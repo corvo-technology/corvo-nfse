@@ -1,5 +1,9 @@
 # Corvo NFS-e
 
+<p align="center">
+  <img src="https://assets.greenflow.solutions/brand/corvo-faceted-green.png" alt="Corvo logo" width="160" />
+</p>
+
 **Brazilian service invoices, built into your product.**
 
 Issue NFS-e through a REST API and manage companies, A1 certificates, and invoices from one dashboard. Corvo handles background processing, stores PDF and XML documents, and delivers status updates through webhooks.
