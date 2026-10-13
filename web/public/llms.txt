@@ -1,0 +1,11 @@
+# Corvo
+
+> Corvo is a developer-first WhatsApp messaging API for building, operating, and scaling transactional and automated messaging.
+
+Corvo provides one API for WhatsApp templates, webhooks, delivery monitoring, and prepaid messaging credits. It is designed for SaaS products, AI agents, CRMs, automation workflows, and internal systems.
+
+Corvo is currently preparing for public launch. Account creation, the dashboard, and developer documentation are not yet publicly available.
+
+## Product
+
+- [Corvo landing page](https://corvo.tech/): Product overview, supported use cases, architecture, dashboard capabilities, and planned pricing.

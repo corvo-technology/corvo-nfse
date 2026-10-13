@@ -1,0 +1,81 @@
+"use client";
+
+import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { FileText } from "lucide-react";
+import type { Invoice } from "@/lib/types";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { DataTable, DataTableSkeleton, type Column } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { timeAgo } from "@/lib/i18n-helpers";
+
+type TimeAgoT = ReturnType<typeof import("next-intl").useTranslations>;
+
+interface InvoiceTableProps {
+  invoices: Invoice[];
+  emptyText: string;
+  loading?: boolean;
+  maxRows?: number;
+  timeAgoT: TimeAgoT;
+}
+
+const STATUS_VARIANT: Record<Invoice["status"], BadgeVariant> = {
+  authorized: "accent",
+  processing: "info",
+  queued: "gray",
+  rejected: "danger",
+  reconciliation_required: "warn",
+  retry_pending: "warn",
+  manual_review: "warn",
+  failed: "danger",
+};
+
+export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }: InvoiceTableProps) {
+  const t = useTranslations("Invoices");
+  const locale = useLocale();
+  const rows = maxRows ? invoices.slice(0, maxRows) : invoices;
+
+  if (loading) return <DataTableSkeleton label={timeAgoT("loading")} rows={maxRows ?? 4} />;
+  if (rows.length === 0) return <EmptyState icon={FileText} title={emptyText} />;
+
+  const currency = new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US", {
+    style: "currency",
+    currency: "BRL",
+  });
+
+  const columns: Column<Invoice>[] = [
+    {
+      id: "customer",
+      header: t("table.customer"),
+      primary: true,
+      cell: (inv) => (
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate text-text"><Link href={`/app/invoices/${inv.id}`} className="hover:text-accent">{inv.customerName}</Link></span>
+          <span className="truncate font-mono text-[12px] font-normal text-text-4">
+            {inv.externalId ?? inv.id.slice(0, 12)}
+          </span>
+        </div>
+      ),
+      className: "max-w-[320px]",
+    },
+    {
+      id: "amount",
+      header: t("table.amount"),
+      align: "right",
+      cell: (inv) => <span className="font-mono text-[13px] text-text-2">{currency.format(inv.amount)}</span>,
+    },
+    {
+      id: "status",
+      header: t("table.status"),
+      cell: (inv) => <Badge variant={STATUS_VARIANT[inv.status]}>{t(`status.${inv.status}`)}</Badge>,
+    },
+    {
+      id: "created",
+      header: t("table.created"),
+      align: "right",
+      cell: (inv) => <span className="text-[13px] text-text-3">{timeAgo(inv.createdAt, timeAgoT)}</span>,
+    },
+  ];
+
+  return <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} caption={t("title")} />;
+}

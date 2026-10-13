@@ -1,0 +1,19 @@
+/** Application tables whose tenant isolation must be enforced by PostgreSQL. */
+export const TENANT_RLS_TABLES = [
+  'tenants',
+  'tenant_billing',
+  'tenant_settings',
+  'tenant_memberships',
+  'tenant_invitations',
+  'api_keys',
+  'nfse_companies',
+  'nfse_invoices',
+  'credit_transactions',
+  'billing_usage_periods',
+  'webhook_configs',
+  'webhook_deliveries',
+  'mcp_connections',
+  'nfse_certificates',
+  'nfse_dps_sequences',
+  'nfse_invoice_events',
+] as const;

@@ -1,0 +1,602 @@
+import { createHash, randomUUID } from 'crypto';
+import { UnauthorizedException } from '@nestjs/common';
+import { SignJWT } from 'jose';
+import { FindOperator } from 'typeorm';
+import {
+  AuthAuthorizationCodeOrmEntity,
+  AuthSessionOrmEntity,
+} from '@/infra/persistence/typeorm/entities/auth.orm-entities';
+import { McpConnectionOrmEntity } from './infra/mcp-connection.orm-entity';
+import { McpAuthService, verifyCodeChallenge } from './mcp-auth.service';
+
+const sha256 = (value: string): string =>
+  createHash('sha256').update(value).digest('hex');
+
+const base64urlSha256 = (value: string): string =>
+  createHash('sha256').update(value).digest('base64url');
+
+const CLIENT_ID = 'corvo-mcp';
+const REDIRECT_URI = 'http://localhost:3000/mcp/callback';
+const SCOPE = 'nfse:read nfse:write';
+const USER_ID = '11111111-1111-4111-8111-111111111111';
+const TENANT_ID = '22222222-2222-4222-8222-222222222222';
+const CODE_VERIFIER = 'test-code-verifier-abcdefghijklmnopqrstuvwxyz012345';
+const CODE_CHALLENGE = base64urlSha256(CODE_VERIFIER);
+
+type Row = Record<string, unknown>;
+
+function matches(row: object, where: Row | undefined): boolean {
+  return Object.entries(where ?? {}).every(([key, value]) =>
+    value instanceof FindOperator
+      ? value.type === 'isNull'
+        ? (row as Row)[key] == null
+        : value.type === 'moreThan' && (row as Row)[key]! > value.value
+      : (row as Row)[key] === value,
+  );
+}
+
+function upsert<T extends Row>(rows: T[], entity: T): T {
+  const existing = entity.id
+    ? rows.find((row) => row.id === (entity.id as string))
+    : undefined;
+  if (existing) {
+    Object.assign(existing, entity);
+    return existing;
+  }
+  const row = {
+    id: randomUUID(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...entity,
+  } as T;
+  rows.push(row);
+  return row;
+}
+
+function createInMemoryRepos() {
+  const codes: AuthAuthorizationCodeOrmEntity[] = [];
+  const sessions: AuthSessionOrmEntity[] = [];
+  const connections: McpConnectionOrmEntity[] = [];
+
+  const codesRepo = {
+    findOne: jest.fn(
+      async (opts: { where: Row }) =>
+        codes.find((row) => matches(row, opts.where)) ?? null,
+    ),
+    save: jest.fn(
+      async (entity: AuthAuthorizationCodeOrmEntity) =>
+        upsert(
+          codes as unknown as Row[],
+          entity as unknown as Row,
+        ) as unknown as AuthAuthorizationCodeOrmEntity,
+    ),
+    update: jest.fn(async (criteria: Row, partial: Row) => {
+      const row = codes.find((r) => matches(r, criteria));
+      if (row) Object.assign(row, partial);
+      return { affected: row ? 1 : 0 };
+    }),
+  };
+
+  const sessionsRepo = {
+    findOne: jest.fn(
+      async (opts: { where: Row }) =>
+        sessions.find((row) => matches(row, opts.where)) ?? null,
+    ),
+    save: jest.fn(
+      async (entity: AuthSessionOrmEntity) =>
+        upsert(
+          sessions as unknown as Row[],
+          entity as unknown as Row,
+        ) as unknown as AuthSessionOrmEntity,
+    ),
+    update: jest.fn(async (criteria: Row, partial: Row) => {
+      const row = sessions.find((r) => matches(r, criteria));
+      if (row) Object.assign(row, partial);
+      return { affected: row ? 1 : 0 };
+    }),
+  };
+
+  const connectionsRepo = {
+    findOne: jest.fn(
+      async (opts: { where: Row }) =>
+        connections.find((row) => matches(row, opts.where)) ?? null,
+    ),
+    save: jest.fn(
+      async (entity: McpConnectionOrmEntity) =>
+        upsert(
+          connections as unknown as Row[],
+          entity as unknown as Row,
+        ) as unknown as McpConnectionOrmEntity,
+    ),
+    update: jest.fn(async (criteria: Row, partial: Row) => {
+      const row = connections.find((r) => matches(r, criteria));
+      if (row) Object.assign(row, partial);
+      return { affected: row ? 1 : 0 };
+    }),
+  };
+
+  for (const repo of [codesRepo, sessionsRepo, connectionsRepo])
+    Object.assign(repo, { create: (row: Row) => row, insert: repo.save });
+  return {
+    codes,
+    sessions,
+    connections,
+    codesRepo,
+    sessionsRepo,
+    connectionsRepo,
+  };
+}
+
+function createHarness() {
+  const repos = createInMemoryRepos();
+  const config = {
+    getOrThrow: jest.fn().mockReturnValue({
+      jwtSecret: 'a'.repeat(32),
+      accessTokenTtlSeconds: 900,
+      refreshTokenTtlDays: 30,
+      authorizationCodeTtlSeconds: 300,
+      csrfSigningSecret: 'b'.repeat(32),
+    }),
+  };
+  const memberships = {
+    findByAuthUserAndTenant: jest.fn().mockResolvedValue({ isActive: true }),
+  };
+  const service = new McpAuthService(
+    repos.codesRepo as never,
+    repos.sessionsRepo as never,
+    repos.connectionsRepo as never,
+    config as never,
+    memberships as never,
+  );
+  return { service, config, memberships, ...repos };
+}
+
+function seedCode(
+  codes: AuthAuthorizationCodeOrmEntity[],
+  overrides: Partial<AuthAuthorizationCodeOrmEntity> = {},
+): { raw: string; code: AuthAuthorizationCodeOrmEntity } {
+  const raw = 'raw-auth-code-abcdefghij0123456789abcd';
+  const code = {
+    id: randomUUID(),
+    clientId: CLIENT_ID,
+    authUserId: USER_ID,
+    productKey: 'corvo',
+    codeHash: sha256(raw),
+    codeChallenge: CODE_CHALLENGE,
+    codeChallengeMethod: 'S256',
+    redirectUri: REDIRECT_URI,
+    scope: SCOPE,
+    tenantId: TENANT_ID,
+    expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    consumedAt: null,
+    ...overrides,
+  } as AuthAuthorizationCodeOrmEntity;
+  codes.push(code);
+  return { raw, code };
+}
+
+async function exchange(
+  harness: ReturnType<typeof createHarness>,
+  raw: string,
+  overrides: {
+    codeVerifier?: string;
+    redirectUri?: string;
+    clientId?: string;
+  } = {},
+) {
+  return harness.service.exchangeCode({
+    code: raw,
+    codeVerifier: overrides.codeVerifier ?? CODE_VERIFIER,
+    clientId: overrides.clientId ?? CLIENT_ID,
+    redirectUri: overrides.redirectUri ?? REDIRECT_URI,
+  });
+}
+
+describe('verifyCodeChallenge', () => {
+  it('accepts a valid S256 verifier/challenge pair', () => {
+    expect(verifyCodeChallenge(CODE_VERIFIER, CODE_CHALLENGE)).toBe(true);
+  });
+
+  it('rejects a mismatched verifier', () => {
+    expect(verifyCodeChallenge('wrong-verifier', CODE_CHALLENGE)).toBe(false);
+  });
+
+  it('produces base64url challenges without padding', () => {
+    const challenge = base64urlSha256(CODE_VERIFIER);
+    expect(challenge).not.toMatch(/[+/=]/);
+    expect(verifyCodeChallenge(CODE_VERIFIER, challenge)).toBe(true);
+  });
+});
+
+describe('McpAuthService.createAuthorizationCode', () => {
+  it('returns the raw code and stores only its SHA-256 hash', async () => {
+    const { service, codes } = createHarness();
+
+    const raw = await service.createAuthorizationCode({
+      clientId: CLIENT_ID,
+      userId: USER_ID,
+      tenantId: TENANT_ID,
+      redirectUri: REDIRECT_URI,
+      scope: SCOPE,
+      codeChallenge: CODE_CHALLENGE,
+      codeChallengeMethod: 'S256',
+    });
+
+    expect(raw).toHaveLength(32);
+    expect(codes).toHaveLength(1);
+    const stored = codes[0];
+    expect(stored.codeHash).toBe(sha256(raw));
+    expect(stored.codeHash).not.toBe(raw);
+    expect(stored.clientId).toBe(CLIENT_ID);
+    expect(stored.authUserId).toBe(USER_ID);
+    expect(stored.tenantId).toBe(TENANT_ID);
+    expect(stored.redirectUri).toBe(REDIRECT_URI);
+    expect(stored.scope).toBe(SCOPE);
+    expect(stored.codeChallenge).toBe(CODE_CHALLENGE);
+    expect(stored.codeChallengeMethod).toBe('S256');
+    expect(stored.consumedAt).toBeNull();
+  });
+
+  it('sets a 5-minute expiry', async () => {
+    const { service, codes } = createHarness();
+    const before = Date.now();
+
+    await service.createAuthorizationCode({
+      clientId: CLIENT_ID,
+      userId: USER_ID,
+      tenantId: TENANT_ID,
+      redirectUri: REDIRECT_URI,
+      scope: SCOPE,
+      codeChallenge: CODE_CHALLENGE,
+      codeChallengeMethod: 'S256',
+    });
+
+    const expiresAt = codes[0].expiresAt.getTime();
+    expect(expiresAt).toBeGreaterThanOrEqual(before + 5 * 60 * 1000 - 1000);
+    expect(expiresAt).toBeLessThanOrEqual(Date.now() + 5 * 60 * 1000 + 1000);
+  });
+
+  it('issues a different code on every call', async () => {
+    const { service } = createHarness();
+    const params = {
+      clientId: CLIENT_ID,
+      userId: USER_ID,
+      tenantId: TENANT_ID,
+      redirectUri: REDIRECT_URI,
+      scope: SCOPE,
+      codeChallenge: CODE_CHALLENGE,
+      codeChallengeMethod: 'S256' as const,
+    };
+    const first = await service.createAuthorizationCode(params);
+    const second = await service.createAuthorizationCode(params);
+    expect(first).not.toBe(second);
+  });
+});
+
+describe('McpAuthService.exchangeCode', () => {
+  it('exchanges a valid code for tokens and provisions session + connection', async () => {
+    const harness = createHarness();
+    const { raw } = seedCode(harness.codes);
+
+    const tokens = await exchange(harness, raw);
+
+    expect(tokens.tokenType).toBe('Bearer');
+    expect(tokens.expiresIn).toBe(900);
+    expect(tokens.scope).toBe(SCOPE);
+    expect(tokens.refreshToken).toHaveLength(48);
+    expect(typeof tokens.accessToken).toBe('string');
+
+    // Code is consumed.
+    expect(harness.codes[0].consumedAt).toBeInstanceOf(Date);
+
+    // Session row: oauth_refresh kind with hashed refresh token.
+    expect(harness.sessions).toHaveLength(1);
+    const session = harness.sessions[0];
+    expect(session.kind).toBe('oauth_refresh');
+    expect(session.clientId).toBe(CLIENT_ID);
+    expect(session.authUserId).toBe(USER_ID);
+    expect(session.activeTenantId).toBe(TENANT_ID);
+    expect(session.refreshTokenHash).toBe(sha256(tokens.refreshToken));
+    expect(session.sessionTokenHash).toBeNull();
+    expect(session.revokedAt).toBeNull();
+    expect(session.expiresAt.getTime()).toBeGreaterThan(Date.now());
+
+    // Connection row with split scopes.
+    expect(harness.connections).toHaveLength(1);
+    const connection = harness.connections[0];
+    expect(connection.authUserId).toBe(USER_ID);
+    expect(connection.tenantId).toBe(TENANT_ID);
+    expect(connection.clientId).toBe(CLIENT_ID);
+    expect(connection.sessionId).toBe(session.id);
+    expect(connection.scopes).toEqual(['nfse:read', 'nfse:write']);
+
+    // Access token validates and maps to the expected payload.
+    const payload = await harness.service.validateAccessToken(
+      tokens.accessToken,
+    );
+    expect(payload.sub).toBe(USER_ID);
+    expect(payload.tenant_id).toBe(TENANT_ID);
+    expect(payload.scopes).toEqual(['nfse:read', 'nfse:write']);
+    expect(payload.connection_id).toBe(connection.id);
+    expect(payload.aud).toBe('corvo-mcp');
+  });
+
+  it('rejects a wrong PKCE verifier without consuming the code', async () => {
+    const harness = createHarness();
+    const { raw } = seedCode(harness.codes);
+
+    await expect(
+      exchange(harness, raw, { codeVerifier: 'totally-wrong-verifier' }),
+    ).rejects.toThrow(UnauthorizedException);
+
+    expect(harness.codes[0].consumedAt).toBeNull();
+    expect(harness.sessions).toHaveLength(0);
+    expect(harness.connections).toHaveLength(0);
+  });
+
+  it('rejects an expired code', async () => {
+    const harness = createHarness();
+    const { raw } = seedCode(harness.codes, {
+      expiresAt: new Date(Date.now() - 1000),
+    });
+
+    await expect(exchange(harness, raw)).rejects.toThrow(UnauthorizedException);
+    expect(harness.sessions).toHaveLength(0);
+  });
+
+  it('rejects an already-consumed code', async () => {
+    const harness = createHarness();
+    const { raw } = seedCode(harness.codes, { consumedAt: new Date() });
+
+    await expect(exchange(harness, raw)).rejects.toThrow(UnauthorizedException);
+    expect(harness.sessions).toHaveLength(0);
+  });
+
+  it('rejects an unknown code', async () => {
+    const harness = createHarness();
+
+    await expect(exchange(harness, 'nonexistent-code')).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
+
+  it('rejects a redirect_uri mismatch', async () => {
+    const harness = createHarness();
+    const { raw } = seedCode(harness.codes);
+
+    await expect(
+      exchange(harness, raw, { redirectUri: 'http://evil.test/callback' }),
+    ).rejects.toThrow(UnauthorizedException);
+    expect(harness.sessions).toHaveLength(0);
+  });
+
+  it('rejects a client_id other than corvo-mcp', async () => {
+    const harness = createHarness();
+    const { raw } = seedCode(harness.codes);
+
+    await expect(
+      exchange(harness, raw, { clientId: 'other-client' }),
+    ).rejects.toThrow(UnauthorizedException);
+    expect(harness.sessions).toHaveLength(0);
+  });
+});
+
+describe('McpAuthService.refreshTokens', () => {
+  async function issueTokens(harness: ReturnType<typeof createHarness>) {
+    const { raw } = seedCode(harness.codes);
+    return exchange(harness, raw);
+  }
+
+  it('rotates the refresh token and issues a new access token', async () => {
+    const harness = createHarness();
+    const first = await issueTokens(harness);
+    const connectionId = harness.connections[0].id;
+
+    const second = await harness.service.refreshTokens(first.refreshToken);
+
+    expect(second.refreshToken).not.toBe(first.refreshToken);
+    expect(second.refreshToken).toHaveLength(48);
+    expect(second.tokenType).toBe('Bearer');
+    expect(second.expiresIn).toBe(900);
+    expect(second.scope).toBe(SCOPE);
+
+    // Stored hash updated to the rotated token.
+    expect(harness.sessions[0].refreshTokenHash).toBe(
+      sha256(second.refreshToken),
+    );
+
+    // New access token is valid and bound to the same connection.
+    const payload = await harness.service.validateAccessToken(
+      second.accessToken,
+    );
+    expect(payload.sub).toBe(USER_ID);
+    expect(payload.tenant_id).toBe(TENANT_ID);
+    expect(payload.connection_id).toBe(connectionId);
+    expect(payload.scopes).toEqual(['nfse:read', 'nfse:write']);
+
+    // Old refresh token no longer works.
+    await expect(
+      harness.service.refreshTokens(first.refreshToken),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('does not touch connection last_used_at on refresh', async () => {
+    const harness = createHarness();
+    const first = await issueTokens(harness);
+    harness.connections[0].lastUsedAt = null;
+
+    await harness.service.refreshTokens(first.refreshToken);
+
+    expect(harness.connections[0].lastUsedAt).toBeNull();
+  });
+
+  it('rejects an unknown refresh token', async () => {
+    const harness = createHarness();
+
+    await expect(
+      harness.service.refreshTokens('unknown-token'),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('rejects a revoked session', async () => {
+    const harness = createHarness();
+    const first = await issueTokens(harness);
+    const sessionId = harness.sessions[0].id;
+
+    await harness.service.revokeSession(sessionId, TENANT_ID, USER_ID);
+
+    await expect(
+      harness.service.refreshTokens(first.refreshToken),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+});
+
+describe('McpAuthService.validateAccessToken', () => {
+  it('throws on a malformed token', async () => {
+    const harness = createHarness();
+
+    await expect(
+      harness.service.validateAccessToken('not-a-jwt'),
+    ).rejects.toThrow();
+  });
+
+  it('throws on an expired token', async () => {
+    const harness = createHarness();
+    const secret = new TextEncoder().encode('a'.repeat(32));
+    const expired = await new SignJWT({
+      sub: USER_ID,
+      tenant_id: TENANT_ID,
+      scopes: ['nfse:read'],
+      connection_id: randomUUID(),
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt(Math.floor(Date.now() / 1000) - 600)
+      .setExpirationTime(Math.floor(Date.now() / 1000) - 300)
+      .setAudience('corvo-mcp')
+      .sign(secret);
+
+    await expect(
+      harness.service.validateAccessToken(expired),
+    ).rejects.toThrow();
+  });
+
+  it('throws on a token signed with a different secret', async () => {
+    const harness = createHarness();
+    const otherSecret = new TextEncoder().encode('z'.repeat(32));
+    const forged = await new SignJWT({
+      sub: USER_ID,
+      tenant_id: TENANT_ID,
+      scopes: ['nfse:read'],
+      connection_id: randomUUID(),
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('15m')
+      .setAudience('corvo-mcp')
+      .sign(otherSecret);
+
+    await expect(harness.service.validateAccessToken(forged)).rejects.toThrow();
+  });
+});
+
+describe('McpAuthService.revokeSession', () => {
+  it('marks the session as revoked', async () => {
+    const harness = createHarness();
+    const { raw } = seedCode(harness.codes);
+    await exchange(harness, raw);
+    const sessionId = harness.sessions[0].id;
+
+    await harness.service.revokeSession(sessionId, TENANT_ID, USER_ID);
+
+    expect(harness.sessions[0].revokedAt).toBeInstanceOf(Date);
+  });
+
+  it('is idempotent for unknown sessions', async () => {
+    const harness = createHarness();
+
+    await expect(
+      harness.service.revokeSession(randomUUID(), TENANT_ID, USER_ID),
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe('MCP tenant boundaries and immediate revocation', () => {
+  async function issue(harness: ReturnType<typeof createHarness>) {
+    const { raw } = seedCode(harness.codes);
+    return exchange(harness, raw);
+  }
+  it('consumes each authorization code once under concurrent exchanges', async () => {
+    const harness = createHarness();
+    const { raw } = seedCode(harness.codes);
+    const results = await Promise.allSettled([
+      exchange(harness, raw),
+      exchange(harness, raw),
+    ]);
+    expect(
+      results.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    expect(harness.sessions).toHaveLength(1);
+    expect(harness.connections).toHaveLength(1);
+  });
+  it('rotates each refresh token once under concurrent requests', async () => {
+    const harness = createHarness();
+    const tokens = await issue(harness);
+    const results = await Promise.allSettled([
+      harness.service.refreshTokens(tokens.refreshToken),
+      harness.service.refreshTokens(tokens.refreshToken),
+    ]);
+    expect(
+      results.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+  });
+  it('rejects an access token immediately after session revocation', async () => {
+    const harness = createHarness();
+    const tokens = await issue(harness);
+    await harness.service.revokeSession(
+      harness.sessions[0].id,
+      TENANT_ID,
+      USER_ID,
+    );
+    await expect(
+      harness.service.validateAccessToken(tokens.accessToken),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+  it('rejects a connection belonging to a different tenant or account', async () => {
+    const harness = createHarness();
+    const tokens = await issue(harness);
+    harness.connections[0].tenantId = randomUUID();
+    await expect(
+      harness.service.validateAccessToken(tokens.accessToken),
+    ).rejects.toThrow(UnauthorizedException);
+    await expect(
+      harness.service.refreshTokens(tokens.refreshToken),
+    ).rejects.toThrow(UnauthorizedException);
+    harness.connections[0].tenantId = TENANT_ID;
+    harness.connections[0].authUserId = randomUUID();
+    await expect(
+      harness.service.validateAccessToken(tokens.accessToken),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+  it('rejects access and refresh after the membership becomes inactive', async () => {
+    const harness = createHarness();
+    const tokens = await issue(harness);
+    harness.memberships.findByAuthUserAndTenant.mockResolvedValue({
+      isActive: false,
+    });
+    await expect(
+      harness.service.validateAccessToken(tokens.accessToken),
+    ).rejects.toThrow(UnauthorizedException);
+    await expect(
+      harness.service.refreshTokens(tokens.refreshToken),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+  it('cannot revoke a session using a foreign tenant', async () => {
+    const harness = createHarness();
+    await issue(harness);
+    await harness.service.revokeSession(
+      harness.sessions[0].id,
+      randomUUID(),
+      USER_ID,
+    );
+    expect(harness.sessions[0].revokedAt).toBeNull();
+  });
+});

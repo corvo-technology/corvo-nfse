@@ -1,0 +1,355 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #0d0d0d;
+  --surface-alt: #0c0c0c;
+  --border: #1f1f1f;
+  --border-soft: #1a1a1a;
+  --border-strong: #2b2b2b;
+  --text: #ededec;
+  --text-2: #a1a1a1;
+  --text-3: #8f8f8f;
+  --text-4: #7d7d7d;
+  --text-5: #6b6b6b;
+  --accent: oklch(0.82 0.14 165);
+  --accent-surface: #0e1512;
+  --accent-border: #2f3d38;
+  --warn: #c9b96e;
+  --danger: #c98a6e;
+  --info: #9ec9ff;
+  --hover: #141414;
+  --active: #1a1a1a;
+  --track: #1f1f1f;
+  --ok: #4ade80;
+  --danger-surface: #1c1210;
+  --danger-border: #3a2218;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-text-4: var(--text-4);
+  --color-text-5: var(--text-5);
+  --color-accent: var(--accent);
+  --color-accent-surface: var(--accent-surface);
+  --color-accent-border: var(--accent-border);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --color-hover: var(--hover);
+  --color-active: var(--active);
+  --color-track: var(--track);
+  --color-ok: var(--ok);
+  --color-danger-surface: var(--danger-surface);
+  --color-danger-border: var(--danger-border);
+  --font-sans: var(--font-instrument-sans);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  border-color: var(--border);
+}
+
+::selection {
+  background: oklch(0.82 0.14 165 / 0.3);
+}
+
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Scroll-triggered animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-on-scroll {
+  opacity: 0;
+  animation: fadeInUp 0.7s ease-out forwards;
+}
+
+.animate-on-scroll-delay-1 { animation-delay: 0.1s; }
+.animate-on-scroll-delay-2 { animation-delay: 0.2s; }
+.animate-on-scroll-delay-3 { animation-delay: 0.3s; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-on-scroll {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2b2b2b;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}
+
+/* Toast animation */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* Pricing volume slider */
+.corvo-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+}
+.corvo-range:focus-visible { outline: none; }
+.corvo-range::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: transparent;
+}
+.corvo-range::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: transparent;
+}
+.corvo-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -9.5px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  border: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 0 6px rgba(255, 255, 255, 0.06);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.corvo-range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  border: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 0 6px rgba(255, 255, 255, 0.06);
+}
+.corvo-range:active::-webkit-slider-thumb { transform: scale(1.08); box-shadow: 0 2px 10px rgba(0,0,0,.5), 0 0 0 9px rgba(255,255,255,.08); }
+.corvo-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--accent); }
+
+/* ------------------------------------------------------------------ */
+/*  Accessibility                                                      */
+/* ------------------------------------------------------------------ */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.sr-only-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Dashboard design system                                            */
+/* ------------------------------------------------------------------ */
+
+@layer components {
+  .btn {
+    @apply inline-flex min-h-9 shrink-0 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-[8px] px-4 text-[13.5px] font-medium transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+  }
+  .btn-sm {
+    @apply min-h-8 rounded-[7px] px-3 text-[12.5px];
+  }
+  .btn-primary {
+    @apply bg-text text-bg hover:bg-white;
+  }
+  .btn-accent {
+    @apply bg-accent text-bg hover:brightness-110;
+  }
+  .btn-secondary {
+    @apply border border-border-strong text-text hover:bg-white/5;
+  }
+  .btn-ghost {
+    @apply text-text-2 hover:bg-white/5 hover:text-text;
+  }
+  .btn-danger {
+    @apply border border-danger-border text-danger hover:bg-danger/10;
+  }
+
+  .field {
+    @apply w-full rounded-[9px] border border-border-strong bg-bg px-3 py-2.5 text-[16px] text-text outline-none transition-colors placeholder:text-text-5 sm:text-[14px];
+    min-height: 42px;
+  }
+  .field:hover {
+    border-color: #3a3a3a;
+  }
+  .field:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px oklch(0.82 0.14 165 / 0.18);
+    outline: none;
+  }
+  .field[aria-invalid="true"] {
+    border-color: var(--danger);
+  }
+  .field-label {
+    @apply text-[13px] font-medium text-text-2;
+  }
+  .field-hint {
+    @apply text-[12px] text-text-4;
+  }
+
+  .eyebrow {
+    @apply font-mono text-[11px] uppercase tracking-[0.08em] text-text-4;
+  }
+
+  .banner {
+    @apply flex items-start gap-3 rounded-[11px] border p-4 text-[13.5px];
+  }
+  .banner-danger {
+    @apply border-danger-border bg-danger-surface text-danger;
+  }
+  .banner-warn {
+    border-color: color-mix(in oklch, var(--warn) 35%, transparent);
+    background: color-mix(in oklch, var(--warn) 8%, var(--surface));
+    color: var(--text-2);
+  }
+  .banner-ok {
+    @apply border-accent-border bg-accent-surface text-text-2;
+  }
+  .banner-accent {
+    @apply border-accent-border bg-accent-surface text-text-2;
+  }
+
+  .choice {
+    @apply flex cursor-pointer items-center gap-3 rounded-[9px] border border-border-strong px-3.5 py-3 transition-colors hover:bg-hover;
+    min-height: 48px;
+  }
+  .choice:has(input:checked),
+  .choice[aria-pressed="true"] {
+    border-color: var(--accent-border);
+    background: var(--accent-surface);
+  }
+  .choice:has(input:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .surface {
+    @apply rounded-[12px] border border-border bg-surface;
+  }
+
+  .row-hover {
+    @apply transition-colors hover:bg-white/[0.025];
+  }
+}
+
+/* Dashboard page entrance */
+@keyframes dash-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.dash-in { animation: dash-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.dash-in-1 { animation-delay: 0.05s; }
+.dash-in-2 { animation-delay: 0.1s; }
+.dash-in-3 { animation-delay: 0.15s; }
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, #121212 25%, #1b1b1b 50%, #121212 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Modal entrance (was referencing a missing .animate-in) */
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.modal-in { animation: modal-in 0.2s ease-out both; }
+
+/* Larger touch targets on touch devices */
+@media (pointer: coarse) {
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 40px; }
+}

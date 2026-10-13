@@ -1,0 +1,1610 @@
+{
+  "Common": {
+    "loadMore": "Load more",
+    "brand": "Corvo",
+    "loading": "Loading...",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "close": "Close",
+    "dismiss": "Dismiss",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "delete": "Delete",
+    "creating": "Creating...",
+    "deleting": "Deleting...",
+    "sending": "Sending...",
+    "submitting": "Submitting...",
+    "removing": "Removing...",
+    "revoking": "Revoking...",
+    "redirecting": "Redirecting...",
+    "tryAgain": "Try again",
+    "done": "Done",
+    "or": "OR",
+    "live": "live",
+    "test": "test",
+    "never": "Never",
+    "days": "days",
+    "justNow": "just now",
+    "minutesAgo": "{n} min ago",
+    "hoursAgo": "{n}h ago",
+    "daysAgo": "{n}d ago",
+    "minutesAgoShort": "{n}m ago",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "mainNavigation": "Main navigation",
+    "signOut": "Sign out",
+    "account": "Account",
+    "errorTitle": "Something went wrong",
+    "empty": "Nothing here yet"
+  },
+  "Dashboard": {
+    "overview": "Overview",
+    "connections": "Connections",
+    "templates": "Templates",
+    "messages": "Messages",
+    "webhooks": "Webhooks",
+    "apiKeys": "API keys",
+    "credits": "Credits",
+    "members": "Members",
+    "settings": "Settings",
+    "eyebrow": "DASHBOARD",
+    "title": "Track every invoice you issue",
+    "description": "Tax invoices, emission status, plan consumption and documents in one place.",
+    "alt": "Corvo dashboard showing issued tax invoices, status and plan consumption"
+  },
+  "Sidebar": {
+    "nav": {
+      "overview": "Overview",
+      "connections": "Connections",
+      "templates": "Templates",
+      "messages": "Messages",
+      "webhooks": "Webhooks",
+      "apiKeys": "API keys",
+      "credits": "Credits",
+      "members": "Members",
+      "settings": "Settings",
+      "companies": "Companies",
+      "invoices": "Tax invoices",
+      "billing": "Plan"
+    },
+    "account": "ACCOUNT",
+    "balance": "BALANCE",
+    "buyCredits": "Buy credits →",
+    "signOut": "Sign out",
+    "creditsLabel": "Credits this month",
+    "creditsUsed": "{used} of {total} used"
+  },
+  "Topbar": {
+    "docs": "Docs",
+    "user": "User",
+    "docsLabel": "API documentation",
+    "environment": "Fiscal environment",
+    "test": "Test",
+    "live": "Production"
+  },
+  "Overview": {
+    "title": "Overview",
+    "last7days": "Last 7 days",
+    "last30days": "Last 30 days",
+    "allPhones": "All phones",
+    "days7": "7 days",
+    "days30": "30 days",
+    "noData": "No data for this period",
+    "failedToLoad": "Failed to load overview",
+    "sent": "SENT",
+    "delivered": "DELIVERED",
+    "read": "READ",
+    "failed": "FAILED",
+    "volumePerDay": "Volume per day",
+    "deliveredLabel": "Delivered",
+    "failedLabel": "Failed",
+    "heatmap": {
+      "legendLess": "Less",
+      "legendMore": "More",
+      "empty": "No authorized invoices in this period",
+      "aria": "Heatmap of authorized invoices per day",
+      "note": "{count, plural, one {# invoice} other {# invoices}}"
+    },
+    "recentMessages": "Recent messages",
+    "viewAll": "View all",
+    "table": {
+      "id": "ID",
+      "to": "TO",
+      "type": "TYPE",
+      "status": "STATUS",
+      "age": "AGE"
+    },
+    "kpi": {
+      "authorized": "Authorized",
+      "rejected": "Rejected",
+      "processing": "Processing",
+      "credits": "Credits"
+    },
+    "newInvoice": "New invoice",
+    "invoicesPerDay": "Invoices per day",
+    "recentInvoices": "Recent invoices",
+    "viewAllInvoices": "View all",
+    "period": "Period",
+    "loadFailed": "We couldn't load your data.",
+    "loadedRecords": "Indicators cover up to 100 loaded invoices in this period ({count} records)."
+  },
+  "Connections": {
+    "title": "Connections",
+    "subtitle": "Manage your WhatsApp Business integrations.",
+    "connect": "+ Connect",
+    "connectNumber": "+ Connect number",
+    "loading": "Loading...",
+    "noConnections": "No connections yet",
+    "noConnectionsDesc": "Connect a WhatsApp number to start sending messages through the platform.",
+    "reconnect": "Reconnect",
+    "disconnect": "Disconnect",
+    "disconnecting": "Disconnecting...",
+    "statusPending": "Finalize number selection",
+    "statusActive": "Connected",
+    "statusSuspended": "Connection suspended",
+    "statusDisconnected": "Disconnected",
+    "typeCloudApi": "Cloud API",
+    "typeWabaCloud": "WABA + Cloud",
+    "connectModal": {
+      "title": "Connect WhatsApp",
+      "connectionType": "Connection type",
+      "loadingConfig": "Loading configuration...",
+      "preparingCoexistence": "Preparing coexistence setup...",
+      "metaDialogInfo": "A Meta dialog will open. Complete the WhatsApp Business setup in the dialog, then return here to continue.",
+      "openMetaDialog": "Open Meta dialog",
+      "loadingSdk": "Loading SDK...",
+      "popupBlockerHint": "If the dialog does not open, check your browser popup blocker.",
+      "waitingForSetup": "Waiting for setup to complete",
+      "waitingForSetupDesc": "Complete the WhatsApp Business setup in the Meta dialog, then return here.",
+      "completingCoexistence": "Completing coexistence setup...",
+      "connectingToWhatsApp": "Connecting to WhatsApp...",
+      "selectPhone": "Select a phone number",
+      "selectPhoneDesc": "Choose which number to connect. You can change this later.",
+      "connected": "Connected",
+      "cancelled": "Cancelled",
+      "cancelledDesc": "The setup was cancelled. You can try again.",
+      "errorDefault": "An error occurred. Please try again."
+    },
+    "disconnectModal": {
+      "title": "Disconnect",
+      "description": "Disconnecting {phone} will remove it from this tenant. Any messages in transit may be affected. This cannot be undone."
+    },
+    "connectionTypes": {
+      "meta_cloud": {
+        "label": "WhatsApp Cloud API",
+        "description": "Connect a WhatsApp account through the official Meta API."
+      },
+      "meta_business_app_coexistence": {
+        "label": "Existing WhatsApp Business",
+        "description": "Use your current WhatsApp Business number with the API simultaneously."
+      }
+    },
+    "errors": {
+      "authorizationCodeMissing": "Authorization code missing. Please try again.",
+      "noAuthorizationCode": "No authorization code received. Please try again.",
+      "metaReportedError": "Meta reported an error."
+    }
+  },
+  "Templates": {
+    "title": "Templates",
+    "subtitle": "Templates require Meta approval before use in production.",
+    "newTemplate": "New template",
+    "noConnections": "Connect a WhatsApp number before creating templates.",
+    "noConnectionsDesc": "Templates require an approved connection with Meta. Go to Numbers to connect your first number.",
+    "noTemplates": "No templates yet. Create one to get started.",
+    "searchPlaceholder": "Search templates...",
+    "createViaApi": "Create via API",
+    "preview": "Preview",
+    "filters": {
+      "all": "All",
+      "approved": "Approved",
+      "inReview": "In review",
+      "rejected": "Rejected"
+    },
+    "table": {
+      "name": "NAME",
+      "category": "CATEGORY",
+      "language": "LANGUAGE",
+      "status": "STATUS",
+      "created": "CREATED"
+    },
+    "submit": "Submit",
+    "submitForReview": "Submit for review",
+    "modal": {
+      "title": "New template",
+      "connection": "Connection",
+      "name": "Name",
+      "category": "Category",
+      "language": "Language",
+      "body": "Body",
+      "footer": "Footer",
+      "footerOptional": "(optional)",
+      "bodyHint": "Use '{1}', '{2}' for positional variables.",
+      "footerPlaceholder": "Optional footer text",
+      "categories": {
+        "UTILITY": "UTILITY",
+        "AUTHENTICATION": "AUTHENTICATION",
+        "MARKETING": "MARKETING",
+        "SERVICE": "SERVICE"
+      },
+      "languages": {
+        "en_US": "en_US",
+        "pt_BR": "pt_BR",
+        "es": "es"
+      }
+    },
+    "toasts": {
+      "created": "Template created successfully",
+      "deleted": "Template deleted",
+      "deleteFailed": "Failed to delete template",
+      "submitted": "Template submitted for review",
+      "submitFailed": "Failed to submit template"
+    }
+  },
+  "Messages": {
+    "title": "Messages",
+    "subtitle": "Full 90-day log. Filter and export to CSV.",
+    "exportCsv": "Export CSV",
+    "noMessages": "No messages found",
+    "selectMessage": "Select a message",
+    "filters": {
+      "all": "All",
+      "delivered": "Delivered",
+      "failures": "Failures",
+      "replied": "Replied"
+    },
+    "table": {
+      "id": "ID",
+      "to": "TO",
+      "template": "TEMPLATE",
+      "status": "STATUS",
+      "age": "AGE"
+    },
+    "timeline": {
+      "accepted": "Accepted into queue",
+      "sent": "Sent to Cloud API",
+      "delivered": "Delivered to device",
+      "read": "Read"
+    },
+    "detail": {
+      "deliveredIn": "Delivered in {n}s",
+      "failed": "Failed",
+      "pending": "Pending",
+      "metadata": "Metadata",
+      "toPhone": "To phone",
+      "template": "Template",
+      "creditCharged": "Credit charged",
+      "metaId": "Meta ID",
+      "webhookPayload": "Webhook payload"
+    }
+  },
+  "Webhooks": {
+    "title": "Webhooks",
+    "subtitle": "We send a POST signed with HMAC-SHA256. Exponential retry for 24h.",
+    "newEndpoint": "New endpoint",
+    "noEndpoints": "No webhook endpoints yet. Create one to get started.",
+    "secret": "Secret",
+    "hide": "Hide",
+    "reveal": "Reveal",
+    "sendTestEvent": "Send test event",
+    "recentDeliveries": "Recent deliveries",
+    "last24h": "last 24h",
+    "noDeliveries": "No deliveries in the last 24 hours",
+    "eventGroups": {
+      "message": "Message",
+      "contactSync": "Contact & sync",
+      "balance": "Balance",
+      "nfse": "Invoices"
+    },
+    "secretBanner": {
+      "generated": "Signing secret generated",
+      "for": "for {url}",
+      "warning": "This secret is shown only once. Store it securely -- you will not be able to see it again."
+    },
+    "events": {
+      "nfse": {
+        "invoice": {
+          "authorized": {
+            "label": "Invoice authorized",
+            "description": "The municipality authorized the invoice."
+          },
+          "rejected": {
+            "label": "Invoice rejected",
+            "description": "The municipality rejected the invoice."
+          },
+          "failed": {
+            "label": "Invoice failed",
+            "description": "Invoice processing failed."
+          },
+          "reconciliation_required": {
+            "label": "Reconciliation required",
+            "description": "The invoice needs reconciliation."
+          },
+          "manual_review": {
+            "label": "Manual review",
+            "description": "The invoice needs manual review."
+          },
+          "documents_ready": {
+            "label": "Documents ready",
+            "description": "The PDF and XML were generated."
+          },
+          "email_sent": {
+            "label": "Email sent",
+            "description": "The invoice email was sent to the customer."
+          },
+          "email_failed": {
+            "label": "Email failed",
+            "description": "Sending the invoice email failed."
+          }
+        }
+      }
+    },
+    "modal": {
+      "title": "New endpoint",
+      "url": "URL",
+      "urlPlaceholder": "https://your-app.com/webhooks/corvo",
+      "eventsLabel": "Events",
+      "signingSecretInfo": "A signing secret (whsec_...) will be generated. Verify requests using HMAC-SHA256.",
+      "createEndpoint": "Create endpoint"
+    },
+    "table": {
+      "event": "Event",
+      "destination": "Destination",
+      "code": "Code",
+      "status": "Status",
+      "duration": "Duration",
+      "age": "Age"
+    },
+    "toasts": {
+      "created": "Webhook endpoint created",
+      "deleted": "Webhook deleted",
+      "deleteFailed": "Failed to delete webhook",
+      "testSent": "Test event sent successfully",
+      "testFailed": "Failed to send test event",
+      "retrySuccess": "Delivery retried",
+      "retryFailed": "Failed to retry"
+    }
+  },
+  "ApiKeys": {
+    "title": "API keys",
+    "subtitle": "The key is shown once. Store it in an environment variable.",
+    "createKey": "Create key",
+    "loading": "Loading API keys...",
+    "noKeys": "No API keys yet. Create one to get started.",
+    "authentication": "Authentication",
+    "keyCreated": "API key created",
+    "keyWarning": "This key is shown only once. Store it securely -- you will not be able to see it again.",
+    "table": {
+      "name": "Name",
+      "key": "Key",
+      "env": "Env",
+      "scope": "Scope",
+      "lastUsed": "Last used",
+      "expires": "Expires"
+    },
+    "scopes": {
+      "full_access": {
+        "label": "Full access",
+        "description": "All integration permissions."
+      },
+      "invoices_issue": {
+        "label": "Issue invoices",
+        "description": "Allows issuing invoices."
+      },
+      "invoices_view": {
+        "label": "View invoices",
+        "description": "Allows viewing invoices."
+      },
+      "invoices_read_write": {
+        "label": "Issue and view",
+        "description": "Issue and view invoices, and read companies, certificates and webhooks."
+      }
+    },
+    "modal": {
+      "title": "Create API key",
+      "name": "Name",
+      "nameRequired": "*",
+      "namePlaceholder": "e.g. Production, Staging, CI",
+      "maxChars": "Max 100 characters",
+      "environment": "Environment",
+      "live": "Live",
+      "liveDesc": "Production environment",
+      "test": "Test",
+      "testDesc": "Sandbox environment",
+      "scope": "Scope",
+      "expiresAt": "Expires at",
+      "optional": "(optional)",
+      "noLimit": "No limit",
+      "expires30": "30 days",
+      "expires90": "90 days",
+      "expires365": "1 year",
+      "warning": "The key will be shown only once. Copy it immediately after creation."
+    },
+    "errors": {
+      "authRequired": "You need to sign in to manage API keys.",
+      "permissionRequired": "You need the api_keys.manage permission to manage API keys.",
+      "loadFailed": "Failed to load API keys",
+      "createFailed": "Failed to create key",
+      "revokeFailed": "Failed to revoke key"
+    }
+  },
+  "Credits": {
+    "title": "Credits",
+    "subtitle": "1 credit = 1 Service, Utility or Authentication message. Marketing messages cost 10 credits each. Credits never expire.",
+    "eyebrow": "HOW CREDITS WORK",
+    "columnType": "TYPE",
+    "columnCredits": "CREDITS",
+    "types": {
+      "service": {
+        "name": "Service",
+        "description": "Post-purchase updates, account alerts",
+        "credits": "1"
+      },
+      "utility": {
+        "name": "Utility",
+        "description": "Shipping updates, billing notices",
+        "credits": "1"
+      },
+      "authentication": {
+        "name": "Authentication",
+        "description": "OTP and verification codes",
+        "credits": "1"
+      },
+      "marketing": {
+        "name": "Marketing",
+        "description": "Promotions, product announcements",
+        "credits": "10"
+      }
+    },
+    "example": "EXAMPLE",
+    "exampleTitle": "You have 1,000 credits",
+    "utilityMessages": "Utility messages",
+    "marketingMessages": "Marketing messages",
+    "or": "OR",
+    "note": "Marketing messages cost 10x more credits than service, utility or authentication messages. Mix and match across categories within the same balance.",
+    "yourCredits": "YOUR CREDITS",
+    "autoTopUp": "AUTO TOP-UP",
+    "autoTopUpOff": "Off",
+    "autoTopUpHint": "Turn on when balance < 200",
+    "loadingProducts": "Loading products...",
+    "loadingHistory": "Loading history...",
+    "perCredit": "per credit",
+    "addCredits": "Add credits",
+    "buy": "Buy",
+    "popular": "popular",
+    "history": "History",
+    "noTransactions": "No transactions yet.",
+    "balanceLow": "Running low - add credits below",
+    "balanceOk": "~ {n} days at your average volume",
+    "table": {
+      "date": "DATE",
+      "type": "TYPE",
+      "description": "DESCRIPTION",
+      "credits": "CREDITS"
+    },
+    "errors": {
+      "loadBalance": "Failed to load balance",
+      "loadProducts": "Failed to load products",
+      "loadHistory": "Failed to load history",
+      "purchase": "Purchase failed"
+    }
+  },
+  "Settings": {
+    "title": "Settings",
+    "subtitle": "Environment and billing settings.",
+    "environment": "Environment",
+    "comingSoon": "Coming soon",
+    "billing": "Billing",
+    "stripeEnding": "····4242",
+    "visa": "Visa",
+    "receiptsTo": "Receipts sent to financeiro@acme.com",
+    "openStripePortal": "Open Stripe portal",
+    "deleteWorkspace": "Delete workspace",
+    "deleteWorkspaceDesc": "Permanently remove this workspace and all its data. This action cannot be undone.",
+    "toggles": {
+      "blockOutsideHours": {
+        "label": "Block outside business hours",
+        "desc": "Prevent outbound messages when your business hours are closed."
+      },
+      "lowBalanceAlert": {
+        "label": "Low balance alert",
+        "desc": "Receive a notification when credit balance drops below 100 messages."
+      }
+    },
+    "paymentsPending": "The payment and billing portal is not available yet."
+  },
+  "Members": {
+    "title": "Members",
+    "subtitle": "Manage who has access to your workspace.",
+    "invite": "Invite",
+    "loading": "Loading...",
+    "noMembers": "No members yet",
+    "temporaryPassword": "Temporary password",
+    "passwordWarning": "This password is shown only once. The user must change it on first login.",
+    "invitationSent": "Access created for {name} ({email}) with role {role}.",
+    "table": {
+      "person": "Person",
+      "role": "Role",
+      "joined": "Joined"
+    },
+    "roles": {
+      "admin": {
+        "label": "Admin",
+        "desc": "Full access to all settings and members."
+      },
+      "developer": {
+        "label": "Developer",
+        "desc": "Access to API keys, templates and messages."
+      },
+      "billing": {
+        "label": "Billing",
+        "desc": "Manage credits and payment methods."
+      }
+    },
+    "modal": {
+      "title": "Invite member",
+      "person": "Person",
+      "fullName": "Full name",
+      "fullNameRequired": "*",
+      "fullNamePlaceholder": "e.g. John Doe",
+      "emailAddress": "Email address",
+      "emailAddressRequired": "*",
+      "emailPlaceholder": "colleague@company.com",
+      "role": "Role",
+      "sendInvite": "Send invite"
+    },
+    "errors": {
+      "loadFailed": "Failed to load members",
+      "inviteFailed": "Invite failed",
+      "removeFailed": "Failed to remove member"
+    },
+    "codeLoginHint": "The member can sign in by requesting an email code. No invitation email was sent."
+  },
+  "Login": {
+    "signupTitle": "Create your account",
+    "loginTitle": "Sign in to Corvo",
+    "signupSubtitle": "Create your account with an email code. No password.",
+    "loginSubtitle": "Access your account.",
+    "signUpWithGoogle": "Sign up with Google",
+    "signInWithGoogle": "Sign in with Google",
+    "signUpWithGitHub": "Sign up with GitHub",
+    "signInWithGitHub": "Sign in with GitHub",
+    "namePlaceholder": "Ana Ribeiro",
+    "emailPlaceholder": "your@email.com",
+    "passwordPlaceholder": "Min. 6 characters",
+    "createAccount": "Create account",
+    "signIn": "Sign in",
+    "passwordHint": "Use 6 or more characters with a mix of letters and numbers.",
+    "signInHint": "Enter your password to sign in.",
+    "alreadyHaveAccount": "Already have an account?",
+    "noAccountYet": "No account yet?",
+    "termsNote": "By creating an account, you accept the <terms>Terms of Service</terms> and acknowledge reading the <privacy>Privacy Notice</privacy>.",
+    "errors": {
+      "somethingWentWrong": "Something went wrong",
+      "invalidCredentials": "Invalid or expired code. Check the code or request a new one.",
+      "emailTaken": "This email is already registered. Try signing in instead.",
+      "tooManyAttempts": "Too many attempts. Please wait a moment and try again.",
+      "serviceUnavailable": "Service is temporarily unavailable. Please try again.",
+      "google_auth_failed": "Google login failed. Please try again.",
+      "github_auth_failed": "GitHub login failed. Please try again.",
+      "socialFailed": "Social login failed. Please try again.",
+      "expiredCode": "Code expired. Please request a new one.",
+      "workspaceConflict": "This email cannot create another Free workspace. Use an account with an active membership.",
+      "invalidEmail": "Enter a valid email address."
+    },
+    "perks": {
+      "nfse": {
+        "title": "NFS-e issuance via API",
+        "desc": "Integrate tax invoice issuance into your product with simple REST."
+      },
+      "multiCompany": {
+        "title": "Multi-company management",
+        "desc": "Manage invoices from different CNPJs in a single account."
+      },
+      "automation": {
+        "title": "Tax workflow automation",
+        "desc": "Webhooks and real-time status for every issuance."
+      },
+      "simpleApi": {
+        "title": "Simple REST API",
+        "desc": "Structured responses, examples in Node, Python, and Go."
+      }
+    },
+    "freeCreditsTag": "30 FREE INVOICES PER MONTH",
+    "headline": "From first integration to tax invoice in minutes.",
+    "afterSignup": "AFTER SIGNUP",
+    "footerNote": "No credit card required. No contract. 30 free invoices to get started.",
+    "magicLink": {
+      "sendCode": "Send code",
+      "sending": "Sending...",
+      "codeSent": "Code sent to {email}",
+      "enterCode": "Enter the code",
+      "codePlaceholder": "123456",
+      "resendHint": "Didn't receive? Resend in {n}s",
+      "resend": "Resend code",
+      "verifyCode": "Verify code",
+      "back": "Back"
+    },
+    "socialUnavailable": "Social login is not available yet.",
+    "retrySession": "Recover session"
+  },
+  "Architecture": {
+    "eyebrow": "API",
+    "yourApp": "Your Application",
+    "yourAppDesc": "Your product, SaaS, ERP or internal system.",
+    "yourAi": "Your Business Logic",
+    "yourAiDesc": "Decides when to issue a tax invoice.",
+    "whatsappApi": "Corvo API",
+    "whatsappApiDesc": "Issuance, status and document delivery.",
+    "whatsapp": "Tax Invoice",
+    "whatsappDesc": "The NFS-e is issued and made available.",
+    "footer": "A simple REST API. Structured JSON responses.",
+    "nodejs": "Node.js",
+    "curl": "cURL",
+    "copy": "Copy",
+    "emitting": "Issuing invoices via",
+    "companyDefaults": "The company has a fiscal municipality and default service code configured. The invoice inherits those values automatically."
+  },
+  "Hero": {
+    "badge": "Tax invoice infrastructure for developers",
+    "title": "Your tax invoice API. Simple as that.",
+    "subtitle": "Issue NFS-e, manage multiple companies, send documents by email and automate your tax workflow with a single API.",
+    "startFree": "Start free",
+    "viewDocs": "View documentation",
+    "mono": "30 free invoices per month. No credit card required."
+  },
+  "Nav": {
+    "product": "Product",
+    "docs": "Docs",
+    "pricing": "Pricing",
+    "signIn": "Sign in",
+    "startFree": "Start free"
+  },
+  "Language": {
+    "en": "EN",
+    "pt": "PT"
+  },
+  "FreeTrial": {
+    "eyebrow": "START FREE",
+    "title": "30 free invoices per month",
+    "subtitle": "No credit card required.",
+    "description": "Integrate NFS-e issuance into your product with up to 30 authorized invoices per month for one company. The allowance renews on the first day of each month.",
+    "startFree": "Start free",
+    "finePrint": "Limit of 3 production issuances per day. Allowances use UTC and do not roll over. Tests do not consume the allowance."
+  },
+  "Pricing": {
+    "eyebrow": "PRICING",
+    "title": "Simple pricing. No surprises.",
+    "description": "Start for free and choose a plan that matches your invoice volume.",
+    "credits": "invoices / month",
+    "mostPopular": "MOST POPULAR",
+    "bestFor": "BEST FOR",
+    "includes": "INCLUDED",
+    "comingSoon": "Coming soon",
+    "buyCredits": "Choose plan",
+    "monthly": "Monthly",
+    "perMonth": "/month",
+    "recommended": "Recommended",
+    "calculator": {
+      "title": "How many invoices do you issue per month?",
+      "placeholder": "e.g. 500",
+      "button": "Find ideal plan",
+      "result": "Recommended plan:",
+      "overage": "Notes above quota:",
+      "custoExcedente": "Overage cost:",
+      "totalEstimado": "Estimated total:",
+      "porMes": "/month",
+      "free": {
+        "label": "Free plan",
+        "description": "30 invoices per month, 3 per day limit."
+      },
+      "custom": {
+        "label": "Contact us",
+        "description": "Volumes above 10,000 invoices/month."
+      }
+    },
+    "footnote": "Monthly allowances do not roll over. Free renews on the first day of the month in UTC; paid plans follow the subscription cycle. Authorized production overage is billed separately, up to the plan’s processing limit.",
+    "allPlans": "All plans",
+    "plans": {
+      "free": {
+        "name": "FREE",
+        "credits": "30",
+        "price": "R$ 0",
+        "unit": "",
+        "bestFor": "Test the API and validate your integration.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "1 company",
+          "dailyLimit": "3 invoices per day",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      },
+      "developer": {
+        "name": "DEVELOPER",
+        "credits": "200",
+        "price": "R$ 29.90",
+        "unit": "",
+        "bestFor": "Personal projects, MVPs and small teams.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Up to 10 companies",
+          "email": "Email delivery",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      },
+      "growth": {
+        "name": "GROWTH",
+        "credits": "750",
+        "price": "R$ 89.90",
+        "unit": "",
+        "bestFor": "SaaS products and growing teams.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Up to 50 companies",
+          "email": "Email delivery",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      },
+      "scale": {
+        "name": "SCALE",
+        "credits": "2,500",
+        "price": "R$ 249.90",
+        "unit": "",
+        "bestFor": "High-volume platforms and enterprises.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Up to 500 companies",
+          "email": "Email delivery",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      },
+      "volume": {
+        "name": "VOLUME",
+        "credits": "10,000",
+        "price": "R$ 899.90",
+        "unit": "",
+        "bestFor": "Higher volumes and multi-company operations.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Unlimited companies",
+          "email": "Email delivery",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      }
+    },
+    "fromPrice": "starting at",
+    "perExtra": "per extra invoice",
+    "ctaFree": "Start free",
+    "ctaPaid": "Choose plan",
+    "slider": {
+      "label": "Invoices per month",
+      "unit": "invoices / month",
+      "summaryPre": "Best plan for you:",
+      "summaryFree": "Fits the free plan. No credit card required."
+    },
+    "breakdown": {
+      "free": "Free, 3 per day limit",
+      "plan": "Plan",
+      "extra": "extra invoices",
+      "atVolume": "At {volume} invoices:",
+      "capped": "Capped at {max} invoices/month",
+      "notes": "invoices"
+    },
+    "effective": "Effective cost:",
+    "perNoteShort": "per invoice",
+    "currentPlan": "Your plan"
+  },
+  "Flow": {
+    "eyebrow": "HOW IT WORKS",
+    "title": "From your application to the tax invoice.",
+    "description": "An issuance flow designed to integrate with your product.",
+    "steps": {
+      "step1": "Your application sends the data",
+      "step1Desc": "Issuer company, customer and service description.",
+      "step2": "Corvo processes the issuance",
+      "step2Desc": "Through the available tax integrations.",
+      "step3": "The document is generated",
+      "step3Desc": "Status and result available through the API.",
+      "step4": "Delivery to the customer",
+      "step4Desc": "View via dashboard or email delivery."
+    }
+  },
+  "MultiCompany": {
+    "eyebrow": "MULTI-COMPANY",
+    "title": "One product. Hundreds of companies.",
+    "description": "Built a SaaS or ERP? Manage your clients' tax invoices without creating a different integration for each company.",
+    "items": {
+      "companies": "Registration and management of issuer companies.",
+      "perCompany": "Control and visibility per company.",
+      "documents": "Centralized and accessible documents.",
+      "limits": "Company limits according to the plan.",
+      "consumption": "Track each company's consumption."
+    }
+  },
+  "UseCases": {
+    "eyebrow": "BUILT FOR SOFTWARE",
+    "title": "Built for those who build software.",
+    "description": "From startups to ERPs — one API to integrate tax invoice issuance into your product.",
+    "saas": {
+      "title": "SaaS",
+      "description": "Add NFS-e issuance to your product without building the entire tax infrastructure."
+    },
+    "erp": {
+      "title": "ERPs and platforms",
+      "description": "Centralize issuance for the companies using your platform."
+    },
+    "agencies": {
+      "title": "Software houses",
+      "description": "Integrate tax issuance into the systems you build for your clients."
+    },
+    "companies": {
+      "title": "Companies",
+      "description": "Automate invoice issuance from your internal processes."
+    }
+  },
+  "Developer": {
+    "eyebrow": "DEVELOPERS",
+    "title": "An API you'll enjoy integrating.",
+    "description": "Less time building tax integrations. More time building your product.",
+    "features": {
+      "rest": "Simple HTTP/JSON integration.",
+      "apikey": "API Key authentication.",
+      "structured": "Structured and predictable responses.",
+      "status": "Track the status of each issuance.",
+      "webhooks": "Real-time notifications."
+    },
+    "cta": "View documentation"
+  },
+  "FAQ": {
+    "eyebrow": "FAQ",
+    "title": "Frequently asked questions",
+    "what": {
+      "q": "What is Corvo?",
+      "a": "Corvo is an API platform for issuing and managing electronic service tax invoices (NFS-e). It lets you integrate invoice issuance into your own system."
+    },
+    "free": {
+      "q": "Can I use Corvo for free?",
+      "a": "Yes. Free includes one company and up to 30 authorized production invoices per month, with a limit of 3 per day. The allowance renews on the first day of the month and limits use UTC. No credit card is required; test invoices do not consume this allowance."
+    },
+    "multiCompany": {
+      "q": "Can I manage multiple companies?",
+      "a": "Yes. Paid plans allow managing multiple issuer companies, according to each subscription's limits."
+    },
+    "accumulate": {
+      "q": "Do invoice limits accumulate?",
+      "a": "No. Unused allowance does not roll over. Free renews on the first day of each month in UTC; paid plans follow the monthly subscription period shown in the dashboard."
+    },
+    "email": {
+      "q": "Can I send the invoice by email?",
+      "a": "Yes. You can request XML and PDF delivery to the customer’s email once the invoice is authorized and documents are available. Track delivery status in the Service."
+    },
+    "storage": {
+      "q": "Does Corvo store my invoices?",
+      "a": "Yes. Corvo stores issuance records and available XML and PDF documents, with permission-based access. Retention follows the Terms of Service and Privacy Notice. Download copies to meet your company’s retention obligations."
+    },
+    "nfeProducts": {
+      "q": "Does Corvo issue NF-e for products?",
+      "a": "At this time, the product focuses on NFS-e, for service provision. There is no support for NF-e for goods or NFC-e."
+    },
+    "coverage": {
+      "q": "Does Corvo work in all municipalities?",
+      "a": "Availability depends on the integrations and requirements applicable to the municipality and the issuer company. Check available coverage before starting the integration."
+    },
+    "developer": {
+      "q": "Do I need to be a developer to use it?",
+      "a": "The API was designed for software integration. Corvo also offers an interface for document management and queries."
+    },
+    "accountant": {
+      "q": "Does Corvo replace my accountant?",
+      "a": "No. Corvo provides technological infrastructure for issuing tax documents. Tax classification and accounting obligations remain the responsibility of the company, with support from appropriate professionals."
+    }
+  },
+  "CTA": {
+    "eyebrow": "START NOW",
+    "title": "Your next deploy can issue tax invoices.",
+    "description": "One integration to automate NFS-e issuance and track your product's growth.",
+    "ctaPrimary": "Start free",
+    "ctaSecondary": "Explore API",
+    "subtext": "30 free invoices per month to get started."
+  },
+  "Footer": {
+    "brand": "© Corvo. All rights reserved.",
+    "product": "Product",
+    "features": "Features",
+    "pricing": "Pricing",
+    "companies": "Companies",
+    "developers": "Developers",
+    "docs": "Documentation",
+    "apiRef": "API Reference",
+    "company": "Company",
+    "about": "About",
+    "contact": "Contact",
+    "security": "Security",
+    "terms": "Terms",
+    "privacy": "Privacy Notice"
+  },
+  "Terms": {
+    "eyebrow": "LEGAL",
+    "title": "Terms of Service",
+    "effectiveDate": "Last updated: October 12, 2026",
+    "privacyNotice": "Privacy Notice",
+    "dataProcessing": "Data Processing Addendum",
+    "backToHome": "Back to home",
+    "sections": {
+      "s1": {
+        "title": "1. Acceptance and company identification",
+        "content": "These Terms govern your use of the Corvo dashboard, API, documentation and related services (the Service), operated by Greenflow Desenvolvimento de Software LTDA, CNPJ 61.469.487/0001-40 (Greenflow or Corvo). By creating an account or using the Service, you accept these Terms. If you act for an organization, you must be authorized to represent it. A separately signed enterprise agreement prevails where it conflicts with these Terms."
+      },
+      "s2": {
+        "title": "2. What the Service provides",
+        "content": "Corvo lets you integrate the issuance and management of Brazilian electronic service invoices (NFS-e) into your software. The Service includes issuer company registration, certificate management, status tracking, access to XML and PDF when available, document delivery by email and webhooks. Issuance is asynchronous: confirmation that a request was submitted does not mean the invoice was authorized. Check the result through the API, dashboard or webhooks. The test environment produces documents with no fiscal validity and does not consume the production allowance. The current scope is NFS-e; goods invoices (NF-e) and consumer invoices (NFC-e) are not included."
+      },
+      "s3": {
+        "title": "3. Account, workspace and access",
+        "content": "Keep account and workspace information accurate and current. You must control workspace access, assign appropriate permissions and protect your email, sessions, API keys and webhook secrets. Do not expose credentials in browser applications or public repositories. Notify Corvo of suspected unauthorized access. You are responsible for authorized use of your account, without excluding Greenflow’s responsibility for failures attributable to it."
+      },
+      "s4": {
+        "title": "4. Fiscal responsibilities",
+        "content": "You must be authorized to issue invoices for registered companies and verify issuer, customer, service, amount, tax, fiscal code, tax regime and municipality information. You must meet registration, accreditation and eligibility requirements imposed by the tax authority and track authorizations, rejections and pending requests. Corvo provides integration technology; fiscal and accounting decisions must be checked with the professionals responsible. A rejection, outage or test document does not replace your fiscal obligations."
+      },
+      "s5": {
+        "title": "5. Digital certificates",
+        "content": "Where an integration requires an A1 digital certificate, upload only a valid certificate belonging to the issuer company or a representative authorized for the operation. By uploading it, you authorize its use, together with the supplied password, to sign and transmit the fiscal operations you request through the Service. Keep the certificate valid and replace it when needed. Deactivating a certificate in Corvo prevents its further use in the Service; you must request revocation with the issuing certification authority separately."
+      },
+      "s6": {
+        "title": "6. Acceptable use and abuse prevention",
+        "content": "Do not use the Service to issue false documents, act without company authorization, commit fraud, send spam, distribute unlawful content or violate third-party rights. Do not bypass allowances, company limits, request limits, access controls or Free plan eligibility rules, including through accounts or workspaces created for that purpose. Do not share API access beyond your contracted permissions or interfere with the Service or connected fiscal systems."
+      },
+      "s7": {
+        "title": "7. Plans, allowances and renewal",
+        "content": "Plans define the monthly invoice allowance, active company limit and usage limits shown in the offer and dashboard. Free allows one active company and up to 30 authorized production invoices per month, with a limit of 3 per day. Its allowance renews on the first day of each month; monthly and daily limits use UTC. Paid allowances follow the monthly subscription period shown in the dashboard. Allowances belong to the workspace, not to each member or API key. Unused allowance does not roll over or convert into cash. Once a limit is reached, new requests may be blocked until renewal or the purchase of appropriate capacity."
+      },
+      "s8": {
+        "title": "8. How usage and overage are calculated",
+        "content": "Each authorized production NFS-e counts as one usage unit. Corvo reserves capacity when it receives a request while issuance is in progress. Rejected invoices and invoices that finish with a failure release that reservation; invoices still processing may temporarily reduce available capacity. If authorization completes after renewal, usage stays in the period in which it was reserved. Free does not allow paid overage. On paid plans, authorized invoices above the allowance incur additional charges at the plan’s unit rate, within a total monthly processing limit of five times the included allowance. Check usage, reservations and estimated overage in the dashboard."
+      },
+      "s9": {
+        "title": "9. Billing, plan changes and cancellation",
+        "content": "Paid subscriptions are monthly, in Brazilian reais, and renew automatically until canceled. The base fee is charged at the start of the cycle and overage is charged after use; late authorizations may result in a later charge for the original period. Stripe processes payments, and activation requires payment confirmation. The current offer does not include annual subscriptions or prepaid packs. Plan changes and cancellation to return to Free take effect at the end of the current period, without immediate proration of the base fee. Use the subscription options and billing portal in the dashboard; stopping account use does not cancel a subscription. After a failed renewal, paid issuance may remain available for up to seven days after the paid period ends, depending on subscription status, and may then be blocked. Cancellation does not remove charges for usage already incurred. Send refund requests or billing disputes to the contact in these Terms; mandatory statutory rights remain protected, including withdrawal rights where applicable."
+      },
+      "s10": {
+        "title": "10. Fiscal documents and retention",
+        "content": "Corvo stores issuance records and the XML and PDF documents it generates or receives, making them available according to invoice status and your access permissions. Document generation or retrieval failures may require further processing. Storage in the Service does not promise indefinite retention or a specific fiscal retention period unless expressly agreed in a separate contract. Keep your own copies and download documents while you have access to the Service. You remain responsible for retaining documents for the period required for your activity. Export, access or deletion requests after termination are handled under the Privacy Notice, legal obligations and contracted conditions."
+      },
+      "s11": {
+        "title": "11. Coverage and third-party services",
+        "content": "Issuance depends on integration coverage, company eligibility, valid certificates and the availability of the national or municipal fiscal systems involved. Verify compatibility before operating in production. Corvo also uses infrastructure, storage, email and payment providers. External systems may delay, reject or interrupt operations. Sending an email or webhook does not guarantee receipt at the destination; track status and configure your integration to query results and handle failures. These dependencies do not exclude Greenflow’s statutory responsibilities for its own actions."
+      },
+      "s12": {
+        "title": "12. Personal data and privacy",
+        "content": "For customer, issuer, fiscal document and instruction data submitted to the Service, Greenflow acts as a processor on the customer’s behalf under documented instructions and the Data Processing Addendum. The customer must have a lawful basis, inform data subjects and be authorized by the controller when acting on its behalf. Greenflow acts as controller for data needed to manage accounts, billing, security and support. The Privacy Notice and Data Processing Addendum supplement these Terms. Both parties must comply with Brazil’s LGPD and other applicable rules."
+      },
+      "s13": {
+        "title": "13. Security",
+        "content": "Corvo uses access controls, workspace and environment data separation, API-key hashes, encryption of stored certificates and signed webhooks. You must protect credentials, review permissions and verify signatures received by your integration. No system is entirely free of risk. Specific audit, certification, data location or service-level commitments require an express agreement; they do not arise solely from using the Service."
+      },
+      "s14": {
+        "title": "14. Suspension and termination",
+        "content": "We may restrict or suspend access where there are reasonable indications of fraud, unauthorized issuance, security risk, breach of these Terms or nonpayment preventing use of the plan. Where possible, we will explain the reason and how to resolve it. You may request account closure through the contact in these Terms and must manage subscription cancellation in the dashboard. Closure does not cancel an NFS-e already authorized by the tax authority or extinguish payment or document retention obligations already incurred."
+      },
+      "s15": {
+        "title": "15. Customer data and intellectual property",
+        "content": "Data and documents you submit remain under your responsibility and are not transferred to Greenflow by these Terms. You authorize the processing needed to provide the Service and execute your instructions. Greenflow retains rights in Corvo’s software, brand and documentation, subject to third-party rights. While complying with these Terms, you may use the Service and documentation for your contracted integrations."
+      },
+      "s16": {
+        "title": "16. Availability and Service changes",
+        "content": "We may fix, improve or change features and integrations. We will communicate material changes where reasonably possible. Maintenance, infrastructure failures and fiscal system outages may affect processing. We do not promise instant issuance, approval of every request or uninterrupted operation. A service-level agreement applies only where expressly contracted. Nothing in this section excludes warranties or duties that cannot be waived by law."
+      },
+      "s17": {
+        "title": "17. Limitation of liability",
+        "content": "To the extent permitted by law, Greenflow’s total liability relating to the Service or these Terms is limited to the amounts the customer paid for the Service in the twelve months preceding the event giving rise to the claim. Also to the extent permitted by law, Greenflow is not liable for indirect damages or lost profits. These limits do not exclude liabilities that cannot be limited, mandatory consumer rights or duties under data-protection law."
+      },
+      "s18": {
+        "title": "18. Governing law and dispute resolution",
+        "content": "These Terms are governed by Brazilian law. The parties will seek to resolve questions and disputes through the contact below. For unresolved disputes, the courts of the District of Ourinhos, State of São Paulo, have jurisdiction, subject to mandatory jurisdiction rules and the consumer’s right to use the legally applicable forum."
+      },
+      "s19": {
+        "title": "19. Updates to these Terms",
+        "content": "The date at the top of this page identifies the latest text update. For existing accounts, material changes will be communicated through the dashboard, email or another reasonable method at least 30 days before they apply, unless a shorter period is needed for legal requirements, security or abuse prevention. The notice will specify the effective date for those accounts. For new contracts, the version presented at signup applies. Continued use after the applicable date represents acceptance of the changes, subject to statutory rights."
+      },
+      "s20": {
+        "title": "20. Contact and company information",
+        "content": "For questions about these Terms, privacy requests, billing or account closure, email legal@corvo.tech. The Service is operated by Greenflow Desenvolvimento de Software LTDA, CNPJ 61.469.487/0001-40, at Rua Doutor Arlindo Luz, 540, Sala 01, Centro, Ourinhos, São Paulo, postal code 19900-011, Brazil."
+      }
+    },
+    "description": "Rules for using Corvo to issue NFS-e: plans, renewal, usage, billing, certificates and fiscal documents."
+  },
+  "Security": {
+    "eyebrow": "TRUST",
+    "title": "Security",
+    "description": "How we protect access, digital certificates and data in your NFS-e operations.",
+    "responsibleDisclosure": "Responsible disclosure",
+    "questions": "Questions about security?",
+    "backToHome": "Back to home",
+    "practices": {
+      "encryptionTransit": {
+        "title": "Secure connections",
+        "description": "Use Corvo’s HTTPS endpoints to protect data transmitted between your application and the API."
+      },
+      "encryptionRest": {
+        "title": "Protected certificates",
+        "description": "Digital certificates and their passwords are stored using AES-256-GCM encryption. API keys are verified using one-way hashes."
+      },
+      "hmacWebhooks": {
+        "title": "Signed webhooks",
+        "description": "Deliveries include an HMAC-SHA256 signature. Verify it on your server before processing the event."
+      },
+      "documentStorage": {
+        "title": "Fiscal document access",
+        "description": "XML, PDF and issuance records are stored by workspace and environment. Access requires authentication and permissions."
+      },
+      "accessControl": {
+        "title": "Permissions and environments",
+        "description": "Dashboard access and integration keys follow workspace permissions. Test and production environments are separated."
+      },
+      "dataProtection": {
+        "title": "Data processing",
+        "description": "The Privacy Notice and Addendum describe purposes, responsibilities and channels for personal data requests."
+      }
+    },
+    "disclosures": {
+      "reporting": {
+        "title": "Vulnerability reporting",
+        "description": "Send reports to security@corvo.tech with reproduction steps and observed impact. Do not include passwords, certificates or third-party personal data."
+      },
+      "credentials": {
+        "title": "Suspected unauthorized access",
+        "description": "Revoke affected keys, review workspace access and notify the team through the security contact."
+      }
+    }
+  },
+  "Companies": {
+    "title": "Companies",
+    "subtitle": "Manage your NFS-e issuer companies.",
+    "add": "New company",
+    "createHint": "Full company creation form coming soon. Backend integration is not yet available.",
+    "table": {
+      "name": "NAME",
+      "taxId": "TAX ID",
+      "city": "CITY",
+      "status": "STATUS",
+      "created": "CREATED"
+    },
+    "listTitle": "Companies",
+    "empty": "No companies registered.",
+    "loadFailed": "We couldn't load your companies.",
+    "status": {
+      "ready": "Ready",
+      "pending_setup": "Setup pending",
+      "blocked": "Blocked"
+    },
+    "missing": "Missing: {items}",
+    "gaps": {
+      "municipal_registration": "municipal registration",
+      "certificate": "certificate"
+    },
+    "view": "View company",
+    "viewCompany": "View details for {name}"
+  },
+  "Invoices": {
+    "title": "Tax invoices",
+    "subtitle": "History of issued, processing, and rejected invoices.",
+    "new": "New invoice",
+    "newTitle": "Issue tax invoice",
+    "newSubtitle": "Fill in the data to issue an NFS-e.",
+    "noInvoices": "No invoices found.",
+    "submit": "Issue NFS-e",
+    "submitting": "Issuing...",
+    "cancel": "Cancel",
+    "filters": {
+      "all": "All",
+      "authorized": "Authorized",
+      "processing": "Processing",
+      "rejected": "Rejected"
+    },
+    "form": {
+      "company": "Issuer company",
+      "customer": "Customer details",
+      "service": "Service provided",
+      "companyHint": "Who issues the invoice and which internal reference to use.",
+      "customerHint": "Who receives the service. CPF or CNPJ.",
+      "serviceHint": "What was provided, where, and for how much."
+    },
+    "table": {
+      "id": "ID",
+      "customer": "Customer",
+      "amount": "Amount",
+      "status": "Status",
+      "created": "Created"
+    },
+    "status": {
+      "authorized": "Authorized",
+      "processing": "Processing",
+      "queued": "Queued",
+      "rejected": "Rejected",
+      "reconciliation_required": "Reconciliation",
+      "retry_pending": "Retry pending",
+      "manual_review": "Manual review",
+      "failed": "Failed"
+    },
+    "loadFailed": "We couldn't load your invoices.",
+    "filterLabel": "Filter by status",
+    "fields": {
+      "company": "Issuing company",
+      "reference": "Your reference",
+      "optional": "optional",
+      "taxId": "Customer CPF or CNPJ",
+      "name": "Name / legal name",
+      "email": "Billing email",
+      "city": "City",
+      "state": "State",
+      "description": "Service description",
+      "serviceCode": "Tax code",
+      "competence": "Competence date",
+      "amount": "Total amount",
+      "loadingCompanies": "Loading...",
+      "noCompanies": "No companies registered",
+      "invalidAmount": "Enter an amount greater than zero.",
+      "createFailed": "We couldn't issue the invoice.",
+      "companiesFailed": "We couldn't load your companies.",
+      "municipalityCode": "Service location IBGE code",
+      "uncertain": "Issuing was not confirmed. Check the invoice list and reference before submitting again.",
+      "checkInvoices": "Check invoices",
+      "fixFields": "Fix the highlighted fields.",
+      "loadMoreCompanies": "Load more companies",
+      "companyNotReady": "This company needs setup or is blocked from issuing in this environment.",
+      "configureCompany": "View company setup"
+    },
+    "placeholders": {
+      "reference": "order-12345",
+      "taxId": "00.000.000/0000-00",
+      "name": "Customer Company LTDA",
+      "email": "billing@customer.com",
+      "city": "São Paulo",
+      "state": "SP",
+      "description": "Technical consulting for software development",
+      "amount": "1000.00",
+      "serviceCode": "010701",
+      "municipalityCode": "3550308"
+    },
+    "loadedRecords": "Showing {count} loaded invoices. Filters apply to these records.",
+    "loadMore": "Load more",
+    "hints": {
+      "reference": "Prevents duplicate issuance. Auto-generated if empty.",
+      "email": "Receives the invoice PDF and XML after authorization.",
+      "serviceCode": "Search by service name or type the code.",
+      "municipalityCode": "7-digit IBGE code, e.g. 3550308",
+      "serviceCodeDefault": "Company default: {code}. Leave empty to use it, or choose another code for this invoice.",
+      "municipalityDefault": "Company municipality: {code}. Leave empty to use it, or enter another service location for this invoice."
+    },
+    "summary": {
+      "title": "Invoice summary",
+      "live": "Live",
+      "test": "Test",
+      "issuer": "Issuer",
+      "customer": "Customer",
+      "taxId": "Tax ID",
+      "competence": "Competence",
+      "liveWarning": "Live environment: this invoice will have real fiscal value.",
+      "missing": "Still needed: {fields}.",
+      "ready": "Ready to issue.",
+      "email": "Email",
+      "emailPending": "enter the email",
+      "emailOff": "don't send"
+    },
+    "sendEmail": {
+      "label": "Email the invoice to the customer",
+      "hint": "The PDF and XML are sent to the customer's email as soon as the invoice is authorized.",
+      "hintTest": "In test the subject gets [TESTE]. Use your own email."
+    }
+  },
+  "Billing": {
+    "title": "Plan and usage",
+    "subtitle": "Track your invoice quota and plan details.",
+    "monthly": "Monthly",
+    "perMonth": "/mo",
+    "usage": "Invoice usage",
+    "usageWarning": "You've used more than 80% of this month's quota.",
+    "period": "Period",
+    "activeCompanies": "Active companies",
+    "loadFailed": "We couldn't load your plan.",
+    "unknownError": "Unknown error",
+    "plans": "Plans",
+    "currentPlan": "Current plan",
+    "subscribe": "Subscribe",
+    "upgrade": "Upgrade",
+    "downgrade": "Downgrade",
+    "manage": "Manage billing",
+    "allowance": "{count} invoices / month",
+    "overage": "{price} per extra invoice",
+    "scheduled": "Switching to {plan} on {date}",
+    "cancelsAtEnd": "Cancels at the end of the period",
+    "blocked": "Billing is blocked. Update your payment method to keep issuing invoices.",
+    "overageUsed": "{count} extra invoices this period ({price})",
+    "redirecting": "Redirecting to checkout…",
+    "changeScheduled": "Plan change scheduled for {date}.",
+    "changeScheduledNoDate": "Plan change scheduled.",
+    "errors": {
+      "customer_required": "Subscribe to a plan before managing billing.",
+      "ERROR_CONFLICT": "This action conflicts with your current subscription.",
+      "ERROR_RATE_LIMIT_EXCEEDED": "Too many requests. Try again in {seconds}s.",
+      "generic": "We couldn't complete that. Try again."
+    },
+    "success": {
+      "eyebrow": "Subscription",
+      "headingPending": "Confirming your payment",
+      "bodyPending": "We're waiting for the payment provider to confirm. This usually takes a few seconds — you can keep this page open.",
+      "headingDone": "You're all set",
+      "bodyDone": "Your subscription is active and your new allowance is already available.",
+      "headingFailed": "Still processing",
+      "bodyFailed": "The payment hasn't been confirmed yet. It may still be on its way — check again in a moment.",
+      "headingMissing": "Link not recognized",
+      "bodyMissing": "This confirmation link is incomplete. Open Billing to see your current plan.",
+      "steps": {
+        "paid": "Payment submitted",
+        "confirming": "Confirming with the provider",
+        "active": "Subscription active"
+      },
+      "summary": {
+        "plan": "Plan",
+        "allowance": "Invoices / month",
+        "price": "Per month",
+        "renews": "Renews on"
+      },
+      "hint": "Checking automatically…",
+      "retry": "Check again",
+      "back": "Back to billing",
+      "ctaIssue": "Issue an invoice",
+      "failedNote": "If you were charged and this persists, contact support."
+    }
+  },
+  "Session": {
+    "unavailable": "Could not retrieve your session. Check the API and try again.",
+    "retry": "Try again",
+    "forbidden": "You do not have permission to access this page.",
+    "actionFailed": "Could not complete the action. Try again.",
+    "workspace": "Workspace"
+  },
+  "CompanyForm": {
+    "legalName": "Legal name",
+    "tradeName": "Trade name",
+    "taxId": "Tax ID (CNPJ)",
+    "taxRegime": "Tax regime",
+    "municipalReg": "Municipal registration",
+    "municipalityCode": "Municipality IBGE code",
+    "specialRegime": "Special regime",
+    "simpleNational": "Simples Nacional opt-in",
+    "address": "Address",
+    "street": "Street",
+    "number": "Number",
+    "complement": "Complement",
+    "district": "District",
+    "city": "City",
+    "state": "State",
+    "zip": "ZIP code",
+    "readinessHint": "The fiscal municipality is required in every environment. Live issuance also requires municipal registration and a valid certificate.",
+    "required": "Enter a legal name and tax ID.",
+    "failed": "Could not save the company.",
+    "cancel": "Cancel",
+    "save": "Save company",
+    "optional": "optional",
+    "sectionCompany": "Company",
+    "sectionFiscal": "Tax details",
+    "placeholders": {
+      "legalName": "Hot Bread Bakery Ltd",
+      "tradeName": "Hot Bread",
+      "taxId": "00.000.000/0000-00",
+      "municipalReg": "123456",
+      "municipalityCode": "3550308",
+      "specialRegime": "E.g. Municipal Microenterprise",
+      "street": "Av. Paulista",
+      "number": "1000",
+      "complement": "Suite 12",
+      "district": "Bela Vista",
+      "city": "São Paulo",
+      "state": "SP",
+      "zip": "00000-000"
+    },
+    "cep": {
+      "hint": "Auto-fills address and IBGE code.",
+      "found": "Address and IBGE code filled in.",
+      "notFound": "ZIP code not found.",
+      "error": "Could not look up the ZIP code. Fill in manually.",
+      "loading": "Looking up ZIP code..."
+    },
+    "steps": {
+      "company": "Company",
+      "address": "Address",
+      "fiscal": "Tax",
+      "certificate": "Certificate"
+    },
+    "stepHint": {
+      "company": "Start with the tax ID and name of the company that will issue invoices.",
+      "address": "Enter the ZIP code: the address and municipality IBGE code fill in automatically.",
+      "fiscal": "Enter the fiscal municipality. Live mode also requires municipal registration. A default service code simplifies future invoices."
+    },
+    "next": "Continue",
+    "back": "Back",
+    "createCompany": "Create company",
+    "certificateNext": "Next step: digital certificate (optional for now).",
+    "cnpjInvalid": "Enter a valid CNPJ.",
+    "created": "Company {name} created.",
+    "certificateTitle": "A1 digital certificate",
+    "certificateIntro": "Required to issue in production. Upload it now or later from the company page.",
+    "certificateDone": "Certificate uploaded",
+    "certificateDoneHint": "Check the company setup on its page before issuing an invoice.",
+    "later": "Upload later",
+    "finish": "Finish",
+    "hints": {
+      "municipalReg": "Number assigned by the municipality. Required to register in live mode; optional in test mode.",
+      "defaultServiceCode": "National tax code (cTribNac), with 6 digits. Used when an invoice does not specify another code. You can clear this default when editing."
+    },
+    "fixFields": "Fix the highlighted fields.",
+    "defaultServiceCode": "Default service code",
+    "municipalityInvalid": "Enter an IBGE municipality code with exactly 7 digits.",
+    "municipalRegRequired": "Municipal registration is required to register in live mode.",
+    "serviceCodeInvalid": "The service code must have exactly 6 digits."
+  },
+  "CompanyDetail": {
+    "legalName": "Legal name",
+    "taxRegime": "Tax regime",
+    "municipalReg": "Municipal registration",
+    "municipality": "Fiscal municipality",
+    "environment": "Environment",
+    "edit": "Edit company",
+    "delete": "Delete company",
+    "loading": "Loading company...",
+    "retry": "Try again",
+    "failed": "Could not complete the action.",
+    "readinessHint": "Set a municipal registration before issuing invoices.",
+    "certificates": "Certificates",
+    "upload": "Upload certificate",
+    "file": "PKCS#12 certificate (.p12 or .pfx)",
+    "password": "Certificate password",
+    "certificateHint": ".p12 or .pfx, up to 50 KiB. The password is only used for this upload.",
+    "certificateRequired": "Select a file and enter its password.",
+    "certificateInvalid": "Select a .p12 or .pfx file up to 50 KiB.",
+    "noCertificates": "No active certificate registered.",
+    "validUntil": "Valid until",
+    "active": "Active",
+    "expired": "Expired",
+    "revoked": "Revoked",
+    "revoke": "Revoke",
+    "confirmTitle": "Confirm deletion",
+    "confirmCompany": "The company will be deleted. Confirm to continue.",
+    "confirmCertificate": "The certificate will be revoked. New invoices will require a valid certificate.",
+    "confirm": "Confirm",
+    "dropTitle": "Drop the certificate here",
+    "chooseFile": "Choose file",
+    "changeFile": "Change",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "certificateMatch": "The certificate CNPJ must match the company's CNPJ.",
+    "certErr": {
+      "tooLarge": "File is larger than 50 KiB.",
+      "mismatch": "The certificate CNPJ differs from the company CNPJ.",
+      "expired": "This certificate has expired.",
+      "notYetValid": "This certificate is not valid yet.",
+      "invalid": "Could not read the certificate. Check the file and password."
+    },
+    "expiresSoon": "Expires in less than 30 days. Upload a new certificate.",
+    "noCertificatePermission": "You don't have permission to upload certificates.",
+    "env": {
+      "test": "Test",
+      "live": "Live"
+    },
+    "setup": {
+      "title": "Finish setup",
+      "subtitle": "Check the fiscal municipality and issuance requirements for the selected environment.",
+      "progress": "{done} of {total}",
+      "complete": "Setup complete. The company is ready to issue.",
+      "requiredLive": "required in live",
+      "testNote": "In test mode, municipal registration and a certificate are optional. The fiscal municipality must be configured.",
+      "items": {
+        "address": {
+          "title": "Address",
+          "hint": "Enter the ZIP code to fill in the address and IBGE code.",
+          "action": "Complete"
+        },
+        "municipalReg": {
+          "title": "Municipal registration",
+          "hint": "Number issued by the city hall. Without it you can't issue in production.",
+          "action": "Add"
+        },
+        "certificate": {
+          "title": "A1 digital certificate",
+          "hint": "Upload the company's .p12 or .pfx file.",
+          "action": "Upload certificate"
+        },
+        "municipalityCode": {
+          "title": "Fiscal municipality",
+          "hint": "A 7-digit IBGE code, required in both test and live mode.",
+          "action": "Set municipality"
+        }
+      },
+      "required": "required",
+      "recommended": "recommended"
+    },
+    "blocked": "This company is blocked and can't issue invoices. Contact support.",
+    "defaultServiceCode": "Default service code"
+  },
+  "InvoiceDetail": {
+    "title": "Invoice",
+    "loading": "Loading invoice...",
+    "failed": "Could not load the invoice.",
+    "refresh": "Refresh",
+    "customer": "Customer",
+    "amount": "Amount",
+    "reference": "Reference",
+    "competence": "Competence date",
+    "service": "Service",
+    "documents": "Documents",
+    "documentsHint": "PDF and XML become available after authorization.",
+    "events": "Invoice progress",
+    "noEvents": "No events recorded.",
+    "timeline": {
+      "queued": "We received the request and the invoice is waiting to be issued.",
+      "processing": "We are sending the invoice to the city.",
+      "authorized": "The city authorized the invoice. PDF and XML are available.",
+      "rejected": "The city rejected the invoice. Review the data and issue it again.",
+      "retry_pending": "Issuance was not completed and will be retried automatically.",
+      "reconciliation_required": "We could not confirm the invoice state; we are checking with the city.",
+      "manual_review": "The invoice needs manual review by our team.",
+      "failed": "The invoice could not be issued."
+    }
+  },
+  "FiscalDocs": {
+    "title": "Corvo API — NFS-e",
+    "intro": "The dashboard uses an HttpOnly session cookie and CSRF. External integrations use x-api-key with the required scope.",
+    "base": "API base",
+    "relative": "Table paths are relative to /v1; do not repeat the prefix.",
+    "login": "Email code login",
+    "loginFlow": "Request a code, keep data.challengeId in memory and send it with the email and code to verify. The browser receives the cookie. Fetch /auth/session for tenant, permissions and CSRF.",
+    "pending": "Public OAuth, checkout and trusted payment confirmation are pending. Invitations create access but do not send email.",
+    "contracts": "Responses",
+    "responses": "Auth, companies, billing and plans use {data}. Invoices and events use {props}. Certificates, credits and webhooks return data directly. PDF/XML are files. HTTP 204 has no body.",
+    "example": "Server integration example",
+    "catalog": "Endpoints",
+    "access": "Access / permission"
+  },
+  "ServiceCode": {
+    "label": "Service tax code",
+    "placeholder": "Search by service or code",
+    "popular": "Most used",
+    "empty": "No service found. Type the 6-digit code.",
+    "useCustom": "Use this code",
+    "clear": "Clear selected code"
+  },
+  "ApiErrors": {
+    "required": "Required field.",
+    "blank": "Can't be blank.",
+    "invalid_cnpj": "Invalid CNPJ.",
+    "invalid_cpf": "Invalid CPF.",
+    "invalid_tax_id": "Invalid CPF or CNPJ.",
+    "invalid_cep": "ZIP must have 8 digits.",
+    "invalid_uf": "Invalid state.",
+    "invalid_ibge_code": "IBGE code must have 7 digits.",
+    "invalid_service_code": "The tax code must have 6 digits.",
+    "invalid_decimal_places": "Use at most 2 decimal places.",
+    "out_of_range": "Value out of the allowed range.",
+    "future_date": "Competence date can't be in the future.",
+    "invalid_date": "Invalid date.",
+    "incomplete_address": "Enter city and state together."
+  },
+  "Legal": {
+    "eyebrow": "LEGAL",
+    "backToHome": "Back to home",
+    "navigation": "Legal documents",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Notice",
+    "dpa": "Data Processing Addendum",
+    "security": "Security"
+  },
+  "Privacy": {
+    "title": "Privacy Notice",
+    "effectiveDate": "Last updated: October 12, 2026",
+    "description": "How Corvo processes account data, fiscal documents, certificates and personal data when issuing NFS-e.",
+    "sections": {
+      "s1": {
+        "title": "1. Who operates the Service",
+        "content": "Corvo is operated by Greenflow Desenvolvimento de Software LTDA, CNPJ 61.469.487/0001-40. This Notice explains personal data processing on the website, dashboard and NFS-e issuance and management API. The Data Processing Addendum also applies to data customers submit in their fiscal operations."
+      },
+      "s2": {
+        "title": "2. Data processed",
+        "content": "We process account and workspace data, such as names, email addresses, members and permissions; issuer and customer data, such as CPF or CNPJ tax identifiers, municipal registration, names, addresses and contact details; and fiscal data, such as service descriptions, amounts, taxes, service dates, identifiers, statuses, XML and PDF. We also process digital certificates and their passwords when submitted for issuance, webhook configurations and deliveries, authentication and access records, billing information and support communications. Submit only data needed for the operation; avoid including sensitive personal data in service descriptions."
+      },
+      "s3": {
+        "title": "3. Purposes and legal bases",
+        "content": "We use data to authenticate users, administer accounts, process issuance, sign documents when authorized, store and provide XML and PDF, send emails and webhooks, process payments and provide support. We also process data to protect the Service, prevent fraud and meet legal obligations. Where we act as controller, legal bases include contract performance, legal obligations, the exercise of rights and legitimate interests, depending on the purpose and data-subject rights. We use consent for optional website analytics. Where we act as processor, we follow the customer’s documented instructions."
+      },
+      "s4": {
+        "title": "4. Customer and Greenflow roles",
+        "content": "The customer determines the purposes and lawful basis for fiscal data it submits, acting as controller or an authorized representative of a controller. Greenflow processes that data as processor to execute instructions and provide the Service. Greenflow acts as controller for account administration, billing, security and support. If a data-subject request concerns a customer’s fiscal data, we may refer it to the responsible party for assessment and provide appropriate assistance."
+      },
+      "s5": {
+        "title": "5. Sharing",
+        "content": "We share necessary data with fiscal systems involved in issuance, including the competent tax authority, and with hosting, storage, email, payment, monitoring and support providers. Sending an invoice by email shares the documents with the address designated by the customer; webhooks send events to the configured destination. Stripe processes payments through Checkout and the billing portal; Corvo receives identifiers, statuses and records needed for the subscription without collecting the full card number through its own form. We may also share data to meet legal obligations. We do not sell personal data."
+      },
+      "s6": {
+        "title": "6. Cookies and browser storage",
+        "content": "We use session cookies for authentication and browser storage for language, fiscal environment and cookie preferences. When configured, Google Analytics loads on the public website after cookie acceptance and does not load on login or dashboard routes. It helps analyze navigation and traffic. You can remove cookies and the saved preference in browser settings to choose again on a later visit. Restricting necessary cookies may prevent login or features from working."
+      },
+      "s7": {
+        "title": "7. International transfers",
+        "content": "Service providers may process data outside Brazil. International transfers must follow the mechanisms and safeguards required by the LGPD and applicable regulations, including standard contractual clauses where that mechanism is used. This Notice does not promise exclusive hosting in a specific country. You may request information about providers and transfers through the contact below."
+      },
+      "s8": {
+        "title": "8. Storage and retention",
+        "content": "We store fiscal documents and records needed for operations. Retention depends on the data category, purpose, contractual relationship and applicable legal obligations; we do not promise automatic deletion after 90 days or indefinite storage. Data may be retained after termination where there is a lawful basis, with access restricted to the retention purpose. Access, export and deletion requests are assessed under the LGPD, contract and retention obligations. Keep your own copies of documents needed for your activity."
+      },
+      "s9": {
+        "title": "9. Security measures",
+        "content": "We use access controls and separate data by workspace and environment. API keys are verified using one-way hashes. Digital certificates and passwords stored with them are encrypted; webhook events are signed so recipients can verify them. These measures reduce risk, but no system is completely secure. Protect credentials and report suspected unauthorized access."
+      },
+      "s10": {
+        "title": "10. Data-subject rights",
+        "content": "Where provided by law, you may request confirmation of processing, access, correction, sharing information, portability and anonymization, blocking or deletion of unnecessary, excessive or unlawfully processed data. You may also withdraw consent, request deletion of data processed with consent subject to lawful retention exceptions, and complain to the competent authority. Send requests to the contact below. We may request proportionate information to verify your identity and authority before responding."
+      },
+      "s11": {
+        "title": "11. Contact",
+        "content": "For personal data requests and questions, email legal@corvo.tech. Correspondence address: Greenflow Desenvolvimento de Software LTDA, Rua Doutor Arlindo Luz, 540, Sala 01, Centro, Ourinhos, São Paulo, postal code 19900-011, Brazil. Describe your relationship with the account or issuer company; do not send passwords or certificate files to this contact."
+      },
+      "s12": {
+        "title": "12. Notice updates",
+        "content": "We may update this Notice to reflect changes to the Service and data processing. The date at the top identifies the latest update. We will communicate relevant changes through Service channels where applicable. Changes requiring new consent are not authorized solely by continued use."
+      }
+    }
+  },
+  "Dpa": {
+    "title": "Data Processing Addendum",
+    "effectiveDate": "Last updated: October 12, 2026",
+    "description": "Customer and Greenflow responsibilities for processing personal data to issue and manage NFS-e.",
+    "sections": {
+      "s1": {
+        "title": "1. Scope and relationship with the Terms",
+        "content": "This Addendum forms part of the Terms of Service where Greenflow Desenvolvimento de Software LTDA, CNPJ 61.469.487/0001-40, processes personal data on the customer’s behalf through Corvo. It covers processing needed to issue and manage NFS-e. For that processing, this Addendum prevails over conflicting general Terms. Data Greenflow processes as an independent controller is described in the Privacy Notice."
+      },
+      "s2": {
+        "title": "2. Roles and instructions",
+        "content": "The customer acts as controller or represents that the controller has authorized it to provide data and instructions. Greenflow acts as processor and processes data to provide, protect and support the Service under the contract, workspace settings and lawful documented instructions. If an instruction appears incompatible with data-protection law, Greenflow will notify the customer and may suspend the affected operation while the issue is clarified."
+      },
+      "s3": {
+        "title": "3. Data categories and subjects",
+        "content": "Processing may involve workspace representatives and members, service providers and customers, contacts and other people identified in fiscal documents. Data includes names, CPF or CNPJ tax identifiers, registrations, addresses, emails, service descriptions, amounts, taxes, fiscal identifiers and statuses, XML, PDF, webhook configurations and events and operational records. Certificates and passwords submitted for signing are also processed to execute authorized operations. Customers must limit submissions to necessary data and avoid sensitive personal data without an appropriate need and lawful basis."
+      },
+      "s4": {
+        "title": "4. Purpose, operations and duration",
+        "content": "Operations include receipt, validation, signing, transmission to fiscal systems, result queries, document storage and access, delivery by email and webhook and operational support. Processing continues during the Service and afterwards only while there is a lawful basis for retention or to complete applicable return or deletion. Test environment data should be fictitious wherever possible."
+      },
+      "s5": {
+        "title": "5. Customer duties",
+        "content": "The customer is responsible for the lawful basis, transparency to data subjects, authority to act for issuer companies and accuracy of submitted data. It must configure permissions, protect credentials, verify email and webhook destinations and respond to data-subject requests under its responsibility. If acting for another controller, it must ensure its instructions and this engagement are authorized by that controller."
+      },
+      "s6": {
+        "title": "6. Confidentiality and security",
+        "content": "Greenflow will limit access to those who need to process data to provide the Service and require confidentiality duties. It will maintain technical and organizational measures appropriate to the processing, including access controls, workspace and environment separation, API-key hashes, encryption of stored certificates and signed webhooks. Customers must also secure their own integrations."
+      },
+      "s7": {
+        "title": "7. Subprocessors and recipients",
+        "content": "The customer authorizes providers needed for infrastructure, storage, email, monitoring and support, subject to data-protection obligations appropriate to the service provided. Information about these providers may be requested through the privacy contact. Material changes affecting processing will be communicated where applicable, and the customer may submit a reasoned objection for assessment. Tax authorities receive data for their statutory responsibilities; they are not automatically Greenflow’s subprocessors. Customers define email and webhook destinations."
+      },
+      "s8": {
+        "title": "8. Assistance and incidents",
+        "content": "Considering the nature of processing and available information, Greenflow will provide reasonable assistance with data-subject rights, risk assessment and data-protection obligations. Upon becoming aware of an incident affecting personal data processed on the customer’s behalf, it will notify the customer without undue delay with available information and necessary updates. The controller remains responsible for assessing and making notifications to the authority and data subjects within statutory deadlines, without excluding Greenflow’s own obligations."
+      },
+      "s9": {
+        "title": "9. Return, deletion and retention",
+        "content": "Upon Service termination, the customer may request access, export or deletion of personal data under its responsibility through the privacy contact. Greenflow will comply with lawful instructions under contracted conditions and applicable law. Data requiring retention on a lawful basis will have access restricted to the corresponding purpose; backup deletion will follow the maintenance cycle and applicable obligations. The customer must retain copies of fiscal documents required for its activity. Account closure does not cancel documents with the tax authority."
+      },
+      "s10": {
+        "title": "10. International transfers and contact",
+        "content": "Where processing involves an international transfer, the parties must follow the mechanisms and safeguards required by the LGPD and applicable regulations. This Addendum alone does not replace standard contractual clauses or another instrument required for a specific transfer. Send requests about instructions, providers, security measures or transfers to legal@corvo.tech."
+      }
+    }
+  }
+}

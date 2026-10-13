@@ -1,0 +1,51 @@
+# Dependencies and generated artifacts, at any service depth.
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+graphify-out/
+playwright-report/
+test-results/
+output/
+tmp/
+.tmp/
+.temp/
+storage/
+*.log
+*.sarif
+
+# Local configuration and credentials. Only examples belong in Git.
+.env
+.env.*
+!.env.example
+!.env.*.example
+!*.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.aws/
+.vercel/
+
+# Local agent/editor state carried over from the old repositories.
+.agents/
+.codex/
+.claude/
+.verboo/
+.codewright/
+.codewright-output/
+_bmad-output/
+AGENTS.md
+.DS_Store
+.idea/
+
+# Generated quality reports.
+audit-report.json
+lint-report.json
+jscpd-report.json
+quality-report.json
+quality-report.md

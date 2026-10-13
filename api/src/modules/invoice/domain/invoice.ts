@@ -1,0 +1,302 @@
+import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
+import { randomUUID } from 'crypto';
+import { InvoiceStatus, VALID_TRANSITIONS } from './invoice-status';
+import { buildInvoiceState, type InvoiceState } from './invoice-state';
+import { InvoiceEvent } from './invoice-event';
+import { InvalidInvoiceTransitionError } from './errors';
+
+export type LastEmailStatus = 'queued' | 'sent' | 'failed';
+
+export interface CustomerSnapshot {
+  taxId: string;
+  name: string;
+  email?: string;
+  address?: {
+    city: string;
+    state: string;
+    country?: string;
+  };
+}
+
+export interface ServiceSnapshot {
+  description: string;
+  code: string;
+  municipalityCode: string;
+}
+
+export interface TaxSnapshot {
+  // Extensible tax calculation snapshots
+  [key: string]: unknown;
+}
+
+export interface InvoiceProps {
+  id: string;
+  companyId: string;
+  tenantId: string;
+  environment?: ExecutionEnvironment;
+  documentKeyVersion?: number;
+  requestHash?: string | null;
+  externalId: string | null;
+  idempotencyKey: string | null;
+  status: InvoiceStatus;
+  customerSnapshot: CustomerSnapshot;
+  serviceSnapshot: ServiceSnapshot;
+  taxSnapshot: TaxSnapshot;
+  amount: number;
+  currency: string;
+  competenceDate: Date;
+  dpsId: string | null;
+  dpsSeries: string | null;
+  dpsNumber: number | null;
+  accessKey: string | null;
+  nfseNumber: number | null;
+  fiscalProvider: string;
+  fiscalSchemaVersion: string;
+  issuedAt: Date | null;
+  authorizedAt: Date | null;
+  emailSnapshot?: {
+    send?: boolean;
+  };
+  lastErrorCode: string | null;
+  lastErrorMessage: string | null;
+  lastErrorProvider: string | null;
+  documentsReadyAt: Date | null;
+  lastEmailStatus: LastEmailStatus | null;
+  lastEmailSentAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateInvoiceInput {
+  companyId: string;
+  environment?: ExecutionEnvironment;
+  requestHash?: string;
+  externalId?: string;
+  customer: {
+    taxId: string;
+    name: string;
+    email?: string;
+    address?: {
+      city: string;
+      state: string;
+      country?: string;
+    };
+  };
+  service: {
+    description: string;
+    code: string;
+    municipalityCode: string;
+  };
+  amount: number;
+  competenceDate: Date;
+  email?: {
+    send?: boolean;
+  };
+}
+
+export class Invoice {
+  private constructor(private readonly props: InvoiceProps) {}
+
+  static create(
+    input: CreateInvoiceInput,
+    tenantId: string,
+    idempotencyKey?: string,
+  ): Invoice {
+    const now = new Date();
+    return new Invoice({
+      id: randomUUID(),
+      companyId: input.companyId,
+      tenantId,
+      environment: input.environment ?? 'test',
+      documentKeyVersion: 2,
+      requestHash: input.requestHash ?? null,
+      externalId: input.externalId ?? null,
+      idempotencyKey: idempotencyKey ?? null,
+      status: 'queued',
+      customerSnapshot: {
+        taxId: input.customer.taxId,
+        name: input.customer.name,
+        email: input.customer.email,
+        address: input.customer.address,
+      },
+      serviceSnapshot: {
+        description: input.service.description,
+        code: input.service.code,
+        municipalityCode: input.service.municipalityCode,
+      },
+      taxSnapshot: {},
+      emailSnapshot: input.email ? { send: input.email.send } : undefined,
+      amount: input.amount,
+      currency: 'BRL',
+      competenceDate: input.competenceDate,
+      dpsId: null,
+      dpsSeries: null,
+      dpsNumber: null,
+      accessKey: null,
+      nfseNumber: null,
+      fiscalProvider: 'national',
+      fiscalSchemaVersion: 'v2_02',
+      issuedAt: null,
+      authorizedAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      lastErrorProvider: null,
+      documentsReadyAt: null,
+      lastEmailStatus: null,
+      lastEmailSentAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  static reconstitute(props: InvoiceProps): Invoice {
+    return new Invoice(props);
+  }
+
+  get id(): string {
+    return this.props.id;
+  }
+
+  get environment(): ExecutionEnvironment {
+    return this.props.environment ?? 'test';
+  }
+
+  get storageEnvironment(): ExecutionEnvironment | undefined {
+    return this.props.documentKeyVersion === 1 ? undefined : this.environment;
+  }
+
+  setDpsId(id: string): void {
+    this.props.dpsId = id;
+  }
+
+  get status(): InvoiceStatus {
+    return this.props.status;
+  }
+
+  get dpsNumber(): number | null {
+    return this.props.dpsNumber;
+  }
+
+  get accessKey(): string | null {
+    return this.props.accessKey;
+  }
+
+  get companyId(): string {
+    return this.props.companyId;
+  }
+
+  get tenantId(): string {
+    return this.props.tenantId;
+  }
+
+  get externalId(): string | null {
+    return this.props.externalId;
+  }
+
+  get idempotencyKey(): string | null {
+    return this.props.idempotencyKey;
+  }
+
+  get emailSnapshot(): InvoiceProps['emailSnapshot'] {
+    return this.props.emailSnapshot;
+  }
+
+  get documentsReadyAt(): Date | null {
+    return this.props.documentsReadyAt;
+  }
+
+  /** Fiscal status, documents and email state in one consistent view. */
+  get state(): InvoiceState {
+    return buildInvoiceState({
+      status: this.props.status,
+      documentsReady: this.props.documentsReadyAt !== null,
+      emailRequested: Boolean(this.props.emailSnapshot?.send),
+      emailStatus: this.props.lastEmailStatus,
+    });
+  }
+
+  get lastEmailStatus(): LastEmailStatus | null {
+    return this.props.lastEmailStatus;
+  }
+
+  get lastEmailSentAt(): Date | null {
+    return this.props.lastEmailSentAt;
+  }
+
+  get nfseNumber(): number | null {
+    return this.props.nfseNumber;
+  }
+
+  get customerSnapshot(): CustomerSnapshot {
+    return this.props.customerSnapshot;
+  }
+
+  get amount(): number {
+    return this.props.amount;
+  }
+
+  transitionTo(newStatus: InvoiceStatus, reason?: string): InvoiceEvent {
+    const validTargets = VALID_TRANSITIONS[this.props.status];
+    if (!validTargets.includes(newStatus)) {
+      throw new InvalidInvoiceTransitionError(this.props.status, newStatus);
+    }
+    const event = InvoiceEvent.create(
+      this.props.id,
+      this.props.status,
+      newStatus,
+      reason,
+    );
+    this.props.status = newStatus;
+    this.props.updatedAt = new Date();
+    return event;
+  }
+
+  setDpsInfo(series: string, number: number): void {
+    this.props.dpsId = randomUUID();
+    this.props.dpsSeries = series;
+    this.props.dpsNumber = number;
+    this.props.updatedAt = new Date();
+  }
+
+  setAuthorized(accessKey: string, nfseNumber: number): void {
+    const now = new Date();
+    this.props.accessKey = accessKey;
+    this.props.nfseNumber = nfseNumber;
+    this.props.authorizedAt = now;
+    this.props.issuedAt = now;
+    this.props.updatedAt = now;
+  }
+
+  setRejected(
+    errorCode: string,
+    errorMessage: string,
+    providerMessage?: string,
+  ): void {
+    this.props.lastErrorCode = errorCode;
+    this.props.lastErrorMessage = errorMessage;
+    this.props.lastErrorProvider = providerMessage ?? null;
+    this.props.updatedAt = new Date();
+  }
+
+  setReconciliationRequired(reason: string): void {
+    this.props.lastErrorMessage = reason;
+    this.props.updatedAt = new Date();
+  }
+
+  setProcessing(): void {
+    this.props.status = 'processing';
+    this.props.updatedAt = new Date();
+  }
+
+  toJSON(): {
+    props: Omit<InvoiceProps, 'requestHash'> & Omit<InvoiceState, 'status'>;
+  } {
+    const { requestHash: _hash, ...props } = this.toSnapshot();
+    const { documentsStatus, emailStatus, stage } = this.state;
+    return { props: { ...props, documentsStatus, emailStatus, stage } };
+  }
+
+  toSnapshot(): InvoiceProps {
+    return { ...this.props };
+  }
+}

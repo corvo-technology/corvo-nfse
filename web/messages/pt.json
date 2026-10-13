@@ -1,0 +1,1610 @@
+{
+  "Common": {
+    "loadMore": "Carregar mais",
+    "brand": "Corvo",
+    "loading": "Carregando...",
+    "retry": "Tentar novamente",
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "dismiss": "Dispensar",
+    "copy": "Copiar",
+    "copied": "Copiado!",
+    "delete": "Excluir",
+    "creating": "Criando...",
+    "deleting": "Excluindo...",
+    "sending": "Enviando...",
+    "submitting": "Enviando...",
+    "removing": "Removendo...",
+    "revoking": "Revogando...",
+    "redirecting": "Redirecionando...",
+    "tryAgain": "Tentar novamente",
+    "done": "Concluído",
+    "or": "OU",
+    "live": "live",
+    "test": "test",
+    "never": "Nunca",
+    "days": "dias",
+    "justNow": "agora",
+    "minutesAgo": "há {n} min",
+    "hoursAgo": "há {n}h",
+    "daysAgo": "há {n}d",
+    "minutesAgoShort": "há {n}m",
+    "openMenu": "Abrir menu",
+    "closeMenu": "Fechar menu",
+    "mainNavigation": "Navegação principal",
+    "signOut": "Sair",
+    "account": "Conta",
+    "errorTitle": "Algo deu errado",
+    "empty": "Nada por aqui ainda"
+  },
+  "Dashboard": {
+    "overview": "Visão geral",
+    "connections": "Conexões",
+    "templates": "Templates",
+    "messages": "Mensagens",
+    "webhooks": "Webhooks",
+    "apiKeys": "Chaves de API",
+    "credits": "Créditos",
+    "members": "Membros",
+    "settings": "Configurações",
+    "eyebrow": "DASHBOARD",
+    "title": "Acompanhe cada nota emitida",
+    "description": "Notas fiscais, status de emissão, consumo do plano e documentos em um só lugar.",
+    "alt": "Dashboard da Corvo mostrando notas fiscais emitidas, status e consumo do plano"
+  },
+  "Sidebar": {
+    "nav": {
+      "overview": "Visão geral",
+      "connections": "Conexões",
+      "templates": "Templates",
+      "messages": "Mensagens",
+      "webhooks": "Webhooks",
+      "apiKeys": "Chaves de API",
+      "credits": "Créditos",
+      "members": "Membros",
+      "settings": "Configurações",
+      "companies": "Empresas",
+      "invoices": "Notas fiscais",
+      "billing": "Plano"
+    },
+    "account": "CONTA",
+    "balance": "SALDO",
+    "buyCredits": "Comprar créditos →",
+    "signOut": "Sair",
+    "creditsLabel": "Créditos do mês",
+    "creditsUsed": "{used} de {total} usados"
+  },
+  "Topbar": {
+    "docs": "Docs",
+    "user": "Usuário",
+    "docsLabel": "Documentação da API",
+    "environment": "Ambiente fiscal",
+    "test": "Teste",
+    "live": "Produção"
+  },
+  "Overview": {
+    "title": "Visão geral",
+    "last7days": "Últimos 7 dias",
+    "last30days": "Últimos 30 dias",
+    "allPhones": "Todos os telefones",
+    "days7": "7 dias",
+    "days30": "30 dias",
+    "noData": "Sem dados para este período",
+    "failedToLoad": "Falha ao carregar visão geral",
+    "sent": "ENVIADAS",
+    "delivered": "ENTREGUES",
+    "read": "LIDAS",
+    "failed": "FALHAS",
+    "volumePerDay": "Volume por dia",
+    "deliveredLabel": "Entregues",
+    "failedLabel": "Falhas",
+    "heatmap": {
+      "legendLess": "Menos",
+      "legendMore": "Mais",
+      "empty": "Sem notas autorizadas neste período",
+      "aria": "Mapa de calor de notas autorizadas por dia",
+      "note": "{count, plural, one {# nota} other {# notas}}"
+    },
+    "recentMessages": "Mensagens recentes",
+    "viewAll": "Ver todas",
+    "table": {
+      "id": "ID",
+      "to": "PARA",
+      "type": "TIPO",
+      "status": "STATUS",
+      "age": "TEMPO"
+    },
+    "kpi": {
+      "authorized": "Autorizadas",
+      "rejected": "Rejeitadas",
+      "processing": "Em processamento",
+      "credits": "Créditos"
+    },
+    "newInvoice": "Nova nota",
+    "invoicesPerDay": "Notas por dia",
+    "recentInvoices": "Notas recentes",
+    "viewAllInvoices": "Ver todas",
+    "period": "Período",
+    "loadFailed": "Não foi possível carregar os dados.",
+    "loadedRecords": "Indicadores calculados sobre até 100 notas carregadas no período ({count} registros)."
+  },
+  "Connections": {
+    "title": "Conexões",
+    "subtitle": "Gerencie suas integrações com o WhatsApp Business.",
+    "connect": "+ Conectar",
+    "connectNumber": "+ Conectar número",
+    "loading": "Carregando...",
+    "noConnections": "Nenhuma conexão ainda",
+    "noConnectionsDesc": "Conecte um número do WhatsApp para começar a enviar mensagens pela plataforma.",
+    "reconnect": "Reconectar",
+    "disconnect": "Desconectar",
+    "disconnecting": "Desconectando...",
+    "statusPending": "Finalizar seleção de número",
+    "statusActive": "Conectado",
+    "statusSuspended": "Conexão suspensa",
+    "statusDisconnected": "Desconectado",
+    "typeCloudApi": "Cloud API",
+    "typeWabaCloud": "WABA + Cloud",
+    "connectModal": {
+      "title": "Conectar WhatsApp",
+      "connectionType": "Tipo de conexão",
+      "loadingConfig": "Carregando configuração...",
+      "preparingCoexistence": "Preparando configuração de coexistência...",
+      "metaDialogInfo": "Um diálogo da Meta será aberto. Complete a configuração do WhatsApp Business no diálogo e retorne aqui para continuar.",
+      "openMetaDialog": "Abrir diálogo da Meta",
+      "loadingSdk": "Carregando SDK...",
+      "popupBlockerHint": "Se o diálogo não abrir, verifique o bloqueador de pop-ups do seu navegador.",
+      "waitingForSetup": "Aguardando conclusão da configuração",
+      "waitingForSetupDesc": "Complete a configuração do WhatsApp Business no diálogo da Meta e retorne aqui.",
+      "completingCoexistence": "Finalizando configuração de coexistência...",
+      "connectingToWhatsApp": "Conectando ao WhatsApp...",
+      "selectPhone": "Selecione um número de telefone",
+      "selectPhoneDesc": "Escolha qual número conectar. Você pode alterar isso depois.",
+      "connected": "Conectado",
+      "cancelled": "Cancelado",
+      "cancelledDesc": "A configuração foi cancelada. Você pode tentar novamente.",
+      "errorDefault": "Ocorreu um erro. Por favor, tente novamente."
+    },
+    "disconnectModal": {
+      "title": "Desconectar",
+      "description": "Desconectar {phone} irá removê-lo deste tenant. Mensagens em trânsito podem ser afetadas. Esta ação não pode ser desfeita."
+    },
+    "connectionTypes": {
+      "meta_cloud": {
+        "label": "WhatsApp Cloud API",
+        "description": "Conecte uma conta do WhatsApp pela API oficial da Meta."
+      },
+      "meta_business_app_coexistence": {
+        "label": "WhatsApp Business existente",
+        "description": "Use seu número atual do WhatsApp Business com a API simultaneamente."
+      }
+    },
+    "errors": {
+      "authorizationCodeMissing": "Código de autorização ausente. Por favor, tente novamente.",
+      "noAuthorizationCode": "Nenhum código de autorização recebido. Por favor, tente novamente.",
+      "metaReportedError": "A Meta reportou um erro."
+    }
+  },
+  "Templates": {
+    "title": "Templates",
+    "subtitle": "Templates precisam de aprovação da Meta antes de uso em produção.",
+    "newTemplate": "Novo template",
+    "noConnections": "Conecte um número do WhatsApp antes de criar templates.",
+    "noConnectionsDesc": "Templates precisam de uma conexão aprovada com a Meta. Vá para Números para conectar seu primeiro número.",
+    "noTemplates": "Nenhum template ainda. Crie um para começar.",
+    "searchPlaceholder": "Buscar templates...",
+    "createViaApi": "Criar via API",
+    "preview": "Pré-visualização",
+    "filters": {
+      "all": "Todos",
+      "approved": "Aprovados",
+      "inReview": "Em revisão",
+      "rejected": "Rejeitados"
+    },
+    "table": {
+      "name": "NOME",
+      "category": "CATEGORIA",
+      "language": "IDIOMA",
+      "status": "STATUS",
+      "created": "CRIADO"
+    },
+    "submit": "Enviar",
+    "submitForReview": "Enviar para revisão",
+    "modal": {
+      "title": "Novo template",
+      "connection": "Conexão",
+      "name": "Nome",
+      "category": "Categoria",
+      "language": "Idioma",
+      "body": "Corpo",
+      "footer": "Rodapé",
+      "footerOptional": "(opcional)",
+      "bodyHint": "Use '{1}', '{2}' para variáveis posicionais.",
+      "footerPlaceholder": "Texto do rodapé opcional",
+      "categories": {
+        "UTILITY": "UTILITY",
+        "AUTHENTICATION": "AUTHENTICATION",
+        "MARKETING": "MARKETING",
+        "SERVICE": "SERVICE"
+      },
+      "languages": {
+        "en_US": "en_US",
+        "pt_BR": "pt_BR",
+        "es": "es"
+      }
+    },
+    "toasts": {
+      "created": "Template criado com sucesso",
+      "deleted": "Template excluído",
+      "deleteFailed": "Falha ao excluir template",
+      "submitted": "Template enviado para revisão",
+      "submitFailed": "Falha ao enviar template"
+    }
+  },
+  "Messages": {
+    "title": "Mensagens",
+    "subtitle": "Log completo de 90 dias. Filtre e exporte para CSV.",
+    "exportCsv": "Exportar CSV",
+    "noMessages": "Nenhuma mensagem encontrada",
+    "selectMessage": "Selecione uma mensagem",
+    "filters": {
+      "all": "Todas",
+      "delivered": "Entregues",
+      "failures": "Falhas",
+      "replied": "Respondidas"
+    },
+    "table": {
+      "id": "ID",
+      "to": "PARA",
+      "template": "TEMPLATE",
+      "status": "STATUS",
+      "age": "TEMPO"
+    },
+    "timeline": {
+      "accepted": "Aceita na fila",
+      "sent": "Enviada para a Cloud API",
+      "delivered": "Entregue no dispositivo",
+      "read": "Lida"
+    },
+    "detail": {
+      "deliveredIn": "Entregue em {n}s",
+      "failed": "Falhou",
+      "pending": "Pendente",
+      "metadata": "Metadados",
+      "toPhone": "Telefone",
+      "template": "Template",
+      "creditCharged": "Créditos cobrados",
+      "metaId": "ID da Meta",
+      "webhookPayload": "Payload do webhook"
+    }
+  },
+  "Webhooks": {
+    "title": "Webhooks",
+    "subtitle": "Enviamos um POST assinado com HMAC-SHA256. Retry exponencial por 24h.",
+    "newEndpoint": "Novo endpoint",
+    "noEndpoints": "Nenhum endpoint de webhook ainda. Crie um para começar.",
+    "secret": "Secret",
+    "hide": "Ocultar",
+    "reveal": "Revelar",
+    "sendTestEvent": "Enviar evento de teste",
+    "recentDeliveries": "Entregas recentes",
+    "last24h": "últimas 24h",
+    "noDeliveries": "Nenhuma entrega nas últimas 24 horas",
+    "eventGroups": {
+      "message": "Mensagem",
+      "contactSync": "Contato e sincronização",
+      "balance": "Saldo",
+      "nfse": "Notas fiscais"
+    },
+    "secretBanner": {
+      "generated": "Secret de assinatura gerado",
+      "for": "para {url}",
+      "warning": "Este secret é exibido apenas uma vez. Armazene-o de forma segura -- você não conseguirá vê-lo novamente."
+    },
+    "events": {
+      "nfse": {
+        "invoice": {
+          "authorized": {
+            "label": "Nota autorizada",
+            "description": "A prefeitura autorizou a nota."
+          },
+          "rejected": {
+            "label": "Nota rejeitada",
+            "description": "A prefeitura rejeitou a nota."
+          },
+          "failed": {
+            "label": "Falha na emissão",
+            "description": "O processamento da nota falhou."
+          },
+          "reconciliation_required": {
+            "label": "Reconciliação necessária",
+            "description": "A nota precisa de reconciliação."
+          },
+          "manual_review": {
+            "label": "Revisão manual",
+            "description": "A nota precisa de revisão manual."
+          },
+          "documents_ready": {
+            "label": "Documentos prontos",
+            "description": "O PDF e o XML foram gerados."
+          },
+          "email_sent": {
+            "label": "E-mail enviado",
+            "description": "O e-mail da nota foi enviado ao cliente."
+          },
+          "email_failed": {
+            "label": "Falha no e-mail",
+            "description": "O envio do e-mail da nota falhou."
+          }
+        }
+      }
+    },
+    "modal": {
+      "title": "Novo endpoint",
+      "url": "URL",
+      "urlPlaceholder": "https://seu-app.com/webhooks/corvo",
+      "eventsLabel": "Eventos",
+      "signingSecretInfo": "Um secret de assinatura (whsec_...) será gerado. Verifique as requisições usando HMAC-SHA256.",
+      "createEndpoint": "Criar endpoint"
+    },
+    "table": {
+      "event": "Evento",
+      "destination": "Destino",
+      "code": "Código",
+      "status": "Status",
+      "duration": "Duração",
+      "age": "Tempo"
+    },
+    "toasts": {
+      "created": "Endpoint de webhook criado",
+      "deleted": "Webhook excluído",
+      "deleteFailed": "Falha ao excluir webhook",
+      "testSent": "Evento de teste enviado com sucesso",
+      "testFailed": "Falha ao enviar evento de teste",
+      "retrySuccess": "Entrega reenviada",
+      "retryFailed": "Falha ao reenviar"
+    }
+  },
+  "ApiKeys": {
+    "title": "Chaves de API",
+    "subtitle": "A chave é exibida apenas uma vez. Armazene em uma variável de ambiente.",
+    "createKey": "Criar chave",
+    "loading": "Carregando chaves de API...",
+    "noKeys": "Nenhuma chave de API ainda. Crie uma para começar.",
+    "authentication": "Autenticação",
+    "keyCreated": "Chave de API criada",
+    "keyWarning": "Esta chave é exibida apenas uma vez. Armazene-a de forma segura -- você não conseguirá vê-la novamente.",
+    "table": {
+      "name": "Nome",
+      "key": "Chave",
+      "env": "Ambiente",
+      "scope": "Escopo",
+      "lastUsed": "Último uso",
+      "expires": "Expira"
+    },
+    "scopes": {
+      "full_access": {
+        "label": "Acesso completo",
+        "description": "Todas as permissões de integração."
+      },
+      "invoices_issue": {
+        "label": "Emitir notas",
+        "description": "Permite emitir NFS-e."
+      },
+      "invoices_view": {
+        "label": "Consultar notas",
+        "description": "Permite consultar NFS-e."
+      },
+      "invoices_read_write": {
+        "label": "Emitir e consultar",
+        "description": "Emissão, consulta e leitura de empresas, certificados e webhooks."
+      }
+    },
+    "modal": {
+      "title": "Criar chave de API",
+      "name": "Nome",
+      "nameRequired": "*",
+      "namePlaceholder": "ex.: Produção, Staging, CI",
+      "maxChars": "Máximo de 100 caracteres",
+      "environment": "Ambiente",
+      "live": "Live",
+      "liveDesc": "Ambiente de produção",
+      "test": "Test",
+      "testDesc": "Ambiente sandbox",
+      "scope": "Escopo",
+      "expiresAt": "Expira em",
+      "optional": "(opcional)",
+      "noLimit": "Sem limite",
+      "expires30": "30 dias",
+      "expires90": "90 dias",
+      "expires365": "1 ano",
+      "warning": "A chave será exibida apenas uma vez. Copie-a imediatamente após a criação."
+    },
+    "errors": {
+      "authRequired": "Você precisa fazer login para gerenciar chaves de API.",
+      "permissionRequired": "Você precisa da permissão api_keys.manage para gerenciar chaves de API.",
+      "loadFailed": "Falha ao carregar chaves de API",
+      "createFailed": "Falha ao criar chave",
+      "revokeFailed": "Falha ao revogar chave"
+    }
+  },
+  "Credits": {
+    "title": "Créditos",
+    "subtitle": "1 crédito = 1 mensagem de Serviço, Utilidade ou Autenticação. Mensagens de marketing custam 10 créditos cada. Créditos nunca expiram.",
+    "eyebrow": "COMO FUNCIONAM OS CRÉDITOS",
+    "columnType": "TIPO",
+    "columnCredits": "CRÉDITOS",
+    "types": {
+      "service": {
+        "name": "Serviço",
+        "description": "Atualizações pós-compra, alertas de conta",
+        "credits": "1"
+      },
+      "utility": {
+        "name": "Utilidade",
+        "description": "Atualizações de envio, avisos de fatura",
+        "credits": "1"
+      },
+      "authentication": {
+        "name": "Autenticação",
+        "description": "OTP e códigos de verificação",
+        "credits": "1"
+      },
+      "marketing": {
+        "name": "Marketing",
+        "description": "Promoções, anúncios de produto",
+        "credits": "10"
+      }
+    },
+    "example": "EXEMPLO",
+    "exampleTitle": "Você tem 1.000 créditos",
+    "utilityMessages": "Mensagens de utilidade",
+    "marketingMessages": "Mensagens de marketing",
+    "or": "OU",
+    "note": "Mensagens de marketing custam 10x mais créditos que mensagens de serviço, utilidade ou autenticação. Misture e combine categorias dentro do mesmo saldo.",
+    "yourCredits": "SEUS CRÉDITOS",
+    "autoTopUp": "RECARGA AUTOMÁTICA",
+    "autoTopUpOff": "Desligado",
+    "autoTopUpHint": "Ativar quando saldo < 200",
+    "loadingProducts": "Carregando produtos...",
+    "loadingHistory": "Carregando histórico...",
+    "perCredit": "por crédito",
+    "addCredits": "Adicionar créditos",
+    "buy": "Comprar",
+    "popular": "popular",
+    "history": "Histórico",
+    "noTransactions": "Nenhuma transação ainda.",
+    "balanceLow": "Saldo baixo - adicione créditos abaixo",
+    "balanceOk": "~ {n} dias no seu volume médio",
+    "table": {
+      "date": "DATA",
+      "type": "TIPO",
+      "description": "DESCRIÇÃO",
+      "credits": "CRÉDITOS"
+    },
+    "errors": {
+      "loadBalance": "Falha ao carregar saldo",
+      "loadProducts": "Falha ao carregar produtos",
+      "loadHistory": "Falha ao carregar histórico",
+      "purchase": "Falha na compra"
+    }
+  },
+  "Settings": {
+    "title": "Configurações",
+    "subtitle": "Configurações de ambiente e faturamento.",
+    "environment": "Ambiente",
+    "comingSoon": "Em breve",
+    "billing": "Faturamento",
+    "stripeEnding": "····4242",
+    "visa": "Visa",
+    "receiptsTo": "Recibos enviados para financeiro@acme.com",
+    "openStripePortal": "Abrir portal do Stripe",
+    "deleteWorkspace": "Excluir workspace",
+    "deleteWorkspaceDesc": "Remover permanentemente este workspace e todos os seus dados. Esta ação não pode ser desfeita.",
+    "toggles": {
+      "blockOutsideHours": {
+        "label": "Bloquear fora do horário comercial",
+        "desc": "Impedir mensagens de saída quando seu horário comercial estiver encerrado."
+      },
+      "lowBalanceAlert": {
+        "label": "Alerta de saldo baixo",
+        "desc": "Receber uma notificação quando o saldo de créditos cair abaixo de 100 mensagens."
+      }
+    },
+    "paymentsPending": "Portal de pagamento e cobrança ainda não estão disponíveis."
+  },
+  "Members": {
+    "title": "Membros",
+    "subtitle": "Gerencie quem tem acesso ao seu workspace.",
+    "invite": "Convidar",
+    "loading": "Carregando...",
+    "noMembers": "Nenhum membro ainda",
+    "temporaryPassword": "Senha temporária",
+    "passwordWarning": "Esta senha é exibida apenas uma vez. O usuário deve alterá-la no primeiro login.",
+    "invitationSent": "Acesso criado para {name} ({email}), com papel {role}.",
+    "table": {
+      "person": "Pessoa",
+      "role": "Função",
+      "joined": "Entrou"
+    },
+    "roles": {
+      "admin": {
+        "label": "Admin",
+        "desc": "Acesso total a todas as configurações e membros."
+      },
+      "developer": {
+        "label": "Developer",
+        "desc": "Acesso a chaves de API, templates e mensagens."
+      },
+      "billing": {
+        "label": "Billing",
+        "desc": "Gerenciar créditos e formas de pagamento."
+      }
+    },
+    "modal": {
+      "title": "Convidar membro",
+      "person": "Pessoa",
+      "fullName": "Nome completo",
+      "fullNameRequired": "*",
+      "fullNamePlaceholder": "ex.: João Silva",
+      "emailAddress": "Endereço de e-mail",
+      "emailAddressRequired": "*",
+      "emailPlaceholder": "colega@empresa.com",
+      "role": "Função",
+      "sendInvite": "Enviar convite"
+    },
+    "errors": {
+      "loadFailed": "Falha ao carregar membros",
+      "inviteFailed": "Falha ao enviar convite",
+      "removeFailed": "Falha ao remover membro"
+    },
+    "codeLoginHint": "O membro pode entrar solicitando um código no login. Nenhum convite por e-mail foi enviado."
+  },
+  "Login": {
+    "signupTitle": "Crie sua conta",
+    "loginTitle": "Entrar no Corvo",
+    "signupSubtitle": "Crie sua conta com um código enviado por e-mail. Sem senha.",
+    "loginSubtitle": "Acesse sua conta.",
+    "signUpWithGoogle": "Cadastrar com Google",
+    "signInWithGoogle": "Entrar com Google",
+    "signUpWithGitHub": "Cadastrar com GitHub",
+    "signInWithGitHub": "Entrar com GitHub",
+    "namePlaceholder": "Ana Ribeiro",
+    "emailPlaceholder": "seu@email.com",
+    "passwordPlaceholder": "Mínimo de 6 caracteres",
+    "createAccount": "Criar conta",
+    "signIn": "Entrar",
+    "passwordHint": "Use 6 ou mais caracteres com uma combinação de letras e números.",
+    "signInHint": "Digite sua senha para entrar.",
+    "alreadyHaveAccount": "Já tem uma conta?",
+    "noAccountYet": "Ainda não tem conta?",
+    "termsNote": "Ao criar uma conta, você aceita os <terms>Termos de Uso</terms> e declara ter lido o <privacy>Aviso de Privacidade</privacy>.",
+    "errors": {
+      "somethingWentWrong": "Algo deu errado",
+      "invalidCredentials": "Código inválido ou expirado. Confira o código ou solicite outro.",
+      "emailTaken": "Este e-mail já está cadastrado. Tente fazer login.",
+      "tooManyAttempts": "Muitas tentativas. Aguarde um momento e tente novamente.",
+      "serviceUnavailable": "Serviço temporariamente indisponível. Por favor, tente novamente.",
+      "google_auth_failed": "Falha no login com Google. Por favor, tente novamente.",
+      "github_auth_failed": "Falha no login com GitHub. Por favor, tente novamente.",
+      "socialFailed": "Falha no login social. Por favor, tente novamente.",
+      "expiredCode": "Código expirado. Solicite um novo.",
+      "workspaceConflict": "Este e-mail não pode criar outro workspace Free. Entre com uma conta com membership ativo.",
+      "invalidEmail": "Informe um e-mail válido."
+    },
+    "perks": {
+      "nfse": {
+        "title": "Emissão de NFS-e via API",
+        "desc": "Integre a emissão de notas fiscais ao seu produto com REST simples."
+      },
+      "multiCompany": {
+        "title": "Gestão multiempresa",
+        "desc": "Gerencie notas de diferentes CNPJs em uma única conta."
+      },
+      "automation": {
+        "title": "Automação do fluxo fiscal",
+        "desc": "Webhooks e status em tempo real para cada emissão."
+      },
+      "simpleApi": {
+        "title": "API REST simples",
+        "desc": "Respostas estruturadas, exemplos em Node, Python e Go."
+      }
+    },
+    "freeCreditsTag": "30 NOTAS GRÁTIS POR MÊS",
+    "headline": "Da primeira emissão à nota fiscal em minutos.",
+    "afterSignup": "APÓS O CADASTRO",
+    "footerNote": "Sem cartão de crédito. Sem contrato. 30 notas grátis para começar.",
+    "magicLink": {
+      "sendCode": "Enviar código",
+      "sending": "Enviando...",
+      "codeSent": "Código enviado para {email}",
+      "enterCode": "Digite o código",
+      "codePlaceholder": "123456",
+      "resendHint": "Não recebeu? Reenviar em {n}s",
+      "resend": "Reenviar código",
+      "verifyCode": "Verificar código",
+      "back": "Voltar"
+    },
+    "socialUnavailable": "Login social estará disponível em breve.",
+    "retrySession": "Recuperar sessão"
+  },
+  "Architecture": {
+    "eyebrow": "API",
+    "yourApp": "Sua aplicação",
+    "yourAppDesc": "Seu produto, SaaS, ERP ou sistema interno.",
+    "yourAi": "Sua lógica de negócio",
+    "yourAiDesc": "Decide quando emitir uma nota fiscal.",
+    "whatsappApi": "API Corvo",
+    "whatsappApiDesc": "Emissão, status e entrega do documento.",
+    "whatsapp": "Documento fiscal",
+    "whatsappDesc": "A NFS-e é emitida e disponibilizada.",
+    "footer": "Uma API REST simples. Respostas estruturadas em JSON.",
+    "nodejs": "Node.js",
+    "curl": "cURL",
+    "copy": "Copiar",
+    "emitting": "Emitindo notas por",
+    "companyDefaults": "Empresa cadastrada com município fiscal e código de serviço padrão. A nota usa esses valores automaticamente."
+  },
+  "Hero": {
+    "badge": "Infraestrutura de notas fiscais para desenvolvedores",
+    "title": "Sua API de notas fiscais. Simples assim.",
+    "subtitle": "Emita NFS-e, gerencie múltiplas empresas, envie documentos por e-mail e automatize seu fluxo fiscal com uma única API.",
+    "startFree": "Começar grátis",
+    "viewDocs": "Ver documentação",
+    "mono": "30 notas grátis por mês. Sem cartão de crédito."
+  },
+  "Nav": {
+    "product": "Produto",
+    "docs": "Docs",
+    "pricing": "Preços",
+    "signIn": "Entrar",
+    "startFree": "Começar grátis"
+  },
+  "Language": {
+    "en": "EN",
+    "pt": "PT"
+  },
+  "FreeTrial": {
+    "eyebrow": "COMEÇAR GRÁTIS",
+    "title": "30 notas fiscais grátis por mês",
+    "subtitle": "Sem cartão de crédito.",
+    "description": "Integre a emissão de NFS-e ao seu produto com até 30 notas autorizadas por mês, para uma empresa. A cota renova no primeiro dia de cada mês.",
+    "startFree": "Começar grátis",
+    "finePrint": "Limite de 3 emissões por dia em produção. Cotas em UTC, sem acúmulo. Testes não consomem a cota."
+  },
+  "Pricing": {
+    "eyebrow": "PREÇOS",
+    "title": "Preços simples. Sem surpresas.",
+    "description": "Comece grátis e escolha um plano que acompanha o volume de notas do seu produto.",
+    "credits": "notas / mês",
+    "mostPopular": "MAIS POPULAR",
+    "bestFor": "IDEAL PARA",
+    "includes": "INCLUÍDO",
+    "comingSoon": "Em breve",
+    "buyCredits": "Escolher plano",
+    "monthly": "Mensal",
+    "perMonth": "/mês",
+    "recommended": "Recomendado",
+    "calculator": {
+      "title": "Quanto você emite por mês?",
+      "placeholder": "Ex: 500",
+      "button": "Ver plano ideal",
+      "result": "Plano recomendado:",
+      "overage": "Notas acima da cota:",
+      "custoExcedente": "Custo excedente:",
+      "totalEstimado": "Total estimado:",
+      "porMes": "/mês",
+      "free": {
+        "label": "Plano gratuito",
+        "description": "30 notas por mês, limite de 3 por dia."
+      },
+      "custom": {
+        "label": "Fale conosco",
+        "description": "Volumes acima de 10.000 notas/mês."
+      }
+    },
+    "footnote": "Cotas mensais, sem acúmulo. No Free, renovação no primeiro dia do mês em UTC; nos pagos, pelo ciclo da assinatura. Excedentes autorizados em produção são cobrados à parte, até o limite de processamento do plano.",
+    "allPlans": "Todos os planos",
+    "plans": {
+      "free": {
+        "name": "FREE",
+        "credits": "30",
+        "price": "R$ 0",
+        "unit": "",
+        "bestFor": "Testar a API e validar a integração.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "1 empresa",
+          "dailyLimit": "3 notas por dia",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      },
+      "developer": {
+        "name": "DEVELOPER",
+        "credits": "200",
+        "price": "R$ 29,90",
+        "unit": "",
+        "bestFor": "Projetos pessoais, MVPs e small teams.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Até 10 empresas",
+          "email": "Envio por e-mail",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      },
+      "growth": {
+        "name": "GROWTH",
+        "credits": "750",
+        "price": "R$ 89,90",
+        "unit": "",
+        "bestFor": "Produtos SaaS e equipes em crescimento.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Até 50 empresas",
+          "email": "Envio por e-mail",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      },
+      "scale": {
+        "name": "SCALE",
+        "credits": "2.500",
+        "price": "R$ 249,90",
+        "unit": "",
+        "bestFor": "Plataformas de alto volume e empresas.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Até 500 empresas",
+          "email": "Envio por e-mail",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      },
+      "volume": {
+        "name": "VOLUME",
+        "credits": "10.000",
+        "price": "R$ 899,90",
+        "unit": "",
+        "bestFor": "Maiores volumes e operações multiempresa.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Empresas ilimitadas",
+          "email": "Envio por e-mail",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      }
+    },
+    "fromPrice": "a partir de",
+    "perExtra": "por nota extra",
+    "ctaFree": "Começar grátis",
+    "ctaPaid": "Escolher plano",
+    "slider": {
+      "label": "Notas por mês",
+      "unit": "notas / mês",
+      "summaryPre": "Melhor plano para você:",
+      "summaryFree": "Cabe no plano gratuito. Sem cartão de crédito."
+    },
+    "breakdown": {
+      "free": "Grátis, limite de 3 por dia",
+      "plan": "Plano",
+      "extra": "notas extras",
+      "atVolume": "Com {volume} notas:",
+      "capped": "Limitado a {max} notas/mês",
+      "notes": "notas"
+    },
+    "effective": "Custo efetivo:",
+    "perNoteShort": "por nota",
+    "currentPlan": "Seu plano"
+  },
+  "Flow": {
+    "eyebrow": "COMO FUNCIONA",
+    "title": "Da sua aplicação à nota fiscal.",
+    "description": "Um fluxo de emissão pensado para se integrar ao seu produto.",
+    "steps": {
+      "step1": "Sua aplicação envia os dados",
+      "step1Desc": "Empresa emissora, cliente e descrição do serviço.",
+      "step2": "A Corvo processa a emissão",
+      "step2Desc": "Por meio das integrações fiscais disponíveis.",
+      "step3": "O documento é gerado",
+      "step3Desc": "Status e resultado disponíveis pela API.",
+      "step4": "Entrega ao cliente",
+      "step4Desc": "Consulta pelo dashboard ou envio por e-mail."
+    }
+  },
+  "MultiCompany": {
+    "eyebrow": "MULTIEMPRESA",
+    "title": "Um produto. Centenas de empresas.",
+    "description": "Construiu um SaaS ou ERP? Gerencie as notas fiscais de seus clientes sem criar uma integração diferente para cada empresa.",
+    "items": {
+      "companies": "Cadastro e gerenciamento de empresas emissoras.",
+      "perCompany": "Controle e visibilidade por empresa.",
+      "documents": "Documentos centralizados e acessíveis.",
+      "limits": "Limites de empresas de acordo com o plano.",
+      "consumption": "Acompanhe o consumo de cada empresa."
+    }
+  },
+  "UseCases": {
+    "eyebrow": "PARA QUEM CONSTRÓI SOFTWARE",
+    "title": "Feita para quem constrói software.",
+    "description": "Da startup ao ERP — uma API para integrar emissão fiscal ao seu produto.",
+    "saas": {
+      "title": "SaaS",
+      "description": "Adicione emissão de NFS-e ao seu produto sem desenvolver toda a infraestrutura fiscal."
+    },
+    "erp": {
+      "title": "ERPs e plataformas",
+      "description": "Centralize a emissão das empresas que utilizam sua plataforma."
+    },
+    "agencies": {
+      "title": "Software houses",
+      "description": "Integre emissão fiscal aos sistemas que você desenvolve para seus clientes."
+    },
+    "companies": {
+      "title": "Empresas",
+      "description": "Automatize a emissão de notas a partir dos seus processos internos."
+    }
+  },
+  "Developer": {
+    "eyebrow": "DESENVOLVEDORES",
+    "title": "Uma API que você vai gostar de integrar.",
+    "description": "Menos tempo construindo integrações fiscais. Mais tempo desenvolvendo seu produto.",
+    "features": {
+      "rest": "Integração HTTP/JSON simples.",
+      "apikey": "Autenticação por API Key.",
+      "structured": "Respostas estruturadas e previsíveis.",
+      "status": "Acompanhe o status de cada emissão.",
+      "webhooks": "Notificações em tempo real."
+    },
+    "cta": "Ver documentação"
+  },
+  "FAQ": {
+    "eyebrow": "FAQ",
+    "title": "Perguntas frequentes",
+    "what": {
+      "q": "O que é a Corvo?",
+      "a": "A Corvo é uma plataforma de API para emissão e gerenciamento de notas fiscais de serviço eletrônicas (NFS-e). Ela permite integrar a emissão ao seu próprio sistema."
+    },
+    "free": {
+      "q": "Posso usar a Corvo gratuitamente?",
+      "a": "Sim. O Free inclui uma empresa e até 30 notas autorizadas em produção por mês, com limite de 3 por dia. A cota renova no primeiro dia do mês e os limites seguem UTC. Não é necessário cartão de crédito; notas de teste não consomem essa cota."
+    },
+    "multiCompany": {
+      "q": "Posso gerenciar várias empresas?",
+      "a": "Sim. Os planos pagos permitem gerenciar múltiplas empresas emissoras, de acordo com os limites de cada assinatura."
+    },
+    "accumulate": {
+      "q": "Os limites de notas acumulam?",
+      "a": "Não. Notas não utilizadas não acumulam. O Free renova no primeiro dia de cada mês em UTC; os planos pagos seguem o período mensal da assinatura informado no painel."
+    },
+    "email": {
+      "q": "Posso enviar a nota por e-mail?",
+      "a": "Sim. Você pode solicitar o envio do XML e do PDF para o e-mail do tomador quando a nota estiver autorizada e os documentos estiverem disponíveis. Acompanhe o status de envio no Serviço."
+    },
+    "storage": {
+      "q": "A Corvo armazena minhas notas?",
+      "a": "Sim. A Corvo armazena registros das emissões e os documentos XML e PDF disponíveis, com acesso por permissões. A retenção segue os Termos de Uso e o Aviso de Privacidade. Baixe cópias para cumprir as obrigações de guarda da sua empresa."
+    },
+    "nfeProducts": {
+      "q": "A Corvo emite NF-e de produtos?",
+      "a": "Neste momento, o foco do produto é NFS-e, destinada à prestação de serviços. Não há suporte a NF-e de mercadorias ou NFC-e."
+    },
+    "coverage": {
+      "q": "A Corvo funciona em todos os municípios?",
+      "a": "A disponibilidade depende das integrações e dos requisitos aplicáveis ao município e à empresa emissora. Consulte a cobertura disponível antes de iniciar a integração."
+    },
+    "developer": {
+      "q": "Preciso ser desenvolvedor para utilizar?",
+      "a": "A API foi pensada para integração com software. A Corvo também oferece uma interface para gerenciamento e consulta dos documentos."
+    },
+    "accountant": {
+      "q": "A Corvo substitui meu contador?",
+      "a": "Não. A Corvo fornece infraestrutura tecnológica para emissão de documentos fiscais. O enquadramento tributário e as obrigações contábeis continuam sendo responsabilidade da empresa, com apoio dos profissionais adequados."
+    }
+  },
+  "CTA": {
+    "eyebrow": "COMEÇAR AGORA",
+    "title": "Seu próximo deploy pode emitir notas fiscais.",
+    "description": "Uma integração para automatizar a emissão de NFS-e e acompanhar o crescimento do seu produto.",
+    "ctaPrimary": "Começar grátis",
+    "ctaSecondary": "Explorar API",
+    "subtext": "30 notas gratuitas por mês para começar."
+  },
+  "Footer": {
+    "brand": "© Corvo. Todos os direitos reservados.",
+    "product": "Produto",
+    "features": "Funcionalidades",
+    "pricing": "Preços",
+    "companies": "Empresas",
+    "developers": "Desenvolvedores",
+    "docs": "Documentação",
+    "apiRef": "Referência da API",
+    "company": "Empresa",
+    "about": "Sobre",
+    "contact": "Contato",
+    "security": "Segurança",
+    "terms": "Termos",
+    "privacy": "Aviso de Privacidade"
+  },
+  "Terms": {
+    "eyebrow": "JURÍDICO",
+    "title": "Termos de Uso",
+    "effectiveDate": "Última atualização: 12 de outubro de 2026",
+    "privacyNotice": "Aviso de Privacidade",
+    "dataProcessing": "Aditivo de Tratamento de Dados",
+    "backToHome": "Voltar ao início",
+    "sections": {
+      "s1": {
+        "title": "1. Aceitação e identificação da Corvo",
+        "content": "Estes Termos regulam o uso do painel, da API, da documentação e dos serviços da Corvo (o Serviço), operados pela Greenflow Desenvolvimento de Software LTDA, CNPJ 61.469.487/0001-40 (Greenflow ou Corvo). Ao criar uma conta ou usar o Serviço, você aceita estes Termos. Se agir em nome de uma organização, deve ter autorização para representá-la. Um contrato empresarial assinado separadamente prevalece sobre estes Termos nos pontos em que houver conflito."
+      },
+      "s2": {
+        "title": "2. O que o Serviço oferece",
+        "content": "A Corvo permite integrar a emissão e o gerenciamento de notas fiscais de serviço eletrônicas (NFS-e) ao seu software. O Serviço inclui cadastro de empresas emissoras, gestão de certificados, acompanhamento de status, acesso a XML e PDF quando disponíveis, envio de documentos por e-mail e webhooks. A emissão é assíncrona: receber uma confirmação de envio não significa que a nota foi autorizada. Confira o resultado pela API, pelo painel ou pelos webhooks. O ambiente de testes gera documentos sem validade fiscal e não consome a cota de produção. O escopo atual é NFS-e; NF-e de mercadorias e NFC-e não estão incluídas."
+      },
+      "s3": {
+        "title": "3. Conta, workspace e acessos",
+        "content": "Mantenha os dados da conta e do workspace corretos e atualizados. Você deve controlar quem acessa o workspace, atribuir permissões adequadas e proteger seu e-mail, suas sessões, chaves de API e segredos de webhook. Não exponha credenciais em aplicações no navegador ou em repositórios públicos. Informe à Corvo qualquer suspeita de acesso indevido. Você responde pelo uso autorizado da sua conta, sem prejuízo da responsabilidade da Greenflow por falhas que lhe sejam atribuíveis."
+      },
+      "s4": {
+        "title": "4. Responsabilidades fiscais",
+        "content": "Você deve ter autorização para emitir em nome das empresas cadastradas e conferir os dados de prestadores, tomadores, serviços, valores, tributos, códigos fiscais, regime tributário e município. Cabe a você atender aos requisitos de cadastro, credenciamento e habilitação exigidos pela administração tributária e acompanhar autorizações, rejeições e pendências. A Corvo fornece tecnologia de integração; decisões fiscais e contábeis devem ser validadas com os profissionais responsáveis. Uma rejeição, uma indisponibilidade ou um documento de teste não substitui o cumprimento de suas obrigações fiscais."
+      },
+      "s5": {
+        "title": "5. Certificados digitais",
+        "content": "Quando a integração exigir certificado digital A1, envie apenas um certificado válido da empresa emissora ou de representante habilitado para a operação. Ao enviá-lo, você autoriza seu uso, com a senha informada, para assinar e transmitir as operações fiscais que solicitar no Serviço. Mantenha o certificado válido e substitua-o quando necessário. A desativação de um certificado na Corvo impede seu uso posterior no Serviço; a revogação perante a autoridade certificadora deve ser solicitada por você ao emissor do certificado."
+      },
+      "s6": {
+        "title": "6. Uso permitido e prevenção de abuso",
+        "content": "Não use o Serviço para emitir documentos falsos, agir sem autorização de uma empresa, praticar fraude, enviar spam, distribuir conteúdo ilegal ou violar direitos de terceiros. Não tente contornar cotas, limites de empresas, limites de requisições, controles de acesso ou regras de elegibilidade do plano Free, inclusive por meio de contas ou workspaces criados para esse fim. Não compartilhe acesso à API fora das permissões contratadas nem interfira na operação do Serviço ou dos sistemas fiscais integrados."
+      },
+      "s7": {
+        "title": "7. Planos, cotas e renovação",
+        "content": "Os planos definem a cota mensal de notas, o limite de empresas ativas e os limites de uso apresentados na oferta e no painel. O Free permite uma empresa ativa e até 30 notas autorizadas em produção por mês, com limite de 3 por dia. Sua cota renova no primeiro dia de cada mês; os limites mensal e diário seguem UTC. Nos planos pagos, a cota acompanha o período mensal da assinatura informado no painel. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas não utilizadas não acumulam nem se convertem em dinheiro. Ao atingir um limite, novas solicitações podem ser bloqueadas até a renovação ou a contratação de capacidade compatível."
+      },
+      "s8": {
+        "title": "8. Como o consumo e os excedentes são calculados",
+        "content": "Cada NFS-e autorizada em produção conta como uma unidade de consumo. Ao receber uma solicitação, a Corvo reserva capacidade enquanto a emissão está em andamento. Emissões rejeitadas ou que terminem com falha liberam essa reserva; notas ainda em processamento podem reduzir temporariamente a capacidade disponível. Se a autorização ocorrer após a virada do ciclo, o consumo permanece no período em que foi reservado. O Free não permite excedentes pagos. Nos planos pagos, notas autorizadas acima da cota geram cobrança adicional pelo valor unitário do plano, dentro do limite total mensal de processamento de cinco vezes a cota incluída. Consulte consumo, reservas e estimativa de excedentes no painel."
+      },
+      "s9": {
+        "title": "9. Cobrança, mudanças de plano e cancelamento",
+        "content": "As assinaturas pagas são mensais, em reais, com renovação automática até o cancelamento. A mensalidade é cobrada no início do ciclo e os excedentes são cobrados após o consumo; autorizações concluídas tardiamente podem gerar cobrança posterior referente ao período original. O pagamento é processado pela Stripe e a ativação depende da confirmação do pagamento. A oferta atual não inclui assinatura anual nem compra de pacotes pré-pagos. Mudanças de plano e cancelamento para retorno ao Free têm efeito ao final do período vigente, sem ajuste proporcional imediato da mensalidade. Use as opções de assinatura e o portal de cobrança no painel; deixar de usar a conta não cancela a assinatura. Em caso de falha de renovação, a emissão paga pode continuar por até sete dias após o fim do período pago, conforme o status da assinatura, e depois ser bloqueada. O cancelamento não elimina cobranças por consumo já realizado. Solicitações de reembolso ou contestação podem ser enviadas ao contato destes Termos; os direitos obrigatórios previstos em lei permanecem assegurados, inclusive o direito de arrependimento quando aplicável."
+      },
+      "s10": {
+        "title": "10. Documentos fiscais e guarda",
+        "content": "A Corvo armazena registros das emissões e os documentos XML e PDF que gerar ou receber, disponibilizando-os conforme o status da nota e suas permissões de acesso. Falhas na geração ou na obtenção de um documento podem exigir novo processamento. O armazenamento no Serviço não representa uma promessa de guarda por prazo ilimitado ou por um período fiscal específico, salvo previsão expressa em contrato separado. Mantenha cópias próprias e baixe os documentos enquanto tiver acesso ao Serviço. Você continua responsável por conservar seus documentos pelo prazo exigido para sua atividade. Pedidos de exportação, acesso ou eliminação após o encerramento serão tratados conforme o Aviso de Privacidade, as obrigações legais e as condições contratadas."
+      },
+      "s11": {
+        "title": "11. Cobertura e serviços de terceiros",
+        "content": "A emissão depende da cobertura das integrações, da habilitação da empresa, de certificados válidos e da disponibilidade dos sistemas fiscais nacionais ou municipais envolvidos. Verifique a compatibilidade antes de operar em produção. A Corvo também utiliza fornecedores de infraestrutura, armazenamento, e-mail e pagamentos. Sistemas externos podem atrasar, rejeitar ou interromper operações. O envio de e-mail ou de webhook não garante seu recebimento pelo destino; acompanhe o status e configure sua integração para consultar os resultados e tratar falhas. Essas dependências não afastam responsabilidades legais da Greenflow por sua própria atuação."
+      },
+      "s12": {
+        "title": "12. Dados pessoais e privacidade",
+        "content": "Para dados de tomadores, prestadores, documentos fiscais e instruções enviados ao Serviço, a Greenflow atua como operadora em nome do cliente, conforme as instruções documentadas e o Aditivo de Tratamento de Dados. O cliente deve ter uma base legal para o tratamento, informar os titulares e estar autorizado pelo controlador quando agir em seu nome. A Greenflow atua como controladora dos dados necessários à gestão de contas, cobrança, segurança e suporte. O Aviso de Privacidade e o Aditivo de Tratamento de Dados complementam estes Termos. As partes devem observar a LGPD e as demais normas aplicáveis."
+      },
+      "s13": {
+        "title": "13. Segurança",
+        "content": "A Corvo utiliza controles de acesso, separação de dados por workspace e ambiente, hashes de chaves de API, criptografia dos certificados armazenados e assinatura de webhooks. Você deve proteger suas credenciais, revisar permissões e verificar as assinaturas recebidas na sua integração. Nenhum sistema é completamente livre de riscos. Compromissos específicos de auditoria, certificação, localização de dados ou nível de serviço dependem de acordo expresso; não decorrem apenas do uso do Serviço."
+      },
+      "s14": {
+        "title": "14. Suspensão e encerramento",
+        "content": "Podemos restringir ou suspender o acesso quando houver indícios razoáveis de fraude, emissão sem autorização, risco de segurança, violação destes Termos ou inadimplência que impeça o uso do plano. Quando possível, informaremos o motivo e os meios de regularização. Você pode solicitar o encerramento da conta pelo contato destes Termos e deve gerenciar o cancelamento da assinatura no painel. O encerramento não cancela uma NFS-e já autorizada perante o órgão fiscal nem extingue obrigações de pagamento ou de guarda de documentos já constituídas."
+      },
+      "s15": {
+        "title": "15. Dados do cliente e propriedade intelectual",
+        "content": "Os dados e documentos enviados por você permanecem sob sua responsabilidade e não são transferidos à Greenflow por estes Termos. Você autoriza o tratamento necessário para prestar o Serviço e executar suas instruções. A Greenflow mantém os direitos sobre o software, a marca e a documentação da Corvo, respeitados os direitos de terceiros. Enquanto cumprir estes Termos, você pode usar o Serviço e a documentação para as integrações contratadas."
+      },
+      "s16": {
+        "title": "16. Disponibilidade e alterações do Serviço",
+        "content": "Podemos corrigir, melhorar ou alterar funcionalidades e integrações. Comunicaremos mudanças materiais quando razoavelmente possível. Manutenção, falhas de infraestrutura e indisponibilidade de sistemas fiscais podem afetar o processamento. Não prometemos emissão instantânea, aprovação de toda solicitação ou operação sem interrupções. Um acordo de nível de serviço somente se aplica se contratado expressamente. Nada nesta seção exclui garantias ou deveres que não possam ser afastados por lei."
+      },
+      "s17": {
+        "title": "17. Limitação de responsabilidade",
+        "content": "Na medida permitida por lei, a responsabilidade total da Greenflow relacionada ao Serviço ou a estes Termos fica limitada aos valores pagos pelo cliente pelo Serviço nos doze meses anteriores ao evento que originou a reclamação. Também na medida permitida por lei, a Greenflow não responde por danos indiretos ou lucros cessantes. Essas limitações não afastam responsabilidades que não possam ser limitadas, direitos obrigatórios do consumidor ou deveres previstos na legislação de proteção de dados."
+      },
+      "s18": {
+        "title": "18. Lei aplicável e resolução de conflitos",
+        "content": "Estes Termos são regidos pelas leis brasileiras. As partes buscarão resolver dúvidas e conflitos pelo contato indicado abaixo. Para disputas que não forem resolvidas, fica eleito o foro da Comarca de Ourinhos, Estado de São Paulo, respeitadas as regras obrigatórias de competência e o direito do consumidor de recorrer ao foro legalmente aplicável."
+      },
+      "s19": {
+        "title": "19. Atualizações destes Termos",
+        "content": "A data no início desta página identifica a última atualização do texto. Para contas existentes, mudanças materiais serão comunicadas pelo painel, por e-mail ou por outro meio razoável com pelo menos 30 dias de antecedência à sua aplicação, salvo necessidade de prazo menor por exigência legal, segurança ou prevenção de abuso. A comunicação indicará a data de vigência para essas contas. Para novas contratações, vale a versão apresentada na contratação. O uso continuado após a data aplicável representa aceitação das mudanças, respeitados os direitos previstos em lei."
+      },
+      "s20": {
+        "title": "20. Contato e informações da empresa",
+        "content": "Para dúvidas sobre estes Termos, solicitações de privacidade, cobrança ou encerramento, escreva para legal@corvo.tech. A responsável pelo Serviço é Greenflow Desenvolvimento de Software LTDA, CNPJ 61.469.487/0001-40, com endereço na Rua Doutor Arlindo Luz, 540, Sala 01, Centro, Ourinhos, São Paulo, CEP 19900-011, Brasil."
+      }
+    },
+    "description": "Regras de uso da Corvo para emissão de NFS-e: planos, renovação, consumo, cobrança, certificados e documentos fiscais."
+  },
+  "Security": {
+    "eyebrow": "CONFIANÇA",
+    "title": "Segurança",
+    "description": "Como protegemos os acessos, os certificados digitais e os dados das suas operações de NFS-e.",
+    "responsibleDisclosure": "Divulgação responsável",
+    "questions": "Dúvidas sobre segurança?",
+    "backToHome": "Voltar ao início",
+    "practices": {
+      "encryptionTransit": {
+        "title": "Conexões seguras",
+        "description": "Use os endpoints HTTPS da Corvo para proteger os dados transmitidos entre sua aplicação e a API."
+      },
+      "encryptionRest": {
+        "title": "Certificados protegidos",
+        "description": "Certificados digitais e suas senhas são armazenados com criptografia AES-256-GCM. As chaves de API são verificadas por hashes unidirecionais."
+      },
+      "hmacWebhooks": {
+        "title": "Webhooks assinados",
+        "description": "As entregas incluem assinatura HMAC-SHA256. Verifique a assinatura no seu servidor antes de processar o evento."
+      },
+      "documentStorage": {
+        "title": "Acesso aos documentos fiscais",
+        "description": "XML, PDF e registros das emissões são armazenados por workspace e ambiente. O acesso depende de autenticação e permissões."
+      },
+      "accessControl": {
+        "title": "Permissões e ambientes",
+        "description": "Acessos do painel e chaves de integração seguem permissões do workspace. Os ambientes de teste e produção são separados."
+      },
+      "dataProtection": {
+        "title": "Tratamento de dados",
+        "description": "O Aviso de Privacidade e o Aditivo descrevem finalidades, responsabilidades e canais para solicitações sobre dados pessoais."
+      }
+    },
+    "disclosures": {
+      "reporting": {
+        "title": "Relato de vulnerabilidades",
+        "description": "Envie relatos para security@corvo.tech com os passos para reproduzir e o impacto observado. Não inclua senhas, certificados ou dados pessoais de terceiros."
+      },
+      "credentials": {
+        "title": "Suspeita de acesso indevido",
+        "description": "Revogue as chaves afetadas, revise os acessos do workspace e informe a equipe pelo contato de segurança."
+      }
+    }
+  },
+  "Companies": {
+    "title": "Empresas",
+    "subtitle": "Gerencie as empresas emissoras de NFS-e.",
+    "add": "Nova empresa",
+    "createHint": "O formulário completo de cadastro virá em breve. Por enquanto, a integração com o backend não está disponível.",
+    "table": {
+      "name": "NOME",
+      "taxId": "CNPJ",
+      "city": "MUNICÍPIO",
+      "status": "STATUS",
+      "created": "CRIADA"
+    },
+    "listTitle": "Empresas",
+    "empty": "Nenhuma empresa cadastrada.",
+    "loadFailed": "Não foi possível carregar as empresas.",
+    "status": {
+      "ready": "Pronta",
+      "pending_setup": "Configuração pendente",
+      "blocked": "Bloqueada"
+    },
+    "missing": "Falta: {items}",
+    "gaps": {
+      "municipal_registration": "inscrição municipal",
+      "certificate": "certificado"
+    },
+    "view": "Ver empresa",
+    "viewCompany": "Ver detalhes de {name}"
+  },
+  "Invoices": {
+    "title": "Notas fiscais",
+    "subtitle": "Histórico de notas emitidas, processadas e rejeitadas.",
+    "new": "Nova nota",
+    "newTitle": "Emitir nota fiscal",
+    "newSubtitle": "Preencha os dados para emitir uma NFS-e.",
+    "noInvoices": "Nenhuma nota encontrada.",
+    "submit": "Emitir NFS-e",
+    "submitting": "Emitindo...",
+    "cancel": "Cancelar",
+    "filters": {
+      "all": "Todas",
+      "authorized": "Autorizadas",
+      "processing": "Processando",
+      "rejected": "Rejeitadas"
+    },
+    "form": {
+      "company": "Empresa emissora",
+      "customer": "Dados do tomador",
+      "service": "Serviço prestado",
+      "companyHint": "Quem emite a nota e qual referência interna usar.",
+      "customerHint": "Quem recebe o serviço. CPF ou CNPJ.",
+      "serviceHint": "O que foi prestado, onde e por quanto."
+    },
+    "table": {
+      "id": "ID",
+      "customer": "Cliente",
+      "amount": "Valor",
+      "status": "Status",
+      "created": "Criada"
+    },
+    "status": {
+      "authorized": "Autorizada",
+      "processing": "Processando",
+      "queued": "Na fila",
+      "rejected": "Rejeitada",
+      "reconciliation_required": "Reconciliação",
+      "retry_pending": "Nova tentativa pendente",
+      "manual_review": "Revisão manual",
+      "failed": "Falha"
+    },
+    "loadFailed": "Não foi possível carregar as notas fiscais.",
+    "filterLabel": "Filtrar por status",
+    "fields": {
+      "company": "Empresa emissora",
+      "reference": "Sua referência",
+      "optional": "opcional",
+      "taxId": "CPF ou CNPJ do tomador",
+      "name": "Nome / razão social",
+      "email": "E-mail do financeiro",
+      "city": "Cidade",
+      "state": "UF",
+      "description": "Descrição do serviço",
+      "serviceCode": "Código de tributação",
+      "competence": "Data de competência",
+      "amount": "Valor total",
+      "loadingCompanies": "Carregando...",
+      "noCompanies": "Nenhuma empresa cadastrada",
+      "invalidAmount": "Informe um valor maior que zero.",
+      "createFailed": "Não foi possível emitir a nota fiscal.",
+      "companiesFailed": "Não foi possível carregar as empresas.",
+      "municipalityCode": "Código IBGE do local da prestação",
+      "uncertain": "A resposta não confirmou a emissão. Verifique a lista e a referência antes de emitir novamente.",
+      "checkInvoices": "Consultar notas",
+      "fixFields": "Corrija os campos destacados.",
+      "loadMoreCompanies": "Carregar mais empresas",
+      "companyNotReady": "Esta empresa precisa de configuração ou está bloqueada para emissão neste ambiente.",
+      "configureCompany": "Ver configuração da empresa"
+    },
+    "placeholders": {
+      "reference": "pedido-12345",
+      "taxId": "00.000.000/0000-00",
+      "name": "Empresa Cliente LTDA",
+      "email": "fiscal@cliente.com",
+      "city": "São Paulo",
+      "state": "SP",
+      "description": "Consultoria técnica em desenvolvimento de software",
+      "amount": "1000.00",
+      "serviceCode": "010701",
+      "municipalityCode": "3550308"
+    },
+    "loadedRecords": "Exibindo {count} notas carregadas. Os filtros se aplicam a estes registros.",
+    "loadMore": "Carregar mais",
+    "hints": {
+      "reference": "Evita emissão duplicada. Gerada automaticamente se vazia.",
+      "email": "Recebe o PDF e o XML da nota após a autorização.",
+      "serviceCode": "Busque pelo nome do serviço ou digite o código.",
+      "municipalityCode": "7 dígitos do IBGE, ex.: 3550308",
+      "serviceCodeDefault": "Padrão da empresa: {code}. Deixe vazio para usar este código ou escolha outro para esta nota.",
+      "municipalityDefault": "Município da empresa: {code}. Deixe vazio para usá-lo ou informe outro local de prestação para esta nota."
+    },
+    "summary": {
+      "title": "Resumo da nota",
+      "live": "Produção",
+      "test": "Teste",
+      "issuer": "Emitente",
+      "customer": "Tomador",
+      "taxId": "CPF/CNPJ",
+      "competence": "Competência",
+      "liveWarning": "Ambiente de produção: esta nota terá valor fiscal real.",
+      "missing": "Falta preencher: {fields}.",
+      "ready": "Tudo certo para emitir.",
+      "email": "E-mail",
+      "emailPending": "informe o e-mail",
+      "emailOff": "não enviar"
+    },
+    "sendEmail": {
+      "label": "Enviar a nota por e-mail ao cliente",
+      "hint": "O PDF e o XML saem para o e-mail do tomador assim que a nota for autorizada.",
+      "hintTest": "Em teste o assunto recebe [TESTE]. Use um e-mail seu."
+    }
+  },
+  "Billing": {
+    "title": "Plano e uso",
+    "subtitle": "Acompanhe sua cota de notas e informações do plano.",
+    "monthly": "Mensal",
+    "perMonth": "/mês",
+    "usage": "Uso de notas",
+    "usageWarning": "Você já usou mais de 80% da sua cota este mês.",
+    "period": "Período",
+    "activeCompanies": "Empresas ativas",
+    "loadFailed": "Não foi possível carregar o plano.",
+    "unknownError": "Erro desconhecido",
+    "plans": "Planos",
+    "currentPlan": "Plano atual",
+    "subscribe": "Assinar",
+    "upgrade": "Fazer upgrade",
+    "downgrade": "Fazer downgrade",
+    "manage": "Gerenciar cobrança",
+    "allowance": "{count} notas / mês",
+    "overage": "{price} por nota extra",
+    "scheduled": "Mudança para {plan} em {date}",
+    "cancelsAtEnd": "Cancela ao fim do período",
+    "blocked": "A cobrança está bloqueada. Atualize a forma de pagamento para continuar emitindo notas.",
+    "overageUsed": "{count} notas extras neste período ({price})",
+    "redirecting": "Redirecionando para o checkout…",
+    "changeScheduled": "Mudança de plano agendada para {date}.",
+    "changeScheduledNoDate": "Mudança de plano agendada.",
+    "errors": {
+      "customer_required": "Assine um plano antes de gerenciar a cobrança.",
+      "ERROR_CONFLICT": "Esta ação conflita com a sua assinatura atual.",
+      "ERROR_RATE_LIMIT_EXCEEDED": "Muitas requisições. Tente novamente em {seconds}s.",
+      "generic": "Não foi possível concluir. Tente novamente."
+    },
+    "success": {
+      "eyebrow": "Assinatura",
+      "headingPending": "Confirmando seu pagamento",
+      "bodyPending": "Estamos aguardando a confirmação do provedor de pagamento. Costuma levar poucos segundos — pode manter esta página aberta.",
+      "headingDone": "Tudo certo",
+      "bodyDone": "Sua assinatura está ativa e a nova franquia já está disponível.",
+      "headingFailed": "Ainda processando",
+      "bodyFailed": "O pagamento ainda não foi confirmado. Ele pode estar a caminho — verifique novamente em instantes.",
+      "headingMissing": "Link não reconhecido",
+      "bodyMissing": "Este link de confirmação está incompleto. Abra a cobrança para ver o seu plano atual.",
+      "steps": {
+        "paid": "Pagamento enviado",
+        "confirming": "Confirmando com o provedor",
+        "active": "Assinatura ativa"
+      },
+      "summary": {
+        "plan": "Plano",
+        "allowance": "Notas / mês",
+        "price": "Por mês",
+        "renews": "Renova em"
+      },
+      "hint": "Verificando automaticamente…",
+      "retry": "Verificar novamente",
+      "back": "Voltar para cobrança",
+      "ctaIssue": "Emitir uma nota",
+      "failedNote": "Se houve cobrança e isso persistir, fale com o suporte."
+    }
+  },
+  "Session": {
+    "unavailable": "Não foi possível consultar sua sessão. Verifique a API e tente novamente.",
+    "retry": "Tentar novamente",
+    "forbidden": "Você não tem permissão para acessar esta página.",
+    "actionFailed": "Não foi possível concluir a ação. Tente novamente.",
+    "workspace": "Workspace"
+  },
+  "CompanyForm": {
+    "legalName": "Razão social",
+    "tradeName": "Nome fantasia",
+    "taxId": "CNPJ",
+    "taxRegime": "Regime tributário",
+    "municipalReg": "Inscrição municipal",
+    "municipalityCode": "Código IBGE do município",
+    "specialRegime": "Regime especial",
+    "simpleNational": "Optante pelo Simples Nacional",
+    "address": "Endereço",
+    "street": "Rua",
+    "number": "Número",
+    "complement": "Complemento",
+    "district": "Bairro",
+    "city": "Cidade",
+    "state": "UF",
+    "zip": "CEP",
+    "readinessHint": "Município fiscal obrigatório em todos os ambientes. Em produção, a emissão também exige inscrição municipal e certificado válido.",
+    "required": "Informe razão social e CNPJ.",
+    "failed": "Não foi possível salvar a empresa.",
+    "cancel": "Cancelar",
+    "save": "Salvar empresa",
+    "optional": "opcional",
+    "sectionCompany": "Empresa",
+    "sectionFiscal": "Dados fiscais",
+    "placeholders": {
+      "legalName": "Padaria Pão Quente Ltda",
+      "tradeName": "Pão Quente",
+      "taxId": "00.000.000/0000-00",
+      "municipalReg": "123456",
+      "municipalityCode": "3550308",
+      "specialRegime": "Ex.: Microempresa Municipal",
+      "street": "Av. Paulista",
+      "number": "1000",
+      "complement": "Sala 12",
+      "district": "Bela Vista",
+      "city": "São Paulo",
+      "state": "SP",
+      "zip": "00000-000"
+    },
+    "cep": {
+      "hint": "Preenche endereço e código IBGE automaticamente.",
+      "found": "Endereço e código IBGE preenchidos.",
+      "notFound": "CEP não encontrado.",
+      "error": "Não foi possível consultar o CEP. Preencha manualmente.",
+      "loading": "Buscando CEP..."
+    },
+    "steps": {
+      "company": "Empresa",
+      "address": "Endereço",
+      "fiscal": "Fiscal",
+      "certificate": "Certificado"
+    },
+    "stepHint": {
+      "company": "Comece pelo CNPJ e pelo nome da empresa que vai emitir as notas.",
+      "address": "Informe o CEP: o endereço e o código IBGE do município são preenchidos sozinhos.",
+      "fiscal": "Informe o município fiscal. Em produção, informe também a inscrição municipal. O serviço padrão simplifica as próximas notas."
+    },
+    "next": "Continuar",
+    "back": "Voltar",
+    "createCompany": "Criar empresa",
+    "certificateNext": "Próximo passo: certificado digital (opcional agora).",
+    "cnpjInvalid": "Informe um CNPJ válido.",
+    "created": "Empresa {name} criada.",
+    "certificateTitle": "Certificado digital A1",
+    "certificateIntro": "Necessário para emitir em produção. Você pode enviar agora ou depois, na página da empresa.",
+    "certificateDone": "Certificado enviado",
+    "certificateDoneHint": "Confira a configuração na página da empresa antes de emitir.",
+    "later": "Enviar depois",
+    "finish": "Concluir",
+    "hints": {
+      "municipalReg": "Número dado pela prefeitura. Obrigatório no cadastro em produção; opcional em teste.",
+      "defaultServiceCode": "Código nacional (cTribNac), com 6 dígitos. Usado quando a nota não informa outro código. Você pode remover este padrão na edição."
+    },
+    "fixFields": "Corrija os campos destacados.",
+    "defaultServiceCode": "Código de serviço padrão",
+    "municipalityInvalid": "Informe um código IBGE com exatamente 7 dígitos.",
+    "municipalRegRequired": "Informe a inscrição municipal para cadastrar em produção.",
+    "serviceCodeInvalid": "O código de serviço deve ter exatamente 6 dígitos."
+  },
+  "CompanyDetail": {
+    "legalName": "Razão social",
+    "taxRegime": "Regime tributário",
+    "municipalReg": "Inscrição municipal",
+    "municipality": "Município fiscal",
+    "environment": "Ambiente",
+    "edit": "Editar empresa",
+    "delete": "Excluir empresa",
+    "loading": "Carregando empresa...",
+    "retry": "Tentar novamente",
+    "failed": "Não foi possível concluir a ação.",
+    "readinessHint": "Cadastre a inscrição municipal antes de emitir notas.",
+    "certificates": "Certificados",
+    "upload": "Enviar certificado",
+    "file": "Certificado PKCS#12 (.p12 ou .pfx)",
+    "password": "Senha do certificado",
+    "certificateHint": ".p12 ou .pfx, até 50 KiB. A senha é usada somente neste envio.",
+    "certificateRequired": "Selecione o arquivo e informe a senha.",
+    "certificateInvalid": "Selecione um arquivo .p12 ou .pfx de até 50 KiB.",
+    "noCertificates": "Nenhum certificado ativo cadastrado.",
+    "validUntil": "Válido até",
+    "active": "Ativo",
+    "expired": "Expirado",
+    "revoked": "Revogado",
+    "revoke": "Revogar",
+    "confirmTitle": "Confirmar exclusão",
+    "confirmCompany": "A empresa será excluída. Confirme para continuar.",
+    "confirmCertificate": "O certificado será revogado. Novas emissões exigirão um certificado válido.",
+    "confirm": "Confirmar",
+    "dropTitle": "Arraste o certificado aqui",
+    "chooseFile": "Escolher arquivo",
+    "changeFile": "Trocar",
+    "showPassword": "Mostrar senha",
+    "hidePassword": "Ocultar senha",
+    "certificateMatch": "O CNPJ do certificado precisa ser o mesmo da empresa.",
+    "certErr": {
+      "tooLarge": "Arquivo maior que 50 KiB.",
+      "mismatch": "O CNPJ do certificado é diferente do CNPJ da empresa.",
+      "expired": "Este certificado está vencido.",
+      "notYetValid": "Este certificado ainda não é válido.",
+      "invalid": "Não foi possível ler o certificado. Confira o arquivo e a senha."
+    },
+    "expiresSoon": "Vence em menos de 30 dias. Envie um novo certificado.",
+    "noCertificatePermission": "Você não tem permissão para enviar certificados.",
+    "env": {
+      "test": "Teste",
+      "live": "Produção"
+    },
+    "setup": {
+      "title": "Finalize a configuração",
+      "subtitle": "Confira o município fiscal e os requisitos para emitir no ambiente selecionado.",
+      "progress": "{done} de {total}",
+      "complete": "Configuração completa. A empresa está pronta para emitir.",
+      "requiredLive": "obrigatório em produção",
+      "testNote": "Em teste, inscrição municipal e certificado são opcionais. O município fiscal deve estar cadastrado.",
+      "items": {
+        "address": {
+          "title": "Endereço",
+          "hint": "Informe o CEP para preencher o endereço e o código IBGE.",
+          "action": "Completar"
+        },
+        "municipalReg": {
+          "title": "Inscrição municipal",
+          "hint": "Número dado pela prefeitura. Sem ele, não é possível emitir em produção.",
+          "action": "Informar"
+        },
+        "certificate": {
+          "title": "Certificado digital A1",
+          "hint": "Envie o arquivo .p12 ou .pfx da empresa.",
+          "action": "Enviar certificado"
+        },
+        "municipalityCode": {
+          "title": "Município fiscal",
+          "hint": "Código IBGE de 7 dígitos, obrigatório em teste e produção.",
+          "action": "Informar"
+        }
+      },
+      "required": "obrigatório",
+      "recommended": "recomendado"
+    },
+    "blocked": "Esta empresa está bloqueada e não pode emitir notas. Entre em contato com o suporte.",
+    "defaultServiceCode": "Código de serviço padrão"
+  },
+  "InvoiceDetail": {
+    "title": "Nota fiscal",
+    "loading": "Carregando nota...",
+    "failed": "Não foi possível carregar a nota.",
+    "refresh": "Atualizar",
+    "customer": "Tomador",
+    "amount": "Valor",
+    "reference": "Referência",
+    "competence": "Competência",
+    "service": "Serviço",
+    "documents": "Documentos",
+    "documentsHint": "PDF e XML ficam disponíveis após autorização.",
+    "events": "Andamento da nota",
+    "noEvents": "Nenhum evento registrado.",
+    "timeline": {
+      "queued": "Recebemos o pedido e a nota aguarda a vez de ser emitida.",
+      "processing": "Estamos enviando a nota para a prefeitura.",
+      "authorized": "A prefeitura autorizou a nota. PDF e XML estão disponíveis.",
+      "rejected": "A prefeitura rejeitou a nota. Revise os dados e emita novamente.",
+      "retry_pending": "A emissão não foi concluída e uma nova tentativa será feita automaticamente.",
+      "reconciliation_required": "Não foi possível confirmar o estado da nota; estamos conferindo com a prefeitura.",
+      "manual_review": "A nota precisa de revisão manual da nossa equipe.",
+      "failed": "Não foi possível emitir a nota."
+    }
+  },
+  "FiscalDocs": {
+    "title": "API Corvo — NFS-e",
+    "intro": "O dashboard usa sessão por cookie HttpOnly e CSRF. Integrações externas usam x-api-key com o escopo necessário.",
+    "base": "Base da API",
+    "relative": "Os caminhos da tabela são relativos a /v1; não repita o prefixo.",
+    "login": "Login por código",
+    "loginFlow": "Solicite o código, guarde data.challengeId em memória e envie-o com e-mail e código na verificação. O navegador recebe o cookie. Consulte /auth/session para obter tenant, permissões e CSRF.",
+    "pending": "OAuth público, checkout e confirmação confiável de pagamentos ainda estão pendentes. Convites criam acesso, mas não enviam e-mail.",
+    "contracts": "Respostas",
+    "responses": "Auth, empresas, billing e planos usam {data}. Notas e eventos usam {props}. Certificados, créditos e webhooks retornam dados diretamente. PDF/XML são arquivos. HTTP 204 não tem corpo.",
+    "example": "Exemplo de integração no servidor",
+    "catalog": "Endpoints",
+    "access": "Acesso / permissão"
+  },
+  "ServiceCode": {
+    "label": "Código de tributação",
+    "placeholder": "Busque por serviço ou código",
+    "popular": "Mais usados",
+    "empty": "Nenhum serviço encontrado. Digite o código de 6 dígitos.",
+    "useCustom": "Usar este código",
+    "clear": "Remover código selecionado"
+  },
+  "ApiErrors": {
+    "required": "Campo obrigatório.",
+    "blank": "Não pode ficar em branco.",
+    "invalid_cnpj": "CNPJ inválido.",
+    "invalid_cpf": "CPF inválido.",
+    "invalid_tax_id": "CPF ou CNPJ inválido.",
+    "invalid_cep": "CEP deve ter 8 dígitos.",
+    "invalid_uf": "UF inválida.",
+    "invalid_ibge_code": "Código IBGE deve ter 7 dígitos.",
+    "invalid_service_code": "O código de tributação deve ter 6 dígitos.",
+    "invalid_decimal_places": "Use no máximo 2 casas decimais.",
+    "out_of_range": "Valor fora do limite permitido.",
+    "future_date": "A data de competência não pode ser futura.",
+    "invalid_date": "Data inválida.",
+    "incomplete_address": "Informe cidade e UF juntas."
+  },
+  "Legal": {
+    "eyebrow": "JURÍDICO",
+    "backToHome": "Voltar ao início",
+    "navigation": "Documentos legais",
+    "terms": "Termos de Uso",
+    "privacy": "Aviso de Privacidade",
+    "dpa": "Aditivo de Tratamento de Dados",
+    "security": "Segurança"
+  },
+  "Privacy": {
+    "title": "Aviso de Privacidade",
+    "effectiveDate": "Última atualização: 12 de outubro de 2026",
+    "description": "Como a Corvo trata dados de conta, documentos fiscais, certificados e dados pessoais na emissão de NFS-e.",
+    "sections": {
+      "s1": {
+        "title": "1. Quem é responsável pelo Serviço",
+        "content": "A Corvo é operada pela Greenflow Desenvolvimento de Software LTDA, CNPJ 61.469.487/0001-40. Este Aviso explica o tratamento de dados pessoais no site, no painel e na API de emissão e gerenciamento de NFS-e. Para dados enviados pelo cliente em suas operações fiscais, aplica-se também o Aditivo de Tratamento de Dados."
+      },
+      "s2": {
+        "title": "2. Dados tratados",
+        "content": "Tratamos dados de conta e workspace, como nome, e-mail, integrantes e permissões; dados de empresas emissoras e tomadores, como CPF ou CNPJ, inscrição municipal, nome, endereço e contato; e dados fiscais, como descrição do serviço, valores, tributos, competência, identificadores, status, XML e PDF. Também tratamos certificados digitais e suas senhas quando enviados para emissão, configurações e entregas de webhooks, registros de autenticação e acesso, informações de cobrança e comunicações de suporte. Envie apenas dados necessários à operação; evite incluir dados pessoais sensíveis na descrição dos serviços."
+      },
+      "s3": {
+        "title": "3. Finalidades e bases legais",
+        "content": "Usamos dados para autenticar usuários, administrar contas, processar emissões, assinar documentos quando autorizado, armazenar e disponibilizar XML e PDF, enviar e-mails e webhooks, processar pagamentos e prestar suporte. Também tratamos dados para proteger o Serviço, prevenir fraude e cumprir obrigações legais. Quando atuamos como controladora, as bases legais incluem execução de contrato, cumprimento de obrigação legal, exercício regular de direitos e legítimo interesse, conforme a finalidade e os direitos do titular. Para análises opcionais do site, usamos consentimento. Quando atuamos como operadora, seguimos as instruções documentadas do cliente."
+      },
+      "s4": {
+        "title": "4. Papéis do cliente e da Greenflow",
+        "content": "O cliente define as finalidades e a base legal do tratamento dos dados fiscais que envia, atuando como controlador ou como representante autorizado de um controlador. A Greenflow trata esses dados como operadora para executar as instruções e prestar o Serviço. Para a administração de contas, cobrança, segurança e suporte, a Greenflow atua como controladora. Se a solicitação de um titular disser respeito aos dados fiscais de um cliente, podemos encaminhá-la ao responsável para que ele a avalie, prestando a assistência cabível."
+      },
+      "s5": {
+        "title": "5. Compartilhamento",
+        "content": "Compartilhamos os dados necessários com os sistemas fiscais envolvidos na emissão, inclusive a administração tributária competente, e com fornecedores de hospedagem, armazenamento, e-mail, pagamentos, monitoramento e suporte. O envio de uma nota por e-mail compartilha os documentos com o endereço definido pelo cliente; webhooks enviam os eventos ao destino configurado. A Stripe processa o pagamento no checkout e no portal de cobrança; a Corvo recebe identificadores, status e registros necessários à assinatura, sem receber o número completo do cartão no seu próprio formulário. Também podemos compartilhar dados para cumprir uma obrigação legal. Não vendemos dados pessoais."
+      },
+      "s6": {
+        "title": "6. Cookies e armazenamento no navegador",
+        "content": "Usamos cookies de sessão para autenticação e mecanismos de armazenamento no navegador para preferências de idioma, ambiente fiscal e escolha de cookies. Quando configurado, o Google Analytics é carregado no site público após a aceitação de cookies e não é carregado nas rotas de login ou do painel. Ele permite analisar navegação e tráfego. Você pode remover cookies e a preferência salva nas configurações do navegador para voltar a escolher em uma próxima visita. Restringir cookies necessários pode impedir o login ou o funcionamento de recursos."
+      },
+      "s7": {
+        "title": "7. Transferências internacionais",
+        "content": "Fornecedores utilizados pelo Serviço podem tratar dados fora do Brasil. Quando houver transferência internacional, ela deve observar os mecanismos e as garantias exigidos pela LGPD e pela regulamentação aplicável, inclusive cláusulas-padrão contratuais quando forem o mecanismo adotado. Este Aviso não representa um compromisso de hospedagem exclusiva em um país específico. Informações sobre fornecedores e transferências podem ser solicitadas pelo contato abaixo."
+      },
+      "s8": {
+        "title": "8. Armazenamento e retenção",
+        "content": "Armazenamos documentos fiscais e registros necessários à operação. O prazo depende da categoria de dado, da finalidade, da relação contratual e das obrigações legais aplicáveis; não prometemos eliminação automática em 90 dias nem guarda ilimitada. Dados podem ser conservados após o encerramento quando houver fundamento legal, com acesso restrito à finalidade de conservação. Solicitações de acesso, exportação e eliminação são avaliadas conforme a LGPD, o contrato e as obrigações de retenção. Mantenha cópias próprias dos documentos necessários à sua atividade."
+      },
+      "s9": {
+        "title": "9. Medidas de segurança",
+        "content": "Utilizamos controles de acesso e separação de dados por workspace e ambiente. As chaves de API são verificadas por hashes unidirecionais. Os certificados digitais e as senhas armazenadas com eles são criptografados; eventos de webhook são assinados para permitir verificação pelo destinatário. Essas medidas reduzem riscos, mas nenhum sistema é completamente seguro. Proteja suas credenciais e informe suspeitas de acesso indevido."
+      },
+      "s10": {
+        "title": "10. Direitos dos titulares",
+        "content": "Nos casos previstos em lei, você pode solicitar confirmação de tratamento, acesso, correção, informações sobre compartilhamento, portabilidade e anonimização, bloqueio ou eliminação de dados desnecessários, excessivos ou tratados irregularmente. Pode também revogar consentimento, solicitar a eliminação de dados tratados com consentimento, ressalvadas as hipóteses legais de conservação, e apresentar reclamação à autoridade competente. Envie sua solicitação ao contato abaixo. Podemos pedir informações proporcionais para verificar sua identidade e sua autorização antes de responder."
+      },
+      "s11": {
+        "title": "11. Contato",
+        "content": "Para solicitações e dúvidas sobre dados pessoais, escreva para legal@corvo.tech. Endereço para correspondência: Greenflow Desenvolvimento de Software LTDA, Rua Doutor Arlindo Luz, 540, Sala 01, Centro, Ourinhos, São Paulo, CEP 19900-011, Brasil. Descreva sua relação com a conta ou com a empresa emissora; não envie senhas ou arquivos de certificado para esse contato."
+      },
+      "s12": {
+        "title": "12. Atualizações deste Aviso",
+        "content": "Podemos atualizar este Aviso para refletir mudanças no Serviço e no tratamento de dados. A data no início da página identifica a última atualização. Comunicaremos alterações relevantes pelos canais do Serviço quando aplicável. Mudanças que dependam de novo consentimento não são autorizadas apenas pela continuidade de uso."
+      }
+    }
+  },
+  "Dpa": {
+    "title": "Aditivo de Tratamento de Dados",
+    "effectiveDate": "Última atualização: 12 de outubro de 2026",
+    "description": "Responsabilidades do cliente e da Greenflow no tratamento de dados pessoais para emissão e gerenciamento de NFS-e.",
+    "sections": {
+      "s1": {
+        "title": "1. Objeto e relação com os Termos",
+        "content": "Este Aditivo integra os Termos de Serviço quando a Greenflow Desenvolvimento de Software LTDA, CNPJ 61.469.487/0001-40, trata dados pessoais em nome do cliente na Corvo. Seu objeto é o tratamento necessário à emissão e ao gerenciamento de NFS-e. Para esse tratamento, o Aditivo prevalece em caso de conflito com os Termos gerais. Dados tratados pela Greenflow como controladora independente estão descritos no Aviso de Privacidade."
+      },
+      "s2": {
+        "title": "2. Papéis e instruções",
+        "content": "O cliente atua como controlador ou declara estar autorizado pelo controlador a fornecer dados e instruções. A Greenflow atua como operadora e trata os dados para prestar, proteger e dar suporte ao Serviço, conforme o contrato, as configurações do workspace e as instruções lícitas documentadas. Se uma instrução parecer incompatível com a legislação de proteção de dados, a Greenflow informará o cliente e poderá suspender a operação afetada enquanto a questão for esclarecida."
+      },
+      "s3": {
+        "title": "3. Categorias de dados e titulares",
+        "content": "O tratamento pode envolver representantes e integrantes do workspace, prestadores e tomadores de serviços, contatos e outras pessoas identificadas em documentos fiscais. Os dados incluem nomes, CPF ou CNPJ, inscrições, endereços, e-mails, descrição de serviços, valores, tributos, identificadores e status fiscais, XML, PDF, configurações e eventos de webhook e registros operacionais. Certificados e senhas enviados para assinatura também são tratados para executar as operações autorizadas. O cliente deve limitar o envio ao necessário e evitar dados pessoais sensíveis sem necessidade e base legal adequadas."
+      },
+      "s4": {
+        "title": "4. Finalidade, operações e duração",
+        "content": "As operações incluem recebimento, validação, assinatura, transmissão aos sistemas fiscais, consulta de resultados, armazenamento e disponibilização de documentos, entrega por e-mail e webhook e suporte à operação. O tratamento ocorre durante a prestação do Serviço e, depois dela, apenas enquanto houver fundamento legal para conservação ou para concluir a devolução ou eliminação aplicável. Dados do ambiente de testes devem ser fictícios sempre que possível."
+      },
+      "s5": {
+        "title": "5. Deveres do cliente",
+        "content": "O cliente é responsável pela base legal, pela transparência com os titulares, pela autorização para atuar em nome das empresas emissoras e pela precisão dos dados enviados. Deve configurar permissões, proteger credenciais, verificar destinos de e-mail e webhook e responder às solicitações dos titulares sob sua responsabilidade. Se atuar em nome de outro controlador, deve garantir que suas instruções e esta contratação sejam autorizadas por ele."
+      },
+      "s6": {
+        "title": "6. Confidencialidade e segurança",
+        "content": "A Greenflow limitará o acesso a quem precisar tratar os dados para prestar o Serviço e exigirá deveres de confidencialidade. Manterá medidas técnicas e organizacionais compatíveis com o tratamento, incluindo controles de acesso, separação por workspace e ambiente, hashes de chaves de API, criptografia dos certificados armazenados e assinatura de webhooks. O cliente também deve adotar medidas de segurança na sua própria integração."
+      },
+      "s7": {
+        "title": "7. Suboperadores e destinatários",
+        "content": "O cliente autoriza o uso de fornecedores necessários à infraestrutura, armazenamento, e-mail, monitoramento e suporte, sujeitos a obrigações de proteção de dados compatíveis com o serviço prestado. Informações sobre esses fornecedores podem ser solicitadas pelo contato de privacidade. Mudanças materiais que afetem o tratamento serão comunicadas quando aplicável, e o cliente poderá apresentar objeção fundamentada para avaliação. Administrações tributárias recebem dados para suas competências legais; seu papel não é automaticamente o de suboperadoras da Greenflow. Destinos de e-mail e webhook são definidos pelo cliente."
+      },
+      "s8": {
+        "title": "8. Assistência e incidentes",
+        "content": "A Greenflow prestará assistência razoável, considerando a natureza do tratamento e as informações disponíveis, para atender direitos de titulares, avaliar riscos e cumprir obrigações de proteção de dados. Ao tomar conhecimento de incidente que afete os dados pessoais tratados em nome do cliente, informará o cliente sem demora injustificada, com as informações disponíveis e atualizações necessárias. O controlador permanece responsável por avaliar e realizar comunicações à autoridade e aos titulares nos prazos legais, sem prejuízo das obrigações próprias da Greenflow."
+      },
+      "s9": {
+        "title": "9. Devolução, eliminação e conservação",
+        "content": "Ao encerrar o Serviço, o cliente pode solicitar acesso, exportação ou eliminação dos dados pessoais sob sua responsabilidade pelo contato de privacidade. A Greenflow atenderá às instruções lícitas conforme as condições contratadas e a legislação aplicável. Dados que devam ser conservados por fundamento legal terão acesso restrito à finalidade correspondente; a eliminação de cópias de segurança observará seu ciclo de manutenção e as obrigações aplicáveis. O cliente deve manter as cópias dos documentos fiscais exigidas para sua atividade. O encerramento da conta não cancela documentos perante o órgão fiscal."
+      },
+      "s10": {
+        "title": "10. Transferências internacionais e contato",
+        "content": "Quando o tratamento envolver transferência internacional, as partes devem observar os mecanismos e as garantias exigidos pela LGPD e pela regulamentação aplicável. Este Aditivo, por si só, não substitui as cláusulas-padrão ou outro instrumento exigido para uma transferência específica. Solicitações sobre instruções, fornecedores, medidas de segurança ou transferências devem ser enviadas para legal@corvo.tech."
+      }
+    }
+  }
+}

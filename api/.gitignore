@@ -1,0 +1,114 @@
+# compiled output
+/dist
+/node_modules
+/build
+/docs/
+!/docs/
+/docs/*
+!/docs/api-key-reference.md
+!/docs/api/
+!/docs/api/http-contract.md
+!/docs/api/route-contract-matrix.md
+!/docs/security/
+!/docs/security/SECURITY_HARDENING_PHASE_1.md
+!/docs/integrations/
+!/docs/integrations/instagram.md
+!/docs/module-boundaries/
+!/docs/module-boundaries/**
+!/docs/migracao-langchain-agent-runtime.md
+!/docs/pendencias-conclusao-migracao-langgraph.md
+!/docs/adr-langgraph-runtime-oficial.md
+!/docs/arquitetura-agents-dashboard.md
+!/docs/prompt-implementacao-admin-agents-multicanal.md
+!/docs/arquitetura-agent-builder-triggers.md
+!/docs/backlog-gaps-regras-negocio-agents-runtime.md
+!/docs/integracao-frontend-agents-dashboard.md
+!/docs/analise-arquitetura-agent-runtime-multi-agent.md
+!/docs/observabilidade-pool-postgres.md
+!/docs/revisao-arquitetura-ai-whatsapp-conversacional.md
+!/docs/ARCHITECTURE_DESIGN_REVIEW.md
+!/docs/AI_CODE_REVIEW.md
+!/docs/arquitetura-prontuario-anamnese-generico.md
+!/docs/arquitetura-agendamento-orquestrado-grupos-esteiras-comanda.md
+!/docs/planos-recursos-limites-arquitetura.md
+.verboo
+.claude/
+tmp/
+_bmad-output/*
+.codewright-output
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+
+# Tests
+/coverage
+/.nyc_output
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+.env.api-smoke.local
+.env.graphify.local
+
+# temp directory
+.temp
+.tmp
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Quality gate artifacts (gerados, não versionados)
+lint-report.json
+audit-report.json
+jscpd-report.json
+quality-report.json
+quality-report.md
+# quality-baseline.json é versionado intencionalmente
+
+# Graphify cache
+graphify-out/
+
+# Agents documentation
+AGENTS.md
+
+# k6 performance test artifacts
+perf-k6/.env.performance.local
+perf-k6/results/*.json
+perf-k6/results/*.csv
+perf-k6/results/*.html
+
+!docs/stripe-billing.md

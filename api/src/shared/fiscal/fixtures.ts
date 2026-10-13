@@ -1,0 +1,3 @@
+export const VALID_CNPJ = '11222333000181';
+export const VALID_ALPHA_CNPJ = '12ABC34501DE35';
+export const VALID_CPF = '52998224725';

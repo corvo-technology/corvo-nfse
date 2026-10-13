@@ -1,0 +1,26 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "maxWorkers": 1,
+  "testRegex": "test/.*\\.e2e-spec\\.ts$",
+  "testPathIgnorePatterns": [
+    "/node_modules/",
+    "/\\.verboo-worktrees/",
+    "/\\.claude/worktrees/"
+  ],
+  "setupFiles": ["<rootDir>/test/support/e2e-env.ts"],
+  "modulePathIgnorePatterns": [
+    "<rootDir>/.verboo-worktrees",
+    "<rootDir>/.claude/worktrees"
+  ],
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@/(.*)$": "<rootDir>/src/$1"
+  },
+  "transformIgnorePatterns": [
+    "node_modules/(?!(@nestjs/bullmq|@nestjs/bull-shared|jose)/)"
+  ]
+}

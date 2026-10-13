@@ -1,0 +1,128 @@
+name: Security
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: Secret Scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Scan repository for secrets
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: 'false'
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          GITLEAKS_VERSION: 8.24.3
+
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    container:
+      image: semgrep/semgrep:1.172.0@sha256:65dcd4408adda7c183a6b4550cb1e9b19f7f627a6fbb7e0559bd466bedc44d7b
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Select Semgrep mode
+        id: semgrep-mode
+        shell: sh
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: |
+          if [ -n "$SEMGREP_APP_TOKEN" ]; then
+            echo "managed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "managed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Semgrep managed scan
+        if: steps.semgrep-mode.outputs.managed == 'true'
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: >-
+          semgrep ci
+          --audit-on push
+          --no-suppress-errors
+          --sarif-output semgrep.sarif
+
+      - name: Run Semgrep Community scan for pull request
+        if: >-
+          steps.semgrep-mode.outputs.managed == 'false' &&
+          github.event_name == 'pull_request'
+        env:
+          SEMGREP_BASELINE_COMMIT: ${{ github.event.pull_request.base.sha }}
+        run: >-
+          semgrep scan
+          --config p/default
+          --config p/typescript
+          --config p/javascript
+          --error
+          --strict
+          --sarif-output semgrep.sarif
+          .
+
+      - name: Run Semgrep Community audit on push
+        if: >-
+          steps.semgrep-mode.outputs.managed == 'false' &&
+          github.event_name == 'push'
+        run: >-
+          semgrep scan
+          --config p/default
+          --config p/typescript
+          --config p/javascript
+          --strict
+          --sarif-output semgrep.sarif
+          .
+
+      - name: Run Semgrep Community full scan on demand
+        if: >-
+          steps.semgrep-mode.outputs.managed == 'false' &&
+          github.event_name == 'workflow_dispatch'
+        run: >-
+          semgrep scan
+          --config p/default
+          --config p/typescript
+          --config p/javascript
+          --error
+          --strict
+          --sarif-output semgrep.sarif
+          .
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always() && hashFiles('semgrep.sarif') != ''
+        uses: github/codeql-action/upload-sarif@c4dd10e44af883a891fe31ced449bcb4a6728b9b # v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+        continue-on-error: true

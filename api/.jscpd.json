@@ -1,0 +1,14 @@
+{
+  "minLines": 5,
+  "minTokens": 50,
+  "reporters": ["json"],
+  "output": "./",
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/*.d.ts",
+    "**/coverage/**"
+  ],
+  "path": ["src"],
+  "format": ["typescript"]
+}

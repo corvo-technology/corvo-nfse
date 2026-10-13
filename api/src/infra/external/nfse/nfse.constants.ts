@@ -1,0 +1,2 @@
+export const FAKE_NFSE_PROVIDER = Symbol('FAKE_NFSE_PROVIDER');
+export const OPEN_NFSE_PROVIDER = Symbol('OPEN_NFSE_PROVIDER');

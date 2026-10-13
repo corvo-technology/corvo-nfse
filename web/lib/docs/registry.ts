@@ -1,0 +1,24 @@
+// lib/docs/registry.ts
+import { en } from "./content/en";
+import { pt } from "./content/pt";
+import type { DocGroupKey, DocsLocale, DocsTree } from "./types";
+
+export const DOC_GROUPS: { key: DocGroupKey; slugs: import("./types").DocSlug[] }[] = [
+  { key: "gettingStarted", slugs: ["authentication", "errors", "rate-limits"] },
+  {
+    key: "reference",
+    slugs: ["companies", "certificates", "invoices", "webhooks", "credits", "billing"],
+  },
+  {
+    key: "guides",
+    slugs: ["async-issuance", "pagination", "receiving-webhooks", "integration-checklist"],
+  },
+];
+
+export const DOC_SLUGS = DOC_GROUPS.flatMap((g) => g.slugs);
+
+const TREES: Record<DocsLocale, DocsTree> = { en, pt };
+
+export function getDocsTree(locale: string): DocsTree | null {
+  return locale === "en" || locale === "pt" ? TREES[locale] : null;
+}

@@ -1,0 +1,106 @@
+import { ApiCursorResponse } from '@/infra/openapi/swagger';
+import { data } from '@/shared/http/response';
+import { cursorScope } from '@/shared/http/keyset-pagination';
+import { IsIn, IsOptional } from 'class-validator';
+import {
+  CursorQuery,
+  decodeCursor,
+  invalidCursor,
+  normalizeLimit,
+  paginateItems,
+} from '@/shared/http/pagination';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { PricingService, PriceQuote } from '../application/pricing.service';
+import type { BillingCycle, PlanSlug } from '../domain/plan';
+import { IPlanRepository } from '../domain/plan.repository';
+import { PublicRoute } from '@/modules/auth/application/public-route.decorator';
+
+class PlanListQuery extends CursorQuery {
+  @IsOptional() @IsIn(['monthly']) cycle?: BillingCycle;
+}
+
+@Controller('plans')
+@PublicRoute()
+@ApiTags('plans')
+export class PlanController {
+  constructor(
+    private readonly pricing: PricingService,
+    private readonly planRepo: IPlanRepository,
+  ) {}
+
+  @Get()
+  @ApiCursorResponse()
+  list(@Query() options: PlanListQuery) {
+    const cycle = options.cycle ?? 'monthly';
+    if (cycle !== 'monthly')
+      throw new BadRequestException('Only monthly billing is supported');
+    const scope = cursorScope(['plan-quotes', cycle]);
+    const cursor = decodeCursor<{ v: number; scope: string; position: number }>(
+      options.cursor,
+    );
+    const quotes = this.pricing.listAllQuotes(cycle);
+    if (
+      cursor &&
+      (cursor.v !== 1 ||
+        cursor.scope !== scope ||
+        !Number.isInteger(cursor.position) ||
+        cursor.position < 0 ||
+        cursor.position >= quotes.length)
+    )
+      invalidCursor();
+    const start = cursor ? cursor.position + 1 : 0;
+    const limit = normalizeLimit(options.limit);
+    const items = quotes.slice(start, start + limit + 1);
+    return paginateItems(items, limit, (item) => ({
+      v: 1,
+      scope,
+      position: quotes.findIndex((quote) => quote.slug === item.slug),
+    }));
+  }
+
+  @Get('quote')
+  quote(
+    @Query('volume') volume: number,
+    @Query('cycle') cycle: BillingCycle = 'monthly',
+  ): { data: Record<string, unknown> | null } {
+    if (cycle !== 'monthly')
+      throw new BadRequestException('Only monthly billing is supported');
+    if (!volume || volume < 0) {
+      return data(null);
+    }
+    const rec = this.pricing.recommendPlanForVolume(volume);
+    const planQuote = this.pricing.calculateQuote(rec.planSlug, cycle);
+    return data({
+      volume,
+      recommended_plan: rec.planSlug,
+      plan_name: planQuote.name,
+      monthly_allowance: planQuote.monthlyAllowance,
+      overage_credits: rec.overageCredits,
+      overage_cost_cents: rec.overageCostCents,
+      base_price_cents: planQuote.basePriceCents,
+      total_estimated_cents: rec.totalEstimatedCents,
+      currency: 'BRL',
+      billing_cycle: cycle,
+    });
+  }
+
+  @Get(':slug')
+  async findBySlug(
+    @Param('slug') slug: PlanSlug,
+    @Query('cycle') cycle: BillingCycle = 'monthly',
+  ): Promise<{ data: PriceQuote }> {
+    if (cycle !== 'monthly')
+      throw new BadRequestException('Only monthly billing is supported');
+    const plan = await this.planRepo.findBySlug(slug);
+    if (!plan) throw new NotFoundException(`Plan ${slug} not found`);
+    return data(this.pricing.calculateQuote(slug, cycle));
+  }
+}

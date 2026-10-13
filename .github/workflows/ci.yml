@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application:
+    name: Check ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [api, web]
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: ${{ matrix.service }}/yarn.lock
+      - name: Install
+        run: yarn install --frozen-lockfile
+      - name: Lint
+        run: |
+          if [ '${{ matrix.service }}' = api ]; then
+            yarn lint:check
+          else
+            yarn lint
+          fi
+      - name: Typecheck production code
+        run: yarn typecheck
+      - name: Test
+        env:
+          NODE_ENV: test
+        run: |
+          if [ '${{ matrix.service }}' = api ]; then
+            yarn test --runInBand
+          else
+            yarn test
+          fi
+      - name: Build
+        run: yarn build
+
+  docker:
+    name: Validate Docker and Compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+      - name: Generate local configuration
+        run: node scripts/setup-env.mjs
+      - name: Validate local Compose
+        run: >-
+          docker compose --env-file deploy/.env.local
+          -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml
+          config --quiet
+      - name: Validate production Compose structure
+        run: >-
+          docker compose --env-file deploy/.env
+          -f deploy/docker-compose.yml config --quiet
+      - name: Build images
+        run: >-
+          docker compose --env-file deploy/.env.local
+          -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml
+          build

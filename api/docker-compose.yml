@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-corvo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-corvo_dev}
+    ports:
+      - '5434:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-corvo} -d ${POSTGRES_DB:-corvo_dev}',
+        ]
+      interval: 10s
+      timeout: 15s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - '${REDIS_PORT:-6381}:6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.152.0
+    command: ['--config=/etc/otelcol-contrib/config.yml']
+    profiles:
+      - observability
+    ports:
+      - '4317:4317'
+      - '4318:4318'
+    volumes:
+      - ./docker/otel-collector.yml:/etc/otelcol-contrib/config.yml:ro
+    restart: unless-stopped
+
+  localstack:
+    image: localstack/localstack:4
+    ports:
+      - '${LOCALSTACK_PORT:-4566}:4566'
+    environment:
+      SERVICES: s3
+      DEBUG: 1
+    volumes:
+      - localstackdata:/var/lib/localstack
+      - ./docker/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh
+    profiles:
+      - storage
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  localstackdata:
