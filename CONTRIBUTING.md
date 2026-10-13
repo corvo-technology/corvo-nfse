@@ -1,6 +1,6 @@
 # Contributing to Corvo NFS-e
 
-Corvo is being prepared for an open source release. Maintainers still need to select a license and establish public contribution channels before publication.
+Corvo NFS-e is licensed under [AGPL-3.0](LICENSE). By participating in the project, you agree to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Set up your environment
 
@@ -34,4 +34,6 @@ Each application owns its `yarn.lock`. Install dependencies in the appropriate d
 
 Describe the problem, resulting behavior, and checks you ran. Include migration, configuration, and HTTP contract changes where relevant. Workflows belong in the root `.github/workflows/` directory.
 
-Follow [SECURITY.md](SECURITY.md) for private vulnerability reports.
+Contributions to this repository are provided under the project's AGPL-3.0 license unless explicitly agreed otherwise with the maintainers.
+
+Report community conduct incidents through the private contact listed in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Follow [SECURITY.md](SECURITY.md) for vulnerability reports.

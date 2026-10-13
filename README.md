@@ -4,7 +4,7 @@
 
 Issue NFS-e through a REST API and manage companies, A1 certificates, and invoices from one dashboard. Corvo handles background processing, stores PDF and XML documents, and delivers status updates through webhooks.
 
-[Run with Docker](#run-with-docker) · [Deploy to production](#deploy-to-production) · [Self-hosting guide](SELF_HOSTING.md) · [Contribute](CONTRIBUTING.md)
+[Run with Docker](#run-with-docker) · [Deploy to production](#deploy-to-production) · [Self-hosting guide](SELF_HOSTING.md) · [Contribute](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## What you can do
 
@@ -131,6 +131,10 @@ API and worker share backend code and run as separate production processes. Each
 
 ## License
 
-Corvo is being prepared for an open source release. The license has not been selected yet; the backend is currently marked `UNLICENSED`.
+Corvo NFS-e is licensed under the [GNU Affero General Public License, version 3](LICENSE) (`AGPL-3.0-only`).
+
+## Community
+
+Participation in this project is governed by our [Code of Conduct](CODE_OF_CONDUCT.md), based on Contributor Covenant 2.1. Follow [CONTRIBUTING.md](CONTRIBUTING.md) to contribute.
 
 For private vulnerability reports, see [SECURITY.md](SECURITY.md).

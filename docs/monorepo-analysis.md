@@ -63,4 +63,4 @@ Graphify supported architectural navigation, with findings checked against sourc
 3. Add frontend/backend contract tests based on OpenAPI, covering response envelopes, pagination, documents, and fiscal errors.
 4. Adopt a dependency workspace and one lockfile when shared packages are introduced; update imports, resolution, and Docker contexts together.
 5. Review types, fields, and dependencies inherited from the previous product. This consolidation removed startup requirements while retaining optional integrations.
-6. Select a license, establish private security reporting, and define releases and published images before opening the project. The backend remains `UNLICENSED` for now.
+6. Establish private security reporting and define releases and published images before opening the project. AGPL-3.0 licensing and the Contributor Covenant 2.1 Code of Conduct have now been added.

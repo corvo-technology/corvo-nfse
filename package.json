@@ -2,6 +2,7 @@
   "name": "corvo-nfse",
   "version": "0.1.0",
   "private": true,
+  "license": "AGPL-3.0-only",
   "description": "Corvo NFS-e platform monorepo: web, API, and worker.",
   "packageManager": "yarn@1.22.22",
   "engines": {
