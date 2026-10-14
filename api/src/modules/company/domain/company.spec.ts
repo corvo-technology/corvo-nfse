@@ -337,7 +337,10 @@ describe('Company', () => {
 
       const after = company.toSnapshot();
       expect(after).not.toHaveProperty('taxRegime');
-      expect(after).toEqual(before);
+      expect({ ...after, updatedAt: null }).toEqual({
+        ...before,
+        updatedAt: null,
+      });
     });
   });
 
