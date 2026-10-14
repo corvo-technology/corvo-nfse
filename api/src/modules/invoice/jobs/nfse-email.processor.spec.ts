@@ -265,6 +265,32 @@ describe('NfseEmailProcessor', () => {
     });
   });
 
+  describe('anonymous customer — no customer snapshot', () => {
+    it('completes without error and marks the email as failed', async () => {
+      const base = buildInvoice({ customerEmail: 'cliente@example.com' });
+      const invoice = {
+        ...base,
+        customerSnapshot: null,
+        toSnapshot: () => ({
+          ...base.toSnapshot(),
+          customerSnapshot: null,
+        }),
+      } as unknown as Invoice;
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        invoice,
+      );
+
+      await expect(processor.process(makeJob())).resolves.toBeUndefined();
+
+      expect(fakeEmailProvider.send).not.toHaveBeenCalled();
+      expect(fakeInvoiceRepo.updateEmailStatus).toHaveBeenCalledWith(
+        'inv-1',
+        'tenant-1',
+        'failed',
+      );
+    });
+  });
+
   describe('intermediate failure — no DB write', () => {
     it('does not update email status on intermediate failure', async () => {
       (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(

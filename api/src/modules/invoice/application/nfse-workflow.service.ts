@@ -202,9 +202,12 @@ export class NfseWorkflowService {
       await this.invoices.save(invoice, invoice.tenantId);
     }
     const snapshot = invoice.toSnapshot();
-    const taxId = snapshot.customerSnapshot.taxId
-      .replace(/[./\s-]/g, '')
-      .toUpperCase();
+    const customer = snapshot.customerSnapshot;
+    // Anonymous consumer invoices have no customer taxId; the DPS is then
+    // built without a `tomador` (allowed by open-nfse / RTC XSD).
+    const taxId = customer?.taxId
+      ? customer.taxId.replace(/[./\s-]/g, '').toUpperCase()
+      : null;
     const municipality = company.municipalityCode;
     if (!municipality || !/^\d{7}$/.test(municipality)) {
       throw new Error('Company municipalityCode is missing or invalid');
@@ -262,10 +265,15 @@ export class NfseWorkflowService {
         codMunicipioPrestacao: snapshot.serviceSnapshot.municipalityCode,
       },
       valores: { vServ: snapshot.amount },
-      tomador: {
-        documento: taxId.length === 14 ? { CNPJ: taxId } : { CPF: taxId },
-        nome: snapshot.customerSnapshot.name,
-      },
+      ...(taxId && customer
+        ? {
+            tomador: {
+              documento:
+                taxId.length === 14 ? { CNPJ: taxId } : { CPF: taxId },
+              nome: customer.name,
+            },
+          }
+        : {}),
     };
   }
   private async schedule(invoice: Invoice, attemptCount = 0): Promise<void> {

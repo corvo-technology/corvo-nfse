@@ -160,7 +160,8 @@ export class NfseDocPrepProcessor extends WorkerHost {
         );
 
       // 7. Enqueue automatic email if configured
-      if (invoice.emailSnapshot?.send && invoice.customerSnapshot?.email) {
+      const customerEmail = invoice.customerSnapshot?.email;
+      if (invoice.emailSnapshot?.send && customerEmail) {
         const emailData: NfseEmailJobData = {
           invoiceId,
           tenantId,
@@ -183,7 +184,7 @@ export class NfseDocPrepProcessor extends WorkerHost {
           true,
         );
         this.logger.debug(
-          `NfseEmail job enqueued for invoice ${invoiceId} to ${invoice.customerSnapshot.email}`,
+          `NfseEmail job enqueued for invoice ${invoiceId} to ${customerEmail}`,
         );
       }
 

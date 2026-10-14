@@ -168,21 +168,28 @@ export class InvoiceService {
         email: { send: normalized.emailSend },
         companyId: normalized.companyId,
         externalId: normalized.externalId,
-        customer: {
-          taxId: normalized.customer.taxId,
-          name: normalized.customer.name,
-          email: normalized.customer.email,
-          address: {
-            city: normalized.customer.address.city,
-            state: normalized.customer.address.state,
-          },
-        },
+        customer: normalized.customer
+          ? {
+              taxId: normalized.customer.taxId,
+              name: normalized.customer.name,
+              email: normalized.customer.email,
+              address: {
+                city: normalized.customer.address.city,
+                state: normalized.customer.address.state,
+                municipalityCode:
+                  normalized.customer.address.municipalityCode,
+              },
+            }
+          : null,
         service: {
           description: normalized.service.description ?? '',
           code: normalized.service.code,
           municipalityCode: normalized.service.municipalityCode,
+          fiscal: normalized.service.fiscal,
+          serviceProfileId: normalized.service.serviceProfileId,
         },
         amount: normalized.amount,
+        discount: normalized.discount,
         competenceDate: normalized.competenceDate,
       },
       tenantId,
@@ -410,7 +417,7 @@ export class InvoiceService {
     }
 
     const snapshot = invoice.toSnapshot();
-    const customerEmail = snapshot.customerSnapshot.email;
+    const customerEmail = snapshot.customerSnapshot?.email;
 
     if (!customerEmail) {
       throw new UnprocessableEntityException('Customer has no email');

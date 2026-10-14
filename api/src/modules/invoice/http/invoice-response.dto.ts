@@ -3,8 +3,10 @@ import type { InvoiceStatus } from '../domain/invoice-status';
 import type { LastEmailStatus } from '../domain/invoice';
 
 export class CustomerSnapshotDto {
-  @ApiProperty()
-  taxId!: string;
+  @ApiPropertyOptional({
+    description: 'Absent for anonymous consumer invoices.',
+  })
+  taxId?: string;
 
   @ApiProperty()
   name!: string;
@@ -26,6 +28,14 @@ export class ServiceSnapshotDto {
 
   @ApiProperty()
   code!: string;
+
+  @ApiPropertyOptional({
+    description: 'RTC fiscal classification (nbsCode, cst, classCode, ...).',
+  })
+  fiscal?: Record<string, string>;
+
+  @ApiPropertyOptional()
+  serviceProfileId?: string;
 
   @ApiProperty()
   municipalityCode!: string;
@@ -50,8 +60,13 @@ export class InvoiceResponseDto {
   @ApiProperty()
   status!: InvoiceStatus;
 
-  @ApiProperty()
-  customerSnapshot!: CustomerSnapshotDto;
+  @ApiPropertyOptional({
+    type: CustomerSnapshotDto,
+    nullable: true,
+    description:
+      'Null for anonymous consumer invoices (tomador omitted from the DPS).',
+  })
+  customerSnapshot?: CustomerSnapshotDto | null;
 
   @ApiProperty()
   serviceSnapshot!: ServiceSnapshotDto;
@@ -61,6 +76,11 @@ export class InvoiceResponseDto {
 
   @ApiProperty()
   amount!: number;
+
+  @ApiPropertyOptional({
+    description: 'Unconditional discount applied to the amount.',
+  })
+  discount?: number;
 
   @ApiProperty()
   currency!: string;

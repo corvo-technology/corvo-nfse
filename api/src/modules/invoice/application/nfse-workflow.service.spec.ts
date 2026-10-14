@@ -1,5 +1,7 @@
 import { NfseWorkflowService } from './nfse-workflow.service';
-import type { Invoice } from '../domain/invoice';
+import { Invoice } from '../domain/invoice';
+import type { CustomerSnapshot } from '../domain/invoice';
+import type { IIssuePayload } from '@/infra/external/nfse/nfse-fiscal-provider';
 import { buildInvoiceState } from '../domain/invoice-state';
 
 function buildInvoice(overrides: {
@@ -87,5 +89,106 @@ describe('NfseWorkflowService email webhooks', () => {
       emailStatus: 'failed',
       stage: 'completed',
     });
+  });
+});
+
+describe('NfseWorkflowService payload — tomador opcional', () => {
+  const company = {
+    id: 'company-1',
+    taxId: '11222333000181',
+    legalName: 'Empresa Teste',
+    municipalReg: '123',
+    municipalityCode: '3550308',
+  };
+  const fakes = {
+    invoices: { findByIdAndTenantId: jest.fn(), save: jest.fn() },
+    sequences: {
+      reserveNext: jest.fn().mockResolvedValue({ series: '1', number: 7 }),
+    },
+    companies: { findById: jest.fn() },
+    profiles: { findEffective: jest.fn() },
+  };
+  let service: NfseWorkflowService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    fakes.companies.findById.mockResolvedValue(company);
+    fakes.sequences.reserveNext.mockResolvedValue({ series: '1', number: 7 });
+    fakes.profiles.findEffective.mockResolvedValue({
+      taxRegime: 'MEI',
+      specialTaxRegime: null,
+    });
+    service = new NfseWorkflowService(
+      fakes.invoices as any,
+      fakes.sequences as any,
+      fakes.companies as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      fakes.profiles as any,
+    );
+  });
+
+  function createInvoice(customerSnapshot: CustomerSnapshot | null): Invoice {
+    return Invoice.create(
+      {
+        companyId: 'company-1',
+        customer: customerSnapshot,
+        service: {
+          description: 'Serviço',
+          code: '010101',
+          municipalityCode: '3550308',
+        },
+        amount: 100,
+        competenceDate: new Date('2026-10-13'),
+      },
+      'tenant-1',
+    );
+  }
+
+  const callPayload = (invoice: Invoice) =>
+    (
+      service as unknown as {
+        payload: (i: Invoice) => Promise<IIssuePayload>;
+      }
+    ).payload(invoice);
+
+  it('omits tomador when the invoice has no customer snapshot', async () => {
+    const payload = await callPayload(createInvoice(null));
+
+    expect(payload).not.toHaveProperty('tomador');
+    expect(payload.servico.cTribNac).toBe('010101');
+    expect(payload.valores.vServ).toBe(100);
+  });
+
+  it('builds tomador from the customer snapshot when present', async () => {
+    const payload = await callPayload(
+      createInvoice({ taxId: '52998224725', name: 'Ana' }),
+    );
+
+    expect(payload.tomador).toEqual({
+      documento: { CPF: '52998224725' },
+      nome: 'Ana',
+    });
+  });
+
+  it('builds CNPJ tomador for a business customer', async () => {
+    const payload = await callPayload(
+      createInvoice({ taxId: '11222333000181', name: 'Empresa' }),
+    );
+
+    expect(payload.tomador?.documento).toEqual({ CNPJ: '11222333000181' });
+  });
+
+  it('omits tomador when the customer has no taxId', async () => {
+    const payload = await callPayload(
+      createInvoice({ name: 'Ana', email: 'ana@example.com' }),
+    );
+
+    expect(payload).not.toHaveProperty('tomador');
   });
 });

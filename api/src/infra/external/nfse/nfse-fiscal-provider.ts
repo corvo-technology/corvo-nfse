@@ -43,7 +43,8 @@ export interface IIssuePayload {
     codMunicipioPrestacao?: string;
   };
   valores: { vServ: number; aliqIss?: number; pTotTribSN?: number };
-  tomador: { documento: { CNPJ: string } | { CPF: string }; nome: string };
+  /** Absent for anonymous consumer invoices (tomador omitted from the DPS). */
+  tomador?: { documento: { CNPJ: string } | { CPF: string }; nome: string };
 }
 
 export interface FiscalProvider {
