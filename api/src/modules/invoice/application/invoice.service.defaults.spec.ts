@@ -1,3 +1,4 @@
+import { IdempotencyConflictError } from '../domain/errors';
 import { Company } from '@/modules/company/domain/company';
 import { CompanyNotFoundError } from '@/modules/company/domain/errors';
 import type { AuthContext } from '@/modules/auth/auth-context';
@@ -40,14 +41,14 @@ describe('Invoice fiscal defaults and idempotency', () => {
     lifecycle = { submit: jest.fn() };
     queues = { add: jest.fn() };
     service = new InvoiceService(
-      repository as any,
-      {} as any,
-      {} as any,
-      companies as any,
-      {} as any,
-      queues as any,
-      lifecycle as any,
-      {} as any,
+      repository as never,
+      {} as never,
+      {} as never,
+      companies as never,
+      {} as never,
+      queues as never,
+      lifecycle as never,
+      {} as never,
       new InvoiceDomainService(),
     );
   });
@@ -128,5 +129,50 @@ describe('Invoice fiscal defaults and idempotency', () => {
       'live',
     );
     expect(lifecycle.submit).not.toHaveBeenCalled();
+  });
+  it('does not enqueue nfse-emission directly on emit (the outbox owns the entry)', async () => {
+    await service.emit(dto, 'tenant-1', auth);
+    expect(lifecycle.submit).toHaveBeenCalledTimes(1);
+    expect(queues.add).not.toHaveBeenCalled();
+  });
+
+  it('an idempotent replay returns the stored invoice without submitting or enqueueing', async () => {
+    const first = await service.emit(dto, 'tenant-1', auth, 'replay-key');
+    lifecycle.submit.mockClear();
+    repository.findByIdempotencyKey.mockResolvedValue(first);
+    const repeated = await service.emit(dto, 'tenant-1', auth, 'replay-key');
+    expect(repeated.id).toBe(first.id);
+    expect(lifecycle.submit).not.toHaveBeenCalled();
+    expect(queues.add).not.toHaveBeenCalled();
+  });
+
+  it('on a 23505 race returns the winner without enqueueing', async () => {
+    const winner = await service.emit(dto, 'tenant-1', auth, 'race-key');
+    lifecycle.submit.mockReset();
+    lifecycle.submit.mockRejectedValue(
+      Object.assign(new Error('duplicate'), { code: '23505' }),
+    );
+    repository.findByIdempotencyKey.mockReset();
+    repository.findByIdempotencyKey
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(winner);
+    const result = await service.emit(dto, 'tenant-1', auth, 'race-key');
+    expect(result).toBe(winner);
+    expect(queues.add).not.toHaveBeenCalled();
+  });
+
+  it('on a 23505 race with a different payload throws IdempotencyConflictError', async () => {
+    const winner = await service.emit(dto, 'tenant-1', auth, 'race-key-2');
+    lifecycle.submit.mockReset();
+    lifecycle.submit.mockRejectedValue(
+      Object.assign(new Error('duplicate'), { code: '23505' }),
+    );
+    repository.findByIdempotencyKey.mockReset();
+    repository.findByIdempotencyKey
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(winner);
+    await expect(
+      service.emit({ ...dto, amount: 999 }, 'tenant-1', auth, 'race-key-2'),
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
 });

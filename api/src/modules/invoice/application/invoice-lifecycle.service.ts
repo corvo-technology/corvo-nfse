@@ -1,3 +1,5 @@
+import { INVOICE_EMIT } from './invoice-emit.handler';
+import { OutboxService } from './outbox.service';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import {
@@ -27,6 +29,7 @@ export class InvoiceLifecycleService {
     @Inject(CACHE_PORT) private readonly cache: CachePort,
     private readonly usage: BillingUsageService,
     private readonly context: TypeOrmTransactionContext,
+    private readonly outbox: OutboxService,
   ) {}
 
   private async lockTenant(
@@ -87,6 +90,19 @@ export class InvoiceLifecycleService {
           await manager
             .getRepository(InvoiceEventOrmEntity)
             .insert(new InvoiceEventMapper().toPersistence(event));
+          await this.outbox.enqueue({
+            tenantId: invoice.tenantId,
+            environment: invoice.environment,
+            type: INVOICE_EMIT,
+            aggregateId: invoice.id,
+            payload: {
+              invoiceId: invoice.id,
+              companyId: invoice.companyId,
+              tenantId: invoice.tenantId,
+            },
+            dedupeKey: `emission:${invoice.id}`,
+            availableAt: invoice.scheduledFor ?? undefined,
+          });
         }),
       );
       if (invoice.environment === 'live')

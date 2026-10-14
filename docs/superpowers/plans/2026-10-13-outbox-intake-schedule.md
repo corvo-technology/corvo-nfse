@@ -737,7 +737,7 @@ git commit -m "feat(invoice): add SCHEDULE emission type and scheduledFor"
   ```
   Payload da mensagem: `{ invoiceId, companyId, tenantId }`; `dedupeKey = emission:{invoiceId}`.
 
-- [ ] **Step 1: Write the failing handler test** — `invoice-emit.handler.spec.ts`
+- [x] **Step 1: Write the failing handler test** — `invoice-emit.handler.spec.ts`
 
 ```ts
 import { InvoiceEmitHandler, INVOICE_EMIT } from './invoice-emit.handler';
@@ -771,12 +771,12 @@ describe('InvoiceEmitHandler', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `yarn jest src/modules/invoice/application/invoice-emit.handler.spec.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement the handler**
+- [x] **Step 3: Implement the handler**
 
 ```ts
 import { Injectable, OnModuleInit } from '@nestjs/common';
@@ -820,7 +820,7 @@ export class InvoiceEmitHandler implements OutboxHandler, OnModuleInit {
 }
 ```
 
-- [ ] **Step 4: Write the lifecycle/intake tests (failing)**
+- [x] **Step 4: Write the lifecycle/intake tests (failing)**
 
 Em `src/modules/invoice/application/invoice.service.defaults.spec.ts` (tem o arranjo pronto: `dto`, `auth`, `company`, `repository`, `lifecycle`, `queues`, `service`), acrescente dentro do `describe` existente — e remova do `new InvoiceService(...)` nada além do que a Task exige (o construtor não muda):
 
@@ -960,12 +960,12 @@ describe('InvoiceLifecycleService.submit + outbox', () => {
 
 (O rollback real do banco é verificado no teste de Postgres da Task 7. `environment: 'test'` evita o ramo de carteira de créditos.)
 
-- [ ] **Step 5: Run to verify they fail**
+- [x] **Step 5: Run to verify they fail**
 
 Run: `yarn jest src/modules/invoice/application`
 Expected: FAIL.
 
-- [ ] **Step 6: Implement lifecycle + service + wiring**
+- [x] **Step 6: Implement lifecycle + service + wiring**
 
 `invoice-lifecycle.service.ts`: injete `OutboxService` no construtor (`private readonly outbox: OutboxService`), importe `INVOICE_EMIT` de `./invoice-emit.handler` e, em `submit`, **depois** dos dois `insert` (invoice e evento) e ainda dentro do `this.context.run`:
 
@@ -989,12 +989,12 @@ Expected: FAIL.
 
 `invoice.module.ts`: outbox já registrada na Task 3; `providers: [..., InvoiceEmitHandler, { provide: SCHEDULE_MAX_DAYS, useFactory: (config: ConfigService) => config.get<OutboxConfig>('outbox')?.scheduleMaxDays ?? 365, inject: [ConfigService] }]`. `worker-app.module.ts`: `OutboxRelay` já registrado como provider na Task 3. O handler é registrado nos dois processos; só o worker roda o relay.
 
-- [ ] **Step 7: Run to verify they pass; fix collateral specs**
+- [x] **Step 7: Run to verify they pass; fix collateral specs**
 
 Run: `yarn jest src/modules/invoice && yarn typecheck && yarn typecheck:tests`
-Expected: PASS. Specs antigos que asseveravam `queueService.add` de `nfse-emission` no `emit()` devem ser atualizados para as asserções acima; construtores de `InvoiceLifecycleService` em specs ganham o argumento `outbox`.
+Validation: invoice suite PASS (207 tests; 6 PostgreSQL tests skipped), production typecheck PASS. Test typecheck remains FAIL with the same 46 pre-existing diagnostics as `/tmp/corvo-outbox-baseline-typecheck-tests.log` (identical output). No PostgreSQL infrastructure was added. Worker relay wiring was already completed in Task 3 and verified unchanged. Specs antigos que asseveravam `queueService.add` de `nfse-emission` no `emit()` devem ser atualizados para as asserções acima; construtores de `InvoiceLifecycleService` em specs ganham o argumento `outbox`.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src
