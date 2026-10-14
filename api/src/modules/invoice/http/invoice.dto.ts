@@ -63,7 +63,18 @@ export class EmailOptionsDto {
   @IsOptional() @IsBoolean() send?: boolean;
 }
 
+export type InvoiceEmissionType = 'IMMEDIATE' | 'SCHEDULE';
+
 export class InvoiceOptionsDto {
+  @IsOptional()
+  @IsIn(['IMMEDIATE', 'SCHEDULE'])
+  @ApiPropertyOptional({
+    enum: ['IMMEDIATE', 'SCHEDULE'],
+    description:
+      'SCHEDULE accepts a future competenceDate; the invoice is released at 00:00 America/Sao_Paulo of that day.',
+  })
+  type?: InvoiceEmissionType;
+
   @IsOptional()
   @ValidateNested()
   @Type(() => EmailOptionsDto)

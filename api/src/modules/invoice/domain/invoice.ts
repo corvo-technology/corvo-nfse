@@ -45,6 +45,7 @@ export interface InvoiceProps {
   amount: number;
   currency: string;
   competenceDate: Date;
+  scheduledFor?: Date | null;
   dpsId: string | null;
   dpsSeries: string | null;
   dpsNumber: number | null;
@@ -89,6 +90,7 @@ export interface CreateInvoiceInput {
   };
   amount: number;
   competenceDate: Date;
+  scheduledFor?: Date;
   email?: {
     send?: boolean;
   };
@@ -129,6 +131,7 @@ export class Invoice {
       amount: input.amount,
       currency: 'BRL',
       competenceDate: input.competenceDate,
+      scheduledFor: input.scheduledFor ?? null,
       dpsId: null,
       dpsSeries: null,
       dpsNumber: null,
@@ -167,6 +170,10 @@ export class Invoice {
 
   setDpsId(id: string): void {
     this.props.dpsId = id;
+  }
+
+  get scheduledFor(): Date | null {
+    return this.props.scheduledFor ?? null;
   }
 
   get status(): InvoiceStatus {

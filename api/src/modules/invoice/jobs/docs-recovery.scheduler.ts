@@ -29,11 +29,12 @@ export class DocsRecoveryScheduler {
   async handle(): Promise<void> {
     await this.discovery.visit('invoice-recovery', async (tenantId) => {
       const cutoff = new Date(Date.now() - 5 * 60 * 1000);
+      // queued invoices are owned by the outbox (also protects SCHEDULE invoices from early emission).
       const fiscal = await this.database
         .getRepository(InvoiceOrmEntity)
         .createQueryBuilder('i')
         .where('i.status IN (:...statuses)', {
-          statuses: ['queued', 'processing', 'reconciliation_required'],
+          statuses: ['processing', 'reconciliation_required'],
         })
         .andWhere('i.updated_at < :cutoff AND i.tenant_id = :tenantId', {
           cutoff,
@@ -43,7 +44,7 @@ export class DocsRecoveryScheduler {
         .getMany();
       for (const i of fiscal)
         await this.queueService.add(
-          i.status === 'queued' ? 'nfse-emission' : 'nfse-reconciliation',
+          'nfse-reconciliation',
           'recover',
           { invoiceId: i.id, tenantId: i.tenantId, companyId: i.companyId },
           {

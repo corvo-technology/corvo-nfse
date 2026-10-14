@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { DateTime } from 'luxon';
+
 import {
   FiscalValidationError,
   FiscalIssue,
@@ -7,6 +9,9 @@ import { parseCustomerTaxId } from '@/shared/tax-id';
 import { normalizeCep } from '@/shared/fiscal/cep';
 import { normalizeUf } from '@/shared/fiscal/uf';
 import type { CreateInvoiceDto } from '../http/invoice.dto';
+
+export const SCHEDULE_MAX_DAYS = 'SCHEDULE_MAX_DAYS';
+const SCHEDULE_ZONE = 'America/Sao_Paulo';
 
 export interface NormalizedInvoiceInput {
   customer: {
@@ -28,6 +33,7 @@ export interface NormalizedInvoiceInput {
   };
   amount: number;
   competenceDate: Date;
+  scheduledFor?: Date;
   emailSend: boolean;
   companyId: string;
   externalId?: string;
@@ -36,6 +42,11 @@ export interface NormalizedInvoiceInput {
 
 @Injectable()
 export class InvoiceDomainService {
+  constructor(
+    @Optional()
+    @Inject(SCHEDULE_MAX_DAYS)
+    private readonly scheduleMaxDays: number = 15,
+  ) {}
   /**
    * Validates and normalizes raw invoice input.
    * Throws FiscalValidationError with ALL grouped issues if validation fails.
@@ -158,8 +169,9 @@ export class InvoiceDomainService {
       }
     }
 
-    // ── competenceDate: not future ───────────────────────────────────
+    // ── competenceDate: immediate or scheduled ───────────────────────────────────
     let competenceDate: Date;
+    let scheduledFor: Date | undefined;
     if (!dto.competenceDate) {
       issues.push({
         field: 'competenceDate',
@@ -176,6 +188,23 @@ export class InvoiceDomainService {
           message: 'competenceDate must be a valid date',
         });
         competenceDate = new Date();
+      } else if (dto.options?.type === 'SCHEDULE') {
+        const today = DateTime.now().setZone(SCHEDULE_ZONE).startOf('day');
+        const release = DateTime.fromISO(
+          competenceDate.toISOString().slice(0, 10),
+          {
+            zone: SCHEDULE_ZONE,
+          },
+        ).startOf('day');
+        if (release > today.plus({ days: this.scheduleMaxDays })) {
+          issues.push({
+            field: 'competenceDate',
+            code: 'schedule_horizon_exceeded',
+            message: `competenceDate cannot be more than ${this.scheduleMaxDays} days ahead`,
+          });
+        } else if (release > today) {
+          scheduledFor = release.toJSDate();
+        }
       } else if (competenceDate > new Date()) {
         issues.push({
           field: 'competenceDate',
@@ -232,6 +261,7 @@ export class InvoiceDomainService {
       },
       amount: Math.round(dto.amount * 100) / 100,
       competenceDate,
+      scheduledFor,
       emailSend,
     };
   }

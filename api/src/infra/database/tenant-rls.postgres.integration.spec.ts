@@ -233,7 +233,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       await admin.destroy();
     }
   });
-  it('enables and forces RLS on all 16 tenant tables', async () => {
+  it('enables and forces RLS on all 17 tenant tables', async () => {
     const rows: Array<{
       relrowsecurity: boolean;
       relforcerowsecurity: boolean;
@@ -241,7 +241,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       'SELECT relrowsecurity,relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$1 AND c.relrowsecurity',
       [schema],
     );
-    expect(rows).toHaveLength(16);
+    expect(rows).toHaveLength(17);
     expect(rows.every((row) => row.relforcerowsecurity)).toBe(true);
     const [flags]: Array<{ rolsuper: boolean; rolbypassrls: boolean }> =
       await runtime.query(
@@ -335,19 +335,31 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
         .length,
     ).toBeGreaterThan(0);
   });
-  it('discovers tenants internally and scopes each worker callback', async () => {
-    const seen: string[] = [];
-    await new TenantWorkDiscovery(runtime).visit(
-      'invoice-recovery',
-      async (tenantId) => {
+  it('excludes queued recovery and scopes processing/reconciliation worker callbacks', async () => {
+    const discovery = new TenantWorkDiscovery(runtime);
+    const after = '00000000-0000-0000-0000-000000000000';
+    expect(await discovery.discover('invoice-recovery', after)).toEqual([]);
+    try {
+      await admin.query(
+        `UPDATE ${table('nfse_invoices')} SET status = CASE WHEN id = $1 THEN 'processing' ELSE 'reconciliation_required' END WHERE id IN ($1,$2)`,
+        [invoiceA, invoiceB],
+      );
+      const seen: string[] = [];
+      await discovery.visit('invoice-recovery', async (tenantId) => {
         seen.push(tenantId);
         const rows: Array<{ tenant_id: string }> = await runtime.query(
           `SELECT tenant_id FROM ${table('nfse_invoices')}`,
         );
         expect(rows).toEqual([{ tenant_id: tenantId }]);
-      },
-    );
-    expect(seen.sort()).toEqual([tenantA, tenantB].sort());
+      });
+      expect(seen.sort()).toEqual([tenantA, tenantB].sort());
+    } finally {
+      await admin.query(
+        `UPDATE ${table('nfse_invoices')} SET status = 'queued' WHERE id IN ($1,$2)`,
+        [invoiceA, invoiceB],
+      );
+    }
+    expect(await discovery.discover('invoice-recovery', after)).toEqual([]);
   });
   it('checks parent ownership in certificate, event and DPS repositories', async () => {
     const certificates = new TypeOrmCertificateRepository(

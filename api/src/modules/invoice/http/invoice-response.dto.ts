@@ -68,6 +68,9 @@ export class InvoiceResponseDto {
   @ApiProperty()
   competenceDate!: Date;
 
+  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  scheduledFor?: Date | null;
+
   @ApiPropertyOptional()
   dpsId?: string;
 

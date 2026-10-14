@@ -34,6 +34,7 @@ storage/
 # Local agent/editor state carried over from the old repositories.
 .agents/
 .codex/
+.superpowers/
 .claude/
 .verboo/
 .codewright/

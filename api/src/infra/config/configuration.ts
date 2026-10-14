@@ -8,7 +8,11 @@ export type {
 export type { WorkerConfig } from './configuration.types';
 export type { LoggingConfig, OpenTelemetryConfig } from './configuration.types';
 export type { SentryConfig } from './configuration.types';
-export type { QueueConfig, RedisConfig } from './configuration.types';
+export type {
+  QueueConfig,
+  RedisConfig,
+  OutboxConfig,
+} from './configuration.types';
 export type { AuthConfig } from './configuration.types';
 export type { StorageConfig } from './configuration.types';
 export type { PaymentsConfig, StripeConfig } from './configuration.types';
@@ -90,6 +94,13 @@ export default function configuration(): AppConfiguration {
     queue: {
       defaultAttempts: env.QUEUE_DEFAULT_ATTEMPTS,
       defaultBackoffMs: env.QUEUE_DEFAULT_BACKOFF_MS,
+    },
+    outbox: {
+      relayIntervalMs: env.OUTBOX_RELAY_INTERVAL_MS,
+      batchSize: env.OUTBOX_BATCH_SIZE,
+      leaseMs: env.OUTBOX_LEASE_MS,
+      maxAttempts: env.OUTBOX_MAX_ATTEMPTS,
+      scheduleMaxDays: env.OUTBOX_SCHEDULE_MAX_DAYS,
     },
     logging: {
       level: env.LOG_LEVEL,

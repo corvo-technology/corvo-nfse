@@ -41,7 +41,7 @@ describe('InvoiceService.emit company resolution', () => {
       {} as any,
       {} as any,
       {} as any,
-      invoiceDomain,
+      invoiceDomain as never,
     );
   });
 

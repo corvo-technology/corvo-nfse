@@ -1,5 +1,5 @@
-/** Application tables whose tenant isolation must be enforced by PostgreSQL. */
-export const TENANT_RLS_TABLES = [
+/** Tables covered by the original RLS migration (1791750000000). Never change. */
+export const BASELINE_RLS_TABLES = [
   'tenants',
   'tenant_billing',
   'tenant_settings',
@@ -16,4 +16,10 @@ export const TENANT_RLS_TABLES = [
   'nfse_certificates',
   'nfse_dps_sequences',
   'nfse_invoice_events',
+] as const;
+
+/** Application tables whose tenant isolation must be enforced by PostgreSQL. */
+export const TENANT_RLS_TABLES = [
+  ...BASELINE_RLS_TABLES,
+  'outbox_messages',
 ] as const;

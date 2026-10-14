@@ -116,7 +116,6 @@ export class InvoiceService {
           this.logger.log(
             `Idempotent request for key: ${idempotencyKeyHeader}`,
           );
-          await this.enqueueEmission(existing);
           return existing;
         } else {
           throw new IdempotencyConflictError(idempotencyKeyHeader);
@@ -165,6 +164,7 @@ export class InvoiceService {
       {
         environment,
         requestHash,
+        scheduledFor: normalized.scheduledFor,
         email: { send: normalized.emailSend },
         companyId: normalized.companyId,
         externalId: normalized.externalId,
@@ -210,15 +210,12 @@ export class InvoiceService {
           environment,
         );
         if (winner?.toSnapshot().requestHash === requestHash) {
-          await this.enqueueEmission(winner);
           return winner;
         }
         throw new IdempotencyConflictError(idempotencyKeyHeader);
       }
       throw error;
     }
-
-    await this.enqueueEmission(invoice);
 
     this.logger.log(
       `Invoice ${invoice.id} emitted for company ${normalized.companyId}`,
@@ -246,26 +243,6 @@ export class InvoiceService {
       environment,
     );
     return company;
-  }
-
-  private async enqueueEmission(invoice: Invoice): Promise<void> {
-    if (invoice.status !== 'queued') return;
-    await this.queueService.add(
-      'nfse-emission',
-      'process',
-      {
-        invoiceId: invoice.id,
-        companyId: invoice.companyId,
-        tenantId: invoice.tenantId,
-      },
-      {
-        idempotencyKey: `emission-${invoice.id}`,
-        attempts: 5,
-        backoffMs: 5000,
-        removeOnComplete: false,
-        removeOnFail: 1000,
-      },
-    );
   }
 
   async list(

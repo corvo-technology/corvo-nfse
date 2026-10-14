@@ -1,3 +1,4 @@
+import { InvoiceResponseDto } from './invoice-response.dto';
 import { data } from '@/shared/http/response';
 import { ApiCursorResponse } from '@/infra/openapi/swagger';
 import { RawResponse } from '@/shared/http/response.interceptor';
@@ -21,7 +22,14 @@ import {
   HttpCode,
   StreamableFile,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiHeader } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiHeader,
+  ApiExtraModels,
+  ApiAcceptedResponse,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import type { Response } from 'express';
 import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { ApiKeyEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
@@ -41,6 +49,19 @@ export class InvoiceController {
 
   @Post()
   @HttpCode(202)
+  @ApiExtraModels(InvoiceResponseDto)
+  @ApiAcceptedResponse({
+    schema: {
+      type: 'object',
+      required: ['data'],
+      properties: {
+        data: {
+          type: 'object',
+          properties: { props: { $ref: getSchemaPath(InvoiceResponseDto) } },
+        },
+      },
+    },
+  })
   @ApiKeyEndpoint()
   @RequirePermission('nfse.invoices.issue')
   @ApiOperation({ summary: 'Emit a new NFS-e invoice' })

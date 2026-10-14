@@ -1,3 +1,6 @@
+import type { DataSource } from 'typeorm';
+import type { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
+import type { InvoiceOrmEntity } from '../infra/invoice.orm-entity';
 import { DocsRecoveryScheduler } from './docs-recovery.scheduler';
 import type { IInvoiceRepository } from '../domain/invoice.repository';
 import type { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
@@ -32,29 +35,134 @@ describe('DocsRecoveryScheduler', () => {
     getQueue: jest.fn(),
   } as unknown as BullmqQueueService;
 
+  type FiscalRow = Pick<
+    InvoiceOrmEntity,
+    'id' | 'tenantId' | 'companyId' | 'status' | 'scheduledFor'
+  >;
+  let fiscalRows: FiscalRow[] = [];
+  let selectedStatuses: string[] = [];
+  let selectedTenant = '';
+  interface FiscalQuery {
+    where: (sql: string, parameters: { statuses: string[] }) => FiscalQuery;
+    andWhere: (sql: string, parameters: { tenantId: string }) => FiscalQuery;
+    take: () => FiscalQuery;
+    getMany: () => Promise<FiscalRow[]>;
+  }
+  const where = jest.fn(
+    (_sql: string, parameters: { statuses: string[] }): FiscalQuery => {
+      selectedStatuses = parameters.statuses;
+      return query;
+    },
+  );
+  const andWhere = jest.fn(
+    (_sql: string, parameters: { tenantId: string }): FiscalQuery => {
+      selectedTenant = parameters.tenantId;
+      return query;
+    },
+  );
+  const query: FiscalQuery = {
+    where,
+    andWhere,
+    take: jest.fn((): FiscalQuery => query),
+    getMany: async () =>
+      fiscalRows.filter(
+        (row) =>
+          selectedStatuses.includes(row.status) &&
+          row.tenantId === selectedTenant,
+      ),
+  };
+  const database = {
+    getRepository: () => ({ createQueryBuilder: () => query }),
+  } as unknown as DataSource;
+  const discovery = {
+    visit: async (_kind: string, work: (id: string) => Promise<void>) => {
+      await work('tenant-a');
+      await work('tenant-b');
+    },
+  } as unknown as TenantWorkDiscovery;
   const scheduler = new DocsRecoveryScheduler(
-    {
-      visit: async (_kind: string, work: (id: string) => Promise<void>) => {
-        await work('tenant-a');
-        await work('tenant-b');
-      },
-    } as never,
+    discovery,
     mockInvoiceRepo,
     mockQueueService,
-    {
-      getRepository: () => ({
-        createQueryBuilder: () => ({
-          where: jest.fn().mockReturnThis(),
-          andWhere: jest.fn().mockReturnThis(),
-          take: jest.fn().mockReturnThis(),
-          getMany: async () => [],
-        }),
-      }),
-    } as any,
+    database,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
+    fiscalRows = [];
+    selectedStatuses = [];
+    selectedTenant = '';
+    findAuthorizedWithoutDocuments.mockResolvedValue([]);
+  });
+
+  it('does not query or re-enqueue queued invoices, including scheduled invoices', async () => {
+    fiscalRows = [
+      {
+        id: 'queued',
+        tenantId: 'tenant-a',
+        companyId: 'comp-1',
+        status: 'queued',
+        scheduledFor: null,
+      },
+      {
+        id: 'scheduled',
+        tenantId: 'tenant-b',
+        companyId: 'comp-2',
+        status: 'queued',
+        scheduledFor: new Date(Date.now() + 86400000),
+      },
+    ];
+    await scheduler.handle();
+    expect(where).toHaveBeenCalledWith('i.status IN (:...statuses)', {
+      statuses: ['processing', 'reconciliation_required'],
+    });
+    expect(addMock).not.toHaveBeenCalled();
+  });
+
+  it('recovers processing and reconciliation_required invoices through reconciliation', async () => {
+    fiscalRows = [
+      {
+        id: 'processing',
+        tenantId: 'tenant-a',
+        companyId: 'comp-1',
+        status: 'processing',
+        scheduledFor: null,
+      },
+      {
+        id: 'reconciliation',
+        tenantId: 'tenant-b',
+        companyId: 'comp-2',
+        status: 'reconciliation_required',
+        scheduledFor: null,
+      },
+    ];
+    await scheduler.handle();
+    expect(addMock).toHaveBeenCalledTimes(2);
+    for (const row of fiscalRows) {
+      expect(addMock).toHaveBeenCalledWith(
+        'nfse-reconciliation',
+        'recover',
+        {
+          invoiceId: row.id,
+          tenantId: row.tenantId,
+          companyId: row.companyId,
+        },
+        {
+          attempts: 5,
+          backoffMs: 30000,
+          removeOnComplete: true,
+          removeOnFail: 1000,
+        },
+      );
+    }
+    expect(andWhere).toHaveBeenCalledWith(
+      'i.updated_at < :cutoff AND i.tenant_id = :tenantId',
+      { cutoff: expect.any(Date), tenantId: 'tenant-a' },
+    );
+    expect(andWhere).toHaveBeenCalledWith(
+      'i.updated_at < :cutoff AND i.tenant_id = :tenantId',
+      { cutoff: expect.any(Date), tenantId: 'tenant-b' },
+    );
   });
 
   it('enqueues a doc-prep job for each invoice returned by the query', async () => {

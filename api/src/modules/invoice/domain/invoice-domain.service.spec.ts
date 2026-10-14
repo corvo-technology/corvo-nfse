@@ -1,3 +1,5 @@
+import { plainToInstance } from 'class-transformer';
+import { CreateInvoiceDto } from '../http/invoice.dto';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { InvoiceDomainService } from './invoice-domain.service';
 
@@ -287,5 +289,91 @@ describe('InvoiceDomainService', () => {
         ).not.toContain('11.222.333');
       }
     });
+  });
+});
+
+describe('SCHEDULE calendar days', () => {
+  const input = (date: string, type = 'SCHEDULE') => ({
+    ...plainToInstance(
+      CreateInvoiceDto,
+      validDto({ competenceDate: date, options: { type } }),
+    ),
+    companyId: '01927de2-1234-7890-abcd-ef0123456789',
+  });
+  beforeEach(() =>
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-13T12:00:00Z')),
+  );
+  afterEach(() => jest.useRealTimers());
+
+  it('preserves IMMEDIATE future-date rejection', () => {
+    expect(() =>
+      new InvoiceDomainService().normalizeAndValidate(
+        input('2026-10-14', 'IMMEDIATE'),
+        'test',
+      ),
+    ).toThrow(FiscalValidationError);
+  });
+  it('releases tomorrow at local midnight', () => {
+    expect(
+      new InvoiceDomainService()
+        .normalizeAndValidate(input('2026-10-14'), 'test')
+        .scheduledFor?.toISOString(),
+    ).toBe('2026-10-14T03:00:00.000Z');
+  });
+  it.each(['2026-10-13', '2026-10-12'])(
+    'treats today/past %s as immediate',
+    (date) => {
+      expect(
+        new InvoiceDomainService().normalizeAndValidate(input(date), 'test')
+          .scheduledFor,
+      ).toBeUndefined();
+    },
+  );
+  it('schedules the next local day during the UTC/local boundary', () => {
+    jest.setSystemTime(new Date('2026-10-13T02:00:00Z'));
+    expect(
+      new InvoiceDomainService()
+        .normalizeAndValidate(input('2026-10-13'), 'test')
+        .scheduledFor?.toISOString(),
+    ).toBe('2026-10-13T03:00:00.000Z');
+    expect(
+      new InvoiceDomainService().normalizeAndValidate(
+        input('2026-10-12'),
+        'test',
+      ).scheduledFor,
+    ).toBeUndefined();
+  });
+  it('accepts the inclusive default 15 calendar-day horizon', () => {
+    expect(
+      new InvoiceDomainService()
+        .normalizeAndValidate(input('2026-10-28'), 'test')
+        .scheduledFor?.toISOString(),
+    ).toBe('2026-10-28T03:00:00.000Z');
+  });
+  it.each([
+    [15, '2026-10-29'],
+    [30, '2026-11-13'],
+  ])('rejects beyond the %s day horizon', (days, date) => {
+    try {
+      new InvoiceDomainService(days).normalizeAndValidate(input(date), 'test');
+      throw new Error('Expected validation failure');
+    } catch (error) {
+      expect(error).toBeInstanceOf(FiscalValidationError);
+      if (!(error instanceof FiscalValidationError)) throw error;
+      expect(error.issues).toContainEqual(
+        expect.objectContaining({
+          field: 'competenceDate',
+          code: 'schedule_horizon_exceeded',
+        }),
+      );
+    }
+  });
+  it('accepts the exact configured calendar horizon at the UTC boundary', () => {
+    jest.setSystemTime(new Date('2026-10-13T02:00:00Z'));
+    expect(
+      new InvoiceDomainService(30)
+        .normalizeAndValidate(input('2026-11-11'), 'test')
+        .scheduledFor?.toISOString(),
+    ).toBe('2026-11-11T03:00:00.000Z');
   });
 });

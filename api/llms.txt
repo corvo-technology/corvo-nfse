@@ -39,3 +39,16 @@
 - `.codewright/config.yaml` - Codewright configuration
 - `.codewright/config.user.yaml` - User overrides (gitignored)
 - `.codewright/rules/DEFAULT.md` - Project rules
+
+## Invoice intake and scheduling
+
+POST /v1/invoices returns HTTP 202 with data.props and initial status queued.
+options.type accepts IMMEDIATE (default) or SCHEDULE. SCHEDULE uses a future
+competenceDate (YYYY-MM-DD) and releases emission at 00:00 America/Sao_Paulo.
+data.props.scheduledFor is the release timestamp (ISO string), or null for
+IMMEDIATE; scheduled invoices remain queued until that instant. Dates beyond
+the configured horizon (15 days by default) return HTTP 422 with fiscal issue
+code schedule_horizon_exceeded. Intake atomically persists invoice, event and
+outbox message. Once a queue publication is acknowledged, a Redis reset can
+lose the job while the invoice stays queued; document recovery does not recover
+queued invoices.

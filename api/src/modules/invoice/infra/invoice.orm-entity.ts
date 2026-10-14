@@ -114,6 +114,9 @@ export class InvoiceOrmEntity {
   @Column({ name: 'competence_date', type: 'date' })
   competenceDate!: string;
 
+  @Column({ name: 'scheduled_for', type: 'timestamptz', nullable: true })
+  scheduledFor?: Date | null;
+
   @Column({ name: 'dps_id', type: 'varchar', length: 50, nullable: true })
   dpsId?: string;
 

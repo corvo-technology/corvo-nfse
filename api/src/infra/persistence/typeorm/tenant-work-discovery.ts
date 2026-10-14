@@ -50,7 +50,7 @@ export class TenantWorkDiscovery {
           .getRepository(InvoiceOrmEntity)
           .createQueryBuilder('work')
           .where(
-            "work.status IN ('queued','processing','reconciliation_required','authorized')",
+            "work.status IN ('processing','reconciliation_required','authorized')",
           );
       } else if (kind === 'certificate-expiry') {
         owner = 'company.tenant_id';

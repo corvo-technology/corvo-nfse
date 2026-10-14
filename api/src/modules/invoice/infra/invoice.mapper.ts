@@ -24,6 +24,7 @@ export class InvoiceMapper {
       amount: Number(orm.amount),
       currency: orm.currency,
       competenceDate: new Date(orm.competenceDate),
+      scheduledFor: orm.scheduledFor ?? null,
       dpsId: orm.dpsId ?? null,
       dpsSeries: orm.dpsSeries ?? null,
       dpsNumber: orm.dpsNumber ? Number(orm.dpsNumber) : null,
@@ -72,6 +73,7 @@ export class InvoiceMapper {
     // PostgreSQL DATE has no timezone. A Date at UTC midnight would be
     // converted to the previous day by TypeORM in America/Sao_Paulo.
     orm.competenceDate = snapshot.competenceDate.toISOString().slice(0, 10);
+    orm.scheduledFor = snapshot.scheduledFor ?? null;
     orm.dpsId = snapshot.dpsId ?? undefined;
     orm.dpsSeries = snapshot.dpsSeries ?? undefined;
     orm.dpsNumber = snapshot.dpsNumber ?? undefined;
