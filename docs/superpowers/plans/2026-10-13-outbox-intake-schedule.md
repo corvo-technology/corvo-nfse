@@ -596,65 +596,26 @@ git commit -m "feat(outbox): add service, handler registry and relay"
   Invoice#scheduledFor: Date | null
   ```
 
-- [ ] **Step 1: Write failing tests** — acrescentar em `invoice-domain.service.spec.ts` (usa `validDto()` e `service` existentes no arquivo; veja como os testes vizinhos montam o dto):
+- [x] **Step 1: Write failing tests** — acrescentar em `invoice-domain.service.spec.ts` (usa `validDto()` e `service` existentes no arquivo; veja como os testes vizinhos montam o dto):
 
 ```ts
-describe('SCHEDULE', () => {
-  const inDays = (n: number) =>
-    new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
-
-  it('still rejects a future competenceDate for IMMEDIATE', () => {
-    expect(() =>
-      service.normalizeAndValidate(validDto({ competenceDate: inDays(3) }) as any, 'test', defaults),
-    ).toThrow(FiscalValidationError);
-  });
-
-  it('accepts a future competenceDate for SCHEDULE and releases at 00:00 America/Sao_Paulo', () => {
-    const result = service.normalizeAndValidate(
-      validDto({ competenceDate: '2099-10-14', options: { type: 'SCHEDULE' } }) as any,
-      'test',
-      defaults,
-    );
-    expect(result.scheduledFor?.toISOString()).toBe('2099-10-14T03:00:00.000Z');
-  });
-
-  it('treats SCHEDULE with today or a past date as immediate', () => {
-    const result = service.normalizeAndValidate(
-      validDto({ competenceDate: inDays(-2), options: { type: 'SCHEDULE' } }) as any,
-      'test',
-      defaults,
-    );
-    expect(result.scheduledFor).toBeUndefined();
-  });
-
-  it('rejects SCHEDULE beyond the horizon with schedule_horizon_exceeded', () => {
-    try {
-      new InvoiceDomainService(30).normalizeAndValidate(
-        validDto({ competenceDate: inDays(31), options: { type: 'SCHEDULE' } }) as any,
-        'test',
-        defaults,
-      );
-      throw new Error('expected failure');
-    } catch (error) {
-      expect(error).toBeInstanceOf(FiscalValidationError);
-      expect((error as FiscalValidationError).issues).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ field: 'competenceDate', code: 'schedule_horizon_exceeded' }),
-        ]),
-      );
-    }
-  });
-});
+// Freeze now at 2026-10-13T12:00:00Z; use typed DTO fixtures.
+// SCHEDULE 2026-10-14 -> 2026-10-14T03:00:00.000Z.
+// Today/past are immediate; 365 calendar days inclusive is allowed.
+// Beyond configured/default horizon emits schedule_horizon_exceeded.
+// Boundary regression: now 2026-10-13T02:00:00Z means local today is
+// 2026-10-12; 2026-10-13 schedules at 03Z, 2026-10-12 is immediate.
+// Also test InvoiceOptionsDto accepts IMMEDIATE/SCHEDULE/omitted and rejects others.
 ```
 
 Em `invoice.spec.ts`: um teste `Invoice.create({ …, scheduledFor })` verificando `invoice.scheduledFor` e que `Invoice.create` sem ela retorna `null`, e que `toSnapshot().scheduledFor` espelha.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `yarn jest src/modules/invoice/domain`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `invoice.dto.ts`:
 
@@ -699,32 +660,30 @@ export class InvoiceDomainService {
 Substitua o ramo `else if (competenceDate > new Date())` por:
 
 ```ts
-      } else if (competenceDate > new Date()) {
-        if (dto.options?.type !== 'SCHEDULE') {
+      } else if (dto.options?.type === 'SCHEDULE') {
+        const today = DateTime.now().setZone(SCHEDULE_ZONE).startOf('day');
+        const release = DateTime.fromISO(competenceDate.toISOString().slice(0, 10), {
+          zone: SCHEDULE_ZONE,
+        }).startOf('day');
+        if (release > today.plus({ days: this.scheduleMaxDays })) {
           issues.push({
             field: 'competenceDate',
-            code: 'future_date',
-            message: 'competenceDate cannot be in the future',
+            code: 'schedule_horizon_exceeded',
+            message: `competenceDate cannot be more than ${this.scheduleMaxDays} days ahead`,
           });
-        } else {
-          const release = DateTime.fromISO(
-            competenceDate.toISOString().slice(0, 10),
-            { zone: SCHEDULE_ZONE },
-          ).startOf('day');
-          if (release.toMillis() > Date.now() + this.scheduleMaxDays * 86_400_000) {
-            issues.push({
-              field: 'competenceDate',
-              code: 'schedule_horizon_exceeded',
-              message: `competenceDate cannot be more than ${this.scheduleMaxDays} days ahead`,
-            });
-          } else if (release.toMillis() > Date.now()) {
-            scheduledFor = release.toJSDate();
-          }
+        } else if (release > today) {
+          scheduledFor = release.toJSDate();
         }
+      } else if (competenceDate > new Date()) {
+        issues.push({
+          field: 'competenceDate',
+          code: 'future_date',
+          message: 'competenceDate cannot be in the future',
+        });
       }
 ```
 
-declare `let scheduledFor: Date | undefined;` antes do bloco de competenceDate e inclua `scheduledFor` no objeto retornado. (SCHEDULE com data hoje/passada cai no `if (competenceDate > new Date())` falso e fica imediato.)
+declare `let scheduledFor: Date | undefined;` antes do bloco de competenceDate e inclua `scheduledFor` no objeto retornado. (SCHEDULE compara dias de calendário em America/Sao_Paulo; hoje/passado fica imediato. IMMEDIATE preserva a comparação original de instantes.)
 
 `invoice.ts`: `scheduledFor?: Date | null;` em `InvoiceProps`; `scheduledFor?: Date;` em `CreateInvoiceInput`; em `Invoice.create` acrescente `scheduledFor: input.scheduledFor ?? null,`; getter:
 
@@ -743,15 +702,17 @@ declare `let scheduledFor: Date | undefined;` antes do bloco de competenceDate e
 
 `invoice.mapper.ts`: `scheduledFor: orm.scheduledFor ?? null,` em `toDomain` e `orm.scheduledFor = snapshot.scheduledFor ?? null;` em `toPersistence`. `invoice-response.dto.ts` (após `competenceDate`): `@ApiPropertyOptional({ nullable: true }) scheduledFor?: Date | null;`.
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
-Run: `yarn jest src/modules/invoice && yarn typecheck`
+Run: `yarn jest src/modules/invoice --runInBand && yarn typecheck`
+
+Executed: 19 suites passed, 197 tests passed, 6 skipped; production typecheck passed. RED: 9 failed / 92 passed.
 Expected: PASS (corrija qualquer fixture de `InvoiceProps` que quebre tipagem — o campo é opcional, então não deve haver).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
-git add src/modules/invoice
+git add src/modules/invoice src/shared/fiscal/fiscal-validation-error.ts
 git commit -m "feat(invoice): add SCHEDULE emission type and scheduledFor"
 ```
 

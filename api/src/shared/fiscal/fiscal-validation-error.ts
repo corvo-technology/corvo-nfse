@@ -14,6 +14,7 @@ export type FiscalIssueCode =
   | 'invalid_decimal_places'
   | 'out_of_range'
   | 'future_date'
+  | 'schedule_horizon_exceeded'
   | 'invalid_date'
   | 'incomplete_address'
   | 'invalid_type'

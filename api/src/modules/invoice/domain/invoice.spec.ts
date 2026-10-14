@@ -25,6 +25,21 @@ describe('Invoice', () => {
   };
 
   describe('create', () => {
+    it('preserves scheduledFor in snapshots and JSON', () => {
+      const scheduledFor = new Date('2026-10-14T03:00:00Z');
+      const invoice = Invoice.create(
+        { ...defaultInput, scheduledFor },
+        'tenant-123',
+      );
+      expect(invoice.scheduledFor).toEqual(scheduledFor);
+      expect(invoice.toSnapshot().scheduledFor).toEqual(scheduledFor);
+      expect(JSON.parse(JSON.stringify(invoice)).props.scheduledFor).toBe(
+        scheduledFor.toISOString(),
+      );
+      const immediate = Invoice.create(defaultInput, 'tenant-123');
+      expect(immediate.scheduledFor).toBeNull();
+      expect(immediate.toSnapshot().scheduledFor).toBeNull();
+    });
     it('creates an invoice in queued status', () => {
       const invoice = Invoice.create(defaultInput, 'tenant-123', 'idem-key-1');
 
