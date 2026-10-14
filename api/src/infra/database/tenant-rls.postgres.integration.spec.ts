@@ -134,7 +134,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       ],
     ]) {
       await admin.query(
-        `INSERT INTO ${table('nfse_companies')} (id,tenant_id,legal_name,tax_id,tax_regime,environment) VALUES ($1,$2,'Fixture','11222333000181','MEI','test')`,
+        `INSERT INTO ${table('nfse_companies')} (id,tenant_id,legal_name,tax_id,environment) VALUES ($1,$2,'Fixture','11222333000181','test')`,
         [company, tenant],
       );
       await admin.query(

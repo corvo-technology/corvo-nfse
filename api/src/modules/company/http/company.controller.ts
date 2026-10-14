@@ -23,6 +23,7 @@ import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { ApiKeyEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
 import type { RequestWithAuthContext } from '@/modules/auth/auth-context';
 import { CompanyService } from '../application/company.service';
+import type { CurrentCompanyRegime } from '../application/company.service';
 import { ICompanyCertificateReader } from '../domain/i-company-certificate-reader';
 import {
   CreateCompanyDto,
@@ -35,11 +36,18 @@ import type {
   UpdateCompanyInput,
 } from '../domain/company';
 
-function toView(company: Company, hasActiveCert: boolean) {
+function toView(
+  company: Company,
+  hasActiveCert: boolean,
+  regime: CurrentCompanyRegime | null,
+) {
   const snapshot = company.toSnapshot();
   return {
     ...snapshot,
     setupGaps: company.getSetupGapsWithCert(hasActiveCert),
+    taxRegime: regime?.taxRegime ?? null,
+    simpleNational: regime?.simpleNational ?? false,
+    specialRegime: regime?.specialRegime ?? null,
   };
 }
 
@@ -133,7 +141,8 @@ export class CompanyController {
       tenantId,
       executionEnvironment(req.authContext!),
     );
-    return data(toView(company, false));
+    const regime = await this.companyService.currentRegime(company.id, tenantId);
+    return data(toView(company, false, regime));
   }
 
   @Get()
@@ -155,7 +164,13 @@ export class CompanyController {
       env,
       tenantId,
     );
-    return page.map((c) => toView(c, certStatus.get(c.id) ?? false));
+    const regimes = await this.companyService.currentRegimesByCompanyIds(
+      companies.map((c) => c.id),
+      tenantId,
+    );
+    return page.map((c) =>
+      toView(c, certStatus.get(c.id) ?? false, regimes.get(c.id) ?? null),
+    );
   }
 
   @Get(':id')
@@ -174,7 +189,8 @@ export class CompanyController {
       env,
       tenantId,
     );
-    return data(toView(company, hasCert));
+    const regime = await this.companyService.currentRegime(id, tenantId);
+    return data(toView(company, hasCert, regime));
   }
 
   @Patch(':id')
@@ -200,7 +216,8 @@ export class CompanyController {
       hasCert,
       env,
     );
-    return data(toView(refreshed, hasCert));
+    const regime = await this.companyService.currentRegime(id, tenantId);
+    return data(toView(refreshed, hasCert, regime));
   }
 
   @Delete(':id')

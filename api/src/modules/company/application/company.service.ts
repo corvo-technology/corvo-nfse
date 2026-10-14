@@ -20,6 +20,19 @@ import {
 } from '../domain/errors';
 import { normalizeTaxID } from '@/shared/tax-id';
 import { CompanyDomainService } from '../domain/company-domain.service';
+import type { TaxRegime } from '../domain/company';
+import { CompanyFiscalProfileService } from './company-fiscal-profile.service';
+import {
+  legacyFromRegimeKind,
+  regimeKindFromLegacy,
+} from '../domain/fiscal-profile';
+import { todayInEstablishmentTimezone } from '@/shared/dates/date-time';
+
+export interface CurrentCompanyRegime {
+  taxRegime: TaxRegime | null;
+  simpleNational: boolean;
+  specialRegime: string | null;
+}
 
 @Injectable()
 export class CompanyService {
@@ -35,6 +48,7 @@ export class CompanyService {
     private readonly companyRepo: ICompanyRepository,
     private readonly quotaService: QuotaService,
     private readonly companyDomain: CompanyDomainService,
+    private readonly profiles: CompanyFiscalProfileService,
   ) {}
 
   async create(
@@ -72,6 +86,22 @@ export class CompanyService {
     } else {
       await this.companyRepo.save(company, tenantId);
     }
+
+    // Record the initial fiscal profile from the request regime (source
+    // `company_api`, unreviewed, valid from today). The Company aggregate no
+    // longer stores the regime — the fiscal profile is the source of truth.
+    await this.profiles.record(company.id, tenantId, {
+      taxRegime: regimeKindFromLegacy(normalized.taxRegime),
+      simpleNational: normalized.simpleNational ?? false,
+      specialTaxRegime: normalized.specialRegime?.trim() || null,
+      ibsCbsRegularOption: false,
+      ibsCbsRegularFrom: null,
+      validFrom: todayInEstablishmentTimezone(),
+      source: 'company_api',
+      reviewStatus: 'unreviewed',
+      reviewedBy: null,
+    });
+
     return company;
   }
 
@@ -157,7 +187,89 @@ export class CompanyService {
     company.update(normalized);
 
     await this.companyRepo.save(company, tenantId);
+
+    // If any regime field was sent, append a new fiscal profile row when the
+    // effective regime actually changed (never mutate an approved row in place).
+    const regimeTouched =
+      input.taxRegime !== undefined ||
+      input.simpleNational !== undefined ||
+      input.specialRegime !== undefined;
+    if (regimeTouched) {
+      const current = await this.profiles.current(id, tenantId);
+      const mergedRegime = {
+        taxRegime:
+          input.taxRegime !== undefined
+            ? regimeKindFromLegacy(input.taxRegime)
+            : (current?.taxRegime ?? 'UNKNOWN'),
+        simpleNational:
+          input.simpleNational ?? current?.simpleNational ?? false,
+        specialTaxRegime:
+          input.specialRegime !== undefined
+            ? input.specialRegime.trim() || null
+            : (current?.specialTaxRegime ?? null),
+      };
+      const unchanged =
+        current !== null &&
+        mergedRegime.taxRegime === current.taxRegime &&
+        mergedRegime.simpleNational === current.simpleNational &&
+        mergedRegime.specialTaxRegime === current.specialTaxRegime;
+      if (!unchanged) {
+        await this.profiles.record(id, tenantId, {
+          ...mergedRegime,
+          ibsCbsRegularOption: current?.ibsCbsRegularOption ?? false,
+          ibsCbsRegularFrom: current?.ibsCbsRegularFrom ?? null,
+          validFrom: todayInEstablishmentTimezone(),
+          source: 'company_api',
+          reviewStatus: 'unreviewed',
+          reviewedBy: null,
+        });
+      }
+    }
+
     return company;
+  }
+
+  /**
+   * Returns the company's current fiscal-regime view, read from the open
+   * fiscal profile (legacy-shaped values for API compatibility). Returns a
+   * null regime when no profile exists yet.
+   */
+  async currentRegime(
+    companyId: string,
+    tenantId: string,
+  ): Promise<CurrentCompanyRegime> {
+    const profile = await this.profiles.current(companyId, tenantId);
+    if (!profile) {
+      return { taxRegime: null, simpleNational: false, specialRegime: null };
+    }
+    return {
+      taxRegime: legacyFromRegimeKind(profile.taxRegime),
+      simpleNational: profile.simpleNational,
+      specialRegime: profile.specialTaxRegime,
+    };
+  }
+
+  /**
+   * Batch variant of {@link currentRegime} for list endpoints: returns a
+   * companyId → current regime map keyed off each company's open profile.
+   */
+  async currentRegimesByCompanyIds(
+    companyIds: string[],
+    tenantId: string,
+  ): Promise<Map<string, CurrentCompanyRegime>> {
+    const profiles = await this.profiles.currentByCompanyIds(
+      companyIds,
+      tenantId,
+    );
+    const regimes = new Map<string, CurrentCompanyRegime>();
+    for (const [companyId, profile] of profiles) {
+      regimes.set(companyId, {
+        taxRegime: legacyFromRegimeKind(profile.taxRegime),
+        simpleNational: profile.simpleNational,
+        specialRegime: profile.specialTaxRegime,
+      });
+    }
+    return regimes;
   }
 
   async delete(

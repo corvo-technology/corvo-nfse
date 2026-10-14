@@ -73,20 +73,6 @@ export class CompanyOrmEntity {
   })
   defaultServiceCode?: string | null;
 
-  @Column({ name: 'tax_regime', type: 'varchar', length: 30 })
-  taxRegime!: string;
-
-  @Column({ name: 'simple_national', type: 'boolean', default: false })
-  simpleNational!: boolean;
-
-  @Column({
-    name: 'special_regime',
-    type: 'varchar',
-    length: 50,
-    nullable: true,
-  })
-  specialRegime?: string;
-
   @Column({
     name: 'address_street',
     type: 'varchar',

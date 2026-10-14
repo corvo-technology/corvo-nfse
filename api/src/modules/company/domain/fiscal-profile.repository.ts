@@ -26,6 +26,11 @@ export abstract class IFiscalProfileRepository {
     companyId: string,
     tenantId: string,
   ): Promise<CompanyFiscalProfile | null>;
+  /** Open (valid_until IS NULL) profiles for a batch of companies. */
+  abstract findOpenByCompanyIds(
+    companyIds: string[],
+    tenantId: string,
+  ): Promise<CompanyFiscalProfile[]>;
   /** All profiles of the company, validFrom DESC. */
   abstract list(
     companyId: string,

@@ -149,9 +149,9 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
     const companyId = 'aaaaaaaa-1111-4222-8333-444444444444';
     await dataSource.query(
       `INSERT INTO "${schema}"."nfse_companies"
-         (id, tenant_id, legal_name, tax_id, tax_regime, municipality_code,
+         (id, tenant_id, legal_name, tax_id, municipality_code,
           municipal_reg, environment, status, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, 'MEI', '3550308', '12345', 'test', 'ready', NOW(), NOW())
+       VALUES ($1, $2, $3, $4, '3550308', '12345', 'test', 'ready', NOW(), NOW())
        ON CONFLICT (id) DO NOTHING`,
       [companyId, tenantId, 'Empresa MCP E2E', COMPANY_TAX_ID],
     );

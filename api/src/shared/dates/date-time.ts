@@ -124,6 +124,14 @@ export function currentLocalDate(
   return parsed.toISODate()!;
 }
 
+/**
+ * Today's date (YYYY-MM-DD) in the default establishment timezone. Convenience
+ * alias used when recording fiscal profiles with a "today" validity start.
+ */
+export function todayInEstablishmentTimezone(now = new Date()): string {
+  return currentLocalDate(now);
+}
+
 export function parseNaturalLocalDatePtBr(
   text: string,
   referenceAt: string | Date = new Date(),

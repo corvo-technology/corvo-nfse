@@ -64,6 +64,9 @@ class FakeFiscalProfileRepository implements IFiscalProfileRepository {
   findOpen(): Promise<CompanyFiscalProfile | null> {
     return Promise.resolve(null);
   }
+  findOpenByCompanyIds(): Promise<CompanyFiscalProfile[]> {
+    return Promise.resolve([]);
+  }
   list(): Promise<CompanyFiscalProfile[]> {
     return Promise.resolve([]);
   }

@@ -105,7 +105,7 @@ describeIntegration('complete API module HTTP contract', () => {
       otherTenant,
     ]);
     await admin.query(
-      `INSERT INTO "${schema}".nfse_companies (id,tenant_id,legal_name,tax_id,tax_regime,environment) VALUES ($1,$2,'Fixture','11222333000181','MEI','test')`,
+      `INSERT INTO "${schema}".nfse_companies (id,tenant_id,legal_name,tax_id,environment) VALUES ($1,$2,'Fixture','11222333000181','test')`,
       [company, tenant],
     );
     const keys = app.get(ApiKeyService);

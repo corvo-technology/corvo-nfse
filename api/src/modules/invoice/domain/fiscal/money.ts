@@ -1,5 +1,7 @@
 import { Decimal } from '@/shared/types/money';
 
+export { Decimal };
+
 export type DecimalString = string;
 
 export function toDecimal(value: string | number | Decimal): Decimal {

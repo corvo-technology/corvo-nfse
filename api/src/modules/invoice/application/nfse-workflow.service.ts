@@ -10,6 +10,8 @@ import {
   type IDpsSequenceRepository,
 } from '../domain/dps-sequence';
 import { CompanyService } from '@/modules/company/application/company.service';
+import { CompanyFiscalProfileService } from '@/modules/company/application/company-fiscal-profile.service';
+import { formatLocalDate } from '@/shared/dates/date-time';
 import { ApplicationCertificateDecryptor } from '@/modules/certificate/application/certificate-decryptor';
 import { NfseProviderFactory } from '@/infra/external/nfse/nfse-provider.factory';
 import type {
@@ -52,6 +54,7 @@ export class NfseWorkflowService {
     private readonly outbox: WebhookOutboxService,
     @Inject(DOCUMENT_STORAGE)
     private readonly documentStorage: IDocumentStorage,
+    private readonly profiles: CompanyFiscalProfileService,
   ) {}
 
   async process(data: FiscalJobData): Promise<void> {
@@ -215,6 +218,18 @@ export class NfseWorkflowService {
         nDPS: String(invoice.dpsNumber),
       }),
     );
+    // The fiscal regime is read from the company's effective fiscal profile on
+    // the invoice competence date (the Company aggregate no longer stores it).
+    const profile = await this.profiles.findEffective(
+      company.id,
+      invoice.tenantId,
+      formatLocalDate(new Date(snapshot.competenceDate)),
+    );
+    if (!profile) {
+      throw new Error(
+        'Company fiscal profile not found for the invoice competence date',
+      );
+    }
     return {
       invoiceId: invoice.id,
       tenantId: invoice.tenantId,
@@ -231,13 +246,13 @@ export class NfseWorkflowService {
         codMunicipio: municipality,
         regime: {
           opSimpNac:
-            company.taxRegime === 'MEI'
+            profile.taxRegime === 'MEI'
               ? 2
-              : company.taxRegime === 'Simples Nacional'
+              : profile.taxRegime === 'SIMPLES_NACIONAL'
                 ? 3
                 : 1,
           regApTribSN: 1,
-          regEspTrib: Number(company.specialRegime ?? 0),
+          regEspTrib: Number(profile.specialTaxRegime ?? 0),
         },
       },
       serie: snapshot.dpsSeries!,

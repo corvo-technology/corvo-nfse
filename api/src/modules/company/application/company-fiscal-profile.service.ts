@@ -42,4 +42,28 @@ export class CompanyFiscalProfileService {
   ): Promise<CompanyFiscalProfile | null> {
     return this.profiles.findOpen(companyId, tenantId);
   }
+
+  findEffective(
+    companyId: string,
+    tenantId: string,
+    date: string,
+  ): Promise<CompanyFiscalProfile | null> {
+    return this.profiles.findEffective(companyId, tenantId, date);
+  }
+
+  /**
+   * Returns a companyId → current (open) profile map for a batch of companies,
+   * for list endpoints that must surface the regime of each row.
+   */
+  async currentByCompanyIds(
+    companyIds: string[],
+    tenantId: string,
+  ): Promise<Map<string, CompanyFiscalProfile>> {
+    if (companyIds.length === 0) return new Map();
+    const profiles = await this.profiles.findOpenByCompanyIds(
+      companyIds,
+      tenantId,
+    );
+    return new Map(profiles.map((profile) => [profile.companyId, profile]));
+  }
 }

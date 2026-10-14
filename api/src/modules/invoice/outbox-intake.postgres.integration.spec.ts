@@ -116,7 +116,7 @@ describePostgres('invoice intake with restricted PostgreSQL role', () => {
       [companyLive, 'live'],
     ])
       await admin.query(
-        `INSERT INTO "${schema}".nfse_companies (id, tenant_id, legal_name, tax_id, environment, tax_regime) VALUES ($1,$2,'Fixture','11222333000181',$3,'MEI')`,
+        `INSERT INTO "${schema}".nfse_companies (id, tenant_id, legal_name, tax_id, environment) VALUES ($1,$2,'Fixture','11222333000181',$3)`,
         [id, tenantA, environment],
       );
     outbox = new OutboxService(repo);

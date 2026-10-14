@@ -97,6 +97,20 @@ export class TypeOrmCompanyFiscalProfileRepository
     });
   }
 
+  async findOpenByCompanyIds(
+    companyIds: string[],
+    tenantId: string,
+  ): Promise<CompanyFiscalProfile[]> {
+    if (companyIds.length === 0) return [];
+    return runWithTenant(tenantId, async () => {
+      const rows = await this.manager().query<FiscalProfileRow[]>(
+        `SELECT * FROM ${this.table()} WHERE company_id = ANY($1::uuid[]) AND tenant_id = $2 AND valid_until IS NULL`,
+        [companyIds, tenantId],
+      );
+      return rows.map((row) => this.toDomain(row));
+    });
+  }
+
   async list(
     companyId: string,
     tenantId: string,

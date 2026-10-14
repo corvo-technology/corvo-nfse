@@ -68,7 +68,7 @@ describePostgres(
         [tenantA, companyC, '11222333000183'],
       ] as const) {
         await admin.query(
-          `INSERT INTO "${schema}".nfse_companies (id,tenant_id,legal_name,tax_id,tax_regime,environment) VALUES ($1,$2,'Fixture',$3,'MEI','test')`,
+          `INSERT INTO "${schema}".nfse_companies (id,tenant_id,legal_name,tax_id,environment) VALUES ($1,$2,'Fixture',$3,'test')`,
           [company, tenant, taxId],
         );
       }

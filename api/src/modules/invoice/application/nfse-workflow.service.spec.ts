@@ -51,6 +51,7 @@ describe('NfseWorkflowService email webhooks', () => {
       webhooks as any,
       outbox as any,
       {} as any,
+      {} as any,
     );
   });
 

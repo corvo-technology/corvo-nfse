@@ -17,7 +17,10 @@ export class JsonFiscalCatalog extends IFiscalCatalog {
   lookupServiceCode(code: string): CatalogLookup {
     return { version: this.file.version, found: /^\d{6}$/.test(code) && this.codes.has(code) };
   }
-  validateClassification(): ReturnType<IFiscalCatalog['validateClassification']> {
+  validateClassification(
+    _input: Parameters<IFiscalCatalog['validateClassification']>[0],
+    _date: string,
+  ): ReturnType<IFiscalCatalog['validateClassification']> {
     return { status: 'unavailable', reason: 'NBS/CST/cClassTrib/cIndOp catalogs are not loaded yet (Spec 3)' };
   }
 }
