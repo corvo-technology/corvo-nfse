@@ -1010,10 +1010,12 @@ git commit -m "feat(invoice): enqueue emission through the outbox"
 - Modify: `src/infra/persistence/typeorm/tenant-work-discovery.ts` (kind `invoice-recovery`)
 - Test: `src/modules/invoice/jobs/docs-recovery.scheduler.spec.ts`
 
+**Execution note (2026-10-13):** Tests use a configurable constructor fixture instead of mutating private fields or using `as any`. The RLS discovery integration test now first verifies queued owners are excluded, temporarily changes its two invoices to processing/reconciliation_required for scoped discovery, and restores queued in finally. This corrects the expectation induced by Task 6 without changing other fixtures. Focused invoice/persistence tests and production typecheck passed; focused PostgreSQL discovery test passed after retrying outside the sandbox.
+
 **Interfaces:**
 - Consumes: nada novo. Produces: scheduler que só trata `processing`, `reconciliation_required` e `authorized` sem documentos.
 
-- [ ] **Step 1: Write the failing tests** — acrescentar ao spec existente (ajuste o mock do `getRepository` para devolver um array configurável em `getMany` e capture o argumento de `where`):
+- [x] **Step 1: Write the failing tests** — acrescentar ao spec existente (ajuste o mock do `getRepository` para devolver um array configurável em `getMany` e capture o argumento de `where`):
 
 ```ts
 it('does not query or re-enqueue queued invoices', async () => {
@@ -1055,12 +1057,12 @@ it('re-enqueues reconciliation for stuck processing and reconciliation_required 
 
 Também adicione ao spec de `tenant-work-discovery` (se existir) ou a um teste simples do `discover` que o kind `invoice-recovery` não inclui `'queued'` — se não houver spec para isso, cubra apenas pelo teste do scheduler e pela leitura do SQL no passo 3.
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `yarn jest src/modules/invoice/jobs/docs-recovery.scheduler.spec.ts`
 Expected: FAIL (o `where` ainda inclui `queued`; hoje enfileira `nfse-emission` para queued).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `docs-recovery.scheduler.ts`: troque a lista de statuses para `['processing', 'reconciliation_required']` e o nome da fila fixo:
 
@@ -1085,12 +1087,12 @@ Expected: FAIL (o `where` ainda inclui `queued`; hoje enfileira `nfse-emission` 
 
 Comentário curto acima: `// queued invoices are owned by the outbox (also protects SCHEDULE invoices from early emission).` Em `tenant-work-discovery.ts`, no ramo `invoice-recovery`, troque `"work.status IN ('queued','processing','reconciliation_required','authorized')"` por `"work.status IN ('processing','reconciliation_required','authorized')"`.
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `yarn jest src/modules/invoice src/infra/persistence && yarn typecheck`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src
