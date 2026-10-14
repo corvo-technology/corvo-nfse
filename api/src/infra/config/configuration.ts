@@ -8,7 +8,11 @@ export type {
 export type { WorkerConfig } from './configuration.types';
 export type { LoggingConfig, OpenTelemetryConfig } from './configuration.types';
 export type { SentryConfig } from './configuration.types';
-export type { QueueConfig, RedisConfig, OutboxConfig } from './configuration.types';
+export type {
+  QueueConfig,
+  RedisConfig,
+  OutboxConfig,
+} from './configuration.types';
 export type { AuthConfig } from './configuration.types';
 export type { StorageConfig } from './configuration.types';
 export type { PaymentsConfig, StripeConfig } from './configuration.types';

@@ -38,7 +38,12 @@ export class TypeOrmOutboxRepository implements IOutboxRepository {
   }
 
   private table(): string {
-    return this.dataSource.getMetadata(OutboxMessageOrmEntity).tablePath;
+    const metadata = this.dataSource.getMetadata(OutboxMessageOrmEntity);
+    const escape = (identifier: string) =>
+      this.dataSource.driver.escape(identifier);
+    return metadata.schema
+      ? `${escape(metadata.schema)}.${escape(metadata.tableName)}`
+      : escape(metadata.tableName);
   }
 
   /** UPDATE ... RETURNING resolves to [rows, affected]; INSERT ... RETURNING to rows. */
@@ -97,12 +102,18 @@ export class TypeOrmOutboxRepository implements IOutboxRepository {
     return this.rowsOf(raw).map((row) => this.toDomain(row));
   }
 
-  async complete(id: string, tenantId: string, at: Date): Promise<void> {
-    await this.manager().query(
+  async complete(
+    id: string,
+    tenantId: string,
+    at: Date,
+    attempt: number,
+  ): Promise<boolean> {
+    const raw: unknown = await this.manager().query(
       `UPDATE ${this.table()} SET status = 'completed', completed_at = $3, lease_until = NULL, updated_at = $3
-       WHERE id = $1 AND tenant_id = $2`,
-      [id, tenantId, at],
+       WHERE id = $1 AND tenant_id = $2 AND status = 'claimed' AND attempts = $4 RETURNING id`,
+      [id, tenantId, at, attempt],
     );
+    return this.rowsOf(raw).length > 0;
   }
 
   async release(
@@ -111,12 +122,14 @@ export class TypeOrmOutboxRepository implements IOutboxRepository {
     error: string,
     nextAvailableAt: Date,
     at: Date,
-  ): Promise<void> {
-    await this.manager().query(
+    attempt: number,
+  ): Promise<boolean> {
+    const raw: unknown = await this.manager().query(
       `UPDATE ${this.table()} SET status = 'pending', last_error = $3, available_at = $4, lease_until = NULL, updated_at = $5
-       WHERE id = $1 AND tenant_id = $2`,
-      [id, tenantId, error, nextAvailableAt, at],
+       WHERE id = $1 AND tenant_id = $2 AND status = 'claimed' AND attempts = $6 RETURNING id`,
+      [id, tenantId, error, nextAvailableAt, at, attempt],
     );
+    return this.rowsOf(raw).length > 0;
   }
 
   async markDead(
@@ -124,12 +137,14 @@ export class TypeOrmOutboxRepository implements IOutboxRepository {
     tenantId: string,
     error: string,
     at: Date,
-  ): Promise<void> {
-    await this.manager().query(
+    attempt: number,
+  ): Promise<boolean> {
+    const raw: unknown = await this.manager().query(
       `UPDATE ${this.table()} SET status = 'dead', last_error = $3, lease_until = NULL, updated_at = $4
-       WHERE id = $1 AND tenant_id = $2`,
-      [id, tenantId, error, at],
+       WHERE id = $1 AND tenant_id = $2 AND status = 'claimed' AND attempts = $5 RETURNING id`,
+      [id, tenantId, error, at, attempt],
     );
+    return this.rowsOf(raw).length > 0;
   }
 
   private toDomain(row: OutboxRow): OutboxMessage {

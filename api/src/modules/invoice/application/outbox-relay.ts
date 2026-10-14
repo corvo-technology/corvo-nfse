@@ -91,9 +91,15 @@ export class OutboxRelay
       if (!handler)
         throw new Error(`No outbox handler for type ${message.type}`);
       await runWithTenant(message.tenantId, () => handler.handle(message));
-      await runWithTenant(message.tenantId, () =>
-        this.repo.complete(message.id, message.tenantId, new Date()),
+      const completed = await runWithTenant(message.tenantId, () =>
+        this.repo.complete(
+          message.id,
+          message.tenantId,
+          new Date(),
+          message.attempts,
+        ),
       );
+      if (!completed) return;
       recordOutboxPublished(message.type);
       recordOutboxLatency(
         message.type,
@@ -101,8 +107,19 @@ export class OutboxRelay
       );
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      recordOutboxFailure(message.type);
+      const failedAt = new Date();
       if (message.attempts >= maxAttempts) {
+        const dead = await runWithTenant(message.tenantId, () =>
+          this.repo.markDead(
+            message.id,
+            message.tenantId,
+            reason,
+            failedAt,
+            message.attempts,
+          ),
+        );
+        if (!dead) return;
+        recordOutboxFailure(message.type);
         recordOutboxDead(message.type);
         this.logger.error(
           {
@@ -115,20 +132,19 @@ export class OutboxRelay
           'Outbox message is dead',
         );
         captureRuntimeException(error, 'worker', `outbox.dead:${message.type}`);
-        await runWithTenant(message.tenantId, () =>
-          this.repo.markDead(message.id, message.tenantId, reason, new Date()),
-        );
         return;
       }
-      await runWithTenant(message.tenantId, () =>
+      const released = await runWithTenant(message.tenantId, () =>
         this.repo.release(
           message.id,
           message.tenantId,
           reason,
-          new Date(claimedAt.getTime() + outboxBackoffMs(message.attempts)),
-          new Date(),
+          new Date(failedAt.getTime() + outboxBackoffMs(message.attempts)),
+          failedAt,
+          message.attempts,
         ),
       );
+      if (released) recordOutboxFailure(message.type);
     }
   }
 }

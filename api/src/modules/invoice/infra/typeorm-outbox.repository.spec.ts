@@ -7,7 +7,7 @@ describe('oldestPendingAvailableAt', () => {
     const source = new DataSource({ type: 'postgres' });
     jest
       .spyOn(source, 'getMetadata')
-      .mockReturnValue({ tablePath: 'outbox_messages' } as ReturnType<
+      .mockReturnValue({ tableName: 'outbox_messages' } as ReturnType<
         DataSource['getMetadata']
       >);
     const query = jest

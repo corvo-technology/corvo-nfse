@@ -139,6 +139,12 @@ describePostgres('outbox repository with restricted PostgreSQL role', () => {
     ]);
     const ids = [...a, ...b].map((m) => m.id);
     expect(new Set(ids).size).toBe(ids.length);
+    expect(
+      [...a, ...b]
+        .filter((message) => message.dedupeKey.startsWith('race-'))
+        .map((message) => message.dedupeKey)
+        .sort(),
+    ).toEqual(Array.from({ length: 20 }, (_, index) => `race-${index}`).sort());
   });
 
   it('reclaims a message whose lease expired', async () => {
@@ -159,50 +165,134 @@ describePostgres('outbox repository with restricted PostgreSQL role', () => {
     expect(again?.attempts).toBe(2);
   });
 
-  it('complete, release and markDead update state under the tenant scope', async () => {
-    await runWithTenant(tenantA, () => repo.insert(base('state-1')));
+  it('complete, release and markDead mutate only the active claim in tenant scope', async () => {
+    await runWithTenant(tenantA, async () => {
+      for (const key of ['state-release', 'state-dead', 'state-complete'])
+        await repo.insert(base(key));
+    });
     const now = new Date();
-    const [msg] = (
-      await runAsSystem('outbox-relay', () =>
-        repo.claimBatch(now, 100, new Date(now.getTime() + 60_000)),
-      )
-    ).filter((m) => m.dedupeKey === 'state-1');
-    if (!msg) throw new Error('Expected state message claim');
+    const claimed = await runAsSystem('outbox-relay', () =>
+      repo.claimBatch(now, 100, new Date(now.getTime() + 60000)),
+    );
+    const find = (key: string) => {
+      const message = claimed.find((row) => row.dedupeKey === key);
+      if (!message) throw new Error(`Expected ${key} claim`);
+      return message;
+    };
+    const released = find('state-release');
+    const dead = find('state-dead');
+    const completed = find('state-complete');
+    await runWithTenant(tenantA, async () => {
+      expect(
+        await repo.release(
+          released.id,
+          tenantA,
+          'boom',
+          new Date(now.getTime() + 10000),
+          now,
+          released.attempts,
+        ),
+      ).toBe(true);
+      expect(
+        await repo.markDead(dead.id, tenantA, 'dead', now, dead.attempts),
+      ).toBe(true);
+      expect(
+        await repo.complete(completed.id, tenantA, now, completed.attempts),
+      ).toBe(true);
+      expect(await repo.complete(dead.id, tenantA, now, dead.attempts)).toBe(
+        false,
+      );
+    });
+    expect(
+      await admin.query(
+        `SELECT status, last_error FROM "${schema}".outbox_messages WHERE id=$1`,
+        [released.id],
+      ),
+    ).toEqual([{ status: 'pending', last_error: 'boom' }]);
+    expect(
+      await admin.query(
+        `SELECT status, last_error FROM "${schema}".outbox_messages WHERE id=$1`,
+        [dead.id],
+      ),
+    ).toEqual([{ status: 'dead', last_error: 'dead' }]);
+    expect(
+      await admin.query(
+        `SELECT status, lease_until, completed_at FROM "${schema}".outbox_messages WHERE id=$1`,
+        [completed.id],
+      ),
+    ).toEqual([{ status: 'completed', lease_until: null, completed_at: now }]);
+  });
+
+  it('rejects stale claimant completion, release and dead updates after lease takeover', async () => {
+    await runWithTenant(tenantA, () => repo.insert(base('stale-claim')));
+    const started = new Date();
+    const claim = async (at: Date) => {
+      const message = (
+        await runAsSystem('outbox-relay', () =>
+          repo.claimBatch(at, 100, new Date(at.getTime() + 1000)),
+        )
+      ).find((row) => row.dedupeKey === 'stale-claim');
+      if (!message) throw new Error('Expected stale claim fixture');
+      return message;
+    };
+    const first = await claim(started);
+    const second = await claim(new Date(started.getTime() + 2000));
+    expect(second.attempts).toBe(first.attempts + 1);
+    await runWithTenant(tenantA, () =>
+      repo.complete(first.id, tenantA, started, first.attempts),
+    );
+    expect(
+      await admin.query(
+        `SELECT status, attempts FROM "${schema}".outbox_messages WHERE id=$1`,
+        [second.id],
+      ),
+    ).toEqual([{ status: 'claimed', attempts: second.attempts }]);
+    await runWithTenant(tenantA, () =>
+      repo.complete(second.id, tenantA, started, second.attempts),
+    );
     await runWithTenant(tenantA, () =>
       repo.release(
-        msg.id,
+        first.id,
         tenantA,
-        'boom',
-        new Date(now.getTime() + 10_000),
-        now,
+        'late failure',
+        started,
+        started,
+        first.attempts,
       ),
     );
-    const [row] = await admin.query(
-      `SELECT status, last_error FROM "${schema}".outbox_messages WHERE id=$1`,
-      [msg.id],
-    );
-    expect(row).toEqual({ status: 'pending', last_error: 'boom' });
     await runWithTenant(tenantA, () =>
-      repo.markDead(msg.id, tenantA, 'dead', now),
+      repo.markDead(first.id, tenantA, 'late dead', started, first.attempts),
     );
-    const [dead] = await admin.query(
-      `SELECT status FROM "${schema}".outbox_messages WHERE id=$1`,
-      [msg.id],
-    );
-    expect(dead).toEqual({ status: 'dead' });
-    await runWithTenant(tenantA, () => repo.complete(msg.id, tenantA, now));
-    const completed = await admin.query(
-      `SELECT status, lease_until, completed_at FROM "${schema}".outbox_messages WHERE id=$1`,
-      [msg.id],
-    );
-    expect(completed).toEqual([
-      { status: 'completed', lease_until: null, completed_at: now },
+    expect(
+      await admin.query(
+        `SELECT status, attempts, last_error FROM "${schema}".outbox_messages WHERE id=$1`,
+        [second.id],
+      ),
+    ).toEqual([
+      { status: 'completed', attempts: second.attempts, last_error: null },
     ]);
+  });
+
+  it('allows the same dedupe key in different tenants and isolates targeted reads', async () => {
+    await runWithTenant(tenantA, () => repo.insert(base('tenant-shared')));
+    await runWithTenant(tenantB, async () => {
+      expect(
+        await repo.insert({ ...base('tenant-shared'), tenantId: tenantB }),
+      ).toBe(true);
+      const rows = await runtime.query(
+        `SELECT tenant_id FROM "${schema}".outbox_messages WHERE dedupe_key=$1`,
+        ['tenant-shared'],
+      );
+      expect(rows).toEqual([{ tenant_id: tenantB }]);
+    });
   });
 
   it('RLS hides tenant A messages from tenant B', async () => {
     const rows = await runWithTenant(tenantB, () =>
-      runtime.query(`SELECT id FROM "${schema}".outbox_messages`),
+      runtime.query(
+        `SELECT id FROM "${schema}".outbox_messages WHERE tenant_id=$1`,
+        [tenantA],
+      ),
     );
     expect(rows).toEqual([]);
   });

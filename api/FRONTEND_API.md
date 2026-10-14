@@ -213,7 +213,7 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | POST   | `/companies/{companyId}/certificates`                  | S/K, `nfse.certificates.manage` | Multipart: `file` PKCS#12, `password` do certificado; até 50 KiB; 201              |
 | GET    | `/companies/{companyId}/certificates`                  | S/K, `nfse.certificates.view`   | Lista de metadados de certificados                                                 |
 | DELETE | `/companies/{companyId}/certificates/{certId}`         | S/K, `nfse.certificates.manage` | Revoga/exclui; 204                                                                 |
-| POST   | `/invoices`                                            | S/K, `nfse.invoices.issue`      | JSON CreateInvoice; header `idempotency-key?`; 201                                 |
+| POST   | `/invoices`                                            | S/K, `nfse.invoices.issue`      | JSON CreateInvoice; header `idempotency-key?`; 202                                 |
 | GET    | `/invoices`                                            | S/K, `nfse.invoices.view`       | Query: `companyId?`, `status?`, `from?`, `to?`, `externalId?`, `limit?`, `cursor?` |
 | GET    | `/invoices/{id}`                                       | S/K, `nfse.invoices.view`       | Detalhes/status da nota                                                            |
 | GET    | `/invoices/{id}/events`                                | S/K, `nfse.invoices.view`       | Histórico de transições                                                            |
@@ -258,7 +258,17 @@ campos, todos opcionais. Address: `street`, `number`, `complement`, `district`,
 `competenceDate` e a empresa, informada por `companyId` (uuid) **ou**
 `companyTaxId` (CNPJ, com ou sem pontuação); pelo menos um dos dois. Se vierem
 os dois, vale o `companyId`. Empresa inexistente no tenant/ambiente retorna 404.
-Opcionais `externalId`, `email: {send?: boolean}`.
+Opcionais `externalId`, `email: {send?: boolean}` e `options: {type?: "IMMEDIATE" | "SCHEDULE"}`.
+`IMMEDIATE` é o padrão. Com `SCHEDULE`, envie `competenceDate` futura em
+`YYYY-MM-DD`; `data.props.scheduledFor` retorna a data ISO de liberação às
+00:00 em `America/Sao_Paulo` (ou `null` para emissão imediata). A nota permanece
+`queued` até esse instante. Datas além do horizonte configurado (365 dias por
+padrão) retornam HTTP 422 com issue code `schedule_horizon_exceeded`.
+
+O aceite persiste a nota, o evento e a mensagem da outbox na mesma transação.
+Depois que a publicação é confirmada, um reset do Redis pode perder o job e
+manter a nota em `queued`; o scheduler de recuperação de documentos não
+recupera esse caso.
 Amount é valor monetário, mínimo 0.01. Customer exige `taxId` e `name`;
 aceita `email` e `address: {city?,state?,country?}`. Service exige `code`;
 `description` e `municipalityCode` são opcionais. Ver "Validação fiscal e
@@ -288,7 +298,7 @@ status da empresa".
 ao simulador; em live, usar os códigos e cadastro fiscal reais da empresa.
 Enviar CPF/CNPJ sem pontuação e competência como `YYYY-MM-DD`.
 
-**Nota fiscal**: `POST /invoices` retorna 201 com `{props: {...}}` em estado
+**Nota fiscal**: `POST /invoices` retorna 202 com `{data: {props: {...}}}` em estado
 `queued`; não significa que a nota já está autorizada. Buscar
 `GET /invoices/{id}` até `props.status === 'authorized'` e
 `props.documentsReadyAt !== null`, ou acompanhar webhooks. A resposta inclui:

@@ -1,6 +1,11 @@
 import { ConfigService } from '@nestjs/config';
 import { getDatabaseScope } from '@/infra/persistence/typeorm/tenant-context.storage';
-import { recordOutboxPendingAge } from '../observability/outbox.metrics';
+import {
+  recordOutboxPendingAge,
+  recordOutboxPublished,
+  recordOutboxFailure,
+  recordOutboxDead,
+} from '../observability/outbox.metrics';
 jest.mock('../observability/outbox.metrics');
 import { OutboxRelay } from './outbox-relay';
 import { OutboxHandlerRegistry } from './outbox-handler.registry';
@@ -38,9 +43,9 @@ function setup(claimed: OutboxMessage[], handle: jest.Mock) {
     oldestPendingAvailableAt: jest.fn().mockResolvedValue(null),
     insert: jest.fn(),
     claimBatch: jest.fn().mockResolvedValue(claimed),
-    complete: jest.fn(),
-    release: jest.fn(),
-    markDead: jest.fn(),
+    complete: jest.fn().mockResolvedValue(true),
+    release: jest.fn().mockResolvedValue(true),
+    markDead: jest.fn().mockResolvedValue(true),
   };
   const registry = new OutboxHandlerRegistry();
   registry.register({ type: 'invoice.emit', handle });
@@ -82,6 +87,7 @@ describe('OutboxRelay', () => {
     });
     repo.complete.mockImplementation(async () => {
       expect(getDatabaseScope()).toEqual({ tenantId, authUserId: undefined });
+      return true;
     });
     await relay.tick();
   });
@@ -104,6 +110,7 @@ describe('OutboxRelay', () => {
       'm1',
       tenantId,
       expect.any(Date),
+      1,
     );
     expect(repo.release).not.toHaveBeenCalled();
   });
@@ -111,16 +118,43 @@ describe('OutboxRelay', () => {
   it('releases with backoff when the handler throws', async () => {
     const handle = jest.fn().mockRejectedValue(new Error('redis down'));
     const { repo, relay } = setup([message({ attempts: 1 })], handle);
-    const now = new Date('2026-10-13T12:00:00Z');
+    const now = new Date();
+    jest.useFakeTimers().setSystemTime(now);
     await relay.tick(now);
+    jest.useRealTimers();
     expect(repo.release).toHaveBeenCalledWith(
       'm1',
       tenantId,
       'redis down',
       new Date(now.getTime() + 2000),
       expect.any(Date),
+      1,
     );
     expect(repo.complete).not.toHaveBeenCalled();
+  });
+
+  it('backs off from actual failure time after a slow handler', async () => {
+    jest.useFakeTimers();
+    const started = new Date('2026-10-13T12:00:00Z');
+    jest.setSystemTime(started);
+    const handle = jest.fn(async () => {
+      jest.setSystemTime(new Date(started.getTime() + 30000));
+      throw new Error('slow redis failure');
+    });
+    try {
+      const { repo, relay } = setup([message()], handle);
+      await relay.tick(started);
+      expect(repo.release).toHaveBeenCalledWith(
+        'm1',
+        tenantId,
+        'slow redis failure',
+        new Date(started.getTime() + 32000),
+        new Date(started.getTime() + 30000),
+        1,
+      );
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('marks the message dead once maxAttempts is reached', async () => {
@@ -132,6 +166,7 @@ describe('OutboxRelay', () => {
       tenantId,
       'still down',
       expect.any(Date),
+      3,
     );
     expect(repo.release).not.toHaveBeenCalled();
   });
@@ -156,7 +191,31 @@ describe('OutboxRelay', () => {
     );
     await relay.tick(new Date());
     expect(repo.release).toHaveBeenCalledTimes(1);
-    expect(repo.complete).toHaveBeenCalledWith('b', tenantId, expect.any(Date));
+    expect(repo.complete).toHaveBeenCalledWith(
+      'b',
+      tenantId,
+      expect.any(Date),
+      1,
+    );
+  });
+
+  it('records no success or failure diagnostics for a stale claim', async () => {
+    jest.clearAllMocks();
+    const { repo, relay } = setup(
+      [message()],
+      jest.fn().mockResolvedValue(undefined),
+    );
+    repo.complete.mockResolvedValue(false);
+    await relay.tick();
+    expect(recordOutboxPublished).not.toHaveBeenCalled();
+    const failed = setup(
+      [message({ attempts: 3 })],
+      jest.fn().mockRejectedValue(new Error('late')),
+    );
+    failed.repo.markDead.mockResolvedValue(false);
+    await failed.relay.tick();
+    expect(recordOutboxFailure).not.toHaveBeenCalled();
+    expect(recordOutboxDead).not.toHaveBeenCalled();
   });
 
   it('ignores overlapping ticks', async () => {

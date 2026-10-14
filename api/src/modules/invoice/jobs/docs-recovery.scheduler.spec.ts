@@ -42,18 +42,28 @@ describe('DocsRecoveryScheduler', () => {
   let fiscalRows: FiscalRow[] = [];
   let selectedStatuses: string[] = [];
   let selectedTenant = '';
-  const where = jest.fn((_sql: string, parameters: { statuses: string[] }) => {
-    selectedStatuses = parameters.statuses;
-    return query;
-  });
-  const andWhere = jest.fn((_sql: string, parameters: { tenantId: string }) => {
-    selectedTenant = parameters.tenantId;
-    return query;
-  });
-  const query = {
+  interface FiscalQuery {
+    where: (sql: string, parameters: { statuses: string[] }) => FiscalQuery;
+    andWhere: (sql: string, parameters: { tenantId: string }) => FiscalQuery;
+    take: () => FiscalQuery;
+    getMany: () => Promise<FiscalRow[]>;
+  }
+  const where = jest.fn(
+    (_sql: string, parameters: { statuses: string[] }): FiscalQuery => {
+      selectedStatuses = parameters.statuses;
+      return query;
+    },
+  );
+  const andWhere = jest.fn(
+    (_sql: string, parameters: { tenantId: string }): FiscalQuery => {
+      selectedTenant = parameters.tenantId;
+      return query;
+    },
+  );
+  const query: FiscalQuery = {
     where,
     andWhere,
-    take: jest.fn().mockReturnThis(),
+    take: jest.fn((): FiscalQuery => query),
     getMany: async () =>
       fiscalRows.filter(
         (row) =>

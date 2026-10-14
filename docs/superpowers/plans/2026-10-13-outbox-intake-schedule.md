@@ -525,7 +525,7 @@ export class TypeOrmOutboxRepository implements IOutboxRepository {
 
 (`claimBatch` usa `this.dataSource.query` de propósito: não participa de transação ambiente e roda em auto-commit, soltando o lock `SKIP LOCKED` ao fim do statement.)
 
-- [x] **Step 6: Run to verify it passes** — executed: focused outbox/RLS PASS (27 tests); combined database run has 2 new-migration baseline fixture failures, deferred to Task 7; see Task 2 report.
+- [x] **Step 6: Run to verify it passes** — executed: focused outbox/RLS PASS (27 tests); deferred baseline entity drift/reversal verification resolved in Task 7 with metadata alignment and preserved legacy company assertions; full PostgreSQL suite PASS (Task 7 report).
 
 Run: `MIGRATION_TEST_DATABASE_URL=… yarn jest src/modules/invoice src/infra/database`
 Expected: PASS (inclui o teste RLS agora com 17 tabelas). Sem a variável: suites ficam `skipped`; neste caso rode também `yarn typecheck`.
@@ -1110,7 +1110,7 @@ git commit -m "fix(invoice): leave queued recovery to the outbox"
 
 **Interfaces:** Consumes todos os anteriores.
 
-- [ ] **Step 1: Write the integration test** (harness da Task 2). Cenários, com `InvoiceLifecycleService` real (mesmo `runtime` DataSource, `TypeOrmTransactionContext` compartilhado, `BillingUsageService` e `CachePort` mockados) + `OutboxRelay` real com um `InvoiceEmitHandler` cuja `BullmqQueueService` é um fake que registra chamadas:
+- [x] **Step 1: Write the integration test** (harness da Task 2). Cenários, com `InvoiceLifecycleService` real (mesmo `runtime` DataSource, `TypeOrmTransactionContext` compartilhado, `BillingUsageService` e `CachePort` mockados) + `OutboxRelay` real com um `InvoiceEmitHandler` cuja `BullmqQueueService` é um fake que registra chamadas:
 
 ```ts
 // Arrange (beforeAll, after the harness creates `admin`, `runtime`, `schema`, tenantA):
@@ -1215,14 +1215,14 @@ it('a failing outbox insert rolls the invoice back (no orphan invoice)', async (
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails / then passes** after ajustes mínimos de harness
+- [x] **Step 2: Run to verify it fails / then passes** after ajustes mínimos de harness
 
 Run: `MIGRATION_TEST_DATABASE_URL=… yarn jest src/modules/invoice/outbox-intake.postgres.integration.spec.ts`
 Expected: PASS.
 
-- [ ] **Step 3: Documentation** — `FRONTEND_API.md` e `llms.txt`: documentar `options.type` (`IMMEDIATE` padrão | `SCHEDULE`), `scheduledFor` na resposta, o erro `422 schedule_horizon_exceeded` e que invoices agendadas ficam `queued` até a data.
+- [x] **Step 3: Documentation** — `FRONTEND_API.md` e `llms.txt`: documentar `options.type` (`IMMEDIATE` padrão | `SCHEDULE`), `scheduledFor` na resposta, o erro `422 schedule_horizon_exceeded` e que invoices agendadas ficam `queued` até a data.
 
-- [ ] **Step 4: Full verification**
+- [x] **Step 4: Full verification** — executed; production typecheck/unit/PostgreSQL/fiscal/build PASS; lint retains the identical 57 baseline errors and test typecheck the identical 46 baseline diagnostics. Optional PostgreSQL suites skipped (3 suites/24 tests). See Task 7 report for exact command outcomes.
 
 Run, nesta ordem:
 ```bash
@@ -1234,9 +1234,25 @@ yarn test:fiscal:integration
 ```
 Expected: tudo verde. Falhas fora do escopo devem ser relatadas, não mascaradas.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit** — exact task paths only; preserves six externally staged unrelated documents.
 
 ```bash
 git add src FRONTEND_API.md llms.txt
 git commit -m "test(outbox): intake integration and API docs"
 ```
+
+
+**Task 7 implementation evidence and justified corrections:** Real restricted-role
+integration has eight intake scenarios plus stale-lease regression. Supported
+mixed-case schemas require driver-escaped schema/table names in raw outbox SQL.
+Entity metadata now exactly matches the existing outbox migration. Generated
+Swagger explicitly references the HTTP202 `data.props` invoice response and
+specifies nullable string/date-time `scheduledFor`. Final review strengthened
+repository mutations beyond the sample interfaces: `complete`, `release`,
+`markDead` return boolean and require the claimed monotonic attempt number plus
+`status = claimed`; stale lease holders cannot acknowledge or overwrite a newer
+claim. Metrics/dead diagnostics only record accepted mutations. Retry scheduling
+uses the actual failure instant plus backoff, so slow publishes do not erase the
+retry delay. These corrections preserve the original lease/retry intent without
+adding schema fields. RED/GREEN and final exact outcomes are recorded in
+`.superpowers/sdd/2026-10-13-outbox-intake-schedule/task-7-report.md`.

@@ -1,3 +1,4 @@
+import type { NewOutboxMessage } from '../domain/outbox-message';
 import type { EntityManager } from 'typeorm';
 import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
 import { Invoice } from '../domain/invoice';
@@ -104,7 +105,11 @@ describe('InvoiceLifecycleService.submit + outbox', () => {
   });
 
   it('uses scheduledFor as availableAt for a scheduled invoice and "now" otherwise', async () => {
-    const outbox = { enqueue: jest.fn().mockResolvedValue(true) };
+    const outbox = {
+      enqueue: jest
+        .fn<Promise<boolean>, [NewOutboxMessage]>()
+        .mockResolvedValue(true),
+    };
     const { service } = build(outbox);
     const when = new Date('2099-10-14T03:00:00.000Z');
     const scheduled = newInvoice(when);
@@ -138,7 +143,7 @@ describe('InvoiceLifecycleService.submit + outbox', () => {
   it('reserves live credit and enqueues using the same transaction manager', async () => {
     const order: string[] = [];
     const context = new TypeOrmTransactionContext();
-    let expectedManager: EntityManager | undefined;
+
     const outbox = {
       enqueue: jest.fn(async () => {
         expect(context.getManager()).toBe(expectedManager);
@@ -147,7 +152,7 @@ describe('InvoiceLifecycleService.submit + outbox', () => {
       }),
     };
     const { service, manager, usage } = build(outbox, order, context);
-    expectedManager = manager as unknown as EntityManager;
+    const expectedManager = manager as unknown as EntityManager;
     const invoice = newInvoice(undefined, 'live');
     await service.submit(
       invoice,

@@ -162,6 +162,6 @@ Métricas: `outbox_pending_oldest_age_seconds`, `outbox_published_total{type}`, 
 - **Reserva longa de crédito** em agendamentos distantes pode cruzar períodos de billing; mitigado só pelo horizonte máximo. Alternativa (reservar na liberação) fica para decisão futura.
 - **Dependência do relay:** relay parado = entrada parada. Mitigação: métrica da idade da mensagem `pending` mais antiga e alerta.
 - **`dead`** exige ação operacional.
-- **Jobs perdidos após a publicação** (ex.: Redis zerado) seguem cobertos pelo scheduler reduzido, não pela outbox.
+- **Jobs perdidos após a publicação** (ex.: Redis zerado) podem deixar a invoice em `queued`; o scheduler reduzido não recupera `queued`, e a outbox concluída não republica automaticamente. Recuperação operacional exige ação explícita.
 - **Valores padrão** (intervalo do relay 2 s, lote, lease, `OUTBOX_MAX_ATTEMPTS`) definidos no plano, em `env.schema.ts`.
 - **Rollback:** reverter o deploy; linhas da outbox ficam inertes sem o relay. Sem produção, não há dado legado a migrar.
