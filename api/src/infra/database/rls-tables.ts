@@ -23,4 +23,5 @@ export const TENANT_RLS_TABLES = [
   ...BASELINE_RLS_TABLES,
   'outbox_messages',
   'company_fiscal_profiles',
+  'company_service_tax_profiles',
 ] as const;

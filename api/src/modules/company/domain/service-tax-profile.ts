@@ -39,3 +39,14 @@ export interface CompanyServiceTaxProfile {
   catalogVersion: string | null;
   createdAt: Date;
 }
+
+/** Validity window: `effectiveFrom` inclusive, `effectiveUntil` exclusive. */
+export function isServiceTaxProfileEffectiveOn(
+  profile: Pick<CompanyServiceTaxProfile, 'effectiveFrom' | 'effectiveUntil'>,
+  date: string,
+): boolean {
+  return (
+    profile.effectiveFrom <= date &&
+    (profile.effectiveUntil === null || date < profile.effectiveUntil)
+  );
+}
