@@ -10,6 +10,7 @@ import { OutboxMessageOrmEntity } from './infra/outbox-message.orm-entity';
 import { InvoiceFiscalSnapshotOrmEntity } from './infra/invoice-fiscal-snapshot.orm-entity';
 import { TypeOrmInvoiceFiscalSnapshotRepository } from './infra/typeorm-invoice-fiscal-snapshot.repository';
 import { FiscalSnapshotService } from './application/fiscal/fiscal-snapshot.service';
+import { FiscalEngineModule } from './application/fiscal/fiscal-engine.module';
 import { FISCAL_SNAPSHOT_REPOSITORY } from './domain/fiscal/fiscal-snapshot.repository';
 import { BillingUsageModule } from '@/modules/billing/billing-usage.module';
 import { PlansModule } from '@/modules/plans/plans.module';
@@ -61,6 +62,7 @@ import { EmailModule } from '@/modules/email/email.module';
     StorageModule.forRoot(),
     NfseExternalModule,
     EmailModule,
+    FiscalEngineModule,
   ],
   controllers: [InvoiceController],
   providers: [
@@ -105,6 +107,7 @@ import { EmailModule } from '@/modules/email/email.module';
     DPS_SEQUENCE_REPOSITORY,
     FISCAL_SNAPSHOT_REPOSITORY,
     FiscalSnapshotService,
+    FiscalEngineModule,
   ],
 })
 export class InvoiceModule {}

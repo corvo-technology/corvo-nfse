@@ -48,6 +48,10 @@ export interface OutboxConfig {
   scheduleMaxDays: number;
 }
 
+export interface FiscalConfig {
+  ibsCbsUnavailableMode: 'block' | 'warn';
+}
+
 export type OpenApiConfig = {
   enabled: boolean;
   path: string;
@@ -193,6 +197,7 @@ export type AppConfiguration = {
   redis: RedisConfig;
   queue: QueueConfig;
   outbox: OutboxConfig;
+  fiscal: FiscalConfig;
   logging: LoggingConfig;
   openTelemetry: OpenTelemetryConfig;
   sentry: SentryConfig;

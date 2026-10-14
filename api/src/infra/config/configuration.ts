@@ -13,6 +13,7 @@ export type {
   RedisConfig,
   OutboxConfig,
 } from './configuration.types';
+export type { FiscalConfig } from './configuration.types';
 export type { AuthConfig } from './configuration.types';
 export type { StorageConfig } from './configuration.types';
 export type { PaymentsConfig, StripeConfig } from './configuration.types';
@@ -101,6 +102,9 @@ export default function configuration(): AppConfiguration {
       leaseMs: env.OUTBOX_LEASE_MS,
       maxAttempts: env.OUTBOX_MAX_ATTEMPTS,
       scheduleMaxDays: env.OUTBOX_SCHEDULE_MAX_DAYS,
+    },
+    fiscal: {
+      ibsCbsUnavailableMode: env.FISCAL_IBSCBS_UNAVAILABLE_MODE,
     },
     logging: {
       level: env.LOG_LEVEL,

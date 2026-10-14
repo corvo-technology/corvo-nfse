@@ -17,6 +17,7 @@ import { HealthModule } from '@/modules/health/health.module';
 import { WebhooksConfigModule } from '@/modules/webhooks-config/webhooks-config.module';
 import { SentryModule } from '@/infra/observability/sentry.module';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
+import { FiscalEngineModule } from '@/modules/invoice/application/fiscal/fiscal-engine.module';
 import { CompanyModule } from '@/modules/company/company.module';
 import { EmailExternalModule } from '@/infra/external/email/email-external.module';
 import { EmailModule } from '@/modules/email/email.module';
@@ -38,6 +39,7 @@ import { DocsRecoveryScheduler } from '@/modules/invoice/jobs/docs-recovery.sche
     ScheduleModule.forRoot(),
     WebhooksConfigModule,
     InvoiceModule,
+    FiscalEngineModule,
     CompanyModule,
     CertificateModule,
     BullModule.registerQueue({ name: 'email' }),

@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { FiscalContext } from '@/modules/invoice/domain/fiscal/fiscal-context';
 import { fiscalError, type FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
-import type { IFiscalProfileReader } from '@/modules/invoice/domain/fiscal/ports/fiscal-profile.reader';
+import { IFiscalProfileReader } from '@/modules/invoice/domain/fiscal/ports/fiscal-profile.reader';
 import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
 import type { FiscalStep, StepOutcome } from '@/modules/invoice/domain/fiscal/fiscal-step';
 
@@ -10,7 +10,10 @@ export class CompanyFiscalProfileStep implements FiscalStep {
   readonly name = 'CompanyFiscalProfile';
   readonly required = true;
 
-  constructor(private readonly profiles: IFiscalProfileReader) {}
+  constructor(
+    @Inject(IFiscalProfileReader)
+    private readonly profiles: IFiscalProfileReader,
+  ) {}
 
   async execute(
     context: Readonly<FiscalContext>,

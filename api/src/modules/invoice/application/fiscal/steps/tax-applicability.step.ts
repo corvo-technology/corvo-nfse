@@ -1,13 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
 import type { TaxApplicability } from '@/modules/invoice/domain/fiscal/applicability/tax-applicability';
 import type { ServiceTaxClassification } from '@/modules/invoice/domain/fiscal/classification/service-tax-classification';
 import type { FiscalContext } from '@/modules/invoice/domain/fiscal/fiscal-context';
 import { fiscalError, type FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
 import type { FiscalStep, StepOutcome } from '@/modules/invoice/domain/fiscal/fiscal-step';
-import type { TaxTransitionPolicy } from '@/modules/invoice/domain/fiscal/policies/tax-transition.policy';
+import { TaxTransitionPolicy } from '@/modules/invoice/domain/fiscal/policies/tax-transition.policy';
 import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
-import type { TaxStrategyResolver } from '../strategies/tax-strategy.resolver';
+import { TaxStrategyResolver } from '../strategies/tax-strategy.resolver';
 
 type TaxApplicabilityPlan = Omit<
   TaxApplicability,
@@ -31,7 +31,9 @@ export class TaxApplicabilityStep implements FiscalStep {
   readonly required = true;
 
   constructor(
+    @Inject(TaxStrategyResolver)
     private readonly resolver: TaxStrategyResolver,
+    @Inject(TaxTransitionPolicy)
     private readonly policy: TaxTransitionPolicy,
   ) {}
 

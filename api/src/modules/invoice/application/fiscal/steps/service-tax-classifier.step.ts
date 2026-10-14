@@ -1,12 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CompanyServiceTaxProfile } from '@/modules/company/domain/service-tax-profile';
 import type { FiscalContext } from '@/modules/invoice/domain/fiscal/fiscal-context';
 import { fiscalError, type FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
 import type { NormalizedInvoice } from '@/modules/invoice/domain/fiscal/normalized-invoice';
 import type { FiscalStep, StepOutcome } from '@/modules/invoice/domain/fiscal/fiscal-step';
 import { classifyService } from '@/modules/invoice/domain/fiscal/classification/classify-service';
-import type { IFiscalCatalog } from '@/modules/invoice/domain/fiscal/classification/fiscal-catalog.port';
-import type { IServiceProfileReader } from '@/modules/invoice/domain/fiscal/ports/service-profile.reader';
+import { IFiscalCatalog } from '@/modules/invoice/domain/fiscal/classification/fiscal-catalog.port';
+import { IServiceProfileReader } from '@/modules/invoice/domain/fiscal/ports/service-profile.reader';
 import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
 
 @Injectable()
@@ -15,7 +15,9 @@ export class ServiceTaxClassifierStep implements FiscalStep {
   readonly required = true;
 
   constructor(
+    @Inject(IServiceProfileReader)
     private readonly serviceProfiles: IServiceProfileReader,
+    @Inject(IFiscalCatalog)
     private readonly catalog: IFiscalCatalog,
   ) {}
 
