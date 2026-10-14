@@ -4,6 +4,7 @@ import { requireTenantId } from './tenant-scope';
 
 export type SystemPurpose =
   | 'worker-discovery'
+  | 'outbox-relay'
   | 'credential-lookup'
   | 'oauth-bootstrap'
   | 'workspace-bootstrap'

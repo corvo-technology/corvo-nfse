@@ -164,7 +164,7 @@ git commit -m "feat(config): add outbox and schedule settings"
   ```
 - Produces: `TypeOrmOutboxRepository`, `OutboxMessageOrmEntity`.
 
-- [ ] **Step 1: Split the RLS table list** — `rls-tables.ts`:
+- [x] **Step 1: Split the RLS table list** — `rls-tables.ts`:
 
 ```ts
 /** Tables covered by the original RLS migration (1791750000000). Never change. */
@@ -193,7 +193,7 @@ export const TENANT_RLS_TABLES = [...BASELINE_RLS_TABLES, 'outbox_messages'] as 
 
 Em `1791750000000-EnableTenantRls.ts` troque o import e os dois usos de `TENANT_RLS_TABLES` por `BASELINE_RLS_TABLES`. Em `tenant-rls.postgres.integration.spec.ts` altere o título `'enables and forces RLS on all 16 tenant tables'` e `expect(rows).toHaveLength(16)` para `17`. Em `tenant-context.storage.ts` acrescente `| 'outbox-relay'` ao `SystemPurpose`.
 
-- [ ] **Step 2: Write the failing integration test** — `typeorm-outbox.repository.postgres.integration.spec.ts`
+- [x] **Step 2: Write the failing integration test** — `typeorm-outbox.repository.postgres.integration.spec.ts`
 
 Use o mesmo harness de `src/infra/database/tenant-rls.postgres.integration.spec.ts` (schema temporário, `admin.runMigrations()`, role de runtime sem BYPASSRLS via `scripts/provision-runtime-role.sql`, `installRlsConnectionScope(runtime)`). Copie o bloco `beforeAll`/`afterAll` dele (criação de `admin`, schema, tenants, role, `runtime`) e instancie:
 
@@ -300,12 +300,12 @@ it('RLS hides tenant A messages from tenant B', async () => {
 });
 ```
 
-- [ ] **Step 3: Run to verify it fails**
+- [x] **Step 3: Run to verify it fails**
 
 Run: `MIGRATION_TEST_DATABASE_URL=postgres://…/corvo_test yarn jest src/modules/outbox`
 Expected: FAIL (módulos inexistentes).
 
-- [ ] **Step 4: Write the migration** — `1791770000000-CreateOutboxMessages.ts`
+- [x] **Step 4: Write the migration** — `1791770000000-CreateOutboxMessages.ts`
 
 ```ts
 import type { MigrationInterface, QueryRunner } from 'typeorm';
@@ -373,7 +373,7 @@ export class CreateOutboxMessages1791770000000 implements MigrationInterface {
 }
 ```
 
-- [ ] **Step 5: Write domain types, entity and repository**
+- [x] **Step 5: Write domain types, entity and repository**
 
 `outbox-message.ts` e `outbox.repository.ts` conforme **Interfaces** (importar `ExecutionEnvironment` de `@/shared/domain/execution-environment`).
 
@@ -525,12 +525,12 @@ export class TypeOrmOutboxRepository implements IOutboxRepository {
 
 (`claimBatch` usa `this.dataSource.query` de propósito: não participa de transação ambiente e roda em auto-commit, soltando o lock `SKIP LOCKED` ao fim do statement.)
 
-- [ ] **Step 6: Run to verify it passes**
+- [x] **Step 6: Run to verify it passes** — executed: focused outbox/RLS PASS (27 tests); combined database run has 2 new-migration baseline fixture failures, deferred to Task 7; see Task 2 report.
 
 Run: `MIGRATION_TEST_DATABASE_URL=… yarn jest src/modules/outbox src/infra/database`
 Expected: PASS (inclui o teste RLS agora com 17 tabelas). Sem a variável: suites ficam `skipped`; neste caso rode também `yarn typecheck`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/infra src/modules/outbox

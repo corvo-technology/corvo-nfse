@@ -1,0 +1,209 @@
+import { randomBytes, randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
+import { DataSource } from 'typeorm';
+import { createTypeOrmOptions } from '@/infra/database/typeorm.options';
+import { installRlsConnectionScope } from '@/infra/database/rls-connection-scope';
+import {
+  runAsSystem,
+  runWithTenant,
+} from '@/infra/persistence/typeorm/tenant-context.storage';
+import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
+import { TypeOrmOutboxRepository } from './typeorm-outbox.repository';
+import type { NewOutboxMessage } from '../domain/outbox-message';
+const url = process.env.MIGRATION_TEST_DATABASE_URL;
+if (
+  url &&
+  (!['localhost', '127.0.0.1', '[::1]'].includes(new URL(url).hostname) ||
+    !new URL(url).pathname.endsWith('_test'))
+)
+  throw new Error('RLS integration requires a local _test database');
+const describePostgres = url ? describe : describe.skip;
+const schema = `outbox_test_${randomUUID().replaceAll('-', '')}`;
+const role = `${schema}_runtime`;
+const tenantA = randomUUID(),
+  tenantB = randomUUID();
+describePostgres('outbox repository with restricted PostgreSQL role', () => {
+  let admin: DataSource;
+  let runtime: DataSource;
+  let repo: TypeOrmOutboxRepository;
+  beforeAll(async () => {
+    if (!url) throw new Error('Test database URL is required');
+    admin = new DataSource(
+      createTypeOrmOptions({ url, schema, ssl: false, logging: false }),
+    );
+    await admin.initialize();
+    await admin.query(`CREATE SCHEMA "${schema}"`);
+    await admin.runMigrations();
+    await admin.query(`INSERT INTO "${schema}".tenants (id) VALUES ($1),($2)`, [
+      tenantA,
+      tenantB,
+    ]);
+    const password = randomBytes(24).toString('hex');
+    await admin.query(
+      `CREATE ROLE "${role}" LOGIN PASSWORD '${password}' NOSUPERUSER NOBYPASSRLS NOINHERIT`,
+    );
+    const [owner]: Array<{ role: string }> = await admin.query(
+      'SELECT current_user AS role',
+    );
+    if (!owner) throw new Error('Migration owner was not returned');
+    // Exercise the reviewed provisioning artifact, including a repeated invocation.
+    for (let index = 0; index < 2; index++)
+      execFileSync(
+        'psql',
+        [
+          url,
+          '-w',
+          '-v',
+          `runtime_role=${role}`,
+          '-v',
+          `migration_role=${owner.role}`,
+          '-v',
+          `app_schema=${schema}`,
+          '-f',
+          resolve(process.cwd(), 'scripts/provision-runtime-role.sql'),
+        ],
+        { stdio: 'pipe' },
+      );
+    const runtimeUrl = new URL(url);
+    runtimeUrl.username = role;
+    runtimeUrl.password = password;
+    const options = createTypeOrmOptions({
+      url: runtimeUrl.toString(),
+      schema,
+      ssl: false,
+      logging: false,
+    });
+    runtime = new DataSource({
+      ...options,
+      extra: { ...options.extra, max: 4 },
+    });
+    await runtime.initialize();
+    installRlsConnectionScope(runtime);
+    repo = new TypeOrmOutboxRepository(
+      runtime,
+      new TypeOrmTransactionContext(),
+    );
+  }, 60000);
+  afterAll(async () => {
+    if (runtime?.isInitialized) await runtime.destroy();
+    if (admin?.isInitialized) {
+      await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+      await admin.query(`DROP ROLE IF EXISTS "${role}"`);
+      await admin.destroy();
+    }
+  });
+  const base = (dedupeKey: string, availableAt?: Date): NewOutboxMessage => ({
+    tenantId: tenantA,
+    environment: 'test',
+    type: 'invoice.emit',
+    aggregateId: randomUUID(),
+    payload: { invoiceId: 'x' },
+    dedupeKey,
+    availableAt,
+  });
+
+  it('inserts once per (tenant, dedupeKey)', async () => {
+    await runWithTenant(tenantA, async () => {
+      expect(await repo.insert(base('emission:1'))).toBe(true);
+      expect(await repo.insert(base('emission:1'))).toBe(false);
+    });
+  });
+
+  it('claims only due messages and leaves future ones', async () => {
+    const future = new Date(Date.now() + 3_600_000);
+    await runWithTenant(tenantA, async () => {
+      await repo.insert(base('due-1'));
+      await repo.insert(base('future-1', future));
+    });
+    const now = new Date();
+    const claimed = await runAsSystem('outbox-relay', () =>
+      repo.claimBatch(now, 10, new Date(now.getTime() + 60_000)),
+    );
+    expect(claimed.map((m) => m.dedupeKey)).toContain('due-1');
+    expect(claimed.map((m) => m.dedupeKey)).not.toContain('future-1');
+    expect(
+      claimed.every((m) => m.status === 'claimed' && m.attempts === 1),
+    ).toBe(true);
+  });
+
+  it('two concurrent claimers never receive the same message', async () => {
+    await runWithTenant(tenantA, async () => {
+      for (let i = 0; i < 20; i++) await repo.insert(base(`race-${i}`));
+    });
+    const now = new Date();
+    const lease = new Date(now.getTime() + 60_000);
+    const [a, b] = await Promise.all([
+      runAsSystem('outbox-relay', () => repo.claimBatch(now, 20, lease)),
+      runAsSystem('outbox-relay', () => repo.claimBatch(now, 20, lease)),
+    ]);
+    const ids = [...a, ...b].map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('reclaims a message whose lease expired', async () => {
+    await runWithTenant(tenantA, () => repo.insert(base('lease-1')));
+    const t0 = new Date();
+    const [first] = (
+      await runAsSystem('outbox-relay', () =>
+        repo.claimBatch(t0, 100, new Date(t0.getTime() + 1_000)),
+      )
+    ).filter((m) => m.dedupeKey === 'lease-1');
+    if (!first) throw new Error('Expected initial lease claim');
+    const later = new Date(t0.getTime() + 5_000);
+    const again = (
+      await runAsSystem('outbox-relay', () =>
+        repo.claimBatch(later, 100, new Date(later.getTime() + 1_000)),
+      )
+    ).find((m) => m.id === first.id);
+    expect(again?.attempts).toBe(2);
+  });
+
+  it('complete, release and markDead update state under the tenant scope', async () => {
+    await runWithTenant(tenantA, () => repo.insert(base('state-1')));
+    const now = new Date();
+    const [msg] = (
+      await runAsSystem('outbox-relay', () =>
+        repo.claimBatch(now, 100, new Date(now.getTime() + 60_000)),
+      )
+    ).filter((m) => m.dedupeKey === 'state-1');
+    if (!msg) throw new Error('Expected state message claim');
+    await runWithTenant(tenantA, () =>
+      repo.release(
+        msg.id,
+        tenantA,
+        'boom',
+        new Date(now.getTime() + 10_000),
+        now,
+      ),
+    );
+    const [row] = await admin.query(
+      `SELECT status, last_error FROM "${schema}".outbox_messages WHERE id=$1`,
+      [msg.id],
+    );
+    expect(row).toEqual({ status: 'pending', last_error: 'boom' });
+    await runWithTenant(tenantA, () =>
+      repo.markDead(msg.id, tenantA, 'dead', now),
+    );
+    const [dead] = await admin.query(
+      `SELECT status FROM "${schema}".outbox_messages WHERE id=$1`,
+      [msg.id],
+    );
+    expect(dead).toEqual({ status: 'dead' });
+    await runWithTenant(tenantA, () => repo.complete(msg.id, tenantA, now));
+    const completed = await admin.query(
+      `SELECT status, lease_until, completed_at FROM "${schema}".outbox_messages WHERE id=$1`,
+      [msg.id],
+    );
+    expect(completed).toEqual([
+      { status: 'completed', lease_until: null, completed_at: now },
+    ]);
+  });
+
+  it('RLS hides tenant A messages from tenant B', async () => {
+    const rows = await runWithTenant(tenantB, () =>
+      runtime.query(`SELECT id FROM "${schema}".outbox_messages`),
+    );
+    expect(rows).toEqual([]);
+  });
+});

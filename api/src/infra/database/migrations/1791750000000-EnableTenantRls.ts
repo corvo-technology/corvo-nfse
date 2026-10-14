@@ -1,5 +1,5 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
-import { TENANT_RLS_TABLES } from '../rls-tables';
+import { BASELINE_RLS_TABLES } from '../rls-tables';
 
 const children = [
   ['nfse_certificates', 'company_id', 'nfse_companies'],
@@ -13,7 +13,7 @@ export class EnableTenantRls1791750000000 implements MigrationInterface {
     );
     const system = "current_setting('app.system_context', true) = 'on'";
     const tenant = "current_setting('app.current_tenant_id', true)";
-    for (const table of TENANT_RLS_TABLES) {
+    for (const table of BASELINE_RLS_TABLES) {
       let owner = `${table === 'tenants' ? 'id' : 'tenant_id'}::text = ${tenant}`;
       const child = children.find(([name]) => name === table);
       if (child)
@@ -37,7 +37,7 @@ export class EnableTenantRls1791750000000 implements MigrationInterface {
     const schema = runner.connection.driver.escape(
       (runner.connection.options as { schema?: string }).schema ?? 'corvo',
     );
-    for (const table of [...TENANT_RLS_TABLES].reverse()) {
+    for (const table of [...BASELINE_RLS_TABLES].reverse()) {
       if (table === 'tenant_memberships')
         await runner.query(
           `DROP POLICY account_membership_read_policy ON ${schema}."${table}"`,
