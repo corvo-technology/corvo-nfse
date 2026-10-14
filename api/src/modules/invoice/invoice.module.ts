@@ -1,3 +1,8 @@
+import { OutboxService } from './application/outbox.service';
+import { OutboxHandlerRegistry } from './application/outbox-handler.registry';
+import { OUTBOX_REPOSITORY } from './domain/outbox.repository';
+import { TypeOrmOutboxRepository } from './infra/typeorm-outbox.repository';
+import { OutboxMessageOrmEntity } from './infra/outbox-message.orm-entity';
 import { BillingUsageModule } from '@/modules/billing/billing-usage.module';
 import { PlansModule } from '@/modules/plans/plans.module';
 import { InvoiceLifecycleService } from './application/invoice-lifecycle.service';
@@ -35,6 +40,7 @@ import { EmailModule } from '@/modules/email/email.module';
       { name: 'nfse-email' },
     ),
     TypeOrmModule.forFeature([
+      OutboxMessageOrmEntity,
       InvoiceOrmEntity,
       InvoiceEventOrmEntity,
       DpsSequenceOrmEntity,
@@ -49,6 +55,9 @@ import { EmailModule } from '@/modules/email/email.module';
   ],
   controllers: [InvoiceController],
   providers: [
+    OutboxService,
+    OutboxHandlerRegistry,
+    { provide: OUTBOX_REPOSITORY, useClass: TypeOrmOutboxRepository },
     {
       provide: INVOICE_REPOSITORY,
       useClass: TypeOrmInvoiceRepository,
@@ -66,6 +75,8 @@ import { EmailModule } from '@/modules/email/email.module';
     InvoiceDomainService,
   ],
   exports: [
+    OutboxHandlerRegistry,
+    OUTBOX_REPOSITORY,
     InvoiceService,
     InvoiceLifecycleService,
     INVOICE_REPOSITORY,

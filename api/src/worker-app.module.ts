@@ -1,3 +1,4 @@
+import { OutboxRelay } from '@/modules/invoice/application/outbox-relay';
 import { BillingCoreModule } from '@/modules/billing/billing-core.module';
 import { BillingScheduler } from '@/modules/billing/jobs/billing.scheduler';
 import { NfseWorkflowService } from '@/modules/invoice/application/nfse-workflow.service';
@@ -46,6 +47,7 @@ import { DocsRecoveryScheduler } from '@/modules/invoice/jobs/docs-recovery.sche
     EmailModule,
   ],
   providers: [
+    OutboxRelay,
     BillingScheduler,
     NfseWorkflowService,
     EmailProcessor,

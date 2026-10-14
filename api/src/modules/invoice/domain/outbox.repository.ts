@@ -1,5 +1,6 @@
 import type { NewOutboxMessage, OutboxMessage } from './outbox-message';
 export interface IOutboxRepository {
+  oldestPendingAvailableAt(now: Date): Promise<Date | null>; // system scope
   insert(message: NewOutboxMessage): Promise<boolean>; // false = dedupe hit
   claimBatch(
     now: Date,

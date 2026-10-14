@@ -47,8 +47,16 @@ export class TypeOrmOutboxRepository implements IOutboxRepository {
     return (Array.isArray(list[0]) ? list[0] : list) as OutboxRow[];
   }
 
+  async oldestPendingAvailableAt(now: Date): Promise<Date | null> {
+    const rows = await this.dataSource.query<{ oldest: Date | null }[]>(
+      `SELECT MIN(available_at) AS oldest FROM ${this.table()} WHERE status = 'pending' AND available_at <= $1`,
+      [now],
+    );
+    return rows[0]?.oldest ?? null;
+  }
+
   async insert(message: NewOutboxMessage): Promise<boolean> {
-    const raw = await this.manager().query(
+    const raw: unknown = await this.manager().query(
       `INSERT INTO ${this.table()} (tenant_id, environment, type, aggregate_id, payload, dedupe_key, available_at)
        VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
        ON CONFLICT (tenant_id, dedupe_key) DO NOTHING
@@ -71,7 +79,7 @@ export class TypeOrmOutboxRepository implements IOutboxRepository {
     limit: number,
     leaseUntil: Date,
   ): Promise<OutboxMessage[]> {
-    const raw = await this.dataSource.query(
+    const raw: unknown = await this.dataSource.query(
       `WITH due AS (
          SELECT id FROM ${this.table()}
          WHERE (status = 'pending' AND available_at <= $1)

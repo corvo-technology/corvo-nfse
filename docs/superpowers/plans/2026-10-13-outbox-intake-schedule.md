@@ -4,7 +4,7 @@
 
 **Goal:** Trocar o `queues.add('nfse-emission')` do `POST /v1/invoices` por um transactional outbox (invoice + mensagem na mesma transação, relay publica no BullMQ) e adicionar `options.type = SCHEDULE` com `competenceDate` futura.
 
-**Architecture:** Nova tabela `outbox_messages` (RLS por tenant) e um módulo `modules/outbox` genérico (repositório, service, registry de handlers, relay com `FOR UPDATE SKIP LOCKED`). O handler `invoice.emit` vive em `modules/invoice` e publica no `nfse-emission` com o mesmo `jobId` de hoje. O pipeline posterior (workflow, processors) não muda; o `DocsRecoveryScheduler` perde só a recuperação de `queued`.
+**Architecture:** Nova tabela `outbox_messages` (RLS por tenant) e outbox pertencente a `modules/invoice`: tipos/contrato em domain, service/registry/relay em application, entidade/repositório em infra e métricas em observability. `InvoiceModule` registra service, registry, repositório e entidade; `WorkerAppModule` registra sozinho o relay com `FOR UPDATE SKIP LOCKED`. Correção de arquitetura solicitada pelo usuário: sem módulo genérico separado. O handler `invoice.emit` vive em `modules/invoice` e publica no `nfse-emission` com o mesmo `jobId` de hoje. O pipeline posterior (workflow, processors) não muda; o `DocsRecoveryScheduler` perde só a recuperação de `queued`.
 
 **Tech Stack:** NestJS 11, TypeORM 0.3 (PostgreSQL, schema `corvo`, RLS), BullMQ 5, `@nestjs/schedule`, luxon, Jest, zod.
 
@@ -138,11 +138,11 @@ git commit -m "feat(config): add outbox and schedule settings"
 - Modify: `src/infra/database/tenant-rls.postgres.integration.spec.ts` (16 → 17)
 - Modify: `src/infra/persistence/typeorm/tenant-context.storage.ts` (`SystemPurpose` + `'outbox-relay'`)
 - Create: `src/infra/database/migrations/1791770000000-CreateOutboxMessages.ts`
-- Create: `src/modules/outbox/domain/outbox-message.ts`
-- Create: `src/modules/outbox/domain/outbox.repository.ts`
-- Create: `src/modules/outbox/infra/outbox-message.orm-entity.ts`
-- Create: `src/modules/outbox/infra/typeorm-outbox.repository.ts`
-- Test: `src/modules/outbox/infra/typeorm-outbox.repository.postgres.integration.spec.ts`
+- Create: `src/modules/invoice/domain/outbox-message.ts`
+- Create: `src/modules/invoice/domain/outbox.repository.ts`
+- Create: `src/modules/invoice/infra/outbox-message.orm-entity.ts`
+- Create: `src/modules/invoice/infra/typeorm-outbox.repository.ts`
+- Test: `src/modules/invoice/infra/typeorm-outbox.repository.postgres.integration.spec.ts`
 
 **Interfaces:**
 - Produces (`outbox-message.ts`):
@@ -302,7 +302,7 @@ it('RLS hides tenant A messages from tenant B', async () => {
 
 - [x] **Step 3: Run to verify it fails**
 
-Run: `MIGRATION_TEST_DATABASE_URL=postgres://…/corvo_test yarn jest src/modules/outbox`
+Run: `MIGRATION_TEST_DATABASE_URL=postgres://…/corvo_test yarn jest src/modules/invoice`
 Expected: FAIL (módulos inexistentes).
 
 - [x] **Step 4: Write the migration** — `1791770000000-CreateOutboxMessages.ts`
@@ -527,363 +527,44 @@ export class TypeOrmOutboxRepository implements IOutboxRepository {
 
 - [x] **Step 6: Run to verify it passes** — executed: focused outbox/RLS PASS (27 tests); combined database run has 2 new-migration baseline fixture failures, deferred to Task 7; see Task 2 report.
 
-Run: `MIGRATION_TEST_DATABASE_URL=… yarn jest src/modules/outbox src/infra/database`
+Run: `MIGRATION_TEST_DATABASE_URL=… yarn jest src/modules/invoice src/infra/database`
 Expected: PASS (inclui o teste RLS agora com 17 tabelas). Sem a variável: suites ficam `skipped`; neste caso rode também `yarn typecheck`.
 
 - [x] **Step 7: Commit**
 
 ```bash
-git add src/infra src/modules/outbox
+git add src/infra src/modules/invoice
 git commit -m "feat(outbox): add outbox_messages table, entity and repository"
 ```
 
 ---
 
-### Task 3: OutboxService, registry e relay
+### Task 3: OutboxService, registry e relay (domínio de invoice)
+
+**Correção de arquitetura solicitada pelo usuário:** a outbox pertence a invoice. Não criar módulo standalone. Tipos/contratos em `src/modules/invoice/domain`, service/registry/relay em `application`, entidade/repositório em `infra`, métricas em `observability`; arquivos planos junto aos vizinhos existentes.
 
 **Files:**
-- Create: `src/modules/outbox/domain/outbox-handler.ts`
-- Create: `src/modules/outbox/application/outbox-handler.registry.ts`
-- Create: `src/modules/outbox/application/outbox.service.ts`
-- Create: `src/modules/outbox/application/outbox-backoff.ts`
-- Create: `src/modules/outbox/application/outbox-relay.ts`
-- Create: `src/modules/outbox/outbox.module.ts`
-- Create: `src/modules/outbox/observability/outbox.metrics.ts`
-- Test: `src/modules/outbox/application/outbox-relay.spec.ts`, `outbox-backoff.spec.ts`
+- Create: `src/modules/invoice/domain/outbox-handler.ts`
+- Create: `src/modules/invoice/application/outbox-handler.registry.ts`, `outbox.service.ts`, `outbox-backoff.ts`, `outbox-relay.ts`
+- Create: `src/modules/invoice/observability/outbox.metrics.ts`
+- Test: `src/modules/invoice/application/outbox-relay.spec.ts`, `outbox-backoff.spec.ts`
+- Test: `src/modules/invoice/infra/typeorm-outbox.repository.spec.ts`, `src/modules/invoice/outbox-wiring.spec.ts`
+- Move: arquivos da Task 2 para as camadas correspondentes em invoice.
+- Modify: `src/modules/invoice/invoice.module.ts`, `src/worker-app.module.ts`, contrato e repositório de outbox.
 
-**Interfaces:**
-- Consumes: `IOutboxRepository`, `OUTBOX_REPOSITORY`, `OutboxMessage`, `NewOutboxMessage` (Task 2); `OutboxConfig` (Task 1).
-- Produces:
-  ```ts
-  export interface OutboxHandler { readonly type: string; handle(message: OutboxMessage): Promise<void> }
-  export class OutboxHandlerRegistry { register(handler: OutboxHandler): void; get(type: string): OutboxHandler | undefined }
-  export class OutboxService { enqueue(message: NewOutboxMessage): Promise<boolean> }
-  export function outboxBackoffMs(attempts: number): number   // min(2000 * 2^(attempts-1), 300000)
-  export class OutboxRelay { tick(now?: Date): Promise<number> }  // returns processed count
-  export class OutboxModule  // exports OutboxService, OutboxHandlerRegistry; provides OutboxRelay
-  ```
+**Interfaces:** `OutboxHandler { readonly type: string; handle(message: OutboxMessage): Promise<void> }`; `OutboxHandlerRegistry.register/get`; `OutboxService.enqueue(message: NewOutboxMessage): Promise<boolean>`; `outboxBackoffMs(attempts): number`; `OutboxRelay.tick(now?: Date): Promise<number>`.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests** — backoff, success, retry, dead, unknown type, batch continuation, overlap com sinal explícito de entrada do handler, tenant/system scopes, configuração ausente, idade da pendência vencida. Teste de ownership dos módulos adicionado antes da reorganização.
+- [x] **Step 2: Run to verify they fail** — aplicação falha por módulos inexistentes; teste de idade falha por método inexistente. Ownership falha porque `InvoiceModule` não registra a outbox e `WorkerAppModule` não registra o relay.
+- [x] **Step 3: Implement** — guard explícito de configuração ausente, sem non-null assertion. Claim e leitura da idade em `runAsSystem('outbox-relay')`; handler e acknowledgements em `runWithTenant`. Backoff `min(2000 * 2 ** max(attempts - 1, 0), 300000)`. Registry rejeita duplicados; tipo desconhecido segue retry/dead. Intervalo e shutdown mantêm o comportamento planejado. `InvoiceModule` registra entidade, service, registry, repositório e exporta registry + `OUTBOX_REPOSITORY`; somente `WorkerAppModule` registra relay como provider. Sem mudanças de intake nesta tarefa.
 
-`outbox-backoff.spec.ts`:
+**Correção mínima autorizada para seção 9 da spec:** `IOutboxRepository.oldestPendingAvailableAt(now): Promise<Date | null>` consulta `MIN(available_at)` em system scope com `status = 'pending' AND available_at <= now`. Gauge `outbox_pending_oldest_age_seconds` (meter `greenflow.outbox`) registra idade em segundos ou zero quando não há pendências vencidas. Mensagens agendadas no futuro não contam como atraso.
 
-```ts
-import { outboxBackoffMs } from './outbox-backoff';
-
-describe('outboxBackoffMs', () => {
-  it.each([[1, 2000], [2, 4000], [3, 8000], [20, 300000]])(
-    'attempt %i waits %i ms',
-    (attempts, expected) => expect(outboxBackoffMs(attempts)).toBe(expected),
-  );
-});
-```
-
-`outbox-relay.spec.ts`:
-
-```ts
-import { OutboxRelay } from './outbox-relay';
-import { OutboxHandlerRegistry } from './outbox-handler.registry';
-import type { IOutboxRepository } from '../domain/outbox.repository';
-import type { OutboxMessage } from '../domain/outbox-message';
-
-const tenantId = '11111111-1111-4111-8111-111111111111';
-const message = (over: Partial<OutboxMessage> = {}): OutboxMessage => ({
-  id: 'm1', tenantId, environment: 'test', type: 'invoice.emit',
-  aggregateId: 'a1', payload: {}, dedupeKey: 'emission:a1', status: 'claimed',
-  availableAt: new Date(), leaseUntil: new Date(), attempts: 1, lastError: null,
-  ...over,
-});
-const config = {
-  get: () => ({ relayIntervalMs: 1000, batchSize: 10, leaseMs: 60000, maxAttempts: 3, scheduleMaxDays: 365 }),
-};
-
-function setup(claimed: OutboxMessage[], handle: jest.Mock) {
-  const repo: jest.Mocked<IOutboxRepository> = {
-    insert: jest.fn(), claimBatch: jest.fn().mockResolvedValue(claimed),
-    complete: jest.fn(), release: jest.fn(), markDead: jest.fn(),
-  };
-  const registry = new OutboxHandlerRegistry();
-  registry.register({ type: 'invoice.emit', handle });
-  return { repo, relay: new OutboxRelay(repo, registry, config as never) };
-}
-
-describe('OutboxRelay', () => {
-  it('completes a message after its handler succeeds', async () => {
-    const handle = jest.fn().mockResolvedValue(undefined);
-    const { repo, relay } = setup([message()], handle);
-    await relay.tick(new Date('2026-10-13T12:00:00Z'));
-    expect(handle).toHaveBeenCalledTimes(1);
-    expect(repo.complete).toHaveBeenCalledWith('m1', tenantId, expect.any(Date));
-    expect(repo.release).not.toHaveBeenCalled();
-  });
-
-  it('releases with backoff when the handler throws', async () => {
-    const handle = jest.fn().mockRejectedValue(new Error('redis down'));
-    const { repo, relay } = setup([message({ attempts: 1 })], handle);
-    const now = new Date('2026-10-13T12:00:00Z');
-    await relay.tick(now);
-    expect(repo.release).toHaveBeenCalledWith('m1', tenantId, 'redis down', new Date(now.getTime() + 2000), expect.any(Date));
-    expect(repo.complete).not.toHaveBeenCalled();
-  });
-
-  it('marks the message dead once maxAttempts is reached', async () => {
-    const handle = jest.fn().mockRejectedValue(new Error('still down'));
-    const { repo, relay } = setup([message({ attempts: 3 })], handle);
-    await relay.tick(new Date());
-    expect(repo.markDead).toHaveBeenCalledWith('m1', tenantId, 'still down', expect.any(Date));
-    expect(repo.release).not.toHaveBeenCalled();
-  });
-
-  it('releases a message of unknown type instead of dropping it', async () => {
-    const { repo, relay } = setup([message({ type: 'unknown.type' })], jest.fn());
-    await relay.tick(new Date());
-    expect(repo.release).toHaveBeenCalled();
-  });
-
-  it('a failing message does not stop the rest of the batch', async () => {
-    const handle = jest.fn()
-      .mockRejectedValueOnce(new Error('boom'))
-      .mockResolvedValueOnce(undefined);
-    const { repo, relay } = setup([message({ id: 'a' }), message({ id: 'b' })], handle);
-    await relay.tick(new Date());
-    expect(repo.release).toHaveBeenCalledTimes(1);
-    expect(repo.complete).toHaveBeenCalledWith('b', tenantId, expect.any(Date));
-  });
-
-  it('ignores overlapping ticks', async () => {
-    let finish!: () => void;
-    const handle = jest.fn(() => new Promise<void>((r) => (finish = r)));
-    const { relay } = setup([message()], handle);
-    const first = relay.tick(new Date());
-    expect(await relay.tick(new Date())).toBe(0);
-    finish();
-    await first;
-  });
-});
-```
-
-- [ ] **Step 2: Run to verify they fail**
-
-Run: `yarn jest src/modules/outbox/application`
-Expected: FAIL (arquivos inexistentes).
-
-- [ ] **Step 3: Implement**
-
-`outbox-handler.ts`:
-
-```ts
-import type { OutboxMessage } from './outbox-message';
-
-export interface OutboxHandler {
-  readonly type: string;
-  /** Must be idempotent: a message can be delivered again after a crash. */
-  handle(message: OutboxMessage): Promise<void>;
-}
-```
-
-`outbox-handler.registry.ts`:
-
-```ts
-import { Injectable } from '@nestjs/common';
-import type { OutboxHandler } from '../domain/outbox-handler';
-
-@Injectable()
-export class OutboxHandlerRegistry {
-  private readonly handlers = new Map<string, OutboxHandler>();
-
-  register(handler: OutboxHandler): void {
-    if (this.handlers.has(handler.type))
-      throw new Error(`Outbox handler already registered for ${handler.type}`);
-    this.handlers.set(handler.type, handler);
-  }
-
-  get(type: string): OutboxHandler | undefined {
-    return this.handlers.get(type);
-  }
-}
-```
-
-`outbox-backoff.ts`:
-
-```ts
-export function outboxBackoffMs(attempts: number): number {
-  return Math.min(2000 * 2 ** Math.max(attempts - 1, 0), 300_000);
-}
-```
-
-`outbox.service.ts`:
-
-```ts
-import { Inject, Injectable } from '@nestjs/common';
-import { OUTBOX_REPOSITORY, type IOutboxRepository } from '../domain/outbox.repository';
-import type { NewOutboxMessage } from '../domain/outbox-message';
-
-/** Call inside the caller's transaction (TypeOrmTransactionContext) so state and message commit together. */
-@Injectable()
-export class OutboxService {
-  constructor(@Inject(OUTBOX_REPOSITORY) private readonly repo: IOutboxRepository) {}
-
-  enqueue(message: NewOutboxMessage): Promise<boolean> {
-    return this.repo.insert(message);
-  }
-}
-```
-
-`outbox.metrics.ts` (padrão de `security.metrics.ts`):
-
-```ts
-import { metrics } from '@opentelemetry/api';
-
-const meter = metrics.getMeter('greenflow.outbox');
-const published = meter.createCounter('outbox_published_total');
-const failures = meter.createCounter('outbox_publish_failures_total');
-const dead = meter.createCounter('outbox_dead_total');
-const claimToPublish = meter.createHistogram('outbox_claim_to_publish_duration', { unit: 's' });
-
-export const recordOutboxPublished = (type: string) => published.add(1, { type });
-export const recordOutboxFailure = (type: string) => failures.add(1, { type });
-export const recordOutboxDead = (type: string) => dead.add(1, { type });
-export const recordOutboxLatency = (type: string, seconds: number) =>
-  claimToPublish.record(seconds, { type });
-```
-
-`outbox-relay.ts`:
-
-```ts
-import { Inject, Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { runAsSystem, runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
-import { captureRuntimeException } from '@/infra/observability/sentry-reporter';
-import type { OutboxConfig } from '@/infra/config/configuration';
-import { OUTBOX_REPOSITORY, type IOutboxRepository } from '../domain/outbox.repository';
-import type { OutboxMessage } from '../domain/outbox-message';
-import { OutboxHandlerRegistry } from './outbox-handler.registry';
-import { outboxBackoffMs } from './outbox-backoff';
-import { recordOutboxDead, recordOutboxFailure, recordOutboxLatency, recordOutboxPublished } from '../observability/outbox.metrics';
-
-@Injectable()
-export class OutboxRelay implements OnApplicationBootstrap, OnApplicationShutdown {
-  private readonly logger = new Logger(OutboxRelay.name);
-  private running = false;
-  private timer?: NodeJS.Timeout;
-
-  constructor(
-    @Inject(OUTBOX_REPOSITORY) private readonly repo: IOutboxRepository,
-    private readonly registry: OutboxHandlerRegistry,
-    private readonly config: ConfigService,
-  ) {}
-
-  private settings(): OutboxConfig {
-    return this.config.get<OutboxConfig>('outbox')!;
-  }
-
-  onApplicationBootstrap(): void {
-    this.timer = setInterval(() => {
-      void this.tick().catch((error: unknown) =>
-        this.logger.error({ err: error }, 'Outbox relay tick failed'),
-      );
-    }, this.settings().relayIntervalMs);
-    this.timer.unref();
-  }
-
-  onApplicationShutdown(): void {
-    if (this.timer) clearInterval(this.timer);
-  }
-
-  async tick(now = new Date()): Promise<number> {
-    if (this.running) return 0;
-    this.running = true;
-    try {
-      const { batchSize, leaseMs } = this.settings();
-      const claimed = await runAsSystem('outbox-relay', () =>
-        this.repo.claimBatch(now, batchSize, new Date(now.getTime() + leaseMs)),
-      );
-      for (const message of claimed) await this.dispatch(message, now);
-      return claimed.length;
-    } finally {
-      this.running = false;
-    }
-  }
-
-  private async dispatch(message: OutboxMessage, claimedAt: Date): Promise<void> {
-    const { maxAttempts } = this.settings();
-    try {
-      const handler = this.registry.get(message.type);
-      if (!handler) throw new Error(`No outbox handler for type ${message.type}`);
-      await runWithTenant(message.tenantId, () => handler.handle(message));
-      await runWithTenant(message.tenantId, () =>
-        this.repo.complete(message.id, message.tenantId, new Date()),
-      );
-      recordOutboxPublished(message.type);
-      recordOutboxLatency(message.type, (Date.now() - claimedAt.getTime()) / 1000);
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      recordOutboxFailure(message.type);
-      if (message.attempts >= maxAttempts) {
-        recordOutboxDead(message.type);
-        this.logger.error(
-          { outboxId: message.id, type: message.type, tenantId: message.tenantId, attempts: message.attempts },
-          'Outbox message is dead',
-        );
-        captureRuntimeException(error, 'worker', `outbox.dead:${message.type}`);
-        await runWithTenant(message.tenantId, () =>
-          this.repo.markDead(message.id, message.tenantId, reason, new Date()),
-        );
-        return;
-      }
-      await runWithTenant(message.tenantId, () =>
-        this.repo.release(
-          message.id,
-          message.tenantId,
-          reason,
-          new Date(claimedAt.getTime() + outboxBackoffMs(message.attempts)),
-          new Date(),
-        ),
-      );
-    }
-  }
-}
-```
-
-(Se `captureRuntimeException` rejeitar `'worker'` como `SentryRuntime`, use o literal aceito em `sentry-reporter.ts:3`.)
-
-`outbox.module.ts`:
-
-```ts
-import { Module } from '@nestjs/common';
-import { OUTBOX_REPOSITORY } from './domain/outbox.repository';
-import { TypeOrmOutboxRepository } from './infra/typeorm-outbox.repository';
-import { OutboxHandlerRegistry } from './application/outbox-handler.registry';
-import { OutboxService } from './application/outbox.service';
-import { OutboxRelay } from './application/outbox-relay';
-
-@Module({
-  providers: [
-    { provide: OUTBOX_REPOSITORY, useClass: TypeOrmOutboxRepository },
-    OutboxHandlerRegistry,
-    OutboxService,
-  ],
-  exports: [OutboxService, OutboxHandlerRegistry, OUTBOX_REPOSITORY],
-})
-export class OutboxModule {}
-
-/** Only the worker process runs the relay. */
-@Module({
-  imports: [OutboxModule],
-  providers: [OutboxRelay],
-})
-export class OutboxRelayModule {}
-```
-
-- [ ] **Step 4: Run to verify they pass**
-
-Run: `yarn jest src/modules/outbox/application && yarn typecheck`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
+- [x] **Step 4: Run to verify they pass** — `yarn jest src/modules/invoice/outbox-wiring.spec.ts src/modules/invoice/application/outbox src/modules/invoice/infra/typeorm-outbox.repository.spec.ts --runInBand` (4 suites, 17 tests); `yarn typecheck` PASS. `typecheck:tests` possui 46 diagnósticos preexistentes, nenhum em outbox (baseline confirmado pelo coordenador). Graphify query antes das conclusões e refresh após a reorganização.
+- [x] **Step 5: Commit**
 
 ```bash
-git add src/modules/outbox
+git add api/src/modules/invoice api/src/modules/outbox api/src/worker-app.module.ts docs/superpowers/plans/2026-10-13-outbox-intake-schedule.md docs/superpowers/specs/2026-10-13-outbox-intake-schedule-design.md
 git commit -m "feat(outbox): add service, handler registry and relay"
 ```
 
@@ -1099,7 +780,7 @@ git commit -m "feat(invoice): add SCHEDULE emission type and scheduledFor"
 
 ```ts
 import { InvoiceEmitHandler, INVOICE_EMIT } from './invoice-emit.handler';
-import { OutboxHandlerRegistry } from '@/modules/outbox/application/outbox-handler.registry';
+import { OutboxHandlerRegistry } from '@/modules/invoice/application/outbox-handler.registry';
 
 describe('InvoiceEmitHandler', () => {
   const queue = { add: jest.fn().mockResolvedValue({ id: 'emission-i1' }) };
@@ -1139,9 +820,9 @@ Expected: FAIL.
 ```ts
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
-import type { OutboxHandler } from '@/modules/outbox/domain/outbox-handler';
-import type { OutboxMessage } from '@/modules/outbox/domain/outbox-message';
-import { OutboxHandlerRegistry } from '@/modules/outbox/application/outbox-handler.registry';
+import type { OutboxHandler } from '@/modules/invoice/domain/outbox-handler';
+import type { OutboxMessage } from '@/modules/invoice/domain/outbox-message';
+import { OutboxHandlerRegistry } from '@/modules/invoice/application/outbox-handler.registry';
 
 export const INVOICE_EMIT = 'invoice.emit';
 
@@ -1345,11 +1026,11 @@ Expected: FAIL.
 
 `invoice.service.ts`: em `emit()` remova as três chamadas `await this.enqueueEmission(...)` (replay idempotente, vencedor da corrida `23505`, e a final) e apague o método privado `enqueueEmission`. Passe `scheduledFor: normalized.scheduledFor` em `Invoice.create({...})`. `queueService` continua usado por `requestEmail`.
 
-`invoice.module.ts`: `imports: [..., OutboxModule]`; `providers: [..., InvoiceEmitHandler, { provide: SCHEDULE_MAX_DAYS, useFactory: (config: ConfigService) => config.get<OutboxConfig>('outbox')?.scheduleMaxDays ?? 365, inject: [ConfigService] }]`. `worker-app.module.ts`: `imports: [..., OutboxRelayModule]` (importar de `@/modules/outbox/outbox.module`). O handler é registrado nos dois processos; só o worker roda o relay.
+`invoice.module.ts`: outbox já registrada na Task 3; `providers: [..., InvoiceEmitHandler, { provide: SCHEDULE_MAX_DAYS, useFactory: (config: ConfigService) => config.get<OutboxConfig>('outbox')?.scheduleMaxDays ?? 365, inject: [ConfigService] }]`. `worker-app.module.ts`: `OutboxRelay` já registrado como provider na Task 3. O handler é registrado nos dois processos; só o worker roda o relay.
 
 - [ ] **Step 7: Run to verify they pass; fix collateral specs**
 
-Run: `yarn jest src/modules/invoice src/modules/outbox && yarn typecheck && yarn typecheck:tests`
+Run: `yarn jest src/modules/invoice && yarn typecheck && yarn typecheck:tests`
 Expected: PASS. Specs antigos que asseveravam `queueService.add` de `nfse-emission` no `emit()` devem ser atualizados para as asserções acima; construtores de `InvoiceLifecycleService` em specs ganham o argumento `outbox`.
 
 - [ ] **Step 8: Commit**
@@ -1460,7 +1141,7 @@ git commit -m "fix(invoice): leave queued recovery to the outbox"
 ### Task 7: Integração ponta a ponta, docs e verificação final
 
 **Files:**
-- Create: `src/modules/outbox/outbox-intake.postgres.integration.spec.ts`
+- Create: `src/modules/invoice/outbox-intake.postgres.integration.spec.ts`
 - Modify: `api/FRONTEND_API.md`, `api/llms.txt` (na raiz do repositório: `FRONTEND_API.md` e `llms.txt` ficam em `api/`)
 - Modify: Swagger já coberto por `@ApiPropertyOptional` (Task 4); confirmar em `src/infra/openapi`
 
@@ -1573,7 +1254,7 @@ it('a failing outbox insert rolls the invoice back (no orphan invoice)', async (
 
 - [ ] **Step 2: Run to verify it fails / then passes** after ajustes mínimos de harness
 
-Run: `MIGRATION_TEST_DATABASE_URL=… yarn jest src/modules/outbox/outbox-intake.postgres.integration.spec.ts`
+Run: `MIGRATION_TEST_DATABASE_URL=… yarn jest src/modules/invoice/outbox-intake.postgres.integration.spec.ts`
 Expected: PASS.
 
 - [ ] **Step 3: Documentation** — `FRONTEND_API.md` e `llms.txt`: documentar `options.type` (`IMMEDIATE` padrão | `SCHEDULE`), `scheduledFor` na resposta, o erro `422 schedule_horizon_exceeded` e que invoices agendadas ficam `queued` até a data.
