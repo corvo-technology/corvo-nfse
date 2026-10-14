@@ -40,6 +40,14 @@ export type QueueConfig = {
   defaultBackoffMs: number;
 };
 
+export interface OutboxConfig {
+  relayIntervalMs: number;
+  batchSize: number;
+  leaseMs: number;
+  maxAttempts: number;
+  scheduleMaxDays: number;
+}
+
 export type OpenApiConfig = {
   enabled: boolean;
   path: string;
@@ -184,6 +192,7 @@ export type AppConfiguration = {
   database: DatabaseConfig;
   redis: RedisConfig;
   queue: QueueConfig;
+  outbox: OutboxConfig;
   logging: LoggingConfig;
   openTelemetry: OpenTelemetryConfig;
   sentry: SentryConfig;
