@@ -233,7 +233,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       await admin.destroy();
     }
   });
-  it('enables and forces RLS on all 17 tenant tables', async () => {
+  it('enables and forces RLS on all 18 tenant tables', async () => {
     const rows: Array<{
       relrowsecurity: boolean;
       relforcerowsecurity: boolean;
@@ -241,7 +241,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       'SELECT relrowsecurity,relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$1 AND c.relrowsecurity',
       [schema],
     );
-    expect(rows).toHaveLength(17);
+    expect(rows).toHaveLength(18);
     expect(rows.every((row) => row.relforcerowsecurity)).toBe(true);
     const [flags]: Array<{ rolsuper: boolean; rolbypassrls: boolean }> =
       await runtime.query(
