@@ -232,7 +232,7 @@ export const envSchema = z
     OUTBOX_BATCH_SIZE: z.coerce.number().int().positive().default(50),
     OUTBOX_LEASE_MS: z.coerce.number().int().positive().default(120000),
     OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
-    OUTBOX_SCHEDULE_MAX_DAYS: z.coerce.number().int().positive().default(365),
+    OUTBOX_SCHEDULE_MAX_DAYS: z.coerce.number().int().positive().default(15),
     WHATSAPP_SEND_ATTEMPTS: z.coerce.number().int().positive().default(3),
     WHATSAPP_SEND_BACKOFF_MS: z.coerce.number().int().positive().default(5000),
     WHATSAPP_RECEIVE_CONCURRENCY: z.coerce

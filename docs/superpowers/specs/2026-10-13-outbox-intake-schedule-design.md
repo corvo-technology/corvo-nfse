@@ -25,7 +25,7 @@ Dito pelo usuário:
 Premissas minhas (revisar):
 - Reserva de crédito `live` no **agendamento**, na mesma transação.
 - Liberação às **00:00 de `competenceDate` em America/Sao_Paulo**.
-- Horizonte máximo configurável, padrão 365 dias.
+- Horizonte máximo configurável, padrão 15 dias.
 - Cancelar invoice agendada fica fora do escopo.
 
 ## 3. Fora de escopo
@@ -98,7 +98,7 @@ Coluna nullable `scheduled_for timestamptz`. `status` continua `queued` para age
 1. `CreateInvoiceDto.options.type?: 'IMMEDIATE' | 'SCHEDULE'` (padrão `IMMEDIATE`), validado com `@IsIn`.
 2. `normalizeAndValidate` recebe o tipo:
    - `IMMEDIATE`: regra atual (`future_date`).
-   - `SCHEDULE` com data futura: aceita; `scheduledFor` = 00:00 America/Sao_Paulo do dia; `schedule_horizon_exceeded` (422) se passar do horizonte (`OUTBOX_SCHEDULE_MAX_DAYS`, padrão 365).
+   - `SCHEDULE` com data futura: aceita; `scheduledFor` = 00:00 America/Sao_Paulo do dia; `schedule_horizon_exceeded` (422) se passar do horizonte (`OUTBOX_SCHEDULE_MAX_DAYS`, padrão 15).
    - `SCHEDULE` com data hoje ou passada: tratada como imediata.
 3. `Invoice.create` recebe `scheduledFor?`; a regra mora no domínio.
 4. `InvoiceLifecycleService.submit()` insere também a mensagem `invoice.emit` (`available_at` = agora ou `scheduledFor`) na mesma transação, depois da reserva de crédito.

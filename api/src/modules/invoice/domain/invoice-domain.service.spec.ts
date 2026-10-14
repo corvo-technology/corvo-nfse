@@ -343,16 +343,16 @@ describe('SCHEDULE calendar days', () => {
       ).scheduledFor,
     ).toBeUndefined();
   });
-  it('accepts the inclusive default 365 calendar-day horizon', () => {
+  it('accepts the inclusive default 15 calendar-day horizon', () => {
     expect(
       new InvoiceDomainService()
-        .normalizeAndValidate(input('2027-10-13'), 'test')
+        .normalizeAndValidate(input('2026-10-28'), 'test')
         .scheduledFor?.toISOString(),
-    ).toBe('2027-10-13T03:00:00.000Z');
+    ).toBe('2026-10-28T03:00:00.000Z');
   });
   it.each([
+    [15, '2026-10-29'],
     [30, '2026-11-13'],
-    [365, '2027-10-14'],
   ])('rejects beyond the %s day horizon', (days, date) => {
     try {
       new InvoiceDomainService(days).normalizeAndValidate(input(date), 'test');

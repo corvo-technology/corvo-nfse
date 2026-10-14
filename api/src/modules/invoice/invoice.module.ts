@@ -63,7 +63,7 @@ import { EmailModule } from '@/modules/email/email.module';
     {
       provide: SCHEDULE_MAX_DAYS,
       useFactory: (config: ConfigService) =>
-        config.get<OutboxConfig>('outbox')?.scheduleMaxDays ?? 365,
+        config.get<OutboxConfig>('outbox')?.scheduleMaxDays ?? 15,
       inject: [ConfigService],
     },
     OutboxService,

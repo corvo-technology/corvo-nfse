@@ -262,7 +262,7 @@ Opcionais `externalId`, `email: {send?: boolean}` e `options: {type?: "IMMEDIATE
 `IMMEDIATE` é o padrão. Com `SCHEDULE`, envie `competenceDate` futura em
 `YYYY-MM-DD`; `data.props.scheduledFor` retorna a data ISO de liberação às
 00:00 em `America/Sao_Paulo` (ou `null` para emissão imediata). A nota permanece
-`queued` até esse instante. Datas além do horizonte configurado (365 dias por
+`queued` até esse instante. Datas além do horizonte configurado (15 dias por
 padrão) retornam HTTP 422 com issue code `schedule_horizon_exceeded`.
 
 O aceite persiste a nota, o evento e a mensagem da outbox na mesma transação.

@@ -45,7 +45,7 @@ export class InvoiceDomainService {
   constructor(
     @Optional()
     @Inject(SCHEDULE_MAX_DAYS)
-    private readonly scheduleMaxDays: number = 365,
+    private readonly scheduleMaxDays: number = 15,
   ) {}
   /**
    * Validates and normalizes raw invoice input.

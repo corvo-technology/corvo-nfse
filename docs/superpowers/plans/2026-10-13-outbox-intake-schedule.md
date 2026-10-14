@@ -18,7 +18,7 @@
 - Toda tabela tenant-owned entra em `TENANT_RLS_TABLES`, com `ENABLE` + `FORCE ROW LEVEL SECURITY` e a policy `tenant_isolation_policy` idêntica às demais.
 - Contrato público só ganha `options.type` (entrada) e `scheduledFor` (saída); nenhum campo ou status existente muda.
 - `jobId` publicado continua `emission-{invoiceId}`; opções do job idênticas às de `enqueueEmission` (attempts 5, backoffMs 5000, removeOnComplete false, removeOnFail 1000).
-- Liberação de agendamento: 00:00 de `competenceDate` em `America/Sao_Paulo`. Horizonte máximo: `OUTBOX_SCHEDULE_MAX_DAYS` (padrão 365).
+- Liberação de agendamento: 00:00 de `competenceDate` em `America/Sao_Paulo`. Horizonte máximo: `OUTBOX_SCHEDULE_MAX_DAYS` (padrão 15).
 - Sem backfill de dados (não há produção). Sem feature flag para a outbox.
 - Testes de Postgres só rodam com `MIGRATION_TEST_DATABASE_URL` apontando para banco local terminado em `_test`; sem a variável são `describe.skip`.
 - Commits pequenos por tarefa; mensagem convencional (`commitlint`). Trabalhar em branch `feat/outbox-intake` (não commitar na `main`).
@@ -58,7 +58,7 @@ describe('outbox environment configuration', () => {
     expect(env.OUTBOX_BATCH_SIZE).toBe(50);
     expect(env.OUTBOX_LEASE_MS).toBe(120000);
     expect(env.OUTBOX_MAX_ATTEMPTS).toBe(10);
-    expect(env.OUTBOX_SCHEDULE_MAX_DAYS).toBe(365);
+    expect(env.OUTBOX_SCHEDULE_MAX_DAYS).toBe(15);
   });
 
   it('coerces overrides and rejects non-positive values', () => {
@@ -87,7 +87,7 @@ Expected: FAIL (`OUTBOX_RELAY_INTERVAL_MS` is `undefined`). Se `parseEnvConfig` 
     OUTBOX_BATCH_SIZE: z.coerce.number().int().positive().default(50),
     OUTBOX_LEASE_MS: z.coerce.number().int().positive().default(120000),
     OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
-    OUTBOX_SCHEDULE_MAX_DAYS: z.coerce.number().int().positive().default(365),
+    OUTBOX_SCHEDULE_MAX_DAYS: z.coerce.number().int().positive().default(15),
 ```
 
 `configuration.types.ts` (ao lado de `QueueConfig`):
@@ -601,7 +601,7 @@ git commit -m "feat(outbox): add service, handler registry and relay"
 ```ts
 // Freeze now at 2026-10-13T12:00:00Z; use typed DTO fixtures.
 // SCHEDULE 2026-10-14 -> 2026-10-14T03:00:00.000Z.
-// Today/past are immediate; 365 calendar days inclusive is allowed.
+// Today/past are immediate; 15 calendar days inclusive is allowed.
 // Beyond configured/default horizon emits schedule_horizon_exceeded.
 // Boundary regression: now 2026-10-13T02:00:00Z means local today is
 // 2026-10-12; 2026-10-13 schedules at 03Z, 2026-10-12 is immediate.
@@ -653,7 +653,7 @@ const SCHEDULE_ZONE = 'America/Sao_Paulo';
 @Injectable()
 export class InvoiceDomainService {
   constructor(
-    @Optional() @Inject(SCHEDULE_MAX_DAYS) private readonly scheduleMaxDays: number = 365,
+    @Optional() @Inject(SCHEDULE_MAX_DAYS) private readonly scheduleMaxDays: number = 15,
   ) {}
 ```
 
@@ -987,7 +987,7 @@ Expected: FAIL.
 
 `invoice.service.ts`: em `emit()` remova as três chamadas `await this.enqueueEmission(...)` (replay idempotente, vencedor da corrida `23505`, e a final) e apague o método privado `enqueueEmission`. Passe `scheduledFor: normalized.scheduledFor` em `Invoice.create({...})`. `queueService` continua usado por `requestEmail`.
 
-`invoice.module.ts`: outbox já registrada na Task 3; `providers: [..., InvoiceEmitHandler, { provide: SCHEDULE_MAX_DAYS, useFactory: (config: ConfigService) => config.get<OutboxConfig>('outbox')?.scheduleMaxDays ?? 365, inject: [ConfigService] }]`. `worker-app.module.ts`: `OutboxRelay` já registrado como provider na Task 3. O handler é registrado nos dois processos; só o worker roda o relay.
+`invoice.module.ts`: outbox já registrada na Task 3; `providers: [..., InvoiceEmitHandler, { provide: SCHEDULE_MAX_DAYS, useFactory: (config: ConfigService) => config.get<OutboxConfig>('outbox')?.scheduleMaxDays ?? 15, inject: [ConfigService] }]`. `worker-app.module.ts`: `OutboxRelay` já registrado como provider na Task 3. O handler é registrado nos dois processos; só o worker roda o relay.
 
 - [x] **Step 7: Run to verify they pass; fix collateral specs**
 

@@ -7,7 +7,7 @@ describe('outbox environment configuration', () => {
     expect(env.OUTBOX_BATCH_SIZE).toBe(50);
     expect(env.OUTBOX_LEASE_MS).toBe(120000);
     expect(env.OUTBOX_MAX_ATTEMPTS).toBe(10);
-    expect(env.OUTBOX_SCHEDULE_MAX_DAYS).toBe(365);
+    expect(env.OUTBOX_SCHEDULE_MAX_DAYS).toBe(15);
   });
 
   it('coerces overrides and rejects non-positive values', () => {
