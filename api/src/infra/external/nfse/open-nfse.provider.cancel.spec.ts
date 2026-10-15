@@ -83,7 +83,10 @@ describe('OpenNfseProvider.cancel', () => {
       .spyOn(NfseClient.prototype as any, 'cancelar')
       // The jest mock of open-nfse takes (message, code); the real class takes options.
       .mockRejectedValue(
-        new (ReceitaRejectionError as any)('Prazo expirado', 'E0840'),
+        new (ReceitaRejectionError as unknown as new (
+          message: string,
+          code: string,
+        ) => Error)('Prazo expirado', 'E0840'),
       );
     const { provider } = providerWith();
     await expect(provider.cancel(payload)).resolves.toEqual({
