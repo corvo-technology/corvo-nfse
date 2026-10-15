@@ -125,12 +125,12 @@ describe('TypeOrmInvoiceRepository', () => {
         { id: 'inv-2', tenantId: 'tenant-1', companyId: 'comp-2' },
       ]);
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-        'invoice.status = :status AND invoice.tenant_id = :tenantId',
-        { status: 'authorized', tenantId },
+        'invoice.status IN (:...statuses) AND invoice.tenant_id = :tenantId',
+        { statuses: ['authorized', 'cancelling', 'cancelled'], tenantId },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenNthCalledWith(
         1,
-        "(invoice.documents_ready_at IS NULL OR (invoice.email_snapshot->>'send' = 'true' AND invoice.last_email_status IS NULL))",
+        "(invoice.documents_ready_at IS NULL OR (invoice.status = 'authorized' AND invoice.email_snapshot->>'send' = 'true' AND invoice.last_email_status IS NULL))",
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenNthCalledWith(
         2,

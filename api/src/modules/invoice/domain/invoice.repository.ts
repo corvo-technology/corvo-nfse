@@ -65,7 +65,9 @@ export interface IInvoiceRepository {
     onlyIfUnset?: boolean,
   ): Promise<void>;
   /**
-   * Finds authorized invoices that still lack documents, older than `olderThan`.
+   * Finds invoices that were authorized (status authorized, cancelling or
+   * cancelled) and still lack documents, older than `olderThan`. The pending
+   * automatic-email recovery applies only to still-authorized invoices.
    */
   findAuthorizedWithoutDocuments(
     tenantId: string,

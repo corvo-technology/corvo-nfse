@@ -289,12 +289,15 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
       const rows = await this.repo
         .createQueryBuilder('invoice')
         .select(['invoice.id', 'invoice.tenantId', 'invoice.companyId'])
-        .where('invoice.status = :status AND invoice.tenant_id = :tenantId', {
-          status: 'authorized',
-          tenantId,
-        })
+        .where(
+          'invoice.status IN (:...statuses) AND invoice.tenant_id = :tenantId',
+          {
+            statuses: ['authorized', 'cancelling', 'cancelled'],
+            tenantId,
+          },
+        )
         .andWhere(
-          "(invoice.documents_ready_at IS NULL OR (invoice.email_snapshot->>'send' = 'true' AND invoice.last_email_status IS NULL))",
+          "(invoice.documents_ready_at IS NULL OR (invoice.status = 'authorized' AND invoice.email_snapshot->>'send' = 'true' AND invoice.last_email_status IS NULL))",
         )
         .andWhere('invoice.authorized_at < :olderThan', { olderThan })
         .orderBy('invoice.authorized_at', 'ASC')

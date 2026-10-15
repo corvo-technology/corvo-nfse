@@ -19,6 +19,7 @@ import {
   NFSE_PUBLIC_CONSULTATION_URL,
   NFSE_TEST_DISCLAIMER,
 } from '@/shared/fiscal/nfse-constants';
+import type { Invoice } from '../domain/invoice';
 import { buildInvoiceState } from '../domain/invoice-state';
 import type { WebhookEvent } from '@/modules/webhooks-config/domain/webhook-event';
 import type { NfseDocPrepJobData } from '@/infra/queues/nfse-doc-prep-job.types';
@@ -26,6 +27,11 @@ import type { NfseEmailJobData } from '@/infra/queues/nfse-email-job.types';
 
 const LOCK_TTL_MS = 60_000;
 const EMAIL_QUEUE = 'nfse-email';
+const DOC_PREP_STATUSES: ReadonlyArray<Invoice['status']> = [
+  'authorized',
+  'cancelling',
+  'cancelled',
+];
 
 @Processor('nfse-doc-prep')
 @Injectable()
@@ -69,9 +75,11 @@ export class NfseDocPrepProcessor extends WorkerHost {
         return;
       }
 
-      if (invoice.status !== 'authorized') {
+      // Documents stay available after cancellation (wasAuthorized), so
+      // cancelling/cancelled invoices also get their PDF generated.
+      if (!DOC_PREP_STATUSES.includes(invoice.status)) {
         this.logger.warn(
-          `Invoice ${invoiceId} status is ${invoice.status}, expected 'authorized'. Skipping doc-prep.`,
+          `Invoice ${invoiceId} status is ${invoice.status}, expected authorized/cancelling/cancelled. Skipping doc-prep.`,
         );
         return;
       }
@@ -159,8 +167,12 @@ export class NfseDocPrepProcessor extends WorkerHost {
           invoice.environment,
         );
 
-      // 7. Enqueue automatic email if configured
-      if (invoice.emailSnapshot?.send && invoice.customerSnapshot?.email) {
+      // 7. Enqueue automatic email if configured (never after cancellation)
+      if (
+        invoice.status === 'authorized' &&
+        invoice.emailSnapshot?.send &&
+        invoice.customerSnapshot?.email
+      ) {
         const emailData: NfseEmailJobData = {
           invoiceId,
           tenantId,

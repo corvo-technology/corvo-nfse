@@ -344,6 +344,49 @@ describe('NfseDocPrepProcessor', () => {
       await expect(processor.process(makeJob())).resolves.toBeUndefined();
       expect(fakeDocStorage.exists).not.toHaveBeenCalled();
     });
+
+    it.each(['queued', 'rejected'])(
+      'still skips a %s invoice',
+      async (status) => {
+        (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+          buildInvoice({ status }),
+        );
+
+        await processor.process(makeJob());
+
+        expect(fakeDocStorage.exists).not.toHaveBeenCalled();
+        expect(fakeInvoiceRepo.markDocumentsReady).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe('invoices cancelled before documents were prepared', () => {
+    it.each(['cancelling', 'cancelled'])(
+      'generates the PDF and marks documents ready for a %s invoice without enqueuing email',
+      async (status) => {
+        (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+          buildInvoice({
+            status,
+            emailSnapshot: { send: true },
+          }),
+        );
+        (fakeInvoiceRepo.markDocumentsReady as jest.Mock).mockResolvedValue(
+          true,
+        );
+
+        await processor.process(makeJob());
+
+        expect(fakeDocStorage.savePdf).toHaveBeenCalledWith(
+          'tenant-1',
+          'inv-1',
+          Buffer.from('%PDF-fake'),
+          'live',
+        );
+        expect(fakeInvoiceRepo.markDocumentsReady).toHaveBeenCalledTimes(1);
+        expect(fakeQueueService.add).not.toHaveBeenCalled();
+        expect(fakeInvoiceRepo.updateEmailStatus).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe('lock', () => {
