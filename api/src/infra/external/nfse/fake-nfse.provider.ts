@@ -13,6 +13,8 @@ import type {
   IIssuePayload,
   FiscalIssueResult,
   FiscalQueryResult,
+  ICancelPayload,
+  FiscalCancelResult,
 } from './nfse-fiscal-provider';
 import { issueParams } from './issue-params';
 
@@ -84,5 +86,11 @@ export class FakeNfseProvider implements FiscalProvider {
       ambiente: Ambiente.ProducaoRestrita,
       observacoes: NFSE_TEST_DISCLAIMER,
     });
+  }
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async cancel(payload: ICancelPayload): Promise<FiscalCancelResult> {
+    if (payload.environment !== 'test')
+      throw new Error('Simulation is available only in test');
+    return { status: 'cancelled' };
   }
 }

@@ -46,6 +46,28 @@ export interface IIssuePayload {
   tomador: { documento: { CNPJ: string } | { CPF: string }; nome: string };
 }
 
+export type FiscalCancellationReason =
+  | 'issue_error'
+  | 'service_not_provided'
+  | 'other';
+
+export interface ICancelPayload {
+  invoiceId: string;
+  tenantId: string;
+  accessKey: string;
+  environment: 'test' | 'live';
+  pfxBuffer: Buffer;
+  p12Password: string;
+  emitenteCnpj: string;
+  reason: FiscalCancellationReason;
+  description: string;
+}
+
+export type FiscalCancelResult =
+  | { status: 'cancelled' }
+  | { status: 'rejected'; errorCode: string; errorMessage: string }
+  | { status: 'pending'; errorMessage: string };
+
 export interface FiscalProvider {
   issue(payload: IIssuePayload): Promise<FiscalIssueResult>;
   queryByAccessKey(
@@ -58,6 +80,7 @@ export interface FiscalProvider {
     environment: 'test' | 'live',
     credentials?: IIssuePayload,
   ): Promise<Buffer>;
+  cancel(payload: ICancelPayload): Promise<FiscalCancelResult>;
 }
 
 export const FISCAL_PROVIDER = 'FISCAL_PROVIDER';

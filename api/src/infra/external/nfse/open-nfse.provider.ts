@@ -11,6 +11,7 @@ import {
   ReceitaRejectionError,
   ValidationError,
   NotFoundError,
+  JustificativaCancelamento,
   gerarDanfse,
   parseNfseXml,
   type PendingEvent,
@@ -24,13 +25,27 @@ import type {
   FiscalIssueResult,
   FiscalQueryResult,
   IIssuePayload,
+  ICancelPayload,
+  FiscalCancelResult,
+  FiscalCancellationReason,
 } from './nfse-fiscal-provider';
 import { issueParams } from './issue-params';
+
+const CANCELLATION_REASON: Record<
+  FiscalCancellationReason,
+  JustificativaCancelamento
+> = {
+  issue_error: JustificativaCancelamento.ErroEmissao,
+  service_not_provided: JustificativaCancelamento.ServicoNaoPrestado,
+  other: JustificativaCancelamento.Outros,
+};
 
 @Injectable()
 export class OpenNfseProvider implements FiscalProvider {
   constructor(@InjectDataSource() private readonly database: DataSource) {}
-  private store(payload: IIssuePayload): RetryStore {
+  private store(
+    payload: Pick<IIssuePayload, 'invoiceId' | 'tenantId'>,
+  ): RetryStore {
     const tenantId = payload.tenantId!;
     requireTenantId(tenantId);
     const repo = this.database.getRepository(InvoiceOrmEntity);
@@ -80,7 +95,10 @@ export class OpenNfseProvider implements FiscalProvider {
       delete: async () => {},
     };
   }
-  private client(payload: IIssuePayload, retryStore?: RetryStore): NfseClient {
+  private client(
+    payload: Pick<IIssuePayload, 'environment' | 'pfxBuffer' | 'p12Password'>,
+    retryStore?: RetryStore,
+  ): NfseClient {
     if (payload.environment !== 'live')
       throw new Error('Real fiscal provider requires live');
     return new NfseClient({
@@ -96,6 +114,57 @@ export class OpenNfseProvider implements FiscalProvider {
       nfseNumber: Number(result.nfse.infNFSe.nNFSe),
       xmlAuthorized: result.xmlNfse,
       requiresReconciliation: false,
+    };
+  }
+  /** Event 101101. The pending_emission slot (free once authorized) holds the signed event for replay. */
+  async cancel(payload: ICancelPayload): Promise<FiscalCancelResult> {
+    const store = this.store(payload);
+    const client = this.client(payload, store);
+    try {
+      const [pending] = await store.list();
+      if (pending?.kind === 'cancelamento_simples') {
+        const [replayed] = await client.replayPendingEvents(store);
+        if (replayed?.status === 'success') return { status: 'cancelled' };
+        if (replayed?.status === 'failed_permanent')
+          return this.cancelRejection(replayed.error);
+        return {
+          status: 'pending',
+          errorMessage:
+            replayed?.status === 'still_pending'
+              ? replayed.error.message
+              : 'Awaiting fiscal retry window',
+        };
+      }
+      const result = await client.cancelar({
+        chaveAcesso: payload.accessKey,
+        autor: { CNPJ: payload.emitenteCnpj },
+        cMotivo: CANCELLATION_REASON[payload.reason],
+        xMotivo: payload.description,
+        retryStore: store,
+      });
+      return result.status === 'ok'
+        ? { status: 'cancelled' }
+        : { status: 'pending', errorMessage: result.error.message };
+    } catch (error) {
+      if (
+        error instanceof ReceitaRejectionError ||
+        error instanceof ValidationError
+      )
+        return this.cancelRejection(error);
+      throw error;
+    } finally {
+      await client.close();
+    }
+  }
+
+  private cancelRejection(error: Error): FiscalCancelResult {
+    return {
+      status: 'rejected',
+      errorCode:
+        error instanceof ReceitaRejectionError
+          ? error.codigo
+          : 'INVALID_FISCAL_INPUT',
+      errorMessage: error.message,
     };
   }
   async issue(payload: IIssuePayload): Promise<FiscalIssueResult> {
