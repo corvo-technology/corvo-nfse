@@ -1106,7 +1106,7 @@ console.log(res.status, body.data.props.status); // 202 "cancelling"`,
           },
           notes: [
             { kind: "callout", tone: "accent", body: "`reason`: `issue_error`, `service_not_provided` or `other`. `description` is required (15–255 characters) for an authorized NFS-e and optional for a queued invoice. Repeating the request for a `cancelling` or `cancelled` invoice returns its current state." },
-            { kind: "callout", tone: "warn", body: "`202` does not confirm the cancellation: wait for `nfse.invoice.cancelled` or `nfse.invoice.cancellation_rejected` (the invoice returns to `authorized` with `lastErrorCode`). Cancelling an issued NFS-e does not refund the credit; cancelling a queued invoice releases the live reservation. Errors: `404` invoice missing; `409` `ERROR_INVOICE_NOT_CANCELLABLE` or `ERROR_CONCURRENT_INVOICE_TRANSITION`; `422` `ERROR_INVALID_CANCELLATION_REASON`." },
+            { kind: "callout", tone: "warn", body: "`202` does not confirm the cancellation: wait for `nfse.invoice.cancelled` or `nfse.invoice.cancellation_rejected` (the invoice returns to `authorized` with `lastErrorCode`). Cancelling an issued NFS-e does not refund the credit; cancelling a queued invoice releases the live reservation. Errors: `404` invoice missing; `409` `ERROR_INVOICE_NOT_CANCELLABLE` (also when issuance has already started); `422` `ERROR_INVALID_CANCELLATION_REASON`. If another request already cancelled the invoice, the current state is returned." },
           ],
         },
       ],

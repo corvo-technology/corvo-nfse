@@ -391,7 +391,7 @@ Body: `{ "reason": "issue_error" | "service_not_provided" | "other", "descriptio
 - Nota `queued` (agendada ou ainda não processada): cancelada na hora, `200` com `status: "cancelled"`. Em live, o crédito reservado é estornado. `description` é opcional.
 - Nota `authorized`: `202` com `status: "cancelling"`. O evento 101101 é enviado à Sefin em segundo plano. `description` é obrigatória (15–255 caracteres). Resultado: `cancelled` (webhook `nfse.invoice.cancelled`) ou de volta a `authorized` com `lastErrorCode/lastErrorMessage` (webhook `nfse.invoice.cancellation_rejected`). O crédito não é devolvido. Após a rejeição da Sefin, a nota volta a `authorized` mantendo `cancellationReason`/`cancellationDescription` do último pedido (um novo pedido os sobrescreve).
 - Nota já `cancelling`/`cancelled`: devolve o estado atual.
-- Erros: `409 ERROR_INVOICE_NOT_CANCELLABLE` (outros status), `409 ERROR_CONCURRENT_INVOICE_TRANSITION` (a emissão começou durante o pedido), `422 ERROR_INVALID_CANCELLATION_REASON`.
+- Erros: `409 ERROR_INVOICE_NOT_CANCELLABLE` (outros status, inclusive se a emissão começou durante o pedido), `422 ERROR_INVALID_CANCELLATION_REASON`. Se outro pedido já cancelou a nota, devolve o estado atual.
 - Campos novos na invoice: `cancellationReason`, `cancellationDescription`, `cancelledAt`. XML/PDF continuam disponíveis depois do cancelamento; o reenvio de e-mail não.
 
 **Webhook `nfse.invoice.documents_ready`**: Disparado quando os documentos fiscais ficam prontos. Payload:
