@@ -5,6 +5,14 @@ import {
   type ServerResponse,
 } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { metrics, type Attributes } from '@opentelemetry/api';
+import {
+  AggregationTemporality,
+  DataPointType,
+  InMemoryMetricExporter,
+  MeterProvider,
+  PeriodicExportingMetricReader,
+} from '@opentelemetry/sdk-metrics';
 import type { RtcConfig } from '@/infra/config/configuration';
 import {
   fiscalError,
@@ -183,6 +191,47 @@ const adapterFor = (
   );
 
 describe('HttpRtcCalculatorAdapter', () => {
+  let exporter: InMemoryMetricExporter;
+  let provider: MeterProvider;
+
+  beforeAll(() => {
+    exporter = new InMemoryMetricExporter(AggregationTemporality.CUMULATIVE);
+    provider = new MeterProvider({
+      readers: [
+        new PeriodicExportingMetricReader({
+          exporter,
+          exportIntervalMillis: 60_000,
+        }),
+      ],
+    });
+    expect(metrics.setGlobalMeterProvider(provider)).toBe(true);
+  });
+
+  afterAll(async () => {
+    await provider.shutdown();
+  });
+
+  const versionInfoPoint = async (): Promise<
+    { attributes: Attributes; value: number } | undefined
+  > => {
+    await provider.forceFlush();
+    const resources = await exporter.getMetrics();
+    for (const resource of resources.flatMap((entry) => entry.scopeMetrics)) {
+      const metric = resource.metrics.find(
+        (candidate) => candidate.descriptor.name === 'greenflow.rtc.version_info',
+      );
+      if (metric === undefined) continue;
+      if (metric.dataPointType !== DataPointType.GAUGE) {
+        throw new Error('greenflow.rtc.version_info is not a gauge');
+      }
+      const point = metric.dataPoints[0];
+      return point === undefined
+        ? undefined
+        : { attributes: point.attributes, value: point.value };
+    }
+    return undefined;
+  };
+
   it('runs version → base → calc in order and returns the mapped result', async () => {
     const harness = await startServer(healthyEngine);
     const adapter = adapterFor(harness);
@@ -511,6 +560,70 @@ describe('HttpRtcCalculatorAdapter', () => {
     ).toHaveLength(1);
 
     await harness.close();
+  });
+
+  it('records version_info and warns at most once per hour when the version differs from expected', async () => {
+    const harness = await startServer(healthyEngine);
+    const clock = jest.spyOn(Date, 'now');
+    const warnSpy = jest.spyOn(Logger.prototype, 'warn');
+    const versionWarnings = (): string[] =>
+      warnSpy.mock.calls
+        .map((call) => String(call[0]))
+        .filter((message) => message.includes('differs from expected'));
+    const start = Date.UTC(2026, 9, 14, 12, 0, 0);
+
+    try {
+      clock.mockReturnValue(start);
+      const adapter = adapterFor(harness, {
+        config: { expectedVersion: '1.5.0/V0058' },
+      });
+
+      expect(await adapter.version()).toEqual(ok('1.6.0/V0059'));
+      expect(versionWarnings()).toHaveLength(1);
+
+      // Still inside the hourly window: the version refreshes, the warn does not.
+      clock.mockReturnValue(start + 30 * 60_000);
+      expect(await adapter.version()).toEqual(ok('1.6.0/V0059'));
+      expect(versionWarnings()).toHaveLength(1);
+
+      // Window elapsed: warning may fire again.
+      clock.mockReturnValue(start + 61 * 60_000);
+      expect(await adapter.version()).toEqual(ok('1.6.0/V0059'));
+      expect(versionWarnings()).toHaveLength(2);
+
+      const point = await versionInfoPoint();
+      expect(point?.value).toBe(1);
+      expect(point?.attributes).toMatchObject({ version: '1.6.0/V0059' });
+    } finally {
+      clock.mockRestore();
+      warnSpy.mockRestore();
+      await harness.close();
+    }
+  });
+
+  it('does not warn when the published version matches RTC_EXPECTED_VERSION', async () => {
+    const harness = await startServer(healthyEngine);
+    const warnSpy = jest.spyOn(Logger.prototype, 'warn');
+
+    try {
+      const adapter = adapterFor(harness, {
+        config: { expectedVersion: '1.6.0/V0059' },
+      });
+
+      expect(await adapter.version()).toEqual(ok('1.6.0/V0059'));
+
+      const versionWarnings = warnSpy.mock.calls
+        .map((call) => String(call[0]))
+        .filter((message) => message.includes('differs from expected'));
+      expect(versionWarnings).toHaveLength(0);
+
+      const point = await versionInfoPoint();
+      expect(point?.value).toBe(1);
+      expect(point?.attributes).toMatchObject({ version: '1.6.0/V0059' });
+    } finally {
+      warnSpy.mockRestore();
+      await harness.close();
+    }
   });
 
   it('health() is available:true only when the version endpoint answers 200', async () => {

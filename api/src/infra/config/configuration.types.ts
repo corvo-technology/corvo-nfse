@@ -61,6 +61,8 @@ export interface RtcConfig {
   circuitFailureThreshold: number;
   circuitResetMs: number;
   dpsLayout: RtcDpsLayout;
+  /** Versão fixada `"{versaoApp}/{versaoDb}"` para detectar updates publicados. */
+  expectedVersion?: string;
 }
 
 export type OpenApiConfig = {

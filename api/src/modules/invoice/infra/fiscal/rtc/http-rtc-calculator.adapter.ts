@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { metrics, type Gauge } from '@opentelemetry/api';
 import type { RtcConfig } from '@/infra/config/configuration';
 import {
   fiscalError,
@@ -26,6 +27,21 @@ import type { RtcMapper } from './rtc-mapper';
 const STEP_NAME = 'RtcTaxCalculator';
 const VERSION_CACHE_MS = 60_000;
 const VERSION_PATH = '/calculadora/dados-abertos/versao';
+const VERSION_WARN_INTERVAL_MS = 60 * 60 * 1000;
+const VERSION_INFO_METRIC = 'greenflow.rtc.version_info';
+
+// Created on first use so the instrument binds to the MeterProvider that is
+// global at record time (the SDK registers it at bootstrap; specs register
+// their own before the first record).
+let versionInfoGauge: Gauge | null = null;
+
+/** Registra a versão observada da Calculadora como gauge (atributo `version`). */
+const recordVersionInfo = (version: string): void => {
+  versionInfoGauge ??= metrics
+    .getMeter('greenflow.rtc')
+    .createGauge(VERSION_INFO_METRIC);
+  versionInfoGauge.record(1, { version });
+};
 
 type FailureReason =
   | 'timeout'
@@ -86,13 +102,18 @@ const failureReasonOf = (error: FiscalError): string => {
  * (`regime-geral`). Falhas de transporte/rede viram TAX_CALCULATION_UNAVAILABLE
  * reprocessável (a Calculadora é serviço interno: timeout ainda subindo é
  * normal); 4xx passa pelo mapper; circuito aberto rejeita sem tocar a rede.
- * O corpo da requisição nunca é logado.
+ * O corpo da requisição nunca é logado. `version()` publica a versão
+ * observada no gauge `greenflow.rtc.version_info` e, quando
+ * `RTC_EXPECTED_VERSION` difere da publicada, alerta no máximo uma vez por
+ * hora (runbook `docs/fiscal/runbooks/rtc-update.md`).
  */
 export class HttpRtcCalculatorAdapter extends RtcCalculatorPort {
   private readonly logger = new Logger(HttpRtcCalculatorAdapter.name);
   private readonly http: RtcHttpClient;
   private readonly breaker: CircuitBreaker;
+  private readonly expectedVersion: string | null;
   private cachedVersion: { value: string; at: number } | null = null;
+  private lastVersionWarnAt: number | null = null;
 
   constructor(
     config: RtcConfig,
@@ -100,6 +121,7 @@ export class HttpRtcCalculatorAdapter extends RtcCalculatorPort {
     http: typeof fetch = fetch,
   ) {
     super();
+    this.expectedVersion = config.expectedVersion ?? null;
     this.http = new RtcHttpClient(
       config.url ?? '',
       {
@@ -127,7 +149,10 @@ export class HttpRtcCalculatorAdapter extends RtcCalculatorPort {
   async version(): Promise<Result<string, FiscalError>> {
     const gate = this.gate();
     if (gate !== null) return err(gate);
-    return this.cachedVersionOf();
+    const outcome = await this.cachedVersionOf();
+    if (!outcome.ok) return outcome;
+    this.trackVersion(outcome.value);
+    return outcome;
   }
 
   async calculate(
@@ -192,6 +217,30 @@ export class HttpRtcCalculatorAdapter extends RtcCalculatorPort {
     if (!outcome.ok) return outcome;
     this.cachedVersion = { value: outcome.value, at: Date.now() };
     return outcome;
+  }
+
+  /**
+   * Publica a versão observada como gauge `version_info` e, se houver versão
+   * esperada (`RTC_EXPECTED_VERSION`) divergente da publicada, avisa no
+   * máximo uma vez por hora: o desalinhamento com a Sefin é silencioso e a
+   * vigília semanal do CI só abre issue uma vez por semana.
+   */
+  private trackVersion(version: string): void {
+    recordVersionInfo(version);
+    if (this.expectedVersion === null || version === this.expectedVersion) {
+      return;
+    }
+    const now = Date.now();
+    if (
+      this.lastVersionWarnAt !== null &&
+      now - this.lastVersionWarnAt < VERSION_WARN_INTERVAL_MS
+    ) {
+      return;
+    }
+    this.lastVersionWarnAt = now;
+    this.logger.warn(
+      `RTC calculator version ${version} differs from expected ${this.expectedVersion}; follow docs/fiscal/runbooks/rtc-update.md`,
+    );
   }
 
   private async fetchVersion(): Promise<Result<string, FiscalError>> {
