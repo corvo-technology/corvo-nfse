@@ -234,6 +234,20 @@ export const envSchema = z
     OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
     OUTBOX_SCHEDULE_MAX_DAYS: z.coerce.number().int().positive().default(15),
     FISCAL_IBSCBS_UNAVAILABLE_MODE: z.enum(['block', 'warn']).default('block'),
+    RTC_CALCULATOR_URL: z.string().url().optional(),
+    RTC_CALCULATOR_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
+    RTC_CALCULATOR_MAX_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(8),
+    RTC_CIRCUIT_FAILURE_THRESHOLD: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(5),
+    RTC_CIRCUIT_RESET_MS: z.coerce.number().int().positive().default(30000),
+    FISCAL_DPS_LAYOUT: z.enum(['rtc-v1.01']).default('rtc-v1.01'),
     WHATSAPP_SEND_ATTEMPTS: z.coerce.number().int().positive().default(3),
     WHATSAPP_SEND_BACKOFF_MS: z.coerce.number().int().positive().default(5000),
     WHATSAPP_RECEIVE_CONCURRENCY: z.coerce

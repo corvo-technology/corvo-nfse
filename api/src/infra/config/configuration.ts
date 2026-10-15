@@ -14,6 +14,7 @@ export type {
   OutboxConfig,
 } from './configuration.types';
 export type { FiscalConfig } from './configuration.types';
+export type { RtcConfig } from './configuration.types';
 export type { AuthConfig } from './configuration.types';
 export type { StorageConfig } from './configuration.types';
 export type { PaymentsConfig, StripeConfig } from './configuration.types';
@@ -105,6 +106,14 @@ export default function configuration(): AppConfiguration {
     },
     fiscal: {
       ibsCbsUnavailableMode: env.FISCAL_IBSCBS_UNAVAILABLE_MODE,
+    },
+    rtc: {
+      url: env.RTC_CALCULATOR_URL,
+      timeoutMs: env.RTC_CALCULATOR_TIMEOUT_MS,
+      maxConcurrency: env.RTC_CALCULATOR_MAX_CONCURRENCY,
+      circuitFailureThreshold: env.RTC_CIRCUIT_FAILURE_THRESHOLD,
+      circuitResetMs: env.RTC_CIRCUIT_RESET_MS,
+      dpsLayout: env.FISCAL_DPS_LAYOUT,
     },
     logging: {
       level: env.LOG_LEVEL,
