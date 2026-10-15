@@ -28,6 +28,8 @@ const STATUS_VARIANT: Record<Invoice["status"], BadgeVariant> = {
   retry_pending: "warn",
   manual_review: "warn",
   failed: "danger",
+  cancelling: "warn",
+  cancelled: "gray",
 };
 
 export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }: InvoiceTableProps) {
