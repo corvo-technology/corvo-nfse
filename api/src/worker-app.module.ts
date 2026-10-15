@@ -5,6 +5,8 @@ import { NfseWorkflowService } from '@/modules/invoice/application/nfse-workflow
 import { CertificateModule } from '@/modules/certificate/certificate.module';
 import { NfseEmissionProcessor } from '@/modules/invoice/jobs/nfse-emission.processor';
 import { NfseReconciliationProcessor } from '@/modules/invoice/jobs/nfse-reconciliation.processor';
+import { NfseCancellationProcessor } from '@/modules/invoice/jobs/nfse-cancellation.processor';
+import { NfseCancellationService } from '@/modules/invoice/application/nfse-cancellation.service';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -53,6 +55,8 @@ import { DocsRecoveryScheduler } from '@/modules/invoice/jobs/docs-recovery.sche
     EmailProcessor,
     NfseEmissionProcessor,
     NfseReconciliationProcessor,
+    NfseCancellationService,
+    NfseCancellationProcessor,
     NfseDocPrepProcessor,
     NfseEmailProcessor,
     DocsRecoveryScheduler,

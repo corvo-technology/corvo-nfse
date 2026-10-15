@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import type { OutboxConfig } from '@/infra/config/configuration.types';
 import { SCHEDULE_MAX_DAYS } from './domain/invoice-domain.service';
 import { InvoiceEmitHandler } from './application/invoice-emit.handler';
+import { InvoiceCancelHandler } from './application/invoice-cancel.handler';
 import { OutboxService } from './application/outbox.service';
 import { OutboxHandlerRegistry } from './application/outbox-handler.registry';
 import { OUTBOX_REPOSITORY } from './domain/outbox.repository';
@@ -41,6 +42,7 @@ import { EmailModule } from '@/modules/email/email.module';
     BullModule.registerQueue(
       { name: 'nfse-emission' },
       { name: 'nfse-reconciliation' },
+      { name: 'nfse-cancellation' },
       { name: 'nfse-doc-prep' },
       { name: 'nfse-email' },
     ),
@@ -61,6 +63,7 @@ import { EmailModule } from '@/modules/email/email.module';
   controllers: [InvoiceController],
   providers: [
     InvoiceEmitHandler,
+    InvoiceCancelHandler,
     {
       provide: SCHEDULE_MAX_DAYS,
       useFactory: (config: ConfigService) =>

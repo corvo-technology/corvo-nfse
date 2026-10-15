@@ -23,6 +23,7 @@ export const redisProviders = [
       email: Queue,
       emission: Queue,
       reconciliation: Queue,
+      cancellation: Queue,
       docPrep: Queue,
       nfseEmail: Queue,
     ) =>
@@ -31,6 +32,7 @@ export const redisProviders = [
           email,
           'nfse-emission': emission,
           'nfse-reconciliation': reconciliation,
+          'nfse-cancellation': cancellation,
           'nfse-doc-prep': docPrep,
           'nfse-email': nfseEmail,
         },
@@ -41,6 +43,7 @@ export const redisProviders = [
       getQueueToken('email'),
       getQueueToken('nfse-emission'),
       getQueueToken('nfse-reconciliation'),
+      getQueueToken('nfse-cancellation'),
       getQueueToken('nfse-doc-prep'),
       getQueueToken('nfse-email'),
     ],
