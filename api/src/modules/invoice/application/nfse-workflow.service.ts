@@ -23,6 +23,7 @@ import {
 } from '@/infra/storage/domain/document-storage';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import type { Invoice } from '../domain/invoice';
+import { ConcurrentInvoiceTransitionError } from '../domain/errors';
 import { InvoiceWebhookPublisher } from './invoice-webhook.publisher';
 
 export interface FiscalJobData {
@@ -74,7 +75,13 @@ export class NfseWorkflowService {
         'processing',
         'Starting fiscal emission',
       );
-      await this.lifecycle.transition(invoice, event);
+      try {
+        await this.lifecycle.transition(invoice, event);
+      } catch (error: unknown) {
+        // Cancelled (or taken by another worker) after we loaded it: never issue.
+        if (error instanceof ConcurrentInvoiceTransitionError) return;
+        throw error;
+      }
     }
     let result: FiscalIssueResult;
     try {
@@ -192,7 +199,7 @@ export class NfseWorkflowService {
         invoice.environment,
       );
       invoice.setDpsInfo(sequence.series, sequence.number);
-      await this.invoices.save(invoice, invoice.tenantId);
+      await this.invoices.saveDpsInfo(invoice);
     }
     const snapshot = invoice.toSnapshot();
     const taxId = snapshot.customerSnapshot.taxId
