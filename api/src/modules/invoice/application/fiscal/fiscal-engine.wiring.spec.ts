@@ -8,12 +8,14 @@ import type { FiscalStep } from '@/modules/invoice/domain/fiscal/fiscal-step';
 import { IFiscalProfileReader } from '@/modules/invoice/domain/fiscal/ports/fiscal-profile.reader';
 import { IServiceProfileReader } from '@/modules/invoice/domain/fiscal/ports/service-profile.reader';
 import { RtcCalculatorPort } from '@/modules/invoice/domain/fiscal/rtc/rtc-calculator.port';
+import type { RtcMapper } from '@/modules/invoice/infra/fiscal/rtc/rtc-mapper';
 import { Invoice } from '@/modules/invoice/domain/invoice';
 import { UnconfiguredRtcCalculator } from '@/modules/invoice/infra/fiscal/unconfigured-rtc-calculator';
 import { FiscalEngineService } from './fiscal-engine.service';
 import {
   FISCAL_ENGINE_INTERNAL_PROVIDERS,
   FISCAL_IBSCBS_UNAVAILABLE_MODE,
+  RTC_MAPPER,
 } from './fiscal-engine.module';
 import { FISCAL_STEPS } from './fiscal-steps.provider';
 
@@ -148,6 +150,19 @@ class ValidatingCatalog extends IFiscalCatalog {
   }
 }
 
+/** RTC mapper double: the wiring tests never reach the contract mapping. */
+const stubRtcMapper: RtcMapper = {
+  toBaseRequest: () => ({ path: '/calculadora/nfse/base-calculo', body: {} }),
+  fromBaseResponse: () => {
+    throw new Error('stubRtcMapper is not usable in wiring tests');
+  },
+  toCalcRequest: () => ({ path: '/calculadora/regime-geral', body: {} }),
+  fromCalcResponse: () => {
+    throw new Error('stubRtcMapper is not usable in wiring tests');
+  },
+  fromProblem: () => null,
+};
+
 const company = (): Company =>
   Company.create(
     {
@@ -211,6 +226,7 @@ const buildEngine = (
     imports: [AppConfigModule],
     providers: [
       ...FISCAL_ENGINE_INTERNAL_PROVIDERS,
+      { provide: RTC_MAPPER, useValue: stubRtcMapper },
       {
         provide: IFiscalProfileReader,
         useValue: new InMemoryFiscalProfileReader(opts.profiles ?? []),
@@ -397,6 +413,7 @@ describe('UnconfiguredRtcCalculator', () => {
       competenceDate: '2026-10-13',
       grossAmount: '100.00',
       discountAmount: '0.00',
+      issAmount: null,
       serviceCode: '010101',
       nbsCode: '010101',
       cst: '001',

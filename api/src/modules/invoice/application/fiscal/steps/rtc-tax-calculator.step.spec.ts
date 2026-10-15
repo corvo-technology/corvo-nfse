@@ -7,6 +7,7 @@ import type { ServiceTaxClassification } from '@/modules/invoice/domain/fiscal/c
 import type { FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
 import { fiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
 import type { StepOutcome } from '@/modules/invoice/domain/fiscal/fiscal-step';
+import type { LegacyTaxResult } from '@/modules/invoice/domain/fiscal/legacy/legacy-tax-result';
 import { toDecimal } from '@/modules/invoice/domain/fiscal/money';
 import { TaxTransitionPolicy } from '@/modules/invoice/domain/fiscal/policies/tax-transition.policy';
 import type { RtcCalculatorPort } from '@/modules/invoice/domain/fiscal/rtc/rtc-calculator.port';
@@ -218,6 +219,7 @@ describe('RtcTaxCalculatorStep', () => {
         competenceDate: '2026-10-13',
         grossAmount: '1000.00',
         discountAmount: '0.00',
+        issAmount: null,
         serviceCode: '010601',
         nbsCode: '010601001',
         cst: '000',
@@ -234,6 +236,22 @@ describe('RtcTaxCalculatorStep', () => {
         regime: 'LUCRO_PRESUMIDO',
       },
     ]);
+  });
+
+  it('passes the legacy ISS amount through (2026 base deduction)', async () => {
+    const calculator = new FakeRtcCalculator();
+    const legacyTaxes: LegacyTaxResult = {
+      iss: { base: '1000.00', rate: '3', amount: '30.00' },
+      issWithheld: false,
+      issResponsible: 'PROVIDER',
+      withholdings: [],
+      netReceivableAmount: '970.00',
+    };
+    const outcome = outcomeOf(
+      await stepWith(calculator).execute(context({ legacyTaxes })),
+    );
+    expect(outcome.status).toBe('applied');
+    expect(calculator.calls[0]?.issAmount).toBe('30.00');
   });
 
   it('stores the typed RTC result in the context (R$1000: CBS 9.00, IBS 1.00 with the fake)', async () => {

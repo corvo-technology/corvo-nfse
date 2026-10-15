@@ -1,5 +1,6 @@
 import { Module, type Provider } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { RtcConfig } from '@/infra/config/configuration';
 import { CompanyModule } from '@/modules/company/company.module';
 import { IFiscalCatalog } from '@/modules/invoice/domain/fiscal/classification/fiscal-catalog.port';
 import { TAX_RULES } from '@/modules/invoice/domain/fiscal/policies/rules';
@@ -8,6 +9,9 @@ import { IFiscalProfileReader } from '@/modules/invoice/domain/fiscal/ports/fisc
 import { IServiceProfileReader } from '@/modules/invoice/domain/fiscal/ports/service-profile.reader';
 import { RtcCalculatorPort } from '@/modules/invoice/domain/fiscal/rtc/rtc-calculator.port';
 import { ctribnacCatalogProvider } from '@/modules/invoice/infra/fiscal/ctribnac-catalog.provider';
+import { DefaultRtcMapper } from '@/modules/invoice/infra/fiscal/rtc/default-rtc-mapper';
+import { HttpRtcCalculatorAdapter } from '@/modules/invoice/infra/fiscal/rtc/http-rtc-calculator.adapter';
+import type { RtcMapper } from '@/modules/invoice/infra/fiscal/rtc/rtc-mapper';
 import { UnconfiguredRtcCalculator } from '@/modules/invoice/infra/fiscal/unconfigured-rtc-calculator';
 import { FiscalEngineService } from './fiscal-engine.service';
 import { fiscalStepsProvider } from './fiscal-steps.provider';
@@ -26,6 +30,9 @@ import { TypeOrmServiceProfileReader } from './typeorm-service-profile.reader';
 
 /** Injects the D1 mode string from the `fiscal` config section into the RTC step. */
 export const FISCAL_IBSCBS_UNAVAILABLE_MODE = 'FISCAL_IBSCBS_UNAVAILABLE_MODE';
+
+/** Injection token for the RTC contract mapper (`DefaultRtcMapper` in production). */
+export const RTC_MAPPER = 'RTC_MAPPER';
 
 /**
  * Providers that make up the engine itself and depend only on ports (no
@@ -58,7 +65,13 @@ export const FISCAL_ENGINE_INTERNAL_PROVIDERS: Provider[] = [
   FiscalValidatorStep,
   {
     provide: RtcCalculatorPort,
-    useClass: UnconfiguredRtcCalculator,
+    useFactory: (config: ConfigService, mapper: RtcMapper) => {
+      const rtc = config.get<RtcConfig>('rtc');
+      return rtc?.url
+        ? new HttpRtcCalculatorAdapter(rtc, mapper)
+        : new UnconfiguredRtcCalculator();
+    },
+    inject: [ConfigService, RTC_MAPPER],
   },
   {
     provide: FISCAL_IBSCBS_UNAVAILABLE_MODE,
@@ -91,6 +104,7 @@ export const FISCAL_ENGINE_INTERNAL_PROVIDERS: Provider[] = [
 @Module({
   imports: [CompanyModule],
   providers: [
+    { provide: RTC_MAPPER, useClass: DefaultRtcMapper },
     ...FISCAL_ENGINE_INTERNAL_PROVIDERS,
     TypeOrmCompanyFiscalProfileReader,
     {

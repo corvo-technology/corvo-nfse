@@ -15,6 +15,8 @@ export interface RtcCalculationInput {
   readonly competenceDate: string;
   readonly grossAmount: DecimalString;
   readonly discountAmount: DecimalString;
+  /** ISS destacado na NFS-e; deduzido da base de IBS/CBS na transição de 2026. */
+  readonly issAmount: DecimalString | null;
   readonly serviceCode: string;
   readonly nbsCode: string;
   readonly cst: string;

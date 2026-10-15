@@ -9,6 +9,7 @@ const input = (
   competenceDate: '2026-10-13',
   grossAmount: '1000.00',
   discountAmount: '0.00',
+  issAmount: null,
   serviceCode: '010601',
   nbsCode: '010601001',
   cst: '000',

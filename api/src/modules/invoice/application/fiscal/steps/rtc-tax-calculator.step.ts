@@ -226,6 +226,7 @@ export class RtcTaxCalculatorStep implements FiscalStep {
       competenceDate: context.invoice.competenceDate,
       grossAmount: context.invoice.grossAmount,
       discountAmount: context.invoice.discountAmount,
+      issAmount: context.legacyTaxes?.iss?.amount ?? null,
       serviceCode: classification.serviceCode,
       nbsCode: classification.nbsCode ?? '',
       cst: classification.cst ?? '',
