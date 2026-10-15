@@ -1,6 +1,7 @@
 import { VALID_CNPJ } from '@/shared/fiscal/fixtures';
 import { Invoice } from '../domain/invoice';
 import {
+  ConcurrentInvoiceTransitionError,
   InvoiceNotCancellableError,
   InvalidCancellationReasonError,
 } from '../domain/errors';
@@ -32,11 +33,16 @@ function invoiceIn(status: InvoiceStatus): Invoice {
   });
 }
 
-function build(invoice: Invoice) {
-  const lifecycle = { transition: jest.fn() };
+function build(invoice: Invoice, stored?: Invoice) {
+  const lifecycle = { transition: jest.fn().mockResolvedValue(true) };
   const webhooks = { publish: jest.fn() };
+  const findByIdAndTenantId = jest.fn().mockResolvedValue(invoice);
+  if (stored)
+    findByIdAndTenantId
+      .mockResolvedValueOnce(invoice)
+      .mockResolvedValue(stored);
   const service = new InvoiceService(
-    { findByIdAndTenantId: jest.fn().mockResolvedValue(invoice) } as never,
+    { findByIdAndTenantId } as never,
     {} as never,
     {} as never,
     {} as never,
@@ -65,7 +71,7 @@ describe('InvoiceService.cancel', () => {
     expect(result.status).toBe('cancelled');
     expect(lifecycle.transition).toHaveBeenCalledWith(
       invoice,
-      expect.objectContaining({}),
+      expect.objectContaining({ toStatus: 'cancelled' }),
       undefined,
     );
     expect(webhooks.publish).toHaveBeenCalledWith(
@@ -116,5 +122,53 @@ describe('InvoiceService.cancel', () => {
       service.cancel(invoice.id, tenantId, 'test', { reason: 'other' }),
     ).rejects.toBeInstanceOf(InvalidCancellationReasonError);
     expect(lifecycle.transition).not.toHaveBeenCalled();
+  });
+
+  it('publishes no webhook and returns the stored invoice when the transition was not applied', async () => {
+    const invoice = invoiceIn('queued');
+    const stored = invoiceIn('cancelled');
+    const { service, lifecycle, webhooks } = build(invoice, stored);
+    lifecycle.transition.mockResolvedValue(false);
+    await expect(
+      service.cancel(invoice.id, tenantId, 'test', { reason: 'other' }),
+    ).resolves.toBe(stored);
+    expect(webhooks.publish).not.toHaveBeenCalled();
+  });
+
+  it('returns the winner without a webhook when the transition loses the race to another cancel', async () => {
+    const invoice = invoiceIn('queued');
+    const stored = invoiceIn('cancelled');
+    const { service, lifecycle, webhooks } = build(invoice, stored);
+    lifecycle.transition.mockRejectedValue(
+      new ConcurrentInvoiceTransitionError(invoice.id),
+    );
+    await expect(
+      service.cancel(invoice.id, tenantId, 'test', { reason: 'other' }),
+    ).resolves.toBe(stored);
+    expect(webhooks.publish).not.toHaveBeenCalled();
+  });
+
+  it('answers not-cancellable when the worker took the invoice meanwhile', async () => {
+    const invoice = invoiceIn('queued');
+    const { service, lifecycle, webhooks } = build(
+      invoice,
+      invoiceIn('processing'),
+    );
+    lifecycle.transition.mockRejectedValue(
+      new ConcurrentInvoiceTransitionError(invoice.id),
+    );
+    await expect(
+      service.cancel(invoice.id, tenantId, 'test', { reason: 'other' }),
+    ).rejects.toBeInstanceOf(InvoiceNotCancellableError);
+    expect(webhooks.publish).not.toHaveBeenCalled();
+  });
+
+  it('rethrows unrelated transition errors', async () => {
+    const invoice = invoiceIn('queued');
+    const { service, lifecycle } = build(invoice);
+    lifecycle.transition.mockRejectedValue(new Error('db down'));
+    await expect(
+      service.cancel(invoice.id, tenantId, 'test', { reason: 'other' }),
+    ).rejects.toThrow('db down');
   });
 });

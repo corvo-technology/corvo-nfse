@@ -33,6 +33,8 @@ import type {
   IInvoiceEventRepository,
 } from '../domain/invoice.repository';
 import {
+  ConcurrentInvoiceTransitionError,
+  InvoiceNotCancellableError,
   InvoiceNotFoundError,
   IdempotencyConflictError,
 } from '../domain/errors';
@@ -300,16 +302,35 @@ export class InvoiceService {
     const event = invoice.requestCancellation(
       cancellationReason(input.reason, input.description),
     );
-    await this.lifecycle.transition(
-      invoice,
-      event,
-      fiscal ? cancellationMessage(invoice, event) : undefined,
-    );
+    let applied: boolean;
+    try {
+      applied = await this.lifecycle.transition(
+        invoice,
+        event,
+        fiscal ? cancellationMessage(invoice, event) : undefined,
+      );
+    } catch (error: unknown) {
+      if (!(error instanceof ConcurrentInvoiceTransitionError)) throw error;
+      return this.currentAfterLostRace(id, tenantId, environment);
+    }
+    if (!applied) return this.currentAfterLostRace(id, tenantId, environment);
     if (!fiscal)
       await this.webhooks.publish(invoice, 'nfse.invoice.cancelled', {
         reason: input.reason,
       });
     return invoice;
+  }
+
+  /** Lost a race: another request already cancelled it (return that state) or the worker took it (409). */
+  private async currentAfterLostRace(
+    id: string,
+    tenantId: string,
+    environment: ExecutionEnvironment,
+  ): Promise<Invoice> {
+    const current = await this.findById(id, tenantId, environment);
+    if (current.status === 'cancelling' || current.status === 'cancelled')
+      return current;
+    throw new InvoiceNotCancellableError(current.status);
   }
 
   async getXml(

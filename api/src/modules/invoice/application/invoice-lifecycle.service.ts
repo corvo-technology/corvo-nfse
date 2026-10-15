@@ -121,8 +121,9 @@ export class InvoiceLifecycleService {
     invoice: Invoice,
     event: InvoiceEvent,
     message?: NewOutboxMessage,
-  ): Promise<void> {
+  ): Promise<boolean> {
     return runWithTenant(invoice.tenantId, async () => {
+      let applied = false;
       await this.database.transaction(async (manager) =>
         this.context.run(manager, async () => {
           if (event.invoiceId !== invoice.id)
@@ -147,6 +148,7 @@ export class InvoiceLifecycleService {
             invoice.tenantId,
             ['companyId', 'environment'],
           );
+          applied = true;
           await manager
             .getRepository(InvoiceEventOrmEntity)
             .insert(new InvoiceEventMapper().toPersistence(event));
@@ -183,6 +185,7 @@ export class InvoiceLifecycleService {
       );
       if (invoice.environment === 'live')
         await this.cache.delete(`credit:balance:${invoice.tenantId}`);
+      return applied;
     });
   }
 }

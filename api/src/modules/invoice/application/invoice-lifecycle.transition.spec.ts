@@ -152,6 +152,32 @@ describe('InvoiceLifecycleService.transition — cancellation', () => {
     expect(ctx.persisted[0].pendingEmission).toBeUndefined();
   });
 
+  it('reports true when it applies the transition', async () => {
+    const ctx = build('queued', null);
+    const invoice = invoiceIn('queued', 'test');
+    await expect(
+      ctx.service.transition(
+        invoice,
+        invoice.requestCancellation(cancellationReason('other')),
+      ),
+    ).resolves.toBe(true);
+  });
+
+  it('reports false and writes nothing when the stored status already is the target', async () => {
+    const ctx = build('cancelled', null);
+    const invoice = invoiceIn('queued', 'live');
+    await expect(
+      ctx.service.transition(
+        invoice,
+        invoice.requestCancellation(cancellationReason('other')),
+        message,
+      ),
+    ).resolves.toBe(false);
+    expect(ctx.persisted).toEqual([]);
+    expect(ctx.outbox.enqueue).not.toHaveBeenCalled();
+    expect(ctx.usage.settle).not.toHaveBeenCalled();
+  });
+
   it('throws a typed error when another writer changed the status', async () => {
     const ctx = build('processing', null);
     const invoice = invoiceIn('queued', 'test');
