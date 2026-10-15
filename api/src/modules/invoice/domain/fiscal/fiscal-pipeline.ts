@@ -34,6 +34,13 @@ export class FiscalPipeline {
   async execute(
     initial: FiscalContext,
   ): Promise<Result<FiscalContext, FiscalError>> {
+    const { context, error } = await this.executeWithPartial(initial);
+    return error === null ? ok(context) : err(error);
+  }
+
+  async executeWithPartial(
+    initial: FiscalContext,
+  ): Promise<{ context: FiscalContext; error: FiscalError | null }> {
     const startedAt = performance.now();
     let context = initial;
     for (const step of this.steps) {
@@ -49,7 +56,7 @@ export class FiscalPipeline {
           performance.now() - startedAt,
           error.code,
         );
-        return err(error);
+        return { context, error };
       }
       if (outcome.value.status === 'skipped' && step.required) {
         const error = fiscalError({
@@ -65,7 +72,7 @@ export class FiscalPipeline {
           performance.now() - startedAt,
           error.code,
         );
-        return err(error);
+        return { context, error };
       }
       const trace: StepTrace = {
         step: step.name,
@@ -91,6 +98,6 @@ export class FiscalPipeline {
       performance.now() - startedAt,
       undefined,
     );
-    return ok(context);
+    return { context, error: null };
   }
 }
