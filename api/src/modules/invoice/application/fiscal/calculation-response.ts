@@ -16,7 +16,7 @@ import type { WithholdingAmount } from '../../domain/fiscal/legacy/legacy-tax-re
 import { calculationSourceOf } from '../../domain/fiscal/result-builder';
 
 export const CALCULATION_DISCLAIMER =
-  'Cálculo pré-emissão. Os valores não constituem documento fiscal e podem divergir da validação final da Sefin.';
+  'Pre-emission calculation. Values are not a fiscal document and may differ from the final validation by Sefin.';
 export interface InvoiceCalculationResponse {
   preEmission: true;
   status: 'ready' | 'blocked';

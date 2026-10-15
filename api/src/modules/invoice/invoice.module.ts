@@ -1,3 +1,4 @@
+import { InvoiceCalculationService } from './application/fiscal/invoice-calculation.service';
 import { CreditsModule } from '@/modules/credits/credits.module';
 import { ConfigService } from '@nestjs/config';
 import type { OutboxConfig } from '@/infra/config/configuration.types';
@@ -125,6 +126,7 @@ import { EmailModule } from '@/modules/email/email.module';
     DpsBuilder,
     InvoiceService,
     InvoiceIntakeService,
+    InvoiceCalculationService,
     InvoiceLifecycleService,
     InvoiceDomainService,
   ],

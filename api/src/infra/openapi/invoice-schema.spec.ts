@@ -1,3 +1,4 @@
+import { InvoiceCalculationService } from '@/modules/invoice/application/fiscal/invoice-calculation.service';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule } from '@nestjs/swagger';
@@ -9,7 +10,10 @@ import { setupOpenApi } from './setup';
 it('documents the actual 202 invoice data.props response with nullable scheduledFor', async () => {
   const module = await Test.createTestingModule({
     controllers: [InvoiceController],
-    providers: [{ provide: InvoiceService, useValue: {} }],
+    providers: [
+      { provide: InvoiceService, useValue: {} },
+      { provide: InvoiceCalculationService, useValue: {} },
+    ],
   })
     .overrideGuard(ExecutionEnvironmentGuard)
     .useValue({ canActivate: () => true })
@@ -43,6 +47,20 @@ it('documents the actual 202 invoice data.props response with nullable scheduled
         }),
       }),
     );
+    expect(
+      document?.paths['/invoices/calculate']?.post?.responses['200'],
+    ).toBeDefined();
+    expect(
+      document?.components?.schemas?.InvoiceCalculationResponseDto,
+    ).toMatchObject({
+      properties: {
+        preEmission: { enum: [true] },
+        taxes: expect.any(Object),
+        pendingFields: expect.any(Object),
+        blocking: expect.any(Object),
+        trace: expect.any(Object),
+      },
+    });
     expect(document?.paths['/invoices']?.post?.responses['202']).toEqual(
       expect.objectContaining({
         content: {
