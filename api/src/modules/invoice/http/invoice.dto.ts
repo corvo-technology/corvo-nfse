@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CursorQuery } from '@/shared/http/pagination';
 import {
   IsBoolean,
@@ -12,9 +12,14 @@ import {
   ValidateIf,
   IsDateString,
   IsIn,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { INVOICE_STATUSES, type InvoiceStatus } from '../domain/invoice-status';
+import {
+  CANCELLATION_REASON_CODES,
+  type CancellationReasonCode,
+} from '../domain/cancellation-reason';
 
 /**
  * Invoice DTOs — HTTP layer.
@@ -123,4 +128,19 @@ export class ListInvoicesQuery extends CursorQuery {
   @IsOptional() @IsDateString() from?: string;
   @IsOptional() @IsDateString() to?: string;
   @IsOptional() @IsString() externalId?: string;
+}
+
+export class CancelInvoiceDto {
+  @IsIn(CANCELLATION_REASON_CODES)
+  @ApiProperty({ enum: CANCELLATION_REASON_CODES })
+  reason!: CancellationReasonCode;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  @ApiPropertyOptional({
+    description:
+      'Required (15–255 characters) to cancel an authorized NFS-e; optional for a queued invoice.',
+  })
+  description?: string;
 }

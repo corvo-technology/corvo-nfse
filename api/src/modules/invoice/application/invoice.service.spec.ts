@@ -98,6 +98,8 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
     documentStorage = {
       exists: jest.fn(),
       getSignedUrl: jest.fn(),
+      getXml: jest.fn(),
+      getPdf: jest.fn(),
     } as unknown as jest.Mocked<IDocumentStorage>;
 
     // Create a real BullmqQueueService with a mocked Queue for nfse-email
@@ -135,6 +137,7 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
       queueService,
       {} as any,
       {} as any,
+      {} as any,
     );
   });
 
@@ -150,8 +153,11 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('returns 409 when invoice is not authorized', async () => {
-      const invoice = makeAuthorizedInvoice({ status: 'queued' });
+    it('returns 409 when invoice was never authorized', async () => {
+      const invoice = makeAuthorizedInvoice({
+        status: 'queued',
+        authorizedAt: null,
+      });
       invoiceRepo.findByIdAndTenantId.mockResolvedValue(invoice);
 
       await expect(
@@ -209,6 +215,24 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
       expect(result.mimeType).toBe('application/xml');
     });
 
+    it('resolves for a cancelled invoice that was once authorized', async () => {
+      const invoice = makeAuthorizedInvoice({
+        status: 'cancelled',
+        nfseNumber: 7,
+      });
+      invoiceRepo.findByIdAndTenantId.mockResolvedValue(invoice);
+      documentStorage.getSignedUrl.mockResolvedValue({
+        url: 'https://storage.example.com/signed.pdf',
+        expiresAt: new Date(Date.now() + 3600_000),
+        fileName: 'nfse-7.pdf',
+        mimeType: 'application/pdf',
+      });
+
+      await expect(
+        service.getDownloadUrl('inv-1', 'tenant-1', 'pdf'),
+      ).resolves.toMatchObject({ fileName: 'nfse-7.pdf' });
+    });
+
     it('throws ServiceUnavailable when storage throws', async () => {
       const invoice = makeAuthorizedInvoice({ nfseNumber: 1 });
       invoiceRepo.findByIdAndTenantId.mockResolvedValue(invoice);
@@ -219,6 +243,38 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
       await expect(
         service.getDownloadUrl('inv-1', 'tenant-1', 'pdf'),
       ).rejects.toThrow(ServiceUnavailableException);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // getXml / getPdf
+  // -------------------------------------------------------------------------
+  describe('getXml / getPdf', () => {
+    it('serves the XML and PDF of a cancelled invoice that was authorized', async () => {
+      const invoice = makeAuthorizedInvoice({ status: 'cancelled' });
+      invoiceRepo.findByIdAndTenantId.mockResolvedValue(invoice);
+      documentStorage.getXml.mockResolvedValue('<xml/>');
+      documentStorage.getPdf.mockResolvedValue(Buffer.from('pdf'));
+
+      await expect(service.getXml('inv-1', 'tenant-1')).resolves.toBe('<xml/>');
+      await expect(service.getPdf('inv-1', 'tenant-1')).resolves.toEqual(
+        Buffer.from('pdf'),
+      );
+    });
+
+    it('returns 404 for an invoice that was never authorized', async () => {
+      const invoice = makeAuthorizedInvoice({
+        status: 'cancelled',
+        authorizedAt: null,
+      });
+      invoiceRepo.findByIdAndTenantId.mockResolvedValue(invoice);
+
+      await expect(service.getXml('inv-1', 'tenant-1')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.getPdf('inv-1', 'tenant-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -236,6 +292,15 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
 
     it('returns 409 when documents are not ready (status not authorized)', async () => {
       const invoice = makeAuthorizedInvoice({ status: 'queued' });
+      invoiceRepo.findByIdAndTenantId.mockResolvedValue(invoice);
+
+      await expect(service.requestEmail('inv-1', 'tenant-1')).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('returns 409 for a cancelled invoice (email still requires authorized)', async () => {
+      const invoice = makeAuthorizedInvoice({ status: 'cancelled' });
       invoiceRepo.findByIdAndTenantId.mockResolvedValue(invoice);
 
       await expect(service.requestEmail('inv-1', 'tenant-1')).rejects.toThrow(

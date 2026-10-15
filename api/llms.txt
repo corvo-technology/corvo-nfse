@@ -52,3 +52,15 @@ code schedule_horizon_exceeded. Intake atomically persists invoice, event and
 outbox message. Once a queue publication is acknowledged, a Redis reset can
 lose the job while the invoice stays queued; document recovery does not recover
 queued invoices.
+
+## Invoice cancellation
+
+POST /v1/invoices/:id/cancel with {"reason": "issue_error" | "service_not_provided"
+| "other", "description"?: string}. A queued invoice (scheduled or not yet
+processed) is cancelled locally: HTTP 200, status cancelled, live credit
+reservation refunded. An authorized invoice returns HTTP 202 with status
+cancelling; description (15-255 chars) is required and event 101101 is sent to
+the Sefin asynchronously. Outcome: cancelled (webhook nfse.invoice.cancelled) or
+back to authorized with lastErrorCode/lastErrorMessage (webhook
+nfse.invoice.cancellation_rejected). Other statuses return 409
+ERROR_INVOICE_NOT_CANCELLABLE. Cancelling an issued NFS-e does not refund credit.

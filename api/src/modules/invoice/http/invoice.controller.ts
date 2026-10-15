@@ -36,6 +36,7 @@ import { ApiKeyEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
 import type { RequestWithAuthContext } from '@/modules/auth/auth-context';
 import { InvoiceService } from '../application/invoice.service';
 import {
+  CancelInvoiceDto,
   CreateInvoiceDto,
   GetDownloadUrlDto,
   ListInvoicesQuery,
@@ -245,5 +246,29 @@ export class InvoiceController {
       emailId: result.emailId,
       status: result.status,
     });
+  }
+
+  @Post(':id/cancel')
+  @HttpCode(202)
+  @ApiKeyEndpoint()
+  @RequirePermission('nfse.invoices.issue')
+  @ApiOperation({
+    summary:
+      'Cancel an invoice: 200 when a queued invoice is cancelled locally, 202 while the NFS-e cancellation event is processed',
+  })
+  async cancel(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: CancelInvoiceDto,
+    @Req() req: RequestWithAuthContext,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const invoice = await this.invoiceService.cancel(
+      id,
+      req.authContext!.activeTenantId,
+      executionEnvironment(req.authContext!),
+      dto,
+    );
+    res.status(invoice.status === 'cancelled' ? 200 : 202);
+    return invoice;
   }
 }

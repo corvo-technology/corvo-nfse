@@ -41,7 +41,14 @@ import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { CompanyService } from '@/modules/company/application/company.service';
 import { CertificateService } from '@/modules/certificate/application/certificate.service';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
-import { CreateInvoiceDto, ListInvoicesQuery } from '../http/invoice.dto';
+import {
+  CancelInvoiceDto,
+  CreateInvoiceDto,
+  ListInvoicesQuery,
+} from '../http/invoice.dto';
+import { cancellationReason } from '../domain/cancellation-reason';
+import { cancellationMessage } from './invoice-cancel.handler';
+import { InvoiceWebhookPublisher } from './invoice-webhook.publisher';
 import type { DocumentFormat } from '@/infra/storage/domain/document-storage';
 import {
   DOCUMENT_STORAGE,
@@ -83,6 +90,7 @@ export class InvoiceService {
     private readonly lifecycle: InvoiceLifecycleService,
     private readonly quotaService: QuotaService,
     private readonly invoiceDomain: InvoiceDomainService,
+    private readonly webhooks: InvoiceWebhookPublisher,
   ) {}
 
   async emit(
@@ -278,6 +286,32 @@ export class InvoiceService {
     return invoice;
   }
 
+  /** Local for a queued invoice; otherwise requests the fiscal event and returns `cancelling`. */
+  async cancel(
+    id: string,
+    tenantId: string,
+    environment: ExecutionEnvironment,
+    input: CancelInvoiceDto,
+  ): Promise<Invoice> {
+    const invoice = await this.findById(id, tenantId, environment);
+    if (invoice.status === 'cancelling' || invoice.status === 'cancelled')
+      return invoice;
+    const fiscal = invoice.status !== 'queued';
+    const event = invoice.requestCancellation(
+      cancellationReason(input.reason, input.description),
+    );
+    await this.lifecycle.transition(
+      invoice,
+      event,
+      fiscal ? cancellationMessage(invoice, event) : undefined,
+    );
+    if (!fiscal)
+      await this.webhooks.publish(invoice, 'nfse.invoice.cancelled', {
+        reason: input.reason,
+      });
+    return invoice;
+  }
+
   async getXml(
     id: string,
     tenantId: string,
@@ -285,7 +319,7 @@ export class InvoiceService {
   ): Promise<string> {
     const invoice = await this.findById(id, tenantId, environment);
 
-    if (invoice.status !== 'authorized') {
+    if (!invoice.wasAuthorized) {
       throw new NotFoundException(
         'XML not available for non-authorized invoice',
       );
@@ -305,7 +339,7 @@ export class InvoiceService {
   ): Promise<Buffer> {
     const invoice = await this.findById(id, tenantId, environment);
 
-    if (invoice.status !== 'authorized') {
+    if (!invoice.wasAuthorized) {
       throw new NotFoundException(
         'PDF not available for non-authorized invoice',
       );
@@ -360,7 +394,7 @@ export class InvoiceService {
       throw e;
     }
 
-    if (invoice.status !== 'authorized' || !invoice.documentsReadyAt) {
+    if (!invoice.wasAuthorized || !invoice.documentsReadyAt) {
       throw new ConflictException('Documents not ready');
     }
 

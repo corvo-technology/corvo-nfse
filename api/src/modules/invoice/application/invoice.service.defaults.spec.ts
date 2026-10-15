@@ -50,6 +50,7 @@ describe('Invoice fiscal defaults and idempotency', () => {
       lifecycle as never,
       {} as never,
       new InvoiceDomainService(),
+      {} as never,
     );
   });
 

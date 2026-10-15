@@ -14,11 +14,40 @@ describe('InvoiceController', () => {
     getEvents: jest.fn(),
     getDownloadUrl: jest.fn(),
     requestEmail: jest.fn(),
+    cancel: jest.fn(),
   };
 
   const mockRes = { setHeader: jest.fn() };
 
   beforeEach(() => jest.clearAllMocks());
+
+  describe('POST :id/cancel', () => {
+    const req = {
+      authContext: { activeTenantId: tenantId },
+    } as never;
+
+    it.each([
+      ['cancelled', 200],
+      ['cancelling', 202],
+    ] as const)('answers %s with HTTP %i', async (status, code) => {
+      const invoice = { status };
+      invoiceService.cancel.mockResolvedValue(invoice);
+      const res = { status: jest.fn() };
+      const controller = new InvoiceController(invoiceService as never);
+
+      await expect(
+        controller.cancel(invoiceId, { reason: 'other' }, req, res as never),
+      ).resolves.toBe(invoice);
+
+      expect(res.status).toHaveBeenCalledWith(code);
+      expect(invoiceService.cancel).toHaveBeenCalledWith(
+        invoiceId,
+        tenantId,
+        'test',
+        { reason: 'other' },
+      );
+    });
+  });
 
   describe('POST :id/download-url', () => {
     it('returns 200 with signed URL and sets Cache-Control: no-store', async () => {
