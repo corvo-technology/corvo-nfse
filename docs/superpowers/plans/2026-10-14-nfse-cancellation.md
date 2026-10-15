@@ -18,7 +18,7 @@
 - Motivos: `issue_error` → cMotivo `1`, `service_not_provided` → `2`, `other` → `9`. A descrição fiscal deve ter de 15 a 255 caracteres (depois do `trim`). Para `queued`, a descrição é opcional.
 - Créditos (live): `queued → cancelled` estorna a reserva e chama `usage.settle(..., 'cancelled')`. Transições a partir de `authorized` não mexem em crédito nem billing.
 - Endpoint: `POST /v1/invoices/:id/cancel`, permissão `nfse.invoices.issue`. Responde `200` quando o resultado é `cancelled` e `202` quando é `cancelling`.
-- Erros HTTP: `409 ERROR_INVOICE_NOT_CANCELLABLE`, `409 ERROR_CONCURRENT_INVOICE_TRANSITION`, `422 ERROR_INVALID_CANCELLATION_REASON`.
+- Erros HTTP: `409 ERROR_INVOICE_NOT_CANCELLABLE`, `409 ERROR_CONCURRENT_INVOICE_TRANSITION`, `422 ERROR_INVALID_CANCELLATION_REASON`. **Emenda (Task 12):** o endpoint de cancelamento deixa de responder `ERROR_CONCURRENT_INVOICE_TRANSITION`; a corrida vira `ERROR_INVOICE_NOT_CANCELLABLE` (ou o estado do vencedor, se outro pedido cancelou antes).
 - Fila `nfse-cancellation`, job `cancel`, `jobId = cancellation-{eventId}`, attempts 8, backoffMs 60000 (exponencial, já padrão do `BullmqQueueService`), removeOnComplete false, removeOnFail 1000.
 - Outbox: type `invoice.cancel`, `dedupeKey = cancellation:{eventId}`.
 - Webhooks públicos novos: `nfse.invoice.cancelled` e `nfse.invoice.cancellation_rejected`.
@@ -31,7 +31,7 @@
 
 - **O worker pega uma nota `queued` no mesmo instante em que ela é cancelada.** A nota não pode ser emitida. Testado na Task 5 (`saveDpsInfo` + `ConcurrentInvoiceTransitionError` ignorado).
 - **Mensagem `invoice.emit` de nota cancelada publicada depois** (agendamento chegando à data). O workflow não deve fazer nada. Testado na Task 5 (status `cancelled` ignorado).
-- **Duplo clique ou retry do cliente no endpoint.** O segundo pedido devolve o estado atual sem outra mensagem na outbox. Testado na Task 8.
+- **Duplo clique ou retry do cliente no endpoint.** O segundo pedido devolve o estado atual sem outra mensagem na outbox. Testado na Task 8. Duplo envio **concorrente** (os dois pedidos leem `queued` ao mesmo tempo) publica um único webhook `nfse.invoice.cancelled`. Testado na Task 12.
 - **Falha transitória da Sefin seguida de retry do BullMQ.** O provider deve fazer replay do XML assinado guardado, sem assinar outro evento. Testado na Task 6.
 - **Nota cancelada continua com XML/PDF disponíveis, mas o e-mail é recusado.** Testado na Task 8.
 
@@ -3107,4 +3107,177 @@ Expected: tudo verde. Registre no resumo os specs de Postgres que foram pulados 
 ```bash
 git add web/lib/docs/content web/tests/docs-parity.test.ts
 git commit -m "docs(web): document invoice cancellation endpoint and webhooks"
+```
+
+---
+
+### Task 12: Cancelamento concorrente — um único webhook e erro 409 claro
+
+Emenda posterior às Tasks 3 e 8, decidida depois da revisão final (sem lock Redis: o lock por tenant dentro da transação do banco já serializa os pedidos).
+
+**Files:**
+- Modify: `api/src/modules/invoice/application/invoice-lifecycle.service.ts`
+- Modify: `api/src/modules/invoice/application/invoice.service.ts`
+- Modify: `api/FRONTEND_API.md`
+- Modify: `web/lib/docs/content/en.ts`
+- Modify: `web/lib/docs/content/pt.ts`
+- Test: `api/src/modules/invoice/application/invoice-lifecycle.transition.spec.ts`
+- Test: `api/src/modules/invoice/application/invoice.service.cancel.spec.ts`
+
+**Interfaces:**
+- Consumes: `ConcurrentInvoiceTransitionError` (Task 1), `InvoiceNotCancellableError` (Task 1), `InvoiceService.cancel` (Task 8).
+- Produces: `InvoiceLifecycleService.transition(invoice, event, message?): Promise<boolean>` — `true` quando aplicou a mudança, `false` quando o status gravado já era o de destino. Os chamadores existentes ignoram o retorno e continuam válidos.
+
+- [ ] **Step 1: Testes que falham**
+
+Em `invoice-lifecycle.transition.spec.ts`, no `describe('InvoiceLifecycleService.transition — cancellation')`:
+
+```ts
+  it('reports true when it applies the transition', async () => {
+    const ctx = build('queued', null);
+    const invoice = invoiceIn('queued', 'test');
+    await expect(
+      ctx.service.transition(
+        invoice,
+        invoice.requestCancellation(cancellationReason('other')),
+      ),
+    ).resolves.toBe(true);
+  });
+
+  it('reports false and writes nothing when the stored status already is the target', async () => {
+    const ctx = build('cancelled', null);
+    const invoice = invoiceIn('queued', 'live');
+    await expect(
+      ctx.service.transition(
+        invoice,
+        invoice.requestCancellation(cancellationReason('other')),
+        message,
+      ),
+    ).resolves.toBe(false);
+    expect(ctx.persisted).toEqual([]);
+    expect(ctx.outbox.enqueue).not.toHaveBeenCalled();
+    expect(ctx.usage.settle).not.toHaveBeenCalled();
+  });
+```
+
+Em `invoice.service.cancel.spec.ts`: o `build` passa a aceitar a nota "gravada" que a releitura devolve e o `lifecycle.transition` resolve `true` por padrão:
+
+```ts
+function build(invoice: Invoice, stored?: Invoice) {
+  const lifecycle = { transition: jest.fn().mockResolvedValue(true) };
+  const webhooks = { publish: jest.fn() };
+  const findByIdAndTenantId = jest.fn().mockResolvedValue(invoice);
+  if (stored) findByIdAndTenantId.mockResolvedValueOnce(invoice).mockResolvedValue(stored);
+  // ... mesmo construtor de hoje, usando { findByIdAndTenantId } no primeiro argumento
+  return { service, lifecycle, webhooks };
+}
+```
+
+e os novos casos:
+
+```ts
+  it('publishes the webhook once and returns the stored invoice when a concurrent request won', async () => {
+    const invoice = invoiceIn('queued');
+    const stored = invoiceIn('cancelled');
+    const { service, lifecycle, webhooks } = build(invoice, stored);
+    lifecycle.transition.mockResolvedValue(false);
+    await expect(
+      service.cancel(invoice.id, tenantId, 'test', { reason: 'other' }),
+    ).resolves.toBe(stored);
+    expect(webhooks.publish).not.toHaveBeenCalled();
+  });
+
+  it('returns the winner without a webhook when the transition loses the race to another cancel', async () => {
+    const invoice = invoiceIn('queued');
+    const stored = invoiceIn('cancelled');
+    const { service, lifecycle, webhooks } = build(invoice, stored);
+    lifecycle.transition.mockRejectedValue(new ConcurrentInvoiceTransitionError(invoice.id));
+    await expect(
+      service.cancel(invoice.id, tenantId, 'test', { reason: 'other' }),
+    ).resolves.toBe(stored);
+    expect(webhooks.publish).not.toHaveBeenCalled();
+  });
+
+  it('answers not-cancellable when the worker took the invoice meanwhile', async () => {
+    const invoice = invoiceIn('queued');
+    const { service, lifecycle, webhooks } = build(invoice, invoiceIn('processing'));
+    lifecycle.transition.mockRejectedValue(new ConcurrentInvoiceTransitionError(invoice.id));
+    await expect(
+      service.cancel(invoice.id, tenantId, 'test', { reason: 'other' }),
+    ).rejects.toBeInstanceOf(InvoiceNotCancellableError);
+    expect(webhooks.publish).not.toHaveBeenCalled();
+  });
+
+  it('rethrows unrelated transition errors', async () => {
+    const invoice = invoiceIn('queued');
+    const { service, lifecycle } = build(invoice);
+    lifecycle.transition.mockRejectedValue(new Error('db down'));
+    await expect(
+      service.cancel(invoice.id, tenantId, 'test', { reason: 'other' }),
+    ).rejects.toThrow('db down');
+  });
+```
+
+Aproveite para trocar `expect.objectContaining({})` do teste local por `expect.objectContaining({ toStatus: 'cancelled' })` (adaptar ao formato real de `InvoiceEvent`).
+
+- [ ] **Step 2: Rodar e ver falhar**
+
+Run: `yarn jest src/modules/invoice/application/invoice-lifecycle.transition.spec.ts src/modules/invoice/application/invoice.service.cancel.spec.ts`
+Expected: FAIL (`transition` resolve `undefined` em vez de `true`/`false`; o webhook é publicado no caso concorrente; o erro de concorrência é propagado em vez de virar o estado do vencedor ou `InvoiceNotCancellableError`).
+
+- [ ] **Step 3: Implementar o retorno booleano**
+
+Em `invoice-lifecycle.service.ts`: `transition(...)` passa a `Promise<boolean>`. Declare `let applied = false;` antes da transação, faça `applied = true;` logo depois do `persistTenantEntity` (antes da lógica live de crédito, que tem `return`s próprios), e devolva `applied` no fim, depois da invalidação do cache. O `return` do caso "status gravado já é o de destino" fica como está (resulta em `false`).
+
+- [ ] **Step 4: Implementar o tratamento no `cancel`**
+
+Em `invoice.service.ts` (importar `ConcurrentInvoiceTransitionError` e `InvoiceNotCancellableError` de `'../domain/errors'`), substituir o trecho entre `requestCancellation` e o `return` por:
+
+```ts
+    let applied: boolean;
+    try {
+      applied = await this.lifecycle.transition(
+        invoice,
+        event,
+        fiscal ? cancellationMessage(invoice, event) : undefined,
+      );
+    } catch (error: unknown) {
+      if (!(error instanceof ConcurrentInvoiceTransitionError)) throw error;
+      return this.currentAfterLostRace(id, tenantId, environment);
+    }
+    if (!applied) return this.currentAfterLostRace(id, tenantId, environment);
+    if (!fiscal)
+      await this.webhooks.publish(invoice, 'nfse.invoice.cancelled', {
+        reason: input.reason,
+      });
+    return invoice;
+  }
+
+  /** Lost a race: another request already cancelled it (return that state) or the worker took it (409). */
+  private async currentAfterLostRace(
+    id: string,
+    tenantId: string,
+    environment: ExecutionEnvironment,
+  ): Promise<Invoice> {
+    const current = await this.findById(id, tenantId, environment);
+    if (current.status === 'cancelling' || current.status === 'cancelled')
+      return current;
+    throw new InvoiceNotCancellableError(current.status);
+  }
+```
+
+- [ ] **Step 5: Rodar e ver passar**
+
+Run: `yarn jest src/modules/invoice` e depois `yarn typecheck` e `yarn jest`.
+Expected: PASS, typecheck limpo, suíte inteira verde.
+
+- [ ] **Step 6: Documentação**
+
+Em `api/FRONTEND_API.md` (seção `POST /invoices/{id}/cancel`) e nas notas do endpoint de `web/lib/docs/content/{en,pt}.ts`: remover `ERROR_CONCURRENT_INVOICE_TRANSITION` da lista de erros do cancelamento e acrescentar uma frase: se outro pedido já cancelou a nota, devolve o estado atual; se a emissão já começou, `409 ERROR_INVOICE_NOT_CANCELLABLE`. Em `web/`, mantenha a paridade en/pt e rode `yarn vitest run tests/docs-parity.test.ts`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add api/src/modules/invoice/application api/FRONTEND_API.md web/lib/docs/content
+git commit -m "fix(invoice): publish a single cancelled webhook under concurrent cancels"
 ```

@@ -73,11 +73,14 @@ cancelling  → cancelled | authorized
 - Nota `queued`: transição local, responde `200` com a nota `cancelled`.
 - Nota `authorized`: responde `202` com a nota `cancelling`.
 - Nota já `cancelling` ou `cancelled`: idempotente, devolve a nota sem efeito colateral (`200` se `cancelled`, `202` se `cancelling`).
-- Demais status: `409 ERROR_INVOICE_NOT_CANCELLABLE`. Corrida com o worker: `409 ERROR_CONCURRENT_INVOICE_TRANSITION`.
+- Demais status: `409 ERROR_INVOICE_NOT_CANCELLABLE`.
+- Corrida (outro escritor muda a nota entre a leitura e a transição): o serviço relê a nota. Se ela já está `cancelling` ou `cancelled` (outro pedido venceu), devolve o estado atual, sem webhook nem mensagem na outbox. Em qualquer outro status (por exemplo, o worker já a colocou em `processing`), responde `409 ERROR_INVOICE_NOT_CANCELLABLE`. O `ERROR_CONCURRENT_INVOICE_TRANSITION` deixa de sair deste endpoint (continua mapeado para outros chamadores do lifecycle).
 
 ### 6.2 Cancelamento local (`queued → cancelled`)
 
 `InvoiceService.cancel` chama `lifecycle.transition(invoice, event)` numa transação: lock por tenant, check de `fromStatus`, status, evento, `usage.settle('cancelled')` (libera o reservado sem contar como autorizado) e estorno da reserva (`invoice_rejected`, mesmo caminho de `rejected/failed`). Depois o webhook `nfse.invoice.cancelled` é publicado (best effort).
+
+`lifecycle.transition()` devolve um booleano: `true` quando aplicou a mudança de status, `false` quando o status gravado já era o de destino (outro pedido idêntico venceu a corrida). O webhook só é publicado quando a transição foi aplicada. Quando devolve `false`, o serviço relê a nota e devolve o estado gravado, sem webhook (cancelamentos duplicados e concorrentes geram um único `nfse.invoice.cancelled`). Não há lock distribuído: o lock por tenant dentro da transação do banco já serializa os pedidos, e o que faltava era o perdedor saber que perdeu.
 
 A mensagem `invoice.emit` da outbox **não é removida**. Se ela for publicada depois, o workflow vê `cancelled` e não faz nada. Isso é mais simples que criar um status `discarded` na outbox (mudança em relação à Seção 1, por YAGNI).
 
@@ -122,7 +125,8 @@ Migration `1791780000000-AddInvoiceCancellation`: recria `ck_nfse_invoices_statu
 ## 10. Testes
 
 - Domínio: transições, regras de motivo, stage.
-- Lifecycle: estorno em `queued → cancelled`, nenhum efeito de crédito em `cancelling → cancelled`, mensagem da outbox na mesma transação, erro tipado de concorrência.
+- Lifecycle: estorno em `queued → cancelled`, nenhum efeito de crédito em `cancelling → cancelled`, mensagem da outbox na mesma transação, erro tipado de concorrência, retorno booleano (`true` aplicado, `false` já estava no destino).
+- `InvoiceService.cancel` sob corrida: pedido duplicado concorrente publica um único webhook e devolve o estado gravado; perda para o worker (`ConcurrentInvoiceTransitionError`) vira `409 ERROR_INVOICE_NOT_CANCELLABLE`; vencedor concorrente é devolvido sem webhook.
 - Workflow: a nota cancelada não é emitida (`saveDpsInfo` + captura do erro).
 - Provider: mapeamento de motivo, `ok`/`retry_pending`/replay/rejeição; Fake.
 - Aplicação: handler, processor (lock), serviço (os três desfechos), `InvoiceService.cancel` (local, fiscal, idempotente, 409), controller (200/202).
