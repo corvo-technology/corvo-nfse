@@ -15,6 +15,7 @@ tmp/
 .tmp/
 .temp/
 storage/
+!api/src/infra/storage/
 *.log
 *.sarif
 
