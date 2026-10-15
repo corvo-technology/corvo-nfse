@@ -96,12 +96,13 @@ export function toCalculationResponse({
   error,
   result,
 }: PartialFiscalCalculation): InvoiceCalculationResponse {
+  const blocking = publicBlocking(error, context);
   const pending = new Map<string, string>();
   for (const field of [
     ...stringFields(error?.details.missingFields),
     ...stringFields(error?.details.fields),
   ])
-    pending.set(field, error?.message ?? 'Required configuration');
+    pending.set(field, blocking?.message ?? 'Required configuration');
   const applicability = context.applicability;
   if (applicability) {
     for (const tax of [
@@ -159,7 +160,7 @@ export function toCalculationResponse({
         : null,
     warnings: result?.warnings ?? context.warnings,
     pendingFields: [...pending].map(([field, reason]) => ({ field, reason })),
-    blocking: publicBlocking(error, context),
+    blocking,
     trace: context.trace.map(({ step, status, durationMs, reason }) => ({
       step,
       status,

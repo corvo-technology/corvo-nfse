@@ -67,7 +67,7 @@ describe('toCalculationResponse', () => {
       error: fiscalError({
         code: 'FISCAL_VALIDATION_FAILED',
         category: 'VALIDATION',
-        message: 'Customer validation',
+        message: 'Customer 12345678000199 validation',
         details: {
           fields: ['customer'],
           customer: {
