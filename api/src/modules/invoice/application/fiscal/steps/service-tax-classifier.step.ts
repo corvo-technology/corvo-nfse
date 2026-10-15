@@ -49,7 +49,7 @@ export class ServiceTaxClassifierStep implements FiscalStep {
       invoice,
       requestedProfileId,
     );
-    const result = classifyService({
+    const result = await classifyService({
       invoice,
       profile: companyProfile,
       serviceProfiles,

@@ -172,12 +172,12 @@ const overrideClassification = (
   justification: CLASSIFICATION_JUSTIFICATION_OVERRIDE,
 });
 
-const validateAgainstCatalog = (
+const validateAgainstCatalog = async (
   classification: ServiceTaxClassification,
   catalog: IFiscalCatalog,
   date: string,
-): Result<ServiceTaxClassification, FiscalError> => {
-  const validation = catalog.validateClassification(
+): Promise<Result<ServiceTaxClassification, FiscalError>> => {
+  const validation = await catalog.validateClassification(
     {
       serviceCode: classification.serviceCode,
       nbsCode: classification.nbsCode,
@@ -208,6 +208,20 @@ const validateAgainstCatalog = (
     );
   }
   if (validation.status === 'unavailable') {
+    if (validation.transient) {
+      return err(
+        fiscalError({
+          code: 'TAX_CALCULATION_UNAVAILABLE',
+          message: `Fiscal catalog validation is temporarily unavailable: ${validation.reason}`,
+          category: 'INTEGRATION',
+          details: {
+            reason: 'catalog_validation_unavailable',
+            detail: validation.reason,
+          },
+          retryable: true,
+        }),
+      );
+    }
     return ok({
       ...classification,
       catalogValidated: false,
@@ -231,13 +245,13 @@ const validateAgainstCatalog = (
  * 4. Partial classification from the official catalog. Missing IBS/CBS fields
  *    are the applicability step's concern (FISCAL_CLASSIFICATION_REQUIRED).
  */
-export function classifyService(input: {
+export async function classifyService(input: {
   invoice: NormalizedInvoice;
   profile: CompanyFiscalProfile;
   serviceProfiles: CompanyServiceTaxProfile[];
   requestedProfileId: string | null;
   catalog: IFiscalCatalog;
-}): Result<ServiceTaxClassification, FiscalError> {
+}): Promise<Result<ServiceTaxClassification, FiscalError>> {
   const { invoice, profile, serviceProfiles, requestedProfileId, catalog } =
     input;
 

@@ -1,6 +1,6 @@
 import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
 import type { CompanyServiceTaxProfile } from '@/modules/company/domain/service-tax-profile';
-import type { ClassificationValidationResult } from './fiscal-catalog.port';
+import type { ClassificationValidation } from './fiscal-catalog.port';
 import type {
   NormalizedInvoice,
   ServiceFiscalInput,
@@ -21,7 +21,7 @@ class StubCatalog extends IFiscalCatalog {
   constructor(
     private readonly opts: {
       known: string[];
-      validation?: ClassificationValidationResult;
+      validation?: ClassificationValidation;
     },
   ) {
     super();
@@ -32,11 +32,12 @@ class StubCatalog extends IFiscalCatalog {
       found: this.opts.known.includes(code),
     };
   }
-  validateClassification(): ClassificationValidationResult {
+  async validateClassification(): Promise<ClassificationValidation> {
     return (
       this.opts.validation ?? {
         status: 'unavailable',
         reason: 'catalogs not loaded',
+        transient: false,
       }
     );
   }
@@ -44,7 +45,7 @@ class StubCatalog extends IFiscalCatalog {
 
 const fakeCatalog = (opts: {
   known: string[];
-  validation?: ClassificationValidationResult;
+  validation?: ClassificationValidation;
 }): IFiscalCatalog => new StubCatalog(opts);
 
 const KNOWN_CODES = ['060101', '010601'];
@@ -130,13 +131,13 @@ const serviceProfile = (
   ...overrides,
 });
 
-const classify = (opts: {
+const classify = async (opts: {
   inv?: NormalizedInvoice;
   profile?: CompanyFiscalProfile;
   serviceProfiles?: CompanyServiceTaxProfile[];
   requestedProfileId?: string | null;
   catalog?: IFiscalCatalog;
-}): Result<ServiceTaxClassification, FiscalError> => {
+}): Promise<Result<ServiceTaxClassification, FiscalError>> => {
   const inv = opts.inv ?? invoice();
   return classifyService({
     invoice: inv,
@@ -169,8 +170,8 @@ const errorOf = (
 };
 
 describe('classifyService', () => {
-  it('rejects a service code absent from the official catalog', () => {
-    const error = errorOf(classify({ inv: invoice({ code: '999999' }) }));
+  it('rejects a service code absent from the official catalog', async () => {
+    const error = errorOf(await classify({ inv: invoice({ code: '999999' }) }));
     expect(error).toMatchObject({
       code: 'FISCAL_CLASSIFICATION_INVALID',
       category: 'CLASSIFICATION',
@@ -178,9 +179,9 @@ describe('classifyService', () => {
     });
   });
 
-  it('explicit override wins and is flagged request_override', () => {
+  it('explicit override wins and is flagged request_override', async () => {
     const classification = valueOf(
-      classify({
+      await classify({
         inv: invoice({
           fiscal: {
             nbsCode: SYNTHETIC_NBS,
@@ -216,9 +217,9 @@ describe('classifyService', () => {
     });
   });
 
-  it('override merges only missing fields from the approved company profile', () => {
+  it('override merges only missing fields from the approved company profile', async () => {
     const merged = valueOf(
-      classify({
+      await classify({
         inv: invoice({ fiscal: { nbsCode: SYNTHETIC_NBS } }),
         serviceProfiles: [serviceProfile()],
         catalog: fakeCatalog({
@@ -246,7 +247,7 @@ describe('classifyService', () => {
     });
 
     const unapproved = valueOf(
-      classify({
+      await classify({
         inv: invoice({ fiscal: { nbsCode: SYNTHETIC_NBS } }),
         serviceProfiles: [serviceProfile({ reviewStatus: 'unreviewed' })],
       }),
@@ -262,9 +263,9 @@ describe('classifyService', () => {
     });
   });
 
-  it('company profile classification is used when no override is sent', () => {
+  it('company profile classification is used when no override is sent', async () => {
     const classification = valueOf(
-      classify({
+      await classify({
         serviceProfiles: [serviceProfile()],
         catalog: fakeCatalog({
           known: KNOWN_CODES,
@@ -293,9 +294,9 @@ describe('classifyService', () => {
     });
   });
 
-  it('requested serviceProfileId must belong to the company and be effective on the competence date', () => {
+  it('requested serviceProfileId must belong to the company and be effective on the competence date', async () => {
     const notFound = errorOf(
-      classify({ serviceProfiles: [], requestedProfileId: 'sp-1' }),
+      await classify({ serviceProfiles: [], requestedProfileId: 'sp-1' }),
     );
     expect(notFound).toMatchObject({
       code: 'FISCAL_CLASSIFICATION_INVALID',
@@ -304,7 +305,7 @@ describe('classifyService', () => {
     });
 
     const otherCompany = errorOf(
-      classify({
+      await classify({
         serviceProfiles: [serviceProfile({ companyId: 'comp-other' })],
         requestedProfileId: 'sp-1',
       }),
@@ -315,7 +316,7 @@ describe('classifyService', () => {
     });
 
     const expired = errorOf(
-      classify({
+      await classify({
         serviceProfiles: [serviceProfile({ effectiveUntil: '2026-06-01' })],
         requestedProfileId: 'sp-1',
       }),
@@ -326,9 +327,9 @@ describe('classifyService', () => {
     });
   });
 
-  it('two effective profiles for the same code are ambiguous (never picks the first)', () => {
+  it('two effective profiles for the same code are ambiguous (never picks the first)', async () => {
     const error = errorOf(
-      classify({
+      await classify({
         serviceProfiles: [serviceProfile(), serviceProfile({ id: 'sp-2' })],
       }),
     );
@@ -339,9 +340,9 @@ describe('classifyService', () => {
     });
   });
 
-  it('profile whose regimeApplicability excludes the regime is not used', () => {
+  it('profile whose regimeApplicability excludes the regime is not used', async () => {
     const excludedByCode = valueOf(
-      classify({
+      await classify({
         serviceProfiles: [
           serviceProfile({ regimeApplicability: ['LUCRO_REAL'] }),
         ],
@@ -357,7 +358,7 @@ describe('classifyService', () => {
     });
 
     const excludedById = errorOf(
-      classify({
+      await classify({
         serviceProfiles: [
           serviceProfile({ regimeApplicability: ['LUCRO_REAL'] }),
         ],
@@ -370,8 +371,8 @@ describe('classifyService', () => {
     });
   });
 
-  it('falls back to a partial official-catalog classification', () => {
-    const classification = valueOf(classify({ serviceProfiles: [] }));
+  it('falls back to a partial official-catalog classification', async () => {
+    const classification = valueOf(await classify({ serviceProfiles: [] }));
     expect(classification).toEqual({
       serviceCode: '060101',
       municipalServiceCode: null,
@@ -396,9 +397,9 @@ describe('classifyService', () => {
     });
   });
 
-  it('catalog-invalid override fails with the catalog issues', () => {
+  it('catalog-invalid override fails with the catalog issues', async () => {
     const invalid = errorOf(
-      classify({
+      await classify({
         inv: invoice({
           fiscal: {
             nbsCode: SYNTHETIC_NBS,
@@ -435,7 +436,7 @@ describe('classifyService', () => {
     });
 
     const ambiguous = errorOf(
-      classify({
+      await classify({
         inv: invoice({
           fiscal: { nbsCode: SYNTHETIC_NBS, cst: SYNTHETIC_CST },
         }),
@@ -443,7 +444,10 @@ describe('classifyService', () => {
           known: KNOWN_CODES,
           validation: {
             status: 'ambiguous',
-            candidates: [{ nbsCode: SYNTHETIC_NBS }, { nbsCode: '888888888' }],
+            candidates: [
+              { cst: SYNTHETIC_CST, classCode: SYNTHETIC_CLASS },
+              { cst: '901', classCode: '900002' },
+            ],
           },
         }),
       }),
@@ -451,18 +455,25 @@ describe('classifyService', () => {
     expect(ambiguous).toMatchObject({
       code: 'FISCAL_CLASSIFICATION_AMBIGUOUS',
       details: {
-        candidates: [{ nbsCode: SYNTHETIC_NBS }, { nbsCode: '888888888' }],
+        candidates: [
+          { cst: SYNTHETIC_CST, classCode: SYNTHETIC_CLASS },
+          { cst: '901', classCode: '900002' },
+        ],
       },
     });
 
     const unavailable = valueOf(
-      classify({
+      await classify({
         inv: invoice({
           fiscal: { nbsCode: SYNTHETIC_NBS, cst: SYNTHETIC_CST },
         }),
         catalog: fakeCatalog({
           known: KNOWN_CODES,
-          validation: { status: 'unavailable', reason: 'catalogs not loaded' },
+          validation: {
+            status: 'unavailable',
+            reason: 'catalogs not loaded',
+            transient: false,
+          },
         }),
       }),
     );
@@ -474,9 +485,33 @@ describe('classifyService', () => {
     });
   });
 
-  it('live + unreviewed service profile requires review', () => {
+  it('a transient catalog outage fails retryable without marking catalogValidated=false', async () => {
+    const outage = errorOf(
+      await classify({
+        inv: invoice({
+          fiscal: { nbsCode: SYNTHETIC_NBS, cst: SYNTHETIC_CST },
+        }),
+        catalog: fakeCatalog({
+          known: KNOWN_CODES,
+          validation: {
+            status: 'unavailable',
+            reason: 'calculator unreachable (network)',
+            transient: true,
+          },
+        }),
+      }),
+    );
+    expect(outage).toMatchObject({
+      code: 'TAX_CALCULATION_UNAVAILABLE',
+      category: 'INTEGRATION',
+      retryable: true,
+      details: { reason: 'catalog_validation_unavailable' },
+    });
+  });
+
+  it('live + unreviewed service profile requires review', async () => {
     const unreviewedInLive = errorOf(
-      classify({
+      await classify({
         inv: invoice({ environment: 'live' }),
         serviceProfiles: [serviceProfile({ reviewStatus: 'unreviewed' })],
       }),
@@ -488,7 +523,7 @@ describe('classifyService', () => {
     });
 
     const rejected = errorOf(
-      classify({
+      await classify({
         inv: invoice({ environment: 'test' }),
         serviceProfiles: [serviceProfile({ reviewStatus: 'rejected' })],
       }),
@@ -499,9 +534,9 @@ describe('classifyService', () => {
     });
   });
 
-  it('carries ISS settings and withholding policy from the profile', () => {
+  it('carries ISS settings and withholding policy from the profile', async () => {
     const classification = valueOf(
-      classify({
+      await classify({
         serviceProfiles: [
           serviceProfile({
             issTaxation: 'EXEMPT',
@@ -526,9 +561,9 @@ describe('classifyService', () => {
     });
   });
 
-  it('carries operationNature from the profile (GOODS)', () => {
+  it('carries operationNature from the profile (GOODS)', async () => {
     const classification = valueOf(
-      classify({
+      await classify({
         serviceProfiles: [serviceProfile({ operationNature: 'GOODS' })],
       }),
     );

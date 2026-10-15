@@ -1,6 +1,7 @@
 import {
   CatalogFile,
   CatalogLookup,
+  ClassificationValidation,
   IFiscalCatalog,
 } from './fiscal-catalog.port';
 
@@ -22,13 +23,14 @@ export class JsonFiscalCatalog extends IFiscalCatalog {
       found: /^\d{6}$/.test(code) && this.codes.has(code),
     };
   }
-  validateClassification(
+  async validateClassification(
     _input: Parameters<IFiscalCatalog['validateClassification']>[0],
     _date: string,
-  ): ReturnType<IFiscalCatalog['validateClassification']> {
+  ): Promise<ClassificationValidation> {
     return {
       status: 'unavailable',
       reason: 'NBS/CST/cClassTrib/cIndOp catalogs are not loaded yet (Spec 3)',
+      transient: false,
     };
   }
 }

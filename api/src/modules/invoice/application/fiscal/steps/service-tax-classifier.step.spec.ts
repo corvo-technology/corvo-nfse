@@ -1,6 +1,6 @@
 import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
 import type { CompanyServiceTaxProfile } from '@/modules/company/domain/service-tax-profile';
-import type { ClassificationValidationResult } from '@/modules/invoice/domain/fiscal/classification/fiscal-catalog.port';
+import type { ClassificationValidation } from '@/modules/invoice/domain/fiscal/classification/fiscal-catalog.port';
 import type { CatalogLookup } from '@/modules/invoice/domain/fiscal/classification/fiscal-catalog.port';
 import { IFiscalCatalog } from '@/modules/invoice/domain/fiscal/classification/fiscal-catalog.port';
 import type { FiscalContext } from '@/modules/invoice/domain/fiscal/fiscal-context';
@@ -13,9 +13,10 @@ import { IServiceProfileReader } from '@/modules/invoice/domain/fiscal/ports/ser
 import { ServiceTaxClassifierStep } from './service-tax-classifier.step';
 
 class StubCatalog extends IFiscalCatalog {
-  validation: ClassificationValidationResult = {
+  validation: ClassificationValidation = {
     status: 'unavailable',
     reason: 'catalogs not loaded',
+    transient: false,
   };
   lookupServiceCode(code: string): CatalogLookup {
     return {
@@ -23,7 +24,7 @@ class StubCatalog extends IFiscalCatalog {
       found: ['060101', '010601'].includes(code),
     };
   }
-  validateClassification(): ClassificationValidationResult {
+  async validateClassification(): Promise<ClassificationValidation> {
     return this.validation;
   }
 }
@@ -169,6 +170,28 @@ describe('ServiceTaxClassifierStep', () => {
       code: 'FISCAL_INTERNAL_ERROR',
       category: 'INTERNAL',
       step: 'ServiceTaxClassifier',
+    });
+  });
+
+  it('propagates a transient catalog outage as a retryable TAX_CALCULATION_UNAVAILABLE', async () => {
+    const { reader, findEffectiveByCode } = fakeReader();
+    findEffectiveByCode.mockResolvedValue([serviceProfile()]);
+    const catalog = new StubCatalog();
+    catalog.validation = {
+      status: 'unavailable',
+      reason: 'calculator unreachable (network)',
+      transient: true,
+    };
+    const step = new ServiceTaxClassifierStep(reader, catalog);
+
+    const error = errorOf(
+      await step.execute(contextFor(invoice(), companyProfile())),
+    );
+    expect(error).toMatchObject({
+      code: 'TAX_CALCULATION_UNAVAILABLE',
+      category: 'INTEGRATION',
+      step: 'ServiceTaxClassifier',
+      retryable: true,
     });
   });
 

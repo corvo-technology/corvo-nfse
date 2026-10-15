@@ -142,10 +142,10 @@ class ValidatingCatalog extends IFiscalCatalog {
     return { version: 'test-catalog-1', found: /^\d{6}$/.test(code) };
   }
 
-  validateClassification(): {
+  async validateClassification(): Promise<{
     status: 'validated';
     versions: Record<string, string>;
-  } {
+  }> {
     return { status: 'validated', versions: { ctribnac: 'test-catalog-1' } };
   }
 }

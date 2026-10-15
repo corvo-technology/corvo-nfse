@@ -1,0 +1,60 @@
+{
+  "capturedAt": "2026-10-15",
+  "calculator": {
+    "app": "1.6.0",
+    "db": "V0059",
+    "dbDate": "2026-09-30",
+    "source": "local offline instance (docker eclipse-temurin:21-jre + api-regime-geral.jar)"
+  },
+  "description": "Why /indicador-operacao/validate is called without cTribNac: the calculator stores the NBS <-> cTribNac link at 4-digit granularity (ISS item + subitem) in db V0059, so the DPS 6-digit cTribNac (XSD TSCodTribNac, [0-9]{6}) is always rejected — valido=false even for the correct service code — while the documented 4-digit form (openapi pattern ^\\d{4}$|^\\d{6}$) answers valido=true. Sending serviceCode would false-reject every valid classification, and a truncated code would misattribute the single valido flag to operationIndicator. cTribNac existence keeps being validated by the local cTribNac JSON catalog (lookupServiceCode).",
+  "steps": [
+    {
+      "name": "validate-ctribnac-6-digitos",
+      "method": "POST",
+      "path": "/calculadora/nfse/indicador-operacao/validate",
+      "request": {
+        "cClassTrib": "000001",
+        "cIndOp": "100301",
+        "dataOcorrenciaFatoGerador": "2026-12-10",
+        "nbs": "115011000",
+        "cTribNac": "010601"
+      },
+      "status": 200,
+      "response": {
+        "cTribNac": "010601",
+        "cIndOp": "100301",
+        "cClassTrib": "000001",
+        "nbs": "115011000",
+        "dataOcorrenciaFatoGerador": "2026-12-10",
+        "valido": false
+        
+      }
+    },
+    {
+      "name": "validate-ctribnac-4-digitos",
+      "method": "POST",
+      "path": "/calculadora/nfse/indicador-operacao/validate",
+      "request": {
+        "cClassTrib": "000001",
+        "cIndOp": "100301",
+        "dataOcorrenciaFatoGerador": "2026-12-10",
+        "nbs": "115011000",
+        "cTribNac": "0106"
+      },
+      "status": 200,
+      "response": {
+        "cTribNac": "0106",
+        "cIndOp": "100301",
+        "cClassTrib": "000001",
+        "nbs": "115011000",
+        "dataOcorrenciaFatoGerador": "2026-12-10",
+        "valido": true
+      }
+    }
+  ],
+  "expected": {
+    "cTribNac": "not sent by RtcFiscalCatalog",
+    "valido6Digits": false,
+    "valido4Digits": true
+  }
+}

@@ -24,8 +24,8 @@ describe('JsonFiscalCatalog', () => {
     expect(catalog.lookupServiceCode('999999').found).toBe(false));
   it('rejects malformed codes', () =>
     expect(catalog.lookupServiceCode('0601').found).toBe(false));
-  it('does not validate NBS/CST/cClassTrib while those catalogs are not loaded', () => {
-    expect(
+  it('does not validate NBS/CST/cClassTrib while those catalogs are not loaded', async () => {
+    await expect(
       catalog.validateClassification(
         {
           serviceCode: '060101',
@@ -36,9 +36,10 @@ describe('JsonFiscalCatalog', () => {
         },
         '2026-10-13',
       ),
-    ).toEqual({
+    ).resolves.toEqual({
       status: 'unavailable',
       reason: expect.stringContaining('NBS/CST/cClassTrib'),
+      transient: false,
     });
   });
   it('refuses a malformed file', () => {

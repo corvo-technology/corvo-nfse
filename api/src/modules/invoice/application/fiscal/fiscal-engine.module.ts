@@ -8,10 +8,14 @@ import { TaxTransitionPolicy } from '@/modules/invoice/domain/fiscal/policies/ta
 import { IFiscalProfileReader } from '@/modules/invoice/domain/fiscal/ports/fiscal-profile.reader';
 import { IServiceProfileReader } from '@/modules/invoice/domain/fiscal/ports/service-profile.reader';
 import { RtcCalculatorPort } from '@/modules/invoice/domain/fiscal/rtc/rtc-calculator.port';
-import { ctribnacCatalogProvider } from '@/modules/invoice/infra/fiscal/ctribnac-catalog.provider';
+import { JsonFiscalCatalog } from '@/modules/invoice/domain/fiscal/classification/ctribnac-catalog';
+import { loadCtribnacCatalogFile } from '@/modules/invoice/infra/fiscal/ctribnac-catalog.provider';
+import { CompositeFiscalCatalog } from '@/modules/invoice/infra/fiscal/composite-fiscal-catalog';
 import { DefaultRtcMapper } from '@/modules/invoice/infra/fiscal/rtc/default-rtc-mapper';
 import { HttpRtcCalculatorAdapter } from '@/modules/invoice/infra/fiscal/rtc/http-rtc-calculator.adapter';
 import type { RtcMapper } from '@/modules/invoice/infra/fiscal/rtc/rtc-mapper';
+import { RtcFiscalCatalog } from '@/modules/invoice/infra/fiscal/rtc/rtc-fiscal-catalog';
+import { RtcHttpClient } from '@/modules/invoice/infra/fiscal/rtc/rtc-http-client';
 import { UnconfiguredRtcCalculator } from '@/modules/invoice/infra/fiscal/unconfigured-rtc-calculator';
 import { FiscalEngineService } from './fiscal-engine.service';
 import { fiscalStepsProvider } from './fiscal-steps.provider';
@@ -35,13 +39,38 @@ export const FISCAL_IBSCBS_UNAVAILABLE_MODE = 'FISCAL_IBSCBS_UNAVAILABLE_MODE';
 export const RTC_MAPPER = 'RTC_MAPPER';
 
 /**
+ * Local cTribNac lookup + RTC-backed classification validation. Without a
+ * configured calculator the validation is a non-transient `unavailable`, so
+ * classification keeps flowing with `catalogValidated=false` + warning.
+ */
+const compositeFiscalCatalogProvider: Provider = {
+  provide: IFiscalCatalog,
+  useFactory: (config: ConfigService): IFiscalCatalog => {
+    const rtc = config.get<RtcConfig>('rtc');
+    const rtcCatalog = rtc?.url
+      ? new RtcFiscalCatalog(
+          new RtcHttpClient(rtc.url, {
+            timeoutMs: rtc.timeoutMs,
+            maxConcurrency: rtc.maxConcurrency,
+          }),
+        )
+      : null;
+    return new CompositeFiscalCatalog(
+      new JsonFiscalCatalog(loadCtribnacCatalogFile()),
+      rtcCatalog,
+    );
+  },
+  inject: [ConfigService],
+};
+
+/**
  * Providers that make up the engine itself and depend only on ports (no
  * TypeORM/`CompanyModule`). Exported so the wiring test can compose the engine
  * in isolation without dragging the whole database graph into a unit test; the
  * `CompanyModule`-backed reader adapters are added on top in the module below.
  */
 export const FISCAL_ENGINE_INTERNAL_PROVIDERS: Provider[] = [
-  ctribnacCatalogProvider,
+  compositeFiscalCatalogProvider,
   {
     provide: TaxTransitionPolicy,
     useFactory: () => new TaxTransitionPolicy(TAX_RULES),
