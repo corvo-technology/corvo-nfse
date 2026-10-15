@@ -35,7 +35,7 @@ function build(invoice: Invoice, transition: jest.Mock) {
     invoices as any,
     {
       reserveNext: jest.fn().mockResolvedValue({ series: '1', number: 7 }),
-    } as any,
+    },
     {
       findById: jest.fn().mockResolvedValue({
         id: 'company-1',
