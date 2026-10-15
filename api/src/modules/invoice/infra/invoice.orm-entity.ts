@@ -48,7 +48,7 @@ import {
 @Index('idx_nfse_invoices_tenant_created_at', ['tenantId', 'createdAt'])
 @Check(
   'ck_nfse_invoices_status',
-  `"status" IN ('queued', 'processing', 'authorized', 'rejected', 'retry_pending', 'reconciliation_required', 'manual_review', 'failed')`,
+  `"status" IN ('queued', 'processing', 'authorized', 'rejected', 'retry_pending', 'reconciliation_required', 'manual_review', 'failed', 'cancelling', 'cancelled')`,
 )
 @Unique('uq_nfse_invoices_id_tenant', ['id', 'tenantId'])
 @ManagedIndex('idx_invoices_cursor', { synchronize: false })
@@ -189,6 +189,20 @@ export class InvoiceOrmEntity {
     nullable: true,
   })
   lastEmailSentAt?: Date;
+
+  @Column({
+    name: 'cancellation_reason',
+    type: 'varchar',
+    length: 30,
+    nullable: true,
+  })
+  cancellationReason?: string | null;
+
+  @Column({ name: 'cancellation_description', type: 'text', nullable: true })
+  cancellationDescription?: string | null;
+
+  @Column({ name: 'cancelled_at', type: 'timestamptz', nullable: true })
+  cancelledAt?: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

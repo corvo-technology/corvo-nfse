@@ -1,0 +1,63 @@
+import { VALID_CNPJ } from '@/shared/fiscal/fixtures';
+import { Invoice } from '../domain/invoice';
+import { cancellationReason } from '../domain/cancellation-reason';
+import { InvoiceMapper } from './invoice.mapper';
+
+describe('InvoiceMapper cancellation fields', () => {
+  it('round-trips the cancellation reason, description and timestamp', () => {
+    const invoice = Invoice.create(
+      {
+        companyId: 'company-1',
+        customer: { taxId: VALID_CNPJ, name: 'Cliente' },
+        service: {
+          description: 'Serviço',
+          code: '010101',
+          municipalityCode: '3550308',
+        },
+        amount: 100,
+        competenceDate: new Date('2026-10-14'),
+      },
+      'tenant-1',
+    );
+    invoice.requestCancellation(
+      cancellationReason('other', 'Cliente desistiu'),
+    );
+    const mapper = new InvoiceMapper();
+    const orm = mapper.toPersistence(invoice);
+    expect(orm.status).toBe('cancelled');
+    expect(orm.cancellationReason).toBe('other');
+    expect(orm.cancellationDescription).toBe('Cliente desistiu');
+    expect(orm.cancelledAt).toEqual(invoice.cancelledAt);
+
+    const back = mapper.toDomain(orm);
+    expect(back.cancellationReason).toEqual({
+      code: 'other',
+      description: 'Cliente desistiu',
+    });
+    expect(back.cancelledAt).toEqual(invoice.cancelledAt);
+  });
+
+  it('maps absent cancellation columns to null', () => {
+    const orm = new InvoiceMapper().toPersistence(
+      Invoice.create(
+        {
+          companyId: 'company-1',
+          customer: { taxId: VALID_CNPJ, name: 'Cliente' },
+          service: {
+            description: 'Serviço',
+            code: '010101',
+            municipalityCode: '3550308',
+          },
+          amount: 100,
+          competenceDate: new Date('2026-10-14'),
+        },
+        'tenant-1',
+      ),
+    );
+    orm.cancellationReason = undefined;
+    orm.cancelledAt = undefined;
+    const back = new InvoiceMapper().toDomain(orm);
+    expect(back.cancellationReason).toBeNull();
+    expect(back.cancelledAt).toBeNull();
+  });
+});

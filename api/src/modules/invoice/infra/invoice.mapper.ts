@@ -1,5 +1,6 @@
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { Invoice, InvoiceProps, LastEmailStatus } from '../domain/invoice';
+import type { CancellationReasonCode } from '../domain/cancellation-reason';
 import { InvoiceStatus } from '../domain/invoice-status';
 import { InvoiceOrmEntity } from './invoice.orm-entity';
 
@@ -40,6 +41,10 @@ export class InvoiceMapper {
       documentsReadyAt: orm.documentsReadyAt ?? null,
       lastEmailStatus: (orm.lastEmailStatus as LastEmailStatus | null) ?? null,
       lastEmailSentAt: orm.lastEmailSentAt ?? null,
+      cancellationReason:
+        (orm.cancellationReason as CancellationReasonCode | null) ?? null,
+      cancellationDescription: orm.cancellationDescription ?? null,
+      cancelledAt: orm.cancelledAt ?? null,
       createdAt: orm.createdAt,
       updatedAt: orm.updatedAt,
     };
@@ -89,6 +94,9 @@ export class InvoiceMapper {
     orm.documentsReadyAt = snapshot.documentsReadyAt ?? undefined;
     orm.lastEmailStatus = snapshot.lastEmailStatus ?? undefined;
     orm.lastEmailSentAt = snapshot.lastEmailSentAt ?? undefined;
+    orm.cancellationReason = snapshot.cancellationReason ?? null;
+    orm.cancellationDescription = snapshot.cancellationDescription ?? null;
+    orm.cancelledAt = snapshot.cancelledAt ?? null;
     orm.createdAt = snapshot.createdAt;
     orm.updatedAt = snapshot.updatedAt;
     return orm;

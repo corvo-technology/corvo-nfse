@@ -194,6 +194,26 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
     });
   }
 
+  async saveDpsInfo(invoice: Invoice): Promise<void> {
+    const snapshot = invoice.toSnapshot();
+    return runWithTenant(snapshot.tenantId, async () => {
+      requireTenantId(snapshot.tenantId);
+      await this.repo
+        .createQueryBuilder()
+        .update()
+        .set({
+          dpsId: snapshot.dpsId ?? undefined,
+          dpsSeries: snapshot.dpsSeries ?? undefined,
+          dpsNumber: snapshot.dpsNumber ?? undefined,
+        })
+        .where('id = :id AND tenant_id = :tenantId', {
+          id: snapshot.id,
+          tenantId: snapshot.tenantId,
+        })
+        .execute();
+    });
+  }
+
   async existsIdempotencyKey(
     key: string,
     tenantId: string,

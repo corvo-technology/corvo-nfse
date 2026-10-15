@@ -41,6 +41,8 @@ export interface IInvoiceRepository {
     cursor?: string,
   ): Promise<Invoice[]>;
   save(invoice: Invoice, tenantId: string): Promise<Invoice>;
+  /** Persists only the DPS identity; never overwrites status or other fields. */
+  saveDpsInfo(invoice: Invoice): Promise<void>;
   existsIdempotencyKey(
     key: string,
     tenantId: string,

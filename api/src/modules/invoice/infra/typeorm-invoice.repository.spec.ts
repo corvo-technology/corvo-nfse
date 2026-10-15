@@ -159,4 +159,37 @@ describe('TypeOrmInvoiceRepository', () => {
       expect(result).toEqual([]);
     });
   });
+
+  describe('saveDpsInfo', () => {
+    it('updates only the DPS columns so a concurrent status change survives', async () => {
+      const qb = {
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ affected: 1 }),
+      };
+      mockRepo.createQueryBuilder.mockReturnValue(qb as any);
+      const invoice = {
+        toSnapshot: () => ({
+          id: 'inv-1',
+          tenantId,
+          dpsId: 'dps-uuid',
+          dpsSeries: '1',
+          dpsNumber: 7,
+        }),
+      } as any;
+
+      await repository.saveDpsInfo(invoice);
+
+      expect(qb.set).toHaveBeenCalledWith({
+        dpsId: 'dps-uuid',
+        dpsSeries: '1',
+        dpsNumber: 7,
+      });
+      expect(qb.where).toHaveBeenCalledWith(
+        'id = :id AND tenant_id = :tenantId',
+        { id: 'inv-1', tenantId },
+      );
+    });
+  });
 });

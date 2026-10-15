@@ -14,7 +14,7 @@ import {
   IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import type { InvoiceStatus } from '../domain/invoice-status';
+import { INVOICE_STATUSES, type InvoiceStatus } from '../domain/invoice-status';
 
 /**
  * Invoice DTOs — HTTP layer.
@@ -117,16 +117,7 @@ export class ListInvoicesQuery extends CursorQuery {
   @IsOptional() @IsUUID() companyId?: string;
 
   @IsOptional()
-  @IsIn([
-    'queued',
-    'processing',
-    'authorized',
-    'rejected',
-    'retry_pending',
-    'reconciliation_required',
-    'manual_review',
-    'failed',
-  ] as InvoiceStatus[])
+  @IsIn(INVOICE_STATUSES)
   status?: InvoiceStatus;
 
   @IsOptional() @IsDateString() from?: string;
