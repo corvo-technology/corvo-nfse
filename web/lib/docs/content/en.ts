@@ -86,6 +86,7 @@ export const en: DocsTree = {
           ["GET", "`/v1/invoices/:id/events`", "Fetch event history", "200"],
           ["POST", "`/v1/invoices/:id/download-url`", "Generate a signed URL", "200"],
           ["POST", "`/v1/invoices/:id/email`", "Request email delivery", "202"],
+          ["POST", "`/v1/invoices/:id/cancel`", "Cancel an invoice", "200/202"],
           ["GET", "`/v1/webhooks`", "List webhook configurations", "200"],
           ["POST", "`/v1/webhooks`", "Register a webhook", "201"],
           ["DELETE", "`/v1/webhooks/:id`", "Delete a webhook", "200"],
@@ -812,7 +813,7 @@ console.log(body.data.props.id); // { data: { props: Invoice } }`,
         },
         {
           kind: "text",
-          body: "Fiscal statuses: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`. Do not treat authorization as immediate availability of every document.",
+          body: "Fiscal statuses: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling`, `cancelled`. Do not treat authorization as immediate availability of every document.",
         },
         {
           kind: "endpoint",
@@ -1068,6 +1069,46 @@ console.log(body.data.status); // { data: { emailId, status } }`,
             { kind: "callout", tone: "warn", body: "`202` does not confirm delivery. On a repeat request the status may reflect the last state of the email. Errors: `404` invoice missing; `409` documents not ready; `422` customer without email or invalid idempotency key." },
           ],
         },
+        {
+          kind: "endpoint",
+          method: "POST",
+          path: "/v1/invoices/:id/cancel",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "200 OK / 202 Accepted",
+          summary: "Cancels an invoice. A `queued` invoice (scheduled or not yet processed) is cancelled immediately; an `authorized` NFS-e moves to `cancelling` while event 101101 is sent to the Sefin.",
+          examples: {
+            curl: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/cancel" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H 'Content-Type: application/json' \\
+  -d '{"reason":"issue_error","description":"Service amount was informed incorrectly"}'`,
+            node: `const res = await fetch(\`\${BASE_URL}/invoices/\${process.env.INVOICE_ID}/cancel\`, {
+  method: "POST",
+  headers: { "X-API-Key": process.env.CORVO_API_KEY, "Content-Type": "application/json" },
+  body: JSON.stringify({ reason: "issue_error", description: "Service amount was informed incorrectly" }),
+});
+const body = await res.json();
+console.log(res.status, body.data.props.status); // 202 "cancelling"`,
+          },
+          response: {
+            label: "202 Accepted",
+            json: `{
+  "data": {
+    "props": {
+      "id": "6f1c0e2a-4b7d-4c1e-9a55-2b8f7c3d9e10",
+      "status": "cancelling",
+      "stage": "completed",
+      "cancellationReason": "issue_error",
+      "cancellationDescription": "Service amount was informed incorrectly",
+      "cancelledAt": null
+    }
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "`reason`: `issue_error`, `service_not_provided` or `other`. `description` is required (15–255 characters) for an authorized NFS-e and optional for a queued invoice. Repeating the request for a `cancelling` or `cancelled` invoice returns its current state." },
+            { kind: "callout", tone: "warn", body: "`202` does not confirm the cancellation: wait for `nfse.invoice.cancelled` or `nfse.invoice.cancellation_rejected` (the invoice returns to `authorized` with `lastErrorCode`). Cancelling an issued NFS-e does not refund the credit; cancelling a queued invoice releases the live reservation. Errors: `404` invoice missing; `409` `ERROR_INVOICE_NOT_CANCELLABLE` or `ERROR_CONCURRENT_INVOICE_TRANSITION`; `422` `ERROR_INVALID_CANCELLATION_REASON`." },
+          ],
+        },
       ],
     },
     webhooks: {
@@ -1196,6 +1237,8 @@ console.log(body.data.secret); // store the secret now — it is not returned ag
             "`nfse.invoice.documents_ready`",
             "`nfse.invoice.email_sent`",
             "`nfse.invoice.email_failed`",
+            "`nfse.invoice.cancelled`",
+            "`nfse.invoice.cancellation_rejected`",
           ],
         },
         {
@@ -1758,7 +1801,7 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
         {
           kind: "callout",
           tone: "warn",
-          body: "Fiscal statuses: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`. Do not treat authorization as immediate availability of every document — wait for `documentsStatus: \"ready\"` before generating URLs and requesting emails.",
+          body: "Fiscal statuses: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling`, `cancelled`. Do not treat authorization as immediate availability of every document — wait for `documentsStatus: \"ready\"` before generating URLs and requesting emails.",
         },
         { kind: "heading", level: 2, body: "Idempotency-Key" },
         {
@@ -1914,6 +1957,8 @@ async function issueWithRetry(buildBody, attempts = 3) {
             ["`nfse.invoice.documents_ready`", "Documents are ready; adds `accessKey`/`nfseNumber`/`documentsReadyAt`."],
             ["`nfse.invoice.email_sent`", "The notification email was sent; adds `sentAt`."],
             ["`nfse.invoice.email_failed`", "The notification email failed."],
+            ["`nfse.invoice.cancelled`", "The invoice was cancelled; adds `reason`."],
+            ["`nfse.invoice.cancellation_rejected`", "The Sefin refused the cancellation; the invoice is `authorized` again; adds `errorCode` and `errorMessage`."],
             ["`webhook.test`", "Sent by the test route; carries `{ \"message\": \"This is a test webhook event\" }`."],
           ],
         },

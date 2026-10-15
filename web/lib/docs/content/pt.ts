@@ -86,6 +86,7 @@ export const pt: DocsTree = {
           ["GET", "`/v1/invoices/:id/events`", "Consultar histórico", "200"],
           ["POST", "`/v1/invoices/:id/download-url`", "Gerar URL assinada", "200"],
           ["POST", "`/v1/invoices/:id/email`", "Solicitar envio de email", "202"],
+          ["POST", "`/v1/invoices/:id/cancel`", "Cancelar nota", "200/202"],
           ["GET", "`/v1/webhooks`", "Listar configurações", "200"],
           ["POST", "`/v1/webhooks`", "Cadastrar webhook", "201"],
           ["DELETE", "`/v1/webhooks/:id`", "Excluir webhook", "200"],
@@ -795,7 +796,7 @@ console.log(body.data.props.id); // { data: { props: Invoice } }`,
         },
         {
           kind: "text",
-          body: "Status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`. Não interprete autorização como disponibilidade imediata de todos os documentos.",
+          body: "Status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling`, `cancelled`. Não interprete autorização como disponibilidade imediata de todos os documentos.",
         },
         {
           kind: "endpoint",
@@ -808,7 +809,7 @@ console.log(body.data.props.id); // { data: { props: Invoice } }`,
             title: "Query",
             rows: [
               { name: "companyId", type: "string UUID", required: false, description: "UUID da empresa." },
-              { name: "status", type: "string", required: false, description: "Um dos status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`." },
+              { name: "status", type: "string", required: false, description: "Um dos status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling`, `cancelled`." },
               { name: "from, to", type: "string ISO", required: false, description: "Datas ISO; filtro inclusivo pela competência, não por `createdAt`." },
               { name: "externalId", type: "string", required: false, description: "Correspondência exata." },
               { name: "limit", type: "integer", required: false, description: "Inteiro entre 1 e 1000; padrão `50`." },
@@ -1045,6 +1046,46 @@ console.log(body.data); // { data: { emailId, status } }`,
             { kind: "callout", tone: "warn", body: "A nota precisa estar autorizada e com documentos prontos. Erros: `404` nota ausente; `409` documentos não prontos; `422` cliente sem email ou chave de idempotência inválida." },
           ],
         },
+        {
+          kind: "endpoint",
+          method: "POST",
+          path: "/v1/invoices/:id/cancel",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "200 OK / 202 Accepted",
+          summary: "Cancela uma nota. Uma nota `queued` (agendada ou ainda não processada) é cancelada na hora; uma NFS-e `authorized` passa a `cancelling` enquanto o evento 101101 é enviado à Sefin.",
+          examples: {
+            curl: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/cancel" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H 'Content-Type: application/json' \\
+  -d '{"reason":"issue_error","description":"Valor do serviço informado incorretamente"}'`,
+            node: `const res = await fetch(\`\${BASE_URL}/invoices/\${process.env.INVOICE_ID}/cancel\`, {
+  method: "POST",
+  headers: { "X-API-Key": process.env.CORVO_API_KEY, "Content-Type": "application/json" },
+  body: JSON.stringify({ reason: "issue_error", description: "Valor do serviço informado incorretamente" }),
+});
+const body = await res.json();
+console.log(res.status, body.data.props.status); // 202 "cancelling"`,
+          },
+          response: {
+            label: "202 Accepted",
+            json: `{
+  "data": {
+    "props": {
+      "id": "6f1c0e2a-4b7d-4c1e-9a55-2b8f7c3d9e10",
+      "status": "cancelling",
+      "stage": "completed",
+      "cancellationReason": "issue_error",
+      "cancellationDescription": "Valor do serviço informado incorretamente",
+      "cancelledAt": null
+    }
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "`reason`: `issue_error`, `service_not_provided` ou `other`. `description` é obrigatória (15–255 caracteres) para NFS-e autorizada e opcional para nota `queued`. Repetir o pedido para uma nota `cancelling` ou `cancelled` devolve o estado atual." },
+            { kind: "callout", tone: "warn", body: "`202` não confirma o cancelamento: aguarde `nfse.invoice.cancelled` ou `nfse.invoice.cancellation_rejected` (a nota volta a `authorized` com `lastErrorCode`). Cancelar uma NFS-e emitida não devolve o crédito; cancelar uma nota `queued` libera a reserva em live. Erros: `404` nota inexistente; `409` `ERROR_INVOICE_NOT_CANCELLABLE` ou `ERROR_CONCURRENT_INVOICE_TRANSITION`; `422` `ERROR_INVALID_CANCELLATION_REASON`." },
+          ],
+        },
       ],
     },
     webhooks: {
@@ -1174,6 +1215,8 @@ console.log(body.data.secret); // guarde o secret agora`,
             "`nfse.invoice.documents_ready`",
             "`nfse.invoice.email_sent`",
             "`nfse.invoice.email_failed`",
+            "`nfse.invoice.cancelled`",
+            "`nfse.invoice.cancellation_rejected`",
           ],
         },
         {
@@ -1738,7 +1781,7 @@ console.log(body.data); // { data: { scheduled_plan, effective_at } }`,
         {
           kind: "callout",
           tone: "warn",
-          body: "Status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`. Não interprete autorização como disponibilidade imediata de todos os documentos — aguarde `documentsStatus: \"ready\"` antes de gerar URLs e solicitar emails.",
+          body: "Status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling`, `cancelled`. Não interprete autorização como disponibilidade imediata de todos os documentos — aguarde `documentsStatus: \"ready\"` antes de gerar URLs e solicitar emails.",
         },
         { kind: "heading", level: 2, body: "Idempotency-Key" },
         {
@@ -1899,6 +1942,8 @@ const invoiceId = await emitirComRetry(pedido, \`pedido_\${pedido.externalId}_em
             ["`nfse.invoice.documents_ready`", "`accessKey`, `nfseNumber`, `documentsReadyAt`."],
             ["`nfse.invoice.email_sent`", "`sentAt`."],
             ["`nfse.invoice.email_failed`", "Identificação e estado da nota."],
+            ["`nfse.invoice.cancelled`", "A nota foi cancelada; inclui `reason`."],
+            ["`nfse.invoice.cancellation_rejected`", "A Sefin recusou o cancelamento; a nota volta a `authorized`; inclui `errorCode` e `errorMessage`."],
             ["`webhook.test`", "`{ \"message\": \"This is a test webhook event\" }`."],
           ],
         },
