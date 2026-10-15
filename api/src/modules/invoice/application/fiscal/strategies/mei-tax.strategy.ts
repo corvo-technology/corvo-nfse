@@ -4,7 +4,11 @@ import type { Obligation } from '@/modules/invoice/domain/fiscal/applicability/t
 import type { FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
 import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
 import { commonObligations } from './common-obligations';
-import type { StrategyInput, StrategyPlanResult, TaxStrategy } from './tax-strategy';
+import type {
+  StrategyInput,
+  StrategyPlanResult,
+  TaxStrategy,
+} from './tax-strategy';
 
 /**
  * LC 214/2025 general IBS/CBS start. MEI-specific rules for 2027 are not
@@ -26,7 +30,10 @@ export class MeiTaxStrategy implements TaxStrategy {
     if (!common.ok) return err(common.error);
 
     const date = input.invoice.competenceDate;
-    const iss: Obligation = { status: 'NOT_APPLICABLE', reason: 'ISS recolhido no DAS-MEI' };
+    const iss: Obligation = {
+      status: 'NOT_APPLICABLE',
+      reason: 'ISS recolhido no DAS-MEI',
+    };
     const ibscbs: Obligation =
       date < MEI_IBS_CBS_FROM
         ? {

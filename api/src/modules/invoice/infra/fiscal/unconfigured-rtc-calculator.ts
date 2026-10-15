@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { fiscalError, type FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
+import {
+  fiscalError,
+  type FiscalError,
+} from '@/modules/invoice/domain/fiscal/fiscal-error';
 import { err, type Result } from '@/modules/invoice/domain/fiscal/result';
 import {
   RtcCalculatorPort,

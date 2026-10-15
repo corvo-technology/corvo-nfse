@@ -1,4 +1,3 @@
-
 import type { CompanyServiceTaxProfile } from '@/modules/company/domain/service-tax-profile';
 
 export abstract class IServiceProfileReader {

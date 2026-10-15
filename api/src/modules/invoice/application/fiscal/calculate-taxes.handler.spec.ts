@@ -171,7 +171,7 @@ describe('CalculateTaxesHandler', () => {
     const invoice = newInvoice();
     const result = calculationResult();
     fakes.invoices.findByIdAndTenantId.mockResolvedValue(invoice);
-    fakes.companies.findById.mockResolvedValue({ id: companyId } as Company);
+    fakes.companies.findById.mockResolvedValue({ id: companyId });
     fakes.profiles.findEffective.mockResolvedValue({
       specialTaxRegime: 'ME_EPP',
     });
@@ -292,7 +292,9 @@ describe('CalculateTaxesHandler', () => {
       ),
     );
 
-    await expect(fakes.handler.handle(messageFor(invoice))).resolves.toBeUndefined();
+    await expect(
+      fakes.handler.handle(messageFor(invoice)),
+    ).resolves.toBeUndefined();
 
     expect(invoice.status).toBe('rejected');
     const snapshotProps = invoice.toSnapshot();

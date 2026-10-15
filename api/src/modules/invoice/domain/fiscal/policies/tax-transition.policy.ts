@@ -3,14 +3,19 @@ import { err, ok, type Result } from '../result';
 import { RULES_VERSION, TAX_RULES } from './rules';
 import type { TaxRule } from './tax-rule';
 
-type TaxRuleFor<K extends TaxRule['ruleKey']> = Extract<TaxRule, { ruleKey: K }>;
+type TaxRuleFor<K extends TaxRule['ruleKey']> = Extract<
+  TaxRule,
+  { ruleKey: K }
+>;
 type IbsCbsInformationRule = TaxRuleFor<'nfse.ibscbs-information'>;
 
 const OPEN_ENDED = '9999-12-31';
 
 const rangeEnd = (rule: TaxRule): string => rule.validUntil ?? OPEN_ENDED;
-const rangeKey = (rule: TaxRule): string => `${rule.validFrom}..${rangeEnd(rule)}`;
-const covers = (rule: TaxRule, date: string): boolean => rule.validFrom <= date && date <= rangeEnd(rule);
+const rangeKey = (rule: TaxRule): string =>
+  `${rule.validFrom}..${rangeEnd(rule)}`;
+const covers = (rule: TaxRule, date: string): boolean =>
+  rule.validFrom <= date && date <= rangeEnd(rule);
 const intersects = (a: TaxRule, b: TaxRule): boolean => {
   const start = a.validFrom > b.validFrom ? a.validFrom : b.validFrom;
   const end = rangeEnd(a) < rangeEnd(b) ? rangeEnd(a) : rangeEnd(b);
@@ -58,7 +63,9 @@ export class TaxTransitionPolicy {
     ruleKey: K,
     date: string,
   ): Result<TaxRuleFor<K>, FiscalError> {
-    const configured = this.rules.filter((rule): rule is TaxRuleFor<K> => rule.ruleKey === ruleKey);
+    const configured = this.rules.filter(
+      (rule): rule is TaxRuleFor<K> => rule.ruleKey === ruleKey,
+    );
     if (configured.length === 0) return err(this.noRuleError(ruleKey, date));
 
     const distinctRanges = new Map<string, TaxRuleFor<K>>();
@@ -78,7 +85,9 @@ export class TaxTransitionPolicy {
     // range is a failure.
     const upcoming = configured
       .filter((rule) => rule.validFrom > date)
-      .sort((a, b) => (a.validFrom < b.validFrom ? -1 : a.validFrom > b.validFrom ? 1 : 0));
+      .sort((a, b) =>
+        a.validFrom < b.validFrom ? -1 : a.validFrom > b.validFrom ? 1 : 0,
+      );
     if (upcoming.length > 0) return ok(upcoming[0]);
     return err(this.noRuleError(ruleKey, date));
   }
@@ -92,12 +101,15 @@ export class TaxTransitionPolicy {
     rule: IbsCbsInformationRule;
   } {
     const infoRules = this.rules.filter(
-      (rule): rule is IbsCbsInformationRule => rule.ruleKey === 'nfse.ibscbs-information',
+      (rule): rule is IbsCbsInformationRule =>
+        rule.ruleKey === 'nfse.ibscbs-information',
     );
     if (infoRules.length === 0) {
       // Internal invariant: the transition policy is unusable without the
       // NFS-e information milestones. Not an expected/fiscal failure.
-      throw new Error('TaxTransitionPolicy: no "nfse.ibscbs-information" rule configured');
+      throw new Error(
+        'TaxTransitionPolicy: no "nfse.ibscbs-information" rule configured',
+      );
     }
 
     const ordered = [...infoRules].sort((a, b) =>
@@ -112,7 +124,8 @@ export class TaxTransitionPolicy {
     if (covering.length > 0) {
       rule = isSpecificCategory ? covering[covering.length - 1] : covering[0];
     } else {
-      rule = date < ordered[0].validFrom ? ordered[0] : ordered[ordered.length - 1];
+      rule =
+        date < ordered[0].validFrom ? ordered[0] : ordered[ordered.length - 1];
     }
 
     const requiredFrom = isSpecificCategory

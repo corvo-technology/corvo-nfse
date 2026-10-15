@@ -1,7 +1,5 @@
 import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
-import type {
-  OperationNature,
-} from '@/modules/company/domain/service-tax-profile';
+import type { OperationNature } from '@/modules/company/domain/service-tax-profile';
 import type { ServiceTaxClassification } from '@/modules/invoice/domain/fiscal/classification/service-tax-classification';
 import type { FiscalCustomer } from '@/modules/invoice/domain/fiscal/normalized-invoice';
 import { TaxTransitionPolicy } from '@/modules/invoice/domain/fiscal/policies/tax-transition.policy';
@@ -13,7 +11,9 @@ import {
   requiresSpecialTreatment,
 } from './specifications';
 
-const fullProfile = (over: Partial<CompanyFiscalProfile> = {}): CompanyFiscalProfile => ({
+const fullProfile = (
+  over: Partial<CompanyFiscalProfile> = {},
+): CompanyFiscalProfile => ({
   id: 'profile-1',
   tenantId: 'tenant-1',
   companyId: 'company-1',
@@ -32,7 +32,9 @@ const fullProfile = (over: Partial<CompanyFiscalProfile> = {}): CompanyFiscalPro
   ...over,
 });
 
-const classificationWith = (over: Partial<ServiceTaxClassification> = {}): ServiceTaxClassification => ({
+const classificationWith = (
+  over: Partial<ServiceTaxClassification> = {},
+): ServiceTaxClassification => ({
   serviceCode: '060101',
   municipalServiceCode: null,
   nbsCode: null,
@@ -42,7 +44,12 @@ const classificationWith = (over: Partial<ServiceTaxClassification> = {}): Servi
   source: 'official_catalog',
   serviceProfileId: null,
   operationNature: 'SERVICE',
-  iss: { taxation: 'NORMAL', rate: '3', withholdingDefault: false, incidenceMunicipalityCode: null },
+  iss: {
+    taxation: 'NORMAL',
+    rate: '3',
+    withholdingDefault: false,
+    incidenceMunicipalityCode: null,
+  },
   withholding: { policy: 'NONE_CONFIRMED', rates: {} },
   catalogVersions: {},
   catalogValidated: false,
@@ -54,7 +61,12 @@ describe('allowsAnonymousCustomer', () => {
   const subject = (
     regime: CompanyFiscalProfile['taxRegime'],
     operationNature: OperationNature = 'SERVICE',
-  ) => allowsAnonymousCustomer({ regime, competenceDate: '2026-10-13', operationNature });
+  ) =>
+    allowsAnonymousCustomer({
+      regime,
+      competenceDate: '2026-10-13',
+      operationNature,
+    });
 
   it('allows an anonymous customer for MEI service operations', () => {
     expect(subject('MEI')).toMatchObject({ satisfied: true });
@@ -67,7 +79,9 @@ describe('allowsAnonymousCustomer', () => {
   it('does not allow an anonymous customer for regular regimes', () => {
     const presumido = subject('LUCRO_PRESUMIDO');
     expect(presumido.satisfied).toBe(false);
-    expect(presumido.reason).toBe('regular tax regimes require an identified customer');
+    expect(presumido.reason).toBe(
+      'regular tax regimes require an identified customer',
+    );
     expect(subject('LUCRO_REAL').satisfied).toBe(false);
   });
 
@@ -78,20 +92,38 @@ describe('allowsAnonymousCustomer', () => {
 });
 
 describe('requiresIssWithholding', () => {
-  const cnpjCustomer: FiscalCustomer = { kind: 'CNPJ', taxId: '11222333000181', municipalityCode: '3550308' };
-  const cpfCustomer: FiscalCustomer = { kind: 'CPF', taxId: '12345678909', municipalityCode: null };
+  const cnpjCustomer: FiscalCustomer = {
+    kind: 'CNPJ',
+    taxId: '11222333000181',
+    municipalityCode: '3550308',
+  };
+  const cpfCustomer: FiscalCustomer = {
+    kind: 'CPF',
+    taxId: '12345678909',
+    municipalityCode: null,
+  };
 
   it('is satisfied when withholding is configured and the customer is a CNPJ', () => {
     const classification = classificationWith({
-      iss: { taxation: 'NORMAL', rate: '3', withholdingDefault: true, incidenceMunicipalityCode: null },
+      iss: {
+        taxation: 'NORMAL',
+        rate: '3',
+        withholdingDefault: true,
+        incidenceMunicipalityCode: null,
+      },
     });
-    expect(requiresIssWithholding({ customer: cnpjCustomer, classification })).toMatchObject({
+    expect(
+      requiresIssWithholding({ customer: cnpjCustomer, classification }),
+    ).toMatchObject({
       satisfied: true,
     });
   });
 
   it('is not satisfied when the service default is off, with the plan reason', () => {
-    const result = requiresIssWithholding({ customer: cnpjCustomer, classification: classificationWith() });
+    const result = requiresIssWithholding({
+      customer: cnpjCustomer,
+      classification: classificationWith(),
+    });
     expect(result).toMatchObject({
       satisfied: false,
       reason: 'no ISS withholding configured for this customer/service',
@@ -100,16 +132,31 @@ describe('requiresIssWithholding', () => {
 
   it('is not satisfied for a CPF customer', () => {
     const classification = classificationWith({
-      iss: { taxation: 'NORMAL', rate: '3', withholdingDefault: true, incidenceMunicipalityCode: null },
+      iss: {
+        taxation: 'NORMAL',
+        rate: '3',
+        withholdingDefault: true,
+        incidenceMunicipalityCode: null,
+      },
     });
-    expect(requiresIssWithholding({ customer: cpfCustomer, classification }).satisfied).toBe(false);
+    expect(
+      requiresIssWithholding({ customer: cpfCustomer, classification })
+        .satisfied,
+    ).toBe(false);
   });
 
   it('is not satisfied without a customer', () => {
     const classification = classificationWith({
-      iss: { taxation: 'NORMAL', rate: '3', withholdingDefault: true, incidenceMunicipalityCode: null },
+      iss: {
+        taxation: 'NORMAL',
+        rate: '3',
+        withholdingDefault: true,
+        incidenceMunicipalityCode: null,
+      },
     });
-    expect(requiresIssWithholding({ customer: null, classification }).satisfied).toBe(false);
+    expect(
+      requiresIssWithholding({ customer: null, classification }).satisfied,
+    ).toBe(false);
   });
 });
 
@@ -117,13 +164,23 @@ describe('requiresIbsCbs', () => {
   const policy = new TaxTransitionPolicy();
 
   it('is not satisfied before the information obligation takes effect', () => {
-    const result = requiresIbsCbs({ competenceDate: '2026-09-30', serviceCode: '060101', policy });
-    expect(result).toMatchObject({ satisfied: false, reason: 'obrigação de informação ainda não vigente' });
+    const result = requiresIbsCbs({
+      competenceDate: '2026-09-30',
+      serviceCode: '060101',
+      policy,
+    });
+    expect(result).toMatchObject({
+      satisfied: false,
+      reason: 'obrigação de informação ainda não vigente',
+    });
   });
 
   it('is satisfied from the general milestone on', () => {
     for (const date of ['2026-10-01', '2026-10-13', '2027-02-01']) {
-      expect(requiresIbsCbs({ competenceDate: date, serviceCode: '060101', policy }).satisfied).toBe(true);
+      expect(
+        requiresIbsCbs({ competenceDate: date, serviceCode: '060101', policy })
+          .satisfied,
+      ).toBe(true);
     }
   });
 
@@ -133,7 +190,8 @@ describe('requiresIbsCbs', () => {
       validFrom: '2026-10-01',
       validUntil: null,
       legalReference: 'Ato Conjunto RFB/CGIBS nº 4/2026',
-      sourceUrl: 'https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/rtc',
+      sourceUrl:
+        'https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/rtc',
       status: 'published',
       parameters: {
         generalFrom: '2026-10-01',
@@ -144,20 +202,35 @@ describe('requiresIbsCbs', () => {
     };
     const custom = new TaxTransitionPolicy([specificRule]);
     expect(
-      requiresIbsCbs({ competenceDate: '2026-11-15', serviceCode: '666666', policy: custom }),
+      requiresIbsCbs({
+        competenceDate: '2026-11-15',
+        serviceCode: '666666',
+        policy: custom,
+      }),
     ).toMatchObject({ satisfied: false });
     expect(
-      requiresIbsCbs({ competenceDate: '2026-11-15', serviceCode: '060101', policy: custom }).satisfied,
+      requiresIbsCbs({
+        competenceDate: '2026-11-15',
+        serviceCode: '060101',
+        policy: custom,
+      }).satisfied,
     ).toBe(true);
     expect(
-      requiresIbsCbs({ competenceDate: '2026-12-01', serviceCode: '666666', policy: custom }).satisfied,
+      requiresIbsCbs({
+        competenceDate: '2026-12-01',
+        serviceCode: '666666',
+        policy: custom,
+      }).satisfied,
     ).toBe(true);
   });
 });
 
 describe('requiresSpecialTreatment', () => {
   const subject = (operationNature: OperationNature) =>
-    requiresSpecialTreatment({ classification: classificationWith({ operationNature }), profile: fullProfile() });
+    requiresSpecialTreatment({
+      classification: classificationWith({ operationNature }),
+      profile: fullProfile(),
+    });
 
   it('is satisfied for plain service operations', () => {
     expect(subject('SERVICE')).toMatchObject({ satisfied: true });

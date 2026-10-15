@@ -5,7 +5,10 @@ import type { CompanyFiscalProfileService } from '../application/company-fiscal-
 import type { CompanyServiceTaxProfileService } from '../application/company-service-tax-profile.service';
 import type { ICompanyCertificateReader } from '../domain/i-company-certificate-reader';
 import type { UpsertFiscalProfileDto } from './company.dto';
-import type { AuthContext, RequestWithAuthContext } from '@/modules/auth/auth-context';
+import type {
+  AuthContext,
+  RequestWithAuthContext,
+} from '@/modules/auth/auth-context';
 import type { CompanyFiscalProfile } from '../domain/fiscal-profile';
 import type { NewFiscalProfile } from '../domain/fiscal-profile.repository';
 import type { CompanyServiceTaxProfile } from '../domain/service-tax-profile';
@@ -103,10 +106,12 @@ interface ServiceTaxProfilesFake {
   delete: jest.Mock;
 }
 
-const makeController = (overrides: {
-  fiscalProfiles?: Partial<FiscalProfilesFake>;
-  serviceTaxProfiles?: Partial<ServiceTaxProfilesFake>;
-} = {}) => {
+const makeController = (
+  overrides: {
+    fiscalProfiles?: Partial<FiscalProfilesFake>;
+    serviceTaxProfiles?: Partial<ServiceTaxProfilesFake>;
+  } = {},
+) => {
   const companyService = {
     findById: jest.fn().mockResolvedValue({ id: companyId }),
   } as unknown as CompanyService;
@@ -115,8 +120,9 @@ const makeController = (overrides: {
     current: jest.fn().mockResolvedValue(null),
     record: jest
       .fn()
-      .mockImplementation((_id: string, _tenant: string, input: NewFiscalProfile) =>
-        Promise.resolve(makeFiscalProfile(input)),
+      .mockImplementation(
+        (_id: string, _tenant: string, input: NewFiscalProfile) =>
+          Promise.resolve(makeFiscalProfile(input)),
       ),
     approve: jest
       .fn()
@@ -231,12 +237,20 @@ describe('CompanyController fiscal profile endpoints', () => {
     const { controller, fiscalProfiles } = makeController({
       fiscalProfiles: {
         current: jest.fn().mockResolvedValue(open),
-        record: jest.fn().mockRejectedValue(new ConflictException('profile_validity_conflict')),
+        record: jest
+          .fn()
+          .mockRejectedValue(
+            new ConflictException('profile_validity_conflict'),
+          ),
       },
     });
 
     await expect(
-      controller.upsertFiscalProfile(companyId, fiscalProfileDto({ confirm: true }), req),
+      controller.upsertFiscalProfile(
+        companyId,
+        fiscalProfileDto({ confirm: true }),
+        req,
+      ),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
@@ -248,7 +262,10 @@ describe('CompanyController fiscal profile endpoints', () => {
 
     const result = await controller.listFiscalProfile(companyId, req);
 
-    expect(fiscalProfiles.list).toHaveBeenCalledWith(companyId, 'tenant-fixture');
+    expect(fiscalProfiles.list).toHaveBeenCalledWith(
+      companyId,
+      'tenant-fixture',
+    );
     expect(result.data).toEqual(history);
   });
 
@@ -279,13 +296,17 @@ describe('CompanyController service tax profile endpoints', () => {
   it('POST service-tax-profiles creates an unreviewed catalog entry', async () => {
     const { controller, serviceTaxProfiles } = makeController();
 
-    await controller.createServiceTaxProfile(companyId, {
-      name: 'Limpeza predial',
-      serviceCode: '010101',
-      effectiveFrom: '2026-01-01',
-      withholdingPolicy: 'CONFIGURED',
-      withholdingRates: { irrf: '1.5' },
-    }, req);
+    await controller.createServiceTaxProfile(
+      companyId,
+      {
+        name: 'Limpeza predial',
+        serviceCode: '010101',
+        effectiveFrom: '2026-01-01',
+        withholdingPolicy: 'CONFIGURED',
+        withholdingRates: { irrf: '1.5' },
+      },
+      req,
+    );
 
     expect(serviceTaxProfiles.upsert).toHaveBeenCalledWith(
       companyId,
@@ -318,7 +339,12 @@ describe('CompanyController service tax profile endpoints', () => {
       },
     });
 
-    await controller.updateServiceTaxProfile(companyId, 'service-1', { name: 'Nova' }, req);
+    await controller.updateServiceTaxProfile(
+      companyId,
+      'service-1',
+      { name: 'Nova' },
+      req,
+    );
 
     expect(serviceTaxProfiles.upsert).toHaveBeenCalledWith(
       companyId,
@@ -338,7 +364,12 @@ describe('CompanyController service tax profile endpoints', () => {
     });
 
     await expect(
-      controller.updateServiceTaxProfile(companyId, 'missing', { name: 'Nova' }, req),
+      controller.updateServiceTaxProfile(
+        companyId,
+        'missing',
+        { name: 'Nova' },
+        req,
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 

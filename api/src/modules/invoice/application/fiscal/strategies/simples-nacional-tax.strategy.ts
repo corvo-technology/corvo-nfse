@@ -5,7 +5,11 @@ import type { FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
 import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
 import { commonObligations } from './common-obligations';
 import { RegularTaxStrategy } from './regular-tax.strategy';
-import type { StrategyInput, StrategyPlanResult, TaxStrategy } from './tax-strategy';
+import type {
+  StrategyInput,
+  StrategyPlanResult,
+  TaxStrategy,
+} from './tax-strategy';
 
 @Injectable()
 export class SimplesNacionalTaxStrategy implements TaxStrategy {
@@ -37,11 +41,18 @@ export class SimplesNacionalTaxStrategy implements TaxStrategy {
     // With the regular option active the invoice is planned exactly as a
     // regular-regime one; `supports` stays mutually exclusive because this
     // delegation happens inside this strategy instead of a second one.
-    if (ibsCbsInEra && regularOptionActive) return this.regular.planRegular(input);
+    if (ibsCbsInEra && regularOptionActive)
+      return this.regular.planRegular(input);
 
-    const iss: Obligation = { status: 'NOT_APPLICABLE', reason: 'ISS recolhido no DAS' };
+    const iss: Obligation = {
+      status: 'NOT_APPLICABLE',
+      reason: 'ISS recolhido no DAS',
+    };
     const ibscbs: Obligation = ibsCbsInEra
-      ? { status: 'UNSUPPORTED', reason: 'IBS/CBS dentro do DAS em 2027 ainda não suportado' }
+      ? {
+          status: 'UNSUPPORTED',
+          reason: 'IBS/CBS dentro do DAS em 2027 ainda não suportado',
+        }
       : {
           status: 'NOT_APPLICABLE',
           reason: `regras de IBS/CBS do Simples produzem efeitos a partir de ${effectiveFrom}`,

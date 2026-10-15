@@ -7,17 +7,25 @@ import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
 import { commonObligations } from './common-obligations';
 import { loadProvisionalTax } from './provisional-tax';
 import { requiresIbsCbs } from './specifications';
-import type { StrategyInput, StrategyPlanResult, TaxStrategy } from './tax-strategy';
+import type {
+  StrategyInput,
+  StrategyPlanResult,
+  TaxStrategy,
+} from './tax-strategy';
 
 function regularIss(classification: ServiceTaxClassification): Obligation {
   const { taxation, rate } = classification.iss;
   if (taxation === 'EXEMPT') {
-    return { status: 'NOT_APPLICABLE', reason: 'ISS exempt for this operation' };
+    return {
+      status: 'NOT_APPLICABLE',
+      reason: 'ISS exempt for this operation',
+    };
   }
   if (taxation === 'FIXED') {
     return {
       status: 'UNSUPPORTED',
-      reason: 'fixed ISS regime requires fiscal review; not supported by the engine',
+      reason:
+        'fixed ISS regime requires fiscal review; not supported by the engine',
     };
   }
   if (taxation === 'NORMAL' && rate !== null) {
@@ -38,7 +46,9 @@ function regularIbsCbs(input: StrategyInput): {
   const { invoice, policy } = input;
   const date = invoice.competenceDate;
   const provisional = loadProvisionalTax(policy, date);
-  const collectionWaived = provisional.ok ? provisional.value.collectionWaived : false;
+  const collectionWaived = provisional.ok
+    ? provisional.value.collectionWaived
+    : false;
 
   const obligation = requiresIbsCbs({
     competenceDate: date,
@@ -52,7 +62,11 @@ function regularIbsCbs(input: StrategyInput): {
     };
     return { cbs: notYet, ibs: notYet, collectionWaived };
   }
-  return { cbs: { status: 'REQUIRED' }, ibs: { status: 'REQUIRED' }, collectionWaived };
+  return {
+    cbs: { status: 'REQUIRED' },
+    ibs: { status: 'REQUIRED' },
+    collectionWaived,
+  };
 }
 
 /**
@@ -65,7 +79,10 @@ export class RegularTaxStrategy implements TaxStrategy {
   readonly name = 'regular';
 
   supports(profile: CompanyFiscalProfile): boolean {
-    return profile.taxRegime === 'LUCRO_PRESUMIDO' || profile.taxRegime === 'LUCRO_REAL';
+    return (
+      profile.taxRegime === 'LUCRO_PRESUMIDO' ||
+      profile.taxRegime === 'LUCRO_REAL'
+    );
   }
 
   plan(input: StrategyInput): Result<StrategyPlanResult, FiscalError> {

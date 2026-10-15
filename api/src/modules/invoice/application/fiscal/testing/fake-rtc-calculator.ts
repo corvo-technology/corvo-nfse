@@ -1,5 +1,9 @@
 import type { FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
-import { moneyString, percentOf, toDecimal } from '@/modules/invoice/domain/fiscal/money';
+import {
+  moneyString,
+  percentOf,
+  toDecimal,
+} from '@/modules/invoice/domain/fiscal/money';
 import { ok, type Result } from '@/modules/invoice/domain/fiscal/result';
 import {
   RtcCalculatorPort,
@@ -57,8 +61,12 @@ export class FakeRtcCalculator extends RtcCalculatorPort {
       toDecimal(input.grossAmount).minus(toDecimal(input.discountAmount)),
     );
     const baseDecimal = toDecimal(base);
-    const cbsAmount = moneyString(percentOf(baseDecimal, toDecimal(CBS_TEST_PHASE_PERCENT)));
-    const ibsAmount = moneyString(percentOf(baseDecimal, toDecimal(IBS_TEST_PHASE_PERCENT)));
+    const cbsAmount = moneyString(
+      percentOf(baseDecimal, toDecimal(CBS_TEST_PHASE_PERCENT)),
+    );
+    const ibsAmount = moneyString(
+      percentOf(baseDecimal, toDecimal(IBS_TEST_PHASE_PERCENT)),
+    );
     return {
       calculatorVersion: this.options.version ?? FAKE_RTC_VERSION,
       cbs: { base, rate: CBS_TEST_PHASE_PERCENT, amount: cbsAmount },

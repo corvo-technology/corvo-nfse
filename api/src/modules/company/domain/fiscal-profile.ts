@@ -50,6 +50,8 @@ export const regimeKindFromLegacy = (legacy: TaxRegime): TaxRegimeKind =>
   LEGACY_TO_KIND[legacy];
 
 export function legacyFromRegimeKind(kind: TaxRegimeKind): TaxRegime | null {
-  const entry = Object.entries(LEGACY_TO_KIND).find(([, value]) => value === kind);
+  const entry = Object.entries(LEGACY_TO_KIND).find(
+    ([, value]) => value === kind,
+  );
   return entry ? (entry[0] as TaxRegime) : null;
 }

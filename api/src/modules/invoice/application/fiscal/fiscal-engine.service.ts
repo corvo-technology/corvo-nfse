@@ -5,7 +5,10 @@ import { initialFiscalContext } from '@/modules/invoice/domain/fiscal/fiscal-con
 import type { FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
 import { FiscalPipeline } from '@/modules/invoice/domain/fiscal/fiscal-pipeline';
 import { moneyString, toDecimal } from '@/modules/invoice/domain/fiscal/money';
-import type { NormalizedInvoice } from '@/modules/invoice/domain/fiscal/normalized-invoice';
+import type {
+  FiscalCustomer,
+  NormalizedInvoice,
+} from '@/modules/invoice/domain/fiscal/normalized-invoice';
 import type { Result } from '@/modules/invoice/domain/fiscal/result';
 import { buildFiscalCalculationResult } from '@/modules/invoice/domain/fiscal/result-builder';
 import type { FiscalStep } from '@/modules/invoice/domain/fiscal/fiscal-step';
@@ -22,7 +25,9 @@ import { FISCAL_STEPS } from './fiscal-steps.provider';
  */
 @Injectable()
 export class FiscalEngineService {
-  constructor(@Inject(FISCAL_STEPS) private readonly steps: readonly FiscalStep[]) {}
+  constructor(
+    @Inject(FISCAL_STEPS) private readonly steps: readonly FiscalStep[],
+  ) {}
 
   async calculate(
     invoice: Invoice,
@@ -44,13 +49,14 @@ export class FiscalEngineService {
   toNormalizedInvoice(invoice: Invoice, company: Company): NormalizedInvoice {
     const snapshot = invoice.toSnapshot();
     const customerTaxId = snapshot.customerSnapshot?.taxId;
-    const customer =
+    const customer: FiscalCustomer | null =
       customerTaxId === undefined || customerTaxId === ''
         ? null
         : {
-            kind: (customerTaxId.length === 11 ? 'CPF' : 'CNPJ') as 'CPF' | 'CNPJ',
+            kind: customerTaxId.length === 11 ? 'CPF' : 'CNPJ',
             taxId: customerTaxId,
-            municipalityCode: snapshot.customerSnapshot?.address?.municipalityCode ?? null,
+            municipalityCode:
+              snapshot.customerSnapshot?.address?.municipalityCode ?? null,
           };
 
     return {

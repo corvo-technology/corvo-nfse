@@ -49,9 +49,7 @@ import type {
 } from '../domain/company';
 import type { CompanyFiscalProfile } from '../domain/fiscal-profile';
 import type { NewFiscalProfile } from '../domain/fiscal-profile.repository';
-import type {
-  CompanyServiceTaxProfile,
-} from '../domain/service-tax-profile';
+import type { CompanyServiceTaxProfile } from '../domain/service-tax-profile';
 import type { NewServiceTaxProfile } from '../domain/service-tax-profile.repository';
 
 function toView(
@@ -273,7 +271,10 @@ export class CompanyController {
       tenantId,
       executionEnvironment(req.authContext!),
     );
-    const regime = await this.companyService.currentRegime(company.id, tenantId);
+    const regime = await this.companyService.currentRegime(
+      company.id,
+      tenantId,
+    );
     return data(toView(company, false, regime));
   }
 
@@ -441,7 +442,12 @@ export class CompanyController {
       executionEnvironment(context),
     );
     return data(
-      await this.fiscalProfiles.approve(id, tenantId, profileId, context.authUserId),
+      await this.fiscalProfiles.approve(
+        id,
+        tenantId,
+        profileId,
+        context.authUserId,
+      ),
     );
   }
 
@@ -475,7 +481,9 @@ export class CompanyController {
   @Post(':id/service-tax-profiles')
   @ApiKeyEndpoint()
   @RequirePermission('nfse.companies.manage')
-  @ApiOperation({ summary: 'Create a service tax profile in the company catalog' })
+  @ApiOperation({
+    summary: 'Create a service tax profile in the company catalog',
+  })
   async createServiceTaxProfile(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: CreateServiceTaxProfileDto,
@@ -501,7 +509,9 @@ export class CompanyController {
   @Patch(':id/service-tax-profiles/:serviceId')
   @ApiKeyEndpoint()
   @RequirePermission('nfse.companies.manage')
-  @ApiOperation({ summary: 'Update a service tax profile of the company catalog' })
+  @ApiOperation({
+    summary: 'Update a service tax profile of the company catalog',
+  })
   async updateServiceTaxProfile(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Param('serviceId', new ParseUUIDPipe()) serviceId: string,

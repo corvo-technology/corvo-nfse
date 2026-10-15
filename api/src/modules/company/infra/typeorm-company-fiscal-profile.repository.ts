@@ -42,9 +42,7 @@ interface FiscalProfileRow {
 }
 
 @Injectable()
-export class TypeOrmCompanyFiscalProfileRepository
-  implements IFiscalProfileRepository
-{
+export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepository {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly transactions: TypeOrmTransactionContext,

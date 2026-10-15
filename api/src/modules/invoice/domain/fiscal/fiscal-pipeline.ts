@@ -4,11 +4,19 @@ import type { FiscalStep } from './fiscal-step';
 import { err, ok, type Result } from './result';
 
 export interface PipelineObserver {
-  stepFinished(step: string, status: StepTrace['status'], durationMs: number, errorCode?: string): void;
+  stepFinished(
+    step: string,
+    status: StepTrace['status'],
+    durationMs: number,
+    errorCode?: string,
+  ): void;
   pipelineFinished(ok: boolean, durationMs: number, errorCode?: string): void;
 }
 
-const NOOP_OBSERVER: PipelineObserver = { stepFinished() {}, pipelineFinished() {} };
+const NOOP_OBSERVER: PipelineObserver = {
+  stepFinished() {},
+  pipelineFinished() {},
+};
 
 export class FiscalPipeline {
   constructor(
@@ -17,12 +25,15 @@ export class FiscalPipeline {
   ) {
     const seen = new Set<string>();
     for (const step of steps) {
-      if (seen.has(step.name)) throw new Error(`Duplicate fiscal step name: ${step.name}`);
+      if (seen.has(step.name))
+        throw new Error(`Duplicate fiscal step name: ${step.name}`);
       seen.add(step.name);
     }
   }
 
-  async execute(initial: FiscalContext): Promise<Result<FiscalContext, FiscalError>> {
+  async execute(
+    initial: FiscalContext,
+  ): Promise<Result<FiscalContext, FiscalError>> {
     const startedAt = performance.now();
     let context = initial;
     for (const step of this.steps) {
@@ -33,7 +44,11 @@ export class FiscalPipeline {
       if (!outcome.ok) {
         const error: FiscalError = { ...outcome.error, step: step.name };
         this.observer.stepFinished(step.name, 'failed', durationMs, error.code);
-        this.observer.pipelineFinished(false, performance.now() - startedAt, error.code);
+        this.observer.pipelineFinished(
+          false,
+          performance.now() - startedAt,
+          error.code,
+        );
         return err(error);
       }
       if (outcome.value.status === 'skipped' && step.required) {
@@ -45,19 +60,37 @@ export class FiscalPipeline {
           details: { reason: outcome.value.reason },
         });
         this.observer.stepFinished(step.name, 'failed', durationMs, error.code);
-        this.observer.pipelineFinished(false, performance.now() - startedAt, error.code);
+        this.observer.pipelineFinished(
+          false,
+          performance.now() - startedAt,
+          error.code,
+        );
         return err(error);
       }
       const trace: StepTrace = {
         step: step.name,
         status: outcome.value.status,
         durationMs,
-        ...(outcome.value.status === 'skipped' ? { reason: outcome.value.reason } : {}),
+        ...(outcome.value.status === 'skipped'
+          ? { reason: outcome.value.reason }
+          : {}),
       };
-      this.observer.stepFinished(step.name, trace.status, durationMs, undefined);
-      context = { ...outcome.value.context, trace: [...outcome.value.context.trace, trace] };
+      this.observer.stepFinished(
+        step.name,
+        trace.status,
+        durationMs,
+        undefined,
+      );
+      context = {
+        ...outcome.value.context,
+        trace: [...outcome.value.context.trace, trace],
+      };
     }
-    this.observer.pipelineFinished(true, performance.now() - startedAt, undefined);
+    this.observer.pipelineFinished(
+      true,
+      performance.now() - startedAt,
+      undefined,
+    );
     return ok(context);
   }
 }

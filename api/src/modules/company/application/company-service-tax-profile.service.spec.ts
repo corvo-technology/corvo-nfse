@@ -106,7 +106,12 @@ class FakeServiceTaxProfileRepository implements IServiceTaxProfileRepository {
     scopedTenant: string,
     input: NewServiceTaxProfile,
   ): Promise<CompanyServiceTaxProfile> {
-    this.upsertCalls.push({ id, companyId: scopedCompanyId, tenantId: scopedTenant, input });
+    this.upsertCalls.push({
+      id,
+      companyId: scopedCompanyId,
+      tenantId: scopedTenant,
+      input,
+    });
     return Promise.resolve(
       makeProfile({
         id: id ?? 'profile-created',
@@ -150,10 +155,17 @@ describe('CompanyServiceTaxProfileService', () => {
     const service = new CompanyServiceTaxProfileService(repository);
 
     await expect(
-      service.upsert(companyId, tenantId, null, makeInput({ serviceCode: '12345' })),
+      service.upsert(
+        companyId,
+        tenantId,
+        null,
+        makeInput({ serviceCode: '12345' }),
+      ),
     ).rejects.toMatchObject({
       name: 'FiscalValidationError',
-      issues: [expect.objectContaining({ field: 'serviceCode', code: 'invalid' })],
+      issues: [
+        expect.objectContaining({ field: 'serviceCode', code: 'invalid' }),
+      ],
     });
     expect(repository.upsertCalls).toHaveLength(0);
   });
@@ -172,7 +184,10 @@ describe('CompanyServiceTaxProfileService', () => {
     ).rejects.toMatchObject({
       name: 'FiscalValidationError',
       issues: [
-        expect.objectContaining({ field: 'withholdingRates', code: 'required' }),
+        expect.objectContaining({
+          field: 'withholdingRates',
+          code: 'required',
+        }),
       ],
     });
   });
@@ -186,12 +201,18 @@ describe('CompanyServiceTaxProfileService', () => {
         companyId,
         tenantId,
         null,
-        makeInput({ effectiveFrom: '2026-06-01', effectiveUntil: '2026-01-01' }),
+        makeInput({
+          effectiveFrom: '2026-06-01',
+          effectiveUntil: '2026-01-01',
+        }),
       ),
     ).rejects.toMatchObject({
       name: 'FiscalValidationError',
       issues: [
-        expect.objectContaining({ field: 'effectiveUntil', code: 'out_of_range' }),
+        expect.objectContaining({
+          field: 'effectiveUntil',
+          code: 'out_of_range',
+        }),
       ],
     });
   });
@@ -199,7 +220,10 @@ describe('CompanyServiceTaxProfileService', () => {
   it('upsert refuses to rewrite an approved profile keeping the same effectiveFrom', async () => {
     const repository = new FakeServiceTaxProfileRepository(
       new Map([
-        ['profile-1', makeProfile({ id: 'profile-1', reviewStatus: 'approved' })],
+        [
+          'profile-1',
+          makeProfile({ id: 'profile-1', reviewStatus: 'approved' }),
+        ],
       ]),
     );
     const service = new CompanyServiceTaxProfileService(repository);
@@ -317,9 +341,9 @@ describe('CompanyServiceTaxProfileService', () => {
     );
     const service = new CompanyServiceTaxProfileService(repository);
 
-    await expect(service.list(companyId, tenantId, '2026-01-01')).resolves.toEqual([
-      stored,
-    ]);
+    await expect(
+      service.list(companyId, tenantId, '2026-01-01'),
+    ).resolves.toEqual([stored]);
   });
 
   describe('resolveProfileForFiscalEngine', () => {
@@ -438,10 +462,10 @@ describe('CompanyServiceTaxProfileService', () => {
     });
 
     it('reports ambiguity when several effective profiles match', async () => {
-      const repository = new FakeServiceTaxProfileRepository(
-        new Map(),
-        [makeProfile({ id: 'profile-1' }), makeProfile({ id: 'profile-2' })],
-      );
+      const repository = new FakeServiceTaxProfileRepository(new Map(), [
+        makeProfile({ id: 'profile-1' }),
+        makeProfile({ id: 'profile-2' }),
+      ]);
       const service = new CompanyServiceTaxProfileService(repository);
 
       await expect(
@@ -457,10 +481,9 @@ describe('CompanyServiceTaxProfileService', () => {
 
     it('resolves the single effective candidate without a requested id', async () => {
       const stored = makeProfile({ id: 'profile-9', reviewStatus: 'rejected' });
-      const repository = new FakeServiceTaxProfileRepository(
-        new Map(),
-        [stored],
-      );
+      const repository = new FakeServiceTaxProfileRepository(new Map(), [
+        stored,
+      ]);
       const service = new CompanyServiceTaxProfileService(repository);
 
       const resolved = await service.resolveProfileForFiscalEngine(

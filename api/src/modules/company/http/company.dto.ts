@@ -184,7 +184,9 @@ export class CreateServiceTaxProfileDto {
   @IsOptional() @IsIn(ISS_TAXATIONS) issTaxation?: IssTaxation | null;
   @IsOptional() @IsString() @MaxLength(10) issRate?: string | null;
   @IsOptional() @IsBoolean() issWithholdingDefault?: boolean;
-  @IsOptional() @IsIn(WITHHOLDING_POLICIES) withholdingPolicy?: WithholdingPolicy;
+  @IsOptional()
+  @IsIn(WITHHOLDING_POLICIES)
+  withholdingPolicy?: WithholdingPolicy;
   @IsOptional()
   @IsObject()
   @ValidateNested()
@@ -220,7 +222,9 @@ export class UpdateServiceTaxProfileDto {
   @IsOptional() @IsIn(ISS_TAXATIONS) issTaxation?: IssTaxation | null;
   @IsOptional() @IsString() @MaxLength(10) issRate?: string | null;
   @IsOptional() @IsBoolean() issWithholdingDefault?: boolean;
-  @IsOptional() @IsIn(WITHHOLDING_POLICIES) withholdingPolicy?: WithholdingPolicy;
+  @IsOptional()
+  @IsIn(WITHHOLDING_POLICIES)
+  withholdingPolicy?: WithholdingPolicy;
   @IsOptional()
   @IsObject()
   @ValidateNested()

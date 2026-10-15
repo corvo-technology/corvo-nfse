@@ -1,7 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import type { FiscalContext } from '@/modules/invoice/domain/fiscal/fiscal-context';
-import { fiscalError, type FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
-import type { FiscalStep, StepOutcome } from '@/modules/invoice/domain/fiscal/fiscal-step';
+import {
+  fiscalError,
+  type FiscalError,
+} from '@/modules/invoice/domain/fiscal/fiscal-error';
+import type {
+  FiscalStep,
+  StepOutcome,
+} from '@/modules/invoice/domain/fiscal/fiscal-step';
 import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
 import { validateFiscalContext } from '@/modules/invoice/domain/fiscal/validation/fiscal-validator';
 

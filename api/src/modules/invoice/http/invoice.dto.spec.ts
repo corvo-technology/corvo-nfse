@@ -53,7 +53,9 @@ describe('CreateInvoiceDto optional customer, discount and fiscal input', () => 
   });
 
   it('accepts a partial customer without taxId', async () => {
-    expect(await errorsOf(validBody({ customer: { name: 'Ana' } }))).toEqual([]);
+    expect(await errorsOf(validBody({ customer: { name: 'Ana' } }))).toEqual(
+      [],
+    );
   });
 
   it('accepts a decimal discount', async () => {
@@ -76,9 +78,7 @@ describe('CreateInvoiceDto optional customer, discount and fiscal input', () => 
     ['operationIndicator', '000001'],
   ])('accepts a valid service.fiscal.%s', async (field, value) => {
     expect(
-      await errorsOf(
-        validBody({ service: { fiscal: { [field]: value } } }),
-      ),
+      await errorsOf(validBody({ service: { fiscal: { [field]: value } } })),
     ).toEqual([]);
   });
 
@@ -105,7 +105,9 @@ describe('CreateInvoiceDto optional customer, discount and fiscal input', () => 
   });
 
   it('rejects a non-UUID serviceProfileId', async () => {
-    const errors = await errorsOf(validBody({ service: { serviceProfileId: 'nope' } }));
+    const errors = await errorsOf(
+      validBody({ service: { serviceProfileId: 'nope' } }),
+    );
     expect(errorProperties(errors)).toContain('serviceProfileId');
   });
 

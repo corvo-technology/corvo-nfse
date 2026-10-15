@@ -18,7 +18,9 @@ const na = (reason = 'not_applicable'): Obligation => ({
   reason,
 });
 
-const invoice = (overrides: Partial<NormalizedInvoice> = {}): NormalizedInvoice => ({
+const invoice = (
+  overrides: Partial<NormalizedInvoice> = {},
+): NormalizedInvoice => ({
   invoiceId: 'inv-1',
   tenantId: 'ten-1',
   environment: 'test',
@@ -38,11 +40,17 @@ const invoice = (overrides: Partial<NormalizedInvoice> = {}): NormalizedInvoice 
     fiscal: null,
     serviceProfileId: 'sp-1',
   },
-  customer: { kind: 'CNPJ', taxId: '12345678000199', municipalityCode: '3550308' },
+  customer: {
+    kind: 'CNPJ',
+    taxId: '12345678000199',
+    municipalityCode: '3550308',
+  },
   ...overrides,
 });
 
-const profile = (overrides: Partial<CompanyFiscalProfile> = {}): CompanyFiscalProfile => ({
+const profile = (
+  overrides: Partial<CompanyFiscalProfile> = {},
+): CompanyFiscalProfile => ({
   id: 'cfp-1',
   tenantId: 'ten-1',
   companyId: 'comp-1',
@@ -86,7 +94,9 @@ const classification = (
   ...overrides,
 });
 
-const applicability = (overrides: Partial<TaxApplicability> = {}): TaxApplicability => ({
+const applicability = (
+  overrides: Partial<TaxApplicability> = {},
+): TaxApplicability => ({
   strategy: 'regular',
   customerRequired: true,
   iss: REQUIRED,
@@ -101,7 +111,9 @@ const applicability = (overrides: Partial<TaxApplicability> = {}): TaxApplicabil
   ...overrides,
 });
 
-const meiApplicability = (overrides: Partial<TaxApplicability> = {}): TaxApplicability =>
+const meiApplicability = (
+  overrides: Partial<TaxApplicability> = {},
+): TaxApplicability =>
   applicability({
     strategy: 'mei',
     customerRequired: false,
@@ -113,7 +125,9 @@ const meiApplicability = (overrides: Partial<TaxApplicability> = {}): TaxApplica
     ...overrides,
   });
 
-const legacyTaxes = (overrides: Partial<LegacyTaxResult> = {}): LegacyTaxResult => ({
+const legacyTaxes = (
+  overrides: Partial<LegacyTaxResult> = {},
+): LegacyTaxResult => ({
   iss: { base: '1000.00', rate: '3', amount: '30.00' },
   issWithheld: false,
   issResponsible: 'PROVIDER',
@@ -162,7 +176,9 @@ const context = (overrides: Partial<FiscalContext> = {}): FiscalContext => {
 const resultOf = (ctx: FiscalContext): FiscalCalculationResult => {
   const result = buildFiscalCalculationResult(ctx);
   if (result.ok === false) {
-    throw new Error(`expected a fiscal calculation result, got ${result.error.code}`);
+    throw new Error(
+      `expected a fiscal calculation result, got ${result.error.code}`,
+    );
   }
   return result.value;
 };
@@ -182,7 +198,12 @@ describe('buildFiscalCalculationResult', () => {
       competenceDate: '2026-12-10',
       taxRegime: 'LUCRO_PRESUMIDO',
       profileId: 'cfp-1',
-      taxableAmounts: { gross: '1000.00', discount: '0.00', iss: '1000.00', ibsCbs: '1000.00' },
+      taxableAmounts: {
+        gross: '1000.00',
+        discount: '0.00',
+        iss: '1000.00',
+        ibsCbs: '1000.00',
+      },
       taxes: {
         iss: { base: '1000.00', rate: '3', amount: '30.00' },
         cbs: { base: '1000.00', rate: '0.9', amount: '9.00' },
@@ -210,9 +231,15 @@ describe('buildFiscalCalculationResult', () => {
   it('builds an empty result for MEI in 2026', () => {
     const result = resultOf(
       context({
-        invoice: invoice({ grossAmount: '50.00', service: { ...invoice().service, code: '060101' } }),
+        invoice: invoice({
+          grossAmount: '50.00',
+          service: { ...invoice().service, code: '060101' },
+        }),
         companyProfile: profile({ taxRegime: 'MEI' }),
-        classification: classification({ serviceCode: '060101', iss: { ...classification().iss, rate: null } }),
+        classification: classification({
+          serviceCode: '060101',
+          iss: { ...classification().iss, rate: null },
+        }),
         applicability: meiApplicability(),
         legacyTaxes: undefined,
         rtcTaxes: undefined,
@@ -241,7 +268,9 @@ describe('buildFiscalCalculationResult', () => {
       }),
     );
     expect(result.calculationSource).toBe('legacy');
-    expect(result.taxes).toEqual({ iss: { base: '1000.00', rate: '3', amount: '30.00' } });
+    expect(result.taxes).toEqual({
+      iss: { base: '1000.00', rate: '3', amount: '30.00' },
+    });
     expect(result.calculationMemory).toEqual([]);
   });
 
@@ -250,7 +279,12 @@ describe('buildFiscalCalculationResult', () => {
       context({
         invoice: invoice({ competenceDate: '2027-03-10' }),
         classification: classification({
-          iss: { taxation: 'EXEMPT', rate: null, withholdingDefault: false, incidenceMunicipalityCode: null },
+          iss: {
+            taxation: 'EXEMPT',
+            rate: null,
+            withholdingDefault: false,
+            incidenceMunicipalityCode: null,
+          },
         }),
         applicability: applicability({
           iss: na('ISS is exempt'),
@@ -285,28 +319,42 @@ describe('buildFiscalCalculationResult', () => {
       retryable: false,
     });
     expect(error.details.issues).toContainEqual(
-      expect.objectContaining({ field: 'legacyTaxes.iss', code: 'TAX_CALCULATION_UNSUPPORTED' }),
+      expect.objectContaining({
+        field: 'legacyTaxes.iss',
+        code: 'TAX_CALCULATION_UNSUPPORTED',
+      }),
     );
   });
 
   it('fails with FISCAL_VALIDATION_FAILED when IBS/CBS is required without RTC taxes', () => {
     const error = errorOf(context({ rtcTaxes: undefined }));
-    expect(error).toMatchObject({ code: 'FISCAL_VALIDATION_FAILED', category: 'VALIDATION' });
+    expect(error).toMatchObject({
+      code: 'FISCAL_VALIDATION_FAILED',
+      category: 'VALIDATION',
+    });
     expect(error.details.issues).toContainEqual(
-      expect.objectContaining({ field: 'rtcTaxes', code: 'TAX_CALCULATION_UNAVAILABLE' }),
+      expect.objectContaining({
+        field: 'rtcTaxes',
+        code: 'TAX_CALCULATION_UNAVAILABLE',
+      }),
     );
   });
 
   it('fails with FISCAL_VALIDATION_FAILED when the ISS base differs from gross minus discount', () => {
     const error = errorOf(
       context({
-        legacyTaxes: legacyTaxes({ iss: { base: '1000.00', rate: '3', amount: '30.00' } }),
+        legacyTaxes: legacyTaxes({
+          iss: { base: '1000.00', rate: '3', amount: '30.00' },
+        }),
         invoice: invoice({ discountAmount: '100.00' }),
       }),
     );
     expect(error).toMatchObject({ code: 'FISCAL_VALIDATION_FAILED' });
     expect(error.details.issues).toContainEqual(
-      expect.objectContaining({ field: 'legacyTaxes.iss.base', code: 'ISS_BASE_MISMATCH' }),
+      expect.objectContaining({
+        field: 'legacyTaxes.iss.base',
+        code: 'ISS_BASE_MISMATCH',
+      }),
     );
   });
 
@@ -315,13 +363,18 @@ describe('buildFiscalCalculationResult', () => {
       context({
         legacyTaxes: legacyTaxes({
           iss: null,
-          withholdings: [{ tax: 'INSS', base: '1000.00', rate: '11', amount: '1000.01' }],
+          withholdings: [
+            { tax: 'INSS', base: '1000.00', rate: '11', amount: '1000.01' },
+          ],
         }),
       }),
     );
     expect(error).toMatchObject({ code: 'FISCAL_VALIDATION_FAILED' });
     expect(error.details.issues).toContainEqual(
-      expect.objectContaining({ field: 'withholdings', code: 'WITHHOLDINGS_EXCEED_NET' }),
+      expect.objectContaining({
+        field: 'withholdings',
+        code: 'WITHHOLDINGS_EXCEED_NET',
+      }),
     );
   });
 
@@ -337,7 +390,8 @@ describe('buildFiscalCalculationResult', () => {
     const ctx = context();
     const first = buildFiscalCalculationResult(ctx);
     const second = buildFiscalCalculationResult(ctx);
-    if (first.ok === false || second.ok === false) throw new Error('expected both builds to succeed');
+    if (first.ok === false || second.ok === false)
+      throw new Error('expected both builds to succeed');
     expect(second.value).toEqual(first.value);
     expect(second.value).not.toHaveProperty('calculatedAt');
     expect(Object.keys(second.value)).toEqual(Object.keys(first.value));
@@ -345,18 +399,26 @@ describe('buildFiscalCalculationResult', () => {
 
   it('marks the result for review when a REVIEW warning is present', () => {
     const warnings: FiscalWarning[] = [
-      { code: 'REVIEW_IBSCBS_TRANSITION', message: 'IBS/CBS transition year', step: 'FiscalValidator' },
+      {
+        code: 'REVIEW_IBSCBS_TRANSITION',
+        message: 'IBS/CBS transition year',
+        step: 'FiscalValidator',
+      },
     ];
     expect(resultOf(context({ warnings })).requiresReview).toBe(true);
   });
 
   it('marks the result for review when the fiscal profile is not approved', () => {
-    const result = resultOf(context({ companyProfile: profile({ reviewStatus: 'unreviewed' }) }));
+    const result = resultOf(
+      context({ companyProfile: profile({ reviewStatus: 'unreviewed' }) }),
+    );
     expect(result.requiresReview).toBe(true);
   });
 
   it('marks the result for review in the 2027 transition year', () => {
-    const result = resultOf(context({ invoice: invoice({ competenceDate: '2027-06-01' }) }));
+    const result = resultOf(
+      context({ invoice: invoice({ competenceDate: '2027-06-01' }) }),
+    );
     expect(result.requiresReview).toBe(true);
   });
 
@@ -381,7 +443,10 @@ describe('buildFiscalCalculationResult', () => {
     const result = resultOf(
       context({
         applicability: applicability({
-          specialTreatment: { status: 'UNSUPPORTED', reason: 'partner-salon scenario not supported' },
+          specialTreatment: {
+            status: 'UNSUPPORTED',
+            reason: 'partner-salon scenario not supported',
+          },
         }),
       }),
     );
@@ -397,10 +462,14 @@ describe('buildFiscalCalculationResult', () => {
 
   it('does not throw on an invalid monetary string, failing with a Result error instead', () => {
     expect(() =>
-      buildFiscalCalculationResult(context({ invoice: invoice({ grossAmount: 'not-a-number' }) })),
+      buildFiscalCalculationResult(
+        context({ invoice: invoice({ grossAmount: 'not-a-number' }) }),
+      ),
     ).not.toThrow();
     expect(
-      buildFiscalCalculationResult(context({ invoice: invoice({ grossAmount: 'not-a-number' }) })),
+      buildFiscalCalculationResult(
+        context({ invoice: invoice({ grossAmount: 'not-a-number' }) }),
+      ),
     ).toMatchObject({ ok: false, error: { code: 'FISCAL_VALIDATION_FAILED' } });
   });
 });

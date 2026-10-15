@@ -29,7 +29,12 @@ export class CompanyFiscalProfileService {
     const profile = await this.profiles.findById(profileId, tenantId);
     if (!profile || profile.companyId !== companyId)
       throw new NotFoundException('Fiscal profile not found');
-    return this.profiles.markApproved(profileId, tenantId, reviewedBy, new Date());
+    return this.profiles.markApproved(
+      profileId,
+      tenantId,
+      reviewedBy,
+      new Date(),
+    );
   }
 
   list(companyId: string, tenantId: string): Promise<CompanyFiscalProfile[]> {

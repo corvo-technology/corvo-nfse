@@ -1,5 +1,10 @@
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
-import { Invoice, InvoiceProps, LastEmailStatus, ServiceSnapshot } from '../domain/invoice';
+import {
+  Invoice,
+  InvoiceProps,
+  LastEmailStatus,
+  ServiceSnapshot,
+} from '../domain/invoice';
 import { InvoiceStatus } from '../domain/invoice-status';
 import { InvoiceOrmEntity } from './invoice.orm-entity';
 
@@ -14,13 +19,15 @@ function normalizeCustomerSnapshot(
   return value as unknown as InvoiceProps['customerSnapshot'];
 }
 
-function readServiceSnapshot(value: Record<string, unknown> | null | undefined): {
+function readServiceSnapshot(
+  value: Record<string, unknown> | null | undefined,
+): {
   snapshot: ServiceSnapshot;
   discount?: number;
 } {
   const { discount, ...rest } = (value ??
     {}) as unknown as PersistedServiceSnapshot;
-  return { snapshot: rest as ServiceSnapshot, discount };
+  return { snapshot: rest, discount };
 }
 
 export class InvoiceMapper {
@@ -91,7 +98,7 @@ export class InvoiceMapper {
     orm.serviceSnapshot = {
       ...serviceSnapshot,
       ...(discount !== undefined ? { discount } : {}),
-    } as unknown as Record<string, unknown>;
+    };
     orm.taxSnapshot = snapshot.taxSnapshot;
     orm.amount = snapshot.amount;
     orm.currency = snapshot.currency;

@@ -1,4 +1,7 @@
-import type { TaxApplicability, Obligation } from '@/modules/invoice/domain/fiscal/applicability/tax-applicability';
+import type {
+  TaxApplicability,
+  Obligation,
+} from '@/modules/invoice/domain/fiscal/applicability/tax-applicability';
 import type { ServiceTaxClassification } from '@/modules/invoice/domain/fiscal/classification/service-tax-classification';
 import type { FiscalContext } from '@/modules/invoice/domain/fiscal/fiscal-context';
 import { initialFiscalContext } from '@/modules/invoice/domain/fiscal/fiscal-context';
@@ -10,22 +13,45 @@ import type { WithholdingRates } from '@/modules/company/domain/service-tax-prof
 import { LegacyTaxCalculatorStep } from './legacy-tax-calculator.step';
 
 const REQUIRED: Obligation = { status: 'REQUIRED' };
-const na = (reason: string): Obligation => ({ status: 'NOT_APPLICABLE', reason });
+const na = (reason: string): Obligation => ({
+  status: 'NOT_APPLICABLE',
+  reason,
+});
 
-const invoice = (grossAmount: string, discountAmount: string): NormalizedInvoice => ({
+const invoice = (
+  grossAmount: string,
+  discountAmount: string,
+): NormalizedInvoice => ({
   invoiceId: 'inv-1',
   tenantId: 'ten-1',
   environment: 'test',
-  company: { id: 'comp-1', taxId: '11222333000181', municipalityCode: '3550308', municipalRegistration: null },
+  company: {
+    id: 'comp-1',
+    taxId: '11222333000181',
+    municipalityCode: '3550308',
+    municipalRegistration: null,
+  },
   competenceDate: '2026-10-13',
   grossAmount,
   discountAmount,
-  service: { code: '010101', municipalityCode: '3550308', description: null, fiscal: null, serviceProfileId: 'sp-1' },
-  customer: { kind: 'CNPJ', taxId: '12345678000199', municipalityCode: '3550308' },
+  service: {
+    code: '010101',
+    municipalityCode: '3550308',
+    description: null,
+    fiscal: null,
+    serviceProfileId: 'sp-1',
+  },
+  customer: {
+    kind: 'CNPJ',
+    taxId: '12345678000199',
+    municipalityCode: '3550308',
+  },
 });
 
 const applicability = (
-  overrides: Partial<Pick<TaxApplicability, 'iss' | 'issWithheld' | 'federalWithholding'>> = {},
+  overrides: Partial<
+    Pick<TaxApplicability, 'iss' | 'issWithheld' | 'federalWithholding'>
+  > = {},
 ): TaxApplicability => ({
   strategy: 'regime_specific',
   customerRequired: true,
@@ -41,7 +67,9 @@ const applicability = (
   ...overrides,
 });
 
-const classification = (overrides: { issRate?: string | null; rates?: WithholdingRates } = {}): ServiceTaxClassification => ({
+const classification = (
+  overrides: { issRate?: string | null; rates?: WithholdingRates } = {},
+): ServiceTaxClassification => ({
   serviceCode: '010101',
   municipalServiceCode: null,
   nbsCode: '010101001',
@@ -75,7 +103,8 @@ const context = (
 });
 
 const outcomeOf = (result: Result<StepOutcome, FiscalError>): StepOutcome => {
-  if (result.ok === false) throw new Error(`expected the step to succeed, got ${result.error.code}`);
+  if (result.ok === false)
+    throw new Error(`expected the step to succeed, got ${result.error.code}`);
   return result.value;
 };
 
@@ -115,7 +144,9 @@ describe('LegacyTaxCalculatorStep', () => {
       iss: { base: '900.00', rate: '5', amount: '45.00' },
       issWithheld: true,
       issResponsible: 'CUSTOMER',
-      withholdings: [{ tax: 'ISS', base: '900.00', rate: '5', amount: '45.00' }],
+      withholdings: [
+        { tax: 'ISS', base: '900.00', rate: '5', amount: '45.00' },
+      ],
       netReceivableAmount: '855.00',
     });
   });
@@ -136,7 +167,9 @@ describe('LegacyTaxCalculatorStep', () => {
       iss: { base: '900.00', rate: '5', amount: '45.00' },
       issWithheld: false,
       issResponsible: 'PROVIDER',
-      withholdings: [{ tax: 'IRRF', base: '900.00', rate: '1.5', amount: '13.50' }],
+      withholdings: [
+        { tax: 'IRRF', base: '900.00', rate: '1.5', amount: '13.50' },
+      ],
       netReceivableAmount: '886.50',
     });
   });
@@ -151,7 +184,8 @@ describe('LegacyTaxCalculatorStep', () => {
     expect(outcome.context.warnings).toEqual([
       {
         code: 'UNCONDITIONAL_DISCOUNT_DEDUCTED',
-        message: 'Desconto incondicional deduzido da base de cálculo do ISS (LC 116/2003, art. 7º)',
+        message:
+          'Desconto incondicional deduzido da base de cálculo do ISS (LC 116/2003, art. 7º)',
         step: 'LegacyTaxCalculator',
       },
     ]);

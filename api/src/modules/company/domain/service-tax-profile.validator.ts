@@ -44,7 +44,9 @@ function rateIssues(field: string, value: string): FiscalIssue[] {
  * Structural and range validation for a service tax profile. Fiscal coherence
  * beyond formats (e.g. ISS exemption vs. rate) is the fiscal engine's concern.
  */
-export function validateServiceTaxProfile(input: NewServiceTaxProfile): FiscalIssue[] {
+export function validateServiceTaxProfile(
+  input: NewServiceTaxProfile,
+): FiscalIssue[] {
   const issues: FiscalIssue[] = [];
 
   if (!/^\d{6}$/.test(input.serviceCode)) {
@@ -93,7 +95,8 @@ export function validateServiceTaxProfile(input: NewServiceTaxProfile): FiscalIs
     issues.push({
       field: 'withholdingRates',
       code: 'required',
-      message: 'withholdingPolicy CONFIGURED requires at least one withholding rate',
+      message:
+        'withholdingPolicy CONFIGURED requires at least one withholding rate',
     });
   }
 
@@ -111,8 +114,7 @@ export function validateServiceTaxProfile(input: NewServiceTaxProfile): FiscalIs
 
   if (
     input.regimeApplicability.some(
-      (regime) =>
-        !(TAX_REGIME_KINDS as readonly string[]).includes(regime),
+      (regime) => !(TAX_REGIME_KINDS as readonly string[]).includes(regime),
     )
   ) {
     issues.push({

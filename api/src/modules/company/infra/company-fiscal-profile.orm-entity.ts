@@ -39,10 +39,7 @@ const dateTransformer = {
   'ck_cfp_regime',
   `tax_regime IN ('MEI','SIMPLES_NACIONAL','LUCRO_PRESUMIDO','LUCRO_REAL','OUTRO_REGIME','UNKNOWN')`,
 )
-@Check(
-  'ck_cfp_review',
-  `review_status IN ('unreviewed','approved','rejected')`,
-)
+@Check('ck_cfp_review', `review_status IN ('unreviewed','approved','rejected')`)
 @Check('ck_cfp_validity', `valid_until IS NULL OR valid_until > valid_from`)
 @Index('uq_cfp_company_valid_from', ['companyId', 'validFrom'], {
   unique: true,
@@ -69,7 +66,12 @@ export class CompanyFiscalProfileOrmEntity {
   @Column({ name: 'simple_national', type: 'boolean', default: false })
   simpleNational!: boolean;
 
-  @Column({ name: 'special_tax_regime', type: 'varchar', length: 50, nullable: true })
+  @Column({
+    name: 'special_tax_regime',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
   specialTaxRegime?: string | null;
 
   @Column({ name: 'ibs_cbs_regular_option', type: 'boolean', default: false })
@@ -97,7 +99,12 @@ export class CompanyFiscalProfileOrmEntity {
   @Column({ name: 'source', type: 'varchar', length: 30 })
   source!: string;
 
-  @Column({ name: 'review_status', type: 'varchar', length: 12, default: 'unreviewed' })
+  @Column({
+    name: 'review_status',
+    type: 'varchar',
+    length: 12,
+    default: 'unreviewed',
+  })
   reviewStatus!: string;
 
   @Column({ name: 'reviewed_by', type: 'varchar', length: 100, nullable: true })

@@ -104,10 +104,14 @@ class InMemoryServiceProfileReader extends IServiceProfileReader {
     super();
   }
 
-  findById(id: string, companyId: string): Promise<CompanyServiceTaxProfile | null> {
+  findById(
+    id: string,
+    companyId: string,
+  ): Promise<CompanyServiceTaxProfile | null> {
     return Promise.resolve(
-      this.profiles.find((profile) => profile.id === id && profile.companyId === companyId) ??
-        null,
+      this.profiles.find(
+        (profile) => profile.id === id && profile.companyId === companyId,
+      ) ?? null,
     );
   }
 
@@ -136,7 +140,10 @@ class ValidatingCatalog extends IFiscalCatalog {
     return { version: 'test-catalog-1', found: /^\d{6}$/.test(code) };
   }
 
-  validateClassification(): { status: 'validated'; versions: Record<string, string> } {
+  validateClassification(): {
+    status: 'validated';
+    versions: Record<string, string>;
+  } {
     return { status: 'validated', versions: { ctribnac: 'test-catalog-1' } };
   }
 }
@@ -212,8 +219,13 @@ const buildEngine = (
         provide: IServiceProfileReader,
         useValue: new InMemoryServiceProfileReader(opts.serviceProfiles ?? []),
       },
-      ...(opts.catalog ? [{ provide: IFiscalCatalog, useValue: opts.catalog }] : []),
-      { provide: FISCAL_IBSCBS_UNAVAILABLE_MODE, useValue: opts.mode ?? 'block' },
+      ...(opts.catalog
+        ? [{ provide: IFiscalCatalog, useValue: opts.catalog }]
+        : []),
+      {
+        provide: FISCAL_IBSCBS_UNAVAILABLE_MODE,
+        useValue: opts.mode ?? 'block',
+      },
     ],
   }).compile();
 
@@ -221,7 +233,9 @@ describe('FiscalEngineModule wiring', () => {
   it('resolves FiscalEngineService and wires the six steps in fail-fast order', async () => {
     const moduleRef = await buildEngine();
 
-    expect(moduleRef.get(FiscalEngineService)).toBeInstanceOf(FiscalEngineService);
+    expect(moduleRef.get(FiscalEngineService)).toBeInstanceOf(
+      FiscalEngineService,
+    );
     const steps = moduleRef.get<readonly FiscalStep[]>(FISCAL_STEPS);
     expect(steps.map((step) => step.name)).toEqual(STEP_ORDER);
 
@@ -240,10 +254,12 @@ describe('FiscalEngineModule wiring', () => {
     expect(result.value.calculationSource).toBe('none');
     expect(result.value.trace.map((entry) => entry.step)).toEqual(STEP_ORDER);
     expect(
-      result.value.trace.find((entry) => entry.step === 'LegacyTaxCalculator')?.status,
+      result.value.trace.find((entry) => entry.step === 'LegacyTaxCalculator')
+        ?.status,
     ).toBe('skipped');
     expect(
-      result.value.trace.find((entry) => entry.step === 'RtcTaxCalculator')?.status,
+      result.value.trace.find((entry) => entry.step === 'RtcTaxCalculator')
+        ?.status,
     ).toBe('skipped');
 
     await moduleRef.close();
@@ -268,7 +284,9 @@ describe('FiscalEngineModule wiring', () => {
 
   it('blocks with TAX_CALCULATION_UNAVAILABLE when the RTC adapter is unconfigured (default mode)', async () => {
     const moduleRef = await buildEngine({
-      profiles: [fiscalProfile({ taxRegime: 'LUCRO_PRESUMIDO', simpleNational: false })],
+      profiles: [
+        fiscalProfile({ taxRegime: 'LUCRO_PRESUMIDO', simpleNational: false }),
+      ],
       serviceProfiles: [serviceProfile()],
       catalog: new ValidatingCatalog(),
       mode: 'block',
@@ -291,7 +309,9 @@ describe('FiscalEngineModule wiring', () => {
 
   it('tolerates the missing RTC calculation with a warning in warn mode', async () => {
     const moduleRef = await buildEngine({
-      profiles: [fiscalProfile({ taxRegime: 'LUCRO_PRESUMIDO', simpleNational: false })],
+      profiles: [
+        fiscalProfile({ taxRegime: 'LUCRO_PRESUMIDO', simpleNational: false }),
+      ],
       serviceProfiles: [serviceProfile()],
       catalog: new ValidatingCatalog(),
       mode: 'warn',
@@ -324,7 +344,11 @@ describe('FiscalEngineModule wiring', () => {
         customer: {
           name: 'Consumidor',
           taxId: '12345678901',
-          address: { city: 'Sao Paulo', state: 'SP', municipalityCode: '3550308' },
+          address: {
+            city: 'Sao Paulo',
+            state: 'SP',
+            municipalityCode: '3550308',
+          },
         },
         service: {
           description: 'Servico',
@@ -353,7 +377,11 @@ describe('FiscalEngineModule wiring', () => {
         municipalRegistration: '12345',
       },
       service: { code: '060101', municipalityCode: '3550308' },
-      customer: { kind: 'CPF', taxId: '12345678901', municipalityCode: '3550308' },
+      customer: {
+        kind: 'CPF',
+        taxId: '12345678901',
+        municipalityCode: '3550308',
+      },
     });
     expect(normalized.invoiceId).toBe(invoice.id);
 
@@ -398,7 +426,11 @@ describe('UnconfiguredRtcCalculator', () => {
     expect(health.ok).toBe(false);
     expect(version.ok).toBe(false);
     if (health.ok || version.ok) throw new Error('expected errors');
-    expect(health.error.details).toMatchObject({ reason: 'adapter_not_configured' });
-    expect(version.error.details).toMatchObject({ reason: 'adapter_not_configured' });
+    expect(health.error.details).toMatchObject({
+      reason: 'adapter_not_configured',
+    });
+    expect(version.error.details).toMatchObject({
+      reason: 'adapter_not_configured',
+    });
   });
 });

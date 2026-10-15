@@ -1,8 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import type { Obligation } from '@/modules/invoice/domain/fiscal/applicability/tax-applicability';
-import type { FiscalContext, FiscalWarning } from '@/modules/invoice/domain/fiscal/fiscal-context';
-import { fiscalError, type FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
-import type { FiscalStep, StepOutcome } from '@/modules/invoice/domain/fiscal/fiscal-step';
+import type {
+  FiscalContext,
+  FiscalWarning,
+} from '@/modules/invoice/domain/fiscal/fiscal-context';
+import {
+  fiscalError,
+  type FiscalError,
+} from '@/modules/invoice/domain/fiscal/fiscal-error';
+import type {
+  FiscalStep,
+  StepOutcome,
+} from '@/modules/invoice/domain/fiscal/fiscal-step';
 import type { Decimal } from '@/modules/invoice/domain/fiscal/money';
 import { toDecimal } from '@/modules/invoice/domain/fiscal/money';
 import type { TaxTransitionPolicy } from '@/modules/invoice/domain/fiscal/policies/tax-transition.policy';
@@ -19,12 +28,14 @@ export type IbsCbsUnavailableMode = 'block' | 'warn';
 
 const STEP_NAME = 'RtcTaxCalculator';
 
-const isRequired = (obligation: Obligation): boolean => obligation.status === 'REQUIRED';
+const isRequired = (obligation: Obligation): boolean =>
+  obligation.status === 'REQUIRED';
 
 const notRequiredReason = (obligation: Obligation): string =>
   obligation.status === 'REQUIRED' ? '' : obligation.reason;
 
-const isBlank = (value: string | null): boolean => value === null || value === '';
+const isBlank = (value: string | null): boolean =>
+  value === null || value === '';
 
 const tryDecimal = (value: string): Decimal | null => {
   try {
@@ -89,12 +100,19 @@ export function assertRtcResultConsistent(
       );
     }
   }
-  if (result.ibsTotal !== null && result.ibsState !== null && result.ibsCity !== null) {
+  if (
+    result.ibsTotal !== null &&
+    result.ibsState !== null &&
+    result.ibsCity !== null
+  ) {
     const total = tryDecimal(result.ibsTotal.amount);
     const state = tryDecimal(result.ibsState.amount);
     const city = tryDecimal(result.ibsCity.amount);
     if (total === null || state === null || city === null) {
-      return inconsistentResult('invalid_decimal', 'RTC engine returned a non-decimal IBS component');
+      return inconsistentResult(
+        'invalid_decimal',
+        'RTC engine returned a non-decimal IBS component',
+      );
     }
     if (!total.eq(state.plus(city))) {
       return inconsistentResult(
@@ -133,7 +151,8 @@ export class RtcTaxCalculatorStep implements FiscalStep {
       return err(
         fiscalError({
           code: 'FISCAL_INTERNAL_ERROR',
-          message: 'RtcTaxCalculator requires the tax applicability produced by the previous step',
+          message:
+            'RtcTaxCalculator requires the tax applicability produced by the previous step',
           category: 'INTERNAL',
           step: this.name,
           details: { reason: 'applicability_missing' },
@@ -144,7 +163,8 @@ export class RtcTaxCalculatorStep implements FiscalStep {
       return err(
         fiscalError({
           code: 'FISCAL_INTERNAL_ERROR',
-          message: 'RtcTaxCalculator requires the service tax classification produced by the previous step',
+          message:
+            'RtcTaxCalculator requires the service tax classification produced by the previous step',
           category: 'INTERNAL',
           step: this.name,
           details: { reason: 'classification_missing' },
@@ -155,7 +175,8 @@ export class RtcTaxCalculatorStep implements FiscalStep {
       return err(
         fiscalError({
           code: 'FISCAL_INTERNAL_ERROR',
-          message: 'RtcTaxCalculator requires the company fiscal profile produced by the first step',
+          message:
+            'RtcTaxCalculator requires the company fiscal profile produced by the first step',
           category: 'INTERNAL',
           step: this.name,
           details: { reason: 'company_profile_missing' },
@@ -170,7 +191,9 @@ export class RtcTaxCalculatorStep implements FiscalStep {
       return ok({
         status: 'skipped',
         context,
-        reason: notRequiredReason(applicability.cbs) || notRequiredReason(applicability.ibs),
+        reason:
+          notRequiredReason(applicability.cbs) ||
+          notRequiredReason(applicability.ibs),
       });
     }
 
@@ -190,7 +213,8 @@ export class RtcTaxCalculatorStep implements FiscalStep {
       return err(
         fiscalError({
           code: 'FISCAL_INTERNAL_ERROR',
-          message: 'RtcTaxCalculator requires a complete classification (nbsCode, cst, classCode and operationIndicator)',
+          message:
+            'RtcTaxCalculator requires a complete classification (nbsCode, cst, classCode and operationIndicator)',
           category: 'INTERNAL',
           step: this.name,
           details: { reason: 'classification_incomplete', missingFields },
@@ -210,7 +234,8 @@ export class RtcTaxCalculatorStep implements FiscalStep {
       providerTaxId: context.invoice.company.taxId,
       providerMunicipalityCode: context.invoice.company.municipalityCode,
       incidenceMunicipalityCode:
-        classification.iss.incidenceMunicipalityCode ?? context.invoice.service.municipalityCode,
+        classification.iss.incidenceMunicipalityCode ??
+        context.invoice.service.municipalityCode,
       customer: context.invoice.customer,
       regime: companyProfile.taxRegime,
     };
@@ -220,9 +245,10 @@ export class RtcTaxCalculatorStep implements FiscalStep {
       const tolerated =
         isUnconfiguredAdapterError(result.error) &&
         this.mode === 'warn' &&
-        this.policy
-          .ibsCbsInformation(classification.serviceCode, context.invoice.competenceDate)
-          .toleratedBySefin;
+        this.policy.ibsCbsInformation(
+          classification.serviceCode,
+          context.invoice.competenceDate,
+        ).toleratedBySefin;
       if (tolerated) {
         const warning: FiscalWarning = {
           code: IBS_CBS_TOLERATED_WARNING_CODE,
@@ -244,6 +270,9 @@ export class RtcTaxCalculatorStep implements FiscalStep {
     );
     if (inconsistency !== null) return err(inconsistency);
 
-    return ok({ status: 'applied', context: { ...context, rtcTaxes: result.value } });
+    return ok({
+      status: 'applied',
+      context: { ...context, rtcTaxes: result.value },
+    });
   }
 }

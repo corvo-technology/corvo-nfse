@@ -31,7 +31,12 @@ export class InvoiceFiscalSnapshotOrmEntity {
   @Column({ name: 'profile_id', type: 'uuid' }) declare profileId: string;
   @Column({ name: 'service_profile_id', type: 'uuid', nullable: true })
   declare serviceProfileId: string | null;
-  @Column({ name: 'special_tax_regime', type: 'varchar', length: 50, nullable: true })
+  @Column({
+    name: 'special_tax_regime',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
   declare specialTaxRegime: string | null;
   @Column({ type: 'integer', default: 1 }) declare attempt: number;
   @Column({ name: 'calculation_version', type: 'varchar', length: 40 })
@@ -40,13 +45,36 @@ export class InvoiceFiscalSnapshotOrmEntity {
   declare grossAmount: string;
   @Column({ name: 'discount_amount', type: 'numeric', precision: 15, scale: 2 })
   declare discountAmount: string;
-  @Column({ name: 'iss_amount', type: 'numeric', precision: 15, scale: 2, nullable: true })
+  @Column({
+    name: 'iss_amount',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
   declare issAmount: string | null;
-  @Column({ name: 'cbs_amount', type: 'numeric', precision: 15, scale: 2, nullable: true })
+  @Column({
+    name: 'cbs_amount',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
   declare cbsAmount: string | null;
-  @Column({ name: 'ibs_total_amount', type: 'numeric', precision: 15, scale: 2, nullable: true })
+  @Column({
+    name: 'ibs_total_amount',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
   declare ibsTotalAmount: string | null;
-  @Column({ name: 'net_receivable_amount', type: 'numeric', precision: 15, scale: 2 })
+  @Column({
+    name: 'net_receivable_amount',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+  })
   declare netReceivableAmount: string;
   @Column({ type: 'jsonb' }) declare result: Record<string, unknown>;
   @Column({ name: 'calculated_at', type: 'timestamptz' })

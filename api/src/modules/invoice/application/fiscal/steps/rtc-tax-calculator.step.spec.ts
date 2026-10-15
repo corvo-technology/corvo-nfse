@@ -13,16 +13,22 @@ import type { RtcCalculatorPort } from '@/modules/invoice/domain/fiscal/rtc/rtc-
 import type { RtcTaxResult } from '@/modules/invoice/domain/fiscal/rtc/rtc-tax-result';
 import { ok, err, type Result } from '@/modules/invoice/domain/fiscal/result';
 import { IBS_CBS_TOLERATED_WARNING_CODE } from '@/modules/invoice/domain/fiscal/validation/fiscal-validator';
-import {
-  contextFor,
-  type ContextForOptions,
-} from '../testing/context';
+import { contextFor, type ContextForOptions } from '../testing/context';
 import { FakeRtcCalculator } from '../testing/fake-rtc-calculator';
-import { RtcTaxCalculatorStep, assertRtcResultConsistent } from './rtc-tax-calculator.step';
+import {
+  RtcTaxCalculatorStep,
+  assertRtcResultConsistent,
+} from './rtc-tax-calculator.step';
 
 const REQUIRED: Obligation = { status: 'REQUIRED' };
-const na = (reason: string): Obligation => ({ status: 'NOT_APPLICABLE', reason });
-const unsupported = (reason: string): Obligation => ({ status: 'UNSUPPORTED', reason });
+const na = (reason: string): Obligation => ({
+  status: 'NOT_APPLICABLE',
+  reason,
+});
+const unsupported = (reason: string): Obligation => ({
+  status: 'UNSUPPORTED',
+  reason,
+});
 
 const companyProfile = (
   overrides: Partial<CompanyFiscalProfile> = {},
@@ -132,10 +138,12 @@ const unconfiguredFake = (): FakeRtcCalculator =>
 const stepWith = (
   rtc: RtcCalculatorPort,
   mode: 'block' | 'warn' = 'block',
-): RtcTaxCalculatorStep => new RtcTaxCalculatorStep(rtc, new TaxTransitionPolicy(), mode);
+): RtcTaxCalculatorStep =>
+  new RtcTaxCalculatorStep(rtc, new TaxTransitionPolicy(), mode);
 
 const outcomeOf = (result: Result<StepOutcome, FiscalError>): StepOutcome => {
-  if (result.ok === false) throw new Error(`expected the step to succeed, got ${result.error.code}`);
+  if (result.ok === false)
+    throw new Error(`expected the step to succeed, got ${result.error.code}`);
   return result.value;
 };
 
@@ -155,7 +163,12 @@ describe('RtcTaxCalculatorStep', () => {
     const calculator = new FakeRtcCalculator();
     const outcome = outcomeOf(
       await stepWith(calculator).execute(
-        context({ applicability: applicability({ cbs: na('regime_imei'), ibs: na('regime_imei') }) }),
+        context({
+          applicability: applicability({
+            cbs: na('regime_imei'),
+            ibs: na('regime_imei'),
+          }),
+        }),
       ),
     );
     expect(outcome.status).toBe('skipped');
@@ -213,7 +226,11 @@ describe('RtcTaxCalculatorStep', () => {
         providerTaxId: '11222330000181',
         providerMunicipalityCode: '3550308',
         incidenceMunicipalityCode: '4004004',
-        customer: { kind: 'CNPJ', taxId: '12345678000199', municipalityCode: '3550308' },
+        customer: {
+          kind: 'CNPJ',
+          taxId: '12345678000199',
+          municipalityCode: '3550308',
+        },
         regime: 'LUCRO_PRESUMIDO',
       },
     ]);
@@ -301,9 +318,9 @@ describe('RtcTaxCalculatorStep', () => {
       ibsTotal: { base: '1000.00', rate: '0.12', amount: '1.20' },
     });
     const error = errorOf(
-      await stepWith(new FakeRtcCalculator({ handler: () => ok(inconsistent) })).execute(
-        context(),
-      ),
+      await stepWith(
+        new FakeRtcCalculator({ handler: () => ok(inconsistent) }),
+      ).execute(context()),
     );
     expect(error).toMatchObject({
       code: 'FISCAL_VALIDATION_FAILED',
@@ -318,7 +335,9 @@ describe('RtcTaxCalculatorStep', () => {
       cbs: { base: '1000.00', rate: '-0.9', amount: '-9.00' },
     });
     const error = errorOf(
-      await stepWith(new FakeRtcCalculator({ handler: () => ok(negative) })).execute(context()),
+      await stepWith(
+        new FakeRtcCalculator({ handler: () => ok(negative) }),
+      ).execute(context()),
     );
     expect(error).toMatchObject({
       code: 'FISCAL_VALIDATION_FAILED',
@@ -338,7 +357,10 @@ describe('RtcTaxCalculatorStep', () => {
   it('fails with FISCAL_INTERNAL_ERROR when the applicability is missing', async () => {
     const error = errorOf(
       await stepWith(new FakeRtcCalculator()).execute(
-        contextFor({ companyProfile: companyProfile(), classification: classification() }),
+        contextFor({
+          companyProfile: companyProfile(),
+          classification: classification(),
+        }),
       ),
     );
     expect(error).toMatchObject({
@@ -351,7 +373,10 @@ describe('RtcTaxCalculatorStep', () => {
   it('fails with FISCAL_INTERNAL_ERROR when the classification is missing', async () => {
     const error = errorOf(
       await stepWith(new FakeRtcCalculator()).execute(
-        contextFor({ companyProfile: companyProfile(), applicability: applicability() }),
+        contextFor({
+          companyProfile: companyProfile(),
+          applicability: applicability(),
+        }),
       ),
     );
     expect(error).toMatchObject({
@@ -364,7 +389,10 @@ describe('RtcTaxCalculatorStep', () => {
   it('fails with FISCAL_INTERNAL_ERROR when the company profile is missing', async () => {
     const error = errorOf(
       await stepWith(new FakeRtcCalculator()).execute(
-        contextFor({ classification: classification(), applicability: applicability() }),
+        contextFor({
+          classification: classification(),
+          applicability: applicability(),
+        }),
       ),
     );
     expect(error).toMatchObject({
@@ -383,7 +411,10 @@ describe('RtcTaxCalculatorStep', () => {
     expect(error).toMatchObject({
       code: 'FISCAL_INTERNAL_ERROR',
       category: 'INTERNAL',
-      details: { reason: 'classification_incomplete', missingFields: ['nbsCode'] },
+      details: {
+        reason: 'classification_incomplete',
+        missingFields: ['nbsCode'],
+      },
     });
   });
 });
@@ -402,7 +433,9 @@ describe('assertRtcResultConsistent', () => {
 
   it('rejects IBS components that do not sum to the declared total', () => {
     const error = assertRtcResultConsistent(
-      rtcResult({ ibsTotal: { base: '1000.00', rate: '0.12', amount: '1.20' } }),
+      rtcResult({
+        ibsTotal: { base: '1000.00', rate: '0.12', amount: '1.20' },
+      }),
       gross,
     );
     expect(error).toMatchObject({
@@ -415,7 +448,9 @@ describe('assertRtcResultConsistent', () => {
 
   it('rejects a negative amount', () => {
     const error = assertRtcResultConsistent(
-      rtcResult({ ibsCity: { base: '1000.00', rate: '-0.1', amount: '-1.00' } }),
+      rtcResult({
+        ibsCity: { base: '1000.00', rate: '-0.1', amount: '-1.00' },
+      }),
       gross,
     );
     expect(error?.details.reason).toBe('rtc_inconsistent_result');

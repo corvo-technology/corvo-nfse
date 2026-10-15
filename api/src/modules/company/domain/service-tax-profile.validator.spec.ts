@@ -34,12 +34,16 @@ describe('validateServiceTaxProfile', () => {
 
   it('accepts NORMAL ISS taxation without an issRate', () => {
     expect(
-      validateServiceTaxProfile(makeInput({ issTaxation: 'NORMAL', issRate: null })),
+      validateServiceTaxProfile(
+        makeInput({ issTaxation: 'NORMAL', issRate: null }),
+      ),
     ).toEqual([]);
   });
 
   it('rejects a service code that is not six digits with an invalid issue', () => {
-    const issues = validateServiceTaxProfile(makeInput({ serviceCode: '12345' }));
+    const issues = validateServiceTaxProfile(
+      makeInput({ serviceCode: '12345' }),
+    );
     expect(issues).toContainEqual(
       expect.objectContaining({ field: 'serviceCode', code: 'invalid' }),
     );
@@ -64,7 +68,10 @@ describe('validateServiceTaxProfile', () => {
   it('accepts CONFIGURED when at least one rate is present', () => {
     expect(
       validateServiceTaxProfile(
-        makeInput({ withholdingPolicy: 'CONFIGURED', withholdingRates: { irrf: '1.5' } }),
+        makeInput({
+          withholdingPolicy: 'CONFIGURED',
+          withholdingRates: { irrf: '1.5' },
+        }),
       ),
     ).toEqual([]);
   });
@@ -75,17 +82,30 @@ describe('validateServiceTaxProfile', () => {
         makeInput({ withholdingRates: { irrf: 'abc' } }),
       ),
     ).toContainEqual(
-      expect.objectContaining({ field: 'withholdingRates.irrf', code: 'invalid' }),
+      expect.objectContaining({
+        field: 'withholdingRates.irrf',
+        code: 'invalid',
+      }),
     );
     expect(
-      validateServiceTaxProfile(makeInput({ withholdingRates: { inss: '-1' } })),
+      validateServiceTaxProfile(
+        makeInput({ withholdingRates: { inss: '-1' } }),
+      ),
     ).toContainEqual(
-      expect.objectContaining({ field: 'withholdingRates.inss', code: 'out_of_range' }),
+      expect.objectContaining({
+        field: 'withholdingRates.inss',
+        code: 'out_of_range',
+      }),
     );
     expect(
-      validateServiceTaxProfile(makeInput({ withholdingRates: { csll: '100.1' } })),
+      validateServiceTaxProfile(
+        makeInput({ withholdingRates: { csll: '100.1' } }),
+      ),
     ).toContainEqual(
-      expect.objectContaining({ field: 'withholdingRates.csll', code: 'out_of_range' }),
+      expect.objectContaining({
+        field: 'withholdingRates.csll',
+        code: 'out_of_range',
+      }),
     );
     expect(
       validateServiceTaxProfile(
@@ -126,21 +146,36 @@ describe('validateServiceTaxProfile', () => {
   it('rejects effectiveUntil that is not after effectiveFrom', () => {
     expect(
       validateServiceTaxProfile(
-        makeInput({ effectiveFrom: '2026-06-01', effectiveUntil: '2026-06-01' }),
+        makeInput({
+          effectiveFrom: '2026-06-01',
+          effectiveUntil: '2026-06-01',
+        }),
       ),
     ).toContainEqual(
-      expect.objectContaining({ field: 'effectiveUntil', code: 'out_of_range' }),
+      expect.objectContaining({
+        field: 'effectiveUntil',
+        code: 'out_of_range',
+      }),
     );
     expect(
       validateServiceTaxProfile(
-        makeInput({ effectiveFrom: '2026-06-01', effectiveUntil: '2026-01-01' }),
+        makeInput({
+          effectiveFrom: '2026-06-01',
+          effectiveUntil: '2026-01-01',
+        }),
       ),
     ).toContainEqual(
-      expect.objectContaining({ field: 'effectiveUntil', code: 'out_of_range' }),
+      expect.objectContaining({
+        field: 'effectiveUntil',
+        code: 'out_of_range',
+      }),
     );
     expect(
       validateServiceTaxProfile(
-        makeInput({ effectiveFrom: '2026-06-01', effectiveUntil: '2027-01-01' }),
+        makeInput({
+          effectiveFrom: '2026-06-01',
+          effectiveUntil: '2027-01-01',
+        }),
       ),
     ).toEqual([]);
   });
@@ -152,7 +187,10 @@ describe('validateServiceTaxProfile', () => {
       }),
     );
     expect(issues).toContainEqual(
-      expect.objectContaining({ field: 'regimeApplicability', code: 'invalid_option' }),
+      expect.objectContaining({
+        field: 'regimeApplicability',
+        code: 'invalid_option',
+      }),
     );
   });
 });

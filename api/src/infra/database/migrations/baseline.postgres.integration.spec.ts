@@ -321,8 +321,7 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
           .map((m) => m.tableName)
           .filter(
             (name) =>
-              name !== 'outbox_messages' &&
-              name !== 'company_fiscal_profiles',
+              name !== 'outbox_messages' && name !== 'company_fiscal_profiles',
           ),
         'migrations',
       ].sort(),

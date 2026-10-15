@@ -176,8 +176,7 @@ export class InvoiceService {
               address: {
                 city: normalized.customer.address.city,
                 state: normalized.customer.address.state,
-                municipalityCode:
-                  normalized.customer.address.municipalityCode,
+                municipalityCode: normalized.customer.address.municipalityCode,
               },
             }
           : null,

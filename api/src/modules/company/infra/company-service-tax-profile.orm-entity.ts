@@ -17,16 +17,17 @@ const dateTransformer = {
 
 const numericStringTransformer = {
   to: (value: string | null): string | null => value,
-  from: (value: string | number | null | undefined): string | null | undefined =>
+  from: (
+    value: string | number | null | undefined,
+  ): string | null | undefined =>
     value === null || value === undefined ? value : String(value),
 };
 
 const jsonTransformer = {
   to: (value: Record<string, string>): string => JSON.stringify(value ?? {}),
-  from: (value: string | Record<string, string> | null | undefined):
-    | Record<string, string>
-    | null
-    | undefined => {
+  from: (
+    value: string | Record<string, string> | null | undefined,
+  ): Record<string, string> | null | undefined => {
     if (value === null || value === undefined) return value;
     return typeof value === 'string'
       ? (JSON.parse(value) as Record<string, string>)
@@ -43,10 +44,7 @@ const jsonTransformer = {
   name: 'company_service_tax_profiles_company_id_fkey',
   onDelete: 'CASCADE',
 })
-@Check(
-  'ck_cstp_service_code',
-  `service_code ~ '^[0-9]{6}$'`,
-)
+@Check('ck_cstp_service_code', `service_code ~ '^[0-9]{6}$'`)
 @Check(
   'ck_cstp_operation_nature',
   `operation_nature IN ('SERVICE','GOODS','MIXED','PARTNER_SALON')`,
@@ -90,7 +88,12 @@ export class CompanyServiceTaxProfileOrmEntity {
   @Column({ name: 'service_code', type: 'varchar', length: 6 })
   serviceCode!: string;
 
-  @Column({ name: 'municipal_service_code', type: 'varchar', length: 20, nullable: true })
+  @Column({
+    name: 'municipal_service_code',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
   municipalServiceCode!: string | null;
 
   @Column({ name: 'nbs_code', type: 'varchar', length: 9, nullable: true })
@@ -102,7 +105,12 @@ export class CompanyServiceTaxProfileOrmEntity {
   @Column({ name: 'class_code', type: 'varchar', length: 6, nullable: true })
   classCode!: string | null;
 
-  @Column({ name: 'operation_indicator', type: 'varchar', length: 6, nullable: true })
+  @Column({
+    name: 'operation_indicator',
+    type: 'varchar',
+    length: 6,
+    nullable: true,
+  })
   operationIndicator!: string | null;
 
   @Column({
@@ -187,7 +195,12 @@ export class CompanyServiceTaxProfileOrmEntity {
   })
   reviewStatus!: string;
 
-  @Column({ name: 'catalog_version', type: 'varchar', length: 40, nullable: true })
+  @Column({
+    name: 'catalog_version',
+    type: 'varchar',
+    length: 40,
+    nullable: true,
+  })
   catalogVersion!: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

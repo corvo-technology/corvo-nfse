@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { isEffectiveOn, type CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
+import {
+  isEffectiveOn,
+  type CompanyFiscalProfile,
+} from '@/modules/company/domain/fiscal-profile';
 import { CompanyFiscalProfileService } from '@/modules/company/application/company-fiscal-profile.service';
 import type { IFiscalProfileReader } from '@/modules/invoice/domain/fiscal/ports/fiscal-profile.reader';
 

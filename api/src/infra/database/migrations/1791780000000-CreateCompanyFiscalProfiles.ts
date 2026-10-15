@@ -1,8 +1,6 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateCompanyFiscalProfiles1791780000000
-  implements MigrationInterface
-{
+export class CreateCompanyFiscalProfiles1791780000000 implements MigrationInterface {
   private schema(runner: QueryRunner): string {
     const options = runner.connection.options;
     return runner.connection.driver.escape(
@@ -73,6 +71,8 @@ export class CreateCompanyFiscalProfiles1791780000000
   }
 
   async down(runner: QueryRunner): Promise<void> {
-    await runner.query(`DROP TABLE ${this.schema(runner)}.company_fiscal_profiles`);
+    await runner.query(
+      `DROP TABLE ${this.schema(runner)}.company_fiscal_profiles`,
+    );
   }
 }

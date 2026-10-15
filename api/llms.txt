@@ -52,3 +52,18 @@ code schedule_horizon_exceeded. Intake atomically persists invoice, event and
 outbox message. Once a queue publication is acknowledged, a Redis reset can
 lose the job while the invoice stays queued; document recovery does not recover
 queued invoices.
+
+## Fiscal engine (IBS/CBS and ISS)
+
+Every queued invoice runs a fail-fast fiscal pipeline (company fiscal profile,
+service classification, tax applicability, ISS/withholding, RTC/IBS-CBS,
+validator) driven by the transactional outbox (type invoice.calculate-taxes).
+The company's tax regime now comes from the historical company_fiscal_profiles
+table, not nfse_companies. customer is optional (omitted => consumidor, no
+tomador in the DPS); discount and service.fiscal are accepted at intake. IBS/CBS
+is delegated to the official RTC calculator whose real adapter is not yet built
+(Spec 3), so with FISCAL_IBSCBS_UNAVAILABLE_MODE=block (default) invoices whose
+IBS/CBS is mandatory are rejected with lastErrorCode TAX_CALCULATION_UNAVAILABLE
+instead of emitting incomplete notes. The computed result is persisted as an
+immutable invoice_fiscal_snapshots row. This engine is always on (no feature
+flag).

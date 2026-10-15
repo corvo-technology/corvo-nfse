@@ -1,8 +1,4 @@
-import {
-  Company,
-  CompanyEnvironment,
-  CompanyStatus,
-} from '../domain/company';
+import { Company, CompanyEnvironment, CompanyStatus } from '../domain/company';
 import { CompanyOrmEntity } from './company.orm-entity';
 
 export class CompanyMapper {

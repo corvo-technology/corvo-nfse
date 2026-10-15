@@ -32,9 +32,7 @@ interface InvoiceFiscalSnapshotRow {
 }
 
 @Injectable()
-export class TypeOrmInvoiceFiscalSnapshotRepository
-  implements IFiscalSnapshotRepository
-{
+export class TypeOrmInvoiceFiscalSnapshotRepository implements IFiscalSnapshotRepository {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly transactions: TypeOrmTransactionContext,
@@ -57,7 +55,9 @@ export class TypeOrmInvoiceFiscalSnapshotRepository
 
   private rowsOf(raw: unknown): InvoiceFiscalSnapshotRow[] {
     const list = raw as unknown[];
-    return (Array.isArray(list[0]) ? list[0] : list) as InvoiceFiscalSnapshotRow[];
+    return (
+      Array.isArray(list[0]) ? list[0] : list
+    ) as InvoiceFiscalSnapshotRow[];
   }
 
   async insert(snapshot: NewFiscalSnapshot): Promise<string> {

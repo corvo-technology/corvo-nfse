@@ -30,7 +30,10 @@ const tryDecimal = (value: string): Decimal | null => {
 const isValidCompetenceDate = (date: string): boolean => {
   if (!COMPETENCE_DATE_PATTERN.test(date)) return false;
   const parsed = new Date(`${date}T00:00:00Z`);
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
+  return (
+    !Number.isNaN(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === date
+  );
 };
 
 const moneyIssue = (field: string, value: string): FiscalIssueLike | null => {
@@ -52,19 +55,35 @@ const moneyIssue = (field: string, value: string): FiscalIssueLike | null => {
   return null;
 };
 
-const pushMoneyIssue = (errors: FiscalIssueLike[], field: string, value: string): void => {
+const pushMoneyIssue = (
+  errors: FiscalIssueLike[],
+  field: string,
+  value: string,
+): void => {
   const issue = moneyIssue(field, value);
   if (issue !== null) errors.push(issue);
 };
 
-const hasSefinToleranceWarning = (warnings: readonly FiscalWarning[]): boolean =>
+const hasSefinToleranceWarning = (
+  warnings: readonly FiscalWarning[],
+): boolean =>
   warnings.some((warning) => warning.code === IBS_CBS_TOLERATED_WARNING_CODE);
 
-const isBlank = (value: string | null): boolean => value === null || value === '';
+const isBlank = (value: string | null): boolean =>
+  value === null || value === '';
 
-export function validateFiscalContext(context: FiscalContext): FiscalContextValidation {
+export function validateFiscalContext(
+  context: FiscalContext,
+): FiscalContextValidation {
   const errors: FiscalIssueLike[] = [];
-  const { invoice, companyProfile, classification, applicability, legacyTaxes, rtcTaxes } = context;
+  const {
+    invoice,
+    companyProfile,
+    classification,
+    applicability,
+    legacyTaxes,
+    rtcTaxes,
+  } = context;
 
   if (!isValidCompetenceDate(invoice.competenceDate)) {
     errors.push({
@@ -106,27 +125,31 @@ export function validateFiscalContext(context: FiscalContext): FiscalContextVali
         message: `The classified service code ${classification.serviceCode} does not match the invoiced service code ${invoice.service.code}`,
       });
     }
-    const hasAnyCode = !isBlank(classification.classCode) || !isBlank(classification.cst);
+    const hasAnyCode =
+      !isBlank(classification.classCode) || !isBlank(classification.cst);
     if (hasAnyCode || classification.catalogValidated) {
       if (isBlank(classification.classCode)) {
         errors.push({
           field: 'classification.classCode',
           code: 'FISCAL_CLASSIFICATION_INVALID',
-          message: 'classCode must be present and non-empty for the classification to be consistent',
+          message:
+            'classCode must be present and non-empty for the classification to be consistent',
         });
       }
       if (isBlank(classification.cst)) {
         errors.push({
           field: 'classification.cst',
           code: 'FISCAL_CLASSIFICATION_INVALID',
-          message: 'cst must be present and non-empty for the classification to be consistent',
+          message:
+            'cst must be present and non-empty for the classification to be consistent',
         });
       }
       if (isBlank(classification.operationIndicator)) {
         errors.push({
           field: 'classification.operationIndicator',
           code: 'FISCAL_CLASSIFICATION_INVALID',
-          message: 'operationIndicator must be present and non-empty for the classification to be consistent',
+          message:
+            'operationIndicator must be present and non-empty for the classification to be consistent',
         });
       }
     }
@@ -138,10 +161,22 @@ export function validateFiscalContext(context: FiscalContext): FiscalContextVali
       pushMoneyIssue(errors, 'legacyTaxes.iss.amount', legacyTaxes.iss.amount);
     }
     legacyTaxes.withholdings.forEach((withholding, index) => {
-      pushMoneyIssue(errors, `legacyTaxes.withholdings[${index}].base`, withholding.base);
-      pushMoneyIssue(errors, `legacyTaxes.withholdings[${index}].amount`, withholding.amount);
+      pushMoneyIssue(
+        errors,
+        `legacyTaxes.withholdings[${index}].base`,
+        withholding.base,
+      );
+      pushMoneyIssue(
+        errors,
+        `legacyTaxes.withholdings[${index}].amount`,
+        withholding.amount,
+      );
     });
-    pushMoneyIssue(errors, 'legacyTaxes.netReceivableAmount', legacyTaxes.netReceivableAmount);
+    pushMoneyIssue(
+      errors,
+      'legacyTaxes.netReceivableAmount',
+      legacyTaxes.netReceivableAmount,
+    );
   }
 
   if (rtcTaxes !== undefined) {
@@ -161,12 +196,18 @@ export function validateFiscalContext(context: FiscalContext): FiscalContextVali
 
   if (applicability !== undefined) {
     const ibscbsRequired =
-      applicability.cbs.status === 'REQUIRED' || applicability.ibs.status === 'REQUIRED';
-    if (ibscbsRequired && rtcTaxes === undefined && !hasSefinToleranceWarning(context.warnings)) {
+      applicability.cbs.status === 'REQUIRED' ||
+      applicability.ibs.status === 'REQUIRED';
+    if (
+      ibscbsRequired &&
+      rtcTaxes === undefined &&
+      !hasSefinToleranceWarning(context.warnings)
+    ) {
       errors.push({
         field: 'rtcTaxes',
         code: 'TAX_CALCULATION_UNAVAILABLE',
-        message: 'IBS/CBS is required but the context carries no RTC calculation nor the Sefin tolerance warning',
+        message:
+          'IBS/CBS is required but the context carries no RTC calculation nor the Sefin tolerance warning',
       });
     }
     if (applicability.iss.status === 'REQUIRED') {
@@ -174,13 +215,19 @@ export function validateFiscalContext(context: FiscalContext): FiscalContextVali
         errors.push({
           field: 'legacyTaxes.iss',
           code: 'TAX_CALCULATION_UNAVAILABLE',
-          message: 'ISS is required but the context carries no calculated ISS amount',
+          message:
+            'ISS is required but the context carries no calculated ISS amount',
         });
       } else {
         const gross = tryDecimal(invoice.grossAmount);
         const discount = tryDecimal(invoice.discountAmount);
         const issBase = tryDecimal(legacyTaxes.iss.base);
-        if (gross !== null && discount !== null && issBase !== null && !issBase.eq(gross.minus(discount))) {
+        if (
+          gross !== null &&
+          discount !== null &&
+          issBase !== null &&
+          !issBase.eq(gross.minus(discount))
+        ) {
           errors.push({
             field: 'legacyTaxes.iss.base',
             code: 'ISS_BASE_MISMATCH',
@@ -202,7 +249,8 @@ export function validateFiscalContext(context: FiscalContext): FiscalContextVali
           message: `${companyProfile.taxRegime} must not carry a calculated ISS amount`,
         });
       }
-      const ibscbsAllowedBySimplesOption = isSimples && companyProfile.ibsCbsRegularOption === true;
+      const ibscbsAllowedBySimplesOption =
+        isSimples && companyProfile.ibsCbsRegularOption === true;
       if (rtcTaxes !== undefined && !ibscbsAllowedBySimplesOption) {
         errors.push({
           field: 'rtcTaxes',
@@ -217,10 +265,13 @@ export function validateFiscalContext(context: FiscalContext): FiscalContextVali
     const gross = tryDecimal(invoice.grossAmount);
     const discount = tryDecimal(invoice.discountAmount);
     if (gross !== null && discount !== null) {
-      const total = legacyTaxes.withholdings.reduce<Decimal>((acc, withholding) => {
-        const amount = tryDecimal(withholding.amount);
-        return amount === null ? acc : acc.plus(amount);
-      }, new Decimal(0));
+      const total = legacyTaxes.withholdings.reduce<Decimal>(
+        (acc, withholding) => {
+          const amount = tryDecimal(withholding.amount);
+          return amount === null ? acc : acc.plus(amount);
+        },
+        new Decimal(0),
+      );
       if (total.gt(gross.minus(discount))) {
         errors.push({
           field: 'withholdings',

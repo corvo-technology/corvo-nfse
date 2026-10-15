@@ -271,7 +271,11 @@ describePostgres(
         repository.findById(created.id, companyA, tenantB),
       ).resolves.toBeNull();
       expect(
-        await repository.findEffectiveByCompany(companyB, tenantA, '2026-02-01'),
+        await repository.findEffectiveByCompany(
+          companyB,
+          tenantA,
+          '2026-02-01',
+        ),
       ).toEqual([]);
       expect(
         await repository.findEffectiveByCompanyAndCode(

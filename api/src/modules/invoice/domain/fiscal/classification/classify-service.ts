@@ -1,6 +1,9 @@
 import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
 import type { CompanyServiceTaxProfile } from '@/modules/company/domain/service-tax-profile';
-import type { NormalizedInvoice, ServiceFiscalInput } from '../normalized-invoice';
+import type {
+  NormalizedInvoice,
+  ServiceFiscalInput,
+} from '../normalized-invoice';
 import { fiscalError, type FiscalError } from '../fiscal-error';
 import { err, ok, type Result } from '../result';
 import type { IFiscalCatalog } from './fiscal-catalog.port';
@@ -141,7 +144,8 @@ const overrideClassification = (
     (fillProfile === null ? null : fillProfile.operationIndicator),
   source: 'request_override',
   serviceProfileId: fillProfile === null ? null : fillProfile.id,
-  operationNature: fillProfile === null ? 'SERVICE' : fillProfile.operationNature,
+  operationNature:
+    fillProfile === null ? 'SERVICE' : fillProfile.operationNature,
   iss:
     fillProfile === null
       ? {
@@ -204,7 +208,11 @@ const validateAgainstCatalog = (
     );
   }
   if (validation.status === 'unavailable') {
-    return ok({ ...classification, catalogValidated: false, catalogVersions: {} });
+    return ok({
+      ...classification,
+      catalogValidated: false,
+      catalogVersions: {},
+    });
   }
   return ok({
     ...classification,
@@ -230,7 +238,8 @@ export function classifyService(input: {
   requestedProfileId: string | null;
   catalog: IFiscalCatalog;
 }): Result<ServiceTaxClassification, FiscalError> {
-  const { invoice, profile, serviceProfiles, requestedProfileId, catalog } = input;
+  const { invoice, profile, serviceProfiles, requestedProfileId, catalog } =
+    input;
 
   const lookup = catalog.lookupServiceCode(invoice.service.code);
   if (!lookup.found) {
@@ -274,7 +283,8 @@ export function classifyService(input: {
       return err(
         fiscalError({
           code: 'FISCAL_CLASSIFICATION_AMBIGUOUS',
-          message: 'Multiple service profiles match the requested service profile id',
+          message:
+            'Multiple service profiles match the requested service profile id',
           category: 'CLASSIFICATION',
           details: { candidates: matches.map((candidate) => candidate.id) },
         }),
@@ -300,7 +310,8 @@ export function classifyService(input: {
     return err(
       fiscalError({
         code: 'FISCAL_CLASSIFICATION_AMBIGUOUS',
-        message: 'Multiple service profiles are effective for this service code',
+        message:
+          'Multiple service profiles are effective for this service code',
         category: 'CLASSIFICATION',
         details: { candidates: candidates.map((candidate) => candidate.id) },
       }),

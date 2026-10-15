@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
-import { fiscalError, type FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
+import {
+  fiscalError,
+  type FiscalError,
+} from '@/modules/invoice/domain/fiscal/fiscal-error';
 import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
 import type { TaxStrategy } from './tax-strategy';
 
@@ -34,7 +37,9 @@ export class TaxStrategyResolver {
         category: 'UNSUPPORTED',
         step: 'TaxStrategyResolver.resolve',
         message: 'Multiple tax strategies claim the same fiscal profile',
-        details: { ambiguousStrategies: matching.map((strategy) => strategy.name) },
+        details: {
+          ambiguousStrategies: matching.map((strategy) => strategy.name),
+        },
       }),
     );
   }

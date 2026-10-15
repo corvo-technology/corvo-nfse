@@ -63,7 +63,9 @@ export const FISCAL_ENGINE_INTERNAL_PROVIDERS: Provider[] = [
   {
     provide: FISCAL_IBSCBS_UNAVAILABLE_MODE,
     useFactory: (config: ConfigService) => {
-      const fiscal = config.get<{ ibsCbsUnavailableMode: 'block' | 'warn' }>('fiscal');
+      const fiscal = config.get<{ ibsCbsUnavailableMode: 'block' | 'warn' }>(
+        'fiscal',
+      );
       if (fiscal === undefined) throw new Error('Missing fiscal configuration');
       return fiscal.ibsCbsUnavailableMode;
     },
@@ -76,7 +78,11 @@ export const FISCAL_ENGINE_INTERNAL_PROVIDERS: Provider[] = [
       policy: TaxTransitionPolicy,
       mode: 'block' | 'warn',
     ) => new RtcTaxCalculatorStep(rtc, policy, mode),
-    inject: [RtcCalculatorPort, TaxTransitionPolicy, FISCAL_IBSCBS_UNAVAILABLE_MODE],
+    inject: [
+      RtcCalculatorPort,
+      TaxTransitionPolicy,
+      FISCAL_IBSCBS_UNAVAILABLE_MODE,
+    ],
   },
   fiscalStepsProvider,
   FiscalEngineService,

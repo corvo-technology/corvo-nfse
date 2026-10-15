@@ -115,204 +115,207 @@ const snapshotOf = (
   calculatedAt: new Date('2026-12-10T12:00:00Z'),
 });
 
-describePostgres('invoice fiscal snapshot repository with restricted PostgreSQL role', () => {
-  let admin: DataSource;
-  let runtime: DataSource;
-  let repo: TypeOrmInvoiceFiscalSnapshotRepository;
-  beforeAll(async () => {
-    if (!url) throw new Error('Test database URL is required');
-    admin = new DataSource(
-      createTypeOrmOptions({ url, schema, ssl: false, logging: false }),
-    );
-    await admin.initialize();
-    await admin.query(`CREATE SCHEMA "${schema}"`);
-    await admin.runMigrations();
-    await admin.query(`INSERT INTO "${schema}".tenants (id) VALUES ($1),($2)`, [
-      tenantA,
-      tenantB,
-    ]);
-    for (const [tenant, company, invoice] of [
-      [tenantA, companyA, invoiceA],
-      [tenantB, companyB, invoiceB],
-    ] as const) {
-      await admin.query(
-        `INSERT INTO "${schema}".nfse_companies (id,tenant_id,legal_name,tax_id,environment) VALUES ($1,$2,'Fixture','11222333000181','test')`,
-        [company, tenant],
+describePostgres(
+  'invoice fiscal snapshot repository with restricted PostgreSQL role',
+  () => {
+    let admin: DataSource;
+    let runtime: DataSource;
+    let repo: TypeOrmInvoiceFiscalSnapshotRepository;
+    beforeAll(async () => {
+      if (!url) throw new Error('Test database URL is required');
+      admin = new DataSource(
+        createTypeOrmOptions({ url, schema, ssl: false, logging: false }),
       );
+      await admin.initialize();
+      await admin.query(`CREATE SCHEMA "${schema}"`);
+      await admin.runMigrations();
+      await admin.query(
+        `INSERT INTO "${schema}".tenants (id) VALUES ($1),($2)`,
+        [tenantA, tenantB],
+      );
+      for (const [tenant, company, invoice] of [
+        [tenantA, companyA, invoiceA],
+        [tenantB, companyB, invoiceB],
+      ] as const) {
+        await admin.query(
+          `INSERT INTO "${schema}".nfse_companies (id,tenant_id,legal_name,tax_id,environment) VALUES ($1,$2,'Fixture','11222333000181','test')`,
+          [company, tenant],
+        );
+        await admin.query(
+          `INSERT INTO "${schema}".nfse_invoices (id,company_id,tenant_id,status,customer_snapshot,service_snapshot,tax_snapshot,amount,competence_date,environment) VALUES ($1,$2,$3,'queued','{}','{}','{}',10,'2026-12-10','test')`,
+          [invoice, company, tenant],
+        );
+      }
+      const password = randomBytes(24).toString('hex');
+      await admin.query(
+        `CREATE ROLE "${role}" LOGIN PASSWORD '${password}' NOSUPERUSER NOBYPASSRLS NOINHERIT`,
+      );
+      const [owner]: Array<{ role: string }> = await admin.query(
+        'SELECT current_user AS role',
+      );
+      if (!owner) throw new Error('Migration owner was not returned');
+      for (let index = 0; index < 2; index++)
+        execFileSync(
+          'psql',
+          [
+            url,
+            '-w',
+            '-v',
+            `runtime_role=${role}`,
+            '-v',
+            `migration_role=${owner.role}`,
+            '-v',
+            `app_schema=${schema}`,
+            '-f',
+            resolve(process.cwd(), 'scripts/provision-runtime-role.sql'),
+          ],
+          { stdio: 'pipe' },
+        );
+      const runtimeUrl = new URL(url);
+      runtimeUrl.username = role;
+      runtimeUrl.password = password;
+      const options = createTypeOrmOptions({
+        url: runtimeUrl.toString(),
+        schema,
+        ssl: false,
+        logging: false,
+      });
+      runtime = new DataSource({
+        ...options,
+        extra: { ...options.extra, max: 4 },
+      });
+      await runtime.initialize();
+      installRlsConnectionScope(runtime);
+      repo = new TypeOrmInvoiceFiscalSnapshotRepository(
+        runtime,
+        new TypeOrmTransactionContext(),
+      );
+    }, 60000);
+    afterAll(async () => {
+      if (runtime?.isInitialized) await runtime.destroy();
+      if (admin?.isInitialized) {
+        await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+        await admin.query(`DROP ROLE IF EXISTS "${role}"`);
+        await admin.destroy();
+      }
+    });
+
+    it('inserts once per (invoice, attempt) and round-trips the result with decimal strings intact', async () => {
+      const snapshot = snapshotOf(tenantA, companyA, invoiceA);
+      const id = await runWithTenant(tenantA, () => repo.insert(snapshot));
+      const redelivered = await runWithTenant(tenantA, () =>
+        repo.insert(snapshot),
+      );
+      expect(redelivered).toBe(id);
+      const rows = await admin.query(
+        `SELECT id FROM "${schema}".invoice_fiscal_snapshots WHERE invoice_id=$1`,
+        [invoiceA],
+      );
+      expect(rows).toHaveLength(1);
+
+      const found = await runWithTenant(tenantA, () =>
+        repo.findByInvoiceId(invoiceA, tenantA),
+      );
+      expect(found).not.toBeNull();
+      expect(found?.id).toBe(id);
+      expect(found?.tenantId).toBe(tenantA);
+      expect(found?.companyId).toBe(companyA);
+      expect(found?.attempt).toBe(1);
+      expect(found?.calculationVersion).toBe('2026.10-r1');
+      expect(found?.grossAmount).toBe('1000.00');
+      expect(found?.netReceivableAmount).toBe('864.90');
+      expect(found?.result.taxableAmounts).toEqual({
+        gross: '1000.00',
+        discount: '100.00',
+        iss: '900.00',
+      });
+      expect(found?.result.taxes.iss?.amount).toBe('27.00');
+      expect(found?.result.rulesVersion).toBe('2026.10-r1');
+      expect(found?.result.trace).toEqual(snapshot.result.trace);
+    });
+
+    it('stores a later attempt as a new row and returns it as the latest', async () => {
+      const firstId = await runWithTenant(tenantA, () =>
+        repo.insert(snapshotOf(tenantA, companyA, invoiceA, 1)),
+      );
+      const secondId = await runWithTenant(tenantA, () =>
+        repo.insert(snapshotOf(tenantA, companyA, invoiceA, 2)),
+      );
+      expect(secondId).not.toBe(firstId);
+      const found = await runWithTenant(tenantA, () =>
+        repo.findByInvoiceId(invoiceA, tenantA),
+      );
+      expect(found?.attempt).toBe(2);
+    });
+
+    it('rejects direct UPDATE and DELETE through the immutability trigger', async () => {
+      const id = await runWithTenant(tenantA, () =>
+        repo.insert(snapshotOf(tenantA, companyA, invoiceA)),
+      );
+      await expect(
+        admin.query(
+          `UPDATE "${schema}".invoice_fiscal_snapshots SET calculation_version='tampered' WHERE id=$1`,
+          [id],
+        ),
+      ).rejects.toMatchObject({
+        driverError: { message: expect.stringContaining('immutable') },
+      });
+      await expect(
+        admin.query(
+          `DELETE FROM "${schema}".invoice_fiscal_snapshots WHERE id=$1`,
+          [id],
+        ),
+      ).rejects.toMatchObject({
+        driverError: { message: expect.stringContaining('immutable') },
+      });
+    });
+
+    it('removes the snapshot when the invoice is deleted through the cascade', async () => {
+      const cascadeInvoice = randomUUID();
       await admin.query(
         `INSERT INTO "${schema}".nfse_invoices (id,company_id,tenant_id,status,customer_snapshot,service_snapshot,tax_snapshot,amount,competence_date,environment) VALUES ($1,$2,$3,'queued','{}','{}','{}',10,'2026-12-10','test')`,
-        [invoice, company, tenant],
+        [cascadeInvoice, companyA, tenantA],
       );
-    }
-    const password = randomBytes(24).toString('hex');
-    await admin.query(
-      `CREATE ROLE "${role}" LOGIN PASSWORD '${password}' NOSUPERUSER NOBYPASSRLS NOINHERIT`,
-    );
-    const [owner]: Array<{ role: string }> = await admin.query(
-      'SELECT current_user AS role',
-    );
-    if (!owner) throw new Error('Migration owner was not returned');
-    for (let index = 0; index < 2; index++)
-      execFileSync(
-        'psql',
-        [
-          url,
-          '-w',
-          '-v',
-          `runtime_role=${role}`,
-          '-v',
-          `migration_role=${owner.role}`,
-          '-v',
-          `app_schema=${schema}`,
-          '-f',
-          resolve(process.cwd(), 'scripts/provision-runtime-role.sql'),
-        ],
-        { stdio: 'pipe' },
-      );
-    const runtimeUrl = new URL(url);
-    runtimeUrl.username = role;
-    runtimeUrl.password = password;
-    const options = createTypeOrmOptions({
-      url: runtimeUrl.toString(),
-      schema,
-      ssl: false,
-      logging: false,
-    });
-    runtime = new DataSource({
-      ...options,
-      extra: { ...options.extra, max: 4 },
-    });
-    await runtime.initialize();
-    installRlsConnectionScope(runtime);
-    repo = new TypeOrmInvoiceFiscalSnapshotRepository(
-      runtime,
-      new TypeOrmTransactionContext(),
-    );
-  }, 60000);
-  afterAll(async () => {
-    if (runtime?.isInitialized) await runtime.destroy();
-    if (admin?.isInitialized) {
-      await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
-      await admin.query(`DROP ROLE IF EXISTS "${role}"`);
-      await admin.destroy();
-    }
-  });
-
-  it('inserts once per (invoice, attempt) and round-trips the result with decimal strings intact', async () => {
-    const snapshot = snapshotOf(tenantA, companyA, invoiceA);
-    const id = await runWithTenant(tenantA, () => repo.insert(snapshot));
-    const redelivered = await runWithTenant(tenantA, () =>
-      repo.insert(snapshot),
-    );
-    expect(redelivered).toBe(id);
-    const rows = await admin.query(
-      `SELECT id FROM "${schema}".invoice_fiscal_snapshots WHERE invoice_id=$1`,
-      [invoiceA],
-    );
-    expect(rows).toHaveLength(1);
-
-    const found = await runWithTenant(tenantA, () =>
-      repo.findByInvoiceId(invoiceA, tenantA),
-    );
-    expect(found).not.toBeNull();
-    expect(found?.id).toBe(id);
-    expect(found?.tenantId).toBe(tenantA);
-    expect(found?.companyId).toBe(companyA);
-    expect(found?.attempt).toBe(1);
-    expect(found?.calculationVersion).toBe('2026.10-r1');
-    expect(found?.grossAmount).toBe('1000.00');
-    expect(found?.netReceivableAmount).toBe('864.90');
-    expect(found?.result.taxableAmounts).toEqual({
-      gross: '1000.00',
-      discount: '100.00',
-      iss: '900.00',
-    });
-    expect(found?.result.taxes.iss?.amount).toBe('27.00');
-    expect(found?.result.rulesVersion).toBe('2026.10-r1');
-    expect(found?.result.trace).toEqual(snapshot.result.trace);
-  });
-
-  it('stores a later attempt as a new row and returns it as the latest', async () => {
-    const firstId = await runWithTenant(tenantA, () =>
-      repo.insert(snapshotOf(tenantA, companyA, invoiceA, 1)),
-    );
-    const secondId = await runWithTenant(tenantA, () =>
-      repo.insert(snapshotOf(tenantA, companyA, invoiceA, 2)),
-    );
-    expect(secondId).not.toBe(firstId);
-    const found = await runWithTenant(tenantA, () =>
-      repo.findByInvoiceId(invoiceA, tenantA),
-    );
-    expect(found?.attempt).toBe(2);
-  });
-
-  it('rejects direct UPDATE and DELETE through the immutability trigger', async () => {
-    const id = await runWithTenant(tenantA, () =>
-      repo.insert(snapshotOf(tenantA, companyA, invoiceA)),
-    );
-    await expect(
-      admin.query(
-        `UPDATE "${schema}".invoice_fiscal_snapshots SET calculation_version='tampered' WHERE id=$1`,
-        [id],
-      ),
-    ).rejects.toMatchObject({
-      driverError: { message: expect.stringContaining('immutable') },
-    });
-    await expect(
-      admin.query(
-        `DELETE FROM "${schema}".invoice_fiscal_snapshots WHERE id=$1`,
-        [id],
-      ),
-    ).rejects.toMatchObject({
-      driverError: { message: expect.stringContaining('immutable') },
-    });
-  });
-
-  it('removes the snapshot when the invoice is deleted through the cascade', async () => {
-    const cascadeInvoice = randomUUID();
-    await admin.query(
-      `INSERT INTO "${schema}".nfse_invoices (id,company_id,tenant_id,status,customer_snapshot,service_snapshot,tax_snapshot,amount,competence_date,environment) VALUES ($1,$2,$3,'queued','{}','{}','{}',10,'2026-12-10','test')`,
-      [cascadeInvoice, companyA, tenantA],
-    );
-    await runWithTenant(tenantA, () =>
-      repo.insert(snapshotOf(tenantA, companyA, cascadeInvoice)),
-    );
-    await runWithTenant(tenantA, () =>
-      runtime.query(`DELETE FROM "${schema}".nfse_invoices WHERE id=$1`, [
-        cascadeInvoice,
-      ]),
-    );
-    expect(
-      await admin.query(
-        `SELECT id FROM "${schema}".invoice_fiscal_snapshots WHERE invoice_id=$1`,
-        [cascadeInvoice],
-      ),
-    ).toEqual([]);
-  });
-
-  it('RLS hides snapshots from other tenants', async () => {
-    await runWithTenant(tenantA, () =>
-      repo.insert(snapshotOf(tenantA, companyA, invoiceA)),
-    );
-    expect(
-      await runWithTenant(tenantB, () =>
-        repo.findByInvoiceId(invoiceA, tenantB),
-      ),
-    ).toBeNull();
-    const rows = await runWithTenant(tenantB, () =>
-      runtime.query(
-        `SELECT id FROM "${schema}".invoice_fiscal_snapshots WHERE tenant_id=$1`,
-        [tenantA],
-      ),
-    );
-    expect(rows).toEqual([]);
-  });
-
-  it('does not leak the isolated tenant B invoice into tenant A', async () => {
-    expect(
       await runWithTenant(tenantA, () =>
-        repo.findByInvoiceId(invoiceB, tenantA),
-      ),
-    ).toBeNull();
-  });
-});
+        repo.insert(snapshotOf(tenantA, companyA, cascadeInvoice)),
+      );
+      await runWithTenant(tenantA, () =>
+        runtime.query(`DELETE FROM "${schema}".nfse_invoices WHERE id=$1`, [
+          cascadeInvoice,
+        ]),
+      );
+      expect(
+        await admin.query(
+          `SELECT id FROM "${schema}".invoice_fiscal_snapshots WHERE invoice_id=$1`,
+          [cascadeInvoice],
+        ),
+      ).toEqual([]);
+    });
+
+    it('RLS hides snapshots from other tenants', async () => {
+      await runWithTenant(tenantA, () =>
+        repo.insert(snapshotOf(tenantA, companyA, invoiceA)),
+      );
+      expect(
+        await runWithTenant(tenantB, () =>
+          repo.findByInvoiceId(invoiceA, tenantB),
+        ),
+      ).toBeNull();
+      const rows = await runWithTenant(tenantB, () =>
+        runtime.query(
+          `SELECT id FROM "${schema}".invoice_fiscal_snapshots WHERE tenant_id=$1`,
+          [tenantA],
+        ),
+      );
+      expect(rows).toEqual([]);
+    });
+
+    it('does not leak the isolated tenant B invoice into tenant A', async () => {
+      expect(
+        await runWithTenant(tenantA, () =>
+          repo.findByInvoiceId(invoiceB, tenantA),
+        ),
+      ).toBeNull();
+    });
+  },
+);

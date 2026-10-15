@@ -46,7 +46,10 @@ function classificationOf(
       withholdingDefault: profile.issWithholdingDefault,
       incidenceMunicipalityCode: profile.incidenceMunicipalityCode,
     },
-    withholding: { policy: profile.withholdingPolicy, rates: profile.withholdingRates },
+    withholding: {
+      policy: profile.withholdingPolicy,
+      rates: profile.withholdingRates,
+    },
     catalogVersions: {},
     catalogValidated: false,
     justification: `company service profile: ${profile.name}`,
@@ -94,7 +97,8 @@ export class CompanyServiceTaxProfileService {
   ): Promise<CompanyServiceTaxProfile> {
     if (id !== null) {
       const existing = await this.profiles.findById(id, companyId, tenantId);
-      if (!existing) throw new NotFoundException('Service tax profile not found');
+      if (!existing)
+        throw new NotFoundException('Service tax profile not found');
       if (
         existing.reviewStatus === 'approved' &&
         existing.effectiveFrom === input.effectiveFrom
@@ -121,10 +125,7 @@ export class CompanyServiceTaxProfileService {
     if (!existing) throw new NotFoundException('Service tax profile not found');
     if (existing.reviewStatus === 'approved')
       throw new ConflictException('immutable_approved_profile');
-    if (
-      existing.effectiveUntil === null ||
-      existing.effectiveUntil >= today
-    )
+    if (existing.effectiveUntil === null || existing.effectiveUntil >= today)
       throw new ConflictException('service_profile_still_effective');
     await this.profiles.delete(id, companyId, tenantId);
   }

@@ -1,7 +1,5 @@
 import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
-import type {
-  CompanyServiceTaxProfile,
-} from '@/modules/company/domain/service-tax-profile';
+import type { CompanyServiceTaxProfile } from '@/modules/company/domain/service-tax-profile';
 import type { ClassificationValidationResult } from '@/modules/invoice/domain/fiscal/classification/fiscal-catalog.port';
 import type { CatalogLookup } from '@/modules/invoice/domain/fiscal/classification/fiscal-catalog.port';
 import { IFiscalCatalog } from '@/modules/invoice/domain/fiscal/classification/fiscal-catalog.port';
@@ -20,7 +18,10 @@ class StubCatalog extends IFiscalCatalog {
     reason: 'catalogs not loaded',
   };
   lookupServiceCode(code: string): CatalogLookup {
-    return { version: 'ctribnac-2026.1', found: ['060101', '010601'].includes(code) };
+    return {
+      version: 'ctribnac-2026.1',
+      found: ['060101', '010601'].includes(code),
+    };
   }
   validateClassification(): ClassificationValidationResult {
     return this.validation;
@@ -118,7 +119,8 @@ const contextFor = (
 });
 
 const outcomeOf = (result: Result<StepOutcome, FiscalError>): StepOutcome => {
-  if (!result.ok) throw new Error(`expected the step to succeed, got ${result.error.code}`);
+  if (!result.ok)
+    throw new Error(`expected the step to succeed, got ${result.error.code}`);
   return result.value;
 };
 
@@ -129,10 +131,19 @@ const errorOf = (result: Result<StepOutcome, FiscalError>): FiscalError => {
 
 const fakeReader = () => {
   const findById = jest.fn(
-    async (_id: string, _companyId: string, _tenantId: string): Promise<CompanyServiceTaxProfile | null> => null,
+    async (
+      _id: string,
+      _companyId: string,
+      _tenantId: string,
+    ): Promise<CompanyServiceTaxProfile | null> => null,
   );
   const findEffectiveByCode = jest.fn(
-    async (_companyId: string, _tenantId: string, _serviceCode: string, _date: string): Promise<CompanyServiceTaxProfile[]> => [],
+    async (
+      _companyId: string,
+      _tenantId: string,
+      _serviceCode: string,
+      _date: string,
+    ): Promise<CompanyServiceTaxProfile[]> => [],
   );
   const reader: IServiceProfileReader = { findById, findEffectiveByCode };
   return { reader, findById, findEffectiveByCode };
@@ -140,13 +151,19 @@ const fakeReader = () => {
 
 describe('ServiceTaxClassifierStep', () => {
   it('is a required step named ServiceTaxClassifier', () => {
-    const step = new ServiceTaxClassifierStep(fakeReader().reader, new StubCatalog());
+    const step = new ServiceTaxClassifierStep(
+      fakeReader().reader,
+      new StubCatalog(),
+    );
     expect(step.name).toBe('ServiceTaxClassifier');
     expect(step.required).toBe(true);
   });
 
   it('fails with FISCAL_INTERNAL_ERROR when the company profile is missing', async () => {
-    const step = new ServiceTaxClassifierStep(fakeReader().reader, new StubCatalog());
+    const step = new ServiceTaxClassifierStep(
+      fakeReader().reader,
+      new StubCatalog(),
+    );
     const error = errorOf(await step.execute(contextFor(invoice(), null)));
     expect(error).toMatchObject({
       code: 'FISCAL_INTERNAL_ERROR',
@@ -180,7 +197,9 @@ describe('ServiceTaxClassifierStep', () => {
     const catalog = new StubCatalog();
     catalog.validation = { status: 'validated', versions: { nbs: '2026.1' } };
     const step = new ServiceTaxClassifierStep(reader, catalog);
-    const outcome = outcomeOf(await step.execute(contextFor(invoice(), companyProfile())));
+    const outcome = outcomeOf(
+      await step.execute(contextFor(invoice(), companyProfile())),
+    );
     expect(outcome.context.classification).toMatchObject({
       source: 'company_service_profile',
       serviceProfileId: 'sp-1',
@@ -193,11 +212,18 @@ describe('ServiceTaxClassifierStep', () => {
   it('loads the service profile by id when one was requested, by effective code otherwise', async () => {
     const { reader, findById, findEffectiveByCode } = fakeReader();
     const step = new ServiceTaxClassifierStep(reader, new StubCatalog());
-    await step.execute(contextFor(invoice({ serviceProfileId: 'sp-9' }), companyProfile()));
+    await step.execute(
+      contextFor(invoice({ serviceProfileId: 'sp-9' }), companyProfile()),
+    );
     expect(findById).toHaveBeenCalledWith('sp-9', 'comp-1', 'ten-1');
     expect(findEffectiveByCode).not.toHaveBeenCalled();
 
     await step.execute(contextFor(invoice(), companyProfile()));
-    expect(findEffectiveByCode).toHaveBeenCalledWith('comp-1', 'ten-1', '060101', '2026-10-13');
+    expect(findEffectiveByCode).toHaveBeenCalledWith(
+      'comp-1',
+      'ten-1',
+      '060101',
+      '2026-10-13',
+    );
   });
 });

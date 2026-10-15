@@ -1,5 +1,8 @@
 import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
-import { fiscalError, type FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
+import {
+  fiscalError,
+  type FiscalError,
+} from '@/modules/invoice/domain/fiscal/fiscal-error';
 import type { ServiceTaxClassification } from '@/modules/invoice/domain/fiscal/classification/service-tax-classification';
 import type {
   FiscalCustomer,
@@ -21,7 +24,9 @@ describe('strategies', () => {
     new RegularTaxStrategy(),
   ]);
 
-  const fullProfile = (over: Partial<CompanyFiscalProfile> = {}): CompanyFiscalProfile => ({
+  const fullProfile = (
+    over: Partial<CompanyFiscalProfile> = {},
+  ): CompanyFiscalProfile => ({
     id: 'profile-1',
     tenantId: 'tenant-1',
     companyId: 'company-1',
@@ -40,7 +45,10 @@ describe('strategies', () => {
     ...over,
   });
 
-  const invoiceWith = (date: string, customer: FiscalCustomer | null): NormalizedInvoice => ({
+  const invoiceWith = (
+    date: string,
+    customer: FiscalCustomer | null,
+  ): NormalizedInvoice => ({
     invoiceId: 'invoice-1',
     tenantId: 'tenant-1',
     environment: 'test',
@@ -63,7 +71,9 @@ describe('strategies', () => {
     customer,
   });
 
-  const classificationWith = (over: Partial<ServiceTaxClassification> = {}): ServiceTaxClassification => ({
+  const classificationWith = (
+    over: Partial<ServiceTaxClassification> = {},
+  ): ServiceTaxClassification => ({
     serviceCode: '060101',
     municipalServiceCode: null,
     nbsCode: null,
@@ -73,7 +83,12 @@ describe('strategies', () => {
     source: 'official_catalog',
     serviceProfileId: null,
     operationNature: 'SERVICE',
-    iss: { taxation: 'NORMAL', rate: '3', withholdingDefault: false, incidenceMunicipalityCode: null },
+    iss: {
+      taxation: 'NORMAL',
+      rate: '3',
+      withholdingDefault: false,
+      incidenceMunicipalityCode: null,
+    },
     withholding: { policy: 'NONE_CONFIRMED', rates: {} },
     catalogVersions: {},
     catalogValidated: false,
@@ -86,7 +101,11 @@ describe('strategies', () => {
     taxId: '11222333000181',
     municipalityCode: '3550308',
   };
-  const cpfCustomer: FiscalCustomer = { kind: 'CPF', taxId: '12345678909', municipalityCode: null };
+  const cpfCustomer: FiscalCustomer = {
+    kind: 'CPF',
+    taxId: '12345678909',
+    municipalityCode: null,
+  };
 
   const plan = (
     profile: Partial<CompanyFiscalProfile>,
@@ -125,7 +144,10 @@ describe('strategies', () => {
   });
 
   it('Simples 2026: no test-phase rate applied', () => {
-    const r = plan({ taxRegime: 'SIMPLES_NACIONAL', simpleNational: true }, { competenceDate: '2026-11-15' });
+    const r = plan(
+      { taxRegime: 'SIMPLES_NACIONAL', simpleNational: true },
+      { competenceDate: '2026-11-15' },
+    );
     expect(r.ok && r.value).toMatchObject({
       cbs: { status: 'NOT_APPLICABLE' },
       ibs: { status: 'NOT_APPLICABLE' },
@@ -135,7 +157,10 @@ describe('strategies', () => {
   });
 
   it('Simples 2027 without regular option: UNSUPPORTED', () => {
-    const r = plan({ taxRegime: 'SIMPLES_NACIONAL' }, { competenceDate: '2027-02-01' });
+    const r = plan(
+      { taxRegime: 'SIMPLES_NACIONAL' },
+      { competenceDate: '2027-02-01' },
+    );
     expect(r.ok && r.value.cbs.status).toBe('UNSUPPORTED');
     expect(r.ok && r.value.ibs.status).toBe('UNSUPPORTED');
     expect(r.ok && r.value.iss.status).toBe('NOT_APPLICABLE');
@@ -143,7 +168,11 @@ describe('strategies', () => {
 
   it('Simples 2027 with regular option valid from the competence: behaves as regular', () => {
     const r = plan(
-      { taxRegime: 'SIMPLES_NACIONAL', ibsCbsRegularOption: true, ibsCbsRegularFrom: '2027-01-01' },
+      {
+        taxRegime: 'SIMPLES_NACIONAL',
+        ibsCbsRegularOption: true,
+        ibsCbsRegularFrom: '2027-01-01',
+      },
       { competenceDate: '2027-02-01' },
     );
     expect(r.ok && r.value).toMatchObject({
@@ -160,7 +189,12 @@ describe('strategies', () => {
       {
         customer: cnpjCustomer,
         classification: {
-          iss: { taxation: 'NORMAL', rate: '3', withholdingDefault: false, incidenceMunicipalityCode: null },
+          iss: {
+            taxation: 'NORMAL',
+            rate: '3',
+            withholdingDefault: false,
+            incidenceMunicipalityCode: null,
+          },
           withholding: { policy: 'NONE_CONFIRMED', rates: {} },
         },
       },
@@ -174,7 +208,10 @@ describe('strategies', () => {
   });
 
   it('Regular 2027: collectionWaived false', () => {
-    const r = plan({ taxRegime: 'LUCRO_PRESUMIDO' }, { competenceDate: '2027-01-15', customer: cnpjCustomer });
+    const r = plan(
+      { taxRegime: 'LUCRO_PRESUMIDO' },
+      { competenceDate: '2027-01-15', customer: cnpjCustomer },
+    );
     expect(r.ok && r.value.collectionWaived).toBe(false);
     expect(r.ok && r.value.cbs.status).toBe('REQUIRED');
   });
@@ -184,7 +221,12 @@ describe('strategies', () => {
       { taxRegime: 'LUCRO_PRESUMIDO' },
       {
         classification: {
-          iss: { taxation: 'NORMAL', rate: null, withholdingDefault: false, incidenceMunicipalityCode: null },
+          iss: {
+            taxation: 'NORMAL',
+            rate: null,
+            withholdingDefault: false,
+            incidenceMunicipalityCode: null,
+          },
         },
       },
     );
@@ -199,7 +241,12 @@ describe('strategies', () => {
       { taxRegime: 'LUCRO_PRESUMIDO' },
       {
         classification: {
-          iss: { taxation: 'FIXED', rate: null, withholdingDefault: false, incidenceMunicipalityCode: null },
+          iss: {
+            taxation: 'FIXED',
+            rate: null,
+            withholdingDefault: false,
+            incidenceMunicipalityCode: null,
+          },
         },
       },
     );
@@ -207,7 +254,10 @@ describe('strategies', () => {
   });
 
   it('Regular before 2026-10-01: IBS/CBS NOT_APPLICABLE (obligation not yet effective)', () => {
-    const r = plan({ taxRegime: 'LUCRO_PRESUMIDO' }, { competenceDate: '2026-09-15', customer: cnpjCustomer });
+    const r = plan(
+      { taxRegime: 'LUCRO_PRESUMIDO' },
+      { competenceDate: '2026-09-15', customer: cnpjCustomer },
+    );
     expect(r.ok && r.value.cbs).toMatchObject({
       status: 'NOT_APPLICABLE',
       reason: 'obrigação de informação ainda não vigente',
@@ -218,7 +268,10 @@ describe('strategies', () => {
   it('CNPJ customer with UNKNOWN withholding policy: federalWithholding MISSING_CONFIGURATION', () => {
     const r = plan(
       { taxRegime: 'LUCRO_PRESUMIDO' },
-      { customer: cnpjCustomer, classification: { withholding: { policy: 'UNKNOWN', rates: {} } } },
+      {
+        customer: cnpjCustomer,
+        classification: { withholding: { policy: 'UNKNOWN', rates: {} } },
+      },
     );
     expect(r.ok && r.value.federalWithholding).toMatchObject({
       status: 'MISSING_CONFIGURATION',
@@ -228,7 +281,9 @@ describe('strategies', () => {
 
   it('CPF customer: federalWithholding NOT_APPLICABLE', () => {
     const r = plan({ taxRegime: 'LUCRO_PRESUMIDO' }, { customer: cpfCustomer });
-    expect(r.ok && r.value.federalWithholding).toMatchObject({ status: 'NOT_APPLICABLE' });
+    expect(r.ok && r.value.federalWithholding).toMatchObject({
+      status: 'NOT_APPLICABLE',
+    });
   });
 
   it('ISS withheld when configured and customer is CNPJ', () => {
@@ -237,7 +292,12 @@ describe('strategies', () => {
       {
         customer: cnpjCustomer,
         classification: {
-          iss: { taxation: 'NORMAL', rate: '3', withholdingDefault: true, incidenceMunicipalityCode: null },
+          iss: {
+            taxation: 'NORMAL',
+            rate: '3',
+            withholdingDefault: true,
+            incidenceMunicipalityCode: null,
+          },
         },
       },
     );
@@ -245,14 +305,22 @@ describe('strategies', () => {
   });
 
   it('GOODS nature blocks with OPERATION_DOCUMENT_UNSUPPORTED', () => {
-    expect(plan({ taxRegime: 'MEI' }, { classification: { operationNature: 'GOODS' } })).toMatchObject({
+    expect(
+      plan(
+        { taxRegime: 'MEI' },
+        { classification: { operationNature: 'GOODS' } },
+      ),
+    ).toMatchObject({
       ok: false,
       error: { code: 'OPERATION_DOCUMENT_UNSUPPORTED' },
     });
   });
 
   it('PARTNER_SALON: specialTreatment UNSUPPORTED', () => {
-    const r = plan({ taxRegime: 'MEI' }, { classification: { operationNature: 'PARTNER_SALON' } });
+    const r = plan(
+      { taxRegime: 'MEI' },
+      { classification: { operationNature: 'PARTNER_SALON' } },
+    );
     expect(r.ok && r.value.specialTreatment).toMatchObject({
       status: 'UNSUPPORTED',
       reason: 'partner-salon scenario not supported; fiscal review required',
@@ -262,7 +330,9 @@ describe('strategies', () => {
   it.each(['OUTRO_REGIME', 'UNKNOWN'] as const)(
     'OUTRO_REGIME / UNKNOWN: TAX_REGIME_UNSUPPORTED (%s)',
     (regime) => {
-      expect(resolver.resolve(fullProfile({ taxRegime: regime }), '2026-10-13')).toMatchObject({
+      expect(
+        resolver.resolve(fullProfile({ taxRegime: regime }), '2026-10-13'),
+      ).toMatchObject({
         ok: false,
         error: { code: 'TAX_REGIME_UNSUPPORTED', details: { regime } },
       });
@@ -283,7 +353,10 @@ describe('strategies', () => {
           }),
         ),
     });
-    const ambiguous = new TaxStrategyResolver([stubStrategy('first'), stubStrategy('second')]);
+    const ambiguous = new TaxStrategyResolver([
+      stubStrategy('first'),
+      stubStrategy('second'),
+    ]);
     expect(ambiguous.resolve(fullProfile(), '2026-10-13')).toMatchObject({
       ok: false,
       error: {

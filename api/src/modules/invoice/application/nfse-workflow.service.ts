@@ -268,8 +268,7 @@ export class NfseWorkflowService {
       ...(taxId && customer
         ? {
             tomador: {
-              documento:
-                taxId.length === 14 ? { CNPJ: taxId } : { CPF: taxId },
+              documento: taxId.length === 14 ? { CNPJ: taxId } : { CPF: taxId },
               nome: customer.name,
             },
           }

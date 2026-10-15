@@ -16,7 +16,9 @@ const na = (reason = 'not_applicable'): Obligation => ({
   reason,
 });
 
-const invoice = (overrides: Partial<NormalizedInvoice> = {}): NormalizedInvoice => ({
+const invoice = (
+  overrides: Partial<NormalizedInvoice> = {},
+): NormalizedInvoice => ({
   invoiceId: 'inv-1',
   tenantId: 'ten-1',
   environment: 'test',
@@ -36,11 +38,17 @@ const invoice = (overrides: Partial<NormalizedInvoice> = {}): NormalizedInvoice 
     fiscal: null,
     serviceProfileId: 'sp-1',
   },
-  customer: { kind: 'CNPJ', taxId: '12345678000199', municipalityCode: '3550308' },
+  customer: {
+    kind: 'CNPJ',
+    taxId: '12345678000199',
+    municipalityCode: '3550308',
+  },
   ...overrides,
 });
 
-const profile = (overrides: Partial<CompanyFiscalProfile> = {}): CompanyFiscalProfile => ({
+const profile = (
+  overrides: Partial<CompanyFiscalProfile> = {},
+): CompanyFiscalProfile => ({
   id: 'cfp-1',
   tenantId: 'ten-1',
   companyId: 'comp-1',
@@ -84,7 +92,9 @@ const classification = (
   ...overrides,
 });
 
-const applicability = (overrides: Partial<TaxApplicability> = {}): TaxApplicability => ({
+const applicability = (
+  overrides: Partial<TaxApplicability> = {},
+): TaxApplicability => ({
   strategy: 'regular',
   customerRequired: true,
   iss: REQUIRED,
@@ -99,7 +109,9 @@ const applicability = (overrides: Partial<TaxApplicability> = {}): TaxApplicabil
   ...overrides,
 });
 
-const legacyTaxes = (overrides: Partial<LegacyTaxResult> = {}): LegacyTaxResult => ({
+const legacyTaxes = (
+  overrides: Partial<LegacyTaxResult> = {},
+): LegacyTaxResult => ({
   iss: { base: '1000.00', rate: '3', amount: '30.00' },
   issWithheld: false,
   issResponsible: 'PROVIDER',
@@ -159,9 +171,15 @@ describe('validateFiscalContext', () => {
 
   it('passes the context warnings through untouched', () => {
     const warnings = [
-      { code: 'UNCONDITIONAL_DISCOUNT_DEDUCTED', message: 'discount deducted', step: 'LegacyTaxCalculator' },
+      {
+        code: 'UNCONDITIONAL_DISCOUNT_DEDUCTED',
+        message: 'discount deducted',
+        step: 'LegacyTaxCalculator',
+      },
     ];
-    const { errors, warnings: returned } = validateFiscalContext(context({ warnings }));
+    const { errors, warnings: returned } = validateFiscalContext(
+      context({ warnings }),
+    );
     expect(errors).toEqual([]);
     expect(returned).toEqual(warnings);
   });
@@ -169,21 +187,30 @@ describe('validateFiscalContext', () => {
   it('flags a missing company fiscal profile', () => {
     const { errors } = validateFiscalContext(withoutProfile);
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'companyProfile', code: 'FISCAL_PROFILE_MISSING' }),
+      expect.objectContaining({
+        field: 'companyProfile',
+        code: 'FISCAL_PROFILE_MISSING',
+      }),
     );
   });
 
   it('flags a missing service tax classification', () => {
     const { errors } = validateFiscalContext(withoutClassification);
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'classification', code: 'FISCAL_CLASSIFICATION_REQUIRED' }),
+      expect.objectContaining({
+        field: 'classification',
+        code: 'FISCAL_CLASSIFICATION_REQUIRED',
+      }),
     );
   });
 
   it('flags a missing tax applicability', () => {
     const { errors } = validateFiscalContext(withoutApplicability);
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'applicability', code: 'TAX_APPLICABILITY_UNKNOWN' }),
+      expect.objectContaining({
+        field: 'applicability',
+        code: 'TAX_APPLICABILITY_UNKNOWN',
+      }),
     );
   });
 
@@ -192,7 +219,10 @@ describe('validateFiscalContext', () => {
       context({ classification: classification({ serviceCode: '999999' }) }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'service.code', code: 'FISCAL_CLASSIFICATION_INVALID' }),
+      expect.objectContaining({
+        field: 'service.code',
+        code: 'FISCAL_CLASSIFICATION_INVALID',
+      }),
     );
   });
 
@@ -201,7 +231,10 @@ describe('validateFiscalContext', () => {
       context({ classification: classification({ cst: '' }) }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'classification.cst', code: 'FISCAL_CLASSIFICATION_INVALID' }),
+      expect.objectContaining({
+        field: 'classification.cst',
+        code: 'FISCAL_CLASSIFICATION_INVALID',
+      }),
     );
   });
 
@@ -229,10 +262,16 @@ describe('validateFiscalContext', () => {
       }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'classification.classCode', code: 'FISCAL_CLASSIFICATION_INVALID' }),
+      expect.objectContaining({
+        field: 'classification.classCode',
+        code: 'FISCAL_CLASSIFICATION_INVALID',
+      }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'classification.cst', code: 'FISCAL_CLASSIFICATION_INVALID' }),
+      expect.objectContaining({
+        field: 'classification.cst',
+        code: 'FISCAL_CLASSIFICATION_INVALID',
+      }),
     );
     expect(errors).toContainEqual(
       expect.objectContaining({
@@ -259,7 +298,10 @@ describe('validateFiscalContext', () => {
   it('flags required IBS/CBS without RTC taxes', () => {
     const { errors } = validateFiscalContext(withoutRtc);
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'rtcTaxes', code: 'TAX_CALCULATION_UNAVAILABLE' }),
+      expect.objectContaining({
+        field: 'rtcTaxes',
+        code: 'TAX_CALCULATION_UNAVAILABLE',
+      }),
     );
   });
 
@@ -284,16 +326,26 @@ describe('validateFiscalContext', () => {
       context({ legacyTaxes: legacyTaxes({ iss: null }) }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'legacyTaxes.iss', code: 'TAX_CALCULATION_UNAVAILABLE' }),
+      expect.objectContaining({
+        field: 'legacyTaxes.iss',
+        code: 'TAX_CALCULATION_UNAVAILABLE',
+      }),
     );
   });
 
   it('flags an ISS base different from gross minus discount', () => {
     const { errors } = validateFiscalContext(
-      context({ legacyTaxes: legacyTaxes({ iss: { base: '999.00', rate: '3', amount: '29.97' } }) }),
+      context({
+        legacyTaxes: legacyTaxes({
+          iss: { base: '999.00', rate: '3', amount: '29.97' },
+        }),
+      }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'legacyTaxes.iss.base', code: 'ISS_BASE_MISMATCH' }),
+      expect.objectContaining({
+        field: 'legacyTaxes.iss.base',
+        code: 'ISS_BASE_MISMATCH',
+      }),
     );
   });
 
@@ -315,37 +367,60 @@ describe('validateFiscalContext', () => {
       context({ companyProfile: profile({ taxRegime: 'MEI' }) }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'legacyTaxes.iss', code: 'TAX_CALCULATION_UNSUPPORTED' }),
+      expect.objectContaining({
+        field: 'legacyTaxes.iss',
+        code: 'TAX_CALCULATION_UNSUPPORTED',
+      }),
     );
   });
 
   it('flags RTC taxes for the MEI regime', () => {
     const { errors } = validateFiscalContext(
-      context({ companyProfile: profile({ taxRegime: 'MEI' }), legacyTaxes: undefined }),
+      context({
+        companyProfile: profile({ taxRegime: 'MEI' }),
+        legacyTaxes: undefined,
+      }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'rtcTaxes', code: 'TAX_CALCULATION_UNSUPPORTED' }),
+      expect.objectContaining({
+        field: 'rtcTaxes',
+        code: 'TAX_CALCULATION_UNSUPPORTED',
+      }),
     );
   });
 
   it('flags a calculated ISS for the Simples Nacional regime', () => {
     const { errors } = validateFiscalContext(
-      context({ companyProfile: profile({ taxRegime: 'SIMPLES_NACIONAL', simpleNational: true }) }),
+      context({
+        companyProfile: profile({
+          taxRegime: 'SIMPLES_NACIONAL',
+          simpleNational: true,
+        }),
+      }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'legacyTaxes.iss', code: 'TAX_CALCULATION_UNSUPPORTED' }),
+      expect.objectContaining({
+        field: 'legacyTaxes.iss',
+        code: 'TAX_CALCULATION_UNSUPPORTED',
+      }),
     );
   });
 
   it('flags RTC taxes for Simples Nacional without the regular IBS/CBS option', () => {
     const { errors } = validateFiscalContext(
       context({
-        companyProfile: profile({ taxRegime: 'SIMPLES_NACIONAL', ibsCbsRegularOption: false }),
+        companyProfile: profile({
+          taxRegime: 'SIMPLES_NACIONAL',
+          ibsCbsRegularOption: false,
+        }),
         legacyTaxes: undefined,
       }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'rtcTaxes', code: 'TAX_CALCULATION_UNSUPPORTED' }),
+      expect.objectContaining({
+        field: 'rtcTaxes',
+        code: 'TAX_CALCULATION_UNSUPPORTED',
+      }),
     );
   });
 
@@ -357,7 +432,9 @@ describe('validateFiscalContext', () => {
           ibsCbsRegularOption: true,
           ibsCbsRegularFrom: '2027-01-01',
         }),
-        applicability: applicability({ iss: na('Simples Nacional does not charge ISS separately') }),
+        applicability: applicability({
+          iss: na('Simples Nacional does not charge ISS separately'),
+        }),
         legacyTaxes: undefined,
       }),
     );
@@ -369,12 +446,22 @@ describe('validateFiscalContext', () => {
       context({
         legacyTaxes: legacyTaxes({
           iss: null,
-          withholdings: [{ tax: 'IRRF', base: '1000.00', rate: '100.001', amount: '1000.01' }],
+          withholdings: [
+            {
+              tax: 'IRRF',
+              base: '1000.00',
+              rate: '100.001',
+              amount: '1000.01',
+            },
+          ],
         }),
       }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'withholdings', code: 'WITHHOLDINGS_EXCEED_NET' }),
+      expect.objectContaining({
+        field: 'withholdings',
+        code: 'WITHHOLDINGS_EXCEED_NET',
+      }),
     );
   });
 
@@ -382,7 +469,9 @@ describe('validateFiscalContext', () => {
     const { errors } = validateFiscalContext(
       context({
         legacyTaxes: legacyTaxes({
-          withholdings: [{ tax: 'IRRF', base: '1000.00', rate: '100', amount: '1000.00' }],
+          withholdings: [
+            { tax: 'IRRF', base: '1000.00', rate: '100', amount: '1000.00' },
+          ],
           netReceivableAmount: '0.00',
         }),
       }),
@@ -391,9 +480,14 @@ describe('validateFiscalContext', () => {
   });
 
   it('flags a monetary value with more than two decimal places', () => {
-    const { errors } = validateFiscalContext(context({ invoice: invoice({ grossAmount: '1000.123' }) }));
+    const { errors } = validateFiscalContext(
+      context({ invoice: invoice({ grossAmount: '1000.123' }) }),
+    );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'invoice.grossAmount', code: 'INVALID_DECIMAL_AMOUNT' }),
+      expect.objectContaining({
+        field: 'invoice.grossAmount',
+        code: 'INVALID_DECIMAL_AMOUNT',
+      }),
     );
   });
 
@@ -412,11 +506,16 @@ describe('validateFiscalContext', () => {
   it('flags an RTC amount with more than two decimal places', () => {
     const { errors } = validateFiscalContext(
       context({
-        rtcTaxes: rtcTaxes({ cbs: { base: '1000.00', rate: '0.9', amount: '9.123' } }),
+        rtcTaxes: rtcTaxes({
+          cbs: { base: '1000.00', rate: '0.9', amount: '9.123' },
+        }),
       }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'rtcTaxes.cbs.amount', code: 'INVALID_DECIMAL_AMOUNT' }),
+      expect.objectContaining({
+        field: 'rtcTaxes.cbs.amount',
+        code: 'INVALID_DECIMAL_AMOUNT',
+      }),
     );
   });
 
@@ -425,7 +524,10 @@ describe('validateFiscalContext', () => {
       context({ invoice: invoice({ competenceDate: '2026-13-10' }) }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'competenceDate', code: 'INVALID_COMPETENCE_DATE' }),
+      expect.objectContaining({
+        field: 'competenceDate',
+        code: 'INVALID_COMPETENCE_DATE',
+      }),
     );
   });
 
@@ -434,7 +536,10 @@ describe('validateFiscalContext', () => {
       context({ invoice: invoice({ competenceDate: '2027-02-30' }) }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'competenceDate', code: 'INVALID_COMPETENCE_DATE' }),
+      expect.objectContaining({
+        field: 'competenceDate',
+        code: 'INVALID_COMPETENCE_DATE',
+      }),
     );
   });
 
@@ -443,13 +548,20 @@ describe('validateFiscalContext', () => {
       context({ invoice: invoice({ competenceDate: '10/12/2026' }) }),
     );
     expect(errors).toContainEqual(
-      expect.objectContaining({ field: 'competenceDate', code: 'INVALID_COMPETENCE_DATE' }),
+      expect.objectContaining({
+        field: 'competenceDate',
+        code: 'INVALID_COMPETENCE_DATE',
+      }),
     );
   });
 
   it('aggregates every blocking error instead of stopping at the first one', () => {
     const { errors } = validateFiscalContext(
-      context({ companyProfile: undefined, classification: undefined, rtcTaxes: undefined }),
+      context({
+        companyProfile: undefined,
+        classification: undefined,
+        rtcTaxes: undefined,
+      }),
     );
     const fields = errors.map((issue) => issue.field);
     expect(fields).toEqual(

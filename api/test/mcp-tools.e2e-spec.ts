@@ -7,11 +7,7 @@ import {
   type E2eTestApp,
 } from './support/e2e-app';
 import { InvoiceOrmEntity } from '@/modules/invoice/infra/invoice.orm-entity';
-import {
-  mintToken,
-  mcpRpc,
-  type MintedToken,
-} from './support/mcp-e2e';
+import { mintToken, mcpRpc, type MintedToken } from './support/mcp-e2e';
 
 jest.setTimeout(180_000);
 
@@ -61,8 +57,10 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
   });
 
   it('lists 4 tools with real input schemas', async () => {
-    const res = await mcpPost(fullToken.accessToken, mcpRpc(1, 'tools/list'))
-      .expect(200);
+    const res = await mcpPost(
+      fullToken.accessToken,
+      mcpRpc(1, 'tools/list'),
+    ).expect(200);
 
     const tools = res.body.result.tools as Array<{
       name: string;
@@ -111,7 +109,10 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
       },
     }).expect(200);
 
-    const content = res.body.result.content as Array<{ type: string; text: string }>;
+    const content = res.body.result.content as Array<{
+      type: string;
+      text: string;
+    }>;
     expect(res.body.result.isError).toBe(true);
     expect(content[0].text).toContain('nfse:write');
   });
@@ -121,7 +122,10 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
       jsonrpc: '2.0',
       id: 3,
       method: 'tools/call',
-      params: { name: 'nfse_query', arguments: { access_key: '99999999999999999999' } },
+      params: {
+        name: 'nfse_query',
+        arguments: { access_key: '99999999999999999999' },
+      },
     }).expect(200);
 
     expect(res.body.result.isError).toBe(true);
@@ -169,7 +173,9 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
             tax_id: CUSTOMER_TAX_ID,
             email: 'cliente@e2e.invalid',
           },
-          services: [{ description: 'Consultoria', quantity: 1, unit_price: 100 }],
+          services: [
+            { description: 'Consultoria', quantity: 1, unit_price: 100 },
+          ],
           competence_date: COMPETENCE_DATE,
           service_code: '010101',
           municipality_code: '3550308',
@@ -179,9 +185,10 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
 
     // The invoice row is persisted by the lifecycle before the BullMQ enqueue,
     // so it should exist for this tenant even if the queue is unavailable.
-    const row = await dataSource
-      .getRepository(InvoiceOrmEntity)
-      .findOne({ where: { tenantId, companyId }, order: { createdAt: 'DESC' } });
+    const row = await dataSource.getRepository(InvoiceOrmEntity).findOne({
+      where: { tenantId, companyId },
+      order: { createdAt: 'DESC' },
+    });
     expect(row).toBeTruthy();
     expect(row!.status).toBe('queued');
     expect(row!.environment).toBe('test');

@@ -25,7 +25,9 @@ describe('resolveWithholdings', () => {
   });
 
   it('returns an empty list when no rate is configured', () => {
-    expect(resolveWithholdings({ base: toDecimal('900.00'), rates: {} })).toEqual([]);
+    expect(
+      resolveWithholdings({ base: toDecimal('900.00'), rates: {} }),
+    ).toEqual([]);
   });
 });
 
@@ -35,7 +37,9 @@ describe('netReceivable', () => {
     const net = netReceivable({
       gross: toDecimal('1000.00'),
       discount: toDecimal('100.00'),
-      withholdings: [{ tax: 'IRRF', base: '900.00', rate: '1.5', amount: '13.50' }],
+      withholdings: [
+        { tax: 'IRRF', base: '900.00', rate: '1.5', amount: '13.50' },
+      ],
       issWithheldAmount: toDecimal('45.00'),
     });
     expect(moneyString(net)).toBe('841.50');
@@ -55,7 +59,9 @@ describe('netReceivable', () => {
     const net = netReceivable({
       gross: toDecimal('100.00'),
       discount: toDecimal('0'),
-      withholdings: [{ tax: 'INSS', base: '100.00', rate: '150', amount: '150.00' }],
+      withholdings: [
+        { tax: 'INSS', base: '100.00', rate: '150', amount: '150.00' },
+      ],
       issWithheldAmount: null,
     });
     expect(net.isNegative()).toBe(true);

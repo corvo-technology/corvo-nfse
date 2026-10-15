@@ -120,7 +120,7 @@ describe('NfseWorkflowService payload — tomador opcional', () => {
     });
     service = new NfseWorkflowService(
       fakes.invoices as any,
-      fakes.sequences as any,
+      fakes.sequences,
       fakes.companies as any,
       {} as any,
       {} as any,

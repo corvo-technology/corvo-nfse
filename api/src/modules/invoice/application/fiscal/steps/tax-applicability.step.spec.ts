@@ -11,7 +11,9 @@ import { TaxStrategyResolver } from '../strategies/tax-strategy.resolver';
 import { contextFor } from '../testing/context';
 import { TaxApplicabilityStep } from './tax-applicability.step';
 
-const profile = (overrides: Partial<CompanyFiscalProfile> = {}): CompanyFiscalProfile => ({
+const profile = (
+  overrides: Partial<CompanyFiscalProfile> = {},
+): CompanyFiscalProfile => ({
   id: 'pf-1',
   tenantId: 'ten-1',
   companyId: 'comp-1',
@@ -66,7 +68,8 @@ const stepOf = (): TaxApplicabilityStep =>
   );
 
 const outcomeOf = (result: Result<StepOutcome, FiscalError>): StepOutcome => {
-  if (result.ok === false) throw new Error(`expected the step to succeed, got ${result.error.code}`);
+  if (result.ok === false)
+    throw new Error(`expected the step to succeed, got ${result.error.code}`);
   return result.value;
 };
 
@@ -94,7 +97,8 @@ describe('TaxApplicabilityStep', () => {
     );
     expect(outcome.status).toBe('applied');
     const applicability = outcome.context.applicability;
-    if (applicability === undefined) throw new Error('expected context.applicability to be filled');
+    if (applicability === undefined)
+      throw new Error('expected context.applicability to be filled');
     expect(applicability.strategy).toBe('mei');
     expect(applicability.iss.status).toBe('NOT_APPLICABLE');
     expect(applicability.cbs.status).toBe('NOT_APPLICABLE');
@@ -186,7 +190,12 @@ describe('TaxApplicabilityStep', () => {
         contextFor({
           companyProfile: profile(),
           classification: classification({
-            iss: { taxation: 'NORMAL', rate: null, withholdingDefault: false, incidenceMunicipalityCode: null },
+            iss: {
+              taxation: 'NORMAL',
+              rate: null,
+              withholdingDefault: false,
+              incidenceMunicipalityCode: null,
+            },
           }),
           invoice: { competenceDate: '2026-09-01' },
         }),
@@ -309,9 +318,12 @@ describe('TaxApplicabilityStep', () => {
       ),
     );
     const applicability = outcome.context.applicability;
-    if (applicability === undefined) throw new Error('expected context.applicability to be filled');
+    if (applicability === undefined)
+      throw new Error('expected context.applicability to be filled');
     expect(applicability.strategy).toBe('simples-nacional');
-    expect(applicability.rulesVersion).toBe(new TaxTransitionPolicy().rulesVersion);
+    expect(applicability.rulesVersion).toBe(
+      new TaxTransitionPolicy().rulesVersion,
+    );
     expect(applicability.legalReferences).toEqual(
       expect.arrayContaining([
         'LC 214/2025 (fase de teste 2026)',
@@ -328,15 +340,23 @@ describe('TaxApplicabilityStep', () => {
         contextFor({
           companyProfile: profile(),
           classification: classification({
-            iss: { taxation: 'EXEMPT', rate: null, withholdingDefault: false, incidenceMunicipalityCode: null },
+            iss: {
+              taxation: 'EXEMPT',
+              rate: null,
+              withholdingDefault: false,
+              incidenceMunicipalityCode: null,
+            },
           }),
           invoice: { competenceDate: '2027-02-10' },
         }),
       ),
     );
     const applicability = outcome.context.applicability;
-    if (applicability === undefined) throw new Error('expected context.applicability to be filled');
-    expect(applicability.legalReferences).not.toContain('LC 214/2025 (fase de teste 2026)');
+    if (applicability === undefined)
+      throw new Error('expected context.applicability to be filled');
+    expect(applicability.legalReferences).not.toContain(
+      'LC 214/2025 (fase de teste 2026)',
+    );
     expect(applicability.legalReferences).toContain(
       'Ato Conjunto RFB/CGIBS nº 4/2026; orientação CGNFS-e de 07/08/2026',
     );

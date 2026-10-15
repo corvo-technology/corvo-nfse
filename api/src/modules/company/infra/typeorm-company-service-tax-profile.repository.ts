@@ -7,7 +7,10 @@ import type {
   IssTaxation,
   OperationNature,
 } from '../domain/service-tax-profile';
-import type { ProfileReviewStatus, TaxRegimeKind } from '../domain/fiscal-profile';
+import type {
+  ProfileReviewStatus,
+  TaxRegimeKind,
+} from '../domain/fiscal-profile';
 import type {
   IServiceTaxProfileRepository,
   NewServiceTaxProfile,
@@ -46,9 +49,7 @@ const INSERT_COLUMNS = `tenant_id, company_id, name, service_code, municipal_ser
 const INSERT_VALUES = `$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::text[], $12, $13, $14, $15, $16, $17::jsonb, $18, $19, $20, $21, $22`;
 
 @Injectable()
-export class TypeOrmCompanyServiceTaxProfileRepository
-  implements IServiceTaxProfileRepository
-{
+export class TypeOrmCompanyServiceTaxProfileRepository implements IServiceTaxProfileRepository {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   private manager(): EntityManager {
@@ -56,9 +57,8 @@ export class TypeOrmCompanyServiceTaxProfileRepository
   }
 
   private table(): string {
-    return this.dataSource.getMetadata(
-      CompanyServiceTaxProfileOrmEntity,
-    ).tablePath;
+    return this.dataSource.getMetadata(CompanyServiceTaxProfileOrmEntity)
+      .tablePath;
   }
 
   /** numeric is selected as text so the domain always sees percentage strings. */

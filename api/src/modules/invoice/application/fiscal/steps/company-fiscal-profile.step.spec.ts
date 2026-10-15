@@ -6,7 +6,9 @@ import type { StepOutcome } from '@/modules/invoice/domain/fiscal/fiscal-step';
 import { contextFor } from '../testing/context';
 import { CompanyFiscalProfileStep } from './company-fiscal-profile.step';
 
-const profile = (overrides: Partial<CompanyFiscalProfile> = {}): CompanyFiscalProfile => ({
+const profile = (
+  overrides: Partial<CompanyFiscalProfile> = {},
+): CompanyFiscalProfile => ({
   id: 'pf-1',
   tenantId: 'ten-1',
   companyId: 'comp-1',
@@ -30,7 +32,8 @@ const readerOf = (
 ): IFiscalProfileReader => ({ findEffectiveByDate });
 
 const outcomeOf = (result: Result<StepOutcome, FiscalError>): StepOutcome => {
-  if (result.ok === false) throw new Error(`expected the step to succeed, got ${result.error.code}`);
+  if (result.ok === false)
+    throw new Error(`expected the step to succeed, got ${result.error.code}`);
   return result.value;
 };
 
@@ -48,7 +51,9 @@ describe('CompanyFiscalProfileStep', () => {
 
   it('applies the single effective profile and fills context.companyProfile', async () => {
     const effective = profile();
-    const step = new CompanyFiscalProfileStep(readerOf(async () => [effective]));
+    const step = new CompanyFiscalProfileStep(
+      readerOf(async () => [effective]),
+    );
     const outcome = outcomeOf(await step.execute(contextFor()));
     expect(outcome.status).toBe('applied');
     expect(outcome.context.companyProfile).toEqual(effective);
@@ -62,20 +67,41 @@ describe('CompanyFiscalProfileStep', () => {
         return [profile()];
       }),
     );
-    await step.execute(contextFor({ invoice: { competenceDate: '2026-02-10' } }));
+    await step.execute(
+      contextFor({ invoice: { competenceDate: '2026-02-10' } }),
+    );
     expect(calls).toEqual([['comp-1', 'ten-1', '2026-02-10']]);
   });
 
   it('uses the profile effective on the competence date, not the execution date', async () => {
-    const early = profile({ id: 'pf-early', taxRegime: 'MEI', validFrom: '2026-01-01', validUntil: '2026-06-01' });
-    const late = profile({ id: 'pf-late', taxRegime: 'SIMPLES_NACIONAL', validFrom: '2026-06-01' });
+    const early = profile({
+      id: 'pf-early',
+      taxRegime: 'MEI',
+      validFrom: '2026-01-01',
+      validUntil: '2026-06-01',
+    });
+    const late = profile({
+      id: 'pf-late',
+      taxRegime: 'SIMPLES_NACIONAL',
+      validFrom: '2026-06-01',
+    });
     const step = new CompanyFiscalProfileStep(
-      readerOf(async (_companyId, _tenantId, date) => [date < '2026-06-01' ? early : late]),
+      readerOf(async (_companyId, _tenantId, date) => [
+        date < '2026-06-01' ? early : late,
+      ]),
     );
-    const earlyResult = await step.execute(contextFor({ invoice: { competenceDate: '2026-02-10' } }));
-    const lateResult = await step.execute(contextFor({ invoice: { competenceDate: '2026-08-10' } }));
-    expect(earlyResult.ok && earlyResult.value.context.companyProfile?.taxRegime).toBe('MEI');
-    expect(lateResult.ok && lateResult.value.context.companyProfile?.taxRegime).toBe('SIMPLES_NACIONAL');
+    const earlyResult = await step.execute(
+      contextFor({ invoice: { competenceDate: '2026-02-10' } }),
+    );
+    const lateResult = await step.execute(
+      contextFor({ invoice: { competenceDate: '2026-08-10' } }),
+    );
+    expect(
+      earlyResult.ok && earlyResult.value.context.companyProfile?.taxRegime,
+    ).toBe('MEI');
+    expect(
+      lateResult.ok && lateResult.value.context.companyProfile?.taxRegime,
+    ).toBe('SIMPLES_NACIONAL');
   });
 
   it('fails with FISCAL_PROFILE_NOT_EFFECTIVE when no profile covers the competence date', async () => {
@@ -104,7 +130,9 @@ describe('CompanyFiscalProfileStep', () => {
   });
 
   it('fails with FISCAL_INTERNAL_ERROR when the reader port is not wired', async () => {
-    const step = new CompanyFiscalProfileStep(null as unknown as IFiscalProfileReader);
+    const step = new CompanyFiscalProfileStep(
+      null as unknown as IFiscalProfileReader,
+    );
     const error = errorOf(await step.execute(contextFor()));
     expect(error).toMatchObject({
       code: 'FISCAL_INTERNAL_ERROR',
@@ -132,7 +160,9 @@ describe('CompanyFiscalProfileStep', () => {
     const step = new CompanyFiscalProfileStep(
       readerOf(async () => [profile({ reviewStatus: 'rejected' })]),
     );
-    const error = errorOf(await step.execute(contextFor({ invoice: { environment: 'test' } })));
+    const error = errorOf(
+      await step.execute(contextFor({ invoice: { environment: 'test' } })),
+    );
     expect(error).toMatchObject({
       code: 'FISCAL_REVIEW_REQUIRED',
       category: 'CONFIGURATION',
@@ -141,8 +171,12 @@ describe('CompanyFiscalProfileStep', () => {
   });
 
   it('allows an approved profile in the live environment', async () => {
-    const step = new CompanyFiscalProfileStep(readerOf(async () => [profile({ reviewStatus: 'approved' })]));
-    const outcome = outcomeOf(await step.execute(contextFor({ invoice: { environment: 'live' } })));
+    const step = new CompanyFiscalProfileStep(
+      readerOf(async () => [profile({ reviewStatus: 'approved' })]),
+    );
+    const outcome = outcomeOf(
+      await step.execute(contextFor({ invoice: { environment: 'live' } })),
+    );
     expect(outcome.status).toBe('applied');
     expect(outcome.context.companyProfile?.reviewStatus).toBe('approved');
     expect(outcome.context.warnings).toEqual([]);
@@ -152,7 +186,9 @@ describe('CompanyFiscalProfileStep', () => {
     const step = new CompanyFiscalProfileStep(
       readerOf(async () => [profile({ reviewStatus: 'unreviewed' })]),
     );
-    const outcome = outcomeOf(await step.execute(contextFor({ invoice: { environment: 'test' } })));
+    const outcome = outcomeOf(
+      await step.execute(contextFor({ invoice: { environment: 'test' } })),
+    );
     expect(outcome.status).toBe('applied');
     expect(outcome.context.warnings).toEqual([
       {

@@ -3,8 +3,14 @@ import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profi
 import type { TaxApplicability } from '@/modules/invoice/domain/fiscal/applicability/tax-applicability';
 import type { ServiceTaxClassification } from '@/modules/invoice/domain/fiscal/classification/service-tax-classification';
 import type { FiscalContext } from '@/modules/invoice/domain/fiscal/fiscal-context';
-import { fiscalError, type FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
-import type { FiscalStep, StepOutcome } from '@/modules/invoice/domain/fiscal/fiscal-step';
+import {
+  fiscalError,
+  type FiscalError,
+} from '@/modules/invoice/domain/fiscal/fiscal-error';
+import type {
+  FiscalStep,
+  StepOutcome,
+} from '@/modules/invoice/domain/fiscal/fiscal-step';
 import { TaxTransitionPolicy } from '@/modules/invoice/domain/fiscal/policies/tax-transition.policy';
 import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
 import { TaxStrategyResolver } from '../strategies/tax-strategy.resolver';
@@ -15,7 +21,13 @@ type TaxApplicabilityPlan = Omit<
 >;
 
 /** Obligation keys in the order the UNSUPPORTED/MISSING_CONFIGURATION blocks are scanned. */
-const OBLIGATION_TAXES = ['iss', 'issWithheld', 'federalWithholding', 'cbs', 'ibs'] as const;
+const OBLIGATION_TAXES = [
+  'iss',
+  'issWithheld',
+  'federalWithholding',
+  'cbs',
+  'ibs',
+] as const;
 type ObligationTax = (typeof OBLIGATION_TAXES)[number];
 
 const ISS_RATE_FIELD = 'service.iss.rate';
@@ -23,7 +35,9 @@ const ISS_RATE_FIELD = 'service.iss.rate';
 const coversDate = (
   rule: { readonly validFrom: string; readonly validUntil: string | null },
   date: string,
-): boolean => rule.validFrom <= date && (rule.validUntil === null || date <= rule.validUntil);
+): boolean =>
+  rule.validFrom <= date &&
+  (rule.validUntil === null || date <= rule.validUntil);
 
 @Injectable()
 export class TaxApplicabilityStep implements FiscalStep {
@@ -37,7 +51,9 @@ export class TaxApplicabilityStep implements FiscalStep {
     private readonly policy: TaxTransitionPolicy,
   ) {}
 
-  async execute(context: Readonly<FiscalContext>): Promise<Result<StepOutcome, FiscalError>> {
+  async execute(
+    context: Readonly<FiscalContext>,
+  ): Promise<Result<StepOutcome, FiscalError>> {
     const { invoice, companyProfile, classification } = context;
     if (companyProfile === undefined) {
       return err(
@@ -64,7 +80,10 @@ export class TaxApplicabilityStep implements FiscalStep {
       );
     }
 
-    const resolved = this.resolver.resolve(companyProfile, invoice.competenceDate);
+    const resolved = this.resolver.resolve(
+      companyProfile,
+      invoice.competenceDate,
+    );
     if (!resolved.ok) return err(this.withStep(resolved.error));
     const strategy = resolved.value;
 
@@ -76,7 +95,11 @@ export class TaxApplicabilityStep implements FiscalStep {
     });
     if (!planned.ok) return err(this.withStep(planned.error));
 
-    const blocked = this.evaluateBlocks(planned.value, classification, invoice.customer);
+    const blocked = this.evaluateBlocks(
+      planned.value,
+      classification,
+      invoice.customer,
+    );
     if (blocked !== null) return err(blocked);
 
     const applicability: TaxApplicability = {
@@ -101,21 +124,31 @@ export class TaxApplicabilityStep implements FiscalStep {
     if (plan.customerRequired && customer === null) {
       return fiscalError({
         code: 'FISCAL_VALIDATION_FAILED',
-        message: 'This regime requires an identified customer (tomador) on the NFS-e',
+        message:
+          'This regime requires an identified customer (tomador) on the NFS-e',
         category: 'VALIDATION',
         step: this.name,
         details: { fields: ['customer'] },
       });
     }
 
-    const unsupported = this.firstObligation(plan, (obligation) => obligation.status === 'UNSUPPORTED');
-    if (unsupported !== null && unsupported.obligation.status === 'UNSUPPORTED') {
+    const unsupported = this.firstObligation(
+      plan,
+      (obligation) => obligation.status === 'UNSUPPORTED',
+    );
+    if (
+      unsupported !== null &&
+      unsupported.obligation.status === 'UNSUPPORTED'
+    ) {
       return fiscalError({
         code: 'TAX_CALCULATION_UNSUPPORTED',
         message: `Tax "${unsupported.tax}" is not supported for this operation: ${unsupported.obligation.reason}`,
         category: 'UNSUPPORTED',
         step: this.name,
-        details: { tax: unsupported.tax, reason: unsupported.obligation.reason },
+        details: {
+          tax: unsupported.tax,
+          reason: unsupported.obligation.reason,
+        },
       });
     }
     if (plan.specialTreatment.status === 'UNSUPPORTED') {
@@ -124,7 +157,10 @@ export class TaxApplicabilityStep implements FiscalStep {
         message: plan.specialTreatment.reason,
         category: 'UNSUPPORTED',
         step: this.name,
-        details: { tax: 'specialTreatment', reason: plan.specialTreatment.reason },
+        details: {
+          tax: 'specialTreatment',
+          reason: plan.specialTreatment.reason,
+        },
       });
     }
 
@@ -155,13 +191,15 @@ export class TaxApplicabilityStep implements FiscalStep {
       });
     }
 
-    const ibsCbsRequired = plan.cbs.status === 'REQUIRED' || plan.ibs.status === 'REQUIRED';
+    const ibsCbsRequired =
+      plan.cbs.status === 'REQUIRED' || plan.ibs.status === 'REQUIRED';
     if (ibsCbsRequired) {
       const missingFields = this.missingClassificationFields(classification);
       if (missingFields.length > 0) {
         return fiscalError({
           code: 'FISCAL_CLASSIFICATION_REQUIRED',
-          message: 'IBS/CBS requires a complete fiscal classification (NBS, CST, class code and operation indicator)',
+          message:
+            'IBS/CBS requires a complete fiscal classification (NBS, CST, class code and operation indicator)',
           category: 'CLASSIFICATION',
           step: this.name,
           details: { missingFields },
@@ -170,7 +208,8 @@ export class TaxApplicabilityStep implements FiscalStep {
       if (!classification.catalogValidated) {
         return fiscalError({
           code: 'FISCAL_CLASSIFICATION_INVALID',
-          message: 'IBS/CBS requires a classification validated against the official catalog',
+          message:
+            'IBS/CBS requires a classification validated against the official catalog',
           category: 'CLASSIFICATION',
           step: this.name,
           details: { reason: 'catalog_validation_unavailable' },
@@ -183,7 +222,10 @@ export class TaxApplicabilityStep implements FiscalStep {
   private firstObligation(
     plan: TaxApplicabilityPlan,
     matches: (obligation: TaxApplicabilityPlan[ObligationTax]) => boolean,
-  ): { tax: ObligationTax; obligation: TaxApplicabilityPlan[ObligationTax] } | null {
+  ): {
+    tax: ObligationTax;
+    obligation: TaxApplicabilityPlan[ObligationTax];
+  } | null {
     for (const tax of OBLIGATION_TAXES) {
       const obligation = plan[tax];
       if (matches(obligation)) return { tax, obligation };
@@ -191,11 +233,14 @@ export class TaxApplicabilityStep implements FiscalStep {
     return null;
   }
 
-  private missingClassificationFields(classification: ServiceTaxClassification): string[] {
+  private missingClassificationFields(
+    classification: ServiceTaxClassification,
+  ): string[] {
     const missing: string[] = [];
     if (classification.nbsCode === null) missing.push('service.fiscal.nbsCode');
     if (classification.cst === null) missing.push('service.fiscal.cst');
-    if (classification.classCode === null) missing.push('service.fiscal.classCode');
+    if (classification.classCode === null)
+      missing.push('service.fiscal.classCode');
     if (classification.operationIndicator === null) {
       missing.push('service.fiscal.operationIndicator');
     }

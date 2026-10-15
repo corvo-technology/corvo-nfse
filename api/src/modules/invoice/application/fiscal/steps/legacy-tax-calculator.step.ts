@@ -1,13 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import type { Obligation } from '@/modules/invoice/domain/fiscal/applicability/tax-applicability';
 import type { FiscalContext } from '@/modules/invoice/domain/fiscal/fiscal-context';
-import { fiscalError, type FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
+import {
+  fiscalError,
+  type FiscalError,
+} from '@/modules/invoice/domain/fiscal/fiscal-error';
 import type { Decimal } from '@/modules/invoice/domain/fiscal/money';
 import { moneyString, toDecimal } from '@/modules/invoice/domain/fiscal/money';
-import type { LegacyTaxResult, WithholdingAmount } from '@/modules/invoice/domain/fiscal/legacy/legacy-tax-result';
+import type {
+  LegacyTaxResult,
+  WithholdingAmount,
+} from '@/modules/invoice/domain/fiscal/legacy/legacy-tax-result';
 import { resolveIss } from '@/modules/invoice/domain/fiscal/legacy/iss-tax.resolver';
-import { netReceivable, resolveWithholdings } from '@/modules/invoice/domain/fiscal/legacy/withholding.resolver';
-import type { FiscalStep, StepOutcome } from '@/modules/invoice/domain/fiscal/fiscal-step';
+import {
+  netReceivable,
+  resolveWithholdings,
+} from '@/modules/invoice/domain/fiscal/legacy/withholding.resolver';
+import type {
+  FiscalStep,
+  StepOutcome,
+} from '@/modules/invoice/domain/fiscal/fiscal-step';
 import type { TaxAmount } from '@/modules/invoice/domain/fiscal/tax-amount';
 import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
 
@@ -21,13 +33,16 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
   readonly name = 'LegacyTaxCalculator';
   readonly required = false;
 
-  async execute(context: Readonly<FiscalContext>): Promise<Result<StepOutcome, FiscalError>> {
+  async execute(
+    context: Readonly<FiscalContext>,
+  ): Promise<Result<StepOutcome, FiscalError>> {
     const { applicability, classification } = context;
     if (applicability === undefined) {
       return err(
         fiscalError({
           code: 'FISCAL_INTERNAL_ERROR',
-          message: 'LegacyTaxCalculator requires the tax applicability produced by the previous step',
+          message:
+            'LegacyTaxCalculator requires the tax applicability produced by the previous step',
           category: 'INTERNAL',
           step: this.name,
           details: { reason: 'applicability_missing' },
@@ -38,7 +53,8 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
       return err(
         fiscalError({
           code: 'FISCAL_INTERNAL_ERROR',
-          message: 'LegacyTaxCalculator requires the service tax classification produced by the previous step',
+          message:
+            'LegacyTaxCalculator requires the service tax classification produced by the previous step',
           category: 'INTERNAL',
           step: this.name,
           details: { reason: 'classification_missing' },
@@ -51,7 +67,11 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
       isNotApplicable(applicability.issWithheld) &&
       isNotApplicable(applicability.federalWithholding)
     ) {
-      return ok({ status: 'skipped', context, reason: applicability.iss.reason });
+      return ok({
+        status: 'skipped',
+        context,
+        reason: applicability.iss.reason,
+      });
     }
 
     const gross = toDecimal(context.invoice.grossAmount);
@@ -98,15 +118,31 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
 
     const federal =
       applicability.federalWithholding.status === 'REQUIRED'
-        ? resolveWithholdings({ base: gross.minus(discount), rates: classification.withholding.rates })
+        ? resolveWithholdings({
+            base: gross.minus(discount),
+            rates: classification.withholding.rates,
+          })
         : [];
 
     const withholdings: WithholdingAmount[] =
       iss !== null && issWithheldAmount !== null
-        ? [{ tax: 'ISS', base: iss.base, rate: iss.rate ?? '0', amount: iss.amount }, ...federal]
+        ? [
+            {
+              tax: 'ISS',
+              base: iss.base,
+              rate: iss.rate ?? '0',
+              amount: iss.amount,
+            },
+            ...federal,
+          ]
         : [...federal];
 
-    const net = netReceivable({ gross, discount, withholdings: federal, issWithheldAmount });
+    const net = netReceivable({
+      gross,
+      discount,
+      withholdings: federal,
+      issWithheldAmount,
+    });
     if (net.isNegative()) {
       return err(
         fiscalError({
@@ -122,7 +158,12 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
     const legacyTaxes: LegacyTaxResult = {
       iss,
       issWithheld: issWithheldAmount !== null,
-      issResponsible: iss === null ? null : issWithheldAmount !== null ? 'CUSTOMER' : 'PROVIDER',
+      issResponsible:
+        iss === null
+          ? null
+          : issWithheldAmount !== null
+            ? 'CUSTOMER'
+            : 'PROVIDER',
       withholdings,
       netReceivableAmount: moneyString(net),
     };
@@ -133,12 +174,16 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
             ...context.warnings,
             {
               code: 'UNCONDITIONAL_DISCOUNT_DEDUCTED',
-              message: 'Desconto incondicional deduzido da base de cálculo do ISS (LC 116/2003, art. 7º)',
+              message:
+                'Desconto incondicional deduzido da base de cálculo do ISS (LC 116/2003, art. 7º)',
               step: this.name,
             },
           ]
         : context.warnings;
 
-    return ok({ status: 'applied', context: { ...context, legacyTaxes, warnings } });
+    return ok({
+      status: 'applied',
+      context: { ...context, legacyTaxes, warnings },
+    });
   }
 }

@@ -3,7 +3,9 @@ import { fiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
 import { ok, err } from '@/modules/invoice/domain/fiscal/result';
 import { FakeRtcCalculator } from './fake-rtc-calculator';
 
-const input = (overrides: Partial<RtcCalculationInput> = {}): RtcCalculationInput => ({
+const input = (
+  overrides: Partial<RtcCalculationInput> = {},
+): RtcCalculationInput => ({
   competenceDate: '2026-10-13',
   grossAmount: '1000.00',
   discountAmount: '0.00',
@@ -15,7 +17,11 @@ const input = (overrides: Partial<RtcCalculationInput> = {}): RtcCalculationInpu
   providerTaxId: '11222330000181',
   providerMunicipalityCode: '3550308',
   incidenceMunicipalityCode: '3550308',
-  customer: { kind: 'CNPJ', taxId: '12345678000199', municipalityCode: '3550308' },
+  customer: {
+    kind: 'CNPJ',
+    taxId: '12345678000199',
+    municipalityCode: '3550308',
+  },
   regime: 'LUCRO_PRESUMIDO',
   ...overrides,
 });
@@ -38,13 +44,31 @@ describe('FakeRtcCalculator', () => {
   });
 
   it('deducts the discount from the base', async () => {
-    const result = await new FakeRtcCalculator().calculate(input({ discountAmount: '100.00' }));
+    const result = await new FakeRtcCalculator().calculate(
+      input({ discountAmount: '100.00' }),
+    );
     expect(result.ok).toBe(true);
     if (result.ok === false) return;
-    expect(result.value.cbs).toEqual({ base: '900.00', rate: '0.9', amount: '8.10' });
-    expect(result.value.ibsTotal).toEqual({ base: '900.00', rate: '0.1', amount: '0.90' });
-    expect(result.value.ibsState).toEqual({ base: '900.00', rate: '0', amount: '0.00' });
-    expect(result.value.ibsCity).toEqual({ base: '900.00', rate: '0.1', amount: '0.90' });
+    expect(result.value.cbs).toEqual({
+      base: '900.00',
+      rate: '0.9',
+      amount: '8.10',
+    });
+    expect(result.value.ibsTotal).toEqual({
+      base: '900.00',
+      rate: '0.1',
+      amount: '0.90',
+    });
+    expect(result.value.ibsState).toEqual({
+      base: '900.00',
+      rate: '0',
+      amount: '0.00',
+    });
+    expect(result.value.ibsCity).toEqual({
+      base: '900.00',
+      rate: '0.1',
+      amount: '0.90',
+    });
   });
 
   it('respects a custom handler, forwarding the calculation input', async () => {
@@ -67,13 +91,20 @@ describe('FakeRtcCalculator', () => {
     const result = await calculator.calculate(input());
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toMatchObject({ code: 'TAX_CALCULATION_UNAVAILABLE', retryable: true });
+    expect(result.error).toMatchObject({
+      code: 'TAX_CALCULATION_UNAVAILABLE',
+      retryable: true,
+    });
     expect(seen).toEqual([input()]);
   });
 
   it('exposes the calculator version (overridable) and a healthy adapter', async () => {
     expect(await new FakeRtcCalculator().version()).toEqual(ok('fake-2026.1'));
-    expect(await new FakeRtcCalculator({ version: 'custom-1' }).version()).toEqual(ok('custom-1'));
-    expect(await new FakeRtcCalculator().health()).toEqual(ok({ available: true }));
+    expect(
+      await new FakeRtcCalculator({ version: 'custom-1' }).version(),
+    ).toEqual(ok('custom-1'));
+    expect(await new FakeRtcCalculator().health()).toEqual(
+      ok({ available: true }),
+    );
   });
 });

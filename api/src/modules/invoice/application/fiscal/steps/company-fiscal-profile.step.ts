@@ -1,9 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { FiscalContext } from '@/modules/invoice/domain/fiscal/fiscal-context';
-import { fiscalError, type FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
+import {
+  fiscalError,
+  type FiscalError,
+} from '@/modules/invoice/domain/fiscal/fiscal-error';
 import { IFiscalProfileReader } from '@/modules/invoice/domain/fiscal/ports/fiscal-profile.reader';
 import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
-import type { FiscalStep, StepOutcome } from '@/modules/invoice/domain/fiscal/fiscal-step';
+import type {
+  FiscalStep,
+  StepOutcome,
+} from '@/modules/invoice/domain/fiscal/fiscal-step';
 
 @Injectable()
 export class CompanyFiscalProfileStep implements FiscalStep {
@@ -22,7 +28,8 @@ export class CompanyFiscalProfileStep implements FiscalStep {
       return err(
         fiscalError({
           code: 'FISCAL_INTERNAL_ERROR',
-          message: 'CompanyFiscalProfile requires the fiscal profile reader port',
+          message:
+            'CompanyFiscalProfile requires the fiscal profile reader port',
           category: 'INTERNAL',
           step: this.name,
           details: { reason: 'fiscal_profile_reader_missing' },
@@ -52,10 +59,14 @@ export class CompanyFiscalProfileStep implements FiscalStep {
       return err(
         fiscalError({
           code: 'FISCAL_INTERNAL_ERROR',
-          message: 'Multiple fiscal profiles are effective on the competence date',
+          message:
+            'Multiple fiscal profiles are effective on the competence date',
           category: 'INTERNAL',
           step: this.name,
-          details: { reason: 'overlapping_fiscal_profiles', count: profiles.length },
+          details: {
+            reason: 'overlapping_fiscal_profiles',
+            count: profiles.length,
+          },
         }),
       );
     }
@@ -71,7 +82,10 @@ export class CompanyFiscalProfileStep implements FiscalStep {
           message: 'Fiscal profile requires approval before live emission',
           category: 'CONFIGURATION',
           step: this.name,
-          details: { profileId: profile.id, reviewStatus: profile.reviewStatus },
+          details: {
+            profileId: profile.id,
+            reviewStatus: profile.reviewStatus,
+          },
         }),
       );
     }
@@ -88,6 +102,9 @@ export class CompanyFiscalProfileStep implements FiscalStep {
           ]
         : context.warnings;
 
-    return ok({ status: 'applied', context: { ...context, companyProfile: profile, warnings } });
+    return ok({
+      status: 'applied',
+      context: { ...context, companyProfile: profile, warnings },
+    });
   }
 }

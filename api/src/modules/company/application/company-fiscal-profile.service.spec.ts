@@ -30,7 +30,9 @@ const makeProfile = (
   ...overrides,
 });
 
-const makeInput = (overrides: Partial<NewFiscalProfile> = {}): NewFiscalProfile => ({
+const makeInput = (
+  overrides: Partial<NewFiscalProfile> = {},
+): NewFiscalProfile => ({
   taxRegime: 'SIMPLES_NACIONAL',
   simpleNational: true,
   specialTaxRegime: null,
@@ -70,9 +72,14 @@ class FakeFiscalProfileRepository implements IFiscalProfileRepository {
   list(): Promise<CompanyFiscalProfile[]> {
     return Promise.resolve([]);
   }
-  findById(id: string, scopedTenant: string): Promise<CompanyFiscalProfile | null> {
+  findById(
+    id: string,
+    scopedTenant: string,
+  ): Promise<CompanyFiscalProfile | null> {
     const found =
-      this.stored && this.stored.id === id && this.stored.tenantId === scopedTenant
+      this.stored &&
+      this.stored.id === id &&
+      this.stored.tenantId === scopedTenant
         ? this.stored
         : null;
     return Promise.resolve(found);
@@ -131,9 +138,7 @@ describe('CompanyFiscalProfileService', () => {
 
     const result = await service.record(companyId, tenantId, input);
 
-    expect(repository.appendCalls).toEqual([
-      { companyId, tenantId, input },
-    ]);
+    expect(repository.appendCalls).toEqual([{ companyId, tenantId, input }]);
     expect(result.id).toBe('profile-appended');
     expect(result.validFrom).toBe('2026-06-01');
   });
@@ -169,7 +174,12 @@ describe('CompanyFiscalProfileService', () => {
     const service = new CompanyFiscalProfileService(repository);
 
     await expect(
-      service.approve(companyId, tenantId, 'missing', 'reviewer@example.invalid'),
+      service.approve(
+        companyId,
+        tenantId,
+        'missing',
+        'reviewer@example.invalid',
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(repository.markApprovedCalls).toHaveLength(0);
   });

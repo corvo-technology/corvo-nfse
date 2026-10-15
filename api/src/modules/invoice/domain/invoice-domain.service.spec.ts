@@ -389,7 +389,7 @@ describe('InvoiceDomainService — optional customer, discount and fiscal input'
     it('rejects a negative discount with out_of_range', () => {
       try {
         service.normalizeAndValidate(
-          validDto({ amount: 1000, discount: -1 }) as any,
+          validDto({ amount: 1000, discount: -1 }),
           'test',
           defaults,
         );
@@ -408,7 +408,7 @@ describe('InvoiceDomainService — optional customer, discount and fiscal input'
     it('rejects a discount greater than the gross amount with out_of_range', () => {
       try {
         service.normalizeAndValidate(
-          validDto({ amount: 1000, discount: 1000.01 }) as any,
+          validDto({ amount: 1000, discount: 1000.01 }),
           'test',
           defaults,
         );
@@ -427,7 +427,7 @@ describe('InvoiceDomainService — optional customer, discount and fiscal input'
     it('rejects a discount with more than two decimal places', () => {
       try {
         service.normalizeAndValidate(
-          validDto({ amount: 1000, discount: 100.999 }) as any,
+          validDto({ amount: 1000, discount: 100.999 }),
           'test',
           defaults,
         );
@@ -471,11 +471,7 @@ describe('InvoiceDomainService — optional customer, discount and fiscal input'
     });
 
     it('leaves fiscal undefined when not provided', () => {
-      const result = service.normalizeAndValidate(
-        validDto(),
-        'test',
-        defaults,
-      );
+      const result = service.normalizeAndValidate(validDto(), 'test', defaults);
       expect(result.service.fiscal).toBeUndefined();
       expect(result.service.serviceProfileId).toBeUndefined();
     });

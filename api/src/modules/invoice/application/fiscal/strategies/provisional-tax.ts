@@ -1,5 +1,8 @@
 import type { DecimalString } from '@/modules/invoice/domain/fiscal/money';
-import { fiscalError, type FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
+import {
+  fiscalError,
+  type FiscalError,
+} from '@/modules/invoice/domain/fiscal/fiscal-error';
 import type { TaxTransitionPolicy } from '@/modules/invoice/domain/fiscal/policies/tax-transition.policy';
 import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
 

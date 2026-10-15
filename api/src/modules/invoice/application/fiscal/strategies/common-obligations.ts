@@ -1,7 +1,10 @@
 import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
 import type { Obligation } from '@/modules/invoice/domain/fiscal/applicability/tax-applicability';
 import type { ServiceTaxClassification } from '@/modules/invoice/domain/fiscal/classification/service-tax-classification';
-import { fiscalError, type FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
+import {
+  fiscalError,
+  type FiscalError,
+} from '@/modules/invoice/domain/fiscal/fiscal-error';
 import type {
   FiscalCustomer,
   NormalizedInvoice,
@@ -38,7 +41,10 @@ function federalWithholdingObligation(
   }
   const policy = classification.withholding.policy;
   if (policy === 'NONE_CONFIRMED') {
-    return { status: 'NOT_APPLICABLE', reason: 'no federal withholding configured' };
+    return {
+      status: 'NOT_APPLICABLE',
+      reason: 'no federal withholding configured',
+    };
   }
   if (policy === 'CONFIGURED') {
     return { status: 'REQUIRED' };
@@ -72,16 +78,25 @@ export function commonObligations(
   const specialTreatment: Obligation =
     nature === 'PARTNER_SALON'
       ? { status: 'UNSUPPORTED', reason: special.reason }
-      : { status: 'NOT_APPLICABLE', reason: 'no special treatment required for this operation' };
+      : {
+          status: 'NOT_APPLICABLE',
+          reason: 'no special treatment required for this operation',
+        };
 
   const issWithheld: Obligation = requiresIssWithholding({
     customer: invoice.customer,
     classification,
   }).satisfied
     ? { status: 'REQUIRED' }
-    : { status: 'NOT_APPLICABLE', reason: 'no ISS withholding configured for this customer/service' };
+    : {
+        status: 'NOT_APPLICABLE',
+        reason: 'no ISS withholding configured for this customer/service',
+      };
 
-  const federalWithholding = federalWithholdingObligation(invoice.customer, classification);
+  const federalWithholding = federalWithholdingObligation(
+    invoice.customer,
+    classification,
+  );
 
   const customerRequired = !allowsAnonymousCustomer({
     regime: profile.taxRegime,
@@ -89,5 +104,10 @@ export function commonObligations(
     operationNature: nature,
   }).satisfied;
 
-  return ok({ issWithheld, federalWithholding, customerRequired, specialTreatment });
+  return ok({
+    issWithheld,
+    federalWithholding,
+    customerRequired,
+    specialTreatment,
+  });
 }

@@ -1,8 +1,6 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateInvoiceFiscalSnapshots1791783000000
-  implements MigrationInterface
-{
+export class CreateInvoiceFiscalSnapshots1791783000000 implements MigrationInterface {
   private schema(runner: QueryRunner): string {
     const options = runner.connection.options;
     return runner.connection.driver.escape(

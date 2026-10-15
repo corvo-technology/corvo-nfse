@@ -511,14 +511,32 @@ dessas ações.
 
 ### Nota (`POST /invoices`)
 
-- `customer.taxId`: CPF ou CNPJ válido. `customer.email` é obrigatório se o
-  envio por e-mail estiver ligado.
-- `customer.address`: se enviar `city` ou `state`, os dois são obrigatórios;
-  `state` é UF válida.
-- `service.code`: exatamente 6 dígitos. `service.municipalityCode`: opcional,
-  7 dígitos se enviado. `service.description`: opcional.
+- `customer` é **opcional**. Se ausente ou vazio (`{}`), a nota é de
+  consumidor: `customerSnapshot` fica `null` e o tomador **não** é enviado na
+  DPS. Se enviado parcialmente, os campos ausentes recebem o padrão
+  (`name: 'Consumidor'`, cidade `SIM`, UF `SS`). `customer.taxId` (CPF/CNPJ
+  válido) é obrigatório apenas quando informado; `customer.email` é obrigatório
+  se o envio por e-mail estiver ligado. `customer.address`: se enviar `city` ou
+  `state`, os dois são obrigatórios; `state` é UF válida.
+- `discount`: opcional. >= 0, <= `amount`, no máximo 2 casas decimais (decimal
+  string ou number). Valores inválidos retornam 422 com o issue fiscal
+  correspondente (`out_of_range` / `invalid_decimal_places`).
+- `service.code`: exatamente 6 dígitos (cTribNac). `service.municipalityCode`:
+  opcional, 7 dígitos se enviado. `service.description`: opcional.
+- `service.fiscal`: objeto **opcional** de classificação — `nbsCode` (9
+  dígitos), `cst` (3 dígitos), `classCode` (6 dígitos), `operationIndicator` (6
+  dígitos) e `serviceProfileId` (uuid). Usado pelo motor fiscal como override
+  da classificação; campos ausentes são preenchidos pelo perfil de serviço da
+  empresa.
 - `amount`: > 0, no máximo 2 casas decimais.
 - `competenceDate`: data válida e não futura.
+
+> **Motor fiscal (IBS/CBS):** a nota passa por um pipeline fiscal que calcula
+> ISS/retenções e delega IBS/CBS à Calculadora RTC oficial. O adaptador real da
+> RTC ainda não está disponível (Spec 3); com o modo padrão
+> `FISCAL_IBSCBS_UNAVAILABLE_MODE=block`, notas cujo IBS/CBS é obrigatório são
+> recusadas (`rejected`, `lastErrorCode = TAX_CALCULATION_UNAVAILABLE`) em vez
+> de emitidas incompletas.
 
 ## MCP (Model Context Protocol) e conexão de apps de IA
 

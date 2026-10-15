@@ -1,14 +1,12 @@
 import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
-import type {
-  CompanyServiceTaxProfile,
-} from '@/modules/company/domain/service-tax-profile';
+import type { CompanyServiceTaxProfile } from '@/modules/company/domain/service-tax-profile';
 import type { ClassificationValidationResult } from './fiscal-catalog.port';
-import type { NormalizedInvoice, ServiceFiscalInput } from '../normalized-invoice';
+import type {
+  NormalizedInvoice,
+  ServiceFiscalInput,
+} from '../normalized-invoice';
 import type { ServiceTaxClassification } from './service-tax-classification';
-import {
-  CatalogLookup,
-  IFiscalCatalog,
-} from './fiscal-catalog.port';
+import { CatalogLookup, IFiscalCatalog } from './fiscal-catalog.port';
 import type { FiscalError } from '../fiscal-error';
 import type { Result } from '../result';
 import { classifyService } from './classify-service';
@@ -29,11 +27,17 @@ class StubCatalog extends IFiscalCatalog {
     super();
   }
   lookupServiceCode(code: string): CatalogLookup {
-    return { version: 'ctribnac-2026.1', found: this.opts.known.includes(code) };
+    return {
+      version: 'ctribnac-2026.1',
+      found: this.opts.known.includes(code),
+    };
   }
   validateClassification(): ClassificationValidationResult {
     return (
-      this.opts.validation ?? { status: 'unavailable', reason: 'catalogs not loaded' }
+      this.opts.validation ?? {
+        status: 'unavailable',
+        reason: 'catalogs not loaded',
+      }
     );
   }
 }
@@ -146,13 +150,21 @@ const classify = (opts: {
   });
 };
 
-const valueOf = (result: Result<ServiceTaxClassification, FiscalError>): ServiceTaxClassification => {
-  if (!result.ok) throw new Error(`expected success, got ${result.error.code}: ${result.error.message}`);
+const valueOf = (
+  result: Result<ServiceTaxClassification, FiscalError>,
+): ServiceTaxClassification => {
+  if (!result.ok)
+    throw new Error(
+      `expected success, got ${result.error.code}: ${result.error.message}`,
+    );
   return result.value;
 };
 
-const errorOf = (result: Result<ServiceTaxClassification, FiscalError>): FiscalError => {
-  if (result.ok) throw new Error('expected a classification failure, got a classification');
+const errorOf = (
+  result: Result<ServiceTaxClassification, FiscalError>,
+): FiscalError => {
+  if (result.ok)
+    throw new Error('expected a classification failure, got a classification');
   return result.error;
 };
 
@@ -400,7 +412,10 @@ describe('classifyService', () => {
           validation: {
             status: 'invalid',
             issues: [
-              { field: 'service.fiscal.cst', reason: 'cst conflicts with classCode' },
+              {
+                field: 'service.fiscal.cst',
+                reason: 'cst conflicts with classCode',
+              },
             ],
           },
         }),
@@ -410,7 +425,12 @@ describe('classifyService', () => {
       code: 'FISCAL_CLASSIFICATION_INVALID',
       category: 'CLASSIFICATION',
       details: {
-        issues: [{ field: 'service.fiscal.cst', reason: 'cst conflicts with classCode' }],
+        issues: [
+          {
+            field: 'service.fiscal.cst',
+            reason: 'cst conflicts with classCode',
+          },
+        ],
       },
     });
 

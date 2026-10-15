@@ -20,7 +20,9 @@ const na = (reason = 'not_applicable'): Obligation => ({
   reason,
 });
 
-const invoice = (overrides: Partial<NormalizedInvoice> = {}): NormalizedInvoice => ({
+const invoice = (
+  overrides: Partial<NormalizedInvoice> = {},
+): NormalizedInvoice => ({
   invoiceId: 'inv-1',
   tenantId: 'ten-1',
   environment: 'test',
@@ -40,11 +42,17 @@ const invoice = (overrides: Partial<NormalizedInvoice> = {}): NormalizedInvoice 
     fiscal: null,
     serviceProfileId: 'sp-1',
   },
-  customer: { kind: 'CNPJ', taxId: '12345678000199', municipalityCode: '3550308' },
+  customer: {
+    kind: 'CNPJ',
+    taxId: '12345678000199',
+    municipalityCode: '3550308',
+  },
   ...overrides,
 });
 
-const profile = (overrides: Partial<CompanyFiscalProfile> = {}): CompanyFiscalProfile => ({
+const profile = (
+  overrides: Partial<CompanyFiscalProfile> = {},
+): CompanyFiscalProfile => ({
   id: 'cfp-1',
   tenantId: 'ten-1',
   companyId: 'comp-1',
@@ -88,7 +96,9 @@ const classification = (
   ...overrides,
 });
 
-const applicability = (overrides: Partial<TaxApplicability> = {}): TaxApplicability => ({
+const applicability = (
+  overrides: Partial<TaxApplicability> = {},
+): TaxApplicability => ({
   strategy: 'regular',
   customerRequired: true,
   iss: REQUIRED,
@@ -103,7 +113,9 @@ const applicability = (overrides: Partial<TaxApplicability> = {}): TaxApplicabil
   ...overrides,
 });
 
-const legacyTaxes = (overrides: Partial<LegacyTaxResult> = {}): LegacyTaxResult => ({
+const legacyTaxes = (
+  overrides: Partial<LegacyTaxResult> = {},
+): LegacyTaxResult => ({
   iss: { base: '1000.00', rate: '3', amount: '30.00' },
   issWithheld: false,
   issResponsible: 'PROVIDER',
@@ -150,7 +162,8 @@ const context = (overrides: Partial<FiscalContext> = {}): FiscalContext => {
 };
 
 const outcomeOf = (result: Result<StepOutcome, FiscalError>): StepOutcome => {
-  if (result.ok === false) throw new Error(`expected the step to succeed, got ${result.error.code}`);
+  if (result.ok === false)
+    throw new Error(`expected the step to succeed, got ${result.error.code}`);
   return result.value;
 };
 
@@ -178,7 +191,11 @@ describe('FiscalValidatorStep', () => {
   it('fails with FISCAL_VALIDATION_FAILED carrying the field issues', async () => {
     const error = errorOf(
       await step.execute(
-        context({ legacyTaxes: legacyTaxes({ iss: { base: '999.00', rate: '3', amount: '29.97' } }) }),
+        context({
+          legacyTaxes: legacyTaxes({
+            iss: { base: '999.00', rate: '3', amount: '29.97' },
+          }),
+        }),
       ),
     );
     expect(error).toMatchObject({
@@ -188,7 +205,10 @@ describe('FiscalValidatorStep', () => {
       step: 'FiscalValidator',
     });
     expect(error.details.issues).toContainEqual(
-      expect.objectContaining({ field: 'legacyTaxes.iss.base', code: 'ISS_BASE_MISMATCH' }),
+      expect.objectContaining({
+        field: 'legacyTaxes.iss.base',
+        code: 'ISS_BASE_MISMATCH',
+      }),
     );
   });
 
@@ -202,7 +222,10 @@ describe('FiscalValidatorStep', () => {
     );
     expect(error).toMatchObject({ code: 'FISCAL_VALIDATION_FAILED' });
     expect(error.details.issues).toContainEqual(
-      expect.objectContaining({ field: 'rtcTaxes', code: 'TAX_CALCULATION_UNAVAILABLE' }),
+      expect.objectContaining({
+        field: 'rtcTaxes',
+        code: 'TAX_CALCULATION_UNAVAILABLE',
+      }),
     );
   });
 

@@ -29,7 +29,8 @@ function optionalValue(argv: string[], flag: string, fallback: string): string {
 function optionalInt(argv: string[], flag: string, fallback: number): number {
   const raw = optionalValue(argv, flag, String(fallback));
   const parsed = Number.parseInt(raw, 10);
-  if (Number.isNaN(parsed)) throw new Error(`Invalid integer for ${flag}: ${raw}`);
+  if (Number.isNaN(parsed))
+    throw new Error(`Invalid integer for ${flag}: ${raw}`);
   return parsed;
 }
 
@@ -45,7 +46,10 @@ export function parseArgs(argv: string[]): BuildArgs {
   };
 }
 
-export function buildCatalog(args: BuildArgs): { file: CatalogFile; ignoredLines: number } {
+export function buildCatalog(args: BuildArgs): {
+  file: CatalogFile;
+  ignoredLines: number;
+} {
   const raw = readFileSync(args.input, 'utf8');
   const checksum = createHash('sha256').update(raw).digest('hex');
   const lines = raw.split(/\r?\n/);
@@ -62,11 +66,13 @@ export function buildCatalog(args: BuildArgs): { file: CatalogFile; ignoredLines
       ignoredLines += 1;
       continue;
     }
-    if (seen.has(code)) throw new Error(`Duplicate cTribNac code in source: ${code}`);
+    if (seen.has(code))
+      throw new Error(`Duplicate cTribNac code in source: ${code}`);
     seen.add(code);
     entries.push({ code, description });
   }
-  if (entries.length === 0) throw new Error('No valid cTribNac entries found in input');
+  if (entries.length === 0)
+    throw new Error('No valid cTribNac entries found in input');
   entries.sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
   const file: CatalogFile = {
     kind: 'ctribnac',

@@ -22,12 +22,15 @@ export const loadCtribnacCatalogFile = (): CatalogFile => {
   const path = join(__dirname, 'catalog', 'ctribnac.json');
   const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
   if (!isCatalogFile(parsed)) {
-    throw new Error(`Bundled cTribNac catalog at ${path} is not a "ctribnac" catalog file`);
+    throw new Error(
+      `Bundled cTribNac catalog at ${path} is not a "ctribnac" catalog file`,
+    );
   }
   return parsed;
 };
 
 export const ctribnacCatalogProvider = {
   provide: IFiscalCatalog,
-  useFactory: (): IFiscalCatalog => new JsonFiscalCatalog(loadCtribnacCatalogFile()),
+  useFactory: (): IFiscalCatalog =>
+    new JsonFiscalCatalog(loadCtribnacCatalogFile()),
 };

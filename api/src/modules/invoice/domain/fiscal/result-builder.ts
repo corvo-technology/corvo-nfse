@@ -29,7 +29,9 @@ const uniqueReferences = (
   return [...primary, ...extra.filter((reference) => !seen.has(reference))];
 };
 
-export const calculationSourceOf = (context: FiscalContext): CalculationSource => {
+export const calculationSourceOf = (
+  context: FiscalContext,
+): CalculationSource => {
   const hasLegacy = context.legacyTaxes !== undefined;
   const hasRtc = context.rtcTaxes !== undefined;
   if (hasLegacy && hasRtc) return 'legacy+rtc';
@@ -46,11 +48,18 @@ export const calculationSourceOf = (context: FiscalContext): CalculationSource =
  */
 export const requiresReviewOf = (context: FiscalContext): boolean => {
   const { warnings, companyProfile, applicability } = context;
-  if (warnings.some((warning) => warning.code.startsWith('REVIEW'))) return true;
-  if (warnings.some((warning) => warning.code === IBS_CBS_TOLERATED_WARNING_CODE)) return true;
+  if (warnings.some((warning) => warning.code.startsWith('REVIEW')))
+    return true;
+  if (
+    warnings.some((warning) => warning.code === IBS_CBS_TOLERATED_WARNING_CODE)
+  )
+    return true;
   if (companyProfile !== undefined) {
     if (companyProfile.reviewStatus !== 'approved') return true;
-    if (companyProfile.taxRegime === 'OUTRO_REGIME' || companyProfile.taxRegime === 'UNKNOWN') {
+    if (
+      companyProfile.taxRegime === 'OUTRO_REGIME' ||
+      companyProfile.taxRegime === 'UNKNOWN'
+    ) {
       return true;
     }
   }
@@ -80,7 +89,13 @@ export function buildFiscalCalculationResult(
     );
   }
 
-  const { companyProfile, classification, applicability, legacyTaxes, rtcTaxes } = context;
+  const {
+    companyProfile,
+    classification,
+    applicability,
+    legacyTaxes,
+    rtcTaxes,
+  } = context;
   if (
     companyProfile === undefined ||
     classification === undefined ||
@@ -89,7 +104,8 @@ export function buildFiscalCalculationResult(
     return err(
       fiscalError({
         code: 'FISCAL_INTERNAL_ERROR',
-        message: 'A validated fiscal context must carry the company profile, the classification and the applicability',
+        message:
+          'A validated fiscal context must carry the company profile, the classification and the applicability',
         category: 'INTERNAL',
         step: 'FiscalValidator',
         details: { reason: 'validated_context_incomplete' },
@@ -118,12 +134,18 @@ export function buildFiscalCalculationResult(
         : {}),
     },
     taxes: {
-      ...(legacyTaxes !== undefined && legacyTaxes.iss !== null ? { iss: legacyTaxes.iss } : {}),
-      ...(rtcTaxes !== undefined && rtcTaxes.cbs !== null ? { cbs: rtcTaxes.cbs } : {}),
+      ...(legacyTaxes !== undefined && legacyTaxes.iss !== null
+        ? { iss: legacyTaxes.iss }
+        : {}),
+      ...(rtcTaxes !== undefined && rtcTaxes.cbs !== null
+        ? { cbs: rtcTaxes.cbs }
+        : {}),
       ...(rtcTaxes !== undefined && rtcTaxes.ibsState !== null
         ? { ibsState: rtcTaxes.ibsState }
         : {}),
-      ...(rtcTaxes !== undefined && rtcTaxes.ibsCity !== null ? { ibsCity: rtcTaxes.ibsCity } : {}),
+      ...(rtcTaxes !== undefined && rtcTaxes.ibsCity !== null
+        ? { ibsCity: rtcTaxes.ibsCity }
+        : {}),
       ...(rtcTaxes !== undefined && rtcTaxes.ibsTotal !== null
         ? { ibsTotal: rtcTaxes.ibsTotal }
         : {}),
@@ -136,7 +158,8 @@ export function buildFiscalCalculationResult(
     applicability,
     collectionWaived: applicability.collectionWaived,
     calculationSource: calculationSourceOf(context),
-    calculatorVersion: rtcTaxes !== undefined ? rtcTaxes.calculatorVersion : null,
+    calculatorVersion:
+      rtcTaxes !== undefined ? rtcTaxes.calculatorVersion : null,
     catalogVersions: classification.catalogVersions,
     rulesVersion: applicability.rulesVersion,
     legalReferences: uniqueReferences(

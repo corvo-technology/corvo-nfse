@@ -26,16 +26,28 @@ export const TAX_RULES: readonly TaxRule[] = [
     legalReference: 'LC 214/2025 (fase de teste 2026)',
     sourceUrl: 'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp214.htm',
     status: 'in_production',
-    parameters: { cbsNominalPercent: '0.9', ibsNominalPercent: '0.1', collectionWaived: true, excludesSimplesNacional: true },
+    parameters: {
+      cbsNominalPercent: '0.9',
+      ibsNominalPercent: '0.1',
+      collectionWaived: true,
+      excludesSimplesNacional: true,
+    },
   },
   {
     ruleKey: 'nfse.ibscbs-information',
     validFrom: '2026-10-01',
     validUntil: null,
-    legalReference: 'Ato Conjunto RFB/CGIBS nº 4/2026; orientação CGNFS-e de 07/08/2026',
-    sourceUrl: 'https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/rtc',
+    legalReference:
+      'Ato Conjunto RFB/CGIBS nº 4/2026; orientação CGNFS-e de 07/08/2026',
+    sourceUrl:
+      'https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/rtc',
     status: 'published',
-    parameters: { generalFrom: '2026-10-01', specificCategoriesFrom: '2026-12-01', sefinToleranceUntil: '2026-12-31', specificCategoryServiceCodes: [] },
+    parameters: {
+      generalFrom: '2026-10-01',
+      specificCategoriesFrom: '2026-12-01',
+      sefinToleranceUntil: '2026-12-31',
+      specificCategoryServiceCodes: [],
+    },
   },
   {
     ruleKey: 'simples.ibscbs-effective',

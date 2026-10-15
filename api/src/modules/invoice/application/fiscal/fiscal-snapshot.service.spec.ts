@@ -32,7 +32,9 @@ const classification = (
   ...overrides,
 });
 
-const applicability = (overrides: Partial<TaxApplicability> = {}): TaxApplicability => ({
+const applicability = (
+  overrides: Partial<TaxApplicability> = {},
+): TaxApplicability => ({
   strategy: 'regular',
   customerRequired: true,
   iss: { status: 'REQUIRED' },

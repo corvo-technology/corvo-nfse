@@ -194,7 +194,12 @@ describePostgres(
     it('refuses to rewrite an approved profile on the same day', async () => {
       const open = await repo.findOpen(companyA, tenantA);
       if (!open) throw new Error('Expected an open profile');
-      await repo.markApproved(open.id, tenantA, 'reviewer@example.invalid', new Date());
+      await repo.markApproved(
+        open.id,
+        tenantA,
+        'reviewer@example.invalid',
+        new Date(),
+      );
       await expect(
         repo.append(companyA, tenantA, profileInput('2026-06-01')),
       ).rejects.toThrow(ConflictException);

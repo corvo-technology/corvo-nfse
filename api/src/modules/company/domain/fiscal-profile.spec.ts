@@ -14,7 +14,10 @@ describe('fiscal profile dates', () => {
   ])('%s -> %s', (d, expected) => expect(isEffectiveOn(p, d)).toBe(expected));
   it('open-ended profile stays effective', () =>
     expect(
-      isEffectiveOn({ validFrom: '2026-03-01', validUntil: null }, '2099-01-01'),
+      isEffectiveOn(
+        { validFrom: '2026-03-01', validUntil: null },
+        '2099-01-01',
+      ),
     ).toBe(true));
 });
 
