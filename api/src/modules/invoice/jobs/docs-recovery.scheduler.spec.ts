@@ -1,6 +1,4 @@
-import type { DataSource } from 'typeorm';
 import type { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
-import type { InvoiceOrmEntity } from '../infra/invoice.orm-entity';
 import { DocsRecoveryScheduler } from './docs-recovery.scheduler';
 import type { IInvoiceRepository } from '../domain/invoice.repository';
 import type { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
@@ -14,6 +12,8 @@ describe('DocsRecoveryScheduler', () => {
     findByIdempotencyKey: jest.fn(),
     findByTenantId: jest.fn(),
     save: jest.fn(),
+    insert: jest.fn(),
+    findPendingReconciliation: jest.fn(),
     existsIdempotencyKey: jest.fn(),
     markDocumentsReady: jest.fn(),
     updateEmailStatus: jest.fn(),
@@ -35,45 +35,8 @@ describe('DocsRecoveryScheduler', () => {
     getQueue: jest.fn(),
   } as unknown as BullmqQueueService;
 
-  type FiscalRow = Pick<
-    InvoiceOrmEntity,
-    'id' | 'tenantId' | 'companyId' | 'status' | 'scheduledFor'
-  >;
-  let fiscalRows: FiscalRow[] = [];
-  let selectedStatuses: string[] = [];
-  let selectedTenant = '';
-  interface FiscalQuery {
-    where: (sql: string, parameters: { statuses: string[] }) => FiscalQuery;
-    andWhere: (sql: string, parameters: { tenantId: string }) => FiscalQuery;
-    take: () => FiscalQuery;
-    getMany: () => Promise<FiscalRow[]>;
-  }
-  const where = jest.fn(
-    (_sql: string, parameters: { statuses: string[] }): FiscalQuery => {
-      selectedStatuses = parameters.statuses;
-      return query;
-    },
-  );
-  const andWhere = jest.fn(
-    (_sql: string, parameters: { tenantId: string }): FiscalQuery => {
-      selectedTenant = parameters.tenantId;
-      return query;
-    },
-  );
-  const query: FiscalQuery = {
-    where,
-    andWhere,
-    take: jest.fn((): FiscalQuery => query),
-    getMany: async () =>
-      fiscalRows.filter(
-        (row) =>
-          selectedStatuses.includes(row.status) &&
-          row.tenantId === selectedTenant,
-      ),
-  };
-  const database = {
-    getRepository: () => ({ createQueryBuilder: () => query }),
-  } as unknown as DataSource;
+  const findPendingReconciliation =
+    mockInvoiceRepo.findPendingReconciliation as jest.Mock;
   const discovery = {
     visit: async (_kind: string, work: (id: string) => Promise<void>) => {
       await work('tenant-a');
@@ -84,84 +47,50 @@ describe('DocsRecoveryScheduler', () => {
     discovery,
     mockInvoiceRepo,
     mockQueueService,
-    database,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
-    fiscalRows = [];
-    selectedStatuses = [];
-    selectedTenant = '';
+    findPendingReconciliation.mockResolvedValue([]);
     findAuthorizedWithoutDocuments.mockResolvedValue([]);
   });
 
-  it('does not query or re-enqueue queued invoices, including scheduled invoices', async () => {
-    fiscalRows = [
-      {
-        id: 'queued',
-        tenantId: 'tenant-a',
-        companyId: 'comp-1',
-        status: 'queued',
-        scheduledFor: null,
-      },
-      {
-        id: 'scheduled',
-        tenantId: 'tenant-b',
-        companyId: 'comp-2',
-        status: 'queued',
-        scheduledFor: new Date(Date.now() + 86400000),
-      },
-    ];
+  it('asks the repository for eligible reconciliation work under each tenant', async () => {
+    const cutoff = Date.now() - 5 * 60 * 1000;
     await scheduler.handle();
-    expect(where).toHaveBeenCalledWith('i.status IN (:...statuses)', {
-      statuses: ['processing', 'reconciliation_required'],
-    });
+    expect(findPendingReconciliation).toHaveBeenCalledTimes(2);
+    for (const tenantId of ['tenant-a', 'tenant-b']) {
+      expect(findPendingReconciliation).toHaveBeenCalledWith(
+        tenantId,
+        expect.any(Date),
+        50,
+      );
+    }
+    expect(
+      (
+        findPendingReconciliation.mock.calls as [string, Date, number][]
+      )[0][1].getTime(),
+    ).toBeGreaterThanOrEqual(cutoff);
     expect(addMock).not.toHaveBeenCalled();
   });
 
-  it('recovers processing and reconciliation_required invoices through reconciliation', async () => {
-    fiscalRows = [
-      {
-        id: 'processing',
-        tenantId: 'tenant-a',
-        companyId: 'comp-1',
-        status: 'processing',
-        scheduledFor: null,
-      },
-      {
-        id: 'reconciliation',
-        tenantId: 'tenant-b',
-        companyId: 'comp-2',
-        status: 'reconciliation_required',
-        scheduledFor: null,
-      },
-    ];
-    await scheduler.handle();
-    expect(addMock).toHaveBeenCalledTimes(2);
-    for (const row of fiscalRows) {
-      expect(addMock).toHaveBeenCalledWith(
-        'nfse-reconciliation',
-        'recover',
-        {
-          invoiceId: row.id,
-          tenantId: row.tenantId,
-          companyId: row.companyId,
-        },
-        {
-          attempts: 5,
-          backoffMs: 30000,
-          removeOnComplete: true,
-          removeOnFail: 1000,
-        },
-      );
-    }
-    expect(andWhere).toHaveBeenCalledWith(
-      'i.updated_at < :cutoff AND i.tenant_id = :tenantId',
-      { cutoff: expect.any(Date), tenantId: 'tenant-a' },
+  it('dispatches reconciliation references returned by the repository', async () => {
+    const row = { id: 'processing', tenantId: 'tenant-a', companyId: 'comp-1' };
+    findPendingReconciliation.mockImplementation(async (tenantId: string) =>
+      tenantId === row.tenantId ? [row] : [],
     );
-    expect(andWhere).toHaveBeenCalledWith(
-      'i.updated_at < :cutoff AND i.tenant_id = :tenantId',
-      { cutoff: expect.any(Date), tenantId: 'tenant-b' },
+    await scheduler.handle();
+    expect(addMock).toHaveBeenCalledTimes(1);
+    expect(addMock).toHaveBeenCalledWith(
+      'nfse-reconciliation',
+      'recover',
+      { invoiceId: row.id, tenantId: row.tenantId, companyId: row.companyId },
+      {
+        attempts: 5,
+        backoffMs: 30000,
+        removeOnComplete: true,
+        removeOnFail: 1000,
+      },
     );
   });
 

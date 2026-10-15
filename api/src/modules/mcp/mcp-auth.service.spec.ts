@@ -1,12 +1,9 @@
 import { createHash, randomUUID } from 'crypto';
 import { UnauthorizedException } from '@nestjs/common';
 import { SignJWT } from 'jose';
-import { FindOperator } from 'typeorm';
-import {
-  AuthAuthorizationCodeOrmEntity,
-  AuthSessionOrmEntity,
-} from '@/infra/persistence/typeorm/entities/auth.orm-entities';
-import { McpConnectionOrmEntity } from './infra/mcp-connection.orm-entity';
+import type { OAuthAuthorizationCode } from '../auth/domain/oauth-authorization-code';
+import type { AuthSession } from '../auth/domain/auth-session';
+import type { McpConnection } from './domain/mcp-connection';
 import { McpAuthService, verifyCodeChallenge } from './mcp-auth.service';
 
 const sha256 = (value: string): string =>
@@ -23,100 +20,133 @@ const TENANT_ID = '22222222-2222-4222-8222-222222222222';
 const CODE_VERIFIER = 'test-code-verifier-abcdefghijklmnopqrstuvwxyz012345';
 const CODE_CHALLENGE = base64urlSha256(CODE_VERIFIER);
 
-type Row = Record<string, unknown>;
-
-function matches(row: object, where: Row | undefined): boolean {
-  return Object.entries(where ?? {}).every(([key, value]) =>
-    value instanceof FindOperator
-      ? value.type === 'isNull'
-        ? (row as Row)[key] == null
-        : value.type === 'moreThan' && (row as Row)[key]! > value.value
-      : (row as Row)[key] === value,
-  );
-}
-
-function upsert<T extends Row>(rows: T[], entity: T): T {
-  const existing = entity.id
-    ? rows.find((row) => row.id === (entity.id as string))
-    : undefined;
-  if (existing) {
-    Object.assign(existing, entity);
-    return existing;
-  }
-  const row = {
-    id: randomUUID(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    ...entity,
-  } as T;
-  rows.push(row);
-  return row;
-}
-
 function createInMemoryRepos() {
-  const codes: AuthAuthorizationCodeOrmEntity[] = [];
-  const sessions: AuthSessionOrmEntity[] = [];
-  const connections: McpConnectionOrmEntity[] = [];
-
+  const codes: OAuthAuthorizationCode[] = [];
+  const sessions: AuthSession[] = [];
+  const connections: McpConnection[] = [];
   const codesRepo = {
-    findOne: jest.fn(
-      async (opts: { where: Row }) =>
-        codes.find((row) => matches(row, opts.where)) ?? null,
+    findActiveByCodeHash: jest.fn(
+      async (hash: string) =>
+        codes.find(
+          (row) =>
+            row.codeHash === hash &&
+            !row.consumedAt &&
+            row.expiresAt > new Date(),
+        ) ?? null,
     ),
-    save: jest.fn(
-      async (entity: AuthAuthorizationCodeOrmEntity) =>
-        upsert(
-          codes as unknown as Row[],
-          entity as unknown as Row,
-        ) as unknown as AuthAuthorizationCodeOrmEntity,
-    ),
-    update: jest.fn(async (criteria: Row, partial: Row) => {
-      const row = codes.find((r) => matches(r, criteria));
-      if (row) Object.assign(row, partial);
-      return { affected: row ? 1 : 0 };
+    save: jest.fn(async (code: OAuthAuthorizationCode) => {
+      codes.push(code);
+      return code;
+    }),
+    consume: jest.fn(async (id: string, userId: string, tenantId: string) => {
+      const code = codes.find(
+        (row) =>
+          row.id === id &&
+          row.authUserId === userId &&
+          row.tenantId === tenantId &&
+          !row.consumedAt &&
+          row.expiresAt > new Date(),
+      );
+      if (!code) return false;
+      code.consumedAt = new Date();
+      return true;
     }),
   };
-
   const sessionsRepo = {
-    findOne: jest.fn(
-      async (opts: { where: Row }) =>
-        sessions.find((row) => matches(row, opts.where)) ?? null,
+    findActiveById: jest.fn(
+      async (id: string) =>
+        sessions.find(
+          (row) =>
+            row.id === id && !row.revokedAt && row.expiresAt > new Date(),
+        ) ?? null,
     ),
-    save: jest.fn(
-      async (entity: AuthSessionOrmEntity) =>
-        upsert(
-          sessions as unknown as Row[],
-          entity as unknown as Row,
-        ) as unknown as AuthSessionOrmEntity,
+    findActiveByRefreshTokenHash: jest.fn(
+      async (hash: string) =>
+        sessions.find(
+          (row) =>
+            row.refreshTokenHash === hash &&
+            !row.revokedAt &&
+            row.expiresAt > new Date(),
+        ) ?? null,
     ),
-    update: jest.fn(async (criteria: Row, partial: Row) => {
-      const row = sessions.find((r) => matches(r, criteria));
-      if (row) Object.assign(row, partial);
-      return { affected: row ? 1 : 0 };
+    save: jest.fn(async (session: AuthSession) => {
+      sessions.push(session);
+      return session;
     }),
+    rotateRefreshToken: jest.fn(
+      async (
+        id: string,
+        tenantId: string,
+        userId: string,
+        clientId: string,
+        previousHash: string,
+        nextHash: string,
+      ) => {
+        const session = sessions.find(
+          (row) =>
+            row.id === id &&
+            row.activeTenantId === tenantId &&
+            row.authUserId === userId &&
+            row.clientId === clientId &&
+            row.kind === 'oauth_refresh' &&
+            !row.revokedAt &&
+            row.refreshTokenHash === previousHash &&
+            row.expiresAt > new Date(),
+        );
+        if (!session) return false;
+        session.refreshTokenHash = nextHash;
+        return true;
+      },
+    ),
+    revokeOAuthSession: jest.fn(
+      async (
+        id: string,
+        tenantId: string,
+        userId: string,
+        clientId: string,
+      ) => {
+        const session = sessions.find(
+          (row) =>
+            row.id === id &&
+            row.activeTenantId === tenantId &&
+            row.authUserId === userId &&
+            row.clientId === clientId &&
+            row.kind === 'oauth_refresh' &&
+            !row.revokedAt,
+        );
+        if (session) session.revokedAt = new Date();
+      },
+    ),
   };
-
   const connectionsRepo = {
-    findOne: jest.fn(
-      async (opts: { where: Row }) =>
-        connections.find((row) => matches(row, opts.where)) ?? null,
-    ),
-    save: jest.fn(
-      async (entity: McpConnectionOrmEntity) =>
-        upsert(
-          connections as unknown as Row[],
-          entity as unknown as Row,
-        ) as unknown as McpConnectionOrmEntity,
-    ),
-    update: jest.fn(async (criteria: Row, partial: Row) => {
-      const row = connections.find((r) => matches(r, criteria));
-      if (row) Object.assign(row, partial);
-      return { affected: row ? 1 : 0 };
+    insert: jest.fn(async (connection: McpConnection) => {
+      connections.push(connection);
     }),
+    findBySession: jest.fn(
+      async (
+        sessionId: string,
+        tenantId: string,
+        userId: string,
+        clientId: string,
+      ) =>
+        connections.find(
+          (row) =>
+            row.sessionId === sessionId &&
+            row.tenantId === tenantId &&
+            row.authUserId === userId &&
+            row.clientId === clientId,
+        ) ?? null,
+    ),
+    findByIdAndOwner: jest.fn(
+      async (id: string, tenantId: string, userId: string) =>
+        connections.find(
+          (row) =>
+            row.id === id &&
+            row.tenantId === tenantId &&
+            row.authUserId === userId,
+        ) ?? null,
+    ),
   };
-
-  for (const repo of [codesRepo, sessionsRepo, connectionsRepo])
-    Object.assign(repo, { create: (row: Row) => row, insert: repo.save });
   return {
     codes,
     sessions,
@@ -152,9 +182,9 @@ function createHarness() {
 }
 
 function seedCode(
-  codes: AuthAuthorizationCodeOrmEntity[],
-  overrides: Partial<AuthAuthorizationCodeOrmEntity> = {},
-): { raw: string; code: AuthAuthorizationCodeOrmEntity } {
+  codes: OAuthAuthorizationCode[],
+  overrides: Partial<OAuthAuthorizationCode> = {},
+): { raw: string; code: OAuthAuthorizationCode } {
   const raw = 'raw-auth-code-abcdefghij0123456789abcd';
   const code = {
     id: randomUUID(),
@@ -169,8 +199,10 @@ function seedCode(
     tenantId: TENANT_ID,
     expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     consumedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
     ...overrides,
-  } as AuthAuthorizationCodeOrmEntity;
+  } as OAuthAuthorizationCode;
   codes.push(code);
   return { raw, code };
 }

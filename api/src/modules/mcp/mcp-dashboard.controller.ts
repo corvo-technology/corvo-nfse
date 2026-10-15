@@ -3,6 +3,7 @@ import { AuthContextService } from '../auth/application/auth-context.service';
 import { RawResponse } from '@/shared/http/response.interceptor';
 import {
   Controller,
+  Inject,
   Get,
   NotFoundException,
   Post,
@@ -16,7 +17,10 @@ import type { Request, Response } from 'express';
 import { PublicRoute } from '../auth/application/public-route.decorator';
 import { CookieSessionService } from '../auth/application/cookie-session.service';
 import { extractCookie } from '../auth/application/cookie-reader';
-import { TypeOrmMcpConnectionRepository } from './infra/mcp-connection.repository';
+import {
+  MCP_CONNECTION_REPOSITORY,
+  type McpConnectionRepository,
+} from './domain/mcp-connection.repository';
 
 type DashboardConnection = {
   id: string;
@@ -42,7 +46,8 @@ export class McpDashboardController {
     private readonly connectionManager: McpConnectionService,
     private readonly contexts: AuthContextService,
     private readonly sessions: CookieSessionService,
-    private readonly connections: TypeOrmMcpConnectionRepository,
+    @Inject(MCP_CONNECTION_REPOSITORY)
+    private readonly connections: McpConnectionRepository,
   ) {}
 
   @Get('dashboard')

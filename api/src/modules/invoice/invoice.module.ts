@@ -1,3 +1,4 @@
+import { CreditsModule } from '@/modules/credits/credits.module';
 import { ConfigService } from '@nestjs/config';
 import type { OutboxConfig } from '@/infra/config/configuration.types';
 import { SCHEDULE_MAX_DAYS } from './domain/invoice-domain.service';
@@ -43,6 +44,7 @@ import { EmailModule } from '@/modules/email/email.module';
 @Module({
   imports: [
     BillingUsageModule,
+    CreditsModule,
     BullModule.registerQueue(
       { name: 'nfse-emission' },
       { name: 'nfse-reconciliation' },

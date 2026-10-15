@@ -1,10 +1,10 @@
+import { TypeOrmRepositoryHelper } from '@/infra/persistence/typeorm/typeorm-repository.helper';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { InvoiceOrmEntity } from './invoice.orm-entity';
 import { requireTenantId } from '@/infra/persistence/typeorm/tenant-scope';
 import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import { queryCursorPage } from '@/shared/http/keyset-pagination';
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InvoiceEvent } from '../domain/invoice-event';
 import { IInvoiceEventRepository } from '../domain/invoice.repository';
@@ -42,10 +42,11 @@ export class TypeOrmInvoiceEventRepository implements IInvoiceEventRepository {
     });
   }
 
-  constructor(
-    @InjectRepository(InvoiceEventOrmEntity)
-    private readonly repo: Repository<InvoiceEventOrmEntity>,
-  ) {}
+  constructor(private readonly db: TypeOrmRepositoryHelper) {}
+
+  private get repo(): Repository<InvoiceEventOrmEntity> {
+    return this.db.repository(InvoiceEventOrmEntity);
+  }
 
   async save(event: InvoiceEvent, tenantId: string): Promise<void> {
     return runWithTenant(tenantId, async () => {
@@ -57,7 +58,15 @@ export class TypeOrmInvoiceEventRepository implements IInvoiceEventRepository {
         .values({
           ...orm,
           invoiceId: () =>
-            `(SELECT i.id FROM ${this.repo.manager.getRepository(InvoiceOrmEntity).metadata.tablePath} i WHERE i.id = :invoiceId AND i.tenant_id = :tenantId)`,
+            this.repo
+              .createQueryBuilder()
+              .subQuery()
+              .select('invoice.id')
+              .from(InvoiceOrmEntity, 'invoice')
+              .where(
+                'invoice.id = :invoiceId AND invoice.tenant_id = :tenantId',
+              )
+              .getQuery(),
         })
         .setParameters({ invoiceId: event.invoiceId, tenantId })
         .execute();

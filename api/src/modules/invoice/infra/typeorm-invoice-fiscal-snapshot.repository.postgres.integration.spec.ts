@@ -1,3 +1,13 @@
+import { TypeOrmRepositoryHelper } from '@/infra/persistence/typeorm/typeorm-repository.helper';
+import { TypeOrmUnitOfWork } from '@/infra/persistence/typeorm/typeorm-unit-of-work';
+import { TypeOrmInvoiceRepository } from './typeorm-invoice.repository';
+import { TypeOrmOutboxRepository } from './typeorm-outbox.repository';
+import { CalculateTaxesHandler } from '../application/fiscal/calculate-taxes.handler';
+import { FiscalSnapshotService } from '../application/fiscal/fiscal-snapshot.service';
+import { OutboxService } from '../application/outbox.service';
+import { OutboxHandlerRegistry } from '../application/outbox-handler.registry';
+import { ok } from '../domain/fiscal/result';
+import type { OutboxMessage } from '../domain/outbox-message';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
@@ -190,7 +200,7 @@ describePostgres(
         runtime,
         new TypeOrmTransactionContext(),
       );
-    }, 60000);
+    }, 180000);
     afterAll(async () => {
       if (runtime?.isInitialized) await runtime.destroy();
       if (admin?.isInitialized) {
@@ -198,6 +208,86 @@ describePostgres(
         await admin.query(`DROP ROLE IF EXISTS "${role}"`);
         await admin.destroy();
       }
+    });
+
+    it('commits fiscal snapshot and emission message together through the handler unit of work', async () => {
+      const invoiceId = randomUUID();
+      await admin.query(
+        `INSERT INTO "${schema}".nfse_invoices (id,company_id,tenant_id,status,customer_snapshot,service_snapshot,tax_snapshot,amount,competence_date,environment) VALUES ($1,$2,$3,'queued','{}','{}','{}',10,'2026-12-10','test')`,
+        [invoiceId, companyA, tenantA],
+      );
+      const transactions = new TypeOrmTransactionContext();
+      const result = { ...calculationResult(), operationId: invoiceId };
+      const handler = new CalculateTaxesHandler(
+        new TypeOrmInvoiceRepository(
+          new TypeOrmRepositoryHelper(runtime, transactions),
+        ),
+        { findById: async () => ({}) } as never,
+        { findEffective: async () => null } as never,
+        { calculate: async () => ok(result) } as never,
+        new FiscalSnapshotService(
+          new TypeOrmInvoiceFiscalSnapshotRepository(runtime, transactions),
+        ),
+        new OutboxService(new TypeOrmOutboxRepository(runtime, transactions)),
+        {} as never,
+        new TypeOrmUnitOfWork(runtime, transactions),
+        new OutboxHandlerRegistry(),
+      );
+      const message: OutboxMessage = {
+        id: randomUUID(),
+        tenantId: tenantA,
+        environment: 'test',
+        aggregateId: invoiceId,
+        type: 'invoice.calculate-taxes',
+        dedupeKey: `calc:${invoiceId}`,
+        payload: {},
+        status: 'claimed',
+        availableAt: new Date(),
+        leaseUntil: null,
+        attempts: 1,
+        lastError: null,
+      };
+      await admin.query(
+        `CREATE FUNCTION "${schema}".reject_emission() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'emission outbox down'; END $$`,
+      );
+      await admin.query(
+        `CREATE TRIGGER reject_emission BEFORE INSERT ON "${schema}".outbox_messages FOR EACH ROW EXECUTE FUNCTION "${schema}".reject_emission()`,
+      );
+      try {
+        await expect(
+          runWithTenant(tenantA, () => handler.handle(message)),
+        ).rejects.toThrow('emission outbox down');
+        expect(
+          await admin.query(
+            `SELECT id FROM "${schema}".invoice_fiscal_snapshots WHERE invoice_id=$1`,
+            [invoiceId],
+          ),
+        ).toEqual([]);
+        expect(
+          await admin.query(
+            `SELECT id FROM "${schema}".outbox_messages WHERE aggregate_id=$1`,
+            [invoiceId],
+          ),
+        ).toEqual([]);
+      } finally {
+        await admin.query(
+          `DROP TRIGGER reject_emission ON "${schema}".outbox_messages`,
+        );
+        await admin.query(`DROP FUNCTION "${schema}".reject_emission()`);
+      }
+      await runWithTenant(tenantA, () => handler.handle(message));
+      expect(
+        await admin.query(
+          `SELECT id FROM "${schema}".invoice_fiscal_snapshots WHERE invoice_id=$1`,
+          [invoiceId],
+        ),
+      ).toHaveLength(1);
+      expect(
+        await admin.query(
+          `SELECT type FROM "${schema}".outbox_messages WHERE aggregate_id=$1`,
+          [invoiceId],
+        ),
+      ).toEqual([{ type: 'invoice.emit' }]);
     });
 
     it('inserts once per (invoice, attempt) and round-trips the result with decimal strings intact', async () => {

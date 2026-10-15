@@ -1,3 +1,4 @@
+import { TypeOrmRepositoryHelper } from '@/infra/persistence/typeorm/typeorm-repository.helper';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { assertTenantOwnership } from '@/infra/persistence/typeorm/tenant-scope';
 import { requireTenantId } from '@/infra/persistence/typeorm/tenant-scope';
@@ -5,7 +6,6 @@ import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import { queryCursorPage } from '@/shared/http/keyset-pagination';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-argument */
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   CreditTransaction,
@@ -36,10 +36,11 @@ export class TypeOrmCreditTransactionRepository implements ICreditTransactionRep
     });
   }
 
-  constructor(
-    @InjectRepository(CreditTransactionOrmEntity)
-    private readonly repo: Repository<CreditTransactionOrmEntity>,
-  ) {}
+  constructor(private readonly db: TypeOrmRepositoryHelper) {}
+
+  private get repo(): Repository<CreditTransactionOrmEntity> {
+    return this.db.repository(CreditTransactionOrmEntity);
+  }
 
   async findByTenantId(
     tenantId: string,

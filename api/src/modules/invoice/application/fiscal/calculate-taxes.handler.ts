@@ -1,7 +1,5 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
-import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
+import { UnitOfWorkPort } from '@/infra/transactions/unit-of-work.port';
 import { CompanyService } from '@/modules/company/application/company.service';
 import { CompanyFiscalProfileService } from '@/modules/company/application/company-fiscal-profile.service';
 import type { FiscalCalculationResult } from '@/modules/invoice/domain/fiscal/fiscal-calculation-result';
@@ -42,8 +40,7 @@ export class CalculateTaxesHandler implements OutboxHandler, OnModuleInit {
     private readonly snapshots: FiscalSnapshotService,
     private readonly outbox: OutboxService,
     private readonly lifecycle: InvoiceLifecycleService,
-    private readonly context: TypeOrmTransactionContext,
-    @InjectDataSource() private readonly database: DataSource,
+    private readonly unitOfWork: UnitOfWorkPort,
     private readonly registry: OutboxHandlerRegistry,
   ) {}
 
@@ -95,19 +92,17 @@ export class CalculateTaxesHandler implements OutboxHandler, OnModuleInit {
       invoice.tenantId,
       invoice.toSnapshot().competenceDate.toISOString().slice(0, 10),
     );
-    await this.database.transaction((manager) =>
-      this.context.run(manager, async () => {
-        await this.snapshots.persist({
-          invoiceId: invoice.id,
-          tenantId: invoice.tenantId,
-          result,
-          specialTaxRegime: profile?.specialTaxRegime ?? null,
-          attempt,
-          trace: result.trace,
-        });
-        await this.enqueueEmission(invoice);
-      }),
-    );
+    await this.unitOfWork.execute(async () => {
+      await this.snapshots.persist({
+        invoiceId: invoice.id,
+        tenantId: invoice.tenantId,
+        result,
+        specialTaxRegime: profile?.specialTaxRegime ?? null,
+        attempt,
+        trace: result.trace,
+      });
+      await this.enqueueEmission(invoice);
+    });
   }
 
   private async enqueueEmission(invoice: Invoice): Promise<boolean> {

@@ -5,9 +5,12 @@ import type { AuthContext } from '../auth/auth-context';
 import { IAuthAuditEventRepository } from '../auth/domain/auth-audit-event.repository';
 import { IAuthSessionRepository } from '../auth/domain/auth-session.repository';
 import { ITenantMembershipRepository } from '../auth/domain/tenant-membership.repository';
-import type { McpConnectionOrmEntity } from './infra/mcp-connection.orm-entity';
-import type { McpConnectionRepository } from './infra/mcp-connection.repository';
-import { TypeOrmMcpConnectionRepository } from './infra/mcp-connection.repository';
+import type { McpConnection } from './domain/mcp-connection';
+
+import {
+  MCP_CONNECTION_REPOSITORY,
+  type McpConnectionRepository,
+} from './domain/mcp-connection.repository';
 
 /** Product key used by every Corvo web flow (see AuthContextService). */
 const PRODUCT_KEY = 'corvo';
@@ -47,9 +50,7 @@ export class McpConnectionService {
   }
 
   constructor(
-    // McpConnectionRepository is a TypeScript interface (erased at runtime),
-    // so the concrete TypeORM implementation is the injection token.
-    @Inject(TypeOrmMcpConnectionRepository)
+    @Inject(MCP_CONNECTION_REPOSITORY)
     private readonly repo: McpConnectionRepository,
     @Inject(IAuthSessionRepository)
     private readonly sessionRepo: IAuthSessionRepository,
@@ -130,7 +131,7 @@ export class McpConnectionService {
   }
 
   private toListItem(
-    connection: McpConnectionOrmEntity,
+    connection: McpConnection,
     tenantNames: Map<string, string>,
   ): ConnectionListItem {
     return {

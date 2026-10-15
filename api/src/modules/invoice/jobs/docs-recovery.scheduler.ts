@@ -1,7 +1,4 @@
 import { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
-import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
-import { InvoiceOrmEntity } from '../infra/invoice.orm-entity';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import {
@@ -22,7 +19,6 @@ export class DocsRecoveryScheduler {
     @Inject(INVOICE_REPOSITORY)
     private readonly invoiceRepo: IInvoiceRepository,
     private readonly queueService: BullmqQueueService,
-    @InjectDataSource() private readonly database: DataSource,
   ) {}
 
   @Cron('*/5 * * * *')
@@ -30,18 +26,11 @@ export class DocsRecoveryScheduler {
     await this.discovery.visit('invoice-recovery', async (tenantId) => {
       const cutoff = new Date(Date.now() - 5 * 60 * 1000);
       // queued invoices are owned by the outbox (also protects SCHEDULE invoices from early emission).
-      const fiscal = await this.database
-        .getRepository(InvoiceOrmEntity)
-        .createQueryBuilder('i')
-        .where('i.status IN (:...statuses)', {
-          statuses: ['processing', 'reconciliation_required'],
-        })
-        .andWhere('i.updated_at < :cutoff AND i.tenant_id = :tenantId', {
-          cutoff,
-          tenantId,
-        })
-        .take(50)
-        .getMany();
+      const fiscal = await this.invoiceRepo.findPendingReconciliation(
+        tenantId,
+        cutoff,
+        50,
+      );
       for (const i of fiscal)
         await this.queueService.add(
           'nfse-reconciliation',

@@ -5,6 +5,7 @@ export type OAuthAuthorizationCode = {
   clientId: string;
   authUserId: string;
   productKey: string;
+  tenantId: string | null;
   codeHash: string;
   codeChallenge: string;
   codeChallengeMethod: CodeChallengeMethod;

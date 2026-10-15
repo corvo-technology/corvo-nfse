@@ -1,3 +1,5 @@
+import { IWorkspaceRepository } from './domain/workspace.repository';
+import { TypeOrmWorkspaceRepository } from './infra/typeorm-workspace.repository';
 import { HttpApiRateLimitGuard } from '@/shared/http/rate-limit.guard';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
@@ -107,6 +109,7 @@ import { AuthOauthModule } from './auth-oauth.module';
     // NEW: identity & magic-link providers
     MagicLinkService,
     PasswordlessWorkspaceService,
+    { provide: IWorkspaceRepository, useClass: TypeOrmWorkspaceRepository },
     AuthIdentityService,
     TypeOrmAuthIdentityRepository,
     {

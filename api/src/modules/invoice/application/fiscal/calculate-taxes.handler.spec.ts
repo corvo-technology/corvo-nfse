@@ -1,5 +1,3 @@
-import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
-import type { Company } from '@/modules/company/domain/company';
 import type { ServiceTaxClassification } from '@/modules/invoice/domain/fiscal/classification/service-tax-classification';
 import type { TaxApplicability } from '@/modules/invoice/domain/fiscal/applicability/tax-applicability';
 import type { FiscalCalculationResult } from '@/modules/invoice/domain/fiscal/fiscal-calculation-result';
@@ -119,12 +117,16 @@ const messageFor = (invoice: Invoice, attempts = 1): OutboxMessage => ({
 });
 
 function build() {
-  const manager = { marker: 'tx-manager' };
-  const context = new TypeOrmTransactionContext();
-  const database = {
-    transaction: jest.fn(async (work: (m: unknown) => Promise<void>) =>
-      work(manager),
-    ),
+  const transaction = { active: false };
+  const unitOfWork = {
+    execute: jest.fn(async (work: () => Promise<void>) => {
+      transaction.active = true;
+      try {
+        await work();
+      } finally {
+        transaction.active = false;
+      }
+    }),
   };
   const invoices = { findByIdAndTenantId: jest.fn() };
   const companies = { findById: jest.fn() };
@@ -145,15 +147,13 @@ function build() {
     snapshots as never,
     outbox as never,
     lifecycle as never,
-    context,
-    database as never,
+    unitOfWork as never,
     registry,
   );
   return {
     handler,
-    manager,
-    context,
-    database,
+    transaction,
+    unitOfWork,
     invoices,
     companies,
     profiles,
@@ -178,11 +178,11 @@ describe('CalculateTaxesHandler', () => {
     fakes.engine.calculate.mockResolvedValue(ok(result));
     const managers: unknown[] = [];
     fakes.snapshots.persist.mockImplementation(async () => {
-      managers.push(fakes.context.getManager());
+      managers.push(fakes.transaction.active);
       return 'snap-1';
     });
     fakes.outbox.enqueue.mockImplementation(async () => {
-      managers.push(fakes.context.getManager());
+      managers.push(fakes.transaction.active);
       return true;
     });
 
@@ -221,8 +221,8 @@ describe('CalculateTaxesHandler', () => {
       }),
     );
     // Snapshot insert and emission enqueue share the caller's transaction.
-    expect(fakes.database.transaction).toHaveBeenCalledTimes(1);
-    expect(managers).toEqual([fakes.manager, fakes.manager]);
+    expect(fakes.unitOfWork.execute).toHaveBeenCalledTimes(1);
+    expect(managers).toEqual([true, true]);
     expect(fakes.lifecycle.transition).not.toHaveBeenCalled();
   });
 
@@ -237,7 +237,7 @@ describe('CalculateTaxesHandler', () => {
     expect(fakes.snapshots.persist).not.toHaveBeenCalled();
     expect(fakes.outbox.enqueue).not.toHaveBeenCalled();
     expect(fakes.lifecycle.transition).not.toHaveBeenCalled();
-    expect(fakes.database.transaction).not.toHaveBeenCalled();
+    expect(fakes.unitOfWork.execute).not.toHaveBeenCalled();
   });
 
   it('no-ops when the invoice is no longer queued', async () => {
@@ -252,7 +252,7 @@ describe('CalculateTaxesHandler', () => {
     expect(fakes.snapshots.persist).not.toHaveBeenCalled();
     expect(fakes.outbox.enqueue).not.toHaveBeenCalled();
     expect(fakes.lifecycle.transition).not.toHaveBeenCalled();
-    expect(fakes.database.transaction).not.toHaveBeenCalled();
+    expect(fakes.unitOfWork.execute).not.toHaveBeenCalled();
   });
 
   it('reuses an existing snapshot and only guarantees the emission message', async () => {
@@ -274,7 +274,7 @@ describe('CalculateTaxesHandler', () => {
         payload: { invoiceId: invoice.id, companyId, tenantId },
       }),
     );
-    expect(fakes.database.transaction).not.toHaveBeenCalled();
+    expect(fakes.unitOfWork.execute).not.toHaveBeenCalled();
   });
 
   it('rejects the invoice without rethrowing on a non-retryable fiscal error', async () => {
