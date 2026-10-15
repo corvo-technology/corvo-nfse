@@ -30,8 +30,15 @@ describe('WebhookEvent Types', () => {
       expect(PUBLIC_WEBHOOK_EVENT_TYPES).toContain('nfse.invoice.email_sent');
     });
 
-    it('includes the eight supported NFS-e event types', () => {
-      expect(PUBLIC_WEBHOOK_EVENT_TYPES).toHaveLength(8);
+    it('includes the cancellation event types', () => {
+      expect(PUBLIC_WEBHOOK_EVENT_TYPES).toContain('nfse.invoice.cancelled');
+      expect(PUBLIC_WEBHOOK_EVENT_TYPES).toContain(
+        'nfse.invoice.cancellation_rejected',
+      );
+    });
+
+    it('includes the ten supported NFS-e event types', () => {
+      expect(PUBLIC_WEBHOOK_EVENT_TYPES).toHaveLength(10);
     });
 
     it('all NFS-e event types follow the nfse.invoice.* pattern', () => {

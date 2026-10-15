@@ -9,6 +9,7 @@ import { TypeOrmOutboxRepository } from './infra/typeorm-outbox.repository';
 import { OutboxMessageOrmEntity } from './infra/outbox-message.orm-entity';
 import { BillingUsageModule } from '@/modules/billing/billing-usage.module';
 import { PlansModule } from '@/modules/plans/plans.module';
+import { InvoiceWebhookPublisher } from './application/invoice-webhook.publisher';
 import { InvoiceLifecycleService } from './application/invoice-lifecycle.service';
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
@@ -83,6 +84,7 @@ import { EmailModule } from '@/modules/email/email.module';
     },
     InvoiceService,
     InvoiceLifecycleService,
+    InvoiceWebhookPublisher,
     InvoiceDomainService,
   ],
   exports: [
@@ -90,6 +92,7 @@ import { EmailModule } from '@/modules/email/email.module';
     OUTBOX_REPOSITORY,
     InvoiceService,
     InvoiceLifecycleService,
+    InvoiceWebhookPublisher,
     INVOICE_REPOSITORY,
     INVOICE_EVENT_REPOSITORY,
     DPS_SEQUENCE_REPOSITORY,

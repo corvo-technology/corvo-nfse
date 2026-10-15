@@ -1,6 +1,7 @@
 import { NfseWorkflowService } from './nfse-workflow.service';
 import type { Invoice } from '../domain/invoice';
 import { buildInvoiceState } from '../domain/invoice-state';
+import { InvoiceWebhookPublisher } from './invoice-webhook.publisher';
 
 function buildInvoice(overrides: {
   emailRequested?: boolean;
@@ -48,8 +49,7 @@ describe('NfseWorkflowService email webhooks', () => {
       {} as any,
       {} as any,
       {} as any,
-      webhooks as any,
-      outbox as any,
+      new InvoiceWebhookPublisher(webhooks as any, outbox as any),
       {} as any,
     );
   });
