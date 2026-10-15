@@ -123,8 +123,7 @@ export class InvoiceLifecycleService {
     message?: NewOutboxMessage,
   ): Promise<boolean> {
     return runWithTenant(invoice.tenantId, async () => {
-      let applied = false;
-      await this.database.transaction(async (manager) =>
+      const applied = await this.database.transaction(async (manager) =>
         this.context.run(manager, async () => {
           if (event.invoiceId !== invoice.id)
             throw new Error('Invoice/event identity mismatch');
@@ -136,7 +135,7 @@ export class InvoiceLifecycleService {
               tenantId: invoice.tenantId,
               environment: invoice.environment,
             });
-          if (stored.status === invoice.status) return;
+          if (stored.status === invoice.status) return false;
           if (stored.status !== event.toSnapshot().fromStatus)
             throw new ConcurrentInvoiceTransitionError(invoice.id);
           const record = new InvoiceMapper().toPersistence(invoice);
@@ -148,12 +147,11 @@ export class InvoiceLifecycleService {
             invoice.tenantId,
             ['companyId', 'environment'],
           );
-          applied = true;
           await manager
             .getRepository(InvoiceEventOrmEntity)
             .insert(new InvoiceEventMapper().toPersistence(event));
           if (message) await this.outbox.enqueue(message);
-          if (invoice.environment !== 'live') return;
+          if (invoice.environment !== 'live') return true;
           await this.usage.settle(invoice.id, invoice.tenantId, invoice.status);
           const wallet = manager.getRepository(CreditTransactionOrmEntity);
           const reservation = await wallet.findOneBy({
@@ -161,7 +159,7 @@ export class InvoiceLifecycleService {
             reservedInvoiceId: invoice.id,
             isReservation: true,
           });
-          if (!reservation) return;
+          if (!reservation) return true;
           if (invoice.status === 'authorized')
             await wallet.update(
               { id: reservation.id, tenantId: invoice.tenantId },
@@ -181,6 +179,7 @@ export class InvoiceLifecycleService {
               { isReservation: false },
             );
           }
+          return true;
         }),
       );
       if (invoice.environment === 'live')
