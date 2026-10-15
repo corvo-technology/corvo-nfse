@@ -33,3 +33,20 @@ subir a versão nova.
 | Municípios (ex.: São Paulo, Uberlândia) | não executado |
 
 Pré-requisito: certificado A1 de teste e acesso à Produção Restrita. Registre aqui apenas o que for efetivamente executado (data, CNPJ de teste, município, resultado, evidência).
+
+## Cálculo pré-emissão (`POST /v1/invoices/calculate`)
+
+O endpoint reutiliza o motor fiscal e responde `ready`/`blocked` sem emitir.
+Testes unitários e Postgres verificam o contrato, a ausência de gravações,
+a paridade com o worker e o isolamento; os resultados reais da execução desta
+entrega são registrados no PR. Eles não atestam aceite pela Sefin.
+
+| Cenário externo | Estado nesta entrega |
+| --- | --- |
+| Cálculo pré-emissão comparado à NFS-e na Produção Restrita | não executado |
+| Homologação fiscal de MEI/Simples 2027 | não executado; regras fora do escopo |
+
+As evidências históricas da Calculadora RTC e do transporte simulado acima
+permanecem com suas datas e resultados originais. Nenhuma execução externa nova
+é presumida pela publicação de exemplos. Veja [exemplos](examples.md) e
+[limitações](limitations.md).

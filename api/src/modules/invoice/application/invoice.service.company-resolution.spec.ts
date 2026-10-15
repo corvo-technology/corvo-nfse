@@ -1,3 +1,4 @@
+import { InvoiceIntakeService } from './invoice-intake.service';
 import { BadRequestException } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
 import { CompanyNotFoundError } from '@/modules/company/domain/errors';
@@ -33,15 +34,15 @@ describe('InvoiceService.emit company resolution', () => {
       }),
     };
     service = new InvoiceService(
-      {} as any,
-      {} as any,
-      {} as any,
-      companyService as any,
-      {} as any,
-      {} as any,
-      {} as any,
-      {} as any,
-      invoiceDomain as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      companyService as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      new InvoiceIntakeService(companyService as never, invoiceDomain as never),
     );
   });
 

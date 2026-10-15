@@ -4,6 +4,8 @@ import type { FiscalCalculationResult } from '@/modules/invoice/domain/fiscal/fi
 import { initialFiscalContext } from '@/modules/invoice/domain/fiscal/fiscal-context';
 import type { FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
 import { FiscalPipeline } from '@/modules/invoice/domain/fiscal/fiscal-pipeline';
+import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
+import type { NormalizedInvoiceInput } from '../../domain/invoice-domain.service';
 import { moneyString, toDecimal } from '@/modules/invoice/domain/fiscal/money';
 import type {
   FiscalCustomer,
@@ -33,53 +35,104 @@ export class FiscalEngineService {
     invoice: Invoice,
     company: Company,
   ): Promise<Result<FiscalCalculationResult, FiscalError>> {
-    const normalized = this.toNormalizedInvoice(invoice, company);
-    const pipeline = new FiscalPipeline(
+    return this.calculateNormalized(this.toNormalizedInvoice(invoice, company));
+  }
+
+  async calculateNormalized(
+    normalized: NormalizedInvoice,
+  ): Promise<Result<FiscalCalculationResult, FiscalError>> {
+    const outcome = await this.pipeline(normalized).execute(
+      initialFiscalContext(normalized),
+    );
+    if (!outcome.ok) return outcome;
+    return buildFiscalCalculationResult(outcome.value);
+  }
+
+  async calculatePartial(normalized: NormalizedInvoice) {
+    const partial = await this.pipeline(normalized).executeWithPartial(
+      initialFiscalContext(normalized),
+    );
+    if (partial.error !== null) return { ...partial, result: null };
+    const result = buildFiscalCalculationResult(partial.context);
+    return result.ok
+      ? { ...partial, result: result.value }
+      : { ...partial, error: result.error, result: null };
+  }
+
+  private pipeline(normalized: NormalizedInvoice): FiscalPipeline {
+    return new FiscalPipeline(
       this.steps,
       new OtelPipelineObserver({
         invoiceId: normalized.invoiceId,
         companyId: normalized.company.id,
       }),
     );
-    const outcome = await pipeline.execute(initialFiscalContext(normalized));
-    if (!outcome.ok) return outcome;
-    return buildFiscalCalculationResult(outcome.value);
   }
 
   toNormalizedInvoice(invoice: Invoice, company: Company): NormalizedInvoice {
     const snapshot = invoice.toSnapshot();
-    const customerTaxId = snapshot.customerSnapshot?.taxId;
-    const customer: FiscalCustomer | null =
-      customerTaxId === undefined || customerTaxId === ''
-        ? null
-        : {
-            kind: customerTaxId.length === 11 ? 'CPF' : 'CNPJ',
-            taxId: customerTaxId,
-            municipalityCode:
-              snapshot.customerSnapshot?.address?.municipalityCode ?? null,
-          };
-
-    return {
-      invoiceId: snapshot.id,
-      tenantId: snapshot.tenantId,
-      environment: snapshot.environment ?? 'test',
-      company: {
-        id: snapshot.companyId,
-        taxId: company.taxId,
-        municipalityCode: company.municipalityCode ?? '',
-        municipalRegistration: company.municipalReg ?? null,
+    return toNormalizedInvoice(
+      {
+        companyId: snapshot.companyId,
+        customer: snapshot.customerSnapshot ?? null,
+        service: snapshot.serviceSnapshot,
+        amount: snapshot.amount,
+        discount: snapshot.discount,
+        competenceDate: snapshot.competenceDate,
       },
-      competenceDate: snapshot.competenceDate.toISOString().slice(0, 10),
-      grossAmount: moneyString(toDecimal(snapshot.amount)),
-      discountAmount: moneyString(toDecimal(snapshot.discount ?? 0)),
-      service: {
-        code: snapshot.serviceSnapshot.code,
-        municipalityCode: snapshot.serviceSnapshot.municipalityCode,
-        description: snapshot.serviceSnapshot.description,
-        fiscal: snapshot.serviceSnapshot.fiscal ?? null,
-        serviceProfileId: snapshot.serviceSnapshot.serviceProfileId ?? null,
-      },
-      customer,
-    };
+      company,
+      snapshot.tenantId,
+      snapshot.environment ?? 'test',
+      snapshot.id,
+    );
   }
+}
+
+/** Pure mapping shared by persisted emission and in-memory pre-emission calculation. */
+export function toNormalizedInvoice(
+  input: Pick<
+    NormalizedInvoiceInput,
+    'companyId' | 'service' | 'amount' | 'discount' | 'competenceDate'
+  > & {
+    customer: {
+      taxId?: string;
+      address?: { municipalityCode?: string };
+    } | null;
+  },
+  company: Company,
+  tenantId: string,
+  environment: ExecutionEnvironment,
+  invoiceId: string,
+): NormalizedInvoice {
+  const taxId = input.customer?.taxId;
+  const customer: FiscalCustomer | null =
+    taxId === undefined || taxId === ''
+      ? null
+      : {
+          kind: taxId.length === 11 ? 'CPF' : 'CNPJ',
+          taxId,
+          municipalityCode: input.customer?.address?.municipalityCode ?? null,
+        };
+  return {
+    invoiceId,
+    tenantId,
+    environment,
+    company: {
+      id: input.companyId,
+      taxId: company.taxId,
+      municipalityCode: company.municipalityCode ?? '',
+      municipalRegistration: company.municipalReg ?? null,
+    },
+    competenceDate: input.competenceDate.toISOString().slice(0, 10),
+    grossAmount: moneyString(toDecimal(input.amount)),
+    discountAmount: moneyString(toDecimal(input.discount ?? 0)),
+    service: {
+      code: input.service.code,
+      municipalityCode: input.service.municipalityCode,
+      description: input.service.description ?? null,
+      fiscal: input.service.fiscal ?? null,
+      serviceProfileId: input.service.serviceProfileId ?? null,
+    },
+    customer,
+  };
 }

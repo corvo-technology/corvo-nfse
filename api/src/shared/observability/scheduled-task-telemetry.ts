@@ -5,9 +5,9 @@ import {
 } from './duration-histogram';
 
 const duration = metrics
-  .getMeter('greenflow.scheduled-task')
+  .getMeter('corvo.scheduled-task')
   .createHistogram(
-    'greenflow.scheduled_task.duration',
+    'corvo.scheduled_task.duration',
     durationHistogramOptions(
       'Duration of scheduled application tasks',
       AGENT_RUNTIME_DURATION_BOUNDARIES_SECONDS,
@@ -18,13 +18,13 @@ export function observeScheduledTask<T>(
   jobName: string,
   operation: () => T | Promise<T>,
 ): Promise<T> {
-  return trace.getTracer('greenflow.scheduled-task').startActiveSpan(
+  return trace.getTracer('corvo.scheduled-task').startActiveSpan(
     `cron ${jobName}`,
     {
       kind: SpanKind.INTERNAL,
       attributes: {
-        'greenflow.job.name': jobName,
-        'greenflow.workload.kind': 'cron',
+        'corvo.job.name': jobName,
+        'corvo.workload.kind': 'cron',
       },
     },
     async (span) => {
@@ -42,7 +42,7 @@ export function observeScheduledTask<T>(
         throw error;
       } finally {
         duration.record(Math.max(performance.now() - startedAt, 0) / 1000, {
-          'greenflow.job.name': jobName,
+          'corvo.job.name': jobName,
           status,
         });
         span.end();

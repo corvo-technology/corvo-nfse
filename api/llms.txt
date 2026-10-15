@@ -87,3 +87,79 @@ environment, status = the invoice fiscal status "authorized", differences[] with
 field/local/authorized/delta/kind). The computed
 result is persisted as an immutable invoice_fiscal_snapshots row.
 
+
+## Pre-emission calculation (calculate)
+
+POST /v1/invoices/calculate is always available to authenticated API keys/sessions
+with nfse.invoices.issue. Same CreateInvoiceDto body; companyId wins over
+companyTaxId; company in another tenant/environment returns 404. No new permission.
+Uses exactly the standard authenticated HTTP rate limit of the other endpoints:
+RATE_LIMIT_AUTHENTICATED defaults to 300/minute per API key/session; no separate
+calculate budget/configuration. 429 includes Retry-After
+and X-RateLimit-Limit/Remaining/Reset. No dedicated calculation guard.
+
+Future competenceDate is accepted without options.type, within
+OUTBOX_SCHEDULE_MAX_DAYS (15 days by default). The DTO is cloned and normalized
+as SCHEDULE in memory; scheduledFor is ignored and no job is scheduled. Profiles
+are resolved on the competence date, including future effective profiles.
+InvoiceCalculationService only depends on InvoiceIntakeService and
+FiscalEngineService. FiscalPipeline.executeWithPartial returns applied context
+and error; execute keeps its fail-fast Result contract for the worker.
+
+HTTP 200 {data: InvoiceCalculationResponse}: preEmission:true, status ready|blocked,
+disclaimer, competenceDate, taxRegime, classification, applicability (iss,
+issWithheld, federalWithholding, cbs, ibs, specialTreatment), taxes, withholdings,
+netReceivableAmount, collectionWaived, calculation {source,calculatorVersion,
+rulesVersion,legalReferences}, warnings, pendingFields[{field,reason}],
+blocking {code,message,step,category,retryable,details}|null, trace[{step,status,
+durationMs,reason?}]. Money and rates are decimal strings. blocked preserves only
+already computed values; missing values are not zero. Never echoes customer name
+or CPF/CNPJ. ready is a pre-emission calculation, not authorization by Sefin.
+
+VALIDATION/CONFIGURATION/CLASSIFICATION/UNSUPPORTED/CALCULATION fiscal results =>
+200 blocked. INTEGRATION => 503 with Retry-After (ceil retryAfterMs/1000, min 1,
+default 5 seconds). INTERNAL => generic 500. Invalid DTO/normalization keeps
+normal 4xx (FiscalValidationError => 422). Missing company => 404.
+HTTP errors: {statusCode,code,message,details?,requestId}, ERROR_ public prefix;
+blocking.code keeps domain code without ERROR_.
+
+No writes to nfse_invoices, nfse_invoice_events, nfse_dps_sequences,
+outbox_messages, invoice_fiscal_snapshots, invoice_fiscal_reconciliations,
+credit_transactions or webhook_deliveries; no BullMQ, S3 or Sefin calls and no
+emission credits consumed. The external tax engine is called Calculadora RTC;
+calculate is the pre-emission endpoint. See docs/fiscal/examples.md and
+api/FRONTEND_API.md for requests/responses/errors and prerequisites.
+
+## Fiscal profile API and telemetry
+
+GET/PUT /v1/companies/{id}/fiscal-profile; POST
+/v1/companies/{id}/fiscal-profile/{profileId}/approve. PUT accepts taxRegime,
+simpleNational, specialTaxRegime, ibsCbsRegularOption, ibsCbsRegularFrom,
+validFrom and confirm; confirm:true approves as the acting user.
+GET/POST /v1/companies/{id}/service-tax-profiles; PATCH
+/v1/companies/{id}/service-tax-profiles/{serviceId}; GET date=YYYY-MM-DD.
+view uses nfse.companies.view; writes use nfse.companies.manage.
+There is no fiscal-services route. CreateInvoiceDto service.serviceProfileId is
+separate from service.fiscal {nbsCode,cst,classCode,operationIndicator}.
+customer.address.municipalityCode is 7-digit IBGE; customer may be omitted only
+where allowed by the regime/operation. amount and discount are numbers, email is
+boolean (or options.email.send). Profile approval in live still needs fiscal
+operational governance; examples use test.
+
+OpenTelemetry uses corvo.* names (service identity greenflow-backend is unchanged).
+Meters/scopes/attribute keys formerly greenflow.* are migrated only for telemetry;
+Sentry contexts, Redis/cookies, service names and external hosts keep identity.
+Fiscal instruments are centralized in fiscal.metrics.ts:
+corvo.fiscal.pipeline.duration, corvo.fiscal.step.duration,
+corvo.fiscal.step.failed.total, corvo.fiscal.step.skipped.total,
+corvo.fiscal.dps.validation.failed.total, corvo.nfse.authorization.failed.total,
+corvo.fiscal.reconciliation.mismatch.total, corvo.fiscal.calculate.total
+(status=ready|blocked|error), corvo.fiscal.calculate.duration.
+RTC: corvo.rtc.calculation.duration, corvo.rtc.request.duration,
+corvo.rtc.calculation.failed.total, corvo.rtc.version_info.
+Outbox: corvo.outbox.published.total, corvo.outbox.publish.failed.total,
+corvo.outbox.dead.total, corvo.outbox.claim_to_publish.duration,
+corvo.outbox.pending.oldest_age. Durations/age use seconds.
+See docs/fiscal/observability.md for mapping, attributes, alerts and safe logging;
+runbooks are under docs/fiscal/runbooks. Do not log PFX, passwords, full XML or
+complete personal documents. Local tests do not mean Sefin homologation.

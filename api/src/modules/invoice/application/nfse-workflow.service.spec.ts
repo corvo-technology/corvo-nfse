@@ -4,9 +4,9 @@ import { NfseWorkflowService } from './nfse-workflow.service';
 import {
   recordAuthorizationFailure,
   recordDpsValidationFailure,
-} from './fiscal/fiscal-emission.metrics';
+} from './fiscal/fiscal.metrics';
 
-jest.mock('./fiscal/fiscal-emission.metrics');
+jest.mock('./fiscal/fiscal.metrics');
 import { Invoice } from '../domain/invoice';
 import type { CustomerSnapshot } from '../domain/invoice';
 import type { IIssuePayload } from '@/infra/external/nfse/nfse-fiscal-provider';

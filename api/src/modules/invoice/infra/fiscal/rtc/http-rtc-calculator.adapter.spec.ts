@@ -239,11 +239,11 @@ describe('HttpRtcCalculatorAdapter', () => {
     for (const resource of resources.flatMap((entry) => entry.scopeMetrics)) {
       const metric = resource.metrics.find(
         (candidate) =>
-          candidate.descriptor.name === 'greenflow.rtc.version_info',
+          candidate.descriptor.name === 'corvo.rtc.version_info',
       );
       if (metric === undefined) continue;
       if (metric.dataPointType !== DataPointType.GAUGE) {
-        throw new Error('greenflow.rtc.version_info is not a gauge');
+        throw new Error('corvo.rtc.version_info is not a gauge');
       }
       const point = metric.dataPoints[0];
       return point === undefined

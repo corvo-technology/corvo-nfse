@@ -1,6 +1,6 @@
 # Runbook: layout/DPS não suportado (`DPS_LAYOUT_UNSUPPORTED`, `DPS_SCHEMA_VALIDATION_FAILED`)
 
-**Sintoma.** Invoice `rejected` com `lastErrorCode` `DPS_LAYOUT_UNSUPPORTED` ou `DPS_SCHEMA_VALIDATION_FAILED` e webhook `nfse.invoice.rejected`; métrica `dps_validation_failures_total{code}`. Nenhuma transmissão à Sefin acontece nesses casos.
+**Sintoma.** Invoice `rejected` com `lastErrorCode` `DPS_LAYOUT_UNSUPPORTED` ou `DPS_SCHEMA_VALIDATION_FAILED` e webhook `nfse.invoice.rejected`; métrica `corvo.fiscal.dps.validation.failed.total{code}`. Nenhuma transmissão à Sefin acontece nesses casos.
 
 **O que cada código significa.**
 - `DPS_LAYOUT_UNSUPPORTED`: o layout configurado em `FISCAL_DPS_LAYOUT` não está no registro de layouts implantados (`rtc-v1.01` é o único com status `in_production`), ou está publicado mas ainda não implantado. A NT 009/2026 (V1.04.00) continua **não suportada**.

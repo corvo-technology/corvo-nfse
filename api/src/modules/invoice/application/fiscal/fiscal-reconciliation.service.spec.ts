@@ -194,7 +194,7 @@ describe('FiscalReconciliationService', () => {
     for (const resource of resources.flatMap((entry) => entry.scopeMetrics)) {
       const metric = resource.metrics.find(
         (candidate) =>
-          candidate.descriptor.name === 'tax_reconciliation_mismatches_total',
+          candidate.descriptor.name === 'corvo.fiscal.reconciliation.mismatch.total',
       );
       if (metric)
         return metric.dataPoints.reduce(

@@ -8,9 +8,9 @@
 - Nenhuma DPS fiscalmente incompleta é emitida e nenhum valor é presumido.
 
 **Métricas e logs.**
-- `rtc_calculation_failed_total{reason}` com `reason` = `timeout | network | upstream_5xx | rate_limited | circuit_open`.
-- `rtc_calculation_duration`, `rtc_calculator_latency`; gauge `greenflow.rtc.version_info`.
-- Mensagens `dead` na outbox: `greenflow.outbox` (`outbox_dead_total`).
+- `corvo.rtc.calculation.failed.total{reason}` com `reason` = `timeout | network | upstream_5xx | rate_limited | circuit_open`.
+- `corvo.rtc.calculation.duration`, `corvo.rtc.request.duration`; gauge `corvo.rtc.version_info`.
+- Mensagens `dead` na outbox: `corvo.outbox` (`corvo.outbox.dead.total`).
 
 **Diagnóstico.**
 1. Estado do serviço: `docker compose ps rtc-calculator` (healthcheck usa `GET /api/calculadora/dados-abertos/versao`).

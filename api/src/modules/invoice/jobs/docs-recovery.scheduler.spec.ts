@@ -3,6 +3,7 @@ import { DocsRecoveryScheduler } from './docs-recovery.scheduler';
 import type { IInvoiceRepository } from '../domain/invoice.repository';
 import type { IFiscalReconciliationRepository } from '../domain/fiscal/reconciliation/fiscal-reconciliation.repository';
 import type { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
+import * as scheduledTaskTelemetry from '@/shared/observability/scheduled-task-telemetry';
 
 describe('DocsRecoveryScheduler', () => {
   const findAuthorizedWithoutDocuments = jest.fn();
@@ -62,6 +63,16 @@ describe('DocsRecoveryScheduler', () => {
     findPendingReconciliation.mockResolvedValue([]);
     findAuthorizedWithoutDocuments.mockResolvedValue([]);
     findAuthorizedWithoutReconciliation.mockResolvedValue([]);
+  });
+
+  it('observes recovery as a scheduled task', async () => {
+    const observe = jest.spyOn(scheduledTaskTelemetry, 'observeScheduledTask');
+    try {
+      await scheduler.handle();
+      expect(observe).toHaveBeenCalledWith('invoice.docs-recovery', expect.any(Function));
+    } finally {
+      observe.mockRestore();
+    }
   });
 
   it('asks the repository for eligible reconciliation work under each tenant', async () => {

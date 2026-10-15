@@ -83,3 +83,20 @@ yarn test --runInBand
 
 The test database must be local and end in `_test`. Role provisioning in tests
 requires an administrative test connection; the application connection is restricted.
+
+## Fiscal profiles, snapshots and pre-emission calculation
+
+Subsequent migrations also protect `outbox_messages`, `company_fiscal_profiles`,
+`company_service_tax_profiles`, `invoice_fiscal_snapshots` and
+`invoice_fiscal_reconciliations` with tenant policies and ownership references.
+Fiscal profile readers resolve the active tenant and competence-date validity.
+Snapshot updates/deletes are additionally rejected by an immutability trigger.
+
+`POST /v1/invoices/calculate` shares company resolution with emission: a company
+from another tenant/environment returns 404. It reads profiles under the
+existing tenant context, without persisting any invoice, event, DPS sequence,
+outbox message, snapshot/reconciliation, credit or webhook delivery. It uses the
+standard authenticated HTTP rate limit of the other endpoints, without a
+separate calculation budget. PostgreSQL coverage lives in
+`src/modules/invoice/calculate.postgres.integration.spec.ts` (20 read-only calls,
+worker parity, future profile validity and cross-tenant rejection).

@@ -1,3 +1,4 @@
+import { InvoiceCalculationService } from './application/fiscal/invoice-calculation.service';
 import { CreditsModule } from '@/modules/credits/credits.module';
 import { ConfigService } from '@nestjs/config';
 import type { OutboxConfig } from '@/infra/config/configuration.types';
@@ -40,6 +41,7 @@ import {
   INVOICE_EVENT_REPOSITORY,
 } from './domain/invoice.repository';
 import { DPS_SEQUENCE_REPOSITORY } from './domain/dps-sequence';
+import { InvoiceIntakeService } from './application/invoice-intake.service';
 import { InvoiceService } from './application/invoice.service';
 import { InvoiceController } from './http/invoice.controller';
 import { CompanyModule } from '@/modules/company/company.module';
@@ -123,6 +125,8 @@ import { EmailModule } from '@/modules/email/email.module';
     FiscalSnapshotService,
     DpsBuilder,
     InvoiceService,
+    InvoiceIntakeService,
+    InvoiceCalculationService,
     InvoiceLifecycleService,
     InvoiceDomainService,
   ],

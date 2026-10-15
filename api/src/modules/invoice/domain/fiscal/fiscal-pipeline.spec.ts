@@ -219,3 +219,52 @@ describe('FiscalPipeline', () => {
     );
   });
 });
+
+describe('FiscalPipeline.executeWithPartial', () => {
+  it('retains the last applied context and trace, stamps the failure and stops', async () => {
+    const calls: string[] = [];
+    const failure: FiscalStep = {
+      name: 'B',
+      required: true,
+      execute: async () =>
+        err(
+          fiscalError({
+            code: 'FISCAL_CLASSIFICATION_REQUIRED',
+            message: 'missing',
+            category: 'CLASSIFICATION',
+          }),
+        ),
+    };
+    const initial = initialFiscalContext(invoice('partial'));
+    const result = await new FiscalPipeline([
+      applied('A', calls, {
+        warnings: [{ code: 'X', message: 'retained', step: 'A' }],
+      }),
+      failure,
+      applied('C', calls),
+    ]).executeWithPartial(initial);
+    expect(result.error).toMatchObject({
+      code: 'FISCAL_CLASSIFICATION_REQUIRED',
+      step: 'B',
+    });
+    expect(result.context.warnings).toEqual([
+      { code: 'X', message: 'retained', step: 'A' },
+    ]);
+    expect(result.context.trace.map((t) => t.step)).toEqual(['A']);
+    expect(calls).toEqual(['A']);
+    expect(initial.trace).toEqual([]);
+  });
+  it('returns an internal error with the preceding context for required skips', async () => {
+    const initial = initialFiscalContext(invoice('skip'));
+    const result = await new FiscalPipeline([
+      {
+        name: 'S',
+        required: true,
+        execute: async (context) =>
+          ok({ status: 'skipped', context, reason: 'missing' }),
+      },
+    ]).executeWithPartial(initial);
+    expect(result.error).toMatchObject({ category: 'INTERNAL' });
+    expect(result.context).toBe(initial);
+  });
+});
