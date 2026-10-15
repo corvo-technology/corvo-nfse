@@ -133,6 +133,30 @@ describe('Invoice', () => {
       expect(event.toStatus).toBe('processing');
     });
 
+    it('transitions queued to rejected', () => {
+      const invoice = Invoice.create(defaultInput, 'tenant-123');
+
+      const event = invoice.transitionTo(
+        'rejected',
+        'Fiscal calculation failed',
+      );
+
+      expect(invoice.status).toBe('rejected');
+      expect(event.fromStatus).toBe('queued');
+      expect(event.toStatus).toBe('rejected');
+      expect(event.reason).toBe('Fiscal calculation failed');
+    });
+
+    it('rejects transition from authorized to rejected', () => {
+      const invoice = Invoice.create(defaultInput, 'tenant-123');
+      invoice.setProcessing();
+      invoice.transitionTo('authorized');
+
+      expect(() => invoice.transitionTo('rejected')).toThrow(
+        InvalidInvoiceTransitionError,
+      );
+    });
+
     it('transitions processing to authorized', () => {
       const invoice = Invoice.create(defaultInput, 'tenant-123');
       invoice.setProcessing();

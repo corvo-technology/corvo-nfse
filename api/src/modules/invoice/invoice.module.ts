@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import type { OutboxConfig } from '@/infra/config/configuration.types';
 import { SCHEDULE_MAX_DAYS } from './domain/invoice-domain.service';
 import { InvoiceEmitHandler } from './application/invoice-emit.handler';
+import { CalculateTaxesHandler } from './application/fiscal/calculate-taxes.handler';
 import { OutboxService } from './application/outbox.service';
 import { OutboxHandlerRegistry } from './application/outbox-handler.registry';
 import { OUTBOX_REPOSITORY } from './domain/outbox.repository';
@@ -67,6 +68,7 @@ import { EmailModule } from '@/modules/email/email.module';
   controllers: [InvoiceController],
   providers: [
     InvoiceEmitHandler,
+    CalculateTaxesHandler,
     {
       provide: SCHEDULE_MAX_DAYS,
       useFactory: (config: ConfigService) =>

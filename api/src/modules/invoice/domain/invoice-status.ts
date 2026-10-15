@@ -9,7 +9,7 @@ export type InvoiceStatus =
   | 'failed';
 
 export const VALID_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
-  queued: ['processing'],
+  queued: ['processing', 'rejected'],
   processing: [
     'authorized',
     'rejected',

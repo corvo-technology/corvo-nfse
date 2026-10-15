@@ -1,4 +1,4 @@
-import { INVOICE_EMIT } from './invoice-emit.handler';
+import { INVOICE_CALCULATE_TAXES } from '../domain/invoice-message-types';
 import { OutboxService } from './outbox.service';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
@@ -93,14 +93,14 @@ export class InvoiceLifecycleService {
           await this.outbox.enqueue({
             tenantId: invoice.tenantId,
             environment: invoice.environment,
-            type: INVOICE_EMIT,
+            type: INVOICE_CALCULATE_TAXES,
             aggregateId: invoice.id,
             payload: {
               invoiceId: invoice.id,
               companyId: invoice.companyId,
               tenantId: invoice.tenantId,
             },
-            dedupeKey: `emission:${invoice.id}`,
+            dedupeKey: `calc:${invoice.id}`,
             availableAt: invoice.scheduledFor ?? undefined,
           });
         }),

@@ -75,7 +75,7 @@ const newInvoice = (
   );
 
 describe('InvoiceLifecycleService.submit + outbox', () => {
-  it('enqueues invoice.emit after the invoice and event inserts, in the same transaction', async () => {
+  it('enqueues invoice.calculate-taxes after the invoice and event inserts, in the same transaction', async () => {
     const order: string[] = [];
     const outbox = {
       enqueue: jest.fn(async () => {
@@ -92,16 +92,20 @@ describe('InvoiceLifecycleService.submit + outbox', () => {
     );
     expect(database.transaction).toHaveBeenCalledTimes(1);
     expect(order).toEqual(['invoice', 'event', 'outbox']);
+    expect(outbox.enqueue).toHaveBeenCalledTimes(1);
     expect(outbox.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId,
         environment: 'test',
-        type: 'invoice.emit',
+        type: 'invoice.calculate-taxes',
         aggregateId: invoice.id,
-        dedupeKey: `emission:${invoice.id}`,
+        dedupeKey: `calc:${invoice.id}`,
         payload: { invoiceId: invoice.id, companyId, tenantId },
       }),
     );
+    // Emission is not released at intake: the calculate-taxes handler
+    // enqueues invoice.emit only after the fiscal calculation succeeds.
+    expect(outbox.enqueue.mock.calls[0][0].type).not.toBe('invoice.emit');
   });
 
   it('uses scheduledFor as availableAt for a scheduled invoice and "now" otherwise', async () => {
