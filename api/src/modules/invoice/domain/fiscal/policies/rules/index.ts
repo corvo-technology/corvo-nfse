@@ -67,4 +67,13 @@ export const TAX_RULES: readonly TaxRule[] = [
     status: 'published',
     parameters: { mode: 'HALF_UP', places: 2 },
   },
+  {
+    ruleKey: 'reconciliation.tolerance',
+    validFrom: '2026-01-01',
+    validUntil: null,
+    legalReference: 'Convenção interna (pendente de confirmação fiscal E3)',
+    sourceUrl: 'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp214.htm',
+    status: 'published',
+    parameters: { absolute: '0.01' },
+  },
 ];

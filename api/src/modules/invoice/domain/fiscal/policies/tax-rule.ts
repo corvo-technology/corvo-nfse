@@ -35,4 +35,8 @@ export type TaxRule =
   | (TaxRuleBase & {
       ruleKey: 'rounding.default';
       parameters: { mode: 'HALF_UP'; places: 2 };
+    })
+  | (TaxRuleBase & {
+      ruleKey: 'reconciliation.tolerance';
+      parameters: { absolute: string };
     });

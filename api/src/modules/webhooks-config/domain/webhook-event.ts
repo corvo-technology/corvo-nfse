@@ -8,7 +8,8 @@ export type WebhookEventType =
   | 'nfse.invoice.manual_review'
   | 'nfse.invoice.documents_ready'
   | 'nfse.invoice.email_sent'
-  | 'nfse.invoice.email_failed';
+  | 'nfse.invoice.email_failed'
+  | 'nfse.invoice.fiscal_discrepancy';
 
 /** Event types a tenant may subscribe to through the public API. */
 export const PUBLIC_WEBHOOK_EVENT_TYPES = [
@@ -20,6 +21,7 @@ export const PUBLIC_WEBHOOK_EVENT_TYPES = [
   'nfse.invoice.documents_ready',
   'nfse.invoice.email_sent',
   'nfse.invoice.email_failed',
+  'nfse.invoice.fiscal_discrepancy',
 ] as const satisfies readonly WebhookEventType[];
 
 export type PublicWebhookEventType =
