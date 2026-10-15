@@ -7,7 +7,8 @@ export type InvoiceStage =
   | 'authorized'
   | 'documents_ready'
   | 'completed'
-  | 'failed';
+  | 'failed'
+  | 'cancelled';
 
 export interface InvoiceStateInput {
   status: InvoiceStatus;
@@ -26,8 +27,11 @@ export interface InvoiceState {
 }
 
 function resolveStage(input: InvoiceStateInput): InvoiceStage {
+  if (input.status === 'cancelled') return 'cancelled';
   if (input.status === 'rejected' || input.status === 'failed') return 'failed';
-  if (input.status !== 'authorized') return 'pending';
+  // A pending cancellation is still a valid NFS-e with its documents.
+  const fiscal = input.status === 'cancelling' ? 'authorized' : input.status;
+  if (fiscal !== 'authorized') return 'pending';
   if (!input.documentsReady) return 'authorized';
   const emailResolved =
     !input.emailRequested ||
