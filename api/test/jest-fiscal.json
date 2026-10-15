@@ -4,14 +4,15 @@
   "testEnvironment": "node",
   "maxWorkers": 1,
   "testTimeout": 20000,
-  "testRegex": "test/fiscal-environments.e2e-spec.ts$",
+  "testRegex": "test/fiscal-(environments|dps-emission)\\.e2e-spec\\.ts$",
   "setupFiles": ["<rootDir>/test/support/fiscal-env.ts"],
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "moduleNameMapper": {
     "^@/(.*)$": "<rootDir>/src/$1",
-    "^open-nfse$": "<rootDir>/test/support/open-nfse-native.ts"
+    "^open-nfse$": "<rootDir>/test/support/open-nfse-native.ts",
+    "^open-nfse/testing$": "<rootDir>/test/support/open-nfse-testing-native.ts"
   },
   "transformIgnorePatterns": [
     "node_modules/(?!(@nestjs/bullmq|@nestjs/bull-shared|jose)/)"

@@ -98,6 +98,57 @@ export class OpenNfseProvider implements FiscalProvider {
       requiresReconciliation: false,
     };
   }
+  /**
+   * Signs the DPS WITHOUT transmitting it and returns the pending emission to
+   * persist before the first POST. A `preparedDps` (RTC layout, built by the
+   * DpsBuilder) goes through `emitirDpsPronta`; the legacy payload keeps the
+   * `emitir` dry-run. Both reach `replayPendingEvents` through the same
+   * RetryStore, so timeout/429 handling and idempotency are identical.
+   */
+  private async prepareEmission(
+    client: NfseClient,
+    payload: IIssuePayload,
+  ): Promise<PendingEvent> {
+    const prepared = payload.preparedDps;
+    let signed;
+    let idDps: string;
+    if (prepared) {
+      signed = await client.emitirDpsPronta(prepared, { dryRun: true });
+      idDps = prepared.infDPS.Id;
+    } else {
+      signed = await client.emitir({
+        ...issueParams(payload),
+        nDPS: String(payload.number),
+        dryRun: true,
+      });
+      idDps = buildDpsId({
+        cLocEmi: payload.emitente.codMunicipio,
+        tipoInsc: 'CNPJ',
+        inscricaoFederal: payload.emitente.cnpj,
+        serie: payload.serie,
+        nDPS: String(payload.number),
+      });
+    }
+    if (!('dryRun' in signed) || !signed.dryRun)
+      throw new Error('Expected signed DPS preview');
+    const now = new Date();
+    return {
+      kind: 'emission',
+      id: pendingEmissionId(idDps),
+      idDps,
+      xmlAssinado: signed.xmlDpsAssinado,
+      emitenteCnpj: payload.emitente.cnpj,
+      serie: payload.serie,
+      nDPS: String(payload.number),
+      firstAttemptAt: now,
+      lastAttemptAt: now,
+      lastError: {
+        message: 'Prepared before fiscal submission',
+        errorName: 'Prepared',
+        transient: true,
+      },
+    };
+  }
   async issue(payload: IIssuePayload): Promise<FiscalIssueResult> {
     if (!payload.invoiceId || !payload.tenantId || !payload.number)
       throw new Error('Persistent invoice/DPS identity is required');
@@ -114,38 +165,7 @@ export class OpenNfseProvider implements FiscalProvider {
         }
       }
       if (!pending) {
-        const params = issueParams(payload);
-        const signed = await client.emitir({
-          ...params,
-          nDPS: String(payload.number),
-          dryRun: true,
-        });
-        if (!('dryRun' in signed) || !signed.dryRun)
-          throw new Error('Expected signed DPS preview');
-        const idDps = buildDpsId({
-          cLocEmi: payload.emitente.codMunicipio,
-          tipoInsc: 'CNPJ',
-          inscricaoFederal: payload.emitente.cnpj,
-          serie: payload.serie,
-          nDPS: String(payload.number),
-        });
-        const now = new Date();
-        pending = {
-          kind: 'emission',
-          id: pendingEmissionId(idDps),
-          idDps,
-          xmlAssinado: signed.xmlDpsAssinado,
-          emitenteCnpj: payload.emitente.cnpj,
-          serie: payload.serie,
-          nDPS: String(payload.number),
-          firstAttemptAt: now,
-          lastAttemptAt: now,
-          lastError: {
-            message: 'Prepared before fiscal submission',
-            errorName: 'Prepared',
-            transient: true,
-          },
-        };
+        pending = await this.prepareEmission(client, payload);
         await store.save(pending);
       }
       const [replayed] = await client.replayPendingEvents(store);
