@@ -25,7 +25,11 @@ describe('FiscalReconciliationProcessor', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    lock = { key: 'nfse:fiscal-reconcile:' + jobData.invoiceId, token: 'tok', ttlMs: 60_000 };
+    lock = {
+      key: 'nfse:fiscal-reconcile:' + jobData.invoiceId,
+      token: 'tok',
+      ttlMs: 60_000,
+    };
     jest.mocked(fakeLock.acquire).mockResolvedValue(lock);
     jest.mocked(fakeLock.release).mockResolvedValue(true);
     jest.mocked(fakeService.reconcileInvoice).mockResolvedValue(undefined);

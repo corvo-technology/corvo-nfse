@@ -67,12 +67,10 @@ const sdkRejectionDetails = (
 const redactViolations = (
   violations: readonly { readonly message: string; readonly line?: number }[],
 ): readonly { readonly message: string; readonly line?: number }[] =>
-  violations
-    .slice(0, MAX_VIOLATIONS)
-    .map((violation) => ({
-      message: violation.message.replace(PERSONAL_DATA_PATTERN, '[redacted]'),
-      ...(violation.line !== undefined ? { line: violation.line } : {}),
-    }));
+  violations.slice(0, MAX_VIOLATIONS).map((violation) => ({
+    message: violation.message.replace(PERSONAL_DATA_PATTERN, '[redacted]'),
+    ...(violation.line !== undefined ? { line: violation.line } : {}),
+  }));
 
 /**
  * Translates a `FiscalCalculationResult` into a typed DPS (RTC v1.01). It
@@ -160,9 +158,7 @@ export class DpsBuilder {
                 ...(nbsCode === null ? ['nbsCode'] : []),
                 ...(cst === null ? ['cst'] : []),
                 ...(classCode === null ? ['classCode'] : []),
-                ...(operationIndicator === null
-                  ? ['operationIndicator']
-                  : []),
+                ...(operationIndicator === null ? ['operationIndicator'] : []),
               ],
             },
           }),

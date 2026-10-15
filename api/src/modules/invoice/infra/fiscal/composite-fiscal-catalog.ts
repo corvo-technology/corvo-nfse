@@ -15,10 +15,7 @@ import {
 export class CompositeFiscalCatalog extends IFiscalCatalog {
   constructor(
     private readonly local: Pick<IFiscalCatalog, 'lookupServiceCode'>,
-    private readonly rtc: Pick<
-      IFiscalCatalog,
-      'validateClassification'
-    > | null,
+    private readonly rtc: Pick<IFiscalCatalog, 'validateClassification'> | null,
   ) {
     super();
   }

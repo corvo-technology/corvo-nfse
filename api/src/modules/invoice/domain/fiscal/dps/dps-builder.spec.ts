@@ -179,9 +179,7 @@ describe('DpsBuilder', () => {
       ),
     );
 
-    expect(dps.infDPS.prest.regTrib.opSimpNac).toBe(
-      OpcaoSimplesNacional.Mei,
-    );
+    expect(dps.infDPS.prest.regTrib.opSimpNac).toBe(OpcaoSimplesNacional.Mei);
     expect(dps.infDPS.prest.regTrib.regApTribSN).toBeUndefined();
     expect(dps.infDPS.prest.regTrib.regEspTrib).toBe(
       RegimeEspecialTributacao.Nenhum,
@@ -206,9 +204,7 @@ describe('DpsBuilder', () => {
       ),
     );
 
-    expect(dps.infDPS.prest.regTrib.opSimpNac).toBe(
-      OpcaoSimplesNacional.MeEpp,
-    );
+    expect(dps.infDPS.prest.regTrib.opSimpNac).toBe(OpcaoSimplesNacional.MeEpp);
     expect(dps.infDPS.prest.regTrib.regApTribSN).toBe(
       RegimeApuracaoSimplesNacional.FederalEMunicipalPeloSN,
     );
@@ -272,9 +268,7 @@ describe('DpsBuilder', () => {
   });
 
   it('adds vDescCondIncond when the invoice carries an unconditional discount', async () => {
-    const base = dpsFrom(
-      await new DpsBuilder().build(input(), RTC_V1_01),
-    );
+    const base = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
     const discounted = dpsFrom(
       await new DpsBuilder().build(
         input({ invoice: { discountAmount: '50.00' } }),
@@ -297,7 +291,9 @@ describe('DpsBuilder', () => {
   it('maps ISS withholding to RetidoPeloTomador only when required', async () => {
     const retained = dpsFrom(
       await new DpsBuilder().build(
-        input({ result: { applicability: applicability({ issWithheld: REQUIRED }) } }),
+        input({
+          result: { applicability: applicability({ issWithheld: REQUIRED }) },
+        }),
         RTC_V1_01,
       ),
     );
@@ -391,12 +387,8 @@ describe('DpsBuilder', () => {
   });
 
   it('produces a deterministic DPS for identical inputs', async () => {
-    const first = dpsFrom(
-      await new DpsBuilder().build(input(), RTC_V1_01),
-    );
-    const second = dpsFrom(
-      await new DpsBuilder().build(input(), RTC_V1_01),
-    );
+    const first = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    const second = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
     expect(first).toEqual(second);
   });
 

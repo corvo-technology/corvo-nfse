@@ -14,7 +14,10 @@ import { TypeOrmInvoiceFiscalSnapshotRepository } from './infra/typeorm-invoice-
 import { InvoiceFiscalReconciliationOrmEntity } from './infra/fiscal/invoice-fiscal-reconciliation.orm-entity';
 import { TypeOrmFiscalReconciliationRepository } from './infra/fiscal/typeorm-fiscal-reconciliation.repository';
 import { FISCAL_RECONCILIATION_REPOSITORY } from './domain/fiscal/reconciliation/fiscal-reconciliation.repository';
-import { FiscalReconciliationService, InvoiceWebhookPublisher } from './application/fiscal/fiscal-reconciliation.service';
+import {
+  FiscalReconciliationService,
+  InvoiceWebhookPublisher,
+} from './application/fiscal/fiscal-reconciliation.service';
 import { DpsBuilder } from './domain/fiscal/dps/dps-builder';
 import { FiscalSnapshotService } from './application/fiscal/fiscal-snapshot.service';
 import { FiscalEngineModule } from './application/fiscal/fiscal-engine.module';

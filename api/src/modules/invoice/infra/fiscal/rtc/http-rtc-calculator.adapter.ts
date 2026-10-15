@@ -164,7 +164,8 @@ export class HttpRtcCalculatorAdapter extends RtcCalculatorPort {
       (Date.now() - startedAt) / 1000,
       outcome.ok ? 'ok' : outcome.error.code,
     );
-    if (!outcome.ok) recordRtcCalculationFailure(failureReasonOf(outcome.error));
+    if (!outcome.ok)
+      recordRtcCalculationFailure(failureReasonOf(outcome.error));
     return outcome;
   }
 

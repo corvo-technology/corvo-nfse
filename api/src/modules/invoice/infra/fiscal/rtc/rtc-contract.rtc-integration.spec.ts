@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ok } from '@/modules/invoice/domain/fiscal/result';

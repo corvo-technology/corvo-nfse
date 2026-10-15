@@ -32,7 +32,10 @@ describe('rtc environment configuration', () => {
       parseEnvConfig({ NODE_ENV: 'test', RTC_CALCULATOR_TIMEOUT_MS: '0' }),
     ).toThrow();
     expect(() =>
-      parseEnvConfig({ NODE_ENV: 'test', RTC_CALCULATOR_MAX_CONCURRENCY: '-1' }),
+      parseEnvConfig({
+        NODE_ENV: 'test',
+        RTC_CALCULATOR_MAX_CONCURRENCY: '-1',
+      }),
     ).toThrow();
     expect(() =>
       parseEnvConfig({ NODE_ENV: 'test', FISCAL_DPS_LAYOUT: 'rtc-v1.04' }),

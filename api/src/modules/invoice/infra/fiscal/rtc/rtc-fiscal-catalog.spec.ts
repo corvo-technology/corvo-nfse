@@ -35,10 +35,10 @@ const loadFixture = (name: string): Fixture =>
 
 const okFixture = loadFixture('ok-indicador-valido.json');
 const errorFixture = loadFixture('error-indicador-incompativel.json');
-const okValidateStep = okFixture.steps.find(
+const okValidateStep = okFixture.steps.find((step) => step.method === 'POST');
+const errorValidateStep = errorFixture.steps.find(
   (step) => step.method === 'POST',
 );
-const errorValidateStep = errorFixture.steps.find((step) => step.method === 'POST');
 if (okValidateStep === undefined || errorValidateStep === undefined) {
   throw new Error('validate fixtures must contain the captured POST steps');
 }
@@ -84,7 +84,8 @@ const NBS_LIST = [
   },
   {
     codigo: NBS_MULTI,
-    descricao: 'Serviços de atendimento, assistência ou tratamento para animais domésticos',
+    descricao:
+      'Serviços de atendimento, assistência ou tratamento para animais domésticos',
   },
 ];
 
@@ -146,7 +147,11 @@ const startEngine = (): Promise<Harness> =>
           sendJson(res, 200, date < '2026-01-01' ? [] : NBS_LIST);
           return;
         }
-        if (path.endsWith('/calculadora/nfse/situacoes-classificacoes-tributarias')) {
+        if (
+          path.endsWith(
+            '/calculadora/nfse/situacoes-classificacoes-tributarias',
+          )
+        ) {
           const nbs = parsed.searchParams.get('nbs');
           const combos = nbs === null ? undefined : COMBOS[nbs];
           if (combos === undefined) {
@@ -181,7 +186,11 @@ const startEngine = (): Promise<Harness> =>
           });
           return;
         }
-        sendJson(res, 404, { type: 'about:blank', title: 'Not Found', status: 404 });
+        sendJson(res, 404, {
+          type: 'about:blank',
+          title: 'Not Found',
+          status: 404,
+        });
       });
     });
     server.listen(0, '127.0.0.1', () => {
@@ -217,10 +226,7 @@ const clock = (): Clock => {
   };
 };
 
-const buildCatalog = (
-  harness: Harness,
-  time: Clock,
-): RtcFiscalCatalog =>
+const buildCatalog = (harness: Harness, time: Clock): RtcFiscalCatalog =>
   new RtcFiscalCatalog(
     new RtcHttpClient(harness.url, { timeoutMs: 5_000, maxConcurrency: 4 }),
     { now: time.now },

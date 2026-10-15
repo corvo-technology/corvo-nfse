@@ -7,7 +7,6 @@ import { IFiscalCatalog } from '@/modules/invoice/domain/fiscal/classification/f
 import type { FiscalStep } from '@/modules/invoice/domain/fiscal/fiscal-step';
 import { IFiscalProfileReader } from '@/modules/invoice/domain/fiscal/ports/fiscal-profile.reader';
 import { IServiceProfileReader } from '@/modules/invoice/domain/fiscal/ports/service-profile.reader';
-import { RtcCalculatorPort } from '@/modules/invoice/domain/fiscal/rtc/rtc-calculator.port';
 import type { RtcMapper } from '@/modules/invoice/infra/fiscal/rtc/rtc-mapper';
 import { Invoice } from '@/modules/invoice/domain/invoice';
 import { UnconfiguredRtcCalculator } from '@/modules/invoice/infra/fiscal/unconfigured-rtc-calculator';

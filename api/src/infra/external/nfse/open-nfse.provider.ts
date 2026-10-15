@@ -16,6 +16,7 @@ import {
   type PendingEvent,
   type RetryStore,
   type NfseEmitResult,
+  type DpsDryRunResult,
   type NfseQueryResult,
 } from 'open-nfse';
 import { InvoiceOrmEntity } from '@/modules/invoice/infra/invoice.orm-entity';
@@ -110,7 +111,7 @@ export class OpenNfseProvider implements FiscalProvider {
     payload: IIssuePayload,
   ): Promise<PendingEvent> {
     const prepared = payload.preparedDps;
-    let signed;
+    let signed: DpsDryRunResult;
     let idDps: string;
     if (prepared) {
       signed = await client.emitirDpsPronta(prepared, { dryRun: true });

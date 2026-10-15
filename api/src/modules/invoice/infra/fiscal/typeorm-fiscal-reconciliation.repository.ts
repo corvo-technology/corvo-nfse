@@ -13,9 +13,7 @@ import { InvoiceFiscalReconciliationOrmEntity } from './invoice-fiscal-reconcili
 import { InvoiceFiscalSnapshotOrmEntity } from '../invoice-fiscal-snapshot.orm-entity';
 
 @Injectable()
-export class TypeOrmFiscalReconciliationRepository
-  implements IFiscalReconciliationRepository
-{
+export class TypeOrmFiscalReconciliationRepository implements IFiscalReconciliationRepository {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly transactions: TypeOrmTransactionContext,
@@ -29,7 +27,11 @@ export class TypeOrmFiscalReconciliationRepository
     return this.tableOf(InvoiceFiscalReconciliationOrmEntity);
   }
 
-  private tableOf(entity: typeof InvoiceFiscalReconciliationOrmEntity | typeof InvoiceFiscalSnapshotOrmEntity): string {
+  private tableOf(
+    entity:
+      | typeof InvoiceFiscalReconciliationOrmEntity
+      | typeof InvoiceFiscalSnapshotOrmEntity,
+  ): string {
     const metadata = this.dataSource.getMetadata(entity);
     const escape = (identifier: string) =>
       this.dataSource.driver.escape(identifier);
@@ -64,7 +66,7 @@ export class TypeOrmFiscalReconciliationRepository
   async insert(row: NewReconciliationRow): Promise<boolean> {
     return runWithTenant(row.tenantId, async () => {
       requireTenantId(row.tenantId);
-      const rows = (await this.manager().query(
+      const rows: unknown[] = await this.manager().query(
         `INSERT INTO ${this.table()} (invoice_id, tenant_id, status, local_values, authorized_values, differences, tolerance_absolute, rules_version, reconciled_at)
          VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, $7, $8, $9)
          ON CONFLICT (invoice_id) DO NOTHING
@@ -80,7 +82,7 @@ export class TypeOrmFiscalReconciliationRepository
           row.rulesVersion,
           row.reconciledAt,
         ],
-      )) as unknown[];
+      );
       return rows.length > 0;
     });
   }
@@ -91,7 +93,7 @@ export class TypeOrmFiscalReconciliationRepository
   ): Promise<ReconciliationRow | null> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
-      const rows = await this.manager().query(
+      const rows: unknown[] = await this.manager().query(
         `SELECT id, invoice_id, tenant_id, status, local_values, authorized_values, differences, tolerance_absolute, rules_version, reconciled_at
            FROM ${this.table()}
           WHERE invoice_id = $1 AND tenant_id = $2`,

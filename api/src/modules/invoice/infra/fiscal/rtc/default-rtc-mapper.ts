@@ -6,9 +6,7 @@ import type { Decimal } from '@/modules/invoice/domain/fiscal/money';
 import { moneyString, toDecimal } from '@/modules/invoice/domain/fiscal/money';
 import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
 import type { TaxAmount } from '@/modules/invoice/domain/fiscal/tax-amount';
-import type {
-  RtcCalculationInput,
-} from '@/modules/invoice/domain/fiscal/rtc/rtc-calculator.port';
+import type { RtcCalculationInput } from '@/modules/invoice/domain/fiscal/rtc/rtc-calculator.port';
 import type { RtcTaxResult } from '@/modules/invoice/domain/fiscal/rtc/rtc-tax-result';
 import { ufFromIbge } from '@/shared/fiscal/ibge-uf';
 import type { RtcMapper } from './rtc-mapper';
@@ -220,7 +218,10 @@ export class DefaultRtcMapper implements RtcMapper {
     const group = ibscbs === null ? null : asRecord(ibscbs.gIBSCBS);
     if (group === null) {
       return err(
-        invalidResponse(ibscbsPath, 'missing objetos[0].tribCalc.IBSCBS.gIBSCBS'),
+        invalidResponse(
+          ibscbsPath,
+          'missing objetos[0].tribCalc.IBSCBS.gIBSCBS',
+        ),
       );
     }
 
@@ -269,7 +270,11 @@ export class DefaultRtcMapper implements RtcMapper {
       ibsCity: ibsCity.value,
       ibsTotal: { base: moneyString(base), amount: moneyString(ibs) },
       legalReferences: [],
-      calculationMemory: [gCBS.memoriaCalculo, gIBSUF.memoriaCalculo, gIBSMun.memoriaCalculo],
+      calculationMemory: [
+        gCBS.memoriaCalculo,
+        gIBSUF.memoriaCalculo,
+        gIBSMun.memoriaCalculo,
+      ],
       collectionWaived: false,
     });
   }

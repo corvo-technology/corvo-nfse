@@ -108,7 +108,9 @@ export class DocsRecoveryScheduler {
               removeOnFail: 1000,
             },
           );
-          this.logger.log(`Re-enqueued fiscal reconciliation for invoice ${id}`);
+          this.logger.log(
+            `Re-enqueued fiscal reconciliation for invoice ${id}`,
+          );
         } catch (err) {
           this.logger.error(
             `Failed to re-enqueue fiscal reconciliation for invoice ${id}:`,

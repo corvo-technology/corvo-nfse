@@ -14,10 +14,7 @@ import {
   onDelete: 'CASCADE',
 })
 @Unique('uq_ifr_invoice_id', ['invoiceId'])
-@Check(
-  'ck_ifr_status',
-  `status IN ('matched','within_tolerance','divergent')`,
-)
+@Check('ck_ifr_status', `status IN ('matched','within_tolerance','divergent')`)
 @Index('idx_ifr_tenant_id', ['tenantId'])
 export class InvoiceFiscalReconciliationOrmEntity {
   @PrimaryGeneratedColumn('uuid')

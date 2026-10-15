@@ -33,8 +33,10 @@ const SEVERITY: Record<ReconciliationStatus, number> = {
   divergent: 2,
 } as const;
 
-const worst = (a: ReconciliationStatus, b: ReconciliationStatus): ReconciliationStatus =>
-  SEVERITY[b] > SEVERITY[a] ? b : a;
+const worst = (
+  a: ReconciliationStatus,
+  b: ReconciliationStatus,
+): ReconciliationStatus => (SEVERITY[b] > SEVERITY[a] ? b : a);
 
 /**
  * Reconciles the fiscal engine's immutable snapshot against the values the
@@ -93,9 +95,15 @@ export function reconcile(
   const authorizedValues: Record<string, string | null> = {};
   let status: ReconciliationStatus = 'matched';
 
-  for (const { field, local: localAmount, authorized: authorizedAmount } of fields) {
+  for (const {
+    field,
+    local: localAmount,
+    authorized: authorizedAmount,
+  } of fields) {
     const authorizedString =
-      authorizedAmount === null ? null : new Decimal(String(authorizedAmount)).toString();
+      authorizedAmount === null
+        ? null
+        : new Decimal(String(authorizedAmount)).toString();
     localValues[field] = localAmount;
     authorizedValues[field] = authorizedString;
     if (localAmount === null && authorizedString === null) continue;
@@ -105,7 +113,8 @@ export function reconcile(
         local: localAmount,
         authorized: authorizedString,
         delta: null,
-        kind: localAmount === null ? 'missing_locally' : 'missing_in_authorized',
+        kind:
+          localAmount === null ? 'missing_locally' : 'missing_in_authorized',
       });
       status = worst(status, 'divergent');
       continue;

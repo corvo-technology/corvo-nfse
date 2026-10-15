@@ -23,5 +23,7 @@ export const recordRtcCalculationFailure = (reason: string): void =>
   calculationFailed.add(1, { reason });
 
 /** Latência por chamada HTTP à Calculadora, sempre por caminho — nunca por corpo. */
-export const recordRtcCalculatorLatency = (seconds: number, path: string): void =>
-  calculatorLatency.record(seconds, { path });
+export const recordRtcCalculatorLatency = (
+  seconds: number,
+  path: string,
+): void => calculatorLatency.record(seconds, { path });

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -39,13 +40,11 @@ jest.unmock('open-nfse/testing');
 // bundled undici by explicit path so dispatcher and transport error classes
 // share the instance the client itself uses.
 const sdkUndiciPath = `${process.cwd()}/node_modules/open-nfse/node_modules/undici/index.js`;
-const { MockAgent, errors: undiciErrors } = (
-  existsSync(sdkUndiciPath)
-    ? (createRequire(sdkUndiciPath)('./index.js') as typeof import('undici'))
-    : (createRequire(process.cwd() + '/package.json')(
-        'undici',
-      ) as typeof import('undici'))
-);
+const { MockAgent, errors: undiciErrors } = existsSync(sdkUndiciPath)
+  ? (createRequire(sdkUndiciPath)('./index.js') as typeof import('undici'))
+  : (createRequire(process.cwd() + '/package.json')(
+      'undici',
+    ) as typeof import('undici'));
 
 const SEFIN_ORIGIN = 'https://sefin.nfse.gov.br';
 const SEFIN_POST = '/SefinNacional/nfse';
@@ -76,7 +75,10 @@ const postedXml = (body: unknown): string => {
  * totals the fiscal reconciliation compares. The amounts mirror the local
  * fiscal snapshot below so the reconciliation outcome is `matched`.
  */
-const authorizedNfseXml = (chave: string, signedDpsXml: string): string => `<?xml version="1.0" encoding="UTF-8"?>
+const authorizedNfseXml = (
+  chave: string,
+  signedDpsXml: string,
+): string => `<?xml version="1.0" encoding="UTF-8"?>
 <NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01"><infNFSe Id="NFS${chave}">
 <xLocEmi>SAO PAULO</xLocEmi><xLocPrestacao>SAO PAULO</xLocPrestacao><nNFSe>${DPS_NUMBER}</nNFSe><xTribNac>Consultoria fiscal</xTribNac><verAplic>sefin-test</verAplic><ambGer>1</ambGer><tpEmis>1</tpEmis><cStat>100</cStat><dhProc>${new Date('2026-10-14T12:00:00Z').toISOString()}</dhProc><nDFSe>${DPS_NUMBER}</nDFSe>
 <emit><CNPJ>${EMITENTE_CNPJ}</CNPJ><xNome>Empresa de prova</xNome><enderNac><xLgr>Rua Prova</xLgr><nro>1</nro><xBairro>Centro</xBairro><cMun>${MUNICIPIO}</cMun><UF>SP</UF><CEP>00000000</CEP></enderNac></emit>
@@ -214,7 +216,7 @@ describe('Ready DPS emission through OpenNfseProvider (preparedDps)', () => {
   let provider: OpenNfseProvider;
   let preparedDps: DPS;
   let pfx: Buffer;
-  let transport: MockAgent;
+  let transport: InstanceType<typeof MockAgent>;
   let emitirDpsProntaCalls: jest.SpiedFunction<NfseClient['emitirDpsPronta']>;
 
   const payload = (overrides: Partial<IIssuePayload> = {}): IIssuePayload => ({
@@ -256,21 +258,19 @@ describe('Ready DPS emission through OpenNfseProvider (preparedDps)', () => {
         return reply();
       });
   };
-  const authorizedReply =
-    (chave: string) =>
-    (): HttpReply => ({
-      statusCode: 201,
-      data: JSON.stringify({
-        chaveAcesso: chave,
-        idDps: preparedDps.infDPS.Id,
-        nfseXmlGZipB64: gzipB64(
-          authorizedNfseXml(chave, posts[posts.length - 1]),
-        ),
-        tipoAmbiente: 1,
-        versaoAplicativo: 'sefin-test',
-        dataHoraProcessamento: new Date().toISOString(),
-      }),
-    });
+  const authorizedReply = (chave: string) => (): HttpReply => ({
+    statusCode: 201,
+    data: JSON.stringify({
+      chaveAcesso: chave,
+      idDps: preparedDps.infDPS.Id,
+      nfseXmlGZipB64: gzipB64(
+        authorizedNfseXml(chave, posts[posts.length - 1]),
+      ),
+      tipoAmbiente: 1,
+      versaoAplicativo: 'sefin-test',
+      dataHoraProcessamento: new Date().toISOString(),
+    }),
+  });
   const preparedDpsSignedXml = async (): Promise<string> => {
     const stored = (await pendingRow()).pending_emission?.xmlAssinado;
     if (stored === undefined || stored === null)
@@ -319,9 +319,7 @@ describe('Ready DPS emission through OpenNfseProvider (preparedDps)', () => {
         200,
         JSON.stringify({
           chaveAcesso: chave,
-          nfseXmlGZipB64: gzipB64(
-            authorizedNfseXml(chave, signedXml),
-          ),
+          nfseXmlGZipB64: gzipB64(authorizedNfseXml(chave, signedXml)),
           tipoAmbiente: 1,
           versaoAplicativo: 'sefin-test',
           dataHoraProcessamento: new Date().toISOString(),
@@ -374,7 +372,9 @@ describe('Ready DPS emission through OpenNfseProvider (preparedDps)', () => {
       `INSERT INTO "${process.env.DB_SCHEMA}".nfse_invoices(id,company_id,tenant_id,environment,status,customer_snapshot,service_snapshot,tax_snapshot,amount,competence_date) VALUES ($1,$2,$3,'live','queued','{}','{}','{}',1000,'2026-10-01')`,
       [INVOICE, COMPANY, TENANT],
     );
-    preparedDps = dpsFrom(await new DpsBuilder().build(buildInput(), RTC_V1_01));
+    preparedDps = dpsFrom(
+      await new DpsBuilder().build(buildInput(), RTC_V1_01),
+    );
 
     const keys = forge.pki.rsa.generateKeyPair(2048);
     const certificate = forge.pki.createCertificate();
@@ -390,9 +390,14 @@ describe('Ready DPS emission through OpenNfseProvider (preparedDps)', () => {
     pfx = Buffer.from(
       forge.asn1
         .toDer(
-          forge.pkcs12.toPkcs12Asn1(keys.privateKey, [certificate], pfxPassword, {
-            algorithm: '3des',
-          }),
+          forge.pkcs12.toPkcs12Asn1(
+            keys.privateKey,
+            [certificate],
+            pfxPassword,
+            {
+              algorithm: '3des',
+            },
+          ),
         )
         .getBytes(),
       'binary',
@@ -413,10 +418,7 @@ describe('Ready DPS emission through OpenNfseProvider (preparedDps)', () => {
             dispatcher: transport,
           }),
       );
-    emitirDpsProntaCalls = jest.spyOn(
-      NfseClient.prototype,
-      'emitirDpsPronta',
-    );
+    emitirDpsProntaCalls = jest.spyOn(NfseClient.prototype, 'emitirDpsPronta');
   }, 90000);
 
   afterAll(async () => {
@@ -478,9 +480,7 @@ describe('Ready DPS emission through OpenNfseProvider (preparedDps)', () => {
     expect(first.requiresReconciliation).toBe(true);
     expect(first.errorMessage).toContain('excedeu');
     const rowAfterTimeout = await pendingRow();
-    expect(rowAfterTimeout.pending_emission?.idDps).toBe(
-      preparedDps.infDPS.Id,
-    );
+    expect(rowAfterTimeout.pending_emission?.idDps).toBe(preparedDps.infDPS.Id);
     expect(rowAfterTimeout.pending_emission?.attempts).toBe(2);
     expect(rowAfterTimeout.pending_emission?.xmlAssinado).toContain(
       '<Signature',
@@ -624,9 +624,7 @@ describe('Ready DPS emission through OpenNfseProvider (preparedDps)', () => {
     };
     recordPosts(authorizedReply(synthChaveAcesso(25, EMITENTE_CNPJ)));
 
-    const result = await provider.issue(
-      payload({ preparedDps: invalidDps }),
-    );
+    const result = await provider.issue(payload({ preparedDps: invalidDps }));
 
     expect(result.success).toBe(false);
     expect(result.requiresReconciliation).toBe(false);

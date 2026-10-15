@@ -1,11 +1,7 @@
-import type {
-  FiscalError,
-} from '@/modules/invoice/domain/fiscal/fiscal-error';
+import type { FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
 import type { DecimalString } from '@/modules/invoice/domain/fiscal/money';
 import type { Result } from '@/modules/invoice/domain/fiscal/result';
-import type {
-  RtcCalculationInput,
-} from '@/modules/invoice/domain/fiscal/rtc/rtc-calculator.port';
+import type { RtcCalculationInput } from '@/modules/invoice/domain/fiscal/rtc/rtc-calculator.port';
 import type { RtcTaxResult } from '@/modules/invoice/domain/fiscal/rtc/rtc-tax-result';
 
 /**

@@ -23,14 +23,14 @@ export class JsonFiscalCatalog extends IFiscalCatalog {
       found: /^\d{6}$/.test(code) && this.codes.has(code),
     };
   }
-  async validateClassification(
+  validateClassification(
     _input: Parameters<IFiscalCatalog['validateClassification']>[0],
     _date: string,
   ): Promise<ClassificationValidation> {
-    return {
+    return Promise.resolve({
       status: 'unavailable',
       reason: 'NBS/CST/cClassTrib/cIndOp catalogs are not loaded yet (Spec 3)',
       transient: false,
-    };
+    });
   }
 }

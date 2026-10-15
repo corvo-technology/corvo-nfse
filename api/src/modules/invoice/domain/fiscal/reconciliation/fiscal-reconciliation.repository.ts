@@ -20,7 +20,8 @@ export interface ReconciliationRow {
 
 export type NewReconciliationRow = Omit<ReconciliationRow, 'id'>;
 
-export const FISCAL_RECONCILIATION_REPOSITORY = 'FISCAL_RECONCILIATION_REPOSITORY';
+export const FISCAL_RECONCILIATION_REPOSITORY =
+  'FISCAL_RECONCILIATION_REPOSITORY';
 
 export abstract class IFiscalReconciliationRepository {
   /** Idempotent insert: `true` when the row was created, `false` on a redelivery. */

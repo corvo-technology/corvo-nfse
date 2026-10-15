@@ -3,7 +3,10 @@ import { metrics } from '@opentelemetry/api';
 const meter = metrics.getMeter('greenflow.fiscal');
 const dpsValidationFailures = meter.createCounter(
   'dps_validation_failures_total',
-  { description: 'DPS rejected locally (layout or schema) before any transmission' },
+  {
+    description:
+      'DPS rejected locally (layout or schema) before any transmission',
+  },
 );
 const authorizationFailures = meter.createCounter(
   'nfse_authorization_failures_total',

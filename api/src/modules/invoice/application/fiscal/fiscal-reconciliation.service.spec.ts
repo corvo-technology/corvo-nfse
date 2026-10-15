@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/await-thenable, @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { metrics } from '@opentelemetry/api';
 import {
   AggregationTemporality,
@@ -176,10 +177,11 @@ describe('FiscalReconciliationService', () => {
   });
 
   async function buildService() {
-    const service = require('./fiscal-reconciliation.service') as typeof import('./fiscal-reconciliation.service');
+    const service =
+      require('./fiscal-reconciliation.service') as typeof import('./fiscal-reconciliation.service');
     return new service.FiscalReconciliationService(
-      snapshots as never,
-      reconciliations as never,
+      snapshots,
+      reconciliations,
       invoices as never,
       storage as never,
       publisher as never,
@@ -312,7 +314,8 @@ describe('FiscalReconciliationService', () => {
 
 describe('InvoiceWebhookPublisher', () => {
   it('enqueues the event for every active subscription and skips inactive ones', async () => {
-    const service = require('./fiscal-reconciliation.service') as typeof import('./fiscal-reconciliation.service');
+    const service =
+      require('./fiscal-reconciliation.service') as typeof import('./fiscal-reconciliation.service');
     const configs = {
       findByTenantIdAndEvent: jest.fn().mockResolvedValue([
         { id: 'wh-1', url: 'https://a.test/hook', secret: 's1', active: true },
@@ -359,7 +362,8 @@ describe('InvoiceWebhookPublisher', () => {
   });
 
   it('swallows enqueue failures so reconciliation is never blocked by webhooks', async () => {
-    const service = require('./fiscal-reconciliation.service') as typeof import('./fiscal-reconciliation.service');
+    const service =
+      require('./fiscal-reconciliation.service') as typeof import('./fiscal-reconciliation.service');
     const configs = {
       findByTenantIdAndEvent: jest
         .fn()

@@ -2,7 +2,7 @@ import { CircuitBreaker } from './circuit-breaker';
 
 describe('CircuitBreaker', () => {
   it('opens after N consecutive failures and rejects without passing', () => {
-    let t = 0;
+    const t = 0;
     const cb = new CircuitBreaker({
       failureThreshold: 3,
       resetMs: 1000,

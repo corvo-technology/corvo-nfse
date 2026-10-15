@@ -50,9 +50,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isNbsList = (value: unknown): value is NbsEntry[] =>
   Array.isArray(value) &&
-  value.every(
-    (item) => isRecord(item) && typeof item['codigo'] === 'string',
-  );
+  value.every((item) => isRecord(item) && typeof item['codigo'] === 'string');
 
 const isComboList = (value: unknown): value is ClassificationCombo[] =>
   Array.isArray(value) &&
@@ -325,10 +323,7 @@ export class RtcFiscalCatalog {
       } catch {
         return {
           ok: false,
-          failure: unavailable(
-            'the calculator returned a non-JSON body',
-            true,
-          ),
+          failure: unavailable('the calculator returned a non-JSON body', true),
         };
       }
       this.cache.set(key, { value: payload, expiresAt: now + CACHE_TTL_MS });

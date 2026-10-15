@@ -5,9 +5,7 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  * Sefin consolidated in the authorized NFS-e. One row per invoice (UNIQUE) —
  * re-reconciliations are idempotent inserts, never updates.
  */
-export class CreateInvoiceFiscalReconciliations1791820000000
-  implements MigrationInterface
-{
+export class CreateInvoiceFiscalReconciliations1791820000000 implements MigrationInterface {
   private schema(runner: QueryRunner): string {
     const options = runner.connection.options;
     return runner.connection.driver.escape(
@@ -49,6 +47,8 @@ export class CreateInvoiceFiscalReconciliations1791820000000
 
   async down(runner: QueryRunner): Promise<void> {
     const s = this.schema(runner);
-    await runner.query(`DROP TABLE IF EXISTS ${s}.invoice_fiscal_reconciliations`);
+    await runner.query(
+      `DROP TABLE IF EXISTS ${s}.invoice_fiscal_reconciliations`,
+    );
   }
 }

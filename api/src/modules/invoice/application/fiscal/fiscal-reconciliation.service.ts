@@ -17,9 +17,6 @@ import {
   FISCAL_SNAPSHOT_REPOSITORY,
   type IFiscalSnapshotRepository,
 } from '../../domain/fiscal/fiscal-snapshot.repository';
-import type {
-  ReconciliationDifference,
-} from '../../domain/fiscal/reconciliation/fiscal-reconciliation.repository';
 import {
   FISCAL_RECONCILIATION_REPOSITORY,
   type IFiscalReconciliationRepository,
@@ -34,7 +31,9 @@ const reconciliationMismatches: Counter = meter.createCounter(
 );
 
 function reconciliationToleranceAbsolute(): Decimal {
-  const rule = TAX_RULES.find((candidate) => candidate.ruleKey === 'reconciliation.tolerance');
+  const rule = TAX_RULES.find(
+    (candidate) => candidate.ruleKey === 'reconciliation.tolerance',
+  );
   if (!rule || !('absolute' in rule.parameters))
     throw new Error('reconciliation.tolerance rule is not configured');
   return new Decimal(rule.parameters.absolute);
@@ -118,13 +117,13 @@ export class FiscalReconciliationService {
     private readonly webhooks: InvoiceWebhookPublisher,
   ) {}
 
-  async reconcileInvoice(
-    invoiceId: string,
-    tenantId: string,
-  ): Promise<void> {
+  async reconcileInvoice(invoiceId: string, tenantId: string): Promise<void> {
     const snapshot = await this.snapshots.findByInvoiceId(invoiceId, tenantId);
     if (!snapshot) return;
-    const invoice = await this.invoices.findByIdAndTenantId(invoiceId, tenantId);
+    const invoice = await this.invoices.findByIdAndTenantId(
+      invoiceId,
+      tenantId,
+    );
     if (!invoice) return;
 
     const xml = await this.documentStorage.getXml(
@@ -166,7 +165,7 @@ export class FiscalReconciliationService {
         {
           invoiceId,
           status: invoice.status,
-          differences: outcome.differences as ReconciliationDifference[],
+          differences: outcome.differences,
         },
       );
   }

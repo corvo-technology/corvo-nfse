@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/await-thenable */
 import { Logger } from '@nestjs/common';
 import {
   createServer,
@@ -19,9 +20,7 @@ import {
   type FiscalError,
 } from '@/modules/invoice/domain/fiscal/fiscal-error';
 import { ok, type Result } from '@/modules/invoice/domain/fiscal/result';
-import type {
-  RtcCalculationInput,
-} from '@/modules/invoice/domain/fiscal/rtc/rtc-calculator.port';
+import type { RtcCalculationInput } from '@/modules/invoice/domain/fiscal/rtc/rtc-calculator.port';
 import type { RtcTaxResult } from '@/modules/invoice/domain/fiscal/rtc/rtc-tax-result';
 import { HttpRtcCalculatorAdapter } from './http-rtc-calculator.adapter';
 import type { RtcMapper } from './rtc-mapper';
@@ -37,16 +36,37 @@ const VERSION_BODY = JSON.stringify({
 
 const TAX_RESULT: RtcTaxResult = {
   calculatorVersion: '1.6.0/V0059',
-  cbs: { base: '870.00', rate: '0.90', effectiveRate: '0.90', reductionRate: '0', amount: '7.83' },
-  ibsState: { base: '870.00', rate: '0.10', effectiveRate: '0.10', reductionRate: '0', amount: '0.87' },
-  ibsCity: { base: '870.00', rate: '0.00', effectiveRate: '0.00', reductionRate: '0', amount: '0.00' },
+  cbs: {
+    base: '870.00',
+    rate: '0.90',
+    effectiveRate: '0.90',
+    reductionRate: '0',
+    amount: '7.83',
+  },
+  ibsState: {
+    base: '870.00',
+    rate: '0.10',
+    effectiveRate: '0.10',
+    reductionRate: '0',
+    amount: '0.87',
+  },
+  ibsCity: {
+    base: '870.00',
+    rate: '0.00',
+    effectiveRate: '0.00',
+    reductionRate: '0',
+    amount: '0.00',
+  },
   ibsTotal: { base: '870.00', amount: '0.87' },
   legalReferences: [],
   calculationMemory: [{ source: 'test' }],
   collectionWaived: false,
 };
 
-const rtcConfig = (url: string, overrides: Partial<RtcConfig> = {}): RtcConfig => ({
+const rtcConfig = (
+  url: string,
+  overrides: Partial<RtcConfig> = {},
+): RtcConfig => ({
   url,
   timeoutMs: 1000,
   maxConcurrency: 4,
@@ -218,7 +238,8 @@ describe('HttpRtcCalculatorAdapter', () => {
     const resources = await exporter.getMetrics();
     for (const resource of resources.flatMap((entry) => entry.scopeMetrics)) {
       const metric = resource.metrics.find(
-        (candidate) => candidate.descriptor.name === 'greenflow.rtc.version_info',
+        (candidate) =>
+          candidate.descriptor.name === 'greenflow.rtc.version_info',
       );
       if (metric === undefined) continue;
       if (metric.dataPointType !== DataPointType.GAUGE) {
@@ -266,7 +287,9 @@ describe('HttpRtcCalculatorAdapter', () => {
       retryable: true,
       details: { reason: 'upstream_5xx' },
     });
-    expect(harness.requests.some((url) => pathOf(url).endsWith('regime-geral'))).toBe(false);
+    expect(
+      harness.requests.some((url) => pathOf(url).endsWith('regime-geral')),
+    ).toBe(false);
 
     await harness.close();
   });
@@ -462,7 +485,10 @@ describe('HttpRtcCalculatorAdapter', () => {
   });
 
   it('never leaks raw HTTP/SDK errors (every failure is a FiscalError)', async () => {
-    const scenarios: Array<{ name: string; adapter: HttpRtcCalculatorAdapter }> = [];
+    const scenarios: Array<{
+      name: string;
+      adapter: HttpRtcCalculatorAdapter;
+    }> = [];
 
     const refused = await startServer(healthyEngine);
     const refusedUrl = refused.url;
@@ -651,9 +677,7 @@ describe('HttpRtcCalculatorAdapter', () => {
     );
     const adapter = adapterFor(harness, { mapper });
     const methods = ['log', 'error', 'warn', 'debug', 'verbose'] as const;
-    const spies = methods.map((method) =>
-      jest.spyOn(Logger.prototype, method),
-    );
+    const spies = methods.map((method) => jest.spyOn(Logger.prototype, method));
 
     try {
       failureOf(await adapter.calculate(calculationInput()));

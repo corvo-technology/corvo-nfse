@@ -1,9 +1,4 @@
-import type {
-  NFSe,
-  RtcIbsCbs,
-  RtcTotalIbs,
-  ValoresNFSe,
-} from 'open-nfse';
+import type { NFSe, RtcIbsCbs, RtcTotalIbs, ValoresNFSe } from 'open-nfse';
 import type { CalculatedTaxes } from '../fiscal-calculation-result';
 import type { FiscalCalculationResult } from '../fiscal-calculation-result';
 import { Decimal } from '../money';
@@ -79,10 +74,7 @@ const resultOf = (
  * listed below, which all exist in open-nfse's domain.d.ts — the remaining
  * required groups of a real NFS-e are intentionally omitted.
  */
-const nfseOf = (
-  valores: Partial<ValoresNFSe> = {},
-  ibscbs?: RtcIbsCbs,
-): NFSe =>
+const nfseOf = (valores: Partial<ValoresNFSe> = {}, ibscbs?: RtcIbsCbs): NFSe =>
   ({
     infNFSe: {
       valores: { vServ: 1000, vLiq: 864.9, ...valores },

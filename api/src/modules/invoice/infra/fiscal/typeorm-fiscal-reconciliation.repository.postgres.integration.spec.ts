@@ -45,10 +45,7 @@ let admin: DataSource;
 const reconciliationOf = (
   invoiceId: string,
   tenantId: string,
-  status:
-    | 'matched'
-    | 'within_tolerance'
-    | 'divergent' = 'matched',
+  status: 'matched' | 'within_tolerance' | 'divergent' = 'matched',
 ): NewReconciliationRow => ({
   invoiceId,
   tenantId,

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type { ConfigService } from '@nestjs/config';
 import { NfseWorkflowService } from './nfse-workflow.service';
 import {
@@ -516,9 +517,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     expect(fakes.providers.resolve).not.toHaveBeenCalled();
     expect(fakes.lifecycle.transition).toHaveBeenCalledTimes(1);
     expect(invoice.status).toBe('rejected');
-    expect(invoice.toSnapshot().lastErrorCode).toBe(
-      'DPS_LAYOUT_UNSUPPORTED',
-    );
+    expect(invoice.toSnapshot().lastErrorCode).toBe('DPS_LAYOUT_UNSUPPORTED');
     // The reserved number is already persisted and stays with the invoice.
     expect(fakes.invoices.save).toHaveBeenCalledTimes(1);
     expect(fakes.invoices.save).toHaveBeenCalledWith(invoice, tenantId);
