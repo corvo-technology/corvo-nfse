@@ -427,7 +427,7 @@ Para login, usar as duas rotas `/auth/magic-link`, que também criam sessão.
 | Empresa / nota `environment` | `test`, `live`; somente leitura na resposta                                                                                                                                                                                             |
 | `taxRegime`                  | `MEI`, `Simples Nacional`, `Lucro Presumido`, `Lucro Real`                                                                                                                                                                              |
 | Nota `status`                | `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`                                                                                                                 |
-| Webhook `events`             | `nfse.invoice.authorized`, `nfse.invoice.rejected`, `nfse.invoice.failed`, `nfse.invoice.reconciliation_required`, `nfse.invoice.manual_review`, `nfse.invoice.documents_ready`, `nfse.invoice.email_sent`, `nfse.invoice.email_failed` |
+| Webhook `events`             | `nfse.invoice.authorized`, `nfse.invoice.rejected`, `nfse.invoice.failed`, `nfse.invoice.reconciliation_required`, `nfse.invoice.manual_review`, `nfse.invoice.documents_ready`, `nfse.invoice.email_sent`, `nfse.invoice.email_failed`, `nfse.invoice.fiscal_discrepancy` |
 | OTP `channel`                | `email`, `whatsapp`                                                                                                                                                                                                                     |
 | OTP público `purpose`        | `email_verification`, `phone_verification`, `login_challenge`, `account_recovery`, `magic_link_login`                                                                                                                                   |
 | OTP autenticado `purpose`    | Públicos + `payment_authorization`, `consent_confirmation`                                                                                                                                                                              |
@@ -531,12 +531,39 @@ dessas ações.
 - `amount`: > 0, no máximo 2 casas decimais.
 - `competenceDate`: data válida e não futura.
 
-> **Motor fiscal (IBS/CBS):** a nota passa por um pipeline fiscal que calcula
-> ISS/retenções e delega IBS/CBS à Calculadora RTC oficial. O adaptador real da
-> RTC ainda não está disponível (Spec 3); com o modo padrão
-> `FISCAL_IBSCBS_UNAVAILABLE_MODE=block`, notas cujo IBS/CBS é obrigatório são
-> recusadas (`rejected`, `lastErrorCode = TAX_CALCULATION_UNAVAILABLE`) em vez
-> de emitidas incompletas.
+> **Motor fiscal (IBS/CBS):** o `POST /invoices` é assíncrono: a nota passa por
+> um pipeline fiscal (perfil fiscal, classificação, aplicabilidade, ISS e
+> retenções, IBS/CBS, validação) e só então é emitida. **Erros fiscais não
+> voltam no `POST`**: a nota fica `rejected` e o motivo está em `lastErrorCode`
+> (e no webhook `nfse.invoice.rejected`, com `errorCode` e `errorMessage`).
+> Códigos principais: `FISCAL_PROFILE_MISSING`, `FISCAL_PROFILE_NOT_EFFECTIVE`,
+> `FISCAL_REVIEW_REQUIRED`, `FISCAL_CLASSIFICATION_REQUIRED|INVALID|AMBIGUOUS`,
+> `TAX_APPLICABILITY_UNKNOWN`, `TAX_REGIME_UNSUPPORTED`, `TAX_RATE_NOT_FOUND`,
+> `TAX_CALCULATION_UNAVAILABLE|UNSUPPORTED`, `OPERATION_DOCUMENT_UNSUPPORTED`,
+> `DPS_LAYOUT_UNSUPPORTED` e `DPS_SCHEMA_VALIDATION_FAILED`.
+>
+> - MEI e Simples Nacional em 2026 **não** calculam IBS/CBS (a ausência dos
+>   campos é tolerada até 31/12/2026).
+> - Regime regular: o IBS/CBS é calculado pela Calculadora de Tributos oficial
+>   (rede privada da Corvo) com a **data da competência**. Com a Calculadora
+>   fora do ar a nota **não** é rejeitada de imediato: o processamento é
+>   reentregue com backoff (`TAX_CALCULATION_UNAVAILABLE` só aparece depois de
+>   esgotadas as tentativas). Sem Calculadora configurada e com
+>   `FISCAL_IBSCBS_UNAVAILABLE_MODE=block` (padrão), IBS/CBS obrigatório é
+>   recusado em vez de emitido incompleto.
+> - Competências a partir de **2027-01-01** no regime regular retornam
+>   `TAX_RATE_NOT_FOUND`: o motor oficial ainda não tem as alíquotas e a Corvo
+>   não usa alíquotas estimadas.
+> - A DPS declara só a **classificação** de IBS/CBS (CST e cClassTrib); os
+>   valores são consolidados pela Sefin na nota autorizada.
+
+**Conciliação fiscal.** Depois de `authorized`, a Corvo compara os valores
+calculados com os da NFS-e autorizada, sem alterar o XML. Se a diferença
+passar da tolerância (R$ 0,01 por tributo) é enviado `nfse.invoice.fiscal_discrepancy`
+com `data`: `invoiceId`, `companyId`, `environment`, `status` (estado fiscal da
+nota, `authorized`) e `differences[]` (`field`, `local`, `authorized`, `delta`,
+`kind`: `amount | missing_in_authorized | missing_locally`). O payload não traz
+XML nem documentos completos.
 
 ## MCP (Model Context Protocol) e conexão de apps de IA
 

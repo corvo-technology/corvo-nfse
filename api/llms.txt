@@ -58,12 +58,32 @@ queued invoices.
 Every queued invoice runs a fail-fast fiscal pipeline (company fiscal profile,
 service classification, tax applicability, ISS/withholding, RTC/IBS-CBS,
 validator) driven by the transactional outbox (type invoice.calculate-taxes).
-The company's tax regime now comes from the historical company_fiscal_profiles
-table, not nfse_companies. customer is optional (omitted => consumidor, no
-tomador in the DPS); discount and service.fiscal are accepted at intake. IBS/CBS
-is delegated to the official RTC calculator whose real adapter is not yet built
-(Spec 3), so with FISCAL_IBSCBS_UNAVAILABLE_MODE=block (default) invoices whose
-IBS/CBS is mandatory are rejected with lastErrorCode TAX_CALCULATION_UNAVAILABLE
-instead of emitting incomplete notes. The computed result is persisted as an
-immutable invoice_fiscal_snapshots row. This engine is always on (no feature
-flag).
+It is always on (no feature flag). The company's tax regime comes from the
+historical company_fiscal_profiles table. customer is optional (omitted =>
+consumidor, no tomador in the DPS); discount and service.fiscal are accepted at
+intake. POST /v1/invoices is asynchronous: fiscal errors are NOT returned by the
+POST; the invoice becomes rejected and the reason is in lastErrorCode and in the
+nfse.invoice.rejected webhook. Codes: FISCAL_PROFILE_MISSING,
+FISCAL_PROFILE_NOT_EFFECTIVE, FISCAL_REVIEW_REQUIRED,
+FISCAL_CLASSIFICATION_REQUIRED|INVALID|AMBIGUOUS, TAX_APPLICABILITY_UNKNOWN,
+TAX_REGIME_UNSUPPORTED, TAX_RATE_NOT_FOUND, TAX_CALCULATION_UNAVAILABLE|UNSUPPORTED,
+OPERATION_DOCUMENT_UNSUPPORTED, DPS_LAYOUT_UNSUPPORTED, DPS_SCHEMA_VALIDATION_FAILED.
+
+MEI and Simples Nacional invoices dated 2026 do not compute IBS/CBS. For the
+regular regime, IBS/CBS comes from the official RTC calculator (private
+network) using the competence date; if it is down the work is retried with
+backoff (the invoice is rejected with TAX_CALCULATION_UNAVAILABLE only after the
+attempts are exhausted). With no calculator configured and
+FISCAL_IBSCBS_UNAVAILABLE_MODE=block (default), mandatory IBS/CBS is rejected
+instead of emitted incomplete. Competence dates from 2027-01-01 in the regular
+regime return TAX_RATE_NOT_FOUND (the official engine has no 2027 rates yet and
+Corvo never estimates rates). The DPS only declares the IBS/CBS classification
+(CST, cClassTrib); Sefin consolidates the amounts.
+
+After authorization, Corvo reconciles calculated values against the authorized
+NFS-e without changing the XML. A difference above R$ 0.01 per tax sends the
+webhook nfse.invoice.fiscal_discrepancy (data: invoiceId, companyId,
+environment, status = the invoice fiscal status "authorized", differences[] with
+field/local/authorized/delta/kind). The computed
+result is persisted as an immutable invoice_fiscal_snapshots row.
+

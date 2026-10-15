@@ -1,5 +1,11 @@
 import type { ConfigService } from '@nestjs/config';
 import { NfseWorkflowService } from './nfse-workflow.service';
+import {
+  recordAuthorizationFailure,
+  recordDpsValidationFailure,
+} from './fiscal/fiscal-emission.metrics';
+
+jest.mock('./fiscal/fiscal-emission.metrics');
 import { Invoice } from '../domain/invoice';
 import type { CustomerSnapshot } from '../domain/invoice';
 import type { IIssuePayload } from '@/infra/external/nfse/nfse-fiscal-provider';
@@ -518,6 +524,33 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     expect(fakes.invoices.save).toHaveBeenCalledWith(invoice, tenantId);
     expect(invoice.dpsNumber).toBe(7);
     expect(invoice.toSnapshot().dpsSeries).toBe('1');
+    expect(recordDpsValidationFailure).toHaveBeenCalledWith(
+      'DPS_LAYOUT_UNSUPPORTED',
+    );
+    expect(recordAuthorizationFailure).not.toHaveBeenCalled();
+  });
+
+  it('counts a permanent Sefin rejection as an authorization failure', async () => {
+    const invoice = createInvoice();
+    fakes.invoices.findByIdAndTenantId.mockResolvedValue(invoice);
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(invoice.id),
+    );
+    fakes.providers.resolve.mockReturnValue({
+      issue: jest.fn().mockResolvedValue({
+        success: false,
+        requiresReconciliation: false,
+        errorCode: 'E0001',
+        errorMessage: 'Rejected by Sefin',
+      }),
+    });
+
+    await processInvoice(invoice);
+
+    expect(recordAuthorizationFailure).toHaveBeenCalledWith('E0001');
+    expect(recordDpsValidationFailure).not.toHaveBeenCalled();
+    expect(invoice.status).toBe('rejected');
+    expect(invoice.toSnapshot().lastErrorCode).toBe('E0001');
   });
 
   it('keeps the legacy flow byte-identical when no snapshot exists', async () => {

@@ -11,7 +11,7 @@ aqui foi validado contra a **Calculadora RTC oficial** nem contra o ambiente de
 
 | Cenário | Situação | Motivo |
 | --- | --- | --- |
-| **IBS/CBS no regime regular (2026), modo `block`** | Bloqueado por design | O adaptador **real** da Calculadora RTC é o Spec 3 (fora do escopo do Plano 2). A porta está ligada a `UnconfiguredRtcCalculator`, que devolve `TAX_CALCULATION_UNAVAILABLE`. Em modo `block` a emissão é recusada até o adaptador real existir. |
+| **IBS/CBS no regime regular (2026), modo `block`** | Bloqueado por design | O adaptador real da Calculadora RTC (Spec 3) existe, mas só é ligado quando `RTC_CALCULATOR_URL` está configurada. Sem ela a porta fica em `UnconfiguredRtcCalculator`, que devolve `TAX_CALCULATION_UNAVAILABLE` e, em modo `block`, a emissão é recusada. |
 | **Simples Nacional / MEI em 2027 (opção pelo regime regular)** | `UNSUPPORTED` | As regras de transição para 2027 (Simples com IBS/CBS efetivos) ainda não têm os valores oficiais carregados. O motor bloqueia explicitamente (`TAX_CALCULATION_UNSUPPORTED`) até as regras serem carregadas — nunca degrada para `NOT_APPLICABLE`. |
 | **ISS com regime `FIXED`** | Não exercitado | O resolvedor de ISS trata `NORMAL`/`EXEMPT`; o caso `FIXED` (alíquota fixa municipal) precisa da tabela/alíquota do município e de homologação contra o município de referência. |
 | **Salão-parceiro (`PARTNER_SALON`)** | `FISCAL_REVIEW_REQUIRED` | A regra do Ato Conjunto RFB/CGIBS nº 4/2026 para salões de beleza com parceiros exige conferência das alíneas/ofícios específicos. O motor marca revisão manual em vez de presumir classificação. |
@@ -33,6 +33,35 @@ aqui foi validado contra a **Calculadora RTC oficial** nem contra o ambiente de
 
 ## 4. Fora de escopo deste plano (planos seguintes)
 
-Adaptador HTTP real da Calculadora RTC, DpsBuilder com grupo IBSCBS completo,
-conciliação fiscal, preview de impostos, catálogos NBS/CST/cClassTrib/cIndOp,
-permissões novas.
+Preview de impostos e permissões novas (Plano 4). O adaptador RTC, o DpsBuilder
+com o grupo IBSCBS, a conciliação e a validação de catálogos foram entregues no
+Plano 3 (seção 5).
+
+## 5. Plano 3 / Spec 3 — Calculadora RTC, DPS e conciliação
+
+Data: 2026-10-15 · Escopo: `feat/rtc-dps-reconciliation`.
+
+### 5.1 Nada foi homologado contra a Sefin
+- **Produção Restrita da Sefin: não executado.** A emissão com DPS pronta foi exercitada apenas contra um transporte simulado (`MockAgent` + `NfseClientFake` do SDK) em `api/test/fiscal-dps-emission.e2e-spec.ts`. Isso prova o comportamento do cliente (assinar sem transmitir, timeout ⇒ consulta antes de reenviar, `Retry-After`, rejeição permanente, XSD), **não** que a Sefin aceita a DPS gerada. Sem certificado A1 de teste não há como marcar nada como homologado.
+- A Calculadora foi validada contra a versão `1.6.0/V0059` em ambiente local (fixtures reais em `docs/fiscal/rtc/fixtures`). O teste de contrato `rtc-integration` só roda com `RTC_CALCULATOR_URL`.
+
+### 5.2 Calculadora RTC
+- **Competência ≥ 2027-01-01 (regime regular): bloqueada.** O motor exige alíquotas nominais que a base dele ainda não tem; sem elas responde 422 e a Corvo devolve `TAX_RATE_NOT_FOUND` (não retryable). Com alíquotas informadas o motor calcula, mas marca `calculoSimulado: true`, que a Corvo rejeita. Nenhuma alíquota é estimada.
+- Diferimento (`gDif` com valor ≠ 0) em qualquer componente ⇒ `TAX_CALCULATION_UNSUPPORTED` (não mapeado).
+- A ferramenta se declara **beta**; o grupo de endpoints de NFS-e também. O pacote oficial não traz arquivo de licença (decisão **E1**); o jar e o banco não são versionados no repositório.
+- Partida do serviço ~4 min e ~714 MiB: o healthcheck usa `start_period: 420s`. Atualizações de versão são manuais (`runbooks/rtc-update.md`); o workflow semanal só avisa.
+- A validação de NBS/CST/cClassTrib/cIndOp consulta o motor com a data da competência; com o motor fora do ar o erro é retryable (a invoice não é rejeitada na hora).
+
+### 5.3 DPS (`DpsBuilder`)
+- Só o layout `rtc-v1.01` está em produção; qualquer outro ⇒ `DPS_LAYOUT_UNSUPPORTED`. **NT 009/2026 (V1.04.00) não é suportada.**
+- O grupo `IBSCBS` é apenas declaratório (`finNFSe`, `cIndOp`, `indDest`, CST e cClassTrib). `indFinal`, `tpOper`, `dest`, `imovel`, `gRefNFSe` e `tpEnteGov` **não** são preenchidos sem dado confirmado; se o XSD exigir algum deles em um cenário, a DPS falha por `DPS_SCHEMA_VALIDATION_FAILED` em vez de ser preenchida por suposição.
+- `vTotTrib` (total aproximado de tributos) segue zerado para todos os regimes (comportamento herdado); `regApTribSN` segue `1` (tributos federais e municipais pelo Simples) por padrão e não é configurável por empresa.
+- A numeração DPS é reservada antes da montagem; quando o builder rejeita (layout/schema) o número fica consumido e associado à invoice, nunca devolvido à sequência.
+
+### 5.4 Conciliação
+- Tolerância de R$ 0,01 por tributo é uma política interna **pendente de confirmação fiscal (E3)**.
+- Compara ISS (valor e base), CBS, IBS (UF, município e total) e a base de IBS/CBS; o valor líquido é apenas registrado.
+- Divergência não altera a nota (status, XML e snapshot ficam intactos); o encaminhamento é humano (`runbooks/reconciliation-divergence.md`).
+
+### 5.5 Fora do alcance deste plano (ver `docs/fiscal/mvp-mei-simples-pendencias.md`)
+Regra de MEI/Simples a partir de 01/01/2027, checagem de adesão do município ao Emissor Nacional, `regApTribSN` configurável, roteiro de teste na Produção Restrita, validação com contador (totais aproximados, retenção de ISS, serviços permitidos ao MEI).

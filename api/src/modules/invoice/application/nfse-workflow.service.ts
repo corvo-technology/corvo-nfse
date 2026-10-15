@@ -36,6 +36,10 @@ import {
   type IFiscalSnapshotRepository,
 } from '../domain/fiscal/fiscal-snapshot.repository';
 import { DpsBuilder } from '../domain/fiscal/dps/dps-builder';
+import {
+  recordAuthorizationFailure,
+  recordDpsValidationFailure,
+} from './fiscal/fiscal-emission.metrics';
 import type { FiscalError } from '../domain/fiscal/fiscal-error';
 import { moneyString, toDecimal } from '../domain/fiscal/money';
 
@@ -105,6 +109,7 @@ export class NfseWorkflowService {
       payload = await this.payload(invoice);
     } catch (error: unknown) {
       if (!(error instanceof DpsBuildRejectionError)) throw error;
+      recordDpsValidationFailure(error.error.code);
       await this.rejectBeforeProcessing(
         invoice,
         error.error.code,
@@ -222,6 +227,7 @@ export class NfseWorkflowService {
         });
       } else await this.schedule(invoice, attempts + 1);
     } else {
+      recordAuthorizationFailure(result.errorCode ?? 'ISSUE_REJECTED');
       invoice.setRejected(
         result.errorCode ?? 'ISSUE_REJECTED',
         result.errorMessage ?? 'Fiscal rejection',
