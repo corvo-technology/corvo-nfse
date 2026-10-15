@@ -1,16 +1,6 @@
 import { Logger } from '@nestjs/common';
-import { metrics } from '@opentelemetry/api';
+import { recordFiscalPipeline, recordFiscalStep } from './fiscal.metrics';
 import type { PipelineObserver } from '../../domain/fiscal/fiscal-pipeline';
-
-const meter = metrics.getMeter('greenflow.fiscal');
-const pipelineDuration = meter.createHistogram('fiscal_pipeline_duration', {
-  unit: 's',
-});
-const stepDuration = meter.createHistogram('fiscal_step_duration', {
-  unit: 's',
-});
-const stepFailed = meter.createCounter('fiscal_step_failed_total');
-const stepSkipped = meter.createCounter('fiscal_step_skipped_total');
 
 export class OtelPipelineObserver implements PipelineObserver {
   private readonly logger = new Logger('FiscalPipeline');
@@ -28,10 +18,7 @@ export class OtelPipelineObserver implements PipelineObserver {
     durationMs: number,
     errorCode?: string,
   ): void {
-    stepDuration.record(durationMs / 1000, { step, status });
-    if (status === 'failed')
-      stepFailed.add(1, { step, code: errorCode ?? 'unknown' });
-    if (status === 'skipped') stepSkipped.add(1, { step });
+    recordFiscalStep(step, status, durationMs, errorCode);
     this.logger.log(
       {
         ...this.context,
@@ -45,7 +32,7 @@ export class OtelPipelineObserver implements PipelineObserver {
   }
 
   pipelineFinished(ok: boolean, durationMs: number, errorCode?: string): void {
-    pipelineDuration.record(durationMs / 1000, { ok: String(ok) });
+    recordFiscalPipeline(ok, durationMs);
     this.logger.log(
       { ...this.context, ok, errorCode, durationMs: Math.round(durationMs) },
       'fiscal pipeline finished',

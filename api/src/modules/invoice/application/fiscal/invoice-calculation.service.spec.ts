@@ -1,3 +1,8 @@
+import { recordCalculate } from './fiscal.metrics';
+jest.mock('./fiscal.metrics', () => ({
+  ...jest.requireActual<typeof import('./fiscal.metrics')>('./fiscal.metrics'),
+  recordCalculate: jest.fn(),
+}));
 import { DateTime } from 'luxon';
 import { Company } from '@/modules/company/domain/company';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
@@ -10,6 +15,7 @@ import { calculationEngine } from './testing/calculation-fixtures';
 import { contextFor } from './testing/context';
 
 describe('InvoiceCalculationService', () => {
+  beforeEach(() => jest.clearAllMocks());
   const company = Company.create(
     {
       legalName: 'Empresa',
@@ -47,6 +53,7 @@ describe('InvoiceCalculationService', () => {
     ).calculate({ ...dto, competenceDate: future }, 'ten-1', 'test');
     expect(result).toHaveProperty('response.competenceDate', future);
     expect(result).toHaveProperty('response.status', 'ready');
+    expect(recordCalculate).toHaveBeenCalledWith('ready', expect.any(Number));
   });
   it.each(['INTEGRATION', 'INTERNAL'] as const)(
     'returns an HTTP failure for %s',
@@ -68,6 +75,7 @@ describe('InvoiceCalculationService', () => {
         engine as never,
       ).calculate(dto, 'ten-1', 'test');
       expect(result).toEqual({ httpError: error });
+      expect(recordCalculate).toHaveBeenCalledWith('error', expect.any(Number));
     },
   );
   it('returns blocked for configuration failures', async () => {
@@ -89,6 +97,7 @@ describe('InvoiceCalculationService', () => {
       ]),
     ).calculate(dto, 'ten-1', 'test');
     expect(result).toHaveProperty('response.status', 'blocked');
+    expect(recordCalculate).toHaveBeenCalledWith('blocked', expect.any(Number));
   });
   it('propagates request normalization failures', async () => {
     await expect(
@@ -98,5 +107,6 @@ describe('InvoiceCalculationService', () => {
         'test',
       ),
     ).rejects.toBeInstanceOf(FiscalValidationError);
+    expect(recordCalculate).toHaveBeenCalledWith('error', expect.any(Number));
   });
 });

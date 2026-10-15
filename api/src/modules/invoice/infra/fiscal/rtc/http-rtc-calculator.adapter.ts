@@ -28,7 +28,7 @@ const STEP_NAME = 'RtcTaxCalculator';
 const VERSION_CACHE_MS = 60_000;
 const VERSION_PATH = '/calculadora/dados-abertos/versao';
 const VERSION_WARN_INTERVAL_MS = 60 * 60 * 1000;
-const VERSION_INFO_METRIC = 'greenflow.rtc.version_info';
+const VERSION_INFO_METRIC = 'corvo.rtc.version_info';
 
 // Created on first use so the instrument binds to the MeterProvider that is
 // global at record time (the SDK registers it at bootstrap; specs register
@@ -38,7 +38,7 @@ let versionInfoGauge: Gauge | null = null;
 /** Registra a versão observada da Calculadora como gauge (atributo `version`). */
 const recordVersionInfo = (version: string): void => {
   versionInfoGauge ??= metrics
-    .getMeter('greenflow.rtc')
+    .getMeter('corvo.rtc')
     .createGauge(VERSION_INFO_METRIC);
   versionInfoGauge.record(1, { version });
 };
@@ -103,7 +103,7 @@ const failureReasonOf = (error: FiscalError): string => {
  * reprocessável (a Calculadora é serviço interno: timeout ainda subindo é
  * normal); 4xx passa pelo mapper; circuito aberto rejeita sem tocar a rede.
  * O corpo da requisição nunca é logado. `version()` publica a versão
- * observada no gauge `greenflow.rtc.version_info` e, quando
+ * observada no gauge `corvo.rtc.version_info` e, quando
  * `RTC_EXPECTED_VERSION` difere da publicada, alerta no máximo uma vez por
  * hora (runbook `docs/fiscal/runbooks/rtc-update.md`).
  */

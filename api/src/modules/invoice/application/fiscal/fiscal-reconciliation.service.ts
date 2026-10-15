@@ -1,5 +1,4 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { Counter, metrics } from '@opentelemetry/api';
 import { parseNfseXml } from 'open-nfse';
 import { DOCUMENT_STORAGE } from '@/infra/storage/domain/document-storage';
 import type { IDocumentStorage } from '@/infra/storage/domain/document-storage';
@@ -24,11 +23,7 @@ import {
 import { Decimal } from '../../domain/fiscal/money';
 import { TAX_RULES } from '../../domain/fiscal/policies/rules';
 import { reconcile } from '../../domain/fiscal/reconciliation/reconcile';
-
-const meter = metrics.getMeter('greenflow.fiscal');
-const reconciliationMismatches: Counter = meter.createCounter(
-  'tax_reconciliation_mismatches_total',
-);
+import { recordReconciliationMismatch } from './fiscal.metrics';
 
 function reconciliationToleranceAbsolute(): Decimal {
   const rule = TAX_RULES.find(
@@ -151,7 +146,7 @@ export class FiscalReconciliationService {
     });
 
     if (outcome.status !== 'divergent') return;
-    reconciliationMismatches.add(1, { tenantId });
+    recordReconciliationMismatch(tenantId);
     // Webhook only on the first insert — retried jobs must not notify twice.
     if (inserted)
       await this.webhooks.publish(

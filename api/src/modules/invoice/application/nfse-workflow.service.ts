@@ -39,7 +39,7 @@ import { DpsBuilder } from '../domain/fiscal/dps/dps-builder';
 import {
   recordAuthorizationFailure,
   recordDpsValidationFailure,
-} from './fiscal/fiscal-emission.metrics';
+} from './fiscal/fiscal.metrics';
 import type { FiscalError } from '../domain/fiscal/fiscal-error';
 import { moneyString, toDecimal } from '../domain/fiscal/money';
 

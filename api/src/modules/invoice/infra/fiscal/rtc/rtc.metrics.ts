@@ -1,11 +1,11 @@
 import { metrics } from '@opentelemetry/api';
 
-const meter = metrics.getMeter('greenflow.rtc');
-const calculationDuration = meter.createHistogram('rtc_calculation_duration', {
+const meter = metrics.getMeter('corvo.rtc');
+const calculationDuration = meter.createHistogram('corvo.rtc.calculation.duration', {
   unit: 's',
 });
-const calculationFailed = meter.createCounter('rtc_calculation_failed_total');
-const calculatorLatency = meter.createHistogram('rtc_calculator_latency', {
+const calculationFailed = meter.createCounter('corvo.rtc.calculation.failed.total');
+const calculatorLatency = meter.createHistogram('corvo.rtc.request.duration', {
   unit: 's',
 });
 

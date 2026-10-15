@@ -1,19 +1,19 @@
 import { metrics } from '@opentelemetry/api';
 
-const meter = metrics.getMeter('greenflow.security');
-const authCounter = meter.createCounter('greenflow.auth.events.total');
-const csrfCounter = meter.createCounter('greenflow.auth.csrf.failures.total');
+const meter = metrics.getMeter('corvo.security');
+const authCounter = meter.createCounter('corvo.auth.events.total');
+const csrfCounter = meter.createCounter('corvo.auth.csrf.failures.total');
 const humanCounter = meter.createCounter(
-  'greenflow.security.human_proof.events.total',
+  'corvo.security.human_proof.events.total',
 );
 const authLoginStageDuration = meter.createHistogram(
-  'greenflow.auth.session_login.stage.duration',
+  'corvo.auth.session_login.stage.duration',
   { unit: 's' },
 );
 const authContextCacheCounter = meter.createCounter(
-  'greenflow.auth.context_cache.events.total',
+  'corvo.auth.context_cache.events.total',
 );
-const otpCounter = meter.createCounter('greenflow.security.otp.events.total');
+const otpCounter = meter.createCounter('corvo.security.otp.events.total');
 
 export const recordAuthEvent = (event: string, reason?: string) =>
   authCounter.add(1, { event, ...(reason ? { reason } : {}) });

@@ -2,7 +2,7 @@
 
 **Contexto.** Depois que uma nota é `authorized`, o job `nfse-fiscal-reconcile` compara os valores que a engine calculou (snapshot) com os que a Sefin consolidou na NFS-e autorizada e grava uma linha em `corvo.invoice_fiscal_reconciliations`. Isso **nunca** altera o snapshot, o XML autorizado nem o status da invoice.
 
-**Sintoma.** Webhook `nfse.invoice.fiscal_discrepancy` para o tenant, métrica `tax_reconciliation_mismatches_total` e linha com `status = 'divergent'`.
+**Sintoma.** Webhook `nfse.invoice.fiscal_discrepancy` para o tenant, métrica `corvo.fiscal.reconciliation.mismatch.total` e linha com `status = 'divergent'`.
 
 **Estados.**
 | `status` | Significado | Ação |

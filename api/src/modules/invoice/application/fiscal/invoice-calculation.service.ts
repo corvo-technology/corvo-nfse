@@ -1,3 +1,4 @@
+import { recordCalculate } from './fiscal.metrics';
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
@@ -27,22 +28,30 @@ export class InvoiceCalculationService {
   ): Promise<
     { response: InvoiceCalculationResponse } | { httpError: FiscalError }
   > {
-    const prepared = await this.intake.prepare(dto, tenantId, environment, {
-      allowFutureCompetence: true,
-    });
-    const normalized = toNormalizedInvoice(
-      prepared.normalized,
-      prepared.company,
-      tenantId,
-      environment,
-      randomUUID(),
-    );
-    const partial = await this.engine.calculatePartial(normalized);
-    if (
-      partial.error?.category === 'INTEGRATION' ||
-      partial.error?.category === 'INTERNAL'
-    )
-      return { httpError: partial.error };
-    return { response: toCalculationResponse(partial) };
+    const startedAt = performance.now();
+    let status: 'ready' | 'blocked' | 'error' = 'error';
+    try {
+      const prepared = await this.intake.prepare(dto, tenantId, environment, {
+        allowFutureCompetence: true,
+      });
+      const normalized = toNormalizedInvoice(
+        prepared.normalized,
+        prepared.company,
+        tenantId,
+        environment,
+        randomUUID(),
+      );
+      const partial = await this.engine.calculatePartial(normalized);
+      if (
+        partial.error?.category === 'INTEGRATION' ||
+        partial.error?.category === 'INTERNAL'
+      )
+        return { httpError: partial.error };
+      const response = toCalculationResponse(partial);
+      status = response.status;
+      return { response };
+    } finally {
+      recordCalculate(status, performance.now() - startedAt);
+    }
   }
 }

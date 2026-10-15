@@ -10,6 +10,7 @@ import {
   type IFiscalReconciliationRepository,
 } from '../domain/fiscal/reconciliation/fiscal-reconciliation.repository';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
+import { observeScheduledTask } from '@/shared/observability/scheduled-task-telemetry';
 
 const QUEUE_NAME = 'nfse-doc-prep';
 const JOB_NAME = 'prepare';
@@ -31,6 +32,10 @@ export class DocsRecoveryScheduler {
 
   @Cron('*/5 * * * *')
   async handle(): Promise<void> {
+    await observeScheduledTask('invoice.docs-recovery', () => this.recover());
+  }
+
+  private async recover(): Promise<void> {
     await this.discovery.visit('invoice-recovery', async (tenantId) => {
       const cutoff = new Date(Date.now() - 5 * 60 * 1000);
       // queued invoices are owned by the outbox (also protects SCHEDULE invoices from early emission).

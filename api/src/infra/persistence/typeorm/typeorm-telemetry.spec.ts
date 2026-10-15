@@ -45,7 +45,7 @@ describe('TypeORM telemetry', () => {
     ).resolves.toEqual({ id: 'appointment-1' });
 
     expect(findOne).toHaveBeenCalledWith({ where: { id: 'secret-id' } });
-    expect(trace.getTracer('greenflow.typeorm')).toBeDefined();
+    expect(trace.getTracer('corvo.typeorm')).toBeDefined();
     expect(startActiveSpan).toHaveBeenCalledWith(
       'typeorm.findOne appointments',
       expect.objectContaining({
@@ -125,7 +125,7 @@ describe('TypeORM telemetry', () => {
 
     expect(span.addEvent).toHaveBeenCalledWith('typeorm.transaction.commit');
     expect(span.setAttribute).toHaveBeenCalledWith(
-      'greenflow.typeorm.transaction.result',
+      'corvo.typeorm.transaction.result',
       'committed',
     );
     expect(span.end).toHaveBeenCalledTimes(1);
