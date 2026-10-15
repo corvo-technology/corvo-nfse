@@ -213,6 +213,13 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | POST   | `/companies/{companyId}/certificates`                  | S/K, `nfse.certificates.manage` | Multipart: `file` PKCS#12, `password` do certificado; até 50 KiB; 201              |
 | GET    | `/companies/{companyId}/certificates`                  | S/K, `nfse.certificates.view`   | Lista de metadados de certificados                                                 |
 | DELETE | `/companies/{companyId}/certificates/{certId}`         | S/K, `nfse.certificates.manage` | Revoga/exclui; 204                                                                 |
+| GET    | `/companies/{id}/fiscal-profile`                       | S/K, `nfse.companies.view`      | Histórico de perfis e vigências; 200                                               |
+| PUT    | `/companies/{id}/fiscal-profile`                       | S/K, `nfse.companies.manage`    | Cria vigência fiscal; `confirm: true` aprova pelo ator; idempotente se idêntica; 200 |
+| POST   | `/companies/{id}/fiscal-profile/{profileId}/approve`   | S/K, `nfse.companies.manage`    | Aprova o perfil fiscal; 201                                                        |
+| GET    | `/companies/{id}/service-tax-profiles`                 | S/K, `nfse.companies.view`      | Perfis de serviço vigentes em `?date=YYYY-MM-DD`; 200                               |
+| POST   | `/companies/{id}/service-tax-profiles`                 | S/K, `nfse.companies.manage`    | Cria perfil de serviço; 201                                                        |
+| PATCH  | `/companies/{id}/service-tax-profiles/{serviceId}`     | S/K, `nfse.companies.manage`    | Atualiza perfil de serviço; restrições de imutabilidade dos aprovados; 200           |
+| POST   | `/invoices/calculate`                                  | S/K, `nfse.invoices.issue`      | Cálculo pré-emissão sempre disponível; CreateInvoice; 200 ready/blocked; rate limit HTTP padrão |
 | POST   | `/invoices`                                            | S/K, `nfse.invoices.issue`      | JSON CreateInvoice; header `idempotency-key?`; 202                                 |
 | GET    | `/invoices`                                            | S/K, `nfse.invoices.view`       | Query: `companyId?`, `status?`, `from?`, `to?`, `externalId?`, `limit?`, `cursor?` |
 | GET    | `/invoices/{id}`                                       | S/K, `nfse.invoices.view`       | Detalhes/status da nota                                                            |
@@ -254,11 +261,11 @@ campos, todos opcionais. Address: `street`, `number`, `complement`, `district`,
 }
 ```
 
-**CreateInvoice**: obrigatórios `customer`, `service`, `amount`,
+**CreateInvoice**: obrigatórios `service`, `amount`,
 `competenceDate` e a empresa, informada por `companyId` (uuid) **ou**
 `companyTaxId` (CNPJ, com ou sem pontuação); pelo menos um dos dois. Se vierem
 os dois, vale o `companyId`. Empresa inexistente no tenant/ambiente retorna 404.
-Opcionais `externalId`, `email: {send?: boolean}` e `options: {type?: "IMMEDIATE" | "SCHEDULE"}`.
+Opcionais `customer`, `discount` (number), `externalId`, `email` (boolean) e `options: {type?: "IMMEDIATE" | "SCHEDULE"}`.
 `IMMEDIATE` é o padrão. Com `SCHEDULE`, envie `competenceDate` futura em
 `YYYY-MM-DD`; `data.props.scheduledFor` retorna a data ISO de liberação às
 00:00 em `America/Sao_Paulo` (ou `null` para emissão imediata). A nota permanece
@@ -269,9 +276,11 @@ O aceite persiste a nota, o evento e a mensagem da outbox na mesma transação.
 Depois que a publicação é confirmada, um reset do Redis pode perder o job e
 manter a nota em `queued`; o scheduler de recuperação de documentos não
 recupera esse caso.
-Amount é valor monetário, mínimo 0.01. Customer exige `taxId` e `name`;
-aceita `email` e `address: {city?,state?,country?}`. Service exige `code`;
-`description` e `municipalityCode` são opcionais. Ver "Validação fiscal e
+Amount é valor monetário, mínimo 0.01. Customer é opcional conforme regime/operação;
+quando presente aceita `taxId`, `name`, `email` e `address` (inclui
+`municipalityCode` IBGE de 7 dígitos). `service.code` e
+`service.municipalityCode` herdam os padrões da empresa quando omitidos;
+`description`, `service.fiscal` e `service.serviceProfileId` são opcionais. Ver "Validação fiscal e
 status da empresa".
 
 ```json
@@ -290,7 +299,7 @@ status da empresa".
   },
   "amount": 150.0,
   "competenceDate": "2026-10-09",
-  "email": { "send": true }
+  "email": true
 }
 ```
 
@@ -518,18 +527,19 @@ dessas ações.
   válido) é obrigatório apenas quando informado; `customer.email` é obrigatório
   se o envio por e-mail estiver ligado. `customer.address`: se enviar `city` ou
   `state`, os dois são obrigatórios; `state` é UF válida.
-- `discount`: opcional. >= 0, <= `amount`, no máximo 2 casas decimais (decimal
-  string ou number). Valores inválidos retornam 422 com o issue fiscal
+- `discount`: opcional. >= 0, <= `amount`, no máximo 2 casas decimais (number). Valores inválidos retornam 422 com o issue fiscal
   correspondente (`out_of_range` / `invalid_decimal_places`).
 - `service.code`: exatamente 6 dígitos (cTribNac). `service.municipalityCode`:
   opcional, 7 dígitos se enviado. `service.description`: opcional.
 - `service.fiscal`: objeto **opcional** de classificação — `nbsCode` (9
   dígitos), `cst` (3 dígitos), `classCode` (6 dígitos), `operationIndicator` (6
-  dígitos) e `serviceProfileId` (uuid). Usado pelo motor fiscal como override
-  da classificação; campos ausentes são preenchidos pelo perfil de serviço da
+  dígitos). `service.serviceProfileId` (uuid) é um campo separado de `fiscal`.
+  Usado pelo motor fiscal como override da classificação; campos ausentes são preenchidos pelo perfil de serviço da
   empresa.
 - `amount`: > 0, no máximo 2 casas decimais.
-- `competenceDate`: data válida e não futura.
+- `competenceDate`: data válida e não futura, exceto com `options.type = SCHEDULE`.
+  Emissão agendada é liberada às 00:00 em `America/Sao_Paulo`; a resposta inclui
+  `scheduledFor`. O horizonte é `OUTBOX_SCHEDULE_MAX_DAYS` (15 dias por padrão).
 
 > **Motor fiscal (IBS/CBS):** o `POST /invoices` é assíncrono: a nota passa por
 > um pipeline fiscal (perfil fiscal, classificação, aplicabilidade, ISS e
@@ -564,6 +574,122 @@ com `data`: `invoiceId`, `companyId`, `environment`, `status` (estado fiscal da
 nota, `authorized`) e `differences[]` (`field`, `local`, `authorized`, `delta`,
 `kind`: `amount | missing_in_authorized | missing_locally`). O payload não traz
 XML nem documentos completos.
+
+## Cálculo pré-emissão
+
+`POST /v1/invoices/calculate` executa o mesmo motor fiscal do worker, de forma
+síncrona, sem criar nota ou agendamento. Está **sempre disponível** para API
+key/sessão autenticada com a permissão existente `nfse.invoices.issue`.
+O ambiente vem da API key (ou `X-Corvo-Environment` da sessão).
+
+O request é o mesmo de `CreateInvoiceDto`. Competência futura é aceita **sem**
+`options.type`; continua valendo o horizonte `OUTBOX_SCHEDULE_MAX_DAYS`, 15 dias
+por padrão. Nenhum `scheduledFor` é usado ou retornado pelo cálculo. São
+selecionados os perfis vigentes na competência, inclusive quando futura.
+
+```sh
+curl --request POST 'https://api.corvo.tech/v1/invoices/calculate' \
+  --header "x-api-key: $CORVO_API_KEY" \
+  --header 'Content-Type: application/json' \
+  --data '{"companyId":"11111111-1111-4111-8111-111111111111","service":{"code":"060101","description":"Corte de cabelo","municipalityCode":"3550308"},"amount":50,"competenceDate":"2026-10-13"}'
+```
+
+Pré-requisito do exemplo: empresa MEI no ambiente da chave, perfil fiscal
+vigente na data e atividade de serviço permitida/configurada. Substitua o UUID
+pelo da empresa real. O cálculo não exige certificado A1 nem `ensureReady`.
+Veja [exemplos completos](../docs/fiscal/examples.md), com os perfis necessários.
+
+Retorna HTTP **200** com `{ data: InvoiceCalculationResponse }` para resultados
+fiscais, inclusive bloqueios. O front deve ler `data.status`:
+
+| Campo | Contrato |
+| --- | --- |
+| `preEmission`, `disclaimer` | `true` e aviso de cálculo pré-emissão; os valores podem divergir da validação final da Sefin |
+| `status` | `ready` ou `blocked`; `ready` não é autorização de emissão |
+| `competenceDate`, `taxRegime` | Data usada no cálculo e regime do perfil efetivo (ou `null` se ainda não resolvido) |
+| `classification` | Códigos e fonte, `catalogValidated`, `catalogVersions`; `null` se ainda não resolvida |
+| `applicability` | Obrigações `iss`, `issWithheld`, `federalWithholding`, `cbs`, `ibs`, `specialTreatment`, estratégia e razões; `null` se ainda não resolvida |
+| `taxes` | Somente os tributos calculados (`iss`, `cbs`, `ibsState`, `ibsCity`, `ibsTotal`); cada um com `base`, `rate`, `amount` como strings decimais |
+| `withholdings` | Lista de retenções com `tax`, `base`, `rate`, `amount`; vazia se ainda não calculadas |
+| `netReceivableAmount`, `collectionWaived` | String decimal e boolean; `null` quando ainda não determinados |
+| `calculation` | `source: none|legacy|rtc|legacy+rtc`, `calculatorVersion`, `rulesVersion`, `legalReferences`; pode ser `null` |
+| `warnings` | `{ code, message, step }[]` |
+| `pendingFields` | `{ field, reason }[]` agregados do erro e das obrigações com configuração ausente |
+| `blocking` | `null` em `ready`; `{ code, message, step, category, retryable, details }` em `blocked` |
+| `trace` | `{ step, status: applied|skipped|failed, durationMs, reason? }[]` das etapas executadas |
+
+Recorte de resposta MEI em 2026, sem tomador:
+
+```json
+{
+  "data": {
+    "preEmission": true,
+    "status": "ready",
+    "disclaimer": "Pre-emission calculation. Values are not a fiscal document and may differ from the final validation by Sefin.",
+    "competenceDate": "2026-10-13",
+    "taxRegime": "MEI",
+    "taxes": {},
+    "withholdings": [],
+    "netReceivableAmount": "50.00",
+    "collectionWaived": false,
+    "pendingFields": [],
+    "blocking": null
+  }
+}
+```
+
+Em `blocked`, `taxes`, `withholdings` e demais valores refletem **somente** as
+etapas já calculadas; campos ausentes não são impostos iguais a zero. O payload
+não ecoa CPF/CNPJ nem nome do cliente. Não grava em invoices, eventos,
+sequências DPS, outbox, snapshots/conciliações fiscais, créditos ou entregas de
+webhooks; não publica em BullMQ, não usa S3 e não chama a Sefin. A única
+integração fiscal possível é com a **Calculadora RTC**, motor externo.
+
+| HTTP | Quando / ação |
+| --- | --- |
+| 200 `blocked` | Falhas fiscais VALIDATION, CONFIGURATION, CLASSIFICATION, UNSUPPORTED ou CALCULATION. Corrigir `pendingFields`/`blocking`; não reenviar sem ajuste |
+| 404 | Empresa inexistente no tenant/ambiente (`ERROR_COMPANY_NOT_FOUND`); nunca significa endpoint desativado |
+| 400/422 | DTO inválido ou erro de normalização (`FiscalValidationError` ⇒ 422). Corrigir o request |
+| 429 | Limite HTTP padrão; aguardar `Retry-After` e observar `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` |
+| 503 | FiscalError INTEGRATION, como Calculadora RTC indisponível. Aguardar `Retry-After` antes de tentar novamente |
+| 500 | Falha INTERNAL; mensagem genérica, sem mensagem original nem stack |
+
+Usa o mesmo rate limit autenticado dos demais endpoints: por padrão,
+`RATE_LIMIT_AUTHENTICATED=300` por minuto por API key/sessão. Não há orçamento
+ou configuração de limite separados para `calculate`. `Retry-After` é em segundos:
+no 503, `ceil(details.retryAfterMs/1000)`, mínimo 1, padrão 5.
+Erros HTTP usam `{ statusCode, code, message, details?, requestId }` e códigos
+públicos `ERROR_*`. Exemplo de indisponibilidade:
+
+```http
+HTTP/1.1 503 Service Unavailable
+Retry-After: 5
+Content-Type: application/json
+
+{"statusCode":503,"code":"ERROR_TAX_CALCULATION_UNAVAILABLE","message":"Service temporarily unavailable","requestId":"request-id"}
+```
+
+Os códigos em `blocking.code` pertencem ao domínio e não levam o prefixo HTTP
+`ERROR_`. A categoria e `retryable` vêm do erro efetivo; os códigos abaixo ajudam
+a escolher a ação do cliente:
+
+| Código fiscal | Categoria usual / retryable | Ação |
+| --- | --- | --- |
+| `FISCAL_PROFILE_MISSING`, `FISCAL_PROFILE_NOT_EFFECTIVE` | CONFIGURATION / false | Cadastrar vigência correta do perfil |
+| `FISCAL_REVIEW_REQUIRED` | CONFIGURATION ou UNSUPPORTED / false | Revisar/aprovar configuração ou tratamento especial |
+| `FISCAL_CLASSIFICATION_REQUIRED`, `FISCAL_CLASSIFICATION_INVALID`, `FISCAL_CLASSIFICATION_AMBIGUOUS` | CLASSIFICATION / false | Completar/corrigir códigos e resolver ambiguidade dos perfis |
+| `FISCAL_VALIDATION_FAILED` | VALIDATION / false | Corrigir os campos indicados |
+| `TAX_APPLICABILITY_UNKNOWN`, `TAX_RATE_NOT_FOUND` | CONFIGURATION ou CALCULATION / false | Configurar aplicabilidade/alíquota; não estimar |
+| `TAX_REGIME_UNSUPPORTED`, `TAX_CALCULATION_UNSUPPORTED` | UNSUPPORTED / false | Cenário sem regra suportada; encaminhar ao responsável fiscal |
+| `TAX_RULE_NOT_EFFECTIVE` | CONFIGURATION / false | Rever competência e vigência das regras |
+| `OPERATION_DOCUMENT_UNSUPPORTED` | UNSUPPORTED / false | Operação GOODS/MIXED exige outro documento/módulo |
+| `TAX_CALCULATION_UNAVAILABLE` | INTEGRATION / true | 503, repetir após `Retry-After` (sem estimar tributos) |
+| `FISCAL_INTERNAL_ERROR` | INTERNAL / false | 500 genérico; investigar com `requestId` |
+| `DPS_LAYOUT_UNSUPPORTED`, `DPS_SCHEMA_VALIDATION_FAILED` | UNSUPPORTED ou VALIDATION / false | Erros do fluxo de emissão; corrigir layout/schema, não são gerados por `calculate` |
+| `TAX_RECONCILIATION_REQUIRED` | Sinal de conciliação / não é FiscalError do cálculo | Tratar divergência pós-autorização pelo runbook; não reenviar emissão |
+
+Perfis de serviço usam `/companies/{id}/service-tax-profiles`, com
+`service.serviceProfileId` no request. Não há endpoint `fiscal-services`.
 
 ## MCP (Model Context Protocol) e conexão de apps de IA
 
@@ -724,6 +850,9 @@ ou `response.text()`, não `response.json()`.
 - **E-mail**: a configuração está no `.env`; entrega externa pelo MillionSend
   ainda precisa ser validada com destinatário real. Testes do login substituem
   somente a entrega, mantendo Postgres, Redis, OTP e guards reais.
+- **Cálculo pré-emissão**: `ready` e testes locais não substituem homologação
+  na Sefin, nem confirmação fiscal das regras. MEI/Simples 2027 permanece
+  bloqueado; veja [limitações](../docs/fiscal/limitations.md).
 - **Emissão fiscal**: existência das rotas e boot não comprovam emissão junto
   ao serviço nacional. O teste de integração valida SDK real, assinatura/XSD,
   persistência, reconciliação e débito usando transporte HTTP controlado.

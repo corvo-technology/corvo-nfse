@@ -31,11 +31,11 @@ aqui foi validado contra a **Calculadora RTC oficial** nem contra o ambiente de
 - **D2 — Aprovação de perfil fiscal em produção**: quem pode `approve` um `company_fiscal_profile` / `company_service_tax_profile` no ambiente `live` (papel/`RequirePermission`)? Hoje o fluxo existe mas o papel autorizado não está definido.
 - **D3 — Categorias específicas do Ato Conjunto nº 4/2026**: confirmar a lista de subitens/naturezas que mudam de regra em 01/12/2026 e mapeá-los para códigos internos quando houver equivalência oficial.
 
-## 4. Fora de escopo deste plano (planos seguintes)
+## 4. Evolução dos planos
 
-Preview de impostos e permissões novas (Plano 4). O adaptador RTC, o DpsBuilder
-com o grupo IBSCBS, a conciliação e a validação de catálogos foram entregues no
-Plano 3 (seção 5).
+O cálculo pré-emissão (`POST /v1/invoices/calculate`, Plano 4) reutiliza a
+permissão `nfse.invoices.issue`. O adaptador RTC, o DpsBuilder com o grupo IBSCBS,
+a conciliação e a validação de catálogos foram entregues no Plano 3 (seção 5).
 
 ## 5. Plano 3 / Spec 3 — Calculadora RTC, DPS e conciliação
 
@@ -65,3 +65,34 @@ Data: 2026-10-15 · Escopo: `feat/rtc-dps-reconciliation`.
 
 ### 5.5 Fora do alcance deste plano (ver `docs/fiscal/mvp-mei-simples-pendencias.md`)
 Regra de MEI/Simples a partir de 01/01/2027, checagem de adesão do município ao Emissor Nacional, `regApTribSN` configurável, roteiro de teste na Produção Restrita, validação com contador (totais aproximados, retenção de ISS, serviços permitidos ao MEI).
+
+## 6. Cálculo pré-emissão (Plano 4)
+
+- `POST /v1/invoices/calculate` está sempre disponível para API key/sessão
+  autenticada com `nfse.invoices.issue`. Usa o mesmo rate limit HTTP autenticado
+  dos outros endpoints (padrão 300/min por chave/sessão), sem limite próprio.
+- Aceita competência futura sem `options.type`, preservando o horizonte de
+  `OUTBOX_SCHEDULE_MAX_DAYS` (15 dias por padrão). Não cria agendamento e resolve
+  os perfis vigentes na competência. Não amplia o horizonte do `POST /invoices`.
+- `ready` é cálculo pré-emissão; não valida certificado, prontidão de emissão ou
+  aceite da Sefin. Os valores podem divergir na autorização. Não substitui
+  homologação nem aconselhamento do responsável fiscal.
+- Falhas fiscais esperadas retornam 200 `blocked` com dados parciais e
+  `pendingFields`; falhas INTEGRATION retornam 503 com `Retry-After`, INTERNAL
+  retorna 500 genérico. Request inválido e empresa inexistente mantêm 4xx normais.
+- Nenhum dado é persistido pelo cálculo: não há invoice, evento, sequência DPS,
+  outbox, snapshot/conciliação, crédito, webhook, BullMQ, S3 ou chamada à Sefin.
+  Documento e nome do cliente não integram a resposta.
+- **Desconto e paridade com a emissão:** o cálculo pré-emissão usa o desconto
+  recebido no request. O mapper de persistência legado pode perder `discount`
+  ao recarregar a nota para o worker; a paridade desta entrega foi verificada
+  para entradas sem desconto. O problema precisa de correção separada antes
+  de confiar em paridade de emissão com desconto. O fluxo de emissão não foi
+  alterado nesta entrega.
+- MEI/Simples em 2027, GOODS/MIXED e demais limitações acima continuam valendo.
+- Perfis de serviço usam `service-tax-profiles`, nome real do contrato atual;
+  o plano original citava `fiscal-services`. Não foi criada rota alternativa.
+
+Veja [exemplos](examples.md), [observabilidade](observability.md) e o
+[registro de homologação](homologation.md). A implementação e os testes de
+cálculo não acrescentam homologação na Produção Restrita.
