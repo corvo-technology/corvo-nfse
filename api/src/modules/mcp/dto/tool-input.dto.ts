@@ -2,15 +2,21 @@ import {
   IsArray,
   IsDateString,
   IsEmail,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import {
+  CANCELLATION_REASON_CODES,
+  type CancellationReasonCode,
+} from '@/modules/invoice/domain/cancellation-reason';
 
 /**
  * MCP tool input DTOs — snake_case wire contract for the NFS-e MCP tools.
@@ -78,4 +84,10 @@ export class NfseListInput {
 
 export class NfseDownloadPdfInput {
   @IsString() access_key!: string;
+}
+
+export class NfseCancelInput {
+  @IsUUID() invoice_id!: string;
+  @IsIn(CANCELLATION_REASON_CODES) reason!: CancellationReasonCode;
+  @IsOptional() @IsString() @MaxLength(255) description?: string;
 }

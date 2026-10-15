@@ -70,6 +70,7 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
     }>;
     const names = tools.map((t) => t.name).sort();
     expect(names).toEqual([
+      'nfse_cancel',
       'nfse_download_pdf',
       'nfse_issue',
       'nfse_list',
