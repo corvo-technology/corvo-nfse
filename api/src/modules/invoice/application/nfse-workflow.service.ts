@@ -1,6 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { buildDpsId } from 'open-nfse';
+import type { RtcConfig } from '@/infra/config/configuration';
 import {
   INVOICE_REPOSITORY,
   type IInvoiceRepository,
@@ -29,6 +31,13 @@ import {
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import type { Invoice } from '../domain/invoice';
 import { buildInvoiceState, type InvoiceState } from '../domain/invoice-state';
+import {
+  FISCAL_SNAPSHOT_REPOSITORY,
+  type IFiscalSnapshotRepository,
+} from '../domain/fiscal/fiscal-snapshot.repository';
+import { DpsBuilder } from '../domain/fiscal/dps/dps-builder';
+import type { FiscalError } from '../domain/fiscal/fiscal-error';
+import { moneyString, toDecimal } from '../domain/fiscal/money';
 
 export interface FiscalJobData {
   invoiceId: string;
@@ -36,6 +45,18 @@ export interface FiscalJobData {
   companyId?: string;
   apiKeyEnvironment?: 'test' | 'live';
   attemptCount?: number;
+}
+
+/**
+ * The DpsBuilder rejected the layout/schema: the invoice must be rejected
+ * before `queued → processing` and before any provider `issue` call. The DPS
+ * number already reserved by `payload()` stays associated with the invoice, so
+ * it is never handed to another invoice.
+ */
+class DpsBuildRejectionError extends Error {
+  constructor(readonly error: FiscalError) {
+    super(error.message);
+  }
 }
 
 @Injectable()
@@ -55,6 +76,10 @@ export class NfseWorkflowService {
     @Inject(DOCUMENT_STORAGE)
     private readonly documentStorage: IDocumentStorage,
     private readonly profiles: CompanyFiscalProfileService,
+    @Inject(FISCAL_SNAPSHOT_REPOSITORY)
+    private readonly fiscalSnapshots: IFiscalSnapshotRepository,
+    private readonly dpsBuilder: DpsBuilder,
+    private readonly config: ConfigService,
   ) {}
 
   async process(data: FiscalJobData): Promise<void> {
@@ -75,7 +100,18 @@ export class NfseWorkflowService {
       return;
     if (data.companyId && data.companyId !== invoice.companyId)
       throw new Error('Invoice/company job identity mismatch');
-    const payload = await this.payload(invoice);
+    let payload: IIssuePayload;
+    try {
+      payload = await this.payload(invoice);
+    } catch (error: unknown) {
+      if (!(error instanceof DpsBuildRejectionError)) throw error;
+      await this.rejectBeforeProcessing(
+        invoice,
+        error.error.code,
+        error.error.message,
+      );
+      return;
+    }
     if (invoice.status === 'queued') {
       const event = invoice.transitionTo(
         'processing',
@@ -141,6 +177,29 @@ export class NfseWorkflowService {
         this.logger.error(
           { err: error, invoiceId: invoice.id },
           'Document recovery will enqueue preparation',
+        );
+      }
+      try {
+        await this.queues.add(
+          'nfse-fiscal-reconcile',
+          'reconcile',
+          {
+            invoiceId: invoice.id,
+            companyId: invoice.companyId,
+            tenantId: invoice.tenantId,
+          },
+          {
+            idempotencyKey: `fiscal-reconcile:${invoice.id}`,
+            attempts: 5,
+            backoffMs: 10000,
+            removeOnComplete: false,
+            removeOnFail: 1000,
+          },
+        );
+      } catch (error: unknown) {
+        this.logger.error(
+          { err: error, invoiceId: invoice.id },
+          'Recovery will enqueue fiscal reconciliation',
         );
       }
     } else if (result.requiresReconciliation) {
@@ -233,7 +292,7 @@ export class NfseWorkflowService {
         'Company fiscal profile not found for the invoice competence date',
       );
     }
-    return {
+    const payload: IIssuePayload = {
       invoiceId: invoice.id,
       tenantId: invoice.tenantId,
       number: invoice.dpsNumber!,
@@ -274,6 +333,72 @@ export class NfseWorkflowService {
           }
         : {}),
     };
+    const fiscalSnapshot = await this.fiscalSnapshots.findByInvoiceId(
+      invoice.id,
+      invoice.tenantId,
+    );
+    // Flag off / engine did not run: byte-identical legacy payload, no DPS build.
+    if (fiscalSnapshot === null) return payload;
+    // The numbering was already reserved and persisted above, so a failure from
+    // here on keeps the number associated with this invoice.
+    const dpsNumber = invoice.dpsNumber;
+    const dpsSeries = snapshot.dpsSeries;
+    if (dpsNumber === null || dpsSeries === null)
+      throw new Error('Invoice DPS number is missing');
+    const built = await this.dpsBuilder.build(
+      {
+        result: fiscalSnapshot.result,
+        invoice: {
+          number: String(dpsNumber),
+          serie: dpsSeries,
+          issuedAt: snapshot.createdAt.toISOString(),
+          competenceDate: new Date(snapshot.competenceDate).toISOString(),
+          description: snapshot.serviceSnapshot.description,
+          municipalityCode: snapshot.serviceSnapshot.municipalityCode,
+          environment: invoice.environment,
+          customer:
+            taxId && customer
+              ? {
+                  kind: taxId.length === 14 ? 'CNPJ' : 'CPF',
+                  taxId,
+                  name: customer.name,
+                  ...(customer.email ? { email: customer.email } : {}),
+                }
+              : null,
+          discountAmount: moneyString(toDecimal(snapshot.discount ?? 0)),
+        },
+        emitente: {
+          cnpj: company.taxId,
+          municipalReg: company.municipalReg ?? null,
+          municipalityCode: company.municipalityCode,
+          specialTaxRegime: profile.specialTaxRegime ?? null,
+        },
+      },
+      this.config.getOrThrow<RtcConfig>('rtc').dpsLayout,
+    );
+    if (!built.ok) throw new DpsBuildRejectionError(built.error);
+    return { ...payload, preparedDps: built.value };
+  }
+
+  /**
+   * Rejects the invoice while it is still pre-processing: the reserved DPS
+   * number is consumed (never re-queued into the sequence) and no provider
+   * `issue` call happens.
+   */
+  private async rejectBeforeProcessing(
+    invoice: Invoice,
+    code: string,
+    errorMessage: string,
+  ): Promise<void> {
+    invoice.setRejected(code, errorMessage);
+    await this.lifecycle.transition(
+      invoice,
+      invoice.transitionTo('rejected', errorMessage),
+    );
+    await this.emitWebhook(invoice, 'nfse.invoice.rejected', {
+      errorCode: code,
+      errorMessage,
+    });
   }
   private async schedule(invoice: Invoice, attemptCount = 0): Promise<void> {
     await this.queues.add(

@@ -33,11 +33,13 @@ export class FakeNfseProvider implements FiscalProvider {
     if (payload.environment !== 'test')
       throw new Error('Simulation is available only in test');
     const params = issueParams(payload);
-    const dps = buildDps({
-      ...params,
-      nDPS: params.nDPS!,
-      skipCpfCnpjValidation: true,
-    });
+    const dps =
+      payload.preparedDps ??
+      buildDps({
+        ...params,
+        nDPS: params.nDPS!,
+        skipCpfCnpjValidation: true,
+      });
     const dpsXml = buildDpsXml(dps).replace(/<\?xml[^?]*\?>\s*/, '');
     const digits = createHash('sha256')
       .update(`${payload.tenantId}/${payload.invoiceId}/${dps.infDPS.Id}`)

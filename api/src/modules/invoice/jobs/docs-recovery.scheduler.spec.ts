@@ -1,6 +1,7 @@
 import type { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
 import { DocsRecoveryScheduler } from './docs-recovery.scheduler';
 import type { IInvoiceRepository } from '../domain/invoice.repository';
+import type { IFiscalReconciliationRepository } from '../domain/fiscal/reconciliation/fiscal-reconciliation.repository';
 import type { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
 
 describe('DocsRecoveryScheduler', () => {
@@ -37,6 +38,12 @@ describe('DocsRecoveryScheduler', () => {
 
   const findPendingReconciliation =
     mockInvoiceRepo.findPendingReconciliation as jest.Mock;
+  const findAuthorizedWithoutReconciliation = jest.fn();
+  const mockReconciliationRepo = {
+    insert: jest.fn(),
+    findByInvoiceId: jest.fn(),
+    findAuthorizedWithoutReconciliation,
+  } as unknown as IFiscalReconciliationRepository;
   const discovery = {
     visit: async (_kind: string, work: (id: string) => Promise<void>) => {
       await work('tenant-a');
@@ -47,12 +54,14 @@ describe('DocsRecoveryScheduler', () => {
     discovery,
     mockInvoiceRepo,
     mockQueueService,
+    mockReconciliationRepo,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
     findPendingReconciliation.mockResolvedValue([]);
     findAuthorizedWithoutDocuments.mockResolvedValue([]);
+    findAuthorizedWithoutReconciliation.mockResolvedValue([]);
   });
 
   it('asks the repository for eligible reconciliation work under each tenant', async () => {
@@ -190,5 +199,75 @@ describe('DocsRecoveryScheduler', () => {
       { invoiceId: 'inv-2', tenantId: 'tenant-b', companyId: 'comp-2' },
       expect.any(Object),
     );
+  });
+
+  it('re-enqueues nfse-fiscal-reconcile for authorized invoices pending reconciliation', async () => {
+    const pending = [
+      { id: 'inv-1', tenantId: 'tenant-a', companyId: 'comp-1' },
+      { id: 'inv-2', tenantId: 'tenant-b', companyId: 'comp-2' },
+    ];
+    findAuthorizedWithoutReconciliation.mockImplementation(
+      async (tenantId: string) =>
+        pending.filter((row) => row.tenantId === tenantId),
+    );
+
+    await scheduler.handle();
+
+    expect(findAuthorizedWithoutReconciliation).toHaveBeenCalledTimes(2);
+    const firstQuery = findAuthorizedWithoutReconciliation.mock.calls[0] as [
+      string,
+      Date,
+      number,
+    ];
+    expect(firstQuery[0]).toBe('tenant-a');
+    expect(firstQuery[1].getTime()).toBeGreaterThanOrEqual(
+      Date.now() - 5 * 60 * 1000 - 1000,
+    );
+    expect(firstQuery[1].getTime()).toBeLessThanOrEqual(Date.now());
+    expect(firstQuery[2]).toBe(50);
+    expect(addMock).toHaveBeenCalledTimes(2);
+    expect(addMock).toHaveBeenNthCalledWith(
+      1,
+      'nfse-fiscal-reconcile',
+      'reconcile',
+      { invoiceId: 'inv-1', tenantId: 'tenant-a', companyId: 'comp-1' },
+      {
+        idempotencyKey: 'fiscal-reconcile:inv-1',
+        attempts: 5,
+        backoffMs: 10_000,
+        removeOnComplete: false,
+        removeOnFail: 1000,
+      },
+    );
+    expect(addMock).toHaveBeenNthCalledWith(
+      2,
+      'nfse-fiscal-reconcile',
+      'reconcile',
+      { invoiceId: 'inv-2', tenantId: 'tenant-b', companyId: 'comp-2' },
+      {
+        idempotencyKey: 'fiscal-reconcile:inv-2',
+        attempts: 5,
+        backoffMs: 10_000,
+        removeOnComplete: false,
+        removeOnFail: 1000,
+      },
+    );
+  });
+
+  it('keeps queued invoices out of the fiscal reconciliation pass', async () => {
+    // queued invoices are owned by the outbox; the reconciliation query only
+    // returns authorized invoices that already have a fiscal snapshot.
+    findPendingReconciliation.mockResolvedValue([
+      { id: 'inv-q', tenantId: 'tenant-a', companyId: 'comp-1' },
+    ]);
+    findAuthorizedWithoutReconciliation.mockResolvedValue([]);
+
+    await scheduler.handle();
+
+    expect(findAuthorizedWithoutReconciliation).toHaveBeenCalledTimes(2);
+    const reconcileCalls = addMock.mock.calls.filter(
+      (call: unknown[]) => call[0] === 'nfse-fiscal-reconcile',
+    );
+    expect(reconcileCalls).toHaveLength(0);
   });
 });

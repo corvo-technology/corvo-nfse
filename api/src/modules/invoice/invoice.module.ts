@@ -11,6 +11,11 @@ import { TypeOrmOutboxRepository } from './infra/typeorm-outbox.repository';
 import { OutboxMessageOrmEntity } from './infra/outbox-message.orm-entity';
 import { InvoiceFiscalSnapshotOrmEntity } from './infra/invoice-fiscal-snapshot.orm-entity';
 import { TypeOrmInvoiceFiscalSnapshotRepository } from './infra/typeorm-invoice-fiscal-snapshot.repository';
+import { InvoiceFiscalReconciliationOrmEntity } from './infra/fiscal/invoice-fiscal-reconciliation.orm-entity';
+import { TypeOrmFiscalReconciliationRepository } from './infra/fiscal/typeorm-fiscal-reconciliation.repository';
+import { FISCAL_RECONCILIATION_REPOSITORY } from './domain/fiscal/reconciliation/fiscal-reconciliation.repository';
+import { FiscalReconciliationService, InvoiceWebhookPublisher } from './application/fiscal/fiscal-reconciliation.service';
+import { DpsBuilder } from './domain/fiscal/dps/dps-builder';
 import { FiscalSnapshotService } from './application/fiscal/fiscal-snapshot.service';
 import { FiscalEngineModule } from './application/fiscal/fiscal-engine.module';
 import { FISCAL_SNAPSHOT_REPOSITORY } from './domain/fiscal/fiscal-snapshot.repository';
@@ -50,6 +55,15 @@ import { EmailModule } from '@/modules/email/email.module';
       { name: 'nfse-reconciliation' },
       { name: 'nfse-doc-prep' },
       { name: 'nfse-email' },
+      {
+        name: 'nfse-fiscal-reconcile',
+        defaultJobOptions: {
+          attempts: 5,
+          backoff: { type: 'fixed', delay: 10000 },
+          removeOnComplete: false,
+          removeOnFail: 1000,
+        },
+      },
     ),
     TypeOrmModule.forFeature([
       OutboxMessageOrmEntity,
@@ -57,6 +71,7 @@ import { EmailModule } from '@/modules/email/email.module';
       InvoiceEventOrmEntity,
       DpsSequenceOrmEntity,
       InvoiceFiscalSnapshotOrmEntity,
+      InvoiceFiscalReconciliationOrmEntity,
     ]),
     PlansModule,
     CompanyModule,
@@ -96,7 +111,14 @@ import { EmailModule } from '@/modules/email/email.module';
       provide: FISCAL_SNAPSHOT_REPOSITORY,
       useClass: TypeOrmInvoiceFiscalSnapshotRepository,
     },
+    {
+      provide: FISCAL_RECONCILIATION_REPOSITORY,
+      useClass: TypeOrmFiscalReconciliationRepository,
+    },
+    InvoiceWebhookPublisher,
+    FiscalReconciliationService,
     FiscalSnapshotService,
+    DpsBuilder,
     InvoiceService,
     InvoiceLifecycleService,
     InvoiceDomainService,
@@ -110,6 +132,8 @@ import { EmailModule } from '@/modules/email/email.module';
     INVOICE_EVENT_REPOSITORY,
     DPS_SEQUENCE_REPOSITORY,
     FISCAL_SNAPSHOT_REPOSITORY,
+    FISCAL_RECONCILIATION_REPOSITORY,
+    FiscalReconciliationService,
     FiscalSnapshotService,
     FiscalEngineModule,
   ],
