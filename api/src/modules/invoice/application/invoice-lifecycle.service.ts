@@ -15,11 +15,18 @@ import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import type { CachePort } from '@/infra/redis/cache.port';
 import { CreditTransactionOrmEntity } from '@/modules/credits/infra/credit-transaction.orm-entity';
 import { Invoice } from '../domain/invoice';
+import { ConcurrentInvoiceTransitionError } from '../domain/errors';
+import type { NewOutboxMessage } from '../domain/outbox-message';
 import { InvoiceEvent } from '../domain/invoice-event';
 import { InvoiceMapper } from '../infra/invoice.mapper';
 import { InvoiceEventMapper } from '../infra/invoice-event.mapper';
 import { InvoiceOrmEntity } from '../infra/invoice.orm-entity';
 import { InvoiceEventOrmEntity } from '../infra/invoice-event.orm-entity';
+
+/** Statuses after which no fiscal retry can still need the signed pending XML. */
+const SETTLED_STATUSES = ['authorized', 'rejected', 'failed', 'cancelled'];
+/** Statuses that release an unused live reservation. */
+const REFUND_STATUSES = ['rejected', 'failed', 'cancelled'];
 
 /** One transaction for fiscal state, audit event and the corresponding credit. */
 @Injectable()
@@ -110,7 +117,11 @@ export class InvoiceLifecycleService {
     });
   }
 
-  async transition(invoice: Invoice, event: InvoiceEvent): Promise<void> {
+  async transition(
+    invoice: Invoice,
+    event: InvoiceEvent,
+    message?: NewOutboxMessage,
+  ): Promise<void> {
     return runWithTenant(invoice.tenantId, async () => {
       await this.database.transaction(async (manager) =>
         this.context.run(manager, async () => {
@@ -126,9 +137,9 @@ export class InvoiceLifecycleService {
             });
           if (stored.status === invoice.status) return;
           if (stored.status !== event.toSnapshot().fromStatus)
-            throw new Error('Concurrent invoice transition');
+            throw new ConcurrentInvoiceTransitionError(invoice.id);
           const record = new InvoiceMapper().toPersistence(invoice);
-          if (['authorized', 'rejected', 'failed'].includes(invoice.status))
+          if (SETTLED_STATUSES.includes(invoice.status))
             record.pendingEmission = null;
           await persistTenantEntity(
             manager.getRepository(InvoiceOrmEntity),
@@ -139,6 +150,7 @@ export class InvoiceLifecycleService {
           await manager
             .getRepository(InvoiceEventOrmEntity)
             .insert(new InvoiceEventMapper().toPersistence(event));
+          if (message) await this.outbox.enqueue(message);
           if (invoice.environment !== 'live') return;
           await this.usage.settle(invoice.id, invoice.tenantId, invoice.status);
           const wallet = manager.getRepository(CreditTransactionOrmEntity);
@@ -153,7 +165,7 @@ export class InvoiceLifecycleService {
               { id: reservation.id, tenantId: invoice.tenantId },
               { isReservation: false },
             );
-          if (invoice.status === 'rejected' || invoice.status === 'failed') {
+          if (REFUND_STATUSES.includes(invoice.status)) {
             await wallet.insert({
               tenantId: invoice.tenantId,
               amount: -reservation.amount,

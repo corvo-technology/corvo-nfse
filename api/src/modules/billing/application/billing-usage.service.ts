@@ -49,7 +49,8 @@ export class BillingUsageService {
     tenantId: string,
     status: string,
   ): Promise<void> {
-    if (!['authorized', 'rejected', 'failed'].includes(status)) return;
+    if (!['authorized', 'rejected', 'failed', 'cancelled'].includes(status))
+      return;
     const periodId = await this.repository.reservedPeriod(invoiceId, tenantId);
     if (!periodId) return;
     const state = await this.repository.period(periodId, tenantId);
