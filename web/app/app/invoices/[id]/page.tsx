@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { invoices, collectAll } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { showsCancellationReason } from "@/lib/invoice-cancellation";
 import type { Invoice, InvoiceEvent } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { CancelInvoiceDialog } from "@/components/dashboard/cancel-invoice-dialog";
@@ -54,7 +55,7 @@ export default function InvoiceDetailPage() {
     {error && <p role="alert" className="banner banner-danger">{error}</p>}
     <Card className="grid gap-4 p-5 sm:grid-cols-2"><div><p className="eyebrow">{t("customer")}</p><p>{invoice.customerName}</p><p className="text-sm text-text-3">{invoice.customerTaxId}</p></div><div><p className="eyebrow">{t("amount")}</p><p>{money}</p></div><div><p className="eyebrow">{t("reference")}</p><p>{invoice.externalId || "—"}</p></div><div><p className="eyebrow">{t("competence")}</p><p>{invoice.competenceDate.slice(0, 10)}</p></div><div className="sm:col-span-2"><p className="eyebrow">{t("service")}</p><p>{invoice.serviceDescription}</p><p className="text-sm text-text-3">{invoice.serviceSnapshot.code} · {invoice.serviceSnapshot.municipalityCode}</p></div></Card>
     {invoice.lastErrorMessage && <p role="alert" className="banner banner-danger">{invoice.lastErrorCode}: {invoice.lastErrorMessage}</p>}
-    {invoice.cancellationReason && <p className="banner">{t("cancel.recorded", { reason: t(`cancel.reasons.${invoice.cancellationReason}`) })}{invoice.cancellationDescription ? ` — ${invoice.cancellationDescription}` : ""}</p>}
+    {invoice.cancellationReason && showsCancellationReason(invoice.status) && <p className="banner">{t("cancel.recorded", { reason: t(`cancel.reasons.${invoice.cancellationReason}`) })}{invoice.cancellationDescription ? ` — ${invoice.cancellationDescription}` : ""}</p>}
     <Card className="flex flex-col gap-4 p-5"><h2 className="font-medium">{t("documents")}</h2><div className="flex gap-3"><Button disabled={!hasDocuments || downloading} onClick={() => void download("pdf")}>PDF</Button><Button disabled={!hasDocuments || downloading} onClick={() => void download("xml")}>XML</Button></div>{!hasDocuments && <p className="text-sm text-text-3">{t("documentsHint")}</p>}</Card>
     <Card className="flex flex-col gap-5 p-5"><h2 className="font-medium">{t("events")}</h2>{events.length === 0 && <p className="text-sm text-text-3">{t("noEvents")}</p>}
       <ol className="flex flex-col">{events.map((event, index) => {

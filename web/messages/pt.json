@@ -335,6 +335,14 @@
           "email_failed": {
             "label": "Falha no e-mail",
             "description": "O envio do e-mail da nota falhou."
+          },
+          "cancelled": {
+            "label": "Nota cancelada",
+            "description": "A nota foi cancelada (agendada ou na Sefin)."
+          },
+          "cancellation_rejected": {
+            "label": "Cancelamento recusado",
+            "description": "A Sefin recusou o cancelamento; a nota continua autorizada."
           }
         }
       }

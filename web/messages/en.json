@@ -335,6 +335,14 @@
           "email_failed": {
             "label": "Email failed",
             "description": "Sending the invoice email failed."
+          },
+          "cancelled": {
+            "label": "Invoice cancelled",
+            "description": "The invoice was cancelled (scheduled or at the Sefin)."
+          },
+          "cancellation_rejected": {
+            "label": "Cancellation rejected",
+            "description": "The Sefin refused the cancellation; the invoice stays authorized."
           }
         }
       }
