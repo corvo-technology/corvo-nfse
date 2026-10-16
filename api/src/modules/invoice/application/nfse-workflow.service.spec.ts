@@ -186,6 +186,16 @@ describe('NfseWorkflowService payload — tomador opcional', () => {
       }
     ).payload(invoice);
 
+  it('looks up the fiscal profile on the competence calendar date, not the previous day', async () => {
+    await callPayload(createInvoice(null));
+
+    expect(fakes.profiles.findEffective).toHaveBeenCalledWith(
+      company.id,
+      'tenant-1',
+      '2026-10-13',
+    );
+  });
+
   it('omits tomador when the invoice has no customer snapshot', async () => {
     const payload = await callPayload(createInvoice(null));
 
@@ -495,6 +505,59 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
         idempotencyKey: `fiscal-reconcile:${invoice.id}`,
       }),
     );
+  });
+
+  it('rejects a queued invoice with the reason when the emission job exhausted its retries', async () => {
+    const invoice = createInvoice();
+    fakes.invoices.findByIdAndTenantId.mockResolvedValue(invoice);
+
+    await service.handleEmissionExhausted(
+      { invoiceId: invoice.id, tenantId: invoice.tenantId },
+      new Error('The specified bucket does not exist'),
+    );
+
+    expect(invoice.status).toBe('rejected');
+    expect(invoice.toSnapshot().lastErrorCode).toBe(
+      'EMISSION_PROCESSING_FAILED',
+    );
+    expect(invoice.toSnapshot().lastErrorMessage).toContain(
+      'The specified bucket does not exist',
+    );
+    expect(fakes.providers.resolve).not.toHaveBeenCalled();
+  });
+
+  it('sends a processing invoice to reconciliation instead of declaring it failed', async () => {
+    const invoice = createInvoice();
+    invoice.setProcessing();
+    fakes.invoices.findByIdAndTenantId.mockResolvedValue(invoice);
+
+    await service.handleEmissionExhausted(
+      { invoiceId: invoice.id, tenantId: invoice.tenantId },
+      new Error('storage unavailable'),
+    );
+
+    expect(invoice.status).toBe('reconciliation_required');
+    expect(fakes.queues.add).toHaveBeenCalledWith(
+      'nfse-reconciliation',
+      'reconcile',
+      expect.objectContaining({ invoiceId: invoice.id }),
+      expect.anything(),
+    );
+  });
+
+  it('leaves an already final invoice untouched when the job exhausted its retries', async () => {
+    const invoice = createInvoice();
+    invoice.setProcessing();
+    invoice.transitionTo('authorized');
+    fakes.invoices.findByIdAndTenantId.mockResolvedValue(invoice);
+
+    await service.handleEmissionExhausted(
+      { invoiceId: invoice.id, tenantId: invoice.tenantId },
+      new Error('late failure'),
+    );
+
+    expect(invoice.status).toBe('authorized');
+    expect(fakes.lifecycle.transition).not.toHaveBeenCalled();
   });
 
   it('rejects before processing when the builder fails with DPS_LAYOUT_UNSUPPORTED and never issues', async () => {

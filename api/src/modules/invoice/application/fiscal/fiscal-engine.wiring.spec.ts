@@ -245,6 +245,17 @@ const buildEngine = (
   }).compile();
 
 describe('FiscalEngineModule wiring', () => {
+  // These cases assert the "no calculator configured" behavior; a developer's
+  // api/.env with a real RTC_CALCULATOR_URL must not leak into them.
+  const previousRtcUrl = process.env.RTC_CALCULATOR_URL;
+  beforeAll(() => {
+    process.env.RTC_CALCULATOR_URL = '';
+  });
+  afterAll(() => {
+    if (previousRtcUrl === undefined) delete process.env.RTC_CALCULATOR_URL;
+    else process.env.RTC_CALCULATOR_URL = previousRtcUrl;
+  });
+
   it('resolves FiscalEngineService and wires the six steps in fail-fast order', async () => {
     const moduleRef = await buildEngine();
 

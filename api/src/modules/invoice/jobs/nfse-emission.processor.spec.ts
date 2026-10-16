@@ -36,3 +36,37 @@ for (const Processor of [NfseEmissionProcessor, NfseReconciliationProcessor]) {
     });
   });
 }
+
+describe('NfseEmissionProcessor failure surfacing', () => {
+  const data = { invoiceId: 'invoice', tenantId: 'tenant' };
+  const build = () => {
+    const workflow = { handleEmissionExhausted: jest.fn() };
+    return {
+      workflow,
+      processor: new NfseEmissionProcessor({} as any, workflow as any),
+    };
+  };
+
+  it('surfaces the failure on the invoice only after the last attempt', async () => {
+    const { workflow, processor } = build();
+    const error = new Error('boom');
+
+    await processor.onFailed(
+      { data, attemptsMade: 4, opts: { attempts: 5 } } as any,
+      error,
+    );
+    expect(workflow.handleEmissionExhausted).not.toHaveBeenCalled();
+
+    await processor.onFailed(
+      { data, attemptsMade: 5, opts: { attempts: 5 } } as any,
+      error,
+    );
+    expect(workflow.handleEmissionExhausted).toHaveBeenCalledWith(data, error);
+  });
+
+  it('ignores failures that have no job', async () => {
+    const { workflow, processor } = build();
+    await processor.onFailed(undefined, new Error('boom'));
+    expect(workflow.handleEmissionExhausted).not.toHaveBeenCalled();
+  });
+});

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/await-thenable, @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { metrics } from '@opentelemetry/api';
+import { getDatabaseScope } from '@/infra/persistence/typeorm/tenant-context.storage';
 import {
   AggregationTemporality,
   InMemoryMetricExporter,
@@ -194,7 +195,8 @@ describe('FiscalReconciliationService', () => {
     for (const resource of resources.flatMap((entry) => entry.scopeMetrics)) {
       const metric = resource.metrics.find(
         (candidate) =>
-          candidate.descriptor.name === 'corvo.fiscal.reconciliation.mismatch.total',
+          candidate.descriptor.name ===
+          'corvo.fiscal.reconciliation.mismatch.total',
       );
       if (metric)
         return metric.dataPoints.reduce(
@@ -237,6 +239,24 @@ describe('FiscalReconciliationService', () => {
     expect(invoices.findByIdAndTenantId).toHaveBeenCalledTimes(1);
     expect(publisher.publish).not.toHaveBeenCalled();
     expect(await mismatchCount()).toBe(0);
+  });
+
+  it('reads the snapshot and writes the reconciliation inside the tenant context (RLS)', async () => {
+    parseMock.mockReturnValue(nfseOf(30));
+    const scopes: Array<string | undefined> = [];
+    snapshots.findByInvoiceId.mockImplementation(async () => {
+      scopes.push(getDatabaseScope()?.tenantId);
+      return snapshotOf(invoiceId, tenantId);
+    });
+    reconciliations.insert.mockImplementation(async () => {
+      scopes.push(getDatabaseScope()?.tenantId);
+      return true;
+    });
+    const service = await buildService();
+
+    await service.reconcileInvoice(invoiceId, tenantId);
+
+    expect(scopes).toEqual([tenantId, tenantId]);
   });
 
   it('is a no-op when there is no fiscal snapshot', async () => {

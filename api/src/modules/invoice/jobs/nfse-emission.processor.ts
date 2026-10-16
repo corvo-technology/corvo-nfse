@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import type { Job } from 'bullmq';
 import type { LockPort } from '@/infra/redis/lock.port';
 import { LOCK_PORT } from '@/infra/redis/redis.constants';
@@ -31,5 +31,15 @@ export class NfseEmissionProcessor extends WorkerHost {
     } finally {
       await this.locks.release(lock);
     }
+  }
+
+  /** Fires on every failed attempt; only the last one is surfaced on the invoice. */
+  @OnWorkerEvent('failed')
+  async onFailed(
+    job: Job<NfseEmissionJobData> | undefined,
+    error: Error,
+  ): Promise<void> {
+    if (!job || job.attemptsMade < (job.opts.attempts ?? 1)) return;
+    await this.workflow.handleEmissionExhausted(job.data, error);
   }
 }
