@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 const routes: [RegExp, string[]][] = [
   [/^auth\/magic-link\/(request|verify)$/, ["POST"]],
   [/^auth\/session$/, ["GET"]],
+  [/^auth\/oauth\/providers$/, ["GET"]],
+  [/^auth\/oauth\/(google|github)\/(authorize|callback)$/, ["GET"]],
   [/^auth\/session\/(logout|tenant)$/, ["POST"]],
   [/^auth\/(me|memberships|permissions|members)$/, ["GET"]],
   [/^auth\/invite$/, ["POST"]],
@@ -40,7 +42,19 @@ const routes: [RegExp, string[]][] = [
   [/^mcp\/connections\/[^/]+$/, ["DELETE"]],
   [/^health\/(live|ready)$/, ["GET"]],
 ];
-const sessionNames = new Set(["gf_session_dev", "__Host-gf_session"]);
+// Session plus the short-lived social sign-in state cookie.
+const sessionNames = new Set(["gf_session_dev", "__Host-gf_session", "gf_oauth_state_dev", "__Host-gf_oauth_state"]);
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const OAUTH_HOSTS = new Set(["accounts.google.com", "github.com"]);
+/** A redirect may only go to a path on this site or to a social provider's consent screen. */
+function safeLocation(value: string | null): string | null {
+  if (!value) return null;
+  if (value.startsWith("/")) return value.startsWith("//") || value.includes("\\") ? null : value;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && OAUTH_HOSTS.has(url.hostname) && !url.username && !url.password ? url.toString() : null;
+  } catch { return null; }
+}
 const failure = (status: number, message: string) => NextResponse.json({ statusCode: status, message }, { status, headers: { "Cache-Control": "no-store" } });
 async function limitedBody(request: NextRequest, limit: number) {
   const reader = request.body?.getReader();
@@ -100,6 +114,12 @@ async function proxyRequest(request: NextRequest, context: { params: Promise<{ p
     }
     for (const cookie of upstream.headers.getSetCookie()) {
       if (sessionNames.has(cookie.split("=", 1)[0])) responseHeaders.append("Set-Cookie", cookie);
+    }
+    if (REDIRECT_STATUSES.has(upstream.status)) {
+      const location = safeLocation(upstream.headers.get("location"));
+      if (!location) return failure(502, "Invalid redirect from the API.");
+      responseHeaders.set("Location", location);
+      return new NextResponse(null, { status: upstream.status, headers: responseHeaders });
     }
     const noBody = [204, 205, 304].includes(upstream.status);
     return new NextResponse(noBody ? null : upstream.body, { status: upstream.status, headers: responseHeaders });
