@@ -270,6 +270,7 @@ export class CompanyController {
       dtoToCreateInput(dto),
       tenantId,
       executionEnvironment(req.authContext!),
+      req.authContext!.authUserId,
     );
     const regime = await this.companyService.currentRegime(
       company.id,
@@ -337,7 +338,13 @@ export class CompanyController {
   ) {
     const tenantId = req.authContext!.activeTenantId;
     const env = executionEnvironment(req.authContext!);
-    await this.companyService.update(id, dtoToUpdateInput(dto), tenantId, env);
+    await this.companyService.update(
+      id,
+      dtoToUpdateInput(dto),
+      tenantId,
+      env,
+      req.authContext!.authUserId,
+    );
     const hasCert = await this.certReader.hasActiveCertificate(
       id,
       env,
@@ -539,6 +546,20 @@ export class CompanyController {
         mergeServiceTaxProfile(existing, dto),
       ),
     );
+  }
+
+  @Post(':id/service-tax-profiles/:serviceId/approve')
+  @ApiKeyEndpoint()
+  @RequirePermission('nfse.companies.manage')
+  @ApiOperation({ summary: 'Approve the saved service tax classification for this company' })
+  async approveServiceTaxProfile(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('serviceId', new ParseUUIDPipe()) serviceId: string,
+    @Req() req: RequestWithAuthContext,
+  ): Promise<DataEnvelope<CompanyServiceTaxProfile>> {
+    const context = this.requireAuthContext(req);
+    await this.companyService.findById(id, context.activeTenantId, executionEnvironment(context));
+    return data(await this.serviceTaxProfiles.approve(id, context.activeTenantId, serviceId));
   }
 
   @Delete(':id/service-tax-profiles/:serviceId')

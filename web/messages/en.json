@@ -335,6 +335,10 @@
           "email_failed": {
             "label": "Email failed",
             "description": "Sending the invoice email failed."
+          },
+          "fiscal_discrepancy": {
+            "label": "Fiscal discrepancy",
+            "description": "The authorized invoice differs from the calculated taxes."
           }
         }
       }
@@ -610,10 +614,10 @@
         "desc": "Structured responses, examples in Node, Python, and Go."
       }
     },
-    "freeCreditsTag": "30 FREE INVOICES PER MONTH",
+    "freeCreditsTag": "15 FREE INVOICES PER MONTH",
     "headline": "From first integration to tax invoice in minutes.",
     "afterSignup": "AFTER SIGNUP",
-    "footerNote": "No credit card required. No contract. 30 free invoices to get started.",
+    "footerNote": "No credit card required. No contract. 15 free invoices to get started.",
     "magicLink": {
       "sendCode": "Send code",
       "sending": "Sending...",
@@ -651,7 +655,7 @@
     "subtitle": "Issue NFS-e, manage multiple companies, send documents by email and automate your tax workflow with a single API.",
     "startFree": "Start free",
     "viewDocs": "View documentation",
-    "mono": "30 free invoices per month. No credit card required."
+    "mono": "15 free invoices per month. No credit card required."
   },
   "Nav": {
     "product": "Product",
@@ -666,9 +670,9 @@
   },
   "FreeTrial": {
     "eyebrow": "START FREE",
-    "title": "30 free invoices per month",
+    "title": "15 free invoices per month",
     "subtitle": "No credit card required.",
-    "description": "Integrate NFS-e issuance into your product with up to 30 authorized invoices per month for one company. The allowance renews on the first day of each month.",
+    "description": "Integrate NFS-e issuance into your product with up to 15 authorized invoices per month for one company. The allowance renews on the first day of each month.",
     "startFree": "Start free",
     "finePrint": "Limit of 3 production issuances per day. Allowances use UTC and do not roll over. Tests do not consume the allowance."
   },
@@ -696,7 +700,7 @@
       "porMes": "/month",
       "free": {
         "label": "Free plan",
-        "description": "30 invoices per month, 3 per day limit."
+        "description": "15 invoices per month, 3 per day limit."
       },
       "custom": {
         "label": "Contact us",
@@ -708,7 +712,7 @@
     "plans": {
       "free": {
         "name": "FREE",
-        "credits": "30",
+        "credits": "15",
         "price": "R$ 0",
         "unit": "",
         "bestFor": "Test the API and validate your integration.",
@@ -869,7 +873,7 @@
     },
     "free": {
       "q": "Can I use Corvo for free?",
-      "a": "Yes. Free includes one company and up to 30 authorized production invoices per month, with a limit of 3 per day. The allowance renews on the first day of the month and limits use UTC. No credit card is required; test invoices do not consume this allowance."
+      "a": "Yes. Free includes one company and up to 15 authorized production invoices per month, with a limit of 3 per day. The allowance renews on the first day of the month and limits use UTC. No credit card is required; test invoices do not consume this allowance."
     },
     "multiCompany": {
       "q": "Can I manage multiple companies?",
@@ -910,7 +914,7 @@
     "description": "One integration to automate NFS-e issuance and track your product's growth.",
     "ctaPrimary": "Start free",
     "ctaSecondary": "Explore API",
-    "subtext": "30 free invoices per month to get started."
+    "subtext": "15 free invoices per month to get started."
   },
   "Footer": {
     "brand": "© Corvo. All rights reserved.",
@@ -962,7 +966,7 @@
       },
       "s7": {
         "title": "7. Plans, allowances and renewal",
-        "content": "Plans define the monthly invoice allowance, active company limit and usage limits shown in the offer and dashboard. Free allows one active company and up to 30 authorized production invoices per month, with a limit of 3 per day. Its allowance renews on the first day of each month; monthly and daily limits use UTC. Paid allowances follow the monthly subscription period shown in the dashboard. Allowances belong to the workspace, not to each member or API key. Unused allowance does not roll over or convert into cash. Once a limit is reached, new requests may be blocked until renewal or the purchase of appropriate capacity."
+        "content": "Plans define the monthly invoice allowance, active company limit and usage limits shown in the offer and dashboard. Free allows one active company and up to 15 authorized production invoices per month, with a limit of 3 per day. Its allowance renews on the first day of each month; monthly and daily limits use UTC. Paid allowances follow the monthly subscription period shown in the dashboard. Allowances belong to the workspace, not to each member or API key. Unused allowance does not roll over or convert into cash. Once a limit is reached, new requests may be blocked until renewal or the purchase of appropriate capacity."
       },
       "s8": {
         "title": "8. How usage and overage are calculated",
@@ -1079,7 +1083,7 @@
     "empty": "No companies registered.",
     "loadFailed": "We couldn't load your companies.",
     "status": {
-      "ready": "Ready",
+      "ready": "Registration complete",
       "pending_setup": "Setup pending",
       "blocked": "Blocked"
     },
@@ -1092,6 +1096,29 @@
     "viewCompany": "View details for {name}"
   },
   "Invoices": {
+    "calculate": {
+      "button": "Calculate taxes",
+      "calculating": "Calculating…",
+      "title": "Pre-emission calculation",
+      "ready": "Ready to issue",
+      "blocked": "Cannot calculate yet",
+      "net": "Net amount receivable",
+      "taxes": "Taxes",
+      "withholdings": "Withholdings",
+      "noTaxes": "No taxes shown in this scenario.",
+      "pending": "Still missing",
+      "disclaimer": "Estimate before issuing. It is not a fiscal document and may differ from the final validation by Sefin.",
+      "unavailable": "The tax calculator is unavailable. Try again shortly.",
+      "failed": "Could not calculate.",
+      "stale": "The data changed. Calculate again.",
+      "tax": {
+        "iss": "ISS",
+        "cbs": "CBS",
+        "ibsState": "State IBS",
+        "ibsCity": "Municipal IBS",
+        "ibsTotal": "Total IBS"
+      }
+    },
     "title": "Tax invoices",
     "subtitle": "History of issued, processing, and rejected invoices.",
     "new": "New invoice",
@@ -1321,7 +1348,8 @@
       "company": "Company",
       "address": "Address",
       "fiscal": "Tax",
-      "certificate": "Certificate"
+      "certificate": "Certificate",
+      "review": "Fiscal review"
     },
     "stepHint": {
       "company": "Start with the tax ID and name of the company that will issue invoices.",
@@ -1348,9 +1376,16 @@
     "defaultServiceCode": "Default service code",
     "municipalityInvalid": "Enter an IBGE municipality code with exactly 7 digits.",
     "municipalRegRequired": "Municipal registration is required to register in live mode.",
-    "serviceCodeInvalid": "The service code must have exactly 6 digits."
+    "serviceCodeInvalid": "The service code must have exactly 6 digits.",
+    "selectTaxRegime": "Select a tax regime",
+    "regimeRequired": "Select the company tax regime.",
+    "regimeDerived": "Simples Nacional is set from the selected regime.",
+    "editFiscalHint": "Review the regime and validity periods in Fiscal configuration on the company page.",
+    "reviewNext": "Continue to certificate",
+    "openCompany": "Open company"
   },
   "CompanyDetail": {
+    "fiscalAdvanced": "Advanced fiscal configuration",
     "legalName": "Legal name",
     "taxRegime": "Tax regime",
     "municipalReg": "Municipal registration",
@@ -1402,7 +1437,7 @@
       "title": "Finish setup",
       "subtitle": "Check the fiscal municipality and issuance requirements for the selected environment.",
       "progress": "{done} of {total}",
-      "complete": "Setup complete. The company is ready to issue.",
+      "complete": "Basic registration complete. Review fiscal configuration below before live issuance.",
       "requiredLive": "required in live",
       "testNote": "In test mode, municipal registration and a certificate are optional. The fiscal municipality must be configured.",
       "items": {
@@ -1605,6 +1640,127 @@
         "title": "10. International transfers and contact",
         "content": "Where processing involves an international transfer, the parties must follow the mechanisms and safeguards required by the LGPD and applicable regulations. This Addendum alone does not replace standard contractual clauses or another instrument required for a specific transfer. Send requests about instructions, providers, security measures or transfers to legal@corvo.tech."
       }
+    }
+  },
+  "CompanyFiscal": {
+    "title": "Fiscal configuration",
+    "intro": "Review the company profile and the services used on invoices. Saved configuration is checked again for each operation and competence date.",
+    "date": "Competence date",
+    "dateHint": "Shows the profile and services effective on this date. It does not schedule or issue an invoice.",
+    "loading": "Loading fiscal configuration…",
+    "failed": "Could not load fiscal configuration.",
+    "retry": "Retry",
+    "noView": "You need company view permission to read fiscal configuration.",
+    "profileTitle": "Fiscal profile",
+    "servicesTitle": "Service classifications",
+    "profileMissing": "No fiscal profile is effective on this date.",
+    "profileAmbiguous": "Multiple fiscal profiles overlap on this date. Review the validity periods before issuing.",
+    "profilePending": "Fiscal profile awaiting review",
+    "profileApproved": "Fiscal profile approved",
+    "profileRejected": "Fiscal profile rejected",
+    "missing": "Not configured",
+    "yes": "Yes",
+    "no": "No",
+    "noEnd": "No end date",
+    "regime": "Tax regime",
+    "simpleNational": "Simples Nacional",
+    "specialRegime": "Special tax regime code",
+    "validFrom": "Effective from",
+    "validUntil": "Effective until (exclusive)",
+    "ibsOption": "Regular IBS/CBS option",
+    "ibsFrom": "Regular IBS/CBS option effective from",
+    "history": "Fiscal profile history",
+    "future": "Future validity period",
+    "source": "Source",
+    "approvedAt": "Approved at",
+    "createProfile": "Add fiscal profile",
+    "editProfile": "Edit fiscal profile",
+    "newPeriod": "New validity period",
+    "saveProfile": "Save fiscal profile",
+    "immutableProfile": "An approved fiscal period cannot be overwritten. Select a later start date to create a new period.",
+    "reviewProfile": "Review fiscal profile",
+    "approveProfile": "Approve fiscal profile",
+    "approveService": "Approve service",
+    "reviewService": "Review service",
+    "reviewServiceFor": "Review service {name}",
+    "reviewTitle": "Review saved fiscal data",
+    "reviewHint": "Approval confirms your review of the values below. It does not validate official catalogs or guarantee authorization.",
+    "acknowledge": "I reviewed the displayed fiscal data.",
+    "cancel": "Cancel",
+    "close": "Close",
+    "edit": "Edit",
+    "saveService": "Save service",
+    "addService": "Add service",
+    "serviceSaved": "Service classification saved.",
+    "serviceEmpty": "No service classifications are saved for this competence date.",
+    "serviceHint": "MEI may use a partial classification when the operation allows it. Other scenarios can require ISS, withholding and IBS/CBS information. Use the classification confirmed for your service.",
+    "serviceDefault": "Default service: {code}",
+    "noDefault": "No default service code. Each invoice must supply its service code.",
+    "serviceMissing": "The default service has no applicable saved classification on this date.",
+    "serviceAmbiguous": "More than one classification matches the default service. Resolve the overlap or send an explicit serviceProfileId when issuing.",
+    "serviceImmutable": "Approved services are read-only. A correction needs a new classification; overlapping profiles must be resolved before issuing.",
+    "name": "Service name",
+    "serviceCode": "National service code (cTribNac)",
+    "municipalServiceCode": "Municipal service code",
+    "operationNature": "Operation nature",
+    "incidenceMunicipalityCode": "ISS incidence municipality (IBGE)",
+    "nbsCode": "NBS code",
+    "cst": "CST",
+    "classCode": "cClassTrib",
+    "operationIndicator": "Operation indicator (cIndOp)",
+    "classificationHint": "Use confirmed catalog codes. The dashboard does not infer codes or rates.",
+    "issTaxation": "ISS taxation",
+    "issRate": "ISS rate (%)",
+    "issWithholdingDefault": "ISS withheld by default",
+    "withholdingPolicy": "Federal withholding policy",
+    "withholdingRates": "Federal withholding rates (%)",
+    "effectiveFrom": "Service effective from",
+    "effectiveUntil": "Service effective until (exclusive)",
+    "regimeApplicability": "Applicable tax regimes",
+    "allRegimes": "All regimes",
+    "classificationSource": "Classification source",
+    "catalogVersion": "Catalog version",
+    "advanced": "Advanced classification settings",
+    "select": "Select…",
+    "required": "Complete the required fields.",
+    "invalidDate": "Enter a valid date and an end date later than the start date.",
+    "invalidCode": "Enter a national service code with exactly 6 digits.",
+    "invalidMunicipality": "Enter an IBGE municipality code with exactly 7 digits.",
+    "invalidRate": "Rates must be between 0 and 100.",
+    "missingRates": "Enter at least one rate for a configured withholding policy.",
+    "approvalFailure": "Could not approve the saved fiscal configuration.",
+    "saveFailure": "Could not save fiscal configuration.",
+    "continueLater": "You can finish later from the company page. Live issuance requires an approved fiscal profile and applicable service classifications.",
+    "registration": "Registration",
+    "registrationHint": "Registration and certificate status are separate from fiscal approval.",
+    "statuses": {
+      "unreviewed": "Awaiting review",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "regimes": {
+      "MEI": "MEI",
+      "SIMPLES_NACIONAL": "Simples Nacional",
+      "LUCRO_PRESUMIDO": "Lucro Presumido",
+      "LUCRO_REAL": "Lucro Real",
+      "OUTRO_REGIME": "Other regime",
+      "UNKNOWN": "Unknown"
+    },
+    "operations": {
+      "SERVICE": "Service",
+      "GOODS": "Goods",
+      "MIXED": "Mixed operation",
+      "PARTNER_SALON": "Partner salon"
+    },
+    "iss": {
+      "NORMAL": "Normal",
+      "FIXED": "Fixed",
+      "EXEMPT": "Exempt"
+    },
+    "withholding": {
+      "UNKNOWN": "Not reviewed",
+      "NONE_CONFIRMED": "No withholding (confirmed)",
+      "CONFIGURED": "Configured rates"
     }
   }
 }

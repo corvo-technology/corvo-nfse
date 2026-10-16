@@ -110,6 +110,15 @@ export class CompanyServiceTaxProfileService {
     return this.profiles.upsert(id, companyId, tenantId, input);
   }
 
+  async approve(companyId: string, tenantId: string, id: string): Promise<CompanyServiceTaxProfile> {
+    const existing = await this.profiles.findById(id, companyId, tenantId);
+    if (!existing) throw new NotFoundException('Service tax profile not found');
+    if (existing.reviewStatus === 'approved') return existing;
+    const issues = validateServiceTaxProfile(existing);
+    if (issues.length > 0) throw new FiscalValidationError(issues);
+    return this.profiles.markApproved(id, companyId, tenantId);
+  }
+
   /**
    * Removes a catalog row. Only unreviewed/rejected profiles whose window
    * already ended can be removed; effective or approved rows must be corrected

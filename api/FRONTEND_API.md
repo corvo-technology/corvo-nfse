@@ -219,6 +219,8 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | GET    | `/companies/{id}/service-tax-profiles`                 | S/K, `nfse.companies.view`      | Perfis de serviço vigentes em `?date=YYYY-MM-DD`; 200                               |
 | POST   | `/companies/{id}/service-tax-profiles`                 | S/K, `nfse.companies.manage`    | Cria perfil de serviço; 201                                                        |
 | PATCH  | `/companies/{id}/service-tax-profiles/{serviceId}`     | S/K, `nfse.companies.manage`    | Atualiza perfil de serviço; restrições de imutabilidade dos aprovados; 200           |
+| POST   | `/companies/{id}/service-tax-profiles/{serviceId}/approve` | S/K, `nfse.companies.manage` | Aprova o perfil de serviço (idempotente se já aprovado); 201                          |
+| DELETE | `/companies/{id}/service-tax-profiles/{serviceId}`     | S/K, `nfse.companies.manage`    | Remove só perfil expirado e não aprovado; aprovado ou vigente retorna 409            |
 | POST   | `/invoices/calculate`                                  | S/K, `nfse.invoices.issue`      | Cálculo pré-emissão sempre disponível; CreateInvoice; 200 ready/blocked; rate limit HTTP padrão |
 | POST   | `/invoices`                                            | S/K, `nfse.invoices.issue`      | JSON CreateInvoice; header `idempotency-key?`; 202                                 |
 | GET    | `/invoices`                                            | S/K, `nfse.invoices.view`       | Query: `companyId?`, `status?`, `from?`, `to?`, `externalId?`, `limit?`, `cursor?` |
@@ -245,11 +247,28 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 
 ## Payloads e enums
 
-**CreateCompany**: obrigatórios `legalName`, `taxId`, `taxRegime`.
-Opcionais `tradeName`, `municipalReg`, `municipalityCode`, `simpleNational`,
-`specialRegime`, `address`. UpdateCompany aceita os mesmos
-campos, todos opcionais. Address: `street`, `number`, `complement`, `district`,
+**CreateCompany**: obrigatórios `legalName`, `taxId`, `taxRegime`
+(`MEI`, `Simples Nacional`, `Lucro Presumido` ou `Lucro Real`) e
+`municipalityCode` (código IBGE de 7 dígitos, em `test` e `live`).
+Opcionais `tradeName`, `municipalReg` (exigida em `live`), `defaultServiceCode`
+(cTribNac de 6 dígitos), `simpleNational`, `specialRegime`, `address`.
+UpdateCompany aceita os mesmos campos, todos opcionais (`defaultServiceCode:
+null` remove o padrão). Address: `street`, `number`, `complement`, `district`,
 `city`, `state`, `zip`, todos opcionais.
+
+O regime tributário **não fica na empresa**: `taxRegime`, `simpleNational` e
+`specialRegime` do body criam o primeiro perfil fiscal, vigente desde hoje e
+**já aprovado** pelo usuário ou chave de API que fez a chamada (`reviewedBy`).
+Declarar o regime na requisição é a confirmação. `simpleNational` omitido
+acompanha o regime (`true` para MEI e Simples Nacional). As respostas de
+`/companies` devolvem esses três campos lidos do perfil fiscal aberto;
+`taxRegime` é `null` se a empresa não tem perfil. `PATCH` com campo de regime,
+quando o regime efetivo muda, grava um novo perfil aprovado vigente desde hoje:
+se o perfil aberto começou em data anterior, ele é encerrado hoje e um novo é
+criado; se começou hoje, retorna 409 `profile_validity_conflict` (o perfil
+aprovado não é reescrito no mesmo dia). Para mudar o regime numa data futura,
+use `PUT /companies/{id}/fiscal-profile` com `validFrom` (anterior ao início do
+perfil aberto retorna 422).
 
 ```json
 {
@@ -496,8 +515,51 @@ não enviar campos fora do contrato).
 
 - `taxId`: CNPJ válido (inclui CNPJ alfanumérico, IN RFB 2.229/2024), com ou
   sem máscara. É persistido só com os caracteres do CNPJ, sem pontuação.
-- `municipalReg`: opcional. `""` retorna `blank`. No PATCH, `null` limpa o
-  campo e omitir mantém o valor.
+- `municipalReg`: obrigatória ao criar empresa em `live` (422 `required`);
+  opcional em `test`. `""` retorna `blank`. No PATCH, `null` limpa o campo e
+  omitir mantém o valor.
+- `municipalityCode`: obrigatório, 7 dígitos (`invalid_ibge_code`).
+- `defaultServiceCode`: opcional, 6 dígitos (`invalid_service_code`). É só um
+  padrão da empresa; a classificação fiscal vem do perfil do serviço.
+
+### Configuração fiscal da empresa
+
+Para MEI e Simples Nacional o fluxo é só este:
+
+1. `POST /companies` com `taxRegime`, `municipalityCode` e, em `live`,
+   `municipalReg`. O perfil fiscal já nasce aprovado.
+2. `POST /companies/{id}/certificates` com o certificado A1.
+3. `POST /invoices`.
+
+Use `POST /invoices/calculate` para conferir a configuração antes de emitir.
+O perfil de serviço **não é necessário** para emitir sem tomador ou para
+tomador CPF: sem ele a classificação vem do catálogo oficial pelo `service.code`.
+**Exceção:** quando o tomador é CNPJ, a retenção federal (IRRF, PIS, COFINS,
+CSLL) depende da política do serviço, e sem perfil de serviço o cálculo é
+bloqueado com `TAX_APPLICABILITY_UNKNOWN` e o campo pendente
+`service.withholdingPolicy`. Cadastre o perfil do serviço com
+`withholdingPolicy` `NONE_CONFIRMED` (sem retenção) ou `CONFIGURED` (com
+`withholdingRates`) e aprove-o. O perfil também é exigido quando o regime pede
+IBS/CBS ou ISS configurado (regime regular, a partir de 2027): o cálculo devolve
+`FISCAL_CLASSIFICATION_REQUIRED` com os campos que faltam.
+
+Configuração avançada (opcional):
+
+- `GET|PUT /companies/{id}/fiscal-profile` lista e cria vigências (por exemplo,
+  mudança de regime em data futura). `PUT` aceita `confirm: true` para já
+  registrar a vigência aprovada; sem ele a vigência fica `unreviewed` e exige
+  `POST .../fiscal-profile/{profileId}/approve`.
+- `POST /companies/{id}/service-tax-profiles` cadastra a classificação e a
+  tributação de um serviço (`serviceCode` de 6 dígitos, `effectiveFrom`), com
+  `POST .../service-tax-profiles/{serviceId}/approve`. Em `live`, um perfil de
+  serviço existente precisa estar `approved`, senão a nota é rejeitada com
+  `FISCAL_REVIEW_REQUIRED`. Perfil aprovado é imutável (409
+  `immutable_approved_profile`): para corrigir, crie outro com outra vigência.
+- Perfil `rejected` bloqueia a emissão nos dois ambientes; vigência
+  `unreviewed` em `live` também.
+
+Permissões: `nfse.companies.view` (ler) e `nfse.companies.manage` (criar,
+editar e aprovar).
 - `address.state`: UF válida. `address.zip`: 8 dígitos (normalizado).
   No PATCH, `address: null` limpa o endereço.
 - Não enviar `""` em campo opcional: omitir.
@@ -510,8 +572,13 @@ dentro de `data`. O front não deve calcular "empresa pronta"; usar a API.
 
 | Gap                      | Significado                                         |
 | ------------------------ | --------------------------------------------------- |
+| `municipality_code`      | Código IBGE do município ausente ou sem 7 dígitos   |
 | `municipal_registration` | Falta inscrição municipal. Exigido apenas em `live` |
 | `certificate`            | Não há certificado ativo                            |
+
+`setupGaps` cobre os dados cadastrais e o certificado. Uma empresa `ready`
+emite sem passos extras para MEI e Simples Nacional (veja "Configuração fiscal
+da empresa").
 
 `status` é `ready` quando `setupGaps` está vazio, senão `pending_setup`.
 `blocked` nunca é alterado automaticamente. O status é recalculado ao criar ou

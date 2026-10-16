@@ -309,6 +309,14 @@ export const pt: DocsTree = {
       description: "Cadastre e gerencie as empresas para emissão de NFS-e.",
       blocks: [
         { kind: "text", body: "Permissões: consultas usam `nfse.companies.view`; escrita usa `nfse.companies.manage`." },
+        { kind: "heading", level: 2, body: "Do cadastro à emissão" },
+        { kind: "list", items: [
+          "`POST /v1/companies` com `taxRegime`, `municipalityCode` e, em `live`, `municipalReg`.",
+          "`POST /v1/companies/:id/certificates` com o certificado A1.",
+          "`POST /v1/invoices`.",
+        ] },
+        { kind: "callout", tone: "accent", body: "O regime informado no cadastro cria o perfil fiscal da empresa, vigente desde hoje e já aprovado por quem fez a chamada (usuário ou chave de API). Sem tomador ou com tomador CPF não há etapa de aprovação nem cadastro de serviço: a classificação vem do catálogo oficial pelo `service.code`. Com tomador CNPJ a retenção federal depende da política do serviço: cadastre o perfil do serviço com `withholdingPolicy` `NONE_CONFIRMED` ou `CONFIGURED` e aprove-o, senão o cálculo volta `blocked` com `TAX_APPLICABILITY_UNKNOWN`. `GET /v1/companies/:id` mostra `status` e `setupGaps` (`municipality_code`, `municipal_registration` em `live`, `certificate`). Use `POST /v1/invoices/calculate` para conferir antes de emitir." },
+        { kind: "callout", tone: "warn", body: "Mudar o regime com `PATCH` no mesmo dia do cadastro retorna `409` (`profile_validity_conflict`), porque o perfil aprovado não é reescrito. Para uma mudança com data, use `PUT /v1/companies/:id/fiscal-profile` com `validFrom`. Perfis de serviço (`/v1/companies/:id/service-tax-profiles`) são opcionais e passam a ser exigidos quando o regime pede IBS/CBS ou ISS configurado: o cálculo retorna `FISCAL_CLASSIFICATION_REQUIRED` com os campos que faltam." },
         {
           kind: "endpoint",
           method: "POST",
@@ -325,7 +333,7 @@ export const pt: DocsTree = {
               { name: "municipalReg", type: "string ou null", required: false, description: "Obrigatória e não vazia no cadastro em `live`; opcional em teste. `null` na criação em teste significa não definir." },
               { name: "municipalityCode", type: "string", required: true, description: "Código IBGE de exatamente 7 dígitos, obrigatório em teste e produção. Usado como município do emitente e padrão do local da prestação." },
               { name: "defaultServiceCode", type: "string", required: false, description: "Código nacional (cTribNac) de exatamente 6 dígitos; padrão das novas notas. Sem ele, informe `service.code` na emissão." },
-              { name: "simpleNational", type: "boolean", required: false, description: "Padrão `false`." },
+              { name: "simpleNational", type: "boolean", required: false, description: "Se omitido, acompanha o regime (`true` para MEI e Simples Nacional)." },
               { name: "specialRegime", type: "string", required: false, description: "Até 50 caracteres." },
               { name: "address", type: "objeto", required: false, description: "`street` (200), `number` (20), `complement` (100), `district` (100), `city` (100), `state` (2) e `zip` (10), todos opcionais. UF válida, normalizada para maiúsculas. CEP com 8 dígitos, armazenado sem pontuação." },
             ],
@@ -681,12 +689,14 @@ console.log(res.status); // 204`,
               { name: "companyId", type: "string UUID", required: false, description: "Condicional: informe este campo ou `companyTaxId`; se ambos existirem, `companyId` prevalece." },
               { name: "companyTaxId", type: "string", required: false, description: "CNPJ da empresa já cadastrada na conta/ambiente; pontuação opcional." },
               { name: "externalId", type: "string", required: false, description: "Referência do sistema integrador; não substitui a chave de idempotência." },
-              { name: "customer", type: "objeto", required: true, description: "`name` (obrigatório), `taxId` (obrigatório: CPF ou CNPJ válido, normalizado), `email` (opcional; obrigatório quando o envio de email está habilitado; sem validação de formato neste DTO) e `address` (opcional: `street`, `city`, `state`, `zip`, `country`; se preencher cidade ou UF, preencha ambas)." },
+              { name: "customer", type: "objeto", required: false, description: "Opcional: omita ou envie `{}` para consumidor sem identificação (o tomador não vai na DPS). Quando enviado, `name` (obrigatório), `taxId` (obrigatório: CPF ou CNPJ válido, normalizado), `email` (opcional; obrigatório quando o envio de email está habilitado; sem validação de formato neste DTO) e `address` (opcional: `street`, `city`, `state`, `zip`, `country`; se preencher cidade ou UF, preencha ambas)." },
               { name: "service", type: "objeto", required: true, description: "`code` opcional se a empresa tem `defaultServiceCode`; quando informado, exatamente 6 dígitos. `municipalityCode` herda o município da empresa; quando informado, exatamente 7 dígitos e define o local da prestação. `description` string opcional. Vazio, `null` ou valor inválido não aciona o padrão." },
               { name: "amount", type: "number", required: true, description: "Valor em reais, positivo, até 9999999999.99 e no máximo 2 casas decimais." },
-              { name: "competenceDate", type: "string ISO 8601", required: true, description: "Data de competência válida, não futura." },
+              { name: "competenceDate", type: "string ISO 8601", required: true, description: "Data de competência válida. Sem `options.type`, não pode ser futura (`422` `future_date`). Com `options.type: \"SCHEDULE\"`, aceita data futura (veja Notas agendadas)." },
+              { name: "discount", type: "number", required: false, description: "Desconto incondicional em reais, de 0 até o valor da nota, no máximo 2 casas decimais." },
               { name: "email", type: "boolean", required: false, description: "Solicita notificação; padrão `false`." },
               { name: "options.email.send", type: "boolean", required: false, description: "Quando definido, prevalece sobre `email`." },
+              { name: "options.type", type: "string", required: false, description: "`IMMEDIATE` (padrão) ou `SCHEDULE`. `SCHEDULE` agenda a emissão para a `competenceDate` futura; veja Notas agendadas." },
             ],
           },
           examples: {
@@ -760,6 +770,90 @@ console.log(body.data.props.id); // { data: { props: Invoice } }`,
             { kind: "callout", tone: "warn", body: "O endereço do cliente é reduzido a `city` e `state` no snapshot: `street`, `zip` e `country` não são preservados na criação da nota. Não dependa deles no retorno." },
           ],
         },
+        {
+          kind: "endpoint",
+          method: "POST",
+          path: "/v1/invoices/calculate",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "200 OK",
+          summary: "Calcula os tributos de uma nota **sem emitir**: não grava nota, não consome crédito, não reserva número de DPS, não agenda nem chama a Sefin. Use para conferir a configuração fiscal e mostrar o valor ao cliente antes de `POST /v1/invoices`.",
+          params: {
+            rows: [
+              { name: "(corpo)", type: "objeto", required: true, description: "Mesmo corpo de `POST /v1/invoices` (empresa, `service`, `amount`, `competenceDate`, `customer` opcional, `discount`). Exige a permissão `nfse.invoices.issue`. Não exige certificado nem empresa pronta." },
+            ],
+          },
+          examples: {
+            curl: `curl -X POST "$BASE_URL/invoices/calculate" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "companyTaxId": "11222333000181",
+    "service": { "code": "060101", "description": "Corte de cabelo" },
+    "amount": 50,
+    "competenceDate": "2026-10-13"
+  }'`,
+            node: `const res = await fetch(\`\${BASE_URL}/invoices/calculate\`, {
+  method: "POST",
+  headers: {
+    "X-API-Key": process.env.CORVO_API_KEY,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    companyTaxId: "11222333000181",
+    service: { code: "060101", description: "Corte de cabelo" },
+    amount: 50,
+    competenceDate: "2026-10-13",
+  }),
+});
+const { data } = await res.json();
+console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "preEmission": true,
+    "status": "ready",
+    "disclaimer": "Pre-emission calculation. Values are not a fiscal document and may differ from the final validation by Sefin.",
+    "competenceDate": "2026-10-13",
+    "taxRegime": "MEI",
+    "taxes": {},
+    "withholdings": [],
+    "netReceivableAmount": "50.00",
+    "collectionWaived": false,
+    "warnings": [],
+    "pendingFields": [],
+    "blocking": null,
+    "trace": []
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "`status: \"ready\"` significa que os dados fiscais estão completos e o cálculo foi feito. É uma estimativa pré-emissão, não uma autorização da Sefin. Valores e alíquotas vêm como strings decimais. A resposta nunca devolve o nome nem o CPF/CNPJ do cliente." },
+            { kind: "callout", tone: "warn", body: "Problema fiscal não é erro HTTP: volta `200` com `status: \"blocked\"`, `blocking` (`code`, `message`, `step`) e `pendingFields[]` com o que falta, por exemplo `FISCAL_CLASSIFICATION_REQUIRED` ou `TAX_RATE_NOT_FOUND`. Os valores já calculados antes do bloqueio continuam na resposta. Entrada inválida segue o envelope normal (`404` empresa inexistente, `422` campo inválido)." },
+            { kind: "callout", tone: "warn", body: "`503` com `Retry-After` (segundos) quando a Calculadora de tributos está indisponível: tente de novo depois, sem estimar. O limite é o mesmo de qualquer endpoint autenticado (`429` com `Retry-After`). Data de competência futura só até 15 dias à frente." },
+          ],
+        },
+        { kind: "heading", level: 2, body: "Notas agendadas" },
+        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` com uma `competenceDate` futura para pedir que a nota seja emitida só naquele dia. A Corvo libera a emissão à 00:00 de `America/Sao_Paulo` da `competenceDate`. Até lá a nota fica com `status: \"queued\"` e `props.scheduledFor` traz o instante da liberação (ISO); em notas imediatas `scheduledFor` é `null`." },
+        { kind: "table", head: ["Situação", "Resultado"], rows: [
+          ["Sem `options.type` (ou `IMMEDIATE`) e `competenceDate` futura", "`422` com `future_date`."],
+          ["`SCHEDULE` e `competenceDate` futura até o limite", "`202`, `status: queued`, `scheduledFor` preenchido; a emissão acontece na data."],
+          ["`SCHEDULE` e `competenceDate` além do limite (padrão 15 dias à frente)", "`422` com `schedule_horizon_exceeded`."],
+          ["`SCHEDULE` e `competenceDate` de hoje ou passada", "Emissão imediata, `scheduledFor: null`."],
+        ] },
+        { kind: "code", label: "Agendar uma nota", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: pedido_123_agendada" \\
+  -d '{
+    "companyTaxId": "11222333000181",
+    "service": { "description": "Corte de cabelo" },
+    "amount": 50,
+    "competenceDate": "2026-10-20",
+    "options": { "type": "SCHEDULE" }
+  }'` },
+        { kind: "callout", tone: "warn", body: "Os dados fiscais são calculados na hora de emitir, com a configuração vigente na `competenceDate`. Em `live`, a empresa precisa estar pronta e ter certificado ativo já no momento do agendamento. Antes de agendar, `POST /v1/invoices/calculate` mostra o cálculo para aquela data. O webhook `nfse.invoice.authorized` (ou `rejected`) chega quando a emissão ocorre, não no agendamento." },
         { kind: "heading", level: 2, body: "Schema Invoice" },
         { kind: "text", body: "O objeto está dentro de `props`:" },
         {
@@ -785,6 +879,7 @@ console.log(body.data.props.id); // { data: { props: Invoice } }`,
             ["`documentsStatus`", "Estado derivado: `pending` ou `ready`."],
             ["`emailStatus`", "Estado derivado: `queued`, `sent`, `failed` ou null."],
             ["`stage`", "Estado derivado: `pending`, `authorized`, `documents_ready`, `completed`, `failed`."],
+            ["`scheduledFor`", "Data ISO da liberação de uma nota agendada, ou null."],
             ["`createdAt`, `updatedAt`", "Datas ISO."],
             ["`documentKeyVersion`", "Number opcional, quando presente no snapshot."],
           ],
@@ -1174,6 +1269,7 @@ console.log(body.data.secret); // guarde o secret agora`,
             "`nfse.invoice.documents_ready`",
             "`nfse.invoice.email_sent`",
             "`nfse.invoice.email_failed`",
+            "`nfse.invoice.fiscal_discrepancy`",
           ],
         },
         {
@@ -1899,6 +1995,7 @@ const invoiceId = await emitirComRetry(pedido, \`pedido_\${pedido.externalId}_em
             ["`nfse.invoice.documents_ready`", "`accessKey`, `nfseNumber`, `documentsReadyAt`."],
             ["`nfse.invoice.email_sent`", "`sentAt`."],
             ["`nfse.invoice.email_failed`", "Identificação e estado da nota."],
+            ["`nfse.invoice.fiscal_discrepancy`", "`invoiceId`, `status` e `differences[]` (`field`, `local`, `authorized`, `delta`, `kind`): diferença entre o cálculo da Corvo e a NFS-e autorizada, acima de R$ 0,01 por tributo. O XML autorizado não é alterado."],
             ["`webhook.test`", "`{ \"message\": \"This is a test webhook event\" }`."],
           ],
         },

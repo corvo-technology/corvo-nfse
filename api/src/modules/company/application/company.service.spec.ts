@@ -420,6 +420,84 @@ describe('CompanyService', () => {
       );
     });
 
+    it('create approves the initial profile when the caller is identified', async () => {
+      mockRepo.existsWithTaxId.mockResolvedValue(false);
+      mockRepo.save.mockImplementation(async (c) => c);
+
+      await service.create(
+        {
+          legalName: 'X',
+          taxId: VALID_CNPJ,
+          taxRegime: 'MEI',
+          municipalityCode: '3550308',
+        },
+        tenantId,
+        'test',
+        'api-key-owner',
+      );
+
+      expect(mockProfiles.record).toHaveBeenCalledWith(
+        expect.any(String),
+        tenantId,
+        expect.objectContaining({
+          taxRegime: 'MEI',
+          source: 'company_api',
+          reviewStatus: 'approved',
+          reviewedBy: 'api-key-owner',
+        }),
+      );
+    });
+
+    it('create derives simpleNational from the regime when omitted', async () => {
+      mockRepo.existsWithTaxId.mockResolvedValue(false);
+      mockRepo.save.mockImplementation(async (c) => c);
+
+      await service.create(
+        {
+          legalName: 'X',
+          taxId: VALID_CNPJ,
+          taxRegime: 'MEI',
+          municipalityCode: '3550308',
+        },
+        tenantId,
+        'test',
+      );
+
+      expect(mockProfiles.record).toHaveBeenCalledWith(
+        expect.any(String),
+        tenantId,
+        expect.objectContaining({ simpleNational: true }),
+      );
+    });
+
+    it('update records the changed regime as approved by the caller', async () => {
+      const existingCompany = {
+        ...mockCompany,
+        update: jest.fn(),
+        toSnapshot: jest.fn().mockReturnValue({}),
+      };
+      mockRepo.findByIdAndTenantId.mockResolvedValue(existingCompany as any);
+      mockRepo.save.mockImplementation(async (c) => c);
+      mockProfiles.current.mockResolvedValue(openProfile);
+
+      await service.update(
+        'company-id-1',
+        { taxRegime: 'Simples Nacional' },
+        tenantId,
+        'test',
+        'api-key-owner',
+      );
+
+      expect(mockProfiles.record).toHaveBeenCalledWith(
+        'company-id-1',
+        tenantId,
+        expect.objectContaining({
+          reviewStatus: 'approved',
+          reviewedBy: 'api-key-owner',
+        }),
+      );
+    });
+
     it('update appends a new profile only when the regime changed', async () => {
       const existingCompany = {
         ...mockCompany,

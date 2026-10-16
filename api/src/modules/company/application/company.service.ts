@@ -34,6 +34,13 @@ export interface CurrentCompanyRegime {
   specialRegime: string | null;
 }
 
+/** A regime declared through the company endpoints is approved by the caller. */
+function declarationReview(declaredBy: string | null) {
+  return declaredBy === null
+    ? ({ reviewStatus: 'unreviewed', reviewedBy: null } as const)
+    : ({ reviewStatus: 'approved', reviewedBy: declaredBy } as const);
+}
+
 @Injectable()
 export class CompanyService {
   listPage(
@@ -55,6 +62,7 @@ export class CompanyService {
     input: CreateCompanyInput,
     tenantId: string,
     environment: ExecutionEnvironment = 'test',
+    declaredBy: string | null = null,
   ): Promise<Company> {
     // Fiscal validation + normalization via domain service.
     // Throws FiscalValidationError (→ 422 with code + details) on failure.
@@ -88,18 +96,23 @@ export class CompanyService {
     }
 
     // Record the initial fiscal profile from the request regime (source
-    // `company_api`, unreviewed, valid from today). The Company aggregate no
-    // longer stores the regime — the fiscal profile is the source of truth.
+    // `company_api`, valid from today). Declaring the regime in the request is
+    // the confirmation: the profile is approved by the caller (user or API key)
+    // so the company is ready to issue once the certificate is uploaded. The
+    // Company aggregate no longer stores the regime — the profile is.
+    const regime = regimeKindFromLegacy(normalized.taxRegime);
     await this.profiles.record(company.id, tenantId, {
-      taxRegime: regimeKindFromLegacy(normalized.taxRegime),
-      simpleNational: normalized.simpleNational ?? false,
+      taxRegime: regime,
+      // Omitted => follows the regime (MEI and Simples Nacional are Simples).
+      simpleNational:
+        normalized.simpleNational ??
+        (regime === 'MEI' || regime === 'SIMPLES_NACIONAL'),
       specialTaxRegime: normalized.specialRegime?.trim() || null,
       ibsCbsRegularOption: false,
       ibsCbsRegularFrom: null,
       validFrom: todayInEstablishmentTimezone(),
       source: 'company_api',
-      reviewStatus: 'unreviewed',
-      reviewedBy: null,
+      ...declarationReview(declaredBy),
     });
 
     return company;
@@ -159,6 +172,7 @@ export class CompanyService {
     input: UpdateCompanyInput,
     tenantId: string,
     environment: ExecutionEnvironment = 'test',
+    declaredBy: string | null = null,
   ): Promise<Company> {
     const company = await this.findById(id, tenantId, environment);
 
@@ -220,8 +234,7 @@ export class CompanyService {
           ibsCbsRegularFrom: current?.ibsCbsRegularFrom ?? null,
           validFrom: todayInEstablishmentTimezone(),
           source: 'company_api',
-          reviewStatus: 'unreviewed',
-          reviewedBy: null,
+          ...declarationReview(declaredBy),
         });
       }
     }

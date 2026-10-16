@@ -36,11 +36,11 @@ describe("EN/PT docs parity", () => {
     expect(describeSection(en, en.pages[slug])).toEqual(describeSection(pt, pt.pages[slug]));
   });
 
-  it("documents exactly 31 endpoint operations", () => {
+  it("documents exactly 32 endpoint operations", () => {
     const allEndpoints = DOC_SLUGS.flatMap((slug) => endpoints(pt.pages[slug].blocks));
     const unique = new Set(allEndpoints.map((e) => `${e.method} ${e.path}`));
-    expect(allEndpoints).toHaveLength(31);
-    expect(unique.size).toBe(31);
+    expect(allEndpoints).toHaveLength(32);
+    expect(unique.size).toBe(32);
   });
 
   it("every endpoint has curl and node examples plus a response", () => {
