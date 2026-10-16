@@ -73,3 +73,21 @@ it("forwards the pre-emission calculation and the company fiscal configuration r
   expect((await call(POST, "POST", "companies/id/service-tax-profiles/service/approve")).status).toBe(200);
   expect((await call(DELETE, "DELETE", "invoices/calculate")).status).toBe(404);
 });
+
+it("forwards only the MCP consent and connection routes the dashboard needs", async () => {
+  const allowed: [string, "GET" | "POST" | "DELETE"][] = [["mcp/consent", "GET"], ["mcp/consent", "POST"], ["mcp/connections", "GET"], ["mcp/connections/abc", "DELETE"]];
+  for (const [route, method] of allowed) {
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+    const request = new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers: { origin: "http://localhost:4000" } });
+    const handler = { GET, POST, DELETE }[method];
+    expect((await handler(request, context(route))).status).toBe(200);
+  }
+  expect(fetchMock).toHaveBeenCalledTimes(allowed.length);
+  fetchMock.mockClear();
+  for (const [route, method] of [["mcp/token", "POST"], ["mcp/register", "POST"], ["mcp/authorize", "GET"], ["mcp/connections", "DELETE"], ["mcp", "POST"]] as const) {
+    const request = new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers: { origin: "http://localhost:4000" } });
+    const handler = { GET, POST, DELETE }[method];
+    expect((await handler(request, context(route))).status).toBe(404);
+  }
+  expect(fetchMock).not.toHaveBeenCalled();
+});

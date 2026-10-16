@@ -41,6 +41,8 @@ export type AuthContext = {
   membershipStatus?: 'active' | 'inactive' | null;
   sessionId?: string;
   clientId?: string;
+  /** Set for MCP bearer tokens: the connection that issued the call. */
+  mcpConnectionId?: string;
   scope?: string;
   /** The API credential determines the execution environment. */
   apiKeyEnvironment?: ExecutionEnvironment;

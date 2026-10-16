@@ -6,8 +6,15 @@ import {
   closeE2eApp,
   type E2eTestApp,
 } from './support/e2e-app';
+import { AuthOAuthClientOrmEntity } from '@/infra/persistence/typeorm/entities/auth.orm-entities';
+import { McpConnectionOrmEntity } from '@/modules/mcp/infra/mcp-connection.orm-entity';
 import { InvoiceOrmEntity } from '@/modules/invoice/infra/invoice.orm-entity';
-import { mintToken, mcpRpc, type MintedToken } from './support/mcp-e2e';
+import {
+  MCP_REDIRECT_URI,
+  mintToken,
+  mcpRpc,
+  type MintedToken,
+} from './support/mcp-e2e';
 
 jest.setTimeout(180_000);
 
@@ -45,10 +52,22 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
       tenantId,
       scopes: 'nfse:read nfse:write',
     });
+    // A second client: the same client would reuse (and re-scope) the connection above.
+    await dataSource.getRepository(AuthOAuthClientOrmEntity).insert({
+      id: 'corvo-mcp-readonly00001',
+      name: 'Read only e2e',
+      redirectUris: [MCP_REDIRECT_URI],
+      scopes: ['nfse:read'],
+      isFirstParty: false,
+      isActive: true,
+      tokenEndpointAuthMethod: 'none',
+      grantTypes: ['authorization_code'],
+    });
     readOnlyToken = await mintToken(app, {
       authUserId,
       tenantId,
       scopes: 'nfse:read',
+      clientId: 'corvo-mcp-readonly00001',
     });
   });
 
@@ -146,6 +165,91 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
     ) as { invoices: unknown[]; next_cursor: string | null };
     expect(Array.isArray(payload.invoices)).toBe(true);
     expect(payload).toHaveProperty('next_cursor');
+  });
+
+  it('a live connection works in the live environment and cannot see test companies', async () => {
+    await dataSource.getRepository(AuthOAuthClientOrmEntity).insert({
+      id: 'corvo-mcp-liveagent00001',
+      name: 'Live e2e',
+      redirectUris: [MCP_REDIRECT_URI],
+      scopes: ['nfse:read', 'nfse:write'],
+      isFirstParty: false,
+      isActive: true,
+      tokenEndpointAuthMethod: 'none',
+      grantTypes: ['authorization_code'],
+    });
+    const live = await mintToken(app, {
+      authUserId,
+      tenantId,
+      scopes: 'nfse:read nfse:write',
+      clientId: 'corvo-mcp-liveagent00001',
+      environment: 'live',
+    });
+
+    const list = await mcpPost(live.accessToken, {
+      jsonrpc: '2.0',
+      id: 30,
+      method: 'tools/call',
+      params: { name: 'nfse_list', arguments: { limit: 5 } },
+    }).expect(200);
+    expect(list.body.result.isError).toBeUndefined();
+
+    // The company seeded below is a test-environment company: live must not resolve it.
+    await dataSource.query(
+      `INSERT INTO "${schema}"."nfse_companies"
+         (id, tenant_id, legal_name, tax_id, municipality_code,
+          municipal_reg, environment, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, '3550308', '12345', 'test', 'ready', NOW(), NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [
+        'aaaaaaaa-1111-4222-8333-444444444444',
+        tenantId,
+        'Empresa MCP E2E',
+        COMPANY_TAX_ID,
+      ],
+    );
+    const issue = await mcpPost(live.accessToken, {
+      jsonrpc: '2.0',
+      id: 31,
+      method: 'tools/call',
+      params: {
+        name: 'nfse_issue',
+        arguments: {
+          company_id: 'aaaaaaaa-1111-4222-8333-444444444444',
+          customer: { name: 'Cliente', tax_id: CUSTOMER_TAX_ID },
+          services: [{ description: 'Servico', quantity: 1, unit_price: 10 }],
+          competence_date: COMPETENCE_DATE,
+        },
+      },
+    }).expect(200);
+    expect(issue.body.result.isError).toBe(true);
+  });
+
+  it('counts successful tool calls (and not failed ones) on the connection', async () => {
+    const repo = dataSource.getRepository(McpConnectionOrmEntity);
+    const before = await repo.findOneOrFail({
+      where: { id: fullToken.connectionId },
+    });
+
+    await mcpPost(fullToken.accessToken, {
+      jsonrpc: '2.0',
+      id: 20,
+      method: 'tools/call',
+      params: { name: 'nfse_list', arguments: { limit: 5 } },
+    }).expect(200);
+    await mcpPost(fullToken.accessToken, {
+      jsonrpc: '2.0',
+      id: 21,
+      method: 'tools/call',
+      params: { name: 'nfse_query', arguments: { access_key: '1'.repeat(20) } },
+    }).expect(200);
+
+    const after = await repo.findOneOrFail({
+      where: { id: fullToken.connectionId },
+    });
+    expect(after.toolCallsCount).toBe(before.toolCallsCount + 1);
+    expect(after.invoicesIssuedCount).toBe(before.invoicesIssuedCount);
+    expect(after.lastUsedAt).toBeTruthy();
   });
 
   it('nfse_issue queues an invoice persisted to nfse_invoices', async () => {

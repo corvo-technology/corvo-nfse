@@ -2071,5 +2071,137 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         },
       ],
     },
+    "mcp": {
+      "title": "Agentes de IA (MCP)",
+      "description": "Conecte Claude Code, Cursor e outros agentes à Corvo por OAuth.",
+      "blocks": [
+        {
+          "kind": "text",
+          "body": "O servidor MCP da Corvo deixa agentes de IA (Claude Code, Cursor e outros clientes MCP) emitirem e consultarem NFS-e em nome de um usuário, sem você escrever integração. O agente se conecta por OAuth: abre o navegador, você entra na Corvo, escolhe o workspace e aprova. Nenhuma chave de API é copiada."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Conectar um agente"
+        },
+        {
+          "kind": "text",
+          "body": "Use a URL do servidor abaixo. Ela também aparece no painel, em Agentes de IA, com os comandos prontos para copiar."
+        },
+        {
+          "kind": "code",
+          "label": "Claude Code",
+          "language": "bash",
+          "code": "claude mcp add --transport http corvo https://api.corvo.tech/mcp"
+        },
+        {
+          "kind": "code",
+          "label": "Cursor (.cursor/mcp.json)",
+          "language": "json",
+          "code": "{\n  \"mcpServers\": {\n    \"corvo\": {\n      \"url\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Adicione o servidor no agente com a URL `https://api.corvo.tech/mcp`.",
+            "O agente abre o navegador na tela de aprovação da Corvo. Se você não estiver logado, entre primeiro; depois volta para a aprovação.",
+            "Escolha o workspace e clique em Permitir (ou Negar).",
+            "Volte ao agente. Ele já recebe as ferramentas da Corvo."
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "body": "Ao aprovar, você escolhe o ambiente da conexão: `test` (notas sem valor fiscal) ou `live` (notas reais, com consumo de créditos). Cada conexão fica em um ambiente; para trocar, reconecte o agente. Comece pelo teste."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Permissões"
+        },
+        {
+          "kind": "table",
+          "head": [
+            "Escopo",
+            "O que permite",
+            "Papéis que podem conceder"
+          ],
+          "rows": [
+            [
+              "`nfse:read`",
+              "Consultar, listar e baixar o PDF de notas",
+              "admin, developer, billing"
+            ],
+            [
+              "`nfse:write`",
+              "Emitir notas",
+              "admin, developer"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "body": "Um membro só consegue aprovar escopos que o próprio papel no workspace permite. Um workspace em que o seu papel não cobre o pedido aparece desabilitado na tela de aprovação."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Ferramentas"
+        },
+        {
+          "kind": "table",
+          "head": [
+            "Ferramenta",
+            "Escopo",
+            "Entrada principal",
+            "Saída"
+          ],
+          "rows": [
+            [
+              "`nfse_issue`",
+              "`nfse:write`",
+              "`company_id`, `customer {name, tax_id, email?}`, `services [{description, quantity, unit_price}]`, `competence_date`, `service_code?`, `idempotency_key?`",
+              "`{ invoice_id, access_key, status }`"
+            ],
+            [
+              "`nfse_query`",
+              "`nfse:read`",
+              "`access_key`",
+              "`{ access_key, status, nfse_number, authorized_at, last_error }`"
+            ],
+            [
+              "`nfse_list`",
+              "`nfse:read`",
+              "`status?`, `limit?`, `cursor?`",
+              "`{ invoices, next_cursor }`"
+            ],
+            [
+              "`nfse_download_pdf`",
+              "`nfse:read`",
+              "`access_key` (nota autorizada)",
+              "`{ access_key, pdf_base64 }`"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "body": "As mesmas regras fiscais da API REST valem para `nfse_issue`. Falhas das ferramentas voltam como resultado com `isError: true` e a mensagem em texto, para o agente ler e corrigir."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Ver uso e revogar"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "No painel, abra Agentes de IA → Aplicativos conectados: você vê cada agente, o workspace, as permissões, o último uso e quantas chamadas e notas emitidas ele fez.",
+            "Clique em Revogar para cortar o acesso na hora. O agente precisa ser aprovado de novo para voltar.",
+            "Administradores do workspace veem e podem revogar as conexões de todos os membros; os demais veem só as próprias.",
+            "Reconectar o mesmo agente reaproveita a conexão e revoga a sessão anterior."
+          ]
+        }
+      ]
+    },
   },
 };

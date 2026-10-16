@@ -9,6 +9,7 @@ const publicPaths = new Set([
   "/",
   "/login",
   "/app",
+  "/mcp/authorize",
   "/docs",
   "/brand",
   "/dpa",

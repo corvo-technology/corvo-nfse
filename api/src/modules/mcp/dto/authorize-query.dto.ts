@@ -1,4 +1,11 @@
-import { IsIn, IsString, IsUrl } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+} from 'class-validator';
+import { MCP_CLIENT_ID_PATTERN } from '../mcp-client-policy';
 
 /**
  * Query parameters for `GET /mcp/authorize` (OAuth 2.0 authorization code
@@ -6,18 +13,20 @@ import { IsIn, IsString, IsUrl } from 'class-validator';
  */
 export class AuthorizeQueryDto {
   @IsString()
-  @IsIn(['corvo-mcp'])
+  @Matches(MCP_CLIENT_ID_PATTERN)
   client_id!: string;
 
-  @IsUrl({ require_tld: false })
+  @IsString()
+  @MaxLength(500)
   redirect_uri!: string;
 
   @IsString()
   @IsIn(['code'])
   response_type!: string;
 
+  @IsOptional()
   @IsString()
-  scope!: string; // 'nfse:read nfse:write' or subset
+  scope?: string; // 'nfse:read nfse:write' or subset; defaults to both
 
   @IsString()
   code_challenge!: string;

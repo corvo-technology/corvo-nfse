@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { auth, ApiError, type MagicLinkChallenge } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { safeNextPath } from "@/lib/safe-next";
 import { cn } from "@/lib/utils";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
 
@@ -48,6 +49,8 @@ function LoginPageContent() {
   const [loading, setLoading] = useState(false);
   const codeInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  // Where to go after login (e.g. back to the AI-agent consent screen).
+  const afterLogin = safeNextPath(searchParams.get("next")) ?? "/app";
 
   const { verifyCode, refreshSession, isAuthenticated } = useAuth();
   const [challenge, setChallenge] = useState<MagicLinkChallenge | null>(null);
@@ -61,7 +64,7 @@ function LoginPageContent() {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
-  useEffect(() => { if (isAuthenticated) router.replace("/app"); }, [isAuthenticated, router]);
+  useEffect(() => { if (isAuthenticated) router.replace(afterLogin); }, [isAuthenticated, router, afterLogin]);
   const showError = (cause: unknown) => {
     if (cause instanceof ApiError && cause.status === 429) {
       setCooldownUntil(Date.now() + (cause.retryAfterSeconds ?? 60) * 1000);
@@ -93,7 +96,7 @@ function LoginPageContent() {
     busy.current = true; setError(""); setLoading(true);
     try {
       await verifyCode(email.trim(), challenge.challengeId, candidate, () => setCookieIssued(true));
-      router.replace("/app");
+      router.replace(afterLogin);
     } catch (cause) { showError(cause); }
     finally { busy.current = false; setLoading(false); }
   };

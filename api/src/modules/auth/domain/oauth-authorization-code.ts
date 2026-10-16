@@ -11,6 +11,8 @@ export type OAuthAuthorizationCode = {
   codeChallengeMethod: CodeChallengeMethod;
   redirectUri: string;
   scope: string;
+  /** Fiscal environment the MCP connection will operate in. */
+  environment: 'test' | 'live';
   expiresAt: Date;
   consumedAt: Date | null;
   createdAt: Date;

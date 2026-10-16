@@ -1,5 +1,4 @@
 import { MCP_CONNECTION_REPOSITORY } from './domain/mcp-connection.repository';
-import { ConnectionSessionGuard } from './connection-session.guard';
 import { HttpApiRateLimitGuard } from '@/shared/http/rate-limit.guard';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -16,7 +15,8 @@ import { McpController } from './mcp.controller';
 import { McpOAuthController } from './mcp-oauth.controller';
 import { McpConsentController } from './mcp-consent.controller';
 import { McpDiscoveryController } from './mcp-discovery.controller';
-import { McpDashboardController } from './mcp-dashboard.controller';
+import { McpRegistrationController } from './mcp-registration.controller';
+import { McpUrlService } from './mcp-urls.service';
 import { McpConnectionController } from './mcp-connection.controller';
 import { McpConnectionService } from './mcp-connection.service';
 import { McpAuthService } from './mcp-auth.service';
@@ -33,7 +33,7 @@ import { McpService } from './mcp.service';
       AuthSessionOrmEntity,
     ]),
     InvoiceModule,
-    // CookieSessionService (session-cookie validation for consent/dashboard).
+    // Membership/OAuth/user repositories used by consent and connections.
     // AuthModule does not import McpModule, so no cycle.
     AuthModule,
   ],
@@ -42,11 +42,11 @@ import { McpService } from './mcp.service';
     McpOAuthController,
     McpConsentController,
     McpDiscoveryController,
-    McpDashboardController,
+    McpRegistrationController,
     McpConnectionController,
   ],
   providers: [
-    ConnectionSessionGuard,
+    McpUrlService,
     HttpApiRateLimitGuard,
     McpService,
     McpAuthService,

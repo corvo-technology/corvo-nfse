@@ -137,6 +137,29 @@ function createInMemoryRepos() {
             row.clientId === clientId,
         ) ?? null,
     ),
+    findAnyByUserTenantClient: jest.fn(
+      async (userId: string, tenantId: string, clientId: string) =>
+        connections.find(
+          (row) =>
+            row.authUserId === userId &&
+            row.tenantId === tenantId &&
+            row.clientId === clientId,
+        ) ?? null,
+    ),
+    reconnect: jest.fn(
+      async (
+        id: string,
+        _tenantId: string,
+        next: { sessionId: string; scopes: string[] },
+      ) => {
+        const row = connections.find((item) => item.id === id)!;
+        row.sessionId = next.sessionId;
+        row.scopes = next.scopes;
+        row.environment = next.environment;
+        row.revokedAt = null;
+        return row;
+      },
+    ),
     findByIdAndOwner: jest.fn(
       async (id: string, tenantId: string, userId: string) =>
         connections.find(
@@ -196,6 +219,7 @@ function seedCode(
     codeChallengeMethod: 'S256',
     redirectUri: REDIRECT_URI,
     scope: SCOPE,
+    environment: 'test',
     tenantId: TENANT_ID,
     expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     consumedAt: null,
@@ -306,6 +330,90 @@ describe('McpAuthService.createAuthorizationCode', () => {
 });
 
 describe('McpAuthService.exchangeCode', () => {
+  it('accepts a dynamically registered client and keeps its id on session and connection', async () => {
+    const harness = createHarness();
+    const dynamicId = 'corvo-mcp-AbCdEfGh12345678';
+    const { raw } = seedCode(harness.codes, { clientId: dynamicId });
+
+    await harness.service.exchangeCode({
+      code: raw,
+      codeVerifier: CODE_VERIFIER,
+      clientId: dynamicId,
+      redirectUri: REDIRECT_URI,
+    });
+
+    expect(harness.sessions[0].clientId).toBe(dynamicId);
+    expect(harness.connections[0].clientId).toBe(dynamicId);
+  });
+
+  it('carries the environment chosen on consent to the connection and the validated token', async () => {
+    const harness = createHarness();
+    const live = seedCode(harness.codes, { environment: 'live' });
+    const tokens = await exchange(harness, live.raw);
+
+    expect(harness.connections[0].environment).toBe('live');
+    const payload = await harness.service.validateAccessToken(
+      tokens.accessToken,
+    );
+    expect(payload.environment).toBe('live');
+  });
+
+  it('defaults to test and lets a reconnect switch the environment', async () => {
+    const harness = createHarness();
+    const first = seedCode(harness.codes);
+    await exchange(harness, first.raw);
+    expect(harness.connections[0].environment).toBe('test');
+
+    seedCode(harness.codes, {
+      codeHash: sha256('switch-code'),
+      environment: 'live',
+    });
+    await harness.service.exchangeCode({
+      code: 'switch-code',
+      codeVerifier: CODE_VERIFIER,
+      clientId: CLIENT_ID,
+      redirectUri: REDIRECT_URI,
+    });
+    expect(harness.connections).toHaveLength(1);
+    expect(harness.connections[0].environment).toBe('live');
+  });
+
+  it('rejects a client id that is not an MCP client', async () => {
+    const harness = createHarness();
+    const { raw } = seedCode(harness.codes, { clientId: 'corvo-web' });
+
+    await expect(
+      harness.service.exchangeCode({
+        code: raw,
+        codeVerifier: CODE_VERIFIER,
+        clientId: 'corvo-web',
+        redirectUri: REDIRECT_URI,
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('reconnecting the same client reuses the connection and revokes the old session', async () => {
+    const harness = createHarness();
+    const first = seedCode(harness.codes);
+    await exchange(harness, first.raw);
+    harness.connections[0].toolCallsCount = 7;
+
+    const second = seedCode(harness.codes, { codeHash: sha256('second-code') });
+    await harness.service.exchangeCode({
+      code: 'second-code',
+      codeVerifier: CODE_VERIFIER,
+      clientId: CLIENT_ID,
+      redirectUri: REDIRECT_URI,
+    });
+    void second;
+
+    expect(harness.connections).toHaveLength(1);
+    expect(harness.connections[0].toolCallsCount).toBe(7);
+    expect(harness.sessions).toHaveLength(2);
+    expect(harness.sessions[0].revokedAt).toBeInstanceOf(Date);
+    expect(harness.connections[0].sessionId).toBe(harness.sessions[1].id);
+  });
+
   it('exchanges a valid code for tokens and provisions session + connection', async () => {
     const harness = createHarness();
     const { raw } = seedCode(harness.codes);

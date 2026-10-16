@@ -65,7 +65,8 @@
       "settings": "Settings",
       "companies": "Companies",
       "invoices": "Tax invoices",
-      "billing": "Plan"
+      "billing": "Plan",
+      "agents": "AI agents"
     },
     "account": "ACCOUNT",
     "balance": "BALANCE",
@@ -1756,5 +1757,154 @@
       "NONE_CONFIRMED": "No withholding (confirmed)",
       "CONFIGURED": "Configured rates"
     }
+  },
+  "Agents": {
+    "title": "AI agents",
+    "subtitle": "Connect Claude, Cursor and other agents to Corvo to query and issue invoices by chat.",
+    "setup": {
+      "title": "How to connect",
+      "intro": "Add the Corvo MCP server to your agent. It opens the browser so you can sign in and approve access, with no keys to copy.",
+      "serverUrl": "MCP server URL",
+      "copy": "Copy",
+      "copied": "Copied",
+      "tools": "What the agent can do",
+      "toolList": [
+        "Issue an invoice (nfse_issue)",
+        "Check an invoice status (nfse_query)",
+        "List invoices (nfse_list)",
+        "Download the PDF of an authorized invoice (nfse_download_pdf)"
+      ],
+      "testNote": "When you approve, you choose the environment: test (invoices with no fiscal value) or production (real invoices, using credits). Each connection stays in one environment; to switch, reconnect the agent.",
+      "docs": "Read the full documentation",
+      "clientsTitle": "Pick your agent",
+      "afterTitle": "What happens when you connect",
+      "after": [
+        "The browser opens on Corvo. Sign in if you are not already.",
+        "Pick the workspace and environment (test or production) and click Allow.",
+        "Go back to the agent: the Corvo tools are now available."
+      ],
+      "clients": {
+        "claude-code": {
+          "name": "Claude Code",
+          "steps": [
+            "In the terminal, add the server with the command below.",
+            "Inside Claude Code, type /mcp, pick corvo and select Authenticate."
+          ]
+        },
+        "claude-desktop": {
+          "name": "Claude Desktop",
+          "steps": [
+            "Open Settings → Connectors.",
+            "Click Add custom connector, enter a name (Corvo) and paste the server URL.",
+            "Click Connect and approve access in the browser."
+          ]
+        },
+        "cursor": {
+          "name": "Cursor",
+          "steps": [
+            "Open or create .cursor/mcp.json (project) or ~/.cursor/mcp.json (global).",
+            "Add the server as below and save.",
+            "In Settings → MCP, click Connect next to corvo."
+          ]
+        },
+        "vscode": {
+          "name": "VS Code",
+          "steps": [
+            "Create the .vscode/mcp.json file in your project.",
+            "Add the server as below and save.",
+            "Click Start above the corvo server and approve access."
+          ]
+        },
+        "codex": {
+          "name": "Codex",
+          "steps": [
+            "Edit ~/.codex/config.toml and add the server as below.",
+            "In the terminal, run codex mcp login corvo and approve access in the browser."
+          ]
+        },
+        "windsurf": {
+          "name": "Windsurf",
+          "steps": [
+            "Open ~/.codeium/windsurf/mcp_config.json.",
+            "Add the server as below and save.",
+            "Refresh the MCP list and authorize access when the browser opens."
+          ]
+        },
+        "other": {
+          "name": "Other",
+          "steps": [
+            "Use any MCP client that supports remote (HTTP) servers and OAuth.",
+            "Enter the server URL above. The client handles the login on its own."
+          ]
+        }
+      }
+    },
+    "connections": {
+      "title": "Connected apps",
+      "adminHint": "As an admin you can see and revoke every member's connections.",
+      "emptyTitle": "No agent connected",
+      "emptyBody": "When you approve an agent it shows up here, with its usage and a way to revoke it.",
+      "app": "App",
+      "workspace": "Workspace",
+      "permissions": "Permissions",
+      "connected": "Connected",
+      "lastUsed": "Last used",
+      "usage": "Usage",
+      "status": "Status",
+      "neverUsed": "Never used",
+      "usageValue": "{calls} calls · {invoices} invoices issued",
+      "owner": "by {email}",
+      "you": "you",
+      "active": "Active",
+      "revoked": "Revoked",
+      "revoke": "Revoke",
+      "confirmTitle": "Revoke access?",
+      "confirmBody": "{name} loses access right away and has to be approved again to come back.",
+      "confirm": "Revoke",
+      "cancel": "Cancel",
+      "revokedToast": "Access revoked.",
+      "scopes": {
+        "nfse:read": "Query and download invoices",
+        "nfse:write": "Issue invoices"
+      },
+      "errors": {
+        "loadFailed": "Could not load the connections.",
+        "revokeFailed": "Could not revoke access."
+      },
+      "envTest": "Test",
+      "envLive": "Production"
+    }
+  },
+  "McpAuthorize": {
+    "loading": "Loading…",
+    "wants": "{name} wants to access your Corvo account",
+    "returnTo": "After you decide, you go back to {host}.",
+    "canDo": "This agent will be able to:",
+    "workspace": "Workspace",
+    "workspaceBlocked": "Your role in this workspace does not allow these permissions.",
+    "manage": "You can revoke access at any time under AI agents.",
+    "allow": "Allow",
+    "deny": "Deny",
+    "allowedTitle": "Connected!",
+    "allowedBody": "You can go back to your agent now.",
+    "allowedHint": "If nothing happens, use the button below.",
+    "open": "Back to the agent",
+    "deniedTitle": "Access denied",
+    "deniedBody": "No permission was granted.",
+    "goDashboard": "Go to the dashboard",
+    "scopes": {
+      "nfse:read": "Query and download invoices",
+      "nfse:write": "Issue invoices"
+    },
+    "errors": {
+      "invalid": "Invalid or expired authorization link. Go back to the agent and try connecting again.",
+      "generic": "Could not complete this. Please try again.",
+      "forbidden": "Your role in this workspace cannot grant these permissions."
+    },
+    "environment": "Environment",
+    "envTest": "Test",
+    "envTestHint": "Invoices with no fiscal value. Good to start and validate.",
+    "envLive": "Production",
+    "envLiveHint": "Real invoices, with fiscal value and credit usage."
   }
 }

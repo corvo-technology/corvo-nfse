@@ -58,23 +58,32 @@ export interface MintedToken {
  */
 export async function mintToken(
   app: INestApplication,
-  params: { authUserId: string; tenantId: string; scopes: string },
+  params: {
+    authUserId: string;
+    tenantId: string;
+    scopes: string;
+    /** One connection exists per user, workspace and client; use another client for a second token. */
+    clientId?: string;
+    environment?: 'test' | 'live';
+  },
 ): Promise<MintedToken> {
   const mcpAuth = app.get(McpAuthService);
+  const clientId = params.clientId ?? MCP_CLIENT_ID;
   const { verifier, challenge } = pkcePair();
   const code = await mcpAuth.createAuthorizationCode({
-    clientId: MCP_CLIENT_ID,
+    clientId,
     userId: params.authUserId,
     tenantId: params.tenantId,
     redirectUri: MCP_REDIRECT_URI,
     scope: params.scopes,
     codeChallenge: challenge,
     codeChallengeMethod: 'S256',
+    environment: params.environment,
   });
   const tokens = await mcpAuth.exchangeCode({
     code,
     codeVerifier: verifier,
-    clientId: MCP_CLIENT_ID,
+    clientId,
     redirectUri: MCP_REDIRECT_URI,
   });
   const payload = decodeJwtPayload(tokens.accessToken);

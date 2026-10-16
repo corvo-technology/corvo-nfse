@@ -28,6 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     "/app/invoices/new": t("Invoices.newTitle"),
     "/app/webhooks": t("Webhooks.title"),
     "/app/api-keys": t("ApiKeys.title"),
+    "/app/agents": t("Agents.title"),
     "/app/billing": t("Billing.title"),
     "/app/members": t("Members.title"),
     "/app/settings": t("Settings.title"),

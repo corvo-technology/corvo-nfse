@@ -65,7 +65,8 @@
       "settings": "Configurações",
       "companies": "Empresas",
       "invoices": "Notas fiscais",
-      "billing": "Plano"
+      "billing": "Plano",
+      "agents": "Agentes de IA"
     },
     "account": "CONTA",
     "balance": "SALDO",
@@ -1756,5 +1757,154 @@
       "NONE_CONFIRMED": "Sem retenções (confirmado)",
       "CONFIGURED": "Alíquotas configuradas"
     }
+  },
+  "Agents": {
+    "title": "Agentes de IA",
+    "subtitle": "Conecte Claude, Cursor e outros agentes à Corvo para consultar e emitir notas por conversa.",
+    "setup": {
+      "title": "Como conectar",
+      "intro": "Adicione o servidor MCP da Corvo no seu agente. Ele abre o navegador para você entrar e aprovar o acesso, sem copiar chaves.",
+      "serverUrl": "URL do servidor MCP",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "tools": "O que o agente pode fazer",
+      "toolList": [
+        "Emitir uma nota fiscal (nfse_issue)",
+        "Consultar o status de uma nota (nfse_query)",
+        "Listar notas (nfse_list)",
+        "Baixar o PDF de uma nota autorizada (nfse_download_pdf)"
+      ],
+      "testNote": "Ao aprovar, você escolhe o ambiente: teste (notas sem valor fiscal) ou produção (notas reais, com consumo de créditos). Cada conexão fica em um ambiente; para trocar, reconecte o agente.",
+      "docs": "Ver documentação completa",
+      "clientsTitle": "Escolha seu agente",
+      "afterTitle": "O que acontece ao conectar",
+      "after": [
+        "O navegador abre na Corvo. Entre se ainda não estiver logado.",
+        "Escolha o workspace e o ambiente (teste ou produção) e clique em Permitir.",
+        "Volte ao agente: as ferramentas da Corvo já estão disponíveis."
+      ],
+      "clients": {
+        "claude-code": {
+          "name": "Claude Code",
+          "steps": [
+            "No terminal, adicione o servidor com o comando abaixo.",
+            "Dentro do Claude Code, digite /mcp, escolha corvo e selecione Authenticate."
+          ]
+        },
+        "claude-desktop": {
+          "name": "Claude Desktop",
+          "steps": [
+            "Abra Configurações → Conectores (Connectors).",
+            "Clique em Adicionar conector personalizado, informe um nome (Corvo) e cole a URL do servidor.",
+            "Clique em Conectar e aprove o acesso no navegador."
+          ]
+        },
+        "cursor": {
+          "name": "Cursor",
+          "steps": [
+            "Abra ou crie o arquivo .cursor/mcp.json (no projeto) ou ~/.cursor/mcp.json (global).",
+            "Adicione o servidor como abaixo e salve.",
+            "Em Configurações → MCP, clique em Connect ao lado de corvo."
+          ]
+        },
+        "vscode": {
+          "name": "VS Code",
+          "steps": [
+            "Crie o arquivo .vscode/mcp.json no projeto.",
+            "Adicione o servidor como abaixo e salve.",
+            "Clique em Start acima do servidor corvo e aprove o acesso."
+          ]
+        },
+        "codex": {
+          "name": "Codex",
+          "steps": [
+            "Edite o arquivo ~/.codex/config.toml e adicione o servidor como abaixo.",
+            "No terminal, rode codex mcp login corvo e aprove o acesso no navegador."
+          ]
+        },
+        "windsurf": {
+          "name": "Windsurf",
+          "steps": [
+            "Abra ~/.codeium/windsurf/mcp_config.json.",
+            "Adicione o servidor como abaixo e salve.",
+            "Atualize a lista de MCPs e autorize o acesso quando o navegador abrir."
+          ]
+        },
+        "other": {
+          "name": "Outro",
+          "steps": [
+            "Use qualquer cliente MCP com suporte a servidor remoto (HTTP) e OAuth.",
+            "Informe a URL do servidor acima. O cliente cuida do login sozinho."
+          ]
+        }
+      }
+    },
+    "connections": {
+      "title": "Aplicativos conectados",
+      "adminHint": "Como administrador, você vê e pode revogar as conexões de todos os membros.",
+      "emptyTitle": "Nenhum agente conectado",
+      "emptyBody": "Quando você aprovar um agente, ele aparece aqui, com o uso e a opção de revogar.",
+      "app": "Aplicativo",
+      "workspace": "Workspace",
+      "permissions": "Permissões",
+      "connected": "Conectado",
+      "lastUsed": "Último uso",
+      "usage": "Uso",
+      "status": "Status",
+      "neverUsed": "Nunca usado",
+      "usageValue": "{calls} chamadas · {invoices} notas emitidas",
+      "owner": "por {email}",
+      "you": "você",
+      "active": "Ativo",
+      "revoked": "Revogado",
+      "revoke": "Revogar",
+      "confirmTitle": "Revogar acesso?",
+      "confirmBody": "{name} perde o acesso agora e precisa ser aprovado de novo para voltar.",
+      "confirm": "Revogar",
+      "cancel": "Cancelar",
+      "revokedToast": "Acesso revogado.",
+      "scopes": {
+        "nfse:read": "Consultar e baixar notas",
+        "nfse:write": "Emitir notas"
+      },
+      "errors": {
+        "loadFailed": "Não foi possível carregar as conexões.",
+        "revokeFailed": "Não foi possível revogar o acesso."
+      },
+      "envTest": "Teste",
+      "envLive": "Produção"
+    }
+  },
+  "McpAuthorize": {
+    "loading": "Carregando…",
+    "wants": "{name} quer acessar sua conta Corvo",
+    "returnTo": "Depois de decidir, você volta para {host}.",
+    "canDo": "Este agente poderá:",
+    "workspace": "Workspace",
+    "workspaceBlocked": "Seu papel neste workspace não permite estas permissões.",
+    "manage": "Você pode revogar o acesso a qualquer momento em Agentes de IA.",
+    "allow": "Permitir",
+    "deny": "Negar",
+    "allowedTitle": "Conectado!",
+    "allowedBody": "Você já pode voltar ao seu agente.",
+    "allowedHint": "Se nada acontecer, use o botão abaixo.",
+    "open": "Voltar ao agente",
+    "deniedTitle": "Acesso negado",
+    "deniedBody": "Nenhuma permissão foi concedida.",
+    "goDashboard": "Ir para o painel",
+    "scopes": {
+      "nfse:read": "Consultar e baixar notas fiscais",
+      "nfse:write": "Emitir notas fiscais"
+    },
+    "errors": {
+      "invalid": "Link de autorização inválido ou expirado. Volte ao agente e tente conectar de novo.",
+      "generic": "Não foi possível concluir. Tente novamente.",
+      "forbidden": "Seu papel neste workspace não permite conceder estas permissões."
+    },
+    "environment": "Ambiente",
+    "envTest": "Teste",
+    "envTestHint": "Notas sem valor fiscal. Bom para começar e validar.",
+    "envLive": "Produção",
+    "envLiveHint": "Notas reais, com valor fiscal e consumo de créditos."
   }
 }

@@ -58,4 +58,13 @@ export class McpConnectionOrmEntity {
 
   @Column({ name: 'last_used_at', type: 'timestamptz', nullable: true })
   lastUsedAt!: Date | null;
+
+  @Column({ type: 'text', default: 'test' })
+  environment!: 'test' | 'live';
+
+  @Column({ name: 'tool_calls_count', type: 'integer', default: 0 })
+  toolCallsCount!: number;
+
+  @Column({ name: 'invoices_issued_count', type: 'integer', default: 0 })
+  invoicesIssuedCount!: number;
 }

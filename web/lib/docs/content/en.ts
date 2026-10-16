@@ -2084,5 +2084,137 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         },
       ],
     },
+    "mcp": {
+      "title": "AI agents (MCP)",
+      "description": "Connect Claude Code, Cursor and other agents to Corvo with OAuth.",
+      "blocks": [
+        {
+          "kind": "text",
+          "body": "The Corvo MCP server lets AI agents (Claude Code, Cursor and other MCP clients) issue and query NFS-e on behalf of a user, without you writing an integration. The agent connects with OAuth: it opens the browser, you sign in to Corvo, pick the workspace and approve. No API key is copied."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Connect an agent"
+        },
+        {
+          "kind": "text",
+          "body": "Use the server URL below. It also appears in the dashboard under AI agents, with ready-to-copy commands."
+        },
+        {
+          "kind": "code",
+          "label": "Claude Code",
+          "language": "bash",
+          "code": "claude mcp add --transport http corvo https://api.corvo.tech/mcp"
+        },
+        {
+          "kind": "code",
+          "label": "Cursor (.cursor/mcp.json)",
+          "language": "json",
+          "code": "{\n  \"mcpServers\": {\n    \"corvo\": {\n      \"url\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Add the server to the agent with the URL `https://api.corvo.tech/mcp`.",
+            "The agent opens the browser on the Corvo approval screen. If you are not signed in, sign in first; you then return to the approval.",
+            "Pick the workspace and click Allow (or Deny).",
+            "Go back to the agent. It now has the Corvo tools."
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "body": "When you approve, you choose the connection environment: `test` (invoices with no fiscal value) or `live` (real invoices, using credits). Each connection stays in one environment; to switch, reconnect the agent. Start with test."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Permissions"
+        },
+        {
+          "kind": "table",
+          "head": [
+            "Scope",
+            "What it allows",
+            "Roles that can grant it"
+          ],
+          "rows": [
+            [
+              "`nfse:read`",
+              "Query, list and download the PDF of invoices",
+              "admin, developer, billing"
+            ],
+            [
+              "`nfse:write`",
+              "Issue invoices",
+              "admin, developer"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "body": "A member can only approve scopes that their own role in the workspace allows. A workspace where your role does not cover the request appears disabled on the approval screen."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Tools"
+        },
+        {
+          "kind": "table",
+          "head": [
+            "Tool",
+            "Scope",
+            "Main input",
+            "Output"
+          ],
+          "rows": [
+            [
+              "`nfse_issue`",
+              "`nfse:write`",
+              "`company_id`, `customer {name, tax_id, email?}`, `services [{description, quantity, unit_price}]`, `competence_date`, `service_code?`, `idempotency_key?`",
+              "`{ invoice_id, access_key, status }`"
+            ],
+            [
+              "`nfse_query`",
+              "`nfse:read`",
+              "`access_key`",
+              "`{ access_key, status, nfse_number, authorized_at, last_error }`"
+            ],
+            [
+              "`nfse_list`",
+              "`nfse:read`",
+              "`status?`, `limit?`, `cursor?`",
+              "`{ invoices, next_cursor }`"
+            ],
+            [
+              "`nfse_download_pdf`",
+              "`nfse:read`",
+              "`access_key` (authorized invoice)",
+              "`{ access_key, pdf_base64 }`"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "body": "The same fiscal rules as the REST API apply to `nfse_issue`. Tool failures come back as a result with `isError: true` and the message as text, so the agent can read and fix them."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "See usage and revoke"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "In the dashboard, open AI agents → Connected apps: you see each agent, the workspace, the permissions, the last use and how many calls and invoices it made.",
+            "Click Revoke to cut access immediately. The agent has to be approved again to come back.",
+            "Workspace admins see and can revoke every member's connections; other members see only their own.",
+            "Reconnecting the same agent reuses the connection and revokes the previous session."
+          ]
+        }
+      ]
+    },
   },
 };
