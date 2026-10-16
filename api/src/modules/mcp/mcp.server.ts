@@ -9,25 +9,44 @@ export interface ToolDefinition {
 // MCP JSON-RPC request types
 export interface McpRequest {
   jsonrpc: '2.0';
-  id: number | string;
+  /** Absent on notifications, which never get a response. */
+  id?: number | string;
   method: string;
   params?: Record<string, unknown>;
 }
 
 export interface McpResponse {
   jsonrpc: '2.0';
-  id: number | string;
+  id: number | string | null;
   result?: unknown;
   error?: { code: number; message: string; data?: unknown };
 }
 
-// Server metadata (returned on initialize)
+/** Protocol revisions this server speaks, newest first. */
+export const MCP_SUPPORTED_PROTOCOL_VERSIONS = [
+  '2025-06-18',
+  '2025-03-26',
+  '2024-11-05',
+] as const;
+
 export const MCP_SERVER_INFO = {
   name: 'corvo-nfse',
   version: '1.0.0',
-  protocolVersion: '2024-11-05',
-  capabilities: { tools: {} },
 } as const;
+
+/** Picks the client's protocol version when supported, otherwise our newest. */
+export function negotiateProtocolVersion(requested: unknown): string {
+  return (
+    MCP_SUPPORTED_PROTOCOL_VERSIONS.find((v) => v === requested) ??
+    MCP_SUPPORTED_PROTOCOL_VERSIONS[0]
+  );
+}
+
+function isJsonRpcRequest(value: unknown): value is McpRequest {
+  if (typeof value !== 'object' || value === null) return false;
+  const message = value as Partial<McpRequest>;
+  return message.jsonrpc === '2.0' && typeof message.method === 'string';
+}
 
 type ToolHandler = (params: unknown, ctx: AuthContext) => Promise<unknown>;
 
@@ -53,42 +72,104 @@ export class McpServer {
     }));
   }
 
-  async handleRequest(request: McpRequest, authContext: AuthContext): Promise<McpResponse> {
+  /**
+   * Handles one JSON-RPC message. Returns `null` for notifications (no `id`),
+   * which per the spec must not be answered.
+   */
+  async handleRequest(
+    request: McpRequest,
+    authContext: AuthContext,
+  ): Promise<McpResponse | null> {
+    if (!isJsonRpcRequest(request)) {
+      return {
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32600, message: 'Invalid Request' },
+      };
+    }
+    if (request.id === undefined || request.id === null) return null;
+    const id = request.id;
     try {
-      switch (request.method) {
-        case 'initialize':
-          return { jsonrpc: '2.0', id: request.id, result: { ...MCP_SERVER_INFO } };
-        case 'tools/list':
-          return { jsonrpc: '2.0', id: request.id, result: { tools: this.getToolDefinitions() } };
-        case 'tools/call':
-          return this.handleToolCall(request, authContext);
-        case 'ping':
-          return { jsonrpc: '2.0', id: request.id, result: {} };
-        default:
-          return { jsonrpc: '2.0', id: request.id, error: { code: -32601, message: 'Method not found' } };
-      }
+      return await this.dispatch(request, id, authContext);
     } catch (err) {
       return {
         jsonrpc: '2.0',
-        id: request.id,
+        id,
         error: { code: -32603, message: 'Internal error', data: String(err) },
       };
     }
   }
 
-  private async handleToolCall(request: McpRequest, ctx: AuthContext): Promise<McpResponse> {
-    const { name, arguments: args } = request.params as { name: string; arguments?: unknown };
+  private dispatch(
+    request: McpRequest,
+    id: number | string,
+    authContext: AuthContext,
+  ): Promise<McpResponse> | McpResponse {
+    switch (request.method) {
+      case 'initialize':
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: {
+            protocolVersion: negotiateProtocolVersion(
+              request.params?.protocolVersion,
+            ),
+            capabilities: { tools: {} },
+            serverInfo: { ...MCP_SERVER_INFO },
+          },
+        };
+      case 'tools/list':
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: { tools: this.getToolDefinitions() },
+        };
+      case 'tools/call':
+        return this.handleToolCall(request, authContext);
+      case 'ping':
+        return { jsonrpc: '2.0', id, result: {} };
+      default:
+        return {
+          jsonrpc: '2.0',
+          id,
+          error: { code: -32601, message: 'Method not found' },
+        };
+    }
+  }
+
+  private async handleToolCall(
+    request: McpRequest,
+    ctx: AuthContext,
+  ): Promise<McpResponse> {
+    const id = request.id as number | string;
+    const { name, arguments: args } = request.params as {
+      name: string;
+      arguments?: unknown;
+    };
     const tool = this.tools.get(name);
     if (!tool) {
-      return { jsonrpc: '2.0', id: request.id, error: { code: -32601, message: `Tool '${name}' not found` } };
+      return {
+        jsonrpc: '2.0',
+        id,
+        error: { code: -32601, message: `Tool '${name}' not found` },
+      };
     }
     try {
       const result = await tool.handler(args ?? {}, ctx);
-      return { jsonrpc: '2.0', id: request.id, result: { content: [{ type: 'text', text: JSON.stringify(result) }] } };
+      return {
+        jsonrpc: '2.0',
+        id,
+        result: { content: [{ type: 'text', text: JSON.stringify(result) }] },
+      };
     } catch (err) {
       // MCP reports tool failures as a normal result with isError so the agent can read and react to them.
-      const message = err instanceof Error ? err.message : 'Tool execution failed';
-      return { jsonrpc: '2.0', id: request.id, result: { isError: true, content: [{ type: 'text', text: message }] } };
+      const message =
+        err instanceof Error ? err.message : 'Tool execution failed';
+      return {
+        jsonrpc: '2.0',
+        id,
+        result: { isError: true, content: [{ type: 'text', text: message }] },
+      };
     }
   }
 }
