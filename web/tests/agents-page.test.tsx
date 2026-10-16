@@ -66,7 +66,17 @@ describe("AI agents page", () => {
     expect(cells.length).toBeGreaterThan(0);
     expect(screen.getAllByText("12 calls · 3 invoices issued").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Never used").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Query and download invoices, Issue invoices").length).toBeGreaterThan(0);
+    // Permissions are compact chips; the full wording stays in the tooltip and for screen readers.
+    expect(screen.getAllByText("Read").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Issue").length).toBeGreaterThan(0);
+    expect(screen.getAllByTitle("Query and download invoices").length).toBeGreaterThan(0);
+    expect(screen.getAllByTitle("Issue invoices").length).toBeGreaterThan(0);
+  });
+
+  it("pluralizes the usage line", async () => {
+    mocks.connections.mockResolvedValue(page([row({ tool_calls: 1, invoices_issued: 1 })]));
+    renderPage();
+    expect((await screen.findAllByText("1 call · 1 invoice issued")).length).toBeGreaterThan(0);
   });
 
   it("marks production connections so they stand out", async () => {
@@ -94,7 +104,7 @@ describe("AI agents page", () => {
     mocks.connections.mockResolvedValue(page([row({ id: "c2", mine: false, owner_email: "dev@acme.test" })]));
     renderPage();
     await screen.findByText("As an admin you can see and revoke every member's connections.");
-    expect(screen.getAllByText("by dev@acme.test").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/by dev@acme\.test/).length).toBeGreaterThan(0);
   });
 
   it("shows a retryable error when the list cannot be loaded", async () => {

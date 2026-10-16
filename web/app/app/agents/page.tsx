@@ -6,16 +6,15 @@ import { Bot, Check, Copy } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { collectAll, mcp, type McpConnection } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatDate, timeAgo } from "@/lib/i18n-helpers";
 import { MCP_SERVER_URL } from "@/lib/mcp-config";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CodeBlock } from "@/components/ui/code-block";
-import { DataTable, DataTableSkeleton, type Column } from "@/components/ui/data-table";
+import { DataTableSkeleton } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Modal } from "@/components/ui/modal";
+import { CONNECTION_GRID, ConnectionRow } from "@/components/agents/connection-row";
 import { PageHeader } from "@/components/ui/page-header";
 import { useToast } from "@/components/ui/toast";
 
@@ -185,30 +184,6 @@ export default function AgentsPage() {
     }
   };
 
-  const scopeLabel = (scope: string) => (t.has(`connections.scopes.${scope}`) ? t(`connections.scopes.${scope}`) : scope);
-  const columns: Column<McpConnection>[] = [
-    {
-      id: "app", header: t("connections.app"), primary: true,
-      cell: (row) => (
-        <span className="flex flex-col">
-          <span className="flex items-center gap-2 font-medium">{row.client_name}<Badge variant={row.environment === "live" ? "warn" : "gray"} dot={false}>{t(row.environment === "live" ? "connections.envLive" : "connections.envTest")}</Badge></span>
-          {row.owner_email && !row.mine && <span className="text-[12px] text-text-3">{t("connections.owner", { email: row.owner_email })}</span>}
-          {row.mine && isAdmin && <span className="text-[12px] text-text-3">{t("connections.you")}</span>}
-        </span>
-      ),
-    },
-    { id: "workspace", header: t("connections.workspace"), cell: (row) => row.tenant_name || "—", hideOnMobile: true },
-    { id: "permissions", header: t("connections.permissions"), cell: (row) => row.scopes.map(scopeLabel).join(", ") },
-    { id: "connected", header: t("connections.connected"), cell: (row) => formatDate(row.granted_at, locale), hideOnMobile: true },
-    { id: "lastUsed", header: t("connections.lastUsed"), cell: (row) => (row.last_used_at ? timeAgo(row.last_used_at, tc) : t("connections.neverUsed")) },
-    { id: "usage", header: t("connections.usage"), cell: (row) => t("connections.usageValue", { calls: row.tool_calls, invoices: row.invoices_issued }) },
-    { id: "status", header: t("connections.status"), cell: (row) => <Badge variant={row.revoked ? "gray" : "accent"}>{row.revoked ? t("connections.revoked") : t("connections.active")}</Badge> },
-    {
-      id: "actions", header: "", align: "right", action: true,
-      cell: (row) => (row.revoked ? null : <Button variant="danger" size="sm" onClick={() => setTarget(row)}>{t("connections.revoke")}</Button>),
-    },
-  ];
-
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
@@ -226,7 +201,17 @@ export default function AgentsPage() {
         ) : items.length === 0 ? (
           <EmptyState icon={Bot} title={t("connections.emptyTitle")} description={t("connections.emptyBody")} />
         ) : (
-          <DataTable columns={columns} rows={items} rowKey={(row) => row.id} caption={t("connections.title")} />
+          <div className="@container">
+            <div aria-hidden className={cn("eyebrow hidden gap-x-6 border-b border-border px-5 py-2.5 @4xl:grid", CONNECTION_GRID)}>
+              <span>{t("connections.app")}</span>
+              <span>{t("connections.permissions")}</span>
+              <span>{t("connections.activity")}</span>
+              <span />
+            </div>
+            <ul aria-label={t("connections.title")} className="divide-y divide-border">
+              {items.map((row) => <ConnectionRow key={row.id} row={row} isAdmin={isAdmin} locale={locale} onRevoke={setTarget} />)}
+            </ul>
+          </div>
         )}
       </Card>
 

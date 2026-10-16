@@ -714,6 +714,8 @@
           "nfse": "Emissão de NFS-e via API",
           "companies": "1 empresa",
           "dailyLimit": "3 notas por dia",
+          "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
           "downloads": "Download XML e PDF"
         }
@@ -728,6 +730,7 @@
           "nfse": "Emissão de NFS-e via API",
           "companies": "Até 10 empresas",
           "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
           "downloads": "Download XML e PDF"
         }
@@ -742,6 +745,7 @@
           "nfse": "Emissão de NFS-e via API",
           "companies": "Até 50 empresas",
           "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
           "downloads": "Download XML e PDF"
         }
@@ -756,6 +760,7 @@
           "nfse": "Emissão de NFS-e via API",
           "companies": "Até 500 empresas",
           "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
           "downloads": "Download XML e PDF"
         }
@@ -770,6 +775,7 @@
           "nfse": "Emissão de NFS-e via API",
           "companies": "Empresas ilimitadas",
           "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
           "downloads": "Download XML e PDF"
         }
@@ -795,7 +801,12 @@
     },
     "effective": "Custo efetivo:",
     "perNoteShort": "por nota",
-    "currentPlan": "Seu plano"
+    "currentPlan": "Seu plano",
+    "included": {
+      "label": "Todos os planos incluem",
+      "mcp": "MCP para agentes de IA",
+      "email": "Envio da nota por e-mail"
+    }
   },
   "Flow": {
     "eyebrow": "COMO FUNCIONA",
@@ -1847,14 +1858,8 @@
       "emptyTitle": "Nenhum agente conectado",
       "emptyBody": "Quando você aprovar um agente, ele aparece aqui, com o uso e a opção de revogar.",
       "app": "Aplicativo",
-      "workspace": "Workspace",
       "permissions": "Permissões",
-      "connected": "Conectado",
-      "lastUsed": "Último uso",
-      "usage": "Uso",
-      "status": "Status",
       "neverUsed": "Nunca usado",
-      "usageValue": "{calls} chamadas · {invoices} notas emitidas",
       "owner": "por {email}",
       "you": "você",
       "active": "Ativo",
@@ -1874,7 +1879,14 @@
         "revokeFailed": "Não foi possível revogar o acesso."
       },
       "envTest": "Teste",
-      "envLive": "Produção"
+      "envLive": "Produção",
+      "activity": "Atividade",
+      "scopesShort": {
+        "nfse:read": "Leitura",
+        "nfse:write": "Emissão"
+      },
+      "usageCompact": "{calls, plural, one {# chamada} other {# chamadas}} · {invoices, plural, one {# nota emitida} other {# notas emitidas}}",
+      "connectedOn": "Conectado em {date}"
     }
   },
   "McpAuthorize": {
