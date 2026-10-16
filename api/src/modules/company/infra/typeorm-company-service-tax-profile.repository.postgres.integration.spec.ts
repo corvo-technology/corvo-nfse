@@ -115,6 +115,10 @@ describePostgres(
       await new RlsConnectionScopeService(runtime).onModuleInit();
       repository = new TypeOrmCompanyServiceTaxProfileRepository(runtime);
     }, 60000);
+    // Rows created by one test must not leak into the effective-date queries of the next.
+    afterEach(async () => {
+      await admin.query(`DELETE FROM ${table('company_service_tax_profiles')}`);
+    });
     afterAll(async () => {
       if (runtime?.isInitialized) await runtime.destroy();
       if (admin?.isInitialized) {
