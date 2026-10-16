@@ -130,6 +130,34 @@ emission credits consumed. The external tax engine is called Calculadora RTC;
 calculate is the pre-emission endpoint. See docs/fiscal/examples.md and
 api/FRONTEND_API.md for requests/responses/errors and prerequisites.
 
+## Company creation and fiscal setup
+
+POST /v1/companies requires legalName, taxId (CNPJ), taxRegime (MEI | Simples
+Nacional | Lucro Presumido | Lucro Real) and municipalityCode (7-digit IBGE).
+municipalReg is required in live. defaultServiceCode (6-digit cTribNac),
+simpleNational (defaults from the regime), specialRegime, tradeName and address
+are optional. The regime is not stored on the company: the request creates the
+first company_fiscal_profiles row, valid from today and already approved by the
+caller (user or API key, reviewedBy); declaring the regime is the confirmation.
+Company responses read taxRegime, simpleNational and specialRegime from the open
+profile (taxRegime null when none). For MEI and Simples Nacional the flow is:
+POST /companies, upload the certificate, POST /invoices. No service tax profile
+is needed without a customer or with a CPF customer (classification falls back to
+the official catalog by service.code). With a CNPJ customer the federal
+withholding needs the service withholdingPolicy: without a service tax profile
+the calculation is blocked with TAX_APPLICABILITY_UNKNOWN and pending field
+service.withholdingPolicy; create and approve a profile with NONE_CONFIRMED or
+CONFIGURED. The profile is also required when the regime needs IBS/CBS or
+configured ISS (FISCAL_CLASSIFICATION_REQUIRED lists the missing fields). setupGaps =
+municipality_code | municipal_registration (live) | certificate. Advanced and
+optional: PUT .../fiscal-profile (confirm:true approves), POST
+.../fiscal-profile/{profileId}/approve, POST .../service-tax-profiles and
+.../service-tax-profiles/{id}/approve. In live an existing unreviewed or rejected
+service profile or fiscal profile is rejected with FISCAL_REVIEW_REQUIRED.
+Approved service profiles are immutable (409 immutable_approved_profile); DELETE
+only removes expired, unapproved ones. A PATCH that changes the regime on the day
+the profile started returns 409 profile_validity_conflict.
+
 ## Fiscal profile API and telemetry
 
 GET/PUT /v1/companies/{id}/fiscal-profile; POST

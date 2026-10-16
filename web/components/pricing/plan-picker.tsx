@@ -29,7 +29,7 @@ const DEFAULT_VOLUME = 500;
 const THUMB = 22;
 
 export const PLANS: PlanTier[] = [
-  { slug: "free", credits: 30, basePriceCents: 0, perCreditCents: 0 },
+  { slug: "free", credits: 15, basePriceCents: 0, perCreditCents: 0 },
   { slug: "developer", credits: 200, basePriceCents: 2990, perCreditCents: 15 },
   { slug: "growth", credits: 750, basePriceCents: 8990, perCreditCents: 12 },
   { slug: "scale", credits: 2500, basePriceCents: 24990, perCreditCents: 10 },
@@ -67,7 +67,7 @@ export function findPlanForVolume(volume: number): PlanTier {
   );
 }
 
-/* Slider position (0–1000) ↔ volume, log scale so 30 and 50.000 are both easy to reach. */
+/* Slider position (0–1000) ↔ volume, log scale so 15 and 50.000 are both easy to reach. */
 const LOG_MAX = Math.log(MAX_VOLUME / MIN_VOLUME);
 
 function posToVolume(pos: number): number {

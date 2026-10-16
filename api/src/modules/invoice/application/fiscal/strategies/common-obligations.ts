@@ -32,7 +32,17 @@ export interface CommonObligations {
 function federalWithholdingObligation(
   customer: FiscalCustomer | null,
   classification: ServiceTaxClassification,
+  regime: CompanyFiscalProfile['taxRegime'],
 ): Obligation {
+  // Payments to Simples Nacional/MEI optants are not subject to IRRF or
+  // PIS/COFINS/CSLL withholding by the customer (IN RFB 1.234/2012, art. 4, XI).
+  if (regime === 'MEI' || regime === 'SIMPLES_NACIONAL') {
+    return {
+      status: 'NOT_APPLICABLE',
+      reason:
+        'no federal withholding on payments to Simples Nacional/MEI optants (IN RFB 1.234/2012, art. 4, XI)',
+    };
+  }
   if (customer === null || customer.kind === 'CPF') {
     return {
       status: 'NOT_APPLICABLE',
@@ -96,6 +106,7 @@ export function commonObligations(
   const federalWithholding = federalWithholdingObligation(
     invoice.customer,
     classification,
+    profile.taxRegime,
   );
 
   const customerRequired = !allowsAnonymousCustomer({

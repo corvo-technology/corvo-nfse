@@ -190,13 +190,13 @@ describe('TenantPlanAssignment', () => {
         ...baseProps,
         plan: createPlan({
           slug: 'free',
-          monthlyCreditAllowance: 30,
+          monthlyCreditAllowance: 15,
           maxActiveCompanies: 1,
         }),
       };
       const a = TenantPlanAssignment.reconstitute(freeProps);
       expect(a.plan.isFree()).toBe(true);
-      expect(a.plan.monthlyCreditAllowance).toBe(30);
+      expect(a.plan.monthlyCreditAllowance).toBe(15);
     });
   });
 

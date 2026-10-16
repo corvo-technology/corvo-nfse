@@ -335,6 +335,10 @@
           "email_failed": {
             "label": "Falha no e-mail",
             "description": "O envio do e-mail da nota falhou."
+          },
+          "fiscal_discrepancy": {
+            "label": "Divergência fiscal",
+            "description": "A nota autorizada difere dos tributos calculados."
           }
         }
       }
@@ -610,10 +614,10 @@
         "desc": "Respostas estruturadas, exemplos em Node, Python e Go."
       }
     },
-    "freeCreditsTag": "30 NOTAS GRÁTIS POR MÊS",
+    "freeCreditsTag": "15 NOTAS GRÁTIS POR MÊS",
     "headline": "Da primeira emissão à nota fiscal em minutos.",
     "afterSignup": "APÓS O CADASTRO",
-    "footerNote": "Sem cartão de crédito. Sem contrato. 30 notas grátis para começar.",
+    "footerNote": "Sem cartão de crédito. Sem contrato. 15 notas grátis para começar.",
     "magicLink": {
       "sendCode": "Enviar código",
       "sending": "Enviando...",
@@ -651,7 +655,7 @@
     "subtitle": "Emita NFS-e, gerencie múltiplas empresas, envie documentos por e-mail e automatize seu fluxo fiscal com uma única API.",
     "startFree": "Começar grátis",
     "viewDocs": "Ver documentação",
-    "mono": "30 notas grátis por mês. Sem cartão de crédito."
+    "mono": "15 notas grátis por mês. Sem cartão de crédito."
   },
   "Nav": {
     "product": "Produto",
@@ -666,9 +670,9 @@
   },
   "FreeTrial": {
     "eyebrow": "COMEÇAR GRÁTIS",
-    "title": "30 notas fiscais grátis por mês",
+    "title": "15 notas fiscais grátis por mês",
     "subtitle": "Sem cartão de crédito.",
-    "description": "Integre a emissão de NFS-e ao seu produto com até 30 notas autorizadas por mês, para uma empresa. A cota renova no primeiro dia de cada mês.",
+    "description": "Integre a emissão de NFS-e ao seu produto com até 15 notas autorizadas por mês, para uma empresa. A cota renova no primeiro dia de cada mês.",
     "startFree": "Começar grátis",
     "finePrint": "Limite de 3 emissões por dia em produção. Cotas em UTC, sem acúmulo. Testes não consomem a cota."
   },
@@ -696,7 +700,7 @@
       "porMes": "/mês",
       "free": {
         "label": "Plano gratuito",
-        "description": "30 notas por mês, limite de 3 por dia."
+        "description": "15 notas por mês, limite de 3 por dia."
       },
       "custom": {
         "label": "Fale conosco",
@@ -708,7 +712,7 @@
     "plans": {
       "free": {
         "name": "FREE",
-        "credits": "30",
+        "credits": "15",
         "price": "R$ 0",
         "unit": "",
         "bestFor": "Testar a API e validar a integração.",
@@ -869,7 +873,7 @@
     },
     "free": {
       "q": "Posso usar a Corvo gratuitamente?",
-      "a": "Sim. O Free inclui uma empresa e até 30 notas autorizadas em produção por mês, com limite de 3 por dia. A cota renova no primeiro dia do mês e os limites seguem UTC. Não é necessário cartão de crédito; notas de teste não consomem essa cota."
+      "a": "Sim. O Free inclui uma empresa e até 15 notas autorizadas em produção por mês, com limite de 3 por dia. A cota renova no primeiro dia do mês e os limites seguem UTC. Não é necessário cartão de crédito; notas de teste não consomem essa cota."
     },
     "multiCompany": {
       "q": "Posso gerenciar várias empresas?",
@@ -910,7 +914,7 @@
     "description": "Uma integração para automatizar a emissão de NFS-e e acompanhar o crescimento do seu produto.",
     "ctaPrimary": "Começar grátis",
     "ctaSecondary": "Explorar API",
-    "subtext": "30 notas gratuitas por mês para começar."
+    "subtext": "15 notas gratuitas por mês para começar."
   },
   "Footer": {
     "brand": "© Corvo. Todos os direitos reservados.",
@@ -962,7 +966,7 @@
       },
       "s7": {
         "title": "7. Planos, cotas e renovação",
-        "content": "Os planos definem a cota mensal de notas, o limite de empresas ativas e os limites de uso apresentados na oferta e no painel. O Free permite uma empresa ativa e até 30 notas autorizadas em produção por mês, com limite de 3 por dia. Sua cota renova no primeiro dia de cada mês; os limites mensal e diário seguem UTC. Nos planos pagos, a cota acompanha o período mensal da assinatura informado no painel. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas não utilizadas não acumulam nem se convertem em dinheiro. Ao atingir um limite, novas solicitações podem ser bloqueadas até a renovação ou a contratação de capacidade compatível."
+        "content": "Os planos definem a cota mensal de notas, o limite de empresas ativas e os limites de uso apresentados na oferta e no painel. O Free permite uma empresa ativa e até 15 notas autorizadas em produção por mês, com limite de 3 por dia. Sua cota renova no primeiro dia de cada mês; os limites mensal e diário seguem UTC. Nos planos pagos, a cota acompanha o período mensal da assinatura informado no painel. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas não utilizadas não acumulam nem se convertem em dinheiro. Ao atingir um limite, novas solicitações podem ser bloqueadas até a renovação ou a contratação de capacidade compatível."
       },
       "s8": {
         "title": "8. Como o consumo e os excedentes são calculados",
@@ -1079,7 +1083,7 @@
     "empty": "Nenhuma empresa cadastrada.",
     "loadFailed": "Não foi possível carregar as empresas.",
     "status": {
-      "ready": "Pronta",
+      "ready": "Cadastro completo",
       "pending_setup": "Configuração pendente",
       "blocked": "Bloqueada"
     },
@@ -1092,6 +1096,29 @@
     "viewCompany": "Ver detalhes de {name}"
   },
   "Invoices": {
+    "calculate": {
+      "button": "Calcular tributos",
+      "calculating": "Calculando…",
+      "title": "Cálculo pré-emissão",
+      "ready": "Pronto para emitir",
+      "blocked": "Não dá para calcular ainda",
+      "net": "Valor líquido a receber",
+      "taxes": "Tributos",
+      "withholdings": "Retenções",
+      "noTaxes": "Sem tributos destacados neste cenário.",
+      "pending": "Falta informar",
+      "disclaimer": "Estimativa antes da emissão. Não é um documento fiscal e pode divergir da validação final da Sefin.",
+      "unavailable": "A calculadora de tributos está indisponível. Tente novamente em instantes.",
+      "failed": "Não foi possível calcular.",
+      "stale": "Os dados mudaram. Calcule novamente.",
+      "tax": {
+        "iss": "ISS",
+        "cbs": "CBS",
+        "ibsState": "IBS estadual",
+        "ibsCity": "IBS municipal",
+        "ibsTotal": "IBS total"
+      }
+    },
     "title": "Notas fiscais",
     "subtitle": "Histórico de notas emitidas, processadas e rejeitadas.",
     "new": "Nova nota",
@@ -1321,7 +1348,8 @@
       "company": "Empresa",
       "address": "Endereço",
       "fiscal": "Fiscal",
-      "certificate": "Certificado"
+      "certificate": "Certificado",
+      "review": "Revisão fiscal"
     },
     "stepHint": {
       "company": "Comece pelo CNPJ e pelo nome da empresa que vai emitir as notas.",
@@ -1348,9 +1376,16 @@
     "defaultServiceCode": "Código de serviço padrão",
     "municipalityInvalid": "Informe um código IBGE com exatamente 7 dígitos.",
     "municipalRegRequired": "Informe a inscrição municipal para cadastrar em produção.",
-    "serviceCodeInvalid": "O código de serviço deve ter exatamente 6 dígitos."
+    "serviceCodeInvalid": "O código de serviço deve ter exatamente 6 dígitos.",
+    "selectTaxRegime": "Selecione um regime tributário",
+    "regimeRequired": "Selecione o regime tributário da empresa.",
+    "regimeDerived": "A opção pelo Simples Nacional acompanha o regime selecionado.",
+    "editFiscalHint": "Revise o regime e as vigências em Configuração fiscal na página da empresa.",
+    "reviewNext": "Continuar para o certificado",
+    "openCompany": "Abrir empresa"
   },
   "CompanyDetail": {
+    "fiscalAdvanced": "Configuração fiscal avançada",
     "legalName": "Razão social",
     "taxRegime": "Regime tributário",
     "municipalReg": "Inscrição municipal",
@@ -1402,7 +1437,7 @@
       "title": "Finalize a configuração",
       "subtitle": "Confira o município fiscal e os requisitos para emitir no ambiente selecionado.",
       "progress": "{done} de {total}",
-      "complete": "Configuração completa. A empresa está pronta para emitir.",
+      "complete": "Cadastro básico completo. Confira a configuração fiscal abaixo antes de emitir em produção.",
       "requiredLive": "obrigatório em produção",
       "testNote": "Em teste, inscrição municipal e certificado são opcionais. O município fiscal deve estar cadastrado.",
       "items": {
@@ -1605,6 +1640,127 @@
         "title": "10. Transferências internacionais e contato",
         "content": "Quando o tratamento envolver transferência internacional, as partes devem observar os mecanismos e as garantias exigidos pela LGPD e pela regulamentação aplicável. Este Aditivo, por si só, não substitui as cláusulas-padrão ou outro instrumento exigido para uma transferência específica. Solicitações sobre instruções, fornecedores, medidas de segurança ou transferências devem ser enviadas para legal@corvo.tech."
       }
+    }
+  },
+  "CompanyFiscal": {
+    "title": "Configuração fiscal",
+    "intro": "Confira o perfil da empresa e os serviços usados nas notas. A configuração salva será verificada novamente para cada operação e competência.",
+    "date": "Data de competência",
+    "dateHint": "Mostra o perfil e os serviços vigentes nessa data. Não agenda nem emite uma nota.",
+    "loading": "Carregando configuração fiscal…",
+    "failed": "Não foi possível carregar a configuração fiscal.",
+    "retry": "Tentar novamente",
+    "noView": "Você precisa da permissão de consulta de empresas para ler a configuração fiscal.",
+    "profileTitle": "Perfil fiscal",
+    "servicesTitle": "Classificações dos serviços",
+    "profileMissing": "Não há perfil fiscal vigente nessa data.",
+    "profileAmbiguous": "Há perfis fiscais sobrepostos nessa data. Revise as vigências antes de emitir.",
+    "profilePending": "Perfil fiscal pendente de revisão",
+    "profileApproved": "Perfil fiscal aprovado",
+    "profileRejected": "Perfil fiscal rejeitado",
+    "missing": "Não configurado",
+    "yes": "Sim",
+    "no": "Não",
+    "noEnd": "Sem data final",
+    "regime": "Regime tributário",
+    "simpleNational": "Simples Nacional",
+    "specialRegime": "Código do regime especial",
+    "validFrom": "Vigente a partir de",
+    "validUntil": "Vigente até (exclusivo)",
+    "ibsOption": "Opção pelo IBS/CBS regular",
+    "ibsFrom": "Início da opção pelo IBS/CBS regular",
+    "history": "Histórico do perfil fiscal",
+    "future": "Vigência futura",
+    "source": "Origem",
+    "approvedAt": "Aprovado em",
+    "createProfile": "Adicionar perfil fiscal",
+    "editProfile": "Editar perfil fiscal",
+    "newPeriod": "Nova vigência",
+    "saveProfile": "Salvar perfil fiscal",
+    "immutableProfile": "Uma vigência fiscal aprovada não pode ser sobrescrita. Escolha uma data inicial posterior para criar uma nova vigência.",
+    "reviewProfile": "Revisar perfil fiscal",
+    "approveProfile": "Aprovar perfil fiscal",
+    "approveService": "Aprovar serviço",
+    "reviewService": "Revisar serviço",
+    "reviewServiceFor": "Revisar serviço {name}",
+    "reviewTitle": "Confira os dados fiscais salvos",
+    "reviewHint": "A aprovação confirma sua revisão dos valores abaixo. Ela não valida os catálogos oficiais nem garante a autorização.",
+    "acknowledge": "Revisei os dados fiscais apresentados.",
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "edit": "Editar",
+    "saveService": "Salvar serviço",
+    "addService": "Adicionar serviço",
+    "serviceSaved": "Classificação do serviço salva.",
+    "serviceEmpty": "Não há classificações de serviços salvas para essa competência.",
+    "serviceHint": "O MEI pode usar uma classificação parcial quando a operação permitir. Outros cenários podem exigir ISS, retenções e informações de IBS/CBS. Use a classificação confirmada para o seu serviço.",
+    "serviceDefault": "Serviço padrão: {code}",
+    "noDefault": "Nenhum serviço padrão definido. Cada nota deverá informar o código do serviço.",
+    "serviceMissing": "O serviço padrão não tem uma classificação salva aplicável nessa data.",
+    "serviceAmbiguous": "Mais de uma classificação corresponde ao serviço padrão. Resolva a sobreposição ou informe um serviceProfileId explícito na emissão.",
+    "serviceImmutable": "Serviços aprovados são somente leitura. Uma correção exige nova classificação; sobreposições devem ser resolvidas antes da emissão.",
+    "name": "Nome do serviço",
+    "serviceCode": "Código nacional do serviço (cTribNac)",
+    "municipalServiceCode": "Código municipal do serviço",
+    "operationNature": "Natureza da operação",
+    "incidenceMunicipalityCode": "Município de incidência do ISS (IBGE)",
+    "nbsCode": "Código NBS",
+    "cst": "CST",
+    "classCode": "cClassTrib",
+    "operationIndicator": "Indicador de operação (cIndOp)",
+    "classificationHint": "Use códigos confirmados nos catálogos. O dashboard não presume códigos ou alíquotas.",
+    "issTaxation": "Tributação do ISS",
+    "issRate": "Alíquota de ISS (%)",
+    "issWithholdingDefault": "ISS retido por padrão",
+    "withholdingPolicy": "Política de retenções federais",
+    "withholdingRates": "Alíquotas de retenções federais (%)",
+    "effectiveFrom": "Serviço vigente a partir de",
+    "effectiveUntil": "Serviço vigente até (exclusivo)",
+    "regimeApplicability": "Regimes tributários aplicáveis",
+    "allRegimes": "Todos os regimes",
+    "classificationSource": "Origem da classificação",
+    "catalogVersion": "Versão do catálogo",
+    "advanced": "Configurações avançadas da classificação",
+    "select": "Selecione…",
+    "required": "Preencha os campos obrigatórios.",
+    "invalidDate": "Informe uma data válida e uma data final posterior à inicial.",
+    "invalidCode": "Informe um código nacional de serviço com exatamente 6 dígitos.",
+    "invalidMunicipality": "Informe um código IBGE com exatamente 7 dígitos.",
+    "invalidRate": "As alíquotas devem estar entre 0 e 100.",
+    "missingRates": "Informe ao menos uma alíquota para a política de retenções configuradas.",
+    "approvalFailure": "Não foi possível aprovar a configuração fiscal salva.",
+    "saveFailure": "Não foi possível salvar a configuração fiscal.",
+    "continueLater": "Você pode concluir depois pela página da empresa. A emissão em produção exige perfil fiscal aprovado e classificações de serviços aplicáveis.",
+    "registration": "Cadastro",
+    "registrationHint": "A situação cadastral e o certificado são separados da aprovação fiscal.",
+    "statuses": {
+      "unreviewed": "Pendente de revisão",
+      "approved": "Aprovado",
+      "rejected": "Rejeitado"
+    },
+    "regimes": {
+      "MEI": "MEI",
+      "SIMPLES_NACIONAL": "Simples Nacional",
+      "LUCRO_PRESUMIDO": "Lucro Presumido",
+      "LUCRO_REAL": "Lucro Real",
+      "OUTRO_REGIME": "Outro regime",
+      "UNKNOWN": "Desconhecido"
+    },
+    "operations": {
+      "SERVICE": "Serviço",
+      "GOODS": "Mercadoria",
+      "MIXED": "Operação mista",
+      "PARTNER_SALON": "Salão parceiro"
+    },
+    "iss": {
+      "NORMAL": "Normal",
+      "FIXED": "Fixo",
+      "EXEMPT": "Isento"
+    },
+    "withholding": {
+      "UNKNOWN": "Não revisada",
+      "NONE_CONFIRMED": "Sem retenções (confirmado)",
+      "CONFIGURED": "Alíquotas configuradas"
     }
   }
 }

@@ -242,6 +242,7 @@ export const WEBHOOK_EVENT_OPTIONS = [
   { value: "nfse.invoice.documents_ready", label: "Documents ready", description: "The PDF and XML were generated." },
   { value: "nfse.invoice.email_sent", label: "Email sent", description: "The invoice email was sent to the customer." },
   { value: "nfse.invoice.email_failed", label: "Email failed", description: "Sending the invoice email failed." },
+  { value: "nfse.invoice.fiscal_discrepancy", label: "Fiscal discrepancy", description: "The authorized invoice differs from the calculated taxes." },
 ] as const;
 
 export type WebhookEvent = (typeof WEBHOOK_EVENT_OPTIONS)[number]["value"];
@@ -341,6 +342,33 @@ export interface Member {
 export type SetupGap = "municipality_code" | "municipal_registration" | "certificate";
 export type CompanyStatus = "pending_setup" | "ready" | "blocked";
 export type TaxRegime = "MEI" | "Simples Nacional" | "Lucro Presumido" | "Lucro Real";
+export type TaxRegimeKind = "MEI" | "SIMPLES_NACIONAL" | "LUCRO_PRESUMIDO" | "LUCRO_REAL" | "OUTRO_REGIME" | "UNKNOWN";
+export type FiscalReviewStatus = "unreviewed" | "approved" | "rejected";
+export interface CompanyFiscalProfile {
+  id: string; tenantId: string; companyId: string; taxRegime: TaxRegimeKind;
+  simpleNational: boolean; specialTaxRegime: string | null;
+  ibsCbsRegularOption: boolean; ibsCbsRegularFrom: string | null;
+  validFrom: string; validUntil: string | null; source: string;
+  reviewStatus: FiscalReviewStatus; reviewedBy: string | null; reviewedAt: string | null; createdAt: string;
+}
+export interface FiscalProfileInput {
+  taxRegime: TaxRegimeKind; simpleNational?: boolean; specialTaxRegime?: string | null;
+  ibsCbsRegularOption?: boolean; ibsCbsRegularFrom?: string | null; validFrom?: string; confirm?: boolean;
+}
+export type WithholdingTax = "irrf" | "pis" | "cofins" | "csll" | "inss";
+export interface CompanyServiceTaxProfile {
+  id: string; tenantId: string; companyId: string; name: string; serviceCode: string;
+  municipalServiceCode: string | null; nbsCode: string | null; cst: string | null;
+  classCode: string | null; operationIndicator: string | null;
+  operationNature: "SERVICE" | "GOODS" | "MIXED" | "PARTNER_SALON";
+  regimeApplicability: TaxRegimeKind[]; incidenceMunicipalityCode: string | null;
+  issTaxation: "NORMAL" | "FIXED" | "EXEMPT" | null; issRate: string | null;
+  issWithholdingDefault: boolean; withholdingPolicy: "UNKNOWN" | "NONE_CONFIRMED" | "CONFIGURED";
+  withholdingRates: Partial<Record<WithholdingTax, string>>;
+  effectiveFrom: string; effectiveUntil: string | null; classificationSource: string;
+  reviewStatus: FiscalReviewStatus; catalogVersion: string | null; createdAt: string;
+}
+export type ServiceTaxProfileInput = Pick<CompanyServiceTaxProfile, "name" | "serviceCode" | "effectiveFrom"> & Partial<Omit<CompanyServiceTaxProfile, "id" | "tenantId" | "companyId" | "createdAt" | "reviewStatus">>;
 export type CompanyEnvironment = "test" | "live";
 export interface CompanyAddress {
   street?: string; number?: string; complement?: string; district?: string;
@@ -349,7 +377,7 @@ export interface CompanyAddress {
 export interface Company {
   id: string; tenantId: string; legalName: string; tradeName?: string;
   taxId: string; municipalReg?: string; municipalityCode?: string; defaultServiceCode?: string;
-  taxRegime: TaxRegime; simpleNational: boolean; specialRegime?: string;
+  taxRegime: TaxRegime | null; simpleNational: boolean; specialRegime?: string;
   environment: CompanyEnvironment; address: CompanyAddress;
   status: CompanyStatus; /** What is still missing before the company is ready, from the API. */ setupGaps?: SetupGap[];
   createdAt: string; updatedAt: string;
@@ -365,7 +393,7 @@ export type UpdateCompanyInput = Partial<Omit<CreateCompanyInput, "municipalReg"
   municipalReg?: string | null; defaultServiceCode?: string | null; address?: CompanyAddress | null;
 };
 /** Fields the company form can send for both create and update. */
-export type CompanyFormInput = UpdateCompanyInput & Pick<CreateCompanyInput, "legalName" | "taxId" | "taxRegime" | "municipalityCode">;
+export type CompanyFormInput = UpdateCompanyInput & Pick<CreateCompanyInput, "legalName" | "taxId" | "municipalityCode">;
 export type CertificateStatus = "active" | "expired" | "revoked";
 export interface Certificate {
   id: string; companyId: string; serialNumber: string; issuer: string;
@@ -436,3 +464,15 @@ export interface PlanQuote {
 export type PlanTier = PlanQuote;
 export const NFSE_WEBHOOK_EVENTS = WEBHOOK_EVENT_OPTIONS;
 export type NfseWebhookEvent = WebhookEvent;
+
+export interface CalculatedTaxAmount { base: string; rate: string; amount: string }
+export interface InvoiceCalculation {
+  preEmission: true; status: "ready" | "blocked"; disclaimer: string; competenceDate: string;
+  taxRegime: TaxRegimeKind | null;
+  taxes: Partial<Record<"iss" | "cbs" | "ibsState" | "ibsCity" | "ibsTotal", CalculatedTaxAmount>>;
+  withholdings: (CalculatedTaxAmount & { tax: string })[];
+  netReceivableAmount: string | null; collectionWaived: boolean | null;
+  warnings: { code: string; message: string; step: string }[];
+  pendingFields: { field: string; reason: string }[];
+  blocking: { code: string; message: string; step: string; category: string; retryable: boolean } | null;
+}

@@ -279,6 +279,22 @@ describe('strategies', () => {
     });
   });
 
+  it.each(['MEI', 'SIMPLES_NACIONAL'] as const)(
+    '%s with CNPJ customer and UNKNOWN policy: federalWithholding NOT_APPLICABLE',
+    (taxRegime) => {
+      const r = plan(
+        { taxRegime },
+        {
+          customer: cnpjCustomer,
+          classification: { withholding: { policy: 'UNKNOWN', rates: {} } },
+        },
+      );
+      expect(r.ok && r.value.federalWithholding).toMatchObject({
+        status: 'NOT_APPLICABLE',
+      });
+    },
+  );
+
   it('CPF customer: federalWithholding NOT_APPLICABLE', () => {
     const r = plan({ taxRegime: 'LUCRO_PRESUMIDO' }, { customer: cpfCustomer });
     expect(r.ok && r.value.federalWithholding).toMatchObject({

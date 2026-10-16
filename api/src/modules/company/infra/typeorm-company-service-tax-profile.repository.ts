@@ -149,12 +149,24 @@ export class TypeOrmCompanyServiceTaxProfileRepository implements IServiceTaxPro
               params,
             )
           : await this.manager().query<ServiceTaxProfileRow[]>(
-              `UPDATE ${table} SET name = $3, service_code = $4, municipal_service_code = $5, nbs_code = $6, cst = $7, class_code = $8, operation_indicator = $9, operation_nature = $10, regime_applicability = $11::text[], incidence_municipality_code = $12, iss_taxation = $13, iss_rate = $14, iss_withholding_default = $15, withholding_policy = $16, withholding_rates = $17::jsonb, effective_from = $18, effective_until = $19, classification_source = $20, review_status = $21, catalog_version = $22 WHERE id = $23 AND company_id = $24 AND tenant_id = $1 ${this.returning()}`,
-              [...params, id, companyId],
+              `UPDATE ${table} SET name = $3, service_code = $4, municipal_service_code = $5, nbs_code = $6, cst = $7, class_code = $8, operation_indicator = $9, operation_nature = $10, regime_applicability = $11::text[], incidence_municipality_code = $12, iss_taxation = $13, iss_rate = $14, iss_withholding_default = $15, withholding_policy = $16, withholding_rates = $17::jsonb, effective_from = $18, effective_until = $19, classification_source = $20, review_status = $21, catalog_version = $22 WHERE id = $23 AND company_id = $2 AND tenant_id = $1 ${this.returning()}`,
+              [...params, id],
             );
       const [row] = rows;
       if (row === undefined)
         throw new NotFoundException('Service tax profile not found');
+      return this.toDomain(row);
+    });
+  }
+
+  markApproved(id: string, companyId: string, tenantId: string): Promise<CompanyServiceTaxProfile> {
+    return runWithTenant(tenantId, async () => {
+      const rows = await this.manager().query<ServiceTaxProfileRow[]>(
+        `UPDATE ${this.table()} SET review_status = 'approved' WHERE id = $1 AND company_id = $2 AND tenant_id = $3 ${this.returning()}`,
+        [id, companyId, tenantId],
+      );
+      const [row] = rows;
+      if (!row) throw new NotFoundException('Service tax profile not found');
       return this.toDomain(row);
     });
   }

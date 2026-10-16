@@ -13,7 +13,8 @@ import { useAuth } from "@/lib/auth";
 import { mapIssues } from "@/lib/api-errors";
 import { ApiError, companies as companiesApi, invoices as invoicesApi } from "@/lib/api";
 import { isValidCnpj, isValidCpf, maskCurrency, maskDigits, maskState, cleanTaxId, maskTaxId, parseCurrency } from "@/lib/masks";
-import type { Company } from "@/lib/types";
+import type { Company, InvoiceCalculation } from "@/lib/types";
+import { InvoiceCalculationPanel } from "@/components/dashboard/invoice-calculation-panel";
 
 const FORM_ID = "new-invoice-form";
 
@@ -74,6 +75,9 @@ export default function NewInvoicePage() {
   const attempt = useRef<{ key: string; payload: string } | null>(null);
   const [uncertain, setUncertain] = useState(false);
   const [sendEmail, setSendEmail] = useState(true);
+  const [calculating, setCalculating] = useState(false);
+  const [calc, setCalc] = useState<{ key: string; result: InvoiceCalculation } | null>(null);
+  const [calcError, setCalcError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,6 +112,41 @@ export default function NewInvoicePage() {
     finally { setLoadingMore(false); }
   }
 
+  function buildInput(amount: number, externalId: string) {
+    return {
+      companyTaxId: company?.taxId ?? "",
+      externalId,
+      customer: {
+        taxId: cleanTaxId(form.customerTaxId),
+        name: form.customerName,
+        email: form.customerEmail || undefined,
+        address: form.city || form.state ? { city: form.city || undefined, state: form.state.toUpperCase() || undefined } : undefined,
+      },
+      service: {
+        description: form.serviceDescription,
+        code: form.serviceCode || undefined,
+        municipalityCode: form.municipalityCode || undefined,
+      },
+      amount,
+      competenceDate: form.competenceDate,
+      email: sendEmail,
+    };
+  }
+
+  async function calculate() {
+    if (calculating || !canSubmit) return;
+    setCalculating(true);
+    setCalcError(null);
+    const key = JSON.stringify([form, sendEmail, fiscalEnvironment]);
+    try {
+      const result = await invoicesApi.calculate(buildInput(parseCurrency(form.amount), form.externalId || "dashboard-calculate"));
+      setCalc({ key, result });
+    } catch (err: unknown) {
+      setCalc(null);
+      setCalcError(err instanceof ApiError && err.status === 503 ? t("calculate.unavailable") : err instanceof Error && err.message ? err.message : t("calculate.failed"));
+    } finally { setCalculating(false); }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (inFlight.current || uncertain || !canSubmit || !company) return;
@@ -123,24 +162,7 @@ export default function NewInvoicePage() {
       const formSnapshot = JSON.stringify([form, sendEmail]);
       if (attempt.current && attempt.current.payload !== formSnapshot) attempt.current = null;
       const key = attempt.current?.key ?? crypto.randomUUID();
-      const input = {
-        companyTaxId: company.taxId,
-        externalId: form.externalId || `dashboard-${key}`,
-        customer: {
-          taxId: cleanTaxId(form.customerTaxId),
-          name: form.customerName,
-          email: form.customerEmail || undefined,
-          address: form.city || form.state ? { city: form.city || undefined, state: form.state.toUpperCase() || undefined } : undefined,
-        },
-        service: {
-          description: form.serviceDescription,
-          code: form.serviceCode || undefined,
-          municipalityCode: form.municipalityCode || undefined,
-        },
-        amount,
-        competenceDate: form.competenceDate,
-        email: sendEmail,
-      };
+      const input = buildInput(amount, form.externalId || `dashboard-${key}`);
       attempt.current = { key, payload: formSnapshot };
       const created = await invoicesApi.create(input, key);
       router.push(`/app/invoices/${created.id}`);
@@ -325,6 +347,16 @@ export default function NewInvoicePage() {
               {t("summary.liveWarning")}
             </p>
           )}
+
+          <div className="flex flex-col gap-3">
+            <Button variant="ghost" onClick={calculate} loading={calculating} disabled={!canSubmit || submitting} className="w-full">
+              {calculating ? t("calculate.calculating") : t("calculate.button")}
+            </Button>
+            {calcError && <p role="alert" className="text-[12.5px] text-danger">{calcError}</p>}
+            {calc && (calc.key === JSON.stringify([form, sendEmail, fiscalEnvironment])
+              ? <InvoiceCalculationPanel result={calc.result} format={(value) => money.format(Number(value))} />
+              : <p role="status" className="text-[12.5px] text-text-4">{t("calculate.stale")}</p>)}
+          </div>
 
           <div className="flex flex-col gap-2.5">
             <Button type="submit" form={FORM_ID} variant="accent" loading={submitting} disabled={!canSubmit} aria-describedby="invoice-missing" className="w-full">

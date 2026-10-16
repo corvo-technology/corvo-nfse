@@ -20,7 +20,13 @@ const routes: [RegExp, string[]][] = [
   [/^companies\/[^/]+$/, ["GET", "PATCH", "DELETE"]],
   [/^companies\/[^/]+\/certificates$/, ["GET", "POST"]],
   [/^companies\/[^/]+\/certificates\/[^/]+$/, ["DELETE"]],
+  [/^companies\/[^/]+\/fiscal-profile$/, ["GET", "PUT"]],
+  [/^companies\/[^/]+\/fiscal-profile\/[^/]+\/approve$/, ["POST"]],
+  [/^companies\/[^/]+\/service-tax-profiles$/, ["GET", "POST"]],
+  [/^companies\/[^/]+\/service-tax-profiles\/[^/]+$/, ["PATCH"]],
+  [/^companies\/[^/]+\/service-tax-profiles\/[^/]+\/approve$/, ["POST"]],
   [/^invoices$/, ["GET", "POST"]],
+  [/^invoices\/calculate$/, ["POST"]],
   [/^invoices\/[^/]+(?:\/(events|pdf|xml))?$/, ["GET"]],
   [/^invoices\/[^/]+\/download-url$/, ["POST"]],
   [/^invoices\/[^/]+\/email$/, ["POST"]],
@@ -101,5 +107,6 @@ async function proxyRequest(request: NextRequest, context: { params: Promise<{ p
 }
 export const GET = proxyRequest;
 export const POST = proxyRequest;
+export const PUT = proxyRequest;
 export const PATCH = proxyRequest;
 export const DELETE = proxyRequest;

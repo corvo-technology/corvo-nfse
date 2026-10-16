@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { ServiceCodeCombobox } from "@/components/ui/service-code-combobox";
+import { isSimpleNational } from "@/lib/company-fiscal";
 import { CertificateUpload } from "@/components/dashboard/certificate-upload";
 import { useAuth } from "@/lib/auth";
 import { cleanTaxId, isValidCnpj, maskCnpj, maskDigits, maskState, maskZip, onlyDigits } from "@/lib/masks";
@@ -56,10 +57,9 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
   const canUploadCertificate = can("nfse.certificates.manage");
   const address = company?.address;
   const [values, setValues] = useState<Record<string, string>>({
-    legalName: company?.legalName ?? "", tradeName: company?.tradeName ?? "", taxId: maskCnpj(company?.taxId ?? ""), taxRegime: company?.taxRegime ?? "Simples Nacional", municipalReg: company?.municipalReg ?? "", municipalityCode: company?.municipalityCode ?? "", defaultServiceCode: company?.defaultServiceCode ?? "", specialRegime: company?.specialRegime ?? "",
+    legalName: company?.legalName ?? "", tradeName: company?.tradeName ?? "", taxId: maskCnpj(company?.taxId ?? ""), taxRegime: company?.taxRegime ?? "", municipalReg: company?.municipalReg ?? "", municipalityCode: company?.municipalityCode ?? "", defaultServiceCode: company?.defaultServiceCode ?? "", specialRegime: company?.specialRegime ?? "",
     street: address?.street ?? "", number: address?.number ?? "", complement: address?.complement ?? "", district: address?.district ?? "", city: address?.city ?? "", state: address?.state ?? "", zip: maskZip(address?.zip ?? ""),
   });
-  const [simpleNational, setSimpleNational] = useState(company?.simpleNational ?? false);
   const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null); const busy = useRef(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [stepIndex, setStepIndex] = useState(0);
@@ -111,6 +111,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
     if (wizard && step === "address") { setStepIndex(2); setReached((r) => Math.max(r, 2)); return; }
     if (wizard && step === "certificate") return;
     const fiscalErrors: Record<string, string> = {};
+    if (wizard && !["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"].includes(values.taxRegime)) fiscalErrors.taxRegime = t("regimeRequired");
     if (!/^\d{7}$/.test(values.municipalityCode)) fiscalErrors.municipalityCode = t("municipalityInvalid");
     if (requiresMunicipalReg && !values.municipalReg.trim()) fiscalErrors.municipalReg = t("municipalRegRequired");
     if (values.defaultServiceCode && !/^\d{6}$/.test(values.defaultServiceCode)) fiscalErrors.defaultServiceCode = t("serviceCodeInvalid");
@@ -124,9 +125,10 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       const hasAddress = Object.values(addressFields).some(Boolean);
       const municipalReg = optional(values.municipalReg);
       const result = await onSave({
-        legalName: values.legalName.trim(), taxId: cleanTaxId(values.taxId), taxRegime: values.taxRegime as TaxRegime,
+        legalName: values.legalName.trim(), taxId: cleanTaxId(values.taxId),
+        ...(wizard ? { taxRegime: values.taxRegime as TaxRegime, simpleNational: isSimpleNational(values.taxRegime as TaxRegime), specialRegime: optional(values.specialRegime) } : {}),
         tradeName: optional(values.tradeName), municipalityCode: values.municipalityCode,
-        defaultServiceCode: optional(values.defaultServiceCode) ?? (company?.defaultServiceCode ? null : undefined), specialRegime: optional(values.specialRegime), simpleNational,
+        defaultServiceCode: optional(values.defaultServiceCode) ?? (company?.defaultServiceCode ? null : undefined),
         // Optional text is omitted when empty; null explicitly clears on update.
         municipalReg: municipalReg ?? (company?.municipalReg ? null : undefined),
         address: hasAddress ? addressFields : company && Object.values(company.address).some(Boolean) ? null : undefined,
@@ -152,17 +154,17 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
     </legend>
   );
 
-  // ── Step 4: certificate (company already exists) ──────────────────────────
+  // Step 4: certificate (the company already exists and its fiscal profile is declared).
   if (wizard && step === "certificate" && created) {
     return (
-      <div className="flex flex-col gap-5">
+      <div className="company-sheet flex flex-col gap-5">
         <Stepper current={uploaded ? 4 : 3} reached={3} labels={STEPS.map((s) => t(`steps.${s}`))} />
         <div className="banner banner-ok">
           <Check size={16} aria-hidden className="mt-0.5 flex-none" />
           <p>{t("created", { name: created.tradeName || created.legalName })}</p>
         </div>
         {uploaded ? (
-          <div className="flex flex-col items-center gap-3 rounded-[12px] border border-accent-border bg-accent-surface px-5 py-8 text-center">
+          <div className="flex flex-col items-start gap-3 rounded-[12px] border border-accent-border bg-accent-surface px-5 py-8 text-left">
             <ShieldCheck size={28} aria-hidden className="text-accent" />
             <p className="text-[15px] font-medium text-text">{t("certificateDone")}</p>
             <p className="max-w-[44ch] text-[13px] text-text-3">{t("certificateDoneHint")}</p>
@@ -184,7 +186,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
   }
 
   const last = !wizard || step === "fiscal";
-  return <form onSubmit={submit} className="flex flex-col gap-6" aria-busy={saving} noValidate={wizard && step !== "company"}>
+  return <form onSubmit={submit} className="company-sheet flex flex-col gap-6" aria-busy={saving} noValidate={wizard && step !== "company"}>
     {wizard && <Stepper current={stepIndex} reached={reached} labels={STEPS.map((s) => t(`steps.${s}`))} />}
 
     {show("company") && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
@@ -215,15 +217,14 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
 
     {show("fiscal") && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
       {section(t("sectionFiscal"), wizard ? t("stepHint.fiscal") : undefined)}
-      <Field label={t("taxRegime")}>{(props) => <select {...props} className="field" value={values.taxRegime} onChange={(event) => set("taxRegime", event.target.value)}>{["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"].map((regime) => <option key={regime}>{regime}</option>)}</select>}</Field>
-      {field("specialRegime", { maxLength: 50 })}
+      {wizard && <><Field label={t("taxRegime")} required error={fieldErrors.taxRegime}>{(props) => <select {...props} className="field" value={values.taxRegime} onChange={(event) => set("taxRegime", event.target.value)}><option value="">{t("selectTaxRegime")}</option>{["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"].map((regime) => <option key={regime}>{regime}</option>)}</select>}</Field>
+      {field("specialRegime", { maxLength: 50 })}<p className="text-sm text-text-3 sm:col-span-2">{t("regimeDerived")}</p></>}
       {field("municipalReg", { required: requiresMunicipalReg, maxLength: 20, mono: true, hint: t("hints.municipalReg") })}
       {field("municipalityCode", { required: true, maxLength: 7, mask: maskDigits(7), inputMode: "numeric", mono: true })}
       <Field label={t("defaultServiceCode")} optionalLabel={t("optional")} error={fieldErrors.defaultServiceCode || undefined} hint={t("hints.defaultServiceCode")} className="sm:col-span-2">
         {(props) => <ServiceCodeCombobox {...props} value={values.defaultServiceCode} onChange={(code) => set("defaultServiceCode", code)} />}
       </Field>
-      <label className="choice sm:col-span-2 flex cursor-pointer items-center gap-3 rounded-[10px] border border-border-strong bg-bg px-3.5 py-3 text-sm text-text-2 transition-colors hover:border-[#3a3a3a]"><input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={simpleNational} onChange={(event) => setSimpleNational(event.target.checked)} />{t("simpleNational")}</label>
-      {!wizard && <p className="field-hint sm:col-span-2">{t("readinessHint")}</p>}
+      {!wizard && <p className="field-hint sm:col-span-2">{t("editFiscalHint")}</p>}
     </fieldset>}
 
     {error && <p role="alert" className="banner banner-danger">{error}</p>}
@@ -234,6 +235,6 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
         <Button type="submit" variant="accent" loading={saving}>{last ? (wizard ? t("createCompany") : t("save")) : t("next")}</Button>
       </div>
     </div>
-    {wizard && last && <p className="-mt-3 text-right text-[12.5px] text-text-4">{canUploadCertificate ? t("certificateNext") : td("noCertificatePermission")}</p>}
+    {wizard && last && <p className="-mt-3 text-left text-[12.5px] text-text-4">{canUploadCertificate ? t("certificateNext") : td("noCertificatePermission")}</p>}
   </form>;
 }
