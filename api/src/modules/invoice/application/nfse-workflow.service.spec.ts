@@ -130,7 +130,7 @@ describe('NfseWorkflowService payload — tomador opcional', () => {
     companies: { findById: jest.fn() },
     profiles: { findEffective: jest.fn() },
     fiscalSnapshots: { findByInvoiceId: jest.fn() },
-    config: { getOrThrow: jest.fn() },
+    config: { getOrThrow: jest.fn(), get: jest.fn() },
   };
   let service: NfseWorkflowService;
 
@@ -371,7 +371,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     documentStorage: { saveXml: jest.fn() },
     profiles: { findEffective: jest.fn() },
     fiscalSnapshots: { findByInvoiceId: jest.fn() },
-    config: { getOrThrow: jest.fn() },
+    config: { getOrThrow: jest.fn(), get: jest.fn() },
   };
   type WorkflowArgs = ConstructorParameters<typeof NfseWorkflowService>;
   let service: NfseWorkflowService;
@@ -444,6 +444,42 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       },
       'rejectBeforeProcessing',
     );
+
+  it.each([
+    ['restricted', '2'],
+    [undefined, '1'],
+  ])(
+    'sends a live DPS with the environment of its target (%s => tpAmb %s)',
+    async (target, tpAmb) => {
+      const invoice = Invoice.create(
+        {
+          companyId: company.id,
+          customer: {
+            kind: 'CNPJ',
+            taxId: '12345678000195',
+            name: 'Cliente Teste LTDA',
+          } as never,
+          service: {
+            description: 'Consultoria em TI',
+            code: '010601',
+            municipalityCode: '3550308',
+          },
+          amount: 1000,
+          competenceDate: new Date('2026-10-13'),
+          environment: 'live',
+        },
+        tenantId,
+      );
+      fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+        fiscalSnapshot(invoice.id),
+      );
+      fakes.config.get.mockReturnValue(target);
+
+      const payload = await callPayload(invoice);
+
+      expect(payload.preparedDps?.infDPS.tpAmb).toBe(tpAmb);
+    },
+  );
 
   it('builds preparedDps from the latest fiscal snapshot and keeps the legacy payload', async () => {
     const invoice = createInvoice();
