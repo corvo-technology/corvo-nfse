@@ -48,6 +48,8 @@ export interface DecryptedCertificate {
 // ─── Aggregate ──────────────────────────────────────────────────────────────
 
 export interface ParsedP12 {
+  /** CNPJ the certificate was issued to, when it can be read reliably; null for e-CPF or unknown layouts. */
+  taxId?: string | null;
   serialNumber: string;
   issuer: string;
   subject: string;
