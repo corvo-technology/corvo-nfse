@@ -10,6 +10,7 @@ import { OtpChallengeService } from '@/modules/security/otp/application/otp-chal
 import { normalizeEmail } from './auth-user.service';
 import { EmailService } from '@/modules/email/application/email.service';
 import { PasswordlessWorkspaceService } from './passwordless-workspace.service';
+import type { AuthUser } from '../domain/auth-user';
 
 export interface MagicLinkRequestResult {
   challengeId: string;
@@ -79,7 +80,19 @@ export class MagicLinkService {
     const { user, isNew } =
       await this.authIdentityService.findOrCreateUserByMagicLink(email);
 
-    // Mark email as verified
+    return this.completeLogin(user, isNew, 'magic-link');
+  }
+
+  /**
+   * Finishes a sign-in whose email was already proven (code or OAuth provider):
+   * marks it verified, makes sure the user has a workspace, welcomes new users
+   * and opens the session.
+   */
+  async completeLogin(
+    user: AuthUser,
+    isNew: boolean,
+    userAgent: string,
+  ): Promise<MagicLinkVerifyResult> {
     await this.authUserService.markEmailVerified(user.id, new Date());
 
     await this.workspaces.ensureWorkspace(user);
@@ -89,7 +102,6 @@ export class MagicLinkService {
       'corvo',
     );
 
-    // Create session
     const authConfig = this.config.getOrThrow<AuthConfig>('auth');
     const sessionTtlMs = authConfig.refreshTokenTtlDays * 24 * 60 * 60 * 1000;
     const expiresAt = new Date(Date.now() + sessionTtlMs);
@@ -97,7 +109,7 @@ export class MagicLinkService {
     const { sessionToken, session } = await this.sessionService.createSession({
       authUserId: user.id,
       activeTenantId: context.activeTenantId,
-      userAgent: 'magic-link',
+      userAgent,
       ipHash: null,
       expiresAt,
     });

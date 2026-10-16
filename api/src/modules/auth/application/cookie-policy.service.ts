@@ -12,6 +12,7 @@ export type GreenflowCookieKind =
   | 'human_appointment_cancel'
   | 'human_appointment_reschedule'
   | 'human_otp_issue'
+  | 'oauth_state'
   | 'public_customer';
 
 @Injectable()
@@ -35,6 +36,7 @@ export class CookiePolicyService {
       human_appointment_cancel: 'human_appointment_cancel',
       human_appointment_reschedule: 'human_appointment_reschedule',
       human_otp_issue: 'human_otp_issue',
+      oauth_state: 'oauth_state',
       public_customer: 'public_customer',
     };
     return this.secure ? `__Host-gf_${suffix[kind]}` : `gf_${suffix[kind]}_dev`;

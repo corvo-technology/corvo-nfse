@@ -588,7 +588,11 @@
       "socialFailed": "Falha no login social. Por favor, tente novamente.",
       "expiredCode": "Código expirado. Solicite um novo.",
       "workspaceConflict": "Este e-mail não pode criar outro workspace Free. Entre com uma conta com membership ativo.",
-      "invalidEmail": "Informe um e-mail válido."
+      "invalidEmail": "Informe um e-mail válido.",
+      "oauth_failed": "Não foi possível entrar com o provedor. Tente novamente ou use o código por e-mail.",
+      "oauth_denied": "Você cancelou o login. Escolha outra forma de entrar quando quiser.",
+      "oauth_unavailable": "Este login ainda não está disponível. Entre com o código enviado por e-mail.",
+      "oauth_email_unverified": "O e-mail dessa conta não está verificado no provedor. Verifique o e-mail lá ou entre com o código por e-mail."
     },
     "perks": {
       "nfse": {

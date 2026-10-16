@@ -28,6 +28,9 @@ export interface AvailableTenant { tenantId: string; membershipId: string; role:
 export interface AuthContext { authUserId: string; activeTenantId: string; role: string; permissions: string[]; availableTenants: AvailableTenant[] }
 export interface SessionPayload { status: "authenticated"; context: AuthContext; activeTenantId: string; availableTenants: AvailableTenant[]; permissions: string[]; expiresAt: string; csrfToken: string }
 export interface MagicLinkChallenge { challengeId: string; expiresAt: string; resendAvailableAt: string }
+export type OAuthProvider = "google" | "github";
+export type OAuthProviders = Record<OAuthProvider, boolean>;
+
 export interface MagicLinkVerified { expiresAt: string; isNewUser: boolean; csrfToken: string }
 
 export class ApiError extends Error {
@@ -120,6 +123,10 @@ export const auth = {
     return data;
   },
   logout: () => request<null>("/auth/session/logout", { method: "POST" }),
+  /** Which social sign-in providers the server has configured. */
+  oauthProviders: async () => (await request<Envelope<OAuthProviders>>("/auth/oauth/providers")).data,
+  /** Where the browser goes to start a social sign-in (the API redirects to the provider). */
+  oauthStartUrl: (provider: OAuthProvider, next?: string) => `${BASE}/auth/oauth/${provider}/authorize${next ? `?next=${encodeURIComponent(next)}` : ""}`,
   switchTenant: async (tenantId: string) => (await request<Envelope<Omit<SessionPayload, "status">>>("/auth/session/tenant", json({ tenantId }))).data,
   me: async () => (await request<Envelope<AuthContext>>("/auth/me")).data,
   magicLinkRequest: async (email: string) => (await request<Envelope<MagicLinkChallenge>>("/auth/magic-link/request", json({ email }))).data,
