@@ -59,7 +59,7 @@ O envio de e-mail em test continua passando pelo provedor de e-mail: use um
 destinatário seu. O assunto recebe `[TESTE]`. A simulação não valida regras
 fiscais municipais nem autoriza uma nota no governo.
 
-Em `live`, exige empresa com inscrição municipal, certificado PKCS#12 válido
+Em `live`, exige empresa com certificado PKCS#12 válido
 e correspondente ao CNPJ, plano ativo, créditos e quota disponível. Reserva
 um crédito na submissão; autorização confirma o débito, rejeição devolve o
 crédito. Resultado incerto mantém a reserva para reconciliação usando a
@@ -250,7 +250,7 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 **CreateCompany**: obrigatórios `legalName`, `taxId`, `taxRegime`
 (`MEI`, `Simples Nacional`, `Lucro Presumido` ou `Lucro Real`) e
 `municipalityCode` (código IBGE de 7 dígitos, em `test` e `live`).
-Opcionais `tradeName`, `municipalReg` (exigida em `live`), `defaultServiceCode`
+Opcionais `tradeName`, `municipalReg` (opcional; informe só se o município a registrou no cadastro nacional, senão a Receita rejeita com E0120), `defaultServiceCode`
 (cTribNac de 6 dígitos), `simpleNational`, `specialRegime`, `address`.
 UpdateCompany aceita os mesmos campos, todos opcionais (`defaultServiceCode:
 null` remove o padrão). Address: `street`, `number`, `complement`, `district`,

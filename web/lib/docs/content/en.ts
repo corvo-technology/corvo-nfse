@@ -308,7 +308,7 @@ export const en: DocsTree = {
         },
         { kind: "heading", level: 2, body: "From signup to issuing" },
         { kind: "list", items: [
-          "`POST /v1/companies` with `taxRegime`, `municipalityCode` and, in `live`, `municipalReg`.",
+          "`POST /v1/companies` with `taxRegime` and `municipalityCode`. `municipalReg` is optional.",
           "`POST /v1/companies/:id/certificates` with the A1 certificate.",
           "`POST /v1/invoices`.",
         ] },
@@ -327,7 +327,7 @@ export const en: DocsTree = {
               { name: "taxId", type: "string", required: true, description: "Valid CNPJ; normalized before the duplicate check." },
               { name: "taxRegime", type: "string", required: true, description: "`MEI`, `Simples Nacional`, `Lucro Presumido` or `Lucro Real`." },
               { name: "tradeName", type: "string", required: false, description: "Up to 200 characters." },
-              { name: "municipalReg", type: "string or null", required: false, description: "Required and nonblank when registering in `live`; optional in test mode. `null` on test creation means do not set." },
+              { name: "municipalReg", type: "string or null", required: false, description: "Optional, and nonblank when sent. Fill it only if the city registered this company's municipal registration in the national registry; otherwise the tax authority rejects the invoice (E0120). `null` on creation means do not set." },
               { name: "municipalityCode", type: "string", required: true, description: "Exactly 7 digits (IBGE), required in test and live mode. Used as the issuer municipality and default service location." },
               { name: "defaultServiceCode", type: "string", required: false, description: "Exactly 6 digits (cTribNac); default for new invoices. Without it, provide `service.code` when issuing." },
               { name: "simpleNational", type: "boolean", required: false, description: "If omitted, follows the regime (`true` for MEI and Simples Nacional)." },

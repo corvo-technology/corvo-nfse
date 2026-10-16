@@ -1379,13 +1379,12 @@
     "later": "Enviar depois",
     "finish": "Concluir",
     "hints": {
-      "municipalReg": "Número dado pela prefeitura. Obrigatório no cadastro em produção; opcional em teste.",
+      "municipalReg": "Opcional. Informe só se a prefeitura registrou a inscrição municipal desta empresa no cadastro nacional; se não, a Receita rejeita a nota (E0120).",
       "defaultServiceCode": "Código nacional (cTribNac), com 6 dígitos. Usado quando a nota não informa outro código. Você pode remover este padrão na edição."
     },
     "fixFields": "Corrija os campos destacados.",
     "defaultServiceCode": "Código de serviço padrão",
     "municipalityInvalid": "Informe um código IBGE com exatamente 7 dígitos.",
-    "municipalRegRequired": "Informe a inscrição municipal para cadastrar em produção.",
     "serviceCodeInvalid": "O código de serviço deve ter exatamente 6 dígitos.",
     "selectTaxRegime": "Selecione um regime tributário",
     "regimeRequired": "Selecione o regime tributário da empresa.",
@@ -1448,18 +1447,12 @@
       "subtitle": "Confira o município fiscal e os requisitos para emitir no ambiente selecionado.",
       "progress": "{done} de {total}",
       "complete": "Cadastro básico completo. Confira a configuração fiscal abaixo antes de emitir em produção.",
-      "requiredLive": "obrigatório em produção",
       "testNote": "Em teste, inscrição municipal e certificado são opcionais. O município fiscal deve estar cadastrado.",
       "items": {
         "address": {
           "title": "Endereço",
           "hint": "Informe o CEP para preencher o endereço e o código IBGE.",
           "action": "Completar"
-        },
-        "municipalReg": {
-          "title": "Inscrição municipal",
-          "hint": "Número dado pela prefeitura. Sem ele, não é possível emitir em produção.",
-          "action": "Informar"
         },
         "certificate": {
           "title": "Certificado digital A1",

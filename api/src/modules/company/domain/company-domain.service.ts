@@ -54,13 +54,8 @@ export class CompanyDomainService {
     const issues: FiscalIssue[] = [];
 
     this.validateFiscalDefaults(input, issues, true);
-    if (input.environment === 'live' && !input.municipalReg?.trim()) {
-      issues.push({
-        field: 'municipalReg',
-        code: 'required',
-        message: 'municipalReg is required for live companies',
-      });
-    }
+    // municipalReg is optional even in live: the national system rejects the
+    // provider's IM (E0120) when the municipality has no complementary data for it.
 
     // ── taxId: required + format ─────────────────────────────────
     const rawTaxId = input.taxId?.trim();

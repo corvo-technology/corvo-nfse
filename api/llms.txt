@@ -134,7 +134,8 @@ api/FRONTEND_API.md for requests/responses/errors and prerequisites.
 
 POST /v1/companies requires legalName, taxId (CNPJ), taxRegime (MEI | Simples
 Nacional | Lucro Presumido | Lucro Real) and municipalityCode (7-digit IBGE).
-municipalReg is required in live. defaultServiceCode (6-digit cTribNac),
+municipalReg is optional: send it only if the municipality registered it in the
+national registry, otherwise Receita rejects the invoice (E0120). defaultServiceCode (6-digit cTribNac),
 simpleNational (defaults from the regime), specialRegime, tradeName and address
 are optional. The regime is not stored on the company: the request creates the
 first company_fiscal_profiles row, valid from today and already approved by the
@@ -149,7 +150,7 @@ the calculation is blocked with TAX_APPLICABILITY_UNKNOWN and pending field
 service.withholdingPolicy; create and approve a profile with NONE_CONFIRMED or
 CONFIGURED. The profile is also required when the regime needs IBS/CBS or
 configured ISS (FISCAL_CLASSIFICATION_REQUIRED lists the missing fields). setupGaps =
-municipality_code | municipal_registration (live) | certificate. Advanced and
+municipality_code | certificate. Advanced and
 optional: PUT .../fiscal-profile (confirm:true approves), POST
 .../fiscal-profile/{profileId}/approve, POST .../service-tax-profiles and
 .../service-tax-profiles/{id}/approve. In live an existing unreviewed or rejected

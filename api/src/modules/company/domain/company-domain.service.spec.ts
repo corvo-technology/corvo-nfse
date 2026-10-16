@@ -30,10 +30,18 @@ describe('CompanyDomainService', () => {
       },
     );
 
-    it('requires municipal registration for live creation', () => {
+    it('accepts a live company without a municipal registration', () => {
       expect(() =>
         service.validateAndNormalizeCreate(
           validCreate({ environment: 'live' }),
+        ),
+      ).not.toThrow();
+    });
+
+    it('still rejects a blank municipal registration', () => {
+      expect(() =>
+        service.validateAndNormalizeCreate(
+          validCreate({ environment: 'live', municipalReg: '   ' }),
         ),
       ).toThrow(FiscalValidationError);
     });
