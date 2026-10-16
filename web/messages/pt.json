@@ -367,7 +367,8 @@
       "testSent": "Evento de teste enviado com sucesso",
       "testFailed": "Falha ao enviar evento de teste",
       "retrySuccess": "Entrega reenviada",
-      "retryFailed": "Falha ao reenviar"
+      "retryFailed": "Falha ao reenviar",
+      "testFailedStatus": "Seu endpoint respondeu HTTP {status}"
     }
   },
   "ApiKeys": {

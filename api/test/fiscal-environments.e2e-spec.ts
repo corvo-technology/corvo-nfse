@@ -497,8 +497,8 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
       .set('Idempotency-Key', 'same-order')
       .send(invoiceBody(testCompany, { email: true }))
       .expect(202);
-    invoiceId = sent.body.data.props.id;
-    expect(sent.body.data.props.environment).toBe('test');
+    invoiceId = sent.body.data.id;
+    expect(sent.body.data.environment).toBe('test');
     const finished = await waitFor(
       () =>
         db.getRepository(InvoiceOrmEntity).findOneByOrFail({ id: invoiceId }),
@@ -559,7 +559,7 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
       .set('Idempotency-Key', 'same-order')
       .send(invoiceBody(testCompany, { email: true }))
       .expect(202);
-    expect(again.body.data.props.id).toBe(invoiceId);
+    expect(again.body.data.id).toBe(invoiceId);
     await api('post', '/invoices')
       .set('Idempotency-Key', 'same-order')
       .send(invoiceBody(testCompany, { amount: 200, email: true }))
@@ -754,8 +754,8 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
       .set('Idempotency-Key', 'live-retry')
       .send(invoiceBody(liveCompany))
       .expect(202);
-    const id = issued.body.data.props.id;
-    expect(issued.body.data.props.environment).toBe('live');
+    const id = issued.body.data.id;
+    expect(issued.body.data.environment).toBe('live');
     const pending = await waitFor(
       () => db.getRepository(InvoiceOrmEntity).findOneByOrFail({ id }),
       (row) =>
@@ -873,7 +873,7 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
       .set('Idempotency-Key', 'company-defaults')
       .send(payload)
       .expect(202);
-    const id = created.body.data.id ?? created.body.data.props.id;
+    const id = created.body.data.id ?? created.body.data.id;
     const ready = await waitFor(
       () => db.getRepository(InvoiceOrmEntity).findOneByOrFail({ id }),
       (row) => !!row.documentsReadyAt,
@@ -890,8 +890,8 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
       .set('Idempotency-Key', 'company-defaults')
       .send(payload)
       .expect(202);
-    expect(repeated.body.data.props.id).toBe(id);
-    expect(repeated.body.data.props.serviceSnapshot).toMatchObject({
+    expect(repeated.body.data.id).toBe(id);
+    expect(repeated.body.data.serviceSnapshot).toMatchObject({
       code: '010101',
       municipalityCode: '3550308',
     });
@@ -904,7 +904,7 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
         },
       })
       .expect(202);
-    const overrideId = override.body.data.props.id;
+    const overrideId = override.body.data.id;
     const other = await waitFor(
       () =>
         db.getRepository(InvoiceOrmEntity).findOneByOrFail({ id: overrideId }),

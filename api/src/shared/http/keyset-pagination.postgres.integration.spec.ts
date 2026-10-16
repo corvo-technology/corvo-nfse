@@ -10,6 +10,7 @@ class CursorFixture {
   @PrimaryColumn('uuid') id!: string;
   @Column('uuid') tenant!: string;
   @Column({ type: 'timestamptz', name: 'created_at' }) createdAt!: Date;
+  @Column('int') rank!: number;
 }
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
 if (
@@ -44,7 +45,7 @@ describePostgres('cursor queries and migration on PostgreSQL', () => {
     await db.query(`CREATE SCHEMA "${schema}"`);
     await db.runMigrations();
     await db.query(
-      `CREATE TABLE "${schema}".cursor_fixture (id uuid PRIMARY KEY, tenant uuid NOT NULL, created_at timestamptz NOT NULL)`,
+      `CREATE TABLE "${schema}".cursor_fixture (id uuid PRIMARY KEY, tenant uuid NOT NULL, created_at timestamptz NOT NULL, rank integer NOT NULL DEFAULT 0)`,
     );
     for (const [index, id] of ids.entries())
       await db.query(
@@ -56,6 +57,11 @@ describePostgres('cursor queries and migration on PostgreSQL', () => {
             ? '2026-01-01T00:00:00.123456Z'
             : '2026-01-01T00:00:00.123457Z',
         ],
+      );
+    for (const [index, id] of ids.entries())
+      await db.query(
+        `UPDATE "${schema}".cursor_fixture SET rank = $1 WHERE id = $2`,
+        [(index + 1) * 10, id],
       );
     await db.query(`INSERT INTO "${schema}".cursor_fixture VALUES ($1,$2,$3)`, [
       randomUUID(),
@@ -97,6 +103,23 @@ describePostgres('cursor queries and migration on PostgreSQL', () => {
       hasMore: false,
       nextCursor: null,
     });
+  });
+  it('keeps a numeric sort column on the entity and continues from it', async () => {
+    const byRank = (limit: number, cursor?: string) =>
+      queryCursorPage(
+        db
+          .getRepository(CursorFixture)
+          .createQueryBuilder('row')
+          .where('row.tenant = :tenant', { tenant }),
+        { limit, cursor },
+        ['fixture-rank', tenant],
+        (row) => row,
+        { column: 'rank', numeric: true, direction: 'ASC' },
+      );
+    const first = await byRank(2);
+    expect(first.data.map((row) => row.rank)).toEqual([10, 20]);
+    const second = await byRank(2, first.pagination.nextCursor!);
+    expect(second.data.map((row) => row.rank)).toEqual([30, 40]);
   });
   it('rejects wrong scope, ordering payload types and malformed cursors', async () => {
     const first = await page(1);

@@ -286,7 +286,7 @@ perfil aberto retorna 422).
 os dois, vale o `companyId`. Empresa inexistente no tenant/ambiente retorna 404.
 Opcionais `customer`, `discount` (number), `externalId`, `email` (boolean) e `options: {type?: "IMMEDIATE" | "SCHEDULE"}`.
 `IMMEDIATE` é o padrão. Com `SCHEDULE`, envie `competenceDate` futura em
-`YYYY-MM-DD`; `data.props.scheduledFor` retorna a data ISO de liberação às
+`YYYY-MM-DD`; `data.scheduledFor` retorna a data ISO de liberação às
 00:00 em `America/Sao_Paulo` (ou `null` para emissão imediata). A nota permanece
 `queued` até esse instante. Datas além do horizonte configurado (15 dias por
 padrão) retornam HTTP 422 com issue code `schedule_horizon_exceeded`.
@@ -326,20 +326,20 @@ status da empresa".
 ao simulador; em live, usar os códigos e cadastro fiscal reais da empresa.
 Enviar CPF/CNPJ sem pontuação e competência como `YYYY-MM-DD`.
 
-**Nota fiscal**: `POST /invoices` retorna 202 com `{data: {props: {...}}}` em estado
+**Nota fiscal**: `POST /invoices` retorna 202 com `{data: {...}}` (a nota, sem `props`) em estado
 `queued`; não significa que a nota já está autorizada. Buscar
-`GET /invoices/{id}` até `props.status === 'authorized'` e
-`props.documentsReadyAt !== null`, ou acompanhar webhooks. A resposta inclui:
+`GET /invoices/{id}` até `status === 'authorized'` e
+`documentsReadyAt !== null`, ou acompanhar webhooks. A resposta inclui:
 
 | Campo                    | Tipo                                                      | Descrição                                                                |
 | ------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `props.environment`      | `test\|live`                                              | Ambiente persistido da nota                                              |
-| `props.documentsReadyAt` | `string\|null`                                            | Data ISO; quando preenchida, XML/PDF estão prontos                       |
-| `props.lastEmailStatus`  | `queued\|sent\|failed\|null`                              | Estado do último envio                                                   |
-| `props.lastEmailSentAt`  | `string\|null`                                            | Data ISO do último envio                                                 |
-| `props.documentsStatus`  | `pending\|ready`                                          | Estado dos documentos (derivado de `documentsReadyAt`)                   |
-| `props.emailStatus`      | `queued\|sent\|failed\|null`                              | Igual a `lastEmailStatus`; `null` = e-mail ainda não enviado/enfileirado |
-| `props.stage`            | `pending\|authorized\|documents_ready\|completed\|failed` | Visão calculada do ciclo (não é armazenada)                              |
+| `environment`        | `test\|live`                                              | Ambiente persistido da nota                                              |
+| `documentsReadyAt`   | `string\|null`                                            | Data ISO; quando preenchida, XML/PDF estão prontos                       |
+| `lastEmailStatus`    | `queued\|sent\|failed\|null`                              | Estado do último envio                                                   |
+| `lastEmailSentAt`    | `string\|null`                                            | Data ISO do último envio                                                 |
+| `documentsStatus`    | `pending\|ready`                                          | Estado dos documentos (derivado de `documentsReadyAt`)                   |
+| `emailStatus`        | `queued\|sent\|failed\|null`                              | Igual a `lastEmailStatus`; `null` = e-mail ainda não enviado/enfileirado |
+| `stage`              | `pending\|authorized\|documents_ready\|completed\|failed` | Visão calculada do ciclo (não é armazenada)                              |
 
 `status` é sempre o estado **fiscal** e `authorized` é final; documentos e e-mail
 têm campos próprios. `stage`: `pending` (em processamento), `authorized` (sem
@@ -385,7 +385,7 @@ header de ambiente ao S3. Gerar uma nova URL quando expirar. As rotas
 Erros:
 
 - 404: Nota não encontrada no tenant e ambiente selecionados
-- 409: Nota não autorizada ou `props.documentsReadyAt` ainda nulo
+- 409: Nota não autorizada ou `documentsReadyAt` ainda nulo
 - 503: Armazenamento indisponível
 
 **POST /invoices/{id}/email** - Reenvia o e-mail da nota fiscal ao cliente.
@@ -825,9 +825,8 @@ para o novo ambiente). `GET /v1/mcp/connections` devolve `environment` em cada i
 O código atual não tem envelope global. Auth, sessão, API keys, magic link,
 plans, billing, companies e OTP retornam `{data: ...}`. Certificados,
 credits, webhooks e health retornam objeto/array diretamente.
-Notas e eventos ainda são entidades de domínio serializadas como
-`{props: {...}}`, ou array desses objetos. `/credits/plans` também retorna
-entidades de plano com `props`. Não aplicar `response.data.data` a todas as
+Notas, eventos, planos e transações de crédito também vêm planos (sem `props`):
+`{data: {...}}` ou `{data: [...], pagination}`. Não aplicar `response.data.data` a todas as
 rotas; conferir cada contrato. PDF/XML são arquivos, usar `response.blob()`
 ou `response.text()`, não `response.json()`.
 

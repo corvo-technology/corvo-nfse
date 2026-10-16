@@ -109,4 +109,8 @@ export class CreditTransaction {
   toSnapshot(): CreditTransactionProps {
     return { ...this.props };
   }
+
+  toJSON(): CreditTransactionProps {
+    return this.toSnapshot();
+  }
 }

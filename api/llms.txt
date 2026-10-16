@@ -42,10 +42,10 @@
 
 ## Invoice intake and scheduling
 
-POST /v1/invoices returns HTTP 202 with data.props and initial status queued.
+POST /v1/invoices returns HTTP 202 with the invoice in data (flat, no props) and initial status queued.
 options.type accepts IMMEDIATE (default) or SCHEDULE. SCHEDULE uses a future
 competenceDate (YYYY-MM-DD) and releases emission at 00:00 America/Sao_Paulo.
-data.props.scheduledFor is the release timestamp (ISO string), or null for
+data.scheduledFor is the release timestamp (ISO string), or null for
 IMMEDIATE; scheduled invoices remain queued until that instant. Dates beyond
 the configured horizon (15 days by default) return HTTP 422 with fiscal issue
 code schedule_horizon_exceeded. Intake atomically persists invoice, event and

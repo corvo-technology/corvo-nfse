@@ -48,8 +48,8 @@ export const en: DocsTree = {
           ["List companies", "`{ \"data\": Company[], \"pagination\": {...} }`"],
           ["Delete a company", "`{ \"data\": null }`"],
           ["Certificate upload / listing", "`{ \"data\": Certificate } / paginated listing`"],
-          ["Issue / fetch an invoice", "`{ \"data\": { \"props\": Invoice } }`"],
-          ["List invoices and events", "`{ \"data\": [{ \"props\": ... }], \"pagination\": {...} }`"],
+          ["Issue / fetch an invoice", "`{ \"data\": Invoice }`"],
+          ["List invoices and events", "`{ \"data\": [ ... ], \"pagination\": {...} }`"],
           ["Download URL / email", "`{ \"data\": ... }`"],
           ["Webhooks and deliveries", "`{ \"data\": ... } or paginated listing`"],
           ["Credit balance", "`{ \"data\": { \"tenantId\", \"balance\", ... } }`"],
@@ -59,7 +59,7 @@ export const en: DocsTree = {
       },
       {
         kind: "text",
-        body: "Resource content is preserved: an invoice still carries `props` inside `data` (`data.props`). Read `data` exactly once. PDF/XML, redirects, OAuth, MCP/JSON-RPC, health checks and `204` responses keep their own formats.",
+        body: "Resources come directly inside `data`: an invoice is `data`, a list is `data[]`. Read `data` exactly once. PDF/XML, redirects, OAuth, MCP/JSON-RPC, health checks and `204` responses keep their own formats.",
       },
       { kind: "heading", level: 2, body: "All operations" },
       {
@@ -160,7 +160,7 @@ export const en: DocsTree = {
         {
           kind: "callout",
           tone: "warn",
-          body: "Credits, plan and webhook settings belong to the account. A `test` key with `full_access` can also change plans: do not treat the whole API as a financial sandbox.",
+          body: "Credits, plan and webhook settings belong to the account. A `test` key with `full_access` can manage webhooks and read credits and billing. Plan changes, checkout and the billing portal exist only in the dashboard.",
         },
         { kind: "callout", tone: "accent", body: "The server resolves the tenant from authentication: never send `tenantId` in a body. Resources of another tenant return `404`." },
         { kind: "heading", level: 2, body: "Scopes" },
@@ -309,7 +309,7 @@ export const en: DocsTree = {
           "`POST /v1/invoices`.",
         ] },
         { kind: "callout", tone: "accent", body: "The regime sent when creating the company creates its fiscal profile, valid from today and already approved by the caller (user or API key). Without a customer or with a CPF customer there is no approval step or service setup: classification comes from the official catalog by `service.code`. With a CNPJ customer the federal withholding depends on the service policy: create the service profile with `withholdingPolicy` `NONE_CONFIRMED` or `CONFIGURED` and approve it, otherwise the calculation returns `blocked` with `TAX_APPLICABILITY_UNKNOWN`. `GET /v1/companies/:id` shows `status` and `setupGaps` (`municipality_code`, `municipal_registration` in `live`, `certificate`). Use `POST /v1/invoices/calculate` to check before issuing." },
-        { kind: "callout", tone: "warn", body: "Changing the regime with `PATCH` on the same day the company was created returns `409` (`profile_validity_conflict`), because an approved profile is not rewritten. For a dated change use `PUT /v1/companies/:id/fiscal-profile` with `validFrom`. Service profiles (`/v1/companies/:id/service-tax-profiles`) are optional and become required when the regime needs IBS/CBS or configured ISS: the calculation returns `FISCAL_CLASSIFICATION_REQUIRED` with the missing fields." },
+        { kind: "callout", tone: "warn", body: "Changing `taxRegime`, `simpleNational` or `specialRegime` with `PATCH` on the same day the company was created returns `409` (`ERROR_CONFLICT`, message `profile_validity_conflict`), because an approved profile is not rewritten. For a dated change use `PUT /v1/companies/:id/fiscal-profile` with `validFrom`. Service profiles (`/v1/companies/:id/service-tax-profiles`) are optional and become required when the regime needs IBS/CBS or configured ISS: the calculation returns `FISCAL_CLASSIFICATION_REQUIRED` with the missing fields." },
         {
           kind: "endpoint",
           method: "POST",
@@ -475,7 +475,7 @@ console.log(body.data); // { data: Company }`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "A company that does not exist, was deleted, or belongs to another environment/account returns `404`." },
+            { kind: "callout", tone: "warn", body: "A company that does not exist, was deleted, or belongs to another environment/account returns `404`. An `id` that is not a valid UUID returns `400` (`ERROR_BAD_REQUEST`)." },
           ],
         },
         {
@@ -494,7 +494,7 @@ console.log(body.data); // { data: Company }`,
               { name: "municipalReg", type: "string or null", required: false, description: "Municipal registration. `null` clears the registration." },
               { name: "municipalityCode", type: "string", required: false, description: "Exactly 7 digits when provided; omit to keep the existing value. Cannot be cleared." },
               { name: "defaultServiceCode", type: "string or null", required: false, description: "Exactly 6 digits when provided. Omit to keep; null clears the default." },
-              { name: "simpleNational", type: "boolean", required: false, description: "Defaults to `false`." },
+              { name: "simpleNational", type: "boolean", required: false, description: "Omit it to keep the current value." },
               { name: "specialRegime", type: "string", required: false, description: "Up to 50 characters." },
               { name: "address", type: "object or null", required: false, description: "Same fields as on creation. `null` clears the address." },
             ],
@@ -707,7 +707,7 @@ console.log(res.status); // 204`,
               { name: "customer", type: "object", required: false, description: "Optional: omit it or send `{}` for an unidentified consumer (the customer is left out of the DPS). When sent, `name` (required), `taxId` (required: valid CPF or CNPJ, normalized), `email` (optional; required when email sending is enabled; no email format validation in this DTO/domain) and `address` (optional: `street`, `city`, `state`, `zip`, `country` are optional strings; if you fill in city or state, fill in both; state must be valid)." },
               { name: "service", type: "object", required: true, description: "`code` optional when the company has `defaultServiceCode`; exactly 6 digits when provided. `municipalityCode` inherits the company municipality; when provided, exactly 7 digits and sets the service location. `description` is an optional string. Empty, null or invalid values do not use the defaults." },
               { name: "amount", type: "number", required: true, description: "Value in reais, positive, up to 9999999999.99 with at most 2 decimals." },
-              { name: "competenceDate", type: "string ISO 8601", required: true, description: "Valid competence date. Without `options.type` it cannot be in the future (`422` `future_date`). With `options.type: \"SCHEDULE\"` a future date is accepted (see Scheduled invoices)." },
+              { name: "competenceDate", type: "string ISO 8601", required: true, description: "Valid competence date. Without `options.type` it cannot be in the future (`422` `ERROR_FUTURE_DATE`). With `options.type: \"SCHEDULE\"` a future date is accepted (see Scheduled invoices)." },
               { name: "discount", type: "number", required: false, description: "Unconditional discount in BRL, from 0 up to the invoice amount, at most 2 decimal places." },
               { name: "email", type: "boolean", required: false, description: "Requests a notification; defaults to `false`." },
               { name: "options.email.send", type: "boolean", required: false, description: "When set, takes precedence over `email`." },
@@ -760,30 +760,28 @@ console.log(res.status); // 204`,
   }),
 });
 const body = await res.json();
-console.log(body.data.props.id); // { data: { props: Invoice } }`,
+console.log(body.data.id); // { data: Invoice }`,
           },
           response: {
             label: "202 Accepted",
             json: `{
   "data": {
-    "props": {
-      "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
-      "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
-      "environment": "test",
-      "externalId": "pedido_123",
-      "idempotencyKey": "pedido_123_emissao",
-      "status": "queued",
-      "amount": 150.5,
-      "currency": "BRL",
-      "competenceDate": "2026-10-01",
-      "stage": "pending",
-      "createdAt": "2026-10-10T12:00:00.000Z"
-    }
+    "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
+    "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
+    "environment": "test",
+    "externalId": "pedido_123",
+    "idempotencyKey": "pedido_123_emissao",
+    "status": "queued",
+    "amount": 150.5,
+    "currency": "BRL",
+    "competenceDate": "2026-10-01T00:00:00.000Z",
+    "stage": "pending",
+    "createdAt": "2026-10-10T12:00:00.000Z"
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Send an `Idempotency-Key` header: with the same key, account and environment and equivalent content, the hash recovers the same invoice; different content returns `409` (`IdempotencyConflictError`). The hash is computed before fiscal normalization, with canonical JSON keys and the competence date. Do not change how fields are represented between retries: a CNPJ with and without punctuation can produce different hashes. Without a key there is no deduplication." },
+            { kind: "callout", tone: "accent", body: "Send an `Idempotency-Key` header: with the same key, account and environment and equivalent content, the hash recovers the same invoice; different content returns `409` (`ERROR_IDEMPOTENCY_CONFLICT`). The hash is computed before fiscal normalization, with canonical JSON keys and the competence date. Do not change how fields are represented between retries: a CNPJ with and without punctuation can produce different hashes. Without a key there is no deduplication." },
             { kind: "callout", tone: "warn", body: "Issuance is asynchronous — see the Async issuance guide. Track the invoice with `GET /v1/invoices/:id` or webhooks. The customer address is reduced to `city` and `state` in the snapshot; `street`, `zip` and `country` are not preserved — do not rely on them in the response." },
           ],
         },
@@ -834,14 +832,85 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
     "disclaimer": "Pre-emission calculation. Values are not a fiscal document and may differ from the final validation by Sefin.",
     "competenceDate": "2026-10-13",
     "taxRegime": "MEI",
+    "classification": {
+      "serviceCode": "060101",
+      "source": "official_catalog",
+      "operationNature": "SERVICE",
+      "nbsCode": null,
+      "cst": null,
+      "classCode": null,
+      "serviceProfileId": null,
+      "catalogValidated": false
+    },
+    "applicability": {
+      "customerRequired": false,
+      "strategy": "mei",
+      "iss": {
+        "status": "NOT_APPLICABLE",
+        "reason": "ISS recolhido no DAS-MEI"
+      },
+      "federalWithholding": {
+        "status": "NOT_APPLICABLE",
+        "reason": "no federal withholding on payments to Simples Nacional/MEI optants (IN RFB 1.234/2012, art. 4, XI)"
+      },
+      "cbs": {
+        "status": "NOT_APPLICABLE",
+        "reason": "MEI não destaca IBS/CBS na fase de teste de 2026"
+      },
+      "ibs": {
+        "status": "NOT_APPLICABLE",
+        "reason": "MEI não destaca IBS/CBS na fase de teste de 2026"
+      }
+    },
     "taxes": {},
     "withholdings": [],
     "netReceivableAmount": "50.00",
     "collectionWaived": false,
-    "warnings": [],
+    "calculation": {
+      "source": "none",
+      "calculatorVersion": null,
+      "rulesVersion": "2026.10-r1",
+      "legalReferences": [
+        "Ato Conjunto RFB/CGIBS nº 4/2026; orientação CGNFS-e de 07/08/2026"
+      ]
+    },
+    "warnings": [
+      {
+        "code": "CLASSIFICATION_NOT_CATALOG_VALIDATED",
+        "message": "Service tax classification was not validated against the official catalog",
+        "step": "ServiceTaxClassifier"
+      }
+    ],
     "pendingFields": [],
     "blocking": null,
-    "trace": []
+    "trace": [
+      {
+        "step": "CompanyFiscalProfile",
+        "status": "applied",
+        "durationMs": 2.4
+      },
+      {
+        "step": "ServiceTaxClassifier",
+        "status": "applied",
+        "durationMs": 7.1
+      },
+      {
+        "step": "TaxApplicabilityResolver",
+        "status": "applied",
+        "durationMs": 0.3
+      },
+      {
+        "step": "RtcTaxCalculator",
+        "status": "skipped",
+        "durationMs": 0.03,
+        "reason": "MEI não destaca IBS/CBS na fase de teste de 2026"
+      },
+      {
+        "step": "FiscalValidator",
+        "status": "applied",
+        "durationMs": 0.1
+      }
+    ]
   }
 }`,
           },
@@ -852,11 +921,11 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ],
         },
         { kind: "heading", level: 2, body: "Scheduled invoices" },
-        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` with a future `competenceDate` to have the invoice issued only on that day. Corvo releases issuance at 00:00 `America/Sao_Paulo` on the `competenceDate`. Until then the invoice stays `status: \"queued\"` and `props.scheduledFor` holds the release instant (ISO); for immediate invoices `scheduledFor` is `null`." },
+        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` with a future `competenceDate` to have the invoice issued only on that day. Corvo releases issuance at 00:00 `America/Sao_Paulo` on the `competenceDate`. Until then the invoice stays `status: \"queued\"` and `scheduledFor` holds the release instant (ISO); for immediate invoices `scheduledFor` is `null`." },
         { kind: "table", head: ["Situation", "Result"], rows: [
-          ["No `options.type` (or `IMMEDIATE`) and a future `competenceDate`", "`422` with `future_date`."],
+          ["No `options.type` (or `IMMEDIATE`) and a future `competenceDate`", "`422` with `ERROR_FUTURE_DATE` in `details[].code`."],
           ["`SCHEDULE` and a future `competenceDate` within the limit", "`202`, `status: queued`, `scheduledFor` set; issuance happens on that date."],
-          ["`SCHEDULE` and a `competenceDate` beyond the limit (default 15 days ahead)", "`422` with `schedule_horizon_exceeded`."],
+          ["`SCHEDULE` and a `competenceDate` beyond the limit (default 15 days ahead)", "`422` with `ERROR_SCHEDULE_HORIZON_EXCEEDED` in `details[].code`."],
           ["`SCHEDULE` and a `competenceDate` of today or in the past", "Immediate issuance, `scheduledFor: null`."],
         ] },
         { kind: "code", label: "Schedule an invoice", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
@@ -872,7 +941,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
   }'` },
         { kind: "callout", tone: "warn", body: "Tax data is computed when the invoice is issued, using the configuration in force on the `competenceDate`. In `live`, the company must be ready and have an active certificate when you schedule. Before scheduling, `POST /v1/invoices/calculate` shows the calculation for that date. The `nfse.invoice.authorized` (or `rejected`) webhook arrives when issuance happens, not when you schedule." },
         { kind: "heading", level: 2, body: "Invoice schema" },
-        { kind: "text", body: "The object sits inside `props`:" },
+        { kind: "text", body: "Each invoice has these fields:" },
         {
           kind: "table",
           head: ["Fields", "Type / notes"],
@@ -884,7 +953,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             ["`customerSnapshot`", "`taxId`, `name`, `email?`, `address?: { city, state, country? }`."],
             ["`serviceSnapshot`", "`description`, `code`, `municipalityCode`."],
             ["`taxSnapshot`", "Fiscal information object."],
-            ["`amount`, `currency`, `competenceDate`", "Number in reais, currency and ISO date."],
+            ["`amount`, `currency`, `competenceDate`", "Number in reais, currency and ISO 8601 date-time (the competence date at midnight UTC, e.g. `2026-10-01T00:00:00.000Z`)."],
             ["`dpsId`, `dpsSeries`, `dpsNumber`", "String/string/number or null."],
             ["`accessKey`, `nfseNumber`", "String/number or null."],
             ["`fiscalProvider`, `fiscalSchemaVersion`", "Strings."],
@@ -933,7 +1002,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             node: `const res = await fetch(\`\${BASE_URL}/invoices?status=authorized&limit=50\`, {
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
-const { data: invoices, pagination } = await res.json(); // { data: [{ props: Invoice }], pagination }
+const { data: invoices, pagination } = await res.json(); // { data: Invoice[], pagination }
 console.log(invoices.length, pagination.nextCursor);`,
           },
           response: {
@@ -941,13 +1010,11 @@ console.log(invoices.length, pagination.nextCursor);`,
             json: `{
   "data": [
     {
-      "props": {
-        "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
-        "status": "authorized",
-        "amount": 150.5,
-        "competenceDate": "2026-10-01",
-        "createdAt": "2026-10-10T12:00:00.000Z"
-      }
+      "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
+      "status": "authorized",
+      "amount": 150.5,
+      "competenceDate": "2026-10-01T00:00:00.000Z",
+      "createdAt": "2026-10-10T12:00:00.000Z"
     }
   ],
   "pagination": {
@@ -975,25 +1042,23 @@ console.log(invoices.length, pagination.nextCursor);`,
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
 const body = await res.json();
-console.log(body.data.props.status); // { data: { props: Invoice } }`,
+console.log(body.data.status); // { data: Invoice }`,
           },
           response: {
             label: "200 OK",
             json: `{
   "data": {
-    "props": {
-      "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
-      "status": "authorized",
-      "stage": "documents_ready",
-      "documentsStatus": "ready",
-      "accessKey": "35260712345678900000350010000000011000000019",
-      "nfseNumber": 123
-    }
+    "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
+    "status": "authorized",
+    "stage": "documents_ready",
+    "documentsStatus": "ready",
+    "accessKey": "35260712345678900000350010000000011000000019",
+    "nfseNumber": 123
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "Returns `404` if the invoice is not found in the account/environment." },
+            { kind: "callout", tone: "warn", body: "Returns `404` if the invoice is not found in the account/environment. An `id` that is not a valid UUID returns `400` (`ERROR_BAD_REQUEST`)." },
           ],
         },
         {
@@ -1048,14 +1113,14 @@ await writeFile("nfse.pdf", Buffer.from(await res.arrayBuffer()));`,
           path: "/v1/invoices/:id/events",
           scopes: ["full_access", "invoices_view", "invoices_read_write"],
           success: "200 OK",
-          summary: "Fetches the status history of an invoice. No pagination on this route.",
+          summary: "Fetches the status history of an invoice, oldest first. Paginated like any list (`limit`, `cursor`).",
           examples: {
             curl: `curl "$BASE_URL/invoices/$INVOICE_ID/events" \\
   -H "X-API-Key: $CORVO_API_KEY"`,
             node: `const res = await fetch(\`\${BASE_URL}/invoices/\${process.env.INVOICE_ID}/events\`, {
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
-const { data: events, pagination } = await res.json(); // { data: [{ props: InvoiceEvent }], pagination }
+const { data: events, pagination } = await res.json(); // { data: InvoiceEvent[], pagination }
 console.log(events.length, pagination.hasMore);`,
           },
           response: {
@@ -1063,14 +1128,12 @@ console.log(events.length, pagination.hasMore);`,
             json: `{
   "data": [
     {
-      "props": {
-        "id": "e1d2c3b4-5a6f-4b7c-8d9e-0f1a2b3c4d5e",
-        "invoiceId": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
-        "fromStatus": "queued",
-        "toStatus": "authorized",
-        "reason": null,
-        "createdAt": "2026-10-10T12:01:00.000Z"
-      }
+      "id": "e1d2c3b4-5a6f-4b7c-8d9e-0f1a2b3c4d5e",
+      "invoiceId": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
+      "fromStatus": "queued",
+      "toStatus": "authorized",
+      "reason": null,
+      "createdAt": "2026-10-10T12:01:00.000Z"
     }
   ],
   "pagination": {
@@ -1354,7 +1417,7 @@ console.log(body.data.sent); // { data: { sent: true } }`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "`{ \"sent\": true }` is returned when the attempt succeeds. A failed test attempt does not schedule the normal retries." },
+            { kind: "callout", tone: "accent", body: "`{ \"sent\": true }` is returned when your endpoint answers `2xx`. Otherwise the response is still `200` with `{ \"sent\": false, \"statusCode\": 405, \"error\": \"...\" }` (`statusCode` is `null` if the endpoint could not be reached). A failed test attempt does not schedule the normal retries." },
           ],
         },
         {
@@ -1526,7 +1589,7 @@ console.log(body.data.balance); // { data: { tenantId, balance, overageUnits, ..
             node: `const res = await fetch(\`\${BASE_URL}/credits/plans\`, {
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
-const { data: plans, pagination } = await res.json(); // { data: [{ props: Plan }], pagination }
+const { data: plans, pagination } = await res.json(); // { data: Plan[], pagination }
 console.log(plans.length, pagination.hasMore);`,
           },
           response: {
@@ -1534,17 +1597,23 @@ console.log(plans.length, pagination.hasMore);`,
             json: `{
   "data": [
     {
-      "props": {
-        "id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
-        "slug": "developer",
-        "name": "Developer",
-        "monthlyCreditAllowance": 100,
-        "dailyLimit": null,
-        "maxActiveCompanies": 1,
-        "creditUnitPriceCents": 10,
-        "supportTier": "email",
-        "active": true
-      }
+      "id": "3ec51af3-c715-4755-95da-c9b0951973dd",
+      "slug": "developer",
+      "name": "Developer",
+      "description": "Ideal for developers and small teams",
+      "monthlyCreditAllowance": 200,
+      "dailyLimit": null,
+      "maxActiveCompanies": 10,
+      "creditUnitPriceCents": 15,
+      "throughputRps": 50,
+      "includesWebhooks": true,
+      "includesXmlDownload": true,
+      "includesPdfDownload": true,
+      "includesApiKeys": true,
+      "supportTier": "email",
+      "active": true,
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
     }
   ],
   "pagination": {
@@ -1577,7 +1646,7 @@ console.log(plans.length, pagination.hasMore);`,
             node: `const res = await fetch(\`\${BASE_URL}/credits/history?limit=50\`, {
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
-const { data: txs, pagination } = await res.json(); // { data: [{ props: CreditTransaction }], pagination }
+const { data: txs, pagination } = await res.json(); // { data: CreditTransaction[], pagination }
 console.log(txs.length, pagination.nextCursor);`,
           },
           response: {
@@ -1585,13 +1654,11 @@ console.log(txs.length, pagination.nextCursor);`,
             json: `{
   "data": [
     {
-      "props": {
-        "id": "f4e3d2c1-5b6a-4c7d-8e9f-0a1b2c3d4e5f",
-        "amount": 100,
-        "type": "purchase",
-        "description": null,
-        "createdAt": "2026-10-10T12:00:00.000Z"
-      }
+      "id": "f4e3d2c1-5b6a-4c7d-8e9f-0a1b2c3d4e5f",
+      "amount": 100,
+      "type": "purchase",
+      "description": null,
+      "createdAt": "2026-10-10T12:00:00.000Z"
     }
   ],
   "pagination": {
@@ -1753,7 +1820,7 @@ console.log(body.data.canEmit); // { data: QuotaStatus }`,
           kind: "endpoint",
           method: "POST",
           path: "/v1/billing/upgrade",
-          scopes: ["full_access"],
+          scopes: ["dashboard"],
           success: "200 OK",
           summary: "Schedules the switch to the target plan on the subscription.",
           params: {
@@ -1794,7 +1861,7 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
           kind: "endpoint",
           method: "POST",
           path: "/v1/billing/downgrade",
-          scopes: ["full_access"],
+          scopes: ["dashboard"],
           success: "200 OK",
           summary: "Schedules a plan change for the end of the period.",
           params: {
@@ -1831,6 +1898,129 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
             { kind: "callout", tone: "warn", body: "Dashboard-only route: API keys have no access (`403`). Requires an active subscription (`409` otherwise) and returns `scheduled_plan` and `effective_at`; checkout and the billing portal also live in the dashboard." },
           ],
         },
+        { kind: "heading", level: 2, body: "Public plan catalog" },
+        { kind: "text", body: "These three routes need no API key or session: use them to show prices on your own site or to size a plan. Amounts are in cents (`...Cents`) and the only cycle is `monthly`; any other `cycle` returns `400`." },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/plans",
+          scopes: ["public"],
+          success: "200 OK",
+          summary: "Lists the plans with their monthly price and allowance.",
+          params: {
+            rows: [
+              { name: "cycle", type: "string", required: false, description: "Only `monthly` is accepted (default)." },
+              { name: "limit", type: "integer", required: false, description: "Defaults to `50`; integer from 1 to 1000." },
+              { name: "cursor", type: "string", required: false, description: "`nextCursor` from the previous page." },
+            ],
+          },
+          examples: {
+            curl: `curl "$BASE_URL/plans"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans\`);
+const { data: plans, pagination } = await res.json(); // { data: PlanQuote[], pagination }
+console.log(plans.map((p) => p.slug), pagination.hasMore);`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": [
+    {
+      "slug": "developer",
+      "name": "Developer",
+      "monthlyAllowance": 200,
+      "basePriceCents": 2990,
+      "perCreditOverageCents": 15,
+      "monthlyTotalCents": 2990,
+      "currency": "BRL"
+    }
+  ],
+  "pagination": {
+    "limit": 50,
+    "hasMore": false,
+    "nextCursor": null
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "Ordered from the smallest to the largest allowance. `monthlyAllowance` is the number of included credits, `perCreditOverageCents` the price of each credit above it and `monthlyTotalCents` the monthly price. This is the pricing view; `GET /v1/credits/plans` returns the plan limits and features instead." },
+          ],
+        },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/plans/:slug",
+          scopes: ["public"],
+          success: "200 OK",
+          summary: "Fetches the price of one plan.",
+          params: {
+            rows: [
+              { name: "cycle", type: "string", required: false, description: "Only `monthly` is accepted (default)." },
+            ],
+          },
+          examples: {
+            curl: `curl "$BASE_URL/plans/growth"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/growth\`);
+const body = await res.json();
+console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "slug": "growth",
+    "name": "Growth",
+    "monthlyAllowance": 750,
+    "basePriceCents": 8990,
+    "perCreditOverageCents": 12,
+    "monthlyTotalCents": 8990,
+    "currency": "BRL"
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "warn", body: "`slug` is `free`, `developer`, `growth`, `scale` or `volume`. An unknown plan returns `404`." },
+          ],
+        },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/plans/quote",
+          scopes: ["public"],
+          success: "200 OK",
+          summary: "Recommends the plan for a monthly volume of invoices and estimates the total cost.",
+          params: {
+            rows: [
+              { name: "volume", type: "integer", required: false, description: "Invoices per month. Required for a quote." },
+              { name: "cycle", type: "string", required: false, description: "Only `monthly` is accepted (default)." },
+            ],
+          },
+          examples: {
+            curl: `curl "$BASE_URL/plans/quote?volume=20000"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/quote?volume=20000\`);
+const body = await res.json();
+console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { data: Quote | null }`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "volume": 20000,
+    "recommended_plan": "volume",
+    "plan_name": "Volume",
+    "monthly_allowance": 10000,
+    "overage_credits": 10000,
+    "overage_cost_cents": 90000,
+    "base_price_cents": 89990,
+    "total_estimated_cents": 179990,
+    "currency": "BRL",
+    "billing_cycle": "monthly"
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "warn", body: "This route uses snake_case. `total_estimated_cents` is the plan price plus the estimated overage (`overage_credits` × the plan's price per credit). A missing, zero, negative or non-numeric `volume` returns `200` with `{ \"data\": null }`, not an error." },
+          ],
+        },
       ],
     },
     "async-issuance": {
@@ -1863,7 +2053,7 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
         },
         {
           kind: "text",
-          body: "The same key, account and environment with content equivalent to the computed hash recovers the same invoice; different content returns `409` (`IdempotencyConflictError`). The hash is computed before fiscal normalization, with canonical JSON keys and the competence date — do not change how fields are represented between retries (a CNPJ with and without punctuation can produce different hashes).",
+          body: "The same key, account and environment with content equivalent to the computed hash recovers the same invoice; different content returns `409` (`ERROR_IDEMPOTENCY_CONFLICT`). The hash is computed before fiscal normalization, with canonical JSON keys and the competence date — do not change how fields are represented between retries (a CNPJ with and without punctuation can produce different hashes).",
         },
         {
           kind: "callout",
@@ -1888,7 +2078,7 @@ async function issueWithRetry(buildBody, attempts = 3) {
       body: JSON.stringify(buildBody()),
     });
     if (res.status === 409) {
-      // IdempotencyConflictError — payload differs; fix the data, don't retry
+      // ERROR_IDEMPOTENCY_CONFLICT — payload differs; fix the data, don't retry
       throw new Error("Idempotency conflict: payload changed between retries");
     }
     if (res.status < 500) return res.json(); // success or client error — no retry
@@ -2072,7 +2262,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "2. Register or fetch the company in the corresponding environment (`POST /v1/companies`, `GET /v1/companies/:id`).",
             "3. In `live`, fill in the municipal registration and upload a valid A1 certificate matching the CNPJ (`POST /v1/companies/:companyId/certificates`).",
             "4. Check readiness with `GET /v1/companies/:id` — `status` must be `ready` and `setupGaps` empty.",
-            "5. Issue the first invoices in `test` with a stable `Idempotency-Key` and store `data.props.id`.",
+            "5. Issue the first invoices in `test` with a stable `Idempotency-Key` and store `data.id`.",
             "6. Register a webhook (`POST /v1/webhooks`) and confirm delivery with `POST /v1/webhooks/:id/test`.",
             "7. Track status via `GET /v1/invoices/:id` or signed webhooks; generate download URLs and request email only after documents are ready — check `emailStatus` separately.",
           ],

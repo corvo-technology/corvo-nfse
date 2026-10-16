@@ -130,7 +130,7 @@ async function waitInvoice(id) {
   let last = 'queued';
   while (Date.now() < deadline) {
     const got = await api('GET', `invoices/${id}`);
-    const props = got.body.data?.props ?? got.body.data ?? {};
+    const props = got.body.data ?? {};
     last = props.status ?? last;
     if (['authorized', 'rejected', 'failed', 'manual_review', 'reconciliation_required'].includes(last))
       return { status: last, props };
@@ -157,8 +157,8 @@ for (const spec of COMPANIES) {
       if (scenario.expectHttp || scenario.expectPostHttp || calc.status === 200 && c.status === 'ready') {
         const sent = await api('POST', 'invoices', { json: body, headers: { 'idempotency-key': `scn-${randomUUID()}` } });
         if (sent.status === 202) {
-          const id = sent.body.data?.props?.id;
-          if (scenario.noWait) emitText = `202 ${sent.body.data.props.status} scheduledFor=${sent.body.data.props.scheduledFor}`;
+          const id = sent.body.data?.id;
+          if (scenario.noWait) emitText = `202 ${sent.body.data.status} scheduledFor=${sent.body.data.scheduledFor}`;
           else { const done = await waitInvoice(id); emitText = `${done.status}${done.props.lastErrorCode ? ` ${done.props.lastErrorCode}` : ''}`; }
         } else emitText = `HTTP ${sent.status} ${sent.body.code ?? ''}${sent.body.details?.[0]?.code ? ` ${sent.body.details[0].code}` : ''}`;
       } else emitText = 'não emitida (cálculo bloqueado)';

@@ -74,7 +74,7 @@ function checkpoint() {
 }
 
 function resource(data) {
-  return data?.props ?? data;
+  return data;
 }
 
 function ensureTest(value, label) {

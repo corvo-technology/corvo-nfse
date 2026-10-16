@@ -28,6 +28,11 @@ export class InvoiceEvent {
     });
   }
 
+  /** Rebuilds a stored event; unlike `create` it keeps the original id and timestamp. */
+  static reconstitute(snapshot: InvoiceEventSnapshot): InvoiceEvent {
+    return new InvoiceEvent({ ...snapshot });
+  }
+
   get id(): string {
     return this.props.id;
   }
@@ -54,5 +59,9 @@ export class InvoiceEvent {
 
   toSnapshot(): InvoiceEventSnapshot {
     return { ...this.props };
+  }
+
+  toJSON(): InvoiceEventSnapshot {
+    return this.toSnapshot();
   }
 }

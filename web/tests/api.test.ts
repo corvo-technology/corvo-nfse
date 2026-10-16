@@ -59,13 +59,13 @@ describe("cookie transport", () => {
 });
 describe("endpoint-specific contracts", () => {
   const page = (rows: unknown[], hasMore = false, nextCursor: string | null = null) => ({ data: rows, pagination: { limit: 50, hasMore, nextCursor } });
-  it("adapts enveloped pages: company addresses, invoice props, event props, server cursors", async () => {
-    fetchMock.mockResolvedValueOnce(reply(page([company], true, "c1"))).mockResolvedValueOnce(reply(page([invoice], true, "i1"))).mockResolvedValueOnce(reply(page([{ props: { id: "event-1", invoiceId: "invoice-1", fromStatus: "processing", toStatus: "authorized", createdAt: "2026-10-09T12:00:00.000Z", reason: null } }])));
+  it("adapts enveloped pages: company addresses, flat invoices and events, server cursors", async () => {
+    fetchMock.mockResolvedValueOnce(reply(page([company], true, "c1"))).mockResolvedValueOnce(reply(page([invoice], true, "i1"))).mockResolvedValueOnce(reply(page([{ id: "event-1", invoiceId: "invoice-1", fromStatus: "processing", toStatus: "authorized", createdAt: "2026-10-09T12:00:00.000Z", reason: null }])));
     const c = await companies.list({ limit: 50 }); expect(c.items[0].address.city).toBe("São Paulo"); expect(c).toMatchObject({ hasMore: true, nextCursor: "c1" });
     const result = await invoices.list({ limit: 1000, cursor: "prev", status: "authorized" });
     expect(result.items[0]).toMatchObject({ customerName: "Customer", serviceDescription: "Consulting", nfseNumber: 123 }); expect(result).toMatchObject({ hasMore: true, nextCursor: "i1" });
     expect(String(fetchMock.mock.calls[1][0])).toContain("limit=1000"); expect(String(fetchMock.mock.calls[1][0])).toContain("cursor=prev"); expect(String(fetchMock.mock.calls[1][0])).not.toMatch(/offset|page=/);
-    expect((await invoices.events("invoice-1")).items[0]).toMatchObject({ from: "processing", to: "authorized", at: invoice.props.createdAt });
+    expect((await invoices.events("invoice-1")).items[0]).toMatchObject({ from: "processing", to: "authorized", at: invoice.createdAt });
   });
   it("unwraps single invoices and companies from data", async () => {
     fetchMock.mockResolvedValueOnce(reply({ data: invoice })).mockResolvedValueOnce(reply({ data: company }, 201));
@@ -139,14 +139,14 @@ describe("adaptInvoice", () => {
 
   it("keeps the customer name and tax id when the invoice has a tomador", async () => {
     const { adaptInvoice } = await import("@/lib/api");
-    const invoice = adaptInvoice({ props: { ...(props as object), customerSnapshot: { name: "Ana", taxId: "52998224725" } } as never });
+    const invoice = adaptInvoice({ ...(props as object), customerSnapshot: { name: "Ana", taxId: "52998224725" } } as never);
     expect(invoice.customerName).toBe("Ana");
     expect(invoice.customerTaxId).toBe("52998224725");
   });
 
   it("does not throw for anonymous consumer invoices (no customer snapshot)", async () => {
     const { adaptInvoice } = await import("@/lib/api");
-    const invoice = adaptInvoice({ props: { ...(props as object), customerSnapshot: null } as never });
+    const invoice = adaptInvoice({ ...(props as object), customerSnapshot: null } as never);
     expect(invoice.customerName).toBe("");
     expect(invoice.customerTaxId).toBe("");
     expect(invoice.serviceDescription).toBe("Corte");

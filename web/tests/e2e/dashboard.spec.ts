@@ -27,7 +27,7 @@ async function mockApi(page: Page, options: { authenticated?: boolean; invalidCo
     if (path === "/companies/company-1/certificates") return json(method === "POST" ? { id: "cert-1", companyId: company.id, status: "active", expiresAt: session.expiresAt, uploadedAt: company.createdAt } : [], method === "POST" ? 201 : 200);
     if (path === "/invoices") return json(method === "POST" ? invoice : [invoice], method === "POST" ? 201 : 200);
     if (path === "/invoices/invoice-1") return json(invoice);
-    if (path === "/invoices/invoice-1/events") return json([{ props: { id: "event-1", invoiceId: "invoice-1", fromStatus: "processing", toStatus: "authorized", createdAt: invoice.props.createdAt, reason: null } }]);
+    if (path === "/invoices/invoice-1/events") return json([{ id: "event-1", invoiceId: "invoice-1", fromStatus: "processing", toStatus: "authorized", createdAt: invoice.createdAt, reason: null }]);
     if (path === "/invoices/invoice-1/pdf") return route.fulfill({ contentType: "application/pdf", body: "%PDF-1.4 test" });
     if (path === "/invoices/invoice-1/xml") return route.fulfill({ contentType: "application/xml", body: "<nfse/>" });
     if (path === "/billing/plan") return json({ data: { plan: { slug: "free", name: "Free", monthly_price_cents: 0 }, usage: { credits_used: 1, credits_reserved: 0, credits_remaining: 99, monthly_allowance: 100, daily_usage: 1, daily_limit: 10, active_companies: 1, max_active_companies: 1, period_start: "2026-10-01T00:00:00Z", period_end: "2026-11-01T00:00:00Z" } } });
@@ -63,7 +63,7 @@ test("a failed post-login session can be retried without reusing the OTP", async
   const api = await mockApi(page, { failSessionOnce: true }); await enterCode(page);
   await page.getByRole("button", { name: "Load my session" }).click(); await expect(page).toHaveURL(/\/app$/); expect(api.verificationCount()).toBe(1);
 });
-test("invoice detail unwraps props, renders events and downloads a PDF", async ({ page }) => {
+test("invoice detail renders events and downloads a PDF", async ({ page }) => {
   await mockApi(page, { authenticated: true }); await page.goto("/app/invoices/invoice-1");
   await expect(page.getByText("Customer", { exact: true })).toBeVisible(); await expect(page.getByText("Consulting", { exact: true })).toBeVisible();
   const download = page.waitForEvent("download"); await page.getByRole("button", { name: "Download PDF" }).click(); expect((await download).suggestedFilename()).toContain("invoice-1.pdf");
