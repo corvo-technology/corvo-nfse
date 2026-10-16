@@ -35,6 +35,11 @@ export interface DpsBuildInput {
     readonly description: string;
     readonly municipalityCode: string;
     readonly environment: 'live' | 'test';
+    /**
+     * Where the DPS is received. A live invoice sent to the Sefin Produção Restrita must carry
+     * the homologation `tpAmb`, otherwise the Receita rejects it (E0006).
+     */
+    readonly sefin?: 'production' | 'restricted';
     readonly customer: {
       readonly kind: 'CPF' | 'CNPJ';
       readonly taxId: string;
@@ -204,7 +209,8 @@ export class DpsBuilder {
       serie: input.invoice.serie,
       nDPS: input.invoice.number,
       tpAmb:
-        input.invoice.environment === 'live'
+        input.invoice.environment === 'live' &&
+        input.invoice.sefin !== 'restricted'
           ? TipoAmbienteDps.Producao
           : TipoAmbienteDps.Homologacao,
       dhEmi: new Date(input.invoice.issuedAt),

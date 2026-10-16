@@ -134,8 +134,9 @@ api/FRONTEND_API.md for requests/responses/errors and prerequisites.
 
 POST /v1/companies requires legalName, taxId (CNPJ), taxRegime (MEI | Simples
 Nacional | Lucro Presumido | Lucro Real) and municipalityCode (7-digit IBGE).
-municipalReg is optional: send it only if the municipality registered it in the
-national registry, otherwise Receita rejects the invoice (E0120). defaultServiceCode (6-digit cTribNac),
+municipalReg is optional and is stored but NOT sent in the DPS unless
+sendMunicipalReg=true (default false): Receita rejects it (E0120) when the
+municipality has no complementary data for the company. defaultServiceCode (6-digit cTribNac),
 simpleNational (defaults from the regime), specialRegime, tradeName and address
 are optional. The regime is not stored on the company: the request creates the
 first company_fiscal_profiles row, valid from today and already approved by the

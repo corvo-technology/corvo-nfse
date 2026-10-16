@@ -1383,7 +1383,8 @@
     "finish": "Concluir",
     "hints": {
       "municipalReg": "Opcional. Informe só se a prefeitura registrou a inscrição municipal desta empresa no cadastro nacional; se não, a Receita rejeita a nota (E0120).",
-      "defaultServiceCode": "Código nacional (cTribNac), com 6 dígitos. Usado quando a nota não informa outro código. Você pode remover este padrão na edição."
+      "defaultServiceCode": "Código nacional (cTribNac), com 6 dígitos. Usado quando a nota não informa outro código. Você pode remover este padrão na edição.",
+      "sendMunicipalReg": "Desligado por padrão. Marque só se a prefeitura registrou esta empresa no cadastro nacional e a Receita exigir a IM; senão a nota é rejeitada (E0120)."
     },
     "fixFields": "Corrija os campos destacados.",
     "defaultServiceCode": "Código de serviço padrão",
@@ -1394,7 +1395,8 @@
     "regimeDerived": "A opção pelo Simples Nacional acompanha o regime selecionado.",
     "editFiscalHint": "Revise o regime e as vigências em Configuração fiscal na página da empresa.",
     "reviewNext": "Continuar para o certificado",
-    "openCompany": "Abrir empresa"
+    "openCompany": "Abrir empresa",
+    "sendMunicipalReg": "Enviar a inscrição municipal na nota"
   },
   "CompanyDetail": {
     "fiscalAdvanced": "Configuração fiscal avançada",

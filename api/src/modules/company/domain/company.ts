@@ -21,6 +21,8 @@ export interface CompanyProps {
   tradeName?: string;
   taxId: string;
   municipalReg?: string;
+  /** Send the municipal registration (IM) in the DPS. Off by default: the Receita rejects it (E0120) when the city has no complementary data for the provider. */
+  sendMunicipalReg?: boolean;
   municipalityCode?: string;
   defaultServiceCode?: string;
   addressStreet?: string;
@@ -57,6 +59,7 @@ export type CreateCompanyInput = {
   taxRegime: TaxRegime;
   tradeName?: string;
   municipalReg?: string;
+  sendMunicipalReg?: boolean;
   municipalityCode?: string;
   defaultServiceCode?: string;
   simpleNational?: boolean;
@@ -78,6 +81,7 @@ export type UpdateCompanyInput = {
   tradeName?: string;
   taxId?: string;
   municipalReg?: string | null;
+  sendMunicipalReg?: boolean;
   municipalityCode?: string;
   defaultServiceCode?: string | null;
   taxRegime?: TaxRegime;
@@ -117,6 +121,7 @@ export class Company {
       tradeName: input.tradeName?.trim(),
       taxId: normalizedTaxId,
       municipalReg: input.municipalReg?.trim(),
+      sendMunicipalReg: input.sendMunicipalReg ?? false,
       municipalityCode: input.municipalityCode?.trim(),
       defaultServiceCode: input.defaultServiceCode?.trim(),
       addressStreet: input.address?.street?.trim(),
@@ -160,6 +165,15 @@ export class Company {
 
   get municipalReg(): string | undefined {
     return this.props.municipalReg;
+  }
+
+  get sendMunicipalReg(): boolean {
+    return this.props.sendMunicipalReg ?? false;
+  }
+
+  /** The IM that goes into the DPS: only when the company opted in and has one. */
+  get municipalRegForDps(): string | undefined {
+    return this.sendMunicipalReg ? this.props.municipalReg : undefined;
   }
 
   get municipalityCode(): string | undefined {
@@ -295,9 +309,13 @@ export class Company {
       }
       this.props.taxId = normalized;
     }
+    if (input.sendMunicipalReg !== undefined)
+      this.props.sendMunicipalReg = input.sendMunicipalReg;
     if (input.municipalReg !== undefined) {
       if (input.municipalReg === null) {
         this.props.municipalReg = undefined;
+        // Nothing left to send.
+        this.props.sendMunicipalReg = false;
       } else {
         const trimmed = input.municipalReg.trim();
         if (trimmed === '') {

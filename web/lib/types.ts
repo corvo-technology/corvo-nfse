@@ -376,7 +376,7 @@ export interface CompanyAddress {
 }
 export interface Company {
   id: string; tenantId: string; legalName: string; tradeName?: string;
-  taxId: string; municipalReg?: string; municipalityCode?: string; defaultServiceCode?: string;
+  taxId: string; municipalReg?: string; /** Sends the municipal registration in the DPS. Off by default. */ sendMunicipalReg?: boolean; municipalityCode?: string; defaultServiceCode?: string;
   taxRegime: TaxRegime | null; simpleNational: boolean; specialRegime?: string;
   environment: CompanyEnvironment; address: CompanyAddress;
   status: CompanyStatus; /** What is still missing before the company is ready, from the API. */ setupGaps?: SetupGap[];
@@ -384,7 +384,7 @@ export interface Company {
 }
 export interface CreateCompanyInput {
   legalName: string; taxId: string; taxRegime: TaxRegime;
-  tradeName?: string; municipalReg?: string; municipalityCode: string; defaultServiceCode?: string;
+  tradeName?: string; municipalReg?: string; sendMunicipalReg?: boolean; municipalityCode: string; defaultServiceCode?: string;
   simpleNational?: boolean; specialRegime?: string;
   address?: CompanyAddress;
 }

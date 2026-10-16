@@ -49,6 +49,13 @@ export class CreateCompanyDto {
   @IsOptional() @IsString() @MaxLength(200) tradeName?: string;
   @IsString() taxId!: string; // validated by CompanyDomainService
   @IsOptional() @IsString() municipalReg?: string | null; // null = do not set, '' = error
+  @IsOptional()
+  @IsBoolean()
+  @ApiPropertyOptional({
+    description:
+      'Send the municipal registration in the DPS. Default false: the Receita rejects it (E0120) when the city has no complementary data for the company.',
+  })
+  sendMunicipalReg?: boolean;
   @ApiProperty({
     example: '3550308',
     description: 'Required IBGE municipality code (7 digits) in test and live.',
@@ -77,6 +84,12 @@ export class UpdateCompanyDto {
   @IsOptional() @IsString() @MaxLength(200) tradeName?: string;
   @IsOptional() @IsString() taxId?: string; // validated by CompanyDomainService
   @IsOptional() @IsString() municipalReg?: string | null; // null = clear, '' = error
+  @IsOptional()
+  @IsBoolean()
+  @ApiPropertyOptional({
+    description: 'Send the municipal registration in the DPS.',
+  })
+  sendMunicipalReg?: boolean;
   @ValidateIf((_object, value) => value !== undefined)
   @IsString()
   @MaxLength(7)

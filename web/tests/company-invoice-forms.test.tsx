@@ -66,6 +66,25 @@ describe("Company fiscal setup", () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0][0].municipalReg).toBeUndefined();
   });
+  it("keeps the municipal registration off the invoice unless the user opts in", async () => {
+    const onSave = vi.fn().mockResolvedValue(company);
+    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); reachFiscal(); fill("IBGE", "3550308");
+    const optIn = () => screen.queryByRole("checkbox", { name: /Send the municipal registration/ }) as HTMLInputElement | null;
+    expect(optIn()).toBeNull();
+    fill("Municipal registration", "12345");
+    expect(optIn()?.checked).toBe(false);
+    fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } }); fireEvent.click(screen.getByRole("button", { name: "Create company" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0][0]).toMatchObject({ municipalReg: "12345", sendMunicipalReg: false });
+  });
+  it("sends the municipal registration only after ticking the option", async () => {
+    const onSave = vi.fn().mockResolvedValue(company);
+    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); reachFiscal(); fill("IBGE", "3550308"); fill("Municipal registration", "12345");
+    fireEvent.click(screen.getByRole("checkbox", { name: /Send the municipal registration/ }));
+    fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } }); fireEvent.click(screen.getByRole("button", { name: "Create company" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0][0]).toMatchObject({ municipalReg: "12345", sendMunicipalReg: true });
+  });
   it("shows the saved service code in edit mode and sends null to clear it", async () => {
     const onSave = vi.fn().mockResolvedValue(company);
     renderUI(<CompanyForm company={company} onSave={onSave} onCancel={vi.fn()} />);

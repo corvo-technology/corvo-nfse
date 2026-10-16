@@ -349,7 +349,7 @@ export class NfseWorkflowService {
       emitente: {
         cnpj: company.taxId,
         legalName: company.legalName,
-        municipalReg: company.municipalReg,
+        municipalReg: company.municipalRegForDps,
         codMunicipio: municipality,
         regime: {
           opSimpNac:
@@ -401,6 +401,7 @@ export class NfseWorkflowService {
           description: snapshot.serviceSnapshot.description,
           municipalityCode: snapshot.serviceSnapshot.municipalityCode,
           environment: invoice.environment,
+          sefin: this.sefinTarget(),
           customer:
             taxId && customer
               ? {
@@ -414,7 +415,7 @@ export class NfseWorkflowService {
         },
         emitente: {
           cnpj: company.taxId,
-          municipalReg: company.municipalReg ?? null,
+          municipalReg: company.municipalRegForDps ?? null,
           municipalityCode: company.municipalityCode,
           specialTaxRegime: profile.specialTaxRegime ?? null,
         },
@@ -423,6 +424,13 @@ export class NfseWorkflowService {
     );
     if (!built.ok) throw new DpsBuildRejectionError(built.error);
     return { ...payload, preparedDps: built.value };
+  }
+
+  /** Where live invoices are received: the production Sefin unless the app runs in homologation mode. */
+  private sefinTarget(): 'production' | 'restricted' {
+    return this.config.get<string>('NFSE_SEFIN_ENVIRONMENT') === 'restricted'
+      ? 'restricted'
+      : 'production';
   }
 
   /**

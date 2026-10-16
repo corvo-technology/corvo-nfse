@@ -193,6 +193,33 @@ describe('DpsBuilder', () => {
     expect(dps.infDPS.verAplic).toBe('Corvo-test');
   });
 
+  describe('tpAmb follows where the DPS is received (Receita E0006)', () => {
+    const tpAmbOf = async (invoice: DpsInputOverrides['invoice']) =>
+      dpsFrom(await new DpsBuilder().build(input({ invoice }), RTC_V1_01))
+        .infDPS.tpAmb;
+
+    it('marks a live invoice as production by default', async () => {
+      expect(await tpAmbOf({ environment: 'live' })).toBe(
+        TipoAmbienteDps.Producao,
+      );
+      expect(await tpAmbOf({ environment: 'live', sefin: 'production' })).toBe(
+        TipoAmbienteDps.Producao,
+      );
+    });
+
+    it('marks a live invoice as homologation when it goes to the Produção Restrita', async () => {
+      expect(await tpAmbOf({ environment: 'live', sefin: 'restricted' })).toBe(
+        TipoAmbienteDps.Homologacao,
+      );
+    });
+
+    it('keeps a test invoice in homologation whatever the target is', async () => {
+      expect(await tpAmbOf({ environment: 'test', sefin: 'production' })).toBe(
+        TipoAmbienteDps.Homologacao,
+      );
+    });
+  });
+
   it('builds a DPS with MeEpp regime and SN federal/municipal apuration', async () => {
     const dps = dpsFrom(
       await new DpsBuilder().build(
