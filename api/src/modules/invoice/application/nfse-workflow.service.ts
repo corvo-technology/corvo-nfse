@@ -13,7 +13,6 @@ import {
 } from '../domain/dps-sequence';
 import { CompanyService } from '@/modules/company/application/company.service';
 import { CompanyFiscalProfileService } from '@/modules/company/application/company-fiscal-profile.service';
-import { formatLocalDate } from '@/shared/dates/date-time';
 import { ApplicationCertificateDecryptor } from '@/modules/certificate/application/certificate-decryptor';
 import { NfseProviderFactory } from '@/infra/external/nfse/nfse-provider.factory';
 import type {
@@ -88,6 +87,44 @@ export class NfseWorkflowService {
 
   async process(data: FiscalJobData): Promise<void> {
     return runWithTenant(data.tenantId, () => this.processTenant(data));
+  }
+
+  /**
+   * Called when the emission job exhausted its retries. Without this the invoice
+   * would stay queued/processing forever with no reason visible to the developer.
+   * A queued invoice never reached the provider, so it is rejected with the
+   * reason; a processing one may already have a fiscal result, so it goes to
+   * reconciliation instead of being declared failed.
+   */
+  async handleEmissionExhausted(
+    data: FiscalJobData,
+    error: Error,
+  ): Promise<void> {
+    await runWithTenant(data.tenantId, async () => {
+      const invoice = await this.invoices.findByIdAndTenantId(
+        data.invoiceId,
+        data.tenantId,
+      );
+      if (!invoice) return;
+      const message = `Emission could not be completed: ${error.message}`.slice(
+        0,
+        300,
+      );
+      if (invoice.status === 'queued') {
+        await this.rejectBeforeProcessing(
+          invoice,
+          'EMISSION_PROCESSING_FAILED',
+          message,
+        );
+      } else if (invoice.status === 'processing') {
+        invoice.setReconciliationRequired(message);
+        await this.lifecycle.transition(
+          invoice,
+          invoice.transitionTo('reconciliation_required', message),
+        );
+        await this.schedule(invoice);
+      }
+    });
   }
 
   private async processTenant(data: FiscalJobData): Promise<void> {
@@ -291,7 +328,9 @@ export class NfseWorkflowService {
     const profile = await this.profiles.findEffective(
       company.id,
       invoice.tenantId,
-      formatLocalDate(new Date(snapshot.competenceDate)),
+      // The competence date is a calendar date stored at UTC midnight; converting
+      // it to the establishment timezone would shift it to the previous day.
+      new Date(snapshot.competenceDate).toISOString().slice(0, 10),
     );
     if (!profile) {
       throw new Error(
