@@ -6,7 +6,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 FROM base AS dependencies
 
 COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
+# The yarn cache lives in a BuildKit cache mount, so it is not stored in the image layers.
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
+  yarn install --frozen-lockfile
 
 FROM base AS builder
 
@@ -17,7 +19,8 @@ ENV NEXT_PUBLIC_GA_ID=$NEXT_PUBLIC_GA_ID
 
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
-RUN yarn build
+# Caps the Next.js build heap so it does not exhaust a small server.
+RUN NODE_OPTIONS=--max-old-space-size=3072 yarn build
 
 FROM node:24-alpine AS runner
 
