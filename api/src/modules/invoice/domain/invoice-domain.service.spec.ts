@@ -336,15 +336,37 @@ describe('InvoiceDomainService — optional customer, discount and fiscal input'
       });
     });
 
-    it('keeps a partial customer without taxId', () => {
+    it.each([
+      { name: 'Ana' },
+      { email: 'ana@example.com' },
+      { address: { city: 'São Paulo', state: 'SP' } },
+    ])('requires the taxId when a customer is sent (%o)', (customer) => {
+      try {
+        service.normalizeAndValidate(
+          validDto({ customer, options: {} }),
+          'test',
+          defaults,
+        );
+        throw new Error('expected a FiscalValidationError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FiscalValidationError);
+        expect((error as FiscalValidationError).issues).toContainEqual(
+          expect.objectContaining({
+            field: 'customer.taxId',
+            code: 'required',
+          }),
+        );
+      }
+    });
+
+    it('keeps the name optional when the taxId is present', () => {
       const result = service.normalizeAndValidate(
-        validDto({ customer: { name: 'Ana' }, options: {} }),
+        validDto({ customer: { taxId: '529.982.247-25' }, options: {} }),
         'test',
         defaults,
       );
-      expect(result.customer?.name).toBe('Ana');
-      expect(result.customer?.taxId).toBeUndefined();
-      expect(result.customer?.taxIdKind).toBeUndefined();
+      expect(result.customer?.taxId).toBe('52998224725');
+      expect(result.customer?.taxIdKind).toBe('CPF');
     });
 
     it('still rejects an invalid taxId when present', () => {

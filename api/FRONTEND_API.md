@@ -589,15 +589,18 @@ dessas ações.
 
 - `customer` é **opcional**. Se ausente ou vazio (`{}`), a nota é de
   consumidor: `customerSnapshot` fica `null` e o tomador **não** é enviado na
-  DPS. Se enviado parcialmente, os campos ausentes recebem o padrão
-  (`name: 'Consumidor'`, cidade `SIM`, UF `SS`). `customer.taxId` (CPF/CNPJ
-  válido) é obrigatório apenas quando informado; `customer.email` é obrigatório
+  DPS. Se enviar qualquer dado do tomador (nome, e-mail, endereço), `customer.taxId`
+  (CPF/CNPJ válido) é **obrigatório**; sem ele a API devolve 422 (`customer.taxId`,
+  `required`). `name` é opcional (padrão `Consumidor`, cidade `SIM`, UF `SS` para o
+  que faltar). `customer.email` é obrigatório
   se o envio por e-mail estiver ligado. `customer.address`: se enviar `city` ou
   `state`, os dois são obrigatórios; `state` é UF válida.
 - `discount`: opcional. >= 0, <= `amount`, no máximo 2 casas decimais (number). Valores inválidos retornam 422 com o issue fiscal
   correspondente (`out_of_range` / `invalid_decimal_places`).
-- `service.code`: exatamente 6 dígitos (cTribNac). `service.municipalityCode`:
-  opcional, 7 dígitos se enviado. `service.description`: opcional.
+- `service.code`: opcional, exatamente 6 dígitos (cTribNac) quando enviado. Sem ele vale o
+  `defaultServiceCode` da empresa e, se não houver, `100901` (LC 116 item 10.09,
+  representação de qualquer natureza). `service.municipalityCode`: opcional, 7 dígitos se
+  enviado. `service.description`: opcional; se vazia, usa o nome do código de serviço.
 - `service.fiscal`: objeto **opcional** de classificação — `nbsCode` (9
   dígitos), `cst` (3 dígitos), `classCode` (6 dígitos), `operationIndicator` (6
   dígitos). `service.serviceProfileId` (uuid) é um campo separado de `fiscal`.

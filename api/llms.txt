@@ -60,7 +60,7 @@ service classification, tax applicability, ISS/withholding, RTC/IBS-CBS,
 validator) driven by the transactional outbox (type invoice.calculate-taxes).
 It is always on (no feature flag). The company's tax regime comes from the
 historical company_fiscal_profiles table. customer is optional (omitted =>
-consumidor, no tomador in the DPS); discount and service.fiscal are accepted at
+no tomador in the DPS; when sent with any data, customer.taxId is required); discount and service.fiscal are accepted at
 intake. POST /v1/invoices is asynchronous: fiscal errors are NOT returned by the
 POST; the invoice becomes rejected and the reason is in lastErrorCode and in the
 nfse.invoice.rejected webhook. Codes: FISCAL_PROFILE_MISSING,
@@ -170,7 +170,9 @@ view uses nfse.companies.view; writes use nfse.companies.manage.
 There is no fiscal-services route. CreateInvoiceDto service.serviceProfileId is
 separate from service.fiscal {nbsCode,cst,classCode,operationIndicator}.
 customer.address.municipalityCode is 7-digit IBGE; customer may be omitted only
-where allowed by the regime/operation. amount and discount are numbers, email is
+where allowed by the regime/operation. service.code defaults to the company
+defaultServiceCode, then to 100901 (LC 116 10.09); service.description is optional
+(falls back to the service code name). amount and discount are numbers, email is
 boolean (or options.email.send). Profile approval in live still needs fiscal
 operational governance; examples use test.
 

@@ -95,7 +95,7 @@ export class ServiceDto {
   @ApiPropertyOptional({
     example: '010101',
     description:
-      'National service code (6 digits). Inherits company.defaultServiceCode when omitted.',
+      'National service code (6 digits). Inherits company.defaultServiceCode when omitted, then 100901 (LC 116 item 10.09).',
   })
   @IsString()
   code?: string;

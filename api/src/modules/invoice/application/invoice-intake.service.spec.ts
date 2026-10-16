@@ -56,6 +56,74 @@ describe('InvoiceIntakeService', () => {
     );
     expect(companies.ensureReady).not.toHaveBeenCalled();
   });
+  describe('service defaults', () => {
+    const withoutDefault = Company.create(
+      {
+        legalName: 'Empresa',
+        taxId: '11222333000181',
+        taxRegime: 'MEI',
+        municipalityCode: '3550308',
+      },
+      'tenant',
+    );
+
+    it('uses LC 116 item 10.09 (100901) when neither the request nor the company has a service code', async () => {
+      companies.findById.mockResolvedValue(withoutDefault);
+      const result = await intake.prepare(
+        { ...dto, service: { description: 'Corte' } },
+        'tenant',
+        'test',
+      );
+      expect(result.normalized.service.code).toBe('100901');
+    });
+
+    it('prefers the code of the request, then the one of the company', async () => {
+      const explicit = await intake.prepare(
+        { ...dto, service: { code: '010101', description: 'x' } },
+        'tenant',
+        'test',
+      );
+      expect(explicit.normalized.service.code).toBe('010101');
+      const fromCompany = await intake.prepare(dto, 'tenant', 'test');
+      expect(fromCompany.normalized.service.code).toBe('060101');
+    });
+
+    it('names the service after its catalog entry when the description is omitted', async () => {
+      companies.findById.mockResolvedValue(withoutDefault);
+      const result = await intake.prepare(
+        { ...dto, service: {} },
+        'tenant',
+        'test',
+      );
+      expect(result.normalized.service.description).toBe(
+        'Representação de qualquer natureza, inclusive comercial',
+      );
+    });
+
+    it('keeps the description of the request, and treats a blank one as omitted', async () => {
+      const kept = await intake.prepare(dto, 'tenant', 'test');
+      expect(kept.normalized.service.description).toBe('Corte');
+      const blank = await intake.prepare(
+        { ...dto, service: { description: '   ' } },
+        'tenant',
+        'test',
+      );
+      expect(blank.normalized.service.description).toBeTruthy();
+      expect(blank.normalized.service.description).not.toBe('   ');
+    });
+
+    it('falls back to a generic phrase for a code that is not in the catalog', async () => {
+      const result = await intake.prepare(
+        { ...dto, service: { code: '999999' } },
+        'tenant',
+        'test',
+      );
+      expect(result.normalized.service.description).toBe(
+        'Prestação de serviços',
+      );
+    });
+  });
+
   it('resolves tax id when companyId is absent', async () => {
     await intake.prepare({ ...dto, companyId: undefined }, 'tenant', 'live');
     expect(companies.findByTaxId).toHaveBeenCalledWith(

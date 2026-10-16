@@ -412,9 +412,10 @@ export interface Invoice {
 }
 export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } | { companyId: string; companyTaxId?: string }) & {
   externalId?: string;
-  customer: { taxId: string; name: string; email?: string; address?: { city?: string; state?: string; country?: string } };
-  /** Omit code/municipalityCode to inherit the company defaults. */
-  service: { description: string; code?: string; municipalityCode?: string };
+  /** Omit it for an invoice without tomador. When sent, `taxId` (CPF or CNPJ) is required. */
+  customer?: { taxId: string; name?: string; email?: string; address?: { city?: string; state?: string; country?: string } };
+  /** Omit code/municipalityCode to inherit the company defaults (code falls back to 100901). The description is optional. */
+  service: { description?: string; code?: string; municipalityCode?: string };
   amount: number; competenceDate: string;
   /** Email the invoice to customer.email once the documents are ready. */
   email?: boolean;

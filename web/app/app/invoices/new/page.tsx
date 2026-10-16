@@ -15,6 +15,7 @@ import { ApiError, companies as companiesApi, invoices as invoicesApi } from "@/
 import { isValidCnpj, isValidCpf, maskCurrency, maskDigits, maskState, cleanTaxId, maskTaxId, parseCurrency } from "@/lib/masks";
 import type { Company, InvoiceCalculation } from "@/lib/types";
 import { InvoiceCalculationPanel } from "@/components/dashboard/invoice-calculation-panel";
+import { DEFAULT_SERVICE_CODE } from "@/lib/service-defaults";
 
 const FORM_ID = "new-invoice-form";
 
@@ -116,14 +117,15 @@ export default function NewInvoicePage() {
     return {
       companyTaxId: company?.taxId ?? "",
       externalId,
-      customer: {
+      // No customer data at all issues an anonymous-consumer invoice (no tomador).
+      customer: hasCustomer ? {
         taxId: cleanTaxId(form.customerTaxId),
-        name: form.customerName,
+        name: form.customerName.trim() || undefined,
         email: form.customerEmail || undefined,
         address: form.city || form.state ? { city: form.city || undefined, state: form.state.toUpperCase() || undefined } : undefined,
-      },
+      } : undefined,
       service: {
-        description: form.serviceDescription,
+        description: form.serviceDescription.trim() || undefined,
         code: form.serviceCode || undefined,
         municipalityCode: form.municipalityCode || undefined,
       },
@@ -178,7 +180,7 @@ export default function NewInvoicePage() {
     { setForm((f) => ({ ...f, [key]: mask ? mask(e.target.value) : e.target.value })); setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: "" } : prev)); };
 
   const company = companies.find((c) => c.id === form.companyId && c.environment === fiscalEnvironment);
-  const serviceCode = form.serviceCode || company?.defaultServiceCode || "";
+  const serviceCode = form.serviceCode || company?.defaultServiceCode || DEFAULT_SERVICE_CODE;
   const municipalityCode = form.municipalityCode || company?.municipalityCode || "";
   const amountNumber = parseCurrency(form.amount);
   const hasAmount = form.amount !== "" && amountNumber > 0;
@@ -192,11 +194,11 @@ export default function NewInvoicePage() {
   // disabled until this list is empty; the summary tells what is missing.
   const today = new Date().toLocaleDateString("sv-SE");
   const taxDigits = cleanTaxId(form.customerTaxId);
+  const hasCustomer = Boolean(taxDigits || form.customerName.trim() || form.customerEmail.trim() || form.city.trim() || form.state || sendEmail);
   const missing: string[] = [];
   if (!company || company.status === "blocked" || (isLive && company.status !== "ready") || !/^\d{7}$/.test(company.municipalityCode ?? "")) missing.push(t("fields.company"));
-  if (!(taxDigits.length === 11 ? isValidCpf(taxDigits) : taxDigits.length === 14 && isValidCnpj(taxDigits))) missing.push(t("fields.taxId"));
-  if (!form.customerName.trim()) missing.push(t("fields.name"));
-  if (!form.serviceDescription.trim()) missing.push(t("fields.description"));
+  // A customer needs a valid CPF/CNPJ; with no customer data the invoice has no tomador.
+  if (hasCustomer && !(taxDigits.length === 11 ? isValidCpf(taxDigits) : taxDigits.length === 14 && isValidCnpj(taxDigits))) missing.push(t("fields.taxId"));
   if (!/^\d{6}$/.test(serviceCode)) missing.push(t("fields.serviceCode"));
   if (!/^\d{7}$/.test(municipalityCode)) missing.push(t("fields.municipalityCode"));
   if (!form.competenceDate || form.competenceDate > today) missing.push(t("fields.competence"));
@@ -238,14 +240,14 @@ export default function NewInvoicePage() {
 
           <Section n={2} title={t("form.customer")} hint={t("form.customerHint")} delay={2}>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("fields.taxId")} error={fieldErrors.customerTaxId || undefined} required>
+              <Field label={t("fields.taxId")} error={fieldErrors.customerTaxId || undefined} required={hasCustomer} optionalLabel={hasCustomer ? undefined : t("fields.optional")}>
                 {(c) => (
-                  <input {...c} type="text" inputMode="text" autoCapitalize="characters" className="field font-mono tabular-nums" placeholder={t("placeholders.taxId")} value={form.customerTaxId} onChange={set("customerTaxId", maskTaxId)} maxLength={18} autoComplete="off" required />
+                  <input {...c} type="text" inputMode="text" autoCapitalize="characters" className="field font-mono tabular-nums" placeholder={t("placeholders.taxId")} value={form.customerTaxId} onChange={set("customerTaxId", maskTaxId)} maxLength={18} autoComplete="off" required={hasCustomer} />
                 )}
               </Field>
-              <Field label={t("fields.name")} error={fieldErrors.customerName || undefined} required>
+              <Field label={t("fields.name")} error={fieldErrors.customerName || undefined} optionalLabel={t("fields.optional")}>
                 {(c) => (
-                  <input {...c} type="text" className="field" placeholder={t("placeholders.name")} value={form.customerName} onChange={set("customerName")} autoComplete="organization" required />
+                  <input {...c} type="text" className="field" placeholder={t("placeholders.name")} value={form.customerName} onChange={set("customerName")} autoComplete="organization" />
                 )}
               </Field>
             </div>
@@ -276,14 +278,14 @@ export default function NewInvoicePage() {
           </Section>
 
           <Section n={3} title={t("form.service")} hint={t("form.serviceHint")} delay={3}>
-            <Field label={t("fields.description")} error={fieldErrors.serviceDescription || undefined} required>
+            <Field label={t("fields.description")} error={fieldErrors.serviceDescription || undefined} optionalLabel={t("fields.optional")} hint={t("hints.description")}>
               {(c) => (
-                <textarea {...c} className="field resize-y" rows={3} placeholder={t("placeholders.description")} value={form.serviceDescription} onChange={set("serviceDescription")} required />
+                <textarea {...c} className="field resize-y" rows={3} placeholder={t("placeholders.description")} value={form.serviceDescription} onChange={set("serviceDescription")} />
               )}
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("fields.serviceCode")} error={fieldErrors.serviceCode || undefined} required={!company?.defaultServiceCode} optionalLabel={company?.defaultServiceCode ? t("fields.optional") : undefined} hint={company?.defaultServiceCode ? t("hints.serviceCodeDefault", { code: company.defaultServiceCode }) : t("hints.serviceCode")}>
-                {(c) => <ServiceCodeCombobox id={c.id} aria-describedby={c["aria-describedby"]} aria-invalid={c["aria-invalid"]} value={form.serviceCode} onChange={(code) => { setForm((f) => ({ ...f, serviceCode: code })); setFieldErrors((previous) => ({ ...previous, serviceCode: "" })); }} placeholder={company?.defaultServiceCode} required={!company?.defaultServiceCode} />}
+              <Field label={t("fields.serviceCode")} error={fieldErrors.serviceCode || undefined} optionalLabel={t("fields.optional")} hint={company?.defaultServiceCode ? t("hints.serviceCodeDefault", { code: company.defaultServiceCode }) : t("hints.serviceCodeFallback", { code: DEFAULT_SERVICE_CODE })}>
+                {(c) => <ServiceCodeCombobox id={c.id} aria-describedby={c["aria-describedby"]} aria-invalid={c["aria-invalid"]} value={form.serviceCode} onChange={(code) => { setForm((f) => ({ ...f, serviceCode: code })); setFieldErrors((previous) => ({ ...previous, serviceCode: "" })); }} placeholder={company?.defaultServiceCode ?? DEFAULT_SERVICE_CODE} />}
               </Field>
               <Field label={t("fields.municipalityCode")} error={fieldErrors.municipalityCode || undefined} required={!company?.municipalityCode} optionalLabel={company?.municipalityCode ? t("fields.optional") : undefined} hint={company?.municipalityCode ? t("hints.municipalityDefault", { code: company.municipalityCode }) : t("hints.municipalityCode")}>
                 {(c) => <input {...c} type="text" inputMode="numeric" className="field font-mono tabular-nums" placeholder={company?.municipalityCode ?? t("placeholders.municipalityCode")} value={form.municipalityCode} onChange={set("municipalityCode", maskDigits(7))} pattern="[0-9]{7}" maxLength={7} autoComplete="off" required={!company?.municipalityCode} />}
@@ -333,7 +335,7 @@ export default function NewInvoicePage() {
 
           <dl className="flex flex-col gap-2.5 border-t border-border-soft pt-4">
             <SummaryRow label={t("summary.issuer")} value={company ? company.tradeName || company.legalName : ""} />
-            <SummaryRow label={t("summary.customer")} value={form.customerName} />
+            <SummaryRow label={t("summary.customer")} value={hasCustomer ? form.customerName || "—" : t("summary.noCustomer")} />
             <SummaryRow label={t("summary.taxId")} value={form.customerTaxId} mono />
             <SummaryRow label={t("fields.serviceCode")} value={serviceCode} mono />
             <SummaryRow label={t("fields.municipalityCode")} value={municipalityCode} mono />
