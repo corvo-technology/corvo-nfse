@@ -102,10 +102,30 @@ describe("Invoice company defaults", () => {
     fireEvent.click(screen.getByRole("button", { name: "Issue NFS-e" }));
     await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce()); expect(mocks.create.mock.calls[0][0].service).toMatchObject({ code: "010201", municipalityCode: "3304557" });
   });
-  it("requires a service code when the company has no default", async () => {
+  it("falls back to LC 116 item 10.09 (100901) when the company has no default service code", async () => {
     mocks.list.mockResolvedValue({ items: [{ ...company, defaultServiceCode: undefined }], hasMore: false, nextCursor: null });
-    await prepareInvoice(); expect((screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement).disabled).toBe(true);
-    chooseService("010101"); expect((screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement).disabled).toBe(false);
+    await prepareInvoice();
+    expect(screen.getByText(/we use 100901/)).toBeTruthy();
+    const issue = screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement; expect(issue.disabled).toBe(false);
+    fireEvent.click(issue); await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce());
+    expect(mocks.create.mock.calls[0][0].service.code).toBeUndefined();
+  });
+  it("issues without tomador when no customer data is filled, and without a description", async () => {
+    renderUI(<NewInvoicePage />);
+    await waitFor(() => expect(screen.getByRole("option", { name: company.legalName })).toBeTruthy());
+    fill("Total amount", "19900"); fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.sendEmail.label) }));
+    const issue = screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement; expect(issue.disabled).toBe(false);
+    fireEvent.click(issue); await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce());
+    const payload = JSON.parse(JSON.stringify(mocks.create.mock.calls[0][0]));
+    expect(payload).not.toHaveProperty("customer"); expect(payload.service).toEqual({});
+  });
+  it("needs a valid CPF or CNPJ as soon as any customer data is filled", async () => {
+    renderUI(<NewInvoicePage />);
+    await waitFor(() => expect(screen.getByRole("option", { name: company.legalName })).toBeTruthy());
+    fill("Total amount", "19900"); fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.sendEmail.label) })); fill("Name /", "Only a name");
+    expect((screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement).disabled).toBe(true);
+    fill("CPF or CNPJ", "52998224725");
+    expect((screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement).disabled).toBe(false);
   });
   it("does not let an override conceal a missing issuer municipality", async () => {
     mocks.list.mockResolvedValue({ items: [{ ...company, municipalityCode: undefined, setupGaps: ["municipality_code"] }], hasMore: false, nextCursor: null });

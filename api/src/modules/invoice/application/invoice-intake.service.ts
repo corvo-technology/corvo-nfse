@@ -8,6 +8,10 @@ import {
   type NormalizedInvoiceInput,
 } from '../domain/invoice-domain.service';
 import type { CreateInvoiceDto } from '../http/invoice.dto';
+import {
+  DEFAULT_SERVICE_CODE,
+  defaultServiceDescription,
+} from '../infra/fiscal/service-defaults';
 
 export interface PreparedInvoiceInput {
   company: Company;
@@ -57,10 +61,17 @@ export class InvoiceIntakeService {
       },
       environment,
       {
-        code: company.defaultServiceCode,
+        code: company.defaultServiceCode ?? DEFAULT_SERVICE_CODE,
         municipalityCode: company.municipalityCode,
       },
     );
+    // The description is optional: fall back to the service's catalog name.
+    if (!normalized.service.description) {
+      normalized.service = {
+        ...normalized.service,
+        description: defaultServiceDescription(normalized.service.code),
+      };
+    }
     if (mode?.allowFutureCompetence) {
       const { scheduledFor: _scheduledFor, ...calculationInput } = normalized;
       return { company, normalized: calculationInput, environment };

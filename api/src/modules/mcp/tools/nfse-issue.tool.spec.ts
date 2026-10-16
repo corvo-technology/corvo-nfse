@@ -157,6 +157,21 @@ describe('nfse_issue simple inputs', () => {
     expect(dtoOf(emit).customer).toMatchObject({ taxId: '00202989000116' });
   });
 
+  it('requires the tax id as soon as any customer data is sent', async () => {
+    const { emit, handler } = setup();
+    await expect(
+      handler(
+        {
+          company_tax_id: '11222333000181',
+          amount: 10,
+          customer: { name: 'Só o nome', email: 'a@b.com' },
+        },
+        context,
+      ),
+    ).rejects.toThrow(/customer\.tax_id/);
+    expect(emit).not.toHaveBeenCalled();
+  });
+
   it('still sums itemized services and rounds to cents', async () => {
     const { emit, handler } = setup();
     await handler(

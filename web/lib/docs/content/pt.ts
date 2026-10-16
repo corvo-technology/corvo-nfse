@@ -693,8 +693,8 @@ console.log(res.status); // 204`,
               { name: "companyId", type: "string UUID", required: false, description: "Condicional: informe este campo ou `companyTaxId`; se ambos existirem, `companyId` prevalece." },
               { name: "companyTaxId", type: "string", required: false, description: "CNPJ da empresa já cadastrada na conta/ambiente; pontuação opcional." },
               { name: "externalId", type: "string", required: false, description: "Referência do sistema integrador; não substitui a chave de idempotência." },
-              { name: "customer", type: "objeto", required: false, description: "Opcional: omita ou envie `{}` para consumidor sem identificação (o tomador não vai na DPS). Quando enviado, `name` (obrigatório), `taxId` (obrigatório: CPF ou CNPJ válido, normalizado), `email` (opcional; obrigatório quando o envio de email está habilitado; sem validação de formato neste DTO) e `address` (opcional: `street`, `city`, `state`, `zip`, `country`; se preencher cidade ou UF, preencha ambas)." },
-              { name: "service", type: "objeto", required: true, description: "`code` opcional se a empresa tem `defaultServiceCode`; quando informado, exatamente 6 dígitos. `municipalityCode` herda o município da empresa; quando informado, exatamente 7 dígitos e define o local da prestação. `description` string opcional. Vazio, `null` ou valor inválido não aciona o padrão." },
+              { name: "customer", type: "objeto", required: false, description: "Opcional: omita ou envie `{}` para uma nota sem tomador (o tomador não vai na DPS). Quando enviado com qualquer dado, `taxId` é obrigatório (CPF ou CNPJ válido, normalizado); `name` é opcional, `email` (opcional; obrigatório quando o envio de email está habilitado; sem validação de formato neste DTO) e `address` (opcional: `street`, `city`, `state`, `zip`, `country`; se preencher cidade ou UF, preencha ambas)." },
+              { name: "service", type: "objeto", required: true, description: "`code` é opcional: sem ele vale o `defaultServiceCode` da empresa e, se ela não tiver, `100901` (LC 116 item 10.09, representação de qualquer natureza); quando informado, exatamente 6 dígitos. `municipalityCode` herda o município da empresa; quando informado, exatamente 7 dígitos e define o local da prestação. `description` é opcional: se vazia, usa-se o nome do código de serviço. Vazio, `null` ou valor inválido dos demais campos não aciona o padrão." },
               { name: "amount", type: "number", required: true, description: "Valor em reais, positivo, até 9999999999.99 e no máximo 2 casas decimais." },
               { name: "competenceDate", type: "string ISO 8601", required: true, description: "Data de competência válida. Sem `options.type`, não pode ser futura (`422` `ERROR_FUTURE_DATE`). Com `options.type: \"SCHEDULE\"`, aceita data futura (veja Notas agendadas)." },
               { name: "discount", type: "number", required: false, description: "Desconto incondicional em reais, de 0 até o valor da nota, no máximo 2 casas decimais." },
@@ -2348,7 +2348,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             [
               "`nfse_issue`",
               "`nfse:write`",
-              "`company_tax_id` (CNPJ) ou `company_id`, `amount` (ou `services [{description, quantity, unit_price}]`), `customer? {name?, tax_id?, email?}`, `description?`, `discount?`, `competence_date?` (padrão: hoje), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
+              "`company_tax_id` (CNPJ) ou `company_id`, `amount` (ou `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` obrigatório quando há tomador), `description?`, `discount?`, `competence_date?` (padrão: hoje), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
               "`{ invoice_id, access_key, status }`"
             ],
             [
@@ -2379,7 +2379,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         },
         {
           "kind": "text",
-          "body": "A chamada mais simples é `company_tax_id` mais `amount`: o tomador é opcional (omita para nota de consumidor anônimo), a data de competência é hoje por padrão e o código de serviço e o município vêm da empresa. O agente que não conhece a empresa chama `company_list` antes (ela também informa `ready_to_issue`). As mesmas regras fiscais da API REST valem para `nfse_issue`. Falhas das ferramentas voltam como resultado com `isError: true` e a mensagem em texto, para o agente ler e corrigir."
+          "body": "A chamada mais simples é `company_tax_id` mais `amount`: o tomador é opcional (omita para uma nota sem tomador; se enviar, `tax_id` é obrigatório), a data de competência é hoje por padrão, o código de serviço vem da empresa ou, sem ele, `100901` (LC 116 item 10.09), e a descrição vem do nome do código de serviço. O agente que não conhece a empresa chama `company_list` antes (ela também informa `ready_to_issue`). As mesmas regras fiscais da API REST valem para `nfse_issue`. Falhas das ferramentas voltam como resultado com `isError: true` e a mensagem em texto, para o agente ler e corrigir."
         },
         {
           "kind": "heading",

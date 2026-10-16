@@ -80,8 +80,16 @@ export class InvoiceDomainService {
       });
     }
 
-    // ── customer.taxId (opcional: ausente ⇒ consumidor anônimo) ──
+    // ── customer: sem nada ⇒ consumidor anônimo; com qualquer dado ⇒ CPF/CNPJ obrigatório ──
     const rawTaxId = dto.customer?.taxId?.trim();
+    if (!rawTaxId && customerHasContent(dto.customer)) {
+      issues.push({
+        field: 'customer.taxId',
+        code: 'required',
+        message:
+          'customer.taxId is required when a customer is sent; omit the customer for an anonymous consumer invoice',
+      });
+    }
     if (rawTaxId) {
       const parsed = parseCustomerTaxId(rawTaxId);
       if (!parsed) {
@@ -295,14 +303,11 @@ export class InvoiceDomainService {
   }
 }
 
-function normalizeCustomerInput(
-  customer: CreateInvoiceDto['customer'],
-): NormalizedCustomerInput | null {
-  if (!customer) {
-    return null;
-  }
+/** True when the customer carries any data; an empty object counts as no customer. */
+function customerHasContent(customer: CreateInvoiceDto['customer']): boolean {
+  if (!customer) return false;
   const address = customer.address;
-  const hasContent =
+  return (
     Boolean(customer.name?.trim()) ||
     Boolean(customer.taxId?.trim()) ||
     Boolean(customer.email?.trim()) ||
@@ -311,7 +316,18 @@ function normalizeCustomerInput(
     Boolean(address?.state?.trim()) ||
     Boolean(address?.zip?.trim()) ||
     Boolean(address?.country?.trim()) ||
-    Boolean(address?.municipalityCode?.trim());
+    Boolean(address?.municipalityCode?.trim())
+  );
+}
+
+function normalizeCustomerInput(
+  customer: CreateInvoiceDto['customer'],
+): NormalizedCustomerInput | null {
+  if (!customer) {
+    return null;
+  }
+  const address = customer.address;
+  const hasContent = customerHasContent(customer);
   if (!hasContent) {
     // Empty `{}` ⇒ consumidor anônimo: sem snapshot de cliente.
     return null;

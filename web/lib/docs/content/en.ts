@@ -708,8 +708,8 @@ console.log(res.status); // 204`,
               { name: "companyId", type: "string UUID", required: false, description: "Send this field or `companyTaxId`; if both exist, `companyId` takes precedence." },
               { name: "companyTaxId", type: "string", required: false, description: "CNPJ of a company already registered in the account/environment; punctuation optional." },
               { name: "externalId", type: "string", required: false, description: "Reference from the integrating system; does not replace the idempotency key." },
-              { name: "customer", type: "object", required: false, description: "Optional: omit it or send `{}` for an unidentified consumer (the customer is left out of the DPS). When sent, `name` (required), `taxId` (required: valid CPF or CNPJ, normalized), `email` (optional; required when email sending is enabled; no email format validation in this DTO/domain) and `address` (optional: `street`, `city`, `state`, `zip`, `country` are optional strings; if you fill in city or state, fill in both; state must be valid)." },
-              { name: "service", type: "object", required: true, description: "`code` optional when the company has `defaultServiceCode`; exactly 6 digits when provided. `municipalityCode` inherits the company municipality; when provided, exactly 7 digits and sets the service location. `description` is an optional string. Empty, null or invalid values do not use the defaults." },
+              { name: "customer", type: "object", required: false, description: "Optional: omit it or send `{}` for an invoice without tomador (the customer is left out of the DPS). When sent with any data, `taxId` is required (valid CPF or CNPJ, normalized); `name` is optional, `email` (optional; required when email sending is enabled; no email format validation in this DTO/domain) and `address` (optional: `street`, `city`, `state`, `zip`, `country` are optional strings; if you fill in city or state, fill in both; state must be valid)." },
+              { name: "service", type: "object", required: true, description: "`code` is optional: without it the company `defaultServiceCode` is used and, if the company has none, `100901` (LC 116 item 10.09, representation of any nature); exactly 6 digits when provided. `municipalityCode` inherits the company municipality; when provided, exactly 7 digits and sets the service location. `description` is optional: when empty, the name of the service code is used. Empty, null or invalid values of the other fields do not use the defaults." },
               { name: "amount", type: "number", required: true, description: "Value in reais, positive, up to 9999999999.99 with at most 2 decimals." },
               { name: "competenceDate", type: "string ISO 8601", required: true, description: "Valid competence date. Without `options.type` it cannot be in the future (`422` `ERROR_FUTURE_DATE`). With `options.type: \"SCHEDULE\"` a future date is accepted (see Scheduled invoices)." },
               { name: "discount", type: "number", required: false, description: "Unconditional discount in BRL, from 0 up to the invoice amount, at most 2 decimal places." },
@@ -2367,7 +2367,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             [
               "`nfse_issue`",
               "`nfse:write`",
-              "`company_tax_id` (CNPJ) or `company_id`, `amount` (or `services [{description, quantity, unit_price}]`), `customer? {name?, tax_id?, email?}`, `description?`, `discount?`, `competence_date?` (default: today), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
+              "`company_tax_id` (CNPJ) or `company_id`, `amount` (or `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` required when a customer is sent), `description?`, `discount?`, `competence_date?` (default: today), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
               "`{ invoice_id, access_key, status }`"
             ],
             [
@@ -2398,7 +2398,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         },
         {
           "kind": "text",
-          "body": "The simplest call is `company_tax_id` plus `amount`: the customer is optional (omit it for an anonymous consumer invoice), the competence date defaults to today and the service code and municipality come from the company. An agent that does not know the company calls `company_list` first (it also reports `ready_to_issue`). The same fiscal rules as the REST API apply to `nfse_issue`. Tool failures come back as a result with `isError: true` and the message as text, so the agent can read and fix them."
+          "body": "The simplest call is `company_tax_id` plus `amount`: the customer is optional (omit it for an invoice without tomador; if you send one, `tax_id` is required), the competence date defaults to today, the service code comes from the company or falls back to `100901` (LC 116 item 10.09) and the description from the service code. An agent that does not know the company calls `company_list` first (it also reports `ready_to_issue`). The same fiscal rules as the REST API apply to `nfse_issue`. Tool failures come back as a result with `isError: true` and the message as text, so the agent can read and fix them."
         },
         {
           "kind": "heading",

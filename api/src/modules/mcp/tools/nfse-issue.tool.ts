@@ -32,7 +32,8 @@ export const NFSE_ISSUE_TOOL = {
       },
       description: {
         type: 'string',
-        description: 'Service description (used with amount).',
+        description:
+          'Optional service description (used with amount). When omitted, the name of the service code is used.',
       },
       services: {
         type: 'array',
@@ -51,7 +52,7 @@ export const NFSE_ISSUE_TOOL = {
       customer: {
         type: 'object',
         description:
-          'Tomador. Optional: omit it, or send only the fields you have, for an anonymous consumer invoice.',
+          'Tomador. Optional: omit it for an invoice without tomador. When sent with any data, tax_id (CPF or CNPJ) is required.',
         properties: {
           name: { type: 'string' },
           tax_id: {
@@ -93,7 +94,7 @@ export const NFSE_ISSUE_TOOL = {
       service_code: {
         type: 'string',
         description:
-          'Optional national service code (6 digits). Inherits company.defaultServiceCode when omitted.',
+          'Optional national service code (6 digits). Inherits company.defaultServiceCode when omitted, then 100901 (LC 116 item 10.09).',
       },
       municipality_code: {
         type: 'string',
@@ -173,13 +174,19 @@ export function createNfseIssueHandler(invoiceService: InvoiceService) {
     );
     const errors = await validate(params);
     if (errors.length > 0) throw invalidInput(errors);
+    const customer = toCustomer(params.customer);
+    if (customer && !customer.taxId?.trim()) {
+      throw new Error(
+        'Invalid input: customer.tax_id: required when a customer is sent; omit customer to issue without a tomador',
+      );
+    }
 
     // Map snake_case MCP input → the real camelCase CreateInvoiceDto.
     const dto: CreateInvoiceDto = {
       companyId: params.company_id,
       companyTaxId: params.company_tax_id,
       externalId: params.external_id,
-      customer: toCustomer(params.customer),
+      customer,
       service: {
         // Omitted fiscal fields are resolved from the scoped company by InvoiceService.
         code: params.service_code,

@@ -56,7 +56,7 @@ describe('InvoiceService.emit company resolution', () => {
     expect(invoiceDomain.normalizeAndValidate).toHaveBeenCalledWith(
       expect.objectContaining({ companyId: 'c-1' }),
       'test',
-      { code: undefined, municipalityCode: '3550308' },
+      { code: '100901', municipalityCode: '3550308' },
     );
   });
 
@@ -82,7 +82,7 @@ describe('InvoiceService.emit company resolution', () => {
     expect(invoiceDomain.normalizeAndValidate).toHaveBeenCalledWith(
       expect.objectContaining({ companyId: 'c-9' }),
       'test',
-      { code: undefined, municipalityCode: '3550308' },
+      { code: '100901', municipalityCode: '3550308' },
     );
   });
 
@@ -110,7 +110,7 @@ describe('InvoiceService.emit company resolution', () => {
     expect(invoiceDomain.normalizeAndValidate).toHaveBeenCalledWith(
       expect.objectContaining({ companyId: 'c-1' }),
       'test',
-      { code: undefined, municipalityCode: '3550308' },
+      { code: '100901', municipalityCode: '3550308' },
     );
   });
 

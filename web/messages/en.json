@@ -1149,7 +1149,7 @@
       "customer": "Customer details",
       "service": "Service provided",
       "companyHint": "Who issues the invoice and which internal reference to use.",
-      "customerHint": "Who receives the service. CPF or CNPJ.",
+      "customerHint": "Who receives the service. Send the CPF or CNPJ, or leave everything blank to issue without a customer.",
       "serviceHint": "What was provided, where, and for how much."
     },
     "table": {
@@ -1217,7 +1217,9 @@
       "serviceCode": "Search by service name or type the code.",
       "municipalityCode": "7-digit IBGE code, e.g. 3550308",
       "serviceCodeDefault": "Company default: {code}. Leave empty to use it, or choose another code for this invoice.",
-      "municipalityDefault": "Company municipality: {code}. Leave empty to use it, or enter another service location for this invoice."
+      "municipalityDefault": "Company municipality: {code}. Leave empty to use it, or enter another service location for this invoice.",
+      "description": "Optional. When empty we use the service code's name.",
+      "serviceCodeFallback": "Optional. With no code on the invoice or the company, we use {code} (10.09, representation). Pick your own activity code."
     },
     "summary": {
       "title": "Invoice summary",
@@ -1232,7 +1234,8 @@
       "ready": "Ready to issue.",
       "email": "Email",
       "emailPending": "enter the email",
-      "emailOff": "don't send"
+      "emailOff": "don't send",
+      "noCustomer": "No customer"
     },
     "sendEmail": {
       "label": "Email the invoice to the customer",
