@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { parseNfseXml } from 'open-nfse';
+import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { DOCUMENT_STORAGE } from '@/infra/storage/domain/document-storage';
 import type { IDocumentStorage } from '@/infra/storage/domain/document-storage';
 import { IWebhookConfigRepository } from '@/modules/webhooks-config/domain/webhook-config.repository';
@@ -113,6 +114,17 @@ export class FiscalReconciliationService {
   ) {}
 
   async reconcileInvoice(invoiceId: string, tenantId: string): Promise<void> {
+    // Snapshot and reconciliation rows are protected by RLS: without the tenant
+    // context the lookups come back empty and the job would finish doing nothing.
+    return runWithTenant(tenantId, () =>
+      this.reconcileInTenant(invoiceId, tenantId),
+    );
+  }
+
+  private async reconcileInTenant(
+    invoiceId: string,
+    tenantId: string,
+  ): Promise<void> {
     const snapshot = await this.snapshots.findByInvoiceId(invoiceId, tenantId);
     if (!snapshot) return;
     const invoice = await this.invoices.findByIdAndTenantId(
