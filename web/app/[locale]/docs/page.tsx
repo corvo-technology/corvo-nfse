@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { DocBlocks } from "@/components/docs/doc-blocks";
 import { DocsHeader } from "@/components/docs/docs-header";
 import { getDocsTree } from "@/lib/docs/registry";
+import { SITE_COPY, pageMetadata, seoLocale } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -12,7 +13,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const tree = getDocsTree(locale);
-  return { title: tree ? `${tree.home.title} — Corvo Docs` : "Docs" };
+  return pageMetadata({
+    locale,
+    path: "/docs",
+    title: seoLocale(locale) === "pt" ? "Documentação da API de NFS-e" : "NFS-e API documentation",
+    description: tree?.home.description ?? SITE_COPY[seoLocale(locale)].description,
+  });
 }
 
 export default async function DocsHomePage({

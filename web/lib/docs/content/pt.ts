@@ -18,22 +18,22 @@ export const pt: DocsTree = {
   },
   home: {
     title: "Introdução",
-    description: "Emita e gerencie NFS-e programaticamente via API key.",
+    description: "Emita NFS-e de empresas MEI e do Simples Nacional por uma API REST ou por um agente de IA (MCP): cálculo de tributos, várias empresas e webhooks.",
     blocks: [
       {
         kind: "text",
-        body: "A API da Corvo permite cadastrar empresas, enviar certificados A1, emitir notas fiscais de serviço (NFS-e) e acompanhar o ciclo de vida completo por webhooks.",
+        body: "A API da Corvo permite cadastrar empresas (MEI, Simples Nacional e outros regimes), enviar certificados A1, calcular tributos antes de emitir, emitir notas fiscais de serviço (NFS-e) e acompanhar o ciclo de vida completo por webhooks. Agentes de IA como Claude Code, Cursor e Codex fazem o mesmo pelo servidor MCP (veja Agentes de IA).",
       },
       { kind: "heading", level: 2, body: "Quickstart" },
       {
         kind: "code",
         label: "bash",
         language: "bash",
-        code: "export BASE_URL='https://SEU_DOMINIO/v1'\nexport CORVO_API_KEY='corvo_test_sua_chave'\n\ncurl \"$BASE_URL/companies\" -H \"X-API-Key: $CORVO_API_KEY\"",
+        code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='corvo_test_sua_chave'\n\ncurl \"$BASE_URL/companies\" -H \"X-API-Key: $CORVO_API_KEY\"",
       },
       {
         kind: "text",
-        body: "Todos os caminhos desta documentação são relativos a `BASE_URL` (a origem da instalação acrescida de `/v1`).",
+        body: "Todos os caminhos desta documentação são relativos a `BASE_URL` (`https://api.corvo.tech/v1`).",
       },
       { kind: "heading", level: 2, body: "Formatos de resposta" },
       {
@@ -79,6 +79,7 @@ export const pt: DocsTree = {
           ["GET", "`/v1/companies/:companyId/certificates`", "Listar certificados", "200"],
           ["DELETE", "`/v1/companies/:companyId/certificates/:certId`", "Revogar certificado", "204"],
           ["POST", "`/v1/invoices`", "Solicitar emissão", "202"],
+          ["POST", "`/v1/invoices/calculate`", "Calcular tributos sem emitir", "200"],
           ["GET", "`/v1/invoices`", "Listar notas", "200"],
           ["GET", "`/v1/invoices/:id`", "Consultar nota", "200"],
           ["GET", "`/v1/invoices/:id/xml`", "Baixar XML", "200"],
@@ -101,6 +102,9 @@ export const pt: DocsTree = {
           ["GET", "`/v1/billing/usage`", "Consultar disponibilidade e cotas", "200"],
           ["POST", "`/v1/billing/upgrade`", "Agendar troca de plano", "200"],
           ["POST", "`/v1/billing/downgrade`", "Agendar mudança de plano", "200"],
+          ["GET", "`/v1/plans`", "Listar preços dos planos (público)", "200"],
+          ["GET", "`/v1/plans/:slug`", "Consultar o preço de um plano (público)", "200"],
+          ["GET", "`/v1/plans/quote`", "Recomendar um plano para um volume (público)", "200"],
         ],
       },
       {
@@ -193,7 +197,7 @@ export const pt: DocsTree = {
           kind: "code",
           label: "bash",
           language: "bash",
-          code: "export BASE_URL='https://SEU_DOMINIO/v1'\nexport CORVO_API_KEY='SUA_CHAVE'\ncurl \"$BASE_URL/companies\" -H \"X-API-Key: $CORVO_API_KEY\"",
+          code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='SUA_CHAVE'\ncurl \"$BASE_URL/companies\" -H \"X-API-Key: $CORVO_API_KEY\"",
         },
       ],
     },

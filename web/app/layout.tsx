@@ -5,11 +5,12 @@ import { NextIntlClientProvider } from "next-intl";
 import { Providers } from "./providers";
 import { CookieConsentWrapper } from "@/components/CookieConsentWrapper";
 import { ToastProvider } from "@/components/ui/toast";
+import { OG_IMAGE_PATH, SITE_COPY, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
-const siteUrl = "https://corvo.tech";
-const siteDescription =
-  "Automatize a emissão de NFS-e com a Corvo. Uma API REST para desenvolvedores, SaaS e ERPs, com gestão multiempresa e envio de notas por e-mail.";
+const siteUrl = SITE_URL;
+// Fallback only (login, dashboard, errors): marketing pages set their own metadata per language.
+const fallback = SITE_COPY.en;
 
 const instrumentSans = Instrument_Sans({
   variable: "--font-instrument-sans",
@@ -25,21 +26,10 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Corvo — API de Notas Fiscais para Desenvolvedores",
+    default: fallback.title,
     template: "%s | Corvo",
   },
-  description: siteDescription,
-  keywords: [
-    "API NFS-e",
-    "API de notas fiscais",
-    "emissão de nota fiscal por API",
-    "automação de notas fiscais",
-    "API para SaaS",
-    "emissão NFS-e",
-    "integração fiscal",
-    "NFS-e API",
-    "desenvolvedores",
-  ],
+  description: fallback.description,
   authors: [{ name: "Corvo Tech" }],
   creator: "Corvo Tech",
   metadataBase: new URL(siteUrl),
@@ -52,27 +42,17 @@ export const metadata: Metadata = {
     other: [{ url: "/icon-512.png", sizes: "512x512", type: "image/png" }],
   },
   openGraph: {
-    title: "Corvo — API de Notas Fiscais para Desenvolvedores",
-    description: siteDescription,
-    url: siteUrl,
+    title: fallback.title,
+    description: fallback.description,
     siteName: "Corvo",
     type: "website",
-    locale: "pt_BR",
-    images: [
-      {
-        url: "/og-1200x630.png",
-        width: 1200,
-        height: 630,
-        alt: "Corvo — API de notas fiscais para desenvolvedores",
-        type: "image/png",
-      },
-    ],
+    images: [{ url: OG_IMAGE_PATH, width: 1200, height: 630, alt: fallback.ogAlt, type: "image/png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Corvo — API de Notas Fiscais para Desenvolvedores",
-    description: siteDescription,
-    images: ["/og-1200x630.png"],
+    title: fallback.title,
+    description: fallback.description,
+    images: [OG_IMAGE_PATH],
   },
   robots: {
     index: true,
@@ -85,44 +65,10 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  alternates: {
-    canonical: siteUrl,
-  },
 };
 
 export const viewport: Viewport = {
   themeColor: "#0a0a0a",
-};
-
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "@id": `${siteUrl}/#organization`,
-      name: "Corvo Tech",
-      url: siteUrl,
-      logo: `${siteUrl}/icon-512.png`,
-    },
-    {
-      "@type": "WebSite",
-      "@id": `${siteUrl}/#website`,
-      name: "Corvo",
-      url: siteUrl,
-      inLanguage: "pt-BR",
-      publisher: { "@id": `${siteUrl}/#organization` },
-    },
-    {
-      "@type": "SoftwareApplication",
-      "@id": `${siteUrl}/#software`,
-      name: "Corvo",
-      applicationCategory: "BusinessApplication",
-      operatingSystem: "Web",
-      description: siteDescription,
-      url: siteUrl,
-      provider: { "@id": `${siteUrl}/#organization` },
-    },
-  ],
 };
 
 export default async function RootLayout({
@@ -139,12 +85,6 @@ export default async function RootLayout({
       lang={locale}
       className={`${instrumentSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-      </head>
       <body className="min-h-full flex flex-col">
         <CookieConsentWrapper />
         <NextIntlClientProvider messages={messages} locale={locale}>

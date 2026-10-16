@@ -5,6 +5,8 @@ import { DocBlocks } from "@/components/docs/doc-blocks";
 import { DocsHeader } from "@/components/docs/docs-header";
 import { DOC_SLUGS, getDocsTree } from "@/lib/docs/registry";
 import type { DocSlug } from "@/lib/docs/types";
+import { JsonLd } from "@/components/seo/json-ld";
+import { SITE_COPY, SITE_URL, pageMetadata, pageUrl, seoLocale } from "@/lib/seo";
 
 export function generateStaticParams() {
   return DOC_SLUGS.flatMap((slug) =>
@@ -21,7 +23,14 @@ export async function generateMetadata({
   const tree = getDocsTree(locale);
   const page =
     tree && section.length === 1 ? tree.pages[section[0] as DocSlug] : null;
-  return { title: page ? `${page.title} — Corvo Docs` : "Docs" };
+  if (!page) return { title: "Docs", robots: { index: false } };
+  return pageMetadata({
+    locale,
+    path: `/docs/${section[0]}`,
+    title: `${page.title} — ${seoLocale(locale) === "pt" ? "Docs da API" : "API docs"}`,
+    description: page.description ?? SITE_COPY[seoLocale(locale)].description,
+    type: "article",
+  });
 }
 
 export default async function DocsSectionPage({
@@ -37,8 +46,34 @@ export default async function DocsSectionPage({
   const page = tree.pages[section[0] as DocSlug];
   if (!page) notFound();
 
+  const lang = seoLocale(locale);
+  const url = pageUrl(lang, `/docs/${section[0]}`);
+  const structured = [
+    {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      headline: page.title,
+      description: page.description ?? SITE_COPY[lang].description,
+      url,
+      inLanguage: lang === "pt" ? "pt-BR" : "en",
+      author: { "@id": `${SITE_URL}/#organization` },
+      publisher: { "@id": `${SITE_URL}/#organization` },
+      isPartOf: { "@id": `${SITE_URL}/#website` },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Corvo", item: pageUrl(lang) },
+        { "@type": "ListItem", position: 2, name: lang === "pt" ? "Documentação" : "Docs", item: pageUrl(lang, "/docs") },
+        { "@type": "ListItem", position: 3, name: page.title, item: url },
+      ],
+    },
+  ];
+
   return (
     <>
+      <JsonLd data={structured} />
       <DocsHeader
         locale={locale}
         slug={section[0]}
