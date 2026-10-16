@@ -714,6 +714,8 @@
           "nfse": "NFS-e emission via API",
           "companies": "1 company",
           "dailyLimit": "3 invoices per day",
+          "email": "Email delivery",
+          "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
           "downloads": "XML and PDF download"
         }
@@ -728,6 +730,7 @@
           "nfse": "NFS-e emission via API",
           "companies": "Up to 10 companies",
           "email": "Email delivery",
+          "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
           "downloads": "XML and PDF download"
         }
@@ -742,6 +745,7 @@
           "nfse": "NFS-e emission via API",
           "companies": "Up to 50 companies",
           "email": "Email delivery",
+          "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
           "downloads": "XML and PDF download"
         }
@@ -756,6 +760,7 @@
           "nfse": "NFS-e emission via API",
           "companies": "Up to 500 companies",
           "email": "Email delivery",
+          "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
           "downloads": "XML and PDF download"
         }
@@ -770,6 +775,7 @@
           "nfse": "NFS-e emission via API",
           "companies": "Unlimited companies",
           "email": "Email delivery",
+          "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
           "downloads": "XML and PDF download"
         }
@@ -795,7 +801,12 @@
     },
     "effective": "Effective cost:",
     "perNoteShort": "per invoice",
-    "currentPlan": "Your plan"
+    "currentPlan": "Your plan",
+    "included": {
+      "label": "Every plan includes",
+      "mcp": "MCP for AI agents",
+      "email": "Invoice delivery by email"
+    }
   },
   "Flow": {
     "eyebrow": "HOW IT WORKS",
@@ -1847,14 +1858,8 @@
       "emptyTitle": "No agent connected",
       "emptyBody": "When you approve an agent it shows up here, with its usage and a way to revoke it.",
       "app": "App",
-      "workspace": "Workspace",
       "permissions": "Permissions",
-      "connected": "Connected",
-      "lastUsed": "Last used",
-      "usage": "Usage",
-      "status": "Status",
       "neverUsed": "Never used",
-      "usageValue": "{calls} calls · {invoices} invoices issued",
       "owner": "by {email}",
       "you": "you",
       "active": "Active",
@@ -1874,7 +1879,14 @@
         "revokeFailed": "Could not revoke access."
       },
       "envTest": "Test",
-      "envLive": "Production"
+      "envLive": "Production",
+      "activity": "Activity",
+      "scopesShort": {
+        "nfse:read": "Read",
+        "nfse:write": "Issue"
+      },
+      "usageCompact": "{calls, plural, one {# call} other {# calls}} · {invoices, plural, one {# invoice issued} other {# invoices issued}}",
+      "connectedOn": "Connected {date}"
     }
   },
   "McpAuthorize": {

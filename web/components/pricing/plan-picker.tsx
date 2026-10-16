@@ -25,7 +25,8 @@ export interface PlanTier {
 const MIN_VOLUME = 1;
 const MAX_VOLUME = 50000;
 const VOLUME_PLAN_FROM = 10000;
-const DEFAULT_VOLUME = 500;
+/** Starts exactly at the Developer allowance, so the first price shown has no overage. */
+const DEFAULT_VOLUME = 200;
 const THUMB = 22;
 
 export const PLANS: PlanTier[] = [
@@ -139,12 +140,12 @@ function FeaturedPlan({
 
   const includes = (
     isFree
-      ? ["nfse", "dailyLimit", "webhooks", "downloads"]
-      : ["nfse", "companies", "email", "webhooks", "downloads"]
+      ? ["nfse", "dailyLimit", "email", "mcp", "webhooks", "downloads"]
+      : ["nfse", "companies", "email", "mcp", "webhooks", "downloads"]
   ) as string[];
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-accent/40 bg-accent-surface p-7 sm:p-9">
+    <div className="relative overflow-hidden rounded-3xl border border-accent/40 bg-accent-surface p-6 @lg:p-9">
       {/* ambient glow */}
       <div
         aria-hidden
@@ -163,23 +164,23 @@ function FeaturedPlan({
       />
 
       <div className="relative">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-[12px] tracking-[0.14em] text-text">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="whitespace-nowrap font-mono text-[12px] tracking-[0.14em] text-text">
               {t(`plans.${plan.slug}.name`)}
             </span>
-            <span className="bg-accent text-[#0a0a0a] font-mono text-[10px] font-semibold tracking-[0.08em] px-2.5 py-1 rounded-full">
+            <span className="shrink-0 whitespace-nowrap bg-accent text-[#0a0a0a] font-mono text-[10px] font-semibold tracking-[0.08em] px-2.5 py-1 rounded-full">
               {current ? t("currentPlan") : t("recommended")}
             </span>
           </div>
-          <span className="hidden sm:block text-[13px] text-text-3">
+          <span className="hidden text-right text-[13px] text-text-3 @5xl:block">
             {t(`plans.${plan.slug}.bestFor`)}
           </span>
         </div>
 
         {/* Price */}
         <div className="mt-8 flex flex-wrap items-end gap-x-3 gap-y-1">
-          <span className="text-[64px] sm:text-[76px] font-semibold tracking-[-0.05em] leading-[0.9] text-text tabular-nums">
+          <span className="text-[48px] @lg:text-[64px] @5xl:text-[76px] font-semibold tracking-[-0.05em] leading-[0.9] text-text tabular-nums">
             {isFree ? t("plans.free.price") : <AnimatedBRL cents={total} />}
           </span>
           {!isFree && (
@@ -235,7 +236,7 @@ function FeaturedPlan({
 
         <div className="my-8 h-px bg-white/[0.08]" />
 
-        <ul className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+        <ul className="grid gap-x-8 gap-y-3 @xl:grid-cols-2">
           {includes.map((key) => (
             <li key={key} className="flex items-start gap-2.5 text-[14px] text-text-2">
               <svg
@@ -329,6 +330,7 @@ function PlanLadder({
               <span
                 className={cn(
                   "relative text-right text-[15px] font-medium tabular-nums",
+                  overCap ? "max-w-[9rem] text-[13px] leading-snug" : "whitespace-nowrap",
                   isActive ? "text-text" : overCap ? "text-text-4" : "text-text-2"
                 )}
               >
@@ -378,7 +380,7 @@ export function PlanPicker({
   }
 
   return (
-    <>
+    <div className="@container">
       {/* Volume slider */}
       <div className="max-w-[820px] mx-auto">
         <p className="text-center font-mono text-[11px] tracking-[0.16em] text-text-3 uppercase">
@@ -442,7 +444,7 @@ export function PlanPicker({
           />
 
           {/* zone labels: plan names centered in their zone, limits on the boundaries */}
-          <div className="relative mt-4 hidden h-11 sm:block">
+          <div className="relative mt-4 hidden h-11 @lg:block">
             {ZONES.map((z, i) => {
               const mid = (z.startPos + z.endPos) / 2;
               const on = z.plan.slug === plan.slug;
@@ -481,7 +483,7 @@ export function PlanPicker({
       </div>
 
       {/* Result */}
-      <div className="mt-12 grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+      <div className="mt-12 grid gap-4 @4xl:grid-cols-[1.35fr_1fr]">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={plan.slug}
@@ -496,7 +498,6 @@ export function PlanPicker({
 
         <PlanLadder active={plan.slug} current={currentSlug} volume={volume} onPick={setVolume} />
       </div>
-
-    </>
+    </div>
   );
 }
