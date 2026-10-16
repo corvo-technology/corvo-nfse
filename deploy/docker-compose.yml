@@ -2,9 +2,6 @@ name: corvo-nfse
 
 x-backend: &backend
   image: corvo-api:local
-  build:
-    context: ../api
-    dockerfile: ../deploy/Dockerfile.api
   env_file: ${CORVO_ENV_FILE:-.env}
   environment: &backend-environment
     NODE_ENV: ${NODE_ENV:-production}
@@ -64,10 +61,9 @@ services:
     restart: unless-stopped
 
   migrations:
+    # Reuses the image built by the `api` service (built once, not three times).
     image: corvo-api:local
-    build:
-      context: ../api
-      dockerfile: ../deploy/Dockerfile.api
+    pull_policy: never
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       DB_SCHEMA: corvo
@@ -101,15 +97,25 @@ services:
 
   api:
     <<: *backend
+    # The only service that builds the backend image; `worker` and `migrations` reuse it.
+    build:
+      context: ../api
+      dockerfile: ../deploy/Dockerfile.api
     ports:
       - '${API_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-3000}:3000'
 
   worker:
     <<: *backend
-    image: corvo-worker:local
-    build:
-      context: ../api
-      dockerfile: ../deploy/Dockerfile.worker
+    # Same image as the API; only the command and the health check change.
+    image: corvo-api:local
+    pull_policy: never
+    command: ['node', 'dist/main.worker.js']
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://127.0.0.1:$${WORKER_PORT:-3002}/v1/health/live || exit 1']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     environment:
       <<: *backend-environment
       CORVO_RUNTIME_ROLE: worker
