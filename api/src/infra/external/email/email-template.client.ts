@@ -4,7 +4,8 @@ import { ConfigService } from '@nestjs/config';
 export type EmailTemplateAlias =
   | 'otp-code'
   | 'welcome'
-  | 'nfse-documents-ready';
+  | 'nfse-documents-ready'
+  | 'credits-low';
 
 export type EmailTemplateRef = {
   alias: EmailTemplateAlias;

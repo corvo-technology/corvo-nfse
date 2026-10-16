@@ -61,4 +61,38 @@ describe('EmailService', () => {
       );
     });
   });
+
+  describe('enqueueCreditsLow', () => {
+    it('enqueues the credits-low template with the billing link', async () => {
+      const withUrl = new EmailService(mockQueue, {
+        get: jest.fn().mockReturnValue('https://corvo.tech/app'),
+      } as unknown as ConfigService);
+
+      await withUrl.enqueueCreditsLow({
+        to: 'admin@example.com',
+        planName: 'Gratuito',
+        remaining: 3,
+        total: 15,
+      });
+
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        'email',
+        'credits-low',
+        expect.objectContaining({
+          kind: 'credits-low',
+          to: 'admin@example.com',
+          template: {
+            alias: 'credits-low',
+            variables: {
+              plan_name: 'Gratuito',
+              remaining: '3',
+              total: '15',
+              billing_url: 'https://corvo.tech/app/billing',
+            },
+          },
+        }),
+        expect.any(Object),
+      );
+    });
+  });
 });
