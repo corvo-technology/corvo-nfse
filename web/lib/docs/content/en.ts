@@ -2406,5 +2406,82 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         }
       ]
     },
+    "llms": {
+      "title": "Build with AI (llms.txt)",
+      "description": "Give llms.txt to your coding agent and let it implement the Corvo integration.",
+      "blocks": [
+        {
+          "kind": "text",
+          "body": "Corvo publishes its documentation in a format built for AI coding agents. Give the address to your agent (Claude Code, Cursor, Codex, Copilot and others) and it reads the API and writes the integration in your project, following the same rules as this documentation."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "What to give the agent"
+        },
+        {
+          "kind": "table",
+          "head": [
+            "File",
+            "Address",
+            "Use"
+          ],
+          "rows": [
+            [
+              "`llms.txt`",
+              "`https://corvo.tech/llms.txt`",
+              "Short index with the key facts and a link to every documentation page. The agent opens only what it needs."
+            ],
+            [
+              "`llms-full.txt`",
+              "`https://corvo.tech/llms-full.txt`",
+              "The whole documentation in one Markdown file (English): endpoints, fields, examples and errors. Best when the agent should implement everything in one pass."
+            ]
+          ]
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Ready-to-use prompt"
+        },
+        {
+          "kind": "text",
+          "body": "Copy it, fill in the part in brackets and paste it into your agent. It points to `llms-full.txt` and sets the rules that matter: test environment, key outside the code, idempotency and asynchronous issuance."
+        },
+        {
+          "kind": "code",
+          "label": "Prompt",
+          "language": "text",
+          "code": "Read https://corvo.tech/llms-full.txt (the Corvo NFS-e API documentation) and integrate invoice issuance into this project.\n\nMy stack and where invoices are created: [describe your language/framework and the place in the code where an order or sale becomes an invoice].\n\nFollow these rules:\n- Use the test environment. Read the key from the CORVO_API_KEY environment variable (it starts with corvo_test_). Never write a key in code, in tests or in commits.\n- Register the company once with POST /v1/companies (taxId, taxRegime, municipalityCode) and keep its id.\n- Before issuing, call POST /v1/invoices/calculate and show the taxes when it makes sense.\n- Issue with POST /v1/invoices and send an Idempotency-Key built from my own order id, so a retry never creates a second invoice.\n- Issuance is asynchronous: save the invoice id, and update the status from the nfse.invoice.authorized and nfse.invoice.rejected webhooks (verify the signature) or by polling GET /v1/invoices/:id.\n- Handle the documented errors (validation, 409, 429 with Retry-After) and never log customer documents.\n- Write tests with mocked HTTP. Do not call the live environment.\n\nWhen you finish, list the files you changed and what I still need to configure (webhook URL, environment variables)."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "In each tool"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Claude Code, Codex and other terminal agents: paste the prompt. They fetch the address themselves.",
+            "Cursor: add `https://corvo.tech/llms-full.txt` as a documentation source (Settings → Indexing & Docs), then mention it in the chat, or paste the prompt.",
+            "VS Code, Windsurf and chat apps: paste the prompt; if the tool cannot open addresses, download `llms-full.txt` and attach the file to the conversation."
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "body": "Never paste a `live` key into a prompt or a chat. Keep `corvo_test_...` in an environment variable, review the generated code before going live (company data, service code and tax regime are yours to confirm) and only then switch the key."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Write the code, or operate directly"
+        },
+        {
+          "kind": "text",
+          "body": "This page is for an agent that writes the integration into your repository. If you want the agent to issue and query invoices itself, in a conversation, connect it to the MCP server instead: see AI agents (MCP). Both can be used together."
+        }
+      ]
+    },
   },
 };

@@ -2387,5 +2387,82 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         }
       ]
     },
+    "llms": {
+      "title": "Integrar com IA (llms.txt)",
+      "description": "Entregue o llms.txt ao seu agente de código e deixe que ele implemente a integração com a Corvo.",
+      "blocks": [
+        {
+          "kind": "text",
+          "body": "A Corvo publica a documentação em um formato feito para agentes de IA que programam. Entregue o endereço ao seu agente (Claude Code, Cursor, Codex, Copilot e outros) e ele lê a API e escreve a integração no seu projeto, seguindo as mesmas regras desta documentação."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "O que entregar ao agente"
+        },
+        {
+          "kind": "table",
+          "head": [
+            "Arquivo",
+            "Endereço",
+            "Uso"
+          ],
+          "rows": [
+            [
+              "`llms.txt`",
+              "`https://corvo.tech/llms.txt`",
+              "Índice curto com os fatos principais e um link para cada página da documentação. O agente abre só o que precisa."
+            ],
+            [
+              "`llms-full.txt`",
+              "`https://corvo.tech/llms-full.txt`",
+              "Toda a documentação em um único arquivo Markdown (em inglês): endpoints, campos, exemplos e erros. O melhor quando o agente deve implementar tudo de uma vez."
+            ]
+          ]
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Prompt pronto para usar"
+        },
+        {
+          "kind": "text",
+          "body": "Copie, preencha o trecho entre colchetes e cole no seu agente. Ele aponta para o `llms-full.txt` e define as regras que importam: ambiente de teste, chave fora do código, idempotência e emissão assíncrona."
+        },
+        {
+          "kind": "code",
+          "label": "Prompt",
+          "language": "text",
+          "code": "Leia https://corvo.tech/llms-full.txt (a documentação da API de NFS-e da Corvo) e integre a emissão de notas neste projeto.\n\nMinha stack e onde as notas são criadas: [descreva a linguagem/framework e o ponto do código em que um pedido ou venda vira nota].\n\nSiga estas regras:\n- Use o ambiente de teste. Leia a chave da variável de ambiente CORVO_API_KEY (começa com corvo_test_). Nunca escreva uma chave no código, nos testes ou em commits.\n- Cadastre a empresa uma única vez com POST /v1/companies (taxId, taxRegime, municipalityCode) e guarde o id.\n- Antes de emitir, chame POST /v1/invoices/calculate e mostre os tributos quando fizer sentido.\n- Emita com POST /v1/invoices e envie um Idempotency-Key montado com o id do meu pedido, para que uma nova tentativa nunca crie uma segunda nota.\n- A emissão é assíncrona: salve o id da nota e atualize o status pelos webhooks nfse.invoice.authorized e nfse.invoice.rejected (verifique a assinatura) ou consultando GET /v1/invoices/:id.\n- Trate os erros documentados (validação, 409, 429 com Retry-After) e nunca registre em log documentos de clientes.\n- Escreva testes com HTTP simulado. Não chame o ambiente live.\n\nAo terminar, liste os arquivos que mudou e o que ainda preciso configurar (URL do webhook, variáveis de ambiente)."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Em cada ferramenta"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Claude Code, Codex e outros agentes de terminal: cole o prompt. Eles buscam o endereço sozinhos.",
+            "Cursor: adicione `https://corvo.tech/llms-full.txt` como fonte de documentação (Settings → Indexing & Docs) e cite no chat, ou cole o prompt.",
+            "VS Code, Windsurf e apps de chat: cole o prompt; se a ferramenta não abrir endereços, baixe o `llms-full.txt` e anexe o arquivo à conversa."
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "body": "Nunca cole uma chave `live` em um prompt ou chat. Mantenha a `corvo_test_...` em uma variável de ambiente, revise o código gerado antes de ir para produção (dados da empresa, código de serviço e regime tributário são você quem confirma) e só então troque a chave."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Escrever o código ou operar direto"
+        },
+        {
+          "kind": "text",
+          "body": "Esta página é para um agente que escreve a integração no seu repositório. Se você quer que o agente emita e consulte notas por conta própria, numa conversa, conecte-o ao servidor MCP: veja Agentes de IA (MCP). Os dois podem ser usados juntos."
+        }
+      ]
+    },
   },
 };
