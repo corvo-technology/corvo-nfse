@@ -7,6 +7,7 @@ import { DashboardShowcase } from "@/components/landing/dashboard-showcase";
 import { FreeTrial } from "@/components/landing/free-trial";
 import { Pricing } from "@/components/landing/pricing";
 import { FlowSection } from "@/components/landing/flow-section";
+import { AgentsSection } from "@/components/landing/agents-section";
 import { MultiCompanySection } from "@/components/landing/multi-company-section";
 import { UseCases } from "@/components/landing/use-cases";
 import { Footer } from "@/components/landing/footer";
@@ -29,6 +30,9 @@ export function LandingPage() {
         </ScrollReveal>
         <ScrollReveal>
           <FlowSection />
+        </ScrollReveal>
+        <ScrollReveal>
+          <AgentsSection />
         </ScrollReveal>
         <ScrollReveal delay={100}>
           <FreeTrial />

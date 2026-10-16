@@ -1920,5 +1920,36 @@
     "envTestHint": "Notas sem valor fiscal. Bom para começar e validar.",
     "envLive": "Produção",
     "envLiveHint": "Notas reais, com valor fiscal e consumo de créditos."
+  },
+  "LandingAgents": {
+    "eyebrow": "AGENTES DE IA",
+    "title": "Seus agentes de IA podem emitir notas.",
+    "description": "Conecte o Claude, o Cursor ou o Codex à Corvo por MCP. Peça em linguagem natural e a nota sai, com as mesmas regras fiscais da API.",
+    "points": {
+      "connect": "Um comando para conectar, sem chave para copiar.",
+      "approve": "Você aprova no navegador e escolhe teste ou produção.",
+      "rules": "Mesma validação fiscal, e-mail e webhooks da API."
+    },
+    "connectLabel": "CONECTE EM UM COMANDO",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "agentsLabel": "Agentes compatíveis",
+    "docs": "Ver o guia de MCP",
+    "chat": {
+      "status": "Claude Code · Corvo conectado",
+      "env": "TESTE",
+      "you": "VOCÊ",
+      "agent": "AGENTE",
+      "prompt": "Emite uma nota de R$ 450 de consultoria pra Padaria Estrela e manda no e-mail financeiro@padariaestrela.example.",
+      "listResult": "1 empresa pronta para emitir",
+      "issueResult": "nota na fila",
+      "reply": "Pronto. A NFS-e de R$ 450,00 foi enviada para autorização, e o PDF e o XML vão para o e-mail do cliente assim que ela sair.",
+      "card": {
+        "label": "NFS-E",
+        "detail": "financeiro@padariaestrela.example",
+        "queued": "Na fila",
+        "authorized": "Autorizada"
+      }
+    }
   }
 }
