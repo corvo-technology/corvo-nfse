@@ -70,8 +70,6 @@ services:
       MIGRATION_DATABASE_URL: postgresql://corvo:${POSTGRES_PASSWORD:?Execute node scripts/setup-env.mjs}@postgres:5432/corvo_dev
       POSTGRES_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:?Execute node scripts/setup-env.mjs}
     command: ['node', 'scripts/deploy-migrate.mjs']
-    volumes:
-      - ./scripts/migrate.mjs:/app/scripts/deploy-migrate.mjs:ro
     depends_on:
       postgres:
         condition: service_healthy
