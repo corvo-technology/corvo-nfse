@@ -11,7 +11,7 @@ export const DOC_GROUPS: { key: DocGroupKey; slugs: import("./types").DocSlug[] 
   },
   {
     key: "guides",
-    slugs: ["async-issuance", "pagination", "receiving-webhooks", "integration-checklist", "mcp"],
+    slugs: ["async-issuance", "pagination", "receiving-webhooks", "integration-checklist", "mcp", "llms"],
   },
 ];
 

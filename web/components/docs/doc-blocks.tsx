@@ -2,9 +2,10 @@
 import type { DocBlock, DocsChrome } from "@/lib/docs/types";
 import { Callout } from "./callout";
 import { EndpointCard } from "./endpoint-card";
+import { CopyCodeButton } from "./copy-code-button";
 import { InlineText } from "./inline-text";
 
-const CODE_BLOCK_LANG_LABEL = { bash: "bash", json: "json", js: "javascript" } as const;
+const CODE_BLOCK_LANG_LABEL = { bash: "bash", json: "json", js: "javascript", text: "prompt" } as const;
 
 export function DocBlocks({
   blocks,
@@ -75,10 +76,13 @@ export function DocBlocks({
           case "code":
             return (
               <div key={i}>
-                <p className="mb-1.5 font-mono text-[11px] uppercase tracking-wide text-text-4">
-                  {block.label ?? CODE_BLOCK_LANG_LABEL[block.language]}
-                </p>
-                <pre className="overflow-x-auto rounded-xl border border-border bg-surface p-4 font-mono text-xs leading-relaxed text-text-2">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <p className="font-mono text-[11px] uppercase tracking-wide text-text-4">
+                    {block.label ?? CODE_BLOCK_LANG_LABEL[block.language]}
+                  </p>
+                  <CopyCodeButton code={block.code} copyLabel={copy.copy} copiedLabel={copy.copied} />
+                </div>
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl border border-border bg-surface p-4 font-mono text-xs leading-relaxed text-text-2">
                   <code>{block.code}</code>
                 </pre>
               </div>

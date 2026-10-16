@@ -18,7 +18,8 @@ export type DocSlug =
   | "pagination"
   | "receiving-webhooks"
   | "integration-checklist"
-  | "mcp";
+  | "mcp"
+  | "llms";
 
 export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
@@ -53,7 +54,7 @@ export interface HeadingBlock {
 export interface CodeBlock {
   kind: "code";
   label?: string;
-  language: "bash" | "json" | "js";
+  language: "bash" | "json" | "js" | "text";
   code: string;
 }
 
