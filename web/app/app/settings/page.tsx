@@ -4,9 +4,6 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { Toggle } from "@/components/ui/toggle";
-
-const TOGGLE_KEYS = ["blockOutsideHours", "lowBalanceAlert"] as const;
 
 export default function SettingsPage() {
   const t = useTranslations("Settings");
@@ -15,26 +12,6 @@ export default function SettingsPage() {
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
-
-      <Card className="dash-in dash-in-1 overflow-hidden">
-        <h2 className="border-b border-border px-5 py-4 text-[14.5px] font-medium">{t("environment")}</h2>
-        <ul className="divide-y divide-border">
-          {TOGGLE_KEYS.map((key) => (
-            <li key={key} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <Toggle
-                checked={false}
-                onChange={() => {}}
-                disabled
-                label={t(`toggles.${key}.label`)}
-                description={t(`toggles.${key}.desc`)}
-              />
-              <span className="self-start rounded-full border border-border-strong px-2.5 py-1 font-mono text-[10.5px] text-text-3 sm:self-center">
-                {t("comingSoon")}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Card>
 
       <Card className="dash-in dash-in-2 overflow-hidden">
         <h2 className="border-b border-border px-5 py-4 text-[14.5px] font-medium">{t("billing")}</h2>

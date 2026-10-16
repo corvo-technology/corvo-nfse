@@ -496,8 +496,6 @@
   "Settings": {
     "title": "Settings",
     "subtitle": "Environment and billing settings.",
-    "environment": "Environment",
-    "comingSoon": "Coming soon",
     "billing": "Billing",
     "stripeEnding": "····4242",
     "visa": "Visa",
@@ -505,19 +503,10 @@
     "openStripePortal": "Open Stripe portal",
     "deleteWorkspace": "Delete workspace",
     "deleteWorkspaceDesc": "Permanently remove this workspace and all its data. This action cannot be undone.",
-    "toggles": {
-      "blockOutsideHours": {
-        "label": "Block outside business hours",
-        "desc": "Prevent outbound messages when your business hours are closed."
-      },
-      "lowBalanceAlert": {
-        "label": "Low balance alert",
-        "desc": "Receive a notification when credit balance drops below 100 messages."
-      }
-    },
     "paymentsPending": "The payment and billing portal is not available yet."
   },
   "Members": {
+    "inviteUnavailable": "Invitations are turned off for now.",
     "title": "Members",
     "subtitle": "Manage who has access to your workspace.",
     "invite": "Invite",
