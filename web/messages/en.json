@@ -494,6 +494,10 @@
     }
   },
   "Settings": {
+    "portalDescription": "Manage your payment method, invoices and subscription in the Stripe portal.",
+    "portalNoSubscription": "Subscribe to a plan in Billing to manage payments here.",
+    "portalNoPermission": "Only members with billing permission can open the payment portal.",
+    "goToBilling": "Go to Billing",
     "title": "Settings",
     "subtitle": "Environment and billing settings.",
     "billing": "Billing",
@@ -502,8 +506,7 @@
     "receiptsTo": "Receipts sent to financeiro@acme.com",
     "openStripePortal": "Open Stripe portal",
     "deleteWorkspace": "Delete workspace",
-    "deleteWorkspaceDesc": "Permanently remove this workspace and all its data. This action cannot be undone.",
-    "paymentsPending": "The payment and billing portal is not available yet."
+    "deleteWorkspaceDesc": "Permanently remove this workspace and all its data. This action cannot be undone."
   },
   "Members": {
     "inviteUnavailable": "Invitations are turned off for now.",

@@ -494,6 +494,10 @@
     }
   },
   "Settings": {
+    "portalDescription": "Gerencie forma de pagamento, faturas e assinatura no portal da Stripe.",
+    "portalNoSubscription": "Assine um plano na página de Cobrança para gerenciar os pagamentos aqui.",
+    "portalNoPermission": "Só membros com permissão de cobrança podem abrir o portal de pagamentos.",
+    "goToBilling": "Ir para Cobrança",
     "title": "Configurações",
     "subtitle": "Configurações de ambiente e faturamento.",
     "billing": "Faturamento",
@@ -502,8 +506,7 @@
     "receiptsTo": "Recibos enviados para financeiro@acme.com",
     "openStripePortal": "Abrir portal do Stripe",
     "deleteWorkspace": "Excluir workspace",
-    "deleteWorkspaceDesc": "Remover permanentemente este workspace e todos os seus dados. Esta ação não pode ser desfeita.",
-    "paymentsPending": "Portal de pagamento e cobrança ainda não estão disponíveis."
+    "deleteWorkspaceDesc": "Remover permanentemente este workspace e todos os seus dados. Esta ação não pode ser desfeita."
   },
   "Members": {
     "inviteUnavailable": "Convites estão desativados por enquanto.",
