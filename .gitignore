@@ -14,7 +14,9 @@ output/
 tmp/
 .tmp/
 .temp/
-storage/
+# Runtime storage directories only. A bare `storage/` also ignored the source folder api/src/infra/storage.
+/storage/
+/api/storage/
 *.log
 *.sarif
 
