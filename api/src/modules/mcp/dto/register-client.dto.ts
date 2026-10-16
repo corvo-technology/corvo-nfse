@@ -9,6 +9,12 @@ import {
 
 /** Body of `POST /mcp/register` (RFC 7591 dynamic client registration). */
 export class RegisterClientDto {
+  /**
+   * RFC 7591 §2: the server ignores metadata it does not understand. Clients
+   * send extras such as `application_type`, `client_uri` or `software_id`.
+   */
+  static readonly allowUnknownProperties = true;
+
   @IsOptional()
   @IsString()
   @MaxLength(100)

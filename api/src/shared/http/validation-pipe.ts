@@ -1,4 +1,8 @@
-import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import {
+  ArgumentMetadata,
+  BadRequestException,
+  ValidationPipe,
+} from '@nestjs/common';
 import type { ValidationError } from 'class-validator';
 import type {
   FiscalIssue,
@@ -76,12 +80,41 @@ export function validationExceptionFactory(
   });
 }
 
-export function createValidationPipe(): ValidationPipe {
-  return new ValidationPipe({
-    transform: true,
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    validationError: { target: false, value: true },
-    exceptionFactory: validationExceptionFactory,
+/**
+ * Opt-out of the unknown-field rejection for a DTO: declare
+ * `static readonly allowUnknownProperties = true`. Unknown fields are then
+ * dropped instead of rejected. Meant for protocols that require servers to
+ * ignore metadata they do not understand (RFC 7591 client registration).
+ */
+interface AllowsUnknownProperties {
+  allowUnknownProperties?: boolean;
+}
+
+const pipeOptions = {
+  transform: true,
+  whitelist: true,
+  validationError: { target: false, value: true },
+  exceptionFactory: validationExceptionFactory,
+};
+
+class CorvoValidationPipe extends ValidationPipe {
+  private readonly lenient = new ValidationPipe({
+    ...pipeOptions,
+    forbidNonWhitelisted: false,
   });
+
+  constructor() {
+    super({ ...pipeOptions, forbidNonWhitelisted: true });
+  }
+
+  override transform(value: unknown, metadata: ArgumentMetadata) {
+    const target = metadata.metatype as AllowsUnknownProperties | undefined;
+    return target?.allowUnknownProperties === true
+      ? this.lenient.transform(value, metadata)
+      : super.transform(value, metadata);
+  }
+}
+
+export function createValidationPipe(): ValidationPipe {
+  return new CorvoValidationPipe();
 }
