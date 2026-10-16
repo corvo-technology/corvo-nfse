@@ -27,6 +27,11 @@ import { InvoiceEventOrmEntity } from '../infra/invoice-event.orm-entity';
 const SETTLED_STATUSES = ['authorized', 'rejected', 'failed', 'cancelled'];
 /** Statuses that release an unused live reservation. */
 const REFUND_STATUSES = ['rejected', 'failed', 'cancelled'];
+/** Origins of an already authorized invoice: its credit is final and billing is untouched. */
+const FISCALLY_AUTHORIZED_ORIGINS: (string | null)[] = [
+  'authorized',
+  'cancelling',
+];
 
 /** One transaction for fiscal state, audit event and the corresponding credit. */
 @Injectable()
@@ -152,6 +157,10 @@ export class InvoiceLifecycleService {
             .insert(new InvoiceEventMapper().toPersistence(event));
           if (message) await this.outbox.enqueue(message);
           if (invoice.environment !== 'live') return true;
+          if (
+            FISCALLY_AUTHORIZED_ORIGINS.includes(event.toSnapshot().fromStatus)
+          )
+            return true;
           await this.usage.settle(invoice.id, invoice.tenantId, invoice.status);
           const wallet = manager.getRepository(CreditTransactionOrmEntity);
           const reservation = await wallet.findOneBy({

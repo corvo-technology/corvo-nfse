@@ -139,6 +139,56 @@ describe('InvoiceLifecycleService.transition — cancellation', () => {
     expect(ctx.walletInserts).toEqual([]);
   });
 
+  describe('transitions from a fiscally authorized invoice never touch credit', () => {
+    const reservation = { id: 'res-1', amount: -1 };
+    const fiscalReason = cancellationReason(
+      'issue_error',
+      'Valor informado incorretamente',
+    );
+
+    function expectNoCreditEffects(ctx: ReturnType<typeof build>) {
+      expect(ctx.walletInserts).toEqual([]);
+      expect(ctx.walletUpdates).toEqual([]);
+      expect(ctx.usage.settle).not.toHaveBeenCalled();
+    }
+
+    it('authorized → cancelling', async () => {
+      const ctx = build('authorized', reservation);
+      const invoice = invoiceIn('authorized', 'live');
+      await expect(
+        ctx.service.transition(
+          invoice,
+          invoice.requestCancellation(fiscalReason),
+          message,
+        ),
+      ).resolves.toBe(true);
+      expectNoCreditEffects(ctx);
+    });
+
+    it('cancelling → cancelled', async () => {
+      const ctx = build('cancelling', reservation);
+      const invoice = invoiceIn('authorized', 'live');
+      invoice.requestCancellation(fiscalReason);
+      await expect(
+        ctx.service.transition(invoice, invoice.confirmCancellation()),
+      ).resolves.toBe(true);
+      expectNoCreditEffects(ctx);
+    });
+
+    it('cancelling → authorized (rejected cancellation)', async () => {
+      const ctx = build('cancelling', reservation);
+      const invoice = invoiceIn('authorized', 'live');
+      invoice.requestCancellation(fiscalReason);
+      await expect(
+        ctx.service.transition(
+          invoice,
+          invoice.rejectCancellation('E0840', 'Prazo expirado'),
+        ),
+      ).resolves.toBe(true);
+      expectNoCreditEffects(ctx);
+    });
+  });
+
   it('keeps the pending fiscal event while cancelling', async () => {
     const ctx = build('authorized', null);
     const invoice = invoiceIn('authorized', 'test');
