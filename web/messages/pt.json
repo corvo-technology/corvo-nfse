@@ -1096,6 +1096,7 @@
     "viewCompany": "Ver detalhes de {name}"
   },
   "Invoices": {
+    "anonymousCustomer": "Consumidor não identificado",
     "calculate": {
       "button": "Calcular tributos",
       "calculating": "Calculando…",
@@ -1469,6 +1470,7 @@
     "defaultServiceCode": "Código de serviço padrão"
   },
   "InvoiceDetail": {
+    "anonymousCustomer": "Consumidor não identificado",
     "title": "Nota fiscal",
     "loading": "Carregando nota...",
     "failed": "Não foi possível carregar a nota.",

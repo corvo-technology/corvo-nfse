@@ -1096,6 +1096,7 @@
     "viewCompany": "View details for {name}"
   },
   "Invoices": {
+    "anonymousCustomer": "Unidentified consumer",
     "calculate": {
       "button": "Calculate taxes",
       "calculating": "Calculating…",
@@ -1469,6 +1470,7 @@
     "defaultServiceCode": "Default service code"
   },
   "InvoiceDetail": {
+    "anonymousCustomer": "Unidentified consumer",
     "title": "Invoice",
     "loading": "Loading invoice...",
     "failed": "Could not load the invoice.",

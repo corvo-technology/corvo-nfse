@@ -133,3 +133,22 @@ describe("company fiscal API contracts", () => {
     expect(fetchMock.mock.calls.every(([, init]) => init?.method === "POST" && new Headers(init.headers).get("x-csrf-token") === "test-csrf")).toBe(true);
   });
 });
+
+describe("adaptInvoice", () => {
+  const props = { id: "i", serviceSnapshot: { description: "Corte", code: "060101", municipalityCode: "3550308" } } as never;
+
+  it("keeps the customer name and tax id when the invoice has a tomador", async () => {
+    const { adaptInvoice } = await import("@/lib/api");
+    const invoice = adaptInvoice({ props: { ...(props as object), customerSnapshot: { name: "Ana", taxId: "52998224725" } } as never });
+    expect(invoice.customerName).toBe("Ana");
+    expect(invoice.customerTaxId).toBe("52998224725");
+  });
+
+  it("does not throw for anonymous consumer invoices (no customer snapshot)", async () => {
+    const { adaptInvoice } = await import("@/lib/api");
+    const invoice = adaptInvoice({ props: { ...(props as object), customerSnapshot: null } as never });
+    expect(invoice.customerName).toBe("");
+    expect(invoice.customerTaxId).toBe("");
+    expect(invoice.serviceDescription).toBe("Corte");
+  });
+});
