@@ -1,3 +1,4 @@
+import { CHECKOUT_BRANDING } from './stripe-branding';
 import {
   BadRequestException,
   Injectable,
@@ -125,6 +126,7 @@ export class StripeBillingAdapter extends BillingProvider {
         subscription_data: { metadata: { tenant_id: tenantId } },
         allowed_payment_method_types: ['card'],
         locale: 'pt-BR',
+        branding_settings: CHECKOUT_BRANDING,
         line_items: [{ price: base.id, quantity: 1 }, { price: overage.id }],
         success_url: success
           .toString()
