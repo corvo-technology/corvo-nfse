@@ -496,8 +496,6 @@
   "Settings": {
     "title": "Configurações",
     "subtitle": "Configurações de ambiente e faturamento.",
-    "environment": "Ambiente",
-    "comingSoon": "Em breve",
     "billing": "Faturamento",
     "stripeEnding": "····4242",
     "visa": "Visa",
@@ -505,19 +503,10 @@
     "openStripePortal": "Abrir portal do Stripe",
     "deleteWorkspace": "Excluir workspace",
     "deleteWorkspaceDesc": "Remover permanentemente este workspace e todos os seus dados. Esta ação não pode ser desfeita.",
-    "toggles": {
-      "blockOutsideHours": {
-        "label": "Bloquear fora do horário comercial",
-        "desc": "Impedir mensagens de saída quando seu horário comercial estiver encerrado."
-      },
-      "lowBalanceAlert": {
-        "label": "Alerta de saldo baixo",
-        "desc": "Receber uma notificação quando o saldo de créditos cair abaixo de 100 mensagens."
-      }
-    },
     "paymentsPending": "Portal de pagamento e cobrança ainda não estão disponíveis."
   },
   "Members": {
+    "inviteUnavailable": "Convites estão desativados por enquanto.",
     "title": "Membros",
     "subtitle": "Gerencie quem tem acesso ao seu workspace.",
     "invite": "Convidar",
