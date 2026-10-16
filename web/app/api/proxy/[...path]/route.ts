@@ -35,6 +35,9 @@ const routes: [RegExp, string[]][] = [
   [/^webhooks\/deliveries\/[^/]+\/retry$/, ["POST"]],
   [/^webhooks\/[^/]+\/test$/, ["POST"]],
   [/^webhooks\/[^/]+$/, ["DELETE"]],
+  [/^mcp\/consent$/, ["GET", "POST"]],
+  [/^mcp\/connections$/, ["GET"]],
+  [/^mcp\/connections\/[^/]+$/, ["DELETE"]],
   [/^health\/(live|ready)$/, ["GET"]],
 ];
 const sessionNames = new Set(["gf_session_dev", "__Host-gf_session"]);

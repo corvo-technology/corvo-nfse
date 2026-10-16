@@ -17,7 +17,8 @@ export type DocSlug =
   | "async-issuance"
   | "pagination"
   | "receiving-webhooks"
-  | "integration-checklist";
+  | "integration-checklist"
+  | "mcp";
 
 export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 

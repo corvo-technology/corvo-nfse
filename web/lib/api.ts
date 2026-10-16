@@ -212,3 +212,20 @@ export const members = {
   invite: async (data: { name: string; email: string; role: string }) => unwrap(await request<Envelope<InviteResult>>("/auth/invite", json(data))),
   remove: async (id: string) => unwrap(await request<Envelope<{ deleted: boolean }>>(`/auth/members/${idPath(id)}`, { method: "DELETE" })),
 };
+export interface McpConsentContext {
+  client: { id: string; name: string };
+  redirect_host: string;
+  scopes: { name: string; description: string }[];
+  tenants: { id: string; name: string; allowed_scopes: string[] }[];
+}
+export interface McpConsentParams { client_id: string; redirect_uri: string; scope?: string; state: string; code_challenge: string; code_challenge_method: string }
+export interface McpConnection {
+  id: string; tenant_id: string; tenant_name: string; client_name: string; scopes: string[]; granted_at: string; last_used_at: string | null;
+  environment: "test" | "live"; tool_calls: number; invoices_issued: number; revoked: boolean; mine: boolean; owner_email: string | null;
+}
+export const mcp = {
+  consentContext: async (params: McpConsentParams, signal?: AbortSignal) => unwrap(await request<Envelope<McpConsentContext>>(`/mcp/consent${query(params)}`, { signal })),
+  decide: async (params: McpConsentParams, decision: "allow" | "deny", tenantId?: string, environment?: "test" | "live") => unwrap(await request<Envelope<{ redirect_url: string }>>("/mcp/consent", json({ ...params, decision, ...(tenantId ? { tenant_id: tenantId } : {}), ...(environment ? { environment } : {}) }))),
+  connections: async (params: PageParams = {}, signal?: AbortSignal) => toPage(await request<ListBody<McpConnection>>(`/mcp/connections${query(params)}`, { signal })),
+  revoke: async (id: string) => unwrap(await request<Envelope<{ revoked: boolean }>>(`/mcp/connections/${idPath(id)}`, { method: "DELETE" })),
+};

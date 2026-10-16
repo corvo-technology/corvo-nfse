@@ -405,6 +405,7 @@ function toAuthorizationCode(
     codeChallengeMethod: row.codeChallengeMethod as 'S256',
     redirectUri: row.redirectUri,
     scope: row.scope,
+    environment: row.environment,
     expiresAt: row.expiresAt,
     consumedAt: row.consumedAt,
     createdAt: row.createdAt,

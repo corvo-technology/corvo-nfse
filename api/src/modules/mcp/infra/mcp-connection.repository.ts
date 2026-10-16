@@ -16,21 +16,21 @@ import { McpConnectionOrmEntity } from './mcp-connection.orm-entity';
 @Injectable()
 export class TypeOrmMcpConnectionRepository implements McpConnectionRepository {
   async listPage(
-    userId: string,
+    userId: string | null,
     tenantId: string,
     options: CursorQuery,
   ): Promise<CursorPage<McpConnection>> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
+      const query = this.repo
+        .createQueryBuilder('connection')
+        .where('connection.tenant_id = :tenantId', { tenantId });
+      if (userId !== null)
+        query.andWhere('connection.auth_user_id = :userId', { userId });
       return queryCursorPage(
-        this.repo
-          .createQueryBuilder('connection')
-          .where(
-            'connection.auth_user_id = :userId AND connection.tenant_id = :tenantId',
-            { userId, tenantId },
-          ),
+        query,
         options,
-        ['mcp-connections', tenantId, userId],
+        ['mcp-connections', tenantId, userId ?? 'all'],
         toDomain,
         { column: 'grantedAt' },
       );
@@ -46,6 +46,76 @@ export class TypeOrmMcpConnectionRepository implements McpConnectionRepository {
     return runWithTenant(tenantId, async () => {
       assertTenantOwnership(tenantId, connection.tenantId);
       await this.repo.insert(connection);
+    });
+  }
+
+  async findById(id: string, tenantId: string): Promise<McpConnection | null> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const row = await this.repo.findOne({ where: { id, tenantId } });
+      return row ? toDomain(row) : null;
+    });
+  }
+
+  async findAnyByUserTenantClient(
+    userId: string,
+    tenantId: string,
+    clientId: string,
+  ): Promise<McpConnection | null> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const row = await this.repo.findOne({
+        where: { authUserId: userId, tenantId, clientId },
+      });
+      return row ? toDomain(row) : null;
+    });
+  }
+
+  async reconnect(
+    id: string,
+    tenantId: string,
+    next: {
+      authUserId: string;
+      sessionId: string;
+      scopes: string[];
+      environment: 'test' | 'live';
+    },
+  ): Promise<McpConnection> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      await this.repo.update(
+        { id, tenantId, authUserId: next.authUserId },
+        {
+          sessionId: next.sessionId,
+          scopes: next.scopes,
+          environment: next.environment,
+          revokedAt: null,
+          grantedAt: new Date(),
+        },
+      );
+      const row = await this.repo.findOneOrFail({ where: { id, tenantId } });
+      return toDomain(row);
+    });
+  }
+
+  async recordUsage(
+    id: string,
+    tenantId: string,
+    usage: { toolCalls: number; invoicesIssued: number },
+  ): Promise<void> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      await this.repo
+        .createQueryBuilder()
+        .update()
+        .set({
+          lastUsedAt: new Date(),
+          toolCallsCount: () => `tool_calls_count + ${usage.toolCalls | 0}`,
+          invoicesIssuedCount: () =>
+            `invoices_issued_count + ${usage.invoicesIssued | 0}`,
+        })
+        .where('id = :id AND tenant_id = :tenantId', { id, tenantId })
+        .execute();
     });
   }
 
@@ -155,8 +225,11 @@ function toDomain(row: McpConnectionOrmEntity): McpConnection {
     clientId: row.clientId,
     sessionId: row.sessionId,
     scopes: [...row.scopes],
+    environment: row.environment,
     grantedAt: row.grantedAt,
     revokedAt: row.revokedAt,
     lastUsedAt: row.lastUsedAt,
+    toolCallsCount: row.toolCallsCount,
+    invoicesIssuedCount: row.invoicesIssuedCount,
   };
 }

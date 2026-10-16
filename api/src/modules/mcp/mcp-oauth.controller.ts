@@ -14,17 +14,18 @@ import { ApiTags } from '@nestjs/swagger';
 import { createHash } from 'crypto';
 import { IOAuthClientRepository } from '../auth/domain/oauth-client.repository';
 import type { OAuthClient } from '../auth/domain/oauth-client';
-import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { PublicRoute } from '../auth/application/public-route.decorator';
 import { IAuthSessionRepository } from '../auth/domain/auth-session.repository';
-import type { AppConfig } from '@/infra/config/configuration.types';
 import { AuthorizeQueryDto } from './dto/authorize-query.dto';
 
 import { McpAuthService, TokenResponse } from './mcp-auth.service';
-
-const STATE_COOKIE = 'mcp_oauth_state';
-const STATE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
+import {
+  MCP_CLIENT_ID,
+  MCP_SCOPES,
+  matchesRegisteredRedirectUri,
+} from './mcp-client-policy';
+import { McpUrlService } from './mcp-urls.service';
 
 type OAuthErrorBody = {
   error: string;
@@ -39,16 +40,17 @@ export class McpOAuthController {
   constructor(
     @Inject(IOAuthClientRepository)
     private readonly clients: IOAuthClientRepository,
-    private readonly config: ConfigService,
+    private readonly urls: McpUrlService,
     @Inject(IAuthSessionRepository)
     private readonly sessionRepository: IAuthSessionRepository,
     private readonly mcpAuth: McpAuthService,
   ) {}
 
   /**
-   * OAuth 2.0 authorization endpoint entry point. Validates the request,
-   * binds `state` to an httpOnly cookie, then hands the browser off to the
-   * consent page with the exact same query parameters.
+   * OAuth 2.0 authorization endpoint entry point. Validates the request, then
+   * hands the browser to the dashboard (`/mcp/authorize`), where the user
+   * logs in if needed and approves the connection. The dashboard keeps the
+   * session cookie, so login and consent never run on the API origin.
    */
   @Get('authorize')
   async authorize(
@@ -58,62 +60,19 @@ export class McpOAuthController {
     const client = await this.findActiveClient(query.client_id);
     this.requireRegisteredRedirectUri(client, query.redirect_uri);
 
-    res.cookie(STATE_COOKIE, query.state, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: STATE_MAX_AGE_MS,
-      path: '/',
-    });
-
     const params = new URLSearchParams({
       client_id: query.client_id,
       redirect_uri: query.redirect_uri,
       response_type: query.response_type,
-      scope: query.scope,
+      scope: query.scope || MCP_SCOPES.join(' '),
       code_challenge: query.code_challenge,
       code_challenge_method: query.code_challenge_method,
       state: query.state,
     });
-    const apiPrefix = this.config.getOrThrow<AppConfig>('app').apiPrefix;
-    res.redirect(302, `/${apiPrefix}/mcp/consent?${params.toString()}`);
-  }
-
-  /**
-   * Intermediate callback: verifies the state cookie set by /authorize and
-   * hands code+state back to the MCP client SDK's redirect_uri.
-   */
-  @Get('callback')
-  callback(
-    @Query('code') code: string,
-    @Query('state') state: string,
-    @Query('redirect_uri') redirectUri: string,
-    @Req() req: Request,
-    @Res({ passthrough: false }) res: Response,
-  ): void {
-    if (!code || !state || !redirectUri) {
-      this.sendOAuthError(res, 400, {
-        error: 'invalid_request',
-        error_description:
-          'code, state and redirect_uri query parameters are required',
-      });
-      return;
-    }
-
-    const cookieHeader = req.headers.cookie ?? '';
-    const stateCookie = parseCookieValue(cookieHeader, STATE_COOKIE);
-    if (!stateCookie || stateCookie !== state) {
-      this.sendOAuthError(res, 400, {
-        error: 'invalid_request',
-        error_description: 'State validation failed',
-      });
-      return;
-    }
-
-    const target = new URL(redirectUri);
-    target.searchParams.set('code', code);
-    target.searchParams.set('state', state);
-    res.redirect(302, target.toString());
+    res.redirect(
+      302,
+      `${this.urls.dashboardOrigin()}/mcp/authorize?${params.toString()}`,
+    );
   }
 
   /**
@@ -197,6 +156,7 @@ export class McpOAuthController {
         session.id,
         session.activeTenantId!,
         session.authUserId,
+        session.clientId,
       );
     }
     res.status(200).json({});
@@ -209,7 +169,7 @@ export class McpOAuthController {
     const code = asString(body.code);
     const codeVerifier = asString(body.code_verifier);
     const redirectUri = asString(body.redirect_uri);
-    const clientId = asString(body.client_id) ?? 'corvo-mcp';
+    const clientId = asString(body.client_id) ?? MCP_CLIENT_ID;
 
     if (!code || !codeVerifier || !redirectUri) {
       this.sendOAuthError(res, 400, {
@@ -278,7 +238,7 @@ export class McpOAuthController {
     client: OAuthClient,
     redirectUri: string,
   ): void {
-    if (!client.redirectUris.includes(redirectUri)) {
+    if (!matchesRegisteredRedirectUri(client.redirectUris, redirectUri)) {
       throw new BadRequestException({
         error: 'invalid_request',
         error_description: 'redirect_uri is not registered for this client',
@@ -316,23 +276,6 @@ function normalizeRequestBody(raw: unknown): Record<string, unknown> {
 
 function asString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function parseCookieValue(
-  cookieHeader: string,
-  name: string,
-): string | undefined {
-  for (const part of cookieHeader.split(';')) {
-    const separator = part.indexOf('=');
-    if (separator < 0) continue;
-    if (part.slice(0, separator).trim() !== name) continue;
-    try {
-      return decodeURIComponent(part.slice(separator + 1).trim());
-    } catch {
-      return undefined;
-    }
-  }
-  return undefined;
 }
 
 /** Map internal TokenResponse (camelCase) to the OAuth-standard JSON body. */

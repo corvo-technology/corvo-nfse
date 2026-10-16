@@ -34,13 +34,30 @@ export function resolveCorsOptions(appConfig: AppConfig): CorsOptions {
  * MCP clients discover the server via `/.well-known/mcp.json`, which must
  * not be namespaced under `/v1`.
  */
-export const GLOBAL_PREFIX_EXCLUDES = ['/.well-known/mcp.json'];
+export const GLOBAL_PREFIX_EXCLUDES = [
+  '/.well-known/mcp.json',
+  '/.well-known/oauth-protected-resource',
+  '/.well-known/oauth-protected-resource/v1/mcp',
+  '/.well-known/oauth-protected-resource/mcp',
+  '/.well-known/oauth-authorization-server',
+];
 
 export function configureHttpGlobalPrefix(
   app: INestApplication,
   apiPrefix: string,
 ): void {
   app.setGlobalPrefix(apiPrefix, { exclude: GLOBAL_PREFIX_EXCLUDES });
+  // The MCP server is also served without the version prefix (`/mcp`), the
+  // canonical address given to agents; `/v1/mcp` keeps working.
+  app.use((req: { url: string }, _res: unknown, next: () => void) => {
+    if (
+      req.url === '/mcp' ||
+      req.url.startsWith('/mcp/') ||
+      req.url.startsWith('/mcp?')
+    )
+      req.url = `/${apiPrefix}${req.url}`;
+    next();
+  });
 }
 
 export async function createHttpApp(rootModule: Type<unknown>) {

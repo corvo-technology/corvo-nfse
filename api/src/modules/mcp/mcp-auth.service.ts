@@ -18,6 +18,10 @@ import {
   type McpConnectionRepository,
 } from './domain/mcp-connection.repository';
 import { AuthConfig } from '@/infra/config/configuration.types';
+import { MCP_CLIENT_ID, isMcpClientId } from './mcp-client-policy';
+
+export { MCP_CLIENT_ID };
+
 export interface TokenResponse {
   accessToken: string;
   tokenType: 'Bearer';
@@ -30,13 +34,13 @@ export interface McpTokenPayload {
   sub: string;
   tenant_id: string;
   scopes: string[];
+  environment?: 'test' | 'live';
   connection_id: string;
   aud?: string;
   session_id?: string;
 }
 
 export const MCP_TOKEN_AUDIENCE = 'corvo-mcp';
-export const MCP_CLIENT_ID = 'corvo-mcp';
 const ACCESS_TOKEN_TTL_SECONDS = 900;
 const ACCESS_TOKEN_TTL = '15m';
 const AUTHORIZATION_CODE_TTL_MS = 5 * 60 * 1000;
@@ -81,6 +85,7 @@ export class McpAuthService {
     scope: string;
     codeChallenge: string;
     codeChallengeMethod: 'S256';
+    environment?: 'test' | 'live';
   }): Promise<string> {
     return runAsSystem('oauth-bootstrap', async () => {
       await this.requireMembership(params.userId, params.tenantId);
@@ -96,6 +101,7 @@ export class McpAuthService {
         codeChallengeMethod: params.codeChallengeMethod,
         redirectUri: params.redirectUri,
         scope: params.scope,
+        environment: params.environment ?? 'test',
         tenantId: params.tenantId,
         expiresAt: new Date(Date.now() + AUTHORIZATION_CODE_TTL_MS),
         consumedAt: null,
@@ -123,10 +129,7 @@ export class McpAuthService {
           'Invalid or expired authorization code',
         );
       }
-      if (
-        code.clientId !== params.clientId ||
-        code.clientId !== MCP_CLIENT_ID
-      ) {
+      if (code.clientId !== params.clientId || !isMcpClientId(code.clientId)) {
         throw new UnauthorizedException('Invalid OAuth client');
       }
       if (code.redirectUri !== params.redirectUri) {
@@ -154,7 +157,7 @@ export class McpAuthService {
       const session: AuthSession = {
         id: randomUUID(),
         authUserId: code.authUserId,
-        clientId: MCP_CLIENT_ID,
+        clientId: code.clientId,
         kind: 'oauth_refresh',
         refreshTokenHash: sha256(rawRefreshToken),
         sessionTokenHash: null,
@@ -167,18 +170,14 @@ export class McpAuthService {
       await this.sessionsRepo.save(session);
 
       const scopes = code.scope.split(' ').filter((s) => s.length > 0);
-      const connection: McpConnection = {
-        id: randomUUID(),
+      const connection = await this.attachConnection({
         authUserId: code.authUserId,
         tenantId: code.tenantId,
         clientId: code.clientId,
         sessionId: session.id,
         scopes,
-        revokedAt: null,
-        lastUsedAt: null,
-        grantedAt: new Date(),
-      };
-      await this.connectionsRepo.insert(connection, code.tenantId);
+        environment: code.environment ?? 'test',
+      });
 
       const accessToken = await this.signAccessToken({
         sub: code.authUserId,
@@ -208,7 +207,7 @@ export class McpAuthService {
         session.revokedAt ||
         session.expiresAt.getTime() <= Date.now() ||
         session.kind !== 'oauth_refresh' ||
-        session.clientId !== MCP_CLIENT_ID ||
+        !isMcpClientId(session.clientId) ||
         !session.activeTenantId
       ) {
         throw new UnauthorizedException('Invalid refresh token');
@@ -218,7 +217,7 @@ export class McpAuthService {
         session.id,
         session.activeTenantId,
         session.authUserId,
-        MCP_CLIENT_ID,
+        session.clientId,
       );
       if (!connection || connection.revokedAt) {
         throw new UnauthorizedException('No active MCP connection for session');
@@ -230,7 +229,7 @@ export class McpAuthService {
         session.id,
         session.activeTenantId,
         session.authUserId,
-        MCP_CLIENT_ID,
+        session.clientId,
         sha256(refreshToken),
         sha256(rawRefreshToken),
       );
@@ -283,7 +282,7 @@ export class McpAuthService {
       );
       if (
         !connection ||
-        connection.clientId !== MCP_CLIENT_ID ||
+        !isMcpClientId(connection.clientId) ||
         connection.revokedAt
       )
         throw new UnauthorizedException('Invalid or revoked connection');
@@ -294,7 +293,7 @@ export class McpAuthService {
         !session ||
         session.activeTenantId !== tenantId ||
         session.authUserId !== userId ||
-        session.clientId !== MCP_CLIENT_ID ||
+        session.clientId !== connection.clientId ||
         session.kind !== 'oauth_refresh'
       )
         throw new UnauthorizedException('Invalid or revoked session');
@@ -303,6 +302,7 @@ export class McpAuthService {
         sub: userId,
         tenant_id: tenantId,
         scopes: connection.scopes,
+        environment: connection.environment,
         connection_id: connection.id,
         session_id: session.id,
         aud: MCP_TOKEN_AUDIENCE,
@@ -314,14 +314,65 @@ export class McpAuthService {
     sessionId: string,
     tenantId: string,
     userId: string,
+    clientId: string = MCP_CLIENT_ID,
   ): Promise<void> {
     requireTenantId(tenantId);
     await this.sessionsRepo.revokeOAuthSession(
       sessionId,
       tenantId,
       userId,
-      MCP_CLIENT_ID,
+      clientId,
     );
+  }
+
+  /**
+   * One connection per user, workspace and client (unique constraint): a
+   * reconnect revokes the previous refresh session and reuses the row, which
+   * keeps its usage counters.
+   */
+  private async attachConnection(params: {
+    authUserId: string;
+    tenantId: string;
+    clientId: string;
+    sessionId: string;
+    scopes: string[];
+    environment: 'test' | 'live';
+  }): Promise<McpConnection> {
+    const existing = await this.connectionsRepo.findAnyByUserTenantClient(
+      params.authUserId,
+      params.tenantId,
+      params.clientId,
+    );
+    if (existing) {
+      await this.sessionsRepo.revokeOAuthSession(
+        existing.sessionId,
+        params.tenantId,
+        params.authUserId,
+        params.clientId,
+      );
+      return this.connectionsRepo.reconnect(existing.id, params.tenantId, {
+        authUserId: params.authUserId,
+        sessionId: params.sessionId,
+        scopes: params.scopes,
+        environment: params.environment,
+      });
+    }
+    const connection: McpConnection = {
+      id: randomUUID(),
+      authUserId: params.authUserId,
+      tenantId: params.tenantId,
+      clientId: params.clientId,
+      sessionId: params.sessionId,
+      scopes: params.scopes,
+      environment: params.environment,
+      revokedAt: null,
+      lastUsedAt: null,
+      grantedAt: new Date(),
+      toolCallsCount: 0,
+      invoicesIssuedCount: 0,
+    };
+    await this.connectionsRepo.insert(connection, params.tenantId);
+    return connection;
   }
 
   private async requireMembership(

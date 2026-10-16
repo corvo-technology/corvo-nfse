@@ -758,126 +758,67 @@ a escolher a ação do cliente:
 Perfis de serviço usam `/companies/{id}/service-tax-profiles`, com
 `service.serviceProfileId` no request. Não há endpoint `fiscal-services`.
 
-## MCP (Model Context Protocol) e conexão de apps de IA
+## MCP (Model Context Protocol) e conexão de agentes de IA
 
-Permite que um app de IA (por exemplo Claude) emita e consulte NFS-e em nome
-do usuário, via OAuth 2.1 + PKCE. Base: `https://api.corvo.tech`. As rotas
-ficam sob `/v1` (prefixo da API), exceto o manifesto de descoberta.
+Agentes (Claude Code, Cursor etc.) emitem e consultam NFS-e em nome do usuário.
+Servidor: `https://api.corvo.tech/mcp`. O agente descobre o login sozinho
+(`/.well-known/oauth-protected-resource` e `/.well-known/oauth-authorization-server`,
+sem `/v1`; `/v1/mcp` continua funcionando), se registra (`POST /mcp/register`, RFC 7591) e usa OAuth 2.1 com
+PKCE `S256`. Escopos: `nfse:read`, `nfse:write`. Um `401` em `POST /mcp` traz
+`WWW-Authenticate` apontando para o recurso protegido.
 
-| Item          | Valor                                                                  |
-| ------------- | ---------------------------------------------------------------------- |
-| Manifesto     | `GET https://api.corvo.tech/.well-known/mcp.json` (sem `/v1`, público) |
-| Endpoint MCP  | `https://api.corvo.tech/v1/mcp` (JSON-RPC, `POST`)                     |
-| Authorization | `GET https://api.corvo.tech/v1/mcp/authorize`                          |
-| Token         | `POST https://api.corvo.tech/v1/mcp/token`                             |
-| Revogação     | `POST https://api.corvo.tech/v1/mcp/revoke`                            |
-| `client_id`   | `corvo-mcp` (cliente público, sem secret)                              |
-| Escopos       | `nfse:read`, `nfse:write`                                              |
+### Fluxo (login e consentimento ficam no front)
 
-### Fluxo de autorização
+1. O agente abre `GET /mcp/authorize?...` (API). A API valida o cliente e o
+   `redirect_uri` e **redireciona para o front**: `${DASHBOARD_URL}/mcp/authorize?<mesmos parâmetros>`.
+2. O front (`/mcp/authorize`) exige sessão. Sem sessão, leva ao login
+   (`/login?mode=login&next=<url>`) e volta para a mesma URL depois.
+3. A tela chama `GET /v1/mcp/consent?<parâmetros>` (cookie de sessão) e recebe
+   `{ data: { client: {id,name}, redirect_host, scopes: [{name,description}], tenants: [{id,name,allowed_scopes}] } }`.
+   Um workspace só pode ser escolhido se `allowed_scopes` cobre todos os escopos
+   pedidos (depende do papel do membro: `nfse:write` exige emitir notas).
+4. **Permitir/Negar**: `POST /v1/mcp/consent` com os mesmos parâmetros mais
+   `decision: "allow" | "deny"`, `tenant_id` (obrigatório ao permitir) e
+   `environment: "test" | "live"` (padrão `test`; a conexão fica nesse ambiente). Resposta
+   `{ data: { redirect_url } }`. O front mostra "Conectado" e abre `redirect_url`
+   (`?code=...&state=...`, ou `?error=access_denied&state=...`).
+5. O agente troca o `code` em `POST /mcp/token` (sem cookie) e chama `/v1/mcp`
+   com `Authorization: Bearer`. Access token: 15 min. Refresh token: 1 ano, rotacionado.
 
-1. O app de IA abre no navegador do usuário:
-   `GET /v1/mcp/authorize?client_id=corvo-mcp&redirect_uri=...&response_type=code&scope=nfse:read nfse:write&code_challenge=...&code_challenge_method=S256&state=...`
-   Todos os parâmetros são obrigatórios. `code_challenge_method` só aceita
-   `S256`. O `redirect_uri` precisa estar cadastrado no backend
-   (`MCP_REDIRECT_URIS`), senão retorna 400 `invalid_request`.
-2. O backend redireciona para a **página de consentimento**
-   `/v1/mcp/consent`, renderizada pelo backend (HTML, tema escuro Corvo). O
-   usuário precisa ter **sessão ativa** (cookie `corvo_session`); sem ela a
-   rota retorna 401. **O front deve garantir que o usuário esteja logado
-   antes de seguir o link de autorização**, ou redirecionar ao login e voltar
-   para a URL de `authorize`.
-3. Na página o usuário escolhe o workspace (tenant) e aprova. O backend
-   redireciona para o `redirect_uri` com `code` e `state`. O código expira em
-   5 minutos.
-4. O app troca o código por tokens:
-
-```http
-POST /v1/mcp/token
-Content-Type: application/x-www-form-urlencoded   (JSON também é aceito)
-
-grant_type=authorization_code&code=...&code_verifier=...&redirect_uri=...&client_id=corvo-mcp
-```
-
-```json
-{
-  "access_token": "...",
-  "token_type": "Bearer",
-  "expires_in": 900,
-  "refresh_token": "...",
-  "scope": "nfse:read nfse:write"
-}
-```
-
-O access token vale 15 minutos. Renovar com
-`grant_type=refresh_token&refresh_token=...`. O refresh token vale 1 ano.
-Erros seguem o padrão OAuth: `{ "error": "invalid_grant", "error_description": "..." }`. 5. O app chama `POST /v1/mcp` com `Authorization: Bearer <access_token>`.
+Os dois endpoints `consent` usam a sessão normal do painel (cookie + CSRF, via
+proxy do Next). `redirect_uri` aceitos no registro: `https`, `http` em
+`localhost`/`127.0.0.1` (a porta pode variar) ou esquema próprio do app.
 
 ### Ferramentas (`tools/call`)
 
-| Tool                | Escopo       | Entrada principal                                                                                                                                                                                        | Saída                                                            |
-| ------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `nfse_issue`        | `nfse:write` | `company_id`, `customer {name, tax_id, email?, address?}`, `services [{description, quantity, unit_price}]`, `competence_date` (`YYYY-MM-DD`), `service_code?`, `municipality_code?`, `idempotency_key?` | `{ invoice_id, access_key, status }` (status inicial `queued`)   |
-| `nfse_query`        | `nfse:read`  | `access_key`                                                                                                                                                                                             | `{ access_key, status, nfse_number, authorized_at, last_error }` |
-| `nfse_list`         | `nfse:read`  | `status?`, `limit?` (máx. 100), `cursor?`                                                                                                                                                                | `{ invoices, next_cursor }`                                      |
-| `nfse_download_pdf` | `nfse:read`  | `access_key`                                                                                                                                                                                             | `{ access_key, pdf_base64 }` (só nota autorizada)                |
+| Tool                | Escopo       | Entrada principal                                                                                                                              | Saída                                                            |
+| ------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `nfse_issue`        | `nfse:write` | `company_id`, `customer {name, tax_id, email?}`, `services [{description, quantity, unit_price}]`, `competence_date`, `service_code?`, `idempotency_key?` | `{ invoice_id, access_key, status }`                             |
+| `nfse_query`        | `nfse:read`  | `access_key`                                                                                                                                   | `{ access_key, status, nfse_number, authorized_at, last_error }` |
+| `nfse_list`         | `nfse:read`  | `status?`, `limit?`, `cursor?`                                                                                                                 | `{ invoices, next_cursor }`                                      |
+| `nfse_download_pdf` | `nfse:read`  | `access_key`                                                                                                                                   | `{ access_key, pdf_base64 }`                                     |
 
-`nfse_issue` soma `quantity * unit_price` dos itens para formar o `amount` e
-junta as descrições em uma só. As mesmas regras de validação fiscal da API
-REST valem aqui (ver "Validação fiscal e status da empresa").
+Falhas de ferramenta voltam como resultado `{ isError: true, content: [{type:"text", text}] }`.
 
-### Gerenciamento de conexões no front ("Aplicativos conectados")
+### Agentes conectados no painel (`/app/agents`)
 
-Rotas JSON autenticadas pelo **cookie de sessão** (não usam Bearer nem
-`X-Corvo-Environment`). Chamar com `credentials: 'include'`.
+Rotas com sessão normal (cookie + CSRF), envelope padrão `{data, pagination}`:
 
-**GET /v1/mcp/connections** - lista as conexões do usuário. Retorna array direto
-(sem envelope `data`):
+- `GET /v1/mcp/connections` — cada item: `id`, `tenant_id`, `tenant_name`,
+  `client_name`, `scopes`, `granted_at`, `last_used_at`, `tool_calls`,
+  `invoices_issued`, `revoked`, `mine`, `owner_email`. Membros veem só as
+  próprias; quem tem `settings.manage` (admin) vê todas do workspace.
+- `DELETE /v1/mcp/connections/{id}` — revoga na hora (`{ data: { revoked: true } }`).
+  Membro revoga as próprias; admin revoga qualquer uma do workspace.
 
-```json
-[
-  {
-    "id": "uuid",
-    "tenant_id": "uuid",
-    "tenant_name": "Empresa Exemplo",
-    "scopes": ["nfse:read", "nfse:write"],
-    "granted_at": "2026-10-10T12:00:00.000Z",
-    "last_used_at": null,
-    "revoked": false
-  }
-]
-```
+Reconectar o mesmo agente reaproveita a conexão (e os contadores) e revoga a sessão anterior.
 
-**DELETE /v1/mcp/connections/{id}** - revoga a conexão e invalida a sessão do
-app. Retorna `{ "ok": true }`. Pede também o contexto do workspace ativo.
+### Ambiente (test ou live)
 
-Sugestão de UI: tela "Aplicativos conectados" em Configurações listando
-`tenant_name`, escopos em linguagem simples (`nfse:read` = "Consultar e baixar
-notas", `nfse:write` = "Emitir e cancelar notas"), data de concessão, último
-uso e botão "Revogar". Marcar `revoked: true` como "Revogado" e sem ação. O
-backend também serve uma versão HTML pronta em `GET /v1/mcp/dashboard`.
-
-### Instruções para quem for conectar um app de IA
-
-- URL do servidor MCP a informar ao app: `https://api.corvo.tech/v1/mcp`.
-- O usuário será levado ao navegador para aprovar o acesso. Mostrar no front
-  uma explicação antes (o que o app poderá fazer) e o link para gerenciar ou
-  revogar depois.
-
-### Limitações atuais (importante)
-
-- **A MCP sempre opera no ambiente `test`.** O token não carrega ambiente, e o
-  backend assume `test`. Notas emitidas por MCP são de teste e não aparecem em
-  `live`. Não prometer emissão real ao usuário por esse caminho.
-- **Descoberta OAuth automática não está completa.** O manifesto
-  `/.well-known/mcp.json` não anuncia os endpoints OAuth e não existe
-  `/.well-known/oauth-authorization-server`. Clientes que dependem dessa
-  descoberta precisam receber as URLs acima configuradas manualmente.
-- **`service_code` padrão da MCP (`06990`) tem 5 dígitos** e falha na validação
-  de 6 dígitos da API. Enquanto isso não for corrigido no backend, o app de IA
-  deve enviar `service_code` com 6 dígitos (ex.: `010101`).
-- O `GET /v1/mcp/dashboard` redireciona após revogar para `/mcp/dashboard`
-  (sem `/v1`). Prefira a lista JSON acima na UI do front.
+O usuário escolhe o ambiente na tela de consentimento e a conexão fica nele: o
+token do agente opera em `test` ou `live` (empresas, notas e créditos daquele
+ambiente). Para trocar, reconectar o agente (a conexão é reaproveitada e passa
+para o novo ambiente). `GET /v1/mcp/connections` devolve `environment` em cada item.
 
 ## Formato das respostas e erros
 

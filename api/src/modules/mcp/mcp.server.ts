@@ -82,7 +82,13 @@ export class McpServer {
     if (!tool) {
       return { jsonrpc: '2.0', id: request.id, error: { code: -32601, message: `Tool '${name}' not found` } };
     }
-    const result = await tool.handler(args ?? {}, ctx);
-    return { jsonrpc: '2.0', id: request.id, result: { content: [{ type: 'text', text: JSON.stringify(result) }] } };
+    try {
+      const result = await tool.handler(args ?? {}, ctx);
+      return { jsonrpc: '2.0', id: request.id, result: { content: [{ type: 'text', text: JSON.stringify(result) }] } };
+    } catch (err) {
+      // MCP reports tool failures as a normal result with isError so the agent can read and react to them.
+      const message = err instanceof Error ? err.message : 'Tool execution failed';
+      return { jsonrpc: '2.0', id: request.id, result: { isError: true, content: [{ type: 'text', text: message }] } };
+    }
   }
 }

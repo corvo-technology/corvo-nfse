@@ -11,11 +11,33 @@ export interface McpConnectionRepository {
     userId: string,
     clientId: string,
   ): Promise<McpConnection | null>;
+  /** `userId` null lists every connection of the workspace (admins). */
   listPage(
-    userId: string,
+    userId: string | null,
     tenantId: string,
     options: CursorQuery,
   ): Promise<CursorPage<McpConnection>>;
+  findById(id: string, tenantId: string): Promise<McpConnection | null>;
+  findAnyByUserTenantClient(
+    userId: string,
+    tenantId: string,
+    clientId: string,
+  ): Promise<McpConnection | null>;
+  reconnect(
+    id: string,
+    tenantId: string,
+    next: {
+      authUserId: string;
+      sessionId: string;
+      scopes: string[];
+      environment: 'test' | 'live';
+    },
+  ): Promise<McpConnection>;
+  recordUsage(
+    id: string,
+    tenantId: string,
+    usage: { toolCalls: number; invoicesIssued: number },
+  ): Promise<void>;
   findByIdAndOwner(
     id: string,
     tenantId: string,

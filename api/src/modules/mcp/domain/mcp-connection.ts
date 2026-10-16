@@ -5,7 +5,10 @@ export interface McpConnection {
   clientId: string;
   sessionId: string;
   scopes: string[];
+  environment: 'test' | 'live';
   grantedAt: Date;
   revokedAt: Date | null;
   lastUsedAt: Date | null;
+  toolCallsCount: number;
+  invoicesIssuedCount: number;
 }
