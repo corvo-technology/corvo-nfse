@@ -1379,13 +1379,12 @@
     "later": "Upload later",
     "finish": "Finish",
     "hints": {
-      "municipalReg": "Number assigned by the municipality. Required to register in live mode; optional in test mode.",
+      "municipalReg": "Optional. Fill it only if the city registered this company's municipal registration in the national registry; otherwise the tax authority rejects the invoice (E0120).",
       "defaultServiceCode": "National tax code (cTribNac), with 6 digits. Used when an invoice does not specify another code. You can clear this default when editing."
     },
     "fixFields": "Fix the highlighted fields.",
     "defaultServiceCode": "Default service code",
     "municipalityInvalid": "Enter an IBGE municipality code with exactly 7 digits.",
-    "municipalRegRequired": "Municipal registration is required to register in live mode.",
     "serviceCodeInvalid": "The service code must have exactly 6 digits.",
     "selectTaxRegime": "Select a tax regime",
     "regimeRequired": "Select the company tax regime.",
@@ -1448,18 +1447,12 @@
       "subtitle": "Check the fiscal municipality and issuance requirements for the selected environment.",
       "progress": "{done} of {total}",
       "complete": "Basic registration complete. Review fiscal configuration below before live issuance.",
-      "requiredLive": "required in live",
       "testNote": "In test mode, municipal registration and a certificate are optional. The fiscal municipality must be configured.",
       "items": {
         "address": {
           "title": "Address",
           "hint": "Enter the ZIP code to fill in the address and IBGE code.",
           "action": "Complete"
-        },
-        "municipalReg": {
-          "title": "Municipal registration",
-          "hint": "Number issued by the city hall. Without it you can't issue in production.",
-          "action": "Add"
         },
         "certificate": {
           "title": "A1 digital certificate",

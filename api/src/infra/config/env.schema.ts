@@ -11,6 +11,10 @@ export const envSchema = z
     PORT: z.coerce.number().int().positive().default(3000),
     WORKER_PORT: z.coerce.number().int().positive().default(3002),
     NFSE_MASTER_KEY: z.string().min(32).optional(),
+    /** `restricted` sends live invoices to the Sefin Produção Restrita (homologation), never to production. */
+    NFSE_SEFIN_ENVIRONMENT: z
+      .enum(['production', 'restricted'])
+      .default('production'),
     RESEND_API_KEY: z.string().trim().optional(),
     RESEND_BASE_URL: z.string().url().default('https://api.resend.com'),
     EMAIL_FROM: z.string().min(1).default('Corvo <noreply@corvo.tech>'),

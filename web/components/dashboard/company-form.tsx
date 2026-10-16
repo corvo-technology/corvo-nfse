@@ -51,9 +51,8 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
   const t = useTranslations("CompanyForm");
   const td = useTranslations("CompanyDetail");
   const te = useTranslations("ApiErrors");
-  const { can, fiscalEnvironment } = useAuth();
+  const { can } = useAuth();
   const wizard = !company;
-  const requiresMunicipalReg = wizard && fiscalEnvironment === "live";
   const canUploadCertificate = can("nfse.certificates.manage");
   const address = company?.address;
   const [values, setValues] = useState<Record<string, string>>({
@@ -113,7 +112,6 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
     const fiscalErrors: Record<string, string> = {};
     if (wizard && !["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"].includes(values.taxRegime)) fiscalErrors.taxRegime = t("regimeRequired");
     if (!/^\d{7}$/.test(values.municipalityCode)) fiscalErrors.municipalityCode = t("municipalityInvalid");
-    if (requiresMunicipalReg && !values.municipalReg.trim()) fiscalErrors.municipalReg = t("municipalRegRequired");
     if (values.defaultServiceCode && !/^\d{6}$/.test(values.defaultServiceCode)) fiscalErrors.defaultServiceCode = t("serviceCodeInvalid");
     if (Object.keys(fiscalErrors).length) { setFieldErrors(fiscalErrors); setError(t("fixFields")); return; }
     busy.current = true; setSaving(true); setError(null);
@@ -219,7 +217,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       {section(t("sectionFiscal"), wizard ? t("stepHint.fiscal") : undefined)}
       {wizard && <><Field label={t("taxRegime")} required error={fieldErrors.taxRegime}>{(props) => <select {...props} className="field" value={values.taxRegime} onChange={(event) => set("taxRegime", event.target.value)}><option value="">{t("selectTaxRegime")}</option>{["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"].map((regime) => <option key={regime}>{regime}</option>)}</select>}</Field>
       {field("specialRegime", { maxLength: 50 })}<p className="text-sm text-text-3 sm:col-span-2">{t("regimeDerived")}</p></>}
-      {field("municipalReg", { required: requiresMunicipalReg, maxLength: 20, mono: true, hint: t("hints.municipalReg") })}
+      {field("municipalReg", { maxLength: 20, mono: true, hint: t("hints.municipalReg") })}
       {field("municipalityCode", { required: true, maxLength: 7, mask: maskDigits(7), inputMode: "numeric", mono: true })}
       <Field label={t("defaultServiceCode")} optionalLabel={t("optional")} error={fieldErrors.defaultServiceCode || undefined} hint={t("hints.defaultServiceCode")} className="sm:col-span-2">
         {(props) => <ServiceCodeCombobox {...props} value={values.defaultServiceCode} onChange={(code) => set("defaultServiceCode", code)} />}

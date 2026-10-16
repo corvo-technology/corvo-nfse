@@ -234,11 +234,7 @@ export class Company {
     const gaps: string[] = [];
     if (!/^\d{7}$/.test(this.props.municipalityCode ?? ''))
       gaps.push('municipality_code');
-    if (this.props.environment === 'live') {
-      if (!this.props.municipalReg?.trim()) {
-        gaps.push('municipal_registration');
-      }
-    }
+    // The municipal registration is optional: the DPS only carries it when the company has one.
     // Certificate gap is determined externally (ICompanyCertificateReader).
     // This method only returns gaps the domain can determine without external I/O.
     return gaps;

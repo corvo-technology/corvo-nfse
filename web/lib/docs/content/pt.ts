@@ -117,7 +117,7 @@ export const pt: DocsTree = {
         items: [
           "Obtenha uma chave `test` com escopo adequado — cadastro de empresa/certificado exige `full_access`; uma chave `invoices_read_write` pode emitir com cadastro prévio.",
           "`POST /v1/companies` — cadastre a empresa com CNPJ, regime e município fiscal (`municipalityCode`); configure `defaultServiceCode` para simplificar as notas.",
-          "Em `live`, preencha a inscrição municipal e envie o certificado válido correspondente ao CNPJ (`POST /v1/companies/:companyId/certificates`).",
+          "Em `live`, envie o certificado válido correspondente ao CNPJ (`POST /v1/companies/:companyId/certificates`). A inscrição municipal é opcional: informe só se o município a registrou no cadastro nacional.",
           "`POST /v1/invoices` — use `companyTaxId` (CNPJ da empresa) e solicite a emissão com `Idempotency-Key` estável por operação de negócio e guarde `data.id` (ambiente `live` exige prontidão da empresa).",
           "Acompanhe o ciclo por `GET /v1/invoices/:id` e webhooks assinados — a emissão é assíncrona.",
           "Aguarde os documentos ficarem prontos para gerar a URL e solicitar o email; confira o estado do email separadamente.",
@@ -162,7 +162,7 @@ export const pt: DocsTree = {
           kind: "list",
           items: [
             "Empresas, certificados e notas são acessados no ambiente persistido da chave: `test` ou `live`.",
-            "Em `live`, a emissão verifica a empresa, inscrição municipal, bloqueio e certificado ativo; também se aplicam créditos e limites de emissão.",
+            "Em `live`, a emissão verifica a empresa, bloqueio e certificado ativo; também se aplicam créditos e limites de emissão.",
             "Em `test`, a emissão exige empresa existente, mas dispensa as verificações de prontidão e certificado do fluxo `live`.",
             "Entregas de webhook usam o filtro explícito `?environment=test|live`; sem ele, podem retornar ambos os ambientes da conta, independentemente do ambiente da chave.",
           ],
@@ -264,7 +264,7 @@ export const pt: DocsTree = {
             ["`ERROR_INVALID_CURSOR`", "Cursor adulterado ou de outra coleção, tenant ou filtro (400)."],
             ["`ERROR_RATE_LIMIT_EXCEEDED`", "Limite de requisições excedido (429)."],
             ["`ERROR_INSUFFICIENT_CREDITS` / `ERROR_QUOTA_EXCEEDED`", "Créditos ou cota insuficientes para emitir."],
-            ["`ERROR_COMPANY_NOT_READY` / `ERROR_COMPANY_BLOCKED`", "Empresa sem inscrição municipal/certificado em `live`, ou bloqueada."],
+            ["`ERROR_COMPANY_NOT_READY` / `ERROR_COMPANY_BLOCKED`", "Empresa sem certificado em `live`, ou bloqueada."],
             ["`ERROR_IDEMPOTENCY_CONFLICT`", "Mesma `Idempotency-Key` com payload diferente (409)."],
             ["`ERROR_GONE`", "Operação encerrada, como a compra avulsa de créditos (410)."],
           ],
@@ -315,7 +315,7 @@ export const pt: DocsTree = {
         { kind: "text", body: "Permissões: consultas usam `nfse.companies.view`; escrita usa `nfse.companies.manage`." },
         { kind: "heading", level: 2, body: "Do cadastro à emissão" },
         { kind: "list", items: [
-          "`POST /v1/companies` com `taxRegime`, `municipalityCode` e, em `live`, `municipalReg`.",
+          "`POST /v1/companies` com `taxRegime` e `municipalityCode`. `municipalReg` é opcional.",
           "`POST /v1/companies/:id/certificates` com o certificado A1.",
           "`POST /v1/invoices`.",
         ] },
@@ -334,7 +334,7 @@ export const pt: DocsTree = {
               { name: "taxId", type: "string", required: true, description: "CNPJ válido; normalizado antes de verificar duplicidade." },
               { name: "taxRegime", type: "string", required: true, description: "`MEI`, `Simples Nacional`, `Lucro Presumido` ou `Lucro Real`." },
               { name: "tradeName", type: "string", required: false, description: "Até 200 caracteres." },
-              { name: "municipalReg", type: "string ou null", required: false, description: "Obrigatória e não vazia no cadastro em `live`; opcional em teste. `null` na criação em teste significa não definir." },
+              { name: "municipalReg", type: "string ou null", required: false, description: "Opcional, e não vazia quando enviada. Informe só se o município registrou a inscrição municipal desta empresa no cadastro nacional; senão a Receita rejeita a nota (E0120). `null` na criação significa não definir." },
               { name: "municipalityCode", type: "string", required: true, description: "Código IBGE de exatamente 7 dígitos, obrigatório em teste e produção. Usado como município do emitente e padrão do local da prestação." },
               { name: "defaultServiceCode", type: "string", required: false, description: "Código nacional (cTribNac) de exatamente 6 dígitos; padrão das novas notas. Sem ele, informe `service.code` na emissão." },
               { name: "simpleNational", type: "boolean", required: false, description: "Se omitido, acompanha o regime (`true` para MEI e Simples Nacional)." },
@@ -2243,7 +2243,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           items: [
             "Obter uma chave `test` com escopo adequado — cadastro de empresa/certificado exige `full_access`; uma chave `invoices_read_write` pode emitir com cadastro prévio.",
             "Cadastrar ou consultar a empresa no ambiente correspondente (`POST /v1/companies`, `GET /v1/companies/:id`).",
-            "Verificar a prontidão da empresa: `status` deve ser `ready` e `setupGaps` vazio — o município fiscal (`municipality_code`) é obrigatório em todos os ambientes; em `live`, também são necessários inscrição municipal (`municipal_registration`) e certificado ativo (`certificate`).",
+            "Verificar a prontidão da empresa: `status` deve ser `ready` e `setupGaps` vazio — o município fiscal (`municipality_code`) é obrigatório em todos os ambientes; em `live`, também é necessário o certificado ativo (`certificate`).",
             "Enviar o certificado A1 (.p12) com `POST /v1/companies/:companyId/certificates` — o CNPJ deve corresponder ao da empresa.",
             "Emitir a primeira nota no ambiente `test` com `POST /v1/invoices`, usando `Idempotency-Key` estável, e guardar `id`.",
             "Acompanhar o status por `GET /v1/invoices/:id` ou webhooks assinados — a emissão é assíncrona.",
@@ -2255,7 +2255,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         {
           kind: "callout",
           tone: "accent",
-          body: "Para ir a `live`, a empresa precisa de inscrição municipal, certificado ativo correspondente ao CNPJ e créditos/cota disponíveis — consulte `GET /v1/billing/usage` (`canEmit`, `reason`) antes da primeira emissão de produção.",
+          body: "Para ir a `live`, a empresa precisa de certificado ativo correspondente ao CNPJ e créditos/cota disponíveis — consulte `GET /v1/billing/usage` (`canEmit`, `reason`) antes da primeira emissão de produção.",
         },
       ],
     },

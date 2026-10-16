@@ -58,14 +58,13 @@ describe("Company fiscal setup", () => {
     expect(onSave.mock.calls[0][0]).toMatchObject({ taxId: company.taxId, municipalityCode: "3550308", defaultServiceCode: "010101" });
     expect(onSave.mock.calls[0][0].municipalReg).toBeUndefined();
   });
-  it("requires municipal registration to create a live company", async () => {
+  it("lets a live company be created without a municipal registration", async () => {
     mocks.environment = "live"; const onSave = vi.fn();
     renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); reachFiscal(); fill("IBGE", "3550308");
-    expect(field("Municipal registration").required).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Create company" }));
-    expect(screen.getByText("Municipal registration is required to register in live mode.")).toBeTruthy(); expect(onSave).not.toHaveBeenCalled();
-    fill("Municipal registration", "12345"); fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } }); fireEvent.click(screen.getByRole("button", { name: "Create company" }));
+    expect(field("Municipal registration").required).toBe(false);
+    fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } }); fireEvent.click(screen.getByRole("button", { name: "Create company" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0][0].municipalReg).toBeUndefined();
   });
   it("shows the saved service code in edit mode and sends null to clear it", async () => {
     const onSave = vi.fn().mockResolvedValue(company);

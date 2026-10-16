@@ -1,6 +1,6 @@
 import type { Company } from "./types";
 
-export type SetupKey = "address" | "municipalityCode" | "municipalReg" | "certificate";
+export type SetupKey = "address" | "municipalityCode" | "certificate";
 export interface SetupItem { key: SetupKey; done: boolean; /** The API reports this as blocking (municipal registration only blocks live). */ blocking: boolean }
 export interface CompanySetup { items: SetupItem[]; done: number; total: number; allDone: boolean }
 
@@ -13,7 +13,6 @@ export function companySetup(company: Company): CompanySetup {
   const items: SetupItem[] = [
     { key: "address", done: Boolean(company.address.city && company.address.state), blocking: false },
     { key: "municipalityCode", done: /^\d{7}$/.test(company.municipalityCode ?? ""), blocking: gaps.includes("municipality_code") },
-    { key: "municipalReg", done: Boolean(company.municipalReg?.trim()), blocking: gaps.includes("municipal_registration") },
     { key: "certificate", done: !gaps.includes("certificate"), blocking: gaps.includes("certificate") },
   ];
   const done = items.filter((item) => item.done).length;

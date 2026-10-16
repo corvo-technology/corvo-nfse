@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { requireTenantId } from '@/infra/persistence/typeorm/tenant-scope';
 import { InjectDataSource } from '@nestjs/typeorm';
@@ -26,11 +27,35 @@ import type {
   FiscalQueryResult,
   IIssuePayload,
 } from './nfse-fiscal-provider';
-import { issueParams } from './issue-params';
+import { issueParams, type SefinEnvironment } from './issue-params';
+import { explainRejection } from './rejection-guidance';
 
 @Injectable()
 export class OpenNfseProvider implements FiscalProvider {
-  constructor(@InjectDataSource() private readonly database: DataSource) {}
+  private readonly logger = new Logger(OpenNfseProvider.name);
+  private readonly sefin: SefinEnvironment;
+
+  constructor(
+    @InjectDataSource() private readonly database: DataSource,
+    config: ConfigService,
+  ) {
+    this.sefin =
+      config.get<SefinEnvironment>('NFSE_SEFIN_ENVIRONMENT') === 'restricted'
+        ? 'restricted'
+        : 'production';
+    if (this.sefin === 'restricted') {
+      this.logger.warn(
+        'NFSE_SEFIN_ENVIRONMENT=restricted: live invoices go to the Sefin Produção Restrita (homologation), not to production.',
+      );
+    }
+  }
+
+  private get ambiente(): Ambiente {
+    return this.sefin === 'restricted'
+      ? Ambiente.ProducaoRestrita
+      : Ambiente.Producao;
+  }
+
   private store(payload: IIssuePayload): RetryStore {
     const tenantId = payload.tenantId!;
     requireTenantId(tenantId);
@@ -85,7 +110,7 @@ export class OpenNfseProvider implements FiscalProvider {
     if (payload.environment !== 'live')
       throw new Error('Real fiscal provider requires live');
     return new NfseClient({
-      ambiente: Ambiente.Producao,
+      ambiente: this.ambiente,
       certificado: { pfx: payload.pfxBuffer, password: payload.p12Password },
       retryStore,
     });
@@ -118,7 +143,7 @@ export class OpenNfseProvider implements FiscalProvider {
       idDps = prepared.infDPS.Id;
     } else {
       signed = await client.emitir({
-        ...issueParams(payload),
+        ...issueParams(payload, this.sefin),
         nDPS: String(payload.number),
         dryRun: true,
       });
@@ -177,7 +202,7 @@ export class OpenNfseProvider implements FiscalProvider {
           success: false,
           requiresReconciliation: false,
           errorCode: 'FISCAL_REJECTED',
-          errorMessage: replayed.error.message,
+          errorMessage: explainRejection(replayed.error.message),
         };
       return {
         success: false,
@@ -199,7 +224,7 @@ export class OpenNfseProvider implements FiscalProvider {
             error instanceof ReceitaRejectionError
               ? error.codigo
               : 'INVALID_FISCAL_INPUT',
-          errorMessage: error.message,
+          errorMessage: explainRejection(error.message),
         };
       throw error;
     } finally {
@@ -233,7 +258,7 @@ export class OpenNfseProvider implements FiscalProvider {
     const result = await this.queryByAccessKey(key, environment, credentials);
     if (!result.xmlAuthorized) throw new Error('Invoice not found');
     return gerarDanfse(parseNfseXml(result.xmlAuthorized), {
-      ambiente: Ambiente.Producao,
+      ambiente: this.ambiente,
     });
   }
 }

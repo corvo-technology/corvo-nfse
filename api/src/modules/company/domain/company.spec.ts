@@ -183,20 +183,20 @@ describe('Company', () => {
       expect(company.isReady).toBe(true);
     });
 
-    it('throws when municipalReg is missing for ready transition', () => {
+    it('can become ready without a municipal registration', () => {
       const company = Company.create(
         {
           legalName: 'Test Company',
           taxId: VALID_CNPJ,
           taxRegime: 'MEI',
           municipalityCode: '3550308',
-          environment: 'live', // municipalReg is not set
+          environment: 'live',
         },
         'tenant-123',
       );
 
-      expect(() => company.markReady()).toThrow(/missing/i);
-      expect(company.status).toBe('pending_setup');
+      expect(() => company.markReady()).not.toThrow();
+      expect(company.status).toBe('ready');
     });
 
     it('throws when trying to mark a blocked company as ready', () => {
@@ -413,7 +413,7 @@ describe('Company', () => {
   });
 
   describe('getMissingForReady', () => {
-    it('returns municipal_registration when missing', () => {
+    it('does not ask for a municipal registration', () => {
       const company = Company.create(
         {
           legalName: 'Test Company',
@@ -425,7 +425,9 @@ describe('Company', () => {
         'tenant-123',
       );
 
-      expect(company.getMissingForReady()).toContain('municipal_registration');
+      expect(company.getMissingForReady()).not.toContain(
+        'municipal_registration',
+      );
     });
 
     it('returns empty array when all required fields present', () => {
@@ -484,7 +486,7 @@ describe('Company', () => {
   });
 
   describe('getSetupGaps', () => {
-    it('returns municipal_registration for live without municipalReg', () => {
+    it('does not require municipalReg for live', () => {
       const company = Company.create(
         {
           legalName: 'X',
@@ -495,7 +497,7 @@ describe('Company', () => {
         },
         't',
       );
-      expect(company.getSetupGaps()).toContain('municipal_registration');
+      expect(company.getSetupGaps()).toEqual([]);
     });
     it('returns empty for live with municipalReg', () => {
       const company = Company.create(
@@ -548,7 +550,7 @@ describe('Company', () => {
           legalName: 'X',
           taxId: VALID_CNPJ,
           taxRegime: 'MEI',
-          municipalityCode: '3550308',
+          municipalityCode: '',
           environment: 'live',
         },
         't',
