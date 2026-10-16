@@ -405,7 +405,7 @@ export interface Invoice {
   id: string; tenantId: string; companyId: string; externalId?: string | null;
   accessKey?: string | null; nfseNumber?: number | null; status: InvoiceStatus;
   amount: number; customerName: string; customerTaxId: string;
-  serviceDescription: string; customerSnapshot: CreateInvoiceInput["customer"];
+  serviceDescription: string; customerSnapshot: CreateInvoiceInput["customer"] | null;
   serviceSnapshot: Required<CreateInvoiceInput["service"]>; competenceDate: string;
   lastErrorCode?: string | null; lastErrorMessage?: string | null;
   authorizedAt?: string | null; createdAt: string; updatedAt: string;

@@ -50,7 +50,7 @@ export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }
       primary: true,
       cell: (inv) => (
         <div className="flex min-w-0 flex-col">
-          <span className="truncate text-text"><Link href={`/app/invoices/${inv.id}`} className="hover:text-accent">{inv.customerName}</Link></span>
+          <span className="truncate text-text"><Link href={`/app/invoices/${inv.id}`} className="hover:text-accent">{inv.customerName || t("anonymousCustomer")}</Link></span>
           <span className="truncate font-mono text-[12px] font-normal text-text-4">
             {inv.externalId ?? inv.id.slice(0, 12)}
           </span>

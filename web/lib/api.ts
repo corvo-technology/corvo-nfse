@@ -164,7 +164,8 @@ export const certificates = {
 };
 export type InvoiceWire = Omit<Invoice, "customerName" | "customerTaxId" | "serviceDescription">;
 export function adaptInvoice({ props }: { props: InvoiceWire }): Invoice {
-  return { ...props, customerName: props.customerSnapshot.name, customerTaxId: props.customerSnapshot.taxId, serviceDescription: props.serviceSnapshot.description };
+  // Anonymous consumer invoices have no customer snapshot (the tomador is omitted from the DPS).
+  return { ...props, customerName: props.customerSnapshot?.name ?? "", customerTaxId: props.customerSnapshot?.taxId ?? "", serviceDescription: props.serviceSnapshot.description };
 }
 export interface InvoiceQuery extends PageParams { companyId?: string; status?: InvoiceStatus; from?: string; to?: string; externalId?: string }
 type InvoiceBody = { props: InvoiceWire };
