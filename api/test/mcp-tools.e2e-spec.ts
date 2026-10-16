@@ -75,7 +75,7 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
     await closeE2eApp(ctx);
   });
 
-  it('lists 4 tools with real input schemas', async () => {
+  it('lists 5 tools with real input schemas', async () => {
     const res = await mcpPost(
       fullToken.accessToken,
       mcpRpc(1, 'tools/list'),
@@ -87,6 +87,7 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
     }>;
     const names = tools.map((t) => t.name).sort();
     expect(names).toEqual([
+      'company_list',
       'nfse_download_pdf',
       'nfse_issue',
       'nfse_list',
@@ -296,5 +297,61 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
     expect(row).toBeTruthy();
     expect(row!.status).toBe('queued');
     expect(row!.environment).toBe('test');
+  });
+  it('company_list finds the company and nfse_issue works with just its CNPJ and an amount', async () => {
+    const companyId = 'bbbbbbbb-1111-4222-8333-444444444444';
+    const taxId = '45723174000110';
+    await dataSource.query(
+      `INSERT INTO "${schema}"."nfse_companies"
+         (id, tenant_id, legal_name, tax_id, municipality_code,
+          municipal_reg, environment, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, '3550308', '12345', 'test', 'ready', NOW(), NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [companyId, tenantId, 'Empresa Simples E2E', taxId],
+    );
+
+    const listed = await mcpPost(fullToken.accessToken, {
+      jsonrpc: '2.0',
+      id: 40,
+      method: 'tools/call',
+      params: {
+        name: 'company_list',
+        arguments: { tax_id: '45.723.174/0001-10' },
+      },
+    }).expect(200);
+    expect(listed.body.result.isError).not.toBe(true);
+    const payload = JSON.parse(listed.body.result.content[0].text) as {
+      companies: Array<{ id: string; tax_id: string; setup_gaps: string[] }>;
+    };
+    expect(payload.companies).toHaveLength(1);
+    expect(payload.companies[0]).toMatchObject({
+      id: companyId,
+      tax_id: taxId,
+    });
+
+    const issued = await mcpPost(fullToken.accessToken, {
+      jsonrpc: '2.0',
+      id: 41,
+      method: 'tools/call',
+      params: {
+        name: 'nfse_issue',
+        arguments: {
+          company_tax_id: taxId,
+          amount: 1,
+          description: 'Servico de teste',
+          competence_date: COMPETENCE_DATE,
+          service_code: '010101',
+          municipality_code: '3550308',
+        },
+      },
+    }).expect(200);
+    expect(issued.body.result.isError).not.toBe(true);
+
+    const row = await dataSource.getRepository(InvoiceOrmEntity).findOne({
+      where: { tenantId, companyId },
+      order: { createdAt: 'DESC' },
+    });
+    expect(row).toBeTruthy();
+    expect(row!.status).toBe('queued');
   });
 });

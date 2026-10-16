@@ -1770,6 +1770,7 @@
       "copied": "Copiado",
       "tools": "O que o agente pode fazer",
       "toolList": [
+        "Encontrar suas empresas (company_list)",
         "Emitir uma nota fiscal (nfse_issue)",
         "Consultar o status de uma nota (nfse_query)",
         "Listar notas (nfse_list)",
