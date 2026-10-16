@@ -13,7 +13,9 @@ export class SecretsCipherService {
   encrypt(plaintext: string): string {
     const key = this.getKey();
     const iv = randomBytes(IV_LENGTH);
-    const cipher = createCipheriv('aes-256-gcm', key, iv);
+    const cipher = createCipheriv('aes-256-gcm', key, iv, {
+      authTagLength: TAG_LENGTH,
+    });
     const encrypted = Buffer.concat([
       cipher.update(plaintext, 'utf8'),
       cipher.final(),
@@ -32,7 +34,10 @@ export class SecretsCipherService {
     const iv = packed.subarray(0, IV_LENGTH);
     const tag = packed.subarray(IV_LENGTH, IV_LENGTH + TAG_LENGTH);
     const encrypted = packed.subarray(IV_LENGTH + TAG_LENGTH);
-    const decipher = createDecipheriv('aes-256-gcm', key, iv);
+    // Fixing the tag length stops a shortened tag from being accepted.
+    const decipher = createDecipheriv('aes-256-gcm', key, iv, {
+      authTagLength: TAG_LENGTH,
+    });
     decipher.setAuthTag(tag);
     return Buffer.concat([
       decipher.update(encrypted),

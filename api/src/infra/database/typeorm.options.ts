@@ -5,6 +5,10 @@ export type TypeOrmDatabaseConfig = {
   url: string;
   schema?: string;
   ssl: boolean;
+  /** Verify the server certificate. Defaults to true; only turn it off knowingly. */
+  sslRejectUnauthorized?: boolean;
+  /** PEM of the CA that signed the server certificate (private or provider CA). */
+  sslCa?: string;
   logging: boolean;
   manualInitialization?: boolean;
   pool?: {
@@ -19,6 +23,24 @@ export type TypeOrmDatabaseConfig = {
 };
 
 const DEFAULT_APPLICATION_SCHEMA = 'corvo';
+
+export type DatabaseSsl = { rejectUnauthorized: boolean; ca?: string } | false;
+
+/** TLS options for PostgreSQL connections. The server certificate is verified unless disabled explicitly. */
+export function createDatabaseSsl(
+  database: Pick<
+    TypeOrmDatabaseConfig,
+    'ssl' | 'sslRejectUnauthorized' | 'sslCa'
+  >,
+): DatabaseSsl {
+  if (!database.ssl) return false;
+  // Env files often store a PEM on one line with literal \n sequences.
+  const ca = database.sslCa?.replace(/\\n/g, '\n').trim();
+  return {
+    rejectUnauthorized: database.sslRejectUnauthorized ?? true,
+    ...(ca ? { ca } : {}),
+  };
+}
 
 export function createTypeOrmOptions(
   database: TypeOrmDatabaseConfig,
@@ -35,7 +57,7 @@ export function createTypeOrmOptions(
     schema,
     logging: database.logging ? ['query', 'error'] : false,
     logger: database.logging ? 'advanced-console' : undefined,
-    ssl: database.ssl ? { rejectUnauthorized: false } : false,
+    ssl: createDatabaseSsl(database),
     installExtensions: false,
     uuidExtension: 'pgcrypto',
     extra: {

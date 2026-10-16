@@ -76,6 +76,7 @@ Copy [.env.example](.env.example) to `.env` for development outside Docker. The 
 | --- | --- |
 | Runtime | `NODE_ENV`, `PORT`, `WORKER_PORT`, `API_PREFIX`, `CORS_ORIGINS`, `PUBLIC_API_URL`, `DASHBOARD_URL`, `APP_URL` |
 | Database | `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `DB_SCHEMA`, `DB_POOL_*`, `E2E_DATABASE_URL` |
+| Database TLS | `DB_SSL`, `DB_SSL_CA`, `DB_SSL_REJECT_UNAUTHORIZED` |
 | Redis | `REDIS_URL`, `REDIS_KEY_PREFIX` |
 | Secrets | `AUTH_JWT_SECRET`, `AUTH_CSRF_SIGNING_SECRET`, `SECRETS_ENCRYPTION_KEY`, `NFSE_MASTER_KEY`, `OTP_HMAC_SECRET` |
 | Storage | `STORAGE_PROVIDER`, `STORAGE_S3_*`, `STORAGE_PUBLIC_BASE_URL` |
@@ -88,6 +89,9 @@ Copy [.env.example](.env.example) to `.env` for development outside Docker. The 
 
 > [!IMPORTANT]
 > `DATABASE_URL` must use a `NOSUPERUSER NOBYPASSRLS` role; `MIGRATION_DATABASE_URL` uses the schema owner. The Docker migrations job prepares the runtime role before the applications start.
+
+> [!NOTE]
+> With `DB_SSL=true` the PostgreSQL server certificate is **verified**. If your provider uses a private or non-public CA, set `DB_SSL_CA` to its PEM (`\n` sequences are accepted). `DB_SSL_REJECT_UNAUTHORIZED=false` turns verification off and should only be used knowingly.
 
 > [!WARNING]
 > Keep `NFSE_MASTER_KEY` and `SECRETS_ENCRYPTION_KEY` with your backups: encrypted certificates and secrets depend on them.

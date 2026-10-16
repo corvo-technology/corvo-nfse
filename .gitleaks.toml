@@ -1,0 +1,17 @@
+title = "Corvo secret scanning"
+
+[extend]
+useDefault = true
+
+# False positives only: placeholders in the documentation examples and fake keys
+# in two unit-test fixtures. Real credentials are still caught everywhere else.
+[allowlist]
+description = "Documentation example identifiers and unit-test fixtures"
+regexTarget = "line"
+regexes = [
+  '''(pedido|order)_123_[a-z_]+''',
+]
+paths = [
+  '''api/src/infra/shared/secrets-cipher\.service\.spec\.ts''',
+  '''api/src/modules/auth/application/api-key\.service\.spec\.ts''',
+]

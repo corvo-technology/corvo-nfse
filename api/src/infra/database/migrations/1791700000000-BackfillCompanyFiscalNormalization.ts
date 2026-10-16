@@ -36,7 +36,8 @@ export class BackfillCompanyFiscalNormalization1791700000000 implements Migratio
       HAVING count(*) > 1`)) as unknown[] | undefined;
     if (duplicates && duplicates.length > 0)
       console.warn(
-        `[backfill] ${duplicates.length} company group(s) share a tax_id after normalization and were skipped:`,
+        '[backfill] %d company group(s) share a tax_id after normalization and were skipped: %s',
+        duplicates.length,
         JSON.stringify(duplicates),
       );
 
