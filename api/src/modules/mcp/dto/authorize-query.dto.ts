@@ -12,6 +12,12 @@ import { MCP_CLIENT_ID_PATTERN } from '../mcp-client-policy';
  * flow with PKCE, RFC 7636).
  */
 export class AuthorizeQueryDto {
+  /**
+   * Clients may send parameters this endpoint does not use (`resource`,
+   * RFC 8707, or vendor extras). Ignore them instead of failing the flow.
+   */
+  static readonly allowUnknownProperties = true;
+
   @IsString()
   @Matches(MCP_CLIENT_ID_PATTERN)
   client_id!: string;
@@ -37,4 +43,10 @@ export class AuthorizeQueryDto {
 
   @IsString()
   state!: string;
+
+  /** RFC 8707 resource indicator; accepted and ignored (tokens are for this server only). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  resource?: string;
 }
