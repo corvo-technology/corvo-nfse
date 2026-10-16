@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
+import { pageMetadata } from "@/lib/seo";
 
 type LegalNamespace = "Terms" | "Privacy" | "Dpa";
 
@@ -23,14 +24,12 @@ export async function legalMetadata(
   const t = await getTranslations({ locale, namespace });
   const slug = documents.find((document) => document.namespace === namespace)!.slug;
 
-  return {
+  return pageMetadata({
+    locale,
+    path: `/${slug}`,
     title: t("title"),
     description: t("description"),
-    alternates: {
-      canonical: `/${locale}/${slug}`,
-      languages: { pt: `/pt/${slug}`, en: `/en/${slug}` },
-    },
-  };
+  });
 }
 
 export async function LegalDocument({
