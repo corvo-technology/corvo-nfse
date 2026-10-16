@@ -412,6 +412,49 @@ describe('Company', () => {
     });
   });
 
+  describe('municipal registration in the DPS', () => {
+    const make = (extra: Record<string, unknown> = {}) =>
+      Company.create(
+        {
+          legalName: 'X',
+          taxId: VALID_CNPJ,
+          taxRegime: 'MEI',
+          municipalityCode: '3550308',
+          municipalReg: '12345',
+          ...extra,
+        },
+        't',
+      );
+
+    it('is not sent by default, even when the company has one', () => {
+      const company = make();
+      expect(company.municipalReg).toBe('12345');
+      expect(company.sendMunicipalReg).toBe(false);
+      expect(company.municipalRegForDps).toBeUndefined();
+    });
+
+    it('is sent only after the company opts in', () => {
+      const company = make({ sendMunicipalReg: true });
+      expect(company.municipalRegForDps).toBe('12345');
+      company.update({ sendMunicipalReg: false });
+      expect(company.municipalRegForDps).toBeUndefined();
+    });
+
+    it('sends nothing when opted in without a registration', () => {
+      expect(
+        make({ municipalReg: undefined, sendMunicipalReg: true })
+          .municipalRegForDps,
+      ).toBeUndefined();
+    });
+
+    it('turns the option off when the registration is removed', () => {
+      const company = make({ sendMunicipalReg: true });
+      company.update({ municipalReg: null });
+      expect(company.sendMunicipalReg).toBe(false);
+      expect(company.municipalRegForDps).toBeUndefined();
+    });
+  });
+
   describe('getMissingForReady', () => {
     it('does not ask for a municipal registration', () => {
       const company = Company.create(

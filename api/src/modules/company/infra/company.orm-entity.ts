@@ -57,6 +57,9 @@ export class CompanyOrmEntity {
   })
   municipalReg?: string | null;
 
+  @Column({ name: 'send_municipal_reg', type: 'boolean', default: false })
+  sendMunicipalReg!: boolean;
+
   @Column({
     name: 'municipality_code',
     type: 'varchar',

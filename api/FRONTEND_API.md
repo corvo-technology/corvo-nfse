@@ -250,7 +250,7 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 **CreateCompany**: obrigatórios `legalName`, `taxId`, `taxRegime`
 (`MEI`, `Simples Nacional`, `Lucro Presumido` ou `Lucro Real`) e
 `municipalityCode` (código IBGE de 7 dígitos, em `test` e `live`).
-Opcionais `tradeName`, `municipalReg` (opcional; informe só se o município a registrou no cadastro nacional, senão a Receita rejeita com E0120), `defaultServiceCode`
+Opcionais `tradeName`, `municipalReg` (opcional; guardada, mas **não enviada** na nota a menos que `sendMunicipalReg` seja `true`, padrão `false` — a Receita rejeita com E0120 se o município não tiver o dado), `defaultServiceCode`
 (cTribNac de 6 dígitos), `simpleNational`, `specialRegime`, `address`.
 UpdateCompany aceita os mesmos campos, todos opcionais (`defaultServiceCode:
 null` remove o padrão). Address: `street`, `number`, `complement`, `district`,

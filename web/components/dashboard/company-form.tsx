@@ -59,6 +59,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
     legalName: company?.legalName ?? "", tradeName: company?.tradeName ?? "", taxId: maskCnpj(company?.taxId ?? ""), taxRegime: company?.taxRegime ?? "", municipalReg: company?.municipalReg ?? "", municipalityCode: company?.municipalityCode ?? "", defaultServiceCode: company?.defaultServiceCode ?? "", specialRegime: company?.specialRegime ?? "",
     street: address?.street ?? "", number: address?.number ?? "", complement: address?.complement ?? "", district: address?.district ?? "", city: address?.city ?? "", state: address?.state ?? "", zip: maskZip(address?.zip ?? ""),
   });
+  const [sendMunicipalReg, setSendMunicipalReg] = useState(company?.sendMunicipalReg ?? false);
   const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null); const busy = useRef(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [stepIndex, setStepIndex] = useState(0);
@@ -129,6 +130,8 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
         defaultServiceCode: optional(values.defaultServiceCode) ?? (company?.defaultServiceCode ? null : undefined),
         // Optional text is omitted when empty; null explicitly clears on update.
         municipalReg: municipalReg ?? (company?.municipalReg ? null : undefined),
+        // Off by default: the Receita rejects the registration when the city has no data for the company.
+        sendMunicipalReg: Boolean(municipalReg) && sendMunicipalReg,
         address: hasAddress ? addressFields : company && Object.values(company.address).some(Boolean) ? null : undefined,
       });
       if (wizard && result) {
@@ -218,6 +221,12 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       {wizard && <><Field label={t("taxRegime")} required error={fieldErrors.taxRegime}>{(props) => <select {...props} className="field" value={values.taxRegime} onChange={(event) => set("taxRegime", event.target.value)}><option value="">{t("selectTaxRegime")}</option>{["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"].map((regime) => <option key={regime}>{regime}</option>)}</select>}</Field>
       {field("specialRegime", { maxLength: 50 })}<p className="text-sm text-text-3 sm:col-span-2">{t("regimeDerived")}</p></>}
       {field("municipalReg", { maxLength: 20, mono: true, hint: t("hints.municipalReg") })}
+      {values.municipalReg.trim() && (
+        <label className="flex items-start gap-2.5 text-[13px] text-text-2 sm:col-span-2">
+          <input type="checkbox" className="mt-0.5" checked={sendMunicipalReg} onChange={(event) => setSendMunicipalReg(event.target.checked)} />
+          <span>{t("sendMunicipalReg")}<span className="mt-0.5 block text-[12px] text-text-4">{t("hints.sendMunicipalReg")}</span></span>
+        </label>
+      )}
       {field("municipalityCode", { required: true, maxLength: 7, mask: maskDigits(7), inputMode: "numeric", mono: true })}
       <Field label={t("defaultServiceCode")} optionalLabel={t("optional")} error={fieldErrors.defaultServiceCode || undefined} hint={t("hints.defaultServiceCode")} className="sm:col-span-2">
         {(props) => <ServiceCodeCombobox {...props} value={values.defaultServiceCode} onChange={(code) => set("defaultServiceCode", code)} />}

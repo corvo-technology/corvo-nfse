@@ -1383,7 +1383,8 @@
     "finish": "Finish",
     "hints": {
       "municipalReg": "Optional. Fill it only if the city registered this company's municipal registration in the national registry; otherwise the tax authority rejects the invoice (E0120).",
-      "defaultServiceCode": "National tax code (cTribNac), with 6 digits. Used when an invoice does not specify another code. You can clear this default when editing."
+      "defaultServiceCode": "National tax code (cTribNac), with 6 digits. Used when an invoice does not specify another code. You can clear this default when editing.",
+      "sendMunicipalReg": "Off by default. Tick it only if the city registered this company in the national registry and the tax authority requires it; otherwise the invoice is rejected (E0120)."
     },
     "fixFields": "Fix the highlighted fields.",
     "defaultServiceCode": "Default service code",
@@ -1394,7 +1395,8 @@
     "regimeDerived": "Simples Nacional is set from the selected regime.",
     "editFiscalHint": "Review the regime and validity periods in Fiscal configuration on the company page.",
     "reviewNext": "Continue to certificate",
-    "openCompany": "Open company"
+    "openCompany": "Open company",
+    "sendMunicipalReg": "Send the municipal registration on the invoice"
   },
   "CompanyDetail": {
     "fiscalAdvanced": "Advanced fiscal configuration",

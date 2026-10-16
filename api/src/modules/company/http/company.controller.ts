@@ -77,6 +77,8 @@ function dtoToCreateInput(dto: CreateCompanyDto): CreateCompanyInput {
   if (dto.municipalReg !== undefined)
     result.municipalReg =
       dto.municipalReg === null ? undefined : dto.municipalReg;
+  if (dto.sendMunicipalReg !== undefined)
+    result.sendMunicipalReg = dto.sendMunicipalReg;
   if (dto.municipalityCode !== undefined)
     result.municipalityCode = dto.municipalityCode;
   if (dto.defaultServiceCode !== undefined)
@@ -106,6 +108,8 @@ function dtoToUpdateInput(dto: UpdateCompanyDto): UpdateCompanyInput {
   if (dto.taxId !== undefined) input.taxId = dto.taxId;
   // null means clear, undefined means no change
   if ('municipalReg' in dto) input.municipalReg = dto.municipalReg;
+  if (dto.sendMunicipalReg !== undefined)
+    input.sendMunicipalReg = dto.sendMunicipalReg;
   if (dto.municipalityCode !== undefined)
     input.municipalityCode = dto.municipalityCode;
   if (dto.taxRegime !== undefined) input.taxRegime = dto.taxRegime;

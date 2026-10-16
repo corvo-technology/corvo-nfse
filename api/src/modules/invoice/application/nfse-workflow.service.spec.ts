@@ -120,6 +120,7 @@ describe('NfseWorkflowService payload — tomador opcional', () => {
     taxId: '11222333000181',
     legalName: 'Empresa Teste',
     municipalReg: '123',
+    municipalRegForDps: '123',
     municipalityCode: '3550308',
   };
   const fakes = {
@@ -196,6 +197,16 @@ describe('NfseWorkflowService payload — tomador opcional', () => {
     );
   });
 
+  it('does not send the municipal registration unless the company opted in (Receita E0120)', async () => {
+    fakes.companies.findById.mockResolvedValue({
+      ...company,
+      municipalReg: '123',
+      municipalRegForDps: undefined,
+    });
+    const payload = await callPayload(createInvoice(null));
+    expect(payload.emitente.municipalReg).toBeUndefined();
+  });
+
   it('omits tomador when the invoice has no customer snapshot', async () => {
     const payload = await callPayload(createInvoice(null));
 
@@ -239,6 +250,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     taxId: '11222333000181',
     legalName: 'Empresa Teste',
     municipalReg: '123',
+    municipalRegForDps: '123',
     municipalityCode: '3550308',
   };
   const REQUIRED: Obligation = { status: 'REQUIRED' };

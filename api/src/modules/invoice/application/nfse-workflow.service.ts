@@ -349,7 +349,7 @@ export class NfseWorkflowService {
       emitente: {
         cnpj: company.taxId,
         legalName: company.legalName,
-        municipalReg: company.municipalReg,
+        municipalReg: company.municipalRegForDps,
         codMunicipio: municipality,
         regime: {
           opSimpNac:
@@ -415,7 +415,7 @@ export class NfseWorkflowService {
         },
         emitente: {
           cnpj: company.taxId,
-          municipalReg: company.municipalReg ?? null,
+          municipalReg: company.municipalRegForDps ?? null,
           municipalityCode: company.municipalityCode,
           specialTaxRegime: profile.specialTaxRegime ?? null,
         },
