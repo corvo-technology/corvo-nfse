@@ -1908,5 +1908,36 @@
     "envTestHint": "Invoices with no fiscal value. Good to start and validate.",
     "envLive": "Production",
     "envLiveHint": "Real invoices, with fiscal value and credit usage."
+  },
+  "LandingAgents": {
+    "eyebrow": "AI AGENTS",
+    "title": "Your AI agents can issue invoices.",
+    "description": "Connect Claude, Cursor or Codex to Corvo through MCP. Ask in plain language and the invoice goes out, with the same tax rules as the API.",
+    "points": {
+      "connect": "One command to connect, no key to copy.",
+      "approve": "You approve in the browser and pick test or production.",
+      "rules": "Same tax validation, email and webhooks as the API."
+    },
+    "connectLabel": "CONNECT WITH ONE COMMAND",
+    "copy": "Copy",
+    "copied": "Copied",
+    "agentsLabel": "Compatible agents",
+    "docs": "Read the MCP guide",
+    "chat": {
+      "status": "Claude Code · Corvo connected",
+      "env": "TEST",
+      "you": "YOU",
+      "agent": "AGENT",
+      "prompt": "Issue a R$ 450 consulting invoice to Padaria Estrela and email it to them.",
+      "listResult": "1 company ready to issue",
+      "issueResult": "invoice queued",
+      "reply": "Done. The R$ 450,00 NFS-e was sent for authorization, and the customer gets it by email as soon as it clears.",
+      "card": {
+        "label": "NFS-E",
+        "detail": "Padaria Estrela · Consulting",
+        "queued": "Queued",
+        "authorized": "Authorized"
+      }
+    }
   }
 }
