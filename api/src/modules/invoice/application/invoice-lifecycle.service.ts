@@ -1,49 +1,36 @@
-import { INVOICE_EMIT } from './invoice-emit.handler';
+import { INVOICE_CALCULATE_TAXES } from '../domain/invoice-message-types';
 import { OutboxService } from './outbox.service';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
-import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
-import {
-  persistTenantEntity,
-  requireTenantId,
-} from '@/infra/persistence/typeorm/tenant-scope';
-import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
+import { UnitOfWorkPort } from '@/infra/transactions/unit-of-work.port';
+import { BillingRepository } from '@/modules/billing/domain/billing.repository';
 import { BillingUsageService } from '@/modules/billing/application/billing-usage.service';
 import { Inject, Injectable } from '@nestjs/common';
-import { DataSource, type EntityManager } from 'typeorm';
-import { InjectDataSource } from '@nestjs/typeorm';
 import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import type { CachePort } from '@/infra/redis/cache.port';
-import { CreditTransactionOrmEntity } from '@/modules/credits/infra/credit-transaction.orm-entity';
+import { ICreditTransactionRepository } from '@/modules/credits/domain/credit-transaction.repository';
 import { Invoice } from '../domain/invoice';
 import { InvoiceEvent } from '../domain/invoice-event';
-import { InvoiceMapper } from '../infra/invoice.mapper';
-import { InvoiceEventMapper } from '../infra/invoice-event.mapper';
-import { InvoiceOrmEntity } from '../infra/invoice.orm-entity';
-import { InvoiceEventOrmEntity } from '../infra/invoice-event.orm-entity';
+import {
+  INVOICE_REPOSITORY,
+  INVOICE_EVENT_REPOSITORY,
+  type IInvoiceRepository,
+  type IInvoiceEventRepository,
+} from '../domain/invoice.repository';
 
 /** One transaction for fiscal state, audit event and the corresponding credit. */
 @Injectable()
 export class InvoiceLifecycleService {
   constructor(
-    @InjectDataSource() private readonly database: DataSource,
+    private readonly unitOfWork: UnitOfWorkPort,
     @Inject(CACHE_PORT) private readonly cache: CachePort,
     private readonly usage: BillingUsageService,
-    private readonly context: TypeOrmTransactionContext,
+    private readonly billing: BillingRepository,
     private readonly outbox: OutboxService,
+    @Inject(INVOICE_REPOSITORY) private readonly invoices: IInvoiceRepository,
+    @Inject(INVOICE_EVENT_REPOSITORY)
+    private readonly events: IInvoiceEventRepository,
+    private readonly credits: ICreditTransactionRepository,
   ) {}
-
-  private async lockTenant(
-    manager: EntityManager,
-    tenantId: string,
-  ): Promise<void> {
-    return runWithTenant(tenantId, async () => {
-      requireTenantId(tenantId);
-      await manager.query(
-        'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
-        [`fiscal:${tenantId}`],
-      );
-    });
-  }
 
   async submit(
     invoice: Invoice,
@@ -51,56 +38,50 @@ export class InvoiceLifecycleService {
     _dailyLimit: number | null,
   ): Promise<void> {
     return runWithTenant(invoice.tenantId, async () => {
-      await this.database.transaction(async (manager) =>
-        this.context.run(manager, async () => {
+      await this.unitOfWork.execute(() =>
+        this.billing.locked(invoice.tenantId, async () => {
           if (event.invoiceId !== invoice.id)
             throw new Error('Invoice/event identity mismatch');
-          await this.lockTenant(manager, invoice.tenantId);
           if (
             invoice.idempotencyKey &&
-            (await manager.getRepository(InvoiceOrmEntity).existsBy({
-              tenantId: invoice.tenantId,
-              environment: invoice.environment,
-              idempotencyKey: invoice.idempotencyKey,
-            }))
+            (await this.invoices.findByIdempotencyKey(
+              invoice.idempotencyKey,
+              invoice.tenantId,
+              invoice.environment,
+            ))
           )
             throw Object.assign(new Error('Idempotency key exists'), {
               code: '23505',
             });
           if (invoice.environment === 'live') {
-            const wallet = manager.getRepository(CreditTransactionOrmEntity);
             const periodId = await this.usage.reserve(invoice.tenantId);
-            await wallet.insert({
-              tenantId: invoice.tenantId,
-              amount: -1,
-              type: 'invoice_authorized',
-              reservedInvoiceId: invoice.id,
-              periodId,
-              isReservation: true,
-              description: `Reservation for invoice ${invoice.id}`,
-            });
-          }
-          await manager
-            .getRepository(InvoiceOrmEntity)
-            .insert(
-              new InvoiceMapper().toPersistence(
-                invoice,
-              ) as QueryDeepPartialEntity<InvoiceOrmEntity>,
+            await this.credits.save(
+              {
+                tenantId: invoice.tenantId,
+                amount: -1,
+                type: 'invoice_authorized',
+                reservedInvoiceId: invoice.id,
+                periodId,
+                isReservation: true,
+                description: `Reservation for invoice ${invoice.id}`,
+                createdAt: new Date(),
+              },
+              invoice.tenantId,
             );
-          await manager
-            .getRepository(InvoiceEventOrmEntity)
-            .insert(new InvoiceEventMapper().toPersistence(event));
+          }
+          await this.invoices.insert(invoice, invoice.tenantId);
+          await this.events.save(event, invoice.tenantId);
           await this.outbox.enqueue({
             tenantId: invoice.tenantId,
             environment: invoice.environment,
-            type: INVOICE_EMIT,
+            type: INVOICE_CALCULATE_TAXES,
             aggregateId: invoice.id,
             payload: {
               invoiceId: invoice.id,
               companyId: invoice.companyId,
               tenantId: invoice.tenantId,
             },
-            dedupeKey: `emission:${invoice.id}`,
+            dedupeKey: `calc:${invoice.id}`,
             availableAt: invoice.scheduledFor ?? undefined,
           });
         }),
@@ -112,60 +93,44 @@ export class InvoiceLifecycleService {
 
   async transition(invoice: Invoice, event: InvoiceEvent): Promise<void> {
     return runWithTenant(invoice.tenantId, async () => {
-      await this.database.transaction(async (manager) =>
-        this.context.run(manager, async () => {
+      await this.unitOfWork.execute(() =>
+        this.billing.locked(invoice.tenantId, async () => {
           if (event.invoiceId !== invoice.id)
             throw new Error('Invoice/event identity mismatch');
-          await this.lockTenant(manager, invoice.tenantId);
-          const stored = await manager
-            .getRepository(InvoiceOrmEntity)
-            .findOneByOrFail({
-              id: invoice.id,
-              tenantId: invoice.tenantId,
-              environment: invoice.environment,
-            });
+          const stored = await this.invoices.findByIdAndTenantId(
+            invoice.id,
+            invoice.tenantId,
+            invoice.environment,
+          );
+          if (!stored) throw new Error('Invoice not found');
           if (stored.status === invoice.status) return;
           if (stored.status !== event.toSnapshot().fromStatus)
             throw new Error('Concurrent invoice transition');
-          const record = new InvoiceMapper().toPersistence(invoice);
-          if (['authorized', 'rejected', 'failed'].includes(invoice.status))
-            record.pendingEmission = null;
-          await persistTenantEntity(
-            manager.getRepository(InvoiceOrmEntity),
-            record,
-            invoice.tenantId,
-            ['companyId', 'environment'],
-          );
-          await manager
-            .getRepository(InvoiceEventOrmEntity)
-            .insert(new InvoiceEventMapper().toPersistence(event));
+          await this.invoices.save(invoice, invoice.tenantId);
+          await this.events.save(event, invoice.tenantId);
           if (invoice.environment !== 'live') return;
           await this.usage.settle(invoice.id, invoice.tenantId, invoice.status);
-          const wallet = manager.getRepository(CreditTransactionOrmEntity);
-          const reservation = await wallet.findOneBy({
-            tenantId: invoice.tenantId,
-            reservedInvoiceId: invoice.id,
-            isReservation: true,
-          });
+          const reservation = await this.credits.findByReservedInvoiceId(
+            invoice.id,
+            invoice.tenantId,
+          );
           if (!reservation) return;
           if (invoice.status === 'authorized')
-            await wallet.update(
-              { id: reservation.id, tenantId: invoice.tenantId },
-              { isReservation: false },
-            );
+            await this.credits.confirm(reservation.id, invoice.tenantId);
           if (invoice.status === 'rejected' || invoice.status === 'failed') {
-            await wallet.insert({
-              tenantId: invoice.tenantId,
-              amount: -reservation.amount,
-              type: 'invoice_rejected',
-              relatedTransactionId: reservation.id,
-              isReservation: false,
-              description: `Refund for invoice ${invoice.id}`,
-            });
-            await wallet.update(
-              { id: reservation.id, tenantId: invoice.tenantId },
-              { isReservation: false },
+            await this.credits.save(
+              {
+                tenantId: invoice.tenantId,
+                amount: -reservation.amount,
+                type: 'invoice_rejected',
+                relatedTransactionId: reservation.id,
+                isReservation: false,
+                description: `Refund for invoice ${invoice.id}`,
+                createdAt: new Date(),
+              },
+              invoice.tenantId,
             );
+            await this.credits.confirm(reservation.id, invoice.tenantId);
           }
         }),
       );

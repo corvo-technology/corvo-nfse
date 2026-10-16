@@ -12,7 +12,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { DataSource } from 'typeorm';
+import { IOAuthClientRepository } from '../auth/domain/oauth-client.repository';
+import type { OAuthClient } from '../auth/domain/oauth-client';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { PublicRoute } from '../auth/application/public-route.decorator';
@@ -22,7 +23,6 @@ import {
   ITenantMembershipRepository,
   type TenantMembershipWithEstablishmentName,
 } from '../auth/domain/tenant-membership.repository';
-import { AuthOAuthClientOrmEntity } from '@/infra/persistence/typeorm/entities/auth.orm-entities';
 import type { AppConfig } from '@/infra/config/configuration.types';
 import { AuthorizeQueryDto } from './dto/authorize-query.dto';
 import { McpAuthService } from './mcp-auth.service';
@@ -58,7 +58,8 @@ export class McpConsentController {
     private readonly sessions: CookieSessionService,
     @Inject(ITenantMembershipRepository)
     private readonly memberships: ITenantMembershipRepository,
-    private readonly dataSource: DataSource,
+    @Inject(IOAuthClientRepository)
+    private readonly clients: IOAuthClientRepository,
     private readonly config: ConfigService,
     private readonly mcpAuth: McpAuthService,
   ) {}
@@ -204,9 +205,7 @@ export class McpConsentController {
   }
 
   private async requireActiveClient(clientId: string) {
-    const client = await this.dataSource
-      .getRepository(AuthOAuthClientOrmEntity)
-      .findOne({ where: { id: clientId } });
+    const client = await this.clients.findById(clientId);
     if (!client || !client.isActive) {
       throw new BadRequestException({
         error: 'invalid_client',
@@ -217,7 +216,7 @@ export class McpConsentController {
   }
 
   private requireRegisteredRedirectUri(
-    client: AuthOAuthClientOrmEntity,
+    client: OAuthClient,
     redirectUri: string,
   ): void {
     if (!client.redirectUris.includes(redirectUri)) {

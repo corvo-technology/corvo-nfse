@@ -1,3 +1,4 @@
+import { MCP_CONNECTION_REPOSITORY } from './domain/mcp-connection.repository';
 import { ConnectionSessionGuard } from './connection-session.guard';
 import { HttpApiRateLimitGuard } from '@/shared/http/rate-limit.guard';
 import { Module } from '@nestjs/common';
@@ -51,7 +52,10 @@ import { McpService } from './mcp.service';
     McpAuthService,
     McpAuthGuard,
     McpConnectionService,
-    TypeOrmMcpConnectionRepository,
+    {
+      provide: MCP_CONNECTION_REPOSITORY,
+      useClass: TypeOrmMcpConnectionRepository,
+    },
   ],
   exports: [McpService],
 })

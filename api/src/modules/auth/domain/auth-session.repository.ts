@@ -1,6 +1,21 @@
 import { AuthSession } from './auth-session';
 
 export abstract class IAuthSessionRepository {
+  abstract rotateRefreshToken(
+    id: string,
+    tenantId: string,
+    authUserId: string,
+    clientId: string,
+    previousHash: string,
+    nextHash: string,
+    now?: Date,
+  ): Promise<boolean>;
+  abstract revokeOAuthSession(
+    id: string,
+    tenantId: string,
+    authUserId: string,
+    clientId: string,
+  ): Promise<void>;
   abstract revokeTenantSession(
     id: string,
     tenantId: string,

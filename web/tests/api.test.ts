@@ -114,3 +114,22 @@ describe("envelope helpers", () => {
     expect(toPage({ data: [{ id: "last" }], pagination: { hasMore: false, nextCursor: null } }).hasMore).toBe(false);
   });
 });
+
+describe("company fiscal API contracts", () => {
+  it("loads fiscal history and dated service profiles with the normal cookie transport", async () => {
+    fetchMock.mockResolvedValueOnce(reply({ data: [] })).mockResolvedValueOnce(reply({ data: [] }));
+    await companies.fiscalProfiles("company/1");
+    await companies.serviceTaxProfiles("company/1", "2026-10-15");
+    expect(String(fetchMock.mock.calls[0][0])).toBe("/api/proxy/v1/companies/company%2F1/fiscal-profile");
+    expect(String(fetchMock.mock.calls[1][0])).toBe("/api/proxy/v1/companies/company%2F1/service-tax-profiles?date=2026-10-15");
+  });
+  it("uses explicit scoped approvals and unwraps the saved state", async () => {
+    setCsrfToken("test-csrf");
+    fetchMock.mockResolvedValueOnce(reply({ data: { reviewStatus: "approved" } })).mockResolvedValueOnce(reply({ data: { reviewStatus: "approved" } }));
+    expect(await companies.approveFiscalProfile("company", "profile/1")).toMatchObject({ reviewStatus: "approved" });
+    expect(await companies.approveServiceTaxProfile("company", "service/1")).toMatchObject({ reviewStatus: "approved" });
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/companies/company/fiscal-profile/profile%2F1/approve");
+    expect(String(fetchMock.mock.calls[1][0])).toContain("/companies/company/service-tax-profiles/service%2F1/approve");
+    expect(fetchMock.mock.calls.every(([, init]) => init?.method === "POST" && new Headers(init.headers).get("x-csrf-token") === "test-csrf")).toBe(true);
+  });
+});

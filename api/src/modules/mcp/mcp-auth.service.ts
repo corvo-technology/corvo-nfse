@@ -6,18 +6,18 @@ import { requireTenantId } from '@/infra/persistence/typeorm/tenant-scope';
 import { ITenantMembershipRepository } from '@/modules/auth/domain/tenant-membership.repository';
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomUUID } from 'crypto';
 import * as jose from 'jose';
 import { nanoid } from 'nanoid';
-import { Repository, IsNull, MoreThan } from 'typeorm';
-import { AuthConfig } from '@/infra/config/configuration.types';
+import { IOAuthAuthorizationCodeRepository } from '../auth/domain/oauth-authorization-code.repository';
+import { IAuthSessionRepository } from '../auth/domain/auth-session.repository';
+import type { AuthSession } from '../auth/domain/auth-session';
+import type { McpConnection } from './domain/mcp-connection';
 import {
-  AuthAuthorizationCodeOrmEntity,
-  AuthSessionOrmEntity,
-} from '@/infra/persistence/typeorm/entities/auth.orm-entities';
-import { McpConnectionOrmEntity } from './infra/mcp-connection.orm-entity';
-
+  MCP_CONNECTION_REPOSITORY,
+  type McpConnectionRepository,
+} from './domain/mcp-connection.repository';
+import { AuthConfig } from '@/infra/config/configuration.types';
 export interface TokenResponse {
   accessToken: string;
   tokenType: 'Bearer';
@@ -64,12 +64,10 @@ export function verifyCodeChallenge(
 @Injectable()
 export class McpAuthService {
   constructor(
-    @InjectRepository(AuthAuthorizationCodeOrmEntity)
-    private readonly codesRepo: Repository<AuthAuthorizationCodeOrmEntity>,
-    @InjectRepository(AuthSessionOrmEntity)
-    private readonly sessionsRepo: Repository<AuthSessionOrmEntity>,
-    @InjectRepository(McpConnectionOrmEntity)
-    private readonly connectionsRepo: Repository<McpConnectionOrmEntity>,
+    private readonly codesRepo: IOAuthAuthorizationCodeRepository,
+    private readonly sessionsRepo: IAuthSessionRepository,
+    @Inject(MCP_CONNECTION_REPOSITORY)
+    private readonly connectionsRepo: McpConnectionRepository,
     private readonly config: ConfigService,
     @Inject(ITenantMembershipRepository)
     private readonly memberships: ITenantMembershipRepository,
@@ -88,7 +86,7 @@ export class McpAuthService {
       await this.requireMembership(params.userId, params.tenantId);
       const rawCode = nanoid(CODE_SIZE);
 
-      await this.codesRepo.insert({
+      await this.codesRepo.save({
         id: randomUUID(),
         clientId: params.clientId,
         authUserId: params.userId,
@@ -101,6 +99,8 @@ export class McpAuthService {
         tenantId: params.tenantId,
         expiresAt: new Date(Date.now() + AUTHORIZATION_CODE_TTL_MS),
         consumedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
       return rawCode;
@@ -114,9 +114,9 @@ export class McpAuthService {
     redirectUri: string;
   }): Promise<TokenResponse> {
     return runAsSystem('oauth-bootstrap', async () => {
-      const code = await this.codesRepo.findOne({
-        where: { codeHash: sha256(params.code) },
-      });
+      const code = await this.codesRepo.findActiveByCodeHash(
+        sha256(params.code),
+      );
 
       if (!code || code.consumedAt || code.expiresAt.getTime() <= Date.now()) {
         throw new UnauthorizedException(
@@ -140,23 +140,18 @@ export class McpAuthService {
       }
 
       await this.requireMembership(code.authUserId, code.tenantId);
-      const consumed = await this.codesRepo.update(
-        {
-          id: code.id,
-          authUserId: code.authUserId,
-          tenantId: code.tenantId,
-          consumedAt: IsNull(),
-          expiresAt: MoreThan(new Date()),
-        },
-        { consumedAt: new Date() },
+      const consumed = await this.codesRepo.consume(
+        code.id,
+        code.authUserId,
+        code.tenantId,
       );
-      if (consumed.affected !== 1)
+      if (!consumed)
         throw new UnauthorizedException(
           'Invalid or expired authorization code',
         );
 
       const rawRefreshToken = nanoid(REFRESH_TOKEN_SIZE);
-      const session = this.sessionsRepo.create({
+      const session: AuthSession = {
         id: randomUUID(),
         authUserId: code.authUserId,
         clientId: MCP_CLIENT_ID,
@@ -166,11 +161,13 @@ export class McpAuthService {
         activeTenantId: code.tenantId,
         revokedAt: null,
         expiresAt: new Date(Date.now() + REFRESH_SESSION_TTL_MS),
-      } as AuthSessionOrmEntity);
-      await this.sessionsRepo.insert(session);
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await this.sessionsRepo.save(session);
 
       const scopes = code.scope.split(' ').filter((s) => s.length > 0);
-      const connection = this.connectionsRepo.create({
+      const connection: McpConnection = {
         id: randomUUID(),
         authUserId: code.authUserId,
         tenantId: code.tenantId,
@@ -179,8 +176,9 @@ export class McpAuthService {
         scopes,
         revokedAt: null,
         lastUsedAt: null,
-      } as McpConnectionOrmEntity);
-      await this.connectionsRepo.insert(connection);
+        grantedAt: new Date(),
+      };
+      await this.connectionsRepo.insert(connection, code.tenantId);
 
       const accessToken = await this.signAccessToken({
         sub: code.authUserId,
@@ -201,9 +199,9 @@ export class McpAuthService {
 
   async refreshTokens(refreshToken: string): Promise<TokenResponse> {
     return runAsSystem('oauth-bootstrap', async () => {
-      const session = await this.sessionsRepo.findOne({
-        where: { refreshTokenHash: sha256(refreshToken) },
-      });
+      const session = await this.sessionsRepo.findActiveByRefreshTokenHash(
+        sha256(refreshToken),
+      );
 
       if (
         !session ||
@@ -216,32 +214,27 @@ export class McpAuthService {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      const connection = await this.connectionsRepo.findOne({
-        where: {
-          sessionId: session.id,
-          tenantId: session.activeTenantId,
-          authUserId: session.authUserId,
-          clientId: MCP_CLIENT_ID,
-        },
-      });
+      const connection = await this.connectionsRepo.findBySession(
+        session.id,
+        session.activeTenantId,
+        session.authUserId,
+        MCP_CLIENT_ID,
+      );
       if (!connection || connection.revokedAt) {
         throw new UnauthorizedException('No active MCP connection for session');
       }
 
       await this.requireMembership(session.authUserId, session.activeTenantId);
       const rawRefreshToken = nanoid(REFRESH_TOKEN_SIZE);
-      const rotated = await this.sessionsRepo.update(
-        {
-          id: session.id,
-          activeTenantId: session.activeTenantId,
-          authUserId: session.authUserId,
-          revokedAt: IsNull(),
-          refreshTokenHash: sha256(refreshToken),
-        },
-        { refreshTokenHash: sha256(rawRefreshToken) },
+      const rotated = await this.sessionsRepo.rotateRefreshToken(
+        session.id,
+        session.activeTenantId,
+        session.authUserId,
+        MCP_CLIENT_ID,
+        sha256(refreshToken),
+        sha256(rawRefreshToken),
       );
-      if (rotated.affected !== 1)
-        throw new UnauthorizedException('Invalid refresh token');
+      if (!rotated) throw new UnauthorizedException('Invalid refresh token');
 
       const accessToken = await this.signAccessToken({
         sub: session.authUserId,
@@ -283,29 +276,27 @@ export class McpAuthService {
       throw new UnauthorizedException('Invalid token');
     }
     return runWithTenant(tenantId, async () => {
-      const connection = await this.connectionsRepo.findOne({
-        where: {
-          id: connectionId,
-          tenantId,
-          authUserId: userId,
-          clientId: MCP_CLIENT_ID,
-          revokedAt: IsNull(),
-        },
-      });
-      if (!connection)
+      const connection = await this.connectionsRepo.findByIdAndOwner(
+        connectionId,
+        tenantId,
+        userId,
+      );
+      if (
+        !connection ||
+        connection.clientId !== MCP_CLIENT_ID ||
+        connection.revokedAt
+      )
         throw new UnauthorizedException('Invalid or revoked connection');
-      const session = await this.sessionsRepo.findOne({
-        where: {
-          id: connection.sessionId,
-          activeTenantId: tenantId,
-          authUserId: userId,
-          clientId: MCP_CLIENT_ID,
-          kind: 'oauth_refresh',
-          revokedAt: IsNull(),
-          expiresAt: MoreThan(new Date()),
-        },
-      });
-      if (!session)
+      const session = await this.sessionsRepo.findActiveById(
+        connection.sessionId,
+      );
+      if (
+        !session ||
+        session.activeTenantId !== tenantId ||
+        session.authUserId !== userId ||
+        session.clientId !== MCP_CLIENT_ID ||
+        session.kind !== 'oauth_refresh'
+      )
         throw new UnauthorizedException('Invalid or revoked session');
       await this.requireMembership(userId, tenantId);
       return {
@@ -325,16 +316,11 @@ export class McpAuthService {
     userId: string,
   ): Promise<void> {
     requireTenantId(tenantId);
-    await this.sessionsRepo.update(
-      {
-        id: sessionId,
-        activeTenantId: tenantId,
-        authUserId: userId,
-        kind: 'oauth_refresh',
-        clientId: MCP_CLIENT_ID,
-        revokedAt: IsNull(),
-      },
-      { revokedAt: new Date() },
+    await this.sessionsRepo.revokeOAuthSession(
+      sessionId,
+      tenantId,
+      userId,
+      MCP_CLIENT_ID,
     );
   }
 

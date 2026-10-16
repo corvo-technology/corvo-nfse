@@ -118,7 +118,7 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
       'nfse-email': mockQueueInstance,
     } as unknown as Record<string, Queue>;
 
-    queueService = new BullmqQueueService(mockQueues as any, {
+    queueService = new BullmqQueueService(mockQueues as never, {
       defaultAttempts: 3,
       defaultBackoffMs: 5000,
     }) as unknown as Mocked<BullmqQueueService>;
@@ -133,8 +133,9 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
       companyService,
       certificateService,
       queueService,
-      {} as any,
-      {} as any,
+      {} as never,
+      {} as never,
+      {} as never,
     );
   });
 

@@ -1,11 +1,11 @@
 import { metrics } from '@opentelemetry/api';
 
-const meter = metrics.getMeter('greenflow.outbox');
-const published = meter.createCounter('outbox_published_total');
-const failures = meter.createCounter('outbox_publish_failures_total');
-const dead = meter.createCounter('outbox_dead_total');
+const meter = metrics.getMeter('corvo.outbox');
+const published = meter.createCounter('corvo.outbox.published.total');
+const failures = meter.createCounter('corvo.outbox.publish.failed.total');
+const dead = meter.createCounter('corvo.outbox.dead.total');
 const claimToPublish = meter.createHistogram(
-  'outbox_claim_to_publish_duration',
+  'corvo.outbox.claim_to_publish.duration',
   { unit: 's' },
 );
 
@@ -17,7 +17,7 @@ export const recordOutboxLatency = (type: string, seconds: number) =>
   claimToPublish.record(seconds, { type });
 
 const pendingOldestAge = meter.createGauge(
-  'outbox_pending_oldest_age_seconds',
+  'corvo.outbox.pending.oldest_age',
   { unit: 's' },
 );
 export const recordOutboxPendingAge = (seconds: number) =>

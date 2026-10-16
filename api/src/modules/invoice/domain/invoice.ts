@@ -4,17 +4,21 @@ import { InvoiceStatus, VALID_TRANSITIONS } from './invoice-status';
 import { buildInvoiceState, type InvoiceState } from './invoice-state';
 import { InvoiceEvent } from './invoice-event';
 import { InvalidInvoiceTransitionError } from './errors';
+import type { ServiceFiscalInput } from './fiscal/normalized-invoice';
 
 export type LastEmailStatus = 'queued' | 'sent' | 'failed';
 
 export interface CustomerSnapshot {
-  taxId: string;
+  /** Absent for anonymous consumers (no tomador document). */
+  taxId?: string;
   name: string;
   email?: string;
   address?: {
     city: string;
     state: string;
     country?: string;
+    /** Incidence municipality (7 digits) when explicitly informed. */
+    municipalityCode?: string;
   };
 }
 
@@ -22,6 +26,8 @@ export interface ServiceSnapshot {
   description: string;
   code: string;
   municipalityCode: string;
+  fiscal?: ServiceFiscalInput;
+  serviceProfileId?: string;
 }
 
 export interface TaxSnapshot {
@@ -39,10 +45,13 @@ export interface InvoiceProps {
   externalId: string | null;
   idempotencyKey: string | null;
   status: InvoiceStatus;
-  customerSnapshot: CustomerSnapshot;
+  /** Null for anonymous consumer invoices (tomador omitted). */
+  customerSnapshot: CustomerSnapshot | null;
   serviceSnapshot: ServiceSnapshot;
   taxSnapshot: TaxSnapshot;
   amount: number;
+  /** Unconditional discount applied to `amount`, 2 decimals. */
+  discount?: number;
   currency: string;
   competenceDate: Date;
   scheduledFor?: Date | null;
@@ -73,22 +82,17 @@ export interface CreateInvoiceInput {
   environment?: ExecutionEnvironment;
   requestHash?: string;
   externalId?: string;
-  customer: {
-    taxId: string;
-    name: string;
-    email?: string;
-    address?: {
-      city: string;
-      state: string;
-      country?: string;
-    };
-  };
+  /** Null for anonymous consumer invoices. */
+  customer: CustomerSnapshot | null;
   service: {
     description: string;
     code: string;
     municipalityCode: string;
+    fiscal?: ServiceFiscalInput;
+    serviceProfileId?: string;
   };
   amount: number;
+  discount?: number;
   competenceDate: Date;
   scheduledFor?: Date;
   email?: {
@@ -115,20 +119,25 @@ export class Invoice {
       externalId: input.externalId ?? null,
       idempotencyKey: idempotencyKey ?? null,
       status: 'queued',
-      customerSnapshot: {
-        taxId: input.customer.taxId,
-        name: input.customer.name,
-        email: input.customer.email,
-        address: input.customer.address,
-      },
+      customerSnapshot: input.customer
+        ? {
+            taxId: input.customer.taxId,
+            name: input.customer.name,
+            email: input.customer.email,
+            address: input.customer.address,
+          }
+        : null,
       serviceSnapshot: {
         description: input.service.description,
         code: input.service.code,
         municipalityCode: input.service.municipalityCode,
+        fiscal: input.service.fiscal,
+        serviceProfileId: input.service.serviceProfileId,
       },
       taxSnapshot: {},
       emailSnapshot: input.email ? { send: input.email.send } : undefined,
       amount: input.amount,
+      discount: input.discount,
       currency: 'BRL',
       competenceDate: input.competenceDate,
       scheduledFor: input.scheduledFor ?? null,
@@ -234,8 +243,12 @@ export class Invoice {
     return this.props.nfseNumber;
   }
 
-  get customerSnapshot(): CustomerSnapshot {
+  get customerSnapshot(): CustomerSnapshot | null {
     return this.props.customerSnapshot;
+  }
+
+  get discount(): number | undefined {
+    return this.props.discount;
   }
 
   get amount(): number {

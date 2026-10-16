@@ -1,3 +1,9 @@
+import { TypeOrmRepositoryHelper } from '@/infra/persistence/typeorm/typeorm-repository.helper';
+import { TypeOrmUnitOfWork } from '@/infra/persistence/typeorm/typeorm-unit-of-work';
+import { TypeOrmBillingRepository } from '@/modules/billing/infra/typeorm-billing.repository';
+import { TypeOrmCreditTransactionRepository } from '@/modules/credits/infra/typeorm-credit-transaction.repository';
+import { TypeOrmInvoiceRepository } from './infra/typeorm-invoice.repository';
+import { TypeOrmInvoiceEventRepository } from './infra/typeorm-invoice-event.repository';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
@@ -15,8 +21,6 @@ import { InvoiceLifecycleService } from './application/invoice-lifecycle.service
 import { OutboxService } from './application/outbox.service';
 import { OutboxRelay } from './application/outbox-relay';
 import { OutboxHandlerRegistry } from './application/outbox-handler.registry';
-import { InvoiceEmitHandler } from './application/invoice-emit.handler';
-import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
 import { BillingUsageService } from '@/modules/billing/application/billing-usage.service';
 import type { CachePort } from '@/infra/redis/cache.port';
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -65,6 +69,10 @@ describePostgres('invoice intake with restricted PostgreSQL role', () => {
     await admin.initialize();
     await admin.query(`CREATE SCHEMA "${schema}"`);
     await admin.runMigrations();
+    await admin.query(
+      `INSERT INTO "${schema}".plans (id,slug,name,monthly_credit_allowance,credit_unit_price_cents,daily_limit) VALUES ($1,'free','Free',100,0,NULL) ON CONFLICT (slug) DO NOTHING`,
+      [randomUUID()],
+    );
     await admin.query(`INSERT INTO "${schema}".tenants (id) VALUES ($1),($2)`, [
       tenantA,
       tenantB,
@@ -116,23 +124,36 @@ describePostgres('invoice intake with restricted PostgreSQL role', () => {
       [companyLive, 'live'],
     ])
       await admin.query(
-        `INSERT INTO "${schema}".nfse_companies (id, tenant_id, legal_name, tax_id, environment, tax_regime) VALUES ($1,$2,'Fixture','11222333000181',$3,'MEI')`,
+        `INSERT INTO "${schema}".nfse_companies (id, tenant_id, legal_name, tax_id, environment) VALUES ($1,$2,'Fixture','11222333000181',$3)`,
         [id, tenantA, environment],
       );
     outbox = new OutboxService(repo);
     lifecycle = new InvoiceLifecycleService(
-      runtime,
+      new TypeOrmUnitOfWork(runtime, transactions),
       cache,
       usage as unknown as BillingUsageService,
-      transactions,
+      new TypeOrmBillingRepository(runtime, transactions),
       outbox,
+      new TypeOrmInvoiceRepository(
+        new TypeOrmRepositoryHelper(runtime, transactions),
+      ),
+      new TypeOrmInvoiceEventRepository(
+        new TypeOrmRepositoryHelper(runtime, transactions),
+      ),
+      new TypeOrmCreditTransactionRepository(
+        new TypeOrmRepositoryHelper(runtime, transactions),
+      ),
     );
-    new InvoiceEmitHandler(
-      queue as unknown as BullmqQueueService,
-      registry,
-    ).onModuleInit();
+    registry.register({
+      type: 'invoice.calculate-taxes',
+      handle: async (message) => {
+        await queue.add('fiscal-calculation', 'calculate', message.payload, {
+          idempotencyKey: `calculation-${message.aggregateId}`,
+        });
+      },
+    });
     relay = new OutboxRelay(repo, registry, config);
-  }, 60000);
+  }, 180000);
   afterAll(async () => {
     if (runtime?.isInitialized) await runtime.destroy();
     if (admin?.isInitialized) {
@@ -196,10 +217,10 @@ describePostgres('invoice intake with restricted PostgreSQL role', () => {
     await relay.tick();
     expect(queue.add).toHaveBeenCalledTimes(1);
     expect(queue.add).toHaveBeenCalledWith(
-      'nfse-emission',
-      'process',
+      'fiscal-calculation',
+      'calculate',
       { invoiceId: invoice.id, companyId: companyA, tenantId: tenantA },
-      expect.objectContaining({ idempotencyKey: `emission-${invoice.id}` }),
+      expect.objectContaining({ idempotencyKey: `calculation-${invoice.id}` }),
     );
     expect(await messageStatus(invoice.id)).toEqual([
       { status: 'completed', attempts: 1 },
@@ -291,10 +312,10 @@ describePostgres('invoice intake with restricted PostgreSQL role', () => {
         outbox.enqueue({
           tenantId: tenantA,
           environment: 'test',
-          type: 'invoice.emit',
+          type: 'invoice.calculate-taxes',
           aggregateId: invoice.id,
           payload: {},
-          dedupeKey: `emission:${invoice.id}`,
+          dedupeKey: `calc:${invoice.id}`,
         }),
       ),
     ).toBe(false);
@@ -352,8 +373,118 @@ describePostgres('invoice intake with restricted PostgreSQL role', () => {
       ),
     ).toHaveLength(1);
   });
+  const realLifecycle = () => {
+    const helper = new TypeOrmRepositoryHelper(runtime, transactions);
+    const billing = new TypeOrmBillingRepository(runtime, transactions);
+    return new InvoiceLifecycleService(
+      new TypeOrmUnitOfWork(runtime, transactions),
+      cache,
+      new BillingUsageService(billing),
+      billing,
+      outbox,
+      new TypeOrmInvoiceRepository(helper),
+      new TypeOrmInvoiceEventRepository(helper),
+      new TypeOrmCreditTransactionRepository(helper),
+    );
+  };
+
+  it('serializes competing terminal transitions and settles live billing and credit once', async () => {
+    const service = realLifecycle();
+    const invoice = create(undefined, 'live');
+    await service.submit(
+      invoice,
+      InvoiceEvent.create(invoice.id, null, 'queued'),
+      null,
+    );
+    const processing = invoice.transitionTo('processing');
+    await service.transition(invoice, processing);
+    const first = Invoice.reconstitute(invoice.toSnapshot());
+    const second = Invoice.reconstitute(invoice.toSnapshot());
+    const rejected = first.transitionTo('rejected');
+    const authorized = second.transitionTo('authorized');
+    const results = await Promise.allSettled([
+      service.transition(first, rejected),
+      realLifecycle().transition(second, authorized),
+    ]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    const [row]: Array<{ status: 'rejected' | 'authorized' }> =
+      await admin.query(
+        `SELECT status FROM "${schema}".nfse_invoices WHERE id=$1`,
+        [invoice.id],
+      );
+    const winner = row.status === 'rejected' ? first : second;
+    await service.transition(
+      winner,
+      row.status === 'rejected' ? rejected : authorized,
+    );
+    expect(
+      await admin.query(
+        `SELECT id FROM "${schema}".nfse_invoice_events WHERE invoice_id=$1`,
+        [invoice.id],
+      ),
+    ).toHaveLength(3);
+    const credits: Array<{ amount: number; is_reservation: boolean }> =
+      await admin.query(
+        `SELECT amount, is_reservation FROM "${schema}".credit_transactions WHERE reserved_invoice_id=$1 OR related_transaction_id IN (SELECT id FROM "${schema}".credit_transactions WHERE reserved_invoice_id=$1)`,
+        [invoice.id],
+      );
+    expect(credits.every((credit) => !credit.is_reservation)).toBe(true);
+    expect(credits.reduce((total, credit) => total + credit.amount, 0)).toBe(
+      row.status === 'rejected' ? 0 : -1,
+    );
+    const periods: Array<{ reserved: number }> = await admin.query(
+      `SELECT reserved FROM "${schema}".billing_usage_periods WHERE tenant_id=$1`,
+      [tenantA],
+    );
+    expect(periods.every((period) => period.reserved === 0)).toBe(true);
+  });
+
+  it('limits recovery to old processing/reconciliation references under the requested tenant', async () => {
+    const invoices = await Promise.all(
+      Array.from({ length: 4 }, () => submit()),
+    );
+    const cutoff = new Date(Date.now() - 300000);
+    await admin.query(
+      `UPDATE "${schema}".nfse_invoices SET status='processing',updated_at=$1 WHERE id=$2`,
+      [new Date(cutoff.getTime() - 1), invoices[0].id],
+    );
+    await admin.query(
+      `UPDATE "${schema}".nfse_invoices SET status='reconciliation_required',updated_at=$1 WHERE id=$2`,
+      [new Date(cutoff.getTime() - 1), invoices[1].id],
+    );
+    await admin.query(
+      `UPDATE "${schema}".nfse_invoices SET status='processing',updated_at=$1 WHERE id=$2`,
+      [new Date(), invoices[2].id],
+    );
+    const repository = new TypeOrmInvoiceRepository(
+      new TypeOrmRepositoryHelper(runtime, transactions),
+    );
+    const references = await repository.findPendingReconciliation(
+      tenantA,
+      cutoff,
+      100,
+    );
+    expect(references.map((row) => row.id)).toEqual(
+      expect.arrayContaining([invoices[0].id, invoices[1].id]),
+    );
+    expect(references.map((row) => row.id)).not.toEqual(
+      expect.arrayContaining([invoices[2].id]),
+    );
+    expect(references.some((row) => row.id === invoices[3].id)).toBe(false);
+    expect(
+      await repository.findPendingReconciliation(tenantA, cutoff, 1),
+    ).toHaveLength(1);
+    expect(
+      await repository.findPendingReconciliation(tenantB, cutoff, 100),
+    ).toEqual([]);
+  });
+
   it('failed real outbox insert rolls back live invoice/event/credit reservation', async () => {
     const invoice = create(undefined, 'live');
+    const billingBefore = await admin.query(
+      `SELECT id,reserved,authorized FROM "${schema}".billing_usage_periods WHERE tenant_id=$1 ORDER BY id`,
+      [tenantA],
+    );
     // Trigger a database failure after credit, invoice and event have been inserted.
     await admin.query(
       `CREATE FUNCTION "${schema}".reject_outbox() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'outbox down'; END $$`,
@@ -363,13 +494,18 @@ describePostgres('invoice intake with restricted PostgreSQL role', () => {
     );
     try {
       await expect(
-        lifecycle.submit(
+        realLifecycle().submit(
           invoice,
           InvoiceEvent.create(invoice.id, null, 'queued'),
           null,
         ),
       ).rejects.toThrow('outbox down');
-      expect(usage.reserve).toHaveBeenCalledWith(tenantA);
+      expect(
+        await admin.query(
+          `SELECT id,reserved,authorized FROM "${schema}".billing_usage_periods WHERE tenant_id=$1 ORDER BY id`,
+          [tenantA],
+        ),
+      ).toEqual(billingBefore);
       for (const [table, column] of [
         ['nfse_invoices', 'id'],
         ['nfse_invoice_events', 'invoice_id'],

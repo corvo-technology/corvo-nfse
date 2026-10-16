@@ -16,6 +16,7 @@ x-backend: &backend
     DB_SCHEMA: corvo
     DB_POOL_MIN: 0
     DB_POOL_MAX: 10
+    RTC_CALCULATOR_URL: http://rtc-calculator:8080/api
     STORAGE_PROVIDER: s3
     CORS_ORIGINS: ${APP_ORIGIN:?Configure APP_ORIGIN}
     DASHBOARD_URL: ${APP_ORIGIN:?Configure APP_ORIGIN}
@@ -30,6 +31,8 @@ x-backend: &backend
     migrations:
       condition: service_completed_successfully
     redis:
+      condition: service_healthy
+    rtc-calculator:
       condition: service_healthy
 
 services:
@@ -77,6 +80,24 @@ services:
       postgres:
         condition: service_healthy
     restart: 'no'
+
+  rtc-calculator:
+    image: ${RTC_IMAGE:-corvo-rtc:local}
+    build:
+      context: ../
+      dockerfile: deploy/Dockerfile.rtc
+      args:
+        RTC_ZIP_URL: ${RTC_ZIP_URL:?Informe RTC_ZIP_URL (veja deploy/README.md)}
+        RTC_ZIP_SHA256: ${RTC_ZIP_SHA256:?Informe RTC_ZIP_SHA256}
+    init: true
+    restart: unless-stopped
+    mem_limit: 1536m
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/api/calculadora/dados-abertos/versao || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 420s
 
   api:
     <<: *backend

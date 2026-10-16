@@ -1,4 +1,4 @@
-import type { ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, InvoiceEvent, BillingPlan, BillingUsage, CompanyFormInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -143,9 +143,17 @@ export function adaptCompany(wire: CompanyWire): Company {
   return { ...wire, address: { street: wire.addressStreet, number: wire.addressNumber, complement: wire.addressComplement, district: wire.addressDistrict, city: wire.addressCity, state: wire.addressState, zip: wire.addressZip } };
 }
 export const companies = {
+  fiscalProfiles: async (id: string, signal?: AbortSignal) => unwrap(await request<Envelope<CompanyFiscalProfile[]>>(`/companies/${idPath(id)}/fiscal-profile`, { signal })),
+  saveFiscalProfile: async (id: string, input: FiscalProfileInput) => unwrap(await request<Envelope<CompanyFiscalProfile>>(`/companies/${idPath(id)}/fiscal-profile`, json(input, "PUT"))),
+  approveFiscalProfile: async (id: string, profileId: string) => unwrap(await request<Envelope<CompanyFiscalProfile>>(`/companies/${idPath(id)}/fiscal-profile/${idPath(profileId)}/approve`, json({}))),
+  serviceTaxProfiles: async (id: string, date: string, signal?: AbortSignal) => unwrap(await request<Envelope<CompanyServiceTaxProfile[]>>(`/companies/${idPath(id)}/service-tax-profiles${query({ date })}`, { signal })),
+  createServiceTaxProfile: async (id: string, input: ServiceTaxProfileInput) => unwrap(await request<Envelope<CompanyServiceTaxProfile>>(`/companies/${idPath(id)}/service-tax-profiles`, json(input))),
+  updateServiceTaxProfile: async (id: string, serviceId: string, input: Partial<ServiceTaxProfileInput>) => unwrap(await request<Envelope<CompanyServiceTaxProfile>>(`/companies/${idPath(id)}/service-tax-profiles/${idPath(serviceId)}`, json(input, "PATCH"))),
+  approveServiceTaxProfile: async (id: string, serviceId: string) => unwrap(await request<Envelope<CompanyServiceTaxProfile>>(`/companies/${idPath(id)}/service-tax-profiles/${idPath(serviceId)}/approve`, json({}))),
+
   list: async (params: PageParams = {}, signal?: AbortSignal): Promise<Page<Company>> => { const page = toPage(await request<ListBody<CompanyWire>>(`/companies${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptCompany) }; },
   get: async (id: string, signal?: AbortSignal) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>(`/companies/${idPath(id)}`, { signal }))),
-  create: async (data: CompanyFormInput) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>("/companies", json(data)))),
+  create: async (data: CompanyFormInput & Pick<CreateCompanyInput, "taxRegime">) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>("/companies", json(data)))),
   update: async (id: string, data: UpdateCompanyInput) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>(`/companies/${idPath(id)}`, json(data, "PATCH")))),
   delete: async (id: string) => (await request<Envelope<null>>(`/companies/${idPath(id)}`, { method: "DELETE" })).data,
 };
@@ -165,6 +173,7 @@ export const invoices = {
   list: async (params: InvoiceQuery = {}, signal?: AbortSignal): Promise<Page<Invoice>> => { const page = toPage(await request<ListBody<InvoiceBody>>(`/invoices${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptInvoice) }; },
   get: async (id: string, signal?: AbortSignal) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}`, { signal }))),
   create: async (data: CreateInvoiceInput, idempotencyKey: string) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>("/invoices", { ...json(data), headers: { "idempotency-key": idempotencyKey } }))),
+  calculate: async (data: CreateInvoiceInput, signal?: AbortSignal) => unwrap(await request<Envelope<InvoiceCalculation>>("/invoices/calculate", { ...json(data), signal })),
   xml: (id: string) => request<Blob>(`/invoices/${idPath(id)}/xml`, {}, true),
   pdf: (id: string) => request<Blob>(`/invoices/${idPath(id)}/pdf`, {}, true),
   events: async (id: string, params: PageParams = {}, signal?: AbortSignal): Promise<Page<InvoiceEvent>> => { const page = toPage(await request<ListBody<EventWire>>(`/invoices/${idPath(id)}/events${query(params)}`, { signal })); return { ...page, items: page.items.map(({ props }) => ({ id: props.id, invoiceId: props.invoiceId, from: props.fromStatus, to: props.toStatus, at: props.createdAt, reason: props.reason } satisfies InvoiceEvent)) }; },

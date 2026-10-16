@@ -1,61 +1,15 @@
-import type { NewOutboxMessage } from '../domain/outbox-message';
-import type { EntityManager } from 'typeorm';
-import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
 import { Invoice } from '../domain/invoice';
 import { InvoiceEvent } from '../domain/invoice-event';
-import { InvoiceEventOrmEntity } from '../infra/invoice-event.orm-entity';
-import { InvoiceOrmEntity } from '../infra/invoice.orm-entity';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
+import { CreditTransaction } from '@/modules/credits/domain/credit-transaction';
 
 const tenantId = '11111111-1111-4111-8111-111111111111';
 const companyId = '22222222-2222-4222-8222-222222222222';
 
-function build(
-  outbox: { enqueue: jest.Mock },
-  order: string[] = [],
-  context = new TypeOrmTransactionContext(),
-) {
-  const manager = {
-    query: jest.fn().mockResolvedValue([]),
-    getRepository: (entity: unknown) => ({
-      existsBy: jest.fn().mockResolvedValue(false),
-      insert: jest.fn(async () => {
-        order.push(
-          entity === InvoiceOrmEntity
-            ? 'invoice'
-            : entity === InvoiceEventOrmEntity
-              ? 'event'
-              : 'other',
-        );
-      }),
-    }),
-  };
-  const database = {
-    transaction: jest.fn(async (work: (m: unknown) => Promise<void>) =>
-      work(manager),
-    ),
-  };
-  const usage = {
-    reserve: jest.fn(async () => {
-      expect(context.getManager()).toBe(manager);
-      order.push('reserve');
-      return 'period-1';
-    }),
-    settle: jest.fn(),
-  };
-  const service = new InvoiceLifecycleService(
-    database as never,
-    { delete: jest.fn() } as never,
-    usage as never,
-    context,
-    outbox as never,
-  );
-  return { service, database, manager, context, usage };
-}
-
 const newInvoice = (
   scheduledFor?: Date,
   environment: 'test' | 'live' = 'test',
+  idempotencyKey?: string,
 ) =>
   Invoice.create(
     {
@@ -72,98 +26,272 @@ const newInvoice = (
       scheduledFor,
     },
     tenantId,
+    idempotencyKey,
   );
 
-describe('InvoiceLifecycleService.submit + outbox', () => {
-  it('enqueues invoice.emit after the invoice and event inserts, in the same transaction', async () => {
-    const order: string[] = [];
-    const outbox = {
-      enqueue: jest.fn(async () => {
-        order.push('outbox');
-        return true;
-      }),
-    };
-    const { service, database } = build(outbox, order);
+function build() {
+  let active = false;
+  const order: string[] = [];
+  const inTransaction = (step: string) => {
+    expect(active).toBe(true);
+    order.push(step);
+  };
+  const unitOfWork = {
+    execute: jest.fn(async (work: () => Promise<void>) => {
+      active = true;
+      try {
+        await work();
+        order.push('commit');
+      } finally {
+        active = false;
+      }
+    }),
+  };
+  const billing = {
+    locked: jest.fn(async (_tenantId: string, work: () => Promise<void>) => {
+      inTransaction('lock');
+      await work();
+    }),
+  };
+  const invoices = {
+    findByIdempotencyKey: jest.fn().mockResolvedValue(null),
+    findByIdAndTenantId: jest.fn(),
+    insert: jest.fn(async () => {
+      inTransaction('invoice');
+    }),
+    save: jest.fn(async () => {
+      inTransaction('transition');
+    }),
+  };
+  const events = {
+    save: jest.fn(async () => {
+      inTransaction('event');
+    }),
+  };
+  const credits = {
+    save: jest.fn(async () => {
+      inTransaction('credit');
+    }),
+    findByReservedInvoiceId: jest.fn().mockResolvedValue(null),
+    confirm: jest.fn(async () => {
+      inTransaction('confirm');
+    }),
+  };
+  const usage = {
+    reserve: jest.fn(async () => {
+      inTransaction('reserve');
+      return 'period-1';
+    }),
+    settle: jest.fn(async () => {
+      inTransaction('settle');
+    }),
+  };
+  const outbox = {
+    enqueue: jest.fn(async () => {
+      inTransaction('outbox');
+      return true;
+    }),
+  };
+  const cache = {
+    delete: jest.fn(async () => {
+      expect(active).toBe(false);
+      order.push('cache');
+    }),
+  };
+  const service = new InvoiceLifecycleService(
+    unitOfWork as never,
+    cache as never,
+    usage as never,
+    billing as never,
+    outbox as never,
+    invoices as never,
+    events as never,
+    credits as never,
+  );
+  return {
+    service,
+    unitOfWork,
+    billing,
+    invoices,
+    events,
+    credits,
+    usage,
+    outbox,
+    cache,
+    order,
+  };
+}
+
+describe('InvoiceLifecycleService', () => {
+  it('persists invoice/event/calculation message within the locked unit of work', async () => {
+    const f = build();
     const invoice = newInvoice();
-    await service.submit(
+    await f.service.submit(
       invoice,
       InvoiceEvent.create(invoice.id, null, 'queued'),
       null,
     );
-    expect(database.transaction).toHaveBeenCalledTimes(1);
-    expect(order).toEqual(['invoice', 'event', 'outbox']);
-    expect(outbox.enqueue).toHaveBeenCalledWith(
+    expect(f.order).toEqual(['lock', 'invoice', 'event', 'outbox', 'commit']);
+    expect(f.billing.locked).toHaveBeenCalledWith(
+      tenantId,
+      expect.any(Function),
+    );
+    expect(f.outbox.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
-        tenantId,
-        environment: 'test',
-        type: 'invoice.emit',
+        type: 'invoice.calculate-taxes',
         aggregateId: invoice.id,
-        dedupeKey: `emission:${invoice.id}`,
+        dedupeKey: `calc:${invoice.id}`,
         payload: { invoiceId: invoice.id, companyId, tenantId },
+        environment: 'test',
       }),
     );
+    expect(f.credits.save).not.toHaveBeenCalled();
   });
 
-  it('uses scheduledFor as availableAt for a scheduled invoice and "now" otherwise', async () => {
-    const outbox = {
-      enqueue: jest
-        .fn<Promise<boolean>, [NewOutboxMessage]>()
-        .mockResolvedValue(true),
-    };
-    const { service } = build(outbox);
+  it('preserves the exact scheduled availability and immediate default', async () => {
+    const f = build();
     const when = new Date('2099-10-14T03:00:00.000Z');
-    const scheduled = newInvoice(when);
-    await service.submit(
-      scheduled,
-      InvoiceEvent.create(scheduled.id, null, 'queued'),
-      null,
-    );
-    expect(outbox.enqueue.mock.calls[0][0].availableAt).toEqual(when);
-    const immediate = newInvoice();
-    await service.submit(
-      immediate,
-      InvoiceEvent.create(immediate.id, null, 'queued'),
-      null,
-    );
-    expect(outbox.enqueue.mock.calls[1][0].availableAt).toBeUndefined();
+    for (const scheduledFor of [when, undefined]) {
+      const invoice = newInvoice(scheduledFor);
+      await f.service.submit(
+        invoice,
+        InvoiceEvent.create(invoice.id, null, 'queued'),
+        null,
+      );
+      expect(f.outbox.enqueue).toHaveBeenLastCalledWith(
+        expect.objectContaining({ availableAt: scheduledFor }),
+      );
+    }
   });
 
-  it('propagates an outbox failure so the surrounding transaction rolls back', async () => {
-    const outbox = { enqueue: jest.fn().mockRejectedValue(new Error('db')) };
-    const { service } = build(outbox);
-    const invoice = newInvoice();
+  it('reserves live billing and credits and invalidates cache after commit', async () => {
+    const f = build();
+    const invoice = newInvoice(undefined, 'live');
+    await f.service.submit(
+      invoice,
+      InvoiceEvent.create(invoice.id, null, 'queued'),
+      null,
+    );
+    expect(f.order).toEqual([
+      'lock',
+      'reserve',
+      'credit',
+      'invoice',
+      'event',
+      'outbox',
+      'commit',
+      'cache',
+    ]);
+    expect(f.credits.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: -1,
+        reservedInvoiceId: invoice.id,
+        periodId: 'period-1',
+        isReservation: true,
+      }),
+      tenantId,
+    );
+  });
+
+  it('propagates persistence failures and skips cache invalidation', async () => {
+    const f = build();
+    const invoice = newInvoice(undefined, 'live');
+    f.outbox.enqueue.mockRejectedValueOnce(new Error('outbox down'));
     await expect(
-      service.submit(
+      f.service.submit(
         invoice,
         InvoiceEvent.create(invoice.id, null, 'queued'),
         null,
       ),
-    ).rejects.toThrow('db');
+    ).rejects.toThrow('outbox down');
+    expect(f.order).not.toContain('commit');
+    expect(f.cache.delete).not.toHaveBeenCalled();
   });
-  it('reserves live credit and enqueues using the same transaction manager', async () => {
-    const order: string[] = [];
-    const context = new TypeOrmTransactionContext();
 
-    const outbox = {
-      enqueue: jest.fn(async () => {
-        expect(context.getManager()).toBe(expectedManager);
-        order.push('outbox');
-        return true;
-      }),
-    };
-    const { service, manager, usage } = build(outbox, order, context);
-    const expectedManager = manager as unknown as EntityManager;
-    const invoice = newInvoice(undefined, 'live');
-    await service.submit(
-      invoice,
-      InvoiceEvent.create(invoice.id, null, 'queued'),
-      null,
+  it('checks idempotency in the correct environment before reserving usage', async () => {
+    const f = build();
+    const invoice = newInvoice(undefined, 'live', 'same-key');
+    f.invoices.findByIdempotencyKey.mockResolvedValueOnce(invoice);
+    await expect(
+      f.service.submit(
+        invoice,
+        InvoiceEvent.create(invoice.id, null, 'queued'),
+        null,
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
+    expect(f.invoices.findByIdempotencyKey).toHaveBeenCalledWith(
+      invoice.idempotencyKey,
+      tenantId,
+      'live',
     );
-    expect(usage.reserve).toHaveBeenCalledWith(tenantId);
-    expect(order).toEqual(['reserve', 'other', 'invoice', 'event', 'outbox']);
-    expect(outbox.enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ environment: 'live', tenantId }),
-    );
-    expect(context.getManager()).toBeUndefined();
+    expect(f.usage.reserve).not.toHaveBeenCalled();
+  });
+
+  it('rejects an event for a different invoice', async () => {
+    const f = build();
+    await expect(
+      f.service.submit(
+        newInvoice(),
+        InvoiceEvent.create('other', null, 'queued'),
+        null,
+      ),
+    ).rejects.toThrow('identity mismatch');
+    expect(f.invoices.insert).not.toHaveBeenCalled();
+  });
+
+  it.each(['authorized', 'rejected', 'failed'] as const)(
+    'settles a live %s transition once',
+    async (status) => {
+      const f = build();
+      const invoice = newInvoice(undefined, 'live');
+      f.invoices.findByIdAndTenantId.mockResolvedValue({
+        status: 'processing',
+      });
+      f.credits.findByReservedInvoiceId.mockResolvedValue(
+        CreditTransaction.create({
+          tenantId,
+          amount: -1,
+          type: 'invoice_authorized',
+          isReservation: true,
+          createdAt: new Date(),
+        }),
+      );
+      invoice.transitionTo('processing');
+      invoice.transitionTo(status);
+      const event = InvoiceEvent.create(invoice.id, 'processing', status);
+      await f.service.transition(invoice, event);
+      expect(f.usage.settle).toHaveBeenCalledWith(invoice.id, tenantId, status);
+      expect(f.credits.confirm).toHaveBeenCalledTimes(1);
+      if (status === 'authorized')
+        expect(f.credits.save).not.toHaveBeenCalled();
+      else
+        expect(f.credits.save).toHaveBeenCalledWith(
+          expect.objectContaining({
+            amount: 1,
+            type: 'invoice_rejected',
+            isReservation: false,
+          }),
+          tenantId,
+        );
+      f.invoices.findByIdAndTenantId.mockResolvedValue({ status });
+      await f.service.transition(invoice, event);
+      expect(f.events.save).toHaveBeenCalledTimes(1);
+      expect(f.usage.settle).toHaveBeenCalledTimes(1);
+      expect(f.credits.confirm).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('rejects a stale transition before writes', async () => {
+    const f = build();
+    const invoice = newInvoice();
+    invoice.setRejected('code', 'reason');
+    f.invoices.findByIdAndTenantId.mockResolvedValue({ status: 'authorized' });
+    await expect(
+      f.service.transition(
+        invoice,
+        InvoiceEvent.create(invoice.id, 'queued', 'rejected'),
+      ),
+    ).rejects.toThrow('Concurrent invoice transition');
+    expect(f.invoices.save).not.toHaveBeenCalled();
   });
 });

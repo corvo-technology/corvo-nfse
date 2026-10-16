@@ -1,0 +1,36 @@
+{
+ "capturedAt": "2026-10-15",
+ "calculator": {
+  "app": "1.6.0",
+  "db": "V0059",
+  "dbDate": "2026-09-30",
+  "source": "local offline instance (docker eclipse-temurin:21-jre + api-regime-geral.jar)"
+ },
+ "description": "NFS-e base for IBS/CBS: 1000 - 100 discount - 30 ISS = 870 (2026 transition).",
+ "input": {
+  "year": 2026,
+  "grossAmount": "1000.00",
+  "discountAmount": "100.00",
+  "issAmount": "30.00"
+ },
+ "steps": [
+  {
+   "name": "base",
+   "method": "POST",
+   "path": "/calculadora/nfse/base-calculo",
+   "request": {
+    "anoFatoGerador": 2026,
+    "valorServico": 1000,
+    "descontoIncondicional": 100,
+    "iss": 30
+   },
+   "status": 200,
+   "response": {
+    "baseCalculo": 870
+   }
+  }
+ ],
+ "expected": {
+  "baseCalculo": "870.00"
+ }
+}

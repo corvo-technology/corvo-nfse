@@ -12,6 +12,7 @@ import {
   ValidateIf,
   IsDateString,
   IsIn,
+  Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { InvoiceStatus } from '../domain/invoice-status';
@@ -27,16 +28,66 @@ export class CustomerAddressDto {
   @IsOptional() @IsString() state?: string;
   @IsOptional() @IsString() zip?: string;
   @IsOptional() @IsString() country?: string;
+  @ApiPropertyOptional({
+    example: '3550308',
+    description: 'Incidence municipality (7 digits, IBGE code), when known.',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{7}$/)
+  municipalityCode?: string;
 }
 
 export class CustomerDto {
-  @IsString() name!: string;
-  @IsString() taxId!: string;
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsString() taxId?: string;
   @IsOptional() @IsString() email?: string;
   @IsOptional()
   @ValidateNested()
   @Type(() => CustomerAddressDto)
   address?: CustomerAddressDto;
+}
+
+/**
+ * Fiscal classification input (RTC). All fields optional and validated
+ * against the NT2026.002 / RTC v1.01 XSD patterns.
+ */
+export class ServiceFiscalDto {
+  @ApiPropertyOptional({
+    example: '010101001',
+    description: 'NBS code (9 digits, [0-9]{9}).',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{9}$/)
+  nbsCode?: string;
+
+  @ApiPropertyOptional({
+    example: '001',
+    description: 'Municipal tax code — cTribMun (3 digits, [0-9]{3}).',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{3}$/)
+  cst?: string;
+
+  @ApiPropertyOptional({
+    example: '010601',
+    description: 'Tax classification code — cClassTrib (6 digits, [0-9]{6}).',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{6}$/)
+  classCode?: string;
+
+  @ApiPropertyOptional({
+    example: '000001',
+    description: 'Operation indicator — cIndOp (6 digits, [0-9]{6}).',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{6}$/)
+  operationIndicator?: string;
 }
 
 export class ServiceDto {
@@ -57,6 +108,22 @@ export class ServiceDto {
   @IsString()
   municipalityCode?: string;
   @IsOptional() @IsString() description?: string;
+  @ApiPropertyOptional({
+    type: ServiceFiscalDto,
+    description:
+      'RTC fiscal classification for the service. Optional; passed through to the fiscal engine.',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ServiceFiscalDto)
+  fiscal?: ServiceFiscalDto;
+  @ApiPropertyOptional({
+    description:
+      'Service profile id (UUID). Optional fiscal classification profile.',
+  })
+  @IsOptional()
+  @IsUUID()
+  serviceProfileId?: string;
 }
 
 export class EmailOptionsDto {
@@ -95,10 +162,28 @@ export class CreateInvoiceDto {
 
   @IsOptional() @IsString() externalId?: string;
 
-  @ValidateNested() @Type(() => CustomerDto) customer!: CustomerDto;
+  @ApiPropertyOptional({
+    type: CustomerDto,
+    description:
+      'Customer (tomador). Optional — omit or send an empty object for anonymous consumer invoices; the tomador is then omitted from the DPS.',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CustomerDto)
+  customer?: CustomerDto;
   @IsDefined() @ValidateNested() @Type(() => ServiceDto) service!: ServiceDto;
 
   @IsNumber() amount!: number;
+
+  @ApiPropertyOptional({
+    example: '100.50',
+    description:
+      'Unconditional discount (>= 0 and <= amount, max 2 decimals). Validated, never silently truncated.',
+  })
+  @IsOptional()
+  @IsNumber()
+  discount?: number;
+
   @IsDateString() competenceDate!: string;
 
   @IsOptional() @IsBoolean() email?: boolean;

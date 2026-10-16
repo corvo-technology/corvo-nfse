@@ -15,7 +15,6 @@ describe('Company', () => {
 
       expect(company.legalName).toBe('Acme Corporation');
       expect(company.taxId).toBe(VALID_CNPJ);
-      expect(company.taxRegime).toBe('Simples Nacional');
       expect(company.status).toBe('pending_setup');
       expect(company.tenantId).toBe('tenant-123');
       expect(company.id).toBeDefined();
@@ -65,18 +64,34 @@ describe('Company', () => {
       ).toThrow('Company.taxId is required');
     });
 
-    it('throws when taxRegime is missing', () => {
-      expect(() =>
-        Company.create(
-          {
-            legalName: 'Valid Name',
-            taxId: VALID_CNPJ,
+    it('does not throw when taxRegime is missing (regime lives on the fiscal profile)', () => {
+      const company = Company.create(
+        {
+          legalName: 'Valid Name',
+          taxId: VALID_CNPJ,
+          municipalityCode: '3550308',
+        } as never,
+        'tenant-123',
+      );
+      expect(company.legalName).toBe('Valid Name');
+    });
 
-            taxRegime: undefined as any,
-          },
-          'tenant-123',
-        ),
-      ).toThrow('Company.taxRegime is required');
+    it('ignores regime input and keeps it off the aggregate snapshot', () => {
+      const company = Company.create(
+        {
+          legalName: 'Valid Name',
+          taxId: VALID_CNPJ,
+          taxRegime: 'MEI',
+          simpleNational: true,
+          specialRegime: '3',
+          municipalityCode: '3550308',
+        },
+        'tenant-123',
+      );
+      const snapshot = company.toSnapshot();
+      expect(snapshot).not.toHaveProperty('taxRegime');
+      expect(snapshot).not.toHaveProperty('simpleNational');
+      expect(snapshot).not.toHaveProperty('specialRegime');
     });
 
     it('trims whitespace from legalName and taxId', () => {
@@ -301,6 +316,32 @@ describe('Company', () => {
       expect(company.tradeName).toBe('Trimmed Trade');
       expect(company.addressCity).toBe('Sao Paulo');
     });
+
+    it('ignores regime fields on update (regime lives on the fiscal profile)', () => {
+      const company = Company.create(
+        {
+          legalName: 'Test Company',
+          taxId: VALID_CNPJ,
+          taxRegime: 'MEI',
+          municipalityCode: '3550308',
+        },
+        'tenant-123',
+      );
+      const before = company.toSnapshot();
+
+      company.update({
+        taxRegime: 'Lucro Real',
+        simpleNational: true,
+        specialRegime: '1',
+      });
+
+      const after = company.toSnapshot();
+      expect(after).not.toHaveProperty('taxRegime');
+      expect({ ...after, updatedAt: null }).toEqual({
+        ...before,
+        updatedAt: null,
+      });
+    });
   });
 
   describe('markDeleted', () => {
@@ -332,14 +373,12 @@ describe('Company', () => {
         tenantId: 'tenant-123',
         legalName: 'Reconstituted Company',
         taxId: '22334455000182',
-        taxRegime: 'Lucro Presumido' as const,
         municipalityCode: '3550308',
         environment: 'live' as const,
         status: 'ready' as const,
         fiscalSchemaVersion: 'v2_02',
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-02'),
-        simpleNational: false,
       };
 
       const company = Company.reconstitute(props);

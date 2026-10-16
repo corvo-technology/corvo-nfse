@@ -1,6 +1,13 @@
-import { parseNfseXml } from 'open-nfse';
+import {
+  buildDps,
+  FinalidadeNFSe,
+  IndicadorDestinatario,
+  parseNfseXml,
+  type DPS,
+} from 'open-nfse';
 import { FakeNfseProvider } from './fake-nfse.provider';
 import type { IIssuePayload } from './nfse-fiscal-provider';
+import { issueParams } from './issue-params';
 
 const payload: IIssuePayload = {
   invoiceId: 'invoice-1',
@@ -58,5 +65,56 @@ describe('Offline test invoices with the installed XML/PDF SDK', () => {
     await expect(
       provider.issue({ ...payload, environment: 'live' }),
     ).rejects.toThrow('only in test');
+  });
+});
+
+describe('Offline test invoices with a prebuilt DPS (preparedDps)', () => {
+  const provider = new FakeNfseProvider();
+
+  /** DPS already assembled by the fiscal engine, carrying the RTC IBSCBS group. */
+  const preparedDps = (): DPS => {
+    const base = buildDps({
+      ...issueParams(payload),
+      nDPS: String(payload.number ?? 1),
+      skipCpfCnpjValidation: true,
+    });
+    return {
+      ...base,
+      infDPS: {
+        ...base.infDPS,
+        IBSCBS: {
+          finNFSe: FinalidadeNFSe.Regular,
+          cIndOp: '000000',
+          indDest: IndicadorDestinatario.TomadorEhDestinatario,
+          valores: { trib: { gIBSCBS: { CST: '000', cClassTrib: '060101' } } },
+        },
+      },
+    };
+  };
+
+  it('issues the authorized XML from preparedDps with the IBSCBS group that parseNfseXml accepts', async () => {
+    const result = await provider.issue({
+      ...payload,
+      preparedDps: preparedDps(),
+    });
+
+    expect(result.success).toBe(true);
+    const xml = result.xmlAuthorized ?? '';
+    expect(xml).toContain('IBSCBS');
+    expect(xml).toContain('<cClassTrib>060101</cClassTrib>');
+    const nfse = parseNfseXml(xml);
+    expect(
+      nfse.infNFSe.DPS.infDPS.IBSCBS?.valores.trib.gIBSCBS.cClassTrib,
+    ).toBe('060101');
+    expect(nfse.infNFSe.DPS.infDPS.valores.vServPrest.vServ).toBe(150.25);
+    expect(nfse.infNFSe.DPS.infDPS.toma?.xNome).toBe('Cliente <Teste>');
+  });
+
+  it('keeps the access key deterministic when the same preparedDps is issued again', async () => {
+    const dps = preparedDps();
+    const first = await provider.issue({ ...payload, preparedDps: dps });
+    const second = await provider.issue({ ...payload, preparedDps: dps });
+
+    expect(second.accessKey).toBe(first.accessKey);
   });
 });

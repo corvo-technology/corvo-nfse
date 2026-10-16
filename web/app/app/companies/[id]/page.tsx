@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import type { Company, Certificate } from "@/lib/types";
 import { CompanyForm } from "@/components/dashboard/company-form";
 import { CertificateUpload } from "@/components/dashboard/certificate-upload";
+import { CompanyFiscalSetup } from "@/components/dashboard/company-fiscal-setup";
 import { companySetup } from "@/lib/company-setup";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -47,7 +48,7 @@ export default function CompanyDetailPage() {
   return <div className="flex max-w-[900px] flex-col gap-6">
     <PageHeader title={company.tradeName || company.legalName} subtitle={`${company.taxId} · ${tc(`status.${company.status}`)}`} actions={can("nfse.companies.manage") && <><Button onClick={() => setEditing(true)}>{t("edit")}</Button><Button variant="danger" onClick={() => setConfirmation({ kind: "company", id })}>{t("delete")}</Button></>} />
     {error && <p role="alert" className="banner banner-danger">{error}</p>}
-    <Card className="grid gap-4 p-5 sm:grid-cols-2"><div><p className="eyebrow">{t("legalName")}</p><p>{company.legalName}</p></div><div><p className="eyebrow">{t("taxRegime")}</p><p>{company.taxRegime}</p></div><div><p className="eyebrow">{t("municipalReg")}</p><p>{company.municipalReg || "—"}</p></div><div><p className="eyebrow">{t("municipality")}</p><p>{company.municipalityCode || "—"} · {company.address.city} {company.address.state}</p></div><div><p className="eyebrow">{t("defaultServiceCode")}</p><p className="font-mono">{company.defaultServiceCode || "—"}</p></div><div><p className="eyebrow">{t("environment")}</p><p>{t(`env.${company.environment}`)}</p></div></Card>
+    <Card className="grid gap-4 p-5 sm:grid-cols-2"><div><p className="eyebrow">{t("legalName")}</p><p>{company.legalName}</p></div><div><p className="eyebrow">{t("taxRegime")}</p><p>{company.taxRegime ?? "—"}</p></div><div><p className="eyebrow">{t("municipalReg")}</p><p>{company.municipalReg || "—"}</p></div><div><p className="eyebrow">{t("municipality")}</p><p>{company.municipalityCode || "—"} · {company.address.city} {company.address.state}</p></div><div><p className="eyebrow">{t("defaultServiceCode")}</p><p className="font-mono">{company.defaultServiceCode || "—"}</p></div><div><p className="eyebrow">{t("environment")}</p><p>{t(`env.${company.environment}`)}</p></div></Card>
     {company.status === "ready" && <p className="banner banner-ok"><Check size={16} aria-hidden className="mt-0.5 flex-none text-accent" />{t("setup.complete")}</p>}
     {company.status === "blocked" && <p role="alert" className="banner banner-danger">{t("blocked")}</p>}
     {company.status !== "blocked" && !setup.allDone && (
@@ -73,6 +74,7 @@ export default function CompanyDetailPage() {
           {company.environment === "test" && !setup.allDone && !company.setupGaps?.includes("municipality_code") && <p className="text-[12.5px] text-text-4">{t("setup.testNote")}</p>}
         </Card>
     )}
+    <details className="group"><summary className="cursor-pointer text-sm underline">{t("fiscalAdvanced")}</summary><div className="mt-4"><CompanyFiscalSetup company={company} /></div></details>
     {certificateView && <Card className="flex flex-col gap-4 p-5"><div className="flex items-center justify-between gap-4"><h2 className="text-base font-medium">{t("certificates")}</h2>{can("nfse.certificates.manage") && <Button onClick={() => setUploading(true)}>{t("upload")}</Button>}</div>{certs.length === 0 ? <p className="text-sm text-text-3">{t("noCertificates")}</p> : certs.map((cert) => <div key={cert.id} className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4"><div><p>{cert.subject}</p><p className="font-mono text-xs text-text-3">{cert.serialNumber}</p><p className="text-sm text-text-3">{t("validUntil")}: {date(cert.validUntil)} · {t(new Date(cert.validUntil).getTime() < now ? "expired" : cert.status)}</p>{new Date(cert.validUntil).getTime() >= now && new Date(cert.validUntil).getTime() - now < 30 * 86400000 && <p className="text-[12.5px] text-warn">{t("expiresSoon")}</p>}</div>{can("nfse.certificates.manage") && <Button variant="danger" onClick={() => setConfirmation({ kind: "certificate", id: cert.id })}>{t("revoke")}</Button>}</div>)}</Card>}
     <Modal open={editing} onClose={() => setEditing(false)} title={t("edit")} wide><CompanyForm company={company} onCancel={() => setEditing(false)} onSave={async (input) => { setCompany(await companies.update(id, input)); setEditing(false); }} /></Modal>
     <Modal open={uploading} onClose={() => setUploading(false)} title={t("upload")}><CertificateUpload companyId={id} onUploaded={(cert) => { setCerts([cert]); setUploading(false); setRevision((value) => value + 1); }} /></Modal>

@@ -18,7 +18,13 @@ Verificado em `open-nfse` 0.11.0 (instalado):
 - `emitir(params)` exige `DpsCounter` e `RetryStore`; a própria lib orienta **`emitirDpsPronta(dps)`** para cenários avançados (incluindo IBSCBS) e este **não usa** `DpsCounter`.
 - A Corvo hoje usa `emitir(..., dryRun)` + `RetryStore` próprio (`OpenNfseProvider`) e sequência DPS própria (`DPS_SEQUENCE_REPOSITORY`).
 
-**Não verificado (bloqueante, tarefa 0 do plano):** o contrato real da Calculadora. A página de documentação é renderizada por JavaScript e `…/api/v3/api-docs` respondeu 404 em 2026-10-13. Endpoints citados no briefing (`/calculadora/regime-geral`, `/calculadora/nfse/base-calculo`, consultas de classificação/local/indicador/versão) **não** devem ser usados no código até conferidos no Swagger da versão efetivamente instalada. O plano começa baixando o artefato oficial offline, subindo-o localmente e salvando o OpenAPI real em `docs/` como referência versionada.
+**Verificado em 2026-10-15 na própria Calculadora (app `1.6.0`, dados `V0059`)** — detalhes, OpenAPI e fixtures reais em `docs/fiscal/rtc/`:
+- Distribuição oficial: zip de ~88 MB com `api-regime-geral.jar`, banco SQLite de regras e o código-fonte (Spring Boot, Java 21); roda com `--spring.profiles.active=offline` na porta 8080, context-path `/api`; OpenAPI em `/api/api-docs`. Não há imagem Docker oficial confirmada nem arquivo de licença no pacote.
+- Partida ~4 min, ~714 MiB, 25–440 ms por cálculo. O site público tem WAF e bloqueia rajadas.
+- Simples Nacional não é outro componente: é o campo `OpcaoSimplesNacional` do pedido.
+- O fluxo de NFS-e são duas chamadas: `POST nfse/base-calculo` (ISS e desconto saem da base; ex.: 1000 − 100 − 30 = 870) e `POST regime-geral` (CBS/IBS por componente, com `memoriaCalculo`).
+- **Competência ≥ 2027-01-01**: sem alíquotas nominais o motor responde 422; com elas calcula, mas marca `calculoSimulado: true`. A Corvo não estima alíquotas ⇒ bloqueio `TAX_RATE_NOT_FOUND` até o governo publicar as alíquotas.
+- Catálogos (NBS, CST × cClassTrib por NBS, cIndOp) são consultáveis por endpoint e **não trazem vigência**: valem para a `data` consultada.
 
 ## 3. Calculadora RTC — adapter e deploy
 
@@ -31,7 +37,7 @@ Verificado em `open-nfse` 0.11.0 (instalado):
 
 ## 4. Catálogos oficiais (NBS, CST, cClassTrib, cIndOp, local)
 
-Importação a partir das consultas do próprio motor (após a tarefa 0), gerando os arquivos versionados de catálogo do repositório (mesmo formato do Spec 2: versão, fonte, checksum, data) por script, revisados em PR. Nova importação gera nova versão; snapshots antigos mantêm a versão usada. O `ServiceTaxClassifier` passa a validar coerência CST × cClassTrib × cIndOp contra essas versões, e `catalogValidated` passa a `true`. Mudança de versão de catálogo não altera notas já calculadas.
+Como as respostas não trazem vigência, a validação **consulta a Calculadora com a data da competência** (`RtcFiscalCatalog`, com cache em memória invalidado quando `versaoApp/versaoDb` mudar), em vez de importar arquivos JSON. A versão dos dados (`1.6.0/V0059`) é gravada no snapshot, o que mantém a reprodutibilidade. O cTribNac continua no JSON do spec 2 (o motor não tem a lista nacional). Motor fora do ar durante a validação é falha **retryable** (não marca `catalogValidated=false`); sem Calculadora configurada, a classificação fica não validada e IBS/CBS obrigatório é bloqueado. `catalogValidated` passa a `true` quando o par CST × cClassTrib pertence à lista da NBS e o cIndOp é compatível.
 
 ## 5. DpsBuilder (Builder, sem regra fiscal)
 
@@ -65,10 +71,12 @@ Adapter RTC (contrato, timeout, 5xx, 4xx, resposta inválida, indisponibilidade)
 
 ## 10. Decisões em aberto
 
-- **E1:** artefato e licença de distribuição da Calculadora offline (imagem, jar ou binário) — definido na tarefa 0.
+- **E1:** licença de uso da Calculadora em produção. O artefato (zip com jar) está identificado, mas o pacote não traz arquivo de licença; confirmar com o responsável do produto/jurídico. O governo descreve a ferramenta como gratuita e de código aberto.
 - **E2:** se `emitirDpsPronta` não garantir (a)–(c) da §6, avaliar manter `emitir(params)` com extensão da lib vs. adapter próprio.
 - **E3:** valores de tolerância de arredondamento (por regra, a conferir).
 
 ## 11. Fora de escopo
 
 NT 009/V1.04.00 (notas de crédito/débito, `vAjusteBC`, locação), cancelamento/substituição, salão-parceiro, NF-e/NFC-e.
+- **E4:** competências de 2027 em diante ficam bloqueadas até o governo publicar as alíquotas (o motor as exige como entrada). Decidir se a Corvo aceitará, no futuro, alíquotas informadas por fonte oficial versionada (nunca estimadas).
+- **E5:** operação da atualização de versão (workflow semanal + runbook, Task 10 do plano).

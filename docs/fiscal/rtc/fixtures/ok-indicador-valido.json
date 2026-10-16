@@ -1,0 +1,62 @@
+{
+  "capturedAt": "2026-10-15",
+  "calculator": {
+    "app": "1.6.0",
+    "db": "V0059",
+    "dbDate": "2026-09-30",
+    "source": "local offline instance (docker eclipse-temurin:21-jre + api-regime-geral.jar)"
+  },
+  "description": "GET lists the operation indicators published for NBS 115011000 on the competence date and POST validates the compatible cIndOp 100301 x cClassTrib 000001 combination. The request body is NfseValidacaoIndicadorOperacaoInput (cClassTrib, cIndOp, dataOcorrenciaFatoGerador, nbs — all required; cTribNac optional, see error-ctribnac-seis-digitos.json for why it is not sent).",
+  "input": {
+    "competenceDate": "2026-12-10",
+    "serviceCode": "010601",
+    "nbsCode": "115011000",
+    "cst": "000",
+    "classCode": "000001",
+    "operationIndicator": "100301"
+  },
+  "steps": [
+    {
+      "name": "indicadores",
+      "method": "GET",
+      "path": "/calculadora/nfse/indicador-operacao?dataOcorrenciaFatoGerador=2026-12-10&nbs=115011000",
+      "status": 200,
+      "response": [
+        {
+          "cIndOp": "100301",
+          "tipoOperacao": "Demais serviços, em operações onerosas",
+          "codigoLocalFornecimento": 11,
+          "localFornecimento": "Local do domicílio principal do adquirente residente ou domiciliado no País. Nas aquisições indicadas no art. 11, §4º, II, considera-se domicílio principal do adquirente o estabelecimento matriz",
+          "codigoLocalIncidencia": 2,
+          "localIncidencia": "Endereço do Tomador/Adquirente",
+          "prestacaoServicoOnerosa": true,
+          "adquirenteExterior": false
+        }
+      ]
+    },
+    {
+      "name": "validate-compativel",
+      "method": "POST",
+      "path": "/calculadora/nfse/indicador-operacao/validate",
+      "request": {
+        "cClassTrib": "000001",
+        "cIndOp": "100301",
+        "dataOcorrenciaFatoGerador": "2026-12-10",
+        "nbs": "115011000"
+      },
+      "status": 200,
+      "response": {
+        "cIndOp": "100301",
+        "cClassTrib": "000001",
+        "nbs": "115011000",
+        "dataOcorrenciaFatoGerador": "2026-12-10",
+        "valido": true
+      }
+    }
+  ],
+  "expected": {
+    "cIndOp": "100301",
+    "valido": true,
+    "version": "1.6.0/V0059"
+  }
+}

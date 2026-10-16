@@ -19,6 +19,7 @@ import { redisExports, redisProviders } from './redis.providers';
       { name: 'nfse-reconciliation' },
       { name: 'nfse-doc-prep' },
       { name: 'nfse-email' },
+      { name: 'nfse-fiscal-reconcile' },
     ),
   ],
   providers: redisProviders,

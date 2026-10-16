@@ -48,6 +48,23 @@ export interface OutboxConfig {
   scheduleMaxDays: number;
 }
 
+export interface FiscalConfig {
+  ibsCbsUnavailableMode: 'block' | 'warn';
+}
+
+export type RtcDpsLayout = 'rtc-v1.01';
+
+export interface RtcConfig {
+  url?: string;
+  timeoutMs: number;
+  maxConcurrency: number;
+  circuitFailureThreshold: number;
+  circuitResetMs: number;
+  dpsLayout: RtcDpsLayout;
+  /** Versão fixada `"{versaoApp}/{versaoDb}"` para detectar updates publicados. */
+  expectedVersion?: string;
+}
+
 export type OpenApiConfig = {
   enabled: boolean;
   path: string;
@@ -193,6 +210,8 @@ export type AppConfiguration = {
   redis: RedisConfig;
   queue: QueueConfig;
   outbox: OutboxConfig;
+  fiscal: FiscalConfig;
+  rtc: RtcConfig;
   logging: LoggingConfig;
   openTelemetry: OpenTelemetryConfig;
   sentry: SentryConfig;

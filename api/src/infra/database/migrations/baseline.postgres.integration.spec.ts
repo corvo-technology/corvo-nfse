@@ -110,7 +110,7 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
     expect(rows.map((r) => r.tablename).sort()).toEqual(
       [...db.entityMetadatas.map((m) => m.tableName), 'migrations'].sort(),
     );
-    expect(db.entityMetadatas).toHaveLength(25);
+    expect(db.entityMetadatas).toHaveLength(26);
     const diff = await db.driver.createSchemaBuilder().log();
     expect(diff.upQueries.map((q) => q.query)).toEqual([]);
     expect(await db.runMigrations()).toEqual([]);
@@ -295,6 +295,7 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
   it('reverts and reapplies the last migration without touching other schemas', async () => {
     await db.undoLastMigration();
     await db.undoLastMigration();
+    await db.undoLastMigration();
     const tenantId = randomUUID();
     await new TypeOrmTenantRepository(
       db.getRepository(TenantOrmEntity),
@@ -318,12 +319,15 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
       [
         ...db.entityMetadatas
           .map((m) => m.tableName)
-          .filter((name) => name !== 'outbox_messages'),
+          .filter(
+            (name) =>
+              name !== 'outbox_messages' && name !== 'company_fiscal_profiles',
+          ),
         'migrations',
       ].sort(),
     );
     expect(await db.showMigrations()).toBe(true);
-    expect(await db.runMigrations()).toHaveLength(2);
+    expect(await db.runMigrations()).toHaveLength(3);
     const legacy = await db.query(
       `SELECT id, status, municipality_code, default_service_code FROM "${schema}".nfse_companies WHERE id IN ($1, $2)`,
       [readyId, blockedId],

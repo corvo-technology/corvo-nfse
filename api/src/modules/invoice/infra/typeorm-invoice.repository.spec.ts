@@ -9,7 +9,9 @@ describe('TypeOrmInvoiceRepository', () => {
     createQueryBuilder: jest.fn(),
   };
 
-  const repository = new TypeOrmInvoiceRepository(mockRepo as any);
+  const repository = new TypeOrmInvoiceRepository({
+    repository: () => mockRepo,
+  } as any);
 
   beforeEach(() => {
     jest.clearAllMocks();

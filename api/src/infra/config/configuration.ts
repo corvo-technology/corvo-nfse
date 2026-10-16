@@ -13,6 +13,8 @@ export type {
   RedisConfig,
   OutboxConfig,
 } from './configuration.types';
+export type { FiscalConfig } from './configuration.types';
+export type { RtcConfig } from './configuration.types';
 export type { AuthConfig } from './configuration.types';
 export type { StorageConfig } from './configuration.types';
 export type { PaymentsConfig, StripeConfig } from './configuration.types';
@@ -101,6 +103,18 @@ export default function configuration(): AppConfiguration {
       leaseMs: env.OUTBOX_LEASE_MS,
       maxAttempts: env.OUTBOX_MAX_ATTEMPTS,
       scheduleMaxDays: env.OUTBOX_SCHEDULE_MAX_DAYS,
+    },
+    fiscal: {
+      ibsCbsUnavailableMode: env.FISCAL_IBSCBS_UNAVAILABLE_MODE,
+    },
+    rtc: {
+      url: env.RTC_CALCULATOR_URL,
+      timeoutMs: env.RTC_CALCULATOR_TIMEOUT_MS,
+      maxConcurrency: env.RTC_CALCULATOR_MAX_CONCURRENCY,
+      circuitFailureThreshold: env.RTC_CIRCUIT_FAILURE_THRESHOLD,
+      circuitResetMs: env.RTC_CIRCUIT_RESET_MS,
+      dpsLayout: env.FISCAL_DPS_LAYOUT,
+      expectedVersion: env.RTC_EXPECTED_VERSION,
     },
     logging: {
       level: env.LOG_LEVEL,

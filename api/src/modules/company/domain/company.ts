@@ -23,9 +23,6 @@ export interface CompanyProps {
   municipalReg?: string;
   municipalityCode?: string;
   defaultServiceCode?: string;
-  taxRegime: TaxRegime;
-  simpleNational: boolean;
-  specialRegime?: string;
   addressStreet?: string;
   addressNumber?: string;
   addressComplement?: string;
@@ -43,10 +40,21 @@ export interface CompanyProps {
 
 // ─── Input types ─────────────────────────────────────────────────────────────
 
-export type CreateCompanyInput = Pick<
-  CompanyProps,
-  'legalName' | 'taxId' | 'taxRegime'
-> & {
+/**
+ * Legacy-shaped fiscal regime fields accepted by the HTTP API for backward
+ * compatibility. The {@link Company} aggregate no longer stores these — they
+ * are routed to the company's fiscal profile (see `CompanyFiscalProfile`).
+ */
+export interface CompanyRegimeInput {
+  taxRegime: TaxRegime;
+  simpleNational?: boolean;
+  specialRegime?: string;
+}
+
+export type CreateCompanyInput = {
+  legalName: string;
+  taxId: string;
+  taxRegime: TaxRegime;
   tradeName?: string;
   municipalReg?: string;
   municipalityCode?: string;
@@ -99,9 +107,6 @@ export class Company {
     if (!input.taxId?.trim()) {
       throw new Error('Company.taxId is required');
     }
-    if (!input.taxRegime) {
-      throw new Error('Company.taxRegime is required');
-    }
 
     const now = new Date();
     const normalizedTaxId = normalizeTaxID(input.taxId) ?? input.taxId.trim();
@@ -114,9 +119,6 @@ export class Company {
       municipalReg: input.municipalReg?.trim(),
       municipalityCode: input.municipalityCode?.trim(),
       defaultServiceCode: input.defaultServiceCode?.trim(),
-      taxRegime: input.taxRegime,
-      simpleNational: input.simpleNational ?? false,
-      specialRegime: input.specialRegime?.trim(),
       addressStreet: input.address?.street?.trim(),
       addressNumber: input.address?.number?.trim(),
       addressComplement: input.address?.complement?.trim(),
@@ -166,18 +168,6 @@ export class Company {
 
   get defaultServiceCode(): string | undefined {
     return this.props.defaultServiceCode;
-  }
-
-  get taxRegime(): TaxRegime {
-    return this.props.taxRegime;
-  }
-
-  get simpleNational(): boolean {
-    return this.props.simpleNational;
-  }
-
-  get specialRegime(): string | undefined {
-    return this.props.specialRegime;
   }
 
   get addressStreet(): string | undefined {
@@ -327,11 +317,6 @@ export class Company {
         input.defaultServiceCode === null
           ? undefined
           : input.defaultServiceCode.trim();
-    if (input.taxRegime !== undefined) this.props.taxRegime = input.taxRegime;
-    if (input.simpleNational !== undefined)
-      this.props.simpleNational = input.simpleNational;
-    if (input.specialRegime !== undefined)
-      this.props.specialRegime = input.specialRegime?.trim();
     if (input.address !== undefined) {
       if (input.address === null) {
         // Clear all address fields

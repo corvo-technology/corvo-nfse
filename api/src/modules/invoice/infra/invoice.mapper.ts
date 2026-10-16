@@ -1,7 +1,34 @@
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
-import { Invoice, InvoiceProps, LastEmailStatus } from '../domain/invoice';
+import {
+  Invoice,
+  InvoiceProps,
+  LastEmailStatus,
+  ServiceSnapshot,
+} from '../domain/invoice';
 import { InvoiceStatus } from '../domain/invoice-status';
 import { InvoiceOrmEntity } from './invoice.orm-entity';
+
+type PersistedServiceSnapshot = ServiceSnapshot & { discount?: number };
+
+function normalizeCustomerSnapshot(
+  value: Record<string, unknown> | null | undefined,
+): InvoiceProps['customerSnapshot'] {
+  if (!value || Object.keys(value).length === 0) {
+    return null;
+  }
+  return value as unknown as InvoiceProps['customerSnapshot'];
+}
+
+function readServiceSnapshot(
+  value: Record<string, unknown> | null | undefined,
+): {
+  snapshot: ServiceSnapshot;
+  discount?: number;
+} {
+  const { discount, ...rest } = (value ??
+    {}) as unknown as PersistedServiceSnapshot;
+  return { snapshot: rest, discount };
+}
 
 export class InvoiceMapper {
   toDomain(orm: InvoiceOrmEntity): Invoice {
@@ -16,10 +43,11 @@ export class InvoiceMapper {
       externalId: orm.externalId ?? null,
       idempotencyKey: orm.idempotencyKey ?? null,
       status: orm.status as InvoiceStatus,
-      customerSnapshot:
-        orm.customerSnapshot as unknown as InvoiceProps['customerSnapshot'],
-      serviceSnapshot:
-        orm.serviceSnapshot as unknown as InvoiceProps['serviceSnapshot'],
+      // `customer_snapshot` is NOT NULL — anonymous consumer invoices are
+      // persisted as `{}` and read back as `null`.
+      customerSnapshot: normalizeCustomerSnapshot(orm.customerSnapshot),
+      serviceSnapshot: readServiceSnapshot(orm.serviceSnapshot).snapshot,
+      discount: readServiceSnapshot(orm.serviceSnapshot).discount,
       taxSnapshot: orm.taxSnapshot,
       amount: Number(orm.amount),
       currency: orm.currency,
@@ -59,14 +87,18 @@ export class InvoiceMapper {
     orm.externalId = snapshot.externalId ?? undefined;
     orm.idempotencyKey = snapshot.idempotencyKey ?? undefined;
     orm.status = snapshot.status;
-    orm.customerSnapshot = snapshot.customerSnapshot as unknown as Record<
-      string,
-      unknown
-    >;
-    orm.serviceSnapshot = snapshot.serviceSnapshot as unknown as Record<
-      string,
-      unknown
-    >;
+    // `customer_snapshot` is NOT NULL — anonymous consumer invoices are
+    // persisted as `{}` and read back as `null`.
+    orm.customerSnapshot = (snapshot.customerSnapshot ??
+      {}) as unknown as Record<string, unknown>;
+    // No dedicated discount column yet: `discount` rides in the
+    // `service_snapshot` jsonb and is lifted back by `readServiceSnapshot`.
+    const { discount, ...serviceSnapshot } =
+      snapshot.serviceSnapshot as PersistedServiceSnapshot;
+    orm.serviceSnapshot = {
+      ...serviceSnapshot,
+      ...(discount !== undefined ? { discount } : {}),
+    };
     orm.taxSnapshot = snapshot.taxSnapshot;
     orm.amount = snapshot.amount;
     orm.currency = snapshot.currency;

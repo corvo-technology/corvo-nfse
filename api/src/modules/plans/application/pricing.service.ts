@@ -28,7 +28,7 @@ export class PricingService {
       basePriceCents: 0,
       perCreditCents: 0,
       name: 'Free',
-      allowance: 30,
+      allowance: 15,
       dailyLimit: 3,
       maxCompanies: 1,
       support: 'community',

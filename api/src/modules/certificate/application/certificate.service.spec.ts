@@ -61,13 +61,11 @@ describe('CertificateService', () => {
     tenantId,
     legalName: 'Test Company',
     taxId: '12345678000190',
-    taxRegime: 'Simples Nacional' as const,
     environment: 'sandbox' as const,
     status: 'ready' as const,
     fiscalSchemaVersion: 'v2_02',
     createdAt: new Date(),
     updatedAt: new Date(),
-    simpleNational: true,
     recomputeStatus: jest.fn(),
   };
 

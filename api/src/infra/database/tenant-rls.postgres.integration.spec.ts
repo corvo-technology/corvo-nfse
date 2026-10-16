@@ -1,3 +1,14 @@
+import { TypeOrmUnitOfWork } from '@/infra/persistence/typeorm/typeorm-unit-of-work';
+import { ConfigService } from '@nestjs/config';
+import { createHash } from 'node:crypto';
+import { PasswordlessWorkspaceService } from '@/modules/auth/application/passwordless-workspace.service';
+import { TypeOrmWorkspaceRepository } from '@/modules/auth/infra/typeorm-workspace.repository';
+import type { AuthUser } from '@/modules/auth/domain/auth-user';
+import { McpAuthService } from '@/modules/mcp/mcp-auth.service';
+import {
+  TypeOrmOAuthAuthorizationCodeRepository,
+  TypeOrmAuthSessionRepository,
+} from '@/infra/persistence/typeorm/repositories/auth.repositories';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
@@ -12,16 +23,13 @@ import {
 } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
 import { TypeOrmInvoiceRepository } from '@/modules/invoice/infra/typeorm-invoice.repository';
-import { InvoiceOrmEntity } from '@/modules/invoice/infra/invoice.orm-entity';
 import { TypeOrmCompanyRepository } from '@/modules/company/infra/typeorm-company.repository';
 import { CompanyOrmEntity } from '@/modules/company/infra/company.orm-entity';
 import { TypeOrmCertificateRepository } from '@/modules/certificate/infra/typeorm-certificate.repository';
 import { CertificateOrmEntity } from '@/modules/certificate/infra/certificate.orm-entity';
 import { TypeOrmDpsSequenceRepository } from '@/modules/invoice/infra/typeorm-dps-sequence.repository';
 import { TypeOrmInvoiceEventRepository } from '@/modules/invoice/infra/typeorm-invoice-event.repository';
-import { InvoiceEventOrmEntity } from '@/modules/invoice/infra/invoice-event.orm-entity';
 import { TypeOrmCreditTransactionRepository } from '@/modules/credits/infra/typeorm-credit-transaction.repository';
-import { CreditTransactionOrmEntity } from '@/modules/credits/infra/credit-transaction.orm-entity';
 import { TypeOrmWebhookConfigRepository } from '@/modules/webhooks-config/infra/typeorm-webhook-config.repository';
 import { WebhookConfigEntity } from '@/modules/webhooks-config/infra/webhook-config.orm-entity';
 import { TypeormWebhookDeliveryRepository } from '@/modules/webhooks-config/infra/typeorm-webhook-delivery.repository';
@@ -29,7 +37,6 @@ import { WebhookDeliveryOrmEntity } from '@/modules/webhooks-config/infra/webhoo
 import { TypeormTenantSettingsRepository } from '@/modules/auth/infra/typeorm-tenant-settings.repository';
 import { TenantSettingsOrmEntity } from '@/modules/auth/infra/tenant-settings.orm-entity';
 import { TypeOrmMcpConnectionRepository } from '@/modules/mcp/infra/mcp-connection.repository';
-import { McpConnectionOrmEntity } from '@/modules/mcp/infra/mcp-connection.orm-entity';
 import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
 import { TypeOrmBillingRepository } from '@/modules/billing/infra/typeorm-billing.repository';
 import { RlsConnectionScopeService } from './rls-connection-scope.service';
@@ -134,7 +141,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       ],
     ]) {
       await admin.query(
-        `INSERT INTO ${table('nfse_companies')} (id,tenant_id,legal_name,tax_id,tax_regime,environment) VALUES ($1,$2,'Fixture','11222333000181','MEI','test')`,
+        `INSERT INTO ${table('nfse_companies')} (id,tenant_id,legal_name,tax_id,environment) VALUES ($1,$2,'Fixture','11222333000181','test')`,
         [company, tenant],
       );
       await admin.query(
@@ -224,7 +231,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
     await runtime.initialize();
     installRlsConnectionScope(runtime);
     await new RlsConnectionScopeService(runtime).onModuleInit();
-  }, 60000);
+  }, 180000);
   afterAll(async () => {
     if (runtime?.isInitialized) await runtime.destroy();
     if (admin?.isInitialized) {
@@ -233,7 +240,163 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       await admin.destroy();
     }
   });
-  it('enables and forces RLS on all 17 tenant tables', async () => {
+  const workspaceHarness = () => {
+    const context = new TypeOrmTransactionContext();
+    const helper = new TypeOrmRepositoryHelper(runtime, context);
+    const service = new PasswordlessWorkspaceService(
+      new TypeOrmUnitOfWork(runtime, context),
+      new TypeOrmWorkspaceRepository(helper, context),
+    );
+    return { helper, service };
+  };
+  const createAuthUser = async (): Promise<AuthUser> => {
+    const id = randomUUID();
+    const email = `${id}@example.invalid`;
+    await admin.query(
+      `INSERT INTO ${table('auth_users')} (id,email,name) VALUES ($1,$2,'Bootstrap')`,
+      [id, email],
+    );
+    return {
+      id,
+      email,
+      name: 'Bootstrap',
+      emailVerifiedAt: null,
+      primaryIdentityType: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  };
+
+  it('serializes simultaneous workspace bootstrap and rejects inactive membership and reused email', async () => {
+    const account = await createAuthUser();
+    const { service } = workspaceHarness();
+    await Promise.all([
+      service.ensureWorkspace(account),
+      workspaceHarness().service.ensureWorkspace(account),
+    ]);
+    for (const [name, column] of [
+      ['tenants', 'id'],
+      ['tenant_billing', 'tenant_id'],
+      ['tenant_memberships', 'auth_user_id'],
+    ]) {
+      expect(
+        await admin.query(`SELECT 1 FROM ${table(name)} WHERE ${column}=$1`, [
+          account.id,
+        ]),
+      ).toHaveLength(1);
+    }
+    await admin.query(
+      `UPDATE ${table('tenant_memberships')} SET is_active=false WHERE auth_user_id=$1`,
+      [account.id],
+    );
+    await expect(service.ensureWorkspace(account)).rejects.toThrow(
+      'Tenant membership is inactive',
+    );
+    const duplicate = await createAuthUser();
+    await admin.query(
+      `UPDATE ${table('tenant_billing')} SET billing_email=$1 WHERE tenant_id=$2`,
+      [duplicate.email.toUpperCase(), account.id],
+    );
+    await expect(service.ensureWorkspace(duplicate)).rejects.toThrow(
+      'Email already belongs to a free workspace',
+    );
+    expect(
+      await admin.query(`SELECT 1 FROM ${table('tenants')} WHERE id=$1`, [
+        duplicate.id,
+      ]),
+    ).toEqual([]);
+  });
+
+  it('rolls back workspace and billing when the membership insert fails', async () => {
+    const account = await createAuthUser();
+    await admin.query(
+      `CREATE FUNCTION "${schema}".reject_bootstrap() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.auth_user_id='${account.id}'::uuid THEN RAISE EXCEPTION 'membership down'; END IF; RETURN NEW; END $$`,
+    );
+    await admin.query(
+      `CREATE TRIGGER reject_bootstrap BEFORE INSERT ON ${table('tenant_memberships')} FOR EACH ROW EXECUTE FUNCTION "${schema}".reject_bootstrap()`,
+    );
+    try {
+      await expect(
+        workspaceHarness().service.ensureWorkspace(account),
+      ).rejects.toThrow('membership down');
+      for (const [name, column] of [
+        ['tenants', 'id'],
+        ['tenant_billing', 'tenant_id'],
+        ['tenant_memberships', 'auth_user_id'],
+      ]) {
+        expect(
+          await admin.query(`SELECT 1 FROM ${table(name)} WHERE ${column}=$1`, [
+            account.id,
+          ]),
+        ).toEqual([]);
+      }
+    } finally {
+      await admin.query(
+        `DROP TRIGGER reject_bootstrap ON ${table('tenant_memberships')}`,
+      );
+      await admin.query(`DROP FUNCTION "${schema}".reject_bootstrap()`);
+    }
+  });
+
+  it('consumes codes and rotates refresh tokens once through real repository contracts', async () => {
+    const account = await createAuthUser();
+    const { service, helper } = workspaceHarness();
+    await service.ensureWorkspace(account);
+    const codes = new TypeOrmOAuthAuthorizationCodeRepository(helper);
+    const sessions = new TypeOrmAuthSessionRepository(helper);
+    const mcp = new McpAuthService(
+      codes,
+      sessions,
+      new TypeOrmMcpConnectionRepository(helper),
+      new ConfigService({ auth: { jwtSecret: 'a'.repeat(32) } }),
+      new TypeOrmTenantMembershipRepository(helper),
+    );
+    const verifier = 'repository-contract-verifier';
+    const challenge = createHash('sha256').update(verifier).digest('base64url');
+    const code = await mcp.createAuthorizationCode({
+      clientId: 'corvo-mcp',
+      userId: account.id,
+      tenantId: account.id,
+      redirectUri: 'https://example.invalid/callback',
+      scope: 'nfse:read',
+      codeChallenge: challenge,
+      codeChallengeMethod: 'S256',
+    });
+    const exchanged = await Promise.allSettled(
+      [1, 2].map(() =>
+        mcp.exchangeCode({
+          code,
+          codeVerifier: verifier,
+          clientId: 'corvo-mcp',
+          redirectUri: 'https://example.invalid/callback',
+        }),
+      ),
+    );
+    const successes = exchanged.filter(
+      (result) => result.status === 'fulfilled',
+    );
+    expect(successes).toHaveLength(1);
+    const tokens = successes[0].value;
+    const payload = await mcp.validateAccessToken(tokens.accessToken);
+    expect(payload.tenant_id).toBe(account.id);
+    const rotated = await Promise.allSettled([
+      mcp.refreshTokens(tokens.refreshToken),
+      mcp.refreshTokens(tokens.refreshToken),
+    ]);
+    expect(
+      rotated.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    await mcp.revokeSession(payload.session_id!, tenantB, account.id);
+    await expect(
+      mcp.validateAccessToken(tokens.accessToken),
+    ).resolves.toMatchObject({ sub: account.id });
+    await mcp.revokeSession(payload.session_id!, account.id, account.id);
+    await expect(mcp.validateAccessToken(tokens.accessToken)).rejects.toThrow(
+      'Invalid or revoked session',
+    );
+  });
+
+  it('enables and forces RLS on all 21 tenant tables', async () => {
     const rows: Array<{
       relrowsecurity: boolean;
       relforcerowsecurity: boolean;
@@ -241,7 +404,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       'SELECT relrowsecurity,relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$1 AND c.relrowsecurity',
       [schema],
     );
-    expect(rows).toHaveLength(17);
+    expect(rows).toHaveLength(21);
     expect(rows.every((row) => row.relforcerowsecurity)).toBe(true);
     const [flags]: Array<{ rolsuper: boolean; rolbypassrls: boolean }> =
       await runtime.query(
@@ -382,7 +545,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       companyA,
     ]);
     const events = new TypeOrmInvoiceEventRepository(
-      runtime.getRepository(InvoiceEventOrmEntity),
+      new TypeOrmRepositoryHelper(runtime, new TypeOrmTransactionContext()),
     );
     expect(await events.findByInvoiceId(invoiceB, tenantA)).toEqual([]);
     const event = (await events.findByInvoiceId(invoiceA, tenantA))[0];
@@ -401,7 +564,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       runtime.getRepository(CompanyOrmEntity),
     );
     const invoices = new TypeOrmInvoiceRepository(
-      runtime.getRepository(InvoiceOrmEntity),
+      new TypeOrmRepositoryHelper(runtime, new TypeOrmTransactionContext()),
     );
     expect(
       await companies.findByIdAndTenantId(companyB, tenantA, 'test'),
@@ -451,7 +614,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       'America/Sao_Paulo',
     );
     const credits = new TypeOrmCreditTransactionRepository(
-      runtime.getRepository(CreditTransactionOrmEntity),
+      new TypeOrmRepositoryHelper(runtime, new TypeOrmTransactionContext()),
     );
     expect(await credits.calculateBalance(tenantA)).toBe(0);
     expect(await credits.calculateBalance(tenantB)).toBe(10);
@@ -461,7 +624,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
     );
     expect(await billing.period(periodB, tenantA)).toBeNull();
     const mcp = new TypeOrmMcpConnectionRepository(
-      runtime.getRepository(McpConnectionOrmEntity),
+      new TypeOrmRepositoryHelper(runtime, new TypeOrmTransactionContext()),
     );
     expect(
       (await mcp.findAllByUserAndTenant(user, tenantA)).map((row) => row.id),
@@ -474,7 +637,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
   });
   it('rejects absent tenant context before repository SQL and nested tenant changes', async () => {
     const invoices = new TypeOrmInvoiceRepository(
-      runtime.getRepository(InvoiceOrmEntity),
+      new TypeOrmRepositoryHelper(runtime, new TypeOrmTransactionContext()),
     );
     await expect(
       invoices.findByIdAndTenantId(invoiceB, undefined as unknown as string),

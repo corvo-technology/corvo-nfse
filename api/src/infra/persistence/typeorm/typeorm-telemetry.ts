@@ -13,8 +13,8 @@ import {
   durationHistogramOptions,
 } from '@/shared/observability/duration-histogram';
 
-const TRACER_NAME = 'greenflow.typeorm';
-const METER_NAME = 'greenflow.typeorm';
+const TRACER_NAME = 'corvo.typeorm';
+const METER_NAME = 'corvo.typeorm';
 
 const repositoryOperations = new Set([
   'average',
@@ -71,7 +71,7 @@ const repositoryProxies = new WeakMap<object, object>();
 const operationDuration = metrics
   .getMeter(METER_NAME)
   .createHistogram(
-    'greenflow.typeorm.operation.duration',
+    'corvo.typeorm.operation.duration',
     durationHistogramOptions(
       'Duration of TypeORM entity and query-builder operations',
       TYPEORM_OPERATION_DURATION_BOUNDARIES_SECONDS,
@@ -80,7 +80,7 @@ const operationDuration = metrics
 const transactionDuration = metrics
   .getMeter(METER_NAME)
   .createHistogram(
-    'greenflow.typeorm.transaction.duration',
+    'corvo.typeorm.transaction.duration',
     durationHistogramOptions(
       'Duration of application-managed TypeORM transactions',
       TYPEORM_TRANSACTION_DURATION_BOUNDARIES_SECONDS,
@@ -89,14 +89,14 @@ const transactionDuration = metrics
 const meter = metrics.getMeter(METER_NAME);
 let activeTransactionCount = 0;
 const activeTransactions = meter.createObservableGauge(
-  'greenflow.typeorm.transaction.active',
+  'corvo.typeorm.transaction.active',
   {
     description: 'Number of active application-managed TypeORM transactions',
     unit: '{transaction}',
   },
 );
 const startedTransactions = meter.createCounter(
-  'greenflow.typeorm.transaction.started',
+  'corvo.typeorm.transaction.started',
   {
     description: 'Number of application-managed TypeORM transactions started',
     unit: '{transaction}',
@@ -161,7 +161,7 @@ export function observeTypeOrmTransaction<T>(
           result = 'committed';
           span.addEvent('typeorm.transaction.commit');
           span.setAttribute(
-            'greenflow.typeorm.transaction.result',
+            'corvo.typeorm.transaction.result',
             'committed',
           );
         },
@@ -169,7 +169,7 @@ export function observeTypeOrmTransaction<T>(
           result = 'rolled_back';
           span.addEvent('typeorm.transaction.rollback');
           span.setAttribute(
-            'greenflow.typeorm.transaction.result',
+            'corvo.typeorm.transaction.result',
             'rolled_back',
           );
         },

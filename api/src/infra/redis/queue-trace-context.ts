@@ -16,7 +16,7 @@ import {
 } from 'bullmq';
 import { QueueJobPayload, QueueName } from './queue.port';
 
-const QUEUE_TRACER_NAME = 'greenflow.bullmq';
+const QUEUE_TRACER_NAME = 'corvo.bullmq';
 
 export type QueueTraceJob = {
   data?: unknown;

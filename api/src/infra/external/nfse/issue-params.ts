@@ -37,7 +37,9 @@ export function issueParams(payload: IIssuePayload): EmitirParams {
       ...payload.valores,
       vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 },
     },
-    tomador: payload.tomador,
+    // `tomador` is optional in open-nfse's EmitirParams/BuildDpsParams;
+    // anonymous consumer DPS are issued without it.
+    ...(payload.tomador ? { tomador: payload.tomador } : {}),
     tpAmb:
       payload.environment === 'live'
         ? TipoAmbienteDps.Producao

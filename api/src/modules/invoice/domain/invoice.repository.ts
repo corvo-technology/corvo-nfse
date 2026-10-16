@@ -40,6 +40,12 @@ export interface IInvoiceRepository {
     limit?: number,
     cursor?: string,
   ): Promise<Invoice[]>;
+  insert(invoice: Invoice, tenantId: string): Promise<void>;
+  findPendingReconciliation(
+    tenantId: string,
+    olderThan: Date,
+    limit: number,
+  ): Promise<Array<{ id: string; tenantId: string; companyId: string }>>;
   save(invoice: Invoice, tenantId: string): Promise<Invoice>;
   existsIdempotencyKey(
     key: string,

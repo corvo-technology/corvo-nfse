@@ -33,8 +33,8 @@ describe('scheduled task telemetry', () => {
       'cron campaign.delivery-dispatch',
       expect.objectContaining({
         attributes: {
-          'greenflow.job.name': 'campaign.delivery-dispatch',
-          'greenflow.workload.kind': 'cron',
+          'corvo.job.name': 'campaign.delivery-dispatch',
+          'corvo.workload.kind': 'cron',
         },
       }),
       expect.any(Function),

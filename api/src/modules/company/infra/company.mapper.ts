@@ -1,9 +1,4 @@
-import {
-  Company,
-  CompanyEnvironment,
-  CompanyStatus,
-  TaxRegime,
-} from '../domain/company';
+import { Company, CompanyEnvironment, CompanyStatus } from '../domain/company';
 import { CompanyOrmEntity } from './company.orm-entity';
 
 export class CompanyMapper {
@@ -17,9 +12,6 @@ export class CompanyMapper {
       municipalReg: orm.municipalReg ?? undefined,
       municipalityCode: orm.municipalityCode,
       defaultServiceCode: orm.defaultServiceCode ?? undefined,
-      taxRegime: orm.taxRegime as TaxRegime,
-      simpleNational: orm.simpleNational,
-      specialRegime: orm.specialRegime,
       addressStreet: orm.addressStreet,
       addressNumber: orm.addressNumber,
       addressComplement: orm.addressComplement,
@@ -47,9 +39,6 @@ export class CompanyMapper {
       municipalReg: snap.municipalReg ?? null,
       municipalityCode: snap.municipalityCode,
       defaultServiceCode: snap.defaultServiceCode ?? null,
-      taxRegime: snap.taxRegime,
-      simpleNational: snap.simpleNational,
-      specialRegime: snap.specialRegime,
       addressStreet: snap.addressStreet,
       addressNumber: snap.addressNumber,
       addressComplement: snap.addressComplement,

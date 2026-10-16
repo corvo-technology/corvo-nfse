@@ -52,7 +52,7 @@ describe("Company fiscal setup", () => {
     expect(field("IBGE").required).toBe(true); expect(field("Municipal registration").required).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Create company" }));
     expect(screen.getByText("Enter an IBGE municipality code with exactly 7 digits.")).toBeTruthy(); expect(onSave).not.toHaveBeenCalled();
-    fill("IBGE", "3550308"); chooseService("010101");
+    fill("IBGE", "3550308"); chooseService("010101"); fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } });
     fireEvent.click(screen.getByRole("button", { name: "Create company" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0][0]).toMatchObject({ taxId: company.taxId, municipalityCode: "3550308", defaultServiceCode: "010101" });
@@ -64,7 +64,7 @@ describe("Company fiscal setup", () => {
     expect(field("Municipal registration").required).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Create company" }));
     expect(screen.getByText("Municipal registration is required to register in live mode.")).toBeTruthy(); expect(onSave).not.toHaveBeenCalled();
-    fill("Municipal registration", "12345"); fireEvent.click(screen.getByRole("button", { name: "Create company" }));
+    fill("Municipal registration", "12345"); fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } }); fireEvent.click(screen.getByRole("button", { name: "Create company" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
   });
   it("shows the saved service code in edit mode and sends null to clear it", async () => {
