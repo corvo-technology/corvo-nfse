@@ -151,8 +151,9 @@ export default function WebhooksPage() {
   const handleTest = async (id: string) => {
     setTestingId(id);
     try {
-      await webhooks.test(id);
-      success(t("toasts.testSent"));
+      const result = await webhooks.test(id);
+      if (result.sent) success(t("toasts.testSent"));
+      else toastError(result.statusCode ? t("toasts.testFailedStatus", { status: result.statusCode }) : t("toasts.testFailed"));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t("toasts.testFailed");
       toastError(msg);

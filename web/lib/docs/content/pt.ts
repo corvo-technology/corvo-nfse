@@ -48,8 +48,8 @@ export const pt: DocsTree = {
           ["Listar empresas", "`{ \"data\": Company[], \"pagination\": {...} }`"],
           ["Excluir empresa", "`{ \"data\": null }`"],
           ["Upload / listagem de certificados", "`{ \"data\": Certificate } / listagem paginada`"],
-          ["Emitir / consultar nota", "`{ \"data\": { \"props\": Invoice } }`"],
-          ["Listar notas e eventos", "`{ \"data\": [{ \"props\": ... }], \"pagination\": {...} }`"],
+          ["Emitir / consultar nota", "`{ \"data\": Invoice }`"],
+          ["Listar notas e eventos", "`{ \"data\": [ ... ], \"pagination\": {...} }`"],
           ["URL de download / email", "`{ \"data\": ... }`"],
           ["Webhooks e entregas", "`{ \"data\": ... } ou listagem paginada`"],
           ["Saldo de créditos", "`{ \"data\": { \"tenantId\", \"balance\", ... } }`"],
@@ -59,7 +59,7 @@ export const pt: DocsTree = {
       },
       {
         kind: "text",
-        body: "O conteúdo dos recursos foi preservado: a nota fiscal continua com `props` dentro de `data` (`data.props`). Leia `data` uma única vez. PDF/XML, redirects, OAuth, MCP/JSON-RPC, health checks e respostas `204` mantêm seus formatos próprios.",
+        body: "Os recursos vêm direto em `data`: uma nota é `data`, uma lista é `data[]`. Leia `data` uma única vez. PDF/XML, redirects, OAuth, MCP/JSON-RPC, health checks e respostas `204` mantêm seus formatos próprios.",
       },
       { kind: "heading", level: 2, body: "Todas as operações" },
       {
@@ -114,7 +114,7 @@ export const pt: DocsTree = {
           "Obtenha uma chave `test` com escopo adequado — cadastro de empresa/certificado exige `full_access`; uma chave `invoices_read_write` pode emitir com cadastro prévio.",
           "`POST /v1/companies` — cadastre a empresa com CNPJ, regime e município fiscal (`municipalityCode`); configure `defaultServiceCode` para simplificar as notas.",
           "Em `live`, preencha a inscrição municipal e envie o certificado válido correspondente ao CNPJ (`POST /v1/companies/:companyId/certificates`).",
-          "`POST /v1/invoices` — use `companyTaxId` (CNPJ da empresa) e solicite a emissão com `Idempotency-Key` estável por operação de negócio e guarde `data.props.id` (ambiente `live` exige prontidão da empresa).",
+          "`POST /v1/invoices` — use `companyTaxId` (CNPJ da empresa) e solicite a emissão com `Idempotency-Key` estável por operação de negócio e guarde `data.id` (ambiente `live` exige prontidão da empresa).",
           "Acompanhe o ciclo por `GET /v1/invoices/:id` e webhooks assinados — a emissão é assíncrona.",
           "Aguarde os documentos ficarem prontos para gerar a URL e solicitar o email; confira o estado do email separadamente.",
           "Antes de produção, verifique o domínio e a versão publicada: a referência descreve o checkout local, sem pressupor que o deploy já contém os mesmos contratos.",
@@ -166,7 +166,7 @@ export const pt: DocsTree = {
         {
           kind: "callout",
           tone: "warn",
-          body: "Créditos, plano e configurações de webhook pertencem à conta. Uma chave `test` com `full_access` também pode acessar alterações de plano: não trate toda a API como sandbox financeiro.",
+          body: "Créditos, plano e configurações de webhook pertencem à conta. Uma chave `test` com `full_access` pode gerenciar webhooks e consultar créditos e cobrança. Troca de plano, checkout e portal de cobrança existem só no painel.",
         },
         { kind: "callout", tone: "accent", body: "O servidor resolve o tenant pela autenticação: nunca envie `tenantId` no corpo. Recursos de outro tenant retornam `404`." },
         { kind: "heading", level: 2, body: "Escopos" },
@@ -316,7 +316,7 @@ export const pt: DocsTree = {
           "`POST /v1/invoices`.",
         ] },
         { kind: "callout", tone: "accent", body: "O regime informado no cadastro cria o perfil fiscal da empresa, vigente desde hoje e já aprovado por quem fez a chamada (usuário ou chave de API). Sem tomador ou com tomador CPF não há etapa de aprovação nem cadastro de serviço: a classificação vem do catálogo oficial pelo `service.code`. Com tomador CNPJ a retenção federal depende da política do serviço: cadastre o perfil do serviço com `withholdingPolicy` `NONE_CONFIRMED` ou `CONFIGURED` e aprove-o, senão o cálculo volta `blocked` com `TAX_APPLICABILITY_UNKNOWN`. `GET /v1/companies/:id` mostra `status` e `setupGaps` (`municipality_code`, `municipal_registration` em `live`, `certificate`). Use `POST /v1/invoices/calculate` para conferir antes de emitir." },
-        { kind: "callout", tone: "warn", body: "Mudar o regime com `PATCH` no mesmo dia do cadastro retorna `409` (`profile_validity_conflict`), porque o perfil aprovado não é reescrito. Para uma mudança com data, use `PUT /v1/companies/:id/fiscal-profile` com `validFrom`. Perfis de serviço (`/v1/companies/:id/service-tax-profiles`) são opcionais e passam a ser exigidos quando o regime pede IBS/CBS ou ISS configurado: o cálculo retorna `FISCAL_CLASSIFICATION_REQUIRED` com os campos que faltam." },
+        { kind: "callout", tone: "warn", body: "Mudar `taxRegime`, `simpleNational` ou `specialRegime` com `PATCH` no mesmo dia do cadastro retorna `409` (`ERROR_CONFLICT`, mensagem `profile_validity_conflict`), porque o perfil aprovado não é reescrito. Para uma mudança com data, use `PUT /v1/companies/:id/fiscal-profile` com `validFrom`. Perfis de serviço (`/v1/companies/:id/service-tax-profiles`) são opcionais e passam a ser exigidos quando o regime pede IBS/CBS ou ISS configurado: o cálculo retorna `FISCAL_CLASSIFICATION_REQUIRED` com os campos que faltam." },
         {
           kind: "endpoint",
           method: "POST",
@@ -483,7 +483,7 @@ console.log(body.data.status); // { data: Company }`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "Empresa inexistente, excluída ou de outro ambiente/conta retorna `404`." },
+            { kind: "callout", tone: "warn", body: "Empresa inexistente, excluída ou de outro ambiente/conta retorna `404`. Um `id` que não seja um UUID válido retorna `400` (`ERROR_BAD_REQUEST`)." },
           ],
         },
         {
@@ -692,7 +692,7 @@ console.log(res.status); // 204`,
               { name: "customer", type: "objeto", required: false, description: "Opcional: omita ou envie `{}` para consumidor sem identificação (o tomador não vai na DPS). Quando enviado, `name` (obrigatório), `taxId` (obrigatório: CPF ou CNPJ válido, normalizado), `email` (opcional; obrigatório quando o envio de email está habilitado; sem validação de formato neste DTO) e `address` (opcional: `street`, `city`, `state`, `zip`, `country`; se preencher cidade ou UF, preencha ambas)." },
               { name: "service", type: "objeto", required: true, description: "`code` opcional se a empresa tem `defaultServiceCode`; quando informado, exatamente 6 dígitos. `municipalityCode` herda o município da empresa; quando informado, exatamente 7 dígitos e define o local da prestação. `description` string opcional. Vazio, `null` ou valor inválido não aciona o padrão." },
               { name: "amount", type: "number", required: true, description: "Valor em reais, positivo, até 9999999999.99 e no máximo 2 casas decimais." },
-              { name: "competenceDate", type: "string ISO 8601", required: true, description: "Data de competência válida. Sem `options.type`, não pode ser futura (`422` `future_date`). Com `options.type: \"SCHEDULE\"`, aceita data futura (veja Notas agendadas)." },
+              { name: "competenceDate", type: "string ISO 8601", required: true, description: "Data de competência válida. Sem `options.type`, não pode ser futura (`422` `ERROR_FUTURE_DATE`). Com `options.type: \"SCHEDULE\"`, aceita data futura (veja Notas agendadas)." },
               { name: "discount", type: "number", required: false, description: "Desconto incondicional em reais, de 0 até o valor da nota, no máximo 2 casas decimais." },
               { name: "email", type: "boolean", required: false, description: "Solicita notificação; padrão `false`." },
               { name: "options.email.send", type: "boolean", required: false, description: "Quando definido, prevalece sobre `email`." },
@@ -745,27 +745,25 @@ console.log(res.status); // 204`,
   }),
 });
 const body = await res.json();
-console.log(body.data.props.id); // { data: { props: Invoice } }`,
+console.log(body.data.id); // { data: Invoice }`,
           },
           response: {
             label: "202 Accepted",
             json: `{
   "data": {
-    "props": {
-      "id": "c7d2e9a1-4b5f-4a6c-8d9e-0f1a2b3c4d5e",
-      "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
-      "environment": "test",
-      "externalId": "pedido_123",
-      "status": "queued",
-      "amount": 150.5,
-      "competenceDate": "2026-10-01",
-      "createdAt": "2026-10-10T12:00:00.000Z"
-    }
+    "id": "c7d2e9a1-4b5f-4a6c-8d9e-0f1a2b3c4d5e",
+    "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
+    "environment": "test",
+    "externalId": "pedido_123",
+    "status": "queued",
+    "amount": 150.5,
+    "competenceDate": "2026-10-01T00:00:00.000Z",
+    "createdAt": "2026-10-10T12:00:00.000Z"
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Idempotência: mesma chave, conta e ambiente com conteúdo equivalente ao hash recuperado devolve a mesma nota; conteúdo diferente retorna `409` (`IdempotencyConflictError`). O hash é calculado antes da normalização fiscal, com canonização das chaves JSON e da data de competência: não altere a representação dos campos ao repetir uma requisição (CNPJ com e sem pontuação pode gerar hashes diferentes). Sem chave não há deduplicação." },
+            { kind: "callout", tone: "accent", body: "Idempotência: mesma chave, conta e ambiente com conteúdo equivalente ao hash recuperado devolve a mesma nota; conteúdo diferente retorna `409` (`ERROR_IDEMPOTENCY_CONFLICT`). O hash é calculado antes da normalização fiscal, com canonização das chaves JSON e da data de competência: não altere a representação dos campos ao repetir uma requisição (CNPJ com e sem pontuação pode gerar hashes diferentes). Sem chave não há deduplicação." },
             { kind: "callout", tone: "warn", body: "A emissão é assíncrona — veja a página Emissão assíncrona. Resposta normalmente vem com `status: \"queued\"`; acompanhe com GET ou webhooks." },
             { kind: "callout", tone: "warn", body: "O endereço do cliente é reduzido a `city` e `state` no snapshot: `street`, `zip` e `country` não são preservados na criação da nota. Não dependa deles no retorno." },
           ],
@@ -817,14 +815,85 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
     "disclaimer": "Pre-emission calculation. Values are not a fiscal document and may differ from the final validation by Sefin.",
     "competenceDate": "2026-10-13",
     "taxRegime": "MEI",
+    "classification": {
+      "serviceCode": "060101",
+      "source": "official_catalog",
+      "operationNature": "SERVICE",
+      "nbsCode": null,
+      "cst": null,
+      "classCode": null,
+      "serviceProfileId": null,
+      "catalogValidated": false
+    },
+    "applicability": {
+      "customerRequired": false,
+      "strategy": "mei",
+      "iss": {
+        "status": "NOT_APPLICABLE",
+        "reason": "ISS recolhido no DAS-MEI"
+      },
+      "federalWithholding": {
+        "status": "NOT_APPLICABLE",
+        "reason": "no federal withholding on payments to Simples Nacional/MEI optants (IN RFB 1.234/2012, art. 4, XI)"
+      },
+      "cbs": {
+        "status": "NOT_APPLICABLE",
+        "reason": "MEI não destaca IBS/CBS na fase de teste de 2026"
+      },
+      "ibs": {
+        "status": "NOT_APPLICABLE",
+        "reason": "MEI não destaca IBS/CBS na fase de teste de 2026"
+      }
+    },
     "taxes": {},
     "withholdings": [],
     "netReceivableAmount": "50.00",
     "collectionWaived": false,
-    "warnings": [],
+    "calculation": {
+      "source": "none",
+      "calculatorVersion": null,
+      "rulesVersion": "2026.10-r1",
+      "legalReferences": [
+        "Ato Conjunto RFB/CGIBS nº 4/2026; orientação CGNFS-e de 07/08/2026"
+      ]
+    },
+    "warnings": [
+      {
+        "code": "CLASSIFICATION_NOT_CATALOG_VALIDATED",
+        "message": "Service tax classification was not validated against the official catalog",
+        "step": "ServiceTaxClassifier"
+      }
+    ],
     "pendingFields": [],
     "blocking": null,
-    "trace": []
+    "trace": [
+      {
+        "step": "CompanyFiscalProfile",
+        "status": "applied",
+        "durationMs": 2.4
+      },
+      {
+        "step": "ServiceTaxClassifier",
+        "status": "applied",
+        "durationMs": 7.1
+      },
+      {
+        "step": "TaxApplicabilityResolver",
+        "status": "applied",
+        "durationMs": 0.3
+      },
+      {
+        "step": "RtcTaxCalculator",
+        "status": "skipped",
+        "durationMs": 0.03,
+        "reason": "MEI não destaca IBS/CBS na fase de teste de 2026"
+      },
+      {
+        "step": "FiscalValidator",
+        "status": "applied",
+        "durationMs": 0.1
+      }
+    ]
   }
 }`,
           },
@@ -835,11 +904,11 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ],
         },
         { kind: "heading", level: 2, body: "Notas agendadas" },
-        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` com uma `competenceDate` futura para pedir que a nota seja emitida só naquele dia. A Corvo libera a emissão à 00:00 de `America/Sao_Paulo` da `competenceDate`. Até lá a nota fica com `status: \"queued\"` e `props.scheduledFor` traz o instante da liberação (ISO); em notas imediatas `scheduledFor` é `null`." },
+        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` com uma `competenceDate` futura para pedir que a nota seja emitida só naquele dia. A Corvo libera a emissão à 00:00 de `America/Sao_Paulo` da `competenceDate`. Até lá a nota fica com `status: \"queued\"` e `scheduledFor` traz o instante da liberação (ISO); em notas imediatas `scheduledFor` é `null`." },
         { kind: "table", head: ["Situação", "Resultado"], rows: [
-          ["Sem `options.type` (ou `IMMEDIATE`) e `competenceDate` futura", "`422` com `future_date`."],
+          ["Sem `options.type` (ou `IMMEDIATE`) e `competenceDate` futura", "`422` com `ERROR_FUTURE_DATE` em `details[].code`."],
           ["`SCHEDULE` e `competenceDate` futura até o limite", "`202`, `status: queued`, `scheduledFor` preenchido; a emissão acontece na data."],
-          ["`SCHEDULE` e `competenceDate` além do limite (padrão 15 dias à frente)", "`422` com `schedule_horizon_exceeded`."],
+          ["`SCHEDULE` e `competenceDate` além do limite (padrão 15 dias à frente)", "`422` com `ERROR_SCHEDULE_HORIZON_EXCEEDED` em `details[].code`."],
           ["`SCHEDULE` e `competenceDate` de hoje ou passada", "Emissão imediata, `scheduledFor: null`."],
         ] },
         { kind: "code", label: "Agendar uma nota", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
@@ -855,7 +924,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
   }'` },
         { kind: "callout", tone: "warn", body: "Os dados fiscais são calculados na hora de emitir, com a configuração vigente na `competenceDate`. Em `live`, a empresa precisa estar pronta e ter certificado ativo já no momento do agendamento. Antes de agendar, `POST /v1/invoices/calculate` mostra o cálculo para aquela data. O webhook `nfse.invoice.authorized` (ou `rejected`) chega quando a emissão ocorre, não no agendamento." },
         { kind: "heading", level: 2, body: "Schema Invoice" },
-        { kind: "text", body: "O objeto está dentro de `props`:" },
+        { kind: "text", body: "Cada nota tem estes campos:" },
         {
           kind: "table",
           head: ["Campos", "Tipo / observação"],
@@ -867,7 +936,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             ["`customerSnapshot`", "`taxId`, `name`, `email?`, `address?: { city, state, country? }`."],
             ["`serviceSnapshot`", "`description`, `code`, `municipalityCode`."],
             ["`taxSnapshot`", "Objeto de informações fiscais."],
-            ["`amount`, `currency`, `competenceDate`", "Number em reais, moeda e data ISO."],
+            ["`amount`, `currency`, `competenceDate`", "Number em reais, moeda e data-hora ISO 8601 (a data de competência à meia-noite UTC, ex.: `2026-10-01T00:00:00.000Z`)."],
             ["`dpsId`, `dpsSeries`, `dpsNumber`", "String/string/number ou null."],
             ["`accessKey`, `nfseNumber`", "String/number ou null."],
             ["`fiscalProvider`, `fiscalSchemaVersion`", "Strings."],
@@ -917,19 +986,17 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
 const body = await res.json();
-console.log(body.data, body.pagination.nextCursor); // { data: [{ props: Invoice }], pagination }`,
+console.log(body.data, body.pagination.nextCursor); // { data: Invoice[], pagination }`,
           },
           response: {
             label: "200 OK",
             json: `{
   "data": [
     {
-      "props": {
-        "id": "c7d2e9a1-4b5f-4a6c-8d9e-0f1a2b3c4d5e",
-        "status": "authorized",
-        "amount": 150.5,
-        "createdAt": "2026-10-10T12:00:00.000Z"
-      }
+      "id": "c7d2e9a1-4b5f-4a6c-8d9e-0f1a2b3c4d5e",
+      "status": "authorized",
+      "amount": 150.5,
+      "createdAt": "2026-10-10T12:00:00.000Z"
     }
   ],
   "pagination": {
@@ -957,24 +1024,22 @@ console.log(body.data, body.pagination.nextCursor); // { data: [{ props: Invoice
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
 const body = await res.json();
-console.log(body.data.props.status); // { data: { props: Invoice } }`,
+console.log(body.data.status); // { data: Invoice }`,
           },
           response: {
             label: "200 OK",
             json: `{
   "data": {
-    "props": {
-      "id": "c7d2e9a1-4b5f-4a6c-8d9e-0f1a2b3c4d5e",
-      "status": "authorized",
-      "accessKey": "352610123456789",
-      "nfseNumber": 123,
-      "documentsStatus": "ready"
-    }
+    "id": "c7d2e9a1-4b5f-4a6c-8d9e-0f1a2b3c4d5e",
+    "status": "authorized",
+    "accessKey": "352610123456789",
+    "nfseNumber": 123,
+    "documentsStatus": "ready"
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "Retorna `404` se a nota não estiver na conta/ambiente." },
+            { kind: "callout", tone: "warn", body: "Retorna `404` se a nota não estiver na conta/ambiente. Um `id` que não seja um UUID válido retorna `400` (`ERROR_BAD_REQUEST`)." },
           ],
         },
         {
@@ -1025,7 +1090,7 @@ console.log(buf.length);`,
           path: "/v1/invoices/:id/events",
           scopes: ["full_access", "invoices_view", "invoices_read_write"],
           success: "200 OK",
-          summary: "Consulta o histórico de transições de status da nota.",
+          summary: "Consulta o histórico de transições de status da nota, do mais antigo ao mais recente. Paginado como qualquer lista (`limit`, `cursor`).",
           examples: {
             curl: `curl "$BASE_URL/invoices/$INVOICE_ID/events" \\
   -H "X-API-Key: $CORVO_API_KEY"`,
@@ -1033,21 +1098,19 @@ console.log(buf.length);`,
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
 const body = await res.json();
-console.log(body.data, body.pagination); // { data: [{ props: InvoiceEvent }], pagination }`,
+console.log(body.data, body.pagination); // { data: InvoiceEvent[], pagination }`,
           },
           response: {
             label: "200 OK",
             json: `{
   "data": [
     {
-      "props": {
-        "id": "e1f2a3b4-0c5d-4e6f-8a9b-1c2d3e4f5a6b",
-        "invoiceId": "c7d2e9a1-4b5f-4a6c-8d9e-0f1a2b3c4d5e",
-        "fromStatus": "queued",
-        "toStatus": "authorized",
-        "reason": null,
-        "createdAt": "2026-10-10T12:01:00.000Z"
-      }
+      "id": "e1f2a3b4-0c5d-4e6f-8a9b-1c2d3e4f5a6b",
+      "invoiceId": "c7d2e9a1-4b5f-4a6c-8d9e-0f1a2b3c4d5e",
+      "fromStatus": "queued",
+      "toStatus": "authorized",
+      "reason": null,
+      "createdAt": "2026-10-10T12:01:00.000Z"
     }
   ],
   "pagination": {
@@ -1332,7 +1395,7 @@ console.log(body.data.sent); // { data: { sent: true } }`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "O evento é enviado sempre com ambiente `test`. A tentativa de teste não agenda os retries normais em caso de falha." },
+            { kind: "callout", tone: "accent", body: "O evento é enviado sempre com ambiente `test`. Retorna `{ \"sent\": true }` quando seu endpoint responde `2xx`. Caso contrário a resposta continua `200`, com `{ \"sent\": false, \"statusCode\": 405, \"error\": \"...\" }` (`statusCode` é `null` se o endpoint não foi alcançado). A tentativa de teste não agenda os retries normais em caso de falha." },
           ],
         },
         {
@@ -1502,30 +1565,30 @@ console.log(body.data.balance); // { data: { tenantId, balance, overageUnits, ..
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
 const body = await res.json();
-console.log(body.data, body.pagination); // { data: [{ props: Plan }], pagination }`,
+console.log(body.data, body.pagination); // { data: Plan[], pagination }`,
           },
           response: {
             label: "200 OK",
             json: `{
   "data": [
     {
-      "props": {
-        "id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
-        "slug": "developer",
-        "name": "Developer",
-        "description": "Plano Developer",
-        "monthlyCreditAllowance": 100,
-        "dailyLimit": null,
-        "maxActiveCompanies": 1,
-        "creditUnitPriceCents": 10,
-        "throughputRps": 1,
-        "includesWebhooks": true,
-        "includesXmlDownload": true,
-        "includesPdfDownload": true,
-        "includesApiKeys": true,
-        "supportTier": "community",
-        "active": true
-      }
+      "id": "3ec51af3-c715-4755-95da-c9b0951973dd",
+      "slug": "developer",
+      "name": "Developer",
+      "description": "Ideal for developers and small teams",
+      "monthlyCreditAllowance": 200,
+      "dailyLimit": null,
+      "maxActiveCompanies": 10,
+      "creditUnitPriceCents": 15,
+      "throughputRps": 50,
+      "includesWebhooks": true,
+      "includesXmlDownload": true,
+      "includesPdfDownload": true,
+      "includesApiKeys": true,
+      "supportTier": "email",
+      "active": true,
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
     }
   ],
   "pagination": {
@@ -1560,20 +1623,18 @@ console.log(body.data, body.pagination); // { data: [{ props: Plan }], paginatio
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
 const body = await res.json();
-console.log(body.data, body.pagination); // { data: [{ props: CreditTransaction }], pagination }`,
+console.log(body.data, body.pagination); // { data: CreditTransaction[], pagination }`,
           },
           response: {
             label: "200 OK",
             json: `{
   "data": [
     {
-      "props": {
-        "id": "f0e1d2c3-b4a5-4b6c-8d7e-9f0a1b2c3d4e",
-        "amount": 100,
-        "type": "purchase",
-        "description": "Compra avulsa",
-        "createdAt": "2026-10-10T12:00:00.000Z"
-      }
+      "id": "f0e1d2c3-b4a5-4b6c-8d7e-9f0a1b2c3d4e",
+      "amount": 100,
+      "type": "purchase",
+      "description": "Compra avulsa",
+      "createdAt": "2026-10-10T12:00:00.000Z"
     }
   ],
   "pagination": {
@@ -1733,7 +1794,7 @@ console.log(body.data.canEmit); // { data: QuotaStatus }`,
           kind: "endpoint",
           method: "POST",
           path: "/v1/billing/upgrade",
-          scopes: ["full_access"],
+          scopes: ["dashboard"],
           success: "200 OK",
           summary: "Agenda a troca para o plano de destino na assinatura.",
           params: {
@@ -1774,7 +1835,7 @@ console.log(body.data); // { data: { scheduled_plan, effective_at } }`,
           kind: "endpoint",
           method: "POST",
           path: "/v1/billing/downgrade",
-          scopes: ["full_access"],
+          scopes: ["dashboard"],
           success: "200 OK",
           summary: "Agenda uma mudança de plano para o fim do período.",
           params: {
@@ -1811,6 +1872,129 @@ console.log(body.data); // { data: { scheduled_plan, effective_at } }`,
             { kind: "callout", tone: "warn", body: "Rota exclusiva do painel: chaves de API não têm acesso (`403`). Exige assinatura ativa (`409` caso contrário) e retorna `scheduled_plan` e `effective_at`; o checkout e o portal de cobrança também ficam no painel." },
           ],
         },
+        { kind: "heading", level: 2, body: "Catálogo público de planos" },
+        { kind: "text", body: "Estas três rotas não exigem chave de API nem sessão: use-as para mostrar preços no seu site ou dimensionar um plano. Valores em centavos (`...Cents`) e o único ciclo é `monthly`; qualquer outro `cycle` retorna `400`." },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/plans",
+          scopes: ["public"],
+          success: "200 OK",
+          summary: "Lista os planos com preço mensal e franquia.",
+          params: {
+            rows: [
+              { name: "cycle", type: "string", required: false, description: "Só `monthly` é aceito (padrão)." },
+              { name: "limit", type: "integer", required: false, description: "Padrão `50`; inteiro de 1 a 1000." },
+              { name: "cursor", type: "string", required: false, description: "`nextCursor` da página anterior." },
+            ],
+          },
+          examples: {
+            curl: `curl "$BASE_URL/plans"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans\`);
+const { data: plans, pagination } = await res.json(); // { data: PlanQuote[], pagination }
+console.log(plans.map((p) => p.slug), pagination.hasMore);`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": [
+    {
+      "slug": "developer",
+      "name": "Developer",
+      "monthlyAllowance": 200,
+      "basePriceCents": 2990,
+      "perCreditOverageCents": 15,
+      "monthlyTotalCents": 2990,
+      "currency": "BRL"
+    }
+  ],
+  "pagination": {
+    "limit": 50,
+    "hasMore": false,
+    "nextCursor": null
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "Ordenados da menor para a maior franquia. `monthlyAllowance` é o total de créditos incluídos, `perCreditOverageCents` o preço de cada crédito acima dela e `monthlyTotalCents` o preço mensal. Esta é a visão de preços; `GET /v1/credits/plans` devolve os limites e recursos do plano." },
+          ],
+        },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/plans/:slug",
+          scopes: ["public"],
+          success: "200 OK",
+          summary: "Consulta o preço de um plano.",
+          params: {
+            rows: [
+              { name: "cycle", type: "string", required: false, description: "Só `monthly` é aceito (padrão)." },
+            ],
+          },
+          examples: {
+            curl: `curl "$BASE_URL/plans/growth"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/growth\`);
+const body = await res.json();
+console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "slug": "growth",
+    "name": "Growth",
+    "monthlyAllowance": 750,
+    "basePriceCents": 8990,
+    "perCreditOverageCents": 12,
+    "monthlyTotalCents": 8990,
+    "currency": "BRL"
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "warn", body: "`slug` é `free`, `developer`, `growth`, `scale` ou `volume`. Um plano desconhecido retorna `404`." },
+          ],
+        },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/plans/quote",
+          scopes: ["public"],
+          success: "200 OK",
+          summary: "Recomenda o plano para um volume mensal de notas e estima o custo total.",
+          params: {
+            rows: [
+              { name: "volume", type: "integer", required: false, description: "Notas por mês. Obrigatório para gerar a cotação." },
+              { name: "cycle", type: "string", required: false, description: "Só `monthly` é aceito (padrão)." },
+            ],
+          },
+          examples: {
+            curl: `curl "$BASE_URL/plans/quote?volume=20000"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/quote?volume=20000\`);
+const body = await res.json();
+console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { data: Quote | null }`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "volume": 20000,
+    "recommended_plan": "volume",
+    "plan_name": "Volume",
+    "monthly_allowance": 10000,
+    "overage_credits": 10000,
+    "overage_cost_cents": 90000,
+    "base_price_cents": 89990,
+    "total_estimated_cents": 179990,
+    "currency": "BRL",
+    "billing_cycle": "monthly"
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "warn", body: "Esta rota usa snake_case. `total_estimated_cents` é o preço do plano mais o excedente estimado (`overage_credits` × o preço por crédito do plano). Um `volume` ausente, zero, negativo ou não numérico retorna `200` com `{ \"data\": null }`, e não um erro." },
+          ],
+        },
       ],
     },
     "async-issuance": {
@@ -1843,7 +2027,7 @@ console.log(body.data); // { data: { scheduled_plan, effective_at } }`,
         },
         {
           kind: "text",
-          body: "Mesma chave, conta e ambiente com conteúdo equivalente ao hash calculado recupera a mesma nota; conteúdo diferente retorna `409` (`IdempotencyConflictError`). O hash é calculado antes da normalização fiscal, com canonização das chaves JSON e da data de competência — não altere a representação dos campos ao repetir (CNPJ com e sem pontuação pode gerar hashes diferentes).",
+          body: "Mesma chave, conta e ambiente com conteúdo equivalente ao hash calculado recupera a mesma nota; conteúdo diferente retorna `409` (`ERROR_IDEMPOTENCY_CONFLICT`). O hash é calculado antes da normalização fiscal, com canonização das chaves JSON e da data de competência — não altere a representação dos campos ao repetir (CNPJ com e sem pontuação pode gerar hashes diferentes).",
         },
         {
           kind: "callout",
@@ -1869,7 +2053,7 @@ console.log(body.data); // { data: { scheduled_plan, effective_at } }`,
 
     if (res.ok) {
       const body = await res.json();
-      return body.data.props.id; // { data: { props: Invoice } }
+      return body.data.id; // { data: Invoice }
     }
     if (res.status !== 429 && res.status !== 503) {
       throw new Error(\`HTTP \${res.status}\`);
@@ -2057,7 +2241,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Cadastrar ou consultar a empresa no ambiente correspondente (`POST /v1/companies`, `GET /v1/companies/:id`).",
             "Verificar a prontidão da empresa: `status` deve ser `ready` e `setupGaps` vazio — o município fiscal (`municipality_code`) é obrigatório em todos os ambientes; em `live`, também são necessários inscrição municipal (`municipal_registration`) e certificado ativo (`certificate`).",
             "Enviar o certificado A1 (.p12) com `POST /v1/companies/:companyId/certificates` — o CNPJ deve corresponder ao da empresa.",
-            "Emitir a primeira nota no ambiente `test` com `POST /v1/invoices`, usando `Idempotency-Key` estável, e guardar `props.id`.",
+            "Emitir a primeira nota no ambiente `test` com `POST /v1/invoices`, usando `Idempotency-Key` estável, e guardar `id`.",
             "Acompanhar o status por `GET /v1/invoices/:id` ou webhooks assinados — a emissão é assíncrona.",
             "Registrar um webhook (`POST /v1/webhooks`), guardar o `secret` e verificar a assinatura; conferir entregas em `GET /v1/webhooks/deliveries`.",
             "Aguardar os documentos prontos (`documentsStatus: \"ready\"`) para gerar a URL assinada e solicitar o email; conferir o estado do email separadamente (`emailStatus`).",

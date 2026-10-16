@@ -163,13 +163,13 @@ export const certificates = {
   delete: (companyId: string, certId: string) => request<null>(`/companies/${idPath(companyId)}/certificates/${idPath(certId)}`, { method: "DELETE" }),
 };
 export type InvoiceWire = Omit<Invoice, "customerName" | "customerTaxId" | "serviceDescription">;
-export function adaptInvoice({ props }: { props: InvoiceWire }): Invoice {
+export function adaptInvoice(props: InvoiceWire): Invoice {
   // Anonymous consumer invoices have no customer snapshot (the tomador is omitted from the DPS).
   return { ...props, customerName: props.customerSnapshot?.name ?? "", customerTaxId: props.customerSnapshot?.taxId ?? "", serviceDescription: props.serviceSnapshot.description };
 }
 export interface InvoiceQuery extends PageParams { companyId?: string; status?: InvoiceStatus; from?: string; to?: string; externalId?: string }
-type InvoiceBody = { props: InvoiceWire };
-type EventWire = { props: { id: string; invoiceId: string; fromStatus: InvoiceStatus | null; toStatus: InvoiceStatus; createdAt: string; reason: string | null } };
+type InvoiceBody = InvoiceWire;
+type EventWire = { id: string; invoiceId: string; fromStatus: InvoiceStatus | null; toStatus: InvoiceStatus; createdAt: string; reason: string | null };
 export const invoices = {
   list: async (params: InvoiceQuery = {}, signal?: AbortSignal): Promise<Page<Invoice>> => { const page = toPage(await request<ListBody<InvoiceBody>>(`/invoices${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptInvoice) }; },
   get: async (id: string, signal?: AbortSignal) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}`, { signal }))),
@@ -177,7 +177,7 @@ export const invoices = {
   calculate: async (data: CreateInvoiceInput, signal?: AbortSignal) => unwrap(await request<Envelope<InvoiceCalculation>>("/invoices/calculate", { ...json(data), signal })),
   xml: (id: string) => request<Blob>(`/invoices/${idPath(id)}/xml`, {}, true),
   pdf: (id: string) => request<Blob>(`/invoices/${idPath(id)}/pdf`, {}, true),
-  events: async (id: string, params: PageParams = {}, signal?: AbortSignal): Promise<Page<InvoiceEvent>> => { const page = toPage(await request<ListBody<EventWire>>(`/invoices/${idPath(id)}/events${query(params)}`, { signal })); return { ...page, items: page.items.map(({ props }) => ({ id: props.id, invoiceId: props.invoiceId, from: props.fromStatus, to: props.toStatus, at: props.createdAt, reason: props.reason } satisfies InvoiceEvent)) }; },
+  events: async (id: string, params: PageParams = {}, signal?: AbortSignal): Promise<Page<InvoiceEvent>> => { const page = toPage(await request<ListBody<EventWire>>(`/invoices/${idPath(id)}/events${query(params)}`, { signal })); return { ...page, items: page.items.map((event) => ({ id: event.id, invoiceId: event.invoiceId, from: event.fromStatus, to: event.toStatus, at: event.createdAt, reason: event.reason } satisfies InvoiceEvent)) }; },
   downloadUrl: async (id: string, format: "pdf" | "xml") => (await request<Envelope<{ downloadUrl: string; expiresAt: string; fileName: string; mimeType: string }>>(`/invoices/${idPath(id)}/download-url`, json({ format }))).data,
   email: async (id: string, idempotencyKey: string) => (await request<Envelope<{ emailId: string; status: string }>>(`/invoices/${idPath(id)}/email`, { ...json({}), headers: { "idempotency-key": idempotencyKey } })).data,
 };
@@ -200,7 +200,7 @@ export const webhooks = {
   list: async (params: PageParams = {}) => toPage(await request<ListBody<WebhookEndpoint>>(`/webhooks${query(params)}`)),
   create: async (data: { url: string; events: WebhookEvent[] }) => unwrap(await request<Envelope<WebhookEndpoint>>("/webhooks", json(data))),
   delete: async (id: string) => unwrap(await request<Envelope<{ deleted: boolean }>>(`/webhooks/${idPath(id)}`, { method: "DELETE" })),
-  test: async (id: string) => unwrap(await request<Envelope<{ sent: boolean }>>(`/webhooks/${idPath(id)}/test`, { method: "POST" })),
+  test: async (id: string) => unwrap(await request<Envelope<{ sent: boolean; statusCode?: number | null; error?: string }>>(`/webhooks/${idPath(id)}/test`, { method: "POST" })),
   deliveries: async (params: WebhookDeliveriesQuery = {}) => toPage(await request<ListBody<WebhookDelivery>>(`/webhooks/deliveries${query(params)}`)),
   deliveryStats: async (hours = 24, environment = "live") => unwrap(await request<Envelope<DeliveryStats>>(`/webhooks/deliveries/stats${query({ hours, environment })}`)),
   retryDelivery: async (id: string) => unwrap(await request<Envelope<{ retried: boolean }>>(`/webhooks/deliveries/${idPath(id)}/retry`, { method: "POST" })),

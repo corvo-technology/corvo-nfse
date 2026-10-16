@@ -64,10 +64,7 @@ export class InvoiceController {
       type: 'object',
       required: ['data'],
       properties: {
-        data: {
-          type: 'object',
-          properties: { props: { $ref: getSchemaPath(InvoiceResponseDto) } },
-        },
+        data: { $ref: getSchemaPath(InvoiceResponseDto) },
       },
     },
   })

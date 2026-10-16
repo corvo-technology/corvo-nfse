@@ -7,7 +7,7 @@ import { InvoiceService } from '@/modules/invoice/application/invoice.service';
 import { ExecutionEnvironmentGuard } from '@/modules/auth/execution-environment.guard';
 import { setupOpenApi } from './setup';
 
-it('documents the actual 202 invoice data.props response with nullable scheduledFor', async () => {
+it('documents the actual 202 invoice response with nullable scheduledFor', async () => {
   const module = await Test.createTestingModule({
     controllers: [InvoiceController],
     providers: [
@@ -67,12 +67,7 @@ it('documents the actual 202 invoice data.props response with nullable scheduled
           'application/json': {
             schema: expect.objectContaining({
               properties: {
-                data: {
-                  type: 'object',
-                  properties: {
-                    props: { $ref: '#/components/schemas/InvoiceResponseDto' },
-                  },
-                },
+                data: { $ref: '#/components/schemas/InvoiceResponseDto' },
               },
             }),
           },

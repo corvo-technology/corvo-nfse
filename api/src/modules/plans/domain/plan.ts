@@ -156,4 +156,8 @@ export class Plan {
   toSnapshot(): PlanProps {
     return { ...this.props };
   }
+
+  toJSON(): PlanProps {
+    return this.toSnapshot();
+  }
 }

@@ -308,12 +308,11 @@ export class Invoice {
     this.props.updatedAt = new Date();
   }
 
-  toJSON(): {
-    props: Omit<InvoiceProps, 'requestHash'> & Omit<InvoiceState, 'status'>;
-  } {
+  /** HTTP/MCP representation: the invoice fields at the top level, plus the derived states. */
+  toJSON(): Omit<InvoiceProps, 'requestHash'> & Omit<InvoiceState, 'status'> {
     const { requestHash: _hash, ...props } = this.toSnapshot();
     const { documentsStatus, emailStatus, stage } = this.state;
-    return { props: { ...props, documentsStatus, emailStatus, stage } };
+    return { ...props, documentsStatus, emailStatus, stage };
   }
 
   toSnapshot(): InvoiceProps {

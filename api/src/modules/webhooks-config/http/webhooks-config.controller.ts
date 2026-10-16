@@ -102,7 +102,6 @@ export class WebhooksConfigController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
-    await this.dispatcherService.test(req.authContext!.activeTenantId, id);
-    return { sent: true };
+    return this.dispatcherService.test(req.authContext!.activeTenantId, id);
   }
 }

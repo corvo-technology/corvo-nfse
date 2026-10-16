@@ -34,9 +34,11 @@ describe('Invoice', () => {
       expect(invoice.scheduledFor).toEqual(scheduledFor);
       expect(invoice.toSnapshot().scheduledFor).toEqual(scheduledFor);
       const serialized = JSON.parse(JSON.stringify(invoice)) as {
-        props: { scheduledFor: string };
+        scheduledFor: string;
+        props?: unknown;
       };
-      expect(serialized.props.scheduledFor).toBe(scheduledFor.toISOString());
+      expect(serialized.scheduledFor).toBe(scheduledFor.toISOString());
+      expect(serialized.props).toBeUndefined();
       const immediate = Invoice.create(defaultInput, 'tenant-123');
       expect(immediate.scheduledFor).toBeNull();
       expect(immediate.toSnapshot().scheduledFor).toBeNull();
