@@ -53,6 +53,8 @@ RUN --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
   yarn install --frozen-lockfile --production=true --ignore-scripts
 
 COPY --from=build /app/dist ./dist
+# Used by the `migrations` service; baked in because a bind mount does not work when the Compose runs from a helper container (Coolify).
+COPY scripts/deploy-migrate.mjs ./scripts/deploy-migrate.mjs
 
 USER nestjs
 
