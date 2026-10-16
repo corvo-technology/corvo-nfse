@@ -110,6 +110,12 @@ describe('Stripe billing adapter', () => {
         mode: 'subscription',
         ui_mode: 'hosted_page',
         allowed_payment_method_types: ['card'],
+        branding_settings: expect.objectContaining({
+          display_name: 'Corvo',
+          background_color: '#0a0a0a',
+          button_color: '#3fd6a8',
+          logo: expect.objectContaining({ type: 'url' }) as unknown,
+        }) as unknown,
         line_items: [
           { price: 'price_base', quantity: 1 },
           { price: 'price_excess' },
