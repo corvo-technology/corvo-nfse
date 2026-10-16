@@ -234,7 +234,11 @@ export const envSchema = z
     OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
     OUTBOX_SCHEDULE_MAX_DAYS: z.coerce.number().int().positive().default(15),
     FISCAL_IBSCBS_UNAVAILABLE_MODE: z.enum(['block', 'warn']).default('block'),
-    RTC_CALCULATOR_URL: z.string().url().optional(),
+    // An empty value (RTC_CALCULATOR_URL=) means "not configured".
+    RTC_CALCULATOR_URL: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.string().url().optional(),
+    ),
     RTC_CALCULATOR_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
     RTC_CALCULATOR_MAX_CONCURRENCY: z.coerce
       .number()
