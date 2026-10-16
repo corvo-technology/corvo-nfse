@@ -1,7 +1,41 @@
 import {
+  createDatabaseSsl,
   createNestTypeOrmOptions,
   createTypeOrmOptions,
 } from './typeorm.options';
+
+describe('database TLS', () => {
+  it('is off when SSL is not requested', () => {
+    expect(createDatabaseSsl({ ssl: false })).toBe(false);
+  });
+
+  it('verifies the server certificate by default', () => {
+    expect(createDatabaseSsl({ ssl: true })).toEqual({
+      rejectUnauthorized: true,
+    });
+  });
+
+  it('accepts a CA with escaped newlines and keeps verification on', () => {
+    expect(
+      createDatabaseSsl({
+        ssl: true,
+        sslCa: '-----BEGIN CERTIFICATE-----\\nabc\\n-----END CERTIFICATE-----',
+      }),
+    ).toEqual({
+      rejectUnauthorized: true,
+      ca: '-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----',
+    });
+  });
+
+  it('only skips verification when disabled explicitly', () => {
+    const ssl = createDatabaseSsl({ ssl: true, sslRejectUnauthorized: false });
+
+    expect(ssl).not.toBe(false);
+    expect(
+      (ssl as { rejectUnauthorized: boolean }).rejectUnauthorized,
+    ).toBeFalsy();
+  });
+});
 
 describe('typeorm options', () => {
   const database = {

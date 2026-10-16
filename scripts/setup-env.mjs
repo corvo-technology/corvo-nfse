@@ -1,7 +1,13 @@
 import { randomBytes } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 
+// The tax calculator image is built from the official zip; its address and checksum are pinned in the repo.
+const rtcZipUrl = (await readFile(new URL('../deploy/rtc-zip-url.txt', import.meta.url), 'utf8')).trim();
+const rtcZipSha256 = (await readFile(new URL('../docs/fiscal/rtc/ZIP_SHA256.txt', import.meta.url), 'utf8')).trim().split(/\s+/)[0];
+
 const deploySecrets = {
+  RTC_ZIP_URL: () => rtcZipUrl,
+  RTC_ZIP_SHA256: () => rtcZipSha256,
   POSTGRES_PASSWORD: () => randomBytes(24).toString('hex'),
   POSTGRES_RUNTIME_PASSWORD: () => randomBytes(24).toString('hex'),
   AUTH_JWT_SECRET: () => randomBytes(32).toString('hex'),

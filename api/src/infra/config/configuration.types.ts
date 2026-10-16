@@ -16,6 +16,8 @@ export type DatabaseConfig = {
   url: string;
   schema: string;
   ssl: boolean;
+  sslRejectUnauthorized: boolean;
+  sslCa?: string;
   logging: boolean;
   manualInitialization: boolean;
   pool: {

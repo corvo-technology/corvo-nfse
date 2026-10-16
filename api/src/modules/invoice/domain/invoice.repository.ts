@@ -1,5 +1,6 @@
 import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
+import type { InvoiceEvent } from './invoice-event';
 import { Invoice } from './invoice';
 import { InvoiceStatus } from './invoice-status';
 import { LastEmailStatus } from './invoice';
@@ -88,10 +89,7 @@ export interface IInvoiceEventRepository {
     event: import('./invoice-event').InvoiceEvent,
     tenantId: string,
   ): Promise<void>;
-  findByInvoiceId(
-    invoiceId: string,
-    tenantId: string,
-  ): Promise<import('./invoice-event').InvoiceEvent[]>;
+  findByInvoiceId(invoiceId: string, tenantId: string): Promise<InvoiceEvent[]>;
 }
 
 export const INVOICE_REPOSITORY = 'INVOICE_REPOSITORY';

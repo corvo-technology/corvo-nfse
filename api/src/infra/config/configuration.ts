@@ -50,6 +50,8 @@ export default function configuration(): AppConfiguration {
       url: env.DATABASE_URL,
       schema: env.DB_SCHEMA,
       ssl: env.DB_SSL,
+      sslRejectUnauthorized: env.DB_SSL_REJECT_UNAUTHORIZED,
+      sslCa: env.DB_SSL_CA,
       logging: env.DB_LOGGING,
       manualInitialization: env.NODE_ENV === 'test',
       pool: {

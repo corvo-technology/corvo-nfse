@@ -77,25 +77,7 @@ node scripts/setup-env.mjs
 
 The setup generates passwords and encryption keys and creates missing env files. Running it again keeps your existing files and keys.
 
-### 2. Point the stack at the tax calculator
-
-The stack builds an internal tax calculator (the official Calculadora de Tributos). Add its download address and checksum to `deploy/.env.local`:
-
-```bash
-# one request only: the public site rejects bursts
-curl -s 'https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/download/url?platform=jar'
-```
-
-```dotenv
-# deploy/.env.local
-RTC_ZIP_URL=<downloadUrl returned above>
-RTC_ZIP_SHA256=<first column of docs/fiscal/rtc/ZIP_SHA256.txt>
-```
-
-> [!IMPORTANT]
-> The build stops on purpose if the published file no longer matches the checksum. Details in [deploy/README.md](deploy/README.md).
-
-### 3. Start the local stack
+### 2. Start the local stack
 
 ```bash
 docker compose --env-file deploy/.env.local \
@@ -103,7 +85,7 @@ docker compose --env-file deploy/.env.local \
   up -d --build --wait --wait-timeout 180
 ```
 
-With Yarn installed, `yarn local:up` runs the same command. This starts the dashboard, API, worker, PostgreSQL, Redis, LocalStack and the tax calculator. Database migrations run before the applications start.
+With Yarn installed, `yarn local:up` runs the same command. This starts the dashboard, API, worker, PostgreSQL, Redis, LocalStack and the tax calculator. The calculator image is built from the official zip, whose address and checksum the setup already wrote to the env file (`RTC_ZIP_URL`, `RTC_ZIP_SHA256`); the build stops on purpose if the published file stops matching the checksum (see [deploy/README.md](deploy/README.md)). Database migrations run before the applications start.
 
 | Open | Address |
 | --- | --- |
@@ -112,7 +94,7 @@ With Yarn installed, `yarn local:up` runs the same command. This starts the dash
 | 🤖 MCP server | `http://localhost:3000/mcp` |
 | 📚 Documentation | [localhost:4000/en/docs](http://localhost:4000/en/docs) |
 
-### 4. Configure the integrations you want to test
+### 3. Configure the integrations you want to test
 
 The generated `deploy/.env.local` has everything needed to start. To sign in with an email code, add your email provider:
 
@@ -167,7 +149,7 @@ After running the setup, edit `deploy/.env` using [deploy/.env.example](deploy/.
 | S3 storage | `STORAGE_S3_BUCKET`, `STORAGE_S3_ENDPOINT`, `STORAGE_S3_REGION`, `STORAGE_S3_ACCESS_KEY_ID`, `STORAGE_S3_SECRET_ACCESS_KEY` |
 | Email delivery and login codes | `RESEND_API_KEY`, `RESEND_BASE_URL`, `EMAIL_FROM` |
 | Stripe billing | `STRIPE_SECRET_KEY`, `STRIPE_PLATFORM_WEBHOOK_SECRET` |
-| Tax calculator | `RTC_ZIP_URL` and `RTC_ZIP_SHA256`, or a prebuilt `RTC_IMAGE` |
+| Tax calculator | Filled by the setup (`RTC_ZIP_URL`, `RTC_ZIP_SHA256`); use a prebuilt `RTC_IMAGE` for reproducible deploys |
 
 > [!WARNING]
 > The setup generates the internal passwords and secrets. Keep them with your backups: encrypted certificates depend on them.

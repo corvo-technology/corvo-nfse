@@ -191,6 +191,9 @@ export const envSchema = z
       .regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/)
       .default('corvo'),
     DB_SSL: booleanFromEnv.default(false),
+    // Verify the PostgreSQL certificate (default). Provide DB_SSL_CA for a private or provider CA.
+    DB_SSL_REJECT_UNAUTHORIZED: booleanFromEnv.default(true),
+    DB_SSL_CA: z.string().min(1).optional(),
     DB_LOGGING: booleanFromEnv.default(false),
     DB_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
     DB_POOL_MIN: z.coerce.number().int().min(0).max(100).default(0),

@@ -1,9 +1,9 @@
 // lib/docs/registry.ts
 import { en } from "./content/en";
 import { pt } from "./content/pt";
-import type { DocGroupKey, DocsLocale, DocsTree } from "./types";
+import type { DocGroupKey, DocSlug, DocsLocale, DocsTree } from "./types";
 
-export const DOC_GROUPS: { key: DocGroupKey; slugs: import("./types").DocSlug[] }[] = [
+export const DOC_GROUPS: { key: DocGroupKey; slugs: DocSlug[] }[] = [
   { key: "gettingStarted", slugs: ["authentication", "errors", "rate-limits"] },
   {
     key: "reference",
