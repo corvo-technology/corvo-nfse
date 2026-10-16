@@ -1,5 +1,6 @@
 import { CursorQuery } from '@/shared/http/pagination';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
+import { normalizeTaxID } from '@/shared/tax-id';
 import { Injectable } from '@nestjs/common';
 import { Certificate, CertificateMetadata } from '../domain/certificate';
 import { ICertificateRepository } from '../domain/certificate.repository';
@@ -64,9 +65,10 @@ export class CertificateService {
     }
 
     // 4. Extract CNPJ from certificate subject and compare with company taxId
-    const certCNPJ = this.parser.extractCNPJFromSubject(parsed.subject);
-    if (certCNPJ && company.taxId !== certCNPJ) {
-      throw new CertificateTaxIdMismatchError();
+    const certCNPJ =
+      parsed.taxId ?? this.parser.extractCNPJFromSubject(parsed.subject);
+    if (certCNPJ && normalizeTaxID(company.taxId) !== certCNPJ) {
+      throw new CertificateTaxIdMismatchError(certCNPJ, company.taxId);
     }
 
     // 5. Revoke existing active certificate if any
