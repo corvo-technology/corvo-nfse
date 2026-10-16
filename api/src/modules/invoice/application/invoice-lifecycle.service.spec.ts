@@ -98,6 +98,7 @@ function build() {
       order.push('cache');
     }),
   };
+  const eventBus = { publishBestEffort: jest.fn() };
   const service = new InvoiceLifecycleService(
     unitOfWork as never,
     cache as never,
@@ -107,9 +108,11 @@ function build() {
     invoices as never,
     events as never,
     credits as never,
+    eventBus as never,
   );
   return {
     service,
+    eventBus,
     unitOfWork,
     billing,
     invoices,
@@ -162,6 +165,31 @@ describe('InvoiceLifecycleService', () => {
         expect.objectContaining({ availableAt: scheduledFor }),
       );
     }
+  });
+
+  it('publishes the credits usage event after a live reservation only', async () => {
+    const live = build();
+    const liveInvoice = newInvoice(undefined, 'live');
+    await live.service.submit(
+      liveInvoice,
+      InvoiceEvent.create(liveInvoice.id, null, 'queued'),
+      null,
+    );
+    expect(live.eventBus.publishBestEffort).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'billing.credits.usage_changed',
+        tenantId: liveInvoice.tenantId,
+      }),
+    );
+
+    const test = build();
+    const testInvoice = newInvoice();
+    await test.service.submit(
+      testInvoice,
+      InvoiceEvent.create(testInvoice.id, null, 'queued'),
+      null,
+    );
+    expect(test.eventBus.publishBestEffort).not.toHaveBeenCalled();
   });
 
   it('reserves live billing and credits and invalidates cache after commit', async () => {

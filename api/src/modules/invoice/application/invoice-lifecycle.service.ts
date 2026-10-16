@@ -4,7 +4,9 @@ import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storag
 import { UnitOfWorkPort } from '@/infra/transactions/unit-of-work.port';
 import { BillingRepository } from '@/modules/billing/domain/billing.repository';
 import { BillingUsageService } from '@/modules/billing/application/billing-usage.service';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { ApplicationEventBus } from '@/shared/events/application-event-bus';
+import { creditsUsageChanged } from '@/modules/billing/application/credits-usage.events';
 import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import type { CachePort } from '@/infra/redis/cache.port';
 import { ICreditTransactionRepository } from '@/modules/credits/domain/credit-transaction.repository';
@@ -30,6 +32,7 @@ export class InvoiceLifecycleService {
     @Inject(INVOICE_EVENT_REPOSITORY)
     private readonly events: IInvoiceEventRepository,
     private readonly credits: ICreditTransactionRepository,
+    @Optional() private readonly eventBus?: ApplicationEventBus,
   ) {}
 
   async submit(
@@ -86,8 +89,11 @@ export class InvoiceLifecycleService {
           });
         }),
       );
-      if (invoice.environment === 'live')
+      if (invoice.environment === 'live') {
         await this.cache.delete(`credit:balance:${invoice.tenantId}`);
+        // After the reservation committed; a failing listener never affects emission.
+        this.eventBus?.publishBestEffort(creditsUsageChanged(invoice.tenantId));
+      }
     });
   }
 

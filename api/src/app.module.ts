@@ -11,6 +11,7 @@ import { AppDatabaseModule } from '@/infra/database/database.module';
 import { TypeOrmPersistenceModule } from '@/infra/persistence/typeorm/typeorm-persistence.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { CreditsModule } from '@/modules/credits/credits.module';
+import { CreditsAlertsModule } from '@/modules/credits-alerts/credits-alerts.module';
 import { WebhooksConfigModule } from '@/modules/webhooks-config/webhooks-config.module';
 import { HealthModule } from '@/modules/health/health.module';
 import { SecurityModule } from '@/modules/security/security.module';
@@ -38,6 +39,7 @@ import { SentryModule } from '@/infra/observability/sentry.module';
     AuthModule,
     HealthModule,
     CreditsModule,
+    CreditsAlertsModule,
     WebhooksConfigModule,
     SecurityModule,
     PlansModule,

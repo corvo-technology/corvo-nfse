@@ -4,6 +4,7 @@ import { QueuePort } from '@/infra/redis/queue.port';
 import type {
   OtpEmailJobData,
   WelcomeEmailJobData,
+  CreditsLowEmailJobData,
 } from '@/infra/queues/email-job.types';
 
 export type EnqueueOtpInput = {
@@ -18,7 +19,19 @@ export type EnqueueWelcomeInput = {
   name: string;
 };
 
+export type EnqueueCreditsLowInput = {
+  to: string;
+  planName: string;
+  remaining: number;
+  total: number;
+};
+
 const DEFAULT_APP_URL = 'https://corvo.tech/app';
+
+/** APP_URL may be the site origin or already end with /app; the billing page is /app/billing. */
+function billingUrl(appUrl: string): string {
+  return `${appUrl.replace(/\/+$/, '').replace(/\/app$/, '')}/app/billing`;
+}
 
 @Injectable()
 export class EmailService {
@@ -82,5 +95,35 @@ export class EmailService {
     });
 
     this.logger.debug(`Welcome email enqueued: ${emailId} → ${input.to}`);
+  }
+
+  async enqueueCreditsLow(input: EnqueueCreditsLowInput): Promise<void> {
+    const emailId = `credits_low_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+    const data: CreditsLowEmailJobData = {
+      emailId,
+      to: input.to,
+      template: {
+        alias: 'credits-low',
+        variables: {
+          plan_name: input.planName,
+          remaining: String(input.remaining),
+          total: String(input.total),
+          billing_url: billingUrl(
+            this.config.get<string>('APP_URL') ?? DEFAULT_APP_URL,
+          ),
+        },
+      },
+      kind: 'credits-low',
+    };
+
+    await this.queue.add('email', 'credits-low', data, {
+      attempts: 3,
+      backoffMs: 5_000,
+      removeOnComplete: true,
+      removeOnFail: 0,
+    });
+
+    this.logger.debug(`Credits-low email enqueued: ${emailId} → ${input.to}`);
   }
 }
