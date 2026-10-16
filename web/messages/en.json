@@ -1928,13 +1928,13 @@
       "env": "TEST",
       "you": "YOU",
       "agent": "AGENT",
-      "prompt": "Issue a R$ 450 consulting invoice to Padaria Estrela and email it to them.",
+      "prompt": "Issue a R$ 450 consulting invoice for Padaria Estrela and email it to financeiro@padariaestrela.example.",
       "listResult": "1 company ready to issue",
       "issueResult": "invoice queued",
-      "reply": "Done. The R$ 450,00 NFS-e was sent for authorization, and the customer gets it by email as soon as it clears.",
+      "reply": "Done. The R$ 450,00 NFS-e was sent for authorization, and the PDF and XML go to the customer's email as soon as it clears.",
       "card": {
         "label": "NFS-E",
-        "detail": "Padaria Estrela · Consulting",
+        "detail": "financeiro@padariaestrela.example",
         "queued": "Queued",
         "authorized": "Authorized"
       }

@@ -1928,13 +1928,13 @@
       "env": "TESTE",
       "you": "VOCÊ",
       "agent": "AGENTE",
-      "prompt": "Emite uma nota de R$ 450 de consultoria para a Padaria Estrela e manda por e-mail.",
+      "prompt": "Emite uma nota de R$ 450 de consultoria pra Padaria Estrela e manda no e-mail financeiro@padariaestrela.example.",
       "listResult": "1 empresa pronta para emitir",
       "issueResult": "nota na fila",
-      "reply": "Pronto. A NFS-e de R$ 450,00 foi enviada para autorização, e o cliente recebe por e-mail assim que ela sair.",
+      "reply": "Pronto. A NFS-e de R$ 450,00 foi enviada para autorização, e o PDF e o XML vão para o e-mail do cliente assim que ela sair.",
       "card": {
         "label": "NFS-E",
-        "detail": "Padaria Estrela · Consultoria",
+        "detail": "financeiro@padariaestrela.example",
         "queued": "Na fila",
         "authorized": "Autorizada"
       }
