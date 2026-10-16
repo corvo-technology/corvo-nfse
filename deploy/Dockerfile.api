@@ -41,7 +41,7 @@ FROM node:24-alpine AS production
 ARG SENTRY_RELEASE
 ENV NODE_ENV=production
 ENV CORVO_RUNTIME_ROLE=api
-ENV SENTRY_RELEASE=${SENTRY_RELEASE}
+ENV SENTRY_RELEASE=${SENTRY_RELEASE:-unversioned}
 WORKDIR /app
 
 RUN apk add --no-cache curl
