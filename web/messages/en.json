@@ -1770,6 +1770,7 @@
       "copied": "Copied",
       "tools": "What the agent can do",
       "toolList": [
+        "Find your companies (company_list)",
         "Issue an invoice (nfse_issue)",
         "Check an invoice status (nfse_query)",
         "List invoices (nfse_list)",

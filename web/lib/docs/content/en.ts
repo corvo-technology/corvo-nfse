@@ -2367,8 +2367,14 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             [
               "`nfse_issue`",
               "`nfse:write`",
-              "`company_id`, `customer {name, tax_id, email?}`, `services [{description, quantity, unit_price}]`, `competence_date`, `service_code?`, `idempotency_key?`",
+              "`company_tax_id` (CNPJ) or `company_id`, `amount` (or `services [{description, quantity, unit_price}]`), `customer? {name?, tax_id?, email?}`, `description?`, `discount?`, `competence_date?` (default: today), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
               "`{ invoice_id, access_key, status }`"
+            ],
+            [
+              "`company_list`",
+              "`nfse:read`",
+              "`tax_id?` (CNPJ), `limit?`, `cursor?`",
+              "`{ companies [{ id, legal_name, tax_id, status, tax_regime, setup_gaps, ready_to_issue }], next_cursor }`"
             ],
             [
               "`nfse_query`",
@@ -2392,7 +2398,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         },
         {
           "kind": "text",
-          "body": "The same fiscal rules as the REST API apply to `nfse_issue`. Tool failures come back as a result with `isError: true` and the message as text, so the agent can read and fix them."
+          "body": "The simplest call is `company_tax_id` plus `amount`: the customer is optional (omit it for an anonymous consumer invoice), the competence date defaults to today and the service code and municipality come from the company. An agent that does not know the company calls `company_list` first (it also reports `ready_to_issue`). The same fiscal rules as the REST API apply to `nfse_issue`. Tool failures come back as a result with `isError: true` and the message as text, so the agent can read and fix them."
         },
         {
           "kind": "heading",

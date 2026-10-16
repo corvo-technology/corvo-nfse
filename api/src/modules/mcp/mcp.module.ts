@@ -7,6 +7,7 @@ import {
   AuthOAuthClientOrmEntity,
   AuthSessionOrmEntity,
 } from '@/infra/persistence/typeorm/entities/auth.orm-entities';
+import { CompanyModule } from '@/modules/company/company.module';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { McpConnectionOrmEntity } from './infra/mcp-connection.orm-entity';
@@ -33,6 +34,8 @@ import { McpService } from './mcp.service';
       AuthSessionOrmEntity,
     ]),
     InvoiceModule,
+    // Company listing for the company_list tool.
+    CompanyModule,
     // Membership/OAuth/user repositories used by consent and connections.
     // AuthModule does not import McpModule, so no cycle.
     AuthModule,
