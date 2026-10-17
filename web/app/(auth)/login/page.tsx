@@ -7,6 +7,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { auth, ApiError, type MagicLinkChallenge, type OAuthProvider, type OAuthProviders } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useCookieConsent } from "@/lib/consent";
+import { markPendingCompleteRegistration } from "@/lib/complete-registration";
 import { safeNextPath } from "@/lib/safe-next";
 import { cn } from "@/lib/utils";
 import { trackMeta } from "@/components/MetaPixel";
@@ -60,6 +62,7 @@ function LoginPageContent() {
   const afterLogin = safeNextPath(searchParams.get("next")) ?? "/app";
 
   const { verifyCode, refreshSession, isAuthenticated } = useAuth();
+  const consent = useCookieConsent();
   const [challenge, setChallenge] = useState<MagicLinkChallenge | null>(null);
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [now, setNow] = useState(() => Date.now());
@@ -112,7 +115,10 @@ function LoginPageContent() {
     if (Date.now() >= Date.parse(challenge.expiresAt)) { setError(t("errors.expiredCode")); return; }
     busy.current = true; setError(""); setLoading(true);
     try {
-      await verifyCode(email.trim(), challenge.challengeId, candidate, () => setCookieIssued(true));
+      await verifyCode(email.trim(), challenge.challengeId, candidate, (isNewUser) => {
+        setCookieIssued(true);
+        if (isNewUser && consent === "accepted") markPendingCompleteRegistration(crypto.randomUUID());
+      });
       router.replace(afterLogin);
     } catch (cause) { showError(cause); }
     finally { busy.current = false; setLoading(false); }

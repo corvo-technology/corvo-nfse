@@ -1,6 +1,6 @@
 "use client";
 import { useSyncExternalStore } from "react";
-import { clearAttribution, promoteAttributionOnConsent } from "@/lib/attribution";
+import { clearCompleteRegistrationFlags } from "@/lib/complete-registration";
 
 export type CookieConsentState = "accepted" | "rejected" | null;
 
@@ -31,7 +31,7 @@ function snapshot(): CookieConsentState {
   }
 }
 
-// Deny-by-default: no stored decision means neither Pixel nor CAPI runs.
+// Deny-by-default: no stored decision means the Pixel does not run.
 export function useCookieConsent(): CookieConsentState {
   return useSyncExternalStore(subscribe, snapshot, () => null);
 }
@@ -46,29 +46,51 @@ function setConsent(value: CookieConsentState) {
 
 export function acceptCookies() {
   setConsent("accepted");
-  promoteAttributionOnConsent();
 }
 
 export function rejectCookies() {
-  clearAttribution();
+  clearCompleteRegistrationFlags();
   setConsent("rejected");
 }
 
+/**
+ * fbevents.js (and gtag.js) write _fbp/_fbc/_ga* with `domain=.<registrable-domain>`,
+ * so a bare `path=/` delete only removes a host-only cookie that was never set and
+ * leaves the real one behind. Sweep the host and every parent domain suffix; the
+ * browser silently ignores attempts on domains it doesn't own (e.g. a public TLD).
+ */
 function clearCookie(name: string) {
-  document.cookie = `${name}=; Max-Age=0; path=/`;
+  const host = window.location.hostname;
+  const parts = host.split(".");
+  const domains = new Set<string | undefined>([undefined, host]);
+  for (let i = parts.length - 2; i >= 0; i--) {
+    domains.add("." + parts.slice(i).join("."));
+  }
+  for (const domain of domains) {
+    document.cookie = `${name}=; Max-Age=0; path=/${domain ? `; domain=${domain}` : ""}`;
+  }
+}
+
+function clearCookiesByPrefix(prefix: string) {
+  for (const entry of document.cookie.split(";")) {
+    const name = entry.split("=")[0]?.trim();
+    if (name?.startsWith(prefix)) clearCookie(name);
+  }
 }
 
 /**
- * Undoes a prior "accepted" decision: clears the Meta cookies and the stored
- * attribution, tells the Pixel to revoke consent, and reloads so already
- * injected scripts (which cannot be unloaded without a reload) are dropped.
+ * Undoes a prior "accepted" decision: clears the Meta and GA cookies and the
+ * pending CompleteRegistration flags, tells the Pixel to revoke consent, and
+ * reloads so already injected scripts (which cannot be unloaded without a
+ * reload) are dropped.
  */
 export function revokeConsent() {
   try {
     clearCookie("_fbp");
     clearCookie("_fbc");
+    clearCookiesByPrefix("_ga");
   } catch {}
-  clearAttribution();
+  clearCompleteRegistrationFlags();
   try {
     window.fbq?.("consent", "revoke");
   } catch {}

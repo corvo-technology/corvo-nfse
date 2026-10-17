@@ -19,6 +19,13 @@ describe("MetaPixel", () => {
     expect(container.innerHTML).toBe("");
   });
 
+  it("renders nothing when NEXT_PUBLIC_META_PIXEL_ID is not a plausible numeric Pixel ID", async () => {
+    vi.stubEnv("NEXT_PUBLIC_META_PIXEL_ID", "<script>alert(1)</script>");
+    const { MetaPixel } = await import("@/components/MetaPixel");
+    const { container } = render(<MetaPixel />);
+    expect(container.innerHTML).toBe("");
+  });
+
   it("mounts the Pixel init script (autoConfig off, this Pixel ID) when configured", async () => {
     vi.stubEnv("NEXT_PUBLIC_META_PIXEL_ID", "123456789");
     const { MetaPixel } = await import("@/components/MetaPixel");

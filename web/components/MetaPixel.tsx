@@ -4,7 +4,8 @@ import { usePathname } from "next/navigation";
 import Script from "next/script";
 import { useEffect } from "react";
 
-const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+const rawPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+const PIXEL_ID = rawPixelId && /^\d{5,20}$/.test(rawPixelId) ? rawPixelId : undefined;
 
 declare global {
   interface Window {

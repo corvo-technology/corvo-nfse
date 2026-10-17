@@ -10,7 +10,6 @@ const state = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({ usePathname: () => state.pathname }));
 vi.mock("@/lib/consent", () => ({ useCookieConsent: () => state.consent }));
-vi.mock("@/lib/attribution", () => ({ captureAttributionCandidate: () => {} }));
 vi.mock("@/components/GoogleAnalytics", () => ({ GoogleAnalytics: () => <div data-testid="analytics" /> }));
 vi.mock("@/components/MetaPixel", () => ({ MetaPixel: () => <div data-testid="meta-pixel" /> }));
 vi.mock("@/components/ui/cookie-consent", () => ({ CookieConsent: () => <div data-testid="consent-banner" /> }));
