@@ -20,6 +20,20 @@ export function cancellationReason(
   return { code, description: trimmed ? trimmed : null };
 }
 
+/**
+ * Fixed texts used when a queued invoice loses the race to the worker and the
+ * original request carried no description. Each fits the 15-255 fiscal range.
+ */
+export const DEFAULT_CANCELLATION_DESCRIPTION: Record<
+  CancellationReasonCode,
+  string
+> = {
+  issue_error: 'Cancelamento solicitado pelo emitente por erro na emissão',
+  service_not_provided:
+    'Cancelamento solicitado pelo emitente: serviço não prestado',
+  other: 'Cancelamento solicitado pelo emitente',
+};
+
 /** Sefin TSMotivo (event 101101 xMotivo): 15 to 255 characters. */
 export const CANCELLATION_DESCRIPTION_MIN = 15;
 export const CANCELLATION_DESCRIPTION_MAX = 255;

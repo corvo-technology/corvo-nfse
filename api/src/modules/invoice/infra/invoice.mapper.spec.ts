@@ -81,4 +81,32 @@ describe('InvoiceMapper cancellation fields', () => {
     expect(back.cancellationReason).toBeNull();
     expect(back.cancelledAt).toBeNull();
   });
+
+  it('round-trips cancellationRequestedAt, null and filled', () => {
+    const invoice = Invoice.create(
+      {
+        companyId: 'company-1',
+        customer: { taxId: VALID_CNPJ, name: 'Cliente' },
+        service: {
+          description: 'Serviço',
+          code: '010101',
+          municipalityCode: '3550308',
+        },
+        amount: 100,
+        competenceDate: new Date('2026-10-14'),
+      },
+      'tenant-1',
+    );
+    const mapper = new InvoiceMapper();
+    const empty = mapper.toPersistence(invoice);
+    expect(empty.cancellationRequestedAt).toBeNull();
+    expect(mapper.toDomain(empty).cancellationRequestedAt).toBeNull();
+
+    const at = new Date('2026-10-14T13:00:00Z');
+    empty.cancellationRequestedAt = at;
+    expect(mapper.toDomain(empty).cancellationRequestedAt).toEqual(at);
+    expect(
+      mapper.toPersistence(mapper.toDomain(empty)).cancellationRequestedAt,
+    ).toEqual(at);
+  });
 });

@@ -23,6 +23,13 @@ export const INVOICE_STATUSES: readonly InvoiceStatus[] = [
   'cancelled',
 ];
 
+/** Statuses in which an emission is still unresolved, so a cancellation intent can wait. */
+export const EMISSION_IN_PROGRESS_STATUSES: readonly InvoiceStatus[] = [
+  'processing',
+  'retry_pending',
+  'reconciliation_required',
+];
+
 export const VALID_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
   queued: ['processing', 'rejected', 'cancelled'],
   processing: [

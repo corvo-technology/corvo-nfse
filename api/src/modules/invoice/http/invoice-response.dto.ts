@@ -149,6 +149,9 @@ export class InvoiceResponseDto {
   @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
   cancelledAt?: Date | null;
 
+  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  cancellationRequestedAt?: Date | null;
+
   @ApiProperty()
   createdAt!: Date;
 

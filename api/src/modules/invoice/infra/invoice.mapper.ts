@@ -73,6 +73,7 @@ export class InvoiceMapper {
         (orm.cancellationReason as CancellationReasonCode | null) ?? null,
       cancellationDescription: orm.cancellationDescription ?? null,
       cancelledAt: orm.cancelledAt ?? null,
+      cancellationRequestedAt: orm.cancellationRequestedAt ?? null,
       createdAt: orm.createdAt,
       updatedAt: orm.updatedAt,
     };
@@ -129,6 +130,7 @@ export class InvoiceMapper {
     orm.cancellationReason = snapshot.cancellationReason ?? null;
     orm.cancellationDescription = snapshot.cancellationDescription ?? null;
     orm.cancelledAt = snapshot.cancelledAt ?? null;
+    orm.cancellationRequestedAt = snapshot.cancellationRequestedAt ?? null;
     orm.createdAt = snapshot.createdAt;
     orm.updatedAt = snapshot.updatedAt;
     return orm;

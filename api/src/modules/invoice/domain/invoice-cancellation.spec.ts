@@ -1,12 +1,23 @@
 import { VALID_CNPJ } from '@/shared/fiscal/fixtures';
 import { Invoice } from './invoice';
-import { cancellationReason } from './cancellation-reason';
+import {
+  assertFiscalCancellationReason,
+  CANCELLATION_DESCRIPTION_MAX,
+  CANCELLATION_DESCRIPTION_MIN,
+  CANCELLATION_REASON_CODES,
+  cancellationReason,
+  DEFAULT_CANCELLATION_DESCRIPTION,
+} from './cancellation-reason';
 import {
   InvalidCancellationReasonError,
   InvalidInvoiceTransitionError,
   InvoiceNotCancellableError,
 } from './errors';
-import type { InvoiceStatus } from './invoice-status';
+import {
+  EMISSION_IN_PROGRESS_STATUSES,
+  INVOICE_STATUSES,
+  type InvoiceStatus,
+} from './invoice-status';
 
 const fiscalReason = cancellationReason(
   'issue_error',
@@ -147,5 +158,82 @@ describe('Invoice cancellation', () => {
   it('reports wasAuthorized only after authorization', () => {
     expect(invoiceIn('queued').wasAuthorized).toBe(false);
     expect(invoiceIn('cancelled').wasAuthorized).toBe(true);
+  });
+});
+
+describe('Pending cancellation while the invoice is being issued', () => {
+  it.each(CANCELLATION_REASON_CODES)(
+    'default description for %s fits the fiscal limits',
+    (code) => {
+      const description = DEFAULT_CANCELLATION_DESCRIPTION[code];
+      expect(description.length).toBeGreaterThanOrEqual(
+        CANCELLATION_DESCRIPTION_MIN,
+      );
+      expect(description.length).toBeLessThanOrEqual(
+        CANCELLATION_DESCRIPTION_MAX,
+      );
+      expect(() =>
+        assertFiscalCancellationReason({ code, description }),
+      ).not.toThrow();
+    },
+  );
+
+  it('fills cancellationRequestedAt when cancelling a queued invoice', () => {
+    const invoice = invoiceIn('queued');
+    const event = invoice.requestCancellation(cancellationReason('other'));
+    expect(invoice.cancellationRequestedAt).toEqual(event.createdAt);
+  });
+
+  it('fills cancellationRequestedAt when requesting a fiscal cancellation', () => {
+    const invoice = invoiceIn('authorized');
+    const event = invoice.requestCancellation(fiscalReason);
+    expect(invoice.cancellationRequestedAt).toEqual(event.createdAt);
+  });
+
+  it('registers a pending cancellation in processing without changing status', () => {
+    const invoice = invoiceIn('processing');
+    invoice.registerPendingCancellation(fiscalReason);
+    expect(invoice.status).toBe('processing');
+    expect(invoice.cancellationReason).toEqual(fiscalReason);
+    expect(invoice.cancellationRequestedAt).toBeInstanceOf(Date);
+  });
+
+  it('rejects a pending cancellation with an invalid description', () => {
+    const invoice = invoiceIn('processing');
+    expect(() =>
+      invoice.registerPendingCancellation(cancellationReason('other', 'curta')),
+    ).toThrow(InvalidCancellationReasonError);
+    expect(invoice.cancellationRequestedAt).toBeNull();
+  });
+
+  it.each(INVOICE_STATUSES.filter((s) => s !== 'processing'))(
+    'refuses to register a pending cancellation in %s',
+    (status) => {
+      expect(() =>
+        invoiceIn(status).registerPendingCancellation(fiscalReason),
+      ).toThrow(InvoiceNotCancellableError);
+    },
+  );
+
+  it.each(INVOICE_STATUSES)('hasPendingCancellation in %s', (status) => {
+    const base = invoiceIn(status);
+    const withDate = Invoice.reconstitute({
+      ...base.toSnapshot(),
+      cancellationRequestedAt: new Date('2026-10-14T13:00:00Z'),
+    });
+    expect(withDate.hasPendingCancellation).toBe(
+      EMISSION_IN_PROGRESS_STATUSES.includes(status),
+    );
+    expect(base.hasPendingCancellation).toBe(false);
+  });
+
+  it('discards the pending cancellation, clearing the three fields', () => {
+    const invoice = invoiceIn('processing');
+    invoice.registerPendingCancellation(fiscalReason);
+    invoice.discardPendingCancellation();
+    expect(invoice.cancellationReason).toBeNull();
+    expect(invoice.toSnapshot().cancellationDescription).toBeNull();
+    expect(invoice.cancellationRequestedAt).toBeNull();
+    expect(invoice.hasPendingCancellation).toBe(false);
   });
 });

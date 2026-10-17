@@ -1,6 +1,10 @@
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { randomUUID } from 'crypto';
-import { InvoiceStatus, VALID_TRANSITIONS } from './invoice-status';
+import {
+  EMISSION_IN_PROGRESS_STATUSES,
+  InvoiceStatus,
+  VALID_TRANSITIONS,
+} from './invoice-status';
 import { buildInvoiceState, type InvoiceState } from './invoice-state';
 import { InvoiceEvent } from './invoice-event';
 import {
@@ -84,6 +88,7 @@ export interface InvoiceProps {
   cancellationReason?: CancellationReasonCode | null;
   cancellationDescription?: string | null;
   cancelledAt?: Date | null;
+  cancellationRequestedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -170,6 +175,7 @@ export class Invoice {
       cancellationReason: null,
       cancellationDescription: null,
       cancelledAt: null,
+      cancellationRequestedAt: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -268,6 +274,18 @@ export class Invoice {
       : null;
   }
 
+  get cancellationRequestedAt(): Date | null {
+    return this.props.cancellationRequestedAt ?? null;
+  }
+
+  /** A cancellation was requested while the emission is still unresolved. */
+  get hasPendingCancellation(): boolean {
+    return (
+      this.cancellationRequestedAt !== null &&
+      EMISSION_IN_PROGRESS_STATUSES.includes(this.props.status)
+    );
+  }
+
   get cancelledAt(): Date | null {
     return this.props.cancelledAt ?? null;
   }
@@ -344,15 +362,35 @@ export class Invoice {
       this.recordCancellationReason(reason);
       const event = this.transitionTo('cancelled', 'Cancelled before emission');
       this.props.cancelledAt = event.createdAt;
+      this.props.cancellationRequestedAt = event.createdAt;
       return event;
     }
     if (this.props.status === 'authorized') {
       assertFiscalCancellationReason(reason);
       this.recordCancellationReason(reason);
       this.clearLastError();
-      return this.transitionTo('cancelling', 'Cancellation requested');
+      const event = this.transitionTo('cancelling', 'Cancellation requested');
+      this.props.cancellationRequestedAt = event.createdAt;
+      return event;
     }
     throw new InvoiceNotCancellableError(this.props.status);
+  }
+
+  /** Records the intent to cancel while processing; no status change, no event. */
+  registerPendingCancellation(reason: CancellationReason): void {
+    if (this.props.status !== 'processing')
+      throw new InvoiceNotCancellableError(this.props.status);
+    assertFiscalCancellationReason(reason);
+    this.recordCancellationReason(reason);
+    this.props.cancellationRequestedAt = new Date();
+    this.props.updatedAt = new Date();
+  }
+
+  discardPendingCancellation(): void {
+    this.props.cancellationReason = null;
+    this.props.cancellationDescription = null;
+    this.props.cancellationRequestedAt = null;
+    this.props.updatedAt = new Date();
   }
 
   confirmCancellation(): InvoiceEvent {

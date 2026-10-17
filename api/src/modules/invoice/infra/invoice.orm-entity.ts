@@ -204,6 +204,13 @@ export class InvoiceOrmEntity {
   @Column({ name: 'cancelled_at', type: 'timestamptz', nullable: true })
   cancelledAt?: Date | null;
 
+  @Column({
+    name: 'cancellation_requested_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  cancellationRequestedAt?: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 
