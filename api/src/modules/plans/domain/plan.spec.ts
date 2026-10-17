@@ -36,7 +36,7 @@ describe('Plan', () => {
         slug: 'free' as PlanSlug,
         name: 'Free',
         description: 'No cost plan',
-        monthlyCreditAllowance: 30,
+        monthlyCreditAllowance: 15,
         dailyLimit: 3,
         maxActiveCompanies: 1,
         creditUnitPriceCents: 0,
@@ -52,7 +52,7 @@ describe('Plan', () => {
       const plan = Plan.create(input);
 
       expect(plan.slug).toBe('free');
-      expect(plan.monthlyCreditAllowance).toBe(30);
+      expect(plan.monthlyCreditAllowance).toBe(15);
       expect(plan.dailyLimit).toBe(3);
       expect(plan.maxActiveCompanies).toBe(1);
     });
@@ -148,7 +148,7 @@ describe('Plan', () => {
         slug: 'free' as PlanSlug,
         name: 'Free',
         description: '',
-        monthlyCreditAllowance: 30,
+        monthlyCreditAllowance: 15,
         dailyLimit: 3,
         maxActiveCompanies: 1,
         creditUnitPriceCents: 0,
@@ -195,7 +195,7 @@ describe('Plan', () => {
         slug: 'free',
         name: 'Free',
         description: '',
-        monthlyCreditAllowance: 30,
+        monthlyCreditAllowance: 15,
         dailyLimit: 3,
         maxActiveCompanies: 1,
         creditUnitPriceCents: 0,
@@ -277,7 +277,7 @@ describe('Plan', () => {
         slug: 'free',
         name: 'Free',
         description: '',
-        monthlyCreditAllowance: 30,
+        monthlyCreditAllowance: 15,
         dailyLimit: 3,
         maxActiveCompanies: 1,
         creditUnitPriceCents: 0,

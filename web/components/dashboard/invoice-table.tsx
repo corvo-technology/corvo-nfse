@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { FileText } from "lucide-react";
+import { Eye, FileText } from "lucide-react";
 import type { Invoice } from "@/lib/types";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { DataTable, DataTableSkeleton, type Column } from "@/components/ui/data-table";
@@ -52,7 +52,7 @@ export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }
       primary: true,
       cell: (inv) => (
         <div className="flex min-w-0 flex-col">
-          <span className="truncate text-text"><Link href={`/app/invoices/${inv.id}`} className="hover:text-accent">{inv.customerName}</Link></span>
+          <span className="truncate text-text"><Link href={`/app/invoices/${inv.id}`} className="hover:text-accent">{inv.customerName || t("anonymousCustomer")}</Link></span>
           <span className="truncate font-mono text-[12px] font-normal text-text-4">
             {inv.externalId ?? inv.id.slice(0, 12)}
           </span>
@@ -76,6 +76,22 @@ export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }
       header: t("table.created"),
       align: "right",
       cell: (inv) => <span className="text-[13px] text-text-3">{timeAgo(inv.createdAt, timeAgoT)}</span>,
+    },
+    {
+      id: "view",
+      header: t("view"),
+      action: true,
+      align: "right",
+      cell: (inv) => (
+        <Link
+          href={`/app/invoices/${inv.id}`}
+          aria-label={t("viewInvoice", { name: inv.customerName || t("anonymousCustomer") })}
+          title={t("view")}
+          className="-my-1.5 inline-flex h-9 w-9 items-center justify-center rounded-lg text-text-3 transition-colors hover:bg-white/5 hover:text-text"
+        >
+          <Eye size={16} aria-hidden />
+        </Link>
+      ),
     },
   ];
 

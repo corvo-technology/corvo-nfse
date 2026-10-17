@@ -7,6 +7,13 @@ import {
 } from "@/components/pricing/plan-picker";
 
 describe("plan picker pricing", () => {
+  it("recommends Free up to 15 monthly invoices and a paid plan from 16", () => {
+    expect(PLANS.find((plan) => plan.slug === "free")).toEqual({
+      slug: "free", credits: 15, basePriceCents: 0, perCreditCents: 0,
+    });
+    expect(findPlanForVolume(15).slug).toBe("free");
+    expect(findPlanForVolume(16).slug).toBe("developer");
+  });
   it("picking a plan at its full allowance recommends that same plan", () => {
     for (const plan of PLANS) {
       expect(findPlanForVolume(plan.credits).slug).toBe(plan.slug);

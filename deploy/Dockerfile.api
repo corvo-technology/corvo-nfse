@@ -3,7 +3,9 @@ FROM node:24-alpine AS deps
 WORKDIR /app
 
 COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile --ignore-scripts
+# The yarn cache lives in a BuildKit cache mount: it speeds up the next builds and stays out of the image layers.
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
+  yarn install --frozen-lockfile --ignore-scripts
 
 FROM node:24-alpine AS build
 
@@ -15,7 +17,8 @@ COPY src ./src
 COPY scripts/sentry-release.mjs ./scripts/sentry-release.mjs
 COPY scripts/verify-build-artifacts.mjs ./scripts/verify-build-artifacts.mjs
 
-RUN yarn run build
+# Caps the TypeScript compiler heap so parallel builds do not exhaust a small server.
+RUN NODE_OPTIONS=--max-old-space-size=2048 yarn run build
 
 ARG SENTRY_RELEASE
 ARG SENTRY_ENVIRONMENT=production
@@ -38,7 +41,7 @@ FROM node:24-alpine AS production
 ARG SENTRY_RELEASE
 ENV NODE_ENV=production
 ENV CORVO_RUNTIME_ROLE=api
-ENV SENTRY_RELEASE=${SENTRY_RELEASE}
+ENV SENTRY_RELEASE=${SENTRY_RELEASE:-unversioned}
 WORKDIR /app
 
 RUN apk add --no-cache curl
@@ -46,10 +49,12 @@ RUN apk add --no-cache curl
 RUN addgroup -S nodejs && adduser -S nestjs -G nodejs
 
 COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile --production=true --ignore-scripts \
-  && yarn cache clean
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
+  yarn install --frozen-lockfile --production=true --ignore-scripts
 
 COPY --from=build /app/dist ./dist
+# Used by the `migrations` service; baked in because a bind mount does not work when the Compose runs from a helper container (Coolify).
+COPY scripts/deploy-migrate.mjs ./scripts/deploy-migrate.mjs
 
 USER nestjs
 

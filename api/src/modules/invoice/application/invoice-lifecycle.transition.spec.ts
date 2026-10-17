@@ -1,12 +1,10 @@
-import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
 import { VALID_CNPJ } from '@/shared/fiscal/fixtures';
 import { Invoice } from '../domain/invoice';
 import { cancellationReason } from '../domain/cancellation-reason';
 import { ConcurrentInvoiceTransitionError } from '../domain/errors';
 import type { InvoiceStatus } from '../domain/invoice-status';
 import type { NewOutboxMessage } from '../domain/outbox-message';
-import { CreditTransactionOrmEntity } from '@/modules/credits/infra/credit-transaction.orm-entity';
-import { InvoiceOrmEntity } from '../infra/invoice.orm-entity';
+import { InvoiceMapper } from '../infra/invoice.mapper';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 
 const tenantId = '11111111-1111-4111-8111-111111111111';
@@ -42,36 +40,39 @@ function build(
   const persisted: Record<string, unknown>[] = [];
   const walletInserts: Record<string, unknown>[] = [];
   const walletUpdates: unknown[][] = [];
-  const manager = {
-    query: jest.fn().mockResolvedValue([]),
-    getRepository: (entity: unknown) => ({
-      findOneByOrFail: jest.fn().mockResolvedValue({ status: storedStatus }),
-      findOneBy: jest.fn().mockResolvedValue(reservation),
-      createQueryBuilder: () => {
-        const qb = {
-          update: () => qb,
-          set: (values: Record<string, unknown>) => {
-            if (entity === InvoiceOrmEntity) persisted.push(values);
-            return qb;
-          },
-          where: () => qb,
-          execute: async () => ({ affected: 1 }),
-        };
-        return qb;
-      },
-      insert: jest.fn(async (value: Record<string, unknown>) => {
-        if (entity === CreditTransactionOrmEntity) walletInserts.push(value);
-        else order.push('event');
-      }),
-      update: jest.fn(async (...args: unknown[]) => {
-        walletUpdates.push(args);
-      }),
+  const unitOfWork = {
+    execute: jest.fn(async <T>(work: () => Promise<T>) => work()),
+  };
+  const billing = {
+    locked: jest.fn(async <T>(_tenantId: string, work: () => Promise<T>) =>
+      work(),
+    ),
+  };
+  const invoices = {
+    findByIdAndTenantId: jest.fn().mockResolvedValue({ status: storedStatus }),
+    // What the repository writes: the mapped row (null last-error columns etc.).
+    save: jest.fn(async (invoice: Invoice) => {
+      persisted.push(
+        new InvoiceMapper().toPersistence(invoice) as unknown as Record<
+          string,
+          unknown
+        >,
+      );
     }),
   };
-  const database = {
-    transaction: jest.fn(async (work: (m: unknown) => Promise<void>) =>
-      work(manager),
-    ),
+  const events = {
+    save: jest.fn(async () => {
+      order.push('event');
+    }),
+  };
+  const credits = {
+    findByReservedInvoiceId: jest.fn().mockResolvedValue(reservation),
+    save: jest.fn(async (value: Record<string, unknown>) => {
+      walletInserts.push(value);
+    }),
+    confirm: jest.fn(async (...args: unknown[]) => {
+      walletUpdates.push(args);
+    }),
   };
   const usage = { reserve: jest.fn(), settle: jest.fn() };
   const outbox = {
@@ -81,11 +82,14 @@ function build(
     }),
   };
   const service = new InvoiceLifecycleService(
-    database as never,
+    unitOfWork as never,
     { delete: jest.fn() } as never,
     usage as never,
-    new TypeOrmTransactionContext(),
+    billing as never,
     outbox as never,
+    invoices as never,
+    events as never,
+    credits as never,
   );
   return {
     service,
@@ -123,8 +127,10 @@ describe('InvoiceLifecycleService.transition — cancellation', () => {
     expect(ctx.walletInserts).toEqual([
       expect.objectContaining({ amount: 1, type: 'invoice_rejected' }),
     ]);
-    expect(ctx.walletUpdates[0][1]).toEqual({ isReservation: false });
-    expect(ctx.persisted[0]).toMatchObject({ pendingEmission: null });
+    // The reservation is released (credits.confirm marks it non-reservation);
+    // clearing pending_emission for `cancelled` is the repository's job.
+    expect(ctx.walletUpdates).toEqual([['res-1', tenantId]]);
+    expect(ctx.persisted[0]).toMatchObject({ status: 'cancelled' });
   });
 
   it('enqueues the outbox message after the event, in the same transaction', async () => {
@@ -213,19 +219,6 @@ describe('InvoiceLifecycleService.transition — cancellation', () => {
       });
     },
   );
-
-  it('keeps the pending fiscal event while cancelling', async () => {
-    const ctx = build('authorized', null);
-    const invoice = invoiceIn('authorized', 'test');
-    await ctx.service.transition(
-      invoice,
-      invoice.requestCancellation(
-        cancellationReason('issue_error', 'Valor informado incorretamente'),
-      ),
-    );
-    // The mapped entity may carry the key as undefined, which TypeORM skips on update.
-    expect(ctx.persisted[0].pendingEmission).toBeUndefined();
-  });
 
   it('reports true when it applies the transition', async () => {
     const ctx = build('queued', null);

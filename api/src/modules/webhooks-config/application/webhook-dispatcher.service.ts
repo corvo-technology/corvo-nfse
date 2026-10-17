@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { WebhookConfigService } from './webhook-config.service';
 import { WebhookEvent, WebhookEnvironment } from '../domain/webhook-event';
 import { WebhookOutboxService } from './webhook-outbox.service';
+import { WebhookDeliveryHttpError } from '../infra/webhook-dispatcher.adapter';
 
 export type { WebhookEvent };
 
@@ -38,7 +39,12 @@ export class WebhookDispatcherService {
     }
   }
 
-  async test(tenantId: string, id: string): Promise<void> {
+  async test(
+    tenantId: string,
+    id: string,
+  ): Promise<
+    { sent: true } | { sent: false; statusCode: number | null; error: string }
+  > {
     const webhook = await this.configService.findOne(tenantId, id);
     const testEvent: WebhookEvent = {
       id: `evt_test_${Date.now()}`,
@@ -58,11 +64,23 @@ export class WebhookDispatcherService {
       secret: webhook.secret,
     });
 
-    await this.outboxService.attemptDelivery(
-      delivery,
-      testEvent,
-      webhook.secret,
-      false,
-    );
+    try {
+      await this.outboxService.attemptDelivery(
+        delivery,
+        testEvent,
+        webhook.secret,
+        false,
+      );
+      return { sent: true };
+    } catch (error: unknown) {
+      // The attempt is already stored as failed. The caller's request was fine, so
+      // report what happened at their endpoint instead of answering 500.
+      return {
+        sent: false,
+        statusCode:
+          error instanceof WebhookDeliveryHttpError ? error.statusCode : null,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
   }
 }

@@ -41,22 +41,22 @@ type InstrumentedPool = {
   pool: InstrumentablePostgresPool;
 };
 
-const meter = metrics.getMeter('greenflow.postgres.pool');
+const meter = metrics.getMeter('corvo.postgres.pool');
 const connectionGauge = meter.createObservableGauge(
-  'greenflow.postgres.pool.connections',
+  'corvo.postgres.pool.connections',
   {
     description: 'PostgreSQL application pool connections',
     unit: '{connection}',
   },
 );
 const waitingGauge = meter.createObservableGauge(
-  'greenflow.postgres.pool.waiting',
+  'corvo.postgres.pool.waiting',
   {
     description: 'Requests currently waiting for a PostgreSQL pool connection',
     unit: '{request}',
   },
 );
-const maxGauge = meter.createObservableGauge('greenflow.postgres.pool.max', {
+const maxGauge = meter.createObservableGauge('corvo.postgres.pool.max', {
   description: 'Maximum number of open connections allowed for the pool',
   unit: '{connection}',
 });

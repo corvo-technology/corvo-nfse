@@ -1,3 +1,5 @@
+import type { DPS } from 'open-nfse';
+
 export interface FiscalIssueResult {
   success: boolean;
   accessKey?: string;
@@ -43,7 +45,10 @@ export interface IIssuePayload {
     codMunicipioPrestacao?: string;
   };
   valores: { vServ: number; aliqIss?: number; pTotTribSN?: number };
-  tomador: { documento: { CNPJ: string } | { CPF: string }; nome: string };
+  /** Absent for anonymous consumer invoices (tomador omitted from the DPS). */
+  tomador?: { documento: { CNPJ: string } | { CPF: string }; nome: string };
+  /** Typed DPS built from the fiscal snapshot; absent when the engine did not run. */
+  preparedDps?: DPS;
 }
 
 export type FiscalCancellationReason =

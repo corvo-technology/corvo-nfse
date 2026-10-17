@@ -63,7 +63,7 @@ function buildInvoice(
     nfseNumber: number | null;
     documentsReadyAt: Date | null;
     emailSnapshot: { send?: boolean };
-    customerSnapshot: { email?: string };
+    customerSnapshot: { email?: string } | null;
   }> = {},
 ): Invoice {
   return {
@@ -79,12 +79,15 @@ function buildInvoice(
     nfseNumber: overrides.nfseNumber ?? 42,
     documentsReadyAt: overrides.documentsReadyAt ?? null,
     emailSnapshot: overrides.emailSnapshot,
-    customerSnapshot: {
-      taxId: '11222333000181',
-      name: 'Cliente',
-      email: 'cliente@example.com',
-      ...overrides.customerSnapshot,
-    },
+    customerSnapshot:
+      overrides.customerSnapshot === null
+        ? null
+        : {
+            taxId: '11222333000181',
+            name: 'Cliente',
+            email: 'cliente@example.com',
+            ...overrides.customerSnapshot,
+          },
     serviceSnapshot: {
       code: '010101',
       description: 'Consultoria',
@@ -387,6 +390,37 @@ describe('NfseDocPrepProcessor', () => {
         expect(fakeInvoiceRepo.updateEmailStatus).not.toHaveBeenCalled();
       },
     );
+  });
+
+  describe('anonymous customer', () => {
+    it('completes the flow without an email enqueue when customer snapshot is null', async () => {
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        buildInvoice({
+          customerSnapshot: null,
+          emailSnapshot: { send: true },
+        }),
+      );
+      (fakeInvoiceRepo.markDocumentsReady as jest.Mock).mockResolvedValue(true);
+
+      await expect(processor.process(makeJob())).resolves.toBeUndefined();
+
+      expect(fakeInvoiceRepo.markDocumentsReady).toHaveBeenCalledTimes(1);
+      expect(fakeQueueService.add).not.toHaveBeenCalled();
+    });
+
+    it('still enqueues nothing for email when the customer has no email', async () => {
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        buildInvoice({
+          customerSnapshot: { email: undefined },
+          emailSnapshot: { send: true },
+        }),
+      );
+      (fakeInvoiceRepo.markDocumentsReady as jest.Mock).mockResolvedValue(true);
+
+      await expect(processor.process(makeJob())).resolves.toBeUndefined();
+
+      expect(fakeQueueService.add).not.toHaveBeenCalled();
+    });
   });
 
   describe('lock', () => {

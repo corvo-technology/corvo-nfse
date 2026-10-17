@@ -61,13 +61,11 @@ describe('CertificateService', () => {
     tenantId,
     legalName: 'Test Company',
     taxId: '12345678000190',
-    taxRegime: 'Simples Nacional' as const,
     environment: 'sandbox' as const,
     status: 'ready' as const,
     fiscalSchemaVersion: 'v2_02',
     createdAt: new Date(),
     updatedAt: new Date(),
-    simpleNational: true,
     recomputeStatus: jest.fn(),
   };
 
@@ -136,6 +134,46 @@ describe('CertificateService', () => {
       await expect(
         service.upload(companyId, tenantId, p12Buffer, 'password'),
       ).rejects.toBeInstanceOf(CertificateTaxIdMismatchError);
+    });
+
+    it('tells which CNPJs were compared when they differ', async () => {
+      mockParser.extractCNPJFromSubject.mockReturnValue('99999999000199');
+      mockCompanyRepo.findByIdAndTenantId.mockResolvedValue(mockCompany as any);
+      mockRepo.findActiveByCompanyId.mockResolvedValue(null);
+
+      const error = (await service
+        .upload(companyId, tenantId, Buffer.from('fake-p12-file'), 'password')
+        .catch((e: unknown) => e)) as CertificateTaxIdMismatchError;
+      expect(error.safeDetails).toEqual({
+        certificateTaxId: '99999999000199',
+        companyTaxId: mockCompany.taxId,
+      });
+    });
+
+    it('prefers the tax id the parser read from the certificate itself', async () => {
+      mockParser.parseP12.mockReturnValue({
+        serialNumber: 'AB',
+        issuer: 'CN=AC',
+        subject: 'CN=SOMETHING',
+        fingerprint: 'FP',
+        validFrom: new Date('2024-01-01'),
+        validUntil: new Date('2099-01-01'),
+        p12Buffer: Buffer.from('x'),
+        taxId: mockCompany.taxId,
+      });
+      mockParser.extractCNPJFromSubject.mockReturnValue('99999999000199');
+      mockCompanyRepo.findByIdAndTenantId.mockResolvedValue(mockCompany as any);
+      mockRepo.findActiveByCompanyId.mockResolvedValue(null);
+      mockEncryptor.encrypt.mockResolvedValue({
+        encryptedBlob: Buffer.from('b'),
+        encryptedDek: Buffer.from('d'),
+        dekIv: Buffer.from('i'),
+      });
+      mockRepo.save.mockResolvedValue(undefined as any);
+
+      await expect(
+        service.upload(companyId, tenantId, Buffer.from('p12'), 'password'),
+      ).resolves.toBeDefined();
     });
 
     it('rejects expired certificate', async () => {

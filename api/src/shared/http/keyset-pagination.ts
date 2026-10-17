@@ -74,11 +74,15 @@ export async function queryCursorPage<E extends ObjectLiteral, T>(
       { cursorSort: cursor.sort, cursorId: cursor.id },
     );
   }
-  const sortSelection = config.numeric
-    ? column
-    : `to_char(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+  // A numeric sort column is already an entity column. Selecting it again under
+  // an alias would stop TypeORM from hydrating it on the entity (the field would
+  // silently disappear from responses), so the cursor reads it from the entity.
+  if (!config.numeric)
+    query.addSelect(
+      `to_char(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+      'pagination_sort',
+    );
   const { entities, raw } = await query
-    .addSelect(sortSelection, 'pagination_sort')
     .orderBy(column, direction)
     .addOrderBy(id, direction)
     .take(limit + 1)
@@ -92,7 +96,7 @@ export async function queryCursorPage<E extends ObjectLiteral, T>(
           v: 1,
           scope: cursorScope(scope),
           sort: config.numeric
-            ? Number(raw[limit - 1].pagination_sort)
+            ? Number((last as Record<string, unknown>)[config.column!])
             : raw[limit - 1].pagination_sort,
           id: last.id as string,
           ...(config.context ? { context: config.context } : {}),

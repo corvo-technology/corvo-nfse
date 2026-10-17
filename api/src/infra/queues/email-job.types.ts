@@ -33,7 +33,15 @@ export type WelcomeEmailJobData = {
   kind: 'welcome';
 };
 
+export type CreditsLowEmailJobData = {
+  emailId: string;
+  to: string;
+  template: EmailTemplateRef;
+  kind: 'credits-low';
+};
+
 export type EmailJobData =
   | OtpEmailJobData
   | InvoiceEmailJobData
-  | WelcomeEmailJobData;
+  | WelcomeEmailJobData
+  | CreditsLowEmailJobData;

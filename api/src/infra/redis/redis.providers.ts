@@ -26,6 +26,7 @@ export const redisProviders = [
       cancellation: Queue,
       docPrep: Queue,
       nfseEmail: Queue,
+      fiscalReconcile: Queue,
     ) =>
       new BullmqQueueService(
         {
@@ -35,6 +36,7 @@ export const redisProviders = [
           'nfse-cancellation': cancellation,
           'nfse-doc-prep': docPrep,
           'nfse-email': nfseEmail,
+          'nfse-fiscal-reconcile': fiscalReconcile,
         },
         config.getOrThrow<QueueConfig>('queue'),
       ),
@@ -46,6 +48,7 @@ export const redisProviders = [
       getQueueToken('nfse-cancellation'),
       getQueueToken('nfse-doc-prep'),
       getQueueToken('nfse-email'),
+      getQueueToken('nfse-fiscal-reconcile'),
     ],
   },
   { provide: QueuePort, useExisting: BullmqQueueService },

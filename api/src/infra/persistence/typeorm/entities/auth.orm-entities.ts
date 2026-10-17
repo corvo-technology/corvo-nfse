@@ -180,6 +180,9 @@ export class AuthAuthorizationCodeOrmEntity {
   @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
   tenantId!: string | null;
 
+  @Column({ type: 'text', default: 'test' })
+  environment!: 'test' | 'live';
+
   @Column({ name: 'expires_at', type: 'timestamptz' })
   expiresAt!: Date;
 

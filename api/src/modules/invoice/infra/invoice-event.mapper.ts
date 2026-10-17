@@ -12,13 +12,7 @@ export class InvoiceEventMapper {
       reason: orm.reason ?? null,
       createdAt: orm.createdAt,
     };
-    // Reconstitute by creating a new instance with the same snapshot
-    return InvoiceEvent.create(
-      snapshot.invoiceId,
-      snapshot.fromStatus,
-      snapshot.toStatus,
-      snapshot.reason ?? undefined,
-    );
+    return InvoiceEvent.reconstitute(snapshot);
   }
 
   toPersistence(domain: InvoiceEvent): InvoiceEventOrmEntity {

@@ -7,6 +7,8 @@ import {
 import {
   Controller,
   Get,
+  Inject,
+  Logger,
   Post,
   Req,
   Res,
@@ -15,9 +17,17 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { MCP_SERVER_INFO, type McpServer, type McpRequest } from './mcp.server';
+import {
+  type McpServer,
+  type McpRequest,
+  type McpResponse,
+} from './mcp.server';
 import { McpService } from './mcp.service';
 import { McpAuthGuard } from './mcp-auth.guard';
+import {
+  MCP_CONNECTION_REPOSITORY,
+  type McpConnectionRepository,
+} from './domain/mcp-connection.repository';
 import type { AuthContext } from '../auth/auth-context';
 
 @ApiTags('MCP')
@@ -26,24 +36,32 @@ import type { AuthContext } from '../auth/auth-context';
 @PublicRoute()
 export class McpController {
   private readonly server: McpServer;
+  private readonly logger = new Logger(McpController.name);
 
-  constructor(mcpService: McpService) {
+  constructor(
+    mcpService: McpService,
+    @Inject(MCP_CONNECTION_REPOSITORY)
+    private readonly connections: McpConnectionRepository,
+  ) {
     this.server = mcpService.getServer();
   }
 
   @Get()
-  get() {
-    // MCP initialize handshake / SSE probe — no auth required.
-    // Streamable HTTP allows GET with a body for SSE, but until SSE is wired we
-    // just return server metadata for an empty (or any) body.
-    return MCP_SERVER_INFO;
+  get(@Res({ passthrough: true }) res: Response) {
+    // Streamable HTTP lets a server refuse the optional SSE stream with 405.
+    // Clients then keep using POST only.
+    res.status(405).set('Allow', 'POST');
+    return {
+      error: 'method_not_allowed',
+      error_description: 'Use POST with a JSON-RPC message',
+    };
   }
 
   @Post()
   @HttpCode(200)
   @DeferRateLimit()
   @UseGuards(McpAuthGuard, HttpApiRateLimitGuard)
-  async post(@Req() req: Request, @Res({ passthrough: true }) _res: Response) {
+  async post(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const authContext = (req as Request & { authContext: AuthContext })
       .authContext;
     const body = req.body as McpRequest | McpRequest[];
@@ -51,6 +69,43 @@ export class McpController {
     const results = await Promise.all(
       requests.map((r) => this.server.handleRequest(r, authContext)),
     );
-    return results.length === 1 ? results[0] : results;
+    await this.recordUsage(authContext, requests, results);
+    const replies = results.filter(
+      (result): result is McpResponse => result !== null,
+    );
+    // Only notifications/responses were sent: accept them with no body.
+    if (replies.length === 0) {
+      res.status(202);
+      return;
+    }
+    return Array.isArray(body) ? replies : replies[0];
+  }
+
+  /** Best-effort: usage numbers must never fail a tool call. */
+  private async recordUsage(
+    auth: AuthContext,
+    requests: McpRequest[],
+    results: (McpResponse | null)[],
+  ): Promise<void> {
+    if (!auth.mcpConnectionId) return;
+    let toolCalls = 0;
+    let invoicesIssued = 0;
+    requests.forEach((request, index) => {
+      const result = results[index];
+      const failed =
+        result?.error !== undefined ||
+        (result?.result as { isError?: boolean } | undefined)?.isError === true;
+      if (request?.method !== 'tools/call' || failed) return;
+      toolCalls += 1;
+      if (request.params?.name === 'nfse_issue') invoicesIssued += 1;
+    });
+    try {
+      await this.connections.recordUsage(auth.mcpConnectionId, auth.tenantId, {
+        toolCalls,
+        invoicesIssued,
+      });
+    } catch (error) {
+      this.logger.warn(`Could not record MCP usage: ${String(error)}`);
+    }
   }
 }

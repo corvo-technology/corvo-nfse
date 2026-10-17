@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { renderInvoicePdf } from '@/modules/invoice/infra/danfse/danfse';
+import { ConfigService } from '@nestjs/config';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { requireTenantId } from '@/infra/persistence/typeorm/tenant-scope';
 import { InjectDataSource } from '@nestjs/typeorm';
@@ -12,11 +14,11 @@ import {
   ValidationError,
   NotFoundError,
   JustificativaCancelamento,
-  gerarDanfse,
   parseNfseXml,
   type PendingEvent,
   type RetryStore,
   type NfseEmitResult,
+  type DpsDryRunResult,
   type NfseQueryResult,
 } from 'open-nfse';
 import { InvoiceOrmEntity } from '@/modules/invoice/infra/invoice.orm-entity';
@@ -29,7 +31,8 @@ import type {
   FiscalCancelResult,
   FiscalCancellationReason,
 } from './nfse-fiscal-provider';
-import { issueParams } from './issue-params';
+import { issueParams, type SefinEnvironment } from './issue-params';
+import { explainRejection } from './rejection-guidance';
 
 const CANCELLATION_REASON: Record<
   FiscalCancellationReason,
@@ -42,7 +45,30 @@ const CANCELLATION_REASON: Record<
 
 @Injectable()
 export class OpenNfseProvider implements FiscalProvider {
-  constructor(@InjectDataSource() private readonly database: DataSource) {}
+  private readonly logger = new Logger(OpenNfseProvider.name);
+  private readonly sefin: SefinEnvironment;
+
+  constructor(
+    @InjectDataSource() private readonly database: DataSource,
+    config: ConfigService,
+  ) {
+    this.sefin =
+      config.get<SefinEnvironment>('NFSE_SEFIN_ENVIRONMENT') === 'restricted'
+        ? 'restricted'
+        : 'production';
+    if (this.sefin === 'restricted') {
+      this.logger.warn(
+        'NFSE_SEFIN_ENVIRONMENT=restricted: live invoices go to the Sefin Produção Restrita (homologation), not to production.',
+      );
+    }
+  }
+
+  private get ambiente(): Ambiente {
+    return this.sefin === 'restricted'
+      ? Ambiente.ProducaoRestrita
+      : Ambiente.Producao;
+  }
+
   private store(
     payload: Pick<IIssuePayload, 'invoiceId' | 'tenantId'>,
   ): RetryStore {
@@ -102,7 +128,7 @@ export class OpenNfseProvider implements FiscalProvider {
     if (payload.environment !== 'live')
       throw new Error('Real fiscal provider requires live');
     return new NfseClient({
-      ambiente: Ambiente.Producao,
+      ambiente: this.ambiente,
       certificado: { pfx: payload.pfxBuffer, password: payload.p12Password },
       retryStore,
     });
@@ -167,6 +193,58 @@ export class OpenNfseProvider implements FiscalProvider {
       errorMessage: error.message,
     };
   }
+
+  /**
+   * Signs the DPS WITHOUT transmitting it and returns the pending emission to
+   * persist before the first POST. A `preparedDps` (RTC layout, built by the
+   * DpsBuilder) goes through `emitirDpsPronta`; the legacy payload keeps the
+   * `emitir` dry-run. Both reach `replayPendingEvents` through the same
+   * RetryStore, so timeout/429 handling and idempotency are identical.
+   */
+  private async prepareEmission(
+    client: NfseClient,
+    payload: IIssuePayload,
+  ): Promise<PendingEvent> {
+    const prepared = payload.preparedDps;
+    let signed: DpsDryRunResult;
+    let idDps: string;
+    if (prepared) {
+      signed = await client.emitirDpsPronta(prepared, { dryRun: true });
+      idDps = prepared.infDPS.Id;
+    } else {
+      signed = await client.emitir({
+        ...issueParams(payload, this.sefin),
+        nDPS: String(payload.number),
+        dryRun: true,
+      });
+      idDps = buildDpsId({
+        cLocEmi: payload.emitente.codMunicipio,
+        tipoInsc: 'CNPJ',
+        inscricaoFederal: payload.emitente.cnpj,
+        serie: payload.serie,
+        nDPS: String(payload.number),
+      });
+    }
+    if (!('dryRun' in signed) || !signed.dryRun)
+      throw new Error('Expected signed DPS preview');
+    const now = new Date();
+    return {
+      kind: 'emission',
+      id: pendingEmissionId(idDps),
+      idDps,
+      xmlAssinado: signed.xmlDpsAssinado,
+      emitenteCnpj: payload.emitente.cnpj,
+      serie: payload.serie,
+      nDPS: String(payload.number),
+      firstAttemptAt: now,
+      lastAttemptAt: now,
+      lastError: {
+        message: 'Prepared before fiscal submission',
+        errorName: 'Prepared',
+        transient: true,
+      },
+    };
+  }
   async issue(payload: IIssuePayload): Promise<FiscalIssueResult> {
     if (!payload.invoiceId || !payload.tenantId || !payload.number)
       throw new Error('Persistent invoice/DPS identity is required');
@@ -183,38 +261,7 @@ export class OpenNfseProvider implements FiscalProvider {
         }
       }
       if (!pending) {
-        const params = issueParams(payload);
-        const signed = await client.emitir({
-          ...params,
-          nDPS: String(payload.number),
-          dryRun: true,
-        });
-        if (!('dryRun' in signed) || !signed.dryRun)
-          throw new Error('Expected signed DPS preview');
-        const idDps = buildDpsId({
-          cLocEmi: payload.emitente.codMunicipio,
-          tipoInsc: 'CNPJ',
-          inscricaoFederal: payload.emitente.cnpj,
-          serie: payload.serie,
-          nDPS: String(payload.number),
-        });
-        const now = new Date();
-        pending = {
-          kind: 'emission',
-          id: pendingEmissionId(idDps),
-          idDps,
-          xmlAssinado: signed.xmlDpsAssinado,
-          emitenteCnpj: payload.emitente.cnpj,
-          serie: payload.serie,
-          nDPS: String(payload.number),
-          firstAttemptAt: now,
-          lastAttemptAt: now,
-          lastError: {
-            message: 'Prepared before fiscal submission',
-            errorName: 'Prepared',
-            transient: true,
-          },
-        };
+        pending = await this.prepareEmission(client, payload);
         await store.save(pending);
       }
       const [replayed] = await client.replayPendingEvents(store);
@@ -225,7 +272,7 @@ export class OpenNfseProvider implements FiscalProvider {
           success: false,
           requiresReconciliation: false,
           errorCode: 'FISCAL_REJECTED',
-          errorMessage: replayed.error.message,
+          errorMessage: explainRejection(replayed.error.message),
         };
       return {
         success: false,
@@ -247,7 +294,7 @@ export class OpenNfseProvider implements FiscalProvider {
             error instanceof ReceitaRejectionError
               ? error.codigo
               : 'INVALID_FISCAL_INPUT',
-          errorMessage: error.message,
+          errorMessage: explainRejection(error.message),
         };
       throw error;
     } finally {
@@ -280,8 +327,8 @@ export class OpenNfseProvider implements FiscalProvider {
   ): Promise<Buffer> {
     const result = await this.queryByAccessKey(key, environment, credentials);
     if (!result.xmlAuthorized) throw new Error('Invoice not found');
-    return gerarDanfse(parseNfseXml(result.xmlAuthorized), {
-      ambiente: Ambiente.Producao,
+    return renderInvoicePdf(parseNfseXml(result.xmlAuthorized), {
+      ambiente: this.ambiente,
     });
   }
 }

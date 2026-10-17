@@ -6,8 +6,11 @@ import {
   closeE2eApp,
   type E2eTestApp,
 } from './support/e2e-app';
+import { AuthOAuthClientOrmEntity } from '@/infra/persistence/typeorm/entities/auth.orm-entities';
+import { McpConnectionOrmEntity } from '@/modules/mcp/infra/mcp-connection.orm-entity';
 import { InvoiceOrmEntity } from '@/modules/invoice/infra/invoice.orm-entity';
 import {
+  MCP_REDIRECT_URI,
   mintToken,
   mcpRpc,
   type MintedToken,
@@ -49,10 +52,22 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
       tenantId,
       scopes: 'nfse:read nfse:write',
     });
+    // A second client: the same client would reuse (and re-scope) the connection above.
+    await dataSource.getRepository(AuthOAuthClientOrmEntity).insert({
+      id: 'corvo-mcp-readonly00001',
+      name: 'Read only e2e',
+      redirectUris: [MCP_REDIRECT_URI],
+      scopes: ['nfse:read'],
+      isFirstParty: false,
+      isActive: true,
+      tokenEndpointAuthMethod: 'none',
+      grantTypes: ['authorization_code'],
+    });
     readOnlyToken = await mintToken(app, {
       authUserId,
       tenantId,
       scopes: 'nfse:read',
+      clientId: 'corvo-mcp-readonly00001',
     });
   });
 
@@ -60,9 +75,11 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
     await closeE2eApp(ctx);
   });
 
-  it('lists 4 tools with real input schemas', async () => {
-    const res = await mcpPost(fullToken.accessToken, mcpRpc(1, 'tools/list'))
-      .expect(200);
+  it('lists 5 tools with real input schemas', async () => {
+    const res = await mcpPost(
+      fullToken.accessToken,
+      mcpRpc(1, 'tools/list'),
+    ).expect(200);
 
     const tools = res.body.result.tools as Array<{
       name: string;
@@ -70,6 +87,7 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
     }>;
     const names = tools.map((t) => t.name).sort();
     expect(names).toEqual([
+      'company_list',
       'nfse_cancel',
       'nfse_download_pdf',
       'nfse_issue',
@@ -112,7 +130,10 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
       },
     }).expect(200);
 
-    const content = res.body.result.content as Array<{ type: string; text: string }>;
+    const content = res.body.result.content as Array<{
+      type: string;
+      text: string;
+    }>;
     expect(res.body.result.isError).toBe(true);
     expect(content[0].text).toContain('nfse:write');
   });
@@ -122,7 +143,10 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
       jsonrpc: '2.0',
       id: 3,
       method: 'tools/call',
-      params: { name: 'nfse_query', arguments: { access_key: '99999999999999999999' } },
+      params: {
+        name: 'nfse_query',
+        arguments: { access_key: '99999999999999999999' },
+      },
     }).expect(200);
 
     expect(res.body.result.isError).toBe(true);
@@ -145,14 +169,99 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
     expect(payload).toHaveProperty('next_cursor');
   });
 
+  it('a live connection works in the live environment and cannot see test companies', async () => {
+    await dataSource.getRepository(AuthOAuthClientOrmEntity).insert({
+      id: 'corvo-mcp-liveagent00001',
+      name: 'Live e2e',
+      redirectUris: [MCP_REDIRECT_URI],
+      scopes: ['nfse:read', 'nfse:write'],
+      isFirstParty: false,
+      isActive: true,
+      tokenEndpointAuthMethod: 'none',
+      grantTypes: ['authorization_code'],
+    });
+    const live = await mintToken(app, {
+      authUserId,
+      tenantId,
+      scopes: 'nfse:read nfse:write',
+      clientId: 'corvo-mcp-liveagent00001',
+      environment: 'live',
+    });
+
+    const list = await mcpPost(live.accessToken, {
+      jsonrpc: '2.0',
+      id: 30,
+      method: 'tools/call',
+      params: { name: 'nfse_list', arguments: { limit: 5 } },
+    }).expect(200);
+    expect(list.body.result.isError).toBeUndefined();
+
+    // The company seeded below is a test-environment company: live must not resolve it.
+    await dataSource.query(
+      `INSERT INTO "${schema}"."nfse_companies"
+         (id, tenant_id, legal_name, tax_id, municipality_code,
+          municipal_reg, environment, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, '3550308', '12345', 'test', 'ready', NOW(), NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [
+        'aaaaaaaa-1111-4222-8333-444444444444',
+        tenantId,
+        'Empresa MCP E2E',
+        COMPANY_TAX_ID,
+      ],
+    );
+    const issue = await mcpPost(live.accessToken, {
+      jsonrpc: '2.0',
+      id: 31,
+      method: 'tools/call',
+      params: {
+        name: 'nfse_issue',
+        arguments: {
+          company_id: 'aaaaaaaa-1111-4222-8333-444444444444',
+          customer: { name: 'Cliente', tax_id: CUSTOMER_TAX_ID },
+          services: [{ description: 'Servico', quantity: 1, unit_price: 10 }],
+          competence_date: COMPETENCE_DATE,
+        },
+      },
+    }).expect(200);
+    expect(issue.body.result.isError).toBe(true);
+  });
+
+  it('counts successful tool calls (and not failed ones) on the connection', async () => {
+    const repo = dataSource.getRepository(McpConnectionOrmEntity);
+    const before = await repo.findOneOrFail({
+      where: { id: fullToken.connectionId },
+    });
+
+    await mcpPost(fullToken.accessToken, {
+      jsonrpc: '2.0',
+      id: 20,
+      method: 'tools/call',
+      params: { name: 'nfse_list', arguments: { limit: 5 } },
+    }).expect(200);
+    await mcpPost(fullToken.accessToken, {
+      jsonrpc: '2.0',
+      id: 21,
+      method: 'tools/call',
+      params: { name: 'nfse_query', arguments: { access_key: '1'.repeat(20) } },
+    }).expect(200);
+
+    const after = await repo.findOneOrFail({
+      where: { id: fullToken.connectionId },
+    });
+    expect(after.toolCallsCount).toBe(before.toolCallsCount + 1);
+    expect(after.invoicesIssuedCount).toBe(before.invoicesIssuedCount);
+    expect(after.lastUsedAt).toBeTruthy();
+  });
+
   it('nfse_issue queues an invoice persisted to nfse_invoices', async () => {
     // Seed a test-environment company so the issue handler can resolve it.
     const companyId = 'aaaaaaaa-1111-4222-8333-444444444444';
     await dataSource.query(
       `INSERT INTO "${schema}"."nfse_companies"
-         (id, tenant_id, legal_name, tax_id, tax_regime, municipality_code,
+         (id, tenant_id, legal_name, tax_id, municipality_code,
           municipal_reg, environment, status, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, 'MEI', '3550308', '12345', 'test', 'ready', NOW(), NOW())
+       VALUES ($1, $2, $3, $4, '3550308', '12345', 'test', 'ready', NOW(), NOW())
        ON CONFLICT (id) DO NOTHING`,
       [companyId, tenantId, 'Empresa MCP E2E', COMPANY_TAX_ID],
     );
@@ -170,7 +279,9 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
             tax_id: CUSTOMER_TAX_ID,
             email: 'cliente@e2e.invalid',
           },
-          services: [{ description: 'Consultoria', quantity: 1, unit_price: 100 }],
+          services: [
+            { description: 'Consultoria', quantity: 1, unit_price: 100 },
+          ],
           competence_date: COMPETENCE_DATE,
           service_code: '010101',
           municipality_code: '3550308',
@@ -180,11 +291,68 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
 
     // The invoice row is persisted by the lifecycle before the BullMQ enqueue,
     // so it should exist for this tenant even if the queue is unavailable.
-    const row = await dataSource
-      .getRepository(InvoiceOrmEntity)
-      .findOne({ where: { tenantId, companyId }, order: { createdAt: 'DESC' } });
+    const row = await dataSource.getRepository(InvoiceOrmEntity).findOne({
+      where: { tenantId, companyId },
+      order: { createdAt: 'DESC' },
+    });
     expect(row).toBeTruthy();
     expect(row!.status).toBe('queued');
     expect(row!.environment).toBe('test');
+  });
+  it('company_list finds the company and nfse_issue works with just its CNPJ and an amount', async () => {
+    const companyId = 'bbbbbbbb-1111-4222-8333-444444444444';
+    const taxId = '45723174000110';
+    await dataSource.query(
+      `INSERT INTO "${schema}"."nfse_companies"
+         (id, tenant_id, legal_name, tax_id, municipality_code,
+          municipal_reg, environment, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, '3550308', '12345', 'test', 'ready', NOW(), NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [companyId, tenantId, 'Empresa Simples E2E', taxId],
+    );
+
+    const listed = await mcpPost(fullToken.accessToken, {
+      jsonrpc: '2.0',
+      id: 40,
+      method: 'tools/call',
+      params: {
+        name: 'company_list',
+        arguments: { tax_id: '45.723.174/0001-10' },
+      },
+    }).expect(200);
+    expect(listed.body.result.isError).not.toBe(true);
+    const payload = JSON.parse(listed.body.result.content[0].text) as {
+      companies: Array<{ id: string; tax_id: string; setup_gaps: string[] }>;
+    };
+    expect(payload.companies).toHaveLength(1);
+    expect(payload.companies[0]).toMatchObject({
+      id: companyId,
+      tax_id: taxId,
+    });
+
+    const issued = await mcpPost(fullToken.accessToken, {
+      jsonrpc: '2.0',
+      id: 41,
+      method: 'tools/call',
+      params: {
+        name: 'nfse_issue',
+        arguments: {
+          company_tax_id: taxId,
+          amount: 1,
+          description: 'Servico de teste',
+          competence_date: COMPETENCE_DATE,
+          service_code: '010101',
+          municipality_code: '3550308',
+        },
+      },
+    }).expect(200);
+    expect(issued.body.result.isError).not.toBe(true);
+
+    const row = await dataSource.getRepository(InvoiceOrmEntity).findOne({
+      where: { tenantId, companyId },
+      order: { createdAt: 'DESC' },
+    });
+    expect(row).toBeTruthy();
+    expect(row!.status).toBe('queued');
   });
 });

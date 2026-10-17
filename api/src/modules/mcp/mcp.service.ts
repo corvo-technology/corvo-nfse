@@ -2,6 +2,8 @@ import {
   INVOICE_REPOSITORY,
   type IInvoiceRepository,
 } from '@/modules/invoice/domain/invoice.repository';
+import { CompanyService } from '@/modules/company/application/company.service';
+import { ICompanyCertificateReader } from '@/modules/company/domain/i-company-certificate-reader';
 import { Inject, Injectable } from '@nestjs/common';
 import type { AuthContext } from '../auth/auth-context';
 import { InvoiceService } from '../invoice/application/invoice.service';
@@ -19,6 +21,10 @@ import {
   createNfseQueryHandler,
 } from './tools/nfse-query.tool';
 import { NFSE_LIST_TOOL, createNfseListHandler } from './tools/nfse-list.tool';
+import {
+  COMPANY_LIST_TOOL,
+  createCompanyListHandler,
+} from './tools/company-list.tool';
 import {
   NFSE_DOWNLOAD_PDF_TOOL,
   createNfseDownloadPdfHandler,
@@ -41,6 +47,9 @@ export class McpService {
     private readonly invoiceService: InvoiceService,
     @Inject(INVOICE_REPOSITORY)
     private readonly invoiceRepo: IInvoiceRepository,
+    private readonly companyService: CompanyService,
+    @Inject(ICompanyCertificateReader)
+    private readonly certReader: ICompanyCertificateReader,
   ) {
     this.server = new McpServer();
     this.registerTools();
@@ -63,6 +72,13 @@ export class McpService {
       ),
     );
     // nfse:read tools
+    this.server.registerTool(
+      COMPANY_LIST_TOOL,
+      this.wrapWithScopeCheck(
+        createCompanyListHandler(this.companyService, this.certReader),
+        'nfse:read',
+      ),
+    );
     this.server.registerTool(
       NFSE_QUERY_TOOL,
       this.wrapWithScopeCheck(

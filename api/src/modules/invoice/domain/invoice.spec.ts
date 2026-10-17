@@ -34,9 +34,11 @@ describe('Invoice', () => {
       expect(invoice.scheduledFor).toEqual(scheduledFor);
       expect(invoice.toSnapshot().scheduledFor).toEqual(scheduledFor);
       const serialized = JSON.parse(JSON.stringify(invoice)) as {
-        props: { scheduledFor: string };
+        scheduledFor: string;
+        props?: unknown;
       };
-      expect(serialized.props.scheduledFor).toBe(scheduledFor.toISOString());
+      expect(serialized.scheduledFor).toBe(scheduledFor.toISOString());
+      expect(serialized.props).toBeUndefined();
       const immediate = Invoice.create(defaultInput, 'tenant-123');
       expect(immediate.scheduledFor).toBeNull();
       expect(immediate.toSnapshot().scheduledFor).toBeNull();
@@ -72,11 +74,44 @@ describe('Invoice', () => {
     it('stores customer and service snapshots', () => {
       const invoice = Invoice.create(defaultInput, 'tenant-123');
 
-      expect(invoice.toSnapshot().customerSnapshot.taxId).toBe(VALID_CNPJ);
-      expect(invoice.toSnapshot().customerSnapshot.name).toBe('Customer Name');
+      expect(invoice.toSnapshot().customerSnapshot?.taxId).toBe(VALID_CNPJ);
+      expect(invoice.toSnapshot().customerSnapshot?.name).toBe('Customer Name');
       expect(invoice.toSnapshot().serviceSnapshot.code).toBe('010101');
       expect(invoice.toSnapshot().serviceSnapshot.municipalityCode).toBe(
         '3550308',
+      );
+    });
+
+    it('creates an invoice without a customer snapshot', () => {
+      const invoice = Invoice.create(
+        { ...defaultInput, customer: null },
+        'tenant-123',
+      );
+
+      expect(invoice.toSnapshot().customerSnapshot).toBeNull();
+      expect(invoice.customerSnapshot).toBeNull();
+    });
+
+    it('persists discount and fiscal service input in the snapshots', () => {
+      const invoice = Invoice.create(
+        {
+          ...defaultInput,
+          discount: 25.5,
+          service: {
+            ...defaultInput.service,
+            fiscal: { nbsCode: '010101001' },
+            serviceProfileId: '01927de2-1234-7890-abcd-ef0123456789',
+          },
+        },
+        'tenant-123',
+      );
+
+      expect(invoice.toSnapshot().discount).toBe(25.5);
+      expect(invoice.toSnapshot().serviceSnapshot.fiscal).toEqual({
+        nbsCode: '010101001',
+      });
+      expect(invoice.toSnapshot().serviceSnapshot.serviceProfileId).toBe(
+        '01927de2-1234-7890-abcd-ef0123456789',
       );
     });
 
@@ -98,6 +133,30 @@ describe('Invoice', () => {
       expect(invoice.status).toBe('processing');
       expect(event.fromStatus).toBe('queued');
       expect(event.toStatus).toBe('processing');
+    });
+
+    it('transitions queued to rejected', () => {
+      const invoice = Invoice.create(defaultInput, 'tenant-123');
+
+      const event = invoice.transitionTo(
+        'rejected',
+        'Fiscal calculation failed',
+      );
+
+      expect(invoice.status).toBe('rejected');
+      expect(event.fromStatus).toBe('queued');
+      expect(event.toStatus).toBe('rejected');
+      expect(event.reason).toBe('Fiscal calculation failed');
+    });
+
+    it('rejects transition from authorized to rejected', () => {
+      const invoice = Invoice.create(defaultInput, 'tenant-123');
+      invoice.setProcessing();
+      invoice.transitionTo('authorized');
+
+      expect(() => invoice.transitionTo('rejected')).toThrow(
+        InvalidInvoiceTransitionError,
+      );
     });
 
     it('transitions processing to authorized', () => {

@@ -52,20 +52,38 @@ describe("Company fiscal setup", () => {
     expect(field("IBGE").required).toBe(true); expect(field("Municipal registration").required).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Create company" }));
     expect(screen.getByText("Enter an IBGE municipality code with exactly 7 digits.")).toBeTruthy(); expect(onSave).not.toHaveBeenCalled();
-    fill("IBGE", "3550308"); chooseService("010101");
+    fill("IBGE", "3550308"); chooseService("010101"); fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } });
     fireEvent.click(screen.getByRole("button", { name: "Create company" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0][0]).toMatchObject({ taxId: company.taxId, municipalityCode: "3550308", defaultServiceCode: "010101" });
     expect(onSave.mock.calls[0][0].municipalReg).toBeUndefined();
   });
-  it("requires municipal registration to create a live company", async () => {
+  it("lets a live company be created without a municipal registration", async () => {
     mocks.environment = "live"; const onSave = vi.fn();
     renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); reachFiscal(); fill("IBGE", "3550308");
-    expect(field("Municipal registration").required).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Create company" }));
-    expect(screen.getByText("Municipal registration is required to register in live mode.")).toBeTruthy(); expect(onSave).not.toHaveBeenCalled();
-    fill("Municipal registration", "12345"); fireEvent.click(screen.getByRole("button", { name: "Create company" }));
+    expect(field("Municipal registration").required).toBe(false);
+    fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } }); fireEvent.click(screen.getByRole("button", { name: "Create company" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0][0].municipalReg).toBeUndefined();
+  });
+  it("keeps the municipal registration off the invoice unless the user opts in", async () => {
+    const onSave = vi.fn().mockResolvedValue(company);
+    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); reachFiscal(); fill("IBGE", "3550308");
+    const optIn = () => screen.queryByRole("checkbox", { name: /Send the municipal registration/ }) as HTMLInputElement | null;
+    expect(optIn()).toBeNull();
+    fill("Municipal registration", "12345");
+    expect(optIn()?.checked).toBe(false);
+    fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } }); fireEvent.click(screen.getByRole("button", { name: "Create company" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0][0]).toMatchObject({ municipalReg: "12345", sendMunicipalReg: false });
+  });
+  it("sends the municipal registration only after ticking the option", async () => {
+    const onSave = vi.fn().mockResolvedValue(company);
+    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); reachFiscal(); fill("IBGE", "3550308"); fill("Municipal registration", "12345");
+    fireEvent.click(screen.getByRole("checkbox", { name: /Send the municipal registration/ }));
+    fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } }); fireEvent.click(screen.getByRole("button", { name: "Create company" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0][0]).toMatchObject({ municipalReg: "12345", sendMunicipalReg: true });
   });
   it("shows the saved service code in edit mode and sends null to clear it", async () => {
     const onSave = vi.fn().mockResolvedValue(company);
@@ -103,10 +121,30 @@ describe("Invoice company defaults", () => {
     fireEvent.click(screen.getByRole("button", { name: "Issue NFS-e" }));
     await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce()); expect(mocks.create.mock.calls[0][0].service).toMatchObject({ code: "010201", municipalityCode: "3304557" });
   });
-  it("requires a service code when the company has no default", async () => {
+  it("falls back to LC 116 item 10.09 (100901) when the company has no default service code", async () => {
     mocks.list.mockResolvedValue({ items: [{ ...company, defaultServiceCode: undefined }], hasMore: false, nextCursor: null });
-    await prepareInvoice(); expect((screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement).disabled).toBe(true);
-    chooseService("010101"); expect((screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement).disabled).toBe(false);
+    await prepareInvoice();
+    expect(screen.getByText(/we use 100901/)).toBeTruthy();
+    const issue = screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement; expect(issue.disabled).toBe(false);
+    fireEvent.click(issue); await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce());
+    expect(mocks.create.mock.calls[0][0].service.code).toBeUndefined();
+  });
+  it("issues without tomador when no customer data is filled, and without a description", async () => {
+    renderUI(<NewInvoicePage />);
+    await waitFor(() => expect(screen.getByRole("option", { name: company.legalName })).toBeTruthy());
+    fill("Total amount", "19900"); fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.sendEmail.label) }));
+    const issue = screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement; expect(issue.disabled).toBe(false);
+    fireEvent.click(issue); await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce());
+    const payload = JSON.parse(JSON.stringify(mocks.create.mock.calls[0][0]));
+    expect(payload).not.toHaveProperty("customer"); expect(payload.service).toEqual({});
+  });
+  it("needs a valid CPF or CNPJ as soon as any customer data is filled", async () => {
+    renderUI(<NewInvoicePage />);
+    await waitFor(() => expect(screen.getByRole("option", { name: company.legalName })).toBeTruthy());
+    fill("Total amount", "19900"); fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.sendEmail.label) })); fill("Name /", "Only a name");
+    expect((screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement).disabled).toBe(true);
+    fill("CPF or CNPJ", "52998224725");
+    expect((screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement).disabled).toBe(false);
   });
   it("does not let an override conceal a missing issuer municipality", async () => {
     mocks.list.mockResolvedValue({ items: [{ ...company, municipalityCode: undefined, setupGaps: ["municipality_code"] }], hasMore: false, nextCursor: null });

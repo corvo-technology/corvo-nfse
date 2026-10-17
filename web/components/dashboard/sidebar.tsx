@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  Bot,
   Building2,
   CreditCard,
   FileText,
@@ -36,6 +37,7 @@ const navMain: NavItem[] = [
 const navAccount: NavItem[] = [
   { key: "Sidebar.nav.webhooks", href: "/app/webhooks", icon: Webhook },
   { key: "Sidebar.nav.apiKeys", href: "/app/api-keys", icon: KeyRound },
+  { key: "Sidebar.nav.agents", href: "/app/agents", icon: Bot },
   { key: "Sidebar.nav.billing", href: "/app/billing", icon: CreditCard },
   { key: "Sidebar.nav.members", href: "/app/members", icon: Users },
   { key: "Sidebar.nav.settings", href: "/app/settings", icon: Settings },

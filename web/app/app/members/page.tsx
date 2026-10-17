@@ -14,6 +14,9 @@ import { Field } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 
+/** Member invitations are switched off for now; flip to true to bring the button back. */
+const INVITES_ENABLED = false;
+
 export default function MembersPage() {
   const t = useTranslations("Members");
   const tCommon = useTranslations("Common");
@@ -81,6 +84,7 @@ export default function MembersPage() {
   const roleVariant: Record<string, BadgeVariant> = { admin: "accent", developer: "gray", billing: "info" };
 
   const openInvite = () => {
+    if (!INVITES_ENABLED) return;
     setModalOpen(true);
     setInviteResult(null);
     setInviteName("");
@@ -140,7 +144,12 @@ export default function MembersPage() {
         title={t("title")}
         subtitle={t("subtitle")}
         actions={
-          <Button variant="accent" onClick={openInvite}>
+          <Button
+            variant="accent"
+            onClick={openInvite}
+            disabled={!INVITES_ENABLED}
+            title={INVITES_ENABLED ? undefined : t("inviteUnavailable")}
+          >
             <UserPlus size={15} aria-hidden />
             {t("invite")}
           </Button>

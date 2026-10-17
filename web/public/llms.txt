@@ -1,11 +1,40 @@
 # Corvo
 
-> Corvo is a developer-first WhatsApp messaging API for building, operating, and scaling transactional and automated messaging.
+> Corvo is a REST API and MCP server to issue Brazilian service invoices (NFS-e) on the national standard. It is built for developers, SaaS products, ERPs and AI agents that need to issue notes for MEI and Simples Nacional companies without learning the tax integration.
 
-Corvo provides one API for WhatsApp templates, webhooks, delivery monitoring, and prepaid messaging credits. It is designed for SaaS products, AI agents, CRMs, automation workflows, and internal systems.
+Corvo registers issuer companies, stores their A1 certificates, calculates taxes before issuing, issues the NFS-e asynchronously, tracks every status change and delivers XML and PDF by link, webhook or email. Corvo covers NFS-e (services) only, not NF-e or NFC-e (goods and retail).
 
-Corvo is currently preparing for public launch. Account creation, the dashboard, and developer documentation are not yet publicly available.
+## Quick facts
 
-## Product
+- API base URL: `https://api.corvo.tech/v1`. Authenticate with the `X-API-Key` header. Keys starting with `corvo_test_` use the test environment (no fiscal validity); keys starting with `corvo_live_` issue real invoices.
+- MCP server (AI agents): `https://api.corvo.tech/mcp`. Claude Code, Cursor, Codex, VS Code, Windsurf and Claude Desktop connect with OAuth in the browser; the user picks the workspace and the environment (test or live) on the approval screen.
+- Tax regimes: MEI and Simples Nacional first; other regimes need a service tax profile.
+- Issuance is asynchronous: `POST /v1/invoices` returns `202` and the result arrives by `GET /v1/invoices/:id` or by webhook. Send an `Idempotency-Key` header to retry safely.
+- `POST /v1/invoices/calculate` shows the taxes (ISS, withholdings, IBS/CBS when they apply) without issuing, using no credit.
+- Scheduled invoices: `options.type: "SCHEDULE"` with a future `competenceDate` (up to 15 days ahead).
+- Official SDKs in nine languages (same operations, `X-API-Key` auth, typed errors, webhook verification): Node.js (`npm install corvo-nfse-node`), Python (`pip install corvo-nfse`), Go (`go get github.com/corvo-technology/corvo-nfse-go`), PHP (`composer require corvo-technology/corvo-nfse`), Ruby (`gem install corvo-nfse`), Rust (`cargo add corvo-nfse`), Java (`tech.corvo:corvo-nfse`), Elixir (`{:corvo_nfse, "~> 0.1.1"}`) and .NET (`dotnet add package Corvo.Nfse`). Each reads `CORVO_API_KEY`.
+- Multi-company: one account can hold many issuer companies, each with its own certificate.
+- Pricing: free plan with 15 invoices a month and 1 company, no credit card. Paid plans and overage prices are public at `GET https://api.corvo.tech/v1/plans`.
+- Source code: open source under AGPL-3.0-only.
 
-- [Corvo landing page](https://corvo.tech/): Product overview, supported use cases, architecture, dashboard capabilities, and planned pricing.
+## Documentation
+
+- [API introduction and quickstart](https://corvo.tech/en/docs): Base URL, response formats, endpoint index and the integration sequence.
+- [SDKs](https://corvo.tech/en/docs/sdks): Install and use the official libraries in nine languages.
+- [Authentication](https://corvo.tech/en/docs/authentication): API keys, scopes and environments.
+- [Companies](https://corvo.tech/en/docs/companies): Register issuer companies and their fiscal setup.
+- [Certificates](https://corvo.tech/en/docs/certificates): Upload and manage A1 (.p12) certificates.
+- [Invoices](https://corvo.tech/en/docs/invoices): Issue, calculate, schedule, fetch, download and email NFS-e.
+- [Webhooks](https://corvo.tech/en/docs/webhooks): Register endpoints, event types, signatures and deliveries.
+- [Credits](https://corvo.tech/en/docs/credits) and [Billing](https://corvo.tech/en/docs/billing): Allowance, plans, usage and the public plan catalog.
+- [Async issuance](https://corvo.tech/en/docs/async-issuance): Statuses, tracking and idempotent retries.
+- [Pagination](https://corvo.tech/en/docs/pagination), [Errors](https://corvo.tech/en/docs/errors) and [Rate limits](https://corvo.tech/en/docs/rate-limits).
+- [AI agents (MCP)](https://corvo.tech/en/docs/mcp): Connect Claude Code, Cursor, Codex and others.
+- [Integration checklist](https://corvo.tech/en/docs/integration-checklist): From first call to production.
+
+## Optional
+
+- [Full documentation as one text file](https://corvo.tech/llms-full.txt): Every documentation page in English, for AI tools.
+- [Documentação em português](https://corvo.tech/pt/docs): The same documentation in Brazilian Portuguese.
+- [Corvo landing page](https://corvo.tech/en): Product overview and pricing.
+- [Privacy notice](https://corvo.tech/en/privacy), [Terms of service](https://corvo.tech/en/terms) and [Data processing addendum](https://corvo.tech/en/dpa).

@@ -24,6 +24,6 @@ import { PlansModule } from '@/modules/plans/plans.module';
     },
     CreditsService,
   ],
-  exports: [CreditsService],
+  exports: [CreditsService, ICreditTransactionRepository],
 })
 export class CreditsModule {}

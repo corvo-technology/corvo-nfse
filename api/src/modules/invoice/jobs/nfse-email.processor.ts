@@ -85,7 +85,7 @@ export class NfseEmailProcessor extends WorkerHost {
       if (invoice.status !== 'authorized' || !invoice.documentsReadyAt)
         throw new Error('Invoice documents are not ready');
       const snapshot = invoice.toSnapshot();
-      const customerEmail = snapshot.customerSnapshot.email;
+      const customerEmail = snapshot.customerSnapshot?.email;
 
       if (!customerEmail) {
         this.logger.warn(
@@ -117,7 +117,7 @@ export class NfseEmailProcessor extends WorkerHost {
         alias: 'nfse-documents-ready',
         variables: {
           company_name: company?.tradeName ?? company?.legalName ?? 'Corvo',
-          customer_name: snapshot.customerSnapshot.name,
+          customer_name: snapshot.customerSnapshot?.name ?? 'Consumidor',
           invoice_amount: formatBrl(Number(snapshot.amount)),
           invoice_number: String(nfseNumber),
           invoice_issue_date: formatDateBr(snapshot.issuedAt ?? new Date()),

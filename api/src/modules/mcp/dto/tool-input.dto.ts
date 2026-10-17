@@ -1,8 +1,11 @@
 import {
+  ArrayNotEmpty,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEmail,
   IsIn,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -10,6 +13,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -35,8 +39,8 @@ export class AddressInput {
 }
 
 export class CustomerInput {
-  @IsString() name!: string;
-  @IsString() tax_id!: string;
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsString() tax_id?: string;
   @IsOptional() @IsEmail() email?: string;
   @IsOptional()
   @ValidateNested()
@@ -51,26 +55,62 @@ export class ServiceInput {
 }
 
 export class NfseIssueInput {
+  /** The issuing company: send its id or its CNPJ. */
+  @ValidateIf((o: NfseIssueInput) => !o.company_tax_id)
   @IsUUID()
-  company_id!: string;
+  company_id?: string;
 
+  @ValidateIf((o: NfseIssueInput) => !o.company_id)
+  @IsString()
+  @IsNotEmpty()
+  company_tax_id?: string;
+
+  /** Optional: omit it for an anonymous consumer invoice. */
+  @IsOptional()
   @ValidateNested()
   @Type(() => CustomerInput)
-  customer!: CustomerInput;
+  customer?: CustomerInput;
 
+  /** Simple form: total amount of the service, in BRL. */
+  @ValidateIf((o: NfseIssueInput) => o.services === undefined)
+  @IsNumber()
+  @Min(0.01)
+  amount?: number;
+
+  @IsOptional() @IsString() description?: string;
+
+  /** Itemized form: the amount is the sum of quantity x unit_price. */
+  @ValidateIf((o: NfseIssueInput) => o.amount === undefined)
   @IsArray()
+  @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => ServiceInput)
-  services!: ServiceInput[];
+  services?: ServiceInput[];
 
-  @IsDateString()
-  competence_date!: string;
+  @IsOptional() @IsNumber() @Min(0) discount?: number;
+
+  /** YYYY-MM-DD. Defaults to today (America/Sao_Paulo). */
+  @IsOptional() @IsDateString() competence_date?: string;
+
+  @IsOptional() @IsIn(['IMMEDIATE', 'SCHEDULE']) emission_type?:
+    | 'IMMEDIATE'
+    | 'SCHEDULE';
+
+  @IsOptional() @IsBoolean() send_email?: boolean;
 
   // Omitted classification fields inherit the company defaults.
   @IsOptional() @IsString() service_code?: string;
   @IsOptional() @IsString() municipality_code?: string;
+  @IsOptional() @IsUUID() service_profile_id?: string;
 
+  @IsOptional() @IsString() external_id?: string;
   @IsOptional() @IsString() idempotency_key?: string;
+}
+
+export class CompanyListInput {
+  @IsOptional() @IsString() tax_id?: string;
+  @IsOptional() @IsNumber() @Min(1) @Max(100) limit?: number;
+  @IsOptional() @IsString() cursor?: string;
 }
 
 export class NfseQueryInput {

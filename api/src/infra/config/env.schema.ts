@@ -11,6 +11,10 @@ export const envSchema = z
     PORT: z.coerce.number().int().positive().default(3000),
     WORKER_PORT: z.coerce.number().int().positive().default(3002),
     NFSE_MASTER_KEY: z.string().min(32).optional(),
+    /** `restricted` sends live invoices to the Sefin Produção Restrita (homologation), never to production. */
+    NFSE_SEFIN_ENVIRONMENT: z
+      .enum(['production', 'restricted'])
+      .default('production'),
     RESEND_API_KEY: z.string().trim().optional(),
     RESEND_BASE_URL: z.string().url().default('https://api.resend.com'),
     EMAIL_FROM: z.string().min(1).default('Corvo <noreply@corvo.tech>'),
@@ -191,6 +195,9 @@ export const envSchema = z
       .regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/)
       .default('corvo'),
     DB_SSL: booleanFromEnv.default(false),
+    // Verify the PostgreSQL certificate (default). Provide DB_SSL_CA for a private or provider CA.
+    DB_SSL_REJECT_UNAUTHORIZED: booleanFromEnv.default(true),
+    DB_SSL_CA: z.string().min(1).optional(),
     DB_LOGGING: booleanFromEnv.default(false),
     DB_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
     DB_POOL_MIN: z.coerce.number().int().min(0).max(100).default(0),
@@ -233,6 +240,26 @@ export const envSchema = z
     OUTBOX_LEASE_MS: z.coerce.number().int().positive().default(120000),
     OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
     OUTBOX_SCHEDULE_MAX_DAYS: z.coerce.number().int().positive().default(15),
+    FISCAL_IBSCBS_UNAVAILABLE_MODE: z.enum(['block', 'warn']).default('block'),
+    // An empty value (RTC_CALCULATOR_URL=) means "not configured".
+    RTC_CALCULATOR_URL: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.string().url().optional(),
+    ),
+    RTC_CALCULATOR_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
+    RTC_CALCULATOR_MAX_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(8),
+    RTC_CIRCUIT_FAILURE_THRESHOLD: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(5),
+    RTC_CIRCUIT_RESET_MS: z.coerce.number().int().positive().default(30000),
+    RTC_EXPECTED_VERSION: z.string().trim().min(1).optional(),
+    FISCAL_DPS_LAYOUT: z.enum(['rtc-v1.01']).default('rtc-v1.01'),
     WHATSAPP_SEND_ATTEMPTS: z.coerce.number().int().positive().default(3),
     WHATSAPP_SEND_BACKOFF_MS: z.coerce.number().int().positive().default(5000),
     WHATSAPP_RECEIVE_CONCURRENCY: z.coerce

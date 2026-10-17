@@ -22,7 +22,7 @@
 - Fila `nfse-cancellation`, job `cancel`, `jobId = cancellation-{eventId}`, attempts 8, backoffMs 60000 (exponencial, já padrão do `BullmqQueueService`), removeOnComplete false, removeOnFail 1000.
 - Outbox: type `invoice.cancel`, `dedupeKey = cancellation:{eventId}`.
 - Webhooks públicos novos: `nfse.invoice.cancelled` e `nfse.invoice.cancellation_rejected`.
-- Migration nova: `1791780000000-AddInvoiceCancellation` (a última existente é `1791770000000`).
+- Migration nova: `1792400000000-AddInvoiceCancellation` (renumerada no merge com a main; a última existente na main é `1792300000000-AddCompanySendMunicipalReg`).
 - Testes de Postgres só rodam com `MIGRATION_TEST_DATABASE_URL` (banco local terminado em `_test`). Sem a variável, ficam em `describe.skip`.
 - Nunca chamar a Sefin real nos testes. `open-nfse` é mockado em `api/test/__mocks__/open-nfse.ts`.
 - **Pré-requisito do ambiente:** `api/src/infra/storage/` é ignorado pela regra `storage/` do `.gitignore` da raiz. Se a pasta não existir no checkout, o build falha antes de qualquer tarefa. Pare e avise o usuário (não recrie o port).
@@ -491,7 +491,7 @@ git commit -m "feat(invoice): model invoice cancellation in the domain"
 ### Task 2: Persistência — migration, entidade, mapper, contrato de leitura
 
 **Files:**
-- Create: `api/src/infra/database/migrations/1791780000000-AddInvoiceCancellation.ts`
+- Create: `api/src/infra/database/migrations/1792400000000-AddInvoiceCancellation.ts`
 - Modify: `api/src/modules/invoice/infra/invoice.orm-entity.ts`
 - Modify: `api/src/modules/invoice/infra/invoice.mapper.ts`
 - Modify: `api/src/modules/invoice/domain/invoice.repository.ts`
@@ -617,7 +617,7 @@ Expected: FAIL (`cancellationReason` inexistente em `InvoiceOrmEntity`, `saveDps
 
 - [ ] **Step 3: Migration**
 
-Criar `api/src/infra/database/migrations/1791780000000-AddInvoiceCancellation.ts`:
+Criar `api/src/infra/database/migrations/1792400000000-AddInvoiceCancellation.ts`:
 
 ```ts
 import type { MigrationInterface, QueryRunner } from 'typeorm';
@@ -625,7 +625,7 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
 const PREVIOUS_STATUSES = `'queued', 'processing', 'authorized', 'rejected', 'retry_pending', 'reconciliation_required', 'manual_review', 'failed'`;
 const STATUSES = `${PREVIOUS_STATUSES}, 'cancelling', 'cancelled'`;
 
-export class AddInvoiceCancellation1791780000000 implements MigrationInterface {
+export class AddInvoiceCancellation1792400000000 implements MigrationInterface {
   private schema(runner: QueryRunner): string {
     const options = runner.connection.options;
     return runner.connection.driver.escape(
@@ -780,7 +780,7 @@ Se `MIGRATION_TEST_DATABASE_URL` estiver configurada: `yarn jest src/infra/datab
 - [ ] **Step 8: Commit**
 
 ```bash
-git add api/src/infra/database/migrations/1791780000000-AddInvoiceCancellation.ts api/src/modules/invoice/infra api/src/modules/invoice/domain/invoice.repository.ts api/src/modules/invoice/http
+git add api/src/infra/database/migrations/1792400000000-AddInvoiceCancellation.ts api/src/modules/invoice/infra api/src/modules/invoice/domain/invoice.repository.ts api/src/modules/invoice/http
 git commit -m "feat(invoice): persist cancellation status and fields"
 ```
 
@@ -3350,7 +3350,7 @@ Decididas depois da revisão final do branch, a partir dos minors diferidos. Spe
 ### Task 17: Operação — `down` da migration e ordem de deploy
 
 **Files:**
-- Modify: `api/src/infra/database/migrations/1791780000000-AddInvoiceCancellation.ts`
+- Modify: `api/src/infra/database/migrations/1792400000000-AddInvoiceCancellation.ts`
 - Modify: `SELF_HOSTING.md`
 - Test: `api/src/infra/database/migrations/` (spec unitário com `QueryRunner` falso, ao lado do arquivo; os specs Postgres seguem pulados sem `MIGRATION_TEST_DATABASE_URL`)
 

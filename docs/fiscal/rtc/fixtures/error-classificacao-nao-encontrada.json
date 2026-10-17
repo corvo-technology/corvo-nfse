@@ -1,0 +1,62 @@
+{
+ "capturedAt": "2026-10-15",
+ "calculator": {
+  "app": "1.6.0",
+  "db": "V0059",
+  "dbDate": "2026-09-30",
+  "source": "local offline instance (docker eclipse-temurin:21-jre + api-regime-geral.jar)"
+ },
+ "description": "Unknown cClassTrib on the competence date.",
+ "input": {
+  "competenceDate": "2026-12-10",
+  "grossAmount": "1000.00",
+  "discountAmount": "0.00",
+  "issAmount": null,
+  "serviceCode": "010601",
+  "nbsCode": "115011000",
+  "cst": "000",
+  "classCode": "999999",
+  "operationIndicator": "100301",
+  "providerTaxId": "11222333000181",
+  "providerMunicipalityCode": "3550308",
+  "providerUf": "SP",
+  "incidenceMunicipalityCode": "3550308",
+  "customer": null,
+  "regime": "LUCRO_PRESUMIDO"
+ },
+ "steps": [
+  {
+   "name": "calc",
+   "method": "POST",
+   "path": "/calculadora/regime-geral",
+   "request": {
+    "id": "corvo-teste-1",
+    "versao": "1.0.0",
+    "dhFatoGerador": "2026-12-10T12:00:00Z",
+    "municipio": 3550308,
+    "uf": "SP",
+    "itens": [
+     {
+      "numero": 1,
+      "nbs": "115011000",
+      "cst": "000",
+      "cClassTrib": "999999",
+      "baseCalculo": 1000
+     }
+    ]
+   },
+   "status": 404,
+   "response": {
+    "type": "http://localhost/errors/classificacao-tributaria-nao-encontrada",
+    "title": "Classificação tributária não encontrada",
+    "status": 404,
+    "detail": "Classificação tributária não encontrada para código 999999 e data 2026-12-10 (CBS e IBS)"
+   }
+  }
+ ],
+ "expectedError": {
+  "code": "FISCAL_CLASSIFICATION_INVALID",
+  "category": "CLASSIFICATION",
+  "retryable": false
+ }
+}

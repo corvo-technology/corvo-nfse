@@ -8,7 +8,6 @@ import {
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import {
-  BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
@@ -38,8 +37,6 @@ import {
   InvoiceNotFoundError,
   IdempotencyConflictError,
 } from '../domain/errors';
-import type { Company } from '@/modules/company/domain/company';
-import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { CompanyService } from '@/modules/company/application/company.service';
 import { CertificateService } from '@/modules/certificate/application/certificate.service';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
@@ -56,7 +53,7 @@ import {
   DOCUMENT_STORAGE,
   type IDocumentStorage,
 } from '@/infra/storage/domain/document-storage';
-import { InvoiceDomainService } from '../domain/invoice-domain.service';
+import { InvoiceIntakeService } from './invoice-intake.service';
 
 function hashPayload(payload: unknown): string {
   const canonical = (value: unknown): unknown => {
@@ -91,7 +88,7 @@ export class InvoiceService {
     private readonly queueService: BullmqQueueService,
     private readonly lifecycle: InvoiceLifecycleService,
     private readonly quotaService: QuotaService,
-    private readonly invoiceDomain: InvoiceDomainService,
+    private readonly intake: InvoiceIntakeService,
     private readonly webhooks: InvoiceWebhookPublisher,
   ) {}
 
@@ -135,24 +132,10 @@ export class InvoiceService {
 
     // 2. Fiscal validation + normalization via domain service
     // Throws FiscalValidationError (→ 422 with code + details) on failure.
-    const company = await this.resolveCompany(dto, tenantId, environment);
-    if (!/^\d{7}$/.test(company.municipalityCode ?? '')) {
-      throw new FiscalValidationError([
-        {
-          field: 'company.municipalityCode',
-          code: 'required',
-          message:
-            'Configure a valid municipalityCode on the company before issuing invoices',
-        },
-      ]);
-    }
-    const normalized = this.invoiceDomain.normalizeAndValidate(
-      { ...dto, companyId: company.id },
+    const { normalized } = await this.intake.prepare(
+      dto,
+      tenantId,
       environment,
-      {
-        code: company.defaultServiceCode,
-        municipalityCode: company.municipalityCode,
-      },
     );
 
     // 3. Ensure company is ready
@@ -178,21 +161,27 @@ export class InvoiceService {
         email: { send: normalized.emailSend },
         companyId: normalized.companyId,
         externalId: normalized.externalId,
-        customer: {
-          taxId: normalized.customer.taxId,
-          name: normalized.customer.name,
-          email: normalized.customer.email,
-          address: {
-            city: normalized.customer.address.city,
-            state: normalized.customer.address.state,
-          },
-        },
+        customer: normalized.customer
+          ? {
+              taxId: normalized.customer.taxId,
+              name: normalized.customer.name,
+              email: normalized.customer.email,
+              address: {
+                city: normalized.customer.address.city,
+                state: normalized.customer.address.state,
+                municipalityCode: normalized.customer.address.municipalityCode,
+              },
+            }
+          : null,
         service: {
           description: normalized.service.description ?? '',
           code: normalized.service.code,
           municipalityCode: normalized.service.municipalityCode,
+          fiscal: normalized.service.fiscal,
+          serviceProfileId: normalized.service.serviceProfileId,
         },
         amount: normalized.amount,
+        discount: normalized.discount,
         competenceDate: normalized.competenceDate,
       },
       tenantId,
@@ -231,28 +220,6 @@ export class InvoiceService {
       `Invoice ${invoice.id} emitted for company ${normalized.companyId}`,
     );
     return invoice;
-  }
-
-  /**
-   * At least one of `companyId` or `companyTaxId` (CNPJ) is required. When both
-   * are sent, `companyId` wins. Throws CompanyNotFoundError when the CNPJ
-   * matches no company for this tenant and environment.
-   */
-  private async resolveCompany(
-    dto: CreateInvoiceDto,
-    tenantId: string,
-    environment: ExecutionEnvironment,
-  ): Promise<Company> {
-    if (dto.companyId)
-      return this.companyService.findById(dto.companyId, tenantId, environment);
-    if (!dto.companyTaxId)
-      throw new BadRequestException('companyId or companyTaxId is required');
-    const company = await this.companyService.findByTaxId(
-      dto.companyTaxId,
-      tenantId,
-      environment,
-    );
-    return company;
   }
 
   async list(
@@ -471,7 +438,7 @@ export class InvoiceService {
     }
 
     const snapshot = invoice.toSnapshot();
-    const customerEmail = snapshot.customerSnapshot.email;
+    const customerEmail = snapshot.customerSnapshot?.email;
 
     if (!customerEmail) {
       throw new UnprocessableEntityException('Customer has no email');

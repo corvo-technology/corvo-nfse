@@ -52,6 +52,15 @@ function build(invoice: Invoice, transition: jest.Mock) {
     { add: jest.fn() } as any,
     { publish: jest.fn() } as any,
     {} as any,
+    {
+      findEffective: jest.fn().mockResolvedValue({
+        taxRegime: 'SIMPLES_NACIONAL',
+        specialTaxRegime: null,
+      }),
+    } as any,
+    { findByInvoiceId: jest.fn().mockResolvedValue(null) } as any,
+    {} as any,
+    { get: jest.fn(), getOrThrow: jest.fn() } as any,
   );
   return { service, invoices, provider };
 }

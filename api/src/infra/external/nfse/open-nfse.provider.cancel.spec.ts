@@ -26,7 +26,10 @@ function providerWith(pending: PendingEvent[] = []) {
     list: jest.fn().mockResolvedValue(pending),
     delete: jest.fn(),
   };
-  const provider = new OpenNfseProvider({} as never);
+  const provider = new OpenNfseProvider(
+    {} as never,
+    { get: () => undefined } as never,
+  );
   jest.spyOn(provider as any, 'store').mockReturnValue(store);
   return { provider, store };
 }

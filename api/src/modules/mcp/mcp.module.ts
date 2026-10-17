@@ -1,4 +1,4 @@
-import { ConnectionSessionGuard } from './connection-session.guard';
+import { MCP_CONNECTION_REPOSITORY } from './domain/mcp-connection.repository';
 import { HttpApiRateLimitGuard } from '@/shared/http/rate-limit.guard';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -7,6 +7,7 @@ import {
   AuthOAuthClientOrmEntity,
   AuthSessionOrmEntity,
 } from '@/infra/persistence/typeorm/entities/auth.orm-entities';
+import { CompanyModule } from '@/modules/company/company.module';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { McpConnectionOrmEntity } from './infra/mcp-connection.orm-entity';
@@ -15,7 +16,8 @@ import { McpController } from './mcp.controller';
 import { McpOAuthController } from './mcp-oauth.controller';
 import { McpConsentController } from './mcp-consent.controller';
 import { McpDiscoveryController } from './mcp-discovery.controller';
-import { McpDashboardController } from './mcp-dashboard.controller';
+import { McpRegistrationController } from './mcp-registration.controller';
+import { McpUrlService } from './mcp-urls.service';
 import { McpConnectionController } from './mcp-connection.controller';
 import { McpConnectionService } from './mcp-connection.service';
 import { McpAuthService } from './mcp-auth.service';
@@ -32,7 +34,9 @@ import { McpService } from './mcp.service';
       AuthSessionOrmEntity,
     ]),
     InvoiceModule,
-    // CookieSessionService (session-cookie validation for consent/dashboard).
+    // Company listing for the company_list tool.
+    CompanyModule,
+    // Membership/OAuth/user repositories used by consent and connections.
     // AuthModule does not import McpModule, so no cycle.
     AuthModule,
   ],
@@ -41,17 +45,20 @@ import { McpService } from './mcp.service';
     McpOAuthController,
     McpConsentController,
     McpDiscoveryController,
-    McpDashboardController,
+    McpRegistrationController,
     McpConnectionController,
   ],
   providers: [
-    ConnectionSessionGuard,
+    McpUrlService,
     HttpApiRateLimitGuard,
     McpService,
     McpAuthService,
     McpAuthGuard,
     McpConnectionService,
-    TypeOrmMcpConnectionRepository,
+    {
+      provide: MCP_CONNECTION_REPOSITORY,
+      useClass: TypeOrmMcpConnectionRepository,
+    },
   ],
   exports: [McpService],
 })

@@ -202,7 +202,7 @@ export class TypeOrmCompanyRepository implements ICompanyRepository {
       requireTenantId(tenantId);
       if (companyIds.length === 0) return;
       // Single UPDATE — recompute status for each company based on
-      // municipal_reg + active certificate. Never touches blocked companies.
+      // the active certificate. Never touches blocked companies.
       const companyTable = this.repo.metadata.tablePath;
       const certificateTable =
         this.repo.manager.getRepository(CertificateOrmEntity).metadata
@@ -210,8 +210,7 @@ export class TypeOrmCompanyRepository implements ICompanyRepository {
       await this.repo.query(
         `UPDATE ${companyTable} c
        SET status = CASE
-             WHEN NULLIF(btrim(c.municipal_reg), '') IS NOT NULL
-              AND EXISTS (
+             WHEN EXISTS (
                 SELECT 1 FROM ${certificateTable} k
                 WHERE k.company_id = c.id
                   AND k.status = 'active'
@@ -223,8 +222,7 @@ export class TypeOrmCompanyRepository implements ICompanyRepository {
          AND c.status <> 'blocked'
          AND c.deleted_at IS NULL
          AND c.status <> CASE
-             WHEN NULLIF(btrim(c.municipal_reg), '') IS NOT NULL
-              AND EXISTS (
+             WHEN EXISTS (
                 SELECT 1 FROM ${certificateTable} k
                 WHERE k.company_id = c.id
                   AND k.status = 'active'

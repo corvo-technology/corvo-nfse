@@ -1,5 +1,6 @@
 import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
+import type { InvoiceEvent } from './invoice-event';
 import { Invoice } from './invoice';
 import { InvoiceStatus } from './invoice-status';
 import { LastEmailStatus } from './invoice';
@@ -40,6 +41,12 @@ export interface IInvoiceRepository {
     limit?: number,
     cursor?: string,
   ): Promise<Invoice[]>;
+  insert(invoice: Invoice, tenantId: string): Promise<void>;
+  findPendingReconciliation(
+    tenantId: string,
+    olderThan: Date,
+    limit: number,
+  ): Promise<Array<{ id: string; tenantId: string; companyId: string }>>;
   save(invoice: Invoice, tenantId: string): Promise<Invoice>;
   /** Persists only the DPS identity; never overwrites status or other fields. */
   saveDpsInfo(invoice: Invoice): Promise<void>;
@@ -86,10 +93,7 @@ export interface IInvoiceEventRepository {
     event: import('./invoice-event').InvoiceEvent,
     tenantId: string,
   ): Promise<void>;
-  findByInvoiceId(
-    invoiceId: string,
-    tenantId: string,
-  ): Promise<import('./invoice-event').InvoiceEvent[]>;
+  findByInvoiceId(invoiceId: string, tenantId: string): Promise<InvoiceEvent[]>;
 }
 
 export const INVOICE_REPOSITORY = 'INVOICE_REPOSITORY';

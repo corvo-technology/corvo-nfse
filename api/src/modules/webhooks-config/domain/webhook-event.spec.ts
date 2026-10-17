@@ -37,8 +37,14 @@ describe('WebhookEvent Types', () => {
       );
     });
 
-    it('includes the ten supported NFS-e event types', () => {
-      expect(PUBLIC_WEBHOOK_EVENT_TYPES).toHaveLength(10);
+    it('includes nfse.invoice.fiscal_discrepancy', () => {
+      expect(PUBLIC_WEBHOOK_EVENT_TYPES).toContain(
+        'nfse.invoice.fiscal_discrepancy',
+      );
+    });
+
+    it('includes the eleven supported NFS-e event types', () => {
+      expect(PUBLIC_WEBHOOK_EVENT_TYPES).toHaveLength(11);
     });
 
     it('all NFS-e event types follow the nfse.invoice.* pattern', () => {

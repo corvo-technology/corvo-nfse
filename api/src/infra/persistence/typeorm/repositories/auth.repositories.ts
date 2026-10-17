@@ -112,6 +112,52 @@ export class TypeOrmAuthUserRepository implements IAuthUserRepository {
 export class TypeOrmAuthSessionRepository implements IAuthSessionRepository {
   constructor(private readonly db: TypeOrmRepositoryHelper) {}
 
+  async rotateRefreshToken(
+    id: string,
+    tenantId: string,
+    authUserId: string,
+    clientId: string,
+    previousHash: string,
+    nextHash: string,
+    now = new Date(),
+  ): Promise<boolean> {
+    requireTenantId(tenantId);
+    const result = await this.repository().update(
+      {
+        id,
+        activeTenantId: tenantId,
+        authUserId,
+        clientId,
+        kind: 'oauth_refresh',
+        revokedAt: IsNull(),
+        refreshTokenHash: previousHash,
+        expiresAt: MoreThan(now),
+      },
+      { refreshTokenHash: nextHash },
+    );
+    return result.affected === 1;
+  }
+
+  async revokeOAuthSession(
+    id: string,
+    tenantId: string,
+    authUserId: string,
+    clientId: string,
+  ): Promise<void> {
+    requireTenantId(tenantId);
+    await this.repository().update(
+      {
+        id,
+        activeTenantId: tenantId,
+        authUserId,
+        clientId,
+        kind: 'oauth_refresh',
+        revokedAt: IsNull(),
+      },
+      { revokedAt: new Date() },
+    );
+  }
+
   async revokeTenantSession(
     id: string,
     tenantId: string,
@@ -209,10 +255,11 @@ export class TypeOrmAuthSessionRepository implements IAuthSessionRepository {
 
 @Injectable()
 export class TypeOrmOAuthClientRepository implements IOAuthClientRepository {
-  constructor(
-    @InjectRepository(AuthOAuthClientOrmEntity)
-    private readonly repository: Repository<AuthOAuthClientOrmEntity>,
-  ) {}
+  constructor(private readonly db: TypeOrmRepositoryHelper) {}
+
+  private get repository(): Repository<AuthOAuthClientOrmEntity> {
+    return this.db.repository(AuthOAuthClientOrmEntity);
+  }
 
   async findById(id: string): Promise<OAuthClient | null> {
     const row = await this.repository.findOne({ where: { id } });
@@ -227,10 +274,31 @@ export class TypeOrmOAuthClientRepository implements IOAuthClientRepository {
 
 @Injectable()
 export class TypeOrmOAuthAuthorizationCodeRepository implements IOAuthAuthorizationCodeRepository {
-  constructor(
-    @InjectRepository(AuthAuthorizationCodeOrmEntity)
-    private readonly repository: Repository<AuthAuthorizationCodeOrmEntity>,
-  ) {}
+  constructor(private readonly db: TypeOrmRepositoryHelper) {}
+
+  private get repository(): Repository<AuthAuthorizationCodeOrmEntity> {
+    return this.db.repository(AuthAuthorizationCodeOrmEntity);
+  }
+
+  async consume(
+    id: string,
+    authUserId: string,
+    tenantId: string,
+    now = new Date(),
+  ): Promise<boolean> {
+    requireTenantId(tenantId);
+    const result = await this.repository.update(
+      {
+        id,
+        authUserId,
+        tenantId,
+        consumedAt: IsNull(),
+        expiresAt: MoreThan(now),
+      },
+      { consumedAt: now },
+    );
+    return result.affected === 1;
+  }
 
   async findActiveByCodeHash(
     codeHash: string,
@@ -331,11 +399,13 @@ function toAuthorizationCode(
     clientId: row.clientId,
     authUserId: row.authUserId,
     productKey: row.productKey,
+    tenantId: row.tenantId,
     codeHash: row.codeHash,
     codeChallenge: row.codeChallenge,
     codeChallengeMethod: row.codeChallengeMethod as 'S256',
     redirectUri: row.redirectUri,
     scope: row.scope,
+    environment: row.environment,
     expiresAt: row.expiresAt,
     consumedAt: row.consumedAt,
     createdAt: row.createdAt,

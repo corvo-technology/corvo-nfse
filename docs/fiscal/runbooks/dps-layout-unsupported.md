@@ -1,0 +1,19 @@
+# Runbook: layout/DPS não suportado (`DPS_LAYOUT_UNSUPPORTED`, `DPS_SCHEMA_VALIDATION_FAILED`)
+
+**Sintoma.** Invoice `rejected` com `lastErrorCode` `DPS_LAYOUT_UNSUPPORTED` ou `DPS_SCHEMA_VALIDATION_FAILED` e webhook `nfse.invoice.rejected`; métrica `corvo.fiscal.dps.validation.failed.total{code}`. Nenhuma transmissão à Sefin acontece nesses casos.
+
+**O que cada código significa.**
+- `DPS_LAYOUT_UNSUPPORTED`: o layout configurado em `FISCAL_DPS_LAYOUT` não está no registro de layouts implantados (`rtc-v1.01` é o único com status `in_production`), ou está publicado mas ainda não implantado. A NT 009/2026 (V1.04.00) continua **não suportada**.
+- `DPS_SCHEMA_VALIDATION_FAILED`: a DPS montada viola o XSD (campo exigido ausente ou inválido para o cenário). `details` traz as violações (limitadas, sem dados pessoais).
+
+**Importante.** A numeração DPS já foi reservada e persistida antes da montagem; ao rejeitar, o número fica associado à invoice (nunca é devolvido à sequência, para não reutilizar numeração).
+
+**Diagnóstico.**
+1. Valor atual: `FISCAL_DPS_LAYOUT` no ambiente do worker e `deploy/` / `.env`.
+2. Versão do SDK: `yarn why open-nfse` / `api/package.json` (esperado `0.11.0`, bundle XSD `20260727`).
+3. Reproduzir a validação localmente com os dados do snapshot (`invoice_fiscal_snapshots.result`) usando `DpsBuilder` e `validateDpsXml` (ver `api/src/modules/invoice/domain/fiscal/dps/`).
+
+**Ação.**
+- Layout novo publicado pelo governo: **não** edite `node_modules` nem ignore a validação XSD. Atualize `open-nfse` de forma controlada (versão fixada), atualize o registro em `dps-layout.ts` somente quando o layout estiver `in_production`, rode `yarn test` e `yarn test:fiscal:integration` e só então altere `FISCAL_DPS_LAYOUT`.
+- Violação de XSD por campo opcional não preenchido: o `DpsBuilder` não preenche por suposição. Levar o caso à revisão fiscal; a decisão sobre o dado vira regra no builder, com teste.
+- Invoices já rejeitadas não são reprocessadas: o cliente cria uma nova invoice após a correção.

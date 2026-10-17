@@ -53,4 +53,30 @@ describe('WebhooksConfigController', () => {
       ),
     ).resolves.toEqual(expect.objectContaining({ secret: 'secret-value' }));
   });
+
+  it('accepts a subscription to nfse.invoice.fiscal_discrepancy', async () => {
+    const service = {
+      create: jest.fn().mockResolvedValue({
+        ...config,
+        events: ['nfse.invoice.fiscal_discrepancy'],
+      }),
+    };
+    const controller = new WebhooksConfigController(
+      service as never,
+      {} as never,
+    );
+
+    await expect(
+      controller.create(
+        { authContext: { activeTenantId: tenantId } } as never,
+        { url: config.url, events: ['nfse.invoice.fiscal_discrepancy'] },
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({ events: ['nfse.invoice.fiscal_discrepancy'] }),
+    );
+    expect(service.create).toHaveBeenCalledWith(
+      tenantId,
+      expect.objectContaining({ events: ['nfse.invoice.fiscal_discrepancy'] }),
+    );
+  });
 });

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { GET, POST, DELETE } from "@/app/api/proxy/[...path]/route";
+import { GET, POST, PUT, PATCH, DELETE } from "@/app/api/proxy/[...path]/route";
 const fetchMock = vi.fn<typeof fetch>();
 const context = (route: string) => ({ params: Promise.resolve({ path: ["v1", ...route.split("/")] }) });
 beforeEach(() => { vi.stubEnv("APP_ORIGIN", "http://localhost:4000"); vi.stubEnv("API_BASE_URL", "http://localhost:3000"); fetchMock.mockReset(); vi.stubGlobal("fetch", fetchMock); });
@@ -57,4 +57,37 @@ it("forwards the Stripe billing routes with their expected methods and nothing e
   }
   const wrongMethod = await GET(new NextRequest("http://localhost:4000/api/proxy/v1/billing/checkout"), context("billing/checkout"));
   expect(wrongMethod.status).toBe(404);
+});
+it("forwards the pre-emission calculation and the company fiscal configuration routes", async () => {
+  fetchMock.mockImplementation(async () => new Response("{}", { status: 200 }));
+  const headers = { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "Content-Type": "application/json" };
+  const call = (handler: typeof POST, method: string, route: string) =>
+    handler(new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers, body: method === "GET" ? undefined : "{}" }), context(route));
+  expect((await call(POST, "POST", "invoices/calculate")).status).toBe(200);
+  expect((await call(GET, "GET", "companies/id/fiscal-profile")).status).toBe(200);
+  expect((await call(PUT, "PUT", "companies/id/fiscal-profile")).status).toBe(200);
+  expect((await call(POST, "POST", "companies/id/fiscal-profile/profile/approve")).status).toBe(200);
+  expect((await call(GET, "GET", "companies/id/service-tax-profiles")).status).toBe(200);
+  expect((await call(POST, "POST", "companies/id/service-tax-profiles")).status).toBe(200);
+  expect((await call(PATCH, "PATCH", "companies/id/service-tax-profiles/service")).status).toBe(200);
+  expect((await call(POST, "POST", "companies/id/service-tax-profiles/service/approve")).status).toBe(200);
+  expect((await call(DELETE, "DELETE", "invoices/calculate")).status).toBe(404);
+});
+
+it("forwards only the MCP consent and connection routes the dashboard needs", async () => {
+  const allowed: [string, "GET" | "POST" | "DELETE"][] = [["mcp/consent", "GET"], ["mcp/consent", "POST"], ["mcp/connections", "GET"], ["mcp/connections/abc", "DELETE"]];
+  for (const [route, method] of allowed) {
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+    const request = new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers: { origin: "http://localhost:4000" } });
+    const handler = { GET, POST, DELETE }[method];
+    expect((await handler(request, context(route))).status).toBe(200);
+  }
+  expect(fetchMock).toHaveBeenCalledTimes(allowed.length);
+  fetchMock.mockClear();
+  for (const [route, method] of [["mcp/token", "POST"], ["mcp/register", "POST"], ["mcp/authorize", "GET"], ["mcp/connections", "DELETE"], ["mcp", "POST"]] as const) {
+    const request = new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers: { origin: "http://localhost:4000" } });
+    const handler = { GET, POST, DELETE }[method];
+    expect((await handler(request, context(route))).status).toBe(404);
+  }
+  expect(fetchMock).not.toHaveBeenCalled();
 });

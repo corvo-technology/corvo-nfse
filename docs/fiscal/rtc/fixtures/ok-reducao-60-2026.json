@@ -1,0 +1,151 @@
+{
+ "capturedAt": "2026-10-15",
+ "calculator": {
+  "app": "1.6.0",
+  "db": "V0059",
+  "dbDate": "2026-09-30",
+  "source": "local offline instance (docker eclipse-temurin:21-jre + api-regime-geral.jar)"
+ },
+ "description": "Engine contract fixture with a 60% rate reduction (cClassTrib 011001). The NBS was taken from the engine's own nbs-aplicaveis list only to exercise the contract; it is NOT a fiscal example of a real service pairing.",
+ "input": {
+  "competenceDate": "2026-12-10",
+  "grossAmount": "1000.00",
+  "discountAmount": "0.00",
+  "issAmount": null,
+  "serviceCode": "010601",
+  "nbsCode": "101011100",
+  "cst": "011",
+  "classCode": "011001",
+  "operationIndicator": null,
+  "providerTaxId": "11222333000181",
+  "providerMunicipalityCode": "3550308",
+  "providerUf": "SP",
+  "incidenceMunicipalityCode": "3550308",
+  "customer": null,
+  "regime": "LUCRO_PRESUMIDO"
+ },
+ "steps": [
+  {
+   "name": "calc",
+   "method": "POST",
+   "path": "/calculadora/regime-geral",
+   "request": {
+    "id": "corvo-teste-red",
+    "versao": "1.0.0",
+    "dhFatoGerador": "2026-12-10T12:00:00Z",
+    "municipio": 3550308,
+    "uf": "SP",
+    "itens": [
+     {
+      "numero": 1,
+      "nbs": "101011100",
+      "cst": "011",
+      "cClassTrib": "011001",
+      "baseCalculo": 1000
+     }
+    ]
+   },
+   "status": 200,
+   "response": {
+    "objetos": [
+     {
+      "nObj": 1,
+      "tribCalc": {
+       "IBSCBS": {
+        "CST": "011",
+        "cClassTrib": "011001",
+        "gIBSCBS": {
+         "vBC": "1000.00",
+         "gIBSUF": {
+          "pIBSUF": "0.10",
+          "gRed": {
+           "pRedAliq": "60.00",
+           "pAliqEfet": "0.04"
+          },
+          "vIBSUF": "0.40",
+          "memoriaCalculo": "Operação de consumo com enquadramento legal em Art. 236, tributada conforme Tributação com alíquotas uniformes reduzidas em 60%. A base de cálculo utilizada é de R$ 1000.00000000, com alíquota de 0.100000%, sendo que esse regime define uma redução de 60.000000% na alíquota."
+         },
+         "gIBSMun": {
+          "pIBSMun": "0.00",
+          "gRed": {
+           "pRedAliq": "60.00",
+           "pAliqEfet": "0.00"
+          },
+          "vIBSMun": "0.00",
+          "memoriaCalculo": "Operação de consumo com enquadramento legal em Art. 236, tributada conforme Tributação com alíquotas uniformes reduzidas em 60%. A base de cálculo utilizada é de R$ 1000.00000000, com alíquota de 0.000000%, sendo que esse regime define uma redução de 60.000000% na alíquota."
+         },
+         "vIBS": "0.40",
+         "gCBS": {
+          "pCBS": "0.90",
+          "gRed": {
+           "pRedAliq": "60.00",
+           "pAliqEfet": "0.36"
+          },
+          "vCBS": "3.60",
+          "memoriaCalculo": "Operação de consumo com enquadramento legal em Art. 236, tributada conforme Tributação com alíquotas uniformes reduzidas em 60%. A base de cálculo utilizada é de R$ 1000.00000000, com alíquota de 0.900000%, sendo que esse regime define uma redução de 60.000000% na alíquota."
+         }
+        }
+       }
+      },
+      "calculoSimulado": false
+     }
+    ],
+    "total": {
+     "tribCalc": {
+      "IBSCBSTot": {
+       "vBCIBSCBS": "1000.00",
+       "gIBS": {
+        "gIBSUF": {
+         "vDif": "0.00",
+         "vDevTrib": "0.00",
+         "vIBSUF": "0.40"
+        },
+        "gIBSMun": {
+         "vDif": "0.00",
+         "vDevTrib": "0.00",
+         "vIBSMun": "0.00"
+        },
+        "vIBS": "0.40",
+        "vCredPres": "0.00",
+        "vCredPresCondSus": "0.00"
+       },
+       "gCBS": {
+        "vDif": "0.00",
+        "vDevTrib": "0.00",
+        "vCBS": "3.60",
+        "vCredPres": "0.00",
+        "vCredPresCondSus": "0.00"
+       },
+       "gMono": {
+        "vIBSMono": "0.00",
+        "vCBSMono": "0.00",
+        "vIBSMonoReten": "0.00",
+        "vCBSMonoReten": "0.00",
+        "vIBSMonoRet": "0.00",
+        "vCBSMonoRet": "0.00"
+       }
+      }
+     }
+    }
+   }
+  }
+ ],
+ "expected": {
+  "calculatorVersion": "1.6.0/V0059",
+  "cbs": {
+   "base": "1000.00",
+   "rate": "0.90",
+   "effectiveRate": "0.36",
+   "reductionRate": "60.00",
+   "amount": "3.60"
+  },
+  "ibsState": {
+   "base": "1000.00",
+   "rate": "0.10",
+   "effectiveRate": "0.04",
+   "reductionRate": "60.00",
+   "amount": "0.40"
+  },
+  "collectionWaived": false
+ }
+}

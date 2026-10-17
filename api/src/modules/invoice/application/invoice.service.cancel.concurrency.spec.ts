@@ -1,5 +1,3 @@
-import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
-import { CreditTransactionOrmEntity } from '@/modules/credits/infra/credit-transaction.orm-entity';
 import { VALID_CNPJ } from '@/shared/fiscal/fixtures';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { Invoice } from '../domain/invoice';
@@ -8,7 +6,7 @@ import {
   InvoiceNotCancellableError,
 } from '../domain/errors';
 import type { InvoiceStatus } from '../domain/invoice-status';
-import { InvoiceOrmEntity } from '../infra/invoice.orm-entity';
+import { InvoiceMapper } from '../infra/invoice.mapper';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import { InvoiceService } from './invoice.service';
 
@@ -22,7 +20,7 @@ const fiscal = {
  * Deterministic in-process simulation of concurrent cancels: the REAL
  * InvoiceService.cancel and InvoiceLifecycleService.transition run against a
  * stateful fake persistence layer. The per-tenant advisory lock is emulated by
- * a promise-chain mutex around DataSource.transaction.
+ * a promise-chain mutex around UnitOfWorkPort.execute.
  *
  * `firstReaders` is how many cancel() calls must finish their first read
  * (seeing the pre-cancel status) before any of them may enter a transaction.
@@ -75,47 +73,53 @@ function harness(
     }),
   };
 
-  const manager = {
-    query: jest.fn().mockResolvedValue([]),
-    getRepository: (entity: unknown) => ({
-      findOneByOrFail: jest.fn(async () => ({ status: row.status })),
-      findOneBy: jest.fn().mockResolvedValue({ id: 'res-1', amount: -1 }),
-      createQueryBuilder: () => {
-        const qb = {
-          update: () => qb,
-          set: (values: Record<string, unknown>) => {
-            if (entity === InvoiceOrmEntity) {
-              persisted.push(values);
-              row.status = values.status as InvoiceStatus;
-            }
-            return qb;
-          },
-          where: () => qb,
-          execute: async () => ({ affected: 1 }),
-        };
-        return qb;
-      },
-      insert: jest.fn(async (value: Record<string, unknown>) => {
-        if (entity === CreditTransactionOrmEntity) walletInserts.push(value);
-        else events.push(value);
-      }),
-      update: jest.fn(async () => undefined),
+  // Lifecycle-side persistence ports, sharing the same stateful row.
+  const lifecycleInvoices = {
+    findByIdAndTenantId: jest.fn(async () => ({ status: row.status })),
+    save: jest.fn(async (invoice: Invoice) => {
+      persisted.push(
+        new InvoiceMapper().toPersistence(invoice) as unknown as Record<
+          string,
+          unknown
+        >,
+      );
+      row.status = invoice.status;
     }),
   };
+  const eventRepo = {
+    save: jest.fn(async (event: unknown) => {
+      events.push(event);
+    }),
+  };
+  const credits = {
+    findByReservedInvoiceId: jest
+      .fn()
+      .mockResolvedValue({ id: 'res-1', amount: -1 }),
+    save: jest.fn(async (value: Record<string, unknown>) => {
+      walletInserts.push(value);
+    }),
+    confirm: jest.fn(async () => undefined),
+  };
 
+  // The per-tenant advisory lock + transaction, emulated by a promise-chain mutex.
   let tail: Promise<void> = Promise.resolve();
-  const database = {
-    transaction: jest.fn(async (work: (m: unknown) => Promise<unknown>) => {
+  const unitOfWork = {
+    execute: jest.fn(async <T>(work: () => Promise<T>): Promise<T> => {
       const previous = tail;
       let done!: () => void;
       tail = new Promise<void>((resolve) => (done = resolve));
       await previous;
       try {
-        return await work(manager);
+        return await work();
       } finally {
         done();
       }
     }),
+  };
+  const billing = {
+    locked: jest.fn(async <T>(_tenantId: string, work: () => Promise<T>) =>
+      work(),
+    ),
   };
 
   const usage = { reserve: jest.fn(), settle: jest.fn() };
@@ -126,11 +130,14 @@ function harness(
     }),
   };
   const lifecycle = new InvoiceLifecycleService(
-    database as never,
+    unitOfWork as never,
     { delete: jest.fn() } as never,
     usage as never,
-    new TypeOrmTransactionContext(),
+    billing as never,
     outbox as never,
+    lifecycleInvoices as never,
+    eventRepo as never,
+    credits as never,
   );
   const webhooks = { publish: jest.fn() };
   const service = new InvoiceService(

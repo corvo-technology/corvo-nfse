@@ -24,7 +24,7 @@ export const INVOICE_STATUSES: readonly InvoiceStatus[] = [
 ];
 
 export const VALID_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
-  queued: ['processing', 'cancelled'],
+  queued: ['processing', 'rejected', 'cancelled'],
   processing: [
     'authorized',
     'rejected',

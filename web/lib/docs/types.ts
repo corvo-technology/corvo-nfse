@@ -5,6 +5,7 @@ export const DOC_LOCALES: readonly DocsLocale[] = ["en", "pt"];
 export type DocGroupKey = "gettingStarted" | "reference" | "guides";
 
 export type DocSlug =
+  | "sdks"
   | "authentication"
   | "errors"
   | "rate-limits"
@@ -17,7 +18,9 @@ export type DocSlug =
   | "async-issuance"
   | "pagination"
   | "receiving-webhooks"
-  | "integration-checklist";
+  | "integration-checklist"
+  | "mcp"
+  | "llms";
 
 export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
@@ -52,7 +55,7 @@ export interface HeadingBlock {
 export interface CodeBlock {
   kind: "code";
   label?: string;
-  language: "bash" | "json" | "js";
+  language: "bash" | "json" | "js" | "text";
   code: string;
 }
 

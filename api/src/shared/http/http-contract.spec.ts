@@ -23,6 +23,7 @@ import {
   CompanyNotFoundError,
   CompanyAlreadyExistsError,
 } from '@/modules/company/domain/errors';
+import { CertificateTaxIdMismatchError } from '@/modules/certificate/domain/errors';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { data } from './response';
 
@@ -49,6 +50,12 @@ class ContractController {
   }
   @Get('missing') missing() {
     throw new CompanyNotFoundError('private-company-id');
+  }
+  @Get('certificate-mismatch') certificateMismatch() {
+    throw new CertificateTaxIdMismatchError('RLJ1XFI8000102', '11222333000181');
+  }
+  @Get('certificate-mismatch-plain') certificateMismatchPlain() {
+    throw new CertificateTaxIdMismatchError();
   }
   @Get('conflict') conflict() {
     throw new CompanyAlreadyExistsError('private-tax-id');
@@ -108,6 +115,23 @@ describe('HTTP contract through Nest/Express', () => {
   });
   afterAll(async () => {
     await app.close();
+  });
+  it('shows which tax ids a certificate mismatch compared, and nothing else', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/contract/certificate-mismatch')
+      .expect(422);
+    expect(res.body).toMatchObject({
+      code: 'ERROR_CERTIFICATE_TAX_ID_MISMATCH',
+      details: {
+        certificateTaxId: 'RLJ1XFI8000102',
+        companyTaxId: '11222333000181',
+      },
+    });
+    const plain = await request(app.getHttpServer())
+      .get('/contract/certificate-mismatch-plain')
+      .expect(422);
+    expect(plain.body.code).toBe('ERROR_CERTIFICATE_TAX_ID_MISMATCH');
+    expect(plain.body.details).toBeUndefined();
   });
   it('wraps successes once and does not guess from a data property', async () => {
     for (const path of ['', '/wrapped'])

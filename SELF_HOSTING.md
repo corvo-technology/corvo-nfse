@@ -79,6 +79,19 @@ Edit `deploy/.env` using [the production example](deploy/.env.example).
 
 The setup already generates PostgreSQL passwords, session/OTP signing secrets, and certificate encryption keys. Generated passwords use hexadecimal so they can be embedded safely in connection URLs.
 
+### Social sign-in (optional)
+
+The login screen offers Google and GitHub when the API has all three values of a provider: `<PROVIDER>_CLIENT_ID`, `<PROVIDER>_CLIENT_SECRET` and `<PROVIDER>_REDIRECT_URL`. Without them the buttons stay disabled and the email code still works.
+
+The redirect URL goes through the dashboard, so the session cookie belongs to the dashboard origin. Register exactly this URL in the provider console:
+
+| Provider | Redirect (callback) URL |
+| --- | --- |
+| Google | `https://<WEB_DOMAIN>/api/proxy/v1/auth/oauth/google/callback` |
+| GitHub | `https://<WEB_DOMAIN>/api/proxy/v1/auth/oauth/github/callback` |
+
+Only a verified provider email signs a user in or links an existing account.
+
 Optional settings include `STRIPE_PORTAL_CONFIGURATION_ID`, Turnstile credentials for endpoints that use it, Sentry, and OpenTelemetry. Keep `TURNSTILE_DEVELOPMENT_BYPASS_ENABLED=false` in production. The current email-code login does not use Turnstile.
 
 ```bash

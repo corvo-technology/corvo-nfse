@@ -1,7 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { parseNfseXml, gerarDanfse, Ambiente } from 'open-nfse';
+import { parseNfseXml, Ambiente } from 'open-nfse';
+import { renderInvoicePdf } from '../infra/danfse/danfse';
 import type { LockPort } from '@/infra/redis/lock.port';
 import { LOCK_PORT } from '@/infra/redis/redis.constants';
 import {
@@ -116,12 +117,16 @@ export class NfseDocPrepProcessor extends WorkerHost {
             ? NFSE_PUBLIC_CONSULTATION_URL.restrictedProduction
             : NFSE_PUBLIC_CONSULTATION_URL.production;
 
-        const pdfBuffer = await gerarDanfse(nfse, {
-          ambiente,
-          urlConsultaPublica,
-          observacoes:
-            invoice.environment === 'test' ? NFSE_TEST_DISCLAIMER : undefined,
-        });
+        const isTest = invoice.environment === 'test';
+        const pdfBuffer = await renderInvoicePdf(
+          nfse,
+          {
+            ambiente,
+            urlConsultaPublica,
+            observacoes: isTest ? NFSE_TEST_DISCLAIMER : undefined,
+          },
+          { notes: isTest ? [NFSE_TEST_DISCLAIMER] : [] },
+        );
 
         await this.documentStorage.savePdf(
           tenantId,
@@ -168,10 +173,11 @@ export class NfseDocPrepProcessor extends WorkerHost {
         );
 
       // 7. Enqueue automatic email if configured (never after cancellation)
+      const customerEmail = invoice.customerSnapshot?.email;
       if (
         invoice.status === 'authorized' &&
         invoice.emailSnapshot?.send &&
-        invoice.customerSnapshot?.email
+        customerEmail
       ) {
         const emailData: NfseEmailJobData = {
           invoiceId,
@@ -195,7 +201,7 @@ export class NfseDocPrepProcessor extends WorkerHost {
           true,
         );
         this.logger.debug(
-          `NfseEmail job enqueued for invoice ${invoiceId} to ${invoice.customerSnapshot.email}`,
+          `NfseEmail job enqueued for invoice ${invoiceId} to ${customerEmail}`,
         );
       }
 

@@ -33,7 +33,10 @@ describe('InvoiceController', () => {
       const invoice = { status };
       invoiceService.cancel.mockResolvedValue(invoice);
       const res = { status: jest.fn() };
-      const controller = new InvoiceController(invoiceService as never);
+      const controller = new InvoiceController(
+        invoiceService as never,
+        {} as never,
+      );
 
       await expect(
         controller.cancel(invoiceId, { reason: 'other' }, req, res as never),
@@ -59,7 +62,10 @@ describe('InvoiceController', () => {
         mimeType: 'application/pdf',
       });
 
-      const controller = new InvoiceController(invoiceService as never);
+      const controller = new InvoiceController(
+        invoiceService as never,
+        {} as never,
+      );
       const result = await controller.getDownloadUrl(
         invoiceId,
         { format: 'pdf' },
@@ -92,7 +98,10 @@ describe('InvoiceController', () => {
         new NotFoundException('PDF not available for non-authorized invoice'),
       );
 
-      const controller = new InvoiceController(invoiceService as never);
+      const controller = new InvoiceController(
+        invoiceService as never,
+        {} as never,
+      );
 
       await expect(
         controller.getDownloadUrl(
@@ -109,7 +118,10 @@ describe('InvoiceController', () => {
         new ServiceUnavailableException('Document storage is unavailable'),
       );
 
-      const controller = new InvoiceController(invoiceService as never);
+      const controller = new InvoiceController(
+        invoiceService as never,
+        {} as never,
+      );
 
       await expect(
         controller.getDownloadUrl(
@@ -129,7 +141,10 @@ describe('InvoiceController', () => {
         status: 'queued',
       });
 
-      const controller = new InvoiceController(invoiceService as never);
+      const controller = new InvoiceController(
+        invoiceService as never,
+        {} as never,
+      );
       const result = await controller.requestEmail(
         invoiceId,
         { authContext: { activeTenantId: tenantId } } as never,
@@ -157,7 +172,10 @@ describe('InvoiceController', () => {
         ),
       );
 
-      const controller = new InvoiceController(invoiceService as never);
+      const controller = new InvoiceController(
+        invoiceService as never,
+        {} as never,
+      );
 
       await expect(
         controller.requestEmail(
@@ -173,7 +191,10 @@ describe('InvoiceController', () => {
         new NotFoundException('Customer has no email address on file'),
       );
 
-      const controller = new InvoiceController(invoiceService as never);
+      const controller = new InvoiceController(
+        invoiceService as never,
+        {} as never,
+      );
 
       await expect(
         controller.requestEmail(

@@ -1,4 +1,5 @@
 // lib/docs/content/en.ts
+import { SDKS } from "../../sdks";
 import type { DocsTree } from "../types";
 
 export const en: DocsTree = {
@@ -18,22 +19,22 @@ export const en: DocsTree = {
   },
   home: {
     title: "Introduction",
-    description: "Issue and manage NFS-e programmatically with an API key.",
+    description: "Issue Brazilian NFS-e for MEI and Simples Nacional companies with a REST API or an AI agent (MCP): tax calculation, multiple companies and webhooks.",
     blocks: [
       {
         kind: "text",
-        body: "The Corvo API lets you register companies, upload A1 certificates, issue service invoices (NFS-e), and track their full lifecycle via webhooks.",
+        body: "The Corvo API lets you register companies (MEI, Simples Nacional and other regimes), upload A1 certificates, calculate taxes before issuing, issue service invoices (NFS-e) and track their full lifecycle via webhooks. AI agents such as Claude Code, Cursor and Codex can do the same through the MCP server (see AI agents).",
       },
       { kind: "heading", level: 2, body: "Quickstart" },
       {
         kind: "code",
         label: "bash",
         language: "bash",
-        code: "export BASE_URL='https://YOUR_DOMAIN/v1'\nexport CORVO_API_KEY='corvo_test_your_key'\n\ncurl \"$BASE_URL/companies\" -H \"X-API-Key: $CORVO_API_KEY\"",
+        code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='corvo_test_your_key'\n\ncurl \"$BASE_URL/companies\" -H \"X-API-Key: $CORVO_API_KEY\"",
       },
       {
         kind: "text",
-        body: "All paths in this documentation are relative to `BASE_URL` (the origin of your installation plus `/v1`).",
+        body: "All paths in this documentation are relative to `BASE_URL` (`https://api.corvo.tech/v1`).",
       },
       { kind: "heading", level: 2, body: "Response formats" },
       {
@@ -48,8 +49,8 @@ export const en: DocsTree = {
           ["List companies", "`{ \"data\": Company[], \"pagination\": {...} }`"],
           ["Delete a company", "`{ \"data\": null }`"],
           ["Certificate upload / listing", "`{ \"data\": Certificate } / paginated listing`"],
-          ["Issue / fetch an invoice", "`{ \"data\": { \"props\": Invoice } }`"],
-          ["List invoices and events", "`{ \"data\": [{ \"props\": ... }], \"pagination\": {...} }`"],
+          ["Issue / fetch an invoice", "`{ \"data\": Invoice }`"],
+          ["List invoices and events", "`{ \"data\": [ ... ], \"pagination\": {...} }`"],
           ["Download URL / email", "`{ \"data\": ... }`"],
           ["Webhooks and deliveries", "`{ \"data\": ... } or paginated listing`"],
           ["Credit balance", "`{ \"data\": { \"tenantId\", \"balance\", ... } }`"],
@@ -59,7 +60,7 @@ export const en: DocsTree = {
       },
       {
         kind: "text",
-        body: "Resource content is preserved: an invoice still carries `props` inside `data` (`data.props`). Read `data` exactly once. PDF/XML, redirects, OAuth, MCP/JSON-RPC, health checks and `204` responses keep their own formats.",
+        body: "Resources come directly inside `data`: an invoice is `data`, a list is `data[]`. Read `data` exactly once. PDF/XML, redirects, OAuth, MCP/JSON-RPC, health checks and `204` responses keep their own formats.",
       },
       { kind: "heading", level: 2, body: "All operations" },
       {
@@ -79,6 +80,7 @@ export const en: DocsTree = {
           ["GET", "`/v1/companies/:companyId/certificates`", "List certificates", "200"],
           ["DELETE", "`/v1/companies/:companyId/certificates/:certId`", "Revoke a certificate", "204"],
           ["POST", "`/v1/invoices`", "Request issuance", "202"],
+          ["POST", "`/v1/invoices/calculate`", "Calculate taxes without issuing", "200"],
           ["GET", "`/v1/invoices`", "List invoices", "200"],
           ["GET", "`/v1/invoices/:id`", "Fetch an invoice", "200"],
           ["GET", "`/v1/invoices/:id/xml`", "Download XML", "200"],
@@ -102,6 +104,9 @@ export const en: DocsTree = {
           ["GET", "`/v1/billing/usage`", "Fetch availability and quotas", "200"],
           ["POST", "`/v1/billing/upgrade`", "Schedule a plan change", "200"],
           ["POST", "`/v1/billing/downgrade`", "Schedule a plan change", "200"],
+          ["GET", "`/v1/plans`", "List plan prices (public)", "200"],
+          ["GET", "`/v1/plans/:slug`", "Fetch one plan price (public)", "200"],
+          ["GET", "`/v1/plans/quote`", "Recommend a plan for a volume (public)", "200"],
         ],
       },
       {
@@ -113,7 +118,7 @@ export const en: DocsTree = {
         kind: "list",
         items: [
           "`POST /v1/companies` — register the company with its CNPJ, tax regime and fiscal municipality (`municipalityCode`); set `defaultServiceCode` to simplify invoices.",
-          "In `live`, provide municipal registration and upload a valid A1 certificate (.p12) with its password (`POST /v1/companies/:companyId/certificates`).",
+          "In `live`, upload a valid A1 certificate (.p12) matching the CNPJ, with its password (`POST /v1/companies/:companyId/certificates`). The municipal registration is optional: provide it only if the city registered the company in the national registry.",
           "`POST /v1/invoices` — use `companyTaxId` (company CNPJ) to request issuance (the `live` environment requires the company to be ready).",
           "Track the lifecycle with `GET /v1/invoices/:id` and webhooks — issuance is asynchronous.",
         ],
@@ -121,6 +126,36 @@ export const en: DocsTree = {
     ],
   },
   pages: {
+    sdks: {
+      title: "SDKs",
+      description: "Official libraries for Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir and .NET.",
+      blocks: [
+        { kind: "text", body: "Corvo has official SDKs in nine languages. They call the same API this documentation describes, with the same operations, field names and tax rules, so every guide here applies to all of them." },
+        { kind: "heading", level: 2, body: "Install" },
+        {
+          kind: "table",
+          head: ["Language", "Package", "Install", "Source"],
+          rows: SDKS.map((sdk) => [sdk.name, `\`${sdk.pkg}\` (${sdk.registry})`, `\`${sdk.install}\``, `\`corvo-technology/${sdk.repo}\``]),
+        },
+        { kind: "callout", tone: "accent", body: "Start with a test key: invoices issued with a `corvo_test_` key have no fiscal value." },
+        { kind: "heading", level: 2, body: "What every SDK does" },
+        {
+          kind: "list",
+          items: [
+          "Authenticates with `X-API-Key`. It reads `CORVO_API_KEY`, and `CORVO_BASE_URL` if you use a different API URL.",
+          "The key decides the environment: `corvo_test_...` for test and `corvo_live_...` for live.",
+          "Errors come back as a typed result with `code`, `status`, `requestId`, `details` and `retryAfter`, not as an exception. The iterate helpers raise when a page fails.",
+          "Lists are cursor-paginated, and every SDK has an iterate helper that walks all pages.",
+          "Creating an invoice and sending an email accept an idempotency key, sent as `Idempotency-Key`.",
+          "Webhook signature verification (`X-Corvo-Signature`) in constant time.",
+          ],
+        },
+        { kind: "heading", level: 2, body: "Issue an invoice" },
+        { kind: "text", body: "The same call in each language. Each example reads the key from `CORVO_API_KEY` and passes an idempotency key, so repeating the call never issues the invoice twice." },
+        ...SDKS.map((sdk) => ({ kind: "code" as const, label: sdk.name, language: (sdk.id === "node" ? "js" : "text") as "js" | "text", code: sdk.snippet })),
+        { kind: "text", body: "Changing plans and the billing portal exist only in the dashboard, so they are not in the SDKs. The source of every SDK is in github.com/corvo-technology." },
+      ],
+    },
     authentication: {
       title: "Authentication",
       description: "Authenticate every request with an API key.",
@@ -153,7 +188,7 @@ export const en: DocsTree = {
           kind: "list",
           items: [
             "Companies, certificates and invoices are accessed in the key's persisted environment: `test` or `live`.",
-            "In `live`, issuance verifies the company, municipal registration, blocks and active certificate; credits and issuance limits also apply.",
+            "In `live`, issuance verifies the company, blocks and active certificate; credits and issuance limits also apply.",
             "In `test`, issuance requires an existing company but skips the readiness and certificate checks of the `live` flow.",
             "Webhook deliveries use the explicit `?environment=test|live` filter; without it, they may return both of the account's environments, regardless of the key's environment.",
           ],
@@ -161,7 +196,7 @@ export const en: DocsTree = {
         {
           kind: "callout",
           tone: "warn",
-          body: "Credits, plan and webhook settings belong to the account. A `test` key with `full_access` can also change plans: do not treat the whole API as a financial sandbox.",
+          body: "Credits, plan and webhook settings belong to the account. A `test` key with `full_access` can manage webhooks and read credits and billing. Plan changes, checkout and the billing portal exist only in the dashboard.",
         },
         { kind: "callout", tone: "accent", body: "The server resolves the tenant from authentication: never send `tenantId` in a body. Resources of another tenant return `404`." },
         { kind: "heading", level: 2, body: "Scopes" },
@@ -184,7 +219,7 @@ export const en: DocsTree = {
           kind: "code",
           label: "bash",
           language: "bash",
-          code: "export BASE_URL='https://YOUR_DOMAIN/v1'\nexport CORVO_API_KEY='corvo_test_your_key'\n\ncurl \"$BASE_URL/companies\" -H \"X-API-Key: $CORVO_API_KEY\"",
+          code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='corvo_test_your_key'\n\ncurl \"$BASE_URL/companies\" -H \"X-API-Key: $CORVO_API_KEY\"",
         },
       ],
     },
@@ -251,7 +286,7 @@ export const en: DocsTree = {
             ["`ERROR_INVALID_CURSOR`", "Tampered cursor, or one from another collection, tenant or filter (400)."],
             ["`ERROR_RATE_LIMIT_EXCEEDED`", "Request limit exceeded (429)."],
             ["`ERROR_INSUFFICIENT_CREDITS` / `ERROR_QUOTA_EXCEEDED`", "Not enough credits or quota to issue."],
-            ["`ERROR_COMPANY_NOT_READY` / `ERROR_COMPANY_BLOCKED`", "Company missing municipal registration/certificate in `live`, or blocked."],
+            ["`ERROR_COMPANY_NOT_READY` / `ERROR_COMPANY_BLOCKED`", "Company without an active certificate in `live`, or blocked."],
             ["`ERROR_IDEMPOTENCY_CONFLICT`", "Same `Idempotency-Key` with a different payload (409)."],
             ["`ERROR_GONE`", "Retired operation, such as one-off credit purchases (410)."],
           ],
@@ -303,6 +338,14 @@ export const en: DocsTree = {
           kind: "text",
           body: "Permissions: fetches use `nfse.companies.view`; writes use `nfse.companies.manage`.",
         },
+        { kind: "heading", level: 2, body: "From signup to issuing" },
+        { kind: "list", items: [
+          "`POST /v1/companies` with `taxRegime` and `municipalityCode`. `municipalReg` is optional.",
+          "`POST /v1/companies/:id/certificates` with the A1 certificate.",
+          "`POST /v1/invoices`.",
+        ] },
+        { kind: "callout", tone: "accent", body: "The regime sent when creating the company creates its fiscal profile, valid from today and already approved by the caller (user or API key). Without a customer or with a CPF customer there is no approval step or service setup: classification comes from the official catalog by `service.code`. With a CNPJ customer the federal withholding depends on the service policy: create the service profile with `withholdingPolicy` `NONE_CONFIRMED` or `CONFIGURED` and approve it, otherwise the calculation returns `blocked` with `TAX_APPLICABILITY_UNKNOWN`. `GET /v1/companies/:id` shows `status` and `setupGaps` (`municipality_code`, `certificate`). Use `POST /v1/invoices/calculate` to check before issuing." },
+        { kind: "callout", tone: "warn", body: "Changing `taxRegime`, `simpleNational` or `specialRegime` with `PATCH` on the same day the company was created returns `409` (`ERROR_CONFLICT`, message `profile_validity_conflict`), because an approved profile is not rewritten. For a dated change use `PUT /v1/companies/:id/fiscal-profile` with `validFrom`. Service profiles (`/v1/companies/:id/service-tax-profiles`) are optional and become required when the regime needs IBS/CBS or configured ISS: the calculation returns `FISCAL_CLASSIFICATION_REQUIRED` with the missing fields." },
         {
           kind: "endpoint",
           method: "POST",
@@ -316,10 +359,11 @@ export const en: DocsTree = {
               { name: "taxId", type: "string", required: true, description: "Valid CNPJ; normalized before the duplicate check." },
               { name: "taxRegime", type: "string", required: true, description: "`MEI`, `Simples Nacional`, `Lucro Presumido` or `Lucro Real`." },
               { name: "tradeName", type: "string", required: false, description: "Up to 200 characters." },
-              { name: "municipalReg", type: "string or null", required: false, description: "Required and nonblank when registering in `live`; optional in test mode. `null` on test creation means do not set." },
+              { name: "municipalReg", type: "string or null", required: false, description: "Optional, and nonblank when sent. It is stored but **not sent on the invoice** unless `sendMunicipalReg` is `true`. `null` clears it (and turns `sendMunicipalReg` off)." },
+              { name: "sendMunicipalReg", type: "boolean", required: false, description: "Default `false`. Send the municipal registration in the DPS only if the city registered this company in the national registry and the tax authority requires it; otherwise the invoice is rejected (E0120)." },
               { name: "municipalityCode", type: "string", required: true, description: "Exactly 7 digits (IBGE), required in test and live mode. Used as the issuer municipality and default service location." },
               { name: "defaultServiceCode", type: "string", required: false, description: "Exactly 6 digits (cTribNac); default for new invoices. Without it, provide `service.code` when issuing." },
-              { name: "simpleNational", type: "boolean", required: false, description: "Defaults to `false`." },
+              { name: "simpleNational", type: "boolean", required: false, description: "If omitted, follows the regime (`true` for MEI and Simples Nacional)." },
               { name: "specialRegime", type: "string", required: false, description: "Up to 50 characters." },
               { name: "address", type: "object", required: false, description: "`street` (200), `number` (20), `complement` (100), `district` (100), `city` (100), `state` (2) and `zip` (10), all optional strings. A filled-in state must be a valid UF and is normalized to uppercase. A filled-in zip must be 8 digits and is stored without punctuation." },
             ],
@@ -388,7 +432,7 @@ console.log(body.data.id); // { data: Company }`,
           },
           notes: [
             { kind: "callout", tone: "warn", body: "A duplicate CNPJ in the same account/environment returns `409`. In `live`, creation can fail on company limit or blocked plan (`422`)." },
-            { kind: "callout", tone: "accent", body: "The input body uses `address`, but the response exposes flat fields: `addressStreet`, `addressNumber`, `addressCity`, `addressState`, `addressZip` etc. `status` is `pending_setup`, `ready` or `blocked`; `setupGaps` lists pending items (`municipality_code`, `municipal_registration`, `certificate`)." },
+            { kind: "callout", tone: "accent", body: "The input body uses `address`, but the response exposes flat fields: `addressStreet`, `addressNumber`, `addressCity`, `addressState`, `addressZip` etc. `status` is `pending_setup`, `ready` or `blocked`; `setupGaps` lists pending items (`municipality_code`, `certificate`)." },
           ],
         },
         {
@@ -468,7 +512,7 @@ console.log(body.data); // { data: Company }`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "A company that does not exist, was deleted, or belongs to another environment/account returns `404`." },
+            { kind: "callout", tone: "warn", body: "A company that does not exist, was deleted, or belongs to another environment/account returns `404`. An `id` that is not a valid UUID returns `400` (`ERROR_BAD_REQUEST`)." },
           ],
         },
         {
@@ -484,10 +528,10 @@ console.log(body.data); // { data: Company }`,
               { name: "taxId", type: "string", required: false, description: "Valid CNPJ; normalized before the duplicate check." },
               { name: "taxRegime", type: "string", required: false, description: "`MEI`, `Simples Nacional`, `Lucro Presumido` or `Lucro Real`." },
               { name: "tradeName", type: "string", required: false, description: "Up to 200 characters." },
-              { name: "municipalReg", type: "string or null", required: false, description: "Municipal registration. `null` clears the registration." },
+              { name: "municipalReg", type: "string or null", required: false, description: "Optional. Stored but not sent on the invoice unless `sendMunicipalReg` is `true`. `null` clears it." },
               { name: "municipalityCode", type: "string", required: false, description: "Exactly 7 digits when provided; omit to keep the existing value. Cannot be cleared." },
               { name: "defaultServiceCode", type: "string or null", required: false, description: "Exactly 6 digits when provided. Omit to keep; null clears the default." },
-              { name: "simpleNational", type: "boolean", required: false, description: "Defaults to `false`." },
+              { name: "simpleNational", type: "boolean", required: false, description: "Omit it to keep the current value." },
               { name: "specialRegime", type: "string", required: false, description: "Up to 50 characters." },
               { name: "address", type: "object or null", required: false, description: "Same fields as on creation. `null` clears the address." },
             ],
@@ -697,12 +741,14 @@ console.log(res.status); // 204`,
               { name: "companyId", type: "string UUID", required: false, description: "Send this field or `companyTaxId`; if both exist, `companyId` takes precedence." },
               { name: "companyTaxId", type: "string", required: false, description: "CNPJ of a company already registered in the account/environment; punctuation optional." },
               { name: "externalId", type: "string", required: false, description: "Reference from the integrating system; does not replace the idempotency key." },
-              { name: "customer", type: "object", required: true, description: "`name` (required), `taxId` (required: valid CPF or CNPJ, normalized), `email` (optional; required when email sending is enabled; no email format validation in this DTO/domain) and `address` (optional: `street`, `city`, `state`, `zip`, `country` are optional strings; if you fill in city or state, fill in both; state must be valid)." },
-              { name: "service", type: "object", required: true, description: "`code` optional when the company has `defaultServiceCode`; exactly 6 digits when provided. `municipalityCode` inherits the company municipality; when provided, exactly 7 digits and sets the service location. `description` is an optional string. Empty, null or invalid values do not use the defaults." },
+              { name: "customer", type: "object", required: false, description: "Optional: omit it or send `{}` for an invoice without tomador (the customer is left out of the DPS). When sent with any data, `taxId` is required (valid CPF or CNPJ, normalized); `name` is optional, `email` (optional; required when email sending is enabled; no email format validation in this DTO/domain) and `address` (optional: `street`, `city`, `state`, `zip`, `country` are optional strings; if you fill in city or state, fill in both; state must be valid)." },
+              { name: "service", type: "object", required: true, description: "`code` is optional: without it the company `defaultServiceCode` is used and, if the company has none, `100901` (LC 116 item 10.09, representation of any nature); exactly 6 digits when provided. `municipalityCode` inherits the company municipality; when provided, exactly 7 digits and sets the service location. `description` is optional: when empty, the name of the service code is used. Empty, null or invalid values of the other fields do not use the defaults." },
               { name: "amount", type: "number", required: true, description: "Value in reais, positive, up to 9999999999.99 with at most 2 decimals." },
-              { name: "competenceDate", type: "string ISO 8601", required: true, description: "Valid competence date, not in the future." },
+              { name: "competenceDate", type: "string ISO 8601", required: true, description: "Valid competence date. Without `options.type` it cannot be in the future (`422` `ERROR_FUTURE_DATE`). With `options.type: \"SCHEDULE\"` a future date is accepted (see Scheduled invoices)." },
+              { name: "discount", type: "number", required: false, description: "Unconditional discount in BRL, from 0 up to the invoice amount, at most 2 decimal places." },
               { name: "email", type: "boolean", required: false, description: "Requests a notification; defaults to `false`." },
               { name: "options.email.send", type: "boolean", required: false, description: "When set, takes precedence over `email`." },
+              { name: "options.type", type: "string", required: false, description: "`IMMEDIATE` (default) or `SCHEDULE`. `SCHEDULE` schedules issuance for a future `competenceDate`; see Scheduled invoices." },
             ],
           },
           examples: {
@@ -751,35 +797,188 @@ console.log(res.status); // 204`,
   }),
 });
 const body = await res.json();
-console.log(body.data.props.id); // { data: { props: Invoice } }`,
+console.log(body.data.id); // { data: Invoice }`,
           },
           response: {
             label: "202 Accepted",
             json: `{
   "data": {
-    "props": {
-      "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
-      "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
-      "environment": "test",
-      "externalId": "pedido_123",
-      "idempotencyKey": "pedido_123_emissao",
-      "status": "queued",
-      "amount": 150.5,
-      "currency": "BRL",
-      "competenceDate": "2026-10-01",
-      "stage": "pending",
-      "createdAt": "2026-10-10T12:00:00.000Z"
-    }
+    "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
+    "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
+    "environment": "test",
+    "externalId": "pedido_123",
+    "idempotencyKey": "pedido_123_emissao",
+    "status": "queued",
+    "amount": 150.5,
+    "currency": "BRL",
+    "competenceDate": "2026-10-01T00:00:00.000Z",
+    "stage": "pending",
+    "createdAt": "2026-10-10T12:00:00.000Z"
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Send an `Idempotency-Key` header: with the same key, account and environment and equivalent content, the hash recovers the same invoice; different content returns `409` (`IdempotencyConflictError`). The hash is computed before fiscal normalization, with canonical JSON keys and the competence date. Do not change how fields are represented between retries: a CNPJ with and without punctuation can produce different hashes. Without a key there is no deduplication." },
+            { kind: "callout", tone: "accent", body: "Send an `Idempotency-Key` header: with the same key, account and environment and equivalent content, the hash recovers the same invoice; different content returns `409` (`ERROR_IDEMPOTENCY_CONFLICT`). The hash is computed before fiscal normalization, with canonical JSON keys and the competence date. Do not change how fields are represented between retries: a CNPJ with and without punctuation can produce different hashes. Without a key there is no deduplication." },
             { kind: "callout", tone: "warn", body: "Issuance is asynchronous — see the Async issuance guide. Track the invoice with `GET /v1/invoices/:id` or webhooks. The customer address is reduced to `city` and `state` in the snapshot; `street`, `zip` and `country` are not preserved — do not rely on them in the response." },
           ],
         },
+        {
+          kind: "endpoint",
+          method: "POST",
+          path: "/v1/invoices/calculate",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "200 OK",
+          summary: "Calculates the taxes of an invoice **without issuing it**: it stores no invoice, uses no credit, reserves no DPS number, schedules nothing and does not call Sefin. Use it to check the fiscal setup and show the amount to the customer before `POST /v1/invoices`.",
+          params: {
+            rows: [
+              { name: "(corpo)", type: "objeto", required: true, description: "Same body as `POST /v1/invoices` (company, `service`, `amount`, `competenceDate`, optional `customer`, `discount`). Requires the `nfse.invoices.issue` permission. It does not require a certificate or a ready company." },
+            ],
+          },
+          examples: {
+            curl: `curl -X POST "$BASE_URL/invoices/calculate" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "companyTaxId": "11222333000181",
+    "service": { "code": "060101", "description": "Haircut" },
+    "amount": 50,
+    "competenceDate": "2026-10-13"
+  }'`,
+            node: `const res = await fetch(\`\${BASE_URL}/invoices/calculate\`, {
+  method: "POST",
+  headers: {
+    "X-API-Key": process.env.CORVO_API_KEY,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    companyTaxId: "11222333000181",
+    service: { code: "060101", description: "Haircut" },
+    amount: 50,
+    competenceDate: "2026-10-13",
+  }),
+});
+const { data } = await res.json();
+console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "preEmission": true,
+    "status": "ready",
+    "disclaimer": "Pre-emission calculation. Values are not a fiscal document and may differ from the final validation by Sefin.",
+    "competenceDate": "2026-10-13",
+    "taxRegime": "MEI",
+    "classification": {
+      "serviceCode": "060101",
+      "source": "official_catalog",
+      "operationNature": "SERVICE",
+      "nbsCode": null,
+      "cst": null,
+      "classCode": null,
+      "serviceProfileId": null,
+      "catalogValidated": false
+    },
+    "applicability": {
+      "customerRequired": false,
+      "strategy": "mei",
+      "iss": {
+        "status": "NOT_APPLICABLE",
+        "reason": "ISS recolhido no DAS-MEI"
+      },
+      "federalWithholding": {
+        "status": "NOT_APPLICABLE",
+        "reason": "no federal withholding on payments to Simples Nacional/MEI optants (IN RFB 1.234/2012, art. 4, XI)"
+      },
+      "cbs": {
+        "status": "NOT_APPLICABLE",
+        "reason": "MEI não destaca IBS/CBS na fase de teste de 2026"
+      },
+      "ibs": {
+        "status": "NOT_APPLICABLE",
+        "reason": "MEI não destaca IBS/CBS na fase de teste de 2026"
+      }
+    },
+    "taxes": {},
+    "withholdings": [],
+    "netReceivableAmount": "50.00",
+    "collectionWaived": false,
+    "calculation": {
+      "source": "none",
+      "calculatorVersion": null,
+      "rulesVersion": "2026.10-r1",
+      "legalReferences": [
+        "Ato Conjunto RFB/CGIBS nº 4/2026; orientação CGNFS-e de 07/08/2026"
+      ]
+    },
+    "warnings": [
+      {
+        "code": "CLASSIFICATION_NOT_CATALOG_VALIDATED",
+        "message": "Service tax classification was not validated against the official catalog",
+        "step": "ServiceTaxClassifier"
+      }
+    ],
+    "pendingFields": [],
+    "blocking": null,
+    "trace": [
+      {
+        "step": "CompanyFiscalProfile",
+        "status": "applied",
+        "durationMs": 2.4
+      },
+      {
+        "step": "ServiceTaxClassifier",
+        "status": "applied",
+        "durationMs": 7.1
+      },
+      {
+        "step": "TaxApplicabilityResolver",
+        "status": "applied",
+        "durationMs": 0.3
+      },
+      {
+        "step": "RtcTaxCalculator",
+        "status": "skipped",
+        "durationMs": 0.03,
+        "reason": "MEI não destaca IBS/CBS na fase de teste de 2026"
+      },
+      {
+        "step": "FiscalValidator",
+        "status": "applied",
+        "durationMs": 0.1
+      }
+    ]
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "`status: \"ready\"` means the fiscal data is complete and the calculation was done. It is a pre-emission estimate, not an authorization from Sefin. Amounts and rates are decimal strings. The response never returns the customer's name or CPF/CNPJ." },
+            { kind: "callout", tone: "warn", body: "A fiscal problem is not an HTTP error: it returns `200` with `status: \"blocked\"`, `blocking` (`code`, `message`, `step`) and `pendingFields[]` listing what is missing, for example `FISCAL_CLASSIFICATION_REQUIRED` or `TAX_RATE_NOT_FOUND`. Values already computed before the block stay in the response. Invalid input follows the normal envelope (`404` unknown company, `422` invalid field)." },
+            { kind: "callout", tone: "warn", body: "`503` with `Retry-After` (seconds) when the tax calculator is unavailable: retry later, never estimate. The rate limit is the same as any authenticated endpoint (`429` with `Retry-After`). A future competence date is accepted only up to 15 days ahead." },
+          ],
+        },
+        { kind: "heading", level: 2, body: "Scheduled invoices" },
+        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` with a future `competenceDate` to have the invoice issued only on that day. Corvo releases issuance at 00:00 `America/Sao_Paulo` on the `competenceDate`. Until then the invoice stays `status: \"queued\"` and `scheduledFor` holds the release instant (ISO); for immediate invoices `scheduledFor` is `null`." },
+        { kind: "table", head: ["Situation", "Result"], rows: [
+          ["No `options.type` (or `IMMEDIATE`) and a future `competenceDate`", "`422` with `ERROR_FUTURE_DATE` in `details[].code`."],
+          ["`SCHEDULE` and a future `competenceDate` within the limit", "`202`, `status: queued`, `scheduledFor` set; issuance happens on that date."],
+          ["`SCHEDULE` and a `competenceDate` beyond the limit (default 15 days ahead)", "`422` with `ERROR_SCHEDULE_HORIZON_EXCEEDED` in `details[].code`."],
+          ["`SCHEDULE` and a `competenceDate` of today or in the past", "Immediate issuance, `scheduledFor: null`."],
+        ] },
+        { kind: "code", label: "Schedule an invoice", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: order_123_scheduled" \\
+  -d '{
+    "companyTaxId": "11222333000181",
+    "service": { "description": "Haircut" },
+    "amount": 50,
+    "competenceDate": "2026-10-20",
+    "options": { "type": "SCHEDULE" }
+  }'` },
+        { kind: "callout", tone: "warn", body: "Tax data is computed when the invoice is issued, using the configuration in force on the `competenceDate`. In `live`, the company must be ready and have an active certificate when you schedule. Before scheduling, `POST /v1/invoices/calculate` shows the calculation for that date. The `nfse.invoice.authorized` (or `rejected`) webhook arrives when issuance happens, not when you schedule." },
         { kind: "heading", level: 2, body: "Invoice schema" },
-        { kind: "text", body: "The object sits inside `props`:" },
+        { kind: "text", body: "Each invoice has these fields:" },
         {
           kind: "table",
           head: ["Fields", "Type / notes"],
@@ -791,7 +990,7 @@ console.log(body.data.props.id); // { data: { props: Invoice } }`,
             ["`customerSnapshot`", "`taxId`, `name`, `email?`, `address?: { city, state, country? }`."],
             ["`serviceSnapshot`", "`description`, `code`, `municipalityCode`."],
             ["`taxSnapshot`", "Fiscal information object."],
-            ["`amount`, `currency`, `competenceDate`", "Number in reais, currency and ISO date."],
+            ["`amount`, `currency`, `competenceDate`", "Number in reais, currency and ISO 8601 date-time (the competence date at midnight UTC, e.g. `2026-10-01T00:00:00.000Z`)."],
             ["`dpsId`, `dpsSeries`, `dpsNumber`", "String/string/number or null."],
             ["`accessKey`, `nfseNumber`", "String/number or null."],
             ["`fiscalProvider`, `fiscalSchemaVersion`", "Strings."],
@@ -803,6 +1002,7 @@ console.log(body.data.props.id); // { data: { props: Invoice } }`,
             ["`documentsStatus`", "Derived state: `pending` or `ready`."],
             ["`emailStatus`", "Derived state: `queued`, `sent`, `failed` or null."],
             ["`stage`", "Derived state: `pending`, `authorized`, `documents_ready`, `completed`, `failed`."],
+            ["`scheduledFor`", "ISO release date of a scheduled invoice, or null."],
             ["`createdAt`, `updatedAt`", "ISO dates."],
             ["`documentKeyVersion`", "Optional number, when present in the snapshot."],
           ],
@@ -839,7 +1039,7 @@ console.log(body.data.props.id); // { data: { props: Invoice } }`,
             node: `const res = await fetch(\`\${BASE_URL}/invoices?status=authorized&limit=50\`, {
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
-const { data: invoices, pagination } = await res.json(); // { data: [{ props: Invoice }], pagination }
+const { data: invoices, pagination } = await res.json(); // { data: Invoice[], pagination }
 console.log(invoices.length, pagination.nextCursor);`,
           },
           response: {
@@ -847,13 +1047,11 @@ console.log(invoices.length, pagination.nextCursor);`,
             json: `{
   "data": [
     {
-      "props": {
-        "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
-        "status": "authorized",
-        "amount": 150.5,
-        "competenceDate": "2026-10-01",
-        "createdAt": "2026-10-10T12:00:00.000Z"
-      }
+      "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
+      "status": "authorized",
+      "amount": 150.5,
+      "competenceDate": "2026-10-01T00:00:00.000Z",
+      "createdAt": "2026-10-10T12:00:00.000Z"
     }
   ],
   "pagination": {
@@ -881,25 +1079,23 @@ console.log(invoices.length, pagination.nextCursor);`,
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
 const body = await res.json();
-console.log(body.data.props.status); // { data: { props: Invoice } }`,
+console.log(body.data.status); // { data: Invoice }`,
           },
           response: {
             label: "200 OK",
             json: `{
   "data": {
-    "props": {
-      "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
-      "status": "authorized",
-      "stage": "documents_ready",
-      "documentsStatus": "ready",
-      "accessKey": "35260712345678900000350010000000011000000019",
-      "nfseNumber": 123
-    }
+    "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
+    "status": "authorized",
+    "stage": "documents_ready",
+    "documentsStatus": "ready",
+    "accessKey": "35260712345678900000350010000000011000000019",
+    "nfseNumber": 123
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "Returns `404` if the invoice is not found in the account/environment." },
+            { kind: "callout", tone: "warn", body: "Returns `404` if the invoice is not found in the account/environment. An `id` that is not a valid UUID returns `400` (`ERROR_BAD_REQUEST`)." },
           ],
         },
         {
@@ -954,14 +1150,14 @@ await writeFile("nfse.pdf", Buffer.from(await res.arrayBuffer()));`,
           path: "/v1/invoices/:id/events",
           scopes: ["full_access", "invoices_view", "invoices_read_write"],
           success: "200 OK",
-          summary: "Fetches the status history of an invoice. No pagination on this route.",
+          summary: "Fetches the status history of an invoice, oldest first. Paginated like any list (`limit`, `cursor`).",
           examples: {
             curl: `curl "$BASE_URL/invoices/$INVOICE_ID/events" \\
   -H "X-API-Key: $CORVO_API_KEY"`,
             node: `const res = await fetch(\`\${BASE_URL}/invoices/\${process.env.INVOICE_ID}/events\`, {
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
-const { data: events, pagination } = await res.json(); // { data: [{ props: InvoiceEvent }], pagination }
+const { data: events, pagination } = await res.json(); // { data: InvoiceEvent[], pagination }
 console.log(events.length, pagination.hasMore);`,
           },
           response: {
@@ -969,14 +1165,12 @@ console.log(events.length, pagination.hasMore);`,
             json: `{
   "data": [
     {
-      "props": {
-        "id": "e1d2c3b4-5a6f-4b7c-8d9e-0f1a2b3c4d5e",
-        "invoiceId": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
-        "fromStatus": "queued",
-        "toStatus": "authorized",
-        "reason": null,
-        "createdAt": "2026-10-10T12:01:00.000Z"
-      }
+      "id": "e1d2c3b4-5a6f-4b7c-8d9e-0f1a2b3c4d5e",
+      "invoiceId": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
+      "fromStatus": "queued",
+      "toStatus": "authorized",
+      "reason": null,
+      "createdAt": "2026-10-10T12:01:00.000Z"
     }
   ],
   "pagination": {
@@ -1087,20 +1281,18 @@ console.log(body.data.status); // { data: { emailId, status } }`,
   body: JSON.stringify({ reason: "issue_error", description: "Service amount was informed incorrectly" }),
 });
 const body = await res.json();
-console.log(res.status, body.data.props.status); // 202 "cancelling"`,
+console.log(res.status, body.data.status); // 202 "cancelling"`,
           },
           response: {
             label: "202 Accepted",
             json: `{
   "data": {
-    "props": {
-      "id": "6f1c0e2a-4b7d-4c1e-9a55-2b8f7c3d9e10",
-      "status": "cancelling",
-      "stage": "completed",
-      "cancellationReason": "issue_error",
-      "cancellationDescription": "Service amount was informed incorrectly",
-      "cancelledAt": null
-    }
+    "id": "6f1c0e2a-4b7d-4c1e-9a55-2b8f7c3d9e10",
+    "status": "cancelling",
+    "stage": "completed",
+    "cancellationReason": "issue_error",
+    "cancellationDescription": "Service amount was informed incorrectly",
+    "cancelledAt": null
   }
 }`,
           },
@@ -1237,6 +1429,7 @@ console.log(body.data.secret); // store the secret now — it is not returned ag
             "`nfse.invoice.documents_ready`",
             "`nfse.invoice.email_sent`",
             "`nfse.invoice.email_failed`",
+            "`nfse.invoice.fiscal_discrepancy`",
             "`nfse.invoice.cancelled`",
             "`nfse.invoice.cancellation_rejected`",
           ],
@@ -1301,7 +1494,7 @@ console.log(body.data.sent); // { data: { sent: true } }`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "`{ \"sent\": true }` is returned when the attempt succeeds. A failed test attempt does not schedule the normal retries." },
+            { kind: "callout", tone: "accent", body: "`{ \"sent\": true }` is returned when your endpoint answers `2xx`. Otherwise the response is still `200` with `{ \"sent\": false, \"statusCode\": 405, \"error\": \"...\" }` (`statusCode` is `null` if the endpoint could not be reached). A failed test attempt does not schedule the normal retries." },
           ],
         },
         {
@@ -1473,7 +1666,7 @@ console.log(body.data.balance); // { data: { tenantId, balance, overageUnits, ..
             node: `const res = await fetch(\`\${BASE_URL}/credits/plans\`, {
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
-const { data: plans, pagination } = await res.json(); // { data: [{ props: Plan }], pagination }
+const { data: plans, pagination } = await res.json(); // { data: Plan[], pagination }
 console.log(plans.length, pagination.hasMore);`,
           },
           response: {
@@ -1481,17 +1674,23 @@ console.log(plans.length, pagination.hasMore);`,
             json: `{
   "data": [
     {
-      "props": {
-        "id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
-        "slug": "developer",
-        "name": "Developer",
-        "monthlyCreditAllowance": 100,
-        "dailyLimit": null,
-        "maxActiveCompanies": 1,
-        "creditUnitPriceCents": 10,
-        "supportTier": "email",
-        "active": true
-      }
+      "id": "3ec51af3-c715-4755-95da-c9b0951973dd",
+      "slug": "developer",
+      "name": "Developer",
+      "description": "Ideal for developers and small teams",
+      "monthlyCreditAllowance": 200,
+      "dailyLimit": null,
+      "maxActiveCompanies": 10,
+      "creditUnitPriceCents": 15,
+      "throughputRps": 50,
+      "includesWebhooks": true,
+      "includesXmlDownload": true,
+      "includesPdfDownload": true,
+      "includesApiKeys": true,
+      "supportTier": "email",
+      "active": true,
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
     }
   ],
   "pagination": {
@@ -1524,7 +1723,7 @@ console.log(plans.length, pagination.hasMore);`,
             node: `const res = await fetch(\`\${BASE_URL}/credits/history?limit=50\`, {
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
-const { data: txs, pagination } = await res.json(); // { data: [{ props: CreditTransaction }], pagination }
+const { data: txs, pagination } = await res.json(); // { data: CreditTransaction[], pagination }
 console.log(txs.length, pagination.nextCursor);`,
           },
           response: {
@@ -1532,13 +1731,11 @@ console.log(txs.length, pagination.nextCursor);`,
             json: `{
   "data": [
     {
-      "props": {
-        "id": "f4e3d2c1-5b6a-4c7d-8e9f-0a1b2c3d4e5f",
-        "amount": 100,
-        "type": "purchase",
-        "description": null,
-        "createdAt": "2026-10-10T12:00:00.000Z"
-      }
+      "id": "f4e3d2c1-5b6a-4c7d-8e9f-0a1b2c3d4e5f",
+      "amount": 100,
+      "type": "purchase",
+      "description": null,
+      "createdAt": "2026-10-10T12:00:00.000Z"
     }
   ],
   "pagination": {
@@ -1625,10 +1822,10 @@ console.log(body.data.plan.slug); // { data: { plan, subscription, usage } }`,
     "plan": {
       "slug": "developer",
       "name": "Developer",
-      "monthly_allowance": 100,
+      "monthly_allowance": 200,
       "daily_limit": null,
-      "max_active_companies": 1,
-      "monthly_price_cents": 1000
+      "max_active_companies": 10,
+      "monthly_price_cents": 2990
     },
     "usage": {
       "overage_units": 0,
@@ -1636,12 +1833,12 @@ console.log(body.data.plan.slug); // { data: { plan, subscription, usage } }`,
       "hard_limit": null,
       "credits_used": 10,
       "credits_reserved": 2,
-      "credits_remaining": 88,
-      "monthly_allowance": 100,
+      "credits_remaining": 188,
+      "monthly_allowance": 200,
       "daily_usage": 3,
       "daily_limit": null,
       "active_companies": 1,
-      "max_active_companies": 1,
+      "max_active_companies": 10,
       "period_start": "2026-10-01T00:00:00.000Z",
       "period_end": "2026-10-31T23:59:59.000Z"
     },
@@ -1679,14 +1876,14 @@ console.log(body.data.canEmit); // { data: QuotaStatus }`,
             json: `{
   "data": {
     "canEmit": true,
-    "creditsRemaining": 88,
+    "creditsRemaining": 188,
     "creditsUsed": 10,
     "creditsReserved": 2,
-    "monthlyAllowance": 100,
+    "monthlyAllowance": 200,
     "dailyUsage": 3,
     "dailyLimit": null,
     "activeCompanies": 1,
-    "maxActiveCompanies": 1,
+    "maxActiveCompanies": 10,
     "periodStart": "2026-10-01T00:00:00.000Z",
     "periodEnd": "2026-10-31T23:59:59.000Z"
   }
@@ -1700,7 +1897,7 @@ console.log(body.data.canEmit); // { data: QuotaStatus }`,
           kind: "endpoint",
           method: "POST",
           path: "/v1/billing/upgrade",
-          scopes: ["full_access"],
+          scopes: ["dashboard"],
           success: "200 OK",
           summary: "Schedules the switch to the target plan on the subscription.",
           params: {
@@ -1741,7 +1938,7 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
           kind: "endpoint",
           method: "POST",
           path: "/v1/billing/downgrade",
-          scopes: ["full_access"],
+          scopes: ["dashboard"],
           success: "200 OK",
           summary: "Schedules a plan change for the end of the period.",
           params: {
@@ -1778,6 +1975,129 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
             { kind: "callout", tone: "warn", body: "Dashboard-only route: API keys have no access (`403`). Requires an active subscription (`409` otherwise) and returns `scheduled_plan` and `effective_at`; checkout and the billing portal also live in the dashboard." },
           ],
         },
+        { kind: "heading", level: 2, body: "Public plan catalog" },
+        { kind: "text", body: "These three routes need no API key or session: use them to show prices on your own site or to size a plan. Amounts are in cents (`...Cents`) and the only cycle is `monthly`; any other `cycle` returns `400`." },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/plans",
+          scopes: ["public"],
+          success: "200 OK",
+          summary: "Lists the plans with their monthly price and allowance.",
+          params: {
+            rows: [
+              { name: "cycle", type: "string", required: false, description: "Only `monthly` is accepted (default)." },
+              { name: "limit", type: "integer", required: false, description: "Defaults to `50`; integer from 1 to 1000." },
+              { name: "cursor", type: "string", required: false, description: "`nextCursor` from the previous page." },
+            ],
+          },
+          examples: {
+            curl: `curl "$BASE_URL/plans"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans\`);
+const { data: plans, pagination } = await res.json(); // { data: PlanQuote[], pagination }
+console.log(plans.map((p) => p.slug), pagination.hasMore);`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": [
+    {
+      "slug": "developer",
+      "name": "Developer",
+      "monthlyAllowance": 200,
+      "basePriceCents": 2990,
+      "perCreditOverageCents": 15,
+      "monthlyTotalCents": 2990,
+      "currency": "BRL"
+    }
+  ],
+  "pagination": {
+    "limit": 50,
+    "hasMore": false,
+    "nextCursor": null
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "Ordered from the smallest to the largest allowance. `monthlyAllowance` is the number of included credits, `perCreditOverageCents` the price of each credit above it and `monthlyTotalCents` the monthly price. This is the pricing view; `GET /v1/credits/plans` returns the plan limits and features instead." },
+          ],
+        },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/plans/:slug",
+          scopes: ["public"],
+          success: "200 OK",
+          summary: "Fetches the price of one plan.",
+          params: {
+            rows: [
+              { name: "cycle", type: "string", required: false, description: "Only `monthly` is accepted (default)." },
+            ],
+          },
+          examples: {
+            curl: `curl "$BASE_URL/plans/growth"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/growth\`);
+const body = await res.json();
+console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "slug": "growth",
+    "name": "Growth",
+    "monthlyAllowance": 750,
+    "basePriceCents": 8990,
+    "perCreditOverageCents": 12,
+    "monthlyTotalCents": 8990,
+    "currency": "BRL"
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "warn", body: "`slug` is `free`, `developer`, `growth`, `scale` or `volume`. An unknown plan returns `404`." },
+          ],
+        },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/plans/quote",
+          scopes: ["public"],
+          success: "200 OK",
+          summary: "Recommends the plan for a monthly volume of invoices and estimates the total cost.",
+          params: {
+            rows: [
+              { name: "volume", type: "integer", required: false, description: "Invoices per month. Required for a quote." },
+              { name: "cycle", type: "string", required: false, description: "Only `monthly` is accepted (default)." },
+            ],
+          },
+          examples: {
+            curl: `curl "$BASE_URL/plans/quote?volume=20000"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/quote?volume=20000\`);
+const body = await res.json();
+console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { data: Quote | null }`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "volume": 20000,
+    "recommended_plan": "volume",
+    "plan_name": "Volume",
+    "monthly_allowance": 10000,
+    "overage_credits": 10000,
+    "overage_cost_cents": 90000,
+    "base_price_cents": 89990,
+    "total_estimated_cents": 179990,
+    "currency": "BRL",
+    "billing_cycle": "monthly"
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "warn", body: "This route uses snake_case. `total_estimated_cents` is the plan price plus the estimated overage (`overage_credits` × the plan's price per credit). A missing, zero, negative or non-numeric `volume` returns `200` with `{ \"data\": null }`, not an error." },
+          ],
+        },
       ],
     },
     "async-issuance": {
@@ -1810,7 +2130,7 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
         },
         {
           kind: "text",
-          body: "The same key, account and environment with content equivalent to the computed hash recovers the same invoice; different content returns `409` (`IdempotencyConflictError`). The hash is computed before fiscal normalization, with canonical JSON keys and the competence date — do not change how fields are represented between retries (a CNPJ with and without punctuation can produce different hashes).",
+          body: "The same key, account and environment with content equivalent to the computed hash recovers the same invoice; different content returns `409` (`ERROR_IDEMPOTENCY_CONFLICT`). The hash is computed before fiscal normalization, with canonical JSON keys and the competence date — do not change how fields are represented between retries (a CNPJ with and without punctuation can produce different hashes).",
         },
         {
           kind: "callout",
@@ -1835,7 +2155,7 @@ async function issueWithRetry(buildBody, attempts = 3) {
       body: JSON.stringify(buildBody()),
     });
     if (res.status === 409) {
-      // IdempotencyConflictError — payload differs; fix the data, don't retry
+      // ERROR_IDEMPOTENCY_CONFLICT — payload differs; fix the data, don't retry
       throw new Error("Idempotency conflict: payload changed between retries");
     }
     if (res.status < 500) return res.json(); // success or client error — no retry
@@ -1957,6 +2277,7 @@ async function issueWithRetry(buildBody, attempts = 3) {
             ["`nfse.invoice.documents_ready`", "Documents are ready; adds `accessKey`/`nfseNumber`/`documentsReadyAt`."],
             ["`nfse.invoice.email_sent`", "The notification email was sent; adds `sentAt`."],
             ["`nfse.invoice.email_failed`", "The notification email failed."],
+            ["`nfse.invoice.fiscal_discrepancy`", "`invoiceId`, `status` and `differences[]` (`field`, `local`, `authorized`, `delta`, `kind`): difference between Corvo's calculation and the authorized NFS-e, above R$ 0.01 per tax. The authorized XML is not changed."],
             ["`nfse.invoice.cancelled`", "The invoice was cancelled; adds `reason`."],
             ["`nfse.invoice.cancellation_rejected`", "The Sefin refused the cancellation; the invoice is `authorized` again; adds `errorCode` and `errorMessage`."],
             ["`webhook.test`", "Sent by the test route; carries `{ \"message\": \"This is a test webhook event\" }`."],
@@ -2018,9 +2339,9 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           items: [
             "1. Get a `test` key with the right scope. Registering companies/certificates requires `full_access`; an `invoices_read_write` key can issue once the registration exists.",
             "2. Register or fetch the company in the corresponding environment (`POST /v1/companies`, `GET /v1/companies/:id`).",
-            "3. In `live`, fill in the municipal registration and upload a valid A1 certificate matching the CNPJ (`POST /v1/companies/:companyId/certificates`).",
+            "3. In `live`, upload a valid A1 certificate matching the CNPJ (`POST /v1/companies/:companyId/certificates`). The municipal registration is optional.",
             "4. Check readiness with `GET /v1/companies/:id` — `status` must be `ready` and `setupGaps` empty.",
-            "5. Issue the first invoices in `test` with a stable `Idempotency-Key` and store `data.props.id`.",
+            "5. Issue the first invoices in `test` with a stable `Idempotency-Key` and store `data.id`.",
             "6. Register a webhook (`POST /v1/webhooks`) and confirm delivery with `POST /v1/webhooks/:id/test`.",
             "7. Track status via `GET /v1/invoices/:id` or signed webhooks; generate download URLs and request email only after documents are ready — check `emailStatus` separately.",
           ],
@@ -2028,9 +2349,224 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         {
           kind: "callout",
           tone: "accent",
-          body: "Going live requires: municipal registration filled in, an active certificate matching the CNPJ, and credits/quota available (`GET /v1/billing/usage` — `canEmit` must be `true`). Before production, verify the domain and the published version: this documentation describes the current local checkout and does not assume the deployed contracts are identical.",
+          body: "Going live requires an active certificate matching the CNPJ and credits/quota available (`GET /v1/billing/usage` — `canEmit` must be `true`).",
         },
       ],
+    },
+    "mcp": {
+      "title": "AI agents (MCP)",
+      "description": "Connect Claude Code, Cursor and other agents to Corvo with OAuth.",
+      "blocks": [
+        {
+          "kind": "text",
+          "body": "The Corvo MCP server lets AI agents (Claude Code, Cursor and other MCP clients) issue and query NFS-e on behalf of a user, without you writing an integration. The agent connects with OAuth: it opens the browser, you sign in to Corvo, pick the workspace and approve. No API key is copied."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Connect an agent"
+        },
+        {
+          "kind": "text",
+          "body": "Use the server URL below. It also appears in the dashboard under AI agents, with ready-to-copy commands."
+        },
+        {
+          "kind": "code",
+          "label": "Claude Code",
+          "language": "bash",
+          "code": "claude mcp add --transport http corvo https://api.corvo.tech/mcp"
+        },
+        {
+          "kind": "code",
+          "label": "Cursor (.cursor/mcp.json)",
+          "language": "json",
+          "code": "{\n  \"mcpServers\": {\n    \"corvo\": {\n      \"url\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Add the server to the agent with the URL `https://api.corvo.tech/mcp`.",
+            "The agent opens the browser on the Corvo approval screen. If you are not signed in, sign in first; you then return to the approval.",
+            "Pick the workspace and click Allow (or Deny).",
+            "Go back to the agent. It now has the Corvo tools."
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "body": "When you approve, you choose the connection environment: `test` (invoices with no fiscal value) or `live` (real invoices, using credits). Each connection stays in one environment; to switch, reconnect the agent. Start with test."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Permissions"
+        },
+        {
+          "kind": "table",
+          "head": [
+            "Scope",
+            "What it allows",
+            "Roles that can grant it"
+          ],
+          "rows": [
+            [
+              "`nfse:read`",
+              "Query, list and download the PDF of invoices",
+              "admin, developer, billing"
+            ],
+            [
+              "`nfse:write`",
+              "Issue invoices",
+              "admin, developer"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "body": "A member can only approve scopes that their own role in the workspace allows. A workspace where your role does not cover the request appears disabled on the approval screen."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Tools"
+        },
+        {
+          "kind": "table",
+          "head": [
+            "Tool",
+            "Scope",
+            "Main input",
+            "Output"
+          ],
+          "rows": [
+            [
+              "`nfse_issue`",
+              "`nfse:write`",
+              "`company_tax_id` (CNPJ) or `company_id`, `amount` (or `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` required when a customer is sent), `description?`, `discount?`, `competence_date?` (default: today), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
+              "`{ invoice_id, access_key, status }`"
+            ],
+            [
+              "`company_list`",
+              "`nfse:read`",
+              "`tax_id?` (CNPJ), `limit?`, `cursor?`",
+              "`{ companies [{ id, legal_name, tax_id, status, tax_regime, setup_gaps, ready_to_issue }], next_cursor }`"
+            ],
+            [
+              "`nfse_query`",
+              "`nfse:read`",
+              "`access_key`",
+              "`{ access_key, status, nfse_number, authorized_at, last_error }`"
+            ],
+            [
+              "`nfse_list`",
+              "`nfse:read`",
+              "`status?`, `limit?`, `cursor?`",
+              "`{ invoices, next_cursor }`"
+            ],
+            [
+              "`nfse_download_pdf`",
+              "`nfse:read`",
+              "`access_key` (authorized invoice)",
+              "`{ access_key, pdf_base64 }`"
+            ]
+          ]
+        },
+        {
+          "kind": "text",
+          "body": "The simplest call is `company_tax_id` plus `amount`: the customer is optional (omit it for an invoice without tomador; if you send one, `tax_id` is required), the competence date defaults to today, the service code comes from the company or falls back to `100901` (LC 116 item 10.09) and the description from the service code. An agent that does not know the company calls `company_list` first (it also reports `ready_to_issue`). The same fiscal rules as the REST API apply to `nfse_issue`. Tool failures come back as a result with `isError: true` and the message as text, so the agent can read and fix them."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "See usage and revoke"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "In the dashboard, open AI agents → Connected apps: you see each agent, the workspace, the permissions, the last use and how many calls and invoices it made.",
+            "Click Revoke to cut access immediately. The agent has to be approved again to come back.",
+            "Workspace admins see and can revoke every member's connections; other members see only their own.",
+            "Reconnecting the same agent reuses the connection and revokes the previous session."
+          ]
+        }
+      ]
+    },
+    "llms": {
+      "title": "Build with AI (llms.txt)",
+      "description": "Give llms.txt to your coding agent and let it implement the Corvo integration.",
+      "blocks": [
+        {
+          "kind": "text",
+          "body": "Corvo publishes its documentation in a format built for AI coding agents. Give the address to your agent (Claude Code, Cursor, Codex, Copilot and others) and it reads the API and writes the integration in your project, following the same rules as this documentation."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "What to give the agent"
+        },
+        {
+          "kind": "table",
+          "head": [
+            "File",
+            "Address",
+            "Use"
+          ],
+          "rows": [
+            [
+              "`llms.txt`",
+              "`https://corvo.tech/llms.txt`",
+              "Short index with the key facts and a link to every documentation page. The agent opens only what it needs."
+            ],
+            [
+              "`llms-full.txt`",
+              "`https://corvo.tech/llms-full.txt`",
+              "The whole documentation in one Markdown file (English): endpoints, fields, examples and errors. Best when the agent should implement everything in one pass."
+            ]
+          ]
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Ready-to-use prompt"
+        },
+        {
+          "kind": "text",
+          "body": "Copy it, fill in the part in brackets and paste it into your agent. It points to `llms-full.txt` and sets the rules that matter: test environment, key outside the code, idempotency and asynchronous issuance."
+        },
+        {
+          "kind": "code",
+          "label": "Prompt",
+          "language": "text",
+          "code": "Read https://corvo.tech/llms-full.txt (the Corvo NFS-e API documentation) and integrate invoice issuance into this project.\n\nMy stack and where invoices are created: [describe your language/framework and the place in the code where an order or sale becomes an invoice].\n\nFollow these rules:\n- Use the test environment. Read the key from the CORVO_API_KEY environment variable (it starts with corvo_test_). Never write a key in code, in tests or in commits.\n- Register the company once with POST /v1/companies (taxId, taxRegime, municipalityCode) and keep its id.\n- Before issuing, call POST /v1/invoices/calculate and show the taxes when it makes sense.\n- Issue with POST /v1/invoices and send an Idempotency-Key built from my own order id, so a retry never creates a second invoice.\n- Issuance is asynchronous: save the invoice id, and update the status from the nfse.invoice.authorized and nfse.invoice.rejected webhooks (verify the signature) or by polling GET /v1/invoices/:id.\n- Handle the documented errors (validation, 409, 429 with Retry-After) and never log customer documents.\n- Write tests with mocked HTTP. Do not call the live environment.\n\nWhen you finish, list the files you changed and what I still need to configure (webhook URL, environment variables)."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "In each tool"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Claude Code, Codex and other terminal agents: paste the prompt. They fetch the address themselves.",
+            "Cursor: add `https://corvo.tech/llms-full.txt` as a documentation source (Settings → Indexing & Docs), then mention it in the chat, or paste the prompt.",
+            "VS Code, Windsurf and chat apps: paste the prompt; if the tool cannot open addresses, download `llms-full.txt` and attach the file to the conversation."
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "body": "Never paste a `live` key into a prompt or a chat. Keep `corvo_test_...` in an environment variable, review the generated code before going live (company data, service code and tax regime are yours to confirm) and only then switch the key."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Write the code, or operate directly"
+        },
+        {
+          "kind": "text",
+          "body": "This page is for an agent that writes the integration into your repository. If you want the agent to issue and query invoices itself, in a conversation, connect it to the MCP server instead: see AI agents (MCP). Both can be used together."
+        }
+      ]
     },
   },
 };

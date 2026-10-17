@@ -1,3 +1,6 @@
+import { InvoiceCalculationService } from '../application/fiscal/invoice-calculation.service';
+import { calculationHttpFailure } from './fiscal-error-http';
+import { InvoiceCalculationResponseDto } from './invoice-calculation-response.dto';
 import { InvoiceResponseDto } from './invoice-response.dto';
 import { data } from '@/shared/http/response';
 import { ApiCursorResponse } from '@/infra/openapi/swagger';
@@ -21,14 +24,16 @@ import {
   Res,
   HttpCode,
   StreamableFile,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   ApiTags,
+  ApiOkResponse,
+  ApiResponse,
   ApiOperation,
   ApiHeader,
   ApiExtraModels,
   ApiAcceptedResponse,
-  ApiOkResponse,
   getSchemaPath,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -47,7 +52,10 @@ import {
 @ApiTags('invoices')
 @Controller('invoices')
 export class InvoiceController {
-  constructor(private readonly invoiceService: InvoiceService) {}
+  constructor(
+    private readonly invoiceService: InvoiceService,
+    private readonly calculationService: InvoiceCalculationService,
+  ) {}
 
   @Post()
   @HttpCode(202)
@@ -57,10 +65,7 @@ export class InvoiceController {
       type: 'object',
       required: ['data'],
       properties: {
-        data: {
-          type: 'object',
-          properties: { props: { $ref: getSchemaPath(InvoiceResponseDto) } },
-        },
+        data: { $ref: getSchemaPath(InvoiceResponseDto) },
       },
     },
   })
@@ -80,6 +85,51 @@ export class InvoiceController {
       req.authContext!,
       idempotencyKey,
     );
+  }
+
+  @Post('calculate')
+  @HttpCode(200)
+  @ApiKeyEndpoint()
+  @RequirePermission('nfse.invoices.issue')
+  @ApiOperation({
+    summary: 'Calculate taxes before issuing an invoice',
+    description:
+      'Always available with nfse.invoices.issue. Uses the emission request body; future competence is limited to OUTBOX_SCHEDULE_MAX_DAYS (15 days by default). Fiscal failures return 200 blocked with partial results. No credit, DPS number or document is reserved.',
+  })
+  @ApiOkResponse({ type: InvoiceCalculationResponseDto })
+  @ApiResponse({
+    status: 404,
+    description: 'Company not found in the tenant and environment',
+  })
+  @ApiResponse({ status: 422, description: 'Invalid request input' })
+  @ApiResponse({
+    status: 429,
+    description:
+      'Authenticated API rate limit exceeded; Retry-After in seconds and X-RateLimit-* headers',
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'RTC Calculator unavailable; Retry-After in seconds',
+  })
+  async calculate(
+    @Body() dto: CreateInvoiceDto,
+    @Req() req: RequestWithAuthContext,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const auth = req.authContext;
+    if (!auth) throw new UnauthorizedException();
+    const outcome = await this.calculationService.calculate(
+      dto,
+      auth.activeTenantId,
+      executionEnvironment(auth),
+    );
+    if ('httpError' in outcome) {
+      const failure = calculationHttpFailure(outcome.httpError);
+      if (failure.retryAfterSeconds !== undefined)
+        res.setHeader('Retry-After', failure.retryAfterSeconds);
+      throw failure.exception;
+    }
+    return data(outcome.response);
   }
 
   @Get()
@@ -258,10 +308,7 @@ export class InvoiceController {
       type: 'object',
       required: ['data'],
       properties: {
-        data: {
-          type: 'object',
-          properties: { props: { $ref: getSchemaPath(InvoiceResponseDto) } },
-        },
+        data: { $ref: getSchemaPath(InvoiceResponseDto) },
       },
     },
   })
@@ -271,10 +318,7 @@ export class InvoiceController {
       type: 'object',
       required: ['data'],
       properties: {
-        data: {
-          type: 'object',
-          properties: { props: { $ref: getSchemaPath(InvoiceResponseDto) } },
-        },
+        data: { $ref: getSchemaPath(InvoiceResponseDto) },
       },
     },
   })

@@ -13,7 +13,9 @@ import { useAuth } from "@/lib/auth";
 import { mapIssues } from "@/lib/api-errors";
 import { ApiError, companies as companiesApi, invoices as invoicesApi } from "@/lib/api";
 import { isValidCnpj, isValidCpf, maskCurrency, maskDigits, maskState, cleanTaxId, maskTaxId, parseCurrency } from "@/lib/masks";
-import type { Company } from "@/lib/types";
+import type { Company, InvoiceCalculation } from "@/lib/types";
+import { InvoiceCalculationPanel } from "@/components/dashboard/invoice-calculation-panel";
+import { DEFAULT_SERVICE_CODE } from "@/lib/service-defaults";
 
 const FORM_ID = "new-invoice-form";
 
@@ -74,6 +76,9 @@ export default function NewInvoicePage() {
   const attempt = useRef<{ key: string; payload: string } | null>(null);
   const [uncertain, setUncertain] = useState(false);
   const [sendEmail, setSendEmail] = useState(true);
+  const [calculating, setCalculating] = useState(false);
+  const [calc, setCalc] = useState<{ key: string; result: InvoiceCalculation } | null>(null);
+  const [calcError, setCalcError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,6 +113,42 @@ export default function NewInvoicePage() {
     finally { setLoadingMore(false); }
   }
 
+  function buildInput(amount: number, externalId: string) {
+    return {
+      companyTaxId: company?.taxId ?? "",
+      externalId,
+      // No customer data at all issues an anonymous-consumer invoice (no tomador).
+      customer: hasCustomer ? {
+        taxId: cleanTaxId(form.customerTaxId),
+        name: form.customerName.trim() || undefined,
+        email: form.customerEmail || undefined,
+        address: form.city || form.state ? { city: form.city || undefined, state: form.state.toUpperCase() || undefined } : undefined,
+      } : undefined,
+      service: {
+        description: form.serviceDescription.trim() || undefined,
+        code: form.serviceCode || undefined,
+        municipalityCode: form.municipalityCode || undefined,
+      },
+      amount,
+      competenceDate: form.competenceDate,
+      email: sendEmail,
+    };
+  }
+
+  async function calculate() {
+    if (calculating || !canSubmit) return;
+    setCalculating(true);
+    setCalcError(null);
+    const key = JSON.stringify([form, sendEmail, fiscalEnvironment]);
+    try {
+      const result = await invoicesApi.calculate(buildInput(parseCurrency(form.amount), form.externalId || "dashboard-calculate"));
+      setCalc({ key, result });
+    } catch (err: unknown) {
+      setCalc(null);
+      setCalcError(err instanceof ApiError && err.status === 503 ? t("calculate.unavailable") : err instanceof Error && err.message ? err.message : t("calculate.failed"));
+    } finally { setCalculating(false); }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (inFlight.current || uncertain || !canSubmit || !company) return;
@@ -123,24 +164,7 @@ export default function NewInvoicePage() {
       const formSnapshot = JSON.stringify([form, sendEmail]);
       if (attempt.current && attempt.current.payload !== formSnapshot) attempt.current = null;
       const key = attempt.current?.key ?? crypto.randomUUID();
-      const input = {
-        companyTaxId: company.taxId,
-        externalId: form.externalId || `dashboard-${key}`,
-        customer: {
-          taxId: cleanTaxId(form.customerTaxId),
-          name: form.customerName,
-          email: form.customerEmail || undefined,
-          address: form.city || form.state ? { city: form.city || undefined, state: form.state.toUpperCase() || undefined } : undefined,
-        },
-        service: {
-          description: form.serviceDescription,
-          code: form.serviceCode || undefined,
-          municipalityCode: form.municipalityCode || undefined,
-        },
-        amount,
-        competenceDate: form.competenceDate,
-        email: sendEmail,
-      };
+      const input = buildInput(amount, form.externalId || `dashboard-${key}`);
       attempt.current = { key, payload: formSnapshot };
       const created = await invoicesApi.create(input, key);
       router.push(`/app/invoices/${created.id}`);
@@ -156,7 +180,7 @@ export default function NewInvoicePage() {
     { setForm((f) => ({ ...f, [key]: mask ? mask(e.target.value) : e.target.value })); setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: "" } : prev)); };
 
   const company = companies.find((c) => c.id === form.companyId && c.environment === fiscalEnvironment);
-  const serviceCode = form.serviceCode || company?.defaultServiceCode || "";
+  const serviceCode = form.serviceCode || company?.defaultServiceCode || DEFAULT_SERVICE_CODE;
   const municipalityCode = form.municipalityCode || company?.municipalityCode || "";
   const amountNumber = parseCurrency(form.amount);
   const hasAmount = form.amount !== "" && amountNumber > 0;
@@ -170,11 +194,11 @@ export default function NewInvoicePage() {
   // disabled until this list is empty; the summary tells what is missing.
   const today = new Date().toLocaleDateString("sv-SE");
   const taxDigits = cleanTaxId(form.customerTaxId);
+  const hasCustomer = Boolean(taxDigits || form.customerName.trim() || form.customerEmail.trim() || form.city.trim() || form.state || sendEmail);
   const missing: string[] = [];
   if (!company || company.status === "blocked" || (isLive && company.status !== "ready") || !/^\d{7}$/.test(company.municipalityCode ?? "")) missing.push(t("fields.company"));
-  if (!(taxDigits.length === 11 ? isValidCpf(taxDigits) : taxDigits.length === 14 && isValidCnpj(taxDigits))) missing.push(t("fields.taxId"));
-  if (!form.customerName.trim()) missing.push(t("fields.name"));
-  if (!form.serviceDescription.trim()) missing.push(t("fields.description"));
+  // A customer needs a valid CPF/CNPJ; with no customer data the invoice has no tomador.
+  if (hasCustomer && !(taxDigits.length === 11 ? isValidCpf(taxDigits) : taxDigits.length === 14 && isValidCnpj(taxDigits))) missing.push(t("fields.taxId"));
   if (!/^\d{6}$/.test(serviceCode)) missing.push(t("fields.serviceCode"));
   if (!/^\d{7}$/.test(municipalityCode)) missing.push(t("fields.municipalityCode"));
   if (!form.competenceDate || form.competenceDate > today) missing.push(t("fields.competence"));
@@ -216,14 +240,14 @@ export default function NewInvoicePage() {
 
           <Section n={2} title={t("form.customer")} hint={t("form.customerHint")} delay={2}>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("fields.taxId")} error={fieldErrors.customerTaxId || undefined} required>
+              <Field label={t("fields.taxId")} error={fieldErrors.customerTaxId || undefined} required={hasCustomer} optionalLabel={hasCustomer ? undefined : t("fields.optional")}>
                 {(c) => (
-                  <input {...c} type="text" inputMode="text" autoCapitalize="characters" className="field font-mono tabular-nums" placeholder={t("placeholders.taxId")} value={form.customerTaxId} onChange={set("customerTaxId", maskTaxId)} maxLength={18} autoComplete="off" required />
+                  <input {...c} type="text" inputMode="text" autoCapitalize="characters" className="field font-mono tabular-nums" placeholder={t("placeholders.taxId")} value={form.customerTaxId} onChange={set("customerTaxId", maskTaxId)} maxLength={18} autoComplete="off" required={hasCustomer} />
                 )}
               </Field>
-              <Field label={t("fields.name")} error={fieldErrors.customerName || undefined} required>
+              <Field label={t("fields.name")} error={fieldErrors.customerName || undefined} optionalLabel={t("fields.optional")}>
                 {(c) => (
-                  <input {...c} type="text" className="field" placeholder={t("placeholders.name")} value={form.customerName} onChange={set("customerName")} autoComplete="organization" required />
+                  <input {...c} type="text" className="field" placeholder={t("placeholders.name")} value={form.customerName} onChange={set("customerName")} autoComplete="organization" />
                 )}
               </Field>
             </div>
@@ -254,14 +278,14 @@ export default function NewInvoicePage() {
           </Section>
 
           <Section n={3} title={t("form.service")} hint={t("form.serviceHint")} delay={3}>
-            <Field label={t("fields.description")} error={fieldErrors.serviceDescription || undefined} required>
+            <Field label={t("fields.description")} error={fieldErrors.serviceDescription || undefined} optionalLabel={t("fields.optional")} hint={t("hints.description")}>
               {(c) => (
-                <textarea {...c} className="field resize-y" rows={3} placeholder={t("placeholders.description")} value={form.serviceDescription} onChange={set("serviceDescription")} required />
+                <textarea {...c} className="field resize-y" rows={3} placeholder={t("placeholders.description")} value={form.serviceDescription} onChange={set("serviceDescription")} />
               )}
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("fields.serviceCode")} error={fieldErrors.serviceCode || undefined} required={!company?.defaultServiceCode} optionalLabel={company?.defaultServiceCode ? t("fields.optional") : undefined} hint={company?.defaultServiceCode ? t("hints.serviceCodeDefault", { code: company.defaultServiceCode }) : t("hints.serviceCode")}>
-                {(c) => <ServiceCodeCombobox id={c.id} aria-describedby={c["aria-describedby"]} aria-invalid={c["aria-invalid"]} value={form.serviceCode} onChange={(code) => { setForm((f) => ({ ...f, serviceCode: code })); setFieldErrors((previous) => ({ ...previous, serviceCode: "" })); }} placeholder={company?.defaultServiceCode} required={!company?.defaultServiceCode} />}
+              <Field label={t("fields.serviceCode")} error={fieldErrors.serviceCode || undefined} optionalLabel={t("fields.optional")} hint={company?.defaultServiceCode ? t("hints.serviceCodeDefault", { code: company.defaultServiceCode }) : t("hints.serviceCodeFallback", { code: DEFAULT_SERVICE_CODE })}>
+                {(c) => <ServiceCodeCombobox id={c.id} aria-describedby={c["aria-describedby"]} aria-invalid={c["aria-invalid"]} value={form.serviceCode} onChange={(code) => { setForm((f) => ({ ...f, serviceCode: code })); setFieldErrors((previous) => ({ ...previous, serviceCode: "" })); }} placeholder={company?.defaultServiceCode ?? DEFAULT_SERVICE_CODE} />}
               </Field>
               <Field label={t("fields.municipalityCode")} error={fieldErrors.municipalityCode || undefined} required={!company?.municipalityCode} optionalLabel={company?.municipalityCode ? t("fields.optional") : undefined} hint={company?.municipalityCode ? t("hints.municipalityDefault", { code: company.municipalityCode }) : t("hints.municipalityCode")}>
                 {(c) => <input {...c} type="text" inputMode="numeric" className="field font-mono tabular-nums" placeholder={company?.municipalityCode ?? t("placeholders.municipalityCode")} value={form.municipalityCode} onChange={set("municipalityCode", maskDigits(7))} pattern="[0-9]{7}" maxLength={7} autoComplete="off" required={!company?.municipalityCode} />}
@@ -311,7 +335,7 @@ export default function NewInvoicePage() {
 
           <dl className="flex flex-col gap-2.5 border-t border-border-soft pt-4">
             <SummaryRow label={t("summary.issuer")} value={company ? company.tradeName || company.legalName : ""} />
-            <SummaryRow label={t("summary.customer")} value={form.customerName} />
+            <SummaryRow label={t("summary.customer")} value={hasCustomer ? form.customerName || "—" : t("summary.noCustomer")} />
             <SummaryRow label={t("summary.taxId")} value={form.customerTaxId} mono />
             <SummaryRow label={t("fields.serviceCode")} value={serviceCode} mono />
             <SummaryRow label={t("fields.municipalityCode")} value={municipalityCode} mono />
@@ -325,6 +349,16 @@ export default function NewInvoicePage() {
               {t("summary.liveWarning")}
             </p>
           )}
+
+          <div className="flex flex-col gap-3">
+            <Button variant="ghost" onClick={calculate} loading={calculating} disabled={!canSubmit || submitting} className="w-full">
+              {calculating ? t("calculate.calculating") : t("calculate.button")}
+            </Button>
+            {calcError && <p role="alert" className="text-[12.5px] text-danger">{calcError}</p>}
+            {calc && (calc.key === JSON.stringify([form, sendEmail, fiscalEnvironment])
+              ? <InvoiceCalculationPanel result={calc.result} format={(value) => money.format(Number(value))} />
+              : <p role="status" className="text-[12.5px] text-text-4">{t("calculate.stale")}</p>)}
+          </div>
 
           <div className="flex flex-col gap-2.5">
             <Button type="submit" form={FORM_ID} variant="accent" loading={submitting} disabled={!canSubmit} aria-describedby="invoice-missing" className="w-full">

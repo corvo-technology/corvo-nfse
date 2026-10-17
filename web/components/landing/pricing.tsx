@@ -17,6 +17,19 @@ export function Pricing() {
         <p className="text-[16px] text-text-2 mt-3 max-w-[520px] mx-auto leading-relaxed">
           {t("description")}
         </p>
+        <ul className="mt-6 flex flex-wrap items-center justify-center gap-2.5" aria-label={t("included.label")}>
+          {(["mcp", "email"] as const).map((key) => (
+            <li
+              key={key}
+              className="flex items-center gap-2 rounded-full border border-accent/30 bg-accent-surface px-3.5 py-1.5 text-[13px] text-text-2"
+            >
+              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-accent" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M3 8.5l3.2 3L13 4.5" />
+              </svg>
+              {t(`included.${key}`)}
+            </li>
+          ))}
+        </ul>
       </div>
 
       <PlanPicker

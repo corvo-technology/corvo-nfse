@@ -57,6 +57,9 @@ export class CompanyOrmEntity {
   })
   municipalReg?: string | null;
 
+  @Column({ name: 'send_municipal_reg', type: 'boolean', default: false })
+  sendMunicipalReg!: boolean;
+
   @Column({
     name: 'municipality_code',
     type: 'varchar',
@@ -72,20 +75,6 @@ export class CompanyOrmEntity {
     nullable: true,
   })
   defaultServiceCode?: string | null;
-
-  @Column({ name: 'tax_regime', type: 'varchar', length: 30 })
-  taxRegime!: string;
-
-  @Column({ name: 'simple_national', type: 'boolean', default: false })
-  simpleNational!: boolean;
-
-  @Column({
-    name: 'special_regime',
-    type: 'varchar',
-    length: 50,
-    nullable: true,
-  })
-  specialRegime?: string;
 
   @Column({
     name: 'address_street',

@@ -23,8 +23,14 @@ export class CertificateExpiredError extends Error {
 }
 
 export class CertificateTaxIdMismatchError extends Error {
-  constructor() {
+  /** Public company data, safe to show so the user can see what was compared. */
+  readonly safeDetails?: { certificateTaxId: string; companyTaxId: string };
+
+  constructor(certificateTaxId?: string, companyTaxId?: string) {
     super('Certificate CNPJ does not match company tax ID');
     this.name = 'CertificateTaxIdMismatchError';
+    if (certificateTaxId && companyTaxId) {
+      this.safeDetails = { certificateTaxId, companyTaxId };
+    }
   }
 }

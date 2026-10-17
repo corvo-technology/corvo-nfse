@@ -1,0 +1,46 @@
+{
+  "capturedAt": "2026-10-15",
+  "calculator": {
+    "app": "1.6.0",
+    "db": "V0059",
+    "dbDate": "2026-09-30",
+    "source": "local offline instance (docker eclipse-temurin:21-jre + api-regime-geral.jar)"
+  },
+  "description": "POST with cIndOp 020101 (bem imóvel), which is not published for NBS 115011000. The endpoint answers HTTP 200 with valido=false — rejection is a valid body, not an error status.",
+  "input": {
+    "competenceDate": "2026-12-10",
+    "nbsCode": "115011000",
+    "cst": "000",
+    "classCode": "000001",
+    "operationIndicator": "020101"
+  },
+  "steps": [
+    {
+      "name": "validate-incompativel",
+      "method": "POST",
+      "path": "/calculadora/nfse/indicador-operacao/validate",
+      "request": {
+        "cClassTrib": "000001",
+        "cIndOp": "020101",
+        "dataOcorrenciaFatoGerador": "2026-12-10",
+        "nbs": "115011000"
+      },
+      "status": 200,
+      "response": {
+        "cIndOp": "020101",
+        "cClassTrib": "000001",
+        "nbs": "115011000",
+        "dataOcorrenciaFatoGerador": "2026-12-10",
+        "valido": false
+      }
+    }
+  ],
+  "expected": {
+    "valido": false
+  },
+  "expectedError": {
+    "code": "FISCAL_CLASSIFICATION_INVALID",
+    "category": "CLASSIFICATION",
+    "retryable": false
+  }
+}

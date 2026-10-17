@@ -8,30 +8,40 @@ import {
 import { parseCustomerTaxId } from '@/shared/tax-id';
 import { normalizeCep } from '@/shared/fiscal/cep';
 import { normalizeUf } from '@/shared/fiscal/uf';
+import { toDecimal } from './fiscal/money';
+import type { ServiceFiscalInput } from './fiscal/normalized-invoice';
 import type { CreateInvoiceDto } from '../http/invoice.dto';
 
 export const SCHEDULE_MAX_DAYS = 'SCHEDULE_MAX_DAYS';
 const SCHEDULE_ZONE = 'America/Sao_Paulo';
 
-export interface NormalizedInvoiceInput {
-  customer: {
-    name: string;
-    taxId: string;
-    taxIdKind: 'CPF' | 'CNPJ';
-    email?: string;
-    address: {
-      street?: string;
-      city: string;
-      state: string;
-      zip?: string;
-    };
+export interface NormalizedCustomerInput {
+  name: string;
+  /** Absent for anonymous consumers. */
+  taxId?: string;
+  taxIdKind?: 'CPF' | 'CNPJ';
+  email?: string;
+  address: {
+    street?: string;
+    city: string;
+    state: string;
+    zip?: string;
+    municipalityCode?: string;
   };
+}
+
+export interface NormalizedInvoiceInput {
+  /** Null when the request carries no customer — anonymous consumer. */
+  customer: NormalizedCustomerInput | null;
   service: {
     code: string;
     municipalityCode: string;
     description?: string;
+    fiscal?: ServiceFiscalInput;
+    serviceProfileId?: string;
   };
   amount: number;
+  discount?: number;
   competenceDate: Date;
   scheduledFor?: Date;
   emailSend: boolean;
@@ -70,15 +80,18 @@ export class InvoiceDomainService {
       });
     }
 
-    // ── customer.taxId ──────────────────────────────────────────────
-    if (!dto.customer?.taxId?.trim()) {
+    // ── customer: sem nada ⇒ consumidor anônimo; com qualquer dado ⇒ CPF/CNPJ obrigatório ──
+    const rawTaxId = dto.customer?.taxId?.trim();
+    if (!rawTaxId && customerHasContent(dto.customer)) {
       issues.push({
         field: 'customer.taxId',
         code: 'required',
-        message: 'customer.taxId is required',
+        message:
+          'customer.taxId is required when a customer is sent; omit the customer for an anonymous consumer invoice',
       });
-    } else {
-      const parsed = parseCustomerTaxId(dto.customer.taxId);
+    }
+    if (rawTaxId) {
+      const parsed = parseCustomerTaxId(rawTaxId);
       if (!parsed) {
         issues.push({
           field: 'customer.taxId',
@@ -169,6 +182,45 @@ export class InvoiceDomainService {
       }
     }
 
+    // ── discount: optional, >= 0, <= amount, max 2 decimals ──────
+    let discount: number | undefined;
+    if (dto.discount !== undefined && dto.discount !== null) {
+      if (typeof dto.discount !== 'number' || !Number.isFinite(dto.discount)) {
+        issues.push({
+          field: 'discount',
+          code: 'invalid_type',
+          message: 'discount must be a number',
+        });
+      } else {
+        const rounded = Math.round(dto.discount * 100) / 100;
+        if (rounded !== dto.discount) {
+          issues.push({
+            field: 'discount',
+            code: 'invalid_decimal_places',
+            message: 'discount must have at most 2 decimal places',
+          });
+        }
+        if (dto.discount < 0) {
+          issues.push({
+            field: 'discount',
+            code: 'out_of_range',
+            message: 'discount must be greater than or equal to zero',
+          });
+        } else if (
+          typeof dto.amount === 'number' &&
+          Number.isFinite(dto.amount) &&
+          toDecimal(String(dto.discount)).gt(toDecimal(String(dto.amount)))
+        ) {
+          issues.push({
+            field: 'discount',
+            code: 'out_of_range',
+            message: 'discount cannot exceed the invoice amount',
+          });
+        }
+        discount = rounded;
+      }
+    }
+
     // ── competenceDate: immediate or scheduled ───────────────────────────────────
     let competenceDate: Date;
     let scheduledFor: Date | undefined;
@@ -230,39 +282,72 @@ export class InvoiceDomainService {
     }
 
     // ── Normalize ────────────────────────────────────────────────────
-    const parsed = parseCustomerTaxId(dto.customer.taxId)!;
-    const hasCityN = dto.customer.address?.city?.trim();
-    const hasStateN = dto.customer.address?.state?.trim();
-    const state = hasStateN ? normalizeUf(hasStateN) : 'SS';
-    const city = hasCityN ? dto.customer.address!.city!.trim() : 'SIM';
-
     return {
       companyId: dto.companyId,
       externalId: dto.externalId,
       environment,
-      customer: {
-        name: dto.customer.name?.trim() ?? 'Consumidor',
-        taxId: parsed.value,
-        taxIdKind: parsed.kind,
-        email: dto.customer.email?.trim(),
-        address: {
-          street: dto.customer.address?.street?.trim(),
-          city,
-          state,
-          zip: dto.customer.address?.zip
-            ? normalizeCep(dto.customer.address.zip)
-            : undefined,
-        },
-      },
+      customer: normalizeCustomerInput(dto.customer),
       service: {
         code: code!,
         municipalityCode: municipalityCode!,
         description: dto.service.description?.trim(),
+        fiscal: dto.service.fiscal,
+        serviceProfileId: dto.service.serviceProfileId,
       },
       amount: Math.round(dto.amount * 100) / 100,
+      discount,
       competenceDate,
       scheduledFor,
       emailSend,
     };
   }
+}
+
+/** True when the customer carries any data; an empty object counts as no customer. */
+function customerHasContent(customer: CreateInvoiceDto['customer']): boolean {
+  if (!customer) return false;
+  const address = customer.address;
+  return (
+    Boolean(customer.name?.trim()) ||
+    Boolean(customer.taxId?.trim()) ||
+    Boolean(customer.email?.trim()) ||
+    Boolean(address?.street?.trim()) ||
+    Boolean(address?.city?.trim()) ||
+    Boolean(address?.state?.trim()) ||
+    Boolean(address?.zip?.trim()) ||
+    Boolean(address?.country?.trim()) ||
+    Boolean(address?.municipalityCode?.trim())
+  );
+}
+
+function normalizeCustomerInput(
+  customer: CreateInvoiceDto['customer'],
+): NormalizedCustomerInput | null {
+  if (!customer) {
+    return null;
+  }
+  const address = customer.address;
+  const hasContent = customerHasContent(customer);
+  if (!hasContent) {
+    // Empty `{}` ⇒ consumidor anônimo: sem snapshot de cliente.
+    return null;
+  }
+  const rawTaxId = customer.taxId?.trim();
+  // Already validated above; `undefined` only for anonymous consumers.
+  const parsedTaxId = rawTaxId ? parseCustomerTaxId(rawTaxId) : undefined;
+  const state = address?.state?.trim();
+  const city = address?.city?.trim();
+  return {
+    name: customer.name?.trim() || 'Consumidor',
+    taxId: parsedTaxId?.value,
+    taxIdKind: parsedTaxId?.kind,
+    email: customer.email?.trim(),
+    address: {
+      street: address?.street?.trim(),
+      city: city || 'SIM',
+      state: state ? normalizeUf(state) : 'SS',
+      zip: address?.zip ? normalizeCep(address.zip) : undefined,
+      municipalityCode: address?.municipalityCode?.trim(),
+    },
+  };
 }

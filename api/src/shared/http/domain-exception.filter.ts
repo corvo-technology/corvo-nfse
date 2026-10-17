@@ -190,6 +190,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
         response.status(status).json({
           error: safeDomainMessage(exception),
           code: domainErrorCode(exception),
+          ...safeDomainDetails(exception),
         });
         return;
       }
@@ -519,6 +520,10 @@ function statusForDomainError(error: Error): number | null {
 }
 function domainErrorCode(error: Error): string {
   return DOMAIN_ERRORS[error.name]?.code ?? 'ERROR_INTERNAL';
+}
+function safeDomainDetails(error: Error): { details?: object } {
+  const details = (error as { safeDetails?: unknown }).safeDetails;
+  return details && typeof details === 'object' ? { details } : {};
 }
 function safeDomainMessage(error: Error): string {
   return DOMAIN_ERRORS[error.name]?.message ?? 'Internal server error';

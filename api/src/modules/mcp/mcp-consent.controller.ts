@@ -1,244 +1,181 @@
-import { RawResponse } from '@/shared/http/response.interceptor';
 import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
+  HttpCode,
   Inject,
   Post,
   Query,
   Req,
-  Res,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { DataSource } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
-import type { Request, Response } from 'express';
-import { PublicRoute } from '../auth/application/public-route.decorator';
-import { CookieSessionService } from '../auth/application/cookie-session.service';
-import { extractCookie } from '../auth/application/cookie-reader';
+import { data } from '@/shared/http/response';
+import type { RequestWithAuthContext } from '../auth/auth-context';
+import { IOAuthClientRepository } from '../auth/domain/oauth-client.repository';
+import type { OAuthClient } from '../auth/domain/oauth-client';
 import {
-  ITenantMembershipRepository,
-  type TenantMembershipWithEstablishmentName,
-} from '../auth/domain/tenant-membership.repository';
-import { AuthOAuthClientOrmEntity } from '@/infra/persistence/typeorm/entities/auth.orm-entities';
-import type { AppConfig } from '@/infra/config/configuration.types';
-import { AuthorizeQueryDto } from './dto/authorize-query.dto';
+  permissionsForTenantRole,
+  type TenantPermission,
+} from '../auth/domain/permission';
+import { ITenantMembershipRepository } from '../auth/domain/tenant-membership.repository';
+import { ConsentDecisionDto, ConsentRequestDto } from './dto/consent.dto';
+import {
+  MCP_SCOPES,
+  SCOPE_DESCRIPTIONS,
+  matchesRegisteredRedirectUri,
+  parseScopes,
+} from './mcp-client-policy';
 import { McpAuthService } from './mcp-auth.service';
-import {
-  CORVO_LOGO_ORIGIN,
-  redirectCspSource,
-  renderConsentPage,
-  type ConsentPageInput,
-} from './templates/mcp-consent.page';
 
-/** Body of the consent form POST (browser form, urlencoded). */
-class ConsentSubmitDto {
-  selected_tenant_id!: string;
-  state!: string;
-  code_challenge!: string;
-  code_challenge_method!: string;
-  redirect_uri!: string;
-  scope!: string;
-  client_id!: string;
-}
-
-const SCOPE_DESCRIPTIONS: Record<string, string> = {
-  'nfse:read': 'Consultar e baixar notas fiscais',
-  'nfse:write': 'Emitir e cancelar notas fiscais',
+const SCOPE_PERMISSION: Record<string, TenantPermission> = {
+  'nfse:read': 'nfse.invoices.view',
+  'nfse:write': 'nfse.invoices.issue',
 };
 
-@PublicRoute()
+/**
+ * Consent API used by the dashboard screen `/mcp/authorize`. It runs behind
+ * the normal session guard (cookie + CSRF), so only a logged-in human can
+ * approve a connection.
+ */
 @ApiTags('MCP')
-@Controller('mcp')
-@RawResponse()
+@Controller('mcp/consent')
 export class McpConsentController {
   constructor(
-    private readonly sessions: CookieSessionService,
     @Inject(ITenantMembershipRepository)
     private readonly memberships: ITenantMembershipRepository,
-    private readonly dataSource: DataSource,
-    private readonly config: ConfigService,
+    @Inject(IOAuthClientRepository)
+    private readonly clients: IOAuthClientRepository,
     private readonly mcpAuth: McpAuthService,
   ) {}
 
-  @Get('consent')
-  async consentForm(
-    @Query() query: AuthorizeQueryDto,
-    @Req() req: Request,
-    @Res({ passthrough: false }) res: Response,
-  ): Promise<string> {
-    const authUserId = await this.requireAuthUserId(req);
-    const client = await this.requireActiveClient(query.client_id);
-    this.requireRegisteredRedirectUri(client, query.redirect_uri);
-
-    const tenants = await this.memberships
-      .listActiveWithEstablishmentByAuthUserAndProduct(authUserId, 'corvo')
-      .then((rows) =>
-        rows.map((row: TenantMembershipWithEstablishmentName) => ({
-          id: row.tenantId,
-          name: row.establishmentName,
-        })),
+  /** What the screen shows: the app, what it asks for and the workspaces to choose from. */
+  @Get()
+  async context(
+    @Query() query: ConsentRequestDto,
+    @Req() req: RequestWithAuthContext,
+  ) {
+    const authUserId = this.requireHuman(req);
+    const client = await this.requireClient(query);
+    const requested = this.requestedScopes(query.scope, client);
+    const rows =
+      await this.memberships.listActiveWithEstablishmentByAuthUserAndProduct(
+        authUserId,
+        'corvo',
       );
-
-    const scopes = this.parseScopes(query.scope);
-    const html = renderConsentPage({
-      clientId: client.id,
-      clientName: client.name,
-      scopes,
-      tenants,
-      state: query.state,
-      redirectUri: query.redirect_uri,
-      codeChallenge: query.code_challenge,
-      codeChallengeMethod: query.code_challenge_method,
-      formAction: `${this.apiPrefix()}/mcp/consent`,
-    } satisfies ConsentPageInput);
-
-    // helmet's default `form-action 'self'` makes browsers block the 302 to the
-    // client's redirect_uri after the POST; allow exactly that target.
-    res.setHeader(
-      'Content-Security-Policy',
-      [
-        "default-src 'self'",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        'font-src https://fonts.gstatic.com',
-        `img-src 'self' data: ${CORVO_LOGO_ORIGIN}`,
-        "script-src 'none'",
-        "base-uri 'none'",
-        "frame-ancestors 'none'",
-        `form-action 'self' ${redirectCspSource(query.redirect_uri)}`,
-      ].join('; '),
-    );
-    res.status(200).type('text/html');
-    return html;
+    return data({
+      client: { id: client.id, name: client.name },
+      redirect_host: redirectLabel(query.redirect_uri),
+      scopes: requested.map((name) => ({
+        name,
+        description: SCOPE_DESCRIPTIONS[name],
+      })),
+      tenants: rows.map((row) => ({
+        id: row.tenantId,
+        name: row.establishmentName,
+        allowed_scopes: requested.filter((scope) =>
+          permissionsForTenantRole(row.role).includes(SCOPE_PERMISSION[scope]),
+        ),
+      })),
+    });
   }
 
-  @Post('consent')
-  async consentSubmit(
-    @Body() body: ConsentSubmitDto,
-    @Req() req: Request,
-    @Res({ passthrough: false }) res: Response,
-  ): Promise<void> {
-    const authUserId = await this.requireAuthUserId(req);
+  /** Approve or deny; returns the URL the browser must open to go back to the app. */
+  @Post()
+  @HttpCode(200)
+  async decide(
+    @Body() body: ConsentDecisionDto,
+    @Req() req: RequestWithAuthContext,
+  ) {
+    const authUserId = this.requireHuman(req);
+    const client = await this.requireClient(body);
+    const target = new URL(body.redirect_uri);
 
-    const required: (keyof ConsentSubmitDto)[] = [
-      'selected_tenant_id',
-      'state',
-      'code_challenge',
-      'code_challenge_method',
-      'redirect_uri',
-      'scope',
-      'client_id',
-    ];
-    for (const field of required) {
-      if (typeof body?.[field] !== 'string' || body[field].length === 0) {
-        throw new BadRequestException({
-          error: 'invalid_request',
-          error_description: `Missing parameter: ${field}`,
-        });
-      }
+    if (body.decision === 'deny') {
+      target.searchParams.set('error', 'access_denied');
+      target.searchParams.set('state', body.state);
+      return data({ redirect_url: target.toString() });
     }
 
-    if (body.code_challenge_method !== 'S256') {
+    if (!body.tenant_id) {
       throw new BadRequestException({
         error: 'invalid_request',
-        error_description: 'Unsupported code_challenge_method',
+        error_description: 'tenant_id is required to approve',
       });
     }
-
-    const client = await this.requireActiveClient(body.client_id);
-    this.requireRegisteredRedirectUri(client, body.redirect_uri);
-
-    // The selected tenant must be an ACTIVE membership of the requesting user.
     const membership = await this.memberships.findByAuthUserAndTenant(
       authUserId,
-      body.selected_tenant_id,
+      body.tenant_id,
     );
-    if (!membership || !membership.isActive) {
+    if (!membership?.isActive) {
       throw new BadRequestException({
         error: 'invalid_request',
-        error_description: 'Selected tenant is not available for this user',
+        error_description: 'Selected workspace is not available for this user',
       });
     }
-
-    // Bind the submission to the state cookie set by /mcp/authorize when
-    // present, so a tampered form cannot be replayed against another flow.
-    const expectedState = extractCookie(req, 'mcp_oauth_state');
-    if (expectedState !== undefined && expectedState !== body.state) {
-      throw new BadRequestException({
-        error: 'invalid_request',
-        error_description: 'State mismatch',
-      });
+    const granted = this.requestedScopes(body.scope, client);
+    const allowed = permissionsForTenantRole(membership.role);
+    const missing = granted.filter(
+      (scope) => !allowed.includes(SCOPE_PERMISSION[scope]),
+    );
+    if (missing.length > 0) {
+      throw new ForbiddenException(
+        `Your role in this workspace cannot grant: ${missing.join(', ')}`,
+      );
     }
 
     const code = await this.mcpAuth.createAuthorizationCode({
-      clientId: body.client_id,
+      clientId: client.id,
       userId: authUserId,
-      tenantId: body.selected_tenant_id,
+      tenantId: body.tenant_id,
       redirectUri: body.redirect_uri,
-      scope: body.scope,
+      scope: granted.join(' '),
       codeChallenge: body.code_challenge,
       codeChallengeMethod: 'S256',
+      environment: body.environment ?? 'test',
     });
-
-    const target = new URL(body.redirect_uri);
     target.searchParams.set('code', code);
     target.searchParams.set('state', body.state);
-    res.redirect(302, target.toString());
+    return data({ redirect_url: target.toString() });
   }
 
-  private async requireAuthUserId(req: Request): Promise<string> {
-    const token =
-      extractCookie(req, 'corvo_session') ??
-      extractCookie(req, 'gf_session_dev') ??
-      extractCookie(req, '__Host-gf_session');
-    if (!token) {
-      throw new UnauthorizedException('Session cookie is required');
+  private requireHuman(req: RequestWithAuthContext): string {
+    const auth = req.authContext;
+    if (!auth?.sessionId || auth.principalType === 'api_key') {
+      throw new ForbiddenException('A logged-in user session is required');
     }
-    const session = await this.sessions.validateSession(token);
-    if (!session) {
-      throw new UnauthorizedException('Invalid or expired session');
-    }
-    return session.authUserId;
+    return auth.authUserId;
   }
 
-  private async requireActiveClient(clientId: string) {
-    const client = await this.dataSource
-      .getRepository(AuthOAuthClientOrmEntity)
-      .findOne({ where: { id: clientId } });
-    if (!client || !client.isActive) {
+  private async requireClient(query: ConsentRequestDto): Promise<OAuthClient> {
+    const client = await this.clients.findById(query.client_id);
+    if (!client?.isActive) {
       throw new BadRequestException({
         error: 'invalid_client',
         error_description: 'Unknown or inactive client',
       });
     }
-    return client;
-  }
-
-  private requireRegisteredRedirectUri(
-    client: AuthOAuthClientOrmEntity,
-    redirectUri: string,
-  ): void {
-    if (!client.redirectUris.includes(redirectUri)) {
+    if (
+      !matchesRegisteredRedirectUri(client.redirectUris, query.redirect_uri)
+    ) {
       throw new BadRequestException({
         error: 'invalid_request',
         error_description: 'redirect_uri is not registered for this client',
       });
     }
+    return client;
   }
 
-  private parseScopes(scope: string): ConsentPageInput['scopes'] {
-    const names = scope
-      .split(/\s+/)
-      .filter((name) => name.length > 0 && name in SCOPE_DESCRIPTIONS);
-    return names.map((name) => ({
-      name,
-      description: SCOPE_DESCRIPTIONS[name],
-    }));
+  private requestedScopes(scope: string | undefined, client: OAuthClient) {
+    const parsed = parseScopes(scope ?? '');
+    const wanted = parsed.length > 0 ? parsed : [...MCP_SCOPES];
+    return wanted.filter((name) => client.scopes.includes(name));
   }
+}
 
-  private apiPrefix(): string {
-    return this.config.getOrThrow<AppConfig>('app').apiPrefix;
-  }
+/** Where the approval will be sent, shown so the user can spot a wrong app. */
+function redirectLabel(uri: string): string {
+  const url = new URL(uri);
+  return url.host || `${url.protocol}//`;
 }

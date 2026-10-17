@@ -51,9 +51,9 @@ describe('duration histogram configuration', () => {
       ],
     });
     const histogram = provider
-      .getMeter('greenflow.test')
+      .getMeter('corvo.test')
       .createHistogram(
-        'greenflow.test.duration',
+        'corvo.test.duration',
         durationHistogramOptions(
           'Test duration',
           TYPEORM_OPERATION_DURATION_BOUNDARIES_SECONDS,
@@ -69,7 +69,7 @@ describe('duration histogram configuration', () => {
       .flatMap((resource) => resource.scopeMetrics)
       .flatMap((scope) => scope.metrics)
       .find(
-        (candidate) => candidate.descriptor.name === 'greenflow.test.duration',
+        (candidate) => candidate.descriptor.name === 'corvo.test.duration',
       );
 
     expect(metric?.descriptor.unit).toBe('s');

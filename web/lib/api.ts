@@ -1,4 +1,4 @@
-import type { ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CompanyFormInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -28,6 +28,9 @@ export interface AvailableTenant { tenantId: string; membershipId: string; role:
 export interface AuthContext { authUserId: string; activeTenantId: string; role: string; permissions: string[]; availableTenants: AvailableTenant[] }
 export interface SessionPayload { status: "authenticated"; context: AuthContext; activeTenantId: string; availableTenants: AvailableTenant[]; permissions: string[]; expiresAt: string; csrfToken: string }
 export interface MagicLinkChallenge { challengeId: string; expiresAt: string; resendAvailableAt: string }
+export type OAuthProvider = "google" | "github";
+export type OAuthProviders = Record<OAuthProvider, boolean>;
+
 export interface MagicLinkVerified { expiresAt: string; isNewUser: boolean; csrfToken: string }
 
 export class ApiError extends Error {
@@ -120,6 +123,10 @@ export const auth = {
     return data;
   },
   logout: () => request<null>("/auth/session/logout", { method: "POST" }),
+  /** Which social sign-in providers the server has configured. */
+  oauthProviders: async () => (await request<Envelope<OAuthProviders>>("/auth/oauth/providers")).data,
+  /** Where the browser goes to start a social sign-in (the API redirects to the provider). */
+  oauthStartUrl: (provider: OAuthProvider, next?: string) => `${BASE}/auth/oauth/${provider}/authorize${next ? `?next=${encodeURIComponent(next)}` : ""}`,
   switchTenant: async (tenantId: string) => (await request<Envelope<Omit<SessionPayload, "status">>>("/auth/session/tenant", json({ tenantId }))).data,
   me: async () => (await request<Envelope<AuthContext>>("/auth/me")).data,
   magicLinkRequest: async (email: string) => (await request<Envelope<MagicLinkChallenge>>("/auth/magic-link/request", json({ email }))).data,
@@ -143,9 +150,17 @@ export function adaptCompany(wire: CompanyWire): Company {
   return { ...wire, address: { street: wire.addressStreet, number: wire.addressNumber, complement: wire.addressComplement, district: wire.addressDistrict, city: wire.addressCity, state: wire.addressState, zip: wire.addressZip } };
 }
 export const companies = {
+  fiscalProfiles: async (id: string, signal?: AbortSignal) => unwrap(await request<Envelope<CompanyFiscalProfile[]>>(`/companies/${idPath(id)}/fiscal-profile`, { signal })),
+  saveFiscalProfile: async (id: string, input: FiscalProfileInput) => unwrap(await request<Envelope<CompanyFiscalProfile>>(`/companies/${idPath(id)}/fiscal-profile`, json(input, "PUT"))),
+  approveFiscalProfile: async (id: string, profileId: string) => unwrap(await request<Envelope<CompanyFiscalProfile>>(`/companies/${idPath(id)}/fiscal-profile/${idPath(profileId)}/approve`, json({}))),
+  serviceTaxProfiles: async (id: string, date: string, signal?: AbortSignal) => unwrap(await request<Envelope<CompanyServiceTaxProfile[]>>(`/companies/${idPath(id)}/service-tax-profiles${query({ date })}`, { signal })),
+  createServiceTaxProfile: async (id: string, input: ServiceTaxProfileInput) => unwrap(await request<Envelope<CompanyServiceTaxProfile>>(`/companies/${idPath(id)}/service-tax-profiles`, json(input))),
+  updateServiceTaxProfile: async (id: string, serviceId: string, input: Partial<ServiceTaxProfileInput>) => unwrap(await request<Envelope<CompanyServiceTaxProfile>>(`/companies/${idPath(id)}/service-tax-profiles/${idPath(serviceId)}`, json(input, "PATCH"))),
+  approveServiceTaxProfile: async (id: string, serviceId: string) => unwrap(await request<Envelope<CompanyServiceTaxProfile>>(`/companies/${idPath(id)}/service-tax-profiles/${idPath(serviceId)}/approve`, json({}))),
+
   list: async (params: PageParams = {}, signal?: AbortSignal): Promise<Page<Company>> => { const page = toPage(await request<ListBody<CompanyWire>>(`/companies${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptCompany) }; },
   get: async (id: string, signal?: AbortSignal) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>(`/companies/${idPath(id)}`, { signal }))),
-  create: async (data: CompanyFormInput) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>("/companies", json(data)))),
+  create: async (data: CompanyFormInput & Pick<CreateCompanyInput, "taxRegime">) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>("/companies", json(data)))),
   update: async (id: string, data: UpdateCompanyInput) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>(`/companies/${idPath(id)}`, json(data, "PATCH")))),
   delete: async (id: string) => (await request<Envelope<null>>(`/companies/${idPath(id)}`, { method: "DELETE" })).data,
 };
@@ -155,20 +170,22 @@ export const certificates = {
   delete: (companyId: string, certId: string) => request<null>(`/companies/${idPath(companyId)}/certificates/${idPath(certId)}`, { method: "DELETE" }),
 };
 export type InvoiceWire = Omit<Invoice, "customerName" | "customerTaxId" | "serviceDescription">;
-export function adaptInvoice({ props }: { props: InvoiceWire }): Invoice {
-  return { ...props, customerName: props.customerSnapshot.name, customerTaxId: props.customerSnapshot.taxId, serviceDescription: props.serviceSnapshot.description };
+export function adaptInvoice(props: InvoiceWire): Invoice {
+  // Anonymous consumer invoices have no customer snapshot (the tomador is omitted from the DPS).
+  return { ...props, customerName: props.customerSnapshot?.name ?? "", customerTaxId: props.customerSnapshot?.taxId ?? "", serviceDescription: props.serviceSnapshot.description };
 }
 export interface InvoiceQuery extends PageParams { companyId?: string; status?: InvoiceStatus; from?: string; to?: string; externalId?: string }
-type InvoiceBody = { props: InvoiceWire };
-type EventWire = { props: { id: string; invoiceId: string; fromStatus: InvoiceStatus | null; toStatus: InvoiceStatus; createdAt: string; reason: string | null } };
+type InvoiceBody = InvoiceWire;
+type EventWire = { id: string; invoiceId: string; fromStatus: InvoiceStatus | null; toStatus: InvoiceStatus; createdAt: string; reason: string | null };
 export const invoices = {
   list: async (params: InvoiceQuery = {}, signal?: AbortSignal): Promise<Page<Invoice>> => { const page = toPage(await request<ListBody<InvoiceBody>>(`/invoices${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptInvoice) }; },
   get: async (id: string, signal?: AbortSignal) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}`, { signal }))),
   create: async (data: CreateInvoiceInput, idempotencyKey: string) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>("/invoices", { ...json(data), headers: { "idempotency-key": idempotencyKey } }))),
+  calculate: async (data: CreateInvoiceInput, signal?: AbortSignal) => unwrap(await request<Envelope<InvoiceCalculation>>("/invoices/calculate", { ...json(data), signal })),
   cancel: async (id: string, data: { reason: CancellationReasonCode; description?: string }) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}/cancel`, json(data)))),
   xml: (id: string) => request<Blob>(`/invoices/${idPath(id)}/xml`, {}, true),
   pdf: (id: string) => request<Blob>(`/invoices/${idPath(id)}/pdf`, {}, true),
-  events: async (id: string, params: PageParams = {}, signal?: AbortSignal): Promise<Page<InvoiceEvent>> => { const page = toPage(await request<ListBody<EventWire>>(`/invoices/${idPath(id)}/events${query(params)}`, { signal })); return { ...page, items: page.items.map(({ props }) => ({ id: props.id, invoiceId: props.invoiceId, from: props.fromStatus, to: props.toStatus, at: props.createdAt, reason: props.reason } satisfies InvoiceEvent)) }; },
+  events: async (id: string, params: PageParams = {}, signal?: AbortSignal): Promise<Page<InvoiceEvent>> => { const page = toPage(await request<ListBody<EventWire>>(`/invoices/${idPath(id)}/events${query(params)}`, { signal })); return { ...page, items: page.items.map((event) => ({ id: event.id, invoiceId: event.invoiceId, from: event.fromStatus, to: event.toStatus, at: event.createdAt, reason: event.reason } satisfies InvoiceEvent)) }; },
   downloadUrl: async (id: string, format: "pdf" | "xml") => (await request<Envelope<{ downloadUrl: string; expiresAt: string; fileName: string; mimeType: string }>>(`/invoices/${idPath(id)}/download-url`, json({ format }))).data,
   email: async (id: string, idempotencyKey: string) => (await request<Envelope<{ emailId: string; status: string }>>(`/invoices/${idPath(id)}/email`, { ...json({}), headers: { "idempotency-key": idempotencyKey } })).data,
 };
@@ -191,7 +208,7 @@ export const webhooks = {
   list: async (params: PageParams = {}) => toPage(await request<ListBody<WebhookEndpoint>>(`/webhooks${query(params)}`)),
   create: async (data: { url: string; events: WebhookEvent[] }) => unwrap(await request<Envelope<WebhookEndpoint>>("/webhooks", json(data))),
   delete: async (id: string) => unwrap(await request<Envelope<{ deleted: boolean }>>(`/webhooks/${idPath(id)}`, { method: "DELETE" })),
-  test: async (id: string) => unwrap(await request<Envelope<{ sent: boolean }>>(`/webhooks/${idPath(id)}/test`, { method: "POST" })),
+  test: async (id: string) => unwrap(await request<Envelope<{ sent: boolean; statusCode?: number | null; error?: string }>>(`/webhooks/${idPath(id)}/test`, { method: "POST" })),
   deliveries: async (params: WebhookDeliveriesQuery = {}) => toPage(await request<ListBody<WebhookDelivery>>(`/webhooks/deliveries${query(params)}`)),
   deliveryStats: async (hours = 24, environment = "live") => unwrap(await request<Envelope<DeliveryStats>>(`/webhooks/deliveries/stats${query({ hours, environment })}`)),
   retryDelivery: async (id: string) => unwrap(await request<Envelope<{ retried: boolean }>>(`/webhooks/deliveries/${idPath(id)}/retry`, { method: "POST" })),
@@ -202,4 +219,21 @@ export const members = {
   list: async (params: PageParams = {}) => toPage(await request<ListBody<Member>>(`/auth/members${query(params)}`)),
   invite: async (data: { name: string; email: string; role: string }) => unwrap(await request<Envelope<InviteResult>>("/auth/invite", json(data))),
   remove: async (id: string) => unwrap(await request<Envelope<{ deleted: boolean }>>(`/auth/members/${idPath(id)}`, { method: "DELETE" })),
+};
+export interface McpConsentContext {
+  client: { id: string; name: string };
+  redirect_host: string;
+  scopes: { name: string; description: string }[];
+  tenants: { id: string; name: string; allowed_scopes: string[] }[];
+}
+export interface McpConsentParams { client_id: string; redirect_uri: string; scope?: string; state: string; code_challenge: string; code_challenge_method: string }
+export interface McpConnection {
+  id: string; tenant_id: string; tenant_name: string; client_name: string; scopes: string[]; granted_at: string; last_used_at: string | null;
+  environment: "test" | "live"; tool_calls: number; invoices_issued: number; revoked: boolean; mine: boolean; owner_email: string | null;
+}
+export const mcp = {
+  consentContext: async (params: McpConsentParams, signal?: AbortSignal) => unwrap(await request<Envelope<McpConsentContext>>(`/mcp/consent${query(params)}`, { signal })),
+  decide: async (params: McpConsentParams, decision: "allow" | "deny", tenantId?: string, environment?: "test" | "live") => unwrap(await request<Envelope<{ redirect_url: string }>>("/mcp/consent", json({ ...params, decision, ...(tenantId ? { tenant_id: tenantId } : {}), ...(environment ? { environment } : {}) }))),
+  connections: async (params: PageParams = {}, signal?: AbortSignal) => toPage(await request<ListBody<McpConnection>>(`/mcp/connections${query(params)}`, { signal })),
+  revoke: async (id: string) => unwrap(await request<Envelope<{ revoked: boolean }>>(`/mcp/connections/${idPath(id)}`, { method: "DELETE" })),
 };

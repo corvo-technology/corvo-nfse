@@ -125,7 +125,7 @@ A porta `FiscalProvider` ganha `cancel(payload: ICancelPayload): Promise<FiscalC
 
 ## 9. Persistência
 
-Migration `1791780000000-AddInvoiceCancellation`: recria `ck_nfse_invoices_status` com os dois status novos e adiciona `cancellation_reason varchar(30)`, `cancellation_description text` e `cancelled_at timestamptz` (todas nullable). Sem backfill. O `down` verifica antes se existem notas `cancelling` ou `cancelled` e, se existirem, falha com uma mensagem clara: voltar esses status para `authorized` falsificaria o estado fiscal, então a decisão sobre elas é de quem faz o rollback.
+Migration `1792400000000-AddInvoiceCancellation`: recria `ck_nfse_invoices_status` com os dois status novos e adiciona `cancellation_reason varchar(30)`, `cancellation_description text` e `cancelled_at timestamptz` (todas nullable). Sem backfill. O `down` verifica antes se existem notas `cancelling` ou `cancelled` e, se existirem, falha com uma mensagem clara: voltar esses status para `authorized` falsificaria o estado fiscal, então a decisão sobre elas é de quem faz o rollback.
 
 ## 10. Testes
 

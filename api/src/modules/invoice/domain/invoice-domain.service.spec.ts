@@ -108,8 +108,8 @@ describe('InvoiceDomainService', () => {
     });
     it('normalizes valid input', () => {
       const result = service.normalizeAndValidate(validDto(), 'live');
-      expect(result.customer.taxId).toBe('52998224725');
-      expect(result.customer.taxIdKind).toBe('CPF');
+      expect(result.customer?.taxId).toBe('52998224725');
+      expect(result.customer?.taxIdKind).toBe('CPF');
       expect(result.amount).toBe(100.5);
       expect(result.service.code).toBe('010101');
     });
@@ -125,8 +125,8 @@ describe('InvoiceDomainService', () => {
         }),
         'test',
       );
-      expect(result.customer.taxId).toBe('11222333000181');
-      expect(result.customer.taxIdKind).toBe('CNPJ');
+      expect(result.customer?.taxId).toBe('11222333000181');
+      expect(result.customer?.taxIdKind).toBe('CNPJ');
     });
 
     it('normalizes address state to UF', () => {
@@ -141,7 +141,7 @@ describe('InvoiceDomainService', () => {
         }),
         'test',
       );
-      expect(result.customer.address.state).toBe('SP');
+      expect(result.customer?.address.state).toBe('SP');
     });
 
     it('throws FiscalValidationError for invalid taxId', () => {
@@ -288,6 +288,214 @@ describe('InvoiceDomainService', () => {
           JSON.stringify((e as FiscalValidationError).issues),
         ).not.toContain('11.222.333');
       }
+    });
+  });
+});
+
+describe('InvoiceDomainService — optional customer, discount and fiscal input', () => {
+  let service: InvoiceDomainService;
+  const defaults = { code: '010101', municipalityCode: '3550308' };
+
+  beforeEach(() => {
+    service = new InvoiceDomainService();
+  });
+
+  describe('customer opcional', () => {
+    it('treats a missing customer as consumer with customer null', () => {
+      const result = service.normalizeAndValidate(
+        validDto({ customer: undefined, options: {} }),
+        'test',
+        defaults,
+      );
+      expect(result.customer).toBeNull();
+    });
+
+    it('treats an empty customer object as consumer with customer null', () => {
+      const result = service.normalizeAndValidate(
+        validDto({ customer: {}, options: {} }),
+        'test',
+        defaults,
+      );
+      expect(result.customer).toBeNull();
+    });
+
+    it('fills only absent fields for a partial customer with taxId', () => {
+      const result = service.normalizeAndValidate(
+        validDto({
+          customer: { taxId: '529.982.247-25' },
+          options: {},
+        }),
+        'test',
+        defaults,
+      );
+      expect(result.customer).toMatchObject({
+        name: 'Consumidor',
+        taxId: '52998224725',
+        taxIdKind: 'CPF',
+        address: { city: 'SIM', state: 'SS' },
+      });
+    });
+
+    it.each([
+      { name: 'Ana' },
+      { email: 'ana@example.com' },
+      { address: { city: 'São Paulo', state: 'SP' } },
+    ])('requires the taxId when a customer is sent (%o)', (customer) => {
+      try {
+        service.normalizeAndValidate(
+          validDto({ customer, options: {} }),
+          'test',
+          defaults,
+        );
+        throw new Error('expected a FiscalValidationError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FiscalValidationError);
+        expect((error as FiscalValidationError).issues).toContainEqual(
+          expect.objectContaining({
+            field: 'customer.taxId',
+            code: 'required',
+          }),
+        );
+      }
+    });
+
+    it('keeps the name optional when the taxId is present', () => {
+      const result = service.normalizeAndValidate(
+        validDto({ customer: { taxId: '529.982.247-25' }, options: {} }),
+        'test',
+        defaults,
+      );
+      expect(result.customer?.taxId).toBe('52998224725');
+      expect(result.customer?.taxIdKind).toBe('CPF');
+    });
+
+    it('still rejects an invalid taxId when present', () => {
+      try {
+        service.normalizeAndValidate(
+          validDto({ customer: { taxId: '00000000000' }, options: {} }),
+          'test',
+          defaults,
+        );
+        throw new Error('Expected validation failure');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FiscalValidationError);
+        expect((error as FiscalValidationError).issues).toContainEqual(
+          expect.objectContaining({
+            field: 'customer.taxId',
+            code: 'invalid_tax_id',
+          }),
+        );
+      }
+    });
+  });
+
+  describe('discount', () => {
+    it('accepts a discount up to the gross amount', () => {
+      const result = service.normalizeAndValidate(
+        validDto({ amount: 1000, discount: 100.25 }),
+        'test',
+        defaults,
+      );
+      expect(result.discount).toBe(100.25);
+    });
+
+    it('accepts a discount equal to the gross amount', () => {
+      const result = service.normalizeAndValidate(
+        validDto({ amount: 1000, discount: 1000 }),
+        'test',
+        defaults,
+      );
+      expect(result.discount).toBe(1000);
+    });
+
+    it('rejects a negative discount with out_of_range', () => {
+      try {
+        service.normalizeAndValidate(
+          validDto({ amount: 1000, discount: -1 }),
+          'test',
+          defaults,
+        );
+        throw new Error('Expected validation failure');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FiscalValidationError);
+        expect((error as FiscalValidationError).issues).toContainEqual(
+          expect.objectContaining({
+            field: 'discount',
+            code: 'out_of_range',
+          }),
+        );
+      }
+    });
+
+    it('rejects a discount greater than the gross amount with out_of_range', () => {
+      try {
+        service.normalizeAndValidate(
+          validDto({ amount: 1000, discount: 1000.01 }),
+          'test',
+          defaults,
+        );
+        throw new Error('Expected validation failure');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FiscalValidationError);
+        expect((error as FiscalValidationError).issues).toContainEqual(
+          expect.objectContaining({
+            field: 'discount',
+            code: 'out_of_range',
+          }),
+        );
+      }
+    });
+
+    it('rejects a discount with more than two decimal places', () => {
+      try {
+        service.normalizeAndValidate(
+          validDto({ amount: 1000, discount: 100.999 }),
+          'test',
+          defaults,
+        );
+        throw new Error('Expected validation failure');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FiscalValidationError);
+        expect((error as FiscalValidationError).issues).toContainEqual(
+          expect.objectContaining({
+            field: 'discount',
+            code: 'invalid_decimal_places',
+          }),
+        );
+      }
+    });
+  });
+
+  describe('service.fiscal passthrough', () => {
+    it('passes fiscal input and serviceProfileId through without interpretation', () => {
+      const fiscal = {
+        nbsCode: '010101001',
+        cst: '001',
+        classCode: '010601',
+        operationIndicator: '000001',
+      };
+      const serviceProfileId = '01927de2-1234-7890-abcd-ef0123456789';
+      const result = service.normalizeAndValidate(
+        validDto({
+          service: {
+            code: '010101',
+            municipalityCode: '3550308',
+            description: 'Serviço',
+            fiscal,
+            serviceProfileId,
+          },
+        }),
+        'test',
+        defaults,
+      );
+      expect(result.service.fiscal).toEqual(fiscal);
+      expect(result.service.serviceProfileId).toBe(serviceProfileId);
+    });
+
+    it('leaves fiscal undefined when not provided', () => {
+      const result = service.normalizeAndValidate(validDto(), 'test', defaults);
+      expect(result.service.fiscal).toBeUndefined();
+      expect(result.service.serviceProfileId).toBeUndefined();
     });
   });
 });

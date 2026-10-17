@@ -1,4 +1,6 @@
 import { TypeOrmInvoiceRepository } from './typeorm-invoice.repository';
+import { Invoice } from '../domain/invoice';
+import type { InvoiceStatus } from '../domain/invoice-status';
 
 describe('TypeOrmInvoiceRepository', () => {
   const tenantId = '11111111-1111-4111-8111-111111111111';
@@ -9,7 +11,9 @@ describe('TypeOrmInvoiceRepository', () => {
     createQueryBuilder: jest.fn(),
   };
 
-  const repository = new TypeOrmInvoiceRepository(mockRepo as any);
+  const repository = new TypeOrmInvoiceRepository({
+    repository: () => mockRepo,
+  } as any);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -206,6 +210,57 @@ describe('TypeOrmInvoiceRepository', () => {
       await repository.saveDpsInfo(invoice);
 
       expect(mockRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('save', () => {
+    function qbCapturing(sets: Record<string, unknown>[]) {
+      const qb: Record<string, jest.Mock> = {};
+      qb.update = jest.fn(() => qb);
+      qb.set = jest.fn((values: Record<string, unknown>) => {
+        sets.push(values);
+        return qb;
+      });
+      qb.where = jest.fn(() => qb);
+      qb.execute = jest.fn().mockResolvedValue({ affected: 1 });
+      return qb;
+    }
+
+    function invoiceIn(status: InvoiceStatus): Invoice {
+      const created = Invoice.create(
+        {
+          companyId: '22222222-2222-4222-8222-222222222222',
+          customer: { taxId: '52998224725', name: 'Cliente' },
+          service: {
+            description: 'Servico',
+            code: '060101',
+            municipalityCode: '3550308',
+          },
+          amount: 50,
+          competenceDate: new Date('2026-10-13'),
+        },
+        tenantId,
+      );
+      return Invoice.reconstitute({ ...created.toSnapshot(), status });
+    }
+
+    it('clears the pending fiscal XML once the invoice is cancelled', async () => {
+      const sets: Record<string, unknown>[] = [];
+      mockRepo.createQueryBuilder.mockReturnValue(qbCapturing(sets));
+
+      await repository.save(invoiceIn('cancelled'), tenantId);
+
+      expect(sets[0]).toMatchObject({ pendingEmission: null });
+    });
+
+    it('keeps the pending fiscal event while cancelling', async () => {
+      const sets: Record<string, unknown>[] = [];
+      mockRepo.createQueryBuilder.mockReturnValue(qbCapturing(sets));
+
+      await repository.save(invoiceIn('cancelling'), tenantId);
+
+      // The mapped entity may carry the key as undefined, which TypeORM skips on update.
+      expect(sets[0].pendingEmission).toBeUndefined();
     });
   });
 });

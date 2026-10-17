@@ -21,11 +21,10 @@ export interface CompanyProps {
   tradeName?: string;
   taxId: string;
   municipalReg?: string;
+  /** Send the municipal registration (IM) in the DPS. Off by default: the Receita rejects it (E0120) when the city has no complementary data for the provider. */
+  sendMunicipalReg?: boolean;
   municipalityCode?: string;
   defaultServiceCode?: string;
-  taxRegime: TaxRegime;
-  simpleNational: boolean;
-  specialRegime?: string;
   addressStreet?: string;
   addressNumber?: string;
   addressComplement?: string;
@@ -43,12 +42,24 @@ export interface CompanyProps {
 
 // ─── Input types ─────────────────────────────────────────────────────────────
 
-export type CreateCompanyInput = Pick<
-  CompanyProps,
-  'legalName' | 'taxId' | 'taxRegime'
-> & {
+/**
+ * Legacy-shaped fiscal regime fields accepted by the HTTP API for backward
+ * compatibility. The {@link Company} aggregate no longer stores these — they
+ * are routed to the company's fiscal profile (see `CompanyFiscalProfile`).
+ */
+export interface CompanyRegimeInput {
+  taxRegime: TaxRegime;
+  simpleNational?: boolean;
+  specialRegime?: string;
+}
+
+export type CreateCompanyInput = {
+  legalName: string;
+  taxId: string;
+  taxRegime: TaxRegime;
   tradeName?: string;
   municipalReg?: string;
+  sendMunicipalReg?: boolean;
   municipalityCode?: string;
   defaultServiceCode?: string;
   simpleNational?: boolean;
@@ -70,6 +81,7 @@ export type UpdateCompanyInput = {
   tradeName?: string;
   taxId?: string;
   municipalReg?: string | null;
+  sendMunicipalReg?: boolean;
   municipalityCode?: string;
   defaultServiceCode?: string | null;
   taxRegime?: TaxRegime;
@@ -99,9 +111,6 @@ export class Company {
     if (!input.taxId?.trim()) {
       throw new Error('Company.taxId is required');
     }
-    if (!input.taxRegime) {
-      throw new Error('Company.taxRegime is required');
-    }
 
     const now = new Date();
     const normalizedTaxId = normalizeTaxID(input.taxId) ?? input.taxId.trim();
@@ -112,11 +121,9 @@ export class Company {
       tradeName: input.tradeName?.trim(),
       taxId: normalizedTaxId,
       municipalReg: input.municipalReg?.trim(),
+      sendMunicipalReg: input.sendMunicipalReg ?? false,
       municipalityCode: input.municipalityCode?.trim(),
       defaultServiceCode: input.defaultServiceCode?.trim(),
-      taxRegime: input.taxRegime,
-      simpleNational: input.simpleNational ?? false,
-      specialRegime: input.specialRegime?.trim(),
       addressStreet: input.address?.street?.trim(),
       addressNumber: input.address?.number?.trim(),
       addressComplement: input.address?.complement?.trim(),
@@ -160,24 +167,21 @@ export class Company {
     return this.props.municipalReg;
   }
 
+  get sendMunicipalReg(): boolean {
+    return this.props.sendMunicipalReg ?? false;
+  }
+
+  /** The IM that goes into the DPS: only when the company opted in and has one. */
+  get municipalRegForDps(): string | undefined {
+    return this.sendMunicipalReg ? this.props.municipalReg : undefined;
+  }
+
   get municipalityCode(): string | undefined {
     return this.props.municipalityCode;
   }
 
   get defaultServiceCode(): string | undefined {
     return this.props.defaultServiceCode;
-  }
-
-  get taxRegime(): TaxRegime {
-    return this.props.taxRegime;
-  }
-
-  get simpleNational(): boolean {
-    return this.props.simpleNational;
-  }
-
-  get specialRegime(): string | undefined {
-    return this.props.specialRegime;
   }
 
   get addressStreet(): string | undefined {
@@ -244,11 +248,7 @@ export class Company {
     const gaps: string[] = [];
     if (!/^\d{7}$/.test(this.props.municipalityCode ?? ''))
       gaps.push('municipality_code');
-    if (this.props.environment === 'live') {
-      if (!this.props.municipalReg?.trim()) {
-        gaps.push('municipal_registration');
-      }
-    }
+    // The municipal registration is optional: the DPS only carries it when the company has one.
     // Certificate gap is determined externally (ICompanyCertificateReader).
     // This method only returns gaps the domain can determine without external I/O.
     return gaps;
@@ -309,9 +309,13 @@ export class Company {
       }
       this.props.taxId = normalized;
     }
+    if (input.sendMunicipalReg !== undefined)
+      this.props.sendMunicipalReg = input.sendMunicipalReg;
     if (input.municipalReg !== undefined) {
       if (input.municipalReg === null) {
         this.props.municipalReg = undefined;
+        // Nothing left to send.
+        this.props.sendMunicipalReg = false;
       } else {
         const trimmed = input.municipalReg.trim();
         if (trimmed === '') {
@@ -327,11 +331,6 @@ export class Company {
         input.defaultServiceCode === null
           ? undefined
           : input.defaultServiceCode.trim();
-    if (input.taxRegime !== undefined) this.props.taxRegime = input.taxRegime;
-    if (input.simpleNational !== undefined)
-      this.props.simpleNational = input.simpleNational;
-    if (input.specialRegime !== undefined)
-      this.props.specialRegime = input.specialRegime?.trim();
     if (input.address !== undefined) {
       if (input.address === null) {
         // Clear all address fields

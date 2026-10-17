@@ -19,13 +19,24 @@ import { HealthModule } from '@/modules/health/health.module';
 import { WebhooksConfigModule } from '@/modules/webhooks-config/webhooks-config.module';
 import { SentryModule } from '@/infra/observability/sentry.module';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
+import { FiscalEngineModule } from '@/modules/invoice/application/fiscal/fiscal-engine.module';
 import { CompanyModule } from '@/modules/company/company.module';
 import { EmailExternalModule } from '@/infra/external/email/email-external.module';
 import { EmailModule } from '@/modules/email/email.module';
 import { EmailProcessor } from '@/infra/queues/email.processor';
 import { NfseEmailProcessor } from '@/modules/invoice/jobs/nfse-email.processor';
 import { NfseDocPrepProcessor } from '@/modules/invoice/jobs/nfse-doc-prep.processor';
+import { FiscalReconciliationProcessor } from '@/modules/invoice/jobs/fiscal-reconciliation.processor';
 import { DocsRecoveryScheduler } from '@/modules/invoice/jobs/docs-recovery.scheduler';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { FISCAL_RECONCILIATION_REPOSITORY } from '@/modules/invoice/domain/fiscal/reconciliation/fiscal-reconciliation.repository';
+import { TypeOrmFiscalReconciliationRepository } from '@/modules/invoice/infra/fiscal/typeorm-fiscal-reconciliation.repository';
+import { InvoiceFiscalReconciliationOrmEntity } from '@/modules/invoice/infra/fiscal/invoice-fiscal-reconciliation.orm-entity';
+import {
+  FiscalReconciliationService,
+  InvoiceWebhookPublisher,
+} from '@/modules/invoice/application/fiscal/fiscal-reconciliation.service';
+import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
 
 @Module({
   imports: [
@@ -40,11 +51,14 @@ import { DocsRecoveryScheduler } from '@/modules/invoice/jobs/docs-recovery.sche
     ScheduleModule.forRoot(),
     WebhooksConfigModule,
     InvoiceModule,
+    FiscalEngineModule,
     CompanyModule,
     CertificateModule,
+    TypeOrmModule.forFeature([InvoiceFiscalReconciliationOrmEntity]),
     BullModule.registerQueue({ name: 'email' }),
     BullModule.registerQueue({ name: 'nfse-doc-prep' }),
     BullModule.registerQueue({ name: 'nfse-email' }),
+    BullModule.registerQueue({ name: 'nfse-fiscal-reconcile' }),
     EmailExternalModule,
     EmailModule,
   ],
@@ -58,6 +72,14 @@ import { DocsRecoveryScheduler } from '@/modules/invoice/jobs/docs-recovery.sche
     NfseCancellationService,
     NfseCancellationProcessor,
     NfseDocPrepProcessor,
+    FiscalReconciliationProcessor,
+    {
+      provide: FISCAL_RECONCILIATION_REPOSITORY,
+      useClass: TypeOrmFiscalReconciliationRepository,
+    },
+    InvoiceWebhookPublisher,
+    FiscalReconciliationService,
+    DpsBuilder,
     NfseEmailProcessor,
     DocsRecoveryScheduler,
   ],

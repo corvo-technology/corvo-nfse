@@ -1,5 +1,5 @@
 import type { QueryRunner } from 'typeorm';
-import { AddInvoiceCancellation1791780000000 } from './1791780000000-AddInvoiceCancellation';
+import { AddInvoiceCancellation1792400000000 } from './1792400000000-AddInvoiceCancellation';
 
 function fakeRunner(total: number) {
   const queries: string[] = [];
@@ -19,7 +19,7 @@ function fakeRunner(total: number) {
 describe('AddInvoiceCancellation', () => {
   it('up widens the status constraint and adds the cancellation columns', async () => {
     const { runner, queries } = fakeRunner(0);
-    await new AddInvoiceCancellation1791780000000().up(runner);
+    await new AddInvoiceCancellation1792400000000().up(runner);
     expect(queries).toHaveLength(3);
     expect(queries[0]).toMatch(/DROP CONSTRAINT ck_nfse_invoices_status/);
     expect(queries[1]).toMatch(
@@ -32,7 +32,7 @@ describe('AddInvoiceCancellation', () => {
 
   it('down refuses to run while cancelling or cancelled invoices exist', async () => {
     const { runner, queries } = fakeRunner(3);
-    const result = new AddInvoiceCancellation1791780000000().down(runner);
+    const result = new AddInvoiceCancellation1792400000000().down(runner);
     await expect(result).rejects.toThrow(
       /3 invoice\(s\).*cancelling.*cancelled/,
     );
@@ -41,7 +41,7 @@ describe('AddInvoiceCancellation', () => {
 
   it('down runs the three rollback steps in order when nothing is cancelling or cancelled', async () => {
     const { runner, queries } = fakeRunner(0);
-    await new AddInvoiceCancellation1791780000000().down(runner);
+    await new AddInvoiceCancellation1792400000000().down(runner);
     const alters = queries.filter((sql) => /ALTER TABLE/i.test(sql));
     expect(alters).toHaveLength(3);
     expect(alters[0]).toMatch(

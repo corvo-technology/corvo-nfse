@@ -65,7 +65,8 @@
       "settings": "Configurações",
       "companies": "Empresas",
       "invoices": "Notas fiscais",
-      "billing": "Plano"
+      "billing": "Plano",
+      "agents": "Agentes de IA"
     },
     "account": "CONTA",
     "balance": "SALDO",
@@ -336,6 +337,10 @@
             "label": "Falha no e-mail",
             "description": "O envio do e-mail da nota falhou."
           },
+          "fiscal_discrepancy": {
+            "label": "Divergência fiscal",
+            "description": "A nota autorizada difere dos tributos calculados."
+          },
           "cancelled": {
             "label": "Nota cancelada",
             "description": "A nota foi cancelada (agendada ou na Sefin)."
@@ -370,7 +375,8 @@
       "testSent": "Evento de teste enviado com sucesso",
       "testFailed": "Falha ao enviar evento de teste",
       "retrySuccess": "Entrega reenviada",
-      "retryFailed": "Falha ao reenviar"
+      "retryFailed": "Falha ao reenviar",
+      "testFailedStatus": "Seu endpoint respondeu HTTP {status}"
     }
   },
   "ApiKeys": {
@@ -498,30 +504,22 @@
     }
   },
   "Settings": {
+    "portalDescription": "Gerencie forma de pagamento, faturas e assinatura no portal da Stripe.",
+    "portalNoSubscription": "Assine um plano na página de Cobrança para gerenciar os pagamentos aqui.",
+    "portalNoPermission": "Só membros com permissão de cobrança podem abrir o portal de pagamentos.",
+    "goToBilling": "Ir para Cobrança",
     "title": "Configurações",
     "subtitle": "Configurações de ambiente e faturamento.",
-    "environment": "Ambiente",
-    "comingSoon": "Em breve",
     "billing": "Faturamento",
     "stripeEnding": "····4242",
     "visa": "Visa",
     "receiptsTo": "Recibos enviados para financeiro@acme.com",
     "openStripePortal": "Abrir portal do Stripe",
     "deleteWorkspace": "Excluir workspace",
-    "deleteWorkspaceDesc": "Remover permanentemente este workspace e todos os seus dados. Esta ação não pode ser desfeita.",
-    "toggles": {
-      "blockOutsideHours": {
-        "label": "Bloquear fora do horário comercial",
-        "desc": "Impedir mensagens de saída quando seu horário comercial estiver encerrado."
-      },
-      "lowBalanceAlert": {
-        "label": "Alerta de saldo baixo",
-        "desc": "Receber uma notificação quando o saldo de créditos cair abaixo de 100 mensagens."
-      }
-    },
-    "paymentsPending": "Portal de pagamento e cobrança ainda não estão disponíveis."
+    "deleteWorkspaceDesc": "Remover permanentemente este workspace e todos os seus dados. Esta ação não pode ser desfeita."
   },
   "Members": {
+    "inviteUnavailable": "Convites estão desativados por enquanto.",
     "title": "Membros",
     "subtitle": "Gerencie quem tem acesso ao seu workspace.",
     "invite": "Convidar",
@@ -598,7 +596,11 @@
       "socialFailed": "Falha no login social. Por favor, tente novamente.",
       "expiredCode": "Código expirado. Solicite um novo.",
       "workspaceConflict": "Este e-mail não pode criar outro workspace Free. Entre com uma conta com membership ativo.",
-      "invalidEmail": "Informe um e-mail válido."
+      "invalidEmail": "Informe um e-mail válido.",
+      "oauth_failed": "Não foi possível entrar com o provedor. Tente novamente ou use o código por e-mail.",
+      "oauth_denied": "Você cancelou o login. Escolha outra forma de entrar quando quiser.",
+      "oauth_unavailable": "Este login ainda não está disponível. Entre com o código enviado por e-mail.",
+      "oauth_email_unverified": "O e-mail dessa conta não está verificado no provedor. Verifique o e-mail lá ou entre com o código por e-mail."
     },
     "perks": {
       "nfse": {
@@ -618,10 +620,10 @@
         "desc": "Respostas estruturadas, exemplos em Node, Python e Go."
       }
     },
-    "freeCreditsTag": "30 NOTAS GRÁTIS POR MÊS",
+    "freeCreditsTag": "15 NOTAS GRÁTIS POR MÊS",
     "headline": "Da primeira emissão à nota fiscal em minutos.",
     "afterSignup": "APÓS O CADASTRO",
-    "footerNote": "Sem cartão de crédito. Sem contrato. 30 notas grátis para começar.",
+    "footerNote": "Sem cartão de crédito. Sem contrato. 15 notas grátis para começar.",
     "magicLink": {
       "sendCode": "Enviar código",
       "sending": "Enviando...",
@@ -659,7 +661,7 @@
     "subtitle": "Emita NFS-e, gerencie múltiplas empresas, envie documentos por e-mail e automatize seu fluxo fiscal com uma única API.",
     "startFree": "Começar grátis",
     "viewDocs": "Ver documentação",
-    "mono": "30 notas grátis por mês. Sem cartão de crédito."
+    "mono": "15 notas grátis por mês. Sem cartão de crédito."
   },
   "Nav": {
     "product": "Produto",
@@ -674,9 +676,9 @@
   },
   "FreeTrial": {
     "eyebrow": "COMEÇAR GRÁTIS",
-    "title": "30 notas fiscais grátis por mês",
+    "title": "15 notas fiscais grátis por mês",
     "subtitle": "Sem cartão de crédito.",
-    "description": "Integre a emissão de NFS-e ao seu produto com até 30 notas autorizadas por mês, para uma empresa. A cota renova no primeiro dia de cada mês.",
+    "description": "Integre a emissão de NFS-e ao seu produto com até 15 notas autorizadas por mês, para uma empresa. A cota renova no primeiro dia de cada mês.",
     "startFree": "Começar grátis",
     "finePrint": "Limite de 3 emissões por dia em produção. Cotas em UTC, sem acúmulo. Testes não consomem a cota."
   },
@@ -704,7 +706,7 @@
       "porMes": "/mês",
       "free": {
         "label": "Plano gratuito",
-        "description": "30 notas por mês, limite de 3 por dia."
+        "description": "15 notas por mês, limite de 3 por dia."
       },
       "custom": {
         "label": "Fale conosco",
@@ -716,7 +718,7 @@
     "plans": {
       "free": {
         "name": "FREE",
-        "credits": "30",
+        "credits": "15",
         "price": "R$ 0",
         "unit": "",
         "bestFor": "Testar a API e validar a integração.",
@@ -724,6 +726,8 @@
           "nfse": "Emissão de NFS-e via API",
           "companies": "1 empresa",
           "dailyLimit": "3 notas por dia",
+          "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
           "downloads": "Download XML e PDF"
         }
@@ -738,6 +742,7 @@
           "nfse": "Emissão de NFS-e via API",
           "companies": "Até 10 empresas",
           "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
           "downloads": "Download XML e PDF"
         }
@@ -752,6 +757,7 @@
           "nfse": "Emissão de NFS-e via API",
           "companies": "Até 50 empresas",
           "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
           "downloads": "Download XML e PDF"
         }
@@ -766,6 +772,7 @@
           "nfse": "Emissão de NFS-e via API",
           "companies": "Até 500 empresas",
           "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
           "downloads": "Download XML e PDF"
         }
@@ -780,6 +787,7 @@
           "nfse": "Emissão de NFS-e via API",
           "companies": "Empresas ilimitadas",
           "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
           "downloads": "Download XML e PDF"
         }
@@ -805,7 +813,12 @@
     },
     "effective": "Custo efetivo:",
     "perNoteShort": "por nota",
-    "currentPlan": "Seu plano"
+    "currentPlan": "Seu plano",
+    "included": {
+      "label": "Todos os planos incluem",
+      "mcp": "MCP para agentes de IA",
+      "email": "Envio da nota por e-mail"
+    }
   },
   "Flow": {
     "eyebrow": "COMO FUNCIONA",
@@ -877,7 +890,7 @@
     },
     "free": {
       "q": "Posso usar a Corvo gratuitamente?",
-      "a": "Sim. O Free inclui uma empresa e até 30 notas autorizadas em produção por mês, com limite de 3 por dia. A cota renova no primeiro dia do mês e os limites seguem UTC. Não é necessário cartão de crédito; notas de teste não consomem essa cota."
+      "a": "Sim. O Free inclui uma empresa e até 15 notas autorizadas em produção por mês, com limite de 3 por dia. A cota renova no primeiro dia do mês e os limites seguem UTC. Não é necessário cartão de crédito; notas de teste não consomem essa cota."
     },
     "multiCompany": {
       "q": "Posso gerenciar várias empresas?",
@@ -918,7 +931,7 @@
     "description": "Uma integração para automatizar a emissão de NFS-e e acompanhar o crescimento do seu produto.",
     "ctaPrimary": "Começar grátis",
     "ctaSecondary": "Explorar API",
-    "subtext": "30 notas gratuitas por mês para começar."
+    "subtext": "15 notas gratuitas por mês para começar."
   },
   "Footer": {
     "brand": "© Corvo. Todos os direitos reservados.",
@@ -970,7 +983,7 @@
       },
       "s7": {
         "title": "7. Planos, cotas e renovação",
-        "content": "Os planos definem a cota mensal de notas, o limite de empresas ativas e os limites de uso apresentados na oferta e no painel. O Free permite uma empresa ativa e até 30 notas autorizadas em produção por mês, com limite de 3 por dia. Sua cota renova no primeiro dia de cada mês; os limites mensal e diário seguem UTC. Nos planos pagos, a cota acompanha o período mensal da assinatura informado no painel. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas não utilizadas não acumulam nem se convertem em dinheiro. Ao atingir um limite, novas solicitações podem ser bloqueadas até a renovação ou a contratação de capacidade compatível."
+        "content": "Os planos definem a cota mensal de notas, o limite de empresas ativas e os limites de uso apresentados na oferta e no painel. O Free permite uma empresa ativa e até 15 notas autorizadas em produção por mês, com limite de 3 por dia. Sua cota renova no primeiro dia de cada mês; os limites mensal e diário seguem UTC. Nos planos pagos, a cota acompanha o período mensal da assinatura informado no painel. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas não utilizadas não acumulam nem se convertem em dinheiro. Ao atingir um limite, novas solicitações podem ser bloqueadas até a renovação ou a contratação de capacidade compatível."
       },
       "s8": {
         "title": "8. Como o consumo e os excedentes são calculados",
@@ -1087,7 +1100,7 @@
     "empty": "Nenhuma empresa cadastrada.",
     "loadFailed": "Não foi possível carregar as empresas.",
     "status": {
-      "ready": "Pronta",
+      "ready": "Cadastro completo",
       "pending_setup": "Configuração pendente",
       "blocked": "Bloqueada"
     },
@@ -1100,6 +1113,30 @@
     "viewCompany": "Ver detalhes de {name}"
   },
   "Invoices": {
+    "anonymousCustomer": "Consumidor não identificado",
+    "calculate": {
+      "button": "Calcular tributos",
+      "calculating": "Calculando…",
+      "title": "Cálculo pré-emissão",
+      "ready": "Pronto para emitir",
+      "blocked": "Não dá para calcular ainda",
+      "net": "Valor líquido a receber",
+      "taxes": "Tributos",
+      "withholdings": "Retenções",
+      "noTaxes": "Sem tributos destacados neste cenário.",
+      "pending": "Falta informar",
+      "disclaimer": "Estimativa antes da emissão. Não é um documento fiscal e pode divergir da validação final da Sefin.",
+      "unavailable": "A calculadora de tributos está indisponível. Tente novamente em instantes.",
+      "failed": "Não foi possível calcular.",
+      "stale": "Os dados mudaram. Calcule novamente.",
+      "tax": {
+        "iss": "ISS",
+        "cbs": "CBS",
+        "ibsState": "IBS estadual",
+        "ibsCity": "IBS municipal",
+        "ibsTotal": "IBS total"
+      }
+    },
     "title": "Notas fiscais",
     "subtitle": "Histórico de notas emitidas, processadas e rejeitadas.",
     "new": "Nova nota",
@@ -1120,7 +1157,7 @@
       "customer": "Dados do tomador",
       "service": "Serviço prestado",
       "companyHint": "Quem emite a nota e qual referência interna usar.",
-      "customerHint": "Quem recebe o serviço. CPF ou CNPJ.",
+      "customerHint": "Quem recebe o serviço. Informe o CPF ou CNPJ, ou deixe tudo em branco para emitir sem tomador.",
       "serviceHint": "O que foi prestado, onde e por quanto."
     },
     "table": {
@@ -1190,7 +1227,9 @@
       "serviceCode": "Busque pelo nome do serviço ou digite o código.",
       "municipalityCode": "7 dígitos do IBGE, ex.: 3550308",
       "serviceCodeDefault": "Padrão da empresa: {code}. Deixe vazio para usar este código ou escolha outro para esta nota.",
-      "municipalityDefault": "Município da empresa: {code}. Deixe vazio para usá-lo ou informe outro local de prestação para esta nota."
+      "municipalityDefault": "Município da empresa: {code}. Deixe vazio para usá-lo ou informe outro local de prestação para esta nota.",
+      "description": "Opcional. Se vazia, usamos o nome do código de serviço.",
+      "serviceCodeFallback": "Opcional. Sem código na nota nem na empresa, usamos {code} (10.09, representação). Escolha o código da sua atividade."
     },
     "summary": {
       "title": "Resumo da nota",
@@ -1205,13 +1244,16 @@
       "ready": "Tudo certo para emitir.",
       "email": "E-mail",
       "emailPending": "informe o e-mail",
-      "emailOff": "não enviar"
+      "emailOff": "não enviar",
+      "noCustomer": "Sem tomador"
     },
     "sendEmail": {
       "label": "Enviar a nota por e-mail ao cliente",
       "hint": "O PDF e o XML saem para o e-mail do tomador assim que a nota for autorizada.",
       "hintTest": "Em teste o assunto recebe [TESTE]. Use um e-mail seu."
-    }
+    },
+    "view": "Ver nota",
+    "viewInvoice": "Ver detalhes de {name}"
   },
   "Billing": {
     "title": "Plano e uso",
@@ -1331,7 +1373,8 @@
       "company": "Empresa",
       "address": "Endereço",
       "fiscal": "Fiscal",
-      "certificate": "Certificado"
+      "certificate": "Certificado",
+      "review": "Revisão fiscal"
     },
     "stepHint": {
       "company": "Comece pelo CNPJ e pelo nome da empresa que vai emitir as notas.",
@@ -1351,16 +1394,24 @@
     "later": "Enviar depois",
     "finish": "Concluir",
     "hints": {
-      "municipalReg": "Número dado pela prefeitura. Obrigatório no cadastro em produção; opcional em teste.",
-      "defaultServiceCode": "Código nacional (cTribNac), com 6 dígitos. Usado quando a nota não informa outro código. Você pode remover este padrão na edição."
+      "municipalReg": "Opcional. Informe só se a prefeitura registrou a inscrição municipal desta empresa no cadastro nacional; se não, a Receita rejeita a nota (E0120).",
+      "defaultServiceCode": "Código nacional (cTribNac), com 6 dígitos. Usado quando a nota não informa outro código. Você pode remover este padrão na edição.",
+      "sendMunicipalReg": "Desligado por padrão. Marque só se a prefeitura registrou esta empresa no cadastro nacional e a Receita exigir a IM; senão a nota é rejeitada (E0120)."
     },
     "fixFields": "Corrija os campos destacados.",
     "defaultServiceCode": "Código de serviço padrão",
     "municipalityInvalid": "Informe um código IBGE com exatamente 7 dígitos.",
-    "municipalRegRequired": "Informe a inscrição municipal para cadastrar em produção.",
-    "serviceCodeInvalid": "O código de serviço deve ter exatamente 6 dígitos."
+    "serviceCodeInvalid": "O código de serviço deve ter exatamente 6 dígitos.",
+    "selectTaxRegime": "Selecione um regime tributário",
+    "regimeRequired": "Selecione o regime tributário da empresa.",
+    "regimeDerived": "A opção pelo Simples Nacional acompanha o regime selecionado.",
+    "editFiscalHint": "Revise o regime e as vigências em Configuração fiscal na página da empresa.",
+    "reviewNext": "Continuar para o certificado",
+    "openCompany": "Abrir empresa",
+    "sendMunicipalReg": "Enviar a inscrição municipal na nota"
   },
   "CompanyDetail": {
+    "fiscalAdvanced": "Configuração fiscal avançada",
     "legalName": "Razão social",
     "taxRegime": "Regime tributário",
     "municipalReg": "Inscrição municipal",
@@ -1412,19 +1463,13 @@
       "title": "Finalize a configuração",
       "subtitle": "Confira o município fiscal e os requisitos para emitir no ambiente selecionado.",
       "progress": "{done} de {total}",
-      "complete": "Configuração completa. A empresa está pronta para emitir.",
-      "requiredLive": "obrigatório em produção",
+      "complete": "Cadastro básico completo. Confira a configuração fiscal abaixo antes de emitir em produção.",
       "testNote": "Em teste, inscrição municipal e certificado são opcionais. O município fiscal deve estar cadastrado.",
       "items": {
         "address": {
           "title": "Endereço",
           "hint": "Informe o CEP para preencher o endereço e o código IBGE.",
           "action": "Completar"
-        },
-        "municipalReg": {
-          "title": "Inscrição municipal",
-          "hint": "Número dado pela prefeitura. Sem ele, não é possível emitir em produção.",
-          "action": "Informar"
         },
         "certificate": {
           "title": "Certificado digital A1",
@@ -1444,6 +1489,7 @@
     "defaultServiceCode": "Código de serviço padrão"
   },
   "InvoiceDetail": {
+    "anonymousCustomer": "Consumidor não identificado",
     "title": "Nota fiscal",
     "loading": "Carregando nota...",
     "failed": "Não foi possível carregar a nota.",
@@ -1637,5 +1683,324 @@
         "content": "Quando o tratamento envolver transferência internacional, as partes devem observar os mecanismos e as garantias exigidos pela LGPD e pela regulamentação aplicável. Este Aditivo, por si só, não substitui as cláusulas-padrão ou outro instrumento exigido para uma transferência específica. Solicitações sobre instruções, fornecedores, medidas de segurança ou transferências devem ser enviadas para legal@corvo.tech."
       }
     }
+  },
+  "CompanyFiscal": {
+    "title": "Configuração fiscal",
+    "intro": "Confira o perfil da empresa e os serviços usados nas notas. A configuração salva será verificada novamente para cada operação e competência.",
+    "date": "Data de competência",
+    "dateHint": "Mostra o perfil e os serviços vigentes nessa data. Não agenda nem emite uma nota.",
+    "loading": "Carregando configuração fiscal…",
+    "failed": "Não foi possível carregar a configuração fiscal.",
+    "retry": "Tentar novamente",
+    "noView": "Você precisa da permissão de consulta de empresas para ler a configuração fiscal.",
+    "profileTitle": "Perfil fiscal",
+    "servicesTitle": "Classificações dos serviços",
+    "profileMissing": "Não há perfil fiscal vigente nessa data.",
+    "profileAmbiguous": "Há perfis fiscais sobrepostos nessa data. Revise as vigências antes de emitir.",
+    "profilePending": "Perfil fiscal pendente de revisão",
+    "profileApproved": "Perfil fiscal aprovado",
+    "profileRejected": "Perfil fiscal rejeitado",
+    "missing": "Não configurado",
+    "yes": "Sim",
+    "no": "Não",
+    "noEnd": "Sem data final",
+    "regime": "Regime tributário",
+    "simpleNational": "Simples Nacional",
+    "specialRegime": "Código do regime especial",
+    "validFrom": "Vigente a partir de",
+    "validUntil": "Vigente até (exclusivo)",
+    "ibsOption": "Opção pelo IBS/CBS regular",
+    "ibsFrom": "Início da opção pelo IBS/CBS regular",
+    "history": "Histórico do perfil fiscal",
+    "future": "Vigência futura",
+    "source": "Origem",
+    "approvedAt": "Aprovado em",
+    "createProfile": "Adicionar perfil fiscal",
+    "editProfile": "Editar perfil fiscal",
+    "newPeriod": "Nova vigência",
+    "saveProfile": "Salvar perfil fiscal",
+    "immutableProfile": "Uma vigência fiscal aprovada não pode ser sobrescrita. Escolha uma data inicial posterior para criar uma nova vigência.",
+    "reviewProfile": "Revisar perfil fiscal",
+    "approveProfile": "Aprovar perfil fiscal",
+    "approveService": "Aprovar serviço",
+    "reviewService": "Revisar serviço",
+    "reviewServiceFor": "Revisar serviço {name}",
+    "reviewTitle": "Confira os dados fiscais salvos",
+    "reviewHint": "A aprovação confirma sua revisão dos valores abaixo. Ela não valida os catálogos oficiais nem garante a autorização.",
+    "acknowledge": "Revisei os dados fiscais apresentados.",
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "edit": "Editar",
+    "saveService": "Salvar serviço",
+    "addService": "Adicionar serviço",
+    "serviceSaved": "Classificação do serviço salva.",
+    "serviceEmpty": "Não há classificações de serviços salvas para essa competência.",
+    "serviceHint": "O MEI pode usar uma classificação parcial quando a operação permitir. Outros cenários podem exigir ISS, retenções e informações de IBS/CBS. Use a classificação confirmada para o seu serviço.",
+    "serviceDefault": "Serviço padrão: {code}",
+    "noDefault": "Nenhum serviço padrão definido. Cada nota deverá informar o código do serviço.",
+    "serviceMissing": "O serviço padrão não tem uma classificação salva aplicável nessa data.",
+    "serviceAmbiguous": "Mais de uma classificação corresponde ao serviço padrão. Resolva a sobreposição ou informe um serviceProfileId explícito na emissão.",
+    "serviceImmutable": "Serviços aprovados são somente leitura. Uma correção exige nova classificação; sobreposições devem ser resolvidas antes da emissão.",
+    "name": "Nome do serviço",
+    "serviceCode": "Código nacional do serviço (cTribNac)",
+    "municipalServiceCode": "Código municipal do serviço",
+    "operationNature": "Natureza da operação",
+    "incidenceMunicipalityCode": "Município de incidência do ISS (IBGE)",
+    "nbsCode": "Código NBS",
+    "cst": "CST",
+    "classCode": "cClassTrib",
+    "operationIndicator": "Indicador de operação (cIndOp)",
+    "classificationHint": "Use códigos confirmados nos catálogos. O dashboard não presume códigos ou alíquotas.",
+    "issTaxation": "Tributação do ISS",
+    "issRate": "Alíquota de ISS (%)",
+    "issWithholdingDefault": "ISS retido por padrão",
+    "withholdingPolicy": "Política de retenções federais",
+    "withholdingRates": "Alíquotas de retenções federais (%)",
+    "effectiveFrom": "Serviço vigente a partir de",
+    "effectiveUntil": "Serviço vigente até (exclusivo)",
+    "regimeApplicability": "Regimes tributários aplicáveis",
+    "allRegimes": "Todos os regimes",
+    "classificationSource": "Origem da classificação",
+    "catalogVersion": "Versão do catálogo",
+    "advanced": "Configurações avançadas da classificação",
+    "select": "Selecione…",
+    "required": "Preencha os campos obrigatórios.",
+    "invalidDate": "Informe uma data válida e uma data final posterior à inicial.",
+    "invalidCode": "Informe um código nacional de serviço com exatamente 6 dígitos.",
+    "invalidMunicipality": "Informe um código IBGE com exatamente 7 dígitos.",
+    "invalidRate": "As alíquotas devem estar entre 0 e 100.",
+    "missingRates": "Informe ao menos uma alíquota para a política de retenções configuradas.",
+    "approvalFailure": "Não foi possível aprovar a configuração fiscal salva.",
+    "saveFailure": "Não foi possível salvar a configuração fiscal.",
+    "continueLater": "Você pode concluir depois pela página da empresa. A emissão em produção exige perfil fiscal aprovado e classificações de serviços aplicáveis.",
+    "registration": "Cadastro",
+    "registrationHint": "A situação cadastral e o certificado são separados da aprovação fiscal.",
+    "statuses": {
+      "unreviewed": "Pendente de revisão",
+      "approved": "Aprovado",
+      "rejected": "Rejeitado"
+    },
+    "regimes": {
+      "MEI": "MEI",
+      "SIMPLES_NACIONAL": "Simples Nacional",
+      "LUCRO_PRESUMIDO": "Lucro Presumido",
+      "LUCRO_REAL": "Lucro Real",
+      "OUTRO_REGIME": "Outro regime",
+      "UNKNOWN": "Desconhecido"
+    },
+    "operations": {
+      "SERVICE": "Serviço",
+      "GOODS": "Mercadoria",
+      "MIXED": "Operação mista",
+      "PARTNER_SALON": "Salão parceiro"
+    },
+    "iss": {
+      "NORMAL": "Normal",
+      "FIXED": "Fixo",
+      "EXEMPT": "Isento"
+    },
+    "withholding": {
+      "UNKNOWN": "Não revisada",
+      "NONE_CONFIRMED": "Sem retenções (confirmado)",
+      "CONFIGURED": "Alíquotas configuradas"
+    }
+  },
+  "Agents": {
+    "title": "Agentes de IA",
+    "subtitle": "Conecte Claude, Cursor e outros agentes à Corvo para consultar e emitir notas por conversa.",
+    "setup": {
+      "title": "Como conectar",
+      "intro": "Adicione o servidor MCP da Corvo no seu agente. Ele abre o navegador para você entrar e aprovar o acesso, sem copiar chaves.",
+      "serverUrl": "URL do servidor MCP",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "tools": "O que o agente pode fazer",
+      "toolList": [
+        "Encontrar suas empresas (company_list)",
+        "Emitir uma nota fiscal (nfse_issue)",
+        "Consultar o status de uma nota (nfse_query)",
+        "Listar notas (nfse_list)",
+        "Baixar o PDF de uma nota autorizada (nfse_download_pdf)"
+      ],
+      "testNote": "Ao aprovar, você escolhe o ambiente: teste (notas sem valor fiscal) ou produção (notas reais, com consumo de créditos). Cada conexão fica em um ambiente; para trocar, reconecte o agente.",
+      "docs": "Ver documentação completa",
+      "clientsTitle": "Escolha seu agente",
+      "afterTitle": "O que acontece ao conectar",
+      "after": [
+        "O navegador abre na Corvo. Entre se ainda não estiver logado.",
+        "Escolha o workspace e o ambiente (teste ou produção) e clique em Permitir.",
+        "Volte ao agente: as ferramentas da Corvo já estão disponíveis."
+      ],
+      "clients": {
+        "claude-code": {
+          "name": "Claude Code",
+          "steps": [
+            "No terminal, adicione o servidor com o comando abaixo.",
+            "Dentro do Claude Code, digite /mcp, escolha corvo e selecione Authenticate."
+          ]
+        },
+        "claude-desktop": {
+          "name": "Claude Desktop",
+          "steps": [
+            "Abra Configurações → Conectores (Connectors).",
+            "Clique em Adicionar conector personalizado, informe um nome (Corvo) e cole a URL do servidor.",
+            "Clique em Conectar e aprove o acesso no navegador."
+          ]
+        },
+        "cursor": {
+          "name": "Cursor",
+          "steps": [
+            "Abra ou crie o arquivo .cursor/mcp.json (no projeto) ou ~/.cursor/mcp.json (global).",
+            "Adicione o servidor como abaixo e salve.",
+            "Em Configurações → MCP, clique em Connect ao lado de corvo."
+          ]
+        },
+        "vscode": {
+          "name": "VS Code",
+          "steps": [
+            "Crie o arquivo .vscode/mcp.json no projeto.",
+            "Adicione o servidor como abaixo e salve.",
+            "Clique em Start acima do servidor corvo e aprove o acesso."
+          ]
+        },
+        "codex": {
+          "name": "Codex",
+          "steps": [
+            "Edite o arquivo ~/.codex/config.toml e adicione o servidor como abaixo.",
+            "No terminal, rode codex mcp login corvo e aprove o acesso no navegador."
+          ]
+        },
+        "windsurf": {
+          "name": "Windsurf",
+          "steps": [
+            "Abra ~/.codeium/windsurf/mcp_config.json.",
+            "Adicione o servidor como abaixo e salve.",
+            "Atualize a lista de MCPs e autorize o acesso quando o navegador abrir."
+          ]
+        },
+        "other": {
+          "name": "Outro",
+          "steps": [
+            "Use qualquer cliente MCP com suporte a servidor remoto (HTTP) e OAuth.",
+            "Informe a URL do servidor acima. O cliente cuida do login sozinho."
+          ]
+        }
+      }
+    },
+    "connections": {
+      "title": "Aplicativos conectados",
+      "adminHint": "Como administrador, você vê e pode revogar as conexões de todos os membros.",
+      "emptyTitle": "Nenhum agente conectado",
+      "emptyBody": "Quando você aprovar um agente, ele aparece aqui, com o uso e a opção de revogar.",
+      "app": "Aplicativo",
+      "permissions": "Permissões",
+      "neverUsed": "Nunca usado",
+      "owner": "por {email}",
+      "you": "você",
+      "active": "Ativo",
+      "revoked": "Revogado",
+      "revoke": "Revogar",
+      "confirmTitle": "Revogar acesso?",
+      "confirmBody": "{name} perde o acesso agora e precisa ser aprovado de novo para voltar.",
+      "confirm": "Revogar",
+      "cancel": "Cancelar",
+      "revokedToast": "Acesso revogado.",
+      "scopes": {
+        "nfse:read": "Consultar e baixar notas",
+        "nfse:write": "Emitir notas"
+      },
+      "errors": {
+        "loadFailed": "Não foi possível carregar as conexões.",
+        "revokeFailed": "Não foi possível revogar o acesso."
+      },
+      "envTest": "Teste",
+      "envLive": "Produção",
+      "activity": "Atividade",
+      "scopesShort": {
+        "nfse:read": "Leitura",
+        "nfse:write": "Emissão"
+      },
+      "usageCompact": "{calls, plural, one {# chamada} other {# chamadas}} · {invoices, plural, one {# nota emitida} other {# notas emitidas}}",
+      "connectedOn": "Conectado em {date}"
+    }
+  },
+  "McpAuthorize": {
+    "loading": "Carregando…",
+    "wants": "{name} quer acessar sua conta Corvo",
+    "returnTo": "Depois de decidir, você volta para {host}.",
+    "canDo": "Este agente poderá:",
+    "workspace": "Workspace",
+    "workspaceBlocked": "Seu papel neste workspace não permite estas permissões.",
+    "manage": "Você pode revogar o acesso a qualquer momento em Agentes de IA.",
+    "allow": "Permitir",
+    "deny": "Negar",
+    "allowedTitle": "Conectado!",
+    "allowedBody": "Você já pode voltar ao seu agente.",
+    "allowedHint": "Se nada acontecer, use o botão abaixo.",
+    "open": "Voltar ao agente",
+    "deniedTitle": "Acesso negado",
+    "deniedBody": "Nenhuma permissão foi concedida.",
+    "goDashboard": "Ir para o painel",
+    "scopes": {
+      "nfse:read": "Consultar e baixar notas fiscais",
+      "nfse:write": "Emitir notas fiscais"
+    },
+    "errors": {
+      "invalid": "Link de autorização inválido ou expirado. Volte ao agente e tente conectar de novo.",
+      "generic": "Não foi possível concluir. Tente novamente.",
+      "forbidden": "Seu papel neste workspace não permite conceder estas permissões."
+    },
+    "environment": "Ambiente",
+    "envTest": "Teste",
+    "envTestHint": "Notas sem valor fiscal. Bom para começar e validar.",
+    "envLive": "Produção",
+    "envLiveHint": "Notas reais, com valor fiscal e consumo de créditos."
+  },
+  "LandingAgents": {
+    "eyebrow": "AGENTES DE IA",
+    "title": "Seus agentes de IA podem emitir notas.",
+    "description": "Conecte o Claude, o Cursor ou o Codex à Corvo por MCP. Peça em linguagem natural e a nota sai, com as mesmas regras fiscais da API.",
+    "points": {
+      "connect": "Um comando para conectar, sem chave para copiar.",
+      "approve": "Você aprova no navegador e escolhe teste ou produção.",
+      "rules": "Mesma validação fiscal, e-mail e webhooks da API."
+    },
+    "connectLabel": "CONECTE EM UM COMANDO",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "agentsLabel": "Agentes compatíveis",
+    "docs": "Ver o guia de MCP",
+    "chat": {
+      "status": "Claude Code · Corvo conectado",
+      "env": "TESTE",
+      "you": "VOCÊ",
+      "agent": "AGENTE",
+      "prompt": "Emite uma nota de R$ 450 de consultoria pra Padaria Estrela e manda no e-mail financeiro@padariaestrela.example.",
+      "listResult": "1 empresa pronta para emitir",
+      "issueResult": "nota na fila",
+      "reply": "Pronto. A NFS-e de R$ 450,00 foi enviada para autorização, e o PDF e o XML vão para o e-mail do cliente assim que ela sair.",
+      "card": {
+        "label": "NFS-E",
+        "detail": "financeiro@padariaestrela.example",
+        "queued": "Na fila",
+        "authorized": "Autorizada"
+      }
+    }
+  },
+  "LandingSdks": {
+    "eyebrow": "SDKS",
+    "title": "Nove linguagens. Uma API.",
+    "description": "SDKs oficiais para Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir e .NET. As mesmas operações, as mesmas regras fiscais e a mesma autenticação: use a linguagem que você já tem em produção.",
+    "points": {
+      "same": "As mesmas operações e os mesmos nomes de campo em todas as linguagens.",
+      "errors": "Os erros voltam como resultados tipados, com o código e o id da requisição.",
+      "webhooks": "Verificação de assinatura de webhook e chave de idempotência já incluídas."
+    },
+    "languagesLabel": "Linguagens suportadas",
+    "tabsLabel": "Escolha uma linguagem",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "source": "Código no GitHub",
+    "docs": "Ver todos os SDKs na documentação"
   }
 }

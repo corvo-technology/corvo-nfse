@@ -5,8 +5,9 @@ import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
-import { auth, ApiError, type MagicLinkChallenge } from "@/lib/api";
+import { auth, ApiError, type MagicLinkChallenge, type OAuthProvider, type OAuthProviders } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { safeNextPath } from "@/lib/safe-next";
 import { cn } from "@/lib/utils";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
 
@@ -34,6 +35,8 @@ function ErrorBox({ message }: { message: string }) {
   );
 }
 
+const OAUTH_ERRORS = new Set(["oauth_failed", "oauth_denied", "oauth_unavailable", "oauth_email_unverified"]);
+
 function LoginPageContent() {
   const locale = useLocale();
   const t = useTranslations("Login");
@@ -44,10 +47,16 @@ function LoginPageContent() {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => {
+    const code = searchParams.get("error");
+    return code && OAUTH_ERRORS.has(code) ? t(`errors.${code}`) : "";
+  });
+  const [providers, setProviders] = useState<OAuthProviders>({ google: false, github: false });
   const [loading, setLoading] = useState(false);
   const codeInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  // Where to go after login (e.g. back to the AI-agent consent screen).
+  const afterLogin = safeNextPath(searchParams.get("next")) ?? "/app";
 
   const { verifyCode, refreshSession, isAuthenticated } = useAuth();
   const [challenge, setChallenge] = useState<MagicLinkChallenge | null>(null);
@@ -61,7 +70,16 @@ function LoginPageContent() {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
-  useEffect(() => { if (isAuthenticated) router.replace("/app"); }, [isAuthenticated, router]);
+  useEffect(() => { if (isAuthenticated) router.replace(afterLogin); }, [isAuthenticated, router, afterLogin]);
+  // Social buttons only work when the server has the provider configured.
+  useEffect(() => {
+    let cancelled = false;
+    auth.oauthProviders().then((value) => { if (!cancelled) setProviders(value); }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
+  const startSocial = (provider: OAuthProvider) => {
+    window.location.assign(auth.oauthStartUrl(provider, afterLogin === "/app" ? undefined : afterLogin));
+  };
   const showError = (cause: unknown) => {
     if (cause instanceof ApiError && cause.status === 429) {
       setCooldownUntil(Date.now() + (cause.retryAfterSeconds ?? 60) * 1000);
@@ -93,7 +111,7 @@ function LoginPageContent() {
     busy.current = true; setError(""); setLoading(true);
     try {
       await verifyCode(email.trim(), challenge.challengeId, candidate, () => setCookieIssued(true));
-      router.replace("/app");
+      router.replace(afterLogin);
     } catch (cause) { showError(cause); }
     finally { busy.current = false; setLoading(false); }
   };
@@ -198,9 +216,10 @@ function LoginPageContent() {
                     <div className="mb-6 flex w-full flex-col gap-2.5">
                       <button
                         type="button"
-                        disabled
-                        title={t("socialUnavailable")}
-                        className={cn(socialBtn, "opacity-40 cursor-not-allowed")}
+                        disabled={!providers.google}
+                        title={providers.google ? undefined : t("socialUnavailable")}
+                        onClick={() => startSocial("google")}
+                        className={cn(socialBtn, !providers.google && "opacity-40 cursor-not-allowed")}
                       >
                         <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden>
                           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
@@ -213,9 +232,10 @@ function LoginPageContent() {
 
                       <button
                         type="button"
-                        disabled
-                        title={t("socialUnavailable")}
-                        className={cn(socialBtn, "opacity-40 cursor-not-allowed")}
+                        disabled={!providers.github}
+                        title={providers.github ? undefined : t("socialUnavailable")}
+                        onClick={() => startSocial("github")}
+                        className={cn(socialBtn, !providers.github && "opacity-40 cursor-not-allowed")}
                       >
                         <svg className="h-4 w-4 fill-text" viewBox="0 0 24 24" aria-hidden>
                           <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />

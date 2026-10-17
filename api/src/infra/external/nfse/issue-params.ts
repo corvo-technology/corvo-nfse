@@ -7,7 +7,12 @@ import {
 } from 'open-nfse';
 import type { IIssuePayload } from './nfse-fiscal-provider';
 
-export function issueParams(payload: IIssuePayload): EmitirParams {
+export type SefinEnvironment = 'production' | 'restricted';
+
+export function issueParams(
+  payload: IIssuePayload,
+  sefin: SefinEnvironment = 'production',
+): EmitirParams {
   const opSimpNac = String(
     payload.emitente.regime.opSimpNac,
   ) as OpcaoSimplesNacional;
@@ -37,9 +42,12 @@ export function issueParams(payload: IIssuePayload): EmitirParams {
       ...payload.valores,
       vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 },
     },
-    tomador: payload.tomador,
+    // `tomador` is optional in open-nfse's EmitirParams/BuildDpsParams;
+    // anonymous consumer DPS are issued without it.
+    ...(payload.tomador ? { tomador: payload.tomador } : {}),
+    // A live invoice is only a production DPS when the Sefin target is production.
     tpAmb:
-      payload.environment === 'live'
+      payload.environment === 'live' && sefin === 'production'
         ? TipoAmbienteDps.Producao
         : TipoAmbienteDps.Homologacao,
     dhEmi: payload.issuedAt ?? new Date(),

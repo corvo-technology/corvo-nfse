@@ -4,7 +4,7 @@
 
 **Goal:** Trocar o `UnconfiguredRtcCalculator` por um adapter HTTP da Calculadora RTC oficial (rede privada), montar a DPS completa (incluindo o grupo `IBSCBS`) a partir do snapshot fiscal, emiti-la preservando numeração/idempotência/retry, e conciliar o que a engine calculou com a NFS-e autorizada sem alterar o XML.
 
-**Architecture:** `HttpRtcCalculatorAdapter` implementa o `RtcCalculatorPort` do plano 2; o contrato HTTP real é descoberto e fixado em fixtures na Task 1. `DpsBuilder` (domínio puro + tipos do `open-nfse`) converte `FiscalCalculationResult` em `DPS`; o `OpenNfseProvider` assina a DPS pronta via `emitirDpsPronta(dps, { dryRun: true })` e segue o fluxo atual (pending → `replayPendingEvents`). Após `authorized`, um job BullMQ `nfse-fiscal-reconcile` compara os valores do XML autorizado com o snapshot e grava `invoice_fiscal_reconciliations`.
+**Architecture:** `HttpRtcCalculatorAdapter` implementa o `RtcCalculatorPort` do plano 2 contra o contrato **já verificado** (`docs/fiscal/rtc/`, app `1.6.0`, dados `V0059`): primeiro a base da NFS-e (`nfse/base-calculo`), depois o cálculo (`regime-geral`). A Calculadora oficial roda como serviço interno (jar + Java 21, imagem própria). Os catálogos NBS/CST/cClassTrib/cIndOp são validados por consulta ao motor com a data da competência. `DpsBuilder` (domínio puro + tipos do `open-nfse`) converte `FiscalCalculationResult` em `DPS`; o `OpenNfseProvider` assina a DPS pronta via `emitirDpsPronta(dps, { dryRun: true })` e segue o fluxo atual (pending → `replayPendingEvents`). Após `authorized`, um job BullMQ `nfse-fiscal-reconcile` compara os valores do XML autorizado com o snapshot e grava `invoice_fiscal_reconciliations`.
 
 **Tech Stack:** NestJS 11, TypeORM/PostgreSQL (RLS), BullMQ, `open-nfse` 0.11.0 (layout RTC v1.01), Jest (unit com SDK real via bridge nativo), Docker Compose.
 
@@ -14,7 +14,7 @@
 
 - Trabalhar em `api/` e `deploy/`; branch `feat/rtc-dps-reconciliation` (nunca na `main`).
 - Caminhos com prefixo `api/`, `docs/` ou `deploy/` são relativos à **raiz do repositório**; todos os demais (`src/`, `test/`, `scripts/`, `nest-cli.json`) são relativos a `api/`. Comandos `yarn` rodam em `api/`.
-- **Nada de endpoint, campo ou schema da Calculadora é escrito de memória.** Tudo vem do OpenAPI/respostas capturados na Task 1 e salvos em `docs/fiscal/rtc/`. A API pública de demonstração não é dependência de produção; só o artefato oficial offline em rede privada.
+- **Contrato da Calculadora verificado em 2026-10-15** (`docs/fiscal/rtc/README.md`, `openapi.json`, fixtures reais). Use somente os endpoints listados lá; se `GET …/versao` mudar, recapture as fixtures antes de seguir. A API pública do governo tem WAF e **nunca** é dependência de produção nem de CI intensivo. A Corvo **nunca** envia `aliquotasNominais` e rejeita `calculoSimulado: true` (sem alíquota estimada).
 - Sem `any`; falhas esperadas são `Result<_, FiscalError>`; erros de SDK/HTTP nunca saem do adapter.
 - Layout ativo por ambiente: `FISCAL_DPS_LAYOUT` (padrão `rtc-v1.01`). Layout publicado mas não implantado e NT 009/V1.04.00 ⇒ `DPS_LAYOUT_UNSUPPORTED`. Nada de XML presumido, nada de editar `node_modules`, XSD nunca ignorado (`skipValidation` proibido).
 - Timeout após transmissão ⇒ resultado indeterminado: consultar (`fetchDpsStatus`/`fetchByChave`) antes de qualquer reenvio; nunca reservar nova numeração para a mesma invoice.
@@ -26,6 +26,11 @@
 ## Review Focus
 
 - RTC fora do ar / lento / 5xx ⇒ erro retryable e **nenhuma** DPS emitida sem o grupo exigido (Task 2, 6).
+- Competência de 2027 em diante: o motor exige alíquotas nominais que a base dele ainda não tem ⇒ `TAX_RATE_NOT_FOUND` bloqueante, sem estimar (Task 3).
+- `calculoSimulado: true` nunca é aceito como valor fiscal (Task 3).
+- Base de IBS/CBS ≠ valor bruto (ISS e desconto saem da base): sempre `nfse/base-calculo` antes do cálculo (Task 3).
+- Calculadora ainda em partida (~4 min) ou reiniciando não rejeita a invoice: erro retryable (Task 2).
+- Validação de catálogo usa a data da competência, não a de hoje (Task 4).
 - Resposta do motor com tipos errados, campos ausentes ou valores negativos ⇒ erro de cálculo não retryable, nunca valor presumido (Task 3).
 - Timeout durante o POST: a mesma invoice nunca ganha segunda numeração nem segunda DPS (Task 7).
 - 429 com `Retry-After` respeitado (Task 7).
@@ -37,31 +42,65 @@
 
 ---
 
-## Task 1: Descoberta do contrato da Calculadora e implantação interna
+## Task 1: Implantação interna da Calculadora e contrato verificado
+
+O contrato **já foi descoberto e capturado** em 2026-10-15 (app `1.6.0`, dados `V0059`); os artefatos estão em `docs/fiscal/rtc/` (`README.md`, `openapi.json`, `ZIP_SHA256.txt`, `fixtures/*.json`). Esta task implanta o serviço e a configuração.
 
 **Files:**
-- Create: `docs/fiscal/rtc/README.md`, `docs/fiscal/rtc/openapi.json`, `docs/fiscal/rtc/fixtures/*.json`
-- Modify: `deploy/docker-compose.yml`, `deploy/docker-compose.local.yml`, `api/.env.example`, `api/src/infra/config/env.schema.ts`, `configuration.ts`, `configuration.types.ts`
-- Test: `api/src/infra/config/rtc-env.spec.ts`
+- Create: `deploy/Dockerfile.rtc`, `deploy/rtc-pinned-version.txt`, `scripts/rtc-smoke.sh`
+- Modify: `deploy/docker-compose.yml`, `deploy/docker-compose.local.yml`, `deploy/README.md`, `api/.env.example`
+- Modify: `src/infra/config/env.schema.ts`, `configuration.ts`, `configuration.types.ts`
+- Test: `src/infra/config/rtc-env.spec.ts`
 
-Esta task é de **descoberta + configuração**; não escreve lógica de negócio. O código das Tasks 2–3 depende do que ela registrar.
+- [ ] **Step 1: Conferir os artefatos e a versão.** `ls docs/fiscal/rtc docs/fiscal/rtc/fixtures` deve listar `README.md`, `openapi.json`, `ZIP_SHA256.txt` e 6 fixtures. Compare com o pacote oficial **uma vez** (o site público tem WAF; não faça rajadas): `curl -s 'https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/download/url?platform=jar'` devolve `downloadUrl`; baixe, rode `shasum -a 256` e compare com `ZIP_SHA256.txt`. Se diferir, o governo publicou versão nova: suba a versão nova (Step 3), recapture as fixtures conforme o README e revise o diff antes de seguir.
 
-- [ ] **Step 1: Obter o artefato oficial offline.** Em `https://consumo.tributos.gov.br/servico/calcular-tributos-consumo/calculadora/documentacao` (página renderizada por JavaScript — abra em navegador) localize a distribuição offline da Calculadora (imagem de contêiner, jar ou binário), sua **versão**, licença/termos de uso e instruções de execução. Registre em `docs/fiscal/rtc/README.md`: URL de download, versão, checksum/digest, requisitos (JVM/porta/variáveis), e a data da consulta. Se a distribuição offline não existir ou os termos proibirem uso em produção, **pare** e leve ao responsável pelo produto: o restante do plano depende dessa decisão (spec 3, E1).
+- [ ] **Step 2: `deploy/Dockerfile.rtc`** (imagem própria; não existe imagem oficial confirmada):
+```dockerfile
+FROM eclipse-temurin:21-jre
+ARG RTC_ZIP_URL
+ARG RTC_ZIP_SHA256
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends unzip curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+RUN curl -fsSL "$RTC_ZIP_URL" -o /tmp/rtc.zip \
+ && echo "$RTC_ZIP_SHA256  /tmp/rtc.zip" | sha256sum -c - \
+ && unzip -q /tmp/rtc.zip -d /app \
+ && rm -f /tmp/rtc.zip /app/codigo-fonte-backend.zip \
+ && useradd -r -u 10001 rtc && chown -R rtc /app
+USER rtc
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "api-regime-geral.jar", "--spring.profiles.active=offline"]
+```
+O build **falha de propósito** se o arquivo publicado mudar (SHA-256 diferente): atualizar a Calculadora é uma decisão explícita. Como o governo substitui o arquivo no mesmo endereço, builds antigos deixam de ser reproduzíveis: publique a imagem construída no registry com a tag `rtc-<versaoApp>-<versaoDb>` (ex.: `rtc-1.6.0-V0059`) e faça o deploy sempre pela imagem, não pelo build.
 
-- [ ] **Step 2: Subir localmente e salvar o contrato real.** Execute o artefato em uma porta local, baixe o OpenAPI/Swagger que **a própria instância** serve (a UI está em `…/api/swagger-ui/index.html`; o JSON costuma estar em `…/api/v3/api-docs` na instância — confirme o caminho real) e salve em `docs/fiscal/rtc/openapi.json`. Liste em `README.md`, a partir do JSON salvo, os endpoints efetivamente existentes para: cálculo regime geral, base de cálculo NFS-e, consulta de situação tributária/classificações (CST/cClassTrib), NBS, indicador de operação (cIndOp), local, e versão dos dados abertos. **Somente os endpoints listados aqui poderão ser usados nas próximas tasks.**
+- [ ] **Step 3: Compose** — serviço interno, **sem `ports`**, só na rede do compose:
+```yaml
+  rtc-calculator:
+    image: ${RTC_IMAGE:-corvo-rtc:local}
+    build:
+      context: ../
+      dockerfile: deploy/Dockerfile.rtc
+      args:
+        RTC_ZIP_URL: ${RTC_ZIP_URL:?Informe RTC_ZIP_URL (veja deploy/README.md)}
+        RTC_ZIP_SHA256: ${RTC_ZIP_SHA256:?Informe RTC_ZIP_SHA256}
+    init: true
+    restart: unless-stopped
+    mem_limit: 1536m
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/api/calculadora/dados-abertos/versao || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 420s
+```
+Medições (2026-10-15): partida ~254 s, ~714 MiB em regime, 25–440 ms por cálculo. Em `x-backend` acrescente `RTC_CALCULATOR_URL: http://rtc-calculator:8080/api` e `depends_on: rtc-calculator: { condition: service_healthy }` para `api` e `worker` (o worker não deve aceitar jobs fiscais antes da Calculadora subir). Espelhe no `docker-compose.local.yml`. Documente em `deploy/README.md` como obter `RTC_ZIP_URL` (endpoint `download/url?platform=jar`) e `RTC_ZIP_SHA256` (`docs/fiscal/rtc/ZIP_SHA256.txt`), e grave `1.6.0/V0059` em `deploy/rtc-pinned-version.txt`.
 
-- [ ] **Step 3: Capturar fixtures reais.** Para cada cenário abaixo, monte a requisição a partir do OpenAPI salvo, chame a instância local e salve `{ request, response, calculatorVersion, capturedAt }` em `docs/fiscal/rtc/fixtures/<cenario>.json` (códigos de classificação **reais**, extraídos das consultas de catálogo da própria Calculadora, nunca inventados):
-  1. serviço de consultoria (`010601`) para PJ, competência `2026-12-10`, base R$ 1000,00 (regime regular);
-  2. mesmo serviço, competência `2027-03-10`;
-  3. um serviço/classificação com redução de alíquota, **se existir** nos catálogos (registre qual e por quê);
-  4. com desconto incondicional R$ 100,00;
-  5. requisição inválida (campo obrigatório ausente) — captura o formato de erro de validação;
-  6. classificação inexistente — captura o formato de erro fiscal.
-  Anote em `README.md` quais campos da resposta correspondem a: base IBS/CBS, alíquota nominal/efetiva/redução de CBS e de IBS-UF/IBS-Mun, valores, diferimento, fundamentação legal e memória de cálculo.
+- [ ] **Step 4: Configuração.** `env.schema.ts` (zod): `RTC_CALCULATOR_URL` (url, opcional), `RTC_CALCULATOR_TIMEOUT_MS` (padrão 8000), `RTC_CALCULATOR_MAX_CONCURRENCY` (padrão 8), `RTC_CIRCUIT_FAILURE_THRESHOLD` (padrão 5), `RTC_CIRCUIT_RESET_MS` (padrão 30000), `FISCAL_DPS_LAYOUT` (enum `rtc-v1.01`, padrão `rtc-v1.01`); `configuration.ts`/`types`: seção `rtc` com `{ url?, timeoutMs, maxConcurrency, circuitFailureThreshold, circuitResetMs, dpsLayout }`; `api/.env.example` com os valores. Teste `rtc-env.spec.ts` no padrão do `outbox-env.spec.ts` (defaults e coerção).
 
-- [ ] **Step 4: Configuração e compose.** Acrescente ao `env.schema.ts` (zod): `RTC_CALCULATOR_URL` (url, opcional), `RTC_CALCULATOR_TIMEOUT_MS` (padrão 8000), `RTC_CALCULATOR_MAX_CONCURRENCY` (padrão 8), `RTC_CIRCUIT_FAILURE_THRESHOLD` (padrão 5), `RTC_CIRCUIT_RESET_MS` (padrão 30000), `FISCAL_DPS_LAYOUT` (enum `rtc-v1.01`, padrão `rtc-v1.01`); ao `configuration.ts`/`types` uma seção `rtc` com esses campos. Em `deploy/docker-compose.yml`, adicione o serviço `rtc-calculator` **sem `ports`** (apenas rede interna do compose), com imagem/artefato fixado por digest conforme o Step 1, `restart: unless-stopped` e `healthcheck` apontando para o endpoint de saúde/versão descoberto; adicione `RTC_CALCULATOR_URL: http://rtc-calculator:<porta>` ao `x-backend` e `depends_on` de saúde para `api`/`worker`. Espelhe no `docker-compose.local.yml` e em `api/.env.example`.
+- [ ] **Step 5: Smoke script** `scripts/rtc-smoke.sh` (usa só a instância interna): imprime `GET …/versao`, chama `POST …/nfse/base-calculo` e `POST …/regime-geral` com o corpo de `docs/fiscal/rtc/fixtures/ok-consultoria-2026.json` (`steps[0].request`) e falha se `vCBS` ≠ `9.00` ou `vIBS` ≠ `1.00`. Rode contra o serviço local: `RTC_URL=http://localhost:18080/api scripts/rtc-smoke.sh`.
 
-- [ ] **Step 5: Test + commit.** Teste `rtc-env.spec.ts` (padrão do `outbox-env.spec.ts`): defaults e coerção. `yarn jest src/infra/config && yarn typecheck && docker compose -f deploy/docker-compose.yml config --quiet` (com as variáveis exigidas). Commit: `git add docs/fiscal deploy api && git commit -m "chore(rtc): record calculator contract and add private service config"`.
+- [ ] **Step 6: Run + commit** — `yarn jest src/infra/config && yarn typecheck && docker compose -f ../deploy/docker-compose.yml config --quiet` (com as variáveis exigidas). `git add -A deploy api docs/fiscal && git commit -m "chore(rtc): deploy the official calculator as a private service"`.
 
 ---
 
@@ -72,26 +111,29 @@ Esta task é de **descoberta + configuração**; não escreve lógica de negóci
 - Create: `src/modules/invoice/infra/fiscal/rtc/rtc-http-client.ts`
 - Create: `src/modules/invoice/infra/fiscal/rtc/circuit-breaker.ts`
 - Create: `src/modules/invoice/infra/fiscal/rtc/rtc-mapper.ts` (somente a interface; implementação na Task 3)
-- Modify: `src/modules/invoice/invoice.module.ts` (provider `RtcCalculatorPort`: `HttpRtcCalculatorAdapter` quando `RTC_CALCULATOR_URL` existe, senão `UnconfiguredRtcCalculator`)
 - Create: `src/modules/invoice/infra/fiscal/rtc/rtc.metrics.ts`
+- Modify: `src/modules/invoice/invoice.module.ts` (provider `RtcCalculatorPort`: `HttpRtcCalculatorAdapter` quando `RTC_CALCULATOR_URL` existe, senão `UnconfiguredRtcCalculator`)
 - Test: `circuit-breaker.spec.ts`, `http-rtc-calculator.adapter.spec.ts` (servidor HTTP local de teste)
 
 **Interfaces:**
 - Consumes: `RtcCalculatorPort`, `RtcCalculationInput`, `RtcTaxResult`, `fiscalError` (plano 2); `RtcConfig` (Task 1).
 - Produces:
   ```ts
-  // rtc-mapper.ts
+  // rtc-mapper.ts — o fluxo real tem DUAS chamadas: base da NFS-e e depois o cálculo
   export interface RtcMapper {
-    toRequest(input: RtcCalculationInput): { path: string; method: 'POST' | 'GET'; body?: unknown };
-    fromResponse(body: unknown, input: RtcCalculationInput, calculatorVersion: string): Result<RtcTaxResult, FiscalError>;
-    fromErrorBody(status: number, body: unknown): FiscalError | null;   // 4xx fiscal/validation error → typed error; null = unknown shape
+    toBaseRequest(input: RtcCalculationInput): { path: '/calculadora/nfse/base-calculo'; body: unknown };
+    fromBaseResponse(body: unknown): Result<DecimalString, FiscalError>;                  // → baseCalculo
+    toCalcRequest(input: RtcCalculationInput, baseCalculo: DecimalString): { path: '/calculadora/regime-geral'; body: unknown };
+    fromCalcResponse(body: unknown, input: RtcCalculationInput, calculatorVersion: string): Result<RtcTaxResult, FiscalError>;
+    fromProblem(status: number, body: unknown): FiscalError | null;                       // application/problem+json de 4xx
   }
   // circuit-breaker.ts
   export class CircuitBreaker { constructor(opts: { failureThreshold: number; resetMs: number; now?: () => number }); canPass(): boolean; onSuccess(): void; onFailure(): void; readonly state: 'closed' | 'open' | 'half-open' }
   // http-rtc-calculator.adapter.ts
   export class HttpRtcCalculatorAdapter extends RtcCalculatorPort { constructor(config: RtcConfig, mapper: RtcMapper, http?: typeof fetch) }
   ```
-  Mapeamento de falhas (fixo, independente do schema): rede/abort/timeout ⇒ `TAX_CALCULATION_UNAVAILABLE`, `INTEGRATION`, `retryable: true`, `details.reason 'timeout'|'network'`; HTTP 5xx ⇒ idem `reason 'upstream_5xx'`; HTTP 429 ⇒ idem `reason 'rate_limited'` com `details.retryAfterMs` (de `Retry-After`); circuito aberto ⇒ `TAX_CALCULATION_UNAVAILABLE` retryable `reason 'circuit_open'` **sem chamar a rede**; HTTP 4xx ⇒ `mapper.fromErrorBody`; se `null` ⇒ `TAX_CALCULATION_UNSUPPORTED` (`UNSUPPORTED`, `details.status`); corpo 2xx que não é JSON ⇒ `FISCAL_VALIDATION_FAILED` `rtc_invalid_response` (não retryable); 2xx válido ⇒ `mapper.fromResponse`. A versão do motor vem do endpoint de versão descoberto na Task 1 (cache em memória por 60 s) e é passada a `fromResponse`.
+  Fluxo de `calculate(input)`: `version()` (cache 60 s; `GET /calculadora/dados-abertos/versao` ⇒ `"{versaoApp}/{versaoDb}"`) → `POST nfse/base-calculo` → `POST regime-geral`; a falha de qualquer etapa interrompe as seguintes. Todos os caminhos são relativos a `RTC_CALCULATOR_URL` (que já termina em `/api`).
+  Mapeamento de falhas (independente do schema): rede/abort/timeout ⇒ `TAX_CALCULATION_UNAVAILABLE`, `INTEGRATION`, `retryable: true`, `details.reason 'timeout'|'network'`; HTTP 5xx ⇒ idem `reason 'upstream_5xx'`; HTTP 429 ⇒ idem `reason 'rate_limited'` com `details.retryAfterMs` (de `Retry-After`); conexão recusada/reiniciando (serviço ainda em partida) conta como `network` ⇒ retryable, **nunca** rejeita a invoice de imediato; circuito aberto ⇒ `TAX_CALCULATION_UNAVAILABLE` retryable `reason 'circuit_open'` **sem chamar a rede**; HTTP 4xx ⇒ `mapper.fromProblem`, e se `null` ⇒ `TAX_CALCULATION_UNSUPPORTED` (`UNSUPPORTED`, `details.status`); 2xx cujo corpo não é JSON ⇒ `FISCAL_VALIDATION_FAILED` `rtc_invalid_response` (não retryable); 2xx válido ⇒ `mapper.from*Response`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -110,30 +152,41 @@ it('goes half-open after resetMs and closes on success', () => {
   expect(cb.canPass()).toBe(true); expect(cb.state).toBe('half-open');
   cb.onSuccess(); expect(cb.state).toBe('closed');
 });
-it('a success resets the failure count', () => { /* 2 failures, success, 2 failures → still closed */ });
-it('reopens when the half-open probe fails', () => { /* … */ });
+it('a success resets the failure count', () => {
+  const cb = new CircuitBreaker({ failureThreshold: 3, resetMs: 1000 });
+  cb.onFailure(); cb.onFailure(); cb.onSuccess(); cb.onFailure(); cb.onFailure();
+  expect(cb.state).toBe('closed');
+});
+it('reopens when the half-open probe fails', () => {
+  let t = 0;
+  const cb = new CircuitBreaker({ failureThreshold: 1, resetMs: 1000, now: () => t });
+  cb.onFailure(); t = 1001; expect(cb.canPass()).toBe(true);
+  cb.onFailure(); expect(cb.state).toBe('open'); expect(cb.canPass()).toBe(false);
+});
 ```
 
-`http-rtc-calculator.adapter.spec.ts` — sobe um `http.createServer` local por teste (porta efêmera) e um mapper fake (`toRequest` → `{ path: '/calc', method: 'POST', body }`, `fromResponse` → ok com resultado fixo):
+`http-rtc-calculator.adapter.spec.ts` — sobe um `http.createServer` local por teste (porta efêmera) que imita a Calculadora (`GET …/versao` → `{versaoApp:'1.6.0',versaoDb:'V0059',…}`, `POST …/base-calculo`, `POST …/regime-geral`) e um mapper fake (`toBaseRequest` → body `{}`, `fromBaseResponse` → ok `'870.00'`, `toCalcRequest` → body `{}`, `fromCalcResponse` → ok resultado fixo):
 ```ts
-it('returns the mapped result on 200', ...);
-it('maps a timeout to a retryable TAX_CALCULATION_UNAVAILABLE', ...);   // servidor nunca responde; timeoutMs 50
+it('runs version → base → calc in order and returns the mapped result', ...);       // servidor registra a sequência de caminhos
+it('stops after the base call fails (calc is not called)', ...);
+it('maps a timeout to a retryable TAX_CALCULATION_UNAVAILABLE', ...);                // servidor nunca responde; timeoutMs 50
+it('maps connection refused (service still starting) to a retryable error', ...);    // porta fechada
 it('maps 503 to a retryable error', ...);
-it('maps 429 with Retry-After to retryAfterMs', ...);                   // header 'retry-after: 2' → 2000
+it('maps 429 with Retry-After to retryAfterMs', ...);                                // header 'retry-after: 2' → 2000
 it('opens the circuit after the threshold and then does not call the network', ...); // contador de requests no servidor
 it('maps an unknown 4xx to TAX_CALCULATION_UNSUPPORTED', ...);
-it('uses the mapper for a known 4xx fiscal error', ...);
+it('uses mapper.fromProblem for a known 4xx', ...);
 it('rejects a non-JSON 200 body as rtc_invalid_response (not retryable)', ...);
-it('never forwards raw SDK/HTTP errors (all failures are FiscalError)', ...);
-it('limits concurrency to RTC_CALCULATOR_MAX_CONCURRENCY', ...);        // 20 chamadas, servidor mede pico ≤ limite
-it('health() reflects reachability and version() reads the version endpoint', ...);
+it('never leaks raw HTTP/SDK errors (every failure is a FiscalError)', ...);
+it('limits concurrency to RTC_CALCULATOR_MAX_CONCURRENCY', ...);                    // 20 chamadas, servidor mede pico ≤ limite
+it('version() reads and caches versaoApp/versaoDb for 60 s', ...);
+it('health() is available:true only when the version endpoint answers 200', ...);
+it('does not log the request body', ...);                                            // spy no Logger
 ```
 
 - [ ] **Step 2: Run to verify they fail** — `yarn jest src/modules/invoice/infra/fiscal/rtc` → FAIL.
 
-- [ ] **Step 3: Implement**
-
-`circuit-breaker.ts`:
+- [ ] **Step 3: Implement.** `circuit-breaker.ts`:
 ```ts
 export class CircuitBreaker {
   private failures = 0;
@@ -162,12 +215,7 @@ export class CircuitBreaker {
   }
 }
 ```
-
-`rtc-http-client.ts`: pequena classe `RtcHttpClient` com `request({ path, method, body })` que aplica `AbortController` com `timeoutMs`, semáforo de concorrência (fila em memória), `fetch` injetável, e devolve `{ status, headers, text }` ou lança `RtcTransportError('timeout' | 'network')` (classe local, nunca exportada para fora do adapter).
-
-`http-rtc-calculator.adapter.ts`: orquestra `breaker.canPass()` → `http.request` → classificação conforme **Mapeamento de falhas**; `onFailure` para timeout/rede/5xx/429, `onSuccess` para 2xx e 4xx (o motor respondeu). `health()` chama o endpoint de versão/saúde descoberto; `version()` idem com cache de 60 s. Métricas (`rtc.metrics.ts`, meter `greenflow.rtc`): `rtc_calculation_duration` (histograma, atributo `outcome`), `rtc_calculation_failed_total{reason}`, `rtc_calculator_latency`.
-
-Wiring no `invoice.module.ts`:
+`rtc-http-client.ts`: `RtcHttpClient.request({ path, method, body })` com `AbortController` (`timeoutMs`), semáforo de concorrência (fila em memória), `fetch` injetável; devolve `{ status, headers, text }` ou lança `RtcTransportError('timeout' | 'network')` (classe local, nunca exportada). `http-rtc-calculator.adapter.ts` orquestra `breaker.canPass()` → chamadas → classificação conforme **Mapeamento de falhas**; `onFailure` para timeout/rede/5xx/429, `onSuccess` para 2xx e 4xx (o motor respondeu). Métricas (`rtc.metrics.ts`, meter `greenflow.rtc`): `rtc_calculation_duration` (histograma, atributo `outcome`), `rtc_calculation_failed_total{reason}`, `rtc_calculator_latency`. Wiring no `invoice.module.ts`:
 ```ts
 {
   provide: RtcCalculatorPort,
@@ -178,7 +226,7 @@ Wiring no `invoice.module.ts`:
   inject: [ConfigService, RTC_MAPPER],
 }
 ```
-com `RTC_MAPPER` provendo o `DefaultRtcMapper` da Task 3 (nesta task, provider temporário que lança `Error('RtcMapper is implemented in Task 3')` **apenas se chamado** é inaceitável como entrega final — por isso as Tasks 2 e 3 são mergeadas juntas; mantenha o provider apontando para uma classe com `toRequest`/`fromResponse`/`fromErrorBody` lançando `Error('not implemented')` somente até a Task 3 e não faça deploy entre elas).
+`RTC_MAPPER` provê o `DefaultRtcMapper` da Task 3. As Tasks 2 e 3 devem ser mergeadas juntas (não faça deploy entre elas).
 
 - [ ] **Step 4: Run to verify they pass** — `yarn jest src/modules/invoice/infra/fiscal/rtc && yarn typecheck` → PASS.
 
@@ -186,110 +234,165 @@ com `RTC_MAPPER` provendo o `DefaultRtcMapper` da Task 3 (nesta task, provider t
 
 ---
 
-## Task 3: Mapper do contrato oficial (golden fixtures)
+## Task 3: Mapper do contrato oficial (fixtures reais)
 
 **Files:**
-- Create: `src/modules/invoice/infra/fiscal/rtc/default-rtc-mapper.ts`
-- Create: `src/modules/invoice/infra/fiscal/rtc/default-rtc-mapper.spec.ts`
-- Modify: `src/modules/invoice/domain/fiscal/rtc/rtc-calculator.port.ts` (somente se o contrato exigir campo extra em `RtcCalculationInput`; documente a razão)
+- Create: `src/modules/invoice/infra/fiscal/rtc/default-rtc-mapper.ts`, `default-rtc-mapper.spec.ts`
+- Create: `src/shared/fiscal/ibge-uf.ts`, `ibge-uf.spec.ts`
+- Modify: `src/modules/invoice/domain/fiscal/rtc/rtc-calculator.port.ts` (`RtcCalculationInput` ganha `issAmount: DecimalString | null`)
+- Modify: `src/modules/invoice/application/fiscal/steps/rtc-tax-calculator.step.ts` e seu spec (preenche `issAmount` com `context.legacyTaxes?.iss?.amount ?? null`)
 
 **Interfaces:**
-- Consumes: `RtcMapper` (Task 2), fixtures de `docs/fiscal/rtc/fixtures/*.json`, `assertRtcResultConsistent` (plano 2, Task 13).
-- Produces: `DefaultRtcMapper implements RtcMapper` — única classe que conhece nomes de campos do motor.
+- Consumes: `RtcMapper` (Task 2), fixtures `docs/fiscal/rtc/fixtures/*.json`, `assertRtcResultConsistent` (plano 2, Task 13).
+- Produces: `DefaultRtcMapper implements RtcMapper`; `ufFromIbge(code: string): string | null` (primeiros 2 dígitos → sigla; tabela IBGE: 11 RO, 12 AC, 13 AM, 14 RR, 15 PA, 16 AP, 17 TO, 21 MA, 22 PI, 23 CE, 24 RN, 25 PB, 26 PE, 27 AL, 28 SE, 29 BA, 31 MG, 32 ES, 33 RJ, 35 SP, 41 PR, 42 SC, 43 RS, 50 MS, 51 MT, 52 GO, 53 DF).
 
-Esta task é **orientada por fixtures**: o conteúdo de `toRequest`/`fromResponse`/`fromErrorBody` é determinado pelos arquivos capturados na Task 1.
+Contrato (de `docs/fiscal/rtc/README.md`):
+- **Base:** `toBaseRequest` → `{ anoFatoGerador: <ano de competenceDate>, valorServico: <gross como number>, descontoIncondicional: <discount como number, omitir se 0>, iss: <issAmount como number, omitir se null> }`. **PIS/COFINS nunca são enviados** (retenções federais não entram na base de IBS/CBS aqui; proibidos a partir de 2027). `fromBaseResponse`: `{ baseCalculo: number }` ⇒ `DecimalString` (2 casas); ausente/não numérico ⇒ `FISCAL_VALIDATION_FAILED` `rtc_invalid_response`.
+- **Cálculo:** `toCalcRequest` → `{ id: <invoiceId ou 'preview'>, versao: '1.0.0', dhFatoGerador: '<competenceDate>T12:00:00Z', municipio: <Number(incidenceMunicipalityCode)>, uf: ufFromIbge(incidenceMunicipalityCode), itens: [{ numero: 1, nbs, cst, cClassTrib, baseCalculo: <base como number> }] }`. **Nunca** envia `aliquotasNominais`.
+- **Resposta:** `objetos[0].tribCalc.IBSCBS.gIBSCBS` → `TaxAmount`: `base = vBC`; `rate = pCBS|pIBSUF|pIBSMun`; `effectiveRate = gRed.pAliqEfet ?? rate`; `reductionRate = gRed.pRedAliq ?? '0'`; `amount = vCBS|vIBSUF|vIBSMun`; `ibsTotal = { base: vBC, amount: vIBS }`; `calculationMemory = [memoriaCalculo de cada grupo]`; `legalReferences = []` (o motor traz a fundamentação dentro de `memoriaCalculo`); `collectionWaived = false` (a dispensa é decidida pela aplicabilidade/regra, não pelo motor).
+- **Rejeições (não retryable):** `objetos[0].calculoSimulado === true` ⇒ `TAX_RATE_NOT_FOUND` (`CONFIGURATION`, `details.reason 'simulated_result'`); qualquer `gDif` (diferimento) presente com valor ≠ 0 ⇒ `TAX_CALCULATION_UNSUPPORTED` (`details.reason 'deferral_not_supported'`); campo obrigatório ausente, tipo errado ou valor negativo ⇒ `FISCAL_VALIDATION_FAILED` `rtc_invalid_response` com `details.path`.
+- **Problemas HTTP (`fromProblem`)**, pelo sufixo de `type`: `aliquotas-nominais-nao-informadas` (422) e `aliquota-nao-encontrada` (404) ⇒ `TAX_RATE_NOT_FOUND` (`CONFIGURATION`; **é o bloqueio de 2027+**: a base do governo ainda não tem alíquotas e a Corvo não as estima); `classificacao-tributaria-nao-encontrada` (404) ⇒ `FISCAL_CLASSIFICATION_INVALID` (`CLASSIFICATION`); demais ⇒ `null`.
 
-- [ ] **Step 1: Write the golden-file tests** (estrutura fixa; os valores esperados saem das fixtures):
+- [ ] **Step 1: Write the failing tests**
 
+`ibge-uf.spec.ts`: `ufFromIbge('3550308')` ⇒ `'SP'`; `'5300108'` ⇒ `'DF'`; `'9999999'` ⇒ `null`; `'abc'` ⇒ `null`.
+
+`default-rtc-mapper.spec.ts`:
 ```ts
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DefaultRtcMapper } from './default-rtc-mapper';
 
 const dir = join(process.cwd(), '..', 'docs/fiscal/rtc/fixtures');
-const load = (name: string) => JSON.parse(readFileSync(join(dir, `${name}.json`), 'utf8')) as {
-  request: unknown; response: unknown; calculatorVersion: string; input: RtcCalculationInput; expected?: RtcTaxResult; expectedError?: { code: string; category: string };
-};
+const load = (name: string) => JSON.parse(readFileSync(join(dir, `${name}.json`), 'utf8'));
+const mapper = new DefaultRtcMapper();
 
-describe('DefaultRtcMapper (golden fixtures)', () => {
-  const mapper = new DefaultRtcMapper();
-
-  it.each(readdirSync(dir).filter((f) => f.startsWith('ok-')).map((f) => f.replace('.json', '')))(
-    '%s: request matches the captured request and response maps to the typed result', (name) => {
-      const f = load(name);
-      expect(mapper.toRequest(f.input).body).toEqual(f.request);
-      const result = mapper.fromResponse(f.response, f.input, f.calculatorVersion);
-      expect(result).toEqual({ ok: true, value: f.expected });
-    });
-
-  it('error fixtures map to typed fiscal errors', () => {
-    for (const name of readdirSync(dir).filter((f) => f.startsWith('error-')).map((f) => f.replace('.json', ''))) {
-      const f = load(name);
-      const err = mapper.fromErrorBody(400, f.response);
-      expect(err).toMatchObject({ code: f.expectedError!.code, category: f.expectedError!.category, retryable: false });
-    }
+describe('DefaultRtcMapper (real captured fixtures)', () => {
+  it('builds the base request exactly as the engine accepted it', () => {
+    const f = load('ok-base-calculo-nfse-2026');
+    const input = { ...load('ok-consultoria-2026').input, competenceDate: '2026-12-10', grossAmount: '1000.00', discountAmount: '100.00', issAmount: '30.00' };
+    expect(mapper.toBaseRequest(input).body).toEqual(f.steps[0].request);
+    expect(mapper.fromBaseResponse(f.steps[0].response)).toEqual({ ok: true, value: '870.00' });
   });
 
-  it('rejects a response missing required components with a non-retryable calculation error', () => {
+  it('builds the calc request from the base and maps the response to the typed result', () => {
     const f = load('ok-consultoria-2026');
-    const broken = JSON.parse(JSON.stringify(f.response));
-    // delete the field the fixture README maps to the CBS amount (see docs/fiscal/rtc/README.md)
-    deleteAtPath(broken, CBS_AMOUNT_PATH);
-    expect(mapper.fromResponse(broken, f.input, f.calculatorVersion)).toMatchObject({ ok: false, error: { category: 'CALCULATION', retryable: false } });
+    expect(mapper.toCalcRequest(f.input, '1000.00').body).toEqual({ ...f.steps[0].request, id: expect.any(String) });
+    expect(mapper.fromCalcResponse(f.steps[0].response, f.input, '1.6.0/V0059')).toEqual({
+      ok: true,
+      value: expect.objectContaining({ ...f.expected, legalReferences: [], calculationMemory: expect.any(Array) }),
+    });
   });
 
-  it('rejects wrong types (string where a number is expected) and negative amounts', () => { /* mutate fixture at the mapped paths */ });
-  it('preserves legal references and the calculation memory from the response', () => { /* expected.legalReferences / calculationMemory non-empty when present in the fixture */ });
-  it('keeps monetary values as decimal strings without float drift', () => { /* e.g. 0.1+0.2 style value in a crafted body */ });
+  it('maps the 60% reduction (effective rate and reduction rate)', () => {
+    const f = load('ok-reducao-60-2026');
+    const r = mapper.fromCalcResponse(f.steps[0].response, f.input, '1.6.0/V0059');
+    expect(r.ok && r.value.cbs).toEqual(f.expected.cbs);
+    expect(r.ok && r.value.ibsState).toEqual(f.expected.ibsState);
+  });
+
+  it('never sends nominal rates', () => {
+    const f = load('ok-consultoria-2026');
+    expect(JSON.stringify(mapper.toCalcRequest(f.input, '1000.00').body)).not.toContain('aliquotasNominais');
+  });
+
+  it.each(['error-2027-aliquotas-nominais', 'error-classificacao-nao-encontrada'])('%s maps to the expected typed error', (name) => {
+    const f = load(name);
+    const step = f.steps[0];
+    expect(mapper.fromProblem(step.status, step.response)).toMatchObject({ ...f.expectedError });
+  });
+
+  it('returns null for an unknown problem type', () => {
+    expect(mapper.fromProblem(400, { type: 'http://localhost/errors/outro', status: 400 })).toBeNull();
+  });
+
+  it('rejects a simulated result', () => {
+    const f = load('ok-consultoria-2026');
+    const body = JSON.parse(JSON.stringify(f.steps[0].response));
+    body.objetos[0].calculoSimulado = true;
+    expect(mapper.fromCalcResponse(body, f.input, 'v')).toMatchObject({ ok: false, error: { code: 'TAX_RATE_NOT_FOUND', retryable: false } });
+  });
+
+  it('rejects a response missing a required amount, with the missing path', () => {
+    const f = load('ok-consultoria-2026');
+    const body = JSON.parse(JSON.stringify(f.steps[0].response));
+    delete body.objetos[0].tribCalc.IBSCBS.gIBSCBS.gCBS.vCBS;
+    expect(mapper.fromCalcResponse(body, f.input, 'v')).toMatchObject({ ok: false, error: { code: 'FISCAL_VALIDATION_FAILED', details: { reason: 'rtc_invalid_response' } } });
+  });
+
+  it('rejects wrong types and negative amounts', () => {
+    const f = load('ok-consultoria-2026');
+    const wrong = JSON.parse(JSON.stringify(f.steps[0].response));
+    wrong.objetos[0].tribCalc.IBSCBS.gIBSCBS.gCBS.vCBS = 'abc';
+    expect(mapper.fromCalcResponse(wrong, f.input, 'v').ok).toBe(false);
+    const neg = JSON.parse(JSON.stringify(f.steps[0].response));
+    neg.objetos[0].tribCalc.IBSCBS.gIBSCBS.gCBS.vCBS = '-1.00';
+    expect(mapper.fromCalcResponse(neg, f.input, 'v').ok).toBe(false);
+  });
+
+  it('rejects a non-zero deferral instead of ignoring it', () => {
+    const f = load('ok-consultoria-2026');
+    const body = JSON.parse(JSON.stringify(f.steps[0].response));
+    body.objetos[0].tribCalc.IBSCBS.gIBSCBS.gCBS.gDif = { pDif: '10.00', vDif: '0.90' };
+    expect(mapper.fromCalcResponse(body, f.input, 'v')).toMatchObject({ ok: false, error: { code: 'TAX_CALCULATION_UNSUPPORTED' } });
+  });
+
+  it('keeps monetary values as decimal strings without float drift', () => {
+    const f = load('ok-consultoria-2026');
+    const body = JSON.parse(JSON.stringify(f.steps[0].response));
+    body.objetos[0].tribCalc.IBSCBS.gIBSCBS.gCBS.vCBS = '0.30';
+    const r = mapper.fromCalcResponse(body, f.input, 'v');
+    expect(r.ok && r.value.cbs?.amount).toBe('0.30');
+  });
 });
 ```
-Antes de rodar, complete cada fixture com `input` (o `RtcCalculationInput` usado) e `expected` (o `RtcTaxResult` esperado, escrito **à mão a partir da resposta capturada**, conferindo cada número contra o README da Task 1). `CBS_AMOUNT_PATH` e `deleteAtPath` são helpers locais do spec.
+(Ajuste `ok-consultoria-2026.json` → `input` já contém os campos de `RtcCalculationInput` do plano 2; acrescente-lhe `issAmount` conforme o novo campo. Se algum `expected` das fixtures divergir do mapper por convenção de formatação, **corrija a convenção no mapper**, não o dado capturado; só altere `expected` se o contrato do `RtcTaxResult` mudar, e registre o motivo.)
 
-- [ ] **Step 2: Run to verify they fail** → FAIL.
+- [ ] **Step 2: Run to verify they fail** — `yarn jest src/modules/invoice/infra/fiscal/rtc src/shared/fiscal/ibge-uf.spec.ts` → FAIL.
 
-- [ ] **Step 3: Implement `DefaultRtcMapper`**: `toRequest` monta o corpo exatamente como na fixture (datas, valores em string/number conforme o OpenAPI; converta `DecimalString` → tipo exigido **sem passar por `number`** quando o motor aceitar string; se exigir `number`, converta com `Decimal#toNumber()` apenas na borda e documente). `fromResponse` extrai base/alíquotas/valores/reduções/diferimentos/fundamentação/memória, converte tudo para `DecimalString` via `toDecimal(...)`, valida tipos (qualquer campo obrigatório ausente ou de tipo errado ⇒ `fiscalError({ code: 'FISCAL_VALIDATION_FAILED', category: 'CALCULATION', details: { reason: 'rtc_invalid_response', path } })`), compõe `ibsTotal = ibsState + ibsCity` **somente se** o motor não o fornecer, e chama `assertRtcResultConsistent(result, input.grossAmount)`. `collectionWaived` vem do motor se informado; caso contrário `false`. `fromErrorBody` classifica por código/mensagem do formato capturado: validação de entrada ⇒ `FISCAL_VALIDATION_FAILED` (`VALIDATION`); classificação/local inexistente ⇒ `FISCAL_CLASSIFICATION_INVALID` (`CLASSIFICATION`); desconhecido ⇒ `null`.
+- [ ] **Step 3: Implement** `ibge-uf.ts`, `DefaultRtcMapper` (conversões para `number` só nas bordas de `toBaseRequest`/`toCalcRequest` com `Decimal#toNumber()`; respostas sempre via `toDecimal(string)`), a extensão de `RtcCalculationInput.issAmount` e o ajuste do step do plano 2.
 
-- [ ] **Step 4: Run to verify they pass** — `yarn jest src/modules/invoice/infra/fiscal/rtc && yarn typecheck` → PASS. Rode também os testes do plano 2 que usam `RtcCalculatorPort` (`yarn jest src/modules/invoice`).
+- [ ] **Step 4: Run to verify they pass** — `yarn jest src/modules/invoice src/shared/fiscal && yarn typecheck && yarn typecheck:tests` → PASS (incluindo os testes do plano 2 que usam `RtcCalculatorPort`).
 
-- [ ] **Step 5: Contract test contra a instância real (opcional/etiquetado).** Crie `src/modules/invoice/infra/fiscal/rtc/rtc-contract.rtc-integration.spec.ts`, `describe.skip` sem `RTC_CALCULATOR_URL`; com a variável, executa cada fixture `ok-*` contra a Calculadora local e compara o `expected` (valores devem coincidir com a captura da mesma versão). Documente em `docs/fiscal/rtc/README.md` como rodar (`RTC_CALCULATOR_URL=http://localhost:<porta> yarn jest rtc-integration`). Registre em `docs/fiscal/homologation.md` a data e a versão do motor contra a qual passou.
+- [ ] **Step 5: Teste de contrato contra a instância real (etiquetado).** `rtc-contract.rtc-integration.spec.ts`, `describe.skip` sem `RTC_CALCULATOR_URL`: para cada fixture `ok-*`, executa `steps[].request` na instância e confere `expected`. Rode: `RTC_CALCULATOR_URL=http://localhost:18080/api yarn jest rtc-integration`. Registre data e versão (`1.6.0/V0059`) em `docs/fiscal/homologation.md`.
 
-- [ ] **Step 6: Commit** — `git commit -m "feat(rtc): map the official calculator contract with golden fixtures"`
+- [ ] **Step 6: Commit** — `git commit -m "feat(rtc): map the official calculator contract with real fixtures"`
 
 ---
 
-## Task 4: Catálogos NBS / CST / cClassTrib / cIndOp
+## Task 4: Validação de NBS / CST / cClassTrib / cIndOp por consulta à Calculadora
+
+Os catálogos da Calculadora **não trazem datas de vigência**: cada resposta vale para o parâmetro `data`. Por isso, em vez de arquivos JSON versionados, a validação consulta o motor com a **data da competência** (e guarda a versão dos dados no snapshot). cTribNac continua no JSON do plano 2 (o motor não tem a lista nacional).
 
 **Files:**
-- Create: `scripts/build-rtc-catalogs.ts`
-- Create: `src/modules/invoice/infra/fiscal/catalog/{nbs,cst,cclasstrib,cindop}.json` (gerados)
-- Modify: `src/modules/invoice/domain/fiscal/classification/ctribnac-catalog.ts` → renomear para `json-fiscal-catalog.ts` (mantenha re-export)
-- Test: `json-fiscal-catalog.spec.ts` (estende o spec do plano 2)
+- Modify (plano 2): `src/modules/invoice/domain/fiscal/classification/fiscal-catalog.port.ts`, `classify-service.ts`, `application/fiscal/steps/service-tax-classifier.step.ts` e seus specs
+- Create: `src/modules/invoice/infra/fiscal/rtc/rtc-fiscal-catalog.ts`, `rtc-fiscal-catalog.spec.ts`
+- Create: `src/modules/invoice/infra/fiscal/composite-fiscal-catalog.ts`
+- Modify: `src/modules/invoice/invoice.module.ts`
 
 **Interfaces:**
-- Consumes: endpoints de catálogo registrados na Task 1 (README); `IFiscalCatalog.validateClassification`.
-- Produces: `JsonFiscalCatalog` constrói-se com `{ ctribnac, nbs?, cst?, cclasstrib?, cindop?, relations? }`; `validateClassification` passa a devolver `validated | invalid | ambiguous` quando os catálogos correspondentes estão carregados.
+- Modifica o port do plano 2 para **assíncrono** e com transitoriedade explícita:
+  ```ts
+  export type ClassificationValidation =
+    | { status: 'validated'; versions: Record<string, string> }
+    | { status: 'unavailable'; reason: string; transient: boolean }      // transient=true: motor fora do ar
+    | { status: 'invalid'; issues: Array<{ field: string; reason: string }> }
+    | { status: 'ambiguous'; candidates: Array<{ cst: string; classCode: string }> };
+  abstract validateClassification(input: {...}, date: string): Promise<ClassificationValidation>;
+  // classifyService passa a ser async; o step faz await. Quando status === 'unavailable' && transient,
+  // o classificador devolve TAX_CALCULATION_UNAVAILABLE (INTEGRATION, retryable) — NÃO marca catalogValidated=false.
+  ```
+- `RtcFiscalCatalog implements` a validação usando o `RtcHttpClient` da Task 2 e estes endpoints: `GET /calculadora/dados-abertos/nbs/lista?data=` (NBS existe), `GET /calculadora/nfse/situacoes-classificacoes-tributarias?nbs=&data=` (o par CST × cClassTrib informado precisa estar na lista da NBS; lista com **uma** combinação e nada informado ⇒ pode ser proposta como `validated`/inequívoca; mais de uma e nada informado ⇒ `ambiguous` com `candidates`), `POST /calculadora/nfse/indicador-operacao/validate` (cIndOp × cClassTrib × NBS × cTribNac — **capture a fixture real na Step 1**), `GET /calculadora/nfse/indicador-operacao?dataOcorrenciaFatoGerador=&nbs=` (lista de cIndOp possíveis).
+- Cache em memória por `(endpoint, parâmetros, data)` com TTL de 6 h e limpeza quando `versaoApp/versaoDb` mudar (checar a versão a cada 60 s); `versions` devolvido: `{ rtc: '1.6.0/V0059' }`.
+- `CompositeFiscalCatalog extends IFiscalCatalog`: `lookupServiceCode` vem do `JsonFiscalCatalog` (cTribNac); `validateClassification` vem do `RtcFiscalCatalog` quando o RTC está configurado, senão `{ status: 'unavailable', transient: false }`.
 
-Relações a validar (somente as que o catálogo oficial expressa): `cClassTrib` existe e é compatível com o `CST` informado; `cIndOp` existe; `nbsCode` existe; (se o catálogo trouxer correlação `cTribNac → NBS` ou `NBS → cClassTrib`, valide-a; **se houver mais de uma possibilidade e nada informado ⇒ `ambiguous` com `candidates`**). Vigência: cada entrada tem `validFrom/validUntil` quando o motor as fornece; a validação usa a data da competência.
+- [ ] **Step 1: Capturar a fixture de `indicador-operacao/validate`.** Com a Calculadora local no ar, descubra o corpo (`NfseValidacaoIndicadorOperacaoInput` no `openapi.json`), chame com um cIndOp retornado por `GET nfse/indicador-operacao?…&nbs=115011000` (válido) e com um incompatível, e salve as duas respostas em `docs/fiscal/rtc/fixtures/ok-indicador-valido.json` e `error-indicador-incompativel.json` (mesmo formato das outras).
 
-- [ ] **Step 1: Script.** `scripts/build-rtc-catalogs.ts` chama **apenas** os endpoints de catálogo documentados na Task 1 contra `--url` (a instância local), pagina se necessário, e grava cada JSON com `{ kind, version, sourceUrl, publishedAt, checksum, entries }` (checksum = sha256 do corpo bruto concatenado; `version` = versão dos dados abertos informada pelo motor, nunca inventada). Execute e revise o diff do JSON no PR.
+- [ ] **Step 2: Write the failing tests** (servidor HTTP fake que serve as respostas reais já capturadas: lista de NBS contendo `115011000`, `situacoes-classificacoes` ⇒ `[{ cst '000', classe '000001' }]`, e as fixtures do Step 1): NBS inexistente ⇒ `invalid`; par CST × cClassTrib fora da lista da NBS ⇒ `invalid`; par correto ⇒ `validated` com `versions.rtc`; nada informado e uma combinação ⇒ proposta inequívoca; duas combinações ⇒ `ambiguous` com `candidates`; cIndOp incompatível ⇒ `invalid`; **a data da competência é enviada** em todas as consultas (assert no servidor); segunda chamada igual vem do cache (contador no servidor); mudança de `versaoDb` invalida o cache; motor fora do ar ⇒ `unavailable` com `transient: true`; RTC não configurado ⇒ `unavailable` com `transient: false`. No classificador do plano 2: `transient` ⇒ erro retryable `TAX_CALCULATION_UNAVAILABLE`; `invalid` ⇒ `FISCAL_CLASSIFICATION_INVALID` com `details.issues`.
 
-- [ ] **Step 2: Write failing tests** em `json-fiscal-catalog.spec.ts` usando **trechos reais** dos JSON gerados (carregue o arquivo e escolha entradas existentes programaticamente: `entries[0]`, uma entrada de `cclasstrib` com CST compatível etc. — nada de códigos digitados à mão):
+- [ ] **Step 3: Run (FAIL) → implement → run (PASS)** — `yarn jest src/modules/invoice && yarn typecheck && yarn typecheck:tests`. Atualize os specs do plano 2 (`classify-service.spec.ts`, `service-tax-classifier.step.spec.ts`, `tax-applicability.step.spec.ts`) para `await`, e confirme que `catalogValidated` passa a `true` com o catálogo real.
 
-```ts
-it('validates a CST/cClassTrib pair that exists in the official catalog', ...);
-it('rejects a cClassTrib incompatible with the CST', ...);              // pega um cClassTrib e um CST de outra família
-it('rejects an unknown NBS / cIndOp', ...);
-it('honors validity dates of catalog entries (competence date)', ...);
-it('returns ambiguous with candidates when the catalog maps one service to several classifications and none was informed', ...);
-it('reports the loaded catalog versions in the result', ...);
-it('stays "unavailable" for kinds whose files are not loaded', ...);
-```
-
-- [ ] **Step 3: Run (FAIL) → implement → run (PASS)** — `yarn jest src/modules/invoice/domain/fiscal/classification && yarn typecheck`.
-
-- [ ] **Step 4: Atualizar o classificador do plano 2.** Com catálogos carregados, `catalogValidated` passa a `true` nos casos `validated`; os testes do `classify-service` e do `TaxApplicabilityStep` que usavam `catalogValidated: false` por indisponibilidade devem continuar passando (fake) e ganhar um caso com o catálogo real. Garanta que `nest-cli.json > assets` copia os quatro novos JSON (`yarn build && ls dist/modules/invoice/infra/fiscal/catalog`).
-
-- [ ] **Step 5: Commit** — `git commit -m "feat(fiscal): validate NBS, CST, cClassTrib and cIndOp against official catalogs"`
+- [ ] **Step 4: Commit** — `git commit -m "feat(fiscal): validate NBS, CST, cClassTrib and cIndOp against the calculator by competence date"`
 
 ---
 
@@ -504,3 +607,51 @@ docker compose -f deploy/docker-compose.yml config --quiet
 Expected: tudo verde. Relate separadamente qualquer falha pré-existente.
 
 - [ ] **Step 6: Commit** — `git commit -m "docs(fiscal): runbooks, homologation record and limitations"`
+
+---
+
+## Task 10: Vigilância de versão da Calculadora
+
+A Calculadora tem versão do programa (`1.6.0`) e da base de dados (`V0059`), e o governo publica atualizações com frequência (o arquivo oficial foi substituído no mesmo endereço em 2026-10-14). Sem atualização, os valores divergem da Sefin e a conciliação acusa.
+
+**Files:**
+- Create: `.github/workflows/rtc-version-watch.yml`
+- Modify: `deploy/README.md` (runbook "atualizar a Calculadora")
+- Create: `docs/fiscal/runbooks/rtc-update.md`
+
+- [ ] **Step 1: Workflow semanal** (uma única requisição por execução, por causa do WAF; falha de WAF vira aviso, não issue):
+```yaml
+name: rtc-version-watch
+on:
+  schedule: [{ cron: '0 12 * * 1' }]
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare published and pinned versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pinned="$(tr -d '[:space:]' < deploy/rtc-pinned-version.txt)"
+          body="$(curl -fsS --retry 3 --retry-delay 30 -m 30             'https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/dados-abertos/versao' || true)"
+          published="$(printf '%s' "$body" | jq -r 'select(.versaoApp) | "\(.versaoApp)/\(.versaoDb)"' 2>/dev/null || true)"
+          if [ -z "$published" ]; then
+            echo "::warning::Could not read the published version (WAF or outage). Nothing was compared."
+            exit 0
+          fi
+          if [ "$published" != "$pinned" ]; then
+            title="Calculadora RTC: nova versão publicada ($published)"
+            if ! gh issue list --state open --search "in:title \"$title\"" --json number -q '.[0].number' | grep -q .; then
+              gh issue create --title "$title" \
+                --body "Versão fixada: \`$pinned\`. Publicada: \`$published\`. Siga docs/fiscal/runbooks/rtc-update.md."
+            fi
+          fi
+```
+- [ ] **Step 2: Runbook** `docs/fiscal/runbooks/rtc-update.md`: (1) baixar o zip novo e calcular o SHA-256; (2) reconstruir a imagem com `RTC_ZIP_URL`/`RTC_ZIP_SHA256` e publicar com a tag `rtc-<versaoApp>-<versaoDb>`; (3) subir em staging e rodar `scripts/rtc-smoke.sh` e `RTC_CALCULATOR_URL=… yarn jest rtc-integration`; (4) recapturar as fixtures (README em `docs/fiscal/rtc`), revisar o diff do `expected` em PR; (5) atualizar `deploy/rtc-pinned-version.txt`, `docs/fiscal/rtc/ZIP_SHA256.txt` e `docs/fiscal/homologation.md`; (6) promover a imagem. Inclua o critério de rollback: voltar à tag anterior da imagem.
+- [ ] **Step 3: Alerta em runtime.** No `HttpRtcCalculatorAdapter`, `version()` registra o gauge `greenflow.rtc.version_info` com atributo `version` e emite `warn` uma vez por hora se `versaoApp/versaoDb` ≠ `RTC_EXPECTED_VERSION` (env opcional, igual a `deploy/rtc-pinned-version.txt`). Teste: versão diferente ⇒ warn emitido uma vez no intervalo.
+- [ ] **Step 4: Commit** — `git commit -m "chore(rtc): watch for new calculator versions"`

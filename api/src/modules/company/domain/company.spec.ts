@@ -15,7 +15,6 @@ describe('Company', () => {
 
       expect(company.legalName).toBe('Acme Corporation');
       expect(company.taxId).toBe(VALID_CNPJ);
-      expect(company.taxRegime).toBe('Simples Nacional');
       expect(company.status).toBe('pending_setup');
       expect(company.tenantId).toBe('tenant-123');
       expect(company.id).toBeDefined();
@@ -65,18 +64,34 @@ describe('Company', () => {
       ).toThrow('Company.taxId is required');
     });
 
-    it('throws when taxRegime is missing', () => {
-      expect(() =>
-        Company.create(
-          {
-            legalName: 'Valid Name',
-            taxId: VALID_CNPJ,
+    it('does not throw when taxRegime is missing (regime lives on the fiscal profile)', () => {
+      const company = Company.create(
+        {
+          legalName: 'Valid Name',
+          taxId: VALID_CNPJ,
+          municipalityCode: '3550308',
+        } as never,
+        'tenant-123',
+      );
+      expect(company.legalName).toBe('Valid Name');
+    });
 
-            taxRegime: undefined as any,
-          },
-          'tenant-123',
-        ),
-      ).toThrow('Company.taxRegime is required');
+    it('ignores regime input and keeps it off the aggregate snapshot', () => {
+      const company = Company.create(
+        {
+          legalName: 'Valid Name',
+          taxId: VALID_CNPJ,
+          taxRegime: 'MEI',
+          simpleNational: true,
+          specialRegime: '3',
+          municipalityCode: '3550308',
+        },
+        'tenant-123',
+      );
+      const snapshot = company.toSnapshot();
+      expect(snapshot).not.toHaveProperty('taxRegime');
+      expect(snapshot).not.toHaveProperty('simpleNational');
+      expect(snapshot).not.toHaveProperty('specialRegime');
     });
 
     it('trims whitespace from legalName and taxId', () => {
@@ -168,20 +183,20 @@ describe('Company', () => {
       expect(company.isReady).toBe(true);
     });
 
-    it('throws when municipalReg is missing for ready transition', () => {
+    it('can become ready without a municipal registration', () => {
       const company = Company.create(
         {
           legalName: 'Test Company',
           taxId: VALID_CNPJ,
           taxRegime: 'MEI',
           municipalityCode: '3550308',
-          environment: 'live', // municipalReg is not set
+          environment: 'live',
         },
         'tenant-123',
       );
 
-      expect(() => company.markReady()).toThrow(/missing/i);
-      expect(company.status).toBe('pending_setup');
+      expect(() => company.markReady()).not.toThrow();
+      expect(company.status).toBe('ready');
     });
 
     it('throws when trying to mark a blocked company as ready', () => {
@@ -301,6 +316,32 @@ describe('Company', () => {
       expect(company.tradeName).toBe('Trimmed Trade');
       expect(company.addressCity).toBe('Sao Paulo');
     });
+
+    it('ignores regime fields on update (regime lives on the fiscal profile)', () => {
+      const company = Company.create(
+        {
+          legalName: 'Test Company',
+          taxId: VALID_CNPJ,
+          taxRegime: 'MEI',
+          municipalityCode: '3550308',
+        },
+        'tenant-123',
+      );
+      const before = company.toSnapshot();
+
+      company.update({
+        taxRegime: 'Lucro Real',
+        simpleNational: true,
+        specialRegime: '1',
+      });
+
+      const after = company.toSnapshot();
+      expect(after).not.toHaveProperty('taxRegime');
+      expect({ ...after, updatedAt: null }).toEqual({
+        ...before,
+        updatedAt: null,
+      });
+    });
   });
 
   describe('markDeleted', () => {
@@ -332,14 +373,12 @@ describe('Company', () => {
         tenantId: 'tenant-123',
         legalName: 'Reconstituted Company',
         taxId: '22334455000182',
-        taxRegime: 'Lucro Presumido' as const,
         municipalityCode: '3550308',
         environment: 'live' as const,
         status: 'ready' as const,
         fiscalSchemaVersion: 'v2_02',
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-02'),
-        simpleNational: false,
       };
 
       const company = Company.reconstitute(props);
@@ -373,8 +412,51 @@ describe('Company', () => {
     });
   });
 
+  describe('municipal registration in the DPS', () => {
+    const make = (extra: Record<string, unknown> = {}) =>
+      Company.create(
+        {
+          legalName: 'X',
+          taxId: VALID_CNPJ,
+          taxRegime: 'MEI',
+          municipalityCode: '3550308',
+          municipalReg: '12345',
+          ...extra,
+        },
+        't',
+      );
+
+    it('is not sent by default, even when the company has one', () => {
+      const company = make();
+      expect(company.municipalReg).toBe('12345');
+      expect(company.sendMunicipalReg).toBe(false);
+      expect(company.municipalRegForDps).toBeUndefined();
+    });
+
+    it('is sent only after the company opts in', () => {
+      const company = make({ sendMunicipalReg: true });
+      expect(company.municipalRegForDps).toBe('12345');
+      company.update({ sendMunicipalReg: false });
+      expect(company.municipalRegForDps).toBeUndefined();
+    });
+
+    it('sends nothing when opted in without a registration', () => {
+      expect(
+        make({ municipalReg: undefined, sendMunicipalReg: true })
+          .municipalRegForDps,
+      ).toBeUndefined();
+    });
+
+    it('turns the option off when the registration is removed', () => {
+      const company = make({ sendMunicipalReg: true });
+      company.update({ municipalReg: null });
+      expect(company.sendMunicipalReg).toBe(false);
+      expect(company.municipalRegForDps).toBeUndefined();
+    });
+  });
+
   describe('getMissingForReady', () => {
-    it('returns municipal_registration when missing', () => {
+    it('does not ask for a municipal registration', () => {
       const company = Company.create(
         {
           legalName: 'Test Company',
@@ -386,7 +468,9 @@ describe('Company', () => {
         'tenant-123',
       );
 
-      expect(company.getMissingForReady()).toContain('municipal_registration');
+      expect(company.getMissingForReady()).not.toContain(
+        'municipal_registration',
+      );
     });
 
     it('returns empty array when all required fields present', () => {
@@ -445,7 +529,7 @@ describe('Company', () => {
   });
 
   describe('getSetupGaps', () => {
-    it('returns municipal_registration for live without municipalReg', () => {
+    it('does not require municipalReg for live', () => {
       const company = Company.create(
         {
           legalName: 'X',
@@ -456,7 +540,7 @@ describe('Company', () => {
         },
         't',
       );
-      expect(company.getSetupGaps()).toContain('municipal_registration');
+      expect(company.getSetupGaps()).toEqual([]);
     });
     it('returns empty for live with municipalReg', () => {
       const company = Company.create(
@@ -509,7 +593,7 @@ describe('Company', () => {
           legalName: 'X',
           taxId: VALID_CNPJ,
           taxRegime: 'MEI',
-          municipalityCode: '3550308',
+          municipalityCode: '',
           environment: 'live',
         },
         't',

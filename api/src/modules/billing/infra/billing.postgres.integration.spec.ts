@@ -129,7 +129,7 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
       await context
         .getManager()!
         .query(
-          `INSERT INTO "${schema}".nfse_companies (id,tenant_id,legal_name,tax_id,tax_regime,environment) VALUES ($1,$2,'Fixture','11222333000181','MEI','test')`,
+          `INSERT INTO "${schema}".nfse_companies (id,tenant_id,legal_name,tax_id,environment) VALUES ($1,$2,'Fixture','11222333000181','test')`,
           [companyId, tenantId],
         );
       await context

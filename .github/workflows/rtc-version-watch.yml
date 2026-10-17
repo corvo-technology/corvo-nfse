@@ -1,0 +1,30 @@
+name: rtc-version-watch
+on:
+  schedule: [{ cron: '0 12 * * 1' }]
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Compare published and pinned versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pinned="$(tr -d '[:space:]' < deploy/rtc-pinned-version.txt)"
+          body="$(curl -fsS --retry 3 --retry-delay 30 -m 30 'https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/dados-abertos/versao' || true)"
+          published="$(printf '%s' "$body" | jq -r 'select(.versaoApp) | "\(.versaoApp)/\(.versaoDb)"' 2>/dev/null || true)"
+          if [ -z "$published" ]; then
+            echo "::warning::Could not read the published version (WAF or outage). Nothing was compared."
+            exit 0
+          fi
+          if [ "$published" != "$pinned" ]; then
+            title="Calculadora RTC: nova versão publicada ($published)"
+            if ! gh issue list --state open --search "in:title \"$title\"" --json number -q '.[0].number' | grep -q .; then
+              gh issue create --title "$title" \
+                --body "Versão publicada: $published. Versão fixada: $pinned. Seguir docs/fiscal/runbooks/rtc-update.md."
+            fi
+          fi

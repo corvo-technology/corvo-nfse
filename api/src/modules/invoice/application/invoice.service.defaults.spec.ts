@@ -1,3 +1,4 @@
+import { InvoiceIntakeService } from './invoice-intake.service';
 import { IdempotencyConflictError } from '../domain/errors';
 import { Company } from '@/modules/company/domain/company';
 import { CompanyNotFoundError } from '@/modules/company/domain/errors';
@@ -49,7 +50,7 @@ describe('Invoice fiscal defaults and idempotency', () => {
       queues as never,
       lifecycle as never,
       {} as never,
-      new InvoiceDomainService(),
+      new InvoiceIntakeService(companies as never, new InvoiceDomainService()),
       {} as never,
     );
   });

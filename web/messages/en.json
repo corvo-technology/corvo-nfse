@@ -65,7 +65,8 @@
       "settings": "Settings",
       "companies": "Companies",
       "invoices": "Tax invoices",
-      "billing": "Plan"
+      "billing": "Plan",
+      "agents": "AI agents"
     },
     "account": "ACCOUNT",
     "balance": "BALANCE",
@@ -336,6 +337,10 @@
             "label": "Email failed",
             "description": "Sending the invoice email failed."
           },
+          "fiscal_discrepancy": {
+            "label": "Fiscal discrepancy",
+            "description": "The authorized invoice differs from the calculated taxes."
+          },
           "cancelled": {
             "label": "Invoice cancelled",
             "description": "The invoice was cancelled (scheduled or at the Sefin)."
@@ -370,7 +375,8 @@
       "testSent": "Test event sent successfully",
       "testFailed": "Failed to send test event",
       "retrySuccess": "Delivery retried",
-      "retryFailed": "Failed to retry"
+      "retryFailed": "Failed to retry",
+      "testFailedStatus": "Your endpoint answered HTTP {status}"
     }
   },
   "ApiKeys": {
@@ -498,30 +504,22 @@
     }
   },
   "Settings": {
+    "portalDescription": "Manage your payment method, invoices and subscription in the Stripe portal.",
+    "portalNoSubscription": "Subscribe to a plan in Billing to manage payments here.",
+    "portalNoPermission": "Only members with billing permission can open the payment portal.",
+    "goToBilling": "Go to Billing",
     "title": "Settings",
     "subtitle": "Environment and billing settings.",
-    "environment": "Environment",
-    "comingSoon": "Coming soon",
     "billing": "Billing",
     "stripeEnding": "····4242",
     "visa": "Visa",
     "receiptsTo": "Receipts sent to financeiro@acme.com",
     "openStripePortal": "Open Stripe portal",
     "deleteWorkspace": "Delete workspace",
-    "deleteWorkspaceDesc": "Permanently remove this workspace and all its data. This action cannot be undone.",
-    "toggles": {
-      "blockOutsideHours": {
-        "label": "Block outside business hours",
-        "desc": "Prevent outbound messages when your business hours are closed."
-      },
-      "lowBalanceAlert": {
-        "label": "Low balance alert",
-        "desc": "Receive a notification when credit balance drops below 100 messages."
-      }
-    },
-    "paymentsPending": "The payment and billing portal is not available yet."
+    "deleteWorkspaceDesc": "Permanently remove this workspace and all its data. This action cannot be undone."
   },
   "Members": {
+    "inviteUnavailable": "Invitations are turned off for now.",
     "title": "Members",
     "subtitle": "Manage who has access to your workspace.",
     "invite": "Invite",
@@ -598,7 +596,11 @@
       "socialFailed": "Social login failed. Please try again.",
       "expiredCode": "Code expired. Please request a new one.",
       "workspaceConflict": "This email cannot create another Free workspace. Use an account with an active membership.",
-      "invalidEmail": "Enter a valid email address."
+      "invalidEmail": "Enter a valid email address.",
+      "oauth_failed": "We could not sign you in with that provider. Try again or use the email code.",
+      "oauth_denied": "You cancelled the sign-in. Pick another way to sign in when you are ready.",
+      "oauth_unavailable": "This sign-in is not available yet. Use the code sent to your email.",
+      "oauth_email_unverified": "The email on that account is not verified with the provider. Verify it there or sign in with the email code."
     },
     "perks": {
       "nfse": {
@@ -618,10 +620,10 @@
         "desc": "Structured responses, examples in Node, Python, and Go."
       }
     },
-    "freeCreditsTag": "30 FREE INVOICES PER MONTH",
+    "freeCreditsTag": "15 FREE INVOICES PER MONTH",
     "headline": "From first integration to tax invoice in minutes.",
     "afterSignup": "AFTER SIGNUP",
-    "footerNote": "No credit card required. No contract. 30 free invoices to get started.",
+    "footerNote": "No credit card required. No contract. 15 free invoices to get started.",
     "magicLink": {
       "sendCode": "Send code",
       "sending": "Sending...",
@@ -659,7 +661,7 @@
     "subtitle": "Issue NFS-e, manage multiple companies, send documents by email and automate your tax workflow with a single API.",
     "startFree": "Start free",
     "viewDocs": "View documentation",
-    "mono": "30 free invoices per month. No credit card required."
+    "mono": "15 free invoices per month. No credit card required."
   },
   "Nav": {
     "product": "Product",
@@ -674,9 +676,9 @@
   },
   "FreeTrial": {
     "eyebrow": "START FREE",
-    "title": "30 free invoices per month",
+    "title": "15 free invoices per month",
     "subtitle": "No credit card required.",
-    "description": "Integrate NFS-e issuance into your product with up to 30 authorized invoices per month for one company. The allowance renews on the first day of each month.",
+    "description": "Integrate NFS-e issuance into your product with up to 15 authorized invoices per month for one company. The allowance renews on the first day of each month.",
     "startFree": "Start free",
     "finePrint": "Limit of 3 production issuances per day. Allowances use UTC and do not roll over. Tests do not consume the allowance."
   },
@@ -704,7 +706,7 @@
       "porMes": "/month",
       "free": {
         "label": "Free plan",
-        "description": "30 invoices per month, 3 per day limit."
+        "description": "15 invoices per month, 3 per day limit."
       },
       "custom": {
         "label": "Contact us",
@@ -716,7 +718,7 @@
     "plans": {
       "free": {
         "name": "FREE",
-        "credits": "30",
+        "credits": "15",
         "price": "R$ 0",
         "unit": "",
         "bestFor": "Test the API and validate your integration.",
@@ -724,6 +726,8 @@
           "nfse": "NFS-e emission via API",
           "companies": "1 company",
           "dailyLimit": "3 invoices per day",
+          "email": "Email delivery",
+          "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
           "downloads": "XML and PDF download"
         }
@@ -738,6 +742,7 @@
           "nfse": "NFS-e emission via API",
           "companies": "Up to 10 companies",
           "email": "Email delivery",
+          "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
           "downloads": "XML and PDF download"
         }
@@ -752,6 +757,7 @@
           "nfse": "NFS-e emission via API",
           "companies": "Up to 50 companies",
           "email": "Email delivery",
+          "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
           "downloads": "XML and PDF download"
         }
@@ -766,6 +772,7 @@
           "nfse": "NFS-e emission via API",
           "companies": "Up to 500 companies",
           "email": "Email delivery",
+          "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
           "downloads": "XML and PDF download"
         }
@@ -780,6 +787,7 @@
           "nfse": "NFS-e emission via API",
           "companies": "Unlimited companies",
           "email": "Email delivery",
+          "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
           "downloads": "XML and PDF download"
         }
@@ -805,7 +813,12 @@
     },
     "effective": "Effective cost:",
     "perNoteShort": "per invoice",
-    "currentPlan": "Your plan"
+    "currentPlan": "Your plan",
+    "included": {
+      "label": "Every plan includes",
+      "mcp": "MCP for AI agents",
+      "email": "Invoice delivery by email"
+    }
   },
   "Flow": {
     "eyebrow": "HOW IT WORKS",
@@ -877,7 +890,7 @@
     },
     "free": {
       "q": "Can I use Corvo for free?",
-      "a": "Yes. Free includes one company and up to 30 authorized production invoices per month, with a limit of 3 per day. The allowance renews on the first day of the month and limits use UTC. No credit card is required; test invoices do not consume this allowance."
+      "a": "Yes. Free includes one company and up to 15 authorized production invoices per month, with a limit of 3 per day. The allowance renews on the first day of the month and limits use UTC. No credit card is required; test invoices do not consume this allowance."
     },
     "multiCompany": {
       "q": "Can I manage multiple companies?",
@@ -918,7 +931,7 @@
     "description": "One integration to automate NFS-e issuance and track your product's growth.",
     "ctaPrimary": "Start free",
     "ctaSecondary": "Explore API",
-    "subtext": "30 free invoices per month to get started."
+    "subtext": "15 free invoices per month to get started."
   },
   "Footer": {
     "brand": "© Corvo. All rights reserved.",
@@ -970,7 +983,7 @@
       },
       "s7": {
         "title": "7. Plans, allowances and renewal",
-        "content": "Plans define the monthly invoice allowance, active company limit and usage limits shown in the offer and dashboard. Free allows one active company and up to 30 authorized production invoices per month, with a limit of 3 per day. Its allowance renews on the first day of each month; monthly and daily limits use UTC. Paid allowances follow the monthly subscription period shown in the dashboard. Allowances belong to the workspace, not to each member or API key. Unused allowance does not roll over or convert into cash. Once a limit is reached, new requests may be blocked until renewal or the purchase of appropriate capacity."
+        "content": "Plans define the monthly invoice allowance, active company limit and usage limits shown in the offer and dashboard. Free allows one active company and up to 15 authorized production invoices per month, with a limit of 3 per day. Its allowance renews on the first day of each month; monthly and daily limits use UTC. Paid allowances follow the monthly subscription period shown in the dashboard. Allowances belong to the workspace, not to each member or API key. Unused allowance does not roll over or convert into cash. Once a limit is reached, new requests may be blocked until renewal or the purchase of appropriate capacity."
       },
       "s8": {
         "title": "8. How usage and overage are calculated",
@@ -1087,7 +1100,7 @@
     "empty": "No companies registered.",
     "loadFailed": "We couldn't load your companies.",
     "status": {
-      "ready": "Ready",
+      "ready": "Registration complete",
       "pending_setup": "Setup pending",
       "blocked": "Blocked"
     },
@@ -1100,6 +1113,30 @@
     "viewCompany": "View details for {name}"
   },
   "Invoices": {
+    "anonymousCustomer": "Unidentified consumer",
+    "calculate": {
+      "button": "Calculate taxes",
+      "calculating": "Calculating…",
+      "title": "Pre-emission calculation",
+      "ready": "Ready to issue",
+      "blocked": "Cannot calculate yet",
+      "net": "Net amount receivable",
+      "taxes": "Taxes",
+      "withholdings": "Withholdings",
+      "noTaxes": "No taxes shown in this scenario.",
+      "pending": "Still missing",
+      "disclaimer": "Estimate before issuing. It is not a fiscal document and may differ from the final validation by Sefin.",
+      "unavailable": "The tax calculator is unavailable. Try again shortly.",
+      "failed": "Could not calculate.",
+      "stale": "The data changed. Calculate again.",
+      "tax": {
+        "iss": "ISS",
+        "cbs": "CBS",
+        "ibsState": "State IBS",
+        "ibsCity": "Municipal IBS",
+        "ibsTotal": "Total IBS"
+      }
+    },
     "title": "Tax invoices",
     "subtitle": "History of issued, processing, and rejected invoices.",
     "new": "New invoice",
@@ -1120,7 +1157,7 @@
       "customer": "Customer details",
       "service": "Service provided",
       "companyHint": "Who issues the invoice and which internal reference to use.",
-      "customerHint": "Who receives the service. CPF or CNPJ.",
+      "customerHint": "Who receives the service. Send the CPF or CNPJ, or leave everything blank to issue without a customer.",
       "serviceHint": "What was provided, where, and for how much."
     },
     "table": {
@@ -1190,7 +1227,9 @@
       "serviceCode": "Search by service name or type the code.",
       "municipalityCode": "7-digit IBGE code, e.g. 3550308",
       "serviceCodeDefault": "Company default: {code}. Leave empty to use it, or choose another code for this invoice.",
-      "municipalityDefault": "Company municipality: {code}. Leave empty to use it, or enter another service location for this invoice."
+      "municipalityDefault": "Company municipality: {code}. Leave empty to use it, or enter another service location for this invoice.",
+      "description": "Optional. When empty we use the service code's name.",
+      "serviceCodeFallback": "Optional. With no code on the invoice or the company, we use {code} (10.09, representation). Pick your own activity code."
     },
     "summary": {
       "title": "Invoice summary",
@@ -1205,13 +1244,16 @@
       "ready": "Ready to issue.",
       "email": "Email",
       "emailPending": "enter the email",
-      "emailOff": "don't send"
+      "emailOff": "don't send",
+      "noCustomer": "No customer"
     },
     "sendEmail": {
       "label": "Email the invoice to the customer",
       "hint": "The PDF and XML are sent to the customer's email as soon as the invoice is authorized.",
       "hintTest": "In test the subject gets [TESTE]. Use your own email."
-    }
+    },
+    "view": "View invoice",
+    "viewInvoice": "View details for {name}"
   },
   "Billing": {
     "title": "Plan and usage",
@@ -1331,7 +1373,8 @@
       "company": "Company",
       "address": "Address",
       "fiscal": "Tax",
-      "certificate": "Certificate"
+      "certificate": "Certificate",
+      "review": "Fiscal review"
     },
     "stepHint": {
       "company": "Start with the tax ID and name of the company that will issue invoices.",
@@ -1351,16 +1394,24 @@
     "later": "Upload later",
     "finish": "Finish",
     "hints": {
-      "municipalReg": "Number assigned by the municipality. Required to register in live mode; optional in test mode.",
-      "defaultServiceCode": "National tax code (cTribNac), with 6 digits. Used when an invoice does not specify another code. You can clear this default when editing."
+      "municipalReg": "Optional. Fill it only if the city registered this company's municipal registration in the national registry; otherwise the tax authority rejects the invoice (E0120).",
+      "defaultServiceCode": "National tax code (cTribNac), with 6 digits. Used when an invoice does not specify another code. You can clear this default when editing.",
+      "sendMunicipalReg": "Off by default. Tick it only if the city registered this company in the national registry and the tax authority requires it; otherwise the invoice is rejected (E0120)."
     },
     "fixFields": "Fix the highlighted fields.",
     "defaultServiceCode": "Default service code",
     "municipalityInvalid": "Enter an IBGE municipality code with exactly 7 digits.",
-    "municipalRegRequired": "Municipal registration is required to register in live mode.",
-    "serviceCodeInvalid": "The service code must have exactly 6 digits."
+    "serviceCodeInvalid": "The service code must have exactly 6 digits.",
+    "selectTaxRegime": "Select a tax regime",
+    "regimeRequired": "Select the company tax regime.",
+    "regimeDerived": "Simples Nacional is set from the selected regime.",
+    "editFiscalHint": "Review the regime and validity periods in Fiscal configuration on the company page.",
+    "reviewNext": "Continue to certificate",
+    "openCompany": "Open company",
+    "sendMunicipalReg": "Send the municipal registration on the invoice"
   },
   "CompanyDetail": {
+    "fiscalAdvanced": "Advanced fiscal configuration",
     "legalName": "Legal name",
     "taxRegime": "Tax regime",
     "municipalReg": "Municipal registration",
@@ -1412,19 +1463,13 @@
       "title": "Finish setup",
       "subtitle": "Check the fiscal municipality and issuance requirements for the selected environment.",
       "progress": "{done} of {total}",
-      "complete": "Setup complete. The company is ready to issue.",
-      "requiredLive": "required in live",
+      "complete": "Basic registration complete. Review fiscal configuration below before live issuance.",
       "testNote": "In test mode, municipal registration and a certificate are optional. The fiscal municipality must be configured.",
       "items": {
         "address": {
           "title": "Address",
           "hint": "Enter the ZIP code to fill in the address and IBGE code.",
           "action": "Complete"
-        },
-        "municipalReg": {
-          "title": "Municipal registration",
-          "hint": "Number issued by the city hall. Without it you can't issue in production.",
-          "action": "Add"
         },
         "certificate": {
           "title": "A1 digital certificate",
@@ -1444,6 +1489,7 @@
     "defaultServiceCode": "Default service code"
   },
   "InvoiceDetail": {
+    "anonymousCustomer": "Unidentified consumer",
     "title": "Invoice",
     "loading": "Loading invoice...",
     "failed": "Could not load the invoice.",
@@ -1637,5 +1683,324 @@
         "content": "Where processing involves an international transfer, the parties must follow the mechanisms and safeguards required by the LGPD and applicable regulations. This Addendum alone does not replace standard contractual clauses or another instrument required for a specific transfer. Send requests about instructions, providers, security measures or transfers to legal@corvo.tech."
       }
     }
+  },
+  "CompanyFiscal": {
+    "title": "Fiscal configuration",
+    "intro": "Review the company profile and the services used on invoices. Saved configuration is checked again for each operation and competence date.",
+    "date": "Competence date",
+    "dateHint": "Shows the profile and services effective on this date. It does not schedule or issue an invoice.",
+    "loading": "Loading fiscal configuration…",
+    "failed": "Could not load fiscal configuration.",
+    "retry": "Retry",
+    "noView": "You need company view permission to read fiscal configuration.",
+    "profileTitle": "Fiscal profile",
+    "servicesTitle": "Service classifications",
+    "profileMissing": "No fiscal profile is effective on this date.",
+    "profileAmbiguous": "Multiple fiscal profiles overlap on this date. Review the validity periods before issuing.",
+    "profilePending": "Fiscal profile awaiting review",
+    "profileApproved": "Fiscal profile approved",
+    "profileRejected": "Fiscal profile rejected",
+    "missing": "Not configured",
+    "yes": "Yes",
+    "no": "No",
+    "noEnd": "No end date",
+    "regime": "Tax regime",
+    "simpleNational": "Simples Nacional",
+    "specialRegime": "Special tax regime code",
+    "validFrom": "Effective from",
+    "validUntil": "Effective until (exclusive)",
+    "ibsOption": "Regular IBS/CBS option",
+    "ibsFrom": "Regular IBS/CBS option effective from",
+    "history": "Fiscal profile history",
+    "future": "Future validity period",
+    "source": "Source",
+    "approvedAt": "Approved at",
+    "createProfile": "Add fiscal profile",
+    "editProfile": "Edit fiscal profile",
+    "newPeriod": "New validity period",
+    "saveProfile": "Save fiscal profile",
+    "immutableProfile": "An approved fiscal period cannot be overwritten. Select a later start date to create a new period.",
+    "reviewProfile": "Review fiscal profile",
+    "approveProfile": "Approve fiscal profile",
+    "approveService": "Approve service",
+    "reviewService": "Review service",
+    "reviewServiceFor": "Review service {name}",
+    "reviewTitle": "Review saved fiscal data",
+    "reviewHint": "Approval confirms your review of the values below. It does not validate official catalogs or guarantee authorization.",
+    "acknowledge": "I reviewed the displayed fiscal data.",
+    "cancel": "Cancel",
+    "close": "Close",
+    "edit": "Edit",
+    "saveService": "Save service",
+    "addService": "Add service",
+    "serviceSaved": "Service classification saved.",
+    "serviceEmpty": "No service classifications are saved for this competence date.",
+    "serviceHint": "MEI may use a partial classification when the operation allows it. Other scenarios can require ISS, withholding and IBS/CBS information. Use the classification confirmed for your service.",
+    "serviceDefault": "Default service: {code}",
+    "noDefault": "No default service code. Each invoice must supply its service code.",
+    "serviceMissing": "The default service has no applicable saved classification on this date.",
+    "serviceAmbiguous": "More than one classification matches the default service. Resolve the overlap or send an explicit serviceProfileId when issuing.",
+    "serviceImmutable": "Approved services are read-only. A correction needs a new classification; overlapping profiles must be resolved before issuing.",
+    "name": "Service name",
+    "serviceCode": "National service code (cTribNac)",
+    "municipalServiceCode": "Municipal service code",
+    "operationNature": "Operation nature",
+    "incidenceMunicipalityCode": "ISS incidence municipality (IBGE)",
+    "nbsCode": "NBS code",
+    "cst": "CST",
+    "classCode": "cClassTrib",
+    "operationIndicator": "Operation indicator (cIndOp)",
+    "classificationHint": "Use confirmed catalog codes. The dashboard does not infer codes or rates.",
+    "issTaxation": "ISS taxation",
+    "issRate": "ISS rate (%)",
+    "issWithholdingDefault": "ISS withheld by default",
+    "withholdingPolicy": "Federal withholding policy",
+    "withholdingRates": "Federal withholding rates (%)",
+    "effectiveFrom": "Service effective from",
+    "effectiveUntil": "Service effective until (exclusive)",
+    "regimeApplicability": "Applicable tax regimes",
+    "allRegimes": "All regimes",
+    "classificationSource": "Classification source",
+    "catalogVersion": "Catalog version",
+    "advanced": "Advanced classification settings",
+    "select": "Select…",
+    "required": "Complete the required fields.",
+    "invalidDate": "Enter a valid date and an end date later than the start date.",
+    "invalidCode": "Enter a national service code with exactly 6 digits.",
+    "invalidMunicipality": "Enter an IBGE municipality code with exactly 7 digits.",
+    "invalidRate": "Rates must be between 0 and 100.",
+    "missingRates": "Enter at least one rate for a configured withholding policy.",
+    "approvalFailure": "Could not approve the saved fiscal configuration.",
+    "saveFailure": "Could not save fiscal configuration.",
+    "continueLater": "You can finish later from the company page. Live issuance requires an approved fiscal profile and applicable service classifications.",
+    "registration": "Registration",
+    "registrationHint": "Registration and certificate status are separate from fiscal approval.",
+    "statuses": {
+      "unreviewed": "Awaiting review",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "regimes": {
+      "MEI": "MEI",
+      "SIMPLES_NACIONAL": "Simples Nacional",
+      "LUCRO_PRESUMIDO": "Lucro Presumido",
+      "LUCRO_REAL": "Lucro Real",
+      "OUTRO_REGIME": "Other regime",
+      "UNKNOWN": "Unknown"
+    },
+    "operations": {
+      "SERVICE": "Service",
+      "GOODS": "Goods",
+      "MIXED": "Mixed operation",
+      "PARTNER_SALON": "Partner salon"
+    },
+    "iss": {
+      "NORMAL": "Normal",
+      "FIXED": "Fixed",
+      "EXEMPT": "Exempt"
+    },
+    "withholding": {
+      "UNKNOWN": "Not reviewed",
+      "NONE_CONFIRMED": "No withholding (confirmed)",
+      "CONFIGURED": "Configured rates"
+    }
+  },
+  "Agents": {
+    "title": "AI agents",
+    "subtitle": "Connect Claude, Cursor and other agents to Corvo to query and issue invoices by chat.",
+    "setup": {
+      "title": "How to connect",
+      "intro": "Add the Corvo MCP server to your agent. It opens the browser so you can sign in and approve access, with no keys to copy.",
+      "serverUrl": "MCP server URL",
+      "copy": "Copy",
+      "copied": "Copied",
+      "tools": "What the agent can do",
+      "toolList": [
+        "Find your companies (company_list)",
+        "Issue an invoice (nfse_issue)",
+        "Check an invoice status (nfse_query)",
+        "List invoices (nfse_list)",
+        "Download the PDF of an authorized invoice (nfse_download_pdf)"
+      ],
+      "testNote": "When you approve, you choose the environment: test (invoices with no fiscal value) or production (real invoices, using credits). Each connection stays in one environment; to switch, reconnect the agent.",
+      "docs": "Read the full documentation",
+      "clientsTitle": "Pick your agent",
+      "afterTitle": "What happens when you connect",
+      "after": [
+        "The browser opens on Corvo. Sign in if you are not already.",
+        "Pick the workspace and environment (test or production) and click Allow.",
+        "Go back to the agent: the Corvo tools are now available."
+      ],
+      "clients": {
+        "claude-code": {
+          "name": "Claude Code",
+          "steps": [
+            "In the terminal, add the server with the command below.",
+            "Inside Claude Code, type /mcp, pick corvo and select Authenticate."
+          ]
+        },
+        "claude-desktop": {
+          "name": "Claude Desktop",
+          "steps": [
+            "Open Settings → Connectors.",
+            "Click Add custom connector, enter a name (Corvo) and paste the server URL.",
+            "Click Connect and approve access in the browser."
+          ]
+        },
+        "cursor": {
+          "name": "Cursor",
+          "steps": [
+            "Open or create .cursor/mcp.json (project) or ~/.cursor/mcp.json (global).",
+            "Add the server as below and save.",
+            "In Settings → MCP, click Connect next to corvo."
+          ]
+        },
+        "vscode": {
+          "name": "VS Code",
+          "steps": [
+            "Create the .vscode/mcp.json file in your project.",
+            "Add the server as below and save.",
+            "Click Start above the corvo server and approve access."
+          ]
+        },
+        "codex": {
+          "name": "Codex",
+          "steps": [
+            "Edit ~/.codex/config.toml and add the server as below.",
+            "In the terminal, run codex mcp login corvo and approve access in the browser."
+          ]
+        },
+        "windsurf": {
+          "name": "Windsurf",
+          "steps": [
+            "Open ~/.codeium/windsurf/mcp_config.json.",
+            "Add the server as below and save.",
+            "Refresh the MCP list and authorize access when the browser opens."
+          ]
+        },
+        "other": {
+          "name": "Other",
+          "steps": [
+            "Use any MCP client that supports remote (HTTP) servers and OAuth.",
+            "Enter the server URL above. The client handles the login on its own."
+          ]
+        }
+      }
+    },
+    "connections": {
+      "title": "Connected apps",
+      "adminHint": "As an admin you can see and revoke every member's connections.",
+      "emptyTitle": "No agent connected",
+      "emptyBody": "When you approve an agent it shows up here, with its usage and a way to revoke it.",
+      "app": "App",
+      "permissions": "Permissions",
+      "neverUsed": "Never used",
+      "owner": "by {email}",
+      "you": "you",
+      "active": "Active",
+      "revoked": "Revoked",
+      "revoke": "Revoke",
+      "confirmTitle": "Revoke access?",
+      "confirmBody": "{name} loses access right away and has to be approved again to come back.",
+      "confirm": "Revoke",
+      "cancel": "Cancel",
+      "revokedToast": "Access revoked.",
+      "scopes": {
+        "nfse:read": "Query and download invoices",
+        "nfse:write": "Issue invoices"
+      },
+      "errors": {
+        "loadFailed": "Could not load the connections.",
+        "revokeFailed": "Could not revoke access."
+      },
+      "envTest": "Test",
+      "envLive": "Production",
+      "activity": "Activity",
+      "scopesShort": {
+        "nfse:read": "Read",
+        "nfse:write": "Issue"
+      },
+      "usageCompact": "{calls, plural, one {# call} other {# calls}} · {invoices, plural, one {# invoice issued} other {# invoices issued}}",
+      "connectedOn": "Connected {date}"
+    }
+  },
+  "McpAuthorize": {
+    "loading": "Loading…",
+    "wants": "{name} wants to access your Corvo account",
+    "returnTo": "After you decide, you go back to {host}.",
+    "canDo": "This agent will be able to:",
+    "workspace": "Workspace",
+    "workspaceBlocked": "Your role in this workspace does not allow these permissions.",
+    "manage": "You can revoke access at any time under AI agents.",
+    "allow": "Allow",
+    "deny": "Deny",
+    "allowedTitle": "Connected!",
+    "allowedBody": "You can go back to your agent now.",
+    "allowedHint": "If nothing happens, use the button below.",
+    "open": "Back to the agent",
+    "deniedTitle": "Access denied",
+    "deniedBody": "No permission was granted.",
+    "goDashboard": "Go to the dashboard",
+    "scopes": {
+      "nfse:read": "Query and download invoices",
+      "nfse:write": "Issue invoices"
+    },
+    "errors": {
+      "invalid": "Invalid or expired authorization link. Go back to the agent and try connecting again.",
+      "generic": "Could not complete this. Please try again.",
+      "forbidden": "Your role in this workspace cannot grant these permissions."
+    },
+    "environment": "Environment",
+    "envTest": "Test",
+    "envTestHint": "Invoices with no fiscal value. Good to start and validate.",
+    "envLive": "Production",
+    "envLiveHint": "Real invoices, with fiscal value and credit usage."
+  },
+  "LandingAgents": {
+    "eyebrow": "AI AGENTS",
+    "title": "Your AI agents can issue invoices.",
+    "description": "Connect Claude, Cursor or Codex to Corvo through MCP. Ask in plain language and the invoice goes out, with the same tax rules as the API.",
+    "points": {
+      "connect": "One command to connect, no key to copy.",
+      "approve": "You approve in the browser and pick test or production.",
+      "rules": "Same tax validation, email and webhooks as the API."
+    },
+    "connectLabel": "CONNECT WITH ONE COMMAND",
+    "copy": "Copy",
+    "copied": "Copied",
+    "agentsLabel": "Compatible agents",
+    "docs": "Read the MCP guide",
+    "chat": {
+      "status": "Claude Code · Corvo connected",
+      "env": "TEST",
+      "you": "YOU",
+      "agent": "AGENT",
+      "prompt": "Issue a R$ 450 consulting invoice for Padaria Estrela and email it to financeiro@padariaestrela.example.",
+      "listResult": "1 company ready to issue",
+      "issueResult": "invoice queued",
+      "reply": "Done. The R$ 450,00 NFS-e was sent for authorization, and the PDF and XML go to the customer's email as soon as it clears.",
+      "card": {
+        "label": "NFS-E",
+        "detail": "financeiro@padariaestrela.example",
+        "queued": "Queued",
+        "authorized": "Authorized"
+      }
+    }
+  },
+  "LandingSdks": {
+    "eyebrow": "SDKS",
+    "title": "Nine languages. One API.",
+    "description": "Official SDKs for Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir and .NET. Same operations, same tax rules, same authentication: pick the language you already ship in.",
+    "points": {
+      "same": "The same operations and field names in every language.",
+      "errors": "Errors come back as typed results, with the code and the request id.",
+      "webhooks": "Webhook signature verification and idempotency keys built in."
+    },
+    "languagesLabel": "Supported languages",
+    "tabsLabel": "Choose a language",
+    "copy": "Copy",
+    "copied": "Copied",
+    "source": "Source on GitHub",
+    "docs": "See all SDKs in the docs"
   }
 }

@@ -1,3 +1,6 @@
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
+import { assertTenantOwnership } from '@/infra/persistence/typeorm/tenant-scope';
+import { TypeOrmRepositoryHelper } from '@/infra/persistence/typeorm/typeorm-repository.helper';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import {
   persistTenantEntity,
@@ -7,7 +10,6 @@ import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import { queryCursorPage } from '@/shared/http/keyset-pagination';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, type FindOptionsWhere } from 'typeorm';
 import { Invoice, LastEmailStatus } from '../domain/invoice';
 import {
@@ -22,10 +24,11 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
   private readonly mapper = new InvoiceMapper();
   private readonly logger = new Logger(TypeOrmInvoiceRepository.name);
 
-  constructor(
-    @InjectRepository(InvoiceOrmEntity)
-    private readonly repo: Repository<InvoiceOrmEntity>,
-  ) {}
+  constructor(private readonly db: TypeOrmRepositoryHelper) {}
+
+  private get repo(): Repository<InvoiceOrmEntity> {
+    return this.db.repository(InvoiceOrmEntity);
+  }
 
   async findByAccessKeyAndTenantId(
     accessKey: string,
@@ -182,10 +185,54 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
     });
   }
 
+  async insert(invoice: Invoice, tenantId: string): Promise<void> {
+    return runWithTenant(tenantId, async () => {
+      assertTenantOwnership(tenantId, invoice.tenantId);
+      await this.repo.insert(
+        this.mapper.toPersistence(
+          invoice,
+        ) as QueryDeepPartialEntity<InvoiceOrmEntity>,
+      );
+    });
+  }
+
+  async findPendingReconciliation(
+    tenantId: string,
+    olderThan: Date,
+    limit: number,
+  ): Promise<Array<{ id: string; tenantId: string; companyId: string }>> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const rows = await this.repo
+        .createQueryBuilder('invoice')
+        .select(['invoice.id', 'invoice.tenantId', 'invoice.companyId'])
+        .where('invoice.tenant_id = :tenantId', { tenantId })
+        .andWhere('invoice.status IN (:...statuses)', {
+          statuses: ['processing', 'reconciliation_required'],
+        })
+        .andWhere('invoice.updated_at < :olderThan', { olderThan })
+        .take(limit)
+        .getMany();
+      return rows.map(({ id, tenantId, companyId }) => ({
+        id,
+        tenantId,
+        companyId,
+      }));
+    });
+  }
+
   async save(invoice: Invoice, tenantId: string): Promise<Invoice> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
+      assertTenantOwnership(tenantId, invoice.tenantId);
       const orm = this.mapper.toPersistence(invoice);
+      // Settled statuses: no fiscal retry can still need the signed pending XML.
+      if (
+        ['authorized', 'rejected', 'failed', 'cancelled'].includes(
+          invoice.status,
+        )
+      )
+        orm.pendingEmission = null;
       await persistTenantEntity(this.repo, orm, tenantId, [
         'companyId',
         'environment',

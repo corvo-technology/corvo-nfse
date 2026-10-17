@@ -24,7 +24,7 @@ describe('CompanyService.findByTaxId', () => {
 
   function build() {
     const repo = createMockRepo();
-    const service = new CompanyService(repo, {} as any, {} as any);
+    const service = new CompanyService(repo, {} as any, {} as any, {} as any);
     return { repo, service };
   }
 
@@ -59,6 +59,11 @@ describe('CompanyService.findByTaxId', () => {
 describe('CompanyService', () => {
   let service: CompanyService;
   let mockRepo: jest.Mocked<ICompanyRepository>;
+  let mockProfiles: {
+    record: jest.Mock;
+    current: jest.Mock;
+    findEffective: jest.Mock;
+  };
   let companyDomain: CompanyDomainService;
 
   const tenantId = 'tenant-123';
@@ -69,14 +74,12 @@ describe('CompanyService', () => {
     tenantId,
     legalName: 'Test Company',
     taxId: VALID_CNPJ,
-    taxRegime: 'Simples Nacional' as const,
     municipalityCode: '3550308',
     environment: 'test' as const,
     status: 'ready' as const,
     fiscalSchemaVersion: 'v2_02',
     createdAt: new Date(),
     updatedAt: new Date(),
-    simpleNational: true,
     municipalReg: 'INSCRICAO123',
     getMissingForReady: jest.fn().mockReturnValue([]),
     update: jest.fn(),
@@ -87,10 +90,16 @@ describe('CompanyService', () => {
   beforeEach(() => {
     mockRepo = createMockRepo();
     companyDomain = new CompanyDomainService();
+    mockProfiles = {
+      record: jest.fn().mockResolvedValue({}),
+      current: jest.fn().mockResolvedValue(null),
+      findEffective: jest.fn().mockResolvedValue(null),
+    };
     service = new CompanyService(
       mockRepo,
       { getStatus: jest.fn() } as any,
       companyDomain,
+      mockProfiles as any,
     );
   });
 
@@ -366,6 +375,208 @@ describe('CompanyService', () => {
 
       // getMissingForReady should NOT be called because blocked throws first
       expect(blockedCompany.getMissingForReady).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('fiscal profile routing', () => {
+    const openProfile = {
+      id: 'profile-1',
+      taxRegime: 'MEI',
+      simpleNational: false,
+      specialTaxRegime: null,
+      ibsCbsRegularOption: false,
+      ibsCbsRegularFrom: null,
+      validFrom: '2026-01-01',
+    };
+
+    it('create writes the initial fiscal profile from the request regime', async () => {
+      mockRepo.existsWithTaxId.mockResolvedValue(false);
+      mockRepo.save.mockImplementation(async (c) => c);
+
+      await service.create(
+        {
+          legalName: 'X',
+          taxId: VALID_CNPJ,
+          taxRegime: 'Simples Nacional',
+          simpleNational: true,
+          specialRegime: undefined,
+          municipalityCode: '3550308',
+        },
+        tenantId,
+        'test',
+      );
+
+      expect(mockProfiles.record).toHaveBeenCalledWith(
+        expect.any(String),
+        tenantId,
+        expect.objectContaining({
+          taxRegime: 'SIMPLES_NACIONAL',
+          simpleNational: true,
+          specialTaxRegime: null,
+          source: 'company_api',
+          reviewStatus: 'unreviewed',
+          validFrom: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        }),
+      );
+    });
+
+    it('create approves the initial profile when the caller is identified', async () => {
+      mockRepo.existsWithTaxId.mockResolvedValue(false);
+      mockRepo.save.mockImplementation(async (c) => c);
+
+      await service.create(
+        {
+          legalName: 'X',
+          taxId: VALID_CNPJ,
+          taxRegime: 'MEI',
+          municipalityCode: '3550308',
+        },
+        tenantId,
+        'test',
+        'api-key-owner',
+      );
+
+      expect(mockProfiles.record).toHaveBeenCalledWith(
+        expect.any(String),
+        tenantId,
+        expect.objectContaining({
+          taxRegime: 'MEI',
+          source: 'company_api',
+          reviewStatus: 'approved',
+          reviewedBy: 'api-key-owner',
+        }),
+      );
+    });
+
+    it('create derives simpleNational from the regime when omitted', async () => {
+      mockRepo.existsWithTaxId.mockResolvedValue(false);
+      mockRepo.save.mockImplementation(async (c) => c);
+
+      await service.create(
+        {
+          legalName: 'X',
+          taxId: VALID_CNPJ,
+          taxRegime: 'MEI',
+          municipalityCode: '3550308',
+        },
+        tenantId,
+        'test',
+      );
+
+      expect(mockProfiles.record).toHaveBeenCalledWith(
+        expect.any(String),
+        tenantId,
+        expect.objectContaining({ simpleNational: true }),
+      );
+    });
+
+    it('update records the changed regime as approved by the caller', async () => {
+      const existingCompany = {
+        ...mockCompany,
+        update: jest.fn(),
+        toSnapshot: jest.fn().mockReturnValue({}),
+      };
+      mockRepo.findByIdAndTenantId.mockResolvedValue(existingCompany as any);
+      mockRepo.save.mockImplementation(async (c) => c);
+      mockProfiles.current.mockResolvedValue(openProfile);
+
+      await service.update(
+        'company-id-1',
+        { taxRegime: 'Simples Nacional' },
+        tenantId,
+        'test',
+        'api-key-owner',
+      );
+
+      expect(mockProfiles.record).toHaveBeenCalledWith(
+        'company-id-1',
+        tenantId,
+        expect.objectContaining({
+          reviewStatus: 'approved',
+          reviewedBy: 'api-key-owner',
+        }),
+      );
+    });
+
+    it('update appends a new profile only when the regime changed', async () => {
+      const existingCompany = {
+        ...mockCompany,
+        update: jest.fn(),
+        toSnapshot: jest.fn().mockReturnValue({}),
+      };
+      mockRepo.findByIdAndTenantId.mockResolvedValue(existingCompany as any);
+      mockRepo.save.mockImplementation(async (c) => c);
+      mockProfiles.current.mockResolvedValue(openProfile);
+
+      await service.update(
+        'company-id-1',
+        { taxRegime: 'Simples Nacional' },
+        tenantId,
+        'test',
+      );
+      expect(mockProfiles.record).toHaveBeenCalledTimes(1);
+
+      mockProfiles.record.mockClear();
+      await service.update(
+        'company-id-1',
+        { legalName: 'Novo nome' },
+        tenantId,
+        'test',
+      );
+      expect(mockProfiles.record).not.toHaveBeenCalled();
+    });
+
+    it('update does not append when the requested regime equals the current one', async () => {
+      const existingCompany = {
+        ...mockCompany,
+        update: jest.fn(),
+        toSnapshot: jest.fn().mockReturnValue({}),
+      };
+      mockRepo.findByIdAndTenantId.mockResolvedValue(existingCompany as any);
+      mockRepo.save.mockImplementation(async (c) => c);
+      mockProfiles.current.mockResolvedValue({
+        ...openProfile,
+        taxRegime: 'SIMPLES_NACIONAL',
+      });
+
+      await service.update(
+        'company-id-1',
+        { taxRegime: 'Simples Nacional' },
+        tenantId,
+        'test',
+      );
+      expect(mockProfiles.record).not.toHaveBeenCalled();
+    });
+
+    it('currentRegime reads the open profile into legacy-shaped values', async () => {
+      mockProfiles.current.mockResolvedValue({
+        ...openProfile,
+        taxRegime: 'SIMPLES_NACIONAL',
+        simpleNational: true,
+        specialTaxRegime: '3',
+      });
+
+      const regime = await service.currentRegime('company-id-1', tenantId);
+
+      expect(mockProfiles.current).toHaveBeenCalledWith(
+        'company-id-1',
+        tenantId,
+      );
+      expect(regime).toEqual({
+        taxRegime: 'Simples Nacional',
+        simpleNational: true,
+        specialRegime: '3',
+      });
+    });
+
+    it('currentRegime returns null regime when no profile exists', async () => {
+      mockProfiles.current.mockResolvedValue(null);
+      const regime = await service.currentRegime('company-id-1', tenantId);
+      expect(regime).toEqual({
+        taxRegime: null,
+        simpleNational: false,
+        specialRegime: null,
+      });
     });
   });
 });

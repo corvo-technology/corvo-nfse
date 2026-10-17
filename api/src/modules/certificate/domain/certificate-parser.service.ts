@@ -7,8 +7,13 @@ import {
   CertificateTaxIdMismatchError,
 } from './errors';
 
-const CNPJ_REGEX = /\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/;
-const CNPJ_REGEX_RAW = /\b(\d{14})\b/;
+/** Formatted CNPJ, numeric or alphanumeric (2026 format): 11.222.333/0001-81 or RL.J1X.FI8/0001-02. */
+const CNPJ_REGEX =
+  /\b[0-9A-Z]{2}\.[0-9A-Z]{3}\.[0-9A-Z]{3}\/[0-9A-Z]{4}-\d{2}\b/;
+/** 14 characters at the end of the name ("EMPRESA LTDA:11222333000181"); the last two are digits. */
+const CNPJ_AT_END = /(?:^|[^0-9A-Z])([0-9A-Z]{12}\d{2})\s*$/;
+/** ICP-Brasil: otherName in subjectAltName holding the CNPJ of an e-CNPJ certificate. */
+const OID_ICP_BRASIL_CNPJ = '2.16.76.1.3.3';
 
 export class CertificateParserService {
   parseP12(p12Buffer: Buffer, password: string): ParsedP12 {
@@ -76,6 +81,7 @@ export class CertificateParserService {
       const fingerprint = md.digest().toHex().toUpperCase();
 
       return {
+        taxId: this.extractTaxId(cert),
         serialNumber,
         issuer,
         subject,
@@ -100,15 +106,56 @@ export class CertificateParserService {
     }
   }
 
+  /**
+   * CNPJ the certificate was issued to. The official place is the ICP-Brasil
+   * otherName (OID 2.16.76.1.3.3) in subjectAltName; the CN ("NAME:CNPJ") is the
+   * fallback. Other numbers in the subject, such as the CNPJ of the registration
+   * authority in an OU, are never used. Returns null when none is found (e-CPF).
+   */
+  extractTaxId(cert: any): string | null {
+    const fromAltName = this.cnpjFromAltName(cert);
+    if (fromAltName) return fromAltName;
+    const commonName = cert.subject?.getField?.('CN')?.value;
+    return typeof commonName === 'string'
+      ? this.cnpjFromName(commonName)
+      : null;
+  }
+
+  /** Same rule applied to a flattened subject string ("C=BR, OU=..., CN=NAME:CNPJ"). */
   extractCNPJFromSubject(subject: string): string | null {
-    // Try formatted CNPJ first
-    const match = subject.match(CNPJ_REGEX);
-    if (match) return match[0].replace(/\D/g, '');
+    const commonName = /(?:^|, )CN=([^,]*)/.exec(subject)?.[1];
+    return commonName ? this.cnpjFromName(commonName) : null;
+  }
 
-    // Try raw 14-digit CNPJ
-    const rawMatch = subject.match(CNPJ_REGEX_RAW);
-    if (rawMatch) return rawMatch[1];
+  private cnpjFromName(name: string): string | null {
+    const upper = name.toUpperCase();
+    const formatted = upper.match(CNPJ_REGEX);
+    if (formatted) return formatted[0].replace(/[./-]/g, '');
+    return CNPJ_AT_END.exec(upper)?.[1] ?? null;
+  }
 
+  private cnpjFromAltName(cert: any): string | null {
+    try {
+      const extension = cert.getExtension?.('subjectAltName');
+      if (!extension?.value) return null;
+      const names = forge.asn1.fromDer(extension.value);
+      for (const general of names.value as any[]) {
+        // otherName is the [0] choice of GeneralName: SEQUENCE { OID, [0] value }.
+        if (
+          general.tagClass !== forge.asn1.Class.CONTEXT_SPECIFIC ||
+          general.type !== 0
+        )
+          continue;
+        const [oid, wrapped] = general.value as any[];
+        if (forge.asn1.derToOid(oid.value) !== OID_ICP_BRASIL_CNPJ) continue;
+        const raw = String(wrapped?.value?.[0]?.value ?? '')
+          .trim()
+          .toUpperCase();
+        if (/^[0-9A-Z]{12}\d{2}$/.test(raw)) return raw;
+      }
+    } catch {
+      // A malformed extension must not block the upload: fall back to the CN.
+    }
     return null;
   }
 }

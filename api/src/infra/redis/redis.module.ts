@@ -20,6 +20,7 @@ import { redisExports, redisProviders } from './redis.providers';
       { name: 'nfse-cancellation' },
       { name: 'nfse-doc-prep' },
       { name: 'nfse-email' },
+      { name: 'nfse-fiscal-reconcile' },
     ),
   ],
   providers: redisProviders,

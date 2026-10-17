@@ -1,17 +1,17 @@
 // lib/docs/registry.ts
 import { en } from "./content/en";
 import { pt } from "./content/pt";
-import type { DocGroupKey, DocsLocale, DocsTree } from "./types";
+import type { DocGroupKey, DocSlug, DocsLocale, DocsTree } from "./types";
 
-export const DOC_GROUPS: { key: DocGroupKey; slugs: import("./types").DocSlug[] }[] = [
-  { key: "gettingStarted", slugs: ["authentication", "errors", "rate-limits"] },
+export const DOC_GROUPS: { key: DocGroupKey; slugs: DocSlug[] }[] = [
+  { key: "gettingStarted", slugs: ["sdks", "authentication", "errors", "rate-limits"] },
   {
     key: "reference",
     slugs: ["companies", "certificates", "invoices", "webhooks", "credits", "billing"],
   },
   {
     key: "guides",
-    slugs: ["async-issuance", "pagination", "receiving-webhooks", "integration-checklist"],
+    slugs: ["async-issuance", "pagination", "receiving-webhooks", "integration-checklist", "mcp", "llms"],
   },
 ];
 
