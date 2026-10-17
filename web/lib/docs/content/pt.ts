@@ -121,7 +121,6 @@ export const pt: DocsTree = {
           "`POST /v1/invoices` — use `companyTaxId` (CNPJ da empresa) e solicite a emissão com `Idempotency-Key` estável por operação de negócio e guarde `data.id` (ambiente `live` exige prontidão da empresa).",
           "Acompanhe o ciclo por `GET /v1/invoices/:id` e webhooks assinados — a emissão é assíncrona.",
           "Aguarde os documentos ficarem prontos para gerar a URL e solicitar o email; confira o estado do email separadamente.",
-          "Antes de produção, verifique o domínio e a versão publicada: a referência descreve o checkout local, sem pressupor que o deploy já contém os mesmos contratos.",
         ],
       },
     ],
@@ -319,7 +318,7 @@ export const pt: DocsTree = {
           "`POST /v1/companies/:id/certificates` com o certificado A1.",
           "`POST /v1/invoices`.",
         ] },
-        { kind: "callout", tone: "accent", body: "O regime informado no cadastro cria o perfil fiscal da empresa, vigente desde hoje e já aprovado por quem fez a chamada (usuário ou chave de API). Sem tomador ou com tomador CPF não há etapa de aprovação nem cadastro de serviço: a classificação vem do catálogo oficial pelo `service.code`. Com tomador CNPJ a retenção federal depende da política do serviço: cadastre o perfil do serviço com `withholdingPolicy` `NONE_CONFIRMED` ou `CONFIGURED` e aprove-o, senão o cálculo volta `blocked` com `TAX_APPLICABILITY_UNKNOWN`. `GET /v1/companies/:id` mostra `status` e `setupGaps` (`municipality_code`, `municipal_registration` em `live`, `certificate`). Use `POST /v1/invoices/calculate` para conferir antes de emitir." },
+        { kind: "callout", tone: "accent", body: "O regime informado no cadastro cria o perfil fiscal da empresa, vigente desde hoje e já aprovado por quem fez a chamada (usuário ou chave de API). Sem tomador ou com tomador CPF não há etapa de aprovação nem cadastro de serviço: a classificação vem do catálogo oficial pelo `service.code`. Com tomador CNPJ a retenção federal depende da política do serviço: cadastre o perfil do serviço com `withholdingPolicy` `NONE_CONFIRMED` ou `CONFIGURED` e aprove-o, senão o cálculo volta `blocked` com `TAX_APPLICABILITY_UNKNOWN`. `GET /v1/companies/:id` mostra `status` e `setupGaps` (`municipality_code`, `certificate`). Use `POST /v1/invoices/calculate` para conferir antes de emitir." },
         { kind: "callout", tone: "warn", body: "Mudar `taxRegime`, `simpleNational` ou `specialRegime` com `PATCH` no mesmo dia do cadastro retorna `409` (`ERROR_CONFLICT`, mensagem `profile_validity_conflict`), porque o perfil aprovado não é reescrito. Para uma mudança com data, use `PUT /v1/companies/:id/fiscal-profile` com `validFrom`. Perfis de serviço (`/v1/companies/:id/service-tax-profiles`) são opcionais e passam a ser exigidos quando o regime pede IBS/CBS ou ISS configurado: o cálculo retorna `FISCAL_CLASSIFICATION_REQUIRED` com os campos que faltam." },
         {
           kind: "endpoint",
@@ -407,7 +406,7 @@ console.log(body.data.id); // { data: Company }`,
           },
           notes: [
             { kind: "callout", tone: "warn", body: "CNPJ repetido na mesma conta/ambiente retorna `409`. Em `live`, o cadastro pode falhar por limite de empresas ou plano bloqueado (`422`)." },
-            { kind: "callout", tone: "accent", body: "O corpo de entrada usa `address`, mas a resposta expõe campos planos: `addressStreet`, `addressNumber`, `addressCity`, `addressState`, `addressZip` etc. `status` é `pending_setup`, `ready` ou `blocked`; `setupGaps` lista pendências (`municipality_code`, `municipal_registration`, `certificate`)." },
+            { kind: "callout", tone: "accent", body: "O corpo de entrada usa `address`, mas a resposta expõe campos planos: `addressStreet`, `addressNumber`, `addressCity`, `addressState`, `addressZip` etc. `status` é `pending_setup`, `ready` ou `blocked`; `setupGaps` lista pendências (`municipality_code`, `certificate`)." },
           ],
         },
         {
@@ -1126,7 +1125,7 @@ console.log(body.data, body.pagination); // { data: InvoiceEvent[], pagination }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Campos: `id`, `invoiceId`, `fromStatus` (string ou null), `toStatus`, `reason` (string ou null), `createdAt`. Não há paginação nesta rota." },
+            { kind: "callout", tone: "accent", body: "Campos: `id`, `invoiceId`, `fromStatus` (string ou null), `toStatus`, `reason` (string ou null), `createdAt`." },
           ],
         },
         {
@@ -1723,10 +1722,10 @@ console.log(body.data.usage); // { data: { plan, subscription, usage } }`,
     "plan": {
       "slug": "developer",
       "name": "Developer",
-      "monthly_allowance": 100,
+      "monthly_allowance": 200,
       "daily_limit": null,
-      "max_active_companies": 1,
-      "monthly_price_cents": 1000
+      "max_active_companies": 10,
+      "monthly_price_cents": 2990
     },
     "usage": {
       "overage_units": 0,
@@ -1734,12 +1733,12 @@ console.log(body.data.usage); // { data: { plan, subscription, usage } }`,
       "hard_limit": null,
       "credits_used": 10,
       "credits_reserved": 2,
-      "credits_remaining": 88,
-      "monthly_allowance": 100,
+      "credits_remaining": 188,
+      "monthly_allowance": 200,
       "daily_usage": 3,
       "daily_limit": null,
       "active_companies": 1,
-      "max_active_companies": 1,
+      "max_active_companies": 10,
       "period_start": "2026-10-01T00:00:00.000Z",
       "period_end": "2026-10-31T23:59:59.000Z"
     },
@@ -1777,14 +1776,14 @@ console.log(body.data.canEmit); // { data: QuotaStatus }`,
             json: `{
   "data": {
     "canEmit": true,
-    "creditsRemaining": 88,
+    "creditsRemaining": 188,
     "creditsUsed": 10,
     "creditsReserved": 2,
-    "monthlyAllowance": 100,
+    "monthlyAllowance": 200,
     "dailyUsage": 3,
     "dailyLimit": null,
     "activeCompanies": 1,
-    "maxActiveCompanies": 1,
+    "maxActiveCompanies": 10,
     "periodStart": "2026-10-01T00:00:00.000Z",
     "periodEnd": "2026-10-31T23:59:59.000Z"
   }
@@ -2250,7 +2249,6 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Acompanhar o status por `GET /v1/invoices/:id` ou webhooks assinados — a emissão é assíncrona.",
             "Registrar um webhook (`POST /v1/webhooks`), guardar o `secret` e verificar a assinatura; conferir entregas em `GET /v1/webhooks/deliveries`.",
             "Aguardar os documentos prontos (`documentsStatus: \"ready\"`) para gerar a URL assinada e solicitar o email; conferir o estado do email separadamente (`emailStatus`).",
-            "Antes de produção, verificar o domínio e a versão publicada: a referência descreve o checkout local, sem pressupor que o deploy já contém os mesmos contratos.",
           ],
         },
         {
