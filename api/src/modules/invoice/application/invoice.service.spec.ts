@@ -299,12 +299,25 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
       );
     });
 
-    it('returns 409 for a cancelled invoice (email still requires authorized)', async () => {
-      const invoice = makeAuthorizedInvoice({ status: 'cancelled' });
+    it.each(['cancelling', 'cancelled'] as const)(
+      'returns 409 with a cancelled-invoice message for a %s invoice',
+      async (status) => {
+        const invoice = makeAuthorizedInvoice({ status });
+        invoiceRepo.findByIdAndTenantId.mockResolvedValue(invoice);
+
+        const promise = service.requestEmail('inv-1', 'tenant-1');
+        await expect(promise).rejects.toThrow(ConflictException);
+        await expect(promise).rejects.toThrow(/cancelled/i);
+        await expect(promise).rejects.not.toThrow('Documents not ready');
+      },
+    );
+
+    it('keeps "Documents not ready" for an authorized invoice without documents', async () => {
+      const invoice = makeAuthorizedInvoice({ documentsReadyAt: null });
       invoiceRepo.findByIdAndTenantId.mockResolvedValue(invoice);
 
       await expect(service.requestEmail('inv-1', 'tenant-1')).rejects.toThrow(
-        ConflictException,
+        'Documents not ready',
       );
     });
 

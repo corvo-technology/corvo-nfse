@@ -72,6 +72,16 @@ export class NfseEmailProcessor extends WorkerHost {
         return;
       }
 
+      if (invoice.status === 'cancelling' || invoice.status === 'cancelled') {
+        // No e-mail for a cancelled/cancelling invoice. If the cancellation is
+        // rejected and the invoice returns to `authorized`, the recovery
+        // scheduler re-enqueues the e-mail (authorized + requested + no status).
+        this.logger.log(
+          `Invoice ${invoiceId} is ${invoice.status}, skipping e-mail`,
+        );
+        return;
+      }
+
       if (invoice.status !== 'authorized' || !invoice.documentsReadyAt)
         throw new Error('Invoice documents are not ready');
       const snapshot = invoice.toSnapshot();
