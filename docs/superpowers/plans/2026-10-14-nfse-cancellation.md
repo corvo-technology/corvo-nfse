@@ -34,6 +34,7 @@
 - **Duplo clique ou retry do cliente no endpoint.** O segundo pedido devolve o estado atual sem outra mensagem na outbox. Testado na Task 8. Duplo envio **concorrente** (os dois pedidos leem `queued` ao mesmo tempo) publica um único webhook `nfse.invoice.cancelled`. Testado na Task 12.
 - **Falha transitória da Sefin seguida de retry do BullMQ.** O provider deve fazer replay do XML assinado guardado, sem assinar outro evento. Testado na Task 6.
 - **Nota cancelada continua com XML/PDF disponíveis, mas o e-mail é recusado.** Testado na Task 8.
+- **Cancelamento pedido enquanto o worker autoriza a nota (Tasks 18 a 23).** A intenção nunca pode ser apagada pela cópia desatualizada do worker, e a nota autorizada com intenção vai a `cancelling` na mesma transação, com uma única mensagem na outbox. Testado nas Tasks 19 e 23.
 
 ---
 
@@ -3360,3 +3361,90 @@ Decididas depois da revisão final do branch, a partir dos minors diferidos. Spe
 - [ ] **Step 4:** teste verde; `yarn typecheck`; `yarn jest`; eslint `--quiet`.
 - [ ] **Step 5: Docs.** `SELF_HOSTING.md`: seção curta de atualização com a ordem de deploy (worker antes da API, por causa da mensagem de outbox `invoice.cancel`) e o aviso do `down`.
 - [ ] **Step 6: Commit** `fix(db): make the cancellation migration rollback fail with a clear message` e `docs: document the deploy order for invoice cancellation`.
+
+---
+
+## Cancelamento durante a emissão (Tasks 18 a 23)
+
+Decidido depois da entrega anterior (opção C, ver spec §2, §6.5, §8, §9, §10 e §11): um pedido de cancelamento em `processing` registra a intenção; quando a nota é autorizada, o `transition()` aplica `authorized → cancelling` na mesma transação. Só `processing` aceita o pedido. A intenção usa `cancellation_reason`/`cancellation_description` e a nova coluna `cancellation_requested_at`. Cada tarefa segue TDD (teste que falha, implementação, teste que passa, suíte inteira, eslint `--quiet`), com um commit por tarefa e a spec como autoridade.
+
+### Task 18: Domínio e colunas da intenção
+
+**Files:**
+- Modify: `api/src/modules/invoice/domain/cancellation-reason.ts`, `invoice-status.ts`, `invoice.ts`
+- Modify: `api/src/modules/invoice/infra/invoice.orm-entity.ts`, `invoice.mapper.ts`
+- Modify: `api/src/modules/invoice/http/invoice-response.dto.ts`
+- Create: `api/src/infra/database/migrations/1792410000000-AddCancellationRequestedAt.ts` e o spec unitário ao lado
+- Test: `invoice-cancellation.spec.ts`, `invoice.mapper.spec.ts`
+
+**Interfaces:**
+- Produces: `DEFAULT_CANCELLATION_DESCRIPTION: Record<CancellationReasonCode, string>`; `EMISSION_IN_PROGRESS_STATUSES = ['processing','retry_pending','reconciliation_required']`; `Invoice.cancellationRequestedAt`, `Invoice.hasPendingCancellation`, `Invoice.registerPendingCancellation(reason): void`, `Invoice.discardPendingCancellation(): void`; `requestCancellation` passa a preencher `cancellationRequestedAt` (com o `createdAt` do evento).
+
+- [ ] **Step 1: Testes que falham.** (a) Cada texto de `DEFAULT_CANCELLATION_DESCRIPTION` tem entre `CANCELLATION_DESCRIPTION_MIN` e `MAX` caracteres e passa em `assertFiscalCancellationReason`. (b) `requestCancellation` em `queued` e em `authorized` preenche `cancellationRequestedAt` igual ao `createdAt` do evento. (c) `registerPendingCancellation` em `processing`: grava motivo, descrição e data, não muda o status; com descrição inválida lança `InvalidCancellationReasonError`; em qualquer outro status lança `InvoiceNotCancellableError`. (d) `hasPendingCancellation` verdadeiro só com data preenchida e status em `EMISSION_IN_PROGRESS_STATUSES` (tabela por status). (e) `discardPendingCancellation` zera os três campos. (f) mapper: ida e volta de `cancellationRequestedAt` (nulo e preenchido). (g) migration: `up` adiciona a coluna, `down` remove (spec com `QueryRunner` falso, como o da migration anterior).
+- [ ] **Step 2:** rodar e ver falhar.
+- [ ] **Step 3: Implementar.** Prop opcional `cancellationRequestedAt?: Date | null` em `InvoiceProps`; coluna `cancellation_requested_at timestamptz` nullable na entidade; mapper com `?? null`; campo `cancellationRequestedAt` no DTO de resposta; migration nova com classe `AddCancellationRequestedAt1792410000000`.
+- [ ] **Step 4:** testes verdes, `yarn typecheck`, `yarn jest`, eslint.
+- [ ] **Step 5: Commit** `feat(invoice): model the pending cancellation request while an invoice is being issued`.
+
+### Task 19: Repositório e lifecycle (escrita da intenção e aplicação atômica)
+
+**Files:**
+- Modify: `api/src/modules/invoice/domain/invoice.repository.ts`, `infra/typeorm-invoice.repository.ts`
+- Modify: `api/src/modules/invoice/application/invoice-lifecycle.service.ts` (e o caminho de persistência que o `transition()` usa hoje, conforme o código atual)
+- Test: `typeorm-invoice.repository.spec.ts`, `invoice-lifecycle.transition.spec.ts`
+
+**Interfaces:**
+- Produces: `IInvoiceRepository.registerCancellationIntent(invoiceId, tenantId, intent: { code; description; requestedAt }): Promise<boolean>` (`true` se o `UPDATE` condicional afetou uma linha). `transition()` mantém a assinatura e o retorno booleano.
+
+- [ ] **Step 1: Testes que falham.** (a) Repositório: o `UPDATE` tem `WHERE id = :id AND tenant_id = :tenantId AND status = 'processing' AND cancellation_requested_at IS NULL`; devolve `true`/`false` conforme as linhas afetadas. (b) `transition()` de uma transição que parte de `processing`, `retry_pending` ou `reconciliation_required` para qualquer destino **não** inclui as colunas `cancellation_reason`, `cancellation_description`, `cancellation_requested_at` no `set` (a cópia em memória do worker não pode apagar a intenção). (c) Destino `rejected` ou `failed` escreve as três como `null`. (d) Autorização (`processing → authorized` e `reconciliation_required → authorized`) com a linha gravada tendo `cancellation_requested_at` e `cancellation_reason`: o mesmo `transition()` grava um segundo evento (`authorized → cancelling`), a nota termina `cancelling`, e a mensagem `invoice.cancel` da outbox é enfileirada exatamente uma vez, com `dedupeKey` do segundo evento; o crédito é consumido pelo primeiro movimento e nada é feito no segundo (origem `authorized`). (e) Autorização sem intenção: comportamento atual inalterado. (f) Transições do fluxo de cancelamento fiscal e o cancelamento local de `queued` continuam escrevendo as colunas normalmente.
+- [ ] **Step 2:** rodar e ver falhar.
+- [ ] **Step 3: Implementar.** `registerCancellationIntent` como `UPDATE` condicional (padrão do `saveDpsInfo`). No `transition()`, depois de ler `stored` sob o lock: para origens em emissão, não escrever as colunas de cancelamento (`undefined`), exceto `rejected`/`failed` (`null`) e a aplicação na autorização, que constrói o `Invoice` a partir de `stored` para obter motivo e descrição, chama `requestCancellation` e persiste o segundo evento e a mensagem `cancellationMessage` (importar de `invoice-cancel.handler`) dentro da mesma transação; atualizar o `Invoice` em memória do chamador para `cancelling`. A mensagem do evento de descarte em `rejected`/`failed` registra que o pedido de cancelamento foi descartado.
+- [ ] **Step 4:** testes verdes, `yarn typecheck`, `yarn jest`, eslint.
+- [ ] **Step 5: Commit** `feat(invoice): keep and apply a cancellation request made while the invoice is being issued`.
+
+### Task 20: `InvoiceService.cancel` durante a emissão
+
+**Files:**
+- Modify: `api/src/modules/invoice/application/invoice.service.ts`
+- Test: `invoice.service.cancel.spec.ts`
+
+- [ ] **Step 1: Testes que falham.** (a) `processing` com descrição válida: chama `registerCancellationIntent`, não chama `transition`, não publica webhook, devolve a nota com a intenção (`hasPendingCancellation`). (b) `processing` sem descrição (ou curta): `InvalidCancellationReasonError`, nada gravado. (c) `processing` com a intenção já pendente: devolve a nota sem nova escrita (o primeiro prevalece, o segundo motivo é ignorado). (d) `registerCancellationIntent` devolve `false` e a releitura mostra `authorized`: segue o caminho fiscal normal; mostra `cancelling`/`cancelled`: devolve; outro status: `InvoiceNotCancellableError`. (e) Corrida de `queued` perdida para o worker (`ConcurrentInvoiceTransitionError`, releitura em `processing`): registra a intenção com a descrição do pedido, ou com o texto padrão do motivo quando não houve descrição; nenhum webhook. (f) `retry_pending`, `reconciliation_required`, `manual_review`, `rejected`, `failed`: `InvoiceNotCancellableError`.
+- [ ] **Step 2:** rodar e ver falhar.
+- [ ] **Step 3: Implementar.** Ramo `processing` em `cancel` (antes de `requestCancellation`), reaproveitando `currentAfterLostRace` para o fallback; o padrão só é aplicado no caminho (e). O controller não muda: responde `200` só para `cancelled` e `202` nos demais.
+- [ ] **Step 4:** testes verdes, `yarn typecheck`, `yarn jest`, eslint.
+- [ ] **Step 5: Commit** `feat(invoice): accept a cancellation request while the invoice is being issued`.
+
+### Task 21: Contrato e documentação da API
+
+**Files:**
+- Modify: `api/src/modules/invoice/http/invoice.controller.ts` (texto do OpenAPI), `api/src/modules/mcp/tools/nfse-cancel.tool.ts` (descrição), `api/FRONTEND_API.md`, `api/llms.txt`
+- Modify: `web/lib/docs/content/en.ts`, `pt.ts`
+- Test: specs existentes (OpenAPI, `nfse-cancel.tool.spec.ts`), `web/tests/docs-parity.test.ts`
+
+- [ ] **Step 1: Testes que falham.** A descrição da tool `nfse_cancel` e o resumo da operação no OpenAPI citam o comportamento em `processing`; o schema da resposta inclui `cancellationRequestedAt`; a paridade en/pt segue verde.
+- [ ] **Step 2:** rodar e ver falhar.
+- [ ] **Step 3: Implementar.** Atualizar os textos (pt em `FRONTEND_API.md` e `pt.ts`, en em `llms.txt` e `en.ts`): em `processing` o pedido é aceito com `202`, a descrição é obrigatória, a nota é cancelada assim que autorizada e o crédito não é devolvido; `retry_pending`, `reconciliation_required` e `manual_review` seguem dando 409; repetir o pedido devolve o estado atual.
+- [ ] **Step 4:** `yarn typecheck`, `yarn jest`, eslint, `yarn vitest run tests/docs-parity.test.ts`.
+- [ ] **Step 5: Commit** `docs(api): document cancelling an invoice that is being issued`.
+
+### Task 22: Dashboard
+
+**Files:**
+- Modify: `web/lib/types.ts`, `web/lib/invoice-cancellation.ts`, `web/components/dashboard/cancel-invoice-dialog.tsx`, `web/app/app/invoices/[id]/page.tsx`, `web/messages/en.json`, `web/messages/pt.json`
+- Test: `web/tests/invoice-cancellation.test.ts`, `web/tests/cancel-invoice-dialog.test.tsx`
+
+- [ ] **Step 1: Testes que falham.** (a) `canCancelInvoice` passa a aceitar `processing` com permissão (e continua recusando `retry_pending`, `reconciliation_required`, `manual_review`, `rejected`, `failed`, `cancelling`, `cancelled`); manter a tabela completa por status (preferir `Record<InvoiceStatus, boolean>` para o compilador exigir todos os status). (b) Diálogo em `processing`: descrição obrigatória 15–255 (botão desabilitado com 14 caracteres), mostra o aviso de que a nota está sendo emitida e o crédito não é devolvido. (c) Helper de marcador: uma nota com `cancellationRequestedAt` e status em emissão mostra o marcador "cancelamento solicitado".
+- [ ] **Step 2:** rodar e ver falhar.
+- [ ] **Step 3: Implementar.** Tipos (`cancellationRequestedAt`), predicado, texto do diálogo por situação (`queued`, `processing`, `authorized`), marcador na página, mensagens en/pt com as mesmas chaves.
+- [ ] **Step 4:** `yarn vitest run`, `yarn lint`, `yarn tsc --noEmit` em `web/`.
+- [ ] **Step 5: Commit** `feat(web): cancel an invoice that is being issued`.
+
+### Task 23: Cenários concorrentes e verificação final
+
+**Files:**
+- Modify: `api/src/modules/invoice/application/invoice.service.cancel.concurrency.spec.ts` (ou arquivo novo ao lado, no mesmo estilo)
+
+- [ ] **Step 1: Cenários** (simulação determinística com `InvoiceService.cancel` e `InvoiceLifecycleService.transition` reais, persistência falsa com estado e mutex por tenant, como os já existentes). (a) A intenção é registrada enquanto o worker, com a cópia antiga da nota, autoriza: depois dos dois, a nota termina `cancelling`, com uma mensagem `invoice.cancel` e a intenção não se perdeu. (b) Dois pedidos simultâneos em `processing`: uma escrita de intenção, os dois recebem o mesmo estado e o segundo motivo é ignorado. (c) Emissão rejeitada com intenção pendente: motivo, descrição e data são limpos e a reserva é estornada. (d) Cancelamento de `queued` que perde a corrida para o worker: intenção com o texto padrão e nenhum webhook de `nfse.invoice.cancelled`. (e) Intenção pendente e a emissão cai em `retry_pending` e depois é autorizada: termina `cancelling`.
+- [ ] **Step 2:** provar com mutação que cada cenário falha sem a correção que o protege (a regra de escrita do `transition()`, a aplicação atômica, o `UPDATE` condicional), reverter.
+- [ ] **Step 3: Verificação final.** `yarn typecheck`, `yarn jest`, eslint `--quiet` nos arquivos alterados (API); `yarn vitest run`, `yarn lint`, `yarn tsc --noEmit` (web). Registrar o que não foi verificado (Postgres real, E2E, Sefin).
+- [ ] **Step 4: Commit** `test(invoice): add concurrent scenarios for cancelling during issuance`.
