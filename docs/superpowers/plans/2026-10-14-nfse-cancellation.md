@@ -3281,3 +3281,82 @@ Em `api/FRONTEND_API.md` (seção `POST /invoices/{id}/cancel`) e nas notas do e
 git add api/src/modules/invoice/application api/FRONTEND_API.md web/lib/docs/content
 git commit -m "fix(invoice): publish a single cancelled webhook under concurrent cancels"
 ```
+
+---
+
+## Emendas pós-revisão final (Tasks 13 a 17)
+
+Decididas depois da revisão final do branch, a partir dos minors diferidos. Spec: seções 5, 8, 9, 10 e 11 (já emendadas). Cada tarefa segue TDD (teste que falha, implementação, teste que passa, suíte inteira). Fora de escopo: recuperação de notas presas em `cancelling` (spec própria futura) e renomear `setRejected`.
+
+### Task 13: Comportamento — erro anterior, e-mail, `requestEmail`, `saveDpsInfo`, log
+
+**Files:**
+- Modify: `api/src/modules/invoice/domain/invoice.ts`
+- Modify: `api/src/modules/invoice/jobs/nfse-email.processor.ts`
+- Modify: `api/src/modules/invoice/application/invoice.service.ts` (`requestEmail`)
+- Modify: `api/src/modules/invoice/infra/typeorm-invoice.repository.ts` (`saveDpsInfo`)
+- Modify: `api/src/modules/invoice/application/nfse-workflow.service.ts` (log)
+- Test: `invoice-cancellation.spec.ts`, `nfse-email.processor.spec.ts`, `invoice.service.spec.ts`, `typeorm-invoice.repository.spec.ts`, `nfse-workflow.cancellation-race.spec.ts`
+
+**Interfaces:** nenhuma nova. Comportamento por spec §5, §8 e §10.
+
+- [ ] **Step 1: Testes que falham**
+  1. Domínio: depois de `requestCancellation(fiscal)` + `rejectCancellation('E0840','Prazo expirado')` a nota tem `lastErrorCode='E0840'`; um novo `requestCancellation(fiscal)` deixa `lastErrorCode/Message` nulos; `confirmCancellation()` também os deixa nulos. `rejectCancellation` continua preenchendo.
+  2. E-mail processor: para nota `cancelling` e para `cancelled` (com `documentsReadyAt` preenchido) o `process` resolve sem lançar, não chama `getPdf`/`getXml`/envio e não chama `updateEmailStatus`. Para `authorized` sem documentos continua lançando `Invoice documents are not ready`.
+  3. `requestEmail`: nota `cancelling`/`cancelled` lança `ConflictException` com mensagem que cita nota cancelada (diferente de `Documents not ready`); nota `authorized` sem `documentsReadyAt` continua com `Documents not ready`.
+  4. `saveDpsInfo`: com `dpsId`, `dpsSeries` e `dpsNumber` todos nulos não chama `createQueryBuilder().update()`.
+  5. Workflow (spec da corrida): quando `transition` lança `ConcurrentInvoiceTransitionError`, o `logger.debug` é chamado com o id da nota (espionar o logger do serviço).
+- [ ] **Step 2:** `yarn jest <os 5 arquivos>` — Expected: FAIL pelos motivos acima.
+- [ ] **Step 3: Implementar.** `requestCancellation` (ramo `authorized`) e `confirmCancellation` zeram `lastErrorCode` e `lastErrorMessage` (usar o mesmo mecanismo interno dos setters existentes). Processor: antes do `throw` de documentos não prontos, `if (invoice.status === 'cancelling' || invoice.status === 'cancelled') { this.logger.log(...); return; }` com comentário (o agendador de recuperação reenfileira se a nota voltar a `authorized`). `requestEmail`: ramo próprio para `cancelling`/`cancelled` antes do `Documents not ready`. `saveDpsInfo`: construir o objeto `set` só com campos não nulos e retornar cedo se vazio. Workflow: `this.logger.debug(...)` no `return` do catch.
+- [ ] **Step 4:** os mesmos testes passam; `yarn typecheck`; `yarn jest`; eslint `--quiet` nos arquivos alterados.
+- [ ] **Step 5: Commit** `fix(invoice): clear stale cancellation errors and skip e-mail for cancelled invoices` (um commit por tema é aceitável).
+
+### Task 14: Contrato — constante única da descrição, OpenAPI, `nfse_list`, `llms.txt`, MCP
+
+**Files:**
+- Modify: `api/src/modules/invoice/domain/cancellation-reason.ts`, `api/src/modules/invoice/http/invoice.dto.ts`
+- Modify: `api/src/modules/invoice/http/invoice.controller.ts`
+- Modify: `api/src/modules/mcp/tools/nfse-cancel.tool.ts`, `api/src/modules/mcp/tools/nfse-list.tool.ts`
+- Modify: `api/llms.txt`
+- Test: `invoice-cancellation.spec.ts`, `nfse-cancel.tool.spec.ts`, `nfse-list.tool` spec (criar se não houver), spec/contrato OpenAPI existente
+
+- [ ] **Step 1: Testes que falham.** (a) Exportar e testar `CANCELLATION_DESCRIPTION_MIN = 15` e `CANCELLATION_DESCRIPTION_MAX = 255`: fronteiras 14/15 e 255/256 no `assertFiscalCancellationReason`. (b) `NFSE_CANCEL_TOOL.inputSchema.properties.description.maxLength` é `CANCELLATION_DESCRIPTION_MAX`. (c) a descrição do filtro `status` de `NFSE_LIST_TOOL` contém todos os valores de `INVOICE_STATUSES` (inclui `cancelling` e `cancelled`). (d) O documento OpenAPI gerado para `POST /v1/invoices/{id}/cancel` tem respostas `200` e `202` (usar o spec de OpenAPI existente como modelo). (e) `llms.txt` contém `ERROR_INVOICE_NOT_CANCELLABLE` e `ERROR_INVALID_CANCELLATION_REASON` (teste simples de leitura de arquivo, se houver precedente; senão, apenas conferir manualmente e registrar).
+- [ ] **Step 2:** rodar e ver falhar.
+- [ ] **Step 3: Implementar.** Constantes em `cancellation-reason.ts` usadas em `assertFiscalCancellationReason`, `@MaxLength` do DTO e `maxLength` do `inputSchema`. `@ApiOkResponse` e `@ApiAcceptedResponse` (DTO de resposta da invoice, mesmo usado pelos vizinhos) no `cancel`. Descrição do `nfse_list` montada com `INVOICE_STATUSES.join(', ')`. `llms.txt`: acrescentar os dois códigos de erro ao parágrafo de cancelamento.
+- [ ] **Step 4:** testes verdes; `yarn typecheck`; `yarn jest`; eslint `--quiet`.
+- [ ] **Step 5: Commit** `refactor(invoice): single source for the cancellation description rule and complete the contract docs`.
+
+### Task 15: Dashboard — reset do modal e predicado de visibilidade
+
+**Files:**
+- Modify: `web/lib/invoice-cancellation.ts`, `web/app/app/invoices/[id]/page.tsx`, `web/components/dashboard/cancel-invoice-dialog.tsx`
+- Test: `web/tests/invoice-cancellation.test.ts` (existente do helper; estender) e `web/tests/cancel-invoice-dialog.test.tsx`
+
+- [ ] **Step 1: Testes que falham.** (a) `canCancelInvoice(status, hasPermission)`: `true` só para `queued`/`authorized` com permissão; `false` para os demais status e sem permissão. (b) Constantes `CANCELLATION_DESCRIPTION_MIN/MAX` (15/255) exportadas pelo helper e usadas pelo diálogo; teste de fronteira 14/15/255/256 na validação do diálogo (o caso de 256 é barrado por `maxLength` do `textarea`; testar 14 e 15 e o botão). (c) Reabrir: renderizar o diálogo com `open`, digitar motivo/descrição e provocar erro; desmontar/remontar (como a página faz com `{open && ...}`) e verificar campos vazios e sem alerta.
+- [ ] **Step 2:** `yarn vitest run tests/invoice-cancellation.test.ts tests/cancel-invoice-dialog.test.tsx` — Expected: FAIL.
+- [ ] **Step 3: Implementar.** Predicado e constantes em `web/lib/invoice-cancellation.ts`; a página usa `canCancelInvoice(invoice.status, can("nfse.invoices.issue"))` e monta o diálogo com `{cancelOpen && <CancelInvoiceDialog … />}`; o diálogo importa as constantes em vez de literais.
+- [ ] **Step 4:** `yarn vitest run`, `yarn lint`, `yarn tsc --noEmit` na `web/`.
+- [ ] **Step 5: Commit** `fix(web): reset the cancel dialog on reopen and test button visibility`.
+
+### Task 16: Cobertura adicional (só testes)
+
+**Files (apenas specs):** `invoice-webhook.publisher.spec.ts`, `open-nfse.provider.cancel.spec.ts`, `nfse-cancellation.service.spec.ts`
+
+- [ ] **Step 1: Testes** (devem passar de primeira; provar com mutação onde indicado). (a) Publisher: `publish(invoice, 'nfse.invoice.email_sent', {}, { emailStatus: 'sent' })` coloca `emailStatus: 'sent'` no payload mesmo com `lastEmailStatus` diferente na nota. (b) Provider: replay `failed_permanent` retorna `rejected` com código e mensagem; replay `still_pending` e lista vazia retornam `pending` (mensagens `still_pending` e `Awaiting fiscal retry window`); `ValidationError` mapeia para `INVALID_FISCAL_INPUT`; `client.close` é chamado em sucesso e em exceção. (c) Serviço de cancelamento: caracterização do risco da spec §11. Quando `provider.cancel` devolve `cancelled` e `lifecycle.transition` lança, o `process` rejeita (o job é tentado de novo) e `webhooks.publish` não é chamado. O teste documenta, em comentário, que o reenvio ao Sefin é o risco aceito.
+- [ ] **Step 2:** mutações: remover o `finally { client.close() }` faz (b) falhar; fazer o publisher ignorar `stateOverride` faz (a) falhar. Reverter.
+- [ ] **Step 3:** `yarn jest`, eslint `--quiet` nos specs.
+- [ ] **Step 4: Commit** `test(nfse): cover provider replay branches, state override and the accepted-then-failed cancellation`.
+
+### Task 17: Operação — `down` da migration e ordem de deploy
+
+**Files:**
+- Modify: `api/src/infra/database/migrations/1791780000000-AddInvoiceCancellation.ts`
+- Modify: `SELF_HOSTING.md`
+- Test: `api/src/infra/database/migrations/` (spec unitário com `QueryRunner` falso, ao lado do arquivo; os specs Postgres seguem pulados sem `MIGRATION_TEST_DATABASE_URL`)
+
+- [ ] **Step 1: Teste que falha.** `down` com um `QueryRunner` falso cuja consulta de contagem devolve `> 0` lança erro com mensagem clara (cita `cancelling`/`cancelled` e a quantidade) e não executa nenhum `ALTER TABLE`; com contagem `0` executa as três etapas atuais na ordem.
+- [ ] **Step 2:** rodar e ver falhar.
+- [ ] **Step 3: Implementar.** No início do `down`: `SELECT count(*)::int AS total FROM ${schema}.nfse_invoices WHERE status IN ('cancelling','cancelled')`; se `total > 0`, `throw new Error(...)`. Comentário no topo explicando por que não mapear para `authorized`.
+- [ ] **Step 4:** teste verde; `yarn typecheck`; `yarn jest`; eslint `--quiet`.
+- [ ] **Step 5: Docs.** `SELF_HOSTING.md`: seção curta de atualização com a ordem de deploy (worker antes da API, por causa da mensagem de outbox `invoice.cancel`) e o aviso do `down`.
+- [ ] **Step 6: Commit** `fix(db): make the cancellation migration rollback fail with a clear message` e `docs: document the deploy order for invoice cancellation`.

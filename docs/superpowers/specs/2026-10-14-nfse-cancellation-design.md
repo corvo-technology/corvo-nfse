@@ -59,6 +59,7 @@ cancelling  → cancelled | authorized
 - `requestCancellation(reason)`: de `queued` vai para `cancelled` (preenche `cancelledAt`); de `authorized` vai para `cancelling` (exige descrição fiscal válida). Nos demais status lança `InvoiceNotCancellableError` (409).
 - `confirmCancellation()`: `cancelling → cancelled` e preenche `cancelledAt`.
 - `rejectCancellation(code, message)`: `cancelling → authorized` e preenche `lastErrorCode/Message`.
+- `requestCancellation` (a partir de `authorized`) e `confirmCancellation` limpam `lastErrorCode/Message`: o erro pertence à tentativa anterior, rejeitada, e não deve aparecer numa nota que está sendo cancelada ou já foi cancelada. O histórico continua nos eventos (`Cancellation rejected: …`) e no webhook `nfse.invoice.cancellation_rejected`. Só os métodos de cancelamento limpam o erro; a convenção dos demais métodos não muda.
 - `cancellationReason` e `cancelledAt` como getters; `wasAuthorized` (`authorizedAt !== null`).
 
 `CancellationReason { code, description | null }` em `domain/cancellation-reason.ts`. A descrição fiscal fora de 15–255 caracteres lança `InvalidCancellationReasonError` (422).
@@ -113,14 +114,18 @@ A porta `FiscalProvider` ganha `cancel(payload: ICancelPayload): Promise<FiscalC
 - Resposta da invoice: campos aditivos `cancellationReason`, `cancellationDescription`, `cancelledAt`.
 - `GET /v1/invoices?status=` aceita `cancelling` e `cancelled`.
 - XML/PDF/download-url: disponíveis quando `wasAuthorized`. E-mail: só para `authorized`.
+- E-mail automático: o processor de e-mail, ao encontrar a nota em `cancelling` ou `cancelled`, retorna sem lançar erro, sem nova tentativa e sem alterar o status do e-mail (`lastEmailStatus` continua nulo). Se o cancelamento for rejeitado e a nota voltar a `authorized`, o agendador de recuperação (que reenfileira `authorized` com e-mail pedido e `lastEmailStatus` nulo) reenvia o e-mail; se a nota terminar `cancelled`, nenhum e-mail é enviado.
+- `POST /v1/invoices/:id/email` numa nota `cancelling` ou `cancelled` responde `409` com mensagem própria (e-mail indisponível para nota cancelada), distinta de "Documents not ready" (nota autorizada sem documentos).
 - Webhooks públicos novos: `nfse.invoice.cancelled` e `nfse.invoice.cancellation_rejected`. A publicação é extraída para `InvoiceWebhookPublisher` (DRY entre workflow, cancelamento e InvoiceService).
-- MCP: tool `nfse_cancel` (`invoice_id`, `reason`, `description?`), escopo `nfse:write`.
-- Dashboard: botão "Cancelar nota" no detalhe da invoice (para `queued` e `authorized`, com permissão `nfse.invoices.issue`) abre um modal com motivo e descrição. Status, timeline e opções de webhook em en/pt.
+- MCP: tool `nfse_cancel` (`invoice_id`, `reason`, `description?` com `maxLength` 255 no `inputSchema`), escopo `nfse:write`.
+- A regra da descrição (15 a 255 caracteres) vem de uma constante única por workspace: `CANCELLATION_DESCRIPTION_MIN/MAX` em `api/src/modules/invoice/domain/cancellation-reason.ts` (usada pelo domínio, pelo DTO e pelo `inputSchema` do MCP) e uma constante equivalente em `web/lib/invoice-cancellation.ts` (usada pelo modal).
+- OpenAPI: o endpoint de cancelamento documenta `200` e `202`. A descrição do filtro de status da tool `nfse_list` é montada a partir de `INVOICE_STATUSES`, para não ficar desatualizada. O `api/llms.txt` cita `409 ERROR_INVOICE_NOT_CANCELLABLE` e `422 ERROR_INVALID_CANCELLATION_REASON`.
+- Dashboard: botão "Cancelar nota" no detalhe da invoice (para `queued` e `authorized`, com permissão `nfse.invoices.issue`; a regra é um predicado puro e testado em `web/lib/invoice-cancellation.ts`) abre um modal com motivo e descrição. O modal só é montado enquanto está aberto, então motivo, descrição e erro começam limpos a cada abertura. Status, timeline e opções de webhook em en/pt.
 - Docs: endpoint novo em `web/lib/docs/content/{en,pt}.ts` (paridade passa a 32 operações), `api/FRONTEND_API.md` e `api/llms.txt`.
 
 ## 9. Persistência
 
-Migration `1791780000000-AddInvoiceCancellation`: recria `ck_nfse_invoices_status` com os dois status novos e adiciona `cancellation_reason varchar(30)`, `cancellation_description text` e `cancelled_at timestamptz` (todas nullable). Sem backfill.
+Migration `1791780000000-AddInvoiceCancellation`: recria `ck_nfse_invoices_status` com os dois status novos e adiciona `cancellation_reason varchar(30)`, `cancellation_description text` e `cancelled_at timestamptz` (todas nullable). Sem backfill. O `down` verifica antes se existem notas `cancelling` ou `cancelled` e, se existirem, falha com uma mensagem clara: voltar esses status para `authorized` falsificaria o estado fiscal, então a decisão sobre elas é de quem faz o rollback.
 
 ## 10. Testes
 
@@ -131,11 +136,15 @@ Migration `1791780000000-AddInvoiceCancellation`: recria `ck_nfse_invoices_statu
 - Provider: mapeamento de motivo, `ok`/`retry_pending`/replay/rejeição; Fake.
 - Aplicação: handler, processor (lock), serviço (os três desfechos), `InvoiceService.cancel` (local, fiscal, idempotente, 409), controller (200/202).
 - MCP: a tool delega ao `InvoiceService.cancel`.
-- Web: modal (validação de descrição, chamada à API), paridade de docs.
+- Web: modal (validação de descrição, chamada à API), reset ao reabrir, predicado de visibilidade do botão (status e permissão), paridade de docs.
+- Comportamento: erro anterior limpo ao pedir/confirmar o cancelamento; e-mail automático ignora `cancelling`/`cancelled` sem lançar erro; `requestEmail` com mensagem própria; `saveDpsInfo` sem campos para atualizar não emite `UPDATE`; saída silenciosa da corrida com log.
+- Cobertura adicional: `stateOverride` do publisher; ramos `failed_permanent`, `still_pending`, `ValidationError` e `close` do provider; caracterização do risco "Sefin aceitou e `transition()` falhou depois" (o job tenta de novo e reenvia o evento).
 
 ## 11. Riscos e pontos em aberto
 
 - **Nota parada em `cancelling`** depois de 8 tentativas: precisa de ação operacional (log + Sentry via falha do job).
 - **Resposta perdida depois que a Sefin aceitou:** o replay reenvia o mesmo XML. Se a Sefin responder com rejeição de evento duplicado em vez do resultado original, a nota volta a `authorized` por engano. A biblioteca afirma que o reenvio devolve "o mesmo resultado ou uma rejeição determinística". Validar em produção restrita.
+- **Ordem de deploy:** implante o worker antes da API. Um worker antigo não conhece o tipo de outbox `invoice.cancel` ("No outbox handler") e a nota fica em `cancelling`. Isso entra no `SELF_HOSTING.md` e na descrição do PR.
+- **Recuperação de nota presa em `cancelling`** (fora de escopo, §3): a solução natural é estender o agendador de recuperação para reenfileirar notas `cancelling` antigas (o serviço é idempotente e o provider faz replay do evento guardado). Fica para uma spec própria, que também cobriria a falha de ordem de deploy.
 - **`api/src/infra/storage/` não está versionado**: a regra `storage/` do `.gitignore` da raiz ignora essa pasta. Um clone limpo não compila. Corrigir à parte (`!api/src/infra/storage/`).
 - O número de DPS reservado por uma nota cancelada na corrida fica sem uso (lacuna na sequência).
