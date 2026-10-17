@@ -24,6 +24,7 @@ export type { OpenApiConfig } from './configuration.types';
 export type { OtpConfig } from './configuration.types';
 export type { ReferralsConfig } from './configuration.types';
 export type { MagicLinkConfig } from './configuration.types';
+export type { MarketingConfig } from './configuration.types';
 
 export default function configuration(): AppConfiguration {
   const env = parseEnvConfig(process.env);
@@ -218,6 +219,12 @@ export default function configuration(): AppConfiguration {
     magicLink: {
       codeTtlMinutes: env.MAGIC_LINK_CODE_TTL_MINUTES,
       maxAttemptsPerHour: env.MAGIC_LINK_MAX_ATTEMPTS_PER_HOUR,
+    },
+    marketing: {
+      pixelId: env.META_PIXEL_ID,
+      capiToken: env.META_CAPI_TOKEN,
+      capiEnabled: env.META_CAPI_ENABLED,
+      capiTestEventCode: env.META_CAPI_TEST_EVENT_CODE,
     },
   };
 

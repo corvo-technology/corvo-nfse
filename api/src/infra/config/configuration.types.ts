@@ -122,6 +122,14 @@ export type MetaConfig = {
   secretsEncryptionKey: string;
 };
 
+/** Meta Pixel (browser) + Conversions API (server); unrelated to the WhatsApp `MetaConfig` above. */
+export type MarketingConfig = {
+  pixelId?: string;
+  capiToken?: string;
+  capiEnabled: boolean;
+  capiTestEventCode?: string;
+};
+
 export type StripeConfig = {
   enabled: boolean;
   secretKey: string;
@@ -226,4 +234,5 @@ export type AppConfiguration = {
   otp: OtpConfig;
   referrals: ReferralsConfig;
   magicLink: MagicLinkConfig;
+  marketing: MarketingConfig;
 };

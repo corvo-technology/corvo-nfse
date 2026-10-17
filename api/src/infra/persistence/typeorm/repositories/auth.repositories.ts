@@ -3,7 +3,12 @@ import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storag
 import { TenantMembershipOrmEntity } from '../entities/tenant-membership.orm-entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, MoreThan, Repository } from 'typeorm';
+import {
+  IsNull,
+  MoreThan,
+  Repository,
+  type QueryDeepPartialEntity,
+} from 'typeorm';
 import { AuthAuditEvent } from '@/modules/auth/domain/auth-audit-event';
 import { IAuthAuditEventRepository } from '@/modules/auth/domain/auth-audit-event.repository';
 import { AuthSession } from '@/modules/auth/domain/auth-session';
@@ -79,7 +84,7 @@ export class TypeOrmAuthUserRepository implements IAuthUserRepository {
       .createQueryBuilder()
       .insert()
       .into(AuthUserOrmEntity)
-      .values(toAuthUserRow(user))
+      .values(toAuthUserRow(user) as QueryDeepPartialEntity<AuthUserOrmEntity>)
       .orIgnore()
       .returning('*')
       .execute();

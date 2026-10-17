@@ -27,6 +27,10 @@ export class AuthUserOrmEntity {
   @Column({ name: 'primary_identity_type', type: 'text', nullable: true })
   primaryIdentityType!: string | null;
 
+  /** Written once by the marketing signup-attribution endpoint; never by the auth flows. */
+  @Column({ name: 'signup_attribution', type: 'jsonb', nullable: true })
+  signupAttribution!: Record<string, unknown> | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

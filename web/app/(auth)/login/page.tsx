@@ -9,6 +9,7 @@ import { auth, ApiError, type MagicLinkChallenge, type OAuthProvider, type OAuth
 import { useAuth } from "@/lib/auth";
 import { safeNextPath } from "@/lib/safe-next";
 import { cn } from "@/lib/utils";
+import { trackMeta } from "@/components/MetaPixel";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
 
 type Mode = "signup" | "login";
@@ -100,6 +101,7 @@ function LoginPageContent() {
     busy.current = true; setError(""); setLoading(true);
     try {
       const issued = await auth.magicLinkRequest(email.trim());
+      if (mode === "signup") trackMeta("Lead", {}, `lead_${issued.challengeId}`);
       setChallenge(issued); setCooldownUntil(Date.parse(issued.resendAvailableAt));
       setNow(Date.now()); setCode(""); setCookieIssued(false); setStep("code");
     } catch (cause) { showError(cause); }

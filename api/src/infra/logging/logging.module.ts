@@ -30,6 +30,7 @@ const SENSITIVE_LOG_FIELD_NAMES = [
   'accessTokenEncrypted',
   'webhookSecret',
   'verifyToken',
+  'META_CAPI_TOKEN',
 ];
 
 const SENSITIVE_LOG_HEADER_NAMES = [

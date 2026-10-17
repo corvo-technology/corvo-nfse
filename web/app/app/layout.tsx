@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { useSignupAttribution } from "@/lib/use-signup-attribution";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
 import { CorvoLogo } from "@/components/ui/corvo-logo";
@@ -13,6 +14,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const t = useTranslations();
   const { isAuthenticated, isLoading, status, refreshSession, tenantId, can, fiscalEnvironment } = useAuth();
+  useSignupAttribution();
 
   // The drawer is tied to the path it was opened on, so navigating closes it
   // without needing an effect.

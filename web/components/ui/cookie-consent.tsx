@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { acceptCookies } from "@/lib/consent";
+import { acceptCookies, rejectCookies } from "@/lib/consent";
 import { CorvoLogo } from "./corvo-logo";
 
 export function CookieConsent() {
+  const t = useTranslations("CookieConsent");
   const pathname = usePathname();
   const locale = pathname.match(/^\/(en|pt)(?:\/|$)/)?.[1] ?? "en";
   const [animateIn, setAnimateIn] = useState(false);
@@ -15,6 +17,7 @@ export function CookieConsent() {
     return () => cancelAnimationFrame(frame);
   }, []);
   function handleAccept() { acceptCookies(); }
+  function handleReject() { rejectCookies(); }
 
   return (
     <div
@@ -34,15 +37,13 @@ export function CookieConsent() {
               </div>
               <div className="flex flex-col gap-1">
                 <p className="text-[13.5px] text-text-2 leading-relaxed">
-                  We use cookies to improve your experience and analyze site
-                  traffic. By clicking &ldquo;Accept&rdquo;, you agree to our
-                  use of cookies.
+                  {t("message")}
                 </p>
                 <Link
                   href={`/${locale}/privacy`}
                   className="text-[12.5px] text-text-4 hover:text-text-2 transition-colors"
                 >
-                  Learn more about our privacy practices
+                  {t("learnMore")}
                 </Link>
               </div>
             </div>
@@ -50,10 +51,16 @@ export function CookieConsent() {
             {/* Actions */}
             <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto">
               <button
+                onClick={handleReject}
+                className="flex-1 sm:flex-none bg-transparent border border-border text-text-2 rounded-[8px] px-5 py-2.5 text-[13.5px] font-medium transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              >
+                {t("reject")}
+              </button>
+              <button
                 onClick={handleAccept}
                 className="flex-1 sm:flex-none bg-[#ededec] text-[#0a0a0a] rounded-[8px] px-5 py-2.5 text-[13.5px] font-medium transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
-                Accept
+                {t("accept")}
               </button>
             </div>
           </div>

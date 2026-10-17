@@ -32,6 +32,9 @@ export type OAuthProvider = "google" | "github";
 export type OAuthProviders = Record<OAuthProvider, boolean>;
 
 export interface MagicLinkVerified { expiresAt: string; isNewUser: boolean; csrfToken: string }
+export interface SignupAttributionUtm { source?: string; medium?: string; campaign?: string; term?: string; content?: string }
+export interface SignupAttributionInput { eventId: string; consent: boolean; consentVersion?: string; utm?: SignupAttributionUtm; fbclid?: string; fbc?: string; fbp?: string; landingUrl?: string; eventSourceUrl?: string }
+export interface SignupAttributionResult { recorded: boolean }
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string, public retryAfterSeconds?: number, public details?: ApiErrorDetail[], public requestId?: string) { super(message); this.name = "ApiError"; }
@@ -131,6 +134,7 @@ export const auth = {
   me: async () => (await request<Envelope<AuthContext>>("/auth/me")).data,
   magicLinkRequest: async (email: string) => (await request<Envelope<MagicLinkChallenge>>("/auth/magic-link/request", json({ email }))).data,
   magicLinkVerify: async (email: string, challengeId: string, code: string) => (await request<Envelope<MagicLinkVerified>>("/auth/magic-link/verify", json({ email, challengeId, code }))).data,
+  signupAttribution: async (input: SignupAttributionInput) => (await request<Envelope<SignupAttributionResult>>("/auth/signup-attribution", json(input))).data,
 };
 export const apiKeys = {
   list: async (params: PageParams = {}) => toPage(await request<ListBody<ApiKey>>(`/auth/api-keys${query(params)}`)),

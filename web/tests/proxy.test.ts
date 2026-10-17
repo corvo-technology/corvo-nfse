@@ -74,6 +74,49 @@ it("forwards the pre-emission calculation and the company fiscal configuration r
   expect((await call(DELETE, "DELETE", "invoices/calculate")).status).toBe(404);
 });
 
+it("forwards the signup-attribution route with user-agent and the derived client IP, and only for that route", async () => {
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ data: { recorded: true } }), { status: 200 }));
+  const headers = {
+    Origin: "http://localhost:4000",
+    "sec-fetch-site": "same-origin",
+    "Content-Type": "application/json",
+    "User-Agent": "Mozilla/5.0 test-agent",
+    "cf-connecting-ip": "203.0.113.9",
+    "x-forwarded-for": "198.51.100.1, 10.0.0.1",
+  };
+  const response = await POST(
+    new NextRequest("http://localhost:4000/api/proxy/v1/auth/signup-attribution", { method: "POST", headers, body: "{}" }),
+    context("auth/signup-attribution"),
+  );
+  expect(response.status).toBe(200);
+  const sent = new Headers(fetchMock.mock.calls[0][1]?.headers);
+  expect(sent.get("user-agent")).toBe("Mozilla/5.0 test-agent");
+  expect(sent.get("x-corvo-client-ip")).toBe("203.0.113.9");
+
+  // cf-connecting-ip missing: falls back to the first x-forwarded-for entry.
+  fetchMock.mockClear();
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ data: { recorded: true } }), { status: 200 }));
+  const withoutCf: Record<string, string> = { ...headers };
+  delete withoutCf["cf-connecting-ip"];
+  await POST(
+    new NextRequest("http://localhost:4000/api/proxy/v1/auth/signup-attribution", { method: "POST", headers: withoutCf, body: "{}" }),
+    context("auth/signup-attribution"),
+  );
+  const fallbackSent = new Headers(fetchMock.mock.calls[0][1]?.headers);
+  expect(fallbackSent.get("x-corvo-client-ip")).toBe("198.51.100.1");
+
+  // Another authenticated route never gets the client-ip/UA treatment.
+  fetchMock.mockClear();
+  fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+  await POST(
+    new NextRequest("http://localhost:4000/api/proxy/v1/auth/session/logout", { method: "POST", headers }),
+    context("auth/session/logout"),
+  );
+  const unrelatedSent = new Headers(fetchMock.mock.calls[0][1]?.headers);
+  expect(unrelatedSent.has("user-agent")).toBe(false);
+  expect(unrelatedSent.has("x-corvo-client-ip")).toBe(false);
+});
+
 it("forwards only the MCP consent and connection routes the dashboard needs", async () => {
   const allowed: [string, "GET" | "POST" | "DELETE"][] = [["mcp/consent", "GET"], ["mcp/consent", "POST"], ["mcp/connections", "GET"], ["mcp/connections/abc", "DELETE"]];
   for (const [route, method] of allowed) {

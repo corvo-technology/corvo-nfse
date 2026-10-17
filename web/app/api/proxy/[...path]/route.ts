@@ -7,6 +7,7 @@ const routes: [RegExp, string[]][] = [
   [/^auth\/oauth\/(google|github)\/(authorize|callback)$/, ["GET"]],
   [/^auth\/session\/(logout|tenant)$/, ["POST"]],
   [/^auth\/(me|memberships|permissions|members)$/, ["GET"]],
+  [/^auth\/signup-attribution$/, ["POST"]],
   [/^auth\/invite$/, ["POST"]],
   [/^auth\/members\/[^/]+$/, ["DELETE"]],
   [/^auth\/api-keys$/, ["GET", "POST"]],
@@ -104,6 +105,13 @@ async function proxyRequest(request: NextRequest, context: { params: Promise<{ p
   // Restrict credentials to session cookies; never proxy Bearer or integration keys.
   const cookie = request.headers.get("cookie")?.split(";").filter((entry) => sessionNames.has(entry.trim().split("=", 1)[0])).map((entry) => entry.trim()).join("; ");
   if (cookie) headers.set("cookie", cookie);
+  // Only the signup-attribution endpoint needs the real client IP/UA, for Meta CAPI match quality.
+  if (route === "auth/signup-attribution") {
+    const userAgent = request.headers.get("user-agent");
+    if (userAgent) headers.set("user-agent", userAgent);
+    const clientIp = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    if (clientIp) headers.set("x-corvo-client-ip", clientIp);
+  }
   try {
     const mutation = !["GET", "HEAD"].includes(request.method);
     const body = mutation ? await limitedBody(request, /\/certificates$/.test(route) ? 64 * 1024 : 1024 * 1024) : undefined;
