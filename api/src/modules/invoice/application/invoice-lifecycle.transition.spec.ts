@@ -189,6 +189,31 @@ describe('InvoiceLifecycleService.transition — cancellation', () => {
     });
   });
 
+  it.each(['request', 'confirm'] as const)(
+    'writes null last-error columns on %s cancellation so a stale error is erased',
+    async (step) => {
+      const ctx = build(step === 'request' ? 'authorized' : 'cancelling', null);
+      const invoice = invoiceIn('authorized', 'test');
+      const reason = cancellationReason(
+        'issue_error',
+        'Valor informado incorretamente',
+      );
+      invoice.requestCancellation(reason);
+      invoice.rejectCancellation('E0840', 'Prazo expirado');
+      const event =
+        step === 'request'
+          ? invoice.requestCancellation(reason)
+          : (invoice.requestCancellation(reason),
+            invoice.confirmCancellation());
+      await ctx.service.transition(invoice, event);
+      expect(ctx.persisted[0]).toMatchObject({
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        lastErrorProvider: null,
+      });
+    },
+  );
+
   it('keeps the pending fiscal event while cancelling', async () => {
     const ctx = build('authorized', null);
     const invoice = invoiceIn('authorized', 'test');

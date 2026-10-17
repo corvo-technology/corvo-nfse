@@ -37,6 +37,27 @@ describe('InvoiceMapper cancellation fields', () => {
     expect(back.cancelledAt).toEqual(invoice.cancelledAt);
   });
 
+  it('maps a cleared last error to explicit nulls so the UPDATE erases it', () => {
+    const invoice = Invoice.create(
+      {
+        companyId: 'company-1',
+        customer: { taxId: VALID_CNPJ, name: 'Cliente' },
+        service: {
+          description: 'Serviço',
+          code: '010101',
+          municipalityCode: '3550308',
+        },
+        amount: 100,
+        competenceDate: new Date('2026-10-14'),
+      },
+      'tenant-1',
+    );
+    const orm = new InvoiceMapper().toPersistence(invoice);
+    expect(orm.lastErrorCode).toBeNull();
+    expect(orm.lastErrorMessage).toBeNull();
+    expect(orm.lastErrorProvider).toBeNull();
+  });
+
   it('maps absent cancellation columns to null', () => {
     const orm = new InvoiceMapper().toPersistence(
       Invoice.create(

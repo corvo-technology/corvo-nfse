@@ -160,13 +160,13 @@ export class InvoiceOrmEntity {
     length: 50,
     nullable: true,
   })
-  lastErrorCode?: string;
+  lastErrorCode?: string | null;
 
   @Column({ name: 'last_error_message', type: 'text', nullable: true })
-  lastErrorMessage?: string;
+  lastErrorMessage?: string | null;
 
   @Column({ name: 'last_error_provider', type: 'text', nullable: true })
-  lastErrorProvider?: string;
+  lastErrorProvider?: string | null;
 
   @Column({
     name: 'documents_ready_at',

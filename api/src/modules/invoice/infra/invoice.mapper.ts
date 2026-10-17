@@ -88,9 +88,9 @@ export class InvoiceMapper {
     orm.fiscalSchemaVersion = snapshot.fiscalSchemaVersion;
     orm.issuedAt = snapshot.issuedAt ?? undefined;
     orm.authorizedAt = snapshot.authorizedAt ?? undefined;
-    orm.lastErrorCode = snapshot.lastErrorCode ?? undefined;
-    orm.lastErrorMessage = snapshot.lastErrorMessage ?? undefined;
-    orm.lastErrorProvider = snapshot.lastErrorProvider ?? undefined;
+    orm.lastErrorCode = snapshot.lastErrorCode ?? null;
+    orm.lastErrorMessage = snapshot.lastErrorMessage ?? null;
+    orm.lastErrorProvider = snapshot.lastErrorProvider ?? null;
     orm.documentsReadyAt = snapshot.documentsReadyAt ?? undefined;
     orm.lastEmailStatus = snapshot.lastEmailStatus ?? undefined;
     orm.lastEmailSentAt = snapshot.lastEmailSentAt ?? undefined;

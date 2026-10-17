@@ -76,7 +76,7 @@ export class NfseEmailProcessor extends WorkerHost {
         // No e-mail for a cancelled/cancelling invoice. If the cancellation is
         // rejected and the invoice returns to `authorized`, the recovery
         // scheduler re-enqueues the e-mail (authorized + requested + no status).
-        this.logger.log(
+        this.logger.debug(
           `Invoice ${invoiceId} is ${invoice.status}, skipping e-mail`,
         );
         return;
