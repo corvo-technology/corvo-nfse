@@ -1,10 +1,7 @@
 import { VALID_CNPJ } from '@/shared/fiscal/fixtures';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { Invoice } from '../domain/invoice';
-import {
-  ConcurrentInvoiceTransitionError,
-  InvoiceNotCancellableError,
-} from '../domain/errors';
+import { ConcurrentInvoiceTransitionError } from '../domain/errors';
 import type { InvoiceStatus } from '../domain/invoice-status';
 import { InvoiceMapper } from '../infra/invoice.mapper';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
@@ -49,6 +46,7 @@ function harness(
   const row = { status: initial };
   const persisted: Record<string, unknown>[] = [];
   const events: unknown[] = [];
+  const intents: string[] = [];
   const walletInserts: Record<string, unknown>[] = [];
   const outboxMessages: { type: string }[] = [];
 
@@ -70,6 +68,11 @@ function harness(
       if (reads === firstReaders) release();
       if (reads <= firstReaders) await barrier;
       return seen;
+    }),
+    registerCancellationIntent: jest.fn(async () => {
+      if (row.status !== 'processing') return false;
+      intents.push('registered');
+      return true;
     }),
   };
 
@@ -164,6 +167,7 @@ function harness(
     events,
     walletInserts,
     outboxMessages,
+    intents,
     fresh,
     cancel: (env: ExecutionEnvironment, input: object) =>
       service.cancel(base.id, tenantId, env, input as never),
@@ -210,14 +214,15 @@ describe('InvoiceService.cancel — concurrent submissions', () => {
     expect(h.row.status).toBe('cancelling');
   });
 
-  it('refuses the cancel when a worker moves the invoice to processing first', async () => {
+  it('registers a pending cancellation when a worker moves the invoice to processing first', async () => {
     const h = harness('queued', 'live', 1);
     const workerInvoice = h.fresh();
     const workerEvent = workerInvoice.transitionTo('processing');
     // The worker takes the transaction slot first; the cancel read `queued` meanwhile.
     const worker = h.lifecycle.transition(workerInvoice, workerEvent);
-    const cancel = h.cancel('live', { reason: 'other' });
-    await expect(cancel).rejects.toBeInstanceOf(InvoiceNotCancellableError);
+    const cancelled = await h.cancel('live', { reason: 'other' });
+    expect(cancelled.hasPendingCancellation).toBe(true);
+    expect(h.intents).toEqual(['registered']);
     await expect(worker).resolves.toBe(true);
     expect(h.webhooks.publish).not.toHaveBeenCalled();
     expect(h.walletInserts).toEqual([]);

@@ -45,7 +45,11 @@ import {
   CreateInvoiceDto,
   ListInvoicesQuery,
 } from '../http/invoice.dto';
-import { cancellationReason } from '../domain/cancellation-reason';
+import {
+  cancellationReason,
+  DEFAULT_CANCELLATION_DESCRIPTION,
+  type CancellationReason,
+} from '../domain/cancellation-reason';
 import { cancellationMessage } from './invoice-cancel.handler';
 import { InvoiceWebhookPublisher } from './invoice-webhook.publisher';
 import type { DocumentFormat } from '@/infra/storage/domain/document-storage';
@@ -265,6 +269,13 @@ export class InvoiceService {
     const invoice = await this.findById(id, tenantId, environment);
     if (invoice.status === 'cancelling' || invoice.status === 'cancelled')
       return invoice;
+    if (invoice.status === 'processing')
+      return this.cancelWhileProcessing(
+        invoice,
+        cancellationReason(input.reason, input.description),
+        input,
+        environment,
+      );
     const fiscal = invoice.status !== 'queued';
     const event = invoice.requestCancellation(
       cancellationReason(input.reason, input.description),
@@ -278,9 +289,10 @@ export class InvoiceService {
       );
     } catch (error: unknown) {
       if (!(error instanceof ConcurrentInvoiceTransitionError)) throw error;
-      return this.currentAfterLostRace(id, tenantId, environment);
+      return this.currentAfterLostRace(id, tenantId, environment, input);
     }
-    if (!applied) return this.currentAfterLostRace(id, tenantId, environment);
+    if (!applied)
+      return this.currentAfterLostRace(id, tenantId, environment, input);
     if (!fiscal)
       await this.webhooks.publish(invoice, 'nfse.invoice.cancelled', {
         reason: input.reason,
@@ -288,15 +300,65 @@ export class InvoiceService {
     return invoice;
   }
 
-  /** Lost a race: another request already cancelled it (return that state) or the worker took it (409). */
+  /**
+   * Records the intent to cancel on an invoice still being issued: no transition,
+   * outbox or webhook. The worker applies it when the Sefin authorizes. The reason
+   * is validated here because the repository and `transition()` trust it.
+   */
+  private async cancelWhileProcessing(
+    invoice: Invoice,
+    reason: CancellationReason,
+    input: CancelInvoiceDto,
+    environment: ExecutionEnvironment,
+  ): Promise<Invoice> {
+    if (invoice.hasPendingCancellation) return invoice;
+    invoice.registerPendingCancellation(reason); // validates 15-255 first
+    const requestedAt = invoice.cancellationRequestedAt as Date;
+    const written = await this.invoiceRepo.registerCancellationIntent(
+      invoice.id,
+      invoice.tenantId,
+      { code: reason.code, description: reason.description, requestedAt },
+    );
+    if (written) return invoice;
+    return this.currentAfterLostRace(
+      invoice.id,
+      invoice.tenantId,
+      environment,
+      input,
+    );
+  }
+
+  /**
+   * Lost a race: another request already cancelled it (return that state), the
+   * worker authorized it (cancel fiscally), the worker took a queued one (register
+   * the intent) or it is not cancellable (409).
+   */
   private async currentAfterLostRace(
     id: string,
     tenantId: string,
     environment: ExecutionEnvironment,
+    input: CancelInvoiceDto,
   ): Promise<Invoice> {
     const current = await this.findById(id, tenantId, environment);
     if (current.status === 'cancelling' || current.status === 'cancelled')
       return current;
+    if (current.status === 'authorized')
+      return this.cancel(id, tenantId, environment, input);
+    if (current.status === 'processing') {
+      if (current.hasPendingCancellation) return current;
+      const supplied = cancellationReason(input.reason, input.description);
+      return this.cancelWhileProcessing(
+        current,
+        {
+          code: supplied.code,
+          description:
+            supplied.description ??
+            DEFAULT_CANCELLATION_DESCRIPTION[supplied.code],
+        },
+        input,
+        environment,
+      );
+    }
     throw new InvoiceNotCancellableError(current.status);
   }
 
