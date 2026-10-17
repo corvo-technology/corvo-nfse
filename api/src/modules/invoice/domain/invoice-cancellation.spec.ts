@@ -110,6 +110,26 @@ describe('Invoice cancellation', () => {
     expect(invoice.toSnapshot().lastErrorMessage).toBe('Prazo expirado');
   });
 
+  it('clears the previous rejection error when a new cancellation is requested', () => {
+    const invoice = invoiceIn('authorized');
+    invoice.requestCancellation(fiscalReason);
+    invoice.rejectCancellation('E0840', 'Prazo expirado');
+    expect(invoice.toSnapshot().lastErrorCode).toBe('E0840');
+    invoice.requestCancellation(fiscalReason);
+    expect(invoice.toSnapshot().lastErrorCode).toBeNull();
+    expect(invoice.toSnapshot().lastErrorMessage).toBeNull();
+  });
+
+  it('leaves no stale error after the cancellation is confirmed', () => {
+    const invoice = invoiceIn('authorized');
+    invoice.requestCancellation(fiscalReason);
+    invoice.rejectCancellation('E0840', 'Prazo expirado');
+    invoice.requestCancellation(fiscalReason);
+    invoice.confirmCancellation();
+    expect(invoice.toSnapshot().lastErrorCode).toBeNull();
+    expect(invoice.toSnapshot().lastErrorMessage).toBeNull();
+  });
+
   it('cannot confirm a cancellation that was never requested', () => {
     expect(() => invoiceIn('queued').confirmCancellation()).toThrow(
       InvalidInvoiceTransitionError,

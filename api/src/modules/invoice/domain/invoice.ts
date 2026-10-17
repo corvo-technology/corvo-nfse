@@ -336,6 +336,7 @@ export class Invoice {
     if (this.props.status === 'authorized') {
       assertFiscalCancellationReason(reason);
       this.recordCancellationReason(reason);
+      this.clearLastError();
       return this.transitionTo('cancelling', 'Cancellation requested');
     }
     throw new InvoiceNotCancellableError(this.props.status);
@@ -344,6 +345,7 @@ export class Invoice {
   confirmCancellation(): InvoiceEvent {
     if (this.props.status !== 'cancelling')
       throw new InvalidInvoiceTransitionError(this.props.status, 'cancelled');
+    this.clearLastError();
     const event = this.transitionTo('cancelled', 'NFS-e cancelled');
     this.props.cancelledAt = event.createdAt;
     return event;
@@ -357,6 +359,13 @@ export class Invoice {
       'authorized',
       `Cancellation rejected: ${errorMessage}`,
     );
+  }
+
+  /** Drops an error left by a previous (rejected) cancellation attempt. */
+  private clearLastError(): void {
+    this.props.lastErrorCode = null;
+    this.props.lastErrorMessage = null;
+    this.props.lastErrorProvider = null;
   }
 
   private recordCancellationReason(reason: CancellationReason): void {
