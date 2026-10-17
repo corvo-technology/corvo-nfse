@@ -42,7 +42,7 @@ docker compose --env-file deploy/.env.local \
   up -d --build --wait --wait-timeout 180
 ```
 
-Open the dashboard at `http://localhost:4000` and the API reference at `http://localhost:4000/en/docs`. The API listens at `http://localhost:3000/v1`.
+Open the dashboard at `http://localhost:4000` and the API reference at `http://localhost:4000/en/docs`. The API listens at `http://localhost:3000/v1`. Point the SDKs at the origin without `/v1` (`CORVO_BASE_URL=http://localhost:3000`); they add `/v1` themselves.
 
 The stack includes web, API, worker, a migrations job, PostgreSQL, Redis, and LocalStack. LocalStack creates the `corvo-nfse` bucket automatically. Its endpoint is `http://s3.localhost.localstack.cloud:4566`; the Compose network provides that hostname as an alias, and it resolves to localhost from the host.
 

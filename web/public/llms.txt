@@ -6,7 +6,7 @@ Corvo registers issuer companies, stores their A1 certificates, calculates taxes
 
 ## Quick facts
 
-- API base URL: `https://api.corvo.tech/v1`. Authenticate with the `X-API-Key` header. Keys starting with `corvo_test_` use the test environment (no fiscal validity); keys starting with `corvo_live_` issue real invoices.
+- API base URL: `https://api.corvo.tech/v1`. The SDKs take the origin only in `CORVO_BASE_URL` (`https://api.corvo.tech`, without `/v1`) and add `/v1` themselves. Authenticate with the `X-API-Key` header. Keys starting with `corvo_test_` use the test environment (no fiscal validity); keys starting with `corvo_live_` issue real invoices.
 - MCP server (AI agents): `https://api.corvo.tech/mcp`. Claude Code, Cursor, Codex, VS Code, Windsurf and Claude Desktop connect with OAuth in the browser; the user picks the workspace and the environment (test or live) on the approval screen.
 - Tax regimes: MEI and Simples Nacional first; other regimes need a service tax profile.
 - Issuance is asynchronous: `POST /v1/invoices` returns `202` and the result arrives by `GET /v1/invoices/:id` or by webhook. Send an `Idempotency-Key` header to retry safely.

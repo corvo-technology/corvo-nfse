@@ -34,7 +34,7 @@ export const en: DocsTree = {
       },
       {
         kind: "text",
-        body: "All paths in this documentation are relative to `BASE_URL` (`https://api.corvo.tech/v1`).",
+        body: "All paths in this documentation are relative to `BASE_URL` (`https://api.corvo.tech/v1`), used in the `curl` examples. The SDKs use a different variable: `CORVO_BASE_URL` is the origin only, without `/v1` (default `https://api.corvo.tech`), and the SDK adds `/v1` itself.",
       },
       { kind: "heading", level: 2, body: "Response formats" },
       {
@@ -141,7 +141,7 @@ export const en: DocsTree = {
         {
           kind: "list",
           items: [
-          "Authenticates with `X-API-Key`. It reads `CORVO_API_KEY`, and `CORVO_BASE_URL` if you use a different API URL.",
+          "Authenticates with `X-API-Key`. It reads `CORVO_API_KEY`, and `CORVO_BASE_URL` if you use a different API URL. `CORVO_BASE_URL` is the origin only, without `/v1` (default `https://api.corvo.tech`): the SDK adds the `/v1` prefix, and a base that already ends in `/v1` produces `/v1/v1/...` and `404`.",
           "The key decides the environment: `corvo_test_...` for test and `corvo_live_...` for live.",
           "Errors come back as a typed result with `code`, `status`, `requestId`, `details` and `retryAfter`, not as an exception. The iterate helpers raise when a page fails.",
           "Lists are cursor-paginated, and every SDK has an iterate helper that walks all pages.",
@@ -266,11 +266,11 @@ export const en: DocsTree = {
             ["200 / 201 / 202", "Action completed / resource created / asynchronous processing accepted."],
             ["204", "Operation completed with no body."],
             ["400", "Invalid DTO, parameter, JSON, UUID, `limit` or cursor."],
-            ["401 / 403", "Missing or invalid authentication / access denied (scope, endpoint not enabled for API keys, blocked company)."],
+            ["401 / 403", "Missing or invalid authentication / access denied (scope, endpoint not enabled for API keys)."],
             ["404", "Resource not found, including resources of another tenant."],
             ["409 / 410", "Conflict (duplicate CNPJ, idempotency conflict, documents not ready yet) / resource retired."],
             ["413 / 415", "Payload too large / unsupported encoding."],
-            ["422", "Fiscal validation in the domain or a rejected business rule (readiness, certificate, quota)."],
+            ["422", "Fiscal validation in the domain or a rejected business rule (readiness, certificate, quota and plan limits)."],
             ["429", "Rate limit or cooldown; honor `Retry-After`."],
             ["500 / 502 / 503 / 504", "Internal error / invalid dependency / unavailability / timeout."],
           ],
@@ -284,8 +284,12 @@ export const en: DocsTree = {
             ["`ERROR_INVALID_LIMIT`", "`limit` outside 1–1000 or not an integer (400)."],
             ["`ERROR_INVALID_CURSOR`", "Tampered cursor, or one from another collection, tenant or filter (400)."],
             ["`ERROR_RATE_LIMIT_EXCEEDED`", "Request limit exceeded (429)."],
-            ["`ERROR_INSUFFICIENT_CREDITS` / `ERROR_QUOTA_EXCEEDED`", "Not enough credits or quota to issue."],
-            ["`ERROR_COMPANY_NOT_READY` / `ERROR_COMPANY_BLOCKED`", "Company without an active certificate in `live`, or blocked."],
+            ["`ERROR_QUOTA_EXCEEDED`", "Plan blocked when issuing or when creating a company in `live` (422)."],
+            ["`ERROR_MONTHLY_LIMIT_EXCEEDED`", "The plan's monthly processing limit was reached (422)."],
+            ["`ERROR_DAILY_LIMIT_EXCEEDED`", "The plan's daily issuance limit was reached (422)."],
+            ["`ERROR_PLAN_BLOCKED`", "Paid subscription required or payment grace period expired (422)."],
+            ["`ERROR_COMPANY_LIMIT_EXCEEDED`", "The plan's limit of active `live` companies was reached when creating a company (422)."],
+            ["`ERROR_COMPANY_NOT_READY`", "Issuing in `live` with a company that has no active certificate or an incomplete setup; `details` lists what is missing (422)."],
             ["`ERROR_IDEMPOTENCY_CONFLICT`", "Same `Idempotency-Key` with a different payload (409)."],
             ["`ERROR_GONE`", "Retired operation, such as one-off credit purchases (410)."],
           ],
@@ -995,7 +999,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             ["`fiscalProvider`, `fiscalSchemaVersion`", "Strings."],
             ["`issuedAt`, `authorizedAt`", "ISO date or null."],
             ["`emailSnapshot`", "Optional object with `send`."],
-            ["`lastErrorCode`, `lastErrorMessage`, `lastErrorProvider`", "String or null."],
+            ["`lastErrorCode`, `lastErrorMessage`, `lastErrorProvider`", "String or null. `lastErrorCode` holds the Sefin code (e.g. `E0120`) or a Corvo code (e.g. `FISCAL_REVIEW_REQUIRED`). `lastErrorProvider` is reserved and is always `null` today."],
             ["`documentsReadyAt`", "ISO date or null."],
             ["`lastEmailStatus`, `lastEmailSentAt`", "`queued`, `sent`, `failed` or null; ISO date or null."],
             ["`documentsStatus`", "Derived state: `pending` or `ready`."],
@@ -1012,7 +1016,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
         },
         {
           kind: "text",
-          body: "Fiscal statuses: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`. Do not treat authorization as immediate availability of every document.",
+          body: "Fiscal statuses: `queued`, `processing`, `authorized`, `rejected`, `reconciliation_required`, `manual_review`. `reconciliation_required`: the result of the Sefin submission is uncertain (timeout, network error or pending event); Corvo checks again on its own, with a growing interval of up to 30 minutes, and the invoice ends in `authorized` or `rejected`. `manual_review`: after 5 checks without a conclusive answer, the invoice stops in this status and the `nfse.invoice.manual_review` webhook carries `reason`; do not reissue with a different `Idempotency-Key`, which could duplicate the invoice, and contact support with the invoice `id`. Final statuses: `authorized`, `rejected` and `manual_review`. Do not treat authorization as immediate availability of every document.",
         },
         {
           kind: "endpoint",
@@ -1396,7 +1400,7 @@ console.log(body.data.secret); // store the secret now — it is not returned ag
         {
           kind: "callout",
           tone: "warn",
-          body: "`webhook.test` is used by the test route and cannot be included in the subscription array. Accepting an event at registration does not guarantee that every failure path of the current processing emits it; do not rely solely on `failed`/`reconciliation_required` without fetching the invoice.",
+          body: "`webhook.test` is used by the test route and cannot be included in the subscription array. `nfse.invoice.failed` is accepted at registration, but the current processing does not emit it; treat `nfse.invoice.rejected` and `nfse.invoice.manual_review` as final and, when in doubt, fetch the invoice.",
         },
         {
           kind: "endpoint",
@@ -2080,7 +2084,7 @@ console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { d
         {
           kind: "callout",
           tone: "warn",
-          body: "Fiscal statuses: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`. Do not treat authorization as immediate availability of every document — wait for `documentsStatus: \"ready\"` before generating URLs and requesting emails.",
+          body: "Fiscal statuses: `queued`, `processing`, `authorized`, `rejected`, `reconciliation_required`, `manual_review`. `reconciliation_required`: the result of the Sefin submission is uncertain (timeout, network error or pending event); Corvo checks again on its own, with a growing interval of up to 30 minutes, and the invoice ends in `authorized` or `rejected`. `manual_review`: after 5 checks without a conclusive answer, the invoice stops in this status and the `nfse.invoice.manual_review` webhook carries `reason`; do not reissue with a different `Idempotency-Key`, which could duplicate the invoice, and contact support with the invoice `id`. Final statuses: `authorized`, `rejected` and `manual_review`. Do not treat authorization as immediate availability of every document — wait for `documentsStatus: \"ready\"` before generating URLs and requesting emails.",
         },
         { kind: "heading", level: 2, body: "Idempotency-Key" },
         {
@@ -2230,7 +2234,7 @@ async function issueWithRetry(buildBody, attempts = 3) {
           rows: [
             ["`nfse.invoice.authorized`", "The invoice was authorized; adds `accessKey`/`nfseNumber`."],
             ["`nfse.invoice.rejected`", "Authorization was rejected; adds `errorCode`/`errorMessage`."],
-            ["`nfse.invoice.failed`", "Processing failed."],
+            ["`nfse.invoice.failed`", "Reserved: accepted at registration, but not emitted today."],
             ["`nfse.invoice.reconciliation_required`", "Reconciliation is required."],
             ["`nfse.invoice.manual_review`", "Manual review is required; adds `reason`."],
             ["`nfse.invoice.documents_ready`", "Documents are ready; adds `accessKey`/`nfseNumber`/`documentsReadyAt`."],
@@ -2243,7 +2247,7 @@ async function issueWithRetry(buildBody, attempts = 3) {
         {
           kind: "callout",
           tone: "warn",
-          body: "Accepting an event at registration does not guarantee that every failure path of the current processing emits it; do not rely solely on `failed`/`reconciliation_required` without fetching the invoice. `webhook.test` cannot be subscribed.",
+          body: "`nfse.invoice.failed` is accepted at registration, but the current processing does not emit it; treat `nfse.invoice.rejected` and `nfse.invoice.manual_review` as final and, when in doubt, fetch the invoice. `webhook.test` cannot be subscribed.",
         },
         { kind: "heading", level: 2, body: "Signature verification" },
         {
