@@ -1,4 +1,5 @@
 // lib/docs/content/pt.ts
+import { SDKS } from "../../sdks";
 import type { DocsTree } from "../types";
 
 export const pt: DocsTree = {
@@ -126,6 +127,36 @@ export const pt: DocsTree = {
     ],
   },
   pages: {
+    sdks: {
+      title: "SDKs",
+      description: "Bibliotecas oficiais para Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir e .NET.",
+      blocks: [
+        { kind: "text", body: "A Corvo tem SDKs oficiais em nove linguagens. Eles chamam a mesma API descrita nesta documentação, com as mesmas operações, nomes de campo e regras fiscais, então todos os guias daqui valem para todos eles." },
+        { kind: "heading", level: 2, body: "Instalação" },
+        {
+          kind: "table",
+          head: ["Linguagem", "Pacote", "Instalação", "Código"],
+          rows: SDKS.map((sdk) => [sdk.name, `\`${sdk.pkg}\` (${sdk.registry})`, `\`${sdk.install}\``, `\`corvo-technology/${sdk.repo}\``]),
+        },
+        { kind: "callout", tone: "accent", body: "Comece com uma chave de teste: notas emitidas com uma chave `corvo_test_` não têm valor fiscal." },
+        { kind: "heading", level: 2, body: "O que todo SDK faz" },
+        {
+          kind: "list",
+          items: [
+          "Autentica com `X-API-Key`. Lê `CORVO_API_KEY`, e `CORVO_BASE_URL` se você usar outra URL da API.",
+          "A chave decide o ambiente: `corvo_test_...` para teste e `corvo_live_...` para produção.",
+          "Os erros voltam como um resultado tipado com `code`, `status`, `requestId`, `details` e `retryAfter`, não como exceção. Os helpers de iteração lançam erro quando uma página falha.",
+          "As listas usam paginação por cursor, e todo SDK tem um helper de iteração que percorre todas as páginas.",
+          "Emitir uma nota e enviar um email aceitam chave de idempotência, enviada como `Idempotency-Key`.",
+          "Verificação da assinatura do webhook (`X-Corvo-Signature`) em tempo constante.",
+          ],
+        },
+        { kind: "heading", level: 2, body: "Emitir uma nota" },
+        { kind: "text", body: "A mesma chamada em cada linguagem. Cada exemplo lê a chave de `CORVO_API_KEY` e passa uma chave de idempotência, então repetir a chamada nunca emite a nota duas vezes." },
+        ...SDKS.map((sdk) => ({ kind: "code" as const, label: sdk.name, language: (sdk.id === "node" ? "js" : "text") as "js" | "text", code: sdk.snippet })),
+        { kind: "text", body: "A troca de plano e o portal de cobrança existem só no painel, por isso não estão nos SDKs. O código de cada SDK está em github.com/corvo-technology." },
+      ],
+    },
     authentication: {
       title: "Autenticação",
       description: "Todas as rotas desta API exigem uma chave de API no header `X-API-Key`.",

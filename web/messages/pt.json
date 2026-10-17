@@ -1953,5 +1953,21 @@
         "authorized": "Autorizada"
       }
     }
+  },
+  "LandingSdks": {
+    "eyebrow": "SDKS",
+    "title": "Nove linguagens. Uma API.",
+    "description": "SDKs oficiais para Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir e .NET. As mesmas operações, as mesmas regras fiscais e a mesma autenticação: use a linguagem que você já tem em produção.",
+    "points": {
+      "same": "As mesmas operações e os mesmos nomes de campo em todas as linguagens.",
+      "errors": "Os erros voltam como resultados tipados, com o código e o id da requisição.",
+      "webhooks": "Verificação de assinatura de webhook e chave de idempotência já incluídas."
+    },
+    "languagesLabel": "Linguagens suportadas",
+    "tabsLabel": "Escolha uma linguagem",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "source": "Código no GitHub",
+    "docs": "Ver todos os SDKs na documentação"
   }
 }

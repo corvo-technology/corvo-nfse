@@ -1953,5 +1953,21 @@
         "authorized": "Authorized"
       }
     }
+  },
+  "LandingSdks": {
+    "eyebrow": "SDKS",
+    "title": "Nine languages. One API.",
+    "description": "Official SDKs for Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir and .NET. Same operations, same tax rules, same authentication: pick the language you already ship in.",
+    "points": {
+      "same": "The same operations and field names in every language.",
+      "errors": "Errors come back as typed results, with the code and the request id.",
+      "webhooks": "Webhook signature verification and idempotency keys built in."
+    },
+    "languagesLabel": "Supported languages",
+    "tabsLabel": "Choose a language",
+    "copy": "Copy",
+    "copied": "Copied",
+    "source": "Source on GitHub",
+    "docs": "See all SDKs in the docs"
   }
 }
