@@ -198,14 +198,17 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
     const snapshot = invoice.toSnapshot();
     return runWithTenant(snapshot.tenantId, async () => {
       requireTenantId(snapshot.tenantId);
+      const set: Partial<
+        Pick<InvoiceOrmEntity, 'dpsId' | 'dpsSeries' | 'dpsNumber'>
+      > = {};
+      if (snapshot.dpsId != null) set.dpsId = snapshot.dpsId;
+      if (snapshot.dpsSeries != null) set.dpsSeries = snapshot.dpsSeries;
+      if (snapshot.dpsNumber != null) set.dpsNumber = snapshot.dpsNumber;
+      if (Object.keys(set).length === 0) return;
       await this.repo
         .createQueryBuilder()
         .update()
-        .set({
-          dpsId: snapshot.dpsId ?? undefined,
-          dpsSeries: snapshot.dpsSeries ?? undefined,
-          dpsNumber: snapshot.dpsNumber ?? undefined,
-        })
+        .set(set)
         .where('id = :id AND tenant_id = :tenantId', {
           id: snapshot.id,
           tenantId: snapshot.tenantId,

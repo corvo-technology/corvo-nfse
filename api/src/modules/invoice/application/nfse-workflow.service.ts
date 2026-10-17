@@ -79,7 +79,12 @@ export class NfseWorkflowService {
         await this.lifecycle.transition(invoice, event);
       } catch (error: unknown) {
         // Cancelled (or taken by another worker) after we loaded it: never issue.
-        if (error instanceof ConcurrentInvoiceTransitionError) return;
+        if (error instanceof ConcurrentInvoiceTransitionError) {
+          this.logger.debug(
+            `Invoice ${invoice.id} changed concurrently (likely cancelled); skipping emission`,
+          );
+          return;
+        }
         throw error;
       }
     }

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { VALID_CNPJ } from '@/shared/fiscal/fixtures';
 import { Invoice } from '../domain/invoice';
 import { cancellationReason } from '../domain/cancellation-reason';
@@ -77,6 +78,20 @@ describe('NfseWorkflowService — cancellation race', () => {
       service.process({ invoiceId: invoice.id, tenantId }),
     ).resolves.toBeUndefined();
     expect(provider.issue).not.toHaveBeenCalled();
+  });
+
+  it('logs the concurrent-transition exit with the invoice id', async () => {
+    const invoice = queuedInvoice();
+    const transition = jest
+      .fn()
+      .mockRejectedValue(new ConcurrentInvoiceTransitionError(invoice.id));
+    const debug = jest
+      .spyOn(Logger.prototype, 'debug')
+      .mockImplementation(() => undefined);
+    const { service } = build(invoice, transition);
+    await service.process({ invoiceId: invoice.id, tenantId });
+    expect(debug).toHaveBeenCalledWith(expect.stringContaining(invoice.id));
+    debug.mockRestore();
   });
 
   it('ignores a late emission job for an already cancelled invoice', async () => {

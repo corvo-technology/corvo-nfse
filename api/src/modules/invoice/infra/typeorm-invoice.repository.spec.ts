@@ -191,5 +191,21 @@ describe('TypeOrmInvoiceRepository', () => {
         { id: 'inv-1', tenantId },
       );
     });
+
+    it('issues no UPDATE when there is no DPS information to persist', async () => {
+      const invoice = {
+        toSnapshot: () => ({
+          id: 'inv-1',
+          tenantId,
+          dpsId: null,
+          dpsSeries: null,
+          dpsNumber: null,
+        }),
+      } as any;
+
+      await repository.saveDpsInfo(invoice);
+
+      expect(mockRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
   });
 });
