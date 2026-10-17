@@ -1,6 +1,7 @@
 import {
   NfseClient,
   ReceitaRejectionError,
+  ValidationError,
   type PendingEvent,
   type RetryStore,
 } from 'open-nfse';
@@ -104,5 +105,90 @@ describe('OpenNfseProvider.cancel', () => {
     await expect(provider.cancel(payload)).rejects.toThrow(
       'certificate unreadable',
     );
+  });
+
+  describe('replay of a stored cancellation event', () => {
+    const stored = [{ kind: 'cancelamento_simples' } as PendingEvent];
+
+    it('maps a permanent replay failure to rejected with code and message', async () => {
+      jest
+        .spyOn(NfseClient.prototype as any, 'replayPendingEvents')
+        .mockResolvedValue([
+          {
+            id: 'p1',
+            status: 'failed_permanent',
+            error: new (ReceitaRejectionError as unknown as new (
+              message: string,
+              code: string,
+            ) => Error)('Prazo expirado', 'E0840'),
+          },
+        ]);
+      const { provider } = providerWith(stored);
+      await expect(provider.cancel(payload)).resolves.toEqual({
+        status: 'rejected',
+        errorCode: 'E0840',
+        errorMessage: 'Prazo expirado',
+      });
+    });
+
+    it('reports pending with the replay error when still pending', async () => {
+      jest
+        .spyOn(NfseClient.prototype as any, 'replayPendingEvents')
+        .mockResolvedValue([
+          { id: 'p1', status: 'still_pending', error: new Error('sefin 503') },
+        ]);
+      const { provider } = providerWith(stored);
+      await expect(provider.cancel(payload)).resolves.toEqual({
+        status: 'pending',
+        errorMessage: 'sefin 503',
+      });
+    });
+
+    it('reports pending when the retry window has not elapsed (empty replay)', async () => {
+      jest
+        .spyOn(NfseClient.prototype as any, 'replayPendingEvents')
+        .mockResolvedValue([]);
+      const { provider } = providerWith(stored);
+      await expect(provider.cancel(payload)).resolves.toEqual({
+        status: 'pending',
+        errorMessage: 'Awaiting fiscal retry window',
+      });
+    });
+  });
+
+  it('maps a local validation error to INVALID_FISCAL_INPUT', async () => {
+    jest
+      .spyOn(NfseClient.prototype as any, 'cancelar')
+      .mockRejectedValue(
+        new (ValidationError as unknown as new (message: string) => Error)(
+          'xMotivo is required',
+        ),
+      );
+    const { provider } = providerWith();
+    await expect(provider.cancel(payload)).resolves.toEqual({
+      status: 'rejected',
+      errorCode: 'INVALID_FISCAL_INPUT',
+      errorMessage: 'xMotivo is required',
+    });
+  });
+
+  it('closes the client after a successful cancellation', async () => {
+    jest
+      .spyOn(NfseClient.prototype as any, 'cancelar')
+      .mockResolvedValue({ status: 'ok', evento: {} });
+    const close = jest.spyOn(NfseClient.prototype, 'close');
+    const { provider } = providerWith();
+    await provider.cancel(payload);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes the client even when cancelar throws', async () => {
+    jest
+      .spyOn(NfseClient.prototype as any, 'cancelar')
+      .mockRejectedValue(new Error('certificate unreadable'));
+    const close = jest.spyOn(NfseClient.prototype, 'close');
+    const { provider } = providerWith();
+    await expect(provider.cancel(payload)).rejects.toThrow();
+    expect(close).toHaveBeenCalledTimes(1);
   });
 });

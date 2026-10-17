@@ -106,6 +106,18 @@ describe('NfseCancellationService', () => {
     expect(ctx.lifecycle.transition).not.toHaveBeenCalled();
   });
 
+  // Characterization of the accepted risk in spec section 11 ("lost response after
+  // the Sefin accepted"): if persisting the cancellation fails after the Sefin
+  // accepted it, the job rejects and BullMQ retries, re-sending the cancellation
+  // event. This is accepted and must be validated in the sandbox.
+  it('rejects without notifying when the transition fails after the Sefin accepted', async () => {
+    const invoice = cancelling();
+    const ctx = build(invoice, { status: 'cancelled' });
+    ctx.lifecycle.transition.mockRejectedValue(new Error('db down'));
+    await expect(ctx.service.process(job(invoice))).rejects.toThrow('db down');
+    expect(ctx.webhooks.publish).not.toHaveBeenCalled();
+  });
+
   it('decrypts the company certificate in live', async () => {
     const invoice = cancelling('live');
     const ctx = build(invoice, { status: 'cancelled' });

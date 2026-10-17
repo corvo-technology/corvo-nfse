@@ -69,4 +69,54 @@ describe('InvoiceWebhookPublisher', () => {
       publisher.publish(invoice, 'nfse.invoice.cancelled'),
     ).resolves.toBeUndefined();
   });
+
+  describe('email status in the payload', () => {
+    async function emailPayload(
+      stateOverride?: { emailStatus: 'sent' },
+      lastEmailStatus: 'queued' | null = 'queued',
+    ) {
+      const outbox = { enqueue: jest.fn() };
+      const publisher = new InvoiceWebhookPublisher(
+        {
+          findByTenantIdAndEvent: jest
+            .fn()
+            .mockResolvedValue([
+              { id: 'cfg-1', active: true, url: 'https://a.test', secret: 's' },
+            ]),
+        } as never,
+        outbox as never,
+      );
+      const stale = {
+        ...invoice,
+        status: 'authorized',
+        lastEmailStatus,
+        emailSnapshot: { send: true },
+      } as unknown as Invoice;
+      await publisher.publish(
+        stale,
+        'nfse.invoice.email_sent',
+        {},
+        stateOverride,
+      );
+      const [[call]] = outbox.enqueue.mock.calls as [
+        [{ payload: { data: Record<string, unknown> } }],
+      ];
+      return call.payload.data;
+    }
+
+    it.each([['queued' as const], [null]])(
+      'uses the override even when lastEmailStatus is %s',
+      async (last) => {
+        expect(await emailPayload({ emailStatus: 'sent' }, last)).toMatchObject(
+          { emailStatus: 'sent' },
+        );
+      },
+    );
+
+    it('falls back to lastEmailStatus without an override', async () => {
+      expect(await emailPayload(undefined, 'queued')).toMatchObject({
+        emailStatus: 'queued',
+      });
+    });
+  });
 });
