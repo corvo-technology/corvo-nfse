@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Script from "next/script";
 import { useEffect } from "react";
+import { waitForFbq } from "@/lib/wait-for-fbq";
 
 const rawPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 const PIXEL_ID = rawPixelId && /^\d{5,20}$/.test(rawPixelId) ? rawPixelId : undefined;
@@ -30,7 +31,7 @@ export function MetaPixel() {
 
   useEffect(() => {
     if (!PIXEL_ID || pathname.startsWith("/app")) return;
-    window.fbq?.("track", "PageView");
+    return waitForFbq(() => window.fbq?.("track", "PageView"));
   }, [pathname]);
 
   if (!PIXEL_ID) return null;

@@ -38,6 +38,25 @@ describe("MetaPixel", () => {
     });
   });
 
+  it("waits for window.fbq before firing the automatic PageView, instead of firing into a missing stub", async () => {
+    vi.stubEnv("NEXT_PUBLIC_META_PIXEL_ID", "123456789");
+    delete (window as unknown as { fbq?: unknown }).fbq;
+    const { MetaPixel } = await import("@/components/MetaPixel");
+    const fbq = vi.fn();
+    vi.useFakeTimers();
+    render(<MetaPixel />);
+
+    vi.advanceTimersByTime(500);
+    expect(fbq).not.toHaveBeenCalled();
+
+    (window as unknown as { fbq?: typeof fbq }).fbq = fbq;
+    vi.advanceTimersByTime(250);
+
+    expect(fbq).toHaveBeenCalledWith("track", "PageView");
+    vi.useRealTimers();
+    delete (window as unknown as { fbq?: unknown }).fbq;
+  });
+
   it("trackMeta is a no-op without a configured Pixel ID, even once fbq exists", async () => {
     vi.stubEnv("NEXT_PUBLIC_META_PIXEL_ID", "");
     const { trackMeta } = await import("@/components/MetaPixel");

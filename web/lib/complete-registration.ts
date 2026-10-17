@@ -10,6 +10,16 @@ export function markPendingCompleteRegistration(eventId: string): void {
   } catch {}
 }
 
+/** Peeks without mutating state, so callers can decide whether it's worth waiting for fbq. */
+export function hasPendingCompleteRegistration(): boolean {
+  try {
+    if (localStorage.getItem(DONE_KEY)) return false;
+    return localStorage.getItem(PENDING_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
 /** Consumes the pending flag at most once; returns the event id to fire, or null. */
 export function consumePendingCompleteRegistration(): string | null {
   try {
