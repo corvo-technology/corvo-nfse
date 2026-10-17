@@ -11,9 +11,15 @@ import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import type { CachePort } from '@/infra/redis/cache.port';
 import { ICreditTransactionRepository } from '@/modules/credits/domain/credit-transaction.repository';
 import { Invoice } from '../domain/invoice';
+import type { CancellationReason } from '../domain/cancellation-reason';
 import { ConcurrentInvoiceTransitionError } from '../domain/errors';
 import type { NewOutboxMessage } from '../domain/outbox-message';
 import { InvoiceEvent } from '../domain/invoice-event';
+import {
+  EMISSION_IN_PROGRESS_STATUSES,
+  type InvoiceStatus,
+} from '../domain/invoice-status';
+import { cancellationMessage } from './invoice-cancel.handler';
 import {
   INVOICE_REPOSITORY,
   INVOICE_EVENT_REPOSITORY,
@@ -24,10 +30,12 @@ import {
 /** Statuses that release an unused live reservation. */
 const REFUND_STATUSES = ['rejected', 'failed', 'cancelled'];
 /** Origins of an already authorized invoice: its credit is final and billing is untouched. */
-const FISCALLY_AUTHORIZED_ORIGINS: (string | null)[] = [
+const FISCALLY_AUTHORIZED_ORIGINS: (InvoiceStatus | null)[] = [
   'authorized',
   'cancelling',
 ];
+/** Emission outcomes that will never be authorized: a pending cancellation request is moot. */
+const DISCARDS_CANCELLATION_REQUEST: InvoiceStatus[] = ['rejected', 'failed'];
 
 /** One transaction for fiscal state, audit event and the corresponding credit. */
 @Injectable()
@@ -124,39 +132,39 @@ export class InvoiceLifecycleService {
           );
           if (!stored) throw new Error('Invoice not found');
           if (stored.status === invoice.status) return false;
-          if (stored.status !== event.toSnapshot().fromStatus)
+          const fromStatus = event.toSnapshot().fromStatus;
+          if (stored.status !== fromStatus)
             throw new ConcurrentInvoiceTransitionError(invoice.id);
-          await this.invoices.save(invoice, invoice.tenantId);
-          await this.events.save(event, invoice.tenantId);
-          if (message) await this.outbox.enqueue(message);
-          if (invoice.environment !== 'live') return true;
+          // The worker's copy may predate a cancellation intent registered by
+          // the API: during emission the stored row is the only source of truth.
+          const duringEmission =
+            fromStatus !== null &&
+            EMISSION_IN_PROGRESS_STATUSES.includes(fromStatus);
+          let recorded = event;
           if (
-            FISCALLY_AUTHORIZED_ORIGINS.includes(event.toSnapshot().fromStatus)
-          )
-            return true;
-          await this.usage.settle(invoice.id, invoice.tenantId, invoice.status);
-          const reservation = await this.credits.findByReservedInvoiceId(
-            invoice.id,
-            invoice.tenantId,
-          );
-          if (!reservation) return true;
-          if (invoice.status === 'authorized')
-            await this.credits.confirm(reservation.id, invoice.tenantId);
-          if (REFUND_STATUSES.includes(invoice.status)) {
-            await this.credits.save(
-              {
-                tenantId: invoice.tenantId,
-                amount: -reservation.amount,
-                type: 'invoice_rejected',
-                relatedTransactionId: reservation.id,
-                isReservation: false,
-                description: `Refund for invoice ${invoice.id}`,
-                createdAt: new Date(),
-              },
-              invoice.tenantId,
-            );
-            await this.credits.confirm(reservation.id, invoice.tenantId);
+            duringEmission &&
+            DISCARDS_CANCELLATION_REQUEST.includes(invoice.status)
+          ) {
+            if (stored.cancellationRequestedAt)
+              recorded = withCancellationDiscarded(event);
+            invoice.discardPendingCancellation();
+            await this.invoices.save(invoice, invoice.tenantId);
+          } else {
+            await this.invoices.save(invoice, invoice.tenantId, {
+              preserveCancellationRequest: duringEmission,
+            });
           }
+          await this.events.save(recorded, invoice.tenantId);
+          if (message) await this.outbox.enqueue(message);
+          await this.settleCredit(invoice, fromStatus);
+          const pending = stored.cancellationReason;
+          if (
+            duringEmission &&
+            invoice.status === 'authorized' &&
+            stored.cancellationRequestedAt &&
+            pending
+          )
+            await this.applyPendingCancellation(invoice, pending);
           return true;
         }),
       );
@@ -165,4 +173,63 @@ export class InvoiceLifecycleService {
       return applied;
     });
   }
+
+  /**
+   * authorized → cancelling inside the authorization's transaction, with the
+   * reason read from the stored row. The request keeps its stored columns
+   * (including the original request time); no credit effect (origin authorized).
+   */
+  private async applyPendingCancellation(
+    invoice: Invoice,
+    reason: CancellationReason,
+  ): Promise<void> {
+    const event = invoice.requestCancellation(reason);
+    await this.invoices.save(invoice, invoice.tenantId, {
+      preserveCancellationRequest: true,
+    });
+    await this.events.save(event, invoice.tenantId);
+    await this.outbox.enqueue(cancellationMessage(invoice, event));
+  }
+
+  private async settleCredit(
+    invoice: Invoice,
+    fromStatus: InvoiceStatus | null,
+  ): Promise<void> {
+    if (invoice.environment !== 'live') return;
+    if (FISCALLY_AUTHORIZED_ORIGINS.includes(fromStatus)) return;
+    await this.usage.settle(invoice.id, invoice.tenantId, invoice.status);
+    const reservation = await this.credits.findByReservedInvoiceId(
+      invoice.id,
+      invoice.tenantId,
+    );
+    if (!reservation) return;
+    if (invoice.status === 'authorized')
+      await this.credits.confirm(reservation.id, invoice.tenantId);
+    if (REFUND_STATUSES.includes(invoice.status)) {
+      await this.credits.save(
+        {
+          tenantId: invoice.tenantId,
+          amount: -reservation.amount,
+          type: 'invoice_rejected',
+          relatedTransactionId: reservation.id,
+          isReservation: false,
+          description: `Refund for invoice ${invoice.id}`,
+          createdAt: new Date(),
+        },
+        invoice.tenantId,
+      );
+      await this.credits.confirm(reservation.id, invoice.tenantId);
+    }
+  }
+}
+
+/** Same event (id and time), with the audit note that the request was dropped. */
+function withCancellationDiscarded(event: InvoiceEvent): InvoiceEvent {
+  const snapshot = event.toSnapshot();
+  return InvoiceEvent.reconstitute({
+    ...snapshot,
+    reason: snapshot.reason
+      ? `${snapshot.reason} (pending cancellation request discarded)`
+      : 'Pending cancellation request discarded',
+  });
 }

@@ -262,5 +262,92 @@ describe('TypeOrmInvoiceRepository', () => {
       // The mapped entity may carry the key as undefined, which TypeORM skips on update.
       expect(sets[0].pendingEmission).toBeUndefined();
     });
+
+    const cancellationColumns = [
+      'cancellationReason',
+      'cancellationDescription',
+      'cancellationRequestedAt',
+    ];
+
+    it('writes the cancellation request columns by default', async () => {
+      const sets: Record<string, unknown>[] = [];
+      mockRepo.createQueryBuilder.mockReturnValue(qbCapturing(sets));
+
+      await repository.save(invoiceIn('processing'), tenantId);
+
+      for (const column of cancellationColumns)
+        expect(sets[0][column]).toBeNull();
+    });
+
+    it('leaves the cancellation request columns out of the update when asked to preserve them', async () => {
+      const sets: Record<string, unknown>[] = [];
+      mockRepo.createQueryBuilder.mockReturnValue(qbCapturing(sets));
+
+      await repository.save(invoiceIn('retry_pending'), tenantId, {
+        preserveCancellationRequest: true,
+      });
+
+      // TypeORM skips undefined values, so the stored intent survives.
+      for (const column of cancellationColumns)
+        expect(sets[0][column]).toBeUndefined();
+      expect(sets[0]).toMatchObject({ status: 'retry_pending' });
+    });
+  });
+
+  describe('registerCancellationIntent', () => {
+    function qbWith(affected: number) {
+      return {
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ affected }),
+      };
+    }
+    const requestedAt = new Date('2026-10-14T12:00:00Z');
+    const intent = {
+      code: 'issue_error' as const,
+      description: 'Valor informado incorretamente',
+      requestedAt,
+    };
+
+    it('writes the intent only on a processing invoice without one and reports it', async () => {
+      const qb = qbWith(1);
+      mockRepo.createQueryBuilder.mockReturnValue(qb as any);
+
+      await expect(
+        repository.registerCancellationIntent('inv-1', tenantId, intent),
+      ).resolves.toBe(true);
+
+      expect(qb.set).toHaveBeenCalledWith({
+        cancellationReason: 'issue_error',
+        cancellationDescription: 'Valor informado incorretamente',
+        cancellationRequestedAt: requestedAt,
+      });
+      expect(qb.where).toHaveBeenCalledWith(
+        'id = :id AND tenant_id = :tenantId',
+        { id: 'inv-1', tenantId },
+      );
+      expect(qb.andWhere).toHaveBeenCalledWith("status = 'processing'");
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'cancellation_requested_at IS NULL',
+      );
+      expect(qb.execute).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports false when no row matched (status changed or intent already pending)', async () => {
+      mockRepo.createQueryBuilder.mockReturnValue(qbWith(0) as any);
+
+      await expect(
+        repository.registerCancellationIntent('inv-1', tenantId, intent),
+      ).resolves.toBe(false);
+    });
+
+    it('refuses an invalid tenant context before touching the database', async () => {
+      await expect(
+        repository.registerCancellationIntent('inv-1', 'not-a-tenant', intent),
+      ).rejects.toThrow('A valid tenant context is required');
+      expect(mockRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
   });
 });

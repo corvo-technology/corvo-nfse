@@ -4,8 +4,10 @@ import { cancellationReason } from '../domain/cancellation-reason';
 import { ConcurrentInvoiceTransitionError } from '../domain/errors';
 import type { InvoiceStatus } from '../domain/invoice-status';
 import type { NewOutboxMessage } from '../domain/outbox-message';
-import { InvoiceMapper } from '../infra/invoice.mapper';
+import type { InvoiceEvent } from '../domain/invoice-event';
+import { TypeOrmInvoiceRepository } from '../infra/typeorm-invoice.repository';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
+import { cancellationMessage } from './invoice-cancel.handler';
 
 const tenantId = '11111111-1111-4111-8111-111111111111';
 
@@ -32,12 +34,33 @@ function invoiceIn(status: InvoiceStatus, environment: 'test' | 'live') {
   });
 }
 
+/** The real repository over a query builder that records each UPDATE set. */
+function capturingRepository(persisted: Record<string, unknown>[]) {
+  const qb: Record<string, jest.Mock> = {};
+  qb.update = jest.fn(() => qb);
+  qb.set = jest.fn((values: Record<string, unknown>) => {
+    // TypeORM skips undefined values: only what is really written is kept.
+    persisted.push(
+      Object.fromEntries(
+        Object.entries(values).filter(([, value]) => value !== undefined),
+      ),
+    );
+    return qb;
+  });
+  qb.where = jest.fn(() => qb);
+  qb.execute = jest.fn().mockResolvedValue({ affected: 1 });
+  return new TypeOrmInvoiceRepository({
+    repository: () => ({ createQueryBuilder: () => qb }),
+  } as never);
+}
+
 function build(
-  storedStatus: InvoiceStatus,
+  stored: InvoiceStatus | Invoice,
   reservation: { id: string; amount: number } | null,
 ) {
   const order: string[] = [];
   const persisted: Record<string, unknown>[] = [];
+  const savedEvents: InvoiceEvent[] = [];
   const walletInserts: Record<string, unknown>[] = [];
   const walletUpdates: unknown[][] = [];
   const unitOfWork = {
@@ -48,21 +71,20 @@ function build(
       work(),
     ),
   };
+  const repository = capturingRepository(persisted);
   const invoices = {
-    findByIdAndTenantId: jest.fn().mockResolvedValue({ status: storedStatus }),
-    // What the repository writes: the mapped row (null last-error columns etc.).
-    save: jest.fn(async (invoice: Invoice) => {
-      persisted.push(
-        new InvoiceMapper().toPersistence(invoice) as unknown as Record<
-          string,
-          unknown
-        >,
-      );
-    }),
+    findByIdAndTenantId: jest
+      .fn()
+      .mockResolvedValue(
+        typeof stored === 'string' ? { status: stored } : stored,
+      ),
+    // What the repository really writes (the UPDATE set).
+    save: jest.fn(repository.save.bind(repository)),
   };
   const events = {
-    save: jest.fn(async () => {
+    save: jest.fn(async (event: InvoiceEvent) => {
       order.push('event');
+      savedEvents.push(event);
     }),
   };
   const credits = {
@@ -97,6 +119,7 @@ function build(
     outbox,
     order,
     persisted,
+    savedEvents,
     walletInserts,
     walletUpdates,
   };
@@ -256,5 +279,271 @@ describe('InvoiceLifecycleService.transition — cancellation', () => {
       ),
     ).rejects.toBeInstanceOf(ConcurrentInvoiceTransitionError);
     expect(ctx.outbox.enqueue).not.toHaveBeenCalled();
+  });
+});
+
+describe('InvoiceLifecycleService.transition — cancellation requested during emission', () => {
+  const cancellationColumns = [
+    'cancellationReason',
+    'cancellationDescription',
+    'cancellationRequestedAt',
+  ];
+  const requestedAt = new Date('2026-10-14T12:00:00Z');
+  const pendingReason = cancellationReason(
+    'issue_error',
+    'Valor informado incorretamente',
+  );
+
+  /** The row as the database holds it: same status, plus the API's intent. */
+  function storedWithIntent(invoice: Invoice): Invoice {
+    return Invoice.reconstitute({
+      ...invoice.toSnapshot(),
+      cancellationReason: pendingReason.code,
+      cancellationDescription: pendingReason.description,
+      cancellationRequestedAt: requestedAt,
+    });
+  }
+
+  function storedWithoutIntent(invoice: Invoice): Invoice {
+    return Invoice.reconstitute(invoice.toSnapshot());
+  }
+
+  describe('the worker copy never writes the cancellation columns', () => {
+    it.each([
+      ['processing', 'retry_pending', true],
+      ['processing', 'reconciliation_required', true],
+      ['retry_pending', 'processing', true],
+      ['reconciliation_required', 'manual_review', true],
+      ['processing', 'authorized', false],
+      ['reconciliation_required', 'authorized', false],
+    ] as const)('%s → %s', async (from, to, intentStored) => {
+      // The worker loaded the invoice before the intent was registered.
+      const invoice = invoiceIn(from, 'live');
+      const stored = intentStored
+        ? storedWithIntent(invoice)
+        : storedWithoutIntent(invoice);
+      const ctx = build(stored, { id: 'res-1', amount: -1 });
+
+      await expect(
+        ctx.service.transition(invoice, invoice.transitionTo(to)),
+      ).resolves.toBe(true);
+
+      expect(ctx.persisted).toHaveLength(1);
+      expect(ctx.persisted[0]).toMatchObject({ status: to });
+      for (const column of cancellationColumns)
+        expect(ctx.persisted[0]).not.toHaveProperty(column);
+    });
+  });
+
+  describe('an emission that does not authorize discards the request', () => {
+    it.each([
+      ['processing', 'rejected'],
+      ['processing', 'failed'],
+      ['reconciliation_required', 'rejected'],
+    ] as const)(
+      '%s → %s clears the columns and records the discard',
+      async (from, to) => {
+        // This worker copy was loaded after the intent was registered.
+        const invoice = storedWithIntent(invoiceIn(from, 'live'));
+        const ctx = build(storedWithIntent(invoice), {
+          id: 'res-1',
+          amount: -1,
+        });
+        const event = invoice.transitionTo(to, 'Rejected by Sefin');
+
+        await expect(ctx.service.transition(invoice, event)).resolves.toBe(
+          true,
+        );
+
+        expect(ctx.persisted).toHaveLength(1);
+        expect(ctx.persisted[0]).toMatchObject({
+          status: to,
+          cancellationReason: null,
+          cancellationDescription: null,
+          cancellationRequestedAt: null,
+        });
+        expect(ctx.savedEvents).toHaveLength(1);
+        expect(ctx.savedEvents[0].toSnapshot()).toMatchObject({
+          id: event.id,
+          fromStatus: from,
+          toStatus: to,
+          reason: 'Rejected by Sefin (pending cancellation request discarded)',
+        });
+        expect(invoice.cancellationRequestedAt).toBeNull();
+        // The reservation is refunded as for any rejected emission.
+        expect(ctx.walletInserts).toEqual([
+          expect.objectContaining({ amount: 1, type: 'invoice_rejected' }),
+        ]);
+      },
+    );
+
+    it('keeps the event reason when there was no request to discard', async () => {
+      const invoice = invoiceIn('processing', 'test');
+      const ctx = build(storedWithoutIntent(invoice), null);
+      const event = invoice.transitionTo('rejected', 'Rejected by Sefin');
+
+      await ctx.service.transition(invoice, event);
+
+      expect(ctx.persisted[0]).toMatchObject({ cancellationRequestedAt: null });
+      expect(ctx.savedEvents.map((e) => e.toSnapshot().reason)).toEqual([
+        'Rejected by Sefin',
+      ]);
+    });
+  });
+
+  describe('authorization applies the stored request atomically', () => {
+    it.each(['processing', 'reconciliation_required'] as const)(
+      '%s → authorized → cancelling in the same transition',
+      async (from) => {
+        const invoice = invoiceIn(from, 'live');
+        const ctx = build(storedWithIntent(invoice), {
+          id: 'res-1',
+          amount: -1,
+        });
+        invoice.setRejected('E999', 'stale error');
+        invoice.setAuthorized('a'.repeat(50), 42);
+        const authorization = invoice.transitionTo(
+          'authorized',
+          'NFS-e authorized',
+        );
+
+        await expect(
+          ctx.service.transition(invoice, authorization),
+        ).resolves.toBe(true);
+
+        expect(invoice.status).toBe('cancelling');
+        expect(invoice.cancellationReason).toEqual(pendingReason);
+        expect(ctx.savedEvents).toHaveLength(2);
+        const [first, second] = ctx.savedEvents.map((e) => e.toSnapshot());
+        expect(first).toMatchObject({
+          id: authorization.id,
+          fromStatus: from,
+          toStatus: 'authorized',
+        });
+        expect(second).toMatchObject({
+          fromStatus: 'authorized',
+          toStatus: 'cancelling',
+        });
+        expect(ctx.order).toEqual(['event', 'event', 'outbox']);
+        expect(ctx.outbox.enqueue).toHaveBeenCalledTimes(1);
+        expect(ctx.outbox.enqueue).toHaveBeenCalledWith(
+          cancellationMessage(invoice, ctx.savedEvents[1]),
+        );
+        expect(ctx.outbox.enqueue).toHaveBeenCalledWith(
+          expect.objectContaining({ dedupeKey: `cancellation:${second.id}` }),
+        );
+        // Authorized first (frees the emission's pending XML), then cancelling;
+        // neither write touches the stored request (its original timestamp stays).
+        expect(ctx.persisted.map((row) => row.status)).toEqual([
+          'authorized',
+          'cancelling',
+        ]);
+        expect(ctx.persisted[0]).toMatchObject({ pendingEmission: null });
+        expect(ctx.persisted[1]).toMatchObject({
+          lastErrorCode: null,
+          lastErrorMessage: null,
+        });
+        for (const row of ctx.persisted)
+          for (const column of cancellationColumns)
+            expect(row).not.toHaveProperty(column);
+        // Credit: the first movement consumes the reservation, the second does nothing.
+        expect(ctx.usage.settle).toHaveBeenCalledTimes(1);
+        expect(ctx.usage.settle).toHaveBeenCalledWith(
+          invoice.id,
+          tenantId,
+          'authorized',
+        );
+        expect(ctx.walletUpdates).toEqual([['res-1', tenantId]]);
+        expect(ctx.walletInserts).toEqual([]);
+      },
+    );
+
+    it('applies the request in the test environment too', async () => {
+      const invoice = invoiceIn('processing', 'test');
+      const ctx = build(storedWithIntent(invoice), null);
+      invoice.setAuthorized('a'.repeat(50), 42);
+
+      await ctx.service.transition(
+        invoice,
+        invoice.transitionTo('authorized', 'NFS-e authorized'),
+      );
+
+      expect(invoice.status).toBe('cancelling');
+      expect(ctx.outbox.enqueue).toHaveBeenCalledTimes(1);
+    });
+
+    it('without a stored request, authorization behaves as before', async () => {
+      const invoice = invoiceIn('processing', 'live');
+      const ctx = build(storedWithoutIntent(invoice), {
+        id: 'res-1',
+        amount: -1,
+      });
+      invoice.setAuthorized('a'.repeat(50), 42);
+
+      await expect(
+        ctx.service.transition(
+          invoice,
+          invoice.transitionTo('authorized', 'NFS-e authorized'),
+        ),
+      ).resolves.toBe(true);
+
+      expect(invoice.status).toBe('authorized');
+      expect(ctx.savedEvents).toHaveLength(1);
+      expect(ctx.outbox.enqueue).not.toHaveBeenCalled();
+      expect(ctx.persisted.map((row) => row.status)).toEqual(['authorized']);
+      expect(ctx.usage.settle).toHaveBeenCalledWith(
+        invoice.id,
+        tenantId,
+        'authorized',
+      );
+      expect(ctx.walletUpdates).toEqual([['res-1', tenantId]]);
+    });
+  });
+
+  describe('cancellation flow transitions keep writing the columns', () => {
+    it('queued → cancelled', async () => {
+      const ctx = build('queued', null);
+      const invoice = invoiceIn('queued', 'test');
+      await ctx.service.transition(
+        invoice,
+        invoice.requestCancellation(cancellationReason('other')),
+      );
+      expect(ctx.persisted[0]).toMatchObject({
+        cancellationReason: 'other',
+        cancellationDescription: null,
+        cancellationRequestedAt: expect.any(Date),
+      });
+    });
+
+    it('authorized → cancelling', async () => {
+      const ctx = build('authorized', null);
+      const invoice = invoiceIn('authorized', 'test');
+      const event = invoice.requestCancellation(pendingReason);
+      await ctx.service.transition(invoice, event, message);
+      expect(ctx.persisted[0]).toMatchObject({
+        cancellationReason: 'issue_error',
+        cancellationDescription: 'Valor informado incorretamente',
+        cancellationRequestedAt: event.createdAt,
+      });
+    });
+
+    it.each(['confirm', 'reject'] as const)(
+      'cancelling → %s',
+      async (outcome) => {
+        const ctx = build('cancelling', null);
+        const invoice = invoiceIn('authorized', 'test');
+        invoice.requestCancellation(pendingReason);
+        const event =
+          outcome === 'confirm'
+            ? invoice.confirmCancellation()
+            : invoice.rejectCancellation('E0840', 'Prazo expirado');
+        await ctx.service.transition(invoice, event);
+        expect(ctx.persisted[0]).toMatchObject({
+          cancellationReason: 'issue_error',
+          cancellationDescription: 'Valor informado incorretamente',
+          cancellationRequestedAt: expect.any(Date),
+        });
+      },
+    );
   });
 });

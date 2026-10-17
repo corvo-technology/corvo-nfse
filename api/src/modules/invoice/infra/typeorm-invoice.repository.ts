@@ -13,8 +13,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Repository, Not, type FindOptionsWhere } from 'typeorm';
 import { Invoice, LastEmailStatus } from '../domain/invoice';
 import {
+  CancellationIntent,
   IInvoiceRepository,
   ListInvoicesFilters,
+  SaveInvoiceOptions,
 } from '../domain/invoice.repository';
 import { InvoiceMapper } from './invoice.mapper';
 import { InvoiceOrmEntity } from './invoice.orm-entity';
@@ -221,11 +223,21 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
     });
   }
 
-  async save(invoice: Invoice, tenantId: string): Promise<Invoice> {
+  async save(
+    invoice: Invoice,
+    tenantId: string,
+    options: SaveInvoiceOptions = {},
+  ): Promise<Invoice> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
       assertTenantOwnership(tenantId, invoice.tenantId);
       const orm = this.mapper.toPersistence(invoice);
+      // Undefined values are skipped by TypeORM, so the stored request survives.
+      if (options.preserveCancellationRequest) {
+        orm.cancellationReason = undefined;
+        orm.cancellationDescription = undefined;
+        orm.cancellationRequestedAt = undefined;
+      }
       // Settled statuses: no fiscal retry can still need the signed pending XML.
       if (
         ['authorized', 'rejected', 'failed', 'cancelled'].includes(
@@ -261,6 +273,32 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
           tenantId: snapshot.tenantId,
         })
         .execute();
+    });
+  }
+
+  async registerCancellationIntent(
+    invoiceId: string,
+    tenantId: string,
+    intent: CancellationIntent,
+  ): Promise<boolean> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const result = await this.repo
+        .createQueryBuilder()
+        .update()
+        .set({
+          cancellationReason: intent.code,
+          cancellationDescription: intent.description,
+          cancellationRequestedAt: intent.requestedAt,
+        })
+        .where('id = :id AND tenant_id = :tenantId', {
+          id: invoiceId,
+          tenantId,
+        })
+        .andWhere("status = 'processing'")
+        .andWhere('cancellation_requested_at IS NULL')
+        .execute();
+      return (result.affected ?? 0) === 1;
     });
   }
 
