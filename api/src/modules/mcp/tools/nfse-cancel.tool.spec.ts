@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import type { AuthContext } from '@/modules/auth/auth-context';
-import { createNfseCancelHandler } from './nfse-cancel.tool';
+import { CANCELLATION_DESCRIPTION_MAX } from '@/modules/invoice/domain/cancellation-reason';
+import { NFSE_CANCEL_TOOL, createNfseCancelHandler } from './nfse-cancel.tool';
 
 const ctx = {
   tenantId: 'tenant-1',
@@ -44,5 +45,11 @@ describe('nfse_cancel tool', () => {
       handler({ invoice_id: invoiceId, reason: 'because' }, ctx),
     ).rejects.toThrow('Invalid input: reason');
     expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it('advertises the shared description maxLength in the input schema', () => {
+    expect(NFSE_CANCEL_TOOL.inputSchema.properties.description.maxLength).toBe(
+      CANCELLATION_DESCRIPTION_MAX,
+    );
   });
 });

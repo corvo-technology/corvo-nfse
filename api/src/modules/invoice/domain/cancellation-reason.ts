@@ -21,9 +21,16 @@ export function cancellationReason(
 }
 
 /** Sefin TSMotivo (event 101101 xMotivo): 15 to 255 characters. */
+export const CANCELLATION_DESCRIPTION_MIN = 15;
+export const CANCELLATION_DESCRIPTION_MAX = 255;
+
 export function assertFiscalCancellationReason(
   reason: CancellationReason,
 ): void {
   const length = reason.description?.length ?? 0;
-  if (length < 15 || length > 255) throw new InvalidCancellationReasonError();
+  if (
+    length < CANCELLATION_DESCRIPTION_MIN ||
+    length > CANCELLATION_DESCRIPTION_MAX
+  )
+    throw new InvalidCancellationReasonError();
 }

@@ -3,12 +3,15 @@ import { validate } from 'class-validator';
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
 import type { InvoiceService } from '@/modules/invoice/application/invoice.service';
+import {
+  CANCELLATION_DESCRIPTION_MAX,
+  CANCELLATION_DESCRIPTION_MIN,
+} from '@/modules/invoice/domain/cancellation-reason';
 import { NfseCancelInput } from '../dto/tool-input.dto';
 
 export const NFSE_CANCEL_TOOL = {
   name: 'nfse_cancel',
-  description:
-    'Cancel an invoice. A queued (scheduled or not yet issued) invoice is cancelled immediately; an authorized NFS-e returns status "cancelling" while the cancellation event is sent to the Sefin. Issued NFS-e require a 15-255 character description.',
+  description: `Cancel an invoice. A queued (scheduled or not yet issued) invoice is cancelled immediately; an authorized NFS-e returns status "cancelling" while the cancellation event is sent to the Sefin. Issued NFS-e require a ${CANCELLATION_DESCRIPTION_MIN}-${CANCELLATION_DESCRIPTION_MAX} character description.`,
   inputSchema: {
     type: 'object',
     properties: {
@@ -19,8 +22,8 @@ export const NFSE_CANCEL_TOOL = {
       },
       description: {
         type: 'string',
-        description:
-          'Free-text justification; required (15-255 chars) for an authorized NFS-e',
+        maxLength: CANCELLATION_DESCRIPTION_MAX,
+        description: `Free-text justification; required (${CANCELLATION_DESCRIPTION_MIN}-${CANCELLATION_DESCRIPTION_MAX} chars) for an authorized NFS-e`,
       },
     },
     required: ['invoice_id', 'reason'],

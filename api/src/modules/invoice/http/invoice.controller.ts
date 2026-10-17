@@ -28,6 +28,7 @@ import {
   ApiHeader,
   ApiExtraModels,
   ApiAcceptedResponse,
+  ApiOkResponse,
   getSchemaPath,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -250,6 +251,33 @@ export class InvoiceController {
 
   @Post(':id/cancel')
   @HttpCode(202)
+  @ApiExtraModels(InvoiceResponseDto)
+  @ApiOkResponse({
+    description: 'Queued invoice cancelled locally',
+    schema: {
+      type: 'object',
+      required: ['data'],
+      properties: {
+        data: {
+          type: 'object',
+          properties: { props: { $ref: getSchemaPath(InvoiceResponseDto) } },
+        },
+      },
+    },
+  })
+  @ApiAcceptedResponse({
+    description: 'NFS-e cancellation event is being processed (cancelling)',
+    schema: {
+      type: 'object',
+      required: ['data'],
+      properties: {
+        data: {
+          type: 'object',
+          properties: { props: { $ref: getSchemaPath(InvoiceResponseDto) } },
+        },
+      },
+    },
+  })
   @ApiKeyEndpoint()
   @RequirePermission('nfse.invoices.issue')
   @ApiOperation({

@@ -63,4 +63,5 @@ cancelling; description (15-255 chars) is required and event 101101 is sent to
 the Sefin asynchronously. Outcome: cancelled (webhook nfse.invoice.cancelled) or
 back to authorized with lastErrorCode/lastErrorMessage (webhook
 nfse.invoice.cancellation_rejected). Other statuses return 409
-ERROR_INVOICE_NOT_CANCELLABLE. Cancelling an issued NFS-e does not refund credit.
+ERROR_INVOICE_NOT_CANCELLABLE; an invalid or missing description for an issued
+NFS-e returns 422 ERROR_INVALID_CANCELLATION_REASON. Cancelling an issued NFS-e does not refund credit.

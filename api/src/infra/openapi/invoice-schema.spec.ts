@@ -43,6 +43,11 @@ it('documents the actual 202 invoice data.props response with nullable scheduled
         }),
       }),
     );
+    const cancelResponses =
+      document?.paths['/invoices/{id}/cancel']?.post?.responses ?? {};
+    expect(Object.keys(cancelResponses)).toEqual(
+      expect.arrayContaining(['200', '202']),
+    );
     expect(document?.paths['/invoices']?.post?.responses['202']).toEqual(
       expect.objectContaining({
         content: {

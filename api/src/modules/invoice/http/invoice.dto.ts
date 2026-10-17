@@ -17,6 +17,8 @@ import {
 import { Type } from 'class-transformer';
 import { INVOICE_STATUSES, type InvoiceStatus } from '../domain/invoice-status';
 import {
+  CANCELLATION_DESCRIPTION_MAX,
+  CANCELLATION_DESCRIPTION_MIN,
   CANCELLATION_REASON_CODES,
   type CancellationReasonCode,
 } from '../domain/cancellation-reason';
@@ -137,10 +139,9 @@ export class CancelInvoiceDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(255)
+  @MaxLength(CANCELLATION_DESCRIPTION_MAX)
   @ApiPropertyOptional({
-    description:
-      'Required (15–255 characters) to cancel an authorized NFS-e; optional for a queued invoice.',
+    description: `Required (${CANCELLATION_DESCRIPTION_MIN}–${CANCELLATION_DESCRIPTION_MAX} characters) to cancel an authorized NFS-e; optional for a queued invoice.`,
   })
   description?: string;
 }

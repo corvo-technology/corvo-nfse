@@ -14,6 +14,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
+  CANCELLATION_DESCRIPTION_MAX,
   CANCELLATION_REASON_CODES,
   type CancellationReasonCode,
 } from '@/modules/invoice/domain/cancellation-reason';
@@ -89,5 +90,8 @@ export class NfseDownloadPdfInput {
 export class NfseCancelInput {
   @IsUUID() invoice_id!: string;
   @IsIn(CANCELLATION_REASON_CODES) reason!: CancellationReasonCode;
-  @IsOptional() @IsString() @MaxLength(255) description?: string;
+  @IsOptional()
+  @IsString()
+  @MaxLength(CANCELLATION_DESCRIPTION_MAX)
+  description?: string;
 }
