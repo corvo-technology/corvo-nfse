@@ -1,8 +1,14 @@
 import { ConfigService } from '@nestjs/config';
 import { S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { S3DocumentStorage } from './s3-storage';
 
 const mockSend = jest.fn();
+
+const firstSentCommand = () =>
+  (mockSend.mock.calls as unknown[][])[0][0] as {
+    args: Record<string, unknown>;
+  };
 
 jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({})),
@@ -55,7 +61,7 @@ describe('S3DocumentStorage', () => {
       await storage.saveXml(tenantId, invoiceId, xml);
 
       expect(mockSend).toHaveBeenCalledTimes(1);
-      const call = mockSend.mock.calls[0][0];
+      const call = firstSentCommand();
       expect(call.args.Key).toBe(
         `${tenantId}/invoices/${invoiceId}/invoice.xml`,
       );
@@ -70,7 +76,7 @@ describe('S3DocumentStorage', () => {
       await storage.savePdf(tenantId, invoiceId, pdf);
 
       expect(mockSend).toHaveBeenCalledTimes(1);
-      const call = mockSend.mock.calls[0][0];
+      const call = firstSentCommand();
       expect(call.args.Key).toBe(
         `${tenantId}/invoices/${invoiceId}/invoice.pdf`,
       );
@@ -88,7 +94,7 @@ describe('S3DocumentStorage', () => {
       const result = await storage.getXml(tenantId, invoiceId);
 
       expect(mockSend).toHaveBeenCalledTimes(1);
-      const call = mockSend.mock.calls[0][0];
+      const call = firstSentCommand();
       expect(call.args.Key).toBe(
         `${tenantId}/invoices/${invoiceId}/invoice.xml`,
       );
@@ -108,7 +114,7 @@ describe('S3DocumentStorage', () => {
       const result = await storage.getPdf(tenantId, invoiceId);
 
       expect(mockSend).toHaveBeenCalledTimes(1);
-      const call = mockSend.mock.calls[0][0];
+      const call = firstSentCommand();
       expect(call.args.Key).toBe(
         `${tenantId}/invoices/${invoiceId}/invoice.pdf`,
       );
@@ -123,7 +129,7 @@ describe('S3DocumentStorage', () => {
       const result = await storage.exists(tenantId, invoiceId, 'xml');
 
       expect(result).toBe(true);
-      const call = mockSend.mock.calls[0][0];
+      const call = firstSentCommand();
       expect(call.args.Key).toBe(
         `${tenantId}/invoices/${invoiceId}/invoice.xml`,
       );
@@ -162,8 +168,7 @@ describe('S3DocumentStorage', () => {
     });
 
     it('uses default 300s expiration when expiresInSeconds not provided', async () => {
-      const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-      getSignedUrl.mockClear();
+      (getSignedUrl as jest.Mock).mockClear();
 
       await storage.getSignedUrl(tenantId, invoiceId, 'pdf', {
         fileName: 'nota-fiscal.pdf',

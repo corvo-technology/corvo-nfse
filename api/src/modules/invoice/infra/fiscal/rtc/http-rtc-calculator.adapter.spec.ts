@@ -238,8 +238,7 @@ describe('HttpRtcCalculatorAdapter', () => {
     const resources = await exporter.getMetrics();
     for (const resource of resources.flatMap((entry) => entry.scopeMetrics)) {
       const metric = resource.metrics.find(
-        (candidate) =>
-          candidate.descriptor.name === 'corvo.rtc.version_info',
+        (candidate) => candidate.descriptor.name === 'corvo.rtc.version_info',
       );
       if (metric === undefined) continue;
       if (metric.dataPointType !== DataPointType.GAUGE) {

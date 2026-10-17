@@ -234,7 +234,7 @@ describe('CompanyController fiscal profile endpoints', () => {
 
   it('PUT fiscal-profile propagates the conflict when the open approved profile differs', async () => {
     const open = makeFiscalProfile({ taxRegime: 'LUCRO_REAL' });
-    const { controller, fiscalProfiles } = makeController({
+    const { controller } = makeController({
       fiscalProfiles: {
         current: jest.fn().mockResolvedValue(open),
         record: jest
@@ -402,11 +402,25 @@ describe('CompanyController service tax profile endpoints', () => {
 describe('CompanyController service tax profile approval', () => {
   it('scopes the company before approving a service and returns the envelope', async () => {
     const { controller, companyService, serviceTaxProfiles } = makeController();
-    const approve = jest.fn().mockResolvedValue(makeServiceProfile({ reviewStatus: 'approved' }));
+    const approve = jest
+      .fn()
+      .mockResolvedValue(makeServiceProfile({ reviewStatus: 'approved' }));
     Object.assign(serviceTaxProfiles, { approve });
-    const response = await controller.approveServiceTaxProfile(companyId, 'service-id', req);
-    expect(companyService.findById).toHaveBeenCalledWith(companyId, authContext.activeTenantId, 'test');
-    expect(approve).toHaveBeenCalledWith(companyId, authContext.activeTenantId, 'service-id');
+    const response = await controller.approveServiceTaxProfile(
+      companyId,
+      'service-id',
+      req,
+    );
+    expect(companyService.findById).toHaveBeenCalledWith(
+      companyId,
+      authContext.activeTenantId,
+      'test',
+    );
+    expect(approve).toHaveBeenCalledWith(
+      companyId,
+      authContext.activeTenantId,
+      'service-id',
+    );
     expect(response.data.reviewStatus).toBe('approved');
   });
 });

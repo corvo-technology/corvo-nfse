@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import type { INestApplication } from '@nestjs/common';
