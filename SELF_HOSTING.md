@@ -133,6 +133,12 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --wait
 
 Include `--profile proxy` if you use Caddy. Editing the PostgreSQL password in an env file does not change the password stored in an existing database volume. `down` keeps volumes; `down -v` deletes them.
 
+### Invoice cancellation release
+
+This release adds NFS-e cancellation. The API now writes `invoice.cancel` outbox messages, and a worker from an older version has no handler for them (`No outbox handler`), which leaves the invoice stuck in `cancelling`. Always update and restart the worker before, or together with, the API; the update procedure above rebuilds and starts both from the same version.
+
+The `AddInvoiceCancellation` migration cannot be rolled back while any invoice is `cancelling` or `cancelled`: the rollback fails with an error naming how many exist, because mapping them back to `authorized` would falsify their fiscal state. Resolve those invoices first, or restore from your backup.
+
 ## Troubleshooting
 
 ```bash
