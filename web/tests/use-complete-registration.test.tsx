@@ -37,7 +37,6 @@ describe("useCompleteRegistration", () => {
     await waitFor(() => expect(trackMetaMock).toHaveBeenCalledTimes(1));
     expect(trackMetaMock).toHaveBeenCalledWith("CompleteRegistration", {}, "evt-1");
     expect(localStorage.getItem("corvo_cr_pending")).toBeNull();
-    expect(localStorage.getItem("corvo_cr_done")).toBe("1");
   });
 
   it("does nothing without a pending flag", async () => {
@@ -57,7 +56,19 @@ describe("useCompleteRegistration", () => {
     expect(localStorage.getItem("corvo_cr_pending")).toBe("evt-1");
   });
 
-  it("never fires twice, even across remounts", async () => {
+  it("never fires twice for the same signup, even across remounts", async () => {
+    setFbq(vi.fn());
+    markPendingCompleteRegistration("evt-1");
+    const { unmount } = renderHook(() => useCompleteRegistration());
+    await waitFor(() => expect(trackMetaMock).toHaveBeenCalledTimes(1));
+    unmount();
+
+    renderHook(() => useCompleteRegistration());
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(trackMetaMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("fires again for a second legitimate signup in the same browser", async () => {
     setFbq(vi.fn());
     markPendingCompleteRegistration("evt-1");
     const { unmount } = renderHook(() => useCompleteRegistration());
@@ -66,8 +77,8 @@ describe("useCompleteRegistration", () => {
 
     markPendingCompleteRegistration("evt-2");
     renderHook(() => useCompleteRegistration());
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(trackMetaMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(trackMetaMock).toHaveBeenCalledTimes(2));
+    expect(trackMetaMock).toHaveBeenLastCalledWith("CompleteRegistration", {}, "evt-2");
   });
 
   it("waits for window.fbq to appear before consuming the flag, instead of losing the event on a hard /app load", () => {
@@ -89,7 +100,6 @@ describe("useCompleteRegistration", () => {
     expect(trackMetaMock).toHaveBeenCalledTimes(1);
     expect(trackMetaMock).toHaveBeenCalledWith("CompleteRegistration", {}, "evt-1");
     expect(localStorage.getItem("corvo_cr_pending")).toBeNull();
-    expect(localStorage.getItem("corvo_cr_done")).toBe("1");
   });
 
   it("gives up after ~10s if fbq never appears, leaving the flag unconsumed for the next mount", () => {
@@ -101,14 +111,11 @@ describe("useCompleteRegistration", () => {
 
     expect(trackMetaMock).not.toHaveBeenCalled();
     expect(localStorage.getItem("corvo_cr_pending")).toBe("evt-1");
-    expect(localStorage.getItem("corvo_cr_done")).toBeNull();
   });
 
-  it("clearCompleteRegistrationFlags removes both the pending and done flags", () => {
+  it("clearCompleteRegistrationFlags removes the pending flag", () => {
     markPendingCompleteRegistration("evt-1");
-    localStorage.setItem("corvo_cr_done", "1");
     clearCompleteRegistrationFlags();
     expect(localStorage.getItem("corvo_cr_pending")).toBeNull();
-    expect(localStorage.getItem("corvo_cr_done")).toBeNull();
   });
 });
