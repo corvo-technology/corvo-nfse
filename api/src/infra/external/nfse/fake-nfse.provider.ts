@@ -45,7 +45,8 @@ export class FakeNfseProvider implements FiscalProvider {
     const accessKey = digits.slice(0, 50);
     const nfseNumber = payload.number ?? 1;
     // The real Sefin returns the computed ISS; the simulation mirrors it when a rate is known.
-    const issRate = payload.valores.aliqIss;
+    const issRate =
+      dps.infDPS.valores.trib.tribMun.pAliq ?? payload.valores.aliqIss;
     const issValues =
       issRate === undefined
         ? ''
