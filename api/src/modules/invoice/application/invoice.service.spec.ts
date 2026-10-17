@@ -90,7 +90,6 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
 
     eventRepo = {
       listPage: jest.fn(),
-      listPage: jest.fn(),
       findByInvoiceId: jest.fn(),
       save: jest.fn(),
     };
