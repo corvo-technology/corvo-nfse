@@ -8,6 +8,7 @@ import { effectiveFiscalProfiles, fiscalToday, resolveServiceState } from "@/lib
 import type { Company, CompanyFiscalProfile, CompanyServiceTaxProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CompanyFiscalProfileForm } from "./company-fiscal-profile-form";
 import { CompanyServiceProfileForm } from "./company-service-profile-form";
 
@@ -79,7 +80,7 @@ function FiscalSetup({ company, canView, canManage }: { company: Company; canVie
     <header><h2 className="text-xl font-semibold tracking-tight">{t("title")}</h2><p className="mt-2 max-w-[70ch] text-sm text-text-3">{t("intro")}</p></header>
     {!canView ? <p className="fiscal-notice">{t("noView")}</p> : <>
       <div className="max-w-sm"><Field label={t("date")} hint={t("dateHint")}>{props => <input {...props} type="date" required className="field" value={date} disabled={approving} onChange={event => { setDate(event.target.value); setEditor(null); setReview(null); }} />}</Field></div>
-      {!data ? <p role="status">{t("loading")}</p> : data.error ? <div><p role="alert" className="fiscal-notice">{data.error}</p><Button className="mt-3" onClick={() => setRevision(value => value + 1)}>{t("retry")}</Button></div> : <>
+      {!data ? <div role="status" aria-busy="true" aria-label={t("loading")} className="flex flex-col gap-3"><Skeleton className="h-5 w-48" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-4/5" /></div> : data.error ? <div><p role="alert" className="fiscal-notice">{data.error}</p><Button className="mt-3" onClick={() => setRevision(value => value + 1)}>{t("retry")}</Button></div> : <>
         <section className="fiscal-section"><header className="fiscal-heading"><span className="fiscal-number" aria-hidden>01</span><div><h3 className="text-lg font-medium">{t("profileTitle")}</h3><p className="mt-1 text-sm">{t(activeProfiles.length > 1 ? "profileAmbiguous" : !active ? "profileMissing" : active.reviewStatus === "approved" ? "profileApproved" : active.reviewStatus === "rejected" ? "profileRejected" : "profilePending")}</p></div></header>
           {active && profileFacts(active)}
           {canManage && <div className="mt-4 flex flex-wrap gap-3">{active?.reviewStatus !== "approved" && active && <Button onClick={() => startReview({ kind: "profile", value: active })}>{t("reviewProfile")}</Button>}<Button onClick={() => { setReview(null); setEditor({ kind: "profile", value: active ?? data.profiles.toSorted((a, b) => b.validFrom.localeCompare(a.validFrom))[0] ?? null }); }}>{t(active ? active.reviewStatus === "approved" ? "newPeriod" : "editProfile" : "createProfile")}</Button></div>}

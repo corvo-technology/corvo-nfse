@@ -1241,7 +1241,9 @@
       "label": "Enviar a nota por e-mail ao cliente",
       "hint": "O PDF e o XML saem para o e-mail do tomador assim que a nota for autorizada.",
       "hintTest": "Em teste o assunto recebe [TESTE]. Use um e-mail seu."
-    }
+    },
+    "view": "Ver nota",
+    "viewInvoice": "Ver detalhes de {name}"
   },
   "Billing": {
     "title": "Plano e uso",

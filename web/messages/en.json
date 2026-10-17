@@ -1241,7 +1241,9 @@
       "label": "Email the invoice to the customer",
       "hint": "The PDF and XML are sent to the customer's email as soon as the invoice is authorized.",
       "hintTest": "In test the subject gets [TESTE]. Use your own email."
-    }
+    },
+    "view": "View invoice",
+    "viewInvoice": "View details for {name}"
   },
   "Billing": {
     "title": "Plan and usage",

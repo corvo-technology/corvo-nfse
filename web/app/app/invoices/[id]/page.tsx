@@ -6,6 +6,7 @@ import { invoices, collectAll } from "@/lib/api";
 import type { Invoice, InvoiceEvent } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { DetailSkeleton } from "@/components/ui/detail-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { timeAgo } from "@/lib/i18n-helpers";
 
@@ -44,7 +45,7 @@ export default function InvoiceDetailPage() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : t("failed")); }
     finally { downloadBusy.current = false; setDownloading(false); }
   }
-  if (!invoice || invoice.id !== id) return <div className="flex flex-col gap-4"><p role={error ? "alert" : "status"}>{error || t("loading")}</p>{error && <Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button>}</div>;
+  if (!invoice || invoice.id !== id) return error ? <div className="flex flex-col gap-4"><p role="alert">{error}</p><Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button></div> : <DetailSkeleton label={t("loading")} />;
   const date = (value: string) => new Date(value).toLocaleString(locale === "pt" ? "pt-BR" : "en-US");
   const money = new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US", { style: "currency", currency: "BRL" }).format(invoice.amount);
   return <div className="flex max-w-[900px] flex-col gap-6"><PageHeader title={invoice.nfseNumber ? `${t("title")} ${invoice.nfseNumber}` : t("title")} subtitle={`${invoice.id} · ${ts(invoice.status)}`} actions={<Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button>} />
