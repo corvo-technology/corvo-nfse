@@ -14,14 +14,19 @@ describe("canCancelInvoice", () => {
   });
 });
 
+const IN_PROGRESS: Record<InvoiceStatus, boolean> = {
+  queued: false, processing: true, retry_pending: true, reconciliation_required: true,
+  authorized: false, rejected: false, manual_review: false, failed: false, cancelling: false, cancelled: false,
+};
+
 describe("showsCancellationRequested", () => {
-  it("shows only with a request timestamp and an in-progress emission status", () => {
-    expect(showsCancellationRequested("processing", "2026-10-17T10:00:00.000Z")).toBe(true);
-    expect(showsCancellationRequested("retry_pending", "2026-10-17T10:00:00.000Z")).toBe(true);
-    expect(showsCancellationRequested("processing", null)).toBe(false);
-    expect(showsCancellationRequested("processing", undefined)).toBe(false);
-    expect(showsCancellationRequested("authorized", "2026-10-17T10:00:00.000Z")).toBe(false);
-    expect(showsCancellationRequested("cancelled", "2026-10-17T10:00:00.000Z")).toBe(false);
+  const requestedAt = "2026-10-17T10:00:00.000Z";
+  it.each(Object.entries(IN_PROGRESS) as [InvoiceStatus, boolean][])("%s with a request -> %s", (status, expected) => {
+    expect(showsCancellationRequested(status, requestedAt)).toBe(expected);
+  });
+  it.each(Object.keys(IN_PROGRESS) as InvoiceStatus[])("%s without a request -> false", (status) => {
+    expect(showsCancellationRequested(status, null)).toBe(false);
+    expect(showsCancellationRequested(status, undefined)).toBe(false);
   });
 });
 

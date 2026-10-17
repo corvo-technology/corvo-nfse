@@ -70,6 +70,9 @@ describe("CancelInvoiceDialog", () => {
     expect(disabled()).toBe(true);
     fireEvent.change(field, { target: { value: "a".repeat(15) } });
     expect(disabled()).toBe(false);
+    expect(field.getAttribute("maxlength")).toBe("255");
+    expect(screen.queryByText(t.queuedHint)).toBeNull();
+    expect(screen.queryByText(t.fiscalHint)).toBeNull();
   });
 
   it("starts clean when a fresh instance is mounted after an error (page mounts it only while open)", async () => {
