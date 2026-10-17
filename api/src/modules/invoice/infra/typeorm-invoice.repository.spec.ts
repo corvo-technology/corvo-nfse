@@ -294,6 +294,38 @@ describe('TypeOrmInvoiceRepository', () => {
     });
   });
 
+  describe('findByIdAndTenantId', () => {
+    function readingQb() {
+      return {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        setLock: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      };
+    }
+
+    it('locks the row (FOR UPDATE) when asked, so a concurrent intent write waits for the commit', async () => {
+      const qb = readingQb();
+      mockRepo.createQueryBuilder.mockReturnValue(qb as any);
+
+      await repository.findByIdAndTenantId('inv-1', tenantId, 'live', {
+        forUpdate: true,
+      });
+
+      expect(qb.setLock).toHaveBeenCalledWith('pessimistic_write');
+      expect(qb.getOne).toHaveBeenCalledTimes(1);
+    });
+
+    it('is a plain read by default', async () => {
+      const qb = readingQb();
+      mockRepo.createQueryBuilder.mockReturnValue(qb as any);
+
+      await repository.findByIdAndTenantId('inv-1', tenantId, 'live');
+
+      expect(qb.setLock).not.toHaveBeenCalled();
+    });
+  });
+
   describe('registerCancellationIntent', () => {
     function qbWith(affected: number) {
       return {

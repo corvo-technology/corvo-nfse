@@ -50,6 +50,7 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
     id: string,
     tenantId: string,
     environment?: ExecutionEnvironment,
+    options: { forUpdate?: boolean } = {},
   ): Promise<Invoice | null> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
@@ -61,6 +62,7 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
         });
       if (environment)
         query.andWhere('invoice.environment = :environment', { environment });
+      if (options.forUpdate) query.setLock('pessimistic_write');
       const entity = await query.getOne();
       return entity ? this.mapper.toDomain(entity) : null;
     });

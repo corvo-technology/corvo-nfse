@@ -42,10 +42,15 @@ export interface IInvoiceRepository {
     filters: ListInvoicesFilters,
     options: CursorQuery,
   ): Promise<CursorPage<Invoice>>;
+  /**
+   * `forUpdate` locks the row (SELECT ... FOR UPDATE) until the surrounding
+   * transaction ends; it must run inside one.
+   */
   findByIdAndTenantId(
     id: string,
     tenantId: string,
     environment?: ExecutionEnvironment,
+    options?: { forUpdate?: boolean },
   ): Promise<Invoice | null>;
   findByIdempotencyKey(
     key: string,
@@ -74,6 +79,12 @@ export interface IInvoiceRepository {
   /**
    * First-write-wins: records the intent only on a `processing` invoice that has
    * none yet. Returns true when this call actually wrote it.
+   *
+   * Safe against the worker because `transition()` reads the row FOR UPDATE:
+   * an intent committed before that read is seen and applied on authorization;
+   * one sent after it blocks on the row lock until the transition commits, then
+   * re-evaluates `status = 'processing'`, matches no row and returns false, so
+   * the caller re-reads the invoice and decides again.
    */
   registerCancellationIntent(
     invoiceId: string,

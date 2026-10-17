@@ -125,10 +125,13 @@ export class InvoiceLifecycleService {
         this.billing.locked(invoice.tenantId, async () => {
           if (event.invoiceId !== invoice.id)
             throw new Error('Invoice/event identity mismatch');
+          // FOR UPDATE: a concurrent registerCancellationIntent waits for this
+          // commit and then no longer matches, instead of landing unseen.
           const stored = await this.invoices.findByIdAndTenantId(
             invoice.id,
             invoice.tenantId,
             invoice.environment,
+            { forUpdate: true },
           );
           if (!stored) throw new Error('Invoice not found');
           if (stored.status === invoice.status) return false;
@@ -148,6 +151,7 @@ export class InvoiceLifecycleService {
             if (stored.cancellationRequestedAt)
               recorded = withCancellationDiscarded(event);
             invoice.discardPendingCancellation();
+            // No preserve: this destination clears the columns on purpose.
             await this.invoices.save(invoice, invoice.tenantId);
           } else {
             await this.invoices.save(invoice, invoice.tenantId, {

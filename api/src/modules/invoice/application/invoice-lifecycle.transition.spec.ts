@@ -115,6 +115,7 @@ function build(
   );
   return {
     service,
+    invoices,
     usage,
     outbox,
     order,
@@ -333,6 +334,25 @@ describe('InvoiceLifecycleService.transition — cancellation requested during e
       for (const column of cancellationColumns)
         expect(ctx.persisted[0]).not.toHaveProperty(column);
     });
+  });
+
+  it('reads the stored row with a write lock, so an intent cannot slip in before the authorization is written', async () => {
+    const invoice = invoiceIn('processing', 'live');
+    const ctx = build(storedWithoutIntent(invoice), null);
+    invoice.setAuthorized('a'.repeat(50), 42);
+
+    await ctx.service.transition(
+      invoice,
+      invoice.transitionTo('authorized', 'NFS-e authorized'),
+    );
+
+    expect(ctx.invoices.findByIdAndTenantId).toHaveBeenCalledTimes(1);
+    expect(ctx.invoices.findByIdAndTenantId).toHaveBeenCalledWith(
+      invoice.id,
+      tenantId,
+      'live',
+      { forUpdate: true },
+    );
   });
 
   describe('an emission that does not authorize discards the request', () => {
