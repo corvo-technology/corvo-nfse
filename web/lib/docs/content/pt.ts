@@ -1245,7 +1245,7 @@ console.log(body.data); // { data: { emailId, status } }`,
           path: "/v1/invoices/:id/cancel",
           scopes: ["full_access", "invoices_issue", "invoices_read_write"],
           success: "200 OK / 202 Accepted",
-          summary: "Cancela uma nota. Uma nota `queued` (agendada ou ainda não processada) é cancelada na hora; uma NFS-e `authorized` passa a `cancelling` enquanto o evento 101101 é enviado à Sefin.",
+          summary: "Cancela uma nota. Uma nota `queued` (agendada ou ainda não processada) é cancelada na hora; uma NFS-e `authorized` passa a `cancelling` enquanto o evento 101101 é enviado à Sefin. Uma nota `processing` (em emissão) registra o pedido: `202`, ainda `processing`, com `cancellationRequestedAt` preenchido.",
           examples: {
             curl: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/cancel" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
@@ -1273,8 +1273,8 @@ console.log(res.status, body.data.status); // 202 "cancelling"`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "`reason`: `issue_error`, `service_not_provided` ou `other`. `description` é obrigatória (15–255 caracteres) para NFS-e autorizada e opcional para nota `queued`. Repetir o pedido para uma nota `cancelling` ou `cancelled` devolve o estado atual." },
-            { kind: "callout", tone: "warn", body: "`202` não confirma o cancelamento: aguarde `nfse.invoice.cancelled` ou `nfse.invoice.cancellation_rejected` (a nota volta a `authorized` com `lastErrorCode`). Cancelar uma NFS-e emitida não devolve o crédito; cancelar uma nota `queued` libera a reserva em live. Erros: `404` nota inexistente; `409` `ERROR_INVOICE_NOT_CANCELLABLE` (também quando a emissão já começou); `422` `ERROR_INVALID_CANCELLATION_REASON`. Se outro pedido já cancelou a nota, devolve o estado atual." },
+            { kind: "callout", tone: "accent", body: "`reason`: `issue_error`, `service_not_provided` ou `other`. `description` é obrigatória (15–255 caracteres) para NFS-e autorizada e opcional para nota `queued`. Uma nota `processing` também exige `description`; assim que for autorizada, é cancelada automaticamente na Sefin sem devolver o crédito, e se a emissão terminar `rejected` ou `failed` o pedido é descartado e a reserva estornada como de costume. Repetir o pedido para uma nota `processing` (vale o primeiro pedido), `cancelling` ou `cancelled` devolve o estado atual." },
+            { kind: "callout", tone: "warn", body: "`202` não confirma o cancelamento: aguarde `nfse.invoice.cancelled` ou `nfse.invoice.cancellation_rejected` (a nota volta a `authorized` com `lastErrorCode`). Cancelar uma NFS-e emitida não devolve o crédito; cancelar uma nota `queued` libera a reserva em live. Erros: `404` nota inexistente; `409` `ERROR_INVOICE_NOT_CANCELLABLE` (ex.: `retry_pending`, `reconciliation_required`, `manual_review`); `422` `ERROR_INVALID_CANCELLATION_REASON`. Se outro pedido já cancelou a nota, devolve o estado atual." },
           ],
         },
       ],

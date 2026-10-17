@@ -62,7 +62,15 @@ reservation refunded. An authorized invoice returns HTTP 202 with status
 cancelling; description (15-255 chars) is required and event 101101 is sent to
 the Sefin asynchronously. Outcome: cancelled (webhook nfse.invoice.cancelled) or
 back to authorized with lastErrorCode/lastErrorMessage (webhook
-nfse.invoice.cancellation_rejected). Other statuses return 409
+nfse.invoice.cancellation_rejected). A processing invoice
+(being issued) accepts the request: HTTP 202, status stays processing and
+cancellationRequestedAt is set; description (15-255 chars) is required. Once the
+invoice is authorized it is cancelled automatically at the Sefin (event
+101101) and the credit is not refunded; if the emission ends rejected or
+failed the request is discarded and the reservation is refunded as usual.
+Repeating the request returns the current state (first request wins).
+retry_pending, reconciliation_required and manual_review, like other
+statuses, return 409
 ERROR_INVOICE_NOT_CANCELLABLE; an invalid or missing description for an issued
 NFS-e returns 422 ERROR_INVALID_CANCELLATION_REASON. Cancelling an issued NFS-e does not refund credit.
 

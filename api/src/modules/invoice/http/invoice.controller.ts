@@ -313,7 +313,8 @@ export class InvoiceController {
     },
   })
   @ApiAcceptedResponse({
-    description: 'NFS-e cancellation event is being processed (cancelling)',
+    description:
+      'NFS-e cancellation event is being processed (cancelling), or the cancellation request was registered on an invoice that is still being issued (processing, with cancellationRequestedAt set)',
     schema: {
       type: 'object',
       required: ['data'],
@@ -326,7 +327,9 @@ export class InvoiceController {
   @RequirePermission('nfse.invoices.issue')
   @ApiOperation({
     summary:
-      'Cancel an invoice: 200 when a queued invoice is cancelled locally, 202 while the NFS-e cancellation event is processed',
+      'Cancel an invoice: 200 when a queued invoice is cancelled locally, 202 while the NFS-e cancellation event is processed or when the request is registered on a processing invoice',
+    description:
+      'A processing invoice (being issued) accepts the request with 202 and stays processing with cancellationRequestedAt set; description (15-255 characters) is required. When the invoice is authorized it is cancelled automatically at the Sefin (event 101101) and the credit is not refunded (cancelling an issued NFS-e does not refund credit); if the emission ends rejected or failed the request is discarded and the reservation is refunded as usual. Repeating the request returns the current state (the first request wins). retry_pending, reconciliation_required and manual_review return 409 ERROR_INVOICE_NOT_CANCELLABLE.',
   })
   async cancel(
     @Param('id', new ParseUUIDPipe()) id: string,

@@ -38,6 +38,12 @@ describe('nfse_cancel tool', () => {
     });
   });
 
+  it('describes cancelling an invoice that is still being issued', () => {
+    expect(NFSE_CANCEL_TOOL.description).toContain('"processing"');
+    expect(NFSE_CANCEL_TOOL.description).toContain('cancelled automatically');
+    expect(NFSE_CANCEL_TOOL.description).toContain('credit is not refunded');
+  });
+
   it('rejects an unknown reason before calling the service', async () => {
     const cancel = jest.fn();
     const handler = createNfseCancelHandler({ cancel });

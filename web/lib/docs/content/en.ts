@@ -1269,7 +1269,7 @@ console.log(body.data.status); // { data: { emailId, status } }`,
           path: "/v1/invoices/:id/cancel",
           scopes: ["full_access", "invoices_issue", "invoices_read_write"],
           success: "200 OK / 202 Accepted",
-          summary: "Cancels an invoice. A `queued` invoice (scheduled or not yet processed) is cancelled immediately; an `authorized` NFS-e moves to `cancelling` while event 101101 is sent to the Sefin.",
+          summary: "Cancels an invoice. A `queued` invoice (scheduled or not yet processed) is cancelled immediately; an `authorized` NFS-e moves to `cancelling` while event 101101 is sent to the Sefin. A `processing` invoice (being issued) registers the request: `202`, still `processing`, with `cancellationRequestedAt` set.",
           examples: {
             curl: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/cancel" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
@@ -1297,8 +1297,8 @@ console.log(res.status, body.data.status); // 202 "cancelling"`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "`reason`: `issue_error`, `service_not_provided` or `other`. `description` is required (15–255 characters) for an authorized NFS-e and optional for a queued invoice. Repeating the request for a `cancelling` or `cancelled` invoice returns its current state." },
-            { kind: "callout", tone: "warn", body: "`202` does not confirm the cancellation: wait for `nfse.invoice.cancelled` or `nfse.invoice.cancellation_rejected` (the invoice returns to `authorized` with `lastErrorCode`). Cancelling an issued NFS-e does not refund the credit; cancelling a queued invoice releases the live reservation. Errors: `404` invoice missing; `409` `ERROR_INVOICE_NOT_CANCELLABLE` (also when issuance has already started); `422` `ERROR_INVALID_CANCELLATION_REASON`. If another request already cancelled the invoice, the current state is returned." },
+            { kind: "callout", tone: "accent", body: "`reason`: `issue_error`, `service_not_provided` or `other`. `description` is required (15–255 characters) for an authorized NFS-e and optional for a queued invoice. A `processing` invoice also requires `description`; once it is authorized it is cancelled automatically at the Sefin and the credit is not refunded, and if the emission ends `rejected` or `failed` the request is discarded and the reservation refunded as usual. Repeating the request for a `processing` (first request wins), `cancelling` or `cancelled` invoice returns its current state." },
+            { kind: "callout", tone: "warn", body: "`202` does not confirm the cancellation: wait for `nfse.invoice.cancelled` or `nfse.invoice.cancellation_rejected` (the invoice returns to `authorized` with `lastErrorCode`). Cancelling an issued NFS-e does not refund the credit; cancelling a queued invoice releases the live reservation. Errors: `404` invoice missing; `409` `ERROR_INVOICE_NOT_CANCELLABLE` (e.g. `retry_pending`, `reconciliation_required`, `manual_review`); `422` `ERROR_INVALID_CANCELLATION_REASON`. If another request already cancelled the invoice, the current state is returned." },
           ],
         },
       ],

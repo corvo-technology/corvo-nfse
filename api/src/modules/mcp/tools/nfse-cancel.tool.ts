@@ -11,7 +11,7 @@ import { NfseCancelInput } from '../dto/tool-input.dto';
 
 export const NFSE_CANCEL_TOOL = {
   name: 'nfse_cancel',
-  description: `Cancel an invoice. A queued (scheduled or not yet issued) invoice is cancelled immediately; an authorized NFS-e returns status "cancelling" while the cancellation event is sent to the Sefin. Issued NFS-e require a ${CANCELLATION_DESCRIPTION_MIN}-${CANCELLATION_DESCRIPTION_MAX} character description.`,
+  description: `Cancel an invoice. A queued (scheduled or not yet issued) invoice is cancelled immediately; an authorized NFS-e returns status "cancelling" while the cancellation event is sent to the Sefin. An invoice still being issued (status "processing") registers the request and stays "processing" with the request recorded; if it is authorized it is cancelled automatically at the Sefin and the credit is not refunded, and if the emission is rejected or fails the request is discarded. Issued NFS-e and invoices being issued require a ${CANCELLATION_DESCRIPTION_MIN}-${CANCELLATION_DESCRIPTION_MAX} character description.`,
   inputSchema: {
     type: 'object',
     properties: {

@@ -230,7 +230,7 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | GET    | `/invoices/{id}/pdf`                                   | S/K, `nfse.invoices.view`       | Arquivo PDF; nota autorizada ou cancelada após autorização                                                    |
 | POST   | `/invoices/{id}/download-url`                          | S/K, `nfse.invoices.view`       | Body: `{format: "pdf"                                                              | "xml"}`; URL pré-assinada para download |
 | POST   | `/invoices/{id}/email`                                 | S/K, `nfse.invoices.issue`      | Header `Idempotency-Key`; reenvia e-mail da nota; 202                              |
-| POST   | `/invoices/{id}/cancel`                                | S/K, `nfse.invoices.issue`      | JSON: `reason`, `description?`; 200 (queued → cancelled) ou 202 (authorized → cancelling) |
+| POST   | `/invoices/{id}/cancel`                                | S/K, `nfse.invoices.issue`      | JSON: `reason`, `description?`; 200 (queued → cancelled) ou 202 (authorized → cancelling; processing → pedido registrado) |
 | GET    | `/webhooks`                                            | S/K, `webhooks.view`            | Lista sem segredo                                                                  |
 | POST   | `/webhooks`                                            | S/K, `webhooks.manage`          | JSON: `url`, `events`; retorna segredo na criação; 201                             |
 | DELETE | `/webhooks/{id}`                                       | S/K, `webhooks.manage`          | Exclui configuração                                                                |
@@ -418,9 +418,11 @@ Body: `{ "reason": "issue_error" | "service_not_provided" | "other", "descriptio
 
 - Nota `queued` (agendada ou ainda não processada): cancelada na hora, `200` com `status: "cancelled"`. Em live, o crédito reservado é estornado. `description` é opcional.
 - Nota `authorized`: `202` com `status: "cancelling"`. O evento 101101 é enviado à Sefin em segundo plano. `description` é obrigatória (15–255 caracteres). Resultado: `cancelled` (webhook `nfse.invoice.cancelled`) ou de volta a `authorized` com `lastErrorCode/lastErrorMessage` (webhook `nfse.invoice.cancellation_rejected`). O crédito não é devolvido. Após a rejeição da Sefin, a nota volta a `authorized` mantendo `cancellationReason`/`cancellationDescription` do último pedido (um novo pedido os sobrescreve).
+- Nota `processing` (em emissão): `202` com a nota ainda `processing` e `cancellationRequestedAt` preenchido (o pedido fica registrado). `description` é obrigatória (15–255 caracteres). Assim que a nota for autorizada, ela é cancelada automaticamente na Sefin (evento 101101), sem devolver o crédito; se a emissão terminar `rejected` ou `failed`, o pedido é descartado e a reserva é estornada como de costume. Repetir o pedido devolve o estado atual (vale o primeiro pedido).
+- Nota `retry_pending`, `reconciliation_required` ou `manual_review`: `409 ERROR_INVOICE_NOT_CANCELLABLE`.
 - Nota já `cancelling`/`cancelled`: devolve o estado atual.
-- Erros: `409 ERROR_INVOICE_NOT_CANCELLABLE` (outros status, inclusive se a emissão começou durante o pedido), `422 ERROR_INVALID_CANCELLATION_REASON`. Se outro pedido já cancelou a nota, devolve o estado atual.
-- Campos novos na invoice: `cancellationReason`, `cancellationDescription`, `cancelledAt`. XML/PDF continuam disponíveis depois do cancelamento; o reenvio de e-mail não.
+- Erros: `409 ERROR_INVOICE_NOT_CANCELLABLE` (outros status, como `retry_pending`, `reconciliation_required` e `manual_review`), `422 ERROR_INVALID_CANCELLATION_REASON`. Se outro pedido já cancelou a nota, devolve o estado atual.
+- Campos novos na invoice: `cancellationReason`, `cancellationDescription`, `cancelledAt`, `cancellationRequestedAt` (pedido feito enquanto a nota estava em emissão). XML/PDF continuam disponíveis depois do cancelamento; o reenvio de e-mail não.
 
 **Webhook `nfse.invoice.documents_ready`**: Disparado quando os documentos fiscais ficam prontos. Payload:
 
@@ -808,7 +810,7 @@ proxy do Next). `redirect_uri` aceitos no registro: `https`, `http` em
 | Tool                | Escopo       | Entrada principal                                                                                                                              | Saída                                                            |
 | ------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `nfse_issue`        | `nfse:write` | `company_id`, `customer {name, tax_id, email?}`, `services [{description, quantity, unit_price}]`, `competence_date`, `service_code?`, `idempotency_key?` | `{ invoice_id, access_key, status }`                             |
-| `nfse_cancel`       | `nfse:write` | `invoice_id`, `reason` (`issue_error` \| `service_not_provided` \| `other`), `description?` (15-255 caracteres, obrigatória para NFS-e autorizada) | `{ invoice_id, status, cancelled_at }` (`cancelled` ou `cancelling`) |
+| `nfse_cancel`       | `nfse:write` | `invoice_id`, `reason` (`issue_error` \| `service_not_provided` \| `other`), `description?` (15-255 caracteres, obrigatória para NFS-e autorizada ou em emissão) | `{ invoice_id, status, cancelled_at }` (`cancelled`, `cancelling` ou `processing` com o pedido registrado) |
 | `nfse_query`        | `nfse:read`  | `access_key`                                                                                                                                   | `{ access_key, status, nfse_number, authorized_at, last_error }` |
 | `nfse_list`         | `nfse:read`  | `status?`, `limit?`, `cursor?`                                                                                                                 | `{ invoices, next_cursor }`                                      |
 | `nfse_download_pdf` | `nfse:read`  | `access_key`                                                                                                                                   | `{ access_key, pdf_base64 }`                                     |
