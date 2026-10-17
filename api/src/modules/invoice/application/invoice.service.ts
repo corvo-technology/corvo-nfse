@@ -461,7 +461,9 @@ export class InvoiceService {
     }
 
     if (invoice.status === 'cancelling' || invoice.status === 'cancelled') {
-      throw new ConflictException('Invoice is cancelled; e-mail is not available');
+      throw new ConflictException(
+        'Invoice is cancelled; e-mail is not available',
+      );
     }
 
     if (invoice.status !== 'authorized' || !invoice.documentsReadyAt) {
