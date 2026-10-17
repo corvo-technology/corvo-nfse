@@ -116,13 +116,7 @@ export class ApiKeyService {
   }
 
   async touchLastUsed(apiKeyId: string, tenantId: string): Promise<void> {
-    const apiKey = await this.apiKeyRepo.findByIdAndTenantId(
-      apiKeyId,
-      tenantId,
-    );
-    if (!apiKey) return;
-    apiKey.lastUsedAt = new Date();
-    await this.apiKeyRepo.save(apiKey, tenantId);
+    await this.apiKeyRepo.touchLastUsed(apiKeyId, tenantId, new Date());
   }
 
   private buildPrefix(environment: ApiKeyEnvironment, token: string): string {

@@ -15,8 +15,10 @@ describe(ApiKeyService.name, () => {
     findByKeyPrefix: jest.fn(),
     findByTenantId: jest.fn(),
     findById: jest.fn(),
+    findByIdAndTenantId: jest.fn(),
     save: jest.fn(),
     remove: jest.fn(),
+    touchLastUsed: jest.fn(),
   } as jest.Mocked<IApiKeyRepository>;
   const service = new ApiKeyService(repository);
 
@@ -63,5 +65,57 @@ describe(ApiKeyService.name, () => {
       UnauthorizedException,
     );
     expect(repository.findByKeyPrefix).not.toHaveBeenCalled();
+  });
+
+  describe('touchLastUsed', () => {
+    it('issues a direct repository update and never finds or saves the key', async () => {
+      repository.touchLastUsed.mockResolvedValue(undefined);
+
+      await service.touchLastUsed('key-id', 'tenant-id');
+
+      expect(repository.touchLastUsed).toHaveBeenCalledWith(
+        'key-id',
+        'tenant-id',
+        expect.any(Date),
+      );
+      expect(repository.findByIdAndTenantId).not.toHaveBeenCalled();
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('keeps a deleted key deleted and authentication failing', async () => {
+      const plaintext = `corvo_live_abcdef012345${'f'.repeat(28)}`;
+      const key: ApiKey = {
+        id: 'key-id',
+        tenantId: 'tenant-id',
+        name: 'Production',
+        environment: 'live',
+        keyPrefix: 'corvo_live_abcdef012345',
+        keyHash: 'hash',
+        scope: 'full_access',
+        createdAt: new Date(),
+      };
+      // Stateful fake: the row was removed, but a stale copy may still be read.
+      const store = new Map<string, ApiKey>();
+      repository.findByIdAndTenantId.mockResolvedValue({ ...key });
+      repository.save.mockImplementation(async (row) => {
+        store.set(row.keyPrefix, row); // mirrors the update-or-insert helper
+        return row;
+      });
+      repository.touchLastUsed.mockResolvedValue(undefined); // 0 rows affected
+      repository.findByKeyPrefix.mockImplementation(
+        async (prefix) => store.get(prefix) ?? null,
+      );
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        service.touchLastUsed('key-id', 'tenant-id'),
+      ).resolves.toBeUndefined();
+
+      expect(store.size).toBe(0);
+      expect(repository.save).not.toHaveBeenCalled();
+      await expect(service.validate(plaintext)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    });
   });
 });
