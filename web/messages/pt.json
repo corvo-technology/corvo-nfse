@@ -1519,6 +1519,8 @@
       "open": "Cancelar nota",
       "title": "Cancelar nota",
       "fiscalHint": "O cancelamento é enviado à Sefin e pode ser recusado (por exemplo, fora do prazo municipal). O crédito usado na emissão não é devolvido.",
+      "processingHint": "Esta nota está sendo emitida. O cancelamento será enviado à Sefin assim que ela for autorizada, e a justificativa é obrigatória. O crédito usado na emissão não é devolvido.",
+      "requested": "Cancelamento solicitado. Ele será enviado à Sefin assim que a nota for autorizada.",
       "queuedHint": "Esta nota ainda não foi emitida. Ela será cancelada na hora e o crédito reservado será liberado.",
       "reason": "Motivo",
       "reasons": {

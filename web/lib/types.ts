@@ -413,6 +413,8 @@ export interface Invoice {
   lastErrorCode?: string | null; lastErrorMessage?: string | null;
   authorizedAt?: string | null; createdAt: string; updatedAt: string;
   cancellationReason?: CancellationReasonCode | null; cancellationDescription?: string | null; cancelledAt?: string | null;
+  /** Set when a cancellation was requested while the invoice was still being issued. */
+  cancellationRequestedAt?: string | null;
 }
 export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } | { companyId: string; companyTaxId?: string }) & {
   externalId?: string;

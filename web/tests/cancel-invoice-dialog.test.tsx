@@ -61,6 +61,17 @@ describe("CancelInvoiceDialog", () => {
     expect(confirm()).toBe(false);
   });
 
+  it("requires 15-255 chars for a processing invoice and warns it is being issued", () => {
+    renderDialog({ ...base, status: "processing" } as Invoice);
+    expect(screen.getByText(t.processingHint)).toBeTruthy();
+    const field = screen.getByLabelText(t.description);
+    const disabled = () => (screen.getByRole("button", { name: t.confirm }) as HTMLButtonElement).disabled;
+    fireEvent.change(field, { target: { value: "a".repeat(14) } });
+    expect(disabled()).toBe(true);
+    fireEvent.change(field, { target: { value: "a".repeat(15) } });
+    expect(disabled()).toBe(false);
+  });
+
   it("starts clean when a fresh instance is mounted after an error (page mounts it only while open)", async () => {
     mocks.cancel.mockRejectedValue(new Error("boom failure"));
     const first = render(<NextIntlClientProvider locale="en" messages={messages}><CancelInvoiceDialog invoice={base} open onClose={vi.fn()} onCancelled={vi.fn()} /></NextIntlClientProvider>);

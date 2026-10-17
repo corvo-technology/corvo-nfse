@@ -7,5 +7,8 @@ export const showsCancellationReason = (status: InvoiceStatus) => status === "ca
 export const CANCELLATION_DESCRIPTION_MIN = 15;
 export const CANCELLATION_DESCRIPTION_MAX = 255;
 
-/** The cancel button/dialog is offered only for queued or authorized invoices, and only to users allowed to issue. */
-export const canCancelInvoice = (status: InvoiceStatus, hasPermission: boolean) => hasPermission && (status === "queued" || status === "authorized");
+/** The cancel button/dialog is offered for queued, processing (deferred until authorized) or authorized invoices, and only to users allowed to issue. */
+export const canCancelInvoice = (status: InvoiceStatus, hasPermission: boolean) => hasPermission && (status === "queued" || status === "processing" || status === "authorized");
+
+/** A cancellation requested mid-emission is pending: show the marker while the invoice is still in an in-progress emission status. */
+export const showsCancellationRequested = (status: InvoiceStatus, requestedAt?: string | null) => Boolean(requestedAt) && (status === "processing" || status === "retry_pending");

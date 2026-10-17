@@ -1519,6 +1519,8 @@
       "open": "Cancel invoice",
       "title": "Cancel invoice",
       "fiscalHint": "The cancellation is sent to the Sefin. It may be refused (for example, after the municipal deadline). The credit used to issue it is not refunded.",
+      "processingHint": "This invoice is being issued. The cancellation will be sent to the Sefin as soon as it is authorized, and the justification is required. The credit used to issue it is not refunded.",
+      "requested": "Cancellation requested. It will be sent to the Sefin as soon as the invoice is authorized.",
       "queuedHint": "This invoice has not been issued yet. It will be cancelled immediately and the reserved credit released.",
       "reason": "Reason",
       "reasons": {

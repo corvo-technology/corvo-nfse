@@ -17,10 +17,11 @@ interface CancelInvoiceDialogProps {
   onCancelled: (invoice: Invoice) => void;
 }
 
-/** Issued NFS-e need the Sefin justification (15–255 chars); queued ones are cancelled locally. */
+/** Issued and being-issued NFS-e need the Sefin justification (15–255 chars); queued ones are cancelled locally. */
 export function CancelInvoiceDialog({ invoice, open, onClose, onCancelled }: CancelInvoiceDialogProps) {
   const t = useTranslations("InvoiceDetail.cancel");
-  const fiscal = invoice.status === "authorized";
+  const fiscal = invoice.status === "authorized" || invoice.status === "processing";
+  const hint = invoice.status === "authorized" ? "fiscalHint" : invoice.status === "processing" ? "processingHint" : "queuedHint";
   const [reason, setReason] = useState<CancellationReasonCode>("issue_error");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -40,7 +41,7 @@ export function CancelInvoiceDialog({ invoice, open, onClose, onCancelled }: Can
   return (
     <Modal open={open} onClose={onClose} title={t("title")}>
       <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
-        <p className="text-sm text-text-3">{t(fiscal ? "fiscalHint" : "queuedHint")}</p>
+        <p className="text-sm text-text-3">{t(hint)}</p>
         <label className="flex flex-col gap-1.5 text-sm">
           {t("reason")}
           <select className="field" value={reason} onChange={(event) => setReason(event.target.value as CancellationReasonCode)}>
