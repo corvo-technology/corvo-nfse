@@ -466,7 +466,7 @@ export type PlanTier = PlanQuote;
 export const NFSE_WEBHOOK_EVENTS = WEBHOOK_EVENT_OPTIONS;
 export type NfseWebhookEvent = WebhookEvent;
 
-export interface CalculatedTaxAmount { base: string; rate: string; amount: string }
+export interface CalculatedTaxAmount { base: string; rate?: string; amount: string }
 export interface InvoiceCalculation {
   preEmission: true; status: "ready" | "blocked"; disclaimer: string; competenceDate: string;
   taxRegime: TaxRegimeKind | null;

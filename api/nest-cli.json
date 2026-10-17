@@ -8,6 +8,10 @@
       {
         "include": "modules/invoice/infra/fiscal/catalog/*.json",
         "outDir": "dist"
+      },
+      {
+        "include": "modules/invoice/infra/danfse/assets/*",
+        "outDir": "dist"
       }
     ],
     "plugins": [

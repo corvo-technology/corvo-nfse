@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { renderInvoicePdf } from '@/modules/invoice/infra/danfse/danfse';
 import { ConfigService } from '@nestjs/config';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { requireTenantId } from '@/infra/persistence/typeorm/tenant-scope';
@@ -12,7 +13,6 @@ import {
   ReceitaRejectionError,
   ValidationError,
   NotFoundError,
-  gerarDanfse,
   parseNfseXml,
   type PendingEvent,
   type RetryStore,
@@ -257,7 +257,7 @@ export class OpenNfseProvider implements FiscalProvider {
   ): Promise<Buffer> {
     const result = await this.queryByAccessKey(key, environment, credentials);
     if (!result.xmlAuthorized) throw new Error('Invoice not found');
-    return gerarDanfse(parseNfseXml(result.xmlAuthorized), {
+    return renderInvoicePdf(parseNfseXml(result.xmlAuthorized), {
       ambiente: this.ambiente,
     });
   }

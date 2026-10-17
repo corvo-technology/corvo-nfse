@@ -2943,6 +2943,13 @@
   dependencies:
     undici-types "~8.9.0"
 
+"@types/pdfkit@^0.17.6":
+  version "0.17.6"
+  resolved "https://registry.yarnpkg.com/@types/pdfkit/-/pdfkit-0.17.6.tgz#b0a4b728b1d0bfb7ec6e574efebba7dc6bf4cca1"
+  integrity sha512-tIwzxk2uWKp0Cq9JIluQXJid77lYhF52EsIOwhsMF4iWLA6YneoBR1xVKYYdAysHuepUB0OX4tdwMiUDdGKmig==
+  dependencies:
+    "@types/node" "*"
+
 "@types/pg-pool@2.0.7":
   version "2.0.7"
   resolved "https://registry.yarnpkg.com/@types/pg-pool/-/pg-pool-2.0.7.tgz#c17945a74472d9a3beaf8e66d5aa6fc938328734"

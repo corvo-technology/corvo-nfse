@@ -17,7 +17,7 @@ export function InvoiceCalculationPanel({ result, format }: { result: InvoiceCal
         <dl className="flex flex-col gap-1.5">
           <dt className="eyebrow">{t("taxes")}</dt>
           {taxes.map(([key, tax]) => (
-            <div key={key} className="flex items-baseline justify-between gap-3"><dd className="text-text-3">{t(`tax.${key}`)} · {Number(tax.rate)}%</dd><dd className="font-mono tabular-nums text-text-2">{format(tax.amount)}</dd></div>
+            <div key={key} className="flex items-baseline justify-between gap-3"><dd className="text-text-3">{t(`tax.${key}`)}{tax.rate ? ` · ${Number(tax.rate)}%` : ""}</dd><dd className="font-mono tabular-nums text-text-2">{format(tax.amount)}</dd></div>
           ))}
         </dl>
       )}
