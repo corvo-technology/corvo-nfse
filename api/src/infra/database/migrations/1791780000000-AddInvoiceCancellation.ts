@@ -27,8 +27,23 @@ export class AddInvoiceCancellation1791780000000 implements MigrationInterface {
     );
   }
 
+  /**
+   * Rolling back restores the previous status constraint, which has no
+   * 'cancelling'/'cancelled'. We deliberately do not map those invoices to
+   * 'authorized': that would falsify their fiscal state (a cancelled NFS-e
+   * would look valid). The rollback is refused until they are resolved.
+   */
   async down(runner: QueryRunner): Promise<void> {
     const schema = this.schema(runner);
+    const rows = (await runner.query(
+      `SELECT count(*)::int AS total FROM ${schema}.nfse_invoices WHERE status IN ('cancelling','cancelled')`,
+    )) as Array<{ total: number }>;
+    const total = Number(rows[0]?.total ?? 0);
+    if (total > 0) {
+      throw new Error(
+        `Cannot roll back AddInvoiceCancellation: ${total} invoice(s) are cancelling or cancelled. Rolling them back to authorized would falsify their fiscal state; resolve them first.`,
+      );
+    }
     await runner.query(
       `ALTER TABLE ${schema}.nfse_invoices
          DROP COLUMN cancelled_at,
