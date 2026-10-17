@@ -5,6 +5,7 @@ export const DOC_LOCALES: readonly DocsLocale[] = ["en", "pt"];
 export type DocGroupKey = "gettingStarted" | "reference" | "guides";
 
 export type DocSlug =
+  | "sdks"
   | "authentication"
   | "errors"
   | "rate-limits"

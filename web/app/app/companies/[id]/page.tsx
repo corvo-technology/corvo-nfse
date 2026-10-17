@@ -12,6 +12,7 @@ import { CompanyFiscalSetup } from "@/components/dashboard/company-fiscal-setup"
 import { companySetup } from "@/lib/company-setup";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { DetailSkeleton } from "@/components/ui/detail-skeleton";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -42,7 +43,7 @@ export default function CompanyDetailPage() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : t("failed")); }
     finally { setBusy(false); }
   }
-  if (!company || company.id !== id) return <div className="flex flex-col gap-4"><p role={error ? "alert" : "status"}>{error || t("loading")}</p>{error && <Button onClick={() => setRevision((value) => value + 1)}>{t("retry")}</Button>}</div>;
+  if (!company || company.id !== id) return error ? <div className="flex flex-col gap-4"><p role="alert">{error}</p><Button onClick={() => setRevision((value) => value + 1)}>{t("retry")}</Button></div> : <DetailSkeleton label={t("loading")} />;
   const setup = companySetup(company);
   const date = (value: string) => new Date(value).toLocaleDateString(locale === "pt" ? "pt-BR" : "en-US");
   return <div className="flex max-w-[900px] flex-col gap-6">

@@ -1,4 +1,5 @@
 // lib/docs/content/en.ts
+import { SDKS } from "../../sdks";
 import type { DocsTree } from "../types";
 
 export const en: DocsTree = {
@@ -124,6 +125,36 @@ export const en: DocsTree = {
     ],
   },
   pages: {
+    sdks: {
+      title: "SDKs",
+      description: "Official libraries for Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir and .NET.",
+      blocks: [
+        { kind: "text", body: "Corvo has official SDKs in nine languages. They call the same API this documentation describes, with the same operations, field names and tax rules, so every guide here applies to all of them." },
+        { kind: "heading", level: 2, body: "Install" },
+        {
+          kind: "table",
+          head: ["Language", "Package", "Install", "Source"],
+          rows: SDKS.map((sdk) => [sdk.name, `\`${sdk.pkg}\` (${sdk.registry})`, `\`${sdk.install}\``, `\`corvo-technology/${sdk.repo}\``]),
+        },
+        { kind: "callout", tone: "accent", body: "Start with a test key: invoices issued with a `corvo_test_` key have no fiscal value." },
+        { kind: "heading", level: 2, body: "What every SDK does" },
+        {
+          kind: "list",
+          items: [
+          "Authenticates with `X-API-Key`. It reads `CORVO_API_KEY`, and `CORVO_BASE_URL` if you use a different API URL.",
+          "The key decides the environment: `corvo_test_...` for test and `corvo_live_...` for live.",
+          "Errors come back as a typed result with `code`, `status`, `requestId`, `details` and `retryAfter`, not as an exception. The iterate helpers raise when a page fails.",
+          "Lists are cursor-paginated, and every SDK has an iterate helper that walks all pages.",
+          "Creating an invoice and sending an email accept an idempotency key, sent as `Idempotency-Key`.",
+          "Webhook signature verification (`X-Corvo-Signature`) in constant time.",
+          ],
+        },
+        { kind: "heading", level: 2, body: "Issue an invoice" },
+        { kind: "text", body: "The same call in each language. Each example reads the key from `CORVO_API_KEY` and passes an idempotency key, so repeating the call never issues the invoice twice." },
+        ...SDKS.map((sdk) => ({ kind: "code" as const, label: sdk.name, language: (sdk.id === "node" ? "js" : "text") as "js" | "text", code: sdk.snippet })),
+        { kind: "text", body: "Changing plans and the billing portal exist only in the dashboard, so they are not in the SDKs. The source of every SDK is in github.com/corvo-technology." },
+      ],
+    },
     authentication: {
       title: "Authentication",
       description: "Authenticate every request with an API key.",
