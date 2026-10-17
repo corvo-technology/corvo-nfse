@@ -1,13 +1,8 @@
+import { renderInvoicePdf } from '@/modules/invoice/infra/danfse/danfse';
 import { NFSE_TEST_DISCLAIMER } from '@/shared/fiscal/nfse-constants';
 import { Injectable } from '@nestjs/common';
 import { createHash } from 'crypto';
-import {
-  buildDps,
-  buildDpsXml,
-  gerarDanfse,
-  parseNfseXml,
-  Ambiente,
-} from 'open-nfse';
+import { buildDps, buildDpsXml, parseNfseXml, Ambiente } from 'open-nfse';
 import type {
   FiscalProvider,
   IIssuePayload,
@@ -82,9 +77,13 @@ export class FakeNfseProvider implements FiscalProvider {
   ): Promise<Buffer> {
     const result = await this.queryByAccessKey(key, environment, credentials);
     if (!result.xmlAuthorized) throw new Error('Invoice not found');
-    return gerarDanfse(parseNfseXml(result.xmlAuthorized), {
-      ambiente: Ambiente.ProducaoRestrita,
-      observacoes: NFSE_TEST_DISCLAIMER,
-    });
+    return renderInvoicePdf(
+      parseNfseXml(result.xmlAuthorized),
+      {
+        ambiente: Ambiente.ProducaoRestrita,
+        observacoes: NFSE_TEST_DISCLAIMER,
+      },
+      { notes: [NFSE_TEST_DISCLAIMER] },
+    );
   }
 }
