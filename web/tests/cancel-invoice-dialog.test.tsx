@@ -49,4 +49,29 @@ describe("CancelInvoiceDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: t.confirm }));
     expect((await screen.findByRole("alert")).textContent).toContain("cannot be cancelled");
   });
+
+  it("enforces the 15 character boundary on the trimmed description and caps input at 255", () => {
+    renderDialog(base);
+    const field = screen.getByLabelText(t.description) as HTMLTextAreaElement;
+    const confirm = () => (screen.getByRole("button", { name: t.confirm }) as HTMLButtonElement).disabled;
+    expect(field.getAttribute("maxlength")).toBe("255");
+    fireEvent.change(field, { target: { value: `  ${"a".repeat(14)}  ` } });
+    expect(confirm()).toBe(true);
+    fireEvent.change(field, { target: { value: `  ${"a".repeat(15)}  ` } });
+    expect(confirm()).toBe(false);
+  });
+
+  it("starts clean when a fresh instance is mounted after an error (page mounts it only while open)", async () => {
+    mocks.cancel.mockRejectedValue(new Error("boom failure"));
+    const first = render(<NextIntlClientProvider locale="en" messages={messages}><CancelInvoiceDialog invoice={base} open onClose={vi.fn()} onCancelled={vi.fn()} /></NextIntlClientProvider>);
+    fireEvent.change(screen.getByLabelText(t.reason), { target: { value: "other" } });
+    fireEvent.change(screen.getByLabelText(t.description), { target: { value: "a".repeat(20) } });
+    fireEvent.click(screen.getByRole("button", { name: t.confirm }));
+    expect((await screen.findByRole("alert")).textContent).toContain("boom failure");
+    first.unmount();
+    renderDialog(base);
+    expect((screen.getByLabelText(t.description) as HTMLTextAreaElement).value).toBe("");
+    expect((screen.getByLabelText(t.reason) as HTMLSelectElement).value).toBe("issue_error");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

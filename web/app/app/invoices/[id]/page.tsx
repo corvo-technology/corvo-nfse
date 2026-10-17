@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { invoices, collectAll } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { showsCancellationReason } from "@/lib/invoice-cancellation";
+import { canCancelInvoice, showsCancellationReason } from "@/lib/invoice-cancellation";
 import type { Invoice, InvoiceEvent } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { CancelInvoiceDialog } from "@/components/dashboard/cancel-invoice-dialog";
@@ -48,7 +48,7 @@ export default function InvoiceDetailPage() {
     finally { downloadBusy.current = false; setDownloading(false); }
   }
   if (!invoice || invoice.id !== id) return <div className="flex flex-col gap-4"><p role={error ? "alert" : "status"}>{error || t("loading")}</p>{error && <Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button>}</div>;
-  const cancellable = can("nfse.invoices.issue") && (invoice.status === "queued" || invoice.status === "authorized"); const hasDocuments = Boolean(invoice.authorizedAt);
+  const cancellable = canCancelInvoice(invoice.status, can("nfse.invoices.issue")); const hasDocuments = Boolean(invoice.authorizedAt);
   const date = (value: string) => new Date(value).toLocaleString(locale === "pt" ? "pt-BR" : "en-US");
   const money = new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US", { style: "currency", currency: "BRL" }).format(invoice.amount);
   return <div className="flex max-w-[900px] flex-col gap-6"><PageHeader title={invoice.nfseNumber ? `${t("title")} ${invoice.nfseNumber}` : t("title")} subtitle={`${invoice.id} · ${ts(invoice.status)}`} actions={<div className="flex gap-3">{cancellable && <Button variant="danger" onClick={() => setCancelOpen(true)}>{t("cancel.open")}</Button>}<Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button></div>} />
@@ -67,6 +67,6 @@ export default function InvoiceDetailPage() {
         </li>;
       })}</ol>
     </Card>
-    {cancellable && <CancelInvoiceDialog invoice={invoice} open={cancelOpen} onClose={() => setCancelOpen(false)} onCancelled={(updated) => { setCancelOpen(false); setInvoice(updated); setRevision((value) => value + 1); }} />}
+    {cancelOpen && cancellable && <CancelInvoiceDialog invoice={invoice} open={cancelOpen} onClose={() => setCancelOpen(false)} onCancelled={(updated) => { setCancelOpen(false); setInvoice(updated); setRevision((value) => value + 1); }} />}
   </div>;
 }

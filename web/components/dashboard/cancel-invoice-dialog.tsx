@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { invoices } from "@/lib/api";
+import { CANCELLATION_DESCRIPTION_MAX, CANCELLATION_DESCRIPTION_MIN } from "@/lib/invoice-cancellation";
 import type { CancellationReasonCode, Invoice } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -25,7 +26,7 @@ export function CancelInvoiceDialog({ invoice, open, onClose, onCancelled }: Can
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const trimmed = description.trim();
-  const invalid = fiscal && (trimmed.length < 15 || trimmed.length > 255);
+  const invalid = fiscal && (trimmed.length < CANCELLATION_DESCRIPTION_MIN || trimmed.length > CANCELLATION_DESCRIPTION_MAX);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -49,7 +50,7 @@ export function CancelInvoiceDialog({ invoice, open, onClose, onCancelled }: Can
         <div className="flex flex-col gap-1.5 text-sm">
           <label className="flex flex-col gap-1.5">
             {t("description")}
-            <textarea className="field resize-y" rows={3} maxLength={255} required={fiscal} value={description} onChange={(event) => setDescription(event.target.value)} />
+            <textarea className="field resize-y" rows={3} maxLength={CANCELLATION_DESCRIPTION_MAX} required={fiscal} value={description} onChange={(event) => setDescription(event.target.value)} />
           </label>
           {/* Outside the label so the field's accessible name stays "Justification". */}
           <span className="text-[12.5px] text-text-4">{t(fiscal ? "descriptionRequired" : "descriptionOptional")}</span>
