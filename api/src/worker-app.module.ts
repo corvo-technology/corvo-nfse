@@ -35,8 +35,6 @@ import {
   InvoiceWebhookPublisher,
 } from '@/modules/invoice/application/fiscal/fiscal-reconciliation.service';
 import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
-import { MetaCapiProcessor } from '@/modules/marketing/jobs/meta-capi.processor';
-import { MetaCapiClient } from '@/modules/marketing/application/meta-capi.client';
 
 @Module({
   imports: [
@@ -59,7 +57,6 @@ import { MetaCapiClient } from '@/modules/marketing/application/meta-capi.client
     BullModule.registerQueue({ name: 'nfse-doc-prep' }),
     BullModule.registerQueue({ name: 'nfse-email' }),
     BullModule.registerQueue({ name: 'nfse-fiscal-reconcile' }),
-    BullModule.registerQueue({ name: 'meta-capi' }),
     EmailExternalModule,
     EmailModule,
   ],
@@ -81,8 +78,6 @@ import { MetaCapiClient } from '@/modules/marketing/application/meta-capi.client
     DpsBuilder,
     NfseEmailProcessor,
     DocsRecoveryScheduler,
-    MetaCapiProcessor,
-    MetaCapiClient,
   ],
 })
 export class WorkerAppModule {}

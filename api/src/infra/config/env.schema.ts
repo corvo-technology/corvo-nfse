@@ -410,11 +410,6 @@ export const envSchema = z
       .min(0)
       .max(100)
       .default(3),
-    // ─── Meta Pixel + Conversions API (marketing) ──────────────────
-    META_PIXEL_ID: z.string().min(1).optional(),
-    META_CAPI_TOKEN: z.string().min(1).optional(),
-    META_CAPI_ENABLED: booleanFromEnv.default(false),
-    META_CAPI_TEST_EVENT_CODE: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
     if (
