@@ -7,12 +7,6 @@ export type CookieConsentState = "accepted" | "rejected" | null;
 const KEY = "corvo_cookie_consent";
 const EVENT = "corvo-consent";
 
-declare global {
-  interface Window {
-    fbq?: (...args: unknown[]) => void;
-  }
-}
-
 function subscribe(listener: () => void) {
   window.addEventListener("storage", listener);
   window.addEventListener(EVENT, listener);

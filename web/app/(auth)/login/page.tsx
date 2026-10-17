@@ -101,10 +101,11 @@ function LoginPageContent() {
   const handleSendCode = async () => {
     if (!email.trim() || busy.current || Date.now() < cooldownUntil) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError(t("errors.invalidEmail")); return; }
+    const isFirstSend = mode === "signup" && !challenge;
     busy.current = true; setError(""); setLoading(true);
     try {
       const issued = await auth.magicLinkRequest(email.trim());
-      if (mode === "signup") trackMeta("Lead", {}, `lead_${issued.challengeId}`);
+      if (isFirstSend) trackMeta("Lead", {}, crypto.randomUUID());
       setChallenge(issued); setCooldownUntil(Date.parse(issued.resendAvailableAt));
       setNow(Date.now()); setCode(""); setCookieIssued(false); setStep("code");
     } catch (cause) { showError(cause); }
