@@ -339,14 +339,7 @@ describe('TaxApplicabilityStep', () => {
       await step.execute(
         contextFor({
           companyProfile: profile(),
-          classification: classification({
-            iss: {
-              taxation: 'EXEMPT',
-              rate: null,
-              withholdingDefault: false,
-              incidenceMunicipalityCode: null,
-            },
-          }),
+          classification: classification(),
           invoice: { competenceDate: '2027-02-10' },
         }),
       ),
