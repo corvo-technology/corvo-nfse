@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { booleanFromEnv } from './boolean-env.schema';
 
+function optionalNonEmptyString() {
+  return z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(1).optional(),
+  );
+}
+
 export const envSchema = z
   .object({
     APP_NAME: z.string().min(1).default('corvo-backend'),
@@ -350,11 +357,12 @@ export const envSchema = z
     META_GRAPH_API_VERSION: z.string().min(1).default('v25.0'),
     SECRETS_ENCRYPTION_KEY: z.string().min(1).optional(),
     // ─── OAuth Providers ──────────────────────────────────────────
-    GOOGLE_CLIENT_ID: z.string().min(1).optional(),
-    GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+    // An empty credential (GOOGLE_CLIENT_ID=) means "provider not configured".
+    GOOGLE_CLIENT_ID: optionalNonEmptyString(),
+    GOOGLE_CLIENT_SECRET: optionalNonEmptyString(),
     GOOGLE_REDIRECT_URL: z.string().url().optional(),
-    GITHUB_CLIENT_ID: z.string().min(1).optional(),
-    GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
+    GITHUB_CLIENT_ID: optionalNonEmptyString(),
+    GITHUB_CLIENT_SECRET: optionalNonEmptyString(),
     GITHUB_REDIRECT_URL: z.string().url().optional(),
     DASHBOARD_URL: z.string().url().optional(),
     MCP_REDIRECT_URIS: z.string().min(1).optional(),

@@ -91,3 +91,14 @@ it("forwards only the MCP consent and connection routes the dashboard needs", as
   }
   expect(fetchMock).not.toHaveBeenCalled();
 });
+
+it("forwards the invoice cancellation with POST only", async () => {
+  fetchMock.mockResolvedValueOnce(new Response("{}", { status: 202 }));
+  const headers = { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "Content-Type": "application/json" };
+  const response = await POST(new NextRequest("http://localhost:4000/api/proxy/v1/invoices/id/cancel", { method: "POST", headers, body: '{"reason":"1"}' }), context("invoices/id/cancel"));
+  expect(response.status).toBe(202);
+  expect(String(fetchMock.mock.calls[0][0])).toBe("http://localhost:3000/v1/invoices/id/cancel");
+  fetchMock.mockClear();
+  expect((await GET(new NextRequest("http://localhost:4000/api/proxy/v1/invoices/id/cancel"), context("invoices/id/cancel"))).status).toBe(404);
+  expect(fetchMock).not.toHaveBeenCalled();
+});
