@@ -353,3 +353,35 @@ html {
   .btn { min-height: 44px; }
   .btn-sm { min-height: 40px; }
 }
+
+@keyframes bar-grow {
+  from { transform: scaleY(0); opacity: 0.4; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+.bar-grow { transform-origin: bottom; animation: bar-grow 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes bar-fade {
+  from { opacity: 0.3; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+.bar-fade { animation: bar-fade 0.2s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .bar-grow, .bar-fade { animation: none; }
+}
+
+/* Overview — premium surfaces */
+.premium-card {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(120% 80% at 0% 0%, color-mix(in oklch, var(--accent) 7%, transparent), transparent 55%),
+    linear-gradient(180deg, color-mix(in oklch, var(--surface) 92%, white), var(--surface));
+  box-shadow: inset 0 1px 0 color-mix(in oklch, white 6%, transparent), 0 24px 48px -32px rgb(0 0 0 / 0.8);
+}
+.kpi-tile { position: relative; transition: background-color 0.2s; }
+.kpi-tile::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in oklch, var(--accent) 60%, transparent), transparent);
+  opacity: 0; transition: opacity 0.25s;
+}
+.kpi-tile:hover { background: color-mix(in oklch, var(--accent) 3%, transparent); }
+.kpi-tile:hover::before { opacity: 1; }

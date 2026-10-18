@@ -44,6 +44,10 @@ import { DPS_SEQUENCE_REPOSITORY } from './domain/dps-sequence';
 import { InvoiceIntakeService } from './application/invoice-intake.service';
 import { InvoiceService } from './application/invoice.service';
 import { InvoiceController } from './http/invoice.controller';
+import { InvoiceOverviewController } from './http/invoice-overview.controller';
+import { InvoiceOverviewService } from './application/invoice-overview.service';
+import { INVOICE_OVERVIEW_REPOSITORY } from './domain/invoice-overview.repository';
+import { TypeOrmInvoiceOverviewRepository } from './infra/typeorm-invoice-overview.repository';
 import { CompanyModule } from '@/modules/company/company.module';
 import { CertificateModule } from '@/modules/certificate/certificate.module';
 import { WebhooksConfigModule } from '@/modules/webhooks-config/webhooks-config.module';
@@ -87,8 +91,14 @@ import { EmailModule } from '@/modules/email/email.module';
     EmailModule,
     FiscalEngineModule,
   ],
-  controllers: [InvoiceController],
+  // Static overview route must be registered before InvoiceController's :id.
+  controllers: [InvoiceOverviewController, InvoiceController],
   providers: [
+    InvoiceOverviewService,
+    {
+      provide: INVOICE_OVERVIEW_REPOSITORY,
+      useClass: TypeOrmInvoiceOverviewRepository,
+    },
     InvoiceEmitHandler,
     CalculateTaxesHandler,
     {
