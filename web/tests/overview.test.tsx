@@ -44,7 +44,7 @@ describe("overview page", () => {
   it("switches periods without refetching monthly credits", async () => {
     renderPage();
     await screen.findAllByText("1201");
-    fireEvent.click(screen.getByRole("button", { name: "30 days", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^30 days$/ }));
     await waitFor(() => expect(invoices.overview).toHaveBeenCalledWith("30d", expect.any(AbortSignal)));
     await waitFor(() => expect(screen.getAllByRole("button", { name: /invoices?$/ })).toHaveLength(30));
     expect(billing.plan).toHaveBeenCalledTimes(1);
@@ -54,7 +54,7 @@ describe("overview page", () => {
     vi.mocked(invoices.overview).mockImplementation((period) => period === "7d" ? new Promise((resolve) => { resolveOld = resolve; }) : Promise.resolve(overview("30d", 99)));
     renderPage();
     const oldSignal = vi.mocked(invoices.overview).mock.calls[0][1]!;
-    fireEvent.click(screen.getByRole("button", { name: "30 days", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^30 days$/ }));
     await screen.findAllByText("99");
     resolveOld(overview("7d", 777));
     await waitFor(() => expect(oldSignal.aborted).toBe(true));
@@ -81,7 +81,7 @@ describe("overview page", () => {
   it("preserves credits if overview fails", async () => {
     vi.mocked(invoices.overview).mockRejectedValue(new Error("unavailable"));
     renderPage();
-    await screen.findByRole("alert");
+    await screen.findAllByRole("alert");
     expect(screen.getByText(/^4/, { selector: "dd" })).toBeTruthy();
     expect(screen.queryByText("1201")).toBeNull();
   });
