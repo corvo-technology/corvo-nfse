@@ -12,6 +12,10 @@ export function fiscalToday(now = new Date()): string {
 export function isSimpleNational(regime: TaxRegime | TaxRegimeKind): boolean {
   return regime === "MEI" || regime === "Simples Nacional" || regime === "SIMPLES_NACIONAL";
 }
+/** MEI and Simples Nacional always send regEspTrib=0 (E0174/E0175), so the choice is only offered to the other regimes. */
+export function allowsSpecialTaxRegime(regime: TaxRegime | TaxRegimeKind | ""): boolean {
+  return regime !== "" && !isSimpleNational(regime);
+}
 export function regimeKind(regime: TaxRegime): TaxRegimeKind {
   const kinds: Record<TaxRegime, TaxRegimeKind> = { MEI: "MEI", "Simples Nacional": "SIMPLES_NACIONAL", "Lucro Presumido": "LUCRO_PRESUMIDO", "Lucro Real": "LUCRO_REAL" };
   return kinds[regime];

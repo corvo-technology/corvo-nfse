@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { ServiceCodeCombobox } from "@/components/ui/service-code-combobox";
-import { isSimpleNational, SPECIAL_TAX_REGIME_CODES } from "@/lib/company-fiscal";
+import { allowsSpecialTaxRegime, isSimpleNational, SPECIAL_TAX_REGIME_CODES } from "@/lib/company-fiscal";
 import { CertificateUpload } from "@/components/dashboard/certificate-upload";
 import { useAuth } from "@/lib/auth";
 import { cleanTaxId, isValidCnpj, maskCnpj, maskDigits, maskState, maskZip, onlyDigits } from "@/lib/masks";
@@ -125,7 +125,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       const municipalReg = optional(values.municipalReg);
       const result = await onSave({
         legalName: values.legalName.trim(), taxId: cleanTaxId(values.taxId),
-        ...(wizard ? { taxRegime: values.taxRegime as TaxRegime, simpleNational: isSimpleNational(values.taxRegime as TaxRegime), specialRegime: values.specialRegime === "0" ? undefined : values.specialRegime } : {}),
+        ...(wizard ? { taxRegime: values.taxRegime as TaxRegime, simpleNational: isSimpleNational(values.taxRegime as TaxRegime), specialRegime: !allowsSpecialTaxRegime(values.taxRegime as TaxRegime) || values.specialRegime === "0" ? undefined : values.specialRegime } : {}),
         tradeName: optional(values.tradeName), municipalityCode: values.municipalityCode,
         defaultServiceCode: optional(values.defaultServiceCode) ?? (company?.defaultServiceCode ? null : undefined),
         // Optional text is omitted when empty; null explicitly clears on update.
@@ -218,8 +218,8 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
 
     {show("fiscal") && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
       {section(t("sectionFiscal"), wizard ? t("stepHint.fiscal") : undefined)}
-      {wizard && <><Field label={t("taxRegime")} required error={fieldErrors.taxRegime}>{(props) => <select {...props} className="field" value={values.taxRegime} onChange={(event) => set("taxRegime", event.target.value)}><option value="">{t("selectTaxRegime")}</option>{["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"].map((regime) => <option key={regime}>{regime}</option>)}</select>}</Field>
-      <Field label={t("specialRegime")} error={fieldErrors.specialRegime}>{(props) => <select {...props} className="field" value={values.specialRegime} onChange={(event) => set("specialRegime", event.target.value)}>{SPECIAL_TAX_REGIME_CODES.map((code) => <option key={code} value={code}>{t(`specialRegimes.${code}`)}</option>)}</select>}</Field>
+      {wizard && <><Field label={t("taxRegime")} required error={fieldErrors.taxRegime}>{(props) => <select {...props} className="field" value={values.taxRegime} onChange={(event) => { set("taxRegime", event.target.value); if (!allowsSpecialTaxRegime(event.target.value as TaxRegime)) set("specialRegime", "0"); }}><option value="">{t("selectTaxRegime")}</option>{["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"].map((regime) => <option key={regime}>{regime}</option>)}</select>}</Field>
+      {allowsSpecialTaxRegime(values.taxRegime as TaxRegime) && <Field label={t("specialRegime")} hint={t("specialRegimeHint")} error={fieldErrors.specialRegime}>{(props) => <select {...props} className="field" value={values.specialRegime} onChange={(event) => set("specialRegime", event.target.value)}>{SPECIAL_TAX_REGIME_CODES.map((code) => <option key={code} value={code}>{t(`specialRegimes.${code}`)}</option>)}</select>}</Field>}
       <p className="text-sm text-text-3 sm:col-span-2">{t("regimeDerived")}</p></>}
       {field("municipalReg", { maxLength: 20, mono: true, hint: t("hints.municipalReg") })}
       {values.municipalReg.trim() && (

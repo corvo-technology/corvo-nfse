@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { companies } from "@/lib/api";
 import { mapIssues } from "@/lib/api-errors";
-import { fiscalToday, isSimpleNational, regimeKind, SPECIAL_TAX_REGIME_CODES } from "@/lib/company-fiscal";
+import { allowsSpecialTaxRegime, fiscalToday, isSimpleNational, regimeKind, SPECIAL_TAX_REGIME_CODES } from "@/lib/company-fiscal";
 import type { Company, CompanyFiscalProfile, TaxRegimeKind } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
@@ -41,7 +41,7 @@ export function CompanyFiscalProfileForm({ company, profile, onSaved, onCancel }
     busy.current = true; setSaving(true); setError(null); setIssues({});
     try {
       const result = await companies.saveFiscalProfile(company.id, {
-        taxRegime: regime, simpleNational: simple, specialTaxRegime: specialTaxRegime === "0" ? null : specialTaxRegime,
+        taxRegime: regime, simpleNational: simple, specialTaxRegime: !allowsSpecialTaxRegime(regime) || specialTaxRegime === "0" ? null : specialTaxRegime,
         validFrom, ibsCbsRegularOption: simple && ibsOption,
         ibsCbsRegularFrom: simple && ibsOption ? ibsFrom || null : null,
         simplesIssRate: regime === "SIMPLES_NACIONAL" ? simplesIssRate.trim().replace(",", ".") || null : null,
@@ -56,9 +56,9 @@ export function CompanyFiscalProfileForm({ company, profile, onSaved, onCancel }
   return <form onSubmit={submit} className="flex flex-col gap-4 border-t border-border pt-5" aria-label={t("profileTitle")} aria-busy={saving}>
     {approved && <p className="fiscal-notice">{t("immutableProfile")}</p>}
     <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
-      <Field label={t("regime")} required error={issues.taxRegime}>{props => <select {...props} className="field" value={regime} onChange={event => setRegime(event.target.value as TaxRegimeKind)}><option value="" disabled>{t("missing")}</option>{(regime === "UNKNOWN" ? [...FISCAL_REGIMES, "UNKNOWN" as const] : FISCAL_REGIMES).map(value => <option key={value} value={value}>{t(`regimes.${value}`)}</option>)}</select>}</Field>
+      <Field label={t("regime")} required error={issues.taxRegime}>{props => <select {...props} className="field" value={regime} onChange={event => { const next = event.target.value as TaxRegimeKind; setRegime(next); if (!allowsSpecialTaxRegime(next)) setSpecialTaxRegime("0"); }}><option value="" disabled>{t("missing")}</option>{(regime === "UNKNOWN" ? [...FISCAL_REGIMES, "UNKNOWN" as const] : FISCAL_REGIMES).map(value => <option key={value} value={value}>{t(`regimes.${value}`)}</option>)}</select>}</Field>
       <Field label={t("validFrom")} required error={issues.validFrom}>{props => <input {...props} className="field" type="date" required min={minDate} value={validFrom} onChange={event => setValidFrom(event.target.value)} />}</Field>
-      <Field label={t("specialRegime")} error={issues.specialTaxRegime}>{props => <select {...props} className="field" value={specialTaxRegime} onChange={event => setSpecialTaxRegime(event.target.value)}>{SPECIAL_TAX_REGIME_CODES.map(value => <option key={value} value={value}>{t(`specialRegimes.${value}`)}</option>)}</select>}</Field>
+      {allowsSpecialTaxRegime(regime) && <Field label={t("specialRegime")} hint={t("specialRegimeHint")} error={issues.specialTaxRegime}>{props => <select {...props} className="field" value={specialTaxRegime} onChange={event => setSpecialTaxRegime(event.target.value)}>{SPECIAL_TAX_REGIME_CODES.map(value => <option key={value} value={value}>{t(`specialRegimes.${value}`)}</option>)}</select>}</Field>}
       <p className="self-end py-2 text-sm">{t("simpleNational")}: {t(simple ? "yes" : "no")}</p>
       {regime === "SIMPLES_NACIONAL" && <Field label={t("simplesIssRate")} hint={t("simplesIssRateHint")} error={issues.simplesIssRate}>{props => <input {...props} className="field" inputMode="decimal" placeholder="2,01" value={simplesIssRate} onChange={event => setSimplesIssRate(event.target.value)} />}</Field>}
       {simple && <><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ibsOption} onChange={event => setIbsOption(event.target.checked)} />{t("ibsOption")}</label>{ibsOption && <Field label={t("ibsFrom")} required error={issues.ibsCbsRegularFrom}>{props => <input {...props} type="date" required className="field" value={ibsFrom} onChange={event => setIbsFrom(event.target.value)} />}</Field>}</>}

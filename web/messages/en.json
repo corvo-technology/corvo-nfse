@@ -1320,6 +1320,7 @@
     "municipalReg": "Municipal registration",
     "municipalityCode": "Municipality IBGE code",
     "specialRegime": "Special regime",
+    "specialRegimeHint": "Only applies if your city hall placed the company in one of these cases (cooperative, notary, estimated ISS, professional partnership, etc.). When in doubt, leave \"None\".",
     "specialRegimes": {
       "0": "0 - None",
       "1": "1 - Cooperative Act",
@@ -1409,7 +1410,7 @@
     "sendMunicipalReg": "Send the municipal registration on the invoice"
   },
   "CompanyDetail": {
-    "fiscalAdvanced": "Advanced fiscal configuration",
+    "fiscalAdvanced": "Advanced mode (accountant)",
     "legalName": "Legal name",
     "taxRegime": "Tax regime",
     "municipalReg": "Municipal registration",
@@ -1661,6 +1662,51 @@
       }
     }
   },
+  "CompanyFiscalGuide": {
+    "title": "Fiscal setup",
+    "subtitle": "The basics to issue invoices. Confirm what we already have and fill in only what your regime requires.",
+    "loading": "Loading fiscal setup",
+    "retry": "Try again",
+    "failed": "Could not load the fiscal setup.",
+    "saveFailure": "Could not save. Try again.",
+    "noProfile": "This company has no tax regime yet. Use \"Edit company\" to set the regime.",
+    "regimes": {
+      "MEI": "MEI",
+      "SIMPLES_NACIONAL": "Simples Nacional",
+      "LUCRO_PRESUMIDO": "Presumed profit",
+      "LUCRO_REAL": "Actual profit",
+      "OUTRO_REGIME": "Other regime",
+      "UNKNOWN": "Not set"
+    },
+    "regimeDone": "Regime: {regime}",
+    "regimeDoneHint": "Set at registration and confirmed.",
+    "regimePending": "Regime: {regime}",
+    "regimePendingHint": "Confirm this is the company's current regime. It is required to issue in production.",
+    "confirmRegime": "Confirm regime",
+    "rateTitle": "Simples ISS rate (optional)",
+    "rateHint": "Only needed if a customer withholds ISS at source. It is the effective ISS rate of your bracket in last month's DAS. If unsure, leave it blank and ask your accountant. It takes effect from the next day, because a confirmed regime cannot change on the same day.",
+    "rateLabel": "Rate (%)",
+    "saveRate": "Save rate",
+    "invalidRate": "Enter a percentage between 0 and 100.",
+    "rateDone": "Simples ISS rate: {rate}%",
+    "rateDoneHint": "Used when the customer withholds ISS.",
+    "serviceNotNeeded": "Service: nothing to set up",
+    "serviceNotNeededHint": "Under Simples Nacional and MEI, ISS is paid through the DAS. Service classification only becomes necessary when IBS/CBS applies to Simples, in 2027.",
+    "serviceTitle": "The service you provide",
+    "serviceHint": "Pick the service and the ISS rate charged by your city. Saving confirms the setup.",
+    "serviceReviewHint": "A setup for this service is waiting for review.",
+    "serviceDone": "Service: {service}",
+    "serviceDoneHint": "Set up and confirmed.",
+    "serviceLabel": "Service",
+    "issRateLabel": "ISS rate (%)",
+    "issRateHint": "Check your city's rate for this activity.",
+    "retentionLabel": "Do your customers withhold taxes at source?",
+    "retentionNone": "No (IRRF, PIS, COFINS, CSLL, INSS)",
+    "retentionSome": "Some do — I will adjust in advanced mode",
+    "saveService": "Save and confirm service",
+    "invalidCode": "Select a service from the list.",
+    "serviceAdvanced": "Review or correct this setup in the advanced mode below."
+  },
   "CompanyFiscal": {
     "title": "Fiscal configuration",
     "intro": "Review the company profile and the services used on invoices. Saved configuration is checked again for each operation and competence date.",
@@ -1684,6 +1730,7 @@
     "regime": "Tax regime",
     "simpleNational": "Simples Nacional",
     "specialRegime": "Special tax regime code",
+    "specialRegimeHint": "Only applies if your city hall placed the company in one of these cases (cooperative, notary, estimated ISS, professional partnership, etc.). When in doubt, leave \"None\".",
     "specialRegimes": {
       "0": "0 - None",
       "1": "1 - Cooperative Act",
