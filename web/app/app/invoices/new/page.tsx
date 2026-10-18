@@ -16,6 +16,7 @@ import { isValidCnpj, isValidCpf, maskCurrency, maskDigits, maskState, cleanTaxI
 import type { Company, InvoiceCalculation } from "@/lib/types";
 import { InvoiceCalculationPanel } from "@/components/dashboard/invoice-calculation-panel";
 import { DEFAULT_SERVICE_CODE } from "@/lib/service-defaults";
+import { invoiceToFormValues } from "@/lib/invoice-copy";
 
 const FORM_ID = "new-invoice-form";
 
@@ -79,6 +80,9 @@ export default function NewInvoicePage() {
   const [calculating, setCalculating] = useState(false);
   const [calc, setCalc] = useState<{ key: string; result: InvoiceCalculation } | null>(null);
   const [calcError, setCalcError] = useState<string | null>(null);
+  const [copiedFrom, setCopiedFrom] = useState<string | null>(null);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const copyApplied = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,6 +105,22 @@ export default function NewInvoicePage() {
       cancelled = true;
     };
   }, [t, fiscalEnvironment]);
+
+  // `?from=<invoiceId>` pre-fills the form with an existing invoice; applied once, after the companies are known.
+  useEffect(() => {
+    if (loading || copyApplied.current) return;
+    const from = new URLSearchParams(window.location.search).get("from");
+    copyApplied.current = true;
+    if (!from) return;
+    invoicesApi.get(from)
+      .then((invoice) => {
+        const { sendEmail: email, companyId, ...values } = invoiceToFormValues(invoice, new Date().toLocaleDateString("sv-SE"));
+        setForm((prev) => ({ ...prev, ...values, companyId: companies.some((item) => item.id === companyId) ? companyId : prev.companyId }));
+        setSendEmail(email);
+        setCopiedFrom(invoice.customerName || t("anonymousCustomer"));
+      })
+      .catch(() => setCopyFailed(true));
+  }, [loading, companies, t]);
 
   async function loadMoreCompanies() {
     if (!nextCursor || loadingMore) return;
@@ -210,6 +230,8 @@ export default function NewInvoicePage() {
   return (
     <div className="flex flex-col gap-7">
       <PageHeader title={t("newTitle")} subtitle={t("newSubtitle")} />
+      {copiedFrom && <p role="status" className="banner banner-accent">{t("copyBanner", { name: copiedFrom })}</p>}
+      {copyFailed && <p role="alert" className="banner banner-warn">{t("copyFailed")}</p>}
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <form id={FORM_ID} onSubmit={handleSubmit} className="flex min-w-0 flex-col gap-5" aria-busy={submitting}>

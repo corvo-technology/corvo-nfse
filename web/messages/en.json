@@ -1243,7 +1243,11 @@
       "hintTest": "In test the subject gets [TESTE]. Use your own email."
     },
     "view": "View invoice",
-    "viewInvoice": "View details for {name}"
+    "viewInvoice": "View details for {name}",
+    "copyAction": "Duplicate",
+    "copyInvoice": "Duplicate invoice for {name}",
+    "copyBanner": "Details copied from the invoice for {name}. The competence date is today; review anything you need before issuing.",
+    "copyFailed": "Could not copy the invoice. Fill in the details manually."
   },
   "Billing": {
     "title": "Plan and usage",
@@ -1479,6 +1483,7 @@
     "defaultServiceCode": "Default service code"
   },
   "InvoiceDetail": {
+    "copy": "Duplicate",
     "anonymousCustomer": "Unidentified consumer",
     "title": "Invoice",
     "loading": "Loading invoice...",

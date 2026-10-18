@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { invoices, collectAll } from "@/lib/api";
@@ -8,12 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DetailSkeleton } from "@/components/ui/detail-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
+import { useAuth } from "@/lib/auth";
+import { copyInvoiceHref } from "@/lib/invoice-copy";
 import { timeAgo } from "@/lib/i18n-helpers";
 
 const pending = new Set(["queued", "processing", "retry_pending"]);
 const TONE: Record<string, string> = { queued: "bg-text-4", processing: "bg-accent", retry_pending: "bg-warn", authorized: "bg-ok", rejected: "bg-danger", failed: "bg-danger", reconciliation_required: "bg-warn", manual_review: "bg-warn" };
 export default function InvoiceDetailPage() {
-  const { id } = useParams<{ id: string }>(); const t = useTranslations("InvoiceDetail"); const ts = useTranslations("Invoices.status"); const tc = useTranslations("Common"); const locale = useLocale();
+  const { id } = useParams<{ id: string }>(); const { can } = useAuth(); const t = useTranslations("InvoiceDetail"); const ts = useTranslations("Invoices.status"); const tc = useTranslations("Common"); const locale = useLocale();
   const [invoice, setInvoice] = useState<Invoice | null>(null); const [events, setEvents] = useState<InvoiceEvent[]>([]);
   const [error, setError] = useState<string | null>(null); const [revision, setRevision] = useState(0); const [downloading, setDownloading] = useState(false); const downloadBusy = useRef(false);
   useEffect(() => {
@@ -48,7 +51,7 @@ export default function InvoiceDetailPage() {
   if (!invoice || invoice.id !== id) return error ? <div className="flex flex-col gap-4"><p role="alert">{error}</p><Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button></div> : <DetailSkeleton label={t("loading")} />;
   const date = (value: string) => new Date(value).toLocaleString(locale === "pt" ? "pt-BR" : "en-US");
   const money = new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US", { style: "currency", currency: "BRL" }).format(invoice.amount);
-  return <div className="flex max-w-[900px] flex-col gap-6"><PageHeader title={invoice.nfseNumber ? `${t("title")} ${invoice.nfseNumber}` : t("title")} subtitle={`${invoice.id} · ${ts(invoice.status)}`} actions={<Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button>} />
+  return <div className="flex max-w-[900px] flex-col gap-6"><PageHeader title={invoice.nfseNumber ? `${t("title")} ${invoice.nfseNumber}` : t("title")} subtitle={`${invoice.id} · ${ts(invoice.status)}`} actions={<>{can("nfse.invoices.issue") && <Link href={copyInvoiceHref(invoice.id)} className="btn">{t("copy")}</Link>}<Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button></>} />
     {error && <p role="alert" className="banner banner-danger">{error}</p>}
     <Card className="grid gap-4 p-5 sm:grid-cols-2"><div><p className="eyebrow">{t("customer")}</p><p>{invoice.customerName || t("anonymousCustomer")}</p><p className="text-sm text-text-3">{invoice.customerTaxId}</p></div><div><p className="eyebrow">{t("amount")}</p><p>{money}</p></div><div><p className="eyebrow">{t("reference")}</p><p>{invoice.externalId || "—"}</p></div><div><p className="eyebrow">{t("competence")}</p><p>{invoice.competenceDate.slice(0, 10)}</p></div><div className="sm:col-span-2"><p className="eyebrow">{t("service")}</p><p>{invoice.serviceDescription}</p><p className="text-sm text-text-3">{invoice.serviceSnapshot.code} · {invoice.serviceSnapshot.municipalityCode}</p></div></Card>
     {invoice.lastErrorMessage && <p role="alert" className="banner banner-danger">{invoice.lastErrorCode}: {invoice.lastErrorMessage}</p>}
