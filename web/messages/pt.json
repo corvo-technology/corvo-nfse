@@ -1153,6 +1153,7 @@
     "cancel": "Cancelar",
     "filters": {
       "all": "Todas",
+      "scheduled": "Agendadas",
       "authorized": "Autorizadas",
       "processing": "Processando",
       "rejected": "Rejeitadas"
@@ -1173,6 +1174,7 @@
       "created": "Criada"
     },
     "status": {
+      "scheduled": "Agendada",
       "authorized": "Autorizada",
       "processing": "Processando",
       "queued": "Na fila",
@@ -1183,6 +1185,7 @@
       "failed": "Falha"
     },
     "loadFailed": "Não foi possível carregar as notas fiscais.",
+    "scheduledFor": "Emite em {date}",
     "filterLabel": "Filtrar por status",
     "fields": {
       "company": "Empresa emissora",
@@ -1505,6 +1508,7 @@
     "defaultServiceCode": "Código de serviço padrão"
   },
   "InvoiceDetail": {
+    "scheduledBanner": "Nota agendada: será emitida automaticamente em {date}. Até lá ela fica na fila.",
     "copy": "Duplicar",
     "anonymousCustomer": "Consumidor não identificado",
     "title": "Nota fiscal",
@@ -1521,6 +1525,7 @@
     "events": "Andamento da nota",
     "noEvents": "Nenhum evento registrado.",
     "timeline": {
+      "scheduled": "Agendada. A emissão será liberada em {date}.",
       "queued": "Recebemos o pedido e a nota aguarda a vez de ser emitida.",
       "processing": "Estamos enviando a nota para a prefeitura.",
       "authorized": "A prefeitura autorizou a nota. PDF e XML estão disponíveis.",
