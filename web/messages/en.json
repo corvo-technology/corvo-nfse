@@ -104,7 +104,19 @@
       "legendMore": "More",
       "empty": "No authorized invoices in this period",
       "aria": "Heatmap of authorized invoices per day",
-      "note": "{count, plural, one {# invoice} other {# invoices}}"
+      "periodTotal": "Period total",
+      "authorizedNotes": "Authorized invoices",
+      "note": "{count, plural, one {# invoice} other {# invoices}}",
+      "average": "avg",
+      "pinned": "Pinned",
+      "vsAverage": "vs. daily average",
+      "ofPeriod": "Of the period",
+      "dailyAverage": "Daily average",
+      "bestDay": "Best day",
+      "anonymous": "Customer",
+      "quietDay": "No invoices authorized this day.",
+      "seeInList": "Open the invoice list to see them.",
+      "hint": "Hover or tap a bar to inspect a day. Click to pin it, arrow keys to move, Esc to clear."
     },
     "recentMessages": "Recent messages",
     "viewAll": "View all",
@@ -127,7 +139,8 @@
     "viewAllInvoices": "View all",
     "period": "Period",
     "loadFailed": "We couldn't load your data.",
-    "loadedRecords": "Indicators cover up to 100 loaded invoices in this period ({count} records)."
+    "monthlyCycle": "Monthly plan cycle",
+    "creditsLoadFailed": "Could not load credits."
   },
   "Connections": {
     "title": "Connections",

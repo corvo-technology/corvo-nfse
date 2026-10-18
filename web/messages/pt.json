@@ -104,7 +104,19 @@
       "legendMore": "Mais",
       "empty": "Sem notas autorizadas neste período",
       "aria": "Mapa de calor de notas autorizadas por dia",
-      "note": "{count, plural, one {# nota} other {# notas}}"
+      "periodTotal": "Total no período",
+      "authorizedNotes": "Notas autorizadas",
+      "note": "{count, plural, one {# nota} other {# notas}}",
+      "average": "média",
+      "pinned": "Fixado",
+      "vsAverage": "vs. média diária",
+      "ofPeriod": "Do período",
+      "dailyAverage": "Média diária",
+      "bestDay": "Melhor dia",
+      "anonymous": "Cliente",
+      "quietDay": "Nenhuma nota autorizada neste dia.",
+      "seeInList": "Abra a lista de notas para vê-las.",
+      "hint": "Passe o mouse ou toque numa barra para ver o dia. Clique para fixar, setas para navegar, Esc para limpar."
     },
     "recentMessages": "Mensagens recentes",
     "viewAll": "Ver todas",
@@ -127,7 +139,8 @@
     "viewAllInvoices": "Ver todas",
     "period": "Período",
     "loadFailed": "Não foi possível carregar os dados.",
-    "loadedRecords": "Indicadores calculados sobre até 100 notas carregadas no período ({count} registros)."
+    "monthlyCycle": "Ciclo mensal do plano",
+    "creditsLoadFailed": "Não foi possível carregar os créditos."
   },
   "Connections": {
     "title": "Conexões",
