@@ -97,7 +97,7 @@ Para MEI e Simples em 2026 o plano 2 deixa a emissão seguir sem IBS/CBS (a aus�
 
 ### P5. Pontos a validar com um contador
 - **Totais aproximados de tributos:** a Corvo envia `vTotTrib` zerado para todos os regimes. Para o MEI a lib sugere `indTotTrib`; para ME/EPP, `pTotTribSN`. Não está claro o que a Sefin exige ou aceita.
-- **Retenção de ISS pelo tomador (Simples):** não há campo no DTO; a nota sai sempre "não retida".
+- **Retenção de ISS pelo tomador (Simples):** resolvido — `simplesIssRate` no perfil fiscal carrega a alíquota efetiva do Simples do mês anterior (LC 123/2006, art. 21, §4º, I) e o `DpsBuilder` preenche `pAliq` quando `tpRetISSQN` indica retenção; sem a alíquota configurada a emissão é bloqueada (`MISSING_CONFIGURATION`).
 - **Serviços permitidos ao MEI:** a Sefin rejeita atividades que o MEI não pode prestar; a Corvo hoje só repassa a mensagem.
 - **MEI sem tomador:** quando a nota é obrigatória (tomador PJ, ou PF que solicite) e como a Corvo deve tratar o caso sem tomador.
 

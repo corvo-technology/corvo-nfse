@@ -10,6 +10,7 @@ export interface NewFiscalProfile {
   specialTaxRegime: string | null;
   ibsCbsRegularOption: boolean;
   ibsCbsRegularFrom: string | null;
+  simplesIssRate: string | null;
   validFrom: string; // YYYY-MM-DD, inclusive
   source: string;
   reviewStatus: ProfileReviewStatus;

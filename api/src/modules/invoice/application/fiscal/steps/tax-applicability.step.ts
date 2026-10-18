@@ -31,6 +31,7 @@ const OBLIGATION_TAXES = [
 type ObligationTax = (typeof OBLIGATION_TAXES)[number];
 
 const ISS_RATE_FIELD = 'service.iss.rate';
+const SIMPLES_ISS_RATE_FIELD = 'fiscalProfile.simplesIssRate';
 
 const coversDate = (
   rule: { readonly validFrom: string; readonly validUntil: string | null },
@@ -177,6 +178,15 @@ export class TaxApplicabilityStep implements FiscalStep {
         return fiscalError({
           code: 'TAX_RATE_NOT_FOUND',
           message: `No ISS rate is configured for this service: ${obligation.reason}`,
+          category: 'CONFIGURATION',
+          step: this.name,
+          details: { tax, missingFields: [...obligation.missingFields] },
+        });
+      }
+      if (obligation.missingFields.includes(SIMPLES_ISS_RATE_FIELD)) {
+        return fiscalError({
+          code: 'TAX_RATE_NOT_FOUND',
+          message: `No Simples Nacional ISS rate is configured for this company: ${obligation.reason}`,
           category: 'CONFIGURATION',
           step: this.name,
           details: { tax, missingFields: [...obligation.missingFields] },

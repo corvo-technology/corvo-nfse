@@ -17,8 +17,9 @@ function regularIss(classification: ServiceTaxClassification): Obligation {
   const { taxation, rate } = classification.iss;
   if (taxation === 'EXEMPT') {
     return {
-      status: 'NOT_APPLICABLE',
-      reason: 'ISS exempt for this operation',
+      status: 'UNSUPPORTED',
+      reason:
+        'isenção de ISS exige o benefício municipal (BM/nBM) na DPS; ainda não suportado',
     };
   }
   if (taxation === 'FIXED') {
@@ -38,7 +39,7 @@ function regularIss(classification: ServiceTaxClassification): Obligation {
   };
 }
 
-function regularIbsCbs(input: StrategyInput): {
+export function regularIbsCbs(input: StrategyInput): {
   cbs: Obligation;
   ibs: Obligation;
   collectionWaived: boolean;
@@ -70,9 +71,10 @@ function regularIbsCbs(input: StrategyInput): {
 }
 
 /**
- * Regular regimes (LUCRO_PRESUMIDO / LUCRO_REAL). `planRegular` is also
+ * Regular regimes (LUCRO_PRESUMIDO / LUCRO_REAL). `regularIbsCbs` is also
  * reused by the Simples Nacional strategy once the regular IBS/CBS option is
- * active, so `supports` stays mutually exclusive across strategies.
+ * active: only IBS/CBS move to the regular regime then (Res. CGSN 140 art.
+ * 22-A), ISS stays in the DAS, so only the IBS/CBS half is shared.
  */
 @Injectable()
 export class RegularTaxStrategy implements TaxStrategy {
