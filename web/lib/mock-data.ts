@@ -142,19 +142,19 @@ export const MOCK_INVOICES: Invoice[] = sampleInvoices.map((invoice) => ({ ...in
 // ── Billing ───────────────────────────────────────────────────────────────
 
 export const MOCK_BILLING: BillingPlan = {
-  slug: "developer",
-  name: "Developer",
+  slug: "dev",
+  name: "Dev",
   monthlyPriceCents: 2990,
   subscription: { status: "active", paidUntil: null, cancelAtPeriodEnd: false, scheduledPlan: null, blocked: false },
   usage: {
     creditsUsed: 87,
     creditsReserved: 3,
-    creditsRemaining: 113,
-    monthlyAllowance: 200,
+    creditsRemaining: 163,
+    monthlyAllowance: 250,
     dailyUsage: 5,
     dailyLimit: null,
     activeCompanies: 1,
-    maxActiveCompanies: 10,
+    maxActiveCompanies: 25,
     periodStart: "2026-10-01",
     periodEnd: "2026-10-31",
     overageUnits: 0,

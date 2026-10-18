@@ -202,7 +202,7 @@ export const billing = {
   portal: async () => unwrap(await request<Envelope<{ url: string }>>("/billing/portal", { method: "POST" })),
   changePlan: async (planSlug: PlanSlug, direction: "upgrade" | "downgrade") => { const d = unwrap(await request<Envelope<{ scheduled_plan: string | null; effective_at: string | null }>>(`/billing/${direction}`, json({ plan_slug: planSlug }))); return { scheduledPlan: d.scheduled_plan, effectiveAt: d.effective_at }; },
 };
-export type CheckoutPlan = "developer" | "growth" | "scale" | "volume";
+export type CheckoutPlan = "dev" | "pro" | "escala";
 export const webhooks = {
   list: async (params: PageParams = {}) => toPage(await request<ListBody<WebhookEndpoint>>(`/webhooks${query(params)}`)),
   create: async (data: { url: string; events: WebhookEvent[] }) => unwrap(await request<Envelope<WebhookEndpoint>>("/webhooks", json(data))),

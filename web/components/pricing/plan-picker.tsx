@@ -13,29 +13,46 @@ import { useLocale, useTranslations } from "next-intl";
 
 /* ── Pricing engine (mirrors backend PricingService) ─────────── */
 
-export type PlanSlug = "free" | "developer" | "growth" | "scale" | "volume";
+export type CatalogPlanSlug = "free" | "dev" | "pro" | "escala";
+export type LegacyPlanSlug = "developer" | "growth" | "scale" | "volume";
+export type PlanSlug = CatalogPlanSlug | LegacyPlanSlug;
 
-export interface PlanTier {
-  slug: PlanSlug;
+export interface PriceTier {
   credits: number;
   basePriceCents: number;
   perCreditCents: number;
 }
 
+export interface PlanTier extends PriceTier {
+  slug: CatalogPlanSlug;
+}
+
 const MIN_VOLUME = 1;
 const MAX_VOLUME = 50000;
-const VOLUME_PLAN_FROM = 10000;
-/** Starts exactly at the Developer allowance, so the first price shown has no overage. */
-const DEFAULT_VOLUME = 200;
+/** From here the picker recommends Volume ("sob consulta") instead of Escala plus heavy overage. */
+const VOLUME_PLAN_FROM = 14000;
+/** Starts exactly at the Dev allowance, so the first price shown has no overage. */
+const DEFAULT_VOLUME = 250;
 const THUMB = 22;
 
 export const PLANS: PlanTier[] = [
   { slug: "free", credits: 15, basePriceCents: 0, perCreditCents: 0 },
-  { slug: "developer", credits: 200, basePriceCents: 2990, perCreditCents: 15 },
-  { slug: "growth", credits: 750, basePriceCents: 8990, perCreditCents: 12 },
-  { slug: "scale", credits: 2500, basePriceCents: 24990, perCreditCents: 10 },
-  { slug: "volume", credits: 10000, basePriceCents: 89990, perCreditCents: 9 },
+  { slug: "dev", credits: 250, basePriceCents: 2990, perCreditCents: 12 },
+  { slug: "pro", credits: 1500, basePriceCents: 9990, perCreditCents: 8 },
+  { slug: "escala", credits: 6000, basePriceCents: 29990, perCreditCents: 5 },
 ];
+
+/**
+ * Legacy (grandfathered) plan prices. Kept only so the billing page can work
+ * out upgrade/downgrade direction for a tenant still on an old plan; legacy
+ * plans are never shown in the picker and never available for new checkout.
+ */
+export const LEGACY_PLANS: Record<LegacyPlanSlug, PriceTier> = {
+  developer: { credits: 200, basePriceCents: 2990, perCreditCents: 15 },
+  growth: { credits: 750, basePriceCents: 8990, perCreditCents: 12 },
+  scale: { credits: 2500, basePriceCents: 24990, perCreditCents: 10 },
+  volume: { credits: 10000, basePriceCents: 89990, perCreditCents: 9 },
+};
 
 export function formatBRL(cents: number): string {
   return `R$ ${(cents / 100).toFixed(2).replace(".", ",")}`;
@@ -54,18 +71,21 @@ function limitLabel(n: number, locale: string): string {
   return `${k.toLocaleString(locale === "pt" ? "pt-BR" : "en-US", { maximumFractionDigits: 1 })}K`;
 }
 
-export function calcMonthlyTotal(volume: number, plan: PlanTier): number {
-  if (plan.slug === "free") return 0;
+export function calcMonthlyTotal(volume: number, plan: PriceTier): number {
   return plan.basePriceCents + Math.max(0, volume - plan.credits) * plan.perCreditCents;
 }
 
-/** Free while it fits, Volume from 10k, otherwise the cheapest plan at this volume. */
+/** Cheapest catalog plan that covers this volume; Free covers its own allowance outright. */
 export function findPlanForVolume(volume: number): PlanTier {
   if (volume <= PLANS[0].credits) return PLANS[0];
-  if (volume >= VOLUME_PLAN_FROM) return PLANS[PLANS.length - 1];
-  return PLANS.slice(1, -1).reduce((best, p) =>
+  return PLANS.slice(1).reduce((best, p) =>
     calcMonthlyTotal(volume, p) < calcMonthlyTotal(volume, best) ? p : best
   );
+}
+
+/** Above this volume, Escala's overage is no longer the better deal — recommend talking to sales instead. */
+export function isVolumeContactZone(volume: number): boolean {
+  return volume >= VOLUME_PLAN_FROM;
 }
 
 /* Slider position (0–1000) ↔ volume, log scale so 15 and 50.000 are both easy to reach. */
@@ -81,15 +101,16 @@ function volumeToPos(volume: number): number {
   return (Math.log(Math.max(volume, MIN_VOLUME) / MIN_VOLUME) / LOG_MAX) * 1000;
 }
 
-/** First volume where each plan becomes the recommendation — drives the colored zones on the track. */
+/** First volume where each zone (a catalog plan, then Volume) becomes the recommendation. */
 const ZONES = (() => {
-  const starts: { plan: PlanTier; from: number }[] = [];
-  for (let v = MIN_VOLUME; v <= MAX_VOLUME; v++) {
-    const p = findPlanForVolume(v);
-    if (starts.length === 0 || starts[starts.length - 1].plan.slug !== p.slug) {
-      starts.push({ plan: p, from: v });
+  const starts: { slug: PlanSlug; from: number }[] = [];
+  for (let v = MIN_VOLUME; v < VOLUME_PLAN_FROM; v++) {
+    const slug = findPlanForVolume(v).slug;
+    if (starts.length === 0 || starts[starts.length - 1].slug !== slug) {
+      starts.push({ slug, from: v });
     }
   }
+  starts.push({ slug: "volume", from: VOLUME_PLAN_FROM });
   return starts.map((z, i) => ({
     ...z,
     startPos: volumeToPos(z.from) / 1000,
@@ -262,6 +283,48 @@ function FeaturedPlan({
   );
 }
 
+/* ── Volume ("sob consulta"): marketing-only, never checkout ──── */
+
+function VolumeContactCard() {
+  const t = useTranslations("Pricing");
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-accent/40 bg-accent-surface p-6 @lg:p-9">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-32 -right-24 h-72 w-72 rounded-full bg-accent/20 blur-[90px]"
+      />
+      <div className="relative">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="whitespace-nowrap font-mono text-[12px] tracking-[0.14em] text-text">
+              {t("plans.volume.name")}
+            </span>
+            <span className="shrink-0 whitespace-nowrap bg-accent text-[#0a0a0a] font-mono text-[10px] font-semibold tracking-[0.08em] px-2.5 py-1 rounded-full">
+              {t("recommended")}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-wrap items-end gap-x-3 gap-y-1">
+          <span className="text-[14px] text-text-3">{t("fromPrice")}</span>
+          <span className="text-[40px] @lg:text-[52px] font-semibold tracking-[-0.05em] leading-[0.9] text-text tabular-nums">
+            {t("plans.volume.price")}
+          </span>
+          <span className="text-[15px] text-text-3 mb-1">{t("perMonth")}</span>
+        </div>
+
+        <p className="mt-3 text-[14px] text-text-2">{t("plans.volume.bestFor")}</p>
+
+        <div className="my-8 h-px bg-white/[0.08]" />
+
+        {/* TODO: add a real sales contact link/mailto once a channel exists; see plans.volume.contact copy. */}
+        <p className="text-[14px] text-text-2">{t("plans.volume.contact")}</p>
+      </div>
+    </div>
+  );
+}
+
 /* ── Plan ladder (all plans at this volume) ─────────────────── */
 
 function PlanLadder({
@@ -339,6 +402,50 @@ function PlanLadder({
             </button>
           );
         })}
+
+        {/* Volume: marketing row only, never self-serve; picking it just shows the contact card. A legacy "volume" tenant is not marked current here (different plan). */}
+        <button
+          type="button"
+          onClick={() => onPick(VOLUME_PLAN_FROM)}
+          className="relative flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors hover:bg-white/[0.03]"
+        >
+          {active === "volume" && (
+            <motion.span
+              layoutId="ladder-active"
+              transition={{ type: "spring", stiffness: 380, damping: 32 }}
+              className="absolute inset-0 rounded-2xl border border-accent/40 bg-accent/[0.07]"
+            />
+          )}
+          <span className="relative flex items-center gap-3">
+            <span
+              className={cn(
+                "h-1.5 w-1.5 rounded-full transition-colors",
+                active === "volume" ? "bg-accent" : "bg-white/15"
+              )}
+            />
+            <span>
+              <span
+                className={cn(
+                  "block font-mono text-[12px] tracking-[0.1em]",
+                  active === "volume" ? "text-text" : "text-text-3"
+                )}
+              >
+                {t("plans.volume.name")}
+              </span>
+              <span className="block text-[12px] text-text-4 tabular-nums mt-0.5">
+                {t("plans.volume.credits")}+ {t("credits")}
+              </span>
+            </span>
+          </span>
+          <span
+            className={cn(
+              "relative text-right text-[13px] font-medium",
+              active === "volume" ? "text-text" : "text-text-2"
+            )}
+          >
+            {t("fromPrice")} {t("plans.volume.price")}
+          </span>
+        </button>
       </div>
     </div>
   );
@@ -364,11 +471,16 @@ export function PlanPicker({
   const locale = useLocale();
   const nf = new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US");
 
-  const startVolume = currentSlug ? (PLANS.find((p) => p.slug === currentSlug)?.credits ?? DEFAULT_VOLUME) : DEFAULT_VOLUME;
+  const startVolume = currentSlug
+    ? PLANS.find((p) => p.slug === currentSlug)?.credits ??
+      (currentSlug in LEGACY_PLANS ? LEGACY_PLANS[currentSlug as LegacyPlanSlug].credits : DEFAULT_VOLUME)
+    : DEFAULT_VOLUME;
   const [volume, setVolume] = useState(startVolume);
   const [draft, setDraft] = useState<string | null>(null);
 
+  const contactZone = isVolumeContactZone(volume);
   const plan = findPlanForVolume(volume);
+  const activeSlug: PlanSlug = contactZone ? "volume" : plan.slug;
   const pos = volumeToPos(volume);
   const pct = pos / 10;
   const shown = draft ?? nf.format(volume);
@@ -415,7 +527,7 @@ export function PlanPicker({
               const filled = Math.min(Math.max((pct / 100 - z.startPos) / (z.endPos - z.startPos), 0), 1);
               return (
                 <div
-                  key={z.plan.slug}
+                  key={z.slug}
                   className="absolute top-0 h-full overflow-hidden rounded-full bg-white/[0.09]"
                   style={{
                     left: l,
@@ -447,11 +559,11 @@ export function PlanPicker({
           <div className="relative mt-4 hidden h-11 @lg:block">
             {ZONES.map((z, i) => {
               const mid = (z.startPos + z.endPos) / 2;
-              const on = z.plan.slug === plan.slug;
+              const on = z.slug === activeSlug;
               const next = ZONES[i + 1];
               return (
                 <button
-                  key={z.plan.slug}
+                  key={z.slug}
                   type="button"
                   onClick={() => setVolume(Math.round((z.from + (next?.from ?? MAX_VOLUME)) / 2))}
                   style={{ left: thumbOffset(mid) }}
@@ -460,7 +572,7 @@ export function PlanPicker({
                     on ? "text-accent" : "text-text-4 hover:text-text-3"
                   )}
                 >
-                  {t(`plans.${z.plan.slug}.name`)}
+                  {t(`plans.${z.slug}.name`)}
                 </button>
               );
             })}
@@ -486,17 +598,26 @@ export function PlanPicker({
       <div className="mt-12 grid gap-4 @4xl:grid-cols-[1.35fr_1fr]">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
-            key={plan.slug}
+            key={activeSlug}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
           >
-            <FeaturedPlan plan={plan} volume={volume} current={plan.slug === currentSlug} action={renderAction({ plan, volume, isCurrent: plan.slug === currentSlug })} />
+            {contactZone ? (
+              <VolumeContactCard />
+            ) : (
+              <FeaturedPlan
+                plan={plan}
+                volume={volume}
+                current={plan.slug === currentSlug}
+                action={renderAction({ plan, volume, isCurrent: plan.slug === currentSlug })}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
 
-        <PlanLadder active={plan.slug} current={currentSlug} volume={volume} onPick={setVolume} />
+        <PlanLadder active={activeSlug} current={currentSlug} volume={volume} onPick={setVolume} />
       </div>
     </div>
   );

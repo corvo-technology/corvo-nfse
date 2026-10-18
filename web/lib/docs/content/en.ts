@@ -1634,13 +1634,13 @@ console.log(plans.length, pagination.hasMore);`,
   "data": [
     {
       "id": "3ec51af3-c715-4755-95da-c9b0951973dd",
-      "slug": "developer",
-      "name": "Developer",
+      "slug": "dev",
+      "name": "Dev",
       "description": "Ideal for developers and small teams",
-      "monthlyCreditAllowance": 200,
+      "monthlyCreditAllowance": 250,
       "dailyLimit": null,
-      "maxActiveCompanies": 10,
-      "creditUnitPriceCents": 15,
+      "maxActiveCompanies": 25,
+      "creditUnitPriceCents": 12,
       "throughputRps": 50,
       "includesWebhooks": true,
       "includesXmlDownload": true,
@@ -1660,7 +1660,7 @@ console.log(plans.length, pagination.hasMore);`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Plan fields: `id`, `slug`, `name`, `description`, `monthlyCreditAllowance`, `dailyLimit` (number or null), `maxActiveCompanies`, `creditUnitPriceCents`, `throughputRps`, `includesWebhooks`, `includesXmlDownload`, `includesPdfDownload`, `includesApiKeys`, `supportTier`, `active`, `createdAt`, `updatedAt`. Slugs defined in the domain: `free`, `developer`, `growth`, `scale`, `volume`; `supportTier`: `community`, `email`, `priority`. Use the returned catalog to identify available plans — do not hard-code prices in the integration." },
+            { kind: "callout", tone: "accent", body: "Plan fields: `id`, `slug`, `name`, `description`, `monthlyCreditAllowance`, `dailyLimit` (number or null), `maxActiveCompanies`, `creditUnitPriceCents`, `throughputRps`, `includesWebhooks`, `includesXmlDownload`, `includesPdfDownload`, `includesApiKeys`, `supportTier`, `active`, `createdAt`, `updatedAt`. Public catalog slugs: `free`, `dev`, `pro`, `escala`. Legacy slugs, valid only for existing subscribers (not available for new subscriptions): `developer`, `growth`, `scale`, `volume`; `supportTier`: `community`, `email`, `priority`. Use the returned catalog to identify available plans — do not hard-code prices in the integration." },
           ],
         },
         {
@@ -1779,11 +1779,11 @@ console.log(body.data.plan.slug); // { data: { plan, subscription, usage } }`,
             json: `{
   "data": {
     "plan": {
-      "slug": "developer",
-      "name": "Developer",
-      "monthly_allowance": 200,
+      "slug": "dev",
+      "name": "Dev",
+      "monthly_allowance": 250,
       "daily_limit": null,
-      "max_active_companies": 10,
+      "max_active_companies": 25,
       "monthly_price_cents": 2990
     },
     "usage": {
@@ -1792,12 +1792,12 @@ console.log(body.data.plan.slug); // { data: { plan, subscription, usage } }`,
       "hard_limit": null,
       "credits_used": 10,
       "credits_reserved": 2,
-      "credits_remaining": 188,
-      "monthly_allowance": 200,
+      "credits_remaining": 238,
+      "monthly_allowance": 250,
       "daily_usage": 3,
       "daily_limit": null,
       "active_companies": 1,
-      "max_active_companies": 10,
+      "max_active_companies": 25,
       "period_start": "2026-10-01T00:00:00.000Z",
       "period_end": "2026-10-31T23:59:59.000Z"
     },
@@ -1835,14 +1835,14 @@ console.log(body.data.canEmit); // { data: QuotaStatus }`,
             json: `{
   "data": {
     "canEmit": true,
-    "creditsRemaining": 188,
+    "creditsRemaining": 238,
     "creditsUsed": 10,
     "creditsReserved": 2,
-    "monthlyAllowance": 200,
+    "monthlyAllowance": 250,
     "dailyUsage": 3,
     "dailyLimit": null,
     "activeCompanies": 1,
-    "maxActiveCompanies": 10,
+    "maxActiveCompanies": 25,
     "periodStart": "2026-10-01T00:00:00.000Z",
     "periodEnd": "2026-10-31T23:59:59.000Z"
   }
@@ -1861,21 +1861,21 @@ console.log(body.data.canEmit); // { data: QuotaStatus }`,
           summary: "Schedules the switch to the target plan on the subscription.",
           params: {
             rows: [
-              { name: "plan_slug", type: "string", required: true, description: "Slug of the target plan, e.g. `\"growth\"`." },
+              { name: "plan_slug", type: "string", required: true, description: "Slug of the target plan, e.g. `\"pro\"`. Accepts the public catalog (`free`, `dev`, `pro`, `escala`); a legacy slug is accepted only if it is the tenant's current plan (e.g. to undo a scheduled cancellation)." },
             ],
           },
           examples: {
             curl: `curl -X POST "$BASE_URL/billing/upgrade" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{ "plan_slug": "growth" }'`,
+  -d '{ "plan_slug": "pro" }'`,
             node: `const res = await fetch(\`\${BASE_URL}/billing/upgrade\`, {
   method: "POST",
   headers: {
     "X-API-Key": process.env.CORVO_API_KEY,
     "Content-Type": "application/json",
   },
-  body: JSON.stringify({ plan_slug: "growth" }),
+  body: JSON.stringify({ plan_slug: "pro" }),
 });
 const body = await res.json();
 console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at } }`,
@@ -1884,7 +1884,7 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
             label: "200 OK",
             json: `{
   "data": {
-    "scheduled_plan": "growth",
+    "scheduled_plan": "pro",
     "effective_at": "2026-11-01T00:00:00.000Z"
   }
 }`,
@@ -1902,21 +1902,21 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
           summary: "Schedules a plan change for the end of the period.",
           params: {
             rows: [
-              { name: "plan_slug", type: "string", required: true, description: "Slug of the target plan, e.g. `\"developer\"`." },
+              { name: "plan_slug", type: "string", required: true, description: "Slug of the target plan, e.g. `\"dev\"`. Accepts the public catalog (`free`, `dev`, `pro`, `escala`); a legacy slug is accepted only if it is the tenant's current plan (e.g. to undo a scheduled cancellation)." },
             ],
           },
           examples: {
             curl: `curl -X POST "$BASE_URL/billing/downgrade" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{ "plan_slug": "developer" }'`,
+  -d '{ "plan_slug": "dev" }'`,
             node: `const res = await fetch(\`\${BASE_URL}/billing/downgrade\`, {
   method: "POST",
   headers: {
     "X-API-Key": process.env.CORVO_API_KEY,
     "Content-Type": "application/json",
   },
-  body: JSON.stringify({ plan_slug: "developer" }),
+  body: JSON.stringify({ plan_slug: "dev" }),
 });
 const body = await res.json();
 console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at } }`,
@@ -1925,7 +1925,7 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
             label: "200 OK",
             json: `{
   "data": {
-    "scheduled_plan": "developer",
+    "scheduled_plan": "dev",
     "effective_at": "2026-11-01T00:00:00.000Z"
   }
 }`,
@@ -1961,13 +1961,15 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
             json: `{
   "data": [
     {
-      "slug": "developer",
-      "name": "Developer",
-      "monthlyAllowance": 200,
+      "slug": "dev",
+      "name": "Dev",
+      "monthlyAllowance": 250,
       "basePriceCents": 2990,
-      "perCreditOverageCents": 15,
+      "perCreditOverageCents": 12,
       "monthlyTotalCents": 2990,
-      "currency": "BRL"
+      "currency": "BRL",
+      "legacy": false,
+      "maxActiveCompanies": 25
     }
   ],
   "pagination": {
@@ -1978,7 +1980,7 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Ordered from the smallest to the largest allowance. `monthlyAllowance` is the number of included credits, `perCreditOverageCents` the price of each credit above it and `monthlyTotalCents` the monthly price. This is the pricing view; `GET /v1/credits/plans` returns the plan limits and features instead." },
+            { kind: "callout", tone: "accent", body: "Ordered from the smallest to the largest allowance. `monthlyAllowance` is the number of included credits, `perCreditOverageCents` the price of each credit above it and `monthlyTotalCents` the monthly price; `maxActiveCompanies` is the plan's active-company limit. Only the public catalog is listed here, never legacy plans. This is the pricing view; `GET /v1/credits/plans` returns the plan limits and features instead." },
           ],
         },
         {
@@ -1994,8 +1996,8 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
             ],
           },
           examples: {
-            curl: `curl "$BASE_URL/plans/growth"`,
-            node: `const res = await fetch(\`\${BASE_URL}/plans/growth\`);
+            curl: `curl "$BASE_URL/plans/pro"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/pro\`);
 const body = await res.json();
 console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
           },
@@ -2003,18 +2005,20 @@ console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
             label: "200 OK",
             json: `{
   "data": {
-    "slug": "growth",
-    "name": "Growth",
-    "monthlyAllowance": 750,
-    "basePriceCents": 8990,
-    "perCreditOverageCents": 12,
-    "monthlyTotalCents": 8990,
-    "currency": "BRL"
+    "slug": "pro",
+    "name": "Pro",
+    "monthlyAllowance": 1500,
+    "basePriceCents": 9990,
+    "perCreditOverageCents": 8,
+    "monthlyTotalCents": 9990,
+    "currency": "BRL",
+    "legacy": false,
+    "maxActiveCompanies": 150
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "`slug` is `free`, `developer`, `growth`, `scale` or `volume`. An unknown plan returns `404`." },
+            { kind: "callout", tone: "warn", body: "Public catalog `slug`: `free`, `dev`, `pro` or `escala`. The legacy slugs `developer`, `growth`, `scale` and `volume` still answer (with `legacy: true`) for existing subscribers. An unknown plan returns `404`." },
           ],
         },
         {
@@ -2031,8 +2035,8 @@ console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
             ],
           },
           examples: {
-            curl: `curl "$BASE_URL/plans/quote?volume=20000"`,
-            node: `const res = await fetch(\`\${BASE_URL}/plans/quote?volume=20000\`);
+            curl: `curl "$BASE_URL/plans/quote?volume=2000"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/quote?volume=2000\`);
 const body = await res.json();
 console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { data: Quote | null }`,
           },
@@ -2040,21 +2044,21 @@ console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { d
             label: "200 OK",
             json: `{
   "data": {
-    "volume": 20000,
-    "recommended_plan": "volume",
-    "plan_name": "Volume",
-    "monthly_allowance": 10000,
-    "overage_credits": 10000,
-    "overage_cost_cents": 90000,
-    "base_price_cents": 89990,
-    "total_estimated_cents": 179990,
+    "volume": 2000,
+    "recommended_plan": "pro",
+    "plan_name": "Pro",
+    "monthly_allowance": 1500,
+    "overage_credits": 500,
+    "overage_cost_cents": 4000,
+    "base_price_cents": 9990,
+    "total_estimated_cents": 13990,
     "currency": "BRL",
     "billing_cycle": "monthly"
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "This route uses snake_case. `total_estimated_cents` is the plan price plus the estimated overage (`overage_credits` × the plan's price per credit). A missing, zero, negative or non-numeric `volume` returns `200` with `{ \"data\": null }`, not an error." },
+            { kind: "callout", tone: "warn", body: "This route uses snake_case. `total_estimated_cents` is the plan price plus the estimated overage (`overage_credits` × the plan's price per credit). The recommendation is the cheapest catalog plan for that volume, overage included. A missing, zero, negative or non-numeric `volume` returns `200` with `{ \"data\": null }`, not an error." },
           ],
         },
       ],

@@ -1,6 +1,25 @@
 import { randomUUID } from 'crypto';
 
-export type PlanSlug = 'free' | 'developer' | 'growth' | 'scale' | 'volume';
+export const CATALOG_PLAN_SLUGS = ['free', 'dev', 'pro', 'escala'] as const;
+export const PAID_CATALOG_PLAN_SLUGS = ['dev', 'pro', 'escala'] as const;
+export const LEGACY_PLAN_SLUGS = [
+  'developer',
+  'growth',
+  'scale',
+  'volume',
+] as const;
+
+export type CatalogPlanSlug = (typeof CATALOG_PLAN_SLUGS)[number];
+export type LegacyPlanSlug = (typeof LEGACY_PLAN_SLUGS)[number];
+export type PlanSlug = CatalogPlanSlug | LegacyPlanSlug;
+
+export function isCatalogPlanSlug(slug: string): slug is CatalogPlanSlug {
+  return (CATALOG_PLAN_SLUGS as readonly string[]).includes(slug);
+}
+
+export function isLegacyPlanSlug(slug: string): slug is LegacyPlanSlug {
+  return (LEGACY_PLAN_SLUGS as readonly string[]).includes(slug);
+}
 
 export type SupportTier = 'community' | 'email' | 'priority';
 export type BillingCycle = 'monthly';

@@ -724,6 +724,51 @@
           "downloads": "XML and PDF download"
         }
       },
+      "dev": {
+        "name": "DEV",
+        "credits": "250",
+        "price": "R$ 29.90",
+        "unit": "",
+        "bestFor": "Personal projects, MVPs and small teams.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Up to 25 companies",
+          "email": "Email delivery",
+          "mcp": "AI agents via MCP",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      },
+      "pro": {
+        "name": "PRO",
+        "credits": "1,500",
+        "price": "R$ 99.90",
+        "unit": "",
+        "bestFor": "SaaS products and growing teams.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Up to 150 companies",
+          "email": "Email delivery",
+          "mcp": "AI agents via MCP",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      },
+      "escala": {
+        "name": "ESCALA",
+        "credits": "6,000",
+        "price": "R$ 299.90",
+        "unit": "",
+        "bestFor": "High-volume platforms and enterprises.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Up to 500 companies",
+          "email": "Email delivery",
+          "mcp": "AI agents via MCP",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      },
       "developer": {
         "name": "DEVELOPER",
         "credits": "200",
@@ -771,13 +816,14 @@
       },
       "volume": {
         "name": "VOLUME",
-        "credits": "10,000",
-        "price": "R$ 899.90",
+        "credits": "20,000",
+        "price": "R$ 699.90",
         "unit": "",
-        "bestFor": "Higher volumes and multi-company operations.",
+        "bestFor": "Very high-volume operations, negotiated with our team.",
+        "contact": "Talk to our team for a custom, quote-based plan.",
         "includes": {
           "nfse": "NFS-e emission via API",
-          "companies": "Unlimited companies",
+          "companies": "Up to 2,000 companies",
           "email": "Email delivery",
           "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
@@ -1258,6 +1304,7 @@
     "unknownError": "Unknown error",
     "plans": "Plans",
     "currentPlan": "Current plan",
+    "legacyPlanNote": "legacy plan",
     "subscribe": "Subscribe",
     "upgrade": "Upgrade",
     "downgrade": "Downgrade",

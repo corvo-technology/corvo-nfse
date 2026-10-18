@@ -10,6 +10,10 @@ import { subscriptionDecision } from '../domain/subscription-policy';
 import { hasPaidAccess } from '../domain/billing-policy';
 import { BillingRuleError } from '../domain/billing-period';
 import { isSupportedStripeEvent } from '../domain/stripe-webhook-events';
+import {
+  PAID_CATALOG_PLAN_SLUGS,
+  isLegacyPlanSlug,
+} from '@/modules/plans/domain/plan';
 
 @Injectable()
 export class BillingService {
@@ -29,7 +33,10 @@ export class BillingService {
     // Persist the intent before any provider call. A lost response always resumes this same intent.
     await this.repository.locked(tenantId, async () => {
       const plan = await this.repository.plan(planSlug);
-      if (!plan?.active || plan.slug === 'free')
+      if (
+        !plan?.active ||
+        !(PAID_CATALOG_PLAN_SLUGS as readonly string[]).includes(planSlug)
+      )
         throw new BillingRuleError(
           'invalid_checkout_plan',
           'An active paid plan is required',
@@ -173,6 +180,16 @@ export class BillingService {
           'invalid_plan',
           'An active plan is required',
         );
+      if (isLegacyPlanSlug(slug)) {
+        const { plan: currentPlan } = await this.repository.current(tenantId);
+        // Legacy plans are grandfathered, not selectable; the only valid
+        // legacy "change" is undoing a scheduled downgrade/cancellation.
+        if (currentPlan.slug !== slug)
+          throw new BillingRuleError(
+            'invalid_plan',
+            'Legacy plans are only available to their current subscribers',
+          );
+      }
       const billing = await this.repository.billing(tenantId);
       if (!billing?.stripeSubscriptionId)
         throw new BillingRuleError(

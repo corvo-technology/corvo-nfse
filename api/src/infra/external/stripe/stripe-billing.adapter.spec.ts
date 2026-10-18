@@ -130,6 +130,149 @@ describe('Stripe billing adapter', () => {
       adapter.createCheckout('cus_fixture', 'tenant', 'developer', 'intent2'),
     ).rejects.toThrow('must be provisioned');
   });
+  it('resolves v2 catalog prices by lookup_key and rejects prices that do not match the catalog', async () => {
+    const price = (
+      id: string,
+      lookup: string,
+      amount: number,
+      usage: 'licensed' | 'metered',
+    ) => ({
+      id,
+      lookup_key: lookup,
+      currency: 'brl',
+      unit_amount: amount,
+      recurring: { interval: 'month', usage_type: usage },
+      metadata: { plan_slug: 'pro' },
+    });
+    const list = jest.fn().mockResolvedValue({
+      data: [
+        price('price_pro', 'corvo_pro_monthly', 9990, 'licensed'),
+        price('price_pro_excess', 'corvo_pro_overage', 8, 'metered'),
+      ],
+    });
+    const create = jest.fn().mockResolvedValue({
+      id: 'cs_pro',
+      url: 'https://checkout.stripe.com/pro',
+      expires_at: 1800000000,
+      status: 'open',
+      payment_status: 'unpaid',
+      customer: 'cus_fixture',
+      subscription: null,
+    });
+    const adapter = new StripeBillingAdapter(
+      {
+        config: configuration(),
+        stripe: {
+          prices: { list },
+          checkout: { sessions: { create } },
+        },
+      } as unknown as StripeGateway,
+      new PricingService(),
+    );
+    await adapter.createCheckout('cus_fixture', 'tenant', 'pro', 'intent-pro');
+    expect(list).toHaveBeenCalledWith({
+      lookup_keys: ['corvo_pro_monthly', 'corvo_pro_overage'],
+      active: true,
+    });
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        line_items: [
+          { price: 'price_pro', quantity: 1 },
+          { price: 'price_pro_excess' },
+        ],
+      }),
+      { idempotencyKey: 'corvo:checkout:intent-pro' },
+    );
+    // A stale Stripe price (old Growth amount under the new lookup_key) is refused, never charged.
+    list.mockResolvedValueOnce({
+      data: [
+        price('price_stale', 'corvo_pro_monthly', 8990, 'licensed'),
+        price('price_pro_excess', 'corvo_pro_overage', 8, 'metered'),
+      ],
+    });
+    await expect(
+      adapter.createCheckout('cus_fixture', 'tenant', 'pro', 'intent-stale'),
+    ).rejects.toThrow('must be provisioned');
+  });
+  it('schedules a grandfathered legacy subscription onto a v2 plan without touching the current phase prices', async () => {
+    const legacySub = {
+      id: 'sub_legacy',
+      schedule: null,
+      cancel_at_period_end: false,
+      items: {
+        data: [
+          {
+            price: {
+              id: 'price_growth',
+              recurring: { interval: 'month', usage_type: 'licensed' },
+              metadata: { plan_slug: 'growth', kind: 'base' },
+            },
+            quantity: 1,
+            current_period_start: 1790000000,
+            current_period_end: 1792600000,
+          },
+          {
+            price: {
+              id: 'price_growth_excess',
+              recurring: { interval: 'month', usage_type: 'metered' },
+              metadata: { plan_slug: 'growth', kind: 'overage' },
+            },
+          },
+        ],
+      },
+    };
+    const update = jest.fn().mockResolvedValue({});
+    const adapter = new StripeBillingAdapter(
+      {
+        config: configuration(),
+        stripe: {
+          subscriptions: {
+            retrieve: jest.fn().mockResolvedValue(legacySub),
+            update: jest.fn(),
+          },
+          subscriptionSchedules: {
+            create: jest.fn().mockResolvedValue({ id: 'sub_sched' }),
+            update,
+          },
+          prices: {
+            list: jest.fn().mockResolvedValue({
+              data: [
+                {
+                  id: 'price_dev',
+                  lookup_key: 'corvo_dev_monthly',
+                  currency: 'brl',
+                  unit_amount: 2990,
+                  recurring: { interval: 'month', usage_type: 'licensed' },
+                  metadata: { plan_slug: 'dev' },
+                },
+                {
+                  id: 'price_dev_excess',
+                  lookup_key: 'corvo_dev_overage',
+                  currency: 'brl',
+                  unit_amount: 12,
+                  recurring: { interval: 'month', usage_type: 'metered' },
+                  metadata: { plan_slug: 'dev' },
+                },
+              ],
+            }),
+          },
+        },
+      } as unknown as StripeGateway,
+      new PricingService(),
+    );
+    await adapter.scheduleChange('sub_legacy', 'dev');
+    const phases = (
+      update.mock.calls[0] as [string, { phases: { items: unknown[] }[] }]
+    )[1].phases;
+    expect(phases[0].items).toEqual([
+      { price: 'price_growth', quantity: 1 },
+      { price: 'price_growth_excess' },
+    ]);
+    expect(phases[1].items).toEqual([
+      { price: 'price_dev', quantity: 1 },
+      { price: 'price_dev_excess' },
+    ]);
+  });
   it('recovers a dedicated late-usage invoice and finalizes it after cancellation', async () => {
     const invoice = {
       id: 'in_late',

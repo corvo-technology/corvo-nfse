@@ -1608,13 +1608,13 @@ console.log(body.data, body.pagination); // { data: Plan[], pagination }`,
   "data": [
     {
       "id": "3ec51af3-c715-4755-95da-c9b0951973dd",
-      "slug": "developer",
-      "name": "Developer",
+      "slug": "dev",
+      "name": "Dev",
       "description": "Ideal for developers and small teams",
-      "monthlyCreditAllowance": 200,
+      "monthlyCreditAllowance": 250,
       "dailyLimit": null,
-      "maxActiveCompanies": 10,
-      "creditUnitPriceCents": 15,
+      "maxActiveCompanies": 25,
+      "creditUnitPriceCents": 12,
       "throughputRps": 50,
       "includesWebhooks": true,
       "includesXmlDownload": true,
@@ -1634,7 +1634,7 @@ console.log(body.data, body.pagination); // { data: Plan[], pagination }`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Slugs definidos no domínio: `free`, `developer`, `growth`, `scale`, `volume`. Use o catálogo retornado para identificar planos disponíveis; não fixe preços na integração. `supportTier`: `community`, `email`, `priority`." },
+            { kind: "callout", tone: "accent", body: "Catálogo público: `free`, `dev`, `pro`, `escala`. Legados, válidos somente para assinantes já existentes (não disponíveis para novas assinaturas): `developer`, `growth`, `scale`, `volume`. Use o catálogo retornado para identificar planos disponíveis; não fixe preços na integração. `supportTier`: `community`, `email`, `priority`." },
           ],
         },
         {
@@ -1751,11 +1751,11 @@ console.log(body.data.usage); // { data: { plan, subscription, usage } }`,
             json: `{
   "data": {
     "plan": {
-      "slug": "developer",
-      "name": "Developer",
-      "monthly_allowance": 200,
+      "slug": "dev",
+      "name": "Dev",
+      "monthly_allowance": 250,
       "daily_limit": null,
-      "max_active_companies": 10,
+      "max_active_companies": 25,
       "monthly_price_cents": 2990
     },
     "usage": {
@@ -1764,12 +1764,12 @@ console.log(body.data.usage); // { data: { plan, subscription, usage } }`,
       "hard_limit": null,
       "credits_used": 10,
       "credits_reserved": 2,
-      "credits_remaining": 188,
-      "monthly_allowance": 200,
+      "credits_remaining": 238,
+      "monthly_allowance": 250,
       "daily_usage": 3,
       "daily_limit": null,
       "active_companies": 1,
-      "max_active_companies": 10,
+      "max_active_companies": 25,
       "period_start": "2026-10-01T00:00:00.000Z",
       "period_end": "2026-10-31T23:59:59.000Z"
     },
@@ -1807,14 +1807,14 @@ console.log(body.data.canEmit); // { data: QuotaStatus }`,
             json: `{
   "data": {
     "canEmit": true,
-    "creditsRemaining": 188,
+    "creditsRemaining": 238,
     "creditsUsed": 10,
     "creditsReserved": 2,
-    "monthlyAllowance": 200,
+    "monthlyAllowance": 250,
     "dailyUsage": 3,
     "dailyLimit": null,
     "activeCompanies": 1,
-    "maxActiveCompanies": 10,
+    "maxActiveCompanies": 25,
     "periodStart": "2026-10-01T00:00:00.000Z",
     "periodEnd": "2026-10-31T23:59:59.000Z"
   }
@@ -1834,21 +1834,21 @@ console.log(body.data.canEmit); // { data: QuotaStatus }`,
           summary: "Agenda a troca para o plano de destino na assinatura.",
           params: {
             rows: [
-              { name: "plan_slug", type: "string", required: true, description: "Slug do plano de destino, por exemplo `growth`." },
+              { name: "plan_slug", type: "string", required: true, description: "Slug do plano de destino, por exemplo `pro`. Aceita o catálogo público (`free`, `dev`, `pro`, `escala`); um slug legado só é aceito se for o plano atual do tenant (ex.: para desfazer um cancelamento agendado)." },
             ],
           },
           examples: {
             curl: `curl -X POST "$BASE_URL/billing/upgrade" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{ "plan_slug": "growth" }'`,
+  -d '{ "plan_slug": "pro" }'`,
             node: `const res = await fetch(\`\${BASE_URL}/billing/upgrade\`, {
   method: "POST",
   headers: {
     "X-API-Key": process.env.CORVO_API_KEY,
     "Content-Type": "application/json",
   },
-  body: JSON.stringify({ plan_slug: "growth" }),
+  body: JSON.stringify({ plan_slug: "pro" }),
 });
 const body = await res.json();
 console.log(body.data); // { data: { scheduled_plan, effective_at } }`,
@@ -1857,7 +1857,7 @@ console.log(body.data); // { data: { scheduled_plan, effective_at } }`,
             label: "200 OK",
             json: `{
   "data": {
-    "scheduled_plan": "growth",
+    "scheduled_plan": "pro",
     "effective_at": "2026-11-01T00:00:00.000Z"
   }
 }`,
@@ -1875,21 +1875,21 @@ console.log(body.data); // { data: { scheduled_plan, effective_at } }`,
           summary: "Agenda uma mudança de plano para o fim do período.",
           params: {
             rows: [
-              { name: "plan_slug", type: "string", required: true, description: "Slug do plano de destino, por exemplo `developer`." },
+              { name: "plan_slug", type: "string", required: true, description: "Slug do plano de destino, por exemplo `dev`. Aceita o catálogo público (`free`, `dev`, `pro`, `escala`); um slug legado só é aceito se for o plano atual do tenant (ex.: para desfazer um cancelamento agendado)." },
             ],
           },
           examples: {
             curl: `curl -X POST "$BASE_URL/billing/downgrade" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{ "plan_slug": "developer" }'`,
+  -d '{ "plan_slug": "dev" }'`,
             node: `const res = await fetch(\`\${BASE_URL}/billing/downgrade\`, {
   method: "POST",
   headers: {
     "X-API-Key": process.env.CORVO_API_KEY,
     "Content-Type": "application/json",
   },
-  body: JSON.stringify({ plan_slug: "developer" }),
+  body: JSON.stringify({ plan_slug: "dev" }),
 });
 const body = await res.json();
 console.log(body.data); // { data: { scheduled_plan, effective_at } }`,
@@ -1898,7 +1898,7 @@ console.log(body.data); // { data: { scheduled_plan, effective_at } }`,
             label: "200 OK",
             json: `{
   "data": {
-    "scheduled_plan": "developer",
+    "scheduled_plan": "dev",
     "effective_at": "2026-11-01T00:00:00.000Z"
   }
 }`,
@@ -1934,13 +1934,15 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
             json: `{
   "data": [
     {
-      "slug": "developer",
-      "name": "Developer",
-      "monthlyAllowance": 200,
+      "slug": "dev",
+      "name": "Dev",
+      "monthlyAllowance": 250,
       "basePriceCents": 2990,
-      "perCreditOverageCents": 15,
+      "perCreditOverageCents": 12,
       "monthlyTotalCents": 2990,
-      "currency": "BRL"
+      "currency": "BRL",
+      "legacy": false,
+      "maxActiveCompanies": 25
     }
   ],
   "pagination": {
@@ -1951,7 +1953,7 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Ordenados da menor para a maior franquia. `monthlyAllowance` é o total de créditos incluídos, `perCreditOverageCents` o preço de cada crédito acima dela e `monthlyTotalCents` o preço mensal. Esta é a visão de preços; `GET /v1/credits/plans` devolve os limites e recursos do plano." },
+            { kind: "callout", tone: "accent", body: "Ordenados da menor para a maior franquia. `monthlyAllowance` é o total de créditos incluídos, `perCreditOverageCents` o preço de cada crédito acima dela e `monthlyTotalCents` o preço mensal; `maxActiveCompanies` é o limite de empresas ativas do plano. Só o catálogo público aparece aqui, sem planos legados. Esta é a visão de preços; `GET /v1/credits/plans` devolve os limites e recursos do plano." },
           ],
         },
         {
@@ -1967,8 +1969,8 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
             ],
           },
           examples: {
-            curl: `curl "$BASE_URL/plans/growth"`,
-            node: `const res = await fetch(\`\${BASE_URL}/plans/growth\`);
+            curl: `curl "$BASE_URL/plans/pro"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/pro\`);
 const body = await res.json();
 console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
           },
@@ -1976,18 +1978,20 @@ console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
             label: "200 OK",
             json: `{
   "data": {
-    "slug": "growth",
-    "name": "Growth",
-    "monthlyAllowance": 750,
-    "basePriceCents": 8990,
-    "perCreditOverageCents": 12,
-    "monthlyTotalCents": 8990,
-    "currency": "BRL"
+    "slug": "pro",
+    "name": "Pro",
+    "monthlyAllowance": 1500,
+    "basePriceCents": 9990,
+    "perCreditOverageCents": 8,
+    "monthlyTotalCents": 9990,
+    "currency": "BRL",
+    "legacy": false,
+    "maxActiveCompanies": 150
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "`slug` é `free`, `developer`, `growth`, `scale` ou `volume`. Um plano desconhecido retorna `404`." },
+            { kind: "callout", tone: "warn", body: "`slug` do catálogo público: `free`, `dev`, `pro` ou `escala`. Os slugs legados `developer`, `growth`, `scale` e `volume` ainda respondem (com `legacy: true`) para assinantes já existentes. Um plano desconhecido retorna `404`." },
           ],
         },
         {
@@ -2004,8 +2008,8 @@ console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
             ],
           },
           examples: {
-            curl: `curl "$BASE_URL/plans/quote?volume=20000"`,
-            node: `const res = await fetch(\`\${BASE_URL}/plans/quote?volume=20000\`);
+            curl: `curl "$BASE_URL/plans/quote?volume=2000"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/quote?volume=2000\`);
 const body = await res.json();
 console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { data: Quote | null }`,
           },
@@ -2013,21 +2017,21 @@ console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { d
             label: "200 OK",
             json: `{
   "data": {
-    "volume": 20000,
-    "recommended_plan": "volume",
-    "plan_name": "Volume",
-    "monthly_allowance": 10000,
-    "overage_credits": 10000,
-    "overage_cost_cents": 90000,
-    "base_price_cents": 89990,
-    "total_estimated_cents": 179990,
+    "volume": 2000,
+    "recommended_plan": "pro",
+    "plan_name": "Pro",
+    "monthly_allowance": 1500,
+    "overage_credits": 500,
+    "overage_cost_cents": 4000,
+    "base_price_cents": 9990,
+    "total_estimated_cents": 13990,
     "currency": "BRL",
     "billing_cycle": "monthly"
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "Esta rota usa snake_case. `total_estimated_cents` é o preço do plano mais o excedente estimado (`overage_credits` × o preço por crédito do plano). Um `volume` ausente, zero, negativo ou não numérico retorna `200` com `{ \"data\": null }`, e não um erro." },
+            { kind: "callout", tone: "warn", body: "Esta rota usa snake_case. `total_estimated_cents` é o preço do plano mais o excedente estimado (`overage_credits` × o preço por crédito do plano). A recomendação é o plano do catálogo mais barato para o volume, já contando o excedente. Um `volume` ausente, zero, negativo ou não numérico retorna `200` com `{ \"data\": null }`, e não um erro." },
           ],
         },
       ],

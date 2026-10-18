@@ -151,7 +151,7 @@ function Summary({ plan }: { plan: BillingPlan | null }) {
   const tp = useTranslations("Pricing");
   const locale = useLocale();
   const intl = locale === "pt" ? "pt-BR" : "en-US";
-  const known = plan && ["free", "developer", "growth", "scale", "volume"].includes(plan.slug);
+  const known = plan && ["free", "dev", "pro", "escala"].includes(plan.slug); // catalog only; legacy plans show the API name
   const rows: [string, string][] = plan
     ? [
         [t("summary.plan"), known ? tp(`plans.${plan.slug}.name`) : plan.name],

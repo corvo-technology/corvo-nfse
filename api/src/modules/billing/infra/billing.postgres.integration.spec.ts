@@ -276,21 +276,21 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     });
     provider.checkout.mockImplementation(async () => session);
     const results = await Promise.all([
-      service.checkout(id, 'developer', 'request-1'),
-      service.checkout(id, 'developer', 'request-1'),
+      service.checkout(id, 'dev', 'request-1'),
+      service.checkout(id, 'dev', 'request-1'),
     ]);
     expect(results[0]).toEqual(results[1]);
     expect(provider.createCheckout).toHaveBeenCalledTimes(1);
     await expect(
-      service.checkout(id, 'growth', 'request-1'),
+      service.checkout(id, 'pro', 'request-1'),
     ).rejects.toMatchObject({ code: 'idempotency_conflict' });
   });
   it('checks Stripe for an existing subscription before opening another', async () => {
     const id = await tenant();
     provider.liveSubscriptions.mockResolvedValue(['existing']);
-    await expect(
-      service.checkout(id, 'developer', 'request'),
-    ).rejects.toMatchObject({ code: 'subscription_exists' });
+    await expect(service.checkout(id, 'dev', 'request')).rejects.toMatchObject({
+      code: 'subscription_exists',
+    });
     expect(provider.createCheckout).not.toHaveBeenCalled();
   });
   it('does not expose another tenant checkout', async () => {

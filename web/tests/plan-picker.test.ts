@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   PLANS,
   calcMonthlyTotal,
+  LEGACY_PLANS,
   findPlanForVolume,
   formatBRLPerNote,
+  isVolumeContactZone,
 } from "@/components/pricing/plan-picker";
 
 describe("plan picker pricing", () => {
@@ -12,7 +14,7 @@ describe("plan picker pricing", () => {
       slug: "free", credits: 15, basePriceCents: 0, perCreditCents: 0,
     });
     expect(findPlanForVolume(15).slug).toBe("free");
-    expect(findPlanForVolume(16).slug).toBe("developer");
+    expect(findPlanForVolume(16).slug).toBe("dev");
   });
   it("picking a plan at its full allowance recommends that same plan", () => {
     for (const plan of PLANS) {
@@ -25,15 +27,35 @@ describe("plan picker pricing", () => {
       const plan = PLANS.find((p) => p.slug === slug)!;
       return formatBRLPerNote(calcMonthlyTotal(plan.credits, plan) / plan.credits);
     };
-    expect(perNote("developer")).toBe("R$ 0,1495");
-    expect(perNote("growth")).toBe("R$ 0,1199");
+    expect(perNote("dev")).toBe("R$ 0,1196");
+    expect(perNote("pro")).toBe("R$ 0,0666");
+    expect(perNote("escala")).toBe("R$ 0,0500");
   });
 
   it("uses two decimals once a note costs a real or more", () => {
     expect(formatBRLPerNote(2990 / 3)).toBe("R$ 9,97");
   });
 
-  it("keeps the Volume overage in line with the backend (R$ 0,09)", () => {
-    expect(PLANS.find((p) => p.slug === "volume")!.perCreditCents).toBe(9);
+  it("mirrors the backend v2 catalog (PricingService) exactly", () => {
+    expect(PLANS).toEqual([
+      { slug: "free", credits: 15, basePriceCents: 0, perCreditCents: 0 },
+      { slug: "dev", credits: 250, basePriceCents: 2990, perCreditCents: 12 },
+      { slug: "pro", credits: 1500, basePriceCents: 9990, perCreditCents: 8 },
+      { slug: "escala", credits: 6000, basePriceCents: 29990, perCreditCents: 5 },
+    ]);
+  });
+
+  it("never offers a legacy plan or a self-serve Volume", () => {
+    const slugs = PLANS.map((p) => p.slug as string);
+    for (const legacy of Object.keys(LEGACY_PLANS)) expect(slugs).not.toContain(legacy);
+    expect(slugs).not.toContain("volume");
+    expect(isVolumeContactZone(13999)).toBe(false);
+    expect(isVolumeContactZone(14000)).toBe(true);
+    expect(findPlanForVolume(20000).slug).toBe("escala");
+  });
+
+  it("keeps legacy prices for grandfathered tenants (upgrade/downgrade direction only)", () => {
+    expect(LEGACY_PLANS.growth).toEqual({ credits: 750, basePriceCents: 8990, perCreditCents: 12 });
+    expect(LEGACY_PLANS.volume.basePriceCents).toBe(89990);
   });
 });

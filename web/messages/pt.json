@@ -724,6 +724,51 @@
           "downloads": "Download XML e PDF"
         }
       },
+      "dev": {
+        "name": "DEV",
+        "credits": "250",
+        "price": "R$ 29,90",
+        "unit": "",
+        "bestFor": "Projetos pessoais, MVPs e small teams.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Até 25 empresas",
+          "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      },
+      "pro": {
+        "name": "PRO",
+        "credits": "1.500",
+        "price": "R$ 99,90",
+        "unit": "",
+        "bestFor": "Produtos SaaS e equipes em crescimento.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Até 150 empresas",
+          "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      },
+      "escala": {
+        "name": "ESCALA",
+        "credits": "6.000",
+        "price": "R$ 299,90",
+        "unit": "",
+        "bestFor": "Plataformas de alto volume e empresas.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Até 500 empresas",
+          "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      },
       "developer": {
         "name": "DEVELOPER",
         "credits": "200",
@@ -771,13 +816,14 @@
       },
       "volume": {
         "name": "VOLUME",
-        "credits": "10.000",
-        "price": "R$ 899,90",
+        "credits": "20.000",
+        "price": "R$ 699,90",
         "unit": "",
-        "bestFor": "Maiores volumes e operações multiempresa.",
+        "bestFor": "Operações de altíssimo volume, negociado com nosso time.",
+        "contact": "Fale com nosso time para um plano sob consulta.",
         "includes": {
           "nfse": "Emissão de NFS-e via API",
-          "companies": "Empresas ilimitadas",
+          "companies": "Até 2.000 empresas",
           "email": "Envio por e-mail",
           "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
@@ -1258,6 +1304,7 @@
     "unknownError": "Erro desconhecido",
     "plans": "Planos",
     "currentPlan": "Plano atual",
+    "legacyPlanNote": "plano legado",
     "subscribe": "Assinar",
     "upgrade": "Fazer upgrade",
     "downgrade": "Fazer downgrade",

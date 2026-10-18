@@ -72,8 +72,8 @@ describe("endpoint-specific contracts", () => {
     expect((await invoices.get("invoice-1")).customerName).toBe("Customer"); expect((await companies.get("company-1")).address.city).toBe("São Paulo");
   });
   it("adapts nested snake-case billing, subscription and paged lists", async () => {
-    fetchMock.mockResolvedValueOnce(reply({ data: { plan: { slug: "free", name: "Free", monthly_price_cents: 0 }, subscription: { status: "active", paid_until: "2026-11-01T00:00:00Z", cancel_at_period_end: false, scheduled_plan: "growth", blocked: false }, usage: { overage_units: 3, overage_amount_cents: 90, credits_used: 2, credits_reserved: 1, credits_remaining: 97, monthly_allowance: 100, daily_usage: 2, daily_limit: 10, active_companies: 1, max_active_companies: 1, period_start: "2026-10-01T00:00:00Z" } } })).mockResolvedValueOnce(reply(page([{ id: "wh-1", events: ["nfse.invoice.authorized"] }]))).mockResolvedValueOnce(reply(page([{ id: "user-1", email: "person@example.com" }])));
-    expect(await billing.plan()).toMatchObject({ slug: "free", subscription: { status: "active", scheduledPlan: "growth" }, usage: { creditsUsed: 2, overageUnits: 3, overageAmountCents: 90, periodStart: "2026-10-01T00:00:00Z" } });
+    fetchMock.mockResolvedValueOnce(reply({ data: { plan: { slug: "free", name: "Free", monthly_price_cents: 0 }, subscription: { status: "active", paid_until: "2026-11-01T00:00:00Z", cancel_at_period_end: false, scheduled_plan: "pro", blocked: false }, usage: { overage_units: 3, overage_amount_cents: 90, credits_used: 2, credits_reserved: 1, credits_remaining: 97, monthly_allowance: 100, daily_usage: 2, daily_limit: 10, active_companies: 1, max_active_companies: 1, period_start: "2026-10-01T00:00:00Z" } } })).mockResolvedValueOnce(reply(page([{ id: "wh-1", events: ["nfse.invoice.authorized"] }]))).mockResolvedValueOnce(reply(page([{ id: "user-1", email: "person@example.com" }])));
+    expect(await billing.plan()).toMatchObject({ slug: "free", subscription: { status: "active", scheduledPlan: "pro" }, usage: { creditsUsed: 2, overageUnits: 3, overageAmountCents: 90, periodStart: "2026-10-01T00:00:00Z" } });
     expect((await webhooks.list()).items[0].id).toBe("wh-1"); expect((await members.list()).items[0].id).toBe("user-1");
   });
   it("sends the cursor (not offset) for deliveries and credit history and unwraps balance", async () => {
@@ -88,11 +88,11 @@ describe("endpoint-specific contracts", () => {
   });
   it("checkout sends plan_slug with an Idempotency-Key; portal and plan change adapt snake_case", async () => {
     setCsrfToken("csrf");
-    fetchMock.mockResolvedValueOnce(reply({ data: { session_id: "cs_1", url: "https://stripe.test/pay" } }, 201)).mockResolvedValueOnce(reply({ data: { url: "https://stripe.test/portal" } })).mockResolvedValueOnce(reply({ data: { scheduled_plan: "growth", effective_at: "2026-11-01T00:00:00Z" } })).mockResolvedValueOnce(reply({ data: { session_id: "cs_1", status: "complete", payment_status: "paid", activated: true } }));
-    expect(await billing.checkout("developer", "key-1")).toEqual({ sessionId: "cs_1", url: "https://stripe.test/pay" });
-    const init = fetchMock.mock.calls[0][1]; expect(JSON.parse(String(init?.body))).toEqual({ plan_slug: "developer" }); expect(new Headers(init?.headers).get("idempotency-key")).toBe("key-1");
+    fetchMock.mockResolvedValueOnce(reply({ data: { session_id: "cs_1", url: "https://stripe.test/pay" } }, 201)).mockResolvedValueOnce(reply({ data: { url: "https://stripe.test/portal" } })).mockResolvedValueOnce(reply({ data: { scheduled_plan: "pro", effective_at: "2026-11-01T00:00:00Z" } })).mockResolvedValueOnce(reply({ data: { session_id: "cs_1", status: "complete", payment_status: "paid", activated: true } }));
+    expect(await billing.checkout("dev", "key-1")).toEqual({ sessionId: "cs_1", url: "https://stripe.test/pay" });
+    const init = fetchMock.mock.calls[0][1]; expect(JSON.parse(String(init?.body))).toEqual({ plan_slug: "dev" }); expect(new Headers(init?.headers).get("idempotency-key")).toBe("key-1");
     expect((await billing.portal()).url).toBe("https://stripe.test/portal");
-    expect(await billing.changePlan("growth", "upgrade")).toEqual({ scheduledPlan: "growth", effectiveAt: "2026-11-01T00:00:00Z" }); expect(String(fetchMock.mock.calls[2][0])).toContain("/billing/upgrade");
+    expect(await billing.changePlan("pro", "upgrade")).toEqual({ scheduledPlan: "pro", effectiveAt: "2026-11-01T00:00:00Z" }); expect(String(fetchMock.mock.calls[2][0])).toContain("/billing/upgrade");
     expect(await billing.checkoutStatus("cs_1")).toMatchObject({ activated: true, paymentStatus: "paid" });
   });
   it("exposes 409 billing conflicts and 422 validation details to forms", async () => {

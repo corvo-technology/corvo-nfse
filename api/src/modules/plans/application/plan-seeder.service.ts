@@ -20,6 +20,57 @@ const SEED_DATA: Record<PlanSlug, CreatePlanInput> = {
     supportTier: 'community',
     active: true,
   },
+  dev: {
+    slug: 'dev',
+    name: 'Dev',
+    description: 'Ideal for developers and small teams',
+    monthlyCreditAllowance: 250,
+    dailyLimit: null,
+    maxActiveCompanies: 25,
+    creditUnitPriceCents: 12,
+    throughputRps: 50,
+    includesWebhooks: true,
+    includesXmlDownload: true,
+    includesPdfDownload: true,
+    includesApiKeys: true,
+    supportTier: 'email',
+    active: true,
+  },
+  pro: {
+    slug: 'pro',
+    name: 'Pro',
+    description: 'For growing businesses with higher volume needs',
+    monthlyCreditAllowance: 1500,
+    dailyLimit: null,
+    maxActiveCompanies: 150,
+    creditUnitPriceCents: 8,
+    throughputRps: 150,
+    includesWebhooks: true,
+    includesXmlDownload: true,
+    includesPdfDownload: true,
+    includesApiKeys: true,
+    supportTier: 'email',
+    active: true,
+  },
+  escala: {
+    slug: 'escala',
+    name: 'Escala',
+    description: 'Enterprise-grade for high-volume operations',
+    monthlyCreditAllowance: 6000,
+    dailyLimit: null,
+    maxActiveCompanies: 500,
+    creditUnitPriceCents: 5,
+    throughputRps: 400,
+    includesWebhooks: true,
+    includesXmlDownload: true,
+    includesPdfDownload: true,
+    includesApiKeys: true,
+    supportTier: 'priority',
+    active: true,
+  },
+  // Legacy plans: kept active forever for grandfathered tenants/subscriptions.
+  // Never updated once seeded (seedIfMissing only inserts missing rows) and
+  // excluded from the public catalog (PricingService.listAllQuotes).
   developer: {
     slug: 'developer',
     name: 'Developer',
@@ -116,3 +167,5 @@ export class PlanSeederService implements OnApplicationBootstrap {
     this.logger.log('Plan seeding complete.');
   }
 }
+
+export { SEED_DATA };
