@@ -1243,7 +1243,11 @@
       "hintTest": "Em teste o assunto recebe [TESTE]. Use um e-mail seu."
     },
     "view": "Ver nota",
-    "viewInvoice": "Ver detalhes de {name}"
+    "viewInvoice": "Ver detalhes de {name}",
+    "copyAction": "Duplicar",
+    "copyInvoice": "Duplicar nota de {name}",
+    "copyBanner": "Dados copiados da nota de {name}. A competência é a de hoje; revise o que precisar antes de emitir.",
+    "copyFailed": "Não foi possível copiar a nota. Preencha os dados manualmente."
   },
   "Billing": {
     "title": "Plano e uso",
@@ -1479,6 +1483,7 @@
     "defaultServiceCode": "Código de serviço padrão"
   },
   "InvoiceDetail": {
+    "copy": "Duplicar",
     "anonymousCustomer": "Consumidor não identificado",
     "title": "Nota fiscal",
     "loading": "Carregando nota...",
