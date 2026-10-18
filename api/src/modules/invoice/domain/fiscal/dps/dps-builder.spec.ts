@@ -138,6 +138,7 @@ const input = (overrides: DpsInputOverrides = {}): DpsBuildInput => ({
     municipalReg: null,
     municipalityCode: MUNICIPIO_SP,
     specialTaxRegime: null,
+    simplesIssRate: null,
     ...overrides.emitente,
   },
 });
@@ -238,6 +239,70 @@ describe('DpsBuilder', () => {
     expect(dps.infDPS.prest.regTrib.regEspTrib).toBe(
       RegimeEspecialTributacao.Estimativa,
     );
+  });
+
+  describe('Simples Nacional ISS withholding rate (pAliq)', () => {
+    it('carries pAliq with the Simples ISS rate when retention is required', async () => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({
+            result: {
+              taxRegime: 'SIMPLES_NACIONAL',
+              taxes: {},
+              applicability: applicability({ issWithheld: REQUIRED }),
+            },
+            emitente: { simplesIssRate: '2.01' },
+          }),
+          RTC_V1_01,
+        ),
+      );
+      expect(dps.infDPS.valores.trib.tribMun.pAliq).toBe(2.01);
+      expect(dps.infDPS.valores.trib.tribMun.tpRetISSQN).toBe(
+        TipoRetISSQN.RetidoPeloTomador,
+      );
+    });
+
+    it('refuses Simples Nacional ISS retention when the rate is missing at emission', async () => {
+      const error = errorFrom(
+        await new DpsBuilder().build(
+          input({
+            result: {
+              taxRegime: 'SIMPLES_NACIONAL',
+              taxes: {},
+              applicability: applicability({ issWithheld: REQUIRED }),
+            },
+            emitente: { simplesIssRate: null },
+          }),
+          RTC_V1_01,
+        ),
+      );
+      expect(error.details).toMatchObject({
+        reason: 'simples_iss_rate_missing',
+      });
+    });
+
+    it('omits pAliq for Simples Nacional without ISS retention even when the rate is set', async () => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({
+            result: { taxRegime: 'SIMPLES_NACIONAL', taxes: {} },
+            emitente: { simplesIssRate: '2.01' },
+          }),
+          RTC_V1_01,
+        ),
+      );
+      expect(dps.infDPS.valores.trib.tribMun.pAliq).toBeUndefined();
+    });
+
+    it('keeps the regular-regime aliqIss from the calculated ISS rate regardless of simplesIssRate', async () => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({ emitente: { simplesIssRate: '2.01' } }),
+          RTC_V1_01,
+        ),
+      );
+      expect(dps.infDPS.valores.trib.tribMun.pAliq).toBe(3);
+    });
   });
 
   it('builds the declarative IBSCBS group with real catalog codes and passes XSD validation', async () => {

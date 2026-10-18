@@ -1680,6 +1680,8 @@
     "validUntil": "Effective until (exclusive)",
     "ibsOption": "Regular IBS/CBS option",
     "ibsFrom": "Regular IBS/CBS option effective from",
+    "simplesIssRate": "Simples Nacional effective ISS rate (%)",
+    "simplesIssRateHint": "Bracket of the previous month (LC 123/2006, art. 21, §4º, I). Required to issue with ISS withholding; record a new period every month.",
     "history": "Fiscal profile history",
     "future": "Future validity period",
     "source": "Source",

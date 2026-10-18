@@ -1680,6 +1680,8 @@
     "validUntil": "Vigente até (exclusivo)",
     "ibsOption": "Opção pelo IBS/CBS regular",
     "ibsFrom": "Início da opção pelo IBS/CBS regular",
+    "simplesIssRate": "Alíquota efetiva de ISS do Simples (%)",
+    "simplesIssRateHint": "Faixa do mês anterior (LC 123/2006, art. 21, §4º, I). Obrigatória para emitir com retenção de ISS; registre um novo período a cada mês.",
     "history": "Histórico do perfil fiscal",
     "future": "Vigência futura",
     "source": "Origem",

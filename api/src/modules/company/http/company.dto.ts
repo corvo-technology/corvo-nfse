@@ -131,6 +131,16 @@ export class UpsertFiscalProfileDto {
 
   @ApiPropertyOptional({
     type: String,
+    example: '2.01',
+    description:
+      'Effective ISS rate (%) of the Simples Nacional bracket of the previous month (LC 123/2006, art. 21, §4º, I). Required to withhold ISS for Simples Nacional ME/EPP.',
+  })
+  @IsOptional()
+  @Matches(/^\d+(\.\d{1,2})?$/)
+  simplesIssRate?: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
     example: '2027-01-01',
     description: 'Start of the validity period (inclusive). Defaults to today.',
   })

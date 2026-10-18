@@ -65,7 +65,7 @@ function FiscalSetup({ company, canView, canManage }: { company: Company; canVie
   const profileFacts = (profile: CompanyFiscalProfile) => facts([
     ["regime", t(`regimes.${profile.taxRegime}`)], ["simpleNational", profile.simpleNational], ["specialRegime", profile.specialTaxRegime],
     ["validFrom", profile.validFrom], ["validUntil", profile.validUntil ?? t("noEnd")], ["ibsOption", profile.ibsCbsRegularOption],
-    ["ibsFrom", profile.ibsCbsRegularFrom], ["source", profile.source], ["approvedAt", profile.reviewedAt],
+    ["ibsFrom", profile.ibsCbsRegularFrom], ["simplesIssRate", profile.simplesIssRate], ["source", profile.source], ["approvedAt", profile.reviewedAt],
   ]);
   const serviceFacts = (service: CompanyServiceTaxProfile) => facts([
     ["name", service.name], ["serviceCode", service.serviceCode], ["municipalServiceCode", service.municipalServiceCode],
