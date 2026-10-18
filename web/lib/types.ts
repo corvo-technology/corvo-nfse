@@ -408,7 +408,7 @@ export interface Invoice {
   serviceDescription: string; customerSnapshot: CreateInvoiceInput["customer"] | null;
   serviceSnapshot: Required<CreateInvoiceInput["service"]>; competenceDate: string;
   lastErrorCode?: string | null; lastErrorMessage?: string | null;
-  authorizedAt?: string | null; createdAt: string; updatedAt: string;
+  authorizedAt?: string | null; scheduledFor?: string | null; createdAt: string; updatedAt: string;
 }
 export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } | { companyId: string; companyTaxId?: string }) & {
   externalId?: string;

@@ -292,6 +292,11 @@ html {
   .banner-ok {
     @apply border-accent-border bg-accent-surface text-text-2;
   }
+  .banner-info {
+    border-color: color-mix(in oklch, var(--info) 35%, transparent);
+    background: color-mix(in oklch, var(--info) 8%, var(--surface));
+    color: var(--text-2);
+  }
   .banner-accent {
     @apply border-accent-border bg-accent-surface text-text-2;
   }

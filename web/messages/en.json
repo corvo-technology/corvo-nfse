@@ -1153,6 +1153,7 @@
     "cancel": "Cancel",
     "filters": {
       "all": "All",
+      "scheduled": "Scheduled",
       "authorized": "Authorized",
       "processing": "Processing",
       "rejected": "Rejected"
@@ -1173,6 +1174,7 @@
       "created": "Created"
     },
     "status": {
+      "scheduled": "Scheduled",
       "authorized": "Authorized",
       "processing": "Processing",
       "queued": "Queued",
@@ -1183,6 +1185,7 @@
       "failed": "Failed"
     },
     "loadFailed": "We couldn't load your invoices.",
+    "scheduledFor": "Issues on {date}",
     "filterLabel": "Filter by status",
     "fields": {
       "company": "Issuing company",
@@ -1505,6 +1508,7 @@
     "defaultServiceCode": "Default service code"
   },
   "InvoiceDetail": {
+    "scheduledBanner": "Scheduled invoice: it will be issued automatically on {date}. Until then it stays queued.",
     "copy": "Duplicate",
     "anonymousCustomer": "Unidentified consumer",
     "title": "Invoice",
@@ -1521,6 +1525,7 @@
     "events": "Invoice progress",
     "noEvents": "No events recorded.",
     "timeline": {
+      "scheduled": "Scheduled. Issuance will be released on {date}.",
       "queued": "We received the request and the invoice is waiting to be issued.",
       "processing": "We are sending the invoice to the city.",
       "authorized": "The city authorized the invoice. PDF and XML are available.",

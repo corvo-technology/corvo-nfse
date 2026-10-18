@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Copy, Eye, FileText } from "lucide-react";
+import { CalendarClock, Copy, Eye, FileText } from "lucide-react";
 import type { Invoice } from "@/lib/types";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { DataTable, DataTableSkeleton, type Column } from "@/components/ui/data-table";
@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { useAuth } from "@/lib/auth";
 import { copyInvoiceHref } from "@/lib/invoice-copy";
 import { timeAgo } from "@/lib/i18n-helpers";
+import { formatScheduledDate, isScheduled } from "@/lib/invoice-schedule";
 
 type TimeAgoT = ReturnType<typeof import("next-intl").useTranslations>;
 
@@ -70,7 +71,18 @@ export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }
     {
       id: "status",
       header: t("table.status"),
-      cell: (inv) => <Badge variant={STATUS_VARIANT[inv.status]}>{t(`status.${inv.status}`)}</Badge>,
+      cell: (inv) =>
+        isScheduled(inv) ? (
+          <div className="flex flex-col items-start gap-1">
+            <Badge variant="info" dot={false}>
+              <CalendarClock size={12} aria-hidden />
+              {t("status.scheduled")}
+            </Badge>
+            <span className="text-[12px] text-text-3">{t("scheduledFor", { date: formatScheduledDate(inv.scheduledFor!, locale) })}</span>
+          </div>
+        ) : (
+          <Badge variant={STATUS_VARIANT[inv.status]}>{t(`status.${inv.status}`)}</Badge>
+        ),
     },
     {
       id: "created",
