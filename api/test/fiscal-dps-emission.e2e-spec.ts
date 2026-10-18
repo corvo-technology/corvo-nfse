@@ -181,6 +181,7 @@ const buildInput = (): DpsBuildInput => ({
     municipalReg: '12345',
     municipalityCode: MUNICIPIO,
     specialTaxRegime: null,
+    simplesIssRate: null,
   },
 });
 

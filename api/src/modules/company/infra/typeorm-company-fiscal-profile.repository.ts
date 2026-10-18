@@ -32,6 +32,7 @@ interface FiscalProfileRow {
   special_tax_regime: string | null;
   ibs_cbs_regular_option: boolean;
   ibs_cbs_regular_from: Date | string | null;
+  simples_iss_rate: string | null;
   valid_from: Date | string;
   valid_until: Date | string | null;
   source: string;
@@ -187,7 +188,7 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
             if (open.review_status === 'approved')
               throw new ConflictException('profile_validity_conflict');
             await manager.query(
-              `UPDATE ${table} SET tax_regime=$2, simple_national=$3, special_tax_regime=$4, ibs_cbs_regular_option=$5, ibs_cbs_regular_from=$6, source=$7, review_status=$8, reviewed_by=$9, reviewed_at=$10 WHERE id=$1`,
+              `UPDATE ${table} SET tax_regime=$2, simple_national=$3, special_tax_regime=$4, ibs_cbs_regular_option=$5, ibs_cbs_regular_from=$6, simples_iss_rate=$7, source=$8, review_status=$9, reviewed_by=$10, reviewed_at=$11 WHERE id=$1`,
               [
                 open.id,
                 input.taxRegime,
@@ -195,6 +196,7 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
                 input.specialTaxRegime,
                 input.ibsCbsRegularOption,
                 input.ibsCbsRegularFrom,
+                input.simplesIssRate,
                 input.source,
                 input.reviewStatus,
                 input.reviewedBy,
@@ -209,8 +211,8 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
           );
         }
         const raw: unknown = await manager.query(
-          `INSERT INTO ${table} (tenant_id, company_id, tax_regime, simple_national, special_tax_regime, ibs_cbs_regular_option, ibs_cbs_regular_from, valid_from, source, review_status, reviewed_by, reviewed_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+          `INSERT INTO ${table} (tenant_id, company_id, tax_regime, simple_national, special_tax_regime, ibs_cbs_regular_option, ibs_cbs_regular_from, simples_iss_rate, valid_from, source, review_status, reviewed_by, reviewed_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
           [
             tenantId,
             companyId,
@@ -219,6 +221,7 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
             input.specialTaxRegime,
             input.ibsCbsRegularOption,
             input.ibsCbsRegularFrom,
+            input.simplesIssRate,
             input.validFrom,
             input.source,
             input.reviewStatus,
@@ -260,6 +263,8 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
         row.ibs_cbs_regular_from === null
           ? null
           : toDateString(row.ibs_cbs_regular_from),
+      simplesIssRate:
+        row.simples_iss_rate === null ? null : String(row.simples_iss_rate),
       validFrom: toDateString(row.valid_from),
       validUntil:
         row.valid_until === null ? null : toDateString(row.valid_until),

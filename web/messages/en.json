@@ -104,7 +104,19 @@
       "legendMore": "More",
       "empty": "No authorized invoices in this period",
       "aria": "Heatmap of authorized invoices per day",
-      "note": "{count, plural, one {# invoice} other {# invoices}}"
+      "periodTotal": "Period total",
+      "authorizedNotes": "Authorized invoices",
+      "note": "{count, plural, one {# invoice} other {# invoices}}",
+      "average": "avg",
+      "pinned": "Pinned",
+      "vsAverage": "vs. daily average",
+      "ofPeriod": "Of the period",
+      "dailyAverage": "Daily average",
+      "bestDay": "Best day",
+      "anonymous": "Customer",
+      "quietDay": "No invoices authorized this day.",
+      "seeInList": "Open the invoice list to see them.",
+      "hint": "Hover or tap a bar to inspect a day. Click to pin it, arrow keys to move, Esc to clear."
     },
     "recentMessages": "Recent messages",
     "viewAll": "View all",
@@ -127,7 +139,8 @@
     "viewAllInvoices": "View all",
     "period": "Period",
     "loadFailed": "We couldn't load your data.",
-    "loadedRecords": "Indicators cover up to 100 loaded invoices in this period ({count} records)."
+    "monthlyCycle": "Monthly plan cycle",
+    "creditsLoadFailed": "Could not load credits."
   },
   "Connections": {
     "title": "Connections",
@@ -1186,6 +1199,7 @@
     "cancel": "Cancel",
     "filters": {
       "all": "All",
+      "scheduled": "Scheduled",
       "authorized": "Authorized",
       "processing": "Processing",
       "rejected": "Rejected"
@@ -1206,6 +1220,7 @@
       "created": "Created"
     },
     "status": {
+      "scheduled": "Scheduled",
       "authorized": "Authorized",
       "processing": "Processing",
       "queued": "Queued",
@@ -1216,6 +1231,7 @@
       "failed": "Failed"
     },
     "loadFailed": "We couldn't load your invoices.",
+    "scheduledFor": "Issues on {date}",
     "filterLabel": "Filter by status",
     "fields": {
       "company": "Issuing company",
@@ -1289,7 +1305,11 @@
       "hintTest": "In test the subject gets [TESTE]. Use your own email."
     },
     "view": "View invoice",
-    "viewInvoice": "View details for {name}"
+    "viewInvoice": "View details for {name}",
+    "copyAction": "Duplicate",
+    "copyInvoice": "Duplicate invoice for {name}",
+    "copyBanner": "Details copied from the invoice for {name}. The competence date is today; review anything you need before issuing.",
+    "copyFailed": "Could not copy the invoice. Fill in the details manually."
   },
   "Billing": {
     "title": "Plan and usage",
@@ -1367,6 +1387,16 @@
     "municipalReg": "Municipal registration",
     "municipalityCode": "Municipality IBGE code",
     "specialRegime": "Special regime",
+    "specialRegimeHint": "Only applies if your city hall placed the company in one of these cases (cooperative, notary, estimated ISS, professional partnership, etc.). When in doubt, leave \"None\".",
+    "specialRegimes": {
+      "0": "0 - None",
+      "1": "1 - Cooperative Act",
+      "2": "2 - Estimate",
+      "3": "3 - Municipal Microenterprise",
+      "4": "4 - Notary or Registrar",
+      "5": "5 - Self-employed Professional",
+      "6": "6 - Professional Partnership"
+    },
     "simpleNational": "Simples Nacional opt-in",
     "address": "Address",
     "street": "Street",
@@ -1390,7 +1420,6 @@
       "taxId": "00.000.000/0000-00",
       "municipalReg": "123456",
       "municipalityCode": "3550308",
-      "specialRegime": "E.g. Municipal Microenterprise",
       "street": "Av. Paulista",
       "number": "1000",
       "complement": "Suite 12",
@@ -1448,7 +1477,7 @@
     "sendMunicipalReg": "Send the municipal registration on the invoice"
   },
   "CompanyDetail": {
-    "fiscalAdvanced": "Advanced fiscal configuration",
+    "fiscalAdvanced": "Advanced mode (accountant)",
     "legalName": "Legal name",
     "taxRegime": "Tax regime",
     "municipalReg": "Municipal registration",
@@ -1526,6 +1555,8 @@
     "defaultServiceCode": "Default service code"
   },
   "InvoiceDetail": {
+    "scheduledBanner": "Scheduled invoice: it will be issued automatically on {date}. Until then it stays queued.",
+    "copy": "Duplicate",
     "anonymousCustomer": "Unidentified consumer",
     "title": "Invoice",
     "loading": "Loading invoice...",
@@ -1541,6 +1572,7 @@
     "events": "Invoice progress",
     "noEvents": "No events recorded.",
     "timeline": {
+      "scheduled": "Scheduled. Issuance will be released on {date}.",
       "queued": "We received the request and the invoice is waiting to be issued.",
       "processing": "We are sending the invoice to the city.",
       "authorized": "The city authorized the invoice. PDF and XML are available.",
@@ -1700,6 +1732,51 @@
       }
     }
   },
+  "CompanyFiscalGuide": {
+    "title": "Fiscal setup",
+    "subtitle": "The basics to issue invoices. Confirm what we already have and fill in only what your regime requires.",
+    "loading": "Loading fiscal setup",
+    "retry": "Try again",
+    "failed": "Could not load the fiscal setup.",
+    "saveFailure": "Could not save. Try again.",
+    "noProfile": "This company has no tax regime yet. Use \"Edit company\" to set the regime.",
+    "regimes": {
+      "MEI": "MEI",
+      "SIMPLES_NACIONAL": "Simples Nacional",
+      "LUCRO_PRESUMIDO": "Presumed profit",
+      "LUCRO_REAL": "Actual profit",
+      "OUTRO_REGIME": "Other regime",
+      "UNKNOWN": "Not set"
+    },
+    "regimeDone": "Regime: {regime}",
+    "regimeDoneHint": "Set at registration and confirmed.",
+    "regimePending": "Regime: {regime}",
+    "regimePendingHint": "Confirm this is the company's current regime. It is required to issue in production.",
+    "confirmRegime": "Confirm regime",
+    "rateTitle": "Simples ISS rate (optional)",
+    "rateHint": "Only needed if a customer withholds ISS at source. It is the effective ISS rate of your bracket in last month's DAS. If unsure, leave it blank and ask your accountant. It takes effect from the next day, because a confirmed regime cannot change on the same day.",
+    "rateLabel": "Rate (%)",
+    "saveRate": "Save rate",
+    "invalidRate": "Enter a percentage between 0 and 100.",
+    "rateDone": "Simples ISS rate: {rate}%",
+    "rateDoneHint": "Used when the customer withholds ISS.",
+    "serviceNotNeeded": "Service: nothing to set up",
+    "serviceNotNeededHint": "Under Simples Nacional and MEI, ISS is paid through the DAS. Service classification only becomes necessary when IBS/CBS applies to Simples, in 2027.",
+    "serviceTitle": "The service you provide",
+    "serviceHint": "Pick the service and the ISS rate charged by your city. Saving confirms the setup.",
+    "serviceReviewHint": "A setup for this service is waiting for review.",
+    "serviceDone": "Service: {service}",
+    "serviceDoneHint": "Set up and confirmed.",
+    "serviceLabel": "Service",
+    "issRateLabel": "ISS rate (%)",
+    "issRateHint": "Check your city's rate for this activity.",
+    "retentionLabel": "Do your customers withhold taxes at source?",
+    "retentionNone": "No (IRRF, PIS, COFINS, CSLL, INSS)",
+    "retentionSome": "Some do — I will adjust in advanced mode",
+    "saveService": "Save and confirm service",
+    "invalidCode": "Select a service from the list.",
+    "serviceAdvanced": "Review or correct this setup in the advanced mode below."
+  },
   "CompanyFiscal": {
     "title": "Fiscal configuration",
     "intro": "Review the company profile and the services used on invoices. Saved configuration is checked again for each operation and competence date.",
@@ -1723,10 +1800,22 @@
     "regime": "Tax regime",
     "simpleNational": "Simples Nacional",
     "specialRegime": "Special tax regime code",
+    "specialRegimeHint": "Only applies if your city hall placed the company in one of these cases (cooperative, notary, estimated ISS, professional partnership, etc.). When in doubt, leave \"None\".",
+    "specialRegimes": {
+      "0": "0 - None",
+      "1": "1 - Cooperative Act",
+      "2": "2 - Estimate",
+      "3": "3 - Municipal Microenterprise",
+      "4": "4 - Notary or Registrar",
+      "5": "5 - Self-employed Professional",
+      "6": "6 - Professional Partnership"
+    },
     "validFrom": "Effective from",
     "validUntil": "Effective until (exclusive)",
     "ibsOption": "Regular IBS/CBS option",
     "ibsFrom": "Regular IBS/CBS option effective from",
+    "simplesIssRate": "Simples Nacional effective ISS rate (%)",
+    "simplesIssRateHint": "Bracket of the previous month (LC 123/2006, art. 21, §4º, I). Required to issue with ISS withholding; record a new period every month.",
     "history": "Fiscal profile history",
     "future": "Future validity period",
     "source": "Source",

@@ -348,13 +348,13 @@ export type FiscalReviewStatus = "unreviewed" | "approved" | "rejected";
 export interface CompanyFiscalProfile {
   id: string; tenantId: string; companyId: string; taxRegime: TaxRegimeKind;
   simpleNational: boolean; specialTaxRegime: string | null;
-  ibsCbsRegularOption: boolean; ibsCbsRegularFrom: string | null;
+  ibsCbsRegularOption: boolean; ibsCbsRegularFrom: string | null; simplesIssRate: string | null;
   validFrom: string; validUntil: string | null; source: string;
   reviewStatus: FiscalReviewStatus; reviewedBy: string | null; reviewedAt: string | null; createdAt: string;
 }
 export interface FiscalProfileInput {
   taxRegime: TaxRegimeKind; simpleNational?: boolean; specialTaxRegime?: string | null;
-  ibsCbsRegularOption?: boolean; ibsCbsRegularFrom?: string | null; validFrom?: string; confirm?: boolean;
+  ibsCbsRegularOption?: boolean; ibsCbsRegularFrom?: string | null; simplesIssRate?: string | null; validFrom?: string; confirm?: boolean;
 }
 export type WithholdingTax = "irrf" | "pis" | "cofins" | "csll" | "inss";
 export interface CompanyServiceTaxProfile {
@@ -409,7 +409,7 @@ export interface Invoice {
   serviceDescription: string; customerSnapshot: CreateInvoiceInput["customer"] | null;
   serviceSnapshot: Required<CreateInvoiceInput["service"]>; competenceDate: string;
   lastErrorCode?: string | null; lastErrorMessage?: string | null;
-  authorizedAt?: string | null; createdAt: string; updatedAt: string;
+  authorizedAt?: string | null; scheduledFor?: string | null; createdAt: string; updatedAt: string;
 }
 export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } | { companyId: string; companyTaxId?: string }) & {
   externalId?: string;

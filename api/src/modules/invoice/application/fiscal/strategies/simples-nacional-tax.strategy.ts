@@ -4,7 +4,7 @@ import type { Obligation } from '@/modules/invoice/domain/fiscal/applicability/t
 import type { FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
 import { err, ok, type Result } from '@/modules/invoice/domain/fiscal/result';
 import { commonObligations } from './common-obligations';
-import { RegularTaxStrategy } from './regular-tax.strategy';
+import { regularIbsCbs } from './regular-tax.strategy';
 import type {
   StrategyInput,
   StrategyPlanResult,
@@ -14,8 +14,6 @@ import type {
 @Injectable()
 export class SimplesNacionalTaxStrategy implements TaxStrategy {
   readonly name = 'simples-nacional';
-
-  private readonly regular = new RegularTaxStrategy();
 
   supports(profile: CompanyFiscalProfile): boolean {
     return profile.taxRegime === 'SIMPLES_NACIONAL';
@@ -38,16 +36,42 @@ export class SimplesNacionalTaxStrategy implements TaxStrategy {
       profile.ibsCbsRegularFrom !== null &&
       profile.ibsCbsRegularFrom <= date;
 
-    // With the regular option active the invoice is planned exactly as a
-    // regular-regime one; `supports` stays mutually exclusive because this
-    // delegation happens inside this strategy instead of a second one.
-    if (ibsCbsInEra && regularOptionActive)
-      return this.regular.planRegular(input);
+    // The rate is the company's effective ISS rate of the Simples bracket of
+    // the previous month (LC 123/2006, art. 21, §4º, I); without it the DPS
+    // cannot carry the mandatory pAliq when retention applies (Sefin 656/658).
+    const issWithheld: Obligation =
+      common.value.issWithheld.status === 'REQUIRED' &&
+      (profile.simplesIssRate === null || profile.simplesIssRate === undefined)
+        ? {
+            status: 'MISSING_CONFIGURATION',
+            reason:
+              'ISS withholding for Simples Nacional ME/EPP requires the effective ISS rate of the previous month (LC 123/2006, art. 21, §4º, I)',
+            missingFields: ['fiscalProfile.simplesIssRate'],
+          }
+        : common.value.issWithheld;
 
     const iss: Obligation = {
       status: 'NOT_APPLICABLE',
       reason: 'ISS recolhido no DAS',
     };
+
+    // Once the regular option is active, only IBS/CBS move to the regular
+    // regime (Res. CGSN 140 art. 22-A; LC 123 art. 13 §§9º-11); ISS keeps
+    // being collected through the DAS and follows the rules above.
+    if (ibsCbsInEra && regularOptionActive) {
+      const ibscbs = regularIbsCbs(input);
+      return ok({
+        customerRequired: common.value.customerRequired,
+        iss,
+        issWithheld,
+        federalWithholding: common.value.federalWithholding,
+        cbs: ibscbs.cbs,
+        ibs: ibscbs.ibs,
+        specialTreatment: common.value.specialTreatment,
+        collectionWaived: ibscbs.collectionWaived,
+      });
+    }
+
     const ibscbs: Obligation = ibsCbsInEra
       ? {
           status: 'UNSUPPORTED',
@@ -61,7 +85,7 @@ export class SimplesNacionalTaxStrategy implements TaxStrategy {
     return ok({
       customerRequired: common.value.customerRequired,
       iss,
-      issWithheld: common.value.issWithheld,
+      issWithheld,
       federalWithholding: common.value.federalWithholding,
       cbs: ibscbs,
       ibs: ibscbs,

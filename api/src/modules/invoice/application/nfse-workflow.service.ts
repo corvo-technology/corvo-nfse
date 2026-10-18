@@ -418,6 +418,7 @@ export class NfseWorkflowService {
           municipalReg: company.municipalRegForDps ?? null,
           municipalityCode: company.municipalityCode,
           specialTaxRegime: profile.specialTaxRegime ?? null,
+          simplesIssRate: profile.simplesIssRate ?? null,
         },
       },
       this.config.getOrThrow<RtcConfig>('rtc').dpsLayout,

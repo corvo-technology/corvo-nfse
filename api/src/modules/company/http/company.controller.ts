@@ -149,6 +149,7 @@ function fiscalProfileMatches(
     profile.specialTaxRegime === desired.specialTaxRegime &&
     profile.ibsCbsRegularOption === desired.ibsCbsRegularOption &&
     profile.ibsCbsRegularFrom === desired.ibsCbsRegularFrom &&
+    profile.simplesIssRate === desired.simplesIssRate &&
     profile.reviewStatus === desired.reviewStatus
   );
 }
@@ -424,6 +425,7 @@ export class CompanyController {
       specialTaxRegime: dto.specialTaxRegime ?? null,
       ibsCbsRegularOption: dto.ibsCbsRegularOption ?? false,
       ibsCbsRegularFrom: dto.ibsCbsRegularFrom ?? null,
+      simplesIssRate: dto.simplesIssRate ?? null,
       validFrom: dto.validFrom ?? todayInEstablishmentTimezone(),
       source: 'company_api',
       reviewStatus: confirmed ? 'approved' : 'unreviewed',

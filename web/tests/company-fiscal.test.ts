@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { effectiveFiscalProfiles, isSimpleNational, fiscalToday, resolveServiceState } from "@/lib/company-fiscal";
+import { allowsSpecialTaxRegime, effectiveFiscalProfiles, isSimpleNational, fiscalToday, resolveServiceState } from "@/lib/company-fiscal";
 import type { CompanyFiscalProfile, CompanyServiceTaxProfile } from "@/lib/types";
 
 const profile = { id: "old", validFrom: "2026-01-01", validUntil: "2026-10-20" } as CompanyFiscalProfile;
@@ -27,5 +27,14 @@ describe("company fiscal configuration", () => {
     expect(resolveServiceState([{ ...service, reviewStatus: "approved" }], "010601", "2026-10-15", "MEI")).toBe("approved");
     expect(resolveServiceState([service, { ...service, id: "duplicate" }], "010601", "2026-10-15", "MEI")).toBe("ambiguous");
     expect(resolveServiceState([{ ...service, regimeApplicability: ["LUCRO_REAL"] }], "010601", "2026-10-15", "MEI")).toBe("missing");
+  });
+
+  it("only offers the special tax regime outside MEI and Simples Nacional", () => {
+    expect(allowsSpecialTaxRegime("")).toBe(false);
+    expect(allowsSpecialTaxRegime("MEI")).toBe(false);
+    expect(allowsSpecialTaxRegime("Simples Nacional")).toBe(false);
+    expect(allowsSpecialTaxRegime("SIMPLES_NACIONAL")).toBe(false);
+    expect(allowsSpecialTaxRegime("Lucro Presumido")).toBe(true);
+    expect(allowsSpecialTaxRegime("LUCRO_REAL")).toBe(true);
   });
 });
