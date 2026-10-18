@@ -9,6 +9,23 @@ export const TAX_REGIME_KINDS = [
   'UNKNOWN',
 ] as const;
 export type TaxRegimeKind = (typeof TAX_REGIME_KINDS)[number];
+
+/**
+ * `regEspTrib` codes (RTC v1.01 `TSRegEspTrib`) this engine maps today: 0
+ * Nenhum, 1 Ato Cooperado, 2 Estimativa, 3 Microempresa Municipal, 4 Notário
+ * ou Registrador, 5 Profissional Autônomo, 6 Sociedade de Profissionais. "9
+ * Outros" also exists in the layout but is free-text and not modelled.
+ */
+export const SPECIAL_TAX_REGIME_CODES = [
+  '0',
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+] as const;
+export type SpecialTaxRegimeCode = (typeof SPECIAL_TAX_REGIME_CODES)[number];
 export type ProfileReviewStatus = 'unreviewed' | 'approved' | 'rejected';
 
 export interface CompanyFiscalProfile {

@@ -293,6 +293,44 @@ describe('strategies', () => {
     expect(r.ok && r.value.iss.status).toBe('UNSUPPORTED');
   });
 
+  it('Regular EXEMPT ISS: UNSUPPORTED (isenção needs the BM/nBM municipal benefit, not modelled)', () => {
+    const r = plan(
+      { taxRegime: 'LUCRO_PRESUMIDO' },
+      {
+        classification: {
+          iss: {
+            taxation: 'EXEMPT',
+            rate: null,
+            withholdingDefault: false,
+            incidenceMunicipalityCode: null,
+          },
+        },
+      },
+    );
+    expect(r.ok && r.value.iss).toMatchObject({
+      status: 'UNSUPPORTED',
+      reason:
+        'isenção de ISS exige o benefício municipal (BM/nBM) na DPS; ainda não suportado',
+    });
+  });
+
+  it('Regular NORMAL ISS with rate: REQUIRED (unchanged)', () => {
+    const r = plan(
+      { taxRegime: 'LUCRO_PRESUMIDO' },
+      {
+        classification: {
+          iss: {
+            taxation: 'NORMAL',
+            rate: '3',
+            withholdingDefault: false,
+            incidenceMunicipalityCode: null,
+          },
+        },
+      },
+    );
+    expect(r.ok && r.value.iss.status).toBe('REQUIRED');
+  });
+
   it('Regular before 2026-10-01: IBS/CBS NOT_APPLICABLE (obligation not yet effective)', () => {
     const r = plan(
       { taxRegime: 'LUCRO_PRESUMIDO' },

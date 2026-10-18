@@ -17,8 +17,9 @@ function regularIss(classification: ServiceTaxClassification): Obligation {
   const { taxation, rate } = classification.iss;
   if (taxation === 'EXEMPT') {
     return {
-      status: 'NOT_APPLICABLE',
-      reason: 'ISS exempt for this operation',
+      status: 'UNSUPPORTED',
+      reason:
+        'isenção de ISS exige o benefício municipal (BM/nBM) na DPS; ainda não suportado',
     };
   }
   if (taxation === 'FIXED') {

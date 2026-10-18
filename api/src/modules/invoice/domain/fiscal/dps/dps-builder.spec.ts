@@ -226,7 +226,7 @@ describe('DpsBuilder', () => {
       await new DpsBuilder().build(
         input({
           result: { taxRegime: 'SIMPLES_NACIONAL', taxes: {} },
-          emitente: { specialTaxRegime: '2' },
+          emitente: { specialTaxRegime: null },
         }),
         RTC_V1_01,
       ),
@@ -237,7 +237,7 @@ describe('DpsBuilder', () => {
       RegimeApuracaoSimplesNacional.FederalEMunicipalPeloSN,
     );
     expect(dps.infDPS.prest.regTrib.regEspTrib).toBe(
-      RegimeEspecialTributacao.Estimativa,
+      RegimeEspecialTributacao.Nenhum,
     );
   });
 
@@ -302,6 +302,126 @@ describe('DpsBuilder', () => {
         ),
       );
       expect(dps.infDPS.valores.trib.tribMun.pAliq).toBe(3);
+    });
+  });
+
+  describe('regEspTrib (E0174/E0175) and tribISSQN', () => {
+    it('defaults a null special tax regime to "0"', async () => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({ emitente: { specialTaxRegime: null } }),
+          RTC_V1_01,
+        ),
+      );
+      expect(dps.infDPS.prest.regTrib.regEspTrib).toBe(
+        RegimeEspecialTributacao.Nenhum,
+      );
+    });
+
+    it('accepts a regular regime with regEspTrib="6" and serializes it as "6"', async () => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({ emitente: { specialTaxRegime: '6' } }),
+          RTC_V1_01,
+        ),
+      );
+      expect(dps.infDPS.prest.regTrib.regEspTrib).toBe(
+        RegimeEspecialTributacao.SociedadeProfissionais,
+      );
+    });
+
+    it('normalizes numeric legacy values such as "03" to "3"', async () => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({ emitente: { specialTaxRegime: ' 03 ' } }),
+          RTC_V1_01,
+        ),
+      );
+      expect(dps.infDPS.prest.regTrib.regEspTrib).toBe(
+        RegimeEspecialTributacao.MicroempresaMunicipal,
+      );
+    });
+
+    it('rejects free text that predates this validation with FISCAL_VALIDATION_FAILED', async () => {
+      const error = errorFrom(
+        await new DpsBuilder().build(
+          input({ emitente: { specialTaxRegime: 'Sociedade Simples' } }),
+          RTC_V1_01,
+        ),
+      );
+      expect(error.code).toBe('FISCAL_VALIDATION_FAILED');
+      expect(error.details).toMatchObject({
+        reason: 'special_tax_regime_invalid',
+      });
+    });
+
+    it('rejects MEI with a non-zero regEspTrib citing E0174', async () => {
+      const error = errorFrom(
+        await new DpsBuilder().build(
+          input({
+            result: {
+              taxRegime: 'MEI',
+              taxes: {},
+              applicability: applicability({
+                strategy: 'mei',
+                customerRequired: false,
+                iss: na('ISS recolhido no DAS-MEI'),
+                cbs: na('MEI nao destaca IBS/CBS na fase de teste'),
+                ibs: na('MEI nao destaca IBS/CBS na fase de teste'),
+              }),
+            },
+            emitente: { specialTaxRegime: '3' },
+          }),
+          RTC_V1_01,
+        ),
+      );
+      expect(error.code).toBe('FISCAL_VALIDATION_FAILED');
+      expect(error.details).toMatchObject({
+        reason: 'special_tax_regime_incompatible_with_simples',
+        rule: 'E0174',
+      });
+    });
+
+    it('rejects Simples Nacional with a non-zero regEspTrib citing E0175', async () => {
+      const error = errorFrom(
+        await new DpsBuilder().build(
+          input({
+            result: { taxRegime: 'SIMPLES_NACIONAL', taxes: {} },
+            emitente: { specialTaxRegime: '6' },
+          }),
+          RTC_V1_01,
+        ),
+      );
+      expect(error.code).toBe('FISCAL_VALIDATION_FAILED');
+      expect(error.details).toMatchObject({
+        reason: 'special_tax_regime_incompatible_with_simples',
+        rule: 'E0175',
+      });
+    });
+
+    it('keeps tribISSQN as OperacaoTributavel for the supported (REQUIRED/NOT_APPLICABLE) ISS cases', async () => {
+      const required = dpsFrom(
+        await new DpsBuilder().build(input(), RTC_V1_01),
+      );
+      expect(required.infDPS.valores.trib.tribMun.tribISSQN).toBe(
+        TipoTribISSQN.OperacaoTributavel,
+      );
+
+      const notApplicable = dpsFrom(
+        await new DpsBuilder().build(
+          input({
+            result: {
+              applicability: applicability({
+                iss: na('ISS recolhido no DAS'),
+              }),
+            },
+          }),
+          RTC_V1_01,
+        ),
+      );
+      expect(notApplicable.infDPS.valores.trib.tribMun.tribISSQN).toBe(
+        TipoTribISSQN.OperacaoTributavel,
+      );
     });
   });
 

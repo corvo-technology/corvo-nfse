@@ -1,5 +1,9 @@
 import type { CompanyFiscalProfile, CompanyServiceTaxProfile, TaxRegime, TaxRegimeKind } from "./types";
 
+/** `regEspTrib` codes (RTC v1.01 `TSRegEspTrib`) the API accepts; keep in sync with the API's SPECIAL_TAX_REGIME_CODES. */
+export const SPECIAL_TAX_REGIME_CODES = ["0", "1", "2", "3", "4", "5", "6"] as const;
+export type SpecialTaxRegimeCode = (typeof SPECIAL_TAX_REGIME_CODES)[number];
+
 export function fiscalToday(now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((value) => value.type === type)?.value ?? "";

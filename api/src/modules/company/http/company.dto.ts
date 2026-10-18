@@ -15,7 +15,10 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { TaxRegime } from '../domain/company';
-import { TAX_REGIME_KINDS } from '../domain/fiscal-profile';
+import {
+  SPECIAL_TAX_REGIME_CODES,
+  TAX_REGIME_KINDS,
+} from '../domain/fiscal-profile';
 import type {
   IssTaxation,
   OperationNature,
@@ -33,6 +36,11 @@ const TAX_REGIMES: TaxRegime[] = [
   'Lucro Presumido',
   'Lucro Real',
 ];
+
+const SPECIAL_TAX_REGIME_DESCRIPTION =
+  'Special tax regime (regEspTrib, RTC v1.01): 0 Nenhum, 1 Ato Cooperado, ' +
+  '2 Estimativa, 3 Microempresa Municipal, 4 Notário ou Registrador, ' +
+  '5 Profissional Autônomo, 6 Sociedade de Profissionais.';
 
 export class AddressDto {
   @IsOptional() @IsString() @MaxLength(200) street?: string;
@@ -75,7 +83,15 @@ export class CreateCompanyDto {
   defaultServiceCode?: string;
   @IsString() @IsIn(TAX_REGIMES) taxRegime!: TaxRegime;
   @IsOptional() @IsBoolean() simpleNational?: boolean;
-  @IsOptional() @IsString() @MaxLength(50) specialRegime?: string;
+  @IsOptional()
+  @ValidateIf((_object, value) => value !== '')
+  @IsIn(SPECIAL_TAX_REGIME_CODES)
+  @ApiPropertyOptional({
+    type: String,
+    enum: SPECIAL_TAX_REGIME_CODES,
+    description: `${SPECIAL_TAX_REGIME_DESCRIPTION} Empty string clears it.`,
+  })
+  specialRegime?: string;
   @IsOptional() @ValidateNested() @Type(() => AddressDto) address?: AddressDto;
 }
 
@@ -107,7 +123,15 @@ export class UpdateCompanyDto {
   defaultServiceCode?: string | null;
   @IsOptional() @IsString() @IsIn(TAX_REGIMES) taxRegime?: TaxRegime;
   @IsOptional() @IsBoolean() simpleNational?: boolean;
-  @IsOptional() @IsString() @MaxLength(50) specialRegime?: string;
+  @IsOptional()
+  @ValidateIf((_object, value) => value !== '')
+  @IsIn(SPECIAL_TAX_REGIME_CODES)
+  @ApiPropertyOptional({
+    type: String,
+    enum: SPECIAL_TAX_REGIME_CODES,
+    description: `${SPECIAL_TAX_REGIME_DESCRIPTION} Empty string clears it.`,
+  })
+  specialRegime?: string;
   @IsOptional()
   @ValidateNested()
   @Type(() => AddressDto)
@@ -125,7 +149,15 @@ export class UpsertFiscalProfileDto {
   taxRegime!: (typeof TAX_REGIME_KINDS)[number];
 
   @IsOptional() @IsBoolean() simpleNational?: boolean;
-  @IsOptional() @IsString() @MaxLength(50) specialTaxRegime?: string | null;
+  @IsOptional()
+  @IsIn(SPECIAL_TAX_REGIME_CODES)
+  @ApiPropertyOptional({
+    type: String,
+    enum: SPECIAL_TAX_REGIME_CODES,
+    nullable: true,
+    description: `${SPECIAL_TAX_REGIME_DESCRIPTION} Null means none.`,
+  })
+  specialTaxRegime?: string | null;
   @IsOptional() @IsBoolean() ibsCbsRegularOption?: boolean;
   @IsOptional() @IsDateString() ibsCbsRegularFrom?: string | null;
 
