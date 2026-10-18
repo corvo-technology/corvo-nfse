@@ -20,6 +20,12 @@ export interface CompanyFiscalProfile {
   specialTaxRegime: string | null;
   ibsCbsRegularOption: boolean;
   ibsCbsRegularFrom: string | null; // YYYY-MM-DD
+  /**
+   * Effective ISS rate (%) of the Simples Nacional bracket of the previous
+   * month (LC 123/2006, art. 21, §4º, I). Required to withhold ISS for
+   * Simples Nacional ME/EPP.
+   */
+  simplesIssRate: string | null;
   validFrom: string; // YYYY-MM-DD, inclusive
   validUntil: string | null; // exclusive; null = open
   source: string;

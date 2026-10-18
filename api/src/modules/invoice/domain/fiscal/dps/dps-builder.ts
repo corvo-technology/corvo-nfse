@@ -53,6 +53,8 @@ export interface DpsBuildInput {
     readonly municipalReg: string | null;
     readonly municipalityCode: string;
     readonly specialTaxRegime: string | null;
+    /** Effective ISS rate (%) of the Simples Nacional bracket of the previous month (LC 123/2006, art. 21, §4º, I). */
+    readonly simplesIssRate: string | null;
   };
 }
 
@@ -186,6 +188,36 @@ export class DpsBuilder {
           ? OpcaoSimplesNacional.MeEpp
           : OpcaoSimplesNacional.NaoOptante;
 
+    const tpRetISSQN =
+      result.applicability.issWithheld.status === 'REQUIRED'
+        ? TipoRetISSQN.RetidoPeloTomador
+        : TipoRetISSQN.NaoRetido;
+    // The Simples Nacional ME/EPP ISS rate only goes on the DPS when
+    // retention applies (Sefin 656/658 mandate pAliq for tpRetISSQN 2/3); the
+    // engine blocks emission beforehand when retention is required and the
+    // rate is missing, so this never silently sends a zeroed rate.
+    const simplesRetentionRate =
+      opSimpNac === OpcaoSimplesNacional.MeEpp &&
+      tpRetISSQN === TipoRetISSQN.RetidoPeloTomador
+        ? input.emitente.simplesIssRate
+        : null;
+    if (
+      opSimpNac === OpcaoSimplesNacional.MeEpp &&
+      tpRetISSQN === TipoRetISSQN.RetidoPeloTomador &&
+      simplesRetentionRate === null
+    ) {
+      return err(
+        fiscalError({
+          code: 'DPS_SCHEMA_VALIDATION_FAILED',
+          message:
+            'ISS withholding for Simples Nacional ME/EPP requires the effective ISS rate (pAliq) on the fiscal profile',
+          category: 'VALIDATION',
+          step: STEP,
+          details: { reason: 'simples_iss_rate_missing' },
+        }),
+      );
+    }
+
     const params: BuildDpsParams = {
       emitente: {
         cnpj: input.emitente.cnpj,
@@ -226,15 +258,14 @@ export class DpsBuilder {
       },
       valores: {
         vServ: toDecimal(result.taxableAmounts.gross).toNumber(),
-        ...(result.taxes.iss !== undefined &&
-        result.taxes.iss.rate !== undefined
-          ? { aliqIss: Number(result.taxes.iss.rate) }
-          : {}),
+        ...(simplesRetentionRate !== null
+          ? { aliqIss: Number(simplesRetentionRate) }
+          : result.taxes.iss !== undefined &&
+              result.taxes.iss.rate !== undefined
+            ? { aliqIss: Number(result.taxes.iss.rate) }
+            : {}),
         tribISSQN: TipoTribISSQN.OperacaoTributavel,
-        tpRetISSQN:
-          result.applicability.issWithheld.status === 'REQUIRED'
-            ? TipoRetISSQN.RetidoPeloTomador
-            : TipoRetISSQN.NaoRetido,
+        tpRetISSQN,
         vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 },
       },
       ...(input.invoice.customer !== null

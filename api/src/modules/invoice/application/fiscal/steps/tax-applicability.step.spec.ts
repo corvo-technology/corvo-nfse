@@ -22,6 +22,7 @@ const profile = (
   specialTaxRegime: null,
   ibsCbsRegularOption: false,
   ibsCbsRegularFrom: null,
+  simplesIssRate: null,
   validFrom: '2026-01-01',
   validUntil: null,
   source: 'onboarding',
@@ -206,6 +207,35 @@ describe('TaxApplicabilityStep', () => {
       category: 'CONFIGURATION',
       step: 'TaxApplicabilityResolver',
       details: { missingFields: ['service.iss.rate'] },
+    });
+  });
+
+  it('fails with TAX_RATE_NOT_FOUND when Simples Nacional ISS withholding is required without simplesIssRate', async () => {
+    const step = stepOf();
+    const error = errorOf(
+      await step.execute(
+        contextFor({
+          companyProfile: profile({
+            taxRegime: 'SIMPLES_NACIONAL',
+            simplesIssRate: null,
+          }),
+          classification: classification({
+            iss: {
+              taxation: 'NORMAL',
+              rate: '5.00',
+              withholdingDefault: true,
+              incidenceMunicipalityCode: '3550308',
+            },
+          }),
+          invoice: { competenceDate: '2026-09-01' },
+        }),
+      ),
+    );
+    expect(error).toMatchObject({
+      code: 'TAX_RATE_NOT_FOUND',
+      category: 'CONFIGURATION',
+      step: 'TaxApplicabilityResolver',
+      details: { missingFields: ['fiscalProfile.simplesIssRate'] },
     });
   });
 

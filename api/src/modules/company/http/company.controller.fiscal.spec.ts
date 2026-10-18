@@ -44,6 +44,7 @@ const makeFiscalProfile = (
   specialTaxRegime: null,
   ibsCbsRegularOption: false,
   ibsCbsRegularFrom: null,
+  simplesIssRate: null,
   validFrom: todayInEstablishmentTimezone(),
   validUntil: null,
   source: 'company_api',
@@ -169,6 +170,7 @@ describe('CompanyController fiscal profile endpoints', () => {
         specialTaxRegime: null,
         ibsCbsRegularOption: false,
         ibsCbsRegularFrom: null,
+        simplesIssRate: null,
         validFrom: todayInEstablishmentTimezone(),
         source: 'company_api',
         reviewStatus: 'unreviewed',
@@ -402,11 +404,25 @@ describe('CompanyController service tax profile endpoints', () => {
 describe('CompanyController service tax profile approval', () => {
   it('scopes the company before approving a service and returns the envelope', async () => {
     const { controller, companyService, serviceTaxProfiles } = makeController();
-    const approve = jest.fn().mockResolvedValue(makeServiceProfile({ reviewStatus: 'approved' }));
+    const approve = jest
+      .fn()
+      .mockResolvedValue(makeServiceProfile({ reviewStatus: 'approved' }));
     Object.assign(serviceTaxProfiles, { approve });
-    const response = await controller.approveServiceTaxProfile(companyId, 'service-id', req);
-    expect(companyService.findById).toHaveBeenCalledWith(companyId, authContext.activeTenantId, 'test');
-    expect(approve).toHaveBeenCalledWith(companyId, authContext.activeTenantId, 'service-id');
+    const response = await controller.approveServiceTaxProfile(
+      companyId,
+      'service-id',
+      req,
+    );
+    expect(companyService.findById).toHaveBeenCalledWith(
+      companyId,
+      authContext.activeTenantId,
+      'test',
+    );
+    expect(approve).toHaveBeenCalledWith(
+      companyId,
+      authContext.activeTenantId,
+      'service-id',
+    );
     expect(response.data.reviewStatus).toBe('approved');
   });
 });

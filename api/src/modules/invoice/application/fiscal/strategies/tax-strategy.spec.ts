@@ -35,6 +35,7 @@ describe('strategies', () => {
     specialTaxRegime: null,
     ibsCbsRegularOption: false,
     ibsCbsRegularFrom: null,
+    simplesIssRate: null,
     validFrom: '2026-01-01',
     validUntil: null,
     source: 'manual',
@@ -166,7 +167,7 @@ describe('strategies', () => {
     expect(r.ok && r.value.iss.status).toBe('NOT_APPLICABLE');
   });
 
-  it('Simples 2027 with regular option valid from the competence: behaves as regular', () => {
+  it('Simples 2027 with regular option valid from the competence: IBS/CBS go regular, ISS stays in the DAS', () => {
     const r = plan(
       {
         taxRegime: 'SIMPLES_NACIONAL',
@@ -176,11 +177,50 @@ describe('strategies', () => {
       { competenceDate: '2027-02-01' },
     );
     expect(r.ok && r.value).toMatchObject({
-      iss: { status: 'REQUIRED' },
+      iss: { status: 'NOT_APPLICABLE', reason: 'ISS recolhido no DAS' },
       cbs: { status: 'REQUIRED' },
       ibs: { status: 'REQUIRED' },
       collectionWaived: false,
     });
+  });
+
+  it('Simples ISS withholding required without simplesIssRate: MISSING_CONFIGURATION', () => {
+    const r = plan(
+      { taxRegime: 'SIMPLES_NACIONAL', simplesIssRate: null },
+      {
+        customer: cnpjCustomer,
+        classification: {
+          iss: {
+            taxation: 'NORMAL',
+            rate: null,
+            withholdingDefault: true,
+            incidenceMunicipalityCode: null,
+          },
+        },
+      },
+    );
+    expect(r.ok && r.value.issWithheld).toMatchObject({
+      status: 'MISSING_CONFIGURATION',
+      missingFields: ['fiscalProfile.simplesIssRate'],
+    });
+  });
+
+  it('Simples ISS withholding required with simplesIssRate configured: REQUIRED', () => {
+    const r = plan(
+      { taxRegime: 'SIMPLES_NACIONAL', simplesIssRate: '2.01' },
+      {
+        customer: cnpjCustomer,
+        classification: {
+          iss: {
+            taxation: 'NORMAL',
+            rate: null,
+            withholdingDefault: true,
+            incidenceMunicipalityCode: null,
+          },
+        },
+      },
+    );
+    expect(r.ok && r.value.issWithheld).toMatchObject({ status: 'REQUIRED' });
   });
 
   it('Regular 2026: IBS/CBS REQUIRED with collection waived; customer required', () => {

@@ -250,7 +250,10 @@ export function validateFiscalContext(
         });
       }
       const ibscbsAllowedBySimplesOption =
-        isSimples && companyProfile.ibsCbsRegularOption === true;
+        isSimples &&
+        companyProfile.ibsCbsRegularOption === true &&
+        companyProfile.ibsCbsRegularFrom !== null &&
+        companyProfile.ibsCbsRegularFrom <= invoice.competenceDate;
       if (rtcTaxes !== undefined && !ibscbsAllowedBySimplesOption) {
         errors.push({
           field: 'rtcTaxes',
