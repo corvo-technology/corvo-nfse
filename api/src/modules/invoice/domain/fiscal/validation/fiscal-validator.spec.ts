@@ -57,6 +57,7 @@ const profile = (
   specialTaxRegime: null,
   ibsCbsRegularOption: false,
   ibsCbsRegularFrom: null,
+  simplesIssRate: null,
   validFrom: '2026-01-01',
   validUntil: null,
   source: 'registration_wizard',
@@ -426,6 +427,7 @@ describe('validateFiscalContext', () => {
   it('accepts RTC taxes for Simples Nacional with the regular IBS/CBS option', () => {
     const { errors } = validateFiscalContext(
       context({
+        invoice: invoice({ competenceDate: '2027-02-01' }),
         companyProfile: profile({
           taxRegime: 'SIMPLES_NACIONAL',
           ibsCbsRegularOption: true,
@@ -438,6 +440,26 @@ describe('validateFiscalContext', () => {
       }),
     );
     expect(errors).toEqual([]);
+  });
+
+  it('flags RTC taxes for Simples Nacional when the regular IBS/CBS option is not yet effective', () => {
+    const { errors } = validateFiscalContext(
+      context({
+        invoice: invoice({ competenceDate: '2026-12-10' }),
+        companyProfile: profile({
+          taxRegime: 'SIMPLES_NACIONAL',
+          ibsCbsRegularOption: true,
+          ibsCbsRegularFrom: '2027-01-01',
+        }),
+        legacyTaxes: undefined,
+      }),
+    );
+    expect(errors).toContainEqual(
+      expect.objectContaining({
+        field: 'rtcTaxes',
+        code: 'TAX_CALCULATION_UNSUPPORTED',
+      }),
+    );
   });
 
   it('flags withholdings greater than the discounted base', () => {

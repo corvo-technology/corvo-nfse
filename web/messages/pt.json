@@ -1253,7 +1253,11 @@
       "hintTest": "Em teste o assunto recebe [TESTE]. Use um e-mail seu."
     },
     "view": "Ver nota",
-    "viewInvoice": "Ver detalhes de {name}"
+    "viewInvoice": "Ver detalhes de {name}",
+    "copyAction": "Duplicar",
+    "copyInvoice": "Duplicar nota de {name}",
+    "copyBanner": "Dados copiados da nota de {name}. A competência é a de hoje; revise o que precisar antes de emitir.",
+    "copyFailed": "Não foi possível copiar a nota. Preencha os dados manualmente."
   },
   "Billing": {
     "title": "Plano e uso",
@@ -1330,6 +1334,16 @@
     "municipalReg": "Inscrição municipal",
     "municipalityCode": "Código IBGE do município",
     "specialRegime": "Regime especial",
+    "specialRegimeHint": "Só se aplica se a prefeitura enquadrou a empresa em um destes casos (cooperativa, cartório, ISS por estimativa, sociedade de profissionais etc.). Na dúvida, deixe \"Nenhum\".",
+    "specialRegimes": {
+      "0": "0 - Nenhum",
+      "1": "1 - Ato Cooperado",
+      "2": "2 - Estimativa",
+      "3": "3 - Microempresa Municipal",
+      "4": "4 - Notário ou Registrador",
+      "5": "5 - Profissional Autônomo",
+      "6": "6 - Sociedade de Profissionais"
+    },
     "simpleNational": "Optante pelo Simples Nacional",
     "address": "Endereço",
     "street": "Rua",
@@ -1353,7 +1367,6 @@
       "taxId": "00.000.000/0000-00",
       "municipalReg": "123456",
       "municipalityCode": "3550308",
-      "specialRegime": "Ex.: Microempresa Municipal",
       "street": "Av. Paulista",
       "number": "1000",
       "complement": "Sala 12",
@@ -1411,7 +1424,7 @@
     "sendMunicipalReg": "Enviar a inscrição municipal na nota"
   },
   "CompanyDetail": {
-    "fiscalAdvanced": "Configuração fiscal avançada",
+    "fiscalAdvanced": "Modo avançado (contador)",
     "legalName": "Razão social",
     "taxRegime": "Regime tributário",
     "municipalReg": "Inscrição municipal",
@@ -1489,6 +1502,7 @@
     "defaultServiceCode": "Código de serviço padrão"
   },
   "InvoiceDetail": {
+    "copy": "Duplicar",
     "anonymousCustomer": "Consumidor não identificado",
     "title": "Nota fiscal",
     "loading": "Carregando nota...",
@@ -1686,6 +1700,51 @@
       }
     }
   },
+  "CompanyFiscalGuide": {
+    "title": "Configuração fiscal",
+    "subtitle": "O básico para emitir notas. Confirme o que já informamos e preencha só o que o seu regime exige.",
+    "loading": "Carregando configuração fiscal",
+    "retry": "Tentar de novo",
+    "failed": "Não foi possível carregar a configuração fiscal.",
+    "saveFailure": "Não foi possível salvar. Tente de novo.",
+    "noProfile": "Esta empresa ainda não tem regime tributário. Use \"Editar empresa\" para informar o regime.",
+    "regimes": {
+      "MEI": "MEI",
+      "SIMPLES_NACIONAL": "Simples Nacional",
+      "LUCRO_PRESUMIDO": "Lucro Presumido",
+      "LUCRO_REAL": "Lucro Real",
+      "OUTRO_REGIME": "Outro regime",
+      "UNKNOWN": "Não informado"
+    },
+    "regimeDone": "Regime: {regime}",
+    "regimeDoneHint": "Informado no cadastro e confirmado.",
+    "regimePending": "Regime: {regime}",
+    "regimePendingHint": "Confirme que este é o regime atual da empresa. Para emitir em produção, essa confirmação é obrigatória.",
+    "confirmRegime": "Confirmar regime",
+    "rateTitle": "Alíquota de ISS do Simples (opcional)",
+    "rateHint": "Só é necessária se algum cliente reter o ISS na fonte. É a alíquota efetiva de ISS da sua faixa no DAS do mês anterior. Se não souber, deixe em branco e pergunte ao seu contador. Vale a partir do dia seguinte, pois um regime já confirmado não pode ser alterado no mesmo dia.",
+    "rateLabel": "Alíquota (%)",
+    "saveRate": "Salvar alíquota",
+    "invalidRate": "Informe um percentual entre 0 e 100.",
+    "rateDone": "Alíquota de ISS do Simples: {rate}%",
+    "rateDoneHint": "Usada quando o cliente retém o ISS.",
+    "serviceNotNeeded": "Serviço: nada a configurar",
+    "serviceNotNeededHint": "No Simples Nacional e no MEI o ISS é recolhido no DAS. A classificação do serviço só passa a ser necessária quando o IBS/CBS começar a valer para o Simples, em 2027.",
+    "serviceTitle": "Serviço que você presta",
+    "serviceHint": "Escolha o serviço e a alíquota de ISS cobrada pelo seu município. Ao salvar, a configuração é confirmada.",
+    "serviceReviewHint": "Há uma configuração para este serviço aguardando revisão.",
+    "serviceDone": "Serviço: {service}",
+    "serviceDoneHint": "Configurado e confirmado.",
+    "serviceLabel": "Serviço",
+    "issRateLabel": "Alíquota de ISS (%)",
+    "issRateHint": "Consulte a alíquota do seu município para esta atividade.",
+    "retentionLabel": "Seus clientes retêm impostos na fonte?",
+    "retentionNone": "Não retêm (IRRF, PIS, COFINS, CSLL, INSS)",
+    "retentionSome": "Alguns retêm — ajustarei no modo avançado",
+    "saveService": "Salvar e confirmar serviço",
+    "invalidCode": "Selecione um serviço da lista.",
+    "serviceAdvanced": "Revise ou corrija esta configuração no modo avançado abaixo."
+  },
   "CompanyFiscal": {
     "title": "Configuração fiscal",
     "intro": "Confira o perfil da empresa e os serviços usados nas notas. A configuração salva será verificada novamente para cada operação e competência.",
@@ -1709,10 +1768,22 @@
     "regime": "Regime tributário",
     "simpleNational": "Simples Nacional",
     "specialRegime": "Código do regime especial",
+    "specialRegimeHint": "Só se aplica se a prefeitura enquadrou a empresa em um destes casos (cooperativa, cartório, ISS por estimativa, sociedade de profissionais etc.). Na dúvida, deixe \"Nenhum\".",
+    "specialRegimes": {
+      "0": "0 - Nenhum",
+      "1": "1 - Ato Cooperado",
+      "2": "2 - Estimativa",
+      "3": "3 - Microempresa Municipal",
+      "4": "4 - Notário ou Registrador",
+      "5": "5 - Profissional Autônomo",
+      "6": "6 - Sociedade de Profissionais"
+    },
     "validFrom": "Vigente a partir de",
     "validUntil": "Vigente até (exclusivo)",
     "ibsOption": "Opção pelo IBS/CBS regular",
     "ibsFrom": "Início da opção pelo IBS/CBS regular",
+    "simplesIssRate": "Alíquota efetiva de ISS do Simples (%)",
+    "simplesIssRateHint": "Faixa do mês anterior (LC 123/2006, art. 21, §4º, I). Obrigatória para emitir com retenção de ISS; registre um novo período a cada mês.",
     "history": "Histórico do perfil fiscal",
     "future": "Vigência futura",
     "source": "Origem",

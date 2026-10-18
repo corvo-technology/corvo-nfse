@@ -9,6 +9,9 @@ import messages from "@/messages/en.json";
 
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 
+const auth = vi.hoisted(() => ({ canIssue: true }));
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (permission: string) => permission !== "nfse.invoices.issue" || auth.canIssue }) }));
+
 afterEach(cleanup);
 
 const invoice = (over: Partial<Invoice> = {}) =>
@@ -32,6 +35,22 @@ describe("invoice list", () => {
 
     const second = screen.getAllByRole("link").filter((link) => link.getAttribute("href") === "/app/invoices/inv-2" && link.getAttribute("aria-label"));
     expect(second.length).toBeGreaterThan(0);
+  });
+});
+
+describe("invoice list duplicate action", () => {
+  it("links each invoice to the new-invoice form pre-filled from it", () => {
+    auth.canIssue = true;
+    renderTable([invoice()]);
+    const links = screen.getAllByRole("link", { name: "Duplicate invoice for Padaria Estrela" });
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) expect(link.getAttribute("href")).toBe("/app/invoices/new?from=inv-1");
+  });
+  it("hides the duplicate action from users who cannot issue invoices", () => {
+    auth.canIssue = false;
+    renderTable([invoice()]);
+    expect(screen.queryAllByRole("link", { name: /Duplicate invoice/ })).toHaveLength(0);
+    auth.canIssue = true;
   });
 });
 

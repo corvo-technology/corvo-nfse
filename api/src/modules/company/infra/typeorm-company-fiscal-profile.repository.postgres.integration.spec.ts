@@ -37,6 +37,7 @@ const profileInput = (
   specialTaxRegime: null,
   ibsCbsRegularOption: false,
   ibsCbsRegularFrom: null,
+  simplesIssRate: null,
   validFrom,
   source: 'manual',
   reviewStatus: 'unreviewed',

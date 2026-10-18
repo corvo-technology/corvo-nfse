@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import type { Company, Certificate } from "@/lib/types";
 import { CompanyForm } from "@/components/dashboard/company-form";
 import { CertificateUpload } from "@/components/dashboard/certificate-upload";
+import { CompanyFiscalGuide } from "@/components/dashboard/company-fiscal-guide";
 import { CompanyFiscalSetup } from "@/components/dashboard/company-fiscal-setup";
 import { companySetup } from "@/lib/company-setup";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,7 @@ export default function CompanyDetailPage() {
           {company.environment === "test" && !setup.allDone && !company.setupGaps?.includes("municipality_code") && <p className="text-[12.5px] text-text-4">{t("setup.testNote")}</p>}
         </Card>
     )}
+    <CompanyFiscalGuide company={company} />
     <details className="group"><summary className="cursor-pointer text-sm underline">{t("fiscalAdvanced")}</summary><div className="mt-4"><CompanyFiscalSetup company={company} /></div></details>
     {certificateView && <Card className="flex flex-col gap-4 p-5"><div className="flex items-center justify-between gap-4"><h2 className="text-base font-medium">{t("certificates")}</h2>{can("nfse.certificates.manage") && <Button onClick={() => setUploading(true)}>{t("upload")}</Button>}</div>{certs.length === 0 ? <p className="text-sm text-text-3">{t("noCertificates")}</p> : certs.map((cert) => <div key={cert.id} className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4"><div><p>{cert.subject}</p><p className="font-mono text-xs text-text-3">{cert.serialNumber}</p><p className="text-sm text-text-3">{t("validUntil")}: {date(cert.validUntil)} · {t(new Date(cert.validUntil).getTime() < now ? "expired" : cert.status)}</p>{new Date(cert.validUntil).getTime() >= now && new Date(cert.validUntil).getTime() - now < 30 * 86400000 && <p className="text-[12.5px] text-warn">{t("expiresSoon")}</p>}</div>{can("nfse.certificates.manage") && <Button variant="danger" onClick={() => setConfirmation({ kind: "certificate", id: cert.id })}>{t("revoke")}</Button>}</div>)}</Card>}
     <Modal open={editing} onClose={() => setEditing(false)} title={t("edit")} wide><CompanyForm company={company} onCancel={() => setEditing(false)} onSave={async (input) => { setCompany(await companies.update(id, input)); setEditing(false); }} /></Modal>
