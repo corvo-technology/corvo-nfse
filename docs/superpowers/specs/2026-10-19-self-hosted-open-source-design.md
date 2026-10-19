@@ -17,8 +17,9 @@ Hoje isso não funciona: o self-hosted nasce no plano Free (3 notas por dia, 1 e
 2. A instância self-hosted mostra apenas o produto (`/app`, `/login`) e a documentação da API (`/docs`, público **[decidido]**).
 3. Uma instância de uso pessoal fica fechada por padrão: só o administrador definido entra.
 4. O primeiro acesso funciona sem provedor de e-mail.
-5. O repositório pode ser tornado público sem vazar dados pessoais nem acoplamento com a marca antiga.
-6. Subir o stack exige poucos passos e imagens prontas para api e web.
+5. O operador chama a API logo após subir o stack, sem criar chave pela interface.
+6. O repositório pode ser tornado público sem vazar dados pessoais nem acoplamento com a marca antiga.
+7. Subir o stack exige poucos passos e imagens prontas para api e web.
 
 **Não objetivos**
 - Cobrança entre usuários da mesma instância self-hosted.
@@ -146,7 +147,31 @@ Hoje qualquer e-mail que peça um código ganha um workspace novo. Numa instânc
 
 Sem provedor de e-mail configurado, a interface avisa que o login por código está indisponível e orienta a usar o comando.
 
-### 6.4 Exposição de rede e dados
+### 6.4 Acesso à API sem gerar chave pela interface
+
+Hoje toda chamada exige `x-api-key` (ligada a tenant, escopo e ambiente) ou cookie de sessão (`api-key.guard.ts`). Num self-hosted de uso pessoal isso é atrito: o operador quer subir e chamar a API. Projetos comparáveis (WAHA, Evolution API, Meilisearch) usam uma chave definida no `.env`, e aceitam modo aberto só em ambiente local.
+
+O Corvo guarda certificados A1 e emite documentos fiscais com valor legal, então uma API aberta em rede alcançável permitiria emitir notas em nome da empresa. O modo sem chave por isso é restrito.
+
+**Chave fixa no `.env` [decisão minha: é o padrão].**
+- `CORVO_API_KEY`, gerada por `scripts/setup-env.mjs` com os demais segredos. Vale só em `self_hosted`; em `cloud` é ignorada e a API avisa no log.
+- Enviada em `x-api-key`, como as chaves normais. O `ApiKeyGuard` compara em tempo constante com o valor configurado (guardado como hash em memória) antes de consultar o banco.
+- Resolve para o **tenant da instância**: o tenant do `ADMIN_EMAIL`. Se ele ainda não existe, o tenant é criado na primeira chamada autenticada ou pelo `create-admin`. **[decisão minha]** em self-hosted existe um único tenant "da instância"; chamadas com a chave fixa e o login do administrador enxergam os mesmos dados.
+- Escopo total. O ambiente fiscal continua vindo do header `x-corvo-environment` (`test` por padrão, `live` explícito).
+- Não pode ser revogada pela interface; trocar é editar o `.env` e reiniciar. Fica fora do modelo de chaves da tabela `api_keys` e não aparece na tela de chaves, que mostra um aviso "chave da instância definida no ambiente".
+- Rate limit e auditoria seguem valendo, com a identidade `instance-key`.
+
+**Modo sem chave, só local.**
+- `API_AUTH_MODE=none` faz toda chamada resolver para o tenant da instância sem credencial.
+- A API **recusa subir** se `API_AUTH_MODE=none` e a porta publicada não for loopback (`API_BIND_ADDRESS` diferente de `127.0.0.1` ou `::1`) ou se `APP_ORIGIN` for HTTPS público. Mesma lógica do Meilisearch em produção.
+- Não é padrão e não é gerado pelo `setup-env`. Existe para teste local e CI.
+- No log de subida, aviso permanente de que a API está sem autenticação.
+
+**Chaves normais** (tabela `api_keys`, com escopo por integração) continuam existindo no modo `self_hosted` para quem precisa de várias chaves com permissões diferentes. No modo `cloud` nada muda.
+
+**Não faz parte:** autenticação por IP de origem, e aceitar o header de uma chave fixa em `cloud`.
+
+### 6.5 Exposição de rede e dados
 
 - Manter o bind padrão em `127.0.0.1` para api e web. Documentar três modos: **local**, **privado** (Tailscale, VPN ou Cloudflare Access na frente) e **público** (Caddy ou Dokploy com HTTPS).
 - Documentar com destaque a chave `NFSE_MASTER_KEY` e `SECRETS_ENCRYPTION_KEY`: perdê-las perde os certificados armazenados.
@@ -224,6 +249,9 @@ O que ainda depende do operador: um bucket S3 em produção (LocalStack no teste
 - Em `closed`, um e-mail desconhecido recebe a resposta normal de `magic-link/request`, mas nenhum e-mail é enviado e nenhum usuário é criado. O `ADMIN_EMAIL` consegue entrar.
 - `create-admin` produz um link que funciona uma vez e expira; reutilizá-lo falha; em `cloud` o comando recusa.
 - Convidado entra mesmo em `closed`.
+- Com `CORVO_API_KEY` definida, `x-api-key` com o valor certo acessa a API do tenant da instância e com valor errado recebe 401; em `cloud` a variável é ignorada.
+- `API_AUTH_MODE=none` com `API_BIND_ADDRESS=0.0.0.0` impede a API de subir; com `127.0.0.1` sobe e avisa no log.
+- A chave fixa nunca aparece em logs, na listagem de chaves nem em `/v1/config`.
 
 **C**
 - `git grep` por e-mails pessoais e `greenflow` não retorna nada fora de arquivos de histórico explicitamente permitidos.
@@ -238,6 +266,8 @@ O que ainda depende do operador: um bucket S3 em produção (LocalStack no teste
 - **Divergência entre modos.** Dois modos dobram a superfície de teste. Mitigação: a diferença fica em implementações trocadas por DI e cada uma tem sua suíte; um teste de contrato garante a mesma interface.
 - **Renomeação de cookies e prefixos** invalida sessões e chaves de atestado em voo. Mitigação: janela única, produção com 1 tenant.
 - **RTC.** Se a redistribuição não for permitida, o setup continua pesado. Mitigação: documentar claramente e manter a alternativa de build local.
+- **Chave fixa vazada** dá acesso total. Mitigação: gerada com 256 bits, arquivo `.env` com permissão `0600`, comparação em tempo constante, nunca logada, e documentação de rotação (editar e reiniciar).
+- **Modo sem chave exposto por engano.** Mitigação: a validação de subida recusa combinações inseguras.
 - **Cadastro fechado mal configurado** deixa o operador sem acesso. Mitigação: `create-admin` sempre disponível por shell.
 - **Expectativa fiscal.** O operador pode achar que o projeto garante conformidade. Mitigação: aviso legal explícito.
 
@@ -248,6 +278,7 @@ O que ainda depende do operador: um bucket S3 em produção (LocalStack no teste
 3. Termos de redistribuição do jar da RTC (precisa de leitura dos termos do governo).
 4. Armazenamento local ou MinIO no compose para instâncias pessoais, em vez de S3 externo.
 5. Endurecimento de containers (`read_only`, `cap_drop`) depende de verificar onde o app escreve.
+6. Se a chave fixa deve poder ser restrita a `test` (por exemplo, `CORVO_API_KEY_ENVIRONMENT=test`) ou sempre ter acesso a `live`.
 
 ## 13. Fora desta spec
 
