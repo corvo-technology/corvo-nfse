@@ -153,13 +153,15 @@ Hoje toda chamada exige `x-api-key` (ligada a tenant, escopo e ambiente) ou cook
 
 O Corvo guarda certificados A1 e emite documentos fiscais com valor legal, então uma API aberta em rede alcançável permitiria emitir notas em nome da empresa. O modo sem chave por isso é restrito.
 
-**Chave fixa no `.env` [decisão minha: é o padrão].**
-- `CORVO_API_KEY`, gerada por `scripts/setup-env.mjs` com os demais segredos. Vale só em `self_hosted`; em `cloud` é ignorada e a API avisa no log.
+**Duas chaves fixas no `.env`, uma por ambiente fiscal [decidido: teste e live separadas; o resto é decisão minha].**
+- `CORVO_API_KEY_TEST` e `CORVO_API_KEY_LIVE`, ambas geradas por `scripts/setup-env.mjs` com os demais segredos. Assim o operador integra e valida o próprio servidor com a chave de teste e só troca para a chave live quando for emitir de verdade. Cada uma é opcional: se uma estiver vazia, aquele ambiente fica sem acesso por chave fixa. As duas valem só em `self_hosted`; em `cloud` são ignoradas e a API avisa no log.
+- O ambiente fiscal é **determinado pela chave**, como já acontece com as chaves normais (a chave persistida é a fonte da verdade do ambiente, `api-key.guard.ts`). Uma chave `test` que envie `x-corvo-environment: live` recebe 403; o header só pode confirmar o ambiente da chave, nunca mudá-lo. As duas chaves precisam ser diferentes: a API recusa subir se forem iguais.
+- Uma chave `test` só enxerga e cria dados do ambiente `test`; a `live` só os do `live`, como hoje.
 - Enviada em `x-api-key`, como as chaves normais. O `ApiKeyGuard` compara em tempo constante com o valor configurado (guardado como hash em memória) antes de consultar o banco.
 - Resolve para o **tenant da instância**: o tenant do `ADMIN_EMAIL`. Se ele ainda não existe, o tenant é criado na primeira chamada autenticada ou pelo `create-admin`. **[decisão minha]** em self-hosted existe um único tenant "da instância"; chamadas com a chave fixa e o login do administrador enxergam os mesmos dados.
-- Escopo total. O ambiente fiscal continua vindo do header `x-corvo-environment` (`test` por padrão, `live` explícito).
-- Não pode ser revogada pela interface; trocar é editar o `.env` e reiniciar. Fica fora do modelo de chaves da tabela `api_keys` e não aparece na tela de chaves, que mostra um aviso "chave da instância definida no ambiente".
-- Rate limit e auditoria seguem valendo, com a identidade `instance-key`.
+- Escopo total dentro do ambiente da chave.
+- Não podem ser revogadas pela interface; trocar é editar o `.env` e reiniciar. Ficam fora do modelo de chaves da tabela `api_keys` e não aparecem na tela de chaves, que mostra um aviso "chaves da instância definidas no ambiente".
+- Rate limit e auditoria seguem valendo, com a identidade `instance-key:test` ou `instance-key:live`.
 
 **Modo sem chave, só local.**
 - `API_AUTH_MODE=none` faz toda chamada resolver para o tenant da instância sem credencial.
@@ -249,9 +251,10 @@ O que ainda depende do operador: um bucket S3 em produção (LocalStack no teste
 - Em `closed`, um e-mail desconhecido recebe a resposta normal de `magic-link/request`, mas nenhum e-mail é enviado e nenhum usuário é criado. O `ADMIN_EMAIL` consegue entrar.
 - `create-admin` produz um link que funciona uma vez e expira; reutilizá-lo falha; em `cloud` o comando recusa.
 - Convidado entra mesmo em `closed`.
-- Com `CORVO_API_KEY` definida, `x-api-key` com o valor certo acessa a API do tenant da instância e com valor errado recebe 401; em `cloud` a variável é ignorada.
+- Com `CORVO_API_KEY_TEST` e `CORVO_API_KEY_LIVE` definidas, cada uma acessa a API do tenant da instância apenas no seu ambiente; valor errado recebe 401; a chave `test` pedindo `live` recebe 403; chaves iguais impedem a subida; em `cloud` as variáveis são ignoradas.
+- Notas emitidas com a chave `test` não consomem nem reservam nada e não aparecem no ambiente `live`.
 - `API_AUTH_MODE=none` com `API_BIND_ADDRESS=0.0.0.0` impede a API de subir; com `127.0.0.1` sobe e avisa no log.
-- A chave fixa nunca aparece em logs, na listagem de chaves nem em `/v1/config`.
+- As chaves fixas nunca aparecem em logs, na listagem de chaves nem em `/v1/config`.
 
 **C**
 - `git grep` por e-mails pessoais e `greenflow` não retorna nada fora de arquivos de histórico explicitamente permitidos.
@@ -266,7 +269,7 @@ O que ainda depende do operador: um bucket S3 em produção (LocalStack no teste
 - **Divergência entre modos.** Dois modos dobram a superfície de teste. Mitigação: a diferença fica em implementações trocadas por DI e cada uma tem sua suíte; um teste de contrato garante a mesma interface.
 - **Renomeação de cookies e prefixos** invalida sessões e chaves de atestado em voo. Mitigação: janela única, produção com 1 tenant.
 - **RTC.** Se a redistribuição não for permitida, o setup continua pesado. Mitigação: documentar claramente e manter a alternativa de build local.
-- **Chave fixa vazada** dá acesso total. Mitigação: gerada com 256 bits, arquivo `.env` com permissão `0600`, comparação em tempo constante, nunca logada, e documentação de rotação (editar e reiniciar).
+- **Chave live vazada** permite emitir notas reais; a chave de teste vazada não tem valor fiscal. Mitigação: gerada com 256 bits, arquivo `.env` com permissão `0600`, comparação em tempo constante, nunca logada, e documentação de rotação (editar e reiniciar).
 - **Modo sem chave exposto por engano.** Mitigação: a validação de subida recusa combinações inseguras.
 - **Cadastro fechado mal configurado** deixa o operador sem acesso. Mitigação: `create-admin` sempre disponível por shell.
 - **Expectativa fiscal.** O operador pode achar que o projeto garante conformidade. Mitigação: aviso legal explícito.
@@ -278,7 +281,6 @@ O que ainda depende do operador: um bucket S3 em produção (LocalStack no teste
 3. Termos de redistribuição do jar da RTC (precisa de leitura dos termos do governo).
 4. Armazenamento local ou MinIO no compose para instâncias pessoais, em vez de S3 externo.
 5. Endurecimento de containers (`read_only`, `cap_drop`) depende de verificar onde o app escreve.
-6. Se a chave fixa deve poder ser restrita a `test` (por exemplo, `CORVO_API_KEY_ENVIRONMENT=test`) ou sempre ter acesso a `live`.
 
 ## 13. Fora desta spec
 
