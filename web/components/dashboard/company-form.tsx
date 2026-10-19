@@ -2,6 +2,7 @@
 import { useState, useRef } from "react";
 import { Check, Loader2, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
+import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { ServiceCodeCombobox } from "@/components/ui/service-code-combobox";
@@ -12,6 +13,10 @@ import { cleanTaxId, isValidCnpj, maskCnpj, maskDigits, maskState, maskZip, only
 import { lookupCep } from "@/lib/viacep";
 import { mapIssues } from "@/lib/api-errors";
 import type { Company, CompanyFormInput, TaxRegime } from "@/lib/types";
+
+const posthogConfigured = Boolean(
+  process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
+);
 
 const STEPS = ["company", "address", "fiscal", "certificate"] as const;
 type Step = (typeof STEPS)[number];
@@ -135,6 +140,12 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
         address: hasAddress ? addressFields : company && Object.values(company.address).some(Boolean) ? null : undefined,
       });
       if (wizard && result) {
+        if (posthogConfigured) {
+          posthog.capture("company_created", {
+            tax_regime: values.taxRegime,
+            has_default_service_code: Boolean(values.defaultServiceCode),
+          });
+        }
         setCreated(result); setStepIndex(3); setReached(3);
         if (!canUploadCertificate) onFinish?.(result);
       }

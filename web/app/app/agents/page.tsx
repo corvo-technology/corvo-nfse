@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Bot, Check, Copy } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import posthog from "posthog-js";
 import { collectAll, mcp, type McpConnection } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { MCP_SERVER_URL } from "@/lib/mcp-config";
@@ -17,6 +18,10 @@ import { Modal } from "@/components/ui/modal";
 import { CONNECTION_GRID, ConnectionRow } from "@/components/agents/connection-row";
 import { PageHeader } from "@/components/ui/page-header";
 import { useToast } from "@/components/ui/toast";
+
+const posthogConfigured = Boolean(
+  process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
+);
 
 function CopyButton({ value }: { value: string }) {
   const t = useTranslations("Agents.setup");
@@ -174,6 +179,7 @@ export default function AgentsPage() {
     setRevoking(true);
     try {
       await mcp.revoke(target.id);
+      if (posthogConfigured) posthog.capture("mcp_connection_revoked");
       success(t("connections.revokedToast"));
       setTarget(null);
       await load();

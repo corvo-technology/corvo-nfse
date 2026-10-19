@@ -5,11 +5,16 @@ import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
+import posthog from "posthog-js";
 import { auth, ApiError, type MagicLinkChallenge, type OAuthProvider, type OAuthProviders } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { safeNextPath } from "@/lib/safe-next";
 import { cn } from "@/lib/utils";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
+
+const posthogConfigured = Boolean(
+  process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
+);
 
 type Mode = "signup" | "login";
 type Step = "email" | "code";
@@ -111,6 +116,7 @@ function LoginPageContent() {
     busy.current = true; setError(""); setLoading(true);
     try {
       await verifyCode(email.trim(), challenge.challengeId, candidate, () => setCookieIssued(true));
+      if (posthogConfigured) posthog.capture("authentication_completed", { method: "magic_link", mode });
       router.replace(afterLogin);
     } catch (cause) { showError(cause); }
     finally { busy.current = false; setLoading(false); }
