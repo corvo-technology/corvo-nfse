@@ -1,4 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { SeverityNumber } from "@opentelemetry/api-logs";
+import { after, NextRequest, NextResponse } from "next/server";
+import { loggerProvider, posthogConfigured, posthogLog } from "@/instrumentation";
 
 const routes: [RegExp, string[]][] = [
   [/^auth\/magic-link\/(request|verify)$/, ["POST"]],
@@ -46,6 +48,23 @@ const routes: [RegExp, string[]][] = [
 const sessionNames = new Set(["gf_session_dev", "__Host-gf_session", "gf_oauth_state_dev", "__Host-gf_oauth_state"]);
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const OAUTH_HOSTS = new Set(["accounts.google.com", "github.com"]);
+
+function logProxyOutcome(route: string, method: string, status: number, outcome: "completed" | "body_rejected" | "upstream_unavailable") {
+  if (!posthogConfigured) return;
+  posthogLog.emit({
+    body: outcome === "completed" ? "API proxy request completed" : "API proxy request failed",
+    severityNumber: status >= 500 ? SeverityNumber.ERROR : status >= 400 ? SeverityNumber.WARN : SeverityNumber.INFO,
+    attributes: {
+      event: `api_proxy_request_${outcome}`,
+      api_area: route.split("/", 1)[0],
+      method,
+      status_code: status,
+    },
+  });
+  after(async () => {
+    await loggerProvider.forceFlush();
+  });
+}
 /** A redirect may only go to a path on this site or to a social provider's consent screen. */
 function safeLocation(value: string | null): string | null {
   if (!value) return null;
@@ -108,6 +127,7 @@ async function proxyRequest(request: NextRequest, context: { params: Promise<{ p
     const mutation = !["GET", "HEAD"].includes(request.method);
     const body = mutation ? await limitedBody(request, /\/certificates$/.test(route) ? 64 * 1024 : 1024 * 1024) : undefined;
     const upstream = await fetch(target, { method: request.method, headers, body, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(30_000) });
+    logProxyOutcome(route, request.method, upstream.status, "completed");
     const responseHeaders = new Headers({ "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
     for (const name of ["content-type", "content-disposition", "retry-after", "x-ratelimit-limit", "x-ratelimit-remaining", "x-ratelimit-reset"]) {
       const value = upstream.headers.get(name); if (value) responseHeaders.set(name, value);
@@ -124,7 +144,11 @@ async function proxyRequest(request: NextRequest, context: { params: Promise<{ p
     const noBody = [204, 205, 304].includes(upstream.status);
     return new NextResponse(noBody ? null : upstream.body, { status: upstream.status, headers: responseHeaders });
   } catch (error) {
-    if (error instanceof Error && error.message === "BODY_TOO_LARGE") return failure(413, "Request body too large");
+    if (error instanceof Error && error.message === "BODY_TOO_LARGE") {
+      logProxyOutcome(route, request.method, 413, "body_rejected");
+      return failure(413, "Request body too large");
+    }
+    logProxyOutcome(route, request.method, 502, "upstream_unavailable");
     return failure(502, "Could not connect to the API. Please try again.");
   }
 }
