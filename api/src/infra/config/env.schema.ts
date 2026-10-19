@@ -189,6 +189,7 @@ export const envSchema = z
       .default(3),
     TURNSTILE_ALLOWED_HOSTNAMES: z.string().min(1).default('localhost'),
     TURNSTILE_DEVELOPMENT_BYPASS_ENABLED: booleanFromEnv.default(false),
+    TURNSTILE_ENFORCED: booleanFromEnv.default(false),
     DATABASE_URL: z.string().min(1),
     DB_SCHEMA: z
       .string()

@@ -1,3 +1,4 @@
+import { RequireHumanProof } from '@/modules/security/http/turnstile-proof.guard';
 import {
   Body,
   Controller,
@@ -51,6 +52,7 @@ export class MagicLinkController {
   ) {}
 
   @Post('request')
+  @RequireHumanProof('login')
   @HttpCode(200)
   @Header('Cache-Control', 'no-store')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })

@@ -91,3 +91,11 @@ it("forwards only the MCP consent and connection routes the dashboard needs", as
   }
   expect(fetchMock).not.toHaveBeenCalled();
 });
+it("lets the Turnstile verify call through and relays only the human-proof cookie", async () => {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  headers.append("Set-Cookie", "gf_human_login_dev=proof; HttpOnly; Path=/"); headers.append("Set-Cookie", "other=ignore; Path=/");
+  fetchMock.mockResolvedValue(new Response("{}", { status: 200, headers }));
+  const response = await POST(new NextRequest("http://localhost:4000/api/proxy/v1/public/security/turnstile/verify", { method: "POST", headers: { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "Content-Type": "application/json", Cookie: "gf_human_login_dev=proof; analytics=ignored" }, body: JSON.stringify({ token: "t", action: "login" }) }), context("public/security/turnstile/verify"));
+  expect(response.status).toBe(200); expect(response.headers.getSetCookie()).toEqual(["gf_human_login_dev=proof; HttpOnly; Path=/"]);
+  expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get("Cookie")).toBe("gf_human_login_dev=proof");
+});

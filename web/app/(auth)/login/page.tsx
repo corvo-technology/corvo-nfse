@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { auth, ApiError, type MagicLinkChallenge, type OAuthProvider, type OAuthProviders } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { turnstileEnabled, useTurnstile } from "@/lib/turnstile";
 import { safeNextPath } from "@/lib/safe-next";
 import { cn } from "@/lib/utils";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
@@ -64,6 +65,7 @@ function LoginPageContent() {
   const [now, setNow] = useState(() => Date.now());
   const [cookieIssued, setCookieIssued] = useState(false);
   const busy = useRef(false);
+  const { containerRef: humanCheckRef, getToken: getHumanToken, reset: resetHumanCheck } = useTurnstile("login");
   const waitSeconds = Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
   const expired = challenge !== null && now >= Date.parse(challenge.expiresAt);
   useEffect(() => {
@@ -99,6 +101,11 @@ function LoginPageContent() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError(t("errors.invalidEmail")); return; }
     busy.current = true; setError(""); setLoading(true);
     try {
+      if (turnstileEnabled) {
+        const token = await getHumanToken();
+        if (!token) { setError(t("errors.humanCheckFailed")); return; }
+        try { await auth.humanProof(token); } finally { resetHumanCheck(); }
+      }
       const issued = await auth.magicLinkRequest(email.trim());
       setChallenge(issued); setCooldownUntil(Date.parse(issued.resendAvailableAt));
       setNow(Date.now()); setCode(""); setCookieIssued(false); setStep("code");
@@ -367,6 +374,9 @@ function LoginPageContent() {
                 )}
               </motion.div>
             </AnimatePresence>
+
+            {/* Turnstile: invisible unless Cloudflare needs the visitor to interact. */}
+            <div ref={humanCheckRef} className="mt-4 flex justify-center empty:hidden" />
           </div>
 
           {/* Terms (signup only) */}

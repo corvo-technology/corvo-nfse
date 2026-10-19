@@ -93,7 +93,10 @@ export class TurnstileProofGuard implements CanActivate {
       return true;
     }
 
-    if (this.isRolloutBypassEnabled(requirement)) {
+    if (
+      this.config.get<TurnstileConfig>('turnstile')?.enforced === false ||
+      this.isRolloutBypassEnabled(requirement)
+    ) {
       recordHumanProofEvent('proof_rollout_bypassed', requirement.action);
       return true;
     }

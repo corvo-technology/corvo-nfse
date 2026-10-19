@@ -145,6 +145,8 @@ export type TurnstileConfig = {
   secretKey: string;
   allowedHostnames: string[];
   developmentBypassEnabled: boolean;
+  /** When false, routes marked `@RequireHumanProof` accept requests without proof (rollout switch). */
+  enforced: boolean;
 };
 
 export type LoggingConfig = {

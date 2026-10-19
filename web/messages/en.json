@@ -591,6 +591,7 @@
     "noAccountYet": "No account yet?",
     "termsNote": "By creating an account, you accept the <terms>Terms of Service</terms> and acknowledge reading the <privacy>Privacy Notice</privacy>.",
     "errors": {
+      "humanCheckFailed": "Could not complete the security check. Reload the page and try again.",
       "somethingWentWrong": "Something went wrong",
       "invalidCredentials": "Invalid or expired code. Check the code or request a new one.",
       "emailTaken": "This email is already registered. Try signing in instead.",

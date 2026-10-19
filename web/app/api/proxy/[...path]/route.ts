@@ -40,10 +40,11 @@ const routes: [RegExp, string[]][] = [
   [/^mcp\/consent$/, ["GET", "POST"]],
   [/^mcp\/connections$/, ["GET"]],
   [/^mcp\/connections\/[^/]+$/, ["DELETE"]],
+  [/^public\/security\/turnstile\/verify$/, ["POST"]],
   [/^health\/(live|ready)$/, ["GET"]],
 ];
-// Session plus the short-lived social sign-in state cookie.
-const sessionNames = new Set(["gf_session_dev", "__Host-gf_session", "gf_oauth_state_dev", "__Host-gf_oauth_state"]);
+// Session, the short-lived social sign-in state cookie and the single-use Turnstile proof.
+const sessionNames = new Set(["gf_session_dev", "__Host-gf_session", "gf_oauth_state_dev", "__Host-gf_oauth_state", "gf_human_login_dev", "__Host-gf_human_login"]);
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const OAUTH_HOSTS = new Set(["accounts.google.com", "github.com"]);
 /** A redirect may only go to a path on this site or to a social provider's consent screen. */

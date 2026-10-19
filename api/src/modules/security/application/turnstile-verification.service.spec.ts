@@ -25,7 +25,7 @@ function config(
         return { nodeEnv };
       }
       if (key === 'turnstile') {
-        return { secretKey };
+        return { secretKey, allowedHostnames: ['corvo.tech'] };
       }
       return undefined;
     }),
@@ -41,6 +41,38 @@ describe('TurnstileVerificationService', () => {
 
   afterEach(() => {
     fetchSpy.mockRestore();
+  });
+
+  it('rejects a token issued for another action or hostname', async () => {
+    const service = new TurnstileVerificationService(config());
+    fetchSpy.mockResolvedValueOnce(
+      makeResponse(200, { success: true, hostname: 'corvo.tech', action: 'x' }),
+    );
+    await expect(
+      service.verify({ token: 't', expectedAction: 'login' }),
+    ).resolves.toEqual({ success: false, errorCodes: ['action-mismatch'] });
+
+    fetchSpy.mockResolvedValueOnce(
+      makeResponse(200, {
+        success: true,
+        hostname: 'evil.test',
+        action: 'login',
+      }),
+    );
+    await expect(
+      service.verify({ token: 't', expectedAction: 'login' }),
+    ).resolves.toEqual({ success: false, errorCodes: ['hostname-mismatch'] });
+
+    fetchSpy.mockResolvedValueOnce(
+      makeResponse(200, {
+        success: true,
+        hostname: 'corvo.tech',
+        action: 'login',
+      }),
+    );
+    await expect(
+      service.verify({ token: 't', expectedAction: 'login' }),
+    ).resolves.toMatchObject({ success: true, hostname: 'corvo.tech' });
   });
 
   it('bypasses Cloudflare verification in development', async () => {

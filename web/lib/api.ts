@@ -55,7 +55,7 @@ const unauthorizedListeners = new Set<() => void>();
 export function onUnauthorized(listener: () => void) { unauthorizedListeners.add(listener); return () => { unauthorizedListeners.delete(listener); }; }
 export function setCsrfToken(token: string | null) { csrfToken = token || null; csrfGeneration++; csrfRefresh = null; }
 export function getCsrfToken() { return csrfToken; }
-const publicMutations = new Set(["/auth/magic-link/request", "/auth/magic-link/verify"]);
+const publicMutations = new Set(["/auth/magic-link/request", "/auth/magic-link/verify", "/public/security/turnstile/verify"]);
 function invalidateSession() { setCsrfToken(null); for (const listener of unauthorizedListeners) listener(); }
 async function ensureCsrf() {
   if (csrfToken) return;
@@ -129,6 +129,11 @@ export const auth = {
   oauthStartUrl: (provider: OAuthProvider, next?: string) => `${BASE}/auth/oauth/${provider}/authorize${next ? `?next=${encodeURIComponent(next)}` : ""}`,
   switchTenant: async (tenantId: string) => (await request<Envelope<Omit<SessionPayload, "status">>>("/auth/session/tenant", json({ tenantId }))).data,
   me: async () => (await request<Envelope<AuthContext>>("/auth/me")).data,
+  /** Exchanges a Turnstile token for the single-use human-proof cookie the login endpoint requires. */
+  humanProof: async (token: string) => {
+    const { data } = await request<Envelope<{ isVerified: boolean }>>("/public/security/turnstile/verify", json({ token, action: "login" }));
+    if (!data?.isVerified) throw new ApiError(403, "Human verification failed.");
+  },
   magicLinkRequest: async (email: string) => (await request<Envelope<MagicLinkChallenge>>("/auth/magic-link/request", json({ email }))).data,
   magicLinkVerify: async (email: string, challengeId: string, code: string) => (await request<Envelope<MagicLinkVerified>>("/auth/magic-link/verify", json({ email, challengeId, code }))).data,
 };

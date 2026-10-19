@@ -37,6 +37,7 @@ describe('TurnstileProofGuard', () => {
     enforcement?: HumanProofEnforcement;
     nodeEnv?: 'development' | 'test' | 'production';
     bypass?: boolean;
+    turnstileEnforced?: boolean;
     publicCustomerSessionEnforced?: boolean;
   }) => {
     const reflector = {
@@ -54,7 +55,10 @@ describe('TurnstileProofGuard', () => {
           return { nodeEnv: input.nodeEnv ?? 'test' };
         }
         if (key === 'turnstile') {
-          return { developmentBypassEnabled: input.bypass ?? false };
+          return {
+            developmentBypassEnabled: input.bypass ?? false,
+            enforced: input.turnstileEnforced,
+          };
         }
         if (
           key === 'publicCustomerSession' &&
@@ -91,6 +95,27 @@ describe('TurnstileProofGuard', () => {
       cookies,
     };
   };
+
+  it('lets requests through without proof while TURNSTILE_ENFORCED is off', async () => {
+    const fixture = makeGuard({ action: 'login', turnstileEnforced: false });
+
+    await expect(fixture.guard.canActivate(fixture.context)).resolves.toBe(
+      true,
+    );
+    expect(fixture.attestations.consume).not.toHaveBeenCalled();
+    expect(recordHumanProofEvent).toHaveBeenCalledWith(
+      'proof_rollout_bypassed',
+      'login',
+    );
+  });
+
+  it('demands proof once TURNSTILE_ENFORCED is on', async () => {
+    const fixture = makeGuard({ action: 'login', turnstileEnforced: true });
+
+    await expect(
+      fixture.guard.canActivate(fixture.context),
+    ).rejects.toMatchObject({ status: 403 });
+  });
 
   it.each(actions)(
     'bypasses %s proof only when explicitly enabled in development',

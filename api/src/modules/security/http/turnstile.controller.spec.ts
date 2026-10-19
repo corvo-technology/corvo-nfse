@@ -6,7 +6,16 @@ import { TurnstileController } from './turnstile.controller';
 
 describe('TurnstileController', () => {
   const service = { verify: jest.fn() };
-  const controller = new TurnstileController(service as any);
+  const attestations = {
+    assertVerifyRate: jest.fn().mockResolvedValue(true),
+    create: jest.fn().mockResolvedValue('proof-token'),
+  };
+  const cookies = { set: jest.fn() };
+  const controller = new TurnstileController(
+    service as any,
+    attestations as any,
+    cookies as any,
+  );
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -22,6 +31,48 @@ describe('TurnstileController', () => {
     expect(service.verify).toHaveBeenCalledWith({
       token: 'token-1',
       remoteIp: '203.0.113.10',
+    });
+  });
+
+  it('issues the human-proof cookie when an action is verified', async () => {
+    service.verify.mockResolvedValue({ success: true, hostname: 'corvo.tech' });
+    const res = {} as any;
+
+    const result = await controller.verify(
+      { headers: {}, ip: '203.0.113.9' },
+      { token: 't', action: 'login' },
+      res,
+    );
+
+    expect(service.verify).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedAction: 'login' }),
+    );
+    expect(cookies.set).toHaveBeenCalledWith(
+      res,
+      'human_login',
+      'proof-token',
+      undefined,
+      30 * 60 * 1000,
+    );
+    expect(result.data).toMatchObject({ isVerified: true });
+  });
+
+  it('does not issue a cookie when the challenge fails', async () => {
+    service.verify.mockResolvedValue({
+      success: false,
+      errorCodes: ['action-mismatch'],
+    });
+
+    const result = await controller.verify(
+      { headers: {}, ip: '203.0.113.9' },
+      { token: 't', action: 'login' },
+      {} as any,
+    );
+
+    expect(cookies.set).not.toHaveBeenCalled();
+    expect(result.data).toEqual({
+      isVerified: false,
+      errorCodes: ['action-mismatch'],
     });
   });
 

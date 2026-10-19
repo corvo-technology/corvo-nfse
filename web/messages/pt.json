@@ -591,6 +591,7 @@
     "noAccountYet": "Ainda não tem conta?",
     "termsNote": "Ao criar uma conta, você aceita os <terms>Termos de Uso</terms> e declara ter lido o <privacy>Aviso de Privacidade</privacy>.",
     "errors": {
+      "humanCheckFailed": "Não foi possível concluir a verificação de segurança. Recarregue a página e tente de novo.",
       "somethingWentWrong": "Algo deu errado",
       "invalidCredentials": "Código inválido ou expirado. Confira o código ou solicite outro.",
       "emailTaken": "Este e-mail já está cadastrado. Tente fazer login.",

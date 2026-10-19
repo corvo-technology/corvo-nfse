@@ -165,6 +165,7 @@ export default function configuration(): AppConfiguration {
         .map((hostname) => hostname.trim().toLowerCase())
         .filter(Boolean),
       developmentBypassEnabled: env.TURNSTILE_DEVELOPMENT_BYPASS_ENABLED,
+      enforced: env.TURNSTILE_ENFORCED,
     },
     storage: {
       provider: env.STORAGE_PROVIDER,

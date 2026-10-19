@@ -9,6 +9,8 @@ import type { AppConfiguration } from '@/infra/config/configuration.types';
 export type TurnstileVerificationInput = {
   token: string;
   remoteIp?: string;
+  /** Must match the action the widget was rendered with (prevents replaying another form's token). */
+  expectedAction?: string;
 };
 
 export type TurnstileVerificationResult =
@@ -94,6 +96,17 @@ export class TurnstileVerificationService {
           : [],
       };
     }
+
+    if (input.expectedAction && payload.action !== input.expectedAction)
+      return { success: false, errorCodes: ['action-mismatch'] };
+    const allowed =
+      this.config.get<AppConfiguration['turnstile']>('turnstile')
+        ?.allowedHostnames ?? [];
+    if (
+      input.expectedAction &&
+      !allowed.includes((payload.hostname ?? '').toLowerCase())
+    )
+      return { success: false, errorCodes: ['hostname-mismatch'] };
 
     return {
       success: true,
