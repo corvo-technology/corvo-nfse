@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { RawResponse } from '@/shared/http/response.interceptor';
 import { Body, Controller, HttpCode, Inject, Post, Res } from '@nestjs/common';
 import type { Response } from 'express';
@@ -47,6 +48,7 @@ export class McpRegistrationController {
     private readonly clients: IOAuthClientRepository,
   ) {}
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('register')
   @HttpCode(201)
   async register(

@@ -12,6 +12,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
 import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
+import { createConcurrencyLimit } from '@/shared/http/concurrency-limit.middleware';
 import { createValidationPipe } from '@/shared/http/validation-pipe';
 import type { AppConfig } from '@/infra/config/configuration';
 
@@ -70,6 +71,11 @@ export async function createHttpApp(rootModule: Type<unknown>) {
 
   app.useLogger(app.get(Logger));
   app.enableCors(resolveCorsOptions(appConfig));
+  app.use(
+    createConcurrencyLimit(
+      configService.get<number>('MAX_CONCURRENT_REQUESTS') ?? 200,
+    ),
+  );
   configureHttpTransport(app);
   app.enableShutdownHooks();
   configureHttpGlobalPrefix(app, appConfig.apiPrefix);

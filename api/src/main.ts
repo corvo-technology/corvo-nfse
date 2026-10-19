@@ -17,7 +17,12 @@ export async function bootstrap() {
   const configService = app.get(ConfigService);
   const appConfig = configService.getOrThrow<AppConfig>('app');
 
-  await app.listen(appConfig.port);
+  const server = await app.listen(appConfig.port);
+  // Cut slow-header/slow-body connections early (slowloris); Node defaults are 60s/300s.
+  server.headersTimeout =
+    configService.get<number>('HTTP_HEADERS_TIMEOUT_MS') ?? 15000;
+  server.requestTimeout =
+    configService.get<number>('HTTP_REQUEST_TIMEOUT_MS') ?? 60000;
   pino().info(
     {
       event: 'runtime_started',
