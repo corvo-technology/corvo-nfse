@@ -128,10 +128,10 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
     expect((await plans.findActiveByTenantId(tenantId))?.slug).toBe('free');
     const free = await service.getOrCreate(tenantId);
     expect(free.plan.slug).toBe('free');
-    const upgraded = await service.upgradePlan(tenantId, 'developer');
-    expect(upgraded.plan.slug).toBe('developer');
+    const upgraded = await service.upgradePlan(tenantId, 'dev');
+    expect(upgraded.plan.slug).toBe('dev');
     expect((await plans.findActiveByTenantId(tenantId))?.slug).toBe(
-      'developer',
+      'dev',
     );
     const scheduled = await service.scheduleDowngrade(tenantId, 'free');
     expect(scheduled.downgradeToPlanId).toBe(free.plan.id);
@@ -159,7 +159,7 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
     await expect(
       checker.assertTaxIdNotInFreeWorkspace(taxId),
     ).rejects.toBeInstanceOf(FreeAbuseDetectedError);
-    await service.upgradePlan(tenantId, 'developer');
+    await service.upgradePlan(tenantId, 'dev');
     await expect(
       checker.assertEmailNotInFreeWorkspace(email),
     ).resolves.toBeUndefined();
@@ -168,7 +168,7 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
     ).resolves.toBeUndefined();
     const paidId = randomUUID();
     await service.getOrCreate(paidId);
-    await service.upgradePlan(paidId, 'growth');
+    await service.upgradePlan(paidId, 'pro');
     await expect(
       assignments.setBillingInfo(paidId, email, taxId),
     ).resolves.toBeUndefined();

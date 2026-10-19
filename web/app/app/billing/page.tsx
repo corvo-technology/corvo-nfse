@@ -5,7 +5,7 @@ import { AlertTriangle } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { ApiError, billing as billingApi, type CheckoutPlan } from "@/lib/api";
 import type { BillingPlan } from "@/lib/types";
-import { PlanPicker, PLANS, LEGACY_PLANS, type LegacyPlanSlug, type PlanSlug } from "@/components/pricing/plan-picker";
+import { PlanPicker, PLANS, type PlanSlug } from "@/components/pricing/plan-picker";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
@@ -112,9 +112,6 @@ export default function BillingPage() {
           <div>
             <p className="eyebrow text-accent">
               {billing.name}
-              {billing.slug in LEGACY_PLANS && (
-                <span className="ml-2 text-text-4">· {t("legacyPlanNote")}</span>
-              )}
             </p>
             <p className="mt-2 flex flex-wrap items-baseline gap-x-1.5">
               <span className="font-mono text-[36px] font-medium leading-none tracking-tight">{money(billing.monthlyPriceCents)}</span>
@@ -170,7 +167,7 @@ export default function BillingPage() {
 
       {u.overageUnits > 0 && <p role="status" className="text-[13px] text-text-2">{t("overageUsed", { count: u.overageUnits, price: money(u.overageAmountCents) })}</p>}
       {sub.blocked && <p role="alert" className="text-[13px] text-danger">{t("blocked")}</p>}
-      {sub.scheduledPlan && <p className="text-[13px] text-text-3">{t("scheduled", { plan: PLANS.some((p) => p.slug === sub.scheduledPlan) || sub.scheduledPlan in LEGACY_PLANS ? tp(`plans.${sub.scheduledPlan}.name`) : sub.scheduledPlan, date: sub.paidUntil ? date(sub.paidUntil) : "—" })}</p>}
+      {sub.scheduledPlan && <p className="text-[13px] text-text-3">{t("scheduled", { plan: PLANS.some((p) => p.slug === sub.scheduledPlan) ? tp(`plans.${sub.scheduledPlan}.name`) : sub.scheduledPlan, date: sub.paidUntil ? date(sub.paidUntil) : "—" })}</p>}
       {sub.cancelAtPeriodEnd && <p className="text-[13px] text-warn">{t("cancelsAtEnd")}</p>}
 
       <section aria-labelledby="plans-heading" className="dash-in dash-in-3 flex flex-col gap-4">
@@ -183,10 +180,7 @@ export default function BillingPage() {
           renderAction={({ plan, isCurrent }) => {
             if (isCurrent) return <span className="inline-flex min-h-10 items-center text-[14px] text-accent">{t("currentPlan")}</span>;
             if (!canManage) return null;
-            const currentPriceCents =
-              PLANS.find((p) => p.slug === billing.slug)?.basePriceCents ??
-              LEGACY_PLANS[billing.slug as LegacyPlanSlug]?.basePriceCents ??
-              0;
+            const currentPriceCents = PLANS.find((p) => p.slug === billing.slug)?.basePriceCents ?? 0;
             const action = !hasSubscription ? (plan.slug === "free" ? null : "subscribe")
               : plan.basePriceCents > currentPriceCents ? "upgrade" : "downgrade";
             if (!action) return null;

@@ -32,9 +32,9 @@ export function assertKeySafety(
 }
 
 /**
- * Provisions ONLY the public catalog's paid plans (free excluded, legacy excluded).
- * `PricingService.listAllQuotes` already omits legacy slugs, so legacy Stripe
- * products/prices/meters are never read, created, updated or deactivated here.
+ * Provisions the paid plans (free excluded). Stripe products, prices and meters
+ * that do not belong to the current catalog are never read, created, updated or
+ * deactivated here.
  */
 export async function provisionStripe(
   stripe: Stripe,

@@ -2,10 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   PLANS,
   calcMonthlyTotal,
-  LEGACY_PLANS,
   findPlanForVolume,
   formatBRLPerNote,
-  isVolumeContactZone,
 } from "@/components/pricing/plan-picker";
 
 describe("plan picker pricing", () => {
@@ -45,17 +43,9 @@ describe("plan picker pricing", () => {
     ]);
   });
 
-  it("never offers a legacy plan or a self-serve Volume", () => {
+  it("offers exactly the four subscribable plans", () => {
     const slugs = PLANS.map((p) => p.slug as string);
-    for (const legacy of Object.keys(LEGACY_PLANS)) expect(slugs).not.toContain(legacy);
-    expect(slugs).not.toContain("volume");
-    expect(isVolumeContactZone(13999)).toBe(false);
-    expect(isVolumeContactZone(14000)).toBe(true);
+    expect(slugs).toEqual(["free", "dev", "pro", "escala"]);
     expect(findPlanForVolume(20000).slug).toBe("escala");
-  });
-
-  it("keeps legacy prices for grandfathered tenants (upgrade/downgrade direction only)", () => {
-    expect(LEGACY_PLANS.growth).toEqual({ credits: 750, basePriceCents: 8990, perCreditCents: 12 });
-    expect(LEGACY_PLANS.volume.basePriceCents).toBe(89990);
   });
 });

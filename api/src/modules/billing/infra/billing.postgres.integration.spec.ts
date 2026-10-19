@@ -173,13 +173,13 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
       id: `sub_${tenantId}`,
       customerId: `cus_${tenantId}`,
       status: 'active',
-      planSlug: 'developer',
+      planSlug: 'dev',
       periodStart: start,
       periodEnd: end,
       paidUntil: end,
-      paidPlanSlug: 'developer',
-      included: 200,
-      unitCents: 15,
+      paidPlanSlug: 'dev',
+      included: 250,
+      unitCents: 12,
       cancelAtPeriodEnd: false,
       pendingPlanSlug: null,
       ...patch,
@@ -194,12 +194,12 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     expect(db.hasMetadata(WebhookEventOrmEntity)).toBe(true);
   });
   it('reserves atomically at 5x, and authorizes a reservation only once', async () => {
-    const id = await tenant('developer');
+    const id = await tenant('dev');
     const current = await usage.status(id);
     await db.manager.update(
       BillingUsagePeriod,
       { id: current.period.id },
-      { authorized: 999 },
+      { authorized: 1249 },
     );
     const results = await Promise.allSettled([reserve(id), reserve(id)]);
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
@@ -212,13 +212,13 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     await settle(id, invoice);
     await settle(id, invoice);
     expect(await usage.status(id)).toMatchObject({
-      period: { authorized: 1000, reserved: 0 },
-      overage_units: 800,
+      period: { authorized: 1250, reserved: 0 },
+      overage_units: 1000,
       overage_amount_cents: 12000,
     });
   });
   it('releases failures without charging excess', async () => {
-    const id = await tenant('developer');
+    const id = await tenant('dev');
     const invoice = await reserve(id);
     await settle(id, invoice, 'failed');
     expect(await usage.status(id)).toMatchObject({
@@ -227,7 +227,7 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     });
   });
   it('retains the original period when an invoice finishes after renewal', async () => {
-    const id = await tenant('developer');
+    const id = await tenant('dev');
     const invoice = await reserve(id);
     const original = (await usage.status(id)).period.id;
     const nextEnd = new Date(end);
@@ -244,13 +244,13 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     });
     expect((await usage.status(id)).period.authorized).toBe(0);
   });
-  it('blocks unpaid legacy paid plans, preserving their historic credits', async () => {
-    const id = await tenant('developer');
+  it('blocks unpaid paid plans, preserving their historic credits', async () => {
+    const id = await tenant('dev');
     await repository.saveBilling(id, { paidUntil: null, stripeStatus: null });
     await expect(reserve(id)).rejects.toMatchObject({ code: 'plan_blocked' });
   });
   it('rolls back reservations with the surrounding fiscal transaction', async () => {
-    const id = await tenant('developer');
+    const id = await tenant('dev');
     await expect(
       repository.locked(id, async () => {
         await usage.reserve(id);
@@ -311,7 +311,7 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     provider.subscription.mockResolvedValue(subscription(id));
     await service.webhook(Buffer.from('signed payload'), 'signature');
     await service.webhook(Buffer.from('signed payload'), 'signature');
-    expect((await repository.current(id)).plan.slug).toBe('developer');
+    expect((await repository.current(id)).plan.slug).toBe('dev');
     expect(provider.subscription).toHaveBeenCalledTimes(1);
     expect(
       await db.manager.count(WebhookEventOrmEntity, {
@@ -349,12 +349,12 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     expect(await repository.eventSeen('evt_failure')).toBe(true);
   });
   it('pins the same overage request across a failed send and reports only the delta', async () => {
-    const id = await tenant('developer');
+    const id = await tenant('dev');
     const { period } = await usage.status(id);
     await db.manager.update(
       BillingUsagePeriod,
       { id: period.id },
-      { authorized: 250 },
+      { authorized: 300 },
     );
     provider.reportMeter.mockRejectedValueOnce(new Error('timeout'));
     await expect(reporter.reportPeriod(id, period.id)).rejects.toThrow(
@@ -364,7 +364,7 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     await db.manager.update(
       BillingUsagePeriod,
       { id: period.id },
-      { authorized: 260 },
+      { authorized: 310 },
     );
     await reporter.reportPeriod(id, period.id);
     expect(provider.reportMeter.mock.calls[1][0]).toMatchObject({
@@ -376,12 +376,12 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     expect((await repository.period(period.id, id))!.reported).toBe(60);
   });
   it('uses a pending invoice item for late finalized periods, never also a meter event', async () => {
-    const id = await tenant('developer');
+    const id = await tenant('dev');
     const { period } = await usage.status(id);
     await db.manager.update(
       BillingUsagePeriod,
       { id: period.id },
-      { authorized: 201 },
+      { authorized: 251 },
     );
     provider.reportRoute.mockResolvedValue({
       route: 'invoice_item',
@@ -392,7 +392,7 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     expect(provider.reportInvoiceItem).toHaveBeenCalledWith(
       expect.objectContaining({
         units: 1,
-        unitCents: 15,
+        unitCents: 12,
         invoiceId: 'in_final',
       }),
     );

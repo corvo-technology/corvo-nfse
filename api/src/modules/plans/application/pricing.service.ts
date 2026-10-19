@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
   BillingCycle,
-  CATALOG_PLAN_SLUGS,
-  PAID_CATALOG_PLAN_SLUGS,
+  PLAN_SLUGS,
+  PAID_PLAN_SLUGS,
   PlanSlug,
 } from '../domain/plan';
 
@@ -14,7 +14,6 @@ export interface PriceQuote {
   perCreditOverageCents: number;
   monthlyTotalCents: number;
   currency: 'BRL';
-  legacy: boolean;
   maxActiveCompanies: number;
 }
 
@@ -26,7 +25,6 @@ type PricingEntry = {
   dailyLimit: number | null;
   maxCompanies: number;
   support: 'community' | 'email' | 'priority';
-  legacy: boolean;
 };
 
 @Injectable()
@@ -40,7 +38,6 @@ export class PricingService {
       dailyLimit: 3,
       maxCompanies: 1,
       support: 'community',
-      legacy: false,
     },
     dev: {
       basePriceCents: 2990,
@@ -50,7 +47,6 @@ export class PricingService {
       dailyLimit: null,
       maxCompanies: 25,
       support: 'email',
-      legacy: false,
     },
     pro: {
       basePriceCents: 9990,
@@ -60,7 +56,6 @@ export class PricingService {
       dailyLimit: null,
       maxCompanies: 150,
       support: 'email',
-      legacy: false,
     },
     escala: {
       basePriceCents: 29990,
@@ -70,47 +65,6 @@ export class PricingService {
       dailyLimit: null,
       maxCompanies: 500,
       support: 'priority',
-      legacy: false,
-    },
-    developer: {
-      basePriceCents: 2990,
-      perCreditCents: 15,
-      name: 'Developer',
-      allowance: 200,
-      dailyLimit: null,
-      maxCompanies: 10,
-      support: 'email',
-      legacy: true,
-    },
-    growth: {
-      basePriceCents: 8990,
-      perCreditCents: 12,
-      name: 'Growth',
-      allowance: 750,
-      dailyLimit: null,
-      maxCompanies: 50,
-      support: 'email',
-      legacy: true,
-    },
-    scale: {
-      basePriceCents: 24990,
-      perCreditCents: 10,
-      name: 'Scale',
-      allowance: 2500,
-      dailyLimit: null,
-      maxCompanies: 500,
-      support: 'priority',
-      legacy: true,
-    },
-    volume: {
-      basePriceCents: 89990,
-      perCreditCents: 9,
-      name: 'Volume',
-      allowance: 10000,
-      dailyLimit: null,
-      maxCompanies: 999999,
-      support: 'priority',
-      legacy: true,
     },
   };
 
@@ -131,7 +85,6 @@ export class PricingService {
       perCreditOverageCents: entry.perCreditCents,
       monthlyTotalCents: monthly,
       currency: 'BRL',
-      legacy: entry.legacy,
       maxActiveCompanies: entry.maxCompanies,
     };
   }
@@ -143,15 +96,15 @@ export class PricingService {
     totalEstimatedCents: number;
   } {
     // Free while it fits (Free never bills overage); otherwise the cheapest paid
-    // catalog plan at this volume, overage included. Mirrors the web plan picker.
+    // plan at this volume, overage included. Mirrors the web plan picker.
     const totalAt = (slug: PlanSlug) =>
       this.PRICING[slug].basePriceCents +
       Math.max(0, volume - this.PRICING[slug].allowance) *
         this.PRICING[slug].perCreditCents;
     let chosen: PlanSlug = 'free';
     if (volume > this.PRICING.free.allowance) {
-      chosen = PAID_CATALOG_PLAN_SLUGS[0];
-      for (const slug of PAID_CATALOG_PLAN_SLUGS)
+      chosen = PAID_PLAN_SLUGS[0];
+      for (const slug of PAID_PLAN_SLUGS)
         if (totalAt(slug) < totalAt(chosen)) chosen = slug;
     }
     const allowance = this.PRICING[chosen].allowance;
@@ -167,6 +120,6 @@ export class PricingService {
   }
 
   listAllQuotes(cycle: BillingCycle): PriceQuote[] {
-    return CATALOG_PLAN_SLUGS.map((slug) => this.calculateQuote(slug, cycle));
+    return PLAN_SLUGS.map((slug) => this.calculateQuote(slug, cycle));
   }
 }

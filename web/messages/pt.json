@@ -826,25 +826,8 @@
           "webhooks": "Webhooks de status",
           "downloads": "Download XML e PDF"
         }
-      },
-      "volume": {
-        "name": "VOLUME",
-        "credits": "20.000",
-        "price": "R$ 699,90",
-        "unit": "",
-        "bestFor": "Operações de altíssimo volume, negociado com nosso time.",
-        "contact": "Fale com nosso time para um plano sob consulta.",
-        "includes": {
-          "nfse": "Emissão de NFS-e via API",
-          "companies": "Até 2.000 empresas",
-          "email": "Envio por e-mail",
-          "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
-        }
       }
     },
-    "fromPrice": "a partir de",
     "perExtra": "por nota extra",
     "ctaFree": "Começar grátis",
     "ctaPaid": "Escolher plano",
@@ -1324,7 +1307,6 @@
     "unknownError": "Erro desconhecido",
     "plans": "Planos",
     "currentPlan": "Plano atual",
-    "legacyPlanNote": "plano legado",
     "subscribe": "Assinar",
     "upgrade": "Fazer upgrade",
     "downgrade": "Fazer downgrade",

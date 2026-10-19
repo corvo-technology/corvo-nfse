@@ -1660,7 +1660,7 @@ console.log(plans.length, pagination.hasMore);`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Plan fields: `id`, `slug`, `name`, `description`, `monthlyCreditAllowance`, `dailyLimit` (number or null), `maxActiveCompanies`, `creditUnitPriceCents`, `throughputRps`, `includesWebhooks`, `includesXmlDownload`, `includesPdfDownload`, `includesApiKeys`, `supportTier`, `active`, `createdAt`, `updatedAt`. Public catalog slugs: `free`, `dev`, `pro`, `escala`. Legacy slugs, valid only for existing subscribers (not available for new subscriptions): `developer`, `growth`, `scale`, `volume`; `supportTier`: `community`, `email`, `priority`. Use the returned catalog to identify available plans — do not hard-code prices in the integration." },
+            { kind: "callout", tone: "accent", body: "Plan fields: `id`, `slug`, `name`, `description`, `monthlyCreditAllowance`, `dailyLimit` (number or null), `maxActiveCompanies`, `creditUnitPriceCents`, `throughputRps`, `includesWebhooks`, `includesXmlDownload`, `includesPdfDownload`, `includesApiKeys`, `supportTier`, `active`, `createdAt`, `updatedAt`. Public catalog slugs: `free`, `dev`, `pro`, `escala`.. `supportTier`: `community`, `email`, `priority`. Use the returned catalog to identify available plans — do not hard-code prices in the integration." },
           ],
         },
         {
@@ -1861,7 +1861,7 @@ console.log(body.data.canEmit); // { data: QuotaStatus }`,
           summary: "Schedules the switch to the target plan on the subscription.",
           params: {
             rows: [
-              { name: "plan_slug", type: "string", required: true, description: "Slug of the target plan, e.g. `\"pro\"`. Accepts the public catalog (`free`, `dev`, `pro`, `escala`); a legacy slug is accepted only if it is the tenant's current plan (e.g. to undo a scheduled cancellation)." },
+              { name: "plan_slug", type: "string", required: true, description: "Slug of the target plan, e.g. `\"pro\"`. Accepts the public catalog (`free`, `dev`, `pro`, `escala`)." },
             ],
           },
           examples: {
@@ -1902,7 +1902,7 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
           summary: "Schedules a plan change for the end of the period.",
           params: {
             rows: [
-              { name: "plan_slug", type: "string", required: true, description: "Slug of the target plan, e.g. `\"dev\"`. Accepts the public catalog (`free`, `dev`, `pro`, `escala`); a legacy slug is accepted only if it is the tenant's current plan (e.g. to undo a scheduled cancellation)." },
+              { name: "plan_slug", type: "string", required: true, description: "Slug of the target plan, e.g. `\"dev\"`. Accepts the public catalog (`free`, `dev`, `pro`, `escala`)." },
             ],
           },
           examples: {
@@ -1968,7 +1968,6 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
       "perCreditOverageCents": 12,
       "monthlyTotalCents": 2990,
       "currency": "BRL",
-      "legacy": false,
       "maxActiveCompanies": 25
     }
   ],
@@ -1980,7 +1979,7 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Ordered from the smallest to the largest allowance. `monthlyAllowance` is the number of included credits, `perCreditOverageCents` the price of each credit above it and `monthlyTotalCents` the monthly price; `maxActiveCompanies` is the plan's active-company limit. Only the public catalog is listed here, never legacy plans. This is the pricing view; `GET /v1/credits/plans` returns the plan limits and features instead." },
+            { kind: "callout", tone: "accent", body: "Ordered from the smallest to the largest allowance. `monthlyAllowance` is the number of included credits, `perCreditOverageCents` the price of each credit above it and `monthlyTotalCents` the monthly price; `maxActiveCompanies` is the plan's active-company limit.  This is the pricing view; `GET /v1/credits/plans` returns the plan limits and features instead." },
           ],
         },
         {
@@ -2012,13 +2011,12 @@ console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
     "perCreditOverageCents": 8,
     "monthlyTotalCents": 9990,
     "currency": "BRL",
-    "legacy": false,
     "maxActiveCompanies": 150
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "Public catalog `slug`: `free`, `dev`, `pro` or `escala`. The legacy slugs `developer`, `growth`, `scale` and `volume` still answer (with `legacy: true`) for existing subscribers. An unknown plan returns `404`." },
+            { kind: "callout", tone: "warn", body: "Public catalog `slug`: `free`, `dev`, `pro` or `escala`. An unknown plan returns `404`." },
           ],
         },
         {

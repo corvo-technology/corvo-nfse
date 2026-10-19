@@ -137,21 +137,6 @@ describe('provisionStripe', () => {
     expect((stripe.products as Mutable).create).not.toHaveBeenCalled();
   });
 
-  it('never lists, creates or deactivates legacy plan products/prices', async () => {
-    const { stripe } = mockStripe();
-    const summary = await provisionStripe(stripe as never, opts(true));
-    const legacy = ['developer', 'growth', 'scale', 'volume'];
-    expect(summary.some((row) => legacy.includes(row.planSlug))).toBe(false);
-    const createdLookupKeys = (stripe.prices as Mutable).create.mock.calls.map(
-      ([params]) => (params as { lookup_key: string }).lookup_key,
-    );
-    expect(
-      createdLookupKeys.some((key: string) =>
-        legacy.some((slug) => key.includes(slug)),
-      ),
-    ).toBe(false);
-  });
-
   it('refuses a live key without --live', () => {
     expect(() =>
       assertKeySafety('sk_live_abc', { apply: true, live: false }),

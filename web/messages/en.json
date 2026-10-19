@@ -826,25 +826,8 @@
           "webhooks": "Status webhooks",
           "downloads": "XML and PDF download"
         }
-      },
-      "volume": {
-        "name": "VOLUME",
-        "credits": "20,000",
-        "price": "R$ 699.90",
-        "unit": "",
-        "bestFor": "Very high-volume operations, negotiated with our team.",
-        "contact": "Talk to our team for a custom, quote-based plan.",
-        "includes": {
-          "nfse": "NFS-e emission via API",
-          "companies": "Up to 2,000 companies",
-          "email": "Email delivery",
-          "mcp": "AI agents via MCP",
-          "webhooks": "Status webhooks",
-          "downloads": "XML and PDF download"
-        }
       }
     },
-    "fromPrice": "starting at",
     "perExtra": "per extra invoice",
     "ctaFree": "Start free",
     "ctaPaid": "Choose plan",
@@ -1324,7 +1307,6 @@
     "unknownError": "Unknown error",
     "plans": "Plans",
     "currentPlan": "Current plan",
-    "legacyPlanNote": "legacy plan",
     "subscribe": "Subscribe",
     "upgrade": "Upgrade",
     "downgrade": "Downgrade",

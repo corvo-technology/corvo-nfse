@@ -9,8 +9,7 @@ export type ConnectionStatus = "pending" | "active" | "suspended" | "disconnecte
 export type PhoneStatus = "pending" | "verified" | "registered";
 export type QualityRating = "GREEN" | "YELLOW" | "RED" | "NA";
 export type MemberRole = "Owner" | "Admin" | "Developer" | "Billing";
-// Catalog: free, dev, pro, escala. Legacy (grandfathered, not self-serve): developer, growth, scale, volume.
-export type PlanSlug = "free" | "dev" | "pro" | "escala" | "developer" | "growth" | "scale" | "volume";
+export type PlanSlug = "free" | "dev" | "pro" | "escala";
 export type CreditTransactionType = "purchase" | "message_sent" | "refund" | "adjustment" | "bonus";
 export type CreditSource = "avulso" | "subscription" | "bonus";
 

@@ -4,23 +4,18 @@ import type { BillingCycle } from '../domain/plan';
 describe('PricingService monthly catalog', () => {
   const service = new PricingService();
   it.each([
-    ['free', 0, 15, 0, false, 1],
-    ['dev', 2990, 250, 12, false, 25],
-    ['pro', 9990, 1500, 8, false, 150],
-    ['escala', 29990, 6000, 5, false, 500],
-    ['developer', 2990, 200, 15, true, 10],
-    ['growth', 8990, 750, 12, true, 50],
-    ['scale', 24990, 2500, 10, true, 500],
-    ['volume', 89990, 10000, 9, true, 999999],
+    ['free', 0, 15, 0, 1],
+    ['dev', 2990, 250, 12, 25],
+    ['pro', 9990, 1500, 8, 150],
+    ['escala', 29990, 6000, 5, 500],
   ] as const)(
     'quotes %s in BRL with the agreed allowance and excess price',
-    (slug, price, included, excess, legacy, maxActiveCompanies) => {
+    (slug, price, included, excess, maxActiveCompanies) => {
       expect(service.calculateQuote(slug)).toMatchObject({
         monthlyTotalCents: price,
         monthlyAllowance: included,
         perCreditOverageCents: excess,
         currency: 'BRL',
-        legacy,
         maxActiveCompanies,
       });
       expect(service.calculateQuote(slug)).not.toHaveProperty(
@@ -33,19 +28,11 @@ describe('PricingService monthly catalog', () => {
       service.calculateQuote('dev', 'annual' as BillingCycle),
     ).toThrow('Only monthly');
   });
-  it('still quotes legacy slugs for grandfathered subscribers', () => {
-    expect(service.calculateQuote('growth')).toMatchObject({
-      slug: 'growth',
-      legacy: true,
-      monthlyTotalCents: 8990,
-    });
-  });
-  it('lists exactly the four public catalog plans, excluding legacy', () => {
+  it('lists exactly the four plans', () => {
     const quotes = service.listAllQuotes('monthly');
     expect(quotes.map((q) => q.slug)).toEqual(['free', 'dev', 'pro', 'escala']);
-    expect(quotes.every((q) => !q.legacy)).toBe(true);
   });
-  it('recommends a catalog plan within its allowance with no overage', () => {
+  it('recommends a plan within its allowance with no overage', () => {
     expect(service.recommendPlanForVolume(1200)).toMatchObject({
       planSlug: 'pro',
       overageCredits: 0,

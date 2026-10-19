@@ -14,8 +14,7 @@ import { useLocale, useTranslations } from "next-intl";
 /* ── Pricing engine (mirrors backend PricingService) ─────────── */
 
 export type CatalogPlanSlug = "free" | "dev" | "pro" | "escala";
-export type LegacyPlanSlug = "developer" | "growth" | "scale" | "volume";
-export type PlanSlug = CatalogPlanSlug | LegacyPlanSlug;
+export type PlanSlug = CatalogPlanSlug;
 
 export interface PriceTier {
   credits: number;
@@ -29,8 +28,6 @@ export interface PlanTier extends PriceTier {
 
 const MIN_VOLUME = 1;
 const MAX_VOLUME = 50000;
-/** From here the picker recommends Volume ("sob consulta") instead of Escala plus heavy overage. */
-const VOLUME_PLAN_FROM = 14000;
 /** Starts exactly at the Dev allowance, so the first price shown has no overage. */
 const DEFAULT_VOLUME = 250;
 const THUMB = 22;
@@ -41,18 +38,6 @@ export const PLANS: PlanTier[] = [
   { slug: "pro", credits: 1500, basePriceCents: 9990, perCreditCents: 8 },
   { slug: "escala", credits: 6000, basePriceCents: 29990, perCreditCents: 5 },
 ];
-
-/**
- * Legacy (grandfathered) plan prices. Kept only so the billing page can work
- * out upgrade/downgrade direction for a tenant still on an old plan; legacy
- * plans are never shown in the picker and never available for new checkout.
- */
-export const LEGACY_PLANS: Record<LegacyPlanSlug, PriceTier> = {
-  developer: { credits: 200, basePriceCents: 2990, perCreditCents: 15 },
-  growth: { credits: 750, basePriceCents: 8990, perCreditCents: 12 },
-  scale: { credits: 2500, basePriceCents: 24990, perCreditCents: 10 },
-  volume: { credits: 10000, basePriceCents: 89990, perCreditCents: 9 },
-};
 
 export function formatBRL(cents: number): string {
   return `R$ ${(cents / 100).toFixed(2).replace(".", ",")}`;
@@ -83,11 +68,6 @@ export function findPlanForVolume(volume: number): PlanTier {
   );
 }
 
-/** Above this volume, Escala's overage is no longer the better deal — recommend talking to sales instead. */
-export function isVolumeContactZone(volume: number): boolean {
-  return volume >= VOLUME_PLAN_FROM;
-}
-
 /* Slider position (0–1000) ↔ volume, log scale so 15 and 50.000 are both easy to reach. */
 const LOG_MAX = Math.log(MAX_VOLUME / MIN_VOLUME);
 
@@ -101,16 +81,15 @@ function volumeToPos(volume: number): number {
   return (Math.log(Math.max(volume, MIN_VOLUME) / MIN_VOLUME) / LOG_MAX) * 1000;
 }
 
-/** First volume where each zone (a catalog plan, then Volume) becomes the recommendation. */
+/** First volume where each zone (one per plan) becomes the recommendation. */
 const ZONES = (() => {
   const starts: { slug: PlanSlug; from: number }[] = [];
-  for (let v = MIN_VOLUME; v < VOLUME_PLAN_FROM; v++) {
+  for (let v = MIN_VOLUME; v <= MAX_VOLUME; v++) {
     const slug = findPlanForVolume(v).slug;
     if (starts.length === 0 || starts[starts.length - 1].slug !== slug) {
       starts.push({ slug, from: v });
     }
   }
-  starts.push({ slug: "volume", from: VOLUME_PLAN_FROM });
   return starts.map((z, i) => ({
     ...z,
     startPos: volumeToPos(z.from) / 1000,
@@ -283,48 +262,6 @@ function FeaturedPlan({
   );
 }
 
-/* ── Volume ("sob consulta"): marketing-only, never checkout ──── */
-
-function VolumeContactCard() {
-  const t = useTranslations("Pricing");
-
-  return (
-    <div className="relative overflow-hidden rounded-3xl border border-accent/40 bg-accent-surface p-6 @lg:p-9">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-32 -right-24 h-72 w-72 rounded-full bg-accent/20 blur-[90px]"
-      />
-      <div className="relative">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <span className="whitespace-nowrap font-mono text-[12px] tracking-[0.14em] text-text">
-              {t("plans.volume.name")}
-            </span>
-            <span className="shrink-0 whitespace-nowrap bg-accent text-[#0a0a0a] font-mono text-[10px] font-semibold tracking-[0.08em] px-2.5 py-1 rounded-full">
-              {t("recommended")}
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-8 flex flex-wrap items-end gap-x-3 gap-y-1">
-          <span className="text-[14px] text-text-3">{t("fromPrice")}</span>
-          <span className="text-[40px] @lg:text-[52px] font-semibold tracking-[-0.05em] leading-[0.9] text-text tabular-nums">
-            {t("plans.volume.price")}
-          </span>
-          <span className="text-[15px] text-text-3 mb-1">{t("perMonth")}</span>
-        </div>
-
-        <p className="mt-3 text-[14px] text-text-2">{t("plans.volume.bestFor")}</p>
-
-        <div className="my-8 h-px bg-white/[0.08]" />
-
-        {/* TODO: add a real sales contact link/mailto once a channel exists; see plans.volume.contact copy. */}
-        <p className="text-[14px] text-text-2">{t("plans.volume.contact")}</p>
-      </div>
-    </div>
-  );
-}
-
 /* ── Plan ladder (all plans at this volume) ─────────────────── */
 
 function PlanLadder({
@@ -402,50 +339,6 @@ function PlanLadder({
             </button>
           );
         })}
-
-        {/* Volume: marketing row only, never self-serve; picking it just shows the contact card. A legacy "volume" tenant is not marked current here (different plan). */}
-        <button
-          type="button"
-          onClick={() => onPick(VOLUME_PLAN_FROM)}
-          className="relative flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors hover:bg-white/[0.03]"
-        >
-          {active === "volume" && (
-            <motion.span
-              layoutId="ladder-active"
-              transition={{ type: "spring", stiffness: 380, damping: 32 }}
-              className="absolute inset-0 rounded-2xl border border-accent/40 bg-accent/[0.07]"
-            />
-          )}
-          <span className="relative flex items-center gap-3">
-            <span
-              className={cn(
-                "h-1.5 w-1.5 rounded-full transition-colors",
-                active === "volume" ? "bg-accent" : "bg-white/15"
-              )}
-            />
-            <span>
-              <span
-                className={cn(
-                  "block font-mono text-[12px] tracking-[0.1em]",
-                  active === "volume" ? "text-text" : "text-text-3"
-                )}
-              >
-                {t("plans.volume.name")}
-              </span>
-              <span className="block text-[12px] text-text-4 tabular-nums mt-0.5">
-                {t("plans.volume.credits")}+ {t("credits")}
-              </span>
-            </span>
-          </span>
-          <span
-            className={cn(
-              "relative text-right text-[13px] font-medium",
-              active === "volume" ? "text-text" : "text-text-2"
-            )}
-          >
-            {t("fromPrice")} {t("plans.volume.price")}
-          </span>
-        </button>
       </div>
     </div>
   );
@@ -472,15 +365,13 @@ export function PlanPicker({
   const nf = new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US");
 
   const startVolume = currentSlug
-    ? PLANS.find((p) => p.slug === currentSlug)?.credits ??
-      (currentSlug in LEGACY_PLANS ? LEGACY_PLANS[currentSlug as LegacyPlanSlug].credits : DEFAULT_VOLUME)
+    ? PLANS.find((p) => p.slug === currentSlug)?.credits ?? DEFAULT_VOLUME
     : DEFAULT_VOLUME;
   const [volume, setVolume] = useState(startVolume);
   const [draft, setDraft] = useState<string | null>(null);
 
-  const contactZone = isVolumeContactZone(volume);
   const plan = findPlanForVolume(volume);
-  const activeSlug: PlanSlug = contactZone ? "volume" : plan.slug;
+  const activeSlug: PlanSlug = plan.slug;
   const pos = volumeToPos(volume);
   const pct = pos / 10;
   const shown = draft ?? nf.format(volume);
@@ -604,16 +495,12 @@ export function PlanPicker({
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
           >
-            {contactZone ? (
-              <VolumeContactCard />
-            ) : (
-              <FeaturedPlan
-                plan={plan}
-                volume={volume}
-                current={plan.slug === currentSlug}
-                action={renderAction({ plan, volume, isCurrent: plan.slug === currentSlug })}
-              />
-            )}
+            <FeaturedPlan
+              plan={plan}
+              volume={volume}
+              current={plan.slug === currentSlug}
+              action={renderAction({ plan, volume, isCurrent: plan.slug === currentSlug })}
+            />
           </motion.div>
         </AnimatePresence>
 

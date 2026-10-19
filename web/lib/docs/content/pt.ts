@@ -1634,7 +1634,7 @@ console.log(body.data, body.pagination); // { data: Plan[], pagination }`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Catálogo público: `free`, `dev`, `pro`, `escala`. Legados, válidos somente para assinantes já existentes (não disponíveis para novas assinaturas): `developer`, `growth`, `scale`, `volume`. Use o catálogo retornado para identificar planos disponíveis; não fixe preços na integração. `supportTier`: `community`, `email`, `priority`." },
+            { kind: "callout", tone: "accent", body: "Catálogo público: `free`, `dev`, `pro`, `escala`. Use o catálogo retornado para identificar planos disponíveis; não fixe preços na integração. `supportTier`: `community`, `email`, `priority`." },
           ],
         },
         {
@@ -1834,7 +1834,7 @@ console.log(body.data.canEmit); // { data: QuotaStatus }`,
           summary: "Agenda a troca para o plano de destino na assinatura.",
           params: {
             rows: [
-              { name: "plan_slug", type: "string", required: true, description: "Slug do plano de destino, por exemplo `pro`. Aceita o catálogo público (`free`, `dev`, `pro`, `escala`); um slug legado só é aceito se for o plano atual do tenant (ex.: para desfazer um cancelamento agendado)." },
+              { name: "plan_slug", type: "string", required: true, description: "Slug do plano de destino, por exemplo `pro`. Aceita o catálogo público (`free`, `dev`, `pro`, `escala`)." },
             ],
           },
           examples: {
@@ -1875,7 +1875,7 @@ console.log(body.data); // { data: { scheduled_plan, effective_at } }`,
           summary: "Agenda uma mudança de plano para o fim do período.",
           params: {
             rows: [
-              { name: "plan_slug", type: "string", required: true, description: "Slug do plano de destino, por exemplo `dev`. Aceita o catálogo público (`free`, `dev`, `pro`, `escala`); um slug legado só é aceito se for o plano atual do tenant (ex.: para desfazer um cancelamento agendado)." },
+              { name: "plan_slug", type: "string", required: true, description: "Slug do plano de destino, por exemplo `dev`. Aceita o catálogo público (`free`, `dev`, `pro`, `escala`)." },
             ],
           },
           examples: {
@@ -1941,7 +1941,6 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
       "perCreditOverageCents": 12,
       "monthlyTotalCents": 2990,
       "currency": "BRL",
-      "legacy": false,
       "maxActiveCompanies": 25
     }
   ],
@@ -1953,7 +1952,7 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Ordenados da menor para a maior franquia. `monthlyAllowance` é o total de créditos incluídos, `perCreditOverageCents` o preço de cada crédito acima dela e `monthlyTotalCents` o preço mensal; `maxActiveCompanies` é o limite de empresas ativas do plano. Só o catálogo público aparece aqui, sem planos legados. Esta é a visão de preços; `GET /v1/credits/plans` devolve os limites e recursos do plano." },
+            { kind: "callout", tone: "accent", body: "Ordenados da menor para a maior franquia. `monthlyAllowance` é o total de créditos incluídos, `perCreditOverageCents` o preço de cada crédito acima dela e `monthlyTotalCents` o preço mensal; `maxActiveCompanies` é o limite de empresas ativas do plano.  Esta é a visão de preços; `GET /v1/credits/plans` devolve os limites e recursos do plano." },
           ],
         },
         {
@@ -1985,13 +1984,12 @@ console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
     "perCreditOverageCents": 8,
     "monthlyTotalCents": 9990,
     "currency": "BRL",
-    "legacy": false,
     "maxActiveCompanies": 150
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "`slug` do catálogo público: `free`, `dev`, `pro` ou `escala`. Os slugs legados `developer`, `growth`, `scale` e `volume` ainda respondem (com `legacy: true`) para assinantes já existentes. Um plano desconhecido retorna `404`." },
+            { kind: "callout", tone: "warn", body: "`slug` do catálogo público: `free`, `dev`, `pro` ou `escala`. Um plano desconhecido retorna `404`." },
           ],
         },
         {

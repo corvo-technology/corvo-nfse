@@ -16,10 +16,6 @@ it('seeds 15 free invoices per month while preserving all other plan allowances'
     ['dev', 250],
     ['pro', 1500],
     ['escala', 6000],
-    ['developer', 200],
-    ['growth', 750],
-    ['scale', 2500],
-    ['volume', 10000],
   ]);
   expect(save.mock.calls[0]?.[0].toSnapshot()).toMatchObject({
     dailyLimit: 3,
@@ -36,12 +32,6 @@ it('never saves a plan that already exists', async () => {
   } as never);
   await service.seedIfMissing();
   expect(save).not.toHaveBeenCalled();
-});
-
-it('keeps legacy plans active so grandfathered tenants are never blocked', () => {
-  for (const slug of ['developer', 'growth', 'scale', 'volume'] as const) {
-    expect(SEED_DATA[slug].active).toBe(true);
-  }
 });
 
 it('never drifts from PricingService for allowance/price/overage/maxCompanies', () => {
