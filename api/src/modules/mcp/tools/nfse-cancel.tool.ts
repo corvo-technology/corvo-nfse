@@ -23,7 +23,7 @@ export const NFSE_CANCEL_TOOL = {
       description: {
         type: 'string',
         maxLength: CANCELLATION_DESCRIPTION_MAX,
-        description: `Free-text justification; required (${CANCELLATION_DESCRIPTION_MIN}-${CANCELLATION_DESCRIPTION_MAX} chars) for an authorized NFS-e`,
+        description: `Free-text justification; required (${CANCELLATION_DESCRIPTION_MIN}-${CANCELLATION_DESCRIPTION_MAX} chars) for an authorized NFS-e or an invoice being issued (processing)`,
       },
     },
     required: ['invoice_id', 'reason'],

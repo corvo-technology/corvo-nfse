@@ -985,6 +985,9 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             ["`emailStatus`", "Estado derivado: `queued`, `sent`, `failed` ou null."],
             ["`stage`", "Estado derivado: `pending`, `authorized`, `documents_ready`, `completed`, `failed`."],
             ["`scheduledFor`", "Data ISO da liberação de uma nota agendada, ou null."],
+            ["`cancellationReason`, `cancellationDescription`", "Motivo (`issue_error`, `service_not_provided` ou `other`) e justificativa do pedido de cancelamento, ou null."],
+            ["`cancelledAt`", "Data ISO em que a nota chegou a `cancelled`, ou null."],
+            ["`cancellationRequestedAt`", "Data ISO do pedido de cancelamento feito enquanto a nota estava `processing`, ou null. A nota é cancelada na Sefin assim que for autorizada."],
             ["`createdAt`, `updatedAt`", "Datas ISO."],
             ["`documentKeyVersion`", "Number opcional, quando presente no snapshot."],
           ],
@@ -1268,7 +1271,8 @@ console.log(res.status, body.data.status); // 202 "cancelling"`,
     "stage": "completed",
     "cancellationReason": "issue_error",
     "cancellationDescription": "Valor do serviço informado incorretamente",
-    "cancelledAt": null
+    "cancelledAt": null,
+    "cancellationRequestedAt": null
   }
 }`,
           },
@@ -2429,6 +2433,12 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`nfse:read`",
               "`tax_id?` (CNPJ), `limit?`, `cursor?`",
               "`{ companies [{ id, legal_name, tax_id, status, tax_regime, setup_gaps, ready_to_issue }], next_cursor }`"
+            ],
+            [
+              "`nfse_cancel`",
+              "`nfse:write`",
+              "`invoice_id`, `reason` (`issue_error`, `service_not_provided` ou `other`), `description?` (15–255 caracteres, obrigatória para NFS-e autorizada ou em emissão)",
+              "`{ invoice_id, status, cancelled_at }` (`cancelled`, `cancelling` ou `processing` com o pedido registrado)"
             ],
             [
               "`nfse_query`",

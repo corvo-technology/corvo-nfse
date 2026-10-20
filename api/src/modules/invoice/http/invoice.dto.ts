@@ -226,7 +226,7 @@ export class CancelInvoiceDto {
   @IsString()
   @MaxLength(CANCELLATION_DESCRIPTION_MAX)
   @ApiPropertyOptional({
-    description: `Required (${CANCELLATION_DESCRIPTION_MIN}–${CANCELLATION_DESCRIPTION_MAX} characters) to cancel an authorized NFS-e; optional for a queued invoice.`,
+    description: `Required (${CANCELLATION_DESCRIPTION_MIN}–${CANCELLATION_DESCRIPTION_MAX} characters) to cancel an authorized NFS-e or an invoice being issued (processing); optional for a queued invoice.`,
   })
   description?: string;
 }

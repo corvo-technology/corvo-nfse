@@ -329,7 +329,7 @@ Eventos não devem ser aplicados cegamente pela ordem de chegada. Quando necess�
 
 Não existe transação distribuída com a plataforma. Um reembolso pode ocorrer imediatamente depois da última consulta e da submissão da nota. O recebimento posterior deve abrir a pendência correspondente, sem promessa de cancelamento automático.
 
-O cancelamento fiscal exige um fluxo separado e condições aplicáveis. A definição atual de status de invoice não oferece um ciclo completo de cancelamento; essa capacidade não é considerada pronta por este documento.
+O cancelamento fiscal exige um fluxo separado e condições aplicáveis. A API oferece `POST /v1/invoices/:id/cancel`: uma nota `queued` é cancelada localmente e uma NFS-e autorizada (ou em emissão) recebe o evento 101101 na Sefin, com o resultado informado por `nfse.invoice.cancelled` ou `nfse.invoice.cancellation_rejected`. O cancelamento é sempre pedido explicitamente: um reembolso ou estorno recebido de uma plataforma não dispara o cancelamento da nota.
 
 ## 16. API e experiência de configuração
 

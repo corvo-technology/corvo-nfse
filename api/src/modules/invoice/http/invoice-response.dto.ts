@@ -140,16 +140,35 @@ export class InvoiceResponseDto {
     sentAt: Date | null;
   };
 
-  @ApiPropertyOptional({ enum: CANCELLATION_REASON_CODES, nullable: true })
+  @ApiPropertyOptional({
+    enum: CANCELLATION_REASON_CODES,
+    nullable: true,
+    description: 'Reason given when the cancellation was requested',
+  })
   cancellationReason?: CancellationReasonCode | null;
 
-  @ApiPropertyOptional({ type: String, nullable: true })
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: 'Justification given when the cancellation was requested',
+  })
   cancellationDescription?: string | null;
 
-  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  @ApiPropertyOptional({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    description: 'When the invoice reached cancelled',
+  })
   cancelledAt?: Date | null;
 
-  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  @ApiPropertyOptional({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    description:
+      'Set when the cancellation was requested while the invoice was being issued (processing); it is cancelled at the Sefin as soon as it is authorized',
+  })
   cancellationRequestedAt?: Date | null;
 
   @ApiProperty()
