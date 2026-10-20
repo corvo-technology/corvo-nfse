@@ -6,7 +6,6 @@ import { AlertTriangle, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { invoices as invoicesApi } from "@/lib/api";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
-import type { InvoiceStatus } from "@/lib/types";
 import { InvoiceTable } from "@/components/dashboard/invoice-table";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -14,8 +13,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { isScheduled } from "@/lib/invoice-schedule";
 
-const FILTERS = ["all", "authorized", "processing", "rejected"] as const;
+const FILTERS = ["all", "scheduled", "authorized", "processing", "rejected"] as const;
 type Filter = (typeof FILTERS)[number];
 
 export default function InvoicesPage() {
@@ -27,8 +27,10 @@ export default function InvoicesPage() {
   const failed = error !== null;
 
   const all = invoices ?? [];
-  const filtered = filter === "all" ? all : all.filter((i) => i.status === filter);
-  const countOf = (s: InvoiceStatus) => all.filter((i) => i.status === s).length;
+  const scheduled = all.filter((i) => isScheduled(i));
+  const matches = (i: (typeof all)[number], f: Exclude<Filter, "all">) => (f === "scheduled" ? isScheduled(i) : !isScheduled(i) && i.status === f);
+  const filtered = filter === "all" ? all : all.filter((i) => matches(i, filter));
+  const countOf = (f: Exclude<Filter, "all">) => (f === "scheduled" ? scheduled.length : all.filter((i) => matches(i, f)).length);
 
   return (
     <div className="flex flex-col gap-6">

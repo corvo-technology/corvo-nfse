@@ -104,7 +104,19 @@
       "legendMore": "More",
       "empty": "No authorized invoices in this period",
       "aria": "Heatmap of authorized invoices per day",
-      "note": "{count, plural, one {# invoice} other {# invoices}}"
+      "periodTotal": "Period total",
+      "authorizedNotes": "Authorized invoices",
+      "note": "{count, plural, one {# invoice} other {# invoices}}",
+      "average": "avg",
+      "pinned": "Pinned",
+      "vsAverage": "vs. daily average",
+      "ofPeriod": "Of the period",
+      "dailyAverage": "Daily average",
+      "bestDay": "Best day",
+      "anonymous": "Customer",
+      "quietDay": "No invoices authorized this day.",
+      "seeInList": "Open the invoice list to see them.",
+      "hint": "Hover or tap a bar to inspect a day. Click to pin it, arrow keys to move, Esc to clear."
     },
     "recentMessages": "Recent messages",
     "viewAll": "View all",
@@ -127,7 +139,8 @@
     "viewAllInvoices": "View all",
     "period": "Period",
     "loadFailed": "We couldn't load your data.",
-    "loadedRecords": "Indicators cover up to 100 loaded invoices in this period ({count} records)."
+    "monthlyCycle": "Monthly plan cycle",
+    "creditsLoadFailed": "Could not load credits."
   },
   "Connections": {
     "title": "Connections",
@@ -1148,6 +1161,7 @@
     "cancel": "Cancel",
     "filters": {
       "all": "All",
+      "scheduled": "Scheduled",
       "authorized": "Authorized",
       "processing": "Processing",
       "rejected": "Rejected"
@@ -1168,6 +1182,7 @@
       "created": "Created"
     },
     "status": {
+      "scheduled": "Scheduled",
       "authorized": "Authorized",
       "processing": "Processing",
       "queued": "Queued",
@@ -1180,6 +1195,7 @@
       "cancelled": "Cancelled"
     },
     "loadFailed": "We couldn't load your invoices.",
+    "scheduledFor": "Issues on {date}",
     "filterLabel": "Filter by status",
     "fields": {
       "company": "Issuing company",
@@ -1502,6 +1518,7 @@
     "defaultServiceCode": "Default service code"
   },
   "InvoiceDetail": {
+    "scheduledBanner": "Scheduled invoice: it will be issued automatically on {date}. Until then it stays queued.",
     "copy": "Duplicate",
     "anonymousCustomer": "Unidentified consumer",
     "title": "Invoice",
@@ -1518,6 +1535,7 @@
     "events": "Invoice progress",
     "noEvents": "No events recorded.",
     "timeline": {
+      "scheduled": "Scheduled. Issuance will be released on {date}.",
       "queued": "We received the request and the invoice is waiting to be issued.",
       "processing": "We are sending the invoice to the city.",
       "authorized": "The city authorized the invoice. PDF and XML are available.",

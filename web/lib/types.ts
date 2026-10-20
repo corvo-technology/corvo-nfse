@@ -411,7 +411,7 @@ export interface Invoice {
   serviceDescription: string; customerSnapshot: CreateInvoiceInput["customer"] | null;
   serviceSnapshot: Required<CreateInvoiceInput["service"]>; competenceDate: string;
   lastErrorCode?: string | null; lastErrorMessage?: string | null;
-  authorizedAt?: string | null; createdAt: string; updatedAt: string;
+  authorizedAt?: string | null; scheduledFor?: string | null; createdAt: string; updatedAt: string;
   cancellationReason?: CancellationReasonCode | null; cancellationDescription?: string | null; cancelledAt?: string | null;
   /** Set when a cancellation was requested while the invoice was still being issued. */
   cancellationRequestedAt?: string | null;

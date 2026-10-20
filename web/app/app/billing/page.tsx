@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import posthog from "posthog-js";
 import { ApiError, billing as billingApi, type CheckoutPlan } from "@/lib/api";
 import type { BillingPlan } from "@/lib/types";
 import { PlanPicker, PLANS, type PlanSlug } from "@/components/pricing/plan-picker";
@@ -14,6 +15,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+
+const posthogConfigured = Boolean(
+  process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
+);
 
 export default function BillingPage() {
   const t = useTranslations("Billing");
@@ -46,13 +51,18 @@ export default function BillingPage() {
   const redirect = (url: string) => { window.location.assign(url); };
   const subscribe = async (slug: CheckoutPlan) => {
     if (busy) return; setBusy(slug);
-    try { const { url } = await billingApi.checkout(slug, crypto.randomUUID()); success(t("redirecting")); redirect(url); }
+    try {
+      const { url } = await billingApi.checkout(slug, crypto.randomUUID());
+      if (posthogConfigured) posthog.capture("billing_checkout_started", { plan: slug });
+      success(t("redirecting")); redirect(url);
+    }
     catch (cause) { fail(cause); setBusy(null); }
   };
   const changePlan = async (slug: PlanSlug, direction: "upgrade" | "downgrade") => {
     if (busy) return; setBusy(slug);
     try {
       const result = await billingApi.changePlan(slug, direction);
+      if (posthogConfigured) posthog.capture("billing_plan_changed", { plan: slug, direction });
       success(result.effectiveAt ? t("changeScheduled", { date: new Date(result.effectiveAt).toLocaleDateString(intl) }) : t("changeScheduledNoDate"));
       setBilling(await billingApi.plan());
     } catch (cause) { fail(cause); }

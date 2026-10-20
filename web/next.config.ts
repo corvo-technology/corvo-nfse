@@ -1,3 +1,4 @@
+import { withPostHogConfig } from "@posthog/nextjs-config";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
@@ -17,4 +18,14 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+const uploadSourcemaps = Boolean(process.env.POSTHOG_API_KEY && process.env.POSTHOG_PROJECT_ID);
+
+// Source maps go to the PostHog app host, not the ingestion host used by the browser SDK.
+export default uploadSourcemaps
+  ? withPostHogConfig(withNextIntl(nextConfig), {
+      personalApiKey: process.env.POSTHOG_API_KEY!,
+      projectId: process.env.POSTHOG_PROJECT_ID,
+      host: process.env.NEXT_PUBLIC_POSTHOG_HOST?.replace(".i.posthog.com", ".posthog.com"),
+      sourcemaps: { enabled: true, deleteAfterUpload: true },
+    })
+  : withNextIntl(nextConfig);

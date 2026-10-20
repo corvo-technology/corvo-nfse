@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, KeyRound, Plus } from "lucide-react";
+import posthog from "posthog-js";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,6 +16,10 @@ import { cn } from "@/lib/utils";
 import { apiKeys, collectAll, type ApiKey } from "@/lib/api";
 import type { KeyEnvironment, KeyScope } from "@/lib/types";
 import { timeAgo } from "@/lib/i18n-helpers";
+
+const posthogConfigured = Boolean(
+  process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
+);
 
 function getApiKeyErrorMessage(error: unknown, fallback: string, tError: (key: string) => string): string {
   if (!(error instanceof Error)) return fallback;
@@ -105,6 +110,13 @@ export default function ApiKeysPage() {
       if (exp) body.expiresAt = exp;
 
       const created = await apiKeys.create(body);
+      if (posthogConfigured) {
+        posthog.capture("api_key_created", {
+          environment,
+          scope,
+          expiration_days: expiresAt === "never" ? null : Number(expiresAt),
+        });
+      }
 
       setNewKey({
         apiKey: created.plaintext,
@@ -131,6 +143,7 @@ export default function ApiKeysPage() {
 
     try {
       await apiKeys.delete(id);
+      if (posthogConfigured) posthog.capture("api_key_revoked");
       setKeys((prev) => prev.filter((k) => k.id !== id));
     } catch (err: unknown) {
       setError(getApiKeyErrorMessage(err, t("errors.revokeFailed"), (key) => t(`errors.${key}`)));

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, Plus, Webhook as WebhookIcon } from "lucide-react";
+import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -17,6 +18,10 @@ import { useAuth } from "@/lib/auth";
 import { webhooks, collectAll, type WebhookEndpoint, type WebhookDelivery } from "@/lib/api";
 import { WEBHOOK_EVENT_OPTIONS, type WebhookEvent } from "@/lib/types";
 import { timeAgo } from "@/lib/i18n-helpers";
+
+const posthogConfigured = Boolean(
+  process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
+);
 
 /* ------------------------------------------------------------------ */
 /*  Sub-components                                                     */
@@ -114,6 +119,12 @@ export default function WebhooksPage() {
         url: url.trim(),
         events: selectedEvents,
       });
+      if (posthogConfigured) {
+        posthog.capture("webhook_endpoint_created", {
+          event_types: selectedEvents,
+          event_type_count: selectedEvents.length,
+        });
+      }
 
       /* Show the secret only once */
       if (created.secret) {
@@ -138,6 +149,7 @@ export default function WebhooksPage() {
     setDeletingId(id);
     try {
       await webhooks.delete(id);
+      if (posthogConfigured) posthog.capture("webhook_endpoint_deleted");
       fetchData();
       success(t("toasts.deleted"));
     } catch (err: unknown) {
@@ -152,8 +164,10 @@ export default function WebhooksPage() {
     setTestingId(id);
     try {
       const result = await webhooks.test(id);
-      if (result.sent) success(t("toasts.testSent"));
-      else toastError(result.statusCode ? t("toasts.testFailedStatus", { status: result.statusCode }) : t("toasts.testFailed"));
+      if (result.sent) {
+        if (posthogConfigured) posthog.capture("webhook_test_sent");
+        success(t("toasts.testSent"));
+      } else toastError(result.statusCode ? t("toasts.testFailedStatus", { status: result.statusCode }) : t("toasts.testFailed"));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t("toasts.testFailed");
       toastError(msg);
@@ -167,6 +181,7 @@ export default function WebhooksPage() {
     setRetryingId(id);
     try {
       await webhooks.retryDelivery(id);
+      if (posthogConfigured) posthog.capture("webhook_delivery_retried");
       fetchData();
       success(t("toasts.retrySuccess"));
     } catch (err: unknown) {

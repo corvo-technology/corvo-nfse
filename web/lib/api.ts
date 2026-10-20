@@ -175,9 +175,23 @@ export function adaptInvoice(props: InvoiceWire): Invoice {
   return { ...props, customerName: props.customerSnapshot?.name ?? "", customerTaxId: props.customerSnapshot?.taxId ?? "", serviceDescription: props.serviceSnapshot.description };
 }
 export interface InvoiceQuery extends PageParams { companyId?: string; status?: InvoiceStatus; from?: string; to?: string; externalId?: string }
+export type OverviewPeriod = "7d" | "30d";
+export interface InvoiceOverview {
+  period: OverviewPeriod;
+  from: string;
+  to: string;
+  timezone: string;
+  counts: { authorized: number; rejected: number; processing: number };
+  dailyActivity: { date: string; count: number }[];
+  recentInvoices: Invoice[];
+}
 type InvoiceBody = InvoiceWire;
 type EventWire = { id: string; invoiceId: string; fromStatus: InvoiceStatus | null; toStatus: InvoiceStatus; createdAt: string; reason: string | null };
 export const invoices = {
+  overview: async (period: OverviewPeriod = "7d", signal?: AbortSignal): Promise<InvoiceOverview> => {
+    const result = unwrap(await request<Envelope<Omit<InvoiceOverview, "recentInvoices"> & { recentInvoices: InvoiceWire[] }>>(`/invoices/overview${query({ period })}`, { signal }));
+    return { ...result, recentInvoices: result.recentInvoices.map(adaptInvoice) };
+  },
   list: async (params: InvoiceQuery = {}, signal?: AbortSignal): Promise<Page<Invoice>> => { const page = toPage(await request<ListBody<InvoiceBody>>(`/invoices${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptInvoice) }; },
   get: async (id: string, signal?: AbortSignal) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}`, { signal }))),
   create: async (data: CreateInvoiceInput, idempotencyKey: string) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>("/invoices", { ...json(data), headers: { "idempotency-key": idempotencyKey } }))),

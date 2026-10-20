@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { AlertTriangle, FlaskConical, ShieldAlert } from "lucide-react";
+import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { ServiceCodeCombobox } from "@/components/ui/service-code-combobox";
@@ -17,6 +18,10 @@ import type { Company, InvoiceCalculation } from "@/lib/types";
 import { InvoiceCalculationPanel } from "@/components/dashboard/invoice-calculation-panel";
 import { DEFAULT_SERVICE_CODE } from "@/lib/service-defaults";
 import { invoiceToFormValues } from "@/lib/invoice-copy";
+
+const posthogConfigured = Boolean(
+  process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
+);
 
 const FORM_ID = "new-invoice-form";
 
@@ -162,6 +167,13 @@ export default function NewInvoicePage() {
     const key = JSON.stringify([form, sendEmail, fiscalEnvironment]);
     try {
       const result = await invoicesApi.calculate(buildInput(parseCurrency(form.amount), form.externalId || "dashboard-calculate"));
+      if (posthogConfigured) {
+        posthog.capture("invoice_calculated", {
+          fiscal_environment: fiscalEnvironment,
+          has_customer: hasCustomer,
+          email_delivery_requested: sendEmail,
+        });
+      }
       setCalc({ key, result });
     } catch (err: unknown) {
       setCalc(null);
@@ -187,6 +199,13 @@ export default function NewInvoicePage() {
       const input = buildInput(amount, form.externalId || `dashboard-${key}`);
       attempt.current = { key, payload: formSnapshot };
       const created = await invoicesApi.create(input, key);
+      if (posthogConfigured) {
+        posthog.capture("invoice_created", {
+          fiscal_environment: fiscalEnvironment,
+          has_customer: hasCustomer,
+          email_delivery_requested: sendEmail,
+        });
+      }
       router.push(`/app/invoices/${created.id}`);
     } catch (err: unknown) {
       if (err instanceof ApiError && [0, 409, 502, 503].includes(err.status)) setUncertain(true);

@@ -104,7 +104,19 @@
       "legendMore": "Mais",
       "empty": "Sem notas autorizadas neste período",
       "aria": "Mapa de calor de notas autorizadas por dia",
-      "note": "{count, plural, one {# nota} other {# notas}}"
+      "periodTotal": "Total no período",
+      "authorizedNotes": "Notas autorizadas",
+      "note": "{count, plural, one {# nota} other {# notas}}",
+      "average": "média",
+      "pinned": "Fixado",
+      "vsAverage": "vs. média diária",
+      "ofPeriod": "Do período",
+      "dailyAverage": "Média diária",
+      "bestDay": "Melhor dia",
+      "anonymous": "Cliente",
+      "quietDay": "Nenhuma nota autorizada neste dia.",
+      "seeInList": "Abra a lista de notas para vê-las.",
+      "hint": "Passe o mouse ou toque numa barra para ver o dia. Clique para fixar, setas para navegar, Esc para limpar."
     },
     "recentMessages": "Mensagens recentes",
     "viewAll": "Ver todas",
@@ -127,7 +139,8 @@
     "viewAllInvoices": "Ver todas",
     "period": "Período",
     "loadFailed": "Não foi possível carregar os dados.",
-    "loadedRecords": "Indicadores calculados sobre até 100 notas carregadas no período ({count} registros)."
+    "monthlyCycle": "Ciclo mensal do plano",
+    "creditsLoadFailed": "Não foi possível carregar os créditos."
   },
   "Connections": {
     "title": "Conexões",
@@ -1148,6 +1161,7 @@
     "cancel": "Cancelar",
     "filters": {
       "all": "Todas",
+      "scheduled": "Agendadas",
       "authorized": "Autorizadas",
       "processing": "Processando",
       "rejected": "Rejeitadas"
@@ -1168,6 +1182,7 @@
       "created": "Criada"
     },
     "status": {
+      "scheduled": "Agendada",
       "authorized": "Autorizada",
       "processing": "Processando",
       "queued": "Na fila",
@@ -1180,6 +1195,7 @@
       "cancelled": "Cancelada"
     },
     "loadFailed": "Não foi possível carregar as notas fiscais.",
+    "scheduledFor": "Emite em {date}",
     "filterLabel": "Filtrar por status",
     "fields": {
       "company": "Empresa emissora",
@@ -1502,6 +1518,7 @@
     "defaultServiceCode": "Código de serviço padrão"
   },
   "InvoiceDetail": {
+    "scheduledBanner": "Nota agendada: será emitida automaticamente em {date}. Até lá ela fica na fila.",
     "copy": "Duplicar",
     "anonymousCustomer": "Consumidor não identificado",
     "title": "Nota fiscal",
@@ -1518,6 +1535,7 @@
     "events": "Andamento da nota",
     "noEvents": "Nenhum evento registrado.",
     "timeline": {
+      "scheduled": "Agendada. A emissão será liberada em {date}.",
       "queued": "Recebemos o pedido e a nota aguarda a vez de ser emitida.",
       "processing": "Estamos enviando a nota para a prefeitura.",
       "authorized": "A prefeitura autorizou a nota. PDF e XML estão disponíveis.",

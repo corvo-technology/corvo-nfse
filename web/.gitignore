@@ -45,3 +45,5 @@ next-env.d.ts
 
 # generated repository graph
 /graphify-out/
+.env.local
+.env
