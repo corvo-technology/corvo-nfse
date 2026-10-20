@@ -1566,7 +1566,7 @@
       "keep": "Manter nota",
       "confirm": "Cancelar nota",
       "failed": "Não foi possível cancelar a nota.",
-      "recorded": "Motivo do cancelamento: {reason}"
+      "reasonLabel": "Motivo do cancelamento"
     }
   },
   "FiscalDocs": {

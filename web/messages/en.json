@@ -1566,7 +1566,7 @@
       "keep": "Keep invoice",
       "confirm": "Cancel invoice",
       "failed": "We couldn't cancel the invoice.",
-      "recorded": "Cancellation reason: {reason}"
+      "reasonLabel": "Cancellation reason"
     }
   },
   "FiscalDocs": {
