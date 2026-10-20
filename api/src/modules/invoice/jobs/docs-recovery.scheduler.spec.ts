@@ -15,6 +15,7 @@ describe('DocsRecoveryScheduler', () => {
     findByTenantId: jest.fn(),
     save: jest.fn(),
     saveDpsInfo: jest.fn(),
+    registerCancellationIntent: jest.fn(),
     insert: jest.fn(),
     findPendingReconciliation: jest.fn(),
     existsIdempotencyKey: jest.fn(),
