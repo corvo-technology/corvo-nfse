@@ -51,7 +51,10 @@ const files = [
 for (const [source, target, values] of files) {
   let content = await readFile(new URL(`../${source}`, import.meta.url), 'utf8');
   for (const [key, generate] of Object.entries(values)) {
-    content = content.replace(new RegExp(`^${key}=.*$`, 'm'), `${key}=${generate()}`);
+    content = content
+      .split('\n')
+      .map((line) => (line.startsWith(`${key}=`) ? `${key}=${generate()}` : line))
+      .join('\n');
   }
   if (args['force-deploy'] && target === 'deploy/.env') {
     try {
