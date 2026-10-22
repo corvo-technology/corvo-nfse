@@ -69,8 +69,6 @@ export function createTypeOrmOptions(
       idleTimeoutMillis: database.pool?.idleTimeoutMs ?? 30000,
       connectionTimeoutMillis: database.pool?.connectionTimeoutMs ?? 3000,
       maxLifetimeSeconds: database.pool?.maxLifetimeSeconds ?? 1800,
-      statement_timeout: database.statementTimeoutMs ?? 0,
-      application_name: database.applicationName ?? 'corvo',
     },
     entities: [
       __dirname + '/../persistence/typeorm/**/*.orm-entity{.ts,.js}',

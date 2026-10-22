@@ -59,8 +59,6 @@ describe('typeorm options', () => {
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 3000,
       maxLifetimeSeconds: 1800,
-      statement_timeout: 0,
-      application_name: 'corvo',
     });
   });
 
@@ -94,7 +92,7 @@ describe('typeorm options', () => {
     });
   });
 
-  it('propagates explicit PostgreSQL pool controls', () => {
+  it('propagates client-side PostgreSQL pool controls without startup parameters', () => {
     const options = createTypeOrmOptions({
       ...database,
       pool: {
@@ -104,8 +102,6 @@ describe('typeorm options', () => {
         connectionTimeoutMs: 2_000,
         maxLifetimeSeconds: 900,
       },
-      statementTimeoutMs: 8_000,
-      applicationName: 'greenflow-api',
     });
 
     expect(options.extra).toMatchObject({
@@ -114,9 +110,9 @@ describe('typeorm options', () => {
       idleTimeoutMillis: 45_000,
       connectionTimeoutMillis: 2_000,
       maxLifetimeSeconds: 900,
-      statement_timeout: 8_000,
-      application_name: 'greenflow-api',
     });
+    expect(options.extra).not.toHaveProperty('statement_timeout');
+    expect(options.extra).not.toHaveProperty('application_name');
   });
 
   it('propagates manual initialization to Nest TypeORM options', () => {
