@@ -61,7 +61,9 @@ export function createTypeOrmOptions(
     installExtensions: false,
     uuidExtension: 'pgcrypto',
     extra: {
-      options: `-c search_path="${schema}",public`,
+      // Do not send `search_path` as a PostgreSQL startup parameter. Managed
+      // connection poolers can reject arbitrary startup options; TypeORM's
+      // `schema` option above still qualifies all mapped tables correctly.
       max: database.pool?.max ?? 10,
       min: database.pool?.min ?? 0,
       idleTimeoutMillis: database.pool?.idleTimeoutMs ?? 30000,

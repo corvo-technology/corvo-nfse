@@ -44,7 +44,7 @@ describe('typeorm options', () => {
     logging: false,
   };
 
-  it('uses the configured application schema and search_path', () => {
+  it('uses the configured application schema without a startup search_path', () => {
     const options = createTypeOrmOptions({
       ...database,
       schema: 'custom_greenflow',
@@ -54,7 +54,6 @@ describe('typeorm options', () => {
       schema: 'custom_greenflow',
     });
     expect(options.extra).toMatchObject({
-      options: '-c search_path="custom_greenflow",public',
       max: 10,
       min: 0,
       idleTimeoutMillis: 30000,
@@ -71,9 +70,7 @@ describe('typeorm options', () => {
     expect(options).toMatchObject({
       schema: 'corvo',
     });
-    expect(options.extra).toMatchObject({
-      options: '-c search_path="corvo",public',
-    });
+    expect(options.extra).not.toHaveProperty('options');
     expect(options.migrations).toEqual([
       expect.stringContaining('/migrations/**/!(*.spec){.ts,.js}'),
     ]);
