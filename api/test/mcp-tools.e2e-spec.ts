@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import request from 'supertest';
 import type { INestApplication } from '@nestjs/common';
 import { DataSource } from 'typeorm';
@@ -88,6 +89,7 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
     const names = tools.map((t) => t.name).sort();
     expect(names).toEqual([
       'company_list',
+      'nfse_cancel',
       'nfse_download_pdf',
       'nfse_issue',
       'nfse_list',

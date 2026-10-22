@@ -226,10 +226,11 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | GET    | `/invoices`                                            | S/K, `nfse.invoices.view`       | Query: `companyId?`, `status?`, `from?`, `to?`, `externalId?`, `limit?`, `cursor?` |
 | GET    | `/invoices/{id}`                                       | S/K, `nfse.invoices.view`       | Detalhes/status da nota                                                            |
 | GET    | `/invoices/{id}/events`                                | S/K, `nfse.invoices.view`       | Histórico de transições                                                            |
-| GET    | `/invoices/{id}/xml`                                   | S/K, `nfse.invoices.view`       | Arquivo XML; nota autorizada                                                       |
-| GET    | `/invoices/{id}/pdf`                                   | S/K, `nfse.invoices.view`       | Arquivo PDF; nota autorizada                                                       |
+| GET    | `/invoices/{id}/xml`                                   | S/K, `nfse.invoices.view`       | Arquivo XML; nota autorizada ou cancelada após autorização                                                    |
+| GET    | `/invoices/{id}/pdf`                                   | S/K, `nfse.invoices.view`       | Arquivo PDF; nota autorizada ou cancelada após autorização                                                    |
 | POST   | `/invoices/{id}/download-url`                          | S/K, `nfse.invoices.view`       | Body: `{format: "pdf"                                                              | "xml"}`; URL pré-assinada para download |
 | POST   | `/invoices/{id}/email`                                 | S/K, `nfse.invoices.issue`      | Header `Idempotency-Key`; reenvia e-mail da nota; 202                              |
+| POST   | `/invoices/{id}/cancel`                                | S/K, `nfse.invoices.issue`      | JSON: `reason`, `description?`; 200 (queued → cancelled) ou 202 (authorized → cancelling; processing → pedido registrado) |
 | GET    | `/webhooks`                                            | S/K, `webhooks.view`            | Lista sem segredo                                                                  |
 | POST   | `/webhooks`                                            | S/K, `webhooks.manage`          | JSON: `url`, `events`; retorna segredo na criação; 201                             |
 | DELETE | `/webhooks/{id}`                                       | S/K, `webhooks.manage`          | Exclui configuração                                                                |
@@ -411,6 +412,18 @@ Erros:
 - 409: Nota não autorizada ou documentos ainda não preparados
 - 422: Cliente não possui e-mail cadastrado
 
+**POST /invoices/{id}/cancel** - Cancela uma nota.
+
+Body: `{ "reason": "issue_error" | "service_not_provided" | "other", "description"?: string }`.
+
+- Nota `queued` (agendada ou ainda não processada): cancelada na hora, `200` com `status: "cancelled"`. Em live, o crédito reservado é estornado. `description` é opcional.
+- Nota `authorized`: `202` com `status: "cancelling"`. O evento 101101 é enviado à Sefin em segundo plano. `description` é obrigatória (15–255 caracteres). Resultado: `cancelled` (webhook `nfse.invoice.cancelled`) ou de volta a `authorized` com `lastErrorCode/lastErrorMessage` (webhook `nfse.invoice.cancellation_rejected`). O crédito não é devolvido. Após a rejeição da Sefin, a nota volta a `authorized` mantendo `cancellationReason`/`cancellationDescription` do último pedido (um novo pedido os sobrescreve).
+- Nota `processing` (em emissão): `202` com a nota ainda `processing` e `cancellationRequestedAt` preenchido (o pedido fica registrado). `description` é obrigatória (15–255 caracteres). Assim que a nota for autorizada, ela é cancelada automaticamente na Sefin (evento 101101), sem devolver o crédito; se a emissão terminar `rejected` ou `failed`, o pedido é descartado e a reserva é estornada como de costume. Repetir o pedido devolve o estado atual (vale o primeiro pedido).
+- Nota `retry_pending`, `reconciliation_required` ou `manual_review`: `409 ERROR_INVOICE_NOT_CANCELLABLE`.
+- Nota já `cancelling`/`cancelled`: devolve o estado atual.
+- Erros: `409 ERROR_INVOICE_NOT_CANCELLABLE` (outros status, como `retry_pending`, `reconciliation_required` e `manual_review`), `422 ERROR_INVALID_CANCELLATION_REASON`. Se outro pedido já cancelou a nota, devolve o estado atual.
+- Campos novos na invoice: `cancellationReason`, `cancellationDescription`, `cancelledAt`, `cancellationRequestedAt` (pedido feito enquanto a nota estava em emissão). XML/PDF continuam disponíveis depois do cancelamento; o reenvio de e-mail não.
+
 **Webhook `nfse.invoice.documents_ready`**: Disparado quando os documentos fiscais ficam prontos. Payload:
 
 ```json
@@ -454,8 +467,8 @@ Para login, usar as duas rotas `/auth/magic-link`, que também criam sessão.
 | `cycle`                      | `monthly`, `annual`                                                                                                                                                                                                                     |
 | Empresa / nota `environment` | `test`, `live`; somente leitura na resposta                                                                                                                                                                                             |
 | `taxRegime`                  | `MEI`, `Simples Nacional`, `Lucro Presumido`, `Lucro Real`                                                                                                                                                                              |
-| Nota `status`                | `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`                                                                                                                 |
-| Webhook `events`             | `nfse.invoice.authorized`, `nfse.invoice.rejected`, `nfse.invoice.failed`, `nfse.invoice.reconciliation_required`, `nfse.invoice.manual_review`, `nfse.invoice.documents_ready`, `nfse.invoice.email_sent`, `nfse.invoice.email_failed`, `nfse.invoice.fiscal_discrepancy` |
+| Nota `status`                | `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling` (cancelamento enviado à Sefin, aguardando resposta), `cancelled` (nota cancelada)                                                                                                             |
+| Webhook `events`             | `nfse.invoice.authorized`, `nfse.invoice.rejected`, `nfse.invoice.failed`, `nfse.invoice.reconciliation_required`, `nfse.invoice.manual_review`, `nfse.invoice.documents_ready`, `nfse.invoice.email_sent`, `nfse.invoice.email_failed`, `nfse.invoice.fiscal_discrepancy`, `nfse.invoice.cancelled`, `nfse.invoice.cancellation_rejected` |
 | OTP `channel`                | `email`, `whatsapp`                                                                                                                                                                                                                     |
 | OTP público `purpose`        | `email_verification`, `phone_verification`, `login_challenge`, `account_recovery`, `magic_link_login`                                                                                                                                   |
 | OTP autenticado `purpose`    | Públicos + `payment_authorization`, `consent_confirmation`                                                                                                                                                                              |
@@ -797,6 +810,7 @@ proxy do Next). `redirect_uri` aceitos no registro: `https`, `http` em
 | Tool                | Escopo       | Entrada principal                                                                                                                              | Saída                                                            |
 | ------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `nfse_issue`        | `nfse:write` | `company_id`, `customer {name, tax_id, email?}`, `services [{description, quantity, unit_price}]`, `competence_date`, `service_code?`, `idempotency_key?` | `{ invoice_id, access_key, status }`                             |
+| `nfse_cancel`       | `nfse:write` | `invoice_id`, `reason` (`issue_error` \| `service_not_provided` \| `other`), `description?` (15-255 caracteres, obrigatória para NFS-e autorizada ou em emissão) | `{ invoice_id, status, cancelled_at }` (`cancelled`, `cancelling` ou `processing` com o pedido registrado) |
 | `nfse_query`        | `nfse:read`  | `access_key`                                                                                                                                   | `{ access_key, status, nfse_number, authorized_at, last_error }` |
 | `nfse_list`         | `nfse:read`  | `status?`, `limit?`, `cursor?`                                                                                                                 | `{ invoices, next_cursor }`                                      |
 | `nfse_download_pdf` | `nfse:read`  | `access_key`                                                                                                                                   | `{ access_key, pdf_base64 }`                                     |
@@ -868,7 +882,7 @@ ou `response.text()`, não `response.json()`.
   persistência, reconciliação e débito usando transporte HTTP controlado.
   Emissão real ainda depende do cadastro fiscal e certificado reais.
 - Não existem rotas de login por senha, refresh JWT, cadastro separado,
-  CRUD de tenants, atualização de perfil ou cancelamento de nota neste inventário.
+  CRUD de tenants ou atualização de perfil neste inventário.
 
 Teste HTTP de login com schema isolado:
 

@@ -88,6 +88,7 @@ export const pt: DocsTree = {
           ["GET", "`/v1/invoices/:id/events`", "Consultar histórico", "200"],
           ["POST", "`/v1/invoices/:id/download-url`", "Gerar URL assinada", "200"],
           ["POST", "`/v1/invoices/:id/email`", "Solicitar envio de email", "202"],
+          ["POST", "`/v1/invoices/:id/cancel`", "Cancelar nota", "200/202"],
           ["GET", "`/v1/webhooks`", "Listar configurações", "200"],
           ["POST", "`/v1/webhooks`", "Cadastrar webhook", "201"],
           ["DELETE", "`/v1/webhooks/:id`", "Excluir webhook", "200"],
@@ -984,6 +985,9 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             ["`emailStatus`", "Estado derivado: `queued`, `sent`, `failed` ou null."],
             ["`stage`", "Estado derivado: `pending`, `authorized`, `documents_ready`, `completed`, `failed`."],
             ["`scheduledFor`", "Data ISO da liberação de uma nota agendada, ou null."],
+            ["`cancellationReason`, `cancellationDescription`", "Motivo (`issue_error`, `service_not_provided` ou `other`) e justificativa do pedido de cancelamento, ou null."],
+            ["`cancelledAt`", "Data ISO em que a nota chegou a `cancelled`, ou null."],
+            ["`cancellationRequestedAt`", "Data ISO do pedido de cancelamento feito enquanto a nota estava `processing`, ou null. A nota é cancelada na Sefin assim que for autorizada."],
             ["`createdAt`, `updatedAt`", "Datas ISO."],
             ["`documentKeyVersion`", "Number opcional, quando presente no snapshot."],
           ],
@@ -994,7 +998,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
         },
         {
           kind: "text",
-          body: "Status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`. Não interprete autorização como disponibilidade imediata de todos os documentos.",
+          body: "Status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling`, `cancelled`. Não interprete autorização como disponibilidade imediata de todos os documentos.",
         },
         {
           kind: "endpoint",
@@ -1007,7 +1011,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             title: "Query",
             rows: [
               { name: "companyId", type: "string UUID", required: false, description: "UUID da empresa." },
-              { name: "status", type: "string", required: false, description: "Um dos status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`." },
+              { name: "status", type: "string", required: false, description: "Um dos status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling`, `cancelled`." },
               { name: "from, to", type: "string ISO", required: false, description: "Datas ISO; filtro inclusivo pela competência, não por `createdAt`." },
               { name: "externalId", type: "string", required: false, description: "Correspondência exata." },
               { name: "limit", type: "integer", required: false, description: "Inteiro entre 1 e 1000; padrão `50`." },
@@ -1238,6 +1242,45 @@ console.log(body.data); // { data: { emailId, status } }`,
             { kind: "callout", tone: "warn", body: "A nota precisa estar autorizada e com documentos prontos. Erros: `404` nota ausente; `409` documentos não prontos; `422` cliente sem email ou chave de idempotência inválida." },
           ],
         },
+        {
+          kind: "endpoint",
+          method: "POST",
+          path: "/v1/invoices/:id/cancel",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "200 OK / 202 Accepted",
+          summary: "Cancela uma nota. Uma nota `queued` (agendada ou ainda não processada) é cancelada na hora; uma NFS-e `authorized` passa a `cancelling` enquanto o evento 101101 é enviado à Sefin. Uma nota `processing` (em emissão) registra o pedido: `202`, ainda `processing`, com `cancellationRequestedAt` preenchido.",
+          examples: {
+            curl: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/cancel" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H 'Content-Type: application/json' \\
+  -d '{"reason":"issue_error","description":"Valor do serviço informado incorretamente"}'`,
+            node: `const res = await fetch(\`\${BASE_URL}/invoices/\${process.env.INVOICE_ID}/cancel\`, {
+  method: "POST",
+  headers: { "X-API-Key": process.env.CORVO_API_KEY, "Content-Type": "application/json" },
+  body: JSON.stringify({ reason: "issue_error", description: "Valor do serviço informado incorretamente" }),
+});
+const body = await res.json();
+console.log(res.status, body.data.status); // 202 "cancelling"`,
+          },
+          response: {
+            label: "202 Accepted",
+            json: `{
+  "data": {
+    "id": "6f1c0e2a-4b7d-4c1e-9a55-2b8f7c3d9e10",
+    "status": "cancelling",
+    "stage": "completed",
+    "cancellationReason": "issue_error",
+    "cancellationDescription": "Valor do serviço informado incorretamente",
+    "cancelledAt": null,
+    "cancellationRequestedAt": null
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "`reason`: `issue_error`, `service_not_provided` ou `other`. `description` é obrigatória (15–255 caracteres) para NFS-e autorizada e opcional para nota `queued`. Uma nota `processing` também exige `description`; assim que for autorizada, é cancelada automaticamente na Sefin sem devolver o crédito, e se a emissão terminar `rejected` ou `failed` o pedido é descartado e a reserva estornada como de costume. Repetir o pedido para uma nota `processing` (vale o primeiro pedido), `cancelling` ou `cancelled` devolve o estado atual." },
+            { kind: "callout", tone: "warn", body: "`202` não confirma o cancelamento: aguarde `nfse.invoice.cancelled` ou `nfse.invoice.cancellation_rejected` (a nota volta a `authorized` com `lastErrorCode`). Cancelar uma NFS-e emitida não devolve o crédito; cancelar uma nota `queued` libera a reserva em live. Erros: `404` nota inexistente; `409` `ERROR_INVOICE_NOT_CANCELLABLE` (ex.: `retry_pending`, `reconciliation_required`, `manual_review`); `422` `ERROR_INVALID_CANCELLATION_REASON`. Se outro pedido já cancelou a nota, devolve o estado atual." },
+          ],
+        },
       ],
     },
     webhooks: {
@@ -1368,6 +1411,8 @@ console.log(body.data.secret); // guarde o secret agora`,
             "`nfse.invoice.email_sent`",
             "`nfse.invoice.email_failed`",
             "`nfse.invoice.fiscal_discrepancy`",
+            "`nfse.invoice.cancelled`",
+            "`nfse.invoice.cancellation_rejected`",
           ],
         },
         {
@@ -2053,7 +2098,7 @@ console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { d
         {
           kind: "callout",
           tone: "warn",
-          body: "Status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`. Não interprete autorização como disponibilidade imediata de todos os documentos — aguarde `documentsStatus: \"ready\"` antes de gerar URLs e solicitar emails.",
+          body: "Status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling`, `cancelled`. Não interprete autorização como disponibilidade imediata de todos os documentos — aguarde `documentsStatus: \"ready\"` antes de gerar URLs e solicitar emails.",
         },
         { kind: "heading", level: 2, body: "Idempotency-Key" },
         {
@@ -2215,6 +2260,8 @@ const invoiceId = await emitirComRetry(pedido, \`pedido_\${pedido.externalId}_em
             ["`nfse.invoice.email_sent`", "`sentAt`."],
             ["`nfse.invoice.email_failed`", "Identificação e estado da nota."],
             ["`nfse.invoice.fiscal_discrepancy`", "`invoiceId`, `status` e `differences[]` (`field`, `local`, `authorized`, `delta`, `kind`): diferença entre o cálculo da Corvo e a NFS-e autorizada, acima de R$ 0,01 por tributo. O XML autorizado não é alterado."],
+            ["`nfse.invoice.cancelled`", "A nota foi cancelada; inclui `reason`."],
+            ["`nfse.invoice.cancellation_rejected`", "A Sefin recusou o cancelamento; a nota volta a `authorized`; inclui `errorCode` e `errorMessage`."],
             ["`webhook.test`", "`{ \"message\": \"This is a test webhook event\" }`."],
           ],
         },
@@ -2386,6 +2433,12 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`nfse:read`",
               "`tax_id?` (CNPJ), `limit?`, `cursor?`",
               "`{ companies [{ id, legal_name, tax_id, status, tax_regime, setup_gaps, ready_to_issue }], next_cursor }`"
+            ],
+            [
+              "`nfse_cancel`",
+              "`nfse:write`",
+              "`invoice_id`, `reason` (`issue_error`, `service_not_provided` ou `other`), `description?` (15–255 caracteres, obrigatória para NFS-e autorizada ou em emissão)",
+              "`{ invoice_id, status, cancelled_at }` (`cancelled`, `cancelling` ou `processing` com o pedido registrado)"
             ],
             [
               "`nfse_query`",

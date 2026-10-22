@@ -312,6 +312,7 @@ describePostgres('POST /v1/invoices/calculate with PostgreSQL RLS', () => {
             lifecycle as never,
             quota as never,
             intake,
+            { publish: async () => undefined } as never,
           ),
         },
       ],

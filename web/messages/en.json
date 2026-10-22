@@ -353,6 +353,14 @@
           "fiscal_discrepancy": {
             "label": "Fiscal discrepancy",
             "description": "The authorized invoice differs from the calculated taxes."
+          },
+          "cancelled": {
+            "label": "Invoice cancelled",
+            "description": "The invoice was cancelled (scheduled or at the Sefin)."
+          },
+          "cancellation_rejected": {
+            "label": "Cancellation rejected",
+            "description": "The Sefin refused the cancellation; the invoice stays authorized."
           }
         }
       }
@@ -1182,7 +1190,9 @@
       "reconciliation_required": "Reconciliation",
       "retry_pending": "Retry pending",
       "manual_review": "Manual review",
-      "failed": "Failed"
+      "failed": "Failed",
+      "cancelling": "Cancelling",
+      "cancelled": "Cancelled"
     },
     "loadFailed": "We couldn't load your invoices.",
     "scheduledFor": "Issues on {date}",
@@ -1533,7 +1543,30 @@
       "retry_pending": "Issuance was not completed and will be retried automatically.",
       "reconciliation_required": "We could not confirm the invoice state; we are checking with the city.",
       "manual_review": "The invoice needs manual review by our team.",
-      "failed": "The invoice could not be issued."
+      "failed": "The invoice could not be issued.",
+      "cancelling": "We sent the cancellation to the Sefin and are waiting for the answer.",
+      "cancelled": "The invoice was cancelled."
+    },
+    "cancel": {
+      "open": "Cancel invoice",
+      "title": "Cancel invoice",
+      "fiscalHint": "The cancellation is sent to the Sefin. It may be refused (for example, after the municipal deadline). The credit used to issue it is not refunded.",
+      "processingHint": "This invoice is being issued. The cancellation will be sent to the Sefin as soon as it is authorized, and the justification is required. The credit used to issue it is not refunded.",
+      "requested": "Cancellation requested. It will be sent to the Sefin as soon as the invoice is authorized.",
+      "queuedHint": "This invoice has not been issued yet. It will be cancelled immediately and the reserved credit released.",
+      "reason": "Reason",
+      "reasons": {
+        "issue_error": "Issuance error",
+        "service_not_provided": "Service not provided",
+        "other": "Other"
+      },
+      "description": "Justification",
+      "descriptionRequired": "Required, 15 to 255 characters. Sent to the Sefin.",
+      "descriptionOptional": "Optional.",
+      "keep": "Keep invoice",
+      "confirm": "Cancel invoice",
+      "failed": "We couldn't cancel the invoice.",
+      "reasonLabel": "Cancellation reason"
     }
   },
   "FiscalDocs": {

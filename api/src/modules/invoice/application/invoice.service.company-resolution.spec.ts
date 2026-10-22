@@ -43,6 +43,7 @@ describe('InvoiceService.emit company resolution', () => {
       {} as never,
       {} as never,
       new InvoiceIntakeService(companyService as never, invoiceDomain as never),
+      {} as never,
     );
   });
 

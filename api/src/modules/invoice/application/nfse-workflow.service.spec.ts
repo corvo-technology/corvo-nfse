@@ -11,6 +11,7 @@ import { Invoice } from '../domain/invoice';
 import type { CustomerSnapshot } from '../domain/invoice';
 import type { IIssuePayload } from '@/infra/external/nfse/nfse-fiscal-provider';
 import { buildInvoiceState } from '../domain/invoice-state';
+import { InvoiceWebhookPublisher } from './invoice-webhook.publisher';
 import { DpsBuilder } from '../domain/fiscal/dps/dps-builder';
 import type {
   FiscalSnapshot,
@@ -69,8 +70,7 @@ describe('NfseWorkflowService email webhooks', () => {
       {} as any,
       {} as any,
       {} as any,
-      webhooks as any,
-      outbox as any,
+      new InvoiceWebhookPublisher(webhooks as any, outbox as any),
       {} as any,
       {} as any,
       {} as unknown as IFiscalSnapshotRepository,
@@ -124,7 +124,11 @@ describe('NfseWorkflowService payload — tomador opcional', () => {
     municipalityCode: '3550308',
   };
   const fakes = {
-    invoices: { findByIdAndTenantId: jest.fn(), save: jest.fn() },
+    invoices: {
+      findByIdAndTenantId: jest.fn(),
+      save: jest.fn(),
+      saveDpsInfo: jest.fn(),
+    },
     sequences: {
       reserveNext: jest.fn().mockResolvedValue({ series: '1', number: 7 }),
     },
@@ -149,7 +153,6 @@ describe('NfseWorkflowService payload — tomador opcional', () => {
       fakes.invoices as any,
       fakes.sequences,
       fakes.companies as any,
-      {} as any,
       {} as any,
       {} as any,
       {} as any,
@@ -371,7 +374,11 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
   };
 
   const fakes = {
-    invoices: { findByIdAndTenantId: jest.fn(), save: jest.fn() },
+    invoices: {
+      findByIdAndTenantId: jest.fn(),
+      save: jest.fn(),
+      saveDpsInfo: jest.fn(),
+    },
     sequences: { reserveNext: jest.fn() },
     companies: { findById: jest.fn() },
     certificates: { decryptCredentials: jest.fn() },
@@ -391,6 +398,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     fakes.invoices.save.mockResolvedValue(undefined);
+    fakes.invoices.saveDpsInfo.mockResolvedValue(undefined);
     fakes.companies.findById.mockResolvedValue(company);
     fakes.sequences.reserveNext.mockResolvedValue({ series: '1', number: 7 });
     fakes.profiles.findEffective.mockResolvedValue({
@@ -420,8 +428,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       fakes.providers,
       fakes.lifecycle,
       fakes.queues,
-      fakes.webhooks,
-      fakes.outbox,
+      new InvoiceWebhookPublisher(fakes.webhooks as any, fakes.outbox as any),
       fakes.documentStorage,
       fakes.profiles,
       fakes.fiscalSnapshots,
@@ -630,8 +637,9 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     expect(invoice.status).toBe('rejected');
     expect(invoice.toSnapshot().lastErrorCode).toBe('DPS_LAYOUT_UNSUPPORTED');
     // The reserved number is already persisted and stays with the invoice.
-    expect(fakes.invoices.save).toHaveBeenCalledTimes(1);
-    expect(fakes.invoices.save).toHaveBeenCalledWith(invoice, tenantId);
+    // Persisted through the column-scoped saveDpsInfo (cancellation race fix).
+    expect(fakes.invoices.saveDpsInfo).toHaveBeenCalledTimes(1);
+    expect(fakes.invoices.saveDpsInfo).toHaveBeenCalledWith(invoice);
     expect(invoice.dpsNumber).toBe(7);
     expect(invoice.toSnapshot().dpsSeries).toBe('1');
     expect(recordDpsValidationFailure).toHaveBeenCalledWith(

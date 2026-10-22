@@ -44,9 +44,23 @@ it('documents the actual 202 invoice response with nullable scheduledFor', async
             format: 'date-time',
             nullable: true,
           }),
+          cancellationRequestedAt: expect.objectContaining({
+            type: 'string',
+            format: 'date-time',
+            nullable: true,
+          }),
         }),
       }),
     );
+    const cancelResponses =
+      document?.paths['/invoices/{id}/cancel']?.post?.responses ?? {};
+    expect(Object.keys(cancelResponses)).toEqual(
+      expect.arrayContaining(['200', '202']),
+    );
+    const cancelOp = document?.paths['/invoices/{id}/cancel']?.post;
+    expect(cancelOp?.summary).toContain('processing');
+    expect(cancelOp?.description).toContain('cancellationRequestedAt');
+    expect(cancelOp?.description).toContain('does not refund');
     expect(
       document?.paths['/invoices/calculate']?.post?.responses['200'],
     ).toBeDefined();

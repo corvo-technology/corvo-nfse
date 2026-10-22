@@ -240,6 +240,35 @@ describe('NfseEmailProcessor', () => {
     });
   });
 
+  describe('cancelled invoices — no e-mail', () => {
+    it.each(['cancelling', 'cancelled'] as const)(
+      'returns without throwing or touching e-mail status for a %s invoice',
+      async (status) => {
+        const invoice = buildInvoice({ customerEmail: 'cliente@example.com' });
+        Object.assign(invoice, { status });
+        (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+          invoice,
+        );
+        await expect(processor.process(makeJob())).resolves.toBeUndefined();
+        expect(fakeInvoiceRepo.updateEmailStatus).not.toHaveBeenCalled();
+        expect(fakeDocStorage.getPdf).not.toHaveBeenCalled();
+        expect(fakeDocStorage.getXml).not.toHaveBeenCalled();
+        expect(fakeEmailProvider.send).not.toHaveBeenCalled();
+      },
+    );
+
+    it('still throws for an authorized invoice without documents', async () => {
+      const invoice = buildInvoice({ customerEmail: 'cliente@example.com' });
+      Object.assign(invoice, { documentsReadyAt: null });
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        invoice,
+      );
+      await expect(processor.process(makeJob())).rejects.toThrow(
+        'Invoice documents are not ready',
+      );
+    });
+  });
+
   describe('no customer email — silent skip', () => {
     it('marks invoice as failed when customer has no email', async () => {
       (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(

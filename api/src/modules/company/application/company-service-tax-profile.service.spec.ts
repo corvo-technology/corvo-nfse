@@ -101,7 +101,11 @@ class FakeServiceTaxProfileRepository implements IServiceTaxProfileRepository {
         : null;
     return Promise.resolve(scoped);
   }
-  async markApproved(id: string, scopedCompanyId: string, scopedTenant: string): Promise<CompanyServiceTaxProfile> {
+  async markApproved(
+    id: string,
+    scopedCompanyId: string,
+    scopedTenant: string,
+  ): Promise<CompanyServiceTaxProfile> {
     const profile = await this.findById(id, scopedCompanyId, scopedTenant);
     if (!profile) throw new NotFoundException('Service tax profile not found');
     return { ...profile, reviewStatus: 'approved' };
@@ -513,9 +517,17 @@ describe('CompanyServiceTaxProfileService', () => {
 describe('CompanyServiceTaxProfileService approval', () => {
   it('approves a scoped service without rewriting its classification', async () => {
     const existing = makeProfile();
-    const markApproved = jest.fn().mockResolvedValue({ ...existing, reviewStatus: 'approved' });
-    const profiles = { findById: jest.fn().mockResolvedValue(existing), markApproved, upsert: jest.fn() };
-    const result = await new CompanyServiceTaxProfileService(profiles as never).approve(companyId, tenantId, existing.id);
+    const markApproved = jest
+      .fn()
+      .mockResolvedValue({ ...existing, reviewStatus: 'approved' });
+    const profiles = {
+      findById: jest.fn().mockResolvedValue(existing),
+      markApproved,
+      upsert: jest.fn(),
+    };
+    const result = await new CompanyServiceTaxProfileService(
+      profiles as never,
+    ).approve(companyId, tenantId, existing.id);
     expect(result.reviewStatus).toBe('approved');
     expect(markApproved).toHaveBeenCalledWith(existing.id, companyId, tenantId);
     expect(profiles.upsert).not.toHaveBeenCalled();
@@ -523,18 +535,31 @@ describe('CompanyServiceTaxProfileService approval', () => {
   it('returns an already approved service without writing', async () => {
     const existing = makeProfile({ reviewStatus: 'approved' });
     const markApproved = jest.fn();
-    const result = await new CompanyServiceTaxProfileService({ findById: jest.fn().mockResolvedValue(existing), markApproved } as never).approve(companyId, tenantId, existing.id);
+    const result = await new CompanyServiceTaxProfileService({
+      findById: jest.fn().mockResolvedValue(existing),
+      markApproved,
+    } as never).approve(companyId, tenantId, existing.id);
     expect(result).toBe(existing);
     expect(markApproved).not.toHaveBeenCalled();
   });
   it('does not approve a service outside the company and tenant scope', async () => {
     const markApproved = jest.fn();
-    await expect(new CompanyServiceTaxProfileService({ findById: jest.fn().mockResolvedValue(null), markApproved } as never).approve(companyId, 'other-tenant', 'service')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      new CompanyServiceTaxProfileService({
+        findById: jest.fn().mockResolvedValue(null),
+        markApproved,
+      } as never).approve(companyId, 'other-tenant', 'service'),
+    ).rejects.toBeInstanceOf(NotFoundException);
     expect(markApproved).not.toHaveBeenCalled();
   });
   it('validates the saved profile before approving it', async () => {
     const markApproved = jest.fn();
-    await expect(new CompanyServiceTaxProfileService({ findById: jest.fn().mockResolvedValue(makeProfile({ issRate: '101' })), markApproved } as never).approve(companyId, tenantId, 'service')).rejects.toBeInstanceOf(FiscalValidationError);
+    await expect(
+      new CompanyServiceTaxProfileService({
+        findById: jest.fn().mockResolvedValue(makeProfile({ issRate: '101' })),
+        markApproved,
+      } as never).approve(companyId, tenantId, 'service'),
+    ).rejects.toBeInstanceOf(FiscalValidationError);
     expect(markApproved).not.toHaveBeenCalled();
   });
 });

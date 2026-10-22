@@ -161,7 +161,6 @@ const context = (overrides: Partial<FiscalContext> = {}): FiscalContext => {
 const withoutProfile = context({ companyProfile: undefined });
 const withoutClassification = context({ classification: undefined });
 const withoutApplicability = context({ applicability: undefined });
-const withoutLegacy = context({ legacyTaxes: undefined });
 const withoutRtc = context({ rtcTaxes: undefined });
 
 describe('validateFiscalContext', () => {

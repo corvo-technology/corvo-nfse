@@ -243,6 +243,8 @@ export const WEBHOOK_EVENT_OPTIONS = [
   { value: "nfse.invoice.email_sent", label: "Email sent", description: "The invoice email was sent to the customer." },
   { value: "nfse.invoice.email_failed", label: "Email failed", description: "Sending the invoice email failed." },
   { value: "nfse.invoice.fiscal_discrepancy", label: "Fiscal discrepancy", description: "The authorized invoice differs from the calculated taxes." },
+  { value: "nfse.invoice.cancelled", label: "Invoice cancelled", description: "The invoice was cancelled (scheduled or at the Sefin)." },
+  { value: "nfse.invoice.cancellation_rejected", label: "Cancellation rejected", description: "The Sefin refused the cancellation; the invoice stays authorized." },
 ] as const;
 
 export type WebhookEvent = (typeof WEBHOOK_EVENT_OPTIONS)[number]["value"];
@@ -400,7 +402,8 @@ export interface Certificate {
   subject: string; fingerprint: string; validFrom: string; validUntil: string;
   status: CertificateStatus; createdAt: string;
 }
-export type InvoiceStatus = "queued" | "processing" | "authorized" | "rejected" | "retry_pending" | "reconciliation_required" | "manual_review" | "failed";
+export type InvoiceStatus = "queued" | "processing" | "authorized" | "rejected" | "retry_pending" | "reconciliation_required" | "manual_review" | "failed" | "cancelling" | "cancelled";
+export type CancellationReasonCode = "issue_error" | "service_not_provided" | "other";
 export interface Invoice {
   id: string; tenantId: string; companyId: string; externalId?: string | null;
   accessKey?: string | null; nfseNumber?: number | null; status: InvoiceStatus;
@@ -409,6 +412,9 @@ export interface Invoice {
   serviceSnapshot: Required<CreateInvoiceInput["service"]>; competenceDate: string;
   lastErrorCode?: string | null; lastErrorMessage?: string | null;
   authorizedAt?: string | null; scheduledFor?: string | null; createdAt: string; updatedAt: string;
+  cancellationReason?: CancellationReasonCode | null; cancellationDescription?: string | null; cancelledAt?: string | null;
+  /** Set when a cancellation was requested while the invoice was still being issued. */
+  cancellationRequestedAt?: string | null;
 }
 export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } | { companyId: string; companyTaxId?: string }) & {
   externalId?: string;

@@ -1,5 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { InvoiceStatus } from '../domain/invoice-status';
+import {
+  CANCELLATION_REASON_CODES,
+  type CancellationReasonCode,
+} from '../domain/cancellation-reason';
 import type { LastEmailStatus } from '../domain/invoice';
 
 export class CustomerSnapshotDto {
@@ -135,6 +139,37 @@ export class InvoiceResponseDto {
     status: LastEmailStatus;
     sentAt: Date | null;
   };
+
+  @ApiPropertyOptional({
+    enum: CANCELLATION_REASON_CODES,
+    nullable: true,
+    description: 'Reason given when the cancellation was requested',
+  })
+  cancellationReason?: CancellationReasonCode | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: 'Justification given when the cancellation was requested',
+  })
+  cancellationDescription?: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    description: 'When the invoice reached cancelled',
+  })
+  cancelledAt?: Date | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    description:
+      'Set when the cancellation was requested while the invoice was being issued (processing); it is cancelled at the Sefin as soon as it is authorized',
+  })
+  cancellationRequestedAt?: Date | null;
 
   @ApiProperty()
   createdAt!: Date;

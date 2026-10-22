@@ -236,7 +236,7 @@ describe('CompanyController fiscal profile endpoints', () => {
 
   it('PUT fiscal-profile propagates the conflict when the open approved profile differs', async () => {
     const open = makeFiscalProfile({ taxRegime: 'LUCRO_REAL' });
-    const { controller, fiscalProfiles } = makeController({
+    const { controller } = makeController({
       fiscalProfiles: {
         current: jest.fn().mockResolvedValue(open),
         record: jest

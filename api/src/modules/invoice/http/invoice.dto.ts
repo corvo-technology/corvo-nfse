@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CursorQuery } from '@/shared/http/pagination';
 import {
   IsBoolean,
@@ -12,10 +12,17 @@ import {
   ValidateIf,
   IsDateString,
   IsIn,
+  MaxLength,
   Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import type { InvoiceStatus } from '../domain/invoice-status';
+import { INVOICE_STATUSES, type InvoiceStatus } from '../domain/invoice-status';
+import {
+  CANCELLATION_DESCRIPTION_MAX,
+  CANCELLATION_DESCRIPTION_MIN,
+  CANCELLATION_REASON_CODES,
+  type CancellationReasonCode,
+} from '../domain/cancellation-reason';
 
 /**
  * Invoice DTOs — HTTP layer.
@@ -202,19 +209,24 @@ export class ListInvoicesQuery extends CursorQuery {
   @IsOptional() @IsUUID() companyId?: string;
 
   @IsOptional()
-  @IsIn([
-    'queued',
-    'processing',
-    'authorized',
-    'rejected',
-    'retry_pending',
-    'reconciliation_required',
-    'manual_review',
-    'failed',
-  ] as InvoiceStatus[])
+  @IsIn(INVOICE_STATUSES)
   status?: InvoiceStatus;
 
   @IsOptional() @IsDateString() from?: string;
   @IsOptional() @IsDateString() to?: string;
   @IsOptional() @IsString() externalId?: string;
+}
+
+export class CancelInvoiceDto {
+  @IsIn(CANCELLATION_REASON_CODES)
+  @ApiProperty({ enum: CANCELLATION_REASON_CODES })
+  reason!: CancellationReasonCode;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(CANCELLATION_DESCRIPTION_MAX)
+  @ApiPropertyOptional({
+    description: `Required (${CANCELLATION_DESCRIPTION_MIN}–${CANCELLATION_DESCRIPTION_MAX} characters) to cancel an authorized NFS-e or an invoice being issued (processing); optional for a queued invoice.`,
+  })
+  description?: string;
 }

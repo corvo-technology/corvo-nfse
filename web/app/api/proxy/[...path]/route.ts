@@ -34,6 +34,7 @@ const routes: [RegExp, string[]][] = [
   [/^invoices\/[^/]+(?:\/(events|pdf|xml))?$/, ["GET"]],
   [/^invoices\/[^/]+\/download-url$/, ["POST"]],
   [/^invoices\/[^/]+\/email$/, ["POST"]],
+  [/^invoices\/[^/]+\/cancel$/, ["POST"]],
   [/^webhooks$/, ["GET", "POST"]],
   [/^webhooks\/deliveries(?:\/stats)?$/, ["GET"]],
   [/^webhooks\/deliveries\/[^/]+\/retry$/, ["POST"]],

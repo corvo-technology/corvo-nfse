@@ -353,6 +353,14 @@
           "fiscal_discrepancy": {
             "label": "Divergência fiscal",
             "description": "A nota autorizada difere dos tributos calculados."
+          },
+          "cancelled": {
+            "label": "Nota cancelada",
+            "description": "A nota foi cancelada (agendada ou na Sefin)."
+          },
+          "cancellation_rejected": {
+            "label": "Cancelamento recusado",
+            "description": "A Sefin recusou o cancelamento; a nota continua autorizada."
           }
         }
       }
@@ -1182,7 +1190,9 @@
       "reconciliation_required": "Reconciliação",
       "retry_pending": "Nova tentativa pendente",
       "manual_review": "Revisão manual",
-      "failed": "Falha"
+      "failed": "Falha",
+      "cancelling": "Cancelando",
+      "cancelled": "Cancelada"
     },
     "loadFailed": "Não foi possível carregar as notas fiscais.",
     "scheduledFor": "Emite em {date}",
@@ -1533,7 +1543,30 @@
       "retry_pending": "A emissão não foi concluída e uma nova tentativa será feita automaticamente.",
       "reconciliation_required": "Não foi possível confirmar o estado da nota; estamos conferindo com a prefeitura.",
       "manual_review": "A nota precisa de revisão manual da nossa equipe.",
-      "failed": "Não foi possível emitir a nota."
+      "failed": "Não foi possível emitir a nota.",
+      "cancelling": "Enviamos o cancelamento à Sefin e aguardamos a resposta.",
+      "cancelled": "A nota foi cancelada."
+    },
+    "cancel": {
+      "open": "Cancelar nota",
+      "title": "Cancelar nota",
+      "fiscalHint": "O cancelamento é enviado à Sefin e pode ser recusado (por exemplo, fora do prazo municipal). O crédito usado na emissão não é devolvido.",
+      "processingHint": "Esta nota está sendo emitida. O cancelamento será enviado à Sefin assim que ela for autorizada, e a justificativa é obrigatória. O crédito usado na emissão não é devolvido.",
+      "requested": "Cancelamento solicitado. Ele será enviado à Sefin assim que a nota for autorizada.",
+      "queuedHint": "Esta nota ainda não foi emitida. Ela será cancelada na hora e o crédito reservado será liberado.",
+      "reason": "Motivo",
+      "reasons": {
+        "issue_error": "Erro na emissão",
+        "service_not_provided": "Serviço não prestado",
+        "other": "Outros"
+      },
+      "description": "Justificativa",
+      "descriptionRequired": "Obrigatória, de 15 a 255 caracteres. Enviada à Sefin.",
+      "descriptionOptional": "Opcional.",
+      "keep": "Manter nota",
+      "confirm": "Cancelar nota",
+      "failed": "Não foi possível cancelar a nota.",
+      "reasonLabel": "Motivo do cancelamento"
     }
   },
   "FiscalDocs": {

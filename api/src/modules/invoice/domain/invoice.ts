@@ -1,9 +1,21 @@
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { randomUUID } from 'crypto';
-import { InvoiceStatus, VALID_TRANSITIONS } from './invoice-status';
+import {
+  EMISSION_IN_PROGRESS_STATUSES,
+  InvoiceStatus,
+  VALID_TRANSITIONS,
+} from './invoice-status';
 import { buildInvoiceState, type InvoiceState } from './invoice-state';
 import { InvoiceEvent } from './invoice-event';
-import { InvalidInvoiceTransitionError } from './errors';
+import {
+  InvalidInvoiceTransitionError,
+  InvoiceNotCancellableError,
+} from './errors';
+import {
+  assertFiscalCancellationReason,
+  type CancellationReason,
+  type CancellationReasonCode,
+} from './cancellation-reason';
 import type { ServiceFiscalInput } from './fiscal/normalized-invoice';
 
 export type LastEmailStatus = 'queued' | 'sent' | 'failed';
@@ -73,6 +85,10 @@ export interface InvoiceProps {
   documentsReadyAt: Date | null;
   lastEmailStatus: LastEmailStatus | null;
   lastEmailSentAt: Date | null;
+  cancellationReason?: CancellationReasonCode | null;
+  cancellationDescription?: string | null;
+  cancelledAt?: Date | null;
+  cancellationRequestedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -156,6 +172,10 @@ export class Invoice {
       documentsReadyAt: null,
       lastEmailStatus: null,
       lastEmailSentAt: null,
+      cancellationReason: null,
+      cancellationDescription: null,
+      cancelledAt: null,
+      cancellationRequestedAt: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -247,6 +267,34 @@ export class Invoice {
     return this.props.customerSnapshot;
   }
 
+  get cancellationReason(): CancellationReason | null {
+    const code = this.props.cancellationReason;
+    return code
+      ? { code, description: this.props.cancellationDescription ?? null }
+      : null;
+  }
+
+  get cancellationRequestedAt(): Date | null {
+    return this.props.cancellationRequestedAt ?? null;
+  }
+
+  /** A cancellation was requested while the emission is still unresolved. */
+  get hasPendingCancellation(): boolean {
+    return (
+      this.cancellationRequestedAt !== null &&
+      EMISSION_IN_PROGRESS_STATUSES.includes(this.props.status)
+    );
+  }
+
+  get cancelledAt(): Date | null {
+    return this.props.cancelledAt ?? null;
+  }
+
+  /** True once the Sefin authorized it, even if later cancelled: documents exist. */
+  get wasAuthorized(): boolean {
+    return this.props.authorizedAt !== null;
+  }
+
   get discount(): number | undefined {
     return this.props.discount;
   }
@@ -306,6 +354,74 @@ export class Invoice {
   setProcessing(): void {
     this.props.status = 'processing';
     this.props.updatedAt = new Date();
+  }
+
+  /** queued → cancelled (local) or authorized → cancelling (fiscal event). */
+  requestCancellation(reason: CancellationReason): InvoiceEvent {
+    if (this.props.status === 'queued') {
+      this.recordCancellationReason(reason);
+      const event = this.transitionTo('cancelled', 'Cancelled before emission');
+      this.props.cancelledAt = event.createdAt;
+      this.props.cancellationRequestedAt = event.createdAt;
+      return event;
+    }
+    if (this.props.status === 'authorized') {
+      assertFiscalCancellationReason(reason);
+      this.recordCancellationReason(reason);
+      this.clearLastError();
+      const event = this.transitionTo('cancelling', 'Cancellation requested');
+      this.props.cancellationRequestedAt = event.createdAt;
+      return event;
+    }
+    throw new InvoiceNotCancellableError(this.props.status);
+  }
+
+  /** Records the intent to cancel while processing; no status change, no event. */
+  registerPendingCancellation(reason: CancellationReason): void {
+    if (this.props.status !== 'processing')
+      throw new InvoiceNotCancellableError(this.props.status);
+    assertFiscalCancellationReason(reason);
+    this.recordCancellationReason(reason);
+    this.props.cancellationRequestedAt = new Date();
+    this.props.updatedAt = new Date();
+  }
+
+  discardPendingCancellation(): void {
+    this.props.cancellationReason = null;
+    this.props.cancellationDescription = null;
+    this.props.cancellationRequestedAt = null;
+    this.props.updatedAt = new Date();
+  }
+
+  confirmCancellation(): InvoiceEvent {
+    if (this.props.status !== 'cancelling')
+      throw new InvalidInvoiceTransitionError(this.props.status, 'cancelled');
+    this.clearLastError();
+    const event = this.transitionTo('cancelled', 'NFS-e cancelled');
+    this.props.cancelledAt = event.createdAt;
+    return event;
+  }
+
+  rejectCancellation(errorCode: string, errorMessage: string): InvoiceEvent {
+    if (this.props.status !== 'cancelling')
+      throw new InvalidInvoiceTransitionError(this.props.status, 'authorized');
+    this.setRejected(errorCode, errorMessage);
+    return this.transitionTo(
+      'authorized',
+      `Cancellation rejected: ${errorMessage}`,
+    );
+  }
+
+  /** Drops an error left by a previous (rejected) cancellation attempt. */
+  private clearLastError(): void {
+    this.props.lastErrorCode = null;
+    this.props.lastErrorMessage = null;
+    this.props.lastErrorProvider = null;
+  }
+
+  private recordCancellationReason(reason: CancellationReason): void {
+    this.props.cancellationReason = reason.code;
+    this.props.cancellationDescription = reason.description;
   }
 
   /** HTTP/MCP representation: the invoice fields at the top level, plus the derived states. */

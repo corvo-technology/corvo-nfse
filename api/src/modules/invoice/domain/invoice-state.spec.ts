@@ -64,4 +64,20 @@ describe('buildInvoiceState', () => {
       ).toBe('completed');
     },
   );
+
+  it('is cancelled when the invoice was cancelled', () => {
+    expect(buildInvoiceState({ ...base, status: 'cancelled' }).stage).toBe(
+      'cancelled',
+    );
+  });
+
+  it('keeps the authorized view while a cancellation is pending', () => {
+    expect(
+      buildInvoiceState({ ...base, status: 'cancelling', documentsReady: true })
+        .stage,
+    ).toBe('completed');
+    expect(buildInvoiceState({ ...base, status: 'cancelling' }).stage).toBe(
+      'authorized',
+    );
+  });
 });

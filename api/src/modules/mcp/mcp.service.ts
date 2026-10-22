@@ -13,6 +13,10 @@ import {
   createNfseIssueHandler,
 } from './tools/nfse-issue.tool';
 import {
+  NFSE_CANCEL_TOOL,
+  createNfseCancelHandler,
+} from './tools/nfse-cancel.tool';
+import {
   NFSE_QUERY_TOOL,
   createNfseQueryHandler,
 } from './tools/nfse-query.tool';
@@ -57,6 +61,13 @@ export class McpService {
       NFSE_ISSUE_TOOL,
       this.wrapWithScopeCheck(
         createNfseIssueHandler(this.invoiceService),
+        'nfse:write',
+      ),
+    );
+    this.server.registerTool(
+      NFSE_CANCEL_TOOL,
+      this.wrapWithScopeCheck(
+        createNfseCancelHandler(this.invoiceService),
         'nfse:write',
       ),
     );
