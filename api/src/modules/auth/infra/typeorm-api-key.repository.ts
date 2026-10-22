@@ -114,4 +114,17 @@ export class TypeormApiKeyRepository implements IApiKeyRepository {
       await this.repo.delete({ id: apiKey.id, tenantId });
     });
   }
+
+  /** Direct UPDATE of last_used_at only; never inserts. */
+  async touchLastUsed(id: string, tenantId: string, at: Date): Promise<void> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      await this.repo
+        .createQueryBuilder()
+        .update()
+        .set({ lastUsedAt: at })
+        .where('id = :id AND tenant_id = :tenantId', { id, tenantId })
+        .execute();
+    });
+  }
 }
