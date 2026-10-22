@@ -53,9 +53,7 @@ export const pt: DocsTree = {
           ["Listar notas e eventos", "`{ \"data\": [ ... ], \"pagination\": {...} }`"],
           ["URL de download / email", "`{ \"data\": ... }`"],
           ["Webhooks e entregas", "`{ \"data\": ... } ou listagem paginada`"],
-          ["Saldo de créditos", "`{ \"data\": { \"tenantId\", \"balance\", ... } }`"],
-          ["Planos / histórico de créditos", "`{ \"data\": [...], \"pagination\": {...} }`"],
-          ["Billing", "`{ \"data\": ... }`"],
+          ["Plano e cotas", "`{ \"data\": ... }`"],
         ],
       },
       {
@@ -96,10 +94,6 @@ export const pt: DocsTree = {
           ["GET", "`/v1/webhooks/deliveries`", "Listar entregas", "200"],
           ["GET", "`/v1/webhooks/deliveries/stats`", "Consultar estatísticas", "200"],
           ["POST", "`/v1/webhooks/deliveries/:id/retry`", "Agendar nova tentativa", "200"],
-          ["GET", "`/v1/credits`", "Consultar saldo", "200"],
-          ["GET", "`/v1/credits/plans`", "Listar planos", "200"],
-          ["GET", "`/v1/credits/history`", "Listar transações", "200"],
-          ["POST", "`/v1/credits/purchase/preview`", "Compra avulsa (descontinuada)", "410"],
           ["GET", "`/v1/billing/plan`", "Consultar plano e consumo", "200"],
           ["GET", "`/v1/billing/usage`", "Consultar disponibilidade e cotas", "200"],
           ["POST", "`/v1/billing/upgrade`", "Agendar troca de plano", "200"],
@@ -203,7 +197,7 @@ export const pt: DocsTree = {
           tone: "warn",
           body: "Créditos, plano e configurações de webhook pertencem à conta. Uma chave `test` com `full_access` pode gerenciar webhooks e consultar créditos e cobrança. Troca de plano, checkout e portal de cobrança existem só no painel.",
         },
-        { kind: "callout", tone: "accent", body: "O servidor resolve o tenant pela autenticação: nunca envie `tenantId` no corpo. Recursos de outro tenant retornam `404`." },
+        { kind: "callout", tone: "accent", body: "O servidor resolve a conta pela autenticação; recursos de outra conta retornam `404`." },
         { kind: "heading", level: 2, body: "Escopos" },
         {
           kind: "table",
@@ -966,7 +960,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           kind: "table",
           head: ["Campos", "Tipo / observação"],
           rows: [
-            ["`id`, `companyId`, `tenantId`", "Strings de identificação."],
+            ["`id`, `companyId`", "Strings de identificação."],
             ["`environment`", "`test` ou `live`."],
             ["`externalId`, `idempotencyKey`", "String ou null."],
             ["`status`", "Enum descrito abaixo."],
@@ -1328,7 +1322,7 @@ console.log(body.data, body.pagination); // { data: [{ id, url, events, active, 
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "A listagem não devolve `secret` nem `tenantId`." },
+            { kind: "callout", tone: "accent", body: "A listagem não devolve `secret`." },
           ],
         },
         {
@@ -1527,7 +1521,7 @@ console.log(body.data, body.pagination); // { data: WebhookDelivery[], paginatio
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Campos: `id`, `tenantId`, `webhookConfigId`, `eventType`, `environment`, `url`, `payload?`, `statusCode?`, `responseBody?`, `errorMessage?`, `status`, `durationMs?`, `retryCount`, `nextRetryAt?`, `lastError?`, `createdAt`. Status de entrega: `pending`, `sent`, `delayed`, `failed`, `manual_retry`. Sem o filtro `?environment`, a listagem pode retornar ambos os ambientes da conta." },
+            { kind: "callout", tone: "accent", body: "Campos: `id`, `webhookConfigId`, `eventType`, `environment`, `url`, `payload?`, `statusCode?`, `responseBody?`, `errorMessage?`, `status`, `durationMs?`, `retryCount`, `nextRetryAt?`, `lastError?`, `createdAt`. Status de entrega: `pending`, `sent`, `delayed`, `failed`, `manual_retry`. Sem o filtro `?environment`, a listagem pode retornar ambos os ambientes da conta." },
           ],
         },
         {
@@ -1618,13 +1612,12 @@ console.log(body.data.retried); // { data: { retried: true } }`,
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
 const body = await res.json();
-console.log(body.data.balance); // { data: { tenantId, balance, overageUnits, ... } }`,
+console.log(body.data.balance); // { data: { balance, overageUnits, ... } }`,
           },
           response: {
             label: "200 OK",
             json: `{
   "data": {
-    "tenantId": "b6c7d8e9-f0a1-4b2c-9d3e-4f5a6b7c8d9e",
     "balance": 100,
     "overageUnits": 0,
     "overageAmountCents": 0,
@@ -2436,6 +2429,30 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`{ companies [{ id, legal_name, tax_id, status, tax_regime, setup_gaps, ready_to_issue }], next_cursor }`"
             ],
             [
+              "`company_get`",
+              "`nfse:read`",
+              "`tax_id` (CNPJ)",
+              "`{ company }` ou `{ company: null }`"
+            ],
+            [
+              "`company_create`",
+              "`nfse:write`",
+              "`legal_name`, `tax_id`, `tax_regime`, `municipality_code` e dados fiscais opcionais",
+              "`{ id, legal_name, tax_id, status }`; certificado continua somente pela API"
+            ],
+            [
+              "`nfse_calculate`",
+              "`nfse:read`",
+              "`company_tax_id` ou `company_id`, `amount` e dados fiscais opcionais",
+              "Resultado da apuração sem emitir, reservar crédito ou criar DPS"
+            ],
+            [
+              "`billing_usage`",
+              "`nfse:read`",
+              "Sem parâmetros",
+              "`QuotaStatus` com `canEmit`, franquia e uso"
+            ],
+            [
               "`nfse_cancel`",
               "`nfse:write`",
               "`invoice_id`, `reason` (`issue_error`, `service_not_provided` ou `other`), `description?` (15–255 caracteres, obrigatória para NFS-e autorizada ou em emissão)",
@@ -2463,7 +2480,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         },
         {
           "kind": "text",
-          "body": "A chamada mais simples é `company_tax_id` mais `amount`: o tomador é opcional (omita para uma nota sem tomador; se enviar, `tax_id` é obrigatório), a data de competência é hoje por padrão, o código de serviço vem da empresa ou, sem ele, `100901` (LC 116 item 10.09), e a descrição vem do nome do código de serviço. O agente que não conhece a empresa chama `company_list` antes (ela também informa `ready_to_issue`). As mesmas regras fiscais da API REST valem para `nfse_issue`. Falhas das ferramentas voltam como resultado com `isError: true` e a mensagem em texto, para o agente ler e corrigir."
+          "body": "A chamada mais simples é `company_tax_id` mais `amount`: o tomador é opcional (omita para uma nota sem tomador; se enviar, `tax_id` é obrigatório), a data de competência é hoje por padrão, o código de serviço vem da empresa ou, sem ele, `100901` (LC 116 item 10.09), e a descrição vem do nome do código de serviço. Use `company_get` para consultar um CNPJ específico e `billing_usage` antes de emitir. Certificados A1 não são expostos no MCP e devem ser enviados somente pela API. Falhas das ferramentas voltam como resultado com `isError: true` e a mensagem em texto, para o agente ler e corrigir."
         },
         {
           "kind": "heading",

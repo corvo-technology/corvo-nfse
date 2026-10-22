@@ -113,6 +113,35 @@ export class CompanyListInput {
   @IsOptional() @IsString() cursor?: string;
 }
 
+export class CompanyCreateAddressInput {
+  @IsOptional() @IsString() street?: string;
+  @IsOptional() @IsString() number?: string;
+  @IsOptional() @IsString() complement?: string;
+  @IsOptional() @IsString() district?: string;
+  @IsOptional() @IsString() city?: string;
+  @IsOptional() @IsString() state?: string;
+  @IsOptional() @IsString() zip?: string;
+}
+
+export class CompanyCreateInput {
+  @IsString() @IsNotEmpty() legal_name!: string;
+  @IsString() @IsNotEmpty() tax_id!: string;
+  @IsString()
+  @IsIn(['mei', 'simple_national', 'presumed_profit', 'real_profit'])
+  tax_regime!: string;
+  @IsString() @IsNotEmpty() municipality_code!: string;
+  @IsOptional() @IsString() trade_name?: string;
+  @IsOptional() @IsString() municipal_reg?: string;
+  @IsOptional() @IsBoolean() send_municipal_reg?: boolean;
+  @IsOptional() @IsString() default_service_code?: string;
+  @IsOptional() @IsBoolean() simple_national?: boolean;
+  @IsOptional() @IsString() special_regime?: string;
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CompanyCreateAddressInput)
+  address?: CompanyCreateAddressInput;
+}
+
 export class NfseQueryInput {
   @IsString() access_key!: string;
 }

@@ -7,6 +7,8 @@ import { ICompanyCertificateReader } from '@/modules/company/domain/i-company-ce
 import { Inject, Injectable } from '@nestjs/common';
 import type { AuthContext } from '../auth/auth-context';
 import { InvoiceService } from '../invoice/application/invoice.service';
+import { InvoiceCalculationService } from '../invoice/application/fiscal/invoice-calculation.service';
+import { QuotaService } from '@/modules/plans/application/quota.service';
 import { McpServer } from './mcp.server';
 import {
   NFSE_ISSUE_TOOL,
@@ -29,6 +31,22 @@ import {
   NFSE_DOWNLOAD_PDF_TOOL,
   createNfseDownloadPdfHandler,
 } from './tools/nfse-download-pdf.tool';
+import {
+  COMPANY_CREATE_TOOL,
+  createCompanyCreateHandler,
+} from './tools/company-create.tool';
+import {
+  NFSE_CALCULATE_TOOL,
+  createNfseCalculateHandler,
+} from './tools/nfse-calculate.tool';
+import {
+  BILLING_USAGE_TOOL,
+  createBillingUsageHandler,
+} from './tools/billing-usage.tool';
+import {
+  COMPANY_GET_TOOL,
+  createCompanyGetHandler,
+} from './tools/company-get.tool';
 
 type ToolHandler = (params: unknown, ctx: AuthContext) => Promise<unknown>;
 
@@ -45,6 +63,8 @@ export class McpService {
 
   constructor(
     private readonly invoiceService: InvoiceService,
+    private readonly calculationService: InvoiceCalculationService,
+    private readonly quotaService: QuotaService,
     @Inject(INVOICE_REPOSITORY)
     private readonly invoiceRepo: IInvoiceRepository,
     private readonly companyService: CompanyService,
@@ -71,11 +91,39 @@ export class McpService {
         'nfse:write',
       ),
     );
+    this.server.registerTool(
+      COMPANY_CREATE_TOOL,
+      this.wrapWithScopeCheck(
+        createCompanyCreateHandler(this.companyService),
+        'nfse:write',
+      ),
+    );
     // nfse:read tools
     this.server.registerTool(
       COMPANY_LIST_TOOL,
       this.wrapWithScopeCheck(
         createCompanyListHandler(this.companyService, this.certReader),
+        'nfse:read',
+      ),
+    );
+    this.server.registerTool(
+      COMPANY_GET_TOOL,
+      this.wrapWithScopeCheck(
+        createCompanyGetHandler(this.companyService, this.certReader),
+        'nfse:read',
+      ),
+    );
+    this.server.registerTool(
+      NFSE_CALCULATE_TOOL,
+      this.wrapWithScopeCheck(
+        createNfseCalculateHandler(this.calculationService),
+        'nfse:read',
+      ),
+    );
+    this.server.registerTool(
+      BILLING_USAGE_TOOL,
+      this.wrapWithScopeCheck(
+        createBillingUsageHandler(this.quotaService),
         'nfse:read',
       ),
     );
