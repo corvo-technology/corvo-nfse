@@ -341,4 +341,5 @@ export const SERVICE_CODES: ServiceCode[] = [
   {"code": "390101", "description": "Serviços de ourivesaria e lapidação (quando o material for fornecido pelo tomador do serviço).", "lc116": "39.01"},
   {"code": "400101", "description": "Obras de arte sob encomenda.", "lc116": "40.01"},
   {"code": "990101", "description": "Serviços sem a incidência de ISSQN e ICMS", "lc116": "99.01"},
+  {"code": "990501", "description": "Cobrança de taxas e demais valores condominiais pelo condomínio edilício.", "lc116": "99.05"},
 ];
