@@ -35,36 +35,36 @@ export class PricingService {
     },
     developer: {
       basePriceCents: 2990,
-      perCreditCents: 15,
+      perCreditCents: 12,
       name: 'Developer',
-      allowance: 200,
+      allowance: 250,
       dailyLimit: null,
-      maxCompanies: 10,
+      maxCompanies: 999999,
       support: 'email',
     },
     growth: {
-      basePriceCents: 8990,
-      perCreditCents: 12,
+      basePriceCents: 9990,
+      perCreditCents: 8,
       name: 'Growth',
-      allowance: 750,
+      allowance: 1500,
       dailyLimit: null,
-      maxCompanies: 50,
+      maxCompanies: 999999,
       support: 'email',
     },
     scale: {
-      basePriceCents: 24990,
-      perCreditCents: 10,
+      basePriceCents: 29990,
+      perCreditCents: 5,
       name: 'Scale',
-      allowance: 2500,
+      allowance: 6000,
       dailyLimit: null,
-      maxCompanies: 500,
+      maxCompanies: 999999,
       support: 'priority',
     },
     volume: {
-      basePriceCents: 89990,
-      perCreditCents: 9,
+      basePriceCents: 69990,
+      perCreditCents: 5,
       name: 'Volume',
-      allowance: 10000,
+      allowance: 20000,
       dailyLimit: null,
       maxCompanies: 999999,
       support: 'priority',
@@ -97,21 +97,23 @@ export class PricingService {
     overageCostCents: number;
     totalEstimatedCents: number;
   } {
-    const tiers: PlanSlug[] = [
-      'free',
-      'developer',
-      'growth',
-      'scale',
-      'volume',
-    ];
-    let chosen: PlanSlug = 'free';
-    for (const slug of tiers) {
-      if (this.PRICING[slug].allowance >= volume) {
-        chosen = slug;
-        break;
-      }
-      chosen = slug;
+    if (volume <= this.PRICING.free.allowance) {
+      return {
+        planSlug: 'free',
+        overageCredits: 0,
+        overageCostCents: 0,
+        totalEstimatedCents: 0,
+      };
     }
+    const paidTiers: PlanSlug[] = ['developer', 'growth', 'scale', 'volume'];
+    const chosen = paidTiers.reduce((best, candidate) => {
+      const bestEntry = this.PRICING[best];
+      const candidateEntry = this.PRICING[candidate];
+      const total = (entry: PricingEntry) =>
+        entry.basePriceCents +
+        Math.max(0, volume - entry.allowance) * entry.perCreditCents;
+      return total(candidateEntry) < total(bestEntry) ? candidate : best;
+    });
     const allowance = this.PRICING[chosen].allowance;
     const overage = Math.max(0, volume - allowance);
     const overageCost = overage * this.PRICING[chosen].perCreditCents;

@@ -86,11 +86,14 @@ export class CompanyService {
       const status = await this.quotaService.getStatus(tenantId);
       if (status.reason === QuotaExceededReason.PLAN_BLOCKED)
         throw new QuotaExceededError(status.reason, {});
-      await this.companyRepo.saveWithLimit(
-        company,
-        status.maxActiveCompanies,
-        tenantId,
-      );
+      if (status.maxActiveCompanies >= 999999)
+        await this.companyRepo.save(company, tenantId);
+      else
+        await this.companyRepo.saveWithLimit(
+          company,
+          status.maxActiveCompanies,
+          tenantId,
+        );
     } else {
       await this.companyRepo.save(company, tenantId);
     }

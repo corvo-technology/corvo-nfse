@@ -88,7 +88,10 @@ export class QuotaService {
 
   async assertCanCreateCompany(tenantId: string): Promise<void> {
     const status = await this.getStatus(tenantId);
-    if (status.activeCompanies >= status.maxActiveCompanies) {
+    if (
+      status.maxActiveCompanies < 999999 &&
+      status.activeCompanies >= status.maxActiveCompanies
+    ) {
       throw new QuotaExceededError(QuotaExceededReason.COMPANY_LIMIT, {
         active: status.activeCompanies,
         max: status.maxActiveCompanies,

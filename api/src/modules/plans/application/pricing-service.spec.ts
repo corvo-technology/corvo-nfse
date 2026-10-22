@@ -5,10 +5,10 @@ describe('PricingService monthly catalog', () => {
   const service = new PricingService();
   it.each([
     ['free', 0, 15, 0],
-    ['developer', 2990, 200, 15],
-    ['growth', 8990, 750, 12],
-    ['scale', 24990, 2500, 10],
-    ['volume', 89990, 10000, 9],
+    ['developer', 2990, 250, 12],
+    ['growth', 9990, 1500, 8],
+    ['scale', 29990, 6000, 5],
+    ['volume', 69990, 20000, 5],
   ] as const)(
     'quotes %s in BRL with the agreed allowance and excess price',
     (slug, price, included, excess) => {
@@ -34,8 +34,8 @@ describe('PricingService monthly catalog', () => {
   it('estimates excess above the highest included volume', () => {
     expect(service.recommendPlanForVolume(15000)).toMatchObject({
       planSlug: 'volume',
-      overageCredits: 5000,
-      overageCostCents: 45000,
+      overageCredits: 0,
+      overageCostCents: 0,
     });
   });
 });
