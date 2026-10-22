@@ -187,17 +187,17 @@ function captureExceptionSafely(
       }
       if (diagnostics?.failureKind === 'dependency' && diagnostics.errorCode) {
         scope.setFingerprint([
-          'greenflow-dependency',
+          'corvo-dependency',
           operation,
           diagnostics.errorCode,
         ]);
       }
       scope.setLevel(level);
-      if (context) scope.setContext('greenflow', removeUndefined(context));
+      if (context) scope.setContext('corvo', removeUndefined(context));
       return Sentry.captureException(exception, {
         mechanism: {
           handled: diagnostics?.handled ?? false,
-          type: 'greenflow.global_error_handler',
+          type: 'corvo.global_error_handler',
         },
       });
     });

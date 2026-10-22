@@ -10,7 +10,7 @@ export async function runSentryCanary(): Promise<boolean> {
   const eventId = Sentry.withScope((scope) => {
     scope.setTag('runtime', 'canary');
     scope.setTag('canary', 'true');
-    return Sentry.captureException(new Error('greenflow_sentry_canary'));
+    return Sentry.captureException(new Error('corvo_sentry_canary'));
   });
   const flushed = await flushSentry(sentryBootstrapConfig.flushTimeoutMs);
   pino().info({ event: 'sentry_canary', eventId, flushed });
