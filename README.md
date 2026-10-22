@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Brazilian service invoices (NFS-e), built into your product.</strong>
+  <strong>NFS-e brasileira para produtos, ERPs e agentes de IA.</strong>
 </p>
 
 <p align="center">
@@ -14,14 +14,16 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/typescript-strict-3178c6" />
 </p>
 
-Corvo is a REST API and MCP server to issue NFS-e on the national standard, focused on **MEI and Simples Nacional** companies. It registers issuer companies, stores their A1 certificates, calculates taxes before issuing, processes each invoice in the background, keeps the PDF and XML, and reports every status change by webhook. A dashboard and AI agents (Claude Code, Cursor, Codex and others) use the same API.
+**Corvo** é a infraestrutura para emitir NFS-e de serviços no padrão nacional dentro do seu produto. Uma única API atende o seu backend, o painel e agentes de IA via MCP — com empresas, cálculo tributário, emissão assíncrona, documentos e webhooks no mesmo fluxo.
+
+Feito para MEI, Simples Nacional e os demais regimes suportados pela NFS-e nacional. Corvo não é NF-e nem NFC-e.
 
 [🚀 Quick start](#-quick-start) · [🔌 Use the API](#-use-the-api) · [🤖 AI agents](#-ai-agents-mcp) · [📦 Deploy](#-deploy-to-production) · [🛠️ Develop](#-develop) · [📚 Documentation](#-documentation) · [🤝 Contribute](CONTRIBUTING.md)
 
 ## 📑 Contents
 
-- [✨ What you can do](#-what-you-can-do)
-- [🧭 How it works](#-how-it-works)
+- [✨ O que resolve](#-o-que-resolve)
+- [🧭 Como funciona](#-como-funciona)
 - [🚀 Quick start](#-quick-start)
 - [🔌 Use the API](#-use-the-api)
 - [🤖 AI agents (MCP)](#-ai-agents-mcp)
@@ -31,25 +33,21 @@ Corvo is a REST API and MCP server to issue NFS-e on the national standard, focu
 - [📚 Documentation](#-documentation)
 - [🤝 Community and license](#-community-and-license)
 
-## ✨ What you can do
+## ✨ O que resolve
 
-| Capability | What it gives you |
+| Recurso | Para que serve |
 | --- | --- |
-| 🧾 Invoice API | Issue Brazilian electronic service invoices from your SaaS, ERP, or backend. Issuance is asynchronous and safe to retry with an `Idempotency-Key`. |
-| 🧮 Tax calculation | `POST /v1/invoices/calculate` shows ISS, withholdings and IBS/CBS (when they apply) before you issue, with no invoice and no credit used. |
-| ⏰ Scheduled invoices | Issue on a future competence date with `options.type: "SCHEDULE"`. |
-| 🚫 Cancellation | `POST /v1/invoices/:id/cancel` cancels a queued invoice immediately, or sends the cancellation event to the Sefin for an issued NFS-e (or one still being issued) and reports the result by webhook. |
-| 🏢 Multi-company | Manage many issuers, each with its fiscal profile and A1 certificate, in one workspace. |
-| 📄 Documents and delivery | PDF and XML storage, signed download links, email delivery and signed webhooks for every status change. |
-| 🤖 AI agents | A remote MCP server lets agents issue and query invoices, and `llms.txt` lets a coding agent write the integration for you. |
-| 📊 Dashboard | Companies, invoices, API keys, members, billing and connected agents, in English or Portuguese. |
-| 🧪 Fiscal environments | Test and live are kept apart. Test needs no certificate and has no fiscal value. |
-| 💳 Plans and credits | A free plan with 15 invoices a month, paid plans with monthly allowances, public prices at `GET /v1/plans`. |
+| 🧾 Emissão por API | Emita NFS-e do seu SaaS, ERP ou backend. A emissão é assíncrona e pode ser repetida com `Idempotency-Key`. |
+| 🧮 Pré-cálculo fiscal | `POST /v1/invoices/calculate` calcula tributos antes de emitir — sem criar nota, DPS ou reservar cota. |
+| 🏢 Empresas | Cadastre e consulte empresas por CNPJ, com perfil fiscal por emissor. Planos pagos permitem empresas ilimitadas. |
+| 📄 Ciclo completo | PDF, XML, links assinados, e-mail, cancelamento e webhooks assinados para cada mudança de status. |
+| 🤖 MCP | Claude Code, Cursor, Codex e outros clientes podem criar empresas, consultar CNPJ, calcular impostos, emitir e acompanhar NFS-e. |
+| 🧪 Teste e produção | Ambientes isolados; teste não precisa de certificado e não tem valor fiscal. |
 
 > [!NOTE]
 > Corvo covers **NFS-e (services)** only, not NF-e or NFC-e. See [fiscal limitations](docs/fiscal/limitations.md) for what is not covered yet.
 
-## 🧭 How it works
+## 🧭 Como funciona
 
 ```text
 Your app / ERP / AI agent
@@ -62,7 +60,10 @@ Your app / ERP / AI agent
  PostgreSQL · Redis · S3          webhooks / email  ──►  your system and your customer
 ```
 
-The API accepts a request and answers `202`. The worker classifies the service, calculates taxes, builds and signs the DPS, sends it to the national system, stores the result and notifies you.
+Você envia a solicitação e recebe `202`. O worker classifica o serviço, calcula impostos, monta e assina a DPS, envia para a NFS-e nacional, guarda os documentos e notifica o seu sistema.
+
+> [!IMPORTANT]
+> Certificados A1 são enviados apenas pela API autenticada. O MCP não aceita certificados nem senhas.
 
 ## 🚀 Quick start
 
@@ -126,7 +127,9 @@ curl -X POST "$BASE_URL/invoices" \
   -d '{"companyTaxId":"11222333000181","service":{"description":"Haircut"},"amount":50,"competenceDate":"2026-10-16"}'
 ```
 
-The second call returns `202` with the invoice in `queued` state. Follow it with `GET /v1/invoices/:id` or a webhook. Every endpoint, field and error is in the [API reference](http://localhost:4000/en/docs).
+O segundo request retorna `202` com a nota em `queued`. Acompanhe por `GET /v1/invoices/:id` ou webhook. Antes de emitir em produção, envie o A1 pela rota de certificados e confirme `GET /v1/billing/usage` (`canEmit: true`).
+
+Para calcular antes de emitir, use o mesmo payload em `POST /v1/invoices/calculate`. Todos os campos, respostas e erros estão na [referência da API](http://localhost:4000/pt/docs).
 
 ## 🤖 AI agents (MCP)
 
@@ -136,7 +139,17 @@ Agents connect to one address and approve access in the browser:
 claude mcp add --transport http corvo http://localhost:3000/mcp
 ```
 
-The user signs in, picks the workspace and chooses **test** or **live** on the approval screen. The dashboard page **AI agents** lists connected apps, their usage, and lets you revoke them. To let a coding agent write the integration into your project instead, give it `/llms-full.txt`. See [AI agents (MCP)](http://localhost:4000/en/docs/mcp) and [Build with AI](http://localhost:4000/en/docs/llms).
+O usuário faz login, escolhe a conta e aprova **test** ou **live**. A página **AI agents** mostra conexões e permite revogá-las.
+
+| Tool MCP | Uso |
+| --- | --- |
+| `company_create` | Cria uma empresa; certificado permanece pela API. |
+| `company_list` / `company_get` | Lista empresas ou encontra uma pelo CNPJ. |
+| `nfse_calculate` | Prévia fiscal sem emissão. |
+| `billing_usage` | Confere franquia, consumo e `canEmit`. |
+| `nfse_issue`, `nfse_query`, `nfse_list`, `nfse_cancel` | Opera o ciclo da NFS-e. |
+
+Para deixar um agente de código escrever a integração, forneça `/llms-full.txt`. Veja [Agentes de IA (MCP)](http://localhost:4000/pt/docs/mcp) e [Construir com IA](http://localhost:4000/pt/docs/llms).
 
 ## 📦 Deploy to production
 
