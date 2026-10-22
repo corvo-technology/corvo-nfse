@@ -2579,5 +2579,8 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
 };
 
 // The retired credit-purchase reference is intentionally not published.
-delete ptWithRetiredCredits.pages.credits;
-export const pt = ptWithRetiredCredits;
+const { credits: _retiredCreditsPt, ...ptPages } = ptWithRetiredCredits.pages;
+export const pt: DocsTree = {
+  ...ptWithRetiredCredits,
+  pages: ptPages as DocsTree["pages"],
+};
