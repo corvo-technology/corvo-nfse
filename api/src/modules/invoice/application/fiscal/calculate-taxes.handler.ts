@@ -87,17 +87,12 @@ export class CalculateTaxesHandler implements OutboxHandler, OnModuleInit {
     result: FiscalCalculationResult,
     attempt: number,
   ): Promise<void> {
-    const profile = await this.profiles.findEffective(
-      invoice.companyId,
-      invoice.tenantId,
-      invoice.toSnapshot().competenceDate.toISOString().slice(0, 10),
-    );
     await this.unitOfWork.execute(async () => {
       await this.snapshots.persist({
         invoiceId: invoice.id,
         tenantId: invoice.tenantId,
         result,
-        specialTaxRegime: profile?.specialTaxRegime ?? null,
+        specialTaxRegime: result.emissionProfile?.specialTaxRegime ?? null,
         attempt,
         trace: result.trace,
       });

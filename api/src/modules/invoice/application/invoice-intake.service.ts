@@ -8,10 +8,7 @@ import {
   type NormalizedInvoiceInput,
 } from '../domain/invoice-domain.service';
 import type { CreateInvoiceDto } from '../http/invoice.dto';
-import {
-  DEFAULT_SERVICE_CODE,
-  defaultServiceDescription,
-} from '../infra/fiscal/service-defaults';
+import { defaultServiceDescription } from '../infra/fiscal/service-defaults';
 
 export interface PreparedInvoiceInput {
   company: Company;
@@ -61,7 +58,7 @@ export class InvoiceIntakeService {
       },
       environment,
       {
-        code: company.defaultServiceCode ?? DEFAULT_SERVICE_CODE,
+        code: company.defaultServiceCode ?? undefined,
         municipalityCode: company.municipalityCode,
       },
     );

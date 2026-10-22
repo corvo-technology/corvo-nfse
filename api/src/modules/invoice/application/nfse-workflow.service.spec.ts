@@ -530,6 +530,60 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     });
   });
 
+  it('uses frozen Simples retention inputs even after the profile changes', async () => {
+    const invoice = createInvoice();
+    const stored = fiscalSnapshot(invoice.id);
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue({
+      ...stored,
+      result: {
+        ...stored.result,
+        taxRegime: 'SIMPLES_NACIONAL',
+        emissionProfile: { specialTaxRegime: null, simplesIssRate: '3' },
+        taxableAmounts: { gross: '1000.00', discount: '100.00' },
+        applicability: {
+          ...stored.result.applicability,
+          iss: na('DAS'),
+          issWithheld: REQUIRED,
+          cbs: na('2026'),
+          ibs: na('2026'),
+        },
+      },
+    });
+    fakes.profiles.findEffective.mockResolvedValue({
+      taxRegime: 'MEI',
+      simplesIssRate: '5',
+    });
+    const payload = await callPayload(invoice);
+    expect(fakes.profiles.findEffective).not.toHaveBeenCalled();
+    expect(payload.preparedDps?.infDPS.prest.regTrib.opSimpNac).toBe('3');
+    expect(payload.preparedDps?.infDPS.valores.trib.tribMun.pAliq).toBe(3);
+    expect(
+      payload.preparedDps?.infDPS.valores.vDescCondIncond?.vDescIncond,
+    ).toBe(100);
+  });
+
+  it('rejects an old Simples retention snapshot without the frozen effective rate', async () => {
+    const invoice = createInvoice();
+    const stored = fiscalSnapshot(invoice.id);
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue({
+      ...stored,
+      result: {
+        ...stored.result,
+        taxRegime: 'SIMPLES_NACIONAL',
+        applicability: {
+          ...stored.result.applicability,
+          iss: na('DAS'),
+          issWithheld: REQUIRED,
+          cbs: na('2026'),
+          ibs: na('2026'),
+        },
+      },
+    });
+    await expect(callPayload(invoice)).rejects.toMatchObject({
+      error: expect.objectContaining({ code: 'DPS_SCHEMA_VALIDATION_FAILED' }),
+    });
+  });
+
   it('hands preparedDps to the fiscal provider and enqueues the reconciliation', async () => {
     const invoice = createInvoice();
     fakes.invoices.findByIdAndTenantId.mockResolvedValue(invoice);

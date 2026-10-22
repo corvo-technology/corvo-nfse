@@ -197,16 +197,12 @@ describe('CalculateTaxesHandler', () => {
       invoice,
       expect.objectContaining({ id: companyId }),
     );
-    expect(fakes.profiles.findEffective).toHaveBeenCalledWith(
-      companyId,
-      tenantId,
-      '2026-10-13',
-    );
+    expect(fakes.profiles.findEffective).not.toHaveBeenCalled();
     expect(fakes.snapshots.persist).toHaveBeenCalledWith({
       invoiceId: invoice.id,
       tenantId,
       result,
-      specialTaxRegime: 'ME_EPP',
+      specialTaxRegime: result.emissionProfile?.specialTaxRegime ?? null,
       attempt: 3,
       trace: result.trace,
     });

@@ -191,6 +191,19 @@ const errorOf = (ctx: FiscalContext): FiscalError => {
 };
 
 describe('buildFiscalCalculationResult', () => {
+  it('copies the fiscal emission inputs instead of retaining a mutable profile', () => {
+    const ctx = context();
+    const companyProfile = profile({
+      simplesIssRate: '3',
+      specialTaxRegime: '0',
+    });
+    const result = resultOf({ ...ctx, companyProfile });
+    companyProfile.simplesIssRate = '5';
+    expect(result.emissionProfile).toEqual({
+      simplesIssRate: '3',
+      specialTaxRegime: '0',
+    });
+  });
   it('builds the complete result for a regular regime with legacy and RTC taxes', () => {
     const result = resultOf(context());
     expect(result).toMatchObject({

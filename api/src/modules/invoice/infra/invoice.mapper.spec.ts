@@ -4,6 +4,30 @@ import { cancellationReason } from '../domain/cancellation-reason';
 import { InvoiceMapper } from './invoice.mapper';
 
 describe('InvoiceMapper cancellation fields', () => {
+  it.each([undefined, 0, 12.34, 100])(
+    'preserves discount %s through persistence',
+    (discount) => {
+      const invoice = Invoice.create(
+        {
+          companyId: 'company-1',
+          customer: { taxId: VALID_CNPJ, name: 'Cliente' },
+          service: {
+            description: 'Serviço',
+            code: '010101',
+            municipalityCode: '3550308',
+          },
+          amount: 100,
+          discount,
+          competenceDate: new Date('2026-10-14'),
+        },
+        'tenant-1',
+      );
+      const mapper = new InvoiceMapper();
+      expect(mapper.toDomain(mapper.toPersistence(invoice)).discount).toBe(
+        discount,
+      );
+    },
+  );
   it('round-trips the cancellation reason, description and timestamp', () => {
     const invoice = Invoice.create(
       {

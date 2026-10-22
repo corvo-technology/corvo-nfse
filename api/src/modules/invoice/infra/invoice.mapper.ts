@@ -99,8 +99,8 @@ export class InvoiceMapper {
       {}) as unknown as Record<string, unknown>;
     // No dedicated discount column yet: `discount` rides in the
     // `service_snapshot` jsonb and is lifted back by `readServiceSnapshot`.
-    const { discount, ...serviceSnapshot } =
-      snapshot.serviceSnapshot as PersistedServiceSnapshot;
+    const { discount } = snapshot;
+    const serviceSnapshot = snapshot.serviceSnapshot;
     orm.serviceSnapshot = {
       ...serviceSnapshot,
       ...(discount !== undefined ? { discount } : {}),

@@ -11,6 +11,7 @@ import type { NormalizedInvoice } from '@/modules/invoice/domain/fiscal/normaliz
 import type { Result } from '@/modules/invoice/domain/fiscal/result';
 import type { WithholdingRates } from '@/modules/company/domain/service-tax-profile';
 import { LegacyTaxCalculatorStep } from './legacy-tax-calculator.step';
+import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
 
 const REQUIRED: Obligation = { status: 'REQUIRED' };
 const na = (reason: string): Obligation => ({
@@ -115,6 +116,61 @@ const errorOf = (result: Result<StepOutcome, FiscalError>): FiscalError => {
 
 describe('LegacyTaxCalculatorStep', () => {
   const step = new LegacyTaxCalculatorStep();
+
+  it('validates discounts even when MEI has no applicable taxes', async () => {
+    expect(errorOf(await step.execute(context('100.00', '100.01'))).code).toBe(
+      'FISCAL_VALIDATION_FAILED',
+    );
+  });
+
+  it.each([
+    ['0.00', '30.00', '970.00'],
+    ['100.00', '27.00', '873.00'],
+  ])(
+    'uses the declared Simples effective rate with discount %s',
+    async (discount, retained, net) => {
+      const ctx = context(
+        '1000.00',
+        discount,
+        applicability({ issWithheld: REQUIRED }),
+      );
+      const result = outcomeOf(
+        await step.execute({
+          ...ctx,
+          companyProfile: {
+            taxRegime: 'SIMPLES_NACIONAL',
+            simplesIssRate: '3',
+          } as CompanyFiscalProfile,
+        }),
+      );
+      expect(result.context.legacyTaxes).toMatchObject({
+        issWithheld: true,
+        issResponsible: 'CUSTOMER',
+        netReceivableAmount: net,
+        withholdings: [{ tax: 'ISS', rate: '3', amount: retained }],
+      });
+      expect(result.context.applicability?.iss.status).toBe('NOT_APPLICABLE');
+    },
+  );
+
+  it('never substitutes the municipal rate for a missing Simples retention rate', async () => {
+    const ctx = context(
+      '1000.00',
+      '0.00',
+      applicability({ issWithheld: REQUIRED }),
+    );
+    expect(
+      errorOf(
+        await step.execute({
+          ...ctx,
+          companyProfile: {
+            taxRegime: 'SIMPLES_NACIONAL',
+            simplesIssRate: null,
+          } as CompanyFiscalProfile,
+        }),
+      ).code,
+    ).toBe('TAX_RATE_NOT_FOUND');
+  });
 
   it('is an optional step named LegacyTaxCalculator', () => {
     expect(step.name).toBe('LegacyTaxCalculator');

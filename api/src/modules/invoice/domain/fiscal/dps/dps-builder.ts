@@ -331,7 +331,10 @@ export class DpsBuilder {
             : {}),
         tribISSQN: tribIssqnFor(result.applicability.iss),
         tpRetISSQN,
-        vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 },
+        // MEI has an explicit SDK/schema indicator; do not invent a zero tax burden.
+        ...(opSimpNac === OpcaoSimplesNacional.Mei
+          ? {}
+          : { vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 } }),
       },
       ...(input.invoice.customer !== null
         ? {

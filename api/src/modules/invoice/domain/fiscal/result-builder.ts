@@ -122,6 +122,10 @@ export function buildFiscalCalculationResult(
     competenceDate: context.invoice.competenceDate,
     taxRegime: companyProfile.taxRegime,
     profileId: companyProfile.id,
+    emissionProfile: {
+      specialTaxRegime: companyProfile.specialTaxRegime,
+      simplesIssRate: companyProfile.simplesIssRate,
+    },
     classification,
     taxableAmounts: {
       gross: context.invoice.grossAmount,

@@ -30,6 +30,11 @@ export interface FiscalCalculationResult {
   readonly competenceDate: string;
   readonly taxRegime: TaxRegimeKind;
   readonly profileId: string;
+  /** Frozen inputs; optional only for snapshots written before this contract. */
+  readonly emissionProfile?: {
+    readonly specialTaxRegime: string | null;
+    readonly simplesIssRate: string | null;
+  };
   readonly classification: ServiceTaxClassification;
   readonly taxableAmounts: TaxableAmounts;
   readonly taxes: CalculatedTaxes;

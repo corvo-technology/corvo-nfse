@@ -38,7 +38,6 @@ import {
   recordDpsValidationFailure,
 } from './fiscal/fiscal.metrics';
 import type { FiscalError } from '../domain/fiscal/fiscal-error';
-import { moneyString, toDecimal } from '../domain/fiscal/money';
 
 export interface FiscalJobData {
   invoiceId: string;
@@ -333,13 +332,25 @@ export class NfseWorkflowService {
     );
     // The fiscal regime is read from the company's effective fiscal profile on
     // the invoice competence date (the Company aggregate no longer stores it).
-    const profile = await this.profiles.findEffective(
-      company.id,
+    const fiscalSnapshot = await this.fiscalSnapshots.findByInvoiceId(
+      invoice.id,
       invoice.tenantId,
-      // The competence date is a calendar date stored at UTC midnight; converting
-      // it to the establishment timezone would shift it to the previous day.
-      new Date(snapshot.competenceDate).toISOString().slice(0, 10),
     );
+    const profile =
+      fiscalSnapshot !== null
+        ? {
+            taxRegime: fiscalSnapshot.result.taxRegime,
+            specialTaxRegime:
+              fiscalSnapshot.result.emissionProfile?.specialTaxRegime ??
+              fiscalSnapshot.specialTaxRegime,
+          }
+        : await this.profiles.findEffective(
+            company.id,
+            invoice.tenantId,
+            // The competence date is a calendar date stored at UTC midnight; converting
+            // it to the establishment timezone would shift it to the previous day.
+            new Date(snapshot.competenceDate).toISOString().slice(0, 10),
+          );
     if (!profile) {
       throw new Error(
         'Company fiscal profile not found for the invoice competence date',
@@ -386,10 +397,6 @@ export class NfseWorkflowService {
           }
         : {}),
     };
-    const fiscalSnapshot = await this.fiscalSnapshots.findByInvoiceId(
-      invoice.id,
-      invoice.tenantId,
-    );
     // Flag off / engine did not run: byte-identical legacy payload, no DPS build.
     if (fiscalSnapshot === null) return payload;
     // The numbering was already reserved and persisted above, so a failure from
@@ -419,14 +426,17 @@ export class NfseWorkflowService {
                   ...(customer.email ? { email: customer.email } : {}),
                 }
               : null,
-          discountAmount: moneyString(toDecimal(snapshot.discount ?? 0)),
+          discountAmount: fiscalSnapshot.result.taxableAmounts.discount,
         },
         emitente: {
           cnpj: company.taxId,
           municipalReg: company.municipalRegForDps ?? null,
           municipalityCode: company.municipalityCode,
-          specialTaxRegime: profile.specialTaxRegime ?? null,
-          simplesIssRate: profile.simplesIssRate ?? null,
+          specialTaxRegime:
+            fiscalSnapshot.result.emissionProfile?.specialTaxRegime ??
+            fiscalSnapshot.specialTaxRegime,
+          simplesIssRate:
+            fiscalSnapshot.result.emissionProfile?.simplesIssRate ?? null,
         },
       },
       this.config.getOrThrow<RtcConfig>('rtc').dpsLayout,

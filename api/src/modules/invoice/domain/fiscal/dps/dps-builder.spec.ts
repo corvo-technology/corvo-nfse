@@ -188,7 +188,7 @@ describe('DpsBuilder', () => {
     expect(dps.infDPS.IBSCBS).toBeUndefined();
     expect(dps.infDPS.valores.vServPrest.vServ).toBe(1000);
     expect(dps.infDPS.valores.trib.totTrib).toEqual({
-      vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 },
+      indTotTrib: '0',
     });
     expect(dps.infDPS.tpAmb).toBe(TipoAmbienteDps.Homologacao);
     expect(dps.infDPS.verAplic).toBe('Corvo-test');

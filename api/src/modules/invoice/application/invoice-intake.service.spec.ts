@@ -67,14 +67,15 @@ describe('InvoiceIntakeService', () => {
       'tenant',
     );
 
-    it('uses LC 116 item 10.09 (100901) when neither the request nor the company has a service code', async () => {
+    it('requires a declared service code instead of choosing an activity', async () => {
       companies.findById.mockResolvedValue(withoutDefault);
-      const result = await intake.prepare(
-        { ...dto, service: { description: 'Corte' } },
-        'tenant',
-        'test',
-      );
-      expect(result.normalized.service.code).toBe('100901');
+      await expect(
+        intake.prepare(
+          { ...dto, service: { description: 'Corte' } },
+          'tenant',
+          'test',
+        ),
+      ).rejects.toBeInstanceOf(FiscalValidationError);
     });
 
     it('prefers the code of the request, then the one of the company', async () => {
@@ -91,7 +92,7 @@ describe('InvoiceIntakeService', () => {
     it('names the service after its catalog entry when the description is omitted', async () => {
       companies.findById.mockResolvedValue(withoutDefault);
       const result = await intake.prepare(
-        { ...dto, service: {} },
+        { ...dto, service: { code: '100901' } },
         'tenant',
         'test',
       );

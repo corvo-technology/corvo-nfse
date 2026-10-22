@@ -33,9 +33,15 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
   readonly name = 'LegacyTaxCalculator';
   readonly required = false;
 
-  async execute(
+  execute(
     context: Readonly<FiscalContext>,
   ): Promise<Result<StepOutcome, FiscalError>> {
+    return Promise.resolve(this.calculate(context));
+  }
+
+  private calculate(
+    context: Readonly<FiscalContext>,
+  ): Result<StepOutcome, FiscalError> {
     const { applicability, classification } = context;
     if (applicability === undefined) {
       return err(
@@ -62,6 +68,25 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
       );
     }
 
+    const gross = toDecimal(context.invoice.grossAmount);
+    const discount = toDecimal(context.invoice.discountAmount);
+    if (
+      gross.isNegative() ||
+      discount.isNegative() ||
+      discount.greaterThan(gross)
+    ) {
+      return err(
+        fiscalError({
+          code: 'FISCAL_VALIDATION_FAILED',
+          message:
+            'Amounts must be non-negative and discount cannot exceed gross',
+          category: 'VALIDATION',
+          step: this.name,
+          details: { fields: ['discount'] },
+        }),
+      );
+    }
+
     if (
       isNotApplicable(applicability.iss) &&
       isNotApplicable(applicability.issWithheld) &&
@@ -74,26 +99,15 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
       });
     }
 
-    const gross = toDecimal(context.invoice.grossAmount);
-    const discount = toDecimal(context.invoice.discountAmount);
-    if (discount.greaterThan(gross)) {
-      return err(
-        fiscalError({
-          code: 'FISCAL_VALIDATION_FAILED',
-          message: 'Discount is greater than the gross amount',
-          category: 'VALIDATION',
-          step: this.name,
-          details: { fields: ['discount'] },
-        }),
-      );
-    }
-
     const issWithheld = applicability.issWithheld.status === 'REQUIRED';
     let iss: TaxAmount | null = null;
     let issWithheldAmount: Decimal | null = null;
-    if (applicability.iss.status === 'REQUIRED') {
-      const rate = classification.iss.rate;
-      if (rate === null) {
+    if (applicability.iss.status === 'REQUIRED' || issWithheld) {
+      const rate =
+        context.companyProfile?.taxRegime === 'SIMPLES_NACIONAL' && issWithheld
+          ? context.companyProfile.simplesIssRate
+          : classification.iss.rate;
+      if (rate === null || rate === undefined) {
         return err(
           fiscalError({
             code: 'TAX_RATE_NOT_FOUND',
