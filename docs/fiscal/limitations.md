@@ -70,7 +70,7 @@ Regra de MEI/Simples a partir de 01/01/2027, checagem de adesão do município a
 
 - `POST /v1/invoices/calculate` está sempre disponível para API key/sessão
   autenticada com `nfse.invoices.issue`. Usa o mesmo rate limit HTTP autenticado
-  dos outros endpoints (padrão 300/min por chave/sessão), sem limite próprio.
+  dos outros endpoints (padrão 300/min por chave/sessão e 600/min por tenant), além de 120/min por tenant na rota.
 - Aceita competência futura sem `options.type`, preservando o horizonte de
   `OUTBOX_SCHEDULE_MAX_DAYS` (15 dias por padrão). Não cria agendamento e resolve
   os perfis vigentes na competência. Não amplia o horizonte do `POST /invoices`.

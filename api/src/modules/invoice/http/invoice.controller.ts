@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { InvoiceCalculationService } from '../application/fiscal/invoice-calculation.service';
 import { calculationHttpFailure } from './fiscal-error-http';
 import { InvoiceCalculationResponseDto } from './invoice-calculation-response.dto';
@@ -57,6 +58,7 @@ export class InvoiceController {
     private readonly calculationService: InvoiceCalculationService,
   ) {}
 
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @Post()
   @HttpCode(202)
   @ApiExtraModels(InvoiceResponseDto)
@@ -87,6 +89,7 @@ export class InvoiceController {
     );
   }
 
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @Post('calculate')
   @HttpCode(200)
   @ApiKeyEndpoint()

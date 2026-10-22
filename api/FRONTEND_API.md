@@ -738,8 +738,7 @@ integração fiscal possível é com a **Calculadora RTC**, motor externo.
 | 500 | Falha INTERNAL; mensagem genérica, sem mensagem original nem stack |
 
 Usa o mesmo rate limit autenticado dos demais endpoints: por padrão,
-`RATE_LIMIT_AUTHENTICATED=300` por minuto por API key/sessão. Não há orçamento
-ou configuração de limite separados para `calculate`. `Retry-After` é em segundos:
+`RATE_LIMIT_AUTHENTICATED=300` por minuto por API key/sessão, mais `RATE_LIMIT_TENANT=600` por tenant e 120/min por tenant na própria rota (`@Throttle`, fixo no código, sem variável de ambiente). `Retry-After` é em segundos:
 no 503, `ceil(details.retryAfterMs/1000)`, mínimo 1, padrão 5.
 Erros HTTP usam `{ statusCode, code, message, details?, requestId }` e códigos
 públicos `ERROR_*`. Exemplo de indisponibilidade:

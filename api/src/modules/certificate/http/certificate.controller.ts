@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { ApiCursorResponse } from '@/infra/openapi/swagger';
 import { CursorQuery } from '@/shared/http/pagination';
 import {
@@ -46,6 +47,7 @@ interface UploadedFileDto {
 export class CertificateController {
   constructor(private readonly certService: CertificateService) {}
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiKeyEndpoint()

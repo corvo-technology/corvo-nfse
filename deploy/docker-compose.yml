@@ -13,6 +13,8 @@ x-backend: &backend
     DB_SCHEMA: corvo
     DB_POOL_MIN: 0
     DB_POOL_MAX: 10
+    DB_STATEMENT_TIMEOUT_MS: ${DB_STATEMENT_TIMEOUT_MS:-15000}
+    NODE_OPTIONS: --max-old-space-size=768
     RTC_CALCULATOR_URL: http://rtc-calculator:8080/api
     STORAGE_PROVIDER: s3
     CORS_ORIGINS: ${APP_ORIGIN:?Configure APP_ORIGIN}
@@ -24,6 +26,7 @@ x-backend: &backend
   init: true
   restart: unless-stopped
   stop_grace_period: 30s
+  mem_limit: 1g
   depends_on:
     migrations:
       condition: service_completed_successfully
@@ -39,6 +42,9 @@ services:
       POSTGRES_USER: corvo
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Execute node scripts/setup-env.mjs}
       POSTGRES_DB: corvo_dev
+    # Sized for a 2 vCPU / 8 GB host shared with api, worker, web and the RTC calculator.
+    command: ['postgres', '-c', 'shared_buffers=1GB', '-c', 'effective_cache_size=3GB', '-c', 'max_connections=60', '-c', 'work_mem=8MB']
+    mem_limit: 2g
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -50,7 +56,8 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ['redis-server', '--appendonly', 'yes']
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory', '384mb', '--maxmemory-policy', 'noeviction']
+    mem_limit: 512m
     volumes:
       - redisdata:/data
     healthcheck:

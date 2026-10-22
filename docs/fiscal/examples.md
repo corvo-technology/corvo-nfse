@@ -3,8 +3,8 @@
 Revisão: 2026-10-15. O endpoint `POST /v1/invoices/calculate` está sempre
 disponível para API key/sessão autenticada com `nfse.invoices.issue`.
 Usa o mesmo rate limit autenticado dos demais endpoints: por padrão,
-`RATE_LIMIT_AUTHENTICATED=300` por minuto por API key/sessão, com os limites
-globais existentes. Nenhum exemplo de cálculo emite nota,
+`RATE_LIMIT_AUTHENTICATED=300` por minuto por API key/sessão, `RATE_LIMIT_TENANT=600`
+por tenant e 120 por minuto por tenant nesta rota, com os limites globais existentes. Nenhum exemplo de cálculo emite nota,
 consome crédito, reserva DPS ou cria agendamento. Os valores são pré-emissão e
 podem divergir da validação final da Sefin.
 

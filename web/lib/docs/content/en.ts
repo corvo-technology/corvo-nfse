@@ -312,12 +312,13 @@ export const en: DocsTree = {
           rows: [
             ["Validated API key (summed across endpoints)", "300"],
             ["Public routes, per IP", "120"],
+            ["Whole tenant (all keys and sessions together)", "600"],
             ["Pre-authentication protection, per IP", "1200"],
           ],
         },
         {
           kind: "text",
-          body: "Sensitive routes (OTP/magic link, Turnstile) have extra per-route budgets on top of the general limit. Health checks, preflight and Stripe receiving are exempt.",
+          body: "Sensitive routes have extra per-route budgets on top of the general limit: OTP, magic link, OAuth and Turnstile (10 to 30 per minute per IP), MCP client registration, token and revocation (10 to 30 per minute per IP), and the costly authenticated routes `POST /invoices`, `POST /invoices/calculate` (120 per minute per tenant) and certificate upload (10 per minute per tenant). Health checks, preflight and Stripe receiving are exempt. Creating more API keys does not raise your ceiling: the tenant-wide limit applies across all of them.",
         },
         {
           kind: "text",
@@ -326,7 +327,7 @@ export const en: DocsTree = {
         {
           kind: "callout",
           tone: "accent",
-          body: "Honor `Retry-After` before retrying and use exponential backoff during spikes. Do not treat the plan's `throughputRps` as the HTTP limit.",
+          body: "Honor `Retry-After` before retrying and use exponential backoff during spikes. Do not treat the plan's `throughputRps` as the HTTP limit. When the server is saturated it answers `503` with `code: \"ERROR_SERVER_BUSY\"` and `Retry-After: 1`: retry with backoff.",
         },
       ],
     },

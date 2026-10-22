@@ -321,12 +321,13 @@ export const pt: DocsTree = {
           rows: [
             ["API key validada (somada entre endpoints)", "300"],
             ["Rotas públicas, por IP", "120"],
+            ["Tenant inteiro (todas as chaves e sessões somadas)", "600"],
             ["Proteção anterior à autenticação, por IP", "1200"],
           ],
         },
         {
           kind: "text",
-          body: "Rotas sensíveis (OTP/magic link, Turnstile) têm orçamentos adicionais por rota, somados ao limite geral. Health checks, preflight e o recebimento Stripe são isentos.",
+          body: "Rotas sensíveis têm orçamentos adicionais por rota, somados ao limite geral: OTP, magic link, OAuth e Turnstile (10 a 30 por minuto por IP), registro, token e revogação de clientes MCP (10 a 30 por minuto por IP) e as rotas autenticadas custosas `POST /invoices`, `POST /invoices/calculate` (120 por minuto por tenant) e upload de certificado (10 por minuto por tenant). Health checks, preflight e o recebimento Stripe são isentos. Criar mais API keys não aumenta o teto: o limite do tenant vale para todas somadas.",
         },
         {
           kind: "text",
@@ -335,7 +336,7 @@ export const pt: DocsTree = {
         {
           kind: "callout",
           tone: "accent",
-          body: "Respeite `Retry-After` antes de repetir a chamada e use backoff exponencial em picos. Não use `throughputRps` do plano como limite HTTP.",
+          body: "Respeite `Retry-After` antes de repetir a chamada e use backoff exponencial em picos. Não use `throughputRps` do plano como limite HTTP. Com o servidor saturado, a resposta é `503` com `code: \"ERROR_SERVER_BUSY\"` e `Retry-After: 1`: tente de novo com backoff.",
         },
       ],
     },
