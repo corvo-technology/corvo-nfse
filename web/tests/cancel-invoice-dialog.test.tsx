@@ -29,11 +29,11 @@ describe("CancelInvoiceDialog", () => {
     const updated = { ...base, status: "cancelling" } as Invoice;
     mocks.cancel.mockResolvedValue(updated);
     const onCancelled = renderDialog(base);
-    fireEvent.change(screen.getByLabelText(t.reason), { target: { value: "service_not_provided" } });
-    fireEvent.change(screen.getByLabelText(t.description), { target: { value: "  Serviço não foi prestado  " } });
+    fireEvent.click(screen.getByRole("radio", { name: new RegExp(t.options.service_not_provided.title) }));
+    fireEvent.change(screen.getByLabelText(t.description), { target: { value: "  Service was not provided  " } });
     fireEvent.click(screen.getByRole("button", { name: t.confirm }));
     await waitFor(() => expect(onCancelled).toHaveBeenCalledWith(updated));
-    expect(mocks.cancel).toHaveBeenCalledWith("inv-1", { reason: "service_not_provided", description: "Serviço não foi prestado" });
+    expect(mocks.cancel).toHaveBeenCalledWith("inv-1", { reason: "service_not_provided", description: "Service was not provided" });
   });
 
   it("allows cancelling a queued invoice without a description", async () => {
@@ -78,14 +78,14 @@ describe("CancelInvoiceDialog", () => {
   it("starts clean when a fresh instance is mounted after an error (page mounts it only while open)", async () => {
     mocks.cancel.mockRejectedValue(new Error("boom failure"));
     const first = render(<NextIntlClientProvider locale="en" messages={messages}><CancelInvoiceDialog invoice={base} open onClose={vi.fn()} onCancelled={vi.fn()} /></NextIntlClientProvider>);
-    fireEvent.change(screen.getByLabelText(t.reason), { target: { value: "other" } });
+    fireEvent.click(screen.getByRole("radio", { name: new RegExp(t.options.refund.title) }));
     fireEvent.change(screen.getByLabelText(t.description), { target: { value: "a".repeat(20) } });
     fireEvent.click(screen.getByRole("button", { name: t.confirm }));
     expect((await screen.findByRole("alert")).textContent).toContain("boom failure");
     first.unmount();
     renderDialog(base);
     expect((screen.getByLabelText(t.description) as HTMLTextAreaElement).value).toBe("");
-    expect((screen.getByLabelText(t.reason) as HTMLSelectElement).value).toBe("issue_error");
+    expect(screen.getByRole("radio", { name: new RegExp(t.options.incorrect_data.title) }).getAttribute("aria-checked")).toBe("true");
     expect(screen.queryByRole("alert")).toBeNull();
   });
 });

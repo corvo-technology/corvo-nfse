@@ -1555,6 +1555,28 @@
       "requested": "Cancellation requested. It will be sent to the Sefin as soon as the invoice is authorized.",
       "queuedHint": "This invoice has not been issued yet. It will be cancelled immediately and the reserved credit released.",
       "reason": "Reason",
+      "options": {
+        "incorrect_data": {
+          "title": "Incorrect details or amount",
+          "description": "There is incorrect information on the invoice.",
+          "suggestedDescription": "Invoice details or amount were entered incorrectly"
+        },
+        "duplicate_charge": {
+          "title": "Duplicate charge",
+          "description": "The same charge was issued more than once.",
+          "suggestedDescription": "Charge was issued in duplicate"
+        },
+        "service_not_provided": {
+          "title": "Service not provided",
+          "description": "The service was cancelled or did not take place.",
+          "suggestedDescription": "Service was not provided to the customer"
+        },
+        "refund": {
+          "title": "Cancellation with refund",
+          "description": "The customer withdrew and the amount will be refunded.",
+          "suggestedDescription": "Cancellation requested to refund the customer"
+        }
+      },
       "reasons": {
         "issue_error": "Issuance error",
         "service_not_provided": "Service not provided",

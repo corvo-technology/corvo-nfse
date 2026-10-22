@@ -1555,6 +1555,28 @@
       "requested": "Cancelamento solicitado. Ele será enviado à Sefin assim que a nota for autorizada.",
       "queuedHint": "Esta nota ainda não foi emitida. Ela será cancelada na hora e o crédito reservado será liberado.",
       "reason": "Motivo",
+      "options": {
+        "incorrect_data": {
+          "title": "Dados ou valor incorretos",
+          "description": "Há uma informação errada na nota.",
+          "suggestedDescription": "Dados ou valor da nota informados incorretamente"
+        },
+        "duplicate_charge": {
+          "title": "Cobrança duplicada",
+          "description": "A mesma cobrança foi emitida mais de uma vez.",
+          "suggestedDescription": "Cobrança emitida em duplicidade"
+        },
+        "service_not_provided": {
+          "title": "Serviço não prestado",
+          "description": "O serviço foi cancelado ou não aconteceu.",
+          "suggestedDescription": "Serviço não foi prestado ao tomador"
+        },
+        "refund": {
+          "title": "Cancelamento com reembolso",
+          "description": "O cliente desistiu e o valor será devolvido.",
+          "suggestedDescription": "Cancelamento solicitado para reembolso ao tomador"
+        }
+      },
       "reasons": {
         "issue_error": "Erro na emissão",
         "service_not_provided": "Serviço não prestado",
