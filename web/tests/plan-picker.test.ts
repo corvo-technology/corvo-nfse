@@ -25,15 +25,15 @@ describe("plan picker pricing", () => {
       const plan = PLANS.find((p) => p.slug === slug)!;
       return formatBRLPerNote(calcMonthlyTotal(plan.credits, plan) / plan.credits);
     };
-    expect(perNote("developer")).toBe("R$ 0,1495");
-    expect(perNote("growth")).toBe("R$ 0,1199");
+    expect(perNote("developer")).toBe("R$ 0,1196");
+    expect(perNote("growth")).toBe("R$ 0,0666");
   });
 
   it("uses two decimals once a note costs a real or more", () => {
     expect(formatBRLPerNote(2990 / 3)).toBe("R$ 9,97");
   });
 
-  it("keeps the Volume overage in line with the backend (R$ 0,09)", () => {
-    expect(PLANS.find((p) => p.slug === "volume")!.perCreditCents).toBe(9);
+  it("keeps the Enterprise overage in line with the backend (R$ 0,05)", () => {
+    expect(PLANS.find((p) => p.slug === "volume")!.perCreditCents).toBe(5);
   });
 });

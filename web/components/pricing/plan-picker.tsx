@@ -24,17 +24,16 @@ export interface PlanTier {
 
 const MIN_VOLUME = 1;
 const MAX_VOLUME = 50000;
-const VOLUME_PLAN_FROM = 10000;
-/** Starts exactly at the Developer allowance, so the first price shown has no overage. */
-const DEFAULT_VOLUME = 200;
+/** Starts exactly at the Essencial allowance, so the first price shown has no overage. */
+const DEFAULT_VOLUME = 250;
 const THUMB = 22;
 
 export const PLANS: PlanTier[] = [
   { slug: "free", credits: 15, basePriceCents: 0, perCreditCents: 0 },
-  { slug: "developer", credits: 200, basePriceCents: 2990, perCreditCents: 15 },
-  { slug: "growth", credits: 750, basePriceCents: 8990, perCreditCents: 12 },
-  { slug: "scale", credits: 2500, basePriceCents: 24990, perCreditCents: 10 },
-  { slug: "volume", credits: 10000, basePriceCents: 89990, perCreditCents: 9 },
+  { slug: "developer", credits: 250, basePriceCents: 2990, perCreditCents: 12 },
+  { slug: "growth", credits: 1500, basePriceCents: 9990, perCreditCents: 8 },
+  { slug: "scale", credits: 6000, basePriceCents: 29990, perCreditCents: 5 },
+  { slug: "volume", credits: 20000, basePriceCents: 69990, perCreditCents: 5 },
 ];
 
 export function formatBRL(cents: number): string {
@@ -59,11 +58,10 @@ export function calcMonthlyTotal(volume: number, plan: PlanTier): number {
   return plan.basePriceCents + Math.max(0, volume - plan.credits) * plan.perCreditCents;
 }
 
-/** Free while it fits, Volume from 10k, otherwise the cheapest plan at this volume. */
+/** Free while it fits; otherwise recommend the lowest monthly cost. */
 export function findPlanForVolume(volume: number): PlanTier {
   if (volume <= PLANS[0].credits) return PLANS[0];
-  if (volume >= VOLUME_PLAN_FROM) return PLANS[PLANS.length - 1];
-  return PLANS.slice(1, -1).reduce((best, p) =>
+  return PLANS.slice(1).reduce((best, p) =>
     calcMonthlyTotal(volume, p) < calcMonthlyTotal(volume, best) ? p : best
   );
 }

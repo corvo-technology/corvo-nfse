@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
-import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { Providers } from "./providers";
 import { CookieConsentWrapper } from "@/components/CookieConsentWrapper";
@@ -11,18 +10,6 @@ import "./globals.css";
 const siteUrl = SITE_URL;
 // Fallback only (login, dashboard, errors): marketing pages set their own metadata per language.
 const fallback = SITE_COPY.en;
-
-const instrumentSans = Instrument_Sans({
-  variable: "--font-instrument-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-});
 
 export const metadata: Metadata = {
   title: {
@@ -83,7 +70,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${instrumentSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
       <body className="min-h-full flex flex-col">
         <CookieConsentWrapper />
