@@ -32,6 +32,10 @@ import {
   createNfseDownloadPdfHandler,
 } from './tools/nfse-download-pdf.tool';
 import {
+  NFSE_GET_DOWNLOAD_URL_TOOL,
+  createNfseGetDownloadUrlHandler,
+} from './tools/nfse-get-download-url.tool';
+import {
   COMPANY_CREATE_TOOL,
   createCompanyCreateHandler,
 } from './tools/company-create.tool';
@@ -145,6 +149,13 @@ export class McpService {
       NFSE_DOWNLOAD_PDF_TOOL,
       this.wrapWithScopeCheck(
         createNfseDownloadPdfHandler(this.invoiceService, this.invoiceRepo),
+        'nfse:read',
+      ),
+    );
+    this.server.registerTool(
+      NFSE_GET_DOWNLOAD_URL_TOOL,
+      this.wrapWithScopeCheck(
+        createNfseGetDownloadUrlHandler(this.invoiceService, this.invoiceRepo),
         'nfse:read',
       ),
     );

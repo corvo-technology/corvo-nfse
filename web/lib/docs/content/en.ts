@@ -2476,6 +2476,12 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`nfse:read`",
               "`access_key` (authorized invoice)",
               "`{ access_key, pdf_base64 }`"
+            ],
+            [
+              "`nfse_get_download_url`",
+              "`nfse:read`",
+              "`access_key`, `format` (`pdf` or `xml`; authorized invoice)",
+              "`{ download_url, expires_at, file_name, mime_type }` (signed URL, valid for one hour)"
             ]
           ]
         },

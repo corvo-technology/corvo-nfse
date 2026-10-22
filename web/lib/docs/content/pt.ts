@@ -2475,6 +2475,12 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`nfse:read`",
               "`access_key` (nota autorizada)",
               "`{ access_key, pdf_base64 }`"
+            ],
+            [
+              "`nfse_get_download_url`",
+              "`nfse:read`",
+              "`access_key`, `format` (`pdf` ou `xml`; nota autorizada)",
+              "`{ download_url, expires_at, file_name, mime_type }` (URL assinada, válida por 1 hora)"
             ]
           ]
         },

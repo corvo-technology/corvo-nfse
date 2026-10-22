@@ -156,6 +156,11 @@ export class NfseDownloadPdfInput {
   @IsString() access_key!: string;
 }
 
+export class NfseGetDownloadUrlInput {
+  @IsString() access_key!: string;
+  @IsIn(['pdf', 'xml']) format!: 'pdf' | 'xml';
+}
+
 export class NfseCancelInput {
   @IsUUID() invoice_id!: string;
   @IsIn(CANCELLATION_REASON_CODES) reason!: CancellationReasonCode;
