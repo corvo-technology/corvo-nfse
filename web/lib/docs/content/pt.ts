@@ -2,7 +2,7 @@
 import { SDKS } from "../../sdks";
 import type { DocsTree } from "../types";
 
-export const pt: DocsTree = {
+const ptWithRetiredCredits: DocsTree = {
   chrome: {
     homeLabel: "Introdução",
     groups: { gettingStarted: "Começando", reference: "Referência", guides: "Guias" },
@@ -2577,3 +2577,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     },
   },
 };
+
+// The retired credit-purchase reference is intentionally not published.
+delete ptWithRetiredCredits.pages.credits;
+export const pt = ptWithRetiredCredits;
