@@ -2041,7 +2041,8 @@
     "loading": "Loading…",
     "wants": "{name} wants to access your Corvo account",
     "returnTo": "After you decide, you go back to {host}.",
-    "canDo": "This agent will be able to:",
+    "canDo": "Access you are granting",
+    "certificateNote": "A1 certificates and passwords are never available to the agent; upload remains API-only.",
     "workspace": "Workspace",
     "workspaceBlocked": "Your role in this workspace does not allow these permissions.",
     "manage": "You can revoke access at any time under AI agents.",
@@ -2055,8 +2056,20 @@
     "deniedBody": "No permission was granted.",
     "goDashboard": "Go to the dashboard",
     "scopes": {
-      "nfse:read": "Query and download invoices",
-      "nfse:write": "Issue invoices"
+      "nfse:read": "Read and prepare operations",
+      "nfse:write": "Create and change operations"
+    },
+    "tools": {
+      "read": {
+        "company": "Companies", "companyDetail": "list or look up by CNPJ",
+        "calculate": "Tax preview", "calculateDetail": "calculate taxes without issuing",
+        "invoices": "Invoices and documents", "invoicesDetail": "query, list and download PDF",
+        "usage": "Plan and quotas", "usageDetail": "see consumption and emission availability"
+      },
+      "write": {
+        "company": "Create company", "companyDetail": "register an issuer in the selected environment",
+        "invoices": "Issue and cancel NFS-e", "invoicesDetail": "start an issuance or cancellation"
+      }
     },
     "errors": {
       "invalid": "Invalid or expired authorization link. Go back to the agent and try connecting again.",
