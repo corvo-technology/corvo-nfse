@@ -6,10 +6,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 import pino from 'pino';
 import { WorkerAppModule } from './worker-app.module';
-import type {
-  AppConfig,
-  WorkerConfig,
-} from '@/infra/config/configuration.types';
+import type { WorkerConfig } from '@/infra/config/configuration.types';
 import { HealthResponse, HealthService } from '@/modules/health/health.service';
 import {
   captureRuntimeException,
@@ -24,13 +21,11 @@ export type WorkerHealthRouteResponse = {
 };
 
 export function createWorkerHealthServer(
-  healthService: Pick<HealthService, 'getLive' | 'getReady'>,
-  apiPrefix: string,
+  healthService: Pick<HealthService, 'getLive'>,
 ): Server {
   return createServer((request, response) => {
     void resolveWorkerHealthRoute(
       healthService,
-      apiPrefix,
       request.method ?? 'GET',
       request.url ?? '/',
       request.headers.host,
@@ -39,27 +34,19 @@ export function createWorkerHealthServer(
 }
 
 export async function resolveWorkerHealthRoute(
-  healthService: Pick<HealthService, 'getLive' | 'getReady'>,
-  apiPrefix: string,
+  healthService: Pick<HealthService, 'getLive'>,
   method: string,
   requestUrl: string,
   host = 'localhost',
 ): Promise<WorkerHealthRouteResponse> {
-  const normalizedPrefix = apiPrefix.replace(/^\/+|\/+$/g, '');
-  const livePath = `/${normalizedPrefix}/health/live`;
-  const readyPath = `/${normalizedPrefix}/health/ready`;
   const url = new URL(requestUrl, `http://${host}`);
 
   if (method !== 'GET') {
     return notFound();
   }
 
-  if (url.pathname === livePath) {
+  if (url.pathname === '/health') {
     return handleHealthRoute(() => healthService.getLive(), 'worker');
-  }
-
-  if (url.pathname === readyPath) {
-    return handleHealthRoute(() => healthService.getReady(), 'worker');
   }
 
   return notFound();
@@ -71,10 +58,9 @@ export async function bootstrapWorker() {
   app.useLogger(logger);
 
   const configService = app.get(ConfigService);
-  const appConfig = configService.getOrThrow<AppConfig>('app');
   const workerConfig = configService.getOrThrow<WorkerConfig>('worker');
   const healthService = app.get(HealthService);
-  const server = createWorkerHealthServer(healthService, appConfig.apiPrefix);
+  const server = createWorkerHealthServer(healthService);
 
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);

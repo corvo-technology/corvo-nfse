@@ -35,7 +35,7 @@ describe('createConcurrencyLimit', () => {
     const limit = createConcurrencyLimit(1);
     const next = jest.fn();
     limit(req(), res(), next);
-    limit(req('/v1/health/live'), res(), next);
+    limit(req('/health'), res(), next);
     expect(next).toHaveBeenCalledTimes(2);
     const off = createConcurrencyLimit(0);
     off(req(), res(), next);

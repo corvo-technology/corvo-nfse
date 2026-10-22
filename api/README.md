@@ -159,4 +159,4 @@ docker build -f deploy/Dockerfile.api -t corvo-api:local api
 
 The same image runs the API and the worker (the worker overrides the command with `node dist/main.worker.js`).
 
-Liveness uses `/v1/health/live` and readiness `/v1/health/ready`. See [SELF_HOSTING.md](../SELF_HOSTING.md) and [deploy/README.md](../deploy/README.md).
+Health checks use `GET /health`. See [SELF_HOSTING.md](../SELF_HOSTING.md) and [deploy/README.md](../deploy/README.md).

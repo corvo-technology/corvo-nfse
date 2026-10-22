@@ -18,6 +18,7 @@ describe('configureHttpGlobalPrefix', () => {
     });
     expect(GLOBAL_PREFIX_EXCLUDES).toEqual(
       expect.arrayContaining([
+        '/health',
         '/.well-known/mcp.json',
         '/.well-known/oauth-protected-resource',
         '/.well-known/oauth-authorization-server',

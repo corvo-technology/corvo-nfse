@@ -36,6 +36,7 @@ export function resolveCorsOptions(appConfig: AppConfig): CorsOptions {
  * not be namespaced under `/v1`.
  */
 export const GLOBAL_PREFIX_EXCLUDES = [
+  '/health',
   '/.well-known/mcp.json',
   '/.well-known/oauth-protected-resource',
   '/.well-known/oauth-protected-resource/v1/mcp',

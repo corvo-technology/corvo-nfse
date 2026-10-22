@@ -121,8 +121,7 @@ describe('HTTP rate limit policies', () => {
     expect(setHeader).toHaveBeenCalledWith('X-RateLimit-Remaining', 0);
   });
   it.each([
-    { path: '/v1/health/live' },
-    { path: '/v1/health/ready' },
+    { path: '/health' },
     { path: '/v1/webhooks/stripe' },
     { method: 'OPTIONS' },
   ])('exempts %p', async (request) => {

@@ -116,7 +116,7 @@ services:
     pull_policy: never
     command: ['node', 'dist/main.worker.js']
     healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://127.0.0.1:$${WORKER_PORT:-3002}/v1/health/live || exit 1']
+      test: ['CMD-SHELL', 'curl -f http://127.0.0.1:$${WORKER_PORT:-3002}/health || exit 1']
       interval: 30s
       timeout: 5s
       retries: 3

@@ -23,7 +23,7 @@ type RateRequest = Request & {
 function exempt(request: Request): boolean {
   return (
     request.method === 'OPTIONS' ||
-    /\/(health\/(live|ready)|webhooks\/stripe)$/.test(request.path)
+    /\/(health|webhooks\/stripe)$/.test(request.path)
   );
 }
 @Injectable()

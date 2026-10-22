@@ -250,7 +250,7 @@ describeIntegration('complete API module HTTP contract', () => {
       ].schema.properties.pagination,
     ).toBeDefined();
     const health = await request(app.getHttpServer())
-      .get('/v1/health/live')
+      .get('/health')
       .expect(200);
     expect(health.body.status).toBe('ok');
     expect(health.body.data).toBeUndefined();

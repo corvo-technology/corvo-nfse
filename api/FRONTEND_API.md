@@ -243,8 +243,7 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | POST   | `/public/security/otp/challenges/{challengeId}/verify` | Público                         | JSON VerifyOtp; retorna prova, sem criar sessão; 201                               |
 | POST   | `/security/otp/challenges`                             | S                               | JSON RequestOtp; retorna desafio; 202                                              |
 | POST   | `/security/otp/challenges/{challengeId}/verify`        | S                               | JSON VerifyOtp; retorna prova; 201                                                 |
-| GET    | `/health/live`                                         | Público                         | Liveness                                                                           |
-| GET    | `/health/ready`                                        | Público                         | Readiness de banco/Redis                                                           |
+| GET    | `/health`                                              | Público                         | Health check                                                                       |
 
 ## Payloads e enums
 

@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 
-const EXEMPT_PATH = /\/health\/(live|ready)$/;
+const EXEMPT_PATH = /\/health$/;
 
 /**
  * Sheds load once a process already has `max` requests in flight, so a flood
