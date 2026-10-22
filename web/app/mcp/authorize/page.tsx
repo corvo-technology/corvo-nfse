@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, Loader2, ShieldCheck, X } from "lucide-react";
+import { Building2, Calculator, Check, FileSearch, Loader2, ReceiptText, ShieldCheck, WalletCards, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ApiError, mcp, type McpConsentContext, type McpConsentParams } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -27,6 +27,19 @@ function readParams(search: URLSearchParams): McpConsentParams | null {
 }
 
 type Outcome = { kind: "allowed" | "denied"; url: string };
+
+const TOOL_GROUPS = {
+  "nfse:read": [
+    { icon: Building2, title: "tools.read.company", detail: "tools.read.companyDetail" },
+    { icon: Calculator, title: "tools.read.calculate", detail: "tools.read.calculateDetail" },
+    { icon: FileSearch, title: "tools.read.invoices", detail: "tools.read.invoicesDetail" },
+    { icon: WalletCards, title: "tools.read.usage", detail: "tools.read.usageDetail" },
+  ],
+  "nfse:write": [
+    { icon: Building2, title: "tools.write.company", detail: "tools.write.companyDetail" },
+    { icon: ReceiptText, title: "tools.write.invoices", detail: "tools.write.invoicesDetail" },
+  ],
+} as const;
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -141,15 +154,30 @@ function AuthorizeContent() {
           </div>
         </div>
 
-        <div>
-          <p className="mb-2 text-[13px] font-medium">{t("canDo")}</p>
-          <ul className="flex flex-col gap-1.5">
-            {context.scopes.map((scope) => (
-              <li key={scope.name} className="flex items-center gap-2 text-sm text-text-2">
-                <Check size={14} className="text-accent" aria-hidden />{scopeLabel(scope.name, scope.description)}
-              </li>
-            ))}
-          </ul>
+        <div className="border-y border-border py-4">
+          <p className="mb-3 text-[13px] font-medium">{t("canDo")}</p>
+          <div className="flex flex-col gap-3">
+            {context.scopes.map((scope) => {
+              const tools = TOOL_GROUPS[scope.name as keyof typeof TOOL_GROUPS];
+              return (
+                <section key={scope.name} className="border-l-2 border-accent pl-3">
+                  <div className="flex items-center gap-2">
+                    <Check size={14} className="text-accent" aria-hidden />
+                    <p className="text-sm font-medium text-text">{scopeLabel(scope.name, scope.description)}</p>
+                  </div>
+                  {tools && <div className="mt-2 grid grid-cols-1 gap-1.5">
+                    {tools.map(({ icon: Icon, title, detail }) => (
+                      <div key={title} className="flex items-start gap-2 rounded-md bg-surface-alt px-2.5 py-2">
+                        <Icon size={15} className="mt-0.5 shrink-0 text-text-3" aria-hidden />
+                        <p className="text-[12px] leading-4 text-text-2"><span className="font-medium text-text">{t(title)}</span><span className="text-text-3"> · {t(detail)}</span></p>
+                      </div>
+                    ))}
+                  </div>}
+                </section>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-[12px] leading-4 text-text-3">{t("certificateNote")}</p>
         </div>
 
         <fieldset className="flex flex-col gap-2">

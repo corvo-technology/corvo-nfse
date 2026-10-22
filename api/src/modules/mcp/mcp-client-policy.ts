@@ -67,8 +67,8 @@ export function matchesRegisteredRedirectUri(
 }
 
 export const SCOPE_DESCRIPTIONS: Record<string, string> = {
-  'nfse:read': 'Consultar e baixar notas fiscais',
-  'nfse:write': 'Emitir notas fiscais',
+  'nfse:read': 'Consultar empresas, notas, cálculo fiscal e cotas',
+  'nfse:write': 'Criar empresas, emitir e cancelar notas fiscais',
 };
 
 /** Keeps only known scopes, preserving order and removing duplicates. */

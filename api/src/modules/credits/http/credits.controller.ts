@@ -33,7 +33,6 @@ export class CreditsController {
     const tenantId = req.authContext!.activeTenantId;
     const usage = await this.usage.status(tenantId);
     return {
-      tenantId,
       balance: usage.included_remaining,
       overageUnits: usage.overage_units,
       overageAmountCents: usage.overage_amount_cents,

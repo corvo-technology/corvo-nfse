@@ -2,7 +2,7 @@
 import { SDKS } from "../../sdks";
 import type { DocsTree } from "../types";
 
-export const en: DocsTree = {
+const enWithRetiredCredits: DocsTree = {
   chrome: {
     homeLabel: "Introduction",
     groups: { gettingStarted: "Getting Started", reference: "Reference", guides: "Guides" },
@@ -53,9 +53,7 @@ export const en: DocsTree = {
           ["List invoices and events", "`{ \"data\": [ ... ], \"pagination\": {...} }`"],
           ["Download URL / email", "`{ \"data\": ... }`"],
           ["Webhooks and deliveries", "`{ \"data\": ... } or paginated listing`"],
-          ["Credit balance", "`{ \"data\": { \"tenantId\", \"balance\", ... } }`"],
-          ["Plans / credit history", "`{ \"data\": [...], \"pagination\": {...} }`"],
-          ["Billing", "`{ \"data\": ... }`"],
+          ["Plan & quotas", "`{ \"data\": ... }`"],
         ],
       },
       {
@@ -96,10 +94,6 @@ export const en: DocsTree = {
           ["GET", "`/v1/webhooks/deliveries`", "List deliveries", "200"],
           ["GET", "`/v1/webhooks/deliveries/stats`", "Fetch delivery statistics", "200"],
           ["POST", "`/v1/webhooks/deliveries/:id/retry`", "Schedule a retry", "200"],
-          ["GET", "`/v1/credits`", "Fetch balance", "200"],
-          ["GET", "`/v1/credits/plans`", "List plans", "200"],
-          ["GET", "`/v1/credits/history`", "List transactions", "200"],
-          ["POST", "`/v1/credits/purchase/preview`", "One-off purchase (retired)", "410"],
           ["GET", "`/v1/billing/plan`", "Fetch plan and consumption", "200"],
           ["GET", "`/v1/billing/usage`", "Fetch availability and quotas", "200"],
           ["POST", "`/v1/billing/upgrade`", "Schedule a plan change", "200"],
@@ -198,7 +192,7 @@ export const en: DocsTree = {
           tone: "warn",
           body: "Credits, plan and webhook settings belong to the account. A `test` key with `full_access` can manage webhooks and read credits and billing. Plan changes, checkout and the billing portal exist only in the dashboard.",
         },
-        { kind: "callout", tone: "accent", body: "The server resolves the tenant from authentication: never send `tenantId` in a body. Resources of another tenant return `404`." },
+        { kind: "callout", tone: "accent", body: "The server resolves the account from authentication; resources of another account return `404`." },
         { kind: "heading", level: 2, body: "Scopes" },
         {
           kind: "table",
@@ -984,7 +978,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           kind: "table",
           head: ["Fields", "Type / notes"],
           rows: [
-            ["`id`, `companyId`, `tenantId`", "Identification strings."],
+            ["`id`, `companyId`", "Identification strings."],
             ["`environment`", "`test` or `live`."],
             ["`externalId`, `idempotencyKey`", "String or null."],
             ["`status`", "Enum described below."],
@@ -1354,7 +1348,7 @@ console.log(configs.length, pagination.hasMore);`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "The listing never returns `secret` or `tenantId`." },
+            { kind: "callout", tone: "accent", body: "The listing never returns `secret`." },
           ],
         },
         {
@@ -1551,7 +1545,7 @@ console.log(deliveries.length, pagination.nextCursor);`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Fields include `id`, `tenantId`, `webhookConfigId`, `eventType`, `environment`, `url`, `payload?`, `statusCode?`, `responseBody?`, `errorMessage?`, `status`, `durationMs?`, `retryCount`, `nextRetryAt?`, `lastError?`, `createdAt`. Delivery `status` values: `pending`, `sent`, `delayed`, `failed`, `manual_retry`. Without `?environment`, the listing may return both environments of the account." },
+            { kind: "callout", tone: "accent", body: "Fields include `id`, `webhookConfigId`, `eventType`, `environment`, `url`, `payload?`, `statusCode?`, `responseBody?`, `errorMessage?`, `status`, `durationMs?`, `retryCount`, `nextRetryAt?`, `lastError?`, `createdAt`. Delivery `status` values: `pending`, `sent`, `delayed`, `failed`, `manual_retry`. Without `?environment`, the listing may return both environments of the account." },
           ],
         },
         {
@@ -1644,13 +1638,12 @@ console.log(body.data.retried); // { data: { retried: true } }`,
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
 const body = await res.json();
-console.log(body.data.balance); // { data: { tenantId, balance, overageUnits, ... } }`,
+console.log(body.data.balance); // { data: { balance, overageUnits, ... } }`,
           },
           response: {
             label: "200 OK",
             json: `{
   "data": {
-    "tenantId": "9d8c7b6a-5e4f-4a3b-8c2d-1e0f9a8b7c6d",
     "balance": 100,
     "overageUnits": 0,
     "overageAmountCents": 0,
@@ -2456,6 +2449,10 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`tax_id?` (CNPJ), `limit?`, `cursor?`",
               "`{ companies [{ id, legal_name, tax_id, status, tax_regime, setup_gaps, ready_to_issue }], next_cursor }`"
             ],
+            ["`company_get`", "`nfse:read`", "`tax_id` (CNPJ)", "`{ company }` or `{ company: null }`"],
+            ["`company_create`", "`nfse:write`", "`legal_name`, `tax_id`, `tax_regime`, `municipality_code` and optional fiscal data", "`{ id, legal_name, tax_id, status }`; certificates remain API-only"],
+            ["`nfse_calculate`", "`nfse:read`", "`company_tax_id` or `company_id`, `amount` and optional fiscal data", "Calculation result; no issue, credit reservation or DPS"],
+            ["`billing_usage`", "`nfse:read`", "No parameters", "`QuotaStatus` with `canEmit`, allowance and usage"],
             [
               "`nfse_cancel`",
               "`nfse:write`",
@@ -2484,7 +2481,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         },
         {
           "kind": "text",
-          "body": "The simplest call is `company_tax_id` plus `amount`: the customer is optional (omit it for an invoice without tomador; if you send one, `tax_id` is required), the competence date defaults to today, the service code comes from the company or falls back to `100901` (LC 116 item 10.09) and the description from the service code. An agent that does not know the company calls `company_list` first (it also reports `ready_to_issue`). The same fiscal rules as the REST API apply to `nfse_issue`. Tool failures come back as a result with `isError: true` and the message as text, so the agent can read and fix them."
+          "body": "The simplest call is `company_tax_id` plus `amount`: the customer is optional (omit it for an invoice without tomador; if you send one, `tax_id` is required), the competence date defaults to today, the service code comes from the company or falls back to `100901` (LC 116 item 10.09) and the description from the service code. Use `company_get` for one CNPJ and `billing_usage` before issuing. A1 certificates are not exposed over MCP and must be uploaded through the API only. Tool failures come back as a result with `isError: true` and the message as text, so the agent can read and fix them."
         },
         {
           "kind": "heading",
@@ -2580,4 +2577,11 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
       ]
     },
   },
+};
+
+// The retired credit-purchase reference is intentionally not published.
+const { credits: _retiredCreditsEn, ...enPages } = enWithRetiredCredits.pages;
+export const en: DocsTree = {
+  ...enWithRetiredCredits,
+  pages: enPages as DocsTree["pages"],
 };

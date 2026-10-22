@@ -7,7 +7,7 @@ export const DOC_GROUPS: { key: DocGroupKey; slugs: DocSlug[] }[] = [
   { key: "gettingStarted", slugs: ["sdks", "authentication", "errors", "rate-limits"] },
   {
     key: "reference",
-    slugs: ["companies", "certificates", "invoices", "webhooks", "credits", "billing"],
+    slugs: ["companies", "certificates", "invoices", "webhooks", "billing"],
   },
   {
     key: "guides",

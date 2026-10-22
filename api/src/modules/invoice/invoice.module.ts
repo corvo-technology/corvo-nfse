@@ -151,6 +151,7 @@ import { EmailModule } from '@/modules/email/email.module';
     OutboxHandlerRegistry,
     OUTBOX_REPOSITORY,
     InvoiceService,
+    InvoiceCalculationService,
     InvoiceLifecycleService,
     InvoiceWebhookPublisher,
     INVOICE_REPOSITORY,

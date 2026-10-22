@@ -2041,7 +2041,8 @@
     "loading": "Carregando…",
     "wants": "{name} quer acessar sua conta Corvo",
     "returnTo": "Depois de decidir, você volta para {host}.",
-    "canDo": "Este agente poderá:",
+    "canDo": "Acessos que você está concedendo",
+    "certificateNote": "Certificados A1 e senhas não são disponibilizados ao agente; o envio continua exclusivamente pela API.",
     "workspace": "Workspace",
     "workspaceBlocked": "Seu papel neste workspace não permite estas permissões.",
     "manage": "Você pode revogar o acesso a qualquer momento em Agentes de IA.",
@@ -2055,8 +2056,20 @@
     "deniedBody": "Nenhuma permissão foi concedida.",
     "goDashboard": "Ir para o painel",
     "scopes": {
-      "nfse:read": "Consultar e baixar notas fiscais",
-      "nfse:write": "Emitir notas fiscais"
+      "nfse:read": "Consultar e preparar operações",
+      "nfse:write": "Criar e alterar operações"
+    },
+    "tools": {
+      "read": {
+        "company": "Empresas", "companyDetail": "listar ou consultar por CNPJ",
+        "calculate": "Pré-cálculo fiscal", "calculateDetail": "calcular tributos sem emitir",
+        "invoices": "Notas e documentos", "invoicesDetail": "consultar, listar e baixar PDF",
+        "usage": "Plano e cotas", "usageDetail": "ver consumo e disponibilidade de emissão"
+      },
+      "write": {
+        "company": "Criar empresa", "companyDetail": "cadastrar emissor no ambiente selecionado",
+        "invoices": "Emitir e cancelar NFS-e", "invoicesDetail": "iniciar emissão ou cancelamento"
+      }
     },
     "errors": {
       "invalid": "Link de autorização inválido ou expirado. Volte ao agente e tente conectar de novo.",
