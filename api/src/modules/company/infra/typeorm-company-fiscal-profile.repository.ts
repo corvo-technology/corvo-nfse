@@ -8,10 +8,11 @@ import { DataSource, In, IsNull } from 'typeorm';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
-import type {
-  CompanyFiscalProfile,
-  ProfileReviewStatus,
-  TaxRegimeKind,
+import {
+  effectiveProfilesOn,
+  type CompanyFiscalProfile,
+  type ProfileReviewStatus,
+  type TaxRegimeKind,
 } from '../domain/fiscal-profile';
 import type {
   IFiscalProfileRepository,
@@ -38,17 +39,8 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
     date: string,
   ): Promise<CompanyFiscalProfile | null> {
     return runWithTenant(tenantId, async () => {
-      const row = await this.profiles()
-        .createQueryBuilder('profile')
-        .where('profile.companyId = :companyId', { companyId })
-        .andWhere('profile.tenantId = :tenantId', { tenantId })
-        .andWhere('profile.validFrom <= :date', { date })
-        .andWhere(
-          '(profile.validUntil IS NULL OR :date < profile.validUntil)',
-          { date },
-        )
-        .getOne();
-      return row ? toDomain(row) : null;
+      const rows = await this.profiles().findBy({ companyId, tenantId });
+      return effectiveProfilesOn(rows.map(toDomain), date)[0] ?? null;
     });
   }
 

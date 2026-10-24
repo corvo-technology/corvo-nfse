@@ -170,10 +170,13 @@ describePostgres(
       expect(onJune?.validUntil).toBeNull();
     });
 
-    it('findEffective returns null before the first profile', async () => {
+    it('findEffective applies the first profile backwards, before it started', async () => {
+      // companyA's first profile starts 2026-01-01: an earlier competence uses it.
+      const first = (await repo.list(companyA, tenantA)).at(-1);
+
       expect(
-        await repo.findEffective(companyA, tenantA, '2025-12-31'),
-      ).toBeNull();
+        (await repo.findEffective(companyA, tenantA, '2025-12-31'))?.id,
+      ).toBe(first?.id);
     });
 
     it('updates in place when the same day is rewritten and the profile is not approved', async () => {
@@ -252,13 +255,13 @@ describePostgres(
           (p) => p.validUntil === null,
         ),
       ).toHaveLength(1);
-      // The invoice of 30/09 now finds its profile; before it, nothing was effective.
+      // The invoice of 30/09 finds the retroactive profile; earlier dates fall back to it too.
       expect(
         (await repo.findEffective(companyD, tenantA, '2026-09-30'))?.id,
       ).toBe(retroactive.id);
       expect(
-        await repo.findEffective(companyD, tenantA, '2025-12-31'),
-      ).toBeNull();
+        (await repo.findEffective(companyD, tenantA, '2025-12-31'))?.id,
+      ).toBe(retroactive.id);
     });
 
     it('refuses a retroactive start that lands inside the existing history, or on its first day', async () => {

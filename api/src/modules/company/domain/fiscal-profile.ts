@@ -62,6 +62,21 @@ export function isEffectiveOn(
   );
 }
 
+/**
+ * The profiles that apply on `date`. The first profile also applies backwards:
+ * a company only gets its first profile when it is registered, but it existed
+ * (and can issue invoices) before. A date inside a gap of the history gets
+ * none, and overlapping profiles are all returned so the caller can refuse them.
+ */
+export function effectiveProfilesOn<
+  T extends Pick<CompanyFiscalProfile, 'validFrom' | 'validUntil'>,
+>(profiles: T[], date: string): T[] {
+  const covering = profiles.filter((profile) => isEffectiveOn(profile, date));
+  if (covering.length > 0 || profiles.length === 0) return covering;
+  const first = profiles.reduce((a, b) => (b.validFrom < a.validFrom ? b : a));
+  return date < first.validFrom ? [first] : [];
+}
+
 const LEGACY_TO_KIND: Record<TaxRegime, TaxRegimeKind> = {
   MEI: 'MEI',
   'Simples Nacional': 'SIMPLES_NACIONAL',
