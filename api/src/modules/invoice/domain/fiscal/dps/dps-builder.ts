@@ -109,6 +109,11 @@ export interface DpsBuildInput {
       readonly email?: string;
     } | null;
     readonly discountAmount: DecimalString;
+    /**
+     * Issuer-declared deduction from the tax base (partner professional share of a
+     * salon partnership). Sent as `vDedRed/vDR`; absent or zero omits the group.
+     */
+    readonly deductionAmount?: DecimalString;
   };
   readonly emitente: {
     readonly cnpj: string;
@@ -377,6 +382,19 @@ export class DpsBuilder {
           valores: {
             ...dps.infDPS.valores,
             vDescCondIncond: { vDescIncond: discount.toNumber() },
+          },
+        },
+      };
+    }
+    const deduction = toDecimal(input.invoice.deductionAmount ?? '0');
+    if (deduction.gt(0)) {
+      dps = {
+        ...dps,
+        infDPS: {
+          ...dps.infDPS,
+          valores: {
+            ...dps.infDPS.valores,
+            vDedRed: { vDR: deduction.toNumber() },
           },
         },
       };

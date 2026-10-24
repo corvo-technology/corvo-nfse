@@ -741,6 +741,7 @@ console.log(res.status); // 204`,
               { name: "amount", type: "number", required: true, description: "Value in reais, positive, up to 9999999999.99 with at most 2 decimals." },
               { name: "competenceDate", type: "string ISO 8601", required: true, description: "Valid competence date. Without `options.type` it cannot be in the future (`422` `ERROR_FUTURE_DATE`). With `options.type: \"SCHEDULE\"` a future date is accepted (see Scheduled invoices)." },
               { name: "discount", type: "number", required: false, description: "Unconditional discount in BRL, from 0 up to the invoice amount, at most 2 decimal places." },
+              { name: "deduction", type: "number", required: false, description: "Deduction from the ISS base declared by the issuer, in BRL: greater than 0 and less than `amount` minus `discount`, at most 2 decimal places (`0` is the same as omitting it). Sent in the DPS as `vDedRed/vDR`, it reduces the ISS tax base. Use it for the partner professional's share in salons and barbershops with a partnership contract (Brazilian Lei 13.352/2016): the establishment issues the invoice for the full amount and the professional's share goes here. The issuer is responsible for the declared value and the contract; Corvo does not check them. IBS/CBS is still calculated on the amount without the deduction. See Partner salon." },
               { name: "email", type: "boolean", required: false, description: "Requests a notification; defaults to `false`." },
               { name: "options.email.send", type: "boolean", required: false, description: "When set, takes precedence over `email`." },
               { name: "options.type", type: "string", required: false, description: "`IMMEDIATE` (default) or `SCHEDULE`. `SCHEDULE` schedules issuance for a future `competenceDate`; see Scheduled invoices." },
@@ -826,7 +827,7 @@ console.log(body.data.id); // { data: Invoice }`,
           summary: "Calculates the taxes of an invoice **without issuing it**: it stores no invoice, uses no credit, reserves no DPS number, schedules nothing and does not call Sefin. Use it to check the fiscal setup and show the amount to the customer before `POST /v1/invoices`.",
           params: {
             rows: [
-              { name: "(corpo)", type: "objeto", required: true, description: "Same body as `POST /v1/invoices` (company, `service`, `amount`, `competenceDate`, optional `customer`, `discount`). Requires the `nfse.invoices.issue` permission. It does not require a certificate or a ready company." },
+              { name: "(corpo)", type: "objeto", required: true, description: "Same body as `POST /v1/invoices` (company, `service`, `amount`, `competenceDate`, optional `customer`, `discount`, `deduction`). Requires the `nfse.invoices.issue` permission. It does not require a certificate or a ready company." },
             ],
           },
           examples: {
@@ -972,6 +973,28 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
     "options": { "type": "SCHEDULE" }
   }'` },
         { kind: "callout", tone: "warn", body: "Tax data is computed when the invoice is issued, using the configuration in force on the `competenceDate`. In `live`, the company must be ready and have an active certificate when you schedule. Before scheduling, `POST /v1/invoices/calculate` shows the calculation for that date. The `nfse.invoice.authorized` (or `rejected`) webhook arrives when issuance happens, not when you schedule." },
+        { kind: "heading", level: 2, body: "Partner salon" },
+        { kind: "text", body: "Establishments with a partnership contract (Brazilian Lei 13.352/2016) issue a single invoice for the total amount charged to the customer and report the partner professional's share in `deduction`. The value is sent in the DPS as `vDedRed/vDR` and deducted from the ISS tax base." },
+        { kind: "table", head: ["Field / tax", "How it is handled"], rows: [
+          ["`amount`", "Total amount charged to the customer."],
+          ["`deduction`", "The partner professional's share. Greater than 0 and less than `amount` minus `discount`; `0` is the same as omitting it."],
+          ["ISS", "Base = `amount` − `discount` − `deduction`."],
+          ["Federal withholdings", "Base unchanged: `amount` − `discount`."],
+          ["IBS/CBS", "Calculated on the amount without the deduction."],
+          ["Net receivable", "Does not change with the deduction."],
+        ] },
+        { kind: "code", label: "Partner salon invoice", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: order_123" \\
+  -d '{
+    "companyTaxId": "11222333000181",
+    "service": { "description": "Haircut" },
+    "amount": 100,
+    "deduction": 40,
+    "competenceDate": "2026-10-20"
+  }'` },
+        { kind: "callout", tone: "warn", body: "The establishment declares the value and is responsible for it and for the partnership contract: Corvo issues what was reported, does not check the contract and does not replace your accountant. Acceptance of the deduction by the municipality and the national system has not been validated in Produção Restrita yet; if the invoice is rejected, the reason is in `lastErrorCode` and `lastErrorMessage`. A service profile with the `PARTNER_SALON` nature still requires fiscal review and blocks issuance: use the `SERVICE` nature with `deduction`." },
         { kind: "heading", level: 2, body: "Invoice schema" },
         { kind: "text", body: "Each invoice has these fields:" },
         {
@@ -986,6 +1009,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             ["`serviceSnapshot`", "`description`, `code`, `municipalityCode`."],
             ["`taxSnapshot`", "Fiscal information object."],
             ["`amount`, `currency`, `competenceDate`", "Number in reais, currency and ISO 8601 date-time (the competence date at midnight UTC, e.g. `2026-10-01T00:00:00.000Z`)."],
+            ["`discount`, `deduction`", "Optional numbers in reais: the unconditional discount and the issuer-declared deduction from the ISS base (see Partner salon)."],
             ["`dpsId`, `dpsSeries`, `dpsNumber`", "String/string/number or null."],
             ["`accessKey`, `nfseNumber`", "String/number or null."],
             ["`fiscalProvider`, `fiscalSchemaVersion`", "Strings."],
@@ -2440,7 +2464,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             [
               "`nfse_issue`",
               "`nfse:write`",
-              "`company_tax_id` (CNPJ) or `company_id`, `amount` (or `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` required when a customer is sent), `description?`, `discount?`, `competence_date?` (default: today), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
+              "`company_tax_id` (CNPJ) or `company_id`, `amount` (or `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` required when a customer is sent), `description?`, `discount?`, `deduction?` (ISS base deduction, e.g. the partner professional's share), `competence_date?` (default: today), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
               "`{ invoice_id, access_key, status }`"
             ],
             [

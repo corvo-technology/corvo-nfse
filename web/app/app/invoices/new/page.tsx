@@ -76,6 +76,7 @@ export default function NewInvoicePage() {
     municipalityCode: "",
     competenceDate: new Date().toLocaleDateString("sv-SE"),
     amount: "",
+    deduction: "",
   });
 
   const inFlight = useRef(false);
@@ -155,6 +156,8 @@ export default function NewInvoicePage() {
         municipalityCode: form.municipalityCode || undefined,
       },
       amount,
+      // Declared by the issuer (partner professional share); empty or zero sends nothing.
+      deduction: hasDeduction ? deductionNumber : undefined,
       competenceDate: form.competenceDate,
       email: sendEmail,
     };
@@ -209,7 +212,7 @@ export default function NewInvoicePage() {
       router.push(`/app/invoices/${created.id}`);
     } catch (err: unknown) {
       if (err instanceof ApiError && [0, 409, 502, 503].includes(err.status)) setUncertain(true);
-      const { _form, ...perField } = mapIssues(err, { "customer.taxId": "customerTaxId", "customer.name": "customerName", "customer.email": "customerEmail", "customer.address": "city", "customer.address.city": "city", "customer.address.state": "state", "service.code": "serviceCode", "service.municipalityCode": "municipalityCode", "service.description": "serviceDescription", amount: "amount", competenceDate: "competenceDate", companyId: "companyId", companyTaxId: "companyId", "company.municipalityCode": "companyId" }, (code, fallback) => (te.has(code) ? te(code) : fallback));
+      const { _form, ...perField } = mapIssues(err, { "customer.taxId": "customerTaxId", "customer.name": "customerName", "customer.email": "customerEmail", "customer.address": "city", "customer.address.city": "city", "customer.address.state": "state", "service.code": "serviceCode", "service.municipalityCode": "municipalityCode", "service.description": "serviceDescription", amount: "amount", deduction: "deduction", competenceDate: "competenceDate", companyId: "companyId", companyTaxId: "companyId", "company.municipalityCode": "companyId" }, (code, fallback) => (te.has(code) ? te(code) : fallback));
       setFieldErrors(perField);
       setError(_form ?? (Object.keys(perField).length > 0 ? t("fields.fixFields") : err instanceof Error && err.message ? err.message : t("fields.createFailed")));
     } finally { inFlight.current = false; setSubmitting(false); }
@@ -223,6 +226,10 @@ export default function NewInvoicePage() {
   const municipalityCode = form.municipalityCode || company?.municipalityCode || "";
   const amountNumber = parseCurrency(form.amount);
   const hasAmount = form.amount !== "" && amountNumber > 0;
+  const deductionNumber = parseCurrency(form.deduction);
+  const hasDeduction = form.deduction !== "" && deductionNumber > 0;
+  // The deduction is taken from the ISS base, so it has to leave something to tax.
+  const deductionInvalid = hasDeduction && hasAmount && deductionNumber >= amountNumber;
   const money = useMemo(() => new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US", { style: "currency", currency: "BRL" }), [locale]);
   const competence = form.competenceDate
     ? new Intl.DateTimeFormat(locale === "pt" ? "pt-BR" : "en-US", { dateStyle: "medium" }).format(new Date(`${form.competenceDate}T12:00:00`))
@@ -242,6 +249,7 @@ export default function NewInvoicePage() {
   if (!/^\d{7}$/.test(municipalityCode)) missing.push(t("fields.municipalityCode"));
   if (!form.competenceDate || form.competenceDate > today) missing.push(t("fields.competence"));
   if (!hasAmount) missing.push(t("fields.amount"));
+  if (deductionInvalid) missing.push(t("fields.deduction"));
   if ((sendEmail || form.customerEmail) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customerEmail.trim())) missing.push(t("fields.email"));
   if (Boolean(form.city.trim()) !== Boolean(form.state)) missing.push(form.city.trim() ? t("fields.state") : t("fields.city"));
   const canSubmit = missing.length === 0 && !uncertain;
@@ -342,6 +350,16 @@ export default function NewInvoicePage() {
                   </div>
                 )}
               </Field>
+              <div className="sm:col-span-2">
+                <Field label={t("fields.deduction")} error={fieldErrors.deduction || (deductionInvalid ? t("fields.invalidDeduction") : undefined)} optionalLabel={t("fields.optional")} hint={t("hints.deduction")}>
+                  {(c) => (
+                    <div className="relative">
+                      <span aria-hidden className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-[13px] text-text-4">R$</span>
+                      <input {...c} type="text" inputMode="numeric" className="field pl-10 text-right font-mono tabular-nums" placeholder="0,00" value={form.deduction} onChange={set("deduction", maskCurrency)} autoComplete="off" />
+                    </div>
+                  )}
+                </Field>
+              </div>
             </div>
           </Section>
 
@@ -381,6 +399,7 @@ export default function NewInvoicePage() {
             <SummaryRow label={t("fields.serviceCode")} value={serviceCode} mono />
             <SummaryRow label={t("fields.municipalityCode")} value={municipalityCode} mono />
             <SummaryRow label={t("summary.competence")} value={competence} />
+            {hasDeduction && <SummaryRow label={t("summary.deduction")} value={money.format(deductionNumber)} mono />}
             <SummaryRow label={t("summary.email")} value={sendEmail ? form.customerEmail || t("summary.emailPending") : t("summary.emailOff")} />
           </dl>
 

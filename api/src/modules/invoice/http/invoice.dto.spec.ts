@@ -62,6 +62,19 @@ describe('CreateInvoiceDto optional customer, discount and fiscal input', () => 
     expect(await errorsOf(validBody({ discount: 10.5 }))).toEqual([]);
   });
 
+  it('accepts a decimal deduction', async () => {
+    expect(await errorsOf(validBody({ deduction: 40.5 }))).toEqual([]);
+  });
+
+  it('rejects a non-numeric deduction', async () => {
+    const errors = await errorsOf(validBody({ deduction: 'quarenta' }));
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ property: 'deduction' }),
+      ]),
+    );
+  });
+
   it('rejects a non-numeric discount', async () => {
     const errors = await errorsOf(validBody({ discount: 'dez' }));
     expect(errors).toEqual(

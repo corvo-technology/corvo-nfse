@@ -126,6 +126,10 @@ export function buildFiscalCalculationResult(
     taxableAmounts: {
       gross: context.invoice.grossAmount,
       discount: context.invoice.discountAmount,
+      ...(context.invoice.deductionAmount !== undefined &&
+      toDecimal(context.invoice.deductionAmount).gt(0)
+        ? { deduction: context.invoice.deductionAmount }
+        : {}),
       ...(legacyTaxes !== undefined && legacyTaxes.iss !== null
         ? { iss: legacyTaxes.iss.base }
         : {}),

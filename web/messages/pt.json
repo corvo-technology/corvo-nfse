@@ -1213,6 +1213,8 @@
       "loadingCompanies": "Carregando...",
       "noCompanies": "Nenhuma empresa cadastrada",
       "invalidAmount": "Informe um valor maior que zero.",
+      "deduction": "Dedução da base do ISS",
+      "invalidDeduction": "A dedução deve ser menor que o valor total.",
       "createFailed": "Não foi possível emitir a nota fiscal.",
       "companiesFailed": "Não foi possível carregar as empresas.",
       "municipalityCode": "Código IBGE do local da prestação",
@@ -1245,6 +1247,7 @@
       "serviceCodeDefault": "Padrão da empresa: {code}. Deixe vazio para usar este código ou escolha outro para esta nota.",
       "municipalityDefault": "Município da empresa: {code}. Deixe vazio para usá-lo ou informe outro local de prestação para esta nota.",
       "description": "Opcional. Se vazia, usamos o nome do código de serviço.",
+      "deduction": "Opcional. Para salão-parceiro (Lei 13.352/2016), informe a cota-parte do profissional parceiro. Ela é abatida da base do ISS e enviada na nota. O valor é declarado por você: o Corvo não confere o contrato de parceria, então confirme com seu contador.",
       "serviceCodeFallback": "Opcional. Sem código na nota nem na empresa, usamos {code} (10.09, representação). Escolha o código da sua atividade."
     },
     "summary": {
@@ -1255,6 +1258,7 @@
       "customer": "Tomador",
       "taxId": "CPF/CNPJ",
       "competence": "Competência",
+      "deduction": "Dedução (ISS)",
       "liveWarning": "Ambiente de produção: esta nota terá valor fiscal real.",
       "missing": "Falta preencher: {fields}.",
       "ready": "Tudo certo para emitir.",
@@ -1527,6 +1531,7 @@
     "refresh": "Atualizar",
     "customer": "Tomador",
     "amount": "Valor",
+    "deduction": "Dedução da base do ISS",
     "reference": "Referência",
     "competence": "Competência",
     "service": "Serviço",

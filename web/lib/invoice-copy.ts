@@ -19,6 +19,7 @@ export function invoiceToFormValues(invoice: Invoice, today: string) {
     municipalityCode: invoice.serviceSnapshot.municipalityCode ?? "",
     competenceDate: today,
     amount: maskCurrency(String(Math.round(invoice.amount * 100))),
+    deduction: invoice.deduction ? maskCurrency(String(Math.round(invoice.deduction * 100))) : "",
     sendEmail: Boolean(customer?.email),
   };
 }

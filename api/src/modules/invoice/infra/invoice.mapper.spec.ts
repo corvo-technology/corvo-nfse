@@ -110,3 +110,76 @@ describe('InvoiceMapper cancellation fields', () => {
     ).toEqual(at);
   });
 });
+
+describe('InvoiceMapper discount', () => {
+  it('round-trips the unconditional discount through the service_snapshot', () => {
+    const invoice = Invoice.create(
+      {
+        companyId: 'company-1',
+        customer: { taxId: VALID_CNPJ, name: 'Cliente' },
+        service: {
+          description: 'Serviço',
+          code: '010101',
+          municipalityCode: '3550308',
+        },
+        amount: 100,
+        discount: 10,
+        competenceDate: new Date('2026-10-14'),
+      },
+      'tenant-1',
+    );
+    const mapper = new InvoiceMapper();
+    const orm = mapper.toPersistence(invoice);
+    expect(orm.serviceSnapshot).toMatchObject({ discount: 10 });
+    expect(mapper.toDomain(orm).discount).toBe(10);
+  });
+
+  it('round-trips the declared deduction without leaking it into the service snapshot', () => {
+    const invoice = Invoice.create(
+      {
+        companyId: 'company-1',
+        customer: { taxId: VALID_CNPJ, name: 'Cliente' },
+        service: {
+          description: 'Serviço',
+          code: '010101',
+          municipalityCode: '3550308',
+        },
+        amount: 100,
+        discount: 10,
+        deduction: 40,
+        competenceDate: new Date('2026-10-14'),
+      },
+      'tenant-1',
+    );
+    const mapper = new InvoiceMapper();
+    const orm = mapper.toPersistence(invoice);
+    expect(orm.serviceSnapshot).toMatchObject({ discount: 10, deduction: 40 });
+
+    const back = mapper.toDomain(orm);
+    expect(back.deduction).toBe(40);
+    expect(back.discount).toBe(10);
+    expect(back.toSnapshot().serviceSnapshot).not.toHaveProperty('deduction');
+    expect(back.toSnapshot().serviceSnapshot).not.toHaveProperty('discount');
+  });
+
+  it('persists neither field when the invoice has no discount nor deduction', () => {
+    const orm = new InvoiceMapper().toPersistence(
+      Invoice.create(
+        {
+          companyId: 'company-1',
+          customer: { taxId: VALID_CNPJ, name: 'Cliente' },
+          service: {
+            description: 'Serviço',
+            code: '010101',
+            municipalityCode: '3550308',
+          },
+          amount: 100,
+          competenceDate: new Date('2026-10-14'),
+        },
+        'tenant-1',
+      ),
+    );
+    expect(orm.serviceSnapshot).not.toHaveProperty('discount');
+    expect(orm.serviceSnapshot).not.toHaveProperty('deduction');
+  });
+});

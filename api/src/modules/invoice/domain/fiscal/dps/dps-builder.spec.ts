@@ -500,6 +500,47 @@ describe('DpsBuilder', () => {
     });
   });
 
+  it('adds vDedRed/vDR when the invoice carries a declared deduction', async () => {
+    const base = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    const deducted = dpsFrom(
+      await new DpsBuilder().build(
+        input({ invoice: { deductionAmount: '400.00' } }),
+        RTC_V1_01,
+      ),
+    );
+
+    expect(deducted.infDPS.valores.vDedRed).toEqual({ vDR: 400 });
+    expect(deducted.infDPS).toEqual({
+      ...base.infDPS,
+      valores: { ...base.infDPS.valores, vDedRed: { vDR: 400 } },
+    });
+  });
+
+  it('serializes the deduction in the XML and keeps it schema valid', async () => {
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({ invoice: { deductionAmount: '400.00' } }),
+        RTC_V1_01,
+      ),
+    );
+    const xml = buildDpsXml(dps);
+    expect(xml).toContain('<vDedRed><vDR>400</vDR></vDedRed>');
+    const validation = await validateDpsXml(xml, { throwOnInvalid: false });
+    expect(validation.valid).toBe(true);
+  });
+
+  it('omits vDedRed when the deduction is zero or absent', async () => {
+    const zero = dpsFrom(
+      await new DpsBuilder().build(
+        input({ invoice: { deductionAmount: '0.00' } }),
+        RTC_V1_01,
+      ),
+    );
+    const absent = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    expect(zero.infDPS.valores.vDedRed).toBeUndefined();
+    expect(absent.infDPS.valores.vDedRed).toBeUndefined();
+  });
+
   it('maps ISS withholding to RetidoPeloTomador only when required', async () => {
     const retained = dpsFrom(
       await new DpsBuilder().build(

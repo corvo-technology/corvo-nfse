@@ -138,6 +138,26 @@ describe("Invoice company defaults", () => {
     const payload = JSON.parse(JSON.stringify(mocks.create.mock.calls[0][0]));
     expect(payload).not.toHaveProperty("customer"); expect(payload.service).toEqual({});
   });
+  it("sends the deduction declared for a salon partnership and lists it in the summary", async () => {
+    await prepareInvoice(); fill("Deduction from the ISS base", "8000");
+    expect(screen.getByText(messages.Invoices.summary.deduction)).toBeTruthy();
+    const issue = screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement; expect(issue.disabled).toBe(false);
+    fireEvent.click(issue); await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce());
+    expect(mocks.create.mock.calls[0][0]).toMatchObject({ amount: 199, deduction: 80 });
+  });
+  it("omits the deduction when the field is empty", async () => {
+    await prepareInvoice();
+    expect(screen.queryByText(messages.Invoices.summary.deduction)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Issue NFS-e" })); await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce());
+    expect(JSON.parse(JSON.stringify(mocks.create.mock.calls[0][0]))).not.toHaveProperty("deduction");
+  });
+  it("blocks issuing while the deduction is not less than the total amount", async () => {
+    await prepareInvoice(); fill("Deduction from the ISS base", "19900");
+    expect(screen.getByText(messages.Invoices.fields.invalidDeduction)).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement).disabled).toBe(true);
+    fill("Deduction from the ISS base", "19899");
+    expect((screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement).disabled).toBe(false);
+  });
   it("needs a valid CPF or CNPJ as soon as any customer data is filled", async () => {
     renderUI(<NewInvoicePage />);
     await waitFor(() => expect(screen.getByRole("option", { name: company.legalName })).toBeTruthy());

@@ -1213,6 +1213,8 @@
       "loadingCompanies": "Loading...",
       "noCompanies": "No companies registered",
       "invalidAmount": "Enter an amount greater than zero.",
+      "deduction": "Deduction from the ISS base",
+      "invalidDeduction": "The deduction must be less than the total amount.",
       "createFailed": "We couldn't issue the invoice.",
       "companiesFailed": "We couldn't load your companies.",
       "municipalityCode": "Service location IBGE code",
@@ -1245,6 +1247,7 @@
       "serviceCodeDefault": "Company default: {code}. Leave empty to use it, or choose another code for this invoice.",
       "municipalityDefault": "Company municipality: {code}. Leave empty to use it, or enter another service location for this invoice.",
       "description": "Optional. When empty we use the service code's name.",
+      "deduction": "Optional. For salon partnerships (Brazilian Lei 13.352/2016), enter the partner professional's share. It is deducted from the ISS base and sent on the invoice. You declare the value: Corvo does not check the partnership contract, so confirm it with your accountant.",
       "serviceCodeFallback": "Optional. With no code on the invoice or the company, we use {code} (10.09, representation). Pick your own activity code."
     },
     "summary": {
@@ -1255,6 +1258,7 @@
       "customer": "Customer",
       "taxId": "Tax ID",
       "competence": "Competence",
+      "deduction": "Deduction (ISS)",
       "liveWarning": "Live environment: this invoice will have real fiscal value.",
       "missing": "Still needed: {fields}.",
       "ready": "Ready to issue.",
@@ -1527,6 +1531,7 @@
     "refresh": "Refresh",
     "customer": "Customer",
     "amount": "Amount",
+    "deduction": "Deduction from the ISS base",
     "reference": "Reference",
     "competence": "Competence date",
     "service": "Service",

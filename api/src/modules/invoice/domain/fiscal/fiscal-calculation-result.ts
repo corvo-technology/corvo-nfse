@@ -11,6 +11,8 @@ export type CalculationSource = 'legacy' | 'rtc' | 'legacy+rtc' | 'none';
 export interface TaxableAmounts {
   readonly gross: DecimalString;
   readonly discount: DecimalString;
+  /** Issuer-declared deduction from the ISS base; present only when greater than zero. */
+  readonly deduction?: DecimalString;
   readonly iss?: DecimalString;
   readonly ibsCbs?: DecimalString;
 }

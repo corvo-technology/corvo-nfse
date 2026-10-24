@@ -76,6 +76,11 @@ export const NFSE_ISSUE_TOOL = {
         description:
           'Unconditional discount in BRL (>= 0, at most the amount).',
       },
+      deduction: {
+        type: 'number',
+        description:
+          'Deduction from the ISS tax base in BRL, declared by the issuer (> 0 and less than amount minus discount). For the partner professional share of a salon partnership (Lei 13.352/2016). The issuer is responsible for the declared value.',
+      },
       competence_date: {
         type: 'string',
         description:
@@ -196,6 +201,7 @@ export function createNfseIssueHandler(invoiceService: InvoiceService) {
       },
       amount: serviceAmount(params),
       discount: params.discount,
+      deduction: params.deduction,
       competenceDate:
         params.competence_date ?? SAO_PAULO_DATE.format(new Date()),
       options:

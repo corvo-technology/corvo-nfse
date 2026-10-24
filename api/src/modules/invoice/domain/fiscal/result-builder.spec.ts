@@ -359,6 +359,63 @@ describe('buildFiscalCalculationResult', () => {
     );
   });
 
+  describe('declared deduction', () => {
+    it('records the deduction in the taxable amounts and accepts the reduced ISS base', () => {
+      const result = resultOf(
+        context({
+          invoice: invoice({ deductionAmount: '400.00' }),
+          legacyTaxes: legacyTaxes({
+            iss: { base: '600.00', rate: '3', amount: '18.00' },
+            netReceivableAmount: '1000.00',
+          }),
+        }),
+      );
+      expect(result.taxableAmounts).toMatchObject({
+        gross: '1000.00',
+        discount: '0.00',
+        deduction: '400.00',
+        iss: '600.00',
+        ibsCbs: '1000.00',
+      });
+    });
+
+    it('does not record a deduction when it is absent or zero', () => {
+      expect(resultOf(context()).taxableAmounts).not.toHaveProperty(
+        'deduction',
+      );
+      expect(
+        resultOf(context({ invoice: invoice({ deductionAmount: '0.00' }) }))
+          .taxableAmounts,
+      ).not.toHaveProperty('deduction');
+    });
+
+    it('fails when the ISS base ignores the declared deduction', () => {
+      const error = errorOf(
+        context({
+          invoice: invoice({ deductionAmount: '400.00' }),
+          legacyTaxes: legacyTaxes({
+            iss: { base: '1000.00', rate: '3', amount: '30.00' },
+          }),
+        }),
+      );
+      expect(error.details.issues).toContainEqual(
+        expect.objectContaining({
+          field: 'legacyTaxes.iss.base',
+          code: 'ISS_BASE_MISMATCH',
+        }),
+      );
+    });
+
+    it('fails when the deduction is not a valid money amount', () => {
+      const error = errorOf(
+        context({ invoice: invoice({ deductionAmount: '4x' }) }),
+      );
+      expect(error.details.issues).toContainEqual(
+        expect.objectContaining({ field: 'invoice.deductionAmount' }),
+      );
+    });
+  });
+
   it('fails with FISCAL_VALIDATION_FAILED when withholdings exceed the discounted base', () => {
     const error = errorOf(
       context({

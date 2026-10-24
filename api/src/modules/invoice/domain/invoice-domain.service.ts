@@ -42,6 +42,8 @@ export interface NormalizedInvoiceInput {
   };
   amount: number;
   discount?: number;
+  /** Issuer-declared deduction from the ISS base (e.g. partner professional share). */
+  deduction?: number;
   competenceDate: Date;
   scheduledFor?: Date;
   emailSend: boolean;
@@ -221,6 +223,56 @@ export class InvoiceDomainService {
       }
     }
 
+    // ── deduction: optional, > 0 and < amount - discount, max 2 decimals ──
+    // Declared by the issuer (e.g. the partner professional share, Lei
+    // 13.352/2016). Zero means "no deduction" and is dropped.
+    let deduction: number | undefined;
+    if (dto.deduction !== undefined && dto.deduction !== null) {
+      if (
+        typeof dto.deduction !== 'number' ||
+        !Number.isFinite(dto.deduction)
+      ) {
+        issues.push({
+          field: 'deduction',
+          code: 'invalid_type',
+          message: 'deduction must be a number',
+        });
+      } else {
+        const rounded = Math.round(dto.deduction * 100) / 100;
+        if (rounded !== dto.deduction) {
+          issues.push({
+            field: 'deduction',
+            code: 'invalid_decimal_places',
+            message: 'deduction must have at most 2 decimal places',
+          });
+        }
+        if (dto.deduction < 0) {
+          issues.push({
+            field: 'deduction',
+            code: 'out_of_range',
+            message: 'deduction must be greater than or equal to zero',
+          });
+        } else if (
+          dto.deduction > 0 &&
+          typeof dto.amount === 'number' &&
+          Number.isFinite(dto.amount) &&
+          toDecimal(String(dto.deduction)).gte(
+            toDecimal(String(dto.amount)).minus(
+              toDecimal(String(discount ?? 0)),
+            ),
+          )
+        ) {
+          issues.push({
+            field: 'deduction',
+            code: 'out_of_range',
+            message:
+              'deduction must be less than the amount minus the discount',
+          });
+        }
+        if (rounded > 0) deduction = rounded;
+      }
+    }
+
     // ── competenceDate: immediate or scheduled ───────────────────────────────────
     let competenceDate: Date;
     let scheduledFor: Date | undefined;
@@ -296,6 +348,7 @@ export class InvoiceDomainService {
       },
       amount: Math.round(dto.amount * 100) / 100,
       discount,
+      deduction,
       competenceDate,
       scheduledFor,
       emailSend,

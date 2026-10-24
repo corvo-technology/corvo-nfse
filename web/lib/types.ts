@@ -408,6 +408,10 @@ export interface Invoice {
   id: string; tenantId: string; companyId: string; externalId?: string | null;
   accessKey?: string | null; nfseNumber?: number | null; status: InvoiceStatus;
   amount: number; customerName: string; customerTaxId: string;
+  /** Unconditional discount applied to the amount. */
+  discount?: number;
+  /** Deduction from the ISS base declared by the issuer (e.g. the partner professional share). */
+  deduction?: number;
   serviceDescription: string; customerSnapshot: CreateInvoiceInput["customer"] | null;
   serviceSnapshot: Required<CreateInvoiceInput["service"]>; competenceDate: string;
   lastErrorCode?: string | null; lastErrorMessage?: string | null;
@@ -423,6 +427,11 @@ export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } |
   /** Omit code/municipalityCode to inherit the company defaults (code falls back to 100901). The description is optional. */
   service: { description?: string; code?: string; municipalityCode?: string };
   amount: number; competenceDate: string;
+  /**
+   * Deduction from the ISS base declared by the issuer, in BRL (> 0 and < amount, max 2 decimals), sent in the DPS as `vDedRed/vDR`.
+   * For the partner professional share of a salon partnership (Lei 13.352/2016). The issuer is responsible for the declared value.
+   */
+  deduction?: number;
   /** Email the invoice to customer.email once the documents are ready. */
   email?: boolean;
 }

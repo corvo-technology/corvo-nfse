@@ -191,6 +191,126 @@ describe('LegacyTaxCalculatorStep', () => {
     ]);
   });
 
+  describe('declared deduction', () => {
+    const withDeduction = (
+      base: FiscalContext,
+      deductionAmount: string,
+    ): FiscalContext => ({
+      ...base,
+      invoice: { ...base.invoice, deductionAmount },
+    });
+
+    it('deducts the declared amount from the ISS base and keeps the net receivable', async () => {
+      const outcome = outcomeOf(
+        await step.execute(
+          withDeduction(
+            context('1000.00', '0.00', applicability({ iss: REQUIRED })),
+            '400.00',
+          ),
+        ),
+      );
+      expect(outcome.status).toBe('applied');
+      expect(outcome.context.legacyTaxes).toEqual({
+        iss: { base: '600.00', rate: '5', amount: '30.00' },
+        issWithheld: false,
+        issResponsible: 'PROVIDER',
+        withholdings: [],
+        netReceivableAmount: '1000.00',
+      });
+    });
+
+    it('deducts both the discount and the declared amount', async () => {
+      const outcome = outcomeOf(
+        await step.execute(
+          withDeduction(
+            context('1000.00', '100.00', applicability({ iss: REQUIRED })),
+            '400.00',
+          ),
+        ),
+      );
+      expect(outcome.context.legacyTaxes?.iss).toEqual({
+        base: '500.00',
+        rate: '5',
+        amount: '25.00',
+      });
+    });
+
+    it('does not reduce the federal withholding base', async () => {
+      const outcome = outcomeOf(
+        await step.execute(
+          withDeduction(
+            context(
+              '1000.00',
+              '0.00',
+              applicability({ iss: REQUIRED, federalWithholding: REQUIRED }),
+              classification({ rates: { irrf: '1.5' } }),
+            ),
+            '400.00',
+          ),
+        ),
+      );
+      expect(outcome.context.legacyTaxes?.withholdings).toEqual([
+        { tax: 'IRRF', base: '1000.00', rate: '1.5', amount: '15.00' },
+      ]);
+    });
+
+    it('registers a warning that the issuer declared the deduction', async () => {
+      const outcome = outcomeOf(
+        await step.execute(
+          withDeduction(
+            context('1000.00', '0.00', applicability({ iss: REQUIRED })),
+            '400.00',
+          ),
+        ),
+      );
+      expect(outcome.context.warnings).toEqual([
+        expect.objectContaining({
+          code: 'DECLARED_DEDUCTION_APPLIED',
+          step: 'LegacyTaxCalculator',
+        }),
+      ]);
+    });
+
+    it('behaves exactly as before when the deduction is absent or zero', async () => {
+      const absent = outcomeOf(
+        await step.execute(
+          context('1000.00', '0.00', applicability({ iss: REQUIRED })),
+        ),
+      );
+      const zero = outcomeOf(
+        await step.execute(
+          withDeduction(
+            context('1000.00', '0.00', applicability({ iss: REQUIRED })),
+            '0.00',
+          ),
+        ),
+      );
+      expect(zero.context.legacyTaxes).toEqual(absent.context.legacyTaxes);
+      expect(zero.context.warnings).toEqual([]);
+    });
+
+    it.each([
+      ['equal to the gross amount', '1000.00', '0.00', '1000.00'],
+      ['equal to gross minus discount', '1000.00', '100.00', '900.00'],
+      ['greater than gross minus discount', '1000.00', '100.00', '900.01'],
+    ])('rejects a deduction %s', async (_label, gross, discount, deduction) => {
+      const error = errorOf(
+        await step.execute(
+          withDeduction(
+            context(gross, discount, applicability({ iss: REQUIRED })),
+            deduction,
+          ),
+        ),
+      );
+      expect(error).toMatchObject({
+        code: 'FISCAL_VALIDATION_FAILED',
+        category: 'VALIDATION',
+        retryable: false,
+        details: { fields: ['deduction'] },
+      });
+    });
+  });
+
   it('rejects a discount greater than the gross amount', async () => {
     const error = errorOf(
       await step.execute(

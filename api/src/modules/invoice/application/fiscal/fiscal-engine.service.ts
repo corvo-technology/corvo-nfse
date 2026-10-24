@@ -78,6 +78,7 @@ export class FiscalEngineService {
         service: snapshot.serviceSnapshot,
         amount: snapshot.amount,
         discount: snapshot.discount,
+        deduction: snapshot.deduction,
         competenceDate: snapshot.competenceDate,
       },
       company,
@@ -92,7 +93,12 @@ export class FiscalEngineService {
 export function toNormalizedInvoice(
   input: Pick<
     NormalizedInvoiceInput,
-    'companyId' | 'service' | 'amount' | 'discount' | 'competenceDate'
+    | 'companyId'
+    | 'service'
+    | 'amount'
+    | 'discount'
+    | 'deduction'
+    | 'competenceDate'
   > & {
     customer: {
       taxId?: string;
@@ -126,6 +132,9 @@ export function toNormalizedInvoice(
     competenceDate: input.competenceDate.toISOString().slice(0, 10),
     grossAmount: moneyString(toDecimal(input.amount)),
     discountAmount: moneyString(toDecimal(input.discount ?? 0)),
+    ...(input.deduction !== undefined && input.deduction > 0
+      ? { deductionAmount: moneyString(toDecimal(input.deduction)) }
+      : {}),
     service: {
       code: input.service.code,
       municipalityCode: input.service.municipalityCode,

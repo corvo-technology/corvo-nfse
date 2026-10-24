@@ -9,7 +9,10 @@ import type { CancellationReasonCode } from '../domain/cancellation-reason';
 import { InvoiceStatus } from '../domain/invoice-status';
 import { InvoiceOrmEntity } from './invoice.orm-entity';
 
-type PersistedServiceSnapshot = ServiceSnapshot & { discount?: number };
+type PersistedServiceSnapshot = ServiceSnapshot & {
+  discount?: number;
+  deduction?: number;
+};
 
 function normalizeCustomerSnapshot(
   value: Record<string, unknown> | null | undefined,
@@ -25,14 +28,16 @@ function readServiceSnapshot(
 ): {
   snapshot: ServiceSnapshot;
   discount?: number;
+  deduction?: number;
 } {
-  const { discount, ...rest } = (value ??
+  const { discount, deduction, ...rest } = (value ??
     {}) as unknown as PersistedServiceSnapshot;
-  return { snapshot: rest, discount };
+  return { snapshot: rest, discount, deduction };
 }
 
 export class InvoiceMapper {
   toDomain(orm: InvoiceOrmEntity): Invoice {
+    const service = readServiceSnapshot(orm.serviceSnapshot);
     const props: InvoiceProps = {
       id: orm.id,
       companyId: orm.companyId,
@@ -47,8 +52,9 @@ export class InvoiceMapper {
       // `customer_snapshot` is NOT NULL — anonymous consumer invoices are
       // persisted as `{}` and read back as `null`.
       customerSnapshot: normalizeCustomerSnapshot(orm.customerSnapshot),
-      serviceSnapshot: readServiceSnapshot(orm.serviceSnapshot).snapshot,
-      discount: readServiceSnapshot(orm.serviceSnapshot).discount,
+      serviceSnapshot: service.snapshot,
+      discount: service.discount,
+      deduction: service.deduction,
       taxSnapshot: orm.taxSnapshot,
       amount: Number(orm.amount),
       currency: orm.currency,
@@ -97,13 +103,14 @@ export class InvoiceMapper {
     // persisted as `{}` and read back as `null`.
     orm.customerSnapshot = (snapshot.customerSnapshot ??
       {}) as unknown as Record<string, unknown>;
-    // No dedicated discount column yet: `discount` rides in the
-    // `service_snapshot` jsonb and is lifted back by `readServiceSnapshot`.
-    const { discount, ...serviceSnapshot } =
-      snapshot.serviceSnapshot as PersistedServiceSnapshot;
+    // No dedicated discount/deduction columns: both ride in the
+    // `service_snapshot` jsonb and are lifted back by `readServiceSnapshot`.
+    // They live on the invoice props, not inside `serviceSnapshot`.
+    const { discount, deduction } = snapshot;
     orm.serviceSnapshot = {
-      ...serviceSnapshot,
+      ...snapshot.serviceSnapshot,
       ...(discount !== undefined ? { discount } : {}),
+      ...(deduction !== undefined ? { deduction } : {}),
     };
     orm.taxSnapshot = snapshot.taxSnapshot;
     orm.amount = snapshot.amount;

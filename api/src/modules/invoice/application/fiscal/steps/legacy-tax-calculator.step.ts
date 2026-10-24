@@ -76,6 +76,7 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
 
     const gross = toDecimal(context.invoice.grossAmount);
     const discount = toDecimal(context.invoice.discountAmount);
+    const deduction = toDecimal(context.invoice.deductionAmount ?? '0');
     if (discount.greaterThan(gross)) {
       return err(
         fiscalError({
@@ -84,6 +85,21 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
           category: 'VALIDATION',
           step: this.name,
           details: { fields: ['discount'] },
+        }),
+      );
+    }
+    if (
+      deduction.greaterThanOrEqualTo(gross.minus(discount)) &&
+      deduction.gt(0)
+    ) {
+      return err(
+        fiscalError({
+          code: 'FISCAL_VALIDATION_FAILED',
+          message:
+            'Deduction must be less than the gross amount minus the discount',
+          category: 'VALIDATION',
+          step: this.name,
+          details: { fields: ['deduction'] },
         }),
       );
     }
@@ -107,6 +123,7 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
       const resolved = resolveIss({
         gross,
         discount,
+        deduction,
         ratePercent: toDecimal(rate),
         withheld: issWithheld,
       });
@@ -168,10 +185,10 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
       netReceivableAmount: moneyString(net),
     };
 
-    const warnings =
-      iss !== null && discount.greaterThan(0)
+    const warnings = [
+      ...context.warnings,
+      ...(iss !== null && discount.greaterThan(0)
         ? [
-            ...context.warnings,
             {
               code: 'UNCONDITIONAL_DISCOUNT_DEDUCTED',
               message:
@@ -179,7 +196,18 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
               step: this.name,
             },
           ]
-        : context.warnings;
+        : []),
+      ...(deduction.greaterThan(0)
+        ? [
+            {
+              code: 'DECLARED_DEDUCTION_APPLIED',
+              message:
+                'Dedução declarada pelo emitente (ex.: cota-parte do profissional parceiro, Lei 13.352/2016) abatida da base de cálculo do ISS e enviada na DPS. O emitente responde pelo valor declarado.',
+              step: this.name,
+            },
+          ]
+        : []),
+    ];
 
     return ok({
       status: 'applied',
