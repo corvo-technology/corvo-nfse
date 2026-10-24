@@ -10,9 +10,8 @@ export interface IssResolution {
 /**
  * ISS municipal: base = gross - discount - deduction (LC 116/2003, art. 7º —
  * the unconditional discount does not integrate the tax base). The deduction
- * is declared by the issuer (e.g. the partner professional share of a salon
- * partnership, Lei 13.352/2016). Amount is rounded HALF_UP to two places
- * exactly once, at the per-tax amount.
+ * is declared by the issuer. Amount is rounded HALF_UP to two places exactly
+ * once, at the per-tax amount.
  */
 export function resolveIss(input: {
   gross: Decimal;

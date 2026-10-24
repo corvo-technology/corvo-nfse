@@ -87,8 +87,7 @@ export class InvoiceResponseDto {
   discount?: number;
 
   @ApiPropertyOptional({
-    description:
-      'Deduction from the ISS tax base declared by the issuer (e.g. partner professional share).',
+    description: 'Deduction from the ISS tax base declared by the issuer.',
   })
   deduction?: number;
 

@@ -1,14 +1,13 @@
-# Salão-parceiro: dedução declarada (`deduction`)
+# Dedução da base do ISS declarada pelo emitente (`deduction`)
 
-Estabelecimentos com contrato de parceria (Lei 13.352/2016) emitem **uma única
-NFS-e**, pelo valor total cobrado do cliente, e informam a cota-parte do
-profissional parceiro em `deduction`. O valor é enviado na DPS em
-`vDedRed/vDR` e abatido da base de cálculo do ISS.
+O emitente pode declarar em `deduction` um valor que a legislação do município
+permite abater da base de cálculo do ISS. O valor é enviado na DPS em
+`vDedRed/vDR` e reduz a base do ISS. A nota continua sendo emitida pelo valor
+total (`amount`).
 
-> **Responsabilidade.** O estabelecimento declara o valor e responde por ele e
-> pelo contrato de parceria. O Corvo emite o que foi informado: não confere o
-> contrato e não substitui o contador. A regra de cada município deve ser
-> confirmada com um contador.
+> **Responsabilidade.** O emitente declara o valor e responde por ele. O Corvo
+> emite o que foi informado: não confere se a dedução é permitida para o
+> serviço ou município e não substitui o contador.
 
 ## Como usar
 
@@ -18,7 +17,7 @@ profissional parceiro em `deduction`. O valor é enviado na DPS em
 POST /v1/invoices
 {
   "companyTaxId": "11222333000181",
-  "service": { "description": "Corte de cabelo" },
+  "service": { "description": "Serviço de manutenção" },
   "amount": 100,
   "deduction": 40,
   "competenceDate": "2026-10-20"
@@ -78,6 +77,6 @@ reidratada por `InvoiceMapper`. **Não há migration.**
 ## Limitações
 
 Ver `docs/fiscal/limitations.md` (linha "Dedução declarada pelo emitente",
-seção 2 e decisões D4/D5). Em resumo: não homologado na Produção Restrita;
+seção 2 e decisão D4). Em resumo: não homologado na Produção Restrita;
 aceitação por município e pelo sistema nacional não confirmada; IBS/CBS não é
-reduzido pela dedução; a natureza `PARTNER_SALON` continua bloqueada.
+reduzido pela dedução.

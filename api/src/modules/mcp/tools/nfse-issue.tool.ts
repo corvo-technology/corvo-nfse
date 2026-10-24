@@ -79,7 +79,7 @@ export const NFSE_ISSUE_TOOL = {
       deduction: {
         type: 'number',
         description:
-          'Deduction from the ISS tax base in BRL, declared by the issuer (> 0 and less than amount minus discount). For the partner professional share of a salon partnership (Lei 13.352/2016). The issuer is responsible for the declared value.',
+          'Deduction from the ISS tax base in BRL, declared by the issuer (> 0 and less than amount minus discount). The issuer is responsible for the declared value; Corvo does not check whether the deduction is allowed.',
       },
       competence_date: {
         type: 'string',

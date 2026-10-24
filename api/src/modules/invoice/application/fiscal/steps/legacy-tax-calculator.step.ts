@@ -202,7 +202,7 @@ export class LegacyTaxCalculatorStep implements FiscalStep {
             {
               code: 'DECLARED_DEDUCTION_APPLIED',
               message:
-                'Dedução declarada pelo emitente (ex.: cota-parte do profissional parceiro, Lei 13.352/2016) abatida da base de cálculo do ISS e enviada na DPS. O emitente responde pelo valor declarado.',
+                'Dedução declarada pelo emitente abatida da base de cálculo do ISS e enviada na DPS. O emitente responde pelo valor declarado.',
               step: this.name,
             },
           ]

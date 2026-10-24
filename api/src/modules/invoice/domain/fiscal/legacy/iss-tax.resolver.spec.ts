@@ -23,7 +23,7 @@ describe('resolveIss', () => {
     expect(r.iss).toMatchObject({ base: '900.00', amount: '45.00' });
   });
 
-  it('deducts the declared deduction from the base (R$40 partner share of R$100)', () => {
+  it('deducts the declared deduction from the base (R$40 of R$100)', () => {
     const r = resolveIss({
       gross: toDecimal('100.00'),
       discount: toDecimal('0'),

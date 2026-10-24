@@ -19,7 +19,7 @@ describe("invoice copy", () => {
       competenceDate: "2026-10-18", amount: "1.234,50", deduction: "", sendEmail: true,
     });
   });
-  it("copies the declared deduction so a partner-salon invoice can be duplicated", () => {
+  it("copies the declared deduction so an invoice with a deduction can be duplicated", () => {
     expect(invoiceToFormValues({ ...invoice, deduction: 500.25 } as Invoice, "2026-10-18")).toMatchObject({ amount: "1.234,50", deduction: "500,25" });
   });
   it("leaves the deduction empty when the source invoice has none or zero", () => {

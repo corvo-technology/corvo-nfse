@@ -29,8 +29,8 @@ export interface NormalizedInvoice {
   grossAmount: DecimalString;
   discountAmount: DecimalString;
   /**
-   * Issuer-declared deduction from the ISS base (DPS `vDedRed/vDR`), e.g. the
-   * partner professional share of a salon partnership. Absent means 0.00.
+   * Issuer-declared deduction from the ISS base (DPS `vDedRed/vDR`). Absent
+   * means 0.00.
    */
   deductionAmount?: DecimalString;
   service: {

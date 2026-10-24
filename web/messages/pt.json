@@ -1247,7 +1247,7 @@
       "serviceCodeDefault": "Padrão da empresa: {code}. Deixe vazio para usar este código ou escolha outro para esta nota.",
       "municipalityDefault": "Município da empresa: {code}. Deixe vazio para usá-lo ou informe outro local de prestação para esta nota.",
       "description": "Opcional. Se vazia, usamos o nome do código de serviço.",
-      "deduction": "Opcional. Para salão-parceiro (Lei 13.352/2016), informe a cota-parte do profissional parceiro. Ela é abatida da base do ISS e enviada na nota. O valor é declarado por você: o Corvo não confere o contrato de parceria, então confirme com seu contador.",
+      "deduction": "Opcional. Valor que a legislação do município permite abater da base do ISS. Ele é descontado da base de cálculo e enviado na nota. O valor é declarado por você: o Corvo não confere se a dedução é permitida, então confirme com seu contador.",
       "serviceCodeFallback": "Opcional. Sem código na nota nem na empresa, usamos {code} (10.09, representação). Escolha o código da sua atividade."
     },
     "summary": {

@@ -110,8 +110,8 @@ export interface DpsBuildInput {
     } | null;
     readonly discountAmount: DecimalString;
     /**
-     * Issuer-declared deduction from the tax base (partner professional share of a
-     * salon partnership). Sent as `vDedRed/vDR`; absent or zero omits the group.
+     * Issuer-declared deduction from the tax base. Sent as `vDedRed/vDR`; absent
+     * or zero omits the group.
      */
     readonly deductionAmount?: DecimalString;
   };

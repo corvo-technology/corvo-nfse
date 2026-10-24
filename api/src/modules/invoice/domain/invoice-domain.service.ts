@@ -42,7 +42,7 @@ export interface NormalizedInvoiceInput {
   };
   amount: number;
   discount?: number;
-  /** Issuer-declared deduction from the ISS base (e.g. partner professional share). */
+  /** Issuer-declared deduction from the ISS base. */
   deduction?: number;
   competenceDate: Date;
   scheduledFor?: Date;
@@ -224,8 +224,7 @@ export class InvoiceDomainService {
     }
 
     // ── deduction: optional, > 0 and < amount - discount, max 2 decimals ──
-    // Declared by the issuer (e.g. the partner professional share, Lei
-    // 13.352/2016). Zero means "no deduction" and is dropped.
+    // Declared by the issuer. Zero means "no deduction" and is dropped.
     let deduction: number | undefined;
     if (dto.deduction !== undefined && dto.deduction !== null) {
       if (

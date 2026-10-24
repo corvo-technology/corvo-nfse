@@ -156,7 +156,7 @@ export default function NewInvoicePage() {
         municipalityCode: form.municipalityCode || undefined,
       },
       amount,
-      // Declared by the issuer (partner professional share); empty or zero sends nothing.
+      // Declared by the issuer; empty or zero sends nothing.
       deduction: hasDeduction ? deductionNumber : undefined,
       competenceDate: form.competenceDate,
       email: sendEmail,

@@ -410,7 +410,7 @@ export interface Invoice {
   amount: number; customerName: string; customerTaxId: string;
   /** Unconditional discount applied to the amount. */
   discount?: number;
-  /** Deduction from the ISS base declared by the issuer (e.g. the partner professional share). */
+  /** Deduction from the ISS base declared by the issuer. */
   deduction?: number;
   serviceDescription: string; customerSnapshot: CreateInvoiceInput["customer"] | null;
   serviceSnapshot: Required<CreateInvoiceInput["service"]>; competenceDate: string;
@@ -429,7 +429,7 @@ export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } |
   amount: number; competenceDate: string;
   /**
    * Deduction from the ISS base declared by the issuer, in BRL (> 0 and < amount, max 2 decimals), sent in the DPS as `vDedRed/vDR`.
-   * For the partner professional share of a salon partnership (Lei 13.352/2016). The issuer is responsible for the declared value.
+   * The issuer is responsible for the declared value; Corvo does not check whether the deduction is allowed.
    */
   deduction?: number;
   /** Email the invoice to customer.email once the documents are ready. */

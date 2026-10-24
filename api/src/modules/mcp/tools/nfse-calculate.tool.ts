@@ -20,7 +20,7 @@ export const NFSE_CALCULATE_TOOL = {
       deduction: {
         type: 'number',
         description:
-          'Deduction from the ISS tax base in BRL, declared by the issuer (partner professional share).',
+          'Deduction from the ISS tax base in BRL, declared by the issuer.',
       },
       description: { type: 'string' },
       competence_date: { type: 'string' },

@@ -138,7 +138,7 @@ describe("Invoice company defaults", () => {
     const payload = JSON.parse(JSON.stringify(mocks.create.mock.calls[0][0]));
     expect(payload).not.toHaveProperty("customer"); expect(payload.service).toEqual({});
   });
-  it("sends the deduction declared for a salon partnership and lists it in the summary", async () => {
+  it("sends the declared ISS base deduction and lists it in the summary", async () => {
     await prepareInvoice(); fill("Deduction from the ISS base", "8000");
     expect(screen.getByText(messages.Invoices.summary.deduction)).toBeTruthy();
     const issue = screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement; expect(issue.disabled).toBe(false);
