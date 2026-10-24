@@ -1,6 +1,7 @@
 import { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { observeScheduledTask } from '@/shared/observability/scheduled-task-telemetry';
 import { ICertificateRepository } from '../domain/certificate.repository';
 import { ICompanyRepository } from '@/modules/company/domain/company.repository';
 
@@ -20,6 +21,10 @@ export class CertificateExpiryScheduler {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleExpiry(): Promise<void> {
+    await observeScheduledTask('certificate.expiry', () => this.expire());
+  }
+
+  private async expire(): Promise<void> {
     await this.discovery.visit('certificate-expiry', async (tenantId) => {
       // 1) Batch: mark all expired active certificates as 'expired'
       const expiredCompanyIds =
