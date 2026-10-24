@@ -964,6 +964,8 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ["Retenções federais", "Base inalterada: `amount` − `discount`."],
           ["IBS/CBS", "Calculado sobre o valor sem a dedução."],
           ["Líquido a receber", "Não muda com a dedução."],
+          ["Erros de validação", "`422` com `out_of_range` (negativa, ou não menor que `amount` menos `discount`) ou `invalid_decimal_places` em `details[].code`, no `field: \"deduction\"`."],
+          ["Resposta", "A nota devolve `deduction` quando uma dedução foi declarada."],
         ] },
         { kind: "code", label: "Nota com dedução", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
@@ -2467,7 +2469,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             [
               "`nfse_calculate`",
               "`nfse:read`",
-              "`company_tax_id` ou `company_id`, `amount` e dados fiscais opcionais",
+              "`company_tax_id` ou `company_id`, `amount`, mais `discount`, `deduction` e dados fiscais opcionais",
               "Resultado da apuração sem emitir, reservar crédito ou criar DPS"
             ],
             [

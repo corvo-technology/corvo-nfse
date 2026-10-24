@@ -982,6 +982,8 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ["Federal withholdings", "Base unchanged: `amount` − `discount`."],
           ["IBS/CBS", "Calculated on the amount without the deduction."],
           ["Net receivable", "Does not change with the deduction."],
+          ["Validation errors", "`422` with `out_of_range` (negative, or not less than `amount` minus `discount`) or `invalid_decimal_places` in `details[].code`, on `field: \"deduction\"`."],
+          ["Response", "The invoice echoes `deduction` when one was declared."],
         ] },
         { kind: "code", label: "Invoice with a deduction", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
@@ -2475,7 +2477,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             ],
             ["`company_get`", "`nfse:read`", "`tax_id` (CNPJ)", "`{ company }` or `{ company: null }`"],
             ["`company_create`", "`nfse:write`", "`legal_name`, `tax_id`, `tax_regime`, `municipality_code` and optional fiscal data", "`{ id, legal_name, tax_id, status }`; certificates remain API-only"],
-            ["`nfse_calculate`", "`nfse:read`", "`company_tax_id` or `company_id`, `amount` and optional fiscal data", "Calculation result; no issue, credit reservation or DPS"],
+            ["`nfse_calculate`", "`nfse:read`", "`company_tax_id` or `company_id`, `amount`, optional `discount`, `deduction` and fiscal data", "Calculation result; no issue, credit reservation or DPS"],
             ["`billing_usage`", "`nfse:read`", "No parameters", "`QuotaStatus` with `canEmit`, allowance and usage"],
             [
               "`nfse_cancel`",
