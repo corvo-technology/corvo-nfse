@@ -68,4 +68,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 
 # Apply schema changes before accepting traffic. The migration runner takes a
 # PostgreSQL advisory lock, so parallel replica starts safely serialize here.
-CMD ["sh", "-c", "node scripts/deploy-migrate.mjs && exec node dist/main.js"]
+CMD ["sh", "-c", "exec node dist/main.js"]
