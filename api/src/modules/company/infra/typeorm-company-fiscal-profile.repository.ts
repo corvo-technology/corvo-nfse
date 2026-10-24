@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, In, IsNull } from 'typeorm';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
@@ -17,30 +17,8 @@ import type {
   IFiscalProfileRepository,
   NewFiscalProfile,
 } from '../domain/fiscal-profile.repository';
-import {
-  CompanyFiscalProfileOrmEntity,
-  toDateString,
-} from './company-fiscal-profile.orm-entity';
+import { CompanyFiscalProfileOrmEntity } from './company-fiscal-profile.orm-entity';
 import { CompanyOrmEntity } from './company.orm-entity';
-
-interface FiscalProfileRow {
-  id: string;
-  tenant_id: string;
-  company_id: string;
-  tax_regime: string;
-  simple_national: boolean;
-  special_tax_regime: string | null;
-  ibs_cbs_regular_option: boolean;
-  ibs_cbs_regular_from: Date | string | null;
-  simples_iss_rate: string | null;
-  valid_from: Date | string;
-  valid_until: Date | string | null;
-  source: string;
-  review_status: string;
-  reviewed_by: string | null;
-  reviewed_at: Date | null;
-  created_at: Date;
-}
 
 @Injectable()
 export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepository {
@@ -49,22 +27,9 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
     private readonly transactions: TypeOrmTransactionContext,
   ) {}
 
-  private manager(): EntityManager {
-    return this.transactions.getManager() ?? this.dataSource.manager;
-  }
-
-  private table(): string {
-    return this.dataSource.getMetadata(CompanyFiscalProfileOrmEntity).tablePath;
-  }
-
-  private companiesTable(): string {
-    return this.dataSource.getMetadata(CompanyOrmEntity).tablePath;
-  }
-
-  /** SELECT/INSERT ... RETURNING resolve to rows; UPDATE ... RETURNING to [rows, affected]. */
-  private rowsOf(raw: unknown): FiscalProfileRow[] {
-    const list = raw as unknown[];
-    return (Array.isArray(list[0]) ? list[0] : list) as FiscalProfileRow[];
+  private profiles() {
+    const manager = this.transactions.getManager() ?? this.dataSource.manager;
+    return manager.getRepository(CompanyFiscalProfileOrmEntity);
   }
 
   async findEffective(
@@ -73,12 +38,17 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
     date: string,
   ): Promise<CompanyFiscalProfile | null> {
     return runWithTenant(tenantId, async () => {
-      const rows = await this.manager().query<FiscalProfileRow[]>(
-        `SELECT * FROM ${this.table()} WHERE company_id = $1 AND tenant_id = $2 AND valid_from <= $3 AND (valid_until IS NULL OR $3 < valid_until)`,
-        [companyId, tenantId, date],
-      );
-      const [row] = rows;
-      return row ? this.toDomain(row) : null;
+      const row = await this.profiles()
+        .createQueryBuilder('profile')
+        .where('profile.companyId = :companyId', { companyId })
+        .andWhere('profile.tenantId = :tenantId', { tenantId })
+        .andWhere('profile.validFrom <= :date', { date })
+        .andWhere(
+          '(profile.validUntil IS NULL OR :date < profile.validUntil)',
+          { date },
+        )
+        .getOne();
+      return row ? toDomain(row) : null;
     });
   }
 
@@ -87,12 +57,12 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
     tenantId: string,
   ): Promise<CompanyFiscalProfile | null> {
     return runWithTenant(tenantId, async () => {
-      const rows = await this.manager().query<FiscalProfileRow[]>(
-        `SELECT * FROM ${this.table()} WHERE company_id = $1 AND tenant_id = $2 AND valid_until IS NULL`,
-        [companyId, tenantId],
-      );
-      const [row] = rows;
-      return row ? this.toDomain(row) : null;
+      const row = await this.profiles().findOneBy({
+        companyId,
+        tenantId,
+        validUntil: IsNull(),
+      });
+      return row ? toDomain(row) : null;
     });
   }
 
@@ -102,11 +72,12 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
   ): Promise<CompanyFiscalProfile[]> {
     if (companyIds.length === 0) return [];
     return runWithTenant(tenantId, async () => {
-      const rows = await this.manager().query<FiscalProfileRow[]>(
-        `SELECT * FROM ${this.table()} WHERE company_id = ANY($1::uuid[]) AND tenant_id = $2 AND valid_until IS NULL`,
-        [companyIds, tenantId],
-      );
-      return rows.map((row) => this.toDomain(row));
+      const rows = await this.profiles().findBy({
+        companyId: In(companyIds),
+        tenantId,
+        validUntil: IsNull(),
+      });
+      return rows.map(toDomain);
     });
   }
 
@@ -115,11 +86,11 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
     tenantId: string,
   ): Promise<CompanyFiscalProfile[]> {
     return runWithTenant(tenantId, async () => {
-      const rows = await this.manager().query<FiscalProfileRow[]>(
-        `SELECT * FROM ${this.table()} WHERE company_id = $1 AND tenant_id = $2 ORDER BY valid_from DESC`,
-        [companyId, tenantId],
-      );
-      return rows.map((row) => this.toDomain(row));
+      const rows = await this.profiles().find({
+        where: { companyId, tenantId },
+        order: { validFrom: 'DESC' },
+      });
+      return rows.map(toDomain);
     });
   }
 
@@ -128,12 +99,8 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
     tenantId: string,
   ): Promise<CompanyFiscalProfile | null> {
     return runWithTenant(tenantId, async () => {
-      const rows = await this.manager().query<FiscalProfileRow[]>(
-        `SELECT * FROM ${this.table()} WHERE id = $1 AND tenant_id = $2`,
-        [id, tenantId],
-      );
-      const [row] = rows;
-      return row ? this.toDomain(row) : null;
+      const row = await this.profiles().findOneBy({ id, tenantId });
+      return row ? toDomain(row) : null;
     });
   }
 
@@ -144,14 +111,17 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
     at: Date,
   ): Promise<CompanyFiscalProfile> {
     return runWithTenant(tenantId, async () => {
-      const raw: unknown = await this.manager().query(
-        `UPDATE ${this.table()} SET review_status = 'approved', reviewed_by = $3, reviewed_at = $4
-         WHERE id = $1 AND tenant_id = $2 RETURNING *`,
-        [id, tenantId, reviewedBy, at],
-      );
-      const [row] = this.rowsOf(raw);
+      const profiles = this.profiles();
+      const row = await profiles.findOneBy({ id, tenantId });
       if (!row) throw new NotFoundException('Fiscal profile not found');
-      return this.toDomain(row);
+      return toDomain(
+        await profiles.save({
+          ...row,
+          reviewStatus: 'approved',
+          reviewedBy,
+          reviewedAt: at,
+        }),
+      );
     });
   }
 
@@ -162,20 +132,27 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
   ): Promise<CompanyFiscalProfile> {
     return runWithTenant(tenantId, () =>
       this.dataSource.transaction(async (manager) => {
-        const table = this.table();
-        const locked = await manager.query(
-          `SELECT id FROM ${this.companiesTable()} WHERE id = $1 AND tenant_id = $2 FOR UPDATE`,
-          [companyId, tenantId],
-        );
-        if (locked.length === 0)
-          throw new NotFoundException('Company not found');
-        const [open] = await manager.query<FiscalProfileRow[]>(
-          `SELECT * FROM ${table} WHERE company_id = $1 AND valid_until IS NULL`,
-          [companyId],
-        );
-        if (open) {
-          const openFrom = toDateString(open.valid_from);
-          if (input.validFrom < openFrom)
+        // Serializes concurrent changes to the same company's history.
+        const company = await manager.getRepository(CompanyOrmEntity).findOne({
+          select: { id: true },
+          where: { id: companyId, tenantId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!company) throw new NotFoundException('Company not found');
+
+        const profiles = manager.getRepository(CompanyFiscalProfileOrmEntity);
+        const history = await profiles.find({
+          where: { companyId },
+          order: { validFrom: 'ASC' },
+        });
+        const earliest = history[0];
+        const open = history.find((profile) => !profile.validUntil);
+        // A company existed before it was registered: a start before the whole
+        // history is a closed profile that ends where the history began.
+        const retroactive = earliest && input.validFrom < earliest.validFrom;
+
+        if (open && !retroactive) {
+          if (input.validFrom < open.validFrom)
             throw new FiscalValidationError([
               {
                 field: 'validFrom',
@@ -184,95 +161,62 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
                   'validFrom cannot be before the current fiscal profile start',
               },
             ]);
-          if (input.validFrom === openFrom) {
-            if (open.review_status === 'approved')
+          if (input.validFrom === open.validFrom) {
+            if (open.reviewStatus === 'approved')
               throw new ConflictException('profile_validity_conflict');
-            await manager.query(
-              `UPDATE ${table} SET tax_regime=$2, simple_national=$3, special_tax_regime=$4, ibs_cbs_regular_option=$5, ibs_cbs_regular_from=$6, simples_iss_rate=$7, source=$8, review_status=$9, reviewed_by=$10, reviewed_at=$11 WHERE id=$1`,
-              [
-                open.id,
-                input.taxRegime,
-                input.simpleNational,
-                input.specialTaxRegime,
-                input.ibsCbsRegularOption,
-                input.ibsCbsRegularFrom,
-                input.simplesIssRate,
-                input.source,
-                input.reviewStatus,
-                input.reviewedBy,
-                input.reviewStatus === 'approved' ? new Date() : null,
-              ],
+            return toDomain(
+              await profiles.save({ ...open, ...fieldsOf(input) }),
             );
-            return this.requireById(manager, open.id, tenantId);
           }
-          await manager.query(
-            `UPDATE ${table} SET valid_until = $2 WHERE id = $1`,
-            [open.id, input.validFrom],
-          );
+          await profiles.update(open.id, { validUntil: input.validFrom });
         }
-        const raw: unknown = await manager.query(
-          `INSERT INTO ${table} (tenant_id, company_id, tax_regime, simple_national, special_tax_regime, ibs_cbs_regular_option, ibs_cbs_regular_from, simples_iss_rate, valid_from, source, review_status, reviewed_by, reviewed_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-          [
+        return toDomain(
+          await profiles.save({
+            ...fieldsOf(input),
             tenantId,
             companyId,
-            input.taxRegime,
-            input.simpleNational,
-            input.specialTaxRegime,
-            input.ibsCbsRegularOption,
-            input.ibsCbsRegularFrom,
-            input.simplesIssRate,
-            input.validFrom,
-            input.source,
-            input.reviewStatus,
-            input.reviewedBy,
-            input.reviewStatus === 'approved' ? new Date() : null,
-          ],
+            validFrom: input.validFrom,
+            validUntil: retroactive ? earliest.validFrom : null,
+          }),
         );
-        const [row] = this.rowsOf(raw);
-        if (!row) throw new NotFoundException('Fiscal profile not found');
-        return this.toDomain(row);
       }),
     );
   }
+}
 
-  private async requireById(
-    manager: EntityManager,
-    id: string,
-    tenantId: string,
-  ): Promise<CompanyFiscalProfile> {
-    const rows = await manager.query<FiscalProfileRow[]>(
-      `SELECT * FROM ${this.table()} WHERE id = $1 AND tenant_id = $2`,
-      [id, tenantId],
-    );
-    const [row] = rows;
-    if (!row) throw new NotFoundException('Fiscal profile not found');
-    return this.toDomain(row);
-  }
+/** What a vigência carries, except when it starts. */
+function fieldsOf(input: NewFiscalProfile) {
+  return {
+    taxRegime: input.taxRegime,
+    simpleNational: input.simpleNational,
+    specialTaxRegime: input.specialTaxRegime,
+    ibsCbsRegularOption: input.ibsCbsRegularOption,
+    ibsCbsRegularFrom: input.ibsCbsRegularFrom,
+    simplesIssRate: input.simplesIssRate,
+    source: input.source,
+    reviewStatus: input.reviewStatus,
+    reviewedBy: input.reviewedBy,
+    reviewedAt: input.reviewStatus === 'approved' ? new Date() : null,
+  };
+}
 
-  private toDomain(row: FiscalProfileRow): CompanyFiscalProfile {
-    return {
-      id: row.id,
-      tenantId: row.tenant_id,
-      companyId: row.company_id,
-      taxRegime: row.tax_regime as TaxRegimeKind,
-      simpleNational: row.simple_national,
-      specialTaxRegime: row.special_tax_regime,
-      ibsCbsRegularOption: row.ibs_cbs_regular_option,
-      ibsCbsRegularFrom:
-        row.ibs_cbs_regular_from === null
-          ? null
-          : toDateString(row.ibs_cbs_regular_from),
-      simplesIssRate:
-        row.simples_iss_rate === null ? null : String(row.simples_iss_rate),
-      validFrom: toDateString(row.valid_from),
-      validUntil:
-        row.valid_until === null ? null : toDateString(row.valid_until),
-      source: row.source,
-      reviewStatus: row.review_status as ProfileReviewStatus,
-      reviewedBy: row.reviewed_by,
-      reviewedAt: row.reviewed_at,
-      createdAt: row.created_at,
-    };
-  }
+function toDomain(row: CompanyFiscalProfileOrmEntity): CompanyFiscalProfile {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    companyId: row.companyId,
+    taxRegime: row.taxRegime as TaxRegimeKind,
+    simpleNational: row.simpleNational,
+    specialTaxRegime: row.specialTaxRegime ?? null,
+    ibsCbsRegularOption: row.ibsCbsRegularOption,
+    ibsCbsRegularFrom: row.ibsCbsRegularFrom ?? null,
+    simplesIssRate: row.simplesIssRate ?? null,
+    validFrom: row.validFrom,
+    validUntil: row.validUntil ?? null,
+    source: row.source,
+    reviewStatus: row.reviewStatus as ProfileReviewStatus,
+    reviewedBy: row.reviewedBy ?? null,
+    reviewedAt: row.reviewedAt ?? null,
+    createdAt: row.createdAt,
+  };
 }
