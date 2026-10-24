@@ -23,6 +23,38 @@ describe('resolveIss', () => {
     expect(r.iss).toMatchObject({ base: '900.00', amount: '45.00' });
   });
 
+  it('deducts the declared deduction from the base (R$40 of R$100)', () => {
+    const r = resolveIss({
+      gross: toDecimal('100.00'),
+      discount: toDecimal('0'),
+      deduction: toDecimal('40.00'),
+      ratePercent: toDecimal('5'),
+      withheld: false,
+    });
+    expect(r.iss).toEqual({ base: '60.00', rate: '5', amount: '3.00' });
+  });
+
+  it('deducts both the discount and the deduction from the base', () => {
+    const r = resolveIss({
+      gross: toDecimal('100.00'),
+      discount: toDecimal('10.00'),
+      deduction: toDecimal('40.00'),
+      ratePercent: toDecimal('5'),
+      withheld: false,
+    });
+    expect(r.iss).toMatchObject({ base: '50.00', amount: '2.50' });
+  });
+
+  it('keeps the previous base when no deduction is given', () => {
+    const r = resolveIss({
+      gross: toDecimal('100.00'),
+      discount: toDecimal('10.00'),
+      ratePercent: toDecimal('5'),
+      withheld: false,
+    });
+    expect(r.iss).toMatchObject({ base: '90.00', amount: '4.50' });
+  });
+
   it.each([
     ['0.01', '2', '0.00'],
     ['0.25', '2', '0.01'],

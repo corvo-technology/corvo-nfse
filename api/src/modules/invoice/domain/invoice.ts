@@ -64,6 +64,8 @@ export interface InvoiceProps {
   amount: number;
   /** Unconditional discount applied to `amount`, 2 decimals. */
   discount?: number;
+  /** Issuer-declared deduction from the ISS base, 2 decimals (DPS `vDedRed/vDR`). */
+  deduction?: number;
   currency: string;
   competenceDate: Date;
   scheduledFor?: Date | null;
@@ -109,6 +111,7 @@ export interface CreateInvoiceInput {
   };
   amount: number;
   discount?: number;
+  deduction?: number;
   competenceDate: Date;
   scheduledFor?: Date;
   email?: {
@@ -154,6 +157,7 @@ export class Invoice {
       emailSnapshot: input.email ? { send: input.email.send } : undefined,
       amount: input.amount,
       discount: input.discount,
+      deduction: input.deduction,
       currency: 'BRL',
       competenceDate: input.competenceDate,
       scheduledFor: input.scheduledFor ?? null,
@@ -297,6 +301,10 @@ export class Invoice {
 
   get discount(): number | undefined {
     return this.props.discount;
+  }
+
+  get deduction(): number | undefined {
+    return this.props.deduction;
   }
 
   get amount(): number {

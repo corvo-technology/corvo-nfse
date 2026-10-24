@@ -37,7 +37,7 @@ import {
   recordAuthorizationFailure,
   recordDpsValidationFailure,
 } from './fiscal/fiscal.metrics';
-import type { FiscalError } from '../domain/fiscal/fiscal-error';
+import { fiscalError, type FiscalError } from '../domain/fiscal/fiscal-error';
 import { moneyString, toDecimal } from '../domain/fiscal/money';
 
 export interface FiscalJobData {
@@ -391,7 +391,23 @@ export class NfseWorkflowService {
       invoice.tenantId,
     );
     // Flag off / engine did not run: byte-identical legacy payload, no DPS build.
-    if (fiscalSnapshot === null) return payload;
+    if (fiscalSnapshot === null) {
+      // The legacy payload cannot carry a deduction: issuing it would silently
+      // tax the full amount, so a declared deduction is rejected instead.
+      if (snapshot.deduction !== undefined && snapshot.deduction > 0) {
+        throw new DpsBuildRejectionError(
+          fiscalError({
+            code: 'FISCAL_VALIDATION_FAILED',
+            message:
+              'A declared deduction cannot be issued without a fiscal calculation snapshot',
+            category: 'VALIDATION',
+            step: 'NfseWorkflow',
+            details: { fields: ['deduction'] },
+          }),
+        );
+      }
+      return payload;
+    }
     // The numbering was already reserved and persisted above, so a failure from
     // here on keeps the number associated with this invoice.
     const dpsNumber = invoice.dpsNumber;
@@ -420,6 +436,9 @@ export class NfseWorkflowService {
                 }
               : null,
           discountAmount: moneyString(toDecimal(snapshot.discount ?? 0)),
+          ...(snapshot.deduction !== undefined && snapshot.deduction > 0
+            ? { deductionAmount: moneyString(toDecimal(snapshot.deduction)) }
+            : {}),
         },
         emitente: {
           cnpj: company.taxId,

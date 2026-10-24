@@ -191,6 +191,15 @@ export class CreateInvoiceDto {
   @IsNumber()
   discount?: number;
 
+  @ApiPropertyOptional({
+    example: 40,
+    description:
+      'Deduction from the ISS tax base declared by the issuer, in BRL (> 0 and < amount - discount, max 2 decimals). Sent in the DPS as vDedRed/vDR. The issuer is responsible for the declared value; Corvo does not check whether the deduction is allowed for the service or municipality.',
+  })
+  @IsOptional()
+  @IsNumber()
+  deduction?: number;
+
   @IsDateString() competenceDate!: string;
 
   @IsOptional() @IsBoolean() email?: boolean;

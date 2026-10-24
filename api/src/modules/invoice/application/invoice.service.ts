@@ -186,6 +186,7 @@ export class InvoiceService {
         },
         amount: normalized.amount,
         discount: normalized.discount,
+        deduction: normalized.deduction,
         competenceDate: normalized.competenceDate,
       },
       tenantId,

@@ -28,6 +28,11 @@ export interface NormalizedInvoice {
   competenceDate: string;
   grossAmount: DecimalString;
   discountAmount: DecimalString;
+  /**
+   * Issuer-declared deduction from the ISS base (DPS `vDedRed/vDR`). Absent
+   * means 0.00.
+   */
+  deductionAmount?: DecimalString;
   service: {
     code: string;
     municipalityCode: string;

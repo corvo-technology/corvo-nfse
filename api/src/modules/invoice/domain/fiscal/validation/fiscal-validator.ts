@@ -94,6 +94,9 @@ export function validateFiscalContext(
   }
   pushMoneyIssue(errors, 'invoice.grossAmount', invoice.grossAmount);
   pushMoneyIssue(errors, 'invoice.discountAmount', invoice.discountAmount);
+  if (invoice.deductionAmount !== undefined) {
+    pushMoneyIssue(errors, 'invoice.deductionAmount', invoice.deductionAmount);
+  }
 
   if (companyProfile === undefined) {
     errors.push({
@@ -221,17 +224,20 @@ export function validateFiscalContext(
       } else {
         const gross = tryDecimal(invoice.grossAmount);
         const discount = tryDecimal(invoice.discountAmount);
+        const deduction = tryDecimal(invoice.deductionAmount ?? '0.00');
         const issBase = tryDecimal(legacyTaxes.iss.base);
         if (
           gross !== null &&
           discount !== null &&
+          deduction !== null &&
           issBase !== null &&
-          !issBase.eq(gross.minus(discount))
+          !issBase.eq(gross.minus(discount).minus(deduction))
         ) {
+          const expected = moneyString(gross.minus(discount).minus(deduction));
           errors.push({
             field: 'legacyTaxes.iss.base',
             code: 'ISS_BASE_MISMATCH',
-            message: `The ISS base must equal gross minus discount (${moneyString(gross.minus(discount))}), received "${legacyTaxes.iss.base}"`,
+            message: `The ISS base must equal gross minus discount minus deduction (${expected}), received "${legacyTaxes.iss.base}"`,
           });
         }
       }

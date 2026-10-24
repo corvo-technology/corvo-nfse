@@ -725,6 +725,7 @@ console.log(res.status); // 204`,
               { name: "amount", type: "number", required: true, description: "Valor em reais, positivo, até 9999999999.99 e no máximo 2 casas decimais." },
               { name: "competenceDate", type: "string ISO 8601", required: true, description: "Data de competência válida. Sem `options.type`, não pode ser futura (`422` `ERROR_FUTURE_DATE`). Com `options.type: \"SCHEDULE\"`, aceita data futura (veja Notas agendadas)." },
               { name: "discount", type: "number", required: false, description: "Desconto incondicional em reais, de 0 até o valor da nota, no máximo 2 casas decimais." },
+              { name: "deduction", type: "number", required: false, description: "Dedução da base do ISS declarada pelo emitente, em reais: maior que 0 e menor que `amount` menos `discount`, no máximo 2 casas decimais (`0` equivale a omitir). Vai na DPS em `vDedRed/vDR` e reduz a base de cálculo do ISS. A nota continua sendo emitida pelo valor total. O emitente responde pelo valor declarado; a Corvo não confere se a dedução é permitida. O IBS/CBS segue calculado sobre o valor sem a dedução. Veja Dedução da base do ISS." },
               { name: "email", type: "boolean", required: false, description: "Solicita notificação; padrão `false`." },
               { name: "options.email.send", type: "boolean", required: false, description: "Quando definido, prevalece sobre `email`." },
               { name: "options.type", type: "string", required: false, description: "`IMMEDIATE` (padrão) ou `SCHEDULE`. `SCHEDULE` agenda a emissão para a `competenceDate` futura; veja Notas agendadas." },
@@ -808,7 +809,7 @@ console.log(body.data.id); // { data: Invoice }`,
           summary: "Calcula os tributos de uma nota **sem emitir**: não grava nota, não consome crédito, não reserva número de DPS, não agenda nem chama a Sefin. Use para conferir a configuração fiscal e mostrar o valor ao cliente antes de `POST /v1/invoices`.",
           params: {
             rows: [
-              { name: "(corpo)", type: "objeto", required: true, description: "Mesmo corpo de `POST /v1/invoices` (empresa, `service`, `amount`, `competenceDate`, `customer` opcional, `discount`). Exige a permissão `nfse.invoices.issue`. Não exige certificado nem empresa pronta." },
+              { name: "(corpo)", type: "objeto", required: true, description: "Mesmo corpo de `POST /v1/invoices` (empresa, `service`, `amount`, `competenceDate`, `customer` opcional, `discount`, `deduction`). Exige a permissão `nfse.invoices.issue`. Não exige certificado nem empresa pronta." },
             ],
           },
           examples: {
@@ -954,6 +955,30 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
     "options": { "type": "SCHEDULE" }
   }'` },
         { kind: "callout", tone: "warn", body: "Os dados fiscais são calculados na hora de emitir, com a configuração vigente na `competenceDate`. Em `live`, a empresa precisa estar pronta e ter certificado ativo já no momento do agendamento. Antes de agendar, `POST /v1/invoices/calculate` mostra o cálculo para aquela data. O webhook `nfse.invoice.authorized` (ou `rejected`) chega quando a emissão ocorre, não no agendamento." },
+        { kind: "heading", level: 2, body: "Dedução da base do ISS" },
+        { kind: "text", body: "O emitente pode declarar em `deduction` um valor que a legislação do município permite abater da base de cálculo do ISS. O valor vai na DPS em `vDedRed/vDR` e reduz a base do ISS; a nota continua sendo emitida pelo valor total (`amount`)." },
+        { kind: "table", head: ["Campo / tributo", "Como é tratado"], rows: [
+          ["`amount`", "Valor total da nota."],
+          ["`deduction`", "Valor a abater da base do ISS. Maior que 0 e menor que `amount` menos `discount`; `0` equivale a omitir."],
+          ["ISS", "Base = `amount` − `discount` − `deduction`."],
+          ["Retenções federais", "Base inalterada: `amount` − `discount`."],
+          ["IBS/CBS", "Calculado sobre o valor sem a dedução."],
+          ["Líquido a receber", "Não muda com a dedução."],
+          ["Erros de validação", "`422` com `out_of_range` (negativa, ou não menor que `amount` menos `discount`) ou `invalid_decimal_places` em `details[].code`, no `field: \"deduction\"`."],
+          ["Resposta", "A nota devolve `deduction` quando uma dedução foi declarada."],
+        ] },
+        { kind: "code", label: "Nota com dedução", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: pedido_123" \\
+  -d '{
+    "companyTaxId": "11222333000181",
+    "service": { "description": "Serviço de manutenção" },
+    "amount": 100,
+    "deduction": 40,
+    "competenceDate": "2026-10-20"
+  }'` },
+        { kind: "callout", tone: "warn", body: "O emitente declara o valor e responde por ele: a Corvo emite o que foi informado, não confere se a dedução é permitida para o serviço ou para o município e não substitui o seu contador. A aceitação da dedução pelo município e pelo sistema nacional ainda não foi homologada na Produção Restrita; se a nota for rejeitada, o motivo fica em `lastErrorCode` e `lastErrorMessage`." },
         { kind: "heading", level: 2, body: "Schema Invoice" },
         { kind: "text", body: "Cada nota tem estes campos:" },
         {
@@ -968,6 +993,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             ["`serviceSnapshot`", "`description`, `code`, `municipalityCode`."],
             ["`taxSnapshot`", "Objeto de informações fiscais."],
             ["`amount`, `currency`, `competenceDate`", "Number em reais, moeda e data-hora ISO 8601 (a data de competência à meia-noite UTC, ex.: `2026-10-01T00:00:00.000Z`)."],
+            ["`discount`, `deduction`", "Numbers opcionais em reais: desconto incondicional e dedução da base do ISS declarada pelo emitente (veja Dedução da base do ISS)."],
             ["`dpsId`, `dpsSeries`, `dpsNumber`", "String/string/number ou null."],
             ["`accessKey`, `nfseNumber`", "String/number ou null."],
             ["`fiscalProvider`, `fiscalSchemaVersion`", "Strings."],
@@ -2419,7 +2445,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             [
               "`nfse_issue`",
               "`nfse:write`",
-              "`company_tax_id` (CNPJ) ou `company_id`, `amount` (ou `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` obrigatório quando há tomador), `description?`, `discount?`, `competence_date?` (padrão: hoje), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
+              "`company_tax_id` (CNPJ) ou `company_id`, `amount` (ou `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` obrigatório quando há tomador), `description?`, `discount?`, `deduction?` (dedução da base do ISS declarada pelo emitente), `competence_date?` (padrão: hoje), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
               "`{ invoice_id, access_key, status }`"
             ],
             [
@@ -2443,7 +2469,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             [
               "`nfse_calculate`",
               "`nfse:read`",
-              "`company_tax_id` ou `company_id`, `amount` e dados fiscais opcionais",
+              "`company_tax_id` ou `company_id`, `amount`, mais `discount`, `deduction` e dados fiscais opcionais",
               "Resultado da apuração sem emitir, reservar crédito ou criar DPS"
             ],
             [

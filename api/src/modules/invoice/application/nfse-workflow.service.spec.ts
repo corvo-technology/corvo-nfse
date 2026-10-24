@@ -348,6 +348,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       taxId: '12345678000195',
       name: 'Cliente Teste LTDA',
     },
+    amounts: { discount?: number; deduction?: number } = {},
   ): Invoice =>
     Invoice.create(
       {
@@ -359,6 +360,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
           municipalityCode: '3550308',
         },
         amount: 1000,
+        ...amounts,
         competenceDate: new Date('2026-10-13'),
       },
       tenantId,
@@ -528,6 +530,59 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       documento: { CNPJ: '12345678000195' },
       nome: 'Cliente Teste LTDA',
     });
+  });
+
+  it('sends the declared deduction in the preparedDps as vDedRed/vDR', async () => {
+    const invoice = createInvoice(undefined, { deduction: 400 });
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(invoice.id),
+    );
+
+    const payload = await callPayload(invoice);
+
+    expect(payload.preparedDps?.infDPS.valores.vDedRed).toEqual({ vDR: 400 });
+  });
+
+  it('sends the unconditional discount in the preparedDps', async () => {
+    const invoice = createInvoice(undefined, { discount: 50 });
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(invoice.id),
+    );
+
+    const payload = await callPayload(invoice);
+
+    expect(payload.preparedDps?.infDPS.valores.vDescCondIncond).toEqual({
+      vDescIncond: 50,
+    });
+  });
+
+  it('omits vDedRed when the invoice declares no deduction', async () => {
+    const invoice = createInvoice();
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(invoice.id),
+    );
+
+    const payload = await callPayload(invoice);
+
+    expect(payload.preparedDps?.infDPS.valores.vDedRed).toBeUndefined();
+  });
+
+  it('rejects a declared deduction before processing when there is no fiscal snapshot and never issues', async () => {
+    const invoice = createInvoice(undefined, { deduction: 400 });
+    fakes.invoices.findByIdAndTenantId.mockResolvedValue(invoice);
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(null);
+    fakes.providers.resolve.mockReturnValue({ issue: jest.fn() });
+    const rejectSpy = spyOnReject();
+
+    await processInvoice(invoice);
+
+    expect(rejectSpy).toHaveBeenCalledWith(
+      invoice,
+      'FISCAL_VALIDATION_FAILED',
+      expect.stringContaining('deduction'),
+    );
+    expect(fakes.providers.resolve).not.toHaveBeenCalled();
+    expect(invoice.status).toBe('rejected');
   });
 
   it('hands preparedDps to the fiscal provider and enqueues the reconciliation', async () => {

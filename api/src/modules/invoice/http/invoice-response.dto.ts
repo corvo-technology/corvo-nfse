@@ -86,6 +86,11 @@ export class InvoiceResponseDto {
   })
   discount?: number;
 
+  @ApiPropertyOptional({
+    description: 'Deduction from the ISS tax base declared by the issuer.',
+  })
+  deduction?: number;
+
   @ApiProperty()
   currency!: string;
 

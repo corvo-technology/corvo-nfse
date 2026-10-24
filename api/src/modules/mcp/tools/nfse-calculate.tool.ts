@@ -17,6 +17,11 @@ export const NFSE_CALCULATE_TOOL = {
       company_id: { type: 'string' },
       company_tax_id: { type: 'string' },
       amount: { type: 'number' },
+      deduction: {
+        type: 'number',
+        description:
+          'Deduction from the ISS tax base in BRL, declared by the issuer.',
+      },
       description: { type: 'string' },
       competence_date: { type: 'string' },
       service_code: { type: 'string' },
@@ -48,6 +53,7 @@ export function createNfseCalculateHandler(
       companyTaxId: params.company_tax_id,
       amount: params.amount,
       discount: params.discount,
+      deduction: params.deduction,
       competenceDate:
         params.competence_date ??
         new Intl.DateTimeFormat('en-CA', {
