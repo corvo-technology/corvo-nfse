@@ -11,6 +11,7 @@ import type {
 } from '../../domain/fiscal/reconciliation/fiscal-reconciliation.repository';
 import { InvoiceFiscalReconciliationOrmEntity } from './invoice-fiscal-reconciliation.orm-entity';
 import { InvoiceFiscalSnapshotOrmEntity } from '../invoice-fiscal-snapshot.orm-entity';
+import { InvoiceOrmEntity } from '../invoice.orm-entity';
 
 @Injectable()
 export class TypeOrmFiscalReconciliationRepository implements IFiscalReconciliationRepository {
@@ -30,7 +31,8 @@ export class TypeOrmFiscalReconciliationRepository implements IFiscalReconciliat
   private tableOf(
     entity:
       | typeof InvoiceFiscalReconciliationOrmEntity
-      | typeof InvoiceFiscalSnapshotOrmEntity,
+      | typeof InvoiceFiscalSnapshotOrmEntity
+      | typeof InvoiceOrmEntity,
   ): string {
     const metadata = this.dataSource.getMetadata(entity);
     const escape = (identifier: string) =>
@@ -113,7 +115,7 @@ export class TypeOrmFiscalReconciliationRepository implements IFiscalReconciliat
       requireTenantId(tenantId);
       const rows: unknown = await this.manager().query(
         `SELECT i.id, i.tenant_id, i.company_id
-           FROM nfse_invoices i
+           FROM ${this.tableOf(InvoiceOrmEntity)} i
           WHERE i.tenant_id = $1
             AND i.status = 'authorized'
             AND i.updated_at < $2
