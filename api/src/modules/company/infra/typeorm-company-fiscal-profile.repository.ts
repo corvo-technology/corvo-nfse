@@ -173,7 +173,20 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
           `SELECT * FROM ${table} WHERE company_id = $1 AND valid_until IS NULL`,
           [companyId],
         );
-        if (open) {
+        // A company existed before it was registered: a start before the whole
+        // history is a closed profile that ends where the history began.
+        const [earliest] = await manager.query<FiscalProfileRow[]>(
+          `SELECT valid_from FROM ${table} WHERE company_id = $1 ORDER BY valid_from ASC LIMIT 1`,
+          [companyId],
+        );
+        const earliestFrom = earliest
+          ? toDateString(earliest.valid_from)
+          : null;
+        const validUntil =
+          earliestFrom !== null && input.validFrom < earliestFrom
+            ? earliestFrom
+            : null;
+        if (open && validUntil === null) {
           const openFrom = toDateString(open.valid_from);
           if (input.validFrom < openFrom)
             throw new FiscalValidationError([
@@ -211,8 +224,8 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
           );
         }
         const raw: unknown = await manager.query(
-          `INSERT INTO ${table} (tenant_id, company_id, tax_regime, simple_national, special_tax_regime, ibs_cbs_regular_option, ibs_cbs_regular_from, simples_iss_rate, valid_from, source, review_status, reviewed_by, reviewed_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+          `INSERT INTO ${table} (tenant_id, company_id, tax_regime, simple_national, special_tax_regime, ibs_cbs_regular_option, ibs_cbs_regular_from, simples_iss_rate, valid_from, valid_until, source, review_status, reviewed_by, reviewed_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
           [
             tenantId,
             companyId,
@@ -223,6 +236,7 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
             input.ibsCbsRegularFrom,
             input.simplesIssRate,
             input.validFrom,
+            validUntil,
             input.source,
             input.reviewStatus,
             input.reviewedBy,

@@ -174,7 +174,8 @@ export class UpsertFiscalProfileDto {
   @ApiPropertyOptional({
     type: String,
     example: '2027-01-01',
-    description: 'Start of the validity period (inclusive). Defaults to today.',
+    description:
+      'Start of the validity period (inclusive). Defaults to today. May be earlier than the whole history, to cover competences before the company was registered.',
   })
   @IsOptional()
   @IsDateString()
