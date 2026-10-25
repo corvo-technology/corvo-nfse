@@ -160,8 +160,8 @@ describe.each(['MEI', 'SIMPLES_NACIONAL'] as const)(
 );
 
 describe('Anexo I deduction list', () => {
-  it('has the 50 cTribNac of rules E0441/E0442', () => {
-    expect(DEDUCTION_ALLOWED_CTRIBNAC.size).toBe(50);
+  it('has the 49 cTribNac of rules E0441/E0442', () => {
+    expect(DEDUCTION_ALLOWED_CTRIBNAC.size).toBe(49);
     expect(DEDUCTION_ALLOWED_CTRIBNAC.has('060101')).toBe(true);
     expect(DEDUCTION_ALLOWED_CTRIBNAC.has('010101')).toBe(false);
   });
