@@ -2,6 +2,7 @@ import { Invoice } from '../domain/invoice';
 import { InvoiceEvent } from '../domain/invoice-event';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import { CreditTransaction } from '@/modules/credits/domain/credit-transaction';
+import { BillingRuleError } from '@/modules/billing/domain/billing-period';
 
 const tenantId = '11111111-1111-4111-8111-111111111111';
 const companyId = '22222222-2222-4222-8222-222222222222';
@@ -321,5 +322,114 @@ describe('InvoiceLifecycleService', () => {
       ),
     ).rejects.toThrow('Concurrent invoice transition');
     expect(f.invoices.save).not.toHaveBeenCalled();
+  });
+});
+
+describe('InvoiceLifecycleService.submitBatch', () => {
+  const entry = (
+    environment: 'test' | 'live' = 'test',
+    idempotencyKey?: string,
+  ) => {
+    const invoice = newInvoice(undefined, environment, idempotencyKey);
+    return {
+      invoice,
+      event: InvoiceEvent.create(invoice.id, null, 'queued'),
+    };
+  };
+
+  it('runs one unit of work and one billing lock for N entries', async () => {
+    const f = build();
+    const outcomes = await f.service.submitBatch(tenantId, [
+      entry(),
+      entry(),
+      entry(),
+    ]);
+    expect(outcomes).toEqual([{ ok: true }, { ok: true }, { ok: true }]);
+    expect(f.unitOfWork.execute).toHaveBeenCalledTimes(1);
+    expect(f.billing.locked).toHaveBeenCalledTimes(1);
+    expect(f.order.filter((step) => step === 'commit')).toHaveLength(1);
+  });
+
+  it('saves invoice, event and outbox row for every accepted entry', async () => {
+    const f = build();
+    const entries = [entry(), entry()];
+    await f.service.submitBatch(tenantId, entries);
+    expect(f.invoices.insert).toHaveBeenCalledTimes(2);
+    expect(f.events.save).toHaveBeenCalledTimes(2);
+    for (const { invoice } of entries)
+      expect(f.outbox.enqueue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'invoice.calculate-taxes',
+          aggregateId: invoice.id,
+          dedupeKey: `calc:${invoice.id}`,
+        }),
+      );
+  });
+
+  it('rejects an entry whose idempotency key already exists, without writing it', async () => {
+    const f = build();
+    f.invoices.findByIdempotencyKey.mockResolvedValueOnce({} as never);
+    const outcomes = await f.service.submitBatch(tenantId, [
+      entry('test', 'taken'),
+      entry(),
+    ]);
+    expect(outcomes[0]).toMatchObject({
+      ok: false,
+      code: 'ERROR_IDEMPOTENCY_CONFLICT',
+    });
+    expect(outcomes[1]).toEqual({ ok: true });
+    expect(f.invoices.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects entries once usage.reserve throws BillingRuleError, keeps the earlier ones', async () => {
+    const f = build();
+    f.usage.reserve
+      .mockResolvedValueOnce('period-1')
+      .mockResolvedValueOnce('period-1')
+      .mockRejectedValueOnce(
+        new BillingRuleError(
+          'monthly_limit_exceeded',
+          'Monthly processing limit reached',
+        ),
+      );
+    const outcomes = await f.service.submitBatch(tenantId, [
+      entry('live'),
+      entry('live'),
+      entry('live'),
+    ]);
+    expect(outcomes).toEqual([
+      { ok: true },
+      { ok: true },
+      {
+        ok: false,
+        code: 'ERROR_MONTHLY_LIMIT_EXCEEDED',
+        message: 'Monthly processing limit reached',
+      },
+    ]);
+    expect(f.invoices.insert).toHaveBeenCalledTimes(2);
+    expect(f.credits.save).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not reserve credits in test environment', async () => {
+    const f = build();
+    await f.service.submitBatch(tenantId, [entry('test')]);
+    expect(f.usage.reserve).not.toHaveBeenCalled();
+    expect(f.credits.save).not.toHaveBeenCalled();
+  });
+
+  it('publishes the credits usage event once after a live batch', async () => {
+    const f = build();
+    await f.service.submitBatch(tenantId, [entry('live'), entry('live')]);
+    expect(f.cache.delete).toHaveBeenCalledTimes(1);
+    expect(f.eventBus.publishBestEffort).toHaveBeenCalledTimes(1);
+  });
+
+  it('rethrows unexpected errors so nothing is committed', async () => {
+    const f = build();
+    f.outbox.enqueue.mockRejectedValueOnce(new Error('db down'));
+    await expect(
+      f.service.submitBatch(tenantId, [entry(), entry()]),
+    ).rejects.toThrow('db down');
+    expect(f.order).not.toContain('commit');
   });
 });
