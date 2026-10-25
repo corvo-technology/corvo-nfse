@@ -216,6 +216,8 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | GET    | `/companies/{id}/fiscal-profile`                       | S/K, `nfse.companies.view`      | Histórico de perfis e vigências; 200                                               |
 | PUT    | `/companies/{id}/fiscal-profile`                       | S/K, `nfse.companies.manage`    | Cria vigência fiscal; `confirm: true` aprova pelo ator; idempotente se idêntica; 200 |
 | POST   | `/companies/{id}/fiscal-profile/{profileId}/approve`   | S/K, `nfse.companies.manage`    | Aprova o perfil fiscal; 201                                                        |
+| GET    | `/companies/{id}/simples-rates`                        | S/K, `nfse.companies.view`      | Alíquotas mensais do Simples informadas (mês mais novo primeiro) |
+| PUT    | `/companies/{id}/simples-rates/{month}`                | S/K, `nfse.companies.manage`    | Informa/substitui o mês (`AAAA-MM`, não futuro); `{ totalRate, issRate? }`; sem DAS: quem informa é a empresa/contador; 200 |
 | GET    | `/companies/{id}/service-tax-profiles`                 | S/K, `nfse.companies.view`      | Perfis de serviço vigentes em `?date=YYYY-MM-DD`; 200                               |
 | POST   | `/companies/{id}/service-tax-profiles`                 | S/K, `nfse.companies.manage`    | Cria perfil de serviço; 201                                                        |
 | PATCH  | `/companies/{id}/service-tax-profiles/{serviceId}`     | S/K, `nfse.companies.manage`    | Atualiza perfil de serviço; restrições de imutabilidade dos aprovados; 200           |
@@ -249,7 +251,7 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 ## Payloads e enums
 
 **CreateCompany**: obrigatórios `legalName`, `taxId`, `taxRegime`
-(`MEI`, `Simples Nacional`, `Lucro Presumido` ou `Lucro Real`) e
+(`MEI` ou `Simples Nacional`; outros regimes retornam `422 ERROR_TAX_REGIME_NOT_SUPPORTED`) e
 `municipalityCode` (código IBGE de 7 dígitos, em `test` e `live`).
 Opcionais `tradeName`, `municipalReg` (opcional; guardada, mas **não enviada** na nota a menos que `sendMunicipalReg` seja `true`, padrão `false` — a Receita rejeita com E0120 se o município não tiver o dado), `defaultServiceCode`
 (cTribNac de 6 dígitos), `simpleNational`, `specialRegime`, `address`.
@@ -466,7 +468,7 @@ Para login, usar as duas rotas `/auth/magic-link`, que também criam sessão.
 | `plan_slug` / `slug`         | `free`, `developer`, `growth`, `scale`, `volume`                                                                                                                                                                                        |
 | `cycle`                      | `monthly`, `annual`                                                                                                                                                                                                                     |
 | Empresa / nota `environment` | `test`, `live`; somente leitura na resposta                                                                                                                                                                                             |
-| `taxRegime`                  | `MEI`, `Simples Nacional`, `Lucro Presumido`, `Lucro Real`                                                                                                                                                                              |
+| `taxRegime`                  | `MEI`, `Simples Nacional`                                                                                                                                                                                                                |
 | Nota `status`                | `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling` (cancelamento enviado à Sefin, aguardando resposta), `cancelled` (nota cancelada)                                                                                                             |
 | Webhook `events`             | `nfse.invoice.authorized`, `nfse.invoice.rejected`, `nfse.invoice.failed`, `nfse.invoice.reconciliation_required`, `nfse.invoice.manual_review`, `nfse.invoice.documents_ready`, `nfse.invoice.email_sent`, `nfse.invoice.email_failed`, `nfse.invoice.fiscal_discrepancy`, `nfse.invoice.cancelled`, `nfse.invoice.cancellation_rejected` |
 | OTP `channel`                | `email`, `whatsapp`                                                                                                                                                                                                                     |

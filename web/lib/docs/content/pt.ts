@@ -74,6 +74,8 @@ const ptWithRetiredCredits: DocsTree = {
           ["GET", "`/v1/companies/:id`", "Consultar empresa", "200"],
           ["PATCH", "`/v1/companies/:id`", "Atualizar empresa", "200"],
           ["DELETE", "`/v1/companies/:id`", "Excluir empresa", "200"],
+          ["GET", "`/v1/companies/:id/simples-rates`", "Listar as alíquotas mensais do Simples Nacional", "200"],
+          ["PUT", "`/v1/companies/:id/simples-rates/:month`", "Informar as alíquotas do Simples Nacional de um mês", "200"],
           ["POST", "`/v1/companies/:companyId/certificates`", "Enviar certificado", "201"],
           ["GET", "`/v1/companies/:companyId/certificates`", "Listar certificados", "200"],
           ["DELETE", "`/v1/companies/:companyId/certificates/:certId`", "Revogar certificado", "204"],
@@ -291,6 +293,9 @@ const ptWithRetiredCredits: DocsTree = {
             ["`ERROR_INSUFFICIENT_CREDITS` / `ERROR_QUOTA_EXCEEDED`", "Créditos ou cota insuficientes para emitir."],
             ["`ERROR_COMPANY_NOT_READY` / `ERROR_COMPANY_BLOCKED`", "Empresa sem certificado em `live`, ou bloqueada."],
             ["`ERROR_IDEMPOTENCY_CONFLICT`", "Mesma `Idempotency-Key` com payload diferente (409)."],
+            ["`ERROR_TAX_REGIME_NOT_SUPPORTED`", "Só empresas MEI e Simples Nacional são atendidas (422)."],
+            ["`ERROR_DEDUCTION_NOT_ALLOWED_FOR_REGIME`", "Dedução da base do ISS que o MEI ou o Simples não pode declarar (422)."],
+            ["`ERROR_SIMPLES_SUBLIMIT_NOT_SUPPORTED`", "Simples Nacional acima do sublimite (`regApTribSN` 2 ou 3) ainda não é suportado (422)."],
             ["`ERROR_GONE`", "Operação encerrada, como a compra avulsa de créditos (410)."],
           ],
         },
@@ -358,7 +363,7 @@ const ptWithRetiredCredits: DocsTree = {
             rows: [
               { name: "legalName", type: "string", required: true, description: "Razão social, até 200 caracteres, não vazia após trim." },
               { name: "taxId", type: "string", required: true, description: "CNPJ válido; normalizado antes de verificar duplicidade." },
-              { name: "taxRegime", type: "string", required: true, description: "`MEI`, `Simples Nacional`, `Lucro Presumido` ou `Lucro Real`." },
+              { name: "taxRegime", type: "string", required: true, description: "`MEI` ou `Simples Nacional`. A Corvo atende só esses dois regimes: qualquer outro valor devolve `422` `ERROR_TAX_REGIME_NOT_SUPPORTED`." },
               { name: "tradeName", type: "string", required: false, description: "Até 200 caracteres." },
               { name: "municipalReg", type: "string ou null", required: false, description: "Opcional, e não vazia quando enviada. Fica guardada, mas **não vai na nota** a menos que `sendMunicipalReg` seja `true`. `null` limpa o valor (e desliga `sendMunicipalReg`)." },
               { name: "sendMunicipalReg", type: "boolean", required: false, description: "Padrão `false`. Envia a inscrição municipal na DPS só se o município registrou esta empresa no cadastro nacional e a Receita exigir; senão a nota é rejeitada (E0120)." },
@@ -591,6 +596,83 @@ console.log(body.data); // { data: null }`,
       description: "Envie e gerencie certificados A1 (PKCS#12) das empresas.",
       blocks: [
         { kind: "text", body: "Permissões: `nfse.certificates.view` para listar e `nfse.certificates.manage` para upload/revogação." },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/companies/:id/simples-rates",
+          scopes: ["full_access", "companies_manage", "companies_read_write"],
+          success: "200 OK",
+          summary: "Lista as alíquotas mensais do Simples Nacional informadas para a empresa, do mês mais novo para o mais antigo. A Corvo não calcula o DAS: as alíquotas vêm da empresa ou do contador.",
+          examples: {
+            curl: `curl "$BASE_URL/companies/$COMPANY_ID/simples-rates" \\
+  -H "X-API-Key: $CORVO_API_KEY"`,
+            node: `const res = await fetch(\`\${BASE_URL}/companies/\${companyId}/simples-rates\`, {
+  headers: { "X-API-Key": process.env.CORVO_API_KEY },
+});
+const { data } = await res.json();
+console.log(data[0]?.month, data[0]?.totalRate);`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": [
+    {
+      "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
+      "month": "2026-10",
+      "totalRate": "6.54",
+      "issRate": "2.01",
+      "updatedAt": "2026-10-25T12:00:00.000Z"
+    }
+  ]
+}`,
+          },
+        },
+        {
+          kind: "endpoint",
+          method: "PUT",
+          path: "/v1/companies/:id/simples-rates/:month",
+          scopes: ["full_access", "companies_manage", "companies_read_write"],
+          success: "200 OK",
+          summary: "Informa ou substitui as alíquotas do Simples Nacional de um mês (`AAAA-MM`, não pode ser futuro). A alíquota total vai em toda NFS-e de ME/EPP (`pTotTribSN`). O último mês informado é repetido nos meses seguintes até você informar um novo.",
+          params: {
+            rows: [
+              { name: "month", type: "string", required: true, description: "Parâmetro de caminho, `AAAA-MM`, não pode ser futuro." },
+              { name: "totalRate", type: "string", required: true, description: "Alíquota total aproximada (%) do Simples no mês, a alíquota efetiva que aparece no PGDAS-D. De 0 a 100, no máximo 2 casas decimais. Exemplo `\"6.54\"`." },
+              { name: "issRate", type: "string", required: false, description: "Alíquota efetiva de ISS (%) do mês, usada quando o tomador retém ISS. Mesmo formato." },
+            ],
+          },
+          examples: {
+            curl: `curl -X PUT "$BASE_URL/companies/$COMPANY_ID/simples-rates/2026-10" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H 'Content-Type: application/json' \\
+  -d '{ "totalRate": "6.54", "issRate": "2.01" }'`,
+            node: `const res = await fetch(\`\${BASE_URL}/companies/\${companyId}/simples-rates/2026-10\`, {
+  method: "PUT",
+  headers: {
+    "X-API-Key": process.env.CORVO_API_KEY,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ totalRate: "6.54", issRate: "2.01" }),
+});
+const { data } = await res.json();
+console.log(data.month, data.totalRate); // "2026-10" "6.54"`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
+    "month": "2026-10",
+    "totalRate": "6.54",
+    "issRate": "2.01",
+    "updatedAt": "2026-10-25T12:00:00.000Z"
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "**Quem informa a alíquota.** A Corvo não gera nem calcula o DAS (PGMEI ou PGDAS-D). Informe, uma vez por mês, a alíquota efetiva que o contador ou o PGDAS-D mostra. Se o mês não tiver valor, usamos o mês anterior mais próximo; mais de um mês de atraso gera o aviso `SIMPLES_RATE_STALE`. Empresas MEI não precisam de alíquota. As permissões são `nfse.companies.view` para ler e `nfse.companies.manage` para gravar." },
+          ],
+        },
         {
           kind: "endpoint",
           method: "POST",
@@ -2454,6 +2536,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`tax_id?` (CNPJ), `limit?`, `cursor?`",
               "`{ companies [{ id, legal_name, tax_id, status, tax_regime, setup_gaps, ready_to_issue }], next_cursor }`"
             ],
+            ["`company_set_simples_rate`", "`nfse:write`", "`company_tax_id` ou `company_id`, `month` (`AAAA-MM`), `total_rate`, `iss_rate?`", "`{ company_id, month, total_rate, iss_rate }`; o último mês informado vale até ser atualizado. `company_get` também devolve `simples_rate`"],
             [
               "`company_get`",
               "`nfse:read`",

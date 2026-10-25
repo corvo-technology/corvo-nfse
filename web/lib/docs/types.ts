@@ -22,7 +22,7 @@ export type DocSlug =
   | "mcp"
   | "llms";
 
-export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export interface TextBlock {
   kind: "text";

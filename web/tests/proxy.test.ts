@@ -67,6 +67,10 @@ it("forwards the pre-emission calculation and the company fiscal configuration r
   expect((await call(GET, "GET", "companies/id/fiscal-profile")).status).toBe(200);
   expect((await call(PUT, "PUT", "companies/id/fiscal-profile")).status).toBe(200);
   expect((await call(POST, "POST", "companies/id/fiscal-profile/profile/approve")).status).toBe(200);
+  expect((await call(GET, "GET", "companies/id/simples-rates")).status).toBe(200);
+  expect((await call(PUT, "PUT", "companies/id/simples-rates/2026-10")).status).toBe(200);
+  expect((await call(POST, "POST", "companies/id/simples-rates/2026-10")).status).toBe(404);
+  expect((await call(PUT, "PUT", "companies/id/simples-rates")).status).toBe(404);
   expect((await call(GET, "GET", "companies/id/service-tax-profiles")).status).toBe(200);
   expect((await call(POST, "POST", "companies/id/service-tax-profiles")).status).toBe(200);
   expect((await call(PATCH, "PATCH", "companies/id/service-tax-profiles/service")).status).toBe(200);
