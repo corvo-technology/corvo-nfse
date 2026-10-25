@@ -1,4 +1,4 @@
-import type { ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, SimplesRate, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -152,6 +152,8 @@ export function adaptCompany(wire: CompanyWire): Company {
 export const companies = {
   fiscalProfiles: async (id: string, signal?: AbortSignal) => unwrap(await request<Envelope<CompanyFiscalProfile[]>>(`/companies/${idPath(id)}/fiscal-profile`, { signal })),
   saveFiscalProfile: async (id: string, input: FiscalProfileInput) => unwrap(await request<Envelope<CompanyFiscalProfile>>(`/companies/${idPath(id)}/fiscal-profile`, json(input, "PUT"))),
+  simplesRates: async (id: string, signal?: AbortSignal) => unwrap(await request<Envelope<SimplesRate[]>>(`/companies/${idPath(id)}/simples-rates`, { signal })),
+  saveSimplesRate: async (id: string, month: string, input: { totalRate: string; issRate?: string | null }) => unwrap(await request<Envelope<SimplesRate>>(`/companies/${idPath(id)}/simples-rates/${idPath(month)}`, json(input, "PUT"))),
   approveFiscalProfile: async (id: string, profileId: string) => unwrap(await request<Envelope<CompanyFiscalProfile>>(`/companies/${idPath(id)}/fiscal-profile/${idPath(profileId)}/approve`, json({}))),
   serviceTaxProfiles: async (id: string, date: string, signal?: AbortSignal) => unwrap(await request<Envelope<CompanyServiceTaxProfile[]>>(`/companies/${idPath(id)}/service-tax-profiles${query({ date })}`, { signal })),
   createServiceTaxProfile: async (id: string, input: ServiceTaxProfileInput) => unwrap(await request<Envelope<CompanyServiceTaxProfile>>(`/companies/${idPath(id)}/service-tax-profiles`, json(input))),

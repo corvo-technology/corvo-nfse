@@ -2133,5 +2133,23 @@
     "copied": "Copiado",
     "source": "Código no GitHub",
     "docs": "Ver todos os SDKs na documentação"
+  },
+  "CompanySimplesRate": {
+    "title": "Alíquota do Simples Nacional",
+    "intro": "A Corvo não calcula o DAS. Informe todo mês a alíquota efetiva que aparece no seu PGDAS-D: ela vai em toda NFS-e (pTotTribSN). O último mês informado vale até você atualizar.",
+    "none": "Nenhuma alíquota informada ainda. Informe a do mês para emitir notas sem avisos.",
+    "inForce": "Alíquota em vigor ({month})",
+    "issRate": "Alíquota de ISS",
+    "stale": "A última alíquota informada é de {month}, mas o mês atual é {current}: atualize.",
+    "totalRate": "Alíquota total (%)",
+    "totalRateHint": "Percentual aproximado do total de tributos do Simples no mês.",
+    "issRateHint": "Opcional. Alíquota efetiva de ISS, usada quando o tomador retém ISS.",
+    "save": "Salvar alíquota de {month}",
+    "formTitle": "Alíquota de {month}",
+    "rateInvalid": "Informe um número, por exemplo 6.54.",
+    "rateRange": "A alíquota deve estar entre 0 e 100.",
+    "rateDecimals": "Use no máximo 2 casas decimais.",
+    "saveFailed": "Não foi possível salvar a alíquota.",
+    "failed": "Não foi possível carregar a alíquota."
   }
 }
