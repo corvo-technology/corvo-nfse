@@ -213,7 +213,6 @@ describe('CompanyFiscalProfileService regime restriction', () => {
         taxRegimeRestriction: { on: true, tenants: '*' },
         fiscalDpsConformance: { on: false, tenants: '*' },
         simplesTottrib: { on: false, tenants: '*' },
-        fiscal2027SimplesMei: { on: false, tenants: '*' },
         cnpjRegistryCheck: { on: false, tenants: '*' },
         simplesRateMode: { mode: 'off', tenants: '*' },
         simplesRateEnforcedFrom: null,

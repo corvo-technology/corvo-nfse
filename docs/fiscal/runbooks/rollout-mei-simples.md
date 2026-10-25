@@ -14,7 +14,6 @@ Todas as mudanças nascem **desligadas**. Com tudo desligado a API se comporta c
 | `SIMPLES_TOTTRIB` | `true`/`false` | Envia `indTotTrib`/`pTotTribSN` e o `regApTribSN` do perfil no lugar de zeros |
 | `SIMPLES_RATE_MODE` | `off`/`warn`/`block` | Exigência da alíquota do Simples do mês |
 | `SIMPLES_RATE_ENFORCED_FROM` | `YYYY-MM-DD` | Só exige a alíquota para competência a partir dessa data |
-| `FISCAL_2027_SIMPLES_MEI` | `true`/`false` | Grupo IBS/CBS de 2027 para MEI e Simples |
 | `CNPJ_REGISTRY_CHECK` | `true`/`false` | Aviso de divergência com o cadastro público de CNPJ |
 
 Cada flag aceita `<FLAG>_TENANTS` (UUIDs separados por vírgula, ou `*`) para liberar só para alguns tenants (canário). Vazio ou `*` vale para todos. Com a flag desligada, a lista não faz efeito.
@@ -26,7 +25,6 @@ Cada flag aceita `<FLAG>_TENANTS` (UUIDs separados por vírgula, ou `*`) para li
 3. `SIMPLES_TOTTRIB`, **depois** de os clientes ME/EPP terem informado a alíquota do mês.
 4. `SIMPLES_RATE_MODE=warn`, depois `block` com `SIMPLES_RATE_ENFORCED_FROM`.
 5. `CNPJ_REGISTRY_CHECK`.
-6. `FISCAL_2027_SIMPLES_MEI`, só quando a NT SE/CGNFS-e 9/2026 estiver implementada.
 
 Entre um passo e o próximo, deixe pelo menos um dia útil de emissões reais e confira as rejeições da Sefin.
 

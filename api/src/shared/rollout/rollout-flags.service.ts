@@ -9,7 +9,6 @@ export type RolloutFlag =
   | 'TAX_REGIME_RESTRICTION'
   | 'FISCAL_DPS_CONFORMANCE'
   | 'SIMPLES_TOTTRIB'
-  | 'FISCAL_2027_SIMPLES_MEI'
   | 'CNPJ_REGISTRY_CHECK';
 
 const FLAG_KEY: Record<
@@ -19,14 +18,12 @@ const FLAG_KEY: Record<
     | 'taxRegimeRestriction'
     | 'fiscalDpsConformance'
     | 'simplesTottrib'
-    | 'fiscal2027SimplesMei'
     | 'cnpjRegistryCheck'
   >
 > = {
   TAX_REGIME_RESTRICTION: 'taxRegimeRestriction',
   FISCAL_DPS_CONFORMANCE: 'fiscalDpsConformance',
   SIMPLES_TOTTRIB: 'simplesTottrib',
-  FISCAL_2027_SIMPLES_MEI: 'fiscal2027SimplesMei',
   CNPJ_REGISTRY_CHECK: 'cnpjRegistryCheck',
 };
 

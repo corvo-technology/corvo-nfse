@@ -122,10 +122,6 @@ export default function configuration(): AppConfiguration {
         env.SIMPLES_TOTTRIB,
         env.SIMPLES_TOTTRIB_TENANTS,
       ),
-      fiscal2027SimplesMei: rolloutFlag(
-        env.FISCAL_2027_SIMPLES_MEI,
-        env.FISCAL_2027_SIMPLES_MEI_TENANTS,
-      ),
       cnpjRegistryCheck: rolloutFlag(
         env.CNPJ_REGISTRY_CHECK,
         env.CNPJ_REGISTRY_CHECK_TENANTS,

@@ -140,10 +140,10 @@ describe('strategies', () => {
     });
   });
 
-  it('MEI 2027: IBS/CBS UNSUPPORTED (never NOT_APPLICABLE)', () => {
+  it('MEI 2027: IBS/CBS NOT_APPLICABLE (MEI does not highlight IBS/CBS)', () => {
     const r = plan({ taxRegime: 'MEI' }, { competenceDate: '2027-02-01' });
-    expect(r.ok && r.value.cbs.status).toBe('UNSUPPORTED');
-    expect(r.ok && r.value.ibs.status).toBe('UNSUPPORTED');
+    expect(r.ok && r.value.cbs.status).toBe('NOT_APPLICABLE');
+    expect(r.ok && r.value.ibs.status).toBe('NOT_APPLICABLE');
   });
 
   it('Simples 2026: no test-phase rate applied', () => {
@@ -159,13 +159,13 @@ describe('strategies', () => {
     });
   });
 
-  it('Simples 2027 without regular option: UNSUPPORTED', () => {
+  it('Simples 2027 without regular option: IBS/CBS NOT_APPLICABLE (stay in the DAS)', () => {
     const r = plan(
       { taxRegime: 'SIMPLES_NACIONAL' },
       { competenceDate: '2027-02-01' },
     );
-    expect(r.ok && r.value.cbs.status).toBe('UNSUPPORTED');
-    expect(r.ok && r.value.ibs.status).toBe('UNSUPPORTED');
+    expect(r.ok && r.value.cbs.status).toBe('NOT_APPLICABLE');
+    expect(r.ok && r.value.ibs.status).toBe('NOT_APPLICABLE');
     expect(r.ok && r.value.iss.status).toBe('NOT_APPLICABLE');
   });
 
@@ -470,7 +470,6 @@ describe('strategies', () => {
             taxRegimeRestriction: { on: false, tenants: '*' },
             fiscalDpsConformance: { on: conformance, tenants: '*' },
             simplesTottrib: { on: false, tenants: '*' },
-            fiscal2027SimplesMei: { on: false, tenants: '*' },
             cnpjRegistryCheck: { on: false, tenants: '*' },
             simplesRateMode: { mode: 'off', tenants: '*' },
             simplesRateEnforcedFrom: null,
@@ -540,7 +539,6 @@ describe('strategies', () => {
             taxRegimeRestriction: { on: restricted, tenants: '*' },
             fiscalDpsConformance: { on: false, tenants: '*' },
             simplesTottrib: { on: false, tenants: '*' },
-            fiscal2027SimplesMei: { on: false, tenants: '*' },
             cnpjRegistryCheck: { on: false, tenants: '*' },
             simplesRateMode: { mode: 'off', tenants: '*' },
             simplesRateEnforcedFrom: null,

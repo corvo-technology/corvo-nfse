@@ -125,7 +125,9 @@ conferência de CNPJ/Simples no cadastro            (6.5)
 
 ### 6.4 IBS/CBS de 2027 para MEI e Simples
 
-Estado hoje: `MeiTaxStrategy` e `SimplesNacionalTaxStrategy` devolvem `UNSUPPORTED` para competência ≥ `2027-01-01`, o que bloqueia a emissão.
+**Atualização:** o bloqueio de 2027 foi removido. MEI e Simples sem a opção regular emitem sem IBS/CBS (`NOT_APPLICABLE`), sem flag; a flag `FISCAL_2027_SIMPLES_MEI` deixou de existir. O grupo `regApIBSCBSSN` continua pendente da NT 009 (sem XSD publicado).
+
+Estado antes: `MeiTaxStrategy` e `SimplesNacionalTaxStrategy` devolvem `UNSUPPORTED` para competência ≥ `2027-01-01`, o que bloqueia a emissão.
 
 **O que a NT SE/CGNFS-e 9/2026 (v1.01, 01/10/2026) diz**, lido no *Anexo VI – leiautes e regras, v1.04.01* (planilha oficial):
 

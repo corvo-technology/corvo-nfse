@@ -10,7 +10,6 @@ const config = (overrides: Record<string, unknown> = {}) =>
       taxRegimeRestriction: off,
       fiscalDpsConformance: off,
       simplesTottrib: off,
-      fiscal2027SimplesMei: off,
       cnpjRegistryCheck: off,
       simplesRateMode: { mode: 'off', tenants: '*' },
       simplesRateEnforcedFrom: null,
@@ -25,7 +24,6 @@ describe('RolloutFlagsService', () => {
       'TAX_REGIME_RESTRICTION',
       'FISCAL_DPS_CONFORMANCE',
       'SIMPLES_TOTTRIB',
-      'FISCAL_2027_SIMPLES_MEI',
       'CNPJ_REGISTRY_CHECK',
     ] as const)
       expect(flags.isOn(flag, A)).toBe(false);

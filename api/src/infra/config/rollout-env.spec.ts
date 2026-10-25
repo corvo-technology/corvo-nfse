@@ -9,7 +9,6 @@ describe('rollout environment configuration', () => {
     expect(env.TAX_REGIME_RESTRICTION).toBe(false);
     expect(env.FISCAL_DPS_CONFORMANCE).toBe(false);
     expect(env.SIMPLES_TOTTRIB).toBe(false);
-    expect(env.FISCAL_2027_SIMPLES_MEI).toBe(false);
     expect(env.CNPJ_REGISTRY_CHECK).toBe(false);
     expect(env.SIMPLES_RATE_MODE).toBe('off');
     expect(env.SIMPLES_RATE_ENFORCED_FROM).toBeUndefined();

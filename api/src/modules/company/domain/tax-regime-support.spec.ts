@@ -12,7 +12,6 @@ const flags = (on: boolean, tenants: '*' | string[] = '*') =>
         taxRegimeRestriction: { on, tenants },
         fiscalDpsConformance: { on: false, tenants: '*' },
         simplesTottrib: { on: false, tenants: '*' },
-        fiscal2027SimplesMei: { on: false, tenants: '*' },
         cnpjRegistryCheck: { on: false, tenants: '*' },
         simplesRateMode: { mode: 'off', tenants: '*' },
         simplesRateEnforcedFrom: null,

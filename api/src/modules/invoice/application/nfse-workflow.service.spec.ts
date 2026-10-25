@@ -770,7 +770,6 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
             taxRegimeRestriction: { on: false, tenants: '*' },
             fiscalDpsConformance: { on: false, tenants: '*' },
             simplesTottrib: { on, tenants: '*' },
-            fiscal2027SimplesMei: { on: false, tenants: '*' },
             cnpjRegistryCheck: { on: false, tenants: '*' },
             simplesRateMode: { mode: 'off', tenants: '*' },
             simplesRateEnforcedFrom: null,

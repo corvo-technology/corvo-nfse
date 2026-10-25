@@ -72,15 +72,13 @@ export class SimplesNacionalTaxStrategy implements TaxStrategy {
       });
     }
 
-    const ibscbs: Obligation = ibsCbsInEra
-      ? {
-          status: 'UNSUPPORTED',
-          reason: 'IBS/CBS dentro do DAS em 2027 ainda não suportado',
-        }
-      : {
-          status: 'NOT_APPLICABLE',
-          reason: `regras de IBS/CBS do Simples produzem efeitos a partir de ${effectiveFrom}`,
-        };
+    // Without the regular option, IBS/CBS stay inside the DAS and are not highlighted.
+    const ibscbs: Obligation = {
+      status: 'NOT_APPLICABLE',
+      reason: ibsCbsInEra
+        ? 'IBS/CBS recolhidos no DAS; o Simples não destaca IBS/CBS sem a opção pelo regime regular'
+        : `regras de IBS/CBS do Simples produzem efeitos a partir de ${effectiveFrom}`,
+    };
 
     return ok({
       customerRequired: common.value.customerRequired,

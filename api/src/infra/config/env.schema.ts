@@ -294,8 +294,6 @@ export const envSchema = z
         )
         .optional(),
     ),
-    FISCAL_2027_SIMPLES_MEI: booleanFromEnv.default(false),
-    FISCAL_2027_SIMPLES_MEI_TENANTS: rolloutTenants(),
     CNPJ_REGISTRY_CHECK: booleanFromEnv.default(false),
     CNPJ_REGISTRY_CHECK_TENANTS: rolloutTenants(),
     // An empty value (RTC_CALCULATOR_URL=) means "not configured".
