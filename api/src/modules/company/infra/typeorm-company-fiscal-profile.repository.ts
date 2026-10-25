@@ -12,6 +12,7 @@ import {
   effectiveProfilesOn,
   type CompanyFiscalProfile,
   type ProfileReviewStatus,
+  type SimplesApuracao,
   type TaxRegimeKind,
 } from '../domain/fiscal-profile';
 import type {
@@ -185,6 +186,7 @@ function fieldsOf(input: NewFiscalProfile) {
     ibsCbsRegularOption: input.ibsCbsRegularOption,
     ibsCbsRegularFrom: input.ibsCbsRegularFrom,
     simplesIssRate: input.simplesIssRate,
+    simplesApuracao: input.simplesApuracao ?? null,
     source: input.source,
     reviewStatus: input.reviewStatus,
     reviewedBy: input.reviewedBy,
@@ -203,6 +205,7 @@ function toDomain(row: CompanyFiscalProfileOrmEntity): CompanyFiscalProfile {
     ibsCbsRegularOption: row.ibsCbsRegularOption,
     ibsCbsRegularFrom: row.ibsCbsRegularFrom ?? null,
     simplesIssRate: row.simplesIssRate ?? null,
+    simplesApuracao: (row.simplesApuracao ?? null) as SimplesApuracao | null,
     validFrom: row.validFrom,
     validUntil: row.validUntil ?? null,
     source: row.source,

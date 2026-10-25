@@ -171,6 +171,7 @@ describe('CompanyController fiscal profile endpoints', () => {
         ibsCbsRegularOption: false,
         ibsCbsRegularFrom: null,
         simplesIssRate: null,
+        simplesApuracao: null,
         validFrom: todayInEstablishmentTimezone(),
         source: 'company_api',
         reviewStatus: 'unreviewed',

@@ -172,6 +172,16 @@ export class UpsertFiscalProfileDto {
   simplesIssRate?: string | null;
 
   @ApiPropertyOptional({
+    enum: ['SN'],
+    example: 'SN',
+    description:
+      'How a ME/EPP apportions federal and municipal taxes (DPS regApTribSN). Only SN (1) is supported; omit it for MEI. ISS_MUNICIPAL and REGULAR (above a sublimit) are refused.',
+  })
+  @IsOptional()
+  @IsIn(['SN', 'ISS_MUNICIPAL', 'REGULAR'])
+  simplesApuracao?: 'SN' | 'ISS_MUNICIPAL' | 'REGULAR' | null;
+
+  @ApiPropertyOptional({
     type: String,
     example: '2027-01-01',
     description:

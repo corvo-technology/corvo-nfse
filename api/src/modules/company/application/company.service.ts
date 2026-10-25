@@ -253,6 +253,7 @@ export class CompanyService {
           ibsCbsRegularOption: current?.ibsCbsRegularOption ?? false,
           ibsCbsRegularFrom: current?.ibsCbsRegularFrom ?? null,
           simplesIssRate: current?.simplesIssRate ?? null,
+          simplesApuracao: current?.simplesApuracao ?? null,
           validFrom: todayInEstablishmentTimezone(),
           source: 'company_api',
           ...declarationReview(declaredBy),

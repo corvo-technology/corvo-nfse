@@ -286,6 +286,16 @@ describePostgres(
       expect(profiles[0]?.validUntil).toBeNull();
     });
 
+    it('persists and reads back simplesApuracao', async () => {
+      const created = await repo.append(companyA, tenantA, {
+        ...profileInput('2099-01-01'),
+        simplesApuracao: 'SN',
+      });
+      expect(created.simplesApuracao).toBe('SN');
+      const open = await repo.findOpen(companyA, tenantA);
+      expect(open?.simplesApuracao).toBe('SN');
+    });
+
     it('RLS hides profiles from another tenant', async () => {
       const rows = await runWithTenant(tenantB, () =>
         runtime.query(

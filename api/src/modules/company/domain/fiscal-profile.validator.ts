@@ -15,7 +15,25 @@ function decimalPlaces(value: string): number {
  */
 export function validateFiscalProfile(input: NewFiscalProfile): FiscalIssue[] {
   const issues: FiscalIssue[] = [];
-  const { simplesIssRate } = input;
+  const { simplesIssRate, simplesApuracao } = input;
+
+  if (simplesApuracao !== null && simplesApuracao !== undefined) {
+    if (input.taxRegime !== 'SIMPLES_NACIONAL') {
+      issues.push({
+        field: 'simplesApuracao',
+        code: 'invalid',
+        message:
+          'simplesApuracao only applies to Simples Nacional ME/EPP (regApTribSN is forbidden for MEI, E0162)',
+      });
+    } else if (simplesApuracao !== 'SN') {
+      issues.push({
+        field: 'simplesApuracao',
+        code: 'simples_sublimit_not_supported',
+        message:
+          'Simples Nacional above a sublimit (regApTribSN 2 or 3) is not supported yet',
+      });
+    }
+  }
 
   if (simplesIssRate !== null && simplesIssRate !== undefined) {
     const numeric =

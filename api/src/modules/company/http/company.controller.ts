@@ -150,6 +150,7 @@ function fiscalProfileMatches(
     profile.ibsCbsRegularOption === desired.ibsCbsRegularOption &&
     profile.ibsCbsRegularFrom === desired.ibsCbsRegularFrom &&
     profile.simplesIssRate === desired.simplesIssRate &&
+    (profile.simplesApuracao ?? null) === (desired.simplesApuracao ?? null) &&
     profile.reviewStatus === desired.reviewStatus
   );
 }
@@ -426,6 +427,7 @@ export class CompanyController {
       ibsCbsRegularOption: dto.ibsCbsRegularOption ?? false,
       ibsCbsRegularFrom: dto.ibsCbsRegularFrom ?? null,
       simplesIssRate: dto.simplesIssRate ?? null,
+      simplesApuracao: dto.simplesApuracao ?? null,
       validFrom: dto.validFrom ?? todayInEstablishmentTimezone(),
       source: 'company_api',
       reviewStatus: confirmed ? 'approved' : 'unreviewed',
@@ -557,15 +559,27 @@ export class CompanyController {
   @Post(':id/service-tax-profiles/:serviceId/approve')
   @ApiKeyEndpoint()
   @RequirePermission('nfse.companies.manage')
-  @ApiOperation({ summary: 'Approve the saved service tax classification for this company' })
+  @ApiOperation({
+    summary: 'Approve the saved service tax classification for this company',
+  })
   async approveServiceTaxProfile(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Param('serviceId', new ParseUUIDPipe()) serviceId: string,
     @Req() req: RequestWithAuthContext,
   ): Promise<DataEnvelope<CompanyServiceTaxProfile>> {
     const context = this.requireAuthContext(req);
-    await this.companyService.findById(id, context.activeTenantId, executionEnvironment(context));
-    return data(await this.serviceTaxProfiles.approve(id, context.activeTenantId, serviceId));
+    await this.companyService.findById(
+      id,
+      context.activeTenantId,
+      executionEnvironment(context),
+    );
+    return data(
+      await this.serviceTaxProfiles.approve(
+        id,
+        context.activeTenantId,
+        serviceId,
+      ),
+    );
   }
 
   @Delete(':id/service-tax-profiles/:serviceId')
