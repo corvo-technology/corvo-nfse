@@ -5,7 +5,9 @@ import {
   QuotaExceededReason,
 } from '@/modules/plans/application/quota.service';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Optional } from '@nestjs/common';
+import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
+import { assertRegimeSupported } from '../domain/tax-regime-support';
 import { ICompanyRepository } from '../domain/company.repository';
 import {
   Company,
@@ -56,6 +58,8 @@ export class CompanyService {
     private readonly quotaService: QuotaService,
     private readonly companyDomain: CompanyDomainService,
     private readonly profiles: CompanyFiscalProfileService,
+    // Optional so the service keeps working where no flags are provided (rule off).
+    @Optional() private readonly flags?: RolloutFlagsService,
   ) {}
 
   async create(
@@ -70,6 +74,12 @@ export class CompanyService {
       ...input,
       environment,
     });
+    // Before anything is saved: a refused regime must not leave a company behind.
+    assertRegimeSupported(
+      this.flags,
+      tenantId,
+      regimeKindFromLegacy(normalized.taxRegime),
+    );
 
     const exists = await this.companyRepo.existsWithTaxId(
       normalized.taxId,
@@ -202,6 +212,12 @@ export class CompanyService {
     )
       throw new BadRequestException('Company environment is immutable');
 
+    if (input.taxRegime !== undefined)
+      assertRegimeSupported(
+        this.flags,
+        tenantId,
+        regimeKindFromLegacy(input.taxRegime),
+      );
     company.update(normalized);
 
     await this.companyRepo.save(company, tenantId);

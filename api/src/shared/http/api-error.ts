@@ -156,6 +156,11 @@ export const DOMAIN_ERRORS: Record<
     code: 'ERROR_FREE_PLAN_ABUSE',
     message: 'Free plan eligibility check failed',
   },
+  TaxRegimeNotSupportedError: {
+    status: 422,
+    code: 'ERROR_TAX_REGIME_NOT_SUPPORTED',
+    message: 'Only MEI and Simples Nacional companies are supported',
+  },
   QuotaExceededError: {
     status: 422,
     code: 'ERROR_QUOTA_EXCEEDED',

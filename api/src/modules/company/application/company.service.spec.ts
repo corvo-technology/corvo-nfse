@@ -1,3 +1,6 @@
+import { ConfigService } from '@nestjs/config';
+import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
+import { TaxRegimeNotSupportedError } from '../domain/errors';
 import { CompanyService } from './company.service';
 import { CompanyDomainService } from '../domain/company-domain.service';
 import { ICompanyRepository } from '../domain/company.repository';
@@ -579,5 +582,70 @@ describe('CompanyService', () => {
         specialRegime: null,
       });
     });
+  });
+});
+
+describe('CompanyService regime restriction (TAX_REGIME_RESTRICTION)', () => {
+  const tenant = '11111111-1111-4111-8111-111111111111';
+  const flagsFor = (on: boolean) =>
+    new RolloutFlagsService(
+      new ConfigService({
+        rollout: {
+          taxRegimeRestriction: { on, tenants: '*' },
+          fiscalDpsConformance: { on: false, tenants: '*' },
+          simplesTottrib: { on: false, tenants: '*' },
+          fiscal2027SimplesMei: { on: false, tenants: '*' },
+          cnpjRegistryCheck: { on: false, tenants: '*' },
+          simplesRateMode: { mode: 'off', tenants: '*' },
+          simplesRateEnforcedFrom: null,
+        },
+      }),
+    );
+  const input = (taxRegime: 'MEI' | 'Lucro Presumido' | 'Lucro Real') => ({
+    legalName: 'Empresa',
+    taxId: '22.334.455/0001-86',
+    taxRegime,
+    municipalityCode: '3550308',
+  });
+  const build = (on: boolean) => {
+    const repo = {
+      existsWithTaxId: jest.fn().mockResolvedValue(false),
+      save: jest.fn(),
+      saveWithLimit: jest.fn(),
+      findByIdAndTenantId: jest.fn(),
+    };
+    const profiles = {
+      record: jest.fn(),
+      current: jest.fn().mockResolvedValue(null),
+    };
+    const service = new CompanyService(
+      repo as never,
+      { getStatus: jest.fn() } as never,
+      new CompanyDomainService(),
+      profiles as never,
+      flagsFor(on),
+    );
+    return { service, repo, profiles };
+  };
+
+  it.each(['Lucro Presumido', 'Lucro Real'] as const)(
+    'refuses %s on create and saves nothing when the flag is on',
+    async (regime) => {
+      const { service, repo, profiles } = build(true);
+      await expect(
+        service.create(input(regime), tenant, 'test'),
+      ).rejects.toBeInstanceOf(TaxRegimeNotSupportedError);
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(profiles.record).not.toHaveBeenCalled();
+    },
+  );
+
+  it('accepts MEI when the flag is on and Lucro Presumido when it is off', async () => {
+    await expect(
+      build(true).service.create(input('MEI'), tenant, 'test'),
+    ).resolves.toBeDefined();
+    await expect(
+      build(false).service.create(input('Lucro Presumido'), tenant, 'test'),
+    ).resolves.toBeDefined();
   });
 });
