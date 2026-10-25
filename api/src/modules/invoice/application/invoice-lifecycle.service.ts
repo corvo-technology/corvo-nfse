@@ -4,12 +4,14 @@ import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storag
 import { UnitOfWorkPort } from '@/infra/transactions/unit-of-work.port';
 import { BillingRepository } from '@/modules/billing/domain/billing.repository';
 import { BillingUsageService } from '@/modules/billing/application/billing-usage.service';
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ApplicationEventBus } from '@/shared/events/application-event-bus';
 import { creditsUsageChanged } from '@/modules/billing/application/credits-usage.events';
 import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import type { CachePort } from '@/infra/redis/cache.port';
 import { ICreditTransactionRepository } from '@/modules/credits/domain/credit-transaction.repository';
+import { publicErrorCode } from '@/shared/http/api-error';
+import { BillingRuleError } from '@/modules/billing/domain/billing-period';
 import { Invoice } from '../domain/invoice';
 import type { CancellationReason } from '../domain/cancellation-reason';
 import { ConcurrentInvoiceTransitionError } from '../domain/errors';
@@ -27,6 +29,20 @@ import {
   type IInvoiceEventRepository,
 } from '../domain/invoice.repository';
 
+/** `requestHash` lets a key committed by a concurrent request be told apart from a real conflict. */
+export type BatchSubmitEntry = {
+  invoice: Invoice;
+  event: InvoiceEvent;
+  requestHash: string;
+};
+export type BatchSubmitOutcome =
+  | { ok: true; replayed?: Invoice }
+  | { ok: false; code: string; message: string };
+
+function isWritten(outcome: BatchSubmitOutcome | undefined): boolean {
+  return outcome?.ok === true && !outcome.replayed;
+}
+
 /** Statuses that release an unused live reservation. */
 const REFUND_STATUSES = ['rejected', 'failed', 'cancelled'];
 /** Origins of an already authorized invoice: its credit is final and billing is untouched. */
@@ -40,6 +56,8 @@ const DISCARDS_CANCELLATION_REQUEST: InvoiceStatus[] = ['rejected', 'failed'];
 /** One transaction for fiscal state, audit event and the corresponding credit. */
 @Injectable()
 export class InvoiceLifecycleService {
+  private readonly logger = new Logger(InvoiceLifecycleService.name);
+
   constructor(
     private readonly unitOfWork: UnitOfWorkPort,
     @Inject(CACHE_PORT) private readonly cache: CachePort,
@@ -63,56 +81,141 @@ export class InvoiceLifecycleService {
         this.billing.locked(invoice.tenantId, async () => {
           if (event.invoiceId !== invoice.id)
             throw new Error('Invoice/event identity mismatch');
-          if (
-            invoice.idempotencyKey &&
-            (await this.invoices.findByIdempotencyKey(
-              invoice.idempotencyKey,
-              invoice.tenantId,
-              invoice.environment,
-            ))
-          )
+          if (await this.findByIdempotencyKey(invoice))
             throw Object.assign(new Error('Idempotency key exists'), {
               code: '23505',
             });
-          if (invoice.environment === 'live') {
-            const periodId = await this.usage.reserve(invoice.tenantId);
-            await this.credits.save(
-              {
-                tenantId: invoice.tenantId,
-                amount: -1,
-                type: 'invoice_authorized',
-                reservedInvoiceId: invoice.id,
-                periodId,
-                isReservation: true,
-                description: `Reservation for invoice ${invoice.id}`,
-                createdAt: new Date(),
-              },
-              invoice.tenantId,
-            );
-          }
-          await this.invoices.insert(invoice, invoice.tenantId);
-          await this.events.save(event, invoice.tenantId);
-          await this.outbox.enqueue({
-            tenantId: invoice.tenantId,
-            environment: invoice.environment,
-            type: INVOICE_CALCULATE_TAXES,
-            aggregateId: invoice.id,
-            payload: {
-              invoiceId: invoice.id,
-              companyId: invoice.companyId,
-              tenantId: invoice.tenantId,
-            },
-            dedupeKey: `calc:${invoice.id}`,
-            availableAt: invoice.scheduledFor ?? undefined,
-          });
+          if (invoice.environment === 'live') await this.reserveCredit(invoice);
+          await this.insertQueued(invoice, event);
         }),
       );
-      if (invoice.environment === 'live') {
-        await this.cache.delete(`credit:balance:${invoice.tenantId}`);
-        // After the reservation committed; a failing listener never affects emission.
-        this.eventBus?.publishBestEffort(creditsUsageChanged(invoice.tenantId));
-      }
+      if (invoice.environment === 'live')
+        await this.publishCreditsChanged(invoice.tenantId);
     });
+  }
+
+  /**
+   * Submits many prepared invoices in ONE unit of work and ONE billing lock.
+   * Entries that cannot be accepted (idempotency key taken, plan/credit limit)
+   * are returned as rejected outcomes and never written; the accepted ones are
+   * committed together. Any unexpected error aborts the whole transaction.
+   */
+  async submitBatch(
+    tenantId: string,
+    entries: BatchSubmitEntry[],
+  ): Promise<BatchSubmitOutcome[]> {
+    const outcomes: BatchSubmitOutcome[] = [];
+    return runWithTenant(tenantId, async () => {
+      await this.unitOfWork.execute(() =>
+        this.billing.locked(tenantId, async () => {
+          outcomes.length = 0;
+          for (const entry of entries)
+            outcomes.push(await this.acceptBatchEntry(entry));
+        }),
+      );
+      const anyLive = entries.some(
+        ({ invoice }, index) =>
+          invoice.environment === 'live' && isWritten(outcomes[index]),
+      );
+      if (anyLive) await this.publishCreditsChanged(tenantId);
+      return outcomes;
+    });
+  }
+
+  /** One entry of a batch, inside the open transaction: reject it cleanly or write it. */
+  private async acceptBatchEntry({
+    invoice,
+    event,
+    requestHash,
+  }: BatchSubmitEntry): Promise<BatchSubmitOutcome> {
+    if (event.invoiceId !== invoice.id)
+      throw new Error('Invoice/event identity mismatch');
+    const existing = await this.findByIdempotencyKey(invoice);
+    if (existing)
+      // Prepared outside the lock: another request may have committed this key meanwhile.
+      return existing.toSnapshot().requestHash === requestHash
+        ? { ok: true, replayed: existing }
+        : {
+            ok: false,
+            code: 'ERROR_IDEMPOTENCY_CONFLICT',
+            message: 'Idempotency key was used with a different payload',
+          };
+    if (invoice.environment === 'live') {
+      try {
+        await this.reserveCredit(invoice);
+      } catch (error) {
+        // Thrown by the billing rules before any write: the transaction stays usable.
+        if (!(error instanceof BillingRuleError)) throw error;
+        return {
+          ok: false,
+          code: publicErrorCode(error.code, 'ERROR_BILLING_RULE'),
+          message: error.message,
+        };
+      }
+    }
+    await this.insertQueued(invoice, event);
+    return { ok: true };
+  }
+
+  private async findByIdempotencyKey(
+    invoice: Invoice,
+  ): Promise<Invoice | null> {
+    if (!invoice.idempotencyKey) return null;
+    return this.invoices.findByIdempotencyKey(
+      invoice.idempotencyKey,
+      invoice.tenantId,
+      invoice.environment,
+    );
+  }
+
+  private async reserveCredit(invoice: Invoice): Promise<void> {
+    const periodId = await this.usage.reserve(invoice.tenantId);
+    await this.credits.save(
+      {
+        tenantId: invoice.tenantId,
+        amount: -1,
+        type: 'invoice_authorized',
+        reservedInvoiceId: invoice.id,
+        periodId,
+        isReservation: true,
+        description: `Reservation for invoice ${invoice.id}`,
+        createdAt: new Date(),
+      },
+      invoice.tenantId,
+    );
+  }
+
+  private async insertQueued(
+    invoice: Invoice,
+    event: InvoiceEvent,
+  ): Promise<void> {
+    await this.invoices.insert(invoice, invoice.tenantId);
+    await this.events.save(event, invoice.tenantId);
+    await this.outbox.enqueue({
+      tenantId: invoice.tenantId,
+      environment: invoice.environment,
+      type: INVOICE_CALCULATE_TAXES,
+      aggregateId: invoice.id,
+      payload: {
+        invoiceId: invoice.id,
+        companyId: invoice.companyId,
+        tenantId: invoice.tenantId,
+      },
+      dedupeKey: `calc:${invoice.id}`,
+      availableAt: invoice.scheduledFor ?? undefined,
+    });
+  }
+
+  /** After the commit: a failing cache or listener must never turn saved invoices into an error. */
+  private async publishCreditsChanged(tenantId: string): Promise<void> {
+    try {
+      await this.cache.delete(`credit:balance:${tenantId}`);
+    } catch (error) {
+      this.logger.warn(
+        `Could not invalidate the credit balance cache: ${String(error)}`,
+      );
+    }
+    this.eventBus?.publishBestEffort(creditsUsageChanged(tenantId));
   }
 
   async transition(

@@ -1,5 +1,7 @@
 import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { PATH_METADATA, HTTP_CODE_METADATA } from '@nestjs/common/constants';
 import { InvoiceController } from './invoice.controller';
+import { REQUIRED_TENANT_PERMISSION } from '@/modules/auth/require-permission.decorator';
 
 const invoiceId = '11111111-1111-4111-8111-111111111111';
 const tenantId = '22222222-2222-4222-8222-222222222222';
@@ -36,6 +38,7 @@ describe('InvoiceController', () => {
       const controller = new InvoiceController(
         invoiceService as never,
         {} as never,
+        {} as never,
       );
 
       await expect(
@@ -64,6 +67,7 @@ describe('InvoiceController', () => {
 
       const controller = new InvoiceController(
         invoiceService as never,
+        {} as never,
         {} as never,
       );
       const result = await controller.getDownloadUrl(
@@ -101,6 +105,7 @@ describe('InvoiceController', () => {
       const controller = new InvoiceController(
         invoiceService as never,
         {} as never,
+        {} as never,
       );
 
       await expect(
@@ -120,6 +125,7 @@ describe('InvoiceController', () => {
 
       const controller = new InvoiceController(
         invoiceService as never,
+        {} as never,
         {} as never,
       );
 
@@ -143,6 +149,7 @@ describe('InvoiceController', () => {
 
       const controller = new InvoiceController(
         invoiceService as never,
+        {} as never,
         {} as never,
       );
       const result = await controller.requestEmail(
@@ -175,6 +182,7 @@ describe('InvoiceController', () => {
       const controller = new InvoiceController(
         invoiceService as never,
         {} as never,
+        {} as never,
       );
 
       await expect(
@@ -194,6 +202,7 @@ describe('InvoiceController', () => {
       const controller = new InvoiceController(
         invoiceService as never,
         {} as never,
+        {} as never,
       );
 
       await expect(
@@ -204,5 +213,45 @@ describe('InvoiceController', () => {
         ),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
+  });
+});
+
+describe('InvoiceController POST batches', () => {
+  const batchService = { emitBatch: jest.fn() };
+  const authContext = {
+    activeTenantId: 'tenant-1',
+    executionEnvironment: 'test',
+  };
+  const controller = new InvoiceController(
+    {} as never,
+    {} as never,
+    batchService as never,
+  );
+
+  it('delegates to InvoiceBatchService with the items, tenant and auth context', async () => {
+    const result = { total: 1, accepted: 1, rejected: 0, results: [] };
+    batchService.emitBatch.mockResolvedValue(result);
+    const invoices = [{ amount: 1 }];
+
+    await expect(
+      controller.emitBatch({ invoices }, { authContext } as never),
+    ).resolves.toBe(result);
+
+    expect(batchService.emitBatch).toHaveBeenCalledWith(
+      invoices,
+      'tenant-1',
+      authContext,
+    );
+  });
+
+  it('is POST /invoices/batches answering 202 under nfse.invoices.issue with a 10/min throttle', () => {
+    const handler = InvoiceController.prototype.emitBatch;
+    expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('batches');
+    expect(Reflect.getMetadata(HTTP_CODE_METADATA, handler)).toBe(202);
+    expect(Reflect.getMetadata(REQUIRED_TENANT_PERMISSION, handler)).toBe(
+      'nfse.invoices.issue',
+    );
+    expect(Reflect.getMetadata('THROTTLER:LIMITdefault', handler)).toBe(10);
+    expect(Reflect.getMetadata('THROTTLER:TTLdefault', handler)).toBe(60_000);
   });
 });

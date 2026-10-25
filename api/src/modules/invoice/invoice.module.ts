@@ -47,6 +47,7 @@ import {
 import { DPS_SEQUENCE_REPOSITORY } from './domain/dps-sequence';
 import { InvoiceIntakeService } from './application/invoice-intake.service';
 import { InvoiceService } from './application/invoice.service';
+import { InvoiceBatchService } from './application/invoice-batch.service';
 import { InvoiceController } from './http/invoice.controller';
 import { InvoiceOverviewController } from './http/invoice-overview.controller';
 import { InvoiceOverviewService } from './application/invoice-overview.service';
@@ -141,6 +142,7 @@ import { EmailModule } from '@/modules/email/email.module';
     FiscalSnapshotService,
     DpsBuilder,
     InvoiceService,
+    InvoiceBatchService,
     InvoiceIntakeService,
     InvoiceCalculationService,
     InvoiceLifecycleService,
@@ -151,6 +153,7 @@ import { EmailModule } from '@/modules/email/email.module';
     OutboxHandlerRegistry,
     OUTBOX_REPOSITORY,
     InvoiceService,
+    InvoiceBatchService,
     InvoiceCalculationService,
     InvoiceLifecycleService,
     InvoiceWebhookPublisher,

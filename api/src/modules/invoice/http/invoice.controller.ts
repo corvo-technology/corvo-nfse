@@ -42,6 +42,12 @@ import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { ApiKeyEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
 import type { RequestWithAuthContext } from '@/modules/auth/auth-context';
 import { InvoiceService } from '../application/invoice.service';
+import { InvoiceBatchService } from '../application/invoice-batch.service';
+import {
+  BatchInvoiceItemDto,
+  CreateInvoiceBatchDto,
+} from './invoice-batch.dto';
+import { InvoiceBatchSummaryDto } from './invoice-batch-response.dto';
 import {
   CancelInvoiceDto,
   CreateInvoiceDto,
@@ -56,6 +62,7 @@ export class InvoiceController {
   constructor(
     private readonly invoiceService: InvoiceService,
     private readonly calculationService: InvoiceCalculationService,
+    private readonly batchService: InvoiceBatchService,
   ) {}
 
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
@@ -87,6 +94,49 @@ export class InvoiceController {
       req.authContext!,
       idempotencyKey,
     );
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('batches')
+  @HttpCode(202)
+  @ApiExtraModels(BatchInvoiceItemDto, InvoiceBatchSummaryDto)
+  @ApiAcceptedResponse({
+    schema: {
+      type: 'object',
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(InvoiceBatchSummaryDto) },
+      },
+    },
+  })
+  @ApiKeyEndpoint()
+  @RequirePermission('nfse.invoices.issue')
+  @ApiOperation({
+    summary: 'Emit up to 50 NFS-e in one request',
+    description:
+      'Accepts 1 to 50 invoices, for one company or several. Each item has the same fields as POST /invoices plus an optional `idempotencyKey`. ' +
+      'Items are validated one by one: an invalid item is returned as `rejected` (with `error.code` and `error.message`) and is NOT saved, while the valid ones are saved together in a single transaction. ' +
+      'The response has one result per item, in the order sent (`index`). ' +
+      'Send an `idempotencyKey` per item: repeating the batch returns the invoices already saved (`replayed: true`) and only retries the rejected ones. The `Idempotency-Key` header does not apply here. ' +
+      'In `live`, each accepted item reserves one credit; items beyond the plan limit are rejected with the limit error. ' +
+      'Like POST /invoices, issuance is asynchronous: follow each invoice by id or webhook.',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'The body is not a list of 1 to 50 invoices (ERROR_VALIDATION)',
+  })
+  @ApiResponse({
+    status: 429,
+    description:
+      'Rate limit exceeded (10 batches per minute); Retry-After in seconds',
+  })
+  async emitBatch(
+    @Body() dto: CreateInvoiceBatchDto,
+    @Req() req: RequestWithAuthContext,
+  ) {
+    const auth = req.authContext!;
+    return this.batchService.emitBatch(dto.invoices, auth.activeTenantId, auth);
   }
 
   @Throttle({ default: { limit: 120, ttl: 60_000 } })

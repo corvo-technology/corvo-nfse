@@ -373,6 +373,98 @@ describePostgres('invoice intake with restricted PostgreSQL role', () => {
       ),
     ).toHaveLength(1);
   });
+  const queuedEntry = (invoice: Invoice, requestHash = 'hash-1') => ({
+    invoice,
+    event: InvoiceEvent.create(invoice.id, null, 'queued'),
+    requestHash,
+  });
+  const countBy = async (table: string, column: string, ids: string[]) =>
+    (
+      await admin.query(
+        `SELECT 1 FROM "${schema}".${table} WHERE ${column} = ANY($1::uuid[])`,
+        [ids],
+      )
+    ).length;
+
+  it('batch commits all accepted invoices atomically', async () => {
+    const invoices = [create(), create(), create()];
+    const ids = invoices.map((invoice) => invoice.id);
+    const outcomes = await lifecycle.submitBatch(
+      tenantA,
+      invoices.map(queuedEntry),
+    );
+    expect(outcomes).toEqual([{ ok: true }, { ok: true }, { ok: true }]);
+    expect(await countBy('nfse_invoices', 'id', ids)).toBe(3);
+    expect(await countBy('nfse_invoice_events', 'invoice_id', ids)).toBe(3);
+    expect(await countBy('outbox_messages', 'aggregate_id', ids)).toBe(3);
+  });
+
+  it('two concurrent batches with the same idempotency key and payload save once and replay the other', async () => {
+    const key = randomUUID();
+    const withHash = () =>
+      Invoice.create(
+        {
+          companyId: companyA,
+          environment: 'test',
+          requestHash: 'hash-1',
+          customer: { taxId: '52998224725', name: 'Cliente' },
+          service: {
+            description: 'Servico',
+            code: '060101',
+            municipalityCode: '3550308',
+          },
+          amount: 50,
+          competenceDate: new Date('2026-10-13'),
+        },
+        tenantA,
+        key,
+      );
+    const [first, second] = await Promise.all([
+      lifecycle.submitBatch(tenantA, [queuedEntry(withHash())]),
+      lifecycle.submitBatch(tenantA, [queuedEntry(withHash())]),
+    ]);
+    const outcomes = [first[0], second[0]];
+    expect(outcomes.filter((o) => o?.ok && !o.replayed)).toHaveLength(1);
+    expect(outcomes.filter((o) => o?.ok && o.replayed)).toHaveLength(1);
+    expect(
+      await admin.query(
+        `SELECT id FROM "${schema}".nfse_invoices WHERE idempotency_key=$1`,
+        [key],
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('batch rolls back invoices, events, outbox and credit reservations when a later insert fails', async () => {
+    const service = realLifecycle();
+    const good = [create(undefined, 'live'), create(undefined, 'live')];
+    const orphan = Invoice.create(
+      {
+        companyId: randomUUID(),
+        environment: 'live',
+        customer: { taxId: '52998224725', name: 'Cliente' },
+        service: {
+          description: 'Servico',
+          code: '060101',
+          municipalityCode: '3550308',
+        },
+        amount: 50,
+        competenceDate: new Date('2026-10-13'),
+      },
+      tenantA,
+    );
+    const all = [...good, orphan];
+    const ids = all.map((invoice) => invoice.id);
+    await expect(
+      service.submitBatch(tenantA, all.map(queuedEntry)),
+    ).rejects.toBeDefined();
+    expect(await countBy('nfse_invoices', 'id', ids)).toBe(0);
+    expect(await countBy('nfse_invoice_events', 'invoice_id', ids)).toBe(0);
+    expect(await countBy('outbox_messages', 'aggregate_id', ids)).toBe(0);
+    expect(
+      await countBy('credit_transactions', 'reserved_invoice_id', ids),
+    ).toBe(0);
+  });
+
   const realLifecycle = () => {
     const helper = new TypeOrmRepositoryHelper(runtime, transactions);
     const billing = new TypeOrmBillingRepository(runtime, transactions);
