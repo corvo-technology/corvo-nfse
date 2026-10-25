@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -28,7 +28,12 @@ export class CreateInvoiceBatchDto {
 }
 
 export class BatchInvoiceItemDto extends CreateInvoiceDto {
-  /** Per-item idempotency key. Repeating the batch with the same keys never issues twice. */
+  @ApiPropertyOptional({
+    example: 'planilha-2026-10-linha-7',
+    maxLength: 255,
+    description:
+      'Per-item idempotency key. Repeating the batch with the same keys never issues twice: the saved invoice comes back with replayed true.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(255)

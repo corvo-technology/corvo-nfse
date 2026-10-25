@@ -6,6 +6,7 @@ import { fiscalError } from '../domain/fiscal/fiscal-error';
 import { InvoiceCalculationService } from '../application/fiscal/invoice-calculation.service';
 import { InvoiceService } from '../application/invoice.service';
 import { InvoiceController } from './invoice.controller';
+import { InvoiceBatchService } from '../application/invoice-batch.service';
 
 describe('InvoiceController.calculate', () => {
   const request = {
@@ -25,6 +26,7 @@ describe('InvoiceController.calculate', () => {
       controllers: [InvoiceController],
       providers: [
         { provide: InvoiceService, useValue: {} },
+        { provide: InvoiceBatchService, useValue: {} },
         { provide: InvoiceCalculationService, useValue: { calculate } },
       ],
     }).compile();
@@ -54,6 +56,7 @@ describe('InvoiceController.calculate', () => {
     const controller = new InvoiceController(
       {} as never,
       { calculate: async () => ({ httpError: error }) } as never,
+      {} as never,
     );
     const setHeader = jest.fn();
     await expect(
