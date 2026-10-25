@@ -157,7 +157,9 @@ export class InvoiceOptionsDto {
 
 export class CreateInvoiceDto {
   /** Company id. Required unless `companyTaxId` is sent; wins if both are sent. */
-  @ValidateIf((o: CreateInvoiceDto) => !o.companyTaxId)
+  @ValidateIf(
+    (o: CreateInvoiceDto) => !o.companyTaxId || o.companyId !== undefined,
+  )
   @IsUUID()
   companyId?: string;
 
@@ -167,7 +169,11 @@ export class CreateInvoiceDto {
   @IsNotEmpty()
   companyTaxId?: string;
 
-  @IsOptional() @IsString() externalId?: string;
+  /** Stored in a varchar(100) column. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  externalId?: string;
 
   @ApiPropertyOptional({
     type: CustomerDto,

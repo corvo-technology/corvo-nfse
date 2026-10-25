@@ -4,6 +4,7 @@ import { Company } from '@/modules/company/domain/company';
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { InvoiceDomainService } from '../domain/invoice-domain.service';
 import { InvoiceService } from './invoice.service';
+import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 
 describe('InvoiceService.prepareEmission', () => {
   const testAuth = { executionEnvironment: 'test' } as AuthContext;
@@ -109,4 +110,18 @@ describe('InvoiceService.prepareEmission', () => {
     expect(companies.ensureReady).toHaveBeenCalledTimes(1);
     expect(certificates.getActive).toHaveBeenCalledTimes(1);
   });
+
+  it.each(['2026-W53', '2026-366', '2026-13-45'])(
+    'rejects the unparsable competenceDate %s with a validation error instead of crashing',
+    async (competenceDate) => {
+      const error = await service
+        .prepareEmission({ ...dto, competenceDate }, 'tenant-1', testAuth)
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(FiscalValidationError);
+      expect((error as FiscalValidationError).issues[0]).toMatchObject({
+        field: 'competenceDate',
+        code: 'invalid_date',
+      });
+    },
+  );
 });

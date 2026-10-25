@@ -63,7 +63,11 @@ export class InvoiceBatchService {
     const entryIndexes: number[] = [];
     prepared.forEach((item, index) => {
       if (item.kind !== 'ready') return;
-      entries.push({ invoice: item.invoice, event: item.event });
+      entries.push({
+        invoice: item.invoice,
+        event: item.event,
+        requestHash: item.requestHash,
+      });
       entryIndexes.push(index);
     });
     const outcomes = entries.length
@@ -82,7 +86,14 @@ export class InvoiceBatchService {
         };
       const outcome = outcomes[entryIndexes.indexOf(index)];
       return outcome?.ok
-        ? { index, status: 'accepted', invoice: item.invoice }
+        ? outcome.replayed
+          ? {
+              index,
+              status: 'accepted',
+              replayed: true,
+              invoice: outcome.replayed,
+            }
+          : { index, status: 'accepted', invoice: item.invoice }
         : {
             index,
             status: 'rejected',

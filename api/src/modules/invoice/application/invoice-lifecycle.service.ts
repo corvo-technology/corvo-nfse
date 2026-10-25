@@ -4,7 +4,7 @@ import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storag
 import { UnitOfWorkPort } from '@/infra/transactions/unit-of-work.port';
 import { BillingRepository } from '@/modules/billing/domain/billing.repository';
 import { BillingUsageService } from '@/modules/billing/application/billing-usage.service';
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ApplicationEventBus } from '@/shared/events/application-event-bus';
 import { creditsUsageChanged } from '@/modules/billing/application/credits-usage.events';
 import { CACHE_PORT } from '@/infra/redis/redis.constants';
@@ -29,10 +29,19 @@ import {
   type IInvoiceEventRepository,
 } from '../domain/invoice.repository';
 
-export type BatchSubmitEntry = { invoice: Invoice; event: InvoiceEvent };
+/** `requestHash` lets a key committed by a concurrent request be told apart from a real conflict. */
+export type BatchSubmitEntry = {
+  invoice: Invoice;
+  event: InvoiceEvent;
+  requestHash: string;
+};
 export type BatchSubmitOutcome =
-  | { ok: true }
+  | { ok: true; replayed?: Invoice }
   | { ok: false; code: string; message: string };
+
+function isWritten(outcome: BatchSubmitOutcome | undefined): boolean {
+  return outcome?.ok === true && !outcome.replayed;
+}
 
 /** Statuses that release an unused live reservation. */
 const REFUND_STATUSES = ['rejected', 'failed', 'cancelled'];
@@ -47,6 +56,8 @@ const DISCARDS_CANCELLATION_REQUEST: InvoiceStatus[] = ['rejected', 'failed'];
 /** One transaction for fiscal state, audit event and the corresponding credit. */
 @Injectable()
 export class InvoiceLifecycleService {
+  private readonly logger = new Logger(InvoiceLifecycleService.name);
+
   constructor(
     private readonly unitOfWork: UnitOfWorkPort,
     @Inject(CACHE_PORT) private readonly cache: CachePort,
@@ -70,7 +81,7 @@ export class InvoiceLifecycleService {
         this.billing.locked(invoice.tenantId, async () => {
           if (event.invoiceId !== invoice.id)
             throw new Error('Invoice/event identity mismatch');
-          if (await this.idempotencyKeyTaken(invoice))
+          if (await this.findByIdempotencyKey(invoice))
             throw Object.assign(new Error('Idempotency key exists'), {
               code: '23505',
             });
@@ -104,7 +115,7 @@ export class InvoiceLifecycleService {
       );
       const anyLive = entries.some(
         ({ invoice }, index) =>
-          invoice.environment === 'live' && outcomes[index]?.ok,
+          invoice.environment === 'live' && isWritten(outcomes[index]),
       );
       if (anyLive) await this.publishCreditsChanged(tenantId);
       return outcomes;
@@ -115,15 +126,20 @@ export class InvoiceLifecycleService {
   private async acceptBatchEntry({
     invoice,
     event,
+    requestHash,
   }: BatchSubmitEntry): Promise<BatchSubmitOutcome> {
     if (event.invoiceId !== invoice.id)
       throw new Error('Invoice/event identity mismatch');
-    if (await this.idempotencyKeyTaken(invoice))
-      return {
-        ok: false,
-        code: 'ERROR_IDEMPOTENCY_CONFLICT',
-        message: 'Idempotency key was used with a different payload',
-      };
+    const existing = await this.findByIdempotencyKey(invoice);
+    if (existing)
+      // Prepared outside the lock: another request may have committed this key meanwhile.
+      return existing.toSnapshot().requestHash === requestHash
+        ? { ok: true, replayed: existing }
+        : {
+            ok: false,
+            code: 'ERROR_IDEMPOTENCY_CONFLICT',
+            message: 'Idempotency key was used with a different payload',
+          };
     if (invoice.environment === 'live') {
       try {
         await this.reserveCredit(invoice);
@@ -141,14 +157,14 @@ export class InvoiceLifecycleService {
     return { ok: true };
   }
 
-  private async idempotencyKeyTaken(invoice: Invoice): Promise<boolean> {
-    if (!invoice.idempotencyKey) return false;
-    return Boolean(
-      await this.invoices.findByIdempotencyKey(
-        invoice.idempotencyKey,
-        invoice.tenantId,
-        invoice.environment,
-      ),
+  private async findByIdempotencyKey(
+    invoice: Invoice,
+  ): Promise<Invoice | null> {
+    if (!invoice.idempotencyKey) return null;
+    return this.invoices.findByIdempotencyKey(
+      invoice.idempotencyKey,
+      invoice.tenantId,
+      invoice.environment,
     );
   }
 
@@ -190,9 +206,15 @@ export class InvoiceLifecycleService {
     });
   }
 
+  /** After the commit: a failing cache or listener must never turn saved invoices into an error. */
   private async publishCreditsChanged(tenantId: string): Promise<void> {
-    await this.cache.delete(`credit:balance:${tenantId}`);
-    // After the reservation committed; a failing listener never affects emission.
+    try {
+      await this.cache.delete(`credit:balance:${tenantId}`);
+    } catch (error) {
+      this.logger.warn(
+        `Could not invalidate the credit balance cache: ${String(error)}`,
+      );
+    }
     this.eventBus?.publishBestEffort(creditsUsageChanged(tenantId));
   }
 

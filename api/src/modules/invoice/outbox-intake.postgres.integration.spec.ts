@@ -373,9 +373,10 @@ describePostgres('invoice intake with restricted PostgreSQL role', () => {
       ),
     ).toHaveLength(1);
   });
-  const queuedEntry = (invoice: Invoice) => ({
+  const queuedEntry = (invoice: Invoice, requestHash = 'hash-1') => ({
     invoice,
     event: InvoiceEvent.create(invoice.id, null, 'queued'),
+    requestHash,
   });
   const countBy = async (table: string, column: string, ids: string[]) =>
     (
@@ -396,6 +397,41 @@ describePostgres('invoice intake with restricted PostgreSQL role', () => {
     expect(await countBy('nfse_invoices', 'id', ids)).toBe(3);
     expect(await countBy('nfse_invoice_events', 'invoice_id', ids)).toBe(3);
     expect(await countBy('outbox_messages', 'aggregate_id', ids)).toBe(3);
+  });
+
+  it('two concurrent batches with the same idempotency key and payload save once and replay the other', async () => {
+    const key = randomUUID();
+    const withHash = () =>
+      Invoice.create(
+        {
+          companyId: companyA,
+          environment: 'test',
+          requestHash: 'hash-1',
+          customer: { taxId: '52998224725', name: 'Cliente' },
+          service: {
+            description: 'Servico',
+            code: '060101',
+            municipalityCode: '3550308',
+          },
+          amount: 50,
+          competenceDate: new Date('2026-10-13'),
+        },
+        tenantA,
+        key,
+      );
+    const [first, second] = await Promise.all([
+      lifecycle.submitBatch(tenantA, [queuedEntry(withHash())]),
+      lifecycle.submitBatch(tenantA, [queuedEntry(withHash())]),
+    ]);
+    const outcomes = [first[0], second[0]];
+    expect(outcomes.filter((o) => o?.ok && !o.replayed)).toHaveLength(1);
+    expect(outcomes.filter((o) => o?.ok && o.replayed)).toHaveLength(1);
+    expect(
+      await admin.query(
+        `SELECT id FROM "${schema}".nfse_invoices WHERE idempotency_key=$1`,
+        [key],
+      ),
+    ).toHaveLength(1);
   });
 
   it('batch rolls back invoices, events, outbox and credit reservations when a later insert fails', async () => {

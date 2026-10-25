@@ -122,8 +122,9 @@ export class InvoiceController {
       'Like POST /invoices, issuance is asynchronous: follow each invoice by id or webhook.',
   })
   @ApiResponse({
-    status: 422,
-    description: 'The body is not a list of 1 to 50 invoices',
+    status: 400,
+    description:
+      'The body is not a list of 1 to 50 invoices (ERROR_VALIDATION)',
   })
   @ApiResponse({
     status: 429,

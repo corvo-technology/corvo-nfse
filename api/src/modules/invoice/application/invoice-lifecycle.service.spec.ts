@@ -334,8 +334,12 @@ describe('InvoiceLifecycleService.submitBatch', () => {
     return {
       invoice,
       event: InvoiceEvent.create(invoice.id, null, 'queued'),
+      requestHash: 'hash-1',
     };
   };
+  const stored = (requestHash: string) => ({
+    toSnapshot: () => ({ requestHash }),
+  });
 
   it('runs one unit of work and one billing lock for N entries', async () => {
     const f = build();
@@ -366,9 +370,9 @@ describe('InvoiceLifecycleService.submitBatch', () => {
       );
   });
 
-  it('rejects an entry whose idempotency key already exists, without writing it', async () => {
+  it('rejects an entry whose idempotency key exists with a different payload, without writing it', async () => {
     const f = build();
-    f.invoices.findByIdempotencyKey.mockResolvedValueOnce({});
+    f.invoices.findByIdempotencyKey.mockResolvedValueOnce(stored('other'));
     const outcomes = await f.service.submitBatch(tenantId, [
       entry('test', 'taken'),
       entry(),
@@ -379,6 +383,40 @@ describe('InvoiceLifecycleService.submitBatch', () => {
     });
     expect(outcomes[1]).toEqual({ ok: true });
     expect(f.invoices.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it('replays an entry whose idempotency key was committed meanwhile with the same payload', async () => {
+    const f = build();
+    const winner = stored('hash-1');
+    f.invoices.findByIdempotencyKey.mockResolvedValueOnce(winner);
+    const outcomes = await f.service.submitBatch(tenantId, [
+      entry('live', 'taken'),
+    ]);
+    expect(outcomes).toEqual([{ ok: true, replayed: winner }]);
+    expect(f.invoices.insert).not.toHaveBeenCalled();
+    expect(f.usage.reserve).not.toHaveBeenCalled();
+    expect(f.eventBus.publishBestEffort).not.toHaveBeenCalled();
+  });
+
+  it('does not fail a committed batch when the credit cache invalidation fails', async () => {
+    const f = build();
+    f.cache.delete.mockRejectedValueOnce(new Error('redis down'));
+    await expect(
+      f.service.submitBatch(tenantId, [entry('live')]),
+    ).resolves.toEqual([{ ok: true }]);
+  });
+
+  it('does not fail a committed submit when the credit cache invalidation fails', async () => {
+    const f = build();
+    f.cache.delete.mockRejectedValueOnce(new Error('redis down'));
+    const invoice = newInvoice(undefined, 'live');
+    await expect(
+      f.service.submit(
+        invoice,
+        InvoiceEvent.create(invoice.id, null, 'queued'),
+        null,
+      ),
+    ).resolves.toBeUndefined();
   });
 
   it('rejects entries once usage.reserve throws BillingRuleError, keeps the earlier ones', async () => {

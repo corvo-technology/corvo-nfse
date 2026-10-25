@@ -810,7 +810,7 @@ console.log(body.data.id); // { data: Invoice }`,
           summary: "Solicita a emissão de **1 a 50 notas em uma única chamada**, de uma empresa ou de várias. Cada item tem os mesmos campos de `POST /v1/invoices` mais um `idempotencyKey` opcional. Os itens são conferidos um a um: os válidos são salvos juntos em uma única transação e os inválidos voltam como `rejected` com o motivo e **não** são salvos. A emissão continua assíncrona, como em `POST /v1/invoices`.",
           params: {
             rows: [
-              { name: "invoices", type: "array", required: true, description: "Lista de 1 a 50 itens. Cada item recebe os campos de `POST /v1/invoices` (`companyId` ou `companyTaxId`, `service`, `amount`, `competenceDate`, `customer`, `discount`, `deduction`, `options` opcionais...). Os itens podem ser de empresas diferentes da conta. Menos de 1 ou mais de 50 itens devolve `422` para a requisição inteira." },
+              { name: "invoices", type: "array", required: true, description: "Lista de 1 a 50 itens. Cada item recebe os campos de `POST /v1/invoices` (`companyId` ou `companyTaxId`, `service`, `amount`, `competenceDate`, `customer`, `discount`, `deduction`, `options` opcionais...). Os itens podem ser de empresas diferentes da conta. Menos de 1 ou mais de 50 itens devolve `400` `ERROR_VALIDATION` para a requisição inteira." },
               { name: "invoices[].idempotencyKey", type: "string", required: false, description: "Chave de idempotência do item (até 255 caracteres). Com a mesma chave e o mesmo conteúdo, repetir o lote devolve a nota já salva com `replayed: true` em vez de emitir de novo. O header `Idempotency-Key` não é usado nesta rota." },
             ],
           },

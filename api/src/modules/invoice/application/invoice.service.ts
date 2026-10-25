@@ -58,6 +58,7 @@ import {
   type IDocumentStorage,
 } from '@/infra/storage/domain/document-storage';
 import { InvoiceIntakeService } from './invoice-intake.service';
+import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 
 export type PreparedEmission =
   | { kind: 'replay'; invoice: Invoice }
@@ -167,10 +168,21 @@ export class InvoiceService {
   ): Promise<PreparedEmission> {
     const environment = executionEnvironment(authContext);
 
+    // `@IsDateString` accepts forms `Date` cannot parse (2026-W53, 2026-366): fail as validation, not as a crash.
+    const competence = new Date(dto.competenceDate);
+    if (Number.isNaN(competence.getTime()))
+      throw new FiscalValidationError([
+        {
+          field: 'competenceDate',
+          code: 'invalid_date',
+          message: 'competenceDate must be a valid date',
+        },
+      ]);
+
     // Hash computed on ORIGINAL request body (before normalization).
     const requestHash = hashPayload({
       ...dto,
-      competenceDate: new Date(dto.competenceDate).toISOString().slice(0, 10),
+      competenceDate: competence.toISOString().slice(0, 10),
       email: { send: dto.email ?? false },
     });
 

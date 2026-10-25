@@ -115,7 +115,7 @@ POST /v1/invoices/batches (permission nfse.invoices.issue, 10 requests/minute pe
 tenant, 202) issues 1 to 50 invoices in one call. Body { invoices: [...] }; each item
 is a CreateInvoice plus an optional idempotencyKey, and items may belong to
 different companies (companyId or companyTaxId). Only a body that is not a list of
-1 to 50 items fails the request (422). Each item is validated on its own: invalid
+1 to 50 items fails the request (400 ERROR_VALIDATION). Each item is validated on its own: invalid
 items are returned rejected (error.code, error.message, error.details) and are not
 saved, while all the valid ones are saved in a single transaction together with
 their credit reservation and outbox message. Response data: { total, accepted,

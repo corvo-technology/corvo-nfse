@@ -137,6 +137,22 @@ describe('InvoiceBatchService.emitBatch', () => {
     });
   });
 
+  it('passes the request hash to submitBatch and maps a replay found inside the lock', async () => {
+    lifecycle.submitBatch.mockResolvedValue([
+      { ok: true, replayed: { id: 'winner' } },
+    ]);
+    const result = await service.emitBatch([valid()], tenantId, auth);
+    expect((lifecycle.submitBatch.mock.calls as unknown[][])[0]?.[1]).toEqual([
+      expect.objectContaining({ requestHash: 'hash-inv-0' }),
+    ]);
+    expect(result.results[0]).toEqual({
+      index: 0,
+      status: 'accepted',
+      replayed: true,
+      invoice: { id: 'winner' },
+    });
+  });
+
   it('does not call submitBatch when every item is rejected', async () => {
     const result = await service.emitBatch([{}, {}], tenantId, auth);
     expect(result).toMatchObject({ total: 2, accepted: 0, rejected: 2 });

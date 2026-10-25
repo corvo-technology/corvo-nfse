@@ -828,7 +828,7 @@ console.log(body.data.id); // { data: Invoice }`,
           summary: "Requests the issuance of **1 to 50 invoices in a single call**, for one company or for several. Each item has the same fields as `POST /v1/invoices` plus an optional `idempotencyKey`. Items are checked one by one: valid items are saved together in a single transaction, invalid items come back as `rejected` with the reason and are **not** saved. Issuance stays asynchronous, as in `POST /v1/invoices`.",
           params: {
             rows: [
-              { name: "invoices", type: "array", required: true, description: "List of 1 to 50 items. Each item takes the fields of `POST /v1/invoices` (`companyId` or `companyTaxId`, `service`, `amount`, `competenceDate`, optional `customer`, `discount`, `deduction`, `options`...). Items can belong to different companies of the account. Fewer than 1 or more than 50 items returns `422` for the whole request." },
+              { name: "invoices", type: "array", required: true, description: "List of 1 to 50 items. Each item takes the fields of `POST /v1/invoices` (`companyId` or `companyTaxId`, `service`, `amount`, `competenceDate`, optional `customer`, `discount`, `deduction`, `options`...). Items can belong to different companies of the account. Fewer than 1 or more than 50 items returns `400` `ERROR_VALIDATION` for the whole request." },
               { name: "invoices[].idempotencyKey", type: "string", required: false, description: "Idempotency key of the item (up to 255 characters). With the same key and the same content, repeating the batch returns the invoice already saved with `replayed: true` instead of issuing again. The `Idempotency-Key` header is not used by this route." },
             ],
           },

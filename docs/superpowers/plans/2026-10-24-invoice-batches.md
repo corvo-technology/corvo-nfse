@@ -14,7 +14,7 @@
 
 - Route: `POST /invoices/batches`, HTTP 202, `@ApiKeyEndpoint()`, `@RequirePermission('nfse.invoices.issue')`, `@UseGuards(ExecutionEnvironmentGuard)` (inherited from `InvoiceController`), `@Throttle({ default: { limit: 10, ttl: 60_000 } })`.
 - Body: `{ "invoices": [ ...1 to 50 items ] }`. Each item has the same fields as `CreateInvoiceDto` plus an optional `idempotencyKey`. Items may reference different companies (`companyId` or `companyTaxId`).
-- Batch-level problems (not an object/array, empty list, more than 50) return 422 for the whole request. Nothing else fails the whole request except an unexpected infrastructure error (500, nothing saved).
+- Batch-level problems (not an object/array, empty list, more than 50) return 400 ERROR_VALIDATION for the whole request (corrected after the final review; the plan first said 422). Nothing else fails the whole request except an unexpected infrastructure error (500, nothing saved).
 - Item-level problems NEVER fail the batch: the item is `rejected`, the others proceed.
 - Response: `{ data: { total, accepted, rejected, results } }`; `results` has one entry per input item, in input order: `{ index, status: 'accepted', replayed?: true, invoice }` or `{ index, status: 'rejected', error: { code, message, details? } }`.
 - Persistence: every accepted item is written in ONE transaction and ONE billing lock; commit saves all accepted items or none.
