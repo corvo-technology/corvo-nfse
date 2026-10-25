@@ -167,6 +167,29 @@ Desenho:
 | 2 | IBS/CBS 2027 (6.4), dependente da NT 9/2026 | até **31/12/2026** |
 | 3 | Conferência de CNPJ (6.5), docs, site e limpeza do ramo regular | junto com 1 e 2; limpeza depois |
 
+### 7.1 Liberação gradual por variáveis de ambiente
+
+Tudo é construído primeiro **desligado** e liberado aos poucos mudando o `.env` do deploy (Dokploy). Com tudo desligado o comportamento é idêntico ao de hoje, então dá para mesclar cada parte assim que os testes passarem, sem esperar o conjunto. Segue o padrão de `env.schema.ts` (`booleanFromEnv`, e enums `off|warn|block` como `FISCAL_IBSCBS_UNAVAILABLE_MODE`). As flags são lidas na subida do processo: mudar uma exige reiniciar a API.
+
+| Flag | Valores | Padrão | O que liga |
+|---|---|---|---|
+| `TAX_REGIME_RESTRICTION` | `off` `on` | `off` | 6.1: recusar regimes que não sejam MEI ou Simples |
+| `FISCAL_DPS_CONFORMANCE` | `off` `on` | `off` | Seção 4 e recusas síncronas de 6.2: dedução proibida, retenção do MEI, campos proibidos |
+| `SIMPLES_TOTTRIB` | `off` `on` | `off` | 6.3: enviar `indTotTrib`/`pTotTribSN` e o `regApTribSN` do perfil em vez de zeros |
+| `SIMPLES_RATE_MODE` | `off` `warn` `block` | `off` | 6.3: alíquota do mês ausente. `warn` só avisa, `block` recusa com `422` |
+| `SIMPLES_RATE_ENFORCED_FROM` | data `YYYY-MM-DD` | vazio | só exige a alíquota para competência a partir dessa data |
+| `FISCAL_2027_SIMPLES_MEI` | `off` `on` | `off` | 6.4: grupo IBSCBS de 2027. `off` mantém o bloqueio atual |
+| `CNPJ_REGISTRY_CHECK` | `off` `on` | `off` | 6.5: aviso de divergência no cadastro |
+| `*_TENANTS` (uma para cada flag acima, opcional) | lista de UUIDs ou `*` | vazio | libera a flag só para esses tenants (canário), em vez de para todos |
+
+Regras de construção:
+- As **tabelas, colunas e endpoints** de alíquotas existem desde o primeiro deploy, mesmo com `SIMPLES_RATE_MODE=off`, para os clientes poderem preencher antes de a exigência ligar.
+- Cada flag tem teste nos dois estados (ligada e desligada); desligada é igual ao comportamento atual.
+- Depois de uma flag ficar ligada para todos por um tempo combinado e sem incidentes, o código da versão antiga e a flag são removidos (uma limpeza por flag, em PR próprio).
+- Mudanças de **contrato de API** (por exemplo o `422` de regime) também ficam atrás da flag e só valem quando ela é ligada.
+
+Sequência sugerida de liberação, cada passo com um deploy e uma observação de erros da Sefin antes do próximo: `FISCAL_DPS_CONFORMANCE` → `TAX_REGIME_RESTRICTION` → `SIMPLES_TOTTRIB` (junto de clientes já tendo preenchido a alíquota) → `SIMPLES_RATE_MODE=warn` → `SIMPLES_RATE_MODE=block` com `SIMPLES_RATE_ENFORCED_FROM` → `CNPJ_REGISTRY_CHECK` → `FISCAL_2027_SIMPLES_MEI` quando a NT 9/2026 estiver implementada.
+
 A fase 0 é pequena e tem prioridade absoluta: corrige notas que podem estar sendo rejeitadas e para de aceitar clientes que não atendemos.
 
 ## 8. Testes e critério de pronto
@@ -195,6 +218,8 @@ A fase 0 é pequena e tem prioridade absoluta: corrige notas que podem estar sen
 8. **Conferência de CNPJ é só aviso** (6.5), sem recusa nem override, porque as fontes públicas atrasam. Se o negócio quiser recusa dura, é mudança de contrato da API com campo de confirmação.
 9. **Recusas síncronas** (6.2): eu decidi que regime, dedução e taxa ausente são `422` no intake, antes de reservar crédito, em vez de rejeição assíncrona com estorno.
 10. **Dados atuais:** a base tem só empresas Simples Nacional (dono do produto, 2026-10-25), então não há notas em fila de empresas de outros regimes. Antes de ligar a fase 0, o construtor roda uma consulta de auditoria por `tax_regime IN ('UNKNOWN','OUTRO_REGIME')` (a migração mapeou regimes não reconhecidos para `UNKNOWN`) e corrige à mão qualquer ocorrência.
+11. **Cronograma da alíquota:** com as flags, o envio de `pTotTribSN` e o bloqueio por alíquota ausente deixam de depender da data da fase 1. Os zeros em `vTotTrib` continuam até `SIMPLES_TOTTRIB=on`, e a exigência começa em `warn`, depois `block`, quando os clientes tiverem preenchido. É uma exceção temporária e consciente ao anti-objetivo de não enviar número zerado.
+12. **Canário por tenant** via `*_TENANTS` é minha adição: sem ela só dá para ligar para todos de uma vez.
 7. **Recursos da `open-nfse` não usados** e úteis depois (fora desta spec): `fetchByNsu` (espelhar notas emitidas fora da Corvo), `consultarAliquota`/`consultarConvenio`/`consultarRetencoes`, `substituir` e `consultarDanfse`.
 
 ## 11. Fontes
