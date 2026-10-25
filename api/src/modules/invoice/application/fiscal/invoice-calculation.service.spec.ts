@@ -56,12 +56,7 @@ describe('InvoiceCalculationService', () => {
     expect(recordCalculate).toHaveBeenCalledWith('ready', expect.any(Number));
   });
   it('adds the intake warnings to the calculation response warnings', async () => {
-    const original = await intake.prepare(
-      dto as never,
-      'ten-1',
-      'test',
-      undefined,
-    );
+    const original = await intake.prepare(dto, 'ten-1', 'test', undefined);
     const spy = jest.spyOn(intake, 'prepare').mockResolvedValue({
       ...original,
       warnings: [{ code: 'SIMPLES_RATE_STALE', message: 'update the rate' }],

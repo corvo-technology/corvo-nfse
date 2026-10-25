@@ -699,7 +699,7 @@ describe('CompanyService registry check (CNPJ_REGISTRY_CHECK)', () => {
       new CompanyDomainService(),
       {} as never,
       flagsFor(on),
-      { lookup } as never,
+      { lookup },
     );
 
   it('warns when the registry says the MEI is not a MEI', async () => {

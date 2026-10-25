@@ -21,7 +21,7 @@ describe('BrasilApiSimplesRegistry', () => {
       optanteMei: false,
       municipalityCode: '3550308',
     });
-    expect(fetchFn.mock.calls[0]?.[0]).toBe(
+    expect((fetchFn.mock.calls as unknown[][])[0]?.[0]).toBe(
       'https://brasilapi.com.br/api/cnpj/v1/11222333000181',
     );
   });
@@ -83,7 +83,7 @@ describe('BrasilApiSimplesRegistry', () => {
     await new BrasilApiSimplesRegistry({ fetchFn }).lookup(
       '12.ABC.345/01DE-35',
     );
-    expect(fetchFn.mock.calls[0]?.[0]).toBe(
+    expect((fetchFn.mock.calls as unknown[][])[0]?.[0]).toBe(
       'https://brasilapi.com.br/api/cnpj/v1/12ABC34501DE35',
     );
   });

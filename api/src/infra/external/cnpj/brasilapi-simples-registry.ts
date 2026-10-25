@@ -33,7 +33,7 @@ export class BrasilApiSimplesRegistry extends SimplesRegistryPort {
     } = {},
   ) {
     super();
-    this.fetchFn = options.fetchFn ?? (fetch as unknown as FetchLike);
+    this.fetchFn = options.fetchFn ?? fetch;
     this.now = options.now ?? Date.now;
     this.timeoutMs = options.timeoutMs ?? 3000;
   }
