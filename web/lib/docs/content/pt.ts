@@ -78,6 +78,7 @@ const ptWithRetiredCredits: DocsTree = {
           ["GET", "`/v1/companies/:companyId/certificates`", "Listar certificados", "200"],
           ["DELETE", "`/v1/companies/:companyId/certificates/:certId`", "Revogar certificado", "204"],
           ["POST", "`/v1/invoices`", "Solicitar emissão", "202"],
+          ["POST", "`/v1/invoices/batches`", "Solicitar a emissão de até 50 notas", "202"],
           ["POST", "`/v1/invoices/calculate`", "Calcular tributos sem emitir", "200"],
           ["GET", "`/v1/invoices`", "Listar notas", "200"],
           ["GET", "`/v1/invoices/:id`", "Consultar nota", "200"],
@@ -321,7 +322,7 @@ const ptWithRetiredCredits: DocsTree = {
         },
         {
           kind: "text",
-          body: "Rotas sensíveis têm orçamentos adicionais por rota, somados ao limite geral: OTP, magic link, OAuth e Turnstile (10 a 30 por minuto por IP), registro, token e revogação de clientes MCP (10 a 30 por minuto por IP) e as rotas autenticadas custosas `POST /invoices`, `POST /invoices/calculate` (120 por minuto por tenant) e upload de certificado (10 por minuto por tenant). Health checks, preflight e o recebimento Stripe são isentos. Criar mais API keys não aumenta o teto: o limite do tenant vale para todas somadas.",
+          body: "Rotas sensíveis têm orçamentos adicionais por rota, somados ao limite geral: OTP, magic link, OAuth e Turnstile (10 a 30 por minuto por IP), registro, token e revogação de clientes MCP (10 a 30 por minuto por IP) e as rotas autenticadas custosas `POST /invoices`, `POST /invoices/calculate` (120 por minuto por tenant), `POST /invoices/batches` (10 por minuto por tenant) e upload de certificado (10 por minuto por tenant). Health checks, preflight e o recebimento Stripe são isentos. Criar mais API keys não aumenta o teto: o limite do tenant vale para todas somadas.",
         },
         {
           kind: "text",
@@ -798,6 +799,119 @@ console.log(body.data.id); // { data: Invoice }`,
             { kind: "callout", tone: "accent", body: "Idempotência: mesma chave, conta e ambiente com conteúdo equivalente ao hash recuperado devolve a mesma nota; conteúdo diferente retorna `409` (`ERROR_IDEMPOTENCY_CONFLICT`). O hash é calculado antes da normalização fiscal, com canonização das chaves JSON e da data de competência: não altere a representação dos campos ao repetir uma requisição (CNPJ com e sem pontuação pode gerar hashes diferentes). Sem chave não há deduplicação." },
             { kind: "callout", tone: "warn", body: "A emissão é assíncrona — veja a página Emissão assíncrona. Resposta normalmente vem com `status: \"queued\"`; acompanhe com GET ou webhooks." },
             { kind: "callout", tone: "warn", body: "O endereço do cliente é reduzido a `city` e `state` no snapshot: `street`, `zip` e `country` não são preservados na criação da nota. Não dependa deles no retorno." },
+          ],
+        },
+        {
+          kind: "endpoint",
+          method: "POST",
+          path: "/v1/invoices/batches",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "202 Accepted",
+          summary: "Solicita a emissão de **1 a 50 notas em uma única chamada**, de uma empresa ou de várias. Cada item tem os mesmos campos de `POST /v1/invoices` mais um `idempotencyKey` opcional. Os itens são conferidos um a um: os válidos são salvos juntos em uma única transação e os inválidos voltam como `rejected` com o motivo e **não** são salvos. A emissão continua assíncrona, como em `POST /v1/invoices`.",
+          params: {
+            rows: [
+              { name: "invoices", type: "array", required: true, description: "Lista de 1 a 50 itens. Cada item recebe os campos de `POST /v1/invoices` (`companyId` ou `companyTaxId`, `service`, `amount`, `competenceDate`, `customer`, `discount`, `deduction`, `options` opcionais...). Os itens podem ser de empresas diferentes da conta. Menos de 1 ou mais de 50 itens devolve `422` para a requisição inteira." },
+              { name: "invoices[].idempotencyKey", type: "string", required: false, description: "Chave de idempotência do item (até 255 caracteres). Com a mesma chave e o mesmo conteúdo, repetir o lote devolve a nota já salva com `replayed: true` em vez de emitir de novo. O header `Idempotency-Key` não é usado nesta rota." },
+            ],
+          },
+          examples: {
+            curl: `curl -X POST "$BASE_URL/invoices/batches" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "invoices": [
+      {
+        "companyTaxId": "11222333000181",
+        "idempotencyKey": "planilha-out-linha-2",
+        "customer": { "name": "Cliente A", "taxId": "52998224725" },
+        "service": { "description": "Consultoria" },
+        "amount": 150.50,
+        "competenceDate": "2026-10-01"
+      },
+      {
+        "companyTaxId": "45723174000110",
+        "idempotencyKey": "planilha-out-linha-3",
+        "service": { "description": "Manutenção mensal" },
+        "amount": 300,
+        "competenceDate": "2026-10-01"
+      }
+    ]
+  }'`,
+            node: `const res = await fetch(\`\${BASE_URL}/invoices/batches\`, {
+  method: "POST",
+  headers: {
+    "X-API-Key": process.env.CORVO_API_KEY,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    invoices: rows.map((row, i) => ({
+      companyTaxId: row.cnpj,
+      idempotencyKey: \`planilha-out-linha-\${i + 2}\`,
+      service: { description: row.description },
+      amount: row.amount,
+      competenceDate: "2026-10-01",
+    })),
+  }),
+});
+const { data } = await res.json();
+for (const item of data.results) {
+  if (item.status === "rejected") console.log(item.index, item.error.code, item.error.message);
+}`,
+          },
+          response: {
+            label: "202 Accepted",
+            json: `{
+  "data": {
+    "total": 3,
+    "accepted": 2,
+    "rejected": 1,
+    "results": [
+      {
+        "index": 0,
+        "status": "accepted",
+        "invoice": {
+          "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
+          "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
+          "environment": "test",
+          "idempotencyKey": "planilha-out-linha-2",
+          "status": "queued",
+          "amount": 150.5,
+          "currency": "BRL",
+          "competenceDate": "2026-10-01T00:00:00.000Z",
+          "stage": "pending",
+          "createdAt": "2026-10-10T12:00:00.000Z"
+        }
+      },
+      {
+        "index": 1,
+        "status": "accepted",
+        "replayed": true,
+        "invoice": {
+          "id": "0b7a1f52-3c4d-4e6f-8a9b-2c3d4e5f6a7b",
+          "status": "queued",
+          "idempotencyKey": "planilha-out-linha-3",
+          "amount": 300
+        }
+      },
+      {
+        "index": 2,
+        "status": "rejected",
+        "error": {
+          "code": "ERROR_VALIDATION",
+          "message": "Request validation failed",
+          "details": [
+            { "field": "amount", "code": "ERROR_OUT_OF_RANGE", "message": "amount must be greater than 0" }
+          ]
+        }
+      }
+    ]
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "**Tudo ou nada para as válidas, nunca para o lote.** Todo item `accepted` é salvo em um único commit, junto com a reserva de crédito e a mensagem de fila. Um item inválido (validação, empresa não encontrada ou não pronta, certificado ausente em `live`, limite do plano) volta `rejected` e é descartado sem afetar os outros. Se algo inesperado falhar ao salvar, nada é salvo e você pode repetir o mesmo lote com segurança." },
+            { kind: "callout", tone: "accent", body: "**Lendo o resultado.** `results` traz uma entrada por item, na ordem enviada: use `index` para ligar cada resultado à linha da planilha ou ao seu registro. Corrija só as linhas `rejected` e envie de novo; as `accepted` já estão salvas. Envie sempre um `idempotencyKey` por item (por exemplo `arquivo-linha-7`): depois de um timeout, repetir o lote inteiro devolve as já salvas como `replayed: true` e tenta só as que faltam. Uma chave repetida dentro do mesmo lote é rejeitada com `ERROR_DUPLICATE_IDEMPOTENCY_KEY_IN_BATCH`." },
+            { kind: "callout", tone: "warn", body: "Em `live`, cada item aceito reserva um crédito, como em `POST /v1/invoices`. Quando o limite mensal ou diário é atingido no meio do lote, os itens que couberem são salvos e os demais voltam `rejected` com `ERROR_MONTHLY_LIMIT_EXCEEDED`, `ERROR_DAILY_LIMIT_EXCEEDED` ou `ERROR_PLAN_BLOCKED`. A rota aceita até 10 lotes por minuto por tenant (`429` com `Retry-After`). Para agentes de IA, a ferramenta MCP `nfse_issue_batch` tem o mesmo contrato." },
           ],
         },
         {
@@ -2453,6 +2567,12 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`nfse:read`",
               "`tax_id?` (CNPJ), `limit?`, `cursor?`",
               "`{ companies [{ id, legal_name, tax_id, status, tax_regime, setup_gaps, ready_to_issue }], next_cursor }`"
+            ],
+            [
+              "`nfse_issue_batch`",
+              "`nfse:write`",
+              "`invoices` (1 a 50 itens, cada um com os mesmos campos de `nfse_issue`, incluindo `company_tax_id` ou `company_id` e `idempotency_key`)",
+              "`{ total, accepted, rejected, results [{ index, status, replayed?, invoice_id?, access_key?, invoice_status?, error? }] }`; itens inválidos são rejeitados no lugar e os válidos são salvos juntos"
             ],
             [
               "`company_get`",
