@@ -454,7 +454,11 @@ export class NfseWorkflowService {
           municipalReg: company.municipalRegForDps ?? null,
           municipalityCode: company.municipalityCode,
           specialTaxRegime: profile.specialTaxRegime ?? null,
-          simplesIssRate: profile.simplesIssRate ?? null,
+          simplesIssRate: await this.simplesIssRateFor(
+            profile,
+            invoice,
+            snapshot.competenceDate,
+          ),
           ...(await this.simplesTotTribFor(
             profile,
             invoice,
@@ -466,6 +470,22 @@ export class NfseWorkflowService {
     );
     if (!built.ok) throw new DpsBuildRejectionError(built.error);
     return { ...payload, preparedDps: built.value };
+  }
+
+  /** The ISS rate informed for the competence month wins over the profile's (withholding aliquota). */
+  private async simplesIssRateFor(
+    profile: CompanyFiscalProfile,
+    invoice: Invoice,
+    competenceDate: Date | string,
+  ): Promise<string | null> {
+    if (profile.taxRegime !== 'SIMPLES_NACIONAL' || !this.simplesRates)
+      return profile.simplesIssRate ?? null;
+    const { rate } = await this.simplesRates.resolve(
+      invoice.companyId,
+      invoice.tenantId,
+      new Date(competenceDate).toISOString().slice(0, 10),
+    );
+    return rate?.issRate ?? profile.simplesIssRate ?? null;
   }
 
   /**

@@ -5,6 +5,10 @@ import {
   type FiscalIssue,
 } from '@/shared/fiscal/fiscal-validation-error';
 import {
+  SIMPLES_ISS_RATE_MAX,
+  SIMPLES_ISS_RATE_MIN,
+} from '../domain/fiscal-profile.validator';
+import {
   ISimplesRateRepository,
   type SimplesRate,
   type SimplesRateInput,
@@ -79,6 +83,17 @@ export class SimplesRateService {
       if (value === null || value === undefined) continue;
       const issue = rateIssue(field, value);
       if (issue) issues.push(issue);
+      // The ISS rate becomes the withholding aliquota (pAliq): same bounds as the fiscal profile.
+      else if (
+        field === 'issRate' &&
+        (Number(value) < SIMPLES_ISS_RATE_MIN ||
+          Number(value) > SIMPLES_ISS_RATE_MAX)
+      )
+        issues.push({
+          field,
+          code: 'out_of_range',
+          message: `issRate must be between ${SIMPLES_ISS_RATE_MIN} and ${SIMPLES_ISS_RATE_MAX}`,
+        });
     }
     if (issues.length > 0) throw new FiscalValidationError(issues);
     return this.rates.upsert(companyId, tenantId, month, input);

@@ -345,7 +345,7 @@ export type SetupGap = "municipality_code" | "certificate";
 export type CompanyStatus = "pending_setup" | "ready" | "blocked";
 export type TaxRegime = "MEI" | "Simples Nacional" | "Lucro Presumido" | "Lucro Real";
 export interface SimplesRate {
-  companyId: string; month: string; totalRate: string; issRate: string | null; ibsRate: string | null; cbsRate: string | null; updatedAt: string;
+  companyId: string; month: string; totalRate: string; issRate: string | null; updatedAt: string;
 }
 export type TaxRegimeKind = "MEI" | "SIMPLES_NACIONAL" | "LUCRO_PRESUMIDO" | "LUCRO_REAL" | "OUTRO_REGIME" | "UNKNOWN";
 export type FiscalReviewStatus = "unreviewed" | "approved" | "rejected";

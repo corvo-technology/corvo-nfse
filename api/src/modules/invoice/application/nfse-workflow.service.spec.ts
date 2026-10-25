@@ -777,7 +777,11 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
           },
         }),
       );
-    const workflow = (on: boolean, totalRate: string | null) =>
+    const workflow = (
+      on: boolean,
+      totalRate: string | null,
+      issRate: string | null = null,
+    ) =>
       new NfseWorkflowService(
         fakes.invoices,
         fakes.sequences,
@@ -795,7 +799,10 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
         flags(on),
         {
           resolve: jest.fn().mockResolvedValue({
-            rate: totalRate === null ? null : { totalRate, month: '2026-10' },
+            rate:
+              totalRate === null
+                ? null
+                : { totalRate, issRate, month: '2026-10' },
             stale: false,
           }),
         } as never,
@@ -828,6 +835,24 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       expect(payload.preparedDps?.infDPS.valores.trib.totTrib).toEqual({
         pTotTribSN: 6.54,
       });
+    });
+
+    it('uses the ISS rate informed for the month as the withholding aliquota', async () => {
+      fakes.profiles.findEffective.mockResolvedValue({
+        taxRegime: 'SIMPLES_NACIONAL',
+        specialTaxRegime: null,
+        simplesIssRate: '3.00',
+        simplesApuracao: null,
+      });
+      const invoice = createInvoice();
+      const snapshot = simplesSnapshot(invoice.id);
+      snapshot.result.applicability = {
+        ...snapshot.result.applicability,
+        issWithheld: { status: 'REQUIRED' },
+      };
+      fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(snapshot);
+      const payload = await workflow(true, '6.54', '2.01').payload(invoice);
+      expect(payload.preparedDps?.infDPS.valores.trib.tribMun.pAliq).toBe(2.01);
     });
 
     it('keeps the legacy totals when no rate was informed', async () => {

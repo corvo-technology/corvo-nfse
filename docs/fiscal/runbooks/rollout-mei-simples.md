@@ -3,7 +3,7 @@
 Spec: `docs/superpowers/specs/2026-10-25-mei-simples-focus-design.md` (seção 7.1).
 Plano: `docs/superpowers/plans/2026-10-25-mei-simples-focus.md`.
 
-Todas as mudanças nascem **desligadas**. Com tudo desligado a API se comporta como antes. As flags são lidas na subida do processo: depois de mudar o `.env` do deploy, **reinicie a API**.
+Todas as mudanças nascem **desligadas**. Com tudo desligado a API se comporta como antes. As flags são lidas na subida do processo: depois de mudar o `.env` do deploy, **reinicie a API e o worker**. O worker é quem roda o motor fiscal e monta o DPS, então o `.env` dele precisa das mesmas variáveis.
 
 ## Flags
 
@@ -38,7 +38,7 @@ Entre um passo e o próximo, deixe pelo menos um dia útil de emissões reais e 
 
 ## Como reverter
 
-Desligue a flag no `.env`, reinicie a API. Nada é apagado: as tabelas e colunas novas ficam, só o comportamento volta ao anterior. Para tirar apenas um cliente de um canário, retire o UUID de `<FLAG>_TENANTS`.
+Desligue a flag no `.env` (da API e do worker) e reinicie os dois. Nada é apagado: as tabelas e colunas novas ficam, só o comportamento volta ao anterior. Para tirar apenas um cliente de um canário, retire o UUID de `<FLAG>_TENANTS`.
 
 ## Auditoria de regimes (antes de `TAX_REGIME_RESTRICTION`)
 

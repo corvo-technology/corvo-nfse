@@ -13,6 +13,7 @@ import {
 } from '@/modules/company/domain/fiscal-profile';
 import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 import { deductionAllowed } from '../domain/fiscal/validation/deduction-policy';
+import { assertRegimeSupported } from '@/modules/company/domain/tax-regime-support';
 import type { Company } from '@/modules/company/domain/company';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
@@ -91,8 +92,22 @@ export class InvoiceIntakeService {
         municipalityCode: company.municipalityCode,
       },
     );
-    await this.assertDeductionAllowed(company, normalized, tenantId);
-    const warnings = await this.checkSimplesRate(company, normalized, tenantId);
+    // One profile lookup per invoice, shared by the checks below.
+    let profileLookup: Promise<CompanyFiscalProfile | undefined> | undefined;
+    const profile = () =>
+      (profileLookup ??= this.singleEffectiveProfile(
+        company,
+        normalized,
+        tenantId,
+      ));
+    await this.assertRegimeSupported(profile, tenantId);
+    await this.assertDeductionAllowed(normalized, tenantId, profile);
+    const warnings = await this.checkSimplesRate(
+      company,
+      normalized,
+      tenantId,
+      profile,
+    );
     // The description is optional: fall back to the service's catalog name.
     if (!normalized.service.description) {
       normalized.service = {
@@ -105,6 +120,19 @@ export class InvoiceIntakeService {
       return { company, normalized: calculationInput, environment, warnings };
     }
     return { company, normalized, environment, warnings };
+  }
+
+  /**
+   * TAX_REGIME_RESTRICTION: refuse, before any credit is reserved, an invoice of a
+   * company whose profile on the competence date is not MEI or Simples Nacional.
+   */
+  private async assertRegimeSupported(
+    getProfile: () => Promise<CompanyFiscalProfile | undefined>,
+    tenantId: string,
+  ): Promise<void> {
+    if (!this.flags?.isOn('TAX_REGIME_RESTRICTION', tenantId)) return;
+    const profile = await getProfile();
+    if (profile) assertRegimeSupported(this.flags, tenantId, profile.taxRegime);
   }
 
   /**
@@ -134,17 +162,14 @@ export class InvoiceIntakeService {
     company: Company,
     normalized: NormalizedInvoiceInput,
     tenantId: string,
+    getProfile: () => Promise<CompanyFiscalProfile | undefined>,
   ): Promise<IntakeWarning[]> {
     const mode = this.flags?.rateMode(tenantId) ?? 'off';
     if (mode === 'off' || !this.simplesRates) return [];
     const date = normalized.competenceDate.toISOString().slice(0, 10);
     const enforcedFrom = this.flags?.rateEnforcedFrom() ?? null;
     if (enforcedFrom !== null && date < enforcedFrom) return [];
-    const profile = await this.singleEffectiveProfile(
-      company,
-      normalized,
-      tenantId,
-    );
+    const profile = await getProfile();
     if (profile?.taxRegime !== 'SIMPLES_NACIONAL') return [];
     const { rate, stale } = await this.simplesRates.resolve(
       company.id,
@@ -175,17 +200,13 @@ export class InvoiceIntakeService {
    * any credit is reserved. Uses the profile effective on the competence date.
    */
   private async assertDeductionAllowed(
-    company: Company,
     normalized: NormalizedInvoiceInput,
     tenantId: string,
+    getProfile: () => Promise<CompanyFiscalProfile | undefined>,
   ): Promise<void> {
     if (!normalized.deduction || normalized.deduction <= 0) return;
     if (!this.flags?.isOn('FISCAL_DPS_CONFORMANCE', tenantId)) return;
-    const profile = await this.singleEffectiveProfile(
-      company,
-      normalized,
-      tenantId,
-    );
+    const profile = await getProfile();
     if (!profile) return;
     const decision = deductionAllowed({
       taxRegime: profile.taxRegime,

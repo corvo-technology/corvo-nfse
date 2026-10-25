@@ -4,6 +4,7 @@ import { Company } from '@/modules/company/domain/company';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { InvoiceDomainService } from '../domain/invoice-domain.service';
 import { InvoiceIntakeService } from './invoice-intake.service';
+import { TaxRegimeNotSupportedError } from '@/modules/company/domain/errors';
 import { ConfigService } from '@nestjs/config';
 import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 
@@ -476,5 +477,86 @@ describe('InvoiceIntakeService Simples rate requirement (SIMPLES_RATE_MODE)', ()
     await expect(
       bare.intake.prepare(dto(), TENANT, 'test'),
     ).resolves.toBeDefined();
+  });
+});
+
+describe('InvoiceIntakeService regime restriction (TAX_REGIME_RESTRICTION)', () => {
+  const TENANT = '11111111-1111-4111-8111-111111111111';
+  const company = Company.create(
+    {
+      legalName: 'Empresa',
+      taxId: '11222333000181',
+      taxRegime: 'Lucro Real',
+      municipalityCode: '3550308',
+      defaultServiceCode: '060101',
+    },
+    TENANT,
+  );
+  const flags = (on: boolean) =>
+    new RolloutFlagsService(
+      new ConfigService({
+        rollout: {
+          taxRegimeRestriction: { on, tenants: '*' },
+          fiscalDpsConformance: { on: false, tenants: '*' },
+          simplesTottrib: { on: false, tenants: '*' },
+          fiscal2027SimplesMei: { on: false, tenants: '*' },
+          cnpjRegistryCheck: { on: false, tenants: '*' },
+          simplesRateMode: { mode: 'off', tenants: '*' },
+          simplesRateEnforcedFrom: null,
+        },
+      }),
+    );
+  const build = (regime: string, on: boolean) =>
+    new InvoiceIntakeService(
+      { findById: jest.fn().mockResolvedValue(company) } as never,
+      new InvoiceDomainService(),
+      {
+        list: jest
+          .fn()
+          .mockResolvedValue([
+            { taxRegime: regime, validFrom: '2025-01-01', validUntil: null },
+          ]),
+      } as never,
+      flags(on),
+    );
+  const dto = {
+    companyId: company.id,
+    amount: 100,
+    competenceDate: '2026-10-15',
+    service: { description: 'Corte', code: '060101' },
+  };
+
+  it.each(['LUCRO_PRESUMIDO', 'LUCRO_REAL', 'OUTRO_REGIME', 'UNKNOWN'])(
+    'refuses an invoice of a %s company before any credit is reserved',
+    async (regime) => {
+      await expect(
+        build(regime, true).prepare(dto, TENANT, 'test'),
+      ).rejects.toBeInstanceOf(TaxRegimeNotSupportedError);
+    },
+  );
+
+  it.each(['MEI', 'SIMPLES_NACIONAL'])(
+    'accepts a %s company',
+    async (regime) => {
+      await expect(
+        build(regime, true).prepare(dto, TENANT, 'test'),
+      ).resolves.toBeDefined();
+    },
+  );
+
+  it('keeps today behaviour when the flag is off', async () => {
+    await expect(
+      build('LUCRO_REAL', false).prepare(dto, TENANT, 'test'),
+    ).resolves.toBeDefined();
+  });
+
+  it('leaves a company without a single effective profile to the engine', async () => {
+    const intake = new InvoiceIntakeService(
+      { findById: jest.fn().mockResolvedValue(company) } as never,
+      new InvoiceDomainService(),
+      { list: jest.fn().mockResolvedValue([]) } as never,
+      flags(true),
+    );
+    await expect(intake.prepare(dto, TENANT, 'test')).resolves.toBeDefined();
   });
 });

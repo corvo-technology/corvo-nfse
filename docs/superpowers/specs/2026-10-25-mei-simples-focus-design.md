@@ -107,7 +107,7 @@ conferência de CNPJ/Simples no cadastro            (6.5)
 
 **Campos novos no perfil fiscal do ME/EPP** (tabela `company_fiscal_profiles`, versionada por `validFrom`, como hoje):
 
-- `simplesApuracao`: `'SN'` (padrão) | `'ISS_MUNICIPAL'` | `'REGULAR'`, que mapeia para `regApTribSN` 1, 2, 3. **Somente `'SN'` é suportado nesta entrega.** Os outros valores são recusados com `422 ERROR_SIMPLES_SUBLIMIT_NOT_SUPPORTED`, e o motor devolve bloqueio explícito (não emite com regime errado).
+- `simplesApuracao`: `'SN'` (padrão) | `'ISS_MUNICIPAL'` | `'REGULAR'`, que mapeia para `regApTribSN` 1, 2, 3. **Somente `'SN'` é suportado nesta entrega.** Os outros valores são recusados com `422 ERROR_VALIDATION` e `details[].code = ERROR_SIMPLES_SUBLIMIT_NOT_SUPPORTED`, e o motor devolve bloqueio explícito (não emite com regime errado).
 - Para o MEI o campo não existe e `regApTribSN` nunca é enviado.
 
 **Alíquotas mensais, tabela nova `company_simples_rates`** (decisão de projeto, ver 10.1):

@@ -241,53 +241,54 @@ export class CompanyService {
     )
       throw new BadRequestException('Company environment is immutable');
 
-    if (input.taxRegime !== undefined)
-      assertRegimeSupported(
-        this.flags,
-        tenantId,
-        regimeKindFromLegacy(input.taxRegime),
-      );
-    company.update(normalized);
-
-    await this.companyRepo.save(company, tenantId);
-
-    // If any regime field was sent, append a new fiscal profile row when the
+    // If any regime field was sent, a new fiscal profile row is appended when the
     // effective regime actually changed (never mutate an approved row in place).
+    // The resulting regime is decided, and refused if unsupported, BEFORE anything
+    // is saved: a refused change must not leave the company half updated.
     const regimeTouched =
       input.taxRegime !== undefined ||
       input.simpleNational !== undefined ||
       input.specialRegime !== undefined;
-    if (regimeTouched) {
-      const current = await this.profiles.current(id, tenantId);
-      const mergedRegime = {
-        taxRegime:
-          input.taxRegime !== undefined
-            ? regimeKindFromLegacy(input.taxRegime)
-            : (current?.taxRegime ?? 'UNKNOWN'),
-        simpleNational:
-          input.simpleNational ?? current?.simpleNational ?? false,
-        specialTaxRegime:
-          input.specialRegime !== undefined
-            ? input.specialRegime.trim() || null
-            : (current?.specialTaxRegime ?? null),
-      };
-      const unchanged =
+    const current = regimeTouched
+      ? await this.profiles.current(id, tenantId)
+      : null;
+    const mergedRegime = {
+      taxRegime:
+        input.taxRegime !== undefined
+          ? regimeKindFromLegacy(input.taxRegime)
+          : (current?.taxRegime ?? 'UNKNOWN'),
+      simpleNational: input.simpleNational ?? current?.simpleNational ?? false,
+      specialTaxRegime:
+        input.specialRegime !== undefined
+          ? input.specialRegime.trim() || null
+          : (current?.specialTaxRegime ?? null),
+    };
+    const regimeChanged =
+      regimeTouched &&
+      !(
         current !== null &&
         mergedRegime.taxRegime === current.taxRegime &&
         mergedRegime.simpleNational === current.simpleNational &&
-        mergedRegime.specialTaxRegime === current.specialTaxRegime;
-      if (!unchanged) {
-        await this.profiles.record(id, tenantId, {
-          ...mergedRegime,
-          ibsCbsRegularOption: current?.ibsCbsRegularOption ?? false,
-          ibsCbsRegularFrom: current?.ibsCbsRegularFrom ?? null,
-          simplesIssRate: current?.simplesIssRate ?? null,
-          simplesApuracao: current?.simplesApuracao ?? null,
-          validFrom: todayInEstablishmentTimezone(),
-          source: 'company_api',
-          ...declarationReview(declaredBy),
-        });
-      }
+        mergedRegime.specialTaxRegime === current.specialTaxRegime
+      );
+    if (regimeChanged)
+      assertRegimeSupported(this.flags, tenantId, mergedRegime.taxRegime);
+
+    company.update(normalized);
+
+    await this.companyRepo.save(company, tenantId);
+
+    if (regimeChanged) {
+      await this.profiles.record(id, tenantId, {
+        ...mergedRegime,
+        ibsCbsRegularOption: current?.ibsCbsRegularOption ?? false,
+        ibsCbsRegularFrom: current?.ibsCbsRegularFrom ?? null,
+        simplesIssRate: current?.simplesIssRate ?? null,
+        simplesApuracao: current?.simplesApuracao ?? null,
+        validFrom: todayInEstablishmentTimezone(),
+        source: 'company_api',
+        ...declarationReview(declaredBy),
+      });
     }
 
     return company;

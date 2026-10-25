@@ -60,6 +60,18 @@ describe('SimplesRateService', () => {
     expect(repository.rows.size).toBe(1);
   });
 
+  it.each(['1.79', '5.01', '0'])(
+    'put refuses an ISS rate outside the Simples bounds (%s)',
+    async (issRate) => {
+      const { service } = build();
+      const error = await service
+        .put(companyId, tenantId, '2026-10', { totalRate: '6.00', issRate })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(FiscalValidationError);
+      expect((error as FiscalValidationError).issues[0]?.field).toBe('issRate');
+    },
+  );
+
   it.each([
     ['a malformed month', '2026-1', { totalRate: '5.00' }, 'month'],
     ['month 13', '2026-13', { totalRate: '5.00' }, 'month'],

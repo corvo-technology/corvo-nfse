@@ -10,6 +10,8 @@ type FetchLike = (
 ) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>;
 
 const DAY_MS = 24 * 3600_000;
+/** Oldest entries are dropped beyond this, so the cache cannot grow forever. */
+const MAX_CACHED = 1000;
 
 /** Public CNPJ registry (BrasilAPI). Free, rate limited: cached for 24 h and never blocking. */
 @Injectable()
@@ -37,7 +39,8 @@ export class BrasilApiSimplesRegistry extends SimplesRegistryPort {
   }
 
   async lookup(cnpj: string): Promise<RegistryInfo | null> {
-    const digits = cnpj.replace(/\D/g, '');
+    // The new alphanumeric CNPJ keeps its letters: stripping them would query another company.
+    const digits = cnpj.replace(/[^0-9A-Za-z]/g, '').toUpperCase();
     const cached = this.cache.get(digits);
     if (cached && this.now() - cached.at < DAY_MS) return cached.info;
     const controller = new AbortController();
@@ -64,6 +67,8 @@ export class BrasilApiSimplesRegistry extends SimplesRegistryPort {
         municipalityCode:
           typeof ibge === 'number' ? String(ibge).padStart(7, '0') : null,
       };
+      if (this.cache.size >= MAX_CACHED)
+        this.cache.delete(this.cache.keys().next().value as string);
       this.cache.set(digits, { at: this.now(), info });
       return info;
     } catch (error) {

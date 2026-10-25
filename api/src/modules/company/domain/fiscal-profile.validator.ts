@@ -1,8 +1,8 @@
 import type { FiscalIssue } from '@/shared/fiscal/fiscal-validation-error';
 import type { NewFiscalProfile } from './fiscal-profile.repository';
 
-const SIMPLES_ISS_RATE_MIN = 1.8;
-const SIMPLES_ISS_RATE_MAX = 5;
+export const SIMPLES_ISS_RATE_MIN = 1.8;
+export const SIMPLES_ISS_RATE_MAX = 5;
 
 function decimalPlaces(value: string): number {
   const [, fraction] = value.split('.');

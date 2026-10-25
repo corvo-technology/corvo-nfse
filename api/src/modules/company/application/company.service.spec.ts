@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 import { TaxRegimeNotSupportedError } from '../domain/errors';
+import { Company } from '../domain/company';
 import { CompanyService } from './company.service';
 import { CompanyDomainService } from '../domain/company-domain.service';
 import { ICompanyRepository } from '../domain/company.repository';
@@ -639,6 +640,27 @@ describe('CompanyService regime restriction (TAX_REGIME_RESTRICTION)', () => {
       expect(profiles.record).not.toHaveBeenCalled();
     },
   );
+
+  it('update refuses a regime change the restriction would reject BEFORE saving the company', async () => {
+    const { service, repo, profiles } = build(true);
+    const existing = Company.create(
+      {
+        legalName: 'Empresa',
+        taxId: '22334455000186',
+        taxRegime: 'MEI',
+        municipalityCode: '3550308',
+      },
+      tenant,
+    );
+    repo.findByIdAndTenantId.mockResolvedValue(existing);
+    // No current profile: a partial regime change would inherit UNKNOWN.
+    profiles.current.mockResolvedValue(null);
+    await expect(
+      service.update(existing.id, { specialRegime: '1' }, tenant, 'test'),
+    ).rejects.toBeInstanceOf(TaxRegimeNotSupportedError);
+    expect(repo.save).not.toHaveBeenCalled();
+    expect(profiles.record).not.toHaveBeenCalled();
+  });
 
   it('accepts MEI when the flag is on and Lucro Presumido when it is off', async () => {
     await expect(
