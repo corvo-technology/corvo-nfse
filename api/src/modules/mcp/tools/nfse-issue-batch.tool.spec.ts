@@ -104,7 +104,7 @@ describe('nfse_issue_batch', () => {
       },
       context,
     );
-    expect(emitBatch.mock.calls[0][0]).toHaveLength(1);
+    expect((emitBatch.mock.calls as unknown[][])[0]?.[0]).toHaveLength(1);
     expect(result.results.map((r) => [r.index, r.status])).toEqual([
       [0, 'rejected'],
       [1, 'accepted'],

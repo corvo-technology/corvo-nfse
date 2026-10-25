@@ -69,7 +69,7 @@ describe('InvoiceService.prepareEmission', () => {
 
   it('returns replay when the idempotency key exists with the same hash', async () => {
     await service.emit(dto, 'tenant-1', testAuth, 'key-1');
-    const stored = lifecycle.submit.mock.calls[0][0];
+    const stored = (lifecycle.submit.mock.calls as unknown[][])[0]?.[0];
     repository.findByIdempotencyKey.mockResolvedValue(stored);
     companies.findByTaxId.mockClear();
 
@@ -87,7 +87,7 @@ describe('InvoiceService.prepareEmission', () => {
   it('throws IdempotencyConflictError when the key exists with a different hash', async () => {
     await service.emit(dto, 'tenant-1', testAuth, 'key-1');
     repository.findByIdempotencyKey.mockResolvedValue(
-      lifecycle.submit.mock.calls[0][0],
+      (lifecycle.submit.mock.calls as unknown[][])[0]?.[0],
     );
 
     await expect(

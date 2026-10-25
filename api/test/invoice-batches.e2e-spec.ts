@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 import { randomBytes, randomUUID } from 'node:crypto';
 import * as argon2 from 'argon2';
 import request from 'supertest';
@@ -92,12 +91,14 @@ describe('POST /v1/invoices/batches (e2e)', () => {
       rejected: 2,
     });
     const results = first.body.data.results as Array<Record<string, any>>;
-    expect(results.map((r) => [r.index, r.status])).toEqual([
-      [0, 'accepted'],
-      [1, 'accepted'],
-      [2, 'rejected'],
-      [3, 'rejected'],
-    ]);
+    expect(results.map((r): [unknown, unknown] => [r.index, r.status])).toEqual(
+      [
+        [0, 'accepted'],
+        [1, 'accepted'],
+        [2, 'rejected'],
+        [3, 'rejected'],
+      ],
+    );
     expect(results[0]?.invoice).toMatchObject({
       status: 'queued',
       environment: 'test',

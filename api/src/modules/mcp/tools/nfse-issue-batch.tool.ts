@@ -62,7 +62,7 @@ export function createNfseIssueBatchHandler(batchService: InvoiceBatchService) {
     const inputErrors = await validate(input);
     if (inputErrors.length > 0) throw invalidInput(inputErrors);
 
-    const results: BatchToolResult[] = new Array(input.invoices.length);
+    const results = new Array<BatchToolResult>(input.invoices.length);
     const toSend: unknown[] = [];
     const sentIndexes: number[] = [];
     for (const [index, raw] of input.invoices.entries()) {
@@ -78,7 +78,7 @@ export function createNfseIssueBatchHandler(batchService: InvoiceBatchService) {
     if (toSend.length > 0) {
       const outcome = await batchService.emitBatch(toSend, ctx.tenantId, ctx);
       for (const item of outcome.results) {
-        const index = sentIndexes[item.index] as number;
+        const index = sentIndexes[item.index];
         results[index] =
           item.status === 'accepted'
             ? {

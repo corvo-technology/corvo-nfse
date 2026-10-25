@@ -368,7 +368,7 @@ describe('InvoiceLifecycleService.submitBatch', () => {
 
   it('rejects an entry whose idempotency key already exists, without writing it', async () => {
     const f = build();
-    f.invoices.findByIdempotencyKey.mockResolvedValueOnce({} as never);
+    f.invoices.findByIdempotencyKey.mockResolvedValueOnce({});
     const outcomes = await f.service.submitBatch(tenantId, [
       entry('test', 'taken'),
       entry(),

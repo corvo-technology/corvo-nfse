@@ -98,34 +98,8 @@ export class InvoiceLifecycleService {
       await this.unitOfWork.execute(() =>
         this.billing.locked(tenantId, async () => {
           outcomes.length = 0;
-          for (const { invoice, event } of entries) {
-            if (event.invoiceId !== invoice.id)
-              throw new Error('Invoice/event identity mismatch');
-            if (await this.idempotencyKeyTaken(invoice)) {
-              outcomes.push({
-                ok: false,
-                code: 'ERROR_IDEMPOTENCY_CONFLICT',
-                message: 'Idempotency key was used with a different payload',
-              });
-              continue;
-            }
-            if (invoice.environment === 'live') {
-              try {
-                await this.reserveCredit(invoice);
-              } catch (error) {
-                // Thrown by the billing rules before any write: the transaction stays usable.
-                if (!(error instanceof BillingRuleError)) throw error;
-                outcomes.push({
-                  ok: false,
-                  code: publicErrorCode(error.code, 'ERROR_BILLING_RULE'),
-                  message: error.message,
-                });
-                continue;
-              }
-            }
-            await this.insertQueued(invoice, event);
-            outcomes.push({ ok: true });
-          }
+          for (const entry of entries)
+            outcomes.push(await this.acceptBatchEntry(entry));
         }),
       );
       const anyLive = entries.some(
@@ -135,6 +109,36 @@ export class InvoiceLifecycleService {
       if (anyLive) await this.publishCreditsChanged(tenantId);
       return outcomes;
     });
+  }
+
+  /** One entry of a batch, inside the open transaction: reject it cleanly or write it. */
+  private async acceptBatchEntry({
+    invoice,
+    event,
+  }: BatchSubmitEntry): Promise<BatchSubmitOutcome> {
+    if (event.invoiceId !== invoice.id)
+      throw new Error('Invoice/event identity mismatch');
+    if (await this.idempotencyKeyTaken(invoice))
+      return {
+        ok: false,
+        code: 'ERROR_IDEMPOTENCY_CONFLICT',
+        message: 'Idempotency key was used with a different payload',
+      };
+    if (invoice.environment === 'live') {
+      try {
+        await this.reserveCredit(invoice);
+      } catch (error) {
+        // Thrown by the billing rules before any write: the transaction stays usable.
+        if (!(error instanceof BillingRuleError)) throw error;
+        return {
+          ok: false,
+          code: publicErrorCode(error.code, 'ERROR_BILLING_RULE'),
+          message: error.message,
+        };
+      }
+    }
+    await this.insertQueued(invoice, event);
+    return { ok: true };
   }
 
   private async idempotencyKeyTaken(invoice: Invoice): Promise<boolean> {

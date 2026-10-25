@@ -163,7 +163,7 @@ async function mapPool<T, R>(
   const worker = async () => {
     while (next < items.length) {
       const index = next++;
-      results[index] = await work(items[index] as T, index);
+      results[index] = await work(items[index], index);
     }
   };
   await Promise.all(

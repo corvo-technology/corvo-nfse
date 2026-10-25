@@ -97,9 +97,7 @@ export class McpController {
         (result?.result as { isError?: boolean } | undefined)?.isError === true;
       if (request?.method !== 'tools/call' || failed) return;
       toolCalls += 1;
-      if (request.params?.name === 'nfse_issue') invoicesIssued += 1;
-      if (request.params?.name === 'nfse_issue_batch')
-        invoicesIssued += newlyIssuedInBatch(result);
+      invoicesIssued += invoicesIssuedBy(request.params?.name, result);
     });
     try {
       await this.connections.recordUsage(auth.mcpConnectionId, auth.tenantId, {
@@ -110,6 +108,15 @@ export class McpController {
       this.logger.warn(`Could not record MCP usage: ${String(error)}`);
     }
   }
+}
+
+/** Invoices a successful tool call created: 1 for nfse_issue, the newly accepted items for nfse_issue_batch. */
+function invoicesIssuedBy(
+  tool: string | undefined,
+  result: McpResponse | null,
+): number {
+  if (tool === 'nfse_issue') return 1;
+  return tool === 'nfse_issue_batch' ? newlyIssuedInBatch(result) : 0;
 }
 
 /** Accepted items of an nfse_issue_batch result, excluding replays of earlier calls. */

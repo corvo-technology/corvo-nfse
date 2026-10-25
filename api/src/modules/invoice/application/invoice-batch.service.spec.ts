@@ -48,7 +48,9 @@ describe('InvoiceBatchService.emitBatch', () => {
       status: 'rejected',
       error: { code: 'ERROR_VALIDATION' },
     });
-    expect(lifecycle.submitBatch.mock.calls[0][1]).toHaveLength(2);
+    expect(
+      (lifecycle.submitBatch.mock.calls as unknown[][])[0]?.[1],
+    ).toHaveLength(2);
   });
 
   it('rejects items that are not objects', async () => {
