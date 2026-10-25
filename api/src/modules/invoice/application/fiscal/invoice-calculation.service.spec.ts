@@ -55,6 +55,32 @@ describe('InvoiceCalculationService', () => {
     expect(result).toHaveProperty('response.status', 'ready');
     expect(recordCalculate).toHaveBeenCalledWith('ready', expect.any(Number));
   });
+  it('adds the intake warnings to the calculation response warnings', async () => {
+    const original = await intake.prepare(
+      dto as never,
+      'ten-1',
+      'test',
+      undefined,
+    );
+    const spy = jest.spyOn(intake, 'prepare').mockResolvedValue({
+      ...original,
+      warnings: [{ code: 'SIMPLES_RATE_STALE', message: 'update the rate' }],
+    });
+    const result = await new InvoiceCalculationService(
+      intake,
+      calculationEngine(),
+    ).calculate(dto, 'ten-1', 'test');
+    spy.mockRestore();
+    expect(result).toHaveProperty('response.warnings');
+    const warnings = (
+      result as {
+        response: { warnings: Array<{ code: string; step: string }> };
+      }
+    ).response.warnings;
+    expect(warnings).toContainEqual(
+      expect.objectContaining({ code: 'SIMPLES_RATE_STALE', step: 'Intake' }),
+    );
+  });
   it.each(['INTEGRATION', 'INTERNAL'] as const)(
     'returns an HTTP failure for %s',
     async (category) => {

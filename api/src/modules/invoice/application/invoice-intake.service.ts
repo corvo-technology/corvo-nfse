@@ -1,7 +1,16 @@
-import { BadRequestException, Injectable, Optional } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  Optional,
+} from '@nestjs/common';
+import { SimplesRateService } from '@/modules/company/application/simples-rate.service';
 import { CompanyService } from '@/modules/company/application/company.service';
 import { CompanyFiscalProfileService } from '@/modules/company/application/company-fiscal-profile.service';
-import { effectiveProfilesOn } from '@/modules/company/domain/fiscal-profile';
+import {
+  effectiveProfilesOn,
+  type CompanyFiscalProfile,
+} from '@/modules/company/domain/fiscal-profile';
 import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 import { deductionAllowed } from '../domain/fiscal/validation/deduction-policy';
 import type { Company } from '@/modules/company/domain/company';
@@ -17,10 +26,17 @@ import {
   defaultServiceDescription,
 } from '../infra/fiscal/service-defaults';
 
+/** A non blocking finding of the intake, reported by the calculation response. */
+export interface IntakeWarning {
+  readonly code: string;
+  readonly message: string;
+}
+
 export interface PreparedInvoiceInput {
   company: Company;
   normalized: NormalizedInvoiceInput;
   environment: ExecutionEnvironment;
+  warnings: IntakeWarning[];
 }
 
 @Injectable()
@@ -31,7 +47,10 @@ export class InvoiceIntakeService {
     // Optional so the intake keeps working (rule off) where they are not provided.
     @Optional() private readonly profiles?: CompanyFiscalProfileService,
     @Optional() private readonly flags?: RolloutFlagsService,
+    @Optional() private readonly simplesRates?: SimplesRateService,
   ) {}
+
+  private readonly logger = new Logger(InvoiceIntakeService.name);
 
   async prepare(
     dto: CreateInvoiceDto,
@@ -73,6 +92,7 @@ export class InvoiceIntakeService {
       },
     );
     await this.assertDeductionAllowed(company, normalized, tenantId);
+    const warnings = await this.checkSimplesRate(company, normalized, tenantId);
     // The description is optional: fall back to the service's catalog name.
     if (!normalized.service.description) {
       normalized.service = {
@@ -82,9 +102,72 @@ export class InvoiceIntakeService {
     }
     if (mode?.allowFutureCompetence) {
       const { scheduledFor: _scheduledFor, ...calculationInput } = normalized;
-      return { company, normalized: calculationInput, environment };
+      return { company, normalized: calculationInput, environment, warnings };
     }
-    return { company, normalized, environment };
+    return { company, normalized, environment, warnings };
+  }
+
+  /**
+   * The one fiscal profile effective on the competence date. Zero or overlapping
+   * profiles are reported by the fiscal engine, so they yield undefined here.
+   */
+  private async singleEffectiveProfile(
+    company: Company,
+    normalized: NormalizedInvoiceInput,
+    tenantId: string,
+  ): Promise<CompanyFiscalProfile | undefined> {
+    if (!this.profiles) return undefined;
+    const date = normalized.competenceDate.toISOString().slice(0, 10);
+    const effective = effectiveProfilesOn(
+      await this.profiles.list(company.id, tenantId),
+      date,
+    );
+    return effective.length === 1 ? effective[0] : undefined;
+  }
+
+  /**
+   * SIMPLES_RATE_MODE: a Simples Nacional ME/EPP must have informed the rate of
+   * the month (pTotTribSN). `warn` reports it, `block` refuses before any credit
+   * is reserved. A stale rate only warns.
+   */
+  private async checkSimplesRate(
+    company: Company,
+    normalized: NormalizedInvoiceInput,
+    tenantId: string,
+  ): Promise<IntakeWarning[]> {
+    const mode = this.flags?.rateMode(tenantId) ?? 'off';
+    if (mode === 'off' || !this.simplesRates) return [];
+    const date = normalized.competenceDate.toISOString().slice(0, 10);
+    const enforcedFrom = this.flags?.rateEnforcedFrom() ?? null;
+    if (enforcedFrom !== null && date < enforcedFrom) return [];
+    const profile = await this.singleEffectiveProfile(
+      company,
+      normalized,
+      tenantId,
+    );
+    if (profile?.taxRegime !== 'SIMPLES_NACIONAL') return [];
+    const { rate, stale } = await this.simplesRates.resolve(
+      company.id,
+      tenantId,
+      date,
+    );
+    if (rate === null) {
+      const message = `Inform the Simples Nacional rate of the month for this company (PUT /companies/${company.id}/simples-rates/${date.slice(0, 7)})`;
+      if (mode === 'block')
+        throw new FiscalValidationError([
+          { field: 'simplesRate.totalRate', code: 'required', message },
+        ]);
+      this.logger.warn(`Missing Simples rate for company ${company.id}`);
+      return [{ code: 'SIMPLES_RATE_MISSING', message }];
+    }
+    return stale
+      ? [
+          {
+            code: 'SIMPLES_RATE_STALE',
+            message: `The last informed Simples Nacional rate is from ${rate.month}: update it for ${date.slice(0, 7)}`,
+          },
+        ]
+      : [];
   }
 
   /**
@@ -98,14 +181,11 @@ export class InvoiceIntakeService {
   ): Promise<void> {
     if (!normalized.deduction || normalized.deduction <= 0) return;
     if (!this.flags?.isOn('FISCAL_DPS_CONFORMANCE', tenantId)) return;
-    if (!this.profiles) return;
-    const date = normalized.competenceDate.toISOString().slice(0, 10);
-    const effective = effectiveProfilesOn(
-      await this.profiles.list(company.id, tenantId),
-      date,
+    const profile = await this.singleEffectiveProfile(
+      company,
+      normalized,
+      tenantId,
     );
-    // Zero or overlapping profiles are reported by the fiscal engine.
-    const profile = effective.length === 1 ? effective[0] : undefined;
     if (!profile) return;
     const decision = deductionAllowed({
       taxRegime: profile.taxRegime,

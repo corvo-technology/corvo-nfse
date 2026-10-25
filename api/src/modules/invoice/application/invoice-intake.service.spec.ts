@@ -330,3 +330,151 @@ describe('InvoiceIntakeService deduction by regime (Anexo I)', () => {
     ).resolves.toBeDefined();
   });
 });
+
+describe('InvoiceIntakeService Simples rate requirement (SIMPLES_RATE_MODE)', () => {
+  const TENANT = '11111111-1111-4111-8111-111111111111';
+  const OTHER = '22222222-2222-4222-8222-222222222222';
+  const company = Company.create(
+    {
+      legalName: 'Empresa',
+      taxId: '11222333000181',
+      taxRegime: 'Simples Nacional',
+      municipalityCode: '3550308',
+      defaultServiceCode: '060101',
+    },
+    TENANT,
+  );
+  const flags = (
+    mode: 'off' | 'warn' | 'block',
+    enforcedFrom: string | null = null,
+    tenants: '*' | string[] = '*',
+  ) =>
+    new RolloutFlagsService(
+      new ConfigService({
+        rollout: {
+          taxRegimeRestriction: { on: false, tenants: '*' },
+          fiscalDpsConformance: { on: false, tenants: '*' },
+          simplesTottrib: { on: false, tenants: '*' },
+          fiscal2027SimplesMei: { on: false, tenants: '*' },
+          cnpjRegistryCheck: { on: false, tenants: '*' },
+          simplesRateMode: { mode, tenants },
+          simplesRateEnforcedFrom: enforcedFrom,
+        },
+      }),
+    );
+  const build = (
+    regime: 'SIMPLES_NACIONAL' | 'MEI',
+    resolved: { rate: { totalRate: string } | null; stale: boolean },
+    flagService: RolloutFlagsService | undefined,
+  ) => {
+    const rates = { resolve: jest.fn().mockResolvedValue(resolved) };
+    const intake = new InvoiceIntakeService(
+      {
+        findById: jest.fn().mockResolvedValue(company),
+        findByTaxId: jest.fn().mockResolvedValue(company),
+      } as never,
+      new InvoiceDomainService(),
+      {
+        list: jest
+          .fn()
+          .mockResolvedValue([
+            { taxRegime: regime, validFrom: '2025-01-01', validUntil: null },
+          ]),
+      } as never,
+      flagService,
+      rates as never,
+    );
+    return { intake, rates };
+  };
+  const dto = (competenceDate = '2026-10-15') => ({
+    companyId: company.id,
+    amount: 100,
+    competenceDate,
+    service: { description: 'Corte', code: '060101' },
+  });
+  const noRate = { rate: null, stale: false };
+
+  it('mode off never asks for a rate', async () => {
+    const { intake, rates } = build('SIMPLES_NACIONAL', noRate, flags('off'));
+    const prepared = await intake.prepare(dto(), TENANT, 'test');
+    expect(rates.resolve).not.toHaveBeenCalled();
+    expect(prepared.warnings).toEqual([]);
+  });
+
+  it('mode warn lets an ME/EPP without a rate through and reports it', async () => {
+    const { intake } = build('SIMPLES_NACIONAL', noRate, flags('warn'));
+    const prepared = await intake.prepare(dto(), TENANT, 'test');
+    expect(prepared.warnings).toEqual([
+      expect.objectContaining({ code: 'SIMPLES_RATE_MISSING' }),
+    ]);
+  });
+
+  it('mode block refuses with the missing field, before anything is reserved', async () => {
+    const { intake } = build('SIMPLES_NACIONAL', noRate, flags('block'));
+    const error = await intake
+      .prepare(dto(), TENANT, 'test')
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(FiscalValidationError);
+    expect((error as FiscalValidationError).issues[0]).toMatchObject({
+      field: 'simplesRate.totalRate',
+      code: 'required',
+    });
+  });
+
+  it('does not enforce before SIMPLES_RATE_ENFORCED_FROM', async () => {
+    const { intake, rates } = build(
+      'SIMPLES_NACIONAL',
+      noRate,
+      flags('block', '2026-10-10'),
+    );
+    await expect(
+      intake.prepare(dto('2026-10-05'), TENANT, 'test'),
+    ).resolves.toBeDefined();
+    expect(rates.resolve).not.toHaveBeenCalled();
+    await expect(
+      intake.prepare(dto('2026-10-10'), TENANT, 'test'),
+    ).rejects.toBeInstanceOf(FiscalValidationError);
+  });
+
+  it('a MEI never needs a rate', async () => {
+    const { intake, rates } = build('MEI', noRate, flags('block'));
+    await expect(intake.prepare(dto(), TENANT, 'test')).resolves.toBeDefined();
+    expect(rates.resolve).not.toHaveBeenCalled();
+  });
+
+  it('a stale rate adds SIMPLES_RATE_STALE and never blocks', async () => {
+    const { intake } = build(
+      'SIMPLES_NACIONAL',
+      { rate: { totalRate: '6.00' }, stale: true },
+      flags('block'),
+    );
+    const prepared = await intake.prepare(dto(), TENANT, 'test');
+    expect(prepared.warnings).toEqual([
+      expect.objectContaining({ code: 'SIMPLES_RATE_STALE' }),
+    ]);
+  });
+
+  it('an up to date rate adds no warning', async () => {
+    const { intake } = build(
+      'SIMPLES_NACIONAL',
+      { rate: { totalRate: '6.00' }, stale: false },
+      flags('block'),
+    );
+    expect((await intake.prepare(dto(), TENANT, 'test')).warnings).toEqual([]);
+  });
+
+  it('ignores tenants outside the list and works without flags', async () => {
+    const outside = build(
+      'SIMPLES_NACIONAL',
+      noRate,
+      flags('block', null, [OTHER]),
+    );
+    await expect(
+      outside.intake.prepare(dto(), TENANT, 'test'),
+    ).resolves.toBeDefined();
+    const bare = build('SIMPLES_NACIONAL', noRate, undefined);
+    await expect(
+      bare.intake.prepare(dto(), TENANT, 'test'),
+    ).resolves.toBeDefined();
+  });
+});
