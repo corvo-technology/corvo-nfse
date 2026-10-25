@@ -11,6 +11,14 @@ describe('rtc environment configuration', () => {
     expect(env.FISCAL_DPS_LAYOUT).toBe('rtc-v1.01');
   });
 
+  it('accepts the NT 009 release 1 layout', () => {
+    const env = parseEnvConfig({
+      NODE_ENV: 'test',
+      FISCAL_DPS_LAYOUT: 'nt009-r1',
+    });
+    expect(env.FISCAL_DPS_LAYOUT).toBe('nt009-r1');
+  });
+
   it('coerces overrides and rejects invalid values', () => {
     const env = parseEnvConfig({
       NODE_ENV: 'test',

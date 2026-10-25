@@ -565,6 +565,16 @@ describe('DpsBuilder', () => {
     );
   });
 
+  it('builds and validates the DPS against the NT 009 release 1 XSD with layout nt009-r1', async () => {
+    const invoice = { ...input().invoice, deductionAmount: '10.00' };
+    const dps = dpsFrom(
+      await new DpsBuilder().build(input({ invoice }), 'nt009-r1'),
+    );
+    const xml = buildDpsXml(dps, { layout: 'nt009-r1' });
+    expect(xml).toContain('<vAjusteBC><vAjusteBCISSQN>10</vAjusteBCISSQN>');
+    expect(xml).toMatch(/<tpEmit>1<\/tpEmit><finNFSe>0<\/finNFSe>/);
+  });
+
   it('rejects unknown or non-production layouts with DPS_LAYOUT_UNSUPPORTED', async () => {
     const unknown = errorFrom(
       await new DpsBuilder().build(input(), 'rtc-v1.04'),

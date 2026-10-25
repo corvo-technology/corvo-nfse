@@ -314,7 +314,7 @@ export const envSchema = z
       .default(5),
     RTC_CIRCUIT_RESET_MS: z.coerce.number().int().positive().default(30000),
     RTC_EXPECTED_VERSION: z.string().trim().min(1).optional(),
-    FISCAL_DPS_LAYOUT: z.enum(['rtc-v1.01']).default('rtc-v1.01'),
+    FISCAL_DPS_LAYOUT: z.enum(['rtc-v1.01', 'nt009-r1']).default('rtc-v1.01'),
     WHATSAPP_SEND_ATTEMPTS: z.coerce.number().int().positive().default(3),
     WHATSAPP_SEND_BACKOFF_MS: z.coerce.number().int().positive().default(5000),
     WHATSAPP_RECEIVE_CONCURRENCY: z.coerce

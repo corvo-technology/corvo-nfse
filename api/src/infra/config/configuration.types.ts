@@ -69,7 +69,7 @@ export interface RolloutConfig {
   simplesRateEnforcedFrom: string | null;
 }
 
-export type RtcDpsLayout = 'rtc-v1.01';
+export type RtcDpsLayout = 'rtc-v1.01' | 'nt009-r1';
 
 export interface RtcConfig {
   url?: string;

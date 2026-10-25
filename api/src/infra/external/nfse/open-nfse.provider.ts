@@ -47,6 +47,7 @@ const CANCELLATION_REASON: Record<
 export class OpenNfseProvider implements FiscalProvider {
   private readonly logger = new Logger(OpenNfseProvider.name);
   private readonly sefin: SefinEnvironment;
+  private readonly dpsLayout: 'v1.01' | 'nt009-r1';
 
   constructor(
     @InjectDataSource() private readonly database: DataSource,
@@ -56,6 +57,10 @@ export class OpenNfseProvider implements FiscalProvider {
       config.get<SefinEnvironment>('NFSE_SEFIN_ENVIRONMENT') === 'restricted'
         ? 'restricted'
         : 'production';
+    this.dpsLayout =
+      config.get<string>('FISCAL_DPS_LAYOUT') === 'nt009-r1'
+        ? 'nt009-r1'
+        : 'v1.01';
     if (this.sefin === 'restricted') {
       this.logger.warn(
         'NFSE_SEFIN_ENVIRONMENT=restricted: live invoices go to the Sefin Produção Restrita (homologation), not to production.',
@@ -131,6 +136,7 @@ export class OpenNfseProvider implements FiscalProvider {
       ambiente: this.ambiente,
       certificado: { pfx: payload.pfxBuffer, password: payload.p12Password },
       retryStore,
+      dpsLayout: this.dpsLayout,
     });
   }
   private result(result: NfseEmitResult | NfseQueryResult): FiscalIssueResult {

@@ -20,7 +20,7 @@ import type { FiscalCalculationResult } from '../fiscal-calculation-result';
 import { fiscalError, type FiscalError } from '../fiscal-error';
 import { toDecimal, type DecimalString } from '../money';
 import { err, ok, type Result } from '../result';
-import { ACTIVE_LAYOUTS, type DpsLayout } from './dps-layout';
+import { ACTIVE_LAYOUTS, type DpsLayout, XML_LAYOUT } from './dps-layout';
 
 const STEP = 'DpsBuilder';
 const MAX_VIOLATIONS = 20;
@@ -438,9 +438,11 @@ export class DpsBuilder {
     }
 
     try {
-      const validation = await validateDpsXml(buildDpsXml(dps), {
-        throwOnInvalid: false,
-      });
+      const xmlLayout = XML_LAYOUT[layout.id];
+      const validation = await validateDpsXml(
+        buildDpsXml(dps, { layout: xmlLayout }),
+        { throwOnInvalid: false, layout: xmlLayout },
+      );
       if (!validation.valid) {
         return err(
           fiscalError({
