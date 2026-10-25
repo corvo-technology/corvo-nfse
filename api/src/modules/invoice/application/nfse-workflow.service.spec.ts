@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import type { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
+import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 import { NfseWorkflowService } from './nfse-workflow.service';
 import {
   recordAuthorizationFailure,
@@ -758,6 +759,97 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       },
       valores: { vServ: 1000 },
       tomador: { documento: { CPF: '52998224725' }, nome: 'Ana' },
+    });
+  });
+
+  describe('Simples totTrib with SIMPLES_TOTTRIB', () => {
+    const flags = (on: boolean) =>
+      new RolloutFlagsService(
+        new ConfigService({
+          rollout: {
+            taxRegimeRestriction: { on: false, tenants: '*' },
+            fiscalDpsConformance: { on: false, tenants: '*' },
+            simplesTottrib: { on, tenants: '*' },
+            fiscal2027SimplesMei: { on: false, tenants: '*' },
+            cnpjRegistryCheck: { on: false, tenants: '*' },
+            simplesRateMode: { mode: 'off', tenants: '*' },
+            simplesRateEnforcedFrom: null,
+          },
+        }),
+      );
+    const workflow = (on: boolean, totalRate: string | null) =>
+      new NfseWorkflowService(
+        fakes.invoices,
+        fakes.sequences,
+        fakes.companies,
+        fakes.certificates,
+        fakes.providers,
+        fakes.lifecycle,
+        fakes.queues,
+        new InvoiceWebhookPublisher(fakes.webhooks as any, fakes.outbox as any),
+        fakes.documentStorage,
+        fakes.profiles,
+        fakes.fiscalSnapshots,
+        new DpsBuilder(),
+        fakes.config,
+        flags(on),
+        {
+          resolve: jest.fn().mockResolvedValue({
+            rate: totalRate === null ? null : { totalRate, month: '2026-10' },
+            stale: false,
+          }),
+        } as never,
+      ) as unknown as {
+        payload: (i: Invoice) => Promise<IIssuePayload>;
+      };
+    const simplesSnapshot = (invoiceId: string) => {
+      const snapshot = fiscalSnapshot(invoiceId);
+      return {
+        ...snapshot,
+        taxRegime: 'SIMPLES_NACIONAL',
+        result: { ...snapshot.result, taxRegime: 'SIMPLES_NACIONAL' },
+      };
+    };
+    beforeEach(() => {
+      fakes.profiles.findEffective.mockResolvedValue({
+        taxRegime: 'SIMPLES_NACIONAL',
+        specialTaxRegime: null,
+        simplesIssRate: null,
+        simplesApuracao: null,
+      });
+    });
+
+    it('sends pTotTribSN from the informed rate when the flag is on', async () => {
+      const invoice = createInvoice();
+      fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+        simplesSnapshot(invoice.id),
+      );
+      const payload = await workflow(true, '6.54').payload(invoice);
+      expect(payload.preparedDps?.infDPS.valores.trib.totTrib).toEqual({
+        pTotTribSN: 6.54,
+      });
+    });
+
+    it('keeps the legacy totals when no rate was informed', async () => {
+      const invoice = createInvoice();
+      fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+        simplesSnapshot(invoice.id),
+      );
+      const payload = await workflow(true, null).payload(invoice);
+      expect(payload.preparedDps?.infDPS.valores.trib.totTrib).toEqual({
+        vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 },
+      });
+    });
+
+    it('keeps the legacy totals when the flag is off', async () => {
+      const invoice = createInvoice();
+      fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+        simplesSnapshot(invoice.id),
+      );
+      const payload = await workflow(false, '6.54').payload(invoice);
+      expect(payload.preparedDps?.infDPS.valores.trib.totTrib).toEqual({
+        vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 },
+      });
     });
   });
 });

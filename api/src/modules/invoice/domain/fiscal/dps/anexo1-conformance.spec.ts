@@ -166,3 +166,65 @@ describe('Anexo I deduction list', () => {
     expect(DEDUCTION_ALLOWED_CTRIBNAC.has('010101')).toBe(false);
   });
 });
+
+describe('Anexo I totTrib and regApTribSN with simplesTotTrib', () => {
+  const buildWith = async (
+    taxRegime: 'MEI' | 'SIMPLES_NACIONAL',
+    simplesTotTrib: {
+      regApTribSN: 1 | 2 | 3 | null;
+      totalRate: string | null;
+    },
+  ) => {
+    const base = input(taxRegime);
+    return new DpsBuilder().build(
+      { ...base, emitente: { ...base.emitente, simplesTotTrib } },
+      'rtc-v1.01',
+    );
+  };
+
+  it('MEI: indTotTrib 0, no pTotTribSN (E0710) and no regApTribSN (E0162)', async () => {
+    const built = await buildWith('MEI', {
+      regApTribSN: null,
+      totalRate: null,
+    });
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const { totTrib } = built.value.infDPS.valores.trib;
+    expect(totTrib).toEqual({ indTotTrib: '0' });
+    expect(built.value.infDPS.prest.regTrib.regApTribSN).toBeUndefined();
+  });
+
+  it('ME/EPP: pTotTribSN from the informed rate, never indTotTrib (E0712)', async () => {
+    const built = await buildWith('SIMPLES_NACIONAL', {
+      regApTribSN: 1,
+      totalRate: '6.54',
+    });
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const { totTrib } = built.value.infDPS.valores.trib;
+    expect(totTrib).toEqual({ pTotTribSN: 6.54 });
+    expect(totTrib).not.toHaveProperty('indTotTrib');
+    expect(String(built.value.infDPS.prest.regTrib.regApTribSN)).toBe('1');
+  });
+
+  it('ME/EPP: regApTribSN follows the profile (E0166)', async () => {
+    const built = await buildWith('SIMPLES_NACIONAL', {
+      regApTribSN: 2,
+      totalRate: '6.54',
+    });
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(String(built.value.infDPS.prest.regTrib.regApTribSN)).toBe('2');
+  });
+
+  it('ME/EPP without a rate fails instead of sending a zeroed number', async () => {
+    const built = await buildWith('SIMPLES_NACIONAL', {
+      regApTribSN: 1,
+      totalRate: null,
+    });
+    expect(built.ok).toBe(false);
+    expect(!built.ok && built.error.details).toMatchObject({
+      reason: 'simples_total_rate_missing',
+    });
+  });
+});
