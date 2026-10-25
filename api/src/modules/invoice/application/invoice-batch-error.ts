@@ -19,12 +19,18 @@ export type BatchItemError = {
  * infrastructure failure fails the batch instead of hiding as a rejected item.
  */
 export function toBatchItemError(error: unknown): BatchItemError | null {
-  if (error instanceof FiscalValidationError)
-    return {
-      code: 'ERROR_VALIDATION',
-      message: 'Request validation failed',
-      details: error.issues,
-    };
+  if (error instanceof FiscalValidationError) {
+    const { code, message, details } = apiErrorBody(
+      422,
+      {
+        code: 'validation_error',
+        message: 'Request validation failed',
+        details: error.issues,
+      },
+      'batch',
+    );
+    return { code, message, ...(details ? { details } : {}) };
+  }
   if (error instanceof HttpException && error.getStatus() < 500) {
     const { code, message, details } = apiErrorBody(
       error.getStatus(),

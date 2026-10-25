@@ -15,14 +15,16 @@ import {
 import { BillingRuleError } from '@/modules/billing/domain/billing-period';
 
 describe('toBatchItemError', () => {
-  it('maps FiscalValidationError to ERROR_VALIDATION with its issues', () => {
+  it('maps FiscalValidationError like the HTTP response: ERROR_VALIDATION with prefixed issue codes', () => {
     const issues = [
       { field: 'amount', code: 'out_of_range' as const, message: 'bad' },
     ];
     expect(toBatchItemError(new FiscalValidationError(issues))).toEqual({
       code: 'ERROR_VALIDATION',
       message: 'Request validation failed',
-      details: issues,
+      details: [
+        { field: 'amount', code: 'ERROR_OUT_OF_RANGE', message: 'bad' },
+      ],
     });
   });
 
