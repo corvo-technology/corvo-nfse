@@ -99,6 +99,7 @@ conferência de CNPJ/Simples no cadastro            (6.5)
 - `TaxStrategyResolver` resolve somente `MeiTaxStrategy` e `SimplesNacionalTaxStrategy`. Outro regime vira o bloqueio acima.
 - `RegularTaxStrategy` deixa de ser estratégia. A função `regularIbsCbs`, usada pelo Simples que optou pelo regime regular de IBS/CBS (`ibsCbsRegularOption`, `regApIBSCBSSN = 3`), permanece, em arquivo próprio. O restante do ramo "regular" (ISS calculado pela Corvo) sai.
 - **Dedução:** `FiscalValidator` rejeita `deduction > 0` com o código de erro novo `DEDUCTION_NOT_ALLOWED_FOR_REGIME` para MEI e para ME/EPP com `cTribNac` fora da lista da seção 4. A rejeição acontece no `calculate` e no `emit`, **antes** da reserva de crédito.
+- **Recusas síncronas, antes de reservar crédito:** hoje o `FiscalValidator` roda no motor assíncrono, depois da reserva (`invoice-lifecycle.service.ts`), e a única checagem síncrona é `normalizeAndValidate` em `invoice-intake.service.ts`. Tudo o que a Corvo já consegue saber na hora do `POST /invoices` passa a ser recusado ali com `422`, sem reservar crédito: regime não suportado, dedução proibida para o regime (acima), taxa do Simples ausente (6.3) e Simples acima do sublimite (6.3). Isso exige resolver a taxa do mês dentro do intake. O motor assíncrono repete as checagens como defesa em profundidade.
 - **Retenção:** para MEI, `issWithheld = NOT_APPLICABLE` com a razão "MEI não sofre retenção de ISS (E0583)". Para ME/EPP a lógica atual (exigir `simplesIssRate`) permanece.
 - **DPS:** `dps-builder` monta `totTrib` conforme 6.3 e nunca envia `pAliq` nem benefício municipal para MEI.
 
@@ -145,8 +146,8 @@ Desenho:
 
 - Nova porta `SimplesRegistryPort.lookup(cnpj, competenceDate)` devolvendo `{ optanteSimples, optanteMei, municipalityCode, source }`.
 - Primeiro adaptador: consulta pública de CNPJ (a escolher na implementação entre BrasilAPI e ReceitaWS; ver 10.3), com cache de 24 h e *timeout* curto.
-- Em `POST /companies` e na troca de regime: se o cadastro público contradiz o regime informado (por exemplo diz MEI e o cliente informou Simples), devolver `422 ERROR_TAX_REGIME_MISMATCH` com o que o cadastro diz. Se o município do MEI não bate com o do CNPJ, `422 ERROR_MEI_MUNICIPALITY_MISMATCH`.
-- **Falha do serviço externo nunca bloqueia** o cadastro: registra *warning* e segue. A Sefin (E0160, E0041) continua sendo a autoridade final.
+- Só em `POST /companies` (não em `PUT /fiscal-profile` nem nas tools MCP de perfil), comparando com o cadastro **na data de hoje**: se o cadastro público contradiz o regime informado (por exemplo diz MEI e o cliente informou Simples), ou se o município do MEI não bate com o do CNPJ, a resposta de criação traz um *warning* (`TAX_REGIME_REGISTRY_MISMATCH` / `MEI_MUNICIPALITY_MISMATCH`) com o que o cadastro diz. **É aviso, não recusa**, e não há campo de confirmação: as fontes públicas atrasam em relação à mudança real de regime, e quem decide é a Sefin.
+- **Falha do serviço externo nunca bloqueia** nem gera aviso de contradição: registra log e segue. A Sefin (E0160, E0041) continua sendo a autoridade final.
 - Mensagem de rejeição E0160 vinda da Sefin passa a ser traduzida para um erro claro de regime ("o cadastro do Simples Nacional diz outra coisa na data de competência") em vez de erro genérico.
 
 ### 6.6 API, MCP, docs e site
@@ -191,6 +192,9 @@ A fase 0 é pequena e tem prioridade absoluta: corrige notas que podem estar sen
 4. **Efetiva ou nominal:** `pTotTribSN` assumido como a alíquota efetiva total do mês, a confirmar.
 5. **Sublimite (`regApTribSN` 2/3):** bloqueado nesta entrega por escolha minha. Se houver clientes nessa situação, vira uma fase própria que exige calcular ISS fora do DAS (alíquota municipal via `consultarAliquota` da `open-nfse`).
 6. **Bloqueio de ME/EPP sem alíquota a partir de 01/11/2026:** escolhi bloquear em vez de emitir com valor zerado. Se o negócio preferir um período de tolerância, trocar o bloqueio por *warning* até uma data a definir.
+8. **Conferência de CNPJ é só aviso** (6.5), sem recusa nem override, porque as fontes públicas atrasam. Se o negócio quiser recusa dura, é mudança de contrato da API com campo de confirmação.
+9. **Recusas síncronas** (6.2): eu decidi que regime, dedução e taxa ausente são `422` no intake, antes de reservar crédito, em vez de rejeição assíncrona com estorno.
+10. **Dados atuais:** a base tem só empresas Simples Nacional (dono do produto, 2026-10-25), então não há notas em fila de empresas de outros regimes. Antes de ligar a fase 0, o construtor roda uma consulta de auditoria por `tax_regime IN ('UNKNOWN','OUTRO_REGIME')` (a migração mapeou regimes não reconhecidos para `UNKNOWN`) e corrige à mão qualquer ocorrência.
 7. **Recursos da `open-nfse` não usados** e úteis depois (fora desta spec): `fetchByNsu` (espelhar notas emitidas fora da Corvo), `consultarAliquota`/`consultarConvenio`/`consultarRetencoes`, `substituir` e `consultarDanfse`.
 
 ## 11. Fontes
