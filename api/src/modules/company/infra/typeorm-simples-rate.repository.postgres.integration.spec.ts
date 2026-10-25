@@ -110,14 +110,10 @@ describePostgres(
       const second = await repo.upsert(companyA, tenantA, '2026-10', {
         totalRate: '7.00',
         issRate: '2.50',
-        ibsRate: '0.10',
-        cbsRate: '0.90',
       });
       expect(second).toMatchObject({
         totalRate: '7.00',
         issRate: '2.50',
-        ibsRate: '0.10',
-        cbsRate: '0.90',
       });
       expect(await repo.list(companyA, tenantA)).toHaveLength(1);
     });

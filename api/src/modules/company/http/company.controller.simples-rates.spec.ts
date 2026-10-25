@@ -15,8 +15,6 @@ const rate: SimplesRate = {
   month: '2026-10',
   totalRate: '6.54',
   issRate: '2.00',
-  ibsRate: null,
-  cbsRate: null,
   updatedAt: new Date('2026-10-01T00:00:00Z'),
 };
 
@@ -55,8 +53,6 @@ describe('CompanyController Simples rates', () => {
     expect(rates.put).toHaveBeenCalledWith(companyId, tenantId, '2026-10', {
       totalRate: '6.54',
       issRate: '2.00',
-      ibsRate: null,
-      cbsRate: null,
     });
     expect(result).toEqual({ data: rate });
   });

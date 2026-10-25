@@ -488,8 +488,6 @@ export class CompanyController {
       await this.simplesRates.put(id, tenantId, month, {
         totalRate: dto.totalRate,
         issRate: dto.issRate ?? null,
-        ibsRate: dto.ibsRate ?? null,
-        cbsRate: dto.cbsRate ?? null,
       }),
     );
   }

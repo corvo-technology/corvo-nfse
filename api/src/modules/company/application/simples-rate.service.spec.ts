@@ -22,8 +22,6 @@ class FakeRepository implements ISimplesRateRepository {
       month,
       totalRate: input.totalRate,
       issRate: input.issRate ?? null,
-      ibsRate: input.ibsRate ?? null,
-      cbsRate: input.cbsRate ?? null,
       updatedAt: new Date('2026-10-01T00:00:00Z'),
     };
     this.rows.set(`${company}:${month}`, row);
@@ -60,17 +58,6 @@ describe('SimplesRateService', () => {
     });
     expect(second).toMatchObject({ totalRate: '7.00', issRate: '2.50' });
     expect(repository.rows.size).toBe(1);
-  });
-
-  it('accepts optional ibsRate and cbsRate', async () => {
-    const { service } = build();
-    await expect(
-      service.put(companyId, tenantId, '2026-10', {
-        totalRate: '6.00',
-        ibsRate: '0.10',
-        cbsRate: '0.90',
-      }),
-    ).resolves.toMatchObject({ ibsRate: '0.10', cbsRate: '0.90' });
   });
 
   it.each([

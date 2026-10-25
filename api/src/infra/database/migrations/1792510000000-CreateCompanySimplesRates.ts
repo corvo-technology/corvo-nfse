@@ -16,15 +16,11 @@ export class CreateCompanySimplesRates1792510000000 implements MigrationInterfac
       month char(7) NOT NULL,
       total_rate numeric(5,2) NOT NULL,
       iss_rate numeric(5,2),
-      ibs_rate numeric(5,2),
-      cbs_rate numeric(5,2),
       updated_at timestamptz NOT NULL DEFAULT now(),
       PRIMARY KEY (company_id, month),
       CONSTRAINT ck_csr_month CHECK (month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
       CONSTRAINT ck_csr_total_rate CHECK (total_rate BETWEEN 0 AND 100),
-      CONSTRAINT ck_csr_iss_rate CHECK (iss_rate IS NULL OR iss_rate BETWEEN 0 AND 100),
-      CONSTRAINT ck_csr_ibs_rate CHECK (ibs_rate IS NULL OR ibs_rate BETWEEN 0 AND 100),
-      CONSTRAINT ck_csr_cbs_rate CHECK (cbs_rate IS NULL OR cbs_rate BETWEEN 0 AND 100)
+      CONSTRAINT ck_csr_iss_rate CHECK (iss_rate IS NULL OR iss_rate BETWEEN 0 AND 100)
     )`);
     await runner.query(
       `CREATE INDEX idx_csr_tenant ON ${s}.company_simples_rates (tenant_id)`,

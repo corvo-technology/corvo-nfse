@@ -11,8 +11,6 @@ const saved = {
   month: '2026-10',
   totalRate: '6.54',
   issRate: '2.00',
-  ibsRate: null,
-  cbsRate: null,
   updatedAt: new Date(),
 };
 
@@ -60,16 +58,12 @@ describe('company_set_simples_rate', () => {
     expect(rates.put).toHaveBeenCalledWith('company-1', 'tenant-1', '2026-10', {
       totalRate: '6.54',
       issRate: '2.00',
-      ibsRate: null,
-      cbsRate: null,
     });
     expect(result).toEqual({
       company_id: 'company-1',
       month: '2026-10',
       total_rate: 6.54,
       iss_rate: 2,
-      ibs_rate: null,
-      cbs_rate: null,
     });
   });
 

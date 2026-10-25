@@ -246,18 +246,18 @@
 
 ## Fase 2 — até 31/12/2026 (depende da NT 9/2026)
 
-### Task 14: Ler a NT 9/2026 e fechar o desenho de 2027
+### Task 14: Ler a NT 9/2026 e fechar o desenho de 2027 (FEITA, com bloqueios)
 
-**Files:**
-- Modify: `docs/superpowers/specs/2026-10-25-mei-simples-focus-design.md` (seção 6.4 e 10.2)
+Resultado registrado na seção 6.4 da spec: a NT 9/2026 v1.01 (01/10/2026) e o Anexo VI v1.04.01 foram lidos. O emitente informa só `regApIBSCBSSN` (e `cAtvSN` para MEI); `vReceitaBrutaSN` e `gTribSN` são calculados pelo sistema nacional; `opSimpNac` ganha o valor 4. Por isso `ibs_rate`/`cbs_rate` foram removidos da Task 9 e da Task 12.
 
-- [ ] **Step 1:** Obter a NT SE/CGNFS-e 9/2026 e o XSD que contém `regApIBSCBSSN`, `vReceitaBrutaSN` e `gTribSN` (página de documentação técnica do portal NFS-e). Se não estiverem publicados, **parar aqui e avisar o dono do produto**: as Tasks 15 e 16 não podem ser escritas.
-- [ ] **Step 2:** Registrar na seção 6.4 o texto exato das regras, o que o MEI informa em 2027 e como arredondar IBS e CBS; conferir se a `open-nfse` gera os campos (`grep` nos tipos da lib; se não gerar, decidir entre atualizar a lib e estender o builder).
-- [ ] **Step 3: Commit** `docs: desenho de 2027 fechado com a NT 9/2026`
+### Task 15 e Task 16: IBS/CBS de 2027 para Simples e para MEI (BLOQUEADAS)
 
-### Task 15 e Task 16: IBS/CBS de 2027 para Simples e para MEI (a detalhar após a Task 14)
+Continuam **sem passos** de propósito. Não dá para implementar hoje porque:
 
-Estas duas tarefas ficam **intencionalmente sem passos** até a Task 14 terminar, porque as regras do grupo `IBSCBS` para optantes ainda não foram lidas na fonte oficial. Escopo já decidido: grupo `IBSCBS` com `regApIBSCBSSN` 1 e 3 (2 bloqueado), `ibs_rate` e `cbs_rate` vindos de `company_simples_rates`, tudo atrás de `FISCAL_2027_SIMPLES_MEI`, e com a flag desligada a competência de 2027 continua bloqueada com `TAX_CALCULATION_UNSUPPORTED`. O plano é completado com passos de TDD logo após a Task 14.
+1. a `open-nfse` 0.11.0 (a última no npm) não gera `regApIBSCBSSN`, `opSimpNac = 4` nem `cAtvSN`;
+2. a data de vigência da NT 9 e um XSD com os campos novos não foram publicados no que encontrei (pacote v1.01 de 09/02/2026 não os contém).
+
+Escopo já decidido para quando destravar: enviar `regApIBSCBSSN = 1` para ME/EPP (a partir de `simplesApuracao`, bloqueando `2` e `3`), tudo atrás de `FISCAL_2027_SIMPLES_MEI`; desligada, a competência de 2027 continua bloqueada com `TAX_CALCULATION_UNSUPPORTED`. Decisão pendente do dono do produto: esperar a nova versão da lib, ajudar a lib upstream ou estender o nosso builder de DPS.
 
 ---
 

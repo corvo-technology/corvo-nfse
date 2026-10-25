@@ -37,8 +37,6 @@ export class TypeOrmSimplesRateRepository implements ISimplesRateRepository {
           month,
           totalRate: input.totalRate,
           issRate: input.issRate ?? null,
-          ibsRate: input.ibsRate ?? null,
-          cbsRate: input.cbsRate ?? null,
           updatedAt: new Date(),
         },
         ['companyId', 'month'],
@@ -79,8 +77,6 @@ function toDomain(row: CompanySimplesRateOrmEntity): SimplesRate {
     month: row.month,
     totalRate: row.totalRate,
     issRate: row.issRate ?? null,
-    ibsRate: row.ibsRate ?? null,
-    cbsRate: row.cbsRate ?? null,
     updatedAt: row.updatedAt,
   };
 }

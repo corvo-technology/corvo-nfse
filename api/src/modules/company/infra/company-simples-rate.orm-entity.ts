@@ -27,8 +27,6 @@ const numericString = {
 @Check('ck_csr_month', `month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`)
 @Check('ck_csr_total_rate', `total_rate BETWEEN 0 AND 100`)
 @Check('ck_csr_iss_rate', `iss_rate IS NULL OR iss_rate BETWEEN 0 AND 100`)
-@Check('ck_csr_ibs_rate', `ibs_rate IS NULL OR ibs_rate BETWEEN 0 AND 100`)
-@Check('ck_csr_cbs_rate', `cbs_rate IS NULL OR cbs_rate BETWEEN 0 AND 100`)
 @Index('idx_csr_tenant', ['tenantId'])
 export class CompanySimplesRateOrmEntity {
   @Column({ name: 'tenant_id', type: 'uuid' })
@@ -58,26 +56,6 @@ export class CompanySimplesRateOrmEntity {
     transformer: numericString,
   })
   issRate?: string | null;
-
-  @Column({
-    name: 'ibs_rate',
-    type: 'numeric',
-    precision: 5,
-    scale: 2,
-    nullable: true,
-    transformer: numericString,
-  })
-  ibsRate?: string | null;
-
-  @Column({
-    name: 'cbs_rate',
-    type: 'numeric',
-    precision: 5,
-    scale: 2,
-    nullable: true,
-    transformer: numericString,
-  })
-  cbsRate?: string | null;
 
   @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })
   updatedAt!: Date;

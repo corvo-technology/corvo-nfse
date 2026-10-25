@@ -11,7 +11,7 @@ import {
 } from '../domain/simples-rate';
 
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
-const RATE_FIELDS = ['totalRate', 'issRate', 'ibsRate', 'cbsRate'] as const;
+const RATE_FIELDS = ['totalRate', 'issRate'] as const;
 
 function monthIndex(month: string): number {
   const [year, mon] = month.split('-').map(Number);

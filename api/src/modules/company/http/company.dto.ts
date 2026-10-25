@@ -162,24 +162,6 @@ export class PutSimplesRateDto {
   @IsOptional()
   @Matches(RATE_PATTERN)
   issRate?: string | null;
-
-  @ApiPropertyOptional({
-    type: String,
-    example: '0.10',
-    description: 'IBS rate (%) of the Simples for the month (2027).',
-  })
-  @IsOptional()
-  @Matches(RATE_PATTERN)
-  ibsRate?: string | null;
-
-  @ApiPropertyOptional({
-    type: String,
-    example: '0.90',
-    description: 'CBS rate (%) of the Simples for the month (2027).',
-  })
-  @IsOptional()
-  @Matches(RATE_PATTERN)
-  cbsRate?: string | null;
 }
 
 export class UpsertFiscalProfileDto {

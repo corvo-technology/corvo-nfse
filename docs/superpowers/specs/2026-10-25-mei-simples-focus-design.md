@@ -113,7 +113,7 @@ conferência de CNPJ/Simples no cadastro            (6.5)
 **Alíquotas mensais, tabela nova `company_simples_rates`** (decisão de projeto, ver 10.1):
 
 - Chave: `(company_id, competence_month 'YYYY-MM')`, mais `tenant_id` e `environment` como nas demais tabelas.
-- Campos: `total_rate` (percentual, 2 casas, 0 a 100; alimenta `pTotTribSN`), `iss_rate` (percentual, 2 casas; substitui o papel de `simplesIssRate` para retenção), e, na fase de 2027, `ibs_rate` e `cbs_rate` (seção 6.4).
+- Campos: `total_rate` (percentual, 2 casas, 0 a 100; alimenta `pTotTribSN`) e `iss_rate` (percentual, 2 casas; substitui o papel de `simplesIssRate` para retenção). IBS e CBS do Simples em 2027 não são informados pelo cliente (seção 6.4).
 - `simplesIssRate` do perfil continua existindo como **valor de reserva** quando não há linha para o mês, para não quebrar quem já usa.
 - **Resolução da taxa para uma nota:** a linha do mês de competência; se não existir, a do mês anterior mais próximo (repete o último valor informado); se nunca informada, **ausente**.
 - **Ausente para ME/EPP em competência a partir de 01/11/2026:** bloqueio `MISSING_CONFIGURATION` com `missingFields: ['simplesRate.totalRate']` e mensagem que diz onde informar. Antes dessa data, a nota segue como hoje.
@@ -127,20 +127,26 @@ conferência de CNPJ/Simples no cadastro            (6.5)
 
 Estado hoje: `MeiTaxStrategy` e `SimplesNacionalTaxStrategy` devolvem `UNSUPPORTED` para competência ≥ `2027-01-01`, o que bloqueia a emissão.
 
-Alvo: nenhuma nota de MEI ou de ME/EPP bloqueada por essa razão, com o grupo `IBSCBS` conforme a NT SE/CGNFS-e 9/2026 e o Ato Conjunto RFB/CGIBS 4/2026.
+**O que a NT SE/CGNFS-e 9/2026 (v1.01, 01/10/2026) diz**, lido no *Anexo VI – leiautes e regras, v1.04.01* (planilha oficial):
 
-Pelo que as fontes secundárias informam (a confirmar na NT, ver 10.2):
+- **O emitente informa pouco.** No DPS, para ME/EPP (`opSimpNac = 3`) ou Optante Pendente (`4`), o campo novo `prest/regTrib/regApIBSCBSSN` é **obrigatório** e diz como o IBS e a CBS são apurados: `1` IBS e CBS pelo Simples, `2` CBS pelo Simples e IBS pelo regime regular (acima do sublimite), `3` IBS e CBS pelo regime regular. O MEI não informa `regApIBSCBSSN`.
+- **O sistema nacional calcula o resto.** `vReceitaBrutaSN`, o grupo `gTribSN` (`pIBSSN`, `vIBSSN`, `pCBSSN`, `vCBSSN`) e os totais ficam **na NFS-e gerada pelo sistema**, e as alíquotas devem ser iguais às devolvidas pela Calculadora nacional. O cliente **não** informa alíquota de IBS nem de CBS: por isso a Corvo **não** guarda `ibs_rate`/`cbs_rate` (removidos da API e do MCP).
+- **Valor novo de `opSimpNac`:** `4 – Optante Pendente` (opção pelo Simples ainda em análise). Hoje a Corvo só trata 1, 2 e 3.
+- Novo campo `cAtvSN` (código da atividade do Simples), informado só quando `opSimpNac = 2`, com validação própria na versão 1.01 da NT.
+- O `cClassTrib` informado precisa ser válido para a prestação de serviços; a Calculadora indica `tpRBSN` (receita bruta interna, externa ou "não é receita bruta").
 
-- `regApIBSCBSSN`: 1 (IBS e CBS apurados no Simples), 2 (CBS no Simples e IBS no regime regular, sublimite) ou 3 (regime regular).
-- `vReceitaBrutaSN` = `vServ − descIncond − ajustes de base`.
-- Grupo `gTribSN` com alíquota e valor de IBS e de CBS apurados pelo Simples.
+**Bloqueios de implementação encontrados:**
 
-Desenho:
+1. **A `open-nfse` 0.11.0 (a última publicada no npm) não tem `regApIBSCBSSN`, `opSimpNac = 4` nem `cAtvSN`.** Sem eles o DPS de ME/EPP a partir da data de vigência seria rejeitado.
+2. **As datas de vigência da NT 9 ainda não foram publicadas** (o portal diz que o cronograma será divulgado "nas próximas semanas"). O pacote de XSD que baixamos (v1.01 de 09/02/2026) não contém os campos novos, e não achei um XSD novo na página.
+3. Os campos `vReceitaBrutaSN` e `gTribSN` não são enviados por nós, mas a Calculadora nacional passa a ser a fonte de verdade para o Simples: a nossa Calculadora RTC local (container `rtc-calc`) **não** substitui isso.
 
-- Entrada dos percentuais: `ibs_rate` e `cbs_rate` em `company_simples_rates` (mesmo fluxo de 6.3). O valor de cada um é `vReceitaBrutaSN × rate`, arredondado como a NT mandar.
-- `regApIBSCBSSN = 1` e `3` suportados; `2` (sublimite) fica bloqueado como em 6.3.
-- MEI: comportamento para 2027 definido pela NT. Se a NT disser que o MEI informa o grupo sem tributos apurados, implementar isso; se não houver regra publicada até a data de entrega, o bloqueio atual **permanece** e é registrado como risco aberto, nunca contornado.
-- **Pré-requisitos:** obter a NT 9/2026 e o XSD que a contém (o pacote v1.01 de 09/02/2026 que baixamos **não tem** `regApIBSCBSSN` nem `gTribSN`), e confirmar que a versão da `open-nfse` em uso gera esses campos. Se não gerar, atualizar a lib ou estender o builder de DPS.
+**Desenho (sem mudança de decisão de produto):**
+
+- `FISCAL_2027_SIMPLES_MEI` continua desligada, e desligada o bloqueio de 2027 permanece.
+- Quando a lib (ou uma extensão nossa do builder de DPS) gerar `regApIBSCBSSN`, o motor passa a enviar `regApIBSCBSSN = 1` para ME/EPP (suportado) e bloqueia `2` e `3` como em 6.3. `regApIBSCBSSN` vem do mesmo `simplesApuracao` do perfil fiscal.
+- MEI: nenhuma informação nova do emitente é exigida pela NT, além de `cAtvSN`; avaliar na implementação.
+- **Pré-requisitos antes de implementar:** (a) a data de vigência e a versão do XSD, (b) uma versão da `open-nfse` que gere os campos novos, ou aval para estender o builder nós mesmos (alternativas: contribuir para a lib, ou pós-processar o XML antes da assinatura), (c) confirmar com a Calculadora nacional o comportamento de `cClassTrib` para optantes.
 
 ### 6.5 Conferência de regime e município no cadastro
 
@@ -201,7 +207,7 @@ A fase 0 é pequena e tem prioridade absoluta: corrige notas que podem estar sen
 
 ## 9. Riscos
 
-1. **NT 9/2026 indisponível** até o fim do ano: a fase 2 não fecha e as notas de 2027 continuam bloqueadas.
+1. **Fase 2 depende de terceiros:** a NT 9/2026 já está publicada, mas a data de vigência e o XSD com os campos novos não foram encontrados e a `open-nfse` 0.11.0 não gera `regApIBSCBSSN` nem `opSimpNac = 4` (ver 6.4). Sem isso as notas de 2027 continuam bloqueadas.
 2. **Cliente não informa a alíquota:** com o bloqueio de 6.3, ME/EPP deixa de emitir em vez de emitir errado. É deliberado, mas gera suporte. Mitigação: aviso, MCP e valor repetido do mês anterior.
 3. **Qual alíquota informar:** o layout diz "percentual aproximado do total dos tributos da alíquota do Simples". As fontes que achei não são conclusivas entre efetiva e nominal. Confirmar com a Receita ou um contador antes de documentar ao cliente (ver 10.4).
 4. **Fonte pública de CNPJ** instável ou com limite de uso. Mitigação: nunca bloquear por falha dela.
@@ -210,7 +216,7 @@ A fase 0 é pequena e tem prioridade absoluta: corrige notas que podem estar sen
 ## 10. Chamadas minhas e pontos abertos para o construtor
 
 1. **Tabela `company_simples_rates` em vez de reaproveitar o perfil fiscal.** Escolhi tabela própria porque a alíquota muda todo mês e o perfil fiscal exige fluxo de aprovação e cria uma versão por mudança. Alternativa: novo campo no perfil, com aprovação automática.
-2. **Layout de 2027:** não consegui ler a NT 9/2026 nem o XSD que a contém. Tudo da seção 6.4 vem de fontes secundárias e deve ser **conferido na NT antes de implementar**.
+2. **Layout de 2027:** a seção 6.4 foi conferida no Anexo VI v1.04.01 da NT 9/2026 (planilha oficial). Falta ler o texto da NT (PDF) sobre vigência e obter o XSD novo.
 3. **Fonte pública de CNPJ:** BrasilAPI ou ReceitaWS; o construtor escolhe depois de verificar o que cada uma devolve sobre opção pelo Simples/MEI e município, limites de uso e custo.
 4. **Efetiva ou nominal:** `pTotTribSN` assumido como a alíquota efetiva total do mês, a confirmar.
 5. **Sublimite (`regApTribSN` 2/3):** bloqueado nesta entrega por escolha minha. Se houver clientes nessa situação, vira uma fase própria que exige calcular ISS fora do DAS (alíquota municipal via `consultarAliquota` da `open-nfse`).

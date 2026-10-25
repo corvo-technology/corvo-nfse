@@ -2,7 +2,8 @@
  * Monthly rates of a Simples Nacional company, informed by the company (or its
  * accountant): Corvo does not compute the DAS. `totalRate` is the approximate
  * total tax rate sent as `pTotTribSN`; `issRate` replaces the ISS rate of the
- * fiscal profile for withholding; `ibsRate` and `cbsRate` are for 2027.
+ * fiscal profile for withholding. The IBS and CBS of the Simples (2027) are computed by the
+ * national system, so they are not informed here.
  */
 export interface SimplesRate {
   companyId: string;
@@ -10,16 +11,12 @@ export interface SimplesRate {
   month: string;
   totalRate: string;
   issRate: string | null;
-  ibsRate: string | null;
-  cbsRate: string | null;
   updatedAt: Date;
 }
 
 export interface SimplesRateInput {
   totalRate: string;
   issRate?: string | null;
-  ibsRate?: string | null;
-  cbsRate?: string | null;
 }
 
 export abstract class ISimplesRateRepository {

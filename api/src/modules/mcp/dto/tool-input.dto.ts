@@ -188,6 +188,4 @@ export class CompanySetSimplesRateInput {
 
   @IsNumber() @Min(0) @Max(100) total_rate!: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) iss_rate?: number;
-  @IsOptional() @IsNumber() @Min(0) @Max(100) ibs_rate?: number;
-  @IsOptional() @IsNumber() @Min(0) @Max(100) cbs_rate?: number;
 }
