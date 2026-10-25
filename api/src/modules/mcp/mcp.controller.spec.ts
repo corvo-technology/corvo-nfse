@@ -62,4 +62,62 @@ describe('McpController', () => {
     expect(res.status).toHaveBeenCalledWith(405);
     expect(res.set).toHaveBeenCalledWith('Allow', 'POST');
   });
+
+  describe('usage recording', () => {
+    const call = (name: string, id = 1) => ({
+      jsonrpc: '2.0',
+      id,
+      method: 'tools/call',
+      params: { name, arguments: {} },
+    });
+    const setup = () => {
+      const server = new McpServer();
+      const recordUsage = jest.fn();
+      const controller = new McpController(
+        { getServer: () => server } as unknown as McpService,
+        { recordUsage } as unknown as McpConnectionRepository,
+      );
+      const definition = (name: string) => ({
+        name,
+        description: name,
+        inputSchema: { type: 'object', properties: {} },
+      });
+      server.registerTool(definition('nfse_issue'), async () => ({}));
+      server.registerTool(definition('nfse_issue_batch'), async () => ({
+        results: [
+          { index: 0, status: 'accepted' },
+          { index: 1, status: 'accepted', replayed: true },
+          { index: 2, status: 'rejected' },
+          { index: 3, status: 'accepted' },
+        ],
+      }));
+      const post = (body: unknown) =>
+        controller.post(
+          {
+            body,
+            authContext: { tenantId: 'tenant-1', mcpConnectionId: 'conn-1' },
+          } as unknown as Request,
+          { status: jest.fn() } as unknown as Response,
+        );
+      return { recordUsage, post };
+    };
+
+    it('counts only newly issued invoices of nfse_issue_batch (not replays or rejections)', async () => {
+      const { recordUsage, post } = setup();
+      await post(call('nfse_issue_batch'));
+      expect(recordUsage).toHaveBeenCalledWith('conn-1', 'tenant-1', {
+        toolCalls: 1,
+        invoicesIssued: 2,
+      });
+    });
+
+    it('keeps counting one invoice per nfse_issue call', async () => {
+      const { recordUsage, post } = setup();
+      await post([call('nfse_issue', 1), call('nfse_issue_batch', 2)]);
+      expect(recordUsage).toHaveBeenCalledWith('conn-1', 'tenant-1', {
+        toolCalls: 2,
+        invoicesIssued: 3,
+      });
+    });
+  });
 });

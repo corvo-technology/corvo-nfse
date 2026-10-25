@@ -1,4 +1,5 @@
 import {
+  ArrayMaxSize,
   ArrayNotEmpty,
   IsArray,
   IsBoolean,
@@ -170,4 +171,15 @@ export class NfseCancelInput {
   @IsString()
   @MaxLength(CANCELLATION_DESCRIPTION_MAX)
   description?: string;
+}
+
+export class NfseIssueBatchInput {
+  /**
+   * Items are NOT nested-validated here: each one is checked on its own by the
+   * handler so a bad row is reported in place instead of failing the batch.
+   */
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMaxSize(50)
+  invoices!: unknown[];
 }
