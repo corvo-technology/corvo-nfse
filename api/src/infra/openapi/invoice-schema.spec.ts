@@ -5,6 +5,7 @@ import { SwaggerModule } from '@nestjs/swagger';
 import { InvoiceController } from '@/modules/invoice/http/invoice.controller';
 import { InvoiceService } from '@/modules/invoice/application/invoice.service';
 import { ExecutionEnvironmentGuard } from '@/modules/auth/execution-environment.guard';
+import { InvoiceBatchService } from '@/modules/invoice/application/invoice-batch.service';
 import { setupOpenApi } from './setup';
 
 it('documents the actual 202 invoice response with nullable scheduledFor', async () => {
@@ -12,6 +13,7 @@ it('documents the actual 202 invoice response with nullable scheduledFor', async
     controllers: [InvoiceController],
     providers: [
       { provide: InvoiceService, useValue: {} },
+      { provide: InvoiceBatchService, useValue: {} },
       { provide: InvoiceCalculationService, useValue: {} },
     ],
   })
@@ -61,6 +63,24 @@ it('documents the actual 202 invoice response with nullable scheduledFor', async
     expect(cancelOp?.summary).toContain('processing');
     expect(cancelOp?.description).toContain('cancellationRequestedAt');
     expect(cancelOp?.description).toContain('does not refund');
+    const batchOp = document?.paths['/invoices/batches']?.post;
+    expect(batchOp?.responses['202']).toBeDefined();
+    expect(batchOp?.description).toContain('single transaction');
+    expect(document?.components?.schemas?.BatchInvoiceItemDto).toEqual(
+      expect.objectContaining({
+        properties: expect.objectContaining({
+          idempotencyKey: expect.any(Object),
+        }),
+      }),
+    );
+    expect(document?.components?.schemas?.InvoiceBatchSummaryDto).toEqual(
+      expect.objectContaining({
+        properties: expect.objectContaining({
+          results: expect.any(Object),
+          accepted: expect.any(Object),
+        }),
+      }),
+    );
     expect(
       document?.paths['/invoices/calculate']?.post?.responses['200'],
     ).toBeDefined();

@@ -224,6 +224,7 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | POST   | `/companies/{id}/service-tax-profiles/{serviceId}/approve` | S/K, `nfse.companies.manage` | Aprova o perfil de serviço (idempotente se já aprovado); 201                          |
 | DELETE | `/companies/{id}/service-tax-profiles/{serviceId}`     | S/K, `nfse.companies.manage`    | Remove só perfil expirado e não aprovado; aprovado ou vigente retorna 409            |
 | POST   | `/invoices/calculate`                                  | S/K, `nfse.invoices.issue`      | Cálculo pré-emissão sempre disponível; CreateInvoice; 200 ready/blocked; rate limit HTTP padrão |
+| POST   | `/invoices/batches`                                    | S/K, `nfse.invoices.issue`      | Emite 1 a 50 notas (várias empresas); `{ invoices: [CreateInvoice + idempotencyKey?] }`; resultado por item (`index`, `accepted`/`rejected`, `replayed?`); válidas salvas em uma transação; 10 req/min por tenant; 202 |
 | POST   | `/invoices`                                            | S/K, `nfse.invoices.issue`      | JSON CreateInvoice; header `idempotency-key?`; 202                                 |
 | GET    | `/invoices`                                            | S/K, `nfse.invoices.view`       | Query: `companyId?`, `status?`, `from?`, `to?`, `externalId?`, `limit?`, `cursor?` |
 | GET    | `/invoices/{id}`                                       | S/K, `nfse.invoices.view`       | Detalhes/status da nota                                                            |

@@ -121,6 +121,25 @@ adds the warning SIMPLES_RATE_STALE to the calculation response. MCP tool:
 company_set_simples_rate. The IBS and CBS of the Simples (2027) are computed by the
 national system and are not informed.
 
+## Batch issuance (batches)
+
+POST /v1/invoices/batches (permission nfse.invoices.issue, 10 requests/minute per
+tenant, 202) issues 1 to 50 invoices in one call. Body { invoices: [...] }; each item
+is a CreateInvoice plus an optional idempotencyKey, and items may belong to
+different companies (companyId or companyTaxId). Only a body that is not a list of
+1 to 50 items fails the request (400 ERROR_VALIDATION). Each item is validated on its own: invalid
+items are returned rejected (error.code, error.message, error.details) and are not
+saved, while all the valid ones are saved in a single transaction together with
+their credit reservation and outbox message. Response data: { total, accepted,
+rejected, results[] } with one entry per item in the order sent
+({ index, status: accepted|rejected, replayed?, invoice?, error? }). In live each
+accepted item reserves one credit; items beyond the plan limit are rejected with
+ERROR_MONTHLY_LIMIT_EXCEEDED / ERROR_DAILY_LIMIT_EXCEEDED / ERROR_PLAN_BLOCKED.
+Idempotency is per item (the Idempotency-Key header is not used): repeating the
+batch returns saved items as replayed true. A key repeated inside the batch is
+rejected with ERROR_DUPLICATE_IDEMPOTENCY_KEY_IN_BATCH. MCP: nfse_issue_batch
+(scope nfse:write), same contract in snake_case.
+
 ## Pre-emission calculation (calculate)
 
 POST /v1/invoices/calculate is always available to authenticated API keys/sessions
@@ -239,7 +258,7 @@ at /.well-known/oauth-protected-resource and /.well-known/oauth-authorization-se
 GET /mcp/authorize redirects to the dashboard (DASHBOARD_URL/mcp/authorize), where
 login and consent happen; the dashboard calls GET/POST /v1/mcp/consent with its
 session cookie. Scopes nfse:read, nfse:write (a member can only grant what their
-role allows). Tools: nfse_issue, nfse_cancel, nfse_query, nfse_list, nfse_download_pdf,
+role allows). Tools: nfse_issue, nfse_issue_batch, nfse_cancel, nfse_query, nfse_list, nfse_download_pdf,
 company_set_simples_rate; tool
 failures return isError results. The user picks test or live on the consent screen; the connection stays in that environment (reconnect to switch). Dashboard lists
 connections with usage (GET /v1/mcp/connections) and revokes (DELETE

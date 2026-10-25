@@ -1,4 +1,5 @@
 import {
+  ArrayMaxSize,
   ArrayNotEmpty,
   IsArray,
   IsBoolean,
@@ -188,4 +189,15 @@ export class CompanySetSimplesRateInput {
 
   @IsNumber() @Min(0) @Max(100) total_rate!: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) iss_rate?: number;
+}
+
+export class NfseIssueBatchInput {
+  /**
+   * Items are NOT nested-validated here: each one is checked on its own by the
+   * handler so a bad row is reported in place instead of failing the batch.
+   */
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMaxSize(50)
+  invoices!: unknown[];
 }

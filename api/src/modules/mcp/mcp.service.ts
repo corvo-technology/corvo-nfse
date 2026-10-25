@@ -7,6 +7,7 @@ import { ICompanyCertificateReader } from '@/modules/company/domain/i-company-ce
 import { Inject, Injectable } from '@nestjs/common';
 import type { AuthContext } from '../auth/auth-context';
 import { InvoiceService } from '../invoice/application/invoice.service';
+import { InvoiceBatchService } from '../invoice/application/invoice-batch.service';
 import { InvoiceCalculationService } from '../invoice/application/fiscal/invoice-calculation.service';
 import { QuotaService } from '@/modules/plans/application/quota.service';
 import { McpServer } from './mcp.server';
@@ -14,6 +15,10 @@ import {
   NFSE_ISSUE_TOOL,
   createNfseIssueHandler,
 } from './tools/nfse-issue.tool';
+import {
+  NFSE_ISSUE_BATCH_TOOL,
+  createNfseIssueBatchHandler,
+} from './tools/nfse-issue-batch.tool';
 import {
   NFSE_CANCEL_TOOL,
   createNfseCancelHandler,
@@ -72,6 +77,7 @@ export class McpService {
 
   constructor(
     private readonly invoiceService: InvoiceService,
+    private readonly invoiceBatchService: InvoiceBatchService,
     private readonly calculationService: InvoiceCalculationService,
     private readonly quotaService: QuotaService,
     @Inject(INVOICE_REPOSITORY)
@@ -91,6 +97,13 @@ export class McpService {
       NFSE_ISSUE_TOOL,
       this.wrapWithScopeCheck(
         createNfseIssueHandler(this.invoiceService),
+        'nfse:write',
+      ),
+    );
+    this.server.registerTool(
+      NFSE_ISSUE_BATCH_TOOL,
+      this.wrapWithScopeCheck(
+        createNfseIssueBatchHandler(this.invoiceBatchService),
         'nfse:write',
       ),
     );

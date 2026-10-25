@@ -139,3 +139,30 @@ describe('CreateInvoiceDto optional customer, discount and fiscal input', () => 
     expect(errorProperties(errors)).toContain('municipalityCode');
   });
 });
+
+describe('CreateInvoiceDto inputs that used to crash after validation', () => {
+  const body = (overrides: Record<string, unknown> = {}) =>
+    plainToInstance(CreateInvoiceDto, {
+      companyTaxId: '11222333000181',
+      service: { code: '010101' },
+      amount: 10,
+      competenceDate: '2026-01-01',
+      ...overrides,
+    });
+  const failing = async (overrides: Record<string, unknown>) =>
+    (await validate(body(overrides))).map((error) => error.property);
+
+  it('rejects an externalId longer than the 100 characters the column holds', async () => {
+    expect(await failing({ externalId: 'x'.repeat(101) })).toContain(
+      'externalId',
+    );
+    expect(await failing({ externalId: 'x'.repeat(100) })).toEqual([]);
+  });
+
+  it('rejects a companyId that is not a UUID even when companyTaxId is also sent', async () => {
+    expect(await failing({ companyId: 'abc' })).toContain('companyId');
+    expect(
+      await failing({ companyId: '01927de2-1234-7890-abcd-ef0123456789' }),
+    ).toEqual([]);
+  });
+});

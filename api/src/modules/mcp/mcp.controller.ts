@@ -97,7 +97,7 @@ export class McpController {
         (result?.result as { isError?: boolean } | undefined)?.isError === true;
       if (request?.method !== 'tools/call' || failed) return;
       toolCalls += 1;
-      if (request.params?.name === 'nfse_issue') invoicesIssued += 1;
+      invoicesIssued += invoicesIssuedBy(request.params?.name, result);
     });
     try {
       await this.connections.recordUsage(auth.mcpConnectionId, auth.tenantId, {
@@ -107,5 +107,31 @@ export class McpController {
     } catch (error) {
       this.logger.warn(`Could not record MCP usage: ${String(error)}`);
     }
+  }
+}
+
+/** Invoices a successful tool call created: 1 for nfse_issue, the newly accepted items for nfse_issue_batch. */
+function invoicesIssuedBy(
+  tool: string | undefined,
+  result: McpResponse | null,
+): number {
+  if (tool === 'nfse_issue') return 1;
+  return tool === 'nfse_issue_batch' ? newlyIssuedInBatch(result) : 0;
+}
+
+/** Accepted items of an nfse_issue_batch result, excluding replays of earlier calls. */
+function newlyIssuedInBatch(result: McpResponse | null): number {
+  const content = (
+    result?.result as { content?: Array<{ text?: string }> } | undefined
+  )?.content;
+  try {
+    const parsed = JSON.parse(content?.[0]?.text ?? '{}') as {
+      results?: Array<{ status?: string; replayed?: boolean }>;
+    };
+    return (parsed.results ?? []).filter(
+      (item) => item.status === 'accepted' && !item.replayed,
+    ).length;
+  } catch {
+    return 0;
   }
 }

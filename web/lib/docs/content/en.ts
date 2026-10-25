@@ -80,6 +80,7 @@ const enWithRetiredCredits: DocsTree = {
           ["GET", "`/v1/companies/:companyId/certificates`", "List certificates", "200"],
           ["DELETE", "`/v1/companies/:companyId/certificates/:certId`", "Revoke a certificate", "204"],
           ["POST", "`/v1/invoices`", "Request issuance", "202"],
+          ["POST", "`/v1/invoices/batches`", "Request issuance of up to 50 invoices", "202"],
           ["POST", "`/v1/invoices/calculate`", "Calculate taxes without issuing", "200"],
           ["GET", "`/v1/invoices`", "List invoices", "200"],
           ["GET", "`/v1/invoices/:id`", "Fetch an invoice", "200"],
@@ -316,7 +317,7 @@ const enWithRetiredCredits: DocsTree = {
         },
         {
           kind: "text",
-          body: "Sensitive routes have extra per-route budgets on top of the general limit: OTP, magic link, OAuth and Turnstile (10 to 30 per minute per IP), MCP client registration, token and revocation (10 to 30 per minute per IP), and the costly authenticated routes `POST /invoices`, `POST /invoices/calculate` (120 per minute per tenant) and certificate upload (10 per minute per tenant). Health checks, preflight and Stripe receiving are exempt. Creating more API keys does not raise your ceiling: the tenant-wide limit applies across all of them.",
+          body: "Sensitive routes have extra per-route budgets on top of the general limit: OTP, magic link, OAuth and Turnstile (10 to 30 per minute per IP), MCP client registration, token and revocation (10 to 30 per minute per IP), and the costly authenticated routes `POST /invoices`, `POST /invoices/calculate` (120 per minute per tenant), `POST /invoices/batches` (10 per minute per tenant) and certificate upload (10 per minute per tenant). Health checks, preflight and Stripe receiving are exempt. Creating more API keys does not raise your ceiling: the tenant-wide limit applies across all of them.",
         },
         {
           kind: "text",
@@ -897,6 +898,119 @@ console.log(body.data.id); // { data: Invoice }`,
           notes: [
             { kind: "callout", tone: "accent", body: "Send an `Idempotency-Key` header: with the same key, account and environment and equivalent content, the hash recovers the same invoice; different content returns `409` (`ERROR_IDEMPOTENCY_CONFLICT`). The hash is computed before fiscal normalization, with canonical JSON keys and the competence date. Do not change how fields are represented between retries: a CNPJ with and without punctuation can produce different hashes. Without a key there is no deduplication." },
             { kind: "callout", tone: "warn", body: "Issuance is asynchronous — see the Async issuance guide. Track the invoice with `GET /v1/invoices/:id` or webhooks. The customer address is reduced to `city` and `state` in the snapshot; `street`, `zip` and `country` are not preserved — do not rely on them in the response." },
+          ],
+        },
+        {
+          kind: "endpoint",
+          method: "POST",
+          path: "/v1/invoices/batches",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "202 Accepted",
+          summary: "Requests the issuance of **1 to 50 invoices in a single call**, for one company or for several. Each item has the same fields as `POST /v1/invoices` plus an optional `idempotencyKey`. Items are checked one by one: valid items are saved together in a single transaction, invalid items come back as `rejected` with the reason and are **not** saved. Issuance stays asynchronous, as in `POST /v1/invoices`.",
+          params: {
+            rows: [
+              { name: "invoices", type: "array", required: true, description: "List of 1 to 50 items. Each item takes the fields of `POST /v1/invoices` (`companyId` or `companyTaxId`, `service`, `amount`, `competenceDate`, optional `customer`, `discount`, `deduction`, `options`...). Items can belong to different companies of the account. Fewer than 1 or more than 50 items returns `400` `ERROR_VALIDATION` for the whole request." },
+              { name: "invoices[].idempotencyKey", type: "string", required: false, description: "Idempotency key of the item (up to 255 characters). With the same key and the same content, repeating the batch returns the invoice already saved with `replayed: true` instead of issuing again. The `Idempotency-Key` header is not used by this route." },
+            ],
+          },
+          examples: {
+            curl: `curl -X POST "$BASE_URL/invoices/batches" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "invoices": [
+      {
+        "companyTaxId": "11222333000181",
+        "idempotencyKey": "planilha-out-linha-2",
+        "customer": { "name": "Cliente A", "taxId": "52998224725" },
+        "service": { "description": "Consultoria" },
+        "amount": 150.50,
+        "competenceDate": "2026-10-01"
+      },
+      {
+        "companyTaxId": "45723174000110",
+        "idempotencyKey": "planilha-out-linha-3",
+        "service": { "description": "Manutenção mensal" },
+        "amount": 300,
+        "competenceDate": "2026-10-01"
+      }
+    ]
+  }'`,
+            node: `const res = await fetch(\`\${BASE_URL}/invoices/batches\`, {
+  method: "POST",
+  headers: {
+    "X-API-Key": process.env.CORVO_API_KEY,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    invoices: rows.map((row, i) => ({
+      companyTaxId: row.cnpj,
+      idempotencyKey: \`planilha-out-linha-\${i + 2}\`,
+      service: { description: row.description },
+      amount: row.amount,
+      competenceDate: "2026-10-01",
+    })),
+  }),
+});
+const { data } = await res.json();
+for (const item of data.results) {
+  if (item.status === "rejected") console.log(item.index, item.error.code, item.error.message);
+}`,
+          },
+          response: {
+            label: "202 Accepted",
+            json: `{
+  "data": {
+    "total": 3,
+    "accepted": 2,
+    "rejected": 1,
+    "results": [
+      {
+        "index": 0,
+        "status": "accepted",
+        "invoice": {
+          "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
+          "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
+          "environment": "test",
+          "idempotencyKey": "planilha-out-linha-2",
+          "status": "queued",
+          "amount": 150.5,
+          "currency": "BRL",
+          "competenceDate": "2026-10-01T00:00:00.000Z",
+          "stage": "pending",
+          "createdAt": "2026-10-10T12:00:00.000Z"
+        }
+      },
+      {
+        "index": 1,
+        "status": "accepted",
+        "replayed": true,
+        "invoice": {
+          "id": "0b7a1f52-3c4d-4e6f-8a9b-2c3d4e5f6a7b",
+          "status": "queued",
+          "idempotencyKey": "planilha-out-linha-3",
+          "amount": 300
+        }
+      },
+      {
+        "index": 2,
+        "status": "rejected",
+        "error": {
+          "code": "ERROR_VALIDATION",
+          "message": "Request validation failed",
+          "details": [
+            { "field": "amount", "code": "ERROR_OUT_OF_RANGE", "message": "amount must be greater than 0" }
+          ]
+        }
+      }
+    ]
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "**All or nothing for the valid ones, never for the batch.** Every `accepted` item is saved in one single commit, with its credit reservation and its queue message. An invalid item (validation, company not found or not ready, missing certificate in `live`, plan limit) comes back `rejected` and is discarded without affecting the others. If something unexpected fails while saving, nothing at all is saved and you can repeat the same batch safely." },
+            { kind: "callout", tone: "accent", body: "**Reading the result.** `results` has one entry per item, in the order sent: use `index` to match each result to the row of your spreadsheet or to your own record. Fix only the `rejected` rows and send them again; the `accepted` ones are already saved. Always send an `idempotencyKey` per item (for example `file-row-7`): after a timeout, repeating the whole batch returns the saved ones as `replayed: true` and retries only the missing ones. A key repeated inside the same batch is rejected with `ERROR_DUPLICATE_IDEMPOTENCY_KEY_IN_BATCH`." },
+            { kind: "callout", tone: "warn", body: "In `live`, each accepted item reserves one credit, like `POST /v1/invoices`. When the monthly or daily limit is reached in the middle of the batch, the items that fit are saved and the rest come back `rejected` with `ERROR_MONTHLY_LIMIT_EXCEEDED`, `ERROR_DAILY_LIMIT_EXCEEDED` or `ERROR_PLAN_BLOCKED`. The route accepts up to 10 batches per minute per tenant (`429` with `Retry-After`). For AI agents, the MCP tool `nfse_issue_batch` has the same contract." },
           ],
         },
         {
@@ -2555,6 +2669,12 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`nfse:read`",
               "`tax_id?` (CNPJ), `limit?`, `cursor?`",
               "`{ companies [{ id, legal_name, tax_id, status, tax_regime, setup_gaps, ready_to_issue }], next_cursor }`"
+            ],
+            [
+              "`nfse_issue_batch`",
+              "`nfse:write`",
+              "`invoices` (1 to 50 items, each with the same fields as `nfse_issue`, including `company_tax_id` or `company_id` and `idempotency_key`)",
+              "`{ total, accepted, rejected, results [{ index, status, replayed?, invoice_id?, access_key?, invoice_status?, error? }] }`; invalid items are rejected in place and the valid ones are saved together"
             ],
             ["`company_set_simples_rate`", "`nfse:write`", "`company_tax_id` or `company_id`, `month` (`YYYY-MM`), `total_rate`, `iss_rate?`", "`{ company_id, month, total_rate, iss_rate }`; the last informed month is repeated until updated. `company_get` also returns `simples_rate`"],
             ["`company_get`", "`nfse:read`", "`tax_id` (CNPJ)", "`{ company }` or `{ company: null }`"],

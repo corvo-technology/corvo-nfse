@@ -36,11 +36,28 @@ describe("EN/PT docs parity", () => {
     expect(describeSection(en, en.pages[slug])).toEqual(describeSection(pt, pt.pages[slug]));
   });
 
-  it("documents exactly 34 endpoint operations", () => {
+  it("documents exactly 35 endpoint operations", () => {
     const allEndpoints = DOC_SLUGS.flatMap((slug) => endpoints(pt.pages[slug].blocks));
     const unique = new Set(allEndpoints.map((e) => `${e.method} ${e.path}`));
-    expect(allEndpoints).toHaveLength(34);
-    expect(unique.size).toBe(34);
+    expect(allEndpoints).toHaveLength(35);
+    expect(unique.size).toBe(35);
+  });
+
+  it.each([["en", en], ["pt", pt]] as const)("documents POST /v1/invoices/batches in the %s endpoint table and reference", (_lang, tree) => {
+    const reference = DOC_SLUGS.flatMap((slug) => endpoints(tree.pages[slug].blocks)).find(
+      (e) => e.method === "POST" && e.path === "/v1/invoices/batches",
+    );
+    expect(reference?.success).toBe("202 Accepted");
+    expect(reference?.summary).toContain("50");
+    const tables = DOC_SLUGS.flatMap((slug) => tree.pages[slug].blocks).concat(tree.home.blocks).filter(
+      (b): b is Extract<DocBlock, { kind: "table" }> => b.kind === "table",
+    );
+    expect(
+      tables.some((t) => t.rows.some((row) => row[0] === "POST" && row[1] === "`/v1/invoices/batches`")),
+    ).toBe(true);
+    expect(
+      tables.some((t) => t.rows.some((row) => row[0] === "`nfse_issue_batch`")),
+    ).toBe(true);
   });
 
   it("every endpoint has curl and node examples plus a response", () => {
