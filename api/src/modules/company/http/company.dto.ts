@@ -140,6 +140,48 @@ export class UpdateCompanyDto {
 
 export class ListCompaniesQuery extends CursorQuery {}
 
+const RATE_PATTERN = /^\d+(\.\d{1,2})?$/;
+
+export class PutSimplesRateDto {
+  @ApiProperty({
+    type: String,
+    example: '6.54',
+    description:
+      'Approximate total tax rate (%) of the Simples Nacional for the month (the effective rate of the DAS). Sent in the DPS as pTotTribSN. Informed by the company or its accountant: Corvo does not compute the DAS.',
+  })
+  @IsString()
+  @Matches(RATE_PATTERN)
+  totalRate!: string;
+
+  @ApiPropertyOptional({
+    type: String,
+    example: '2.01',
+    description:
+      'Effective ISS rate (%) of the month; used for ISS withholding.',
+  })
+  @IsOptional()
+  @Matches(RATE_PATTERN)
+  issRate?: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    example: '0.10',
+    description: 'IBS rate (%) of the Simples for the month (2027).',
+  })
+  @IsOptional()
+  @Matches(RATE_PATTERN)
+  ibsRate?: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    example: '0.90',
+    description: 'CBS rate (%) of the Simples for the month (2027).',
+  })
+  @IsOptional()
+  @Matches(RATE_PATTERN)
+  cbsRate?: string | null;
+}
+
 export class UpsertFiscalProfileDto {
   @ApiProperty({
     enum: TAX_REGIME_KINDS,

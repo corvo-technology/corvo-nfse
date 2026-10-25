@@ -4,6 +4,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CompanyOrmEntity } from './infra/company.orm-entity';
 import { CompanyFiscalProfileOrmEntity } from './infra/company-fiscal-profile.orm-entity';
 import { CompanyServiceTaxProfileOrmEntity } from './infra/company-service-tax-profile.orm-entity';
+import { CompanySimplesRateOrmEntity } from './infra/company-simples-rate.orm-entity';
+import { TypeOrmSimplesRateRepository } from './infra/typeorm-simples-rate.repository';
+import { ISimplesRateRepository } from './domain/simples-rate';
+import { SimplesRateService } from './application/simples-rate.service';
 import { TypeOrmCompanyRepository } from './infra/typeorm-company.repository';
 import { TypeOrmCompanyFiscalProfileRepository } from './infra/typeorm-company-fiscal-profile.repository';
 import { TypeOrmCompanyServiceTaxProfileRepository } from './infra/typeorm-company-service-tax-profile.repository';
@@ -26,6 +30,7 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
       CompanyOrmEntity,
       CompanyFiscalProfileOrmEntity,
       CompanyServiceTaxProfileOrmEntity,
+      CompanySimplesRateOrmEntity,
     ]),
     forwardRef(() => CertificateModule),
   ],
@@ -44,6 +49,10 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
       useClass: TypeOrmCompanyServiceTaxProfileRepository,
     },
     {
+      provide: ISimplesRateRepository,
+      useClass: TypeOrmSimplesRateRepository,
+    },
+    {
       provide: ICompanyCertificateReader,
       useClass: CompanyCertificateReader,
     },
@@ -51,12 +60,14 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
     CompanyDomainService,
     CompanyFiscalProfileService,
     CompanyServiceTaxProfileService,
+    SimplesRateService,
   ],
   exports: [
     CompanyService,
     CompanyDomainService,
     CompanyFiscalProfileService,
     CompanyServiceTaxProfileService,
+    SimplesRateService,
     ICompanyRepository,
     IFiscalProfileRepository,
     IServiceTaxProfileRepository,
