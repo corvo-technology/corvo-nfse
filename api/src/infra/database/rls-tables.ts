@@ -24,6 +24,7 @@ export const TENANT_RLS_TABLES = [
   'outbox_messages',
   'company_fiscal_profiles',
   'company_service_tax_profiles',
+  'company_simples_rates',
   'invoice_fiscal_snapshots',
   'invoice_fiscal_reconciliations',
 ] as const;

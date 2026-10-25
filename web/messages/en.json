@@ -2133,5 +2133,23 @@
     "copied": "Copied",
     "source": "Source on GitHub",
     "docs": "See all SDKs in the docs"
+  },
+  "CompanySimplesRate": {
+    "title": "Simples Nacional rate",
+    "intro": "Corvo does not compute the DAS. Inform the effective rate shown in your PGDAS-D each month: it is sent on every NFS-e (pTotTribSN). The last month you inform is repeated until you update it.",
+    "none": "No rate informed yet. Inform this month's rate to issue invoices without warnings.",
+    "inForce": "Rate in force ({month})",
+    "issRate": "ISS rate",
+    "stale": "The last informed rate is from {month}, but the current month is {current}: update it.",
+    "totalRate": "Total rate (%)",
+    "totalRateHint": "Approximate total tax rate of the Simples for the month.",
+    "issRateHint": "Optional. Effective ISS rate, used when the customer withholds ISS.",
+    "save": "Save rate for {month}",
+    "formTitle": "Rate for {month}",
+    "rateInvalid": "Inform a number, for example 6.54.",
+    "rateRange": "The rate must be between 0 and 100.",
+    "rateDecimals": "Use at most 2 decimal places.",
+    "saveFailed": "Could not save the rate.",
+    "failed": "Could not load the rate."
   }
 }

@@ -28,3 +28,24 @@ export function resolveServiceState(services: CompanyServiceTaxProfile[], code: 
   if (matches.length > 1) return "ambiguous";
   return matches[0]?.reviewStatus ?? "missing";
 }
+
+/** Corvo serves only these regimes; the form offers nothing else. */
+export const SUPPORTED_TAX_REGIMES: readonly TaxRegime[] = ["MEI", "Simples Nacional"];
+
+/** Current competence month (YYYY-MM) in the fiscal timezone. */
+export function fiscalMonth(now = new Date()): string {
+  return fiscalToday(now).slice(0, 7);
+}
+const monthNumber = (month: string): number => { const [year, mon] = month.split("-").map(Number); return year * 12 + mon; };
+/** A Simples rate is stale when the latest informed month is more than one month behind. */
+export function isSimplesRateStale(latestMonth: string, currentMonth: string): boolean {
+  return monthNumber(currentMonth) - monthNumber(latestMonth) > 1;
+}
+/** Null when valid; otherwise the reason key. A percentage from 0 to 100 with at most two decimals. */
+export function simplesRateError(value: string): "invalid" | "range" | "decimals" | null {
+  const text = value.trim();
+  if (!/^-?\d+(\.\d+)?$/.test(text)) return "invalid";
+  if (Number(text) < 0 || Number(text) > 100) return "range";
+  if ((text.split(".")[1]?.length ?? 0) > 2) return "decimals";
+  return null;
+}

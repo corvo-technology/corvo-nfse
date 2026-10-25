@@ -151,6 +151,7 @@ const makeController = (
     {} as ICompanyCertificateReader,
     fiscalProfiles as unknown as CompanyFiscalProfileService,
     serviceTaxProfiles as unknown as CompanyServiceTaxProfileService,
+    {} as never,
   );
   return { controller, companyService, fiscalProfiles, serviceTaxProfiles };
 };
@@ -171,6 +172,7 @@ describe('CompanyController fiscal profile endpoints', () => {
         ibsCbsRegularOption: false,
         ibsCbsRegularFrom: null,
         simplesIssRate: null,
+        simplesApuracao: null,
         validFrom: todayInEstablishmentTimezone(),
         source: 'company_api',
         reviewStatus: 'unreviewed',

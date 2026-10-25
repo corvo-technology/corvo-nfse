@@ -70,3 +70,38 @@ describe('validateFiscalProfile', () => {
     );
   });
 });
+
+describe('validateFiscalProfile simplesApuracao (regApTribSN)', () => {
+  it('accepts SN for Simples Nacional and an omitted value', () => {
+    expect(validateFiscalProfile(makeInput({ simplesApuracao: 'SN' }))).toEqual(
+      [],
+    );
+    expect(validateFiscalProfile(makeInput())).toEqual([]);
+  });
+
+  it.each(['ISS_MUNICIPAL', 'REGULAR'] as const)(
+    'refuses %s: Simples above the sublimit is not supported yet',
+    (simplesApuracao) => {
+      expect(validateFiscalProfile(makeInput({ simplesApuracao }))).toEqual([
+        expect.objectContaining({
+          field: 'simplesApuracao',
+          code: 'simples_sublimit_not_supported',
+        }),
+      ]);
+    },
+  );
+
+  it('refuses any simplesApuracao for MEI (E0162)', () => {
+    const issues = validateFiscalProfile(
+      makeInput({ taxRegime: 'MEI', simplesApuracao: 'SN' }),
+    );
+    expect(issues).toEqual([
+      expect.objectContaining({ field: 'simplesApuracao', code: 'invalid' }),
+    ]);
+    expect(
+      validateFiscalProfile(
+        makeInput({ taxRegime: 'MEI', simplesApuracao: null }),
+      ),
+    ).toEqual([]);
+  });
+});

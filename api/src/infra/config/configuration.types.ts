@@ -54,7 +54,22 @@ export interface FiscalConfig {
   ibsCbsUnavailableMode: 'block' | 'warn';
 }
 
-export type RtcDpsLayout = 'rtc-v1.01';
+/** A rollout flag: `tenants` is `*` (every tenant) or the tenants it is limited to. */
+export interface RolloutFlagConfig {
+  on: boolean;
+  tenants: '*' | string[];
+}
+
+export interface RolloutConfig {
+  taxRegimeRestriction: RolloutFlagConfig;
+  fiscalDpsConformance: RolloutFlagConfig;
+  simplesTottrib: RolloutFlagConfig;
+  cnpjRegistryCheck: RolloutFlagConfig;
+  simplesRateMode: { mode: 'off' | 'warn' | 'block'; tenants: '*' | string[] };
+  simplesRateEnforcedFrom: string | null;
+}
+
+export type RtcDpsLayout = 'rtc-v1.01' | 'nt009-r1';
 
 export interface RtcConfig {
   url?: string;
@@ -213,6 +228,7 @@ export type AppConfiguration = {
   queue: QueueConfig;
   outbox: OutboxConfig;
   fiscal: FiscalConfig;
+  rollout: RolloutConfig;
   rtc: RtcConfig;
   logging: LoggingConfig;
   openTelemetry: OpenTelemetryConfig;

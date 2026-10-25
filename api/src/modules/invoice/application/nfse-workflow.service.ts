@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
+import { SimplesRateService } from '@/modules/company/application/simples-rate.service';
+import {
+  regApTribSNFor,
+  type CompanyFiscalProfile,
+} from '@/modules/company/domain/fiscal-profile';
 import { ConfigService } from '@nestjs/config';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { buildDpsId } from 'open-nfse';
@@ -80,6 +86,9 @@ export class NfseWorkflowService {
     private readonly fiscalSnapshots: IFiscalSnapshotRepository,
     private readonly dpsBuilder: DpsBuilder,
     private readonly config: ConfigService,
+    // Optional so the workflow keeps today's DPS where they are not provided.
+    @Optional() private readonly flags?: RolloutFlagsService,
+    @Optional() private readonly simplesRates?: SimplesRateService,
   ) {}
 
   async process(data: FiscalJobData): Promise<void> {
@@ -445,13 +454,73 @@ export class NfseWorkflowService {
           municipalReg: company.municipalRegForDps ?? null,
           municipalityCode: company.municipalityCode,
           specialTaxRegime: profile.specialTaxRegime ?? null,
-          simplesIssRate: profile.simplesIssRate ?? null,
+          simplesIssRate: await this.simplesIssRateFor(
+            profile,
+            invoice,
+            snapshot.competenceDate,
+          ),
+          ...(await this.simplesTotTribFor(
+            profile,
+            invoice,
+            snapshot.competenceDate,
+          )),
         },
       },
       this.config.getOrThrow<RtcConfig>('rtc').dpsLayout,
     );
     if (!built.ok) throw new DpsBuildRejectionError(built.error);
     return { ...payload, preparedDps: built.value };
+  }
+
+  /** The ISS rate informed for the competence month wins over the profile's (withholding aliquota). */
+  private async simplesIssRateFor(
+    profile: CompanyFiscalProfile,
+    invoice: Invoice,
+    competenceDate: Date | string,
+  ): Promise<string | null> {
+    if (profile.taxRegime !== 'SIMPLES_NACIONAL' || !this.simplesRates)
+      return profile.simplesIssRate ?? null;
+    const { rate } = await this.simplesRates.resolve(
+      invoice.companyId,
+      invoice.tenantId,
+      new Date(competenceDate).toISOString().slice(0, 10),
+    );
+    return rate?.issRate ?? profile.simplesIssRate ?? null;
+  }
+
+  /**
+   * With SIMPLES_TOTTRIB the DPS carries the Simples approximate tax rate and the
+   * profile's regApTribSN. An ME/EPP without any informed rate keeps the legacy
+   * totals (the rate requirement itself is enforced at intake, SIMPLES_RATE_MODE).
+   */
+  private async simplesTotTribFor(
+    profile: CompanyFiscalProfile,
+    invoice: Invoice,
+    competenceDate: Date | string,
+  ): Promise<{
+    simplesTotTrib?: {
+      regApTribSN: 1 | 2 | 3 | null;
+      totalRate: string | null;
+    };
+  }> {
+    if (!this.flags?.isOn('SIMPLES_TOTTRIB', invoice.tenantId)) return {};
+    const regApTribSN = regApTribSNFor(profile);
+    if (profile.taxRegime === 'MEI')
+      return { simplesTotTrib: { regApTribSN, totalRate: null } };
+    if (profile.taxRegime !== 'SIMPLES_NACIONAL' || !this.simplesRates)
+      return {};
+    const { rate } = await this.simplesRates.resolve(
+      invoice.companyId,
+      invoice.tenantId,
+      new Date(competenceDate).toISOString().slice(0, 10),
+    );
+    if (rate === null) {
+      this.logger.warn(
+        `SIMPLES_TOTTRIB is on but company ${invoice.companyId} has no informed Simples rate: keeping the legacy totals`,
+      );
+      return {};
+    }
+    return { simplesTotTrib: { regApTribSN, totalRate: rate.totalRate } };
   }
 
   /** Where live invoices are received: the production Sefin unless the app runs in homologation mode. */

@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
 import type { Obligation } from '@/modules/invoice/domain/fiscal/applicability/tax-applicability';
 import type { ServiceTaxClassification } from '@/modules/invoice/domain/fiscal/classification/service-tax-classification';
@@ -80,7 +81,14 @@ export function regularIbsCbs(input: StrategyInput): {
 export class RegularTaxStrategy implements TaxStrategy {
   readonly name = 'regular';
 
+  // Optional so the strategy keeps working where no flags are provided (rule off).
+  constructor(@Optional() private readonly flags?: RolloutFlagsService) {}
+
   supports(profile: CompanyFiscalProfile): boolean {
+    // TAX_REGIME_RESTRICTION: Lucro Presumido/Real are no longer served, so the
+    // resolver answers TAX_REGIME_UNSUPPORTED instead of calculating them.
+    if (this.flags?.isOn('TAX_REGIME_RESTRICTION', profile.tenantId))
+      return false;
     return (
       profile.taxRegime === 'LUCRO_PRESUMIDO' ||
       profile.taxRegime === 'LUCRO_REAL'

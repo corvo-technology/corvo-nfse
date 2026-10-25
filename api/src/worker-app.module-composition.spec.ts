@@ -15,4 +15,17 @@ describe('WorkerAppModule composition', () => {
       expect(imports).not.toContain(undefined);
     });
   });
+
+  it('provides the rollout flags: the worker builds the DPS and runs the fiscal engine', () => {
+    jest.isolateModules(() => {
+      const { WorkerAppModule } = require('./worker-app.module');
+      const { RolloutModule } = require('./shared/rollout/rollout.module');
+      const imports = Reflect.getMetadata(
+        MODULE_METADATA.IMPORTS,
+        WorkerAppModule,
+      ) as unknown[];
+
+      expect(imports).toContain(RolloutModule);
+    });
+  });
 });

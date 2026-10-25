@@ -20,7 +20,7 @@ import type { FiscalCalculationResult } from '../fiscal-calculation-result';
 import { fiscalError, type FiscalError } from '../fiscal-error';
 import { toDecimal, type DecimalString } from '../money';
 import { err, ok, type Result } from '../result';
-import { ACTIVE_LAYOUTS, type DpsLayout } from './dps-layout';
+import { ACTIVE_LAYOUTS, type DpsLayout, XML_LAYOUT } from './dps-layout';
 
 const STEP = 'DpsBuilder';
 const MAX_VIOLATIONS = 20;
@@ -122,6 +122,15 @@ export interface DpsBuildInput {
     readonly specialTaxRegime: string | null;
     /** Effective ISS rate (%) of the Simples Nacional bracket of the previous month (LC 123/2006, art. 21, §4º, I). */
     readonly simplesIssRate: string | null;
+    /**
+     * Present only with `SIMPLES_TOTTRIB`: the DPS then carries the Simples
+     * approximate total tax rate (`pTotTribSN`, ME/EPP) or `indTotTrib = 0`
+     * (MEI) and the profile's `regApTribSN`, instead of a zeroed `vTotTrib`.
+     */
+    readonly simplesTotTrib?: {
+      readonly regApTribSN: 1 | 2 | 3 | null;
+      readonly totalRate: string | null;
+    };
   };
 }
 
@@ -290,6 +299,24 @@ export class DpsBuilder {
     );
     if (!regEspTrib.ok) return err(regEspTrib.error);
 
+    const simplesTotTrib = input.emitente.simplesTotTrib;
+    if (
+      simplesTotTrib !== undefined &&
+      opSimpNac === OpcaoSimplesNacional.MeEpp &&
+      simplesTotTrib.totalRate === null
+    ) {
+      return err(
+        fiscalError({
+          code: 'DPS_SCHEMA_VALIDATION_FAILED',
+          message:
+            'Simples Nacional ME/EPP requires the approximate total tax rate (pTotTribSN) for the month',
+          category: 'VALIDATION',
+          step: STEP,
+          details: { reason: 'simples_total_rate_missing' },
+        }),
+      );
+    }
+
     const params: BuildDpsParams = {
       emitente: {
         cnpj: input.emitente.cnpj,
@@ -300,7 +327,11 @@ export class DpsBuilder {
           ...(opSimpNac === OpcaoSimplesNacional.MeEpp
             ? {
                 regApTribSN:
-                  RegimeApuracaoSimplesNacional.FederalEMunicipalPeloSN,
+                  simplesTotTrib?.regApTribSN != null
+                    ? (String(
+                        simplesTotTrib.regApTribSN,
+                      ) as RegimeApuracaoSimplesNacional)
+                    : RegimeApuracaoSimplesNacional.FederalEMunicipalPeloSN,
               }
             : {}),
         },
@@ -336,7 +367,13 @@ export class DpsBuilder {
             : {}),
         tribISSQN: tribIssqnFor(result.applicability.iss),
         tpRetISSQN,
-        vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 },
+        // The SDK picks the allowed `totTrib` member per regime (E0710/E0712):
+        // indTotTrib 0 for MEI when nothing is informed, pTotTribSN for ME/EPP.
+        ...(simplesTotTrib === undefined
+          ? { vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 } }
+          : opSimpNac === OpcaoSimplesNacional.MeEpp
+            ? { pTotTribSN: Number(simplesTotTrib.totalRate) }
+            : {}),
       },
       ...(input.invoice.customer !== null
         ? {
@@ -401,9 +438,11 @@ export class DpsBuilder {
     }
 
     try {
-      const validation = await validateDpsXml(buildDpsXml(dps), {
-        throwOnInvalid: false,
-      });
+      const xmlLayout = XML_LAYOUT[layout.id];
+      const validation = await validateDpsXml(
+        buildDpsXml(dps, { layout: xmlLayout }),
+        { throwOnInvalid: false, layout: xmlLayout },
+      );
       if (!validation.valid) {
         return err(
           fiscalError({

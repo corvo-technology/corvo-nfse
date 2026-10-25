@@ -1,3 +1,7 @@
+import { ConfigService } from '@nestjs/config';
+import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
+import { TaxRegimeNotSupportedError } from '../domain/errors';
+import { Company } from '../domain/company';
 import { CompanyService } from './company.service';
 import { CompanyDomainService } from '../domain/company-domain.service';
 import { ICompanyRepository } from '../domain/company.repository';
@@ -579,5 +583,161 @@ describe('CompanyService', () => {
         specialRegime: null,
       });
     });
+  });
+});
+
+describe('CompanyService regime restriction (TAX_REGIME_RESTRICTION)', () => {
+  const tenant = '11111111-1111-4111-8111-111111111111';
+  const flagsFor = (on: boolean) =>
+    new RolloutFlagsService(
+      new ConfigService({
+        rollout: {
+          taxRegimeRestriction: { on, tenants: '*' },
+          fiscalDpsConformance: { on: false, tenants: '*' },
+          simplesTottrib: { on: false, tenants: '*' },
+          cnpjRegistryCheck: { on: false, tenants: '*' },
+          simplesRateMode: { mode: 'off', tenants: '*' },
+          simplesRateEnforcedFrom: null,
+        },
+      }),
+    );
+  const input = (taxRegime: 'MEI' | 'Lucro Presumido' | 'Lucro Real') => ({
+    legalName: 'Empresa',
+    taxId: '22.334.455/0001-86',
+    taxRegime,
+    municipalityCode: '3550308',
+  });
+  const build = (on: boolean) => {
+    const repo = {
+      existsWithTaxId: jest.fn().mockResolvedValue(false),
+      save: jest.fn(),
+      saveWithLimit: jest.fn(),
+      findByIdAndTenantId: jest.fn(),
+    };
+    const profiles = {
+      record: jest.fn(),
+      current: jest.fn().mockResolvedValue(null),
+    };
+    const service = new CompanyService(
+      repo as never,
+      { getStatus: jest.fn() } as never,
+      new CompanyDomainService(),
+      profiles as never,
+      flagsFor(on),
+    );
+    return { service, repo, profiles };
+  };
+
+  it.each(['Lucro Presumido', 'Lucro Real'] as const)(
+    'refuses %s on create and saves nothing when the flag is on',
+    async (regime) => {
+      const { service, repo, profiles } = build(true);
+      await expect(
+        service.create(input(regime), tenant, 'test'),
+      ).rejects.toBeInstanceOf(TaxRegimeNotSupportedError);
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(profiles.record).not.toHaveBeenCalled();
+    },
+  );
+
+  it('update refuses a regime change the restriction would reject BEFORE saving the company', async () => {
+    const { service, repo, profiles } = build(true);
+    const existing = Company.create(
+      {
+        legalName: 'Empresa',
+        taxId: '22334455000186',
+        taxRegime: 'MEI',
+        municipalityCode: '3550308',
+      },
+      tenant,
+    );
+    repo.findByIdAndTenantId.mockResolvedValue(existing);
+    // No current profile: a partial regime change would inherit UNKNOWN.
+    profiles.current.mockResolvedValue(null);
+    await expect(
+      service.update(existing.id, { specialRegime: '1' }, tenant, 'test'),
+    ).rejects.toBeInstanceOf(TaxRegimeNotSupportedError);
+    expect(repo.save).not.toHaveBeenCalled();
+    expect(profiles.record).not.toHaveBeenCalled();
+  });
+
+  it('accepts MEI when the flag is on and Lucro Presumido when it is off', async () => {
+    await expect(
+      build(true).service.create(input('MEI'), tenant, 'test'),
+    ).resolves.toBeDefined();
+    await expect(
+      build(false).service.create(input('Lucro Presumido'), tenant, 'test'),
+    ).resolves.toBeDefined();
+  });
+});
+
+describe('CompanyService registry check (CNPJ_REGISTRY_CHECK)', () => {
+  const tenant = '11111111-1111-4111-8111-111111111111';
+  const flagsFor = (on: boolean) =>
+    new RolloutFlagsService(
+      new ConfigService({
+        rollout: {
+          taxRegimeRestriction: { on: false, tenants: '*' },
+          fiscalDpsConformance: { on: false, tenants: '*' },
+          simplesTottrib: { on: false, tenants: '*' },
+          cnpjRegistryCheck: { on, tenants: '*' },
+          simplesRateMode: { mode: 'off', tenants: '*' },
+          simplesRateEnforcedFrom: null,
+        },
+      }),
+    );
+  const company = {
+    taxId: '11222333000181',
+    municipalityCode: '3550308',
+  } as never;
+  const service = (on: boolean, lookup: jest.Mock) =>
+    new CompanyService(
+      {} as never,
+      {} as never,
+      new CompanyDomainService(),
+      {} as never,
+      flagsFor(on),
+      { lookup },
+    );
+
+  it('warns when the registry says the MEI is not a MEI', async () => {
+    const lookup = jest.fn().mockResolvedValue({
+      optanteSimples: true,
+      optanteMei: false,
+      municipalityCode: '3550308',
+    });
+    const warnings = await service(true, lookup).registryWarnings(
+      company,
+      'MEI',
+      tenant,
+    );
+    expect(lookup).toHaveBeenCalledWith('11222333000181');
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'TAX_REGIME_REGISTRY_MISMATCH' }),
+    ]);
+  });
+
+  it('makes no call when the flag is off', async () => {
+    const lookup = jest.fn();
+    expect(
+      await service(false, lookup).registryWarnings(company, 'MEI', tenant),
+    ).toEqual([]);
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it('never fails or warns when the registry fails', async () => {
+    expect(
+      await service(
+        true,
+        jest.fn().mockRejectedValue(new Error('down')),
+      ).registryWarnings(company, 'MEI', tenant),
+    ).toEqual([]);
+    expect(
+      await service(true, jest.fn().mockResolvedValue(null)).registryWarnings(
+        company,
+        'MEI',
+        tenant,
+      ),
+    ).toEqual([]);
   });
 });

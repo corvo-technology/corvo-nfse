@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { SimplesRateService } from '@/modules/company/application/simples-rate.service';
 import {
   effectiveProfilesOn,
   type CompanyFiscalProfile,
@@ -16,7 +17,11 @@ import type { IFiscalProfileReader } from '@/modules/invoice/domain/fiscal/ports
  */
 @Injectable()
 export class TypeOrmCompanyFiscalProfileReader implements IFiscalProfileReader {
-  constructor(private readonly profiles: CompanyFiscalProfileService) {}
+  constructor(
+    private readonly profiles: CompanyFiscalProfileService,
+    // Optional so the reader keeps working where the rates are not provided.
+    @Optional() private readonly simplesRates?: SimplesRateService,
+  ) {}
 
   async findEffectiveByDate(
     companyId: string,
@@ -24,6 +29,21 @@ export class TypeOrmCompanyFiscalProfileReader implements IFiscalProfileReader {
     date: string,
   ): Promise<CompanyFiscalProfile[]> {
     const all = await this.profiles.list(companyId, tenantId);
-    return effectiveProfilesOn(all, date);
+    const effective = effectiveProfilesOn(all, date);
+    if (
+      !this.simplesRates ||
+      !effective.some((profile) => profile.taxRegime === 'SIMPLES_NACIONAL')
+    )
+      return effective;
+    // The ISS rate informed for the month wins over the one on the profile
+    // (LC 123/2006, art. 21, §4º, I: the rate of the previous month's bracket).
+    const { rate } = await this.simplesRates.resolve(companyId, tenantId, date);
+    if (rate?.issRate == null) return effective;
+    const issRate = rate.issRate;
+    return effective.map((profile) =>
+      profile.taxRegime === 'SIMPLES_NACIONAL'
+        ? { ...profile, simplesIssRate: issRate }
+        : profile,
+    );
   }
 }

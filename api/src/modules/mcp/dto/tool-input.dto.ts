@@ -11,6 +11,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -171,6 +172,23 @@ export class NfseCancelInput {
   @IsString()
   @MaxLength(CANCELLATION_DESCRIPTION_MAX)
   description?: string;
+}
+
+export class CompanySetSimplesRateInput {
+  /** The company: its id or its CNPJ. */
+  @ValidateIf((o: CompanySetSimplesRateInput) => !o.company_tax_id)
+  @IsUUID()
+  company_id?: string;
+
+  @ValidateIf((o: CompanySetSimplesRateInput) => !o.company_id)
+  @IsString()
+  @IsNotEmpty()
+  company_tax_id?: string;
+
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/) month!: string;
+
+  @IsNumber() @Min(0) @Max(100) total_rate!: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(100) iss_rate?: number;
 }
 
 export class NfseIssueBatchInput {

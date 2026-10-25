@@ -11,6 +11,8 @@ import type {
 import { TaxTransitionPolicy } from '@/modules/invoice/domain/fiscal/policies/tax-transition.policy';
 import { err, type Result } from '@/modules/invoice/domain/fiscal/result';
 import { MeiTaxStrategy } from './mei-tax.strategy';
+import { ConfigService } from '@nestjs/config';
+import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 import { RegularTaxStrategy } from './regular-tax.strategy';
 import { SimplesNacionalTaxStrategy } from './simples-nacional-tax.strategy';
 import { TaxStrategyResolver } from './tax-strategy.resolver';
@@ -138,10 +140,10 @@ describe('strategies', () => {
     });
   });
 
-  it('MEI 2027: IBS/CBS UNSUPPORTED (never NOT_APPLICABLE)', () => {
+  it('MEI 2027: IBS/CBS NOT_APPLICABLE (MEI does not highlight IBS/CBS)', () => {
     const r = plan({ taxRegime: 'MEI' }, { competenceDate: '2027-02-01' });
-    expect(r.ok && r.value.cbs.status).toBe('UNSUPPORTED');
-    expect(r.ok && r.value.ibs.status).toBe('UNSUPPORTED');
+    expect(r.ok && r.value.cbs.status).toBe('NOT_APPLICABLE');
+    expect(r.ok && r.value.ibs.status).toBe('NOT_APPLICABLE');
   });
 
   it('Simples 2026: no test-phase rate applied', () => {
@@ -157,13 +159,13 @@ describe('strategies', () => {
     });
   });
 
-  it('Simples 2027 without regular option: UNSUPPORTED', () => {
+  it('Simples 2027 without regular option: IBS/CBS NOT_APPLICABLE (stay in the DAS)', () => {
     const r = plan(
       { taxRegime: 'SIMPLES_NACIONAL' },
       { competenceDate: '2027-02-01' },
     );
-    expect(r.ok && r.value.cbs.status).toBe('UNSUPPORTED');
-    expect(r.ok && r.value.ibs.status).toBe('UNSUPPORTED');
+    expect(r.ok && r.value.cbs.status).toBe('NOT_APPLICABLE');
+    expect(r.ok && r.value.ibs.status).toBe('NOT_APPLICABLE');
     expect(r.ok && r.value.iss.status).toBe('NOT_APPLICABLE');
   });
 
@@ -457,6 +459,120 @@ describe('strategies', () => {
         code: 'TAX_REGIME_UNSUPPORTED',
         details: { ambiguousStrategies: ['first', 'second'] },
       },
+    });
+  });
+
+  describe('Anexo I E0583: MEI never has ISS withheld', () => {
+    const rolloutFlags = (conformance: boolean) =>
+      new RolloutFlagsService(
+        new ConfigService({
+          rollout: {
+            taxRegimeRestriction: { on: false, tenants: '*' },
+            fiscalDpsConformance: { on: conformance, tenants: '*' },
+            simplesTottrib: { on: false, tenants: '*' },
+            cnpjRegistryCheck: { on: false, tenants: '*' },
+            simplesRateMode: { mode: 'off', tenants: '*' },
+            simplesRateEnforcedFrom: null,
+          },
+        }),
+      );
+    const withholdingClassification = classificationWith({
+      iss: {
+        taxation: 'NORMAL',
+        rate: '3',
+        withholdingDefault: true,
+        incidenceMunicipalityCode: '3550308',
+      },
+    });
+    const cnpjCustomer: FiscalCustomer = {
+      kind: 'CNPJ',
+      taxId: '12345678000195',
+      municipalityCode: null,
+    };
+    const plan = (
+      regime: 'MEI' | 'SIMPLES_NACIONAL',
+      conformance: boolean | undefined,
+    ) => {
+      const strategy =
+        regime === 'MEI'
+          ? new MeiTaxStrategy(
+              conformance === undefined ? undefined : rolloutFlags(conformance),
+            )
+          : new SimplesNacionalTaxStrategy();
+      return strategy.plan({
+        invoice: invoiceWith('2026-12-10', cnpjCustomer),
+        profile: fullProfile({
+          taxRegime: regime,
+          simpleNational: true,
+          simplesIssRate: '2.00',
+        }),
+        classification: withholdingClassification,
+        policy,
+      });
+    };
+
+    it('is NOT_APPLICABLE for a MEI with a CNPJ customer when the conformance flag is on', () => {
+      const planned = plan('MEI', true);
+      expect(planned.ok && planned.value.issWithheld).toMatchObject({
+        status: 'NOT_APPLICABLE',
+      });
+    });
+
+    it('keeps REQUIRED when the flag is off or not provided', () => {
+      for (const flag of [false, undefined]) {
+        const planned = plan('MEI', flag);
+        expect(planned.ok && planned.value.issWithheld.status).toBe('REQUIRED');
+      }
+    });
+
+    it('does not change Simples Nacional, which keeps withholding', () => {
+      const planned = plan('SIMPLES_NACIONAL', true);
+      expect(planned.ok && planned.value.issWithheld.status).toBe('REQUIRED');
+    });
+  });
+
+  describe('regular regimes with TAX_REGIME_RESTRICTION', () => {
+    const rolloutFlags = (restricted: boolean) =>
+      new RolloutFlagsService(
+        new ConfigService({
+          rollout: {
+            taxRegimeRestriction: { on: restricted, tenants: '*' },
+            fiscalDpsConformance: { on: false, tenants: '*' },
+            simplesTottrib: { on: false, tenants: '*' },
+            cnpjRegistryCheck: { on: false, tenants: '*' },
+            simplesRateMode: { mode: 'off', tenants: '*' },
+            simplesRateEnforcedFrom: null,
+          },
+        }),
+      );
+
+    it('stops resolving Lucro Presumido and Lucro Real when the restriction is on', () => {
+      const restricted = new TaxStrategyResolver([
+        new MeiTaxStrategy(),
+        new SimplesNacionalTaxStrategy(),
+        new RegularTaxStrategy(rolloutFlags(true)),
+      ]);
+      for (const taxRegime of ['LUCRO_PRESUMIDO', 'LUCRO_REAL'] as const) {
+        const resolved = restricted.resolve(
+          fullProfile({ taxRegime }),
+          '2026-12-10',
+        );
+        expect(resolved.ok).toBe(false);
+        expect(!resolved.ok && resolved.error.code).toBe(
+          'TAX_REGIME_UNSUPPORTED',
+        );
+      }
+    });
+
+    it('keeps resolving them when the restriction is off', () => {
+      const open = new TaxStrategyResolver([
+        new MeiTaxStrategy(),
+        new SimplesNacionalTaxStrategy(),
+        new RegularTaxStrategy(rolloutFlags(false)),
+      ]);
+      expect(
+        open.resolve(fullProfile({ taxRegime: 'LUCRO_REAL' }), '2026-12-10').ok,
+      ).toBe(true);
     });
   });
 });

@@ -26,6 +26,14 @@ export const SPECIAL_TAX_REGIME_CODES = [
   '6',
 ] as const;
 export type SpecialTaxRegimeCode = (typeof SPECIAL_TAX_REGIME_CODES)[number];
+/**
+ * How a ME/EPP apportions its federal and municipal taxes (DPS `regApTribSN`):
+ * SN = 1 (all through the Simples), ISS_MUNICIPAL = 2 and REGULAR = 3 (above a
+ * sublimit). Only SN is supported today.
+ */
+export const SIMPLES_APURACAO = ['SN', 'ISS_MUNICIPAL', 'REGULAR'] as const;
+export type SimplesApuracao = (typeof SIMPLES_APURACAO)[number];
+
 export type ProfileReviewStatus = 'unreviewed' | 'approved' | 'rejected';
 
 export interface CompanyFiscalProfile {
@@ -43,6 +51,8 @@ export interface CompanyFiscalProfile {
    * Simples Nacional ME/EPP.
    */
   simplesIssRate: string | null;
+  /** ME/EPP only; absent or null means SN. Never set for MEI. */
+  simplesApuracao?: SimplesApuracao | null;
   validFrom: string; // YYYY-MM-DD, inclusive
   validUntil: string | null; // exclusive; null = open
   source: string;
@@ -92,4 +102,19 @@ export function legacyFromRegimeKind(kind: TaxRegimeKind): TaxRegime | null {
     ([, value]) => value === kind,
   );
   return entry ? (entry[0] as TaxRegime) : null;
+}
+
+/** DPS `regApTribSN`: required for ME/EPP (E0166), forbidden for MEI and others (E0162). */
+export function regApTribSNFor(
+  profile: Pick<CompanyFiscalProfile, 'taxRegime' | 'simplesApuracao'>,
+): 1 | 2 | 3 | null {
+  if (profile.taxRegime !== 'SIMPLES_NACIONAL') return null;
+  switch (profile.simplesApuracao ?? 'SN') {
+    case 'ISS_MUNICIPAL':
+      return 2;
+    case 'REGULAR':
+      return 3;
+    default:
+      return 1;
+  }
 }

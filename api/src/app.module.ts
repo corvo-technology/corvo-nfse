@@ -5,6 +5,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 import { AppConfigModule } from '@/infra/config/config.module';
+import { RolloutModule } from '@/shared/rollout/rollout.module';
 import { AppLoggingModule } from '@/infra/logging/logging.module';
 import { AppRedisModule } from '@/infra/redis/redis.module';
 import { AppDatabaseModule } from '@/infra/database/database.module';
@@ -32,6 +33,7 @@ import { SentryModule } from '@/infra/observability/sentry.module';
     SentryModule.forRoot('api'),
 
     AppConfigModule,
+    RolloutModule,
     AppLoggingModule,
     AppDatabaseModule,
     TypeOrmPersistenceModule,

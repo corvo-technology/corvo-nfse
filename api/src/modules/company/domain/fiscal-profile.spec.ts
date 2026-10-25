@@ -2,6 +2,7 @@ import {
   effectiveProfilesOn,
   isEffectiveOn,
   legacyFromRegimeKind,
+  regApTribSNFor,
   regimeKindFromLegacy,
 } from './fiscal-profile';
 
@@ -84,5 +85,36 @@ describe('effectiveProfilesOn', () => {
     ];
 
     expect(effectiveProfilesOn(overlap, '2026-03-01')).toHaveLength(2);
+  });
+});
+
+describe('regApTribSNFor', () => {
+  const base = { simplesApuracao: undefined } as const;
+
+  it('is 1 for Simples Nacional, with or without an explicit SN', () => {
+    expect(regApTribSNFor({ taxRegime: 'SIMPLES_NACIONAL', ...base })).toBe(1);
+    expect(
+      regApTribSNFor({ taxRegime: 'SIMPLES_NACIONAL', simplesApuracao: 'SN' }),
+    ).toBe(1);
+  });
+
+  it('is 2 and 3 for the sublimit options', () => {
+    expect(
+      regApTribSNFor({
+        taxRegime: 'SIMPLES_NACIONAL',
+        simplesApuracao: 'ISS_MUNICIPAL',
+      }),
+    ).toBe(2);
+    expect(
+      regApTribSNFor({
+        taxRegime: 'SIMPLES_NACIONAL',
+        simplesApuracao: 'REGULAR',
+      }),
+    ).toBe(3);
+  });
+
+  it('is null for MEI and for other regimes (E0162)', () => {
+    for (const taxRegime of ['MEI', 'LUCRO_REAL'] as const)
+      expect(regApTribSNFor({ taxRegime, ...base })).toBeNull();
   });
 });

@@ -19,6 +19,8 @@ export const COMPANY_CREATE_TOOL = {
       tax_regime: {
         type: 'string',
         enum: ['mei', 'simple_national', 'presumed_profit', 'real_profit'],
+        description:
+          'Corvo serves MEI (mei) and Simples Nacional (simple_national). presumed_profit and real_profit are being retired and are refused once the tax regime restriction is on.',
       },
       municipality_code: {
         type: 'string',

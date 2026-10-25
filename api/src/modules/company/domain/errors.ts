@@ -25,3 +25,10 @@ export class CompanyAlreadyExistsError extends Error {
     this.name = 'CompanyAlreadyExistsError';
   }
 }
+
+export class TaxRegimeNotSupportedError extends Error {
+  constructor(regime: string) {
+    super(`Tax regime not supported: ${regime}`);
+    this.name = 'TaxRegimeNotSupportedError';
+  }
+}

@@ -74,6 +74,8 @@ const enWithRetiredCredits: DocsTree = {
           ["GET", "`/v1/companies/:id`", "Fetch a company", "200"],
           ["PATCH", "`/v1/companies/:id`", "Update a company", "200"],
           ["DELETE", "`/v1/companies/:id`", "Delete a company", "200"],
+          ["GET", "`/v1/companies/:id/simples-rates`", "List the monthly Simples Nacional rates", "200"],
+          ["PUT", "`/v1/companies/:id/simples-rates/:month`", "Inform the Simples Nacional rates of a month", "200"],
           ["POST", "`/v1/companies/:companyId/certificates`", "Upload a certificate", "201"],
           ["GET", "`/v1/companies/:companyId/certificates`", "List certificates", "200"],
           ["DELETE", "`/v1/companies/:companyId/certificates/:certId`", "Revoke a certificate", "204"],
@@ -283,6 +285,8 @@ const enWithRetiredCredits: DocsTree = {
             ["`ERROR_INSUFFICIENT_CREDITS` / `ERROR_QUOTA_EXCEEDED`", "Not enough credits or quota to issue."],
             ["`ERROR_COMPANY_NOT_READY` / `ERROR_COMPANY_BLOCKED`", "Company without an active certificate in `live`, or blocked."],
             ["`ERROR_IDEMPOTENCY_CONFLICT`", "Same `Idempotency-Key` with a different payload (409)."],
+            ["`ERROR_TAX_REGIME_NOT_SUPPORTED`", "Only MEI and Simples Nacional companies are supported (422)."],
+            ["`ERROR_VALIDATION` with `details[].code` `ERROR_DEDUCTION_NOT_ALLOWED_FOR_REGIME` or `ERROR_SIMPLES_SUBLIMIT_NOT_SUPPORTED`", "A deduction from the ISS base that a MEI or a Simples company cannot declare, or a Simples company above a sublimit (`regApTribSN` 2 or 3), which is not supported yet (422)."],
             ["`ERROR_GONE`", "Retired operation, such as one-off credit purchases (410)."],
           ],
         },
@@ -353,7 +357,7 @@ const enWithRetiredCredits: DocsTree = {
             rows: [
               { name: "legalName", type: "string", required: true, description: "Legal name, up to 200 characters, not empty after trim." },
               { name: "taxId", type: "string", required: true, description: "Valid CNPJ; normalized before the duplicate check." },
-              { name: "taxRegime", type: "string", required: true, description: "`MEI`, `Simples Nacional`, `Lucro Presumido` or `Lucro Real`." },
+              { name: "taxRegime", type: "string", required: true, description: "`MEI` or `Simples Nacional`. Corvo serves only these two regimes: any other value returns `422` `ERROR_TAX_REGIME_NOT_SUPPORTED`." },
               { name: "tradeName", type: "string", required: false, description: "Up to 200 characters." },
               { name: "municipalReg", type: "string or null", required: false, description: "Optional, and nonblank when sent. It is stored but **not sent on the invoice** unless `sendMunicipalReg` is `true`. `null` clears it (and turns `sendMunicipalReg` off)." },
               { name: "sendMunicipalReg", type: "boolean", required: false, description: "Default `false`. Send the municipal registration in the DPS only if the city registered this company in the national registry and the tax authority requires it; otherwise the invoice is rejected (E0120)." },
@@ -522,7 +526,7 @@ console.log(body.data); // { data: Company }`,
             rows: [
               { name: "legalName", type: "string", required: false, description: "Legal name, up to 200 characters, not empty after trim." },
               { name: "taxId", type: "string", required: false, description: "Valid CNPJ; normalized before the duplicate check." },
-              { name: "taxRegime", type: "string", required: false, description: "`MEI`, `Simples Nacional`, `Lucro Presumido` or `Lucro Real`." },
+              { name: "taxRegime", type: "string", required: false, description: "`MEI` or `Simples Nacional`. Corvo serves only these two regimes: any other value returns `422` `ERROR_TAX_REGIME_NOT_SUPPORTED`." },
               { name: "tradeName", type: "string", required: false, description: "Up to 200 characters." },
               { name: "municipalReg", type: "string or null", required: false, description: "Optional. Stored but not sent on the invoice unless `sendMunicipalReg` is `true`. `null` clears it." },
               { name: "municipalityCode", type: "string", required: false, description: "Exactly 7 digits when provided; omit to keep the existing value. Cannot be cleared." },
@@ -599,6 +603,83 @@ console.log(body.data); // { data: null }`,
         {
           kind: "text",
           body: "Permissions: `nfse.certificates.view` to list and `nfse.certificates.manage` to upload/revoke.",
+        },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/companies/:id/simples-rates",
+          scopes: ["full_access", "companies_manage", "companies_read_write"],
+          success: "200 OK",
+          summary: "Lists the monthly Simples Nacional rates informed for the company, newest month first. Corvo does not compute the DAS: the rates come from the company or its accountant.",
+          examples: {
+            curl: `curl "$BASE_URL/companies/$COMPANY_ID/simples-rates" \\
+  -H "X-API-Key: $CORVO_API_KEY"`,
+            node: `const res = await fetch(\`\${BASE_URL}/companies/\${companyId}/simples-rates\`, {
+  headers: { "X-API-Key": process.env.CORVO_API_KEY },
+});
+const { data } = await res.json();
+console.log(data[0]?.month, data[0]?.totalRate);`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": [
+    {
+      "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
+      "month": "2026-10",
+      "totalRate": "6.54",
+      "issRate": "2.01",
+      "updatedAt": "2026-10-25T12:00:00.000Z"
+    }
+  ]
+}`,
+          },
+        },
+        {
+          kind: "endpoint",
+          method: "PUT",
+          path: "/v1/companies/:id/simples-rates/:month",
+          scopes: ["full_access", "companies_manage", "companies_read_write"],
+          success: "200 OK",
+          summary: "Informs or replaces the Simples Nacional rates of one month (`YYYY-MM`, not in the future). The total rate is sent on every NFS-e of an ME/EPP (`pTotTribSN`). The last informed month is repeated for later months until you inform a new one.",
+          params: {
+            rows: [
+              { name: "month", type: "string", required: true, description: "Path parameter, `YYYY-MM`, not in the future." },
+              { name: "totalRate", type: "string", required: true, description: "Approximate total tax rate (%) of the Simples for the month, the effective rate shown in the PGDAS-D. 0 to 100, at most 2 decimals. Example `\"6.54\"`." },
+              { name: "issRate", type: "string", required: false, description: "Effective ISS rate (%) of the month, used when the customer withholds ISS. Same format." },
+            ],
+          },
+          examples: {
+            curl: `curl -X PUT "$BASE_URL/companies/$COMPANY_ID/simples-rates/2026-10" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H 'Content-Type: application/json' \\
+  -d '{ "totalRate": "6.54", "issRate": "2.01" }'`,
+            node: `const res = await fetch(\`\${BASE_URL}/companies/\${companyId}/simples-rates/2026-10\`, {
+  method: "PUT",
+  headers: {
+    "X-API-Key": process.env.CORVO_API_KEY,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ totalRate: "6.54", issRate: "2.01" }),
+});
+const { data } = await res.json();
+console.log(data.month, data.totalRate); // "2026-10" "6.54"`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
+    "month": "2026-10",
+    "totalRate": "6.54",
+    "issRate": "2.01",
+    "updatedAt": "2026-10-25T12:00:00.000Z"
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "**Who informs the rate.** Corvo does not generate or compute the DAS (PGMEI or PGDAS-D). Inform, once a month, the effective rate your accountant or the PGDAS-D shows. If the month has no value, the closest previous month is used; more than one month behind generates the warning `SIMPLES_RATE_STALE`. MEI companies do not need a rate. The permissions are `nfse.companies.view` to read and `nfse.companies.manage` to write." },
+          ],
         },
         {
           kind: "endpoint",
@@ -2595,6 +2676,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`invoices` (1 to 50 items, each with the same fields as `nfse_issue`, including `company_tax_id` or `company_id` and `idempotency_key`)",
               "`{ total, accepted, rejected, results [{ index, status, replayed?, invoice_id?, access_key?, invoice_status?, error? }] }`; invalid items are rejected in place and the valid ones are saved together"
             ],
+            ["`company_set_simples_rate`", "`nfse:write`", "`company_tax_id` or `company_id`, `month` (`YYYY-MM`), `total_rate`, `iss_rate?`", "`{ company_id, month, total_rate, iss_rate }`; the last informed month is repeated until updated. `company_get` also returns `simples_rate`"],
             ["`company_get`", "`nfse:read`", "`tax_id` (CNPJ)", "`{ company }` or `{ company: null }`"],
             ["`company_create`", "`nfse:write`", "`legal_name`, `tax_id`, `tax_regime`, `municipality_code` and optional fiscal data", "`{ id, legal_name, tax_id, status }`; certificates remain API-only"],
             ["`nfse_calculate`", "`nfse:read`", "`company_tax_id` or `company_id`, `amount`, optional `discount`, `deduction` and fiscal data", "Calculation result; no issue, credit reservation or DPS"],
