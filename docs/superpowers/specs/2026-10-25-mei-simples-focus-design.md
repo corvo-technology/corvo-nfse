@@ -40,7 +40,7 @@ Por que agora:
 
 | Decisão | Resultado |
 |---|---|
-| Regimes aceitos | Somente MEI e Simples Nacional |
+| Regimes aceitos | Somente MEI e Simples Nacional. Não há empresas de outros regimes hoje |
 | Escopo de documento | Somente NFS-e nacional |
 | DAS | Fora do escopo |
 | Alíquota do Simples (`pTotTribSN`, IBS/CBS de 2027) | **O cliente informa e atualiza.** Não consultamos nem calculamos |
@@ -91,8 +91,8 @@ conferência de CNPJ/Simples no cadastro            (6.5)
 
 - `TAX_REGIMES` em `company.dto.ts` passa a ter somente `'MEI'` e `'Simples Nacional'`. Qualquer outro valor devolve `422` com `ERROR_TAX_REGIME_NOT_SUPPORTED` e mensagem que diz que a Corvo atende MEI e Simples Nacional.
 - Vale para `POST /companies`, `PATCH /companies/:id`, `PUT /companies/:id/fiscal-profile`, a tool MCP `company_create` (`tax_regime` enum) e o formulário web.
-- Os valores `LUCRO_PRESUMIDO`, `LUCRO_REAL`, `OUTRO_REGIME` e `UNKNOWN` **continuam existindo no tipo e nos CHECKs do banco** (`company_fiscal_profiles`, `invoice_fiscal_snapshots`), para não perder histórico nem exigir migração destrutiva.
-- **Empresas já cadastradas** com outro regime: continuam legíveis, o histórico de notas fica intacto, e **qualquer nova emissão ou cálculo** devolve bloqueio `TAX_REGIME_NOT_SUPPORTED`. `GET /companies/:id` inclui `tax_regime_unsupported` em `setupGaps` e `ready_to_issue = false`.
+- **Não há empresas de outros regimes na base**: todas as empresas atuais são Simples Nacional (informação do dono do produto em 2026-10-25). Por isso não existe tratamento de empresas legadas: nada de migração de dados, estado "bloqueada por regime" ou comunicação a clientes afetados.
+- Os valores `LUCRO_PRESUMIDO`, `LUCRO_REAL`, `OUTRO_REGIME` e `UNKNOWN` podem **continuar no tipo e nos CHECKs do banco** (`company_fiscal_profiles`, `invoice_fiscal_snapshots`) nesta entrega; remover do banco é uma limpeza opcional que o construtor decide, já que não há dado a preservar. Se algum dia aparecer uma empresa com outro regime, o motor devolve o bloqueio `TAX_REGIME_NOT_SUPPORTED` (defesa em profundidade, não um fluxo de produto).
 
 ### 6.2 Motor fiscal com duas estratégias
 
@@ -180,9 +180,8 @@ A fase 0 é pequena e tem prioridade absoluta: corrige notas que podem estar sen
 1. **NT 9/2026 indisponível** até o fim do ano: a fase 2 não fecha e as notas de 2027 continuam bloqueadas.
 2. **Cliente não informa a alíquota:** com o bloqueio de 6.3, ME/EPP deixa de emitir em vez de emitir errado. É deliberado, mas gera suporte. Mitigação: aviso, MCP e valor repetido do mês anterior.
 3. **Qual alíquota informar:** o layout diz "percentual aproximado do total dos tributos da alíquota do Simples". As fontes que achei não são conclusivas entre efetiva e nominal. Confirmar com a Receita ou um contador antes de documentar ao cliente (ver 10.4).
-4. **Empresas legadas de outros regimes** deixam de emitir sem aviso prévio. Mitigação: comunicar os clientes afetados antes de ligar a fase 0.
-5. **Fonte pública de CNPJ** instável ou com limite de uso. Mitigação: nunca bloquear por falha dela.
-6. **Mudança de comportamento de API** (cadastro de outros regimes passa a falhar): comunicar na documentação e no changelog.
+4. **Fonte pública de CNPJ** instável ou com limite de uso. Mitigação: nunca bloquear por falha dela.
+5. **Mudança de comportamento de API** (cadastro de outros regimes passa a falhar): comunicar na documentação e no changelog.
 
 ## 10. Chamadas minhas e pontos abertos para o construtor
 
