@@ -16,6 +16,7 @@ export class FiscalValidatorStep implements FiscalStep {
   readonly name = 'FiscalValidator';
   readonly required = true;
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async execute(
     context: Readonly<FiscalContext>,
   ): Promise<Result<StepOutcome, FiscalError>> {

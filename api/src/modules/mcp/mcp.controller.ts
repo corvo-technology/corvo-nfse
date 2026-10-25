@@ -97,7 +97,11 @@ export class McpController {
         (result?.result as { isError?: boolean } | undefined)?.isError === true;
       if (request?.method !== 'tools/call' || failed) return;
       toolCalls += 1;
-      invoicesIssued += invoicesIssuedBy(request.params?.name, result);
+      const tool: unknown = request.params?.name;
+      invoicesIssued += invoicesIssuedBy(
+        typeof tool === 'string' ? tool : undefined,
+        result,
+      );
     });
     try {
       await this.connections.recordUsage(auth.mcpConnectionId, auth.tenantId, {
