@@ -8,6 +8,11 @@ import type { ExecutionEnvironment } from '@/shared/domain/execution-environment
 import { Injectable, BadRequestException, Optional } from '@nestjs/common';
 import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 import { assertRegimeSupported } from '../domain/tax-regime-support';
+import {
+  registryWarnings,
+  SimplesRegistryPort,
+  type RegistryWarning,
+} from '../domain/registry-check';
 import { ICompanyRepository } from '../domain/company.repository';
 import {
   Company,
@@ -60,7 +65,31 @@ export class CompanyService {
     private readonly profiles: CompanyFiscalProfileService,
     // Optional so the service keeps working where no flags are provided (rule off).
     @Optional() private readonly flags?: RolloutFlagsService,
+    @Optional() private readonly registry?: SimplesRegistryPort,
   ) {}
+
+  /**
+   * CNPJ_REGISTRY_CHECK: warnings when the public registry disagrees with the
+   * regime or municipality just informed. Never blocks and never throws.
+   */
+  async registryWarnings(
+    company: Company,
+    regime: TaxRegime,
+    tenantId: string,
+  ): Promise<RegistryWarning[]> {
+    if (!this.registry || !this.flags?.isOn('CNPJ_REGISTRY_CHECK', tenantId))
+      return [];
+    try {
+      const info = await this.registry.lookup(company.taxId);
+      return registryWarnings(
+        info,
+        regimeKindFromLegacy(regime),
+        company.municipalityCode,
+      );
+    } catch {
+      return [];
+    }
+  }
 
   async create(
     input: CreateCompanyInput,

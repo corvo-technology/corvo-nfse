@@ -84,3 +84,67 @@ describe('CompanyController Simples rates', () => {
     );
   });
 });
+
+describe('CompanyController create registry warnings', () => {
+  const company = {
+    id: companyId,
+    toSnapshot: () => ({ id: companyId }),
+    getSetupGapsWithCert: () => [],
+  };
+  const build = (warnings: unknown[]) => {
+    const companyService = {
+      create: jest.fn().mockResolvedValue(company),
+      currentRegime: jest.fn().mockResolvedValue(null),
+      registryWarnings: jest.fn().mockResolvedValue(warnings),
+    };
+    return {
+      companyService,
+      controller: new CompanyController(
+        companyService as unknown as CompanyService,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+      ),
+    };
+  };
+  const dto = {
+    legalName: 'Empresa',
+    taxId: '11222333000181',
+    taxRegime: 'MEI',
+    municipalityCode: '3550308',
+  } as never;
+
+  it('adds the warnings to the response when the registry disagrees', async () => {
+    const { controller, companyService } = build([
+      { code: 'TAX_REGIME_REGISTRY_MISMATCH', message: 'x' },
+    ]);
+    const result = await controller.create(dto, {
+      authContext: {
+        activeTenantId: tenantId,
+        executionEnvironment: 'test',
+        authUserId: 'u',
+      },
+    } as never);
+    expect(result.data).toMatchObject({
+      warnings: [{ code: 'TAX_REGIME_REGISTRY_MISMATCH' }],
+    });
+    expect(companyService.registryWarnings).toHaveBeenCalledWith(
+      company,
+      'MEI',
+      tenantId,
+    );
+  });
+
+  it('keeps the response unchanged without warnings', async () => {
+    const { controller } = build([]);
+    const result = await controller.create(dto, {
+      authContext: {
+        activeTenantId: tenantId,
+        executionEnvironment: 'test',
+        authUserId: 'u',
+      },
+    } as never);
+    expect(result.data).not.toHaveProperty('warnings');
+  });
+});

@@ -8,6 +8,8 @@ import { CompanySimplesRateOrmEntity } from './infra/company-simples-rate.orm-en
 import { TypeOrmSimplesRateRepository } from './infra/typeorm-simples-rate.repository';
 import { ISimplesRateRepository } from './domain/simples-rate';
 import { SimplesRateService } from './application/simples-rate.service';
+import { SimplesRegistryPort } from './domain/registry-check';
+import { BrasilApiSimplesRegistry } from '@/infra/external/cnpj/brasilapi-simples-registry';
 import { TypeOrmCompanyRepository } from './infra/typeorm-company.repository';
 import { TypeOrmCompanyFiscalProfileRepository } from './infra/typeorm-company-fiscal-profile.repository';
 import { TypeOrmCompanyServiceTaxProfileRepository } from './infra/typeorm-company-service-tax-profile.repository';
@@ -47,6 +49,11 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
     {
       provide: IServiceTaxProfileRepository,
       useClass: TypeOrmCompanyServiceTaxProfileRepository,
+    },
+    {
+      provide: SimplesRegistryPort,
+      // The adapter takes plain options (not injectables): build it here.
+      useFactory: () => new BrasilApiSimplesRegistry(),
     },
     {
       provide: ISimplesRateRepository,
