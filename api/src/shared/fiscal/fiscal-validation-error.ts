@@ -21,6 +21,7 @@ export type FiscalIssueCode =
   | 'invalid_option'
   | 'invalid_uuid'
   | 'unknown_field'
+  | 'deduction_not_allowed_for_regime'
   | 'invalid';
 
 export interface FiscalIssue {
