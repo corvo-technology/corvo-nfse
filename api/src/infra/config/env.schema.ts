@@ -1,6 +1,27 @@
 import { z } from 'zod';
 import { booleanFromEnv } from './boolean-env.schema';
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** `*` or a comma separated list of tenant UUIDs. Empty means not set (every tenant). */
+function rolloutTenants() {
+  return z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z
+      .string()
+      .refine(
+        (value) =>
+          value
+            .split(',')
+            .map((item) => item.trim())
+            .every((item) => item === '*' || UUID_RE.test(item)),
+        'must be * or a comma separated list of tenant UUIDs',
+      )
+      .optional(),
+  );
+}
+
 function optionalNonEmptyString() {
   return z.preprocess(
     (value) => (value === '' ? undefined : value),
@@ -252,6 +273,31 @@ export const envSchema = z
     OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
     OUTBOX_SCHEDULE_MAX_DAYS: z.coerce.number().int().positive().default(15),
     FISCAL_IBSCBS_UNAVAILABLE_MODE: z.enum(['block', 'warn']).default('block'),
+    // Gradual rollout of the MEI / Simples Nacional focus. Every flag is off by
+    // default; `<FLAG>_TENANTS` limits a flag to some tenants (canary).
+    TAX_REGIME_RESTRICTION: booleanFromEnv.default(false),
+    TAX_REGIME_RESTRICTION_TENANTS: rolloutTenants(),
+    FISCAL_DPS_CONFORMANCE: booleanFromEnv.default(false),
+    FISCAL_DPS_CONFORMANCE_TENANTS: rolloutTenants(),
+    SIMPLES_TOTTRIB: booleanFromEnv.default(false),
+    SIMPLES_TOTTRIB_TENANTS: rolloutTenants(),
+    SIMPLES_RATE_MODE: z.enum(['off', 'warn', 'block']).default('off'),
+    SIMPLES_RATE_MODE_TENANTS: rolloutTenants(),
+    SIMPLES_RATE_ENFORCED_FROM: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .refine(
+          (value) => !Number.isNaN(Date.parse(`${value}T00:00:00Z`)),
+          'must be a valid date',
+        )
+        .optional(),
+    ),
+    FISCAL_2027_SIMPLES_MEI: booleanFromEnv.default(false),
+    FISCAL_2027_SIMPLES_MEI_TENANTS: rolloutTenants(),
+    CNPJ_REGISTRY_CHECK: booleanFromEnv.default(false),
+    CNPJ_REGISTRY_CHECK_TENANTS: rolloutTenants(),
     // An empty value (RTC_CALCULATOR_URL=) means "not configured".
     RTC_CALCULATOR_URL: z.preprocess(
       (value) => (value === '' ? undefined : value),

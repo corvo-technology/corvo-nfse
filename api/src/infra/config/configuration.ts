@@ -109,6 +109,33 @@ export default function configuration(): AppConfiguration {
     fiscal: {
       ibsCbsUnavailableMode: env.FISCAL_IBSCBS_UNAVAILABLE_MODE,
     },
+    rollout: {
+      taxRegimeRestriction: rolloutFlag(
+        env.TAX_REGIME_RESTRICTION,
+        env.TAX_REGIME_RESTRICTION_TENANTS,
+      ),
+      fiscalDpsConformance: rolloutFlag(
+        env.FISCAL_DPS_CONFORMANCE,
+        env.FISCAL_DPS_CONFORMANCE_TENANTS,
+      ),
+      simplesTottrib: rolloutFlag(
+        env.SIMPLES_TOTTRIB,
+        env.SIMPLES_TOTTRIB_TENANTS,
+      ),
+      fiscal2027SimplesMei: rolloutFlag(
+        env.FISCAL_2027_SIMPLES_MEI,
+        env.FISCAL_2027_SIMPLES_MEI_TENANTS,
+      ),
+      cnpjRegistryCheck: rolloutFlag(
+        env.CNPJ_REGISTRY_CHECK,
+        env.CNPJ_REGISTRY_CHECK_TENANTS,
+      ),
+      simplesRateMode: {
+        mode: env.SIMPLES_RATE_MODE,
+        tenants: rolloutTenants(env.SIMPLES_RATE_MODE_TENANTS),
+      },
+      simplesRateEnforcedFrom: env.SIMPLES_RATE_ENFORCED_FROM ?? null,
+    },
     rtc: {
       url: env.RTC_CALCULATOR_URL,
       timeoutMs: env.RTC_CALCULATOR_TIMEOUT_MS,
@@ -233,4 +260,17 @@ function parseCorsOrigins(value: string): string[] {
 
 function normalizePath(value: string): string {
   return value.replace(/^\/+|\/+$/g, '');
+}
+
+/** `*` (or nothing) means every tenant; otherwise only the listed tenant ids. */
+function rolloutTenants(value: string | undefined): '*' | string[] {
+  const items = (value ?? '*')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return items.length === 0 || items.includes('*') ? '*' : items;
+}
+
+function rolloutFlag(on: boolean, tenants: string | undefined) {
+  return { on, tenants: rolloutTenants(tenants) };
 }
