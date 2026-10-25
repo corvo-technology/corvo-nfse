@@ -59,6 +59,15 @@ import {
 } from '@/infra/storage/domain/document-storage';
 import { InvoiceIntakeService } from './invoice-intake.service';
 
+export type PreparedEmission =
+  | { kind: 'replay'; invoice: Invoice }
+  | {
+      kind: 'ready';
+      invoice: Invoice;
+      event: InvoiceEvent;
+      requestHash: string;
+    };
+
 function hashPayload(payload: unknown): string {
   const canonical = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(canonical);
@@ -103,6 +112,60 @@ export class InvoiceService {
     idempotencyKeyHeader?: string,
   ): Promise<Invoice> {
     const environment = executionEnvironment(authContext);
+    const prepared = await this.prepareEmission(
+      dto,
+      tenantId,
+      authContext,
+      idempotencyKeyHeader,
+    );
+    if (prepared.kind === 'replay') return prepared.invoice;
+    const { invoice, event, requestHash } = prepared;
+
+    const quota =
+      environment === 'live'
+        ? await this.quotaService.getStatus(tenantId)
+        : undefined;
+    if (quota?.reason === QuotaExceededReason.PLAN_BLOCKED)
+      throw new QuotaExceededError(quota.reason, {});
+    const dailyLimit = quota?.dailyLimit ?? null;
+    try {
+      await this.lifecycle.submit(invoice, event, dailyLimit);
+    } catch (error) {
+      if (
+        idempotencyKeyHeader &&
+        (error as { code?: string }).code === '23505'
+      ) {
+        const winner = await this.invoiceRepo.findByIdempotencyKey(
+          idempotencyKeyHeader,
+          tenantId,
+          environment,
+        );
+        if (winner?.toSnapshot().requestHash === requestHash) {
+          return winner;
+        }
+        throw new IdempotencyConflictError(idempotencyKeyHeader);
+      }
+      throw error;
+    }
+
+    this.logger.log(
+      `Invoice ${invoice.id} emitted for company ${invoice.companyId}`,
+    );
+    return invoice;
+  }
+
+  /**
+   * Everything `emit` does before writing: idempotency lookup, fiscal
+   * validation, company/certificate checks and building the queued invoice
+   * with its event. Nothing is persisted.
+   */
+  async prepareEmission(
+    dto: CreateInvoiceDto,
+    tenantId: string,
+    authContext: AuthContext,
+    idempotencyKeyHeader?: string,
+  ): Promise<PreparedEmission> {
+    const environment = executionEnvironment(authContext);
 
     // Hash computed on ORIGINAL request body (before normalization).
     const requestHash = hashPayload({
@@ -127,7 +190,7 @@ export class InvoiceService {
           this.logger.log(
             `Idempotent request for key: ${idempotencyKeyHeader}`,
           );
-          return existing;
+          return { kind: 'replay', invoice: existing };
         } else {
           throw new IdempotencyConflictError(idempotencyKeyHeader);
         }
@@ -156,7 +219,7 @@ export class InvoiceService {
       );
     }
 
-    // 4. Create invoice with normalized values
+    // 4. Build the invoice with normalized values (not persisted here)
     const invoice = Invoice.create(
       {
         environment,
@@ -194,37 +257,7 @@ export class InvoiceService {
     );
 
     const event = InvoiceEvent.create(invoice.id, null, 'queued');
-    const quota =
-      environment === 'live'
-        ? await this.quotaService.getStatus(tenantId)
-        : undefined;
-    if (quota?.reason === QuotaExceededReason.PLAN_BLOCKED)
-      throw new QuotaExceededError(quota.reason, {});
-    const dailyLimit = quota?.dailyLimit ?? null;
-    try {
-      await this.lifecycle.submit(invoice, event, dailyLimit);
-    } catch (error) {
-      if (
-        idempotencyKeyHeader &&
-        (error as { code?: string }).code === '23505'
-      ) {
-        const winner = await this.invoiceRepo.findByIdempotencyKey(
-          idempotencyKeyHeader,
-          tenantId,
-          environment,
-        );
-        if (winner?.toSnapshot().requestHash === requestHash) {
-          return winner;
-        }
-        throw new IdempotencyConflictError(idempotencyKeyHeader);
-      }
-      throw error;
-    }
-
-    this.logger.log(
-      `Invoice ${invoice.id} emitted for company ${normalized.companyId}`,
-    );
-    return invoice;
+    return { kind: 'ready', invoice, event, requestHash };
   }
 
   async list(
