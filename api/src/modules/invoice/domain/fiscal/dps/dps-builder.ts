@@ -447,7 +447,7 @@ export class DpsBuilder {
         return err(
           fiscalError({
             code: 'DPS_SCHEMA_VALIDATION_FAILED',
-            message: `The DPS XML failed RTC v1.01 schema validation (${validation.violations.length} violation(s))`,
+            message: `The DPS XML failed schema validation for layout ${layout.id} (${validation.violations.length} violation(s))`,
             category: 'VALIDATION',
             step: STEP,
             details: { violations: redactViolations(validation.violations) },
@@ -458,7 +458,7 @@ export class DpsBuilder {
       return err(
         fiscalError({
           code: 'DPS_SCHEMA_VALIDATION_FAILED',
-          message: 'The DPS XML could not be validated against RTC v1.01',
+          message: `The DPS XML could not be validated against layout ${layout.id}`,
           category: 'VALIDATION',
           step: STEP,
           details: sdkRejectionDetails('schema_validation_failed', error),

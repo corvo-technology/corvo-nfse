@@ -575,6 +575,30 @@ describe('DpsBuilder', () => {
     expect(xml).toMatch(/<tpEmit>1<\/tpEmit><finNFSe>0<\/finNFSe>/);
   });
 
+  it('builds a Simples Nacional DPS without tomador and without IBS/CBS in both layouts', async () => {
+    const simples = input({
+      result: {
+        taxRegime: 'SIMPLES_NACIONAL',
+        applicability: applicability({
+          strategy: 'simples',
+          customerRequired: false,
+          cbs: na('Simples sem opção pelo regime regular'),
+          ibs: na('Simples sem opção pelo regime regular'),
+        }),
+      },
+      invoice: { customer: null },
+      emitente: { simplesTotTrib: { regApTribSN: 1, totalRate: '6.54' } },
+    });
+    for (const layout of ['rtc-v1.01', 'nt009-r1'] as const) {
+      const dps = dpsFrom(await new DpsBuilder().build(simples, layout));
+      const xml = buildDpsXml(dps, {
+        layout: layout === 'nt009-r1' ? 'nt009-r1' : 'v1.01',
+      });
+      expect(xml).not.toContain('<IBSCBS>');
+      if (layout === 'nt009-r1') expect(xml).toContain('<finNFSe>0</finNFSe>');
+    }
+  });
+
   it('rejects unknown or non-production layouts with DPS_LAYOUT_UNSUPPORTED', async () => {
     const unknown = errorFrom(
       await new DpsBuilder().build(input(), 'rtc-v1.04'),
