@@ -3,7 +3,7 @@
 **Sintoma.** Invoice `rejected` com `lastErrorCode` `DPS_LAYOUT_UNSUPPORTED` ou `DPS_SCHEMA_VALIDATION_FAILED` e webhook `nfse.invoice.rejected`; métrica `corvo.fiscal.dps.validation.failed.total{code}`. Nenhuma transmissão à Sefin acontece nesses casos.
 
 **O que cada código significa.**
-- `DPS_LAYOUT_UNSUPPORTED`: o layout configurado em `FISCAL_DPS_LAYOUT` não está no registro de layouts implantados (`rtc-v1.01` e `nt009-r1` são os que têm status `in_production`), ou está publicado mas ainda não implantado. Os campos da NT 009 v1.01+ para o Simples (`regApIBSCBSSN`, `cAtvSN`) ainda não têm XSD publicado e **não são suportados**.
+- `DPS_LAYOUT_UNSUPPORTED`: o layout configurado em `FISCAL_DPS_LAYOUT` não está no registro de layouts implantados (`rtc-v1.01` é o único com status `in_production`), ou está publicado mas ainda não implantado. O layout `nt009-r1` (NT 009 release 1, XSD de Produção Restrita 20261020) só é aceito com `NFSE_SEFIN_ENVIRONMENT=restricted`: a API não sobe com `FISCAL_DPS_LAYOUT=nt009-r1` apontando para produção, e o `DpsBuilder` recusa (`details.reason = restricted_environment_only`) uma nota `live` destinada à produção. Os códigos 99.02.01, 99.03.01 a 99.03.05 e 99.04.01 só existem nesse layout (`details.reason = layout_without_event` no layout atual). O leiaute 1.04.01 continua **não suportado**.
 - `DPS_SCHEMA_VALIDATION_FAILED`: a DPS montada viola o XSD (campo exigido ausente ou inválido para o cenário). `details` traz as violações (limitadas, sem dados pessoais).
 
 **Importante.** A numeração DPS já foi reservada e persistida antes da montagem; ao rejeitar, o número fica associado à invoice (nunca é devolvido à sequência, para não reutilizar numeração).

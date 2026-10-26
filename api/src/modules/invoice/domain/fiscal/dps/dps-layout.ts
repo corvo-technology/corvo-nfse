@@ -18,6 +18,7 @@ export const XML_LAYOUT: Record<DpsLayout['id'], 'v1.01' | 'nt009-r1'> = {
  */
 export const ACTIVE_LAYOUTS: Record<string, DpsLayout> = {
   'rtc-v1.01': { id: 'rtc-v1.01', status: 'in_production' },
-  // NT 009 release 1: production from 2026-12-01. Selected only through FISCAL_DPS_LAYOUT.
+  // NT 009 release 1: production from 2026-12-01. Selected only through FISCAL_DPS_LAYOUT,
+  // which env.schema.ts accepts only with NFSE_SEFIN_ENVIRONMENT=restricted (Produção Restrita).
   'nt009-r1': { id: 'nt009-r1', status: 'in_production' },
 };

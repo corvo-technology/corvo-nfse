@@ -702,3 +702,196 @@ describe('DpsBuilder', () => {
     });
   });
 });
+
+describe('DpsBuilder — NT 009 release 1 (XSD 20261020, Produção Restrita)', () => {
+  const NT009 = 'nt009-r1';
+  const ibscbsClassification = (serviceCode = '010601') =>
+    classification({
+      serviceCode,
+      nbsCode: REAL_NBS,
+      cst: REAL_CST,
+      classCode: REAL_CLASS_CODE,
+      operationIndicator: REAL_OPERATION_INDICATOR,
+    });
+  const restricted = {
+    environment: 'live' as const,
+    sefin: 'restricted' as const,
+  };
+
+  const validNt009Xml = async (dps: DPS): Promise<string> => {
+    const xml = buildDpsXml(dps, { layout: NT009 });
+    const validation = await validateDpsXml(xml, {
+      throwOnInvalid: false,
+      layout: NT009,
+    });
+    expect(validation.violations).toEqual([]);
+    expect(validation.valid).toBe(true);
+    return xml;
+  };
+
+  it('puts CST and cClassTrib directly under IBSCBS/valores/trib and validates against the XSD', async () => {
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          result: { classification: ibscbsClassification() },
+          invoice: restricted,
+        }),
+        NT009,
+      ),
+    );
+    const xml = await validNt009Xml(dps);
+    expect(xml).toContain(
+      `<trib><CST>${REAL_CST}</CST><cClassTrib>${REAL_CLASS_CODE}</cClassTrib></trib>`,
+    );
+    expect(xml).not.toContain('<gIBSCBS>');
+    expect(xml).toMatch(/<tpEmit>1<\/tpEmit><finNFSe>0<\/finNFSe>/);
+  });
+
+  it('sends the issuer deduction as the vAjusteBC group and validates against the XSD', async () => {
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          result: { classification: ibscbsClassification() },
+          invoice: { ...restricted, deductionAmount: '25.50' },
+        }),
+        NT009,
+      ),
+    );
+    const xml = await validNt009Xml(dps);
+    expect(xml).toContain(
+      '<vAjusteBC><vAjusteBCISSQN>25.50</vAjusteBCISSQN></vAjusteBC>',
+    );
+    expect(xml).not.toContain('<vDedRed>');
+  });
+
+  it('keeps the current layout output unchanged (vDedRed and gIBSCBS)', async () => {
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          result: { classification: ibscbsClassification() },
+          invoice: { deductionAmount: '25.50' },
+        }),
+        RTC_V1_01,
+      ),
+    );
+    const xml = buildDpsXml(dps, { layout: 'v1.01' });
+    expect(xml).toContain('<vDedRed>');
+    expect(xml).toContain('<gIBSCBS>');
+    expect(xml).not.toContain('<vAjusteBC>');
+  });
+
+  it.each([
+    '990201',
+    '990301',
+    '990302',
+    '990303',
+    '990304',
+    '990305',
+    '990401',
+  ])(
+    'emits the IBS/CBS-only event %s with tribISSQN=4 and validates against the XSD',
+    async (serviceCode) => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({
+            result: {
+              classification: ibscbsClassification(serviceCode),
+              applicability: applicability({
+                iss: na('NT 009 item 99: no ISSQN incidence'),
+              }),
+            },
+            invoice: restricted,
+          }),
+          NT009,
+        ),
+      );
+      expect(dps.infDPS.serv.cServ.cTribNac).toBe(serviceCode);
+      expect(dps.infDPS.valores.trib.tribMun.tribISSQN).toBe(
+        TipoTribISSQN.NaoIncidencia,
+      );
+      expect(dps.infDPS.valores.trib.tribMun.tpRetISSQN).toBe(
+        TipoRetISSQN.NaoRetido,
+      );
+      const xml = await validNt009Xml(dps);
+      expect(xml).not.toContain('<pAliq>');
+      expect(xml).toContain('<IBSCBS>');
+    },
+  );
+
+  it('refuses the NT 009 events on the current layout', async () => {
+    const error = errorFrom(
+      await new DpsBuilder().build(
+        input({ result: { classification: ibscbsClassification('990401') } }),
+        RTC_V1_01,
+      ),
+    );
+    expect(error.code).toBe('DPS_LAYOUT_UNSUPPORTED');
+    expect(error.details).toMatchObject({ reason: 'layout_without_event' });
+  });
+
+  it('refuses ISS withholding or ISS base adjustment on the NT 009 events', async () => {
+    const withheld = errorFrom(
+      await new DpsBuilder().build(
+        input({
+          result: {
+            classification: ibscbsClassification('990301'),
+            applicability: applicability({ issWithheld: REQUIRED }),
+          },
+          invoice: restricted,
+        }),
+        NT009,
+      ),
+    );
+    expect(withheld.details).toMatchObject({
+      reason: 'iss_withholding_not_allowed',
+    });
+
+    const adjusted = errorFrom(
+      await new DpsBuilder().build(
+        input({
+          result: { classification: ibscbsClassification('990301') },
+          invoice: { ...restricted, deductionAmount: '10.00' },
+        }),
+        NT009,
+      ),
+    );
+    expect(adjusted.details).toMatchObject({
+      reason: 'iss_base_adjustment_not_allowed',
+    });
+  });
+
+  it('never builds the NT 009 layout for a live invoice bound for production', async () => {
+    for (const sefin of [undefined, 'production' as const]) {
+      const error = errorFrom(
+        await new DpsBuilder().build(
+          input({
+            result: { classification: ibscbsClassification() },
+            invoice: { environment: 'live', sefin },
+          }),
+          NT009,
+        ),
+      );
+      expect(error.code).toBe('DPS_LAYOUT_UNSUPPORTED');
+      expect(error.details).toMatchObject({
+        reason: 'restricted_environment_only',
+      });
+    }
+  });
+
+  it('the NT 009 XML does not validate against the current production XSD', async () => {
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          result: { classification: ibscbsClassification() },
+          invoice: restricted,
+        }),
+        NT009,
+      ),
+    );
+    const legacy = await validateDpsXml(buildDpsXml(dps, { layout: NT009 }), {
+      throwOnInvalid: false,
+      layout: 'v1.01',
+    });
+    expect(legacy.valid).toBe(false);
+  });
+});

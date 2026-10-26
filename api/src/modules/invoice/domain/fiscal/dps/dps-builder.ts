@@ -21,6 +21,7 @@ import { fiscalError, type FiscalError } from '../fiscal-error';
 import { toDecimal, type DecimalString } from '../money';
 import { err, ok, type Result } from '../result';
 import { ACTIVE_LAYOUTS, type DpsLayout, XML_LAYOUT } from './dps-layout';
+import { isNt009IbsCbsOnlyEvent } from './nt009-events';
 
 const STEP = 'DpsBuilder';
 const MAX_VIOLATIONS = 20;
@@ -36,7 +37,12 @@ const PERSONAL_DATA_PATTERN = /\b\d{11,14}\b/g;
  * cPaisResult) and não incidência (4) are not modelled either — this is the
  * single place to add them once the engine can produce those extra fields.
  */
-function tribIssqnFor(_iss: Obligation): TipoTribISSQN {
+function tribIssqnFor(
+  _iss: Obligation,
+  ibsCbsOnlyEvent: boolean,
+): TipoTribISSQN {
+  // NT 009 r1 events 99.02 to 99.04 are not ISSQN events (same rule as E0532).
+  if (ibsCbsOnlyEvent) return TipoTribISSQN.NaoIncidencia;
   return TipoTribISSQN.OperacaoTributavel;
 }
 
@@ -199,6 +205,58 @@ export class DpsBuilder {
       );
     }
 
+    // NT 009 r1 is only accepted by the Sefin Produção Restrita until it reaches
+    // production; a live invoice bound for production keeps the current layout.
+    if (
+      layout.id === 'nt009-r1' &&
+      input.invoice.environment === 'live' &&
+      input.invoice.sefin !== 'restricted'
+    ) {
+      return err(
+        fiscalError({
+          code: 'DPS_LAYOUT_UNSUPPORTED',
+          message:
+            "The DPS layout 'nt009-r1' is only enabled for the Sefin Produção Restrita",
+          category: 'UNSUPPORTED',
+          step: STEP,
+          details: { layout: layout.id, reason: 'restricted_environment_only' },
+        }),
+      );
+    }
+
+    const serviceCode = result.classification.serviceCode;
+    const ibsCbsOnlyEvent = isNt009IbsCbsOnlyEvent(serviceCode);
+    if (ibsCbsOnlyEvent) {
+      const violation =
+        layout.id !== 'nt009-r1'
+          ? 'layout_without_event'
+          : result.applicability.issWithheld.status === 'REQUIRED'
+            ? 'iss_withholding_not_allowed'
+            : toDecimal(input.invoice.deductionAmount ?? '0').gt(0)
+              ? 'iss_base_adjustment_not_allowed'
+              : null;
+      if (violation !== null) {
+        return err(
+          fiscalError({
+            code:
+              violation === 'layout_without_event'
+                ? 'DPS_LAYOUT_UNSUPPORTED'
+                : 'DPS_SCHEMA_VALIDATION_FAILED',
+            message:
+              violation === 'layout_without_event'
+                ? `The service code ${serviceCode} (NT 009 item 99) requires the DPS layout 'nt009-r1'`
+                : `The service code ${serviceCode} (NT 009 item 99) has no ISSQN incidence: ${violation}`,
+            category:
+              violation === 'layout_without_event'
+                ? 'UNSUPPORTED'
+                : 'VALIDATION',
+            step: STEP,
+            details: { layout: layout.id, serviceCode, reason: violation },
+          }),
+        );
+      }
+    }
+
     if (
       input.invoice.customer === null &&
       result.applicability.customerRequired
@@ -221,7 +279,8 @@ export class DpsBuilder {
       result.applicability.cbs.status === 'REQUIRED' ||
       result.applicability.ibs.status === 'REQUIRED';
     let ibscbs: RtcInfoIbsCbs | undefined;
-    if (ibscbsRequired) {
+    // An IBS/CBS-only event without the IBSCBS group would carry no tax at all.
+    if (ibscbsRequired || ibsCbsOnlyEvent) {
       if (
         nbsCode === null ||
         cst === null ||
@@ -273,6 +332,7 @@ export class DpsBuilder {
     // engine blocks emission beforehand when retention is required and the
     // rate is missing, so this never silently sends a zeroed rate.
     const simplesRetentionRate =
+      !ibsCbsOnlyEvent &&
       opSimpNac === OpcaoSimplesNacional.MeEpp &&
       tpRetISSQN === TipoRetISSQN.RetidoPeloTomador
         ? input.emitente.simplesIssRate
@@ -352,7 +412,7 @@ export class DpsBuilder {
       ),
       verAplic: input.invoice.environment === 'live' ? 'Corvo' : 'Corvo-test',
       servico: {
-        cTribNac: result.classification.serviceCode,
+        cTribNac: serviceCode,
         ...(nbsCode !== null ? { cNBS: nbsCode } : {}),
         descricao: input.invoice.description,
         codMunicipioPrestacao: input.invoice.municipalityCode,
@@ -361,11 +421,12 @@ export class DpsBuilder {
         vServ: toDecimal(result.taxableAmounts.gross).toNumber(),
         ...(simplesRetentionRate !== null
           ? { aliqIss: Number(simplesRetentionRate) }
-          : result.taxes.iss !== undefined &&
+          : !ibsCbsOnlyEvent &&
+              result.taxes.iss !== undefined &&
               result.taxes.iss.rate !== undefined
             ? { aliqIss: Number(result.taxes.iss.rate) }
             : {}),
-        tribISSQN: tribIssqnFor(result.applicability.iss),
+        tribISSQN: tribIssqnFor(result.applicability.iss, ibsCbsOnlyEvent),
         tpRetISSQN,
         // The SDK picks the allowed `totTrib` member per regime (E0710/E0712):
         // indTotTrib 0 for MEI when nothing is informed, pTotTribSN for ME/EPP.
