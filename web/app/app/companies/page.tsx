@@ -118,7 +118,7 @@ export default function CompaniesPage() {
       <Modal open={showForm} onClose={() => setShowForm(false)} title={t("add")} wide>
         <CompanyForm
           onCancel={() => setShowForm(false)}
-          onSave={async (input) => { if (!input.taxRegime) throw new Error("taxRegime is required"); const created = await companiesApi.create({ ...input, taxRegime: input.taxRegime }); setCompanies((rows) => [created, ...(rows ?? [])]); return created; }}
+          onSave={async (input) => { if (!input.taxRegime || !input.taxId) throw new Error("taxRegime and taxId are required"); const created = await companiesApi.create({ ...input, taxRegime: input.taxRegime, taxId: input.taxId }); setCompanies((rows) => [created, ...(rows ?? [])]); return created; }}
           onFinish={(created) => { setShowForm(false); router.push(`/app/companies/${created.id}`); }}
         />
       </Modal>

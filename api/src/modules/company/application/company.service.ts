@@ -215,17 +215,17 @@ export class CompanyService {
     // Throws FiscalValidationError (→ 422 with code + details) on failure.
     const normalized = this.companyDomain.validateAndNormalizeUpdate(input);
 
-    if (normalized.taxId && normalized.taxId !== company.taxId) {
-      const exists = await this.companyRepo.existsWithTaxId(
-        normalized.taxId,
-        tenantId,
-        company.id,
-        environment,
-      );
-      if (exists) {
-        throw new CompanyAlreadyExistsError(normalized.taxId);
-      }
-    }
+    // The CNPJ identifies the company (certificate, DPS numbering, invoices): it never changes.
+    if (normalized.taxId && normalized.taxId !== company.taxId)
+      throw new FiscalValidationError([
+        {
+          field: 'taxId',
+          code: 'invalid',
+          message:
+            'taxId cannot be changed: create a new company for another CNPJ',
+        },
+      ]);
+    delete normalized.taxId;
 
     if (
       normalized.environment &&

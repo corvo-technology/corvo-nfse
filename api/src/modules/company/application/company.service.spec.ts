@@ -240,7 +240,7 @@ describe('CompanyService', () => {
       expect(mockRepo.save).toHaveBeenCalledWith(existingCompany, tenantId);
     });
 
-    it('checks for duplicate taxId when changing', async () => {
+    it('refuses to change the CNPJ and saves nothing', async () => {
       const existingCompany = {
         ...mockCompany,
         id: 'company-1',
@@ -249,37 +249,30 @@ describe('CompanyService', () => {
         toSnapshot: jest.fn().mockReturnValue({}),
       };
       mockRepo.findByIdAndTenantId.mockResolvedValue(existingCompany as any);
-      mockRepo.existsWithTaxId.mockResolvedValue(false);
-      mockRepo.save.mockImplementation(async (c) => c);
-
-      await service.update(
-        'company-1',
-        { taxId: '22.334.455/0001-86' },
-        tenantId,
-      );
-
-      expect(mockRepo.existsWithTaxId).toHaveBeenCalledWith(
-        '22334455000186',
-        tenantId,
-        'company-1',
-        'test',
-      );
-    });
-
-    it('throws CompanyAlreadyExistsError when changing to duplicate taxId', async () => {
-      const existingCompany = {
-        ...mockCompany,
-        id: 'company-1',
-        taxId: VALID_CNPJ,
-        update: jest.fn(),
-        toSnapshot: jest.fn().mockReturnValue({}),
-      };
-      mockRepo.findByIdAndTenantId.mockResolvedValue(existingCompany as any);
-      mockRepo.existsWithTaxId.mockResolvedValue(true);
 
       await expect(
         service.update('company-1', { taxId: '22.334.455/0001-86' }, tenantId),
-      ).rejects.toBeInstanceOf(CompanyAlreadyExistsError);
+      ).rejects.toBeInstanceOf(FiscalValidationError);
+      expect(existingCompany.update).not.toHaveBeenCalled();
+      expect(mockRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('accepts the same CNPJ again (clients that resend the whole company)', async () => {
+      const existingCompany = {
+        ...mockCompany,
+        id: 'company-1',
+        taxId: VALID_CNPJ,
+        update: jest.fn(),
+        toSnapshot: jest.fn().mockReturnValue({}),
+      };
+      mockRepo.findByIdAndTenantId.mockResolvedValue(existingCompany as any);
+      mockRepo.save.mockImplementation(async (c) => c);
+
+      await service.update('company-1', { taxId: VALID_CNPJ }, tenantId);
+
+      expect(existingCompany.update).toHaveBeenCalledWith(
+        expect.not.objectContaining({ taxId: expect.anything() }),
+      );
     });
 
     it('does not check duplicate taxId when taxId not in input', async () => {

@@ -1433,7 +1433,8 @@
       "defaultServiceCode": "National tax code (cTribNac), with 6 digits. Used when an invoice does not specify another code. You can clear this default when editing.",
       "sendMunicipalReg": "Off by default. Tick it only if the city registered this company in the national registry and the tax authority requires it; otherwise the invoice is rejected (E0120).",
       "simplesRate": "The effective rate shown in your PGDAS-D. It goes on every invoice (pTotTribSN). To update it, edit the company.",
-      "simplesIssRate": "Optional. Only if a customer withholds ISS: the ISS rate of your bracket."
+      "simplesIssRate": "Optional. Only if a customer withholds ISS: the ISS rate of your bracket.",
+      "taxIdLocked": "The CNPJ cannot be changed. To use another CNPJ, create a new company."
     },
     "fixFields": "Fix the highlighted fields.",
     "defaultServiceCode": "Default service code",

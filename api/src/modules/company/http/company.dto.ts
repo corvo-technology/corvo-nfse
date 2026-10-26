@@ -118,7 +118,13 @@ export class CreateCompanyDto {
 export class UpdateCompanyDto {
   @IsOptional() @IsString() @MaxLength(200) legalName?: string;
   @IsOptional() @IsString() @MaxLength(200) tradeName?: string;
-  @IsOptional() @IsString() taxId?: string; // validated by CompanyDomainService
+  @ApiPropertyOptional({
+    description:
+      'The CNPJ cannot be changed. Sending the current CNPJ is accepted and ignored; any other value returns 422.',
+  })
+  @IsOptional()
+  @IsString()
+  taxId?: string; // validated by CompanyDomainService
   @IsOptional() @IsString() municipalReg?: string | null; // null = clear, '' = error
   @IsOptional()
   @IsBoolean()

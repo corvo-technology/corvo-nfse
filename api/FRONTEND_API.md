@@ -528,7 +528,9 @@ não enviar campos fora do contrato).
 ### Empresa
 
 - `taxId`: CNPJ válido (inclui CNPJ alfanumérico, IN RFB 2.229/2024), com ou
-  sem máscara. É persistido só com os caracteres do CNPJ, sem pontuação.
+  sem máscara. É persistido só com os caracteres do CNPJ, sem pontuação. **Não
+  pode ser alterado**: no `PATCH`, o CNPJ atual é aceito e ignorado; outro valor
+  retorna 422.
 - `municipalReg`: obrigatória ao criar empresa em `live` (422 `required`);
   opcional em `test`. `""` retorna `blank`. No PATCH, `null` limpa o campo e
   omitir mantém o valor.

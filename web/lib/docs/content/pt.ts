@@ -530,7 +530,7 @@ console.log(body.data.status); // { data: Company }`,
           path: "/v1/companies/:id",
           scopes: ["full_access"],
           success: "200 OK",
-          summary: "Atualiza uma empresa. Aceita os campos da criação, todos opcionais. Envie `simplesRate` (e `simplesIssRate`, ou `null` para remover) para atualizar a alíquota do Simples, por exemplo todo mês.",
+          summary: "Atualiza uma empresa. Aceita os campos da criação, todos opcionais, **exceto o CNPJ**: ele não pode ser alterado (enviar o CNPJ atual é aceito e ignorado; outro valor retorna `422`). Para outro CNPJ, cadastre uma nova empresa. Envie `simplesRate` (e `simplesIssRate`, ou `null` para remover) para atualizar a alíquota do Simples, por exemplo todo mês.",
           examples: {
             curl: `curl -X PATCH "$BASE_URL/companies/$COMPANY_ID" \\
   -H "X-API-Key: $CORVO_API_KEY" \\

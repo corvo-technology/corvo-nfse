@@ -394,12 +394,13 @@ export interface CreateCompanyInput {
   simplesRate?: string; simplesIssRate?: string;
   address?: CompanyAddress;
 }
-export type UpdateCompanyInput = Partial<Omit<CreateCompanyInput, "municipalReg" | "defaultServiceCode" | "simplesIssRate" | "address">> & {
+export type UpdateCompanyInput = Partial<Omit<CreateCompanyInput, "taxId" | "municipalReg" | "defaultServiceCode" | "simplesIssRate" | "address">> & {
   /** `null` clears the value; omit to keep it. */
   municipalReg?: string | null; defaultServiceCode?: string | null; simplesIssRate?: string | null; address?: CompanyAddress | null;
 };
 /** Fields the company form can send for both create and update. */
-export type CompanyFormInput = UpdateCompanyInput & Pick<CreateCompanyInput, "legalName" | "taxId" | "municipalityCode">;
+/** `taxId` only goes with a new company: the CNPJ of an existing one never changes. */
+export type CompanyFormInput = UpdateCompanyInput & Pick<CreateCompanyInput, "legalName" | "municipalityCode"> & { taxId?: string };
 export type CertificateStatus = "active" | "expired" | "revoked";
 export interface Certificate {
   id: string; companyId: string; serialNumber: string; issuer: string;
