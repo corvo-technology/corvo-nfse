@@ -120,12 +120,12 @@ export interface DpsBuildInput {
     readonly municipalReg: string | null;
     readonly municipalityCode: string;
     readonly specialTaxRegime: string | null;
-    /** Effective ISS rate (%) of the Simples Nacional bracket of the previous month (LC 123/2006, art. 21, §4º, I). */
+    /** Effective ISS rate (%) of the Simples Nacional bracket, informed on the company (LC 123/2006, art. 21, §4º, I). */
     readonly simplesIssRate: string | null;
     /**
-     * Present only with `SIMPLES_TOTTRIB`: the DPS then carries the Simples
-     * approximate total tax rate (`pTotTribSN`, ME/EPP) or `indTotTrib = 0`
-     * (MEI) and the profile's `regApTribSN`, instead of a zeroed `vTotTrib`.
+     * When present, the DPS carries the Simples approximate total tax rate
+     * (`pTotTribSN`, ME/EPP) or `indTotTrib = 0` (MEI) and the profile's
+     * `regApTribSN`, instead of a zeroed `vTotTrib`.
      */
     readonly simplesTotTrib?: {
       readonly regApTribSN: 1 | 2 | 3 | null;
@@ -286,7 +286,7 @@ export class DpsBuilder {
         fiscalError({
           code: 'DPS_SCHEMA_VALIDATION_FAILED',
           message:
-            'ISS withholding for Simples Nacional ME/EPP requires the effective ISS rate (pAliq) on the fiscal profile',
+            'ISS withholding for Simples Nacional ME/EPP requires the effective ISS rate (pAliq) on the company',
           category: 'VALIDATION',
           step: STEP,
           details: { reason: 'simples_iss_rate_missing' },
@@ -309,7 +309,7 @@ export class DpsBuilder {
         fiscalError({
           code: 'DPS_SCHEMA_VALIDATION_FAILED',
           message:
-            'Simples Nacional ME/EPP requires the approximate total tax rate (pTotTribSN) for the month',
+            'Simples Nacional ME/EPP requires the approximate total tax rate (pTotTribSN) on the company',
           category: 'VALIDATION',
           step: STEP,
           details: { reason: 'simples_total_rate_missing' },

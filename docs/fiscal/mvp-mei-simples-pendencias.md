@@ -49,6 +49,7 @@ Para MEI e Simples em 2026 o plano 2 deixa a emissão seguir sem IBS/CBS (a aus�
 - **Dependência:** é pessoa, não código. Sem isso nada pode ser chamado de "homologado".
 
 ### P2. Regra de MEI e Simples a partir de 01/01/2027 — **prazo duro**
+- **Atualização (2026-10-26): resolvido.** MEI e Simples que não optaram pelo regime regular emitem em 2027 sem destacar IBS/CBS (`NOT_APPLICABLE`). Quem optar pelo regime regular continua bloqueado. O texto abaixo é o registro da discussão original.
 - **Situação atual do código (verificado):** as estratégias de MEI e Simples tratam IBS/CBS de 2027 como `UNSUPPORTED`. Isso **bloqueia a emissão** em 01/01/2027 se ninguém trocar essa regra. Foi um bloqueio conservador que eu deixei como marcador, não uma exigência legal.
 - **O que se sabe (fonte secundária):**
   - o Ato Conjunto RFB/CGIBS nº 4/2026 (30/07/2026) fixa 01/01/2027 para optantes do Simples preencherem os campos de IBS/CBS;

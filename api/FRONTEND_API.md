@@ -216,8 +216,6 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | GET    | `/companies/{id}/fiscal-profile`                       | S/K, `nfse.companies.view`      | Histórico de perfis e vigências; 200                                               |
 | PUT    | `/companies/{id}/fiscal-profile`                       | S/K, `nfse.companies.manage`    | Cria vigência fiscal; `confirm: true` aprova pelo ator; idempotente se idêntica; 200 |
 | POST   | `/companies/{id}/fiscal-profile/{profileId}/approve`   | S/K, `nfse.companies.manage`    | Aprova o perfil fiscal; 201                                                        |
-| GET    | `/companies/{id}/simples-rates`                        | S/K, `nfse.companies.view`      | Alíquotas mensais do Simples informadas (mês mais novo primeiro) |
-| PUT    | `/companies/{id}/simples-rates/{month}`                | S/K, `nfse.companies.manage`    | Informa/substitui o mês (`AAAA-MM`, não futuro); `{ totalRate, issRate? }`; sem DAS: quem informa é a empresa/contador; 200 |
 | GET    | `/companies/{id}/service-tax-profiles`                 | S/K, `nfse.companies.view`      | Perfis de serviço vigentes em `?date=YYYY-MM-DD`; 200                               |
 | POST   | `/companies/{id}/service-tax-profiles`                 | S/K, `nfse.companies.manage`    | Cria perfil de serviço; 201                                                        |
 | PATCH  | `/companies/{id}/service-tax-profiles/{serviceId}`     | S/K, `nfse.companies.manage`    | Atualiza perfil de serviço; restrições de imutabilidade dos aprovados; 200           |
@@ -537,13 +535,20 @@ não enviar campos fora do contrato).
 - `municipalityCode`: obrigatório, 7 dígitos (`invalid_ibge_code`).
 - `defaultServiceCode`: opcional, 6 dígitos (`invalid_service_code`). É só um
   padrão da empresa; a classificação fiscal vem do perfil do serviço.
+- `simplesRate`: **obrigatório para Simples Nacional** (422 `required`), ignorado
+  para MEI. Alíquota efetiva total (%) do DAS, ex.: `"6.54"` (0 a 100, até 2
+  casas). Vai em toda nota (`pTotTribSN`). Para atualizar, mande o novo valor no
+  `PATCH /companies/{id}`.
+- `simplesIssRate`: opcional, só Simples Nacional (1,80 a 5,00). Necessária só
+  quando algum cliente retém ISS. No PATCH, `null` remove.
 
 ### Configuração fiscal da empresa
 
 Para MEI e Simples Nacional o fluxo é só este:
 
-1. `POST /companies` com `taxRegime`, `municipalityCode` e, em `live`,
-   `municipalReg`. O perfil fiscal já nasce aprovado.
+1. `POST /companies` com `taxRegime`, `municipalityCode`, `simplesRate` (só
+   Simples Nacional) e, em `live`, `municipalReg`. O perfil fiscal já nasce
+   aprovado.
 2. `POST /companies/{id}/certificates` com o certificado A1.
 3. `POST /invoices`.
 
@@ -877,8 +882,8 @@ ou `response.text()`, não `response.json()`.
   ainda precisa ser validada com destinatário real. Testes do login substituem
   somente a entrega, mantendo Postgres, Redis, OTP e guards reais.
 - **Cálculo pré-emissão**: `ready` e testes locais não substituem homologação
-  na Sefin, nem confirmação fiscal das regras. MEI/Simples 2027 permanece
-  bloqueado; veja [limitações](../docs/fiscal/limitations.md).
+  na Sefin, nem confirmação fiscal das regras. MEI/Simples sem opção pelo regime regular
+  emitem sem IBS/CBS em 2027; veja [limitações](../docs/fiscal/limitations.md).
 - **Emissão fiscal**: existência das rotas e boot não comprovam emissão junto
   ao serviço nacional. O teste de integração valida SDK real, assinatura/XSD,
   persistência, reconciliação e débito usando transporte HTTP controlado.
