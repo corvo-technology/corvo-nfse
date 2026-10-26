@@ -110,10 +110,6 @@ export default function configuration(): AppConfiguration {
       ibsCbsUnavailableMode: env.FISCAL_IBSCBS_UNAVAILABLE_MODE,
     },
     rollout: {
-      taxRegimeRestriction: rolloutFlag(
-        env.TAX_REGIME_RESTRICTION,
-        env.TAX_REGIME_RESTRICTION_TENANTS,
-      ),
       fiscalDpsConformance: rolloutFlag(
         env.FISCAL_DPS_CONFORMANCE,
         env.FISCAL_DPS_CONFORMANCE_TENANTS,
@@ -121,10 +117,6 @@ export default function configuration(): AppConfiguration {
       simplesTottrib: rolloutFlag(
         env.SIMPLES_TOTTRIB,
         env.SIMPLES_TOTTRIB_TENANTS,
-      ),
-      cnpjRegistryCheck: rolloutFlag(
-        env.CNPJ_REGISTRY_CHECK,
-        env.CNPJ_REGISTRY_CHECK_TENANTS,
       ),
       simplesRateMode: {
         mode: env.SIMPLES_RATE_MODE,

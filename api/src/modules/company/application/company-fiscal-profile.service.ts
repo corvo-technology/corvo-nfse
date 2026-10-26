@@ -1,10 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  Optional,
-} from '@nestjs/common';
-import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { assertRegimeSupported } from '../domain/tax-regime-support';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import type { CompanyFiscalProfile } from '../domain/fiscal-profile';
@@ -19,8 +13,6 @@ export class CompanyFiscalProfileService {
   constructor(
     @Inject(IFiscalProfileRepository)
     private readonly profiles: IFiscalProfileRepository,
-    // Optional so the service keeps working where no flags are provided (rule off).
-    @Optional() private readonly flags?: RolloutFlagsService,
   ) {}
 
   async record(
@@ -28,7 +20,7 @@ export class CompanyFiscalProfileService {
     tenantId: string,
     input: NewFiscalProfile,
   ): Promise<CompanyFiscalProfile> {
-    assertRegimeSupported(this.flags, tenantId, input.taxRegime);
+    assertRegimeSupported(input.taxRegime);
     const issues = validateFiscalProfile(input);
     if (issues.length > 0) throw new FiscalValidationError(issues);
     return this.profiles.append(companyId, tenantId, input);

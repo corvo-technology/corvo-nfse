@@ -1,7 +1,5 @@
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 import { TaxRegimeNotSupportedError } from '../domain/errors';
 import { CompanyFiscalProfileService } from './company-fiscal-profile.service';
 import type { CompanyFiscalProfile } from '../domain/fiscal-profile';
@@ -207,29 +205,16 @@ describe('CompanyFiscalProfileService', () => {
 });
 
 describe('CompanyFiscalProfileService regime restriction', () => {
-  const restricted = new RolloutFlagsService(
-    new ConfigService({
-      rollout: {
-        taxRegimeRestriction: { on: true, tenants: '*' },
-        fiscalDpsConformance: { on: false, tenants: '*' },
-        simplesTottrib: { on: false, tenants: '*' },
-        cnpjRegistryCheck: { on: false, tenants: '*' },
-        simplesRateMode: { mode: 'off', tenants: '*' },
-        simplesRateEnforcedFrom: null,
-      },
-    }),
-  );
-
   it.each([
     'LUCRO_PRESUMIDO',
     'LUCRO_REAL',
     'OUTRO_REGIME',
     'UNKNOWN',
   ] as const)(
-    'record refuses %s and never reaches the repository when the flag is on',
+    'record refuses %s and never reaches the repository ',
     async (taxRegime) => {
       const repository = new FakeFiscalProfileRepository();
-      const service = new CompanyFiscalProfileService(repository, restricted);
+      const service = new CompanyFiscalProfileService(repository);
       await expect(
         service.record(companyId, tenantId, makeInput({ taxRegime })),
       ).rejects.toBeInstanceOf(TaxRegimeNotSupportedError);
@@ -237,9 +222,9 @@ describe('CompanyFiscalProfileService regime restriction', () => {
     },
   );
 
-  it('record still accepts MEI and Simples Nacional when the flag is on', async () => {
+  it('record still accepts MEI and Simples Nacional ', async () => {
     const repository = new FakeFiscalProfileRepository();
-    const service = new CompanyFiscalProfileService(repository, restricted);
+    const service = new CompanyFiscalProfileService(repository);
     for (const taxRegime of ['MEI', 'SIMPLES_NACIONAL'] as const)
       await expect(
         service.record(companyId, tenantId, makeInput({ taxRegime })),

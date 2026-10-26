@@ -289,7 +289,6 @@ export class CompanyController {
     const warnings = await this.companyService.registryWarnings(
       company,
       dto.taxRegime,
-      tenantId,
     );
     return data({
       ...toView(company, false, regime),

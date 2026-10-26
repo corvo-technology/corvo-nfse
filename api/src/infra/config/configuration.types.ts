@@ -61,10 +61,8 @@ export interface RolloutFlagConfig {
 }
 
 export interface RolloutConfig {
-  taxRegimeRestriction: RolloutFlagConfig;
   fiscalDpsConformance: RolloutFlagConfig;
   simplesTottrib: RolloutFlagConfig;
-  cnpjRegistryCheck: RolloutFlagConfig;
   simplesRateMode: { mode: 'off' | 'warn' | 'block'; tenants: '*' | string[] };
   simplesRateEnforcedFrom: string | null;
 }

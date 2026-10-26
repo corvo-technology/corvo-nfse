@@ -221,10 +221,8 @@ describe('InvoiceIntakeService deduction by regime (Anexo I)', () => {
     new RolloutFlagsService(
       new ConfigService({
         rollout: {
-          taxRegimeRestriction: { on: false, tenants: '*' },
           fiscalDpsConformance: { on, tenants },
           simplesTottrib: { on: false, tenants: '*' },
-          cnpjRegistryCheck: { on: false, tenants: '*' },
           simplesRateMode: { mode: 'off', tenants: '*' },
           simplesRateEnforcedFrom: null,
         },
@@ -352,10 +350,8 @@ describe('InvoiceIntakeService Simples rate requirement (SIMPLES_RATE_MODE)', ()
     new RolloutFlagsService(
       new ConfigService({
         rollout: {
-          taxRegimeRestriction: { on: false, tenants: '*' },
           fiscalDpsConformance: { on: false, tenants: '*' },
           simplesTottrib: { on: false, tenants: '*' },
-          cnpjRegistryCheck: { on: false, tenants: '*' },
           simplesRateMode: { mode, tenants },
           simplesRateEnforcedFrom: enforcedFrom,
         },
@@ -478,7 +474,7 @@ describe('InvoiceIntakeService Simples rate requirement (SIMPLES_RATE_MODE)', ()
   });
 });
 
-describe('InvoiceIntakeService regime restriction (TAX_REGIME_RESTRICTION)', () => {
+describe('InvoiceIntakeService regime restriction', () => {
   const TENANT = '11111111-1111-4111-8111-111111111111';
   const company = Company.create(
     {
@@ -490,20 +486,18 @@ describe('InvoiceIntakeService regime restriction (TAX_REGIME_RESTRICTION)', () 
     },
     TENANT,
   );
-  const flags = (on: boolean) =>
+  const flags = () =>
     new RolloutFlagsService(
       new ConfigService({
         rollout: {
-          taxRegimeRestriction: { on, tenants: '*' },
           fiscalDpsConformance: { on: false, tenants: '*' },
           simplesTottrib: { on: false, tenants: '*' },
-          cnpjRegistryCheck: { on: false, tenants: '*' },
           simplesRateMode: { mode: 'off', tenants: '*' },
           simplesRateEnforcedFrom: null,
         },
       }),
     );
-  const build = (regime: string, on: boolean) =>
+  const build = (regime: string) =>
     new InvoiceIntakeService(
       { findById: jest.fn().mockResolvedValue(company) } as never,
       new InvoiceDomainService(),
@@ -514,7 +508,7 @@ describe('InvoiceIntakeService regime restriction (TAX_REGIME_RESTRICTION)', () 
             { taxRegime: regime, validFrom: '2025-01-01', validUntil: null },
           ]),
       } as never,
-      flags(on),
+      flags(),
     );
   const dto = {
     companyId: company.id,
@@ -527,7 +521,7 @@ describe('InvoiceIntakeService regime restriction (TAX_REGIME_RESTRICTION)', () 
     'refuses an invoice of a %s company before any credit is reserved',
     async (regime) => {
       await expect(
-        build(regime, true).prepare(dto, TENANT, 'test'),
+        build(regime).prepare(dto, TENANT, 'test'),
       ).rejects.toBeInstanceOf(TaxRegimeNotSupportedError);
     },
   );
@@ -536,16 +530,10 @@ describe('InvoiceIntakeService regime restriction (TAX_REGIME_RESTRICTION)', () 
     'accepts a %s company',
     async (regime) => {
       await expect(
-        build(regime, true).prepare(dto, TENANT, 'test'),
+        build(regime).prepare(dto, TENANT, 'test'),
       ).resolves.toBeDefined();
     },
   );
-
-  it('keeps today behaviour when the flag is off', async () => {
-    await expect(
-      build('LUCRO_REAL', false).prepare(dto, TENANT, 'test'),
-    ).resolves.toBeDefined();
-  });
 
   it('leaves a company without a single effective profile to the engine', async () => {
     const intake = new InvoiceIntakeService(

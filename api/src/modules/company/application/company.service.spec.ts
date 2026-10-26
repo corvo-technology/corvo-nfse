@@ -586,16 +586,14 @@ describe('CompanyService', () => {
   });
 });
 
-describe('CompanyService regime restriction (TAX_REGIME_RESTRICTION)', () => {
+describe('CompanyService regime restriction', () => {
   const tenant = '11111111-1111-4111-8111-111111111111';
-  const flagsFor = (on: boolean) =>
+  const flagsFor = () =>
     new RolloutFlagsService(
       new ConfigService({
         rollout: {
-          taxRegimeRestriction: { on, tenants: '*' },
           fiscalDpsConformance: { on: false, tenants: '*' },
           simplesTottrib: { on: false, tenants: '*' },
-          cnpjRegistryCheck: { on: false, tenants: '*' },
           simplesRateMode: { mode: 'off', tenants: '*' },
           simplesRateEnforcedFrom: null,
         },
@@ -607,7 +605,7 @@ describe('CompanyService regime restriction (TAX_REGIME_RESTRICTION)', () => {
     taxRegime,
     municipalityCode: '3550308',
   });
-  const build = (on: boolean) => {
+  const build = () => {
     const repo = {
       existsWithTaxId: jest.fn().mockResolvedValue(false),
       save: jest.fn(),
@@ -623,15 +621,15 @@ describe('CompanyService regime restriction (TAX_REGIME_RESTRICTION)', () => {
       { getStatus: jest.fn() } as never,
       new CompanyDomainService(),
       profiles as never,
-      flagsFor(on),
+      flagsFor(),
     );
     return { service, repo, profiles };
   };
 
   it.each(['Lucro Presumido', 'Lucro Real'] as const)(
-    'refuses %s on create and saves nothing when the flag is on',
+    'refuses %s on create and saves nothing',
     async (regime) => {
-      const { service, repo, profiles } = build(true);
+      const { service, repo, profiles } = build();
       await expect(
         service.create(input(regime), tenant, 'test'),
       ).rejects.toBeInstanceOf(TaxRegimeNotSupportedError);
@@ -641,7 +639,7 @@ describe('CompanyService regime restriction (TAX_REGIME_RESTRICTION)', () => {
   );
 
   it('update refuses a regime change the restriction would reject BEFORE saving the company', async () => {
-    const { service, repo, profiles } = build(true);
+    const { service, repo, profiles } = build();
     const existing = Company.create(
       {
         legalName: 'Empresa',
@@ -660,43 +658,20 @@ describe('CompanyService regime restriction (TAX_REGIME_RESTRICTION)', () => {
     expect(repo.save).not.toHaveBeenCalled();
     expect(profiles.record).not.toHaveBeenCalled();
   });
-
-  it('accepts MEI when the flag is on and Lucro Presumido when it is off', async () => {
-    await expect(
-      build(true).service.create(input('MEI'), tenant, 'test'),
-    ).resolves.toBeDefined();
-    await expect(
-      build(false).service.create(input('Lucro Presumido'), tenant, 'test'),
-    ).resolves.toBeDefined();
-  });
 });
 
-describe('CompanyService registry check (CNPJ_REGISTRY_CHECK)', () => {
-  const tenant = '11111111-1111-4111-8111-111111111111';
-  const flagsFor = (on: boolean) =>
-    new RolloutFlagsService(
-      new ConfigService({
-        rollout: {
-          taxRegimeRestriction: { on: false, tenants: '*' },
-          fiscalDpsConformance: { on: false, tenants: '*' },
-          simplesTottrib: { on: false, tenants: '*' },
-          cnpjRegistryCheck: { on, tenants: '*' },
-          simplesRateMode: { mode: 'off', tenants: '*' },
-          simplesRateEnforcedFrom: null,
-        },
-      }),
-    );
+describe('CompanyService registry check', () => {
   const company = {
     taxId: '11222333000181',
     municipalityCode: '3550308',
   } as never;
-  const service = (on: boolean, lookup: jest.Mock) =>
+  const service = (lookup: jest.Mock) =>
     new CompanyService(
       {} as never,
       {} as never,
       new CompanyDomainService(),
       {} as never,
-      flagsFor(on),
+      undefined,
       { lookup },
     );
 
@@ -706,37 +681,23 @@ describe('CompanyService registry check (CNPJ_REGISTRY_CHECK)', () => {
       optanteMei: false,
       municipalityCode: '3550308',
     });
-    const warnings = await service(true, lookup).registryWarnings(
-      company,
-      'MEI',
-      tenant,
-    );
+    const warnings = await service(lookup).registryWarnings(company, 'MEI');
     expect(lookup).toHaveBeenCalledWith('11222333000181');
     expect(warnings).toEqual([
       expect.objectContaining({ code: 'TAX_REGIME_REGISTRY_MISMATCH' }),
     ]);
   });
 
-  it('makes no call when the flag is off', async () => {
-    const lookup = jest.fn();
-    expect(
-      await service(false, lookup).registryWarnings(company, 'MEI', tenant),
-    ).toEqual([]);
-    expect(lookup).not.toHaveBeenCalled();
-  });
-
   it('never fails or warns when the registry fails', async () => {
     expect(
       await service(
-        true,
         jest.fn().mockRejectedValue(new Error('down')),
-      ).registryWarnings(company, 'MEI', tenant),
+      ).registryWarnings(company, 'MEI'),
     ).toEqual([]);
     expect(
-      await service(true, jest.fn().mockResolvedValue(null)).registryWarnings(
+      await service(jest.fn().mockResolvedValue(null)).registryWarnings(
         company,
         'MEI',
-        tenant,
       ),
     ).toEqual([]);
   });

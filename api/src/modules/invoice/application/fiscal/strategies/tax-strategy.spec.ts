@@ -467,10 +467,8 @@ describe('strategies', () => {
       new RolloutFlagsService(
         new ConfigService({
           rollout: {
-            taxRegimeRestriction: { on: false, tenants: '*' },
             fiscalDpsConformance: { on: conformance, tenants: '*' },
             simplesTottrib: { on: false, tenants: '*' },
-            cnpjRegistryCheck: { on: false, tenants: '*' },
             simplesRateMode: { mode: 'off', tenants: '*' },
             simplesRateEnforcedFrom: null,
           },
@@ -528,51 +526,6 @@ describe('strategies', () => {
     it('does not change Simples Nacional, which keeps withholding', () => {
       const planned = plan('SIMPLES_NACIONAL', true);
       expect(planned.ok && planned.value.issWithheld.status).toBe('REQUIRED');
-    });
-  });
-
-  describe('regular regimes with TAX_REGIME_RESTRICTION', () => {
-    const rolloutFlags = (restricted: boolean) =>
-      new RolloutFlagsService(
-        new ConfigService({
-          rollout: {
-            taxRegimeRestriction: { on: restricted, tenants: '*' },
-            fiscalDpsConformance: { on: false, tenants: '*' },
-            simplesTottrib: { on: false, tenants: '*' },
-            cnpjRegistryCheck: { on: false, tenants: '*' },
-            simplesRateMode: { mode: 'off', tenants: '*' },
-            simplesRateEnforcedFrom: null,
-          },
-        }),
-      );
-
-    it('stops resolving Lucro Presumido and Lucro Real when the restriction is on', () => {
-      const restricted = new TaxStrategyResolver([
-        new MeiTaxStrategy(),
-        new SimplesNacionalTaxStrategy(),
-        new RegularTaxStrategy(rolloutFlags(true)),
-      ]);
-      for (const taxRegime of ['LUCRO_PRESUMIDO', 'LUCRO_REAL'] as const) {
-        const resolved = restricted.resolve(
-          fullProfile({ taxRegime }),
-          '2026-12-10',
-        );
-        expect(resolved.ok).toBe(false);
-        expect(!resolved.ok && resolved.error.code).toBe(
-          'TAX_REGIME_UNSUPPORTED',
-        );
-      }
-    });
-
-    it('keeps resolving them when the restriction is off', () => {
-      const open = new TaxStrategyResolver([
-        new MeiTaxStrategy(),
-        new SimplesNacionalTaxStrategy(),
-        new RegularTaxStrategy(rolloutFlags(false)),
-      ]);
-      expect(
-        open.resolve(fullProfile({ taxRegime: 'LUCRO_REAL' }), '2026-12-10').ok,
-      ).toBe(true);
     });
   });
 });

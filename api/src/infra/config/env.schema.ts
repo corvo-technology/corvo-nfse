@@ -275,8 +275,6 @@ export const envSchema = z
     FISCAL_IBSCBS_UNAVAILABLE_MODE: z.enum(['block', 'warn']).default('block'),
     // Gradual rollout of the MEI / Simples Nacional focus. Every flag is off by
     // default; `<FLAG>_TENANTS` limits a flag to some tenants (canary).
-    TAX_REGIME_RESTRICTION: booleanFromEnv.default(false),
-    TAX_REGIME_RESTRICTION_TENANTS: rolloutTenants(),
     FISCAL_DPS_CONFORMANCE: booleanFromEnv.default(false),
     FISCAL_DPS_CONFORMANCE_TENANTS: rolloutTenants(),
     SIMPLES_TOTTRIB: booleanFromEnv.default(false),
@@ -294,8 +292,6 @@ export const envSchema = z
         )
         .optional(),
     ),
-    CNPJ_REGISTRY_CHECK: booleanFromEnv.default(false),
-    CNPJ_REGISTRY_CHECK_TENANTS: rolloutTenants(),
     // An empty value (RTC_CALCULATOR_URL=) means "not configured".
     RTC_CALCULATOR_URL: z.preprocess(
       (value) => (value === '' ? undefined : value),

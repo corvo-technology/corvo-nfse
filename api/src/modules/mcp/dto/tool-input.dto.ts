@@ -131,7 +131,7 @@ export class CompanyCreateInput {
   @IsString() @IsNotEmpty() legal_name!: string;
   @IsString() @IsNotEmpty() tax_id!: string;
   @IsString()
-  @IsIn(['mei', 'simple_national', 'presumed_profit', 'real_profit'])
+  @IsIn(['mei', 'simple_national'])
   tax_regime!: string;
   @IsString() @IsNotEmpty() municipality_code!: string;
   @IsOptional() @IsString() trade_name?: string;

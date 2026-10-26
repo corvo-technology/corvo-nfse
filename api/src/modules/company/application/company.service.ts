@@ -69,16 +69,14 @@ export class CompanyService {
   ) {}
 
   /**
-   * CNPJ_REGISTRY_CHECK: warnings when the public registry disagrees with the
+   * Warnings when the public registry disagrees with the
    * regime or municipality just informed. Never blocks and never throws.
    */
   async registryWarnings(
     company: Company,
     regime: TaxRegime,
-    tenantId: string,
   ): Promise<RegistryWarning[]> {
-    if (!this.registry || !this.flags?.isOn('CNPJ_REGISTRY_CHECK', tenantId))
-      return [];
+    if (!this.registry) return [];
     try {
       const info = await this.registry.lookup(company.taxId);
       return registryWarnings(
@@ -104,11 +102,7 @@ export class CompanyService {
       environment,
     });
     // Before anything is saved: a refused regime must not leave a company behind.
-    assertRegimeSupported(
-      this.flags,
-      tenantId,
-      regimeKindFromLegacy(normalized.taxRegime),
-    );
+    assertRegimeSupported(regimeKindFromLegacy(normalized.taxRegime));
 
     const exists = await this.companyRepo.existsWithTaxId(
       normalized.taxId,
@@ -271,8 +265,7 @@ export class CompanyService {
         mergedRegime.simpleNational === current.simpleNational &&
         mergedRegime.specialTaxRegime === current.specialTaxRegime
       );
-    if (regimeChanged)
-      assertRegimeSupported(this.flags, tenantId, mergedRegime.taxRegime);
+    if (regimeChanged) assertRegimeSupported(mergedRegime.taxRegime);
 
     company.update(normalized);
 
