@@ -61,7 +61,6 @@ export interface RolloutFlagConfig {
 }
 
 export interface RolloutConfig {
-  taxRegimeRestriction: RolloutFlagConfig;
   fiscalDpsConformance: RolloutFlagConfig;
   simplesTottrib: RolloutFlagConfig;
   cnpjRegistryCheck: RolloutFlagConfig;

@@ -7,7 +7,6 @@ const off = { on: false, tenants: '*' as const };
 const config = (overrides: Record<string, unknown> = {}) =>
   new ConfigService({
     rollout: {
-      taxRegimeRestriction: off,
       fiscalDpsConformance: off,
       simplesTottrib: off,
       cnpjRegistryCheck: off,
@@ -21,7 +20,6 @@ describe('RolloutFlagsService', () => {
   it('has every flag off by default', () => {
     const flags = new RolloutFlagsService(config());
     for (const flag of [
-      'TAX_REGIME_RESTRICTION',
       'FISCAL_DPS_CONFORMANCE',
       'SIMPLES_TOTTRIB',
       'CNPJ_REGISTRY_CHECK',
@@ -37,7 +35,6 @@ describe('RolloutFlagsService', () => {
     );
     expect(flags.isOn('FISCAL_DPS_CONFORMANCE', A)).toBe(true);
     expect(flags.isOn('FISCAL_DPS_CONFORMANCE', B)).toBe(true);
-    expect(flags.isOn('TAX_REGIME_RESTRICTION', A)).toBe(false);
   });
 
   it('limits a flag to the listed tenants', () => {

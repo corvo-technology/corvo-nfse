@@ -586,13 +586,12 @@ describe('CompanyService', () => {
   });
 });
 
-describe('CompanyService regime restriction (TAX_REGIME_RESTRICTION)', () => {
+describe('CompanyService regime restriction', () => {
   const tenant = '11111111-1111-4111-8111-111111111111';
-  const flagsFor = (on: boolean) =>
+  const flagsFor = () =>
     new RolloutFlagsService(
       new ConfigService({
         rollout: {
-          taxRegimeRestriction: { on, tenants: '*' },
           fiscalDpsConformance: { on: false, tenants: '*' },
           simplesTottrib: { on: false, tenants: '*' },
           cnpjRegistryCheck: { on: false, tenants: '*' },
@@ -607,7 +606,7 @@ describe('CompanyService regime restriction (TAX_REGIME_RESTRICTION)', () => {
     taxRegime,
     municipalityCode: '3550308',
   });
-  const build = (on: boolean) => {
+  const build = () => {
     const repo = {
       existsWithTaxId: jest.fn().mockResolvedValue(false),
       save: jest.fn(),
@@ -623,15 +622,15 @@ describe('CompanyService regime restriction (TAX_REGIME_RESTRICTION)', () => {
       { getStatus: jest.fn() } as never,
       new CompanyDomainService(),
       profiles as never,
-      flagsFor(on),
+      flagsFor(),
     );
     return { service, repo, profiles };
   };
 
   it.each(['Lucro Presumido', 'Lucro Real'] as const)(
-    'refuses %s on create and saves nothing when the flag is on',
+    'refuses %s on create and saves nothing',
     async (regime) => {
-      const { service, repo, profiles } = build(true);
+      const { service, repo, profiles } = build();
       await expect(
         service.create(input(regime), tenant, 'test'),
       ).rejects.toBeInstanceOf(TaxRegimeNotSupportedError);
@@ -641,7 +640,7 @@ describe('CompanyService regime restriction (TAX_REGIME_RESTRICTION)', () => {
   );
 
   it('update refuses a regime change the restriction would reject BEFORE saving the company', async () => {
-    const { service, repo, profiles } = build(true);
+    const { service, repo, profiles } = build();
     const existing = Company.create(
       {
         legalName: 'Empresa',
@@ -660,15 +659,6 @@ describe('CompanyService regime restriction (TAX_REGIME_RESTRICTION)', () => {
     expect(repo.save).not.toHaveBeenCalled();
     expect(profiles.record).not.toHaveBeenCalled();
   });
-
-  it('accepts MEI when the flag is on and Lucro Presumido when it is off', async () => {
-    await expect(
-      build(true).service.create(input('MEI'), tenant, 'test'),
-    ).resolves.toBeDefined();
-    await expect(
-      build(false).service.create(input('Lucro Presumido'), tenant, 'test'),
-    ).resolves.toBeDefined();
-  });
 });
 
 describe('CompanyService registry check (CNPJ_REGISTRY_CHECK)', () => {
@@ -677,7 +667,6 @@ describe('CompanyService registry check (CNPJ_REGISTRY_CHECK)', () => {
     new RolloutFlagsService(
       new ConfigService({
         rollout: {
-          taxRegimeRestriction: { on: false, tenants: '*' },
           fiscalDpsConformance: { on: false, tenants: '*' },
           simplesTottrib: { on: false, tenants: '*' },
           cnpjRegistryCheck: { on, tenants: '*' },

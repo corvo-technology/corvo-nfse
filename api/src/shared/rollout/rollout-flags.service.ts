@@ -6,7 +6,6 @@ import type {
 } from '@/infra/config/configuration.types';
 
 export type RolloutFlag =
-  | 'TAX_REGIME_RESTRICTION'
   | 'FISCAL_DPS_CONFORMANCE'
   | 'SIMPLES_TOTTRIB'
   | 'CNPJ_REGISTRY_CHECK';
@@ -15,13 +14,9 @@ const FLAG_KEY: Record<
   RolloutFlag,
   keyof Pick<
     RolloutConfig,
-    | 'taxRegimeRestriction'
-    | 'fiscalDpsConformance'
-    | 'simplesTottrib'
-    | 'cnpjRegistryCheck'
+    'fiscalDpsConformance' | 'simplesTottrib' | 'cnpjRegistryCheck'
   >
 > = {
-  TAX_REGIME_RESTRICTION: 'taxRegimeRestriction',
   FISCAL_DPS_CONFORMANCE: 'fiscalDpsConformance',
   SIMPLES_TOTTRIB: 'simplesTottrib',
   CNPJ_REGISTRY_CHECK: 'cnpjRegistryCheck',

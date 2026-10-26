@@ -1,5 +1,5 @@
 -- Empresas cujo perfil fiscal vigente hoje NÃO é MEI nem Simples Nacional.
--- Rodar antes de ligar TAX_REGIME_RESTRICTION:
+-- Lucro Presumido/Real não são mais aceitos. Rodar antes de subir esta versão:
 --   psql "$DATABASE_URL" -v app_schema=corvo -f api/scripts/audit-tax-regimes.sql
 -- Cada linha precisa ser corrigida (perfil fiscal) ou a empresa desativada.
 SELECT p.tenant_id,

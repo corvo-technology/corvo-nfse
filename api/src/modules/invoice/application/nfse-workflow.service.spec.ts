@@ -767,7 +767,6 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       new RolloutFlagsService(
         new ConfigService({
           rollout: {
-            taxRegimeRestriction: { on: false, tenants: '*' },
             fiscalDpsConformance: { on: false, tenants: '*' },
             simplesTottrib: { on, tenants: '*' },
             cnpjRegistryCheck: { on: false, tenants: '*' },

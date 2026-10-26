@@ -104,11 +104,7 @@ export class CompanyService {
       environment,
     });
     // Before anything is saved: a refused regime must not leave a company behind.
-    assertRegimeSupported(
-      this.flags,
-      tenantId,
-      regimeKindFromLegacy(normalized.taxRegime),
-    );
+    assertRegimeSupported(regimeKindFromLegacy(normalized.taxRegime));
 
     const exists = await this.companyRepo.existsWithTaxId(
       normalized.taxId,
@@ -271,8 +267,7 @@ export class CompanyService {
         mergedRegime.simpleNational === current.simpleNational &&
         mergedRegime.specialTaxRegime === current.specialTaxRegime
       );
-    if (regimeChanged)
-      assertRegimeSupported(this.flags, tenantId, mergedRegime.taxRegime);
+    if (regimeChanged) assertRegimeSupported(mergedRegime.taxRegime);
 
     company.update(normalized);
 

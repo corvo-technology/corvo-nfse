@@ -100,7 +100,7 @@ export class InvoiceIntakeService {
         normalized,
         tenantId,
       ));
-    await this.assertRegimeSupported(profile, tenantId);
+    await this.assertRegimeSupported(profile);
     await this.assertDeductionAllowed(normalized, tenantId, profile);
     const warnings = await this.checkSimplesRate(
       company,
@@ -123,16 +123,14 @@ export class InvoiceIntakeService {
   }
 
   /**
-   * TAX_REGIME_RESTRICTION: refuse, before any credit is reserved, an invoice of a
+   * Refuse, before any credit is reserved, an invoice of a
    * company whose profile on the competence date is not MEI or Simples Nacional.
    */
   private async assertRegimeSupported(
     getProfile: () => Promise<CompanyFiscalProfile | undefined>,
-    tenantId: string,
   ): Promise<void> {
-    if (!this.flags?.isOn('TAX_REGIME_RESTRICTION', tenantId)) return;
     const profile = await getProfile();
-    if (profile) assertRegimeSupported(this.flags, tenantId, profile.taxRegime);
+    if (profile) assertRegimeSupported(profile.taxRegime);
   }
 
   /**
