@@ -594,7 +594,6 @@ describe('CompanyService regime restriction', () => {
         rollout: {
           fiscalDpsConformance: { on: false, tenants: '*' },
           simplesTottrib: { on: false, tenants: '*' },
-          cnpjRegistryCheck: { on: false, tenants: '*' },
           simplesRateMode: { mode: 'off', tenants: '*' },
           simplesRateEnforcedFrom: null,
         },
@@ -661,31 +660,18 @@ describe('CompanyService regime restriction', () => {
   });
 });
 
-describe('CompanyService registry check (CNPJ_REGISTRY_CHECK)', () => {
-  const tenant = '11111111-1111-4111-8111-111111111111';
-  const flagsFor = (on: boolean) =>
-    new RolloutFlagsService(
-      new ConfigService({
-        rollout: {
-          fiscalDpsConformance: { on: false, tenants: '*' },
-          simplesTottrib: { on: false, tenants: '*' },
-          cnpjRegistryCheck: { on, tenants: '*' },
-          simplesRateMode: { mode: 'off', tenants: '*' },
-          simplesRateEnforcedFrom: null,
-        },
-      }),
-    );
+describe('CompanyService registry check', () => {
   const company = {
     taxId: '11222333000181',
     municipalityCode: '3550308',
   } as never;
-  const service = (on: boolean, lookup: jest.Mock) =>
+  const service = (lookup: jest.Mock) =>
     new CompanyService(
       {} as never,
       {} as never,
       new CompanyDomainService(),
       {} as never,
-      flagsFor(on),
+      undefined,
       { lookup },
     );
 
@@ -695,37 +681,23 @@ describe('CompanyService registry check (CNPJ_REGISTRY_CHECK)', () => {
       optanteMei: false,
       municipalityCode: '3550308',
     });
-    const warnings = await service(true, lookup).registryWarnings(
-      company,
-      'MEI',
-      tenant,
-    );
+    const warnings = await service(lookup).registryWarnings(company, 'MEI');
     expect(lookup).toHaveBeenCalledWith('11222333000181');
     expect(warnings).toEqual([
       expect.objectContaining({ code: 'TAX_REGIME_REGISTRY_MISMATCH' }),
     ]);
   });
 
-  it('makes no call when the flag is off', async () => {
-    const lookup = jest.fn();
-    expect(
-      await service(false, lookup).registryWarnings(company, 'MEI', tenant),
-    ).toEqual([]);
-    expect(lookup).not.toHaveBeenCalled();
-  });
-
   it('never fails or warns when the registry fails', async () => {
     expect(
       await service(
-        true,
         jest.fn().mockRejectedValue(new Error('down')),
-      ).registryWarnings(company, 'MEI', tenant),
+      ).registryWarnings(company, 'MEI'),
     ).toEqual([]);
     expect(
-      await service(true, jest.fn().mockResolvedValue(null)).registryWarnings(
+      await service(jest.fn().mockResolvedValue(null)).registryWarnings(
         company,
         'MEI',
-        tenant,
       ),
     ).toEqual([]);
   });

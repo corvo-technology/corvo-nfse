@@ -5,21 +5,14 @@ import type {
   RolloutFlagConfig,
 } from '@/infra/config/configuration.types';
 
-export type RolloutFlag =
-  | 'FISCAL_DPS_CONFORMANCE'
-  | 'SIMPLES_TOTTRIB'
-  | 'CNPJ_REGISTRY_CHECK';
+export type RolloutFlag = 'FISCAL_DPS_CONFORMANCE' | 'SIMPLES_TOTTRIB';
 
 const FLAG_KEY: Record<
   RolloutFlag,
-  keyof Pick<
-    RolloutConfig,
-    'fiscalDpsConformance' | 'simplesTottrib' | 'cnpjRegistryCheck'
-  >
+  keyof Pick<RolloutConfig, 'fiscalDpsConformance' | 'simplesTottrib'>
 > = {
   FISCAL_DPS_CONFORMANCE: 'fiscalDpsConformance',
   SIMPLES_TOTTRIB: 'simplesTottrib',
-  CNPJ_REGISTRY_CHECK: 'cnpjRegistryCheck',
 };
 
 function allowed(tenants: '*' | string[], tenantId: string): boolean {

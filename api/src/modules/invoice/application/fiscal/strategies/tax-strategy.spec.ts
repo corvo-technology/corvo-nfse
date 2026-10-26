@@ -469,7 +469,6 @@ describe('strategies', () => {
           rollout: {
             fiscalDpsConformance: { on: conformance, tenants: '*' },
             simplesTottrib: { on: false, tenants: '*' },
-            cnpjRegistryCheck: { on: false, tenants: '*' },
             simplesRateMode: { mode: 'off', tenants: '*' },
             simplesRateEnforcedFrom: null,
           },

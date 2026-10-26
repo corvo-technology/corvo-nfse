@@ -292,8 +292,6 @@ export const envSchema = z
         )
         .optional(),
     ),
-    CNPJ_REGISTRY_CHECK: booleanFromEnv.default(false),
-    CNPJ_REGISTRY_CHECK_TENANTS: rolloutTenants(),
     // An empty value (RTC_CALCULATOR_URL=) means "not configured".
     RTC_CALCULATOR_URL: z.preprocess(
       (value) => (value === '' ? undefined : value),

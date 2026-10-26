@@ -132,7 +132,6 @@ describe('CompanyController create registry warnings', () => {
     expect(companyService.registryWarnings).toHaveBeenCalledWith(
       company,
       'MEI',
-      tenantId,
     );
   });
 

@@ -69,16 +69,14 @@ export class CompanyService {
   ) {}
 
   /**
-   * CNPJ_REGISTRY_CHECK: warnings when the public registry disagrees with the
+   * Warnings when the public registry disagrees with the
    * regime or municipality just informed. Never blocks and never throws.
    */
   async registryWarnings(
     company: Company,
     regime: TaxRegime,
-    tenantId: string,
   ): Promise<RegistryWarning[]> {
-    if (!this.registry || !this.flags?.isOn('CNPJ_REGISTRY_CHECK', tenantId))
-      return [];
+    if (!this.registry) return [];
     try {
       const info = await this.registry.lookup(company.taxId);
       return registryWarnings(

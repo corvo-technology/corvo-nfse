@@ -223,7 +223,6 @@ describe('InvoiceIntakeService deduction by regime (Anexo I)', () => {
         rollout: {
           fiscalDpsConformance: { on, tenants },
           simplesTottrib: { on: false, tenants: '*' },
-          cnpjRegistryCheck: { on: false, tenants: '*' },
           simplesRateMode: { mode: 'off', tenants: '*' },
           simplesRateEnforcedFrom: null,
         },
@@ -353,7 +352,6 @@ describe('InvoiceIntakeService Simples rate requirement (SIMPLES_RATE_MODE)', ()
         rollout: {
           fiscalDpsConformance: { on: false, tenants: '*' },
           simplesTottrib: { on: false, tenants: '*' },
-          cnpjRegistryCheck: { on: false, tenants: '*' },
           simplesRateMode: { mode, tenants },
           simplesRateEnforcedFrom: enforcedFrom,
         },
@@ -494,7 +492,6 @@ describe('InvoiceIntakeService regime restriction', () => {
         rollout: {
           fiscalDpsConformance: { on: false, tenants: '*' },
           simplesTottrib: { on: false, tenants: '*' },
-          cnpjRegistryCheck: { on: false, tenants: '*' },
           simplesRateMode: { mode: 'off', tenants: '*' },
           simplesRateEnforcedFrom: null,
         },

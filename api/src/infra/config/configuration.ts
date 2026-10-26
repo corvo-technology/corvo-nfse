@@ -118,10 +118,6 @@ export default function configuration(): AppConfiguration {
         env.SIMPLES_TOTTRIB,
         env.SIMPLES_TOTTRIB_TENANTS,
       ),
-      cnpjRegistryCheck: rolloutFlag(
-        env.CNPJ_REGISTRY_CHECK,
-        env.CNPJ_REGISTRY_CHECK_TENANTS,
-      ),
       simplesRateMode: {
         mode: env.SIMPLES_RATE_MODE,
         tenants: rolloutTenants(env.SIMPLES_RATE_MODE_TENANTS),
