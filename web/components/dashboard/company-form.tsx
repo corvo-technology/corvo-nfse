@@ -6,7 +6,7 @@ import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { ServiceCodeCombobox } from "@/components/ui/service-code-combobox";
-import { allowsSpecialTaxRegime, isSimpleNational, SPECIAL_TAX_REGIME_CODES, SUPPORTED_TAX_REGIMES } from "@/lib/company-fiscal";
+import { allowsSpecialTaxRegime, isSimpleNational, SPECIAL_TAX_REGIME_CODES, SUPPORTED_TAX_REGIMES, simplesRateError } from "@/lib/company-fiscal";
 import { CertificateUpload } from "@/components/dashboard/certificate-upload";
 import { useAuth } from "@/lib/auth";
 import { cleanTaxId, isValidCnpj, maskCnpj, maskDigits, maskState, maskZip, onlyDigits } from "@/lib/masks";
@@ -61,7 +61,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
   const canUploadCertificate = can("nfse.certificates.manage");
   const address = company?.address;
   const [values, setValues] = useState<Record<string, string>>({
-    legalName: company?.legalName ?? "", tradeName: company?.tradeName ?? "", taxId: maskCnpj(company?.taxId ?? ""), taxRegime: company?.taxRegime ?? "", municipalReg: company?.municipalReg ?? "", municipalityCode: company?.municipalityCode ?? "", defaultServiceCode: company?.defaultServiceCode ?? "", specialRegime: company?.specialRegime ?? "0",
+    legalName: company?.legalName ?? "", tradeName: company?.tradeName ?? "", taxId: maskCnpj(company?.taxId ?? ""), taxRegime: company?.taxRegime ?? "", municipalReg: company?.municipalReg ?? "", municipalityCode: company?.municipalityCode ?? "", defaultServiceCode: company?.defaultServiceCode ?? "", simplesRate: company?.simplesRate ?? "", simplesIssRate: company?.simplesIssRate ?? "", specialRegime: company?.specialRegime ?? "0",
     street: address?.street ?? "", number: address?.number ?? "", complement: address?.complement ?? "", district: address?.district ?? "", city: address?.city ?? "", state: address?.state ?? "", zip: maskZip(address?.zip ?? ""),
   });
   const [sendMunicipalReg, setSendMunicipalReg] = useState(company?.sendMunicipalReg ?? false);
@@ -72,6 +72,9 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
   const [created, setCreated] = useState<Company | null>(null);
   const [uploaded, setUploaded] = useState(false);
   const step: Step = wizard ? STEPS[stepIndex] : "company";
+  // The rate is asked only of a Simples Nacional company; a MEI sees no extra field.
+  const isSimples = (wizard ? values.taxRegime : company?.taxRegime) === "Simples Nacional";
+  const rateValue = (name: string) => values[name].trim().replace(",", ".");
   const show = (name: Step) => !wizard || step === name;
 
   const set = (name: string, value: string) => {
@@ -117,6 +120,13 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
     if (wizard && step === "certificate") return;
     const fiscalErrors: Record<string, string> = {};
     if (wizard && !(SUPPORTED_TAX_REGIMES as readonly string[]).includes(values.taxRegime)) fiscalErrors.taxRegime = t("regimeRequired");
+    if (isSimples) {
+      const reasons = { invalid: t("rateInvalid"), range: t("rateRange"), decimals: t("rateDecimals") };
+      const total = values.simplesRate.trim() === "" ? "invalid" : simplesRateError(rateValue("simplesRate"));
+      if (total) fiscalErrors.simplesRate = values.simplesRate.trim() === "" ? t("simplesRateRequired") : reasons[total];
+      const iss = values.simplesIssRate.trim() === "" ? null : simplesRateError(rateValue("simplesIssRate"));
+      if (iss) fiscalErrors.simplesIssRate = reasons[iss];
+    }
     if (!/^\d{7}$/.test(values.municipalityCode)) fiscalErrors.municipalityCode = t("municipalityInvalid");
     if (values.defaultServiceCode && !/^\d{6}$/.test(values.defaultServiceCode)) fiscalErrors.defaultServiceCode = t("serviceCodeInvalid");
     if (Object.keys(fiscalErrors).length) { setFieldErrors(fiscalErrors); setError(t("fixFields")); return; }
@@ -131,6 +141,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       const result = await onSave({
         legalName: values.legalName.trim(), taxId: cleanTaxId(values.taxId),
         ...(wizard ? { taxRegime: values.taxRegime as TaxRegime, simpleNational: isSimpleNational(values.taxRegime as TaxRegime), specialRegime: !allowsSpecialTaxRegime(values.taxRegime as TaxRegime) || values.specialRegime === "0" ? undefined : values.specialRegime } : {}),
+        ...(isSimples ? { simplesRate: rateValue("simplesRate"), simplesIssRate: rateValue("simplesIssRate") || (company?.simplesIssRate ? null : undefined) } : {}),
         tradeName: optional(values.tradeName), municipalityCode: values.municipalityCode,
         defaultServiceCode: optional(values.defaultServiceCode) ?? (company?.defaultServiceCode ? null : undefined),
         // Optional text is omitted when empty; null explicitly clears on update.
@@ -150,7 +161,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
         if (!canUploadCertificate) onFinish?.(result);
       }
     } catch (cause) {
-      const issues = mapIssues(cause, { legalName: "legalName", tradeName: "tradeName", taxId: "taxId", municipalReg: "municipalReg", municipalityCode: "municipalityCode", defaultServiceCode: "defaultServiceCode", specialRegime: "specialRegime", "address.street": "street", "address.number": "number", "address.complement": "complement", "address.district": "district", "address.city": "city", "address.state": "state", "address.zip": "zip" }, (code, fallback) => (te.has(code) ? te(code) : fallback));
+      const issues = mapIssues(cause, { legalName: "legalName", tradeName: "tradeName", taxId: "taxId", municipalReg: "municipalReg", municipalityCode: "municipalityCode", defaultServiceCode: "defaultServiceCode", specialRegime: "specialRegime", simplesRate: "simplesRate", simplesIssRate: "simplesIssRate", "address.street": "street", "address.number": "number", "address.complement": "complement", "address.district": "district", "address.city": "city", "address.state": "state", "address.zip": "zip" }, (code, fallback) => (te.has(code) ? te(code) : fallback));
       const { _form, ...perField } = issues;
       setFieldErrors(perField);
       if (wizard && Object.keys(perField).length > 0) setStepIndex((index) => (perField.legalName || perField.taxId ? 0 : perField.street || perField.zip || perField.city || perField.state || perField.number ? 1 : index));
@@ -232,6 +243,10 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       {wizard && <><Field label={t("taxRegime")} required error={fieldErrors.taxRegime}>{(props) => <select {...props} className="field" value={values.taxRegime} onChange={(event) => { set("taxRegime", event.target.value); if (!allowsSpecialTaxRegime(event.target.value as TaxRegime)) set("specialRegime", "0"); }}><option value="">{t("selectTaxRegime")}</option>{SUPPORTED_TAX_REGIMES.map((regime) => <option key={regime}>{regime}</option>)}</select>}</Field>
       {allowsSpecialTaxRegime(values.taxRegime as TaxRegime) && <Field label={t("specialRegime")} hint={t("specialRegimeHint")} error={fieldErrors.specialRegime}>{(props) => <select {...props} className="field" value={values.specialRegime} onChange={(event) => set("specialRegime", event.target.value)}>{SPECIAL_TAX_REGIME_CODES.map((code) => <option key={code} value={code}>{t(`specialRegimes.${code}`)}</option>)}</select>}</Field>}
       <p className="text-sm text-text-3 sm:col-span-2">{t("regimeDerived")}</p></>}
+      {isSimples && <>
+        {field("simplesRate", { required: true, maxLength: 6, mono: true, inputMode: "text", hint: t("hints.simplesRate") })}
+        {field("simplesIssRate", { maxLength: 6, mono: true, inputMode: "text", hint: t("hints.simplesIssRate") })}
+      </>}
       {field("municipalReg", { maxLength: 20, mono: true, hint: t("hints.municipalReg") })}
       {values.municipalReg.trim() && (
         <label className="flex items-start gap-2.5 text-[13px] text-text-2 sm:col-span-2">

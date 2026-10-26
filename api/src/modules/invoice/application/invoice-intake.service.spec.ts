@@ -5,8 +5,6 @@ import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { InvoiceDomainService } from '../domain/invoice-domain.service';
 import { InvoiceIntakeService } from './invoice-intake.service';
 import { TaxRegimeNotSupportedError } from '@/modules/company/domain/errors';
-import { ConfigService } from '@nestjs/config';
-import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 
 describe('InvoiceIntakeService', () => {
   const company = Company.create(
@@ -201,12 +199,12 @@ describe('InvoiceIntakeService', () => {
 
 describe('InvoiceIntakeService deduction by regime (Anexo I)', () => {
   const TENANT = '11111111-1111-4111-8111-111111111111';
-  const OTHER = '22222222-2222-4222-8222-222222222222';
   const company = Company.create(
     {
       legalName: 'Empresa',
       taxId: '11222333000181',
       taxRegime: 'MEI',
+      simplesRate: '6.54',
       municipalityCode: '3550308',
       defaultServiceCode: '060101',
     },
@@ -217,21 +215,7 @@ describe('InvoiceIntakeService deduction by regime (Anexo I)', () => {
     validFrom: string,
     validUntil: string | null,
   ) => ({ taxRegime, validFrom, validUntil });
-  const flags = (on: boolean, tenants: '*' | string[] = '*') =>
-    new RolloutFlagsService(
-      new ConfigService({
-        rollout: {
-          fiscalDpsConformance: { on, tenants },
-          simplesTottrib: { on: false, tenants: '*' },
-          simplesRateMode: { mode: 'off', tenants: '*' },
-          simplesRateEnforcedFrom: null,
-        },
-      }),
-    );
-  const build = (
-    profiles: unknown[],
-    flagService: RolloutFlagsService | undefined,
-  ) => {
+  const build = (profiles: unknown[]) => {
     const companies = {
       findById: jest.fn().mockResolvedValue(company),
       findByTaxId: jest.fn().mockResolvedValue(company),
@@ -240,7 +224,6 @@ describe('InvoiceIntakeService deduction by regime (Anexo I)', () => {
       companies as never,
       new InvoiceDomainService(),
       { list: jest.fn().mockResolvedValue(profiles) } as never,
-      flagService,
     );
   };
   const dto = (extra: Record<string, unknown> = {}) => ({
@@ -253,7 +236,7 @@ describe('InvoiceIntakeService deduction by regime (Anexo I)', () => {
   });
 
   it('refuses a deduction for a MEI before anything is reserved', async () => {
-    const intake = build([profile('MEI', '2025-01-01', null)], flags(true));
+    const intake = build([profile('MEI', '2025-01-01', null)]);
     const error = await intake
       .prepare(dto(), TENANT, 'test')
       .catch((e: unknown) => e);
@@ -265,10 +248,7 @@ describe('InvoiceIntakeService deduction by regime (Anexo I)', () => {
   });
 
   it('refuses a deduction for a Simples company outside the Anexo I list', async () => {
-    const intake = build(
-      [profile('SIMPLES_NACIONAL', '2025-01-01', null)],
-      flags(true),
-    );
+    const intake = build([profile('SIMPLES_NACIONAL', '2025-01-01', null)]);
     await expect(
       intake.prepare(
         dto({ service: { description: 'x', code: '010101' } }),
@@ -279,28 +259,22 @@ describe('InvoiceIntakeService deduction by regime (Anexo I)', () => {
   });
 
   it('accepts a deduction for a Simples company on a listed cTribNac', async () => {
-    const intake = build(
-      [profile('SIMPLES_NACIONAL', '2025-01-01', null)],
-      flags(true),
-    );
+    const intake = build([profile('SIMPLES_NACIONAL', '2025-01-01', null)]);
     await expect(intake.prepare(dto(), TENANT, 'test')).resolves.toBeDefined();
   });
 
   it('never checks a zero or absent deduction', async () => {
-    const intake = build([profile('MEI', '2025-01-01', null)], flags(true));
+    const intake = build([profile('MEI', '2025-01-01', null)]);
     await expect(
       intake.prepare(dto({ deduction: undefined }), TENANT, 'test'),
     ).resolves.toBeDefined();
   });
 
   it('uses the profile effective on the competence date, not the current regime', async () => {
-    const intake = build(
-      [
-        profile('MEI', '2025-01-01', '2026-06-01'),
-        profile('SIMPLES_NACIONAL', '2026-06-01', null),
-      ],
-      flags(true),
-    );
+    const intake = build([
+      profile('MEI', '2025-01-01', '2026-06-01'),
+      profile('SIMPLES_NACIONAL', '2026-06-01', null),
+    ]);
     await expect(
       intake.prepare(dto({ competenceDate: '2026-01-15' }), TENANT, 'test'),
     ).rejects.toBeInstanceOf(FiscalValidationError);
@@ -309,64 +283,33 @@ describe('InvoiceIntakeService deduction by regime (Anexo I)', () => {
     ).resolves.toBeDefined();
   });
 
-  it('keeps today behaviour when the flag is off, absent or the tenant is not listed', async () => {
-    const mei = [profile('MEI', '2025-01-01', null)];
-    await expect(
-      build(mei, flags(false)).prepare(dto(), TENANT, 'test'),
-    ).resolves.toBeDefined();
-    await expect(
-      build(mei, undefined).prepare(dto(), TENANT, 'test'),
-    ).resolves.toBeDefined();
-    await expect(
-      build(mei, flags(true, [OTHER])).prepare(dto(), TENANT, 'test'),
-    ).resolves.toBeDefined();
-  });
-
   it('leaves the decision to the engine when no single profile is effective', async () => {
     await expect(
-      build([], flags(true)).prepare(dto(), TENANT, 'test'),
+      build([]).prepare(dto(), TENANT, 'test'),
     ).resolves.toBeDefined();
   });
 });
 
-describe('InvoiceIntakeService Simples rate requirement (SIMPLES_RATE_MODE)', () => {
+describe('InvoiceIntakeService Simples rate requirement', () => {
   const TENANT = '11111111-1111-4111-8111-111111111111';
-  const OTHER = '22222222-2222-4222-8222-222222222222';
-  const company = Company.create(
-    {
-      legalName: 'Empresa',
-      taxId: '11222333000181',
-      taxRegime: 'Simples Nacional',
-      municipalityCode: '3550308',
-      defaultServiceCode: '060101',
-    },
-    TENANT,
-  );
-  const flags = (
-    mode: 'off' | 'warn' | 'block',
-    enforcedFrom: string | null = null,
-    tenants: '*' | string[] = '*',
-  ) =>
-    new RolloutFlagsService(
-      new ConfigService({
-        rollout: {
-          fiscalDpsConformance: { on: false, tenants: '*' },
-          simplesTottrib: { on: false, tenants: '*' },
-          simplesRateMode: { mode, tenants },
-          simplesRateEnforcedFrom: enforcedFrom,
-        },
-      }),
+  const company = (simplesRate?: string) =>
+    Company.create(
+      {
+        legalName: 'Empresa',
+        taxId: '11222333000181',
+        taxRegime: 'Simples Nacional',
+        simplesRate,
+        municipalityCode: '3550308',
+        defaultServiceCode: '060101',
+      },
+      TENANT,
     );
-  const build = (
-    regime: 'SIMPLES_NACIONAL' | 'MEI',
-    resolved: { rate: { totalRate: string } | null; stale: boolean },
-    flagService: RolloutFlagsService | undefined,
-  ) => {
-    const rates = { resolve: jest.fn().mockResolvedValue(resolved) };
+  const build = (regime: 'SIMPLES_NACIONAL' | 'MEI', simplesRate?: string) => {
+    const c = company(simplesRate);
     const intake = new InvoiceIntakeService(
       {
-        findById: jest.fn().mockResolvedValue(company),
-        findByTaxId: jest.fn().mockResolvedValue(company),
+        findById: jest.fn().mockResolvedValue(c),
+        findByTaxId: jest.fn().mockResolvedValue(c),
       } as never,
       new InvoiceDomainService(),
       {
@@ -376,100 +319,39 @@ describe('InvoiceIntakeService Simples rate requirement (SIMPLES_RATE_MODE)', ()
             { taxRegime: regime, validFrom: '2025-01-01', validUntil: null },
           ]),
       } as never,
-      flagService,
-      rates as never,
     );
-    return { intake, rates };
+    return { intake, companyId: c.id };
   };
-  const dto = (competenceDate = '2026-10-15') => ({
-    companyId: company.id,
+  const dto = (companyId: string) => ({
+    companyId,
     amount: 100,
-    competenceDate,
+    competenceDate: '2026-10-15',
     service: { description: 'Corte', code: '060101' },
   });
-  const noRate = { rate: null, stale: false };
 
-  it('mode off never asks for a rate', async () => {
-    const { intake, rates } = build('SIMPLES_NACIONAL', noRate, flags('off'));
-    const prepared = await intake.prepare(dto(), TENANT, 'test');
-    expect(rates.resolve).not.toHaveBeenCalled();
-    expect(prepared.warnings).toEqual([]);
-  });
-
-  it('mode warn lets an ME/EPP without a rate through and reports it', async () => {
-    const { intake } = build('SIMPLES_NACIONAL', noRate, flags('warn'));
-    const prepared = await intake.prepare(dto(), TENANT, 'test');
-    expect(prepared.warnings).toEqual([
-      expect.objectContaining({ code: 'SIMPLES_RATE_MISSING' }),
-    ]);
-  });
-
-  it('mode block refuses with the missing field, before anything is reserved', async () => {
-    const { intake } = build('SIMPLES_NACIONAL', noRate, flags('block'));
+  it('refuses an ME/EPP without a rate, before anything is reserved', async () => {
+    const { intake, companyId } = build('SIMPLES_NACIONAL');
     const error = await intake
-      .prepare(dto(), TENANT, 'test')
+      .prepare(dto(companyId), TENANT, 'test')
       .catch((e: unknown) => e);
     expect(error).toBeInstanceOf(FiscalValidationError);
     expect((error as FiscalValidationError).issues[0]).toMatchObject({
-      field: 'simplesRate.totalRate',
+      field: 'simplesRate',
       code: 'required',
     });
   });
 
-  it('does not enforce before SIMPLES_RATE_ENFORCED_FROM', async () => {
-    const { intake, rates } = build(
-      'SIMPLES_NACIONAL',
-      noRate,
-      flags('block', '2026-10-10'),
-    );
+  it('accepts an ME/EPP that has its rate', async () => {
+    const { intake, companyId } = build('SIMPLES_NACIONAL', '6.54');
     await expect(
-      intake.prepare(dto('2026-10-05'), TENANT, 'test'),
+      intake.prepare(dto(companyId), TENANT, 'test'),
     ).resolves.toBeDefined();
-    expect(rates.resolve).not.toHaveBeenCalled();
-    await expect(
-      intake.prepare(dto('2026-10-10'), TENANT, 'test'),
-    ).rejects.toBeInstanceOf(FiscalValidationError);
   });
 
   it('a MEI never needs a rate', async () => {
-    const { intake, rates } = build('MEI', noRate, flags('block'));
-    await expect(intake.prepare(dto(), TENANT, 'test')).resolves.toBeDefined();
-    expect(rates.resolve).not.toHaveBeenCalled();
-  });
-
-  it('a stale rate adds SIMPLES_RATE_STALE and never blocks', async () => {
-    const { intake } = build(
-      'SIMPLES_NACIONAL',
-      { rate: { totalRate: '6.00' }, stale: true },
-      flags('block'),
-    );
-    const prepared = await intake.prepare(dto(), TENANT, 'test');
-    expect(prepared.warnings).toEqual([
-      expect.objectContaining({ code: 'SIMPLES_RATE_STALE' }),
-    ]);
-  });
-
-  it('an up to date rate adds no warning', async () => {
-    const { intake } = build(
-      'SIMPLES_NACIONAL',
-      { rate: { totalRate: '6.00' }, stale: false },
-      flags('block'),
-    );
-    expect((await intake.prepare(dto(), TENANT, 'test')).warnings).toEqual([]);
-  });
-
-  it('ignores tenants outside the list and works without flags', async () => {
-    const outside = build(
-      'SIMPLES_NACIONAL',
-      noRate,
-      flags('block', null, [OTHER]),
-    );
+    const { intake, companyId } = build('MEI');
     await expect(
-      outside.intake.prepare(dto(), TENANT, 'test'),
-    ).resolves.toBeDefined();
-    const bare = build('SIMPLES_NACIONAL', noRate, undefined);
-    await expect(
-      bare.intake.prepare(dto(), TENANT, 'test'),
+      intake.prepare(dto(companyId), TENANT, 'test'),
     ).resolves.toBeDefined();
   });
 });
@@ -481,22 +363,12 @@ describe('InvoiceIntakeService regime restriction', () => {
       legalName: 'Empresa',
       taxId: '11222333000181',
       taxRegime: 'Lucro Real',
+      simplesRate: '6.54',
       municipalityCode: '3550308',
       defaultServiceCode: '060101',
     },
     TENANT,
   );
-  const flags = () =>
-    new RolloutFlagsService(
-      new ConfigService({
-        rollout: {
-          fiscalDpsConformance: { on: false, tenants: '*' },
-          simplesTottrib: { on: false, tenants: '*' },
-          simplesRateMode: { mode: 'off', tenants: '*' },
-          simplesRateEnforcedFrom: null,
-        },
-      }),
-    );
   const build = (regime: string) =>
     new InvoiceIntakeService(
       { findById: jest.fn().mockResolvedValue(company) } as never,
@@ -508,7 +380,6 @@ describe('InvoiceIntakeService regime restriction', () => {
             { taxRegime: regime, validFrom: '2025-01-01', validUntil: null },
           ]),
       } as never,
-      flags(),
     );
   const dto = {
     companyId: company.id,
@@ -540,7 +411,6 @@ describe('InvoiceIntakeService regime restriction', () => {
       { findById: jest.fn().mockResolvedValue(company) } as never,
       new InvoiceDomainService(),
       { list: jest.fn().mockResolvedValue([]) } as never,
-      flags(true),
     );
     await expect(intake.prepare(dto, TENANT, 'test')).resolves.toBeDefined();
   });

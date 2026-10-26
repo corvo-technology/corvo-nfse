@@ -1393,7 +1393,9 @@
       "district": "Bela Vista",
       "city": "São Paulo",
       "state": "SP",
-      "zip": "00000-000"
+      "zip": "00000-000",
+      "simplesRate": "6.54",
+      "simplesIssRate": "2.01"
     },
     "cep": {
       "hint": "Auto-fills address and IBGE code.",
@@ -1429,7 +1431,9 @@
     "hints": {
       "municipalReg": "Optional. Fill it only if the city registered this company's municipal registration in the national registry; otherwise the tax authority rejects the invoice (E0120).",
       "defaultServiceCode": "National tax code (cTribNac), with 6 digits. Used when an invoice does not specify another code. You can clear this default when editing.",
-      "sendMunicipalReg": "Off by default. Tick it only if the city registered this company in the national registry and the tax authority requires it; otherwise the invoice is rejected (E0120)."
+      "sendMunicipalReg": "Off by default. Tick it only if the city registered this company in the national registry and the tax authority requires it; otherwise the invoice is rejected (E0120).",
+      "simplesRate": "The effective rate shown in your PGDAS-D. It goes on every invoice (pTotTribSN). To update it, edit the company.",
+      "simplesIssRate": "Optional. Only if a customer withholds ISS: the ISS rate of your bracket."
     },
     "fixFields": "Fix the highlighted fields.",
     "defaultServiceCode": "Default service code",
@@ -1441,7 +1445,13 @@
     "editFiscalHint": "Review the regime and validity periods in Fiscal configuration on the company page.",
     "reviewNext": "Continue to certificate",
     "openCompany": "Open company",
-    "sendMunicipalReg": "Send the municipal registration on the invoice"
+    "sendMunicipalReg": "Send the municipal registration on the invoice",
+    "simplesRate": "Effective Simples rate (%)",
+    "simplesIssRate": "ISS rate (%)",
+    "simplesRateRequired": "Enter the effective Simples rate.",
+    "rateInvalid": "Enter a number, for example 6.54.",
+    "rateRange": "The rate must be between 0 and 100.",
+    "rateDecimals": "Use at most 2 decimal places."
   },
   "CompanyDetail": {
     "fiscalAdvanced": "Advanced mode (accountant)",
@@ -1766,13 +1776,7 @@
     "regimePending": "Regime: {regime}",
     "regimePendingHint": "Confirm this is the company's current regime. It is required to issue in production.",
     "confirmRegime": "Confirm regime",
-    "rateTitle": "Simples ISS rate (optional)",
-    "rateHint": "Only needed if a customer withholds ISS at source. It is the effective ISS rate of your bracket in last month's DAS. If unsure, leave it blank and ask your accountant. It takes effect from the next day, because a confirmed regime cannot change on the same day.",
-    "rateLabel": "Rate (%)",
-    "saveRate": "Save rate",
     "invalidRate": "Enter a percentage between 0 and 100.",
-    "rateDone": "Simples ISS rate: {rate}%",
-    "rateDoneHint": "Used when the customer withholds ISS.",
     "serviceNotNeeded": "Service: nothing to set up",
     "serviceNotNeededHint": "Under Simples Nacional and MEI, ISS is paid through the DAS. Service classification only becomes necessary when IBS/CBS applies to Simples, in 2027.",
     "serviceTitle": "The service you provide",
@@ -1827,8 +1831,6 @@
     "validUntil": "Effective until (exclusive)",
     "ibsOption": "Regular IBS/CBS option",
     "ibsFrom": "Regular IBS/CBS option effective from",
-    "simplesIssRate": "Simples Nacional effective ISS rate (%)",
-    "simplesIssRateHint": "Bracket of the previous month (LC 123/2006, art. 21, §4º, I). Required to issue with ISS withholding; record a new period every month.",
     "history": "Fiscal profile history",
     "future": "Future validity period",
     "source": "Source",
@@ -2066,14 +2068,20 @@
     },
     "tools": {
       "read": {
-        "company": "Companies", "companyDetail": "list or look up by CNPJ",
-        "calculate": "Tax preview", "calculateDetail": "calculate taxes without issuing",
-        "invoices": "Invoices and documents", "invoicesDetail": "query, list and download PDF",
-        "usage": "Plan and quotas", "usageDetail": "see consumption and emission availability"
+        "company": "Companies",
+        "companyDetail": "list or look up by CNPJ",
+        "calculate": "Tax preview",
+        "calculateDetail": "calculate taxes without issuing",
+        "invoices": "Invoices and documents",
+        "invoicesDetail": "query, list and download PDF",
+        "usage": "Plan and quotas",
+        "usageDetail": "see consumption and emission availability"
       },
       "write": {
-        "company": "Create company", "companyDetail": "register an issuer in the selected environment",
-        "invoices": "Issue and cancel NFS-e", "invoicesDetail": "start an issuance or cancellation"
+        "company": "Create company",
+        "companyDetail": "register an issuer in the selected environment",
+        "invoices": "Issue and cancel NFS-e",
+        "invoicesDetail": "start an issuance or cancellation"
       }
     },
     "errors": {
@@ -2133,23 +2141,5 @@
     "copied": "Copied",
     "source": "Source on GitHub",
     "docs": "See all SDKs in the docs"
-  },
-  "CompanySimplesRate": {
-    "title": "Simples Nacional rate",
-    "intro": "Corvo does not compute the DAS. Inform the effective rate shown in your PGDAS-D each month: it is sent on every NFS-e (pTotTribSN). The last month you inform is repeated until you update it.",
-    "none": "No rate informed yet. Inform this month's rate to issue invoices without warnings.",
-    "inForce": "Rate in force ({month})",
-    "issRate": "ISS rate",
-    "stale": "The last informed rate is from {month}, but the current month is {current}: update it.",
-    "totalRate": "Total rate (%)",
-    "totalRateHint": "Approximate total tax rate of the Simples for the month.",
-    "issRateHint": "Optional. Effective ISS rate, used when the customer withholds ISS.",
-    "save": "Save rate for {month}",
-    "formTitle": "Rate for {month}",
-    "rateInvalid": "Inform a number, for example 6.54.",
-    "rateRange": "The rate must be between 0 and 100.",
-    "rateDecimals": "Use at most 2 decimal places.",
-    "saveFailed": "Could not save the rate.",
-    "failed": "Could not load the rate."
   }
 }

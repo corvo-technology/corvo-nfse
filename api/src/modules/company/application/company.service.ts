@@ -1,3 +1,4 @@
+import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { CursorQuery } from '@/shared/http/pagination';
 import {
   QuotaService,
@@ -6,7 +7,6 @@ import {
 } from '@/modules/plans/application/quota.service';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { Injectable, BadRequestException, Optional } from '@nestjs/common';
-import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 import { assertRegimeSupported } from '../domain/tax-regime-support';
 import {
   registryWarnings,
@@ -63,8 +63,6 @@ export class CompanyService {
     private readonly quotaService: QuotaService,
     private readonly companyDomain: CompanyDomainService,
     private readonly profiles: CompanyFiscalProfileService,
-    // Optional so the service keeps working where no flags are provided (rule off).
-    @Optional() private readonly flags?: RolloutFlagsService,
     @Optional() private readonly registry?: SimplesRegistryPort,
   ) {}
 
@@ -243,9 +241,12 @@ export class CompanyService {
       input.taxRegime !== undefined ||
       input.simpleNational !== undefined ||
       input.specialRegime !== undefined;
-    const current = regimeTouched
-      ? await this.profiles.current(id, tenantId)
-      : null;
+    const ratesTouched =
+      input.simplesRate !== undefined || input.simplesIssRate !== undefined;
+    const current =
+      regimeTouched || ratesTouched
+        ? await this.profiles.current(id, tenantId)
+        : null;
     const mergedRegime = {
       taxRegime:
         input.taxRegime !== undefined
@@ -266,6 +267,23 @@ export class CompanyService {
         mergedRegime.specialTaxRegime === current.specialTaxRegime
       );
     if (regimeChanged) assertRegimeSupported(mergedRegime.taxRegime);
+
+    // The rates only exist for Simples Nacional: ignored for a MEI, and required
+    // when a company becomes Simples Nacional without one.
+    if (mergedRegime.taxRegime === 'SIMPLES_NACIONAL') {
+      if (!(normalized.simplesRate ?? company.simplesRate))
+        throw new FiscalValidationError([
+          {
+            field: 'simplesRate',
+            code: 'required',
+            message:
+              'simplesRate is required for Simples Nacional (the effective rate of your DAS)',
+          },
+        ]);
+    } else {
+      delete normalized.simplesRate;
+      delete normalized.simplesIssRate;
+    }
 
     company.update(normalized);
 

@@ -74,8 +74,6 @@ const enWithRetiredCredits: DocsTree = {
           ["GET", "`/v1/companies/:id`", "Fetch a company", "200"],
           ["PATCH", "`/v1/companies/:id`", "Update a company", "200"],
           ["DELETE", "`/v1/companies/:id`", "Delete a company", "200"],
-          ["GET", "`/v1/companies/:id/simples-rates`", "List the monthly Simples Nacional rates", "200"],
-          ["PUT", "`/v1/companies/:id/simples-rates/:month`", "Inform the Simples Nacional rates of a month", "200"],
           ["POST", "`/v1/companies/:companyId/certificates`", "Upload a certificate", "201"],
           ["GET", "`/v1/companies/:companyId/certificates`", "List certificates", "200"],
           ["DELETE", "`/v1/companies/:companyId/certificates/:certId`", "Revoke a certificate", "204"],
@@ -365,6 +363,8 @@ const enWithRetiredCredits: DocsTree = {
               { name: "defaultServiceCode", type: "string", required: false, description: "Exactly 6 digits (cTribNac); default for new invoices. Without it, provide `service.code` when issuing." },
               { name: "simpleNational", type: "boolean", required: false, description: "If omitted, follows the regime (`true` for MEI and Simples Nacional)." },
               { name: "specialRegime", type: "string", required: false, description: "One of `\"0\"`–`\"6\"` (regEspTrib, RTC v1.01): 0 None, 1 Cooperative Act, 2 Estimate, 3 Municipal Microenterprise, 4 Notary or Registrar, 5 Self-employed Professional, 6 Professional Partnership." },
+              { name: "simplesRate", type: "string", required: false, description: "Required for `Simples Nacional`, ignored for `MEI`. Effective total rate (%) of your DAS, the one shown in the PGDAS-D, e.g. `\"6.54\"` (0 to 100, at most 2 decimals). It goes on every invoice (`pTotTribSN`). Corvo does not compute the DAS." },
+              { name: "simplesIssRate", type: "string", required: false, description: "Optional, `Simples Nacional` only. Effective ISS rate (%) of your bracket (1.80 to 5.00), needed only when a customer withholds ISS. Ignored for `MEI`." },
               { name: "address", type: "object", required: false, description: "`street` (200), `number` (20), `complement` (100), `district` (100), `city` (100), `state` (2) and `zip` (10), all optional strings. A filled-in state must be a valid UF and is normalized to uppercase. A filled-in zip must be 8 digits and is stored without punctuation." },
             ],
           },
@@ -376,6 +376,7 @@ const enWithRetiredCredits: DocsTree = {
     "legalName": "Empresa Exemplo Ltda",
     "taxId": "11222333000181",
     "taxRegime": "Simples Nacional",
+    "simplesRate": "6.54",
     "simpleNational": true,
     "municipalReg": "123456",
     "municipalityCode": "3550308",
@@ -398,6 +399,7 @@ const enWithRetiredCredits: DocsTree = {
     legalName: "Empresa Exemplo Ltda",
     taxId: "11222333000181",
     taxRegime: "Simples Nacional",
+    simplesRate: "6.54",
     simpleNational: true,
     municipalReg: "123456",
     municipalityCode: "3550308",
@@ -521,7 +523,7 @@ console.log(body.data); // { data: Company }`,
           path: "/v1/companies/:id",
           scopes: ["full_access"],
           success: "200 OK",
-          summary: "Updates a company. Accepts the creation fields, all optional.",
+          summary: "Updates a company. Accepts the creation fields, all optional. Send `simplesRate` (and `simplesIssRate`, or `null` to remove it) to update the Simples rate, for example every month.",
           params: {
             rows: [
               { name: "legalName", type: "string", required: false, description: "Legal name, up to 200 characters, not empty after trim." },
@@ -533,6 +535,8 @@ console.log(body.data); // { data: Company }`,
               { name: "defaultServiceCode", type: "string or null", required: false, description: "Exactly 6 digits when provided. Omit to keep; null clears the default." },
               { name: "simpleNational", type: "boolean", required: false, description: "Omit it to keep the current value." },
               { name: "specialRegime", type: "string", required: false, description: "One of `\"0\"`–`\"6\"` (regEspTrib, RTC v1.01), same codes as on creation. Empty string clears it; omit to keep the current value." },
+              { name: "simplesRate", type: "string", required: false, description: "Omit it to keep the current value. Send a new value to update it (for example, each month). Ignored for `MEI`." },
+              { name: "simplesIssRate", type: "string or null", required: false, description: "Same format as on creation. `null` removes it." },
               { name: "address", type: "object or null", required: false, description: "Same fields as on creation. `null` clears the address." },
             ],
           },
@@ -603,83 +607,6 @@ console.log(body.data); // { data: null }`,
         {
           kind: "text",
           body: "Permissions: `nfse.certificates.view` to list and `nfse.certificates.manage` to upload/revoke.",
-        },
-        {
-          kind: "endpoint",
-          method: "GET",
-          path: "/v1/companies/:id/simples-rates",
-          scopes: ["full_access", "companies_manage", "companies_read_write"],
-          success: "200 OK",
-          summary: "Lists the monthly Simples Nacional rates informed for the company, newest month first. Corvo does not compute the DAS: the rates come from the company or its accountant.",
-          examples: {
-            curl: `curl "$BASE_URL/companies/$COMPANY_ID/simples-rates" \\
-  -H "X-API-Key: $CORVO_API_KEY"`,
-            node: `const res = await fetch(\`\${BASE_URL}/companies/\${companyId}/simples-rates\`, {
-  headers: { "X-API-Key": process.env.CORVO_API_KEY },
-});
-const { data } = await res.json();
-console.log(data[0]?.month, data[0]?.totalRate);`,
-          },
-          response: {
-            label: "200 OK",
-            json: `{
-  "data": [
-    {
-      "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
-      "month": "2026-10",
-      "totalRate": "6.54",
-      "issRate": "2.01",
-      "updatedAt": "2026-10-25T12:00:00.000Z"
-    }
-  ]
-}`,
-          },
-        },
-        {
-          kind: "endpoint",
-          method: "PUT",
-          path: "/v1/companies/:id/simples-rates/:month",
-          scopes: ["full_access", "companies_manage", "companies_read_write"],
-          success: "200 OK",
-          summary: "Informs or replaces the Simples Nacional rates of one month (`YYYY-MM`, not in the future). The total rate is sent on every NFS-e of an ME/EPP (`pTotTribSN`). The last informed month is repeated for later months until you inform a new one.",
-          params: {
-            rows: [
-              { name: "month", type: "string", required: true, description: "Path parameter, `YYYY-MM`, not in the future." },
-              { name: "totalRate", type: "string", required: true, description: "Approximate total tax rate (%) of the Simples for the month, the effective rate shown in the PGDAS-D. 0 to 100, at most 2 decimals. Example `\"6.54\"`." },
-              { name: "issRate", type: "string", required: false, description: "Effective ISS rate (%) of the month, used when the customer withholds ISS. Same format." },
-            ],
-          },
-          examples: {
-            curl: `curl -X PUT "$BASE_URL/companies/$COMPANY_ID/simples-rates/2026-10" \\
-  -H "X-API-Key: $CORVO_API_KEY" \\
-  -H 'Content-Type: application/json' \\
-  -d '{ "totalRate": "6.54", "issRate": "2.01" }'`,
-            node: `const res = await fetch(\`\${BASE_URL}/companies/\${companyId}/simples-rates/2026-10\`, {
-  method: "PUT",
-  headers: {
-    "X-API-Key": process.env.CORVO_API_KEY,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ totalRate: "6.54", issRate: "2.01" }),
-});
-const { data } = await res.json();
-console.log(data.month, data.totalRate); // "2026-10" "6.54"`,
-          },
-          response: {
-            label: "200 OK",
-            json: `{
-  "data": {
-    "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
-    "month": "2026-10",
-    "totalRate": "6.54",
-    "issRate": "2.01",
-    "updatedAt": "2026-10-25T12:00:00.000Z"
-  }
-}`,
-          },
-          notes: [
-            { kind: "callout", tone: "accent", body: "**Who informs the rate.** Corvo does not generate or compute the DAS (PGMEI or PGDAS-D). Inform, once a month, the effective rate your accountant or the PGDAS-D shows. If the month has no value, the closest previous month is used; more than one month behind generates the warning `SIMPLES_RATE_STALE`. MEI companies do not need a rate. The permissions are `nfse.companies.view` to read and `nfse.companies.manage` to write." },
-          ],
         },
         {
           kind: "endpoint",
@@ -2676,9 +2603,8 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`invoices` (1 to 50 items, each with the same fields as `nfse_issue`, including `company_tax_id` or `company_id` and `idempotency_key`)",
               "`{ total, accepted, rejected, results [{ index, status, replayed?, invoice_id?, access_key?, invoice_status?, error? }] }`; invalid items are rejected in place and the valid ones are saved together"
             ],
-            ["`company_set_simples_rate`", "`nfse:write`", "`company_tax_id` or `company_id`, `month` (`YYYY-MM`), `total_rate`, `iss_rate?`", "`{ company_id, month, total_rate, iss_rate }`; the last informed month is repeated until updated. `company_get` also returns `simples_rate`"],
             ["`company_get`", "`nfse:read`", "`tax_id` (CNPJ)", "`{ company }` or `{ company: null }`"],
-            ["`company_create`", "`nfse:write`", "`legal_name`, `tax_id`, `tax_regime`, `municipality_code` and optional fiscal data", "`{ id, legal_name, tax_id, status }`; certificates remain API-only"],
+            ["`company_create`", "`nfse:write`", "`legal_name`, `tax_id`, `tax_regime`, `municipality_code`, `simples_rate` (required for Simples Nacional), `simples_iss_rate?` and optional fiscal data", "`{ id, legal_name, tax_id, status }`; certificates remain API-only"],
             ["`nfse_calculate`", "`nfse:read`", "`company_tax_id` or `company_id`, `amount`, optional `discount`, `deduction` and fiscal data", "Calculation result; no issue, credit reservation or DPS"],
             ["`billing_usage`", "`nfse:read`", "No parameters", "`QuotaStatus` with `canEmit`, allowance and usage"],
             [

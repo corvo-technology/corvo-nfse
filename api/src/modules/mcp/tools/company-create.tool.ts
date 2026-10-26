@@ -35,6 +35,16 @@ export const COMPANY_CREATE_TOOL = {
       },
       simple_national: { type: 'boolean' },
       special_regime: { type: 'string' },
+      simples_rate: {
+        type: 'string',
+        description:
+          'Required for Simples Nacional (ignored for MEI): effective total rate (%) of your DAS, e.g. "6.54".',
+      },
+      simples_iss_rate: {
+        type: 'string',
+        description:
+          'Simples Nacional only, optional: effective ISS rate (%) of your bracket; needed only when a customer withholds ISS.',
+      },
       address: {
         type: 'object',
         properties: {
@@ -66,7 +76,7 @@ export function createCompanyCreateHandler(companyService: CompanyService) {
     const input: CreateCompanyInput = {
       legalName: params.legal_name,
       taxId: params.tax_id,
-      taxRegime: params.tax_regime as CreateCompanyInput['taxRegime'],
+      taxRegime: params.tax_regime === 'mei' ? 'MEI' : 'Simples Nacional',
       municipalityCode: params.municipality_code,
       tradeName: params.trade_name,
       municipalReg: params.municipal_reg,
@@ -74,6 +84,8 @@ export function createCompanyCreateHandler(companyService: CompanyService) {
       defaultServiceCode: params.default_service_code,
       simpleNational: params.simple_national,
       specialRegime: params.special_regime,
+      simplesRate: params.simples_rate,
+      simplesIssRate: params.simples_iss_rate,
       address: params.address,
     };
     const company = await companyService.create(

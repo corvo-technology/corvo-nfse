@@ -4,14 +4,12 @@ import {
   Logger,
   Optional,
 } from '@nestjs/common';
-import { SimplesRateService } from '@/modules/company/application/simples-rate.service';
 import { CompanyService } from '@/modules/company/application/company.service';
 import { CompanyFiscalProfileService } from '@/modules/company/application/company-fiscal-profile.service';
 import {
   effectiveProfilesOn,
   type CompanyFiscalProfile,
 } from '@/modules/company/domain/fiscal-profile';
-import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 import { deductionAllowed } from '../domain/fiscal/validation/deduction-policy';
 import { assertRegimeSupported } from '@/modules/company/domain/tax-regime-support';
 import type { Company } from '@/modules/company/domain/company';
@@ -47,8 +45,6 @@ export class InvoiceIntakeService {
     private readonly domain: InvoiceDomainService,
     // Optional so the intake keeps working (rule off) where they are not provided.
     @Optional() private readonly profiles?: CompanyFiscalProfileService,
-    @Optional() private readonly flags?: RolloutFlagsService,
-    @Optional() private readonly simplesRates?: SimplesRateService,
   ) {}
 
   private readonly logger = new Logger(InvoiceIntakeService.name);
@@ -101,13 +97,9 @@ export class InvoiceIntakeService {
         tenantId,
       ));
     await this.assertRegimeSupported(profile);
-    await this.assertDeductionAllowed(normalized, tenantId, profile);
-    const warnings = await this.checkSimplesRate(
-      company,
-      normalized,
-      tenantId,
-      profile,
-    );
+    await this.assertDeductionAllowed(normalized, profile);
+    await this.assertSimplesRate(company, profile);
+    const warnings: IntakeWarning[] = [];
     // The description is optional: fall back to the service's catalog name.
     if (!normalized.service.description) {
       normalized.service = {
@@ -151,46 +143,20 @@ export class InvoiceIntakeService {
     return effective.length === 1 ? effective[0] : undefined;
   }
 
-  /**
-   * SIMPLES_RATE_MODE: a Simples Nacional ME/EPP must have informed the rate of
-   * the month (pTotTribSN). `warn` reports it, `block` refuses before any credit
-   * is reserved. A stale rate only warns.
-   */
-  private async checkSimplesRate(
+  /** A Simples Nacional ME/EPP must have its rate (pTotTribSN): refuse before any credit is reserved. */
+  private async assertSimplesRate(
     company: Company,
-    normalized: NormalizedInvoiceInput,
-    tenantId: string,
     getProfile: () => Promise<CompanyFiscalProfile | undefined>,
-  ): Promise<IntakeWarning[]> {
-    const mode = this.flags?.rateMode(tenantId) ?? 'off';
-    if (mode === 'off' || !this.simplesRates) return [];
-    const date = normalized.competenceDate.toISOString().slice(0, 10);
-    const enforcedFrom = this.flags?.rateEnforcedFrom() ?? null;
-    if (enforcedFrom !== null && date < enforcedFrom) return [];
-    const profile = await getProfile();
-    if (profile?.taxRegime !== 'SIMPLES_NACIONAL') return [];
-    const { rate, stale } = await this.simplesRates.resolve(
-      company.id,
-      tenantId,
-      date,
-    );
-    if (rate === null) {
-      const message = `Inform the Simples Nacional rate of the month for this company (PUT /companies/${company.id}/simples-rates/${date.slice(0, 7)})`;
-      if (mode === 'block')
-        throw new FiscalValidationError([
-          { field: 'simplesRate.totalRate', code: 'required', message },
-        ]);
-      this.logger.warn(`Missing Simples rate for company ${company.id}`);
-      return [{ code: 'SIMPLES_RATE_MISSING', message }];
-    }
-    return stale
-      ? [
-          {
-            code: 'SIMPLES_RATE_STALE',
-            message: `The last informed Simples Nacional rate is from ${rate.month}: update it for ${date.slice(0, 7)}`,
-          },
-        ]
-      : [];
+  ): Promise<void> {
+    if (company.simplesRate) return;
+    if ((await getProfile())?.taxRegime !== 'SIMPLES_NACIONAL') return;
+    throw new FiscalValidationError([
+      {
+        field: 'simplesRate',
+        code: 'required',
+        message: `Inform the Simples Nacional rate of the company (PATCH /companies/${company.id} with simplesRate)`,
+      },
+    ]);
   }
 
   /**
@@ -199,11 +165,9 @@ export class InvoiceIntakeService {
    */
   private async assertDeductionAllowed(
     normalized: NormalizedInvoiceInput,
-    tenantId: string,
     getProfile: () => Promise<CompanyFiscalProfile | undefined>,
   ): Promise<void> {
     if (!normalized.deduction || normalized.deduction <= 0) return;
-    if (!this.flags?.isOn('FISCAL_DPS_CONFORMANCE', tenantId)) return;
     const profile = await getProfile();
     if (!profile) return;
     const decision = deductionAllowed({

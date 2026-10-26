@@ -1,5 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
-import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
+import { Injectable } from '@nestjs/common';
 import type { CompanyFiscalProfile } from '@/modules/company/domain/fiscal-profile';
 import type { Obligation } from '@/modules/invoice/domain/fiscal/applicability/tax-applicability';
 import type { FiscalError } from '@/modules/invoice/domain/fiscal/fiscal-error';
@@ -14,9 +13,6 @@ import type {
 @Injectable()
 export class MeiTaxStrategy implements TaxStrategy {
   readonly name = 'mei';
-
-  // Optional so the strategy keeps working where no flags are provided (rule off).
-  constructor(@Optional() private readonly flags?: RolloutFlagsService) {}
 
   supports(profile: CompanyFiscalProfile): boolean {
     return profile.taxRegime === 'MEI';
@@ -36,15 +32,10 @@ export class MeiTaxStrategy implements TaxStrategy {
     };
 
     // Anexo I E0583: a MEI never has ISS withheld by the customer.
-    const issWithheld: Obligation = this.flags?.isOn(
-      'FISCAL_DPS_CONFORMANCE',
-      input.invoice.tenantId,
-    )
-      ? {
-          status: 'NOT_APPLICABLE',
-          reason: 'MEI não sofre retenção de ISS (E0583)',
-        }
-      : common.value.issWithheld;
+    const issWithheld: Obligation = {
+      status: 'NOT_APPLICABLE',
+      reason: 'MEI não sofre retenção de ISS (E0583)',
+    };
 
     return ok({
       customerRequired: common.value.customerRequired,

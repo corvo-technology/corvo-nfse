@@ -32,6 +32,10 @@ export interface CompanyProps {
   addressCity?: string;
   addressState?: string;
   addressZip?: string;
+  /** Simples Nacional only: effective total rate (%) of the DAS, sent as pTotTribSN. */
+  simplesRate?: string;
+  /** Simples Nacional only: effective ISS rate (%) of the bracket, used to withhold ISS. */
+  simplesIssRate?: string;
   fiscalSchemaVersion: string;
   environment: CompanyEnvironment;
   status: CompanyStatus;
@@ -64,6 +68,8 @@ export type CreateCompanyInput = {
   defaultServiceCode?: string;
   simpleNational?: boolean;
   specialRegime?: string;
+  simplesRate?: string;
+  simplesIssRate?: string;
   address?: {
     street?: string;
     number?: string;
@@ -87,6 +93,9 @@ export type UpdateCompanyInput = {
   taxRegime?: TaxRegime;
   simpleNational?: boolean;
   specialRegime?: string;
+  simplesRate?: string;
+  /** Null removes it. */
+  simplesIssRate?: string | null;
   address?: {
     street?: string;
     number?: string;
@@ -131,6 +140,8 @@ export class Company {
       addressCity: input.address?.city?.trim(),
       addressState: input.address?.state?.trim(),
       addressZip: input.address?.zip?.trim(),
+      simplesRate: input.simplesRate?.trim(),
+      simplesIssRate: input.simplesIssRate?.trim(),
       fiscalSchemaVersion: 'v2_02',
       environment: input.environment ?? 'test',
       status: 'pending_setup',
@@ -210,6 +221,14 @@ export class Company {
 
   get addressZip(): string | undefined {
     return this.props.addressZip;
+  }
+
+  get simplesRate(): string | undefined {
+    return this.props.simplesRate;
+  }
+
+  get simplesIssRate(): string | undefined {
+    return this.props.simplesIssRate;
   }
 
   get fiscalSchemaVersion(): string {
@@ -331,6 +350,10 @@ export class Company {
         input.defaultServiceCode === null
           ? undefined
           : input.defaultServiceCode.trim();
+    if (input.simplesRate !== undefined)
+      this.props.simplesRate = input.simplesRate.trim();
+    if (input.simplesIssRate !== undefined)
+      this.props.simplesIssRate = input.simplesIssRate?.trim();
     if (input.address !== undefined) {
       if (input.address === null) {
         // Clear all address fields

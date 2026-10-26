@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allowsSpecialTaxRegime, effectiveFiscalProfiles, isSimpleNational, fiscalToday, fiscalMonth, isSimplesRateStale, simplesRateError, SUPPORTED_TAX_REGIMES, resolveServiceState } from "@/lib/company-fiscal";
+import { allowsSpecialTaxRegime, effectiveFiscalProfiles, isSimpleNational, fiscalToday, simplesRateError, SUPPORTED_TAX_REGIMES, resolveServiceState } from "@/lib/company-fiscal";
 import type { CompanyFiscalProfile, CompanyServiceTaxProfile } from "@/lib/types";
 
 const profile = { id: "old", validFrom: "2026-01-01", validUntil: "2026-10-20" } as CompanyFiscalProfile;
@@ -42,17 +42,6 @@ describe("company fiscal configuration", () => {
 describe("MEI and Simples Nacional focus", () => {
   it("offers only MEI and Simples Nacional as regimes", () => {
     expect([...SUPPORTED_TAX_REGIMES]).toEqual(["MEI", "Simples Nacional"]);
-  });
-  it("derives the fiscal month in the fiscal timezone", () => {
-    expect(fiscalMonth(new Date("2026-11-01T01:00:00Z"))).toBe("2026-10");
-    expect(fiscalMonth(new Date("2026-11-01T12:00:00Z"))).toBe("2026-11");
-  });
-  it("marks a rate stale when it is more than one month behind", () => {
-    expect(isSimplesRateStale("2026-10", "2026-10")).toBe(false);
-    expect(isSimplesRateStale("2026-09", "2026-10")).toBe(false);
-    expect(isSimplesRateStale("2026-08", "2026-10")).toBe(true);
-    expect(isSimplesRateStale("2025-12", "2026-01")).toBe(false);
-    expect(isSimplesRateStale("2025-11", "2026-01")).toBe(true);
   });
   it("validates a percentage with at most two decimals between 0 and 100", () => {
     expect(simplesRateError("6.54")).toBeNull();

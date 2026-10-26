@@ -94,7 +94,7 @@ Regra de MEI/Simples a partir de 01/01/2027, checagem de adesão do município a
   para entradas sem desconto. O problema precisa de correção separada antes
   de confiar em paridade de emissão com desconto. O fluxo de emissão não foi
   alterado nesta entrega.
-- MEI/Simples em 2027, GOODS/MIXED e demais limitações acima continuam valendo.
+- Simples que optar pelo regime regular em 2027, GOODS/MIXED e demais limitações acima continuam valendo.
 - Perfis de serviço usam `service-tax-profiles`, nome real do contrato atual;
   o plano original citava `fiscal-services`. Não foi criada rota alternativa.
 

@@ -1,5 +1,5 @@
-import { Injectable, Optional } from '@nestjs/common';
-import { SimplesRateService } from '@/modules/company/application/simples-rate.service';
+import { Injectable } from '@nestjs/common';
+import { ICompanyRepository } from '@/modules/company/domain/company.repository';
 import {
   effectiveProfilesOn,
   type CompanyFiscalProfile,
@@ -19,8 +19,7 @@ import type { IFiscalProfileReader } from '@/modules/invoice/domain/fiscal/ports
 export class TypeOrmCompanyFiscalProfileReader implements IFiscalProfileReader {
   constructor(
     private readonly profiles: CompanyFiscalProfileService,
-    // Optional so the reader keeps working where the rates are not provided.
-    @Optional() private readonly simplesRates?: SimplesRateService,
+    private readonly companies: ICompanyRepository,
   ) {}
 
   async findEffectiveByDate(
@@ -30,16 +29,15 @@ export class TypeOrmCompanyFiscalProfileReader implements IFiscalProfileReader {
   ): Promise<CompanyFiscalProfile[]> {
     const all = await this.profiles.list(companyId, tenantId);
     const effective = effectiveProfilesOn(all, date);
-    if (
-      !this.simplesRates ||
-      !effective.some((profile) => profile.taxRegime === 'SIMPLES_NACIONAL')
-    )
+    if (!effective.some((profile) => profile.taxRegime === 'SIMPLES_NACIONAL'))
       return effective;
-    // The ISS rate informed for the month wins over the one on the profile
-    // (LC 123/2006, art. 21, §4º, I: the rate of the previous month's bracket).
-    const { rate } = await this.simplesRates.resolve(companyId, tenantId, date);
-    if (rate?.issRate == null) return effective;
-    const issRate = rate.issRate;
+    // The ISS rate of a Simples Nacional company is the one on the company.
+    const company = await this.companies.findByIdAndTenantId(
+      companyId,
+      tenantId,
+    );
+    const issRate = company?.simplesIssRate;
+    if (!issRate) return effective;
     return effective.map((profile) =>
       profile.taxRegime === 'SIMPLES_NACIONAL'
         ? { ...profile, simplesIssRate: issRate }

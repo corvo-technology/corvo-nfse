@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { ConfigService } from '@nestjs/config';
-import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 import { NfseWorkflowService } from './nfse-workflow.service';
 import {
   recordAuthorizationFailure,
@@ -762,24 +761,17 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     });
   });
 
-  describe('Simples totTrib with SIMPLES_TOTTRIB', () => {
-    const flags = (on: boolean) =>
-      new RolloutFlagsService(
-        new ConfigService({
-          rollout: {
-            fiscalDpsConformance: { on: false, tenants: '*' },
-            simplesTottrib: { on, tenants: '*' },
-            simplesRateMode: { mode: 'off', tenants: '*' },
-            simplesRateEnforcedFrom: null,
-          },
-        }),
-      );
+  describe('Simples totTrib', () => {
     const workflow = (
-      on: boolean,
       totalRate: string | null,
       issRate: string | null = null,
-    ) =>
-      new NfseWorkflowService(
+    ) => {
+      fakes.companies.findById.mockResolvedValue({
+        ...company,
+        simplesRate: totalRate ?? undefined,
+        simplesIssRate: issRate ?? undefined,
+      });
+      return new NfseWorkflowService(
         fakes.invoices,
         fakes.sequences,
         fakes.companies,
@@ -793,19 +785,10 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
         fakes.fiscalSnapshots,
         new DpsBuilder(),
         fakes.config,
-        flags(on),
-        {
-          resolve: jest.fn().mockResolvedValue({
-            rate:
-              totalRate === null
-                ? null
-                : { totalRate, issRate, month: '2026-10' },
-            stale: false,
-          }),
-        } as never,
       ) as unknown as {
         payload: (i: Invoice) => Promise<IIssuePayload>;
       };
+    };
     const simplesSnapshot = (invoiceId: string) => {
       const snapshot = fiscalSnapshot(invoiceId);
       return {
@@ -823,18 +806,18 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       });
     });
 
-    it('sends pTotTribSN from the informed rate when the flag is on', async () => {
+    it('sends pTotTribSN from the rate of the company', async () => {
       const invoice = createInvoice();
       fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
         simplesSnapshot(invoice.id),
       );
-      const payload = await workflow(true, '6.54').payload(invoice);
+      const payload = await workflow('6.54').payload(invoice);
       expect(payload.preparedDps?.infDPS.valores.trib.totTrib).toEqual({
         pTotTribSN: 6.54,
       });
     });
 
-    it('uses the ISS rate informed for the month as the withholding aliquota', async () => {
+    it('uses the ISS rate of the company as the withholding aliquota', async () => {
       fakes.profiles.findEffective.mockResolvedValue({
         taxRegime: 'SIMPLES_NACIONAL',
         specialTaxRegime: null,
@@ -848,27 +831,16 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
         issWithheld: { status: 'REQUIRED' },
       };
       fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(snapshot);
-      const payload = await workflow(true, '6.54', '2.01').payload(invoice);
+      const payload = await workflow('6.54', '2.01').payload(invoice);
       expect(payload.preparedDps?.infDPS.valores.trib.tribMun.pAliq).toBe(2.01);
     });
 
-    it('keeps the legacy totals when no rate was informed', async () => {
+    it('keeps the legacy totals when the company has no rate', async () => {
       const invoice = createInvoice();
       fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
         simplesSnapshot(invoice.id),
       );
-      const payload = await workflow(true, null).payload(invoice);
-      expect(payload.preparedDps?.infDPS.valores.trib.totTrib).toEqual({
-        vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 },
-      });
-    });
-
-    it('keeps the legacy totals when the flag is off', async () => {
-      const invoice = createInvoice();
-      fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
-        simplesSnapshot(invoice.id),
-      );
-      const payload = await workflow(false, '6.54').payload(invoice);
+      const payload = await workflow(null).payload(invoice);
       expect(payload.preparedDps?.infDPS.valores.trib.totTrib).toEqual({
         vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 },
       });

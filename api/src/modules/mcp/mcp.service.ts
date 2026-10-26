@@ -41,11 +41,6 @@ import {
   createNfseGetDownloadUrlHandler,
 } from './tools/nfse-get-download-url.tool';
 import {
-  COMPANY_SET_SIMPLES_RATE_TOOL,
-  createCompanySetSimplesRateHandler,
-} from './tools/company-set-simples-rate.tool';
-import { SimplesRateService } from '@/modules/company/application/simples-rate.service';
-import {
   COMPANY_CREATE_TOOL,
   createCompanyCreateHandler,
 } from './tools/company-create.tool';
@@ -85,7 +80,6 @@ export class McpService {
     private readonly companyService: CompanyService,
     @Inject(ICompanyCertificateReader)
     private readonly certReader: ICompanyCertificateReader,
-    private readonly simplesRates: SimplesRateService,
   ) {
     this.server = new McpServer();
     this.registerTools();
@@ -121,16 +115,6 @@ export class McpService {
         'nfse:write',
       ),
     );
-    this.server.registerTool(
-      COMPANY_SET_SIMPLES_RATE_TOOL,
-      this.wrapWithScopeCheck(
-        createCompanySetSimplesRateHandler(
-          this.companyService,
-          this.simplesRates,
-        ),
-        'nfse:write',
-      ),
-    );
     // nfse:read tools
     this.server.registerTool(
       COMPANY_LIST_TOOL,
@@ -142,11 +126,7 @@ export class McpService {
     this.server.registerTool(
       COMPANY_GET_TOOL,
       this.wrapWithScopeCheck(
-        createCompanyGetHandler(
-          this.companyService,
-          this.certReader,
-          this.simplesRates,
-        ),
+        createCompanyGetHandler(this.companyService, this.certReader),
         'nfse:read',
       ),
     );

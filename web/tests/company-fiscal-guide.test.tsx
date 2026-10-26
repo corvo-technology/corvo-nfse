@@ -33,24 +33,6 @@ describe("CompanyFiscalGuide", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Confirm regime" }));
     await waitFor(() => expect(api.approveFiscalProfile).toHaveBeenCalledWith("company", "profile"));
   });
-  it("saves the Simples ISS rate as a confirmed new version starting the day after the approved one", async () => {
-    api.fiscalProfiles.mockResolvedValue([profile({ validFrom: "2020-01-01" })]);
-    api.saveFiscalProfile.mockResolvedValue({});
-    renderUI();
-    fireEvent.change(await screen.findByLabelText("Rate (%)"), { target: { value: "2,01" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save rate" }));
-    await waitFor(() => expect(api.saveFiscalProfile).toHaveBeenCalled());
-    const [, input] = api.saveFiscalProfile.mock.calls[0];
-    expect(input).toMatchObject({ taxRegime: "SIMPLES_NACIONAL", simplesIssRate: "2.01", confirm: true });
-  });
-  it("rejects an out-of-range rate without calling the API", async () => {
-    api.fiscalProfiles.mockResolvedValue([profile({})]);
-    renderUI();
-    fireEvent.change(await screen.findByLabelText("Rate (%)"), { target: { value: "150" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save rate" }));
-    await screen.findByText("Enter a percentage between 0 and 100.");
-    expect(api.saveFiscalProfile).not.toHaveBeenCalled();
-  });
   it("creates and approves the service for a regular regime in one step", async () => {
     api.fiscalProfiles.mockResolvedValue([profile({ taxRegime: "LUCRO_PRESUMIDO", simpleNational: false })]);
     api.createServiceTaxProfile.mockResolvedValue({ id: "service" });

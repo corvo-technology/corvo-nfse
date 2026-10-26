@@ -27,7 +27,6 @@ export function CompanyFiscalProfileForm({ company, profile, onSaved, onCancel }
   const [specialTaxRegime, setSpecialTaxRegime] = useState(profile?.specialTaxRegime ?? "0");
   const [ibsOption, setIbsOption] = useState(profile?.ibsCbsRegularOption ?? false);
   const [ibsFrom, setIbsFrom] = useState(profile?.ibsCbsRegularFrom ?? "");
-  const [simplesIssRate, setSimplesIssRate] = useState(profile?.simplesIssRate ?? "");
   const simple = regime !== "" && isSimpleNational(regime);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,12 +43,11 @@ export function CompanyFiscalProfileForm({ company, profile, onSaved, onCancel }
         taxRegime: regime, simpleNational: simple, specialTaxRegime: !allowsSpecialTaxRegime(regime) || specialTaxRegime === "0" ? null : specialTaxRegime,
         validFrom, ibsCbsRegularOption: simple && ibsOption,
         ibsCbsRegularFrom: simple && ibsOption ? ibsFrom || null : null,
-        simplesIssRate: regime === "SIMPLES_NACIONAL" ? simplesIssRate.trim().replace(",", ".") || null : null,
         confirm: false,
       });
       onSaved(result);
     } catch (cause) {
-      setIssues(mapIssues(cause, { taxRegime: "taxRegime", validFrom: "validFrom", specialTaxRegime: "specialTaxRegime", ibsCbsRegularFrom: "ibsCbsRegularFrom", simplesIssRate: "simplesIssRate" }, (_code, fallback) => fallback));
+      setIssues(mapIssues(cause, { taxRegime: "taxRegime", validFrom: "validFrom", specialTaxRegime: "specialTaxRegime", ibsCbsRegularFrom: "ibsCbsRegularFrom" }, (_code, fallback) => fallback));
       setError(cause instanceof Error ? cause.message : t("saveFailure"));
     } finally { busy.current = false; setSaving(false); }
   }
@@ -60,7 +58,6 @@ export function CompanyFiscalProfileForm({ company, profile, onSaved, onCancel }
       <Field label={t("validFrom")} required error={issues.validFrom}>{props => <input {...props} className="field" type="date" required min={minDate} value={validFrom} onChange={event => setValidFrom(event.target.value)} />}</Field>
       {allowsSpecialTaxRegime(regime) && <Field label={t("specialRegime")} hint={t("specialRegimeHint")} error={issues.specialTaxRegime}>{props => <select {...props} className="field" value={specialTaxRegime} onChange={event => setSpecialTaxRegime(event.target.value)}>{SPECIAL_TAX_REGIME_CODES.map(value => <option key={value} value={value}>{t(`specialRegimes.${value}`)}</option>)}</select>}</Field>}
       <p className="self-end py-2 text-sm">{t("simpleNational")}: {t(simple ? "yes" : "no")}</p>
-      {regime === "SIMPLES_NACIONAL" && <Field label={t("simplesIssRate")} hint={t("simplesIssRateHint")} error={issues.simplesIssRate}>{props => <input {...props} className="field" inputMode="decimal" placeholder="2,01" value={simplesIssRate} onChange={event => setSimplesIssRate(event.target.value)} />}</Field>}
       {simple && <><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ibsOption} onChange={event => setIbsOption(event.target.checked)} />{t("ibsOption")}</label>{ibsOption && <Field label={t("ibsFrom")} required error={issues.ibsCbsRegularFrom}>{props => <input {...props} type="date" required className="field" value={ibsFrom} onChange={event => setIbsFrom(event.target.value)} />}</Field>}</>}
     </fieldset>
     {error && <p role="alert" className="fiscal-notice">{error}</p>}
