@@ -94,9 +94,7 @@ export function sanitizeSentryEvent(event: ErrorEvent): ErrorEvent {
   if (sanitized.contexts) {
     const { corvo, trace } = sanitized.contexts;
     sanitized.contexts = {
-      ...(corvo
-        ? { corvo: sanitizeRecord(corvo, SAFE_CONTEXT_KEYS) }
-        : {}),
+      ...(corvo ? { corvo: sanitizeRecord(corvo, SAFE_CONTEXT_KEYS) } : {}),
       ...(trace ? { trace } : {}),
     };
   }

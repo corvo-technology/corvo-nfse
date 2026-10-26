@@ -16,9 +16,8 @@ export const recordOutboxDead = (type: string) => dead.add(1, { type });
 export const recordOutboxLatency = (type: string, seconds: number) =>
   claimToPublish.record(seconds, { type });
 
-const pendingOldestAge = meter.createGauge(
-  'corvo.outbox.pending.oldest_age',
-  { unit: 's' },
-);
+const pendingOldestAge = meter.createGauge('corvo.outbox.pending.oldest_age', {
+  unit: 's',
+});
 export const recordOutboxPendingAge = (seconds: number) =>
   pendingOldestAge.record(seconds);

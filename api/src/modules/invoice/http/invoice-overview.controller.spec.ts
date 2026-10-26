@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call -- supertest/raw SQL responses are untyped */
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -12,13 +13,11 @@ import { REQUIRED_TENANT_PERMISSION } from '@/modules/auth/require-permission.de
 
 describe('Invoice overview HTTP contract', () => {
   let app: INestApplication;
-  const get = jest
-    .fn()
-    .mockResolvedValue({
-      counts: { authorized: 1201 },
-      dailyActivity: [],
-      recentInvoices: [],
-    });
+  const get = jest.fn().mockResolvedValue({
+    counts: { authorized: 1201 },
+    dailyActivity: [],
+    recentInvoices: [],
+  });
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       controllers: [InvoiceOverviewController, InvoiceController],

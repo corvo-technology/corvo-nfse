@@ -110,7 +110,11 @@ export class CompanyServiceTaxProfileService {
     return this.profiles.upsert(id, companyId, tenantId, input);
   }
 
-  async approve(companyId: string, tenantId: string, id: string): Promise<CompanyServiceTaxProfile> {
+  async approve(
+    companyId: string,
+    tenantId: string,
+    id: string,
+  ): Promise<CompanyServiceTaxProfile> {
     const existing = await this.profiles.findById(id, companyId, tenantId);
     if (!existing) throw new NotFoundException('Service tax profile not found');
     if (existing.reviewStatus === 'approved') return existing;

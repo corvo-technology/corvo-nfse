@@ -59,8 +59,8 @@ describe('nfse_get_download_url tool', () => {
 
   it('documents a one-hour signed URL for PDF and XML', () => {
     expect(NFSE_GET_DOWNLOAD_URL_TOOL.description).toContain('one hour');
-    expect(NFSE_GET_DOWNLOAD_URL_TOOL.inputSchema.properties.format.enum).toEqual(
-      ['pdf', 'xml'],
-    );
+    expect(
+      NFSE_GET_DOWNLOAD_URL_TOOL.inputSchema.properties.format.enum,
+    ).toEqual(['pdf', 'xml']);
   });
 });

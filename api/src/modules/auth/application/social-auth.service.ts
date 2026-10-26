@@ -174,7 +174,7 @@ export class SocialAuthService {
   private async handleSocialLogin(
     email: string,
     name: string,
-    avatarUrl?: string,
+    _avatarUrl?: string,
   ): Promise<SocialLoginResult> {
     let isNewUser = false;
     let user = await this.authUserService.findByEmail(email);
@@ -196,7 +196,9 @@ export class SocialAuthService {
     );
 
     // Create session
-    const authConfig = this.config.getOrThrow('auth');
+    const authConfig = this.config.getOrThrow<{ refreshTokenTtlDays: number }>(
+      'auth',
+    );
     const sessionTtlMs = authConfig.refreshTokenTtlDays * 24 * 60 * 60 * 1000;
     const expiresAt = new Date(Date.now() + sessionTtlMs);
 

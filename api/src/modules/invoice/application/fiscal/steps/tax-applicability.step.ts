@@ -52,6 +52,7 @@ export class TaxApplicabilityStep implements FiscalStep {
     private readonly policy: TaxTransitionPolicy,
   ) {}
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async execute(
     context: Readonly<FiscalContext>,
   ): Promise<Result<StepOutcome, FiscalError>> {

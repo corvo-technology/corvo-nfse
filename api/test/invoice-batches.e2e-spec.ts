@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- supertest/raw SQL responses are untyped */
 import { randomBytes, randomUUID } from 'node:crypto';
 import * as argon2 from 'argon2';
 import request from 'supertest';
