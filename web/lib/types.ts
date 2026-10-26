@@ -344,21 +344,18 @@ export interface Member {
 export type SetupGap = "municipality_code" | "certificate";
 export type CompanyStatus = "pending_setup" | "ready" | "blocked";
 export type TaxRegime = "MEI" | "Simples Nacional" | "Lucro Presumido" | "Lucro Real";
-export interface SimplesRate {
-  companyId: string; month: string; totalRate: string; issRate: string | null; updatedAt: string;
-}
 export type TaxRegimeKind = "MEI" | "SIMPLES_NACIONAL" | "LUCRO_PRESUMIDO" | "LUCRO_REAL" | "OUTRO_REGIME" | "UNKNOWN";
 export type FiscalReviewStatus = "unreviewed" | "approved" | "rejected";
 export interface CompanyFiscalProfile {
   id: string; tenantId: string; companyId: string; taxRegime: TaxRegimeKind;
   simpleNational: boolean; specialTaxRegime: string | null;
-  ibsCbsRegularOption: boolean; ibsCbsRegularFrom: string | null; simplesIssRate: string | null;
+  ibsCbsRegularOption: boolean; ibsCbsRegularFrom: string | null;
   validFrom: string; validUntil: string | null; source: string;
   reviewStatus: FiscalReviewStatus; reviewedBy: string | null; reviewedAt: string | null; createdAt: string;
 }
 export interface FiscalProfileInput {
   taxRegime: TaxRegimeKind; simpleNational?: boolean; specialTaxRegime?: string | null;
-  ibsCbsRegularOption?: boolean; ibsCbsRegularFrom?: string | null; simplesIssRate?: string | null; validFrom?: string; confirm?: boolean;
+  ibsCbsRegularOption?: boolean; ibsCbsRegularFrom?: string | null; validFrom?: string; confirm?: boolean;
 }
 export type WithholdingTax = "irrf" | "pis" | "cofins" | "csll" | "inss";
 export interface CompanyServiceTaxProfile {
@@ -383,6 +380,8 @@ export interface Company {
   id: string; tenantId: string; legalName: string; tradeName?: string;
   taxId: string; municipalReg?: string; /** Sends the municipal registration in the DPS. Off by default. */ sendMunicipalReg?: boolean; municipalityCode?: string; defaultServiceCode?: string;
   taxRegime: TaxRegime | null; simpleNational: boolean; specialRegime?: string;
+  /** Simples Nacional only: effective total rate (%) of the DAS and, optionally, the ISS rate (%). */
+  simplesRate?: string; simplesIssRate?: string;
   environment: CompanyEnvironment; address: CompanyAddress;
   status: CompanyStatus; /** What is still missing before the company is ready, from the API. */ setupGaps?: SetupGap[];
   createdAt: string; updatedAt: string;
@@ -391,11 +390,13 @@ export interface CreateCompanyInput {
   legalName: string; taxId: string; taxRegime: TaxRegime;
   tradeName?: string; municipalReg?: string; sendMunicipalReg?: boolean; municipalityCode: string; defaultServiceCode?: string;
   simpleNational?: boolean; specialRegime?: string;
+  /** Required for Simples Nacional, ignored for MEI. */
+  simplesRate?: string; simplesIssRate?: string;
   address?: CompanyAddress;
 }
-export type UpdateCompanyInput = Partial<Omit<CreateCompanyInput, "municipalReg" | "defaultServiceCode" | "address">> & {
+export type UpdateCompanyInput = Partial<Omit<CreateCompanyInput, "municipalReg" | "defaultServiceCode" | "simplesIssRate" | "address">> & {
   /** `null` clears the value; omit to keep it. */
-  municipalReg?: string | null; defaultServiceCode?: string | null; address?: CompanyAddress | null;
+  municipalReg?: string | null; defaultServiceCode?: string | null; simplesIssRate?: string | null; address?: CompanyAddress | null;
 };
 /** Fields the company form can send for both create and update. */
 export type CompanyFormInput = UpdateCompanyInput & Pick<CreateCompanyInput, "legalName" | "taxId" | "municipalityCode">;

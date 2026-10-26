@@ -11,8 +11,6 @@ import type {
 import { TaxTransitionPolicy } from '@/modules/invoice/domain/fiscal/policies/tax-transition.policy';
 import { err, type Result } from '@/modules/invoice/domain/fiscal/result';
 import { MeiTaxStrategy } from './mei-tax.strategy';
-import { ConfigService } from '@nestjs/config';
-import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
 import { RegularTaxStrategy } from './regular-tax.strategy';
 import { SimplesNacionalTaxStrategy } from './simples-nacional-tax.strategy';
 import { TaxStrategyResolver } from './tax-strategy.resolver';
@@ -463,17 +461,6 @@ describe('strategies', () => {
   });
 
   describe('Anexo I E0583: MEI never has ISS withheld', () => {
-    const rolloutFlags = (conformance: boolean) =>
-      new RolloutFlagsService(
-        new ConfigService({
-          rollout: {
-            fiscalDpsConformance: { on: conformance, tenants: '*' },
-            simplesTottrib: { on: false, tenants: '*' },
-            simplesRateMode: { mode: 'off', tenants: '*' },
-            simplesRateEnforcedFrom: null,
-          },
-        }),
-      );
     const withholdingClassification = classificationWith({
       iss: {
         taxation: 'NORMAL',
@@ -487,15 +474,10 @@ describe('strategies', () => {
       taxId: '12345678000195',
       municipalityCode: null,
     };
-    const plan = (
-      regime: 'MEI' | 'SIMPLES_NACIONAL',
-      conformance: boolean | undefined,
-    ) => {
+    const plan = (regime: 'MEI' | 'SIMPLES_NACIONAL') => {
       const strategy =
         regime === 'MEI'
-          ? new MeiTaxStrategy(
-              conformance === undefined ? undefined : rolloutFlags(conformance),
-            )
+          ? new MeiTaxStrategy()
           : new SimplesNacionalTaxStrategy();
       return strategy.plan({
         invoice: invoiceWith('2026-12-10', cnpjCustomer),
@@ -509,22 +491,15 @@ describe('strategies', () => {
       });
     };
 
-    it('is NOT_APPLICABLE for a MEI with a CNPJ customer when the conformance flag is on', () => {
-      const planned = plan('MEI', true);
+    it('is NOT_APPLICABLE for a MEI with a CNPJ customer', () => {
+      const planned = plan('MEI');
       expect(planned.ok && planned.value.issWithheld).toMatchObject({
         status: 'NOT_APPLICABLE',
       });
     });
 
-    it('keeps REQUIRED when the flag is off or not provided', () => {
-      for (const flag of [false, undefined]) {
-        const planned = plan('MEI', flag);
-        expect(planned.ok && planned.value.issWithheld.status).toBe('REQUIRED');
-      }
-    });
-
     it('does not change Simples Nacional, which keeps withholding', () => {
-      const planned = plan('SIMPLES_NACIONAL', true);
+      const planned = plan('SIMPLES_NACIONAL');
       expect(planned.ok && planned.value.issWithheld.status).toBe('REQUIRED');
     });
   });

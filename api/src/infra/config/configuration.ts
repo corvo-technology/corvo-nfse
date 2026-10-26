@@ -109,21 +109,6 @@ export default function configuration(): AppConfiguration {
     fiscal: {
       ibsCbsUnavailableMode: env.FISCAL_IBSCBS_UNAVAILABLE_MODE,
     },
-    rollout: {
-      fiscalDpsConformance: rolloutFlag(
-        env.FISCAL_DPS_CONFORMANCE,
-        env.FISCAL_DPS_CONFORMANCE_TENANTS,
-      ),
-      simplesTottrib: rolloutFlag(
-        env.SIMPLES_TOTTRIB,
-        env.SIMPLES_TOTTRIB_TENANTS,
-      ),
-      simplesRateMode: {
-        mode: env.SIMPLES_RATE_MODE,
-        tenants: rolloutTenants(env.SIMPLES_RATE_MODE_TENANTS),
-      },
-      simplesRateEnforcedFrom: env.SIMPLES_RATE_ENFORCED_FROM ?? null,
-    },
     rtc: {
       url: env.RTC_CALCULATOR_URL,
       timeoutMs: env.RTC_CALCULATOR_TIMEOUT_MS,
@@ -248,17 +233,4 @@ function parseCorsOrigins(value: string): string[] {
 
 function normalizePath(value: string): string {
   return value.replace(/^\/+|\/+$/g, '');
-}
-
-/** `*` (or nothing) means every tenant; otherwise only the listed tenant ids. */
-function rolloutTenants(value: string | undefined): '*' | string[] {
-  const items = (value ?? '*')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return items.length === 0 || items.includes('*') ? '*' : items;
-}
-
-function rolloutFlag(on: boolean, tenants: string | undefined) {
-  return { on, tenants: rolloutTenants(tenants) };
 }

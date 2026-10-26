@@ -74,8 +74,6 @@ const ptWithRetiredCredits: DocsTree = {
           ["GET", "`/v1/companies/:id`", "Consultar empresa", "200"],
           ["PATCH", "`/v1/companies/:id`", "Atualizar empresa", "200"],
           ["DELETE", "`/v1/companies/:id`", "Excluir empresa", "200"],
-          ["GET", "`/v1/companies/:id/simples-rates`", "Listar as alíquotas mensais do Simples Nacional", "200"],
-          ["PUT", "`/v1/companies/:id/simples-rates/:month`", "Informar as alíquotas do Simples Nacional de um mês", "200"],
           ["POST", "`/v1/companies/:companyId/certificates`", "Enviar certificado", "201"],
           ["GET", "`/v1/companies/:companyId/certificates`", "Listar certificados", "200"],
           ["DELETE", "`/v1/companies/:companyId/certificates/:certId`", "Revogar certificado", "204"],
@@ -371,6 +369,8 @@ const ptWithRetiredCredits: DocsTree = {
               { name: "defaultServiceCode", type: "string", required: false, description: "Código nacional (cTribNac) de exatamente 6 dígitos; padrão das novas notas. Sem ele, informe `service.code` na emissão." },
               { name: "simpleNational", type: "boolean", required: false, description: "Se omitido, acompanha o regime (`true` para MEI e Simples Nacional)." },
               { name: "specialRegime", type: "string", required: false, description: "Um valor entre `\"0\"` e `\"6\"` (regEspTrib, RTC v1.01): 0 Nenhum, 1 Ato Cooperado, 2 Estimativa, 3 Microempresa Municipal, 4 Notário ou Registrador, 5 Profissional Autônomo, 6 Sociedade de Profissionais." },
+              { name: "simplesRate", type: "string", required: false, description: "Obrigatório para `Simples Nacional`, ignorado para `MEI`. Alíquota efetiva total (%) do seu DAS, a que aparece no PGDAS-D, por exemplo `\"6.54\"` (0 a 100, no máximo 2 casas decimais). Vai em toda nota (`pTotTribSN`). A Corvo não calcula o DAS." },
+              { name: "simplesIssRate", type: "string", required: false, description: "Opcional, só `Simples Nacional`. Alíquota efetiva de ISS (%) da sua faixa (1,80 a 5,00), necessária só quando algum cliente retém ISS. Ignorada para `MEI`." },
               { name: "address", type: "objeto", required: false, description: "`street` (200), `number` (20), `complement` (100), `district` (100), `city` (100), `state` (2) e `zip` (10), todos opcionais. UF válida, normalizada para maiúsculas. CEP com 8 dígitos, armazenado sem pontuação." },
             ],
           },
@@ -382,6 +382,7 @@ const ptWithRetiredCredits: DocsTree = {
     "legalName": "Empresa Exemplo Ltda",
     "taxId": "11222333000181",
     "taxRegime": "Simples Nacional",
+    "simplesRate": "6.54",
     "simpleNational": true,
     "municipalReg": "123456",
     "municipalityCode": "3550308",
@@ -404,6 +405,7 @@ const ptWithRetiredCredits: DocsTree = {
     legalName: "Empresa Exemplo Ltda",
     taxId: "11222333000181",
     taxRegime: "Simples Nacional",
+    simplesRate: "6.54",
     simpleNational: true,
     municipalReg: "123456",
     municipalityCode: "3550308",
@@ -528,7 +530,7 @@ console.log(body.data.status); // { data: Company }`,
           path: "/v1/companies/:id",
           scopes: ["full_access"],
           success: "200 OK",
-          summary: "Atualiza uma empresa. Aceita os campos da criação, todos opcionais.",
+          summary: "Atualiza uma empresa. Aceita os campos da criação, todos opcionais. Envie `simplesRate` (e `simplesIssRate`, ou `null` para remover) para atualizar a alíquota do Simples, por exemplo todo mês.",
           examples: {
             curl: `curl -X PATCH "$BASE_URL/companies/$COMPANY_ID" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
@@ -596,83 +598,6 @@ console.log(body.data); // { data: null }`,
       description: "Envie e gerencie certificados A1 (PKCS#12) das empresas.",
       blocks: [
         { kind: "text", body: "Permissões: `nfse.certificates.view` para listar e `nfse.certificates.manage` para upload/revogação." },
-        {
-          kind: "endpoint",
-          method: "GET",
-          path: "/v1/companies/:id/simples-rates",
-          scopes: ["full_access", "companies_manage", "companies_read_write"],
-          success: "200 OK",
-          summary: "Lista as alíquotas mensais do Simples Nacional informadas para a empresa, do mês mais novo para o mais antigo. A Corvo não calcula o DAS: as alíquotas vêm da empresa ou do contador.",
-          examples: {
-            curl: `curl "$BASE_URL/companies/$COMPANY_ID/simples-rates" \\
-  -H "X-API-Key: $CORVO_API_KEY"`,
-            node: `const res = await fetch(\`\${BASE_URL}/companies/\${companyId}/simples-rates\`, {
-  headers: { "X-API-Key": process.env.CORVO_API_KEY },
-});
-const { data } = await res.json();
-console.log(data[0]?.month, data[0]?.totalRate);`,
-          },
-          response: {
-            label: "200 OK",
-            json: `{
-  "data": [
-    {
-      "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
-      "month": "2026-10",
-      "totalRate": "6.54",
-      "issRate": "2.01",
-      "updatedAt": "2026-10-25T12:00:00.000Z"
-    }
-  ]
-}`,
-          },
-        },
-        {
-          kind: "endpoint",
-          method: "PUT",
-          path: "/v1/companies/:id/simples-rates/:month",
-          scopes: ["full_access", "companies_manage", "companies_read_write"],
-          success: "200 OK",
-          summary: "Informa ou substitui as alíquotas do Simples Nacional de um mês (`AAAA-MM`, não pode ser futuro). A alíquota total vai em toda NFS-e de ME/EPP (`pTotTribSN`). O último mês informado é repetido nos meses seguintes até você informar um novo.",
-          params: {
-            rows: [
-              { name: "month", type: "string", required: true, description: "Parâmetro de caminho, `AAAA-MM`, não pode ser futuro." },
-              { name: "totalRate", type: "string", required: true, description: "Alíquota total aproximada (%) do Simples no mês, a alíquota efetiva que aparece no PGDAS-D. De 0 a 100, no máximo 2 casas decimais. Exemplo `\"6.54\"`." },
-              { name: "issRate", type: "string", required: false, description: "Alíquota efetiva de ISS (%) do mês, usada quando o tomador retém ISS. Mesmo formato." },
-            ],
-          },
-          examples: {
-            curl: `curl -X PUT "$BASE_URL/companies/$COMPANY_ID/simples-rates/2026-10" \\
-  -H "X-API-Key: $CORVO_API_KEY" \\
-  -H 'Content-Type: application/json' \\
-  -d '{ "totalRate": "6.54", "issRate": "2.01" }'`,
-            node: `const res = await fetch(\`\${BASE_URL}/companies/\${companyId}/simples-rates/2026-10\`, {
-  method: "PUT",
-  headers: {
-    "X-API-Key": process.env.CORVO_API_KEY,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ totalRate: "6.54", issRate: "2.01" }),
-});
-const { data } = await res.json();
-console.log(data.month, data.totalRate); // "2026-10" "6.54"`,
-          },
-          response: {
-            label: "200 OK",
-            json: `{
-  "data": {
-    "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
-    "month": "2026-10",
-    "totalRate": "6.54",
-    "issRate": "2.01",
-    "updatedAt": "2026-10-25T12:00:00.000Z"
-  }
-}`,
-          },
-          notes: [
-            { kind: "callout", tone: "accent", body: "**Quem informa a alíquota.** A Corvo não gera nem calcula o DAS (PGMEI ou PGDAS-D). Informe, uma vez por mês, a alíquota efetiva que o contador ou o PGDAS-D mostra. Se o mês não tiver valor, usamos o mês anterior mais próximo; mais de um mês de atraso gera o aviso `SIMPLES_RATE_STALE`. Empresas MEI não precisam de alíquota. As permissões são `nfse.companies.view` para ler e `nfse.companies.manage` para gravar." },
-          ],
-        },
         {
           kind: "endpoint",
           method: "POST",
@@ -2649,7 +2574,6 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`tax_id?` (CNPJ), `limit?`, `cursor?`",
               "`{ companies [{ id, legal_name, tax_id, status, tax_regime, setup_gaps, ready_to_issue }], next_cursor }`"
             ],
-            ["`company_set_simples_rate`", "`nfse:write`", "`company_tax_id` ou `company_id`, `month` (`AAAA-MM`), `total_rate`, `iss_rate?`", "`{ company_id, month, total_rate, iss_rate }`; o último mês informado vale até ser atualizado. `company_get` também devolve `simples_rate`"],
             [
               "`nfse_issue_batch`",
               "`nfse:write`",
@@ -2665,7 +2589,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             [
               "`company_create`",
               "`nfse:write`",
-              "`legal_name`, `tax_id`, `tax_regime`, `municipality_code` e dados fiscais opcionais",
+              "`legal_name`, `tax_id`, `tax_regime`, `municipality_code`, `simples_rate` (obrigatório no Simples Nacional), `simples_iss_rate?` e dados fiscais opcionais",
               "`{ id, legal_name, tax_id, status }`; certificado continua somente pela API"
             ],
             [

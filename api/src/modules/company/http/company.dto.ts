@@ -92,6 +92,26 @@ export class CreateCompanyDto {
     description: `${SPECIAL_TAX_REGIME_DESCRIPTION} Empty string clears it.`,
   })
   specialRegime?: string;
+  @ApiPropertyOptional({
+    type: String,
+    example: '6.54',
+    description:
+      'Simples Nacional only: effective total rate (%) of your DAS, sent in the invoice as pTotTribSN. Required for Simples Nacional; ignored for MEI.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(6)
+  simplesRate?: string;
+  @ApiPropertyOptional({
+    type: String,
+    example: '2.01',
+    description:
+      'Simples Nacional only: effective ISS rate (%) of your bracket. Only needed when a customer withholds ISS. Ignored for MEI.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(6)
+  simplesIssRate?: string;
   @IsOptional() @ValidateNested() @Type(() => AddressDto) address?: AddressDto;
 }
 
@@ -132,6 +152,26 @@ export class UpdateCompanyDto {
     description: `${SPECIAL_TAX_REGIME_DESCRIPTION} Empty string clears it.`,
   })
   specialRegime?: string;
+  @ApiPropertyOptional({
+    type: String,
+    example: '6.54',
+    description:
+      'Simples Nacional only: effective total rate (%) of your DAS, sent in the invoice as pTotTribSN. Required for Simples Nacional; ignored for MEI.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(6)
+  simplesRate?: string;
+  @ApiPropertyOptional({
+    type: String,
+    example: '2.01',
+    description:
+      'Simples Nacional only: effective ISS rate (%) of your bracket. Only needed when a customer withholds ISS. Ignored for MEI.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(6)
+  simplesIssRate?: string | null;
   @IsOptional()
   @ValidateNested()
   @Type(() => AddressDto)
@@ -139,30 +179,6 @@ export class UpdateCompanyDto {
 }
 
 export class ListCompaniesQuery extends CursorQuery {}
-
-const RATE_PATTERN = /^\d+(\.\d{1,2})?$/;
-
-export class PutSimplesRateDto {
-  @ApiProperty({
-    type: String,
-    example: '6.54',
-    description:
-      'Approximate total tax rate (%) of the Simples Nacional for the month (the effective rate of the DAS). Sent in the DPS as pTotTribSN. Informed by the company or its accountant: Corvo does not compute the DAS.',
-  })
-  @IsString()
-  @Matches(RATE_PATTERN)
-  totalRate!: string;
-
-  @ApiPropertyOptional({
-    type: String,
-    example: '2.01',
-    description:
-      'Effective ISS rate (%) of the month; used for ISS withholding.',
-  })
-  @IsOptional()
-  @Matches(RATE_PATTERN)
-  issRate?: string | null;
-}
 
 export class UpsertFiscalProfileDto {
   @ApiProperty({
@@ -184,16 +200,6 @@ export class UpsertFiscalProfileDto {
   specialTaxRegime?: string | null;
   @IsOptional() @IsBoolean() ibsCbsRegularOption?: boolean;
   @IsOptional() @IsDateString() ibsCbsRegularFrom?: string | null;
-
-  @ApiPropertyOptional({
-    type: String,
-    example: '2.01',
-    description:
-      'Effective ISS rate (%) of the Simples Nacional bracket of the previous month (LC 123/2006, art. 21, §4º, I). Required to withhold ISS for Simples Nacional ME/EPP.',
-  })
-  @IsOptional()
-  @Matches(/^\d+(\.\d{1,2})?$/)
-  simplesIssRate?: string | null;
 
   @ApiPropertyOptional({
     enum: ['SN'],

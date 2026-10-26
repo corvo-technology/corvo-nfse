@@ -31,8 +31,6 @@ import { todayInEstablishmentTimezone } from '@/shared/dates/date-time';
 import { CompanyService } from '../application/company.service';
 import type { CurrentCompanyRegime } from '../application/company.service';
 import { CompanyFiscalProfileService } from '../application/company-fiscal-profile.service';
-import { SimplesRateService } from '../application/simples-rate.service';
-import type { SimplesRate } from '../domain/simples-rate';
 import { CompanyServiceTaxProfileService } from '../application/company-service-tax-profile.service';
 import { ICompanyCertificateReader } from '../domain/i-company-certificate-reader';
 import {
@@ -40,7 +38,6 @@ import {
   UpdateCompanyDto,
   ListCompaniesQuery,
   UpsertFiscalProfileDto,
-  PutSimplesRateDto,
   CreateServiceTaxProfileDto,
   UpdateServiceTaxProfileDto,
   ListServiceTaxProfilesQuery,
@@ -89,6 +86,9 @@ function dtoToCreateInput(dto: CreateCompanyDto): CreateCompanyInput {
   if (dto.simpleNational !== undefined)
     result.simpleNational = dto.simpleNational;
   if (dto.specialRegime !== undefined) result.specialRegime = dto.specialRegime;
+  if (dto.simplesRate !== undefined) result.simplesRate = dto.simplesRate;
+  if (dto.simplesIssRate !== undefined)
+    result.simplesIssRate = dto.simplesIssRate;
   if (dto.address != null) {
     const a = dto.address;
     result.address = {
@@ -121,6 +121,9 @@ function dtoToUpdateInput(dto: UpdateCompanyDto): UpdateCompanyInput {
   if (dto.simpleNational !== undefined)
     input.simpleNational = dto.simpleNational;
   if (dto.specialRegime !== undefined) input.specialRegime = dto.specialRegime;
+  if (dto.simplesRate !== undefined) input.simplesRate = dto.simplesRate;
+  if (dto.simplesIssRate !== undefined)
+    input.simplesIssRate = dto.simplesIssRate;
   if (dto.address !== undefined) {
     if (dto.address === null) {
       input.address = null;
@@ -257,7 +260,6 @@ export class CompanyController {
     private readonly certReader: ICompanyCertificateReader,
     private readonly fiscalProfiles: CompanyFiscalProfileService,
     private readonly serviceTaxProfiles: CompanyServiceTaxProfileService,
-    private readonly simplesRates: SimplesRateService,
   ) {}
 
   private requireAuthContext(req: RequestWithAuthContext): AuthContext {
@@ -437,7 +439,7 @@ export class CompanyController {
       specialTaxRegime: dto.specialTaxRegime ?? null,
       ibsCbsRegularOption: dto.ibsCbsRegularOption ?? false,
       ibsCbsRegularFrom: dto.ibsCbsRegularFrom ?? null,
-      simplesIssRate: dto.simplesIssRate ?? null,
+      simplesIssRate: null,
       simplesApuracao: dto.simplesApuracao ?? null,
       validFrom: dto.validFrom ?? todayInEstablishmentTimezone(),
       source: 'company_api',
@@ -449,54 +451,6 @@ export class CompanyController {
       return data(open);
     }
     return data(await this.fiscalProfiles.record(id, tenantId, desired));
-  }
-
-  @Get(':id/simples-rates')
-  @ApiKeyEndpoint()
-  @RequirePermission('nfse.companies.view')
-  @ApiOperation({
-    summary: 'List the monthly Simples Nacional rates informed for the company',
-  })
-  async listSimplesRates(
-    @Param('id', new ParseUUIDPipe()) id: string,
-    @Req() req: RequestWithAuthContext,
-  ): Promise<DataEnvelope<SimplesRate[]>> {
-    const context = this.requireAuthContext(req);
-    await this.companyService.findById(
-      id,
-      context.activeTenantId,
-      executionEnvironment(context),
-    );
-    return data(await this.simplesRates.list(id, context.activeTenantId));
-  }
-
-  @Put(':id/simples-rates/:month')
-  @ApiKeyEndpoint()
-  @RequirePermission('nfse.companies.manage')
-  @ApiOperation({
-    summary: 'Inform or replace the Simples Nacional rates of a month',
-    description:
-      'Month as YYYY-MM, not in the future. Corvo does not compute the DAS: the company or its accountant informs the effective rate. The latest informed month is repeated for later months until a new one is informed.',
-  })
-  async putSimplesRate(
-    @Param('id', new ParseUUIDPipe()) id: string,
-    @Param('month') month: string,
-    @Body() dto: PutSimplesRateDto,
-    @Req() req: RequestWithAuthContext,
-  ): Promise<DataEnvelope<SimplesRate>> {
-    const context = this.requireAuthContext(req);
-    const tenantId = context.activeTenantId;
-    await this.companyService.findById(
-      id,
-      tenantId,
-      executionEnvironment(context),
-    );
-    return data(
-      await this.simplesRates.put(id, tenantId, month, {
-        totalRate: dto.totalRate,
-        issRate: dto.issRate ?? null,
-      }),
-    );
   }
 
   @Post(':id/fiscal-profile/:profileId/approve')

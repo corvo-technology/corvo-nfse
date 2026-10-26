@@ -25,57 +25,42 @@ const profile = (
 
 const build = (
   profiles: CompanyFiscalProfile[],
-  issRate: string | null | undefined,
+  companyIssRate: string | undefined,
 ) => {
-  const rates = {
-    resolve: jest.fn().mockResolvedValue({
-      rate:
-        issRate === undefined
-          ? null
-          : { month: '2026-10', totalRate: '6.54', issRate },
-      stale: false,
-    }),
+  const companies = {
+    findByIdAndTenantId: jest
+      .fn()
+      .mockResolvedValue({ simplesIssRate: companyIssRate }),
   };
   const reader = new TypeOrmCompanyFiscalProfileReader(
     { list: jest.fn().mockResolvedValue(profiles) } as never,
-    rates as never,
+    companies as never,
   );
-  return { reader, rates };
+  return { reader, companies };
 };
 
-describe('TypeOrmCompanyFiscalProfileReader monthly ISS rate', () => {
-  it('uses the ISS rate informed for the competence month on a Simples profile', async () => {
-    const { reader, rates } = build([profile()], '2.01');
+describe('TypeOrmCompanyFiscalProfileReader ISS rate', () => {
+  it('uses the ISS rate of the company on a Simples profile', async () => {
+    const { reader } = build([profile()], '2.01');
     const [found] = await reader.findEffectiveByDate('c1', 't1', '2026-10-15');
     expect(found?.simplesIssRate).toBe('2.01');
-    expect(rates.resolve).toHaveBeenCalledWith('c1', 't1', '2026-10-15');
   });
 
-  it('keeps the profile rate when the month has no ISS rate or no rate at all', async () => {
-    for (const issRate of [null, undefined]) {
-      const [found] = await build(
-        [profile()],
-        issRate,
-      ).reader.findEffectiveByDate('c1', 't1', '2026-10-15');
-      expect(found?.simplesIssRate).toBe('3.00');
-    }
+  it('keeps the profile value when the company has no ISS rate', async () => {
+    const [found] = await build(
+      [profile()],
+      undefined,
+    ).reader.findEffectiveByDate('c1', 't1', '2026-10-15');
+    expect(found?.simplesIssRate).toBe('3.00');
   });
 
   it('never touches a MEI or any other regime', async () => {
-    const { reader, rates } = build(
+    const { reader, companies } = build(
       [profile({ taxRegime: 'MEI', simplesIssRate: null })],
       '2.01',
     );
     const [found] = await reader.findEffectiveByDate('c1', 't1', '2026-10-15');
     expect(found?.simplesIssRate).toBeNull();
-    expect(rates.resolve).not.toHaveBeenCalled();
-  });
-
-  it('works without the rate service', async () => {
-    const reader = new TypeOrmCompanyFiscalProfileReader({
-      list: jest.fn().mockResolvedValue([profile()]),
-    } as never);
-    const [found] = await reader.findEffectiveByDate('c1', 't1', '2026-10-15');
-    expect(found?.simplesIssRate).toBe('3.00');
+    expect(companies.findByIdAndTenantId).not.toHaveBeenCalled();
   });
 });

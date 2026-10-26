@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, back: 
 vi.mock("@/lib/api", async (original) => ({ ...await original<typeof import("@/lib/api")>(), companies: { list: mocks.list }, invoices: { create: mocks.create } }));
 
 const company: Company = {
-  id: "company-1", tenantId: "tenant-1", legalName: "Example LTDA", taxId: "11222333000181", taxRegime: "Simples Nacional", simpleNational: true,
+  id: "company-1", tenantId: "tenant-1", legalName: "Example LTDA", taxId: "11222333000181", taxRegime: "Simples Nacional", simpleNational: true, simplesRate: "6.54",
   environment: "test", status: "ready", address: {}, municipalityCode: "3550308", defaultServiceCode: "010101", setupGaps: [],
   createdAt: "2026-10-09T12:00:00Z", updatedAt: "2026-10-09T12:00:00Z",
 };
@@ -57,6 +57,22 @@ describe("Company fiscal setup", () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0][0]).toMatchObject({ taxId: company.taxId, municipalityCode: "3550308", defaultServiceCode: "010101" });
     expect(onSave.mock.calls[0][0].municipalReg).toBeUndefined();
+  });
+  it("asks a Simples Nacional company for its rate and sends it", async () => {
+    const onSave = vi.fn().mockResolvedValue(company);
+    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); reachFiscal();
+    fill("IBGE", "3550308"); fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "Simples Nacional" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create company" }));
+    expect(screen.getByText("Enter the effective Simples rate.")).toBeTruthy(); expect(onSave).not.toHaveBeenCalled();
+    fill("Effective Simples rate", "6,54"); fill("ISS rate", "2.01");
+    fireEvent.click(screen.getByRole("button", { name: "Create company" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0][0]).toMatchObject({ simplesRate: "6.54", simplesIssRate: "2.01" });
+  });
+  it("does not show the rate fields for a MEI", () => {
+    renderUI(<CompanyForm onSave={vi.fn()} onCancel={vi.fn()} />); reachFiscal();
+    fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } });
+    expect(screen.queryByLabelText(/Effective Simples rate/i)).toBeNull();
   });
   it("lets a live company be created without a municipal registration", async () => {
     mocks.environment = "live"; const onSave = vi.fn();

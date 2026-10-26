@@ -1393,7 +1393,9 @@
       "district": "Bela Vista",
       "city": "São Paulo",
       "state": "SP",
-      "zip": "00000-000"
+      "zip": "00000-000",
+      "simplesRate": "6.54",
+      "simplesIssRate": "2.01"
     },
     "cep": {
       "hint": "Preenche endereço e código IBGE automaticamente.",
@@ -1429,7 +1431,9 @@
     "hints": {
       "municipalReg": "Opcional. Informe só se a prefeitura registrou a inscrição municipal desta empresa no cadastro nacional; se não, a Receita rejeita a nota (E0120).",
       "defaultServiceCode": "Código nacional (cTribNac), com 6 dígitos. Usado quando a nota não informa outro código. Você pode remover este padrão na edição.",
-      "sendMunicipalReg": "Desligado por padrão. Marque só se a prefeitura registrou esta empresa no cadastro nacional e a Receita exigir a IM; senão a nota é rejeitada (E0120)."
+      "sendMunicipalReg": "Desligado por padrão. Marque só se a prefeitura registrou esta empresa no cadastro nacional e a Receita exigir a IM; senão a nota é rejeitada (E0120).",
+      "simplesRate": "A alíquota efetiva que aparece no seu PGDAS-D. Vai em toda nota (pTotTribSN). Para atualizar, edite a empresa.",
+      "simplesIssRate": "Opcional. Só se algum cliente reter o ISS na fonte: a alíquota de ISS da sua faixa."
     },
     "fixFields": "Corrija os campos destacados.",
     "defaultServiceCode": "Código de serviço padrão",
@@ -1441,7 +1445,13 @@
     "editFiscalHint": "Revise o regime e as vigências em Configuração fiscal na página da empresa.",
     "reviewNext": "Continuar para o certificado",
     "openCompany": "Abrir empresa",
-    "sendMunicipalReg": "Enviar a inscrição municipal na nota"
+    "sendMunicipalReg": "Enviar a inscrição municipal na nota",
+    "simplesRate": "Alíquota efetiva do Simples (%)",
+    "simplesIssRate": "Alíquota de ISS (%)",
+    "simplesRateRequired": "Informe a alíquota efetiva do Simples.",
+    "rateInvalid": "Informe um número, por exemplo 6.54.",
+    "rateRange": "A alíquota deve estar entre 0 e 100.",
+    "rateDecimals": "Use no máximo 2 casas decimais."
   },
   "CompanyDetail": {
     "fiscalAdvanced": "Modo avançado (contador)",
@@ -1766,13 +1776,7 @@
     "regimePending": "Regime: {regime}",
     "regimePendingHint": "Confirme que este é o regime atual da empresa. Para emitir em produção, essa confirmação é obrigatória.",
     "confirmRegime": "Confirmar regime",
-    "rateTitle": "Alíquota de ISS do Simples (opcional)",
-    "rateHint": "Só é necessária se algum cliente reter o ISS na fonte. É a alíquota efetiva de ISS da sua faixa no DAS do mês anterior. Se não souber, deixe em branco e pergunte ao seu contador. Vale a partir do dia seguinte, pois um regime já confirmado não pode ser alterado no mesmo dia.",
-    "rateLabel": "Alíquota (%)",
-    "saveRate": "Salvar alíquota",
     "invalidRate": "Informe um percentual entre 0 e 100.",
-    "rateDone": "Alíquota de ISS do Simples: {rate}%",
-    "rateDoneHint": "Usada quando o cliente retém o ISS.",
     "serviceNotNeeded": "Serviço: nada a configurar",
     "serviceNotNeededHint": "No Simples Nacional e no MEI o ISS é recolhido no DAS. A classificação do serviço só passa a ser necessária quando o IBS/CBS começar a valer para o Simples, em 2027.",
     "serviceTitle": "Serviço que você presta",
@@ -1827,8 +1831,6 @@
     "validUntil": "Vigente até (exclusivo)",
     "ibsOption": "Opção pelo IBS/CBS regular",
     "ibsFrom": "Início da opção pelo IBS/CBS regular",
-    "simplesIssRate": "Alíquota efetiva de ISS do Simples (%)",
-    "simplesIssRateHint": "Faixa do mês anterior (LC 123/2006, art. 21, §4º, I). Obrigatória para emitir com retenção de ISS; registre um novo período a cada mês.",
     "history": "Histórico do perfil fiscal",
     "future": "Vigência futura",
     "source": "Origem",
@@ -2066,14 +2068,20 @@
     },
     "tools": {
       "read": {
-        "company": "Empresas", "companyDetail": "listar ou consultar por CNPJ",
-        "calculate": "Pré-cálculo fiscal", "calculateDetail": "calcular tributos sem emitir",
-        "invoices": "Notas e documentos", "invoicesDetail": "consultar, listar e baixar PDF",
-        "usage": "Plano e cotas", "usageDetail": "ver consumo e disponibilidade de emissão"
+        "company": "Empresas",
+        "companyDetail": "listar ou consultar por CNPJ",
+        "calculate": "Pré-cálculo fiscal",
+        "calculateDetail": "calcular tributos sem emitir",
+        "invoices": "Notas e documentos",
+        "invoicesDetail": "consultar, listar e baixar PDF",
+        "usage": "Plano e cotas",
+        "usageDetail": "ver consumo e disponibilidade de emissão"
       },
       "write": {
-        "company": "Criar empresa", "companyDetail": "cadastrar emissor no ambiente selecionado",
-        "invoices": "Emitir e cancelar NFS-e", "invoicesDetail": "iniciar emissão ou cancelamento"
+        "company": "Criar empresa",
+        "companyDetail": "cadastrar emissor no ambiente selecionado",
+        "invoices": "Emitir e cancelar NFS-e",
+        "invoicesDetail": "iniciar emissão ou cancelamento"
       }
     },
     "errors": {
@@ -2133,23 +2141,5 @@
     "copied": "Copiado",
     "source": "Código no GitHub",
     "docs": "Ver todos os SDKs na documentação"
-  },
-  "CompanySimplesRate": {
-    "title": "Alíquota do Simples Nacional",
-    "intro": "A Corvo não calcula o DAS. Informe todo mês a alíquota efetiva que aparece no seu PGDAS-D: ela vai em toda NFS-e (pTotTribSN). O último mês informado vale até você atualizar.",
-    "none": "Nenhuma alíquota informada ainda. Informe a do mês para emitir notas sem avisos.",
-    "inForce": "Alíquota em vigor ({month})",
-    "issRate": "Alíquota de ISS",
-    "stale": "A última alíquota informada é de {month}, mas o mês atual é {current}: atualize.",
-    "totalRate": "Alíquota total (%)",
-    "totalRateHint": "Percentual aproximado do total de tributos do Simples no mês.",
-    "issRateHint": "Opcional. Alíquota efetiva de ISS, usada quando o tomador retém ISS.",
-    "save": "Salvar alíquota de {month}",
-    "formTitle": "Alíquota de {month}",
-    "rateInvalid": "Informe um número, por exemplo 6.54.",
-    "rateRange": "A alíquota deve estar entre 0 e 100.",
-    "rateDecimals": "Use no máximo 2 casas decimais.",
-    "saveFailed": "Não foi possível salvar a alíquota.",
-    "failed": "Não foi possível carregar a alíquota."
   }
 }

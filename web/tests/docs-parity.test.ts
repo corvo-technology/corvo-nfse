@@ -36,11 +36,11 @@ describe("EN/PT docs parity", () => {
     expect(describeSection(en, en.pages[slug])).toEqual(describeSection(pt, pt.pages[slug]));
   });
 
-  it("documents exactly 35 endpoint operations", () => {
+  it("documents exactly 33 endpoint operations", () => {
     const allEndpoints = DOC_SLUGS.flatMap((slug) => endpoints(pt.pages[slug].blocks));
     const unique = new Set(allEndpoints.map((e) => `${e.method} ${e.path}`));
-    expect(allEndpoints).toHaveLength(35);
-    expect(unique.size).toBe(35);
+    expect(allEndpoints).toHaveLength(33);
+    expect(unique.size).toBe(33);
   });
 
   it.each([["en", en], ["pt", pt]] as const)("documents POST /v1/invoices/batches in the %s endpoint table and reference", (_lang, tree) => {
@@ -74,13 +74,13 @@ describe("EN/PT docs parity", () => {
 
 describe("MEI and Simples Nacional focus in the docs", () => {
   const everyBlock = (tree: DocsTree) => [tree.home, ...DOC_SLUGS.map((slug) => tree.pages[slug])].flatMap((section) => section.blocks);
-  it.each([["en", en], ["pt", pt]] as const)("documents the monthly Simples rate endpoints in %s", (_lang, tree) => {
-    const found = DOC_SLUGS.flatMap((slug) => endpoints(tree.pages[slug].blocks)).map((e) => `${e.method} ${e.path}`);
-    expect(found).toContain("GET /v1/companies/:id/simples-rates");
-    expect(found).toContain("PUT /v1/companies/:id/simples-rates/:month");
+  it.each([["en", en], ["pt", pt]] as const)("asks for the Simples rate on the company and has no monthly rate endpoint in %s", (_lang, tree) => {
+    const all = DOC_SLUGS.flatMap((slug) => endpoints(tree.pages[slug].blocks));
+    expect(all.map((e) => e.path).filter((path) => path.includes("simples-rates"))).toEqual([]);
+    const create = all.find((e) => e.method === "POST" && e.path === "/v1/companies");
+    expect(create?.params?.rows.map((row) => row.name)).toEqual(expect.arrayContaining(["simplesRate", "simplesIssRate"]));
     const tables = everyBlock(tree).filter((b): b is Extract<DocBlock, { kind: "table" }> => b.kind === "table");
-    expect(tables.some((t) => t.rows.some((row) => row[0] === "PUT" && row[1] === "`/v1/companies/:id/simples-rates/:month`"))).toBe(true);
-    expect(tables.some((t) => t.rows.some((row) => row[0] === "`company_set_simples_rate`"))).toBe(true);
+    expect(tables.some((t) => t.rows.some((row) => String(row[0]).includes("company_set_simples_rate")))).toBe(false);
     expect(tables.some((t) => t.rows.some((row) => String(row[0]).includes("ERROR_TAX_REGIME_NOT_SUPPORTED")))).toBe(true);
   });
   it.each([["en", en], ["pt", pt]] as const)("does not offer Lucro Presumido or Lucro Real as accepted regimes in %s", (_lang, tree) => {

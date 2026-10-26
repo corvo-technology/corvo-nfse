@@ -1,5 +1,4 @@
-import { ConfigService } from '@nestjs/config';
-import { RolloutFlagsService } from '@/shared/rollout/rollout-flags.service';
+import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { TaxRegimeNotSupportedError } from '../domain/errors';
 import { Company } from '../domain/company';
 import { CompanyService } from './company.service';
@@ -403,6 +402,7 @@ describe('CompanyService', () => {
           legalName: 'X',
           taxId: VALID_CNPJ,
           taxRegime: 'Simples Nacional',
+          simplesRate: '6.54',
           simpleNational: true,
           specialRegime: undefined,
           municipalityCode: '3550308',
@@ -487,7 +487,7 @@ describe('CompanyService', () => {
 
       await service.update(
         'company-id-1',
-        { taxRegime: 'Simples Nacional' },
+        { taxRegime: 'Simples Nacional', simplesRate: '6.54' },
         tenantId,
         'test',
         'api-key-owner',
@@ -515,7 +515,7 @@ describe('CompanyService', () => {
 
       await service.update(
         'company-id-1',
-        { taxRegime: 'Simples Nacional' },
+        { taxRegime: 'Simples Nacional', simplesRate: '6.54' },
         tenantId,
         'test',
       );
@@ -546,7 +546,7 @@ describe('CompanyService', () => {
 
       await service.update(
         'company-id-1',
-        { taxRegime: 'Simples Nacional' },
+        { taxRegime: 'Simples Nacional', simplesRate: '6.54' },
         tenantId,
         'test',
       );
@@ -588,17 +588,6 @@ describe('CompanyService', () => {
 
 describe('CompanyService regime restriction', () => {
   const tenant = '11111111-1111-4111-8111-111111111111';
-  const flagsFor = () =>
-    new RolloutFlagsService(
-      new ConfigService({
-        rollout: {
-          fiscalDpsConformance: { on: false, tenants: '*' },
-          simplesTottrib: { on: false, tenants: '*' },
-          simplesRateMode: { mode: 'off', tenants: '*' },
-          simplesRateEnforcedFrom: null,
-        },
-      }),
-    );
   const input = (taxRegime: 'MEI' | 'Lucro Presumido' | 'Lucro Real') => ({
     legalName: 'Empresa',
     taxId: '22.334.455/0001-86',
@@ -621,7 +610,6 @@ describe('CompanyService regime restriction', () => {
       { getStatus: jest.fn() } as never,
       new CompanyDomainService(),
       profiles as never,
-      flagsFor(),
     );
     return { service, repo, profiles };
   };
@@ -671,7 +659,6 @@ describe('CompanyService registry check', () => {
       {} as never,
       new CompanyDomainService(),
       {} as never,
-      undefined,
       { lookup },
     );
 
@@ -700,5 +687,77 @@ describe('CompanyService registry check', () => {
         'MEI',
       ),
     ).toEqual([]);
+  });
+});
+
+describe('CompanyService Simples rates on update', () => {
+  const tenantId = '11111111-1111-4111-8111-111111111111';
+  const build = (
+    current: { taxRegime: string; simpleNational: boolean } | null,
+    companyRate?: string,
+  ) => {
+    const company = {
+      id: 'c1',
+      taxId: '11222333000181',
+      simplesRate: companyRate,
+      update: jest.fn(),
+    };
+    const repo = {
+      findByIdAndTenantId: jest.fn().mockResolvedValue(company),
+      save: jest.fn(),
+    };
+    const profiles = {
+      current: jest.fn().mockResolvedValue(
+        current && {
+          ...current,
+          specialTaxRegime: null,
+          ibsCbsRegularOption: false,
+          ibsCbsRegularFrom: null,
+          simplesIssRate: null,
+          simplesApuracao: null,
+        },
+      ),
+      record: jest.fn(),
+    };
+    const service = new CompanyService(
+      repo as never,
+      {} as never,
+      new CompanyDomainService(),
+      profiles as never,
+    );
+    return { service, company, repo };
+  };
+
+  it('requires the rate when a company becomes Simples Nacional', async () => {
+    const { service, repo } = build({
+      taxRegime: 'MEI',
+      simpleNational: true,
+    });
+    await expect(
+      service.update('c1', { taxRegime: 'Simples Nacional' }, tenantId),
+    ).rejects.toBeInstanceOf(FiscalValidationError);
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('updates only the rate of a Simples Nacional company', async () => {
+    const { service, company } = build(
+      { taxRegime: 'SIMPLES_NACIONAL', simpleNational: true },
+      '6.54',
+    );
+    await service.update('c1', { simplesRate: '7.20' }, tenantId);
+    expect(company.update).toHaveBeenCalledWith(
+      expect.objectContaining({ simplesRate: '7.20' }),
+    );
+  });
+
+  it('ignores the rates sent for a MEI', async () => {
+    const { service, company } = build({
+      taxRegime: 'MEI',
+      simpleNational: true,
+    });
+    await service.update('c1', { simplesRate: '7.20' }, tenantId);
+    expect(company.update).toHaveBeenCalledWith(
+      expect.not.objectContaining({ simplesRate: expect.anything() }),
+    );
   });
 });

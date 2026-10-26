@@ -40,7 +40,6 @@ function Guide({ company, canView, canManage }: { company: Company; canView: boo
   const today = fiscalToday();
   const [revision, setRevision] = useState(0);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [rate, setRate] = useState<string | null>(null);
   const [code, setCode] = useState(company.defaultServiceCode ?? "");
   const [issRate, setIssRate] = useState("");
   const [retention, setRetention] = useState<"NONE_CONFIRMED" | "UNKNOWN">("NONE_CONFIRMED");
@@ -65,7 +64,7 @@ function Guide({ company, canView, canManage }: { company: Company; canView: boo
   const run = async (action: () => Promise<unknown>) => {
     if (busy.current) return;
     busy.current = true; setSaving(true); setError(null);
-    try { await action(); setRate(null); setLoaded(null); setRevision(value => value + 1); }
+    try { await action(); setLoaded(null); setRevision(value => value + 1); }
     catch (cause) { setError(cause instanceof Error ? cause.message : t("saveFailure")); }
     finally { busy.current = false; setSaving(false); }
   };
@@ -77,17 +76,6 @@ function Guide({ company, canView, canManage }: { company: Company; canView: boo
   const approved = active.reviewStatus === "approved";
   const serviceState = code ? resolveServiceState(loaded.services, code, today, active.taxRegime) : "missing";
   const serviceName = SERVICE_CODES.find(item => item.code === code)?.description ?? code;
-  const profileInput = (simplesIssRate: string | null, validFrom: string) => ({
-    taxRegime: active.taxRegime, simpleNational: active.simpleNational, specialTaxRegime: active.specialTaxRegime,
-    ibsCbsRegularOption: active.ibsCbsRegularOption, ibsCbsRegularFrom: active.ibsCbsRegularFrom, simplesIssRate, validFrom, confirm: true,
-  });
-  // An approved profile is immutable: the new version starts the day after the current one.
-  const newVersionFrom = approved ? [today, nextDate(active.validFrom)].sort().at(-1) ?? today : today;
-  const saveRate = () => {
-    const value = asRate(rate ?? "");
-    if (!isRate(value)) { setError(t("invalidRate")); return; }
-    void run(() => companies.saveFiscalProfile(company.id, profileInput(value, newVersionFrom)));
-  };
   const saveService = () => {
     const value = asRate(issRate);
     if (!/^\d{6}$/.test(code)) { setError(t("invalidCode")); return; }
@@ -107,9 +95,6 @@ function Guide({ company, canView, canManage }: { company: Company; canView: boo
     {header}
     <ul className="flex flex-col">
       {approved ? done(t("regimeDone", { regime: t(`regimes.${active.taxRegime}`) }), t("regimeDoneHint")) : todo(t("regimePending", { regime: t(`regimes.${active.taxRegime}`) }), t("regimePendingHint"), <div><Button variant="accent" loading={saving} onClick={() => void run(() => companies.approveFiscalProfile(company.id, active.id))}>{t("confirmRegime")}</Button></div>)}
-      {active.taxRegime === "SIMPLES_NACIONAL" && (active.simplesIssRate !== null && rate === null
-        ? done(t("rateDone", { rate: active.simplesIssRate }), t("rateDoneHint"))
-        : todo(t("rateTitle"), t("rateHint"), <div className="flex flex-wrap items-end gap-3"><Field label={t("rateLabel")} className="w-48">{props => <input {...props} className="field" inputMode="decimal" placeholder="2,01" value={rate ?? ""} disabled={saving} onChange={event => setRate(event.target.value)} />}</Field><Button loading={saving} onClick={saveRate}>{t("saveRate")}</Button></div>))}
       {!needsService ? done(t("serviceNotNeeded"), t("serviceNotNeededHint"))
         : serviceState === "approved" ? done(t("serviceDone", { service: serviceName }), t("serviceDoneHint"))
         : todo(t("serviceTitle"), t(serviceState === "missing" ? "serviceHint" : "serviceReviewHint"), serviceState === "missing" || serviceState === "unreviewed"

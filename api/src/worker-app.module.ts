@@ -11,7 +11,6 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AppConfigModule } from '@/infra/config/config.module';
-import { RolloutModule } from '@/shared/rollout/rollout.module';
 import { AppDatabaseModule } from '@/infra/database/database.module';
 import { AppLoggingModule } from '@/infra/logging/logging.module';
 import { TypeOrmPersistenceModule } from '@/infra/persistence/typeorm/typeorm-persistence.module';
@@ -44,7 +43,6 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     BillingCoreModule,
     SentryModule.forRoot('worker'),
     AppConfigModule,
-    RolloutModule,
     AppLoggingModule,
     AppDatabaseModule,
     TypeOrmPersistenceModule,

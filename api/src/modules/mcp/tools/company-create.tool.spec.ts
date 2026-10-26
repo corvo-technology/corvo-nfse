@@ -18,6 +18,7 @@ describe('company_create', () => {
           legal_name: 'Corvo Ltda',
           tax_id: '11.222.333/0001-81',
           tax_regime: 'simple_national',
+          simples_rate: '6.54',
           municipality_code: '3550308',
         },
         {
@@ -31,7 +32,8 @@ describe('company_create', () => {
       expect.objectContaining({
         legalName: 'Corvo Ltda',
         taxId: '11.222.333/0001-81',
-        taxRegime: 'simple_national',
+        taxRegime: 'Simples Nacional',
+        simplesRate: '6.54',
       }),
       'tenant-1',
       'test',
