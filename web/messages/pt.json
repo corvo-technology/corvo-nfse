@@ -1433,7 +1433,8 @@
       "defaultServiceCode": "Código nacional (cTribNac), com 6 dígitos. Usado quando a nota não informa outro código. Você pode remover este padrão na edição.",
       "sendMunicipalReg": "Desligado por padrão. Marque só se a prefeitura registrou esta empresa no cadastro nacional e a Receita exigir a IM; senão a nota é rejeitada (E0120).",
       "simplesRate": "A alíquota efetiva que aparece no seu PGDAS-D. Vai em toda nota (pTotTribSN). Para atualizar, edite a empresa.",
-      "simplesIssRate": "Opcional. Só se algum cliente reter o ISS na fonte: a alíquota de ISS da sua faixa."
+      "simplesIssRate": "Opcional. Só se algum cliente reter o ISS na fonte: a alíquota de ISS da sua faixa.",
+      "taxIdLocked": "O CNPJ não pode ser alterado. Para outro CNPJ, cadastre uma nova empresa."
     },
     "fixFields": "Corrija os campos destacados.",
     "defaultServiceCode": "Código de serviço padrão",

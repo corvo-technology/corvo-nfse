@@ -433,7 +433,7 @@ console.log(body.data.id); // { data: Company }`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "A duplicate CNPJ in the same account/environment returns `409`. In `live`, creation can fail on company limit or blocked plan (`422`)." },
+            { kind: "callout", tone: "warn", body: "A duplicate CNPJ in the same account/environment returns `409`. The CNPJ cannot be changed afterwards. In `live`, creation can fail on company limit or blocked plan (`422`)." },
             { kind: "callout", tone: "accent", body: "The input body uses `address`, but the response exposes flat fields: `addressStreet`, `addressNumber`, `addressCity`, `addressState`, `addressZip` etc. `status` is `pending_setup`, `ready` or `blocked`; `setupGaps` lists pending items (`municipality_code`, `certificate`)." },
           ],
         },
@@ -527,7 +527,7 @@ console.log(body.data); // { data: Company }`,
           params: {
             rows: [
               { name: "legalName", type: "string", required: false, description: "Legal name, up to 200 characters, not empty after trim." },
-              { name: "taxId", type: "string", required: false, description: "Valid CNPJ; normalized before the duplicate check." },
+              { name: "taxId", type: "string", required: false, description: "The CNPJ cannot be changed. Sending the current CNPJ is accepted and ignored; any other value returns `422`. To use another CNPJ, create a new company." },
               { name: "taxRegime", type: "string", required: false, description: "`MEI` or `Simples Nacional`. Corvo serves only these two regimes: any other value returns `422` `ERROR_TAX_REGIME_NOT_SUPPORTED`." },
               { name: "tradeName", type: "string", required: false, description: "Up to 200 characters." },
               { name: "municipalReg", type: "string or null", required: false, description: "Optional. Stored but not sent on the invoice unless `sendMunicipalReg` is `true`. `null` clears it." },

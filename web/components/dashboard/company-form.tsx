@@ -96,16 +96,16 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
     }).catch(() => { if (!controller.signal.aborted) setCepState("error"); });
   };
 
-  type FieldOptions = { required?: boolean; maxLength?: number; mask?: (value: string) => string; inputMode?: "numeric" | "text"; autoComplete?: string; mono?: boolean; span?: boolean; hint?: string };
-  const field = (name: string, { required = false, maxLength = 200, mask, inputMode, autoComplete, mono, span, hint }: FieldOptions = {}) => (
+  type FieldOptions = { required?: boolean; maxLength?: number; mask?: (value: string) => string; inputMode?: "numeric" | "text"; autoComplete?: string; mono?: boolean; span?: boolean; hint?: string; readOnly?: boolean };
+  const field = (name: string, { required = false, maxLength = 200, mask, inputMode, autoComplete, mono, span, hint, readOnly }: FieldOptions = {}) => (
     <Field key={name} label={t(name)} error={fieldErrors[name] || undefined} required={required} optionalLabel={required ? undefined : t("optional")} hint={hint} className={span ? "sm:col-span-2" : undefined}>
-      {(props) => <input {...props} className={mono ? "field font-mono tabular-nums" : "field"} value={values[name]} required={required} maxLength={maxLength} inputMode={inputMode} autoComplete={autoComplete ?? "off"} spellCheck={false} placeholder={t.has(`placeholders.${name}`) ? t(`placeholders.${name}`) : undefined} onChange={(event) => set(name, mask ? mask(event.target.value) : event.target.value)} />}
+      {(props) => <input {...props} className={mono ? "field font-mono tabular-nums" : "field"} value={values[name]} required={required} readOnly={readOnly} aria-readonly={readOnly} maxLength={maxLength} inputMode={inputMode} autoComplete={autoComplete ?? "off"} spellCheck={false} placeholder={t.has(`placeholders.${name}`) ? t(`placeholders.${name}`) : undefined} onChange={(event) => set(name, mask ? mask(event.target.value) : event.target.value)} />}
     </Field>
   );
 
   function validateCompany(): string | null {
-    if (!values.legalName.trim() || !values.taxId.trim()) return t("required");
-    if (!isValidCnpj(values.taxId)) return t("cnpjInvalid");
+    if (!values.legalName.trim() || (wizard && !values.taxId.trim())) return t("required");
+    if (wizard && !isValidCnpj(values.taxId)) return t("cnpjInvalid");
     return null;
   }
 
@@ -139,7 +139,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       const hasAddress = Object.values(addressFields).some(Boolean);
       const municipalReg = optional(values.municipalReg);
       const result = await onSave({
-        legalName: values.legalName.trim(), taxId: cleanTaxId(values.taxId),
+        legalName: values.legalName.trim(), ...(wizard ? { taxId: cleanTaxId(values.taxId) } : {}),
         ...(wizard ? { taxRegime: values.taxRegime as TaxRegime, simpleNational: isSimpleNational(values.taxRegime as TaxRegime), specialRegime: !allowsSpecialTaxRegime(values.taxRegime as TaxRegime) || values.specialRegime === "0" ? undefined : values.specialRegime } : {}),
         ...(isSimples ? { simplesRate: rateValue("simplesRate"), simplesIssRate: rateValue("simplesIssRate") || (company?.simplesIssRate ? null : undefined) } : {}),
         tradeName: optional(values.tradeName), municipalityCode: values.municipalityCode,
@@ -216,7 +216,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       {section(t("sectionCompany"), wizard ? t("stepHint.company") : undefined)}
       {field("legalName", { required: true, span: true })}
       {field("tradeName")}
-      {field("taxId", { required: true, maxLength: 18, mask: maskCnpj, inputMode: "text", mono: true })}
+      {field("taxId", { required: true, maxLength: 18, mask: maskCnpj, inputMode: "text", mono: true, readOnly: !wizard, hint: wizard ? undefined : t("hints.taxIdLocked") })}
     </fieldset>}
 
     {show("address") && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-6">

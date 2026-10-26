@@ -199,3 +199,14 @@ describe("Invoice company defaults", () => {
     await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce()); expect(mocks.create.mock.calls[0][0].companyTaxId).toBe("41834687000148");
   });
 });
+
+describe("CNPJ of an existing company", () => {
+  it("is read-only on edit and is not sent", async () => {
+    const onSave = vi.fn().mockResolvedValue(company);
+    renderUI(<CompanyForm company={company} onSave={onSave} onCancel={vi.fn()} />);
+    expect(field("CNPJ").readOnly).toBe(true);
+    save();
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0][0]).not.toHaveProperty("taxId");
+  });
+});

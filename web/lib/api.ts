@@ -160,7 +160,7 @@ export const companies = {
 
   list: async (params: PageParams = {}, signal?: AbortSignal): Promise<Page<Company>> => { const page = toPage(await request<ListBody<CompanyWire>>(`/companies${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptCompany) }; },
   get: async (id: string, signal?: AbortSignal) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>(`/companies/${idPath(id)}`, { signal }))),
-  create: async (data: CompanyFormInput & Pick<CreateCompanyInput, "taxRegime">) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>("/companies", json(data)))),
+  create: async (data: CompanyFormInput & Pick<CreateCompanyInput, "taxId" | "taxRegime">) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>("/companies", json(data)))),
   update: async (id: string, data: UpdateCompanyInput) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>(`/companies/${idPath(id)}`, json(data, "PATCH")))),
   delete: async (id: string) => (await request<Envelope<null>>(`/companies/${idPath(id)}`, { method: "DELETE" })).data,
 };

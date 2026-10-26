@@ -188,7 +188,8 @@ api/FRONTEND_API.md for requests/responses/errors and prerequisites.
 POST /v1/companies requires legalName, taxId (CNPJ), taxRegime (MEI | Simples
 Nacional), municipalityCode (7-digit IBGE) and, for Simples Nacional, simplesRate. Corvo serves only MEI and Simples
 Nacional: any other regime returns 422 ERROR_TAX_REGIME_NOT_SUPPORTED. Corvo does
-not generate or compute the DAS.
+not generate or compute the DAS. The CNPJ of a company cannot be changed
+(PATCH accepts the current taxId and ignores it; another value returns 422).
 municipalReg is optional and is stored but NOT sent in the DPS unless
 sendMunicipalReg=true (default false): Receita rejects it (E0120) when the
 municipality has no complementary data for the company. defaultServiceCode (6-digit cTribNac),
