@@ -52,6 +52,11 @@ export function proxy(request: NextRequest) {
   // i18n routing for locale-prefixed paths and root
   const response = handleI18nRouting(request);
 
+  // Locale-prefixed pages are static and cached by the CDN: a Set-Cookie would make them
+  // uncacheable. The URL already carries the locale; the root redirect and the locale
+  // switcher still set NEXT_LOCALE.
+  if (hasLocalePrefix) response.headers.delete("set-cookie");
+
   // Access control — skip if site is open
   if (process.env.SITE_ACCESS_MODE === "open") {
     return response;

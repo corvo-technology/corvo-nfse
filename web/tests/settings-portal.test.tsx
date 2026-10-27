@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import SettingsPage from "@/app/app/settings/page";
+import SettingsPage from "@/app/(dashboard)/app/settings/page";
 import { ApiError } from "@/lib/api";
 import messages from "@/messages/en.json";
 

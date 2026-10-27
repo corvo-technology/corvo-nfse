@@ -1,17 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { cookies } from "next/headers";
-import { NextIntlClientProvider } from "next-intl";
-import { Providers } from "./providers";
-import { CookieConsentWrapper } from "@/components/CookieConsentWrapper";
-import { ToastProvider } from "@/components/ui/toast";
 import { OG_IMAGE_PATH, SITE_COPY, SITE_URL } from "@/lib/seo";
-import "./globals.css";
 
-const siteUrl = SITE_URL;
 // Fallback only (login, dashboard, errors): marketing pages set their own metadata per language.
 const fallback = SITE_COPY.en;
 
-export const metadata: Metadata = {
+/** Metadata shared by every root layout (marketing and dashboard). */
+export const rootMetadata: Metadata = {
   title: {
     default: fallback.title,
     template: "%s | Corvo",
@@ -19,7 +13,7 @@ export const metadata: Metadata = {
   description: fallback.description,
   authors: [{ name: "Corvo Tech" }],
   creator: "Corvo Tech",
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(SITE_URL),
   icons: {
     icon: [
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
@@ -54,32 +48,6 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = {
+export const rootViewport: Viewport = {
   themeColor: "#0a0a0a",
 };
-
-export default async function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const cookieStore = await cookies();
-  const locale = cookieStore.get("NEXT_LOCALE")?.value === "pt" ? "pt" : "en";
-  const messages = (await import(`../messages/${locale}.json`)).default;
-
-  return (
-    <html
-      lang={locale}
-      className="h-full antialiased"
-    >
-      <body className="min-h-full flex flex-col">
-        <CookieConsentWrapper />
-        <NextIntlClientProvider messages={messages} locale={locale}>
-          <Providers>
-            <ToastProvider>{children}</ToastProvider>
-          </Providers>
-        </NextIntlClientProvider>
-      </body>
-    </html>
-  );
-}

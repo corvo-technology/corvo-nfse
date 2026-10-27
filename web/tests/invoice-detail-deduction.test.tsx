@@ -2,7 +2,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import InvoiceDetailPage from "@/app/app/invoices/[id]/page";
+import InvoiceDetailPage from "@/app/(dashboard)/app/invoices/[id]/page";
 import type { Invoice } from "@/lib/types";
 import messages from "@/messages/en.json";
 
