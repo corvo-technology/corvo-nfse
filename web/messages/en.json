@@ -707,6 +707,7 @@
     "buyCredits": "Choose plan",
     "monthly": "Monthly",
     "perMonth": "/month",
+    "overagePerNote": "{price} per extra invoice",
     "recommended": "Recommended",
     "calculator": {
       "title": "How many invoices do you issue per month?",
@@ -723,7 +724,7 @@
       },
       "custom": {
         "label": "Contact us",
-        "description": "Volumes above 10,000 invoices/month."
+        "description": "Volumes above 20,000 invoices/month."
       }
     },
     "footnote": "Monthly allowances do not roll over. Free renews on the first day of the month in UTC; paid plans follow the subscription cycle. Authorized production overage is billed separately, up to the plan’s processing limit.",

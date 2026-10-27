@@ -10,17 +10,11 @@ import {
 } from "motion/react";
 import { cn } from "@/lib/utils";
 import { useLocale, useTranslations } from "next-intl";
+import { PLANS, type PlanSlug, type PlanTier } from "@/lib/plans-catalog";
+
+export { PLANS, type PlanSlug, type PlanTier };
 
 /* ── Pricing engine (mirrors backend PricingService) ─────────── */
-
-export type PlanSlug = "free" | "developer" | "growth" | "scale" | "volume";
-
-export interface PlanTier {
-  slug: PlanSlug;
-  credits: number;
-  basePriceCents: number;
-  perCreditCents: number;
-}
 
 const MIN_VOLUME = 1;
 const MAX_VOLUME = 50000;
@@ -28,16 +22,14 @@ const MAX_VOLUME = 50000;
 const DEFAULT_VOLUME = 250;
 const THUMB = 22;
 
-export const PLANS: PlanTier[] = [
-  { slug: "free", credits: 15, basePriceCents: 0, perCreditCents: 0 },
-  { slug: "developer", credits: 250, basePriceCents: 2990, perCreditCents: 12 },
-  { slug: "growth", credits: 1500, basePriceCents: 9990, perCreditCents: 8 },
-  { slug: "scale", credits: 6000, basePriceCents: 29990, perCreditCents: 5 },
-  { slug: "volume", credits: 20000, basePriceCents: 69990, perCreditCents: 5 },
-];
-
 export function formatBRL(cents: number): string {
   return `R$ ${(cents / 100).toFixed(2).replace(".", ",")}`;
+}
+
+/** Overage price per extra invoice, in the locale's decimal format ("R$ 0,12" / "R$ 0.12"). */
+export function formatOverage(cents: number, locale: string): string {
+  const reais = (cents / 100).toFixed(2);
+  return `R$ ${locale === "pt" ? reais.replace(".", ",") : reais}`;
 }
 
 /** Cost of a single note: a fraction of a cent matters here, so keep four decimals below R$ 1. */
@@ -200,6 +192,12 @@ function FeaturedPlan({
           )}
         </p>
 
+        {!isFree && (
+          <p data-testid="plan-overage" className="mt-1 text-[13px] text-text-3 tabular-nums">
+            {t("overagePerNote", { price: formatOverage(plan.perCreditCents, locale) })}
+          </p>
+        )}
+
         {/* Quota vs overage bar */}
         {!isFree && (
           <div className="mt-7">
@@ -293,6 +291,7 @@ function PlanLadder({
             <button
               key={p.slug}
               type="button"
+              data-plan={p.slug}
               onClick={() => onPick(p.credits)}
               className="relative flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors hover:bg-white/[0.03]"
             >
@@ -323,6 +322,11 @@ function PlanLadder({
                   <span className="block text-[12px] text-text-4 tabular-nums mt-0.5">
                     {nf.format(p.credits)} {t("credits")}
                   </span>
+                  {!isFree && (
+                    <span data-testid="plan-overage" className="block text-[11px] text-text-4 tabular-nums">
+                      {t("overagePerNote", { price: formatOverage(p.perCreditCents, locale) })}
+                    </span>
+                  )}
                 </span>
               </span>
               <span
