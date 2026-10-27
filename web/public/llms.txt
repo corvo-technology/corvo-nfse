@@ -8,7 +8,7 @@ Corvo registers issuer companies, stores their A1 certificates, calculates taxes
 
 - API base URL: `https://api.corvo.tech/v1`. Authenticate with the `X-API-Key` header. Keys starting with `corvo_test_` use the test environment (no fiscal validity); keys starting with `corvo_live_` issue real invoices.
 - MCP server (AI agents): `https://api.corvo.tech/mcp`. Claude Code, Cursor, Codex, VS Code, Windsurf and Claude Desktop connect with OAuth in the browser; the user picks the workspace and the environment (test or live) on the approval screen.
-- Tax regimes: MEI and Simples Nacional first; other regimes need a service tax profile.
+- Tax regimes: MEI and Simples Nacional only.
 - Issuance is asynchronous: `POST /v1/invoices` returns `202` and the result arrives by `GET /v1/invoices/:id` or by webhook. Send an `Idempotency-Key` header to retry safely.
 - Corvo serves only MEI and Simples Nacional (`taxRegime` is `MEI` or `Simples Nacional`; other regimes return `422 ERROR_TAX_REGIME_NOT_SUPPORTED`) and does not generate the DAS. An ME/EPP (Simples Nacional) must send its effective Simples rate as `simplesRate` when the company is created (`simplesIssRate` is optional, for ISS withholding) and updates it with `PATCH /v1/companies/:id`; it is sent on every NFS-e as `pTotTribSN`. A MEI sends no rate.
 - `POST /v1/invoices/calculate` shows the taxes (ISS, withholdings, IBS/CBS when they apply) without issuing, using no credit.
@@ -30,7 +30,7 @@ Corvo registers issuer companies, stores their A1 certificates, calculates taxes
 - [Certificates](https://corvo.tech/en/docs/certificates): Upload and manage A1 (.p12) certificates.
 - [Invoices](https://corvo.tech/en/docs/invoices): Issue, calculate, schedule, fetch, download, email and cancel NFS-e.
 - [Webhooks](https://corvo.tech/en/docs/webhooks): Register endpoints, event types, signatures and deliveries.
-- [Credits](https://corvo.tech/en/docs/credits) and [Billing](https://corvo.tech/en/docs/billing): Allowance, plans, usage and the public plan catalog.
+- [Billing](https://corvo.tech/en/docs/billing): Credits, allowance, plans, usage and the public plan catalog.
 - [Async issuance](https://corvo.tech/en/docs/async-issuance): Statuses, tracking and idempotent retries.
 - [Pagination](https://corvo.tech/en/docs/pagination), [Errors](https://corvo.tech/en/docs/errors) and [Rate limits](https://corvo.tech/en/docs/rate-limits).
 - [AI agents (MCP)](https://corvo.tech/en/docs/mcp): Connect Claude Code, Cursor, Codex and others.

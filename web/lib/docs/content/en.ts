@@ -23,7 +23,7 @@ const enWithRetiredCredits: DocsTree = {
     blocks: [
       {
         kind: "text",
-        body: "The Corvo API lets you register companies (MEI, Simples Nacional and other regimes), upload A1 certificates, calculate taxes before issuing, issue service invoices (NFS-e) and track their full lifecycle via webhooks. AI agents such as Claude Code, Cursor and Codex can do the same through the MCP server (see AI agents).",
+        body: "The Corvo API lets you register companies (MEI and Simples Nacional), upload A1 certificates, calculate taxes before issuing, issue service invoices (NFS-e) and track their full lifecycle via webhooks. AI agents such as Claude Code, Cursor and Codex can do the same through the MCP server (see AI agents).",
       },
       { kind: "heading", level: 2, body: "Quickstart" },
       {
