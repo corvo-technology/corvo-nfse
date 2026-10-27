@@ -55,6 +55,13 @@ const publicPaths = new Set([
   "/terms",
 ]);
 
+/** Pages removed for good: 410 tells Google to drop them faster than a 404. Explicit list, no pattern. */
+export const GONE_PATHS = new Set(["/pt/coming-soon", "/en/coming-soon", "/pt/funcionalidades", "/mo", "/month"]);
+
+/** Missing page: rewrite to a path with no route, so Next renders the not-found page with a real 404 status. */
+const notFound = (request: NextRequest, locale: string) =>
+  NextResponse.rewrite(new URL(`/${locale}/__not-found`, request.url));
+
 const isPublicPath = (logicalPath: string) =>
   publicPaths.has(logicalPath) ||
   logicalPath.startsWith("/app") ||
@@ -63,6 +70,10 @@ const isPublicPath = (logicalPath: string) =>
 
 export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  if (GONE_PATHS.has(pathname)) {
+    return new NextResponse("Gone", { status: 410, headers: { "content-type": "text/plain; charset=utf-8" } });
+  }
 
   const legacyTarget = LEGACY_REDIRECTS[pathname];
   if (legacyTarget) {
@@ -83,6 +94,11 @@ export function proxy(request: NextRequest) {
   const hasLocalePrefix = /^\/(en|pt)(\/|$)/.test(pathname);
   const isNonLocalePath = !hasLocalePrefix && pathname !== "/";
 
+  // The public API lives on api.corvo.tech; /v1/* on the site is a plain 404, not a redirect to home.
+  if (pathname === "/v1" || pathname.startsWith("/v1/")) {
+    return notFound(request, locale);
+  }
+
   if (isNonLocalePath) {
     // Access control only — no i18n routing
     if (process.env.SITE_ACCESS_MODE === "open") {
@@ -92,7 +108,7 @@ export function proxy(request: NextRequest) {
     if (isPublicPath(logicalPath)) {
       return NextResponse.next();
     }
-    return NextResponse.redirect(new URL(`/${locale}`, request.url));
+    return notFound(request, locale);
   }
 
   // i18n routing for locale-prefixed paths and root
@@ -118,8 +134,8 @@ export function proxy(request: NextRequest) {
     return response;
   }
 
-  // Redirect non-public paths to home in the same locale
-  return NextResponse.redirect(new URL(`/${locale}`, request.url));
+  // Non-public or unknown paths answer 404 instead of redirecting to home (soft 404).
+  return notFound(request, locale);
 }
 
 export const config = {
