@@ -111,7 +111,7 @@ Vitest covers the API client, the proxy, authentication, documentation content, 
 Run from the repository root:
 
 ```bash
-docker build -f deploy/Dockerfile.web -t corvo-web:local web
+docker build -f deploy/Dockerfile.web -t corvo-web:local .
 ```
 
 The image uses Next.js standalone output. See [SELF_HOSTING.md](../SELF_HOSTING.md) for the complete stack.
