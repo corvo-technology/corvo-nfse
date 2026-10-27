@@ -2199,11 +2199,11 @@ console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { d
     "volume": 20000,
     "recommended_plan": "volume",
     "plan_name": "Volume",
-    "monthly_allowance": 10000,
-    "overage_credits": 10000,
-    "overage_cost_cents": 90000,
-    "base_price_cents": 89990,
-    "total_estimated_cents": 179990,
+    "monthly_allowance": 20000,
+    "overage_credits": 0,
+    "overage_cost_cents": 0,
+    "base_price_cents": 69990,
+    "total_estimated_cents": 69990,
     "currency": "BRL",
     "billing_cycle": "monthly"
   }
