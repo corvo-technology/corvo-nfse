@@ -2501,7 +2501,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     },
     "mcp": {
       "title": "AI agents (MCP)",
-      "description": "Connect Claude Code, Cursor and other agents to Corvo with OAuth.",
+      "description": "Connect Claude Code, Claude Desktop, Cursor, VS Code, Codex and Windsurf to Corvo with OAuth.",
       "blocks": [
         {
           "kind": "text",
@@ -2527,6 +2527,49 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           "label": "Cursor (.cursor/mcp.json)",
           "language": "json",
           "code": "{\n  \"mcpServers\": {\n    \"corvo\": {\n      \"url\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "code",
+          "label": "VS Code (.vscode/mcp.json)",
+          "language": "json",
+          "code": "{\n  \"servers\": {\n    \"corvo\": {\n      \"type\": \"http\",\n      \"url\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "code",
+          "label": "Codex (~/.codex/config.toml)",
+          "language": "text",
+          "code": "[mcp_servers.corvo]\nurl = \"https://api.corvo.tech/mcp\""
+        },
+        {
+          "kind": "code",
+          "label": "Windsurf (mcp_config.json)",
+          "language": "json",
+          "code": "{\n  \"mcpServers\": {\n    \"corvo\": {\n      \"serverUrl\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "heading",
+          "level": 3,
+          "body": "Claude Desktop"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Open Settings → Connectors.",
+            "Click Add custom connector, enter a name (Corvo) and paste the server URL.",
+            "Click Connect and approve access in the browser.",
+            "URL: `https://api.corvo.tech/mcp`"
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "body": "Not yet verified with Corvo's OAuth: the VS Code, Codex, Windsurf and Claude Desktop formats follow each client's public documentation and the dashboard. If one does not connect, use the dashboard (AI agents) and tell us."
+        },
+        {
+          "kind": "code",
+          "label": "Test prompt",
+          "language": "text",
+          "code": "List my companies on Corvo and issue a test NFS-e of R$ 100."
         },
         {
           "kind": "list",
