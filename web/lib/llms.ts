@@ -18,7 +18,7 @@ Corvo registers issuer companies, stores their A1 certificates, calculates taxes
 
 - API base URL: \`https://api.corvo.tech/v1\`. Authenticate with the \`X-API-Key\` header. Keys starting with \`corvo_test_\` use the test environment (no fiscal validity); keys starting with \`corvo_live_\` issue real invoices.
 - MCP server (AI agents): \`https://api.corvo.tech/mcp\`. Claude Code, Cursor, Codex, VS Code, Windsurf and Claude Desktop connect with OAuth in the browser; the user picks the workspace and the environment (test or live) on the approval screen.
-- Tax regimes: MEI and Simples Nacional first; other regimes need a service tax profile.
+- Tax regimes: MEI and Simples Nacional only.
 - Issuance is asynchronous: \`POST /v1/invoices\` returns \`202\` and the result arrives by \`GET /v1/invoices/:id\` or by webhook. Send an \`Idempotency-Key\` header to retry safely.
 - Corvo serves only MEI and Simples Nacional (\`taxRegime\` is \`MEI\` or \`Simples Nacional\`; other regimes return \`422 ERROR_TAX_REGIME_NOT_SUPPORTED\`) and does not generate the DAS. An ME/EPP (Simples Nacional) must send its effective Simples rate as \`simplesRate\` when the company is created (\`simplesIssRate\` is optional, for ISS withholding) and updates it with \`PATCH /v1/companies/:id\`; it is sent on every NFS-e as \`pTotTribSN\`. A MEI sends no rate.
 - \`POST /v1/invoices/calculate\` shows the taxes (ISS, withholdings, IBS/CBS when they apply) without issuing, using no credit.
@@ -28,8 +28,7 @@ Corvo registers issuer companies, stores their A1 certificates, calculates taxes
 - Cancellation: \`POST /v1/invoices/:id/cancel\` with a \`reason\` (\`issue_error\`, \`service_not_provided\` or \`other\`). A \`queued\` invoice is cancelled immediately (\`200\`); an \`authorized\` NFS-e returns \`202\` with status \`cancelling\` while the cancellation event is sent to the Sefin, and the result arrives by webhook (\`nfse.invoice.cancelled\` or \`nfse.invoice.cancellation_rejected\`). An invoice still being issued (\`processing\`) records the request and is cancelled as soon as it is authorized. A \`description\` of 15–255 characters is required for an issued NFS-e or one being issued. Cancelling an issued NFS-e does not refund the credit. An invoice that cannot be cancelled (\`retry_pending\`, \`reconciliation_required\`, \`manual_review\`, \`rejected\`, \`failed\`) returns \`409 ERROR_INVOICE_NOT_CANCELLABLE\`; repeating the request on a \`cancelling\` or \`cancelled\` invoice, or on one with a pending cancellation, returns its current state.
 - Official SDKs in nine languages (same operations, \`X-API-Key\` auth, typed errors, webhook verification): Node.js (\`npm install corvo-nfse-node\`), Python (\`pip install corvo-nfse\`), Go (\`go get github.com/corvo-technology/corvo-nfse-go\`), PHP (\`composer require corvo-technology/corvo-nfse\`), Ruby (\`gem install corvo-nfse\`), Rust (\`cargo add corvo-nfse\`), Java (\`tech.corvo:corvo-nfse\`), Elixir (\`{:corvo_nfse, "~> 0.1.1"}\`) and .NET (\`dotnet add package Corvo.Nfse\`). Each reads \`CORVO_API_KEY\`.
 - Multi-company: one account can hold many issuer companies, each with its own certificate.
-- Pricing: free plan with 15 invoices a month and 1 company, no credit card. Paid plans and overage prices are public at \`GET https://api.corvo.tech/v1/plans\`.
-- Source code: open source under AGPL-3.0-only.`;
+- Pricing: free plan with 15 invoices a month and 1 company, no credit card. Paid plans and overage prices are public at \`GET https://api.corvo.tech/v1/plans\`.`;
 
 const PT_INTRO = `# Corvo
 
@@ -40,8 +39,8 @@ A Corvo cadastra empresas emissoras, guarda os certificados A1, calcula os tribu
 ## Fatos rápidos
 
 - URL base da API: \`https://api.corvo.tech/v1\`. Autentique com o header \`X-API-Key\`. Chaves \`corvo_test_\` usam o ambiente de teste (sem valor fiscal); chaves \`corvo_live_\` emitem notas reais.
-- Servidor MCP (agentes de IA): \`https://api.corvo.tech/mcp\`, com OAuth no navegador.
-- Regimes: MEI e Simples Nacional.
+- Servidor MCP (agentes de IA): \`https://api.corvo.tech/mcp\`. Claude Code, Cursor, Codex, VS Code, Windsurf e Claude Desktop conectam com OAuth no navegador; o usuário escolhe o workspace e o ambiente (teste ou produção) na tela de aprovação.
+- Regimes: só MEI e Simples Nacional.
 - A emissão é assíncrona: \`POST /v1/invoices\` responde \`202\` e o resultado chega por \`GET /v1/invoices/:id\` ou por webhook. Envie \`Idempotency-Key\` para repetir com segurança.
 - \`POST /v1/invoices/calculate\` mostra os tributos sem emitir.
 - SDKs oficiais em nove linguagens; o Java usa a coordenada Maven \`tech.corvo:corvo-nfse\`.
@@ -55,6 +54,7 @@ interface Labels {
   fullDesc: string;
   other: string;
   otherDesc: string;
+  legal: string;
   title: string;
 }
 
@@ -67,6 +67,7 @@ const LABELS: Record<SeoLocale, Labels> = {
     fullDesc: "Every documentation page in English, for AI tools.",
     other: "Documentação em português (llms.txt)",
     otherDesc: "The same index in Brazilian Portuguese.",
+    legal: "[Privacy notice](https://corvo.tech/en/privacy), [Terms of service](https://corvo.tech/en/terms) and [Data processing addendum](https://corvo.tech/en/dpa).",
     title: "Corvo API documentation",
   },
   pt: {
@@ -77,6 +78,7 @@ const LABELS: Record<SeoLocale, Labels> = {
     fullDesc: "Todas as páginas da documentação em português, para ferramentas de IA.",
     other: "English documentation (llms.txt)",
     otherDesc: "O mesmo índice em inglês.",
+    legal: "[Aviso de privacidade](https://corvo.tech/pt/privacy), [Termos de uso](https://corvo.tech/pt/terms) e [Adendo de tratamento de dados](https://corvo.tech/pt/dpa).",
     title: "Documentação da API Corvo",
   },
 };
@@ -105,6 +107,7 @@ export function buildLlmsTxt(locale: SeoLocale): string {
     `- [${labels.full}](${LLMS_PATHS[locale].full}): ${labels.fullDesc}`,
     `- [${labels.other}](${LLMS_PATHS[other].index}): ${labels.otherDesc}`,
     `- [Corvo](${pageUrl(locale)})`,
+    `- ${labels.legal}`,
   ];
   return [
     locale === "en" ? EN_INTRO : PT_INTRO,

@@ -39,4 +39,24 @@ describe("llms.txt and llms-full.txt", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/markdown");
   });
+
+  const CLIENTS = ["Claude Code", "Claude Desktop", "Cursor", "VS Code", "Codex", "Windsurf"];
+
+  for (const locale of ["en", "pt"] as const) {
+    it(`never mentions AGPL in ${locale}`, () => {
+      expect(buildLlmsTxt(locale)).not.toMatch(/AGPL/i);
+    });
+
+    it(`lists the 6 MCP clients and the legal links in ${locale}`, () => {
+      const index = buildLlmsTxt(locale);
+      for (const client of CLIENTS) expect(index).toContain(client);
+      for (const page of ["privacy", "terms", "dpa"]) expect(index).toContain(`https://corvo.tech/${locale}/${page})`);
+    });
+
+    it(`says MEI and Simples Nacional only in ${locale}, matching the regime rule`, () => {
+      const index = buildLlmsTxt(locale);
+      expect(index).not.toMatch(/other regimes need/i);
+      expect(index).toMatch(locale === "en" ? /MEI and Simples Nacional only/ : /só MEI e Simples Nacional/);
+    });
+  }
 });
