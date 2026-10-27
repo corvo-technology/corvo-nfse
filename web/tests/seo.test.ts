@@ -35,9 +35,113 @@ describe("page metadata", () => {
 
 describe("robots and sitemap", () => {
   it("lets crawlers reach the docs and blocks only private screens", () => {
-    const rules = robots().rules as { disallow: string[] };
-    expect(rules.disallow).toEqual(["/app/", "/login", "/mcp/", "/api/"]);
-    expect(rules.disallow).not.toContain("/docs");
+    const rules = robots().rules as { userAgent: string; disallow: string[] }[];
+    for (const rule of rules) {
+      expect(rule.disallow).toEqual(["/app/", "/login", "/mcp/", "/api/"]);
+      expect(rule.disallow).not.toContain("/docs");
+    }
+  });
+
+  it("allows each AI crawler explicitly and has no Host directive", () => {
+    const result = robots();
+    expect(result).not.toHaveProperty("host");
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "rules": [
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "*",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "GPTBot",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "OAI-SearchBot",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "ChatGPT-User",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "ClaudeBot",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "Claude-User",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "PerplexityBot",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "Google-Extended",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "Applebot-Extended",
+          },
+        ],
+        "sitemap": "https://corvo.tech/sitemap.xml",
+      }
+    `);
   });
 
   it("lists every page in both languages with hreflang alternates", () => {
