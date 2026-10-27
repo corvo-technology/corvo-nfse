@@ -180,3 +180,15 @@ describe("start page", () => {
     expect((robots().rules as { disallow: string[] }).disallow).toContain("/login");
   });
 });
+
+describe("sitemap coverage", () => {
+  it("lists every public page under app/[locale] with lastModified", async () => {
+    const { readdirSync, statSync, existsSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const dir = join(__dirname, "..", "app", "[locale]");
+    const pages = readdirSync(dir).filter((name) => statSync(join(dir, name)).isDirectory() && existsSync(join(dir, name, "page.tsx")));
+    const urls = sitemap().map((entry) => entry.url);
+    for (const name of pages) expect(urls).toContain(`https://corvo.tech/pt/${name}`);
+    for (const entry of sitemap()) expect(entry.lastModified).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
