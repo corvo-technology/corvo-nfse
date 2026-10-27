@@ -671,7 +671,7 @@
   "Hero": {
     "badge": "Tax invoice infrastructure for developers",
     "title": "Your tax invoice API. Simple as that.",
-    "subtitle": "Corvo is a REST API and MCP server to issue Brazilian service invoices (NFS-e) on the national standard for MEI and Simples Nacional companies. Built for developers, SaaS products, ERPs and AI agents, open source under AGPL-3.0.",
+    "subtitle": "Corvo is a REST API and MCP server to issue Brazilian service invoices (NFS-e) on the national standard for MEI and Simples Nacional companies. Built for developers, SaaS products, ERPs and AI agents.",
     "startFree": "Start free",
     "viewDocs": "View documentation",
     "mono": "15 free invoices per month. No credit card required."
