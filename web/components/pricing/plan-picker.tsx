@@ -95,6 +95,28 @@ const ZONES = (() => {
   }));
 })();
 
+/** Plans with a highlight badge (Pedro's call: Growth is the flagship, Developer the best value). */
+export const BADGED_PLANS: ReadonlySet<PlanSlug> = new Set(["growth", "developer"]);
+/** The plan whose card gets the highlight border. */
+export const HIGHLIGHTED_PLAN: PlanSlug = "growth";
+
+function PlanBadge({ slug, className }: { slug: PlanSlug; className?: string }) {
+  const t = useTranslations("Pricing");
+  if (!BADGED_PLANS.has(slug)) return null;
+  return (
+    <span
+      data-testid={`plan-badge-${slug}`}
+      className={cn(
+        "whitespace-nowrap rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.06em]",
+        slug === HIGHLIGHTED_PLAN ? "border-accent/60 text-accent" : "border-white/20 text-text-2",
+        className
+      )}
+    >
+      {t(`plans.${slug}.badge`)}
+    </span>
+  );
+}
+
 const thumbOffset = (p: number) => `calc(${p * 100}% + ${(0.5 - p) * THUMB}px)`;
 
 /* ── Animated money ─────────────────────────────────────────── */
@@ -167,6 +189,7 @@ function FeaturedPlan({
             <span className="whitespace-nowrap font-mono text-[12px] tracking-[0.14em] text-text">
               {t(`plans.${plan.slug}.name`)}
             </span>
+            <PlanBadge slug={plan.slug} />
             <span className="shrink-0 whitespace-nowrap bg-accent text-[#0a0a0a] font-mono text-[10px] font-semibold tracking-[0.08em] px-2.5 py-1 rounded-full">
               {current ? t("currentPlan") : t("recommended")}
             </span>
@@ -294,7 +317,11 @@ function PlanLadder({
               key={p.slug}
               type="button"
               onClick={() => onPick(p.credits)}
-              className="relative flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors hover:bg-white/[0.03]"
+              data-plan={p.slug}
+              className={cn(
+                "relative flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors hover:bg-white/[0.03]",
+                p.slug === HIGHLIGHTED_PLAN && "border border-accent/30"
+              )}
             >
               {isActive && (
                 <motion.span
@@ -319,6 +346,7 @@ function PlanLadder({
                   >
                     {t(`plans.${p.slug}.name`)}
                     {p.slug === current && <span className="ml-2 text-accent">· {t("currentPlan")}</span>}
+                    <PlanBadge slug={p.slug} className="ml-2 align-middle" />
                   </span>
                   <span className="block text-[12px] text-text-4 tabular-nums mt-0.5">
                     {nf.format(p.credits)} {t("credits")}
