@@ -3,7 +3,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { JsonLd } from "@/components/seo/json-ld";
-import { SITE_COPY, SITE_NAME, SITE_URL, seoLocale } from "@/lib/seo";
+import { ORGANIZATION_SAME_AS, ORGANIZATION_URL, SITE_COPY, SITE_NAME, SITE_URL, seoLocale } from "@/lib/seo";
 import type { Metadata } from "next";
 import { Providers } from "../providers";
 import { CookieConsentWrapper } from "@/components/CookieConsentWrapper";
@@ -60,8 +60,10 @@ export default async function LocaleLayout({
         "@type": "Organization",
         "@id": `${SITE_URL}/#organization`,
         name: "Corvo Tech",
-        url: SITE_URL,
+        // Same @id in every language, so the url must not change with the locale.
+        url: ORGANIZATION_URL,
         logo: `${SITE_URL}/icon-512.png`,
+        sameAs: ORGANIZATION_SAME_AS,
       },
       {
         "@type": "WebSite",
