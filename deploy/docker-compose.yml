@@ -111,10 +111,9 @@ services:
 
   worker:
     <<: *backend
-    # Same image as the API; only the command and the health check change.
+    # Same image as the API; CORVO_RUNTIME_ROLE picks the worker process.
     image: corvo-api:local
     pull_policy: never
-    command: ['node', 'dist/main.worker.js']
     healthcheck:
       test: ['CMD-SHELL', 'curl -f http://127.0.0.1:$${WORKER_PORT:-3002}/v1/health/live || exit 1']
       interval: 30s

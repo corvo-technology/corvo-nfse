@@ -58,14 +58,21 @@ RUN --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
 COPY --from=build /app/dist ./dist
 # Used by the `migrations` service; baked in because a bind mount does not work when the Compose runs from a helper container (Coolify).
 COPY api/scripts/deploy-migrate.mjs ./scripts/deploy-migrate.mjs
+COPY api/scripts/corvo-entrypoint.sh /usr/local/bin/corvo-entrypoint
+RUN chmod 0555 /usr/local/bin/corvo-entrypoint
 
 USER nestjs
 
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -f "http://127.0.0.1:${PORT:-3000}/v1/health/live" || exit 1
+  CMD case "${CORVO_RUNTIME_ROLE:-api}" in \
+    api) port="${PORT:-3000}" ;; \
+    worker) port="${WORKER_PORT:-3002}" ;; \
+    *) exit 1 ;; \
+  esac; curl -f "http://127.0.0.1:${port}/v1/health/live"
 
 # Apply schema changes before accepting traffic. The migration runner takes a
 # PostgreSQL advisory lock, so parallel replica starts safely serialize here.
-CMD ["sh", "-c", "exec node dist/main.js"]
+# CORVO_RUNTIME_ROLE (api or worker) decides which process starts.
+ENTRYPOINT ["/usr/local/bin/corvo-entrypoint"]
