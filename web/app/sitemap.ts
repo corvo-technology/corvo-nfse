@@ -6,6 +6,7 @@ import { DEFAULT_SEO_LOCALE, SEO_LOCALES, pageUrl } from "@/lib/seo";
 const PAGES: { path: string; changeFrequency: "weekly" | "monthly" | "yearly"; priority: number }[] = [
   { path: "", changeFrequency: "weekly", priority: 1 },
   { path: "/docs", changeFrequency: "weekly", priority: 0.9 },
+  { path: "/api-docs", changeFrequency: "weekly", priority: 0.9 },
   ...DOC_SLUGS.map((slug) => ({ path: `/docs/${slug}`, changeFrequency: "weekly" as const, priority: 0.8 })),
   { path: "/terms", changeFrequency: "yearly", priority: 0.2 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },

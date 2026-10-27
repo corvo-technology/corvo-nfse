@@ -9,6 +9,10 @@ const noIndex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  async redirects() {
+    // /api-docs is outside the proxy matcher (it starts with "api"), so the redirect lives here.
+    return [{ source: "/api-docs", destination: "/pt/api-docs", statusCode: 301 }];
+  },
   async headers() {
     return [
       { source: "/app/:path*", headers: noIndex },
