@@ -13,7 +13,7 @@ describe("page metadata", () => {
       languages: {
         en: "https://corvo.tech/en/docs/invoices",
         pt: "https://corvo.tech/pt/docs/invoices",
-        "x-default": "https://corvo.tech/en/docs/invoices",
+        "x-default": "https://corvo.tech/pt/docs/invoices",
       },
     });
   });
@@ -50,7 +50,11 @@ describe("robots and sitemap", () => {
       expect(urls).toContain(`https://corvo.tech/pt/docs/${slug}`);
     }
     expect(new Set(urls).size).toBe(urls.length);
-    expect(entries[0].alternates?.languages).toMatchObject({ en: "https://corvo.tech/en", pt: "https://corvo.tech/pt" });
+    expect(entries[0].alternates?.languages).toMatchObject({ en: "https://corvo.tech/en", pt: "https://corvo.tech/pt", "x-default": "https://corvo.tech/pt" });
+    for (const entry of entries) {
+      const xDefault = entry.alternates?.languages?.["x-default" as keyof typeof entry.alternates.languages];
+      expect(xDefault).toMatch(/^https:\/\/corvo\.tech\/pt(\/|$)/);
+    }
   });
 });
 
