@@ -5,6 +5,12 @@ import { routing } from "./i18n/routing";
 
 const handleI18nRouting = createMiddleware(routing);
 
+/** Crawlers and AI agents: they must not get a language cookie that would pin later visits. */
+const BOT_USER_AGENT =
+  /bot|crawler|spider|crawling|slurp|bingpreview|facebookexternalhit|embedly|GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|Claude-User|PerplexityBot|Google-Extended|Applebot/i;
+
+export const isBot = (userAgent: string | null) => Boolean(userAgent && BOT_USER_AGENT.test(userAgent));
+
 const publicPaths = new Set([
   "/",
   "/login",
@@ -31,7 +37,7 @@ export function proxy(request: NextRequest) {
   // Detect locale from cookie or path
   const cookieLocale = request.cookies.get("NEXT_LOCALE")?.value;
   const pathLocale = pathname.match(/^\/(en|pt)/)?.[1];
-  const locale = pathLocale || cookieLocale || "en";
+  const locale = pathLocale || cookieLocale || routing.defaultLocale;
 
   // Skip i18n routing for paths outside [locale] (e.g., /login, /api)
   const hasLocalePrefix = /^\/(en|pt)(\/|$)/.test(pathname);
@@ -51,6 +57,9 @@ export function proxy(request: NextRequest) {
 
   // i18n routing for locale-prefixed paths and root
   const response = handleI18nRouting(request);
+  if (isBot(request.headers.get("user-agent"))) {
+    response.headers.delete("set-cookie");
+  }
 
   // Access control — skip if site is open
   if (process.env.SITE_ACCESS_MODE === "open") {

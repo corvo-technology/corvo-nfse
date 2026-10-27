@@ -4,7 +4,7 @@ export const SITE_URL = "https://corvo.tech";
 export const SITE_NAME = "Corvo";
 export const SEO_LOCALES = ["en", "pt"] as const;
 export type SeoLocale = (typeof SEO_LOCALES)[number];
-export const DEFAULT_SEO_LOCALE: SeoLocale = "en";
+export const DEFAULT_SEO_LOCALE: SeoLocale = "pt";
 /** Social-sharing card (1200x630), used by Open Graph and Twitter. */
 export const OG_IMAGE_PATH = "/open-graph-1200x630.png";
 
