@@ -747,6 +747,7 @@
       },
       "developer": {
         "name": "DEVELOPER",
+        "badge": "Melhor custo-benefício",
         "credits": "250",
         "price": "R$ 29,90",
         "unit": "",
@@ -762,6 +763,7 @@
       },
       "growth": {
         "name": "GROWTH",
+        "badge": "Mais popular",
         "credits": "1.500",
         "price": "R$ 99,90",
         "unit": "",
