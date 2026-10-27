@@ -5,7 +5,7 @@ import { DocBlocks } from "@/components/docs/doc-blocks";
 import { DocsHeader } from "@/components/docs/docs-header";
 import { getDocsTree } from "@/lib/docs/registry";
 import { JsonLd } from "@/components/seo/json-ld";
-import { SITE_COPY, pageMetadata, pageUrl, seoLocale } from "@/lib/seo";
+import { SITE_COPY, SITE_URL, pageMetadata, pageUrl, seoLocale } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -33,6 +33,17 @@ export default async function DocsHomePage({
   if (!tree) notFound();
 
   const lang = seoLocale(locale);
+  const article = {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    headline: lang === "pt" ? "Documentação da API Corvo" : "Corvo API documentation",
+    description: SITE_COPY[lang].description,
+    url: pageUrl(lang, "/docs"),
+    inLanguage: lang === "pt" ? "pt-BR" : "en",
+    author: { "@id": `${SITE_URL}/#organization` },
+    publisher: { "@id": `${SITE_URL}/#organization` },
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+  };
   const breadcrumb = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -44,7 +55,7 @@ export default async function DocsHomePage({
 
   return (
     <>
-      <JsonLd data={breadcrumb} />
+      <JsonLd data={[article, breadcrumb]} />
       <DocsHeader
         locale={locale}
         slug={null}
