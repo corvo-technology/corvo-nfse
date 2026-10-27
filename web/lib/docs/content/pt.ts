@@ -2476,7 +2476,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     },
     "mcp": {
       "title": "Agentes de IA (MCP)",
-      "description": "Conecte Claude Code, Cursor e outros agentes à Corvo por OAuth.",
+      "description": "Conecte Claude Code, Claude Desktop, Cursor, VS Code, Codex e Windsurf à Corvo por OAuth.",
       "blocks": [
         {
           "kind": "text",
@@ -2502,6 +2502,49 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           "label": "Cursor (.cursor/mcp.json)",
           "language": "json",
           "code": "{\n  \"mcpServers\": {\n    \"corvo\": {\n      \"url\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "code",
+          "label": "VS Code (.vscode/mcp.json)",
+          "language": "json",
+          "code": "{\n  \"servers\": {\n    \"corvo\": {\n      \"type\": \"http\",\n      \"url\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "code",
+          "label": "Codex (~/.codex/config.toml)",
+          "language": "text",
+          "code": "[mcp_servers.corvo]\nurl = \"https://api.corvo.tech/mcp\""
+        },
+        {
+          "kind": "code",
+          "label": "Windsurf (mcp_config.json)",
+          "language": "json",
+          "code": "{\n  \"mcpServers\": {\n    \"corvo\": {\n      \"serverUrl\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "heading",
+          "level": 3,
+          "body": "Claude Desktop"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Abra Configurações → Conectores (Connectors).",
+            "Clique em Adicionar conector personalizado, informe um nome (Corvo) e cole a URL do servidor.",
+            "Clique em Conectar e aprove o acesso no navegador.",
+            "URL: `https://api.corvo.tech/mcp`"
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "body": "Ainda não verificado com o OAuth da Corvo: os formatos de VS Code, Codex, Windsurf e Claude Desktop seguem a documentação pública de cada cliente e o painel. Se algum não conectar, use o painel (Agentes de IA) e nos avise."
+        },
+        {
+          "kind": "code",
+          "label": "Prompt de teste",
+          "language": "text",
+          "code": "Liste minhas empresas na Corvo e emita uma NFS-e de teste de R$ 100."
         },
         {
           "kind": "list",
