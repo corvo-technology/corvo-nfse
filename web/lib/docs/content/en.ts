@@ -26,12 +26,9 @@ const enWithRetiredCredits: DocsTree = {
         body: "The Corvo API lets you register companies (MEI, Simples Nacional and other regimes), upload A1 certificates, calculate taxes before issuing, issue service invoices (NFS-e) and track their full lifecycle via webhooks. AI agents such as Claude Code, Cursor and Codex can do the same through the MCP server (see AI agents).",
       },
       { kind: "heading", level: 2, body: "Quickstart" },
-      {
-        kind: "code",
-        label: "bash",
-        language: "bash",
-        code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='corvo_test_your_key'\n\ncurl \"$BASE_URL/companies\" -H \"X-API-Key: $CORVO_API_KEY\"",
-      },
+      { kind: "text", body: "From signup to your first invoice, in the test environment. In test no certificate is needed; production needs a `corvo_live_` key and an A1 certificate." },
+      { kind: "list", items: ["Create a free account at https://corvo.tech/login?mode=signup (no credit card).", "In the dashboard, create a test key. It starts with `corvo_test_`; invoices issued with it have no fiscal value.", "Register the issuer company with `POST /v1/companies` (`legalName`, `taxId`, `taxRegime` and `municipalityCode` are required).", "Issue the invoice with `POST /v1/invoices`. The answer is `202` with status `queued`: issuance is asynchronous.", "Track it with `GET /v1/invoices/:id` or receive the `nfse.invoice.authorized` / `nfse.invoice.rejected` webhook.", "Go to production: create a `corvo_live_` key and upload the company's A1 certificate, through the dashboard or the API (`POST /v1/companies/:companyId/certificates`)."] },
+      { kind: "code", label: "bash", language: "bash", code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='corvo_test_your_key'\n\n# 3. Register the company\ncurl -X POST \"$BASE_URL/companies\" \\\n  -H \"X-API-Key: $CORVO_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"legalName\":\"Example Company Ltda\",\"taxId\":\"11222333000181\",\"taxRegime\":\"MEI\",\"municipalityCode\":\"3550308\"}'\n\n# 4. Issue the invoice (202, status queued)\ncurl -X POST \"$BASE_URL/invoices\" \\\n  -H \"X-API-Key: $CORVO_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -H 'Idempotency-Key: pedido_123_emissao' \\\n  -d '{\"companyTaxId\":\"11222333000181\",\"amount\":100,\"service\":{\"description\":\"Consulting\"}}'\n\n# 5. Track it\ncurl \"$BASE_URL/invoices/<id>\" -H \"X-API-Key: $CORVO_API_KEY" },
       {
         kind: "text",
         body: "All paths in this documentation are relative to `BASE_URL` (`https://api.corvo.tech/v1`).",
@@ -604,6 +601,7 @@ console.log(body.data); // { data: null }`,
       title: "Certificates",
       description: "Upload and manage A1 (PKCS#12) certificates for issuance.",
       blocks: [
+        { kind: "text", body: "You can upload the A1 certificate through the dashboard (company page) or through the API with the endpoint below." },
         {
           kind: "text",
           body: "Permissions: `nfse.certificates.view` to list and `nfse.certificates.manage` to upload/revoke.",
