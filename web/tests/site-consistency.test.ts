@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import sitemap from "@/app/sitemap";
-import { GET as llmsFull } from "@/app/llms-full.txt/route";
+import { buildLlmsFull, buildLlmsTxt } from "@/lib/llms";
 import { getDocsTree } from "@/lib/docs/registry";
 
 const WEB = join(__dirname, "..");
@@ -14,6 +14,8 @@ const knownUrls = () =>
     ...sitemap().map((entry) => entry.url),
     "https://corvo.tech/llms.txt",
     "https://corvo.tech/llms-full.txt",
+    "https://corvo.tech/pt/llms.txt",
+    "https://corvo.tech/pt/llms-full.txt",
     "https://corvo.tech/sitemap.xml",
     "https://corvo.tech/robots.txt",
   ]);
@@ -23,13 +25,15 @@ const siteLinks = (text: string) =>
     .map((match) => match[0].replace(/[.,;:]+$/, ""))
     .filter((url) => !url.includes("/login") && url !== "https://corvo.tech");
 
-describe("links in llms.txt and llms-full.txt", () => {
-  it("only point to pages that exist", async () => {
-    const known = knownUrls();
-    const text = read("public/llms.txt") + (await llmsFull().text());
-    const dead = [...new Set(siteLinks(text))].filter((url) => !known.has(url));
-    expect(dead).toEqual([]);
-  });
+describe("links in the generated llms.txt and llms-full.txt", () => {
+  for (const locale of ["en", "pt"] as const) {
+    it(`only point to pages that exist in ${locale}`, () => {
+      const known = knownUrls();
+      const text = buildLlmsTxt(locale) + buildLlmsFull(locale);
+      const dead = [...new Set(siteLinks(text))].filter((url) => !known.has(url));
+      expect(dead).toEqual([]);
+    });
+  }
 });
 
 describe("issuance status code", () => {
@@ -45,6 +49,8 @@ describe("tax regimes", () => {
     for (const locale of ["en", "pt"] as const) {
       expect(JSON.stringify(getDocsTree(locale)!.home.blocks)).not.toMatch(/other regimes|outros regimes/);
     }
-    expect(read("public/llms.txt")).not.toMatch(/other regimes need/);
+    for (const locale of ["en", "pt"] as const) expect(buildLlmsTxt(locale)).not.toMatch(/regimes need|first; other regimes|regimes precisam/);
+    expect(buildLlmsTxt("en")).toContain("MEI and Simples Nacional only");
+    expect(buildLlmsTxt("pt")).toContain("só MEI e Simples Nacional");
   });
 });
