@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import McpAuthorizePage from "@/app/mcp/authorize/page";
+import McpAuthorizePage from "@/app/(dashboard)/mcp/authorize/page";
 import { ApiError } from "@/lib/api";
 import messages from "@/messages/en.json";
 

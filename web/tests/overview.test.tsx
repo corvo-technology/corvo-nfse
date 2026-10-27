@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import OverviewPage from "@/app/app/page";
+import OverviewPage from "@/app/(dashboard)/app/page";
 import { InvoiceHeatmap } from "@/components/dashboard/invoice-heatmap";
 import { invoices, billing } from "@/lib/api";
 import type { InvoiceOverview, OverviewPeriod } from "@/lib/api";

@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import AgentsPage from "@/app/app/agents/page";
+import AgentsPage from "@/app/(dashboard)/app/agents/page";
 import messages from "@/messages/en.json";
 
 const mocks = vi.hoisted(() => ({ connections: vi.fn(), revoke: vi.fn(), success: vi.fn(), error: vi.fn(), admin: false }));
