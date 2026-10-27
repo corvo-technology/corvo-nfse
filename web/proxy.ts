@@ -15,6 +15,7 @@ const publicPaths = new Set([
   "/dpa",
   "/privacy",
   "/security",
+  "/start",
   "/status",
   "/terms",
 ]);
@@ -32,6 +33,11 @@ export function proxy(request: NextRequest) {
   const cookieLocale = request.cookies.get("NEXT_LOCALE")?.value;
   const pathLocale = pathname.match(/^\/(en|pt)/)?.[1];
   const locale = pathLocale || cookieLocale || "en";
+
+  // Signup intent from ads and links lands on the indexable start page.
+  if (pathname === "/signup" || pathname === `/${pathLocale}/signup`) {
+    return NextResponse.redirect(new URL(`/${locale}/start`, request.url), 308);
+  }
 
   // Skip i18n routing for paths outside [locale] (e.g., /login, /api)
   const hasLocalePrefix = /^\/(en|pt)(\/|$)/.test(pathname);
