@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { LandingPage } from "@/components/landing/landing-page";
 import { JsonLd } from "@/components/seo/json-ld";
-import { PLANS } from "@/lib/plans-catalog";
 import { SITE_COPY, SITE_URL, pageMetadata, pageUrl, seoLocale } from "@/lib/seo";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -54,24 +53,13 @@ export default async function Page({ params }: Props) {
             "Webhooks and XML/PDF delivery by email",
             "AI agents through MCP",
           ],
-    offers: PLANS.map((plan) => {
-      const name = plan.slug.charAt(0).toUpperCase() + plan.slug.slice(1);
-      const price = (plan.basePriceCents / 100).toFixed(2);
-      return {
-        "@type": "Offer",
-        name: locale === "pt" ? `${name}: ${plan.credits} notas por mês` : `${name}: ${plan.credits} invoices a month`,
-        price,
-        priceCurrency: "BRL",
-        priceSpecification: {
-          "@type": "UnitPriceSpecification",
-          price,
-          priceCurrency: "BRL",
-          unitText: "MON",
-          referenceQuantity: { "@type": "QuantitativeValue", value: 1, unitCode: "MON" },
-        },
-        url: pageUrl(locale),
-      };
-    }),
+    offers: {
+      "@type": "Offer",
+      name: locale === "pt" ? "Grátis: 15 notas por mês" : "Free: 15 invoices a month",
+      price: "0",
+      priceCurrency: "BRL",
+      url: pageUrl(locale),
+    },
   };
 
   return (

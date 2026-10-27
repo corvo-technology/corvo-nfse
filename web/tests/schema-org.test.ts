@@ -1,8 +1,22 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ORGANIZATION_SAME_AS, ORGANIZATION_URL, SITE_URL } from "@/lib/seo";
-import { PLANS } from "@/lib/plans-catalog";
+import { isValidElement, type ReactNode } from "react";
+import { JsonLd } from "@/components/seo/json-ld";
+import LandingPage from "@/app/[locale]/page";
+import DocsHomePage from "@/app/[locale]/docs/page";
+
+vi.mock("next-intl/server", () => ({ setRequestLocale: () => undefined }));
+
+/** Collects the data of every <JsonLd> in a rendered server-component tree. */
+function jsonLd(node: ReactNode): Record<string, unknown>[] {
+  if (Array.isArray(node)) return node.flatMap(jsonLd);
+  if (!isValidElement(node)) return [];
+  const props = node.props as { data?: unknown; children?: ReactNode };
+  if (node.type === JsonLd) return ([] as Record<string, unknown>[]).concat(props.data as Record<string, unknown>);
+  return jsonLd(props.children);
+}
 
 const ROOT = join(__dirname, "..");
 const files = (dir: string): string[] =>
@@ -32,10 +46,22 @@ describe("schema.org", () => {
     for (const url of ORGANIZATION_SAME_AS) expect(url).not.toMatch(/(x|twitter)\.com/);
   });
 
-  it("offers all 5 plans from the catalog", () => {
-    expect(PLANS.map((plan) => plan.slug)).toEqual(["free", "developer", "growth", "scale", "volume"]);
-    const page = readFileSync(join(ROOT, "app", "[locale]", "page.tsx"), "utf8");
-    expect(page).toContain("offers: PLANS.map(");
+  it.each(["pt", "en"])("%s landing JSON-LD is a SoftwareApplication linked to the Organization", async (locale) => {
+    const [software] = jsonLd(await LandingPage({ params: Promise.resolve({ locale }) }));
+    expect(software).toMatchObject({
+      "@type": "SoftwareApplication",
+      "@id": `${SITE_URL}/#software`,
+      provider: { "@id": `${SITE_URL}/#organization` },
+      url: `${SITE_URL}/${locale}`,
+    });
+  });
+
+  it.each(["pt", "en"])("%s docs home JSON-LD has a TechArticle and a BreadcrumbList", async (locale) => {
+    const data = jsonLd(await DocsHomePage({ params: Promise.resolve({ locale }) }));
+    const article = data.find((item) => item["@type"] === "TechArticle");
+    const breadcrumb = data.find((item) => item["@type"] === "BreadcrumbList");
+    expect(article).toMatchObject({ url: `${SITE_URL}/${locale}/docs`, publisher: { "@id": `${SITE_URL}/#organization` } });
+    expect((breadcrumb?.itemListElement as unknown[]).length).toBe(2);
   });
 
   it("marks every docs page as TechArticle with a BreadcrumbList", () => {
