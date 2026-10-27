@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
   images: { formats: ["image/avif", "image/webp"] },
   // Two root layouts ([locale] and (dashboard)) need a global 404 page.
   experimental: { globalNotFound: true },
+  async redirects() {
+    // /api-docs is outside the proxy matcher (it starts with "api"), so the redirect lives here.
+    return [{ source: "/api-docs", destination: "/pt/api-docs", statusCode: 301 }];
+  },
   async headers() {
     return [
       { source: "/app/:path*", headers: noIndex },

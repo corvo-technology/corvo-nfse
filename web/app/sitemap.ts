@@ -23,6 +23,7 @@ export const PAGES: SitemapPage[] = [
   { path: "", changeFrequency: "weekly", priority: 1, lastModified: LAST_MODIFIED.marketing },
   { path: "/start", changeFrequency: "monthly", priority: 0.9, lastModified: LAST_MODIFIED.marketing },
   { path: "/docs", changeFrequency: "weekly", priority: 0.9, lastModified: LAST_MODIFIED.docs },
+  { path: "/api-docs", changeFrequency: "weekly", priority: 0.9, lastModified: LAST_MODIFIED.docs },
   ...DOC_SLUGS.map((slug) => ({
     path: `/docs/${slug}`,
     changeFrequency: "weekly" as const,

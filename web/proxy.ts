@@ -17,6 +17,7 @@ const publicPaths = new Set([
   "/app",
   "/mcp/authorize",
   "/docs",
+  "/api-docs",
   "/brand",
   "/dpa",
   "/privacy",
