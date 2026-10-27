@@ -1,7 +1,6 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { getDocsTree } from "@/lib/docs/registry";
+import { buildLlmsTxt } from "@/lib/llms";
 
 const CLIENTS = ["Claude Code", "Claude Desktop", "Cursor", "VS Code", "Codex", "Windsurf"];
 
@@ -16,8 +15,10 @@ describe("MCP docs page", () => {
     });
   }
 
-  it("lists the same 6 clients in llms.txt", () => {
-    const llms = readFileSync(join(__dirname, "..", "public", "llms.txt"), "utf8");
-    for (const client of CLIENTS) expect(llms).toContain(client);
-  });
+  for (const locale of ["en", "pt"] as const) {
+    it(`lists the same 6 clients in the generated llms.txt in ${locale}`, () => {
+      const llms = buildLlmsTxt(locale);
+      for (const client of CLIENTS) expect(llms).toContain(client);
+    });
+  }
 });
