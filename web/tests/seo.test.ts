@@ -177,7 +177,7 @@ describe("start page", () => {
     const urls = sitemap().map((entry) => entry.url);
     expect(urls).toContain("https://corvo.tech/pt/start");
     expect(urls).toContain("https://corvo.tech/en/start");
-    expect((robots().rules as { disallow: string[] }).disallow).toContain("/login");
+    for (const rule of [robots().rules].flat() as { disallow: string[] }[]) expect(rule.disallow).toContain("/login");
   });
 });
 

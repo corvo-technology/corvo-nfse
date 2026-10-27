@@ -316,7 +316,6 @@ function PlanLadder({
               type="button"
               data-plan={p.slug}
               onClick={() => onPick(p.credits)}
-              data-plan={p.slug}
               className={cn(
                 "relative flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors hover:bg-white/[0.03]",
                 p.slug === HIGHLIGHTED_PLAN && "border border-accent/30"
