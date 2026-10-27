@@ -129,8 +129,8 @@ services:
   web:
     image: corvo-web:local
     build:
-      context: ../web
-      dockerfile: ../deploy/Dockerfile.web
+      context: ../
+      dockerfile: deploy/Dockerfile.web
       args:
         NEXT_PUBLIC_API_URL: /api/proxy/v1
     environment:
