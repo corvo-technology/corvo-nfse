@@ -8,20 +8,13 @@ import { PLANS, PlanPicker, formatBRL, formatOverage } from "@/components/pricin
 import { paidPlanOffers } from "@/lib/pricing-jsonld";
 import pt from "@/messages/pt.json";
 import en from "@/messages/en.json";
-import { readPricingCatalog, type CatalogEntry } from "./helpers/pricing-catalog";
+import { readPricingCatalog } from "./helpers/pricing-catalog";
+import { PricingService } from "../../api/src/modules/plans/application/pricing.service";
+
+const pricing = new PricingService();
 
 const catalog = readPricingCatalog();
 const row = (slug: string) => document.querySelector(`[data-plan="${slug}"]`) as HTMLElement;
-
-/** Same rule as PricingService.recommendPlanForVolume: Free while it fits, else the cheapest paid plan. */
-function estimate(volume: number, entries: CatalogEntry[]) {
-  const free = entries.find((e) => e.slug === "free")!;
-  if (volume <= free.monthlyAllowance) return { plan: free, overage: 0, overageCost: 0, total: 0 };
-  const total = (e: CatalogEntry) => e.basePriceCents + Math.max(0, volume - e.monthlyAllowance) * e.perCreditOverageCents;
-  const plan = entries.filter((e) => e.slug !== "free").reduce((best, e) => (total(e) < total(best) ? e : best));
-  const overage = Math.max(0, volume - plan.monthlyAllowance);
-  return { plan, overage, overageCost: overage * plan.perCreditOverageCents, total: total(plan) };
-}
 
 describe("price consistency with the billing catalog", () => {
   afterEach(cleanup);
@@ -54,23 +47,31 @@ describe("price consistency with the billing catalog", () => {
     expect(formatBRL(catalog[1].basePriceCents)).toBe("R$ 29,90");
   });
 
-  it("JSON-LD offers match the catalog, with overage as UnitPriceSpecification", () => {
-    const offers = paidPlanOffers("pt");
-    const paid = catalog.filter((e) => e.basePriceCents > 0);
+  it.each(["pt", "en"] as const)("%s JSON-LD offers match PricingService: monthly price, quota and overage", (locale) => {
+    const offers = paidPlanOffers(locale);
+    const paid = (["developer", "growth", "scale", "volume"] as const).map((slug) => pricing.calculateQuote(slug));
     expect(offers).toHaveLength(paid.length);
     offers.forEach((offer, i) => {
-      expect(offer.price).toBe((paid[i].basePriceCents / 100).toFixed(2));
+      const quote = paid[i];
+      expect(offer.price).toBe((quote.monthlyTotalCents / 100).toFixed(2));
+      expect(offer.description).toContain(new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US").format(quote.monthlyAllowance));
       expect(offer.priceSpecification).toEqual([
         {
           "@type": "UnitPriceSpecification",
-          price: (paid[i].perCreditOverageCents / 100).toFixed(2),
+          price: (quote.monthlyTotalCents / 100).toFixed(2),
           priceCurrency: "BRL",
-          unitText: "nota excedente",
+          unitText: "MON",
+          referenceQuantity: { "@type": "QuantitativeValue", value: 1, unitCode: "MON" },
+        },
+        {
+          "@type": "UnitPriceSpecification",
+          price: (quote.perCreditOverageCents / 100).toFixed(2),
+          priceCurrency: "BRL",
+          unitText: locale === "pt" ? "nota excedente" : "extra invoice",
           referenceQuantity: { "@type": "QuantitativeValue", value: 1 },
         },
       ]);
     });
-    expect(offers.map((o) => o.priceSpecification[0].price)).toEqual(["0.12", "0.08", "0.05", "0.05"]);
   });
 
   it("no message uses 10.000 / 10,000 as the ceiling", () => {
@@ -79,21 +80,22 @@ describe("price consistency with the billing catalog", () => {
     expect(en.Pricing.calculator.custom.description).toContain(new Intl.NumberFormat("en-US").format(catalog.at(-1)!.monthlyAllowance));
   });
 
-  it.each(["pt", "en"])("%s docs quote example matches the estimation formula", (locale) => {
+  it.each(["pt", "en"])("%s docs quote example matches PricingService.recommendPlanForVolume", (locale) => {
     const source = readFileSync(join(__dirname, "..", "lib", "docs", "content", `${locale}.ts`), "utf8");
     const block = source.match(/\{\n {2}"data": \{\n {4}"volume": \d+,[\s\S]*?"billing_cycle": "monthly"\n {2}\}\n\}/)![0];
     const example = JSON.parse(block).data;
-    const expected = estimate(example.volume, catalog);
+    const expected = pricing.recommendPlanForVolume(example.volume);
+    const quote = pricing.calculateQuote(expected.planSlug);
     expect(example).toMatchObject({
-      recommended_plan: expected.plan.slug,
-      monthly_allowance: expected.plan.monthlyAllowance,
-      overage_credits: expected.overage,
-      overage_cost_cents: expected.overageCost,
-      base_price_cents: expected.plan.basePriceCents,
-      total_estimated_cents: expected.total,
+      recommended_plan: expected.planSlug,
+      monthly_allowance: quote.monthlyAllowance,
+      overage_credits: expected.overageCredits,
+      overage_cost_cents: expected.overageCostCents,
+      base_price_cents: quote.basePriceCents,
+      total_estimated_cents: expected.totalEstimatedCents,
     });
-    // Reference values for the PR description.
-    expect(estimate(20000, catalog)).toMatchObject({ overage: 0, overageCost: 0, total: 69990 });
-    expect(estimate(25000, catalog)).toMatchObject({ overage: 5000, overageCost: 25000, total: 94990 });
+    // Reference values for the PR description, from the real service.
+    expect(pricing.recommendPlanForVolume(20000)).toMatchObject({ planSlug: "volume", overageCredits: 0, totalEstimatedCents: 69990 });
+    expect(pricing.recommendPlanForVolume(25000)).toMatchObject({ planSlug: "volume", overageCredits: 5000, overageCostCents: 25000, totalEstimatedCents: 94990 });
   });
 });

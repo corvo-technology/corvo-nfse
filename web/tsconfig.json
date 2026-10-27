@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@nestjs/common": ["./tests/helpers/nestjs-common-stub.ts"]
     }
   },
   "include": [
