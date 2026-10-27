@@ -1,8 +1,15 @@
 import Link from "next/link";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
+import { rootMetadata } from "@/lib/root-metadata";
+import "./globals.css";
+
+// The app has two root layouts ([locale] and (dashboard)), so unmatched URLs use this page.
+export const metadata = { ...rootMetadata, title: "Page not found" };
 
 export default function NotFound() {
   return (
+    <html lang="en" className="h-full antialiased">
+      <body className="min-h-full flex flex-col">
     <div className="min-h-screen bg-bg text-text font-sans flex flex-col">
       {/* Nav */}
       <nav className="border-b border-border-soft px-6 sm:px-10 py-4 flex items-center justify-between">
@@ -97,5 +104,7 @@ export default function NotFound() {
         </div>
       </footer>
     </div>
+      </body>
+    </html>
   );
 }

@@ -23,15 +23,12 @@ const enWithRetiredCredits: DocsTree = {
     blocks: [
       {
         kind: "text",
-        body: "The Corvo API lets you register companies (MEI, Simples Nacional and other regimes), upload A1 certificates, calculate taxes before issuing, issue service invoices (NFS-e) and track their full lifecycle via webhooks. AI agents such as Claude Code, Cursor and Codex can do the same through the MCP server (see AI agents).",
+        body: "The Corvo API lets you register companies (MEI and Simples Nacional), upload A1 certificates, calculate taxes before issuing, issue service invoices (NFS-e) and track their full lifecycle via webhooks. AI agents such as Claude Code, Cursor and Codex can do the same through the MCP server (see AI agents).",
       },
       { kind: "heading", level: 2, body: "Quickstart" },
-      {
-        kind: "code",
-        label: "bash",
-        language: "bash",
-        code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='corvo_test_your_key'\n\ncurl \"$BASE_URL/companies\" -H \"X-API-Key: $CORVO_API_KEY\"",
-      },
+      { kind: "text", body: "From signup to your first invoice, in the test environment. In test no certificate is needed; production needs a `corvo_live_` key and an A1 certificate." },
+      { kind: "list", items: ["Create a free account at https://corvo.tech/login?mode=signup (no credit card).", "In the dashboard, create a test key. It starts with `corvo_test_`; invoices issued with it have no fiscal value.", "Register the issuer company with `POST /v1/companies` (`legalName`, `taxId`, `taxRegime` and `municipalityCode` are required).", "Issue the invoice with `POST /v1/invoices`. The answer is `202` with status `queued`: issuance is asynchronous.", "Track it with `GET /v1/invoices/:id` or receive the `nfse.invoice.authorized` / `nfse.invoice.rejected` webhook.", "Go to production: create a `corvo_live_` key and upload the company's A1 certificate, through the dashboard or the API (`POST /v1/companies/:companyId/certificates`)."] },
+      { kind: "code", label: "bash", language: "bash", code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='corvo_test_your_key'\n\n# 3. Register the company\ncurl -X POST \"$BASE_URL/companies\" \\\n  -H \"X-API-Key: $CORVO_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"legalName\":\"Example Company Ltda\",\"taxId\":\"11222333000181\",\"taxRegime\":\"MEI\",\"municipalityCode\":\"3550308\"}'\n\n# 4. Issue the invoice (202, status queued)\ncurl -X POST \"$BASE_URL/invoices\" \\\n  -H \"X-API-Key: $CORVO_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -H 'Idempotency-Key: pedido_123_emissao' \\\n  -d '{\"companyTaxId\":\"11222333000181\",\"amount\":100,\"service\":{\"description\":\"Consulting\"}}'\n\n# 5. Track it\ncurl \"$BASE_URL/invoices/<id>\" -H \"X-API-Key: $CORVO_API_KEY" },
       {
         kind: "text",
         body: "All paths in this documentation are relative to `BASE_URL` (`https://api.corvo.tech/v1`).",
@@ -604,6 +601,7 @@ console.log(body.data); // { data: null }`,
       title: "Certificates",
       description: "Upload and manage A1 (PKCS#12) certificates for issuance.",
       blocks: [
+        { kind: "text", body: "You can upload the A1 certificate through the dashboard (company page) or through the API with the endpoint below." },
         {
           kind: "text",
           body: "Permissions: `nfse.certificates.view` to list and `nfse.certificates.manage` to upload/revoke.",
@@ -2230,11 +2228,11 @@ console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { d
     "volume": 20000,
     "recommended_plan": "volume",
     "plan_name": "Volume",
-    "monthly_allowance": 10000,
-    "overage_credits": 10000,
-    "overage_cost_cents": 90000,
-    "base_price_cents": 89990,
-    "total_estimated_cents": 179990,
+    "monthly_allowance": 20000,
+    "overage_credits": 0,
+    "overage_cost_cents": 0,
+    "base_price_cents": 69990,
+    "total_estimated_cents": 69990,
     "currency": "BRL",
     "billing_cycle": "monthly"
   }
@@ -2501,7 +2499,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     },
     "mcp": {
       "title": "AI agents (MCP)",
-      "description": "Connect Claude Code, Cursor and other agents to Corvo with OAuth.",
+      "description": "Connect Claude Code, Claude Desktop, Cursor, VS Code, Codex and Windsurf to Corvo with OAuth.",
       "blocks": [
         {
           "kind": "text",
@@ -2527,6 +2525,49 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           "label": "Cursor (.cursor/mcp.json)",
           "language": "json",
           "code": "{\n  \"mcpServers\": {\n    \"corvo\": {\n      \"url\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "code",
+          "label": "VS Code (.vscode/mcp.json)",
+          "language": "json",
+          "code": "{\n  \"servers\": {\n    \"corvo\": {\n      \"type\": \"http\",\n      \"url\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "code",
+          "label": "Codex (~/.codex/config.toml)",
+          "language": "text",
+          "code": "[mcp_servers.corvo]\nurl = \"https://api.corvo.tech/mcp\""
+        },
+        {
+          "kind": "code",
+          "label": "Windsurf (mcp_config.json)",
+          "language": "json",
+          "code": "{\n  \"mcpServers\": {\n    \"corvo\": {\n      \"serverUrl\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "heading",
+          "level": 3,
+          "body": "Claude Desktop"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Open Settings → Connectors.",
+            "Click Add custom connector, enter a name (Corvo) and paste the server URL.",
+            "Click Connect and approve access in the browser.",
+            "URL: `https://api.corvo.tech/mcp`"
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "body": "Not yet verified with Corvo's OAuth: the VS Code, Codex, Windsurf and Claude Desktop formats follow each client's public documentation and the dashboard. If one does not connect, use the dashboard (AI agents) and tell us."
+        },
+        {
+          "kind": "code",
+          "label": "Test prompt",
+          "language": "text",
+          "code": "List my companies on Corvo and issue a test NFS-e of R$ 100."
         },
         {
           "kind": "list",

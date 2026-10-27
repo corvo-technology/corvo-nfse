@@ -670,8 +670,8 @@
   },
   "Hero": {
     "badge": "Tax invoice infrastructure for developers",
-    "title": "Your tax invoice API. Simple as that.",
-    "subtitle": "Issue NFS-e, manage multiple companies, send documents by email and automate your tax workflow with a single API.",
+    "title": "Issue NFS-e through an API or an AI agent.",
+    "subtitle": "Corvo is a REST API and MCP server to issue Brazilian service invoices (NFS-e) on the national standard for MEI and Simples Nacional companies. Built for AI agents, developers, SaaS products and ERPs.",
     "startFree": "Start free",
     "viewDocs": "View documentation",
     "mono": "15 free invoices per month. No credit card required."
@@ -707,6 +707,7 @@
     "buyCredits": "Choose plan",
     "monthly": "Monthly",
     "perMonth": "/month",
+    "overagePerNote": "{price} per extra invoice",
     "recommended": "Recommended",
     "calculator": {
       "title": "How many invoices do you issue per month?",
@@ -723,7 +724,7 @@
       },
       "custom": {
         "label": "Contact us",
-        "description": "Volumes above 10,000 invoices/month."
+        "description": "Volumes above 20,000 invoices/month."
       }
     },
     "footnote": "Monthly allowances do not roll over. Free renews on the first day of the month in UTC; paid plans follow the subscription cycle. Authorized production overage is billed separately, up to the plan’s processing limit.",
@@ -747,6 +748,7 @@
       },
       "developer": {
         "name": "DEVELOPER",
+        "badge": "Best value",
         "credits": "250",
         "price": "R$ 29.90",
         "unit": "",
@@ -762,6 +764,7 @@
       },
       "growth": {
         "name": "GROWTH",
+        "badge": "Most popular",
         "credits": "1,500",
         "price": "R$ 99.90",
         "unit": "",

@@ -13,7 +13,7 @@ export function DashboardShowcase() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section className="px-6 sm:px-10 pb-14 sm:pb-22 flex flex-col items-center gap-9">
+    <section id="features" className="px-6 sm:px-10 pb-14 sm:pb-22 flex flex-col items-center gap-9">
       <div className="flex flex-col items-center gap-2.5 text-center">
         <span className="font-mono text-xs text-accent tracking-[0.14em]">
           {t("eyebrow")}

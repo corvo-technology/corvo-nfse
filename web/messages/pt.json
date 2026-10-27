@@ -670,8 +670,8 @@
   },
   "Hero": {
     "badge": "Infraestrutura de notas fiscais para desenvolvedores",
-    "title": "Sua API de notas fiscais. Simples assim.",
-    "subtitle": "Emita NFS-e, gerencie múltiplas empresas, envie documentos por e-mail e automatize seu fluxo fiscal com uma única API.",
+    "title": "Emita NFS-e por API ou por agente de IA.",
+    "subtitle": "A Corvo é uma API REST e um servidor MCP para emitir NFS-e (nota fiscal de serviço) no padrão nacional do Brasil, para empresas MEI e do Simples Nacional. Feita para agentes de IA, desenvolvedores, SaaS e ERPs.",
     "startFree": "Começar grátis",
     "viewDocs": "Ver documentação",
     "mono": "15 notas grátis por mês. Sem cartão de crédito."
@@ -707,6 +707,7 @@
     "buyCredits": "Escolher plano",
     "monthly": "Mensal",
     "perMonth": "/mês",
+    "overagePerNote": "{price} por nota excedente",
     "recommended": "Recomendado",
     "calculator": {
       "title": "Quanto você emite por mês?",
@@ -723,7 +724,7 @@
       },
       "custom": {
         "label": "Fale conosco",
-        "description": "Volumes acima de 10.000 notas/mês."
+        "description": "Volumes acima de 20.000 notas/mês."
       }
     },
     "footnote": "Cotas mensais, sem acúmulo. No Free, renovação no primeiro dia do mês em UTC; nos pagos, pelo ciclo da assinatura. Excedentes autorizados em produção são cobrados à parte, até o limite de processamento do plano.",
@@ -747,6 +748,7 @@
       },
       "developer": {
         "name": "DEVELOPER",
+        "badge": "Melhor custo-benefício",
         "credits": "250",
         "price": "R$ 29,90",
         "unit": "",
@@ -762,6 +764,7 @@
       },
       "growth": {
         "name": "GROWTH",
+        "badge": "Mais popular",
         "credits": "1.500",
         "price": "R$ 99,90",
         "unit": "",

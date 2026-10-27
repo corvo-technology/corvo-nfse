@@ -13,7 +13,7 @@ describe("page metadata", () => {
       languages: {
         en: "https://corvo.tech/en/docs/invoices",
         pt: "https://corvo.tech/pt/docs/invoices",
-        "x-default": "https://corvo.tech/en/docs/invoices",
+        "x-default": "https://corvo.tech/pt/docs/invoices",
       },
     });
   });
@@ -35,9 +35,113 @@ describe("page metadata", () => {
 
 describe("robots and sitemap", () => {
   it("lets crawlers reach the docs and blocks only private screens", () => {
-    const rules = robots().rules as { disallow: string[] };
-    expect(rules.disallow).toEqual(["/app/", "/login", "/mcp/", "/api/"]);
-    expect(rules.disallow).not.toContain("/docs");
+    const rules = robots().rules as { userAgent: string; disallow: string[] }[];
+    for (const rule of rules) {
+      expect(rule.disallow).toEqual(["/app/", "/login", "/mcp/", "/api/"]);
+      expect(rule.disallow).not.toContain("/docs");
+    }
+  });
+
+  it("allows each AI crawler explicitly and has no Host directive", () => {
+    const result = robots();
+    expect(result).not.toHaveProperty("host");
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "rules": [
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "*",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "GPTBot",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "OAI-SearchBot",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "ChatGPT-User",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "ClaudeBot",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "Claude-User",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "PerplexityBot",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "Google-Extended",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "Applebot-Extended",
+          },
+        ],
+        "sitemap": "https://corvo.tech/sitemap.xml",
+      }
+    `);
   });
 
   it("lists every page in both languages with hreflang alternates", () => {
@@ -50,7 +154,11 @@ describe("robots and sitemap", () => {
       expect(urls).toContain(`https://corvo.tech/pt/docs/${slug}`);
     }
     expect(new Set(urls).size).toBe(urls.length);
-    expect(entries[0].alternates?.languages).toMatchObject({ en: "https://corvo.tech/en", pt: "https://corvo.tech/pt" });
+    expect(entries[0].alternates?.languages).toMatchObject({ en: "https://corvo.tech/en", pt: "https://corvo.tech/pt", "x-default": "https://corvo.tech/pt" });
+    for (const entry of entries) {
+      const xDefault = entry.alternates?.languages?.["x-default" as keyof typeof entry.alternates.languages];
+      expect(xDefault).toMatch(/^https:\/\/corvo\.tech\/pt(\/|$)/);
+    }
   });
 });
 
@@ -61,5 +169,26 @@ describe("llms-full", () => {
     expect(markdown).toContain("## Invoices");
     expect(markdown).toContain("### POST /v1/invoices");
     expect(markdown).toContain("| Name | Type | Required | Description |");
+  });
+});
+
+describe("start page", () => {
+  it("is in the sitemap in both languages, and /login stays blocked", () => {
+    const urls = sitemap().map((entry) => entry.url);
+    expect(urls).toContain("https://corvo.tech/pt/start");
+    expect(urls).toContain("https://corvo.tech/en/start");
+    for (const rule of [robots().rules].flat() as { disallow: string[] }[]) expect(rule.disallow).toContain("/login");
+  });
+});
+
+describe("sitemap coverage", () => {
+  it("lists every public page under app/[locale] with lastModified", async () => {
+    const { readdirSync, statSync, existsSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const dir = join(__dirname, "..", "app", "[locale]");
+    const pages = readdirSync(dir).filter((name) => statSync(join(dir, name)).isDirectory() && existsSync(join(dir, name, "page.tsx")));
+    const urls = sitemap().map((entry) => entry.url);
+    for (const name of pages) expect(urls).toContain(`https://corvo.tech/pt/${name}`);
+    for (const entry of sitemap()) expect(entry.lastModified).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CompanyForm } from "@/components/dashboard/company-form";
-import NewInvoicePage from "@/app/app/invoices/new/page";
+import NewInvoicePage from "@/app/(dashboard)/app/invoices/new/page";
 import { companySetup } from "@/lib/company-setup";
 import type { Company } from "@/lib/types";
 import messages from "@/messages/en.json";
