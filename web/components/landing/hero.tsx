@@ -14,8 +14,12 @@ const stagger: Variants = {
   },
 };
 
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 20 },
+/**
+ * Slide only, no opacity fade: the hero text is the LCP element and must be
+ * visible in the server HTML, before JavaScript runs.
+ */
+export const fadeUp: Variants = {
+  hidden: { y: 20 },
   visible: {
     opacity: 1,
     y: 0,

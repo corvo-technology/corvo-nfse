@@ -9,6 +9,8 @@ const noIndex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // AVIF first, WebP as fallback; the PNG source is only served to browsers without either.
+  images: { formats: ["image/avif", "image/webp"] },
   async headers() {
     return [
       { source: "/app/:path*", headers: noIndex },
