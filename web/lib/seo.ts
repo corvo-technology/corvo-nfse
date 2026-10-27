@@ -5,6 +5,8 @@ export const SITE_NAME = "Corvo";
 export const SEO_LOCALES = ["en", "pt"] as const;
 export type SeoLocale = (typeof SEO_LOCALES)[number];
 export const DEFAULT_SEO_LOCALE: SeoLocale = "en";
+/** Official profiles for schema.org sameAs. Add the X profile once its handle is confirmed. */
+export const ORGANIZATION_SAME_AS = ["https://github.com/corvo-technology"];
 /** Social-sharing card (1200x630), used by Open Graph and Twitter. */
 export const OG_IMAGE_PATH = "/open-graph-1200x630.png";
 

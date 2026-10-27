@@ -3,7 +3,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { JsonLd } from "@/components/seo/json-ld";
-import { SITE_COPY, SITE_NAME, SITE_URL, seoLocale } from "@/lib/seo";
+import { ORGANIZATION_SAME_AS, SITE_COPY, SITE_NAME, SITE_URL, seoLocale } from "@/lib/seo";
 import type { Metadata } from "next";
 
 export function generateStaticParams() {
@@ -44,8 +44,10 @@ export default async function LocaleLayout({
         "@type": "Organization",
         "@id": `${SITE_URL}/#organization`,
         name: "Corvo Tech",
-        url: SITE_URL,
+        // Final URL: the bare domain only redirects.
+        url: `${SITE_URL}/${locale}`,
         logo: `${SITE_URL}/icon-512.png`,
+        sameAs: ORGANIZATION_SAME_AS,
       },
       {
         "@type": "WebSite",
