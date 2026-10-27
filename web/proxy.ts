@@ -5,6 +5,34 @@ import { routing } from "./i18n/routing";
 
 const handleI18nRouting = createMiddleware(routing);
 
+/**
+ * Old URLs without locale still indexed by Google (Search Console, 27/10/2026).
+ * Explicit list on purpose, no generic pattern: each one moves to the pt page with a single 301.
+ */
+export const LEGACY_REDIRECTS: Record<string, string> = {
+  "/docs/sdks": "/pt/docs/sdks",
+  "/docs/authentication": "/pt/docs/authentication",
+  "/docs/errors": "/pt/docs/errors",
+  "/docs/rate-limits": "/pt/docs/rate-limits",
+  "/docs/companies": "/pt/docs/companies",
+  "/docs/certificates": "/pt/docs/certificates",
+  "/docs/invoices": "/pt/docs/invoices",
+  "/docs/webhooks": "/pt/docs/webhooks",
+  "/docs/billing": "/pt/docs/billing",
+  "/docs/async-issuance": "/pt/docs/async-issuance",
+  "/docs/pagination": "/pt/docs/pagination",
+  "/docs/receiving-webhooks": "/pt/docs/receiving-webhooks",
+  "/docs/integration-checklist": "/pt/docs/integration-checklist",
+  "/docs/mcp": "/pt/docs/mcp",
+  "/docs/llms": "/pt/docs/llms",
+  "/terms": "/pt/terms",
+  "/privacy": "/pt/privacy",
+  "/dpa": "/pt/dpa",
+  "/security": "/pt/security",
+  "/status": "/pt/status",
+  "/brand": "/pt/brand",
+};
+
 const publicPaths = new Set([
   "/",
   "/login",
@@ -27,6 +55,11 @@ const isPublicPath = (logicalPath: string) =>
 
 export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  const legacyTarget = LEGACY_REDIRECTS[pathname];
+  if (legacyTarget) {
+    return NextResponse.redirect(new URL(legacyTarget, request.url), 301);
+  }
 
   // Detect locale from cookie or path
   const cookieLocale = request.cookies.get("NEXT_LOCALE")?.value;
