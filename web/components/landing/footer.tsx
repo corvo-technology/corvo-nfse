@@ -17,7 +17,7 @@ export function Footer() {
           </span>
           <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-xs text-text-4">
             <Link
-              href={`/${locale}/${t("features").toLowerCase()}`}
+              href={`/${locale}#features`}
               className="hover:text-text-2 transition-colors"
             >
               {t("features")}

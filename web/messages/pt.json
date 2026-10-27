@@ -670,8 +670,8 @@
   },
   "Hero": {
     "badge": "Infraestrutura de notas fiscais para desenvolvedores",
-    "title": "Sua API de notas fiscais. Simples assim.",
-    "subtitle": "A Corvo é uma API REST e um servidor MCP para emitir NFS-e (nota fiscal de serviço) no padrão nacional do Brasil, para empresas MEI e do Simples Nacional. Feita para desenvolvedores, SaaS, ERPs e agentes de IA.",
+    "title": "Emita NFS-e por API ou por agente de IA.",
+    "subtitle": "A Corvo é uma API REST e um servidor MCP para emitir NFS-e (nota fiscal de serviço) no padrão nacional do Brasil, para empresas MEI e do Simples Nacional. Feita para agentes de IA, desenvolvedores, SaaS e ERPs.",
     "startFree": "Começar grátis",
     "viewDocs": "Ver documentação",
     "mono": "15 notas grátis por mês. Sem cartão de crédito."
