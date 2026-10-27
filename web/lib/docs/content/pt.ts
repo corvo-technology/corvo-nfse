@@ -26,12 +26,9 @@ const ptWithRetiredCredits: DocsTree = {
         body: "A API da Corvo permite cadastrar empresas (MEI, Simples Nacional e outros regimes), enviar certificados A1, calcular tributos antes de emitir, emitir notas fiscais de serviço (NFS-e) e acompanhar o ciclo de vida completo por webhooks. Agentes de IA como Claude Code, Cursor e Codex fazem o mesmo pelo servidor MCP (veja Agentes de IA).",
       },
       { kind: "heading", level: 2, body: "Quickstart" },
-      {
-        kind: "code",
-        label: "bash",
-        language: "bash",
-        code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='corvo_test_sua_chave'\n\ncurl \"$BASE_URL/companies\" -H \"X-API-Key: $CORVO_API_KEY\"",
-      },
+      { kind: "text", body: "Do cadastro à primeira nota, no ambiente de teste. Em teste não é preciso certificado; em produção são necessários uma chave `corvo_live_` e um certificado A1." },
+      { kind: "list", items: ["Crie a conta grátis em https://corvo.tech/login?mode=signup (sem cartão de crédito).", "No painel, gere uma chave de teste. Ela começa com `corvo_test_`; notas emitidas com ela não têm valor fiscal.", "Cadastre a empresa emissora com `POST /v1/companies` (`legalName`, `taxId`, `taxRegime` e `municipalityCode` são obrigatórios).", "Emita a nota com `POST /v1/invoices`. A resposta é `202` com status `queued`: a emissão é assíncrona.", "Acompanhe com `GET /v1/invoices/:id` ou receba o webhook `nfse.invoice.authorized` / `nfse.invoice.rejected`.", "Vá para produção: crie uma chave `corvo_live_` e envie o certificado A1 da empresa pelo painel ou pela API (`POST /v1/companies/:companyId/certificates`)."] },
+      { kind: "code", label: "bash", language: "bash", code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='corvo_test_sua_chave'\n\n# 3. Cadastrar a empresa\ncurl -X POST \"$BASE_URL/companies\" \\\n  -H \"X-API-Key: $CORVO_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"legalName\":\"Empresa Exemplo Ltda\",\"taxId\":\"11222333000181\",\"taxRegime\":\"MEI\",\"municipalityCode\":\"3550308\"}'\n\n# 4. Emitir a nota (202, status queued)\ncurl -X POST \"$BASE_URL/invoices\" \\\n  -H \"X-API-Key: $CORVO_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -H 'Idempotency-Key: pedido_123_emissao' \\\n  -d '{\"companyTaxId\":\"11222333000181\",\"amount\":100,\"service\":{\"description\":\"Consultoria\"}}'\n\n# 5. Acompanhar\ncurl \"$BASE_URL/invoices/<id>\" -H \"X-API-Key: $CORVO_API_KEY" },
       {
         kind: "text",
         body: "Todos os caminhos desta documentação são relativos a `BASE_URL` (`https://api.corvo.tech/v1`).",
@@ -597,6 +594,7 @@ console.log(body.data); // { data: null }`,
       title: "Certificados",
       description: "Envie e gerencie certificados A1 (PKCS#12) das empresas.",
       blocks: [
+        { kind: "text", body: "Você pode enviar o certificado A1 pelo painel (página da empresa) ou pela API, com o endpoint abaixo." },
         { kind: "text", body: "Permissões: `nfse.certificates.view` para listar e `nfse.certificates.manage` para upload/revogação." },
         {
           kind: "endpoint",
