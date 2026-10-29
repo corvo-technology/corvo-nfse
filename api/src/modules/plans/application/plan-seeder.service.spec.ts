@@ -12,10 +12,10 @@ it('seeds 15 free invoices per month while preserving all other plan allowances'
     save.mock.calls.map(([plan]) => [plan.slug, plan.monthlyCreditAllowance]),
   ).toEqual([
     ['free', 15],
-    ['developer', 250],
-    ['growth', 1500],
-    ['scale', 6000],
-    ['volume', 20000],
+    ['developer', 200],
+    ['growth', 850],
+    ['scale', 3000],
+    ['volume', 10000],
   ]);
   expect(save.mock.calls[0]?.[0].toSnapshot()).toMatchObject({
     dailyLimit: 3,

@@ -74,8 +74,7 @@ describe("price consistency with the billing catalog", () => {
     });
   });
 
-  it("no message uses 10.000 / 10,000 as the ceiling", () => {
-    for (const messages of [pt, en]) expect(JSON.stringify(messages)).not.toMatch(/10[.,]000 (notas|invoices)/);
+  it("the custom-plan ceiling follows the largest plan allowance", () => {
     expect(pt.Pricing.calculator.custom.description).toContain(new Intl.NumberFormat("pt-BR").format(catalog.at(-1)!.monthlyAllowance));
     expect(en.Pricing.calculator.custom.description).toContain(new Intl.NumberFormat("en-US").format(catalog.at(-1)!.monthlyAllowance));
   });
@@ -95,7 +94,7 @@ describe("price consistency with the billing catalog", () => {
       total_estimated_cents: expected.totalEstimatedCents,
     });
     // Reference values for the PR description, from the real service.
-    expect(pricing.recommendPlanForVolume(20000)).toMatchObject({ planSlug: "volume", overageCredits: 0, totalEstimatedCents: 69990 });
-    expect(pricing.recommendPlanForVolume(25000)).toMatchObject({ planSlug: "volume", overageCredits: 5000, overageCostCents: 25000, totalEstimatedCents: 94990 });
+    expect(pricing.recommendPlanForVolume(10000)).toMatchObject({ planSlug: "volume", overageCredits: 0, totalEstimatedCents: 69990 });
+    expect(pricing.recommendPlanForVolume(15000)).toMatchObject({ planSlug: "volume", overageCredits: 5000, overageCostCents: 45000, totalEstimatedCents: 114990 });
   });
 });

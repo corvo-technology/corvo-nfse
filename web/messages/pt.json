@@ -724,7 +724,7 @@
       },
       "custom": {
         "label": "Fale conosco",
-        "description": "Volumes acima de 20.000 notas/mês."
+        "description": "Volumes acima de 10.000 notas/mês."
       }
     },
     "footnote": "Cotas mensais, sem acúmulo. No Free, renovação no primeiro dia do mês em UTC; nos pagos, pelo ciclo da assinatura. Excedentes autorizados em produção são cobrados à parte, até o limite de processamento do plano.",
@@ -749,7 +749,7 @@
       "developer": {
         "name": "DEVELOPER",
         "badge": "Melhor custo-benefício",
-        "credits": "250",
+        "credits": "200",
         "price": "R$ 29,90",
         "unit": "",
         "bestFor": "Para começar a emitir NFS-e em qualquer número de empresas.",
@@ -765,7 +765,7 @@
       "growth": {
         "name": "GROWTH",
         "badge": "Mais popular",
-        "credits": "1.500",
+        "credits": "850",
         "price": "R$ 99,90",
         "unit": "",
         "bestFor": "Operações em crescimento com mais volume.",
@@ -780,7 +780,7 @@
       },
       "scale": {
         "name": "SCALE",
-        "credits": "6.000",
+        "credits": "3.000",
         "price": "R$ 299,90",
         "unit": "",
         "bestFor": "Plataformas e operações de alto volume.",
@@ -795,7 +795,7 @@
       },
       "volume": {
         "name": "VOLUME",
-        "credits": "20.000",
+        "credits": "10.000",
         "price": "R$ 699,90",
         "unit": "",
         "bestFor": "Maior volume e operações multiempresa.",

@@ -724,7 +724,7 @@
       },
       "custom": {
         "label": "Contact us",
-        "description": "Volumes above 20,000 invoices/month."
+        "description": "Volumes above 10,000 invoices/month."
       }
     },
     "footnote": "Monthly allowances do not roll over. Free renews on the first day of the month in UTC; paid plans follow the subscription cycle. Authorized production overage is billed separately, up to the plan’s processing limit.",
@@ -749,7 +749,7 @@
       "developer": {
         "name": "DEVELOPER",
         "badge": "Best value",
-        "credits": "250",
+        "credits": "200",
         "price": "R$ 29.90",
         "unit": "",
         "bestFor": "Start issuing NFS-e for any number of companies.",
@@ -765,7 +765,7 @@
       "growth": {
         "name": "GROWTH",
         "badge": "Most popular",
-        "credits": "1,500",
+        "credits": "850",
         "price": "R$ 99.90",
         "unit": "",
         "bestFor": "Growing operations with higher volume.",
@@ -780,7 +780,7 @@
       },
       "scale": {
         "name": "SCALE",
-        "credits": "6,000",
+        "credits": "3,000",
         "price": "R$ 299.90",
         "unit": "",
         "bestFor": "High-volume platforms and operations.",
@@ -795,7 +795,7 @@
       },
       "volume": {
         "name": "VOLUME",
-        "credits": "20,000",
+        "credits": "10,000",
         "price": "R$ 699.90",
         "unit": "",
         "bestFor": "The highest volumes and multi-company operations.",

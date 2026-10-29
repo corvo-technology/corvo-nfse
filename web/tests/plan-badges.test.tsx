@@ -47,10 +47,10 @@ describe("pricing badges", () => {
     expect(PLANS.map((p) => ladderRow(p.slug).textContent)).toMatchInlineSnapshot(`
       [
         "FREE15 notas / mêsLimitado a 15 notas/mês",
-        "DEVELOPERMelhor custo-benefício250 notas / mêsR$ 0,12 por nota excedenteR$ 29,90",
-        "GROWTHMais popular1.500 notas / mêsR$ 0,08 por nota excedenteR$ 99,90",
-        "SCALE6.000 notas / mêsR$ 0,05 por nota excedenteR$ 299,90",
-        "VOLUME20.000 notas / mêsR$ 0,05 por nota excedenteR$ 699,90",
+        "DEVELOPERMelhor custo-benefício200 notas / mêsR$ 0,18 por nota excedenteR$ 29,90",
+        "GROWTHMais popular850 notas / mêsR$ 0,14 por nota excedenteR$ 99,90",
+        "SCALE3.000 notas / mêsR$ 0,12 por nota excedenteR$ 299,90",
+        "VOLUME10.000 notas / mêsR$ 0,09 por nota excedenteR$ 699,90",
       ]
     `);
   });
