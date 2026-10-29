@@ -434,7 +434,7 @@ Fontes: [API keys](https://docs.stripe.com/keys), [webhooks](https://docs.stripe
 
 Fixar a versão suportada; a documentação atual da v2 descreve Checkout pago, pagamento transparente e renovação. Em links reutilizáveis, identificar cada pagamento.
 
-Validar o secret específico recebido na URL e a verificação de corpo documentada. O HMAC usa uma chave pública e não substitui o segredo privado da conexão como prova de origem. Suprimir o parâmetro secreto dos logs. Webhooks podem conter documento mascarado ou cliente ausente; consultar o cadastro quando disponível. Reenvio manual pode gerar novo ID, reforçando a deduplicação por operação.
+Aceitar o formato novo (Standard Webhooks: `webhook-id`, `webhook-timestamp`, `webhook-signature`, HMAC-SHA256 de `id.timestamp.corpo` com o Secret da conexão, tolerância de 5 minutos) e o antigo (secret na URL e `X-Webhook-Signature`). O HMAC antigo usa uma chave pública e não substitui o segredo privado da conexão como prova de origem. Suprimir o parâmetro secreto dos logs. Webhooks trazem o documento mascarado: consultar o cliente pela API com a chave do cliente (`CUSTOMER:READ`). O nome do produto, para a descrição da nota, vem de `GET /v2/products/get` (`PRODUCT:READ`). Upsell é a mesma venda, não uma operação nova. Reenvio manual pode gerar novo ID, reforçando a deduplicação por operação.
 
 Fontes: [autenticação](https://docs.abacatepay.com/pages/authentication), [webhooks](https://docs.abacatepay.com/pages/webhooks), [segurança](https://docs.abacatepay.com/pages/webhooks/security), [cliente](https://docs.abacatepay.com/pages/client/get).
 
@@ -456,9 +456,9 @@ Fontes: [token OAuth](https://docs.kiwify.com.br/api-reference/auth/oauth), [cri
 
 ### 20.5 Woovi
 
-Usar AppID da conta conectada. Começar por cobrança paga, `OPENPIX:CHARGE_COMPLETED`, sem tratar qualquer Pix recebido como venda. Conferir a distinção entre pagador e cliente da cobrança.
+Sem credencial do cliente: a Corvo gera um token e o cliente o cola no cabeçalho `Authorization` do webhook (Cabeçalhos HTTP). Começar por cobrança paga, `OPENPIX:CHARGE_COMPLETED`, sem tratar qualquer Pix recebido como venda. Conferir a distinção entre pagador e cliente da cobrança.
 
-Validar `x-webhook-signature` pela chave pública e conferir o vínculo com a conexão. O material específico de segurança documenta RSA-SHA256; não copiar a interpretação de HMAC com o mesmo header presente em materiais auxiliares. Tratar teste de cadastro sem emitir nota. Não abrir subcontas ou implementar BaaS para atender este recorte.
+Exigir o token do cabeçalho `Authorization` (prova o vínculo com a conexão). Se `x-webhook-signature` vier, validá-la pela chave pública. O material específico de segurança documenta RSA-SHA256; não copiar a interpretação de HMAC com o mesmo header presente em materiais auxiliares. A descrição do serviço na nota é o `comment` da cobrança. Tratar teste de cadastro sem emitir nota. Não abrir subcontas ou implementar BaaS para atender este recorte.
 
 Fontes: [autenticação](https://developers.woovi.com/docs/apis/api-getting-started), [eventos](https://developers.woovi.com/docs/webhook/webhook-events-type), [assinatura recomendada](https://developers.woovi.com/docs/webhook/seguranca/webhook-signature-validation), [chaves públicas](https://developers.woovi.com/docs/webhook/seguranca/webhook-public-keys).
 
