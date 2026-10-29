@@ -2177,8 +2177,6 @@
       "company": "Empresa que emite a nota",
       "companyPlaceholder": "Escolha a empresa",
       "noCompanies": "Cadastre uma empresa antes de conectar.",
-      "serviceDescription": "Descrição do serviço na nota",
-      "serviceHint": "Opcional. Em branco, usa o padrão da empresa.",
       "sendEmail": "Enviar a nota por e-mail ao cliente",
       "back": "Voltar",
       "connect": "Conectar",
@@ -2246,8 +2244,6 @@
       },
       "settings": {
         "title": "Como emitir as notas",
-        "description": "Descrição do serviço na nota",
-        "descriptionHint": "Em branco, usa o padrão da empresa.",
         "sendEmail": "Enviar a nota por e-mail ao cliente",
         "anonymous": "Emitir mesmo sem CPF/CNPJ do cliente",
         "anonymousHint": "Se a plataforma não informar o documento completo, a nota sai sem tomador em vez de ficar esperando você.",

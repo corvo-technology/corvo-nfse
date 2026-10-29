@@ -144,6 +144,7 @@ describePostgres('AbacatePay connector through the real pipeline', () => {
       new AbacatePayConnector(HMAC_KEY, {
         checkCredentials: () => Promise.resolve(),
         getCustomer: () => Promise.resolve(lookup),
+        getProductName: () => Promise.resolve('Plano Pro'),
       } as unknown as AbacatePayClient),
     );
     const cipher = new SecretsCipherService(
@@ -232,6 +233,8 @@ describePostgres('AbacatePay connector through the real pipeline', () => {
       service: { code: '020202' },
       externalId: 'checkout:bill_abc123xyz',
     });
+    // The product rule sets its own description, which wins over the product name.
+    expect(request.service).toMatchObject({ description: 'Consultoria' });
     expect(request).not.toHaveProperty('customer');
   });
 

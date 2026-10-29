@@ -198,6 +198,7 @@ describe('WooviConnector.normalize', () => {
         taxIdMasked: false,
       },
       items: [],
+      description: 'Consultoria',
       sellerIssuesInvoice: true,
     });
   });
@@ -273,6 +274,37 @@ describe('WooviConnector.normalize', () => {
       new Date('2026-10-29T15:00:05.000Z'),
     );
   });
+});
+
+describe('WooviConnector.normalize description', () => {
+  const { connector } = setup();
+  const delivery: OperationDelivery = {
+    kind: 'operation',
+    deliveryId: 'd',
+    externalType: 'OPENPIX:CHARGE_COMPLETED',
+  };
+  const withComment = (comment: unknown) => {
+    const body = JSON.parse(fixture('charge-completed.json')) as {
+      charge: Record<string, unknown>;
+    };
+    body.charge.comment = comment;
+    return connector.normalize({
+      connection,
+      payload: JSON.stringify(body),
+      delivery,
+    });
+  };
+  it('uses the charge comment as what was sold, trimmed', async () => {
+    expect((await withComment('  Mentoria 1h  ')).description).toBe(
+      'Mentoria 1h',
+    );
+  });
+  it.each([[undefined], [''], ['   '], [42]])(
+    'has no description when the comment is %s',
+    async (comment) => {
+      expect((await withComment(comment)).description).toBeNull();
+    },
+  );
 });
 
 describe('WooviConnector.validateConnection', () => {

@@ -122,11 +122,11 @@ describe("Connect page", () => {
     mocks.activate.mockResolvedValue(connection());
     await openWoovi();
     fill();
-    fireEvent.change(screen.getByLabelText(/Service description/), { target: { value: "Consultoria" } });
+    expect(screen.queryByLabelText(/Service description/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Connect" }));
     await screen.findByText("Connected!");
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "woovi", companyId: "co1", environment: "test", credentials: { appId: "app-123" } }));
-    expect(mocks.putRules).toHaveBeenCalledWith("c1", [{ service: { description: "Consultoria" }, sendEmail: true }]);
+    expect(mocks.putRules).toHaveBeenCalledWith("c1", [{ service: {}, sendEmail: true }]);
     expect(screen.getByText("https://api.corvo.tech/v1/integrations/inbound/PUB")).toBeTruthy();
     expect(screen.getByText("Create a webhook on Woovi.")).toBeTruthy();
     expect(screen.queryByText(/contains a secret/)).toBeNull();
@@ -194,7 +194,8 @@ describe("Connection page", () => {
   it("shows everything on one page: settings, sales, connection and disconnect", async () => {
     await openDetails([sale(), waiting("s2")]);
     expect(screen.getAllByText("Acme").length).toBeGreaterThan(0);
-    expect(await screen.findByLabelText(/Service description on the invoice/)).toBeTruthy();
+    expect(await screen.findByRole("switch", { name: "Email the invoice to the customer" })).toBeTruthy();
+    expect(screen.queryByLabelText(/Service description/)).toBeNull();
     expect(await screen.findByText("Invoice issued")).toBeTruthy();
     expect(screen.getByText("CPF/CNPJ missing")).toBeTruthy();
     expect(screen.getByText("https://api.corvo.tech/v1/integrations/inbound/PUB")).toBeTruthy();
@@ -219,21 +220,19 @@ describe("Connection page", () => {
     await waitFor(() => expect(mocks.activate).toHaveBeenCalledWith("c1"));
   });
 
-  it("edits the default rule and keeps the per-product rules untouched", async () => {
+  it("edits the default rule, keeps a description set through the API and leaves the per-product rules untouched", async () => {
     mocks.rules.mockResolvedValue([rule({ service: { description: "Consultoria", code: "010101" } }), rule({ id: "r2", externalProductId: "prod_1", service: { code: "020202" }, sendEmail: false })]);
     mocks.putRules.mockResolvedValue([]);
     await openDetails();
-    const description = (await screen.findByLabelText(/Service description on the invoice/)) as HTMLInputElement;
-    expect(description.value).toBe("Consultoria");
+    await screen.findByRole("switch", { name: "Email the invoice to the customer" });
     expect(screen.getByText(/1 per-product rule/)).toBeTruthy();
     const save = screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
-    fireEvent.change(description, { target: { value: "Mentoria" } });
     fireEvent.click(screen.getByRole("switch", { name: "Issue even without the customer's CPF/CNPJ" }));
     expect(save.disabled).toBe(false);
     fireEvent.click(save);
     await waitFor(() => expect(mocks.putRules).toHaveBeenCalledWith("c1", [
-      { externalProductId: null, service: { description: "Mentoria", code: "010101" }, sendEmail: true, allowAnonymousCustomer: true },
+      { externalProductId: null, service: { description: "Consultoria", code: "010101" }, sendEmail: true, allowAnonymousCustomer: true },
       { externalProductId: "prod_1", service: { code: "020202" }, sendEmail: false, allowAnonymousCustomer: false },
     ]));
   });
@@ -289,7 +288,7 @@ describe("Connection page", () => {
     await screen.findByText("CPF/CNPJ missing");
     expect((screen.getByRole("switch", { name: "Issue invoices automatically" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByRole("button", { name: "Add CPF/CNPJ" })).toBeNull();
-    await screen.findByLabelText(/Service description on the invoice/);
+    await screen.findByRole("switch", { name: "Email the invoice to the customer" });
     expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Disconnect" })).toBeNull();
   });

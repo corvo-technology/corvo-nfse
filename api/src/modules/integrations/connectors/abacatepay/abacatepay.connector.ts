@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { normalizeTaxID } from '@/shared/tax-id';
 import {
   ConnectorDataError,
+  ConnectorTransientError,
   type CommercialState,
   type Connector,
   type ConnectionView,
@@ -21,6 +22,7 @@ const STATE_BY_SUFFIX: Record<string, CommercialState> = {
   refunded: 'refunded',
   disputed: 'disputed',
 };
+const MAX_LOOKUPS = 5;
 const TIMESTAMP_TOLERANCE_SECONDS = 300;
 const PAYMENT_EVENT = /^(checkout|transparent)\.(completed|refunded|disputed)$/;
 
@@ -74,7 +76,7 @@ export class AbacatePayConnector implements Connector {
     credentialFields: [
       {
         key: 'apiKey',
-        label: 'Chave de API da AbacatePay',
+        label: 'Chave de API da AbacatePay (com CUSTOMER:READ e PRODUCT:READ)',
         secret: true,
       },
       {
@@ -218,6 +220,7 @@ export class AbacatePayConnector implements Connector {
       const taxId = normalizeTaxID(full.taxId ?? undefined);
       if (taxId) customer = { ...customer, taxId, taxIdMasked: false };
     }
+    const names = await this.productNames(payment.items ?? [], apiKey);
     const at = new Date(payment.updatedAt ?? payment.createdAt ?? Date.now());
     return {
       operationKey: `${kind}:${payment.id}`,
@@ -234,11 +237,38 @@ export class AbacatePayConnector implements Connector {
       customer,
       items: (payment.items ?? []).map((item) => ({
         externalProductId: item.id ?? null,
-        description: null,
+        description: (item.id && names.get(item.id)) || null,
         quantity: item.quantity ?? 1,
       })),
+      description: names.size ? [...new Set(names.values())].join(', ') : null,
       sellerIssuesInvoice: true,
     };
+  }
+
+  /**
+   * Product names by id. A key that cannot read products only costs the description:
+   * the sale still goes out with the company default.
+   */
+  private async productNames(
+    items: Array<{ id?: string }>,
+    apiKey: string | undefined,
+  ): Promise<Map<string, string>> {
+    const names = new Map<string, string>();
+    if (!apiKey) return names;
+    const ids = [
+      ...new Set(items.map((i) => i.id).filter(Boolean)),
+    ] as string[];
+    await Promise.all(
+      ids.slice(0, MAX_LOOKUPS).map(async (id) => {
+        try {
+          const name = await this.client.getProductName(apiKey, id);
+          if (name) names.set(id, name);
+        } catch (error) {
+          if (error instanceof ConnectorTransientError) throw error;
+        }
+      }),
+    );
+    return names;
   }
 
   async validateConnection(

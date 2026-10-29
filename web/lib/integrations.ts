@@ -42,7 +42,7 @@ export class ConnectError extends Error {
   constructor(message: string, readonly step: ConnectStep) { super(message); }
 }
 
-export interface ConnectInput { provider: string; companyId: string; environment: "test" | "live"; credentials: Record<string, string>; serviceDescription: string; sendEmail: boolean }
+export interface ConnectInput { provider: string; companyId: string; environment: "test" | "live"; credentials: Record<string, string>; sendEmail: boolean }
 type ConnectApi = Pick<typeof defaultApi, "create" | "validate" | "putRules" | "activate" | "disconnect">;
 
 /**
@@ -61,8 +61,8 @@ export async function connectProvider(input: ConnectInput, api: ConnectApi = def
   try {
     await api.validate(created.id);
     step = "rules";
-    const description = input.serviceDescription.trim();
-    await api.putRules(created.id, [{ service: description ? { description } : {}, sendEmail: input.sendEmail }]);
+    // No fixed description: each invoice describes what that sale was, using what the platform sent.
+    await api.putRules(created.id, [{ service: {}, sendEmail: input.sendEmail }]);
     step = "activate";
     const active = await api.activate(created.id);
     // The create response is the only one that carries secrets that belong in the URL.

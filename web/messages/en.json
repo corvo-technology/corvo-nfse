@@ -2177,8 +2177,6 @@
       "company": "Company that issues the invoice",
       "companyPlaceholder": "Choose the company",
       "noCompanies": "Register a company before connecting.",
-      "serviceDescription": "Service description on the invoice",
-      "serviceHint": "Optional. Left blank, the company default is used.",
       "sendEmail": "Email the invoice to the customer",
       "back": "Back",
       "connect": "Connect",
@@ -2246,8 +2244,6 @@
       },
       "settings": {
         "title": "How to issue invoices",
-        "description": "Service description on the invoice",
-        "descriptionHint": "Optional. Left blank, the company default is used.",
         "sendEmail": "Email the invoice to the customer",
         "anonymous": "Issue even without the customer's CPF/CNPJ",
         "anonymousHint": "If the platform does not send the full document, the invoice goes out without a customer instead of waiting for you.",

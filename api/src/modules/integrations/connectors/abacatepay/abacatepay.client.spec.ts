@@ -86,3 +86,38 @@ describe('AbacatePayClient.getCustomer', () => {
     expect((fetchFn.mock.calls[0] as [string])[0]).toContain('id=a%26b');
   });
 });
+
+describe('AbacatePayClient.getProductName', () => {
+  it('returns the product name, asking by id with the key', async () => {
+    const fetchFn = jest
+      .fn()
+      .mockResolvedValue(
+        res(200, { data: { id: 'prod_1', name: 'Plano Pro' } }),
+      );
+    await expect(
+      new AbacatePayClient(fetchFn).getProductName('k', 'prod_1'),
+    ).resolves.toBe('Plano Pro');
+    expect((fetchFn.mock.calls[0] as [string])[0]).toBe(
+      'https://api.abacatepay.com/v2/products/get?id=prod_1',
+    );
+  });
+  it('is null when the product has no name', async () => {
+    await expect(
+      new AbacatePayClient(
+        jest.fn().mockResolvedValue(res(200, { data: {} })),
+      ).getProductName('k', 'p'),
+    ).resolves.toBeNull();
+  });
+  it('401/403 are auth errors and 5xx transient', async () => {
+    await expect(
+      new AbacatePayClient(
+        jest.fn().mockResolvedValue(res(403)),
+      ).getProductName('k', 'p'),
+    ).rejects.toThrow(ConnectorAuthError);
+    await expect(
+      new AbacatePayClient(
+        jest.fn().mockResolvedValue(res(503)),
+      ).getProductName('k', 'p'),
+    ).rejects.toThrow(ConnectorTransientError);
+  });
+});

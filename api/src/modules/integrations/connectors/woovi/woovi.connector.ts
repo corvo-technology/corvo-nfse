@@ -36,6 +36,7 @@ interface WooviWebhook {
     correlationID?: string;
     transactionID?: string;
     updatedAt?: string;
+    comment?: unknown;
     customer?: WooviCustomer;
   };
   pix?: { time?: string; transactionID?: string };
@@ -163,6 +164,10 @@ export class WooviConnector implements Connector {
       // The Pix payer is deliberately not used: only the charge customer is the buyer.
       customer: toCustomer(charge.customer),
       items: [],
+      description:
+        typeof charge.comment === 'string' && charge.comment.trim()
+          ? charge.comment.trim()
+          : null,
       sellerIssuesInvoice: true,
     };
   }

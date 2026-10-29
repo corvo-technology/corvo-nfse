@@ -5,6 +5,7 @@ import { AbacatePayConnector } from './abacatepay.connector';
 import type { AbacatePayClient } from './abacatepay.client';
 import {
   ConnectorDataError,
+  ConnectorAuthError,
   ConnectorTransientError,
   type ConnectionView,
   type OperationDelivery,
@@ -288,6 +289,7 @@ describe('AbacatePayConnector.normalize', () => {
           quantity: 1,
         },
       ],
+      description: null,
       sellerIssuesInvoice: true,
     });
   });
@@ -413,6 +415,83 @@ describe('AbacatePayConnector.normalize with an API key', () => {
     expect(op.customer).toMatchObject({ taxId: null, taxIdMasked: true });
   });
   it('lets lookup failures propagate so the worker retries or asks for a new key', async () => {
+    await expect(
+      run(
+        make(jest.fn().mockRejectedValue(new ConnectorTransientError('503'))),
+      ),
+    ).rejects.toThrow(ConnectorTransientError);
+  });
+});
+
+describe('AbacatePayConnector.normalize description from the products', () => {
+  const delivery: OperationDelivery = {
+    kind: 'operation',
+    deliveryId: 'd',
+    externalType: 'x',
+  };
+  const keyed: ConnectionView = {
+    ...connection,
+    credentials: { ...connection.credentials, apiKey: 'abc_key' },
+  };
+  const make = (getProductName: jest.Mock) =>
+    new AbacatePayConnector(undefined, {
+      getProductName,
+      getCustomer: jest
+        .fn()
+        .mockResolvedValue({ name: null, email: null, taxId: null }),
+    } as unknown as AbacatePayClient);
+  const run = (c: AbacatePayConnector, conn = keyed) =>
+    c.normalize({
+      connection: conn,
+      payload: fixture('checkout-completed'),
+      delivery,
+    });
+
+  it('names the sale after the product, and the item after it too', async () => {
+    const getProductName = jest.fn().mockResolvedValue('Plano Pro');
+    const op = await run(make(getProductName));
+    expect(getProductName).toHaveBeenCalledWith('abc_key', 'prod_consultoria');
+    expect(op.description).toBe('Plano Pro');
+    expect(op.items[0]).toMatchObject({
+      externalProductId: 'prod_consultoria',
+      description: 'Plano Pro',
+    });
+  });
+  it('joins several different products and asks for each only once', async () => {
+    const data = JSON.parse(fixture('checkout-completed')) as {
+      data: { checkout: { items: unknown[] } };
+    };
+    data.data.checkout.items = [
+      { id: 'p1', quantity: 1 },
+      { id: 'p2', quantity: 2 },
+      { id: 'p1', quantity: 1 },
+    ];
+    const getProductName = jest
+      .fn()
+      .mockImplementation((_k: string, id: string) =>
+        Promise.resolve(id === 'p1' ? 'Plano Pro' : 'Extra'),
+      );
+    const op = await make(getProductName).normalize({
+      connection: keyed,
+      payload: JSON.stringify(data),
+      delivery,
+    });
+    expect(getProductName).toHaveBeenCalledTimes(2);
+    expect(op.description).toBe('Plano Pro, Extra');
+  });
+  it('has no description without a key', async () => {
+    const getProductName = jest.fn();
+    const op = await run(make(getProductName), connection);
+    expect(getProductName).not.toHaveBeenCalled();
+    expect(op.description).toBeNull();
+  });
+  it('a key without permission on products still lets the sale through, without a description', async () => {
+    const op = await run(
+      make(jest.fn().mockRejectedValue(new ConnectorAuthError('403'))),
+    );
+    expect(op.description).toBeNull();
+  });
+  it('lets a transient failure propagate so the worker retries', async () => {
     await expect(
       run(
         make(jest.fn().mockRejectedValue(new ConnectorTransientError('503'))),

@@ -37,7 +37,6 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
   const [providerId, setProviderId] = useState<string | null>(initialProvider ?? null);
   const [companyId, setCompanyId] = useState(companies.length === 1 ? companies[0].id : "");
   const [credentials, setCredentials] = useState<Record<string, string>>({});
-  const [serviceDescription, setServiceDescription] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +60,6 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
         companyId,
         environment,
         credentials: Object.fromEntries(askedFields.map((field) => [field.key, credentials[field.key].trim()])),
-        serviceDescription,
         sendEmail,
       });
       setWebhookUrl(result.webhookUrl);
@@ -129,9 +127,6 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
               )}
             </Field>
           ))}
-          <Field label={t("wizard.serviceDescription")} hint={t("wizard.serviceHint")}>
-            {(control) => <Input {...control} value={serviceDescription} maxLength={200} onChange={(e) => setServiceDescription(e.target.value)} />}
-          </Field>
           <Toggle checked={sendEmail} onChange={setSendEmail} label={t("wizard.sendEmail")} />
           {error && <p role="alert" className="text-[13px] text-danger">{error}</p>}
           <div className="flex justify-between gap-2.5">

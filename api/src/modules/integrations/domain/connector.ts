@@ -67,6 +67,8 @@ export interface NormalizedOperation {
     description: string | null;
     quantity: number;
   }>;
+  /** What was sold, as the platform describes it; used on the invoice when the rule sets no description. */
+  description?: string | null;
   /** False when the platform says someone else issues the invoice. */
   sellerIssuesInvoice: boolean;
 }

@@ -44,6 +44,21 @@ export class AbacatePayClient {
     };
   }
 
+  /** The webhook only carries product ids; the name says what was sold. */
+  async getProductName(
+    apiKey: string,
+    productId: string,
+  ): Promise<string | null> {
+    const response = await this.call(
+      apiKey,
+      `/products/get?id=${encodeURIComponent(productId)}`,
+    );
+    const body = (await response.json().catch(() => null)) as {
+      data?: { name?: string } | null;
+    } | null;
+    return body?.data?.name?.trim() || null;
+  }
+
   private async call(apiKey: string, path: string): Promise<Response> {
     let response: Response;
     try {
