@@ -80,6 +80,14 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(legacyTarget, request.url), 301);
   }
 
+  // Any other /docs URL without locale (e.g. /docs, /docs/quickstart): one 301 to the pt page,
+  // keeping path and query. Runs before next-intl, which would answer /docs with a 307.
+  if (pathname === "/docs" || pathname.startsWith("/docs/")) {
+    const target = new URL(request.url);
+    target.pathname = `/pt${pathname}`;
+    return NextResponse.redirect(target, 301);
+  }
+
   // Detect locale from cookie or path
   const cookieLocale = request.cookies.get("NEXT_LOCALE")?.value;
   const pathLocale = pathname.match(/^\/(en|pt)/)?.[1];
