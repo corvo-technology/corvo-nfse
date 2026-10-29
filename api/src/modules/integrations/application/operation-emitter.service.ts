@@ -18,6 +18,7 @@ import type {
   BlockReason,
   IntegrationOperation,
 } from '../domain/integration-operation';
+import { IIntegrationEventRepository } from '../domain/integration-event.repository';
 import { IIntegrationOperationRepository } from '../domain/integration-operation.repository';
 import { IIntegrationRuleRepository } from '../domain/integration-rule.repository';
 import { InvoiceIssuancePort } from '../domain/invoice-issuance.port';
@@ -39,6 +40,7 @@ export class OperationEmitter {
     private readonly operations: IIntegrationOperationRepository,
     private readonly rules: IIntegrationRuleRepository,
     private readonly issuance: InvoiceIssuancePort,
+    private readonly events: IIntegrationEventRepository,
   ) {}
 
   /** Throws on unexpected errors so the caller retries; the frozen request makes a retry safe. */
@@ -60,6 +62,7 @@ export class OperationEmitter {
           'submitted',
           'refund_after_invoice',
         );
+      await this.events.resolveAttention(id, tenantId);
       return { state: 'processed', operationId: id };
     }
 
@@ -120,6 +123,7 @@ export class OperationEmitter {
         null,
         invoiceId,
       );
+      await this.events.resolveAttention(id, tenantId);
       return { state: 'processed', operationId: id };
     } catch (error) {
       // These fail before any invoice exists under the key, so the request can be released and re-planned.

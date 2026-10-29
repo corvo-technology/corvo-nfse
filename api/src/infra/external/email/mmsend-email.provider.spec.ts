@@ -13,7 +13,10 @@ jest.mock('resend', () => ({
   })),
 }));
 
-import { MillionSendEmailProvider } from './mmsend-email.provider';
+import {
+  MillionSendEmailProvider,
+  PermanentEmailError,
+} from './mmsend-email.provider';
 
 describe('MillionSendEmailProvider', () => {
   const mockConfig = {
@@ -42,6 +45,41 @@ describe('MillionSendEmailProvider', () => {
     });
     expect(result.id).toBe('email_123');
   });
+
+  it.each([[400], [422]])(
+    'a %s answer is permanent: retrying the same address cannot work',
+    async (statusCode) => {
+      mockEmailsSend.mockResolvedValueOnce({
+        data: null,
+        error: { statusCode, name: 'validation_error', message: 'bad address' },
+      });
+      const provider = new MillionSendEmailProvider(
+        mockConfig as unknown as ConfigService,
+      );
+      await expect(
+        provider.send({ to: ['a@example.com'], subject: 'T', html: '<p/>' }),
+      ).rejects.toThrow(PermanentEmailError);
+    },
+  );
+  it.each([[429], [500], [503]])(
+    'a %s answer is a plain error, so the job is retried',
+    async (statusCode) => {
+      mockEmailsSend.mockResolvedValueOnce({
+        data: null,
+        error: { statusCode, name: 'x', message: 'later' },
+      });
+      const provider = new MillionSendEmailProvider(
+        mockConfig as unknown as ConfigService,
+      );
+      const attempt = provider.send({
+        to: ['a@x.com'],
+        subject: 'T',
+        html: '<p/>',
+      });
+      await expect(attempt).rejects.toThrow('MillionSend API error: later');
+      await expect(attempt).rejects.not.toBeInstanceOf(PermanentEmailError);
+    },
+  );
 
   it('throws when resend returns an error object with no id', async () => {
     mockEmailsSend.mockResolvedValueOnce({

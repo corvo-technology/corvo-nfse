@@ -66,7 +66,8 @@
       "companies": "Empresas",
       "invoices": "Notas fiscais",
       "billing": "Plano",
-      "agents": "Agentes de IA"
+      "agents": "Agentes de IA",
+      "integrations": "Integrações"
     },
     "account": "CONTA",
     "balance": "SALDO",
@@ -2145,5 +2146,154 @@
     "copied": "Copiado",
     "source": "Código no GitHub",
     "docs": "Ver todos os SDKs na documentação"
+  },
+  "Integrations": {
+    "title": "Integrações",
+    "subtitle": "Conecte seu meio de pagamento e a nota sai sozinha a cada venda paga.",
+    "connect": "Conectar",
+    "loadError": "Não foi possível carregar as integrações.",
+    "retry": "Tentar de novo",
+    "empty": {
+      "title": "Nenhuma integração ainda",
+      "description": "Escolha onde você recebe e conecte em menos de um minuto."
+    },
+    "providers": {
+      "woovi": "Cobranças Pix pagas na Woovi.",
+      "abacatepay": "Checkout e pagamentos pagos na AbacatePay.",
+      "other": "Pagamentos confirmados."
+    },
+    "status": {
+      "active": "Ativa",
+      "paused": "Pausada",
+      "reconnect": "Reconectar",
+      "draft": "Rascunho",
+      "disconnected": "Desconectada"
+    },
+    "pending": "{count, plural, one {# venda precisa de você} other {# vendas precisam de você}}",
+    "wizard": {
+      "title": "Conectar pagamento",
+      "stepPlatform": "Onde você recebe?",
+      "stepDetails": "Dados da conexão",
+      "company": "Empresa que emite a nota",
+      "companyPlaceholder": "Escolha a empresa",
+      "noCompanies": "Cadastre uma empresa antes de conectar.",
+      "sendEmail": "Enviar a nota por e-mail ao cliente",
+      "back": "Voltar",
+      "connect": "Conectar",
+      "connecting": "Conectando...",
+      "errors": {
+        "create": "Não foi possível criar a conexão",
+        "validate": "Não foi possível validar as credenciais",
+        "rules": "Não foi possível salvar a regra do serviço",
+        "activate": "Não foi possível ativar a conexão"
+      },
+      "done": {
+        "title": "Conectado!",
+        "body": "Falta só um passo: cadastre este endereço na plataforma para ela avisar a Corvo a cada pagamento.",
+        "urlLabel": "Endereço do webhook",
+        "secretWarning": "Estes dados só aparecem agora. Copie e guarde antes de fechar.",
+        "secretLabel": "Secret",
+        "copySecret": "Copiar o secret",
+        "finish": "Concluir"
+      },
+      "noPermission": "Para usar esta tela, peça a permissão de gerenciar integrações."
+    },
+    "detail": {
+      "webhookUrl": "Endereço do webhook",
+      "webhookUrlHint": "Cadastre na plataforma de pagamento.",
+      "pause": "Pausar",
+      "resume": "Retomar",
+      "disconnect": "Desconectar",
+      "confirmDisconnect": "Desconectar de vez? Esta conexão para de emitir notas e não pode ser reativada.",
+      "confirmYes": "Sim, desconectar",
+      "reconnectHint": "A plataforma recusou a chave. Troque a chave na seção Conexão, mais abaixo.",
+      "pausedHint": "Pausada: as vendas são guardadas, mas nenhuma nota é emitida.",
+      "updated": "Conexão atualizada.",
+      "sales": {
+        "title": "Últimas vendas",
+        "empty": "Nenhuma venda recebida ainda. Faça um pagamento de teste para ver aqui.",
+        "customer": "Cliente",
+        "amount": "Valor",
+        "status": "Situação",
+        "anonymous": "Sem cliente"
+      },
+      "sale": {
+        "issued": "Nota emitida",
+        "refundedAfterInvoice": "Reembolsada depois da nota",
+        "waitingCustomer": "Falta o CPF/CNPJ",
+        "needsAttention": "Precisa de atenção",
+        "notIssuedRefund": "Reembolsada, sem nota",
+        "blocked": "Não emitida",
+        "processing": "Processando"
+      },
+      "fixCustomer": "Informar CPF/CNPJ",
+      "taxIdLabel": "CPF ou CNPJ do cliente",
+      "taxIdInvalid": "Informe um CPF ou CNPJ com 11 ou 14 caracteres.",
+      "save": "Salvar e emitir",
+      "tryAgain": "Tentar de novo",
+      "saleDone": "Pronto, venda atualizada.",
+      "saleFailed": "Não foi possível atualizar a venda.",
+      "emit": "Emitir notas automaticamente",
+      "emitOn": "Ligado: cada venda paga vira uma nota.",
+      "emitOff": "Desligado: as vendas ficam guardadas, mas nenhuma nota é emitida.",
+      "tabs": {
+        "sales": "Vendas",
+        "settings": "Configurações",
+        "connection": "Conexão"
+      },
+      "settings": {
+        "title": "Como emitir as notas",
+        "sendEmail": "Enviar a nota por e-mail ao cliente",
+        "anonymous": "Emitir mesmo sem CPF/CNPJ do cliente",
+        "anonymousHint": "Se a plataforma não informar o documento completo, a nota sai sem tomador em vez de ficar esperando você.",
+        "otherRules": "Esta conexão tem {count} regra(s) por produto, criadas pela API. Elas continuam como estão.",
+        "save": "Salvar alterações",
+        "saved": "Configurações salvas.",
+        "loadError": "Não foi possível carregar as configurações."
+      },
+      "info": {
+        "company": "Empresa",
+        "environment": "Ambiente",
+        "since": "Conectada em",
+        "howTo": "Como cadastrar na plataforma",
+        "eventsTitle": "Avisos recebidos",
+        "eventsEmpty": "Nenhum aviso recebido ainda.",
+        "eventsHint": "Cada vez que a plataforma avisa a Corvo de um pagamento, aparece aqui.",
+        "event": {
+          "processed": "Processado",
+          "ignored": "Ignorado",
+          "working": "Em andamento",
+          "attention": "Precisa de atenção",
+          "dead": "Falhou",
+          "resolved": "Resolvido"
+        },
+        "eventRepeated": "Mesma venda de um aviso anterior"
+      },
+      "disconnectHint": "Para de emitir notas e remove esta conexão.",
+      "credentials": {
+        "title": "Chave de acesso",
+        "hint": "A chave fica guardada com segurança e nunca é mostrada de novo. Para trocar, informe a nova: ela é testada antes de valer.",
+        "stored": "Guardada",
+        "change": "Trocar",
+        "newValue": "Nova chave",
+        "save": "Testar e salvar",
+        "cancel": "Cancelar",
+        "saved": "Chave atualizada."
+      }
+    },
+    "env": {
+      "test": "Teste",
+      "live": "Produção"
+    },
+    "sales": {
+      "title": "Últimas vendas",
+      "all": "Todas",
+      "attention": "Precisam de atenção",
+      "viewInvoice": "Ver nota",
+      "allGood": "Tudo em dia: nenhuma venda precisa de você.",
+      "attentionBanner": "{count} vendas precisam de você",
+      "empty": "Nenhuma venda recebida ainda. Faça um pagamento de teste para ver aqui.",
+      "noneAttention": "Nenhuma venda precisa de atenção."
+    }
   }
 }

@@ -81,6 +81,39 @@ describe('planEmission', () => {
     });
     expect(plan.ruleId).toBe('r1');
   });
+  describe('service description', () => {
+    const bare: IntegrationRule = { ...rule, service: { code: '010101' } };
+    const planned = (
+      rules: IntegrationRule[],
+      description: string | null | undefined,
+    ) => {
+      const plan = planEmission(
+        input({ rules, snap: { description } as Partial<NormalizedOperation> }),
+      );
+      if (plan.kind !== 'issue') throw new Error('expected an issue plan');
+      return plan.request.service;
+    };
+    it('uses what the platform said was sold when the rule sets no description', () => {
+      expect(planned([bare], 'Plano Pro')).toEqual({
+        code: '010101',
+        description: 'Plano Pro',
+      });
+    });
+    it('a description set on the rule wins over the one from the sale', () => {
+      expect(planned([rule], 'Plano Pro')).toEqual({
+        code: '010101',
+        description: 'Consultoria',
+      });
+    });
+    it('without either, leaves the description out so the company default applies', () => {
+      expect(planned([bare], null)).toEqual({ code: '010101' });
+      expect(planned([bare], undefined)).toEqual({ code: '010101' });
+      expect(planned([bare], '   ')).toEqual({ code: '010101' });
+    });
+    it('cuts a very long description to 200 characters', () => {
+      expect(planned([bare], 'x'.repeat(500))?.description).toHaveLength(200);
+    });
+  });
   it('puts discount in the request only when greater than zero', () => {
     const none = planEmission(input());
     const some = planEmission(input({ snap: { discountCents: 500 } }));

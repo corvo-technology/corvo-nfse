@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { WooviConnector } from './woovi.connector';
 import type { WooviPublicKeyProvider } from './woovi-public-key.provider';
-import type { WooviClient } from './woovi.client';
 import {
   ConnectorAuthError,
   ConnectorDataError,
@@ -27,7 +26,7 @@ const connection: ConnectionView = {
   publicId: 'pub',
   environment: 'test',
   externalAccountId: 'woovi:abc',
-  credentials: { appId: 'app-id' },
+  credentials: {},
 };
 const req = (body: string, signature?: string) => ({
   rawBody: Buffer.from(body),
@@ -44,10 +43,7 @@ function setup(keys: string[][] = []) {
         Promise.resolve(queue.length > 1 ? queue.shift()! : queue[0]),
       ),
   } as unknown as WooviPublicKeyProvider & { getKeys: jest.Mock };
-  const client = {
-    checkCredentials: jest.fn().mockResolvedValue(undefined),
-  } as unknown as WooviClient & { checkCredentials: jest.Mock };
-  return { connector: new WooviConnector(provider, client), provider, client };
+  return { connector: new WooviConnector(provider), provider };
 }
 
 describe('WooviConnector.authenticate', () => {
@@ -116,6 +112,90 @@ describe('WooviConnector.authenticate', () => {
     await expect(
       connector.authenticate(req(body, '%%%not-base64%%%'), connection),
     ).resolves.toEqual({ ok: false, reason: 'bad_signature' });
+  });
+});
+
+describe('WooviConnector.authenticate with the webhook token', () => {
+  const body = fixture('charge-completed.json');
+  const TOKEN = 'tok_0123456789abcdef';
+  const withToken: ConnectionView = {
+    ...connection,
+    credentials: { webhookToken: TOKEN },
+  };
+  const request = (headers: Record<string, string>) => ({
+    rawBody: Buffer.from(body),
+    headers,
+    query: {},
+  });
+
+  it('accepts the token in the Authorization header, with or without Bearer, even when no signature header comes', async () => {
+    const { connector, provider } = setup([[keyPair().publicKey]]);
+    for (const value of [TOKEN, `Bearer ${TOKEN}`])
+      await expect(
+        connector.authenticate(request({ authorization: value }), withToken),
+      ).resolves.toEqual({ ok: true });
+    expect(provider.getKeys).not.toHaveBeenCalled();
+  });
+  it('rejects a missing or wrong token, whatever the signature says', async () => {
+    const { publicKey, privateKey } = keyPair();
+    const { connector } = setup([[publicKey]]);
+    const signature = sign(body, privateKey);
+    const attempts: Array<Record<string, string>> = [
+      { 'x-webhook-signature': signature },
+      { authorization: 'nope', 'x-webhook-signature': signature },
+      { authorization: `Bearer ${TOKEN}x` },
+    ];
+    for (const headers of attempts)
+      await expect(
+        connector.authenticate(request(headers), withToken),
+      ).resolves.toEqual({ ok: false, reason: 'bad_token' });
+  });
+  it('a signature that comes must still be valid', async () => {
+    const { connector } = setup([[keyPair().publicKey]]);
+    await expect(
+      connector.authenticate(
+        request({ authorization: TOKEN, 'x-webhook-signature': 'AAAA' }),
+        withToken,
+      ),
+    ).resolves.toEqual({ ok: false, reason: 'bad_signature' });
+  });
+  it('accepts the token together with a valid signature', async () => {
+    const { publicKey, privateKey } = keyPair();
+    const { connector } = setup([[publicKey]]);
+    await expect(
+      connector.authenticate(
+        request({
+          authorization: TOKEN,
+          'x-webhook-signature': sign(body, privateKey),
+        }),
+        withToken,
+      ),
+    ).resolves.toEqual({ ok: true });
+  });
+  it('never puts the token in the rejection reason', async () => {
+    const { connector } = setup();
+    const result = await connector.authenticate(
+      request({ authorization: `${TOKEN}x` }),
+      withToken,
+    );
+    expect(JSON.stringify(result)).not.toContain('tok_');
+  });
+  it('generates the token, reveals it once and asks the client to put it in the Authorization header', () => {
+    const { connector } = setup();
+    expect(connector.manifest.credentialFields).toEqual([
+      expect.objectContaining({
+        key: 'webhookToken',
+        secret: true,
+        generate: true,
+        revealOnce: true,
+      }),
+    ]);
+    expect(connector.manifest.webhookInstructions.pt).toContain(
+      'Authorization',
+    );
+    expect(connector.manifest.webhookInstructions.en).toContain(
+      'Authorization',
+    );
   });
 });
 
@@ -198,6 +278,7 @@ describe('WooviConnector.normalize', () => {
         taxIdMasked: false,
       },
       items: [],
+      description: 'Consultoria',
       sellerIssuesInvoice: true,
     });
   });
@@ -275,40 +356,52 @@ describe('WooviConnector.normalize', () => {
   });
 });
 
+describe('WooviConnector.normalize description', () => {
+  const { connector } = setup();
+  const delivery: OperationDelivery = {
+    kind: 'operation',
+    deliveryId: 'd',
+    externalType: 'OPENPIX:CHARGE_COMPLETED',
+  };
+  const withComment = (comment: unknown) => {
+    const body = JSON.parse(fixture('charge-completed.json')) as {
+      charge: Record<string, unknown>;
+    };
+    body.charge.comment = comment;
+    return connector.normalize({
+      connection,
+      payload: JSON.stringify(body),
+      delivery,
+    });
+  };
+  it('uses the charge comment as what was sold, trimmed', async () => {
+    expect((await withComment('  Mentoria 1h  ')).description).toBe(
+      'Mentoria 1h',
+    );
+  });
+  it.each([[undefined], [''], ['   '], [42]])(
+    'has no description when the comment is %s',
+    async (comment) => {
+      expect((await withComment(comment)).description).toBeNull();
+    },
+  );
+});
+
 describe('WooviConnector.validateConnection', () => {
-  it('checks the credentials in the given environment and derives a stable account id from the AppID', async () => {
-    const { connector, client } = setup();
-    const first = await connector.validateConnection(
-      { appId: 'app-1' },
-      'live',
-    );
-    const again = await connector.validateConnection(
-      { appId: 'app-1' },
-      'live',
-    );
-    const other = await connector.validateConnection(
-      { appId: 'app-2' },
-      'live',
-    );
-    expect(client.checkCredentials).toHaveBeenCalledWith('app-1', 'live');
+  const { connector } = setup();
+  it('needs no credential: the account id comes from the connection, stable and without exposing it', async () => {
+    const first = await connector.validateConnection({}, 'live', {
+      publicId: 'pub-1',
+    });
+    const again = await connector.validateConnection({}, 'test', {
+      publicId: 'pub-1',
+    });
+    const other = await connector.validateConnection({}, 'live', {
+      publicId: 'pub-2',
+    });
     expect(first).toEqual(again);
     expect(first.externalAccountId).toMatch(/^woovi:[0-9a-f]{24}$/);
     expect(first.externalAccountId).not.toBe(other.externalAccountId);
-    expect(first.externalAccountId).not.toContain('app-1');
-  });
-  it('lets the client errors through', async () => {
-    const { connector, client } = setup();
-    client.checkCredentials.mockRejectedValueOnce(
-      new ConnectorAuthError('recusada'),
-    );
-    await expect(
-      connector.validateConnection({ appId: 'x' }, 'test'),
-    ).rejects.toThrow(ConnectorAuthError);
-    client.checkCredentials.mockRejectedValueOnce(
-      new ConnectorTransientError('fora do ar'),
-    );
-    await expect(
-      connector.validateConnection({ appId: 'x' }, 'test'),
-    ).rejects.toThrow(ConnectorTransientError);
+    expect(first.externalAccountId).not.toContain('pub-1');
   });
 });
