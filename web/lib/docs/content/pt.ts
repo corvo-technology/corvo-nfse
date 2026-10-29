@@ -1794,7 +1794,7 @@ console.log(body.data, body.pagination); // { data: Plan[], pagination }`,
       "slug": "developer",
       "name": "Developer",
       "description": "Para começar a emitir NFS-e em qualquer número de empresas",
-      "monthlyCreditAllowance": 250,
+      "monthlyCreditAllowance": 200,
       "dailyLimit": null,
       "maxActiveCompanies": 999999,
       "creditUnitPriceCents": 12,
@@ -1936,7 +1936,7 @@ console.log(body.data.usage); // { data: { plan, subscription, usage } }`,
     "plan": {
       "slug": "developer",
       "name": "Developer",
-      "monthly_allowance": 250,
+      "monthly_allowance": 200,
       "daily_limit": null,
       "max_active_companies": 999999,
       "monthly_price_cents": 2990
@@ -1947,8 +1947,8 @@ console.log(body.data.usage); // { data: { plan, subscription, usage } }`,
       "hard_limit": null,
       "credits_used": 10,
       "credits_reserved": 2,
-      "credits_remaining": 238,
-      "monthly_allowance": 250,
+      "credits_remaining": 188,
+      "monthly_allowance": 200,
       "daily_usage": 3,
       "daily_limit": null,
       "active_companies": 1,
@@ -2119,9 +2119,9 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
     {
       "slug": "developer",
       "name": "Developer",
-      "monthlyAllowance": 250,
+      "monthlyAllowance": 200,
       "basePriceCents": 2990,
-      "perCreditOverageCents": 12,
+      "perCreditOverageCents": 18,
       "monthlyTotalCents": 2990,
       "currency": "BRL"
     }
@@ -2161,9 +2161,9 @@ console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
   "data": {
     "slug": "growth",
     "name": "Growth",
-    "monthlyAllowance": 1500,
+    "monthlyAllowance": 850,
     "basePriceCents": 9990,
-    "perCreditOverageCents": 8,
+    "perCreditOverageCents": 14,
     "monthlyTotalCents": 9990,
     "currency": "BRL"
   }
@@ -2187,8 +2187,8 @@ console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
             ],
           },
           examples: {
-            curl: `curl "$BASE_URL/plans/quote?volume=20000"`,
-            node: `const res = await fetch(\`\${BASE_URL}/plans/quote?volume=20000\`);
+            curl: `curl "$BASE_URL/plans/quote?volume=10000"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/quote?volume=10000\`);
 const body = await res.json();
 console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { data: Quote | null }`,
           },
@@ -2196,10 +2196,10 @@ console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { d
             label: "200 OK",
             json: `{
   "data": {
-    "volume": 20000,
+    "volume": 10000,
     "recommended_plan": "volume",
     "plan_name": "Volume",
-    "monthly_allowance": 20000,
+    "monthly_allowance": 10000,
     "overage_credits": 0,
     "overage_cost_cents": 0,
     "base_price_cents": 69990,

@@ -19,7 +19,7 @@ export { PLANS, type PlanSlug, type PlanTier };
 const MIN_VOLUME = 1;
 const MAX_VOLUME = 50000;
 /** Starts exactly at the Essencial allowance, so the first price shown has no overage. */
-const DEFAULT_VOLUME = 250;
+const DEFAULT_VOLUME = 200;
 const THUMB = 22;
 
 export function formatBRL(cents: number): string {
