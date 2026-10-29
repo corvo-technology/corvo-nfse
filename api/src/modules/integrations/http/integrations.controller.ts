@@ -16,6 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiKeyEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
 import type { RequestWithAuthContext } from '@/modules/auth/auth-context';
+import type { Request } from 'express';
 import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { ConnectionService } from '../application/connection.service';
 import type { EventOutcome } from '../application/event-handler';
@@ -80,7 +81,7 @@ export class IntegrationsController {
         (field) => `${field.key}=${encodeURIComponent(credentials[field.key])}`,
       )
       .join('&');
-    const presented = this.present(connection);
+    const presented = this.present(connection, req);
     return query
       ? { ...presented, webhookUrl: `${presented.webhookUrl}?${query}` }
       : presented;
@@ -92,7 +93,7 @@ export class IntegrationsController {
   @ApiOperation({ summary: 'List connections' })
   async list(@Req() req: RequestWithAuthContext) {
     return (await this.connections.list(tenantOf(req))).map((c) =>
-      this.present(c),
+      this.present(c, req),
     );
   }
 
@@ -104,7 +105,7 @@ export class IntegrationsController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
-    return this.present(await this.connections.get(tenantOf(req), id));
+    return this.present(await this.connections.get(tenantOf(req), id), req);
   }
 
   @Post('connections/:id/validate')
@@ -118,7 +119,10 @@ export class IntegrationsController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
-    return this.present(await this.connections.validate(tenantOf(req), id));
+    return this.present(
+      await this.connections.validate(tenantOf(req), id),
+      req,
+    );
   }
 
   @Post('connections/:id/activate')
@@ -130,7 +134,10 @@ export class IntegrationsController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
-    return this.present(await this.connections.activate(tenantOf(req), id));
+    return this.present(
+      await this.connections.activate(tenantOf(req), id),
+      req,
+    );
   }
 
   @Post('connections/:id/pause')
@@ -142,7 +149,7 @@ export class IntegrationsController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
-    return this.present(await this.connections.pause(tenantOf(req), id));
+    return this.present(await this.connections.pause(tenantOf(req), id), req);
   }
 
   @Post('connections/:id/disconnect')
@@ -154,7 +161,10 @@ export class IntegrationsController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
-    return this.present(await this.connections.disconnect(tenantOf(req), id));
+    return this.present(
+      await this.connections.disconnect(tenantOf(req), id),
+      req,
+    );
   }
 
   @Get('connections/:id/rules')
@@ -257,11 +267,19 @@ export class IntegrationsController {
     return this.operationService.retry(tenantOf(req), id);
   }
 
-  private present(connection: IntegrationConnection) {
+  private present(
+    connection: IntegrationConnection,
+    req: RequestWithAuthContext,
+  ) {
     const app = this.config.get<{ publicApiUrl?: string; apiPrefix?: string }>(
       'app',
     );
     const prefix = app?.apiPrefix ?? 'v1';
+    const http = req as Partial<Pick<Request, 'protocol' | 'get'>>;
+    // Platforms need a full address, so without PUBLIC_API_URL use the one this request came in on.
+    const origin = app?.publicApiUrl
+      ? new URL(app.publicApiUrl).origin
+      : `${http.protocol ?? 'http'}://${http.get?.('host') ?? 'localhost'}`;
     return {
       id: connection.id,
       provider: connection.provider,
@@ -270,7 +288,7 @@ export class IntegrationsController {
       state: connection.state,
       externalAccountId: connection.externalAccountId,
       activeFrom: connection.activeFrom,
-      webhookUrl: `${app?.publicApiUrl ?? ''}/${prefix}/integrations/inbound/${connection.publicId}`,
+      webhookUrl: `${origin}/${prefix}/integrations/inbound/${connection.publicId}`,
       createdAt: connection.createdAt,
     };
   }

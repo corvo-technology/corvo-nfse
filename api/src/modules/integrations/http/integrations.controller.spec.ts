@@ -27,7 +27,7 @@ const connection: IntegrationConnection = {
 };
 const req = { authContext: { activeTenantId: TENANT } } as never;
 
-function setup() {
+function setup(publicApiUrl: string | undefined = 'https://api.corvo.tech') {
   const registry = new ConnectorRegistry();
   registry.register({
     manifest: {
@@ -53,7 +53,7 @@ function setup() {
   } as unknown as ConnectionService;
   const operations = {} as OperationService;
   const config = new ConfigService({
-    app: { publicApiUrl: 'https://api.corvo.tech', apiPrefix: 'v1' },
+    app: { publicApiUrl, apiPrefix: 'v1' },
   });
   return {
     controller: new IntegrationsController(
@@ -66,6 +66,25 @@ function setup() {
     connections,
   };
 }
+
+describe('IntegrationsController webhookUrl', () => {
+  const path = '/v1/integrations/inbound/PUBLICID123456789012345';
+  it('is always a full address: PUBLIC_API_URL is used by its origin only', async () => {
+    const { controller } = setup('https://api.corvo.tech/v1/');
+    const [item] = await controller.list(req);
+    expect(item.webhookUrl).toBe(`https://api.corvo.tech${path}`);
+  });
+  it('falls back to the address the request came in on when PUBLIC_API_URL is not set', async () => {
+    const { controller } = setup(undefined);
+    const local = {
+      authContext: { activeTenantId: TENANT },
+      protocol: 'http',
+      get: (name: string) => (name === 'host' ? 'localhost:3000' : undefined),
+    } as never;
+    const [item] = await controller.list(local);
+    expect(item.webhookUrl).toBe(`http://localhost:3000${path}`);
+  });
+});
 
 describe('IntegrationsController', () => {
   it('lists provider manifests without any credential value', () => {
