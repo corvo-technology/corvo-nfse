@@ -43,4 +43,9 @@ describe.each(["pt", "en"] as const)("payment integrations docs (%s)", (locale) 
     for (const term of ["OPENPIX:CHARGE_COMPLETED", "appId", "webhookSecret", "checkout.completed", "devMode"])
       expect(text).toContain(term);
   });
+
+  it("authenticates the examples with X-API-Key, like the rest of the API", () => {
+    expect(text).toContain("X-API-Key");
+    expect(text).not.toContain("Authorization: Bearer");
+  });
 });

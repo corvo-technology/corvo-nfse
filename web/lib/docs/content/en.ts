@@ -2549,7 +2549,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           label: "1. Create the connection",
           language: "bash",
           code: `curl -X POST "$BASE_URL/v1/integrations/connections" \
-  -H "Authorization: Bearer $CORVO_API_KEY" \
+  -H "X-API-Key: $CORVO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "provider": "woovi",
@@ -2564,12 +2564,12 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           label: "2. Set the service rule and activate",
           language: "bash",
           code: `curl -X PUT "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/rules" \
-  -H "Authorization: Bearer $CORVO_API_KEY" \
+  -H "X-API-Key: $CORVO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "rules": [ { "service": { "code": "010101", "description": "Consulting" }, "sendEmail": true } ] }'
 
-curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/validate" -H "Authorization: Bearer $CORVO_API_KEY"
-curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H "Authorization: Bearer $CORVO_API_KEY"`,
+curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/validate" -H "X-API-Key: $CORVO_API_KEY"
+curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H "X-API-Key: $CORVO_API_KEY"`,
         },
         {
           kind: "text",
