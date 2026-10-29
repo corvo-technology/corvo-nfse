@@ -2169,10 +2169,6 @@
       "draft": "Rascunho",
       "disconnected": "Desconectada"
     },
-    "env": {
-      "test": "Teste",
-      "live": "Produção"
-    },
     "pending": "{count, plural, one {# venda precisa de você} other {# vendas precisam de você}}",
     "wizard": {
       "title": "Conectar pagamento",
@@ -2181,8 +2177,6 @@
       "company": "Empresa que emite a nota",
       "companyPlaceholder": "Escolha a empresa",
       "noCompanies": "Cadastre uma empresa antes de conectar.",
-      "environment": "Ambiente",
-      "environmentHint": "Use Teste para experimentar com a conta de testes da plataforma.",
       "serviceDescription": "Descrição do serviço na nota",
       "serviceHint": "Opcional. Em branco, usa o padrão da empresa.",
       "sendEmail": "Enviar a nota por e-mail ao cliente",

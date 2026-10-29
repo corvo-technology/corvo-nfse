@@ -54,7 +54,6 @@ describe("Integrations page", () => {
     await screen.findByText("Woovi");
     expect(screen.getByText("Acme")).toBeTruthy();
     expect(screen.getByText("Active")).toBeTruthy();
-    expect(screen.getByText("Test")).toBeTruthy();
     expect(screen.getByText("2 sales need you")).toBeTruthy();
   });
 

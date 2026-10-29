@@ -38,11 +38,11 @@ export default function IntegrationsPage() {
         integrations.providers(),
         collectAll((cursor) => companiesApi.list({ cursor, limit: 100 })),
       ]);
-      setConnections(list.filter((c) => c.state !== "disconnected"));
+      setConnections(list.filter((c) => c.state !== "disconnected" && c.environment === fiscalEnvironment));
       setProviders(available);
       setCompanies(owned);
       // Only running connections can have sales waiting for the client.
-      const running = list.filter((c) => c.state === "active" || c.state === "paused");
+      const running = list.filter((c) => c.environment === fiscalEnvironment && (c.state === "active" || c.state === "paused"));
       const entries = await Promise.all(running.map(async (c) => [c.id, await integrations.sales(c.id, 100).catch(() => [])] as const));
       setSales(Object.fromEntries(entries));
     } catch {
@@ -50,7 +50,7 @@ export default function IntegrationsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fiscalEnvironment]);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
@@ -107,7 +107,6 @@ export default function IntegrationsPage() {
                     </div>
                     <div className="flex flex-wrap items-center gap-2.5">
                       {pending > 0 && <Badge variant="warn">{t("pending", { count: pending })}</Badge>}
-                      <Badge variant="gray" dot={false}>{t(`env.${connection.environment}`)}</Badge>
                       <Badge variant={status.tone}>{t(`status.${status.key}`)}</Badge>
                     </div>
                   </Card>
@@ -124,7 +123,7 @@ export default function IntegrationsPage() {
           onClose={() => setWizard(null)}
           providers={providers}
           companies={companies}
-          defaultEnvironment={fiscalEnvironment}
+          environment={fiscalEnvironment}
           initialProvider={wizard.provider}
           onConnected={() => void load()}
         />

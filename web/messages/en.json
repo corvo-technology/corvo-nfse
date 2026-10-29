@@ -2169,10 +2169,6 @@
       "draft": "Draft",
       "disconnected": "Disconnected"
     },
-    "env": {
-      "test": "Test",
-      "live": "Production"
-    },
     "pending": "{count, plural, one {# sale needs you} other {# sales need you}}",
     "wizard": {
       "title": "Connect payments",
@@ -2181,8 +2177,6 @@
       "company": "Company that issues the invoice",
       "companyPlaceholder": "Choose the company",
       "noCompanies": "Register a company before connecting.",
-      "environment": "Environment",
-      "environmentHint": "Use Test to try it with the platform's test account.",
       "serviceDescription": "Service description on the invoice",
       "serviceHint": "Optional. Left blank, the company default is used.",
       "sendEmail": "Email the invoice to the customer",

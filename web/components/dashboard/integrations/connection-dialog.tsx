@@ -83,7 +83,6 @@ export function ConnectionDialog({ connection, provider, companyName, canManage,
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center gap-2.5">
           <Badge variant={status.tone}>{t(`status.${status.key}`)}</Badge>
-          <Badge variant="gray" dot={false}>{t(`env.${current.environment}`)}</Badge>
           <span className="text-[13.5px] text-text-3">{companyName}</span>
         </div>
 

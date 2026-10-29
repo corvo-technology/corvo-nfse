@@ -10,14 +10,14 @@ import { Toggle } from "@/components/ui/toggle";
 import type { IntegrationProvider } from "@/lib/api";
 import type { Company } from "@/lib/types";
 import { ConnectError, connectProvider } from "@/lib/integrations";
-import { cn } from "@/lib/utils";
 
 interface ConnectDialogProps {
   open: boolean;
   onClose: () => void;
   providers: IntegrationProvider[];
   companies: Company[];
-  defaultEnvironment: "test" | "live";
+  /** The dashboard-wide Test/Production switch; connections follow it. */
+  environment: "test" | "live";
   /** Skips the platform step, e.g. when the client picked it from the empty state. */
   initialProvider?: string | null;
   onConnected: () => void;
@@ -29,14 +29,13 @@ export function providerDescriptionKey(id: string): "woovi" | "abacatepay" | "ot
   return id === "woovi" || id === "abacatepay" ? id : "other";
 }
 
-export function ConnectDialog({ open, onClose, providers, companies, defaultEnvironment, initialProvider, onConnected }: ConnectDialogProps) {
+export function ConnectDialog({ open, onClose, providers, companies, environment, initialProvider, onConnected }: ConnectDialogProps) {
   const t = useTranslations("Integrations");
   const tc = useTranslations("Common");
   const locale = useLocale();
   const [step, setStep] = useState<Step>(initialProvider ? "details" : "platform");
   const [providerId, setProviderId] = useState<string | null>(initialProvider ?? null);
   const [companyId, setCompanyId] = useState(companies.length === 1 ? companies[0].id : "");
-  const [environment, setEnvironment] = useState<"test" | "live">(defaultEnvironment);
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [serviceDescription, setServiceDescription] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
@@ -121,24 +120,6 @@ export function ConnectDialog({ open, onClose, providers, companies, defaultEnvi
               )}
             </Field>
           ))}
-          <div className="flex flex-col gap-1.5">
-            <span className="field-label">{t("wizard.environment")}</span>
-            <div role="radiogroup" aria-label={t("wizard.environment")} className="flex gap-2">
-              {(["test", "live"] as const).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={environment === value}
-                  onClick={() => setEnvironment(value)}
-                  className={cn("flex-1 rounded-[10px] border px-3 py-2 text-[13.5px] transition-colors", environment === value ? "border-accent-border bg-accent-surface text-accent" : "border-border text-text-3 hover:text-text")}
-                >
-                  {t(`env.${value}`)}
-                </button>
-              ))}
-            </div>
-            <p className="field-hint">{t("wizard.environmentHint")}</p>
-          </div>
           <Field label={t("wizard.serviceDescription")} hint={t("wizard.serviceHint")}>
             {(control) => <Input {...control} value={serviceDescription} maxLength={200} onChange={(e) => setServiceDescription(e.target.value)} />}
           </Field>
