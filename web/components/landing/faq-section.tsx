@@ -31,9 +31,16 @@ export function FaqSection() {
               </summary>
               <div className="pb-5 pr-10">
                 <p className="max-w-[62ch] text-[15px] leading-relaxed text-text-3">{t(`items.${item.id}.a`)}</p>
-                <Link href={hrefOf(item)} className="mt-3 inline-flex items-center gap-1 text-[13.5px] text-accent underline-offset-4 hover:underline">
-                  {t(`items.${item.id}.link`)} <ArrowUpRight size={13} aria-hidden />
-                </Link>
+                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+                  <Link href={hrefOf(item)} className="inline-flex items-center gap-1 text-[13.5px] text-accent underline-offset-4 hover:underline">
+                    {t(`items.${item.id}.link`)} <ArrowUpRight size={13} aria-hidden />
+                  </Link>
+                  {"extra" in item && (
+                    <Link href={`/${locale}${item.extra.path}`} className="inline-flex items-center gap-1 text-[13.5px] text-accent underline-offset-4 hover:underline">
+                      {t(`items.${item.id}.link2` as "items.sdks.link2")} <ArrowUpRight size={13} aria-hidden />
+                    </Link>
+                  )}
+                </div>
               </div>
             </details>
           ))}

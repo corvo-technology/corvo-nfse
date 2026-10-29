@@ -13,7 +13,8 @@ export const FAQ_ITEMS = [
   // The visible link goes to the pricing section of the landing; machines get the landing itself.
   { id: "companies", path: "", anchor: "#pricing" },
   { id: "payments", path: "/docs/payment-integrations" },
-  { id: "sdks", path: "/docs/sdks" },
+  // The SDK answer also covers the MCP server for AI agents, so it carries a second link.
+  { id: "sdks", path: "/docs/sdks", extra: { path: "/docs/mcp" } },
 ] as const;
 
 export type FaqId = (typeof FAQ_ITEMS)[number]["id"];
@@ -27,17 +28,23 @@ export interface FaqEntry {
   linkLabel: string;
   /** Absolute URL of the page that goes deeper. */
   url: string;
+  /** A second page the answer points at, when it covers two things. */
+  extra?: { label: string; url: string };
 }
 
 export function landingFaq(locale: SeoLocale): FaqEntry[] {
   const copy = MESSAGES[locale].LandingFaq.items;
-  return FAQ_ITEMS.map(({ id, path }) => ({
-    id,
-    question: copy[id].q,
-    answer: copy[id].a,
-    linkLabel: copy[id].link,
-    url: pageUrl(locale, path),
-  }));
+  return FAQ_ITEMS.map((item) => {
+    const text = copy[item.id] as { q: string; a: string; link: string; link2?: string };
+    return {
+      id: item.id,
+      question: text.q,
+      answer: text.a,
+      linkLabel: text.link,
+      url: pageUrl(locale, item.path),
+      ...("extra" in item && text.link2 ? { extra: { label: text.link2, url: pageUrl(locale, item.extra.path) } } : {}),
+    };
+  });
 }
 
 /** schema.org FAQPage for the landing of the given language. */
@@ -61,6 +68,6 @@ export function faqPageJsonLd(locale: SeoLocale): Record<string, unknown> {
 /** The FAQ as markdown, for llms.txt and llms-full.txt. */
 export function faqMarkdown(locale: SeoLocale): string {
   return landingFaq(locale)
-    .map((entry) => `### ${entry.question}\n\n${entry.answer} [${entry.linkLabel}](${entry.url})`)
+    .map((entry) => `### ${entry.question}\n\n${entry.answer} [${entry.linkLabel}](${entry.url})${entry.extra ? ` [${entry.extra.label}](${entry.extra.url})` : ""}`)
     .join("\n\n");
 }

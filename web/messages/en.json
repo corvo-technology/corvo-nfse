@@ -2309,9 +2309,10 @@
         "link": "See how to connect"
       },
       "sdks": {
-        "q": "Does Corvo have an SDK for my language?",
-        "a": "Yes, if it is one of these: Corvo has official SDKs for Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir and .NET, with the same operations in all of them. You can also call the REST API directly.",
-        "link": "See the SDKs"
+        "q": "Does Corvo have an SDK for my language or an MCP server for AI agents?",
+        "a": "Yes. Corvo has official SDKs for Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir and .NET, with the same operations in all of them, and you can also call the REST API directly. For AI agents, Corvo has an MCP server: Claude Code, Cursor, Codex, VS Code, Windsurf and Claude Desktop connect with a browser login, and you pick the workspace and the environment (test or live) on the approval screen.",
+        "link": "See the SDKs",
+        "link2": "See the MCP server"
       }
     }
   }

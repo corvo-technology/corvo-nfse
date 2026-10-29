@@ -2309,9 +2309,10 @@
         "link": "Ver como conectar"
       },
       "sdks": {
-        "q": "A Corvo tem SDK para a minha linguagem?",
-        "a": "Sim, se for uma destas: a Corvo tem SDKs oficiais para Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir e .NET, com as mesmas operações em todos. Também dá para chamar a API REST direto.",
-        "link": "Ver os SDKs"
+        "q": "A Corvo tem SDK para a minha linguagem ou MCP para agentes de IA?",
+        "a": "Sim. A Corvo tem SDKs oficiais para Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir e .NET, com as mesmas operações em todos, e também dá para chamar a API REST direto. Para agentes de IA, a Corvo tem um servidor MCP: Claude Code, Cursor, Codex, VS Code, Windsurf e Claude Desktop conectam com login no navegador, e você escolhe o workspace e o ambiente (teste ou produção) na tela de aprovação.",
+        "link": "Ver os SDKs",
+        "link2": "Ver o MCP"
       }
     }
   }

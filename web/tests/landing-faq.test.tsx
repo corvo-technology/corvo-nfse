@@ -40,16 +40,26 @@ describe("landing FAQ", () => {
     expect(link("Ver os planos")).toBe("/pt#pricing");
     expect(link("Ver como conectar")).toBe("/pt/docs/payment-integrations");
     expect(link("Ver os SDKs")).toBe("/pt/docs/sdks");
+    expect(link("Ver o MCP")).toBe("/pt/docs/mcp");
   });
 
   it("covers municipalities, issuing (with email, certificate and regimes), several CNPJs, payment platforms and SDKs", () => {
     wrap("pt");
-    for (const question of ["A Corvo atende o município da minha empresa?", "A Corvo emite a nota por mim?", "Posso emitir notas para mais de um CNPJ na Corvo?", "Com quais plataformas de pagamento a Corvo se integra?", "A Corvo tem SDK para a minha linguagem?"])
+    for (const question of ["A Corvo atende o município da minha empresa?", "A Corvo emite a nota por mim?", "Posso emitir notas para mais de um CNPJ na Corvo?", "Com quais plataformas de pagamento a Corvo se integra?", "A Corvo tem SDK para a minha linguagem ou MCP para agentes de IA?"])
       expect(screen.getByText(question)).toBeTruthy();
     const issues = screen.getByText("A Corvo emite a nota por mim?").closest("details")!.textContent!;
     for (const part of ["certificado A1", "e-mail", "MEI e Simples Nacional"]) expect(issues).toContain(part);
     expect(screen.getByText(/empresas ilimitadas/)).toBeTruthy();
     expect(screen.getByText(/Woovi e AbacatePay/)).toBeTruthy();
+  });
+
+  it.each(["pt", "en"] as const)("the SDK answer also covers the MCP server, with its own link, in %s", (locale) => {
+    const { container } = wrap(locale);
+    const sdks = [...container.querySelectorAll("details")][4];
+    expect(sdks.textContent).toMatch(/MCP/);
+    for (const client of ["Claude Code", "Cursor", "Codex", "VS Code", "Windsurf", "Claude Desktop"]) expect(sdks.textContent).toContain(client);
+    expect([...sdks.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual([`/${locale}/docs/sdks`, `/${locale}/docs/mcp`]);
+    expect(faqMarkdown(locale)).toContain(`https://www.corvo.tech/${locale}/docs/mcp`);
   });
 
   it.each(["pt", "en"] as const)("the structured data says exactly what the visible FAQ says in %s", (locale) => {
