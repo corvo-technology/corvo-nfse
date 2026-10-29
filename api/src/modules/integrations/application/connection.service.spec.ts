@@ -137,6 +137,17 @@ describe('ConnectionService', () => {
     expect(company.findById).toHaveBeenCalledWith(COMPANY, TENANT, 'test');
   });
 
+  it('validate() hands the connection environment to the connector', async () => {
+    const { service } = setup();
+    const spy = jest.spyOn(connector, 'validateConnection');
+    const c = await service.create(TENANT, { ...input, environment: 'live' });
+    await service.validate(TENANT, c.id);
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ appId: 'abc' }),
+      'live',
+    );
+  });
+
   it('validate() stores the external account id from the connector', async () => {
     const { service } = setup();
     const c = await service.create(TENANT, input);

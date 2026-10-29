@@ -93,6 +93,7 @@ export class ConnectionService {
     const connector = this.registry.get(connection.provider);
     const { externalAccountId } = await connector.validateConnection(
       this.credentials.open(connection.credentialsEnc),
+      connection.environment,
     );
     return this.connections.update({
       ...connection,

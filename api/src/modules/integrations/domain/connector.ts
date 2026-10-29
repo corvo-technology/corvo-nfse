@@ -107,6 +107,7 @@ export interface Connector {
   }): Promise<NormalizedOperation>;
   validateConnection(
     credentials: Record<string, string>,
+    environment: IntegrationEnvironment,
   ): Promise<{ externalAccountId: string }>;
 }
 
