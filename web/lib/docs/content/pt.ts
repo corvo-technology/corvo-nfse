@@ -2593,9 +2593,9 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             ["`company_not_ready`", "A empresa não está pronta ou o certificado está ausente, vencido ou inválido. Corrija o cadastro e use `retry`."],
             ["`before_active_from`", "O pagamento é anterior à data de início da conexão. Nenhuma nota é emitida."],
             ["`refunded` / `disputed`", "O pagamento foi reembolsado ou contestado antes da nota. Nenhuma nota é emitida."],
-            ["`refund_after_invoice`", "O reembolso chegou depois da nota e a regra não cancela por reembolso. A nota continua autorizada e a decisão é sua."],
-            ["`cancel_requested`", "O reembolso chegou e a Corvo pediu o cancelamento da nota (motivo \"Cancelado por reembolso\"). O resultado final está na nota."],
-            ["`cancel_failed`", "Não foi possível pedir o cancelamento (por exemplo, a nota não está num estado que permita). Depois de resolver, use `retry`."],
+            ["`refund_after_invoice`", "Reembolso ou contestação chegou depois da nota e o cancelamento automático está desligado. A nota continua autorizada. Para cancelar, use `POST /v1/invoices/:id/cancel`; para os próximos reembolsos, ligue `cancelOnRefund` na regra (contestação nunca cancela)."],
+            ["`cancel_requested`", "Nada a fazer: a Corvo pediu o cancelamento da nota (motivo \"Cancelado por reembolso\"). Acompanhe o resultado na página da nota."],
+            ["`cancel_failed`", "Não foi possível pedir o cancelamento (por exemplo, a nota está num estado que não permite). Veja a nota e, se puder cancelar, use `retry`."],
           ],
         },
         {

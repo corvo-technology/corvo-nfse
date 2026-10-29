@@ -2616,9 +2616,9 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             ["`company_not_ready`", "The company is not ready or the certificate is missing, expired or invalid. Fix the registration and call `retry`."],
             ["`before_active_from`", "The payment happened before the connection start date. No invoice is issued."],
             ["`refunded` / `disputed`", "The payment was refunded or disputed before the invoice. No invoice is issued."],
-            ["`refund_after_invoice`", "The refund arrived after the invoice and the rule does not cancel on refund. The invoice stays authorized and the decision is yours."],
-            ["`cancel_requested`", "The refund arrived and Corvo asked for the invoice to be cancelled (reason \"Cancelado por reembolso\"). The final result is on the invoice."],
-            ["`cancel_failed`", "The cancellation could not be requested (for example, the invoice is in a state that does not allow it). After fixing it, use `retry`."],
+            ["`refund_after_invoice`", "A refund or dispute arrived after the invoice and automatic cancellation is off. The invoice stays authorized. To cancel it, use `POST /v1/invoices/:id/cancel`; for future refunds, turn on `cancelOnRefund` on the rule (a dispute never cancels)."],
+            ["`cancel_requested`", "Nothing to do: Corvo asked for the invoice to be cancelled (reason \"Cancelado por reembolso\"). Follow the result on the invoice page."],
+            ["`cancel_failed`", "The cancellation could not be requested (for example, the invoice is in a state that does not allow it). Check the invoice and, if it can be cancelled, use `retry`."],
           ],
         },
         {
