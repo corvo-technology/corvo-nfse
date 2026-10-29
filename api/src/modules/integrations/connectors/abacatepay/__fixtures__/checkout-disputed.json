@@ -1,0 +1,43 @@
+{
+  "id": "log_dis1",
+  "event": "checkout.disputed",
+  "apiVersion": 2,
+  "devMode": false,
+  "data": {
+    "checkout": {
+      "id": "bill_abc123xyz",
+      "externalId": "pedido-123",
+      "url": "https://app.abacatepay.com/pay/bill_abc123xyz",
+      "amount": 10000,
+      "paidAmount": 10000,
+      "platformFee": 80,
+      "frequency": "ONE_TIME",
+      "items": [
+        {
+          "id": "prod_consultoria",
+          "quantity": 1
+        }
+      ],
+      "status": "UNDER_DISPUTE",
+      "methods": ["PIX"],
+      "customerId": "cust_1",
+      "receiptUrl": "https://app.abacatepay.com/receipt/bill_abc123xyz",
+      "installmentsCount": null,
+      "createdAt": "2026-10-29T14:59:00.000Z",
+      "updatedAt": "2026-10-29T15:00:00.000Z"
+    },
+    "customer": {
+      "id": "cust_1",
+      "name": "Maria da Silva",
+      "email": "maria@example.com",
+      "taxId": "529.***.***-25"
+    },
+    "payerInformation": {
+      "method": "PIX",
+      "name": "Joao Pagador",
+      "taxId": "111.***.***-35",
+      "isSameAsCustomer": false
+    },
+    "reason": "requested_by_customer"
+  }
+}

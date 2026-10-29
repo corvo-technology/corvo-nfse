@@ -22,6 +22,8 @@ import { CompanyModule } from '@/modules/company/company.module';
 import { CertificateModule } from '@/modules/certificate/certificate.module';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
 import { IntegrationsModule } from '@/modules/integrations/integrations.module';
+import { WooviConnectorModule } from '@/modules/integrations/connectors/woovi/woovi.module';
+import { AbacatePayConnectorModule } from '@/modules/integrations/connectors/abacatepay/abacatepay.module';
 import { McpModule } from '@/modules/mcp/mcp.module';
 import { StorageModule } from '@/infra/storage/storage.module';
 import { NfseExternalModule } from '@/infra/external/nfse/nfse-external.module';
@@ -49,6 +51,8 @@ import { SentryModule } from '@/infra/observability/sentry.module';
     CertificateModule,
     InvoiceModule,
     IntegrationsModule,
+    WooviConnectorModule,
+    AbacatePayConnectorModule,
     McpModule,
     StorageModule.forRoot(),
     NfseExternalModule,

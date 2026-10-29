@@ -75,6 +75,15 @@ export abstract class IIntegrationEventRepository {
     result: EventResult,
   ): Promise<boolean>;
 
+  /**
+   * Once a sale has its invoice, earlier notices about it that were left waiting for the
+   * client are no longer a problem: they count as processed.
+   */
+  abstract resolveAttention(
+    operationId: string,
+    tenantId: string,
+  ): Promise<void>;
+
   /** Newest first; never exposes the stored payload. */
   abstract listByConnection(
     connectionId: string,

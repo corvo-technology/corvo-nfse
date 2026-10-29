@@ -38,4 +38,14 @@ describe.each(["pt", "en"] as const)("payment integrations docs (%s)", (locale) 
     expect(text).toContain("refund_after_invoice");
     expect(text).toContain("/v1/invoices/:id/cancel");
   });
+
+  it("documents how to connect Woovi and AbacatePay", () => {
+    for (const term of ["OPENPIX:CHARGE_COMPLETED", "webhookToken", "Authorization", "webhookSecret", "checkout.completed", "devMode"])
+      expect(text).toContain(term);
+  });
+
+  it("authenticates the examples with X-API-Key, like the rest of the API", () => {
+    expect(text).toContain("X-API-Key");
+    expect(text).not.toContain("Authorization: Bearer");
+  });
 });

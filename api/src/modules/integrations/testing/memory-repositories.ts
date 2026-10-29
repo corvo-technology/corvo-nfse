@@ -9,6 +9,10 @@ import {
   IIntegrationOperationRepository,
   type FrozenEmission,
 } from '../domain/integration-operation.repository';
+import {
+  IIntegrationEventRepository,
+  type IntegrationEventSummary,
+} from '../domain/integration-event.repository';
 import { IIntegrationRuleRepository } from '../domain/integration-rule.repository';
 import type { IntegrationRule } from '../domain/integration-rule';
 
@@ -148,5 +152,35 @@ export class MemoryRules extends IIntegrationRuleRepository {
       connectionId,
     }));
     return Promise.resolve(this.rules);
+  }
+}
+
+/** Only what the emitter needs: events with a state and an operation. */
+export class MemoryEvents extends IIntegrationEventRepository {
+  rows: Array<{
+    id: string;
+    operationId: string | null;
+    state: IntegrationEventSummary['state'];
+    lastError: string | null;
+  }> = [];
+  insertReceived() {
+    return Promise.resolve({ id: '', created: false });
+  }
+  claimBatch() {
+    return Promise.resolve([]);
+  }
+  markResult() {
+    return Promise.resolve(true);
+  }
+  resolveAttention(operationId: string) {
+    for (const row of this.rows)
+      if (row.operationId === operationId && row.state === 'needs_attention') {
+        row.state = 'processed';
+        row.lastError = null;
+      }
+    return Promise.resolve();
+  }
+  listByConnection() {
+    return Promise.resolve([]);
   }
 }

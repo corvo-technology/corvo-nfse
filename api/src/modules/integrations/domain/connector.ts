@@ -67,6 +67,8 @@ export interface NormalizedOperation {
     description: string | null;
     quantity: number;
   }>;
+  /** What was sold, as the platform describes it; used on the invoice when the rule sets no description. */
+  description?: string | null;
   /** False when the platform says someone else issues the invoice. */
   sellerIssuesInvoice: boolean;
 }
@@ -77,6 +79,10 @@ export interface CredentialField {
   secret: boolean;
   /** The platform generates the value on connection creation when the client sends none. */
   generate?: boolean;
+  /** Appended to the webhook URL as a query parameter named `key`, shown once when the connection is created. */
+  inWebhookUrl?: boolean;
+  /** Shown to the client only in the creation response, to paste into the platform (not part of the URL). */
+  revealOnce?: boolean;
 }
 
 export interface ConnectorManifest {
@@ -107,6 +113,9 @@ export interface Connector {
   }): Promise<NormalizedOperation>;
   validateConnection(
     credentials: Record<string, string>,
+    environment: IntegrationEnvironment,
+    /** For platforms that identify nothing about the account: the id can come from the connection itself. */
+    connection: { publicId: string },
   ): Promise<{ externalAccountId: string }>;
 }
 

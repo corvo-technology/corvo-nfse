@@ -137,11 +137,104 @@ describe('ConnectionService', () => {
     expect(company.findById).toHaveBeenCalledWith(COMPANY, TENANT, 'test');
   });
 
+  it('validate() hands the connection environment to the connector', async () => {
+    const { service } = setup();
+    const spy = jest.spyOn(connector, 'validateConnection');
+    const c = await service.create(TENANT, { ...input, environment: 'live' });
+    await service.validate(TENANT, c.id);
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ appId: 'abc' }),
+      'live',
+      { publicId: c.publicId },
+    );
+  });
+
   it('validate() stores the external account id from the connector', async () => {
     const { service } = setup();
     const c = await service.create(TENANT, input);
     const validated = await service.validate(TENANT, c.id);
     expect(validated.externalAccountId).toBe('acc-1');
+  });
+
+  describe('updateCredentials()', () => {
+    async function validated(state?: 'reauth_required') {
+      const ctx = setup();
+      const c = await ctx.service.create(TENANT, input);
+      await ctx.service.validate(TENANT, c.id);
+      if (state)
+        ctx.repo.rows.set(c.id, { ...ctx.repo.rows.get(c.id)!, state });
+      return { ...ctx, id: c.id };
+    }
+
+    it('replaces the credential, keeps the generated ones and checks the new value with the platform before saving', async () => {
+      const { service, id } = await validated();
+      const before = service.toView(await service.get(TENANT, id)).credentials;
+      const spy = jest.spyOn(connector, 'validateConnection');
+      const updated = await service.updateCredentials(TENANT, id, {
+        appId: 'new-key',
+      });
+      expect(spy).toHaveBeenLastCalledWith(
+        { appId: 'new-key', hook: before.hook },
+        'test',
+        { publicId: expect.any(String) as string },
+      );
+      const after = service.toView(updated).credentials;
+      expect(after).toEqual({ appId: 'new-key', hook: before.hook });
+      expect(updated.credentialsEnc).not.toContain('new-key');
+    });
+
+    it('keeps the old credential when the platform refuses the new one', async () => {
+      const { service, id } = await validated();
+      const before = (await service.get(TENANT, id)).credentialsEnc;
+      jest
+        .spyOn(connector, 'validateConnection')
+        .mockRejectedValueOnce(new Error('refused'));
+      await expect(
+        service.updateCredentials(TENANT, id, { appId: 'bad' }),
+      ).rejects.toThrow('refused');
+      expect((await service.get(TENANT, id)).credentialsEnc).toBe(before);
+    });
+
+    it('brings a connection that needed new credentials back to active', async () => {
+      const { service, id } = await validated('reauth_required');
+      const updated = await service.updateCredentials(TENANT, id, {
+        appId: 'fresh',
+      });
+      expect(updated.state).toBe('active');
+    });
+
+    it('does not change the state of an active or paused connection', async () => {
+      const { service, rules, id } = await validated();
+      rules.count = 1;
+      await service.activate(TENANT, id);
+      await service.pause(TENANT, id);
+      const updated = await service.updateCredentials(TENANT, id, {
+        appId: 'fresh',
+      });
+      expect(updated.state).toBe('paused');
+    });
+
+    it('rejects unknown fields, generated fields, blank values and an empty change', async () => {
+      const { service, id } = await validated();
+      const attempts: Array<Record<string, string>> = [
+        { nope: 'x' },
+        { hook: 'x' },
+        { appId: '   ' },
+        {},
+      ];
+      for (const credentials of attempts)
+        await expect(
+          service.updateCredentials(TENANT, id, credentials),
+        ).rejects.toThrow(BadRequestException);
+    });
+
+    it('refuses a disconnected connection', async () => {
+      const { service, id } = await validated();
+      await service.disconnect(TENANT, id);
+      await expect(
+        service.updateCredentials(TENANT, id, { appId: 'x' }),
+      ).rejects.toThrow(ConflictException);
+    });
   });
 
   it('activate() fails while externalAccountId is null', async () => {
