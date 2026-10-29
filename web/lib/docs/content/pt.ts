@@ -2474,6 +2474,115 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         },
       ],
     },
+    "payment-integrations": {
+      title: "Integrações de pagamento",
+      description: "Conecte Woovi, AbacatePay ou Stripe e emita a NFS-e automaticamente a cada pagamento confirmado.",
+      blocks: [
+        {
+          kind: "text",
+          body: "Conecte a conta da sua plataforma de pagamento à Corvo. Quando um pagamento é confirmado, a Corvo emite a NFS-e pelo mesmo caminho da API: valida a empresa e o certificado, consome um crédito do plano e envia a nota à prefeitura.",
+        },
+        { kind: "heading", level: 2, body: "Como funciona" },
+        {
+          kind: "list",
+          items: [
+            "Você cria uma conexão (`POST /v1/integrations/connections`) e recebe o `webhookUrl` dela.",
+            "Cadastre esse endereço no painel da plataforma de pagamento. A plataforma passa a avisar a Corvo a cada pagamento.",
+            "A Corvo confere a autenticação do aviso, guarda o evento e responde na hora. O processamento acontece em segundo plano.",
+            "Se o pagamento está confirmado e existe uma regra de serviço, a nota é emitida. A competência é a data da confirmação (fuso de São Paulo).",
+            "O mesmo pagamento nunca gera duas notas, mesmo que a plataforma reenvie o aviso.",
+          ],
+        },
+        { kind: "heading", level: 2, body: "Rotas" },
+        {
+          kind: "table",
+          head: ["Método", "Rota", "Descrição"],
+          rows: [
+            ["GET", "`/v1/integrations/providers`", "Plataformas disponíveis e os campos de credencial de cada uma"],
+            ["POST", "`/v1/integrations/connections`", "Criar uma conexão"],
+            ["GET", "`/v1/integrations/connections`", "Listar conexões"],
+            ["GET", "`/v1/integrations/connections/:id`", "Consultar uma conexão"],
+            ["POST", "`/v1/integrations/connections/:id/validate`", "Conferir as credenciais e identificar a conta"],
+            ["POST", "`/v1/integrations/connections/:id/activate`", "Começar a emitir automaticamente"],
+            ["POST", "`/v1/integrations/connections/:id/pause`", "Parar de emitir; os eventos continuam sendo guardados"],
+            ["POST", "`/v1/integrations/connections/:id/disconnect`", "Desconectar de vez"],
+            ["GET", "`/v1/integrations/connections/:id/rules`", "Consultar as regras de serviço"],
+            ["PUT", "`/v1/integrations/connections/:id/rules`", "Substituir as regras de serviço"],
+            ["GET", "`/v1/integrations/connections/:id/events`", "Eventos recebidos"],
+            ["GET", "`/v1/integrations/connections/:id/operations`", "Vendas e o estado da nota de cada uma"],
+            ["PATCH", "`/v1/integrations/operations/:id/customer`", "Completar o tomador de uma venda pendente"],
+            ["POST", "`/v1/integrations/operations/:id/retry`", "Tentar emitir de novo"],
+            ["POST", "`/v1/integrations/inbound/:publicId`", "Endereço que a plataforma de pagamento chama (público, autenticado pelo conector)"],
+          ],
+        },
+        {
+          kind: "callout",
+          tone: "accent",
+          body: "As rotas administrativas exigem `integrations.view` (consultar) ou `integrations.manage` (criar, ativar, alterar regras). Chaves de API `full_access` têm as duas.",
+        },
+        { kind: "heading", level: 2, body: "Conectar uma conta" },
+        {
+          kind: "code",
+          label: "1. Criar a conexão",
+          language: "bash",
+          code: `curl -X POST "$BASE_URL/v1/integrations/connections" \
+  -H "Authorization: Bearer $CORVO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "woovi",
+    "companyId": "<id da empresa>",
+    "environment": "test",
+    "credentials": { "appId": "<AppID da Woovi>" },
+    "activeFrom": "2026-11-01T00:00:00Z"
+  }'`,
+        },
+        {
+          kind: "code",
+          label: "2. Definir a regra de serviço e ativar",
+          language: "bash",
+          code: `curl -X PUT "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/rules" \
+  -H "Authorization: Bearer $CORVO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "rules": [ { "service": { "code": "010101", "description": "Consultoria" }, "sendEmail": true } ] }'
+
+curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/validate" -H "Authorization: Bearer $CORVO_API_KEY"
+curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H "Authorization: Bearer $CORVO_API_KEY"`,
+        },
+        {
+          kind: "text",
+          body: "Uma regra sem `externalProductId` vale para qualquer produto. Para dar um serviço diferente a um produto, envie outra regra com o `externalProductId` dele. Pagamentos anteriores a `activeFrom` são ignorados. Com `allowAnonymousCustomer: true`, a nota sai sem tomador quando o pagamento não traz CPF/CNPJ.",
+        },
+        { kind: "heading", level: 2, body: "Vendas que precisam de atenção" },
+        {
+          kind: "text",
+          body: "Quando uma venda não pode virar nota sozinha, ela fica visível em `GET /v1/integrations/connections/:id/operations` com `fiscalStatus` e `blockReason`.",
+        },
+        {
+          kind: "table",
+          head: ["blockReason", "O que fazer"],
+          rows: [
+            ["`customer_tax_id_missing`", "A plataforma não enviou CPF/CNPJ completo. Informe com `PATCH /v1/integrations/operations/:id/customer` e use `POST /v1/integrations/operations/:id/retry`."],
+            ["`no_rule` / `ambiguous_rule`", "Crie ou ajuste as regras e use `retry`."],
+            ["`invoice_rejected`", "A validação fiscal recusou o pedido. A mensagem explica o campo; corrija e use `retry`."],
+            ["`quota_exceeded`", "Sem créditos ou limite do plano. Depois de resolver, use `retry`."],
+            ["`connection_inactive`", "A conexão está pausada ou precisa de nova autorização. Reative e use `retry`."],
+            ["`before_active_from`", "O pagamento é anterior à data de início da conexão. Nenhuma nota é emitida."],
+            ["`refunded` / `disputed`", "O pagamento foi reembolsado ou contestado antes da nota. Nenhuma nota é emitida."],
+            ["`refund_after_invoice`", "O reembolso chegou depois da nota. A nota continua autorizada e a decisão é sua."],
+          ],
+        },
+        {
+          kind: "callout",
+          tone: "warn",
+          body: "Um reembolso ou contestação nunca cancela a nota sozinho. Para cancelar uma NFS-e use `POST /v1/invoices/:id/cancel` de forma explícita.",
+        },
+        {
+          kind: "callout",
+          tone: "accent",
+          body: "O ambiente (`test` ou `live`) é definido na conexão. Se a plataforma informar que o evento é de outro ambiente, a Corvo descarta o evento e não emite nota.",
+        },
+      ],
+    },
     "mcp": {
       "title": "Agentes de IA (MCP)",
       "description": "Conecte Claude Code, Claude Desktop, Cursor, VS Code, Codex e Windsurf à Corvo por OAuth.",

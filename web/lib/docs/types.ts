@@ -19,6 +19,7 @@ export type DocSlug =
   | "pagination"
   | "receiving-webhooks"
   | "integration-checklist"
+  | "payment-integrations"
   | "mcp"
   | "llms";
 
