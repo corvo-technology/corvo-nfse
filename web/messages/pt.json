@@ -652,23 +652,6 @@
     "socialUnavailable": "Login social estará disponível em breve.",
     "retrySession": "Recuperar sessão"
   },
-  "Architecture": {
-    "eyebrow": "API",
-    "yourApp": "Sua aplicação",
-    "yourAppDesc": "Seu produto, SaaS, ERP ou sistema interno.",
-    "yourAi": "Sua lógica de negócio",
-    "yourAiDesc": "Decide quando emitir uma nota fiscal.",
-    "whatsappApi": "API Corvo",
-    "whatsappApiDesc": "Emissão, status e entrega do documento.",
-    "whatsapp": "Documento fiscal",
-    "whatsappDesc": "A NFS-e é emitida e disponibilizada.",
-    "footer": "Uma API REST simples. Respostas estruturadas em JSON.",
-    "nodejs": "Node.js",
-    "curl": "cURL",
-    "copy": "Copiar",
-    "emitting": "Emitindo notas por",
-    "companyDefaults": "Empresa cadastrada com município fiscal e código de serviço padrão. A nota usa esses valores automaticamente."
-  },
   "Hero": {
     "badge": "Infraestrutura de notas fiscais para desenvolvedores",
     "title": "Emita NFS-e por API ou por agente de IA.",

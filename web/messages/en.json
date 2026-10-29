@@ -652,23 +652,6 @@
     "socialUnavailable": "Social login is not available yet.",
     "retrySession": "Recover session"
   },
-  "Architecture": {
-    "eyebrow": "API",
-    "yourApp": "Your Application",
-    "yourAppDesc": "Your product, SaaS, ERP or internal system.",
-    "yourAi": "Your Business Logic",
-    "yourAiDesc": "Decides when to issue a tax invoice.",
-    "whatsappApi": "Corvo API",
-    "whatsappApiDesc": "Issuance, status and document delivery.",
-    "whatsapp": "Tax Invoice",
-    "whatsappDesc": "The NFS-e is issued and made available.",
-    "footer": "A simple REST API. Structured JSON responses.",
-    "nodejs": "Node.js",
-    "curl": "cURL",
-    "copy": "Copy",
-    "emitting": "Issuing invoices via",
-    "companyDefaults": "The company has a fiscal municipality and default service code configured. The invoice inherits those values automatically."
-  },
   "Hero": {
     "badge": "Tax invoice infrastructure for developers",
     "title": "Issue NFS-e through an API or an AI agent.",
