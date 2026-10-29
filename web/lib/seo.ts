@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 
-export const SITE_URL = "https://corvo.tech";
+export const SITE_URL = "https://www.corvo.tech";
 export const SITE_NAME = "Corvo";
 export const SEO_LOCALES = ["en", "pt"] as const;
 export type SeoLocale = (typeof SEO_LOCALES)[number];
-export const DEFAULT_SEO_LOCALE: SeoLocale = "en";
+export const DEFAULT_SEO_LOCALE: SeoLocale = "pt";
+/** Organization url: one value for both languages, because the @id is shared. */
+export const ORGANIZATION_URL = SITE_URL;
+/** Official profiles for schema.org sameAs. The X profile is left out until its handle is confirmed in the repo or on the site. */
+export const ORGANIZATION_SAME_AS = ["https://github.com/corvo-technology"];
 /** Social-sharing card (1200x630), used by Open Graph and Twitter. */
 export const OG_IMAGE_PATH = "/open-graph-1200x630.png";
 

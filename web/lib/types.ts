@@ -243,6 +243,8 @@ export const WEBHOOK_EVENT_OPTIONS = [
   { value: "nfse.invoice.email_sent", label: "Email sent", description: "The invoice email was sent to the customer." },
   { value: "nfse.invoice.email_failed", label: "Email failed", description: "Sending the invoice email failed." },
   { value: "nfse.invoice.fiscal_discrepancy", label: "Fiscal discrepancy", description: "The authorized invoice differs from the calculated taxes." },
+  { value: "nfse.invoice.cancelled", label: "Invoice cancelled", description: "The invoice was cancelled (scheduled or at the Sefin)." },
+  { value: "nfse.invoice.cancellation_rejected", label: "Cancellation rejected", description: "The Sefin refused the cancellation; the invoice stays authorized." },
 ] as const;
 
 export type WebhookEvent = (typeof WEBHOOK_EVENT_OPTIONS)[number]["value"];
@@ -378,6 +380,8 @@ export interface Company {
   id: string; tenantId: string; legalName: string; tradeName?: string;
   taxId: string; municipalReg?: string; /** Sends the municipal registration in the DPS. Off by default. */ sendMunicipalReg?: boolean; municipalityCode?: string; defaultServiceCode?: string;
   taxRegime: TaxRegime | null; simpleNational: boolean; specialRegime?: string;
+  /** Simples Nacional only: effective total rate (%) of the DAS and, optionally, the ISS rate (%). */
+  simplesRate?: string; simplesIssRate?: string;
   environment: CompanyEnvironment; address: CompanyAddress;
   status: CompanyStatus; /** What is still missing before the company is ready, from the API. */ setupGaps?: SetupGap[];
   createdAt: string; updatedAt: string;
@@ -386,29 +390,40 @@ export interface CreateCompanyInput {
   legalName: string; taxId: string; taxRegime: TaxRegime;
   tradeName?: string; municipalReg?: string; sendMunicipalReg?: boolean; municipalityCode: string; defaultServiceCode?: string;
   simpleNational?: boolean; specialRegime?: string;
+  /** Required for Simples Nacional, ignored for MEI. */
+  simplesRate?: string; simplesIssRate?: string;
   address?: CompanyAddress;
 }
-export type UpdateCompanyInput = Partial<Omit<CreateCompanyInput, "municipalReg" | "defaultServiceCode" | "address">> & {
+export type UpdateCompanyInput = Partial<Omit<CreateCompanyInput, "taxId" | "municipalReg" | "defaultServiceCode" | "simplesIssRate" | "address">> & {
   /** `null` clears the value; omit to keep it. */
-  municipalReg?: string | null; defaultServiceCode?: string | null; address?: CompanyAddress | null;
+  municipalReg?: string | null; defaultServiceCode?: string | null; simplesIssRate?: string | null; address?: CompanyAddress | null;
 };
 /** Fields the company form can send for both create and update. */
-export type CompanyFormInput = UpdateCompanyInput & Pick<CreateCompanyInput, "legalName" | "taxId" | "municipalityCode">;
+/** `taxId` only goes with a new company: the CNPJ of an existing one never changes. */
+export type CompanyFormInput = UpdateCompanyInput & Pick<CreateCompanyInput, "legalName" | "municipalityCode"> & { taxId?: string };
 export type CertificateStatus = "active" | "expired" | "revoked";
 export interface Certificate {
   id: string; companyId: string; serialNumber: string; issuer: string;
   subject: string; fingerprint: string; validFrom: string; validUntil: string;
   status: CertificateStatus; createdAt: string;
 }
-export type InvoiceStatus = "queued" | "processing" | "authorized" | "rejected" | "retry_pending" | "reconciliation_required" | "manual_review" | "failed";
+export type InvoiceStatus = "queued" | "processing" | "authorized" | "rejected" | "retry_pending" | "reconciliation_required" | "manual_review" | "failed" | "cancelling" | "cancelled";
+export type CancellationReasonCode = "issue_error" | "service_not_provided" | "other";
 export interface Invoice {
   id: string; tenantId: string; companyId: string; externalId?: string | null;
   accessKey?: string | null; nfseNumber?: number | null; status: InvoiceStatus;
   amount: number; customerName: string; customerTaxId: string;
+  /** Unconditional discount applied to the amount. */
+  discount?: number;
+  /** Deduction from the ISS base declared by the issuer. */
+  deduction?: number;
   serviceDescription: string; customerSnapshot: CreateInvoiceInput["customer"] | null;
   serviceSnapshot: Required<CreateInvoiceInput["service"]>; competenceDate: string;
   lastErrorCode?: string | null; lastErrorMessage?: string | null;
-  authorizedAt?: string | null; createdAt: string; updatedAt: string;
+  authorizedAt?: string | null; scheduledFor?: string | null; createdAt: string; updatedAt: string;
+  cancellationReason?: CancellationReasonCode | null; cancellationDescription?: string | null; cancelledAt?: string | null;
+  /** Set when a cancellation was requested while the invoice was still being issued. */
+  cancellationRequestedAt?: string | null;
 }
 export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } | { companyId: string; companyTaxId?: string }) & {
   externalId?: string;
@@ -417,6 +432,11 @@ export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } |
   /** Omit code/municipalityCode to inherit the company defaults (code falls back to 100901). The description is optional. */
   service: { description?: string; code?: string; municipalityCode?: string };
   amount: number; competenceDate: string;
+  /**
+   * Deduction from the ISS base declared by the issuer, in BRL (> 0 and < amount, max 2 decimals), sent in the DPS as `vDedRed/vDR`.
+   * The issuer is responsible for the declared value; Corvo does not check whether the deduction is allowed.
+   */
+  deduction?: number;
   /** Email the invoice to customer.email once the documents are ready. */
   email?: boolean;
 }

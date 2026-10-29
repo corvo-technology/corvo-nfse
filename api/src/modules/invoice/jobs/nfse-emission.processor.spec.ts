@@ -1,7 +1,12 @@
 import { NfseEmissionProcessor } from './nfse-emission.processor';
 import { NfseReconciliationProcessor } from './nfse-reconciliation.processor';
+import { NfseCancellationProcessor } from './nfse-cancellation.processor';
 
-for (const Processor of [NfseEmissionProcessor, NfseReconciliationProcessor]) {
+for (const Processor of [
+  NfseEmissionProcessor,
+  NfseReconciliationProcessor,
+  NfseCancellationProcessor,
+]) {
   describe(Processor.name, () => {
     const data = { invoiceId: 'invoice', tenantId: 'tenant' };
     it('uses the same invoice lock for emission and reconciliation and always releases it', async () => {

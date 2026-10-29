@@ -1,4 +1,4 @@
-import type { ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -160,7 +160,7 @@ export const companies = {
 
   list: async (params: PageParams = {}, signal?: AbortSignal): Promise<Page<Company>> => { const page = toPage(await request<ListBody<CompanyWire>>(`/companies${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptCompany) }; },
   get: async (id: string, signal?: AbortSignal) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>(`/companies/${idPath(id)}`, { signal }))),
-  create: async (data: CompanyFormInput & Pick<CreateCompanyInput, "taxRegime">) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>("/companies", json(data)))),
+  create: async (data: CompanyFormInput & Pick<CreateCompanyInput, "taxId" | "taxRegime">) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>("/companies", json(data)))),
   update: async (id: string, data: UpdateCompanyInput) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>(`/companies/${idPath(id)}`, json(data, "PATCH")))),
   delete: async (id: string) => (await request<Envelope<null>>(`/companies/${idPath(id)}`, { method: "DELETE" })).data,
 };
@@ -175,13 +175,28 @@ export function adaptInvoice(props: InvoiceWire): Invoice {
   return { ...props, customerName: props.customerSnapshot?.name ?? "", customerTaxId: props.customerSnapshot?.taxId ?? "", serviceDescription: props.serviceSnapshot.description };
 }
 export interface InvoiceQuery extends PageParams { companyId?: string; status?: InvoiceStatus; from?: string; to?: string; externalId?: string }
+export type OverviewPeriod = "7d" | "30d";
+export interface InvoiceOverview {
+  period: OverviewPeriod;
+  from: string;
+  to: string;
+  timezone: string;
+  counts: { authorized: number; rejected: number; processing: number };
+  dailyActivity: { date: string; count: number }[];
+  recentInvoices: Invoice[];
+}
 type InvoiceBody = InvoiceWire;
 type EventWire = { id: string; invoiceId: string; fromStatus: InvoiceStatus | null; toStatus: InvoiceStatus; createdAt: string; reason: string | null };
 export const invoices = {
+  overview: async (period: OverviewPeriod = "7d", signal?: AbortSignal): Promise<InvoiceOverview> => {
+    const result = unwrap(await request<Envelope<Omit<InvoiceOverview, "recentInvoices"> & { recentInvoices: InvoiceWire[] }>>(`/invoices/overview${query({ period })}`, { signal }));
+    return { ...result, recentInvoices: result.recentInvoices.map(adaptInvoice) };
+  },
   list: async (params: InvoiceQuery = {}, signal?: AbortSignal): Promise<Page<Invoice>> => { const page = toPage(await request<ListBody<InvoiceBody>>(`/invoices${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptInvoice) }; },
   get: async (id: string, signal?: AbortSignal) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}`, { signal }))),
   create: async (data: CreateInvoiceInput, idempotencyKey: string) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>("/invoices", { ...json(data), headers: { "idempotency-key": idempotencyKey } }))),
   calculate: async (data: CreateInvoiceInput, signal?: AbortSignal) => unwrap(await request<Envelope<InvoiceCalculation>>("/invoices/calculate", { ...json(data), signal })),
+  cancel: async (id: string, data: { reason: CancellationReasonCode; description?: string }) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}/cancel`, json(data)))),
   xml: (id: string) => request<Blob>(`/invoices/${idPath(id)}/xml`, {}, true),
   pdf: (id: string) => request<Blob>(`/invoices/${idPath(id)}/pdf`, {}, true),
   events: async (id: string, params: PageParams = {}, signal?: AbortSignal): Promise<Page<InvoiceEvent>> => { const page = toPage(await request<ListBody<EventWire>>(`/invoices/${idPath(id)}/events${query(params)}`, { signal })); return { ...page, items: page.items.map((event) => ({ id: event.id, invoiceId: event.invoiceId, from: event.fromStatus, to: event.toStatus, at: event.createdAt, reason: event.reason } satisfies InvoiceEvent)) }; },
@@ -211,6 +226,37 @@ export const webhooks = {
   deliveries: async (params: WebhookDeliveriesQuery = {}) => toPage(await request<ListBody<WebhookDelivery>>(`/webhooks/deliveries${query(params)}`)),
   deliveryStats: async (hours = 24, environment = "live") => unwrap(await request<Envelope<DeliveryStats>>(`/webhooks/deliveries/stats${query({ hours, environment })}`)),
   retryDelivery: async (id: string) => unwrap(await request<Envelope<{ retried: boolean }>>(`/webhooks/deliveries/${idPath(id)}/retry`, { method: "POST" })),
+};
+export interface IntegrationProvider { id: string; name: string; version: string; credentialFields: { key: string; label: string; secret: boolean; generate?: boolean; inWebhookUrl?: boolean }[]; webhookInstructions: { pt: string; en: string }; supportedFlows: string[] }
+export type IntegrationConnectionState = "draft" | "active" | "paused" | "reauth_required" | "disconnected";
+export interface IntegrationConnection { id: string; provider: string; environment: "test" | "live"; companyId: string; state: IntegrationConnectionState; externalAccountId: string | null; activeFrom: string | null; webhookUrl: string; createdAt: string;
+  /** Only in the create response: secrets the client must paste into the platform. */
+  secrets?: Record<string, string> }
+export interface IntegrationSale {
+  id: string; operationKey: string; commercialState: "pending" | "paid" | "refunded" | "disputed" | "canceled"; fiscalStatus: "none" | "blocked" | "needs_attention" | "submitted";
+  blockReason: string | null; amountCents: number; currency: string; customer: { name: string | null; email: string | null; taxId: string | null; taxIdMasked: boolean } | null;
+  paidAt: string | null; invoiceId: string | null; createdAt: string; updatedAt: string;
+}
+export interface IntegrationRuleInput { externalProductId?: string | null; service: { description?: string; code?: string }; sendEmail: boolean; allowAnonymousCustomer?: boolean; cancelOnRefund?: boolean }
+export interface IntegrationRule { id: string; externalProductId: string | null; service: { description?: string; code?: string }; sendEmail: boolean; allowAnonymousCustomer: boolean; cancelOnRefund: boolean }
+export interface IntegrationEvent { id: string; deliveryId: string; externalType: string; state: "received" | "processing" | "retry_pending" | "processed" | "ignored" | "needs_attention" | "dead"; attempts: number; lastError: string | null; operationId: string | null; createdAt: string }
+export interface CreateIntegrationInput { provider: string; companyId: string; environment: "test" | "live"; credentials: Record<string, string>; activeFrom?: string }
+export const integrations = {
+  providers: async () => unwrap(await request<Envelope<IntegrationProvider[]>>("/integrations/providers")),
+  list: async () => unwrap(await request<Envelope<IntegrationConnection[]>>("/integrations/connections")),
+  create: async (data: CreateIntegrationInput) => unwrap(await request<Envelope<IntegrationConnection>>("/integrations/connections", json(data))),
+  get: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}`)),
+  validate: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/validate`, { method: "POST" })),
+  updateCredentials: async (id: string, credentials: Record<string, string>) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/credentials`, json({ credentials }, "PUT"))),
+  activate: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/activate`, { method: "POST" })),
+  pause: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/pause`, { method: "POST" })),
+  disconnect: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/disconnect`, { method: "POST" })),
+  putRules: async (id: string, rules: IntegrationRuleInput[]) => unwrap(await request<Envelope<unknown[]>>(`/integrations/connections/${idPath(id)}/rules`, json({ rules }, "PUT"))),
+  rules: async (id: string) => unwrap(await request<Envelope<IntegrationRule[]>>(`/integrations/connections/${idPath(id)}/rules`)),
+  events: async (id: string, limit = 20) => unwrap(await request<Envelope<IntegrationEvent[]>>(`/integrations/connections/${idPath(id)}/events${query({ limit })}`)),
+  sales: async (id: string, limit = 50) => unwrap(await request<Envelope<IntegrationSale[]>>(`/integrations/connections/${idPath(id)}/operations${query({ limit })}`)),
+  completeCustomer: async (saleId: string, data: { taxId: string; name?: string; email?: string }) => unwrap(await request<Envelope<IntegrationSale>>(`/integrations/operations/${idPath(saleId)}/customer`, json(data, "PATCH"))),
+  retry: async (saleId: string) => unwrap(await request<Envelope<{ state: string; lastError?: string }>>(`/integrations/operations/${idPath(saleId)}/retry`, { method: "POST" })),
 };
 export interface Member { id: string; email: string; name: string; role: string; createdAt: string }
 export interface InviteResult { userId: string; email: string; role: string }

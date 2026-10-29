@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CompanyOrmEntity } from './infra/company.orm-entity';
 import { CompanyFiscalProfileOrmEntity } from './infra/company-fiscal-profile.orm-entity';
 import { CompanyServiceTaxProfileOrmEntity } from './infra/company-service-tax-profile.orm-entity';
+import { SimplesRegistryPort } from './domain/registry-check';
+import { BrasilApiSimplesRegistry } from '@/infra/external/cnpj/brasilapi-simples-registry';
 import { TypeOrmCompanyRepository } from './infra/typeorm-company.repository';
 import { TypeOrmCompanyFiscalProfileRepository } from './infra/typeorm-company-fiscal-profile.repository';
 import { TypeOrmCompanyServiceTaxProfileRepository } from './infra/typeorm-company-service-tax-profile.repository';
@@ -42,6 +44,11 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
     {
       provide: IServiceTaxProfileRepository,
       useClass: TypeOrmCompanyServiceTaxProfileRepository,
+    },
+    {
+      provide: SimplesRegistryPort,
+      // The adapter takes plain options (not injectables): build it here.
+      useFactory: () => new BrasilApiSimplesRegistry(),
     },
     {
       provide: ICompanyCertificateReader,

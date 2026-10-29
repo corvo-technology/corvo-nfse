@@ -1,4 +1,5 @@
 import { metrics, SpanKind, SpanStatusCode, trace } from '@opentelemetry/api';
+import { captureRuntimeException } from '@/infra/observability/sentry-reporter';
 import {
   AGENT_RUNTIME_DURATION_BOUNDARIES_SECONDS,
   durationHistogramOptions,
@@ -39,6 +40,9 @@ export function observeScheduledTask<T>(
           code: SpanStatusCode.ERROR,
           message: error instanceof Error ? error.message : String(error),
         });
+        // `@nestjs/schedule` swallows a failing job into a log line, so nothing
+        // else would ever send it to Sentry.
+        captureRuntimeException(error, 'worker', `cron:${jobName}`);
         throw error;
       } finally {
         duration.record(Math.max(performance.now() - startedAt, 0) / 1000, {

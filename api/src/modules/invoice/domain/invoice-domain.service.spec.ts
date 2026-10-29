@@ -466,6 +466,87 @@ describe('InvoiceDomainService — optional customer, discount and fiscal input'
     });
   });
 
+  describe('deduction', () => {
+    const issuesOf = (dto: ReturnType<typeof validDto>) => {
+      try {
+        service.normalizeAndValidate(dto, 'test', defaults);
+      } catch (error) {
+        expect(error).toBeInstanceOf(FiscalValidationError);
+        return (error as FiscalValidationError).issues;
+      }
+      throw new Error('Expected validation failure');
+    };
+
+    it('accepts a deduction below the amount and normalizes it', () => {
+      const result = service.normalizeAndValidate(
+        validDto({ amount: 100, deduction: 40 }),
+        'test',
+        defaults,
+      );
+      expect(result.deduction).toBe(40);
+    });
+
+    it('accepts a deduction below the amount minus the discount', () => {
+      const result = service.normalizeAndValidate(
+        validDto({ amount: 100, discount: 10, deduction: 89.99 }),
+        'test',
+        defaults,
+      );
+      expect(result.deduction).toBe(89.99);
+    });
+
+    it('treats a zero deduction as no deduction', () => {
+      const result = service.normalizeAndValidate(
+        validDto({ amount: 100, deduction: 0 }),
+        'test',
+        defaults,
+      );
+      expect(result.deduction).toBeUndefined();
+    });
+
+    it('leaves the deduction undefined when it is omitted', () => {
+      const result = service.normalizeAndValidate(
+        validDto({ amount: 100 }),
+        'test',
+        defaults,
+      );
+      expect(result.deduction).toBeUndefined();
+    });
+
+    it('rejects a negative deduction with out_of_range', () => {
+      expect(issuesOf(validDto({ amount: 100, deduction: -1 }))).toContainEqual(
+        expect.objectContaining({ field: 'deduction', code: 'out_of_range' }),
+      );
+    });
+
+    it('rejects a deduction equal to the amount', () => {
+      expect(
+        issuesOf(validDto({ amount: 100, deduction: 100 })),
+      ).toContainEqual(
+        expect.objectContaining({ field: 'deduction', code: 'out_of_range' }),
+      );
+    });
+
+    it('rejects a deduction that leaves nothing after the discount', () => {
+      expect(
+        issuesOf(validDto({ amount: 100, discount: 10, deduction: 90 })),
+      ).toContainEqual(
+        expect.objectContaining({ field: 'deduction', code: 'out_of_range' }),
+      );
+    });
+
+    it('rejects a deduction with more than two decimal places', () => {
+      expect(
+        issuesOf(validDto({ amount: 100, deduction: 10.999 })),
+      ).toContainEqual(
+        expect.objectContaining({
+          field: 'deduction',
+          code: 'invalid_decimal_places',
+        }),
+      );
+    });
+  });
+
   describe('service.fiscal passthrough', () => {
     it('passes fiscal input and serviceProfileId through without interpretation', () => {
       const fiscal = {

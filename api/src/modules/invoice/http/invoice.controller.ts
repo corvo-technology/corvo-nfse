@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { InvoiceCalculationService } from '../application/fiscal/invoice-calculation.service';
 import { calculationHttpFailure } from './fiscal-error-http';
 import { InvoiceCalculationResponseDto } from './invoice-calculation-response.dto';
@@ -41,7 +42,14 @@ import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { ApiKeyEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
 import type { RequestWithAuthContext } from '@/modules/auth/auth-context';
 import { InvoiceService } from '../application/invoice.service';
+import { InvoiceBatchService } from '../application/invoice-batch.service';
 import {
+  BatchInvoiceItemDto,
+  CreateInvoiceBatchDto,
+} from './invoice-batch.dto';
+import { InvoiceBatchSummaryDto } from './invoice-batch-response.dto';
+import {
+  CancelInvoiceDto,
   CreateInvoiceDto,
   GetDownloadUrlDto,
   ListInvoicesQuery,
@@ -54,8 +62,10 @@ export class InvoiceController {
   constructor(
     private readonly invoiceService: InvoiceService,
     private readonly calculationService: InvoiceCalculationService,
+    private readonly batchService: InvoiceBatchService,
   ) {}
 
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @Post()
   @HttpCode(202)
   @ApiExtraModels(InvoiceResponseDto)
@@ -86,6 +96,50 @@ export class InvoiceController {
     );
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('batches')
+  @HttpCode(202)
+  @ApiExtraModels(BatchInvoiceItemDto, InvoiceBatchSummaryDto)
+  @ApiAcceptedResponse({
+    schema: {
+      type: 'object',
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(InvoiceBatchSummaryDto) },
+      },
+    },
+  })
+  @ApiKeyEndpoint()
+  @RequirePermission('nfse.invoices.issue')
+  @ApiOperation({
+    summary: 'Emit up to 50 NFS-e in one request',
+    description:
+      'Accepts 1 to 50 invoices, for one company or several. Each item has the same fields as POST /invoices plus an optional `idempotencyKey`. ' +
+      'Items are validated one by one: an invalid item is returned as `rejected` (with `error.code` and `error.message`) and is NOT saved, while the valid ones are saved together in a single transaction. ' +
+      'The response has one result per item, in the order sent (`index`). ' +
+      'Send an `idempotencyKey` per item: repeating the batch returns the invoices already saved (`replayed: true`) and only retries the rejected ones. The `Idempotency-Key` header does not apply here. ' +
+      'In `live`, each accepted item reserves one credit; items beyond the plan limit are rejected with the limit error. ' +
+      'Like POST /invoices, issuance is asynchronous: follow each invoice by id or webhook.',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'The body is not a list of 1 to 50 invoices (ERROR_VALIDATION)',
+  })
+  @ApiResponse({
+    status: 429,
+    description:
+      'Rate limit exceeded (10 batches per minute); Retry-After in seconds',
+  })
+  async emitBatch(
+    @Body() dto: CreateInvoiceBatchDto,
+    @Req() req: RequestWithAuthContext,
+  ) {
+    const auth = req.authContext!;
+    return this.batchService.emitBatch(dto.invoices, auth.activeTenantId, auth);
+  }
+
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @Post('calculate')
   @HttpCode(200)
   @ApiKeyEndpoint()
@@ -296,5 +350,53 @@ export class InvoiceController {
       emailId: result.emailId,
       status: result.status,
     });
+  }
+
+  @Post(':id/cancel')
+  @HttpCode(202)
+  @ApiExtraModels(InvoiceResponseDto)
+  @ApiOkResponse({
+    description: 'Queued invoice cancelled locally',
+    schema: {
+      type: 'object',
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(InvoiceResponseDto) },
+      },
+    },
+  })
+  @ApiAcceptedResponse({
+    description:
+      'NFS-e cancellation event is being processed (cancelling), or the cancellation request was registered on an invoice that is still being issued (processing, with cancellationRequestedAt set)',
+    schema: {
+      type: 'object',
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(InvoiceResponseDto) },
+      },
+    },
+  })
+  @ApiKeyEndpoint()
+  @RequirePermission('nfse.invoices.issue')
+  @ApiOperation({
+    summary:
+      'Cancel an invoice: 200 when a queued invoice is cancelled locally, 202 while the NFS-e cancellation event is processed or when the request is registered on a processing invoice',
+    description:
+      'A processing invoice (being issued) accepts the request with 202 and stays processing with cancellationRequestedAt set; description (15-255 characters) is required. When the invoice is authorized it is cancelled automatically at the Sefin (event 101101) and the credit is not refunded (cancelling an issued NFS-e does not refund credit); if the emission ends rejected or failed the request is discarded and the reservation is refunded as usual. Repeating the request returns the current state (the first request wins). retry_pending, reconciliation_required and manual_review return 409 ERROR_INVOICE_NOT_CANCELLABLE.',
+  })
+  async cancel(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: CancelInvoiceDto,
+    @Req() req: RequestWithAuthContext,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const invoice = await this.invoiceService.cancel(
+      id,
+      req.authContext!.activeTenantId,
+      executionEnvironment(req.authContext!),
+      dto,
+    );
+    res.status(invoice.status === 'cancelled' ? 200 : 202);
+    return invoice;
   }
 }

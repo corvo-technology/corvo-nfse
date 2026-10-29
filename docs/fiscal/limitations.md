@@ -15,6 +15,7 @@ aqui foi validado contra a **Calculadora RTC oficial** nem contra o ambiente de
 | **Simples Nacional / MEI em 2027 (opção pelo regime regular)** | `UNSUPPORTED` | As regras de transição para 2027 (Simples com IBS/CBS efetivos) ainda não têm os valores oficiais carregados. O motor bloqueia explicitamente (`TAX_CALCULATION_UNSUPPORTED`) até as regras serem carregadas — nunca degrada para `NOT_APPLICABLE`. |
 | **ISS com regime `FIXED`** | Não exercitado | O resolvedor de ISS trata `NORMAL`/`EXEMPT`; o caso `FIXED` (alíquota fixa municipal) precisa da tabela/alíquota do município e de homologação contra o município de referência. |
 | **Salão-parceiro (`PARTNER_SALON`)** | `FISCAL_REVIEW_REQUIRED` | A regra do Ato Conjunto RFB/CGIBS nº 4/2026 para salões de beleza com parceiros exige conferência das alíneas/ofícios específicos. O motor marca revisão manual em vez de presumir classificação. |
+| **Dedução declarada pelo emitente (`deduction`)** | Implementado, **não homologado** | O emitente informa em `deduction` um valor a abater da base do ISS. Ele vai na DPS em `vDedRed/vDR` (validada contra o schema RTC v1.01) e a base do ISS passa a ser `gross − discount − deduction`. A base das retenções federais **não** muda. O Corvo não confere se a dedução é permitida para o serviço ou município. Ver `docs/fiscal/declared-deduction.md`. |
 | **Mercadorias / operação `GOODS`/`MIXED`** | `OPERATION_DOCUMENT_UNSUPPORTED` | O Plano 2 cobre **serviços** (LC 116). Operações com mercadoria (`GOODS`) ou mistas (`MIXED`) exigem o módulo de produtos/NCM e ficam bloqueadas até um plano específico. |
 
 ## 2. O que NÃO foi homologado nesta etapa
@@ -22,6 +23,8 @@ aqui foi validado contra a **Calculadora RTC oficial** nem contra o ambiente de
 - **Nenhum cenário** foi executado contra a **Calculadora RTC oficial** (adaptador real = Spec 3).
 - **Nenhum cenário** foi executado contra a **Produção Restrita** da NFS-e nacional.
 - Os valores de **2026** (CBS 0,9% / IBS 0,1%, dispensa de recolhimento) foram lidos das fontes oficiais (LC 214/2025 art. 343/346/348) e registrados em `docs/fiscal/rules-verification.md`, mas **não** validados fim a fim pelo sistema nacional.
+- **Dedução `vDedRed/vDR`** (`deduction`): nenhuma nota com dedução foi enviada à **Produção Restrita**. Não se sabe se o município ou o sistema nacional aceitam a dedução sem exigir os documentos (`documentos`/`docDedRed`) nem se algum município a rejeita. Uma rejeição chega ao usuário em `lastErrorCode`/`lastErrorMessage`.
+- **IBS/CBS com dedução**: a Calculadora RTC tem `vCalcDedRedIBSCBS` (locação de imóveis e serviços médicos) e `vCalcReeRepRes` (reembolso de bens de terceiros), que são hipóteses específicas; a dedução genérica `deduction` **não** é enviada a eles, então a base de IBS/CBS **não** é reduzida (conservador — nunca sub-exige). O Sefin pode calcular de outra forma.
 - **Arredondamento**: a convenção interna (`HALF_UP`, 2 casas) não tem respaldo estatutário lido — é convenção de código pendente de confirmação fiscal.
 - **`specificCategoryServiceCodes`** (categorias específicas do Ato Conjunto RFB/CGIBS nº 4/2026) ficou **vazio**: o ato define as categorias por **subitens da LC 116** (1.03, 1.05, 1.09, 16.01) e por natureza da operação, não por códigos cTribNac de 6 dígitos. Efeito: todos os serviços seguem a regra **geral** a partir de 01/10/2026 (conservador — nunca sub-exige).
 
@@ -30,6 +33,8 @@ aqui foi validado contra a **Calculadora RTC oficial** nem contra o ambiente de
 - **D1 — `FISCAL_IBSCBS_UNAVAILABLE_MODE`**: manter `block` (padrão atual, não emite sem IBS/CBS) ou operar em `warn` (emite com warning durante a tolerância até 31/12/2026)? Definição de operação, não de código.
 - **D2 — Aprovação de perfil fiscal em produção**: quem pode `approve` um `company_fiscal_profile` / `company_service_tax_profile` no ambiente `live` (papel/`RequirePermission`)? Hoje o fluxo existe mas o papel autorizado não está definido.
 - **D3 — Categorias específicas do Ato Conjunto nº 4/2026**: confirmar a lista de subitens/naturezas que mudam de regra em 01/12/2026 e mapeá-los para códigos internos quando houver equivalência oficial.
+
+- **D4 — IBS/CBS com dedução**: confirmar se e como a dedução declarada também reduz a base de IBS/CBS e, se sim, em qual campo da Calculadora RTC/DPS. Hoje não reduz.
 
 ## 4. Evolução dos planos
 
@@ -70,7 +75,7 @@ Regra de MEI/Simples a partir de 01/01/2027, checagem de adesão do município a
 
 - `POST /v1/invoices/calculate` está sempre disponível para API key/sessão
   autenticada com `nfse.invoices.issue`. Usa o mesmo rate limit HTTP autenticado
-  dos outros endpoints (padrão 300/min por chave/sessão), sem limite próprio.
+  dos outros endpoints (padrão 300/min por chave/sessão e 600/min por tenant), além de 120/min por tenant na rota.
 - Aceita competência futura sem `options.type`, preservando o horizonte de
   `OUTBOX_SCHEDULE_MAX_DAYS` (15 dias por padrão). Não cria agendamento e resolve
   os perfis vigentes na competência. Não amplia o horizonte do `POST /invoices`.
@@ -89,7 +94,7 @@ Regra de MEI/Simples a partir de 01/01/2027, checagem de adesão do município a
   para entradas sem desconto. O problema precisa de correção separada antes
   de confiar em paridade de emissão com desconto. O fluxo de emissão não foi
   alterado nesta entrega.
-- MEI/Simples em 2027, GOODS/MIXED e demais limitações acima continuam valendo.
+- Simples que optar pelo regime regular em 2027, GOODS/MIXED e demais limitações acima continuam valendo.
 - Perfis de serviço usam `service-tax-profiles`, nome real do contrato atual;
   o plano original citava `fiscal-services`. Não foi criada rota alternativa.
 

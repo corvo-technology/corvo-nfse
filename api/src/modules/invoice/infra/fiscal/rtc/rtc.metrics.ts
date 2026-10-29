@@ -1,10 +1,15 @@
 import { metrics } from '@opentelemetry/api';
 
 const meter = metrics.getMeter('corvo.rtc');
-const calculationDuration = meter.createHistogram('corvo.rtc.calculation.duration', {
-  unit: 's',
-});
-const calculationFailed = meter.createCounter('corvo.rtc.calculation.failed.total');
+const calculationDuration = meter.createHistogram(
+  'corvo.rtc.calculation.duration',
+  {
+    unit: 's',
+  },
+);
+const calculationFailed = meter.createCounter(
+  'corvo.rtc.calculation.failed.total',
+);
 const calculatorLatency = meter.createHistogram('corvo.rtc.request.duration', {
   unit: 's',
 });

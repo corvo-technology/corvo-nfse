@@ -9,6 +9,7 @@ import {
 } from '@/infra/persistence/typeorm/entities/auth.orm-entities';
 import { CompanyModule } from '@/modules/company/company.module';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
+import { PlansModule } from '@/modules/plans/plans.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { McpConnectionOrmEntity } from './infra/mcp-connection.orm-entity';
 import { TypeOrmMcpConnectionRepository } from './infra/mcp-connection.repository';
@@ -34,6 +35,7 @@ import { McpService } from './mcp.service';
       AuthSessionOrmEntity,
     ]),
     InvoiceModule,
+    PlansModule,
     // Company listing for the company_list tool.
     CompanyModule,
     // Membership/OAuth/user repositories used by consent and connections.

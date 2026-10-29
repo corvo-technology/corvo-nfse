@@ -66,7 +66,8 @@
       "companies": "Empresas",
       "invoices": "Notas fiscais",
       "billing": "Plano",
-      "agents": "Agentes de IA"
+      "agents": "Agentes de IA",
+      "integrations": "Integrações"
     },
     "account": "CONTA",
     "balance": "SALDO",
@@ -104,7 +105,19 @@
       "legendMore": "Mais",
       "empty": "Sem notas autorizadas neste período",
       "aria": "Mapa de calor de notas autorizadas por dia",
-      "note": "{count, plural, one {# nota} other {# notas}}"
+      "periodTotal": "Total no período",
+      "authorizedNotes": "Notas autorizadas",
+      "note": "{count, plural, one {# nota} other {# notas}}",
+      "average": "média",
+      "pinned": "Fixado",
+      "vsAverage": "vs. média diária",
+      "ofPeriod": "Do período",
+      "dailyAverage": "Média diária",
+      "bestDay": "Melhor dia",
+      "anonymous": "Cliente",
+      "quietDay": "Nenhuma nota autorizada neste dia.",
+      "seeInList": "Abra a lista de notas para vê-las.",
+      "hint": "Passe o mouse ou toque numa barra para ver o dia. Clique para fixar, setas para navegar, Esc para limpar."
     },
     "recentMessages": "Mensagens recentes",
     "viewAll": "Ver todas",
@@ -127,7 +140,8 @@
     "viewAllInvoices": "Ver todas",
     "period": "Período",
     "loadFailed": "Não foi possível carregar os dados.",
-    "loadedRecords": "Indicadores calculados sobre até 100 notas carregadas no período ({count} registros)."
+    "monthlyCycle": "Ciclo mensal do plano",
+    "creditsLoadFailed": "Não foi possível carregar os créditos."
   },
   "Connections": {
     "title": "Conexões",
@@ -340,6 +354,14 @@
           "fiscal_discrepancy": {
             "label": "Divergência fiscal",
             "description": "A nota autorizada difere dos tributos calculados."
+          },
+          "cancelled": {
+            "label": "Nota cancelada",
+            "description": "A nota foi cancelada (agendada ou na Sefin)."
+          },
+          "cancellation_rejected": {
+            "label": "Cancelamento recusado",
+            "description": "A Sefin recusou o cancelamento; a nota continua autorizada."
           }
         }
       }
@@ -649,14 +671,15 @@
   },
   "Hero": {
     "badge": "Infraestrutura de notas fiscais para desenvolvedores",
-    "title": "Sua API de notas fiscais. Simples assim.",
-    "subtitle": "Emita NFS-e, gerencie múltiplas empresas, envie documentos por e-mail e automatize seu fluxo fiscal com uma única API.",
+    "title": "Emita NFS-e por API ou por agente de IA.",
+    "subtitle": "A Corvo é uma API REST e um servidor MCP para emitir NFS-e (nota fiscal de serviço) no padrão nacional do Brasil, para empresas MEI e do Simples Nacional. Feita para agentes de IA, desenvolvedores, SaaS e ERPs.",
     "startFree": "Começar grátis",
     "viewDocs": "Ver documentação",
     "mono": "15 notas grátis por mês. Sem cartão de crédito."
   },
   "Nav": {
     "product": "Produto",
+    "integrations": "Integrações",
     "docs": "Docs",
     "pricing": "Preços",
     "signIn": "Entrar",
@@ -686,6 +709,7 @@
     "buyCredits": "Escolher plano",
     "monthly": "Mensal",
     "perMonth": "/mês",
+    "overagePerNote": "{price} por nota excedente",
     "recommended": "Recomendado",
     "calculator": {
       "title": "Quanto você emite por mês?",
@@ -726,13 +750,14 @@
       },
       "developer": {
         "name": "DEVELOPER",
+        "badge": "Melhor custo-benefício",
         "credits": "200",
         "price": "R$ 29,90",
         "unit": "",
-        "bestFor": "Projetos pessoais, MVPs e small teams.",
+        "bestFor": "Para começar a emitir NFS-e em qualquer número de empresas.",
         "includes": {
           "nfse": "Emissão de NFS-e via API",
-          "companies": "Até 10 empresas",
+          "companies": "Empresas ilimitadas",
           "email": "Envio por e-mail",
           "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
@@ -741,13 +766,14 @@
       },
       "growth": {
         "name": "GROWTH",
-        "credits": "750",
-        "price": "R$ 89,90",
+        "badge": "Mais popular",
+        "credits": "850",
+        "price": "R$ 99,90",
         "unit": "",
-        "bestFor": "Produtos SaaS e equipes em crescimento.",
+        "bestFor": "Operações em crescimento com mais volume.",
         "includes": {
           "nfse": "Emissão de NFS-e via API",
-          "companies": "Até 50 empresas",
+          "companies": "Empresas ilimitadas",
           "email": "Envio por e-mail",
           "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
@@ -756,13 +782,13 @@
       },
       "scale": {
         "name": "SCALE",
-        "credits": "2.500",
-        "price": "R$ 249,90",
+        "credits": "3.000",
+        "price": "R$ 299,90",
         "unit": "",
-        "bestFor": "Plataformas de alto volume e empresas.",
+        "bestFor": "Plataformas e operações de alto volume.",
         "includes": {
           "nfse": "Emissão de NFS-e via API",
-          "companies": "Até 500 empresas",
+          "companies": "Empresas ilimitadas",
           "email": "Envio por e-mail",
           "mcp": "Agentes de IA via MCP",
           "webhooks": "Webhooks de status",
@@ -772,9 +798,9 @@
       "volume": {
         "name": "VOLUME",
         "credits": "10.000",
-        "price": "R$ 899,90",
+        "price": "R$ 699,90",
         "unit": "",
-        "bestFor": "Maiores volumes e operações multiempresa.",
+        "bestFor": "Maior volume e operações multiempresa.",
         "includes": {
           "nfse": "Emissão de NFS-e via API",
           "companies": "Empresas ilimitadas",
@@ -1147,6 +1173,7 @@
     "cancel": "Cancelar",
     "filters": {
       "all": "Todas",
+      "scheduled": "Agendadas",
       "authorized": "Autorizadas",
       "processing": "Processando",
       "rejected": "Rejeitadas"
@@ -1167,6 +1194,7 @@
       "created": "Criada"
     },
     "status": {
+      "scheduled": "Agendada",
       "authorized": "Autorizada",
       "processing": "Processando",
       "queued": "Na fila",
@@ -1174,9 +1202,12 @@
       "reconciliation_required": "Reconciliação",
       "retry_pending": "Nova tentativa pendente",
       "manual_review": "Revisão manual",
-      "failed": "Falha"
+      "failed": "Falha",
+      "cancelling": "Cancelando",
+      "cancelled": "Cancelada"
     },
     "loadFailed": "Não foi possível carregar as notas fiscais.",
+    "scheduledFor": "Emite em {date}",
     "filterLabel": "Filtrar por status",
     "fields": {
       "company": "Empresa emissora",
@@ -1194,6 +1225,8 @@
       "loadingCompanies": "Carregando...",
       "noCompanies": "Nenhuma empresa cadastrada",
       "invalidAmount": "Informe um valor maior que zero.",
+      "deduction": "Dedução da base do ISS",
+      "invalidDeduction": "A dedução deve ser menor que o valor total.",
       "createFailed": "Não foi possível emitir a nota fiscal.",
       "companiesFailed": "Não foi possível carregar as empresas.",
       "municipalityCode": "Código IBGE do local da prestação",
@@ -1226,6 +1259,7 @@
       "serviceCodeDefault": "Padrão da empresa: {code}. Deixe vazio para usar este código ou escolha outro para esta nota.",
       "municipalityDefault": "Município da empresa: {code}. Deixe vazio para usá-lo ou informe outro local de prestação para esta nota.",
       "description": "Opcional. Se vazia, usamos o nome do código de serviço.",
+      "deduction": "Opcional. Valor que a legislação do município permite abater da base do ISS. Ele é descontado da base de cálculo e enviado na nota. O valor é declarado por você: o Corvo não confere se a dedução é permitida, então confirme com seu contador.",
       "serviceCodeFallback": "Opcional. Sem código na nota nem na empresa, usamos {code} (10.09, representação). Escolha o código da sua atividade."
     },
     "summary": {
@@ -1236,6 +1270,7 @@
       "customer": "Tomador",
       "taxId": "CPF/CNPJ",
       "competence": "Competência",
+      "deduction": "Dedução (ISS)",
       "liveWarning": "Ambiente de produção: esta nota terá valor fiscal real.",
       "missing": "Falta preencher: {fields}.",
       "ready": "Tudo certo para emitir.",
@@ -1250,7 +1285,11 @@
       "hintTest": "Em teste o assunto recebe [TESTE]. Use um e-mail seu."
     },
     "view": "Ver nota",
-    "viewInvoice": "Ver detalhes de {name}"
+    "viewInvoice": "Ver detalhes de {name}",
+    "copyAction": "Duplicar",
+    "copyInvoice": "Duplicar nota de {name}",
+    "copyBanner": "Dados copiados da nota de {name}. A competência é a de hoje; revise o que precisar antes de emitir.",
+    "copyFailed": "Não foi possível copiar a nota. Preencha os dados manualmente."
   },
   "Billing": {
     "title": "Plano e uso",
@@ -1327,6 +1366,16 @@
     "municipalReg": "Inscrição municipal",
     "municipalityCode": "Código IBGE do município",
     "specialRegime": "Regime especial",
+    "specialRegimeHint": "Só se aplica se a prefeitura enquadrou a empresa em um destes casos (cooperativa, cartório, ISS por estimativa, sociedade de profissionais etc.). Na dúvida, deixe \"Nenhum\".",
+    "specialRegimes": {
+      "0": "0 - Nenhum",
+      "1": "1 - Ato Cooperado",
+      "2": "2 - Estimativa",
+      "3": "3 - Microempresa Municipal",
+      "4": "4 - Notário ou Registrador",
+      "5": "5 - Profissional Autônomo",
+      "6": "6 - Sociedade de Profissionais"
+    },
     "simpleNational": "Optante pelo Simples Nacional",
     "address": "Endereço",
     "street": "Rua",
@@ -1350,14 +1399,15 @@
       "taxId": "00.000.000/0000-00",
       "municipalReg": "123456",
       "municipalityCode": "3550308",
-      "specialRegime": "Ex.: Microempresa Municipal",
       "street": "Av. Paulista",
       "number": "1000",
       "complement": "Sala 12",
       "district": "Bela Vista",
       "city": "São Paulo",
       "state": "SP",
-      "zip": "00000-000"
+      "zip": "00000-000",
+      "simplesRate": "6.54",
+      "simplesIssRate": "2.01"
     },
     "cep": {
       "hint": "Preenche endereço e código IBGE automaticamente.",
@@ -1393,7 +1443,10 @@
     "hints": {
       "municipalReg": "Opcional. Informe só se a prefeitura registrou a inscrição municipal desta empresa no cadastro nacional; se não, a Receita rejeita a nota (E0120).",
       "defaultServiceCode": "Código nacional (cTribNac), com 6 dígitos. Usado quando a nota não informa outro código. Você pode remover este padrão na edição.",
-      "sendMunicipalReg": "Desligado por padrão. Marque só se a prefeitura registrou esta empresa no cadastro nacional e a Receita exigir a IM; senão a nota é rejeitada (E0120)."
+      "sendMunicipalReg": "Desligado por padrão. Marque só se a prefeitura registrou esta empresa no cadastro nacional e a Receita exigir a IM; senão a nota é rejeitada (E0120).",
+      "simplesRate": "A alíquota efetiva que aparece no seu PGDAS-D. Vai em toda nota (pTotTribSN). Para atualizar, edite a empresa.",
+      "simplesIssRate": "Opcional. Só se algum cliente reter o ISS na fonte: a alíquota de ISS da sua faixa.",
+      "taxIdLocked": "O CNPJ não pode ser alterado. Para outro CNPJ, cadastre uma nova empresa."
     },
     "fixFields": "Corrija os campos destacados.",
     "defaultServiceCode": "Código de serviço padrão",
@@ -1405,10 +1458,16 @@
     "editFiscalHint": "Revise o regime e as vigências em Configuração fiscal na página da empresa.",
     "reviewNext": "Continuar para o certificado",
     "openCompany": "Abrir empresa",
-    "sendMunicipalReg": "Enviar a inscrição municipal na nota"
+    "sendMunicipalReg": "Enviar a inscrição municipal na nota",
+    "simplesRate": "Alíquota efetiva do Simples (%)",
+    "simplesIssRate": "Alíquota de ISS (%)",
+    "simplesRateRequired": "Informe a alíquota efetiva do Simples.",
+    "rateInvalid": "Informe um número, por exemplo 6.54.",
+    "rateRange": "A alíquota deve estar entre 0 e 100.",
+    "rateDecimals": "Use no máximo 2 casas decimais."
   },
   "CompanyDetail": {
-    "fiscalAdvanced": "Configuração fiscal avançada",
+    "fiscalAdvanced": "Modo avançado (contador)",
     "legalName": "Razão social",
     "taxRegime": "Regime tributário",
     "municipalReg": "Inscrição municipal",
@@ -1486,6 +1545,8 @@
     "defaultServiceCode": "Código de serviço padrão"
   },
   "InvoiceDetail": {
+    "scheduledBanner": "Nota agendada: será emitida automaticamente em {date}. Até lá ela fica na fila.",
+    "copy": "Duplicar",
     "anonymousCustomer": "Consumidor não identificado",
     "title": "Nota fiscal",
     "loading": "Carregando nota...",
@@ -1493,6 +1554,7 @@
     "refresh": "Atualizar",
     "customer": "Tomador",
     "amount": "Valor",
+    "deduction": "Dedução da base do ISS",
     "reference": "Referência",
     "competence": "Competência",
     "service": "Serviço",
@@ -1501,6 +1563,7 @@
     "events": "Andamento da nota",
     "noEvents": "Nenhum evento registrado.",
     "timeline": {
+      "scheduled": "Agendada. A emissão será liberada em {date}.",
       "queued": "Recebemos o pedido e a nota aguarda a vez de ser emitida.",
       "processing": "Estamos enviando a nota para a prefeitura.",
       "authorized": "A prefeitura autorizou a nota. PDF e XML estão disponíveis.",
@@ -1508,7 +1571,52 @@
       "retry_pending": "A emissão não foi concluída e uma nova tentativa será feita automaticamente.",
       "reconciliation_required": "Não foi possível confirmar o estado da nota; estamos conferindo com a prefeitura.",
       "manual_review": "A nota precisa de revisão manual da nossa equipe.",
-      "failed": "Não foi possível emitir a nota."
+      "failed": "Não foi possível emitir a nota.",
+      "cancelling": "Enviamos o cancelamento à Sefin e aguardamos a resposta.",
+      "cancelled": "A nota foi cancelada."
+    },
+    "cancel": {
+      "open": "Cancelar nota",
+      "title": "Cancelar nota",
+      "fiscalHint": "O cancelamento é enviado à Sefin e pode ser recusado (por exemplo, fora do prazo municipal). O crédito usado na emissão não é devolvido.",
+      "processingHint": "Esta nota está sendo emitida. O cancelamento será enviado à Sefin assim que ela for autorizada, e a justificativa é obrigatória. O crédito usado na emissão não é devolvido.",
+      "requested": "Cancelamento solicitado. Ele será enviado à Sefin assim que a nota for autorizada.",
+      "queuedHint": "Esta nota ainda não foi emitida. Ela será cancelada na hora e o crédito reservado será liberado.",
+      "reason": "Motivo",
+      "options": {
+        "incorrect_data": {
+          "title": "Dados ou valor incorretos",
+          "description": "Há uma informação errada na nota.",
+          "suggestedDescription": "Dados ou valor da nota informados incorretamente"
+        },
+        "duplicate_charge": {
+          "title": "Cobrança duplicada",
+          "description": "A mesma cobrança foi emitida mais de uma vez.",
+          "suggestedDescription": "Cobrança emitida em duplicidade"
+        },
+        "service_not_provided": {
+          "title": "Serviço não prestado",
+          "description": "O serviço foi cancelado ou não aconteceu.",
+          "suggestedDescription": "Serviço não foi prestado ao tomador"
+        },
+        "refund": {
+          "title": "Cancelamento com reembolso",
+          "description": "O cliente desistiu e o valor será devolvido.",
+          "suggestedDescription": "Cancelamento solicitado para reembolso ao tomador"
+        }
+      },
+      "reasons": {
+        "issue_error": "Erro na emissão",
+        "service_not_provided": "Serviço não prestado",
+        "other": "Outros"
+      },
+      "description": "Justificativa",
+      "descriptionRequired": "Obrigatória, de 15 a 255 caracteres. Enviada à Sefin.",
+      "descriptionOptional": "Opcional.",
+      "keep": "Manter nota",
+      "confirm": "Cancelar nota",
+      "failed": "Não foi possível cancelar a nota.",
+      "reasonLabel": "Motivo do cancelamento"
     }
   },
   "FiscalDocs": {
@@ -1660,6 +1768,45 @@
       }
     }
   },
+  "CompanyFiscalGuide": {
+    "title": "Configuração fiscal",
+    "subtitle": "O básico para emitir notas. Confirme o que já informamos e preencha só o que o seu regime exige.",
+    "loading": "Carregando configuração fiscal",
+    "retry": "Tentar de novo",
+    "failed": "Não foi possível carregar a configuração fiscal.",
+    "saveFailure": "Não foi possível salvar. Tente de novo.",
+    "noProfile": "Esta empresa ainda não tem regime tributário. Use \"Editar empresa\" para informar o regime.",
+    "regimes": {
+      "MEI": "MEI",
+      "SIMPLES_NACIONAL": "Simples Nacional",
+      "LUCRO_PRESUMIDO": "Lucro Presumido",
+      "LUCRO_REAL": "Lucro Real",
+      "OUTRO_REGIME": "Outro regime",
+      "UNKNOWN": "Não informado"
+    },
+    "regimeDone": "Regime: {regime}",
+    "regimeDoneHint": "Informado no cadastro e confirmado.",
+    "regimePending": "Regime: {regime}",
+    "regimePendingHint": "Confirme que este é o regime atual da empresa. Para emitir em produção, essa confirmação é obrigatória.",
+    "confirmRegime": "Confirmar regime",
+    "invalidRate": "Informe um percentual entre 0 e 100.",
+    "serviceNotNeeded": "Serviço: nada a configurar",
+    "serviceNotNeededHint": "No Simples Nacional e no MEI o ISS é recolhido no DAS. A classificação do serviço só passa a ser necessária quando o IBS/CBS começar a valer para o Simples, em 2027.",
+    "serviceTitle": "Serviço que você presta",
+    "serviceHint": "Escolha o serviço e a alíquota de ISS cobrada pelo seu município. Ao salvar, a configuração é confirmada.",
+    "serviceReviewHint": "Há uma configuração para este serviço aguardando revisão.",
+    "serviceDone": "Serviço: {service}",
+    "serviceDoneHint": "Configurado e confirmado.",
+    "serviceLabel": "Serviço",
+    "issRateLabel": "Alíquota de ISS (%)",
+    "issRateHint": "Consulte a alíquota do seu município para esta atividade.",
+    "retentionLabel": "Seus clientes retêm impostos na fonte?",
+    "retentionNone": "Não retêm (IRRF, PIS, COFINS, CSLL, INSS)",
+    "retentionSome": "Alguns retêm — ajustarei no modo avançado",
+    "saveService": "Salvar e confirmar serviço",
+    "invalidCode": "Selecione um serviço da lista.",
+    "serviceAdvanced": "Revise ou corrija esta configuração no modo avançado abaixo."
+  },
   "CompanyFiscal": {
     "title": "Configuração fiscal",
     "intro": "Confira o perfil da empresa e os serviços usados nas notas. A configuração salva será verificada novamente para cada operação e competência.",
@@ -1683,6 +1830,16 @@
     "regime": "Regime tributário",
     "simpleNational": "Simples Nacional",
     "specialRegime": "Código do regime especial",
+    "specialRegimeHint": "Só se aplica se a prefeitura enquadrou a empresa em um destes casos (cooperativa, cartório, ISS por estimativa, sociedade de profissionais etc.). Na dúvida, deixe \"Nenhum\".",
+    "specialRegimes": {
+      "0": "0 - Nenhum",
+      "1": "1 - Ato Cooperado",
+      "2": "2 - Estimativa",
+      "3": "3 - Microempresa Municipal",
+      "4": "4 - Notário ou Registrador",
+      "5": "5 - Profissional Autônomo",
+      "6": "6 - Sociedade de Profissionais"
+    },
     "validFrom": "Vigente a partir de",
     "validUntil": "Vigente até (exclusivo)",
     "ibsOption": "Opção pelo IBS/CBS regular",
@@ -1904,7 +2061,8 @@
     "loading": "Carregando…",
     "wants": "{name} quer acessar sua conta Corvo",
     "returnTo": "Depois de decidir, você volta para {host}.",
-    "canDo": "Este agente poderá:",
+    "canDo": "Acessos que você está concedendo",
+    "certificateNote": "Certificados A1 e senhas não são disponibilizados ao agente; o envio continua exclusivamente pela API.",
     "workspace": "Workspace",
     "workspaceBlocked": "Seu papel neste workspace não permite estas permissões.",
     "manage": "Você pode revogar o acesso a qualquer momento em Agentes de IA.",
@@ -1918,8 +2076,26 @@
     "deniedBody": "Nenhuma permissão foi concedida.",
     "goDashboard": "Ir para o painel",
     "scopes": {
-      "nfse:read": "Consultar e baixar notas fiscais",
-      "nfse:write": "Emitir notas fiscais"
+      "nfse:read": "Consultar e preparar operações",
+      "nfse:write": "Criar e alterar operações"
+    },
+    "tools": {
+      "read": {
+        "company": "Empresas",
+        "companyDetail": "listar ou consultar por CNPJ",
+        "calculate": "Pré-cálculo fiscal",
+        "calculateDetail": "calcular tributos sem emitir",
+        "invoices": "Notas e documentos",
+        "invoicesDetail": "consultar, listar e baixar PDF",
+        "usage": "Plano e cotas",
+        "usageDetail": "ver consumo e disponibilidade de emissão"
+      },
+      "write": {
+        "company": "Criar empresa",
+        "companyDetail": "cadastrar emissor no ambiente selecionado",
+        "invoices": "Emitir e cancelar NFS-e",
+        "invoicesDetail": "iniciar emissão ou cancelamento"
+      }
     },
     "errors": {
       "invalid": "Link de autorização inválido ou expirado. Volte ao agente e tente conectar de novo.",
@@ -1978,5 +2154,194 @@
     "copied": "Copiado",
     "source": "Código no GitHub",
     "docs": "Ver todos os SDKs na documentação"
+  },
+  "Integrations": {
+    "title": "Integrações",
+    "subtitle": "Conecte seu meio de pagamento e a nota sai sozinha a cada venda paga.",
+    "connect": "Conectar",
+    "loadError": "Não foi possível carregar as integrações.",
+    "retry": "Tentar de novo",
+    "empty": {
+      "title": "Nenhuma integração ainda",
+      "description": "Escolha onde você recebe e conecte em menos de um minuto."
+    },
+    "providers": {
+      "woovi": "Cobranças Pix pagas na Woovi.",
+      "abacatepay": "Checkout e pagamentos pagos na AbacatePay.",
+      "other": "Pagamentos confirmados."
+    },
+    "status": {
+      "active": "Ativa",
+      "paused": "Pausada",
+      "reconnect": "Reconectar",
+      "draft": "Rascunho",
+      "disconnected": "Desconectada"
+    },
+    "pending": "{count, plural, one {# venda precisa de você} other {# vendas precisam de você}}",
+    "wizard": {
+      "title": "Conectar pagamento",
+      "stepPlatform": "Onde você recebe?",
+      "stepDetails": "Dados da conexão",
+      "company": "Empresa que emite a nota",
+      "companyPlaceholder": "Escolha a empresa",
+      "noCompanies": "Cadastre uma empresa antes de conectar.",
+      "sendEmail": "Enviar a nota por e-mail ao cliente",
+      "back": "Voltar",
+      "connect": "Conectar",
+      "connecting": "Conectando...",
+      "errors": {
+        "create": "Não foi possível criar a conexão",
+        "validate": "Não foi possível validar as credenciais",
+        "rules": "Não foi possível salvar a regra do serviço",
+        "activate": "Não foi possível ativar a conexão"
+      },
+      "done": {
+        "title": "Conectado!",
+        "body": "Falta só um passo: cadastre este endereço na plataforma para ela avisar a Corvo a cada pagamento.",
+        "urlLabel": "Endereço do webhook",
+        "secretWarning": "Estes dados só aparecem agora. Copie e guarde antes de fechar.",
+        "secretLabel": "Secret",
+        "copySecret": "Copiar o secret",
+        "finish": "Concluir"
+      },
+      "noPermission": "Para usar esta tela, peça a permissão de gerenciar integrações."
+    },
+    "detail": {
+      "webhookUrl": "Endereço do webhook",
+      "webhookUrlHint": "Cadastre na plataforma de pagamento.",
+      "pause": "Pausar",
+      "resume": "Retomar",
+      "disconnect": "Desconectar",
+      "confirmDisconnect": "Desconectar de vez? Esta conexão para de emitir notas e não pode ser reativada.",
+      "confirmYes": "Sim, desconectar",
+      "reconnectHint": "A plataforma recusou a chave. Troque a chave na seção Conexão, mais abaixo.",
+      "pausedHint": "Pausada: as vendas são guardadas, mas nenhuma nota é emitida.",
+      "updated": "Conexão atualizada.",
+      "sales": {
+        "title": "Últimas vendas",
+        "empty": "Nenhuma venda recebida ainda. Faça um pagamento de teste para ver aqui.",
+        "customer": "Cliente",
+        "amount": "Valor",
+        "status": "Situação",
+        "anonymous": "Sem cliente"
+      },
+      "sale": {
+        "issued": "Nota emitida",
+        "refundedAfterInvoice": "Reembolsada depois da nota",
+        "waitingCustomer": "Falta o CPF/CNPJ",
+        "needsAttention": "Precisa de atenção",
+        "notIssuedRefund": "Reembolsada, sem nota",
+        "blocked": "Não emitida",
+        "processing": "Processando",
+        "cancelRequested": "Cancelamento solicitado",
+        "cancelFailed": "Não foi possível cancelar a nota"
+      },
+      "fixCustomer": "Informar CPF/CNPJ",
+      "taxIdLabel": "CPF ou CNPJ do cliente",
+      "taxIdInvalid": "Informe um CPF ou CNPJ com 11 ou 14 caracteres.",
+      "save": "Salvar e emitir",
+      "tryAgain": "Tentar de novo",
+      "saleDone": "Pronto, venda atualizada.",
+      "saleFailed": "Não foi possível atualizar a venda.",
+      "emit": "Emitir notas automaticamente",
+      "emitOn": "Ligado: cada venda paga vira uma nota.",
+      "emitOff": "Desligado: as vendas ficam guardadas, mas nenhuma nota é emitida.",
+      "tabs": {
+        "sales": "Vendas",
+        "settings": "Configurações",
+        "connection": "Conexão"
+      },
+      "settings": {
+        "title": "Como emitir as notas",
+        "sendEmail": "Enviar a nota por e-mail ao cliente",
+        "anonymous": "Emitir mesmo sem CPF/CNPJ do cliente",
+        "anonymousHint": "Se a plataforma não informar o documento completo, a nota sai sem tomador em vez de ficar esperando você.",
+        "otherRules": "Esta conexão tem {count} regra(s) por produto, criadas pela API. Elas continuam como estão.",
+        "save": "Salvar alterações",
+        "saved": "Configurações salvas.",
+        "loadError": "Não foi possível carregar as configurações.",
+        "cancelOnRefund": "Cancelar a nota quando houver reembolso",
+        "cancelOnRefundHint": "Se o cliente for reembolsado na plataforma, a Corvo pede o cancelamento da nota. O crédito da nota não volta. Marque também os eventos de reembolso no webhook (veja em Conexão)."
+      },
+      "info": {
+        "company": "Empresa",
+        "environment": "Ambiente",
+        "since": "Conectada em",
+        "howTo": "Como cadastrar na plataforma",
+        "eventsTitle": "Avisos recebidos",
+        "eventsEmpty": "Nenhum aviso recebido ainda.",
+        "eventsHint": "Cada vez que a plataforma avisa a Corvo de um pagamento, aparece aqui.",
+        "event": {
+          "processed": "Processado",
+          "ignored": "Ignorado",
+          "working": "Em andamento",
+          "attention": "Precisa de atenção",
+          "dead": "Falhou",
+          "resolved": "Resolvido"
+        },
+        "eventRepeated": "Mesma venda de um aviso anterior",
+        "refundNotFound": "Reembolso de um pagamento que não é uma venda da Corvo."
+      },
+      "disconnectHint": "Para de emitir notas e remove esta conexão.",
+      "credentials": {
+        "title": "Chave de acesso",
+        "hint": "A chave fica guardada com segurança e nunca é mostrada de novo. Para trocar, informe a nova: ela é testada antes de valer.",
+        "stored": "Guardada",
+        "change": "Trocar",
+        "newValue": "Nova chave",
+        "save": "Testar e salvar",
+        "cancel": "Cancelar",
+        "saved": "Chave atualizada."
+      }
+    },
+    "env": {
+      "test": "Teste",
+      "live": "Produção"
+    },
+    "sales": {
+      "title": "Últimas vendas",
+      "all": "Todas",
+      "attention": "Precisam de atenção",
+      "viewInvoice": "Ver nota",
+      "allGood": "Tudo em dia: nenhuma venda precisa de você.",
+      "attentionBanner": "{count} vendas precisam de você",
+      "empty": "Nenhuma venda recebida ainda. Faça um pagamento de teste para ver aqui.",
+      "noneAttention": "Nenhuma venda precisa de atenção."
+    }
+  },
+  "LandingIntegrations": {
+    "title": "Vendeu no Pix? A nota sai sozinha.",
+    "description": "Conecte a Woovi ou a AbacatePay e a Corvo emite a NFS-e de cada pagamento aprovado, com os dados do cliente e do produto. Sem código e sem planilha.",
+    "steps": {
+      "connect": {
+        "title": "Conecte a plataforma",
+        "body": "Escolha a empresa que emite a nota e, se a plataforma pedir, cole a chave."
+      },
+      "webhook": {
+        "title": "Cadastre o webhook",
+        "body": "Copie o endereço que a Corvo mostra e cole no painel da plataforma."
+      },
+      "done": {
+        "title": "Pronto",
+        "body": "Cada pagamento aprovado vira uma nota. Se faltar o CPF ou CNPJ, você completa na tela e ela sai."
+      }
+    },
+    "platforms": {
+      "woovi": "Cobranças Pix",
+      "abacatepay": "Pix, cartão e boleto",
+      "soon": "Mais plataformas a caminho."
+    },
+    "invoice": {
+      "status": "Emitida",
+      "amount": "R$ 999,90",
+      "customer": "Maria Souza",
+      "email": "Enviada por e-mail ao cliente"
+    },
+    "cta": "Começar grátis",
+    "guide": "Ver o guia de integrações",
+    "refund": {
+      "title": "Teve reembolso?",
+      "body": "A Corvo cancela a nota sozinha. É um ajuste que você liga quando quiser."
+    }
   }
 }

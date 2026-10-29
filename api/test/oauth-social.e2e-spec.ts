@@ -66,9 +66,9 @@ describe('Social sign-in (e2e)', () => {
     const start = await request(app.getHttpServer()).get(
       '/v1/auth/oauth/google/authorize',
     );
-    const cookie = (start.headers['set-cookie'] as unknown as string[])[0].split(
-      ';',
-    )[0];
+    const cookie = (
+      start.headers['set-cookie'] as unknown as string[]
+    )[0].split(';')[0];
     const res = await request(app.getHttpServer())
       .get('/v1/auth/oauth/google/callback')
       .query({ code: 'code', state: 'forged' })
@@ -76,7 +76,9 @@ describe('Social sign-in (e2e)', () => {
       .expect(302);
     expect(res.headers.location).toBe('/login?error=oauth_failed');
     const cookies = (res.headers['set-cookie'] ?? []) as unknown as string[];
-    expect(cookies.some((entry) => entry.startsWith('gf_session_dev='))).toBe(false);
+    expect(cookies.some((entry) => entry.startsWith('gf_session_dev='))).toBe(
+      false,
+    );
   });
 
   it('turns a callback with no cookie into a login error, not a server error', async () => {

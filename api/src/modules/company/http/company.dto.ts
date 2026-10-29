@@ -15,7 +15,10 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { TaxRegime } from '../domain/company';
-import { TAX_REGIME_KINDS } from '../domain/fiscal-profile';
+import {
+  SPECIAL_TAX_REGIME_CODES,
+  TAX_REGIME_KINDS,
+} from '../domain/fiscal-profile';
 import type {
   IssTaxation,
   OperationNature,
@@ -33,6 +36,11 @@ const TAX_REGIMES: TaxRegime[] = [
   'Lucro Presumido',
   'Lucro Real',
 ];
+
+const SPECIAL_TAX_REGIME_DESCRIPTION =
+  'Special tax regime (regEspTrib, RTC v1.01): 0 Nenhum, 1 Ato Cooperado, ' +
+  '2 Estimativa, 3 Microempresa Municipal, 4 Notário ou Registrador, ' +
+  '5 Profissional Autônomo, 6 Sociedade de Profissionais.';
 
 export class AddressDto {
   @IsOptional() @IsString() @MaxLength(200) street?: string;
@@ -75,14 +83,48 @@ export class CreateCompanyDto {
   defaultServiceCode?: string;
   @IsString() @IsIn(TAX_REGIMES) taxRegime!: TaxRegime;
   @IsOptional() @IsBoolean() simpleNational?: boolean;
-  @IsOptional() @IsString() @MaxLength(50) specialRegime?: string;
+  @IsOptional()
+  @ValidateIf((_object, value) => value !== '')
+  @IsIn(SPECIAL_TAX_REGIME_CODES)
+  @ApiPropertyOptional({
+    type: String,
+    enum: SPECIAL_TAX_REGIME_CODES,
+    description: `${SPECIAL_TAX_REGIME_DESCRIPTION} Empty string clears it.`,
+  })
+  specialRegime?: string;
+  @ApiPropertyOptional({
+    type: String,
+    example: '6.54',
+    description:
+      'Simples Nacional only: effective total rate (%) of your DAS, sent in the invoice as pTotTribSN. Required for Simples Nacional; ignored for MEI.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(6)
+  simplesRate?: string;
+  @ApiPropertyOptional({
+    type: String,
+    example: '2.01',
+    description:
+      'Simples Nacional only: effective ISS rate (%) of your bracket. Only needed when a customer withholds ISS. Ignored for MEI.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(6)
+  simplesIssRate?: string;
   @IsOptional() @ValidateNested() @Type(() => AddressDto) address?: AddressDto;
 }
 
 export class UpdateCompanyDto {
   @IsOptional() @IsString() @MaxLength(200) legalName?: string;
   @IsOptional() @IsString() @MaxLength(200) tradeName?: string;
-  @IsOptional() @IsString() taxId?: string; // validated by CompanyDomainService
+  @ApiPropertyOptional({
+    description:
+      'The CNPJ cannot be changed. Sending the current CNPJ is accepted and ignored; any other value returns 422.',
+  })
+  @IsOptional()
+  @IsString()
+  taxId?: string; // validated by CompanyDomainService
   @IsOptional() @IsString() municipalReg?: string | null; // null = clear, '' = error
   @IsOptional()
   @IsBoolean()
@@ -107,7 +149,35 @@ export class UpdateCompanyDto {
   defaultServiceCode?: string | null;
   @IsOptional() @IsString() @IsIn(TAX_REGIMES) taxRegime?: TaxRegime;
   @IsOptional() @IsBoolean() simpleNational?: boolean;
-  @IsOptional() @IsString() @MaxLength(50) specialRegime?: string;
+  @IsOptional()
+  @ValidateIf((_object, value) => value !== '')
+  @IsIn(SPECIAL_TAX_REGIME_CODES)
+  @ApiPropertyOptional({
+    type: String,
+    enum: SPECIAL_TAX_REGIME_CODES,
+    description: `${SPECIAL_TAX_REGIME_DESCRIPTION} Empty string clears it.`,
+  })
+  specialRegime?: string;
+  @ApiPropertyOptional({
+    type: String,
+    example: '6.54',
+    description:
+      'Simples Nacional only: effective total rate (%) of your DAS, sent in the invoice as pTotTribSN. Required for Simples Nacional; ignored for MEI.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(6)
+  simplesRate?: string;
+  @ApiPropertyOptional({
+    type: String,
+    example: '2.01',
+    description:
+      'Simples Nacional only: effective ISS rate (%) of your bracket. Only needed when a customer withholds ISS. Ignored for MEI.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(6)
+  simplesIssRate?: string | null;
   @IsOptional()
   @ValidateNested()
   @Type(() => AddressDto)
@@ -125,14 +195,33 @@ export class UpsertFiscalProfileDto {
   taxRegime!: (typeof TAX_REGIME_KINDS)[number];
 
   @IsOptional() @IsBoolean() simpleNational?: boolean;
-  @IsOptional() @IsString() @MaxLength(50) specialTaxRegime?: string | null;
+  @IsOptional()
+  @IsIn(SPECIAL_TAX_REGIME_CODES)
+  @ApiPropertyOptional({
+    type: String,
+    enum: SPECIAL_TAX_REGIME_CODES,
+    nullable: true,
+    description: `${SPECIAL_TAX_REGIME_DESCRIPTION} Null means none.`,
+  })
+  specialTaxRegime?: string | null;
   @IsOptional() @IsBoolean() ibsCbsRegularOption?: boolean;
   @IsOptional() @IsDateString() ibsCbsRegularFrom?: string | null;
 
   @ApiPropertyOptional({
+    enum: ['SN'],
+    example: 'SN',
+    description:
+      'How a ME/EPP apportions federal and municipal taxes (DPS regApTribSN). Only SN (1) is supported; omit it for MEI. ISS_MUNICIPAL and REGULAR (above a sublimit) are refused.',
+  })
+  @IsOptional()
+  @IsIn(['SN', 'ISS_MUNICIPAL', 'REGULAR'])
+  simplesApuracao?: 'SN' | 'ISS_MUNICIPAL' | 'REGULAR' | null;
+
+  @ApiPropertyOptional({
     type: String,
     example: '2027-01-01',
-    description: 'Start of the validity period (inclusive). Defaults to today.',
+    description:
+      'Start of the validity period (inclusive). Defaults to today. May be earlier than the whole history, to cover competences before the company was registered.',
   })
   @IsOptional()
   @IsDateString()

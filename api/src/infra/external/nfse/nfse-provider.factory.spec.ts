@@ -11,11 +11,13 @@ describe('NfseProviderFactory', () => {
       issue: jest.fn(),
       queryByAccessKey: jest.fn(),
       retrievePdf: jest.fn(),
+      cancel: jest.fn(),
     };
     real = {
       issue: jest.fn(),
       queryByAccessKey: jest.fn(),
       retrievePdf: jest.fn(),
+      cancel: jest.fn(),
     };
     factory = new NfseProviderFactory(fake, real);
   });

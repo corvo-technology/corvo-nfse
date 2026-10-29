@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { RawResponse } from '@/shared/http/response.interceptor';
 import {
   BadRequestException,
@@ -78,6 +79,7 @@ export class McpOAuthController {
   /**
    * OAuth 2.0 token endpoint. Accepts JSON or form-urlencoded bodies.
    */
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post('token')
   @HttpCode(200)
   async token(
@@ -117,6 +119,7 @@ export class McpOAuthController {
    * RFC 7009 token revocation. Always responds 200 with an empty body when
    * the request is well-formed, even if the token is unknown.
    */
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post('revoke')
   @HttpCode(200)
   async revoke(

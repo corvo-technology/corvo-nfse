@@ -59,6 +59,14 @@ export class HttpApiRateLimitGuard implements CanActivate {
       max,
       60000,
     );
+    const tenantId = request.authContext?.tenantId;
+    if (tenantId)
+      await this.enforce(
+        context,
+        `tenant:${tenantId}`,
+        this.config.get<number>('RATE_LIMIT_TENANT') ?? 600,
+        60000,
+      );
     const routeMax = this.reflector.getAllAndOverride<number>(
       'THROTTLER:LIMITdefault',
       targets,
@@ -71,7 +79,11 @@ export class HttpApiRateLimitGuard implements CanActivate {
     if (routeMax)
       await this.enforce(
         context,
-        `sensitive:${context.getClass().name}:${context.getHandler().name}:ip:${resolveClientIp(request) ?? 'unknown'}`,
+        `sensitive:${context.getClass().name}:${context.getHandler().name}:${
+          tenantId
+            ? `tenant:${tenantId}`
+            : `ip:${resolveClientIp(request) ?? 'unknown'}`
+        }`,
         routeMax,
         routeTtl,
       );

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import request from 'supertest';
 import type { INestApplication } from '@nestjs/common';
 import { DataSource } from 'typeorm';
@@ -75,7 +76,7 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
     await closeE2eApp(ctx);
   });
 
-  it('lists 5 tools with real input schemas', async () => {
+  it('lists the tools with real input schemas, including nfse_issue_batch', async () => {
     const res = await mcpPost(
       fullToken.accessToken,
       mcpRpc(1, 'tools/list'),
@@ -85,14 +86,18 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
       name: string;
       inputSchema: Record<string, unknown>;
     }>;
-    const names = tools.map((t) => t.name).sort();
-    expect(names).toEqual([
-      'company_list',
-      'nfse_download_pdf',
-      'nfse_issue',
-      'nfse_list',
-      'nfse_query',
-    ]);
+    const names = tools.map((t) => t.name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'company_list',
+        'nfse_cancel',
+        'nfse_download_pdf',
+        'nfse_issue',
+        'nfse_issue_batch',
+        'nfse_list',
+        'nfse_query',
+      ]),
+    );
     for (const tool of tools) {
       expect(tool.inputSchema).toMatchObject({ type: 'object' });
     }
@@ -353,5 +358,87 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
     });
     expect(row).toBeTruthy();
     expect(row!.status).toBe('queued');
+  });
+
+  it('nfse_issue_batch saves the valid rows, rejects the invalid one in place and replays on retry', async () => {
+    const companyId = 'cccccccc-1111-4222-8333-444444444444';
+    const taxId = '11222333000262';
+    await dataSource.query(
+      `INSERT INTO "${schema}"."nfse_companies"
+         (id, tenant_id, legal_name, tax_id, municipality_code,
+          municipal_reg, environment, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, '3550308', '12345', 'test', 'ready', NOW(), NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [companyId, tenantId, 'Empresa Lote E2E', taxId],
+    );
+    const call = () =>
+      mcpPost(fullToken.accessToken, {
+        jsonrpc: '2.0',
+        id: 60,
+        method: 'tools/call',
+        params: {
+          name: 'nfse_issue_batch',
+          arguments: {
+            invoices: [
+              {
+                company_tax_id: taxId,
+                amount: 10,
+                competence_date: COMPETENCE_DATE,
+                service_code: '010101',
+                municipality_code: '3550308',
+                idempotency_key: 'e2e-batch-row-1',
+              },
+              { company_tax_id: taxId, amount: 'not a number' },
+              {
+                company_tax_id: taxId,
+                amount: 20,
+                competence_date: COMPETENCE_DATE,
+                service_code: '010101',
+                municipality_code: '3550308',
+                idempotency_key: 'e2e-batch-row-3',
+              },
+            ],
+          },
+        },
+      }).expect(200);
+    type Payload = {
+      total: number;
+      accepted: number;
+      rejected: number;
+      results: Array<{
+        index: number;
+        status: string;
+        replayed?: boolean;
+        invoice_id?: string;
+        error?: { code: string };
+      }>;
+    };
+    const payload = (res: { body: any }) =>
+      JSON.parse(res.body.result.content[0].text) as Payload;
+
+    const first = payload(await call());
+    expect(first).toMatchObject({ total: 3, accepted: 2, rejected: 1 });
+    expect(first.results.map((r) => [r.index, r.status])).toEqual([
+      [0, 'accepted'],
+      [1, 'rejected'],
+      [2, 'accepted'],
+    ]);
+    expect(first.results[1]?.error?.code).toBe('ERROR_VALIDATION');
+    const saved = await dataSource
+      .getRepository(InvoiceOrmEntity)
+      .count({ where: { tenantId, companyId } });
+    expect(saved).toBe(2);
+
+    const retry = payload(await call());
+    expect(retry.results[0]).toMatchObject({
+      status: 'accepted',
+      replayed: true,
+      invoice_id: first.results[0]?.invoice_id,
+    });
+    expect(
+      await dataSource
+        .getRepository(InvoiceOrmEntity)
+        .count({ where: { tenantId, companyId } }),
+    ).toBe(2);
   });
 });

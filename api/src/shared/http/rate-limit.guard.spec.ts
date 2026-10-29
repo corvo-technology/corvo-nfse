@@ -57,6 +57,20 @@ describe('HTTP rate limit policies', () => {
     });
     expect(first.setHeader).toHaveBeenCalledWith('X-RateLimit-Limit', 300);
   });
+  it('adds a tenant-wide budget so extra keys or sessions do not multiply it', async () => {
+    const guard = new HttpApiRateLimitGuard(limiter, new Reflector(), config);
+    await guard.canActivate(
+      context({
+        validatedApiKeyId: 'key-2',
+        authContext: { tenantId: 'tenant-1' },
+      }).ctx,
+    );
+    expect(check).toHaveBeenCalledWith('tenant:tenant-1', {
+      max: 600,
+      windowMs: 60000,
+    });
+  });
+
   it('does not trust unvalidated API key headers', async () => {
     await new HttpApiRateLimitGuard(
       limiter,

@@ -6,10 +6,32 @@ export type InvoiceStatus =
   | 'retry_pending'
   | 'reconciliation_required'
   | 'manual_review'
-  | 'failed';
+  | 'failed'
+  | 'cancelling'
+  | 'cancelled';
+
+export const INVOICE_STATUSES: readonly InvoiceStatus[] = [
+  'queued',
+  'processing',
+  'authorized',
+  'rejected',
+  'retry_pending',
+  'reconciliation_required',
+  'manual_review',
+  'failed',
+  'cancelling',
+  'cancelled',
+];
+
+/** Statuses in which an emission is still unresolved, so a cancellation intent can wait. */
+export const EMISSION_IN_PROGRESS_STATUSES: readonly InvoiceStatus[] = [
+  'processing',
+  'retry_pending',
+  'reconciliation_required',
+];
 
 export const VALID_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
-  queued: ['processing', 'rejected'],
+  queued: ['processing', 'rejected', 'cancelled'],
   processing: [
     'authorized',
     'rejected',
@@ -19,8 +41,10 @@ export const VALID_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
   ],
   retry_pending: ['processing'],
   reconciliation_required: ['authorized', 'rejected', 'manual_review'],
-  authorized: [],
+  authorized: ['cancelling'],
+  cancelling: ['cancelled', 'authorized'],
   rejected: [],
   manual_review: [],
   failed: [],
+  cancelled: [],
 };

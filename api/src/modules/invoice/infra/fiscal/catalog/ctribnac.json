@@ -1344,6 +1344,10 @@
     {
       "code": "990101",
       "description": "Serviços sem a incidência de ISSQN e ICMS"
+    },
+    {
+      "code": "990501",
+      "description": "Cobrança de taxas e demais valores condominiais pelo condomínio edilício."
     }
   ]
 }

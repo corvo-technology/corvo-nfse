@@ -13,6 +13,8 @@ x-backend: &backend
     DB_SCHEMA: corvo
     DB_POOL_MIN: 0
     DB_POOL_MAX: 10
+    DB_STATEMENT_TIMEOUT_MS: ${DB_STATEMENT_TIMEOUT_MS:-15000}
+    NODE_OPTIONS: --max-old-space-size=768
     RTC_CALCULATOR_URL: http://rtc-calculator:8080/api
     STORAGE_PROVIDER: s3
     CORS_ORIGINS: ${APP_ORIGIN:?Configure APP_ORIGIN}
@@ -24,6 +26,7 @@ x-backend: &backend
   init: true
   restart: unless-stopped
   stop_grace_period: 30s
+  mem_limit: 1g
   depends_on:
     migrations:
       condition: service_completed_successfully
@@ -39,6 +42,9 @@ services:
       POSTGRES_USER: corvo
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Execute node scripts/setup-env.mjs}
       POSTGRES_DB: corvo_dev
+    # Sized for a 2 vCPU / 8 GB host shared with api, worker, web and the RTC calculator.
+    command: ['postgres', '-c', 'shared_buffers=1GB', '-c', 'effective_cache_size=3GB', '-c', 'max_connections=60', '-c', 'work_mem=8MB']
+    mem_limit: 2g
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -50,7 +56,8 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ['redis-server', '--appendonly', 'yes']
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory', '384mb', '--maxmemory-policy', 'noeviction']
+    mem_limit: 512m
     volumes:
       - redisdata:/data
     healthcheck:
@@ -97,17 +104,16 @@ services:
     <<: *backend
     # The only service that builds the backend image; `worker` and `migrations` reuse it.
     build:
-      context: ../api
-      dockerfile: ../deploy/Dockerfile.api
+      context: ../
+      dockerfile: deploy/Dockerfile.api
     ports:
       - '${API_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-3000}:3000'
 
   worker:
     <<: *backend
-    # Same image as the API; only the command and the health check change.
+    # Same image as the API; CORVO_RUNTIME_ROLE picks the worker process.
     image: corvo-api:local
     pull_policy: never
-    command: ['node', 'dist/main.worker.js']
     healthcheck:
       test: ['CMD-SHELL', 'curl -f http://127.0.0.1:$${WORKER_PORT:-3002}/v1/health/live || exit 1']
       interval: 30s
@@ -123,8 +129,8 @@ services:
   web:
     image: corvo-web:local
     build:
-      context: ../web
-      dockerfile: ../deploy/Dockerfile.web
+      context: ../
+      dockerfile: deploy/Dockerfile.web
       args:
         NEXT_PUBLIC_API_URL: /api/proxy/v1
         NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID:-}

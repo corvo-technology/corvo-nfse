@@ -1,5 +1,8 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { assertRegimeSupported } from '../domain/tax-regime-support';
+import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import type { CompanyFiscalProfile } from '../domain/fiscal-profile';
+import { validateFiscalProfile } from '../domain/fiscal-profile.validator';
 import {
   IFiscalProfileRepository,
   type NewFiscalProfile,
@@ -12,11 +15,14 @@ export class CompanyFiscalProfileService {
     private readonly profiles: IFiscalProfileRepository,
   ) {}
 
-  record(
+  async record(
     companyId: string,
     tenantId: string,
     input: NewFiscalProfile,
   ): Promise<CompanyFiscalProfile> {
+    assertRegimeSupported(input.taxRegime);
+    const issues = validateFiscalProfile(input);
+    if (issues.length > 0) throw new FiscalValidationError(issues);
     return this.profiles.append(companyId, tenantId, input);
   }
 

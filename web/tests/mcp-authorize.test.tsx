@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import McpAuthorizePage from "@/app/mcp/authorize/page";
+import McpAuthorizePage from "@/app/(dashboard)/mcp/authorize/page";
 import { ApiError } from "@/lib/api";
 import messages from "@/messages/en.json";
 
@@ -59,8 +59,13 @@ describe("MCP authorize screen", () => {
   it("shows the app, what it can do and only offers workspaces the user can grant", async () => {
     renderPage();
     await screen.findByText("Claude Code wants to access your Corvo account");
-    expect(screen.getByText("Query and download invoices")).toBeTruthy();
-    expect(screen.getByText("Issue invoices")).toBeTruthy();
+    expect(screen.getByText("Read and prepare operations")).toBeTruthy();
+    expect(screen.getByText("Create and change operations")).toBeTruthy();
+    expect(screen.getByText("Companies")).toBeTruthy();
+    expect(screen.getByText("Tax preview")).toBeTruthy();
+    expect(screen.getByText("Plan and quotas")).toBeTruthy();
+    expect(screen.getByText("Create company")).toBeTruthy();
+    expect(screen.getByText(/A1 certificates and passwords/)).toBeTruthy();
     expect((screen.getByLabelText("Acme") as HTMLInputElement).checked).toBe(true);
     expect((screen.getByLabelText(/Billing only/) as HTMLInputElement).disabled).toBe(true);
   });

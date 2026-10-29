@@ -1,6 +1,14 @@
 import { z } from 'zod';
 import { booleanFromEnv } from './boolean-env.schema';
 
+/** `*` or a comma separated list of tenant UUIDs. Empty means not set (every tenant). */
+function optionalNonEmptyString() {
+  return z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(1).optional(),
+  );
+}
+
 export const envSchema = z
   .object({
     APP_NAME: z.string().min(1).default('corvo-backend'),
@@ -224,8 +232,17 @@ export const envSchema = z
       .default('corvo-checkpoint'),
     RATE_LIMIT_AUTHENTICATED: z.coerce.number().int().positive().default(300),
     RATE_LIMIT_PUBLIC: z.coerce.number().int().positive().default(120),
+    RATE_LIMIT_TENANT: z.coerce.number().int().positive().default(600),
+    MAX_CONCURRENT_REQUESTS: z.coerce.number().int().min(0).default(200),
+    HTTP_HEADERS_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+    HTTP_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(60000),
     RATE_LIMIT_PRE_AUTH: z.coerce.number().int().positive().default(1200),
     RATE_LIMIT_STRIPE_WEBHOOK: z.coerce.number().int().positive().default(600),
+    RATE_LIMIT_INTEGRATION_INBOUND: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(600),
     REDIS_URL: z.string().min(1),
     REDIS_KEY_PREFIX: z.string().min(1).default('corvo'),
     REDIS_CACHE_DEFAULT_TTL_SECONDS: z.coerce
@@ -259,7 +276,7 @@ export const envSchema = z
       .default(5),
     RTC_CIRCUIT_RESET_MS: z.coerce.number().int().positive().default(30000),
     RTC_EXPECTED_VERSION: z.string().trim().min(1).optional(),
-    FISCAL_DPS_LAYOUT: z.enum(['rtc-v1.01']).default('rtc-v1.01'),
+    FISCAL_DPS_LAYOUT: z.enum(['rtc-v1.01', 'nt009-r1']).default('rtc-v1.01'),
     WHATSAPP_SEND_ATTEMPTS: z.coerce.number().int().positive().default(3),
     WHATSAPP_SEND_BACKOFF_MS: z.coerce.number().int().positive().default(5000),
     WHATSAPP_RECEIVE_CONCURRENCY: z.coerce
@@ -349,12 +366,15 @@ export const envSchema = z
       .default('https://graph.facebook.com'),
     META_GRAPH_API_VERSION: z.string().min(1).default('v25.0'),
     SECRETS_ENCRYPTION_KEY: z.string().min(1).optional(),
+    /** Key behind AbacatePay's X-Webhook-Signature; the URL secret authenticates alone while unset. */
+    ABACATEPAY_WEBHOOK_PUBLIC_KEY: z.string().min(1).optional(),
     // ─── OAuth Providers ──────────────────────────────────────────
-    GOOGLE_CLIENT_ID: z.string().min(1).optional(),
-    GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+    // An empty credential (GOOGLE_CLIENT_ID=) means "provider not configured".
+    GOOGLE_CLIENT_ID: optionalNonEmptyString(),
+    GOOGLE_CLIENT_SECRET: optionalNonEmptyString(),
     GOOGLE_REDIRECT_URL: z.string().url().optional(),
-    GITHUB_CLIENT_ID: z.string().min(1).optional(),
-    GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
+    GITHUB_CLIENT_ID: optionalNonEmptyString(),
+    GITHUB_CLIENT_SECRET: optionalNonEmptyString(),
     GITHUB_REDIRECT_URL: z.string().url().optional(),
     DASHBOARD_URL: z.string().url().optional(),
     MCP_REDIRECT_URIS: z.string().min(1).optional(),

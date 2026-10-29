@@ -17,6 +17,7 @@ const profile = (
   specialTaxRegime: null,
   ibsCbsRegularOption: false,
   ibsCbsRegularFrom: null,
+  simplesIssRate: null,
   validFrom: '2026-01-01',
   validUntil: null,
   source: 'onboarding',

@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CompanyForm } from "@/components/dashboard/company-form";
-import NewInvoicePage from "@/app/app/invoices/new/page";
+import NewInvoicePage from "@/app/(dashboard)/app/invoices/new/page";
 import { companySetup } from "@/lib/company-setup";
 import type { Company } from "@/lib/types";
 import messages from "@/messages/en.json";
@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, back: 
 vi.mock("@/lib/api", async (original) => ({ ...await original<typeof import("@/lib/api")>(), companies: { list: mocks.list }, invoices: { create: mocks.create } }));
 
 const company: Company = {
-  id: "company-1", tenantId: "tenant-1", legalName: "Example LTDA", taxId: "11222333000181", taxRegime: "Simples Nacional", simpleNational: true,
+  id: "company-1", tenantId: "tenant-1", legalName: "Example LTDA", taxId: "11222333000181", taxRegime: "Simples Nacional", simpleNational: true, simplesRate: "6.54",
   environment: "test", status: "ready", address: {}, municipalityCode: "3550308", defaultServiceCode: "010101", setupGaps: [],
   createdAt: "2026-10-09T12:00:00Z", updatedAt: "2026-10-09T12:00:00Z",
 };
@@ -57,6 +57,22 @@ describe("Company fiscal setup", () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0][0]).toMatchObject({ taxId: company.taxId, municipalityCode: "3550308", defaultServiceCode: "010101" });
     expect(onSave.mock.calls[0][0].municipalReg).toBeUndefined();
+  });
+  it("asks a Simples Nacional company for its rate and sends it", async () => {
+    const onSave = vi.fn().mockResolvedValue(company);
+    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); reachFiscal();
+    fill("IBGE", "3550308"); fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "Simples Nacional" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create company" }));
+    expect(screen.getByText("Enter the effective Simples rate.")).toBeTruthy(); expect(onSave).not.toHaveBeenCalled();
+    fill("Effective Simples rate", "6,54"); fill("ISS rate", "2.01");
+    fireEvent.click(screen.getByRole("button", { name: "Create company" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0][0]).toMatchObject({ simplesRate: "6.54", simplesIssRate: "2.01" });
+  });
+  it("does not show the rate fields for a MEI", () => {
+    renderUI(<CompanyForm onSave={vi.fn()} onCancel={vi.fn()} />); reachFiscal();
+    fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } });
+    expect(screen.queryByLabelText(/Effective Simples rate/i)).toBeNull();
   });
   it("lets a live company be created without a municipal registration", async () => {
     mocks.environment = "live"; const onSave = vi.fn();
@@ -138,6 +154,26 @@ describe("Invoice company defaults", () => {
     const payload = JSON.parse(JSON.stringify(mocks.create.mock.calls[0][0]));
     expect(payload).not.toHaveProperty("customer"); expect(payload.service).toEqual({});
   });
+  it("sends the declared ISS base deduction and lists it in the summary", async () => {
+    await prepareInvoice(); fill("Deduction from the ISS base", "8000");
+    expect(screen.getByText(messages.Invoices.summary.deduction)).toBeTruthy();
+    const issue = screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement; expect(issue.disabled).toBe(false);
+    fireEvent.click(issue); await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce());
+    expect(mocks.create.mock.calls[0][0]).toMatchObject({ amount: 199, deduction: 80 });
+  });
+  it("omits the deduction when the field is empty", async () => {
+    await prepareInvoice();
+    expect(screen.queryByText(messages.Invoices.summary.deduction)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Issue NFS-e" })); await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce());
+    expect(JSON.parse(JSON.stringify(mocks.create.mock.calls[0][0]))).not.toHaveProperty("deduction");
+  });
+  it("blocks issuing while the deduction is not less than the total amount", async () => {
+    await prepareInvoice(); fill("Deduction from the ISS base", "19900");
+    expect(screen.getByText(messages.Invoices.fields.invalidDeduction)).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement).disabled).toBe(true);
+    fill("Deduction from the ISS base", "19899");
+    expect((screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement).disabled).toBe(false);
+  });
   it("needs a valid CPF or CNPJ as soon as any customer data is filled", async () => {
     renderUI(<NewInvoicePage />);
     await waitFor(() => expect(screen.getByRole("option", { name: company.legalName })).toBeTruthy());
@@ -161,5 +197,16 @@ describe("Invoice company defaults", () => {
     expect((screen.getByRole("combobox", { name: /Default service code|Tax code/i }) as HTMLInputElement).value).toBe(""); expect(field("Service location IBGE").value).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Issue NFS-e" }));
     await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce()); expect(mocks.create.mock.calls[0][0].companyTaxId).toBe("41834687000148");
+  });
+});
+
+describe("CNPJ of an existing company", () => {
+  it("is read-only on edit and is not sent", async () => {
+    const onSave = vi.fn().mockResolvedValue(company);
+    renderUI(<CompanyForm company={company} onSave={onSave} onCancel={vi.fn()} />);
+    expect(field("CNPJ").readOnly).toBe(true);
+    save();
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0][0]).not.toHaveProperty("taxId");
   });
 });

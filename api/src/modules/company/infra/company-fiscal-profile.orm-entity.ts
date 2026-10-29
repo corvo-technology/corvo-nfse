@@ -26,6 +26,14 @@ const dateTransformer = {
     value === null || value === undefined ? value : toDateString(value),
 };
 
+const numericStringTransformer = {
+  to: (value: string | null): string | null => value,
+  from: (
+    value: string | number | null | undefined,
+  ): string | null | undefined =>
+    value === null || value === undefined ? value : String(value),
+};
+
 @Entity('company_fiscal_profiles')
 @ForeignKey('TenantOrmEntity', ['tenantId'], ['id'], {
   name: 'company_fiscal_profiles_tenant_id_fkey',
@@ -39,8 +47,16 @@ const dateTransformer = {
   'ck_cfp_regime',
   `tax_regime IN ('MEI','SIMPLES_NACIONAL','LUCRO_PRESUMIDO','LUCRO_REAL','OUTRO_REGIME','UNKNOWN')`,
 )
+@Check(
+  'ck_cfp_simples_apuracao',
+  `simples_apuracao IS NULL OR simples_apuracao IN ('SN','ISS_MUNICIPAL','REGULAR')`,
+)
 @Check('ck_cfp_review', `review_status IN ('unreviewed','approved','rejected')`)
 @Check('ck_cfp_validity', `valid_until IS NULL OR valid_until > valid_from`)
+@Check(
+  'ck_cfp_simples_iss_rate',
+  `simples_iss_rate IS NULL OR simples_iss_rate BETWEEN 1.80 AND 5.00`,
+)
 @Index('uq_cfp_company_valid_from', ['companyId', 'validFrom'], {
   unique: true,
 })
@@ -84,6 +100,24 @@ export class CompanyFiscalProfileOrmEntity {
     transformer: dateTransformer,
   })
   ibsCbsRegularFrom?: string | null;
+
+  @Column({
+    name: 'simples_iss_rate',
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    transformer: numericStringTransformer,
+  })
+  simplesIssRate?: string | null;
+
+  @Column({
+    name: 'simples_apuracao',
+    type: 'varchar',
+    length: 16,
+    nullable: true,
+  })
+  simplesApuracao?: string | null;
 
   @Column({ name: 'valid_from', type: 'date', transformer: dateTransformer })
   validFrom!: string;

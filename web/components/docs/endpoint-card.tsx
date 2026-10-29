@@ -8,6 +8,7 @@ import { ParamTable } from "./param-table";
 const METHOD_CLASS: Record<EndpointBlock["method"], string> = {
   GET: "text-accent",
   POST: "text-accent",
+  PUT: "text-warn",
   PATCH: "text-warn",
   DELETE: "text-danger",
 };
@@ -15,6 +16,7 @@ const METHOD_CLASS: Record<EndpointBlock["method"], string> = {
 const METHOD_BORDER: Record<EndpointBlock["method"], string> = {
   GET: "border-l-accent",
   POST: "border-l-accent",
+  PUT: "border-l-warn",
   PATCH: "border-l-warn",
   DELETE: "border-l-danger",
 };

@@ -32,7 +32,6 @@ describe("docs registry structure", () => {
       "certificates",
       "invoices",
       "webhooks",
-      "credits",
       "billing",
     ]);
     expect(DOC_GROUPS[2].slugs).toEqual([
@@ -40,6 +39,7 @@ describe("docs registry structure", () => {
       "pagination",
       "receiving-webhooks",
       "integration-checklist",
+      "payment-integrations",
       "mcp",
       "llms",
     ]);

@@ -3,6 +3,7 @@ import { validate } from 'class-validator';
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
 import type { InvoiceService } from '@/modules/invoice/application/invoice.service';
+import { INVOICE_STATUSES } from '@/modules/invoice/domain/invoice-status';
 import { ListInvoicesQuery } from '@/modules/invoice/http/invoice.dto';
 import { NfseListInput } from '../dto/tool-input.dto';
 
@@ -15,8 +16,7 @@ export const NFSE_LIST_TOOL = {
     properties: {
       status: {
         type: 'string',
-        description:
-          'Filter by status (queued, processing, authorized, rejected, retry_pending, reconciliation_required, manual_review, failed)',
+        description: `Filter by status (${INVOICE_STATUSES.join(', ')})`,
       },
       limit: { type: 'number', default: 50, minimum: 1, maximum: 1000 },
       cursor: {

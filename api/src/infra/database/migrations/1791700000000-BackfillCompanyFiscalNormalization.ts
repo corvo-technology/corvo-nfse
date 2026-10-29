@@ -35,6 +35,7 @@ export class BackfillCompanyFiscalNormalization1791700000000 implements Migratio
       GROUP BY tenant_id, environment, UPPER(regexp_replace(tax_id, '[./\\s-]', '', 'g'))
       HAVING count(*) > 1`)) as unknown[] | undefined;
     if (duplicates && duplicates.length > 0)
+      // eslint-disable-next-line no-console
       console.warn(
         '[backfill] %d company group(s) share a tax_id after normalization and were skipped: %s',
         duplicates.length,

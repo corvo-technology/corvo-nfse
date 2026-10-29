@@ -38,6 +38,7 @@ Corvo is a REST API and MCP server to issue NFS-e on the national standard, focu
 | 🧾 Invoice API | Issue Brazilian electronic service invoices from your SaaS, ERP, or backend. Issuance is asynchronous and safe to retry with an `Idempotency-Key`. |
 | 🧮 Tax calculation | `POST /v1/invoices/calculate` shows ISS, withholdings and IBS/CBS (when they apply) before you issue, with no invoice and no credit used. |
 | ⏰ Scheduled invoices | Issue on a future competence date with `options.type: "SCHEDULE"`. |
+| 🚫 Cancellation | `POST /v1/invoices/:id/cancel` cancels a queued invoice immediately, or sends the cancellation event to the Sefin for an issued NFS-e (or one still being issued) and reports the result by webhook. |
 | 🏢 Multi-company | Manage many issuers, each with its fiscal profile and A1 certificate, in one workspace. |
 | 📄 Documents and delivery | PDF and XML storage, signed download links, email delivery and signed webhooks for every status change. |
 | 🤖 AI agents | A remote MCP server lets agents issue and query invoices, and `llms.txt` lets a coding agent write the integration for you. |

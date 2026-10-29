@@ -17,7 +17,10 @@ import { ICompanyRepository } from '@/modules/company/domain/company.repository'
 import { NFSE_TEST_DISCLAIMER } from '@/shared/fiscal/nfse-constants';
 import { formatBrl } from '@/shared/utils/currency';
 import { MillionSendTemplateClient } from '@/infra/external/email/email-template.client';
-import { MillionSendEmailProvider } from '@/infra/external/email/mmsend-email.provider';
+import {
+  MillionSendEmailProvider,
+  PermanentEmailError,
+} from '@/infra/external/email/mmsend-email.provider';
 import type { NfseEmailJobData } from '@/infra/queues/nfse-email-job.types';
 
 const LOCK_TTL_MS = 30_000;
@@ -69,6 +72,16 @@ export class NfseEmailProcessor extends WorkerHost {
       );
       if (!invoice) {
         this.logger.error(`Invoice ${invoiceId} not found`);
+        return;
+      }
+
+      if (invoice.status === 'cancelling' || invoice.status === 'cancelled') {
+        // No e-mail for a cancelled/cancelling invoice. If the cancellation is
+        // rejected and the invoice returns to `authorized`, the recovery
+        // scheduler re-enqueues the e-mail (authorized + requested + no status).
+        this.logger.debug(
+          `Invoice ${invoiceId} is ${invoice.status}, skipping e-mail`,
+        );
         return;
       }
 
@@ -151,6 +164,20 @@ export class NfseEmailProcessor extends WorkerHost {
         `NfseEmailProcessor: email sent for invoice ${invoiceId}`,
       );
     } catch (e: unknown) {
+      if (e instanceof PermanentEmailError) {
+        // A bad address stays bad on every retry: record it now and end the job.
+        this.logger.warn(
+          { invoiceId, reason: e.message },
+          'NfseEmailProcessor: provider refused the e-mail, not retrying',
+        );
+        const invoice = await this.invoiceRepo.findByIdAndTenantId(
+          invoiceId,
+          tenantId,
+        );
+        await this.invoiceRepo.updateEmailStatus(invoiceId, tenantId, 'failed');
+        if (invoice) await this.workflow.emailFailed(invoice);
+        return;
+      }
       this.logger.error(
         { err: e, invoiceId },
         'NfseEmailProcessor: process failed',

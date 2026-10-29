@@ -26,7 +26,8 @@ const tenantA = randomUUID(),
   tenantB = randomUUID();
 const companyA = randomUUID(),
   companyB = randomUUID(),
-  companyC = randomUUID();
+  companyC = randomUUID(),
+  companyD = randomUUID();
 
 const profileInput = (
   validFrom: string,
@@ -37,6 +38,7 @@ const profileInput = (
   specialTaxRegime: null,
   ibsCbsRegularOption: false,
   ibsCbsRegularFrom: null,
+  simplesIssRate: null,
   validFrom,
   source: 'manual',
   reviewStatus: 'unreviewed',
@@ -66,6 +68,7 @@ describePostgres(
         [tenantA, companyA, '11222333000181'],
         [tenantB, companyB, '11222333000182'],
         [tenantA, companyC, '11222333000183'],
+        [tenantA, companyD, '11222333000184'],
       ] as const) {
         await admin.query(
           `INSERT INTO "${schema}".nfse_companies (id,tenant_id,legal_name,tax_id,environment) VALUES ($1,$2,'Fixture',$3,'test')`,
@@ -167,10 +170,13 @@ describePostgres(
       expect(onJune?.validUntil).toBeNull();
     });
 
-    it('findEffective returns null before the first profile', async () => {
+    it('findEffective applies the first profile backwards, before it started', async () => {
+      // companyA's first profile starts 2026-01-01: an earlier competence uses it.
+      const first = (await repo.list(companyA, tenantA)).at(-1);
+
       expect(
-        await repo.findEffective(companyA, tenantA, '2025-12-31'),
-      ).toBeNull();
+        (await repo.findEffective(companyA, tenantA, '2025-12-31'))?.id,
+      ).toBe(first?.id);
     });
 
     it('updates in place when the same day is rewritten and the profile is not approved', async () => {
@@ -223,6 +229,50 @@ describePostgres(
       expect(await repo.list(companyA, tenantA)).toHaveLength(2);
     });
 
+    it('lets a company registered today start its fiscal profile in the past', async () => {
+      // The profile created at registration starts today (24/10)...
+      await repo.append(companyD, tenantA, profileInput('2026-10-24'));
+      // ...but the company already existed, so an invoice for September must work.
+      const retroactive = await repo.append(
+        companyD,
+        tenantA,
+        profileInput('2026-01-01', {
+          reviewStatus: 'approved',
+          reviewedBy: 'api-key',
+        }),
+      );
+
+      expect(retroactive.validFrom).toBe('2026-01-01');
+      expect(retroactive.validUntil).toBe('2026-10-24');
+      expect(retroactive.reviewStatus).toBe('approved');
+      const [current, earlier] = await repo.list(companyD, tenantA);
+      expect(current?.validFrom).toBe('2026-10-24');
+      expect(current?.validUntil).toBeNull();
+      expect(earlier?.id).toBe(retroactive.id);
+      // Still exactly one open profile.
+      expect(
+        (await repo.list(companyD, tenantA)).filter(
+          (p) => p.validUntil === null,
+        ),
+      ).toHaveLength(1);
+      // The invoice of 30/09 finds the retroactive profile; earlier dates fall back to it too.
+      expect(
+        (await repo.findEffective(companyD, tenantA, '2026-09-30'))?.id,
+      ).toBe(retroactive.id);
+      expect(
+        (await repo.findEffective(companyD, tenantA, '2025-12-31'))?.id,
+      ).toBe(retroactive.id);
+    });
+
+    it('refuses a retroactive start that lands inside the existing history, or on its first day', async () => {
+      // companyD now covers 2026-01-01 onwards without gaps.
+      for (const validFrom of ['2026-01-01', '2026-05-01'])
+        await expect(
+          repo.append(companyD, tenantA, profileInput(validFrom)),
+        ).rejects.toBeInstanceOf(FiscalValidationError);
+      expect(await repo.list(companyD, tenantA)).toHaveLength(2);
+    });
+
     it('only one open profile per company (unique index)', async () => {
       const [first, second] = await Promise.all([
         repo.append(companyC, tenantA, profileInput('2026-01-01')),
@@ -234,6 +284,16 @@ describePostgres(
       const profiles = await repo.list(companyC, tenantA);
       expect(profiles).toHaveLength(1);
       expect(profiles[0]?.validUntil).toBeNull();
+    });
+
+    it('persists and reads back simplesApuracao', async () => {
+      const created = await repo.append(companyA, tenantA, {
+        ...profileInput('2099-01-01'),
+        simplesApuracao: 'SN',
+      });
+      expect(created.simplesApuracao).toBe('SN');
+      const open = await repo.findOpen(companyA, tenantA);
+      expect(open?.simplesApuracao).toBe('SN');
     });
 
     it('RLS hides profiles from another tenant', async () => {

@@ -142,6 +142,8 @@ const FULL_ACCESS_PERMISSIONS: TenantPermission[] = [
   'credits.manage',
   'webhooks.view',
   'webhooks.manage',
+  'integrations.view',
+  'integrations.manage',
   'api_keys.manage',
   'settings.manage',
   'billing.view',

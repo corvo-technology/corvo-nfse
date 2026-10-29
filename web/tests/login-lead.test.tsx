@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import LoginPage from "@/app/(auth)/login/page";
+import LoginPage from "@/app/(dashboard)/(auth)/login/page";
 import messages from "@/messages/en.json";
 
 const mocks = vi.hoisted(() => ({ providers: vi.fn(), magicLinkRequest: vi.fn(), query: "mode=signup" }));

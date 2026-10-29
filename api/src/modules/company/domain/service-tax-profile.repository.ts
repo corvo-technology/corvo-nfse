@@ -37,7 +37,11 @@ export abstract class IServiceTaxProfileRepository {
     input: NewServiceTaxProfile,
   ): Promise<CompanyServiceTaxProfile>;
   /** Approves only the review status, preserving the saved classification. */
-  abstract markApproved(id: string, companyId: string, tenantId: string): Promise<CompanyServiceTaxProfile>;
+  abstract markApproved(
+    id: string,
+    companyId: string,
+    tenantId: string,
+  ): Promise<CompanyServiceTaxProfile>;
   abstract delete(
     id: string,
     companyId: string,

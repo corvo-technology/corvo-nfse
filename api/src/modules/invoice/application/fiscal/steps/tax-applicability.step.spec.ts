@@ -22,6 +22,7 @@ const profile = (
   specialTaxRegime: null,
   ibsCbsRegularOption: false,
   ibsCbsRegularFrom: null,
+  simplesIssRate: null,
   validFrom: '2026-01-01',
   validUntil: null,
   source: 'onboarding',
@@ -124,25 +125,21 @@ describe('TaxApplicabilityStep', () => {
     });
   });
 
-  it('blocks MEI in 2027 with TAX_CALCULATION_UNSUPPORTED, never NOT_APPLICABLE', async () => {
+  it('applies MEI in 2027 without IBS/CBS', async () => {
     const step = stepOf();
-    const result = await step.execute(
-      contextFor({
-        companyProfile: profile({ taxRegime: 'MEI' }),
-        classification: classification(),
-        invoice: { competenceDate: '2027-02-10' },
-      }),
+    const outcome = outcomeOf(
+      await step.execute(
+        contextFor({
+          companyProfile: profile({ taxRegime: 'MEI' }),
+          classification: classification(),
+          invoice: { competenceDate: '2027-02-10' },
+        }),
+      ),
     );
-    const error = errorOf(result);
-    expect(error).toMatchObject({
-      code: 'TAX_CALCULATION_UNSUPPORTED',
-      category: 'UNSUPPORTED',
-      step: 'TaxApplicabilityResolver',
+    expect(outcome.context.applicability).toMatchObject({
+      cbs: { status: 'NOT_APPLICABLE' },
+      ibs: { status: 'NOT_APPLICABLE' },
     });
-    expect(error.details.tax).toBe('cbs');
-    expect(error.details.reason).toEqual(expect.any(String));
-    // UNSUPPORTED never degrades into an applied NOT_APPLICABLE obligation.
-    expect(result.ok).toBe(false);
   });
 
   it('reports only the missing IBS/CBS classification fields for a regular regime', async () => {
@@ -206,6 +203,35 @@ describe('TaxApplicabilityStep', () => {
       category: 'CONFIGURATION',
       step: 'TaxApplicabilityResolver',
       details: { missingFields: ['service.iss.rate'] },
+    });
+  });
+
+  it('fails with TAX_RATE_NOT_FOUND when Simples Nacional ISS withholding is required without simplesIssRate', async () => {
+    const step = stepOf();
+    const error = errorOf(
+      await step.execute(
+        contextFor({
+          companyProfile: profile({
+            taxRegime: 'SIMPLES_NACIONAL',
+            simplesIssRate: null,
+          }),
+          classification: classification({
+            iss: {
+              taxation: 'NORMAL',
+              rate: '5.00',
+              withholdingDefault: true,
+              incidenceMunicipalityCode: '3550308',
+            },
+          }),
+          invoice: { competenceDate: '2026-09-01' },
+        }),
+      ),
+    );
+    expect(error).toMatchObject({
+      code: 'TAX_RATE_NOT_FOUND',
+      category: 'CONFIGURATION',
+      step: 'TaxApplicabilityResolver',
+      details: { missingFields: ['fiscalProfile.simplesIssRate'] },
     });
   });
 
@@ -339,14 +365,7 @@ describe('TaxApplicabilityStep', () => {
       await step.execute(
         contextFor({
           companyProfile: profile(),
-          classification: classification({
-            iss: {
-              taxation: 'EXEMPT',
-              rate: null,
-              withholdingDefault: false,
-              incidenceMunicipalityCode: null,
-            },
-          }),
+          classification: classification(),
           invoice: { competenceDate: '2027-02-10' },
         }),
       ),

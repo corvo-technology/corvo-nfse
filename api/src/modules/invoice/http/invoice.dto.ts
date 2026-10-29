@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CursorQuery } from '@/shared/http/pagination';
 import {
   IsBoolean,
@@ -12,10 +12,17 @@ import {
   ValidateIf,
   IsDateString,
   IsIn,
+  MaxLength,
   Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import type { InvoiceStatus } from '../domain/invoice-status';
+import { INVOICE_STATUSES, type InvoiceStatus } from '../domain/invoice-status';
+import {
+  CANCELLATION_DESCRIPTION_MAX,
+  CANCELLATION_DESCRIPTION_MIN,
+  CANCELLATION_REASON_CODES,
+  type CancellationReasonCode,
+} from '../domain/cancellation-reason';
 
 /**
  * Invoice DTOs — HTTP layer.
@@ -150,7 +157,9 @@ export class InvoiceOptionsDto {
 
 export class CreateInvoiceDto {
   /** Company id. Required unless `companyTaxId` is sent; wins if both are sent. */
-  @ValidateIf((o: CreateInvoiceDto) => !o.companyTaxId)
+  @ValidateIf(
+    (o: CreateInvoiceDto) => !o.companyTaxId || o.companyId !== undefined,
+  )
   @IsUUID()
   companyId?: string;
 
@@ -160,7 +169,11 @@ export class CreateInvoiceDto {
   @IsNotEmpty()
   companyTaxId?: string;
 
-  @IsOptional() @IsString() externalId?: string;
+  /** Stored in a varchar(100) column. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  externalId?: string;
 
   @ApiPropertyOptional({
     type: CustomerDto,
@@ -184,6 +197,15 @@ export class CreateInvoiceDto {
   @IsNumber()
   discount?: number;
 
+  @ApiPropertyOptional({
+    example: 40,
+    description:
+      'Deduction from the ISS tax base declared by the issuer, in BRL (> 0 and < amount - discount, max 2 decimals). Sent in the DPS as vDedRed/vDR. The issuer is responsible for the declared value; Corvo does not check whether the deduction is allowed for the service or municipality.',
+  })
+  @IsOptional()
+  @IsNumber()
+  deduction?: number;
+
   @IsDateString() competenceDate!: string;
 
   @IsOptional() @IsBoolean() email?: boolean;
@@ -202,19 +224,24 @@ export class ListInvoicesQuery extends CursorQuery {
   @IsOptional() @IsUUID() companyId?: string;
 
   @IsOptional()
-  @IsIn([
-    'queued',
-    'processing',
-    'authorized',
-    'rejected',
-    'retry_pending',
-    'reconciliation_required',
-    'manual_review',
-    'failed',
-  ] as InvoiceStatus[])
+  @IsIn(INVOICE_STATUSES)
   status?: InvoiceStatus;
 
   @IsOptional() @IsDateString() from?: string;
   @IsOptional() @IsDateString() to?: string;
   @IsOptional() @IsString() externalId?: string;
+}
+
+export class CancelInvoiceDto {
+  @IsIn(CANCELLATION_REASON_CODES)
+  @ApiProperty({ enum: CANCELLATION_REASON_CODES })
+  reason!: CancellationReasonCode;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(CANCELLATION_DESCRIPTION_MAX)
+  @ApiPropertyOptional({
+    description: `Required (${CANCELLATION_DESCRIPTION_MIN}–${CANCELLATION_DESCRIPTION_MAX} characters) to cancel an authorized NFS-e or an invoice being issued (processing); optional for a queued invoice.`,
+  })
+  description?: string;
 }

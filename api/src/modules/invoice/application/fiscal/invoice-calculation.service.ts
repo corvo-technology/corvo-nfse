@@ -47,8 +47,23 @@ export class InvoiceCalculationService {
         partial.error?.category === 'INTERNAL'
       )
         return { httpError: partial.error };
-      const response = toCalculationResponse(partial);
-      status = response.status;
+      const calculated = toCalculationResponse(partial);
+      status = calculated.status;
+      // Non blocking findings of the intake (for example a stale Simples rate).
+      const response =
+        prepared.warnings.length === 0
+          ? calculated
+          : {
+              ...calculated,
+              warnings: [
+                ...calculated.warnings,
+                ...prepared.warnings.map(({ code, message }) => ({
+                  code,
+                  message,
+                  step: 'Intake',
+                })),
+              ],
+            };
       return { response };
     } finally {
       recordCalculate(status, performance.now() - startedAt);

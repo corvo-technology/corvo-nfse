@@ -1,4 +1,9 @@
+import type { Company } from '@/modules/company/domain/company';
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  regApTribSNFor,
+  type CompanyFiscalProfile,
+} from '@/modules/company/domain/fiscal-profile';
 import { ConfigService } from '@nestjs/config';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { buildDpsId } from 'open-nfse';
@@ -20,16 +25,14 @@ import type {
   FiscalIssueResult,
 } from '@/infra/external/nfse/nfse-fiscal-provider';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
-import { IWebhookConfigRepository } from '@/modules/webhooks-config/domain/webhook-config.repository';
-import { WebhookOutboxService } from '@/modules/webhooks-config/application/webhook-outbox.service';
-import type { WebhookEvent } from '@/modules/webhooks-config/domain/webhook-event';
 import {
   DOCUMENT_STORAGE,
   type IDocumentStorage,
 } from '@/infra/storage/domain/document-storage';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import type { Invoice } from '../domain/invoice';
-import { buildInvoiceState, type InvoiceState } from '../domain/invoice-state';
+import { ConcurrentInvoiceTransitionError } from '../domain/errors';
+import { InvoiceWebhookPublisher } from './invoice-webhook.publisher';
 import {
   FISCAL_SNAPSHOT_REPOSITORY,
   type IFiscalSnapshotRepository,
@@ -39,7 +42,7 @@ import {
   recordAuthorizationFailure,
   recordDpsValidationFailure,
 } from './fiscal/fiscal.metrics';
-import type { FiscalError } from '../domain/fiscal/fiscal-error';
+import { fiscalError, type FiscalError } from '../domain/fiscal/fiscal-error';
 import { moneyString, toDecimal } from '../domain/fiscal/money';
 
 export interface FiscalJobData {
@@ -74,8 +77,7 @@ export class NfseWorkflowService {
     private readonly providers: NfseProviderFactory,
     private readonly lifecycle: InvoiceLifecycleService,
     private readonly queues: BullmqQueueService,
-    private readonly webhooks: IWebhookConfigRepository,
-    private readonly outbox: WebhookOutboxService,
+    private readonly webhooks: InvoiceWebhookPublisher,
     @Inject(DOCUMENT_STORAGE)
     private readonly documentStorage: IDocumentStorage,
     private readonly profiles: CompanyFiscalProfileService,
@@ -83,6 +85,7 @@ export class NfseWorkflowService {
     private readonly fiscalSnapshots: IFiscalSnapshotRepository,
     private readonly dpsBuilder: DpsBuilder,
     private readonly config: ConfigService,
+    // Optional so the workflow keeps today's DPS where they are not provided.
   ) {}
 
   async process(data: FiscalJobData): Promise<void> {
@@ -159,7 +162,18 @@ export class NfseWorkflowService {
         'processing',
         'Starting fiscal emission',
       );
-      await this.lifecycle.transition(invoice, event);
+      try {
+        await this.lifecycle.transition(invoice, event);
+      } catch (error: unknown) {
+        // Cancelled (or taken by another worker) after we loaded it: never issue.
+        if (error instanceof ConcurrentInvoiceTransitionError) {
+          this.logger.debug(
+            `Invoice ${invoice.id} changed concurrently (likely cancelled); skipping emission`,
+          );
+          return;
+        }
+        throw error;
+      }
     }
     let result: FiscalIssueResult;
     try {
@@ -195,7 +209,7 @@ export class NfseWorkflowService {
         invoice,
         invoice.transitionTo('authorized', 'NFS-e authorized'),
       );
-      await this.emitWebhook(invoice, 'nfse.invoice.authorized', {
+      await this.webhooks.publish(invoice, 'nfse.invoice.authorized', {
         accessKey: result.accessKey,
         nfseNumber: result.nfseNumber,
       });
@@ -259,7 +273,7 @@ export class NfseWorkflowService {
             'Automatic reconciliation exhausted',
           ),
         );
-        await this.emitWebhook(invoice, 'nfse.invoice.manual_review', {
+        await this.webhooks.publish(invoice, 'nfse.invoice.manual_review', {
           reason: result.errorMessage,
         });
       } else await this.schedule(invoice, attempts + 1);
@@ -273,7 +287,7 @@ export class NfseWorkflowService {
         invoice,
         invoice.transitionTo('rejected', result.errorMessage),
       );
-      await this.emitWebhook(invoice, 'nfse.invoice.rejected', {
+      await this.webhooks.publish(invoice, 'nfse.invoice.rejected', {
         errorCode: result.errorCode,
         errorMessage: result.errorMessage,
       });
@@ -301,7 +315,7 @@ export class NfseWorkflowService {
         invoice.environment,
       );
       invoice.setDpsInfo(sequence.series, sequence.number);
-      await this.invoices.save(invoice, invoice.tenantId);
+      await this.invoices.saveDpsInfo(invoice);
     }
     const snapshot = invoice.toSnapshot();
     const customer = snapshot.customerSnapshot;
@@ -383,7 +397,23 @@ export class NfseWorkflowService {
       invoice.tenantId,
     );
     // Flag off / engine did not run: byte-identical legacy payload, no DPS build.
-    if (fiscalSnapshot === null) return payload;
+    if (fiscalSnapshot === null) {
+      // The legacy payload cannot carry a deduction: issuing it would silently
+      // tax the full amount, so a declared deduction is rejected instead.
+      if (snapshot.deduction !== undefined && snapshot.deduction > 0) {
+        throw new DpsBuildRejectionError(
+          fiscalError({
+            code: 'FISCAL_VALIDATION_FAILED',
+            message:
+              'A declared deduction cannot be issued without a fiscal calculation snapshot',
+            category: 'VALIDATION',
+            step: 'NfseWorkflow',
+            details: { fields: ['deduction'] },
+          }),
+        );
+      }
+      return payload;
+    }
     // The numbering was already reserved and persisted above, so a failure from
     // here on keeps the number associated with this invoice.
     const dpsNumber = invoice.dpsNumber;
@@ -412,18 +442,50 @@ export class NfseWorkflowService {
                 }
               : null,
           discountAmount: moneyString(toDecimal(snapshot.discount ?? 0)),
+          ...(snapshot.deduction !== undefined && snapshot.deduction > 0
+            ? { deductionAmount: moneyString(toDecimal(snapshot.deduction)) }
+            : {}),
         },
         emitente: {
           cnpj: company.taxId,
           municipalReg: company.municipalRegForDps ?? null,
           municipalityCode: company.municipalityCode,
           specialTaxRegime: profile.specialTaxRegime ?? null,
+          simplesIssRate:
+            profile.taxRegime === 'SIMPLES_NACIONAL'
+              ? (company.simplesIssRate ?? null)
+              : (profile.simplesIssRate ?? null),
+          ...this.simplesTotTribFor(profile, company),
         },
       },
       this.config.getOrThrow<RtcConfig>('rtc').dpsLayout,
     );
     if (!built.ok) throw new DpsBuildRejectionError(built.error);
     return { ...payload, preparedDps: built.value };
+  }
+
+  /**
+   * The DPS carries the Simples approximate tax rate (pTotTribSN) and the
+   * profile's regApTribSN. A MEI has no rate. An ME/EPP without one is refused
+   * at intake, so it only reaches here with the rate.
+   */
+  private simplesTotTribFor(
+    profile: CompanyFiscalProfile,
+    company: Company,
+  ): {
+    simplesTotTrib?: {
+      regApTribSN: 1 | 2 | 3 | null;
+      totalRate: string | null;
+    };
+  } {
+    const regApTribSN = regApTribSNFor(profile);
+    if (profile.taxRegime === 'MEI')
+      return { simplesTotTrib: { regApTribSN, totalRate: null } };
+    if (profile.taxRegime !== 'SIMPLES_NACIONAL' || !company.simplesRate)
+      return {};
+    return {
+      simplesTotTrib: { regApTribSN, totalRate: company.simplesRate },
+    };
   }
 
   /** Where live invoices are received: the production Sefin unless the app runs in homologation mode. */
@@ -448,7 +510,7 @@ export class NfseWorkflowService {
       invoice,
       invoice.transitionTo('rejected', errorMessage),
     );
-    await this.emitWebhook(invoice, 'nfse.invoice.rejected', {
+    await this.webhooks.publish(invoice, 'nfse.invoice.rejected', {
       errorCode: code,
       errorMessage,
     });
@@ -473,7 +535,7 @@ export class NfseWorkflowService {
     );
   }
   async emailSent(invoice: Invoice, sentAt: Date): Promise<void> {
-    await this.emitWebhook(
+    await this.webhooks.publish(
       invoice,
       'nfse.invoice.email_sent',
       { sentAt: sentAt.toISOString() },
@@ -481,67 +543,11 @@ export class NfseWorkflowService {
     );
   }
   async emailFailed(invoice: Invoice): Promise<void> {
-    await this.emitWebhook(
+    await this.webhooks.publish(
       invoice,
       'nfse.invoice.email_failed',
       {},
       { emailStatus: 'failed' },
     );
-  }
-
-  /** Current fiscal/documents/email state; the event itself may be newer than the loaded invoice. */
-  private stateOf(
-    invoice: Invoice,
-    override: Partial<Pick<InvoiceState, 'emailStatus'>>,
-  ): InvoiceState {
-    return buildInvoiceState({
-      status: invoice.status,
-      documentsReady: invoice.documentsReadyAt !== null,
-      emailRequested: Boolean(invoice.emailSnapshot?.send),
-      emailStatus: override.emailStatus ?? invoice.lastEmailStatus,
-    });
-  }
-
-  private async emitWebhook(
-    invoice: Invoice,
-    type: WebhookEvent['type'],
-    extra: Record<string, unknown>,
-    stateOverride: Partial<Pick<InvoiceState, 'emailStatus'>> = {},
-  ): Promise<void> {
-    try {
-      const configs = await this.webhooks.findByTenantIdAndEvent(
-        invoice.tenantId,
-        type,
-      );
-      const event: WebhookEvent = {
-        id: `evt_${crypto.randomUUID()}`,
-        type,
-        environment: invoice.environment,
-        createdAt: new Date().toISOString(),
-        data: {
-          invoiceId: invoice.id,
-          companyId: invoice.companyId,
-          environment: invoice.environment,
-          ...this.stateOf(invoice, stateOverride),
-          ...extra,
-        },
-      };
-      for (const config of configs)
-        if (config.active)
-          await this.outbox.enqueue({
-            tenantId: invoice.tenantId,
-            webhookConfigId: config.id,
-            eventType: type,
-            environment: invoice.environment,
-            url: config.url,
-            payload: event,
-            secret: config.secret,
-          });
-    } catch (error: unknown) {
-      this.logger.error(
-        { err: error, invoiceId: invoice.id },
-        'Fiscal webhook enqueue failed',
-      );
-    }
   }
 }

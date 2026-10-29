@@ -9,6 +9,46 @@ import { isValidCep } from '@/shared/fiscal/cep';
 import { normalizeCep } from '@/shared/fiscal/cep';
 import { normalizeUf, isValidUf } from '@/shared/fiscal/uf';
 import type { CreateCompanyInput, UpdateCompanyInput } from './company';
+import {
+  SIMPLES_ISS_RATE_MAX,
+  SIMPLES_ISS_RATE_MIN,
+} from './fiscal-profile.validator';
+
+/** Format and bounds of the two Simples Nacional rates (percent, 2 decimals). */
+export function simplesRateIssues(
+  input: Pick<UpdateCompanyInput, 'simplesRate' | 'simplesIssRate'>,
+): FiscalIssue[] {
+  const issues: FiscalIssue[] = [];
+  const check = (
+    field: 'simplesRate' | 'simplesIssRate',
+    value: string | null | undefined,
+    min: number,
+    max: number,
+  ) => {
+    if (value === undefined || value === null) return;
+    const text = value.trim();
+    if (!/^\d+(\.\d{1,2})?$/.test(text))
+      issues.push({
+        field,
+        code: 'invalid',
+        message: `${field} must be a percentage with at most 2 decimal places`,
+      });
+    else if (Number(text) < min || Number(text) > max)
+      issues.push({
+        field,
+        code: 'out_of_range',
+        message: `${field} must be between ${min} and ${max}`,
+      });
+  };
+  check('simplesRate', input.simplesRate, 0, 100);
+  check(
+    'simplesIssRate',
+    input.simplesIssRate,
+    SIMPLES_ISS_RATE_MIN,
+    SIMPLES_ISS_RATE_MAX,
+  );
+  return issues;
+}
 
 export interface NormalizedCreateCompanyInput extends Omit<
   CreateCompanyInput,
@@ -54,6 +94,16 @@ export class CompanyDomainService {
     const issues: FiscalIssue[] = [];
 
     this.validateFiscalDefaults(input, issues, true);
+    // The Simples Nacional rate is asked at registration; a MEI has none (ignored if sent).
+    const simples = input.taxRegime === 'Simples Nacional';
+    if (simples && !input.simplesRate?.trim())
+      issues.push({
+        field: 'simplesRate',
+        code: 'required',
+        message:
+          'simplesRate is required for Simples Nacional (the effective rate of your DAS)',
+      });
+    if (simples) issues.push(...simplesRateIssues(input));
     // municipalReg is optional even in live: the national system rejects the
     // provider's IM (E0120) when the municipality has no complementary data for it.
 
@@ -116,6 +166,8 @@ export class CompanyDomainService {
     const normalizedTaxId = normalizeCnpj(rawTaxId);
     return {
       ...input,
+      simplesRate: simples ? input.simplesRate?.trim() : undefined,
+      simplesIssRate: simples ? input.simplesIssRate?.trim() : undefined,
       taxId: normalizedTaxId,
       municipalityCode: input.municipalityCode?.trim(),
       defaultServiceCode: input.defaultServiceCode?.trim(),
@@ -147,6 +199,7 @@ export class CompanyDomainService {
     const issues: FiscalIssue[] = [];
 
     this.validateFiscalDefaults(input, issues, false);
+    issues.push(...simplesRateIssues(input));
 
     if (input.taxId !== undefined) {
       const raw = input.taxId.trim();

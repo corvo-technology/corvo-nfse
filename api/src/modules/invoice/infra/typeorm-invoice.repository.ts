@@ -13,8 +13,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Repository, Not, type FindOptionsWhere } from 'typeorm';
 import { Invoice, LastEmailStatus } from '../domain/invoice';
 import {
+  CancellationIntent,
   IInvoiceRepository,
   ListInvoicesFilters,
+  SaveInvoiceOptions,
 } from '../domain/invoice.repository';
 import { InvoiceMapper } from './invoice.mapper';
 import { InvoiceOrmEntity } from './invoice.orm-entity';
@@ -48,6 +50,7 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
     id: string,
     tenantId: string,
     environment?: ExecutionEnvironment,
+    options: { forUpdate?: boolean } = {},
   ): Promise<Invoice | null> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
@@ -59,6 +62,7 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
         });
       if (environment)
         query.andWhere('invoice.environment = :environment', { environment });
+      if (options.forUpdate) query.setLock('pessimistic_write');
       const entity = await query.getOne();
       return entity ? this.mapper.toDomain(entity) : null;
     });
@@ -221,18 +225,82 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
     });
   }
 
-  async save(invoice: Invoice, tenantId: string): Promise<Invoice> {
+  async save(
+    invoice: Invoice,
+    tenantId: string,
+    options: SaveInvoiceOptions = {},
+  ): Promise<Invoice> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
       assertTenantOwnership(tenantId, invoice.tenantId);
       const orm = this.mapper.toPersistence(invoice);
-      if (['authorized', 'rejected', 'failed'].includes(invoice.status))
+      // Undefined values are skipped by TypeORM, so the stored request survives.
+      if (options.preserveCancellationRequest) {
+        orm.cancellationReason = undefined;
+        orm.cancellationDescription = undefined;
+        orm.cancellationRequestedAt = undefined;
+      }
+      // Settled statuses: no fiscal retry can still need the signed pending XML.
+      if (
+        ['authorized', 'rejected', 'failed', 'cancelled'].includes(
+          invoice.status,
+        )
+      )
         orm.pendingEmission = null;
       await persistTenantEntity(this.repo, orm, tenantId, [
         'companyId',
         'environment',
       ]);
       return invoice;
+    });
+  }
+
+  async saveDpsInfo(invoice: Invoice): Promise<void> {
+    const snapshot = invoice.toSnapshot();
+    return runWithTenant(snapshot.tenantId, async () => {
+      requireTenantId(snapshot.tenantId);
+      const set: Partial<
+        Pick<InvoiceOrmEntity, 'dpsId' | 'dpsSeries' | 'dpsNumber'>
+      > = {};
+      if (snapshot.dpsId != null) set.dpsId = snapshot.dpsId;
+      if (snapshot.dpsSeries != null) set.dpsSeries = snapshot.dpsSeries;
+      if (snapshot.dpsNumber != null) set.dpsNumber = snapshot.dpsNumber;
+      if (Object.keys(set).length === 0) return;
+      await this.repo
+        .createQueryBuilder()
+        .update()
+        .set(set)
+        .where('id = :id AND tenant_id = :tenantId', {
+          id: snapshot.id,
+          tenantId: snapshot.tenantId,
+        })
+        .execute();
+    });
+  }
+
+  async registerCancellationIntent(
+    invoiceId: string,
+    tenantId: string,
+    intent: CancellationIntent,
+  ): Promise<boolean> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const result = await this.repo
+        .createQueryBuilder()
+        .update()
+        .set({
+          cancellationReason: intent.code,
+          cancellationDescription: intent.description,
+          cancellationRequestedAt: intent.requestedAt,
+        })
+        .where('id = :id AND tenant_id = :tenantId', {
+          id: invoiceId,
+          tenantId,
+        })
+        .andWhere("status = 'processing'")
+        .andWhere('cancellation_requested_at IS NULL')
+        .execute();
+      return (result.affected ?? 0) === 1;
     });
   }
 
@@ -311,12 +379,15 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
       const rows = await this.repo
         .createQueryBuilder('invoice')
         .select(['invoice.id', 'invoice.tenantId', 'invoice.companyId'])
-        .where('invoice.status = :status AND invoice.tenant_id = :tenantId', {
-          status: 'authorized',
-          tenantId,
-        })
+        .where(
+          'invoice.status IN (:...statuses) AND invoice.tenant_id = :tenantId',
+          {
+            statuses: ['authorized', 'cancelling', 'cancelled'],
+            tenantId,
+          },
+        )
         .andWhere(
-          "(invoice.documents_ready_at IS NULL OR (invoice.email_snapshot->>'send' = 'true' AND invoice.last_email_status IS NULL))",
+          "(invoice.documents_ready_at IS NULL OR (invoice.status = 'authorized' AND invoice.email_snapshot->>'send' = 'true' AND invoice.last_email_status IS NULL))",
         )
         .andWhere('invoice.authorized_at < :olderThan', { olderThan })
         .orderBy('invoice.authorized_at', 'ASC')

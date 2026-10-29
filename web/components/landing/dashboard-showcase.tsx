@@ -5,13 +5,15 @@ import { motion, useInView } from "motion/react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 
+export const HERO_IMAGE_SIZES = "(max-width: 640px) calc(100vw - 48px), (max-width: 1200px) calc(100vw - 80px), 1120px";
+
 export function DashboardShowcase() {
   const t = useTranslations("Dashboard");
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section className="px-6 sm:px-10 pb-14 sm:pb-22 flex flex-col items-center gap-9">
+    <section id="features" className="px-6 sm:px-10 pb-14 sm:pb-22 flex flex-col items-center gap-9">
       <div className="flex flex-col items-center gap-2.5 text-center">
         <span className="font-mono text-xs text-accent tracking-[0.14em]">
           {t("eyebrow")}
@@ -26,8 +28,9 @@ export function DashboardShowcase() {
 
       <motion.div
         ref={ref}
-        initial={{ opacity: 0, y: 30, scale: 0.98 }}
-        animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
+        // No opacity fade: the screenshot is the LCP element and must paint with the first frame.
+        initial={{ y: 30, scale: 0.98 }}
+        animate={inView ? { y: 0, scale: 1 } : {}}
         transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
         className="w-full max-w-[1120px] relative"
       >
@@ -38,6 +41,8 @@ export function DashboardShowcase() {
           alt={t("alt")}
           width={2000}
           height={1180}
+          // Rendered at most 1120px wide (max-w-[1120px] with px-6/px-10 padding).
+          sizes={HERO_IMAGE_SIZES}
           className="w-full h-auto rounded-2xl border border-border"
           priority
         />

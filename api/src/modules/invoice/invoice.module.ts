@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import type { OutboxConfig } from '@/infra/config/configuration.types';
 import { SCHEDULE_MAX_DAYS } from './domain/invoice-domain.service';
 import { InvoiceEmitHandler } from './application/invoice-emit.handler';
+import { InvoiceCancelHandler } from './application/invoice-cancel.handler';
 import { CalculateTaxesHandler } from './application/fiscal/calculate-taxes.handler';
 import { OutboxService } from './application/outbox.service';
 import { OutboxHandlerRegistry } from './application/outbox-handler.registry';
@@ -15,9 +16,11 @@ import { TypeOrmInvoiceFiscalSnapshotRepository } from './infra/typeorm-invoice-
 import { InvoiceFiscalReconciliationOrmEntity } from './infra/fiscal/invoice-fiscal-reconciliation.orm-entity';
 import { TypeOrmFiscalReconciliationRepository } from './infra/fiscal/typeorm-fiscal-reconciliation.repository';
 import { FISCAL_RECONCILIATION_REPOSITORY } from './domain/fiscal/reconciliation/fiscal-reconciliation.repository';
+// Main's fiscal-discrepancy publisher shares its class name with the invoice
+// lifecycle publisher below; they are distinct providers (DI keys by class).
 import {
   FiscalReconciliationService,
-  InvoiceWebhookPublisher,
+  InvoiceWebhookPublisher as FiscalDiscrepancyWebhookPublisher,
 } from './application/fiscal/fiscal-reconciliation.service';
 import { DpsBuilder } from './domain/fiscal/dps/dps-builder';
 import { FiscalSnapshotService } from './application/fiscal/fiscal-snapshot.service';
@@ -25,6 +28,7 @@ import { FiscalEngineModule } from './application/fiscal/fiscal-engine.module';
 import { FISCAL_SNAPSHOT_REPOSITORY } from './domain/fiscal/fiscal-snapshot.repository';
 import { BillingUsageModule } from '@/modules/billing/billing-usage.module';
 import { PlansModule } from '@/modules/plans/plans.module';
+import { InvoiceWebhookPublisher } from './application/invoice-webhook.publisher';
 import { InvoiceLifecycleService } from './application/invoice-lifecycle.service';
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
@@ -43,7 +47,16 @@ import {
 import { DPS_SEQUENCE_REPOSITORY } from './domain/dps-sequence';
 import { InvoiceIntakeService } from './application/invoice-intake.service';
 import { InvoiceService } from './application/invoice.service';
+import { IntegrationInvoiceIssuer } from './application/integration-invoice-issuer';
+import { InvoiceIssuancePort } from '@/modules/integrations/domain/invoice-issuance.port';
+import { IntegrationInvoiceCanceller } from './application/integration-invoice-canceller';
+import { InvoiceCancellationPort } from '@/modules/integrations/domain/invoice-cancellation.port';
+import { InvoiceBatchService } from './application/invoice-batch.service';
 import { InvoiceController } from './http/invoice.controller';
+import { InvoiceOverviewController } from './http/invoice-overview.controller';
+import { InvoiceOverviewService } from './application/invoice-overview.service';
+import { INVOICE_OVERVIEW_REPOSITORY } from './domain/invoice-overview.repository';
+import { TypeOrmInvoiceOverviewRepository } from './infra/typeorm-invoice-overview.repository';
 import { CompanyModule } from '@/modules/company/company.module';
 import { CertificateModule } from '@/modules/certificate/certificate.module';
 import { WebhooksConfigModule } from '@/modules/webhooks-config/webhooks-config.module';
@@ -58,6 +71,7 @@ import { EmailModule } from '@/modules/email/email.module';
     BullModule.registerQueue(
       { name: 'nfse-emission' },
       { name: 'nfse-reconciliation' },
+      { name: 'nfse-cancellation' },
       { name: 'nfse-doc-prep' },
       { name: 'nfse-email' },
       {
@@ -87,9 +101,16 @@ import { EmailModule } from '@/modules/email/email.module';
     EmailModule,
     FiscalEngineModule,
   ],
-  controllers: [InvoiceController],
+  // Static overview route must be registered before InvoiceController's :id.
+  controllers: [InvoiceOverviewController, InvoiceController],
   providers: [
+    InvoiceOverviewService,
+    {
+      provide: INVOICE_OVERVIEW_REPOSITORY,
+      useClass: TypeOrmInvoiceOverviewRepository,
+    },
     InvoiceEmitHandler,
+    InvoiceCancelHandler,
     CalculateTaxesHandler,
     {
       provide: SCHEDULE_MAX_DAYS,
@@ -120,21 +141,33 @@ import { EmailModule } from '@/modules/email/email.module';
       provide: FISCAL_RECONCILIATION_REPOSITORY,
       useClass: TypeOrmFiscalReconciliationRepository,
     },
-    InvoiceWebhookPublisher,
+    FiscalDiscrepancyWebhookPublisher,
     FiscalReconciliationService,
     FiscalSnapshotService,
     DpsBuilder,
     InvoiceService,
+    { provide: InvoiceIssuancePort, useClass: IntegrationInvoiceIssuer },
+    {
+      provide: InvoiceCancellationPort,
+      useClass: IntegrationInvoiceCanceller,
+    },
+    InvoiceBatchService,
     InvoiceIntakeService,
     InvoiceCalculationService,
     InvoiceLifecycleService,
+    InvoiceWebhookPublisher,
     InvoiceDomainService,
   ],
   exports: [
     OutboxHandlerRegistry,
     OUTBOX_REPOSITORY,
     InvoiceService,
+    InvoiceIssuancePort,
+    InvoiceCancellationPort,
+    InvoiceBatchService,
+    InvoiceCalculationService,
     InvoiceLifecycleService,
+    InvoiceWebhookPublisher,
     INVOICE_REPOSITORY,
     INVOICE_EVENT_REPOSITORY,
     DPS_SEQUENCE_REPOSITORY,

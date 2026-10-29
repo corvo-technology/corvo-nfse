@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import type { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { NfseWorkflowService } from './nfse-workflow.service';
 import {
   recordAuthorizationFailure,
@@ -11,6 +11,7 @@ import { Invoice } from '../domain/invoice';
 import type { CustomerSnapshot } from '../domain/invoice';
 import type { IIssuePayload } from '@/infra/external/nfse/nfse-fiscal-provider';
 import { buildInvoiceState } from '../domain/invoice-state';
+import { InvoiceWebhookPublisher } from './invoice-webhook.publisher';
 import { DpsBuilder } from '../domain/fiscal/dps/dps-builder';
 import type {
   FiscalSnapshot,
@@ -69,8 +70,7 @@ describe('NfseWorkflowService email webhooks', () => {
       {} as any,
       {} as any,
       {} as any,
-      webhooks as any,
-      outbox as any,
+      new InvoiceWebhookPublisher(webhooks as any, outbox as any),
       {} as any,
       {} as any,
       {} as unknown as IFiscalSnapshotRepository,
@@ -124,7 +124,11 @@ describe('NfseWorkflowService payload — tomador opcional', () => {
     municipalityCode: '3550308',
   };
   const fakes = {
-    invoices: { findByIdAndTenantId: jest.fn(), save: jest.fn() },
+    invoices: {
+      findByIdAndTenantId: jest.fn(),
+      save: jest.fn(),
+      saveDpsInfo: jest.fn(),
+    },
     sequences: {
       reserveNext: jest.fn().mockResolvedValue({ series: '1', number: 7 }),
     },
@@ -149,7 +153,6 @@ describe('NfseWorkflowService payload — tomador opcional', () => {
       fakes.invoices as any,
       fakes.sequences,
       fakes.companies as any,
-      {} as any,
       {} as any,
       {} as any,
       {} as any,
@@ -345,6 +348,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       taxId: '12345678000195',
       name: 'Cliente Teste LTDA',
     },
+    amounts: { discount?: number; deduction?: number } = {},
   ): Invoice =>
     Invoice.create(
       {
@@ -356,6 +360,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
           municipalityCode: '3550308',
         },
         amount: 1000,
+        ...amounts,
         competenceDate: new Date('2026-10-13'),
       },
       tenantId,
@@ -371,7 +376,11 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
   };
 
   const fakes = {
-    invoices: { findByIdAndTenantId: jest.fn(), save: jest.fn() },
+    invoices: {
+      findByIdAndTenantId: jest.fn(),
+      save: jest.fn(),
+      saveDpsInfo: jest.fn(),
+    },
     sequences: { reserveNext: jest.fn() },
     companies: { findById: jest.fn() },
     certificates: { decryptCredentials: jest.fn() },
@@ -391,6 +400,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     fakes.invoices.save.mockResolvedValue(undefined);
+    fakes.invoices.saveDpsInfo.mockResolvedValue(undefined);
     fakes.companies.findById.mockResolvedValue(company);
     fakes.sequences.reserveNext.mockResolvedValue({ series: '1', number: 7 });
     fakes.profiles.findEffective.mockResolvedValue({
@@ -420,8 +430,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       fakes.providers,
       fakes.lifecycle,
       fakes.queues,
-      fakes.webhooks,
-      fakes.outbox,
+      new InvoiceWebhookPublisher(fakes.webhooks as any, fakes.outbox as any),
       fakes.documentStorage,
       fakes.profiles,
       fakes.fiscalSnapshots,
@@ -521,6 +530,59 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       documento: { CNPJ: '12345678000195' },
       nome: 'Cliente Teste LTDA',
     });
+  });
+
+  it('sends the declared deduction in the preparedDps as vDedRed/vDR', async () => {
+    const invoice = createInvoice(undefined, { deduction: 400 });
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(invoice.id),
+    );
+
+    const payload = await callPayload(invoice);
+
+    expect(payload.preparedDps?.infDPS.valores.vDedRed).toEqual({ vDR: 400 });
+  });
+
+  it('sends the unconditional discount in the preparedDps', async () => {
+    const invoice = createInvoice(undefined, { discount: 50 });
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(invoice.id),
+    );
+
+    const payload = await callPayload(invoice);
+
+    expect(payload.preparedDps?.infDPS.valores.vDescCondIncond).toEqual({
+      vDescIncond: 50,
+    });
+  });
+
+  it('omits vDedRed when the invoice declares no deduction', async () => {
+    const invoice = createInvoice();
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(invoice.id),
+    );
+
+    const payload = await callPayload(invoice);
+
+    expect(payload.preparedDps?.infDPS.valores.vDedRed).toBeUndefined();
+  });
+
+  it('rejects a declared deduction before processing when there is no fiscal snapshot and never issues', async () => {
+    const invoice = createInvoice(undefined, { deduction: 400 });
+    fakes.invoices.findByIdAndTenantId.mockResolvedValue(invoice);
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(null);
+    fakes.providers.resolve.mockReturnValue({ issue: jest.fn() });
+    const rejectSpy = spyOnReject();
+
+    await processInvoice(invoice);
+
+    expect(rejectSpy).toHaveBeenCalledWith(
+      invoice,
+      'FISCAL_VALIDATION_FAILED',
+      expect.stringContaining('deduction'),
+    );
+    expect(fakes.providers.resolve).not.toHaveBeenCalled();
+    expect(invoice.status).toBe('rejected');
   });
 
   it('hands preparedDps to the fiscal provider and enqueues the reconciliation', async () => {
@@ -630,8 +692,9 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     expect(invoice.status).toBe('rejected');
     expect(invoice.toSnapshot().lastErrorCode).toBe('DPS_LAYOUT_UNSUPPORTED');
     // The reserved number is already persisted and stays with the invoice.
-    expect(fakes.invoices.save).toHaveBeenCalledTimes(1);
-    expect(fakes.invoices.save).toHaveBeenCalledWith(invoice, tenantId);
+    // Persisted through the column-scoped saveDpsInfo (cancellation race fix).
+    expect(fakes.invoices.saveDpsInfo).toHaveBeenCalledTimes(1);
+    expect(fakes.invoices.saveDpsInfo).toHaveBeenCalledWith(invoice);
     expect(invoice.dpsNumber).toBe(7);
     expect(invoice.toSnapshot().dpsSeries).toBe('1');
     expect(recordDpsValidationFailure).toHaveBeenCalledWith(
@@ -695,6 +758,92 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       },
       valores: { vServ: 1000 },
       tomador: { documento: { CPF: '52998224725' }, nome: 'Ana' },
+    });
+  });
+
+  describe('Simples totTrib', () => {
+    const workflow = (
+      totalRate: string | null,
+      issRate: string | null = null,
+    ) => {
+      fakes.companies.findById.mockResolvedValue({
+        ...company,
+        simplesRate: totalRate ?? undefined,
+        simplesIssRate: issRate ?? undefined,
+      });
+      return new NfseWorkflowService(
+        fakes.invoices,
+        fakes.sequences,
+        fakes.companies,
+        fakes.certificates,
+        fakes.providers,
+        fakes.lifecycle,
+        fakes.queues,
+        new InvoiceWebhookPublisher(fakes.webhooks as any, fakes.outbox as any),
+        fakes.documentStorage,
+        fakes.profiles,
+        fakes.fiscalSnapshots,
+        new DpsBuilder(),
+        fakes.config,
+      ) as unknown as {
+        payload: (i: Invoice) => Promise<IIssuePayload>;
+      };
+    };
+    const simplesSnapshot = (invoiceId: string) => {
+      const snapshot = fiscalSnapshot(invoiceId);
+      return {
+        ...snapshot,
+        taxRegime: 'SIMPLES_NACIONAL',
+        result: { ...snapshot.result, taxRegime: 'SIMPLES_NACIONAL' },
+      };
+    };
+    beforeEach(() => {
+      fakes.profiles.findEffective.mockResolvedValue({
+        taxRegime: 'SIMPLES_NACIONAL',
+        specialTaxRegime: null,
+        simplesIssRate: null,
+        simplesApuracao: null,
+      });
+    });
+
+    it('sends pTotTribSN from the rate of the company', async () => {
+      const invoice = createInvoice();
+      fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+        simplesSnapshot(invoice.id),
+      );
+      const payload = await workflow('6.54').payload(invoice);
+      expect(payload.preparedDps?.infDPS.valores.trib.totTrib).toEqual({
+        pTotTribSN: 6.54,
+      });
+    });
+
+    it('uses the ISS rate of the company as the withholding aliquota', async () => {
+      fakes.profiles.findEffective.mockResolvedValue({
+        taxRegime: 'SIMPLES_NACIONAL',
+        specialTaxRegime: null,
+        simplesIssRate: '3.00',
+        simplesApuracao: null,
+      });
+      const invoice = createInvoice();
+      const snapshot = simplesSnapshot(invoice.id);
+      snapshot.result.applicability = {
+        ...snapshot.result.applicability,
+        issWithheld: { status: 'REQUIRED' },
+      };
+      fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(snapshot);
+      const payload = await workflow('6.54', '2.01').payload(invoice);
+      expect(payload.preparedDps?.infDPS.valores.trib.tribMun.pAliq).toBe(2.01);
+    });
+
+    it('keeps the legacy totals when the company has no rate', async () => {
+      const invoice = createInvoice();
+      fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+        simplesSnapshot(invoice.id),
+      );
+      const payload = await workflow(null).payload(invoice);
+      expect(payload.preparedDps?.infDPS.valores.trib.totTrib).toEqual({
+        vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 },
+      });
     });
   });
 });

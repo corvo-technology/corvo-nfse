@@ -6,6 +6,7 @@ function validCreate(overrides: Record<string, unknown> = {}) {
     legalName: 'Acme Corp',
     taxId: '11.222.333/0001-81',
     taxRegime: 'Simples Nacional' as const,
+    simplesRate: '6.54',
     municipalityCode: '3550308',
     ...overrides,
   };
@@ -19,6 +20,52 @@ describe('CompanyDomainService', () => {
   });
 
   describe('validateAndNormalizeCreate', () => {
+    it('requires the rate of a Simples Nacional company', () => {
+      expect(() =>
+        service.validateAndNormalizeCreate(
+          validCreate({ simplesRate: undefined }) as any,
+        ),
+      ).toThrow(FiscalValidationError);
+    });
+
+    it.each(['abc', '6,54', '6.543', '100.01', '-1'])(
+      'rejects the invalid Simples rate %p',
+      (simplesRate) => {
+        expect(() =>
+          service.validateAndNormalizeCreate(
+            validCreate({ simplesRate }) as any,
+          ),
+        ).toThrow(FiscalValidationError);
+      },
+    );
+
+    it('rejects an ISS rate outside the Simples bracket range', () => {
+      expect(() =>
+        service.validateAndNormalizeCreate(
+          validCreate({ simplesIssRate: '9.00' }) as any,
+        ),
+      ).toThrow(FiscalValidationError);
+    });
+
+    it('does not ask a MEI for the rates and ignores them when sent', () => {
+      const normalized = service.validateAndNormalizeCreate(
+        validCreate({
+          taxRegime: 'MEI',
+          simplesRate: undefined,
+        }),
+      );
+      expect(normalized.simplesRate).toBeUndefined();
+      const sent = service.validateAndNormalizeCreate(
+        validCreate({
+          taxRegime: 'MEI',
+          simplesRate: '6.54',
+          simplesIssRate: '2.01',
+        }),
+      );
+      expect(sent.simplesRate).toBeUndefined();
+      expect(sent.simplesIssRate).toBeUndefined();
+    });
+
     it.each([undefined, null, '', '123', 'abcdefg'])(
       'rejects missing or invalid municipality %p',
       (municipalityCode) => {

@@ -35,6 +35,7 @@ describe('strategies', () => {
     specialTaxRegime: null,
     ibsCbsRegularOption: false,
     ibsCbsRegularFrom: null,
+    simplesIssRate: null,
     validFrom: '2026-01-01',
     validUntil: null,
     source: 'manual',
@@ -137,10 +138,10 @@ describe('strategies', () => {
     });
   });
 
-  it('MEI 2027: IBS/CBS UNSUPPORTED (never NOT_APPLICABLE)', () => {
+  it('MEI 2027: IBS/CBS NOT_APPLICABLE (MEI does not highlight IBS/CBS)', () => {
     const r = plan({ taxRegime: 'MEI' }, { competenceDate: '2027-02-01' });
-    expect(r.ok && r.value.cbs.status).toBe('UNSUPPORTED');
-    expect(r.ok && r.value.ibs.status).toBe('UNSUPPORTED');
+    expect(r.ok && r.value.cbs.status).toBe('NOT_APPLICABLE');
+    expect(r.ok && r.value.ibs.status).toBe('NOT_APPLICABLE');
   });
 
   it('Simples 2026: no test-phase rate applied', () => {
@@ -156,17 +157,17 @@ describe('strategies', () => {
     });
   });
 
-  it('Simples 2027 without regular option: UNSUPPORTED', () => {
+  it('Simples 2027 without regular option: IBS/CBS NOT_APPLICABLE (stay in the DAS)', () => {
     const r = plan(
       { taxRegime: 'SIMPLES_NACIONAL' },
       { competenceDate: '2027-02-01' },
     );
-    expect(r.ok && r.value.cbs.status).toBe('UNSUPPORTED');
-    expect(r.ok && r.value.ibs.status).toBe('UNSUPPORTED');
+    expect(r.ok && r.value.cbs.status).toBe('NOT_APPLICABLE');
+    expect(r.ok && r.value.ibs.status).toBe('NOT_APPLICABLE');
     expect(r.ok && r.value.iss.status).toBe('NOT_APPLICABLE');
   });
 
-  it('Simples 2027 with regular option valid from the competence: behaves as regular', () => {
+  it('Simples 2027 with regular option valid from the competence: IBS/CBS go regular, ISS stays in the DAS', () => {
     const r = plan(
       {
         taxRegime: 'SIMPLES_NACIONAL',
@@ -176,11 +177,50 @@ describe('strategies', () => {
       { competenceDate: '2027-02-01' },
     );
     expect(r.ok && r.value).toMatchObject({
-      iss: { status: 'REQUIRED' },
+      iss: { status: 'NOT_APPLICABLE', reason: 'ISS recolhido no DAS' },
       cbs: { status: 'REQUIRED' },
       ibs: { status: 'REQUIRED' },
       collectionWaived: false,
     });
+  });
+
+  it('Simples ISS withholding required without simplesIssRate: MISSING_CONFIGURATION', () => {
+    const r = plan(
+      { taxRegime: 'SIMPLES_NACIONAL', simplesIssRate: null },
+      {
+        customer: cnpjCustomer,
+        classification: {
+          iss: {
+            taxation: 'NORMAL',
+            rate: null,
+            withholdingDefault: true,
+            incidenceMunicipalityCode: null,
+          },
+        },
+      },
+    );
+    expect(r.ok && r.value.issWithheld).toMatchObject({
+      status: 'MISSING_CONFIGURATION',
+      missingFields: ['fiscalProfile.simplesIssRate'],
+    });
+  });
+
+  it('Simples ISS withholding required with simplesIssRate configured: REQUIRED', () => {
+    const r = plan(
+      { taxRegime: 'SIMPLES_NACIONAL', simplesIssRate: '2.01' },
+      {
+        customer: cnpjCustomer,
+        classification: {
+          iss: {
+            taxation: 'NORMAL',
+            rate: null,
+            withholdingDefault: true,
+            incidenceMunicipalityCode: null,
+          },
+        },
+      },
+    );
+    expect(r.ok && r.value.issWithheld).toMatchObject({ status: 'REQUIRED' });
   });
 
   it('Regular 2026: IBS/CBS REQUIRED with collection waived; customer required', () => {
@@ -251,6 +291,44 @@ describe('strategies', () => {
       },
     );
     expect(r.ok && r.value.iss.status).toBe('UNSUPPORTED');
+  });
+
+  it('Regular EXEMPT ISS: UNSUPPORTED (isenção needs the BM/nBM municipal benefit, not modelled)', () => {
+    const r = plan(
+      { taxRegime: 'LUCRO_PRESUMIDO' },
+      {
+        classification: {
+          iss: {
+            taxation: 'EXEMPT',
+            rate: null,
+            withholdingDefault: false,
+            incidenceMunicipalityCode: null,
+          },
+        },
+      },
+    );
+    expect(r.ok && r.value.iss).toMatchObject({
+      status: 'UNSUPPORTED',
+      reason:
+        'isenção de ISS exige o benefício municipal (BM/nBM) na DPS; ainda não suportado',
+    });
+  });
+
+  it('Regular NORMAL ISS with rate: REQUIRED (unchanged)', () => {
+    const r = plan(
+      { taxRegime: 'LUCRO_PRESUMIDO' },
+      {
+        classification: {
+          iss: {
+            taxation: 'NORMAL',
+            rate: '3',
+            withholdingDefault: false,
+            incidenceMunicipalityCode: null,
+          },
+        },
+      },
+    );
+    expect(r.ok && r.value.iss.status).toBe('REQUIRED');
   });
 
   it('Regular before 2026-10-01: IBS/CBS NOT_APPLICABLE (obligation not yet effective)', () => {
@@ -379,6 +457,50 @@ describe('strategies', () => {
         code: 'TAX_REGIME_UNSUPPORTED',
         details: { ambiguousStrategies: ['first', 'second'] },
       },
+    });
+  });
+
+  describe('Anexo I E0583: MEI never has ISS withheld', () => {
+    const withholdingClassification = classificationWith({
+      iss: {
+        taxation: 'NORMAL',
+        rate: '3',
+        withholdingDefault: true,
+        incidenceMunicipalityCode: '3550308',
+      },
+    });
+    const cnpjCustomer: FiscalCustomer = {
+      kind: 'CNPJ',
+      taxId: '12345678000195',
+      municipalityCode: null,
+    };
+    const plan = (regime: 'MEI' | 'SIMPLES_NACIONAL') => {
+      const strategy =
+        regime === 'MEI'
+          ? new MeiTaxStrategy()
+          : new SimplesNacionalTaxStrategy();
+      return strategy.plan({
+        invoice: invoiceWith('2026-12-10', cnpjCustomer),
+        profile: fullProfile({
+          taxRegime: regime,
+          simpleNational: true,
+          simplesIssRate: '2.00',
+        }),
+        classification: withholdingClassification,
+        policy,
+      });
+    };
+
+    it('is NOT_APPLICABLE for a MEI with a CNPJ customer', () => {
+      const planned = plan('MEI');
+      expect(planned.ok && planned.value.issWithheld).toMatchObject({
+        status: 'NOT_APPLICABLE',
+      });
+    });
+
+    it('does not change Simples Nacional, which keeps withholding', () => {
+      const planned = plan('SIMPLES_NACIONAL');
+      expect(planned.ok && planned.value.issWithheld.status).toBe('REQUIRED');
     });
   });
 });

@@ -44,6 +44,7 @@ import type { OutboxMessage } from './domain/outbox-message';
 import { InvoiceDomainService } from './domain/invoice-domain.service';
 import type { CreateInvoiceDto } from './http/invoice.dto';
 import { InvoiceController } from './http/invoice.controller';
+import { InvoiceBatchService } from './application/invoice-batch.service';
 import { InvoiceService } from './application/invoice.service';
 import { InvoiceIntakeService } from './application/invoice-intake.service';
 import { InvoiceCalculationService } from './application/fiscal/invoice-calculation.service';
@@ -288,6 +289,7 @@ describePostgres('POST /v1/invoices/calculate with PostgreSQL RLS', () => {
       controllers: [InvoiceController],
       providers: [
         ...FISCAL_ENGINE_INTERNAL_PROVIDERS,
+        { provide: InvoiceBatchService, useValue: {} },
         { provide: RTC_MAPPER, useClass: DefaultRtcMapper },
         { provide: ConfigService, useValue: config },
         {
@@ -312,6 +314,7 @@ describePostgres('POST /v1/invoices/calculate with PostgreSQL RLS', () => {
             lifecycle as never,
             quota as never,
             intake,
+            { publish: async () => undefined } as never,
           ),
         },
       ],

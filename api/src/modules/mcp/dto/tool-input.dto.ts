@@ -1,4 +1,5 @@
 import {
+  ArrayMaxSize,
   ArrayNotEmpty,
   IsArray,
   IsBoolean,
@@ -11,11 +12,17 @@ import {
   IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import {
+  CANCELLATION_DESCRIPTION_MAX,
+  CANCELLATION_REASON_CODES,
+  type CancellationReasonCode,
+} from '@/modules/invoice/domain/cancellation-reason';
 
 /**
  * MCP tool input DTOs — snake_case wire contract for the NFS-e MCP tools.
@@ -83,6 +90,8 @@ export class NfseIssueInput {
 
   @IsOptional() @IsNumber() @Min(0) discount?: number;
 
+  @IsOptional() @IsNumber() @Min(0) deduction?: number;
+
   /** YYYY-MM-DD. Defaults to today (America/Sao_Paulo). */
   @IsOptional() @IsDateString() competence_date?: string;
 
@@ -107,6 +116,37 @@ export class CompanyListInput {
   @IsOptional() @IsString() cursor?: string;
 }
 
+export class CompanyCreateAddressInput {
+  @IsOptional() @IsString() street?: string;
+  @IsOptional() @IsString() number?: string;
+  @IsOptional() @IsString() complement?: string;
+  @IsOptional() @IsString() district?: string;
+  @IsOptional() @IsString() city?: string;
+  @IsOptional() @IsString() state?: string;
+  @IsOptional() @IsString() zip?: string;
+}
+
+export class CompanyCreateInput {
+  @IsString() @IsNotEmpty() legal_name!: string;
+  @IsString() @IsNotEmpty() tax_id!: string;
+  @IsString()
+  @IsIn(['mei', 'simple_national'])
+  tax_regime!: string;
+  @IsString() @IsNotEmpty() municipality_code!: string;
+  @IsOptional() @IsString() trade_name?: string;
+  @IsOptional() @IsString() municipal_reg?: string;
+  @IsOptional() @IsBoolean() send_municipal_reg?: boolean;
+  @IsOptional() @IsString() default_service_code?: string;
+  @IsOptional() @IsBoolean() simple_national?: boolean;
+  @IsOptional() @IsString() special_regime?: string;
+  @IsOptional() @IsString() simples_rate?: string;
+  @IsOptional() @IsString() simples_iss_rate?: string;
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CompanyCreateAddressInput)
+  address?: CompanyCreateAddressInput;
+}
+
 export class NfseQueryInput {
   @IsString() access_key!: string;
 }
@@ -119,4 +159,29 @@ export class NfseListInput {
 
 export class NfseDownloadPdfInput {
   @IsString() access_key!: string;
+}
+
+export class NfseGetDownloadUrlInput {
+  @IsString() access_key!: string;
+  @IsIn(['pdf', 'xml']) format!: 'pdf' | 'xml';
+}
+
+export class NfseCancelInput {
+  @IsUUID() invoice_id!: string;
+  @IsIn(CANCELLATION_REASON_CODES) reason!: CancellationReasonCode;
+  @IsOptional()
+  @IsString()
+  @MaxLength(CANCELLATION_DESCRIPTION_MAX)
+  description?: string;
+}
+
+export class NfseIssueBatchInput {
+  /**
+   * Items are NOT nested-validated here: each one is checked on its own by the
+   * handler so a bad row is reported in place instead of failing the batch.
+   */
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMaxSize(50)
+  invoices!: unknown[];
 }

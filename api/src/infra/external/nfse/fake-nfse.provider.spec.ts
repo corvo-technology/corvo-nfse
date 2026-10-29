@@ -68,6 +68,31 @@ describe('Offline test invoices with the installed XML/PDF SDK', () => {
   });
 });
 
+describe('FakeNfseProvider.cancel', () => {
+  const base = {
+    invoiceId: 'inv-1',
+    tenantId: 't-1',
+    accessKey: '1'.repeat(50),
+    pfxBuffer: Buffer.alloc(0),
+    p12Password: '',
+    emitenteCnpj: '11222333000181',
+    reason: 'other' as const,
+    description: 'Cancelamento de teste simulado',
+  };
+
+  it('simulates an accepted cancellation in test', async () => {
+    await expect(
+      new FakeNfseProvider().cancel({ ...base, environment: 'test' }),
+    ).resolves.toEqual({ status: 'cancelled' });
+  });
+
+  it('refuses live', async () => {
+    await expect(
+      new FakeNfseProvider().cancel({ ...base, environment: 'live' }),
+    ).rejects.toThrow('only in test');
+  });
+});
+
 describe('Offline test invoices with a prebuilt DPS (preparedDps)', () => {
   const provider = new FakeNfseProvider();
 

@@ -2,7 +2,7 @@
 import { SDKS } from "../../sdks";
 import type { DocsTree } from "../types";
 
-export const pt: DocsTree = {
+const ptWithRetiredCredits: DocsTree = {
   chrome: {
     homeLabel: "Introdução",
     groups: { gettingStarted: "Começando", reference: "Referência", guides: "Guias" },
@@ -23,15 +23,12 @@ export const pt: DocsTree = {
     blocks: [
       {
         kind: "text",
-        body: "A API da Corvo permite cadastrar empresas (MEI, Simples Nacional e outros regimes), enviar certificados A1, calcular tributos antes de emitir, emitir notas fiscais de serviço (NFS-e) e acompanhar o ciclo de vida completo por webhooks. Agentes de IA como Claude Code, Cursor e Codex fazem o mesmo pelo servidor MCP (veja Agentes de IA).",
+        body: "A API da Corvo permite cadastrar empresas (MEI e Simples Nacional), enviar certificados A1, calcular tributos antes de emitir, emitir notas fiscais de serviço (NFS-e) e acompanhar o ciclo de vida completo por webhooks. Agentes de IA como Claude Code, Cursor e Codex fazem o mesmo pelo servidor MCP (veja Agentes de IA).",
       },
       { kind: "heading", level: 2, body: "Quickstart" },
-      {
-        kind: "code",
-        label: "bash",
-        language: "bash",
-        code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='corvo_test_sua_chave'\n\ncurl \"$BASE_URL/companies\" -H \"X-API-Key: $CORVO_API_KEY\"",
-      },
+      { kind: "text", body: "Do cadastro à primeira nota, no ambiente de teste. Em teste não é preciso certificado; em produção são necessários uma chave `corvo_live_` e um certificado A1." },
+      { kind: "list", items: ["Crie a conta grátis em https://www.corvo.tech/login?mode=signup (sem cartão de crédito).", "No painel, gere uma chave de teste. Ela começa com `corvo_test_`; notas emitidas com ela não têm valor fiscal.", "Cadastre a empresa emissora com `POST /v1/companies` (`legalName`, `taxId`, `taxRegime` e `municipalityCode` são obrigatórios).", "Emita a nota com `POST /v1/invoices`. A resposta é `202` com status `queued`: a emissão é assíncrona.", "Acompanhe com `GET /v1/invoices/:id` ou receba o webhook `nfse.invoice.authorized` / `nfse.invoice.rejected`.", "Vá para produção: crie uma chave `corvo_live_` e envie o certificado A1 da empresa pelo painel ou pela API (`POST /v1/companies/:companyId/certificates`)."] },
+      { kind: "code", label: "bash", language: "bash", code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='corvo_test_sua_chave'\n\n# 3. Cadastrar a empresa\ncurl -X POST \"$BASE_URL/companies\" \\\n  -H \"X-API-Key: $CORVO_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"legalName\":\"Empresa Exemplo Ltda\",\"taxId\":\"11222333000181\",\"taxRegime\":\"MEI\",\"municipalityCode\":\"3550308\"}'\n\n# 4. Emitir a nota (202, status queued)\ncurl -X POST \"$BASE_URL/invoices\" \\\n  -H \"X-API-Key: $CORVO_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -H 'Idempotency-Key: pedido_123_emissao' \\\n  -d '{\"companyTaxId\":\"11222333000181\",\"amount\":100,\"service\":{\"description\":\"Consultoria\"}}'\n\n# 5. Acompanhar\ncurl \"$BASE_URL/invoices/<id>\" -H \"X-API-Key: $CORVO_API_KEY" },
       {
         kind: "text",
         body: "Todos os caminhos desta documentação são relativos a `BASE_URL` (`https://api.corvo.tech/v1`).",
@@ -53,9 +50,7 @@ export const pt: DocsTree = {
           ["Listar notas e eventos", "`{ \"data\": [ ... ], \"pagination\": {...} }`"],
           ["URL de download / email", "`{ \"data\": ... }`"],
           ["Webhooks e entregas", "`{ \"data\": ... } ou listagem paginada`"],
-          ["Saldo de créditos", "`{ \"data\": { \"tenantId\", \"balance\", ... } }`"],
-          ["Planos / histórico de créditos", "`{ \"data\": [...], \"pagination\": {...} }`"],
-          ["Billing", "`{ \"data\": ... }`"],
+          ["Plano e cotas", "`{ \"data\": ... }`"],
         ],
       },
       {
@@ -80,6 +75,7 @@ export const pt: DocsTree = {
           ["GET", "`/v1/companies/:companyId/certificates`", "Listar certificados", "200"],
           ["DELETE", "`/v1/companies/:companyId/certificates/:certId`", "Revogar certificado", "204"],
           ["POST", "`/v1/invoices`", "Solicitar emissão", "202"],
+          ["POST", "`/v1/invoices/batches`", "Solicitar a emissão de até 50 notas", "202"],
           ["POST", "`/v1/invoices/calculate`", "Calcular tributos sem emitir", "200"],
           ["GET", "`/v1/invoices`", "Listar notas", "200"],
           ["GET", "`/v1/invoices/:id`", "Consultar nota", "200"],
@@ -88,6 +84,7 @@ export const pt: DocsTree = {
           ["GET", "`/v1/invoices/:id/events`", "Consultar histórico", "200"],
           ["POST", "`/v1/invoices/:id/download-url`", "Gerar URL assinada", "200"],
           ["POST", "`/v1/invoices/:id/email`", "Solicitar envio de email", "202"],
+          ["POST", "`/v1/invoices/:id/cancel`", "Cancelar nota", "200/202"],
           ["GET", "`/v1/webhooks`", "Listar configurações", "200"],
           ["POST", "`/v1/webhooks`", "Cadastrar webhook", "201"],
           ["DELETE", "`/v1/webhooks/:id`", "Excluir webhook", "200"],
@@ -95,10 +92,6 @@ export const pt: DocsTree = {
           ["GET", "`/v1/webhooks/deliveries`", "Listar entregas", "200"],
           ["GET", "`/v1/webhooks/deliveries/stats`", "Consultar estatísticas", "200"],
           ["POST", "`/v1/webhooks/deliveries/:id/retry`", "Agendar nova tentativa", "200"],
-          ["GET", "`/v1/credits`", "Consultar saldo", "200"],
-          ["GET", "`/v1/credits/plans`", "Listar planos", "200"],
-          ["GET", "`/v1/credits/history`", "Listar transações", "200"],
-          ["POST", "`/v1/credits/purchase/preview`", "Compra avulsa (descontinuada)", "410"],
           ["GET", "`/v1/billing/plan`", "Consultar plano e consumo", "200"],
           ["GET", "`/v1/billing/usage`", "Consultar disponibilidade e cotas", "200"],
           ["POST", "`/v1/billing/upgrade`", "Agendar troca de plano", "200"],
@@ -202,7 +195,7 @@ export const pt: DocsTree = {
           tone: "warn",
           body: "Créditos, plano e configurações de webhook pertencem à conta. Uma chave `test` com `full_access` pode gerenciar webhooks e consultar créditos e cobrança. Troca de plano, checkout e portal de cobrança existem só no painel.",
         },
-        { kind: "callout", tone: "accent", body: "O servidor resolve o tenant pela autenticação: nunca envie `tenantId` no corpo. Recursos de outro tenant retornam `404`." },
+        { kind: "callout", tone: "accent", body: "O servidor resolve a conta pela autenticação; recursos de outra conta retornam `404`." },
         { kind: "heading", level: 2, body: "Escopos" },
         {
           kind: "table",
@@ -296,6 +289,8 @@ export const pt: DocsTree = {
             ["`ERROR_INSUFFICIENT_CREDITS` / `ERROR_QUOTA_EXCEEDED`", "Créditos ou cota insuficientes para emitir."],
             ["`ERROR_COMPANY_NOT_READY` / `ERROR_COMPANY_BLOCKED`", "Empresa sem certificado em `live`, ou bloqueada."],
             ["`ERROR_IDEMPOTENCY_CONFLICT`", "Mesma `Idempotency-Key` com payload diferente (409)."],
+            ["`ERROR_TAX_REGIME_NOT_SUPPORTED`", "Só empresas MEI e Simples Nacional são atendidas (422)."],
+            ["`ERROR_VALIDATION` com `details[].code` `ERROR_DEDUCTION_NOT_ALLOWED_FOR_REGIME` ou `ERROR_SIMPLES_SUBLIMIT_NOT_SUPPORTED`", "Dedução da base do ISS que o MEI ou o Simples não pode declarar, ou Simples acima do sublimite (`regApTribSN` 2 ou 3), que ainda não é suportado (422)."],
             ["`ERROR_GONE`", "Operação encerrada, como a compra avulsa de créditos (410)."],
           ],
         },
@@ -320,12 +315,13 @@ export const pt: DocsTree = {
           rows: [
             ["API key validada (somada entre endpoints)", "300"],
             ["Rotas públicas, por IP", "120"],
+            ["Tenant inteiro (todas as chaves e sessões somadas)", "600"],
             ["Proteção anterior à autenticação, por IP", "1200"],
           ],
         },
         {
           kind: "text",
-          body: "Rotas sensíveis (OTP/magic link, Turnstile) têm orçamentos adicionais por rota, somados ao limite geral. Health checks, preflight e o recebimento Stripe são isentos.",
+          body: "Rotas sensíveis têm orçamentos adicionais por rota, somados ao limite geral: OTP, magic link, OAuth e Turnstile (10 a 30 por minuto por IP), registro, token e revogação de clientes MCP (10 a 30 por minuto por IP) e as rotas autenticadas custosas `POST /invoices`, `POST /invoices/calculate` (120 por minuto por tenant), `POST /invoices/batches` (10 por minuto por tenant) e upload de certificado (10 por minuto por tenant). Health checks, preflight e o recebimento Stripe são isentos. Criar mais API keys não aumenta o teto: o limite do tenant vale para todas somadas.",
         },
         {
           kind: "text",
@@ -334,7 +330,7 @@ export const pt: DocsTree = {
         {
           kind: "callout",
           tone: "accent",
-          body: "Respeite `Retry-After` antes de repetir a chamada e use backoff exponencial em picos. Não use `throughputRps` do plano como limite HTTP.",
+          body: "Respeite `Retry-After` antes de repetir a chamada e use backoff exponencial em picos. Não use `throughputRps` do plano como limite HTTP. Com o servidor saturado, a resposta é `503` com `code: \"ERROR_SERVER_BUSY\"` e `Retry-After: 1`: tente de novo com backoff.",
         },
       ],
     },
@@ -362,14 +358,16 @@ export const pt: DocsTree = {
             rows: [
               { name: "legalName", type: "string", required: true, description: "Razão social, até 200 caracteres, não vazia após trim." },
               { name: "taxId", type: "string", required: true, description: "CNPJ válido; normalizado antes de verificar duplicidade." },
-              { name: "taxRegime", type: "string", required: true, description: "`MEI`, `Simples Nacional`, `Lucro Presumido` ou `Lucro Real`." },
+              { name: "taxRegime", type: "string", required: true, description: "`MEI` ou `Simples Nacional`. A Corvo atende só esses dois regimes: qualquer outro valor devolve `422` `ERROR_TAX_REGIME_NOT_SUPPORTED`." },
               { name: "tradeName", type: "string", required: false, description: "Até 200 caracteres." },
               { name: "municipalReg", type: "string ou null", required: false, description: "Opcional, e não vazia quando enviada. Fica guardada, mas **não vai na nota** a menos que `sendMunicipalReg` seja `true`. `null` limpa o valor (e desliga `sendMunicipalReg`)." },
               { name: "sendMunicipalReg", type: "boolean", required: false, description: "Padrão `false`. Envia a inscrição municipal na DPS só se o município registrou esta empresa no cadastro nacional e a Receita exigir; senão a nota é rejeitada (E0120)." },
               { name: "municipalityCode", type: "string", required: true, description: "Código IBGE de exatamente 7 dígitos, obrigatório em teste e produção. Usado como município do emitente e padrão do local da prestação." },
               { name: "defaultServiceCode", type: "string", required: false, description: "Código nacional (cTribNac) de exatamente 6 dígitos; padrão das novas notas. Sem ele, informe `service.code` na emissão." },
               { name: "simpleNational", type: "boolean", required: false, description: "Se omitido, acompanha o regime (`true` para MEI e Simples Nacional)." },
-              { name: "specialRegime", type: "string", required: false, description: "Até 50 caracteres." },
+              { name: "specialRegime", type: "string", required: false, description: "Um valor entre `\"0\"` e `\"6\"` (regEspTrib, RTC v1.01): 0 Nenhum, 1 Ato Cooperado, 2 Estimativa, 3 Microempresa Municipal, 4 Notário ou Registrador, 5 Profissional Autônomo, 6 Sociedade de Profissionais." },
+              { name: "simplesRate", type: "string", required: false, description: "Obrigatório para `Simples Nacional`, ignorado para `MEI`. Alíquota efetiva total (%) do seu DAS, a que aparece no PGDAS-D, por exemplo `\"6.54\"` (0 a 100, no máximo 2 casas decimais). Vai em toda nota (`pTotTribSN`). A Corvo não calcula o DAS." },
+              { name: "simplesIssRate", type: "string", required: false, description: "Opcional, só `Simples Nacional`. Alíquota efetiva de ISS (%) da sua faixa (1,80 a 5,00), necessária só quando algum cliente retém ISS. Ignorada para `MEI`." },
               { name: "address", type: "objeto", required: false, description: "`street` (200), `number` (20), `complement` (100), `district` (100), `city` (100), `state` (2) e `zip` (10), todos opcionais. UF válida, normalizada para maiúsculas. CEP com 8 dígitos, armazenado sem pontuação." },
             ],
           },
@@ -381,6 +379,7 @@ export const pt: DocsTree = {
     "legalName": "Empresa Exemplo Ltda",
     "taxId": "11222333000181",
     "taxRegime": "Simples Nacional",
+    "simplesRate": "6.54",
     "simpleNational": true,
     "municipalReg": "123456",
     "municipalityCode": "3550308",
@@ -403,6 +402,7 @@ export const pt: DocsTree = {
     legalName: "Empresa Exemplo Ltda",
     taxId: "11222333000181",
     taxRegime: "Simples Nacional",
+    simplesRate: "6.54",
     simpleNational: true,
     municipalReg: "123456",
     municipalityCode: "3550308",
@@ -527,7 +527,7 @@ console.log(body.data.status); // { data: Company }`,
           path: "/v1/companies/:id",
           scopes: ["full_access"],
           success: "200 OK",
-          summary: "Atualiza uma empresa. Aceita os campos da criação, todos opcionais.",
+          summary: "Atualiza uma empresa. Aceita os campos da criação, todos opcionais, **exceto o CNPJ**: ele não pode ser alterado (enviar o CNPJ atual é aceito e ignorado; outro valor retorna `422`). Para outro CNPJ, cadastre uma nova empresa. Envie `simplesRate` (e `simplesIssRate`, ou `null` para remover) para atualizar a alíquota do Simples, por exemplo todo mês.",
           examples: {
             curl: `curl -X PATCH "$BASE_URL/companies/$COMPANY_ID" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
@@ -594,6 +594,7 @@ console.log(body.data); // { data: null }`,
       title: "Certificados",
       description: "Envie e gerencie certificados A1 (PKCS#12) das empresas.",
       blocks: [
+        { kind: "text", body: "Você pode enviar o certificado A1 pelo painel (página da empresa) ou pela API, com o endpoint abaixo." },
         { kind: "text", body: "Permissões: `nfse.certificates.view` para listar e `nfse.certificates.manage` para upload/revogação." },
         {
           kind: "endpoint",
@@ -729,6 +730,7 @@ console.log(res.status); // 204`,
               { name: "amount", type: "number", required: true, description: "Valor em reais, positivo, até 9999999999.99 e no máximo 2 casas decimais." },
               { name: "competenceDate", type: "string ISO 8601", required: true, description: "Data de competência válida. Sem `options.type`, não pode ser futura (`422` `ERROR_FUTURE_DATE`). Com `options.type: \"SCHEDULE\"`, aceita data futura (veja Notas agendadas)." },
               { name: "discount", type: "number", required: false, description: "Desconto incondicional em reais, de 0 até o valor da nota, no máximo 2 casas decimais." },
+              { name: "deduction", type: "number", required: false, description: "Dedução da base do ISS declarada pelo emitente, em reais: maior que 0 e menor que `amount` menos `discount`, no máximo 2 casas decimais (`0` equivale a omitir). Vai na DPS em `vDedRed/vDR` e reduz a base de cálculo do ISS. A nota continua sendo emitida pelo valor total. O emitente responde pelo valor declarado; a Corvo não confere se a dedução é permitida. O IBS/CBS segue calculado sobre o valor sem a dedução. Veja Dedução da base do ISS." },
               { name: "email", type: "boolean", required: false, description: "Solicita notificação; padrão `false`." },
               { name: "options.email.send", type: "boolean", required: false, description: "Quando definido, prevalece sobre `email`." },
               { name: "options.type", type: "string", required: false, description: "`IMMEDIATE` (padrão) ou `SCHEDULE`. `SCHEDULE` agenda a emissão para a `competenceDate` futura; veja Notas agendadas." },
@@ -806,13 +808,126 @@ console.log(body.data.id); // { data: Invoice }`,
         {
           kind: "endpoint",
           method: "POST",
+          path: "/v1/invoices/batches",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "202 Accepted",
+          summary: "Solicita a emissão de **1 a 50 notas em uma única chamada**, de uma empresa ou de várias. Cada item tem os mesmos campos de `POST /v1/invoices` mais um `idempotencyKey` opcional. Os itens são conferidos um a um: os válidos são salvos juntos em uma única transação e os inválidos voltam como `rejected` com o motivo e **não** são salvos. A emissão continua assíncrona, como em `POST /v1/invoices`.",
+          params: {
+            rows: [
+              { name: "invoices", type: "array", required: true, description: "Lista de 1 a 50 itens. Cada item recebe os campos de `POST /v1/invoices` (`companyId` ou `companyTaxId`, `service`, `amount`, `competenceDate`, `customer`, `discount`, `deduction`, `options` opcionais...). Os itens podem ser de empresas diferentes da conta. Menos de 1 ou mais de 50 itens devolve `400` `ERROR_VALIDATION` para a requisição inteira." },
+              { name: "invoices[].idempotencyKey", type: "string", required: false, description: "Chave de idempotência do item (até 255 caracteres). Com a mesma chave e o mesmo conteúdo, repetir o lote devolve a nota já salva com `replayed: true` em vez de emitir de novo. O header `Idempotency-Key` não é usado nesta rota." },
+            ],
+          },
+          examples: {
+            curl: `curl -X POST "$BASE_URL/invoices/batches" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "invoices": [
+      {
+        "companyTaxId": "11222333000181",
+        "idempotencyKey": "planilha-out-linha-2",
+        "customer": { "name": "Cliente A", "taxId": "52998224725" },
+        "service": { "description": "Consultoria" },
+        "amount": 150.50,
+        "competenceDate": "2026-10-01"
+      },
+      {
+        "companyTaxId": "45723174000110",
+        "idempotencyKey": "planilha-out-linha-3",
+        "service": { "description": "Manutenção mensal" },
+        "amount": 300,
+        "competenceDate": "2026-10-01"
+      }
+    ]
+  }'`,
+            node: `const res = await fetch(\`\${BASE_URL}/invoices/batches\`, {
+  method: "POST",
+  headers: {
+    "X-API-Key": process.env.CORVO_API_KEY,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    invoices: rows.map((row, i) => ({
+      companyTaxId: row.cnpj,
+      idempotencyKey: \`planilha-out-linha-\${i + 2}\`,
+      service: { description: row.description },
+      amount: row.amount,
+      competenceDate: "2026-10-01",
+    })),
+  }),
+});
+const { data } = await res.json();
+for (const item of data.results) {
+  if (item.status === "rejected") console.log(item.index, item.error.code, item.error.message);
+}`,
+          },
+          response: {
+            label: "202 Accepted",
+            json: `{
+  "data": {
+    "total": 3,
+    "accepted": 2,
+    "rejected": 1,
+    "results": [
+      {
+        "index": 0,
+        "status": "accepted",
+        "invoice": {
+          "id": "6c4d2e81-0a3b-4c5d-9e7f-1a2b3c4d5e6f",
+          "companyId": "3f1c8a90-6b2e-4d5a-9c11-8e2f0a7b4d11",
+          "environment": "test",
+          "idempotencyKey": "planilha-out-linha-2",
+          "status": "queued",
+          "amount": 150.5,
+          "currency": "BRL",
+          "competenceDate": "2026-10-01T00:00:00.000Z",
+          "stage": "pending",
+          "createdAt": "2026-10-10T12:00:00.000Z"
+        }
+      },
+      {
+        "index": 1,
+        "status": "accepted",
+        "replayed": true,
+        "invoice": {
+          "id": "0b7a1f52-3c4d-4e6f-8a9b-2c3d4e5f6a7b",
+          "status": "queued",
+          "idempotencyKey": "planilha-out-linha-3",
+          "amount": 300
+        }
+      },
+      {
+        "index": 2,
+        "status": "rejected",
+        "error": {
+          "code": "ERROR_VALIDATION",
+          "message": "Request validation failed",
+          "details": [
+            { "field": "amount", "code": "ERROR_OUT_OF_RANGE", "message": "amount must be greater than 0" }
+          ]
+        }
+      }
+    ]
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "**Tudo ou nada para as válidas, nunca para o lote.** Todo item `accepted` é salvo em um único commit, junto com a reserva de crédito e a mensagem de fila. Um item inválido (validação, empresa não encontrada ou não pronta, certificado ausente em `live`, limite do plano) volta `rejected` e é descartado sem afetar os outros. Se algo inesperado falhar ao salvar, nada é salvo e você pode repetir o mesmo lote com segurança." },
+            { kind: "callout", tone: "accent", body: "**Lendo o resultado.** `results` traz uma entrada por item, na ordem enviada: use `index` para ligar cada resultado à linha da planilha ou ao seu registro. Corrija só as linhas `rejected` e envie de novo; as `accepted` já estão salvas. Envie sempre um `idempotencyKey` por item (por exemplo `arquivo-linha-7`): depois de um timeout, repetir o lote inteiro devolve as já salvas como `replayed: true` e tenta só as que faltam. Uma chave repetida dentro do mesmo lote é rejeitada com `ERROR_DUPLICATE_IDEMPOTENCY_KEY_IN_BATCH`." },
+            { kind: "callout", tone: "warn", body: "Em `live`, cada item aceito reserva um crédito, como em `POST /v1/invoices`. Quando o limite mensal ou diário é atingido no meio do lote, os itens que couberem são salvos e os demais voltam `rejected` com `ERROR_MONTHLY_LIMIT_EXCEEDED`, `ERROR_DAILY_LIMIT_EXCEEDED` ou `ERROR_PLAN_BLOCKED`. A rota aceita até 10 lotes por minuto por tenant (`429` com `Retry-After`). Para agentes de IA, a ferramenta MCP `nfse_issue_batch` tem o mesmo contrato." },
+          ],
+        },
+        {
+          kind: "endpoint",
+          method: "POST",
           path: "/v1/invoices/calculate",
           scopes: ["full_access", "invoices_issue", "invoices_read_write"],
           success: "200 OK",
           summary: "Calcula os tributos de uma nota **sem emitir**: não grava nota, não consome crédito, não reserva número de DPS, não agenda nem chama a Sefin. Use para conferir a configuração fiscal e mostrar o valor ao cliente antes de `POST /v1/invoices`.",
           params: {
             rows: [
-              { name: "(corpo)", type: "objeto", required: true, description: "Mesmo corpo de `POST /v1/invoices` (empresa, `service`, `amount`, `competenceDate`, `customer` opcional, `discount`). Exige a permissão `nfse.invoices.issue`. Não exige certificado nem empresa pronta." },
+              { name: "(corpo)", type: "objeto", required: true, description: "Mesmo corpo de `POST /v1/invoices` (empresa, `service`, `amount`, `competenceDate`, `customer` opcional, `discount`, `deduction`). Exige a permissão `nfse.invoices.issue`. Não exige certificado nem empresa pronta." },
             ],
           },
           examples: {
@@ -958,13 +1073,37 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
     "options": { "type": "SCHEDULE" }
   }'` },
         { kind: "callout", tone: "warn", body: "Os dados fiscais são calculados na hora de emitir, com a configuração vigente na `competenceDate`. Em `live`, a empresa precisa estar pronta e ter certificado ativo já no momento do agendamento. Antes de agendar, `POST /v1/invoices/calculate` mostra o cálculo para aquela data. O webhook `nfse.invoice.authorized` (ou `rejected`) chega quando a emissão ocorre, não no agendamento." },
+        { kind: "heading", level: 2, body: "Dedução da base do ISS" },
+        { kind: "text", body: "O emitente pode declarar em `deduction` um valor que a legislação do município permite abater da base de cálculo do ISS. O valor vai na DPS em `vDedRed/vDR` e reduz a base do ISS; a nota continua sendo emitida pelo valor total (`amount`)." },
+        { kind: "table", head: ["Campo / tributo", "Como é tratado"], rows: [
+          ["`amount`", "Valor total da nota."],
+          ["`deduction`", "Valor a abater da base do ISS. Maior que 0 e menor que `amount` menos `discount`; `0` equivale a omitir."],
+          ["ISS", "Base = `amount` − `discount` − `deduction`."],
+          ["Retenções federais", "Base inalterada: `amount` − `discount`."],
+          ["IBS/CBS", "Calculado sobre o valor sem a dedução."],
+          ["Líquido a receber", "Não muda com a dedução."],
+          ["Erros de validação", "`422` com `out_of_range` (negativa, ou não menor que `amount` menos `discount`) ou `invalid_decimal_places` em `details[].code`, no `field: \"deduction\"`."],
+          ["Resposta", "A nota devolve `deduction` quando uma dedução foi declarada."],
+        ] },
+        { kind: "code", label: "Nota com dedução", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: pedido_123" \\
+  -d '{
+    "companyTaxId": "11222333000181",
+    "service": { "description": "Serviço de manutenção" },
+    "amount": 100,
+    "deduction": 40,
+    "competenceDate": "2026-10-20"
+  }'` },
+        { kind: "callout", tone: "warn", body: "O emitente declara o valor e responde por ele: a Corvo emite o que foi informado, não confere se a dedução é permitida para o serviço ou para o município e não substitui o seu contador. A aceitação da dedução pelo município e pelo sistema nacional ainda não foi homologada na Produção Restrita; se a nota for rejeitada, o motivo fica em `lastErrorCode` e `lastErrorMessage`." },
         { kind: "heading", level: 2, body: "Schema Invoice" },
         { kind: "text", body: "Cada nota tem estes campos:" },
         {
           kind: "table",
           head: ["Campos", "Tipo / observação"],
           rows: [
-            ["`id`, `companyId`, `tenantId`", "Strings de identificação."],
+            ["`id`, `companyId`", "Strings de identificação."],
             ["`environment`", "`test` ou `live`."],
             ["`externalId`, `idempotencyKey`", "String ou null."],
             ["`status`", "Enum descrito abaixo."],
@@ -972,6 +1111,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             ["`serviceSnapshot`", "`description`, `code`, `municipalityCode`."],
             ["`taxSnapshot`", "Objeto de informações fiscais."],
             ["`amount`, `currency`, `competenceDate`", "Number em reais, moeda e data-hora ISO 8601 (a data de competência à meia-noite UTC, ex.: `2026-10-01T00:00:00.000Z`)."],
+            ["`discount`, `deduction`", "Numbers opcionais em reais: desconto incondicional e dedução da base do ISS declarada pelo emitente (veja Dedução da base do ISS)."],
             ["`dpsId`, `dpsSeries`, `dpsNumber`", "String/string/number ou null."],
             ["`accessKey`, `nfseNumber`", "String/number ou null."],
             ["`fiscalProvider`, `fiscalSchemaVersion`", "Strings."],
@@ -984,6 +1124,9 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             ["`emailStatus`", "Estado derivado: `queued`, `sent`, `failed` ou null."],
             ["`stage`", "Estado derivado: `pending`, `authorized`, `documents_ready`, `completed`, `failed`."],
             ["`scheduledFor`", "Data ISO da liberação de uma nota agendada, ou null."],
+            ["`cancellationReason`, `cancellationDescription`", "Motivo (`issue_error`, `service_not_provided` ou `other`) e justificativa do pedido de cancelamento, ou null."],
+            ["`cancelledAt`", "Data ISO em que a nota chegou a `cancelled`, ou null."],
+            ["`cancellationRequestedAt`", "Data ISO do pedido de cancelamento feito enquanto a nota estava `processing`, ou null. A nota é cancelada na Sefin assim que for autorizada."],
             ["`createdAt`, `updatedAt`", "Datas ISO."],
             ["`documentKeyVersion`", "Number opcional, quando presente no snapshot."],
           ],
@@ -994,7 +1137,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
         },
         {
           kind: "text",
-          body: "Status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`. Não interprete autorização como disponibilidade imediata de todos os documentos.",
+          body: "Status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling`, `cancelled`. Não interprete autorização como disponibilidade imediata de todos os documentos.",
         },
         {
           kind: "endpoint",
@@ -1007,7 +1150,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             title: "Query",
             rows: [
               { name: "companyId", type: "string UUID", required: false, description: "UUID da empresa." },
-              { name: "status", type: "string", required: false, description: "Um dos status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`." },
+              { name: "status", type: "string", required: false, description: "Um dos status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling`, `cancelled`." },
               { name: "from, to", type: "string ISO", required: false, description: "Datas ISO; filtro inclusivo pela competência, não por `createdAt`." },
               { name: "externalId", type: "string", required: false, description: "Correspondência exata." },
               { name: "limit", type: "integer", required: false, description: "Inteiro entre 1 e 1000; padrão `50`." },
@@ -1238,6 +1381,45 @@ console.log(body.data); // { data: { emailId, status } }`,
             { kind: "callout", tone: "warn", body: "A nota precisa estar autorizada e com documentos prontos. Erros: `404` nota ausente; `409` documentos não prontos; `422` cliente sem email ou chave de idempotência inválida." },
           ],
         },
+        {
+          kind: "endpoint",
+          method: "POST",
+          path: "/v1/invoices/:id/cancel",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "200 OK / 202 Accepted",
+          summary: "Cancela uma nota. Uma nota `queued` (agendada ou ainda não processada) é cancelada na hora; uma NFS-e `authorized` passa a `cancelling` enquanto o evento 101101 é enviado à Sefin. Uma nota `processing` (em emissão) registra o pedido: `202`, ainda `processing`, com `cancellationRequestedAt` preenchido.",
+          examples: {
+            curl: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/cancel" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H 'Content-Type: application/json' \\
+  -d '{"reason":"issue_error","description":"Valor do serviço informado incorretamente"}'`,
+            node: `const res = await fetch(\`\${BASE_URL}/invoices/\${process.env.INVOICE_ID}/cancel\`, {
+  method: "POST",
+  headers: { "X-API-Key": process.env.CORVO_API_KEY, "Content-Type": "application/json" },
+  body: JSON.stringify({ reason: "issue_error", description: "Valor do serviço informado incorretamente" }),
+});
+const body = await res.json();
+console.log(res.status, body.data.status); // 202 "cancelling"`,
+          },
+          response: {
+            label: "202 Accepted",
+            json: `{
+  "data": {
+    "id": "6f1c0e2a-4b7d-4c1e-9a55-2b8f7c3d9e10",
+    "status": "cancelling",
+    "stage": "completed",
+    "cancellationReason": "issue_error",
+    "cancellationDescription": "Valor do serviço informado incorretamente",
+    "cancelledAt": null,
+    "cancellationRequestedAt": null
+  }
+}`,
+          },
+          notes: [
+            { kind: "callout", tone: "accent", body: "`reason`: `issue_error`, `service_not_provided` ou `other`. `description` é obrigatória (15–255 caracteres) para NFS-e autorizada e opcional para nota `queued`. Uma nota `processing` também exige `description`; assim que for autorizada, é cancelada automaticamente na Sefin sem devolver o crédito, e se a emissão terminar `rejected` ou `failed` o pedido é descartado e a reserva estornada como de costume. Repetir o pedido para uma nota `processing` (vale o primeiro pedido), `cancelling` ou `cancelled` devolve o estado atual." },
+            { kind: "callout", tone: "warn", body: "`202` não confirma o cancelamento: aguarde `nfse.invoice.cancelled` ou `nfse.invoice.cancellation_rejected` (a nota volta a `authorized` com `lastErrorCode`). Cancelar uma NFS-e emitida não devolve o crédito; cancelar uma nota `queued` libera a reserva em live. Erros: `404` nota inexistente; `409` `ERROR_INVOICE_NOT_CANCELLABLE` (ex.: `retry_pending`, `reconciliation_required`, `manual_review`); `422` `ERROR_INVALID_CANCELLATION_REASON`. Se outro pedido já cancelou a nota, devolve o estado atual." },
+          ],
+        },
       ],
     },
     webhooks: {
@@ -1284,7 +1466,7 @@ console.log(body.data, body.pagination); // { data: [{ id, url, events, active, 
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "A listagem não devolve `secret` nem `tenantId`." },
+            { kind: "callout", tone: "accent", body: "A listagem não devolve `secret`." },
           ],
         },
         {
@@ -1368,6 +1550,8 @@ console.log(body.data.secret); // guarde o secret agora`,
             "`nfse.invoice.email_sent`",
             "`nfse.invoice.email_failed`",
             "`nfse.invoice.fiscal_discrepancy`",
+            "`nfse.invoice.cancelled`",
+            "`nfse.invoice.cancellation_rejected`",
           ],
         },
         {
@@ -1481,7 +1665,7 @@ console.log(body.data, body.pagination); // { data: WebhookDelivery[], paginatio
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Campos: `id`, `tenantId`, `webhookConfigId`, `eventType`, `environment`, `url`, `payload?`, `statusCode?`, `responseBody?`, `errorMessage?`, `status`, `durationMs?`, `retryCount`, `nextRetryAt?`, `lastError?`, `createdAt`. Status de entrega: `pending`, `sent`, `delayed`, `failed`, `manual_retry`. Sem o filtro `?environment`, a listagem pode retornar ambos os ambientes da conta." },
+            { kind: "callout", tone: "accent", body: "Campos: `id`, `webhookConfigId`, `eventType`, `environment`, `url`, `payload?`, `statusCode?`, `responseBody?`, `errorMessage?`, `status`, `durationMs?`, `retryCount`, `nextRetryAt?`, `lastError?`, `createdAt`. Status de entrega: `pending`, `sent`, `delayed`, `failed`, `manual_retry`. Sem o filtro `?environment`, a listagem pode retornar ambos os ambientes da conta." },
           ],
         },
         {
@@ -1572,13 +1756,12 @@ console.log(body.data.retried); // { data: { retried: true } }`,
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
 const body = await res.json();
-console.log(body.data.balance); // { data: { tenantId, balance, overageUnits, ... } }`,
+console.log(body.data.balance); // { data: { balance, overageUnits, ... } }`,
           },
           response: {
             label: "200 OK",
             json: `{
   "data": {
-    "tenantId": "b6c7d8e9-f0a1-4b2c-9d3e-4f5a6b7c8d9e",
     "balance": 100,
     "overageUnits": 0,
     "overageAmountCents": 0,
@@ -1610,11 +1793,11 @@ console.log(body.data, body.pagination); // { data: Plan[], pagination }`,
       "id": "3ec51af3-c715-4755-95da-c9b0951973dd",
       "slug": "developer",
       "name": "Developer",
-      "description": "Ideal for developers and small teams",
+      "description": "Para começar a emitir NFS-e em qualquer número de empresas",
       "monthlyCreditAllowance": 200,
       "dailyLimit": null,
-      "maxActiveCompanies": 10,
-      "creditUnitPriceCents": 15,
+      "maxActiveCompanies": 999999,
+      "creditUnitPriceCents": 12,
       "throughputRps": 50,
       "includesWebhooks": true,
       "includesXmlDownload": true,
@@ -1755,7 +1938,7 @@ console.log(body.data.usage); // { data: { plan, subscription, usage } }`,
       "name": "Developer",
       "monthly_allowance": 200,
       "daily_limit": null,
-      "max_active_companies": 10,
+      "max_active_companies": 999999,
       "monthly_price_cents": 2990
     },
     "usage": {
@@ -1769,7 +1952,7 @@ console.log(body.data.usage); // { data: { plan, subscription, usage } }`,
       "daily_usage": 3,
       "daily_limit": null,
       "active_companies": 1,
-      "max_active_companies": 10,
+      "max_active_companies": 999999,
       "period_start": "2026-10-01T00:00:00.000Z",
       "period_end": "2026-10-31T23:59:59.000Z"
     },
@@ -1938,7 +2121,7 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
       "name": "Developer",
       "monthlyAllowance": 200,
       "basePriceCents": 2990,
-      "perCreditOverageCents": 15,
+      "perCreditOverageCents": 18,
       "monthlyTotalCents": 2990,
       "currency": "BRL"
     }
@@ -1978,10 +2161,10 @@ console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
   "data": {
     "slug": "growth",
     "name": "Growth",
-    "monthlyAllowance": 750,
-    "basePriceCents": 8990,
-    "perCreditOverageCents": 12,
-    "monthlyTotalCents": 8990,
+    "monthlyAllowance": 850,
+    "basePriceCents": 9990,
+    "perCreditOverageCents": 14,
+    "monthlyTotalCents": 9990,
     "currency": "BRL"
   }
 }`,
@@ -2004,8 +2187,8 @@ console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
             ],
           },
           examples: {
-            curl: `curl "$BASE_URL/plans/quote?volume=20000"`,
-            node: `const res = await fetch(\`\${BASE_URL}/plans/quote?volume=20000\`);
+            curl: `curl "$BASE_URL/plans/quote?volume=10000"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/quote?volume=10000\`);
 const body = await res.json();
 console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { data: Quote | null }`,
           },
@@ -2013,14 +2196,14 @@ console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { d
             label: "200 OK",
             json: `{
   "data": {
-    "volume": 20000,
+    "volume": 10000,
     "recommended_plan": "volume",
     "plan_name": "Volume",
     "monthly_allowance": 10000,
-    "overage_credits": 10000,
-    "overage_cost_cents": 90000,
-    "base_price_cents": 89990,
-    "total_estimated_cents": 179990,
+    "overage_credits": 0,
+    "overage_cost_cents": 0,
+    "base_price_cents": 69990,
+    "total_estimated_cents": 69990,
     "currency": "BRL",
     "billing_cycle": "monthly"
   }
@@ -2053,7 +2236,7 @@ console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { d
         {
           kind: "callout",
           tone: "warn",
-          body: "Status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`. Não interprete autorização como disponibilidade imediata de todos os documentos — aguarde `documentsStatus: \"ready\"` antes de gerar URLs e solicitar emails.",
+          body: "Status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling`, `cancelled`. Não interprete autorização como disponibilidade imediata de todos os documentos — aguarde `documentsStatus: \"ready\"` antes de gerar URLs e solicitar emails.",
         },
         { kind: "heading", level: 2, body: "Idempotency-Key" },
         {
@@ -2215,6 +2398,8 @@ const invoiceId = await emitirComRetry(pedido, \`pedido_\${pedido.externalId}_em
             ["`nfse.invoice.email_sent`", "`sentAt`."],
             ["`nfse.invoice.email_failed`", "Identificação e estado da nota."],
             ["`nfse.invoice.fiscal_discrepancy`", "`invoiceId`, `status` e `differences[]` (`field`, `local`, `authorized`, `delta`, `kind`): diferença entre o cálculo da Corvo e a NFS-e autorizada, acima de R$ 0,01 por tributo. O XML autorizado não é alterado."],
+            ["`nfse.invoice.cancelled`", "A nota foi cancelada; inclui `reason`."],
+            ["`nfse.invoice.cancellation_rejected`", "A Sefin recusou o cancelamento; a nota volta a `authorized`; inclui `errorCode` e `errorMessage`."],
             ["`webhook.test`", "`{ \"message\": \"This is a test webhook event\" }`."],
           ],
         },
@@ -2289,9 +2474,145 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         },
       ],
     },
+    "payment-integrations": {
+      title: "Integrações de pagamento",
+      description: "Conecte Woovi, AbacatePay ou Stripe e emita a NFS-e automaticamente a cada pagamento confirmado.",
+      blocks: [
+        {
+          kind: "text",
+          body: "Conecte a conta da sua plataforma de pagamento à Corvo. Quando um pagamento é confirmado, a Corvo emite a NFS-e pelo mesmo caminho da API: valida a empresa e o certificado, consome um crédito do plano e envia a nota à prefeitura.",
+        },
+        { kind: "heading", level: 2, body: "Como funciona" },
+        {
+          kind: "list",
+          items: [
+            "Você cria uma conexão (`POST /v1/integrations/connections`) e recebe o `webhookUrl` dela.",
+            "Cadastre esse endereço no painel da plataforma de pagamento. A plataforma passa a avisar a Corvo a cada pagamento.",
+            "A Corvo confere a autenticação do aviso, guarda o evento e responde na hora. O processamento acontece em segundo plano.",
+            "Se o pagamento está confirmado e existe uma regra de serviço, a nota é emitida. A competência é a data da confirmação (fuso de São Paulo).",
+            "O mesmo pagamento nunca gera duas notas, mesmo que a plataforma reenvie o aviso.",
+          ],
+        },
+        { kind: "heading", level: 2, body: "Rotas" },
+        {
+          kind: "table",
+          head: ["Método", "Rota", "Descrição"],
+          rows: [
+            ["GET", "`/v1/integrations/providers`", "Plataformas disponíveis e os campos de credencial de cada uma"],
+            ["POST", "`/v1/integrations/connections`", "Criar uma conexão"],
+            ["GET", "`/v1/integrations/connections`", "Listar conexões"],
+            ["GET", "`/v1/integrations/connections/:id`", "Consultar uma conexão"],
+            ["POST", "`/v1/integrations/connections/:id/validate`", "Conferir as credenciais e identificar a conta"],
+            ["POST", "`/v1/integrations/connections/:id/activate`", "Começar a emitir automaticamente"],
+            ["POST", "`/v1/integrations/connections/:id/pause`", "Parar de emitir; os eventos continuam sendo guardados"],
+            ["POST", "`/v1/integrations/connections/:id/disconnect`", "Desconectar de vez"],
+            ["GET", "`/v1/integrations/connections/:id/rules`", "Consultar as regras de serviço"],
+            ["PUT", "`/v1/integrations/connections/:id/rules`", "Substituir as regras de serviço"],
+            ["GET", "`/v1/integrations/connections/:id/events`", "Eventos recebidos"],
+            ["GET", "`/v1/integrations/connections/:id/operations`", "Vendas e o estado da nota de cada uma"],
+            ["PATCH", "`/v1/integrations/operations/:id/customer`", "Completar o tomador de uma venda pendente"],
+            ["POST", "`/v1/integrations/operations/:id/retry`", "Tentar emitir de novo"],
+            ["POST", "`/v1/integrations/inbound/:publicId`", "Endereço que a plataforma de pagamento chama (público, autenticado pelo conector)"],
+          ],
+        },
+        {
+          kind: "callout",
+          tone: "accent",
+          body: "As rotas administrativas exigem `integrations.view` (consultar) ou `integrations.manage` (criar, ativar, alterar regras). Chaves de API `full_access` têm as duas.",
+        },
+        { kind: "heading", level: 2, body: "Conectar uma conta" },
+        {
+          kind: "code",
+          label: "1. Criar a conexão",
+          language: "bash",
+          code: `curl -X POST "$BASE_URL/v1/integrations/connections" \
+  -H "X-API-Key: $CORVO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "woovi",
+    "companyId": "<id da empresa>",
+    "environment": "test",
+    "credentials": {},
+    "activeFrom": "2026-11-01T00:00:00Z"
+  }'`,
+        },
+        {
+          kind: "code",
+          label: "2. Definir a regra de serviço e ativar",
+          language: "bash",
+          code: `curl -X PUT "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/rules" \
+  -H "X-API-Key: $CORVO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "rules": [ { "service": { "code": "010101", "description": "Consultoria" }, "sendEmail": true } ] }'
+
+curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/validate" -H "X-API-Key: $CORVO_API_KEY"
+curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H "X-API-Key: $CORVO_API_KEY"`,
+        },
+        {
+          kind: "text",
+          body: "Uma regra sem `externalProductId` vale para qualquer produto. Para dar um serviço diferente a um produto, envie outra regra com o `externalProductId` dele. Pagamentos anteriores a `activeFrom` são ignorados. Com `allowAnonymousCustomer: true`, a nota sai sem tomador quando o pagamento não traz CPF/CNPJ.",
+        },
+        { kind: "heading", level: 2, body: "Por plataforma" },
+        { kind: "heading", level: 3, body: "Woovi" },
+        {
+          kind: "list",
+          items: [
+            "Não há credencial para informar: envie `\"credentials\": {}`. A Corvo gera o `webhookToken` e o devolve em `secrets.webhookToken` só na resposta da criação. O ambiente `test` usa o sandbox da Woovi e `live` usa a conta de produção.",
+            "Na Woovi, crie um webhook com o `webhookUrl` da conexão e o evento de cobrança paga (`OPENPIX:CHARGE_COMPLETED`). Em Cabeçalhos HTTP, adicione o cabeçalho `Authorization` com o `webhookToken` no campo Valor.",
+            "O tomador da nota é o cliente da cobrança, nunca quem pagou o Pix.",
+            "Cada cobrança vira uma nota, identificada pelo `correlationID`. A descrição do serviço na nota é o `comment` da cobrança; sem ele, vale o padrão da empresa.",
+            "Reembolso: marque também `PIX_TRANSACTION_REFUND_SENT_CONFIRMED` no webhook. A Corvo liga o reembolso à venda pelo `endToEndId` do Pix. Reembolso parcial é ignorado.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "AbacatePay" },
+        {
+          kind: "list",
+          items: [
+            "Credencial: `apiKey`, uma chave de API v2 da AbacatePay (Integração > API > + Nova chave) com as permissões `CUSTOMER:READ` e `PRODUCT:READ`. A Corvo gera o `webhookSecret` e devolve o `webhookUrl` já com `?webhookSecret=...` só na resposta da criação. Guarde esse endereço.",
+            "Na AbacatePay, crie um webhook: cole o `webhookUrl` na URL e o `secrets.webhookSecret` (devolvido só na criação) no campo Secret, e marque `checkout.completed` e `transparent.completed`. A Corvo aceita a assinatura Standard Webhooks (`webhook-id`, `webhook-timestamp`, `webhook-signature`) e o formato antigo (`?webhookSecret=`).",
+            "O `devMode` do evento precisa bater com o ambiente da conexão: eventos de teste não emitem nota em uma conexão `live`, e o inverso também.",
+            "O webhook traz o CPF/CNPJ mascarado, então a Corvo consulta o cliente na AbacatePay com a sua chave e usa o documento completo. Se o cliente não tiver documento, a venda fica pendente (`customer_tax_id_missing`) ou sai sem tomador se a regra tiver `allowAnonymousCustomer`.",
+            "O `externalProductId` das regras é o `id` do item do checkout. A descrição do serviço na nota é o nome do produto (a Corvo o consulta pela chave); sem a permissão `PRODUCT:READ`, vale o padrão da empresa.",
+            "Reembolso: marque também `checkout.refunded` e `transparent.refunded` no webhook. Sem o cancelamento automático, o reembolso ou a contestação depois da nota abre a pendência `refund_after_invoice` e a nota não é cancelada.",
+          ],
+        },
+        { kind: "heading", level: 2, body: "Vendas que precisam de atenção" },
+        {
+          kind: "text",
+          body: "Quando uma venda não pode virar nota sozinha, ela fica visível em `GET /v1/integrations/connections/:id/operations` com `fiscalStatus` e `blockReason`.",
+        },
+        {
+          kind: "table",
+          head: ["blockReason", "O que fazer"],
+          rows: [
+            ["`customer_tax_id_missing`", "A plataforma não enviou CPF/CNPJ completo. Informe com `PATCH /v1/integrations/operations/:id/customer` e use `POST /v1/integrations/operations/:id/retry`."],
+            ["`no_rule` / `ambiguous_rule`", "Crie ou ajuste as regras e use `retry`."],
+            ["`invoice_rejected`", "A validação fiscal recusou o pedido. A mensagem explica o campo; corrija e use `retry`."],
+            ["`quota_exceeded`", "Sem créditos ou limite do plano. Depois de resolver, use `retry`."],
+            ["`connection_inactive`", "A conexão está pausada ou precisa de nova autorização. Reative e use `retry`."],
+            ["`company_not_ready`", "A empresa não está pronta ou o certificado está ausente, vencido ou inválido. Corrija o cadastro e use `retry`."],
+            ["`before_active_from`", "O pagamento é anterior à data de início da conexão. Nenhuma nota é emitida."],
+            ["`refunded` / `disputed`", "O pagamento foi reembolsado ou contestado antes da nota. Nenhuma nota é emitida."],
+            ["`refund_after_invoice`", "Reembolso ou contestação chegou depois da nota e o cancelamento automático está desligado. A nota continua autorizada. Para cancelar, use `POST /v1/invoices/:id/cancel`; para os próximos reembolsos, ligue `cancelOnRefund` na regra (contestação nunca cancela)."],
+            ["`cancel_requested`", "Nada a fazer: a Corvo pediu o cancelamento da nota (motivo \"Cancelado por reembolso\"). Acompanhe o resultado na página da nota."],
+            ["`cancel_failed`", "Não foi possível pedir o cancelamento (por exemplo, a nota está num estado que não permite). Veja a nota e, se puder cancelar, use `retry`."],
+          ],
+        },
+        {
+          kind: "callout",
+          tone: "warn",
+          body: "Por padrão, reembolso ou contestação não cancela a nota. Para cancelar sozinho no reembolso, envie `\"cancelOnRefund\": true` na regra: a Corvo pede o cancelamento com o motivo \"Cancelado por reembolso\" (o crédito da nota não volta). Contestação nunca cancela. Para cancelar manualmente, use `POST /v1/invoices/:id/cancel`.",
+        },
+        {
+          kind: "callout",
+          tone: "accent",
+          body: "O ambiente (`test` ou `live`) é definido na conexão. Se a plataforma informar que o evento é de outro ambiente, a Corvo descarta o evento e não emite nota.",
+        },
+      ],
+    },
     "mcp": {
       "title": "Agentes de IA (MCP)",
-      "description": "Conecte Claude Code, Cursor e outros agentes à Corvo por OAuth.",
+      "description": "Conecte Claude Code, Claude Desktop, Cursor, VS Code, Codex e Windsurf à Corvo por OAuth.",
       "blocks": [
         {
           "kind": "text",
@@ -2317,6 +2638,49 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           "label": "Cursor (.cursor/mcp.json)",
           "language": "json",
           "code": "{\n  \"mcpServers\": {\n    \"corvo\": {\n      \"url\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "code",
+          "label": "VS Code (.vscode/mcp.json)",
+          "language": "json",
+          "code": "{\n  \"servers\": {\n    \"corvo\": {\n      \"type\": \"http\",\n      \"url\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "code",
+          "label": "Codex (~/.codex/config.toml)",
+          "language": "text",
+          "code": "[mcp_servers.corvo]\nurl = \"https://api.corvo.tech/mcp\""
+        },
+        {
+          "kind": "code",
+          "label": "Windsurf (mcp_config.json)",
+          "language": "json",
+          "code": "{\n  \"mcpServers\": {\n    \"corvo\": {\n      \"serverUrl\": \"https://api.corvo.tech/mcp\"\n    }\n  }\n}"
+        },
+        {
+          "kind": "heading",
+          "level": 3,
+          "body": "Claude Desktop"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Abra Configurações → Conectores (Connectors).",
+            "Clique em Adicionar conector personalizado, informe um nome (Corvo) e cole a URL do servidor.",
+            "Clique em Conectar e aprove o acesso no navegador.",
+            "URL: `https://api.corvo.tech/mcp`"
+          ]
+        },
+        {
+          "kind": "callout",
+          "tone": "warn",
+          "body": "Ainda não verificado com o OAuth da Corvo: os formatos de VS Code, Codex, Windsurf e Claude Desktop seguem a documentação pública de cada cliente e o painel. Se algum não conectar, use o painel (Agentes de IA) e nos avise."
+        },
+        {
+          "kind": "code",
+          "label": "Prompt de teste",
+          "language": "text",
+          "code": "Liste minhas empresas na Corvo e emita uma NFS-e de teste de R$ 100."
         },
         {
           "kind": "list",
@@ -2378,7 +2742,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             [
               "`nfse_issue`",
               "`nfse:write`",
-              "`company_tax_id` (CNPJ) ou `company_id`, `amount` (ou `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` obrigatório quando há tomador), `description?`, `discount?`, `competence_date?` (padrão: hoje), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
+              "`company_tax_id` (CNPJ) ou `company_id`, `amount` (ou `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` obrigatório quando há tomador), `description?`, `discount?`, `deduction?` (dedução da base do ISS declarada pelo emitente), `competence_date?` (padrão: hoje), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
               "`{ invoice_id, access_key, status }`"
             ],
             [
@@ -2386,6 +2750,42 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`nfse:read`",
               "`tax_id?` (CNPJ), `limit?`, `cursor?`",
               "`{ companies [{ id, legal_name, tax_id, status, tax_regime, setup_gaps, ready_to_issue }], next_cursor }`"
+            ],
+            [
+              "`nfse_issue_batch`",
+              "`nfse:write`",
+              "`invoices` (1 a 50 itens, cada um com os mesmos campos de `nfse_issue`, incluindo `company_tax_id` ou `company_id` e `idempotency_key`)",
+              "`{ total, accepted, rejected, results [{ index, status, replayed?, invoice_id?, access_key?, invoice_status?, error? }] }`; itens inválidos são rejeitados no lugar e os válidos são salvos juntos"
+            ],
+            [
+              "`company_get`",
+              "`nfse:read`",
+              "`tax_id` (CNPJ)",
+              "`{ company }` ou `{ company: null }`"
+            ],
+            [
+              "`company_create`",
+              "`nfse:write`",
+              "`legal_name`, `tax_id`, `tax_regime`, `municipality_code`, `simples_rate` (obrigatório no Simples Nacional), `simples_iss_rate?` e dados fiscais opcionais",
+              "`{ id, legal_name, tax_id, status }`; certificado continua somente pela API"
+            ],
+            [
+              "`nfse_calculate`",
+              "`nfse:read`",
+              "`company_tax_id` ou `company_id`, `amount`, mais `discount`, `deduction` e dados fiscais opcionais",
+              "Resultado da apuração sem emitir, reservar crédito ou criar DPS"
+            ],
+            [
+              "`billing_usage`",
+              "`nfse:read`",
+              "Sem parâmetros",
+              "`QuotaStatus` com `canEmit`, franquia e uso"
+            ],
+            [
+              "`nfse_cancel`",
+              "`nfse:write`",
+              "`invoice_id`, `reason` (`issue_error`, `service_not_provided` ou `other`), `description?` (15–255 caracteres, obrigatória para NFS-e autorizada ou em emissão)",
+              "`{ invoice_id, status, cancelled_at }` (`cancelled`, `cancelling` ou `processing` com o pedido registrado)"
             ],
             [
               "`nfse_query`",
@@ -2404,12 +2804,18 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`nfse:read`",
               "`access_key` (nota autorizada)",
               "`{ access_key, pdf_base64 }`"
+            ],
+            [
+              "`nfse_get_download_url`",
+              "`nfse:read`",
+              "`access_key`, `format` (`pdf` ou `xml`; nota autorizada)",
+              "`{ download_url, expires_at, file_name, mime_type }` (URL assinada, válida por 1 hora)"
             ]
           ]
         },
         {
           "kind": "text",
-          "body": "A chamada mais simples é `company_tax_id` mais `amount`: o tomador é opcional (omita para uma nota sem tomador; se enviar, `tax_id` é obrigatório), a data de competência é hoje por padrão, o código de serviço vem da empresa ou, sem ele, `100901` (LC 116 item 10.09), e a descrição vem do nome do código de serviço. O agente que não conhece a empresa chama `company_list` antes (ela também informa `ready_to_issue`). As mesmas regras fiscais da API REST valem para `nfse_issue`. Falhas das ferramentas voltam como resultado com `isError: true` e a mensagem em texto, para o agente ler e corrigir."
+          "body": "A chamada mais simples é `company_tax_id` mais `amount`: o tomador é opcional (omita para uma nota sem tomador; se enviar, `tax_id` é obrigatório), a data de competência é hoje por padrão, o código de serviço vem da empresa ou, sem ele, `100901` (LC 116 item 10.09), e a descrição vem do nome do código de serviço. Use `company_get` para consultar um CNPJ específico e `billing_usage` antes de emitir. Certificados A1 não são expostos no MCP e devem ser enviados somente pela API. Falhas das ferramentas voltam como resultado com `isError: true` e a mensagem em texto, para o agente ler e corrigir."
         },
         {
           "kind": "heading",
@@ -2450,12 +2856,12 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           "rows": [
             [
               "`llms.txt`",
-              "`https://corvo.tech/llms.txt`",
+              "`https://www.corvo.tech/llms.txt`",
               "Índice curto com os fatos principais e um link para cada página da documentação. O agente abre só o que precisa."
             ],
             [
               "`llms-full.txt`",
-              "`https://corvo.tech/llms-full.txt`",
+              "`https://www.corvo.tech/llms-full.txt`",
               "Toda a documentação em um único arquivo Markdown (em inglês): endpoints, campos, exemplos e erros. O melhor quando o agente deve implementar tudo de uma vez."
             ]
           ]
@@ -2473,7 +2879,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           "kind": "code",
           "label": "Prompt",
           "language": "text",
-          "code": "Leia https://corvo.tech/llms-full.txt (a documentação da API de NFS-e da Corvo) e integre a emissão de notas neste projeto.\n\nMinha stack e onde as notas são criadas: [descreva a linguagem/framework e o ponto do código em que um pedido ou venda vira nota].\n\nSiga estas regras:\n- Use o ambiente de teste. Leia a chave da variável de ambiente CORVO_API_KEY (começa com corvo_test_). Nunca escreva uma chave no código, nos testes ou em commits.\n- Cadastre a empresa uma única vez com POST /v1/companies (taxId, taxRegime, municipalityCode) e guarde o id.\n- Antes de emitir, chame POST /v1/invoices/calculate e mostre os tributos quando fizer sentido.\n- Emita com POST /v1/invoices e envie um Idempotency-Key montado com o id do meu pedido, para que uma nova tentativa nunca crie uma segunda nota.\n- A emissão é assíncrona: salve o id da nota e atualize o status pelos webhooks nfse.invoice.authorized e nfse.invoice.rejected (verifique a assinatura) ou consultando GET /v1/invoices/:id.\n- Trate os erros documentados (validação, 409, 429 com Retry-After) e nunca registre em log documentos de clientes.\n- Escreva testes com HTTP simulado. Não chame o ambiente live.\n\nAo terminar, liste os arquivos que mudou e o que ainda preciso configurar (URL do webhook, variáveis de ambiente)."
+          "code": "Leia https://www.corvo.tech/llms-full.txt (a documentação da API de NFS-e da Corvo) e integre a emissão de notas neste projeto.\n\nMinha stack e onde as notas são criadas: [descreva a linguagem/framework e o ponto do código em que um pedido ou venda vira nota].\n\nSiga estas regras:\n- Use o ambiente de teste. Leia a chave da variável de ambiente CORVO_API_KEY (começa com corvo_test_). Nunca escreva uma chave no código, nos testes ou em commits.\n- Cadastre a empresa uma única vez com POST /v1/companies (taxId, taxRegime, municipalityCode) e guarde o id.\n- Antes de emitir, chame POST /v1/invoices/calculate e mostre os tributos quando fizer sentido.\n- Emita com POST /v1/invoices e envie um Idempotency-Key montado com o id do meu pedido, para que uma nova tentativa nunca crie uma segunda nota.\n- A emissão é assíncrona: salve o id da nota e atualize o status pelos webhooks nfse.invoice.authorized e nfse.invoice.rejected (verifique a assinatura) ou consultando GET /v1/invoices/:id.\n- Trate os erros documentados (validação, 409, 429 com Retry-After) e nunca registre em log documentos de clientes.\n- Escreva testes com HTTP simulado. Não chame o ambiente live.\n\nAo terminar, liste os arquivos que mudou e o que ainda preciso configurar (URL do webhook, variáveis de ambiente)."
         },
         {
           "kind": "heading",
@@ -2484,7 +2890,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           "kind": "list",
           "items": [
             "Claude Code, Codex e outros agentes de terminal: cole o prompt. Eles buscam o endereço sozinhos.",
-            "Cursor: adicione `https://corvo.tech/llms-full.txt` como fonte de documentação (Settings → Indexing & Docs) e cite no chat, ou cole o prompt.",
+            "Cursor: adicione `https://www.corvo.tech/llms-full.txt` como fonte de documentação (Settings → Indexing & Docs) e cite no chat, ou cole o prompt.",
             "VS Code, Windsurf e apps de chat: cole o prompt; se a ferramenta não abrir endereços, baixe o `llms-full.txt` e anexe o arquivo à conversa."
           ]
         },
@@ -2505,4 +2911,11 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
       ]
     },
   },
+};
+
+// The retired credit-purchase reference is intentionally not published.
+const { credits: _retiredCreditsPt, ...ptPages } = ptWithRetiredCredits.pages;
+export const pt: DocsTree = {
+  ...ptWithRetiredCredits,
+  pages: ptPages as DocsTree["pages"],
 };

@@ -19,6 +19,9 @@ export class ReceitaRejectionError extends Error {
     super(message);
     this.name = 'ReceitaRejectionError';
   }
+  get codigo(): string {
+    return this.code ?? '';
+  }
 }
 
 export function createInMemoryDpsCounter() {
@@ -54,6 +57,15 @@ export class NfseClient {
   async obterDanfsePdf(_params: any) {
     return Buffer.from('mock-pdf');
   }
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async cancelar(_params: any): Promise<any> {
+    return { status: 'ok', evento: {} };
+  }
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async replayPendingEvents(_store?: any): Promise<any[]> {
+    return [];
+  }
+  async close(): Promise<void> {}
 }
 
 const sdk = process
@@ -80,3 +92,4 @@ export const TipoAmbienteDps = sdk.TipoAmbienteDps;
 export const ValidationError = sdk.ValidationError;
 export const NotFoundError = sdk.NotFoundError;
 export const pendingEmissionId = sdk.pendingEmissionId;
+export const JustificativaCancelamento = sdk.JustificativaCancelamento;

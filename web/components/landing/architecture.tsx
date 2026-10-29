@@ -226,7 +226,7 @@ function CodeSnippet() {
             {t("emitting")} <span className="font-medium text-text">api.corvo.tech</span>
           </span>
           <span className="font-mono text-[11px] text-text-3">
-            POST /v1/invoices <span className="text-[#8fd6a0]">201</span>
+            POST /v1/invoices <span className="text-[#8fd6a0]">202</span>
           </span>
         </div>
       </div>

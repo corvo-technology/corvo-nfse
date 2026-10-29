@@ -138,6 +138,7 @@ const input = (overrides: DpsInputOverrides = {}): DpsBuildInput => ({
     municipalReg: null,
     municipalityCode: MUNICIPIO_SP,
     specialTaxRegime: null,
+    simplesIssRate: null,
     ...overrides.emitente,
   },
 });
@@ -225,7 +226,7 @@ describe('DpsBuilder', () => {
       await new DpsBuilder().build(
         input({
           result: { taxRegime: 'SIMPLES_NACIONAL', taxes: {} },
-          emitente: { specialTaxRegime: '2' },
+          emitente: { specialTaxRegime: null },
         }),
         RTC_V1_01,
       ),
@@ -236,8 +237,192 @@ describe('DpsBuilder', () => {
       RegimeApuracaoSimplesNacional.FederalEMunicipalPeloSN,
     );
     expect(dps.infDPS.prest.regTrib.regEspTrib).toBe(
-      RegimeEspecialTributacao.Estimativa,
+      RegimeEspecialTributacao.Nenhum,
     );
+  });
+
+  describe('Simples Nacional ISS withholding rate (pAliq)', () => {
+    it('carries pAliq with the Simples ISS rate when retention is required', async () => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({
+            result: {
+              taxRegime: 'SIMPLES_NACIONAL',
+              taxes: {},
+              applicability: applicability({ issWithheld: REQUIRED }),
+            },
+            emitente: { simplesIssRate: '2.01' },
+          }),
+          RTC_V1_01,
+        ),
+      );
+      expect(dps.infDPS.valores.trib.tribMun.pAliq).toBe(2.01);
+      expect(dps.infDPS.valores.trib.tribMun.tpRetISSQN).toBe(
+        TipoRetISSQN.RetidoPeloTomador,
+      );
+    });
+
+    it('refuses Simples Nacional ISS retention when the rate is missing at emission', async () => {
+      const error = errorFrom(
+        await new DpsBuilder().build(
+          input({
+            result: {
+              taxRegime: 'SIMPLES_NACIONAL',
+              taxes: {},
+              applicability: applicability({ issWithheld: REQUIRED }),
+            },
+            emitente: { simplesIssRate: null },
+          }),
+          RTC_V1_01,
+        ),
+      );
+      expect(error.details).toMatchObject({
+        reason: 'simples_iss_rate_missing',
+      });
+    });
+
+    it('omits pAliq for Simples Nacional without ISS retention even when the rate is set', async () => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({
+            result: { taxRegime: 'SIMPLES_NACIONAL', taxes: {} },
+            emitente: { simplesIssRate: '2.01' },
+          }),
+          RTC_V1_01,
+        ),
+      );
+      expect(dps.infDPS.valores.trib.tribMun.pAliq).toBeUndefined();
+    });
+
+    it('keeps the regular-regime aliqIss from the calculated ISS rate regardless of simplesIssRate', async () => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({ emitente: { simplesIssRate: '2.01' } }),
+          RTC_V1_01,
+        ),
+      );
+      expect(dps.infDPS.valores.trib.tribMun.pAliq).toBe(3);
+    });
+  });
+
+  describe('regEspTrib (E0174/E0175) and tribISSQN', () => {
+    it('defaults a null special tax regime to "0"', async () => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({ emitente: { specialTaxRegime: null } }),
+          RTC_V1_01,
+        ),
+      );
+      expect(dps.infDPS.prest.regTrib.regEspTrib).toBe(
+        RegimeEspecialTributacao.Nenhum,
+      );
+    });
+
+    it('accepts a regular regime with regEspTrib="6" and serializes it as "6"', async () => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({ emitente: { specialTaxRegime: '6' } }),
+          RTC_V1_01,
+        ),
+      );
+      expect(dps.infDPS.prest.regTrib.regEspTrib).toBe(
+        RegimeEspecialTributacao.SociedadeProfissionais,
+      );
+    });
+
+    it('normalizes numeric legacy values such as "03" to "3"', async () => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({ emitente: { specialTaxRegime: ' 03 ' } }),
+          RTC_V1_01,
+        ),
+      );
+      expect(dps.infDPS.prest.regTrib.regEspTrib).toBe(
+        RegimeEspecialTributacao.MicroempresaMunicipal,
+      );
+    });
+
+    it('rejects free text that predates this validation with FISCAL_VALIDATION_FAILED', async () => {
+      const error = errorFrom(
+        await new DpsBuilder().build(
+          input({ emitente: { specialTaxRegime: 'Sociedade Simples' } }),
+          RTC_V1_01,
+        ),
+      );
+      expect(error.code).toBe('FISCAL_VALIDATION_FAILED');
+      expect(error.details).toMatchObject({
+        reason: 'special_tax_regime_invalid',
+      });
+    });
+
+    it('rejects MEI with a non-zero regEspTrib citing E0174', async () => {
+      const error = errorFrom(
+        await new DpsBuilder().build(
+          input({
+            result: {
+              taxRegime: 'MEI',
+              taxes: {},
+              applicability: applicability({
+                strategy: 'mei',
+                customerRequired: false,
+                iss: na('ISS recolhido no DAS-MEI'),
+                cbs: na('MEI nao destaca IBS/CBS na fase de teste'),
+                ibs: na('MEI nao destaca IBS/CBS na fase de teste'),
+              }),
+            },
+            emitente: { specialTaxRegime: '3' },
+          }),
+          RTC_V1_01,
+        ),
+      );
+      expect(error.code).toBe('FISCAL_VALIDATION_FAILED');
+      expect(error.details).toMatchObject({
+        reason: 'special_tax_regime_incompatible_with_simples',
+        rule: 'E0174',
+      });
+    });
+
+    it('rejects Simples Nacional with a non-zero regEspTrib citing E0175', async () => {
+      const error = errorFrom(
+        await new DpsBuilder().build(
+          input({
+            result: { taxRegime: 'SIMPLES_NACIONAL', taxes: {} },
+            emitente: { specialTaxRegime: '6' },
+          }),
+          RTC_V1_01,
+        ),
+      );
+      expect(error.code).toBe('FISCAL_VALIDATION_FAILED');
+      expect(error.details).toMatchObject({
+        reason: 'special_tax_regime_incompatible_with_simples',
+        rule: 'E0175',
+      });
+    });
+
+    it('keeps tribISSQN as OperacaoTributavel for the supported (REQUIRED/NOT_APPLICABLE) ISS cases', async () => {
+      const required = dpsFrom(
+        await new DpsBuilder().build(input(), RTC_V1_01),
+      );
+      expect(required.infDPS.valores.trib.tribMun.tribISSQN).toBe(
+        TipoTribISSQN.OperacaoTributavel,
+      );
+
+      const notApplicable = dpsFrom(
+        await new DpsBuilder().build(
+          input({
+            result: {
+              applicability: applicability({
+                iss: na('ISS recolhido no DAS'),
+              }),
+            },
+          }),
+          RTC_V1_01,
+        ),
+      );
+      expect(notApplicable.infDPS.valores.trib.tribMun.tribISSQN).toBe(
+        TipoTribISSQN.OperacaoTributavel,
+      );
+    });
   });
 
   it('builds the declarative IBSCBS group with real catalog codes and passes XSD validation', async () => {
@@ -315,6 +500,47 @@ describe('DpsBuilder', () => {
     });
   });
 
+  it('adds vDedRed/vDR when the invoice carries a declared deduction', async () => {
+    const base = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    const deducted = dpsFrom(
+      await new DpsBuilder().build(
+        input({ invoice: { deductionAmount: '400.00' } }),
+        RTC_V1_01,
+      ),
+    );
+
+    expect(deducted.infDPS.valores.vDedRed).toEqual({ vDR: 400 });
+    expect(deducted.infDPS).toEqual({
+      ...base.infDPS,
+      valores: { ...base.infDPS.valores, vDedRed: { vDR: 400 } },
+    });
+  });
+
+  it('serializes the deduction in the XML and keeps it schema valid', async () => {
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({ invoice: { deductionAmount: '400.00' } }),
+        RTC_V1_01,
+      ),
+    );
+    const xml = buildDpsXml(dps);
+    expect(xml).toContain('<vDedRed><vDR>400</vDR></vDedRed>');
+    const validation = await validateDpsXml(xml, { throwOnInvalid: false });
+    expect(validation.valid).toBe(true);
+  });
+
+  it('omits vDedRed when the deduction is zero or absent', async () => {
+    const zero = dpsFrom(
+      await new DpsBuilder().build(
+        input({ invoice: { deductionAmount: '0.00' } }),
+        RTC_V1_01,
+      ),
+    );
+    const absent = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    expect(zero.infDPS.valores.vDedRed).toBeUndefined();
+    expect(absent.infDPS.valores.vDedRed).toBeUndefined();
+  });
+
   it('maps ISS withholding to RetidoPeloTomador only when required', async () => {
     const retained = dpsFrom(
       await new DpsBuilder().build(
@@ -337,6 +563,40 @@ describe('DpsBuilder', () => {
     expect(notRetained.infDPS.valores.trib.tribMun.tribISSQN).toBe(
       TipoTribISSQN.OperacaoTributavel,
     );
+  });
+
+  it('builds and validates the DPS against the NT 009 release 1 XSD with layout nt009-r1', async () => {
+    const invoice = { ...input().invoice, deductionAmount: '10.00' };
+    const dps = dpsFrom(
+      await new DpsBuilder().build(input({ invoice }), 'nt009-r1'),
+    );
+    const xml = buildDpsXml(dps, { layout: 'nt009-r1' });
+    expect(xml).toContain('<vAjusteBC><vAjusteBCISSQN>10</vAjusteBCISSQN>');
+    expect(xml).toMatch(/<tpEmit>1<\/tpEmit><finNFSe>0<\/finNFSe>/);
+  });
+
+  it('builds a Simples Nacional DPS without tomador and without IBS/CBS in both layouts', async () => {
+    const simples = input({
+      result: {
+        taxRegime: 'SIMPLES_NACIONAL',
+        applicability: applicability({
+          strategy: 'simples',
+          customerRequired: false,
+          cbs: na('Simples sem opção pelo regime regular'),
+          ibs: na('Simples sem opção pelo regime regular'),
+        }),
+      },
+      invoice: { customer: null },
+      emitente: { simplesTotTrib: { regApTribSN: 1, totalRate: '6.54' } },
+    });
+    for (const layout of ['rtc-v1.01', 'nt009-r1'] as const) {
+      const dps = dpsFrom(await new DpsBuilder().build(simples, layout));
+      const xml = buildDpsXml(dps, {
+        layout: layout === 'nt009-r1' ? 'nt009-r1' : 'v1.01',
+      });
+      expect(xml).not.toContain('<IBSCBS>');
+      if (layout === 'nt009-r1') expect(xml).toContain('<finNFSe>0</finNFSe>');
+    }
   });
 
   it('rejects unknown or non-production layouts with DPS_LAYOUT_UNSUPPORTED', async () => {

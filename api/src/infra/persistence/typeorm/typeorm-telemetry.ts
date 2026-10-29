@@ -160,18 +160,12 @@ export function observeTypeOrmTransaction<T>(
         committed: () => {
           result = 'committed';
           span.addEvent('typeorm.transaction.commit');
-          span.setAttribute(
-            'corvo.typeorm.transaction.result',
-            'committed',
-          );
+          span.setAttribute('corvo.typeorm.transaction.result', 'committed');
         },
         rolledBack: () => {
           result = 'rolled_back';
           span.addEvent('typeorm.transaction.rollback');
-          span.setAttribute(
-            'corvo.typeorm.transaction.result',
-            'rolled_back',
-          );
+          span.setAttribute('corvo.typeorm.transaction.result', 'rolled_back');
         },
         rollbackFailed: (error) => {
           span.addEvent('typeorm.transaction.rollback_failed', {

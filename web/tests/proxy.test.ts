@@ -67,6 +67,7 @@ it("forwards the pre-emission calculation and the company fiscal configuration r
   expect((await call(GET, "GET", "companies/id/fiscal-profile")).status).toBe(200);
   expect((await call(PUT, "PUT", "companies/id/fiscal-profile")).status).toBe(200);
   expect((await call(POST, "POST", "companies/id/fiscal-profile/profile/approve")).status).toBe(200);
+  expect((await call(GET, "GET", "companies/id/simples-rates")).status).toBe(404);
   expect((await call(GET, "GET", "companies/id/service-tax-profiles")).status).toBe(200);
   expect((await call(POST, "POST", "companies/id/service-tax-profiles")).status).toBe(200);
   expect((await call(PATCH, "PATCH", "companies/id/service-tax-profiles/service")).status).toBe(200);
@@ -89,5 +90,36 @@ it("forwards only the MCP consent and connection routes the dashboard needs", as
     const handler = { GET, POST, DELETE }[method];
     expect((await handler(request, context(route))).status).toBe(404);
   }
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+it("forwards the invoice cancellation with POST only", async () => {
+  fetchMock.mockResolvedValueOnce(new Response("{}", { status: 202 }));
+  const headers = { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "Content-Type": "application/json" };
+  const response = await POST(new NextRequest("http://localhost:4000/api/proxy/v1/invoices/id/cancel", { method: "POST", headers, body: '{"reason":"1"}' }), context("invoices/id/cancel"));
+  expect(response.status).toBe(202);
+  expect(String(fetchMock.mock.calls[0][0])).toBe("http://localhost:3000/v1/invoices/id/cancel");
+  fetchMock.mockClear();
+  expect((await GET(new NextRequest("http://localhost:4000/api/proxy/v1/invoices/id/cancel"), context("invoices/id/cancel"))).status).toBe(404);
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+it("forwards the payment integration management routes, but never the public inbound webhook", async () => {
+  fetchMock.mockImplementation(async () => new Response("{}", { status: 200 }));
+  const headers = { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "Content-Type": "application/json" };
+  const handlers = { GET, POST, PUT, PATCH };
+  const call = (method: keyof typeof handlers, route: string) =>
+    handlers[method](new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers, body: method === "GET" ? undefined : "{}" }), context(route));
+  const allowed: [keyof typeof handlers, string][] = [
+    ["GET", "integrations/providers"], ["GET", "integrations/connections"], ["POST", "integrations/connections"], ["GET", "integrations/connections/c1"],
+    ["POST", "integrations/connections/c1/validate"], ["POST", "integrations/connections/c1/activate"], ["POST", "integrations/connections/c1/pause"], ["POST", "integrations/connections/c1/disconnect"],
+    ["GET", "integrations/connections/c1/rules"], ["PUT", "integrations/connections/c1/rules"], ["GET", "integrations/connections/c1/events"], ["GET", "integrations/connections/c1/operations"],
+    ["PUT", "integrations/connections/c1/credentials"], ["PATCH", "integrations/operations/o1/customer"], ["POST", "integrations/operations/o1/retry"],
+  ];
+  for (const [method, route] of allowed) expect((await call(method, route)).status, `${method} ${route}`).toBe(200);
+  fetchMock.mockClear();
+  expect((await call("POST", "integrations/inbound/abc")).status).toBe(404);
+  expect((await call("GET", "integrations/connections/c1/pause")).status).toBe(404);
+  expect((await call("PUT", "integrations/connections")).status).toBe(404);
+  expect((await call("GET", "integrations/connections/c1/credentials")).status).toBe(404);
   expect(fetchMock).not.toHaveBeenCalled();
 });

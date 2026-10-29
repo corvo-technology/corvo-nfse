@@ -61,13 +61,13 @@ describe('Sentry configuration', () => {
       contexts: {
         request: { body: 'secret' },
         response: { body: 'secret' },
-        greenflow: { route: '/v1/payables/:id/pay' },
+        corvo: { route: '/v1/payables/:id/pay' },
       },
       exception: { values: [{ type: 'Error', value: 'failure' }] },
     } as unknown as ErrorEvent;
 
     expect(sanitizeSentryEvent(event)).toEqual({
-      contexts: { greenflow: { route: '/v1/payables/:id/pay' } },
+      contexts: { corvo: { route: '/v1/payables/:id/pay' } },
       exception: { values: [{ type: 'Error', value: 'failure' }] },
     });
   });
@@ -76,7 +76,7 @@ describe('Sentry configuration', () => {
     const event = {
       breadcrumbs: [
         {
-          category: 'greenflow.financial',
+          category: 'corvo.financial',
           message: 'must be removed',
           data: {
             operation: 'settle_accounts_payable',
@@ -88,7 +88,7 @@ describe('Sentry configuration', () => {
         { category: 'http', data: { authorization: 'secret' } },
       ],
       contexts: {
-        greenflow: {
+        corvo: {
           route: '/v1/tenant/:tenantId/financial/payables/:id/pay',
           errorCode: 'FINANCIAL_OPERATION_AUDIT_INCONSISTENT',
           tenantId: 'tenant-secret',
@@ -100,7 +100,7 @@ describe('Sentry configuration', () => {
     expect(sanitizeSentryEvent(event)).toEqual({
       breadcrumbs: [
         {
-          category: 'greenflow.financial',
+          category: 'corvo.financial',
           data: {
             operation: 'settle_accounts_payable',
             stage: 'persist_transaction',
@@ -108,7 +108,7 @@ describe('Sentry configuration', () => {
         },
       ],
       contexts: {
-        greenflow: {
+        corvo: {
           route: '/v1/tenant/:tenantId/financial/payables/:id/pay',
           errorCode: 'FINANCIAL_OPERATION_AUDIT_INCONSISTENT',
         },

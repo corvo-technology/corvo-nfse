@@ -81,7 +81,7 @@ describe('Stripe billing adapter', () => {
           id: 'price_excess',
           lookup_key: 'corvo_developer_overage',
           currency: 'brl',
-          unit_amount: 15,
+          unit_amount: 12,
           recurring: { interval: 'month', usage_type: 'metered' },
           metadata: { plan_slug: 'developer' },
         },

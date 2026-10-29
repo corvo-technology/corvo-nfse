@@ -1,5 +1,10 @@
 import { SpanStatusCode, trace } from '@opentelemetry/api';
+import { captureRuntimeException } from '@/infra/observability/sentry-reporter';
 import { observeScheduledTask } from './scheduled-task-telemetry';
+
+jest.mock('@/infra/observability/sentry-reporter', () => ({
+  captureRuntimeException: jest.fn(),
+}));
 
 describe('scheduled task telemetry', () => {
   const span = {
@@ -55,5 +60,30 @@ describe('scheduled task telemetry', () => {
       expect.objectContaining({ code: SpanStatusCode.ERROR }),
     );
     expect(span.end).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a failing cron job to Sentry once, with the job name, and still rethrows it', async () => {
+    const failure = new Error('relation "nfse_invoices" does not exist');
+
+    await expect(
+      observeScheduledTask('invoice.docs-recovery', async () => {
+        throw failure;
+      }),
+    ).rejects.toBe(failure);
+
+    // The cron runner swallows the error into a log line, so this is the only
+    // place that can send it to Sentry.
+    expect(captureRuntimeException).toHaveBeenCalledTimes(1);
+    expect(captureRuntimeException).toHaveBeenCalledWith(
+      failure,
+      'worker',
+      'cron:invoice.docs-recovery',
+    );
+  });
+
+  it('does not report to Sentry when the job succeeds', async () => {
+    await observeScheduledTask('invoice.docs-recovery', async () => undefined);
+
+    expect(captureRuntimeException).not.toHaveBeenCalled();
   });
 });

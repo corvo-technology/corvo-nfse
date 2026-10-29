@@ -70,7 +70,9 @@ describe('QuotaService using the production implementation', () => {
     });
   });
   it('blocks emission with no credits or an inactive plan', async () => {
-    const current = await credits.status();
+    const current = (await credits.status()) as {
+      period: Record<string, unknown>;
+    };
     credits.status.mockResolvedValue({
       ...current,
       period: { ...current.period, authorized: 30, reserved: 0 },

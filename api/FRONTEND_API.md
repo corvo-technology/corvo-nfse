@@ -222,14 +222,16 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | POST   | `/companies/{id}/service-tax-profiles/{serviceId}/approve` | S/K, `nfse.companies.manage` | Aprova o perfil de serviço (idempotente se já aprovado); 201                          |
 | DELETE | `/companies/{id}/service-tax-profiles/{serviceId}`     | S/K, `nfse.companies.manage`    | Remove só perfil expirado e não aprovado; aprovado ou vigente retorna 409            |
 | POST   | `/invoices/calculate`                                  | S/K, `nfse.invoices.issue`      | Cálculo pré-emissão sempre disponível; CreateInvoice; 200 ready/blocked; rate limit HTTP padrão |
+| POST   | `/invoices/batches`                                    | S/K, `nfse.invoices.issue`      | Emite 1 a 50 notas (várias empresas); `{ invoices: [CreateInvoice + idempotencyKey?] }`; resultado por item (`index`, `accepted`/`rejected`, `replayed?`); válidas salvas em uma transação; 10 req/min por tenant; 202 |
 | POST   | `/invoices`                                            | S/K, `nfse.invoices.issue`      | JSON CreateInvoice; header `idempotency-key?`; 202                                 |
 | GET    | `/invoices`                                            | S/K, `nfse.invoices.view`       | Query: `companyId?`, `status?`, `from?`, `to?`, `externalId?`, `limit?`, `cursor?` |
 | GET    | `/invoices/{id}`                                       | S/K, `nfse.invoices.view`       | Detalhes/status da nota                                                            |
 | GET    | `/invoices/{id}/events`                                | S/K, `nfse.invoices.view`       | Histórico de transições                                                            |
-| GET    | `/invoices/{id}/xml`                                   | S/K, `nfse.invoices.view`       | Arquivo XML; nota autorizada                                                       |
-| GET    | `/invoices/{id}/pdf`                                   | S/K, `nfse.invoices.view`       | Arquivo PDF; nota autorizada                                                       |
+| GET    | `/invoices/{id}/xml`                                   | S/K, `nfse.invoices.view`       | Arquivo XML; nota autorizada ou cancelada após autorização                                                    |
+| GET    | `/invoices/{id}/pdf`                                   | S/K, `nfse.invoices.view`       | Arquivo PDF; nota autorizada ou cancelada após autorização                                                    |
 | POST   | `/invoices/{id}/download-url`                          | S/K, `nfse.invoices.view`       | Body: `{format: "pdf"                                                              | "xml"}`; URL pré-assinada para download |
 | POST   | `/invoices/{id}/email`                                 | S/K, `nfse.invoices.issue`      | Header `Idempotency-Key`; reenvia e-mail da nota; 202                              |
+| POST   | `/invoices/{id}/cancel`                                | S/K, `nfse.invoices.issue`      | JSON: `reason`, `description?`; 200 (queued → cancelled) ou 202 (authorized → cancelling; processing → pedido registrado) |
 | GET    | `/webhooks`                                            | S/K, `webhooks.view`            | Lista sem segredo                                                                  |
 | POST   | `/webhooks`                                            | S/K, `webhooks.manage`          | JSON: `url`, `events`; retorna segredo na criação; 201                             |
 | DELETE | `/webhooks/{id}`                                       | S/K, `webhooks.manage`          | Exclui configuração                                                                |
@@ -245,10 +247,34 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | GET    | `/health/live`                                         | Público                         | Liveness                                                                           |
 | GET    | `/health/ready`                                        | Público                         | Readiness de banco/Redis                                                           |
 
+## Integrações de pagamento
+
+Conectam Woovi, AbacatePay ou Stripe à Corvo para emitir a NFS-e a cada
+pagamento confirmado. Detalhes e exemplos na página "Integrações de pagamento"
+da documentação. Caminhos relativos a `/v1`; `S/K` = sessão ou chave de API.
+
+| Método | Caminho                                      | Acesso / permissão                | Entrada / uso                                                         |
+| ------ | -------------------------------------------- | --------------------------------- | --------------------------------------------------------------------- |
+| GET    | `/integrations/providers`                    | S/K, `integrations.view`          | Plataformas e campos de credencial (sem valores)                      |
+| POST   | `/integrations/connections`                  | S/K, `integrations.manage`        | JSON: `provider`, `companyId`, `environment`, `credentials`, `activeFrom?` |
+| GET    | `/integrations/connections`                  | S/K, `integrations.view`          | Lista; cada item traz `webhookUrl`, nunca credenciais                 |
+| GET    | `/integrations/connections/{id}`             | S/K, `integrations.view`          | Detalhe da conexão                                                    |
+| POST   | `/integrations/connections/{id}/validate`    | S/K, `integrations.manage`        | Confere credenciais e grava a conta externa                           |
+| POST   | `/integrations/connections/{id}/activate`    | S/K, `integrations.manage`        | Exige conta validada, ao menos uma regra e, em `live`, empresa pronta     |
+| POST   | `/integrations/connections/{id}/pause`       | S/K, `integrations.manage`        | Eventos continuam guardados; nada é emitido                           |
+| POST   | `/integrations/connections/{id}/disconnect`  | S/K, `integrations.manage`        | Definitivo                                                            |
+| GET    | `/integrations/connections/{id}/rules`       | S/K, `integrations.view`          | Regras de serviço                                                     |
+| PUT    | `/integrations/connections/{id}/rules`       | S/K, `integrations.manage`        | JSON: `rules[]` com `externalProductId?`, `service`, `sendEmail`, `allowAnonymousCustomer?`, `cancelOnRefund?` (padrão `false`: pede o cancelamento da nota quando o reembolso chega depois dela); substitui tudo |
+| GET    | `/integrations/connections/{id}/events`      | S/K, `integrations.view`          | Query: `limit` (ajustado a 1..100); sem o corpo do evento            |
+| GET    | `/integrations/connections/{id}/operations`  | S/K, `integrations.view`          | Query: `limit`; vendas com `fiscalStatus` e `blockReason`             |
+| PATCH  | `/integrations/operations/{id}/customer`     | S/K, `integrations.manage`        | JSON: `taxId`, `name?`, `email?`; só antes de o pedido ser fixado     |
+| POST   | `/integrations/operations/{id}/retry`        | S/K, `integrations.manage`        | Tenta emitir de novo; reaproveita o pedido já fixado                  |
+| POST   | `/integrations/inbound/{publicId}`           | Público, autenticado pelo conector | Chamado pela plataforma de pagamento; sempre `200` quando aceito     |
+
 ## Payloads e enums
 
 **CreateCompany**: obrigatórios `legalName`, `taxId`, `taxRegime`
-(`MEI`, `Simples Nacional`, `Lucro Presumido` ou `Lucro Real`) e
+(`MEI` ou `Simples Nacional`; outros regimes retornam `422 ERROR_TAX_REGIME_NOT_SUPPORTED`) e
 `municipalityCode` (código IBGE de 7 dígitos, em `test` e `live`).
 Opcionais `tradeName`, `municipalReg` (opcional; guardada, mas **não enviada** na nota a menos que `sendMunicipalReg` seja `true`, padrão `false` — a Receita rejeita com E0120 se o município não tiver o dado), `defaultServiceCode`
 (cTribNac de 6 dígitos), `simpleNational`, `specialRegime`, `address`.
@@ -411,6 +437,18 @@ Erros:
 - 409: Nota não autorizada ou documentos ainda não preparados
 - 422: Cliente não possui e-mail cadastrado
 
+**POST /invoices/{id}/cancel** - Cancela uma nota.
+
+Body: `{ "reason": "issue_error" | "service_not_provided" | "other", "description"?: string }`.
+
+- Nota `queued` (agendada ou ainda não processada): cancelada na hora, `200` com `status: "cancelled"`. Em live, o crédito reservado é estornado. `description` é opcional.
+- Nota `authorized`: `202` com `status: "cancelling"`. O evento 101101 é enviado à Sefin em segundo plano. `description` é obrigatória (15–255 caracteres). Resultado: `cancelled` (webhook `nfse.invoice.cancelled`) ou de volta a `authorized` com `lastErrorCode/lastErrorMessage` (webhook `nfse.invoice.cancellation_rejected`). O crédito não é devolvido. Após a rejeição da Sefin, a nota volta a `authorized` mantendo `cancellationReason`/`cancellationDescription` do último pedido (um novo pedido os sobrescreve).
+- Nota `processing` (em emissão): `202` com a nota ainda `processing` e `cancellationRequestedAt` preenchido (o pedido fica registrado). `description` é obrigatória (15–255 caracteres). Assim que a nota for autorizada, ela é cancelada automaticamente na Sefin (evento 101101), sem devolver o crédito; se a emissão terminar `rejected` ou `failed`, o pedido é descartado e a reserva é estornada como de costume. Repetir o pedido devolve o estado atual (vale o primeiro pedido).
+- Nota `retry_pending`, `reconciliation_required` ou `manual_review`: `409 ERROR_INVOICE_NOT_CANCELLABLE`.
+- Nota já `cancelling`/`cancelled`: devolve o estado atual.
+- Erros: `409 ERROR_INVOICE_NOT_CANCELLABLE` (outros status, como `retry_pending`, `reconciliation_required` e `manual_review`), `422 ERROR_INVALID_CANCELLATION_REASON`. Se outro pedido já cancelou a nota, devolve o estado atual.
+- Campos novos na invoice: `cancellationReason`, `cancellationDescription`, `cancelledAt`, `cancellationRequestedAt` (pedido feito enquanto a nota estava em emissão). XML/PDF continuam disponíveis depois do cancelamento; o reenvio de e-mail não.
+
 **Webhook `nfse.invoice.documents_ready`**: Disparado quando os documentos fiscais ficam prontos. Payload:
 
 ```json
@@ -453,9 +491,9 @@ Para login, usar as duas rotas `/auth/magic-link`, que também criam sessão.
 | `plan_slug` / `slug`         | `free`, `developer`, `growth`, `scale`, `volume`                                                                                                                                                                                        |
 | `cycle`                      | `monthly`, `annual`                                                                                                                                                                                                                     |
 | Empresa / nota `environment` | `test`, `live`; somente leitura na resposta                                                                                                                                                                                             |
-| `taxRegime`                  | `MEI`, `Simples Nacional`, `Lucro Presumido`, `Lucro Real`                                                                                                                                                                              |
-| Nota `status`                | `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`                                                                                                                 |
-| Webhook `events`             | `nfse.invoice.authorized`, `nfse.invoice.rejected`, `nfse.invoice.failed`, `nfse.invoice.reconciliation_required`, `nfse.invoice.manual_review`, `nfse.invoice.documents_ready`, `nfse.invoice.email_sent`, `nfse.invoice.email_failed`, `nfse.invoice.fiscal_discrepancy` |
+| `taxRegime`                  | `MEI`, `Simples Nacional`                                                                                                                                                                                                                |
+| Nota `status`                | `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling` (cancelamento enviado à Sefin, aguardando resposta), `cancelled` (nota cancelada)                                                                                                             |
+| Webhook `events`             | `nfse.invoice.authorized`, `nfse.invoice.rejected`, `nfse.invoice.failed`, `nfse.invoice.reconciliation_required`, `nfse.invoice.manual_review`, `nfse.invoice.documents_ready`, `nfse.invoice.email_sent`, `nfse.invoice.email_failed`, `nfse.invoice.fiscal_discrepancy`, `nfse.invoice.cancelled`, `nfse.invoice.cancellation_rejected` |
 | OTP `channel`                | `email`, `whatsapp`                                                                                                                                                                                                                     |
 | OTP público `purpose`        | `email_verification`, `phone_verification`, `login_challenge`, `account_recovery`, `magic_link_login`                                                                                                                                   |
 | OTP autenticado `purpose`    | Públicos + `payment_authorization`, `consent_confirmation`                                                                                                                                                                              |
@@ -514,20 +552,29 @@ não enviar campos fora do contrato).
 ### Empresa
 
 - `taxId`: CNPJ válido (inclui CNPJ alfanumérico, IN RFB 2.229/2024), com ou
-  sem máscara. É persistido só com os caracteres do CNPJ, sem pontuação.
+  sem máscara. É persistido só com os caracteres do CNPJ, sem pontuação. **Não
+  pode ser alterado**: no `PATCH`, o CNPJ atual é aceito e ignorado; outro valor
+  retorna 422.
 - `municipalReg`: obrigatória ao criar empresa em `live` (422 `required`);
   opcional em `test`. `""` retorna `blank`. No PATCH, `null` limpa o campo e
   omitir mantém o valor.
 - `municipalityCode`: obrigatório, 7 dígitos (`invalid_ibge_code`).
 - `defaultServiceCode`: opcional, 6 dígitos (`invalid_service_code`). É só um
   padrão da empresa; a classificação fiscal vem do perfil do serviço.
+- `simplesRate`: **obrigatório para Simples Nacional** (422 `required`), ignorado
+  para MEI. Alíquota efetiva total (%) do DAS, ex.: `"6.54"` (0 a 100, até 2
+  casas). Vai em toda nota (`pTotTribSN`). Para atualizar, mande o novo valor no
+  `PATCH /companies/{id}`.
+- `simplesIssRate`: opcional, só Simples Nacional (1,80 a 5,00). Necessária só
+  quando algum cliente retém ISS. No PATCH, `null` remove.
 
 ### Configuração fiscal da empresa
 
 Para MEI e Simples Nacional o fluxo é só este:
 
-1. `POST /companies` com `taxRegime`, `municipalityCode` e, em `live`,
-   `municipalReg`. O perfil fiscal já nasce aprovado.
+1. `POST /companies` com `taxRegime`, `municipalityCode`, `simplesRate` (só
+   Simples Nacional) e, em `live`, `municipalReg`. O perfil fiscal já nasce
+   aprovado.
 2. `POST /companies/{id}/certificates` com o certificado A1.
 3. `POST /invoices`.
 
@@ -725,8 +772,7 @@ integração fiscal possível é com a **Calculadora RTC**, motor externo.
 | 500 | Falha INTERNAL; mensagem genérica, sem mensagem original nem stack |
 
 Usa o mesmo rate limit autenticado dos demais endpoints: por padrão,
-`RATE_LIMIT_AUTHENTICATED=300` por minuto por API key/sessão. Não há orçamento
-ou configuração de limite separados para `calculate`. `Retry-After` é em segundos:
+`RATE_LIMIT_AUTHENTICATED=300` por minuto por API key/sessão, mais `RATE_LIMIT_TENANT=600` por tenant e 120/min por tenant na própria rota (`@Throttle`, fixo no código, sem variável de ambiente). `Retry-After` é em segundos:
 no 503, `ceil(details.retryAfterMs/1000)`, mínimo 1, padrão 5.
 Erros HTTP usam `{ statusCode, code, message, details?, requestId }` e códigos
 públicos `ERROR_*`. Exemplo de indisponibilidade:
@@ -797,6 +843,7 @@ proxy do Next). `redirect_uri` aceitos no registro: `https`, `http` em
 | Tool                | Escopo       | Entrada principal                                                                                                                              | Saída                                                            |
 | ------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `nfse_issue`        | `nfse:write` | `company_id`, `customer {name, tax_id, email?}`, `services [{description, quantity, unit_price}]`, `competence_date`, `service_code?`, `idempotency_key?` | `{ invoice_id, access_key, status }`                             |
+| `nfse_cancel`       | `nfse:write` | `invoice_id`, `reason` (`issue_error` \| `service_not_provided` \| `other`), `description?` (15-255 caracteres, obrigatória para NFS-e autorizada ou em emissão) | `{ invoice_id, status, cancelled_at }` (`cancelled`, `cancelling` ou `processing` com o pedido registrado) |
 | `nfse_query`        | `nfse:read`  | `access_key`                                                                                                                                   | `{ access_key, status, nfse_number, authorized_at, last_error }` |
 | `nfse_list`         | `nfse:read`  | `status?`, `limit?`, `cursor?`                                                                                                                 | `{ invoices, next_cursor }`                                      |
 | `nfse_download_pdf` | `nfse:read`  | `access_key`                                                                                                                                   | `{ access_key, pdf_base64 }`                                     |
@@ -861,14 +908,14 @@ ou `response.text()`, não `response.json()`.
   ainda precisa ser validada com destinatário real. Testes do login substituem
   somente a entrega, mantendo Postgres, Redis, OTP e guards reais.
 - **Cálculo pré-emissão**: `ready` e testes locais não substituem homologação
-  na Sefin, nem confirmação fiscal das regras. MEI/Simples 2027 permanece
-  bloqueado; veja [limitações](../docs/fiscal/limitations.md).
+  na Sefin, nem confirmação fiscal das regras. MEI/Simples sem opção pelo regime regular
+  emitem sem IBS/CBS em 2027; veja [limitações](../docs/fiscal/limitations.md).
 - **Emissão fiscal**: existência das rotas e boot não comprovam emissão junto
   ao serviço nacional. O teste de integração valida SDK real, assinatura/XSD,
   persistência, reconciliação e débito usando transporte HTTP controlado.
   Emissão real ainda depende do cadastro fiscal e certificado reais.
 - Não existem rotas de login por senha, refresh JWT, cadastro separado,
-  CRUD de tenants, atualização de perfil ou cancelamento de nota neste inventário.
+  CRUD de tenants ou atualização de perfil neste inventário.
 
 Teste HTTP de login com schema isolado:
 

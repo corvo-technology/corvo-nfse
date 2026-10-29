@@ -1,3 +1,4 @@
+import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { CursorQuery } from '@/shared/http/pagination';
 import {
   QuotaService,
@@ -5,7 +6,13 @@ import {
   QuotaExceededReason,
 } from '@/modules/plans/application/quota.service';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Optional } from '@nestjs/common';
+import { assertRegimeSupported } from '../domain/tax-regime-support';
+import {
+  registryWarnings,
+  SimplesRegistryPort,
+  type RegistryWarning,
+} from '../domain/registry-check';
 import { ICompanyRepository } from '../domain/company.repository';
 import {
   Company,
@@ -56,7 +63,29 @@ export class CompanyService {
     private readonly quotaService: QuotaService,
     private readonly companyDomain: CompanyDomainService,
     private readonly profiles: CompanyFiscalProfileService,
+    @Optional() private readonly registry?: SimplesRegistryPort,
   ) {}
+
+  /**
+   * Warnings when the public registry disagrees with the
+   * regime or municipality just informed. Never blocks and never throws.
+   */
+  async registryWarnings(
+    company: Company,
+    regime: TaxRegime,
+  ): Promise<RegistryWarning[]> {
+    if (!this.registry) return [];
+    try {
+      const info = await this.registry.lookup(company.taxId);
+      return registryWarnings(
+        info,
+        regimeKindFromLegacy(regime),
+        company.municipalityCode,
+      );
+    } catch {
+      return [];
+    }
+  }
 
   async create(
     input: CreateCompanyInput,
@@ -70,6 +99,8 @@ export class CompanyService {
       ...input,
       environment,
     });
+    // Before anything is saved: a refused regime must not leave a company behind.
+    assertRegimeSupported(regimeKindFromLegacy(normalized.taxRegime));
 
     const exists = await this.companyRepo.existsWithTaxId(
       normalized.taxId,
@@ -86,11 +117,14 @@ export class CompanyService {
       const status = await this.quotaService.getStatus(tenantId);
       if (status.reason === QuotaExceededReason.PLAN_BLOCKED)
         throw new QuotaExceededError(status.reason, {});
-      await this.companyRepo.saveWithLimit(
-        company,
-        status.maxActiveCompanies,
-        tenantId,
-      );
+      if (status.maxActiveCompanies >= 999999)
+        await this.companyRepo.save(company, tenantId);
+      else
+        await this.companyRepo.saveWithLimit(
+          company,
+          status.maxActiveCompanies,
+          tenantId,
+        );
     } else {
       await this.companyRepo.save(company, tenantId);
     }
@@ -110,6 +144,7 @@ export class CompanyService {
       specialTaxRegime: normalized.specialRegime?.trim() || null,
       ibsCbsRegularOption: false,
       ibsCbsRegularFrom: null,
+      simplesIssRate: null,
       validFrom: todayInEstablishmentTimezone(),
       source: 'company_api',
       ...declarationReview(declaredBy),
@@ -180,17 +215,17 @@ export class CompanyService {
     // Throws FiscalValidationError (→ 422 with code + details) on failure.
     const normalized = this.companyDomain.validateAndNormalizeUpdate(input);
 
-    if (normalized.taxId && normalized.taxId !== company.taxId) {
-      const exists = await this.companyRepo.existsWithTaxId(
-        normalized.taxId,
-        tenantId,
-        company.id,
-        environment,
-      );
-      if (exists) {
-        throw new CompanyAlreadyExistsError(normalized.taxId);
-      }
-    }
+    // The CNPJ identifies the company (certificate, DPS numbering, invoices): it never changes.
+    if (normalized.taxId && normalized.taxId !== company.taxId)
+      throw new FiscalValidationError([
+        {
+          field: 'taxId',
+          code: 'invalid',
+          message:
+            'taxId cannot be changed: create a new company for another CNPJ',
+        },
+      ]);
+    delete normalized.taxId;
 
     if (
       normalized.environment &&
@@ -198,45 +233,73 @@ export class CompanyService {
     )
       throw new BadRequestException('Company environment is immutable');
 
-    company.update(normalized);
-
-    await this.companyRepo.save(company, tenantId);
-
-    // If any regime field was sent, append a new fiscal profile row when the
+    // If any regime field was sent, a new fiscal profile row is appended when the
     // effective regime actually changed (never mutate an approved row in place).
+    // The resulting regime is decided, and refused if unsupported, BEFORE anything
+    // is saved: a refused change must not leave the company half updated.
     const regimeTouched =
       input.taxRegime !== undefined ||
       input.simpleNational !== undefined ||
       input.specialRegime !== undefined;
-    if (regimeTouched) {
-      const current = await this.profiles.current(id, tenantId);
-      const mergedRegime = {
-        taxRegime:
-          input.taxRegime !== undefined
-            ? regimeKindFromLegacy(input.taxRegime)
-            : (current?.taxRegime ?? 'UNKNOWN'),
-        simpleNational:
-          input.simpleNational ?? current?.simpleNational ?? false,
-        specialTaxRegime:
-          input.specialRegime !== undefined
-            ? input.specialRegime.trim() || null
-            : (current?.specialTaxRegime ?? null),
-      };
-      const unchanged =
+    const ratesTouched =
+      input.simplesRate !== undefined || input.simplesIssRate !== undefined;
+    const current =
+      regimeTouched || ratesTouched
+        ? await this.profiles.current(id, tenantId)
+        : null;
+    const mergedRegime = {
+      taxRegime:
+        input.taxRegime !== undefined
+          ? regimeKindFromLegacy(input.taxRegime)
+          : (current?.taxRegime ?? 'UNKNOWN'),
+      simpleNational: input.simpleNational ?? current?.simpleNational ?? false,
+      specialTaxRegime:
+        input.specialRegime !== undefined
+          ? input.specialRegime.trim() || null
+          : (current?.specialTaxRegime ?? null),
+    };
+    const regimeChanged =
+      regimeTouched &&
+      !(
         current !== null &&
         mergedRegime.taxRegime === current.taxRegime &&
         mergedRegime.simpleNational === current.simpleNational &&
-        mergedRegime.specialTaxRegime === current.specialTaxRegime;
-      if (!unchanged) {
-        await this.profiles.record(id, tenantId, {
-          ...mergedRegime,
-          ibsCbsRegularOption: current?.ibsCbsRegularOption ?? false,
-          ibsCbsRegularFrom: current?.ibsCbsRegularFrom ?? null,
-          validFrom: todayInEstablishmentTimezone(),
-          source: 'company_api',
-          ...declarationReview(declaredBy),
-        });
-      }
+        mergedRegime.specialTaxRegime === current.specialTaxRegime
+      );
+    if (regimeChanged) assertRegimeSupported(mergedRegime.taxRegime);
+
+    // The rates only exist for Simples Nacional: ignored for a MEI, and required
+    // when a company becomes Simples Nacional without one.
+    if (mergedRegime.taxRegime === 'SIMPLES_NACIONAL') {
+      if (!(normalized.simplesRate ?? company.simplesRate))
+        throw new FiscalValidationError([
+          {
+            field: 'simplesRate',
+            code: 'required',
+            message:
+              'simplesRate is required for Simples Nacional (the effective rate of your DAS)',
+          },
+        ]);
+    } else {
+      delete normalized.simplesRate;
+      delete normalized.simplesIssRate;
+    }
+
+    company.update(normalized);
+
+    await this.companyRepo.save(company, tenantId);
+
+    if (regimeChanged) {
+      await this.profiles.record(id, tenantId, {
+        ...mergedRegime,
+        ibsCbsRegularOption: current?.ibsCbsRegularOption ?? false,
+        ibsCbsRegularFrom: current?.ibsCbsRegularFrom ?? null,
+        simplesIssRate: current?.simplesIssRate ?? null,
+        simplesApuracao: current?.simplesApuracao ?? null,
+        validFrom: todayInEstablishmentTimezone(),
+        source: 'company_api',
+        ...declarationReview(declaredBy),
+      });
     }
 
     return company;

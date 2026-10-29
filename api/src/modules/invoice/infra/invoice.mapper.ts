@@ -5,10 +5,14 @@ import {
   LastEmailStatus,
   ServiceSnapshot,
 } from '../domain/invoice';
+import type { CancellationReasonCode } from '../domain/cancellation-reason';
 import { InvoiceStatus } from '../domain/invoice-status';
 import { InvoiceOrmEntity } from './invoice.orm-entity';
 
-type PersistedServiceSnapshot = ServiceSnapshot & { discount?: number };
+type PersistedServiceSnapshot = ServiceSnapshot & {
+  discount?: number;
+  deduction?: number;
+};
 
 function normalizeCustomerSnapshot(
   value: Record<string, unknown> | null | undefined,
@@ -24,14 +28,16 @@ function readServiceSnapshot(
 ): {
   snapshot: ServiceSnapshot;
   discount?: number;
+  deduction?: number;
 } {
-  const { discount, ...rest } = (value ??
+  const { discount, deduction, ...rest } = (value ??
     {}) as unknown as PersistedServiceSnapshot;
-  return { snapshot: rest, discount };
+  return { snapshot: rest, discount, deduction };
 }
 
 export class InvoiceMapper {
   toDomain(orm: InvoiceOrmEntity): Invoice {
+    const service = readServiceSnapshot(orm.serviceSnapshot);
     const props: InvoiceProps = {
       id: orm.id,
       companyId: orm.companyId,
@@ -46,8 +52,9 @@ export class InvoiceMapper {
       // `customer_snapshot` is NOT NULL — anonymous consumer invoices are
       // persisted as `{}` and read back as `null`.
       customerSnapshot: normalizeCustomerSnapshot(orm.customerSnapshot),
-      serviceSnapshot: readServiceSnapshot(orm.serviceSnapshot).snapshot,
-      discount: readServiceSnapshot(orm.serviceSnapshot).discount,
+      serviceSnapshot: service.snapshot,
+      discount: service.discount,
+      deduction: service.deduction,
       taxSnapshot: orm.taxSnapshot,
       amount: Number(orm.amount),
       currency: orm.currency,
@@ -68,6 +75,11 @@ export class InvoiceMapper {
       documentsReadyAt: orm.documentsReadyAt ?? null,
       lastEmailStatus: (orm.lastEmailStatus as LastEmailStatus | null) ?? null,
       lastEmailSentAt: orm.lastEmailSentAt ?? null,
+      cancellationReason:
+        (orm.cancellationReason as CancellationReasonCode | null) ?? null,
+      cancellationDescription: orm.cancellationDescription ?? null,
+      cancelledAt: orm.cancelledAt ?? null,
+      cancellationRequestedAt: orm.cancellationRequestedAt ?? null,
       createdAt: orm.createdAt,
       updatedAt: orm.updatedAt,
     };
@@ -91,13 +103,14 @@ export class InvoiceMapper {
     // persisted as `{}` and read back as `null`.
     orm.customerSnapshot = (snapshot.customerSnapshot ??
       {}) as unknown as Record<string, unknown>;
-    // No dedicated discount column yet: `discount` rides in the
-    // `service_snapshot` jsonb and is lifted back by `readServiceSnapshot`.
-    const { discount, ...serviceSnapshot } =
-      snapshot.serviceSnapshot as PersistedServiceSnapshot;
+    // No dedicated discount/deduction columns: both ride in the
+    // `service_snapshot` jsonb and are lifted back by `readServiceSnapshot`.
+    // They live on the invoice props, not inside `serviceSnapshot`.
+    const { discount, deduction } = snapshot;
     orm.serviceSnapshot = {
-      ...serviceSnapshot,
+      ...snapshot.serviceSnapshot,
       ...(discount !== undefined ? { discount } : {}),
+      ...(deduction !== undefined ? { deduction } : {}),
     };
     orm.taxSnapshot = snapshot.taxSnapshot;
     orm.amount = snapshot.amount;
@@ -115,12 +128,16 @@ export class InvoiceMapper {
     orm.fiscalSchemaVersion = snapshot.fiscalSchemaVersion;
     orm.issuedAt = snapshot.issuedAt ?? undefined;
     orm.authorizedAt = snapshot.authorizedAt ?? undefined;
-    orm.lastErrorCode = snapshot.lastErrorCode ?? undefined;
-    orm.lastErrorMessage = snapshot.lastErrorMessage ?? undefined;
-    orm.lastErrorProvider = snapshot.lastErrorProvider ?? undefined;
+    orm.lastErrorCode = snapshot.lastErrorCode ?? null;
+    orm.lastErrorMessage = snapshot.lastErrorMessage ?? null;
+    orm.lastErrorProvider = snapshot.lastErrorProvider ?? null;
     orm.documentsReadyAt = snapshot.documentsReadyAt ?? undefined;
     orm.lastEmailStatus = snapshot.lastEmailStatus ?? undefined;
     orm.lastEmailSentAt = snapshot.lastEmailSentAt ?? undefined;
+    orm.cancellationReason = snapshot.cancellationReason ?? null;
+    orm.cancellationDescription = snapshot.cancellationDescription ?? null;
+    orm.cancelledAt = snapshot.cancelledAt ?? null;
+    orm.cancellationRequestedAt = snapshot.cancellationRequestedAt ?? null;
     orm.createdAt = snapshot.createdAt;
     orm.updatedAt = snapshot.updatedAt;
     return orm;

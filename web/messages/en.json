@@ -66,7 +66,8 @@
       "companies": "Companies",
       "invoices": "Tax invoices",
       "billing": "Plan",
-      "agents": "AI agents"
+      "agents": "AI agents",
+      "integrations": "Integrations"
     },
     "account": "ACCOUNT",
     "balance": "BALANCE",
@@ -104,7 +105,19 @@
       "legendMore": "More",
       "empty": "No authorized invoices in this period",
       "aria": "Heatmap of authorized invoices per day",
-      "note": "{count, plural, one {# invoice} other {# invoices}}"
+      "periodTotal": "Period total",
+      "authorizedNotes": "Authorized invoices",
+      "note": "{count, plural, one {# invoice} other {# invoices}}",
+      "average": "avg",
+      "pinned": "Pinned",
+      "vsAverage": "vs. daily average",
+      "ofPeriod": "Of the period",
+      "dailyAverage": "Daily average",
+      "bestDay": "Best day",
+      "anonymous": "Customer",
+      "quietDay": "No invoices authorized this day.",
+      "seeInList": "Open the invoice list to see them.",
+      "hint": "Hover or tap a bar to inspect a day. Click to pin it, arrow keys to move, Esc to clear."
     },
     "recentMessages": "Recent messages",
     "viewAll": "View all",
@@ -127,7 +140,8 @@
     "viewAllInvoices": "View all",
     "period": "Period",
     "loadFailed": "We couldn't load your data.",
-    "loadedRecords": "Indicators cover up to 100 loaded invoices in this period ({count} records)."
+    "monthlyCycle": "Monthly plan cycle",
+    "creditsLoadFailed": "Could not load credits."
   },
   "Connections": {
     "title": "Connections",
@@ -340,6 +354,14 @@
           "fiscal_discrepancy": {
             "label": "Fiscal discrepancy",
             "description": "The authorized invoice differs from the calculated taxes."
+          },
+          "cancelled": {
+            "label": "Invoice cancelled",
+            "description": "The invoice was cancelled (scheduled or at the Sefin)."
+          },
+          "cancellation_rejected": {
+            "label": "Cancellation rejected",
+            "description": "The Sefin refused the cancellation; the invoice stays authorized."
           }
         }
       }
@@ -649,14 +671,15 @@
   },
   "Hero": {
     "badge": "Tax invoice infrastructure for developers",
-    "title": "Your tax invoice API. Simple as that.",
-    "subtitle": "Issue NFS-e, manage multiple companies, send documents by email and automate your tax workflow with a single API.",
+    "title": "Issue NFS-e through an API or an AI agent.",
+    "subtitle": "Corvo is a REST API and MCP server to issue Brazilian service invoices (NFS-e) on the national standard for MEI and Simples Nacional companies. Built for AI agents, developers, SaaS products and ERPs.",
     "startFree": "Start free",
     "viewDocs": "View documentation",
     "mono": "15 free invoices per month. No credit card required."
   },
   "Nav": {
     "product": "Product",
+    "integrations": "Integrations",
     "docs": "Docs",
     "pricing": "Pricing",
     "signIn": "Sign in",
@@ -686,6 +709,7 @@
     "buyCredits": "Choose plan",
     "monthly": "Monthly",
     "perMonth": "/month",
+    "overagePerNote": "{price} per extra invoice",
     "recommended": "Recommended",
     "calculator": {
       "title": "How many invoices do you issue per month?",
@@ -726,13 +750,14 @@
       },
       "developer": {
         "name": "DEVELOPER",
+        "badge": "Best value",
         "credits": "200",
         "price": "R$ 29.90",
         "unit": "",
-        "bestFor": "Personal projects, MVPs and small teams.",
+        "bestFor": "Start issuing NFS-e for any number of companies.",
         "includes": {
           "nfse": "NFS-e emission via API",
-          "companies": "Up to 10 companies",
+          "companies": "Unlimited companies",
           "email": "Email delivery",
           "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
@@ -741,13 +766,14 @@
       },
       "growth": {
         "name": "GROWTH",
-        "credits": "750",
-        "price": "R$ 89.90",
+        "badge": "Most popular",
+        "credits": "850",
+        "price": "R$ 99.90",
         "unit": "",
-        "bestFor": "SaaS products and growing teams.",
+        "bestFor": "Growing operations with higher volume.",
         "includes": {
           "nfse": "NFS-e emission via API",
-          "companies": "Up to 50 companies",
+          "companies": "Unlimited companies",
           "email": "Email delivery",
           "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
@@ -756,13 +782,13 @@
       },
       "scale": {
         "name": "SCALE",
-        "credits": "2,500",
-        "price": "R$ 249.90",
+        "credits": "3,000",
+        "price": "R$ 299.90",
         "unit": "",
-        "bestFor": "High-volume platforms and enterprises.",
+        "bestFor": "High-volume platforms and operations.",
         "includes": {
           "nfse": "NFS-e emission via API",
-          "companies": "Up to 500 companies",
+          "companies": "Unlimited companies",
           "email": "Email delivery",
           "mcp": "AI agents via MCP",
           "webhooks": "Status webhooks",
@@ -772,9 +798,9 @@
       "volume": {
         "name": "VOLUME",
         "credits": "10,000",
-        "price": "R$ 899.90",
+        "price": "R$ 699.90",
         "unit": "",
-        "bestFor": "Higher volumes and multi-company operations.",
+        "bestFor": "The highest volumes and multi-company operations.",
         "includes": {
           "nfse": "NFS-e emission via API",
           "companies": "Unlimited companies",
@@ -1147,6 +1173,7 @@
     "cancel": "Cancel",
     "filters": {
       "all": "All",
+      "scheduled": "Scheduled",
       "authorized": "Authorized",
       "processing": "Processing",
       "rejected": "Rejected"
@@ -1167,6 +1194,7 @@
       "created": "Created"
     },
     "status": {
+      "scheduled": "Scheduled",
       "authorized": "Authorized",
       "processing": "Processing",
       "queued": "Queued",
@@ -1174,9 +1202,12 @@
       "reconciliation_required": "Reconciliation",
       "retry_pending": "Retry pending",
       "manual_review": "Manual review",
-      "failed": "Failed"
+      "failed": "Failed",
+      "cancelling": "Cancelling",
+      "cancelled": "Cancelled"
     },
     "loadFailed": "We couldn't load your invoices.",
+    "scheduledFor": "Issues on {date}",
     "filterLabel": "Filter by status",
     "fields": {
       "company": "Issuing company",
@@ -1194,6 +1225,8 @@
       "loadingCompanies": "Loading...",
       "noCompanies": "No companies registered",
       "invalidAmount": "Enter an amount greater than zero.",
+      "deduction": "Deduction from the ISS base",
+      "invalidDeduction": "The deduction must be less than the total amount.",
       "createFailed": "We couldn't issue the invoice.",
       "companiesFailed": "We couldn't load your companies.",
       "municipalityCode": "Service location IBGE code",
@@ -1226,6 +1259,7 @@
       "serviceCodeDefault": "Company default: {code}. Leave empty to use it, or choose another code for this invoice.",
       "municipalityDefault": "Company municipality: {code}. Leave empty to use it, or enter another service location for this invoice.",
       "description": "Optional. When empty we use the service code's name.",
+      "deduction": "Optional. An amount your city's legislation allows you to deduct from the ISS base. It is subtracted from the tax base and sent on the invoice. You declare the value: Corvo does not check whether the deduction is allowed, so confirm it with your accountant.",
       "serviceCodeFallback": "Optional. With no code on the invoice or the company, we use {code} (10.09, representation). Pick your own activity code."
     },
     "summary": {
@@ -1236,6 +1270,7 @@
       "customer": "Customer",
       "taxId": "Tax ID",
       "competence": "Competence",
+      "deduction": "Deduction (ISS)",
       "liveWarning": "Live environment: this invoice will have real fiscal value.",
       "missing": "Still needed: {fields}.",
       "ready": "Ready to issue.",
@@ -1250,7 +1285,11 @@
       "hintTest": "In test the subject gets [TESTE]. Use your own email."
     },
     "view": "View invoice",
-    "viewInvoice": "View details for {name}"
+    "viewInvoice": "View details for {name}",
+    "copyAction": "Duplicate",
+    "copyInvoice": "Duplicate invoice for {name}",
+    "copyBanner": "Details copied from the invoice for {name}. The competence date is today; review anything you need before issuing.",
+    "copyFailed": "Could not copy the invoice. Fill in the details manually."
   },
   "Billing": {
     "title": "Plan and usage",
@@ -1327,6 +1366,16 @@
     "municipalReg": "Municipal registration",
     "municipalityCode": "Municipality IBGE code",
     "specialRegime": "Special regime",
+    "specialRegimeHint": "Only applies if your city hall placed the company in one of these cases (cooperative, notary, estimated ISS, professional partnership, etc.). When in doubt, leave \"None\".",
+    "specialRegimes": {
+      "0": "0 - None",
+      "1": "1 - Cooperative Act",
+      "2": "2 - Estimate",
+      "3": "3 - Municipal Microenterprise",
+      "4": "4 - Notary or Registrar",
+      "5": "5 - Self-employed Professional",
+      "6": "6 - Professional Partnership"
+    },
     "simpleNational": "Simples Nacional opt-in",
     "address": "Address",
     "street": "Street",
@@ -1350,14 +1399,15 @@
       "taxId": "00.000.000/0000-00",
       "municipalReg": "123456",
       "municipalityCode": "3550308",
-      "specialRegime": "E.g. Municipal Microenterprise",
       "street": "Av. Paulista",
       "number": "1000",
       "complement": "Suite 12",
       "district": "Bela Vista",
       "city": "São Paulo",
       "state": "SP",
-      "zip": "00000-000"
+      "zip": "00000-000",
+      "simplesRate": "6.54",
+      "simplesIssRate": "2.01"
     },
     "cep": {
       "hint": "Auto-fills address and IBGE code.",
@@ -1393,7 +1443,10 @@
     "hints": {
       "municipalReg": "Optional. Fill it only if the city registered this company's municipal registration in the national registry; otherwise the tax authority rejects the invoice (E0120).",
       "defaultServiceCode": "National tax code (cTribNac), with 6 digits. Used when an invoice does not specify another code. You can clear this default when editing.",
-      "sendMunicipalReg": "Off by default. Tick it only if the city registered this company in the national registry and the tax authority requires it; otherwise the invoice is rejected (E0120)."
+      "sendMunicipalReg": "Off by default. Tick it only if the city registered this company in the national registry and the tax authority requires it; otherwise the invoice is rejected (E0120).",
+      "simplesRate": "The effective rate shown in your PGDAS-D. It goes on every invoice (pTotTribSN). To update it, edit the company.",
+      "simplesIssRate": "Optional. Only if a customer withholds ISS: the ISS rate of your bracket.",
+      "taxIdLocked": "The CNPJ cannot be changed. To use another CNPJ, create a new company."
     },
     "fixFields": "Fix the highlighted fields.",
     "defaultServiceCode": "Default service code",
@@ -1405,10 +1458,16 @@
     "editFiscalHint": "Review the regime and validity periods in Fiscal configuration on the company page.",
     "reviewNext": "Continue to certificate",
     "openCompany": "Open company",
-    "sendMunicipalReg": "Send the municipal registration on the invoice"
+    "sendMunicipalReg": "Send the municipal registration on the invoice",
+    "simplesRate": "Effective Simples rate (%)",
+    "simplesIssRate": "ISS rate (%)",
+    "simplesRateRequired": "Enter the effective Simples rate.",
+    "rateInvalid": "Enter a number, for example 6.54.",
+    "rateRange": "The rate must be between 0 and 100.",
+    "rateDecimals": "Use at most 2 decimal places."
   },
   "CompanyDetail": {
-    "fiscalAdvanced": "Advanced fiscal configuration",
+    "fiscalAdvanced": "Advanced mode (accountant)",
     "legalName": "Legal name",
     "taxRegime": "Tax regime",
     "municipalReg": "Municipal registration",
@@ -1486,6 +1545,8 @@
     "defaultServiceCode": "Default service code"
   },
   "InvoiceDetail": {
+    "scheduledBanner": "Scheduled invoice: it will be issued automatically on {date}. Until then it stays queued.",
+    "copy": "Duplicate",
     "anonymousCustomer": "Unidentified consumer",
     "title": "Invoice",
     "loading": "Loading invoice...",
@@ -1493,6 +1554,7 @@
     "refresh": "Refresh",
     "customer": "Customer",
     "amount": "Amount",
+    "deduction": "Deduction from the ISS base",
     "reference": "Reference",
     "competence": "Competence date",
     "service": "Service",
@@ -1501,6 +1563,7 @@
     "events": "Invoice progress",
     "noEvents": "No events recorded.",
     "timeline": {
+      "scheduled": "Scheduled. Issuance will be released on {date}.",
       "queued": "We received the request and the invoice is waiting to be issued.",
       "processing": "We are sending the invoice to the city.",
       "authorized": "The city authorized the invoice. PDF and XML are available.",
@@ -1508,7 +1571,52 @@
       "retry_pending": "Issuance was not completed and will be retried automatically.",
       "reconciliation_required": "We could not confirm the invoice state; we are checking with the city.",
       "manual_review": "The invoice needs manual review by our team.",
-      "failed": "The invoice could not be issued."
+      "failed": "The invoice could not be issued.",
+      "cancelling": "We sent the cancellation to the Sefin and are waiting for the answer.",
+      "cancelled": "The invoice was cancelled."
+    },
+    "cancel": {
+      "open": "Cancel invoice",
+      "title": "Cancel invoice",
+      "fiscalHint": "The cancellation is sent to the Sefin. It may be refused (for example, after the municipal deadline). The credit used to issue it is not refunded.",
+      "processingHint": "This invoice is being issued. The cancellation will be sent to the Sefin as soon as it is authorized, and the justification is required. The credit used to issue it is not refunded.",
+      "requested": "Cancellation requested. It will be sent to the Sefin as soon as the invoice is authorized.",
+      "queuedHint": "This invoice has not been issued yet. It will be cancelled immediately and the reserved credit released.",
+      "reason": "Reason",
+      "options": {
+        "incorrect_data": {
+          "title": "Incorrect details or amount",
+          "description": "There is incorrect information on the invoice.",
+          "suggestedDescription": "Invoice details or amount were entered incorrectly"
+        },
+        "duplicate_charge": {
+          "title": "Duplicate charge",
+          "description": "The same charge was issued more than once.",
+          "suggestedDescription": "Charge was issued in duplicate"
+        },
+        "service_not_provided": {
+          "title": "Service not provided",
+          "description": "The service was cancelled or did not take place.",
+          "suggestedDescription": "Service was not provided to the customer"
+        },
+        "refund": {
+          "title": "Cancellation with refund",
+          "description": "The customer withdrew and the amount will be refunded.",
+          "suggestedDescription": "Cancellation requested to refund the customer"
+        }
+      },
+      "reasons": {
+        "issue_error": "Issuance error",
+        "service_not_provided": "Service not provided",
+        "other": "Other"
+      },
+      "description": "Justification",
+      "descriptionRequired": "Required, 15 to 255 characters. Sent to the Sefin.",
+      "descriptionOptional": "Optional.",
+      "keep": "Keep invoice",
+      "confirm": "Cancel invoice",
+      "failed": "We couldn't cancel the invoice.",
+      "reasonLabel": "Cancellation reason"
     }
   },
   "FiscalDocs": {
@@ -1660,6 +1768,45 @@
       }
     }
   },
+  "CompanyFiscalGuide": {
+    "title": "Fiscal setup",
+    "subtitle": "The basics to issue invoices. Confirm what we already have and fill in only what your regime requires.",
+    "loading": "Loading fiscal setup",
+    "retry": "Try again",
+    "failed": "Could not load the fiscal setup.",
+    "saveFailure": "Could not save. Try again.",
+    "noProfile": "This company has no tax regime yet. Use \"Edit company\" to set the regime.",
+    "regimes": {
+      "MEI": "MEI",
+      "SIMPLES_NACIONAL": "Simples Nacional",
+      "LUCRO_PRESUMIDO": "Presumed profit",
+      "LUCRO_REAL": "Actual profit",
+      "OUTRO_REGIME": "Other regime",
+      "UNKNOWN": "Not set"
+    },
+    "regimeDone": "Regime: {regime}",
+    "regimeDoneHint": "Set at registration and confirmed.",
+    "regimePending": "Regime: {regime}",
+    "regimePendingHint": "Confirm this is the company's current regime. It is required to issue in production.",
+    "confirmRegime": "Confirm regime",
+    "invalidRate": "Enter a percentage between 0 and 100.",
+    "serviceNotNeeded": "Service: nothing to set up",
+    "serviceNotNeededHint": "Under Simples Nacional and MEI, ISS is paid through the DAS. Service classification only becomes necessary when IBS/CBS applies to Simples, in 2027.",
+    "serviceTitle": "The service you provide",
+    "serviceHint": "Pick the service and the ISS rate charged by your city. Saving confirms the setup.",
+    "serviceReviewHint": "A setup for this service is waiting for review.",
+    "serviceDone": "Service: {service}",
+    "serviceDoneHint": "Set up and confirmed.",
+    "serviceLabel": "Service",
+    "issRateLabel": "ISS rate (%)",
+    "issRateHint": "Check your city's rate for this activity.",
+    "retentionLabel": "Do your customers withhold taxes at source?",
+    "retentionNone": "No (IRRF, PIS, COFINS, CSLL, INSS)",
+    "retentionSome": "Some do — I will adjust in advanced mode",
+    "saveService": "Save and confirm service",
+    "invalidCode": "Select a service from the list.",
+    "serviceAdvanced": "Review or correct this setup in the advanced mode below."
+  },
   "CompanyFiscal": {
     "title": "Fiscal configuration",
     "intro": "Review the company profile and the services used on invoices. Saved configuration is checked again for each operation and competence date.",
@@ -1683,6 +1830,16 @@
     "regime": "Tax regime",
     "simpleNational": "Simples Nacional",
     "specialRegime": "Special tax regime code",
+    "specialRegimeHint": "Only applies if your city hall placed the company in one of these cases (cooperative, notary, estimated ISS, professional partnership, etc.). When in doubt, leave \"None\".",
+    "specialRegimes": {
+      "0": "0 - None",
+      "1": "1 - Cooperative Act",
+      "2": "2 - Estimate",
+      "3": "3 - Municipal Microenterprise",
+      "4": "4 - Notary or Registrar",
+      "5": "5 - Self-employed Professional",
+      "6": "6 - Professional Partnership"
+    },
     "validFrom": "Effective from",
     "validUntil": "Effective until (exclusive)",
     "ibsOption": "Regular IBS/CBS option",
@@ -1904,7 +2061,8 @@
     "loading": "Loading…",
     "wants": "{name} wants to access your Corvo account",
     "returnTo": "After you decide, you go back to {host}.",
-    "canDo": "This agent will be able to:",
+    "canDo": "Access you are granting",
+    "certificateNote": "A1 certificates and passwords are never available to the agent; upload remains API-only.",
     "workspace": "Workspace",
     "workspaceBlocked": "Your role in this workspace does not allow these permissions.",
     "manage": "You can revoke access at any time under AI agents.",
@@ -1918,8 +2076,26 @@
     "deniedBody": "No permission was granted.",
     "goDashboard": "Go to the dashboard",
     "scopes": {
-      "nfse:read": "Query and download invoices",
-      "nfse:write": "Issue invoices"
+      "nfse:read": "Read and prepare operations",
+      "nfse:write": "Create and change operations"
+    },
+    "tools": {
+      "read": {
+        "company": "Companies",
+        "companyDetail": "list or look up by CNPJ",
+        "calculate": "Tax preview",
+        "calculateDetail": "calculate taxes without issuing",
+        "invoices": "Invoices and documents",
+        "invoicesDetail": "query, list and download PDF",
+        "usage": "Plan and quotas",
+        "usageDetail": "see consumption and emission availability"
+      },
+      "write": {
+        "company": "Create company",
+        "companyDetail": "register an issuer in the selected environment",
+        "invoices": "Issue and cancel NFS-e",
+        "invoicesDetail": "start an issuance or cancellation"
+      }
     },
     "errors": {
       "invalid": "Invalid or expired authorization link. Go back to the agent and try connecting again.",
@@ -1978,5 +2154,194 @@
     "copied": "Copied",
     "source": "Source on GitHub",
     "docs": "See all SDKs in the docs"
+  },
+  "Integrations": {
+    "title": "Integrations",
+    "subtitle": "Connect your payment platform and the invoice goes out by itself for every paid sale.",
+    "connect": "Connect",
+    "loadError": "Could not load integrations.",
+    "retry": "Try again",
+    "empty": {
+      "title": "No integrations yet",
+      "description": "Pick where you get paid and connect in under a minute."
+    },
+    "providers": {
+      "woovi": "Pix charges paid on Woovi.",
+      "abacatepay": "Checkout and payments paid on AbacatePay.",
+      "other": "Confirmed payments."
+    },
+    "status": {
+      "active": "Active",
+      "paused": "Paused",
+      "reconnect": "Reconnect",
+      "draft": "Draft",
+      "disconnected": "Disconnected"
+    },
+    "pending": "{count, plural, one {# sale needs you} other {# sales need you}}",
+    "wizard": {
+      "title": "Connect payments",
+      "stepPlatform": "Where do you get paid?",
+      "stepDetails": "Connection details",
+      "company": "Company that issues the invoice",
+      "companyPlaceholder": "Choose the company",
+      "noCompanies": "Register a company before connecting.",
+      "sendEmail": "Email the invoice to the customer",
+      "back": "Back",
+      "connect": "Connect",
+      "connecting": "Connecting...",
+      "errors": {
+        "create": "Could not create the connection",
+        "validate": "Could not validate the credentials",
+        "rules": "Could not save the service rule",
+        "activate": "Could not activate the connection"
+      },
+      "done": {
+        "title": "Connected!",
+        "body": "One step left: register this address on the platform so it tells Corvo about every payment.",
+        "urlLabel": "Webhook address",
+        "secretWarning": "This is shown only now. Copy and keep it before closing.",
+        "secretLabel": "Secret",
+        "copySecret": "Copy the secret",
+        "finish": "Done"
+      },
+      "noPermission": "To use this page, ask for the permission to manage integrations."
+    },
+    "detail": {
+      "webhookUrl": "Webhook address",
+      "webhookUrlHint": "Register it on the payment platform.",
+      "pause": "Pause",
+      "resume": "Resume",
+      "disconnect": "Disconnect",
+      "confirmDisconnect": "Disconnect for good? This connection stops issuing invoices and cannot be turned back on.",
+      "confirmYes": "Yes, disconnect",
+      "reconnectHint": "The platform refused the key. Change the key in the Connection section below.",
+      "pausedHint": "Paused: sales are kept, but no invoice is issued.",
+      "updated": "Connection updated.",
+      "sales": {
+        "title": "Latest sales",
+        "empty": "No sales received yet. Make a test payment to see it here.",
+        "customer": "Customer",
+        "amount": "Amount",
+        "status": "Status",
+        "anonymous": "No customer"
+      },
+      "sale": {
+        "issued": "Invoice issued",
+        "refundedAfterInvoice": "Refunded after the invoice",
+        "waitingCustomer": "CPF/CNPJ missing",
+        "needsAttention": "Needs attention",
+        "notIssuedRefund": "Refunded, no invoice",
+        "blocked": "Not issued",
+        "processing": "Processing",
+        "cancelRequested": "Cancellation requested",
+        "cancelFailed": "Could not cancel the invoice"
+      },
+      "fixCustomer": "Add CPF/CNPJ",
+      "taxIdLabel": "Customer CPF or CNPJ",
+      "taxIdInvalid": "Enter a CPF or CNPJ with 11 or 14 characters.",
+      "save": "Save and issue",
+      "tryAgain": "Try again",
+      "saleDone": "Done, sale updated.",
+      "saleFailed": "Could not update the sale.",
+      "emit": "Issue invoices automatically",
+      "emitOn": "On: every paid sale becomes an invoice.",
+      "emitOff": "Off: sales are kept, but no invoice is issued.",
+      "tabs": {
+        "sales": "Sales",
+        "settings": "Settings",
+        "connection": "Connection"
+      },
+      "settings": {
+        "title": "How to issue invoices",
+        "sendEmail": "Email the invoice to the customer",
+        "anonymous": "Issue even without the customer's CPF/CNPJ",
+        "anonymousHint": "If the platform does not send the full document, the invoice goes out without a customer instead of waiting for you.",
+        "otherRules": "This connection has {count} per-product rule(s) created through the API. They stay as they are.",
+        "save": "Save changes",
+        "saved": "Settings saved.",
+        "loadError": "Could not load the settings.",
+        "cancelOnRefund": "Cancel the invoice on a refund",
+        "cancelOnRefundHint": "If the customer is refunded on the platform, Corvo asks for the invoice to be cancelled. The invoice credit is not returned. Also select the refund events in the webhook (see Connection)."
+      },
+      "info": {
+        "company": "Company",
+        "environment": "Environment",
+        "since": "Connected on",
+        "howTo": "How to register it on the platform",
+        "eventsTitle": "Notifications received",
+        "eventsEmpty": "No notification received yet.",
+        "eventsHint": "Each time the platform tells Corvo about a payment, it shows up here.",
+        "event": {
+          "processed": "Processed",
+          "ignored": "Ignored",
+          "working": "In progress",
+          "attention": "Needs attention",
+          "dead": "Failed",
+          "resolved": "Resolved"
+        },
+        "eventRepeated": "Same sale as an earlier notification",
+        "refundNotFound": "Refund of a payment that is not a Corvo sale."
+      },
+      "disconnectHint": "Stops issuing invoices and removes this connection.",
+      "credentials": {
+        "title": "Access key",
+        "hint": "The key is stored securely and never shown again. To change it, enter the new one: it is tested before it takes effect.",
+        "stored": "Stored",
+        "change": "Change",
+        "newValue": "New key",
+        "save": "Test and save",
+        "cancel": "Cancel",
+        "saved": "Key updated."
+      }
+    },
+    "env": {
+      "test": "Test",
+      "live": "Production"
+    },
+    "sales": {
+      "title": "Latest sales",
+      "all": "All",
+      "attention": "Need attention",
+      "viewInvoice": "View invoice",
+      "allGood": "All good: no sale needs you.",
+      "attentionBanner": "{count} sales need you",
+      "empty": "No sales received yet. Make a test payment to see it here.",
+      "noneAttention": "No sale needs attention."
+    }
+  },
+  "LandingIntegrations": {
+    "title": "Sold on Pix? The invoice issues itself.",
+    "description": "Connect Woovi or AbacatePay and Corvo issues the NFS-e for every approved payment, with the customer and product details. No code, no spreadsheet.",
+    "steps": {
+      "connect": {
+        "title": "Connect the platform",
+        "body": "Pick the company that issues the invoice and, if the platform asks, paste the key."
+      },
+      "webhook": {
+        "title": "Register the webhook",
+        "body": "Copy the address Corvo shows and paste it in the platform's dashboard."
+      },
+      "done": {
+        "title": "Done",
+        "body": "Every approved payment becomes an invoice. If the CPF or CNPJ is missing, you complete it on screen and it goes out."
+      }
+    },
+    "platforms": {
+      "woovi": "Pix charges",
+      "abacatepay": "Pix, card and boleto",
+      "soon": "More platforms on the way."
+    },
+    "invoice": {
+      "status": "Issued",
+      "amount": "R$ 999.90",
+      "customer": "Maria Souza",
+      "email": "Emailed to the customer"
+    },
+    "cta": "Start free",
+    "guide": "Read the integrations guide",
+    "refund": {
+      "title": "Got a refund?",
+      "body": "Corvo cancels the invoice on its own. It's a setting you turn on whenever you want."
+    }
   }
 }

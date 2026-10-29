@@ -40,14 +40,17 @@ export class FakeRtcCalculator extends RtcCalculatorPort {
     this.options = options;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async health(): Promise<Result<{ available: true }, FiscalError>> {
     return ok({ available: true });
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async version(): Promise<Result<string, FiscalError>> {
     return ok(this.options.version ?? FAKE_RTC_VERSION);
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async calculate(
     input: RtcCalculationInput,
   ): Promise<Result<RtcTaxResult, FiscalError>> {

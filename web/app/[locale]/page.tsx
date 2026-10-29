@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { LandingPage } from "@/components/landing/landing-page";
 import { JsonLd } from "@/components/seo/json-ld";
+import { paidPlanOffers } from "@/lib/pricing-jsonld";
 import { SITE_COPY, SITE_URL, pageMetadata, pageUrl, seoLocale } from "@/lib/seo";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -53,13 +54,16 @@ export default async function Page({ params }: Props) {
             "Webhooks and XML/PDF delivery by email",
             "AI agents through MCP",
           ],
-    offers: {
-      "@type": "Offer",
-      name: locale === "pt" ? "Grátis: 15 notas por mês" : "Free: 15 invoices a month",
-      price: "0",
-      priceCurrency: "BRL",
-      url: pageUrl(locale),
-    },
+    offers: [
+      {
+        "@type": "Offer",
+        name: locale === "pt" ? "Grátis: 15 notas por mês" : "Free: 15 invoices a month",
+        price: "0",
+        priceCurrency: "BRL",
+        url: pageUrl(locale),
+      },
+      ...paidPlanOffers(locale),
+    ],
   };
 
   return (

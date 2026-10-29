@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, SelectQueryBuilder } from 'typeorm';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { requireTenantId } from '@/infra/persistence/typeorm/tenant-scope';
 import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
@@ -11,6 +11,7 @@ import type {
 } from '../../domain/fiscal/reconciliation/fiscal-reconciliation.repository';
 import { InvoiceFiscalReconciliationOrmEntity } from './invoice-fiscal-reconciliation.orm-entity';
 import { InvoiceFiscalSnapshotOrmEntity } from '../invoice-fiscal-snapshot.orm-entity';
+import { InvoiceOrmEntity } from '../invoice.orm-entity';
 
 @Injectable()
 export class TypeOrmFiscalReconciliationRepository implements IFiscalReconciliationRepository {
@@ -23,67 +24,19 @@ export class TypeOrmFiscalReconciliationRepository implements IFiscalReconciliat
     return this.transactions.getManager() ?? this.dataSource.manager;
   }
 
-  private table(): string {
-    return this.tableOf(InvoiceFiscalReconciliationOrmEntity);
-  }
-
-  private tableOf(
-    entity:
-      | typeof InvoiceFiscalReconciliationOrmEntity
-      | typeof InvoiceFiscalSnapshotOrmEntity,
-  ): string {
-    const metadata = this.dataSource.getMetadata(entity);
-    const escape = (identifier: string) =>
-      this.dataSource.driver.escape(identifier);
-    return metadata.schema
-      ? `${escape(metadata.schema)}.${escape(metadata.tableName)}`
-      : escape(metadata.tableName);
-  }
-
-  private rowsOf(raw: unknown): ReconciliationRow[] {
-    const list = raw as unknown[];
-    return (Array.isArray(list[0]) ? list[0] : list).map((row) => {
-      const record = row as Record<string, unknown>;
-      return {
-        id: String(record.id),
-        invoiceId: String(record.invoice_id),
-        tenantId: String(record.tenant_id),
-        status: record.status as ReconciliationRow['status'],
-        localValues: record.local_values as Record<string, string | null>,
-        authorizedValues: record.authorized_values as Record<
-          string,
-          string | null
-        >,
-        differences: record.differences as ReconciliationRow['differences'],
-        toleranceAbsolute: String(record.tolerance_absolute),
-        rulesVersion: String(record.rules_version),
-        reconciledAt: new Date(String(record.reconciled_at)),
-      };
-    });
-  }
-
   /** Idempotent: the UNIQUE constraint on invoice_id makes redeliveries no-ops. */
   async insert(row: NewReconciliationRow): Promise<boolean> {
     return runWithTenant(row.tenantId, async () => {
       requireTenantId(row.tenantId);
-      const rows: unknown[] = await this.manager().query(
-        `INSERT INTO ${this.table()} (invoice_id, tenant_id, status, local_values, authorized_values, differences, tolerance_absolute, rules_version, reconciled_at)
-         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, $7, $8, $9)
-         ON CONFLICT (invoice_id) DO NOTHING
-         RETURNING id`,
-        [
-          row.invoiceId,
-          row.tenantId,
-          row.status,
-          JSON.stringify(row.localValues),
-          JSON.stringify(row.authorizedValues),
-          JSON.stringify(row.differences),
-          row.toleranceAbsolute,
-          row.rulesVersion,
-          row.reconciledAt,
-        ],
-      );
-      return rows.length > 0;
+      const result = await this.manager()
+        .createQueryBuilder()
+        .insert()
+        .into(InvoiceFiscalReconciliationOrmEntity)
+        .values(row)
+        .orIgnore()
+        .returning('id')
+        .execute();
+      return (result.raw as unknown[]).length > 0;
     });
   }
 
@@ -93,14 +46,10 @@ export class TypeOrmFiscalReconciliationRepository implements IFiscalReconciliat
   ): Promise<ReconciliationRow | null> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
-      const rows: unknown[] = await this.manager().query(
-        `SELECT id, invoice_id, tenant_id, status, local_values, authorized_values, differences, tolerance_absolute, rules_version, reconciled_at
-           FROM ${this.table()}
-          WHERE invoice_id = $1 AND tenant_id = $2`,
-        [invoiceId, tenantId],
-      );
-      const records = this.rowsOf(rows);
-      return records[0] ?? null;
+      const found = await this.manager()
+        .getRepository(InvoiceFiscalReconciliationOrmEntity)
+        .findOneBy({ invoiceId, tenantId });
+      return (found as ReconciliationRow | null) ?? null;
     });
   }
 
@@ -111,34 +60,56 @@ export class TypeOrmFiscalReconciliationRepository implements IFiscalReconciliat
   ): Promise<Array<{ id: string; tenantId: string; companyId: string }>> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
-      const rows: unknown = await this.manager().query(
-        `SELECT i.id, i.tenant_id, i.company_id
-           FROM nfse_invoices i
-          WHERE i.tenant_id = $1
-            AND i.status = 'authorized'
-            AND i.updated_at < $2
-            AND EXISTS (
-              SELECT 1 FROM ${this.tableOf(InvoiceFiscalSnapshotOrmEntity)} s
-               WHERE s.invoice_id = i.id
-                 AND s.tenant_id = i.tenant_id
-            )
-            AND NOT EXISTS (
-              SELECT 1 FROM ${this.table()} r
-               WHERE r.invoice_id = i.id
-            )
-          ORDER BY i.updated_at
-          LIMIT $3`,
-        [tenantId, olderThan, limit],
-      );
-      const list = rows as unknown[];
-      return (Array.isArray(list[0]) ? list[0] : list).map((row) => {
-        const record = row as Record<string, unknown>;
-        return {
-          id: String(record.id),
-          tenantId: String(record.tenant_id),
-          companyId: String(record.company_id),
-        };
-      });
+      const invoices = await this.authorizedWithoutReconciliation(
+        tenantId,
+        olderThan,
+        limit,
+      ).getMany();
+      return invoices.map(({ id, tenantId, companyId }) => ({
+        id,
+        tenantId,
+        companyId,
+      }));
     });
+  }
+
+  /**
+   * Authorized invoices that have a fiscal snapshot and no reconciliation yet.
+   * Built with the query builder so TypeORM qualifies every table with the
+   * configured schema: the connection has no search_path.
+   */
+  authorizedWithoutReconciliation(
+    tenantId: string,
+    olderThan: Date,
+    limit: number,
+  ): SelectQueryBuilder<InvoiceOrmEntity> {
+    return this.manager()
+      .getRepository(InvoiceOrmEntity)
+      .createQueryBuilder('invoice')
+      .select(['invoice.id', 'invoice.tenantId', 'invoice.companyId'])
+      .where('invoice.tenantId = :tenantId', { tenantId })
+      .andWhere('invoice.status = :status', { status: 'authorized' })
+      .andWhere('invoice.updatedAt < :olderThan', { olderThan })
+      .andWhere(
+        (qb) =>
+          `EXISTS ${qb
+            .subQuery()
+            .select('1')
+            .from(InvoiceFiscalSnapshotOrmEntity, 'snapshot')
+            .where('snapshot.invoiceId = invoice.id')
+            .andWhere('snapshot.tenantId = invoice.tenantId')
+            .getQuery()}`,
+      )
+      .andWhere(
+        (qb) =>
+          `NOT EXISTS ${qb
+            .subQuery()
+            .select('1')
+            .from(InvoiceFiscalReconciliationOrmEntity, 'reconciliation')
+            .where('reconciliation.invoiceId = invoice.id')
+            .getQuery()}`,
+      )
+      .orderBy('invoice.updatedAt', 'ASC')
+      .limit(limit);
   }
 }

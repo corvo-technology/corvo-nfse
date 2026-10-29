@@ -1,4 +1,6 @@
+import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { NotFoundException } from '@nestjs/common';
+import { TaxRegimeNotSupportedError } from '../domain/errors';
 import { CompanyFiscalProfileService } from './company-fiscal-profile.service';
 import type { CompanyFiscalProfile } from '../domain/fiscal-profile';
 import type {
@@ -20,6 +22,7 @@ const makeProfile = (
   specialTaxRegime: null,
   ibsCbsRegularOption: false,
   ibsCbsRegularFrom: null,
+  simplesIssRate: null,
   validFrom: '2026-01-01',
   validUntil: null,
   source: 'company_legacy',
@@ -38,6 +41,7 @@ const makeInput = (
   specialTaxRegime: null,
   ibsCbsRegularOption: false,
   ibsCbsRegularFrom: null,
+  simplesIssRate: null,
   validFrom: '2026-06-01',
   source: 'manual',
   reviewStatus: 'unreviewed',
@@ -104,6 +108,7 @@ class FakeFiscalProfileRepository implements IFiscalProfileRepository {
         specialTaxRegime: input.specialTaxRegime,
         ibsCbsRegularOption: input.ibsCbsRegularOption,
         ibsCbsRegularFrom: input.ibsCbsRegularFrom,
+        simplesIssRate: input.simplesIssRate,
         validFrom: input.validFrom,
         source: input.source,
         reviewStatus: input.reviewStatus,
@@ -141,6 +146,20 @@ describe('CompanyFiscalProfileService', () => {
     expect(repository.appendCalls).toEqual([{ companyId, tenantId, input }]);
     expect(result.id).toBe('profile-appended');
     expect(result.validFrom).toBe('2026-06-01');
+  });
+
+  it('record rejects an out-of-range simplesIssRate before reaching the repository', async () => {
+    const repository = new FakeFiscalProfileRepository();
+    const service = new CompanyFiscalProfileService(repository);
+
+    await expect(
+      service.record(
+        companyId,
+        tenantId,
+        makeInput({ simplesIssRate: '5.01' }),
+      ),
+    ).rejects.toBeInstanceOf(FiscalValidationError);
+    expect(repository.appendCalls).toHaveLength(0);
   });
 
   it('approve marks the profile approved and stamps reviewer', async () => {
@@ -182,5 +201,33 @@ describe('CompanyFiscalProfileService', () => {
       ),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(repository.markApprovedCalls).toHaveLength(0);
+  });
+});
+
+describe('CompanyFiscalProfileService regime restriction', () => {
+  it.each([
+    'LUCRO_PRESUMIDO',
+    'LUCRO_REAL',
+    'OUTRO_REGIME',
+    'UNKNOWN',
+  ] as const)(
+    'record refuses %s and never reaches the repository ',
+    async (taxRegime) => {
+      const repository = new FakeFiscalProfileRepository();
+      const service = new CompanyFiscalProfileService(repository);
+      await expect(
+        service.record(companyId, tenantId, makeInput({ taxRegime })),
+      ).rejects.toBeInstanceOf(TaxRegimeNotSupportedError);
+      expect(repository.appendCalls).toEqual([]);
+    },
+  );
+
+  it('record still accepts MEI and Simples Nacional ', async () => {
+    const repository = new FakeFiscalProfileRepository();
+    const service = new CompanyFiscalProfileService(repository);
+    for (const taxRegime of ['MEI', 'SIMPLES_NACIONAL'] as const)
+      await expect(
+        service.record(companyId, tenantId, makeInput({ taxRegime })),
+      ).resolves.toBeDefined();
   });
 });

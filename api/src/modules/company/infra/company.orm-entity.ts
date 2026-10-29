@@ -123,6 +123,24 @@ export class CompanyOrmEntity {
   addressZip?: string;
 
   @Column({
+    name: 'simples_rate',
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+  })
+  simplesRate?: string | null;
+
+  @Column({
+    name: 'simples_iss_rate',
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+  })
+  simplesIssRate?: string | null;
+
+  @Column({
     name: 'fiscal_schema_version',
     type: 'varchar',
     length: 20,

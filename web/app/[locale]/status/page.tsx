@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
 
-const services = [
-  { name: "API", status: "operational", uptime: "99.98%" },
-  { name: "Webhooks", status: "operational", uptime: "99.99%" },
-  { name: "Dashboard", status: "operational", uptime: "99.97%" },
-  { name: "Authentication", status: "operational", uptime: "100%" },
-  { name: "Embedded Signup", status: "operational", uptime: "99.95%" },
-];
+/**
+ * Component names only. There is no monitoring source behind this page yet, so it shows
+ * no uptime and no live state (fixed numbers looked measured and weren't).
+ */
+export const STATUS_SERVICES = ["API", "Webhooks", "Dashboard", "Authentication", "Embedded Signup"];
 
 const incidents = [
   {
@@ -44,15 +42,11 @@ export default function StatusPage() {
       </nav>
 
       <main className="max-w-[640px] mx-auto px-10 py-16">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-accent" />
-          <span className="text-sm font-mono text-accent">All systems operational</span>
-        </div>
         <h1 className="text-[32px] font-semibold tracking-[-0.03em] mb-1">
           Status
         </h1>
         <p className="text-[15px] text-text-3 mb-10">
-          Real-time status of Corvo services and infrastructure.
+          Corvo services and infrastructure components. This page does not show live metrics.
         </p>
 
         {/* Services */}
@@ -60,21 +54,12 @@ export default function StatusPage() {
           <div className="px-5 py-3.5 border-b border-border-soft">
             <span className="text-sm font-semibold">Services</span>
           </div>
-          {services.map((service) => (
+          {STATUS_SERVICES.map((name) => (
             <div
-              key={service.name}
+              key={name}
               className="flex items-center justify-between px-5 py-3.5 border-b border-[#151515] last:border-b-0"
             >
-              <span className="text-[14.5px]">{service.name}</span>
-              <div className="flex items-center gap-4">
-                <span className="font-mono text-xs text-text-3">
-                  {service.uptime} uptime
-                </span>
-                <span className="flex items-center gap-1.5 font-mono text-xs text-accent">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                  operational
-                </span>
-              </div>
+              <span className="text-[14.5px]">{name}</span>
             </div>
           ))}
         </div>

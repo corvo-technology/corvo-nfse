@@ -1,3 +1,6 @@
+import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
+import { TaxRegimeNotSupportedError } from '../domain/errors';
+import { Company } from '../domain/company';
 import { CompanyService } from './company.service';
 import { CompanyDomainService } from '../domain/company-domain.service';
 import { ICompanyRepository } from '../domain/company.repository';
@@ -237,7 +240,7 @@ describe('CompanyService', () => {
       expect(mockRepo.save).toHaveBeenCalledWith(existingCompany, tenantId);
     });
 
-    it('checks for duplicate taxId when changing', async () => {
+    it('refuses to change the CNPJ and saves nothing', async () => {
       const existingCompany = {
         ...mockCompany,
         id: 'company-1',
@@ -246,37 +249,30 @@ describe('CompanyService', () => {
         toSnapshot: jest.fn().mockReturnValue({}),
       };
       mockRepo.findByIdAndTenantId.mockResolvedValue(existingCompany as any);
-      mockRepo.existsWithTaxId.mockResolvedValue(false);
-      mockRepo.save.mockImplementation(async (c) => c);
-
-      await service.update(
-        'company-1',
-        { taxId: '22.334.455/0001-86' },
-        tenantId,
-      );
-
-      expect(mockRepo.existsWithTaxId).toHaveBeenCalledWith(
-        '22334455000186',
-        tenantId,
-        'company-1',
-        'test',
-      );
-    });
-
-    it('throws CompanyAlreadyExistsError when changing to duplicate taxId', async () => {
-      const existingCompany = {
-        ...mockCompany,
-        id: 'company-1',
-        taxId: VALID_CNPJ,
-        update: jest.fn(),
-        toSnapshot: jest.fn().mockReturnValue({}),
-      };
-      mockRepo.findByIdAndTenantId.mockResolvedValue(existingCompany as any);
-      mockRepo.existsWithTaxId.mockResolvedValue(true);
 
       await expect(
         service.update('company-1', { taxId: '22.334.455/0001-86' }, tenantId),
-      ).rejects.toBeInstanceOf(CompanyAlreadyExistsError);
+      ).rejects.toBeInstanceOf(FiscalValidationError);
+      expect(existingCompany.update).not.toHaveBeenCalled();
+      expect(mockRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('accepts the same CNPJ again (clients that resend the whole company)', async () => {
+      const existingCompany = {
+        ...mockCompany,
+        id: 'company-1',
+        taxId: VALID_CNPJ,
+        update: jest.fn(),
+        toSnapshot: jest.fn().mockReturnValue({}),
+      };
+      mockRepo.findByIdAndTenantId.mockResolvedValue(existingCompany as any);
+      mockRepo.save.mockImplementation(async (c) => c);
+
+      await service.update('company-1', { taxId: VALID_CNPJ }, tenantId);
+
+      expect(existingCompany.update).toHaveBeenCalledWith(
+        expect.not.objectContaining({ taxId: expect.anything() }),
+      );
     });
 
     it('does not check duplicate taxId when taxId not in input', async () => {
@@ -386,6 +382,7 @@ describe('CompanyService', () => {
       specialTaxRegime: null,
       ibsCbsRegularOption: false,
       ibsCbsRegularFrom: null,
+      simplesIssRate: null,
       validFrom: '2026-01-01',
     };
 
@@ -398,6 +395,7 @@ describe('CompanyService', () => {
           legalName: 'X',
           taxId: VALID_CNPJ,
           taxRegime: 'Simples Nacional',
+          simplesRate: '6.54',
           simpleNational: true,
           specialRegime: undefined,
           municipalityCode: '3550308',
@@ -482,7 +480,7 @@ describe('CompanyService', () => {
 
       await service.update(
         'company-id-1',
-        { taxRegime: 'Simples Nacional' },
+        { taxRegime: 'Simples Nacional', simplesRate: '6.54' },
         tenantId,
         'test',
         'api-key-owner',
@@ -510,7 +508,7 @@ describe('CompanyService', () => {
 
       await service.update(
         'company-id-1',
-        { taxRegime: 'Simples Nacional' },
+        { taxRegime: 'Simples Nacional', simplesRate: '6.54' },
         tenantId,
         'test',
       );
@@ -541,7 +539,7 @@ describe('CompanyService', () => {
 
       await service.update(
         'company-id-1',
-        { taxRegime: 'Simples Nacional' },
+        { taxRegime: 'Simples Nacional', simplesRate: '6.54' },
         tenantId,
         'test',
       );
@@ -578,5 +576,181 @@ describe('CompanyService', () => {
         specialRegime: null,
       });
     });
+  });
+});
+
+describe('CompanyService regime restriction', () => {
+  const tenant = '11111111-1111-4111-8111-111111111111';
+  const input = (taxRegime: 'MEI' | 'Lucro Presumido' | 'Lucro Real') => ({
+    legalName: 'Empresa',
+    taxId: '22.334.455/0001-86',
+    taxRegime,
+    municipalityCode: '3550308',
+  });
+  const build = () => {
+    const repo = {
+      existsWithTaxId: jest.fn().mockResolvedValue(false),
+      save: jest.fn(),
+      saveWithLimit: jest.fn(),
+      findByIdAndTenantId: jest.fn(),
+    };
+    const profiles = {
+      record: jest.fn(),
+      current: jest.fn().mockResolvedValue(null),
+    };
+    const service = new CompanyService(
+      repo as never,
+      { getStatus: jest.fn() } as never,
+      new CompanyDomainService(),
+      profiles as never,
+    );
+    return { service, repo, profiles };
+  };
+
+  it.each(['Lucro Presumido', 'Lucro Real'] as const)(
+    'refuses %s on create and saves nothing',
+    async (regime) => {
+      const { service, repo, profiles } = build();
+      await expect(
+        service.create(input(regime), tenant, 'test'),
+      ).rejects.toBeInstanceOf(TaxRegimeNotSupportedError);
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(profiles.record).not.toHaveBeenCalled();
+    },
+  );
+
+  it('update refuses a regime change the restriction would reject BEFORE saving the company', async () => {
+    const { service, repo, profiles } = build();
+    const existing = Company.create(
+      {
+        legalName: 'Empresa',
+        taxId: '22334455000186',
+        taxRegime: 'MEI',
+        municipalityCode: '3550308',
+      },
+      tenant,
+    );
+    repo.findByIdAndTenantId.mockResolvedValue(existing);
+    // No current profile: a partial regime change would inherit UNKNOWN.
+    profiles.current.mockResolvedValue(null);
+    await expect(
+      service.update(existing.id, { specialRegime: '1' }, tenant, 'test'),
+    ).rejects.toBeInstanceOf(TaxRegimeNotSupportedError);
+    expect(repo.save).not.toHaveBeenCalled();
+    expect(profiles.record).not.toHaveBeenCalled();
+  });
+});
+
+describe('CompanyService registry check', () => {
+  const company = {
+    taxId: '11222333000181',
+    municipalityCode: '3550308',
+  } as never;
+  const service = (lookup: jest.Mock) =>
+    new CompanyService(
+      {} as never,
+      {} as never,
+      new CompanyDomainService(),
+      {} as never,
+      { lookup },
+    );
+
+  it('warns when the registry says the MEI is not a MEI', async () => {
+    const lookup = jest.fn().mockResolvedValue({
+      optanteSimples: true,
+      optanteMei: false,
+      municipalityCode: '3550308',
+    });
+    const warnings = await service(lookup).registryWarnings(company, 'MEI');
+    expect(lookup).toHaveBeenCalledWith('11222333000181');
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'TAX_REGIME_REGISTRY_MISMATCH' }),
+    ]);
+  });
+
+  it('never fails or warns when the registry fails', async () => {
+    expect(
+      await service(
+        jest.fn().mockRejectedValue(new Error('down')),
+      ).registryWarnings(company, 'MEI'),
+    ).toEqual([]);
+    expect(
+      await service(jest.fn().mockResolvedValue(null)).registryWarnings(
+        company,
+        'MEI',
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('CompanyService Simples rates on update', () => {
+  const tenantId = '11111111-1111-4111-8111-111111111111';
+  const build = (
+    current: { taxRegime: string; simpleNational: boolean } | null,
+    companyRate?: string,
+  ) => {
+    const company = {
+      id: 'c1',
+      taxId: '11222333000181',
+      simplesRate: companyRate,
+      update: jest.fn(),
+    };
+    const repo = {
+      findByIdAndTenantId: jest.fn().mockResolvedValue(company),
+      save: jest.fn(),
+    };
+    const profiles = {
+      current: jest.fn().mockResolvedValue(
+        current && {
+          ...current,
+          specialTaxRegime: null,
+          ibsCbsRegularOption: false,
+          ibsCbsRegularFrom: null,
+          simplesIssRate: null,
+          simplesApuracao: null,
+        },
+      ),
+      record: jest.fn(),
+    };
+    const service = new CompanyService(
+      repo as never,
+      {} as never,
+      new CompanyDomainService(),
+      profiles as never,
+    );
+    return { service, company, repo };
+  };
+
+  it('requires the rate when a company becomes Simples Nacional', async () => {
+    const { service, repo } = build({
+      taxRegime: 'MEI',
+      simpleNational: true,
+    });
+    await expect(
+      service.update('c1', { taxRegime: 'Simples Nacional' }, tenantId),
+    ).rejects.toBeInstanceOf(FiscalValidationError);
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('updates only the rate of a Simples Nacional company', async () => {
+    const { service, company } = build(
+      { taxRegime: 'SIMPLES_NACIONAL', simpleNational: true },
+      '6.54',
+    );
+    await service.update('c1', { simplesRate: '7.20' }, tenantId);
+    expect(company.update).toHaveBeenCalledWith(
+      expect.objectContaining({ simplesRate: '7.20' }),
+    );
+  });
+
+  it('ignores the rates sent for a MEI', async () => {
+    const { service, company } = build({
+      taxRegime: 'MEI',
+      simpleNational: true,
+    });
+    await service.update('c1', { simplesRate: '7.20' }, tenantId);
+    expect(company.update).toHaveBeenCalledWith(
+      expect.not.objectContaining({ simplesRate: expect.anything() }),
+    );
   });
 });

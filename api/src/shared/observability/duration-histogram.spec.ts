@@ -68,9 +68,7 @@ describe('duration histogram configuration', () => {
       .getMetrics()
       .flatMap((resource) => resource.scopeMetrics)
       .flatMap((scope) => scope.metrics)
-      .find(
-        (candidate) => candidate.descriptor.name === 'corvo.test.duration',
-      );
+      .find((candidate) => candidate.descriptor.name === 'corvo.test.duration');
 
     expect(metric?.descriptor.unit).toBe('s');
     if (!metric || metric.dataPointType !== DataPointType.HISTOGRAM) {

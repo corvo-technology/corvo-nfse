@@ -8,6 +8,7 @@ import { FreeTrial } from "@/components/landing/free-trial";
 import { Pricing } from "@/components/landing/pricing";
 import { FlowSection } from "@/components/landing/flow-section";
 import { AgentsSection } from "@/components/landing/agents-section";
+import { IntegrationsSection } from "@/components/landing/integrations-section";
 import { SdksSection } from "@/components/landing/sdks-section";
 import { MultiCompanySection } from "@/components/landing/multi-company-section";
 import { UseCases } from "@/components/landing/use-cases";
@@ -31,6 +32,9 @@ export function LandingPage() {
         </ScrollReveal>
         <ScrollReveal>
           <FlowSection />
+        </ScrollReveal>
+        <ScrollReveal>
+          <IntegrationsSection />
         </ScrollReveal>
         <ScrollReveal>
           <SdksSection />

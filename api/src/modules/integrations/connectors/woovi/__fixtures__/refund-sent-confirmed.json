@@ -1,0 +1,38 @@
+{
+  "event": "PIX_TRANSACTION_REFUND_SENT_CONFIRMED",
+  "refundTransaction": {
+    "value": 4990,
+    "time": "2026-10-29T16:00:00.000Z",
+    "status": "CONFIRMED",
+    "type": "REFUND",
+    "endToEndId": "D00000000202610291600REFUND0001",
+    "partial": false,
+    "createdAt": "2026-10-29T16:00:01.000Z",
+    "globalID": "UGl4VHJhbnNhY3Rpb246cmVmdW5k"
+  },
+  "originalTransaction": {
+    "value": 4990,
+    "time": "2026-10-29T15:00:00.000Z",
+    "endToEndId": "E00000000202610291500ABCDEFGH1234",
+    "status": "CONFIRMED",
+    "type": "PAYMENT",
+    "payer": {
+      "name": "Joao Pagador",
+      "taxID": {
+        "taxID": "11144477735",
+        "type": "BR:CPF"
+      },
+      "correlationID": "payer-1"
+    },
+    "createdAt": "2026-10-29T15:00:01.000Z",
+    "globalID": "UGl4VHJhbnNhY3Rpb246b3JpZw=="
+  },
+  "company": {
+    "id": "company-1",
+    "name": "Minha Loja",
+    "taxID": "11222333000181"
+  },
+  "account": {
+    "id": "acc-1"
+  }
+}

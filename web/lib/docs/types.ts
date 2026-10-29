@@ -19,10 +19,11 @@ export type DocSlug =
   | "pagination"
   | "receiving-webhooks"
   | "integration-checklist"
+  | "payment-integrations"
   | "mcp"
   | "llms";
 
-export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export interface TextBlock {
   kind: "text";

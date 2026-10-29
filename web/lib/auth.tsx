@@ -1,6 +1,11 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+import posthog from "posthog-js";
 import { ApiError, auth, onUnauthorized, setCsrfToken, setFiscalEnvironment, getFiscalEnvironment, type SessionPayload } from "./api";
+
+const posthogConfigured = Boolean(
+  process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
+);
 
 type AuthStatus = "loading" | "authenticated" | "anonymous" | "error";
 interface AuthContextType {
@@ -22,11 +27,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const controller = useRef<AbortController | null>(null);
   const channel = useRef<BroadcastChannel | null>(null);
   const transition = useRef(false);
+  const identifiedUserId = useRef<string | null>(null);
   const clear = useCallback(() => {
     generation.current++; controller.current?.abort();
+    if (posthogConfigured && (identifiedUserId.current || posthog.get_property("$user_id"))) posthog.reset();
+    identifiedUserId.current = null;
     setCsrfToken(null); setSession(null); setStatus("anonymous"); setError(null);
   }, []);
   const apply = useCallback((value: SessionPayload) => {
+    const userId = value.context.authUserId;
+    if (posthogConfigured && identifiedUserId.current !== userId) {
+      const persistedUserId = posthog.get_property("$user_id");
+      if (identifiedUserId.current || (typeof persistedUserId === "string" && persistedUserId !== userId)) posthog.reset();
+      posthog.identify(userId, { role: value.context.role });
+      identifiedUserId.current = userId;
+    }
     setCsrfToken(value.csrfToken); setSession(value); setStatus("authenticated"); setError(null);
   }, []);
   const refreshSession = useCallback(async () => {

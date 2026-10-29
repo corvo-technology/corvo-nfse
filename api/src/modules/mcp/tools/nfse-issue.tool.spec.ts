@@ -117,6 +117,29 @@ describe('nfse_issue simple inputs', () => {
     });
   });
 
+  it('passes the declared deduction to the invoice request', async () => {
+    const { emit, handler } = setup();
+    await handler(
+      {
+        company_tax_id: '11222333000181',
+        amount: 100,
+        deduction: 40,
+      },
+      context,
+    );
+    expect(dtoOf(emit)).toMatchObject({ amount: 100, deduction: 40 });
+  });
+
+  it('rejects a negative deduction', async () => {
+    const { handler } = setup();
+    await expect(
+      handler(
+        { company_tax_id: '11222333000181', amount: 100, deduction: -1 },
+        context,
+      ),
+    ).rejects.toThrow();
+  });
+
   it('maps the schedule and email options', async () => {
     const { emit, handler } = setup();
     await handler(

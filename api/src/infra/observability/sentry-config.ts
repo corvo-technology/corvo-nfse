@@ -80,7 +80,7 @@ export function sanitizeSentryEvent(event: ErrorEvent): ErrorEvent {
   }
 
   const safeBreadcrumbs = sanitized.breadcrumbs
-    ?.filter((breadcrumb) => breadcrumb.category?.startsWith('greenflow.'))
+    ?.filter((breadcrumb) => breadcrumb.category?.startsWith('corvo.'))
     .map((breadcrumb) => ({
       timestamp: breadcrumb.timestamp,
       type: breadcrumb.type,
@@ -92,11 +92,9 @@ export function sanitizeSentryEvent(event: ErrorEvent): ErrorEvent {
   else delete sanitized.breadcrumbs;
 
   if (sanitized.contexts) {
-    const { greenflow, trace } = sanitized.contexts;
+    const { corvo, trace } = sanitized.contexts;
     sanitized.contexts = {
-      ...(greenflow
-        ? { greenflow: sanitizeRecord(greenflow, SAFE_CONTEXT_KEYS) }
-        : {}),
+      ...(corvo ? { corvo: sanitizeRecord(corvo, SAFE_CONTEXT_KEYS) } : {}),
       ...(trace ? { trace } : {}),
     };
   }

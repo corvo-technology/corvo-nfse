@@ -13,8 +13,8 @@ it('seeds 15 free invoices per month while preserving all other plan allowances'
   ).toEqual([
     ['free', 15],
     ['developer', 200],
-    ['growth', 750],
-    ['scale', 2500],
+    ['growth', 850],
+    ['scale', 3000],
     ['volume', 10000],
   ]);
   expect(save.mock.calls[0]?.[0].toSnapshot()).toMatchObject({

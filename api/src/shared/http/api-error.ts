@@ -71,6 +71,21 @@ export const DOMAIN_ERRORS: Record<
     code: 'ERROR_IDEMPOTENCY_CONFLICT',
     message: 'Idempotency key was used with a different payload',
   },
+  InvoiceNotCancellableError: {
+    status: 409,
+    code: 'ERROR_INVOICE_NOT_CANCELLABLE',
+    message: 'Invoice cannot be cancelled in its current status',
+  },
+  ConcurrentInvoiceTransitionError: {
+    status: 409,
+    code: 'ERROR_CONCURRENT_INVOICE_TRANSITION',
+    message: 'Invoice changed while the request was processed; retry',
+  },
+  InvalidCancellationReasonError: {
+    status: 422,
+    code: 'ERROR_INVALID_CANCELLATION_REASON',
+    message: 'Cancellation description must have 15 to 255 characters',
+  },
   CertificateNotFoundError: {
     status: 404,
     code: 'ERROR_CERTIFICATE_NOT_FOUND',
@@ -140,6 +155,11 @@ export const DOMAIN_ERRORS: Record<
     status: 403,
     code: 'ERROR_FREE_PLAN_ABUSE',
     message: 'Free plan eligibility check failed',
+  },
+  TaxRegimeNotSupportedError: {
+    status: 422,
+    code: 'ERROR_TAX_REGIME_NOT_SUPPORTED',
+    message: 'Only MEI and Simples Nacional companies are supported',
   },
   QuotaExceededError: {
     status: 422,

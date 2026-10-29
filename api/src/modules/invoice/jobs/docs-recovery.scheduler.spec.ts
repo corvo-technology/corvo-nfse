@@ -14,6 +14,8 @@ describe('DocsRecoveryScheduler', () => {
     findByIdempotencyKey: jest.fn(),
     findByTenantId: jest.fn(),
     save: jest.fn(),
+    saveDpsInfo: jest.fn(),
+    registerCancellationIntent: jest.fn(),
     insert: jest.fn(),
     findPendingReconciliation: jest.fn(),
     existsIdempotencyKey: jest.fn(),
@@ -69,7 +71,10 @@ describe('DocsRecoveryScheduler', () => {
     const observe = jest.spyOn(scheduledTaskTelemetry, 'observeScheduledTask');
     try {
       await scheduler.handle();
-      expect(observe).toHaveBeenCalledWith('invoice.docs-recovery', expect.any(Function));
+      expect(observe).toHaveBeenCalledWith(
+        'invoice.docs-recovery',
+        expect.any(Function),
+      );
     } finally {
       observe.mockRestore();
     }

@@ -9,7 +9,8 @@ export type SystemPurpose =
   | 'oauth-bootstrap'
   | 'workspace-bootstrap'
   | 'billing-eligibility'
-  | 'verified-provider-event';
+  | 'verified-provider-event'
+  | 'integration-inbound';
 export type DatabaseScope = {
   tenantId?: string;
   authUserId?: string;

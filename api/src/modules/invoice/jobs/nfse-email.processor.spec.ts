@@ -4,7 +4,10 @@ import { NfseEmailProcessor } from './nfse-email.processor';
 import type { LockPort } from '@/infra/redis/lock.port';
 import type { IDocumentStorage } from '@/infra/storage/domain/document-storage';
 import type { IInvoiceRepository } from '../domain/invoice.repository';
-import type { MillionSendEmailProvider } from '@/infra/external/email/mmsend-email.provider';
+import {
+  PermanentEmailError,
+  type MillionSendEmailProvider,
+} from '@/infra/external/email/mmsend-email.provider';
 import type { Invoice } from '../domain/invoice';
 import type { CustomerSnapshot } from '../domain/invoice';
 
@@ -240,6 +243,35 @@ describe('NfseEmailProcessor', () => {
     });
   });
 
+  describe('cancelled invoices — no e-mail', () => {
+    it.each(['cancelling', 'cancelled'] as const)(
+      'returns without throwing or touching e-mail status for a %s invoice',
+      async (status) => {
+        const invoice = buildInvoice({ customerEmail: 'cliente@example.com' });
+        Object.assign(invoice, { status });
+        (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+          invoice,
+        );
+        await expect(processor.process(makeJob())).resolves.toBeUndefined();
+        expect(fakeInvoiceRepo.updateEmailStatus).not.toHaveBeenCalled();
+        expect(fakeDocStorage.getPdf).not.toHaveBeenCalled();
+        expect(fakeDocStorage.getXml).not.toHaveBeenCalled();
+        expect(fakeEmailProvider.send).not.toHaveBeenCalled();
+      },
+    );
+
+    it('still throws for an authorized invoice without documents', async () => {
+      const invoice = buildInvoice({ customerEmail: 'cliente@example.com' });
+      Object.assign(invoice, { documentsReadyAt: null });
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        invoice,
+      );
+      await expect(processor.process(makeJob())).rejects.toThrow(
+        'Invoice documents are not ready',
+      );
+    });
+  });
+
   describe('no customer email — silent skip', () => {
     it('marks invoice as failed when customer has no email', async () => {
       (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
@@ -288,6 +320,26 @@ describe('NfseEmailProcessor', () => {
         'tenant-1',
         'failed',
       );
+    });
+  });
+
+  describe('permanent provider refusal', () => {
+    it('marks the email as failed right away and finishes the job instead of retrying', async () => {
+      const invoice = buildInvoice({ customerEmail: 'joao@example.com' });
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        invoice,
+      );
+      (fakeEmailProvider.send as jest.Mock).mockRejectedValue(
+        new PermanentEmailError('example.com accepts no mail'),
+      );
+
+      await expect(processor.process(makeJob())).resolves.toBeUndefined();
+      expect(fakeInvoiceRepo.updateEmailStatus).toHaveBeenCalledWith(
+        'inv-1',
+        expect.any(String),
+        'failed',
+      );
+      expect(fakeWorkflow.emailFailed).toHaveBeenCalledWith(invoice);
     });
   });
 

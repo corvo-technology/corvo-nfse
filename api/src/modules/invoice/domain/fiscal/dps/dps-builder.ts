@@ -14,16 +14,78 @@ import {
   type DPS,
   type RtcInfoIbsCbs,
 } from 'open-nfse';
+import { SPECIAL_TAX_REGIME_CODES } from '@/modules/company/domain/fiscal-profile';
+import type { Obligation } from '../applicability/tax-applicability';
 import type { FiscalCalculationResult } from '../fiscal-calculation-result';
 import { fiscalError, type FiscalError } from '../fiscal-error';
 import { toDecimal, type DecimalString } from '../money';
 import { err, ok, type Result } from '../result';
-import { ACTIVE_LAYOUTS, type DpsLayout } from './dps-layout';
+import { ACTIVE_LAYOUTS, type DpsLayout, XML_LAYOUT } from './dps-layout';
 
 const STEP = 'DpsBuilder';
 const MAX_VIOLATIONS = 20;
 /** CPF (11) and CNPJ (14) digit runs must never reach the error details. */
 const PERSONAL_DATA_PATTERN = /\b\d{11,14}\b/g;
+
+/**
+ * RTC v1.01 `tribISSQN` from the ISS applicability the fiscal engine
+ * already decided. Only "operação tributável" (1) is modelled: isenção is
+ * not a `tribISSQN` value, it is the municipal benefit group (BM/nBM),
+ * which blocks emission upstream as UNSUPPORTED before this builder runs.
+ * Imunidade (2, needs tpImunidade), exportação de serviço (3, needs
+ * cPaisResult) and não incidência (4) are not modelled either — this is the
+ * single place to add them once the engine can produce those extra fields.
+ */
+function tribIssqnFor(_iss: Obligation): TipoTribISSQN {
+  return TipoTribISSQN.OperacaoTributavel;
+}
+
+/**
+ * `regEspTrib` (RTC v1.01 `TSRegEspTrib`) from the stored special tax
+ * regime. Rejects free text that predates this validation (old rows may
+ * still hold it) and enforces E0174 (MEI) / E0175 (ME/EPP via Simples
+ * Nacional, the only `regApTribSN` Corvo sends): both require regEspTrib=0.
+ */
+function resolveRegEspTrib(
+  specialTaxRegime: string | null,
+  opSimpNac: OpcaoSimplesNacional,
+): Result<RegimeEspecialTributacao, FiscalError> {
+  const raw = specialTaxRegime?.trim() || '0';
+  // Numeric rows stored before this validation (e.g. "03") keep working.
+  const code = /^\d{1,2}$/.test(raw) ? String(Number(raw)) : raw;
+  if (!(SPECIAL_TAX_REGIME_CODES as readonly string[]).includes(code)) {
+    return err(
+      fiscalError({
+        code: 'FISCAL_VALIDATION_FAILED',
+        message: `O regime especial de tributação "${code}" não é um código regEspTrib válido (0 a 6)`,
+        category: 'VALIDATION',
+        step: STEP,
+        details: { reason: 'special_tax_regime_invalid', value: code },
+      }),
+    );
+  }
+  const isSimplesLike =
+    opSimpNac === OpcaoSimplesNacional.Mei ||
+    opSimpNac === OpcaoSimplesNacional.MeEpp;
+  if (code !== '0' && isSimplesLike) {
+    const rule = opSimpNac === OpcaoSimplesNacional.Mei ? 'E0174' : 'E0175';
+    return err(
+      fiscalError({
+        code: 'FISCAL_VALIDATION_FAILED',
+        message: `opSimpNac=${opSimpNac} exige regEspTrib=0; recebido "${code}" (${rule})`,
+        category: 'VALIDATION',
+        step: STEP,
+        details: {
+          reason: 'special_tax_regime_incompatible_with_simples',
+          opSimpNac,
+          value: code,
+          rule,
+        },
+      }),
+    );
+  }
+  return ok(code as RegimeEspecialTributacao);
+}
 
 export interface DpsBuildInput {
   readonly result: FiscalCalculationResult;
@@ -47,12 +109,28 @@ export interface DpsBuildInput {
       readonly email?: string;
     } | null;
     readonly discountAmount: DecimalString;
+    /**
+     * Issuer-declared deduction from the tax base. Sent as `vDedRed/vDR`; absent
+     * or zero omits the group.
+     */
+    readonly deductionAmount?: DecimalString;
   };
   readonly emitente: {
     readonly cnpj: string;
     readonly municipalReg: string | null;
     readonly municipalityCode: string;
     readonly specialTaxRegime: string | null;
+    /** Effective ISS rate (%) of the Simples Nacional bracket, informed on the company (LC 123/2006, art. 21, §4º, I). */
+    readonly simplesIssRate: string | null;
+    /**
+     * When present, the DPS carries the Simples approximate total tax rate
+     * (`pTotTribSN`, ME/EPP) or `indTotTrib = 0` (MEI) and the profile's
+     * `regApTribSN`, instead of a zeroed `vTotTrib`.
+     */
+    readonly simplesTotTrib?: {
+      readonly regApTribSN: 1 | 2 | 3 | null;
+      readonly totalRate: string | null;
+    };
   };
 }
 
@@ -186,19 +264,74 @@ export class DpsBuilder {
           ? OpcaoSimplesNacional.MeEpp
           : OpcaoSimplesNacional.NaoOptante;
 
+    const tpRetISSQN =
+      result.applicability.issWithheld.status === 'REQUIRED'
+        ? TipoRetISSQN.RetidoPeloTomador
+        : TipoRetISSQN.NaoRetido;
+    // The Simples Nacional ME/EPP ISS rate only goes on the DPS when
+    // retention applies (Sefin 656/658 mandate pAliq for tpRetISSQN 2/3); the
+    // engine blocks emission beforehand when retention is required and the
+    // rate is missing, so this never silently sends a zeroed rate.
+    const simplesRetentionRate =
+      opSimpNac === OpcaoSimplesNacional.MeEpp &&
+      tpRetISSQN === TipoRetISSQN.RetidoPeloTomador
+        ? input.emitente.simplesIssRate
+        : null;
+    if (
+      opSimpNac === OpcaoSimplesNacional.MeEpp &&
+      tpRetISSQN === TipoRetISSQN.RetidoPeloTomador &&
+      simplesRetentionRate === null
+    ) {
+      return err(
+        fiscalError({
+          code: 'DPS_SCHEMA_VALIDATION_FAILED',
+          message:
+            'ISS withholding for Simples Nacional ME/EPP requires the effective ISS rate (pAliq) on the company',
+          category: 'VALIDATION',
+          step: STEP,
+          details: { reason: 'simples_iss_rate_missing' },
+        }),
+      );
+    }
+    const regEspTrib = resolveRegEspTrib(
+      input.emitente.specialTaxRegime,
+      opSimpNac,
+    );
+    if (!regEspTrib.ok) return err(regEspTrib.error);
+
+    const simplesTotTrib = input.emitente.simplesTotTrib;
+    if (
+      simplesTotTrib !== undefined &&
+      opSimpNac === OpcaoSimplesNacional.MeEpp &&
+      simplesTotTrib.totalRate === null
+    ) {
+      return err(
+        fiscalError({
+          code: 'DPS_SCHEMA_VALIDATION_FAILED',
+          message:
+            'Simples Nacional ME/EPP requires the approximate total tax rate (pTotTribSN) on the company',
+          category: 'VALIDATION',
+          step: STEP,
+          details: { reason: 'simples_total_rate_missing' },
+        }),
+      );
+    }
+
     const params: BuildDpsParams = {
       emitente: {
         cnpj: input.emitente.cnpj,
         codMunicipio: input.emitente.municipalityCode,
         regime: {
           opSimpNac,
-          regEspTrib: String(
-            Number(input.emitente.specialTaxRegime ?? 0),
-          ) as RegimeEspecialTributacao,
+          regEspTrib: regEspTrib.value,
           ...(opSimpNac === OpcaoSimplesNacional.MeEpp
             ? {
                 regApTribSN:
-                  RegimeApuracaoSimplesNacional.FederalEMunicipalPeloSN,
+                  simplesTotTrib?.regApTribSN != null
+                    ? (String(
+                        simplesTotTrib.regApTribSN,
+                      ) as RegimeApuracaoSimplesNacional)
+                    : RegimeApuracaoSimplesNacional.FederalEMunicipalPeloSN,
               }
             : {}),
         },
@@ -226,16 +359,21 @@ export class DpsBuilder {
       },
       valores: {
         vServ: toDecimal(result.taxableAmounts.gross).toNumber(),
-        ...(result.taxes.iss !== undefined &&
-        result.taxes.iss.rate !== undefined
-          ? { aliqIss: Number(result.taxes.iss.rate) }
-          : {}),
-        tribISSQN: TipoTribISSQN.OperacaoTributavel,
-        tpRetISSQN:
-          result.applicability.issWithheld.status === 'REQUIRED'
-            ? TipoRetISSQN.RetidoPeloTomador
-            : TipoRetISSQN.NaoRetido,
-        vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 },
+        ...(simplesRetentionRate !== null
+          ? { aliqIss: Number(simplesRetentionRate) }
+          : result.taxes.iss !== undefined &&
+              result.taxes.iss.rate !== undefined
+            ? { aliqIss: Number(result.taxes.iss.rate) }
+            : {}),
+        tribISSQN: tribIssqnFor(result.applicability.iss),
+        tpRetISSQN,
+        // The SDK picks the allowed `totTrib` member per regime (E0710/E0712):
+        // indTotTrib 0 for MEI when nothing is informed, pTotTribSN for ME/EPP.
+        ...(simplesTotTrib === undefined
+          ? { vTotTrib: { vTotTribFed: 0, vTotTribEst: 0, vTotTribMun: 0 } }
+          : opSimpNac === OpcaoSimplesNacional.MeEpp
+            ? { pTotTribSN: Number(simplesTotTrib.totalRate) }
+            : {}),
       },
       ...(input.invoice.customer !== null
         ? {
@@ -285,16 +423,31 @@ export class DpsBuilder {
         },
       };
     }
+    const deduction = toDecimal(input.invoice.deductionAmount ?? '0');
+    if (deduction.gt(0)) {
+      dps = {
+        ...dps,
+        infDPS: {
+          ...dps.infDPS,
+          valores: {
+            ...dps.infDPS.valores,
+            vDedRed: { vDR: deduction.toNumber() },
+          },
+        },
+      };
+    }
 
     try {
-      const validation = await validateDpsXml(buildDpsXml(dps), {
-        throwOnInvalid: false,
-      });
+      const xmlLayout = XML_LAYOUT[layout.id];
+      const validation = await validateDpsXml(
+        buildDpsXml(dps, { layout: xmlLayout }),
+        { throwOnInvalid: false, layout: xmlLayout },
+      );
       if (!validation.valid) {
         return err(
           fiscalError({
             code: 'DPS_SCHEMA_VALIDATION_FAILED',
-            message: `The DPS XML failed RTC v1.01 schema validation (${validation.violations.length} violation(s))`,
+            message: `The DPS XML failed schema validation for layout ${layout.id} (${validation.violations.length} violation(s))`,
             category: 'VALIDATION',
             step: STEP,
             details: { violations: redactViolations(validation.violations) },
@@ -305,7 +458,7 @@ export class DpsBuilder {
       return err(
         fiscalError({
           code: 'DPS_SCHEMA_VALIDATION_FAILED',
-          message: 'The DPS XML could not be validated against RTC v1.01',
+          message: `The DPS XML could not be validated against layout ${layout.id}`,
           category: 'VALIDATION',
           step: STEP,
           details: sdkRejectionDetails('schema_validation_failed', error),
