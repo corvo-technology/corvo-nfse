@@ -4,6 +4,7 @@ import { Callout } from "./callout";
 import { EndpointCard } from "./endpoint-card";
 import { CopyCodeButton } from "./copy-code-button";
 import { InlineText } from "./inline-text";
+import { MunicipalitiesSearch } from "./municipalities-search";
 
 const CODE_BLOCK_LANG_LABEL = { bash: "bash", json: "json", js: "javascript", text: "prompt" } as const;
 
@@ -89,6 +90,8 @@ export function DocBlocks({
             );
           case "endpoint":
             return <EndpointCard key={i} block={block} copy={copy} />;
+          case "municipalities":
+            return <MunicipalitiesSearch key={i} locale={block.locale} labels={block.labels} />;
         }
       })}
     </div>

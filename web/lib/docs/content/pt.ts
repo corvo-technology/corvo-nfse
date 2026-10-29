@@ -1,6 +1,7 @@
 // lib/docs/content/pt.ts
 import { SDKS } from "../../sdks";
 import type { DocsTree } from "../types";
+import { municipalitiesPage } from "../municipalities-page";
 
 const ptWithRetiredCredits: DocsTree = {
   chrome: {
@@ -2474,6 +2475,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         },
       ],
     },
+    municipalities: municipalitiesPage("pt"),
     "payment-integrations": {
       title: "Integrações de pagamento",
       description: "Conecte Woovi, AbacatePay ou Stripe e emita a NFS-e automaticamente a cada pagamento confirmado.",

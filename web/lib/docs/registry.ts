@@ -11,7 +11,7 @@ export const DOC_GROUPS: { key: DocGroupKey; slugs: DocSlug[] }[] = [
   },
   {
     key: "guides",
-    slugs: ["async-issuance", "pagination", "receiving-webhooks", "integration-checklist", "payment-integrations", "mcp", "llms"],
+    slugs: ["async-issuance", "pagination", "receiving-webhooks", "integration-checklist", "payment-integrations", "municipalities", "mcp", "llms"],
   },
 ];
 

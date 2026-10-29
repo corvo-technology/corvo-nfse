@@ -882,50 +882,6 @@
     },
     "cta": "Ver documentação"
   },
-  "FAQ": {
-    "eyebrow": "FAQ",
-    "title": "Perguntas frequentes",
-    "what": {
-      "q": "O que é a Corvo?",
-      "a": "A Corvo é uma plataforma de API para emissão e gerenciamento de notas fiscais de serviço eletrônicas (NFS-e). Ela permite integrar a emissão ao seu próprio sistema."
-    },
-    "free": {
-      "q": "Posso usar a Corvo gratuitamente?",
-      "a": "Sim. O Free inclui uma empresa e até 15 notas autorizadas em produção por mês, com limite de 3 por dia. A cota renova no primeiro dia do mês e os limites seguem UTC. Não é necessário cartão de crédito; notas de teste não consomem essa cota."
-    },
-    "multiCompany": {
-      "q": "Posso gerenciar várias empresas?",
-      "a": "Sim. Os planos pagos permitem gerenciar múltiplas empresas emissoras, de acordo com os limites de cada assinatura."
-    },
-    "accumulate": {
-      "q": "Os limites de notas acumulam?",
-      "a": "Não. Notas não utilizadas não acumulam. O Free renova no primeiro dia de cada mês em UTC; os planos pagos seguem o período mensal da assinatura informado no painel."
-    },
-    "email": {
-      "q": "Posso enviar a nota por e-mail?",
-      "a": "Sim. Você pode solicitar o envio do XML e do PDF para o e-mail do tomador quando a nota estiver autorizada e os documentos estiverem disponíveis. Acompanhe o status de envio no Serviço."
-    },
-    "storage": {
-      "q": "A Corvo armazena minhas notas?",
-      "a": "Sim. A Corvo armazena registros das emissões e os documentos XML e PDF disponíveis, com acesso por permissões. A retenção segue os Termos de Uso e o Aviso de Privacidade. Baixe cópias para cumprir as obrigações de guarda da sua empresa."
-    },
-    "nfeProducts": {
-      "q": "A Corvo emite NF-e de produtos?",
-      "a": "Neste momento, o foco do produto é NFS-e, destinada à prestação de serviços. Não há suporte a NF-e de mercadorias ou NFC-e."
-    },
-    "coverage": {
-      "q": "A Corvo funciona em todos os municípios?",
-      "a": "A disponibilidade depende das integrações e dos requisitos aplicáveis ao município e à empresa emissora. Consulte a cobertura disponível antes de iniciar a integração."
-    },
-    "developer": {
-      "q": "Preciso ser desenvolvedor para utilizar?",
-      "a": "A API foi pensada para integração com software. A Corvo também oferece uma interface para gerenciamento e consulta dos documentos."
-    },
-    "accountant": {
-      "q": "A Corvo substitui meu contador?",
-      "a": "Não. A Corvo fornece infraestrutura tecnológica para emissão de documentos fiscais. O enquadramento tributário e as obrigações contábeis continuam sendo responsabilidade da empresa, com apoio dos profissionais adequados."
-    }
-  },
   "CTA": {
     "eyebrow": "COMEÇAR AGORA",
     "title": "Seu próximo deploy pode emitir notas fiscais.",
@@ -2325,6 +2281,39 @@
     "refund": {
       "title": "Teve reembolso?",
       "body": "A Corvo cancela a nota sozinha. É um ajuste que você liga quando quiser."
+    }
+  },
+  "LandingFaq": {
+    "title": "Perguntas frequentes",
+    "description": "O que mais perguntam antes de integrar a emissão de NFS-e.",
+    "docs": "Ver a documentação",
+    "items": {
+      "coverage": {
+        "q": "A Corvo atende o município da minha empresa?",
+        "a": "A Corvo emite pelo ambiente nacional da NFS-e, da Receita Federal. Os municípios que já estão no padrão nacional aparecem na documentação, com busca por nome, estado ou código IBGE. Estar na lista não garante que cada nota seja aceita: quem decide é a Receita.",
+        "link": "Ver a lista de municípios"
+      },
+      "issues": {
+        "q": "A Corvo emite a nota por mim?",
+        "a": "Sim. Você envia os dados da venda por API, ou por uma integração de pagamento, e a Corvo monta a nota, assina com o certificado A1 da empresa (em teste não precisa), envia à Receita e devolve o resultado. Se você quiser, ela também envia o PDF e o XML por e-mail ao cliente. Hoje a Corvo atende empresas MEI e Simples Nacional.",
+        "link": "Ver o guia de início"
+      },
+      "companies": {
+        "q": "Posso emitir notas para mais de um CNPJ na Corvo?",
+        "a": "Sim. O plano Free da Corvo inclui 1 empresa. Os planos pagos permitem empresas ilimitadas, cada uma com o seu certificado e o seu consumo, sem criar uma integração nova para cada uma.",
+        "link": "Ver os planos"
+      },
+      "payments": {
+        "q": "Com quais plataformas de pagamento a Corvo se integra?",
+        "a": "A Corvo se integra com Woovi e AbacatePay. Depois de conectar, cada pagamento aprovado vira uma NFS-e automaticamente, sem código. Se houver reembolso, a nota pode ser cancelada sozinha, se você ativar essa opção.",
+        "link": "Ver como conectar"
+      },
+      "sdks": {
+        "q": "A Corvo tem SDK para a minha linguagem ou MCP para agentes de IA?",
+        "a": "Sim. A Corvo tem SDKs oficiais para Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir e .NET, com as mesmas operações em todos, e também dá para chamar a API REST direto. Para agentes de IA, a Corvo tem um servidor MCP: Claude Code, Cursor, Codex, VS Code, Windsurf e Claude Desktop conectam com login no navegador, e você escolhe o workspace e o ambiente (teste ou produção) na tela de aprovação.",
+        "link": "Ver os SDKs",
+        "link2": "Ver o MCP"
+      }
     }
   }
 }
