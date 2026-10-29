@@ -6,12 +6,12 @@ import IntegrationsPage from "@/app/(dashboard)/app/integrations/page";
 import messages from "@/messages/en.json";
 
 const mocks = vi.hoisted(() => ({
-  list: vi.fn(), providers: vi.fn(), create: vi.fn(), validate: vi.fn(), activate: vi.fn(), pause: vi.fn(), disconnect: vi.fn(), putRules: vi.fn(),
+  list: vi.fn(), providers: vi.fn(), create: vi.fn(), validate: vi.fn(), activate: vi.fn(), pause: vi.fn(), disconnect: vi.fn(), putRules: vi.fn(), rules: vi.fn(), events: vi.fn(),
   sales: vi.fn(), completeCustomer: vi.fn(), retry: vi.fn(), companies: vi.fn(), success: vi.fn(), error: vi.fn(), permissions: new Set<string>(),
 }));
 vi.mock("@/lib/api", async (original) => ({
   ...(await original<typeof import("@/lib/api")>()),
-  integrations: { list: mocks.list, providers: mocks.providers, create: mocks.create, validate: mocks.validate, activate: mocks.activate, pause: mocks.pause, disconnect: mocks.disconnect, putRules: mocks.putRules, sales: mocks.sales, completeCustomer: mocks.completeCustomer, retry: mocks.retry },
+  integrations: { list: mocks.list, providers: mocks.providers, create: mocks.create, validate: mocks.validate, activate: mocks.activate, pause: mocks.pause, disconnect: mocks.disconnect, putRules: mocks.putRules, rules: mocks.rules, events: mocks.events, sales: mocks.sales, completeCustomer: mocks.completeCustomer, retry: mocks.retry },
   companies: { list: mocks.companies },
 }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (p: string) => mocks.permissions.has(p), fiscalEnvironment: "test" }) }));
@@ -23,6 +23,7 @@ const company = { id: "co1", legalName: "Acme Ltda", tradeName: "Acme" };
 const connection = (over: Record<string, unknown> = {}) => ({ id: "c1", provider: "woovi", environment: "test", companyId: "co1", state: "active", externalAccountId: "acc", activeFrom: null, webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB", createdAt: "2026-10-29T12:00:00Z", ...over });
 const sale = (over: Record<string, unknown> = {}) => ({ id: "s1", operationKey: "charge:1", commercialState: "paid", fiscalStatus: "submitted", blockReason: null, amountCents: 4990, currency: "BRL", customer: { name: "Maria", email: null, taxId: "52998224725", taxIdMasked: false }, paidAt: "2026-10-29T15:00:00Z", invoiceId: "inv1", createdAt: "2026-10-29T15:00:00Z", updatedAt: "2026-10-29T15:00:00Z", ...over });
 const waiting = (id: string) => sale({ id, fiscalStatus: "needs_attention", blockReason: "customer_tax_id_missing", invoiceId: null, customer: { name: "Joao", email: null, taxId: null, taxIdMasked: true } });
+const rule = (over: Record<string, unknown> = {}) => ({ id: "r1", externalProductId: null, service: { description: "Consultoria" }, sendEmail: true, allowAnonymousCustomer: false, ...over });
 const renderPage = () => render(<NextIntlClientProvider locale="en" messages={messages}><IntegrationsPage /></NextIntlClientProvider>);
 
 beforeEach(() => {
@@ -32,6 +33,8 @@ beforeEach(() => {
   mocks.providers.mockResolvedValue([woovi, abacate]);
   mocks.companies.mockResolvedValue({ items: [company], hasMore: false, nextCursor: null });
   mocks.sales.mockResolvedValue([]);
+  mocks.rules.mockResolvedValue([rule()]);
+  mocks.events.mockResolvedValue([]);
   Object.defineProperty(navigator, "clipboard", { value: { writeText: vi.fn().mockResolvedValue(undefined) }, configurable: true });
 });
 afterEach(cleanup);
@@ -174,9 +177,10 @@ describe("Connection details", () => {
     return screen.findByRole("dialog");
   }
 
-  it("shows the webhook address and the latest sales with their status", async () => {
+  const openTab = (dialog: HTMLElement, name: string) => fireEvent.click(within(dialog).getByRole("tab", { name }));
+
+  it("opens on the sales with their status", async () => {
     const dialog = await openDetails([sale(), waiting("s2")]);
-    expect(within(dialog).getByText("https://api.corvo.tech/v1/integrations/inbound/PUB")).toBeTruthy();
     expect(await within(dialog).findByText("Invoice issued")).toBeTruthy();
     expect(within(dialog).getByText("CPF/CNPJ missing")).toBeTruthy();
   });
@@ -186,19 +190,57 @@ describe("Connection details", () => {
     expect(await within(dialog).findByText(/No sales received yet/)).toBeTruthy();
   });
 
-  it("pauses an active connection and resumes a paused one", async () => {
+  it("turns issuing off and on with the switch", async () => {
     mocks.pause.mockResolvedValue(connection({ state: "paused" }));
     mocks.activate.mockResolvedValue(connection({ state: "active" }));
     const dialog = await openDetails();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Pause" }));
+    const toggle = within(dialog).getByRole("switch", { name: "Issue invoices automatically" });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(toggle);
     await waitFor(() => expect(mocks.pause).toHaveBeenCalledWith("c1"));
-    fireEvent.click(await within(dialog).findByRole("button", { name: "Resume" }));
+    await waitFor(() => expect(within(dialog).getByRole("switch").getAttribute("aria-checked")).toBe("false"));
+    fireEvent.click(within(dialog).getByRole("switch"));
     await waitFor(() => expect(mocks.activate).toHaveBeenCalledWith("c1"));
+  });
+
+  it("edits the default rule and keeps the per-product rules untouched", async () => {
+    mocks.rules.mockResolvedValue([rule({ service: { description: "Consultoria", code: "010101" } }), rule({ id: "r2", externalProductId: "prod_1", service: { code: "020202" }, sendEmail: false })]);
+    mocks.putRules.mockResolvedValue([]);
+    const dialog = await openDetails();
+    openTab(dialog, "Settings");
+    const description = (await within(dialog).findByLabelText(/Service description on the invoice/)) as HTMLInputElement;
+    expect(description.value).toBe("Consultoria");
+    expect(within(dialog).getByText(/1 per-product rule/)).toBeTruthy();
+    const save = within(dialog).getByRole("button", { name: "Save changes" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    fireEvent.change(description, { target: { value: "Mentoria" } });
+    fireEvent.click(within(dialog).getByRole("switch", { name: "Issue even without the customer's CPF/CNPJ" }));
+    expect(save.disabled).toBe(false);
+    fireEvent.click(save);
+    await waitFor(() => expect(mocks.putRules).toHaveBeenCalledWith("c1", [
+      { externalProductId: null, service: { description: "Mentoria", code: "010101" }, sendEmail: true, allowAnonymousCustomer: true },
+      { externalProductId: "prod_1", service: { code: "020202" }, sendEmail: false, allowAnonymousCustomer: false },
+    ]));
+  });
+
+  it("shows the webhook address, how to register it and the notifications received", async () => {
+    mocks.events.mockResolvedValue([
+      { id: "e1", deliveryId: "d1", externalType: "checkout.completed", state: "processed", attempts: 1, lastError: null, operationId: "o1", createdAt: "2026-10-29T15:00:00Z" },
+      { id: "e2", deliveryId: "d2", externalType: "checkout.completed", state: "needs_attention", attempts: 1, lastError: "customer_tax_id_missing", operationId: "o2", createdAt: "2026-10-29T15:05:00Z" },
+    ]);
+    const dialog = await openDetails();
+    openTab(dialog, "Connection");
+    expect(within(dialog).getByText("https://api.corvo.tech/v1/integrations/inbound/PUB")).toBeTruthy();
+    expect(within(dialog).getByText(/Create a webhook on Woovi/)).toBeTruthy();
+    expect(await within(dialog).findByText("Processed")).toBeTruthy();
+    expect(within(dialog).getByText("Needs attention")).toBeTruthy();
+    expect(within(dialog).getByText("customer_tax_id_missing")).toBeTruthy();
   });
 
   it("asks for confirmation before disconnecting for good", async () => {
     mocks.disconnect.mockResolvedValue(connection({ state: "disconnected" }));
     const dialog = await openDetails();
+    openTab(dialog, "Connection");
     fireEvent.click(within(dialog).getByRole("button", { name: "Disconnect" }));
     expect(mocks.disconnect).not.toHaveBeenCalled();
     fireEvent.click(within(dialog).getByRole("button", { name: "Yes, disconnect" }));
@@ -232,7 +274,13 @@ describe("Connection details", () => {
     mocks.permissions = new Set(["integrations.view"]);
     const dialog = await openDetails([waiting("s2")]);
     await within(dialog).findByText("CPF/CNPJ missing");
-    for (const name of ["Pause", "Disconnect", "Add CPF/CNPJ"]) expect(within(dialog).queryByRole("button", { name })).toBeNull();
+    expect((within(dialog).getByRole("switch") as HTMLButtonElement).disabled).toBe(true);
+    expect(within(dialog).queryByRole("button", { name: "Add CPF/CNPJ" })).toBeNull();
+    openTab(dialog, "Settings");
+    await within(dialog).findByLabelText(/Service description on the invoice/);
+    expect(within(dialog).queryByRole("button", { name: "Save changes" })).toBeNull();
+    openTab(dialog, "Connection");
+    expect(within(dialog).queryByRole("button", { name: "Disconnect" })).toBeNull();
   });
 
   it("tells the client to reconnect when the platform refused the credentials", async () => {

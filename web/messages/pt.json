@@ -2234,7 +2234,47 @@
       "save": "Salvar e emitir",
       "tryAgain": "Tentar de novo",
       "saleDone": "Pronto, venda atualizada.",
-      "saleFailed": "Não foi possível atualizar a venda."
+      "saleFailed": "Não foi possível atualizar a venda.",
+      "emit": "Emitir notas automaticamente",
+      "emitOn": "Ligado: cada venda paga vira uma nota.",
+      "emitOff": "Desligado: as vendas ficam guardadas, mas nenhuma nota é emitida.",
+      "tabs": {
+        "sales": "Vendas",
+        "settings": "Configurações",
+        "connection": "Conexão"
+      },
+      "settings": {
+        "title": "Como emitir as notas",
+        "description": "Descrição do serviço na nota",
+        "descriptionHint": "Em branco, usa o padrão da empresa.",
+        "sendEmail": "Enviar a nota por e-mail ao cliente",
+        "anonymous": "Emitir mesmo sem CPF/CNPJ do cliente",
+        "anonymousHint": "Se a plataforma não informar o documento completo, a nota sai sem tomador em vez de ficar esperando você.",
+        "otherRules": "Esta conexão tem {count} regra(s) por produto, criadas pela API. Elas continuam como estão.",
+        "save": "Salvar alterações",
+        "saved": "Configurações salvas.",
+        "loadError": "Não foi possível carregar as configurações."
+      },
+      "info": {
+        "company": "Empresa",
+        "environment": "Ambiente",
+        "since": "Conectada em",
+        "howTo": "Como cadastrar na plataforma",
+        "eventsTitle": "Avisos recebidos",
+        "eventsEmpty": "Nenhum aviso recebido ainda.",
+        "eventsHint": "Cada vez que a plataforma avisa a Corvo de um pagamento, aparece aqui.",
+        "event": {
+          "processed": "Processado",
+          "ignored": "Ignorado",
+          "working": "Em andamento",
+          "attention": "Precisa de atenção",
+          "dead": "Falhou"
+        }
+      }
+    },
+    "env": {
+      "test": "Teste",
+      "live": "Produção"
     }
   }
 }

@@ -2234,7 +2234,47 @@
       "save": "Save and issue",
       "tryAgain": "Try again",
       "saleDone": "Done, sale updated.",
-      "saleFailed": "Could not update the sale."
+      "saleFailed": "Could not update the sale.",
+      "emit": "Issue invoices automatically",
+      "emitOn": "On: every paid sale becomes an invoice.",
+      "emitOff": "Off: sales are kept, but no invoice is issued.",
+      "tabs": {
+        "sales": "Sales",
+        "settings": "Settings",
+        "connection": "Connection"
+      },
+      "settings": {
+        "title": "How to issue invoices",
+        "description": "Service description on the invoice",
+        "descriptionHint": "Optional. Left blank, the company default is used.",
+        "sendEmail": "Email the invoice to the customer",
+        "anonymous": "Issue even without the customer's CPF/CNPJ",
+        "anonymousHint": "If the platform does not send the full document, the invoice goes out without a customer instead of waiting for you.",
+        "otherRules": "This connection has {count} per-product rule(s) created through the API. They stay as they are.",
+        "save": "Save changes",
+        "saved": "Settings saved.",
+        "loadError": "Could not load the settings."
+      },
+      "info": {
+        "company": "Company",
+        "environment": "Environment",
+        "since": "Connected on",
+        "howTo": "How to register it on the platform",
+        "eventsTitle": "Notifications received",
+        "eventsEmpty": "No notification received yet.",
+        "eventsHint": "Each time the platform tells Corvo about a payment, it shows up here.",
+        "event": {
+          "processed": "Processed",
+          "ignored": "Ignored",
+          "working": "In progress",
+          "attention": "Needs attention",
+          "dead": "Failed"
+        }
+      }
+    },
+    "env": {
+      "test": "Test",
+      "live": "Production"
     }
   }
 }

@@ -238,6 +238,8 @@ export interface IntegrationSale {
   paidAt: string | null; invoiceId: string | null; createdAt: string; updatedAt: string;
 }
 export interface IntegrationRuleInput { externalProductId?: string | null; service: { description?: string; code?: string }; sendEmail: boolean; allowAnonymousCustomer?: boolean }
+export interface IntegrationRule { id: string; externalProductId: string | null; service: { description?: string; code?: string }; sendEmail: boolean; allowAnonymousCustomer: boolean }
+export interface IntegrationEvent { id: string; deliveryId: string; externalType: string; state: "received" | "processing" | "retry_pending" | "processed" | "ignored" | "needs_attention" | "dead"; attempts: number; lastError: string | null; operationId: string | null; createdAt: string }
 export interface CreateIntegrationInput { provider: string; companyId: string; environment: "test" | "live"; credentials: Record<string, string>; activeFrom?: string }
 export const integrations = {
   providers: async () => unwrap(await request<Envelope<IntegrationProvider[]>>("/integrations/providers")),
@@ -248,6 +250,8 @@ export const integrations = {
   pause: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/pause`, { method: "POST" })),
   disconnect: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/disconnect`, { method: "POST" })),
   putRules: async (id: string, rules: IntegrationRuleInput[]) => unwrap(await request<Envelope<unknown[]>>(`/integrations/connections/${idPath(id)}/rules`, json({ rules }, "PUT"))),
+  rules: async (id: string) => unwrap(await request<Envelope<IntegrationRule[]>>(`/integrations/connections/${idPath(id)}/rules`)),
+  events: async (id: string, limit = 20) => unwrap(await request<Envelope<IntegrationEvent[]>>(`/integrations/connections/${idPath(id)}/events${query({ limit })}`)),
   sales: async (id: string, limit = 50) => unwrap(await request<Envelope<IntegrationSale[]>>(`/integrations/connections/${idPath(id)}/operations${query({ limit })}`)),
   completeCustomer: async (saleId: string, data: { taxId: string; name?: string; email?: string }) => unwrap(await request<Envelope<IntegrationSale>>(`/integrations/operations/${idPath(saleId)}/customer`, json(data, "PATCH"))),
   retry: async (saleId: string) => unwrap(await request<Envelope<{ state: string; lastError?: string }>>(`/integrations/operations/${idPath(saleId)}/retry`, { method: "POST" })),
