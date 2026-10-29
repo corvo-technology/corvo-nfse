@@ -2569,7 +2569,7 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
           kind: "list",
           items: [
             "Credencial: `apiKey`, uma chave de API v2 da AbacatePay (Integração > API > + Nova chave) com a permissão `CUSTOMER:READ`. A Corvo gera o `webhookSecret` e devolve o `webhookUrl` já com `?webhookSecret=...` só na resposta da criação. Guarde esse endereço.",
-            "No painel da AbacatePay, cadastre esse endereço e marque `checkout.completed`, `checkout.refunded`, `checkout.disputed` e os equivalentes `transparent.*`.",
+            "Na AbacatePay, crie um webhook e cole o `webhookUrl` completo no campo da URL, inclusive o `?webhookSecret=...`. Marque `checkout.completed`, `checkout.refunded`, `checkout.disputed` e os equivalentes `transparent.*`.",
             "O `devMode` do evento precisa bater com o ambiente da conexão: eventos de teste não emitem nota em uma conexão `live`, e o inverso também.",
             "O webhook traz o CPF/CNPJ mascarado, então a Corvo consulta o cliente na AbacatePay com a sua chave e usa o documento completo. Se o cliente não tiver documento, a venda fica pendente (`customer_tax_id_missing`) ou sai sem tomador se a regra tiver `allowAnonymousCustomer`.",
             "O `externalProductId` das regras é o `id` do item do checkout.",
