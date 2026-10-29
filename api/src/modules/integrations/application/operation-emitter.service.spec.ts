@@ -1,5 +1,9 @@
 import { OperationEmitter } from './operation-emitter.service';
-import { MemoryOperations, MemoryRules } from '../testing/memory-repositories';
+import {
+  MemoryEvents,
+  MemoryOperations,
+  MemoryRules,
+} from '../testing/memory-repositories';
 import {
   InvoiceIssuancePort,
   type IssueInvoiceCommand,
@@ -86,11 +90,13 @@ function setup() {
     },
   ];
   const issuance = new FakeIssuance();
+  const events = new MemoryEvents();
   const emitter = new OperationEmitter(
     connections,
     operations,
     rules,
     issuance,
+    events,
   );
   const upsert = (n: NormalizedOperation) =>
     operations.upsertFromNormalized({
@@ -101,7 +107,7 @@ function setup() {
       externalAccountId: 'acc',
       normalized: n,
     });
-  return { emitter, operations, rules, issuance, connection, upsert };
+  return { emitter, operations, rules, issuance, connection, upsert, events };
 }
 
 describe('OperationEmitter', () => {
@@ -119,6 +125,48 @@ describe('OperationEmitter', () => {
     expect(operations.rows.get(op.id)).toMatchObject({
       fiscalStatus: 'submitted',
       invoiceId: 'inv1',
+    });
+  });
+
+  describe('earlier notices that were left waiting', () => {
+    const waiting = (operationId: string) => ({
+      id: `e-${operationId}`,
+      operationId,
+      state: 'needs_attention' as const,
+      lastError: 'customer_tax_id_missing',
+    });
+
+    it('count as processed once the sale gets its invoice', async () => {
+      const { emitter, upsert, events } = setup();
+      const op = await upsert(snapshot());
+      events.rows.push(waiting(op.id), waiting('another-sale'));
+      await emitter.run(op);
+      expect(events.rows[0]).toMatchObject({
+        state: 'processed',
+        lastError: null,
+      });
+      expect(events.rows[1].state).toBe('needs_attention');
+    });
+
+    it('count as processed when a repeated notice finds the invoice already issued', async () => {
+      const { emitter, upsert, events, operations } = setup();
+      const op = await upsert(snapshot());
+      await emitter.run(op);
+      events.rows.push(waiting(op.id));
+      await emitter.run(operations.rows.get(op.id)!);
+      expect(events.rows[0].state).toBe('processed');
+    });
+
+    it('stay as they are while the sale still has no invoice', async () => {
+      const { emitter, upsert, events } = setup();
+      const op = await upsert(
+        snapshot({
+          customer: { name: 'M', email: null, taxId: null, taxIdMasked: true },
+        }),
+      );
+      events.rows.push(waiting(op.id));
+      await emitter.run(op);
+      expect(events.rows[0].state).toBe('needs_attention');
     });
   });
 

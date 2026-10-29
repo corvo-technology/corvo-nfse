@@ -95,7 +95,7 @@ export function planEmission(input: PlanInput): EmissionPlan {
   const request: CreateInvoiceDto = {
     companyId: connection.companyId,
     ...(customer ? { customer } : {}),
-    service: rule.service,
+    service: serviceFor(rule, snap),
     amount: toReais(snap.amountCents),
     ...(snap.discountCents > 0
       ? { discount: toReais(snap.discountCents) }
@@ -119,6 +119,18 @@ export function planEmission(input: PlanInput): EmissionPlan {
       operationKey: snap.operationKey,
     }),
   };
+}
+
+const MAX_DESCRIPTION = 200;
+
+/** The rule's own description wins; otherwise what the platform says was sold; otherwise the company default. */
+function serviceFor(
+  rule: IntegrationRule,
+  snap: NormalizedOperation,
+): CreateInvoiceDto['service'] {
+  const sold = snap.description?.trim().slice(0, MAX_DESCRIPTION);
+  if (rule.service.description || !sold) return rule.service;
+  return { ...rule.service, description: sold };
 }
 
 function usableCustomer(

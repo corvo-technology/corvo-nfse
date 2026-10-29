@@ -2177,8 +2177,6 @@
       "company": "Company that issues the invoice",
       "companyPlaceholder": "Choose the company",
       "noCompanies": "Register a company before connecting.",
-      "serviceDescription": "Service description on the invoice",
-      "serviceHint": "Optional. Left blank, the company default is used.",
       "sendEmail": "Email the invoice to the customer",
       "back": "Back",
       "connect": "Connect",
@@ -2193,9 +2191,12 @@
         "title": "Connected!",
         "body": "One step left: register this address on the platform so it tells Corvo about every payment.",
         "urlLabel": "Webhook address",
-        "secretWarning": "This address contains a secret and is only shown now. Copy and keep it before closing.",
+        "secretWarning": "This is shown only now. Copy and keep it before closing.",
+        "secretLabel": "Secret",
+        "copySecret": "Copy the secret",
         "finish": "Done"
-      }
+      },
+      "noPermission": "To use this page, ask for the permission to manage integrations."
     },
     "detail": {
       "webhookUrl": "Webhook address",
@@ -2205,7 +2206,7 @@
       "disconnect": "Disconnect",
       "confirmDisconnect": "Disconnect for good? This connection stops issuing invoices and cannot be turned back on.",
       "confirmYes": "Yes, disconnect",
-      "reconnectHint": "The platform refused the credentials. Disconnect and connect again.",
+      "reconnectHint": "The platform refused the key. Change the key in the Connection section below.",
       "pausedHint": "Paused: sales are kept, but no invoice is issued.",
       "updated": "Connection updated.",
       "sales": {
@@ -2231,7 +2232,68 @@
       "save": "Save and issue",
       "tryAgain": "Try again",
       "saleDone": "Done, sale updated.",
-      "saleFailed": "Could not update the sale."
+      "saleFailed": "Could not update the sale.",
+      "emit": "Issue invoices automatically",
+      "emitOn": "On: every paid sale becomes an invoice.",
+      "emitOff": "Off: sales are kept, but no invoice is issued.",
+      "tabs": {
+        "sales": "Sales",
+        "settings": "Settings",
+        "connection": "Connection"
+      },
+      "settings": {
+        "title": "How to issue invoices",
+        "sendEmail": "Email the invoice to the customer",
+        "anonymous": "Issue even without the customer's CPF/CNPJ",
+        "anonymousHint": "If the platform does not send the full document, the invoice goes out without a customer instead of waiting for you.",
+        "otherRules": "This connection has {count} per-product rule(s) created through the API. They stay as they are.",
+        "save": "Save changes",
+        "saved": "Settings saved.",
+        "loadError": "Could not load the settings."
+      },
+      "info": {
+        "company": "Company",
+        "environment": "Environment",
+        "since": "Connected on",
+        "howTo": "How to register it on the platform",
+        "eventsTitle": "Notifications received",
+        "eventsEmpty": "No notification received yet.",
+        "eventsHint": "Each time the platform tells Corvo about a payment, it shows up here.",
+        "event": {
+          "processed": "Processed",
+          "ignored": "Ignored",
+          "working": "In progress",
+          "attention": "Needs attention",
+          "dead": "Failed",
+          "resolved": "Resolved"
+        },
+        "eventRepeated": "Same sale as an earlier notification"
+      },
+      "disconnectHint": "Stops issuing invoices and removes this connection.",
+      "credentials": {
+        "title": "Access key",
+        "hint": "The key is stored securely and never shown again. To change it, enter the new one: it is tested before it takes effect.",
+        "stored": "Stored",
+        "change": "Change",
+        "newValue": "New key",
+        "save": "Test and save",
+        "cancel": "Cancel",
+        "saved": "Key updated."
+      }
+    },
+    "env": {
+      "test": "Test",
+      "live": "Production"
+    },
+    "sales": {
+      "title": "Latest sales",
+      "all": "All",
+      "attention": "Need attention",
+      "viewInvoice": "View invoice",
+      "allGood": "All good: no sale needs you.",
+      "attentionBanner": "{count} sales need you",
+      "empty": "No sales received yet. Make a test payment to see it here.",
+      "noneAttention": "No sale needs attention."
     }
   }
 }

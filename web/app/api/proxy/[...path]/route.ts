@@ -45,6 +45,7 @@ const routes: [RegExp, string[]][] = [
   [/^integrations\/connections\/[^/]+$/, ["GET"]],
   [/^integrations\/connections\/[^/]+\/(?:validate|activate|pause|disconnect)$/, ["POST"]],
   [/^integrations\/connections\/[^/]+\/rules$/, ["GET", "PUT"]],
+  [/^integrations\/connections\/[^/]+\/credentials$/, ["PUT"]],
   [/^integrations\/connections\/[^/]+\/(?:events|operations)$/, ["GET"]],
   [/^integrations\/operations\/[^/]+\/customer$/, ["PATCH"]],
   [/^integrations\/operations\/[^/]+\/retry$/, ["POST"]],

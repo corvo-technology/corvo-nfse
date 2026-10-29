@@ -2532,7 +2532,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     "provider": "woovi",
     "companyId": "<id da empresa>",
     "environment": "test",
-    "credentials": { "appId": "<AppID da Woovi>" },
+    "credentials": {},
     "activeFrom": "2026-11-01T00:00:00Z"
   }'`,
         },
@@ -2557,10 +2557,10 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         {
           kind: "list",
           items: [
-            "Credencial: `appId`, o AppID da conta (API/Plugins no painel da Woovi). O ambiente `test` usa o sandbox da Woovi e `live` usa a conta de produção.",
-            "No painel da Woovi, cadastre o `webhookUrl` da conexão e marque o evento de cobrança paga (`OPENPIX:CHARGE_COMPLETED`).",
+            "Não há credencial para informar: envie `\"credentials\": {}`. A Corvo gera o `webhookToken` e o devolve em `secrets.webhookToken` só na resposta da criação. O ambiente `test` usa o sandbox da Woovi e `live` usa a conta de produção.",
+            "Na Woovi, crie um webhook com o `webhookUrl` da conexão e o evento de cobrança paga (`OPENPIX:CHARGE_COMPLETED`). Em Cabeçalhos HTTP, adicione o cabeçalho `Authorization` com o `webhookToken` no campo Valor.",
             "O tomador da nota é o cliente da cobrança, nunca quem pagou o Pix.",
-            "Cada cobrança vira uma nota, identificada pelo `correlationID`.",
+            "Cada cobrança vira uma nota, identificada pelo `correlationID`. A descrição do serviço na nota é o `comment` da cobrança; sem ele, vale o padrão da empresa.",
             "Reembolsos da Woovi ainda não são acompanhados: se precisar, cancele a nota manualmente.",
           ],
         },
@@ -2568,11 +2568,11 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         {
           kind: "list",
           items: [
-            "Não há credenciais para informar: envie `\"credentials\": {}`. A Corvo gera o `webhookSecret` e devolve o `webhookUrl` já com `?webhookSecret=...` só na resposta da criação. Guarde esse endereço.",
-            "No painel da AbacatePay, cadastre esse endereço e marque `checkout.completed`, `checkout.refunded`, `checkout.disputed` e os equivalentes `transparent.*`.",
+            "Credencial: `apiKey`, uma chave de API v2 da AbacatePay (Integração > API > + Nova chave) com as permissões `CUSTOMER:READ` e `PRODUCT:READ`. A Corvo gera o `webhookSecret` e devolve o `webhookUrl` já com `?webhookSecret=...` só na resposta da criação. Guarde esse endereço.",
+            "Na AbacatePay, crie um webhook: cole o `webhookUrl` na URL e o `secrets.webhookSecret` (devolvido só na criação) no campo Secret, e marque `checkout.completed` e `transparent.completed`. A Corvo aceita a assinatura Standard Webhooks (`webhook-id`, `webhook-timestamp`, `webhook-signature`) e o formato antigo (`?webhookSecret=`).",
             "O `devMode` do evento precisa bater com o ambiente da conexão: eventos de teste não emitem nota em uma conexão `live`, e o inverso também.",
-            "O CPF/CNPJ chega mascarado. Sem documento completo a venda fica pendente (`customer_tax_id_missing`) ou sai sem tomador se a regra tiver `allowAnonymousCustomer`.",
-            "O `externalProductId` das regras é o `id` do item do checkout.",
+            "O webhook traz o CPF/CNPJ mascarado, então a Corvo consulta o cliente na AbacatePay com a sua chave e usa o documento completo. Se o cliente não tiver documento, a venda fica pendente (`customer_tax_id_missing`) ou sai sem tomador se a regra tiver `allowAnonymousCustomer`.",
+            "O `externalProductId` das regras é o `id` do item do checkout. A descrição do serviço na nota é o nome do produto (a Corvo o consulta pela chave); sem a permissão `PRODUCT:READ`, vale o padrão da empresa.",
             "Reembolso ou contestação depois da nota abre a pendência `refund_after_invoice`; a nota não é cancelada.",
           ],
         },

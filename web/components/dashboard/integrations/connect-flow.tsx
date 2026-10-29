@@ -2,25 +2,23 @@
 
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
+import { Card } from "@/components/ui/card";
 import { Toggle } from "@/components/ui/toggle";
 import type { IntegrationProvider } from "@/lib/api";
 import type { Company } from "@/lib/types";
 import { ConnectError, connectProvider } from "@/lib/integrations";
 
-interface ConnectDialogProps {
-  open: boolean;
-  onClose: () => void;
+interface ConnectFlowProps {
   providers: IntegrationProvider[];
   companies: Company[];
   /** The dashboard-wide Test/Production switch; connections follow it. */
   environment: "test" | "live";
   /** Skips the platform step, e.g. when the client picked it from the empty state. */
   initialProvider?: string | null;
-  onConnected: () => void;
 }
 
 type Step = "platform" | "details" | "done";
@@ -29,7 +27,9 @@ export function providerDescriptionKey(id: string): "woovi" | "abacatepay" | "ot
   return id === "woovi" || id === "abacatepay" ? id : "other";
 }
 
-export function ConnectDialog({ open, onClose, providers, companies, environment, initialProvider, onConnected }: ConnectDialogProps) {
+export function ConnectFlow({ providers, companies, environment, initialProvider }: ConnectFlowProps) {
+  const router = useRouter();
+  const backToList = () => router.push("/app/integrations");
   const t = useTranslations("Integrations");
   const tc = useTranslations("Common");
   const locale = useLocale();
@@ -37,16 +37,16 @@ export function ConnectDialog({ open, onClose, providers, companies, environment
   const [providerId, setProviderId] = useState<string | null>(initialProvider ?? null);
   const [companyId, setCompanyId] = useState(companies.length === 1 ? companies[0].id : "");
   const [credentials, setCredentials] = useState<Record<string, string>>({});
-  const [serviceDescription, setServiceDescription] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [secrets, setSecrets] = useState<Record<string, string>>({});
+  const [copiedSecret, setCopiedSecret] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const provider = providers.find((p) => p.id === providerId) ?? null;
   const askedFields = provider?.credentialFields.filter((field) => !field.generate) ?? [];
-  const urlHasSecret = provider?.credentialFields.some((field) => field.inWebhookUrl) ?? false;
   const ready = Boolean(provider && companyId && askedFields.every((field) => (credentials[field.key] ?? "").trim()));
 
   async function submit() {
@@ -59,12 +59,11 @@ export function ConnectDialog({ open, onClose, providers, companies, environment
         companyId,
         environment,
         credentials: Object.fromEntries(askedFields.map((field) => [field.key, credentials[field.key].trim()])),
-        serviceDescription,
         sendEmail,
       });
       setWebhookUrl(result.webhookUrl);
+      setSecrets(result.secrets);
       setStep("done");
-      onConnected();
     } catch (cause) {
       const failed = cause instanceof ConnectError;
       setError(`${failed ? t(`wizard.errors.${cause.step}`) : t("wizard.errors.create")}: ${cause instanceof Error ? cause.message : ""}`.trim());
@@ -79,8 +78,15 @@ export function ConnectDialog({ open, onClose, providers, companies, environment
     setTimeout(() => setCopied(false), 2000);
   }
 
+  async function copySecret(value: string) {
+    await navigator.clipboard.writeText(value);
+    setCopiedSecret(true);
+    setTimeout(() => setCopiedSecret(false), 2000);
+  }
+
   return (
-    <Modal open={open} onClose={onClose} title={step === "done" ? t("wizard.done.title") : t("wizard.title")}>
+    <Card className="flex max-w-[640px] flex-col gap-4 p-5 sm:p-6">
+      {step === "done" && <h2 className="text-[17px] font-medium text-text">{t("wizard.done.title")}</h2>}
       {step === "platform" && (
         <div className="flex flex-col gap-3">
           <p className="text-[14px] text-text-3">{t("wizard.stepPlatform")}</p>
@@ -120,9 +126,6 @@ export function ConnectDialog({ open, onClose, providers, companies, environment
               )}
             </Field>
           ))}
-          <Field label={t("wizard.serviceDescription")} hint={t("wizard.serviceHint")}>
-            {(control) => <Input {...control} value={serviceDescription} maxLength={200} onChange={(e) => setServiceDescription(e.target.value)} />}
-          </Field>
           <Toggle checked={sendEmail} onChange={setSendEmail} label={t("wizard.sendEmail")} />
           {error && <p role="alert" className="text-[13px] text-danger">{error}</p>}
           <div className="flex justify-between gap-2.5">
@@ -145,11 +148,23 @@ export function ConnectDialog({ open, onClose, providers, companies, environment
               </Button>
             </div>
           </div>
+          {Object.entries(secrets).map(([key, value]) => (
+            <div key={key} className="flex flex-col gap-1.5">
+              <span className="field-label">{provider.credentialFields.find((field) => field.key === key)?.label ?? t("wizard.done.secretLabel")}</span>
+              <div className="flex items-center gap-2">
+                <code className="min-w-0 flex-1 break-all rounded-[10px] border border-border bg-black/20 px-3 py-2 font-mono text-[12.5px] text-text-2">{value}</code>
+                <Button variant="secondary" size="sm" onClick={() => void copySecret(value)} aria-label={t("wizard.done.copySecret")}>
+                  {copiedSecret ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+                  {copiedSecret ? tc("copied") : tc("copy")}
+                </Button>
+              </div>
+            </div>
+          ))}
           <p className="text-[13.5px] text-text-3">{provider.webhookInstructions[locale === "pt" ? "pt" : "en"]}</p>
-          {urlHasSecret && <p role="alert" className="text-[13px] text-warn">{t("wizard.done.secretWarning")}</p>}
-          <Button variant="accent" className="ml-auto" onClick={onClose}>{t("wizard.done.finish")}</Button>
+          {Object.keys(secrets).length > 0 && <p role="alert" className="text-[13px] text-warn">{t("wizard.done.secretWarning")}</p>}
+          <Button variant="accent" className="ml-auto" onClick={backToList}>{t("wizard.done.finish")}</Button>
         </div>
       )}
-    </Modal>
+    </Card>
   );
 }

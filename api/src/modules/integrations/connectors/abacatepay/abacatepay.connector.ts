@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { normalizeTaxID } from '@/shared/tax-id';
 import {
   ConnectorDataError,
+  ConnectorTransientError,
   type CommercialState,
   type Connector,
   type ConnectionView,
@@ -14,12 +15,15 @@ import {
   type OperationDelivery,
   type ParsedDelivery,
 } from '../../domain/connector';
+import { AbacatePayClient } from './abacatepay.client';
 
 const STATE_BY_SUFFIX: Record<string, CommercialState> = {
   completed: 'paid',
   refunded: 'refunded',
   disputed: 'disputed',
 };
+const MAX_LOOKUPS = 5;
+const TIMESTAMP_TOLERANCE_SECONDS = 300;
 const PAYMENT_EVENT = /^(checkout|transparent)\.(completed|refunded|disputed)$/;
 
 interface Payment {
@@ -29,7 +33,6 @@ interface Payment {
   updatedAt?: string;
   createdAt?: string;
   items?: Array<{ id?: string; quantity?: number }>;
-  isUpSell?: boolean;
 }
 interface Envelope {
   id?: unknown;
@@ -38,8 +41,12 @@ interface Envelope {
   data?: {
     checkout?: Payment;
     transparent?: Payment;
-    customer?: { name?: string; email?: string; taxId?: string } | null;
-    isUpSell?: boolean;
+    customer?: {
+      id?: string;
+      name?: string;
+      email?: string;
+      taxId?: string;
+    } | null;
   };
 }
 
@@ -68,6 +75,11 @@ export class AbacatePayConnector implements Connector {
     version: '1',
     credentialFields: [
       {
+        key: 'apiKey',
+        label: 'Chave de API da AbacatePay (com CUSTOMER:READ e PRODUCT:READ)',
+        secret: true,
+      },
+      {
         key: 'webhookSecret',
         label: 'Webhook secret',
         secret: true,
@@ -76,13 +88,16 @@ export class AbacatePayConnector implements Connector {
       },
     ],
     webhookInstructions: {
-      pt: 'No painel da AbacatePay, cadastre um webhook com a URL desta conexão (já com ?webhookSecret=) e marque checkout.completed, checkout.refunded, checkout.disputed e os eventos transparent.* equivalentes.',
-      en: 'In the AbacatePay dashboard, register a webhook with this connection URL (already containing ?webhookSecret=) and select checkout.completed, checkout.refunded, checkout.disputed and the equivalent transparent.* events.',
+      pt: 'Na AbacatePay, crie um webhook (menu Integração). Cole o endereço do webhook na URL e o Secret no campo Secret. Marque os eventos checkout.completed e transparent.completed e salve.',
+      en: 'In AbacatePay, create a webhook (Integration menu). Paste the webhook address in the URL field and the Secret in the Secret field. Select the checkout.completed and transparent.completed events and save.',
     },
     supportedFlows: ['checkout', 'transparent'],
   };
 
-  constructor(private readonly hmacPublicKey?: string) {}
+  constructor(
+    private readonly hmacPublicKey?: string,
+    private readonly client: AbacatePayClient = new AbacatePayClient(),
+  ) {}
 
   authenticate(
     req: InboundRequest,
@@ -92,6 +107,17 @@ export class AbacatePayConnector implements Connector {
   }
 
   private check(req: InboundRequest, connection: ConnectionView): DeliveryAuth {
+    const id = req.headers['webhook-id'];
+    const timestamp = req.headers['webhook-timestamp'];
+    const signatures = req.headers['webhook-signature'];
+    if (id && timestamp && signatures)
+      return this.checkStandard(
+        req.rawBody,
+        id,
+        timestamp,
+        signatures,
+        connection,
+      );
     const secret = req.query.webhookSecret;
     if (!secret || !sameText(secret, connection.credentials.webhookSecret))
       return { ok: false, reason: 'bad_secret' };
@@ -104,6 +130,41 @@ export class AbacatePayConnector implements Connector {
     return sameText(signature, expected)
       ? { ok: true }
       : { ok: false, reason: 'bad_signature' };
+  }
+
+  /**
+   * Standard Webhooks: HMAC-SHA256 of `id.timestamp.body` with the webhook secret.
+   * A `whsec_` secret is base64 (the key is the decoded part); any other secret is used as written.
+   */
+  private checkStandard(
+    rawBody: Buffer,
+    id: string,
+    timestamp: string,
+    signatures: string,
+    connection: ConnectionView,
+  ): DeliveryAuth {
+    const seconds = Number(timestamp);
+    if (
+      !Number.isInteger(seconds) ||
+      Math.abs(Date.now() / 1000 - seconds) > TIMESTAMP_TOLERANCE_SECONDS
+    )
+      return { ok: false, reason: 'stale_timestamp' };
+    const secret = connection.credentials.webhookSecret;
+    const keys = secret.startsWith('whsec_')
+      ? [Buffer.from(secret.slice(6), 'base64')]
+      : [Buffer.from(secret, 'utf8')];
+    const signed = Buffer.concat([Buffer.from(`${id}.${timestamp}.`), rawBody]);
+    const candidates = signatures
+      .split(' ')
+      .filter((entry) => entry.startsWith('v1,'))
+      .map((entry) => entry.slice(3));
+    const valid = keys.some((key) => {
+      const expected = createHmac('sha256', key)
+        .update(signed)
+        .digest('base64');
+      return candidates.some((candidate) => sameText(candidate, expected));
+    });
+    return valid ? { ok: true } : { ok: false, reason: 'bad_signature' };
   }
 
   parse(req: InboundRequest): ParsedDelivery {
@@ -129,10 +190,13 @@ export class AbacatePayConnector implements Connector {
     delivery: OperationDelivery;
   }): Promise<NormalizedOperation> {
     // Errors must surface as rejections, like any other async connector call.
-    return Promise.resolve().then(() => this.toOperation(input.payload));
+    return this.toOperation(input.payload, input.connection.credentials.apiKey);
   }
 
-  private toOperation(payload: unknown): NormalizedOperation {
+  private async toOperation(
+    payload: unknown,
+    apiKey: string | undefined,
+  ): Promise<NormalizedOperation> {
     const body = readBody(Buffer.from(String(payload), 'utf8'));
     const match =
       typeof body.event === 'string' ? PAYMENT_EVENT.exec(body.event) : null;
@@ -149,10 +213,17 @@ export class AbacatePayConnector implements Connector {
       throw new ConnectorDataError(
         'AbacatePay amount is not a positive integer number of cents',
       );
-    const upsell = body.data?.isUpSell === true || payment.isUpSell === true;
+    let customer = toCustomer(body.data?.customer);
+    // The webhook masks the document; with the client's key the full one is one call away.
+    if (customer?.taxIdMasked && apiKey && body.data?.customer?.id) {
+      const full = await this.client.getCustomer(apiKey, body.data.customer.id);
+      const taxId = normalizeTaxID(full.taxId ?? undefined);
+      if (taxId) customer = { ...customer, taxId, taxIdMasked: false };
+    }
+    const names = await this.productNames(payment.items ?? [], apiKey);
     const at = new Date(payment.updatedAt ?? payment.createdAt ?? Date.now());
     return {
-      operationKey: `${kind}:${payment.id}${upsell ? ':upsell' : ''}`,
+      operationKey: `${kind}:${payment.id}`,
       commercialState: STATE_BY_SUFFIX[suffix],
       externalRefs: {
         [`${kind}Id`]: payment.id,
@@ -163,27 +234,53 @@ export class AbacatePayConnector implements Connector {
       currency: 'BRL',
       amountCents: payment.amount as number,
       discountCents: 0,
-      customer: toCustomer(body.data?.customer),
+      customer,
       items: (payment.items ?? []).map((item) => ({
         externalProductId: item.id ?? null,
-        description: null,
+        description: (item.id && names.get(item.id)) || null,
         quantity: item.quantity ?? 1,
       })),
+      description: names.size ? [...new Set(names.values())].join(', ') : null,
       sellerIssuesInvoice: true,
     };
   }
 
-  validateConnection(
+  /**
+   * Product names by id. A key that cannot read products only costs the description:
+   * the sale still goes out with the company default.
+   */
+  private async productNames(
+    items: Array<{ id?: string }>,
+    apiKey: string | undefined,
+  ): Promise<Map<string, string>> {
+    const names = new Map<string, string>();
+    if (!apiKey) return names;
+    const ids = [
+      ...new Set(items.map((i) => i.id).filter(Boolean)),
+    ] as string[];
+    await Promise.all(
+      ids.slice(0, MAX_LOOKUPS).map(async (id) => {
+        try {
+          const name = await this.client.getProductName(apiKey, id);
+          if (name) names.set(id, name);
+        } catch (error) {
+          if (error instanceof ConnectorTransientError) throw error;
+        }
+      }),
+    );
+    return names;
+  }
+
+  async validateConnection(
     credentials: Record<string, string>,
     _environment: IntegrationEnvironment,
   ): Promise<{ externalAccountId: string }> {
-    // Nothing in the inbound flow calls the AbacatePay API, so there is no key to check.
+    if (credentials.apiKey)
+      await this.client.checkCredentials(credentials.apiKey);
     const digest = createHash('sha256')
       .update(credentials.webhookSecret)
       .digest('hex');
-    return Promise.resolve({
-      externalAccountId: `abacatepay:${digest.slice(0, 24)}`,
-    });
+    return { externalAccountId: `abacatepay:${digest.slice(0, 24)}` };
   }
 }
 

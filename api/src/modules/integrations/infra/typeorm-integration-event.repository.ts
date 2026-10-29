@@ -104,6 +104,15 @@ export class TypeOrmIntegrationEventRepository extends IIntegrationEventReposito
     });
   }
 
+  resolveAttention(operationId: string, tenantId: string): Promise<void> {
+    return runWithTenant(tenantId, async () => {
+      await this.repo.update(
+        { operationId, tenantId, state: 'needs_attention' },
+        { state: 'processed', lastError: null },
+      );
+    });
+  }
+
   listByConnection(
     connectionId: string,
     tenantId: string,

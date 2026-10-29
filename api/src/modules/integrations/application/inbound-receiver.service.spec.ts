@@ -17,6 +17,9 @@ const TENANT = '11111111-1111-4111-8111-111111111111';
 class MemoryEvents extends IIntegrationEventRepository {
   rows: Array<Record<string, unknown>> = [];
   fail = false;
+  resolveAttention() {
+    return Promise.resolve();
+  }
   insertReceived(
     input: Parameters<IIntegrationEventRepository['insertReceived']>[0],
   ) {

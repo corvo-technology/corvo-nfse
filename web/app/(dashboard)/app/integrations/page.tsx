@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Plug } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
@@ -9,12 +10,13 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ConnectDialog, providerDescriptionKey } from "@/components/dashboard/integrations/connect-dialog";
-import { ConnectionDialog } from "@/components/dashboard/integrations/connection-dialog";
+import { providerDescriptionKey } from "@/components/dashboard/integrations/connect-flow";
+import { SalesList, type SaleRow } from "@/components/dashboard/integrations/sales-list";
 import { collectAll, companies as companiesApi, integrations, type IntegrationConnection, type IntegrationProvider, type IntegrationSale } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { Company } from "@/lib/types";
-import { connectionStatus, pendingCount } from "@/lib/integrations";
+import { connectionStatus, pendingCount, saleStatus } from "@/lib/integrations";
+import { cn } from "@/lib/utils";
 
 export default function IntegrationsPage() {
   const t = useTranslations("Integrations");
@@ -27,8 +29,7 @@ export default function IntegrationsPage() {
   const [sales, setSales] = useState<Record<string, IntegrationSale[]>>({});
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [wizard, setWizard] = useState<{ provider: string | null } | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [onlyAttention, setOnlyAttention] = useState(false);
 
   const load = useCallback(async () => {
     setFailed(false);
@@ -54,19 +55,25 @@ export default function IntegrationsPage() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
-  const opened = connections.find((c) => c.id === openId) ?? null;
   const providerName = (id: string) => providers.find((p) => p.id === id)?.name ?? id;
   const companyName = (id: string) => {
     const company = companies.find((c) => c.id === id);
     return company ? company.tradeName || company.legalName : "";
   };
 
+  // Newest first, across every integration; the ones that need the client come with a filter.
+  const rows: SaleRow[] = connections
+    .flatMap((connection) => (sales[connection.id] ?? []).map((sale) => ({ sale, source: `${providerName(connection.provider)} · ${companyName(connection.companyId)}` })))
+    .sort((a, b) => (b.sale.paidAt ?? b.sale.createdAt).localeCompare(a.sale.paidAt ?? a.sale.createdAt));
+  const attentionRows = rows.filter(({ sale }) => ["waitingCustomer", "needsAttention"].includes(saleStatus(sale).key));
+  const shownRows = (onlyAttention ? attentionRows : rows).slice(0, onlyAttention ? 100 : 30);
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={t("title")}
         subtitle={t("subtitle")}
-        actions={canManage && providers.length > 0 ? <Button variant="accent" onClick={() => setWizard({ provider: null })}>{t("connect")}</Button> : undefined}
+        actions={canManage && providers.length > 0 ? <Link href="/app/integrations/new" className="btn btn-accent">{t("connect")}</Link> : undefined}
       />
 
       {loading ? (
@@ -79,15 +86,14 @@ export default function IntegrationsPage() {
           {canManage && (
             <div className="flex flex-wrap justify-center gap-3 px-6 pb-8">
               {providers.map((p) => (
-                <button
+                <Link
                   key={p.id}
-                  type="button"
-                  onClick={() => setWizard({ provider: p.id })}
+                  href={`/app/integrations/new?provider=${encodeURIComponent(p.id)}`}
                   className="flex w-full max-w-[16rem] flex-col gap-1 rounded-[12px] border border-border bg-surface px-4 py-3.5 text-left transition-colors hover:border-accent-border hover:bg-accent-surface"
                 >
                   <span className="text-[15px] font-medium text-text">{p.name}</span>
                   <span className="text-[13px] text-text-3">{t(`providers.${providerDescriptionKey(p.id)}`)}</span>
-                </button>
+                </Link>
               ))}
             </div>
           )}
@@ -99,7 +105,7 @@ export default function IntegrationsPage() {
             const pending = pendingCount(sales[connection.id] ?? []);
             return (
               <li key={connection.id}>
-                <button type="button" onClick={() => setOpenId(connection.id)} className="w-full text-left">
+                <Link href={`/app/integrations/${connection.id}`} className="block w-full text-left">
                   <Card className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:border-border-strong">
                     <div className="min-w-0">
                       <p className="text-[16px] font-medium text-text">{providerName(connection.provider)}</p>
@@ -110,34 +116,47 @@ export default function IntegrationsPage() {
                       <Badge variant={status.tone}>{t(`status.${status.key}`)}</Badge>
                     </div>
                   </Card>
-                </button>
+                </Link>
               </li>
             );
           })}
         </ul>
       )}
 
-      {wizard && (
-        <ConnectDialog
-          open
-          onClose={() => setWizard(null)}
-          providers={providers}
-          companies={companies}
-          environment={fiscalEnvironment}
-          initialProvider={wizard.provider}
-          onConnected={() => void load()}
-        />
-      )}
-      {opened && (
-        <ConnectionDialog
-          key={opened.id}
-          connection={opened}
-          provider={providers.find((p) => p.id === opened.provider)}
-          companyName={companyName(opened.companyId)}
-          canManage={canManage}
-          onClose={() => setOpenId(null)}
-          onChanged={() => void load()}
-        />
+      {!loading && !failed && connections.length > 0 && (
+        <>
+          {attentionRows.length > 0 ? (
+            <p role="status" className="banner banner-warn flex flex-wrap items-center justify-between gap-3">
+              <span>{t("sales.attentionBanner", { count: attentionRows.length })}</span>
+              {!onlyAttention && <Button size="sm" variant="secondary" onClick={() => setOnlyAttention(true)}>{t("sales.attention")}</Button>}
+            </p>
+          ) : (
+            <p role="status" className="text-[13.5px] text-text-3">{t("sales.allGood")}</p>
+          )}
+          <Card className="dash-in dash-in-2 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3.5 sm:px-5">
+              <h2 className="text-[14.5px] font-medium text-text">{t("sales.title")}</h2>
+              <div role="group" className="flex gap-1.5">
+                {([false, true] as const).map((attention) => (
+                  <button
+                    key={String(attention)}
+                    type="button"
+                    aria-pressed={onlyAttention === attention}
+                    onClick={() => setOnlyAttention(attention)}
+                    className={cn("rounded-full border px-3 py-1 text-[12.5px] transition-colors", onlyAttention === attention ? "border-accent-border bg-accent-surface text-accent" : "border-border text-text-3 hover:text-text")}
+                  >
+                    {attention ? `${t("sales.attention")} (${attentionRows.length})` : t("sales.all")}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {shownRows.length === 0 ? (
+              <p className="px-5 py-8 text-center text-[13.5px] text-text-3">{onlyAttention ? t("sales.noneAttention") : t("sales.empty")}</p>
+            ) : (
+              <SalesList rows={shownRows} canManage={canManage} onChanged={() => void load()} />
+            )}
+          </Card>
+        </>
       )}
     </div>
   );

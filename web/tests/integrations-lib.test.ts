@@ -48,7 +48,7 @@ it("pendingCount counts only sales that need the customer's action", () => {
 });
 
 describe("connectProvider", () => {
-  const input = { provider: "woovi", companyId: "co1", environment: "test" as const, credentials: { appId: "abc" }, serviceDescription: "Consultoria", sendEmail: true };
+  const input = { provider: "woovi", companyId: "co1", environment: "test" as const, credentials: {}, sendEmail: true };
   const api = () => ({
     create: vi.fn().mockResolvedValue(connection({ state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB?webhookSecret=s" })),
     validate: vi.fn().mockResolvedValue(connection()), putRules: vi.fn().mockResolvedValue([]), activate: vi.fn().mockResolvedValue(connection()), disconnect: vi.fn().mockResolvedValue(connection({ state: "disconnected" })),
@@ -60,9 +60,9 @@ describe("connectProvider", () => {
     for (const name of ["create", "validate", "putRules", "activate"] as const) a[name].mockImplementation(async () => { calls.push(name); return name === "create" ? connection({ state: "draft", webhookUrl: "URL?webhookSecret=s" }) : connection(); });
     const result = await connectProvider(input, a);
     expect(calls).toEqual(["create", "validate", "putRules", "activate"]);
-    expect(result).toEqual({ connection: expect.objectContaining({ id: "c1" }), webhookUrl: "URL?webhookSecret=s" });
-    expect(a.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "woovi", companyId: "co1", environment: "test", credentials: { appId: "abc" }, activeFrom: expect.any(String) }));
-    expect(a.putRules).toHaveBeenCalledWith("c1", [{ service: { description: "Consultoria" }, sendEmail: true }]);
+    expect(result).toEqual({ connection: expect.objectContaining({ id: "c1" }), webhookUrl: "URL?webhookSecret=s", secrets: {} });
+    expect(a.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "woovi", companyId: "co1", environment: "test", credentials: {}, activeFrom: expect.any(String) }));
+    expect(a.putRules).toHaveBeenCalledWith("c1", [{ service: {}, sendEmail: true }]);
     expect(a.disconnect).not.toHaveBeenCalled();
   });
   it("a failure while creating leaves nothing to clean up", async () => {
@@ -85,9 +85,9 @@ describe("connectProvider", () => {
     a.disconnect.mockRejectedValue(new Error("network"));
     await expect(connectProvider(input, a)).rejects.toMatchObject({ step: "validate", message: "Woovi recusou o AppID" });
   });
-  it("leaves the service description out when it is blank, so the company default applies", async () => {
+  it("sets no fixed description, so each invoice uses what the platform sent for that sale", async () => {
     const a = api();
-    await connectProvider({ ...input, serviceDescription: "  " }, a);
+    await connectProvider(input, a);
     expect(a.putRules).toHaveBeenCalledWith("c1", [{ service: {}, sendEmail: true }]);
   });
 });

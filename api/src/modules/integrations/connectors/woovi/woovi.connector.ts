@@ -1,4 +1,4 @@
-import { createHash, createVerify } from 'node:crypto';
+import { createHash, createVerify, timingSafeEqual } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { normalizeTaxID } from '@/shared/tax-id';
 import {
@@ -13,7 +13,6 @@ import {
   type OperationDelivery,
   type ParsedDelivery,
 } from '../../domain/connector';
-import { WooviClient } from './woovi.client';
 import { WooviPublicKeyProvider } from './woovi-public-key.provider';
 
 const PAID_EVENTS = new Set([
@@ -36,9 +35,16 @@ interface WooviWebhook {
     correlationID?: string;
     transactionID?: string;
     updatedAt?: string;
+    comment?: unknown;
     customer?: WooviCustomer;
   };
   pix?: { time?: string; transactionID?: string };
+}
+
+function sameText(a: string, b: string): boolean {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
 }
 
 function readBody(rawBody: Buffer): WooviWebhook {
@@ -80,24 +86,37 @@ export class WooviConnector implements Connector {
     id: 'woovi',
     name: 'Woovi',
     version: '1',
-    credentialFields: [{ key: 'appId', label: 'AppID', secret: true }],
+    credentialFields: [
+      {
+        key: 'webhookToken',
+        label: 'Token do webhook (cabeçalho Authorization)',
+        secret: true,
+        generate: true,
+        revealOnce: true,
+      },
+    ],
     webhookInstructions: {
-      pt: 'No painel da Woovi, em API/Plugins, crie um webhook com a URL desta conexão e marque o evento Cobrança paga (OPENPIX:CHARGE_COMPLETED).',
-      en: 'In the Woovi dashboard, under API/Plugins, create a webhook with this connection URL and select the paid charge event (OPENPIX:CHARGE_COMPLETED).',
+      pt: 'Na Woovi, crie um webhook com a URL desta conexão e o evento Cobrança paga (OPENPIX:CHARGE_COMPLETED). Em Cabeçalhos HTTP, adicione o cabeçalho Authorization e cole o token mostrado aqui no campo Valor.',
+      en: 'In Woovi, create a webhook with this connection URL and the paid charge event (OPENPIX:CHARGE_COMPLETED). Under HTTP headers, add an Authorization header and paste the token shown here in the Value field.',
     },
     supportedFlows: ['pix-charge'],
   };
 
-  constructor(
-    private readonly keys: WooviPublicKeyProvider,
-    private readonly client: WooviClient,
-  ) {}
+  constructor(private readonly keys: WooviPublicKeyProvider) {}
 
   async authenticate(
     req: InboundRequest,
     connection: ConnectionView,
   ): Promise<DeliveryAuth> {
+    const token = connection.credentials.webhookToken;
     const signature = req.headers['x-webhook-signature'];
+    if (token) {
+      // The client put this token in the webhook headers: it proves the call is for this connection.
+      const sent = (req.headers.authorization ?? '').replace(/^Bearer /i, '');
+      if (!sameText(sent, token)) return { ok: false, reason: 'bad_token' };
+      // Woovi's own signature is then optional, but if it comes it must be right.
+      if (!signature) return { ok: true };
+    }
     if (!signature) return { ok: false, reason: 'missing_signature' };
     const check = (list: string[]) =>
       list.some((key) => verifies(req.rawBody, signature, key));
@@ -163,17 +182,25 @@ export class WooviConnector implements Connector {
       // The Pix payer is deliberately not used: only the charge customer is the buyer.
       customer: toCustomer(charge.customer),
       items: [],
+      description:
+        typeof charge.comment === 'string' && charge.comment.trim()
+          ? charge.comment.trim()
+          : null,
       sellerIssuesInvoice: true,
     };
   }
 
-  async validateConnection(
-    credentials: Record<string, string>,
-    environment: IntegrationEnvironment,
+  validateConnection(
+    _credentials: Record<string, string>,
+    _environment: IntegrationEnvironment,
+    connection: { publicId: string },
   ): Promise<{ externalAccountId: string }> {
-    await this.client.checkCredentials(credentials.appId, environment);
-    // Woovi does not tell the account from the AppID, so the id is derived from it.
-    const digest = createHash('sha256').update(credentials.appId).digest('hex');
-    return { externalAccountId: `woovi:${digest.slice(0, 24)}` };
+    // Nothing to check with Woovi: the webhook is signed with its public key. The account id comes from the connection.
+    const digest = createHash('sha256')
+      .update(connection.publicId)
+      .digest('hex');
+    return Promise.resolve({
+      externalAccountId: `woovi:${digest.slice(0, 24)}`,
+    });
   }
 }

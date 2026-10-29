@@ -42,7 +42,7 @@ export class ConnectError extends Error {
   constructor(message: string, readonly step: ConnectStep) { super(message); }
 }
 
-export interface ConnectInput { provider: string; companyId: string; environment: "test" | "live"; credentials: Record<string, string>; serviceDescription: string; sendEmail: boolean }
+export interface ConnectInput { provider: string; companyId: string; environment: "test" | "live"; credentials: Record<string, string>; sendEmail: boolean }
 type ConnectApi = Pick<typeof defaultApi, "create" | "validate" | "putRules" | "activate" | "disconnect">;
 
 /**
@@ -50,7 +50,7 @@ type ConnectApi = Pick<typeof defaultApi, "create" | "validate" | "putRules" | "
  * after the creation fails the new connection is closed, so a failed attempt
  * leaves nothing half-configured behind.
  */
-export async function connectProvider(input: ConnectInput, api: ConnectApi = defaultApi): Promise<{ connection: IntegrationConnection; webhookUrl: string }> {
+export async function connectProvider(input: ConnectInput, api: ConnectApi = defaultApi): Promise<{ connection: IntegrationConnection; webhookUrl: string; secrets: Record<string, string> }> {
   let created: IntegrationConnection;
   try {
     created = await api.create({ provider: input.provider, companyId: input.companyId, environment: input.environment, credentials: input.credentials, activeFrom: new Date().toISOString() });
@@ -61,12 +61,12 @@ export async function connectProvider(input: ConnectInput, api: ConnectApi = def
   try {
     await api.validate(created.id);
     step = "rules";
-    const description = input.serviceDescription.trim();
-    await api.putRules(created.id, [{ service: description ? { description } : {}, sendEmail: input.sendEmail }]);
+    // No fixed description: each invoice describes what that sale was, using what the platform sent.
+    await api.putRules(created.id, [{ service: {}, sendEmail: input.sendEmail }]);
     step = "activate";
     const active = await api.activate(created.id);
     // The create response is the only one that carries secrets that belong in the URL.
-    return { connection: active, webhookUrl: created.webhookUrl };
+    return { connection: active, webhookUrl: created.webhookUrl, secrets: created.secrets ?? {} };
   } catch (error) {
     await api.disconnect(created.id).catch(() => undefined);
     throw new ConnectError(messageOf(error), step);
