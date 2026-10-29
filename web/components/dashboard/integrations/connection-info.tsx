@@ -5,11 +5,12 @@ import { Check, Copy } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { integrations, type IntegrationConnection, type IntegrationEvent, type IntegrationProvider } from "@/lib/api";
+import { integrations, type IntegrationConnection, type IntegrationEvent, type IntegrationProvider, type IntegrationSale } from "@/lib/api";
 import { formatDate } from "@/lib/i18n-helpers";
+import { saleStatus } from "@/lib/integrations";
 
 type Tone = "accent" | "gray" | "warn" | "danger";
-const EVENT_STATE: Record<IntegrationEvent["state"], { key: "processed" | "ignored" | "working" | "attention" | "dead"; tone: Tone }> = {
+const EVENT_STATE: Record<IntegrationEvent["state"], { key: "processed" | "ignored" | "working" | "attention" | "dead" | "resolved"; tone: Tone }> = {
   processed: { key: "processed", tone: "accent" },
   ignored: { key: "ignored", tone: "gray" },
   received: { key: "working", tone: "gray" },
@@ -30,11 +31,14 @@ export function ConnectionInfo({ connection, provider, companyName }: Connection
   const tc = useTranslations("Common");
   const locale = useLocale();
   const [copied, setCopied] = useState(false);
+  const money = new Intl.NumberFormat(locale, { style: "currency", currency: "BRL" });
   const [events, setEvents] = useState<IntegrationEvent[] | null>(null);
+  const [sales, setSales] = useState<Record<string, IntegrationSale>>({});
 
   useEffect(() => {
     let alive = true;
     integrations.events(connection.id).then((list) => { if (alive) setEvents(list); }).catch(() => { if (alive) setEvents([]); });
+    integrations.sales(connection.id, 100).then((list) => { if (alive) setSales(Object.fromEntries(list.map((sale) => [sale.id, sale]))); }).catch(() => undefined);
     return () => { alive = false; };
   }, [connection.id]);
 
@@ -78,15 +82,24 @@ export function ConnectionInfo({ connection, provider, companyName }: Connection
         ) : (
           <ul className="flex flex-col divide-y divide-border rounded-[12px] border border-border">
             {events.map((event) => {
-              const s = EVENT_STATE[event.state];
+              const sale = event.operationId ? sales[event.operationId] : undefined;
+              const saleState = sale ? saleStatus(sale) : null;
+              // An old notice that failed is not a problem once its sale was issued by another one.
+              const resolved = event.state === "needs_attention" && saleState?.key === "issued";
+              const s = resolved ? EVENT_STATE.processed : EVENT_STATE[event.state];
+              const repeated = Boolean(event.operationId) && events.some((other) => other.operationId === event.operationId && new Date(other.createdAt) < new Date(event.createdAt));
               return (
                 <li key={event.id} className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5">
                   <div className="min-w-0">
                     <p className="truncate font-mono text-[12.5px] text-text-2">{event.externalType}</p>
-                    <p className="text-[12.5px] text-text-4">{formatDate(event.createdAt, locale)}</p>
-                    {event.lastError && <p className="mt-0.5 text-[12.5px] text-warn">{event.lastError}</p>}
+                    <p className="text-[12.5px] text-text-4">{new Date(event.createdAt).toLocaleString(locale === "pt" ? "pt-BR" : "en-US")}</p>
+                    {sale && saleState && (
+                      <p className="text-[12.5px] text-text-3">{sale.customer?.name || t("detail.sales.anonymous")} · {money.format(sale.amountCents / 100)} · {t(`detail.sale.${saleState.key}`)}</p>
+                    )}
+                    {repeated && <p className="text-[12.5px] text-text-4">{t("detail.info.eventRepeated")}</p>}
+                    {event.lastError && !resolved && !saleState && <p className="mt-0.5 text-[12.5px] text-warn">{event.lastError}</p>}
                   </div>
-                  <Badge variant={s.tone}>{t(`detail.info.event.${s.key}`)}</Badge>
+                  <Badge variant={s.tone}>{t(`detail.info.event.${resolved ? "resolved" : s.key}`)}</Badge>
                 </li>
               );
             })}

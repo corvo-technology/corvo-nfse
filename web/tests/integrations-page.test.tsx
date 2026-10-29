@@ -237,16 +237,36 @@ describe("Connection page", () => {
     ]));
   });
 
-  it("shows how to register the webhook and the notifications received", async () => {
+  it("shows how to register the webhook and what each notification was about", async () => {
     mocks.events.mockResolvedValue([
-      { id: "e1", deliveryId: "d1", externalType: "checkout.completed", state: "processed", attempts: 1, lastError: null, operationId: "o1", createdAt: "2026-10-29T15:00:00Z" },
-      { id: "e2", deliveryId: "d2", externalType: "checkout.completed", state: "needs_attention", attempts: 1, lastError: "customer_tax_id_missing", operationId: "o2", createdAt: "2026-10-29T15:05:00Z" },
+      { id: "e1", deliveryId: "d1", externalType: "checkout.completed", state: "processed", attempts: 1, lastError: null, operationId: "s1", createdAt: "2026-10-29T15:00:00Z" },
     ]);
-    await openDetails();
+    await openDetails([sale()]);
     expect(screen.getByText(/Create a webhook on Woovi/)).toBeTruthy();
     expect(await screen.findByText("Processed")).toBeTruthy();
-    expect(screen.getByText("Needs attention")).toBeTruthy();
-    expect(screen.getByText("customer_tax_id_missing")).toBeTruthy();
+    expect(await screen.findByText(/Maria · .*49[.,]90 · Invoice issued/)).toBeTruthy();
+  });
+
+  it("the same payment notified twice is one sale: the old failed notice shows as resolved and the repeat is flagged", async () => {
+    mocks.events.mockResolvedValue([
+      { id: "e2", deliveryId: "d2", externalType: "checkout.completed", state: "processed", attempts: 1, lastError: null, operationId: "s1", createdAt: "2026-10-29T19:51:31Z" },
+      { id: "e1", deliveryId: "d1", externalType: "checkout.completed", state: "needs_attention", attempts: 1, lastError: "customer_tax_id_missing", operationId: "s1", createdAt: "2026-10-29T19:51:27Z" },
+    ]);
+    await openDetails([sale()]);
+    expect(await screen.findByText("Resolved")).toBeTruthy();
+    expect(screen.queryByText("Needs attention")).toBeNull();
+    expect(screen.queryByText("customer_tax_id_missing")).toBeNull();
+    expect(screen.getAllByText(/Maria · /)).toHaveLength(2);
+    expect(screen.getAllByText("Same sale as an earlier notification")).toHaveLength(1);
+  });
+
+  it("a notice that still needs attention says why, in the words of the sale", async () => {
+    mocks.events.mockResolvedValue([
+      { id: "e1", deliveryId: "d1", externalType: "checkout.completed", state: "needs_attention", attempts: 1, lastError: "customer_tax_id_missing", operationId: "s2", createdAt: "2026-10-29T15:05:00Z" },
+    ]);
+    await openDetails([waiting("s2")]);
+    expect(await screen.findByText("Needs attention")).toBeTruthy();
+    expect(await screen.findByText(/Joao · .* · CPF\/CNPJ missing/)).toBeTruthy();
   });
 
   it("asks for confirmation before disconnecting for good, then goes back to the list", async () => {

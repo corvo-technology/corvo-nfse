@@ -2265,8 +2265,10 @@
           "ignored": "Ignorado",
           "working": "Em andamento",
           "attention": "Precisa de atenção",
-          "dead": "Falhou"
-        }
+          "dead": "Falhou",
+          "resolved": "Resolvido"
+        },
+        "eventRepeated": "Mesma venda de um aviso anterior"
       },
       "disconnectHint": "Para de emitir notas e remove esta conexão.",
       "credentials": {

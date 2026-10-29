@@ -2265,8 +2265,10 @@
           "ignored": "Ignored",
           "working": "In progress",
           "attention": "Needs attention",
-          "dead": "Failed"
-        }
+          "dead": "Failed",
+          "resolved": "Resolved"
+        },
+        "eventRepeated": "Same sale as an earlier notification"
       },
       "disconnectHint": "Stops issuing invoices and removes this connection.",
       "credentials": {
