@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import sitemap from "@/app/sitemap";
@@ -37,10 +37,12 @@ describe("links in the generated llms.txt and llms-full.txt", () => {
 });
 
 describe("issuance status code", () => {
-  it("shows 202 (asynchronous) for POST /v1/invoices on the landing, never 201", () => {
-    const architecture = read("components/landing/architecture.tsx");
-    expect(architecture).not.toMatch(/POST \/v1\/invoices\s*<span[^>]*>201</);
-    expect(architecture).toMatch(/POST \/v1\/invoices\s*<span[^>]*>202</);
+  it("never shows 201 for POST /v1/invoices on the landing: issuance is asynchronous (202)", () => {
+    const landing = readdirSync(join(__dirname, "..", "components/landing"))
+      .filter((file) => file.endsWith(".tsx"))
+      .map((file) => read(`components/landing/${file}`))
+      .join("\n");
+    expect(landing).not.toMatch(/POST \/v1\/invoices\s*<span[^>]*>201</);
   });
 });
 

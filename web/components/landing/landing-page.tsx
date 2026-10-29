@@ -2,7 +2,6 @@
 
 import { Nav } from "@/components/landing/nav";
 import { Hero } from "@/components/landing/hero";
-import { Architecture } from "@/components/landing/architecture";
 import { DashboardShowcase } from "@/components/landing/dashboard-showcase";
 import { FreeTrial } from "@/components/landing/free-trial";
 import { Pricing } from "@/components/landing/pricing";
@@ -21,9 +20,6 @@ export function LandingPage() {
       <Nav />
       <main>
         <Hero />
-        <ScrollReveal>
-          <Architecture />
-        </ScrollReveal>
         <ScrollReveal>
           <DashboardShowcase />
         </ScrollReveal>
