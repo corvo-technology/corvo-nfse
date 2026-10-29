@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Plug } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +10,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ConnectDialog, providerDescriptionKey } from "@/components/dashboard/integrations/connect-dialog";
-import { ConnectionDialog } from "@/components/dashboard/integrations/connection-dialog";
+import { providerDescriptionKey } from "@/components/dashboard/integrations/connect-flow";
 import { collectAll, companies as companiesApi, integrations, type IntegrationConnection, type IntegrationProvider, type IntegrationSale } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { Company } from "@/lib/types";
@@ -27,8 +27,6 @@ export default function IntegrationsPage() {
   const [sales, setSales] = useState<Record<string, IntegrationSale[]>>({});
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [wizard, setWizard] = useState<{ provider: string | null } | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setFailed(false);
@@ -54,7 +52,6 @@ export default function IntegrationsPage() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
-  const opened = connections.find((c) => c.id === openId) ?? null;
   const providerName = (id: string) => providers.find((p) => p.id === id)?.name ?? id;
   const companyName = (id: string) => {
     const company = companies.find((c) => c.id === id);
@@ -66,7 +63,7 @@ export default function IntegrationsPage() {
       <PageHeader
         title={t("title")}
         subtitle={t("subtitle")}
-        actions={canManage && providers.length > 0 ? <Button variant="accent" onClick={() => setWizard({ provider: null })}>{t("connect")}</Button> : undefined}
+        actions={canManage && providers.length > 0 ? <Link href="/app/integrations/new" className="btn btn-accent">{t("connect")}</Link> : undefined}
       />
 
       {loading ? (
@@ -79,15 +76,14 @@ export default function IntegrationsPage() {
           {canManage && (
             <div className="flex flex-wrap justify-center gap-3 px-6 pb-8">
               {providers.map((p) => (
-                <button
+                <Link
                   key={p.id}
-                  type="button"
-                  onClick={() => setWizard({ provider: p.id })}
+                  href={`/app/integrations/new?provider=${encodeURIComponent(p.id)}`}
                   className="flex w-full max-w-[16rem] flex-col gap-1 rounded-[12px] border border-border bg-surface px-4 py-3.5 text-left transition-colors hover:border-accent-border hover:bg-accent-surface"
                 >
                   <span className="text-[15px] font-medium text-text">{p.name}</span>
                   <span className="text-[13px] text-text-3">{t(`providers.${providerDescriptionKey(p.id)}`)}</span>
-                </button>
+                </Link>
               ))}
             </div>
           )}
@@ -99,7 +95,7 @@ export default function IntegrationsPage() {
             const pending = pendingCount(sales[connection.id] ?? []);
             return (
               <li key={connection.id}>
-                <button type="button" onClick={() => setOpenId(connection.id)} className="w-full text-left">
+                <Link href={`/app/integrations/${connection.id}`} className="block w-full text-left">
                   <Card className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:border-border-strong">
                     <div className="min-w-0">
                       <p className="text-[16px] font-medium text-text">{providerName(connection.provider)}</p>
@@ -110,34 +106,11 @@ export default function IntegrationsPage() {
                       <Badge variant={status.tone}>{t(`status.${status.key}`)}</Badge>
                     </div>
                   </Card>
-                </button>
+                </Link>
               </li>
             );
           })}
         </ul>
-      )}
-
-      {wizard && (
-        <ConnectDialog
-          open
-          onClose={() => setWizard(null)}
-          providers={providers}
-          companies={companies}
-          environment={fiscalEnvironment}
-          initialProvider={wizard.provider}
-          onConnected={() => void load()}
-        />
-      )}
-      {opened && (
-        <ConnectionDialog
-          key={opened.id}
-          connection={opened}
-          provider={providers.find((p) => p.id === opened.provider)}
-          companyName={companyName(opened.companyId)}
-          canManage={canManage}
-          onClose={() => setOpenId(null)}
-          onChanged={() => void load()}
-        />
       )}
     </div>
   );

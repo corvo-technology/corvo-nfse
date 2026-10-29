@@ -245,6 +245,7 @@ export const integrations = {
   providers: async () => unwrap(await request<Envelope<IntegrationProvider[]>>("/integrations/providers")),
   list: async () => unwrap(await request<Envelope<IntegrationConnection[]>>("/integrations/connections")),
   create: async (data: CreateIntegrationInput) => unwrap(await request<Envelope<IntegrationConnection>>("/integrations/connections", json(data))),
+  get: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}`)),
   validate: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/validate`, { method: "POST" })),
   activate: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/activate`, { method: "POST" })),
   pause: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/pause`, { method: "POST" })),

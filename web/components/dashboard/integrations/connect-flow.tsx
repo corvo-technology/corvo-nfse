@@ -2,25 +2,23 @@
 
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
+import { Card } from "@/components/ui/card";
 import { Toggle } from "@/components/ui/toggle";
 import type { IntegrationProvider } from "@/lib/api";
 import type { Company } from "@/lib/types";
 import { ConnectError, connectProvider } from "@/lib/integrations";
 
-interface ConnectDialogProps {
-  open: boolean;
-  onClose: () => void;
+interface ConnectFlowProps {
   providers: IntegrationProvider[];
   companies: Company[];
   /** The dashboard-wide Test/Production switch; connections follow it. */
   environment: "test" | "live";
   /** Skips the platform step, e.g. when the client picked it from the empty state. */
   initialProvider?: string | null;
-  onConnected: () => void;
 }
 
 type Step = "platform" | "details" | "done";
@@ -29,7 +27,9 @@ export function providerDescriptionKey(id: string): "woovi" | "abacatepay" | "ot
   return id === "woovi" || id === "abacatepay" ? id : "other";
 }
 
-export function ConnectDialog({ open, onClose, providers, companies, environment, initialProvider, onConnected }: ConnectDialogProps) {
+export function ConnectFlow({ providers, companies, environment, initialProvider }: ConnectFlowProps) {
+  const router = useRouter();
+  const backToList = () => router.push("/app/integrations");
   const t = useTranslations("Integrations");
   const tc = useTranslations("Common");
   const locale = useLocale();
@@ -67,7 +67,6 @@ export function ConnectDialog({ open, onClose, providers, companies, environment
       setWebhookUrl(result.webhookUrl);
       setSecrets(result.secrets);
       setStep("done");
-      onConnected();
     } catch (cause) {
       const failed = cause instanceof ConnectError;
       setError(`${failed ? t(`wizard.errors.${cause.step}`) : t("wizard.errors.create")}: ${cause instanceof Error ? cause.message : ""}`.trim());
@@ -89,7 +88,8 @@ export function ConnectDialog({ open, onClose, providers, companies, environment
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={step === "done" ? t("wizard.done.title") : t("wizard.title")}>
+    <Card className="flex max-w-[640px] flex-col gap-4 p-5 sm:p-6">
+      {step === "done" && <h2 className="text-[17px] font-medium text-text">{t("wizard.done.title")}</h2>}
       {step === "platform" && (
         <div className="flex flex-col gap-3">
           <p className="text-[14px] text-text-3">{t("wizard.stepPlatform")}</p>
@@ -169,9 +169,9 @@ export function ConnectDialog({ open, onClose, providers, companies, environment
           ))}
           <p className="text-[13.5px] text-text-3">{provider.webhookInstructions[locale === "pt" ? "pt" : "en"]}</p>
           {urlHasSecret && <p role="alert" className="text-[13px] text-warn">{t("wizard.done.secretWarning")}</p>}
-          <Button variant="accent" className="ml-auto" onClick={onClose}>{t("wizard.done.finish")}</Button>
+          <Button variant="accent" className="ml-auto" onClick={backToList}>{t("wizard.done.finish")}</Button>
         </div>
       )}
-    </Modal>
+    </Card>
   );
 }

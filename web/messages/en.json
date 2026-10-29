@@ -2198,7 +2198,8 @@
         "copySecret": "Copy the secret",
         "secretHint": "Also paste it into the webhook's Secret field on the platform. It signs the notifications with this value.",
         "finish": "Done"
-      }
+      },
+      "noPermission": "To use this page, ask for the permission to manage integrations."
     },
     "detail": {
       "webhookUrl": "Webhook address",
@@ -2270,7 +2271,8 @@
           "attention": "Needs attention",
           "dead": "Failed"
         }
-      }
+      },
+      "disconnectHint": "Stops issuing invoices and removes this connection."
     },
     "env": {
       "test": "Test",

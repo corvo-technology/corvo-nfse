@@ -2198,7 +2198,8 @@
         "copySecret": "Copiar o secret",
         "secretHint": "Cole também no campo Secret do webhook na plataforma. Ela usa esse valor para assinar os avisos.",
         "finish": "Concluir"
-      }
+      },
+      "noPermission": "Para usar esta tela, peça a permissão de gerenciar integrações."
     },
     "detail": {
       "webhookUrl": "Endereço do webhook",
@@ -2270,7 +2271,8 @@
           "attention": "Precisa de atenção",
           "dead": "Falhou"
         }
-      }
+      },
+      "disconnectHint": "Para de emitir notas e remove esta conexão."
     },
     "env": {
       "test": "Teste",
