@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import IntegrationsPage from "@/app/(dashboard)/app/integrations/page";
@@ -63,7 +63,7 @@ describe("Integrations list", () => {
     expect(hrefOf(name)).toBe("/app/integrations/c1");
     expect(screen.getByText("Acme")).toBeTruthy();
     expect(screen.getByText("Active")).toBeTruthy();
-    expect(screen.getByText("2 sales need you")).toBeTruthy();
+    expect(screen.getAllByText("2 sales need you")).toHaveLength(2);
     expect(hrefOf(screen.getByText("Connect"))).toBe("/app/integrations/new");
   });
 
@@ -88,6 +88,86 @@ describe("Integrations list", () => {
     mocks.list.mockResolvedValue([]);
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await screen.findByText("No integrations yet");
+  });
+});
+
+describe("Sales on the list", () => {
+  const listWith = (sales: unknown[], connections = [connection()]) => {
+    mocks.list.mockResolvedValue(connections);
+    mocks.sales.mockResolvedValue(sales);
+    renderPage();
+  };
+  const salesCard = async () => (await screen.findByRole("heading", { name: "Latest sales" })).closest("div")!.parentElement!;
+
+  it("shows the latest sales under the integrations, newest first, with the integration they came from and a link to the invoice", async () => {
+    listWith([sale({ id: "old", paidAt: "2026-10-29T10:00:00Z", customer: { name: "Antiga", email: null, taxId: "1", taxIdMasked: false } }), sale({ id: "new", paidAt: "2026-10-29T18:00:00Z", customer: { name: "Recente", email: null, taxId: "1", taxIdMasked: false }, invoiceId: "inv-9" })]);
+    const card = await salesCard();
+    const names = within(card).getAllByText(/Antiga|Recente/).map((n) => n.textContent);
+    expect(names[0]).toMatch(/Recente/);
+    expect(within(card).getAllByText(/Woovi · Acme/).length).toBe(2);
+    expect(within(card).getAllByText("Invoice issued").length).toBe(2);
+    expect(within(card).getAllByRole("link", { name: "View invoice" }).map((a) => a.getAttribute("href"))).toContain("/app/invoices/inv-9");
+  });
+
+  it("says everything is fine when no sale needs the client", async () => {
+    listWith([sale()]);
+    await screen.findByText(/All good: no sale needs you/);
+  });
+
+  it("warns about the sales that need the client and filters to them", async () => {
+    listWith([sale(), waiting("s2"), waiting("s3")]);
+    const banner = await screen.findByRole("status");
+    expect(within(banner).getByText("2 sales need you")).toBeTruthy();
+    fireEvent.click(within(banner).getByRole("button", { name: "Need attention" }));
+    const card = await salesCard();
+    expect(within(card).queryByText("Invoice issued")).toBeNull();
+    expect(within(card).getAllByText("CPF/CNPJ missing").length).toBe(2);
+    expect(within(card).getByRole("button", { name: "Need attention (2)" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(within(card).getByRole("button", { name: "All" }));
+    expect(within(card).getByText("Invoice issued")).toBeTruthy();
+  });
+
+  it("says so when no sale arrived yet", async () => {
+    listWith([]);
+    expect(await screen.findByText(/No sales received yet/)).toBeTruthy();
+  });
+
+  it("completes the customer document of a waiting sale and issues it, then refreshes", async () => {
+    mocks.completeCustomer.mockResolvedValue(sale());
+    mocks.retry.mockResolvedValue({ state: "processed" });
+    listWith([waiting("s2")]);
+    fireEvent.click(await screen.findByRole("button", { name: "Add CPF/CNPJ" }));
+    const input = screen.getByLabelText(/Customer CPF or CNPJ/);
+    const save = screen.getByRole("button", { name: "Save and issue" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    fireEvent.change(input, { target: { value: "529.982.247-25" } });
+    expect(save.disabled).toBe(false);
+    const loads = mocks.list.mock.calls.length;
+    fireEvent.click(save);
+    await waitFor(() => expect(mocks.completeCustomer).toHaveBeenCalledWith("s2", { taxId: "52998224725" }));
+    await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith("s2"));
+    expect(mocks.completeCustomer.mock.invocationCallOrder[0]).toBeLessThan(mocks.retry.mock.invocationCallOrder[0]);
+    await waitFor(() => expect(mocks.list.mock.calls.length).toBeGreaterThan(loads));
+  });
+
+  it("offers a retry for a sale that was held by a paused connection", async () => {
+    mocks.retry.mockResolvedValue({ state: "processed" });
+    listWith([sale({ fiscalStatus: "blocked", blockReason: "connection_inactive", invoiceId: null })], [connection({ state: "paused" })]);
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith("s1"));
+  });
+
+  it("members without manage permission see the sales but cannot change them", async () => {
+    mocks.permissions = new Set(["integrations.view"]);
+    listWith([waiting("s2")]);
+    await screen.findByText("CPF/CNPJ missing");
+    expect(screen.queryByRole("button", { name: "Add CPF/CNPJ" })).toBeNull();
+  });
+
+  it("shows no sales section when there is no integration yet", async () => {
+    renderPage();
+    await screen.findByText("No integrations yet");
+    expect(screen.queryByText("Latest sales")).toBeNull();
   });
 });
 
@@ -191,20 +271,15 @@ describe("Connection page", () => {
     await screen.findByRole("heading", { level: 1, name: "Woovi" });
   }
 
-  it("shows everything on one page: settings, sales, connection and disconnect", async () => {
+  it("shows only what belongs to the integration: settings, connection and disconnect, not the sales", async () => {
     await openDetails([sale(), waiting("s2")]);
     expect(screen.getAllByText("Acme").length).toBeGreaterThan(0);
     expect(await screen.findByRole("switch", { name: "Email the invoice to the customer" })).toBeTruthy();
     expect(screen.queryByLabelText(/Service description/)).toBeNull();
-    expect(await screen.findByText("Invoice issued")).toBeTruthy();
-    expect(screen.getByText("CPF/CNPJ missing")).toBeTruthy();
+    expect(screen.queryByText("Latest sales")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add CPF/CNPJ" })).toBeNull();
     expect(screen.getByText("https://api.corvo.tech/v1/integrations/inbound/PUB")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Disconnect" })).toBeTruthy();
-  });
-
-  it("says so when no sale arrived yet", async () => {
-    await openDetails([]);
-    expect(await screen.findByText(/No sales received yet/)).toBeTruthy();
   });
 
   it("turns issuing off and on with the switch", async () => {
@@ -279,35 +354,10 @@ describe("Connection page", () => {
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/app/integrations"));
   });
 
-  it("completes the customer document of a waiting sale and issues it", async () => {
-    mocks.completeCustomer.mockResolvedValue(sale());
-    mocks.retry.mockResolvedValue({ state: "processed" });
-    await openDetails([waiting("s2")]);
-    fireEvent.click(await screen.findByRole("button", { name: "Add CPF/CNPJ" }));
-    const input = screen.getByLabelText(/Customer CPF or CNPJ/);
-    const save = screen.getByRole("button", { name: "Save and issue" }) as HTMLButtonElement;
-    expect(save.disabled).toBe(true);
-    fireEvent.change(input, { target: { value: "529.982.247-25" } });
-    expect(save.disabled).toBe(false);
-    fireEvent.click(save);
-    await waitFor(() => expect(mocks.completeCustomer).toHaveBeenCalledWith("s2", { taxId: "52998224725" }));
-    await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith("s2"));
-    expect(mocks.completeCustomer.mock.invocationCallOrder[0]).toBeLessThan(mocks.retry.mock.invocationCallOrder[0]);
-  });
-
-  it("offers a retry for a sale that was held by a paused connection", async () => {
-    mocks.retry.mockResolvedValue({ state: "processed" });
-    await openDetails([sale({ fiscalStatus: "blocked", blockReason: "connection_inactive", invoiceId: null })]);
-    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
-    await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith("s1"));
-  });
-
   it("members without manage permission can read but not change anything", async () => {
     mocks.permissions = new Set(["integrations.view"]);
-    await openDetails([waiting("s2")]);
-    await screen.findByText("CPF/CNPJ missing");
+    await openDetails();
     expect((screen.getByRole("switch", { name: "Issue invoices automatically" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.queryByRole("button", { name: "Add CPF/CNPJ" })).toBeNull();
     await screen.findByRole("switch", { name: "Email the invoice to the customer" });
     expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Disconnect" })).toBeNull();

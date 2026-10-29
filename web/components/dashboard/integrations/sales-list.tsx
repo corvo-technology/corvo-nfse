@@ -1,39 +1,38 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { integrations, type IntegrationSale } from "@/lib/api";
-import { formatDate } from "@/lib/i18n-helpers";
 import { saleStatus } from "@/lib/integrations";
 import { cleanTaxId, maskTaxId } from "@/lib/masks";
 
-interface ConnectionSalesProps {
-  connectionId: string;
+export interface SaleRow {
+  sale: IntegrationSale;
+  /** Which integration it came from, e.g. "Woovi · Acme". */
+  source: string;
+}
+
+interface SalesListProps {
+  rows: SaleRow[];
   canManage: boolean;
-  /** Called after a sale changed so the list behind the dialog refreshes. */
+  /** Called after a sale changed so the page refreshes. */
   onChanged: () => void;
 }
 
-export function ConnectionSales({ connectionId, canManage, onChanged }: ConnectionSalesProps) {
+export function SalesList({ rows, canManage, onChanged }: SalesListProps) {
   const t = useTranslations("Integrations");
-  const tc = useTranslations("Common");
   const locale = useLocale();
   const { success, error: toastError } = useToast();
-  const [sales, setSales] = useState<IntegrationSale[] | null>(null);
   const [fixing, setFixing] = useState<string | null>(null);
   const [taxId, setTaxId] = useState("");
   const [saleBusy, setSaleBusy] = useState<string | null>(null);
   const money = new Intl.NumberFormat(locale, { style: "currency", currency: "BRL" });
-
-  const load = useCallback(async () => {
-    try { setSales(await integrations.sales(connectionId)); } catch { setSales([]); }
-  }, [connectionId]);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void load(); }, [load]);
+  const when = (iso: string) => new Date(iso).toLocaleString(locale === "pt" ? "pt-BR" : "en-US", { dateStyle: "short", timeStyle: "short" });
 
   async function update(saleId: string, work: () => Promise<unknown>) {
     setSaleBusy(saleId);
@@ -42,7 +41,6 @@ export function ConnectionSales({ connectionId, canManage, onChanged }: Connecti
       success(t("detail.saleDone"));
       setFixing(null);
       setTaxId("");
-      await load();
       onChanged();
     } catch (cause) {
       toastError(`${t("detail.saleFailed")} ${cause instanceof Error ? cause.message : ""}`.trim());
@@ -53,21 +51,20 @@ export function ConnectionSales({ connectionId, canManage, onChanged }: Connecti
 
   const taxIdOk = /^([0-9]{11}|[0-9A-Z]{14})$/.test(cleanTaxId(taxId));
 
-  if (sales === null) return <p className="text-[13px] text-text-4">{tc("loading")}</p>;
-  if (sales.length === 0) return <p className="text-[13.5px] text-text-3">{t("detail.sales.empty")}</p>;
   return (
-    <ul className="flex flex-col divide-y divide-border rounded-[12px] border border-border">
-      {sales.map((sale) => {
+    <ul className="flex flex-col divide-y divide-border">
+      {rows.map(({ sale, source }) => {
         const s = saleStatus(sale);
         return (
-          <li key={sale.id} className="flex flex-col gap-2 px-3.5 py-3">
+          <li key={sale.id} className="flex flex-col gap-2 px-4 py-3 sm:px-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate text-[14px] text-text">{sale.customer?.name || t("detail.sales.anonymous")}</p>
-                <p className="text-[12.5px] text-text-4">{sale.paidAt ? formatDate(sale.paidAt, locale) : formatDate(sale.createdAt, locale)} · {money.format(sale.amountCents / 100)}</p>
+                <p className="truncate text-[14px] text-text">{sale.customer?.name || t("detail.sales.anonymous")} <span className="text-text-3">· {money.format(sale.amountCents / 100)}</span></p>
+                <p className="text-[12.5px] text-text-4">{when(sale.paidAt ?? sale.createdAt)} · {source}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={s.tone}>{t(`detail.sale.${s.key}`)}</Badge>
+                {sale.invoiceId && <Link href={`/app/invoices/${sale.invoiceId}`} className="btn btn-sm">{t("sales.viewInvoice")}</Link>}
                 {canManage && s.canFixCustomer && fixing !== sale.id && (
                   <Button size="sm" variant="secondary" onClick={() => { setFixing(sale.id); setTaxId(""); }}>{t("detail.fixCustomer")}</Button>
                 )}

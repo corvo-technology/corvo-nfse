@@ -13,7 +13,6 @@ import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
 import { ConnectionCredentials } from "@/components/dashboard/integrations/connection-credentials";
 import { ConnectionInfo } from "@/components/dashboard/integrations/connection-info";
-import { ConnectionSales } from "@/components/dashboard/integrations/connection-sales";
 import { ConnectionSettings } from "@/components/dashboard/integrations/connection-settings";
 import { collectAll, companies as companiesApi, integrations, type IntegrationConnection, type IntegrationProvider } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -96,11 +95,6 @@ export default function IntegrationDetailPage() {
       <Card className="flex flex-col gap-4 p-5">
         <h2 className="font-medium">{t("detail.settings.title")}</h2>
         <ConnectionSettings connectionId={connection.id} canManage={canManage} />
-      </Card>
-
-      <Card className="flex flex-col gap-3 p-5">
-        <h2 className="font-medium">{t("detail.sales.title")}</h2>
-        <ConnectionSales connectionId={connection.id} canManage={canManage} onChanged={() => undefined} />
       </Card>
 
       <Card className="flex flex-col gap-4 p-5">

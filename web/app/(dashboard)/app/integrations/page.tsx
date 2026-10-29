@@ -11,10 +11,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { providerDescriptionKey } from "@/components/dashboard/integrations/connect-flow";
+import { SalesList, type SaleRow } from "@/components/dashboard/integrations/sales-list";
 import { collectAll, companies as companiesApi, integrations, type IntegrationConnection, type IntegrationProvider, type IntegrationSale } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { Company } from "@/lib/types";
-import { connectionStatus, pendingCount } from "@/lib/integrations";
+import { connectionStatus, pendingCount, saleStatus } from "@/lib/integrations";
+import { cn } from "@/lib/utils";
 
 export default function IntegrationsPage() {
   const t = useTranslations("Integrations");
@@ -27,6 +29,7 @@ export default function IntegrationsPage() {
   const [sales, setSales] = useState<Record<string, IntegrationSale[]>>({});
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [onlyAttention, setOnlyAttention] = useState(false);
 
   const load = useCallback(async () => {
     setFailed(false);
@@ -57,6 +60,13 @@ export default function IntegrationsPage() {
     const company = companies.find((c) => c.id === id);
     return company ? company.tradeName || company.legalName : "";
   };
+
+  // Newest first, across every integration; the ones that need the client come with a filter.
+  const rows: SaleRow[] = connections
+    .flatMap((connection) => (sales[connection.id] ?? []).map((sale) => ({ sale, source: `${providerName(connection.provider)} · ${companyName(connection.companyId)}` })))
+    .sort((a, b) => (b.sale.paidAt ?? b.sale.createdAt).localeCompare(a.sale.paidAt ?? a.sale.createdAt));
+  const attentionRows = rows.filter(({ sale }) => ["waitingCustomer", "needsAttention"].includes(saleStatus(sale).key));
+  const shownRows = (onlyAttention ? attentionRows : rows).slice(0, onlyAttention ? 100 : 30);
 
   return (
     <div className="flex flex-col gap-6">
@@ -111,6 +121,42 @@ export default function IntegrationsPage() {
             );
           })}
         </ul>
+      )}
+
+      {!loading && !failed && connections.length > 0 && (
+        <>
+          {attentionRows.length > 0 ? (
+            <p role="status" className="banner banner-warn flex flex-wrap items-center justify-between gap-3">
+              <span>{t("sales.attentionBanner", { count: attentionRows.length })}</span>
+              {!onlyAttention && <Button size="sm" variant="secondary" onClick={() => setOnlyAttention(true)}>{t("sales.attention")}</Button>}
+            </p>
+          ) : (
+            <p role="status" className="text-[13.5px] text-text-3">{t("sales.allGood")}</p>
+          )}
+          <Card className="dash-in dash-in-2 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3.5 sm:px-5">
+              <h2 className="text-[14.5px] font-medium text-text">{t("sales.title")}</h2>
+              <div role="group" className="flex gap-1.5">
+                {([false, true] as const).map((attention) => (
+                  <button
+                    key={String(attention)}
+                    type="button"
+                    aria-pressed={onlyAttention === attention}
+                    onClick={() => setOnlyAttention(attention)}
+                    className={cn("rounded-full border px-3 py-1 text-[12.5px] transition-colors", onlyAttention === attention ? "border-accent-border bg-accent-surface text-accent" : "border-border text-text-3 hover:text-text")}
+                  >
+                    {attention ? `${t("sales.attention")} (${attentionRows.length})` : t("sales.all")}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {shownRows.length === 0 ? (
+              <p className="px-5 py-8 text-center text-[13.5px] text-text-3">{onlyAttention ? t("sales.noneAttention") : t("sales.empty")}</p>
+            ) : (
+              <SalesList rows={shownRows} canManage={canManage} onChanged={() => void load()} />
+            )}
+          </Card>
+        </>
       )}
     </div>
   );

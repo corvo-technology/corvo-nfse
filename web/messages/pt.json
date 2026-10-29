@@ -2285,6 +2285,16 @@
     "env": {
       "test": "Teste",
       "live": "Produção"
+    },
+    "sales": {
+      "title": "Últimas vendas",
+      "all": "Todas",
+      "attention": "Precisam de atenção",
+      "viewInvoice": "Ver nota",
+      "allGood": "Tudo em dia: nenhuma venda precisa de você.",
+      "attentionBanner": "{count} vendas precisam de você",
+      "empty": "Nenhuma venda recebida ainda. Faça um pagamento de teste para ver aqui.",
+      "noneAttention": "Nenhuma venda precisa de atenção."
     }
   }
 }
