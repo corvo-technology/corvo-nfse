@@ -11,6 +11,7 @@ import { IntegrationsSection } from "@/components/landing/integrations-section";
 import { SdksSection } from "@/components/landing/sdks-section";
 import { MultiCompanySection } from "@/components/landing/multi-company-section";
 import { UseCases } from "@/components/landing/use-cases";
+import { FaqSection } from "@/components/landing/faq-section";
 import { Footer } from "@/components/landing/footer";
 import { ScrollReveal } from "@/components/landing/scroll-reveal";
 
@@ -46,6 +47,9 @@ export function LandingPage() {
         </ScrollReveal>
         <ScrollReveal>
           <UseCases />
+        </ScrollReveal>
+        <ScrollReveal>
+          <FaqSection />
         </ScrollReveal>
       </main>
       <Footer />
