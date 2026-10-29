@@ -227,6 +227,29 @@ export const webhooks = {
   deliveryStats: async (hours = 24, environment = "live") => unwrap(await request<Envelope<DeliveryStats>>(`/webhooks/deliveries/stats${query({ hours, environment })}`)),
   retryDelivery: async (id: string) => unwrap(await request<Envelope<{ retried: boolean }>>(`/webhooks/deliveries/${idPath(id)}/retry`, { method: "POST" })),
 };
+export interface IntegrationProvider { id: string; name: string; version: string; credentialFields: { key: string; label: string; secret: boolean; generate?: boolean; inWebhookUrl?: boolean }[]; webhookInstructions: { pt: string; en: string }; supportedFlows: string[] }
+export type IntegrationConnectionState = "draft" | "active" | "paused" | "reauth_required" | "disconnected";
+export interface IntegrationConnection { id: string; provider: string; environment: "test" | "live"; companyId: string; state: IntegrationConnectionState; externalAccountId: string | null; activeFrom: string | null; webhookUrl: string; createdAt: string }
+export interface IntegrationSale {
+  id: string; operationKey: string; commercialState: "pending" | "paid" | "refunded" | "disputed" | "canceled"; fiscalStatus: "none" | "blocked" | "needs_attention" | "submitted";
+  blockReason: string | null; amountCents: number; currency: string; customer: { name: string | null; email: string | null; taxId: string | null; taxIdMasked: boolean } | null;
+  paidAt: string | null; invoiceId: string | null; createdAt: string; updatedAt: string;
+}
+export interface IntegrationRuleInput { externalProductId?: string | null; service: { description?: string; code?: string }; sendEmail: boolean; allowAnonymousCustomer?: boolean }
+export interface CreateIntegrationInput { provider: string; companyId: string; environment: "test" | "live"; credentials: Record<string, string>; activeFrom?: string }
+export const integrations = {
+  providers: async () => unwrap(await request<Envelope<IntegrationProvider[]>>("/integrations/providers")),
+  list: async () => unwrap(await request<Envelope<IntegrationConnection[]>>("/integrations/connections")),
+  create: async (data: CreateIntegrationInput) => unwrap(await request<Envelope<IntegrationConnection>>("/integrations/connections", json(data))),
+  validate: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/validate`, { method: "POST" })),
+  activate: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/activate`, { method: "POST" })),
+  pause: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/pause`, { method: "POST" })),
+  disconnect: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/disconnect`, { method: "POST" })),
+  putRules: async (id: string, rules: IntegrationRuleInput[]) => unwrap(await request<Envelope<unknown[]>>(`/integrations/connections/${idPath(id)}/rules`, json({ rules }, "PUT"))),
+  sales: async (id: string, limit = 50) => unwrap(await request<Envelope<IntegrationSale[]>>(`/integrations/connections/${idPath(id)}/operations${query({ limit })}`)),
+  completeCustomer: async (saleId: string, data: { taxId: string; name?: string; email?: string }) => unwrap(await request<Envelope<IntegrationSale>>(`/integrations/operations/${idPath(saleId)}/customer`, json(data, "PATCH"))),
+  retry: async (saleId: string) => unwrap(await request<Envelope<{ state: string; lastError?: string }>>(`/integrations/operations/${idPath(saleId)}/retry`, { method: "POST" })),
+};
 export interface Member { id: string; email: string; name: string; role: string; createdAt: string }
 export interface InviteResult { userId: string; email: string; role: string }
 export const members = {
