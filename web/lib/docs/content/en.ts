@@ -2555,7 +2555,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     "provider": "woovi",
     "companyId": "<company id>",
     "environment": "test",
-    "credentials": { "appId": "<Woovi AppID>" },
+    "credentials": {},
     "activeFrom": "2026-11-01T00:00:00Z"
   }'`,
         },
@@ -2580,10 +2580,10 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         {
           kind: "list",
           items: [
-            "Credential: `appId`, the account AppID (API/Plugins in the Woovi dashboard). The `test` environment uses the Woovi sandbox and `live` uses the production account.",
-            "In the Woovi dashboard, register the connection `webhookUrl` and select the paid charge event (`OPENPIX:CHARGE_COMPLETED`).",
+            "There is no credential to provide: send `\"credentials\": {}`. Corvo generates the `webhookToken` and returns it in `secrets.webhookToken` only in the creation response. The `test` environment uses the Woovi sandbox and `live` uses the production account.",
+            "In Woovi, create a webhook with the connection `webhookUrl` and the paid charge event (`OPENPIX:CHARGE_COMPLETED`). Under HTTP headers, add an `Authorization` header with the `webhookToken` in the Value field.",
             "The invoice customer is the charge customer, never whoever paid the Pix.",
-            "Each charge becomes one invoice, identified by its `correlationID`.",
+            "Each charge becomes one invoice, identified by its `correlationID`. The service description on the invoice is the charge `comment`; without one, the company default is used.",
             "Woovi refunds are not tracked yet: cancel the invoice manually if needed.",
           ],
         },
@@ -2591,11 +2591,11 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         {
           kind: "list",
           items: [
-            "There are no credentials to provide: send `\"credentials\": {}`. Corvo generates the `webhookSecret` and returns the `webhookUrl` with `?webhookSecret=...` only in the creation response. Keep that address.",
-            "In the AbacatePay dashboard, register that address and select `checkout.completed`, `checkout.refunded`, `checkout.disputed` and the equivalent `transparent.*` events.",
+            "Credential: `apiKey`, an AbacatePay API v2 key (Integration > API > + New key) with the `CUSTOMER:READ` and `PRODUCT:READ` permissions. Corvo generates the `webhookSecret` and returns the `webhookUrl` with `?webhookSecret=...` only in the creation response. Keep that address.",
+            "In AbacatePay, create a webhook: paste the `webhookUrl` in the URL field and `secrets.webhookSecret` (returned only on creation) in the Secret field, and select `checkout.completed` and `transparent.completed`. Corvo accepts the Standard Webhooks signature (`webhook-id`, `webhook-timestamp`, `webhook-signature`) and the legacy format (`?webhookSecret=`).",
             "The event `devMode` must match the connection environment: test events issue no invoice on a `live` connection, and the other way around.",
-            "The CPF/CNPJ arrives masked. Without a full document the sale stays pending (`customer_tax_id_missing`), or is issued without a customer if the rule has `allowAnonymousCustomer`.",
-            "A rule's `externalProductId` is the checkout item `id`.",
+            "The webhook carries the CPF/CNPJ masked, so Corvo looks the customer up on AbacatePay with your key and uses the full document. If the customer has no document, the sale stays pending (`customer_tax_id_missing`), or is issued without a customer if the rule has `allowAnonymousCustomer`.",
+            "A rule's `externalProductId` is the checkout item `id`. The service description on the invoice is the product name (Corvo looks it up with your key); without the `PRODUCT:READ` permission, the company default is used.",
             "A refund or dispute after the invoice opens the `refund_after_invoice` pendency; the invoice is not cancelled.",
           ],
         },

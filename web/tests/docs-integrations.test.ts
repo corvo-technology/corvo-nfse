@@ -40,7 +40,7 @@ describe.each(["pt", "en"] as const)("payment integrations docs (%s)", (locale) 
   });
 
   it("documents how to connect Woovi and AbacatePay", () => {
-    for (const term of ["OPENPIX:CHARGE_COMPLETED", "appId", "webhookSecret", "checkout.completed", "devMode"])
+    for (const term of ["OPENPIX:CHARGE_COMPLETED", "webhookToken", "Authorization", "webhookSecret", "checkout.completed", "devMode"])
       expect(text).toContain(term);
   });
 

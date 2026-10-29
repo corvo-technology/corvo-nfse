@@ -213,6 +213,7 @@ describePostgres('integrations end to end on real PostgreSQL', () => {
       operationsRepo,
       rules,
       issuance,
+      eventsRepo,
     );
     operationService = new OperationService(operationsRepo, emitter);
     processor = new EventProcessorService(

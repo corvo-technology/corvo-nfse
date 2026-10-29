@@ -32,7 +32,6 @@ import { TypeOrmIntegrationEventRepository } from '../../infra/typeorm-integrati
 import { TypeOrmIntegrationOperationRepository } from '../../infra/typeorm-integration-operation.repository';
 import { TypeOrmIntegrationRuleRepository } from '../../infra/typeorm-integration-rule.repository';
 import { WooviConnector } from './woovi.connector';
-import type { WooviClient } from './woovi.client';
 import type { WooviPublicKeyProvider } from './woovi-public-key.provider';
 
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -57,9 +56,12 @@ const fixture = readFileSync(
   join(__dirname, '__fixtures__', 'charge-completed.json'),
   'utf8',
 );
+/** The Authorization token the client pasted into Woovi's webhook headers. */
+let webhookToken = '';
 const signed = (body: string) => ({
   rawBody: Buffer.from(body),
   headers: {
+    authorization: webhookToken,
     'x-webhook-signature': createSign('sha256')
       .update(body)
       .sign(privateKey, 'base64'),
@@ -93,8 +95,9 @@ describePostgres('Woovi connector through the real pipeline', () => {
       provider: 'woovi',
       companyId: company,
       environment: 'test',
-      credentials: { appId: `app-${randomUUID()}` },
+      credentials: {},
     });
+    webhookToken = connections.toView(created).credentials.webhookToken;
     await connections.validate(tenant, created.id);
     await connections.replaceRules(tenant, created.id, [
       {
@@ -125,11 +128,8 @@ describePostgres('Woovi connector through the real pipeline', () => {
     const keys = {
       getKeys: () => Promise.resolve([publicKey]),
     } as unknown as WooviPublicKeyProvider;
-    const client = {
-      checkCredentials: () => Promise.resolve(),
-    } as unknown as WooviClient;
     const registry = new ConnectorRegistry();
-    registry.register(new WooviConnector(keys, client));
+    registry.register(new WooviConnector(keys));
     const cipher = new SecretsCipherService(
       new ConfigService({
         meta: { secretsEncryptionKey: randomBytes(32).toString('base64') },
@@ -166,6 +166,7 @@ describePostgres('Woovi connector through the real pipeline', () => {
       operations,
       rules,
       issuance,
+      events,
     );
     processor = new EventProcessorService(
       events,
@@ -232,6 +233,19 @@ describePostgres('Woovi connector through the real pipeline', () => {
     await expect(receiver.receive(publicId, request)).rejects.toThrow(
       UnauthorizedException,
     );
+    const rows: Array<{ n: number }> = await db.query(
+      `SELECT count(*)::int AS n FROM ${t('integration_events')}`,
+    );
+    expect(rows[0].n).toBe(0);
+  });
+
+  it('a call without the right Authorization token is refused and stores nothing', async () => {
+    const { publicId } = await liveConnection();
+    const request = {
+      ...signed(fixture),
+      headers: { ...signed(fixture).headers, authorization: 'wrong' },
+    };
+    await expect(receiver.receive(publicId, request)).rejects.toThrow();
     const rows: Array<{ n: number }> = await db.query(
       `SELECT count(*)::int AS n FROM ${t('integration_events')}`,
     );

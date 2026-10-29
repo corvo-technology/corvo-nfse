@@ -28,6 +28,10 @@ export class CreateConnectionDto {
   @IsOptional() @IsDateString() activeFrom?: string;
 }
 
+export class UpdateCredentialsDto {
+  @IsObject() credentials!: Record<string, string>;
+}
+
 export class RuleDto {
   @IsOptional() @IsString() @MaxLength(200) externalProductId?: string | null;
   @ValidateNested() @Type(() => ServiceDto) service!: ServiceDto;

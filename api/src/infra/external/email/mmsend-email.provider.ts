@@ -18,6 +18,9 @@ export type SendEmailOutput = {
   id: string;
 };
 
+/** The provider refused the message itself (bad address, invalid content): sending it again cannot work. */
+export class PermanentEmailError extends Error {}
+
 @Injectable()
 export class MillionSendEmailProvider {
   private readonly client: Resend | null;
@@ -72,7 +75,11 @@ export class MillionSendEmailProvider {
     );
 
     if (result.error) {
-      throw new Error(`MillionSend API error: ${result.error.message}`);
+      const message = `MillionSend API error: ${result.error.message}`;
+      const status = result.error.statusCode;
+      if (status === 400 || status === 422)
+        throw new PermanentEmailError(message);
+      throw new Error(message);
     }
 
     if (!result.data?.id) {

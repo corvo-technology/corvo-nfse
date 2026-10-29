@@ -27,6 +27,9 @@ class FakeRepo extends IIntegrationEventRepository {
   listByConnection() {
     return Promise.resolve([]);
   }
+  resolveAttention() {
+    return Promise.resolve();
+  }
   claimBatch() {
     const q = this.queue;
     this.queue = [];
