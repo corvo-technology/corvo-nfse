@@ -264,7 +264,7 @@ da documentação. Caminhos relativos a `/v1`; `S/K` = sessão ou chave de API.
 | POST   | `/integrations/connections/{id}/pause`       | S/K, `integrations.manage`        | Eventos continuam guardados; nada é emitido                           |
 | POST   | `/integrations/connections/{id}/disconnect`  | S/K, `integrations.manage`        | Definitivo                                                            |
 | GET    | `/integrations/connections/{id}/rules`       | S/K, `integrations.view`          | Regras de serviço                                                     |
-| PUT    | `/integrations/connections/{id}/rules`       | S/K, `integrations.manage`        | JSON: `rules[]` com `externalProductId?`, `service`, `sendEmail`, `allowAnonymousCustomer?`; substitui tudo |
+| PUT    | `/integrations/connections/{id}/rules`       | S/K, `integrations.manage`        | JSON: `rules[]` com `externalProductId?`, `service`, `sendEmail`, `allowAnonymousCustomer?`, `cancelOnRefund?` (padrão `false`: pede o cancelamento da nota quando o reembolso chega depois dela); substitui tudo |
 | GET    | `/integrations/connections/{id}/events`      | S/K, `integrations.view`          | Query: `limit` (ajustado a 1..100); sem o corpo do evento            |
 | GET    | `/integrations/connections/{id}/operations`  | S/K, `integrations.view`          | Query: `limit`; vendas com `fiscalStatus` e `blockReason`             |
 | PATCH  | `/integrations/operations/{id}/customer`     | S/K, `integrations.manage`        | JSON: `taxId`, `name?`, `email?`; só antes de o pedido ser fixado     |

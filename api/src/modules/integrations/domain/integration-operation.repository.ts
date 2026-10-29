@@ -26,6 +26,13 @@ export abstract class IIntegrationOperationRepository {
     id: string,
     tenantId: string,
   ): Promise<IntegrationOperation | null>;
+  /** The sale of this connection whose `externalRefs[ref]` equals `value`, if any. */
+  abstract findByExternalRef(input: {
+    tenantId: string;
+    connectionId: string;
+    ref: string;
+    value: string;
+  }): Promise<IntegrationOperation | null>;
   abstract listByConnection(
     connectionId: string,
     tenantId: string,

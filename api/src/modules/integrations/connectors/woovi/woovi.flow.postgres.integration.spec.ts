@@ -34,6 +34,7 @@ import { TypeOrmIntegrationRuleRepository } from '../../infra/typeorm-integratio
 import { WooviConnector } from './woovi.connector';
 import type { WooviPublicKeyProvider } from './woovi-public-key.provider';
 
+import { FakeCancellation } from '../../testing/fake-cancellation';
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
 if (
   url &&
@@ -69,6 +70,8 @@ const signed = (body: string) => ({
   query: {},
 });
 
+const cancellation = new FakeCancellation();
+
 class FakeIssuance extends InvoiceIssuancePort {
   invoices = new Map<string, string>();
   commands: IssueInvoiceCommand[] = [];
@@ -90,7 +93,7 @@ describePostgres('Woovi connector through the real pipeline', () => {
   let processor: EventProcessorService;
   const t = (name: string) => `"${schema}"."${name}"`;
 
-  async function liveConnection() {
+  async function liveConnection(cancelOnRefund = false) {
     const created = await connections.create(tenant, {
       provider: 'woovi',
       companyId: company,
@@ -105,6 +108,7 @@ describePostgres('Woovi connector through the real pipeline', () => {
         service: { code: '010101', description: 'Consultoria' },
         sendEmail: true,
         allowAnonymousCustomer: false,
+        cancelOnRefund,
       },
     ]);
     return connections.activate(tenant, created.id);
@@ -167,6 +171,7 @@ describePostgres('Woovi connector through the real pipeline', () => {
       rules,
       issuance,
       events,
+      cancellation,
     );
     processor = new EventProcessorService(
       events,
@@ -188,6 +193,7 @@ describePostgres('Woovi connector through the real pipeline', () => {
     await db.query(`DELETE FROM ${t('integration_operations')}`);
     issuance.invoices.clear();
     issuance.commands = [];
+    cancellation.calls = [];
   });
 
   it('a signed paid charge issues one invoice with the charge customer, the amount in reais and the São Paulo date', async () => {
@@ -250,6 +256,78 @@ describePostgres('Woovi connector through the real pipeline', () => {
       `SELECT count(*)::int AS n FROM ${t('integration_events')}`,
     );
     expect(rows[0].n).toBe(0);
+  });
+
+  describe('refund after the invoice', () => {
+    const refundBody = readFileSync(
+      join(__dirname, '__fixtures__', 'refund-sent-confirmed.json'),
+      'utf8',
+    );
+    const operationRow = async () => {
+      const rows: Array<{
+        commercial_state: string;
+        fiscal_status: string;
+        block_reason: string | null;
+      }> = await db.query(
+        `SELECT commercial_state, fiscal_status, block_reason FROM ${t('integration_operations')}`,
+      );
+      return rows;
+    };
+
+    it('with "cancel on refund" on, the refund finds the sale by the Pix end-to-end id and cancels its invoice', async () => {
+      const { publicId } = await liveConnection(true);
+      await receiver.receive(publicId, signed(fixture));
+      await drain();
+      await receiver.receive(publicId, signed(refundBody));
+      await drain();
+      const [invoiceId] = [...issuance.invoices.values()];
+      expect(cancellation.calls).toEqual([
+        {
+          tenantId: tenant,
+          environment: 'test',
+          invoiceId,
+          description: 'Cancelado por reembolso',
+        },
+      ]);
+      expect(await operationRow()).toEqual([
+        {
+          commercial_state: 'refunded',
+          fiscal_status: 'submitted',
+          block_reason: 'cancel_requested',
+        },
+      ]);
+    });
+
+    it('with it off, only flags the refund', async () => {
+      const { publicId } = await liveConnection(false);
+      await receiver.receive(publicId, signed(fixture));
+      await drain();
+      await receiver.receive(publicId, signed(refundBody));
+      await drain();
+      expect(cancellation.calls).toHaveLength(0);
+      expect(await operationRow()).toEqual([
+        {
+          commercial_state: 'refunded',
+          fiscal_status: 'submitted',
+          block_reason: 'refund_after_invoice',
+        },
+      ]);
+    });
+
+    it('a refund of a payment that is not a sale here is ignored and creates no sale', async () => {
+      const { publicId } = await liveConnection(true);
+      await receiver.receive(publicId, signed(refundBody));
+      await drain();
+      expect(cancellation.calls).toHaveLength(0);
+      expect(await operationRow()).toEqual([]);
+      const events: Array<{ state: string; last_error: string }> =
+        await db.query(
+          `SELECT state, last_error FROM ${t('integration_events')}`,
+        );
+      expect(events).toEqual([
+        { state: 'ignored', last_error: 'refund_sale_not_found' },
+      ]);
+    });
   });
 
   it('the registration test webhook is acknowledged and stores nothing', async () => {

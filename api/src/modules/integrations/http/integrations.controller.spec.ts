@@ -234,6 +234,35 @@ describe('IntegrationsController', () => {
     ] as const)
       expect(permission(name)).toBe('integrations.manage');
   });
+  describe('cancelOnRefund on the rules', () => {
+    const rule = (extra: Record<string, unknown> = {}) => ({
+      service: { code: '010101' },
+      sendEmail: true,
+      ...extra,
+    });
+    it('is off unless asked for, and is stored when asked for', async () => {
+      const { controller, connections } = setup();
+      const replace = connections.replaceRules as jest.Mock;
+      await controller.putRules(req, '11111111-1111-4111-8111-111111111111', {
+        rules: [rule()],
+      } as never);
+      await controller.putRules(req, '11111111-1111-4111-8111-111111111111', {
+        rules: [rule({ cancelOnRefund: true })],
+      } as never);
+      expect(replace.mock.calls[0][2][0].cancelOnRefund).toBe(false);
+      expect(replace.mock.calls[1][2][0].cancelOnRefund).toBe(true);
+    });
+    it('only accepts a boolean', async () => {
+      const dto = plainToInstance(PutRulesDto, {
+        rules: [rule({ cancelOnRefund: 'yes' })],
+      });
+      expect(await validate(dto)).not.toHaveLength(0);
+      const ok = plainToInstance(PutRulesDto, {
+        rules: [rule({ cancelOnRefund: true })],
+      });
+      expect(await validate(ok)).toHaveLength(0);
+    });
+  });
   it('PUT rules rejects two rules for the same product and two default rules', async () => {
     const dup = plainToInstance(PutRulesDto, {
       rules: [

@@ -4,7 +4,10 @@
     "status": "COMPLETED",
     "customer": {
       "name": "Maria da Silva",
-      "taxID": { "taxID": "52998224725", "type": "BR:CPF" },
+      "taxID": {
+        "taxID": "52998224725",
+        "type": "BR:CPF"
+      },
       "email": "maria@example.com",
       "correlationID": "cust-1"
     },
@@ -17,21 +20,29 @@
     "updatedAt": "2026-10-29T15:00:05.000Z"
   },
   "pix": {
-    "charge": { "correlationID": "pedido-123" },
+    "charge": {
+      "correlationID": "pedido-123"
+    },
     "payer": {
       "name": "Joao Pagador",
-      "taxID": { "taxID": "11144477735", "type": "BR:CPF" },
+      "taxID": {
+        "taxID": "11144477735",
+        "type": "BR:CPF"
+      },
       "email": "joao@example.com"
     },
     "time": "2026-10-29T15:00:00.000Z",
     "value": 4990,
     "transactionID": "tx-pix-1",
-    "infoPagador": []
+    "infoPagador": [],
+    "endToEndId": "E00000000202610291500ABCDEFGH1234"
   },
   "company": {
     "id": "company-1",
     "name": "Minha Loja",
     "taxID": "11222333000181"
   },
-  "account": { "environment": "TESTING" }
+  "account": {
+    "environment": "TESTING"
+  }
 }

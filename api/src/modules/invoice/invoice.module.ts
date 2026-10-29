@@ -49,6 +49,8 @@ import { InvoiceIntakeService } from './application/invoice-intake.service';
 import { InvoiceService } from './application/invoice.service';
 import { IntegrationInvoiceIssuer } from './application/integration-invoice-issuer';
 import { InvoiceIssuancePort } from '@/modules/integrations/domain/invoice-issuance.port';
+import { IntegrationInvoiceCanceller } from './application/integration-invoice-canceller';
+import { InvoiceCancellationPort } from '@/modules/integrations/domain/invoice-cancellation.port';
 import { InvoiceBatchService } from './application/invoice-batch.service';
 import { InvoiceController } from './http/invoice.controller';
 import { InvoiceOverviewController } from './http/invoice-overview.controller';
@@ -145,6 +147,10 @@ import { EmailModule } from '@/modules/email/email.module';
     DpsBuilder,
     InvoiceService,
     { provide: InvoiceIssuancePort, useClass: IntegrationInvoiceIssuer },
+    {
+      provide: InvoiceCancellationPort,
+      useClass: IntegrationInvoiceCanceller,
+    },
     InvoiceBatchService,
     InvoiceIntakeService,
     InvoiceCalculationService,
@@ -157,6 +163,7 @@ import { EmailModule } from '@/modules/email/email.module';
     OUTBOX_REPOSITORY,
     InvoiceService,
     InvoiceIssuancePort,
+    InvoiceCancellationPort,
     InvoiceBatchService,
     InvoiceCalculationService,
     InvoiceLifecycleService,

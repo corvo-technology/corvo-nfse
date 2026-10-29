@@ -224,6 +224,7 @@ describe('WooviConnector.parse', () => {
     'OPENPIX:CHARGE_EXPIRED',
     'OPENPIX:TRANSACTION_RECEIVED',
     'PIX_TRANSACTION_REFUND_RECEIVED_CONFIRMED',
+    'PIX_TRANSACTION_REFUND_SENT_REJECTED',
   ])('%s is ignored', (event) => {
     expect(
       connector.parse(req(JSON.stringify({ event, pix: { value: 1 } }))),
@@ -265,6 +266,7 @@ describe('WooviConnector.normalize', () => {
         chargeCorrelationId: 'pedido-123',
         chargeTransactionId: 'tx-charge-1',
         pixTransactionId: 'tx-pix-1',
+        pixEndToEndId: 'E00000000202610291500ABCDEFGH1234',
       },
       occurredAt: new Date('2026-10-29T15:00:00.000Z'),
       paidAt: new Date('2026-10-29T15:00:00.000Z'),
@@ -353,6 +355,82 @@ describe('WooviConnector.normalize', () => {
     expect((await run(JSON.stringify(data))).paidAt).toEqual(
       new Date('2026-10-29T15:00:05.000Z'),
     );
+  });
+});
+
+describe('WooviConnector refunds', () => {
+  const { connector } = setup();
+  const delivery: OperationDelivery = {
+    kind: 'operation',
+    deliveryId: 'd',
+    externalType: 'PIX_TRANSACTION_REFUND_SENT_CONFIRMED',
+  };
+  const normalize = (body: string) =>
+    connector.normalize({ connection, payload: body, delivery });
+
+  it('a confirmed refund sent to the customer is an operation with a stable delivery id', () => {
+    const parsed = connector.parse(req(fixture('refund-sent-confirmed.json')));
+    expect(parsed).toEqual({
+      kind: 'operation',
+      deliveryId:
+        'PIX_TRANSACTION_REFUND_SENT_CONFIRMED:D00000000202610291600REFUND0001',
+      externalType: 'PIX_TRANSACTION_REFUND_SENT_CONFIRMED',
+    });
+  });
+  it('a partial refund is ignored: it does not undo the sale', () => {
+    const body = JSON.parse(fixture('refund-sent-confirmed.json')) as {
+      refundTransaction: { partial: boolean };
+    };
+    body.refundTransaction.partial = true;
+    expect(connector.parse(req(JSON.stringify(body)))).toEqual({
+      kind: 'ignored',
+      externalType: 'PIX_TRANSACTION_REFUND_SENT_CONFIRMED',
+    });
+  });
+  it('the refund points at the sale by the Pix end-to-end id of the original payment', async () => {
+    const op = await normalize(fixture('refund-sent-confirmed.json'));
+    expect(op).toMatchObject({
+      commercialState: 'refunded',
+      refersTo: {
+        ref: 'pixEndToEndId',
+        value: 'E00000000202610291500ABCDEFGH1234',
+      },
+      amountCents: 4990,
+      currency: 'BRL',
+      occurredAt: new Date('2026-10-29T16:00:00.000Z'),
+    });
+  });
+  it('the older refund notice points at the sale by the charge correlation id', async () => {
+    const body = fixture('refund-legacy.json');
+    expect(connector.parse(req(body))).toMatchObject({
+      kind: 'operation',
+      externalType: 'OPENPIX:TRANSACTION_REFUND_RECEIVED',
+    });
+    expect(await normalize(body)).toMatchObject({
+      commercialState: 'refunded',
+      refersTo: { ref: 'chargeCorrelationId', value: 'pedido-123' },
+    });
+  });
+  it('a partial older notice is ignored too', () => {
+    const body = JSON.parse(fixture('refund-legacy.json')) as {
+      pix: { partial: boolean };
+    };
+    body.pix.partial = true;
+    expect(connector.parse(req(JSON.stringify(body)))).toMatchObject({
+      kind: 'ignored',
+    });
+  });
+  it('a refund notice that names no original payment is unreadable', () => {
+    expect(() =>
+      connector.parse(
+        req(
+          JSON.stringify({
+            event: 'PIX_TRANSACTION_REFUND_SENT_CONFIRMED',
+            refundTransaction: { value: 1 },
+          }),
+        ),
+      ),
+    ).toThrow(ConnectorDataError);
   });
 });
 

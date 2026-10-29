@@ -20,6 +20,10 @@ const PAID_EVENTS = new Set([
   'OPENPIX:CHARGE_COMPLETED_NOT_SAME_CUSTOMER_PAYER',
 ]);
 
+const REFUND_SENT = 'PIX_TRANSACTION_REFUND_SENT_CONFIRMED';
+/** Deprecated by Woovi but documented with the charge in the payload, so it can name the sale directly. */
+const REFUND_LEGACY = 'OPENPIX:TRANSACTION_REFUND_RECEIVED';
+
 interface WooviTaxId {
   taxID?: string;
 }
@@ -38,7 +42,21 @@ interface WooviWebhook {
     comment?: unknown;
     customer?: WooviCustomer;
   };
-  pix?: { time?: string; transactionID?: string };
+  pix?: {
+    time?: string;
+    transactionID?: string;
+    endToEndId?: string;
+    value?: unknown;
+    partial?: boolean;
+  };
+  refundTransaction?: {
+    value?: unknown;
+    time?: string;
+    createdAt?: string;
+    endToEndId?: string;
+    partial?: boolean;
+  };
+  originalTransaction?: { endToEndId?: string };
 }
 
 function sameText(a: string, b: string): boolean {
@@ -96,8 +114,8 @@ export class WooviConnector implements Connector {
       },
     ],
     webhookInstructions: {
-      pt: 'Na Woovi, crie um webhook com a URL desta conexão e o evento Cobrança paga (OPENPIX:CHARGE_COMPLETED). Em Cabeçalhos HTTP, adicione o cabeçalho Authorization e cole o token mostrado aqui no campo Valor.',
-      en: 'In Woovi, create a webhook with this connection URL and the paid charge event (OPENPIX:CHARGE_COMPLETED). Under HTTP headers, add an Authorization header and paste the token shown here in the Value field.',
+      pt: 'Na Woovi, crie um webhook com a URL desta conexão e o evento Cobrança paga (OPENPIX:CHARGE_COMPLETED); para cancelar a nota quando houver reembolso, marque também PIX_TRANSACTION_REFUND_SENT_CONFIRMED. Em Cabeçalhos HTTP, adicione o cabeçalho Authorization e cole o token mostrado aqui no campo Valor.',
+      en: 'In Woovi, create a webhook with this connection URL and the paid charge event (OPENPIX:CHARGE_COMPLETED); to cancel the invoice on a refund, also select PIX_TRANSACTION_REFUND_SENT_CONFIRMED. Under HTTP headers, add an Authorization header and paste the token shown here in the Value field.',
     },
     supportedFlows: ['pix-charge'],
   };
@@ -131,6 +149,8 @@ export class WooviConnector implements Connector {
   parse(req: InboundRequest): ParsedDelivery {
     const body = readBody(req.rawBody);
     if (typeof body.event !== 'string') return { kind: 'test' };
+    if (body.event === REFUND_SENT || body.event === REFUND_LEGACY)
+      return this.parseRefund(body.event, body);
     if (!PAID_EVENTS.has(body.event))
       return { kind: 'ignored', externalType: body.event };
     const correlationId = body.charge?.correlationID;
@@ -143,6 +163,32 @@ export class WooviConnector implements Connector {
     };
   }
 
+  /** Only a total refund counts; a partial one leaves the sale as it is. */
+  private parseRefund(event: string, body: WooviWebhook): ParsedDelivery {
+    if (event === REFUND_SENT) {
+      if (body.refundTransaction?.partial === true)
+        return { kind: 'ignored', externalType: event };
+      const original = body.originalTransaction?.endToEndId;
+      if (!original)
+        throw new ConnectorDataError('Woovi refund names no original payment');
+      return {
+        kind: 'operation',
+        deliveryId: `${event}:${body.refundTransaction?.endToEndId ?? original}`,
+        externalType: event,
+      };
+    }
+    if (body.pix?.partial === true)
+      return { kind: 'ignored', externalType: event };
+    const correlationId = body.charge?.correlationID;
+    if (!correlationId)
+      throw new ConnectorDataError('Woovi refund names no charge');
+    return {
+      kind: 'operation',
+      deliveryId: `${event}:${correlationId}:${body.pix?.transactionID ?? body.pix?.endToEndId ?? ''}`,
+      externalType: event,
+    };
+  }
+
   normalize(input: {
     connection: ConnectionView;
     payload: unknown;
@@ -152,8 +198,41 @@ export class WooviConnector implements Connector {
     return Promise.resolve().then(() => this.toOperation(input.payload));
   }
 
+  private toRefund(body: WooviWebhook): NormalizedOperation {
+    const sent = body.event === REFUND_SENT;
+    const refund = sent ? body.refundTransaction : body.pix;
+    const key = sent
+      ? { ref: 'pixEndToEndId', value: body.originalTransaction?.endToEndId }
+      : { ref: 'chargeCorrelationId', value: body.charge?.correlationID };
+    if (!key.value)
+      throw new ConnectorDataError('Woovi refund names no original payment');
+    if (!Number.isInteger(refund?.value))
+      throw new ConnectorDataError(
+        'Woovi refund value is not an integer number of cents',
+      );
+    const at = new Date(refund?.time ?? Date.now());
+    return {
+      // Stands in until the sale is found: the handler swaps in the sale's own key.
+      operationKey: `refund:${key.value}`,
+      commercialState: 'refunded',
+      externalRefs: {},
+      refersTo: { ref: key.ref, value: key.value },
+      occurredAt: at,
+      paidAt: null,
+      currency: 'BRL',
+      amountCents: refund?.value as number,
+      discountCents: 0,
+      customer: null,
+      items: [],
+      description: null,
+      sellerIssuesInvoice: true,
+    };
+  }
+
   private toOperation(payload: unknown): NormalizedOperation {
     const body = readBody(Buffer.from(String(payload), 'utf8'));
+    if (body.event === REFUND_SENT || body.event === REFUND_LEGACY)
+      return this.toRefund(body);
     const charge = body.charge;
     if (!charge?.correlationID)
       throw new ConnectorDataError('Woovi charge has no correlationID');
@@ -173,6 +252,7 @@ export class WooviConnector implements Connector {
         ...(body.pix?.transactionID
           ? { pixTransactionId: body.pix.transactionID }
           : {}),
+        ...(body.pix?.endToEndId ? { pixEndToEndId: body.pix.endToEndId } : {}),
       },
       occurredAt: paidAt,
       paidAt,

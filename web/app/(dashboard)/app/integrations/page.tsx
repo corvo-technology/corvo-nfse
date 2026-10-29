@@ -65,7 +65,7 @@ export default function IntegrationsPage() {
   const rows: SaleRow[] = connections
     .flatMap((connection) => (sales[connection.id] ?? []).map((sale) => ({ sale, source: `${providerName(connection.provider)} · ${companyName(connection.companyId)}` })))
     .sort((a, b) => (b.sale.paidAt ?? b.sale.createdAt).localeCompare(a.sale.paidAt ?? a.sale.createdAt));
-  const attentionRows = rows.filter(({ sale }) => ["waitingCustomer", "needsAttention"].includes(saleStatus(sale).key));
+  const attentionRows = rows.filter(({ sale }) => ["waitingCustomer", "needsAttention", "cancelFailed"].includes(saleStatus(sale).key));
   const shownRows = (onlyAttention ? attentionRows : rows).slice(0, onlyAttention ? 100 : 30);
 
   return (

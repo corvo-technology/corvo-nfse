@@ -73,6 +73,20 @@ export class MemoryOperations extends IIntegrationOperationRepository {
     const row = this.rows.get(id);
     return Promise.resolve(row && row.tenantId === tenantId ? row : null);
   }
+  findByExternalRef(input: {
+    tenantId: string;
+    connectionId: string;
+    ref: string;
+    value: string;
+  }) {
+    const found = [...this.rows.values()].find(
+      (r) =>
+        r.tenantId === input.tenantId &&
+        r.connectionId === input.connectionId &&
+        r.snapshot.externalRefs[input.ref] === input.value,
+    );
+    return Promise.resolve(found ?? null);
+  }
   listByConnection() {
     return Promise.resolve([...this.rows.values()]);
   }

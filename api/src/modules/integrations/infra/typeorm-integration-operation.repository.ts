@@ -75,6 +75,24 @@ export class TypeOrmIntegrationOperationRepository extends IIntegrationOperation
     });
   }
 
+  findByExternalRef(input: {
+    tenantId: string;
+    connectionId: string;
+    ref: string;
+    value: string;
+  }): Promise<IntegrationOperation | null> {
+    return runWithTenant(input.tenantId, async () => {
+      const rows: Array<Record<string, unknown>> = await this.repo.query(
+        `SELECT * FROM ${this.table()}
+         WHERE tenant_id = $1 AND connection_id = $2
+           AND snapshot #>> ARRAY['externalRefs', $3::text] = $4
+         ORDER BY created_at DESC LIMIT 1`,
+        [input.tenantId, input.connectionId, input.ref, input.value],
+      );
+      return rows.length > 0 ? this.fromRow(rows[0]) : null;
+    });
+  }
+
   listByConnection(
     connectionId: string,
     tenantId: string,

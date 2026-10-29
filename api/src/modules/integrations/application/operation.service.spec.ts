@@ -128,6 +128,21 @@ describe('OperationService', () => {
       expect.objectContaining({ id: op.id }),
     );
   });
+  it('retry runs again for an invoice whose cancellation could not be requested', async () => {
+    const { service, operations, emitter } = setup();
+    const op = await seed(operations);
+    await operations.setFiscal(
+      op.id,
+      TENANT,
+      'needs_attention',
+      'cancel_failed',
+      'inv1',
+    );
+    await service.retry(TENANT, op.id);
+    expect(emitter.run).toHaveBeenCalledWith(
+      expect.objectContaining({ id: op.id }),
+    );
+  });
   it('retry is refused when the invoice already exists', async () => {
     const { service, operations, emitter } = setup();
     const op = await seed(operations);

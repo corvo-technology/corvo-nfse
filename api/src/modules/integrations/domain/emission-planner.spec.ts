@@ -14,6 +14,7 @@ const rule: IntegrationRule = {
   service: { code: '010101', description: 'Consultoria' },
   sendEmail: true,
   allowAnonymousCustomer: false,
+  cancelOnRefund: false,
 };
 
 function snapshot(

@@ -127,6 +127,17 @@ describe("Sales on the list", () => {
     expect(within(card).getByText("Invoice issued")).toBeTruthy();
   });
 
+  it("a sale whose invoice cancellation was requested shows it with the invoice link; a failed one needs attention and can be retried", async () => {
+    mocks.retry.mockResolvedValue({ state: "processed" });
+    listWith([sale({ id: "a", blockReason: "cancel_requested", invoiceId: "inv-a" }), sale({ id: "b", fiscalStatus: "needs_attention", blockReason: "cancel_failed", invoiceId: "inv-b", customer: { name: "Bia", email: null, taxId: "1", taxIdMasked: false } })]);
+    expect(await screen.findByText("Cancellation requested")).toBeTruthy();
+    expect(screen.getByText("Could not cancel the invoice")).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "View invoice" }).map((a) => a.getAttribute("href"))).toEqual(expect.arrayContaining(["/app/invoices/inv-a", "/app/invoices/inv-b"]));
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith("b"));
+    expect(screen.getAllByText("1 sales need you").length).toBeGreaterThan(0);
+  });
+
   it("says so when no sale arrived yet", async () => {
     listWith([]);
     expect(await screen.findByText(/No sales received yet/)).toBeTruthy();
@@ -315,9 +326,37 @@ describe("Connection page", () => {
     expect(save.disabled).toBe(false);
     fireEvent.click(save);
     await waitFor(() => expect(mocks.putRules).toHaveBeenCalledWith("c1", [
-      { externalProductId: null, service: { description: "Consultoria", code: "010101" }, sendEmail: true, allowAnonymousCustomer: true },
+      { externalProductId: null, service: { description: "Consultoria", code: "010101" }, sendEmail: true, allowAnonymousCustomer: true, cancelOnRefund: false },
       { externalProductId: "prod_1", service: { code: "020202" }, sendEmail: false, allowAnonymousCustomer: false },
     ]));
+  });
+
+  it("turns on cancelling the invoice on a refund, saves it with the rule, and warns the credit does not come back", async () => {
+    mocks.rules.mockResolvedValue([rule({ cancelOnRefund: false })]);
+    mocks.putRules.mockResolvedValue([]);
+    await openDetails();
+    const toggle = await screen.findByRole("switch", { name: "Cancel the invoice on a refund" });
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByText(/credit is not returned/)).toBeTruthy();
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(mocks.putRules).toHaveBeenCalledWith("c1", [expect.objectContaining({ externalProductId: null, cancelOnRefund: true })]));
+  });
+
+  it("shows the setting as on when the rule has it on, and members who only view cannot change it", async () => {
+    mocks.permissions = new Set(["integrations.view"]);
+    mocks.rules.mockResolvedValue([rule({ cancelOnRefund: true })]);
+    await openDetails();
+    const toggle = (await screen.findByRole("switch", { name: "Cancel the invoice on a refund" })) as HTMLButtonElement;
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    expect(toggle.disabled).toBe(true);
+  });
+
+  it("a refund notice that is not one of our sales says so in plain words", async () => {
+    mocks.events.mockResolvedValue([{ id: "e9", deliveryId: "d9", externalType: "PIX_TRANSACTION_REFUND_SENT_CONFIRMED", state: "ignored", attempts: 1, lastError: "refund_sale_not_found", operationId: null, createdAt: "2026-10-29T16:00:00Z" }]);
+    await openDetails();
+    expect(await screen.findByText("Refund of a payment that is not a Corvo sale.")).toBeTruthy();
+    expect(screen.queryByText("refund_sale_not_found")).toBeNull();
   });
 
   it("shows how to register the webhook and what each notification was about", async () => {

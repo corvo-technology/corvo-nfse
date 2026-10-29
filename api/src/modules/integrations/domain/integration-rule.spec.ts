@@ -8,6 +8,7 @@ const rule = (id: string, product: string | null): IntegrationRule => ({
   service: { code: '010101' },
   sendEmail: false,
   allowAnonymousCustomer: false,
+  cancelOnRefund: false,
 });
 const item = (externalProductId: string | null) => ({
   externalProductId,

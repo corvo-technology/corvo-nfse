@@ -33,6 +33,8 @@ export type BlockReason =
   | 'ambiguous_rule'
   | 'customer_tax_id_missing'
   | 'refund_after_invoice'
+  | 'cancel_requested'
+  | 'cancel_failed'
   | 'quota_exceeded'
   | 'company_not_ready'
   | 'invoice_rejected';

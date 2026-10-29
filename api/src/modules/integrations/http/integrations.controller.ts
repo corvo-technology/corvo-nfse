@@ -229,6 +229,7 @@ export class IntegrationsController {
         service: rule.service as unknown as Record<string, unknown>,
         sendEmail: rule.sendEmail,
         allowAnonymousCustomer: rule.allowAnonymousCustomer ?? false,
+        cancelOnRefund: rule.cancelOnRefund ?? false,
       })),
     );
     return saved.map(presentRule);
@@ -334,6 +335,7 @@ const presentRule = (rule: IntegrationRule) => ({
   service: rule.service,
   sendEmail: rule.sendEmail,
   allowAnonymousCustomer: rule.allowAnonymousCustomer,
+  cancelOnRefund: rule.cancelOnRefund,
 });
 
 const presentOperation = (op: IntegrationOperation) => ({

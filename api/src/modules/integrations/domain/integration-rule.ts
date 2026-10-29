@@ -8,6 +8,8 @@ export interface IntegrationRule {
   service: Record<string, unknown>;
   sendEmail: boolean;
   allowAnonymousCustomer: boolean;
+  /** When the platform reports a refund after the invoice was issued, ask for the invoice to be cancelled. */
+  cancelOnRefund: boolean;
 }
 
 import type { NormalizedOperation } from './connector';

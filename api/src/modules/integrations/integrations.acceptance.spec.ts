@@ -31,6 +31,7 @@ import {
   syntheticJsonConnector,
 } from './testing/synthetic-connectors';
 
+import { FakeCancellation } from './testing/fake-cancellation';
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
 if (
   url &&
@@ -48,6 +49,8 @@ const companyA = randomUUID();
 const companyB = randomUUID();
 
 /** Idempotent like the real invoice path: one invoice per key, a "usage reservation" per new invoice. */
+const cancellation = new FakeCancellation();
+
 class FakeIssuance extends InvoiceIssuancePort {
   invoices = new Map<string, string>();
   reservations = 0;
@@ -105,6 +108,7 @@ describePostgres('integrations end to end on real PostgreSQL', () => {
         service: { code: '010101', description: 'Servico' },
         sendEmail: false,
         allowAnonymousCustomer: false,
+        cancelOnRefund: false,
       },
     ]);
     const active = await connections.activate(tenant, created.id);
@@ -214,6 +218,7 @@ describePostgres('integrations end to end on real PostgreSQL', () => {
       rules,
       issuance,
       eventsRepo,
+      cancellation,
     );
     operationService = new OperationService(operationsRepo, emitter);
     processor = new EventProcessorService(

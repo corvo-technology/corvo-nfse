@@ -69,6 +69,11 @@ export interface NormalizedOperation {
   }>;
   /** What was sold, as the platform describes it; used on the invoice when the rule sets no description. */
   description?: string | null;
+  /**
+   * Set when the event cannot name its sale directly (a refund that only knows the original
+   * payment): the sale is the one whose `externalRefs[ref]` equals `value`.
+   */
+  refersTo?: { ref: string; value: string };
   /** False when the platform says someone else issues the invoice. */
   sellerIssuesInvoice: boolean;
 }

@@ -31,6 +31,15 @@ describe("saleStatus", () => {
   it("a refund after the invoice is flagged but stays issued", () => {
     expect(saleStatus(sale({ commercialState: "refunded", blockReason: "refund_after_invoice" }))).toMatchObject({ key: "refundedAfterInvoice", tone: "warn" });
   });
+  it("a cancellation requested for the invoice shows as requested, and the invoice stays reachable", () => {
+    expect(saleStatus(sale({ commercialState: "refunded", blockReason: "cancel_requested" }))).toMatchObject({ key: "cancelRequested", tone: "warn", canRetry: false });
+  });
+  it("a cancellation that could not be requested needs attention and can be retried, even though the invoice exists", () => {
+    expect(saleStatus(sale({ commercialState: "refunded", fiscalStatus: "needs_attention", blockReason: "cancel_failed" }))).toMatchObject({ key: "cancelFailed", tone: "danger", canRetry: true });
+  });
+  it("a failed cancellation counts as something that needs the customer", () => {
+    expect(pendingCount([sale({ fiscalStatus: "needs_attention", blockReason: "cancel_failed" }), sale({ blockReason: "cancel_requested" })])).toBe(1);
+  });
   it.each(["refunded", "disputed"] as const)("a %s sale without invoice is not issued", (commercialState) => {
     expect(saleStatus(sale({ commercialState, fiscalStatus: "blocked", blockReason: commercialState, invoiceId: null }))).toMatchObject({ key: "notIssuedRefund", tone: "gray", canRetry: false });
   });

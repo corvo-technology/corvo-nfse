@@ -2225,7 +2225,9 @@
         "needsAttention": "Precisa de atenção",
         "notIssuedRefund": "Reembolsada, sem nota",
         "blocked": "Não emitida",
-        "processing": "Processando"
+        "processing": "Processando",
+        "cancelRequested": "Cancelamento solicitado",
+        "cancelFailed": "Não foi possível cancelar a nota"
       },
       "fixCustomer": "Informar CPF/CNPJ",
       "taxIdLabel": "CPF ou CNPJ do cliente",
@@ -2250,7 +2252,9 @@
         "otherRules": "Esta conexão tem {count} regra(s) por produto, criadas pela API. Elas continuam como estão.",
         "save": "Salvar alterações",
         "saved": "Configurações salvas.",
-        "loadError": "Não foi possível carregar as configurações."
+        "loadError": "Não foi possível carregar as configurações.",
+        "cancelOnRefund": "Cancelar a nota quando houver reembolso",
+        "cancelOnRefundHint": "Se o cliente for reembolsado na plataforma, a Corvo pede o cancelamento da nota. O crédito da nota não volta. Marque também os eventos de reembolso no webhook (veja em Conexão)."
       },
       "info": {
         "company": "Empresa",
@@ -2268,7 +2272,8 @@
           "dead": "Falhou",
           "resolved": "Resolvido"
         },
-        "eventRepeated": "Mesma venda de um aviso anterior"
+        "eventRepeated": "Mesma venda de um aviso anterior",
+        "refundNotFound": "Reembolso de um pagamento que não é uma venda da Corvo."
       },
       "disconnectHint": "Para de emitir notas e remove esta conexão.",
       "credentials": {
@@ -2326,6 +2331,10 @@
       "email": "Enviada por e-mail ao cliente"
     },
     "cta": "Começar grátis",
-    "guide": "Ver o guia de integrações"
+    "guide": "Ver o guia de integrações",
+    "refund": {
+      "title": "Teve reembolso?",
+      "body": "A Corvo cancela a nota sozinha. É um ajuste que você liga quando quiser."
+    }
   }
 }
