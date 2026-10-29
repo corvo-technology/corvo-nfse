@@ -20,6 +20,7 @@ import type {
 } from '../domain/integration-operation';
 import { IIntegrationEventRepository } from '../domain/integration-event.repository';
 import { IIntegrationOperationRepository } from '../domain/integration-operation.repository';
+import { selectRule } from '../domain/integration-rule';
 import { IIntegrationRuleRepository } from '../domain/integration-rule.repository';
 import { InvoiceCancellationPort } from '../domain/invoice-cancellation.port';
 import { InvoiceIssuancePort } from '../domain/invoice-issuance.port';
@@ -214,7 +215,11 @@ export class OperationEmitter {
     return { state: 'processed', operationId: id };
   }
 
-  /** The client's current choice, read from the rule this sale was issued under. */
+  /**
+   * The client's current choice. The rule is picked the way it is at emission (the product's
+   * own, else the default) among today's rules: saving the settings replaces every rule row,
+   * so the id the sale remembers may no longer exist.
+   */
   private async cancelsOnRefund(
     operation: IntegrationOperation,
   ): Promise<boolean> {
@@ -222,10 +227,8 @@ export class OperationEmitter {
       operation.connectionId,
       operation.tenantId,
     );
-    return (
-      rules.find((rule) => rule.id === operation.ruleId)?.cancelOnRefund ===
-      true
-    );
+    const selection = selectRule(rules, operation.snapshot.items);
+    return 'rule' in selection && selection.rule.cancelOnRefund;
   }
 
   private async stop(

@@ -369,6 +369,49 @@ describe('OperationEmitter', () => {
       expect(operations.rows.get(op.id)?.blockReason).toBeNull();
     });
 
+    it('still cancels after the client saved the rules again, which gives them new ids', async () => {
+      const { emitter, later, rules, cancellation, operations, op } =
+        await issuedThenRefunded(true);
+      // Saving the settings replaces every rule row: the sale's remembered rule id no longer exists.
+      rules.rules = [{ ...rules.rules[0], id: 'r-after-edit' }];
+      await emitter.run(later);
+      expect(cancellation.calls).toHaveLength(1);
+      expect(operations.rows.get(op.id)?.blockReason).toBe('cancel_requested');
+    });
+
+    it('uses the rule of the sale product when there is one, otherwise the default rule', async () => {
+      const ctx = setup();
+      const base = ctx.rules.rules[0];
+      ctx.rules.rules = [
+        { ...base, id: 'default', cancelOnRefund: false },
+        {
+          ...base,
+          id: 'product',
+          externalProductId: 'prod-1',
+          cancelOnRefund: true,
+        },
+      ];
+      const item = {
+        externalProductId: 'prod-1',
+        description: null,
+        quantity: 1,
+      };
+      const withProduct = await ctx.upsert(
+        snapshot({ operationKey: 'charge:p', items: [item] }),
+      );
+      await ctx.emitter.run(withProduct);
+      const refundedProduct = await ctx.upsert(
+        snapshot({
+          operationKey: 'charge:p',
+          items: [item],
+          commercialState: 'refunded',
+          occurredAt: new Date('2026-10-29T15:00:00Z'),
+        }),
+      );
+      await ctx.emitter.run(refundedProduct);
+      expect(ctx.cancellation.calls).toHaveLength(1);
+    });
+
     it('turning the setting off later does not undo a cancellation already requested', async () => {
       const { emitter, later, rules, operations, op, cancellation } =
         await issuedThenRefunded(true);
