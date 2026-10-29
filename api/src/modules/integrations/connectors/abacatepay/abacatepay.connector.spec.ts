@@ -227,13 +227,13 @@ describe('AbacatePayConnector.normalize', () => {
     data.data.customer = null;
     expect((await run(JSON.stringify(data))).customer).toBeNull();
   });
-  it('an upsell completion is a separate operation from the main purchase', async () => {
+  it('an upsell is part of the same sale, so it keeps the same operation (one invoice per checkout)', async () => {
     const data = JSON.parse(fixture('checkout-completed')) as {
       data: { isUpSell?: boolean };
     };
     data.data.isUpSell = true;
     expect((await run(JSON.stringify(data))).operationKey).toBe(
-      'checkout:bill_abc123xyz:upsell',
+      'checkout:bill_abc123xyz',
     );
   });
   it.each([[100.5], ['10000'], [0], [-1], [null]])(

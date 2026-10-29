@@ -30,7 +30,6 @@ interface Payment {
   updatedAt?: string;
   createdAt?: string;
   items?: Array<{ id?: string; quantity?: number }>;
-  isUpSell?: boolean;
 }
 interface Envelope {
   id?: unknown;
@@ -45,7 +44,6 @@ interface Envelope {
       email?: string;
       taxId?: string;
     } | null;
-    isUpSell?: boolean;
   };
 }
 
@@ -166,7 +164,6 @@ export class AbacatePayConnector implements Connector {
       throw new ConnectorDataError(
         'AbacatePay amount is not a positive integer number of cents',
       );
-    const upsell = body.data?.isUpSell === true || payment.isUpSell === true;
     let customer = toCustomer(body.data?.customer);
     // The webhook masks the document; with the client's key the full one is one call away.
     if (customer?.taxIdMasked && apiKey && body.data?.customer?.id) {
@@ -176,7 +173,7 @@ export class AbacatePayConnector implements Connector {
     }
     const at = new Date(payment.updatedAt ?? payment.createdAt ?? Date.now());
     return {
-      operationKey: `${kind}:${payment.id}${upsell ? ':upsell' : ''}`,
+      operationKey: `${kind}:${payment.id}`,
       commercialState: STATE_BY_SUFFIX[suffix],
       externalRefs: {
         [`${kind}Id`]: payment.id,
