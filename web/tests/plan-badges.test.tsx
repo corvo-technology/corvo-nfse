@@ -29,6 +29,13 @@ describe("pricing badges", () => {
     for (const slug of ["free", "scale", "volume"]) expect(within(ladderRow(slug)).queryByTestId(`plan-badge-${slug}`)).toBeNull();
   });
 
+  it("Developer card has no 'Recomendado' pill", () => {
+    renderPicker("pt");
+    fireEvent.click(ladderRow("developer"));
+    expect(screen.queryByText("Recomendado")).toBeNull();
+    expect(screen.getAllByText("Melhor custo-benefício").length).toBeGreaterThan(0);
+  });
+
   it("only Growth has the highlight border", () => {
     renderPicker("pt");
     expect(ladderRow("growth").className).toContain("border-accent/30");

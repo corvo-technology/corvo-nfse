@@ -182,9 +182,12 @@ function FeaturedPlan({
               {t(`plans.${plan.slug}.name`)}
             </span>
             <PlanBadge slug={plan.slug} />
-            <span className="shrink-0 whitespace-nowrap bg-accent text-[#0a0a0a] font-mono text-[10px] font-semibold tracking-[0.08em] px-2.5 py-1 rounded-full">
-              {current ? t("currentPlan") : t("recommended")}
-            </span>
+            {/* Developer already carries "Melhor custo-benefício"; no second "Recomendado" pill. */}
+            {(current || plan.slug !== "developer") && (
+              <span className="shrink-0 whitespace-nowrap bg-accent text-[#0a0a0a] font-mono text-[10px] font-semibold tracking-[0.08em] px-2.5 py-1 rounded-full">
+                {current ? t("currentPlan") : t("recommended")}
+              </span>
+            )}
           </div>
           <span className="hidden text-right text-[13px] text-text-3 @5xl:block">
             {t(`plans.${plan.slug}.bestFor`)}
