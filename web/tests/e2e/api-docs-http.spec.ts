@@ -8,7 +8,7 @@ for (const locale of ["pt", "en"] as const) {
     expect(response.headers()["content-type"]).toContain("text/html");
     expect(response.headers()["x-robots-tag"] ?? "").not.toMatch(/noindex/i);
     const html = await response.text();
-    expect(html).toContain(`https://corvo.tech/${locale}/api-docs`);
+    expect(html).toContain(`https://www.corvo.tech/${locale}/api-docs`);
   });
 }
 

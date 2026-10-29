@@ -4,7 +4,7 @@ import { isBot, proxy } from "@/proxy";
 import { localizedAlternates } from "@/lib/seo";
 
 const request = (path: string, headers: Record<string, string> = {}) =>
-  new NextRequest(`https://corvo.tech${path}`, { headers });
+  new NextRequest(`https://www.corvo.tech${path}`, { headers });
 
 describe("locale proxy", () => {
   it("sends the root to /pt when the browser sends no Accept-Language", () => {
@@ -42,6 +42,6 @@ describe("locale proxy", () => {
   });
 
   it("uses /pt as x-default in the HTML alternates", () => {
-    expect(localizedAlternates("en", "").languages["x-default"]).toBe("https://corvo.tech/pt");
+    expect(localizedAlternates("en", "").languages["x-default"]).toBe("https://www.corvo.tech/pt");
   });
 });

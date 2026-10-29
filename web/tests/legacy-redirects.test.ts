@@ -14,7 +14,7 @@ describe("legacy URLs without locale", () => {
 
   for (const [from, to] of Object.entries(LEGACY_REDIRECTS)) {
     it(`${from} → 301 ${to}`, () => {
-      const response = proxy(new NextRequest(`https://corvo.tech${from}`, { headers: { cookie: "NEXT_LOCALE=en" } }));
+      const response = proxy(new NextRequest(`https://www.corvo.tech${from}`, { headers: { cookie: "NEXT_LOCALE=en" } }));
       expect(response.status).toBe(301);
       expect(new URL(response.headers.get("location")!).pathname).toBe(to);
     });

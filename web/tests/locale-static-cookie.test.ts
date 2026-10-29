@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
 import { proxy } from "@/proxy";
 
-const get = (path: string) => proxy(new NextRequest(new URL(path, "https://corvo.tech")));
+const get = (path: string) => proxy(new NextRequest(new URL(path, "https://www.corvo.tech")));
 
 describe("static locale pages", () => {
   it.each(["/pt", "/en", "/pt/docs", "/pt/docs/invoices", "/en/api-docs"])("%s sends no Set-Cookie", (path) => {

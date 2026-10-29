@@ -27,7 +27,7 @@ const ptWithRetiredCredits: DocsTree = {
       },
       { kind: "heading", level: 2, body: "Quickstart" },
       { kind: "text", body: "Do cadastro à primeira nota, no ambiente de teste. Em teste não é preciso certificado; em produção são necessários uma chave `corvo_live_` e um certificado A1." },
-      { kind: "list", items: ["Crie a conta grátis em https://corvo.tech/login?mode=signup (sem cartão de crédito).", "No painel, gere uma chave de teste. Ela começa com `corvo_test_`; notas emitidas com ela não têm valor fiscal.", "Cadastre a empresa emissora com `POST /v1/companies` (`legalName`, `taxId`, `taxRegime` e `municipalityCode` são obrigatórios).", "Emita a nota com `POST /v1/invoices`. A resposta é `202` com status `queued`: a emissão é assíncrona.", "Acompanhe com `GET /v1/invoices/:id` ou receba o webhook `nfse.invoice.authorized` / `nfse.invoice.rejected`.", "Vá para produção: crie uma chave `corvo_live_` e envie o certificado A1 da empresa pelo painel ou pela API (`POST /v1/companies/:companyId/certificates`)."] },
+      { kind: "list", items: ["Crie a conta grátis em https://www.corvo.tech/login?mode=signup (sem cartão de crédito).", "No painel, gere uma chave de teste. Ela começa com `corvo_test_`; notas emitidas com ela não têm valor fiscal.", "Cadastre a empresa emissora com `POST /v1/companies` (`legalName`, `taxId`, `taxRegime` e `municipalityCode` são obrigatórios).", "Emita a nota com `POST /v1/invoices`. A resposta é `202` com status `queued`: a emissão é assíncrona.", "Acompanhe com `GET /v1/invoices/:id` ou receba o webhook `nfse.invoice.authorized` / `nfse.invoice.rejected`.", "Vá para produção: crie uma chave `corvo_live_` e envie o certificado A1 da empresa pelo painel ou pela API (`POST /v1/companies/:companyId/certificates`)."] },
       { kind: "code", label: "bash", language: "bash", code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='corvo_test_sua_chave'\n\n# 3. Cadastrar a empresa\ncurl -X POST \"$BASE_URL/companies\" \\\n  -H \"X-API-Key: $CORVO_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"legalName\":\"Empresa Exemplo Ltda\",\"taxId\":\"11222333000181\",\"taxRegime\":\"MEI\",\"municipalityCode\":\"3550308\"}'\n\n# 4. Emitir a nota (202, status queued)\ncurl -X POST \"$BASE_URL/invoices\" \\\n  -H \"X-API-Key: $CORVO_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -H 'Idempotency-Key: pedido_123_emissao' \\\n  -d '{\"companyTaxId\":\"11222333000181\",\"amount\":100,\"service\":{\"description\":\"Consultoria\"}}'\n\n# 5. Acompanhar\ncurl \"$BASE_URL/invoices/<id>\" -H \"X-API-Key: $CORVO_API_KEY" },
       {
         kind: "text",
@@ -2720,12 +2720,12 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           "rows": [
             [
               "`llms.txt`",
-              "`https://corvo.tech/llms.txt`",
+              "`https://www.corvo.tech/llms.txt`",
               "Índice curto com os fatos principais e um link para cada página da documentação. O agente abre só o que precisa."
             ],
             [
               "`llms-full.txt`",
-              "`https://corvo.tech/llms-full.txt`",
+              "`https://www.corvo.tech/llms-full.txt`",
               "Toda a documentação em um único arquivo Markdown (em inglês): endpoints, campos, exemplos e erros. O melhor quando o agente deve implementar tudo de uma vez."
             ]
           ]
@@ -2743,7 +2743,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           "kind": "code",
           "label": "Prompt",
           "language": "text",
-          "code": "Leia https://corvo.tech/llms-full.txt (a documentação da API de NFS-e da Corvo) e integre a emissão de notas neste projeto.\n\nMinha stack e onde as notas são criadas: [descreva a linguagem/framework e o ponto do código em que um pedido ou venda vira nota].\n\nSiga estas regras:\n- Use o ambiente de teste. Leia a chave da variável de ambiente CORVO_API_KEY (começa com corvo_test_). Nunca escreva uma chave no código, nos testes ou em commits.\n- Cadastre a empresa uma única vez com POST /v1/companies (taxId, taxRegime, municipalityCode) e guarde o id.\n- Antes de emitir, chame POST /v1/invoices/calculate e mostre os tributos quando fizer sentido.\n- Emita com POST /v1/invoices e envie um Idempotency-Key montado com o id do meu pedido, para que uma nova tentativa nunca crie uma segunda nota.\n- A emissão é assíncrona: salve o id da nota e atualize o status pelos webhooks nfse.invoice.authorized e nfse.invoice.rejected (verifique a assinatura) ou consultando GET /v1/invoices/:id.\n- Trate os erros documentados (validação, 409, 429 com Retry-After) e nunca registre em log documentos de clientes.\n- Escreva testes com HTTP simulado. Não chame o ambiente live.\n\nAo terminar, liste os arquivos que mudou e o que ainda preciso configurar (URL do webhook, variáveis de ambiente)."
+          "code": "Leia https://www.corvo.tech/llms-full.txt (a documentação da API de NFS-e da Corvo) e integre a emissão de notas neste projeto.\n\nMinha stack e onde as notas são criadas: [descreva a linguagem/framework e o ponto do código em que um pedido ou venda vira nota].\n\nSiga estas regras:\n- Use o ambiente de teste. Leia a chave da variável de ambiente CORVO_API_KEY (começa com corvo_test_). Nunca escreva uma chave no código, nos testes ou em commits.\n- Cadastre a empresa uma única vez com POST /v1/companies (taxId, taxRegime, municipalityCode) e guarde o id.\n- Antes de emitir, chame POST /v1/invoices/calculate e mostre os tributos quando fizer sentido.\n- Emita com POST /v1/invoices e envie um Idempotency-Key montado com o id do meu pedido, para que uma nova tentativa nunca crie uma segunda nota.\n- A emissão é assíncrona: salve o id da nota e atualize o status pelos webhooks nfse.invoice.authorized e nfse.invoice.rejected (verifique a assinatura) ou consultando GET /v1/invoices/:id.\n- Trate os erros documentados (validação, 409, 429 com Retry-After) e nunca registre em log documentos de clientes.\n- Escreva testes com HTTP simulado. Não chame o ambiente live.\n\nAo terminar, liste os arquivos que mudou e o que ainda preciso configurar (URL do webhook, variáveis de ambiente)."
         },
         {
           "kind": "heading",
@@ -2754,7 +2754,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           "kind": "list",
           "items": [
             "Claude Code, Codex e outros agentes de terminal: cole o prompt. Eles buscam o endereço sozinhos.",
-            "Cursor: adicione `https://corvo.tech/llms-full.txt` como fonte de documentação (Settings → Indexing & Docs) e cite no chat, ou cole o prompt.",
+            "Cursor: adicione `https://www.corvo.tech/llms-full.txt` como fonte de documentação (Settings → Indexing & Docs) e cite no chat, ou cole o prompt.",
             "VS Code, Windsurf e apps de chat: cole o prompt; se a ferramenta não abrir endereços, baixe o `llms-full.txt` e anexe o arquivo à conversa."
           ]
         },

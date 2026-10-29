@@ -12,18 +12,18 @@ const read = (path: string) => readFileSync(join(WEB, path), "utf8");
 const knownUrls = () =>
   new Set([
     ...sitemap().map((entry) => entry.url),
-    "https://corvo.tech/llms.txt",
-    "https://corvo.tech/llms-full.txt",
-    "https://corvo.tech/pt/llms.txt",
-    "https://corvo.tech/pt/llms-full.txt",
-    "https://corvo.tech/sitemap.xml",
-    "https://corvo.tech/robots.txt",
+    "https://www.corvo.tech/llms.txt",
+    "https://www.corvo.tech/llms-full.txt",
+    "https://www.corvo.tech/pt/llms.txt",
+    "https://www.corvo.tech/pt/llms-full.txt",
+    "https://www.corvo.tech/sitemap.xml",
+    "https://www.corvo.tech/robots.txt",
   ]);
 
 const siteLinks = (text: string) =>
-  [...text.matchAll(/https:\/\/corvo\.tech(\/[^\s)`"'<>]*)?/g)]
+  [...text.matchAll(/https:\/\/www\.corvo\.tech(\/[^\s)`"'<>]*)?/g)]
     .map((match) => match[0].replace(/[.,;:]+$/, ""))
-    .filter((url) => !url.includes("/login") && url !== "https://corvo.tech");
+    .filter((url) => !url.includes("/login") && url !== "https://www.corvo.tech");
 
 describe("links in the generated llms.txt and llms-full.txt", () => {
   for (const locale of ["en", "pt"] as const) {

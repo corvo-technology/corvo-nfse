@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { GONE_PATHS, proxy } from "@/proxy";
 
-const run = (path: string) => proxy(new NextRequest(`https://corvo.tech${path}`));
+const run = (path: string) => proxy(new NextRequest(`https://www.corvo.tech${path}`));
 const rewriteTarget = (response: Response) => {
   const value = response.headers.get("x-middleware-rewrite");
   return value ? new URL(value).pathname : null;

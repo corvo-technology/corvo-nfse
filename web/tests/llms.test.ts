@@ -11,17 +11,17 @@ describe("llms.txt and llms-full.txt", () => {
       const full = buildLlmsFull(locale);
       const tree = getDocsTree(locale)!;
       for (const slug of DOC_SLUGS) {
-        expect(index).toContain(`https://corvo.tech/${locale}/docs/${slug})`);
-        expect(full).toContain(`Source: https://corvo.tech/${locale}/docs/${slug}`);
+        expect(index).toContain(`https://www.corvo.tech/${locale}/docs/${slug})`);
+        expect(full).toContain(`Source: https://www.corvo.tech/${locale}/docs/${slug}`);
         expect(full).toContain(tree.pages[slug].title);
       }
     });
   }
 
   it("cross-links the two languages and uses the Maven coordinate from the Java SDK pom", () => {
-    expect(buildLlmsTxt("en")).toContain("https://corvo.tech/pt/llms.txt");
-    expect(buildLlmsTxt("pt")).toContain("https://corvo.tech/llms.txt");
-    expect(buildLlmsTxt("pt")).toContain("https://corvo.tech/pt/llms-full.txt");
+    expect(buildLlmsTxt("en")).toContain("https://www.corvo.tech/pt/llms.txt");
+    expect(buildLlmsTxt("pt")).toContain("https://www.corvo.tech/llms.txt");
+    expect(buildLlmsTxt("pt")).toContain("https://www.corvo.tech/pt/llms-full.txt");
     for (const locale of ["en", "pt"] as const) {
       expect(buildLlmsTxt(locale)).toContain("tech.corvo:corvo-nfse");
       expect(buildLlmsTxt(locale)).not.toContain("technology.corvo:corvo-nfse");
@@ -35,7 +35,7 @@ describe("llms.txt and llms-full.txt", () => {
 
   it("serves text/markdown", async () => {
     expect(rootIndex().headers.get("content-type")).toContain("text/markdown");
-    const response = await localeFull(new Request("https://corvo.tech/pt/llms-full.txt"), { params: Promise.resolve({ locale: "pt" }) });
+    const response = await localeFull(new Request("https://www.corvo.tech/pt/llms-full.txt"), { params: Promise.resolve({ locale: "pt" }) });
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/markdown");
   });
@@ -50,7 +50,7 @@ describe("llms.txt and llms-full.txt", () => {
     it(`lists the 6 MCP clients and the legal links in ${locale}`, () => {
       const index = buildLlmsTxt(locale);
       for (const client of CLIENTS) expect(index).toContain(client);
-      for (const page of ["privacy", "terms", "dpa"]) expect(index).toContain(`https://corvo.tech/${locale}/${page})`);
+      for (const page of ["privacy", "terms", "dpa"]) expect(index).toContain(`https://www.corvo.tech/${locale}/${page})`);
     });
 
     it(`says MEI and Simples Nacional only in ${locale}, matching the regime rule`, () => {

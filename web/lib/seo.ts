@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const SITE_URL = "https://corvo.tech";
+export const SITE_URL = "https://www.corvo.tech";
 export const SITE_NAME = "Corvo";
 export const SEO_LOCALES = ["en", "pt"] as const;
 export type SeoLocale = (typeof SEO_LOCALES)[number];
