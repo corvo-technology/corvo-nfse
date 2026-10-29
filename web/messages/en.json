@@ -2331,6 +2331,10 @@
       "email": "Emailed to the customer"
     },
     "cta": "Start free",
-    "guide": "Read the integrations guide"
+    "guide": "Read the integrations guide",
+    "refund": {
+      "title": "Got a refund?",
+      "body": "Corvo cancels the invoice on its own. It's a setting you turn on whenever you want."
+    }
   }
 }

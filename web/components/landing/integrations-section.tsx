@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Check, FileText } from "lucide-react";
+import { ArrowUpRight, Check, FileText, Undo2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { CorvoLogo } from "@/components/ui/corvo-logo";
 
@@ -96,6 +96,16 @@ export function IntegrationsSection() {
                 </li>
               ))}
             </ol>
+
+            <div className="mt-6 flex max-w-[460px] items-start gap-3.5 rounded-[14px] border border-white/[0.08] bg-white/[0.02] px-4 py-3.5">
+              <span aria-hidden className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-accent-border bg-accent-surface">
+                <Undo2 size={14} className="text-accent" strokeWidth={1.7} aria-hidden />
+              </span>
+              <div>
+                <p className="text-[14.5px] font-medium text-text">{t("refund.title")}</p>
+                <p className="mt-0.5 text-[13.5px] leading-snug text-text-3">{t("refund.body")}</p>
+              </div>
+            </div>
 
             <div className="mt-9 flex flex-wrap items-center gap-x-5 gap-y-3">
               <Link

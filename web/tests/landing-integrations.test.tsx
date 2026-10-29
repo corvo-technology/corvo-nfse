@@ -43,6 +43,16 @@ describe("landing integrations", () => {
     expect(screen.getByText("Cadastre o webhook")).toBeTruthy();
   });
 
+  it("says a refund can cancel the invoice on its own, and that it is a setting the client turns on", () => {
+    wrap("pt", <IntegrationsSection />);
+    expect(screen.getByText("Teve reembolso?")).toBeTruthy();
+    expect(screen.getByText(/cancela a nota sozinha.*liga quando quiser/)).toBeTruthy();
+    cleanup();
+    wrap("en", <IntegrationsSection />);
+    expect(screen.getByText("Got a refund?")).toBeTruthy();
+    expect(screen.getByText(/cancels the invoice on its own.*turn on/)).toBeTruthy();
+  });
+
   it("sends people to sign up and to the integrations guide in their language", () => {
     wrap("en", <IntegrationsSection />);
     expect(screen.getByRole("link", { name: "Start free" }).getAttribute("href")).toBe("/login?mode=signup");

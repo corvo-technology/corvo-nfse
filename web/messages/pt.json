@@ -2331,6 +2331,10 @@
       "email": "Enviada por e-mail ao cliente"
     },
     "cta": "Começar grátis",
-    "guide": "Ver o guia de integrações"
+    "guide": "Ver o guia de integrações",
+    "refund": {
+      "title": "Teve reembolso?",
+      "body": "A Corvo cancela a nota sozinha. É um ajuste que você liga quando quiser."
+    }
   }
 }
