@@ -113,12 +113,13 @@ it("forwards the payment integration management routes, but never the public inb
     ["GET", "integrations/providers"], ["GET", "integrations/connections"], ["POST", "integrations/connections"], ["GET", "integrations/connections/c1"],
     ["POST", "integrations/connections/c1/validate"], ["POST", "integrations/connections/c1/activate"], ["POST", "integrations/connections/c1/pause"], ["POST", "integrations/connections/c1/disconnect"],
     ["GET", "integrations/connections/c1/rules"], ["PUT", "integrations/connections/c1/rules"], ["GET", "integrations/connections/c1/events"], ["GET", "integrations/connections/c1/operations"],
-    ["PATCH", "integrations/operations/o1/customer"], ["POST", "integrations/operations/o1/retry"],
+    ["PUT", "integrations/connections/c1/credentials"], ["PATCH", "integrations/operations/o1/customer"], ["POST", "integrations/operations/o1/retry"],
   ];
   for (const [method, route] of allowed) expect((await call(method, route)).status, `${method} ${route}`).toBe(200);
   fetchMock.mockClear();
   expect((await call("POST", "integrations/inbound/abc")).status).toBe(404);
   expect((await call("GET", "integrations/connections/c1/pause")).status).toBe(404);
   expect((await call("PUT", "integrations/connections")).status).toBe(404);
+  expect((await call("GET", "integrations/connections/c1/credentials")).status).toBe(404);
   expect(fetchMock).not.toHaveBeenCalled();
 });
