@@ -1,6 +1,7 @@
 import { Writable } from 'node:stream';
 import pino from 'pino';
 import {
+  sanitizeRequestUrl,
   httpErrorLogMessage,
   httpErrorLogObject,
   sanitizeHttpRequest,
@@ -224,6 +225,19 @@ describe('SENSITIVE_LOG_REDACTION_PATHS', () => {
     });
     expect(httpErrorLogMessage({} as never, {} as never, error)).toBe(
       'request transport errored',
+    );
+  });
+});
+
+describe('webhook secrets in URLs', () => {
+  it('redacts webhookSecret and signature query parameters', () => {
+    expect(
+      sanitizeRequestUrl(
+        '/v1/integrations/inbound/abc?webhookSecret=s3cr3t&x=1',
+      ),
+    ).toBe('/v1/integrations/inbound/abc?webhookSecret=[REDACTED]&x=1');
+    expect(sanitizeRequestUrl('/hook?a=1&signature=deadbeef')).toBe(
+      '/hook?a=1&signature=[REDACTED]',
     );
   });
 });

@@ -11,6 +11,8 @@ const SENSITIVE_LOG_FIELD_NAMES = [
   'passwordChangeToken',
   'client_secret',
   'secret',
+  'webhookSecret',
+  'signature',
   'apiKey',
   'authorizationCode',
   'code',

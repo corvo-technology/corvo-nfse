@@ -112,11 +112,25 @@ export class InvoiceService {
     authContext: AuthContext,
     idempotencyKeyHeader?: string,
   ): Promise<Invoice> {
-    const environment = executionEnvironment(authContext);
-    const prepared = await this.prepareEmission(
+    return this.emitInEnvironment(
       dto,
       tenantId,
-      authContext,
+      executionEnvironment(authContext),
+      idempotencyKeyHeader,
+    );
+  }
+
+  /** Same as `emit` for callers that have no user session (integrations). */
+  async emitInEnvironment(
+    dto: CreateInvoiceDto,
+    tenantId: string,
+    environment: ExecutionEnvironment,
+    idempotencyKeyHeader?: string,
+  ): Promise<Invoice> {
+    const prepared = await this.prepareEmissionInEnvironment(
+      dto,
+      tenantId,
+      environment,
       idempotencyKeyHeader,
     );
     if (prepared.kind === 'replay') return prepared.invoice;
@@ -166,8 +180,20 @@ export class InvoiceService {
     authContext: AuthContext,
     idempotencyKeyHeader?: string,
   ): Promise<PreparedEmission> {
-    const environment = executionEnvironment(authContext);
+    return this.prepareEmissionInEnvironment(
+      dto,
+      tenantId,
+      executionEnvironment(authContext),
+      idempotencyKeyHeader,
+    );
+  }
 
+  async prepareEmissionInEnvironment(
+    dto: CreateInvoiceDto,
+    tenantId: string,
+    environment: ExecutionEnvironment,
+    idempotencyKeyHeader?: string,
+  ): Promise<PreparedEmission> {
     // `@IsDateString` accepts forms `Date` cannot parse (2026-W53, 2026-366): fail as validation, not as a crash.
     const competence = new Date(dto.competenceDate);
     if (Number.isNaN(competence.getTime()))

@@ -2497,6 +2497,140 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         },
       ],
     },
+    "payment-integrations": {
+      title: "Payment integrations",
+      description: "Connect Woovi, AbacatePay or Stripe and issue the NFS-e automatically for every confirmed payment.",
+      blocks: [
+        {
+          kind: "text",
+          body: "Connect your payment platform account to Corvo. When a payment is confirmed, Corvo issues the NFS-e through the same path as the API: it checks the company and certificate, uses one plan credit and sends the invoice to the city.",
+        },
+        { kind: "heading", level: 2, body: "How it works" },
+        {
+          kind: "list",
+          items: [
+            "You create a connection (`POST /v1/integrations/connections`) and get its `webhookUrl`.",
+            "Register that address in the payment platform dashboard. The platform then notifies Corvo for every payment.",
+            "Corvo checks the notice's authentication, stores the event and answers right away. Processing happens in the background.",
+            "If the payment is confirmed and a service rule exists, the invoice is issued. The competence date is the confirmation date (São Paulo time zone).",
+            "The same payment never produces two invoices, even if the platform sends the notice again.",
+          ],
+        },
+        { kind: "heading", level: 2, body: "Routes" },
+        {
+          kind: "table",
+          head: ["Method", "Route", "Description"],
+          rows: [
+            ["GET", "`/v1/integrations/providers`", "Available platforms and the credential fields of each"],
+            ["POST", "`/v1/integrations/connections`", "Create a connection"],
+            ["GET", "`/v1/integrations/connections`", "List connections"],
+            ["GET", "`/v1/integrations/connections/:id`", "Get a connection"],
+            ["POST", "`/v1/integrations/connections/:id/validate`", "Check the credentials and identify the account"],
+            ["POST", "`/v1/integrations/connections/:id/activate`", "Start issuing automatically"],
+            ["POST", "`/v1/integrations/connections/:id/pause`", "Stop issuing; events are still stored"],
+            ["POST", "`/v1/integrations/connections/:id/disconnect`", "Disconnect for good"],
+            ["GET", "`/v1/integrations/connections/:id/rules`", "Get the service rules"],
+            ["PUT", "`/v1/integrations/connections/:id/rules`", "Replace the service rules"],
+            ["GET", "`/v1/integrations/connections/:id/events`", "Events received"],
+            ["GET", "`/v1/integrations/connections/:id/operations`", "Sales and the invoice status of each"],
+            ["PATCH", "`/v1/integrations/operations/:id/customer`", "Fill in the customer of a pending sale"],
+            ["POST", "`/v1/integrations/operations/:id/retry`", "Try to issue again"],
+            ["POST", "`/v1/integrations/inbound/:publicId`", "Address the payment platform calls (public, authenticated by the connector)"],
+          ],
+        },
+        {
+          kind: "callout",
+          tone: "accent",
+          body: "The management routes require `integrations.view` (read) or `integrations.manage` (create, activate, change rules). `full_access` API keys have both.",
+        },
+        { kind: "heading", level: 2, body: "Connect an account" },
+        {
+          kind: "code",
+          label: "1. Create the connection",
+          language: "bash",
+          code: `curl -X POST "$BASE_URL/v1/integrations/connections" \
+  -H "X-API-Key: $CORVO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "woovi",
+    "companyId": "<company id>",
+    "environment": "test",
+    "credentials": {},
+    "activeFrom": "2026-11-01T00:00:00Z"
+  }'`,
+        },
+        {
+          kind: "code",
+          label: "2. Set the service rule and activate",
+          language: "bash",
+          code: `curl -X PUT "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/rules" \
+  -H "X-API-Key: $CORVO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "rules": [ { "service": { "code": "010101", "description": "Consulting" }, "sendEmail": true } ] }'
+
+curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/validate" -H "X-API-Key: $CORVO_API_KEY"
+curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H "X-API-Key: $CORVO_API_KEY"`,
+        },
+        {
+          kind: "text",
+          body: "A rule without `externalProductId` applies to any product. To give a product a different service, send another rule with its `externalProductId`. Payments made before `activeFrom` are ignored. With `allowAnonymousCustomer: true`, the invoice is issued without a customer when the payment carries no CPF/CNPJ.",
+        },
+        { kind: "heading", level: 2, body: "By platform" },
+        { kind: "heading", level: 3, body: "Woovi" },
+        {
+          kind: "list",
+          items: [
+            "There is no credential to provide: send `\"credentials\": {}`. Corvo generates the `webhookToken` and returns it in `secrets.webhookToken` only in the creation response. The `test` environment uses the Woovi sandbox and `live` uses the production account.",
+            "In Woovi, create a webhook with the connection `webhookUrl` and the paid charge event (`OPENPIX:CHARGE_COMPLETED`). Under HTTP headers, add an `Authorization` header with the `webhookToken` in the Value field.",
+            "The invoice customer is the charge customer, never whoever paid the Pix.",
+            "Each charge becomes one invoice, identified by its `correlationID`. The service description on the invoice is the charge `comment`; without one, the company default is used.",
+            "Woovi refunds are not tracked yet: cancel the invoice manually if needed.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "AbacatePay" },
+        {
+          kind: "list",
+          items: [
+            "Credential: `apiKey`, an AbacatePay API v2 key (Integration > API > + New key) with the `CUSTOMER:READ` and `PRODUCT:READ` permissions. Corvo generates the `webhookSecret` and returns the `webhookUrl` with `?webhookSecret=...` only in the creation response. Keep that address.",
+            "In AbacatePay, create a webhook: paste the `webhookUrl` in the URL field and `secrets.webhookSecret` (returned only on creation) in the Secret field, and select `checkout.completed` and `transparent.completed`. Corvo accepts the Standard Webhooks signature (`webhook-id`, `webhook-timestamp`, `webhook-signature`) and the legacy format (`?webhookSecret=`).",
+            "The event `devMode` must match the connection environment: test events issue no invoice on a `live` connection, and the other way around.",
+            "The webhook carries the CPF/CNPJ masked, so Corvo looks the customer up on AbacatePay with your key and uses the full document. If the customer has no document, the sale stays pending (`customer_tax_id_missing`), or is issued without a customer if the rule has `allowAnonymousCustomer`.",
+            "A rule's `externalProductId` is the checkout item `id`. The service description on the invoice is the product name (Corvo looks it up with your key); without the `PRODUCT:READ` permission, the company default is used.",
+            "A refund or dispute after the invoice opens the `refund_after_invoice` pendency; the invoice is not cancelled.",
+          ],
+        },
+        { kind: "heading", level: 2, body: "Sales that need attention" },
+        {
+          kind: "text",
+          body: "When a sale cannot become an invoice by itself, it shows up in `GET /v1/integrations/connections/:id/operations` with `fiscalStatus` and `blockReason`.",
+        },
+        {
+          kind: "table",
+          head: ["blockReason", "What to do"],
+          rows: [
+            ["`customer_tax_id_missing`", "The platform did not send a full CPF/CNPJ. Provide it with `PATCH /v1/integrations/operations/:id/customer`, then call `POST /v1/integrations/operations/:id/retry`."],
+            ["`no_rule` / `ambiguous_rule`", "Create or adjust the rules, then call `retry`."],
+            ["`invoice_rejected`", "Fiscal validation refused the request. The message names the field; fix it and call `retry`."],
+            ["`quota_exceeded`", "No credits or plan limit reached. After fixing it, call `retry`."],
+            ["`connection_inactive`", "The connection is paused or needs to be authorized again. Reactivate it and call `retry`."],
+            ["`company_not_ready`", "The company is not ready or the certificate is missing, expired or invalid. Fix the registration and call `retry`."],
+            ["`before_active_from`", "The payment happened before the connection start date. No invoice is issued."],
+            ["`refunded` / `disputed`", "The payment was refunded or disputed before the invoice. No invoice is issued."],
+            ["`refund_after_invoice`", "The refund arrived after the invoice. The invoice stays authorized and the decision is yours."],
+          ],
+        },
+        {
+          kind: "callout",
+          tone: "warn",
+          body: "A refund or dispute never cancels an invoice by itself. To cancel an NFS-e, call `POST /v1/invoices/:id/cancel` explicitly.",
+        },
+        {
+          kind: "callout",
+          tone: "accent",
+          body: "The environment (`test` or `live`) is set on the connection. If the platform reports that an event belongs to another environment, Corvo drops it and issues no invoice.",
+        },
+      ],
+    },
     "mcp": {
       "title": "AI agents (MCP)",
       "description": "Connect Claude Code, Claude Desktop, Cursor, VS Code, Codex and Windsurf to Corvo with OAuth.",

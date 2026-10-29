@@ -238,6 +238,11 @@ export const envSchema = z
     HTTP_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(60000),
     RATE_LIMIT_PRE_AUTH: z.coerce.number().int().positive().default(1200),
     RATE_LIMIT_STRIPE_WEBHOOK: z.coerce.number().int().positive().default(600),
+    RATE_LIMIT_INTEGRATION_INBOUND: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(600),
     REDIS_URL: z.string().min(1),
     REDIS_KEY_PREFIX: z.string().min(1).default('corvo'),
     REDIS_CACHE_DEFAULT_TTL_SECONDS: z.coerce
@@ -361,6 +366,8 @@ export const envSchema = z
       .default('https://graph.facebook.com'),
     META_GRAPH_API_VERSION: z.string().min(1).default('v25.0'),
     SECRETS_ENCRYPTION_KEY: z.string().min(1).optional(),
+    /** Key behind AbacatePay's X-Webhook-Signature; the URL secret authenticates alone while unset. */
+    ABACATEPAY_WEBHOOK_PUBLIC_KEY: z.string().min(1).optional(),
     // ─── OAuth Providers ──────────────────────────────────────────
     // An empty credential (GOOGLE_CLIENT_ID=) means "provider not configured".
     GOOGLE_CLIENT_ID: optionalNonEmptyString(),

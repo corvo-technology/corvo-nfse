@@ -247,6 +247,30 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | GET    | `/health/live`                                         | Público                         | Liveness                                                                           |
 | GET    | `/health/ready`                                        | Público                         | Readiness de banco/Redis                                                           |
 
+## Integrações de pagamento
+
+Conectam Woovi, AbacatePay ou Stripe à Corvo para emitir a NFS-e a cada
+pagamento confirmado. Detalhes e exemplos na página "Integrações de pagamento"
+da documentação. Caminhos relativos a `/v1`; `S/K` = sessão ou chave de API.
+
+| Método | Caminho                                      | Acesso / permissão                | Entrada / uso                                                         |
+| ------ | -------------------------------------------- | --------------------------------- | --------------------------------------------------------------------- |
+| GET    | `/integrations/providers`                    | S/K, `integrations.view`          | Plataformas e campos de credencial (sem valores)                      |
+| POST   | `/integrations/connections`                  | S/K, `integrations.manage`        | JSON: `provider`, `companyId`, `environment`, `credentials`, `activeFrom?` |
+| GET    | `/integrations/connections`                  | S/K, `integrations.view`          | Lista; cada item traz `webhookUrl`, nunca credenciais                 |
+| GET    | `/integrations/connections/{id}`             | S/K, `integrations.view`          | Detalhe da conexão                                                    |
+| POST   | `/integrations/connections/{id}/validate`    | S/K, `integrations.manage`        | Confere credenciais e grava a conta externa                           |
+| POST   | `/integrations/connections/{id}/activate`    | S/K, `integrations.manage`        | Exige conta validada, ao menos uma regra e, em `live`, empresa pronta     |
+| POST   | `/integrations/connections/{id}/pause`       | S/K, `integrations.manage`        | Eventos continuam guardados; nada é emitido                           |
+| POST   | `/integrations/connections/{id}/disconnect`  | S/K, `integrations.manage`        | Definitivo                                                            |
+| GET    | `/integrations/connections/{id}/rules`       | S/K, `integrations.view`          | Regras de serviço                                                     |
+| PUT    | `/integrations/connections/{id}/rules`       | S/K, `integrations.manage`        | JSON: `rules[]` com `externalProductId?`, `service`, `sendEmail`, `allowAnonymousCustomer?`; substitui tudo |
+| GET    | `/integrations/connections/{id}/events`      | S/K, `integrations.view`          | Query: `limit` (ajustado a 1..100); sem o corpo do evento            |
+| GET    | `/integrations/connections/{id}/operations`  | S/K, `integrations.view`          | Query: `limit`; vendas com `fiscalStatus` e `blockReason`             |
+| PATCH  | `/integrations/operations/{id}/customer`     | S/K, `integrations.manage`        | JSON: `taxId`, `name?`, `email?`; só antes de o pedido ser fixado     |
+| POST   | `/integrations/operations/{id}/retry`        | S/K, `integrations.manage`        | Tenta emitir de novo; reaproveita o pedido já fixado                  |
+| POST   | `/integrations/inbound/{publicId}`           | Público, autenticado pelo conector | Chamado pela plataforma de pagamento; sempre `200` quando aceito     |
+
 ## Payloads e enums
 
 **CreateCompany**: obrigatórios `legalName`, `taxId`, `taxRegime`
