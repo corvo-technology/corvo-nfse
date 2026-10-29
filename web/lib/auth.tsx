@@ -13,7 +13,7 @@ interface AuthContextType {
   tenantId: string | null; permissions: string[]; isLoading: boolean; isAuthenticated: boolean;
   fiscalEnvironment: "test" | "live"; switchFiscalEnvironment: (env: "test" | "live") => void;
   refreshSession: () => Promise<void>;
-  verifyCode: (email: string, challengeId: string, code: string, onVerified?: () => void) => Promise<void>;
+  verifyCode: (email: string, challengeId: string, code: string, onVerified?: (isNewUser: boolean) => void) => Promise<void>;
   logout: () => Promise<void>; switchTenant: (tenantId: string) => Promise<void>;
   can: (permission: string) => boolean;
 }
@@ -83,14 +83,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener("storage", onEnvironmentChange);
     return () => { lifecycle.current++; controller.current?.abort(); unsubscribe(); window.removeEventListener("focus", onFocus); channel.current?.close(); window.removeEventListener("storage", onEnvironmentChange); };
   }, [clear, refreshSession]);
-  const verifyCode = async (email: string, challengeId: string, code: string, onVerified?: () => void) => {
+  const verifyCode = async (email: string, challengeId: string, code: string, onVerified?: (isNewUser: boolean) => void) => {
     if (transition.current) throw new Error("Session update in progress.");
     transition.current = true;
     const current = ++generation.current; controller.current?.abort();
     try {
     const verified = await auth.magicLinkVerify(email, challengeId, code);
     if (current !== generation.current) throw new Error("Session changed. Please try again.");
-    setCsrfToken(verified.csrfToken); onVerified?.();
+    setCsrfToken(verified.csrfToken); onVerified?.(verified.isNewUser);
     const value = await auth.session();
     if (current !== generation.current) throw new Error("Session changed. Please try again.");
     apply(value); channel.current?.postMessage("refresh");

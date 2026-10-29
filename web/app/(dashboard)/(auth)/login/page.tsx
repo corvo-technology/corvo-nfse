@@ -8,8 +8,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
 import { auth, ApiError, type MagicLinkChallenge, type OAuthProvider, type OAuthProviders } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useCookieConsent } from "@/lib/consent";
+import { markPendingCompleteRegistration } from "@/lib/complete-registration";
 import { safeNextPath } from "@/lib/safe-next";
 import { cn } from "@/lib/utils";
+import { trackMeta } from "@/components/MetaPixel";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
 
 const posthogConfigured = Boolean(
@@ -64,6 +67,7 @@ function LoginPageContent() {
   const afterLogin = safeNextPath(searchParams.get("next")) ?? "/app";
 
   const { verifyCode, refreshSession, isAuthenticated } = useAuth();
+  const consent = useCookieConsent();
   const [challenge, setChallenge] = useState<MagicLinkChallenge | null>(null);
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [now, setNow] = useState(() => Date.now());
@@ -102,9 +106,11 @@ function LoginPageContent() {
   const handleSendCode = async () => {
     if (!email.trim() || busy.current || Date.now() < cooldownUntil) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError(t("errors.invalidEmail")); return; }
+    const isFirstSend = mode === "signup" && !challenge;
     busy.current = true; setError(""); setLoading(true);
     try {
       const issued = await auth.magicLinkRequest(email.trim());
+      if (isFirstSend) trackMeta("Lead", {}, crypto.randomUUID());
       setChallenge(issued); setCooldownUntil(Date.parse(issued.resendAvailableAt));
       setNow(Date.now()); setCode(""); setCookieIssued(false); setStep("code");
     } catch (cause) { showError(cause); }
@@ -115,7 +121,10 @@ function LoginPageContent() {
     if (Date.now() >= Date.parse(challenge.expiresAt)) { setError(t("errors.expiredCode")); return; }
     busy.current = true; setError(""); setLoading(true);
     try {
-      await verifyCode(email.trim(), challenge.challengeId, candidate, () => setCookieIssued(true));
+      await verifyCode(email.trim(), challenge.challengeId, candidate, (isNewUser) => {
+        setCookieIssued(true);
+        if (isNewUser && consent === "accepted") markPendingCompleteRegistration(crypto.randomUUID());
+      });
       if (posthogConfigured) posthog.capture("authentication_completed", { method: "magic_link", mode });
       router.replace(afterLogin);
     } catch (cause) { showError(cause); }

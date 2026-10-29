@@ -965,7 +965,14 @@
     "contact": "Contato",
     "security": "Segurança",
     "terms": "Termos",
-    "privacy": "Aviso de Privacidade"
+    "privacy": "Aviso de Privacidade",
+    "cookiePreferences": "Preferências de cookies"
+  },
+  "CookieConsent": {
+    "message": "Usamos cookies e tecnologias semelhantes, incluindo o Google Analytics e o Meta Pixel, para melhorar sua experiência, medir o tráfego do site e entender campanhas de cadastro. Ao clicar em \"Aceitar\", você concorda com esse uso.",
+    "learnMore": "Saiba mais sobre nossas práticas de privacidade",
+    "accept": "Aceitar",
+    "reject": "Recusar"
   },
   "Terms": {
     "eyebrow": "JURÍDICO",

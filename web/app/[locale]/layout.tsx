@@ -79,8 +79,8 @@ export default async function LocaleLayout({
   return (
     <html lang={language} className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <CookieConsentWrapper />
         <NextIntlClientProvider messages={messages} locale={locale}>
+          <CookieConsentWrapper />
           <Providers>
             <ToastProvider>
               <JsonLd data={identity} />

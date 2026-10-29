@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
+import { revokeConsent } from "@/lib/consent";
 
 export function Footer() {
   const t = useTranslations("Footer");
@@ -52,6 +53,13 @@ export function Footer() {
             >
               {t("security")}
             </Link>
+            <button
+              type="button"
+              onClick={() => revokeConsent()}
+              className="hover:text-text-2 transition-colors cursor-pointer"
+            >
+              {t("cookiePreferences")}
+            </button>
           </div>
         </div>
       </div>

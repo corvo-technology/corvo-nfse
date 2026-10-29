@@ -26,8 +26,8 @@ export default async function DashboardRootLayout({
   return (
     <html lang={locale} className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <CookieConsentWrapper />
         <NextIntlClientProvider messages={messages} locale={locale}>
+          <CookieConsentWrapper />
           <Providers>
             <ToastProvider>{children}</ToastProvider>
           </Providers>

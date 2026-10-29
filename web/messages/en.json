@@ -965,7 +965,14 @@
     "contact": "Contact",
     "security": "Security",
     "terms": "Terms",
-    "privacy": "Privacy Notice"
+    "privacy": "Privacy Notice",
+    "cookiePreferences": "Cookie preferences"
+  },
+  "CookieConsent": {
+    "message": "We use cookies and similar technologies, including Google Analytics and the Meta Pixel, to improve your experience, measure site traffic and understand signup campaigns. By clicking \"Accept\", you agree to this use.",
+    "learnMore": "Learn more about our privacy practices",
+    "accept": "Accept",
+    "reject": "Reject"
   },
   "Terms": {
     "eyebrow": "LEGAL",

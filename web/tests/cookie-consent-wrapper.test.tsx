@@ -3,14 +3,18 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CookieConsentWrapper } from "@/components/CookieConsentWrapper";
 
-const state = vi.hoisted(() => ({ pathname: "/pt", consent: false }));
+const state = vi.hoisted(() => ({
+  pathname: "/pt",
+  consent: null as "accepted" | "rejected" | null,
+}));
 
 vi.mock("next/navigation", () => ({ usePathname: () => state.pathname }));
 vi.mock("@/lib/consent", () => ({ useCookieConsent: () => state.consent }));
 vi.mock("@/components/GoogleAnalytics", () => ({ GoogleAnalytics: () => <div data-testid="analytics" /> }));
+vi.mock("@/components/MetaPixel", () => ({ MetaPixel: () => <div data-testid="meta-pixel" /> }));
 vi.mock("@/components/ui/cookie-consent", () => ({ CookieConsent: () => <div data-testid="consent-banner" /> }));
 
-afterEach(() => { cleanup(); state.consent = false; });
+afterEach(() => { cleanup(); state.consent = null; });
 
 describe("optional cookie consent", () => {
   it.each([
@@ -28,13 +32,22 @@ describe("optional cookie consent", () => {
     render(<CookieConsentWrapper />);
     expect(screen.queryByTestId("consent-banner")).not.toBeNull();
     expect(screen.queryByTestId("analytics")).toBeNull();
+    expect(screen.queryByTestId("meta-pixel")).toBeNull();
   });
 
-  it("loads analytics on a legal page only after prior consent", () => {
+  it("loads analytics and the Meta Pixel on a legal page only after prior consent", () => {
     state.pathname = "/pt/privacy";
-    state.consent = true;
+    state.consent = "accepted";
     render(<CookieConsentWrapper />);
     expect(screen.queryByTestId("analytics")).not.toBeNull();
+    expect(screen.queryByTestId("meta-pixel")).not.toBeNull();
     expect(screen.queryByTestId("consent-banner")).toBeNull();
+  });
+
+  it("shows neither the banner nor analytics once cookies are rejected", () => {
+    state.pathname = "/pt";
+    state.consent = "rejected";
+    const { container } = render(<CookieConsentWrapper />);
+    expect(container.childElementCount).toBe(0);
   });
 });
