@@ -75,7 +75,7 @@ describe('IntegrationsController webhookUrl', () => {
     expect(item.webhookUrl).toBe(`https://api.corvo.tech${path}`);
   });
   it('falls back to the address the request came in on when PUBLIC_API_URL is not set', async () => {
-    const { controller } = setup(undefined);
+    const { controller } = setup('');
     const local = {
       authContext: { activeTenantId: TENANT },
       protocol: 'http',
