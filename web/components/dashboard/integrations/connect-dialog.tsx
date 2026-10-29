@@ -1,0 +1,174 @@
+"use client";
+
+import { useState } from "react";
+import { Check, Copy } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
+import { Toggle } from "@/components/ui/toggle";
+import type { IntegrationProvider } from "@/lib/api";
+import type { Company } from "@/lib/types";
+import { ConnectError, connectProvider } from "@/lib/integrations";
+import { cn } from "@/lib/utils";
+
+interface ConnectDialogProps {
+  open: boolean;
+  onClose: () => void;
+  providers: IntegrationProvider[];
+  companies: Company[];
+  defaultEnvironment: "test" | "live";
+  /** Skips the platform step, e.g. when the client picked it from the empty state. */
+  initialProvider?: string | null;
+  onConnected: () => void;
+}
+
+type Step = "platform" | "details" | "done";
+
+export function providerDescriptionKey(id: string): "woovi" | "abacatepay" | "other" {
+  return id === "woovi" || id === "abacatepay" ? id : "other";
+}
+
+export function ConnectDialog({ open, onClose, providers, companies, defaultEnvironment, initialProvider, onConnected }: ConnectDialogProps) {
+  const t = useTranslations("Integrations");
+  const tc = useTranslations("Common");
+  const locale = useLocale();
+  const [step, setStep] = useState<Step>(initialProvider ? "details" : "platform");
+  const [providerId, setProviderId] = useState<string | null>(initialProvider ?? null);
+  const [companyId, setCompanyId] = useState(companies.length === 1 ? companies[0].id : "");
+  const [environment, setEnvironment] = useState<"test" | "live">(defaultEnvironment);
+  const [credentials, setCredentials] = useState<Record<string, string>>({});
+  const [serviceDescription, setServiceDescription] = useState("");
+  const [sendEmail, setSendEmail] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const provider = providers.find((p) => p.id === providerId) ?? null;
+  const askedFields = provider?.credentialFields.filter((field) => !field.generate) ?? [];
+  const urlHasSecret = provider?.credentialFields.some((field) => field.inWebhookUrl) ?? false;
+  const ready = Boolean(provider && companyId && askedFields.every((field) => (credentials[field.key] ?? "").trim()));
+
+  async function submit() {
+    if (!provider || !ready) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await connectProvider({
+        provider: provider.id,
+        companyId,
+        environment,
+        credentials: Object.fromEntries(askedFields.map((field) => [field.key, credentials[field.key].trim()])),
+        serviceDescription,
+        sendEmail,
+      });
+      setWebhookUrl(result.webhookUrl);
+      setStep("done");
+      onConnected();
+    } catch (cause) {
+      const failed = cause instanceof ConnectError;
+      setError(`${failed ? t(`wizard.errors.${cause.step}`) : t("wizard.errors.create")}: ${cause instanceof Error ? cause.message : ""}`.trim());
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copy() {
+    await navigator.clipboard.writeText(webhookUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={step === "done" ? t("wizard.done.title") : t("wizard.title")}>
+      {step === "platform" && (
+        <div className="flex flex-col gap-3">
+          <p className="text-[14px] text-text-3">{t("wizard.stepPlatform")}</p>
+          {providers.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => { setProviderId(p.id); setStep("details"); }}
+              className="flex flex-col gap-1 rounded-[12px] border border-border bg-surface px-4 py-3.5 text-left transition-colors hover:border-accent-border hover:bg-accent-surface"
+            >
+              <span className="text-[15px] font-medium text-text">{p.name}</span>
+              <span className="text-[13px] text-text-3">{t(`providers.${providerDescriptionKey(p.id)}`)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {step === "details" && provider && (
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+          <p className="text-[14px] font-medium text-text">{provider.name}</p>
+          {companies.length === 0 ? (
+            <p role="alert" className="text-[13.5px] text-warn">{t("wizard.noCompanies")}</p>
+          ) : (
+            <Field label={t("wizard.company")} required>
+              {(control) => (
+                <select {...control} className="field" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+                  <option value="">{t("wizard.companyPlaceholder")}</option>
+                  {companies.map((company) => <option key={company.id} value={company.id}>{company.tradeName || company.legalName}</option>)}
+                </select>
+              )}
+            </Field>
+          )}
+          {askedFields.map((field) => (
+            <Field key={field.key} label={field.label} required>
+              {(control) => (
+                <Input {...control} type={field.secret ? "password" : "text"} autoComplete="off" value={credentials[field.key] ?? ""} onChange={(e) => setCredentials({ ...credentials, [field.key]: e.target.value })} />
+              )}
+            </Field>
+          ))}
+          <div className="flex flex-col gap-1.5">
+            <span className="field-label">{t("wizard.environment")}</span>
+            <div role="radiogroup" aria-label={t("wizard.environment")} className="flex gap-2">
+              {(["test", "live"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={environment === value}
+                  onClick={() => setEnvironment(value)}
+                  className={cn("flex-1 rounded-[10px] border px-3 py-2 text-[13.5px] transition-colors", environment === value ? "border-accent-border bg-accent-surface text-accent" : "border-border text-text-3 hover:text-text")}
+                >
+                  {t(`env.${value}`)}
+                </button>
+              ))}
+            </div>
+            <p className="field-hint">{t("wizard.environmentHint")}</p>
+          </div>
+          <Field label={t("wizard.serviceDescription")} hint={t("wizard.serviceHint")}>
+            {(control) => <Input {...control} value={serviceDescription} maxLength={200} onChange={(e) => setServiceDescription(e.target.value)} />}
+          </Field>
+          <Toggle checked={sendEmail} onChange={setSendEmail} label={t("wizard.sendEmail")} />
+          {error && <p role="alert" className="text-[13px] text-danger">{error}</p>}
+          <div className="flex justify-between gap-2.5">
+            {!initialProvider && <Button variant="ghost" onClick={() => setStep("platform")} disabled={busy}>{t("wizard.back")}</Button>}
+            <Button type="submit" variant="accent" className="ml-auto" disabled={!ready} loading={busy}>{busy ? t("wizard.connecting") : t("wizard.connect")}</Button>
+          </div>
+        </form>
+      )}
+
+      {step === "done" && provider && (
+        <div className="flex flex-col gap-4">
+          <p className="text-[14px] text-text-2">{t("wizard.done.body")}</p>
+          <div className="flex flex-col gap-1.5">
+            <span className="field-label">{t("wizard.done.urlLabel")}</span>
+            <div className="flex items-center gap-2">
+              <code className="min-w-0 flex-1 break-all rounded-[10px] border border-border bg-black/20 px-3 py-2 font-mono text-[12.5px] text-text-2">{webhookUrl}</code>
+              <Button variant="secondary" size="sm" onClick={() => void copy()} aria-label={tc("copy")}>
+                {copied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+                {copied ? tc("copied") : tc("copy")}
+              </Button>
+            </div>
+          </div>
+          <p className="text-[13.5px] text-text-3">{provider.webhookInstructions[locale === "pt" ? "pt" : "en"]}</p>
+          {urlHasSecret && <p role="alert" className="text-[13px] text-warn">{t("wizard.done.secretWarning")}</p>}
+          <Button variant="accent" className="ml-auto" onClick={onClose}>{t("wizard.done.finish")}</Button>
+        </div>
+      )}
+    </Modal>
+  );
+}

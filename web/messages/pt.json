@@ -66,7 +66,8 @@
       "companies": "Empresas",
       "invoices": "Notas fiscais",
       "billing": "Plano",
-      "agents": "Agentes de IA"
+      "agents": "Agentes de IA",
+      "integrations": "Integrações"
     },
     "account": "CONTA",
     "balance": "SALDO",
@@ -2145,5 +2146,98 @@
     "copied": "Copiado",
     "source": "Código no GitHub",
     "docs": "Ver todos os SDKs na documentação"
+  },
+  "Integrations": {
+    "title": "Integrações",
+    "subtitle": "Conecte seu meio de pagamento e a nota sai sozinha a cada venda paga.",
+    "connect": "Conectar",
+    "loadError": "Não foi possível carregar as integrações.",
+    "retry": "Tentar de novo",
+    "empty": {
+      "title": "Nenhuma integração ainda",
+      "description": "Escolha onde você recebe e conecte em menos de um minuto."
+    },
+    "providers": {
+      "woovi": "Cobranças Pix pagas na Woovi.",
+      "abacatepay": "Checkout e pagamentos pagos na AbacatePay.",
+      "other": "Pagamentos confirmados."
+    },
+    "status": {
+      "active": "Ativa",
+      "paused": "Pausada",
+      "reconnect": "Reconectar",
+      "draft": "Rascunho",
+      "disconnected": "Desconectada"
+    },
+    "env": {
+      "test": "Teste",
+      "live": "Produção"
+    },
+    "pending": "{count, plural, one {# venda precisa de você} other {# vendas precisam de você}}",
+    "wizard": {
+      "title": "Conectar pagamento",
+      "stepPlatform": "Onde você recebe?",
+      "stepDetails": "Dados da conexão",
+      "company": "Empresa que emite a nota",
+      "companyPlaceholder": "Escolha a empresa",
+      "noCompanies": "Cadastre uma empresa antes de conectar.",
+      "environment": "Ambiente",
+      "environmentHint": "Use Teste para experimentar com a conta de testes da plataforma.",
+      "serviceDescription": "Descrição do serviço na nota",
+      "serviceHint": "Opcional. Em branco, usa o padrão da empresa.",
+      "sendEmail": "Enviar a nota por e-mail ao cliente",
+      "back": "Voltar",
+      "connect": "Conectar",
+      "connecting": "Conectando...",
+      "errors": {
+        "create": "Não foi possível criar a conexão",
+        "validate": "Não foi possível validar as credenciais",
+        "rules": "Não foi possível salvar a regra do serviço",
+        "activate": "Não foi possível ativar a conexão"
+      },
+      "done": {
+        "title": "Conectado!",
+        "body": "Falta só um passo: cadastre este endereço na plataforma para ela avisar a Corvo a cada pagamento.",
+        "urlLabel": "Endereço do webhook",
+        "secretWarning": "Este endereço tem um segredo e só aparece agora. Copie e guarde antes de fechar.",
+        "finish": "Concluir"
+      }
+    },
+    "detail": {
+      "webhookUrl": "Endereço do webhook",
+      "webhookUrlHint": "Cadastre na plataforma de pagamento.",
+      "pause": "Pausar",
+      "resume": "Retomar",
+      "disconnect": "Desconectar",
+      "confirmDisconnect": "Desconectar de vez? Esta conexão para de emitir notas e não pode ser reativada.",
+      "confirmYes": "Sim, desconectar",
+      "reconnectHint": "A plataforma recusou as credenciais. Desconecte e conecte de novo.",
+      "pausedHint": "Pausada: as vendas são guardadas, mas nenhuma nota é emitida.",
+      "updated": "Conexão atualizada.",
+      "sales": {
+        "title": "Últimas vendas",
+        "empty": "Nenhuma venda recebida ainda. Faça um pagamento de teste para ver aqui.",
+        "customer": "Cliente",
+        "amount": "Valor",
+        "status": "Situação",
+        "anonymous": "Sem cliente"
+      },
+      "sale": {
+        "issued": "Nota emitida",
+        "refundedAfterInvoice": "Reembolsada depois da nota",
+        "waitingCustomer": "Falta o CPF/CNPJ",
+        "needsAttention": "Precisa de atenção",
+        "notIssuedRefund": "Reembolsada, sem nota",
+        "blocked": "Não emitida",
+        "processing": "Processando"
+      },
+      "fixCustomer": "Informar CPF/CNPJ",
+      "taxIdLabel": "CPF ou CNPJ do cliente",
+      "taxIdInvalid": "Informe um CPF ou CNPJ com 11 ou 14 caracteres.",
+      "save": "Salvar e emitir",
+      "tryAgain": "Tentar de novo",
+      "saleDone": "Pronto, venda atualizada.",
+      "saleFailed": "Não foi possível atualizar a venda."
+    }
   }
 }

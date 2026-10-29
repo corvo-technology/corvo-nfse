@@ -66,7 +66,8 @@
       "companies": "Companies",
       "invoices": "Tax invoices",
       "billing": "Plan",
-      "agents": "AI agents"
+      "agents": "AI agents",
+      "integrations": "Integrations"
     },
     "account": "ACCOUNT",
     "balance": "BALANCE",
@@ -2145,5 +2146,98 @@
     "copied": "Copied",
     "source": "Source on GitHub",
     "docs": "See all SDKs in the docs"
+  },
+  "Integrations": {
+    "title": "Integrations",
+    "subtitle": "Connect your payment platform and the invoice goes out by itself for every paid sale.",
+    "connect": "Connect",
+    "loadError": "Could not load integrations.",
+    "retry": "Try again",
+    "empty": {
+      "title": "No integrations yet",
+      "description": "Pick where you get paid and connect in under a minute."
+    },
+    "providers": {
+      "woovi": "Pix charges paid on Woovi.",
+      "abacatepay": "Checkout and payments paid on AbacatePay.",
+      "other": "Confirmed payments."
+    },
+    "status": {
+      "active": "Active",
+      "paused": "Paused",
+      "reconnect": "Reconnect",
+      "draft": "Draft",
+      "disconnected": "Disconnected"
+    },
+    "env": {
+      "test": "Test",
+      "live": "Production"
+    },
+    "pending": "{count, plural, one {# sale needs you} other {# sales need you}}",
+    "wizard": {
+      "title": "Connect payments",
+      "stepPlatform": "Where do you get paid?",
+      "stepDetails": "Connection details",
+      "company": "Company that issues the invoice",
+      "companyPlaceholder": "Choose the company",
+      "noCompanies": "Register a company before connecting.",
+      "environment": "Environment",
+      "environmentHint": "Use Test to try it with the platform's test account.",
+      "serviceDescription": "Service description on the invoice",
+      "serviceHint": "Optional. Left blank, the company default is used.",
+      "sendEmail": "Email the invoice to the customer",
+      "back": "Back",
+      "connect": "Connect",
+      "connecting": "Connecting...",
+      "errors": {
+        "create": "Could not create the connection",
+        "validate": "Could not validate the credentials",
+        "rules": "Could not save the service rule",
+        "activate": "Could not activate the connection"
+      },
+      "done": {
+        "title": "Connected!",
+        "body": "One step left: register this address on the platform so it tells Corvo about every payment.",
+        "urlLabel": "Webhook address",
+        "secretWarning": "This address contains a secret and is only shown now. Copy and keep it before closing.",
+        "finish": "Done"
+      }
+    },
+    "detail": {
+      "webhookUrl": "Webhook address",
+      "webhookUrlHint": "Register it on the payment platform.",
+      "pause": "Pause",
+      "resume": "Resume",
+      "disconnect": "Disconnect",
+      "confirmDisconnect": "Disconnect for good? This connection stops issuing invoices and cannot be turned back on.",
+      "confirmYes": "Yes, disconnect",
+      "reconnectHint": "The platform refused the credentials. Disconnect and connect again.",
+      "pausedHint": "Paused: sales are kept, but no invoice is issued.",
+      "updated": "Connection updated.",
+      "sales": {
+        "title": "Latest sales",
+        "empty": "No sales received yet. Make a test payment to see it here.",
+        "customer": "Customer",
+        "amount": "Amount",
+        "status": "Status",
+        "anonymous": "No customer"
+      },
+      "sale": {
+        "issued": "Invoice issued",
+        "refundedAfterInvoice": "Refunded after the invoice",
+        "waitingCustomer": "CPF/CNPJ missing",
+        "needsAttention": "Needs attention",
+        "notIssuedRefund": "Refunded, no invoice",
+        "blocked": "Not issued",
+        "processing": "Processing"
+      },
+      "fixCustomer": "Add CPF/CNPJ",
+      "taxIdLabel": "Customer CPF or CNPJ",
+      "taxIdInvalid": "Enter a CPF or CNPJ with 11 or 14 characters.",
+      "save": "Save and issue",
+      "tryAgain": "Try again",
+      "saleDone": "Done, sale updated.",
+      "saleFailed": "Could not update the sale."
+    }
   }
 }
