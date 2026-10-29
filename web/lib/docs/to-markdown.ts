@@ -18,6 +18,8 @@ function block(item: DocBlock): string {
       return table(item.head, item.rows);
     case "callout":
       return `> ${item.body}`;
+    case "municipalities":
+      return item.labels.markdown;
     case "heading":
       return `${"#".repeat(item.level + 1)} ${item.body}`;
     case "code":

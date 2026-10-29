@@ -20,6 +20,7 @@ export type DocSlug =
   | "receiving-webhooks"
   | "integration-checklist"
   | "payment-integrations"
+  | "municipalities"
   | "mcp"
   | "llms";
 
@@ -80,6 +81,32 @@ export interface EndpointBlock {
   notes?: CalloutBlock[];
 }
 
+/** The searchable list of municipalities (an interactive block; the data loads on demand). */
+export interface MunicipalitiesBlock {
+  kind: "municipalities";
+  locale: DocsLocale;
+  labels: {
+    searchLabel: string;
+    searchPlaceholder: string;
+    stateLabel: string;
+    allStates: string;
+    status: { all: string; emissor: string; ambiente: string; inactive: string };
+    /** `{count}` is replaced with the number. */
+    results: string;
+    resultsOne: string;
+    empty: string;
+    columns: { name: string; ibge: string; status: string; since: string };
+    showMore: string;
+    loading: string;
+    loadError: string;
+    /** `{date}` is replaced with the date of the official spreadsheet. */
+    source: string;
+    sourceLink: string;
+    /** What the markdown export says instead of the list. */
+    markdown: string;
+  };
+}
+
 export type DocBlock =
   | TextBlock
   | ListBlock
@@ -87,7 +114,8 @@ export type DocBlock =
   | CalloutBlock
   | HeadingBlock
   | CodeBlock
-  | EndpointBlock;
+  | EndpointBlock
+  | MunicipalitiesBlock;
 
 export interface DocSection {
   title: string;
