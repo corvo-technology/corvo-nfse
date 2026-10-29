@@ -166,6 +166,7 @@ describePostgres('Woovi connector through the real pipeline', () => {
       operations,
       rules,
       issuance,
+      events,
     );
     processor = new EventProcessorService(
       events,

@@ -134,6 +134,50 @@ describePostgres('integration event claims on real PostgreSQL', () => {
     expect(done).toMatchObject({ state: 'processed', claim_token: null });
   });
 
+  it('resolveAttention turns waiting notices of that operation into processed and touches nothing else', async () => {
+    const operationA = randomUUID();
+    const operationB = randomUUID();
+    for (const [delivery, op] of [
+      ['a1', operationA],
+      ['a2', operationA],
+      ['b1', operationB],
+    ] as const) {
+      await repo.insertReceived(event(delivery));
+      await db.query(
+        `UPDATE ${t('integration_events')} SET state='needs_attention', last_error='customer_tax_id_missing' WHERE delivery_id=$1`,
+        [delivery],
+      );
+      await db.query(
+        `INSERT INTO ${t('integration_operations')} (id, tenant_id, connection_id, provider, environment, external_account_id, operation_key, commercial_state, snapshot) VALUES ($1,$2,$3,'woovi','test','acc',$4,'paid','{}') ON CONFLICT DO NOTHING`,
+        [op, tenant, connectionId, `k-${op}`],
+      );
+      await db.query(
+        `UPDATE ${t('integration_events')} SET operation_id=$1 WHERE delivery_id=$2`,
+        [op, delivery],
+      );
+    }
+    await db.query(
+      `UPDATE ${t('integration_events')} SET state='processed', last_error=NULL WHERE delivery_id='a2'`,
+    );
+    await repo.resolveAttention(operationA, tenant);
+    const rows: Array<{
+      delivery_id: string;
+      state: string;
+      last_error: string | null;
+    }> = await db.query(
+      `SELECT delivery_id, state, last_error FROM ${t('integration_events')} ORDER BY delivery_id`,
+    );
+    expect(rows).toEqual([
+      { delivery_id: 'a1', state: 'processed', last_error: null },
+      { delivery_id: 'a2', state: 'processed', last_error: null },
+      {
+        delivery_id: 'b1',
+        state: 'needs_attention',
+        last_error: 'customer_tax_id_missing',
+      },
+    ]);
+  });
+
   it('does not claim events that are not yet due', async () => {
     await repo.insertReceived(event('future'));
     await db.query(
