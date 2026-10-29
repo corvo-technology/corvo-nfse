@@ -109,6 +109,13 @@ export class ConnectionService {
       );
     if ((await this.rules.countByConnection(id, tenantId)) === 0)
       throw new ConflictException('Add at least one rule before activating');
+    // Like emission, only production needs a ready company and a certificate.
+    if (connection.environment === 'live')
+      await this.companies.ensureReady(
+        connection.companyId,
+        tenantId,
+        connection.environment,
+      );
     return this.moveTo(connection, 'active');
   }
 

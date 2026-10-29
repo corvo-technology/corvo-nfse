@@ -119,6 +119,20 @@ export class TypeOrmIntegrationOperationRepository extends IIntegrationOperation
     });
   }
 
+  unfreezeEmission(id: string, tenantId: string): Promise<void> {
+    return runWithTenant(tenantId, async () => {
+      await this.repo.update(
+        { id, tenantId },
+        {
+          ruleId: null,
+          emissionRequest: null,
+          emissionRequestHash: null,
+          idempotencyKey: null,
+        },
+      );
+    });
+  }
+
   setFiscal(
     id: string,
     tenantId: string,
@@ -148,8 +162,7 @@ export class TypeOrmIntegrationOperationRepository extends IIntegrationOperation
         .createQueryBuilder()
         .update()
         .set({
-          snapshot: () =>
-            `jsonb_set(snapshot, '{customer}', '${JSON.stringify(customer).replaceAll("'", "''")}'::jsonb)`,
+          snapshot: () => `jsonb_set(snapshot, '{customer}', :customer::jsonb)`,
           fiscalStatus: 'none',
           blockReason: null,
         })
@@ -160,6 +173,7 @@ export class TypeOrmIntegrationOperationRepository extends IIntegrationOperation
             tenantId,
           },
         )
+        .setParameter('customer', JSON.stringify(customer))
         .execute();
       if (!result.affected) return null;
       const row = await this.repo.findOneOrFail({ where: { id, tenantId } });

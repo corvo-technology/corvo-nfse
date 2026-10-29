@@ -37,6 +37,11 @@ export abstract class IIntegrationOperationRepository {
     tenantId: string,
     emission: FrozenEmission,
   ): Promise<IntegrationOperation>;
+  /**
+   * Drops the frozen request so the next attempt plans again. Only for
+   * failures that happened before any invoice was created under the key.
+   */
+  abstract unfreezeEmission(id: string, tenantId: string): Promise<void>;
   abstract setFiscal(
     id: string,
     tenantId: string,

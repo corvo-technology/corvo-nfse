@@ -61,6 +61,35 @@ describe('OperationService', () => {
     });
     expect(updated.fiscalStatus).toBe('none');
   });
+  it('completeCustomer keeps the name and e-mail the platform sent when only the document is given', async () => {
+    const { service, operations } = setup();
+    const op = await operations.upsertFromNormalized({
+      tenantId: TENANT,
+      connectionId: 'c1',
+      provider: 'p',
+      environment: 'test',
+      externalAccountId: 'a2',
+      normalized: {
+        ...normalized,
+        operationKey: 'charge:2',
+        customer: {
+          name: 'Maria da Silva',
+          email: 'maria@x.com',
+          taxId: null,
+          taxIdMasked: true,
+        },
+      },
+    });
+    const updated = await service.completeCustomer(TENANT, op.id, {
+      taxId: '52998224725',
+    });
+    expect(updated.snapshot.customer).toEqual({
+      name: 'Maria da Silva',
+      email: 'maria@x.com',
+      taxId: '52998224725',
+      taxIdMasked: false,
+    });
+  });
   it('completeCustomer refuses an invalid CPF/CNPJ', async () => {
     const { service, operations } = setup();
     const op = await seed(operations);

@@ -233,6 +233,36 @@ describePostgres('integration operations and rules on real PostgreSQL', () => {
     ).resolves.toBeNull();
   });
 
+  it('updateCustomer stores a name with quotes as plain data', async () => {
+    const op = await upsert(normalized());
+    const name = `O'Brien'); DROP TABLE x; --`;
+    const updated = await ops.updateCustomer(op.id, tenant, {
+      name,
+      email: null,
+      taxId: '52998224725',
+      taxIdMasked: false,
+    });
+    expect(updated?.snapshot.customer?.name).toBe(name);
+  });
+
+  it('unfreezeEmission releases the frozen request so it can be frozen again', async () => {
+    const op = await upsert(normalized());
+    await ops.freezeEmission(op.id, tenant, {
+      ruleId: randomUUID(),
+      request: { a: 1 },
+      requestHash: 'h1',
+      idempotencyKey: 'k1',
+    });
+    await ops.unfreezeEmission(op.id, tenant);
+    const refrozen = await ops.freezeEmission(op.id, tenant, {
+      ruleId: randomUUID(),
+      request: { a: 2 },
+      requestHash: 'h2',
+      idempotencyKey: 'k1',
+    });
+    expect(refrozen.emissionRequest).toEqual({ a: 2 });
+  });
+
   it('setFiscal records status, reason and invoice id', async () => {
     const op = await upsert(normalized());
     const invoiceId = randomUUID();

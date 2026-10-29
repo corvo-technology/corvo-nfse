@@ -31,6 +31,16 @@ describe('InboundController', () => {
     });
   });
 
+  it('reads the body from req.body when the raw parser put it there', async () => {
+    const { controller, receive } = setup();
+    const body = Buffer.from('{ not json');
+    await controller.receive('pub', { body, headers: {}, query: {} } as never);
+    expect(receive).toHaveBeenCalledWith(
+      'pub',
+      expect.objectContaining({ rawBody: body }),
+    );
+  });
+
   it('returns 413 above 256 KB before calling the connector', async () => {
     const { controller, receive } = setup();
     const rawBody = Buffer.alloc(MAX_INBOUND_BODY_BYTES + 1);

@@ -10,6 +10,10 @@ import type { ConnectionService } from './connection.service';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { QuotaExceededError } from '@/modules/plans/application/quota.service';
 import { IdempotencyConflictError } from '@/modules/invoice/domain/errors';
+import {
+  CompanyBlockedError,
+  CompanyNotReadyError,
+} from '@/modules/company/domain/errors';
 
 const TENANT = '11111111-1111-4111-8111-111111111111';
 
@@ -273,4 +277,52 @@ describe('OperationEmitter', () => {
       'db down',
     );
   });
+
+  it('after invoice_rejected the frozen request is released, so fixing the rule and retrying issues the corrected invoice', async () => {
+    const { emitter, issuance, upsert, operations, rules } = setup();
+    issuance.error = new FiscalValidationError([
+      {
+        field: 'service.code',
+        code: 'invalid',
+        message: 'service.code is not valid',
+      },
+    ]);
+    const op = await upsert(snapshot());
+    await emitter.run(op);
+    expect(operations.rows.get(op.id)).toMatchObject({
+      emissionRequest: null,
+      idempotencyKey: null,
+      fiscalStatus: 'needs_attention',
+      blockReason: 'invoice_rejected',
+    });
+    issuance.error = null;
+    rules.rules = [{ ...rules.rules[0], service: { code: '020202' } }];
+    await emitter.run(operations.rows.get(op.id)!);
+    expect(issuance.calls[1].request.service).toEqual({ code: '020202' });
+    expect(operations.rows.get(op.id)).toMatchObject({
+      fiscalStatus: 'submitted',
+    });
+  });
+
+  it.each([
+    [
+      'CompanyNotReadyError',
+      () => new CompanyNotReadyError('co1', ['certificate']),
+    ],
+    ['CompanyBlockedError', () => new CompanyBlockedError('co1')],
+  ])(
+    '%s becomes needs_attention company_not_ready instead of burning retries',
+    async (_name, make) => {
+      const { emitter, issuance, upsert, operations } = setup();
+      issuance.error = make();
+      const op = await upsert(snapshot());
+      const outcome = await emitter.run(op);
+      expect(outcome.state).toBe('needs_attention');
+      expect(operations.rows.get(op.id)).toMatchObject({
+        fiscalStatus: 'needs_attention',
+        blockReason: 'company_not_ready',
+        emissionRequest: null,
+      });
+    },
+  );
 });

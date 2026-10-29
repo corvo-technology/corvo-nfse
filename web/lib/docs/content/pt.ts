@@ -2566,6 +2566,7 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             ["`invoice_rejected`", "A validação fiscal recusou o pedido. A mensagem explica o campo; corrija e use `retry`."],
             ["`quota_exceeded`", "Sem créditos ou limite do plano. Depois de resolver, use `retry`."],
             ["`connection_inactive`", "A conexão está pausada ou precisa de nova autorização. Reative e use `retry`."],
+            ["`company_not_ready`", "A empresa não está pronta ou o certificado está ausente, vencido ou inválido. Corrija o cadastro e use `retry`."],
             ["`before_active_from`", "O pagamento é anterior à data de início da conexão. Nenhuma nota é emitida."],
             ["`refunded` / `disputed`", "O pagamento foi reembolsado ou contestado antes da nota. Nenhuma nota é emitida."],
             ["`refund_after_invoice`", "O reembolso chegou depois da nota. A nota continua autorizada e a decisão é sua."],

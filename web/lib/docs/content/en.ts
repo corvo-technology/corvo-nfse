@@ -2589,6 +2589,7 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             ["`invoice_rejected`", "Fiscal validation refused the request. The message names the field; fix it and call `retry`."],
             ["`quota_exceeded`", "No credits or plan limit reached. After fixing it, call `retry`."],
             ["`connection_inactive`", "The connection is paused or needs to be authorized again. Reactivate it and call `retry`."],
+            ["`company_not_ready`", "The company is not ready or the certificate is missing, expired or invalid. Fix the registration and call `retry`."],
             ["`before_active_from`", "The payment happened before the connection start date. No invoice is issued."],
             ["`refunded` / `disputed`", "The payment was refunded or disputed before the invoice. No invoice is issued."],
             ["`refund_after_invoice`", "The refund arrived after the invoice. The invoice stays authorized and the decision is yours."],

@@ -31,8 +31,10 @@ export class InboundController {
     @Param('publicId') publicId: string,
     @Req() req: RawBodyRequest<Request>,
   ): Promise<{ received: true }> {
-    if (!req.rawBody) throw new BadRequestException('Raw body required');
-    if (req.rawBody.length > MAX_INBOUND_BODY_BYTES)
+    const rawBody =
+      req.rawBody ?? (Buffer.isBuffer(req.body) ? req.body : undefined);
+    if (!rawBody) throw new BadRequestException('Raw body required');
+    if (rawBody.length > MAX_INBOUND_BODY_BYTES)
       throw new PayloadTooLargeException('Webhook body too large');
     const headers: Record<string, string> = {};
     for (const [name, value] of Object.entries(req.headers))
@@ -44,7 +46,7 @@ export class InboundController {
     for (const [name, value] of Object.entries(req.query ?? {}))
       if (typeof value === 'string') query[name] = value;
     await this.receiver.receive(publicId, {
-      rawBody: req.rawBody,
+      rawBody,
       headers,
       query,
     });

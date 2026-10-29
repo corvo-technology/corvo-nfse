@@ -2,6 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { QuotaExceededError } from '@/modules/plans/application/quota.service';
 import { IdempotencyConflictError } from '@/modules/invoice/domain/errors';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
+import {
+  CompanyBlockedError,
+  CompanyNotReadyError,
+} from '@/modules/company/domain/errors';
+import {
+  CertificateExpiredError,
+  CertificateInvalidError,
+  CertificateNotFoundError,
+  CertificateTaxIdMismatchError,
+} from '@/modules/certificate/domain/errors';
 import type { CreateInvoiceDto } from '@/modules/invoice/http/invoice.dto';
 import { planEmission } from '../domain/emission-planner';
 import type {
@@ -112,13 +122,32 @@ export class OperationEmitter {
       );
       return { state: 'processed', operationId: id };
     } catch (error) {
-      if (error instanceof FiscalValidationError)
+      // These fail before any invoice exists under the key, so the request can be released and re-planned.
+      if (error instanceof FiscalValidationError) {
+        await this.operations.unfreezeEmission(id, tenantId);
         return this.stop(
           operation,
           'needs_attention',
           'invoice_rejected',
           error.message,
         );
+      }
+      if (
+        error instanceof CompanyNotReadyError ||
+        error instanceof CompanyBlockedError ||
+        error instanceof CertificateNotFoundError ||
+        error instanceof CertificateInvalidError ||
+        error instanceof CertificateExpiredError ||
+        error instanceof CertificateTaxIdMismatchError
+      ) {
+        await this.operations.unfreezeEmission(id, tenantId);
+        return this.stop(
+          operation,
+          'needs_attention',
+          'company_not_ready',
+          error.message,
+        );
+      }
       if (error instanceof IdempotencyConflictError)
         return this.stop(
           operation,

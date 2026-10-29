@@ -1,6 +1,6 @@
 import { setupOpenApi } from '@/infra/openapi/setup';
 import { randomUUID } from 'node:crypto';
-import type { Request, Response, NextFunction } from 'express';
+import { raw, type Request, type Response, type NextFunction } from 'express';
 import {
   HttpException,
   type INestApplication,
@@ -85,6 +85,17 @@ export async function createHttpApp(rootModule: Type<unknown>) {
   return app;
 }
 
+/**
+ * Platform webhooks reach the connector as raw bytes: whatever the content
+ * type, an unparseable body must not be turned into a 400 before the connector
+ * can authenticate it (signatures are over the exact bytes).
+ */
+export function inboundRawBody() {
+  const parse = raw({ type: () => true, limit: 256 * 1024 });
+  return (req: Request, res: Response, next: NextFunction) =>
+    /\/integrations\/inbound\//.test(req.path) ? parse(req, res, next) : next();
+}
+
 export function configureHttpTransport(app: NestExpressApplication): void {
   app.disable('x-powered-by');
   app.use(helmet());
@@ -95,6 +106,7 @@ export function configureHttpTransport(app: NestExpressApplication): void {
       next();
     },
   );
+  app.use(inboundRawBody());
   app.useBodyParser('json', { limit: '1mb' });
   app.useBodyParser('urlencoded', {
     limit: '100kb',

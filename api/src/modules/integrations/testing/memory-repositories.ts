@@ -87,6 +87,17 @@ export class MemoryOperations extends IIntegrationOperationRepository {
     }
     return Promise.resolve(row);
   }
+  unfreezeEmission(id: string) {
+    const row = this.rows.get(id)!;
+    this.rows.set(id, {
+      ...row,
+      ruleId: null,
+      emissionRequest: null,
+      emissionRequestHash: null,
+      idempotencyKey: null,
+    });
+    return Promise.resolve();
+  }
   setFiscal(
     id: string,
     _tenantId: string,

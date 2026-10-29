@@ -33,10 +33,10 @@ export class OperationService {
   ): Promise<IntegrationOperation> {
     const taxId = parseCustomerTaxId(input.taxId);
     if (!taxId) throw new BadRequestException('Invalid CPF or CNPJ');
-    await this.get(tenantId, id);
+    const current = (await this.get(tenantId, id)).snapshot.customer;
     const updated = await this.operations.updateCustomer(id, tenantId, {
-      name: input.name ?? null,
-      email: input.email ?? null,
+      name: input.name ?? current?.name ?? null,
+      email: input.email ?? current?.email ?? null,
       taxId: taxId.value,
       taxIdMasked: false,
     });

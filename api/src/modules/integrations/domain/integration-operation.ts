@@ -34,6 +34,7 @@ export type BlockReason =
   | 'customer_tax_id_missing'
   | 'refund_after_invoice'
   | 'quota_exceeded'
+  | 'company_not_ready'
   | 'invoice_rejected';
 
 export interface IntegrationOperation {
