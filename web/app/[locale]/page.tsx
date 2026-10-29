@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { LandingPage } from "@/components/landing/landing-page";
 import { JsonLd } from "@/components/seo/json-ld";
+import { faqPageJsonLd } from "@/lib/landing-faq";
 import { paidPlanOffers } from "@/lib/pricing-jsonld";
 import { SITE_COPY, SITE_URL, pageMetadata, pageUrl, seoLocale } from "@/lib/seo";
 
@@ -69,6 +70,7 @@ export default async function Page({ params }: Props) {
   return (
     <>
       <JsonLd data={software} />
+      <JsonLd data={faqPageJsonLd(locale)} />
       <LandingPage />
     </>
   );

@@ -1,5 +1,6 @@
 import { DOC_GROUPS, getDocsTree } from "@/lib/docs/registry";
 import { sectionToMarkdown } from "@/lib/docs/to-markdown";
+import { faqMarkdown } from "@/lib/landing-faq";
 import { SITE_COPY, SITE_URL, type SeoLocale, pageUrl } from "@/lib/seo";
 
 /**
@@ -48,6 +49,7 @@ A Corvo cadastra empresas emissoras, guarda os certificados A1, calcula os tribu
 
 interface Labels {
   docs: string;
+  faq: string;
   optional: string;
   intro: string;
   full: string;
@@ -61,6 +63,7 @@ interface Labels {
 const LABELS: Record<SeoLocale, Labels> = {
   en: {
     docs: "Documentation",
+    faq: "Frequently asked questions",
     optional: "Optional",
     intro: "API introduction and quickstart",
     full: "Full documentation as one text file",
@@ -72,6 +75,7 @@ const LABELS: Record<SeoLocale, Labels> = {
   },
   pt: {
     docs: "Documentação",
+    faq: "Perguntas frequentes",
     optional: "Opcional",
     intro: "Introdução à API e início rápido",
     full: "Documentação completa em um arquivo",
@@ -112,6 +116,7 @@ export function buildLlmsTxt(locale: SeoLocale): string {
   return [
     locale === "en" ? EN_INTRO : PT_INTRO,
     `## ${labels.docs}\n\n${docs.join("\n")}`,
+    `## ${labels.faq}\n\n${faqMarkdown(locale)}`,
     `## ${labels.optional}\n\n${optional.join("\n")}`,
   ].join("\n\n") + "\n";
 }
@@ -121,6 +126,7 @@ export function buildLlmsFull(locale: SeoLocale): string {
   const body = [
     `# ${LABELS[locale].title}\n\n> ${SITE_COPY[locale].tagline}\n\nBase URL: https://api.corvo.tech/v1 · MCP: https://api.corvo.tech/mcp · Site: ${pageUrl(locale)}`,
     sectionToMarkdown(tree.home, 2),
+    `## ${LABELS[locale].faq}\n\n${faqMarkdown(locale)}`,
     ...allSlugs().map((slug) => `${sectionToMarkdown(tree.pages[slug], 2)}\n\nSource: ${pageUrl(locale, `/docs/${slug}`)}`),
   ].join("\n\n---\n\n");
   return `${body}\n`;
