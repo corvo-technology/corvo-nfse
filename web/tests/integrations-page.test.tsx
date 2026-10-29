@@ -18,7 +18,7 @@ vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (p: string) => mocks.permi
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ success: mocks.success, error: mocks.error }) }));
 
 const woovi = { id: "woovi", name: "Woovi", version: "1", credentialFields: [{ key: "appId", label: "AppID", secret: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on Woovi." }, supportedFlows: [] };
-const abacate = { id: "abacatepay", name: "AbacatePay", version: "1", credentialFields: [{ key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on AbacatePay." }, supportedFlows: [] };
+const abacate = { id: "abacatepay", name: "AbacatePay", version: "1", credentialFields: [{ key: "apiKey", label: "AbacatePay API key", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on AbacatePay." }, supportedFlows: [] };
 const company = { id: "co1", legalName: "Acme Ltda", tradeName: "Acme" };
 const connection = (over: Record<string, unknown> = {}) => ({ id: "c1", provider: "woovi", environment: "test", companyId: "co1", state: "active", externalAccountId: "acc", activeFrom: null, webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB", createdAt: "2026-10-29T12:00:00Z", ...over });
 const sale = (over: Record<string, unknown> = {}) => ({ id: "s1", operationKey: "charge:1", commercialState: "paid", fiscalStatus: "submitted", blockReason: null, amountCents: 4990, currency: "BRL", customer: { name: "Maria", email: null, taxId: "52998224725", taxIdMasked: false }, paidAt: "2026-10-29T15:00:00Z", invoiceId: "inv1", createdAt: "2026-10-29T15:00:00Z", updatedAt: "2026-10-29T15:00:00Z", ...over });
@@ -132,7 +132,7 @@ describe("Connect wizard", () => {
     expect((within(dialog).getByRole("button", { name: "Connect" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it("AbacatePay asks for no credential and warns that the secret in the address is shown only once", async () => {
+  it("AbacatePay asks for the API key, generates the webhook secret and warns that the secret in the address is shown only once", async () => {
     mocks.create.mockResolvedValue(connection({ provider: "abacatepay", state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB?webhookSecret=S3" }));
     mocks.validate.mockResolvedValue(connection());
     mocks.putRules.mockResolvedValue([]);
@@ -143,9 +143,10 @@ describe("Connect wizard", () => {
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).queryByLabelText(/Webhook secret/)).toBeNull();
     fireEvent.change(within(dialog).getByLabelText(/Company that issues the invoice/), { target: { value: "co1" } });
+    fireEvent.change(within(dialog).getByLabelText(/AbacatePay API key/), { target: { value: "abc_key" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Connect" }));
     await screen.findByText("Connected!");
-    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ credentials: {} }));
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ credentials: { apiKey: "abc_key" } }));
     expect(screen.getByText(/webhookSecret=S3/)).toBeTruthy();
     expect(screen.getByText(/contains a secret/)).toBeTruthy();
   });

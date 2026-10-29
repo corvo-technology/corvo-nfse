@@ -2,8 +2,10 @@ import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AbacatePayConnector } from './abacatepay.connector';
+import type { AbacatePayClient } from './abacatepay.client';
 import {
   ConnectorDataError,
+  ConnectorTransientError,
   type ConnectionView,
   type OperationDelivery,
 } from '../../domain/connector';
@@ -253,8 +255,86 @@ describe('AbacatePayConnector.normalize', () => {
   });
 });
 
+describe('AbacatePayConnector.normalize with an API key', () => {
+  const delivery: OperationDelivery = {
+    kind: 'operation',
+    deliveryId: 'd',
+    externalType: 'x',
+  };
+  const keyed: ConnectionView = {
+    ...connection,
+    credentials: { ...connection.credentials, apiKey: 'abc_key' },
+  };
+  const make = (getCustomer: jest.Mock) =>
+    new AbacatePayConnector(undefined, {
+      getCustomer,
+    } as unknown as AbacatePayClient);
+  const run = (c: AbacatePayConnector, conn = keyed) =>
+    c.normalize({
+      connection: conn,
+      payload: fixture('checkout-completed'),
+      delivery,
+    });
+
+  it('reads the full document from AbacatePay when the webhook masked it', async () => {
+    const getCustomer = jest.fn().mockResolvedValue({
+      name: 'Maria da Silva',
+      email: 'maria@example.com',
+      taxId: '52998224725',
+    });
+    const op = await run(make(getCustomer));
+    expect(getCustomer).toHaveBeenCalledWith('abc_key', 'cust_1');
+    expect(op.customer).toEqual({
+      name: 'Maria da Silva',
+      email: 'maria@example.com',
+      taxId: '52998224725',
+      taxIdMasked: false,
+    });
+  });
+  it('does not call the API when the document already came complete', async () => {
+    const getCustomer = jest.fn();
+    await make(getCustomer).normalize({
+      connection: keyed,
+      payload: fixture('transparent-completed'),
+      delivery,
+    });
+    expect(getCustomer).not.toHaveBeenCalled();
+  });
+  it('keeps the masked customer when the connection has no key', async () => {
+    const getCustomer = jest.fn();
+    const op = await run(make(getCustomer), connection);
+    expect(getCustomer).not.toHaveBeenCalled();
+    expect(op.customer?.taxIdMasked).toBe(true);
+  });
+  it('keeps it masked when AbacatePay has no document for that customer', async () => {
+    const op = await run(
+      make(
+        jest.fn().mockResolvedValue({ name: null, email: null, taxId: null }),
+      ),
+    );
+    expect(op.customer).toMatchObject({ taxId: null, taxIdMasked: true });
+  });
+  it('lets lookup failures propagate so the worker retries or asks for a new key', async () => {
+    await expect(
+      run(
+        make(jest.fn().mockRejectedValue(new ConnectorTransientError('503'))),
+      ),
+    ).rejects.toThrow(ConnectorTransientError);
+  });
+});
+
 describe('AbacatePayConnector.validateConnection', () => {
-  const connector = new AbacatePayConnector(undefined);
+  const checkCredentials = jest.fn().mockResolvedValue(undefined);
+  const connector = new AbacatePayConnector(undefined, {
+    checkCredentials,
+  } as unknown as AbacatePayClient);
+  it('checks the API key with AbacatePay', async () => {
+    await connector.validateConnection(
+      { webhookSecret: 'one', apiKey: 'abc_key' },
+      'live',
+    );
+    expect(checkCredentials).toHaveBeenCalledWith('abc_key');
+  });
   it('derives a stable account id from the webhook secret, without exposing it', async () => {
     const a = await connector.validateConnection(
       { webhookSecret: 'one' },

@@ -27,6 +27,7 @@ import { TypeOrmIntegrationEventRepository } from '../../infra/typeorm-integrati
 import { TypeOrmIntegrationOperationRepository } from '../../infra/typeorm-integration-operation.repository';
 import { TypeOrmIntegrationRuleRepository } from '../../infra/typeorm-integration-rule.repository';
 import { AbacatePayConnector } from './abacatepay.connector';
+import type { AbacatePayClient } from './abacatepay.client';
 
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
 if (
@@ -44,6 +45,13 @@ const company = randomUUID();
 const HMAC_KEY = 'abacatepay-public-key';
 const fixture = (name: string) =>
   readFileSync(join(__dirname, '__fixtures__', `${name}.json`), 'utf8');
+
+/** What AbacatePay's customer API answers; no document by default. */
+let lookup: {
+  name: string | null;
+  email: string | null;
+  taxId: string | null;
+} = { name: null, email: null, taxId: null };
 
 class FakeIssuance extends InvoiceIssuancePort {
   invoices = new Map<string, string>();
@@ -75,7 +83,7 @@ describePostgres('AbacatePay connector through the real pipeline', () => {
       provider: 'abacatepay',
       companyId: company,
       environment,
-      credentials: {},
+      credentials: { apiKey: 'abc_key' },
     });
     const { webhookSecret } = connections.toView(created).credentials;
     await connections.validate(tenant, created.id);
@@ -132,7 +140,12 @@ describePostgres('AbacatePay connector through the real pipeline', () => {
       [company, tenant],
     );
     const registry = new ConnectorRegistry();
-    registry.register(new AbacatePayConnector(HMAC_KEY));
+    registry.register(
+      new AbacatePayConnector(HMAC_KEY, {
+        checkCredentials: () => Promise.resolve(),
+        getCustomer: () => Promise.resolve(lookup),
+      } as unknown as AbacatePayClient),
+    );
     const cipher = new SecretsCipherService(
       new ConfigService({
         meta: { secretsEncryptionKey: randomBytes(32).toString('base64') },
@@ -193,9 +206,10 @@ describePostgres('AbacatePay connector through the real pipeline', () => {
     await db.query(`DELETE FROM ${t('integration_operations')}`);
     issuance.invoices.clear();
     issuance.commands = [];
+    lookup = { name: null, email: null, taxId: null };
   });
 
-  it('creating a connection needs no client credentials: the webhook secret is generated', async () => {
+  it('creating a connection needs only the API key: the webhook secret is generated', async () => {
     const { webhookSecret } = await activeConnection();
     expect(webhookSecret).toMatch(/^[A-Za-z0-9_-]{32}$/);
   });
@@ -219,6 +233,24 @@ describePostgres('AbacatePay connector through the real pipeline', () => {
       externalId: 'checkout:bill_abc123xyz',
     });
     expect(request).not.toHaveProperty('customer');
+  });
+
+  it('a masked document is completed from the customer API and the invoice goes out with the customer', async () => {
+    lookup = {
+      name: 'Maria da Silva',
+      email: 'maria@example.com',
+      taxId: '52998224725',
+    };
+    const { publicId, webhookSecret } = await activeConnection('live', false);
+    await receiver.receive(
+      publicId,
+      delivery(fixture('checkout-completed'), webhookSecret),
+    );
+    await drain();
+    expect(issuance.commands).toHaveLength(1);
+    expect(issuance.commands[0].request).toMatchObject({
+      customer: { taxId: '52998224725' },
+    });
   });
 
   it('without allowAnonymousCustomer the masked document waits for the customer to be completed', async () => {
