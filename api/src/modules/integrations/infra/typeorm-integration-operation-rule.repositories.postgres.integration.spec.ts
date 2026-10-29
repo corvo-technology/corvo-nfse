@@ -15,6 +15,7 @@ if (
 )
   throw new Error('Integrations tests require a local _test database');
 const describePostgres = url ? describe : describe.skip;
+jest.setTimeout(60_000);
 const schema = `integ_ops_${randomUUID().replaceAll('-', '')}`;
 const tenant = randomUUID();
 const company = randomUUID();

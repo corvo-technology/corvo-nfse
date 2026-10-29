@@ -94,9 +94,14 @@ export interface Connector {
     req: InboundRequest,
     connection: ConnectionView,
   ): Promise<DeliveryAuth>;
+  /**
+   * Must depend only on `rawBody`: the worker calls it again later, from the
+   * stored body, without headers or query.
+   */
   parse(req: InboundRequest): ParsedDelivery;
   normalize(input: {
     connection: ConnectionView;
+    /** The raw body text, as received. */
     payload: unknown;
     delivery: OperationDelivery;
   }): Promise<NormalizedOperation>;
