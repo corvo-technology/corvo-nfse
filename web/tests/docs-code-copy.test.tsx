@@ -12,7 +12,7 @@ describe("docs code blocks", () => {
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     const tree = getDocsTree("en")!;
     const prompt = tree.pages.llms.blocks.find((block) => block.kind === "code");
-    expect(prompt && prompt.kind === "code" && prompt.code).toContain("https://corvo.tech/llms-full.txt");
+    expect(prompt && prompt.kind === "code" && prompt.code).toContain("https://www.corvo.tech/llms-full.txt");
 
     render(<DocBlocks blocks={tree.pages.llms.blocks} copy={tree.chrome.copy} />);
     fireEvent.click(screen.getAllByRole("button", { name: "Copy" })[0]);

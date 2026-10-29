@@ -9,11 +9,11 @@ import { SITE_COPY, localizedAlternates, pageMetadata, pageUrl } from "@/lib/seo
 describe("page metadata", () => {
   it("gives every page its own canonical and both languages", () => {
     expect(localizedAlternates("pt", "/docs/invoices")).toEqual({
-      canonical: "https://corvo.tech/pt/docs/invoices",
+      canonical: "https://www.corvo.tech/pt/docs/invoices",
       languages: {
-        en: "https://corvo.tech/en/docs/invoices",
-        pt: "https://corvo.tech/pt/docs/invoices",
-        "x-default": "https://corvo.tech/pt/docs/invoices",
+        en: "https://www.corvo.tech/en/docs/invoices",
+        pt: "https://www.corvo.tech/pt/docs/invoices",
+        "x-default": "https://www.corvo.tech/pt/docs/invoices",
       },
     });
   });
@@ -139,7 +139,7 @@ describe("robots and sitemap", () => {
             "userAgent": "Applebot-Extended",
           },
         ],
-        "sitemap": "https://corvo.tech/sitemap.xml",
+        "sitemap": "https://www.corvo.tech/sitemap.xml",
       }
     `);
   });
@@ -147,17 +147,17 @@ describe("robots and sitemap", () => {
   it("lists every page in both languages with hreflang alternates", () => {
     const entries = sitemap();
     const urls = entries.map((entry) => entry.url);
-    expect(urls).toContain("https://corvo.tech/en");
-    expect(urls).toContain("https://corvo.tech/pt");
+    expect(urls).toContain("https://www.corvo.tech/en");
+    expect(urls).toContain("https://www.corvo.tech/pt");
     for (const slug of DOC_SLUGS) {
-      expect(urls).toContain(`https://corvo.tech/en/docs/${slug}`);
-      expect(urls).toContain(`https://corvo.tech/pt/docs/${slug}`);
+      expect(urls).toContain(`https://www.corvo.tech/en/docs/${slug}`);
+      expect(urls).toContain(`https://www.corvo.tech/pt/docs/${slug}`);
     }
     expect(new Set(urls).size).toBe(urls.length);
-    expect(entries[0].alternates?.languages).toMatchObject({ en: "https://corvo.tech/en", pt: "https://corvo.tech/pt", "x-default": "https://corvo.tech/pt" });
+    expect(entries[0].alternates?.languages).toMatchObject({ en: "https://www.corvo.tech/en", pt: "https://www.corvo.tech/pt", "x-default": "https://www.corvo.tech/pt" });
     for (const entry of entries) {
       const xDefault = entry.alternates?.languages?.["x-default" as keyof typeof entry.alternates.languages];
-      expect(xDefault).toMatch(/^https:\/\/corvo\.tech\/pt(\/|$)/);
+      expect(xDefault).toMatch(/^https:\/\/www\.corvo\.tech\/pt(\/|$)/);
     }
   });
 });
@@ -175,8 +175,8 @@ describe("llms-full", () => {
 describe("start page", () => {
   it("is in the sitemap in both languages, and /login stays blocked", () => {
     const urls = sitemap().map((entry) => entry.url);
-    expect(urls).toContain("https://corvo.tech/pt/start");
-    expect(urls).toContain("https://corvo.tech/en/start");
+    expect(urls).toContain("https://www.corvo.tech/pt/start");
+    expect(urls).toContain("https://www.corvo.tech/en/start");
     for (const rule of [robots().rules].flat() as { disallow: string[] }[]) expect(rule.disallow).toContain("/login");
   });
 });
@@ -188,7 +188,7 @@ describe("sitemap coverage", () => {
     const dir = join(__dirname, "..", "app", "[locale]");
     const pages = readdirSync(dir).filter((name) => statSync(join(dir, name)).isDirectory() && existsSync(join(dir, name, "page.tsx")));
     const urls = sitemap().map((entry) => entry.url);
-    for (const name of pages) expect(urls).toContain(`https://corvo.tech/pt/${name}`);
+    for (const name of pages) expect(urls).toContain(`https://www.corvo.tech/pt/${name}`);
     for (const entry of sitemap()) expect(entry.lastModified).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

@@ -67,7 +67,7 @@ const LABELS: Record<SeoLocale, Labels> = {
     fullDesc: "Every documentation page in English, for AI tools.",
     other: "Documentação em português (llms.txt)",
     otherDesc: "The same index in Brazilian Portuguese.",
-    legal: "[Privacy notice](https://corvo.tech/en/privacy), [Terms of service](https://corvo.tech/en/terms) and [Data processing addendum](https://corvo.tech/en/dpa).",
+    legal: "[Privacy notice](https://www.corvo.tech/en/privacy), [Terms of service](https://www.corvo.tech/en/terms) and [Data processing addendum](https://www.corvo.tech/en/dpa).",
     title: "Corvo API documentation",
   },
   pt: {
@@ -78,7 +78,7 @@ const LABELS: Record<SeoLocale, Labels> = {
     fullDesc: "Todas as páginas da documentação em português, para ferramentas de IA.",
     other: "English documentation (llms.txt)",
     otherDesc: "O mesmo índice em inglês.",
-    legal: "[Aviso de privacidade](https://corvo.tech/pt/privacy), [Termos de uso](https://corvo.tech/pt/terms) e [Adendo de tratamento de dados](https://corvo.tech/pt/dpa).",
+    legal: "[Aviso de privacidade](https://www.corvo.tech/pt/privacy), [Termos de uso](https://www.corvo.tech/pt/terms) e [Adendo de tratamento de dados](https://www.corvo.tech/pt/dpa).",
     title: "Documentação da API Corvo",
   },
 };

@@ -24,14 +24,14 @@ describe("/api-docs", () => {
   it("is indexable with its own canonical, hreflang and x-default", async () => {
     const meta = await generateMetadata(params("en"));
     expect(meta.robots).toBeUndefined();
-    expect(meta.alternates?.canonical).toBe("https://corvo.tech/en/api-docs");
-    expect(meta.alternates?.languages).toMatchObject({ pt: "https://corvo.tech/pt/api-docs", en: "https://corvo.tech/en/api-docs" });
+    expect(meta.alternates?.canonical).toBe("https://www.corvo.tech/en/api-docs");
+    expect(meta.alternates?.languages).toMatchObject({ pt: "https://www.corvo.tech/pt/api-docs", en: "https://www.corvo.tech/en/api-docs" });
   });
 
   it("is in the sitemap in both languages and not blocked by robots", () => {
     const urls = sitemap().map((entry) => entry.url);
-    expect(urls).toContain("https://corvo.tech/pt/api-docs");
-    expect(urls).toContain("https://corvo.tech/en/api-docs");
+    expect(urls).toContain("https://www.corvo.tech/pt/api-docs");
+    expect(urls).toContain("https://www.corvo.tech/en/api-docs");
     const rules = [robots().rules].flat() as { disallow?: string[] }[];
     for (const rule of rules) for (const path of rule.disallow ?? []) expect("/pt/api-docs".startsWith(path)).toBe(false);
   });

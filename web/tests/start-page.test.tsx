@@ -32,15 +32,15 @@ describe("start page", () => {
   it("is indexable with canonical and hreflang", async () => {
     const meta = await generateMetadata(params("en"));
     expect(meta.robots).toBeUndefined();
-    expect(meta.alternates?.canonical).toBe("https://corvo.tech/en/start");
-    expect(meta.alternates?.languages).toMatchObject({ pt: "https://corvo.tech/pt/start" });
+    expect(meta.alternates?.canonical).toBe("https://www.corvo.tech/en/start");
+    expect(meta.alternates?.languages).toMatchObject({ pt: "https://www.corvo.tech/pt/start" });
   });
 
   it("redirects /signup permanently to the start page", () => {
-    const root = proxy(new NextRequest("https://corvo.tech/signup", { headers: { cookie: "NEXT_LOCALE=pt" } }));
+    const root = proxy(new NextRequest("https://www.corvo.tech/signup", { headers: { cookie: "NEXT_LOCALE=pt" } }));
     expect(root.status).toBe(308);
     expect(new URL(root.headers.get("location")!).pathname).toBe("/pt/start");
-    const en = proxy(new NextRequest("https://corvo.tech/en/signup"));
+    const en = proxy(new NextRequest("https://www.corvo.tech/en/signup"));
     expect(new URL(en.headers.get("location")!).pathname).toBe("/en/start");
   });
 });

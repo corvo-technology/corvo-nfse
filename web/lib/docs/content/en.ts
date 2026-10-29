@@ -27,7 +27,7 @@ const enWithRetiredCredits: DocsTree = {
       },
       { kind: "heading", level: 2, body: "Quickstart" },
       { kind: "text", body: "From signup to your first invoice, in the test environment. In test no certificate is needed; production needs a `corvo_live_` key and an A1 certificate." },
-      { kind: "list", items: ["Create a free account at https://corvo.tech/login?mode=signup (no credit card).", "In the dashboard, create a test key. It starts with `corvo_test_`; invoices issued with it have no fiscal value.", "Register the issuer company with `POST /v1/companies` (`legalName`, `taxId`, `taxRegime` and `municipalityCode` are required).", "Issue the invoice with `POST /v1/invoices`. The answer is `202` with status `queued`: issuance is asynchronous.", "Track it with `GET /v1/invoices/:id` or receive the `nfse.invoice.authorized` / `nfse.invoice.rejected` webhook.", "Go to production: create a `corvo_live_` key and upload the company's A1 certificate, through the dashboard or the API (`POST /v1/companies/:companyId/certificates`)."] },
+      { kind: "list", items: ["Create a free account at https://www.corvo.tech/login?mode=signup (no credit card).", "In the dashboard, create a test key. It starts with `corvo_test_`; invoices issued with it have no fiscal value.", "Register the issuer company with `POST /v1/companies` (`legalName`, `taxId`, `taxRegime` and `municipalityCode` are required).", "Issue the invoice with `POST /v1/invoices`. The answer is `202` with status `queued`: issuance is asynchronous.", "Track it with `GET /v1/invoices/:id` or receive the `nfse.invoice.authorized` / `nfse.invoice.rejected` webhook.", "Go to production: create a `corvo_live_` key and upload the company's A1 certificate, through the dashboard or the API (`POST /v1/companies/:companyId/certificates`)."] },
       { kind: "code", label: "bash", language: "bash", code: "export BASE_URL='https://api.corvo.tech/v1'\nexport CORVO_API_KEY='corvo_test_your_key'\n\n# 3. Register the company\ncurl -X POST \"$BASE_URL/companies\" \\\n  -H \"X-API-Key: $CORVO_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"legalName\":\"Example Company Ltda\",\"taxId\":\"11222333000181\",\"taxRegime\":\"MEI\",\"municipalityCode\":\"3550308\"}'\n\n# 4. Issue the invoice (202, status queued)\ncurl -X POST \"$BASE_URL/invoices\" \\\n  -H \"X-API-Key: $CORVO_API_KEY\" \\\n  -H 'Content-Type: application/json' \\\n  -H 'Idempotency-Key: pedido_123_emissao' \\\n  -d '{\"companyTaxId\":\"11222333000181\",\"amount\":100,\"service\":{\"description\":\"Consulting\"}}'\n\n# 5. Track it\ncurl \"$BASE_URL/invoices/<id>\" -H \"X-API-Key: $CORVO_API_KEY" },
       {
         kind: "text",
@@ -2723,12 +2723,12 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           "rows": [
             [
               "`llms.txt`",
-              "`https://corvo.tech/llms.txt`",
+              "`https://www.corvo.tech/llms.txt`",
               "Short index with the key facts and a link to every documentation page. The agent opens only what it needs."
             ],
             [
               "`llms-full.txt`",
-              "`https://corvo.tech/llms-full.txt`",
+              "`https://www.corvo.tech/llms-full.txt`",
               "The whole documentation in one Markdown file (English): endpoints, fields, examples and errors. Best when the agent should implement everything in one pass."
             ]
           ]
@@ -2746,7 +2746,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           "kind": "code",
           "label": "Prompt",
           "language": "text",
-          "code": "Read https://corvo.tech/llms-full.txt (the Corvo NFS-e API documentation) and integrate invoice issuance into this project.\n\nMy stack and where invoices are created: [describe your language/framework and the place in the code where an order or sale becomes an invoice].\n\nFollow these rules:\n- Use the test environment. Read the key from the CORVO_API_KEY environment variable (it starts with corvo_test_). Never write a key in code, in tests or in commits.\n- Register the company once with POST /v1/companies (taxId, taxRegime, municipalityCode) and keep its id.\n- Before issuing, call POST /v1/invoices/calculate and show the taxes when it makes sense.\n- Issue with POST /v1/invoices and send an Idempotency-Key built from my own order id, so a retry never creates a second invoice.\n- Issuance is asynchronous: save the invoice id, and update the status from the nfse.invoice.authorized and nfse.invoice.rejected webhooks (verify the signature) or by polling GET /v1/invoices/:id.\n- Handle the documented errors (validation, 409, 429 with Retry-After) and never log customer documents.\n- Write tests with mocked HTTP. Do not call the live environment.\n\nWhen you finish, list the files you changed and what I still need to configure (webhook URL, environment variables)."
+          "code": "Read https://www.corvo.tech/llms-full.txt (the Corvo NFS-e API documentation) and integrate invoice issuance into this project.\n\nMy stack and where invoices are created: [describe your language/framework and the place in the code where an order or sale becomes an invoice].\n\nFollow these rules:\n- Use the test environment. Read the key from the CORVO_API_KEY environment variable (it starts with corvo_test_). Never write a key in code, in tests or in commits.\n- Register the company once with POST /v1/companies (taxId, taxRegime, municipalityCode) and keep its id.\n- Before issuing, call POST /v1/invoices/calculate and show the taxes when it makes sense.\n- Issue with POST /v1/invoices and send an Idempotency-Key built from my own order id, so a retry never creates a second invoice.\n- Issuance is asynchronous: save the invoice id, and update the status from the nfse.invoice.authorized and nfse.invoice.rejected webhooks (verify the signature) or by polling GET /v1/invoices/:id.\n- Handle the documented errors (validation, 409, 429 with Retry-After) and never log customer documents.\n- Write tests with mocked HTTP. Do not call the live environment.\n\nWhen you finish, list the files you changed and what I still need to configure (webhook URL, environment variables)."
         },
         {
           "kind": "heading",
@@ -2757,7 +2757,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           "kind": "list",
           "items": [
             "Claude Code, Codex and other terminal agents: paste the prompt. They fetch the address themselves.",
-            "Cursor: add `https://corvo.tech/llms-full.txt` as a documentation source (Settings → Indexing & Docs), then mention it in the chat, or paste the prompt.",
+            "Cursor: add `https://www.corvo.tech/llms-full.txt` as a documentation source (Settings → Indexing & Docs), then mention it in the chat, or paste the prompt.",
             "VS Code, Windsurf and chat apps: paste the prompt; if the tool cannot open addresses, download `llms-full.txt` and attach the file to the conversation."
           ]
         },
