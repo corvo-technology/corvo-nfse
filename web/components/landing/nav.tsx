@@ -9,6 +9,7 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 
 const navLinks = [
   { key: "product", href: "#product" },
+  { key: "integrations", href: "#integrations" },
   { key: "docs", href: "/docs" },
   { key: "pricing", href: "#pricing" },
 ];

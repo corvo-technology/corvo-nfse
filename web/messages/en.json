@@ -679,6 +679,7 @@
   },
   "Nav": {
     "product": "Product",
+    "integrations": "Integrations",
     "docs": "Docs",
     "pricing": "Pricing",
     "signIn": "Sign in",
@@ -2295,5 +2296,36 @@
       "empty": "No sales received yet. Make a test payment to see it here.",
       "noneAttention": "No sale needs attention."
     }
+  },
+  "LandingIntegrations": {
+    "title": "Sold on Pix? The invoice issues itself.",
+    "description": "Connect Woovi or AbacatePay and Corvo issues the NFS-e for every approved payment, with the customer and product details. No code, no spreadsheet.",
+    "steps": {
+      "connect": {
+        "title": "Connect the platform",
+        "body": "Pick the company that issues the invoice and, if the platform asks, paste the key."
+      },
+      "webhook": {
+        "title": "Register the webhook",
+        "body": "Copy the address Corvo shows and paste it in the platform's dashboard."
+      },
+      "done": {
+        "title": "Done",
+        "body": "Every approved payment becomes an invoice. If the CPF or CNPJ is missing, you complete it on screen and it goes out."
+      }
+    },
+    "platforms": {
+      "woovi": "Pix charges",
+      "abacatepay": "Pix, card and boleto",
+      "soon": "More platforms on the way."
+    },
+    "invoice": {
+      "status": "Issued",
+      "amount": "R$ 999.90",
+      "customer": "Maria Souza",
+      "email": "Emailed to the customer"
+    },
+    "cta": "Start free",
+    "guide": "Read the integrations guide"
   }
 }

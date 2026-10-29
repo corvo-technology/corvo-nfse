@@ -334,6 +334,21 @@ html {
 .dash-in-2 { animation-delay: 0.1s; }
 .dash-in-3 { animation-delay: 0.15s; }
 
+/* Landing: payment platforms feeding Corvo */
+@keyframes flow-dash { to { stroke-dashoffset: -22; } }
+@keyframes flow-line-move { to { background-position: 22px 0; } }
+.flow-path { animation: flow-dash 1.2s linear infinite; opacity: 0.7; }
+.flow-line {
+  background-image: repeating-linear-gradient(90deg, var(--accent) 0 5px, transparent 5px 11px);
+  background-size: 22px 2px;
+  background-repeat: repeat-x;
+  opacity: 0.7;
+  animation: flow-line-move 1.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-path, .flow-line { animation: none; }
+}
+
 /* Skeleton shimmer */
 @keyframes shimmer {
   from { background-position: 200% 0; }

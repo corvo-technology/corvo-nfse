@@ -679,6 +679,7 @@
   },
   "Nav": {
     "product": "Produto",
+    "integrations": "Integrações",
     "docs": "Docs",
     "pricing": "Preços",
     "signIn": "Entrar",
@@ -2295,5 +2296,36 @@
       "empty": "Nenhuma venda recebida ainda. Faça um pagamento de teste para ver aqui.",
       "noneAttention": "Nenhuma venda precisa de atenção."
     }
+  },
+  "LandingIntegrations": {
+    "title": "Vendeu no Pix? A nota sai sozinha.",
+    "description": "Conecte a Woovi ou a AbacatePay e a Corvo emite a NFS-e de cada pagamento aprovado, com os dados do cliente e do produto. Sem código e sem planilha.",
+    "steps": {
+      "connect": {
+        "title": "Conecte a plataforma",
+        "body": "Escolha a empresa que emite a nota e, se a plataforma pedir, cole a chave."
+      },
+      "webhook": {
+        "title": "Cadastre o webhook",
+        "body": "Copie o endereço que a Corvo mostra e cole no painel da plataforma."
+      },
+      "done": {
+        "title": "Pronto",
+        "body": "Cada pagamento aprovado vira uma nota. Se faltar o CPF ou CNPJ, você completa na tela e ela sai."
+      }
+    },
+    "platforms": {
+      "woovi": "Cobranças Pix",
+      "abacatepay": "Pix, cartão e boleto",
+      "soon": "Mais plataformas a caminho."
+    },
+    "invoice": {
+      "status": "Emitida",
+      "amount": "R$ 999,90",
+      "customer": "Maria Souza",
+      "email": "Enviada por e-mail ao cliente"
+    },
+    "cta": "Começar grátis",
+    "guide": "Ver o guia de integrações"
   }
 }
