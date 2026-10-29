@@ -8,18 +8,18 @@ import { CorvoLogo } from "@/components/ui/corvo-logo";
 
 const PLATFORMS = [
   { id: "woovi", name: "Woovi", logo: "/integrations/woovi.png", width: 800, height: 250 },
-  { id: "abacatepay", name: "AbacatePay", logo: "/integrations/abacatepay.png", width: 928, height: 384 },
+  { id: "abacatepay", name: "AbacatePay", logo: "/integrations/abacatepay-white.png", width: 928, height: 384 },
 ] as const;
 
 const STEPS = ["connect", "webhook", "done"] as const;
 
-/** Brand logos keep their own colors, so each one sits on a light tile instead of being recolored for the dark page. */
+/** Dark tiles, like the rest of the page: Woovi's green works as it is and AbacatePay's logo is the white version. */
 function PlatformTile({ id, name, logo, width, height }: (typeof PLATFORMS)[number]) {
   const t = useTranslations("LandingIntegrations");
   return (
-    <div className="flex h-[92px] flex-col items-center justify-center gap-1.5 rounded-[16px] bg-[#f3f5f3] px-5 shadow-[0_1px_0_rgba(255,255,255,0.5)_inset,0_18px_40px_-22px_rgba(0,0,0,0.9)]">
+    <div className="flex h-[92px] flex-col items-center justify-center gap-1.5 rounded-[16px] border border-white/[0.08] bg-[#141414] px-5 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_18px_40px_-22px_rgba(0,0,0,0.9)]">
       <Image src={logo} alt={name} width={width} height={height} className={id === "woovi" ? "h-[26px] w-auto" : "h-[38px] w-auto"} />
-      <p className="text-[11.5px] leading-none text-[#55645f]">{t(`platforms.${id}`)}</p>
+      <p className="text-[11.5px] leading-none text-text-3">{t(`platforms.${id}`)}</p>
     </div>
   );
 }
