@@ -2552,6 +2552,30 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
           kind: "text",
           body: "Uma regra sem `externalProductId` vale para qualquer produto. Para dar um serviço diferente a um produto, envie outra regra com o `externalProductId` dele. Pagamentos anteriores a `activeFrom` são ignorados. Com `allowAnonymousCustomer: true`, a nota sai sem tomador quando o pagamento não traz CPF/CNPJ.",
         },
+        { kind: "heading", level: 2, body: "Por plataforma" },
+        { kind: "heading", level: 3, body: "Woovi" },
+        {
+          kind: "list",
+          items: [
+            "Credencial: `appId`, o AppID da conta (API/Plugins no painel da Woovi). O ambiente `test` usa o sandbox da Woovi e `live` usa a conta de produção.",
+            "No painel da Woovi, cadastre o `webhookUrl` da conexão e marque o evento de cobrança paga (`OPENPIX:CHARGE_COMPLETED`).",
+            "O tomador da nota é o cliente da cobrança, nunca quem pagou o Pix.",
+            "Cada cobrança vira uma nota, identificada pelo `correlationID`.",
+            "Reembolsos da Woovi ainda não são acompanhados: se precisar, cancele a nota manualmente.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "AbacatePay" },
+        {
+          kind: "list",
+          items: [
+            "Não há credenciais para informar: envie `\"credentials\": {}`. A Corvo gera o `webhookSecret` e devolve o `webhookUrl` já com `?webhookSecret=...` só na resposta da criação. Guarde esse endereço.",
+            "No painel da AbacatePay, cadastre esse endereço e marque `checkout.completed`, `checkout.refunded`, `checkout.disputed` e os equivalentes `transparent.*`.",
+            "O `devMode` do evento precisa bater com o ambiente da conexão: eventos de teste não emitem nota em uma conexão `live`, e o inverso também.",
+            "O CPF/CNPJ chega mascarado. Sem documento completo a venda fica pendente (`customer_tax_id_missing`) ou sai sem tomador se a regra tiver `allowAnonymousCustomer`.",
+            "O `externalProductId` das regras é o `id` do item do checkout.",
+            "Reembolso ou contestação depois da nota abre a pendência `refund_after_invoice`; a nota não é cancelada.",
+          ],
+        },
         { kind: "heading", level: 2, body: "Vendas que precisam de atenção" },
         {
           kind: "text",

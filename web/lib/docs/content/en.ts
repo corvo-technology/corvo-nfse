@@ -2575,6 +2575,30 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
           kind: "text",
           body: "A rule without `externalProductId` applies to any product. To give a product a different service, send another rule with its `externalProductId`. Payments made before `activeFrom` are ignored. With `allowAnonymousCustomer: true`, the invoice is issued without a customer when the payment carries no CPF/CNPJ.",
         },
+        { kind: "heading", level: 2, body: "By platform" },
+        { kind: "heading", level: 3, body: "Woovi" },
+        {
+          kind: "list",
+          items: [
+            "Credential: `appId`, the account AppID (API/Plugins in the Woovi dashboard). The `test` environment uses the Woovi sandbox and `live` uses the production account.",
+            "In the Woovi dashboard, register the connection `webhookUrl` and select the paid charge event (`OPENPIX:CHARGE_COMPLETED`).",
+            "The invoice customer is the charge customer, never whoever paid the Pix.",
+            "Each charge becomes one invoice, identified by its `correlationID`.",
+            "Woovi refunds are not tracked yet: cancel the invoice manually if needed.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "AbacatePay" },
+        {
+          kind: "list",
+          items: [
+            "There are no credentials to provide: send `\"credentials\": {}`. Corvo generates the `webhookSecret` and returns the `webhookUrl` with `?webhookSecret=...` only in the creation response. Keep that address.",
+            "In the AbacatePay dashboard, register that address and select `checkout.completed`, `checkout.refunded`, `checkout.disputed` and the equivalent `transparent.*` events.",
+            "The event `devMode` must match the connection environment: test events issue no invoice on a `live` connection, and the other way around.",
+            "The CPF/CNPJ arrives masked. Without a full document the sale stays pending (`customer_tax_id_missing`), or is issued without a customer if the rule has `allowAnonymousCustomer`.",
+            "A rule's `externalProductId` is the checkout item `id`.",
+            "A refund or dispute after the invoice opens the `refund_after_invoice` pendency; the invoice is not cancelled.",
+          ],
+        },
         { kind: "heading", level: 2, body: "Sales that need attention" },
         {
           kind: "text",
