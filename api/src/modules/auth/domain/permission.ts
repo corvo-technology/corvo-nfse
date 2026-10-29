@@ -3,6 +3,8 @@ export type TenantPermission =
   | 'credits.manage'
   | 'webhooks.view'
   | 'webhooks.manage'
+  | 'integrations.view'
+  | 'integrations.manage'
   | 'api_keys.manage'
   | 'settings.manage'
   | 'billing.view'
@@ -34,6 +36,8 @@ export const TENANT_ADMIN_PERMISSIONS: TenantPermission[] = [
   'credits.manage',
   'webhooks.view',
   'webhooks.manage',
+  'integrations.view',
+  'integrations.manage',
   'api_keys.manage',
   'settings.manage',
   'billing.view',
@@ -50,6 +54,8 @@ const DEVELOPER_PERMISSIONS: TenantPermission[] = [
   'credits.view',
   'webhooks.view',
   'webhooks.manage',
+  'integrations.view',
+  'integrations.manage',
   'api_keys.manage',
   'billing.view',
   'nfse.companies.view',
@@ -87,6 +93,7 @@ export const TENANT_PERMISSION_CATEGORY_CATALOG: PermissionCategoryCatalogItem[]
   [
     { id: 'credits', name: 'Credits' },
     { id: 'webhooks', name: 'Webhooks' },
+    { id: 'integrations', name: 'Integrations' },
     { id: 'api_keys', name: 'API Keys' },
     { id: 'settings', name: 'Settings' },
     { id: 'billing', name: 'Billing' },
@@ -116,6 +123,16 @@ const PERMISSION_LABELS: Record<
     name: 'Manage webhooks',
     description: 'Can create, edit and delete webhooks',
     category: 'webhooks',
+  },
+  'integrations.view': {
+    name: 'View integrations',
+    description: 'Can view payment integrations, events and pending operations',
+    category: 'integrations',
+  },
+  'integrations.manage': {
+    name: 'Manage integrations',
+    description: 'Can connect payment platforms and manage their rules',
+    category: 'integrations',
   },
   'api_keys.manage': {
     name: 'Manage API keys',

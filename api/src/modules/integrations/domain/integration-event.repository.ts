@@ -42,6 +42,17 @@ export interface EventResult {
   nextAttemptAt?: Date;
 }
 
+export interface IntegrationEventSummary {
+  id: string;
+  deliveryId: string;
+  externalType: string;
+  state: IntegrationEventState;
+  attempts: number;
+  lastError: string | null;
+  operationId: string | null;
+  createdAt: Date;
+}
+
 export abstract class IIntegrationEventRepository {
   /** `created` is false when the same delivery was already stored. */
   abstract insertReceived(
@@ -63,4 +74,11 @@ export abstract class IIntegrationEventRepository {
     claim: Pick<ClaimedEvent, 'id' | 'tenantId' | 'claimToken'>,
     result: EventResult,
   ): Promise<boolean>;
+
+  /** Newest first; never exposes the stored payload. */
+  abstract listByConnection(
+    connectionId: string,
+    tenantId: string,
+    limit: number,
+  ): Promise<IntegrationEventSummary[]>;
 }

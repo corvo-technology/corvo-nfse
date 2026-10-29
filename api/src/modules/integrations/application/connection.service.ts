@@ -18,6 +18,7 @@ import {
   type IntegrationConnection,
 } from '../domain/integration-connection';
 import { IIntegrationConnectionRepository } from '../domain/integration-connection.repository';
+import type { IntegrationRule } from '../domain/integration-rule';
 import { IIntegrationRuleRepository } from '../domain/integration-rule.repository';
 import { CredentialsService } from './credentials.service';
 
@@ -126,6 +127,20 @@ export class ConnectionService {
   async requireReauth(connection: IntegrationConnection): Promise<void> {
     if (connection.state === 'active' || connection.state === 'paused')
       await this.moveTo(connection, 'reauth_required');
+  }
+
+  async listRules(tenantId: string, id: string): Promise<IntegrationRule[]> {
+    await this.get(tenantId, id);
+    return this.rules.listByConnection(id, tenantId);
+  }
+
+  async replaceRules(
+    tenantId: string,
+    id: string,
+    rules: Array<Omit<IntegrationRule, 'id' | 'tenantId' | 'connectionId'>>,
+  ): Promise<IntegrationRule[]> {
+    await this.get(tenantId, id);
+    return this.rules.replaceForConnection(id, tenantId, rules);
   }
 
   findByPublicId(publicId: string): Promise<IntegrationConnection | null> {

@@ -128,7 +128,7 @@ function usableCustomer(
     !customer ||
     customer.taxIdMasked ||
     !customer.taxId ||
-    !/^(\d{11}|\d{14})$/.test(customer.taxId)
+    !/^([0-9]{11}|[0-9A-Z]{14})$/.test(customer.taxId)
   )
     return null;
   return {

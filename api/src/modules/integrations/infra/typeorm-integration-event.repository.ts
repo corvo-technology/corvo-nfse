@@ -9,6 +9,7 @@ import {
   IIntegrationEventRepository,
   type ClaimedEvent,
   type EventResult,
+  type IntegrationEventSummary,
   type NewIntegrationEvent,
 } from '../domain/integration-event.repository';
 import { IntegrationEventOrmEntity } from './integration-event.orm-entity';
@@ -101,6 +102,31 @@ export class TypeOrmIntegrationEventRepository extends IIntegrationEventReposito
         .execute();
       return (updated.affected ?? 0) > 0;
     });
+  }
+
+  listByConnection(
+    connectionId: string,
+    tenantId: string,
+    limit: number,
+  ): Promise<IntegrationEventSummary[]> {
+    return runWithTenant(tenantId, async () =>
+      (
+        await this.repo.find({
+          where: { connectionId, tenantId },
+          order: { createdAt: 'DESC' },
+          take: limit,
+        })
+      ).map((row) => ({
+        id: row.id,
+        deliveryId: row.deliveryId,
+        externalType: row.externalType,
+        state: row.state as IntegrationEventSummary['state'],
+        attempts: row.attempts,
+        lastError: row.lastError,
+        operationId: row.operationId,
+        createdAt: row.createdAt,
+      })),
+    );
   }
 
   private table(): string {
