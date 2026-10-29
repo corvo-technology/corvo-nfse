@@ -42,6 +42,8 @@ export function ConnectDialog({ open, onClose, providers, companies, environment
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [secrets, setSecrets] = useState<Record<string, string>>({});
+  const [copiedSecret, setCopiedSecret] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const provider = providers.find((p) => p.id === providerId) ?? null;
@@ -63,6 +65,7 @@ export function ConnectDialog({ open, onClose, providers, companies, environment
         sendEmail,
       });
       setWebhookUrl(result.webhookUrl);
+      setSecrets(result.secrets);
       setStep("done");
       onConnected();
     } catch (cause) {
@@ -77,6 +80,12 @@ export function ConnectDialog({ open, onClose, providers, companies, environment
     await navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function copySecret(value: string) {
+    await navigator.clipboard.writeText(value);
+    setCopiedSecret(true);
+    setTimeout(() => setCopiedSecret(false), 2000);
   }
 
   return (
@@ -145,6 +154,19 @@ export function ConnectDialog({ open, onClose, providers, companies, environment
               </Button>
             </div>
           </div>
+          {Object.entries(secrets).map(([key, value]) => (
+            <div key={key} className="flex flex-col gap-1.5">
+              <span className="field-label">{t("wizard.done.secretLabel")}</span>
+              <div className="flex items-center gap-2">
+                <code className="min-w-0 flex-1 break-all rounded-[10px] border border-border bg-black/20 px-3 py-2 font-mono text-[12.5px] text-text-2">{value}</code>
+                <Button variant="secondary" size="sm" onClick={() => void copySecret(value)} aria-label={t("wizard.done.copySecret")}>
+                  {copiedSecret ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+                  {copiedSecret ? tc("copied") : tc("copy")}
+                </Button>
+              </div>
+              <p className="field-hint">{t("wizard.done.secretHint")}</p>
+            </div>
+          ))}
           <p className="text-[13.5px] text-text-3">{provider.webhookInstructions[locale === "pt" ? "pt" : "en"]}</p>
           {urlHasSecret && <p role="alert" className="text-[13px] text-warn">{t("wizard.done.secretWarning")}</p>}
           <Button variant="accent" className="ml-auto" onClick={onClose}>{t("wizard.done.finish")}</Button>

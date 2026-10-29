@@ -21,6 +21,7 @@ const STATE_BY_SUFFIX: Record<string, CommercialState> = {
   refunded: 'refunded',
   disputed: 'disputed',
 };
+const TIMESTAMP_TOLERANCE_SECONDS = 300;
 const PAYMENT_EVENT = /^(checkout|transparent)\.(completed|refunded|disputed)$/;
 
 interface Payment {
@@ -85,8 +86,8 @@ export class AbacatePayConnector implements Connector {
       },
     ],
     webhookInstructions: {
-      pt: 'Na AbacatePay, abra Integração e crie um webhook. No campo da URL, cole o endereço completo mostrado aqui, inclusive a parte ?webhookSecret=... (ela identifica a sua conexão). Nos eventos, marque checkout.completed, checkout.refunded, checkout.disputed e os equivalentes transparent.*. Salve.',
-      en: 'In AbacatePay, open Integration and create a webhook. In the URL field, paste the full address shown here, including the ?webhookSecret=... part (it identifies your connection). For events, select checkout.completed, checkout.refunded, checkout.disputed and the equivalent transparent.* events. Save.',
+      pt: 'Na AbacatePay, abra Integração e crie um webhook. No campo da URL, cole o endereço completo mostrado aqui, inclusive a parte ?webhookSecret=.... No campo Secret, cole o Secret mostrado aqui (a AbacatePay assina os avisos com ele). Nos eventos, marque checkout.completed, checkout.refunded, checkout.disputed e os equivalentes transparent.*. Salve.',
+      en: 'In AbacatePay, open Integration and create a webhook. In the URL field, paste the full address shown here, including the ?webhookSecret=... part. In the Secret field, paste the Secret shown here (AbacatePay signs the notifications with it). For events, select checkout.completed, checkout.refunded, checkout.disputed and the equivalent transparent.* events. Save.',
     },
     supportedFlows: ['checkout', 'transparent'],
   };
@@ -104,6 +105,17 @@ export class AbacatePayConnector implements Connector {
   }
 
   private check(req: InboundRequest, connection: ConnectionView): DeliveryAuth {
+    const id = req.headers['webhook-id'];
+    const timestamp = req.headers['webhook-timestamp'];
+    const signatures = req.headers['webhook-signature'];
+    if (id && timestamp && signatures)
+      return this.checkStandard(
+        req.rawBody,
+        id,
+        timestamp,
+        signatures,
+        connection,
+      );
     const secret = req.query.webhookSecret;
     if (!secret || !sameText(secret, connection.credentials.webhookSecret))
       return { ok: false, reason: 'bad_secret' };
@@ -116,6 +128,41 @@ export class AbacatePayConnector implements Connector {
     return sameText(signature, expected)
       ? { ok: true }
       : { ok: false, reason: 'bad_signature' };
+  }
+
+  /**
+   * Standard Webhooks: HMAC-SHA256 of `id.timestamp.body` with the webhook secret.
+   * A `whsec_` secret is base64 (the key is the decoded part); any other secret is used as written.
+   */
+  private checkStandard(
+    rawBody: Buffer,
+    id: string,
+    timestamp: string,
+    signatures: string,
+    connection: ConnectionView,
+  ): DeliveryAuth {
+    const seconds = Number(timestamp);
+    if (
+      !Number.isInteger(seconds) ||
+      Math.abs(Date.now() / 1000 - seconds) > TIMESTAMP_TOLERANCE_SECONDS
+    )
+      return { ok: false, reason: 'stale_timestamp' };
+    const secret = connection.credentials.webhookSecret;
+    const keys = secret.startsWith('whsec_')
+      ? [Buffer.from(secret.slice(6), 'base64')]
+      : [Buffer.from(secret, 'utf8')];
+    const signed = Buffer.concat([Buffer.from(`${id}.${timestamp}.`), rawBody]);
+    const candidates = signatures
+      .split(' ')
+      .filter((entry) => entry.startsWith('v1,'))
+      .map((entry) => entry.slice(3));
+    const valid = keys.some((key) => {
+      const expected = createHmac('sha256', key)
+        .update(signed)
+        .digest('base64');
+      return candidates.some((candidate) => sameText(candidate, expected));
+    });
+    return valid ? { ok: true } : { ok: false, reason: 'bad_signature' };
   }
 
   parse(req: InboundRequest): ParsedDelivery {

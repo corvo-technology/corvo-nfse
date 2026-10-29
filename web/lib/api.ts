@@ -229,7 +229,9 @@ export const webhooks = {
 };
 export interface IntegrationProvider { id: string; name: string; version: string; credentialFields: { key: string; label: string; secret: boolean; generate?: boolean; inWebhookUrl?: boolean }[]; webhookInstructions: { pt: string; en: string }; supportedFlows: string[] }
 export type IntegrationConnectionState = "draft" | "active" | "paused" | "reauth_required" | "disconnected";
-export interface IntegrationConnection { id: string; provider: string; environment: "test" | "live"; companyId: string; state: IntegrationConnectionState; externalAccountId: string | null; activeFrom: string | null; webhookUrl: string; createdAt: string }
+export interface IntegrationConnection { id: string; provider: string; environment: "test" | "live"; companyId: string; state: IntegrationConnectionState; externalAccountId: string | null; activeFrom: string | null; webhookUrl: string; createdAt: string;
+  /** Only in the create response: secrets the client must paste into the platform. */
+  secrets?: Record<string, string> }
 export interface IntegrationSale {
   id: string; operationKey: string; commercialState: "pending" | "paid" | "refunded" | "disputed" | "canceled"; fiscalStatus: "none" | "blocked" | "needs_attention" | "submitted";
   blockReason: string | null; amountCents: number; currency: string; customer: { name: string | null; email: string | null; taxId: string | null; taxIdMasked: boolean } | null;

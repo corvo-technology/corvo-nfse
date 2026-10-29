@@ -153,12 +153,14 @@ describe('IntegrationsController', () => {
     expect(created.webhookUrl).toBe(
       'https://api.corvo.tech/v1/integrations/inbound/PUBLICID123456789012345?webhookSecret=a%20b%26c',
     );
+    expect(created.secrets).toEqual({ webhookSecret: 'a b&c' });
     (connections.get as jest.Mock).mockResolvedValue(abacate);
     const read = await controller.get(
       req,
       '11111111-1111-4111-8111-111111111111',
     );
     expect(read.webhookUrl).not.toContain('webhookSecret');
+    expect(read).not.toHaveProperty('secrets');
   });
 
   it('read routes require integrations.view and write routes integrations.manage', () => {

@@ -60,7 +60,7 @@ describe("connectProvider", () => {
     for (const name of ["create", "validate", "putRules", "activate"] as const) a[name].mockImplementation(async () => { calls.push(name); return name === "create" ? connection({ state: "draft", webhookUrl: "URL?webhookSecret=s" }) : connection(); });
     const result = await connectProvider(input, a);
     expect(calls).toEqual(["create", "validate", "putRules", "activate"]);
-    expect(result).toEqual({ connection: expect.objectContaining({ id: "c1" }), webhookUrl: "URL?webhookSecret=s" });
+    expect(result).toEqual({ connection: expect.objectContaining({ id: "c1" }), webhookUrl: "URL?webhookSecret=s", secrets: {} });
     expect(a.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "woovi", companyId: "co1", environment: "test", credentials: { appId: "abc" }, activeFrom: expect.any(String) }));
     expect(a.putRules).toHaveBeenCalledWith("c1", [{ service: { description: "Consultoria" }, sendEmail: true }]);
     expect(a.disconnect).not.toHaveBeenCalled();

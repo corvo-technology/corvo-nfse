@@ -100,6 +100,104 @@ describe('AbacatePayConnector.authenticate', () => {
   });
 });
 
+describe('AbacatePayConnector.authenticate with Standard Webhooks', () => {
+  const body = fixture('checkout-completed');
+  const connector = new AbacatePayConnector(undefined);
+  const secretBytes = Buffer.from('0123456789abcdef0123456789abcdef');
+  const whsec = `whsec_${secretBytes.toString('base64')}`;
+  const sign = (
+    key: Buffer | string,
+    id: string,
+    timestamp: string,
+    payload = body,
+  ) =>
+    `v1,${createHmac('sha256', key).update(`${id}.${timestamp}.${payload}`).digest('base64')}`;
+  const now = () => String(Math.floor(Date.now() / 1000));
+  const std = (
+    key: Buffer | string,
+    over: { timestamp?: string; signature?: string; payload?: string } = {},
+  ) => {
+    const timestamp = over.timestamp ?? now();
+    return {
+      rawBody: Buffer.from(over.payload ?? body),
+      headers: {
+        'webhook-id': 'msg_1',
+        'webhook-timestamp': timestamp,
+        'webhook-signature':
+          over.signature ?? sign(key, 'msg_1', timestamp, body),
+      },
+      query: {},
+    };
+  };
+  const withSecret = (webhookSecret: string): ConnectionView => ({
+    ...connection,
+    credentials: { webhookSecret },
+  });
+
+  it('accepts a whsec_ secret (key is the base64-decoded part) with no secret in the URL', async () => {
+    await expect(
+      connector.authenticate(std(secretBytes), withSecret(whsec)),
+    ).resolves.toEqual({ ok: true });
+  });
+  it('accepts a plain secret used as it is', async () => {
+    await expect(
+      connector.authenticate(
+        std('S3CRET-0123456789'),
+        withSecret('S3CRET-0123456789'),
+      ),
+    ).resolves.toEqual({ ok: true });
+  });
+  it('accepts when any of several space-separated signatures matches', async () => {
+    const good = sign(secretBytes, 'msg_1', now());
+    await expect(
+      connector.authenticate(
+        std(secretBytes, { signature: `v1,AAAA ${good}` }),
+        withSecret(whsec),
+      ),
+    ).resolves.toEqual({ ok: true });
+  });
+  it('rejects a wrong signature and a body altered by one byte', async () => {
+    await expect(
+      connector.authenticate(
+        std(secretBytes, { signature: 'v1,AAAA' }),
+        withSecret(whsec),
+      ),
+    ).resolves.toEqual({ ok: false, reason: 'bad_signature' });
+    const request = std(secretBytes);
+    request.rawBody = Buffer.from(body + ' ');
+    await expect(
+      connector.authenticate(request, withSecret(whsec)),
+    ).resolves.toEqual({ ok: false, reason: 'bad_signature' });
+  });
+  it('rejects a signature made with another secret', async () => {
+    await expect(
+      connector.authenticate(std(Buffer.from('other')), withSecret(whsec)),
+    ).resolves.toEqual({ ok: false, reason: 'bad_signature' });
+  });
+  it('rejects a timestamp outside five minutes, old or in the future, even if the signature is right', async () => {
+    for (const offset of [-301, 301]) {
+      const timestamp = String(Math.floor(Date.now() / 1000) + offset);
+      await expect(
+        connector.authenticate(
+          std(secretBytes, { timestamp }),
+          withSecret(whsec),
+        ),
+      ).resolves.toEqual({ ok: false, reason: 'stale_timestamp' });
+    }
+    await expect(
+      connector.authenticate(
+        std(secretBytes, { timestamp: 'abc' }),
+        withSecret(whsec),
+      ),
+    ).resolves.toEqual({ ok: false, reason: 'stale_timestamp' });
+  });
+  it('without those headers the legacy secret in the URL still works', async () => {
+    await expect(
+      connector.authenticate(req(body, { signature: null }), connection),
+    ).resolves.toEqual({ ok: true });
+  });
+});
+
 describe('AbacatePayConnector.parse', () => {
   const connector = new AbacatePayConnector(undefined);
   it.each([

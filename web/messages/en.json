@@ -2194,6 +2194,9 @@
         "body": "One step left: register this address on the platform so it tells Corvo about every payment.",
         "urlLabel": "Webhook address",
         "secretWarning": "This address contains a secret and is only shown now. Copy and keep it before closing.",
+        "secretLabel": "Secret",
+        "copySecret": "Copy the secret",
+        "secretHint": "Also paste it into the webhook's Secret field on the platform. It signs the notifications with this value.",
         "finish": "Done"
       }
     },

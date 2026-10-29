@@ -133,7 +133,7 @@ describe("Connect wizard", () => {
   });
 
   it("AbacatePay asks for the API key, generates the webhook secret and warns that the secret in the address is shown only once", async () => {
-    mocks.create.mockResolvedValue(connection({ provider: "abacatepay", state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB?webhookSecret=S3" }));
+    mocks.create.mockResolvedValue(connection({ provider: "abacatepay", state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB?webhookSecret=S3", secrets: { webhookSecret: "S3" } }));
     mocks.validate.mockResolvedValue(connection());
     mocks.putRules.mockResolvedValue([]);
     mocks.activate.mockResolvedValue(connection());
@@ -148,6 +148,8 @@ describe("Connect wizard", () => {
     await screen.findByText("Connected!");
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ credentials: { apiKey: "abc_key" } }));
     expect(screen.getByText(/webhookSecret=S3/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Copy the secret" })).toBeTruthy();
+    expect(screen.getByText(/Also paste it into the webhook/)).toBeTruthy();
     expect(screen.getByText(/contains a secret/)).toBeTruthy();
   });
 
