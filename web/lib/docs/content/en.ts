@@ -2555,7 +2555,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     "provider": "woovi",
     "companyId": "<company id>",
     "environment": "test",
-    "credentials": { "appId": "<Woovi AppID>" },
+    "credentials": {},
     "activeFrom": "2026-11-01T00:00:00Z"
   }'`,
         },
@@ -2580,8 +2580,8 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         {
           kind: "list",
           items: [
-            "Credential: `appId`, the account AppID (API/Plugins in the Woovi dashboard). The `test` environment uses the Woovi sandbox and `live` uses the production account.",
-            "In the Woovi dashboard, register the connection `webhookUrl` and select the paid charge event (`OPENPIX:CHARGE_COMPLETED`).",
+            "There is no credential to provide: send `\"credentials\": {}`. Corvo generates the `webhookToken` and returns it in `secrets.webhookToken` only in the creation response. The `test` environment uses the Woovi sandbox and `live` uses the production account.",
+            "In Woovi, create a webhook with the connection `webhookUrl` and the paid charge event (`OPENPIX:CHARGE_COMPLETED`). Under HTTP headers, add an `Authorization` header with the `webhookToken` in the Value field.",
             "The invoice customer is the charge customer, never whoever paid the Pix.",
             "Each charge becomes one invoice, identified by its `correlationID`. The service description on the invoice is the charge `comment`; without one, the company default is used.",
             "Woovi refunds are not tracked yet: cancel the invoice manually if needed.",

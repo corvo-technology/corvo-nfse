@@ -145,6 +145,7 @@ describe('ConnectionService', () => {
     expect(spy).toHaveBeenCalledWith(
       expect.objectContaining({ appId: 'abc' }),
       'live',
+      { publicId: c.publicId },
     );
   });
 
@@ -175,6 +176,7 @@ describe('ConnectionService', () => {
       expect(spy).toHaveBeenLastCalledWith(
         { appId: 'new-key', hook: before.hook },
         'test',
+        { publicId: expect.any(String) as string },
       );
       const after = service.toView(updated).credentials;
       expect(after).toEqual({ appId: 'new-key', hook: before.hook });

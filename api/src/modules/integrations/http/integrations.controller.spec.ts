@@ -113,6 +113,49 @@ describe('IntegrationsController', () => {
     expect(result).not.toHaveProperty('publicId');
     expect(result).not.toHaveProperty('tenantId');
   });
+  it('create reveals a once-only token without putting it in the webhook url', async () => {
+    const { controller, connections } = setup();
+    const registry = (controller as unknown as { registry: ConnectorRegistry })
+      .registry;
+    registry.register({
+      manifest: {
+        id: 'tokened',
+        name: 'T',
+        version: '1',
+        credentialFields: [
+          {
+            key: 'webhookToken',
+            label: 'Token',
+            secret: true,
+            generate: true,
+            revealOnce: true,
+          },
+        ],
+        webhookInstructions: { pt: '', en: '' },
+        supportedFlows: [],
+      },
+      authenticate: () => Promise.resolve({ ok: true }),
+      parse: () => ({ kind: 'test' }),
+      normalize: () => Promise.reject(new Error('x')),
+      validateConnection: () => Promise.resolve({ externalAccountId: 'a' }),
+    });
+    (connections.create as jest.Mock).mockResolvedValue({
+      ...connection,
+      provider: 'tokened',
+    });
+    (connections as unknown as { toView: jest.Mock }).toView = jest
+      .fn()
+      .mockReturnValue({ credentials: { webhookToken: 'tok_abc' } });
+    const created = await controller.create(req, {
+      provider: 'tokened',
+      companyId: 'co',
+      environment: 'test',
+      credentials: {},
+    });
+    expect(created.secrets).toEqual({ webhookToken: 'tok_abc' });
+    expect(created.webhookUrl).not.toContain('tok_abc');
+    expect(created.webhookUrl).not.toContain('?');
+  });
   it('create puts generated URL secrets in the webhook url once; reading never does', async () => {
     const { controller, connections } = setup();
     const registry = (controller as unknown as { registry: ConnectorRegistry })

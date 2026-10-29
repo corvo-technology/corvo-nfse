@@ -2532,7 +2532,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     "provider": "woovi",
     "companyId": "<id da empresa>",
     "environment": "test",
-    "credentials": { "appId": "<AppID da Woovi>" },
+    "credentials": {},
     "activeFrom": "2026-11-01T00:00:00Z"
   }'`,
         },
@@ -2557,8 +2557,8 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         {
           kind: "list",
           items: [
-            "Credencial: `appId`, o AppID da conta (API/Plugins no painel da Woovi). O ambiente `test` usa o sandbox da Woovi e `live` usa a conta de produção.",
-            "No painel da Woovi, cadastre o `webhookUrl` da conexão e marque o evento de cobrança paga (`OPENPIX:CHARGE_COMPLETED`).",
+            "Não há credencial para informar: envie `\"credentials\": {}`. A Corvo gera o `webhookToken` e o devolve em `secrets.webhookToken` só na resposta da criação. O ambiente `test` usa o sandbox da Woovi e `live` usa a conta de produção.",
+            "Na Woovi, crie um webhook com o `webhookUrl` da conexão e o evento de cobrança paga (`OPENPIX:CHARGE_COMPLETED`). Em Cabeçalhos HTTP, adicione o cabeçalho `Authorization` com o `webhookToken` no campo Valor.",
             "O tomador da nota é o cliente da cobrança, nunca quem pagou o Pix.",
             "Cada cobrança vira uma nota, identificada pelo `correlationID`. A descrição do serviço na nota é o `comment` da cobrança; sem ele, vale o padrão da empresa.",
             "Reembolsos da Woovi ainda não são acompanhados: se precisar, cancele a nota manualmente.",

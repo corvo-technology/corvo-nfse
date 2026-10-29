@@ -2191,10 +2191,9 @@
         "title": "Conectado!",
         "body": "Falta só um passo: cadastre este endereço na plataforma para ela avisar a Corvo a cada pagamento.",
         "urlLabel": "Endereço do webhook",
-        "secretWarning": "Este endereço tem um segredo e só aparece agora. Copie e guarde antes de fechar.",
+        "secretWarning": "Estes dados só aparecem agora. Copie e guarde antes de fechar.",
         "secretLabel": "Secret",
         "copySecret": "Copiar o secret",
-        "secretHint": "Cole também no campo Secret do webhook na plataforma. Ela usa esse valor para assinar os avisos.",
         "finish": "Concluir"
       },
       "noPermission": "Para usar esta tela, peça a permissão de gerenciar integrações."

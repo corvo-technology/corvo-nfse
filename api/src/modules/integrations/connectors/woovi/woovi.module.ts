@@ -1,7 +1,6 @@
 import { Module, type OnModuleInit } from '@nestjs/common';
 import { ConnectorRegistry } from '../../domain/connector-registry';
 import { IntegrationsModule } from '../../integrations.module';
-import { WooviClient } from './woovi.client';
 import { WooviConnector } from './woovi.connector';
 import { WooviPublicKeyProvider } from './woovi-public-key.provider';
 
@@ -14,7 +13,6 @@ import { WooviPublicKeyProvider } from './woovi-public-key.provider';
       provide: WooviPublicKeyProvider,
       useFactory: () => new WooviPublicKeyProvider(),
     },
-    { provide: WooviClient, useFactory: () => new WooviClient() },
     WooviConnector,
   ],
 })

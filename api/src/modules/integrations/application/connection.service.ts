@@ -94,6 +94,7 @@ export class ConnectionService {
     const { externalAccountId } = await connector.validateConnection(
       this.credentials.open(connection.credentialsEnc),
       connection.environment,
+      { publicId: connection.publicId },
     );
     return this.connections.update({
       ...connection,
@@ -136,6 +137,7 @@ export class ConnectionService {
     const { externalAccountId } = await connector.validateConnection(
       merged,
       connection.environment,
+      { publicId: connection.publicId },
     );
     return this.connections.update({
       ...connection,

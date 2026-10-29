@@ -47,7 +47,6 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
 
   const provider = providers.find((p) => p.id === providerId) ?? null;
   const askedFields = provider?.credentialFields.filter((field) => !field.generate) ?? [];
-  const urlHasSecret = provider?.credentialFields.some((field) => field.inWebhookUrl) ?? false;
   const ready = Boolean(provider && companyId && askedFields.every((field) => (credentials[field.key] ?? "").trim()));
 
   async function submit() {
@@ -151,7 +150,7 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
           </div>
           {Object.entries(secrets).map(([key, value]) => (
             <div key={key} className="flex flex-col gap-1.5">
-              <span className="field-label">{t("wizard.done.secretLabel")}</span>
+              <span className="field-label">{provider.credentialFields.find((field) => field.key === key)?.label ?? t("wizard.done.secretLabel")}</span>
               <div className="flex items-center gap-2">
                 <code className="min-w-0 flex-1 break-all rounded-[10px] border border-border bg-black/20 px-3 py-2 font-mono text-[12.5px] text-text-2">{value}</code>
                 <Button variant="secondary" size="sm" onClick={() => void copySecret(value)} aria-label={t("wizard.done.copySecret")}>
@@ -159,11 +158,10 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
                   {copiedSecret ? tc("copied") : tc("copy")}
                 </Button>
               </div>
-              <p className="field-hint">{t("wizard.done.secretHint")}</p>
             </div>
           ))}
           <p className="text-[13.5px] text-text-3">{provider.webhookInstructions[locale === "pt" ? "pt" : "en"]}</p>
-          {urlHasSecret && <p role="alert" className="text-[13px] text-warn">{t("wizard.done.secretWarning")}</p>}
+          {Object.keys(secrets).length > 0 && <p role="alert" className="text-[13px] text-warn">{t("wizard.done.secretWarning")}</p>}
           <Button variant="accent" className="ml-auto" onClick={backToList}>{t("wizard.done.finish")}</Button>
         </div>
       )}

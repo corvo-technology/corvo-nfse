@@ -81,6 +81,8 @@ export interface CredentialField {
   generate?: boolean;
   /** Appended to the webhook URL as a query parameter named `key`, shown once when the connection is created. */
   inWebhookUrl?: boolean;
+  /** Shown to the client only in the creation response, to paste into the platform (not part of the URL). */
+  revealOnce?: boolean;
 }
 
 export interface ConnectorManifest {
@@ -112,6 +114,8 @@ export interface Connector {
   validateConnection(
     credentials: Record<string, string>,
     environment: IntegrationEnvironment,
+    /** For platforms that identify nothing about the account: the id can come from the connection itself. */
+    connection: { publicId: string },
   ): Promise<{ externalAccountId: string }>;
 }
 

@@ -76,12 +76,14 @@ export class IntegrationsController {
     const shown = this.registry
       .get(connection.provider)
       .manifest.credentialFields.filter(
-        (field) => field.inWebhookUrl && credentials[field.key],
+        (field) =>
+          (field.inWebhookUrl || field.revealOnce) && credentials[field.key],
       );
     const secrets = Object.fromEntries(
       shown.map((field) => [field.key, credentials[field.key]]),
     );
     const query = shown
+      .filter((field) => field.inWebhookUrl)
       .map(
         (field) => `${field.key}=${encodeURIComponent(credentials[field.key])}`,
       )

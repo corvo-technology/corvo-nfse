@@ -48,7 +48,7 @@ it("pendingCount counts only sales that need the customer's action", () => {
 });
 
 describe("connectProvider", () => {
-  const input = { provider: "woovi", companyId: "co1", environment: "test" as const, credentials: { appId: "abc" }, sendEmail: true };
+  const input = { provider: "woovi", companyId: "co1", environment: "test" as const, credentials: {}, sendEmail: true };
   const api = () => ({
     create: vi.fn().mockResolvedValue(connection({ state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB?webhookSecret=s" })),
     validate: vi.fn().mockResolvedValue(connection()), putRules: vi.fn().mockResolvedValue([]), activate: vi.fn().mockResolvedValue(connection()), disconnect: vi.fn().mockResolvedValue(connection({ state: "disconnected" })),
@@ -61,7 +61,7 @@ describe("connectProvider", () => {
     const result = await connectProvider(input, a);
     expect(calls).toEqual(["create", "validate", "putRules", "activate"]);
     expect(result).toEqual({ connection: expect.objectContaining({ id: "c1" }), webhookUrl: "URL?webhookSecret=s", secrets: {} });
-    expect(a.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "woovi", companyId: "co1", environment: "test", credentials: { appId: "abc" }, activeFrom: expect.any(String) }));
+    expect(a.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "woovi", companyId: "co1", environment: "test", credentials: {}, activeFrom: expect.any(String) }));
     expect(a.putRules).toHaveBeenCalledWith("c1", [{ service: {}, sendEmail: true }]);
     expect(a.disconnect).not.toHaveBeenCalled();
   });

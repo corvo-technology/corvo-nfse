@@ -20,7 +20,7 @@ vi.mock("next/navigation", () => ({ useParams: () => ({ id: "c1" }), useRouter: 
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (p: string) => mocks.permissions.has(p), fiscalEnvironment: "test" }) }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ success: mocks.success, error: mocks.error }) }));
 
-const woovi = { id: "woovi", name: "Woovi", version: "1", credentialFields: [{ key: "appId", label: "AppID", secret: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on Woovi." }, supportedFlows: [] };
+const woovi = { id: "woovi", name: "Woovi", version: "1", credentialFields: [{ key: "webhookToken", label: "Webhook token (Authorization header)", secret: true, generate: true, revealOnce: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on Woovi." }, supportedFlows: [] };
 const abacate = { id: "abacatepay", name: "AbacatePay", version: "1", credentialFields: [{ key: "apiKey", label: "AbacatePay API key", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on AbacatePay." }, supportedFlows: [] };
 const company = { id: "co1", legalName: "Acme Ltda", tradeName: "Acme" };
 const connection = (over: Record<string, unknown> = {}) => ({ id: "c1", provider: "woovi", environment: "test", companyId: "co1", state: "active", externalAccountId: "acc", activeFrom: null, webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB", createdAt: "2026-10-29T12:00:00Z", ...over });
@@ -175,11 +175,10 @@ describe("Connect page", () => {
   async function openWoovi() {
     mocks.search = "provider=woovi";
     wrap(<NewIntegrationPage />);
-    await screen.findByLabelText(/AppID/);
+    await screen.findByLabelText(/Company that issues the invoice/);
   }
   const fill = () => {
     fireEvent.change(screen.getByLabelText(/Company that issues the invoice/), { target: { value: "co1" } });
-    fireEvent.change(screen.getByLabelText(/AppID/), { target: { value: "app-123" } });
   };
 
   it("opens straight on the details of the chosen platform", async () => {
@@ -195,8 +194,8 @@ describe("Connect page", () => {
     expect(screen.getByRole("button", { name: /Woovi/ })).toBeTruthy();
   });
 
-  it("connects in one click and shows the webhook address to register", async () => {
-    mocks.create.mockResolvedValue(connection({ state: "draft" }));
+  it("connects with just the company and shows the address plus the token to paste in the Authorization header", async () => {
+    mocks.create.mockResolvedValue(connection({ state: "draft", secrets: { webhookToken: "tok_123" } }));
     mocks.validate.mockResolvedValue(connection());
     mocks.putRules.mockResolvedValue([]);
     mocks.activate.mockResolvedValue(connection());
@@ -205,20 +204,29 @@ describe("Connect page", () => {
     expect(screen.queryByLabelText(/Service description/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Connect" }));
     await screen.findByText("Connected!");
-    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "woovi", companyId: "co1", environment: "test", credentials: { appId: "app-123" } }));
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "woovi", companyId: "co1", environment: "test", credentials: {} }));
     expect(mocks.putRules).toHaveBeenCalledWith("c1", [{ service: {}, sendEmail: true }]);
     expect(screen.getByText("https://api.corvo.tech/v1/integrations/inbound/PUB")).toBeTruthy();
     expect(screen.getByText("Create a webhook on Woovi.")).toBeTruthy();
-    expect(screen.queryByText(/contains a secret/)).toBeNull();
+    expect(screen.getByText("Webhook token (Authorization header)")).toBeTruthy();
+    expect(screen.getByText("tok_123")).toBeTruthy();
+    expect(screen.getByText(/shown only now/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(mocks.push).toHaveBeenCalledWith("/app/integrations");
   });
 
-  it("keeps Connect disabled until the company and the credentials are filled", async () => {
+  it("Woovi asks for nothing but the company, which is already chosen when there is only one", async () => {
     await openWoovi();
+    expect((screen.getByRole("button", { name: "Connect" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("keeps Connect disabled until the credentials the platform asks for are filled", async () => {
+    mocks.search = "provider=abacatepay";
+    wrap(<NewIntegrationPage />);
+    await screen.findByLabelText(/AbacatePay API key/);
     const button = screen.getByRole("button", { name: "Connect" }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
-    fill();
+    fireEvent.change(screen.getByLabelText(/AbacatePay API key/), { target: { value: "abc_key" } });
     expect(button.disabled).toBe(false);
   });
 
@@ -251,24 +259,24 @@ describe("Connect page", () => {
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ credentials: { apiKey: "abc_key" } }));
     expect(screen.getByText(/webhookSecret=S3/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Copy the secret" })).toBeTruthy();
-    expect(screen.getByText(/Also paste it into the webhook/)).toBeTruthy();
-    expect(screen.getByText(/contains a secret/)).toBeTruthy();
+    expect(screen.getByText("Webhook secret")).toBeTruthy();
+    expect(screen.getByText(/shown only now/)).toBeTruthy();
   });
 
   it("members without manage permission cannot use it", async () => {
     mocks.permissions = new Set(["integrations.view"]);
     wrap(<NewIntegrationPage />);
     await screen.findByText(/ask for the permission/);
-    expect(screen.queryByLabelText(/AppID/)).toBeNull();
+    expect(screen.queryByLabelText(/Company that issues the invoice/)).toBeNull();
   });
 });
 
 describe("Connection page", () => {
-  async function openDetails(sales: unknown[] = [], over: Record<string, unknown> = {}) {
+  async function openDetails(sales: unknown[] = [], over: Record<string, unknown> = {}, name = "Woovi") {
     mocks.get.mockResolvedValue(connection(over));
     mocks.sales.mockResolvedValue(sales);
     wrap(<IntegrationDetailPage />);
-    await screen.findByRole("heading", { level: 1, name: "Woovi" });
+    await screen.findByRole("heading", { level: 1, name });
   }
 
   it("shows only what belongs to the integration: settings, connection and disconnect, not the sales", async () => {
@@ -366,21 +374,21 @@ describe("Connection page", () => {
 
   it("changes the stored key without ever showing the old one, and a connection that needed it works again", async () => {
     mocks.updateCredentials.mockResolvedValue(connection({ state: "active" }));
-    await openDetails([], { state: "reauth_required" });
+    await openDetails([], { state: "reauth_required", provider: "abacatepay" }, "AbacatePay");
     expect(screen.getByText(/Stored/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Change" }));
     const save = screen.getByRole("button", { name: "Test and save" }) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
     fireEvent.change(screen.getByLabelText("New key"), { target: { value: "  app-new  " } });
     fireEvent.click(save);
-    await waitFor(() => expect(mocks.updateCredentials).toHaveBeenCalledWith("c1", { appId: "app-new" }));
+    await waitFor(() => expect(mocks.updateCredentials).toHaveBeenCalledWith("c1", { apiKey: "app-new" }));
     await waitFor(() => expect(screen.queryByText(/refused the key/)).toBeNull());
     expect(screen.getByRole("switch", { name: "Issue invoices automatically" }).getAttribute("aria-checked")).toBe("true");
   });
 
   it("shows the error and keeps the form open when the platform refuses the new key", async () => {
     mocks.updateCredentials.mockRejectedValue(new Error("Woovi recusou o AppID informado"));
-    await openDetails();
+    await openDetails([], { provider: "abacatepay" }, "AbacatePay");
     fireEvent.click(screen.getByRole("button", { name: "Change" }));
     fireEvent.change(screen.getByLabelText("New key"), { target: { value: "bad" } });
     fireEvent.click(screen.getByRole("button", { name: "Test and save" }));
