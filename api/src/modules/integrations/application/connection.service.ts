@@ -102,6 +102,51 @@ export class ConnectionService {
     });
   }
 
+  /**
+   * Swaps the credentials the client typed (a rotated key, say). The new ones are checked
+   * with the platform first, and a connection that was waiting for them starts working again.
+   */
+  async updateCredentials(
+    tenantId: string,
+    id: string,
+    changes: Record<string, string>,
+  ): Promise<IntegrationConnection> {
+    const connection = await this.get(tenantId, id);
+    if (connection.state === 'disconnected')
+      throw new ConflictException('A disconnected connection cannot be edited');
+    const connector = this.registry.get(connection.provider);
+    const editable = new Set(
+      connector.manifest.credentialFields
+        .filter((field) => !field.generate)
+        .map((field) => field.key),
+    );
+    const keys = Object.keys(changes);
+    if (keys.length === 0)
+      throw new BadRequestException('Send at least one credential to change');
+    for (const key of keys) {
+      if (!editable.has(key))
+        throw new BadRequestException(`Cannot change credential field: ${key}`);
+      if (!changes[key]?.trim())
+        throw new BadRequestException(`Empty credential field: ${key}`);
+    }
+    const merged = {
+      ...this.credentials.open(connection.credentialsEnc),
+      ...Object.fromEntries(keys.map((key) => [key, changes[key].trim()])),
+    };
+    const { externalAccountId } = await connector.validateConnection(
+      merged,
+      connection.environment,
+    );
+    return this.connections.update({
+      ...connection,
+      credentialsEnc: this.credentials.seal(merged),
+      externalAccountId,
+      state:
+        connection.state === 'reauth_required' ? 'active' : connection.state,
+      updatedAt: new Date(),
+    });
+  }
+
   async activate(tenantId: string, id: string): Promise<IntegrationConnection> {
     const connection = await this.get(tenantId, id);
     if (!connection.externalAccountId)

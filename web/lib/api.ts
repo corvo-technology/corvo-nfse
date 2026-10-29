@@ -247,6 +247,7 @@ export const integrations = {
   create: async (data: CreateIntegrationInput) => unwrap(await request<Envelope<IntegrationConnection>>("/integrations/connections", json(data))),
   get: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}`)),
   validate: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/validate`, { method: "POST" })),
+  updateCredentials: async (id: string, credentials: Record<string, string>) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/credentials`, json({ credentials }, "PUT"))),
   activate: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/activate`, { method: "POST" })),
   pause: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/pause`, { method: "POST" })),
   disconnect: async (id: string) => unwrap(await request<Envelope<IntegrationConnection>>(`/integrations/connections/${idPath(id)}/disconnect`, { method: "POST" })),

@@ -11,6 +11,7 @@ import { DetailSkeleton } from "@/components/ui/detail-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
+import { ConnectionCredentials } from "@/components/dashboard/integrations/connection-credentials";
 import { ConnectionInfo } from "@/components/dashboard/integrations/connection-info";
 import { ConnectionSales } from "@/components/dashboard/integrations/connection-sales";
 import { ConnectionSettings } from "@/components/dashboard/integrations/connection-settings";
@@ -105,6 +106,7 @@ export default function IntegrationDetailPage() {
       <Card className="flex flex-col gap-4 p-5">
         <h2 className="font-medium">{t("detail.tabs.connection")}</h2>
         <ConnectionInfo connection={connection} provider={provider} companyName={companyName} />
+        <ConnectionCredentials connection={connection} provider={provider} canManage={canManage} onUpdated={setConnection} />
       </Card>
 
       {canManage && connection.state !== "disconnected" && (

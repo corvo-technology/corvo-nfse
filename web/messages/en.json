@@ -2207,7 +2207,7 @@
       "disconnect": "Disconnect",
       "confirmDisconnect": "Disconnect for good? This connection stops issuing invoices and cannot be turned back on.",
       "confirmYes": "Yes, disconnect",
-      "reconnectHint": "The platform refused the credentials. Disconnect and connect again.",
+      "reconnectHint": "The platform refused the key. Change the key in the Connection section below.",
       "pausedHint": "Paused: sales are kept, but no invoice is issued.",
       "updated": "Connection updated.",
       "sales": {
@@ -2268,7 +2268,17 @@
           "dead": "Failed"
         }
       },
-      "disconnectHint": "Stops issuing invoices and removes this connection."
+      "disconnectHint": "Stops issuing invoices and removes this connection.",
+      "credentials": {
+        "title": "Access key",
+        "hint": "The key is stored securely and never shown again. To change it, enter the new one: it is tested before it takes effect.",
+        "stored": "Stored",
+        "change": "Change",
+        "newValue": "New key",
+        "save": "Test and save",
+        "cancel": "Cancel",
+        "saved": "Key updated."
+      }
     },
     "env": {
       "test": "Test",

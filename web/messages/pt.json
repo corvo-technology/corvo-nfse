@@ -2207,7 +2207,7 @@
       "disconnect": "Desconectar",
       "confirmDisconnect": "Desconectar de vez? Esta conexão para de emitir notas e não pode ser reativada.",
       "confirmYes": "Sim, desconectar",
-      "reconnectHint": "A plataforma recusou as credenciais. Desconecte e conecte de novo.",
+      "reconnectHint": "A plataforma recusou a chave. Troque a chave na seção Conexão, mais abaixo.",
       "pausedHint": "Pausada: as vendas são guardadas, mas nenhuma nota é emitida.",
       "updated": "Conexão atualizada.",
       "sales": {
@@ -2268,7 +2268,17 @@
           "dead": "Falhou"
         }
       },
-      "disconnectHint": "Para de emitir notas e remove esta conexão."
+      "disconnectHint": "Para de emitir notas e remove esta conexão.",
+      "credentials": {
+        "title": "Chave de acesso",
+        "hint": "A chave fica guardada com segurança e nunca é mostrada de novo. Para trocar, informe a nova: ela é testada antes de valer.",
+        "stored": "Guardada",
+        "change": "Trocar",
+        "newValue": "Nova chave",
+        "save": "Testar e salvar",
+        "cancel": "Cancelar",
+        "saved": "Chave atualizada."
+      }
     },
     "env": {
       "test": "Teste",

@@ -8,12 +8,12 @@ import IntegrationDetailPage from "@/app/(dashboard)/app/integrations/[id]/page"
 import messages from "@/messages/en.json";
 
 const mocks = vi.hoisted(() => ({
-  list: vi.fn(), providers: vi.fn(), create: vi.fn(), validate: vi.fn(), activate: vi.fn(), pause: vi.fn(), disconnect: vi.fn(), putRules: vi.fn(), rules: vi.fn(), events: vi.fn(), get: vi.fn(), push: vi.fn(), search: "",
+  list: vi.fn(), providers: vi.fn(), create: vi.fn(), validate: vi.fn(), activate: vi.fn(), pause: vi.fn(), disconnect: vi.fn(), putRules: vi.fn(), updateCredentials: vi.fn(), rules: vi.fn(), events: vi.fn(), get: vi.fn(), push: vi.fn(), search: "",
   sales: vi.fn(), completeCustomer: vi.fn(), retry: vi.fn(), companies: vi.fn(), success: vi.fn(), error: vi.fn(), permissions: new Set<string>(),
 }));
 vi.mock("@/lib/api", async (original) => ({
   ...(await original<typeof import("@/lib/api")>()),
-  integrations: { list: mocks.list, providers: mocks.providers, create: mocks.create, validate: mocks.validate, activate: mocks.activate, pause: mocks.pause, disconnect: mocks.disconnect, get: mocks.get, putRules: mocks.putRules, rules: mocks.rules, events: mocks.events, sales: mocks.sales, completeCustomer: mocks.completeCustomer, retry: mocks.retry },
+  integrations: { list: mocks.list, providers: mocks.providers, create: mocks.create, validate: mocks.validate, activate: mocks.activate, pause: mocks.pause, disconnect: mocks.disconnect, get: mocks.get, putRules: mocks.putRules, updateCredentials: mocks.updateCredentials, rules: mocks.rules, events: mocks.events, sales: mocks.sales, completeCustomer: mocks.completeCustomer, retry: mocks.retry },
   companies: { list: mocks.companies },
 }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "c1" }), useRouter: () => ({ push: mocks.push }), useSearchParams: () => new URLSearchParams(mocks.search) }));
@@ -291,11 +291,36 @@ describe("Connection page", () => {
     await screen.findByRole("switch", { name: "Email the invoice to the customer" });
     expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Disconnect" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Change" })).toBeNull();
+  });
+
+  it("changes the stored key without ever showing the old one, and a connection that needed it works again", async () => {
+    mocks.updateCredentials.mockResolvedValue(connection({ state: "active" }));
+    await openDetails([], { state: "reauth_required" });
+    expect(screen.getByText(/Stored/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    const save = screen.getByRole("button", { name: "Test and save" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("New key"), { target: { value: "  app-new  " } });
+    fireEvent.click(save);
+    await waitFor(() => expect(mocks.updateCredentials).toHaveBeenCalledWith("c1", { appId: "app-new" }));
+    await waitFor(() => expect(screen.queryByText(/refused the key/)).toBeNull());
+    expect(screen.getByRole("switch", { name: "Issue invoices automatically" }).getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("shows the error and keeps the form open when the platform refuses the new key", async () => {
+    mocks.updateCredentials.mockRejectedValue(new Error("Woovi recusou o AppID informado"));
+    await openDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    fireEvent.change(screen.getByLabelText("New key"), { target: { value: "bad" } });
+    fireEvent.click(screen.getByRole("button", { name: "Test and save" }));
+    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith("Woovi recusou o AppID informado"));
+    expect(screen.getByLabelText("New key")).toBeTruthy();
   });
 
   it("tells the client to reconnect when the platform refused the credentials", async () => {
     await openDetails([], { state: "reauth_required" });
-    expect(screen.getByText(/refused the credentials/)).toBeTruthy();
+    expect(screen.getByText(/refused the key/)).toBeTruthy();
     expect(screen.queryByRole("switch", { name: "Issue invoices automatically" })).toBeNull();
   });
 

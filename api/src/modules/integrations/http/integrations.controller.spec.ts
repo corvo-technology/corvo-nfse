@@ -184,6 +184,7 @@ describe('IntegrationsController', () => {
       'activate',
       'pause',
       'disconnect',
+      'updateCredentials',
       'putRules',
       'completeCustomer',
       'retry',

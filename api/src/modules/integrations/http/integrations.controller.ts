@@ -34,6 +34,7 @@ import {
   CompleteCustomerDto,
   CreateConnectionDto,
   PutRulesDto,
+  UpdateCredentialsDto,
 } from './integrations.dto';
 
 const tenantOf = (req: RequestWithAuthContext) =>
@@ -129,6 +130,27 @@ export class IntegrationsController {
   ) {
     return this.present(
       await this.connections.validate(tenantOf(req), id),
+      req,
+    );
+  }
+
+  @Put('connections/:id/credentials')
+  @ApiKeyEndpoint()
+  @RequirePermission('integrations.manage')
+  @ApiOperation({
+    summary: 'Replace credentials (for example a rotated API key)',
+  })
+  async updateCredentials(
+    @Req() req: RequestWithAuthContext,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: UpdateCredentialsDto,
+  ) {
+    return this.present(
+      await this.connections.updateCredentials(
+        tenantOf(req),
+        id,
+        body.credentials,
+      ),
       req,
     );
   }
