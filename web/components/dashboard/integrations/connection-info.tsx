@@ -97,7 +97,7 @@ export function ConnectionInfo({ connection, provider, companyName }: Connection
                       <p className="text-[12.5px] text-text-3">{sale.customer?.name || t("detail.sales.anonymous")} · {money.format(sale.amountCents / 100)} · {t(`detail.sale.${saleState.key}`)}</p>
                     )}
                     {repeated && <p className="text-[12.5px] text-text-4">{t("detail.info.eventRepeated")}</p>}
-                    {event.lastError && !resolved && !saleState && <p className="mt-0.5 text-[12.5px] text-warn">{event.lastError}</p>}
+                    {event.lastError && !resolved && !saleState && <p className="mt-0.5 text-[12.5px] text-warn">{event.lastError === "refund_sale_not_found" ? t("detail.info.refundNotFound") : event.lastError}</p>}
                   </div>
                   <Badge variant={s.tone}>{t(`detail.info.event.${resolved ? "resolved" : s.key}`)}</Badge>
                 </li>

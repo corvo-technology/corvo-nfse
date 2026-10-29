@@ -2225,7 +2225,9 @@
         "needsAttention": "Needs attention",
         "notIssuedRefund": "Refunded, no invoice",
         "blocked": "Not issued",
-        "processing": "Processing"
+        "processing": "Processing",
+        "cancelRequested": "Cancellation requested",
+        "cancelFailed": "Could not cancel the invoice"
       },
       "fixCustomer": "Add CPF/CNPJ",
       "taxIdLabel": "Customer CPF or CNPJ",
@@ -2250,7 +2252,9 @@
         "otherRules": "This connection has {count} per-product rule(s) created through the API. They stay as they are.",
         "save": "Save changes",
         "saved": "Settings saved.",
-        "loadError": "Could not load the settings."
+        "loadError": "Could not load the settings.",
+        "cancelOnRefund": "Cancel the invoice on a refund",
+        "cancelOnRefundHint": "If the customer is refunded on the platform, Corvo asks for the invoice to be cancelled. The invoice credit is not returned. Also select the refund events in the webhook (see Connection)."
       },
       "info": {
         "company": "Company",
@@ -2268,7 +2272,8 @@
           "dead": "Failed",
           "resolved": "Resolved"
         },
-        "eventRepeated": "Same sale as an earlier notification"
+        "eventRepeated": "Same sale as an earlier notification",
+        "refundNotFound": "Refund of a payment that is not a Corvo sale."
       },
       "disconnectHint": "Stops issuing invoices and removes this connection.",
       "credentials": {

@@ -1,0 +1,24 @@
+{
+  "event": "OPENPIX:TRANSACTION_REFUND_RECEIVED",
+  "charge": {
+    "status": "COMPLETED",
+    "value": 4990,
+    "comment": "Consultoria",
+    "transactionID": "tx-charge-1",
+    "correlationID": "pedido-123",
+    "createdAt": "2026-10-29T14:59:00.000Z",
+    "updatedAt": "2026-10-29T16:00:05.000Z"
+  },
+  "pix": {
+    "value": 4990,
+    "time": "2026-10-29T16:00:00.000Z",
+    "endToEndId": "D00000000202610291600REFUND0001",
+    "transactionID": "tx-refund-1",
+    "partial": false
+  },
+  "company": {
+    "id": "company-1",
+    "name": "Minha Loja",
+    "taxID": "11222333000181"
+  }
+}

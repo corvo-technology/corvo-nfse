@@ -237,8 +237,8 @@ export interface IntegrationSale {
   blockReason: string | null; amountCents: number; currency: string; customer: { name: string | null; email: string | null; taxId: string | null; taxIdMasked: boolean } | null;
   paidAt: string | null; invoiceId: string | null; createdAt: string; updatedAt: string;
 }
-export interface IntegrationRuleInput { externalProductId?: string | null; service: { description?: string; code?: string }; sendEmail: boolean; allowAnonymousCustomer?: boolean }
-export interface IntegrationRule { id: string; externalProductId: string | null; service: { description?: string; code?: string }; sendEmail: boolean; allowAnonymousCustomer: boolean }
+export interface IntegrationRuleInput { externalProductId?: string | null; service: { description?: string; code?: string }; sendEmail: boolean; allowAnonymousCustomer?: boolean; cancelOnRefund?: boolean }
+export interface IntegrationRule { id: string; externalProductId: string | null; service: { description?: string; code?: string }; sendEmail: boolean; allowAnonymousCustomer: boolean; cancelOnRefund: boolean }
 export interface IntegrationEvent { id: string; deliveryId: string; externalType: string; state: "received" | "processing" | "retry_pending" | "processed" | "ignored" | "needs_attention" | "dead"; attempts: number; lastError: string | null; operationId: string | null; createdAt: string }
 export interface CreateIntegrationInput { provider: string; companyId: string; environment: "test" | "live"; credentials: Record<string, string>; activeFrom?: string }
 export const integrations = {

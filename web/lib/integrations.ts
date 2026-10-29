@@ -13,7 +13,7 @@ export function connectionStatus(connection: Pick<IntegrationConnection, "state"
 }
 
 export interface SaleStatus {
-  key: "issued" | "refundedAfterInvoice" | "waitingCustomer" | "needsAttention" | "notIssuedRefund" | "blocked" | "processing";
+  key: "issued" | "cancelRequested" | "cancelFailed" | "refundedAfterInvoice" | "waitingCustomer" | "needsAttention" | "notIssuedRefund" | "blocked" | "processing";
   tone: Tone;
   /** The client can supply the missing CPF/CNPJ. */
   canFixCustomer: boolean;
@@ -24,6 +24,8 @@ export interface SaleStatus {
 const status = (key: SaleStatus["key"], tone: Tone, flags: Partial<Pick<SaleStatus, "canFixCustomer" | "canRetry">> = {}): SaleStatus => ({ key, tone, canFixCustomer: false, canRetry: false, ...flags });
 
 export function saleStatus(sale: Pick<IntegrationSale, "fiscalStatus" | "blockReason" | "commercialState" | "invoiceId">): SaleStatus {
+  if (sale.invoiceId && sale.blockReason === "cancel_requested") return status("cancelRequested", "warn");
+  if (sale.invoiceId && sale.blockReason === "cancel_failed") return status("cancelFailed", "danger", { canRetry: true });
   if (sale.invoiceId) return sale.blockReason === "refund_after_invoice" ? status("refundedAfterInvoice", "warn") : status("issued", "accent");
   if (sale.fiscalStatus === "needs_attention")
     return sale.blockReason === "customer_tax_id_missing" ? status("waitingCustomer", "warn", { canFixCustomer: true }) : status("needsAttention", "danger", { canRetry: true });
@@ -35,7 +37,7 @@ export function saleStatus(sale: Pick<IntegrationSale, "fiscalStatus" | "blockRe
 }
 
 /** Sales that wait for the client to do something. */
-export const pendingCount = (sales: IntegrationSale[]): number => sales.filter((sale) => saleStatus(sale).key === "waitingCustomer" || saleStatus(sale).key === "needsAttention").length;
+export const pendingCount = (sales: IntegrationSale[]): number => sales.filter((sale) => saleStatus(sale).key === "waitingCustomer" || saleStatus(sale).key === "needsAttention" || saleStatus(sale).key === "cancelFailed").length;
 
 export type ConnectStep = "create" | "validate" | "rules" | "activate";
 export class ConnectError extends Error {

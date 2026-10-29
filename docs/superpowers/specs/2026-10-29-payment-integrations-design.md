@@ -21,7 +21,7 @@ Fora de escopo desta spec: Hotmart e Kiwify (a arquitetura permite adicioná-las
 | D5 | **Quando emitir:** na confirmação do pagamento, imediatamente. A competência é a data da confirmação no fuso `America/Sao_Paulo`. | Recorte inicial do produto. Outras políticas exigem spec própria. |
 | D6 | **Tomador sem CPF/CNPJ utilizável** (ausente ou mascarado) vira **pendência**; o Corvo não inventa o dado. A regra pode permitir nota sem tomador (`allowAnonymousCustomer`, padrão `false`), como a API já permite. O cliente completa os dados da pendência e reprocessa. | Pix muitas vezes chega sem documento completo. |
 | D7 | **Crédito:** a nota emitida por integração consome crédito e respeita limites exatamente como a API. Em ambiente `test` não consome, como hoje. | Um único caminho de emissão. |
-| D8 | **Reembolso ou disputa nunca cancela nota.** Antes de a nota ser enviada, bloqueia a emissão. Depois, cria pendência para o cliente decidir. | Cancelamento fiscal é decisão explícita (`POST /v1/invoices/:id/cancel`). |
+| D8 | **Disputa nunca cancela nota; reembolso só cancela se a regra pedir (`cancelOnRefund`, desligado por padrão).** Antes de a nota ser enviada, o reembolso bloqueia a emissão. Depois da nota, sem `cancelOnRefund`, cria pendência para o cliente decidir; com ele, a Corvo pede o cancelamento (motivo "Cancelado por reembolso", sem devolver crédito). | Cancelar é decisão do cliente, por regra; reembolso parcial e disputa nunca cancelam. |
 | D9 | **Ordem de entrega:** infraestrutura → Woovi → AbacatePay → Stripe. | Pix tem venda única e fluxo simples. A Stripe junta fatura, Checkout e PaymentIntent no mesmo fato. |
 | D10 | **O ambiente (`test`/`live`) é escolhido na conexão.** Quando a plataforma informa o ambiente no evento (`devMode` na AbacatePay, `livemode` na Stripe), um evento de ambiente diferente é descartado. A Woovi não informa; vale a conexão. | Impede nota de produção disparada por pagamento de teste. |
 
@@ -158,7 +158,7 @@ Schema `corvo`, migrations TypeORM no padrão do repositório, RLS com a mesma p
 
 **Chave de idempotência:** `integ_` + SHA-256 em hexadecimal de `tenantId|environment|provider|externalAccountId|operationKey`. Não entram `connectionId`, regra nem id do evento.
 
-**Reembolso depois da nota:** se a operação já tem `invoice_id` e chega `refunded` ou `disputed`, o `fiscal_status` continua `submitted`, o `commercial_state` muda e o `block_reason` recebe `refund_after_invoice`. Aparece como pendência na API. Nada é cancelado.
+**Reembolso depois da nota:** se a operação já tem `invoice_id` e chega `refunded` ou `disputed`, o `fiscal_status` continua `submitted`, o `commercial_state` muda e o `block_reason` recebe `refund_after_invoice`. Aparece como pendência na API. Se a regra tem `cancelOnRefund` e o estado é `refunded`, a Corvo pede o cancelamento pela porta `InvoiceCancellationPort`: sucesso grava `cancel_requested`; recusa (nota que não pode ser cancelada) grava `needs_attention` + `cancel_failed`, e `retry` tenta de novo. Reembolso que só conhece o pagamento original (Woovi) acha a venda por `externalRefs` (`pixEndToEndId`, `chargeCorrelationId`); sem venda, o aviso é `ignored` com `refund_sale_not_found`.
 
 **Falha na emissão:** erros de validação fiscal (`FiscalValidationError`) viram `needs_attention` com a mensagem; erros de cota/plano viram `needs_attention` com `quota_exceeded`; erros inesperados voltam o evento para `retry_pending`.
 

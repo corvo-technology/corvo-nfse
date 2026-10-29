@@ -29,6 +29,7 @@ import { TypeOrmIntegrationRuleRepository } from '../../infra/typeorm-integratio
 import { AbacatePayConnector } from './abacatepay.connector';
 import type { AbacatePayClient } from './abacatepay.client';
 
+import { FakeCancellation } from '../../testing/fake-cancellation';
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
 if (
   url &&
@@ -52,6 +53,8 @@ let lookup: {
   email: string | null;
   taxId: string | null;
 } = { name: null, email: null, taxId: null };
+
+const cancellation = new FakeCancellation();
 
 class FakeIssuance extends InvoiceIssuancePort {
   invoices = new Map<string, string>();
@@ -78,6 +81,7 @@ describePostgres('AbacatePay connector through the real pipeline', () => {
   async function activeConnection(
     environment: 'test' | 'live' = 'live',
     allowAnonymousCustomer = true,
+    cancelOnRefund = false,
   ) {
     const created = await connections.create(tenant, {
       provider: 'abacatepay',
@@ -93,12 +97,14 @@ describePostgres('AbacatePay connector through the real pipeline', () => {
         service: { code: '010101' },
         sendEmail: false,
         allowAnonymousCustomer,
+        cancelOnRefund,
       },
       {
         externalProductId: 'prod_consultoria',
         service: { code: '020202', description: 'Consultoria' },
         sendEmail: true,
         allowAnonymousCustomer,
+        cancelOnRefund,
       },
     ]);
     const active = await connections.activate(tenant, created.id);
@@ -187,6 +193,7 @@ describePostgres('AbacatePay connector through the real pipeline', () => {
       rules,
       issuance,
       events,
+      cancellation,
     );
     processor = new EventProcessorService(
       events,
@@ -208,6 +215,7 @@ describePostgres('AbacatePay connector through the real pipeline', () => {
     await db.query(`DELETE FROM ${t('integration_operations')}`);
     issuance.invoices.clear();
     issuance.commands = [];
+    cancellation.calls = [];
     lookup = { name: null, email: null, taxId: null };
   });
 
@@ -284,6 +292,43 @@ describePostgres('AbacatePay connector through the real pipeline', () => {
     expect(issuance.invoices.size).toBe(1);
   });
 
+  it('with "cancel on refund" on, a refund after the invoice asks for that invoice to be cancelled, once', async () => {
+    const { publicId, webhookSecret } = await activeConnection(
+      'live',
+      true,
+      true,
+    );
+    await receiver.receive(
+      publicId,
+      delivery(fixture('checkout-completed'), webhookSecret),
+    );
+    await drain();
+    const refunded = fixture('checkout-refunded');
+    await receiver.receive(publicId, delivery(refunded, webhookSecret));
+    // AbacatePay may send the refund again under another id.
+    await receiver.receive(
+      publicId,
+      delivery(refunded.replace('log_ref1', 'log_ref2'), webhookSecret),
+    );
+    await drain();
+    const [invoiceId] = [...issuance.invoices.values()];
+    expect(cancellation.calls).toEqual([
+      {
+        tenantId: tenant,
+        environment: 'live',
+        invoiceId,
+        description: 'Cancelado por reembolso',
+      },
+    ]);
+    const rows: Array<{ fiscal_status: string; block_reason: string }> =
+      await db.query(
+        `SELECT fiscal_status, block_reason FROM ${t('integration_operations')}`,
+      );
+    expect(rows).toEqual([
+      { fiscal_status: 'submitted', block_reason: 'cancel_requested' },
+    ]);
+  });
+
   it('a refund after the invoice leaves the invoice alone and flags it', async () => {
     const { publicId, webhookSecret } = await activeConnection();
     await receiver.receive(
@@ -297,6 +342,7 @@ describePostgres('AbacatePay connector through the real pipeline', () => {
     );
     await drain();
     expect(issuance.invoices.size).toBe(1);
+    expect(cancellation.calls).toHaveLength(0);
     const rows: Array<{
       fiscal_status: string;
       block_reason: string;

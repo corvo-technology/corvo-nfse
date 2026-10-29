@@ -55,6 +55,22 @@ export class EventHandlerService extends EventHandler {
       throw error;
     }
 
+    // An event that only names the original payment is about a sale we already have.
+    if (normalized.refersTo) {
+      const sale = await this.operations.findByExternalRef({
+        tenantId: event.tenantId,
+        connectionId: event.connectionId,
+        ...normalized.refersTo,
+      });
+      if (!sale)
+        return { state: 'ignored', lastError: 'refund_sale_not_found' };
+      normalized = {
+        ...sale.snapshot,
+        commercialState: normalized.commercialState,
+        occurredAt: normalized.occurredAt,
+      };
+    }
+
     const operation = await this.operations.upsertFromNormalized({
       tenantId: event.tenantId,
       connectionId: event.connectionId,

@@ -22,6 +22,8 @@ export class IntegrationRuleOrmEntity {
   @Column({ name: 'send_email', type: 'boolean' }) sendEmail!: boolean;
   @Column({ name: 'allow_anonymous_customer', type: 'boolean' })
   allowAnonymousCustomer!: boolean;
+  @Column({ name: 'cancel_on_refund', type: 'boolean', default: false })
+  cancelOnRefund!: boolean;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })

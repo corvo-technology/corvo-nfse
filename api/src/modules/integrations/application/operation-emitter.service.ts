@@ -21,9 +21,13 @@ import type {
 import { IIntegrationEventRepository } from '../domain/integration-event.repository';
 import { IIntegrationOperationRepository } from '../domain/integration-operation.repository';
 import { IIntegrationRuleRepository } from '../domain/integration-rule.repository';
+import { InvoiceCancellationPort } from '../domain/invoice-cancellation.port';
 import { InvoiceIssuancePort } from '../domain/invoice-issuance.port';
 import type { EventOutcome } from './event-handler';
 import { ConnectionService } from './connection.service';
+
+/** Becomes the fiscal reason text of the cancellation (15 to 255 characters). */
+const REFUND_CANCELLATION_TEXT = 'Cancelado por reembolso';
 
 const COMMERCIAL_BLOCK: Record<string, BlockReason> = {
   refunded: 'refunded',
@@ -41,6 +45,7 @@ export class OperationEmitter {
     private readonly rules: IIntegrationRuleRepository,
     private readonly issuance: InvoiceIssuancePort,
     private readonly events: IIntegrationEventRepository,
+    private readonly cancellation: InvoiceCancellationPort,
   ) {}
 
   /** Throws on unexpected errors so the caller retries; the frozen request makes a retry safe. */
@@ -51,20 +56,7 @@ export class OperationEmitter {
       operation.connectionId,
     );
 
-    if (operation.invoiceId) {
-      if (
-        operation.commercialState === 'refunded' ||
-        operation.commercialState === 'disputed'
-      )
-        await this.operations.setFiscal(
-          id,
-          tenantId,
-          'submitted',
-          'refund_after_invoice',
-        );
-      await this.events.resolveAttention(id, tenantId);
-      return { state: 'processed', operationId: id };
-    }
+    if (operation.invoiceId) return this.afterInvoice(operation);
 
     let frozen = operation.emissionRequest ? operation : null;
     if (!frozen) {
@@ -168,6 +160,72 @@ export class OperationEmitter {
         );
       throw error;
     }
+  }
+
+  /** The sale already has its invoice: only a refund or dispute can still matter. */
+  private async afterInvoice(
+    operation: IntegrationOperation,
+  ): Promise<EventOutcome> {
+    const { id, tenantId } = operation;
+    const refunded = operation.commercialState === 'refunded';
+    if (refunded || operation.commercialState === 'disputed') {
+      const alreadyRequested = operation.blockReason === 'cancel_requested';
+      if (
+        refunded &&
+        (alreadyRequested || (await this.cancelsOnRefund(operation)))
+      ) {
+        if (!alreadyRequested) {
+          const result = await this.cancellation.cancel({
+            tenantId,
+            environment: operation.environment,
+            invoiceId: operation.invoiceId!,
+            description: REFUND_CANCELLATION_TEXT,
+          });
+          if (!result.ok) {
+            await this.operations.setFiscal(
+              id,
+              tenantId,
+              'needs_attention',
+              'cancel_failed',
+            );
+            return {
+              state: 'needs_attention',
+              operationId: id,
+              lastError: result.message,
+            };
+          }
+          await this.operations.setFiscal(
+            id,
+            tenantId,
+            'submitted',
+            'cancel_requested',
+          );
+        }
+      } else {
+        await this.operations.setFiscal(
+          id,
+          tenantId,
+          'submitted',
+          'refund_after_invoice',
+        );
+      }
+    }
+    await this.events.resolveAttention(id, tenantId);
+    return { state: 'processed', operationId: id };
+  }
+
+  /** The client's current choice, read from the rule this sale was issued under. */
+  private async cancelsOnRefund(
+    operation: IntegrationOperation,
+  ): Promise<boolean> {
+    const rules = await this.rules.listByConnection(
+      operation.connectionId,
+      operation.tenantId,
+    );
+    return (
+      rules.find((rule) => rule.id === operation.ruleId)?.cancelOnRefund ===
+      true
+    );
   }
 
   private async stop(

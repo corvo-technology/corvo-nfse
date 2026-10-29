@@ -37,6 +37,7 @@ export class RuleDto {
   @ValidateNested() @Type(() => ServiceDto) service!: ServiceDto;
   @IsBoolean() sendEmail!: boolean;
   @IsOptional() @IsBoolean() allowAnonymousCustomer?: boolean;
+  @IsOptional() @IsBoolean() cancelOnRefund?: boolean;
 }
 
 /** One rule per product and a single default rule (the one without a product). */

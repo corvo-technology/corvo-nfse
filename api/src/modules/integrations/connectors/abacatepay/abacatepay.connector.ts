@@ -88,8 +88,8 @@ export class AbacatePayConnector implements Connector {
       },
     ],
     webhookInstructions: {
-      pt: 'Na AbacatePay, crie um webhook (menu Integração). Cole o endereço do webhook na URL e o Secret no campo Secret. Marque os eventos checkout.completed e transparent.completed e salve.',
-      en: 'In AbacatePay, create a webhook (Integration menu). Paste the webhook address in the URL field and the Secret in the Secret field. Select the checkout.completed and transparent.completed events and save.',
+      pt: 'Na AbacatePay, crie um webhook (menu Integração). Cole o endereço do webhook na URL e o Secret no campo Secret. Marque os eventos checkout.completed e transparent.completed (e, para cancelar a nota quando houver reembolso, também checkout.refunded e transparent.refunded) e salve.',
+      en: 'In AbacatePay, create a webhook (Integration menu). Paste the webhook address in the URL field and the Secret in the Secret field. Select the checkout.completed and transparent.completed events (and, to cancel the invoice on a refund, also checkout.refunded and transparent.refunded) and save.',
     },
     supportedFlows: ['checkout', 'transparent'],
   };

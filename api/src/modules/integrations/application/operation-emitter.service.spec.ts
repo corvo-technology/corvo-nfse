@@ -5,6 +5,11 @@ import {
   MemoryRules,
 } from '../testing/memory-repositories';
 import {
+  InvoiceCancellationPort,
+  type CancelInvoiceCommand,
+  type CancelInvoiceResult,
+} from '../domain/invoice-cancellation.port';
+import {
   InvoiceIssuancePort,
   type IssueInvoiceCommand,
 } from '../domain/invoice-issuance.port';
@@ -33,6 +38,17 @@ class FakeIssuance extends InvoiceIssuancePort {
     const id = `inv${this.byKey.size + 1}`;
     this.byKey.set(command.idempotencyKey, id);
     return Promise.resolve({ invoiceId: id, replay: false });
+  }
+}
+
+class FakeCancellation extends InvoiceCancellationPort {
+  calls: CancelInvoiceCommand[] = [];
+  result: CancelInvoiceResult = { ok: true };
+  error: Error | null = null;
+  cancel(command: CancelInvoiceCommand) {
+    this.calls.push(command);
+    if (this.error) return Promise.reject(this.error);
+    return Promise.resolve(this.result);
   }
 }
 
@@ -87,16 +103,19 @@ function setup() {
       service: { code: '010101' },
       sendEmail: false,
       allowAnonymousCustomer: false,
+      cancelOnRefund: false,
     },
   ];
   const issuance = new FakeIssuance();
   const events = new MemoryEvents();
+  const cancellation = new FakeCancellation();
   const emitter = new OperationEmitter(
     connections,
     operations,
     rules,
     issuance,
     events,
+    cancellation,
   );
   const upsert = (n: NormalizedOperation) =>
     operations.upsertFromNormalized({
@@ -107,7 +126,16 @@ function setup() {
       externalAccountId: 'acc',
       normalized: n,
     });
-  return { emitter, operations, rules, issuance, connection, upsert, events };
+  return {
+    emitter,
+    operations,
+    rules,
+    issuance,
+    connection,
+    upsert,
+    events,
+    cancellation,
+  };
 }
 
 describe('OperationEmitter', () => {
@@ -241,6 +269,126 @@ describe('OperationEmitter', () => {
       fiscalStatus: 'submitted',
       blockReason: 'refund_after_invoice',
       commercialState: 'refunded',
+    });
+  });
+
+  describe('refund after the invoice with "cancel on refund"', () => {
+    const refundedAt = new Date('2026-10-29T15:00:00Z');
+    async function issuedThenRefunded(
+      cancelOnRefund: boolean,
+      state: 'refunded' | 'disputed' = 'refunded',
+    ) {
+      const ctx = setup();
+      ctx.rules.rules = [{ ...ctx.rules.rules[0], cancelOnRefund }];
+      const op = await ctx.upsert(snapshot());
+      await ctx.emitter.run(op);
+      const later = await ctx.upsert(
+        snapshot({ commercialState: state, occurredAt: refundedAt }),
+      );
+      return { ...ctx, op, later };
+    }
+
+    it('asks for the invoice to be cancelled, once, with the fixed reason text', async () => {
+      const { emitter, later, cancellation, operations, op } =
+        await issuedThenRefunded(true);
+      await expect(emitter.run(later)).resolves.toEqual({
+        state: 'processed',
+        operationId: op.id,
+      });
+      expect(cancellation.calls).toEqual([
+        {
+          tenantId: TENANT,
+          environment: 'test',
+          invoiceId: 'inv1',
+          description: 'Cancelado por reembolso',
+        },
+      ]);
+      expect(operations.rows.get(op.id)).toMatchObject({
+        fiscalStatus: 'submitted',
+        blockReason: 'cancel_requested',
+        invoiceId: 'inv1',
+      });
+    });
+
+    it('does nothing more when the same refund arrives again', async () => {
+      const { emitter, later, cancellation, operations, op } =
+        await issuedThenRefunded(true);
+      await emitter.run(later);
+      await emitter.run(operations.rows.get(op.id)!);
+      expect(cancellation.calls).toHaveLength(1);
+    });
+
+    it('stays as before when the setting is off: only flags the refund', async () => {
+      const { emitter, later, cancellation, operations, op } =
+        await issuedThenRefunded(false);
+      await emitter.run(later);
+      expect(cancellation.calls).toHaveLength(0);
+      expect(operations.rows.get(op.id)).toMatchObject({
+        blockReason: 'refund_after_invoice',
+      });
+    });
+
+    it('a dispute never cancels, even with the setting on', async () => {
+      const { emitter, later, cancellation, operations, op } =
+        await issuedThenRefunded(true, 'disputed');
+      await emitter.run(later);
+      expect(cancellation.calls).toHaveLength(0);
+      expect(operations.rows.get(op.id)).toMatchObject({
+        blockReason: 'refund_after_invoice',
+      });
+    });
+
+    it('an invoice that cannot be cancelled asks for attention and keeps the invoice, and trying again cancels', async () => {
+      const { emitter, later, cancellation, operations, op } =
+        await issuedThenRefunded(true);
+      cancellation.result = { ok: false, message: 'not cancellable' };
+      await expect(emitter.run(later)).resolves.toEqual({
+        state: 'needs_attention',
+        operationId: op.id,
+        lastError: 'not cancellable',
+      });
+      expect(operations.rows.get(op.id)).toMatchObject({
+        fiscalStatus: 'needs_attention',
+        blockReason: 'cancel_failed',
+        invoiceId: 'inv1',
+      });
+      cancellation.result = { ok: true };
+      await emitter.run(operations.rows.get(op.id)!);
+      expect(cancellation.calls).toHaveLength(2);
+      expect(operations.rows.get(op.id)).toMatchObject({
+        fiscalStatus: 'submitted',
+        blockReason: 'cancel_requested',
+      });
+    });
+
+    it('an unexpected error propagates so the event is retried, leaving the sale as it was', async () => {
+      const { emitter, later, cancellation, operations, op } =
+        await issuedThenRefunded(true);
+      cancellation.error = new Error('db down');
+      await expect(emitter.run(later)).rejects.toThrow('db down');
+      expect(operations.rows.get(op.id)?.blockReason).toBeNull();
+    });
+
+    it('turning the setting off later does not undo a cancellation already requested', async () => {
+      const { emitter, later, rules, operations, op, cancellation } =
+        await issuedThenRefunded(true);
+      await emitter.run(later);
+      rules.rules = [{ ...rules.rules[0], cancelOnRefund: false }];
+      await emitter.run(operations.rows.get(op.id)!);
+      expect(cancellation.calls).toHaveLength(1);
+      expect(operations.rows.get(op.id)?.blockReason).toBe('cancel_requested');
+    });
+
+    it('notices left waiting for this sale count as processed once the cancellation is requested', async () => {
+      const { emitter, later, events, op } = await issuedThenRefunded(true);
+      events.rows.push({
+        id: 'e1',
+        operationId: op.id,
+        state: 'needs_attention',
+        lastError: 'x',
+      });
+      await emitter.run(later);
+      expect(events.rows[0].state).toBe('processed');
     });
   });
 

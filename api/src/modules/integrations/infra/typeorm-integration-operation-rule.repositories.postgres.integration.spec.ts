@@ -82,6 +82,37 @@ describePostgres('integration operations and rules on real PostgreSQL', () => {
   });
   beforeEach(() => db.query(`DELETE FROM ${t('integration_operations')}`));
 
+  it('findByExternalRef finds the sale by a reference kept in its snapshot, in this connection only', async () => {
+    const sale = await upsert(
+      normalized({
+        operationKey: 'charge:with-ref',
+        externalRefs: { pixEndToEndId: 'E-1' },
+      }),
+    );
+    await upsert(
+      normalized({
+        operationKey: 'charge:other',
+        externalRefs: { pixEndToEndId: 'E-2' },
+      }),
+    );
+    const find = (ref: string, value: string, conn = connectionId) =>
+      ops.findByExternalRef({
+        tenantId: tenant,
+        connectionId: conn,
+        ref,
+        value,
+      });
+    await expect(find('pixEndToEndId', 'E-1')).resolves.toMatchObject({
+      id: sale.id,
+      operationKey: 'charge:with-ref',
+    });
+    await expect(find('pixEndToEndId', 'nope')).resolves.toBeNull();
+    await expect(find('otherRef', 'E-1')).resolves.toBeNull();
+    await expect(
+      find('pixEndToEndId', 'E-1', randomUUID()),
+    ).resolves.toBeNull();
+  });
+
   it('upsert twice with the same key keeps one row and rehydrates dates', async () => {
     const first = await upsert(normalized());
     const second = await upsert(normalized());
@@ -282,12 +313,14 @@ describePostgres('integration operations and rules on real PostgreSQL', () => {
         service: { code: '010101' },
         sendEmail: true,
         allowAnonymousCustomer: false,
+        cancelOnRefund: false,
       },
       {
         externalProductId: 'p1',
         service: { code: '020202' },
         sendEmail: false,
         allowAnonymousCustomer: true,
+        cancelOnRefund: false,
       },
     ]);
     expect(await rules.countByConnection(connectionId, tenant)).toBe(2);
@@ -297,6 +330,7 @@ describePostgres('integration operations and rules on real PostgreSQL', () => {
         service: { code: '030303' },
         sendEmail: false,
         allowAnonymousCustomer: false,
+        cancelOnRefund: false,
       },
     ]);
     const list = await rules.listByConnection(connectionId, tenant);

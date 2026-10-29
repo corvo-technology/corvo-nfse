@@ -50,7 +50,8 @@ export class OperationService {
   /** Runs the operation again, reusing the stored request when there is one. */
   async retry(tenantId: string, id: string): Promise<EventOutcome> {
     const operation = await this.get(tenantId, id);
-    if (operation.invoiceId)
+    // An invoice only reopens the sale when asking for its cancellation failed.
+    if (operation.invoiceId && operation.blockReason !== 'cancel_failed')
       throw new ConflictException('This operation already has an invoice');
     return this.emitter.run(operation);
   }

@@ -99,6 +99,95 @@ function setup(normalize: Connector['normalize']) {
   };
 }
 
+describe('EventHandlerService with an event that only names the original payment', () => {
+  const sale: NormalizedOperation = {
+    ...normalized,
+    operationKey: 'charge:pedido-123',
+    externalRefs: {
+      pixEndToEndId: 'E-ORIG',
+      chargeCorrelationId: 'pedido-123',
+    },
+    customer: {
+      name: 'Maria',
+      email: null,
+      taxId: '52998224725',
+      taxIdMasked: false,
+    },
+    description: 'Consultoria',
+    amountCents: 4990,
+  };
+  const refund: NormalizedOperation = {
+    operationKey: 'refund:E-ORIG',
+    commercialState: 'refunded',
+    externalRefs: {},
+    refersTo: { ref: 'pixEndToEndId', value: 'E-ORIG' },
+    occurredAt: new Date('2099-01-01T00:00:00Z'),
+    paidAt: null,
+    currency: 'BRL',
+    amountCents: 4990,
+    discountCents: 0,
+    customer: null,
+    items: [],
+    sellerIssuesInvoice: true,
+  };
+  const existing = (operations: MemoryOperations) =>
+    operations.upsertFromNormalized({
+      tenantId: TENANT,
+      connectionId: 'c1',
+      provider: 'fake',
+      environment: 'test',
+      externalAccountId: 'acc',
+      normalized: sale,
+    });
+
+  it('finds the sale, marks it refunded and keeps what the sale knew', async () => {
+    const { handler, operations, emitter } = setup(
+      jest.fn().mockResolvedValue(refund),
+    );
+    const original = await existing(operations);
+    await handler.handle(event);
+    expect(operations.rows.size).toBe(1);
+    const stored = operations.rows.get(original.id)!;
+    expect(stored.commercialState).toBe('refunded');
+    expect(stored.operationKey).toBe('charge:pedido-123');
+    expect(stored.snapshot).toMatchObject({
+      customer: { name: 'Maria' },
+      description: 'Consultoria',
+      amountCents: 4990,
+    });
+    expect(emitter.run).toHaveBeenCalledWith(
+      expect.objectContaining({ id: original.id }),
+    );
+  });
+
+  it('a refund for a payment the sale list does not know is ignored, saying why, and creates nothing', async () => {
+    const { handler, operations, emitter } = setup(
+      jest.fn().mockResolvedValue(refund),
+    );
+    await expect(handler.handle(event)).resolves.toEqual({
+      state: 'ignored',
+      lastError: 'refund_sale_not_found',
+    });
+    expect(operations.rows.size).toBe(0);
+    expect(emitter.run).not.toHaveBeenCalled();
+  });
+
+  it('only looks among the sales of this connection', async () => {
+    const { handler, operations } = setup(jest.fn().mockResolvedValue(refund));
+    await operations.upsertFromNormalized({
+      tenantId: TENANT,
+      connectionId: 'another-connection',
+      provider: 'fake',
+      environment: 'test',
+      externalAccountId: 'acc',
+      normalized: sale,
+    });
+    await expect(handler.handle(event)).resolves.toMatchObject({
+      state: 'ignored',
+    });
+  });
+});
+
 describe('EventHandlerService', () => {
   it('normalizes the stored payload, stores the operation and hands it to the emitter', async () => {
     const normalize = jest.fn().mockResolvedValue(normalized);
