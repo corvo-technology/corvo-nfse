@@ -47,6 +47,7 @@ function setup() {
     create: jest.fn().mockResolvedValue(connection),
     get: jest.fn().mockResolvedValue(connection),
     list: jest.fn().mockResolvedValue([connection]),
+    toView: jest.fn().mockReturnValue({ credentials: { appId: 'abc' } }),
     listRules: jest.fn(),
     replaceRules: jest.fn().mockResolvedValue([]),
   } as unknown as ConnectionService;
@@ -93,6 +94,54 @@ describe('IntegrationsController', () => {
     expect(result).not.toHaveProperty('publicId');
     expect(result).not.toHaveProperty('tenantId');
   });
+  it('create puts generated URL secrets in the webhook url once; reading never does', async () => {
+    const { controller, connections } = setup();
+    const registry = (controller as unknown as { registry: ConnectorRegistry })
+      .registry;
+    registry.register({
+      manifest: {
+        id: 'abacate',
+        name: 'A',
+        version: '1',
+        credentialFields: [
+          {
+            key: 'webhookSecret',
+            label: 'S',
+            secret: true,
+            generate: true,
+            inWebhookUrl: true,
+          },
+        ],
+        webhookInstructions: { pt: '', en: '' },
+        supportedFlows: [],
+      },
+      authenticate: () => Promise.resolve({ ok: true }),
+      parse: () => ({ kind: 'test' }),
+      normalize: () => Promise.reject(new Error('x')),
+      validateConnection: () => Promise.resolve({ externalAccountId: 'a' }),
+    });
+    const abacate = { ...connection, provider: 'abacate' };
+    (connections.create as jest.Mock).mockResolvedValue(abacate);
+    (connections as unknown as { toView: jest.Mock }).toView = jest
+      .fn()
+      .mockReturnValue({ credentials: { webhookSecret: 'a b&c' } });
+    const created = await controller.create(req, {
+      provider: 'abacate',
+      companyId: 'co',
+      environment: 'test',
+      credentials: {},
+    });
+    expect(created.webhookUrl).toBe(
+      'https://api.corvo.tech/v1/integrations/inbound/PUBLICID123456789012345?webhookSecret=a%20b%26c',
+    );
+    (connections.get as jest.Mock).mockResolvedValue(abacate);
+    const read = await controller.get(
+      req,
+      '11111111-1111-4111-8111-111111111111',
+    );
+    expect(read.webhookUrl).not.toContain('webhookSecret');
+  });
+
   it('read routes require integrations.view and write routes integrations.manage', () => {
     const permission = (name: keyof IntegrationsController) =>
       Reflect.getMetadata(

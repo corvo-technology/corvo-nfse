@@ -1,0 +1,39 @@
+{
+  "id": "log_tr1",
+  "event": "transparent.completed",
+  "apiVersion": 2,
+  "devMode": true,
+  "data": {
+    "transparent": {
+      "id": "pix_char_1",
+      "externalId": null,
+      "amount": 2500,
+      "paidAmount": null,
+      "platformFee": 80,
+      "items": [],
+      "methods": ["PIX"],
+      "frequency": "ONE_TIME",
+      "status": "PAID",
+      "devMode": true,
+      "customerId": "cust_2",
+      "createdAt": "2026-10-29T14:00:00.000Z",
+      "updatedAt": "2026-10-29T14:05:00.000Z",
+      "receiptUrl": "https://app.abacatepay.com/receipt/pix_char_1",
+      "metadata": {
+        "pedidoId": "p-9"
+      }
+    },
+    "customer": {
+      "id": "cust_2",
+      "name": "Carlos",
+      "email": "carlos@example.com",
+      "taxId": "529.982.247-25"
+    },
+    "payerInformation": {
+      "method": "PIX",
+      "name": "Carlos",
+      "taxId": "529.982.247-25",
+      "isSameAsCustomer": true
+    }
+  }
+}

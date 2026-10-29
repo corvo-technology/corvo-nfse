@@ -77,6 +77,8 @@ export interface CredentialField {
   secret: boolean;
   /** The platform generates the value on connection creation when the client sends none. */
   generate?: boolean;
+  /** Appended to the webhook URL as a query parameter named `key`, shown once when the connection is created. */
+  inWebhookUrl?: boolean;
 }
 
 export interface ConnectorManifest {

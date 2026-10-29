@@ -69,7 +69,21 @@ export class IntegrationsController {
       ...body,
       activeFrom: body.activeFrom ? new Date(body.activeFrom) : undefined,
     });
-    return this.present(connection);
+    // Secrets that belong in the URL (e.g. AbacatePay's webhookSecret) are shown only here.
+    const { credentials } = this.connections.toView(connection);
+    const query = this.registry
+      .get(connection.provider)
+      .manifest.credentialFields.filter(
+        (field) => field.inWebhookUrl && credentials[field.key],
+      )
+      .map(
+        (field) => `${field.key}=${encodeURIComponent(credentials[field.key])}`,
+      )
+      .join('&');
+    const presented = this.present(connection);
+    return query
+      ? { ...presented, webhookUrl: `${presented.webhookUrl}?${query}` }
+      : presented;
   }
 
   @Get('connections')
