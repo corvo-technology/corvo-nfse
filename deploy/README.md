@@ -12,6 +12,12 @@ This directory contains the Dockerfiles for the API, worker, and web application
 
 From the repository root, run `node scripts/setup-env.mjs` to generate the env files. Follow [the self-hosting guide](../SELF_HOSTING.md) to start either environment.
 
+## Web build variables
+
+Next.js inlines `NEXT_PUBLIC_*` values into the browser bundle at build time. Supply them as build variables or Docker build args (`docker build -f deploy/Dockerfile.web --build-arg NEXT_PUBLIC_META_PIXEL_ID=... .`), or through Compose `web.build.args`. Setting runtime environment variables does not update these values; rebuild the image after changing them.
+
+The web Docker build logs `NEXT_PUBLIC_META_PIXEL_ID`, `NEXT_PUBLIC_GA_ID`, and `NEXT_PUBLIC_API_URL` and fails if `NEXT_PUBLIC_META_PIXEL_ID` is empty. To intentionally build without Meta Pixel, pass `--build-arg ALLOW_MISSING_PIXEL=1`, or set `ALLOW_MISSING_PIXEL=1` in the Compose build environment (passed through by `web.build.args`). Next.js also warns about a missing pixel in production without failing the build.
+
 ## RTC calculator (Calculadora de Tributos)
 
 The stack includes an internal `rtc-calculator` service (`Dockerfile.rtc`, Java 21 + the official jar). It is reachable only inside the Compose network — no ports are published. Building it requires two variables:

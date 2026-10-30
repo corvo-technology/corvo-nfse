@@ -2,6 +2,12 @@ import { withPostHogConfig } from "@posthog/nextjs-config";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
+if (process.env.NODE_ENV === "production" && !process.env.NEXT_PUBLIC_META_PIXEL_ID) {
+  console.warn(
+    "NEXT_PUBLIC_META_PIXEL_ID is empty: Meta Pixel will be disabled. Set it as a build variable before building (Docker: --build-arg NEXT_PUBLIC_META_PIXEL_ID=... or compose build.args); runtime environment variables cannot update the browser bundle.",
+  );
+}
+
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 /** Private screens must never be indexed, even when linked from elsewhere. */
