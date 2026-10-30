@@ -156,7 +156,7 @@ export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarPr
             className="h-1 overflow-hidden rounded-full bg-track"
           >
             <div
-              className={cn("h-full rounded-full transition-all duration-500", nearLimit ? "bg-warn" : "bg-accent")}
+              className={cn("h-full rounded-full transition-[width] duration-500", nearLimit ? "bg-warn" : "bg-accent")}
               style={{ width: `${pct}%` }}
             />
           </div>

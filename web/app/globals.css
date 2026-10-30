@@ -24,9 +24,17 @@
   --ok: #4ade80;
   --danger-surface: #1c1210;
   --danger-border: #3a2218;
+  --paper: #e9e7df;
+  --paper-edge: #d3d0c5;
+  --ink: #0d0d0c;
+  --ink-2: #4a4944;
 }
 
 @theme inline {
+  --color-paper: var(--paper);
+  --color-paper-edge: var(--paper-edge);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-alt: var(--surface-alt);
@@ -231,7 +239,7 @@ html {
 
 @layer components {
   .btn {
-    @apply inline-flex min-h-9 shrink-0 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-[8px] px-4 text-[13.5px] font-medium transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+    @apply inline-flex min-h-9 shrink-0 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-[8px] px-4 text-[13.5px] font-medium transition-[color,background-color,border-color,opacity,transform,box-shadow] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
   }
   .btn-sm {
     @apply min-h-8 rounded-[7px] px-3 text-[12.5px];

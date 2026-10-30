@@ -57,12 +57,22 @@ export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }
       cell: (inv) => (
         <div className="flex min-w-0 flex-col">
           <span className="truncate text-text"><Link href={`/app/invoices/${inv.id}`} className="hover:text-accent">{inv.customerName || t("anonymousCustomer")}</Link></span>
-          <span className="truncate font-mono text-[12px] font-normal text-text-4">
-            {inv.externalId ?? inv.id.slice(0, 12)}
-          </span>
+          {(inv.status === "rejected" || inv.status === "failed") && (inv.lastErrorMessage || inv.lastErrorCode) ? (
+            <span className="truncate text-[12px] font-normal text-danger">{inv.lastErrorMessage ?? inv.lastErrorCode}</span>
+          ) : (
+            <span className="truncate font-mono text-[12px] font-normal text-text-4">
+              {inv.externalId ?? inv.id.slice(0, 12)}
+            </span>
+          )}
         </div>
       ),
       className: "max-w-[320px]",
+    },
+    {
+      id: "number",
+      header: t("table.number"),
+      align: "right",
+      cell: (inv) => <span className="font-mono text-[13px] text-text-3">{inv.nfseNumber ?? "—"}</span>,
     },
     {
       id: "amount",

@@ -13,15 +13,15 @@ export function DashboardShowcase() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section id="features" className="px-6 sm:px-10 pb-14 sm:pb-22 flex flex-col items-center gap-9">
-      <div className="flex flex-col items-center gap-2.5 text-center">
-        <span className="font-mono text-xs text-accent tracking-[0.14em]">
-          {t("eyebrow")}
-        </span>
-        <h2 className="text-[34px] font-semibold tracking-[-0.04em] text-wrap-balance">
+    <section
+      id="features"
+      className="bg-paper text-ink px-6 sm:px-10 pt-[calc(6vw+48px)] pb-[calc(6vw+48px)] flex flex-col items-center gap-10 [clip-path:polygon(0_6vw,100%_0,100%_calc(100%-6vw),0_100%)]"
+    >
+      <div className="flex flex-col items-start gap-3 w-full max-w-[1120px]">
+        <h2 className="max-w-[640px] text-[clamp(32px,4.4vw,56px)] font-semibold leading-[1.02] tracking-[-0.035em] text-balance">
           {t("title")}
         </h2>
-        <p className="max-w-[560px] text-[17px] leading-[1.55] text-text-3 text-pretty">
+        <p className="max-w-[560px] text-[17px] leading-[1.55] text-ink-2 text-pretty">
           {t("description")}
         </p>
       </div>
@@ -34,8 +34,6 @@ export function DashboardShowcase() {
         transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
         className="w-full max-w-[1120px] relative"
       >
-        {/* Glow behind image */}
-        <div className="absolute inset-0 -z-10 blur-[80px] opacity-20 bg-accent rounded-full scale-90" />
         <Image
           src="/dash/dashboard-hero-2000x1180.png"
           alt={t("alt")}
@@ -43,7 +41,7 @@ export function DashboardShowcase() {
           height={1180}
           // Rendered at most 1120px wide (max-w-[1120px] with px-6/px-10 padding).
           sizes={HERO_IMAGE_SIZES}
-          className="w-full h-auto rounded-2xl border border-border"
+          className="w-full h-auto rounded-[8px] shadow-[0_24px_60px_-28px_rgba(13,13,12,0.7)]"
           priority
         />
       </motion.div>

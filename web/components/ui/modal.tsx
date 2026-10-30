@@ -90,7 +90,7 @@ export function Modal({ open, onClose, title, children, wide }: ModalProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`modal-in flex max-h-[92dvh] w-full flex-col rounded-t-[16px] border border-border bg-surface shadow-2xl outline-none sm:max-h-[85dvh] sm:rounded-[14px] ${
+        className={`modal-in flex max-h-[92dvh] w-full flex-col rounded-t-[16px] border border-border bg-surface outline-none sm:max-h-[85dvh] sm:rounded-[14px] ${
           wide ? "sm:max-w-[640px]" : "sm:max-w-[480px]"
         }`}
       >

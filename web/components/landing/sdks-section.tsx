@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { Facet } from "@/components/ui/facet";
 import { ArrowUpRight, Braces, Check, Copy, ShieldCheck, Undo2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { SDKS, sdkRepoUrl, type Sdk } from "@/lib/sdks";
@@ -53,7 +54,7 @@ function CodeWindow() {
   };
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-[20px] border border-white/[0.08] bg-[#0a0a0a] shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]">
+    <div className="min-w-0 overflow-hidden rounded-[8px] border border-border-strong bg-[#0a0a0a]">
       <div
         role="tablist"
         aria-label={t("tabsLabel")}
@@ -89,7 +90,7 @@ function CodeWindow() {
           <CopyButton text={sdk.install} />
         </div>
 
-        <pre className="max-h-[360px] overflow-auto rounded-[11px] border border-white/[0.06] bg-[#0d0d0d] p-4 font-mono text-[12.5px] leading-[1.65] text-text-2">
+        <pre className="max-h-[360px] overflow-auto rounded-[6px] border border-border bg-[#0d0d0d] p-4 font-mono text-[12.5px] leading-[1.65] text-text-2">
           <code>{sdk.snippet}</code>
         </pre>
 
@@ -116,32 +117,17 @@ export function SdksSection() {
   const locale = useLocale();
 
   return (
-    <section id="sdks" className="mx-auto max-w-[1120px] px-6 pb-14 sm:px-10 sm:pb-22">
-      <div className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-[#0e0e0e] px-6 py-12 sm:px-12 sm:py-14">
-        <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-[360px] w-[360px] rounded-full bg-accent/[0.07] blur-[90px]" />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.28]"
-          style={{
-            backgroundImage: "radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)",
-            backgroundSize: "20px 20px",
-            maskImage: "linear-gradient(to bottom left, black, transparent 60%)",
-            WebkitMaskImage: "linear-gradient(to bottom left, black, transparent 60%)",
-          }}
-        />
-
+    <section id="sdks" className="mx-auto max-w-[1120px] px-6 py-16 sm:px-10 sm:py-24">
+      <div>
         <div className="relative grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
           <div className="min-w-0">
-            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent">{t("eyebrow")}</span>
-            <h2 className="mt-3 max-w-[520px] text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] text-text sm:text-[40px]">{t("title")}</h2>
-            <p className="mt-4 max-w-[440px] text-[16px] leading-relaxed text-text-3">{t("description")}</p>
+            <h2 className="max-w-[520px] text-balance text-[clamp(32px,4.4vw,56px)] font-semibold leading-[1.02] tracking-[-0.035em] text-text">{t("title")}</h2>
+            <p className="mt-5 max-w-[440px] text-[16px] leading-relaxed text-text-3 text-pretty">{t("description")}</p>
 
             <ul className="mt-7 flex flex-col gap-3.5">
-              {POINTS.map(({ key, icon: Icon }) => (
-                <li key={key} className="flex items-start gap-3">
-                  <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-white/[0.07] bg-[#161616]">
-                    <Icon size={14} className="text-accent" strokeWidth={1.6} aria-hidden />
-                  </span>
+              {POINTS.map(({ key }) => (
+                <li key={key} className="flex items-start gap-3.5">
+                  <Facet className="mt-[7px]" />
                   <span className="text-[14px] leading-snug text-text-2">{t(`points.${key}`)}</span>
                 </li>
               ))}
@@ -149,7 +135,7 @@ export function SdksSection() {
 
             <ul className="mt-8 flex flex-wrap gap-1.5" aria-label={t("languagesLabel")}>
               {SDKS.map((sdk) => (
-                <li key={sdk.id} className="rounded-full border border-white/[0.07] px-2.5 py-1 text-[12px] text-text-3">{sdk.name}</li>
+                <li key={sdk.id} className="rounded-[4px] border border-border-strong px-2.5 py-1 text-[12px] text-text-3">{sdk.name}</li>
               ))}
             </ul>
 
