@@ -8,7 +8,7 @@ export function Pricing() {
   const t = useTranslations("Pricing");
 
   return (
-    <section id="pricing" className="max-w-[1120px] mx-auto px-6 sm:px-10 pb-14 sm:pb-22">
+    <section id="pricing" className="max-w-[1120px] mx-auto px-6 sm:px-10 pt-16 sm:pt-24 pb-14 sm:pb-22">
       <div className="text-center mb-14">
         <h2 className="text-[clamp(32px,4.4vw,56px)] font-semibold tracking-[-0.035em] text-text leading-[1.02] text-balance">
           {t("title")}

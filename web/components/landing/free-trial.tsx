@@ -1,20 +1,32 @@
 "use client";
 
+import { useRef } from "react";
 import Link from "next/link";
+import { motion, useInView, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 
 export function FreeTrial() {
   const t = useTranslations("FreeTrial");
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-120px" });
+  const reduce = useReducedMotion();
   const title = t("title");
   const [, count, rest] = title.match(/^(\d+)\s+(.*)$/) ?? [null, null, title];
 
   return (
     <section className="bg-accent text-[#06120d] px-6 sm:px-10 pt-[calc(5vw+40px)] pb-[calc(5vw+40px)] [clip-path:polygon(0_5vw,100%_0,100%_calc(100%-5vw),0_100%)]">
       <div className="mx-auto grid max-w-[1120px] items-center gap-10 md:grid-cols-[auto_1fr] md:gap-16">
-        <div className="flex items-end gap-5">
+        <div ref={ref} className="flex items-end gap-5">
           {count && (
-            <span aria-hidden className="text-[clamp(120px,20vw,240px)] font-semibold leading-[0.8] tracking-[-0.04em]">
-              {count}
+            <span aria-hidden className="block overflow-hidden pb-[0.08em]">
+              <motion.span
+                className="block text-[clamp(120px,20vw,240px)] font-semibold leading-[0.8] tracking-[-0.04em]"
+                initial={reduce ? false : { y: "105%" }}
+                animate={inView || reduce ? { y: 0 } : { y: "105%" }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {count}
+              </motion.span>
             </span>
           )}
           <h3 className="max-w-[260px] pb-1 text-[clamp(24px,3vw,36px)] font-semibold leading-[1.05] tracking-[-0.03em] text-balance">

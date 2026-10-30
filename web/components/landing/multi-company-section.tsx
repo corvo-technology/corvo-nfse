@@ -22,8 +22,8 @@ export function MultiCompanySection() {
 
         <ul className="border-t border-border-strong">
           {items.map((key) => (
-            <li key={key} className="flex items-center gap-4 border-b border-border py-4 text-[15.5px] text-text-2">
-              <Facet />
+            <li key={key} className="group flex items-center gap-4 border-b border-border py-4 text-[15.5px] text-text-2 transition-colors hover:text-text">
+              <Facet className="transition-transform duration-200 group-hover:translate-x-1" />
               {t(`items.${key}`)}
             </li>
           ))}

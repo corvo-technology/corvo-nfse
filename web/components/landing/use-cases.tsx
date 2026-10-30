@@ -16,8 +16,8 @@ export function UseCases() {
 
       <dl className="mt-14 border-t border-border-strong">
         {cases.map((key) => (
-          <div key={key} className="grid gap-2 border-b border-border py-7 md:grid-cols-[5fr_7fr] md:gap-10">
-            <dt className="text-[24px] font-medium leading-tight tracking-[-0.02em] text-text">{t(`${key}.title`)}</dt>
+          <div key={key} className="group grid gap-2 border-b border-border py-7 md:grid-cols-[5fr_7fr] md:gap-10">
+            <dt className="text-[24px] font-medium leading-tight tracking-[-0.02em] text-text transition-[transform,color] duration-200 group-hover:translate-x-1.5 group-hover:text-accent">{t(`${key}.title`)}</dt>
             <dd className="max-w-[520px] text-[15.5px] leading-relaxed text-text-3 text-pretty">{t(`${key}.description`)}</dd>
           </div>
         ))}

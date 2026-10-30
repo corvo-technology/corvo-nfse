@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { motion, type Variants } from "motion/react";
 import { useTranslations, useLocale } from "next-intl";
+import { CrowHead } from "@/components/landing/crow-head";
 
 const stagger: Variants = {
   hidden: {},
@@ -35,17 +36,6 @@ const REQUEST_SAMPLE = `curl -X POST https://api.corvo.tech/v1/invoices \\
     "amount": 100,
     "service": { "description": "Consultoria" }
   }'`;
-
-/** The brand mark, drawn large. Same two facets and eye as /logos/corvo-faceted-green.svg, flipped to face the headline. */
-function CrowHead({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden viewBox="14 13 50 37" className={className}>
-      <path d="M17 44L21 21L39 16L45 25L20 47Z" fill="#3fd6a8" />
-      <path d="M39 16L45 25L61 26L45 30L41 44L20 47Z" fill="#3fd6a8" fillOpacity={0.55} />
-      <circle cx="33" cy="24.5" r="2.4" fill="#0a0a0a" />
-    </svg>
-  );
-}
 
 export function Hero() {
   const t = useTranslations("Hero");
