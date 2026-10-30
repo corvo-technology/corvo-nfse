@@ -32,6 +32,7 @@ tmp/
 *.pfx
 .aws/
 .vercel/
+carrosseis/
 
 # Local agent/editor state carried over from the old repositories.
 .agents/

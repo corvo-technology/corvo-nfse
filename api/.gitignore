@@ -36,6 +36,7 @@
 tmp/
 _bmad-output/*
 .codewright-output
+carrosseis
 
 # Logs
 logs
