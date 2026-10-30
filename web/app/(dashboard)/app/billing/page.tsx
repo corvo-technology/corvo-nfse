@@ -118,14 +118,14 @@ export default function BillingPage() {
     <div className="flex max-w-[1000px] flex-col gap-6">
       {header}
 
-      {!billingEnabled && <p role="status" className="banner-info">{t("liveOnly")}</p>}
+      {!billingEnabled && <p role="status" className="banner banner-info">{t("liveOnly")}</p>}
 
       <Card className="dash-in dash-in-1 p-5 sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="eyebrow text-accent">{billing.name}</p>
             <p className="mt-2 flex flex-wrap items-baseline gap-x-1.5">
-              <span className="font-mono text-[36px] font-medium leading-none tracking-tight">{money(billing.monthlyPriceCents)}</span>
+              <span className="text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums">{money(billing.monthlyPriceCents)}</span>
               <span className="text-[14px] text-text-3">{t("perMonth")}</span>
             </p>
           </div>

@@ -93,7 +93,7 @@ export default function OverviewPage() {
                   aria-pressed={period === p}
                   onClick={() => setPeriod(p)}
                   className={cn(
-                    "min-h-9 flex-1 cursor-pointer rounded-[7px] px-3.5 text-[13px] transition-colors",
+                    "min-h-9 flex-1 cursor-pointer whitespace-nowrap rounded-[7px] px-3.5 text-[13px] transition-colors",
                     period === p ? "bg-active text-text" : "text-text-3 hover:text-text"
                   )}
                 >
@@ -123,8 +123,11 @@ export default function OverviewPage() {
           {rejectedRecent.map((invoice) => (
             <li key={invoice.id}>
               <Link href={`/app/invoices/${invoice.id}`} className="flex flex-col gap-1 px-4 py-3 transition-colors hover:bg-hover sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <span className="text-[14px] text-text">{t("attention.rejected")}: {invoice.customerName || invoice.serviceDescription}</span>
-                <span className="font-mono text-[12px] text-danger">{invoice.lastErrorCode ?? invoice.lastErrorMessage}</span>
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-[14px] text-text">{t("attention.rejected")} · {invoice.customerName || invoice.serviceDescription}</span>
+                  {invoice.lastErrorMessage && <span className="truncate text-[13px] text-text-3">{invoice.lastErrorMessage}</span>}
+                </span>
+                {invoice.lastErrorCode && <span className="flex-none font-mono text-[12px] text-danger">{invoice.lastErrorCode}</span>}
               </Link>
             </li>
           ))}

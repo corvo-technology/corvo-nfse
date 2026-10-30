@@ -1134,7 +1134,7 @@
     },
     "table": {
       "id": "ID",
-      "customer": "Cliente",
+      "customer": "Cliente", "number": "Nº",
       "amount": "Valor",
       "status": "Status",
       "created": "Criada"
