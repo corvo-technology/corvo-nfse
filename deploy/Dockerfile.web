@@ -15,12 +15,19 @@ FROM base AS builder
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_GA_ID
 ARG NEXT_PUBLIC_META_PIXEL_ID
+ARG ALLOW_MISSING_PIXEL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_GA_ID=$NEXT_PUBLIC_GA_ID
 ENV NEXT_PUBLIC_META_PIXEL_ID=$NEXT_PUBLIC_META_PIXEL_ID
 
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY web/ ./
+RUN printf 'NEXT_PUBLIC_META_PIXEL_ID=%s\nNEXT_PUBLIC_GA_ID=%s\nNEXT_PUBLIC_API_URL=%s\n' \
+      "$NEXT_PUBLIC_META_PIXEL_ID" "$NEXT_PUBLIC_GA_ID" "$NEXT_PUBLIC_API_URL" \
+  && if [ -z "$NEXT_PUBLIC_META_PIXEL_ID" ] && [ "$ALLOW_MISSING_PIXEL" != "1" ]; then \
+      echo 'ERROR: NEXT_PUBLIC_META_PIXEL_ID is empty. Pass it as a build arg (docker build --build-arg NEXT_PUBLIC_META_PIXEL_ID=... or compose build.args), or set the build arg ALLOW_MISSING_PIXEL=1 to bypass this guard.' >&2; \
+      exit 1; \
+    fi
 # Caps the Next.js build heap so it does not exhaust a small server.
 RUN NODE_OPTIONS=--max-old-space-size=3072 yarn build
 

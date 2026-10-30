@@ -134,6 +134,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: /api/proxy/v1
         NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID:-}
+        ALLOW_MISSING_PIXEL: ${ALLOW_MISSING_PIXEL:-}
     environment:
       API_BASE_URL: http://api:3000
       APP_ORIGIN: ${APP_ORIGIN:?Configure APP_ORIGIN}
