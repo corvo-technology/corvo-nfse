@@ -57,7 +57,7 @@ export function Nav() {
         </Link>
         <Link
           href="/login?mode=signup"
-          className="inline-flex items-center justify-center bg-[#ededec] text-[#0a0a0a] px-4 py-2 rounded-[7px] font-medium text-[14px] transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+          className="inline-flex items-center justify-center bg-[#ededec] text-[#0a0a0a] px-4 py-2 rounded-[7px] font-medium text-[14px] transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
         >
           {t("startFree")}
         </Link>
@@ -71,13 +71,13 @@ export function Nav() {
       >
         <span
           className={cn(
-            "w-4 h-[1.5px] bg-text-2 transition-all duration-200",
+            "w-4 h-[1.5px] bg-text-2 transition-[transform,opacity] duration-200",
             mobileOpen && "rotate-45 translate-y-[3.25px]"
           )}
         />
         <span
           className={cn(
-            "w-4 h-[1.5px] bg-text-2 transition-all duration-200",
+            "w-4 h-[1.5px] bg-text-2 transition-[transform,opacity] duration-200",
             mobileOpen && "-rotate-45 -translate-y-[3.25px]"
           )}
         />

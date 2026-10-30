@@ -21,36 +21,24 @@ export function LandingPage() {
       <Nav />
       <main>
         <Hero />
-        <ScrollReveal>
-          <DashboardShowcase />
-        </ScrollReveal>
+        <DashboardShowcase />
         <ScrollReveal>
           <MultiCompanySection />
         </ScrollReveal>
         <ScrollReveal>
           <FlowSection />
         </ScrollReveal>
-        <ScrollReveal>
-          <IntegrationsSection />
-        </ScrollReveal>
-        <ScrollReveal>
-          <SdksSection />
-        </ScrollReveal>
+        <IntegrationsSection />
+        <SdksSection />
         <ScrollReveal>
           <AgentsSection />
         </ScrollReveal>
-        <ScrollReveal delay={100}>
-          <FreeTrial />
-        </ScrollReveal>
-        <ScrollReveal delay={100}>
-          <Pricing />
-        </ScrollReveal>
+        <FreeTrial />
+        <Pricing />
         <ScrollReveal>
           <UseCases />
         </ScrollReveal>
-        <ScrollReveal>
-          <FaqSection />
-        </ScrollReveal>
+        <FaqSection />
       </main>
       <Footer />
     </div>

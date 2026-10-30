@@ -110,7 +110,7 @@ export function IntegrationsSection() {
             <div className="mt-9 flex flex-wrap items-center gap-x-5 gap-y-3">
               <Link
                 href="/login?mode=signup"
-                className="inline-flex items-center justify-center rounded-[7px] bg-[#ededec] px-4 py-2 text-[14px] font-medium text-[#0a0a0a] transition-all hover:scale-[1.02] hover:opacity-90 active:scale-[0.98]"
+                className="inline-flex items-center justify-center rounded-[7px] bg-[#ededec] px-4 py-2 text-[14px] font-medium text-[#0a0a0a] transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:scale-[1.02] hover:opacity-90 active:scale-[0.98]"
               >
                 {t("cta")}
               </Link>

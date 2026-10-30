@@ -117,8 +117,7 @@ export function SdksSection() {
 
   return (
     <section id="sdks" className="mx-auto max-w-[1120px] px-6 pb-14 sm:px-10 sm:pb-22">
-      <div className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-[#0e0e0e] px-6 py-12 sm:px-12 sm:py-14">
-        <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-[360px] w-[360px] rounded-full bg-accent/[0.07] blur-[90px]" />
+      <div className="relative overflow-hidden rounded-[16px] border border-white/[0.06] bg-[#0e0e0e] px-6 py-12 sm:px-12 sm:py-14">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-[0.28]"
@@ -132,8 +131,7 @@ export function SdksSection() {
 
         <div className="relative grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
           <div className="min-w-0">
-            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent">{t("eyebrow")}</span>
-            <h2 className="mt-3 max-w-[520px] text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] text-text sm:text-[40px]">{t("title")}</h2>
+            <h2 className="max-w-[520px] text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] text-text sm:text-[40px]">{t("title")}</h2>
             <p className="mt-4 max-w-[440px] text-[16px] leading-relaxed text-text-3">{t("description")}</p>
 
             <ul className="mt-7 flex flex-col gap-3.5">

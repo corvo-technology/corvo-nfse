@@ -157,12 +157,7 @@ function FeaturedPlan({
   ) as string[];
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-accent/40 bg-accent-surface p-6 @lg:p-9">
-      {/* ambient glow */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-32 -right-24 h-72 w-72 rounded-full bg-accent/20 blur-[90px]"
-      />
+    <div className="relative overflow-hidden rounded-[16px] border border-accent/40 bg-accent-surface p-6 @lg:p-9">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.35]"
@@ -196,7 +191,7 @@ function FeaturedPlan({
 
         {/* Price */}
         <div className="mt-8 flex flex-wrap items-end gap-x-3 gap-y-1">
-          <span className="text-[48px] @lg:text-[64px] @5xl:text-[76px] font-semibold tracking-[-0.05em] leading-[0.9] text-text tabular-nums">
+          <span className="text-[48px] @lg:text-[64px] @5xl:text-[76px] font-semibold tracking-[-0.03em] leading-[0.9] text-text tabular-nums">
             {isFree ? t("plans.free.price") : <AnimatedBRL cents={total} />}
           </span>
           {!isFree && (
@@ -302,7 +297,7 @@ function PlanLadder({
   const nf = new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US");
 
   return (
-    <div className="flex flex-col rounded-3xl border border-white/[0.07] bg-[#0b0b0b] p-3">
+    <div className="flex flex-col rounded-[16px] border border-white/[0.07] bg-[#0b0b0b] p-3">
       <span className="px-4 pt-3 pb-2 font-mono text-[10px] tracking-[0.14em] text-text-4 uppercase">
         {t("allPlans")}
       </span>

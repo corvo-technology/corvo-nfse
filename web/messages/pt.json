@@ -141,6 +141,13 @@
     "period": "Período",
     "loadFailed": "Não foi possível carregar os dados.",
     "monthlyCycle": "Ciclo mensal do plano",
+    "unavailable": "Indisponível",
+    "attention": {
+      "title": "Precisa de atenção",
+      "rejected": "Nota rejeitada",
+      "creditsLow": "Créditos do ciclo quase no fim",
+      "creditsLowDetail": "{used} de {allowance} usados"
+    },
     "creditsLoadFailed": "Não foi possível carregar os créditos."
   },
   "Connections": {

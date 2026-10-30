@@ -141,6 +141,13 @@
     "period": "Period",
     "loadFailed": "We couldn't load your data.",
     "monthlyCycle": "Monthly plan cycle",
+    "unavailable": "Unavailable",
+    "attention": {
+      "title": "Needs attention",
+      "rejected": "Rejected invoice",
+      "creditsLow": "Cycle credits almost used up",
+      "creditsLowDetail": "{used} of {allowance} used"
+    },
     "creditsLoadFailed": "Could not load credits."
   },
   "Connections": {

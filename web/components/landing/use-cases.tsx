@@ -51,10 +51,8 @@ function Card({
 }) {
   return (
     <div className="w-[300px] shrink-0 rounded-[16px] border border-white/[0.06] bg-[#0a0a0a] p-6 flex flex-col gap-4 select-none">
-      <div className="w-10 h-10 rounded-[10px] bg-[#111] border border-white/[0.06] flex items-center justify-center">
-        <Icon size={18} className="text-[#a1a1a1]" strokeWidth={1.5} />
-      </div>
-      <h3 className="text-[14px] font-medium text-[#ededec] tracking-[-0.01em]">
+      <h3 className="flex items-center gap-2.5 text-[14px] font-medium text-[#ededec] tracking-[-0.01em]">
+        <Icon size={16} className="shrink-0 text-[#a1a1a1]" strokeWidth={1.5} />
         {title}
       </h3>
       <p className="text-[13px] text-[#666] leading-[1.6]">
@@ -123,10 +121,7 @@ export function UseCases() {
     <section className="max-w-[1120px] mx-auto px-6 sm:px-10 pb-14 sm:pb-22">
       {/* Header */}
       <div className="mb-12">
-        <span className="font-mono text-[11px] text-[#666] tracking-[0.12em] uppercase">
-          {t("eyebrow")}
-        </span>
-        <h2 className="text-[34px] font-semibold tracking-[-0.04em] text-[#ededec] mt-3">
+        <h2 className="text-[34px] font-semibold tracking-[-0.04em] text-[#ededec]">
           {t("title")}
         </h2>
         <p className="text-[17px] text-[#666] mt-3 max-w-[520px]">

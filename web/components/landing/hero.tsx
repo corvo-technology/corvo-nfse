@@ -27,79 +27,84 @@ export const fadeUp: Variants = {
   },
 };
 
+const REQUEST_SAMPLE = `curl -X POST https://api.corvo.tech/v1/invoices \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Idempotency-Key: pedido_123_emissao" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "companyTaxId": "11222333000181",
+    "amount": 100,
+    "service": { "description": "Consultoria" }
+  }'`;
+
 export function Hero() {
   const t = useTranslations("Hero");
   const locale = useLocale();
 
   return (
-    <section
-      className="w-full px-6 sm:px-10 pt-16 sm:pt-24 pb-14 sm:pb-20"
-      style={{
-        background:
-          "radial-gradient(120% 80% at 50% 0%, #131a17 0%, #0a0a0a 62%)",
-      }}
-    >
-      <motion.div
-        className="mx-auto max-w-[860px] flex flex-col items-center text-center"
-        initial="hidden"
-        animate="visible"
-        variants={stagger}
-      >
-        {/* Badge pill */}
+    <section className="w-full px-6 sm:px-10 pt-16 sm:pt-24 pb-14 sm:pb-20">
+      <div className="mx-auto grid max-w-[1120px] items-center gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
         <motion.div
-          variants={fadeUp}
-          className="flex items-center gap-2.5 border border-border bg-[#0f0f0f] rounded-full px-3 py-1.5 mb-8"
+          className="flex min-w-0 flex-col items-start"
+          initial="hidden"
+          animate="visible"
+          variants={stagger}
         >
-          <span className="h-[6px] w-[6px] rounded-full bg-accent shrink-0" />
-          <span className="font-mono text-xs text-text-3">
-            {t("badge")}
-          </span>
+          <motion.h1
+            variants={fadeUp}
+            className="font-semibold text-text leading-[1.02] tracking-[-0.04em] mb-5 text-balance"
+            style={{ fontSize: "clamp(36px, 5vw, 64px)" }}
+          >
+            {t("title")}
+          </motion.h1>
+
+          <motion.p
+            variants={fadeUp}
+            className="max-w-[560px] text-[18px] leading-[1.55] text-text-2 text-pretty mb-8"
+          >
+            {t("subtitle")}
+          </motion.p>
+
+          <motion.div
+            variants={fadeUp}
+            className="flex w-full flex-col sm:w-auto sm:flex-row items-center gap-3 mb-5"
+          >
+            <Link
+              href="/login?mode=signup"
+              className="inline-flex items-center justify-center bg-[#ededec] text-[#0a0a0a] px-5.5 py-3 rounded-[8px] text-[15px] font-medium transition-[opacity,transform] hover:opacity-90 active:scale-[0.98] w-full sm:w-auto"
+            >
+              {t("startFree")}
+            </Link>
+            <a
+              href={`/${locale}/docs`}
+              className="inline-flex items-center justify-center border border-border-strong px-5.5 py-3 rounded-[8px] text-[15px] text-[#d4d4d4] transition-[background-color,transform] hover:bg-white/[0.04] active:scale-[0.98] w-full sm:w-auto"
+            >
+              {t("viewDocs")}
+            </a>
+          </motion.div>
+
+          <motion.p variants={fadeUp} className="font-mono text-xs text-text-4">
+            {t("mono")}
+          </motion.p>
         </motion.div>
 
-        {/* H1 */}
-        <motion.h1
-          variants={fadeUp}
-          className="font-semibold text-text leading-[1.02] tracking-[-0.04em] mb-5"
-          style={{ fontSize: "clamp(36px, 5.5vw, 72px)" }}
-        >
-          {t("title")}
-        </motion.h1>
-
-        {/* Subtitle */}
-        <motion.p
-          variants={fadeUp}
-          className="max-w-[600px] text-[19px] leading-[1.55] text-text-2 text-balance mb-8"
-        >
-          {t("subtitle")}
-        </motion.p>
-
-        {/* CTAs */}
-        <motion.div
-          variants={fadeUp}
-          className="flex flex-col sm:flex-row items-center gap-3 mb-6"
-        >
-          <Link
-            href="/login?mode=signup"
-            className="inline-flex items-center justify-center bg-[#ededec] text-[#0a0a0a] px-5.5 py-3 rounded-[8px] text-[15px] font-medium transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] w-full sm:w-auto"
+        <div className="min-w-0 rounded-[10px] border border-border bg-surface">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2.5 font-mono text-xs text-text-4">
+            <span>POST /v1/invoices</span>
+            <span className="text-accent">202 queued</span>
+          </div>
+          <pre
+            tabIndex={0}
+            aria-label="Exemplo de requisição para emitir NFS-e"
+            className="overflow-x-auto p-4 font-mono text-[12.5px] leading-[1.7] text-text-2"
           >
-            {t("startFree")}
-          </Link>
-          <a
-            href={`/${locale}/docs`}
-            className="inline-flex items-center justify-center border border-border-strong px-5.5 py-3 rounded-[8px] text-[15px] text-[#d4d4d4] transition-all hover:bg-white/[0.04] hover:scale-[1.02] active:scale-[0.98] w-full sm:w-auto"
-          >
-            {t("viewDocs")}
-          </a>
-        </motion.div>
-
-        {/* Mono line */}
-        <motion.p
-          variants={fadeUp}
-          className="font-mono text-xs text-text-4 pt-1"
-        >
-          {t("mono")}
-        </motion.p>
-      </motion.div>
+            <code>{REQUEST_SAMPLE}</code>
+          </pre>
+          <p className="border-t border-border px-4 py-2.5 font-mono text-xs text-text-4">
+            GET /v1/invoices/:id · nfse.invoice.authorized
+          </p>
+        </div>
+      </div>
     </section>
   );
 }

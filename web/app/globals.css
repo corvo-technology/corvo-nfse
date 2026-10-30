@@ -231,7 +231,7 @@ html {
 
 @layer components {
   .btn {
-    @apply inline-flex min-h-9 shrink-0 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-[8px] px-4 text-[13.5px] font-medium transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+    @apply inline-flex min-h-9 shrink-0 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-[8px] px-4 text-[13.5px] font-medium transition-[color,background-color,border-color,opacity,transform,box-shadow] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
   }
   .btn-sm {
     @apply min-h-8 rounded-[7px] px-3 text-[12.5px];

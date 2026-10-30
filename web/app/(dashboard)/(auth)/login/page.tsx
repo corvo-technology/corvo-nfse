@@ -25,7 +25,7 @@ type Step = "email" | "code";
 const PERK_KEYS = ["nfse", "multiCompany", "automation", "simpleApi"] as const;
 
 const socialBtn =
-  "group relative flex items-center justify-center gap-2.5 w-full rounded-[10px] border border-white/[0.09] bg-white/[0.03] px-4 py-3 text-[14px] font-medium text-text transition-all hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.99] cursor-pointer";
+  "group relative flex items-center justify-center gap-2.5 w-full rounded-[10px] border border-white/[0.09] bg-white/[0.03] px-4 py-3 text-[14px] font-medium text-text transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.99] cursor-pointer";
 
 function ErrorBox({ message }: { message: string }) {
   return (
@@ -170,17 +170,13 @@ function LoginPageContent() {
             WebkitMaskImage: "radial-gradient(ellipse 60% 55% at 50% 42%, black, transparent 75%)",
           }}
         />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-[18%] h-[320px] w-[420px] -translate-x-1/2 rounded-full bg-accent/[0.09] blur-[110px]"
-        />
 
         <div className="relative flex w-full max-w-[400px] flex-col items-center">
           <Link href="/" aria-label={tCommon("brand")} className="mb-9 transition-opacity hover:opacity-80">
             <CorvoWordmark size={17} variant="green" />
           </Link>
 
-          <div className="w-full rounded-2xl border border-white/[0.07] bg-[#0c0c0c]/80 p-6 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] backdrop-blur-sm sm:p-8">
+          <div className="w-full rounded-2xl border border-white/[0.07] bg-[#0c0c0c] p-6 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] sm:p-8">
             {/* Mode switch */}
             {step === "email" && (
               <div className="relative mb-7 grid grid-cols-2 rounded-full border border-white/[0.07] bg-[#101010] p-1">
@@ -281,7 +277,7 @@ function LoginPageContent() {
                           handleSendCode();
                         }
                       }}
-                      className="mb-4 w-full rounded-[10px] border border-white/[0.09] bg-[#101010] px-4 py-3 text-[14.5px] text-text outline-none transition-all placeholder:text-text-5 focus:border-accent/60 focus:shadow-[0_0_0_4px_rgba(52,211,153,0.08)]"
+                      className="mb-4 w-full rounded-[10px] border border-white/[0.09] bg-[#101010] px-4 py-3 text-[14.5px] text-text outline-none transition-[border-color,box-shadow,background-color] placeholder:text-text-5 focus:border-accent/60 focus:shadow-[0_0_0_4px_rgba(52,211,153,0.08)]"
                     />
 
                     {error && <ErrorBox message={error} />}
@@ -290,7 +286,7 @@ function LoginPageContent() {
                       type="button"
                       onClick={handleSendCode}
                       disabled={loading || !email.trim() || waitSeconds > 0}
-                      className="w-full cursor-pointer rounded-[10px] bg-[#ededec] p-3 text-center text-[14.5px] font-medium text-[#0a0a0a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.15)] transition-all hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="w-full cursor-pointer rounded-[10px] bg-[#ededec] p-3 text-center text-[14.5px] font-medium text-[#0a0a0a] shadow-[inset_0_-1px_0_rgba(0,0,0,0.15)] transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       {loading ? t("magicLink.sending") : t("magicLink.sendCode")}
                     </button>
@@ -312,7 +308,7 @@ function LoginPageContent() {
                             <div
                               key={i}
                               className={cn(
-                                "flex h-14 items-center justify-center rounded-[10px] border bg-[#101010] font-mono text-[22px] font-medium transition-all",
+                                "flex h-14 items-center justify-center rounded-[10px] border bg-[#101010] font-mono text-[22px] font-medium transition-[color,background-color,border-color,opacity,transform,box-shadow]",
                                 current
                                   ? "border-accent/70 shadow-[0_0_0_4px_rgba(52,211,153,0.08)]"
                                   : filled
@@ -351,7 +347,7 @@ function LoginPageContent() {
                       type="button"
                       onClick={() => void handleVerifyCode()}
                       disabled={loading || code.length !== 6 || expired || cookieIssued}
-                      className="mb-4 w-full cursor-pointer rounded-[10px] bg-[#ededec] p-3 text-center text-[14.5px] font-medium text-[#0a0a0a] transition-all hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="mb-4 w-full cursor-pointer rounded-[10px] bg-[#ededec] p-3 text-center text-[14.5px] font-medium text-[#0a0a0a] transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       {loading ? t("magicLink.sending") : t("magicLink.verifyCode")}
                     </button>
@@ -398,10 +394,6 @@ function LoginPageContent() {
 
       {/* Right column -- value panel */}
       <div className="relative hidden flex-col justify-center gap-8 overflow-hidden border-l border-border bg-surface-alt p-12 lg:flex">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-accent/[0.12] blur-[100px]"
-        />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-50"

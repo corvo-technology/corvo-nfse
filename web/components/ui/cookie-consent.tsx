@@ -21,7 +21,7 @@ export function CookieConsent() {
 
   return (
     <div
-      className={`fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-out ${
+      className={`fixed bottom-0 left-0 right-0 z-50 transition-[transform,opacity] duration-300 ease-out ${
         animateIn
           ? "translate-y-0 opacity-100"
           : "translate-y-full opacity-0"
@@ -52,13 +52,13 @@ export function CookieConsent() {
             <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto">
               <button
                 onClick={handleReject}
-                className="flex-1 sm:flex-none bg-transparent border border-border text-text-2 rounded-[8px] px-5 py-2.5 text-[13.5px] font-medium transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                className="flex-1 sm:flex-none bg-transparent border border-border text-text-2 rounded-[8px] px-5 py-2.5 text-[13.5px] font-medium transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
                 {t("reject")}
               </button>
               <button
                 onClick={handleAccept}
-                className="flex-1 sm:flex-none bg-[#ededec] text-[#0a0a0a] rounded-[8px] px-5 py-2.5 text-[13.5px] font-medium transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                className="flex-1 sm:flex-none bg-[#ededec] text-[#0a0a0a] rounded-[8px] px-5 py-2.5 text-[13.5px] font-medium transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
                 {t("accept")}
               </button>

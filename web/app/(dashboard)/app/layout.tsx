@@ -95,7 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div key={tenantId} className="flex min-h-dvh flex-row bg-bg font-sans text-text">
       {/* Mobile scrim */}
       {sidebarOpen && (
-        <div aria-hidden className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] lg:hidden" onClick={closeSidebar} />
+        <div aria-hidden className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={closeSidebar} />
       )}
 
       <Sidebar activePath={pathname} open={sidebarOpen} onClose={closeSidebar} closeButtonRef={closeButtonRef} />
@@ -106,7 +106,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           id="main"
           tabIndex={-1}
           className="relative flex-1 outline-none"
-          style={{ background: "radial-gradient(70% 320px at 50% 0%, #0f1613 0%, transparent 100%)" }}
         >
           <div className="mx-auto w-full max-w-[1120px] px-4 py-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
             <div key={`${tenantId}:${fiscalEnvironment}:${permission ?? "overview"}`}>{permission && !can(permission) ? <p role="alert">{t("Session.forbidden")}</p> : children}</div>

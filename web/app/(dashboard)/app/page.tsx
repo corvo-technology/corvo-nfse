@@ -65,14 +65,17 @@ export default function OverviewPage() {
 
   const kpis = [
     ...(invoiceView ? [
-      { label: t("kpi.authorized"), value: counts?.authorized ?? "—", tone: "text-accent", loading },
-      { label: t("kpi.rejected"), value: counts?.rejected ?? "—", tone: (counts?.rejected ?? 0) > 0 ? "text-danger" : "text-text", loading },
-      { label: t("kpi.processing"), value: counts?.processing ?? "—", tone: "text-text", loading },
+      { label: t("kpi.authorized"), value: error ? t("unavailable") : (counts?.authorized ?? 0), tone: "text-accent", loading },
+      { label: t("kpi.rejected"), value: error ? t("unavailable") : (counts?.rejected ?? 0), tone: (counts?.rejected ?? 0) > 0 ? "text-danger" : "text-text", loading },
+      { label: t("kpi.processing"), value: error ? t("unavailable") : (counts?.processing ?? 0), tone: "text-text", loading },
     ] : []),
-    ...(billingView ? [{ label: t("kpi.credits"), value: billing?.error ? "—" : `${used}`, suffix: billing?.data ? `/${allowance}` : undefined, tone: "text-text", loading: billingLoading, hint: t("monthlyCycle") }] : []),
+    ...(billingView ? [{ label: t("kpi.credits"), value: billing?.error ? t("unavailable") : `${used}`, suffix: billing?.data ? `/${allowance}` : undefined, tone: "text-text", loading: billingLoading, hint: t("monthlyCycle") }] : []),
   ];
 
   const recent = overview?.data?.recentInvoices ?? [];
+  const rejectedRecent = recent.filter((invoice) => invoice.status === "rejected").slice(0, 3);
+  const creditsLow = billingView && allowance > 0 && used / allowance >= 0.8;
+  const hasAttention = rejectedRecent.length > 0 || creditsLow;
   const periodLabel = period === "7d" ? t("last7days") : t("last30days");
 
   return (
@@ -114,6 +117,26 @@ export default function OverviewPage() {
       )}
 
       {billing?.error && billingView && <div role="alert" className="banner banner-danger">{t("creditsLoadFailed")}</div>}
+      {hasAttention && <section aria-label={t("attention.title")} className="dash-in">
+        <h2 className="mb-2 text-[13px] font-medium text-text-3">{t("attention.title")}</h2>
+        <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-[12px] border border-warn/30 bg-surface">
+          {rejectedRecent.map((invoice) => (
+            <li key={invoice.id}>
+              <Link href={`/app/invoices/${invoice.id}`} className="flex flex-col gap-1 px-4 py-3 transition-colors hover:bg-hover sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <span className="text-[14px] text-text">{t("attention.rejected")}: {invoice.customerName || invoice.serviceDescription}</span>
+                <span className="font-mono text-[12px] text-danger">{invoice.lastErrorCode ?? invoice.lastErrorMessage}</span>
+              </Link>
+            </li>
+          ))}
+          {creditsLow && <li>
+            <Link href="/app/billing" className="flex flex-col gap-1 px-4 py-3 transition-colors hover:bg-hover sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <span className="text-[14px] text-text">{t("attention.creditsLow")}</span>
+              <span className="font-mono text-[12px] text-warn">{t("attention.creditsLowDetail", { used, allowance })}</span>
+            </Link>
+          </li>}
+        </ul>
+      </section>}
+
       {kpis.length > 0 && <section aria-label={t("title")} className="dash-in dash-in-1">
         <dl className={cn("grid overflow-hidden rounded-[12px] border border-border bg-surface", kpis.length === 4 ? "grid-cols-2 lg:grid-cols-4" : kpis.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1")}>
           {kpis.map((kpi, i) => (

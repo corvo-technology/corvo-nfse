@@ -54,7 +54,7 @@ export function FreeTrial() {
         <div className="flex flex-col items-start md:items-end gap-3 shrink-0 relative">
           <Link
             href="/login?mode=signup"
-            className="inline-flex items-center justify-center bg-[#ededec] text-[#0a0a0a] rounded-[8px] px-5.5 py-3 text-[15px] font-medium transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+            className="inline-flex items-center justify-center bg-[#ededec] text-[#0a0a0a] rounded-[8px] px-5.5 py-3 text-[15px] font-medium transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
           >
             {t("startFree")}
           </Link>

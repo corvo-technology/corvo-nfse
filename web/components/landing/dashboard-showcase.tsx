@@ -15,9 +15,6 @@ export function DashboardShowcase() {
   return (
     <section id="features" className="px-6 sm:px-10 pb-14 sm:pb-22 flex flex-col items-center gap-9">
       <div className="flex flex-col items-center gap-2.5 text-center">
-        <span className="font-mono text-xs text-accent tracking-[0.14em]">
-          {t("eyebrow")}
-        </span>
         <h2 className="text-[34px] font-semibold tracking-[-0.04em] text-wrap-balance">
           {t("title")}
         </h2>
@@ -34,8 +31,6 @@ export function DashboardShowcase() {
         transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
         className="w-full max-w-[1120px] relative"
       >
-        {/* Glow behind image */}
-        <div className="absolute inset-0 -z-10 blur-[80px] opacity-20 bg-accent rounded-full scale-90" />
         <Image
           src="/dash/dashboard-hero-2000x1180.png"
           alt={t("alt")}

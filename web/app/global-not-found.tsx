@@ -72,13 +72,13 @@ export default function NotFound() {
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="inline-flex items-center justify-center bg-[#ededec] text-[#0a0a0a] px-5 py-2.5 rounded-[8px] text-[14px] font-medium transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+              className="inline-flex items-center justify-center bg-[#ededec] text-[#0a0a0a] px-5 py-2.5 rounded-[8px] text-[14px] font-medium transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
             >
               Go home
             </Link>
             <Link
               href="/app"
-              className="inline-flex items-center justify-center border border-border-strong px-5 py-2.5 rounded-[8px] text-[14px] text-[#d4d4d4] transition-all hover:bg-white/[0.04] hover:scale-[1.02] active:scale-[0.98]"
+              className="inline-flex items-center justify-center border border-border-strong px-5 py-2.5 rounded-[8px] text-[14px] text-[#d4d4d4] transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:bg-white/[0.04] hover:scale-[1.02] active:scale-[0.98]"
             >
               Open dashboard
             </Link>

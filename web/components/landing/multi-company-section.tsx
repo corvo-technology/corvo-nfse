@@ -39,10 +39,7 @@ export function MultiCompanySection() {
         <div className="relative flex flex-col lg:flex-row items-start lg:items-center gap-10">
           {/* Left */}
           <div className="flex-1">
-            <span className="font-mono text-[11px] text-accent tracking-[0.12em] uppercase">
-              {t("eyebrow")}
-            </span>
-            <h2 className="text-[34px] font-semibold tracking-[-0.04em] text-text mt-3 leading-tight max-w-[380px]">
+            <h2 className="text-[34px] font-semibold tracking-[-0.04em] text-text leading-tight max-w-[380px]">
               {t("title")}
             </h2>
             <p className="text-[16px] text-text-3 mt-4 max-w-[400px] leading-relaxed">
