@@ -24,9 +24,17 @@
   --ok: #4ade80;
   --danger-surface: #1c1210;
   --danger-border: #3a2218;
+  --paper: #e9e7df;
+  --paper-edge: #d3d0c5;
+  --ink: #0d0d0c;
+  --ink-2: #4a4944;
 }
 
 @theme inline {
+  --color-paper: var(--paper);
+  --color-paper-edge: var(--paper-edge);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-alt: var(--surface-alt);
