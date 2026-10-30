@@ -2511,78 +2511,19 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         {
           kind: "list",
           items: [
-            "You create a connection (`POST /v1/integrations/connections`) and get its `webhookUrl`.",
+            "In the Corvo dashboard, open Integrations, choose the platform and connect your account. Copy the webhook URL shown during setup.",
             "Register that address in the payment platform dashboard. The platform then notifies Corvo for every payment.",
             "Corvo checks the notice's authentication, stores the event and answers right away. Processing happens in the background.",
             "If the payment is confirmed and a service rule exists, the invoice is issued. The competence date is the confirmation date (São Paulo time zone).",
             "The same payment never produces two invoices, even if the platform sends the notice again.",
           ],
         },
-        { kind: "heading", level: 2, body: "Routes" },
-        {
-          kind: "table",
-          head: ["Method", "Route", "Description"],
-          rows: [
-            ["GET", "`/v1/integrations/providers`", "Available platforms and the credential fields of each"],
-            ["POST", "`/v1/integrations/connections`", "Create a connection"],
-            ["GET", "`/v1/integrations/connections`", "List connections"],
-            ["GET", "`/v1/integrations/connections/:id`", "Get a connection"],
-            ["POST", "`/v1/integrations/connections/:id/validate`", "Check the credentials and identify the account"],
-            ["POST", "`/v1/integrations/connections/:id/activate`", "Start issuing automatically"],
-            ["POST", "`/v1/integrations/connections/:id/pause`", "Stop issuing; events are still stored"],
-            ["POST", "`/v1/integrations/connections/:id/disconnect`", "Disconnect for good"],
-            ["GET", "`/v1/integrations/connections/:id/rules`", "Get the service rules"],
-            ["PUT", "`/v1/integrations/connections/:id/rules`", "Replace the service rules"],
-            ["GET", "`/v1/integrations/connections/:id/events`", "Events received"],
-            ["GET", "`/v1/integrations/connections/:id/operations`", "Sales and the invoice status of each"],
-            ["PATCH", "`/v1/integrations/operations/:id/customer`", "Fill in the customer of a pending sale"],
-            ["POST", "`/v1/integrations/operations/:id/retry`", "Try to issue again"],
-            ["POST", "`/v1/integrations/inbound/:publicId`", "Address the payment platform calls (public, authenticated by the connector)"],
-          ],
-        },
-        {
-          kind: "callout",
-          tone: "accent",
-          body: "The management routes require `integrations.view` (read) or `integrations.manage` (create, activate, change rules). `full_access` API keys have both.",
-        },
-        { kind: "heading", level: 2, body: "Connect an account" },
-        {
-          kind: "code",
-          label: "1. Create the connection",
-          language: "bash",
-          code: `curl -X POST "$BASE_URL/v1/integrations/connections" \
-  -H "X-API-Key: $CORVO_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "provider": "woovi",
-    "companyId": "<company id>",
-    "environment": "test",
-    "credentials": {},
-    "activeFrom": "2026-11-01T00:00:00Z"
-  }'`,
-        },
-        {
-          kind: "code",
-          label: "2. Set the service rule and activate",
-          language: "bash",
-          code: `curl -X PUT "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/rules" \
-  -H "X-API-Key: $CORVO_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{ "rules": [ { "service": { "code": "010101", "description": "Consulting" }, "sendEmail": true } ] }'
-
-curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/validate" -H "X-API-Key: $CORVO_API_KEY"
-curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H "X-API-Key: $CORVO_API_KEY"`,
-        },
-        {
-          kind: "text",
-          body: "A rule without `externalProductId` applies to any product. To give a product a different service, send another rule with its `externalProductId`. Payments made before `activeFrom` are ignored. With `allowAnonymousCustomer: true`, the invoice is issued without a customer when the payment carries no CPF/CNPJ.",
-        },
         { kind: "heading", level: 2, body: "By platform" },
         { kind: "heading", level: 3, body: "Woovi" },
         {
           kind: "list",
           items: [
-            "There is no credential to provide: send `\"credentials\": {}`. Corvo generates the `webhookToken` and returns it in `secrets.webhookToken` only in the creation response. The `test` environment uses the Woovi sandbox and `live` uses the production account.",
+            "There is no credential to provide. Corvo generates an authentication token shown when you create the connection. Copy and save this token. The `test` environment uses the Woovi sandbox and `live` uses the production account.",
             "In Woovi, create a webhook with the connection `webhookUrl` and the paid charge event (`OPENPIX:CHARGE_COMPLETED`). Under HTTP headers, add an `Authorization` header with the `webhookToken` in the Value field.",
             "The invoice customer is the charge customer, never whoever paid the Pix.",
             "Each charge becomes one invoice, identified by its `correlationID`. The service description on the invoice is the charge `comment`; without one, the company default is used.",
@@ -2593,8 +2534,8 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         {
           kind: "list",
           items: [
-            "Credential: `apiKey`, an AbacatePay API v2 key (Integration > API > + New key) with the `CUSTOMER:READ` and `PRODUCT:READ` permissions. Corvo generates the `webhookSecret` and returns the `webhookUrl` with `?webhookSecret=...` only in the creation response. Keep that address.",
-            "In AbacatePay, create a webhook: paste the `webhookUrl` in the URL field and `secrets.webhookSecret` (returned only on creation) in the Secret field, and select `checkout.completed` and `transparent.completed`. Corvo accepts the Standard Webhooks signature (`webhook-id`, `webhook-timestamp`, `webhook-signature`) and the legacy format (`?webhookSecret=`).",
+            "Credential: `apiKey`, an AbacatePay API v2 key (Integration > API > + New key) with the `CUSTOMER:READ` and `PRODUCT:READ` permissions. Corvo generates the `webhookSecret` and shows the full webhook URL when you create the connection. Copy and save that address.",
+            "In AbacatePay, create a webhook: paste the `webhookUrl` in the URL field and secret shown when creating the connection in the Secret field, and select `checkout.completed` and `transparent.completed`. Corvo accepts the Standard Webhooks signature (`webhook-id`, `webhook-timestamp`, `webhook-signature`) and the legacy format (`?webhookSecret=`).",
             "The event `devMode` must match the connection environment: test events issue no invoice on a `live` connection, and the other way around.",
             "The webhook carries the CPF/CNPJ masked, so Corvo looks the customer up on AbacatePay with your key and uses the full document. If the customer has no document, the sale stays pending (`customer_tax_id_missing`), or is issued without a customer if the rule has `allowAnonymousCustomer`.",
             "A rule's `externalProductId` is the checkout item `id`. The service description on the invoice is the product name (Corvo looks it up with your key); without the `PRODUCT:READ` permission, the company default is used.",
@@ -2604,29 +2545,29 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         { kind: "heading", level: 2, body: "Sales that need attention" },
         {
           kind: "text",
-          body: "When a sale cannot become an invoice by itself, it shows up in `GET /v1/integrations/connections/:id/operations` with `fiscalStatus` and `blockReason`.",
+          body: "When a sale cannot become an invoice automatically, check its pending status and reason in the integration sales list in the Corvo dashboard.",
         },
         {
           kind: "table",
           head: ["blockReason", "What to do"],
           rows: [
-            ["`customer_tax_id_missing`", "The platform did not send a full CPF/CNPJ. Provide it with `PATCH /v1/integrations/operations/:id/customer`, then call `POST /v1/integrations/operations/:id/retry`."],
-            ["`no_rule` / `ambiguous_rule`", "Create or adjust the rules, then call `retry`."],
-            ["`invoice_rejected`", "Fiscal validation refused the request. The message names the field; fix it and call `retry`."],
-            ["`quota_exceeded`", "No credits or plan limit reached. After fixing it, call `retry`."],
-            ["`connection_inactive`", "The connection is paused or needs to be authorized again. Reactivate it and call `retry`."],
-            ["`company_not_ready`", "The company is not ready or the certificate is missing, expired or invalid. Fix the registration and call `retry`."],
+            ["`customer_tax_id_missing`", "The platform did not send a full CPF/CNPJ. Complete the customer details on the sale and retry issuing from the dashboard."],
+            ["`no_rule` / `ambiguous_rule`", "Create or adjust the rules, then retry from the dashboard."],
+            ["`invoice_rejected`", "Fiscal validation refused the request. The message names the field; fix it and retry from the dashboard."],
+            ["`quota_exceeded`", "No credits or plan limit reached. After fixing it, retry from the dashboard."],
+            ["`connection_inactive`", "The connection is paused or needs to be authorized again. Reactivate it and retry from the dashboard."],
+            ["`company_not_ready`", "The company is not ready or the certificate is missing, expired or invalid. Fix the registration and retry from the dashboard."],
             ["`before_active_from`", "The payment happened before the connection start date. No invoice is issued."],
             ["`refunded` / `disputed`", "The payment was refunded or disputed before the invoice. No invoice is issued."],
-            ["`refund_after_invoice`", "A refund or dispute arrived after the invoice and automatic cancellation is off. The invoice stays authorized. To cancel it, use `POST /v1/invoices/:id/cancel`; for future refunds, turn on `cancelOnRefund` on the rule (a dispute never cancels)."],
+            ["`refund_after_invoice`", "A refund or dispute arrived after the invoice and automatic cancellation is off. The invoice stays authorized. To cancel it, request cancellation from the invoice page; for future refunds, enable automatic cancellation in the integration settings (a dispute never cancels)."],
             ["`cancel_requested`", "Nothing to do: Corvo asked for the invoice to be cancelled (reason \"Cancelado por reembolso\"). Follow the result on the invoice page."],
-            ["`cancel_failed`", "The cancellation could not be requested (for example, the invoice is in a state that does not allow it). Check the invoice and, if it can be cancelled, use `retry`."],
+            ["`cancel_failed`", "The cancellation could not be requested (for example, the invoice is in a state that does not allow it). Check the invoice and, if it can be cancelled, retry from the dashboard."],
           ],
         },
         {
           kind: "callout",
           tone: "warn",
-          body: "By default a refund or dispute does not cancel the invoice. To cancel on a refund, send `\"cancelOnRefund\": true` on the rule: Corvo asks for the cancellation with the reason \"Cancelado por reembolso\" (the invoice credit is not returned). A dispute never cancels. To cancel manually, call `POST /v1/invoices/:id/cancel`.",
+          body: "By default a refund or dispute does not cancel the invoice. To cancel on a refund, enable automatic refund cancellation in the integration settings: Corvo asks for the cancellation with the reason \"Cancelado por reembolso\" (the invoice credit is not returned). A dispute never cancels. To cancel manually, request cancellation from the invoice page.",
         },
         {
           kind: "callout",
