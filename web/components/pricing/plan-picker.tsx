@@ -510,7 +510,7 @@ export function PlanPicker({
       </div>
 
       {/* Result */}
-      <div className="mt-12 grid gap-4 @4xl:grid-cols-[1.35fr_1fr]">
+      <div className="mt-12 grid gap-4 @4xl:grid-cols-[1.35fr_1fr] [&>*]:min-w-0">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={plan.slug}

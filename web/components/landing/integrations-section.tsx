@@ -25,7 +25,7 @@ function PlatformTile({ id, name, logo, width, height }: (typeof PLATFORMS)[numb
 }
 
 /** A thin dashed line that carries the eye down on narrow screens, where the side-by-side drawing does not fit. */
-const DownLine = () => <span aria-hidden className="mx-auto block h-8 w-0 border-l-[1.5px] border-dashed border-accent/60 xl:hidden" />;
+const DownLine = () => <span aria-hidden className="mx-auto block h-8 w-0 border-l-[1.5px] border-dashed border-ink/30 xl:hidden" />;
 
 /** Two payment platforms feed Corvo, which hands back an invoice. Decorative: the text beside it says the same. */
 function FlowVisual() {
@@ -36,13 +36,13 @@ function FlowVisual() {
         {PLATFORMS.map((platform) => (
           <PlatformTile key={platform.id} {...platform} />
         ))}
-        <p className="rounded-[12px] border border-dashed border-white/[0.1] px-4 py-3 text-[12.5px] text-text-3">{t("platforms.soon")}</p>
+        <p className="rounded-[6px] border border-dashed border-ink/25 px-4 py-3 text-[12.5px] text-ink-2">{t("platforms.soon")}</p>
       </div>
 
       <DownLine />
 
       <div aria-hidden className="relative hidden h-[200px] w-[60px] shrink-0 xl:block">
-        <svg viewBox="0 0 60 200" width="60" height="200" fill="none" className="absolute inset-0 text-accent">
+        <svg viewBox="0 0 60 200" width="60" height="200" fill="none" className="absolute inset-0 text-ink/40">
           <path className="flow-path" d="M0 46 C 30 46, 30 100, 60 100" stroke="currentColor" strokeWidth="1.5" strokeDasharray="5 6" />
           <path className="flow-path" d="M0 154 C 30 154, 30 100, 60 100" stroke="currentColor" strokeWidth="1.5" strokeDasharray="5 6" />
         </svg>
@@ -76,45 +76,43 @@ export function IntegrationsSection() {
   const locale = useLocale();
 
   return (
-    <section id="integrations" className="mx-auto max-w-[1120px] scroll-mt-20 px-6 pb-14 sm:px-10 sm:pb-22">
-      <div className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-[#0e0e0e] px-6 py-12 sm:px-12 sm:py-14">
-        <div aria-hidden className="pointer-events-none absolute -left-28 -bottom-28 h-[380px] w-[380px] rounded-full bg-accent/[0.06] blur-[100px]" />
-
+    <section id="integrations" className="scroll-mt-20 bg-paper text-ink px-6 pt-[calc(6vw+48px)] pb-[calc(6vw+48px)] sm:px-10 [clip-path:polygon(0_0,100%_6vw,100%_100%,0_calc(100%-6vw))]">
+      <div className="mx-auto max-w-[1120px]">
         <div className="relative grid items-center gap-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)] lg:gap-14">
           <div className="min-w-0">
-            <h2 className="max-w-[480px] text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] text-text sm:text-[40px]">{t("title")}</h2>
-            <p className="mt-4 max-w-[460px] text-[16px] leading-relaxed text-text-3">{t("description")}</p>
+            <h2 className="max-w-[480px] text-balance text-[clamp(32px,4.4vw,56px)] font-semibold leading-[1.02] tracking-[-0.035em] text-ink">{t("title")}</h2>
+            <p className="mt-5 max-w-[460px] text-[16px] leading-relaxed text-ink-2 text-pretty">{t("description")}</p>
 
             <ol className="mt-8 flex flex-col gap-4">
               {STEPS.map((step, index) => (
                 <li key={step} className="flex items-start gap-3.5">
-                  <span aria-hidden className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border border-white/[0.1] text-[12px] text-text-2">{index + 1}</span>
+                  <span aria-hidden className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border border-ink/30 text-[12px] text-ink-2">{index + 1}</span>
                   <div>
-                    <p className="text-[14.5px] font-medium text-text">{t(`steps.${step}.title`)}</p>
-                    <p className="mt-0.5 max-w-[400px] text-[13.5px] leading-snug text-text-3">{t(`steps.${step}.body`)}</p>
+                    <p className="text-[14.5px] font-medium text-ink">{t(`steps.${step}.title`)}</p>
+                    <p className="mt-0.5 max-w-[400px] text-[13.5px] leading-snug text-ink-2">{t(`steps.${step}.body`)}</p>
                   </div>
                 </li>
               ))}
             </ol>
 
-            <div className="mt-6 flex max-w-[460px] items-start gap-3.5 rounded-[14px] border border-white/[0.08] bg-white/[0.02] px-4 py-3.5">
-              <span aria-hidden className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-accent-border bg-accent-surface">
+            <div className="mt-6 flex max-w-[460px] items-start gap-3.5 rounded-[6px] border border-ink/15 bg-white/40 px-4 py-3.5">
+              <span aria-hidden className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[6px] bg-ink">
                 <Undo2 size={14} className="text-accent" strokeWidth={1.7} aria-hidden />
               </span>
               <div>
-                <p className="text-[14.5px] font-medium text-text">{t("refund.title")}</p>
-                <p className="mt-0.5 text-[13.5px] leading-snug text-text-3">{t("refund.body")}</p>
+                <p className="text-[14.5px] font-medium text-ink">{t("refund.title")}</p>
+                <p className="mt-0.5 text-[13.5px] leading-snug text-ink-2">{t("refund.body")}</p>
               </div>
             </div>
 
             <div className="mt-9 flex flex-wrap items-center gap-x-5 gap-y-3">
               <Link
                 href="/login?mode=signup"
-                className="inline-flex items-center justify-center rounded-[7px] bg-[#ededec] px-4 py-2 text-[14px] font-medium text-[#0a0a0a] transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:scale-[1.02] hover:opacity-90 active:scale-[0.98]"
+                className="inline-flex items-center justify-center rounded-[6px] bg-ink px-4 py-2 text-[14px] font-medium text-paper transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:scale-[1.02] hover:opacity-90 active:scale-[0.98]"
               >
                 {t("cta")}
               </Link>
-              <Link href={`/${locale}/docs/payment-integrations`} className="inline-flex items-center gap-1 text-[13.5px] text-text-2 underline-offset-4 transition-colors hover:text-text hover:underline">
+              <Link href={`/${locale}/docs/payment-integrations`} className="inline-flex items-center gap-1 text-[13.5px] text-ink-2 underline underline-offset-4 transition-colors hover:text-ink">
                 {t("guide")} <ArrowUpRight size={13} aria-hidden />
               </Link>
             </div>

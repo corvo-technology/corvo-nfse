@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Facet } from "@/components/ui/facet";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { ArrowUpRight, Check, Copy, Mail, ShieldCheck, Sparkles, Unplug } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -91,7 +92,7 @@ function Conversation() {
   });
 
   return (
-    <div ref={ref} className="relative overflow-hidden rounded-[20px] border border-white/[0.08] bg-[#0a0a0a] shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]">
+    <div ref={ref} className="relative overflow-hidden rounded-[8px] border border-border-strong bg-[#0a0a0a]">
       <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-5 py-3.5">
         <span className="flex items-center gap-2.5 font-mono text-[11.5px] text-text-3">
           <span className="relative flex h-2 w-2">
@@ -146,32 +147,17 @@ export function AgentsSection() {
   const locale = useLocale();
 
   return (
-    <section id="agents" className="mx-auto max-w-[1120px] px-6 pb-14 sm:px-10 sm:pb-22">
-      <div className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-[#0e0e0e] px-6 py-12 sm:px-12 sm:py-14">
-        <div aria-hidden className="pointer-events-none absolute -left-24 -top-24 h-[360px] w-[360px] rounded-full bg-accent/[0.07] blur-[90px]" />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.28]"
-          style={{
-            backgroundImage: "radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)",
-            backgroundSize: "20px 20px",
-            maskImage: "linear-gradient(to bottom right, black, transparent 60%)",
-            WebkitMaskImage: "linear-gradient(to bottom right, black, transparent 60%)",
-          }}
-        />
-
-        <div className="relative grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-          <div className="min-w-0">
-            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent">{t("eyebrow")}</span>
-            <h2 className="mt-3 max-w-[460px] text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] text-text sm:text-[40px]">{t("title")}</h2>
-            <p className="mt-4 max-w-[440px] text-[16px] leading-relaxed text-text-3">{t("description")}</p>
+    <section id="agents" className="mx-auto max-w-[1120px] border-t border-border px-6 py-16 sm:px-10 sm:py-24">
+      <div>
+        <div className="relative grid items-center gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+          <div className="min-w-0 lg:order-2">
+            <h2 className="max-w-[460px] text-[clamp(32px,4.4vw,56px)] font-semibold leading-[1.02] tracking-[-0.035em] text-text text-balance">{t("title")}</h2>
+            <p className="mt-5 max-w-[440px] text-[16px] leading-relaxed text-text-3 text-pretty">{t("description")}</p>
 
             <ul className="mt-7 flex flex-col gap-3.5">
-              {POINTS.map(({ key, icon: Icon }) => (
-                <li key={key} className="flex items-start gap-3">
-                  <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-white/[0.07] bg-[#161616]">
-                    <Icon size={14} className="text-accent" strokeWidth={1.6} aria-hidden />
-                  </span>
+              {POINTS.map(({ key }) => (
+                <li key={key} className="flex items-start gap-3.5">
+                  <Facet className="mt-[7px]" />
                   <span className="text-[14px] leading-snug text-text-2">{t(`points.${key}`)}</span>
                 </li>
               ))}
@@ -183,7 +169,7 @@ export function AgentsSection() {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <ul className="flex flex-wrap gap-1.5" aria-label={t("agentsLabel")}>
                   {AGENTS.map((name) => (
-                    <li key={name} className="rounded-full border border-white/[0.07] px-2.5 py-1 text-[12px] text-text-3">{name}</li>
+                    <li key={name} className="rounded-[4px] border border-border-strong px-2.5 py-1 text-[12px] text-text-3">{name}</li>
                   ))}
                 </ul>
                 <Link href={`/${locale}/docs/mcp`} className="inline-flex items-center gap-1 text-[13px] text-text-2 underline-offset-4 transition-colors hover:text-text hover:underline">
