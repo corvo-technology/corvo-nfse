@@ -29,9 +29,10 @@ export default function BillingPage() {
   const [billing, setBilling] = useState<BillingPlan | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const { can } = useAuth();
+  const { can, fiscalEnvironment } = useAuth();
   const { success, error: toastError } = useToast();
   const canManage = can("billing.manage");
+  const billingEnabled = fiscalEnvironment === "live";
 
   useEffect(() => {
     let cancelled = false;
@@ -50,7 +51,7 @@ export default function BillingPage() {
   };
   const redirect = (url: string) => { window.location.assign(url); };
   const subscribe = async (slug: CheckoutPlan) => {
-    if (busy) return; setBusy(slug);
+    if (!billingEnabled || !canManage || busy) return; setBusy(slug);
     try {
       const { url } = await billingApi.checkout(slug, crypto.randomUUID());
       if (posthogConfigured) posthog.capture("billing_checkout_started", { plan: slug });
@@ -59,7 +60,7 @@ export default function BillingPage() {
     catch (cause) { fail(cause); setBusy(null); }
   };
   const changePlan = async (slug: PlanSlug, direction: "upgrade" | "downgrade") => {
-    if (busy) return; setBusy(slug);
+    if (!billingEnabled || !canManage || busy) return; setBusy(slug);
     try {
       const result = await billingApi.changePlan(slug, direction);
       if (posthogConfigured) posthog.capture("billing_plan_changed", { plan: slug, direction });
@@ -69,7 +70,7 @@ export default function BillingPage() {
     finally { setBusy(null); }
   };
   const openPortal = async () => {
-    if (busy) return; setBusy("portal");
+    if (!billingEnabled || !canManage || busy) return; setBusy("portal");
     try { redirect((await billingApi.portal()).url); }
     catch (cause) { fail(cause); setBusy(null); }
   };
@@ -116,6 +117,8 @@ export default function BillingPage() {
   return (
     <div className="flex max-w-[1000px] flex-col gap-6">
       {header}
+
+      {!billingEnabled && <p role="status" className="banner-info">{t("liveOnly")}</p>}
 
       <Card className="dash-in dash-in-1 p-5 sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
@@ -181,7 +184,7 @@ export default function BillingPage() {
       <section aria-labelledby="plans-heading" className="dash-in dash-in-3 flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <h2 id="plans-heading" className="text-[14.5px] font-medium text-text">{t("plans")}</h2>
-          {canManage && hasSubscription && <Button variant="secondary" size="sm" loading={busy === "portal"} onClick={() => void openPortal()}>{t("manage")}</Button>}
+          {canManage && hasSubscription && <Button variant="secondary" size="sm" disabled={!billingEnabled || busy !== null} loading={busy === "portal"} onClick={() => void openPortal()}>{t("manage")}</Button>}
         </div>
         <PlanPicker
           currentSlug={billing.slug as PlanSlug}
@@ -193,7 +196,7 @@ export default function BillingPage() {
               : plan.basePriceCents > (current?.basePriceCents ?? 0) ? "upgrade" : "downgrade";
             if (!action) return null;
             return (
-              <Button variant={action === "downgrade" ? "secondary" : "accent"} size="lg" loading={busy === plan.slug} disabled={busy !== null && busy !== plan.slug}
+              <Button variant={action === "downgrade" ? "secondary" : "accent"} size="lg" loading={busy === plan.slug} disabled={!billingEnabled || (busy !== null && busy !== plan.slug)}
                 onClick={() => void (action === "subscribe" ? subscribe(plan.slug as CheckoutPlan) : changePlan(plan.slug, action))}>{t(action)}</Button>
             );
           }}

@@ -1247,6 +1247,7 @@
     "upgrade": "Upgrade",
     "downgrade": "Downgrade",
     "manage": "Manage billing",
+    "liveOnly": "To subscribe, change your plan or manage billing, switch to the production environment.",
     "allowance": "{count} invoices / month",
     "overage": "{price} per extra invoice",
     "scheduled": "Switching to {plan} on {date}",

@@ -1247,6 +1247,7 @@
     "upgrade": "Fazer upgrade",
     "downgrade": "Fazer downgrade",
     "manage": "Gerenciar cobrança",
+    "liveOnly": "Para assinar, alterar seu plano ou gerenciar a cobrança, selecione o ambiente de produção.",
     "allowance": "{count} notas / mês",
     "overage": "{price} por nota extra",
     "scheduled": "Mudança para {plan} em {date}",
