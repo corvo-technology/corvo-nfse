@@ -1055,7 +1055,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ],
         },
         { kind: "heading", level: 2, body: "Notas agendadas" },
-        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` com uma `competenceDate` futura para pedir que a nota seja emitida só naquele dia. A Corvo libera a emissão à 00:00 de `America/Sao_Paulo` da `competenceDate`. Até lá a nota fica com `status: \"queued\"` e `scheduledFor` traz o instante da liberação (ISO); em notas imediatas `scheduledFor` é `null`." },
+        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` com uma `competenceDate` futura para pedir que a nota seja emitida só naquele dia. A Corvo libera a emissão às 09:00 de `America/Sao_Paulo` (12:00 UTC) da `competenceDate`. Até lá a nota fica com `status: \"queued\"` e `scheduledFor` traz o instante da liberação (ISO); em notas imediatas `scheduledFor` é `null`." },
         { kind: "table", head: ["Situação", "Resultado"], rows: [
           ["Sem `options.type` (ou `IMMEDIATE`) e `competenceDate` futura", "`422` com `ERROR_FUTURE_DATE` em `details[].code`."],
           ["`SCHEDULE` e `competenceDate` futura até o limite", "`202`, `status: queued`, `scheduledFor` preenchido; a emissão acontece na data."],

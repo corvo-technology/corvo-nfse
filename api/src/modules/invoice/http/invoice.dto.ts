@@ -145,7 +145,7 @@ export class InvoiceOptionsDto {
   @ApiPropertyOptional({
     enum: ['IMMEDIATE', 'SCHEDULE'],
     description:
-      'SCHEDULE accepts a future competenceDate; the invoice is released at 00:00 America/Sao_Paulo of that day.',
+      'SCHEDULE accepts a future competenceDate; the invoice is released at 09:00 America/Sao_Paulo (12:00 UTC) of that day.',
   })
   type?: InvoiceEmissionType;
 
