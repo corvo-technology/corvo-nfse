@@ -1075,7 +1075,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ],
         },
         { kind: "heading", level: 2, body: "Scheduled invoices" },
-        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` with a future `competenceDate` to have the invoice issued only on that day. Corvo releases issuance at 00:00 `America/Sao_Paulo` on the `competenceDate`. Until then the invoice stays `status: \"queued\"` and `scheduledFor` holds the release instant (ISO); for immediate invoices `scheduledFor` is `null`." },
+        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` with a future `competenceDate` to have the invoice issued only on that day. Corvo releases issuance at 09:00 `America/Sao_Paulo` (12:00 UTC) on the `competenceDate`. Until then the invoice stays `status: \"queued\"` and `scheduledFor` holds the release instant (ISO); for immediate invoices `scheduledFor` is `null`." },
         { kind: "table", head: ["Situation", "Result"], rows: [
           ["No `options.type` (or `IMMEDIATE`) and a future `competenceDate`", "`422` with `ERROR_FUTURE_DATE` in `details[].code`."],
           ["`SCHEDULE` and a future `competenceDate` within the limit", "`202`, `status: queued`, `scheduledFor` set; issuance happens on that date."],

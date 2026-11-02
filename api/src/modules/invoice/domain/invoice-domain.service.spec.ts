@@ -607,7 +607,7 @@ describe('SCHEDULE calendar days', () => {
       new InvoiceDomainService()
         .normalizeAndValidate(input('2026-10-14'), 'test')
         .scheduledFor?.toISOString(),
-    ).toBe('2026-10-14T03:00:00.000Z');
+    ).toBe('2026-10-14T12:00:00.000Z');
   });
   it.each(['2026-10-13', '2026-10-12'])(
     'treats today/past %s as immediate',
@@ -624,7 +624,7 @@ describe('SCHEDULE calendar days', () => {
       new InvoiceDomainService()
         .normalizeAndValidate(input('2026-10-13'), 'test')
         .scheduledFor?.toISOString(),
-    ).toBe('2026-10-13T03:00:00.000Z');
+    ).toBe('2026-10-13T12:00:00.000Z');
     expect(
       new InvoiceDomainService().normalizeAndValidate(
         input('2026-10-12'),
@@ -637,7 +637,7 @@ describe('SCHEDULE calendar days', () => {
       new InvoiceDomainService()
         .normalizeAndValidate(input('2026-10-28'), 'test')
         .scheduledFor?.toISOString(),
-    ).toBe('2026-10-28T03:00:00.000Z');
+    ).toBe('2026-10-28T12:00:00.000Z');
   });
   it.each([
     [15, '2026-10-29'],
@@ -663,6 +663,6 @@ describe('SCHEDULE calendar days', () => {
       new InvoiceDomainService(30)
         .normalizeAndValidate(input('2026-11-11'), 'test')
         .scheduledFor?.toISOString(),
-    ).toBe('2026-11-11T03:00:00.000Z');
+    ).toBe('2026-11-11T12:00:00.000Z');
   });
 });

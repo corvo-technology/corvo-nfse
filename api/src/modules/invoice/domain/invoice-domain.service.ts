@@ -14,6 +14,8 @@ import type { CreateInvoiceDto } from '../http/invoice.dto';
 
 export const SCHEDULE_MAX_DAYS = 'SCHEDULE_MAX_DAYS';
 const SCHEDULE_ZONE = 'America/Sao_Paulo';
+// Scheduled invoices are released at 09:00 São Paulo (12:00 UTC), not at midnight.
+const SCHEDULE_RELEASE_HOUR = 9;
 
 export interface NormalizedCustomerInput {
   name: string;
@@ -306,7 +308,7 @@ export class InvoiceDomainService {
             message: `competenceDate cannot be more than ${this.scheduleMaxDays} days ahead`,
           });
         } else if (release > today) {
-          scheduledFor = release.toJSDate();
+          scheduledFor = release.set({ hour: SCHEDULE_RELEASE_HOUR }).toJSDate();
         }
       } else if (competenceDate > new Date()) {
         issues.push({

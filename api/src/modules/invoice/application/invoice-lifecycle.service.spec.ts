@@ -154,7 +154,7 @@ describe('InvoiceLifecycleService', () => {
 
   it('preserves the exact scheduled availability and immediate default', async () => {
     const f = build();
-    const when = new Date('2099-10-14T03:00:00.000Z');
+    const when = new Date('2099-10-14T12:00:00.000Z');
     for (const scheduledFor of [when, undefined]) {
       const invoice = newInvoice(scheduledFor);
       await f.service.submit(
