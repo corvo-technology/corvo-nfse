@@ -209,7 +209,10 @@ export class DpsBuilder {
         }),
       );
     }
-    if (layout.status !== 'in_production') {
+    if (
+      layout.status !== 'in_production' &&
+      !(layout.id === 'nt009-r1' && layout.status === 'restricted_and_scheduled')
+    ) {
       return err(
         fiscalError({
           code: 'DPS_LAYOUT_UNSUPPORTED',
@@ -222,7 +225,7 @@ export class DpsBuilder {
     }
 
     // Explicit NT 009 remains restricted; auto resolves production only after
-    // the cutover with the production opt-in.
+    // the cutover.
     if (
       layout.id === 'nt009-r1' &&
       input.invoice.environment === 'live' &&

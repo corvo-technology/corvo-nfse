@@ -280,7 +280,6 @@ export const envSchema = z
       .string()
       .datetime({ offset: true })
       .default('2026-12-01T00:00:00-03:00'),
-    FISCAL_NT009_PRODUCTION_ENABLED: booleanFromEnv.default(false),
     FISCAL_DPS_LAYOUT: z
       .enum(['rtc-v1.01', 'nt009-r1', 'auto'])
       .default('rtc-v1.01'),

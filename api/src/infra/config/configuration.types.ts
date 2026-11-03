@@ -64,7 +64,6 @@ export interface RtcConfig {
   circuitResetMs: number;
   dpsLayout: RtcDpsLayout;
   nt009CutoverAt?: string;
-  nt009ProductionEnabled?: boolean;
   /** Versão fixada `"{versaoApp}/{versaoDb}"` para detectar updates publicados. */
   expectedVersion?: string;
 }

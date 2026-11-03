@@ -898,13 +898,12 @@ describe('DpsBuilder — NT 009 release 1 (XSD 20261020, Produção Restrita)', 
 
 describe('DpsBuilder auto layout per emission', () => {
   it.each([
-    ['production', '2026-11-30T23:59:59-03:00', true, 'v1.01'],
-    ['production', '2026-12-01T00:00:00-03:00', false, 'v1.01'],
-    ['production', '2026-12-01T00:00:00-03:00', true, 'nt009-r1'],
-    ['restricted', '2026-11-30T23:59:59-03:00', false, 'nt009-r1'],
+    ['production', '2026-11-30T23:59:59-03:00', 'v1.01'],
+    ['production', '2026-12-01T00:00:00-03:00', 'nt009-r1'],
+    ['restricted', '2026-11-30T23:59:59-03:00', 'nt009-r1'],
   ] as const)(
-    '%s at %s opt-in %s validates as %s',
-    async (sefin, issuedAt, productionEnabled, layout) => {
+    '%s at %s validates as %s',
+    async (sefin, issuedAt, layout) => {
       const dps = dpsFrom(
         await new DpsBuilder().build(
           input({
@@ -927,7 +926,6 @@ describe('DpsBuilder auto layout per emission', () => {
             },
           }),
           'auto',
-          { productionEnabled },
         ),
       );
       expect(dps.infDPS.tpAmb).toBe(

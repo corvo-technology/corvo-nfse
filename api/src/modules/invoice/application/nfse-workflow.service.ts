@@ -473,8 +473,6 @@ export class NfseWorkflowService {
       this.config.getOrThrow<RtcConfig>('rtc').dpsLayout,
       {
         cutoverAt: this.config.getOrThrow<RtcConfig>('rtc').nt009CutoverAt,
-        productionEnabled:
-          this.config.getOrThrow<RtcConfig>('rtc').nt009ProductionEnabled,
       },
     );
     if (!built.ok) throw new DpsBuildRejectionError(built.error);

@@ -65,22 +65,10 @@ export class OpenNfseProvider implements FiscalProvider {
         ? 'restricted'
         : 'production';
     this.configuredLayout =
-      config.get<ConfiguredDpsLayout>('rtc.dpsLayout') ??
-      config.get<ConfiguredDpsLayout>('FISCAL_DPS_LAYOUT') ??
-      'rtc-v1.01';
+      config.get<ConfiguredDpsLayout>('rtc.dpsLayout') ?? 'rtc-v1.01';
     this.layoutPolicy = {
-      cutoverAt:
-        config.get<string>('rtc.nt009CutoverAt') ??
-        config.get<string>('FISCAL_NT009_CUTOVER_AT'),
-      productionEnabled:
-        config.get<boolean>('rtc.nt009ProductionEnabled') ??
-        String(config.get('FISCAL_NT009_PRODUCTION_ENABLED')) === 'true',
+      cutoverAt: config.get<string>('rtc.nt009CutoverAt'),
     };
-    if (this.configuredLayout === 'nt009-r1' && this.sefin !== 'restricted') {
-      throw new Error(
-        'FISCAL_DPS_LAYOUT=nt009-r1 requires NFSE_SEFIN_ENVIRONMENT=restricted',
-      );
-    }
     if (this.sefin === 'restricted') {
       this.logger.warn(
         'NFSE_SEFIN_ENVIRONMENT=restricted: live invoices go to the Sefin Produção Restrita (homologation), not to production.',
