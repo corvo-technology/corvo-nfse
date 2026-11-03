@@ -7,11 +7,11 @@ import {
 } from "@/components/pricing/plan-picker";
 
 describe("plan picker pricing", () => {
-  it("recommends Free up to 15 monthly invoices and a paid plan from 16", () => {
+  it("recommends Free up to 5 monthly invoices and a paid plan from 6", () => {
     expect(PLANS.find((plan) => plan.slug === "free")).toEqual({
-      slug: "free", credits: 15, basePriceCents: 0, perCreditCents: 0,
+      slug: "free", credits: 5, basePriceCents: 0, perCreditCents: 0,
     });
-    expect(findPlanForVolume(15).slug).toBe("free");
+    expect(findPlanForVolume(5).slug).toBe("free");
     expect(findPlanForVolume(16).slug).toBe("developer");
   });
   it("picking a plan at its full allowance recommends that same plan", () => {

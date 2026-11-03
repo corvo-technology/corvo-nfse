@@ -4,7 +4,7 @@ import type { BillingCycle } from '../domain/plan';
 describe('PricingService monthly catalog', () => {
   const service = new PricingService();
   it.each([
-    ['free', 0, 15, 0],
+    ['free', 0, 5, 0],
     ['developer', 2990, 200, 18],
     ['growth', 9990, 850, 14],
     ['scale', 29990, 3000, 12],

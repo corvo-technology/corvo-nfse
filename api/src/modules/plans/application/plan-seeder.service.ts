@@ -8,7 +8,7 @@ const SEED_DATA: Record<PlanSlug, CreatePlanInput> = {
     slug: 'free',
     name: 'Free',
     description: 'Perfect for testing and small projects',
-    monthlyCreditAllowance: 15,
+    monthlyCreditAllowance: 5,
     dailyLimit: 3,
     maxActiveCompanies: 1,
     creditUnitPriceCents: 0,

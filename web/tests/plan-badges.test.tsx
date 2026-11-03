@@ -46,7 +46,7 @@ describe("pricing badges", () => {
     renderPicker("pt");
     expect(PLANS.map((p) => ladderRow(p.slug).textContent)).toMatchInlineSnapshot(`
       [
-        "FREE15 notas / mêsLimitado a 15 notas/mês",
+        "FREE5 notas / mêsLimitado a 5 notas/mês",
         "DEVELOPERMelhor custo-benefício200 notas / mêsR$ 0,18 por nota excedenteR$ 29,90",
         "GROWTHMais popular850 notas / mêsR$ 0,14 por nota excedenteR$ 99,90",
         "SCALE3.000 notas / mêsR$ 0,12 por nota excedenteR$ 299,90",

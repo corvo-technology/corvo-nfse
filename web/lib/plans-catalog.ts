@@ -10,7 +10,7 @@ export interface PlanTier {
 }
 
 export const PLANS: PlanTier[] = [
-  { slug: "free", credits: 15, basePriceCents: 0, perCreditCents: 0 },
+  { slug: "free", credits: 5, basePriceCents: 0, perCreditCents: 0 },
   { slug: "developer", credits: 200, basePriceCents: 2990, perCreditCents: 18 },
   { slug: "growth", credits: 850, basePriceCents: 9990, perCreditCents: 14 },
   { slug: "scale", credits: 3000, basePriceCents: 29990, perCreditCents: 12 },

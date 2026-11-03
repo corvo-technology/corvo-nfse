@@ -641,10 +641,10 @@
         "desc": "Structured responses, examples in Node, Python, and Go."
       }
     },
-    "freeCreditsTag": "15 FREE INVOICES PER MONTH",
+    "freeCreditsTag": "5 FREE INVOICES PER MONTH",
     "headline": "From first integration to tax invoice in minutes.",
     "afterSignup": "AFTER SIGNUP",
-    "footerNote": "No credit card required. No contract. 15 free invoices to get started.",
+    "footerNote": "No credit card required. No contract. 5 free invoices to get started.",
     "magicLink": {
       "sendCode": "Send code",
       "sending": "Sending...",
@@ -665,7 +665,7 @@
     "subtitle": "Corvo is a REST API and MCP server to issue Brazilian service invoices (NFS-e) on the national standard for MEI and Simples Nacional companies. Built for AI agents, developers, SaaS products and ERPs.",
     "startFree": "Start free",
     "viewDocs": "View documentation",
-    "mono": "15 free invoices per month. No credit card required."
+    "mono": "5 free invoices per month. No credit card required."
   },
   "Nav": {
     "product": "Product",
@@ -681,9 +681,9 @@
   },
   "FreeTrial": {
     "eyebrow": "START FREE",
-    "title": "15 free invoices per month",
+    "title": "5 free invoices per month",
     "subtitle": "No credit card required.",
-    "description": "Integrate NFS-e issuance into your product with up to 15 authorized invoices per month for one company. The allowance renews on the first day of each month.",
+    "description": "Integrate NFS-e issuance into your product with up to 5 authorized invoices per month for one company. The allowance renews on the first day of each month.",
     "startFree": "Start free",
     "finePrint": "Limit of 3 production issuances per day. Allowances use UTC and do not roll over. Tests do not consume the allowance."
   },
@@ -712,7 +712,7 @@
       "porMes": "/month",
       "free": {
         "label": "Free plan",
-        "description": "15 invoices per month, 3 per day limit."
+        "description": "5 invoices per month, 3 per day limit."
       },
       "custom": {
         "label": "Contact us",
@@ -724,7 +724,7 @@
     "plans": {
       "free": {
         "name": "FREE",
-        "credits": "15",
+        "credits": "5",
         "price": "R$ 0",
         "unit": "",
         "bestFor": "Test the API and validate your integration.",
@@ -895,7 +895,7 @@
     "description": "One integration to automate NFS-e issuance and track your product's growth.",
     "ctaPrimary": "Start free",
     "ctaSecondary": "Explore API",
-    "subtext": "15 free invoices per month to get started."
+    "subtext": "5 free invoices per month to get started."
   },
   "Footer": {
     "brand": "© Corvo. All rights reserved.",
@@ -954,7 +954,7 @@
       },
       "s7": {
         "title": "7. Plans, allowances and renewal",
-        "content": "Plans define the monthly invoice allowance, active company limit and usage limits shown in the offer and dashboard. Free allows one active company and up to 15 authorized production invoices per month, with a limit of 3 per day. Its allowance renews on the first day of each month; monthly and daily limits use UTC. Paid allowances follow the monthly subscription period shown in the dashboard. Allowances belong to the workspace, not to each member or API key. Unused allowance does not roll over or convert into cash. Once a limit is reached, new requests may be blocked until renewal or the purchase of appropriate capacity."
+        "content": "Plans define the monthly invoice allowance, active company limit and usage limits shown in the offer and dashboard. Free allows one active company and up to 5 authorized production invoices per month, with a limit of 3 per day. Its allowance renews on the first day of each month; monthly and daily limits use UTC. Paid allowances follow the monthly subscription period shown in the dashboard. Allowances belong to the workspace, not to each member or API key. Unused allowance does not roll over or convert into cash. Once a limit is reached, new requests may be blocked until renewal or the purchase of appropriate capacity."
       },
       "s8": {
         "title": "8. How usage and overage are calculated",

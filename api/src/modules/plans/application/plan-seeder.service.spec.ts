@@ -1,7 +1,7 @@
 import { Plan } from '../domain/plan';
 import { PlanSeederService } from './plan-seeder.service';
 
-it('seeds 15 free invoices per month while preserving all other plan allowances', async () => {
+it('seeds 5 free invoices per month while preserving all other plan allowances', async () => {
   const save = jest.fn(async (plan: Plan) => plan);
   const service = new PlanSeederService({
     findBySlug: jest.fn().mockResolvedValue(null),
@@ -11,7 +11,7 @@ it('seeds 15 free invoices per month while preserving all other plan allowances'
   expect(
     save.mock.calls.map(([plan]) => [plan.slug, plan.monthlyCreditAllowance]),
   ).toEqual([
-    ['free', 15],
+    ['free', 5],
     ['developer', 200],
     ['growth', 850],
     ['scale', 3000],

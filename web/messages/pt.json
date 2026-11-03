@@ -641,10 +641,10 @@
         "desc": "Respostas estruturadas, exemplos em Node, Python e Go."
       }
     },
-    "freeCreditsTag": "15 NOTAS GRÁTIS POR MÊS",
+    "freeCreditsTag": "5 NOTAS GRÁTIS POR MÊS",
     "headline": "Da primeira emissão à nota fiscal em minutos.",
     "afterSignup": "APÓS O CADASTRO",
-    "footerNote": "Sem cartão de crédito. Sem contrato. 15 notas grátis para começar.",
+    "footerNote": "Sem cartão de crédito. Sem contrato. 5 notas grátis para começar.",
     "magicLink": {
       "sendCode": "Enviar código",
       "sending": "Enviando...",
@@ -665,7 +665,7 @@
     "subtitle": "A Corvo é uma API REST e um servidor MCP para emitir NFS-e (nota fiscal de serviço) no padrão nacional do Brasil, para empresas MEI e do Simples Nacional. Feita para agentes de IA, desenvolvedores, SaaS e ERPs.",
     "startFree": "Começar grátis",
     "viewDocs": "Ver documentação",
-    "mono": "15 notas grátis por mês. Sem cartão de crédito."
+    "mono": "5 notas grátis por mês. Sem cartão de crédito."
   },
   "Nav": {
     "product": "Produto",
@@ -681,9 +681,9 @@
   },
   "FreeTrial": {
     "eyebrow": "COMEÇAR GRÁTIS",
-    "title": "15 notas fiscais grátis por mês",
+    "title": "5 notas fiscais grátis por mês",
     "subtitle": "Sem cartão de crédito.",
-    "description": "Integre a emissão de NFS-e ao seu produto com até 15 notas autorizadas por mês, para uma empresa. A cota renova no primeiro dia de cada mês.",
+    "description": "Integre a emissão de NFS-e ao seu produto com até 5 notas autorizadas por mês, para uma empresa. A cota renova no primeiro dia de cada mês.",
     "startFree": "Começar grátis",
     "finePrint": "Limite de 3 emissões por dia em produção. Cotas em UTC, sem acúmulo. Testes não consomem a cota."
   },
@@ -712,7 +712,7 @@
       "porMes": "/mês",
       "free": {
         "label": "Plano gratuito",
-        "description": "15 notas por mês, limite de 3 por dia."
+        "description": "5 notas por mês, limite de 3 por dia."
       },
       "custom": {
         "label": "Fale conosco",
@@ -724,7 +724,7 @@
     "plans": {
       "free": {
         "name": "FREE",
-        "credits": "15",
+        "credits": "5",
         "price": "R$ 0",
         "unit": "",
         "bestFor": "Testar a API e validar a integração.",
@@ -895,7 +895,7 @@
     "description": "Uma integração para automatizar a emissão de NFS-e e acompanhar o crescimento do seu produto.",
     "ctaPrimary": "Começar grátis",
     "ctaSecondary": "Explorar API",
-    "subtext": "15 notas gratuitas por mês para começar."
+    "subtext": "5 notas gratuitas por mês para começar."
   },
   "Footer": {
     "brand": "© Corvo. Todos os direitos reservados.",
@@ -954,7 +954,7 @@
       },
       "s7": {
         "title": "7. Planos, cotas e renovação",
-        "content": "Os planos definem a cota mensal de notas, o limite de empresas ativas e os limites de uso apresentados na oferta e no painel. O Free permite uma empresa ativa e até 15 notas autorizadas em produção por mês, com limite de 3 por dia. Sua cota renova no primeiro dia de cada mês; os limites mensal e diário seguem UTC. Nos planos pagos, a cota acompanha o período mensal da assinatura informado no painel. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas não utilizadas não acumulam nem se convertem em dinheiro. Ao atingir um limite, novas solicitações podem ser bloqueadas até a renovação ou a contratação de capacidade compatível."
+        "content": "Os planos definem a cota mensal de notas, o limite de empresas ativas e os limites de uso apresentados na oferta e no painel. O Free permite uma empresa ativa e até 5 notas autorizadas em produção por mês, com limite de 3 por dia. Sua cota renova no primeiro dia de cada mês; os limites mensal e diário seguem UTC. Nos planos pagos, a cota acompanha o período mensal da assinatura informado no painel. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas não utilizadas não acumulam nem se convertem em dinheiro. Ao atingir um limite, novas solicitações podem ser bloqueadas até a renovação ou a contratação de capacidade compatível."
       },
       "s8": {
         "title": "8. Como o consumo e os excedentes são calculados",
