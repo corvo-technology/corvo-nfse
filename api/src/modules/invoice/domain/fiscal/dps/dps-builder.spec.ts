@@ -895,3 +895,51 @@ describe('DpsBuilder — NT 009 release 1 (XSD 20261020, Produção Restrita)', 
     expect(legacy.valid).toBe(false);
   });
 });
+
+describe('DpsBuilder auto layout per emission', () => {
+  it.each([
+    ['production', '2026-11-30T23:59:59-03:00', true, 'v1.01'],
+    ['production', '2026-12-01T00:00:00-03:00', false, 'v1.01'],
+    ['production', '2026-12-01T00:00:00-03:00', true, 'nt009-r1'],
+    ['restricted', '2026-11-30T23:59:59-03:00', false, 'nt009-r1'],
+  ] as const)(
+    '%s at %s opt-in %s validates as %s',
+    async (sefin, issuedAt, productionEnabled, layout) => {
+      const dps = dpsFrom(
+        await new DpsBuilder().build(
+          input({
+            emitente: { cnpj: '12A34B56C7D882' },
+            invoice: {
+              environment: 'live',
+              sefin,
+              issuedAt,
+              competenceDate: issuedAt.slice(0, 10),
+              customer: null,
+            },
+            result: {
+              classification: classification({
+                nbsCode: REAL_NBS,
+                cst: REAL_CST,
+                classCode: REAL_CLASS_CODE,
+                operationIndicator: REAL_OPERATION_INDICATOR,
+              }),
+              applicability: applicability({ customerRequired: false }),
+            },
+          }),
+          'auto',
+          { productionEnabled },
+        ),
+      );
+      expect(dps.infDPS.tpAmb).toBe(
+        sefin === 'production'
+          ? TipoAmbienteDps.Producao
+          : TipoAmbienteDps.Homologacao,
+      );
+      const xml = buildDpsXml(dps, { layout });
+      expect(xml.includes('<gIBSCBS>')).toBe(layout === 'v1.01');
+      expect(
+        (await validateDpsXml(xml, { layout, throwOnInvalid: false })).valid,
+      ).toBe(true);
+    },
+  );
+});

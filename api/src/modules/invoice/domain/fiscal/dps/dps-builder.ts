@@ -20,7 +20,13 @@ import type { FiscalCalculationResult } from '../fiscal-calculation-result';
 import { fiscalError, type FiscalError } from '../fiscal-error';
 import { toDecimal, type DecimalString } from '../money';
 import { err, ok, type Result } from '../result';
-import { ACTIVE_LAYOUTS, type DpsLayout, XML_LAYOUT } from './dps-layout';
+import {
+  resolveDpsLayout,
+  type DpsLayoutPolicy,
+  ACTIVE_LAYOUTS,
+  type DpsLayout,
+  XML_LAYOUT,
+} from './dps-layout';
 import { isNt009IbsCbsOnlyEvent } from './nt009-events';
 
 const STEP = 'DpsBuilder';
@@ -178,9 +184,19 @@ export class DpsBuilder {
   async build(
     input: DpsBuildInput,
     layoutId: string,
+    policy: DpsLayoutPolicy = {},
   ): Promise<Result<DPS, FiscalError>> {
     const { result } = input;
 
+    const configured = layoutId;
+    if (configured === 'auto') {
+      layoutId = resolveDpsLayout({
+        ...policy,
+        configured,
+        sefinEnvironment: input.invoice.sefin ?? 'production',
+        at: new Date(input.invoice.issuedAt),
+      });
+    }
     const layout: DpsLayout | undefined = this.layouts[layoutId];
     if (layout === undefined) {
       return err(
@@ -205,12 +221,13 @@ export class DpsBuilder {
       );
     }
 
-    // NT 009 r1 is only accepted by the Sefin Produção Restrita until it reaches
-    // production; a live invoice bound for production keeps the current layout.
+    // Explicit NT 009 remains restricted; auto resolves production only after
+    // the cutover with the production opt-in.
     if (
       layout.id === 'nt009-r1' &&
       input.invoice.environment === 'live' &&
-      input.invoice.sefin !== 'restricted'
+      input.invoice.sefin !== 'restricted' &&
+      configured !== 'auto'
     ) {
       return err(
         fiscalError({

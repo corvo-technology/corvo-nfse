@@ -116,6 +116,8 @@ export default function configuration(): AppConfiguration {
       circuitFailureThreshold: env.RTC_CIRCUIT_FAILURE_THRESHOLD,
       circuitResetMs: env.RTC_CIRCUIT_RESET_MS,
       dpsLayout: env.FISCAL_DPS_LAYOUT,
+      nt009CutoverAt: env.FISCAL_NT009_CUTOVER_AT,
+      nt009ProductionEnabled: env.FISCAL_NT009_PRODUCTION_ENABLED,
       expectedVersion: env.RTC_EXPECTED_VERSION,
     },
     logging: {

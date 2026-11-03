@@ -9,6 +9,8 @@ describe('rtc environment configuration', () => {
     expect(env.RTC_CIRCUIT_FAILURE_THRESHOLD).toBe(5);
     expect(env.RTC_CIRCUIT_RESET_MS).toBe(30000);
     expect(env.FISCAL_DPS_LAYOUT).toBe('rtc-v1.01');
+    expect(env.FISCAL_NT009_CUTOVER_AT).toBe('2026-12-01T00:00:00-03:00');
+    expect(env.FISCAL_NT009_PRODUCTION_ENABLED).toBe(false);
   });
 
   it('accepts the NT 009 release 1 layout only for the Produção Restrita', () => {
@@ -64,4 +66,33 @@ describe('rtc environment configuration', () => {
       parseEnvConfig({ NODE_ENV: 'test', RTC_CALCULATOR_URL: 'not-a-url' }),
     ).toThrow();
   });
+});
+
+it('accepts auto and validates the cutover timestamp and opt-in', () => {
+  expect(
+    parseEnvConfig({
+      NODE_ENV: 'test',
+      FISCAL_DPS_LAYOUT: 'auto',
+      FISCAL_NT009_PRODUCTION_ENABLED: 'true',
+    }),
+  ).toMatchObject({
+    FISCAL_DPS_LAYOUT: 'auto',
+    FISCAL_NT009_PRODUCTION_ENABLED: true,
+  });
+  for (const date of [
+    'invalid',
+    '2026-12-01',
+    '2026-12-01T00:00:00',
+    '2026-02-30T00:00:00-03:00',
+  ]) {
+    expect(() =>
+      parseEnvConfig({ NODE_ENV: 'test', FISCAL_NT009_CUTOVER_AT: date }),
+    ).toThrow();
+  }
+  expect(() =>
+    parseEnvConfig({
+      NODE_ENV: 'test',
+      FISCAL_NT009_PRODUCTION_ENABLED: 'invalid',
+    }),
+  ).toThrow();
 });

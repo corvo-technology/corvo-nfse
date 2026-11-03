@@ -276,7 +276,14 @@ export const envSchema = z
       .default(5),
     RTC_CIRCUIT_RESET_MS: z.coerce.number().int().positive().default(30000),
     RTC_EXPECTED_VERSION: z.string().trim().min(1).optional(),
-    FISCAL_DPS_LAYOUT: z.enum(['rtc-v1.01', 'nt009-r1']).default('rtc-v1.01'),
+    FISCAL_NT009_CUTOVER_AT: z
+      .string()
+      .datetime({ offset: true })
+      .default('2026-12-01T00:00:00-03:00'),
+    FISCAL_NT009_PRODUCTION_ENABLED: booleanFromEnv.default(false),
+    FISCAL_DPS_LAYOUT: z
+      .enum(['rtc-v1.01', 'nt009-r1', 'auto'])
+      .default('rtc-v1.01'),
     WHATSAPP_SEND_ATTEMPTS: z.coerce.number().int().positive().default(3),
     WHATSAPP_SEND_BACKOFF_MS: z.coerce.number().int().positive().default(5000),
     WHATSAPP_RECEIVE_CONCURRENCY: z.coerce

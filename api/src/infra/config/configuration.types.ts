@@ -54,7 +54,7 @@ export interface FiscalConfig {
   ibsCbsUnavailableMode: 'block' | 'warn';
 }
 
-export type RtcDpsLayout = 'rtc-v1.01' | 'nt009-r1';
+export type RtcDpsLayout = 'rtc-v1.01' | 'nt009-r1' | 'auto';
 
 export interface RtcConfig {
   url?: string;
@@ -63,6 +63,8 @@ export interface RtcConfig {
   circuitFailureThreshold: number;
   circuitResetMs: number;
   dpsLayout: RtcDpsLayout;
+  nt009CutoverAt?: string;
+  nt009ProductionEnabled?: boolean;
   /** Versão fixada `"{versaoApp}/{versaoDb}"` para detectar updates publicados. */
   expectedVersion?: string;
 }
