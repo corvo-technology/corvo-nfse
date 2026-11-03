@@ -200,6 +200,37 @@ describe('NfseWorkflowService payload — tomador opcional', () => {
     );
   });
 
+  it('uses the release instant as dhEmi for a scheduled invoice (Receita E0015)', async () => {
+    const scheduledFor = new Date('2099-10-14T12:00:00.000Z');
+    const invoice = Invoice.create(
+      {
+        companyId: 'company-1',
+        customer: null,
+        service: {
+          description: 'Serviço',
+          code: '010101',
+          municipalityCode: '3550308',
+        },
+        amount: 100,
+        competenceDate: new Date('2099-10-14'),
+        scheduledFor,
+      },
+      'tenant-1',
+    );
+
+    const payload = await callPayload(invoice);
+
+    expect(payload.issuedAt).toEqual(scheduledFor);
+  });
+
+  it('keeps the creation time as dhEmi for an immediate invoice', async () => {
+    const invoice = createInvoice(null);
+
+    const payload = await callPayload(invoice);
+
+    expect(payload.issuedAt).toEqual(invoice.toSnapshot().createdAt);
+  });
+
   it('does not send the municipal registration unless the company opted in (Receita E0120)', async () => {
     fakes.companies.findById.mockResolvedValue({
       ...company,

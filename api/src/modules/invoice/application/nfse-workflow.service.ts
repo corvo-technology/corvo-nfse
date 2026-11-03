@@ -65,6 +65,18 @@ class DpsBuildRejectionError extends Error {
   }
 }
 
+/**
+ * dhEmi of the DPS. A scheduled invoice is created before its competence day,
+ * and the Sefin rejects a competence later than dhEmi (E0015), so it uses the
+ * fixed release instant instead of the creation time.
+ */
+function dpsIssuedAt(snapshot: {
+  createdAt: Date;
+  scheduledFor?: Date | null;
+}): Date {
+  return snapshot.scheduledFor ?? snapshot.createdAt;
+}
+
 @Injectable()
 export class NfseWorkflowService {
   private readonly logger = new Logger(NfseWorkflowService.name);
@@ -356,7 +368,7 @@ export class NfseWorkflowService {
       tenantId: invoice.tenantId,
       number: invoice.dpsNumber!,
       competenceDate: new Date(snapshot.competenceDate),
-      issuedAt: snapshot.createdAt,
+      issuedAt: dpsIssuedAt(snapshot),
       pfxBuffer: credentials.pfxBuffer,
       p12Password: credentials.password,
       environment: invoice.environment,
@@ -426,7 +438,7 @@ export class NfseWorkflowService {
         invoice: {
           number: String(dpsNumber),
           serie: dpsSeries,
-          issuedAt: snapshot.createdAt.toISOString(),
+          issuedAt: dpsIssuedAt(snapshot).toISOString(),
           competenceDate: new Date(snapshot.competenceDate).toISOString(),
           description: snapshot.serviceSnapshot.description,
           municipalityCode: snapshot.serviceSnapshot.municipalityCode,
