@@ -211,7 +211,9 @@ export class DpsBuilder {
     }
     if (
       layout.status !== 'in_production' &&
-      !(layout.id === 'nt009-r1' && layout.status === 'restricted_and_scheduled')
+      !(
+        layout.id === 'nt009-r1' && layout.status === 'restricted_and_scheduled'
+      )
     ) {
       return err(
         fiscalError({

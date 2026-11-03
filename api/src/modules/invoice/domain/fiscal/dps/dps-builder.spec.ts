@@ -901,43 +901,40 @@ describe('DpsBuilder auto layout per emission', () => {
     ['production', '2026-11-30T23:59:59-03:00', 'v1.01'],
     ['production', '2026-12-01T00:00:00-03:00', 'nt009-r1'],
     ['restricted', '2026-11-30T23:59:59-03:00', 'nt009-r1'],
-  ] as const)(
-    '%s at %s validates as %s',
-    async (sefin, issuedAt, layout) => {
-      const dps = dpsFrom(
-        await new DpsBuilder().build(
-          input({
-            emitente: { cnpj: '12A34B56C7D882' },
-            invoice: {
-              environment: 'live',
-              sefin,
-              issuedAt,
-              competenceDate: issuedAt.slice(0, 10),
-              customer: null,
-            },
-            result: {
-              classification: classification({
-                nbsCode: REAL_NBS,
-                cst: REAL_CST,
-                classCode: REAL_CLASS_CODE,
-                operationIndicator: REAL_OPERATION_INDICATOR,
-              }),
-              applicability: applicability({ customerRequired: false }),
-            },
-          }),
-          'auto',
-        ),
-      );
-      expect(dps.infDPS.tpAmb).toBe(
-        sefin === 'production'
-          ? TipoAmbienteDps.Producao
-          : TipoAmbienteDps.Homologacao,
-      );
-      const xml = buildDpsXml(dps, { layout });
-      expect(xml.includes('<gIBSCBS>')).toBe(layout === 'v1.01');
-      expect(
-        (await validateDpsXml(xml, { layout, throwOnInvalid: false })).valid,
-      ).toBe(true);
-    },
-  );
+  ] as const)('%s at %s validates as %s', async (sefin, issuedAt, layout) => {
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          emitente: { cnpj: '12A34B56C7D882' },
+          invoice: {
+            environment: 'live',
+            sefin,
+            issuedAt,
+            competenceDate: issuedAt.slice(0, 10),
+            customer: null,
+          },
+          result: {
+            classification: classification({
+              nbsCode: REAL_NBS,
+              cst: REAL_CST,
+              classCode: REAL_CLASS_CODE,
+              operationIndicator: REAL_OPERATION_INDICATOR,
+            }),
+            applicability: applicability({ customerRequired: false }),
+          },
+        }),
+        'auto',
+      ),
+    );
+    expect(dps.infDPS.tpAmb).toBe(
+      sefin === 'production'
+        ? TipoAmbienteDps.Producao
+        : TipoAmbienteDps.Homologacao,
+    );
+    const xml = buildDpsXml(dps, { layout });
+    expect(xml.includes('<gIBSCBS>')).toBe(layout === 'v1.01');
+    expect(
+      (await validateDpsXml(xml, { layout, throwOnInvalid: false })).valid,
+    ).toBe(true);
+  });
 });
