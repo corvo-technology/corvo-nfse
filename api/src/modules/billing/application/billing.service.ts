@@ -285,6 +285,15 @@ export class BillingService {
       });
       return;
     }
+    if (!plan.active) {
+      // A subscription still priced on a retired plan must not pull the account back onto it.
+      this.logger.warn({
+        event: 'stripe_retired_plan_ignored',
+        subscriptionId: sub.id,
+        planSlug: plan.slug,
+      });
+      return;
+    }
     const tenant = await this.repository.current(tenantId);
     const decision = subscriptionDecision(tenant.plan.slug, sub);
     const entitledPlan = await this.repository.plan(decision.planSlug);
