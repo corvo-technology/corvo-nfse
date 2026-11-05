@@ -83,6 +83,20 @@ describe("CheckoutDialog", () => {
     });
   });
 
+  it("formats the document and the phone while the payer types", () => {
+    open({ kind: "plan", slug: "equipe", cycle: "monthly" });
+    const input = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
+    fireEvent.change(input("CPF ou CNPJ"), { target: { value: "12345678909" } });
+    expect(input("CPF ou CNPJ").value).toBe("123.456.789-09");
+    fireEvent.change(input("CPF ou CNPJ"), { target: { value: "12345678000195" } });
+    expect(input("CPF ou CNPJ").value).toBe("12.345.678/0001-95");
+    fireEvent.change(input("Telefone com DDD"), { target: { value: "11999999999" } });
+    expect(input("Telefone com DDD").value).toBe("(11) 99999-9999");
+    expect(input("Telefone com DDD").getAttribute("inputmode")).toBe("tel");
+    expect(input("E-mail").getAttribute("type")).toBe("email");
+    expect(input("E-mail").getAttribute("autocomplete")).toBe("email");
+  });
+
   it("card and annual Pix never ask for the payer", () => {
     open({ kind: "plan", slug: "equipe", cycle: "monthly" });
     fireEvent.click(screen.getByTestId("method-card"));

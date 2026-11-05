@@ -23,6 +23,20 @@ export function maskTaxId(value: string): string {
   return formatCnpj(cleanCnpj(c));
 }
 
+/** Brazilian phone, formatted while typing: (11) 99999-9999 or (11) 3333-4444. A country code (+55) is dropped. */
+export function maskPhone(value: string): string {
+  let d = onlyDigits(value);
+  if (d.length >= 12 && d.startsWith("55")) d = d.slice(2);
+  d = d.slice(0, 11);
+  if (d.length === 0) return "";
+  if (d.length <= 2) return `(${d}`;
+  const area = d.slice(0, 2);
+  const rest = d.slice(2);
+  if (rest.length <= 4) return `(${area}) ${rest}`;
+  const split = rest.length === 9 ? 5 : 4;
+  return `(${area}) ${rest.slice(0, split)}-${rest.slice(split)}`;
+}
+
 export const maskZip = (value: string) => onlyDigits(value).slice(0, 8).replace(/^(\d{5})(\d)/, "$1-$2");
 export const maskState = (value: string) => value.replace(/[^a-zA-Z]/g, "").slice(0, 2).toUpperCase();
 export const maskDigits = (max: number) => (value: string) => onlyDigits(value).slice(0, max);

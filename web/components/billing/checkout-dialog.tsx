@@ -7,6 +7,7 @@ import { Check, Copy, CreditCard, QrCode } from "lucide-react";
 import { ApiError, billing as billingApi, type CheckoutPlan, type PaymentMethod, type PurchaseResult } from "@/lib/api";
 import { AVULSO_UNIT_CENTS, PLANS, chargeTotalCents, type BillingCycle } from "@/lib/plans-catalog";
 import { formatBRL } from "@/components/pricing/plan-picker";
+import { maskPhone, maskTaxId } from "@/lib/masks";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -118,10 +119,10 @@ function buildPayer(p: Record<"name" | "taxID" | "email" | "phone", string>) {
   };
 }
 
-function Field({ label, value, onChange, className, inputMode, autoComplete }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; className?: string; inputMode?: "numeric" | "tel" | "email"; autoComplete?: string }) {
+function Field({ label, value, onChange, className, inputMode, autoComplete, type = "text", placeholder, maxLength }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; className?: string; inputMode?: "numeric" | "tel" | "email"; autoComplete?: string; type?: "text" | "email" | "tel"; placeholder?: string; maxLength?: number }) {
   return (
     <label className={cn("text-[12.5px] text-text-2", className)}>{label}
-      <input value={value} onChange={onChange} inputMode={inputMode} autoComplete={autoComplete} className="mt-1 block w-full rounded-[8px] border border-white/15 bg-transparent px-3 py-2 text-[14px] text-text focus:border-accent focus:outline-none" />
+      <input type={type} value={value} onChange={onChange} inputMode={inputMode} autoComplete={autoComplete} placeholder={placeholder} maxLength={maxLength} spellCheck={false} className="mt-1 block w-full rounded-[8px] border border-white/15 bg-transparent px-3 py-2.5 text-[14px] text-text tabular-nums placeholder:text-text-4 focus:border-accent focus:outline-none" />
     </label>
   );
 }
@@ -219,10 +220,10 @@ function CheckoutDialogInner({
             </div>
             {needsPayer && (
               <div className="grid grid-cols-6 gap-3">
-                <Field className="col-span-6" label={t("checkout.payerName")} value={payer.name} onChange={setField("name")} autoComplete="name" />
-                <Field className="col-span-6 sm:col-span-3" label={t("checkout.payerTaxId")} value={payer.taxID} onChange={setField("taxID")} inputMode="numeric" />
-                <Field className="col-span-6 sm:col-span-3" label={t("checkout.payerPhone")} value={payer.phone} onChange={setField("phone")} inputMode="tel" autoComplete="tel" />
-                <Field className="col-span-6" label={t("checkout.payerEmail")} value={payer.email} onChange={setField("email")} inputMode="email" autoComplete="email" />
+                <Field className="col-span-6" label={t("checkout.payerName")} value={payer.name} onChange={setField("name")} autoComplete="name" placeholder="Ana Souza" />
+                <Field className="col-span-6 sm:col-span-3" label={t("checkout.payerTaxId")} value={payer.taxID} onChange={(e) => setPayer((c) => ({ ...c, taxID: maskTaxId(e.target.value) }))} inputMode="numeric" placeholder="000.000.000-00" maxLength={18} />
+                <Field className="col-span-6 sm:col-span-3" label={t("checkout.payerPhone")} value={payer.phone} onChange={(e) => setPayer((c) => ({ ...c, phone: maskPhone(e.target.value) }))} type="tel" inputMode="tel" autoComplete="tel-national" placeholder="(11) 99999-9999" maxLength={15} />
+                <Field className="col-span-6" label={t("checkout.payerEmail")} value={payer.email} onChange={setField("email")} type="email" inputMode="email" autoComplete="email" placeholder="voce@empresa.com" />
                 <p className="col-span-6 text-[12px] text-text-3">{t("checkout.payerHint")}</p>
               </div>
             )}
