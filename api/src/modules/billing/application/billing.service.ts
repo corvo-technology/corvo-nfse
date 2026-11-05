@@ -11,6 +11,7 @@ import { hasPaidAccess } from '../domain/billing-policy';
 import { BillingRuleError } from '../domain/billing-period';
 import { isSupportedStripeEvent } from '../domain/stripe-webhook-events';
 import { StripePaymentsService } from './stripe-payments.service';
+import { PAID_PLAN_SLUGS } from '@/modules/plans/application/pricing.service';
 
 @Injectable()
 export class BillingService {
@@ -170,6 +171,10 @@ export class BillingService {
 
   /** True while a paid plan (from any provider) still covers today, grace included. */
   async hasLiveEntitlement(tenantId: string): Promise<boolean> {
+    // Only a current plan counts: an account left on a retired plan (or on no plan)
+    // must be able to buy one, whatever its old subscription still says.
+    const { plan } = await this.repository.current(tenantId);
+    if (!(PAID_PLAN_SLUGS as string[]).includes(plan.slug)) return false;
     const billing = await this.repository.billing(tenantId);
     return hasPaidAccess(
       billing?.stripeStatus ?? null,

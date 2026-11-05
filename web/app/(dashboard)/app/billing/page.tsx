@@ -205,7 +205,8 @@ export default function BillingPage() {
               );
             const current = PLANS.find((p) => p.slug === billing.slug);
             // Annual is always a fresh purchase; monthly changes on an existing subscription are scheduled.
-            const action = !hasSubscription || cycle === "annual" ? "subscribe"
+            const onCurrentSubscription = hasSubscription && PLANS.some((p) => p.slug === billing.slug);
+            const action = !onCurrentSubscription || cycle === "annual" ? "subscribe"
               : plan.monthlyCents > (current?.monthlyCents ?? 0) ? "upgrade" : "downgrade";
             return (
               <Button variant={action === "downgrade" ? "secondary" : "accent"} size="lg" loading={busy === plan.slug} disabled={!billingEnabled || (busy !== null && busy !== plan.slug)}
@@ -232,7 +233,7 @@ export default function BillingPage() {
         </Card>
       </section>
 
-      <CheckoutDialog target={target} onClose={() => setTarget(null)} onError={(cause) => { setTarget(null); fail(cause); }} redirect={redirect} />
+      <CheckoutDialog target={target} onPaid={() => void billingApi.plan().then(setBilling).catch(() => undefined)} onClose={() => setTarget(null)} onError={(cause) => { setTarget(null); fail(cause); }} redirect={redirect} />
     </div>
   );
 }

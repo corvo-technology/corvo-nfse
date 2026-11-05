@@ -5,22 +5,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import pt from "@/messages/pt.json";
 
 const purchase = vi.fn();
+const plan = vi.fn();
 vi.mock("@/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api")>();
-  return { ...actual, billing: { ...actual.billing, purchase: (...args: unknown[]) => purchase(...args) } };
+  return { ...actual, billing: { ...actual.billing, purchase: (...args: unknown[]) => purchase(...args), plan: (...args: unknown[]) => plan(...args) } };
 });
 
 import { CheckoutDialog, type CheckoutTarget } from "@/components/billing/checkout-dialog";
 
-const open = (target: CheckoutTarget, redirect = vi.fn()) =>
+const open = (target: CheckoutTarget, redirect = vi.fn(), extra: { onPaid?: () => void; pollMs?: number } = {}) =>
   render(
     <NextIntlClientProvider locale="pt" messages={pt}>
-      <CheckoutDialog target={target} onClose={() => {}} onError={() => {}} redirect={redirect} />
+      <CheckoutDialog target={target} onClose={() => {}} onError={() => {}} redirect={redirect} {...extra} />
     </NextIntlClientProvider>
   );
 
 describe("CheckoutDialog", () => {
-  beforeEach(() => purchase.mockReset());
+  beforeEach(() => { purchase.mockReset(); plan.mockReset(); plan.mockResolvedValue({ slug: "free", usage: { avulsoBalance: 0 } }); });
   afterEach(cleanup);
 
   it("avulso: shows units x R$ 0,99 and sends a Pix purchase with an idempotency key", async () => {
@@ -30,7 +31,7 @@ describe("CheckoutDialog", () => {
     fireEvent.click(screen.getByText("Continuar"));
     await waitFor(() => expect(screen.getByTestId("pix-result")).toBeTruthy());
     expect(purchase).toHaveBeenCalledWith({ kind: "avulso", units: 10, method: "pix" }, expect.any(String));
-    expect(screen.getByAltText("Pix QR Code")).toBeTruthy();
+    expect((await screen.findByAltText("Pix QR Code")).getAttribute("src")).toMatch(/^data:image\//);
     expect(screen.getByText("Copiar código Pix")).toBeTruthy();
   });
 
@@ -86,5 +87,41 @@ describe("CheckoutDialog", () => {
     const firstKey = purchase.mock.calls[0][1];
     expect(typeof firstKey).toBe("string");
   });
-});
 
+  it("asks Pix or card as two clear choices, Pix selected first", () => {
+    open({ kind: "avulso", units: 5 });
+    expect(screen.getByTestId("method-pix").getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByTestId("method-card").getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByText("Aprova na hora. O código vale por 24 horas.")).toBeTruthy();
+    expect(screen.getByText("Pagamento seguro pelo Stripe.")).toBeTruthy();
+  });
+
+  it("builds the QR code from the brCode even when Woovi only sends a hosted image url, and shows the countdown", async () => {
+    purchase.mockResolvedValue({ method: "pix", brCode: "00020126580014BR.GOV.BCB.PIX0136abc", qrCodeImage: "https://api.woovi.test/qr/1.png", paymentLinkUrl: "https://woovi.test/p", expiresAt: new Date(Date.now() + 90 * 60_000).toISOString() });
+    open({ kind: "avulso", units: 3 });
+    fireEvent.click(screen.getByText("Continuar"));
+    expect((await screen.findByAltText("Pix QR Code")).getAttribute("src")).toMatch(/^data:image\//);
+    expect(screen.getByText(/Expira em 01:29:/)).toBeTruthy();
+    expect(screen.getByText("Aguardando o pagamento…")).toBeTruthy();
+  });
+
+  it("detects the payment by itself: avulso balance grows, the dialog says confirmed and refreshes", async () => {
+    purchase.mockResolvedValue({ method: "pix", brCode: "BR", qrCodeImage: null, paymentLinkUrl: "https://woovi.test/p", expiresAt: null });
+    plan.mockResolvedValueOnce({ slug: "free", usage: { avulsoBalance: 2 } }).mockResolvedValue({ slug: "free", usage: { avulsoBalance: 12 } });
+    const onPaid = vi.fn();
+    open({ kind: "avulso", units: 10 }, vi.fn(), { onPaid, pollMs: 5 });
+    fireEvent.click(screen.getByText("Continuar"));
+    expect(await screen.findByText("Pagamento confirmado")).toBeTruthy();
+    expect(screen.getByText("Suas 10 notas avulsas já estão no saldo.")).toBeTruthy();
+    expect(onPaid).toHaveBeenCalledTimes(1);
+  });
+
+  it("detects a plan purchase when the account switches to that plan", async () => {
+    purchase.mockResolvedValue({ method: "pix", brCode: "BR", qrCodeImage: null, paymentLinkUrl: "https://woovi.test/p", expiresAt: null });
+    plan.mockResolvedValueOnce({ slug: "free", usage: { avulsoBalance: 0 } }).mockResolvedValue({ slug: "equipe", usage: { avulsoBalance: 0 } });
+    open({ kind: "plan", slug: "equipe", cycle: "annual" }, vi.fn(), { pollMs: 5 });
+    fireEvent.click(screen.getByText("Continuar"));
+    expect(await screen.findByText("Pagamento confirmado")).toBeTruthy();
+    expect(screen.getByText("Seu plano EQUIPE está ativo.")).toBeTruthy();
+  });
+});
