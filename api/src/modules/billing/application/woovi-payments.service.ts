@@ -5,9 +5,7 @@ import {
   type PaymentIntent,
   type PixCheckout,
 } from '../domain/payment-intent';
-import { BillingRepository } from '../domain/billing.repository';
-import { addUtcMonths } from '../domain/billing-policy';
-import { CreditsService } from '@/modules/credits/application/credits.service';
+import { PaymentFulfillmentService } from './payment-fulfillment.service';
 import {
   AVULSO_UNIT_CENTS,
   assertAvulsoUnits,
@@ -42,8 +40,7 @@ export class WooviPaymentsService {
   constructor(
     private readonly client: WooviClient,
     private readonly intents: PaymentIntentStore,
-    private readonly credits: CreditsService,
-    private readonly billing: BillingRepository,
+    private readonly fulfillment: PaymentFulfillmentService,
     private readonly pricing: PricingService,
   ) {}
 
@@ -179,7 +176,7 @@ export class WooviPaymentsService {
         return;
       }
       if (!(await this.intents.markPaid(intent.id, new Date()))) return;
-      await this.apply(intent);
+      await this.fulfillment.apply(intent);
       return;
     }
     const contractRef = payload.charge?.subscription?.correlationID;
@@ -206,40 +203,11 @@ export class WooviPaymentsService {
       if (isDuplicate(error)) return;
       throw error;
     }
-    await this.activatePlan(contract.tenantId, contract.planSlug!, 'monthly');
-  }
-
-  private async apply(intent: PaymentIntent): Promise<void> {
-    if (intent.kind === 'avulso') {
-      await this.credits.grantAvulso(
-        intent.tenantId,
-        intent.units!,
-        `woovi:${intent.providerRef}`,
-      );
-      return;
-    }
-    await this.activatePlan(intent.tenantId, intent.planSlug!, intent.cycle!);
-  }
-
-  private async activatePlan(
-    tenantId: string,
-    planSlug: string,
-    cycle: BillingCycle,
-  ): Promise<void> {
-    const plan = await this.billing.plan(planSlug);
-    if (!plan) throw new Error(`Unknown plan ${planSlug}`);
-    const now = new Date();
-    await this.billing.locked(tenantId, async () => {
-      await this.billing.setPlan(tenantId, plan.id);
-      await this.billing.saveBilling(tenantId, {
-        stripeStatus: 'active',
-        paidUntil: addUtcMonths(now, cycle === 'annual' ? 12 : 1),
-        currentPeriodStart: now,
-        currentPeriodEnd: addUtcMonths(now, 1),
-        pendingPlanSlug: null,
-        cancelAtPeriodEnd: false,
-      });
-    });
+    await this.fulfillment.activatePlan(
+      contract.tenantId,
+      contract.planSlug!,
+      'monthly',
+    );
   }
 
   private async setSubscriptionStatus(

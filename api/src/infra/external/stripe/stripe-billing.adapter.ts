@@ -131,6 +131,42 @@ export class StripeBillingAdapter extends BillingProvider {
     );
     return this.checkoutView(session);
   }
+  async createPaymentCheckout(
+    customerId: string,
+    tenantId: string,
+    input: { name: string; amountCents: number; intentId: string },
+  ) {
+    const success = new URL(this.gateway.config.checkoutSuccessUrl);
+    success.searchParams.set('session_id', '{CHECKOUT_SESSION_ID}');
+    const session = await this.stripe.checkout.sessions.create(
+      {
+        mode: 'payment',
+        ui_mode: 'hosted_page',
+        customer: customerId,
+        client_reference_id: tenantId,
+        metadata: { tenant_id: tenantId, intent_id: input.intentId },
+        allowed_payment_method_types: ['card'],
+        locale: 'pt-BR',
+        branding_settings: CHECKOUT_BRANDING,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: 'brl',
+              unit_amount: input.amountCents,
+              product_data: { name: input.name },
+            },
+          },
+        ],
+        success_url: success
+          .toString()
+          .replace('%7BCHECKOUT_SESSION_ID%7D', '{CHECKOUT_SESSION_ID}'),
+        cancel_url: this.gateway.config.checkoutCancelUrl,
+      },
+      { idempotencyKey: `corvo:pay:${input.intentId}` },
+    );
+    return { id: session.id, url: session.url };
+  }
   async subscription(id: string): Promise<ProviderSubscription> {
     const sub = await this.stripe.subscriptions.retrieve(id, {
       expand: SUBSCRIPTION_EXPAND,
@@ -280,9 +316,16 @@ export class StripeBillingAdapter extends BillingProvider {
       throw new BadRequestException('Stripe event mode mismatch');
     let subscriptionId: string | null = null;
     let customerId: string | null = null;
+    let payment: { intentId: string; paid: boolean } | null = null;
     if (event.type === 'checkout.session.completed') {
       subscriptionId = stripeId(event.data.object.subscription);
       customerId = stripeId(event.data.object.customer);
+      const intentId = event.data.object.metadata?.intent_id;
+      if (event.data.object.mode === 'payment' && intentId)
+        payment = {
+          intentId,
+          paid: event.data.object.payment_status === 'paid',
+        };
     } else if (
       [
         'customer.subscription.created',
@@ -304,7 +347,13 @@ export class StripeBillingAdapter extends BillingProvider {
       );
       customerId = stripeId(invoice.customer);
     }
-    return { id: event.id, type: event.type, subscriptionId, customerId };
+    return {
+      id: event.id,
+      type: event.type,
+      subscriptionId,
+      customerId,
+      payment,
+    };
   }
   async reportRoute(subscriptionId: string, periodEnd: Date) {
     if (periodEnd > new Date())

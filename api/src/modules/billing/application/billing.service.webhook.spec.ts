@@ -9,6 +9,7 @@ type Event = {
   type: string;
   customerId: string | null;
   subscriptionId: string | null;
+  payment?: { intentId: string; paid: boolean } | null;
 };
 
 function build(event: Event, seen = false) {
@@ -29,12 +30,14 @@ function build(event: Event, seen = false) {
       customerId: event.customerId,
     }),
   };
+  const payments = { complete: jest.fn().mockResolvedValue(undefined) };
   const service = new BillingService(
     {} as TenantWorkDiscovery,
     repository as unknown as BillingRepository,
     provider as unknown as BillingProvider,
+    payments as never,
   );
-  return { service, repository, provider };
+  return { service, repository, provider, payments };
 }
 
 describe('BillingService.webhook event handling', () => {
@@ -55,6 +58,37 @@ describe('BillingService.webhook event handling', () => {
     expect(repository.lockedProviderEvent).not.toHaveBeenCalled();
     expect(provider.subscription).not.toHaveBeenCalled();
     expect(repository.recordEvent).not.toHaveBeenCalled();
+  });
+
+  it('fulfils a paid one-time checkout exactly once per Stripe event', async () => {
+    const event = {
+      id: 'evt_pay',
+      type: 'checkout.session.completed',
+      customerId: 'cus_1',
+      subscriptionId: null,
+      payment: { intentId: 'intent-1', paid: true },
+    };
+    const first = build(event);
+    await first.service.webhook(body, 'sig');
+    expect(first.payments.complete).toHaveBeenCalledWith('intent-1');
+    expect(first.provider.subscription).not.toHaveBeenCalled();
+    expect(first.repository.recordEvent).toHaveBeenCalled();
+
+    const replay = build(event, true);
+    await replay.service.webhook(body, 'sig');
+    expect(replay.payments.complete).not.toHaveBeenCalled();
+  });
+
+  it('does not fulfil an unpaid one-time checkout', async () => {
+    const { service, payments } = build({
+      id: 'evt_unpaid',
+      type: 'checkout.session.completed',
+      customerId: 'cus_1',
+      subscriptionId: null,
+      payment: { intentId: 'intent-1', paid: false },
+    });
+    await service.webhook(body, 'sig');
+    expect(payments.complete).not.toHaveBeenCalled();
   });
 
   it('does not reprocess a supported event that was already seen', async () => {

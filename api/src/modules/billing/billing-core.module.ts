@@ -4,6 +4,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CreditsModule } from '@/modules/credits/credits.module';
 import { WooviClient } from '@/infra/external/woovi/woovi.client';
 import type { WooviConfig } from '@/infra/config/configuration.types';
+import { PaymentFulfillmentService } from './application/payment-fulfillment.service';
+import { CheckoutRouterService } from './application/checkout-router.service';
+import { StripePaymentsService } from './application/stripe-payments.service';
 import { WooviPaymentsService } from './application/woovi-payments.service';
 import { PaymentIntentStore } from './domain/payment-intent';
 import { PaymentIntentOrmEntity } from './infra/payment-intent.orm-entity';
@@ -40,8 +43,17 @@ import { PricingService } from '@/modules/plans/application/pricing.service';
       useFactory: (config: WooviConfig) => new WooviClient(config),
     },
     { provide: PaymentIntentStore, useClass: TypeOrmPaymentIntentStore },
+    PaymentFulfillmentService,
+    StripePaymentsService,
     WooviPaymentsService,
+    CheckoutRouterService,
   ],
-  exports: [BillingService, WooviPaymentsService, WOOVI_CONFIG],
+  exports: [
+    BillingService,
+    WooviPaymentsService,
+    StripePaymentsService,
+    CheckoutRouterService,
+    WOOVI_CONFIG,
+  ],
 })
 export class BillingCoreModule {}

@@ -25,6 +25,8 @@ export interface ProviderEvent {
   type: string;
   customerId: string | null;
   subscriptionId: string | null;
+  /** Set for a completed one-time (mode=payment) checkout session. */
+  payment?: { intentId: string; paid: boolean } | null;
 }
 
 export abstract class BillingProvider {
@@ -45,6 +47,11 @@ export abstract class BillingProvider {
     planSlug: string,
     intentId: string,
   ): Promise<ProviderCheckout>;
+  abstract createPaymentCheckout(
+    customerId: string,
+    tenantId: string,
+    input: { name: string; amountCents: number; intentId: string },
+  ): Promise<{ id: string; url: string | null }>;
   abstract subscription(id: string): Promise<ProviderSubscription>;
   abstract scheduleChange(
     subscriptionId: string,

@@ -1,53 +1,10 @@
 import { WooviPaymentsService } from './woovi-payments.service';
-import {
-  PaymentIntentStore,
-  type PaymentIntent,
-  type PaymentIntentStatus,
-} from '../domain/payment-intent';
+import { MemoryPaymentIntentStore } from './memory-payment-intent-store.testing';
+import { PaymentFulfillmentService } from './payment-fulfillment.service';
 import { PricingService } from '@/modules/plans/application/pricing.service';
 
-class MemoryStore extends PaymentIntentStore {
-  rows: PaymentIntent[] = [];
-  findByKey(tenantId: string, key: string) {
-    return Promise.resolve(
-      this.rows.find(
-        (r) => r.tenantId === tenantId && r.idempotencyKey === key,
-      ) ?? null,
-    );
-  }
-  findByRef(provider: string, ref: string) {
-    return Promise.resolve(
-      this.rows.find((r) => r.provider === provider && r.providerRef === ref) ??
-        null,
-    );
-  }
-  insert(intent: PaymentIntent) {
-    if (this.rows.some((r) => r.providerRef === intent.providerRef))
-      return Promise.reject(Object.assign(new Error('dup'), { code: '23505' }));
-    this.rows.push({ ...intent });
-    return Promise.resolve();
-  }
-  markPaid(id: string, paidAt: Date) {
-    const row = this.rows.find((r) => r.id === id)!;
-    if (!['pending', 'authorized', 'expired'].includes(row.status))
-      return Promise.resolve(false);
-    row.status = 'paid';
-    row.paidAt = paidAt;
-    return Promise.resolve(true);
-  }
-  setStatus(
-    id: string,
-    status: PaymentIntentStatus,
-    onlyFrom?: PaymentIntentStatus[],
-  ) {
-    const row = this.rows.find((r) => r.id === id)!;
-    if (!onlyFrom || onlyFrom.includes(row.status)) row.status = status;
-    return Promise.resolve();
-  }
-}
-
 function setup() {
-  const store = new MemoryStore();
+  const store = new MemoryPaymentIntentStore();
   const client = {
     createCharge: jest.fn(async (i: { correlationID: string }) => ({
       correlationID: i.correlationID,
@@ -75,8 +32,7 @@ function setup() {
   const service = new WooviPaymentsService(
     client as never,
     store,
-    credits as never,
-    billing as never,
+    new PaymentFulfillmentService(credits as never, billing as never),
     new PricingService(),
   );
   return { service, store, client, credits, billing, activated };

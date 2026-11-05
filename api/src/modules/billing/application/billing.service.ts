@@ -1,5 +1,5 @@
 import { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { BillingRepository } from '../domain/billing.repository';
 import {
@@ -10,6 +10,7 @@ import { subscriptionDecision } from '../domain/subscription-policy';
 import { hasPaidAccess } from '../domain/billing-policy';
 import { BillingRuleError } from '../domain/billing-period';
 import { isSupportedStripeEvent } from '../domain/stripe-webhook-events';
+import { StripePaymentsService } from './stripe-payments.service';
 
 @Injectable()
 export class BillingService {
@@ -18,6 +19,7 @@ export class BillingService {
     private readonly discovery: TenantWorkDiscovery,
     private readonly repository: BillingRepository,
     private readonly provider: BillingProvider,
+    @Optional() private readonly payments?: StripePaymentsService,
   ) {}
 
   async checkout(tenantId: string, planSlug: string, requestKey: string) {
@@ -223,7 +225,11 @@ export class BillingService {
         : this.repository.lockedProviderEvent(event.id, work);
     await withLock(async () => {
       if (await this.repository.eventSeen(event.id)) return;
-      if (tenantId && event.subscriptionId) {
+      if (event.payment) {
+        // One-time card payment (avulso notes, prepaid annual plan).
+        if (event.payment.paid && this.payments)
+          await this.payments.complete(event.payment.intentId);
+      } else if (tenantId && event.subscriptionId) {
         await this.applySubscription(
           tenantId,
           await this.provider.subscription(event.subscriptionId),

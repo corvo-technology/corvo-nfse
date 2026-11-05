@@ -7,6 +7,7 @@ import {
   Body,
   Req,
   NotFoundException,
+  BadRequestException,
   Headers,
   Param,
 } from '@nestjs/common';
@@ -16,6 +17,7 @@ import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { QuotaService } from '@/modules/plans/application/quota.service';
 import type { QuotaStatus } from '@/modules/plans/application/quota.service';
 import { BillingService } from './application/billing.service';
+import { CheckoutRouterService } from './application/checkout-router.service';
 import { BillingUsageService } from './application/billing-usage.service';
 import {
   CheckoutDto,
@@ -35,6 +37,7 @@ export class BillingController {
     private readonly billingUsage: BillingUsageService,
     private readonly pricingService: PricingService,
     private readonly planRepo: IPlanRepository,
+    private readonly checkoutRouter: CheckoutRouterService,
   ) {}
 
   @Get('plan')
@@ -102,10 +105,31 @@ export class BillingController {
     @Req() req: RequestWithAuthContext,
     @Headers('idempotency-key') key: string,
   ) {
+    const tenantId = req.authContext!.activeTenantId;
+    const method = body.method ?? 'card';
+    if ((body.kind ?? 'plan') === 'avulso') {
+      if (body.units === undefined)
+        throw new BadRequestException('units is required for avulso');
+      return data(
+        await this.checkoutRouter.start(
+          tenantId,
+          { kind: 'avulso', units: body.units, method },
+          key,
+        ),
+      );
+    }
+    if (!body.plan_slug)
+      throw new BadRequestException('plan_slug is required for a plan');
     return data(
-      await this.billing.checkout(
-        req.authContext!.activeTenantId,
-        body.plan_slug,
+      await this.checkoutRouter.start(
+        tenantId,
+        {
+          kind: 'plan',
+          planSlug: body.plan_slug,
+          cycle: body.cycle ?? 'monthly',
+          method,
+          customer: body.customer,
+        },
         key,
       ),
     );

@@ -56,6 +56,85 @@ describe('Stripe billing adapter', () => {
       ),
     ).toThrow('mode mismatch');
   });
+  it('reads a paid one-time checkout session as a payment event', () => {
+    const stripe = new Stripe('sk_test_fixture', {
+      apiVersion: BILLING_API_VERSION,
+    });
+    const adapter = new StripeBillingAdapter(
+      new StripeGateway(new ConfigService({ stripe: configuration() })),
+      new PricingService(),
+    );
+    const event = (payment_status: string) =>
+      JSON.stringify({
+        id: 'evt_pay',
+        type: 'checkout.session.completed',
+        livemode: false,
+        data: {
+          object: {
+            mode: 'payment',
+            payment_status,
+            customer: 'cus_fixture',
+            subscription: null,
+            metadata: { intent_id: 'intent-1', tenant_id: 't' },
+          },
+        },
+      });
+    const verify = (payload: string) =>
+      adapter.verifyEvent(
+        Buffer.from(payload),
+        stripe.webhooks.generateTestHeaderString({ payload, secret }),
+      );
+    expect(verify(event('paid')).payment).toEqual({
+      intentId: 'intent-1',
+      paid: true,
+    });
+    expect(verify(event('unpaid')).payment).toEqual({
+      intentId: 'intent-1',
+      paid: false,
+    });
+  });
+  it('creates a hosted one-time card checkout with server-owned amount', async () => {
+    const create = jest.fn().mockResolvedValue({
+      id: 'cs_pay',
+      url: 'https://checkout.stripe.com/pay',
+    });
+    const adapter = new StripeBillingAdapter(
+      {
+        config: configuration(),
+        stripe: { checkout: { sessions: { create } } },
+      } as unknown as StripeGateway,
+      new PricingService(),
+    );
+    await expect(
+      adapter.createPaymentCheckout('cus_fixture', 'tenant', {
+        name: 'Corvo: 10 notas avulsas',
+        amountCents: 990,
+        intentId: 'intent-1',
+      }),
+    ).resolves.toEqual({
+      id: 'cs_pay',
+      url: 'https://checkout.stripe.com/pay',
+    });
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'payment',
+        customer: 'cus_fixture',
+        allowed_payment_method_types: ['card'],
+        metadata: { tenant_id: 'tenant', intent_id: 'intent-1' },
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: 'brl',
+              unit_amount: 990,
+              product_data: { name: 'Corvo: 10 notas avulsas' },
+            },
+          },
+        ],
+      }),
+      { idempotencyKey: 'corvo:pay:intent-1' },
+    );
+  });
   it('creates hosted monthly checkout with a single server-owned BRL base price', async () => {
     const config = configuration();
     const create = jest.fn().mockResolvedValue({
@@ -90,12 +169,7 @@ describe('Stripe billing adapter', () => {
       new PricingService(),
     );
     expect(
-      await adapter.createCheckout(
-        'cus_fixture',
-        'tenant',
-        'solo',
-        'intent',
-      ),
+      await adapter.createCheckout('cus_fixture', 'tenant', 'solo', 'intent'),
     ).toMatchObject({ id: 'cs_fixture' });
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
