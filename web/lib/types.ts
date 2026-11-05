@@ -9,7 +9,8 @@ export type ConnectionStatus = "pending" | "active" | "suspended" | "disconnecte
 export type PhoneStatus = "pending" | "verified" | "registered";
 export type QualityRating = "GREEN" | "YELLOW" | "RED" | "NA";
 export type MemberRole = "Owner" | "Admin" | "Developer" | "Billing";
-export type PlanSlug = "free" | "developer" | "growth" | "scale" | "volume";
+/** `free` is the internal "no plan" placeholder. */
+export type PlanSlug = "free" | "solo" | "equipe" | "empresa" | "escala";
 export type CreditTransactionType = "purchase" | "message_sent" | "refund" | "adjustment" | "bonus";
 export type CreditSource = "avulso" | "subscription" | "bonus";
 
@@ -73,8 +74,8 @@ export interface Plan {
 export interface CreditBalance {
   tenantId: string;
   balance: number;
-  overageUnits: number;
-  overageAmountCents: number;
+  planRemaining?: number;
+  avulsoBalance?: number;
   hardLimit: number | null;
 }
 
@@ -458,8 +459,7 @@ export interface BillingUsage {
   maxActiveCompanies: number;
   periodStart: string;
   periodEnd: string;
-  overageUnits: number;
-  overageAmountCents: number;
+  avulsoBalance: number;
 }
 
 export interface BillingSubscription {
@@ -480,7 +480,7 @@ export interface BillingPlan {
 
 export interface PlanQuote {
   slug: PlanSlug; name: string; monthlyAllowance: number; basePriceCents: number;
-  perCreditOverageCents: number; monthlyTotalCents: number; annualTotalCents: number; currency: "BRL";
+  monthlyEquivalentCents: number; chargeTotalCents: number; currency: "BRL";
 }
 export type PlanTier = PlanQuote;
 export const NFSE_WEBHOOK_EVENTS = WEBHOOK_EVENT_OPTIONS;

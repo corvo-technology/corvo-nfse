@@ -690,143 +690,97 @@
   "Pricing": {
     "eyebrow": "PRICING",
     "title": "Simple pricing. No surprises.",
-    "description": "Start for free and choose a plan that matches your invoice volume.",
-    "credits": "invoices / month",
-    "mostPopular": "MOST POPULAR",
-    "bestFor": "BEST FOR",
-    "includes": "INCLUDED",
-    "comingSoon": "Coming soon",
-    "buyCredits": "Choose plan",
-    "monthly": "Monthly",
+    "description": "Your first invoice is free. After that, pick a plan or buy single invoices.",
+    "cycle": {
+      "label": "Billing cycle",
+      "monthly": "Monthly",
+      "annual": "Annual",
+      "annualBadge": "30% off"
+    },
     "perMonth": "/month",
-    "overagePerNote": "{price} per extra invoice",
-    "recommended": "Recommended",
-    "calculator": {
-      "title": "How many invoices do you issue per month?",
-      "placeholder": "e.g. 500",
-      "button": "Find ideal plan",
-      "result": "Recommended plan:",
-      "overage": "Notes above quota:",
-      "custoExcedente": "Overage cost:",
-      "totalEstimado": "Estimated total:",
-      "porMes": "/month",
-      "free": {
-        "label": "Free plan",
-        "description": "15 invoices per month, 3 per day limit."
-      },
-      "custom": {
-        "label": "Contact us",
-        "description": "Volumes above 10,000 invoices/month."
-      }
-    },
-    "footnote": "Monthly allowances do not roll over. Free renews on the first day of the month in UTC; paid plans follow the subscription cycle. Authorized production overage is billed separately, up to the plan’s processing limit.",
-    "allPlans": "All plans",
-    "plans": {
-      "free": {
-        "name": "FREE",
-        "credits": "15",
-        "price": "R$ 0",
-        "unit": "",
-        "bestFor": "Test the API and validate your integration.",
-        "includes": {
-          "nfse": "NFS-e emission via API",
-          "companies": "1 company",
-          "dailyLimit": "3 invoices per day",
-          "email": "Email delivery",
-          "mcp": "AI agents via MCP",
-          "webhooks": "Status webhooks",
-          "downloads": "XML and PDF download"
-        }
-      },
-      "developer": {
-        "name": "DEVELOPER",
-        "badge": "Best value",
-        "credits": "200",
-        "price": "R$ 29.90",
-        "unit": "",
-        "bestFor": "Start issuing NFS-e for any number of companies.",
-        "includes": {
-          "nfse": "NFS-e emission via API",
-          "companies": "Unlimited companies",
-          "email": "Email delivery",
-          "mcp": "AI agents via MCP",
-          "webhooks": "Status webhooks",
-          "downloads": "XML and PDF download"
-        }
-      },
-      "growth": {
-        "name": "GROWTH",
-        "badge": "Most popular",
-        "credits": "850",
-        "price": "R$ 99.90",
-        "unit": "",
-        "bestFor": "Growing operations with higher volume.",
-        "includes": {
-          "nfse": "NFS-e emission via API",
-          "companies": "Unlimited companies",
-          "email": "Email delivery",
-          "mcp": "AI agents via MCP",
-          "webhooks": "Status webhooks",
-          "downloads": "XML and PDF download"
-        }
-      },
-      "scale": {
-        "name": "SCALE",
-        "credits": "3,000",
-        "price": "R$ 299.90",
-        "unit": "",
-        "bestFor": "High-volume platforms and operations.",
-        "includes": {
-          "nfse": "NFS-e emission via API",
-          "companies": "Unlimited companies",
-          "email": "Email delivery",
-          "mcp": "AI agents via MCP",
-          "webhooks": "Status webhooks",
-          "downloads": "XML and PDF download"
-        }
-      },
-      "volume": {
-        "name": "VOLUME",
-        "credits": "10,000",
-        "price": "R$ 699.90",
-        "unit": "",
-        "bestFor": "The highest volumes and multi-company operations.",
-        "includes": {
-          "nfse": "NFS-e emission via API",
-          "companies": "Unlimited companies",
-          "email": "Email delivery",
-          "mcp": "AI agents via MCP",
-          "webhooks": "Status webhooks",
-          "downloads": "XML and PDF download"
-        }
-      }
-    },
-    "fromPrice": "starting at",
-    "perExtra": "per extra invoice",
-    "ctaFree": "Start free",
-    "ctaPaid": "Choose plan",
-    "slider": {
-      "label": "Invoices per month",
-      "unit": "invoices / month",
-      "summaryPre": "Best plan for you:",
-      "summaryFree": "Fits the free plan. No credit card required."
-    },
-    "breakdown": {
-      "free": "Free, 3 per day limit",
-      "plan": "Plan",
-      "extra": "extra invoices",
-      "atVolume": "At {volume} invoices:",
-      "capped": "Capped at {max} invoices/month",
-      "notes": "invoices"
-    },
-    "effective": "Effective cost:",
-    "perNoteShort": "per invoice",
+    "notesPerMonth": "{count} invoices a month",
+    "billedOnce": "{total} billed once a year",
     "currentPlan": "Your plan",
+    "ctaPaid": "Choose plan",
+    "plans": {
+      "solo": {
+        "name": "SOLO",
+        "bestFor": "For a few invoices a month.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Unlimited companies",
+          "email": "Email delivery",
+          "mcp": "AI agents via MCP",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      },
+      "equipe": {
+        "name": "EQUIPE",
+        "bestFor": "For teams that issue regularly.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Unlimited companies",
+          "email": "Email delivery",
+          "mcp": "AI agents via MCP",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        },
+        "badge": "Most popular"
+      },
+      "empresa": {
+        "name": "EMPRESA",
+        "bestFor": "For companies with steady volume.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Unlimited companies",
+          "email": "Email delivery",
+          "mcp": "AI agents via MCP",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      },
+      "escala": {
+        "name": "ESCALA",
+        "bestFor": "For high-volume issuing.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Unlimited companies",
+          "email": "Email delivery",
+          "mcp": "AI agents via MCP",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      }
+    },
     "included": {
       "label": "Every plan includes",
       "mcp": "MCP for AI agents",
       "email": "Invoice delivery by email"
-    }
+    },
+    "freeNote": "Your first invoice is free, no credit card.",
+    "avulso": {
+      "title": "Single invoices",
+      "description": "No plan: {price} per invoice, from {min} invoices. They never expire.",
+      "units": "How many invoices?",
+      "total": "Total",
+      "buy": "Buy invoices",
+      "minimum": "Minimum {min} invoices.",
+      "balance": "Single invoices available"
+    },
+    "calculator": {
+      "title": "How many invoices do you issue a month?",
+      "label": "How many invoices a month?",
+      "placeholder": "Ex: 250",
+      "result": "Best option",
+      "plan": "{name} plan",
+      "avulsoOnly": "Single invoices only",
+      "extra": "+ {count} single invoices",
+      "total": "Total per month",
+      "invalid": "Enter a number between 1 and 1,000,000.",
+      "others": "Other options"
+    },
+    "footnote": "Monthly quotas, no rollover. Need more? Buy single invoices or move to a bigger plan."
   },
   "Flow": {
     "eyebrow": "HOW IT WORKS",
@@ -1134,7 +1088,8 @@
     },
     "table": {
       "id": "ID",
-      "customer": "Customer", "number": "No.",
+      "customer": "Customer",
+      "number": "No.",
       "amount": "Amount",
       "status": "Status",
       "created": "Created"
@@ -1256,11 +1211,9 @@
     "manage": "Manage billing",
     "liveOnly": "To subscribe, change your plan or manage billing, switch to the production environment.",
     "allowance": "{count} invoices / month",
-    "overage": "{price} per extra invoice",
     "scheduled": "Switching to {plan} on {date}",
     "cancelsAtEnd": "Cancels at the end of the period",
     "blocked": "Billing is blocked. Update your payment method to keep issuing invoices.",
-    "overageUsed": "{count} extra invoices this period ({price})",
     "redirecting": "Redirecting to checkout…",
     "changeScheduled": "Plan change scheduled for {date}.",
     "changeScheduledNoDate": "Plan change scheduled.",
@@ -1296,7 +1249,40 @@
       "back": "Back to billing",
       "ctaIssue": "Issue an invoice",
       "failedNote": "If you were charged and this persists, contact support."
-    }
+    },
+    "checkout": {
+      "title": "Complete purchase",
+      "method": "Payment method",
+      "pix": "Pix",
+      "card": "Card",
+      "payerName": "Full name or company name",
+      "payerTaxId": "CPF or CNPJ",
+      "payerHint": "Required to authorize the monthly Pix Automático in your bank app.",
+      "pay": "Continue",
+      "pixScan": "Scan the QR code in your bank app or copy the Pix code.",
+      "pixAuthorize": "Open the link to authorize Pix Automático in your bank app.",
+      "pixCopy": "Copy Pix code",
+      "pixCopied": "Code copied",
+      "pixOpenLink": "Open payment link",
+      "pixWaiting": "As soon as the payment is confirmed, your plan or invoices are released automatically.",
+      "pixExpires": "Valid for 24 hours.",
+      "summaryPlanMonthly": "{name} plan, monthly",
+      "summaryPlanAnnual": "{name} plan, annual",
+      "summaryAvulso": "{count} single invoices",
+      "total": "Total",
+      "totalAnnualNote": "billed once a year"
+    },
+    "avulso": {
+      "title": "Single invoices",
+      "description": "Need more? Buy them at R$ 0.99 each, from 3. They never expire and are used after your plan quota.",
+      "balance": "Single invoices available: {count}",
+      "units": "How many invoices?",
+      "total": "Total: {total}",
+      "buy": "Buy invoices",
+      "minimum": "Minimum 3 invoices."
+    },
+    "choose": "Choose plan",
+    "blockedBuy": "You are out of quota. Buy single invoices or change plan to keep issuing."
   },
   "Session": {
     "unavailable": "Could not retrieve your session. Check the API and try again.",

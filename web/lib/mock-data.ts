@@ -157,7 +157,6 @@ export const MOCK_BILLING: BillingPlan = {
     maxActiveCompanies: 999999,
     periodStart: "2026-10-01",
     periodEnd: "2026-10-31",
-    overageUnits: 0,
-    overageAmountCents: 0,
+    avulsoBalance: 0,
   },
 };

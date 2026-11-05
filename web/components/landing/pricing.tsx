@@ -32,12 +32,12 @@ export function Pricing() {
       </div>
 
       <PlanPicker
-        renderAction={({ plan }) => (
+        renderAction={() => (
           <Link
             href="/login?mode=signup"
             className="inline-flex w-full sm:w-auto items-center justify-center rounded-[10px] bg-[#ededed] px-7 py-3 text-[14px] font-medium text-[#0a0a0a] transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
           >
-            {plan.slug === "free" ? t("ctaFree") : t("ctaPaid")}
+            {t("ctaPaid")}
           </Link>
         )}
       />

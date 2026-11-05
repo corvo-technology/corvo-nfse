@@ -690,143 +690,97 @@
   "Pricing": {
     "eyebrow": "PREÇOS",
     "title": "Preços simples. Sem surpresas.",
-    "description": "Comece grátis e escolha um plano que acompanha o volume de notas do seu produto.",
-    "credits": "notas / mês",
-    "mostPopular": "MAIS POPULAR",
-    "bestFor": "IDEAL PARA",
-    "includes": "INCLUÍDO",
-    "comingSoon": "Em breve",
-    "buyCredits": "Escolher plano",
-    "monthly": "Mensal",
+    "description": "A primeira nota é grátis. Depois, escolha um plano ou compre notas avulsas.",
+    "cycle": {
+      "label": "Ciclo de cobrança",
+      "monthly": "Mensal",
+      "annual": "Anual",
+      "annualBadge": "30% off"
+    },
     "perMonth": "/mês",
-    "overagePerNote": "{price} por nota excedente",
-    "recommended": "Recomendado",
-    "calculator": {
-      "title": "Quanto você emite por mês?",
-      "placeholder": "Ex: 500",
-      "button": "Ver plano ideal",
-      "result": "Plano recomendado:",
-      "overage": "Notas acima da cota:",
-      "custoExcedente": "Custo excedente:",
-      "totalEstimado": "Total estimado:",
-      "porMes": "/mês",
-      "free": {
-        "label": "Plano gratuito",
-        "description": "15 notas por mês, limite de 3 por dia."
-      },
-      "custom": {
-        "label": "Fale conosco",
-        "description": "Volumes acima de 10.000 notas/mês."
-      }
-    },
-    "footnote": "Cotas mensais, sem acúmulo. No Free, renovação no primeiro dia do mês em UTC; nos pagos, pelo ciclo da assinatura. Excedentes autorizados em produção são cobrados à parte, até o limite de processamento do plano.",
-    "allPlans": "Todos os planos",
-    "plans": {
-      "free": {
-        "name": "FREE",
-        "credits": "15",
-        "price": "R$ 0",
-        "unit": "",
-        "bestFor": "Testar a API e validar a integração.",
-        "includes": {
-          "nfse": "Emissão de NFS-e via API",
-          "companies": "1 empresa",
-          "dailyLimit": "3 notas por dia",
-          "email": "Envio por e-mail",
-          "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
-        }
-      },
-      "developer": {
-        "name": "DEVELOPER",
-        "badge": "Melhor custo-benefício",
-        "credits": "200",
-        "price": "R$ 29,90",
-        "unit": "",
-        "bestFor": "Para começar a emitir NFS-e em qualquer número de empresas.",
-        "includes": {
-          "nfse": "Emissão de NFS-e via API",
-          "companies": "Empresas ilimitadas",
-          "email": "Envio por e-mail",
-          "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
-        }
-      },
-      "growth": {
-        "name": "GROWTH",
-        "badge": "Mais popular",
-        "credits": "850",
-        "price": "R$ 99,90",
-        "unit": "",
-        "bestFor": "Operações em crescimento com mais volume.",
-        "includes": {
-          "nfse": "Emissão de NFS-e via API",
-          "companies": "Empresas ilimitadas",
-          "email": "Envio por e-mail",
-          "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
-        }
-      },
-      "scale": {
-        "name": "SCALE",
-        "credits": "3.000",
-        "price": "R$ 299,90",
-        "unit": "",
-        "bestFor": "Plataformas e operações de alto volume.",
-        "includes": {
-          "nfse": "Emissão de NFS-e via API",
-          "companies": "Empresas ilimitadas",
-          "email": "Envio por e-mail",
-          "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
-        }
-      },
-      "volume": {
-        "name": "VOLUME",
-        "credits": "10.000",
-        "price": "R$ 699,90",
-        "unit": "",
-        "bestFor": "Maior volume e operações multiempresa.",
-        "includes": {
-          "nfse": "Emissão de NFS-e via API",
-          "companies": "Empresas ilimitadas",
-          "email": "Envio por e-mail",
-          "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
-        }
-      }
-    },
-    "fromPrice": "a partir de",
-    "perExtra": "por nota extra",
-    "ctaFree": "Começar grátis",
-    "ctaPaid": "Escolher plano",
-    "slider": {
-      "label": "Notas por mês",
-      "unit": "notas / mês",
-      "summaryPre": "Melhor plano para você:",
-      "summaryFree": "Cabe no plano gratuito. Sem cartão de crédito."
-    },
-    "breakdown": {
-      "free": "Grátis, limite de 3 por dia",
-      "plan": "Plano",
-      "extra": "notas extras",
-      "atVolume": "Com {volume} notas:",
-      "capped": "Limitado a {max} notas/mês",
-      "notes": "notas"
-    },
-    "effective": "Custo efetivo:",
-    "perNoteShort": "por nota",
+    "notesPerMonth": "{count} notas por mês",
+    "billedOnce": "{total} cobrados uma vez por ano",
     "currentPlan": "Seu plano",
+    "ctaPaid": "Escolher plano",
+    "plans": {
+      "solo": {
+        "name": "SOLO",
+        "bestFor": "Para quem emite poucas notas por mês.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Empresas ilimitadas",
+          "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      },
+      "equipe": {
+        "name": "EQUIPE",
+        "bestFor": "Para equipes que emitem com frequência.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Empresas ilimitadas",
+          "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        },
+        "badge": "Mais popular"
+      },
+      "empresa": {
+        "name": "EMPRESA",
+        "bestFor": "Para empresas com volume recorrente.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Empresas ilimitadas",
+          "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      },
+      "escala": {
+        "name": "ESCALA",
+        "bestFor": "Para alto volume de emissão.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Empresas ilimitadas",
+          "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      }
+    },
     "included": {
       "label": "Todos os planos incluem",
       "mcp": "MCP para agentes de IA",
       "email": "Envio da nota por e-mail"
-    }
+    },
+    "freeNote": "Sua primeira nota é grátis, sem cartão de crédito.",
+    "avulso": {
+      "title": "Notas avulsas",
+      "description": "Sem plano: {price} por nota, a partir de {min} notas. As notas não expiram.",
+      "units": "Quantas notas?",
+      "total": "Total",
+      "buy": "Comprar notas",
+      "minimum": "Mínimo de {min} notas.",
+      "balance": "Notas avulsas disponíveis"
+    },
+    "calculator": {
+      "title": "Quantas notas você emite por mês?",
+      "label": "Quantas notas por mês?",
+      "placeholder": "Ex: 250",
+      "result": "Melhor opção",
+      "plan": "Plano {name}",
+      "avulsoOnly": "Só notas avulsas",
+      "extra": "+ {count} notas avulsas",
+      "total": "Total por mês",
+      "invalid": "Digite um número entre 1 e 1.000.000.",
+      "others": "Outras opções"
+    },
+    "footnote": "Cotas mensais, sem acúmulo. O que passar da cota você compra como nota avulsa, ou troca de plano."
   },
   "Flow": {
     "eyebrow": "COMO FUNCIONA",
@@ -1134,7 +1088,8 @@
     },
     "table": {
       "id": "ID",
-      "customer": "Cliente", "number": "Nº",
+      "customer": "Cliente",
+      "number": "Nº",
       "amount": "Valor",
       "status": "Status",
       "created": "Criada"
@@ -1256,11 +1211,9 @@
     "manage": "Gerenciar cobrança",
     "liveOnly": "Para assinar, alterar seu plano ou gerenciar a cobrança, selecione o ambiente de produção.",
     "allowance": "{count} notas / mês",
-    "overage": "{price} por nota extra",
     "scheduled": "Mudança para {plan} em {date}",
     "cancelsAtEnd": "Cancela ao fim do período",
     "blocked": "A cobrança está bloqueada. Atualize a forma de pagamento para continuar emitindo notas.",
-    "overageUsed": "{count} notas extras neste período ({price})",
     "redirecting": "Redirecionando para o checkout…",
     "changeScheduled": "Mudança de plano agendada para {date}.",
     "changeScheduledNoDate": "Mudança de plano agendada.",
@@ -1296,7 +1249,40 @@
       "back": "Voltar para cobrança",
       "ctaIssue": "Emitir uma nota",
       "failedNote": "Se houve cobrança e isso persistir, fale com o suporte."
-    }
+    },
+    "checkout": {
+      "title": "Finalizar compra",
+      "method": "Forma de pagamento",
+      "pix": "Pix",
+      "card": "Cartão",
+      "payerName": "Nome completo ou razão social",
+      "payerTaxId": "CPF ou CNPJ",
+      "payerHint": "Necessário para autorizar o Pix Automático mensal no app do seu banco.",
+      "pay": "Continuar",
+      "pixScan": "Escaneie o QR Code no app do seu banco ou copie o código Pix.",
+      "pixAuthorize": "Abra o link para autorizar o Pix Automático no app do seu banco.",
+      "pixCopy": "Copiar código Pix",
+      "pixCopied": "Código copiado",
+      "pixOpenLink": "Abrir link de pagamento",
+      "pixWaiting": "Assim que o pagamento for confirmado, seu plano ou suas notas são liberados automaticamente.",
+      "pixExpires": "Válido por 24 horas.",
+      "summaryPlanMonthly": "Plano {name}, mensal",
+      "summaryPlanAnnual": "Plano {name}, anual",
+      "summaryAvulso": "{count} notas avulsas",
+      "total": "Total",
+      "totalAnnualNote": "cobrados uma vez por ano"
+    },
+    "avulso": {
+      "title": "Notas avulsas",
+      "description": "Precisa de mais notas? Compre a R$ 0,99 cada, a partir de 3. Elas não expiram e são usadas depois da cota do plano.",
+      "balance": "Notas avulsas disponíveis: {count}",
+      "units": "Quantas notas?",
+      "total": "Total: {total}",
+      "buy": "Comprar notas",
+      "minimum": "Mínimo de 3 notas."
+    },
+    "choose": "Escolher plano",
+    "blockedBuy": "Sua cota acabou. Compre notas avulsas ou mude de plano para continuar emitindo."
   },
   "Session": {
     "unavailable": "Não foi possível consultar sua sessão. Verifique a API e tente novamente.",

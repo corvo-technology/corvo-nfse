@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import posthog from "posthog-js";
-import { ApiError, billing as billingApi, type CheckoutPlan } from "@/lib/api";
+import { ApiError, billing as billingApi } from "@/lib/api";
 import type { BillingPlan } from "@/lib/types";
-import { PlanPicker, PLANS, type PlanSlug } from "@/components/pricing/plan-picker";
+import { PlanPicker, PLANS, formatBRL, type PlanSlug } from "@/components/pricing/plan-picker";
+import { CheckoutDialog, purchaseErrorMessage, type CheckoutTarget } from "@/components/billing/checkout-dialog";
+import { AVULSO_MIN_UNITS, AVULSO_UNIT_CENTS } from "@/lib/plans-catalog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
@@ -29,6 +31,8 @@ export default function BillingPage() {
   const [billing, setBilling] = useState<BillingPlan | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [target, setTarget] = useState<CheckoutTarget | null>(null);
+  const [avulsoUnits, setAvulsoUnits] = useState(String(10));
   const { can, fiscalEnvironment } = useAuth();
   const { success, error: toastError } = useToast();
   const canManage = can("billing.manage");
@@ -50,15 +54,6 @@ export default function BillingPage() {
     toastError(cause instanceof ApiError && cause.status < 500 && cause.status > 0 ? cause.message : t("errors.generic"));
   };
   const redirect = (url: string) => { window.location.assign(url); };
-  const subscribe = async (slug: CheckoutPlan) => {
-    if (!billingEnabled || !canManage || busy) return; setBusy(slug);
-    try {
-      const { url } = await billingApi.checkout(slug, crypto.randomUUID());
-      if (posthogConfigured) posthog.capture("billing_checkout_started", { plan: slug });
-      success(t("redirecting")); redirect(url);
-    }
-    catch (cause) { fail(cause); setBusy(null); }
-  };
   const changePlan = async (slug: PlanSlug, direction: "upgrade" | "downgrade") => {
     if (!billingEnabled || !canManage || busy) return; setBusy(slug);
     try {
@@ -176,7 +171,8 @@ export default function BillingPage() {
         </Card>
       </dl>
 
-      {u.overageUnits > 0 && <p role="status" className="text-[13px] text-text-2">{t("overageUsed", { count: u.overageUnits, price: money(u.overageAmountCents) })}</p>}
+      <p className="text-[13px] text-text-2" data-testid="avulso-balance">{t("avulso.balance", { count: u.avulsoBalance })}</p>
+      {u.creditsRemaining <= 0 && u.avulsoBalance <= 0 && <p role="alert" className="text-[13px] text-warn" data-testid="out-of-quota">{t("blockedBuy")}</p>}
       {sub.blocked && <p role="alert" className="text-[13px] text-danger">{t("blocked")}</p>}
       {sub.scheduledPlan && <p className="text-[13px] text-text-3">{t("scheduled", { plan: PLANS.some((p) => p.slug === sub.scheduledPlan) ? tp(`plans.${sub.scheduledPlan}.name`) : sub.scheduledPlan, date: sub.paidUntil ? date(sub.paidUntil) : "—" })}</p>}
       {sub.cancelAtPeriodEnd && <p className="text-[13px] text-warn">{t("cancelsAtEnd")}</p>}
@@ -188,20 +184,39 @@ export default function BillingPage() {
         </div>
         <PlanPicker
           currentSlug={billing.slug as PlanSlug}
-          renderAction={({ plan, isCurrent }) => {
+          renderAction={({ plan, cycle, isCurrent }) => {
             if (isCurrent) return <span className="inline-flex min-h-10 items-center text-[14px] text-accent">{t("currentPlan")}</span>;
             if (!canManage) return null;
             const current = PLANS.find((p) => p.slug === billing.slug);
-            const action = !hasSubscription ? (plan.slug === "free" ? null : "subscribe")
-              : plan.basePriceCents > (current?.basePriceCents ?? 0) ? "upgrade" : "downgrade";
-            if (!action) return null;
+            // Annual is always a fresh purchase; monthly changes on an existing subscription are scheduled.
+            const action = !hasSubscription || cycle === "annual" ? "subscribe"
+              : plan.monthlyCents > (current?.monthlyCents ?? 0) ? "upgrade" : "downgrade";
             return (
               <Button variant={action === "downgrade" ? "secondary" : "accent"} size="lg" loading={busy === plan.slug} disabled={!billingEnabled || (busy !== null && busy !== plan.slug)}
-                onClick={() => void (action === "subscribe" ? subscribe(plan.slug as CheckoutPlan) : changePlan(plan.slug, action))}>{t(action)}</Button>
+                onClick={() => (action === "subscribe" ? setTarget({ kind: "plan", slug: plan.slug, cycle }) : void changePlan(plan.slug, action))}>{t(action === "subscribe" ? "choose" : action)}</Button>
             );
           }}
         />
       </section>
+
+      <section aria-labelledby="avulso-heading" className="dash-in dash-in-3 flex flex-col gap-3">
+        <h2 id="avulso-heading" className="text-[14.5px] font-medium text-text">{t("avulso.title")}</h2>
+        <Card className="flex flex-col gap-3 p-5">
+          <p className="text-[13px] text-text-2">{t("avulso.description")}</p>
+          <label className="text-[13px] text-text-2">{t("avulso.units")}
+            <input inputMode="numeric" value={avulsoUnits} onChange={(e) => setAvulsoUnits(e.target.value.replace(/\D/g, ""))}
+              className="mt-1 block w-40 rounded-[8px] border border-white/15 bg-transparent px-3 py-2 text-text tabular-nums" />
+          </label>
+          {Number(avulsoUnits) < AVULSO_MIN_UNITS && <p role="status" className="text-[12.5px] text-warn">{t("avulso.minimum")}</p>}
+          <div className="flex items-center gap-4">
+            <span className="text-[14px] text-text">{t("avulso.total", { total: formatBRL(Number(avulsoUnits) * AVULSO_UNIT_CENTS) })}</span>
+            <Button variant="accent" disabled={!billingEnabled || !canManage || Number(avulsoUnits) < AVULSO_MIN_UNITS}
+              onClick={() => setTarget({ kind: "avulso", units: Number(avulsoUnits) })}>{t("avulso.buy")}</Button>
+          </div>
+        </Card>
+      </section>
+
+      <CheckoutDialog target={target} onClose={() => setTarget(null)} onError={(cause) => { setTarget(null); fail(cause); }} redirect={redirect} />
     </div>
   );
 }
