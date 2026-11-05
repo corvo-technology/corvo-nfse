@@ -95,12 +95,25 @@ export class StripePaymentsService {
     return { method: 'card', url: session.url };
   }
 
+  /** True once the purchase behind this Stripe session was delivered. */
+  async isPaid(intentId: string): Promise<boolean> {
+    return (
+      (await this.intents.findByRef('stripe', intentId))?.status === 'paid'
+    );
+  }
+
   /** Called for a verified, paid Stripe checkout session. */
   async complete(intentId: string): Promise<void> {
     const intent = await this.intents.findByRef('stripe', intentId);
     if (!intent) return;
     if (!(await this.intents.markPaid(intent.id, new Date()))) return;
-    await this.fulfillment.apply(intent);
+    try {
+      await this.fulfillment.apply(intent);
+    } catch (error) {
+      // Undo the mark so the redelivered event retries instead of dropping a paid order.
+      await this.intents.setStatus(intent.id, 'pending', ['paid']);
+      throw error;
+    }
   }
 
   private async customerId(tenantId: string): Promise<string> {

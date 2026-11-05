@@ -16,7 +16,7 @@ export type CheckoutTarget =
 type PixResult = Extract<PurchaseResult, { method: "pix" }>;
 
 /** Pix or card for a plan or for single invoices. Card redirects to Stripe; Pix shows the code here. */
-export function CheckoutDialog({
+function CheckoutDialogInner({
   target,
   onClose,
   onError,
@@ -123,6 +123,11 @@ export function CheckoutDialog({
       </div>
     </Modal>
   );
+}
+
+/** Remounts per purchase, so Pix result, method and idempotency key never leak between purchases. */
+export function CheckoutDialog(props: Parameters<typeof CheckoutDialogInner>[0]) {
+  return <CheckoutDialogInner key={JSON.stringify(props.target)} {...props} />;
 }
 
 export function purchaseErrorMessage(cause: unknown, fallback: string): string {

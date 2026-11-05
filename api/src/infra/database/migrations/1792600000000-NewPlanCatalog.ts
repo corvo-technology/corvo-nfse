@@ -31,11 +31,13 @@ export class NewPlanCatalog1792600000000 implements MigrationInterface {
           updated_at = now()
       WHERE slug = 'free'
     `);
+    await runner.query(`SELECT set_config('app.system_context', 'on', false)`);
     await runner.query(`
       UPDATE ${schema}.billing_usage_periods
       SET included = 0
       WHERE plan_slug = 'free' AND period_end > now()
     `);
+    await runner.query(`SELECT set_config('app.system_context', 'off', false)`);
   }
 
   async down(runner: QueryRunner): Promise<void> {
@@ -56,10 +58,12 @@ export class NewPlanCatalog1792600000000 implements MigrationInterface {
           updated_at = now()
       WHERE slug = 'free'
     `);
+    await runner.query(`SELECT set_config('app.system_context', 'on', false)`);
     await runner.query(`
       UPDATE ${schema}.billing_usage_periods
       SET included = 15
       WHERE plan_slug = 'free' AND period_end > now()
     `);
+    await runner.query(`SELECT set_config('app.system_context', 'off', false)`);
   }
 }

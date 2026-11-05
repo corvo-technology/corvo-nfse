@@ -187,7 +187,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       [creditB, tenantB],
     );
     await admin.query(
-      `INSERT INTO ${table('billing_usage_periods')} (id,tenant_id,plan_slug,period_start,period_end,included,unit_cents) VALUES ($1,$2,'free','2026-10-01','2026-11-01',10,0)`,
+      `INSERT INTO ${table('billing_usage_periods')} (id,tenant_id,plan_slug,period_start,period_end,included) VALUES ($1,$2,'free','2026-10-01','2026-11-01',10)`,
       [periodB, tenantB],
     );
     const password = randomBytes(24).toString('hex');

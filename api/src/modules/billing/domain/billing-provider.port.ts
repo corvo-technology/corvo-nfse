@@ -19,6 +19,8 @@ export interface ProviderCheckout {
   paymentStatus: string;
   customerId: string | null;
   subscriptionId: string | null;
+  /** Our payment intent for a one-time (mode=payment) session. */
+  intentId?: string | null;
 }
 export interface ProviderEvent {
   id: string;

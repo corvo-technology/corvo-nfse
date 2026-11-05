@@ -1,4 +1,4 @@
-import { ServiceUnavailableException } from '@nestjs/common';
+import { ConflictException, ServiceUnavailableException } from '@nestjs/common';
 import { CheckoutRouterService } from './checkout-router.service';
 
 const tenant = '11111111-1111-4111-8111-111111111111';
@@ -14,6 +14,7 @@ function setup(wooviEnabled = true) {
   };
   const billing = {
     checkout: jest.fn().mockResolvedValue({ url: 'https://s/sub' }),
+    hasLiveEntitlement: jest.fn().mockResolvedValue(false),
   };
   const service = new CheckoutRouterService(
     woovi as never,
@@ -103,5 +104,26 @@ describe('CheckoutRouterService', () => {
       f.service.start(tenant, { kind: 'avulso', units: 5, method: 'pix' }, 'k'),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
     expect(f.woovi.startAvulso).not.toHaveBeenCalled();
+  });
+  it('refuses a new plan purchase while a paid plan is still active, but still sells avulso', async () => {
+    const f = setup();
+    f.billing.hasLiveEntitlement.mockResolvedValue(true);
+    for (const method of ['pix', 'card'] as const)
+      await expect(
+        f.service.start(
+          tenant,
+          { kind: 'plan', planSlug: 'solo', cycle: 'annual', method },
+          'k',
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+    expect(f.woovi.startPlan).not.toHaveBeenCalled();
+    expect(f.stripe.start).not.toHaveBeenCalled();
+    expect(f.billing.checkout).not.toHaveBeenCalled();
+    await f.service.start(
+      tenant,
+      { kind: 'avulso', units: 3, method: 'pix' },
+      'k2',
+    );
+    expect(f.woovi.startAvulso).toHaveBeenCalled();
   });
 });

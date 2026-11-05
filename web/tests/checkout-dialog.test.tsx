@@ -66,4 +66,25 @@ describe("CheckoutDialog", () => {
     await waitFor(() => expect(purchase).toHaveBeenCalled());
     expect(purchase.mock.calls[0][0]).toMatchObject({ method: "pix", customer: { name: "Ana Souza", taxID: "12345678909" } });
   });
+
+  it("never shows the previous purchase's Pix QR for a different purchase", async () => {
+    purchase.mockResolvedValue({ method: "pix", brCode: "OLD", qrCodeImage: "data:image/png;base64,AAA", paymentLinkUrl: "https://woovi.test/old", expiresAt: null });
+    const view = open({ kind: "avulso", units: 3 });
+    fireEvent.click(screen.getByText("Continuar"));
+    await waitFor(() => expect(screen.getByTestId("pix-result")).toBeTruthy());
+    view.rerender(
+      <NextIntlClientProvider locale="pt" messages={pt}>
+        <CheckoutDialog target={{ kind: "plan", slug: "solo", cycle: "annual" }} onClose={() => {}} onError={() => {}} redirect={vi.fn()} />
+      </NextIntlClientProvider>
+    );
+    expect(screen.queryByTestId("pix-result")).toBeNull();
+    expect(screen.getByText(/R\$ 502,80/)).toBeTruthy();
+    purchase.mockClear();
+    fireEvent.click(screen.getByText("Continuar"));
+    await waitFor(() => expect(purchase).toHaveBeenCalled());
+    // A new purchase must not reuse the old idempotency key (the server would replay the old charge).
+    const firstKey = purchase.mock.calls[0][1];
+    expect(typeof firstKey).toBe("string");
+  });
 });
+

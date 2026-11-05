@@ -69,6 +69,16 @@ export class WooviClient {
     };
   }
 
+  /** What Woovi itself holds for this charge: the source of truth behind a webhook. */
+  async getCharge(
+    correlationID: string,
+  ): Promise<{ status: string; value: number }> {
+    const { charge } = await this.call<{
+      charge: { status: string; value: number };
+    }>('GET', `/charge/${encodeURIComponent(correlationID)}`);
+    return { status: charge.status, value: charge.value };
+  }
+
   async createSubscription(input: {
     correlationID: string;
     valueCents: number;

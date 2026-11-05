@@ -193,53 +193,6 @@ describe('Stripe billing adapter', () => {
       adapter.createCheckout('cus_fixture', 'tenant', 'solo', 'intent2'),
     ).rejects.toThrow('must be provisioned');
   });
-  it('recovers a dedicated late-usage invoice and finalizes it after cancellation', async () => {
-    const invoice = {
-      id: 'in_late',
-      status: 'draft',
-      metadata: { usage_report_id: 'report' },
-    };
-    const createInvoice = jest.fn().mockResolvedValue(invoice);
-    const createItem = jest.fn().mockResolvedValue({ id: 'ii_late' });
-    const finalize = jest
-      .fn()
-      .mockResolvedValue({ ...invoice, status: 'open' });
-    async function* invoices() {
-      yield invoice;
-    }
-    async function* items() {
-      yield { metadata: { usage_report_id: 'report' } };
-    }
-    const adapter = new StripeBillingAdapter(
-      {
-        stripe: {
-          invoices: {
-            list: invoices,
-            create: createInvoice,
-            finalizeInvoice: finalize,
-          },
-          invoiceItems: { list: items, create: createItem },
-        },
-      } as unknown as StripeGateway,
-      new PricingService(),
-    );
-    await adapter.reportInvoiceItem({
-      id: 'report',
-      customerId: 'cus',
-      invoiceId: 'in_origin',
-      units: 10,
-      unitCents: 15,
-      periodStart: new Date('2026-10-01'),
-      periodEnd: new Date('2026-11-01'),
-    });
-    expect(createInvoice).not.toHaveBeenCalled();
-    expect(createItem).not.toHaveBeenCalled();
-    expect(finalize).toHaveBeenCalledWith(
-      'in_late',
-      { auto_advance: true },
-      { idempotencyKey: 'finalize:report' },
-    );
-  });
   it('disables API access cleanly when billing credentials are missing', () => {
     const gateway = new StripeGateway(
       new ConfigService({ stripe: { enabled: true, secretKey: '' } }),

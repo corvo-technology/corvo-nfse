@@ -21,6 +21,8 @@ export class FirstFreeNote1792630000000 implements MigrationInterface {
         created_at timestamptz NOT NULL DEFAULT now()
       )
     `);
+    // FORCE ROW LEVEL SECURITY also binds the migration role: run the backfill as system.
+    await runner.query(`SELECT set_config('app.system_context', 'on', false)`);
     await runner.query(`
       WITH keyed AS (
         SELECT tb.tenant_id,
@@ -48,14 +50,17 @@ export class FirstFreeNote1792630000000 implements MigrationInterface {
       SELECT tenant_id, 1, 'bonus', 'bonus', 'Primeira nota grátis', false, now()
       FROM claimed
     `);
+    await runner.query(`SELECT set_config('app.system_context', 'off', false)`);
   }
 
   async down(runner: QueryRunner): Promise<void> {
     const s = this.schema(runner);
+    await runner.query(`SELECT set_config('app.system_context', 'on', false)`);
     await runner.query(`
       DELETE FROM ${s}.credit_transactions
       WHERE type = 'bonus' AND description = 'Primeira nota grátis'
     `);
+    await runner.query(`SELECT set_config('app.system_context', 'off', false)`);
     await runner.query(`DROP TABLE IF EXISTS ${s}.free_note_claims`);
   }
 }

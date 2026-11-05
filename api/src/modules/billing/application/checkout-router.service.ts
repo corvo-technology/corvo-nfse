@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Inject,
   Injectable,
   ServiceUnavailableException,
@@ -32,6 +33,14 @@ export class CheckoutRouterService {
   ) {}
 
   async start(tenantId: string, request: CheckoutRequest, key: string) {
+    // Plans change at renewal (no mid-period switch between providers, no double billing).
+    if (
+      request.kind === 'plan' &&
+      (await this.billing.hasLiveEntitlement(tenantId))
+    )
+      throw new ConflictException(
+        'A paid plan is already active. Change it at renewal, or buy single invoices.',
+      );
     if (request.method === 'pix') {
       if (!this.wooviConfig.enabled)
         throw new ServiceUnavailableException('Pix payments are not enabled');

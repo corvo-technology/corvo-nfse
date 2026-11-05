@@ -155,6 +155,32 @@ export class WooviPaymentsService {
     }
   }
 
+  /** Never trust the webhook body alone: Woovi must say this charge is paid, for this value. */
+  private async confirmedByWoovi(ref: string, expected: number) {
+    const charge = await this.client.getCharge(ref);
+    if (charge.status === 'COMPLETED' && charge.value === expected) return true;
+    this.logger.warn({
+      event: 'woovi_unconfirmed_payment',
+      ref,
+      status: charge.status,
+    });
+    return false;
+  }
+
+  /** Marks paid, delivers, and undoes the mark if delivery fails so a redelivery retries. */
+  private async settle(
+    intent: PaymentIntent,
+    deliver: () => Promise<void>,
+  ): Promise<void> {
+    if (!(await this.intents.markPaid(intent.id, new Date()))) return;
+    try {
+      await deliver();
+    } catch (error) {
+      await this.intents.setStatus(intent.id, 'pending', ['paid']);
+      throw error;
+    }
+  }
+
   private async onChargeCompleted(payload: WooviEvent): Promise<void> {
     const ref = payload.charge?.correlationID;
     const paid = payload.pix?.value ?? payload.charge?.value;
@@ -175,8 +201,8 @@ export class WooviPaymentsService {
         ]);
         return;
       }
-      if (!(await this.intents.markPaid(intent.id, new Date()))) return;
-      await this.fulfillment.apply(intent);
+      if (!(await this.confirmedByWoovi(ref, intent.amountCents))) return;
+      await this.settle(intent, () => this.fulfillment.apply(intent));
       return;
     }
     const contractRef = payload.charge?.subscription?.correlationID;
@@ -187,26 +213,34 @@ export class WooviPaymentsService {
       this.logger.warn({ event: 'woovi_cycle_amount_mismatch', ref, paid });
       return;
     }
+    if (!(await this.confirmedByWoovi(ref, contract.amountCents))) return;
     // One row per cycle charge makes redelivery a no-op (unique provider_ref).
-    try {
-      await this.intents.insert({
+    let cycle = await this.intents.findByRef('woovi', ref);
+    if (!cycle) {
+      cycle = {
         ...contract,
         id: randomUUID(),
         providerRef: ref,
         idempotencyKey: null,
-        status: 'paid',
-        paidAt: new Date(),
+        status: 'pending',
+        paidAt: null,
         checkout: null,
         createdAt: new Date(),
-      });
-    } catch (error) {
-      if (isDuplicate(error)) return;
-      throw error;
+      };
+      try {
+        await this.intents.insert(cycle);
+      } catch (error) {
+        if (!isDuplicate(error)) throw error;
+        return; // a concurrent delivery owns this cycle
+      }
     }
-    await this.fulfillment.activatePlan(
-      contract.tenantId,
-      contract.planSlug!,
-      'monthly',
+    const row = cycle;
+    await this.settle(row, () =>
+      this.fulfillment.activatePlan(
+        contract.tenantId,
+        contract.planSlug!,
+        'monthly',
+      ),
     );
   }
 

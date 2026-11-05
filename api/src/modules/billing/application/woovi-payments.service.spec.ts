@@ -5,6 +5,7 @@ import { PricingService } from '@/modules/plans/application/pricing.service';
 
 function setup() {
   const store = new MemoryPaymentIntentStore();
+  const charges = new Map<string, { status: string; value: number }>();
   const client = {
     createCharge: jest.fn(async (i: { correlationID: string }) => ({
       correlationID: i.correlationID,
@@ -18,6 +19,13 @@ function setup() {
       paymentLinkUrl: 'https://auth/1',
     })),
     cancelSubscription: jest.fn(),
+    // What Woovi itself says about a charge; defaults to "paid in full".
+    getCharge: jest.fn(async (ref: string) => {
+      const override = charges.get(ref);
+      if (override) return override;
+      const row = store.rows.find((r) => r.providerRef === ref);
+      return { status: 'COMPLETED', value: row?.amountCents ?? 5990 };
+    }),
   };
   const credits = { grantAvulso: jest.fn().mockResolvedValue({}) };
   const activated: Array<Record<string, unknown>> = [];
@@ -35,7 +43,7 @@ function setup() {
     new PaymentFulfillmentService(credits as never, billing as never),
     new PricingService(),
   );
-  return { service, store, client, credits, billing, activated };
+  return { service, store, client, credits, billing, activated, charges };
 }
 
 const tenant = '11111111-1111-4111-8111-111111111111';
@@ -145,12 +153,15 @@ describe('WooviPaymentsService.handleEvent', () => {
     await f.service.handleEvent(completed(ref, 100680));
     expect(f.billing.setPlan).toHaveBeenCalledWith(tenant, 'id-equipe');
     const patch = f.activated[0] as {
+      stripeSubscriptionId: string | null;
       paidUntil: Date;
       currentPeriodStart: Date;
       currentPeriodEnd: Date;
       stripeStatus: string;
     };
     expect(patch.stripeStatus).toBe('active');
+    // Entitlement now comes from this payment, not from an old Stripe subscription.
+    expect(patch).toHaveProperty('stripeSubscriptionId', null);
     const months =
       (patch.paidUntil.getUTCFullYear() -
         patch.currentPeriodStart.getUTCFullYear()) *
@@ -186,6 +197,50 @@ describe('WooviPaymentsService.handleEvent', () => {
     await f.service.handleEvent(cycle);
     await f.service.handleEvent(cycle);
     expect(f.billing.setPlan).toHaveBeenCalledTimes(1);
+  });
+  it('ignores a webhook that Woovi itself does not confirm as paid', async () => {
+    const f = setup();
+    await f.service.startAvulso(tenant, 10, 'k');
+    const ref = f.store.rows[0]!.providerRef;
+    f.charges.set(ref, { status: 'ACTIVE', value: 990 });
+    await f.service.handleEvent(completed(ref, 990));
+    expect(f.credits.grantAvulso).not.toHaveBeenCalled();
+    expect(f.store.rows[0]!.status).toBe('pending');
+  });
+  it('puts the intent back to pending when delivery fails, so a redelivery retries', async () => {
+    const f = setup();
+    await f.service.startAvulso(tenant, 10, 'k');
+    const ref = f.store.rows[0]!.providerRef;
+    f.credits.grantAvulso.mockRejectedValueOnce(new Error('db blip'));
+    await expect(f.service.handleEvent(completed(ref, 990))).rejects.toThrow(
+      'db blip',
+    );
+    expect(f.store.rows[0]!.status).toBe('pending');
+    await f.service.handleEvent(completed(ref, 990));
+    expect(f.credits.grantAvulso).toHaveBeenCalledTimes(2);
+    expect(f.store.rows[0]!.status).toBe('paid');
+  });
+  it('retries a monthly cycle whose activation failed once', async () => {
+    const f = setup();
+    await f.service.startPlan(tenant, 'solo', 'monthly', 'k', {
+      name: 'Ana',
+      taxID: '12345678909',
+    });
+    const sub = f.store.rows[0]!;
+    const cycle = {
+      event: 'OPENPIX:CHARGE_COMPLETED',
+      charge: {
+        correlationID: 'cycle-9',
+        value: 5990,
+        subscription: { correlationID: sub.providerRef },
+      },
+      pix: { value: 5990 },
+    };
+    f.billing.setPlan.mockRejectedValueOnce(new Error('lock timeout'));
+    await expect(f.service.handleEvent(cycle)).rejects.toThrow('lock timeout');
+    await f.service.handleEvent(cycle);
+    await f.service.handleEvent(cycle);
+    expect(f.billing.setPlan).toHaveBeenCalledTimes(2);
   });
   it('ignores unknown charges and unknown events', async () => {
     const f = setup();

@@ -161,10 +161,20 @@ export class BillingService {
       session_id: session.id,
       status: session.status,
       payment_status: session.paymentStatus,
-      activated:
-        session.subscriptionId === billing.stripeSubscriptionId &&
-        hasPaidAccess(billing.stripeStatus, billing.paidUntil),
+      activated: session.intentId
+        ? ((await this.payments?.isPaid(session.intentId)) ?? false)
+        : session.subscriptionId === billing.stripeSubscriptionId &&
+          hasPaidAccess(billing.stripeStatus, billing.paidUntil),
     };
+  }
+
+  /** True while a paid plan (from any provider) still covers today, grace included. */
+  async hasLiveEntitlement(tenantId: string): Promise<boolean> {
+    const billing = await this.repository.billing(tenantId);
+    return hasPaidAccess(
+      billing?.stripeStatus ?? null,
+      billing?.paidUntil ?? null,
+    );
   }
 
   async changePlan(tenantId: string, slug: string) {

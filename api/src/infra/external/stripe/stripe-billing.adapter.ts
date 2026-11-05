@@ -43,6 +43,10 @@ export class StripeBillingAdapter extends BillingProvider {
       paymentStatus: session.payment_status,
       customerId: stripeId(session.customer),
       subscriptionId: stripeId(session.subscription),
+      intentId:
+        session.mode === 'payment'
+          ? (session.metadata?.intent_id ?? null)
+          : null,
     };
   }
   async createCustomer(tenantId: string, email: string | null) {
@@ -354,116 +358,5 @@ export class StripeBillingAdapter extends BillingProvider {
       customerId,
       payment,
     };
-  }
-  async reportRoute(subscriptionId: string, periodEnd: Date) {
-    if (periodEnd > new Date())
-      return { route: 'meter' as const, invoiceId: null };
-    for await (const invoice of this.stripe.invoices.list({
-      subscription: subscriptionId,
-      limit: 100,
-    })) {
-      const match = invoice.lines.data.some(
-        (l) => l.period.end * 1000 === periodEnd.getTime(),
-      );
-      if (match)
-        return {
-          route:
-            invoice.status === 'draft'
-              ? ('meter' as const)
-              : ('invoice_item' as const),
-          invoiceId: invoice.id,
-        };
-    }
-    return { route: 'invoice_item' as const, invoiceId: null };
-  }
-  async reportMeter(input: {
-    id: string;
-    name: string;
-    customerId: string;
-    units: number;
-    timestamp: number;
-  }) {
-    await this.stripe.billing.meterEvents.create(
-      {
-        event_name: input.name,
-        identifier: input.id,
-        timestamp: input.timestamp,
-        payload: {
-          stripe_customer_id: input.customerId,
-          value: String(input.units),
-        },
-      },
-      { idempotencyKey: input.id },
-    );
-  }
-  async reportInvoiceItem(input: {
-    id: string;
-    customerId: string;
-    invoiceId: string | null;
-    units: number;
-    unitCents: number;
-    periodStart: Date;
-    periodEnd: Date;
-  }) {
-    // A dedicated invoice also collects late usage after cancellation.
-    // Metadata recovers both resources after the provider's idempotency window.
-    let invoice: Stripe.Invoice | null = null;
-    for await (const candidate of this.stripe.invoices.list({
-      customer: input.customerId,
-      limit: 100,
-    })) {
-      if (candidate.metadata?.usage_report_id === input.id) {
-        invoice = candidate;
-        break;
-      }
-    }
-    invoice ??= await this.stripe.invoices.create(
-      {
-        customer: input.customerId,
-        collection_method: 'charge_automatically',
-        auto_advance: false,
-        pending_invoice_items_behavior: 'exclude',
-        metadata: {
-          usage_report_id: input.id,
-          origin_invoice_id: input.invoiceId ?? '',
-        },
-      },
-      { idempotencyKey: `invoice:${input.id}` },
-    );
-    let exists = false;
-    for await (const item of this.stripe.invoiceItems.list({
-      customer: input.customerId,
-      limit: 100,
-    })) {
-      if (item.metadata?.usage_report_id === input.id) {
-        exists = true;
-        break;
-      }
-    }
-    if (!exists)
-      await this.stripe.invoiceItems.create(
-        {
-          customer: input.customerId,
-          invoice: invoice.id,
-          currency: 'brl',
-          amount: input.units * input.unitCents,
-          description: `${input.units} excess processing units — period ${input.periodStart.toISOString()} to ${input.periodEnd.toISOString()}`,
-          metadata: {
-            usage_report_id: input.id,
-            origin_invoice_id: input.invoiceId ?? '',
-          },
-          period: {
-            start: Math.floor(input.periodStart.getTime() / 1000),
-            end: Math.floor(input.periodEnd.getTime() / 1000),
-          },
-        },
-        { idempotencyKey: input.id },
-      );
-    if (invoice.status === 'draft')
-      await this.stripe.invoices.finalizeInvoice(
-        invoice.id,
-        { auto_advance: true },
-        { idempotencyKey: `finalize:${input.id}` },
-      );
   }
 }

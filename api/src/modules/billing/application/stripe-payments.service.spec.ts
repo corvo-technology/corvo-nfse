@@ -116,6 +116,16 @@ describe('StripePaymentsService.complete', () => {
       `stripe:${ref}`,
     );
   });
+  it('puts the intent back to pending when delivery fails, so the redelivered event retries', async () => {
+    const f = setup('cus_1');
+    await f.service.start(tenant, { kind: 'avulso', units: 10 }, 'k');
+    const ref = f.store.rows[0]!.providerRef;
+    f.credits.grantAvulso.mockRejectedValueOnce(new Error('db blip'));
+    await expect(f.service.complete(ref)).rejects.toThrow('db blip');
+    expect(f.store.rows[0]!.status).toBe('pending');
+    await f.service.complete(ref);
+    expect(f.store.rows[0]!.status).toBe('paid');
+  });
   it('ignores unknown intents', async () => {
     const f = setup('cus_1');
     await expect(f.service.complete('nope')).resolves.toBeUndefined();

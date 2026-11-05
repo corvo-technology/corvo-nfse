@@ -57,6 +57,23 @@ describe('WooviClient', () => {
     });
   });
 
+  it('reads a charge back so a webhook can be double-checked', async () => {
+    const fetchFn = fetchReturning(200, {
+      charge: { correlationID: 'c1', status: 'COMPLETED', value: 990 },
+    });
+    const client = new WooviClient(config, fetchFn as never);
+    await expect(client.getCharge('c 1')).resolves.toEqual({
+      status: 'COMPLETED',
+      value: 990,
+    });
+    const [url, init] = fetchFn.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(url).toBe('https://api.woovi.test/api/v1/charge/c%201');
+    expect(init.method).toBe('GET');
+  });
+
   it('creates a monthly Pix Automático subscription', async () => {
     const fetchFn = fetchReturning(200, {
       subscription: {

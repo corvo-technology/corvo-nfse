@@ -36,6 +36,8 @@ export class PaymentFulfillmentService {
     await this.billing.locked(tenantId, async () => {
       await this.billing.setPlan(tenantId, plan.id);
       await this.billing.saveBilling(tenantId, {
+        // Entitlement now comes from this payment; a stale Stripe subscription must not overwrite it.
+        stripeSubscriptionId: null,
         stripeStatus: 'active',
         paidUntil: addUtcMonths(now, cycle === 'annual' ? 12 : 1),
         currentPeriodStart: now,
