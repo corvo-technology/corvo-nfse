@@ -222,6 +222,57 @@ describe('InvoiceLifecycleService', () => {
     );
   });
 
+  it('marks the reservation as avulso, with no period, when the avulso balance pays', async () => {
+    const f = build();
+    f.usage.reserve.mockResolvedValueOnce(null as never);
+    const invoice = newInvoice(undefined, 'live');
+    await f.service.submit(
+      invoice,
+      InvoiceEvent.create(invoice.id, null, 'queued'),
+      null,
+    );
+    const saved = (f.credits.save.mock.calls as unknown[][])[0]![0] as Record<
+      string,
+      unknown
+    >;
+    expect(saved).toMatchObject({
+      amount: -1,
+      source: 'avulso',
+      isReservation: true,
+    });
+    expect(saved.periodId).toBeUndefined();
+  });
+
+  it('refunds an avulso reservation back into the avulso pool', async () => {
+    const f = build();
+    const invoice = newInvoice(undefined, 'live');
+    f.invoices.findByIdAndTenantId.mockResolvedValue({ status: 'processing' });
+    f.credits.findByReservedInvoiceId.mockResolvedValue(
+      CreditTransaction.create({
+        tenantId,
+        amount: -1,
+        type: 'invoice_authorized',
+        source: 'avulso',
+        isReservation: true,
+        createdAt: new Date(),
+      }),
+    );
+    invoice.transitionTo('processing');
+    invoice.transitionTo('rejected');
+    await f.service.transition(
+      invoice,
+      InvoiceEvent.create(invoice.id, 'processing', 'rejected'),
+    );
+    expect(f.credits.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 1,
+        type: 'invoice_rejected',
+        source: 'avulso',
+      }),
+      tenantId,
+    );
+  });
+
   it('propagates persistence failures and skips cache invalidation', async () => {
     const f = build();
     const invoice = newInvoice(undefined, 'live');

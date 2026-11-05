@@ -3,13 +3,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { CachePort } from '@/infra/redis/cache.port';
 import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import { ICreditTransactionRepository } from '../domain/credit-transaction.repository';
-import { IPlanRepository } from '@/modules/plans/domain/plan.repository';
-import { CreditTransaction, CreditSource } from '../domain/credit-transaction';
+import { AVULSO_UNIT_CENTS, assertAvulsoUnits } from '../domain/avulso';
+import { CreditTransaction } from '../domain/credit-transaction';
 
 const CACHE_TTL_SECONDS = 86400; // 24 hours
 const CACHE_KEY_PREFIX = 'credit:balance';
-
-const MIN_PURCHASE_CENTS = 1000; // R$ 10
 
 @Injectable()
 export class CreditsService {
@@ -20,7 +18,6 @@ export class CreditsService {
   constructor(
     @Inject(CACHE_PORT) private readonly cache: CachePort,
     private readonly txRepo: ICreditTransactionRepository,
-    private readonly planRepo: IPlanRepository,
   ) {}
 
   private getCacheKey(tenantId: string): string {
@@ -44,92 +41,51 @@ export class CreditsService {
   }
 
   /**
-   * Add credits to a tenant's wallet. Used by:
-   *  - Stripe webhook after a successful subscription renewal (source='subscription')
-   *  - Manual avulso purchase via the credit-purchase endpoint (source='avulso')
-   *  - Admin tooling / grants (source='bonus')
-   *
-   * Pricing: `credits = floor(amountBrlCents / plan.creditUnitPriceCents)`
-   * where `plan` is the tenant's CURRENT active plan.
+   * Credits paid one-off notes (R$ 0,99 each, minimum 3). `paymentRef` is the
+   * provider reference of the payment (e.g. `woovi:<correlationID>`); a repeated
+   * ref is a no-op, so provider webhooks can be redelivered safely.
    */
-  async purchaseCredits(
+  async grantAvulso(
     tenantId: string,
-    amountBrlCents: number,
-    source: CreditSource,
-    description?: string,
-  ): Promise<{
-    tenantId: string;
-    balance: number;
-    creditsGranted: number;
-    unitPriceCents: number;
-  }> {
-    if (source === 'avulso' && amountBrlCents < MIN_PURCHASE_CENTS) {
-      throw new Error(
-        `Minimum avulso purchase is R$ ${(MIN_PURCHASE_CENTS / 100).toFixed(2)}`,
-      );
-    }
-    if (amountBrlCents <= 0) {
-      throw new Error('amountBrlCents must be positive');
-    }
-
-    const plan = await this.planRepo.findActiveByTenantId(tenantId);
-    if (!plan) {
-      throw new Error('No active plan found for tenant');
-    }
-    const creditsGranted = Math.floor(
-      amountBrlCents / plan.creditUnitPriceCents,
-    );
-    if (creditsGranted <= 0) {
-      throw new Error(
-        `Amount R$ ${(amountBrlCents / 100).toFixed(2)} below current plan minimum (1 credit = R$ ${(plan.creditUnitPriceCents / 100).toFixed(4)})`,
-      );
-    }
-
-    await this.txRepo.save(
-      {
+    units: number,
+    paymentRef: string,
+  ): Promise<{ tenantId: string; balance: number; creditsGranted: number }> {
+    assertAvulsoUnits(units);
+    let creditsGranted = units;
+    try {
+      await this.txRepo.save(
+        {
+          tenantId,
+          amount: units,
+          type: 'purchase',
+          source: 'avulso',
+          amountBrlCents: units * AVULSO_UNIT_CENTS,
+          unitPriceCentsApplied: AVULSO_UNIT_CENTS,
+          stripeSessionId: paymentRef,
+          description: `Notas avulsas (${units})`,
+          createdAt: new Date(),
+        },
         tenantId,
-        amount: creditsGranted,
-        type: 'purchase',
-        amountBrlCents,
-        unitPriceCentsApplied: plan.creditUnitPriceCents,
-        planIdSnapshot: plan.id,
-        source,
-        description:
-          description ??
-          (source === 'subscription'
-            ? `Plan ${plan.slug} - monthly subscription`
-            : 'One-time purchase'),
-        createdAt: new Date(),
-      },
-      tenantId,
-    );
+      );
+    } catch (error) {
+      if ((error as { code?: string }).code !== '23505') throw error;
+      creditsGranted = 0; // already credited for this payment
+    }
     await this.cache.delete(this.getCacheKey(tenantId));
-    const balance = await this.getBalance(tenantId);
-    return {
-      ...balance,
-      creditsGranted,
-      unitPriceCents: plan.creditUnitPriceCents,
-    };
+    return { ...(await this.getBalance(tenantId)), creditsGranted };
   }
 
-  /**
-   * Preview how many credits a tenant would receive for an avulso purchase,
-   * without actually performing the transaction. Used by the credit-purchase
-   * endpoint to show the conversion in real time.
-   */
-  async previewPurchase(
-    tenantId: string,
-    amountBrlCents: number,
-  ): Promise<{ credits: number; unitPriceCents: number }> {
-    if (amountBrlCents <= 0) {
-      throw new Error('amountBrlCents must be positive');
-    }
-    const plan = await this.planRepo.findActiveByTenantId(tenantId);
-    if (!plan) {
-      throw new Error('No active plan found for tenant');
-    }
-    const credits = Math.floor(amountBrlCents / plan.creditUnitPriceCents);
-    return { credits, unitPriceCents: plan.creditUnitPriceCents };
+  previewPurchase(units: number): {
+    units: number;
+    unitPriceCents: number;
+    totalCents: number;
+  } {
+    assertAvulsoUnits(units);
+    return {
+      units,
+      unitPriceCents: AVULSO_UNIT_CENTS,
+      totalCents: units * AVULSO_UNIT_CENTS,
+    };
   }
 
   /**

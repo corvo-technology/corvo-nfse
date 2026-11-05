@@ -203,6 +203,19 @@ export class TypeOrmBillingRepository extends BillingRepository {
       return row?.periodId ?? null;
     });
   }
+  avulsoBalance(tenantId: string) {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const row = await this.manager
+        .getRepository(CreditTransactionOrmEntity)
+        .createQueryBuilder('t')
+        .select('COALESCE(SUM(t.amount), 0)', 'sum')
+        .where('t.tenant_id = :tenantId', { tenantId })
+        .andWhere("t.source IN ('avulso', 'bonus')")
+        .getRawOne<{ sum: string }>();
+      return Number(row?.sum ?? 0);
+    });
+  }
   dailyUsage(tenantId: string) {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);

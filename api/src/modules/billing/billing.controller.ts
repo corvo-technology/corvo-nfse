@@ -68,6 +68,7 @@ export class BillingController {
       },
       usage: {
         hard_limit: billing.hard_limit,
+        avulso_balance: billing.avulsoBalance,
         credits_used: status.creditsUsed,
         credits_reserved: status.creditsReserved,
         credits_remaining: status.creditsRemaining,

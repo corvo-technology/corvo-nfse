@@ -67,6 +67,8 @@ export abstract class BillingRepository {
     tenantId: string,
   ): Promise<string | null>;
   abstract dailyUsage(tenantId: string): Promise<number>;
+  /** Spendable avulso + bonus notes: grants minus reservations, refunds included. */
+  abstract avulsoBalance(tenantId: string): Promise<number>;
   abstract customerTenant(customerId: string): Promise<string | null>;
   abstract eventSeen(id: string): Promise<boolean>;
   abstract recordEvent(id: string, type: string, hash: string): Promise<void>;
