@@ -1,13 +1,10 @@
 import { runAsSystem } from '@/infra/persistence/typeorm/tenant-context.storage';
-import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { UnitOfWorkPort } from '@/infra/transactions/unit-of-work.port';
 import { IWorkspaceRepository } from '../domain/workspace.repository';
 import type { AuthUser } from '../domain/auth-user';
 import { permissionsForTenantRole } from '../domain/permission';
+import { normalizeEmailKey } from '../domain/email-key';
 
 @Injectable()
 export class PasswordlessWorkspaceService {
@@ -27,14 +24,10 @@ export class PasswordlessWorkspaceService {
           throw new ForbiddenException('Tenant membership is inactive');
 
         const freePlanId = await this.workspaces.freePlanId();
-        const reusedEmail = await this.workspaces.hasFreeWorkspaceWithEmail(
-          user.email,
-          freePlanId,
+        const grantFirstFreeNote = await this.workspaces.claimFirstFreeNote(
+          normalizeEmailKey(user.email),
+          user.id,
         );
-        if (reusedEmail)
-          throw new ConflictException(
-            'Email already belongs to a free workspace',
-          );
 
         const now = new Date();
         await this.workspaces.create({
@@ -58,6 +51,7 @@ export class PasswordlessWorkspaceService {
 
           role: 'admin',
           permissions: permissionsForTenantRole('admin'),
+          grantFirstFreeNote,
         });
       });
     });

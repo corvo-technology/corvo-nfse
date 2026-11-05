@@ -5,6 +5,8 @@ import { TenantOrmEntity } from '@/infra/persistence/typeorm/entities/tenant.orm
 import { TenantBillingOrmEntity } from '@/infra/persistence/typeorm/entities/tenant-billing.orm-entity';
 import { TenantMembershipOrmEntity } from '@/infra/persistence/typeorm/entities/tenant-membership.orm-entity';
 import { PlanOrmEntity } from '@/modules/plans/infra/plan.orm-entity';
+import { CreditTransactionOrmEntity } from '@/modules/credits/infra/credit-transaction.orm-entity';
+import { FreeNoteClaimOrmEntity } from './free-note-claim.orm-entity';
 import {
   IWorkspaceRepository,
   type NewWorkspace,
@@ -41,19 +43,19 @@ export class TypeOrmWorkspaceRepository extends IWorkspaceRepository {
     return plan.id;
   }
 
-  async hasFreeWorkspaceWithEmail(
-    email: string,
-    freePlanId: string,
+  async claimFirstFreeNote(
+    emailKey: string,
+    tenantId: string,
   ): Promise<boolean> {
-    return this.db
-      .repository(TenantBillingOrmEntity)
-      .createQueryBuilder('billing')
-      .innerJoin(TenantOrmEntity, 'tenant', 'tenant.id = billing.tenantId')
-      .where('LOWER(billing.billingEmail) = LOWER(:email)', { email })
-      .andWhere('(tenant.planId = :planId OR tenant.planId IS NULL)', {
-        planId: freePlanId,
-      })
-      .getExists();
+    const result = await this.db
+      .repository(FreeNoteClaimOrmEntity)
+      .createQueryBuilder()
+      .insert()
+      .values({ emailKey, tenantId })
+      .orIgnore()
+      .returning('email_key')
+      .execute();
+    return (result.raw as unknown[]).length > 0;
   }
 
   async create(workspace: NewWorkspace): Promise<void> {
@@ -73,5 +75,15 @@ export class TypeOrmWorkspaceRepository extends IWorkspaceRepository {
       permissions: workspace.permissions,
       isActive: true,
     });
+    if (workspace.grantFirstFreeNote)
+      await this.db.repository(CreditTransactionOrmEntity).insert({
+        tenantId: workspace.tenantId,
+        amount: 1,
+        type: 'bonus',
+        source: 'bonus',
+        description: 'Primeira nota grátis',
+        isReservation: false,
+        createdAt: new Date(),
+      });
   }
 }

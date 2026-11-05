@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 import { PasswordlessWorkspaceService } from './passwordless-workspace.service';
 import type { AuthUser } from '../domain/auth-user';
 import { permissionsForTenantRole } from '../domain/permission';
@@ -30,7 +30,7 @@ function build() {
     }),
     memberships: jest.fn().mockResolvedValue([]),
     freePlanId: jest.fn().mockResolvedValue('free-plan'),
-    hasFreeWorkspaceWithEmail: jest.fn().mockResolvedValue(false),
+    claimFirstFreeNote: jest.fn().mockResolvedValue(true),
     create: jest.fn(async () => {
       expect(active).toBe(true);
     }),
@@ -78,17 +78,24 @@ describe('PasswordlessWorkspaceService', () => {
     );
     expect(f.workspaces.create).not.toHaveBeenCalled();
   });
-  it('rejects a reused free-workspace email', async () => {
+  it('grants the first free note when the normalized e-mail claims it', async () => {
     const f = build();
-    f.workspaces.hasFreeWorkspaceWithEmail.mockResolvedValue(true);
-    await expect(f.service.ensureWorkspace(user)).rejects.toThrow(
-      ConflictException,
+    await f.service.ensureWorkspace({ ...user, email: 'Owner+x@Example.com' });
+    expect(f.workspaces.claimFirstFreeNote).toHaveBeenCalledWith(
+      'owner@example.com',
+      user.id,
     );
-    expect(f.workspaces.hasFreeWorkspaceWithEmail).toHaveBeenCalledWith(
-      user.email,
-      'free-plan',
+    expect(f.workspaces.create).toHaveBeenCalledWith(
+      expect.objectContaining({ grantFirstFreeNote: true }),
     );
-    expect(f.workspaces.create).not.toHaveBeenCalled();
+  });
+  it('still creates the workspace, without the free note, when it was already claimed', async () => {
+    const f = build();
+    f.workspaces.claimFirstFreeNote.mockResolvedValue(false);
+    await f.service.ensureWorkspace(user);
+    expect(f.workspaces.create).toHaveBeenCalledWith(
+      expect.objectContaining({ grantFirstFreeNote: false }),
+    );
   });
   it('propagates persistence failures to the unit of work', async () => {
     const f = build();
