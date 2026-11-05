@@ -17,7 +17,7 @@ import {
   type BillingState,
 } from '../domain/billing.repository';
 import type { BillingPeriodState } from '../domain/billing-period';
-import { calendarPeriod } from '../domain/billing-policy';
+import { calendarPeriod, rollPeriod } from '../domain/billing-policy';
 function nextMonth(date: Date): Date {
   const result = new Date(date);
   const day = result.getUTCDate();
@@ -99,8 +99,15 @@ export class TypeOrmBillingRepository extends BillingRepository {
         start = billing.currentPeriodStart;
         end = billing.currentPeriodEnd;
         if (now >= end) {
-          start = end;
-          end = nextMonth(end);
+          // Annual plans stay paid across many months: land on the month that contains `now`.
+          const rolled = rollPeriod(start, end, billing.paidUntil, now);
+          if (rolled.end > now) {
+            start = rolled.start;
+            end = rolled.end;
+          } else {
+            start = end;
+            end = nextMonth(end);
+          }
         }
       }
       const repo = this.manager.getRepository(BillingUsagePeriod);

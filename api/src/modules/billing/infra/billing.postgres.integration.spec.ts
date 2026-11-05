@@ -274,9 +274,9 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
   it('checks Stripe for an existing subscription before opening another', async () => {
     const id = await tenant();
     provider.liveSubscriptions.mockResolvedValue(['existing']);
-    await expect(
-      service.checkout(id, 'solo', 'request'),
-    ).rejects.toMatchObject({ code: 'subscription_exists' });
+    await expect(service.checkout(id, 'solo', 'request')).rejects.toMatchObject(
+      { code: 'subscription_exists' },
+    );
     expect(provider.createCheckout).not.toHaveBeenCalled();
   });
   it('does not expose another tenant checkout', async () => {

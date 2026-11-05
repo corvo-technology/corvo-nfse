@@ -1,4 +1,6 @@
 import {
+  addUtcMonths,
+  rollPeriod,
   hasPaidAccess,
   PAYMENT_GRACE_MS,
   usageSummary,
@@ -37,5 +39,42 @@ describe('monthly billing policy', () => {
     ).toBe(false);
     expect(hasPaidAccess('unpaid', end, end)).toBe(false);
     expect(hasPaidAccess('canceled', end, end)).toBe(false);
+  });
+
+  it('adds whole UTC months, clamping to the last day of shorter months', () => {
+    expect(
+      addUtcMonths(new Date('2026-01-15T10:00:00Z'), 1).toISOString(),
+    ).toBe('2026-02-15T10:00:00.000Z');
+    expect(
+      addUtcMonths(new Date('2026-01-31T00:00:00Z'), 1).toISOString(),
+    ).toBe('2026-02-28T00:00:00.000Z');
+    expect(
+      addUtcMonths(new Date('2026-03-10T00:00:00Z'), 12).toISOString(),
+    ).toBe('2027-03-10T00:00:00.000Z');
+  });
+  it('rolls an expired monthly period forward while the year is still paid', () => {
+    const start = new Date('2026-01-10T00:00:00Z');
+    const end = new Date('2026-02-10T00:00:00Z');
+    const paidUntil = new Date('2027-01-10T00:00:00Z');
+    const rolled = rollPeriod(
+      start,
+      end,
+      paidUntil,
+      new Date('2026-03-15T00:00:00Z'),
+    );
+    expect(rolled.start.toISOString()).toBe('2026-03-10T00:00:00.000Z');
+    expect(rolled.end.toISOString()).toBe('2026-04-10T00:00:00.000Z');
+  });
+  it('does not roll a current period, nor beyond what was paid', () => {
+    const start = new Date('2026-01-10T00:00:00Z');
+    const end = new Date('2026-02-10T00:00:00Z');
+    const inside = new Date('2026-01-20T00:00:00Z');
+    expect(
+      rollPeriod(start, end, new Date('2027-01-10T00:00:00Z'), inside),
+    ).toEqual({ start, end });
+    const lapsed = new Date('2026-06-01T00:00:00Z');
+    expect(
+      rollPeriod(start, end, new Date('2026-02-10T00:00:00Z'), lapsed),
+    ).toEqual({ start, end });
   });
 });
