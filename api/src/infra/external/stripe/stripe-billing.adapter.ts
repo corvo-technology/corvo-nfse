@@ -79,33 +79,27 @@ export class StripeBillingAdapter extends BillingProvider {
     return null;
   }
   private async prices(slug: string) {
-    const quote = this.pricing.calculateQuote(slug as PlanSlug);
+    const quote = this.pricing.calculateQuote(slug as PlanSlug, 'monthly');
     if (!quote.basePriceCents)
       throw new BadRequestException('Free plan does not require checkout');
-    const keys = [`corvo_${slug}_monthly`, `corvo_${slug}_overage`];
+    const keys = [`corvo_${slug}_monthly`];
     const { data } = await this.stripe.prices.list({
       lookup_keys: keys,
       active: true,
     });
     const base = data.find((p) => p.lookup_key === keys[0]);
-    const overage = data.find((p) => p.lookup_key === keys[1]);
     if (
       !base ||
-      !overage ||
       base.currency !== 'brl' ||
-      overage.currency !== 'brl' ||
       base.unit_amount !== quote.basePriceCents ||
-      overage.unit_amount !== quote.perCreditOverageCents ||
       base.recurring?.interval !== 'month' ||
-      overage.recurring?.usage_type !== 'metered' ||
-      base.metadata.plan_slug !== slug ||
-      overage.metadata.plan_slug !== slug
+      base.metadata.plan_slug !== slug
     ) {
       throw new ServiceUnavailableException(
         'Stripe prices must be provisioned for the current catalog',
       );
     }
-    return { base, overage };
+    return { base };
   }
   async createCheckout(
     customerId: string,
@@ -113,7 +107,7 @@ export class StripeBillingAdapter extends BillingProvider {
     planSlug: string,
     intentId: string,
   ) {
-    const { base, overage } = await this.prices(planSlug);
+    const { base } = await this.prices(planSlug);
     const success = new URL(this.gateway.config.checkoutSuccessUrl);
     success.searchParams.set('session_id', '{CHECKOUT_SESSION_ID}');
     const session = await this.stripe.checkout.sessions.create(
@@ -127,7 +121,7 @@ export class StripeBillingAdapter extends BillingProvider {
         allowed_payment_method_types: ['card'],
         locale: 'pt-BR',
         branding_settings: CHECKOUT_BRANDING,
-        line_items: [{ price: base.id, quantity: 1 }, { price: overage.id }],
+        line_items: [{ price: base.id, quantity: 1 }],
         success_url: success
           .toString()
           .replace('%7BCHECKOUT_SESSION_ID%7D', '{CHECKOUT_SESSION_ID}'),
@@ -221,7 +215,7 @@ export class StripeBillingAdapter extends BillingProvider {
       });
       return;
     }
-    const { base: nextBase, overage } = await this.prices(planSlug);
+    const { base: nextBase } = await this.prices(planSlug);
     if (sub.cancel_at_period_end)
       await this.stripe.subscriptions.update(sub.id, {
         cancel_at_period_end: false,
@@ -254,7 +248,7 @@ export class StripeBillingAdapter extends BillingProvider {
         {
           duration: { interval: 'month', interval_count: 1 },
           proration_behavior: 'none',
-          items: [{ price: nextBase.id, quantity: 1 }, { price: overage.id }],
+          items: [{ price: nextBase.id, quantity: 1 }],
         },
       ],
     });

@@ -24,7 +24,7 @@ import { IPlanRepository } from '../domain/plan.repository';
 import { PublicRoute } from '@/modules/auth/application/public-route.decorator';
 
 class PlanListQuery extends CursorQuery {
-  @IsOptional() @IsIn(['monthly']) cycle?: BillingCycle;
+  @IsOptional() @IsIn(['monthly', 'annual']) cycle?: BillingCycle;
 }
 
 @Controller('plans')
@@ -40,8 +40,6 @@ export class PlanController {
   @ApiCursorResponse()
   list(@Query() options: PlanListQuery) {
     const cycle = options.cycle ?? 'monthly';
-    if (cycle !== 'monthly')
-      throw new BadRequestException('Only monthly billing is supported');
     const scope = cursorScope(['plan-quotes', cycle]);
     const cursor = decodeCursor<{ v: number; scope: string; position: number }>(
       options.cursor,
@@ -66,39 +64,13 @@ export class PlanController {
     }));
   }
 
-  @Get('quote')
-  quote(
-    @Query('volume') volume: number,
-    @Query('cycle') cycle: BillingCycle = 'monthly',
-  ): { data: Record<string, unknown> | null } {
-    if (cycle !== 'monthly')
-      throw new BadRequestException('Only monthly billing is supported');
-    if (!volume || volume < 0) {
-      return data(null);
-    }
-    const rec = this.pricing.recommendPlanForVolume(volume);
-    const planQuote = this.pricing.calculateQuote(rec.planSlug, cycle);
-    return data({
-      volume,
-      recommended_plan: rec.planSlug,
-      plan_name: planQuote.name,
-      monthly_allowance: planQuote.monthlyAllowance,
-      overage_credits: rec.overageCredits,
-      overage_cost_cents: rec.overageCostCents,
-      base_price_cents: planQuote.basePriceCents,
-      total_estimated_cents: rec.totalEstimatedCents,
-      currency: 'BRL',
-      billing_cycle: cycle,
-    });
-  }
-
   @Get(':slug')
   async findBySlug(
     @Param('slug') slug: PlanSlug,
     @Query('cycle') cycle: BillingCycle = 'monthly',
   ): Promise<{ data: PriceQuote }> {
-    if (cycle !== 'monthly')
-      throw new BadRequestException('Only monthly billing is supported');
+    if (cycle !== 'monthly' && cycle !== 'annual')
+      throw new BadRequestException('Unsupported billing cycle');
     const plan = await this.planRepo.findBySlug(slug);
     if (!plan) throw new NotFoundException(`Plan ${slug} not found`);
     return data(this.pricing.calculateQuote(slug, cycle));

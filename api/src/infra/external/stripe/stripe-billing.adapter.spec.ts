@@ -56,7 +56,7 @@ describe('Stripe billing adapter', () => {
       ),
     ).toThrow('mode mismatch');
   });
-  it('creates hosted monthly checkout with server-owned BRL prices and a metered excess item', async () => {
+  it('creates hosted monthly checkout with a single server-owned BRL base price', async () => {
     const config = configuration();
     const create = jest.fn().mockResolvedValue({
       id: 'cs_fixture',
@@ -71,19 +71,11 @@ describe('Stripe billing adapter', () => {
       data: [
         {
           id: 'price_base',
-          lookup_key: 'corvo_developer_monthly',
+          lookup_key: 'corvo_solo_monthly',
           currency: 'brl',
-          unit_amount: 2990,
+          unit_amount: 5990,
           recurring: { interval: 'month', usage_type: 'licensed' },
-          metadata: { plan_slug: 'developer' },
-        },
-        {
-          id: 'price_excess',
-          lookup_key: 'corvo_developer_overage',
-          currency: 'brl',
-          unit_amount: 12,
-          recurring: { interval: 'month', usage_type: 'metered' },
-          metadata: { plan_slug: 'developer' },
+          metadata: { plan_slug: 'solo' },
         },
       ],
     });
@@ -101,7 +93,7 @@ describe('Stripe billing adapter', () => {
       await adapter.createCheckout(
         'cus_fixture',
         'tenant',
-        'developer',
+        'solo',
         'intent',
       ),
     ).toMatchObject({ id: 'cs_fixture' });
@@ -116,10 +108,7 @@ describe('Stripe billing adapter', () => {
           button_color: '#3fd6a8',
           logo: expect.objectContaining({ type: 'url' }) as unknown,
         }) as unknown,
-        line_items: [
-          { price: 'price_base', quantity: 1 },
-          { price: 'price_excess' },
-        ],
+        line_items: [{ price: 'price_base', quantity: 1 }],
         success_url:
           'https://corvo.test/app/billing/success?session_id={CHECKOUT_SESSION_ID}',
       }),
@@ -127,7 +116,7 @@ describe('Stripe billing adapter', () => {
     );
     prices.mockResolvedValueOnce({ data: [] });
     await expect(
-      adapter.createCheckout('cus_fixture', 'tenant', 'developer', 'intent2'),
+      adapter.createCheckout('cus_fixture', 'tenant', 'solo', 'intent2'),
     ).rejects.toThrow('must be provisioned');
   });
   it('recovers a dedicated late-usage invoice and finalizes it after cancellation', async () => {
