@@ -122,6 +122,13 @@ export type MetaConfig = {
   secretsEncryptionKey: string;
 };
 
+export type WooviConfig = {
+  enabled: boolean;
+  appId: string;
+  webhookToken: string;
+  apiUrl: string;
+};
+
 export type StripeConfig = {
   enabled: boolean;
   secretKey: string;
@@ -137,8 +144,8 @@ export type StripeConfig = {
 };
 
 export type PaymentsConfig = {
-  allowedProviders: Array<'stripe'>;
-  defaultProvider: 'stripe';
+  allowedProviders: Array<'stripe' | 'woovi'>;
+  defaultProvider: 'stripe' | 'woovi';
 };
 
 export type TurnstileConfig = {
@@ -218,6 +225,7 @@ export type AppConfiguration = {
   openTelemetry: OpenTelemetryConfig;
   sentry: SentryConfig;
   stripe: StripeConfig;
+  woovi: WooviConfig;
   payments: PaymentsConfig;
   turnstile: TurnstileConfig;
   storage: StorageConfig;
