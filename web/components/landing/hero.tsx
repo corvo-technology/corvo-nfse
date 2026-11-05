@@ -34,8 +34,8 @@ export function Hero() {
   const locale = useLocale();
 
   return (
-    <section className="relative w-full overflow-hidden px-6 sm:px-10 pt-14 sm:pt-20 pb-[calc(5vw+56px)] lg:min-h-[720px]">
-      <CrowHead className="pointer-events-none absolute -right-[18%] top-6 w-[78%] -scale-x-100 opacity-90 sm:-right-[8%] sm:w-[58%] lg:right-[-4%] lg:top-1/2 lg:w-[56%] lg:max-w-[820px] lg:-translate-y-[58%]" />
+    <section className="relative w-full overflow-hidden px-6 sm:px-10 pt-14 sm:pt-20 pb-[calc(5vw+56px)] lg:min-h-[1100px]">
+      <CrowHead className="pointer-events-none absolute -right-[18%] top-6 w-[78%] -scale-x-100 opacity-90 sm:-right-[8%] sm:w-[58%] lg:right-[-4%] lg:top-4 lg:w-[56%] lg:max-w-[820px]" />
 
       <div className="relative mx-auto max-w-[1120px]">
         <motion.div
