@@ -128,7 +128,7 @@
 - Produces: tabela `payment_intents(id uuid pk, tenant_id, kind 'plan'|'avulso', plan_slug null, cycle null, units null, amount_cents, provider 'woovi'|'stripe', provider_ref (correlationID), status 'pending'|'paid'|'expired', expires_at, paid_at null)` com unique em `(provider, provider_ref)`.
 - Produces: `WooviBillingAdapter.createCharge(input: { correlationID: string; valueCents: number; comment: string; expiresInSeconds: number }): Promise<{ brCode: string; qrCodeImage: string; paymentLinkUrl: string }>` — `POST /charge` (cobrança dinâmica, não `/qrcode-static`).
 - Produces: `WooviBillingAdapter.createRecurring(...)` para Pix Automático seguindo `developers.woovi.com/docs/woovi-prompts/pix-automatico`; assinatura exata a definir pelo builder lendo essa doc.
-- Produces: `POST /webhooks/woovi` — valida assinatura (reaproveitar a lógica de `integrations/connectors/woovi/woovi-public-key.provider.ts` como referência), deduplica por `provider_ref`, e ao pagar: `kind 'avulso'` => `CreditsService.grantAvulso(tenantId, units, provider_ref)`; `kind 'plan'` => ativa o plano até o fim do ciclo (mensal: +1 mês; anual: +12 meses, cota resetando todo mês).
+- Produces: `POST /v1/webhooks/woovi` — valida assinatura (reaproveitar a lógica de `integrations/connectors/woovi/woovi-public-key.provider.ts` como referência), deduplica por `provider_ref`, e ao pagar: `kind 'avulso'` => `CreditsService.grantAvulso(tenantId, units, provider_ref)`; `kind 'plan'` => ativa o plano até o fim do ciclo (mensal: +1 mês; anual: +12 meses, cota resetando todo mês).
 - Env novos: `WOOVI_APP_ID`, `WOOVI_WEBHOOK_SECRET` (ou chave pública), `WOOVI_API_URL` (default `https://api.woovi.com/api/v1`). `PAYMENT_ALLOWED_PROVIDERS` aceita `stripe` e `woovi`; `check-deploy-env.mjs` exige as vars da Woovi quando `woovi` está permitido.
 
 - [ ] **Step 1: Failing tests:** adapter envia `Authorization: <APP_ID>`, `value` em centavos e `correlationID`; webhook de pagamento duas vezes => um único crédito; pagamento depois do `expires_at` => marca `expired`, não credita; valor pago diferente de `amount_cents` => não credita e loga alerta; assinatura inválida => 401.
@@ -198,5 +198,5 @@
 
 - [ ] **Step 1:** `grep -rn "overage\|excedente\|developer\b\|growth\b" docs api/src web --include=*.ts --include=*.tsx --include=*.md --include=*.json` e corrigir sobras.
 - [ ] **Step 2:** `cd api && yarn typecheck && yarn typecheck:tests && yarn test` e `cd web && yarn typecheck && yarn lint && yarn test` — PASS.
-- [ ] **Step 3:** Checklist manual para o operador (não automatizar): rodar `provision-stripe.ts`, preencher `WOOVI_APP_ID` e segredo do webhook, cadastrar a URL `/webhooks/woovi` no painel Woovi, rodar a migration.
+- [ ] **Step 3:** Checklist manual para o operador (não automatizar): rodar `provision-stripe.ts`, preencher `WOOVI_APP_ID` e segredo do webhook, cadastrar a URL `/v1/webhooks/woovi` no painel Woovi, rodar a migration.
 - [ ] **Step 4: Commit** `docs: atualizar planos e variáveis de ambiente`.
