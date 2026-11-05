@@ -131,6 +131,8 @@ export class WooviPaymentsService {
     }
     const sub = await this.client.createSubscription({
       correlationID: ref,
+      customerCorrelationID: tenantId,
+      planName: `Corvo ${quote.name}`,
       valueCents: quote.chargeTotalCents,
       comment: `Corvo ${quote.name} (mensal)`,
       customer: customer!,
