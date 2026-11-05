@@ -791,7 +791,16 @@
       "slider": "Ajustar notas por mês",
       "zoneAvulso": "AVULSO"
     },
-    "footnote": "Cotas mensais, sem acúmulo. O que passar da cota você compra como nota avulsa, ou troca de plano."
+    "footnote": "Cotas mensais, sem acúmulo. O que passar da cota você compra como nota avulsa, ou troca de plano.",
+    "featured": {
+      "recommended": "Recomendado",
+      "avulsoName": "NOTAS AVULSAS",
+      "avulsoBestFor": "Sem plano e sem mensalidade. Paga só o que usa, a partir de 3.",
+      "effective": "Custo efetivo:",
+      "perNote": "por nota",
+      "planLine": "Plano · {count} notas",
+      "allPlans": "TODOS OS PLANOS"
+    }
   },
   "Flow": {
     "eyebrow": "COMO FUNCIONA",

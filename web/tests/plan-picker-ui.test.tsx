@@ -8,34 +8,43 @@ import { paidPlanOffers } from "@/lib/pricing-jsonld";
 import pt from "@/messages/pt.json";
 import en from "@/messages/en.json";
 
-const renderPicker = (locale: "pt" | "en" = "pt", renderAction: (ctx: { plan: { slug: string }; cycle: string }) => null = () => null) =>
+const renderPicker = (locale: "pt" | "en" = "pt", renderAction: (ctx: unknown) => null = () => null) =>
   render(
     <NextIntlClientProvider locale={locale} messages={locale === "pt" ? pt : en}>
       <PlanPicker renderAction={renderAction as never} />
     </NextIntlClientProvider>
   );
-const card = (slug: string) => document.querySelector(`[data-plan="${slug}"]`) as HTMLElement;
+const row = (slug: string) => document.querySelector(`[data-plan="${slug}"]`) as HTMLElement;
+const featured = () => screen.getByTestId("featured-plan");
+const type = (value: string) => fireEvent.change(screen.getByLabelText(/Quantas notas/i), { target: { value } });
 
 describe("plan picker", () => {
   afterEach(cleanup);
 
-  it("shows the four plans in order with the monthly price and quota", () => {
+  it("lists avulso and the four plans on the right, with the monthly price", () => {
     renderPicker();
-    expect(Array.from(document.querySelectorAll("[data-plan]")).map((el) => el.getAttribute("data-plan"))).toEqual(PLANS.map((p) => p.slug));
-    expect(card("solo").textContent).toContain("R$ 59,90");
-    expect(card("solo").textContent).toContain("100");
-    expect(card("escala").textContent).toContain("R$ 399,90");
-    expect(card("solo").querySelector("s")).toBeNull();
+    expect(Array.from(document.querySelectorAll("[data-plan]")).map((el) => el.getAttribute("data-plan"))).toEqual(["avulso", ...PLANS.map((p) => p.slug)]);
+    expect(row("solo").textContent).toContain("R$ 59,90");
+    expect(row("escala").textContent).toContain("R$ 399,90");
+    expect(row("solo").querySelector("s")).toBeNull();
+    expect(row("avulso").textContent).toContain("R$ 0,99");
   });
 
-  it("annual: per-month price, the full monthly price struck through, and the year's total", () => {
+  it("starts on 250 notes: Equipe is the featured plan", () => {
+    renderPicker();
+    expect(featured().textContent).toContain("EQUIPE");
+    expect(featured().textContent).toContain("R$ 119,90");
+    expect(row("equipe").getAttribute("aria-current")).toBe("true");
+  });
+
+  it("annual: struck monthly price, per-month price and the year's total", () => {
     renderPicker();
     fireEvent.click(screen.getByTestId("cycle-annual"));
-    const solo = card("solo");
-    expect(within(solo).getByText("R$ 41,90")).toBeTruthy();
-    expect(solo.querySelector("s")!.textContent).toBe("R$ 59,90");
-    expect(solo.textContent).toContain("R$ 502,80");
-    expect(card("escala").textContent).toContain("R$ 3.358,80");
+    expect(featured().querySelector("s")!.textContent).toBe("R$ 119,90");
+    expect(featured().textContent).toContain("R$ 83,90");
+    expect(featured().textContent).toContain("R$ 1.006,80");
+    expect(row("solo").querySelector("s")!.textContent).toBe("R$ 59,90");
+    expect(within(row("solo")).getByText("R$ 41,90")).toBeTruthy();
   });
 
   it.each([
@@ -43,40 +52,50 @@ describe("plan picker", () => {
     ["en", "Most popular"],
   ] as const)("%s: only Equipe carries the badge", (locale, label) => {
     renderPicker(locale);
-    expect(within(card("equipe")).getByText(label)).toBeTruthy();
-    for (const slug of ["solo", "empresa", "escala"]) expect(within(card(slug)).queryByText(label)).toBeNull();
+    expect(within(row("equipe")).getByText(label)).toBeTruthy();
+    for (const slug of ["solo", "empresa", "escala", "avulso"]) expect(within(row(slug)).queryByText(label)).toBeNull();
   });
 
-  it("calculator recommends Equipe for 250 notes and Solo plus avulso for 110", () => {
+  it("typing 110 notes recommends Solo plus 10 single notes", () => {
     renderPicker();
-    const input = screen.getByLabelText(/Quantas notas/i);
-    fireEvent.change(input, { target: { value: "250" } });
-    expect(screen.getByTestId("calculator-result").textContent).toContain("Equipe");
-    expect(screen.getByTestId("calculator-result").textContent).toContain("R$ 119,90");
-    fireEvent.change(input, { target: { value: "110" } });
-    expect(screen.getByTestId("calculator-result").textContent).toContain("Solo");
-    expect(screen.getByTestId("calculator-result").textContent).toContain("10");
-    expect(screen.getByTestId("calculator-result").textContent).toContain("R$ 69,80");
+    type("110");
+    expect(featured().textContent).toContain("SOLO");
+    expect(featured().textContent).toContain("10");
+    expect(featured().textContent).toContain("R$ 69,80");
   });
 
-  it("calculator has a slider that drives the recommendation, with a zone per option", () => {
+  it("the slider starts at 3 notes: avulso only, R$ 2,97", () => {
     renderPicker();
-    const slider = screen.getByRole("slider");
-    fireEvent.change(slider, { target: { value: "700" } });
-    const result = screen.getByTestId("calculator-result").textContent ?? "";
-    expect(result).toContain("Equipe");
-    expect(result).toContain("20");
+    fireEvent.change(screen.getByRole("slider"), { target: { value: "0" } });
+    expect(featured().textContent).toContain("R$ 2,97");
+    expect(featured().textContent).toMatch(/avulsas|AVULSAS/);
+    expect(row("avulso").getAttribute("aria-current")).toBe("true");
+  });
+
+  it("the slider drives the recommendation and draws a zone per option", () => {
+    renderPicker();
+    fireEvent.change(screen.getByRole("slider"), { target: { value: "651" } });
+    expect(featured().textContent).toContain("EQUIPE");
+    expect(featured().textContent).toContain("20");
     const zones = Array.from(document.querySelectorAll("[data-zone]")).map((el) => el.getAttribute("data-zone"));
     expect(zones).toEqual(["avulso", "solo", "equipe", "empresa", "escala"]);
-    fireEvent.change(slider, { target: { value: "0" } });
-    expect(screen.getByTestId("calculator-result").textContent).toContain("R$ 2,97");
   });
 
-  it("hands the chosen cycle to the card action", () => {
+  it("clicking a plan row moves the slider to that plan's full quota", () => {
+    renderPicker();
+    fireEvent.click(row("empresa"));
+    expect(featured().textContent).toContain("EMPRESA");
+    expect((screen.getByLabelText(/Quantas notas/i) as HTMLInputElement).value).toBe("600");
+  });
+
+  it("hands the plan, cycle and extra notes to the action", () => {
     const action = vi.fn(() => null);
     renderPicker("pt", action);
+    type("110");
     fireEvent.click(screen.getByTestId("cycle-annual"));
-    expect(action).toHaveBeenLastCalledWith(expect.objectContaining({ cycle: "annual", plan: expect.objectContaining({ slug: expect.any(String) }) }));
+    expect(action).toHaveBeenLastCalledWith(expect.objectContaining({ cycle: "annual", avulsoUnits: 10, plan: expect.objectContaining({ slug: "solo" }) }));
+    fireEvent.change(screen.getByRole("slider"), { target: { value: "0" } });
+    expect(action).toHaveBeenLastCalledWith(expect.objectContaining({ plan: null, avulsoUnits: 3 }));
   });
 
   it("never mentions overage in either language", () => {

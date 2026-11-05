@@ -196,9 +196,13 @@ export default function BillingPage() {
         </div>
         <PlanPicker
           currentSlug={billing.slug as PlanSlug}
-          renderAction={({ plan, cycle, isCurrent }) => {
+          renderAction={({ plan, cycle, avulsoUnits, isCurrent }) => {
             if (isCurrent) return <span className="inline-flex min-h-10 items-center text-[14px] text-accent">{t("currentPlan")}</span>;
             if (!canManage) return null;
+            if (!plan)
+              return (
+                <Button variant="accent" size="lg" disabled={!billingEnabled} onClick={() => setTarget({ kind: "avulso", units: avulsoUnits })}>{t("avulso.buy")}</Button>
+              );
             const current = PLANS.find((p) => p.slug === billing.slug);
             // Annual is always a fresh purchase; monthly changes on an existing subscription are scheduled.
             const action = !hasSubscription || cycle === "annual" ? "subscribe"

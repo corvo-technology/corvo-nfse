@@ -791,7 +791,16 @@
       "slider": "Adjust invoices per month",
       "zoneAvulso": "SINGLE"
     },
-    "footnote": "Monthly quotas, no rollover. Need more? Buy single invoices or move to a bigger plan."
+    "footnote": "Monthly quotas, no rollover. Need more? Buy single invoices or move to a bigger plan.",
+    "featured": {
+      "recommended": "Recommended",
+      "avulsoName": "SINGLE INVOICES",
+      "avulsoBestFor": "No plan, no subscription. Pay only for what you use, from 3.",
+      "effective": "Effective cost:",
+      "perNote": "per invoice",
+      "planLine": "Plan · {count} invoices",
+      "allPlans": "ALL PLANS"
+    }
   },
   "Flow": {
     "eyebrow": "HOW IT WORKS",
