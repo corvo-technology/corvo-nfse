@@ -155,7 +155,7 @@ const REQUEST_SAMPLE = `curl -X POST https://api.corvo.tech/v1/invoices \\
 /** What the agent calls under the hood: the same REST endpoint any integration uses. */
 function RequestSample({ ariaLabel }: { ariaLabel: string }) {
   return (
-    <div className="w-full min-w-0 border border-border bg-[#0b0b0b]">
+    <div className="w-full min-w-0 border border-border bg-[#0b0b0b] lg:sticky lg:top-28 lg:mt-3">
       <div className="flex items-center justify-between border-b border-border px-4 py-2 font-mono text-xs text-text-4">
         <span>POST /v1/invoices</span>
         <span className="text-accent">202 queued</span>
@@ -174,7 +174,7 @@ export function AgentsSection() {
   return (
     <section id="agents" className="mx-auto max-w-[1120px] border-t border-border px-6 py-16 sm:px-10 sm:py-24">
       <div>
-        <div className="relative grid items-center gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+        <div className="relative grid items-start gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
           <div className="min-w-0 lg:order-2">
             <h2 className="max-w-[460px] text-[clamp(32px,4.4vw,56px)] font-semibold leading-[1.02] tracking-[-0.035em] text-text text-balance">{t("title")}</h2>
             <p className="mt-5 max-w-[440px] text-[16px] leading-relaxed text-text-3 text-pretty">{t("description")}</p>
