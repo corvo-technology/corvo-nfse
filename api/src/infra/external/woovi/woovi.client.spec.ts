@@ -1,4 +1,4 @@
-import { BadGatewayException } from '@nestjs/common';
+import { BadGatewayException, BadRequestException } from '@nestjs/common';
 import { WooviClient } from './woovi.client';
 
 const config = {
@@ -154,7 +154,7 @@ describe('WooviClient', () => {
     expect(init.method).toBe('PUT');
   });
 
-  it('turns a Woovi 4xx into a 502 with a clear message, never leaking the app id', async () => {
+  it("turns a Woovi validation error (4xx) into a 400 that carries Woovi's reason, never the app id", async () => {
     const fetchFn = fetchReturning(400, {
       error: 'customer.address is required, key APP_ID_FIXTURE',
     });
@@ -165,9 +165,39 @@ describe('WooviClient', () => {
       comment: 'x',
       expiresInSeconds: 60,
     });
-    await expect(failure).rejects.toBeInstanceOf(BadGatewayException);
-    await expect(failure).rejects.toThrow('Woovi request failed (400)');
+    await expect(failure).rejects.toBeInstanceOf(BadRequestException);
+    await expect(failure).rejects.toThrow(/customer\.address is required/);
     await expect(failure).rejects.not.toThrow(/APP_ID_FIXTURE/);
+  });
+
+  it("reads Woovi's errors array too", async () => {
+    const fetchFn = fetchReturning(400, {
+      errors: [{ message: 'taxID inválido' }, { message: 'phone inválido' }],
+    });
+    const client = new WooviClient(config, fetchFn as never);
+    await expect(
+      client.createCharge({
+        correlationID: 'c',
+        valueCents: 100,
+        comment: 'x',
+        expiresInSeconds: 60,
+      }),
+    ).rejects.toThrow(/taxID inválido; phone inválido/);
+  });
+
+  it.each([500, 503])('turns a Woovi %s into a 502', async (status) => {
+    const client = new WooviClient(
+      config,
+      fetchReturning(status, { error: 'down' }) as never,
+    );
+    await expect(
+      client.createCharge({
+        correlationID: 'c',
+        valueCents: 100,
+        comment: 'x',
+        expiresInSeconds: 60,
+      }),
+    ).rejects.toBeInstanceOf(BadGatewayException);
   });
 
   it('fails with a sanitized error and never leaks the app id', async () => {

@@ -12,8 +12,9 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 import { CheckoutDialog, type CheckoutTarget } from "@/components/billing/checkout-dialog";
+import { ApiError } from "@/lib/api";
 
-const open = (target: CheckoutTarget, redirect = vi.fn(), extra: { onPaid?: () => void; pollMs?: number } = {}) =>
+const open = (target: CheckoutTarget, redirect = vi.fn(), extra: { onPaid?: () => void; pollMs?: number; onError?: (c: unknown) => void } = {}) =>
   render(
     <NextIntlClientProvider locale="pt" messages={pt}>
       <CheckoutDialog target={target} onClose={() => {}} onError={() => {}} redirect={redirect} {...extra} />
@@ -128,5 +129,27 @@ describe("CheckoutDialog", () => {
     fireEvent.click(screen.getByText("Continuar"));
     expect(await screen.findByText("Pagamento confirmado")).toBeTruthy();
     expect(screen.getByText("Seu plano EQUIPE está ativo.")).toBeTruthy();
+  });
+
+  it("keeps the dialog and the typed data when the provider rejects the request, showing its reason", async () => {
+    purchase.mockRejectedValueOnce(new ApiError(400, "Woovi: taxID inválido"));
+    const onError = vi.fn();
+    open({ kind: "avulso", units: 5 }, vi.fn(), { onError });
+    fireEvent.click(screen.getByText("Continuar"));
+    expect((await screen.findByRole("alert")).textContent).toContain("Woovi: taxID inválido");
+    expect(onError).not.toHaveBeenCalled();
+    // Still on the form: the choices are there and the button works again for a retry.
+    expect(screen.getByTestId("method-pix")).toBeTruthy();
+    purchase.mockResolvedValueOnce({ method: "pix", brCode: "BR", qrCodeImage: null, paymentLinkUrl: "https://woovi.test/p", expiresAt: null });
+    fireEvent.click(screen.getByText("Continuar"));
+    await waitFor(() => expect(screen.getByTestId("pix-result")).toBeTruthy());
+  });
+
+  it("hands server failures (5xx) to the page toast instead of the inline message", async () => {
+    purchase.mockRejectedValueOnce(new ApiError(502, "Upstream service unavailable"));
+    const onError = vi.fn();
+    open({ kind: "avulso", units: 5 }, vi.fn(), { onError });
+    fireEvent.click(screen.getByText("Continuar"));
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
   });
 });

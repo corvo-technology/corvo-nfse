@@ -151,6 +151,7 @@ function CheckoutDialogInner({
   const [busy, setBusy] = useState(false);
   const [pix, setPix] = useState<PixResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   // One key per dialog opening: a retry replays the same charge instead of creating another.
   const [key] = useState(() => crypto.randomUUID());
   const qr = usePixQr(pix?.brCode ?? null);
@@ -181,6 +182,7 @@ function CheckoutDialogInner({
   async function submit() {
     if (!target || busy || !payerOk) return;
     setBusy(true);
+    setError(null);
     try {
       const base = target.kind === "avulso" ? ({ kind: "avulso", units: target.units, method } as const)
         : ({ kind: "plan", planSlug: target.slug, cycle: target.cycle, method, customer: needsPayer ? buildPayer(payer) : undefined } as const);
@@ -188,7 +190,9 @@ function CheckoutDialogInner({
       if (result.method === "card") redirect(result.url);
       else setPix(result);
     } catch (cause) {
-      onError(cause);
+      // A rejected request (invalid payer data, say) stays on the form with its reason, so nothing typed is lost.
+      if (cause instanceof ApiError && cause.status >= 400 && cause.status < 500 && cause.status !== 429) setError(cause.message);
+      else onError(cause);
     } finally {
       setBusy(false);
     }
@@ -232,6 +236,7 @@ function CheckoutDialogInner({
                 <p className="col-span-6 text-[12px] text-text-3">{t("checkout.payerHint")}</p>
               </div>
             )}
+            {error && <p role="alert" className="rounded-[8px] border border-warn/40 bg-warn/10 px-3 py-2 text-[13px] text-warn">{error}</p>}
             <Button variant="accent" size="lg" loading={busy} disabled={!payerOk} onClick={() => void submit()}>{t("checkout.pay")}</Button>
           </>
         )}

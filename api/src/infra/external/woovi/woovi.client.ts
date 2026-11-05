@@ -1,4 +1,8 @@
-import { BadGatewayException, Logger } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import type { WooviConfig } from '@/infra/config/configuration.types';
 
 export interface WooviCharge {
@@ -71,8 +75,19 @@ export class WooviClient {
         status: response.status,
         detail,
       });
-      throw new BadGatewayException(
-        `Woovi request failed (${response.status})`,
+      // 401/403 mean our own credentials are wrong, and 5xx is Woovi being down: both are upstream
+      // problems. Any other 4xx is Woovi rejecting what we sent (e.g. an invalid payer), and the
+      // reason is useful to the person filling the form.
+      if (
+        response.status >= 500 ||
+        response.status === 401 ||
+        response.status === 403
+      )
+        throw new BadGatewayException(
+          `Woovi request failed (${response.status})`,
+        );
+      throw new BadRequestException(
+        `Woovi: ${this.reason(detail) || `request rejected (${response.status})`}`,
       );
     }
     return (await response.json()) as T;
@@ -155,6 +170,26 @@ export class WooviClient {
 
   async cancelSubscription(id: string): Promise<void> {
     await this.call('PUT', `/subscriptions/${encodeURIComponent(id)}/cancel`);
+  }
+
+  /** The human reason inside a Woovi error body (`error`, `message` or `errors[].message`). */
+  private reason(detail: string): string {
+    try {
+      const body = JSON.parse(detail) as {
+        error?: unknown;
+        message?: unknown;
+        errors?: Array<{ message?: unknown }>;
+      };
+      const parts = Array.isArray(body.errors)
+        ? body.errors.map((e) => String(e.message ?? '')).filter(Boolean)
+        : [];
+      const single = body.error ?? body.message;
+      if (parts.length) return parts.join('; ').slice(0, 300);
+      if (typeof single === 'string') return single.slice(0, 300);
+    } catch {
+      /* not JSON */
+    }
+    return detail.slice(0, 200);
   }
 
   private saoPauloDate(): string {
