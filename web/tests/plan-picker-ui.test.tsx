@@ -59,6 +59,19 @@ describe("plan picker", () => {
     expect(screen.getByTestId("calculator-result").textContent).toContain("R$ 69,80");
   });
 
+  it("calculator has a slider that drives the recommendation, with a zone per option", () => {
+    renderPicker();
+    const slider = screen.getByRole("slider");
+    fireEvent.change(slider, { target: { value: "700" } });
+    const result = screen.getByTestId("calculator-result").textContent ?? "";
+    expect(result).toContain("Equipe");
+    expect(result).toContain("20");
+    const zones = Array.from(document.querySelectorAll("[data-zone]")).map((el) => el.getAttribute("data-zone"));
+    expect(zones).toEqual(["avulso", "solo", "equipe", "empresa", "escala"]);
+    fireEvent.change(slider, { target: { value: "0" } });
+    expect(screen.getByTestId("calculator-result").textContent).toContain("R$ 2,97");
+  });
+
   it("hands the chosen cycle to the card action", () => {
     const action = vi.fn(() => null);
     renderPicker("pt", action);

@@ -781,14 +781,15 @@
     "calculator": {
       "title": "Quantas notas você emite por mês?",
       "label": "Quantas notas por mês?",
-      "placeholder": "Ex: 250",
       "result": "Melhor opção",
       "plan": "Plano {name}",
       "avulsoOnly": "Só notas avulsas",
       "extra": "+ {count} notas avulsas",
       "total": "Total por mês",
-      "invalid": "Digite um número entre 1 e 1.000.000.",
-      "others": "Outras opções"
+      "others": "Outras opções",
+      "unit": "notas / mês",
+      "slider": "Ajustar notas por mês",
+      "zoneAvulso": "AVULSO"
     },
     "footnote": "Cotas mensais, sem acúmulo. O que passar da cota você compra como nota avulsa, ou troca de plano."
   },

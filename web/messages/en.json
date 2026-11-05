@@ -781,14 +781,15 @@
     "calculator": {
       "title": "How many invoices do you issue a month?",
       "label": "How many invoices a month?",
-      "placeholder": "Ex: 250",
       "result": "Best option",
       "plan": "{name} plan",
       "avulsoOnly": "Single invoices only",
       "extra": "+ {count} single invoices",
       "total": "Total per month",
-      "invalid": "Enter a number between 1 and 1,000,000.",
-      "others": "Other options"
+      "others": "Other options",
+      "unit": "invoices / month",
+      "slider": "Adjust invoices per month",
+      "zoneAvulso": "SINGLE"
     },
     "footnote": "Monthly quotas, no rollover. Need more? Buy single invoices or move to a bigger plan."
   },
