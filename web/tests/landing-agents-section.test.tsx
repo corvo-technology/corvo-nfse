@@ -29,10 +29,13 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("landing AI agents section", () => {
-  it("sells the idea and shows the REST call the agent makes under the hood", () => {
+  it("sells the idea with real requests, each tied to a tool the MCP server actually has", () => {
     renderSection();
-    expect(screen.getByRole("heading", { name: "Your AI agents can issue invoices." })).toBeTruthy();
-    expect(screen.getByText("POST /v1/invoices")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Ask in plain words. The invoice goes out." })).toBeTruthy();
+    const tools = Array.from(document.querySelectorAll("[data-tool]")).map((el) => el.getAttribute("data-tool"));
+    expect(tools).toEqual(["nfse_calculate", "nfse_issue_batch", "nfse_cancel", "nfse_get_download_url", "nfse_list"]);
+    // No raw API snippet here any more: that belongs to the SDK section.
+    expect(screen.queryByText("POST /v1/invoices")).toBeNull();
     expect(screen.queryByText("company_list")).toBeNull();
   });
 

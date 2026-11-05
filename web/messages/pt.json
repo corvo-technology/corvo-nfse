@@ -2066,13 +2066,8 @@
   },
   "LandingAgents": {
     "eyebrow": "AGENTES DE IA",
-    "title": "Seus agentes de IA podem emitir notas.",
-    "description": "Conecte o Claude, o Cursor ou o Codex à Corvo por MCP. Peça em linguagem natural e a nota sai, com as mesmas regras fiscais da API.",
-    "points": {
-      "connect": "Um comando para conectar, sem chave para copiar.",
-      "approve": "Você aprova no navegador e escolhe teste ou produção.",
-      "rules": "Mesma validação fiscal, e-mail e webhooks da API."
-    },
+    "title": "Peça em português. A nota sai.",
+    "description": "Conecte o Claude, o Cursor ou o Codex à Corvo por MCP. O agente emite, calcula, cancela e busca notas com as mesmas regras fiscais da API. Você aprova no navegador e escolhe teste ou produção.",
     "connectLabel": "CONECTE EM UM COMANDO",
     "copy": "Copiar",
     "copied": "Copiado",
@@ -2093,7 +2088,30 @@
         "queued": "Na fila",
         "authorized": "Autorizada"
       }
-    }
+    },
+    "asksLabel": "O QUE VOCÊ PODE PEDIR",
+    "asks": [
+      {
+        "say": "Quanto de ISS vai dar numa nota de R$ 3.000 de consultoria?",
+        "tool": "nfse_calculate"
+      },
+      {
+        "say": "Emite essas 12 notas da planilha, uma por cliente.",
+        "tool": "nfse_issue_batch"
+      },
+      {
+        "say": "Cancela a nota da Padaria Estrela. Saiu com o valor errado.",
+        "tool": "nfse_cancel"
+      },
+      {
+        "say": "Me manda o PDF da nota que emiti ontem.",
+        "tool": "nfse_get_download_url"
+      },
+      {
+        "say": "Quais notas ficaram pendentes esta semana?",
+        "tool": "nfse_list"
+      }
+    ]
   },
   "LandingSdks": {
     "eyebrow": "SDKS",

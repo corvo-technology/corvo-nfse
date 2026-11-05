@@ -2066,13 +2066,8 @@
   },
   "LandingAgents": {
     "eyebrow": "AI AGENTS",
-    "title": "Your AI agents can issue invoices.",
-    "description": "Connect Claude, Cursor or Codex to Corvo through MCP. Ask in plain language and the invoice goes out, with the same tax rules as the API.",
-    "points": {
-      "connect": "One command to connect, no key to copy.",
-      "approve": "You approve in the browser and pick test or production.",
-      "rules": "Same tax validation, email and webhooks as the API."
-    },
+    "title": "Ask in plain words. The invoice goes out.",
+    "description": "Connect Claude, Cursor or Codex to Corvo over MCP. The agent issues, calculates, cancels and looks up invoices under the same fiscal rules as the API. You approve in the browser and pick test or production.",
     "connectLabel": "CONNECT WITH ONE COMMAND",
     "copy": "Copy",
     "copied": "Copied",
@@ -2093,7 +2088,30 @@
         "queued": "Queued",
         "authorized": "Authorized"
       }
-    }
+    },
+    "asksLabel": "WHAT YOU CAN ASK",
+    "asks": [
+      {
+        "say": "How much ISS will a R$ 3,000 consulting invoice come to?",
+        "tool": "nfse_calculate"
+      },
+      {
+        "say": "Issue these 12 invoices from the spreadsheet, one per client.",
+        "tool": "nfse_issue_batch"
+      },
+      {
+        "say": "Cancel the Padaria Estrela invoice. The amount was wrong.",
+        "tool": "nfse_cancel"
+      },
+      {
+        "say": "Send me the PDF of the invoice I issued yesterday.",
+        "tool": "nfse_get_download_url"
+      },
+      {
+        "say": "Which invoices are still pending this week?",
+        "tool": "nfse_list"
+      }
+    ]
   },
   "LandingSdks": {
     "eyebrow": "SDKS",

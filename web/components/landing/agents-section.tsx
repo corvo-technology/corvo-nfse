@@ -2,20 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Facet } from "@/components/ui/facet";
 import { motion, useInView, useReducedMotion } from "motion/react";
-import { ArrowUpRight, Check, Copy, Mail, ShieldCheck, Sparkles, Unplug } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Mail } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { MCP_SERVER_URL } from "@/lib/mcp-config";
 import { cn } from "@/lib/utils";
 
 const CONNECT_COMMAND = `claude mcp add --transport http corvo ${MCP_SERVER_URL}`;
 const AGENTS = ["Claude Code", "Claude Desktop", "Cursor", "VS Code", "Codex", "Windsurf"] as const;
-const POINTS = [
-  { key: "connect", icon: Unplug },
-  { key: "approve", icon: ShieldCheck },
-  { key: "rules", icon: Sparkles },
-] as const;
 
 /** Delays (s) of the scripted conversation; reduced motion shows everything at once. */
 const STEP = { you: 0.2, list: 1.1, issue: 1.9, reply: 2.8, card: 3.4 } as const;
@@ -143,29 +137,7 @@ export function Conversation({ compact = false }: { compact?: boolean }) {
   );
 }
 
-const REQUEST_SAMPLE = `curl -X POST https://api.corvo.tech/v1/invoices \\
-  -H "X-API-Key: $CORVO_API_KEY" \\
-  -H "Idempotency-Key: pedido_123_emissao" \\
-  -d '{
-    "companyTaxId": "11222333000181",
-    "amount": 100,
-    "service": { "description": "Consultoria" }
-  }'`;
-
-/** What the agent calls under the hood: the same REST endpoint any integration uses. */
-function RequestSample({ ariaLabel }: { ariaLabel: string }) {
-  return (
-    <div className="w-full min-w-0 border border-border bg-[#0b0b0b] lg:sticky lg:top-28 lg:mt-3">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2 font-mono text-xs text-text-4">
-        <span>POST /v1/invoices</span>
-        <span className="text-accent">202 queued</span>
-      </div>
-      <pre tabIndex={0} aria-label={ariaLabel} className="overflow-x-auto p-4 font-mono text-[12px] leading-[1.7] text-text-2">
-        <code>{REQUEST_SAMPLE}</code>
-      </pre>
-    </div>
-  );
-}
+const ASK_COUNT = 5;
 
 export function AgentsSection() {
   const t = useTranslations("LandingAgents");
@@ -173,38 +145,37 @@ export function AgentsSection() {
 
   return (
     <section id="agents" className="mx-auto max-w-[1120px] border-t border-border px-6 py-16 sm:px-10 sm:py-24">
-      <div>
-        <div className="relative grid items-start gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-          <div className="min-w-0 lg:order-2">
-            <h2 className="max-w-[460px] text-[clamp(32px,4.4vw,56px)] font-semibold leading-[1.02] tracking-[-0.035em] text-text text-balance">{t("title")}</h2>
-            <p className="mt-5 max-w-[440px] text-[16px] leading-relaxed text-text-3 text-pretty">{t("description")}</p>
+      <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16">
+        <div className="min-w-0">
+          <h2 className="max-w-[460px] text-[clamp(32px,4.4vw,56px)] font-semibold leading-[1.02] tracking-[-0.035em] text-text text-balance">{t("title")}</h2>
+          <p className="mt-5 max-w-[460px] text-[16px] leading-relaxed text-text-3 text-pretty">{t("description")}</p>
 
-            <ul className="mt-7 flex flex-col gap-3.5">
-              {POINTS.map(({ key }) => (
-                <li key={key} className="flex items-start gap-3.5">
-                  <Facet className="mt-[7px]" />
-                  <span className="text-[14px] leading-snug text-text-2">{t(`points.${key}`)}</span>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-8 flex flex-col gap-3">
-              <p className="font-mono text-[11px] tracking-[0.1em] text-text-4">{t("connectLabel")}</p>
-              <CopyCommand />
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <ul className="flex flex-wrap gap-1.5" aria-label={t("agentsLabel")}>
-                  {AGENTS.map((name) => (
-                    <li key={name} className="rounded-[4px] border border-border-strong px-2.5 py-1 text-[12px] text-text-3">{name}</li>
-                  ))}
-                </ul>
-                <Link href={`/${locale}/docs/mcp`} className="inline-flex items-center gap-1 text-[13px] text-text-2 underline-offset-4 transition-colors hover:text-text hover:underline">
-                  {t("docs")} <ArrowUpRight size={13} aria-hidden />
-                </Link>
-              </div>
+          <div className="mt-8 flex flex-col gap-3">
+            <p className="font-mono text-[11px] text-text-4">{t("connectLabel")}</p>
+            <CopyCommand />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <ul className="flex flex-wrap gap-1.5" aria-label={t("agentsLabel")}>
+                {AGENTS.map((name) => (
+                  <li key={name} className="rounded-[4px] border border-border-strong px-2.5 py-1 text-[12px] text-text-3">{name}</li>
+                ))}
+              </ul>
+              <Link href={`/${locale}/docs/mcp`} className="inline-flex items-center gap-1 text-[13px] text-text-2 underline-offset-4 transition-colors hover:text-text hover:underline">
+                {t("docs")} <ArrowUpRight size={13} aria-hidden />
+              </Link>
             </div>
           </div>
+        </div>
 
-          <RequestSample ariaLabel={locale === "pt" ? "Exemplo de requisição para emitir NFS-e" : "Example request to issue an NFS-e"} />
+        <div className="min-w-0">
+          <p className="font-mono text-[11px] text-text-4">{t("asksLabel")}</p>
+          <ul className="mt-3 divide-y divide-border border-y border-border">
+            {Array.from({ length: ASK_COUNT }, (_, i) => (
+              <li key={i} data-tool={t(`asks.${i}.tool`)} className="flex flex-col gap-1.5 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
+                <p className="text-[17px] leading-snug text-text text-pretty">&ldquo;{t(`asks.${i}.say`)}&rdquo;</p>
+                <span className="shrink-0 font-mono text-[12px] text-accent">{t(`asks.${i}.tool`)}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>
