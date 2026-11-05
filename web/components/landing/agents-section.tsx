@@ -67,7 +67,8 @@ function ToolCall({ name, result, delay, show, instant }: { name: string; result
   );
 }
 
-function Conversation() {
+/** The Claude Code conversation that issues an invoice through the Corvo MCP server. */
+export function Conversation() {
   const t = useTranslations("LandingAgents.chat");
   const reduce = useReducedMotion() ?? false;
   const ref = useRef<HTMLDivElement>(null);
@@ -142,6 +143,30 @@ function Conversation() {
   );
 }
 
+const REQUEST_SAMPLE = `curl -X POST https://api.corvo.tech/v1/invoices \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Idempotency-Key: pedido_123_emissao" \\
+  -d '{
+    "companyTaxId": "11222333000181",
+    "amount": 100,
+    "service": { "description": "Consultoria" }
+  }'`;
+
+/** What the agent calls under the hood: the same REST endpoint any integration uses. */
+function RequestSample({ ariaLabel }: { ariaLabel: string }) {
+  return (
+    <div className="w-full min-w-0 border border-border bg-[#0b0b0b]">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2 font-mono text-xs text-text-4">
+        <span>POST /v1/invoices</span>
+        <span className="text-accent">202 queued</span>
+      </div>
+      <pre tabIndex={0} aria-label={ariaLabel} className="overflow-x-auto p-4 font-mono text-[12px] leading-[1.7] text-text-2">
+        <code>{REQUEST_SAMPLE}</code>
+      </pre>
+    </div>
+  );
+}
+
 export function AgentsSection() {
   const t = useTranslations("LandingAgents");
   const locale = useLocale();
@@ -179,7 +204,7 @@ export function AgentsSection() {
             </div>
           </div>
 
-          <Conversation />
+          <RequestSample ariaLabel={locale === "pt" ? "Exemplo de requisição para emitir NFS-e" : "Example request to issue an NFS-e"} />
         </div>
       </div>
     </section>
