@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PlanSlug, PaidPlanSlug, BillingCycle } from '../domain/plan';
-import { AVULSO_UNIT_CENTS } from '@/modules/credits/domain/avulso';
+import {
+  AVULSO_MIN_UNITS,
+  AVULSO_UNIT_CENTS,
+} from '@/modules/credits/domain/avulso';
 
 export interface PriceQuote {
   slug: PlanSlug;
@@ -112,15 +115,20 @@ export class PricingService {
       throw new Error(
         `notes must be a whole number between 1 and ${MAX_RECOMMEND_NOTES}`,
       );
+    // Avulso notes are sold in lots of at least AVULSO_MIN_UNITS.
+    const buyable = (units: number) =>
+      units === 0 ? 0 : Math.max(AVULSO_MIN_UNITS, units);
     const options: NotesOption[] = [
       {
         planSlug: null,
-        avulsoUnits: notesPerMonth,
-        totalCents: notesPerMonth * AVULSO_UNIT_CENTS,
+        avulsoUnits: buyable(notesPerMonth),
+        totalCents: buyable(notesPerMonth) * AVULSO_UNIT_CENTS,
       },
       ...PAID_PLAN_SLUGS.map((slug) => {
         const quote = this.calculateQuote(slug, cycle);
-        const avulsoUnits = Math.max(0, notesPerMonth - quote.monthlyAllowance);
+        const avulsoUnits = buyable(
+          Math.max(0, notesPerMonth - quote.monthlyAllowance),
+        );
         return {
           planSlug: slug,
           avulsoUnits,

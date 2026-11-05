@@ -93,4 +93,22 @@ describe('PricingService.recommendForNotes', () => {
   it.each([0, -5, 2.5, Number.NaN, 1_000_001])('rejects %s notes', (notes) => {
     expect(() => service.recommendForNotes(notes, 'monthly')).toThrow(/notes/i);
   });
+  it('never suggests fewer than 3 avulso notes (the purchase minimum)', () => {
+    expect(service.recommendForNotes(101, 'monthly').option).toEqual({
+      planSlug: 'solo',
+      avulsoUnits: 3,
+      totalCents: 5990 + 3 * 99,
+    });
+    expect(service.recommendForNotes(2, 'monthly').option).toEqual({
+      planSlug: null,
+      avulsoUnits: 3,
+      totalCents: 297,
+    });
+    for (const n of [1, 2, 101, 102, 351])
+      for (const o of [
+        service.recommendForNotes(n, 'monthly').option,
+        ...service.recommendForNotes(n, 'monthly').alternatives,
+      ])
+        expect(o.avulsoUnits === 0 || o.avulsoUnits >= 3).toBe(true);
+  });
 });

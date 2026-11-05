@@ -34,9 +34,11 @@ export class CreditsController {
   async getBalance(@Req() req: RequestWithAuthContext) {
     const tenantId = req.authContext!.activeTenantId;
     const usage = await this.usage.status(tenantId);
+    const planRemaining = usage.blocked ? 0 : usage.included_remaining;
     return {
-      balance: usage.included_remaining + usage.avulsoBalance,
-      planRemaining: usage.included_remaining,
+      // Plan notes nobody can use (lapsed plan) are not part of the balance.
+      balance: planRemaining + usage.avulsoBalance,
+      planRemaining,
       avulsoBalance: usage.avulsoBalance,
       hardLimit: usage.hard_limit,
     };

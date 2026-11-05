@@ -1282,7 +1282,10 @@
       "minimum": "Mínimo de 3 notas."
     },
     "choose": "Escolher plano",
-    "blockedBuy": "Sua cota acabou. Compre notas avulsas ou mude de plano para continuar emitindo."
+    "blockedBuy": "Sua cota acabou. Compre notas avulsas ou mude de plano para continuar emitindo.",
+    "pixActive": "Seu plano é cobrado todo mês por Pix Automático.",
+    "pixCancel": "Cancelar Pix Automático",
+    "pixCancelled": "Pix Automático cancelado. O plano segue ativo até o fim do período pago."
   },
   "Session": {
     "unavailable": "Não foi possível consultar sua sessão. Verifique a API e tente novamente.",

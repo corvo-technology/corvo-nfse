@@ -1,4 +1,8 @@
-import { ConflictException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { CheckoutRouterService } from './checkout-router.service';
 
 const tenant = '11111111-1111-4111-8111-111111111111';
@@ -126,4 +130,21 @@ describe('CheckoutRouterService', () => {
     );
     expect(f.woovi.startAvulso).toHaveBeenCalled();
   });
+  for (const [index, key] of [
+    undefined,
+    '',
+    '   ',
+    'k'.repeat(201),
+  ].entries()) {
+    it(`rejects the idempotency key #${index} with a 400 before anything else`, async () => {
+      const f = setup();
+      const attempt = f.service.start(
+        tenant,
+        { kind: 'avulso', units: 5, method: 'pix' },
+        key as never,
+      );
+      await expect(attempt).rejects.toBeInstanceOf(BadRequestException);
+      expect(f.woovi.startAvulso).not.toHaveBeenCalled();
+    });
+  }
 });

@@ -29,7 +29,8 @@ export interface PaymentIntent {
 }
 
 export interface PixCheckout {
-  method: 'pix';
+  /** 'card' for Stripe sessions: only paymentLinkUrl is meaningful then. */
+  method: 'pix' | 'card';
   brCode: string | null;
   qrCodeImage: string | null;
   paymentLinkUrl: string;
@@ -44,6 +45,10 @@ export abstract class PaymentIntentStore {
   abstract findByRef(
     provider: string,
     providerRef: string,
+  ): Promise<PaymentIntent | null>;
+  /** The tenant's Pix Automático contract that can still charge (not rejected/cancelled). */
+  abstract findLiveSubscription(
+    tenantId: string,
   ): Promise<PaymentIntent | null>;
   /** Throws an error with code '23505' on a duplicate (provider, providerRef). */
   abstract insert(intent: PaymentIntent): Promise<void>;

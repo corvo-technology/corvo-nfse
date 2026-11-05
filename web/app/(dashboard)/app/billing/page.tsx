@@ -64,6 +64,12 @@ export default function BillingPage() {
     } catch (cause) { fail(cause); }
     finally { setBusy(null); }
   };
+  const cancelPix = async () => {
+    if (!billingEnabled || !canManage || busy) return; setBusy("cancel-pix");
+    try { await billingApi.cancelPix(); success(t("pixCancelled")); setBilling(await billingApi.plan()); }
+    catch (cause) { fail(cause); }
+    finally { setBusy(null); }
+  };
   const openPortal = async () => {
     if (!billingEnabled || !canManage || busy) return; setBusy("portal");
     try { redirect((await billingApi.portal()).url); }
@@ -175,6 +181,12 @@ export default function BillingPage() {
       {u.creditsRemaining <= 0 && u.avulsoBalance <= 0 && <p role="alert" className="text-[13px] text-warn" data-testid="out-of-quota">{t("blockedBuy")}</p>}
       {sub.blocked && <p role="alert" className="text-[13px] text-danger">{t("blocked")}</p>}
       {sub.scheduledPlan && <p className="text-[13px] text-text-3">{t("scheduled", { plan: PLANS.some((p) => p.slug === sub.scheduledPlan) ? tp(`plans.${sub.scheduledPlan}.name`) : sub.scheduledPlan, date: sub.paidUntil ? date(sub.paidUntil) : "—" })}</p>}
+      {sub.pixSubscription && canManage && (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-[13px] text-text-2">{t("pixActive")}</p>
+          <Button variant="secondary" size="sm" disabled={!billingEnabled || busy !== null} loading={busy === "cancel-pix"} onClick={() => void cancelPix()}>{t("pixCancel")}</Button>
+        </div>
+      )}
       {sub.cancelAtPeriodEnd && <p className="text-[13px] text-warn">{t("cancelsAtEnd")}</p>}
 
       <section aria-labelledby="plans-heading" className="dash-in dash-in-3 flex flex-col gap-4">

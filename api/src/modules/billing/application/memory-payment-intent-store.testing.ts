@@ -20,6 +20,19 @@ export class MemoryPaymentIntentStore extends PaymentIntentStore {
         null,
     );
   }
+  findLiveSubscription(tenantId: string) {
+    return Promise.resolve(
+      this.rows.find(
+        (r) =>
+          r.tenantId === tenantId &&
+          r.provider === 'woovi' &&
+          r.kind === 'plan' &&
+          r.cycle === 'monthly' &&
+          r.idempotencyKey !== null &&
+          ['pending', 'authorized'].includes(r.status),
+      ) ?? null,
+    );
+  }
   insert(intent: PaymentIntent) {
     if (this.rows.some((r) => r.providerRef === intent.providerRef))
       return Promise.reject(Object.assign(new Error('dup'), { code: '23505' }));

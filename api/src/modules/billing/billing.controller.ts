@@ -18,6 +18,7 @@ import { QuotaService } from '@/modules/plans/application/quota.service';
 import type { QuotaStatus } from '@/modules/plans/application/quota.service';
 import { BillingService } from './application/billing.service';
 import { CheckoutRouterService } from './application/checkout-router.service';
+import { WooviPaymentsService } from './application/woovi-payments.service';
 import { BillingUsageService } from './application/billing-usage.service';
 import {
   CheckoutDto,
@@ -38,6 +39,7 @@ export class BillingController {
     private readonly pricingService: PricingService,
     private readonly planRepo: IPlanRepository,
     private readonly checkoutRouter: CheckoutRouterService,
+    private readonly pix: WooviPaymentsService,
   ) {}
 
   @Get('plan')
@@ -70,6 +72,7 @@ export class BillingController {
         cancel_at_period_end: billing.billing?.cancelAtPeriodEnd ?? false,
         scheduled_plan: billing.billing?.pendingPlanSlug ?? null,
         blocked: billing.blocked,
+        pix_subscription: await this.pix.hasPixSubscription(tenantId),
       },
       usage: {
         hard_limit: billing.hard_limit,
@@ -147,6 +150,14 @@ export class BillingController {
         params.sessionId,
       ),
     );
+  }
+
+  @Post('pix/cancel')
+  @HttpCode(200)
+  @RequirePermission('billing.manage')
+  async cancelPix(@Req() req: RequestWithAuthContext) {
+    await this.pix.cancelPixSubscription(req.authContext!.activeTenantId);
+    return data({ cancelled: true });
   }
 
   @Post('portal')

@@ -167,3 +167,14 @@ describe("billing.purchase", () => {
   });
 });
 
+describe("billing.cancelPix", () => {
+  it("posts to the Pix cancel endpoint and the plan reports an active Pix subscription", async () => {
+    setCsrfToken("csrf");
+    fetchMock.mockResolvedValueOnce(reply({ data: { cancelled: true } })).mockResolvedValueOnce(reply({ data: { plan: { slug: "solo", name: "Solo", monthly_price_cents: 5990 }, subscription: { status: "active", paid_until: "2026-12-01T00:00:00Z", cancel_at_period_end: false, scheduled_plan: null, blocked: false, pix_subscription: true }, usage: { credits_used: 1, credits_reserved: 0, credits_remaining: 99, monthly_allowance: 100, daily_usage: 0, daily_limit: null, active_companies: 1, max_active_companies: 999999 } } }));
+    await billing.cancelPix();
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/billing/pix/cancel");
+    expect(fetchMock.mock.calls[0][1]?.method).toBe("POST");
+    expect((await billing.plan()).subscription.pixSubscription).toBe(true);
+  });
+});
+

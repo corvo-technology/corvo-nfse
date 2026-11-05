@@ -3,6 +3,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { BillingProvider } from '../domain/billing-provider.port';
 import { BillingRepository } from '../domain/billing.repository';
 import { PaymentIntentStore } from '../domain/payment-intent';
+import { assertReplayMatches } from './checkout-replay';
 import { PaymentFulfillmentService } from './payment-fulfillment.service';
 import {
   AVULSO_UNIT_CENTS,
@@ -36,9 +37,17 @@ export class StripePaymentsService {
     purchase: OneTimePurchase,
     idempotencyKey: string,
   ): Promise<CardCheckout> {
-    const replay = (await this.intents.findByKey(tenantId, idempotencyKey))
-      ?.checkout;
-    if (replay) return { method: 'card', url: replay.paymentLinkUrl };
+    const previous = await this.intents.findByKey(tenantId, idempotencyKey);
+    if (previous) {
+      assertReplayMatches(previous, {
+        provider: 'stripe',
+        kind: purchase.kind,
+        planSlug: purchase.kind === 'plan' ? purchase.planSlug : null,
+        cycle: purchase.kind === 'plan' ? purchase.cycle : null,
+        units: purchase.kind === 'avulso' ? purchase.units : null,
+      });
+      return { method: 'card', url: previous.checkout!.paymentLinkUrl };
+    }
 
     let amountCents: number;
     let name: string;
@@ -84,7 +93,7 @@ export class StripePaymentsService {
       expiresAt: null,
       paidAt: null,
       checkout: {
-        method: 'pix',
+        method: 'card',
         brCode: null,
         qrCodeImage: null,
         paymentLinkUrl: session.url,

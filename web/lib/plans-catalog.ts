@@ -43,10 +43,12 @@ export interface NotesOption {
 /** Cheapest way to get N notes a month. Mirrors PricingService.recommendForNotes. */
 export function recommendForNotes(notes: number, cycle: BillingCycle): { option: NotesOption; alternatives: NotesOption[] } | null {
   if (!Number.isInteger(notes) || notes < 1 || notes > MAX_CALCULATOR_NOTES) return null;
+  // Avulso notes are sold in lots of at least AVULSO_MIN_UNITS.
+  const buyable = (units: number) => (units === 0 ? 0 : Math.max(AVULSO_MIN_UNITS, units));
   const options: NotesOption[] = [
-    { planSlug: null, avulsoUnits: notes, totalCents: notes * AVULSO_UNIT_CENTS },
+    { planSlug: null, avulsoUnits: buyable(notes), totalCents: buyable(notes) * AVULSO_UNIT_CENTS },
     ...PLANS.map((plan) => {
-      const avulsoUnits = Math.max(0, notes - plan.credits);
+      const avulsoUnits = buyable(Math.max(0, notes - plan.credits));
       return { planSlug: plan.slug, avulsoUnits, totalCents: perMonthCents(plan, cycle) + avulsoUnits * AVULSO_UNIT_CENTS };
     }),
   ].sort((a, b) => a.totalCents - b.totalCents);

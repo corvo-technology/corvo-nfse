@@ -1,3 +1,4 @@
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { WooviPaymentsService } from './woovi-payments.service';
 import { MemoryPaymentIntentStore } from './memory-payment-intent-store.testing';
 import { PaymentFulfillmentService } from './payment-fulfillment.service';
@@ -69,6 +70,25 @@ describe('WooviPaymentsService.startAvulso', () => {
       /minimum/i,
     );
     expect(f.client.createCharge).not.toHaveBeenCalled();
+  });
+  it('refuses to replay a key for a different request', async () => {
+    const f = setup();
+    await f.service.startAvulso(tenant, 5, 'same');
+    await expect(
+      f.service.startAvulso(tenant, 7, 'same'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      f.service.startPlan(tenant, 'solo', 'annual', 'same', undefined),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(f.client.createCharge).toHaveBeenCalledTimes(1);
+  });
+  it('does not replay an expired charge: a new key is needed', async () => {
+    const f = setup();
+    await f.service.startAvulso(tenant, 5, 'old');
+    f.store.rows[0]!.expiresAt = new Date(Date.now() - 1000);
+    await expect(
+      f.service.startAvulso(tenant, 5, 'old'),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
   it('replays the same checkout for the same idempotency key', async () => {
     const f = setup();
@@ -251,5 +271,41 @@ describe('WooviPaymentsService.handleEvent', () => {
       f.service.handleEvent({ event: 'OPENPIX:SOMETHING_NEW' }),
     ).resolves.toBeUndefined();
     expect(f.credits.grantAvulso).not.toHaveBeenCalled();
+  });
+});
+
+describe('WooviPaymentsService Pix Automático cancel', () => {
+  const contract = async (f: ReturnType<typeof setup>) => {
+    await f.service.startPlan(tenant, 'solo', 'monthly', 'k', {
+      name: 'Ana',
+      taxID: '12345678909',
+    });
+    return f.store.rows[0]!;
+  };
+  it('cancels the live contract in Woovi and keeps the paid period', async () => {
+    const f = setup();
+    const sub = await contract(f);
+    await expect(f.service.hasPixSubscription(tenant)).resolves.toBe(true);
+    await f.service.cancelPixSubscription(tenant);
+    expect(f.client.cancelSubscription).toHaveBeenCalledWith(sub.providerRef);
+    expect(f.store.rows[0]!.status).toBe('cancelled');
+    expect(f.billing.setPlan).not.toHaveBeenCalled();
+    await expect(f.service.hasPixSubscription(tenant)).resolves.toBe(false);
+  });
+  it('reports not found when there is no live contract', async () => {
+    const f = setup();
+    await expect(
+      f.service.cancelPixSubscription(tenant),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(f.client.cancelSubscription).not.toHaveBeenCalled();
+  });
+  it('does not mark it cancelled if Woovi refuses', async () => {
+    const f = setup();
+    await contract(f);
+    f.client.cancelSubscription.mockRejectedValueOnce(new Error('woovi down'));
+    await expect(f.service.cancelPixSubscription(tenant)).rejects.toThrow(
+      'woovi down',
+    );
+    expect(f.store.rows[0]!.status).not.toBe('cancelled');
   });
 });

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -33,6 +34,10 @@ export class CheckoutRouterService {
   ) {}
 
   async start(tenantId: string, request: CheckoutRequest, key: string) {
+    if (typeof key !== 'string' || key.trim().length === 0 || key.length > 200)
+      throw new BadRequestException(
+        'Idempotency-Key must contain 1 to 200 characters',
+      );
     // Plans change at renewal (no mid-period switch between providers, no double billing).
     if (
       request.kind === 'plan' &&

@@ -1282,7 +1282,10 @@
       "minimum": "Minimum 3 invoices."
     },
     "choose": "Choose plan",
-    "blockedBuy": "You are out of quota. Buy single invoices or change plan to keep issuing."
+    "blockedBuy": "You are out of quota. Buy single invoices or change plan to keep issuing.",
+    "pixActive": "Your plan is charged monthly through Pix Automático.",
+    "pixCancel": "Cancel Pix Automático",
+    "pixCancelled": "Pix Automático cancelled. Your plan stays active until the paid period ends."
   },
   "Session": {
     "unavailable": "Could not retrieve your session. Check the API and try again.",

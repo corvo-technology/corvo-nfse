@@ -56,9 +56,15 @@ export class FirstFreeNote1792630000000 implements MigrationInterface {
   async down(runner: QueryRunner): Promise<void> {
     const s = this.schema(runner);
     await runner.query(`SELECT set_config('app.system_context', 'on', false)`);
+    // Only the notes this migration granted: the backfill gives the claim and its
+    // note the same transaction timestamp, which first-login grants never share.
     await runner.query(`
-      DELETE FROM ${s}.credit_transactions
-      WHERE type = 'bonus' AND description = 'Primeira nota grátis'
+      DELETE FROM ${s}.credit_transactions c
+      USING ${s}.free_note_claims f
+      WHERE c.tenant_id = f.tenant_id
+        AND c.type = 'bonus'
+        AND c.description = 'Primeira nota grátis'
+        AND c.created_at = f.created_at
     `);
     await runner.query(`SELECT set_config('app.system_context', 'off', false)`);
     await runner.query(`DROP TABLE IF EXISTS ${s}.free_note_claims`);

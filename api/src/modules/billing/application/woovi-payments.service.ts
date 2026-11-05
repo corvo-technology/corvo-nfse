@@ -1,10 +1,16 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   PaymentIntentStore,
   type PaymentIntent,
   type PixCheckout,
 } from '../domain/payment-intent';
+import { assertReplayMatches, type ExpectedPurchase } from './checkout-replay';
 import { PaymentFulfillmentService } from './payment-fulfillment.service';
 import {
   AVULSO_UNIT_CENTS,
@@ -54,7 +60,12 @@ export class WooviPaymentsService {
     } catch (error) {
       throw new BadRequestException((error as Error).message);
     }
-    const replay = await this.replay(tenantId, idempotencyKey);
+    const replay = await this.replay(tenantId, idempotencyKey, {
+      kind: 'avulso',
+      planSlug: null,
+      cycle: null,
+      units,
+    });
     if (replay) return replay;
     const amountCents = units * AVULSO_UNIT_CENTS;
     const ref = randomUUID();
@@ -90,7 +101,12 @@ export class WooviPaymentsService {
       throw new BadRequestException('Pix Automático needs the customer name');
     if (cycle === 'monthly' && !customer?.taxID?.trim())
       throw new BadRequestException('Pix Automático needs the customer taxID');
-    const replay = await this.replay(tenantId, idempotencyKey);
+    const replay = await this.replay(tenantId, idempotencyKey, {
+      kind: 'plan',
+      planSlug,
+      cycle,
+      units: null,
+    });
     if (replay) return replay;
     const ref = randomUUID();
     const base = {
@@ -257,8 +273,29 @@ export class WooviPaymentsService {
     return ref ? this.intents.findByRef('woovi', ref) : Promise.resolve(null);
   }
 
-  private async replay(tenantId: string, key: string) {
-    return (await this.intents.findByKey(tenantId, key))?.checkout ?? null;
+  private async replay(
+    tenantId: string,
+    key: string,
+    expected: Omit<ExpectedPurchase, 'provider'>,
+  ) {
+    const intent = await this.intents.findByKey(tenantId, key);
+    if (!intent) return null;
+    assertReplayMatches(intent, { provider: 'woovi', ...expected });
+    return intent.checkout;
+  }
+
+  /** True while a Pix Automático contract can still charge this tenant. */
+  async hasPixSubscription(tenantId: string): Promise<boolean> {
+    return (await this.intents.findLiveSubscription(tenantId)) !== null;
+  }
+
+  /** Stops future Pix Automático charges. The period already paid stays valid. */
+  async cancelPixSubscription(tenantId: string): Promise<void> {
+    const contract = await this.intents.findLiveSubscription(tenantId);
+    if (!contract)
+      throw new NotFoundException('No Pix Automático subscription to cancel');
+    await this.client.cancelSubscription(contract.providerRef);
+    await this.intents.setStatus(contract.id, 'cancelled');
   }
 
   private pixCheckout(

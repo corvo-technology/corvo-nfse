@@ -468,6 +468,8 @@ export interface BillingSubscription {
   cancelAtPeriodEnd: boolean;
   scheduledPlan: string | null;
   blocked: boolean;
+  /** A Pix Automático contract is charging this account monthly. */
+  pixSubscription: boolean;
 }
 
 export interface BillingPlan {

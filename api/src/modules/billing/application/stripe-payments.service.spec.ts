@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { StripePaymentsService } from './stripe-payments.service';
 import { PaymentFulfillmentService } from './payment-fulfillment.service';
 import { MemoryPaymentIntentStore } from './memory-payment-intent-store.testing';
@@ -56,6 +57,7 @@ describe('StripePaymentsService.start', () => {
       provider: 'stripe',
       kind: 'avulso',
       status: 'pending',
+      checkout: { method: 'card', paymentLinkUrl: 'https://stripe.test/pay' },
     });
   });
   it('charges the annual plan at once: 12 x the monthly equivalent', async () => {
@@ -84,6 +86,17 @@ describe('StripePaymentsService.start', () => {
         'k',
       ),
     ).rejects.toThrow(/subscription/i);
+  });
+  it('refuses to replay a key for a different request or provider', async () => {
+    const f = setup('cus_1');
+    await f.service.start(tenant, { kind: 'avulso', units: 5 }, 'same');
+    await expect(
+      f.service.start(tenant, { kind: 'avulso', units: 9 }, 'same'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    f.store.rows[0]!.provider = 'woovi';
+    await expect(
+      f.service.start(tenant, { kind: 'avulso', units: 5 }, 'same'),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
   it('replays the same url for the same idempotency key', async () => {
     const f = setup('cus_1');

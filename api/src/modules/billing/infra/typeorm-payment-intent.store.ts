@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import {
   PaymentIntentStore,
   type PaymentIntent,
@@ -27,6 +27,21 @@ export class TypeOrmPaymentIntentStore extends PaymentIntentStore {
   }
   async findByKey(tenantId: string, idempotencyKey: string) {
     const row = await this.repo.findOneBy({ tenantId, idempotencyKey });
+    return row ? toDomain(row) : null;
+  }
+  async findLiveSubscription(tenantId: string) {
+    const row = await this.repo.findOne({
+      where: {
+        tenantId,
+        provider: 'woovi',
+        kind: 'plan',
+        cycle: 'monthly',
+        // Contract rows carry the idempotency key; per-cycle charge rows do not.
+        idempotencyKey: Not(IsNull()),
+        status: In(['pending', 'authorized']),
+      },
+      order: { createdAt: 'DESC' },
+    });
     return row ? toDomain(row) : null;
   }
   async findByRef(provider: string, providerRef: string) {

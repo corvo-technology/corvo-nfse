@@ -32,4 +32,14 @@ describe("plan catalog", () => {
   it.each([0, -1, 2.5, Number.NaN, 1_000_001])("calculator rejects %s notes", (notes) => {
     expect(recommendForNotes(notes, "monthly")).toBeNull();
   });
+
+  it("calculator never suggests fewer than 3 avulso notes (the purchase minimum)", () => {
+    expect(recommendForNotes(101, "monthly")!.option).toEqual({ planSlug: "solo", avulsoUnits: 3, totalCents: 5990 + 3 * AVULSO_UNIT_CENTS });
+    expect(recommendForNotes(2, "monthly")!.option).toEqual({ planSlug: null, avulsoUnits: 3, totalCents: 297 });
+    for (const n of [1, 2, 101, 102, 351]) {
+      const r = recommendForNotes(n, "monthly")!;
+      for (const o of [r.option, ...r.alternatives]) expect(o.avulsoUnits === 0 || o.avulsoUnits >= 3).toBe(true);
+    }
+  });
 });
+
