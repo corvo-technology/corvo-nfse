@@ -34,8 +34,8 @@ export function Hero() {
   const locale = useLocale();
 
   return (
-    <section className="relative w-full overflow-hidden px-6 sm:px-10 pt-14 sm:pt-20 pb-[calc(5vw+56px)] lg:min-h-[1100px]">
-      <CrowHead className="pointer-events-none absolute -right-[18%] top-6 w-[78%] -scale-x-100 opacity-90 sm:-right-[8%] sm:w-[58%] lg:right-[-4%] lg:top-4 lg:w-[56%] lg:max-w-[820px]" />
+    <section className="relative w-full overflow-hidden px-6 sm:px-10 pt-14 sm:pt-20 pb-[calc(5vw+56px)] lg:min-h-[720px]">
+      <CrowHead className="pointer-events-none absolute -right-[18%] top-6 w-[78%] -scale-x-100 opacity-90 sm:-right-[8%] sm:w-[58%] lg:right-[-4%] lg:top-1/2 lg:w-[56%] lg:max-w-[820px] lg:-translate-y-[58%]" />
 
       <div className="relative mx-auto max-w-[1120px]">
         <motion.div
@@ -76,8 +76,8 @@ export function Hero() {
           </motion.p>
         </motion.div>
 
-        <div className="mt-12 w-full min-w-0 lg:absolute lg:bottom-[-24px] lg:right-0 lg:mt-0 lg:w-[460px]">
-          <Conversation />
+        <div className="mt-12 w-full min-w-0 lg:absolute lg:bottom-[-24px] lg:right-0 lg:mt-0 lg:w-[440px]">
+          <Conversation compact />
         </div>
       </div>
     </section>

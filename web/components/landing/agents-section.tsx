@@ -68,7 +68,7 @@ function ToolCall({ name, result, delay, show, instant }: { name: string; result
 }
 
 /** The Claude Code conversation that issues an invoice through the Corvo MCP server. */
-export function Conversation() {
+export function Conversation({ compact = false }: { compact?: boolean }) {
   const t = useTranslations("LandingAgents.chat");
   const reduce = useReducedMotion() ?? false;
   const ref = useRef<HTMLDivElement>(null);
@@ -105,24 +105,24 @@ export function Conversation() {
         <span className="rounded-full border border-white/[0.08] px-2.5 py-0.5 font-mono text-[10px] tracking-[0.08em] text-text-3">{t("env")}</span>
       </div>
 
-      <div className="flex min-h-[392px] flex-col gap-5 px-5 py-6 sm:px-6">
+      <div className={cn("flex flex-col", compact ? "gap-3 px-4 py-4" : "min-h-[392px] gap-5 px-5 py-6 sm:px-6")}>
         <motion.div {...fade(STEP.you)} className="max-w-[88%] self-end">
-          <p className="mb-1.5 text-right font-mono text-[10px] tracking-[0.14em] text-text-4">{t("you")}</p>
-          <p className="rounded-2xl rounded-tr-md border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-[14px] leading-relaxed text-text">{t("prompt")}</p>
+          {!compact && <p className="mb-1.5 text-right font-mono text-[10px] tracking-[0.14em] text-text-4">{t("you")}</p>}
+          <p className={cn("rounded-2xl rounded-tr-md border border-white/[0.08] bg-white/[0.05] text-text", compact ? "line-clamp-2 px-3 py-2 text-[12.5px] leading-snug" : "px-4 py-3 text-[14px] leading-relaxed")}>{t("prompt")}</p>
         </motion.div>
 
-        <div className="flex flex-col gap-3">
-          <p className="font-mono text-[10px] tracking-[0.14em] text-text-4">{t("agent")}</p>
+        <div className={cn("flex flex-col", compact ? "gap-2.5" : "gap-3")}>
+          {!compact && <p className="font-mono text-[10px] tracking-[0.14em] text-text-4">{t("agent")}</p>}
           <div className="flex flex-col gap-2.5 border-l border-accent/30 pl-4">
             <ToolCall name="company_list" result={t("listResult")} delay={STEP.list} show={inView} instant={reduce} />
             <ToolCall name="nfse_issue" result={t("issueResult")} delay={STEP.issue} show={inView} instant={reduce} />
           </div>
-          <motion.p {...fade(STEP.reply)} className="text-[14px] leading-relaxed text-text-2">{t("reply")}</motion.p>
+          {!compact && <motion.p {...fade(STEP.reply)} className="text-[14px] leading-relaxed text-text-2">{t("reply")}</motion.p>}
 
-          <motion.div {...fade(STEP.card)} className="mt-1 flex items-center justify-between gap-4 rounded-[14px] border border-white/[0.08] bg-[#101010] p-4">
+          <motion.div {...fade(STEP.card)} className={cn("flex items-center justify-between gap-4 rounded-[14px] border border-white/[0.08] bg-[#101010]", compact ? "p-3" : "mt-1 p-4")}>
             <div className="min-w-0">
               <p className="font-mono text-[10px] tracking-[0.14em] text-text-4">{t("card.label")}</p>
-              <p className="mt-1 text-[22px] font-semibold tracking-[-0.03em] tabular-nums text-text">R$ 450,00</p>
+              <p className={cn("mt-1 font-semibold tracking-[-0.03em] tabular-nums text-text", compact ? "text-[18px]" : "text-[22px]")}>R$ 450,00</p>
               <p className="mt-0.5 flex items-center gap-1.5 truncate text-[12.5px] text-text-3">
                 <Mail size={12} aria-hidden /> {t("card.detail")}
               </p>
