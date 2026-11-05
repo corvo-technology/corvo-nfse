@@ -97,10 +97,7 @@ export class WooviPaymentsService {
     customer: WooviCustomer | undefined,
   ): Promise<PixCheckout> {
     const quote = this.pricing.calculateQuote(planSlug, cycle);
-    if (cycle === 'monthly' && !customer?.name?.trim())
-      throw new BadRequestException('Pix Automático needs the customer name');
-    if (cycle === 'monthly' && !customer?.taxID?.trim())
-      throw new BadRequestException('Pix Automático needs the customer taxID');
+    if (cycle === 'monthly') this.assertPayer(customer);
     const replay = await this.replay(tenantId, idempotencyKey, {
       kind: 'plan',
       planSlug,
@@ -142,12 +139,44 @@ export class WooviPaymentsService {
       ...base,
       checkout: {
         method: 'pix',
-        brCode: null,
+        brCode: sub.brCode,
         qrCodeImage: null,
         paymentLinkUrl: sub.paymentLinkUrl,
         expiresAt: null,
+        providerId: sub.providerId,
       },
     });
+  }
+
+  /** Pix Automático needs the full payer: Woovi rejects the contract without it. */
+  private assertPayer(
+    customer: WooviCustomer | undefined,
+  ): asserts customer is WooviCustomer {
+    const missing = (value: string | undefined) => !value || !value.trim();
+    const a = customer?.address;
+    const field = !customer
+      ? 'customer'
+      : missing(customer.name)
+        ? 'name'
+        : missing(customer.taxID)
+          ? 'taxID'
+          : missing(customer.email)
+            ? 'email'
+            : missing(customer.phone)
+              ? 'phone'
+              : !a ||
+                  [
+                    a.zipcode,
+                    a.street,
+                    a.number,
+                    a.neighborhood,
+                    a.city,
+                    a.state,
+                  ].some(missing)
+                ? 'address'
+                : null;
+    if (field)
+      throw new BadRequestException(`Pix Automático needs the payer ${field}`);
   }
 
   async handleEvent(payload: WooviEvent): Promise<void> {
@@ -161,8 +190,10 @@ export class WooviPaymentsService {
         return;
       }
       case 'OPENPIX:SUBSCRIPTION_AUTHORIZED':
+      case 'PIX_AUTOMATIC_APPROVED':
         return this.setSubscriptionStatus(payload, 'authorized', ['pending']);
       case 'OPENPIX:SUBSCRIPTION_REJECTED':
+      case 'PIX_AUTOMATIC_REJECTED':
         return this.setSubscriptionStatus(payload, 'rejected');
       case 'OPENPIX:SUBSCRIPTION_CANCELLED':
         return this.setSubscriptionStatus(payload, 'cancelled');
@@ -294,7 +325,9 @@ export class WooviPaymentsService {
     const contract = await this.intents.findLiveSubscription(tenantId);
     if (!contract)
       throw new NotFoundException('No Pix Automático subscription to cancel');
-    await this.client.cancelSubscription(contract.providerRef);
+    await this.client.cancelSubscription(
+      contract.checkout?.providerId ?? contract.providerRef,
+    );
     await this.intents.setStatus(contract.id, 'cancelled');
   }
 

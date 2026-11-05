@@ -226,7 +226,7 @@ export const billing = {
 };
 export type CheckoutPlan = "solo" | "equipe" | "empresa" | "escala";
 export type PaymentMethod = "pix" | "card";
-export type Payer = { name: string; taxID: string };
+export type Payer = { name: string; taxID: string; email: string; phone: string; address: { zipcode: string; street: string; number: string; neighborhood: string; city: string; state: string } };
 export type PurchaseRequest =
   | { kind: "plan"; planSlug: CheckoutPlan; cycle: "monthly" | "annual"; method: PaymentMethod; customer?: Payer }
   | { kind: "avulso"; units: number; method: PaymentMethod };

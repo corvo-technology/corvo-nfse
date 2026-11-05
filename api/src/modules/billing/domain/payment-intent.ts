@@ -35,6 +35,8 @@ export interface PixCheckout {
   qrCodeImage: string | null;
   paymentLinkUrl: string;
   expiresAt: string | null;
+  /** Provider's own id for the contract (Woovi globalID), used to cancel it. */
+  providerId?: string | null;
 }
 
 export abstract class PaymentIntentStore {

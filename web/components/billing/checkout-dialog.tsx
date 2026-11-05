@@ -106,6 +106,27 @@ function MethodCard({ value, selected, onSelect, title, description, icon }: { v
   );
 }
 
+/** Woovi wants digits only and the phone with the country code. */
+function buildPayer(p: Record<"name" | "taxID" | "email" | "phone" | "zipcode" | "street" | "number" | "neighborhood" | "city" | "state", string>) {
+  const only = (v: string) => v.replace(/\D/g, "");
+  const phone = only(p.phone);
+  return {
+    name: p.name.trim(),
+    taxID: only(p.taxID),
+    email: p.email.trim(),
+    phone: phone.startsWith("55") && phone.length >= 12 ? phone : `55${phone}`,
+    address: { zipcode: only(p.zipcode), street: p.street.trim(), number: p.number.trim(), neighborhood: p.neighborhood.trim(), city: p.city.trim(), state: p.state.trim().toUpperCase() },
+  };
+}
+
+function Field({ label, value, onChange, className, inputMode, autoComplete }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; className?: string; inputMode?: "numeric" | "tel" | "email"; autoComplete?: string }) {
+  return (
+    <label className={cn("text-[12.5px] text-text-2", className)}>{label}
+      <input value={value} onChange={onChange} inputMode={inputMode} autoComplete={autoComplete} className="mt-1 block w-full rounded-[8px] border border-white/15 bg-transparent px-3 py-2 text-[14px] text-text focus:border-accent focus:outline-none" />
+    </label>
+  );
+}
+
 function CheckoutDialogInner({
   target,
   onClose,
@@ -125,8 +146,8 @@ function CheckoutDialogInner({
   const t = useTranslations("Billing");
   const tp = useTranslations("Pricing");
   const [method, setMethod] = useState<PaymentMethod>("pix");
-  const [name, setName] = useState("");
-  const [taxID, setTaxID] = useState("");
+  const [payer, setPayer] = useState({ name: "", taxID: "", email: "", phone: "", zipcode: "", street: "", number: "", neighborhood: "", city: "", state: "" });
+  const setField = (key: keyof typeof payer) => (e: React.ChangeEvent<HTMLInputElement>) => setPayer((current) => ({ ...current, [key]: e.target.value }));
   const [busy, setBusy] = useState(false);
   const [pix, setPix] = useState<PixResult | null>(null);
   const [copied, setCopied] = useState(false);
@@ -140,7 +161,16 @@ function CheckoutDialogInner({
   const plan = target.kind === "plan" ? PLANS.find((p) => p.slug === target.slug)! : null;
   const total = plan ? chargeTotalCents(plan, (target as { cycle: BillingCycle }).cycle) : (target as { units: number }).units * AVULSO_UNIT_CENTS;
   const needsPayer = method === "pix" && target.kind === "plan" && target.cycle === "monthly";
-  const payerOk = !needsPayer || (name.trim().length > 1 && taxID.replace(/\D/g, "").length >= 11);
+  const digits = (value: string) => value.replace(/\D/g, "");
+  const payerOk =
+    !needsPayer ||
+    (payer.name.trim().length > 1 &&
+      digits(payer.taxID).length >= 11 &&
+      /.+@.+\..+/.test(payer.email.trim()) &&
+      digits(payer.phone).length >= 10 &&
+      digits(payer.zipcode).length === 8 &&
+      [payer.street, payer.number, payer.neighborhood, payer.city].every((v) => v.trim().length > 0) &&
+      /^[A-Za-z]{2}$/.test(payer.state.trim()));
   const expired = remaining !== null && remaining <= 0;
 
   const summary =
@@ -153,7 +183,7 @@ function CheckoutDialogInner({
     setBusy(true);
     try {
       const base = target.kind === "avulso" ? ({ kind: "avulso", units: target.units, method } as const)
-        : ({ kind: "plan", planSlug: target.slug, cycle: target.cycle, method, customer: needsPayer ? { name: name.trim(), taxID: taxID.replace(/\D/g, "") } : undefined } as const);
+        : ({ kind: "plan", planSlug: target.slug, cycle: target.cycle, method, customer: needsPayer ? buildPayer(payer) : undefined } as const);
       const result = await billingApi.purchase(base, key);
       if (result.method === "card") redirect(result.url);
       else setPix(result);
@@ -188,14 +218,18 @@ function CheckoutDialogInner({
               <MethodCard value="card" selected={method === "card"} onSelect={() => setMethod("card")} title={t("checkout.card")} description={t("checkout.cardDesc")} icon={<CreditCard size={18} aria-hidden />} />
             </div>
             {needsPayer && (
-              <div className="flex flex-col gap-3">
-                <label className="text-[13px] text-text-2">{t("checkout.payerName")}
-                  <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full rounded-[8px] border border-white/15 bg-transparent px-3 py-2 text-text" />
-                </label>
-                <label className="text-[13px] text-text-2">{t("checkout.payerTaxId")}
-                  <input value={taxID} inputMode="numeric" onChange={(e) => setTaxID(e.target.value)} className="mt-1 block w-full rounded-[8px] border border-white/15 bg-transparent px-3 py-2 text-text" />
-                </label>
-                <p className="text-[12px] text-text-3">{t("checkout.payerHint")}</p>
+              <div className="grid grid-cols-6 gap-3">
+                <Field className="col-span-6" label={t("checkout.payerName")} value={payer.name} onChange={setField("name")} autoComplete="name" />
+                <Field className="col-span-6 sm:col-span-3" label={t("checkout.payerTaxId")} value={payer.taxID} onChange={setField("taxID")} inputMode="numeric" />
+                <Field className="col-span-6 sm:col-span-3" label={t("checkout.payerPhone")} value={payer.phone} onChange={setField("phone")} inputMode="tel" autoComplete="tel" />
+                <Field className="col-span-6" label={t("checkout.payerEmail")} value={payer.email} onChange={setField("email")} inputMode="email" autoComplete="email" />
+                <Field className="col-span-3" label={t("checkout.payerZip")} value={payer.zipcode} onChange={setField("zipcode")} inputMode="numeric" autoComplete="postal-code" />
+                <Field className="col-span-3 sm:col-span-4" label={t("checkout.payerStreet")} value={payer.street} onChange={setField("street")} autoComplete="address-line1" />
+                <Field className="col-span-2" label={t("checkout.payerNumber")} value={payer.number} onChange={setField("number")} />
+                <Field className="col-span-4" label={t("checkout.payerDistrict")} value={payer.neighborhood} onChange={setField("neighborhood")} />
+                <Field className="col-span-4" label={t("checkout.payerCity")} value={payer.city} onChange={setField("city")} autoComplete="address-level2" />
+                <Field className="col-span-2" label={t("checkout.payerState")} value={payer.state} onChange={setField("state")} autoComplete="address-level1" />
+                <p className="col-span-6 text-[12px] text-text-3">{t("checkout.payerHint")}</p>
               </div>
             )}
             <Button variant="accent" size="lg" loading={busy} disabled={!payerOk} onClick={() => void submit()}>{t("checkout.pay")}</Button>

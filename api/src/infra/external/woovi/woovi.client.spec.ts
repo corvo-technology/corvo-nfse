@@ -1,3 +1,4 @@
+import { BadGatewayException } from '@nestjs/common';
 import { WooviClient } from './woovi.client';
 
 const config = {
@@ -74,45 +75,99 @@ describe('WooviClient', () => {
     expect(init.method).toBe('GET');
   });
 
-  it('creates a monthly Pix Automático subscription', async () => {
+  it('creates a monthly Pix Automático subscription the way Woovi expects it', async () => {
     const fetchFn = fetchReturning(200, {
       subscription: {
         correlationID: 's1',
-        status: 'WAITING_AUTHORIZATION',
-        paymentLinkUrl: 'https://woovi.test/auth/s1',
+        globalID: 'UGF5bWVudA==',
+        status: 'ACTIVE',
+        paymentLinkUrl: 'https://woovi.test/pay/s1',
+        pixRecurring: { emv: '000201BRCODE', journey: 'PAYMENT_ON_APPROVAL' },
       },
     });
-    const client = new WooviClient(config, fetchFn as never);
+    const client = new WooviClient(
+      config,
+      fetchFn as never,
+      () => new Date('2026-11-05T15:00:00Z'),
+    );
+    const customer = {
+      name: 'Ana Souza',
+      taxID: '12345678909',
+      email: 'a@x.com',
+      phone: '5511999999999',
+      address: {
+        zipcode: '04556300',
+        street: 'Rua de São Paulo',
+        number: '3432',
+        neighborhood: 'Brooklin',
+        city: 'São Paulo',
+        state: 'SP',
+      },
+    };
     const sub = await client.createSubscription({
       correlationID: 's1',
       valueCents: 5990,
-      comment: 'Corvo Solo',
-      customer: { name: 'Ana', taxID: '12345678909', email: 'a@x.com' },
+      comment: 'Corvo Solo (mensal)',
+      customer,
     });
-    expect(sub.paymentLinkUrl).toBe('https://woovi.test/auth/s1');
+    expect(sub).toEqual({
+      correlationID: 's1',
+      providerId: 'UGF5bWVudA==',
+      paymentLinkUrl: 'https://woovi.test/pay/s1',
+      brCode: '000201BRCODE',
+    });
     const [url, init] = fetchFn.mock.calls[0] as unknown as [
       string,
       RequestInit,
     ];
     expect(url).toBe('https://api.woovi.test/api/v1/subscriptions');
-    expect(JSON.parse(init.body as string)).toMatchObject({
+    const body = JSON.parse(init.body as string);
+    expect(body).toMatchObject({
       correlationID: 's1',
       value: 5990,
-      interval: 'MONTHLY',
-      customer: { name: 'Ana', taxID: '12345678909', email: 'a@x.com' },
+      type: 'PIX_RECURRING',
+      frequency: 'MONTHLY',
+      pixRecurringOptions: {
+        journey: 'PAYMENT_ON_APPROVAL',
+        retryPolicy: 'THREE_RETRIES_7_DAYS',
+      },
+      customer,
     });
+    expect(body).not.toHaveProperty('interval');
+    // Journey 3 charges on approval: the charge day must be today (São Paulo date).
+    expect(body.dayGenerateCharge).toBe('2026-11-05T00:00:00.000Z');
+    expect(body.comment.length).toBeLessThan(30);
+    expect(typeof body.name).toBe('string');
   });
 
-  it('cancels a subscription by correlationID', async () => {
+  it('cancels a subscription with PUT /subscriptions/{id}/cancel', async () => {
     const fetchFn = fetchReturning(200, {});
     const client = new WooviClient(config, fetchFn as never);
-    await client.cancelSubscription('s 1');
+    await client.cancelSubscription('abc 1');
     const [url, init] = fetchFn.mock.calls[0] as unknown as [
       string,
       RequestInit,
     ];
-    expect(url).toBe('https://api.woovi.test/api/v1/subscriptions/s%201');
-    expect(init.method).toBe('DELETE');
+    expect(url).toBe(
+      'https://api.woovi.test/api/v1/subscriptions/abc%201/cancel',
+    );
+    expect(init.method).toBe('PUT');
+  });
+
+  it('turns a Woovi 4xx into a 502 with a clear message, never leaking the app id', async () => {
+    const fetchFn = fetchReturning(400, {
+      error: 'customer.address is required, key APP_ID_FIXTURE',
+    });
+    const client = new WooviClient(config, fetchFn as never);
+    const failure = client.createCharge({
+      correlationID: 'c',
+      valueCents: 100,
+      comment: 'x',
+      expiresInSeconds: 60,
+    });
+    await expect(failure).rejects.toBeInstanceOf(BadGatewayException);
+    await expect(failure).rejects.toThrow('Woovi request failed (400)');
+    await expect(failure).rejects.not.toThrow(/APP_ID_FIXTURE/);
   });
 
   it('fails with a sanitized error and never leaks the app id', async () => {

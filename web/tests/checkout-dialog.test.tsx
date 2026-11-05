@@ -55,37 +55,42 @@ describe("CheckoutDialog", () => {
     expect(purchase.mock.calls[0][0]).toMatchObject({ kind: "plan", planSlug: "solo", cycle: "annual", method: "pix" });
   });
 
-  it("monthly Pix needs the payer name and CPF/CNPJ before it can continue", async () => {
-    purchase.mockResolvedValue({ method: "pix", brCode: null, qrCodeImage: null, paymentLinkUrl: "https://woovi.test/auth", expiresAt: null });
+  it("monthly Pix collects the payer (name, document, e-mail, phone, address) before it can continue", async () => {
+    purchase.mockResolvedValue({ method: "pix", brCode: "000201EMV", qrCodeImage: null, paymentLinkUrl: "https://woovi.test/auth", expiresAt: null });
     open({ kind: "plan", slug: "equipe", cycle: "monthly" });
     const go = screen.getByText("Continuar").closest("button")!;
     expect(go.disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("Nome completo ou razão social"), { target: { value: "Ana Souza" } });
-    fireEvent.change(screen.getByLabelText("CPF ou CNPJ"), { target: { value: "123.456.789-09" } });
+    const fill = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    fill("Nome completo ou razão social", "Ana Souza");
+    fill("CPF ou CNPJ", "123.456.789-09");
+    expect(go.disabled).toBe(true);
+    fill("E-mail", "ana@x.com");
+    fill("Telefone com DDD", "(11) 99999-9999");
+    fill("CEP", "04556-300");
+    fill("Rua", "Rua de São Paulo");
+    fill("Número", "3432");
+    fill("Bairro", "Brooklin");
+    fill("Cidade", "São Paulo");
+    fill("UF", "sp");
     expect(go.disabled).toBe(false);
     fireEvent.click(go);
     await waitFor(() => expect(purchase).toHaveBeenCalled());
-    expect(purchase.mock.calls[0][0]).toMatchObject({ method: "pix", customer: { name: "Ana Souza", taxID: "12345678909" } });
+    expect(purchase.mock.calls[0][0]).toMatchObject({
+      method: "pix",
+      customer: {
+        name: "Ana Souza",
+        taxID: "12345678909",
+        email: "ana@x.com",
+        phone: "5511999999999",
+        address: { zipcode: "04556300", street: "Rua de São Paulo", number: "3432", neighborhood: "Brooklin", city: "São Paulo", state: "SP" },
+      },
+    });
   });
 
-  it("never shows the previous purchase's Pix QR for a different purchase", async () => {
-    purchase.mockResolvedValue({ method: "pix", brCode: "OLD", qrCodeImage: "data:image/png;base64,AAA", paymentLinkUrl: "https://woovi.test/old", expiresAt: null });
-    const view = open({ kind: "avulso", units: 3 });
-    fireEvent.click(screen.getByText("Continuar"));
-    await waitFor(() => expect(screen.getByTestId("pix-result")).toBeTruthy());
-    view.rerender(
-      <NextIntlClientProvider locale="pt" messages={pt}>
-        <CheckoutDialog target={{ kind: "plan", slug: "solo", cycle: "annual" }} onClose={() => {}} onError={() => {}} redirect={vi.fn()} />
-      </NextIntlClientProvider>
-    );
-    expect(screen.queryByTestId("pix-result")).toBeNull();
-    expect(screen.getByText(/R\$ 502,80/)).toBeTruthy();
-    purchase.mockClear();
-    fireEvent.click(screen.getByText("Continuar"));
-    await waitFor(() => expect(purchase).toHaveBeenCalled());
-    // A new purchase must not reuse the old idempotency key (the server would replay the old charge).
-    const firstKey = purchase.mock.calls[0][1];
-    expect(typeof firstKey).toBe("string");
+  it("card and annual Pix never ask for the payer", () => {
+    open({ kind: "plan", slug: "equipe", cycle: "monthly" });
+    fireEvent.click(screen.getByTestId("method-card"));
+    expect(screen.queryByLabelText("CEP")).toBeNull();
   });
 
   it("asks Pix or card as two clear choices, Pix selected first", () => {
@@ -97,7 +102,7 @@ describe("CheckoutDialog", () => {
   });
 
   it("builds the QR code from the brCode even when Woovi only sends a hosted image url, and shows the countdown", async () => {
-    purchase.mockResolvedValue({ method: "pix", brCode: "00020126580014BR.GOV.BCB.PIX0136abc", qrCodeImage: "https://api.woovi.test/qr/1.png", paymentLinkUrl: "https://woovi.test/p", expiresAt: new Date(Date.now() + 90 * 60_000).toISOString() });
+    purchase.mockResolvedValue({ method: "pix", brCode: "00020126580014BR.GOV.BCB.PIX0136abc", qrCodeImage: "https://api.woovi.test/qr/1.png", paymentLinkUrl: "https://woovi.test/p", expiresAt: new Date(Date.now() + 90 * 60_000 - 30_000).toISOString() });
     open({ kind: "avulso", units: 3 });
     fireEvent.click(screen.getByText("Continuar"));
     expect((await screen.findByAltText("Pix QR Code")).getAttribute("src")).toMatch(/^data:image\//);

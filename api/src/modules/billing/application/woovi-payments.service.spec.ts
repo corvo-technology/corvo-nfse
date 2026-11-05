@@ -16,6 +16,8 @@ function setup() {
     })),
     createSubscription: jest.fn(async (i: { correlationID: string }) => ({
       correlationID: i.correlationID,
+      providerId: `gid-${i.correlationID}`,
+      brCode: '000201EMV',
       status: 'WAITING_AUTHORIZATION',
       paymentLinkUrl: 'https://auth/1',
     })),
@@ -48,6 +50,20 @@ function setup() {
 }
 
 const tenant = '11111111-1111-4111-8111-111111111111';
+const payer = {
+  name: 'Ana Souza',
+  taxID: '12345678909',
+  email: 'ana@x.com',
+  phone: '5511999999999',
+  address: {
+    zipcode: '04556300',
+    street: 'Rua de São Paulo',
+    number: '3432',
+    neighborhood: 'Brooklin',
+    city: 'São Paulo',
+    state: 'SP',
+  },
+};
 
 describe('WooviPaymentsService.startAvulso', () => {
   it('charges units x R$ 0,99 for 24h and stores a pending intent', async () => {
@@ -111,18 +127,55 @@ describe('WooviPaymentsService.startPlan', () => {
       amountCents: 50280,
     });
   });
-  it('monthly plan uses Pix Automático and needs the payer data', async () => {
+  it("monthly plan uses Pix Automático, shows the QR from the emv, and remembers Woovi's id", async () => {
     const f = setup();
-    await expect(
-      f.service.startPlan(tenant, 'solo', 'monthly', 'k2', undefined),
-    ).rejects.toThrow(/customer/i);
-    await f.service.startPlan(tenant, 'solo', 'monthly', 'k3', {
-      name: 'Ana',
-      taxID: '12345678909',
-    });
-    expect(f.client.createSubscription).toHaveBeenCalledWith(
-      expect.objectContaining({ valueCents: 5990 }),
+    const out = await f.service.startPlan(
+      tenant,
+      'solo',
+      'monthly',
+      'k3',
+      payer,
     );
+    expect(f.client.createSubscription).toHaveBeenCalledWith(
+      expect.objectContaining({ valueCents: 5990, customer: payer }),
+    );
+    expect(out).toMatchObject({ method: 'pix', brCode: '000201EMV' });
+    expect(f.store.rows[0]!.checkout).toMatchObject({
+      providerId: expect.stringContaining('gid-'),
+    });
+  });
+  it.each([
+    ['customer', undefined],
+    ['name', { ...payer, name: ' ' }],
+    ['taxID', { ...payer, taxID: '' }],
+    ['email', { ...payer, email: '' }],
+    ['phone', { ...payer, phone: '' }],
+    ['address', { ...payer, address: undefined }],
+    ['address', { ...payer, address: { ...payer.address, zipcode: '' } }],
+  ])(
+    'monthly Pix refuses a payer without %s before calling Woovi',
+    async (_field, customer) => {
+      const f = setup();
+      await expect(
+        f.service.startPlan(tenant, 'solo', 'monthly', 'k2', customer as never),
+      ).rejects.toThrow(/Pix Automático needs/);
+      expect(f.client.createSubscription).not.toHaveBeenCalled();
+    },
+  );
+  it('maps the Pix Automático approval and rejection events', async () => {
+    const f = setup();
+    await f.service.startPlan(tenant, 'solo', 'monthly', 'k4', payer);
+    const ref = f.store.rows[0]!.providerRef;
+    await f.service.handleEvent({
+      event: 'PIX_AUTOMATIC_APPROVED',
+      subscription: { correlationID: ref },
+    });
+    expect(f.store.rows[0]!.status).toBe('authorized');
+    await f.service.handleEvent({
+      event: 'PIX_AUTOMATIC_REJECTED',
+      subscription: { correlationID: ref },
+    });
+    expect(f.store.rows[0]!.status).toBe('rejected');
   });
 });
 
@@ -195,10 +248,7 @@ describe('WooviPaymentsService.handleEvent', () => {
   });
   it('renews a monthly Pix Automático contract on each new cycle charge, once per charge', async () => {
     const f = setup();
-    await f.service.startPlan(tenant, 'solo', 'monthly', 'k', {
-      name: 'Ana',
-      taxID: '12345678909',
-    });
+    await f.service.startPlan(tenant, 'solo', 'monthly', 'k', payer);
     const sub = f.store.rows[0]!;
     await f.service.handleEvent({
       event: 'OPENPIX:SUBSCRIPTION_AUTHORIZED',
@@ -242,10 +292,7 @@ describe('WooviPaymentsService.handleEvent', () => {
   });
   it('retries a monthly cycle whose activation failed once', async () => {
     const f = setup();
-    await f.service.startPlan(tenant, 'solo', 'monthly', 'k', {
-      name: 'Ana',
-      taxID: '12345678909',
-    });
+    await f.service.startPlan(tenant, 'solo', 'monthly', 'k', payer);
     const sub = f.store.rows[0]!;
     const cycle = {
       event: 'OPENPIX:CHARGE_COMPLETED',
@@ -276,10 +323,7 @@ describe('WooviPaymentsService.handleEvent', () => {
 
 describe('WooviPaymentsService Pix Automático cancel', () => {
   const contract = async (f: ReturnType<typeof setup>) => {
-    await f.service.startPlan(tenant, 'solo', 'monthly', 'k', {
-      name: 'Ana',
-      taxID: '12345678909',
-    });
+    await f.service.startPlan(tenant, 'solo', 'monthly', 'k', payer);
     return f.store.rows[0]!;
   };
   it('cancels the live contract in Woovi and keeps the paid period', async () => {
@@ -287,7 +331,9 @@ describe('WooviPaymentsService Pix Automático cancel', () => {
     const sub = await contract(f);
     await expect(f.service.hasPixSubscription(tenant)).resolves.toBe(true);
     await f.service.cancelPixSubscription(tenant);
-    expect(f.client.cancelSubscription).toHaveBeenCalledWith(sub.providerRef);
+    expect(f.client.cancelSubscription).toHaveBeenCalledWith(
+      `gid-${sub.providerRef}`,
+    );
     expect(f.store.rows[0]!.status).toBe('cancelled');
     expect(f.billing.setPlan).not.toHaveBeenCalled();
     await expect(f.service.hasPixSubscription(tenant)).resolves.toBe(false);

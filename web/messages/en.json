@@ -1277,7 +1277,7 @@
       "card": "Card",
       "payerName": "Full name or company name",
       "payerTaxId": "CPF or CNPJ",
-      "payerHint": "Required to authorize the monthly Pix Automático in your bank app.",
+      "payerHint": "Pix Automático requires the payer's details to create the authorization in the bank app.",
       "pay": "Continue",
       "pixScan": "Scan with your bank app",
       "pixAuthorize": "Open the link to authorize Pix Automático in your bank app.",
@@ -1304,7 +1304,15 @@
       "authorizeTitle": "Authorize in your bank app",
       "authorizeBody": "Open the link and approve Pix Automático. The first charge goes out as soon as you authorize.",
       "authorizeOpen": "Open authorization",
-      "expired": "This code expired. Close and generate a new one."
+      "expired": "This code expired. Close and generate a new one.",
+      "payerEmail": "E-mail",
+      "payerPhone": "Phone with area code",
+      "payerZip": "ZIP code",
+      "payerStreet": "Street",
+      "payerNumber": "Number",
+      "payerDistrict": "District",
+      "payerCity": "City",
+      "payerState": "State"
     },
     "avulso": {
       "title": "Single invoices",
