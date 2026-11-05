@@ -81,6 +81,16 @@ export class PricingService {
     },
   };
 
+  /** True for the four sellable plans; false for the no-plan placeholder and retired slugs. */
+  isPaidPlan(slug: string): slug is PaidPlanSlug {
+    return (PAID_PLAN_SLUGS as string[]).includes(slug);
+  }
+
+  /** Monthly price of a plan, or 0 when it is not sellable (no plan, or a retired plan). */
+  monthlyPriceCents(slug: string): number {
+    return this.isPaidPlan(slug) ? this.PRICING[slug].basePriceCents : 0;
+  }
+
   calculateQuote(planSlug: PlanSlug, cycle: BillingCycle): PriceQuote {
     const entry = (this.PRICING as Record<string, PricingEntry | undefined>)[
       planSlug

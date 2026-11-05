@@ -61,10 +61,7 @@ export class BillingController {
         monthly_allowance: plan.monthlyCreditAllowance,
         daily_limit: plan.dailyLimit,
         max_active_companies: plan.maxActiveCompanies,
-        monthly_price_cents: this.pricingService.calculateQuote(
-          plan.slug,
-          'monthly',
-        ).monthlyEquivalentCents,
+        monthly_price_cents: this.pricingService.monthlyPriceCents(plan.slug),
       },
       subscription: {
         status: billing.billing?.stripeStatus ?? 'none',

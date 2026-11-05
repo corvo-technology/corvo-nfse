@@ -88,7 +88,9 @@ export class PlanController {
     if (cycle !== 'monthly' && cycle !== 'annual')
       throw new BadRequestException('Unsupported billing cycle');
     const plan = await this.planRepo.findBySlug(slug);
-    if (!plan) throw new NotFoundException(`Plan ${slug} not found`);
+    // The no-plan placeholder and retired plans have no public price.
+    if (!plan || !this.pricing.isPaidPlan(slug))
+      throw new NotFoundException(`Plan ${slug} not found`);
     return data(this.pricing.calculateQuote(slug, cycle));
   }
 }

@@ -1,0 +1,70 @@
+import { BillingController } from './billing.controller';
+import { PricingService } from '@/modules/plans/application/pricing.service';
+
+const req = { authContext: { activeTenantId: 'tenant-1' } } as never;
+
+function build(plan: { slug: string; name: string }) {
+  const quota = {
+    getStatus: jest.fn().mockResolvedValue({
+      creditsUsed: 0,
+      creditsReserved: 0,
+      creditsRemaining: 0,
+      monthlyAllowance: 0,
+      dailyUsage: 0,
+      dailyLimit: null,
+      activeCompanies: 0,
+      maxActiveCompanies: 999999,
+    }),
+  };
+  const planRepo = {
+    findActiveByTenantId: jest.fn().mockResolvedValue({
+      ...plan,
+      monthlyCreditAllowance: 0,
+      dailyLimit: null,
+      maxActiveCompanies: 999999,
+    }),
+  };
+  const usage = {
+    status: jest.fn().mockResolvedValue({
+      billing: null,
+      blocked: false,
+      hard_limit: 0,
+      avulsoBalance: 0,
+    }),
+  };
+  const pix = { hasPixSubscription: jest.fn().mockResolvedValue(false) };
+  return new BillingController(
+    quota as never,
+    {} as never,
+    usage as never,
+    new PricingService(),
+    planRepo as never,
+    {} as never,
+    pix as never,
+  );
+}
+
+describe('BillingController.getCurrentPlan', () => {
+  it.each([
+    ['free', 'Sem plano'],
+    ['volume', 'Volume'],
+    ['developer', 'Developer'],
+  ])(
+    'does not fail for the "%s" plan (no-plan placeholder or a retired plan): price is 0',
+    async (slug, name) => {
+      const out = await build({ slug, name }).getCurrentPlan(req);
+      expect(out.data).toMatchObject({
+        plan: { slug, monthly_price_cents: 0 },
+      });
+    },
+  );
+
+  it('still reports the monthly price of a current plan', async () => {
+    const out = await build({ slug: 'equipe', name: 'Equipe' }).getCurrentPlan(
+      req,
+    );
+    expect(out.data).toMatchObject({
+      plan: { slug: 'equipe', monthly_price_cents: 11990 },
+    });
+  });
+});
