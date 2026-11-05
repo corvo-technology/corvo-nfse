@@ -16,6 +16,7 @@ import {
   Query,
   NotFoundException,
   BadRequestException,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PricingService, PriceQuote } from '../application/pricing.service';
@@ -62,6 +63,21 @@ export class PlanController {
       scope,
       position: quotes.findIndex((quote) => quote.slug === item.slug),
     }));
+  }
+
+  @Get('recommend')
+  recommend(
+    @Query('notes', ParseIntPipe) notes: number,
+    @Query('cycle') cycle: BillingCycle = 'monthly',
+  ) {
+    if (cycle !== 'monthly' && cycle !== 'annual')
+      throw new BadRequestException('Unsupported billing cycle');
+    try {
+      const result = this.pricing.recommendForNotes(notes, cycle);
+      return data({ notes, cycle, ...result, currency: 'BRL' });
+    } catch (error) {
+      throw new BadRequestException((error as Error).message);
+    }
   }
 
   @Get(':slug')

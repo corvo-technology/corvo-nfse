@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PlanSlug, PaidPlanSlug, BillingCycle } from '../domain/plan';
+import { AVULSO_UNIT_CENTS } from '@/modules/credits/domain/avulso';
 
 export interface PriceQuote {
   slug: PlanSlug;
@@ -22,6 +23,16 @@ type PricingEntry = {
   maxCompanies: number;
   support: 'community' | 'email' | 'priority';
 };
+
+export interface NotesOption {
+  /** null = no plan, avulso notes only. */
+  planSlug: PaidPlanSlug | null;
+  avulsoUnits: number;
+  /** Cost per month in the chosen cycle. */
+  totalCents: number;
+}
+
+export const MAX_RECOMMEND_NOTES = 1_000_000;
 
 export const PAID_PLAN_SLUGS: PaidPlanSlug[] = [
   'solo',
@@ -86,6 +97,39 @@ export class PricingService {
         cycle === 'annual' ? monthlyEquivalent * 12 : monthlyEquivalent,
       currency: 'BRL',
     };
+  }
+
+  /** Cheapest way to get N notes a month: a plan, a plan plus avulso notes, or avulso only. */
+  recommendForNotes(
+    notesPerMonth: number,
+    cycle: BillingCycle,
+  ): { option: NotesOption; alternatives: NotesOption[] } {
+    if (
+      !Number.isInteger(notesPerMonth) ||
+      notesPerMonth < 1 ||
+      notesPerMonth > MAX_RECOMMEND_NOTES
+    )
+      throw new Error(
+        `notes must be a whole number between 1 and ${MAX_RECOMMEND_NOTES}`,
+      );
+    const options: NotesOption[] = [
+      {
+        planSlug: null,
+        avulsoUnits: notesPerMonth,
+        totalCents: notesPerMonth * AVULSO_UNIT_CENTS,
+      },
+      ...PAID_PLAN_SLUGS.map((slug) => {
+        const quote = this.calculateQuote(slug, cycle);
+        const avulsoUnits = Math.max(0, notesPerMonth - quote.monthlyAllowance);
+        return {
+          planSlug: slug,
+          avulsoUnits,
+          totalCents:
+            quote.monthlyEquivalentCents + avulsoUnits * AVULSO_UNIT_CENTS,
+        };
+      }),
+    ].sort((a, b) => a.totalCents - b.totalCents);
+    return { option: options[0]!, alternatives: options.slice(1, 4) };
   }
 
   listAllQuotes(cycle: BillingCycle): PriceQuote[] {
