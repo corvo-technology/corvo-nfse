@@ -19,22 +19,11 @@ export interface WooviSubscription {
   /** Pix copy-and-paste / QR payload of the first charge (pixRecurring.emv). */
   brCode: string | null;
 }
-export interface WooviAddress {
-  zipcode: string;
-  street: string;
-  number: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-  complement?: string;
-}
 export interface WooviCustomer {
   name: string;
   taxID: string;
   email: string;
   phone: string;
-  /** Pix Automático requires the payer's address. */
-  address: WooviAddress;
 }
 
 /** Backend-only Woovi API client. The App ID never leaves the server. */
@@ -44,7 +33,6 @@ export class WooviClient {
   constructor(
     private readonly config: WooviConfig,
     private readonly fetchFn: typeof fetch = fetch,
-    private readonly now: () => Date = () => new Date(),
   ) {}
 
   private async call<T>(
@@ -127,11 +115,7 @@ export class WooviClient {
     return { status: charge.status, value: charge.value };
   }
 
-  /**
-   * Pix Automático, journey 3 (PAYMENT_ON_APPROVAL): the payer approves the
-   * mandate and pays the first charge in the same step, so the response carries
-   * the QR payload and a payment link.
-   */
+  /** Monthly recurring Pix: the payer opens the link (or scans the QR, when Woovi sends one) to authorize. */
   async createSubscription(input: {
     correlationID: string;
     valueCents: number;
@@ -146,19 +130,11 @@ export class WooviClient {
         pixRecurring?: { emv?: string };
       };
     }>('POST', '/subscriptions', {
-      name: 'Corvo',
       correlationID: input.correlationID,
       value: input.valueCents,
-      comment: input.comment.slice(0, 29),
+      interval: 'MONTHLY',
       customer: input.customer,
-      type: 'PIX_RECURRING',
-      frequency: 'MONTHLY',
-      pixRecurringOptions: {
-        journey: 'PAYMENT_ON_APPROVAL',
-        retryPolicy: 'THREE_RETRIES_7_DAYS',
-      },
-      // Journey 3 charges on approval, so the charge day is today (São Paulo date).
-      dayGenerateCharge: `${this.saoPauloDate()}T00:00:00.000Z`,
+      comment: input.comment,
     });
     return {
       correlationID: subscription.correlationID,
@@ -190,11 +166,5 @@ export class WooviClient {
       /* not JSON */
     }
     return detail.slice(0, 200);
-  }
-
-  private saoPauloDate(): string {
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Sao_Paulo',
-    }).format(this.now());
   }
 }

@@ -1277,7 +1277,7 @@
       "card": "Cartão",
       "payerName": "Nome completo ou razão social",
       "payerTaxId": "CPF ou CNPJ",
-      "payerHint": "O Pix Automático exige os dados do pagador para criar a autorização no app do banco.",
+      "payerHint": "Necessário para autorizar o Pix mensal no app do seu banco.",
       "pay": "Continuar",
       "pixScan": "Escaneie com o app do seu banco",
       "pixAuthorize": "Abra o link para autorizar o Pix Automático no app do seu banco.",
@@ -1306,13 +1306,7 @@
       "authorizeOpen": "Abrir autorização",
       "expired": "Este código expirou. Feche e gere outro.",
       "payerEmail": "E-mail",
-      "payerPhone": "Telefone com DDD",
-      "payerZip": "CEP",
-      "payerStreet": "Rua",
-      "payerNumber": "Número",
-      "payerDistrict": "Bairro",
-      "payerCity": "Cidade",
-      "payerState": "UF"
+      "payerPhone": "Telefone com DDD"
     },
     "avulso": {
       "title": "Notas avulsas",

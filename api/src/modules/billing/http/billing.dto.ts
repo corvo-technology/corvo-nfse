@@ -13,24 +13,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 const PAID_PLANS = ['solo', 'equipe', 'empresa', 'escala'] as const;
 
-export class AddressDto {
-  @IsString() @MaxLength(12) zipcode!: string;
-  @IsString() @MaxLength(120) street!: string;
-  @IsString() @MaxLength(20) number!: string;
-  @IsString() @MaxLength(80) neighborhood!: string;
-  @IsString() @MaxLength(80) city!: string;
-  @IsString() @MaxLength(2) state!: string;
-  @IsOptional() @IsString() @MaxLength(60) complement?: string;
-}
-
 export class PayerDto {
   @IsString() @MaxLength(120) name!: string;
   @IsString() @MaxLength(20) taxID!: string;
   @IsString() @MaxLength(200) email!: string;
   @IsString() @MaxLength(30) phone!: string;
-  @ValidateNested()
-  @Type(() => AddressDto)
-  address!: AddressDto;
 }
 
 /** Plan or avulso notes, paid with Pix (Woovi) or card (Stripe). */

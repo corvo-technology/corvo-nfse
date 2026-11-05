@@ -107,7 +107,7 @@ function MethodCard({ value, selected, onSelect, title, description, icon }: { v
 }
 
 /** Woovi wants digits only and the phone with the country code. */
-function buildPayer(p: Record<"name" | "taxID" | "email" | "phone" | "zipcode" | "street" | "number" | "neighborhood" | "city" | "state", string>) {
+function buildPayer(p: Record<"name" | "taxID" | "email" | "phone", string>) {
   const only = (v: string) => v.replace(/\D/g, "");
   const phone = only(p.phone);
   return {
@@ -115,7 +115,6 @@ function buildPayer(p: Record<"name" | "taxID" | "email" | "phone" | "zipcode" |
     taxID: only(p.taxID),
     email: p.email.trim(),
     phone: phone.startsWith("55") && phone.length >= 12 ? phone : `55${phone}`,
-    address: { zipcode: only(p.zipcode), street: p.street.trim(), number: p.number.trim(), neighborhood: p.neighborhood.trim(), city: p.city.trim(), state: p.state.trim().toUpperCase() },
   };
 }
 
@@ -146,7 +145,7 @@ function CheckoutDialogInner({
   const t = useTranslations("Billing");
   const tp = useTranslations("Pricing");
   const [method, setMethod] = useState<PaymentMethod>("pix");
-  const [payer, setPayer] = useState({ name: "", taxID: "", email: "", phone: "", zipcode: "", street: "", number: "", neighborhood: "", city: "", state: "" });
+  const [payer, setPayer] = useState({ name: "", taxID: "", email: "", phone: "" });
   const setField = (key: keyof typeof payer) => (e: React.ChangeEvent<HTMLInputElement>) => setPayer((current) => ({ ...current, [key]: e.target.value }));
   const [busy, setBusy] = useState(false);
   const [pix, setPix] = useState<PixResult | null>(null);
@@ -168,10 +167,7 @@ function CheckoutDialogInner({
     (payer.name.trim().length > 1 &&
       digits(payer.taxID).length >= 11 &&
       /.+@.+\..+/.test(payer.email.trim()) &&
-      digits(payer.phone).length >= 10 &&
-      digits(payer.zipcode).length === 8 &&
-      [payer.street, payer.number, payer.neighborhood, payer.city].every((v) => v.trim().length > 0) &&
-      /^[A-Za-z]{2}$/.test(payer.state.trim()));
+      digits(payer.phone).length >= 10);
   const expired = remaining !== null && remaining <= 0;
 
   const summary =
@@ -227,12 +223,6 @@ function CheckoutDialogInner({
                 <Field className="col-span-6 sm:col-span-3" label={t("checkout.payerTaxId")} value={payer.taxID} onChange={setField("taxID")} inputMode="numeric" />
                 <Field className="col-span-6 sm:col-span-3" label={t("checkout.payerPhone")} value={payer.phone} onChange={setField("phone")} inputMode="tel" autoComplete="tel" />
                 <Field className="col-span-6" label={t("checkout.payerEmail")} value={payer.email} onChange={setField("email")} inputMode="email" autoComplete="email" />
-                <Field className="col-span-3" label={t("checkout.payerZip")} value={payer.zipcode} onChange={setField("zipcode")} inputMode="numeric" autoComplete="postal-code" />
-                <Field className="col-span-3 sm:col-span-4" label={t("checkout.payerStreet")} value={payer.street} onChange={setField("street")} autoComplete="address-line1" />
-                <Field className="col-span-2" label={t("checkout.payerNumber")} value={payer.number} onChange={setField("number")} />
-                <Field className="col-span-4" label={t("checkout.payerDistrict")} value={payer.neighborhood} onChange={setField("neighborhood")} />
-                <Field className="col-span-4" label={t("checkout.payerCity")} value={payer.city} onChange={setField("city")} autoComplete="address-level2" />
-                <Field className="col-span-2" label={t("checkout.payerState")} value={payer.state} onChange={setField("state")} autoComplete="address-level1" />
                 <p className="col-span-6 text-[12px] text-text-3">{t("checkout.payerHint")}</p>
               </div>
             )}

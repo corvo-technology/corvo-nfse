@@ -55,14 +55,6 @@ const payer = {
   taxID: '12345678909',
   email: 'ana@x.com',
   phone: '5511999999999',
-  address: {
-    zipcode: '04556300',
-    street: 'Rua de São Paulo',
-    number: '3432',
-    neighborhood: 'Brooklin',
-    city: 'São Paulo',
-    state: 'SP',
-  },
 };
 
 describe('WooviPaymentsService.startAvulso', () => {
@@ -150,8 +142,6 @@ describe('WooviPaymentsService.startPlan', () => {
     ['taxID', { ...payer, taxID: '' }],
     ['email', { ...payer, email: '' }],
     ['phone', { ...payer, phone: '' }],
-    ['address', { ...payer, address: undefined }],
-    ['address', { ...payer, address: { ...payer.address, zipcode: '' } }],
   ])(
     'monthly Pix refuses a payer without %s before calling Woovi',
     async (_field, customer) => {

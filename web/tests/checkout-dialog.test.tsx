@@ -56,7 +56,7 @@ describe("CheckoutDialog", () => {
     expect(purchase.mock.calls[0][0]).toMatchObject({ kind: "plan", planSlug: "solo", cycle: "annual", method: "pix" });
   });
 
-  it("monthly Pix collects the payer (name, document, e-mail, phone, address) before it can continue", async () => {
+  it("monthly Pix collects just the payer basics (name, document, e-mail, phone) before it can continue", async () => {
     purchase.mockResolvedValue({ method: "pix", brCode: "000201EMV", qrCodeImage: null, paymentLinkUrl: "https://woovi.test/auth", expiresAt: null });
     open({ kind: "plan", slug: "equipe", cycle: "monthly" });
     const go = screen.getByText("Continuar").closest("button")!;
@@ -65,14 +65,10 @@ describe("CheckoutDialog", () => {
     fill("Nome completo ou razão social", "Ana Souza");
     fill("CPF ou CNPJ", "123.456.789-09");
     expect(go.disabled).toBe(true);
+    expect(go.disabled).toBe(true);
     fill("E-mail", "ana@x.com");
     fill("Telefone com DDD", "(11) 99999-9999");
-    fill("CEP", "04556-300");
-    fill("Rua", "Rua de São Paulo");
-    fill("Número", "3432");
-    fill("Bairro", "Brooklin");
-    fill("Cidade", "São Paulo");
-    fill("UF", "sp");
+    expect(screen.queryByLabelText("CEP")).toBeNull();
     expect(go.disabled).toBe(false);
     fireEvent.click(go);
     await waitFor(() => expect(purchase).toHaveBeenCalled());
@@ -83,7 +79,6 @@ describe("CheckoutDialog", () => {
         taxID: "12345678909",
         email: "ana@x.com",
         phone: "5511999999999",
-        address: { zipcode: "04556300", street: "Rua de São Paulo", number: "3432", neighborhood: "Brooklin", city: "São Paulo", state: "SP" },
       },
     });
   });
@@ -92,6 +87,7 @@ describe("CheckoutDialog", () => {
     open({ kind: "plan", slug: "equipe", cycle: "monthly" });
     fireEvent.click(screen.getByTestId("method-card"));
     expect(screen.queryByLabelText("CEP")).toBeNull();
+    expect(screen.queryByLabelText("E-mail")).toBeNull();
   });
 
   it("asks Pix or card as two clear choices, Pix selected first", () => {

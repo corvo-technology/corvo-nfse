@@ -75,34 +75,20 @@ describe('WooviClient', () => {
     expect(init.method).toBe('GET');
   });
 
-  it('creates a monthly Pix Automático subscription the way Woovi expects it', async () => {
+  it('creates a monthly Pix subscription with just the payer basics', async () => {
     const fetchFn = fetchReturning(200, {
       subscription: {
         correlationID: 's1',
         globalID: 'UGF5bWVudA==',
-        status: 'ACTIVE',
         paymentLinkUrl: 'https://woovi.test/pay/s1',
-        pixRecurring: { emv: '000201BRCODE', journey: 'PAYMENT_ON_APPROVAL' },
       },
     });
-    const client = new WooviClient(
-      config,
-      fetchFn as never,
-      () => new Date('2026-11-05T15:00:00Z'),
-    );
+    const client = new WooviClient(config, fetchFn as never);
     const customer = {
       name: 'Ana Souza',
       taxID: '12345678909',
       email: 'a@x.com',
       phone: '5511999999999',
-      address: {
-        zipcode: '04556300',
-        street: 'Rua de São Paulo',
-        number: '3432',
-        neighborhood: 'Brooklin',
-        city: 'São Paulo',
-        state: 'SP',
-      },
     };
     const sub = await client.createSubscription({
       correlationID: 's1',
@@ -114,7 +100,7 @@ describe('WooviClient', () => {
       correlationID: 's1',
       providerId: 'UGF5bWVudA==',
       paymentLinkUrl: 'https://woovi.test/pay/s1',
-      brCode: '000201BRCODE',
+      brCode: null,
     });
     const [url, init] = fetchFn.mock.calls[0] as unknown as [
       string,
@@ -122,22 +108,36 @@ describe('WooviClient', () => {
     ];
     expect(url).toBe('https://api.woovi.test/api/v1/subscriptions');
     const body = JSON.parse(init.body as string);
-    expect(body).toMatchObject({
+    expect(body).toEqual({
       correlationID: 's1',
       value: 5990,
-      type: 'PIX_RECURRING',
-      frequency: 'MONTHLY',
-      pixRecurringOptions: {
-        journey: 'PAYMENT_ON_APPROVAL',
-        retryPolicy: 'THREE_RETRIES_7_DAYS',
-      },
+      interval: 'MONTHLY',
       customer,
+      comment: 'Corvo Solo (mensal)',
     });
-    expect(body).not.toHaveProperty('interval');
-    // Journey 3 charges on approval: the charge day must be today (São Paulo date).
-    expect(body.dayGenerateCharge).toBe('2026-11-05T00:00:00.000Z');
-    expect(body.comment.length).toBeLessThan(30);
-    expect(typeof body.name).toBe('string');
+  });
+
+  it('uses the QR payload when Woovi returns one', async () => {
+    const fetchFn = fetchReturning(200, {
+      subscription: {
+        correlationID: 's1',
+        paymentLinkUrl: 'https://woovi.test/pay/s1',
+        pixRecurring: { emv: '000201EMV' },
+      },
+    });
+    const client = new WooviClient(config, fetchFn as never);
+    const sub = await client.createSubscription({
+      correlationID: 's1',
+      valueCents: 100,
+      comment: 'x',
+      customer: {
+        name: 'A',
+        taxID: '1',
+        email: 'a@x.com',
+        phone: '5511999999999',
+      },
+    });
+    expect(sub.brCode).toBe('000201EMV');
   });
 
   it('cancels a subscription with PUT /subscriptions/{id}/cancel', async () => {

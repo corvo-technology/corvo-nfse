@@ -148,12 +148,11 @@ export class WooviPaymentsService {
     });
   }
 
-  /** Pix Automático needs the full payer: Woovi rejects the contract without it. */
+  /** A recurring Pix needs the payer's basics: Woovi rejects the contract without them. */
   private assertPayer(
     customer: WooviCustomer | undefined,
   ): asserts customer is WooviCustomer {
     const missing = (value: string | undefined) => !value || !value.trim();
-    const a = customer?.address;
     const field = !customer
       ? 'customer'
       : missing(customer.name)
@@ -164,17 +163,7 @@ export class WooviPaymentsService {
             ? 'email'
             : missing(customer.phone)
               ? 'phone'
-              : !a ||
-                  [
-                    a.zipcode,
-                    a.street,
-                    a.number,
-                    a.neighborhood,
-                    a.city,
-                    a.state,
-                  ].some(missing)
-                ? 'address'
-                : null;
+              : null;
     if (field)
       throw new BadRequestException(`Pix Automático needs the payer ${field}`);
   }
