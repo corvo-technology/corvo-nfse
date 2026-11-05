@@ -67,8 +67,6 @@ export class BillingController {
         blocked: billing.blocked,
       },
       usage: {
-        overage_units: billing.overage_units,
-        overage_amount_cents: billing.overage_amount_cents,
         hard_limit: billing.hard_limit,
         credits_used: status.creditsUsed,
         credits_reserved: status.creditsReserved,

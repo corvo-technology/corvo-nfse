@@ -68,7 +68,6 @@ export abstract class BillingRepository {
   ): Promise<string | null>;
   abstract dailyUsage(tenantId: string): Promise<number>;
   abstract customerTenant(customerId: string): Promise<string | null>;
-  abstract reportablePeriods(tenantId: string): Promise<BillingPeriodState[]>;
   abstract eventSeen(id: string): Promise<boolean>;
   abstract recordEvent(id: string, type: string, hash: string): Promise<void>;
 }

@@ -1,17 +1,13 @@
-export const OVERAGE_MULTIPLIER = 5;
 export const PAYMENT_GRACE_MS = 7 * 86_400_000;
 
 export function usageSummary(
   included: number,
   authorized: number,
   reserved: number,
-  unitCents: number,
 ) {
   return {
     included_remaining: Math.max(0, included - authorized - reserved),
-    overage_units: Math.max(0, authorized - included),
-    overage_amount_cents: Math.max(0, authorized - included) * unitCents,
-    hard_limit: included * (unitCents > 0 ? OVERAGE_MULTIPLIER : 1),
+    hard_limit: included,
   };
 }
 

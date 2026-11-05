@@ -116,14 +116,10 @@ export class TypeOrmBillingRepository extends BillingRepository {
           periodStart: start,
           periodEnd: end,
           included: plan.monthlyCreditAllowance,
-          unitCents: paid ? plan.creditUnitPriceCents : 0,
           authorized: 0,
           reserved: 0,
-          reported: 0,
-          pendingReport: null,
           customerId: paid ? (billing?.stripeCustomerId ?? null) : null,
           subscriptionId: paid ? (billing?.stripeSubscriptionId ?? null) : null,
-          meterEventName: paid ? `corvo_${plan.slug}_overage` : null,
         });
         await repo.insert(period);
       }
@@ -241,21 +237,6 @@ export class TypeOrmBillingRepository extends BillingRepository {
           })
         )?.tenantId ?? null
       );
-    });
-  }
-  reportablePeriods(tenantId: string) {
-    return runWithTenant(tenantId, async () => {
-      requireTenantId(tenantId);
-      return this.manager
-        .getRepository(BillingUsagePeriod)
-        .createQueryBuilder('p')
-        .where('p.stripe_customer_id IS NOT NULL AND p.tenant_id = :tenantId', {
-          tenantId,
-        })
-        .andWhere(
-          '(p.pending_report IS NOT NULL OR p.authorized - p.included > p.reported)',
-        )
-        .getMany();
     });
   }
   eventSeen(id: string) {

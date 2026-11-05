@@ -193,7 +193,6 @@ export class StripeBillingAdapter extends BillingProvider {
       paidUntil,
       paidPlanSlug,
       included: Number(base?.price.metadata.included ?? 0),
-      unitCents: overage?.price.unit_amount ?? 0,
       cancelAtPeriodEnd: sub.cancel_at_period_end || sub.cancel_at !== null,
       pendingPlanSlug: pending !== slug ? pending : null,
     };

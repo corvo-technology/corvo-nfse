@@ -278,16 +278,11 @@ export class BillingService {
       pendingPlanSlug: sub.cancelAtPeriodEnd ? 'free' : sub.pendingPlanSlug,
       cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
     });
-    // Snapshot the purchased allowance/rate once. Later catalog changes do not reprice past use.
+    // Snapshot the purchased allowance once. Later catalog changes do not reprice past use.
     if (decision.purchased) {
       const { period } = await this.repository.current(tenantId);
-      if (
-        period.authorized === 0 &&
-        period.reserved === 0 &&
-        period.reported === 0
-      ) {
+      if (period.authorized === 0 && period.reserved === 0) {
         period.included = sub.included;
-        period.unitCents = sub.unitCents;
         await this.repository.savePeriod(period, tenantId);
       }
     }

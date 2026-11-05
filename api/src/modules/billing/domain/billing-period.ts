@@ -11,17 +11,6 @@ export class BillingRuleError extends ApplicationError {
   }
 }
 
-export interface PendingUsageReport {
-  id: string;
-  from: number;
-  to: number;
-  route: 'meter' | 'invoice_item' | null;
-  invoiceId: string | null;
-  timestamp: number;
-  attemptedAt: string | null;
-  createdAt: string;
-}
-
 export interface BillingPeriodState {
   id: string;
   tenantId: string;
@@ -29,14 +18,10 @@ export interface BillingPeriodState {
   periodStart: Date;
   periodEnd: Date;
   included: number;
-  unitCents: number;
   authorized: number;
   reserved: number;
-  reported: number;
   customerId: string | null;
   subscriptionId: string | null;
-  meterEventName: string | null;
-  pendingReport: PendingUsageReport | null;
 }
 
 /** A monthly franchise and its billable, authorized consumption. No provider or persistence dependencies. */
@@ -47,7 +32,6 @@ export class BillingPeriod {
       this.state.included,
       this.state.authorized,
       this.state.reserved,
-      this.state.unitCents,
     );
   }
   reserve(
@@ -85,10 +69,5 @@ export class BillingPeriod {
       );
     this.state.reserved -= 1;
     if (authorized) this.state.authorized += 1;
-  }
-  finishReport(): void {
-    if (!this.state.pendingReport) return;
-    this.state.reported = this.state.pendingReport.to;
-    this.state.pendingReport = null;
   }
 }

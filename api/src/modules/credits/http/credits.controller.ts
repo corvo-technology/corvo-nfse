@@ -34,8 +34,6 @@ export class CreditsController {
     const usage = await this.usage.status(tenantId);
     return {
       balance: usage.included_remaining,
-      overageUnits: usage.overage_units,
-      overageAmountCents: usage.overage_amount_cents,
       hardLimit: usage.hard_limit,
     };
   }
