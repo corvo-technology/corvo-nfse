@@ -45,6 +45,14 @@ export function FreeTrial() {
             {t("startFree")}
           </Link>
           <span className="text-xs text-[#06120d]/70">{t("finePrint")}</span>
+          <dl className="mt-2 grid w-full gap-4 border-t border-[#06120d]/25 pt-5 text-[14px]">
+            {(["test", "certificate"] as const).map((key) => (
+              <div key={key}>
+                <dt className="font-semibold">{t(`points.${key}.title`)}</dt>
+                <dd className="mt-1 text-[#06120d]/80 text-pretty">{t(`points.${key}.body`)}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </div>
     </section>

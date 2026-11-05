@@ -616,7 +616,7 @@
       "github_auth_failed": "Falha no login com GitHub. Por favor, tente novamente.",
       "socialFailed": "Falha no login social. Por favor, tente novamente.",
       "expiredCode": "Código expirado. Solicite um novo.",
-      "workspaceConflict": "Este e-mail não pode criar outro workspace Free. Entre com uma conta com membership ativo.",
+      "workspaceConflict": "Não foi possível criar o workspace. Entre com uma conta que já tenha acesso ativo.",
       "invalidEmail": "Informe um e-mail válido.",
       "oauth_failed": "Não foi possível entrar com o provedor. Tente novamente ou use o código por e-mail.",
       "oauth_denied": "Você cancelou o login. Escolha outra forma de entrar quando quiser.",
@@ -641,10 +641,10 @@
         "desc": "Respostas estruturadas, exemplos em Node, Python e Go."
       }
     },
-    "freeCreditsTag": "15 NOTAS GRÁTIS POR MÊS",
+    "freeCreditsTag": "PRIMEIRA NOTA GRÁTIS",
     "headline": "Da primeira emissão à nota fiscal em minutos.",
     "afterSignup": "APÓS O CADASTRO",
-    "footerNote": "Sem cartão de crédito. Sem contrato. 15 notas grátis para começar.",
+    "footerNote": "Sem cartão de crédito. Sem contrato. A primeira nota é grátis.",
     "magicLink": {
       "sendCode": "Enviar código",
       "sending": "Enviando...",
@@ -665,7 +665,7 @@
     "subtitle": "A Corvo é uma API REST e um servidor MCP para emitir NFS-e (nota fiscal de serviço) no padrão nacional do Brasil, para empresas MEI e do Simples Nacional. Feita para agentes de IA, desenvolvedores, SaaS e ERPs.",
     "startFree": "Começar grátis",
     "viewDocs": "Ver documentação",
-    "mono": "15 notas grátis por mês. Sem cartão de crédito."
+    "mono": "A primeira nota é grátis. Sem cartão de crédito."
   },
   "Nav": {
     "product": "Produto",
@@ -681,11 +681,21 @@
   },
   "FreeTrial": {
     "eyebrow": "COMEÇAR GRÁTIS",
-    "title": "15 notas fiscais grátis por mês",
+    "title": "1 nota fiscal grátis para começar",
     "subtitle": "Sem cartão de crédito.",
-    "description": "Integre a emissão de NFS-e ao seu produto com até 15 notas autorizadas por mês, para uma empresa. A cota renova no primeiro dia de cada mês.",
+    "description": "Crie a conta, integre e emita a primeira NFS-e em produção sem pagar. Depois, escolha um plano ou compre notas avulsas a R$ 0,99, a partir de 3.",
     "startFree": "Começar grátis",
-    "finePrint": "Limite de 3 emissões por dia em produção. Cotas em UTC, sem acúmulo. Testes não consomem a cota."
+    "finePrint": "Uma nota grátis por pessoa. Notas de teste (homologação) nunca consomem cota.",
+    "points": {
+      "test": {
+        "title": "Teste antes de pagar",
+        "body": "A homologação, o ambiente de testes da prefeitura, é grátis e ilimitada. Emita notas de teste à vontade antes de ir para produção."
+      },
+      "certificate": {
+        "title": "Certificado guardado com cuidado",
+        "body": "O certificado A1 fica criptografado em repouso com AES-256-GCM."
+      }
+    }
   },
   "Pricing": {
     "eyebrow": "PREÇOS",
@@ -849,7 +859,7 @@
     "description": "Uma integração para automatizar a emissão de NFS-e e acompanhar o crescimento do seu produto.",
     "ctaPrimary": "Começar grátis",
     "ctaSecondary": "Explorar API",
-    "subtext": "15 notas gratuitas por mês para começar."
+    "subtext": "A primeira nota é grátis. Homologação sempre grátis."
   },
   "Footer": {
     "brand": "© Corvo. Todos os direitos reservados.",
@@ -904,19 +914,19 @@
       },
       "s6": {
         "title": "6. Uso permitido e prevenção de abuso",
-        "content": "Não use o Serviço para emitir documentos falsos, agir sem autorização de uma empresa, praticar fraude, enviar spam, distribuir conteúdo ilegal ou violar direitos de terceiros. Não tente contornar cotas, limites de empresas, limites de requisições, controles de acesso ou regras de elegibilidade do plano Free, inclusive por meio de contas ou workspaces criados para esse fim. Não compartilhe acesso à API fora das permissões contratadas nem interfira na operação do Serviço ou dos sistemas fiscais integrados."
+        "content": "Não use o Serviço para emitir documentos falsos, agir sem autorização de uma empresa, praticar fraude, enviar spam, distribuir conteúdo ilegal ou violar direitos de terceiros. Não tente contornar cotas, limites de empresas, limites de requisições, controles de acesso ou regras de elegibilidade da primeira nota grátis, inclusive por meio de contas ou workspaces criados para esse fim. Não compartilhe acesso à API fora das permissões contratadas nem interfira na operação do Serviço ou dos sistemas fiscais integrados."
       },
       "s7": {
         "title": "7. Planos, cotas e renovação",
-        "content": "Os planos definem a cota mensal de notas, o limite de empresas ativas e os limites de uso apresentados na oferta e no painel. O Free permite uma empresa ativa e até 15 notas autorizadas em produção por mês, com limite de 3 por dia. Sua cota renova no primeiro dia de cada mês; os limites mensal e diário seguem UTC. Nos planos pagos, a cota acompanha o período mensal da assinatura informado no painel. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas não utilizadas não acumulam nem se convertem em dinheiro. Ao atingir um limite, novas solicitações podem ser bloqueadas até a renovação ou a contratação de capacidade compatível."
+        "content": "Os planos Solo, Equipe, Empresa e Escala definem a cota mensal de notas, apresentada na oferta e no painel. Cada conta recebe uma primeira nota grátis, uma única vez e sem renovação, e não precisa ter plano para emitir. Notas de teste (homologação) são grátis, ilimitadas e não consomem cota. Nos planos pagos, a cota acompanha o período mensal informado no painel; no plano anual, a cota renova todo mês durante os 12 meses. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas do plano não utilizadas não acumulam nem se convertem em dinheiro. Ao esgotar a cota, a emissão é bloqueada até a renovação, a troca de plano ou a compra de notas avulsas."
       },
       "s8": {
-        "title": "8. Como o consumo e os excedentes são calculados",
-        "content": "Cada NFS-e autorizada em produção conta como uma unidade de consumo. Ao receber uma solicitação, a Corvo reserva capacidade enquanto a emissão está em andamento. Emissões rejeitadas ou que terminem com falha liberam essa reserva; notas ainda em processamento podem reduzir temporariamente a capacidade disponível. Se a autorização ocorrer após a virada do ciclo, o consumo permanece no período em que foi reservado. O Free não permite excedentes pagos. Nos planos pagos, notas autorizadas acima da cota geram cobrança adicional pelo valor unitário do plano, dentro do limite total mensal de processamento de cinco vezes a cota incluída. Consulte consumo, reservas e estimativa de excedentes no painel."
+        "title": "8. Como o consumo e as notas avulsas funcionam",
+        "content": "Cada NFS-e autorizada em produção consome uma nota. Ao receber uma solicitação, a Corvo reserva uma nota enquanto a emissão está em andamento: primeiro da cota do plano e, se ela acabou, do saldo de notas avulsas. Emissões rejeitadas ou que terminem com falha devolvem a reserva; notas ainda em processamento podem reduzir temporariamente a capacidade disponível. Se a autorização ocorrer após a virada do ciclo, o consumo permanece no período em que foi reservado. Não há cobrança de excedente: nada é cobrado por uso além da cota. Notas avulsas custam R$ 0,99 cada, em compras de no mínimo 3, não expiram e são usadas depois da cota do plano."
       },
       "s9": {
         "title": "9. Cobrança, mudanças de plano e cancelamento",
-        "content": "As assinaturas pagas são mensais, em reais, com renovação automática até o cancelamento. A mensalidade é cobrada no início do ciclo e os excedentes são cobrados após o consumo; autorizações concluídas tardiamente podem gerar cobrança posterior referente ao período original. O pagamento é processado pela Stripe e a ativação depende da confirmação do pagamento. A oferta atual não inclui assinatura anual nem compra de pacotes pré-pagos. Mudanças de plano e cancelamento para retorno ao Free têm efeito ao final do período vigente, sem ajuste proporcional imediato da mensalidade. Use as opções de assinatura e o portal de cobrança no painel; deixar de usar a conta não cancela a assinatura. Em caso de falha de renovação, a emissão paga pode continuar por até sete dias após o fim do período pago, conforme o status da assinatura, e depois ser bloqueada. O cancelamento não elimina cobranças por consumo já realizado. Solicitações de reembolso ou contestação podem ser enviadas ao contato destes Termos; os direitos obrigatórios previstos em lei permanecem assegurados, inclusive o direito de arrependimento quando aplicável."
+        "content": "Os planos são vendidos em reais, no ciclo mensal ou anual. O mensal é renovado automaticamente até o cancelamento (cartão, pelo Stripe, ou Pix Automático, pela Woovi). O anual é pago de uma vez, com 30% de desconto sobre o valor mensal, e não renova sozinho. Notas avulsas e o plano anual também podem ser pagos por Pix (cobrança única, válida por 24 horas) ou cartão. A ativação depende da confirmação do pagamento. Enquanto houver um plano pago ativo, um novo plano só pode ser contratado na renovação; notas avulsas podem ser compradas a qualquer momento. Mudanças de plano e cancelamento têm efeito ao final do período vigente, sem ajuste proporcional. No Pix Automático, o cancelamento pelo painel interrompe as próximas cobranças e mantém o período já pago. Em caso de falha de renovação, a emissão pelo plano pode continuar por até sete dias após o fim do período pago e depois ser bloqueada; notas avulsas continuam disponíveis. Deixar de usar a conta não cancela a assinatura. Solicitações de reembolso ou contestação podem ser enviadas ao contato destes Termos; os direitos obrigatórios previstos em lei permanecem assegurados, inclusive o direito de arrependimento quando aplicável."
       },
       "s10": {
         "title": "10. Documentos fiscais e guarda",
@@ -2297,7 +2307,7 @@
       },
       "companies": {
         "q": "Posso emitir notas para mais de um CNPJ na Corvo?",
-        "a": "Sim. O plano Free da Corvo inclui 1 empresa. Os planos pagos permitem empresas ilimitadas, cada uma com o seu certificado e o seu consumo, sem criar uma integração nova para cada uma.",
+        "a": "Sim. Todos os planos permitem empresas ilimitadas, cada uma com o seu certificado e o seu consumo, sem criar uma integração nova para cada uma.",
         "link": "Ver os planos"
       },
       "payments": {

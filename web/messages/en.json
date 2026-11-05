@@ -616,7 +616,7 @@
       "github_auth_failed": "GitHub login failed. Please try again.",
       "socialFailed": "Social login failed. Please try again.",
       "expiredCode": "Code expired. Please request a new one.",
-      "workspaceConflict": "This email cannot create another Free workspace. Use an account with an active membership.",
+      "workspaceConflict": "The workspace could not be created. Use an account that already has active access.",
       "invalidEmail": "Enter a valid email address.",
       "oauth_failed": "We could not sign you in with that provider. Try again or use the email code.",
       "oauth_denied": "You cancelled the sign-in. Pick another way to sign in when you are ready.",
@@ -641,10 +641,10 @@
         "desc": "Structured responses, examples in Node, Python, and Go."
       }
     },
-    "freeCreditsTag": "15 FREE INVOICES PER MONTH",
+    "freeCreditsTag": "FIRST INVOICE FREE",
     "headline": "From first integration to tax invoice in minutes.",
     "afterSignup": "AFTER SIGNUP",
-    "footerNote": "No credit card required. No contract. 15 free invoices to get started.",
+    "footerNote": "No credit card required. No contract. Your first invoice is free.",
     "magicLink": {
       "sendCode": "Send code",
       "sending": "Sending...",
@@ -665,7 +665,7 @@
     "subtitle": "Corvo is a REST API and MCP server to issue Brazilian service invoices (NFS-e) on the national standard for MEI and Simples Nacional companies. Built for AI agents, developers, SaaS products and ERPs.",
     "startFree": "Start free",
     "viewDocs": "View documentation",
-    "mono": "15 free invoices per month. No credit card required."
+    "mono": "Your first invoice is free. No credit card required."
   },
   "Nav": {
     "product": "Product",
@@ -681,11 +681,21 @@
   },
   "FreeTrial": {
     "eyebrow": "START FREE",
-    "title": "15 free invoices per month",
+    "title": "1 free invoice to get started",
     "subtitle": "No credit card required.",
-    "description": "Integrate NFS-e issuance into your product with up to 15 authorized invoices per month for one company. The allowance renews on the first day of each month.",
+    "description": "Create the account, integrate and issue your first production NFS-e without paying. After that, pick a plan or buy single invoices at R$ 0.99, from 3.",
     "startFree": "Start free",
-    "finePrint": "Limit of 3 production issuances per day. Allowances use UTC and do not roll over. Tests do not consume the allowance."
+    "finePrint": "One free invoice per person. Test invoices (sandbox) never use your allowance.",
+    "points": {
+      "test": {
+        "title": "Test before you pay",
+        "body": "The sandbox, the city's test environment, is free and unlimited. Issue test invoices as much as you want before going to production."
+      },
+      "certificate": {
+        "title": "Certificate stored with care",
+        "body": "The A1 certificate is encrypted at rest with AES-256-GCM."
+      }
+    }
   },
   "Pricing": {
     "eyebrow": "PRICING",
@@ -849,7 +859,7 @@
     "description": "One integration to automate NFS-e issuance and track your product's growth.",
     "ctaPrimary": "Start free",
     "ctaSecondary": "Explore API",
-    "subtext": "15 free invoices per month to get started."
+    "subtext": "Your first invoice is free. Test mode is always free."
   },
   "Footer": {
     "brand": "© Corvo. All rights reserved.",
@@ -904,19 +914,19 @@
       },
       "s6": {
         "title": "6. Acceptable use and abuse prevention",
-        "content": "Do not use the Service to issue false documents, act without company authorization, commit fraud, send spam, distribute unlawful content or violate third-party rights. Do not bypass allowances, company limits, request limits, access controls or Free plan eligibility rules, including through accounts or workspaces created for that purpose. Do not share API access beyond your contracted permissions or interfere with the Service or connected fiscal systems."
+        "content": "Do not use the Service to issue false documents, act without company authorization, commit fraud, send spam, distribute unlawful content or violate third-party rights. Do not bypass allowances, company limits, request limits, access controls or free first-invoice eligibility rules, including through accounts or workspaces created for that purpose. Do not share API access beyond your contracted permissions or interfere with the Service or connected fiscal systems."
       },
       "s7": {
         "title": "7. Plans, allowances and renewal",
-        "content": "Plans define the monthly invoice allowance, active company limit and usage limits shown in the offer and dashboard. Free allows one active company and up to 15 authorized production invoices per month, with a limit of 3 per day. Its allowance renews on the first day of each month; monthly and daily limits use UTC. Paid allowances follow the monthly subscription period shown in the dashboard. Allowances belong to the workspace, not to each member or API key. Unused allowance does not roll over or convert into cash. Once a limit is reached, new requests may be blocked until renewal or the purchase of appropriate capacity."
+        "content": "The Solo, Equipe, Empresa and Escala plans set the monthly invoice allowance shown in the offer and in the dashboard. Every account gets one free first invoice, once and without renewal, and does not need a plan to issue it. Test (sandbox) invoices are free, unlimited and do not use any allowance. On paid plans the allowance follows the monthly period shown in the dashboard; on the annual plan it renews every month for the 12 months. Allowances belong to the workspace, not to each member or API key. Unused plan invoices do not roll over or convert to money. When the allowance runs out, issuing is blocked until renewal, a plan change or a purchase of single invoices."
       },
       "s8": {
-        "title": "8. How usage and overage are calculated",
-        "content": "Each authorized production NFS-e counts as one usage unit. Corvo reserves capacity when it receives a request while issuance is in progress. Rejected invoices and invoices that finish with a failure release that reservation; invoices still processing may temporarily reduce available capacity. If authorization completes after renewal, usage stays in the period in which it was reserved. Free does not allow paid overage. On paid plans, authorized invoices above the allowance incur additional charges at the plan’s unit rate, within a total monthly processing limit of five times the included allowance. Check usage, reservations and estimated overage in the dashboard."
+        "title": "8. How usage and single invoices work",
+        "content": "Each production NFS-e authorized uses one invoice. When a request arrives, Corvo reserves one invoice while the issuance is in progress: from the plan allowance first and, once it is spent, from the single-invoice balance. Rejected or failed issuances give the reservation back; invoices still processing may temporarily reduce the available capacity. If authorization happens after the cycle changes, usage stays in the period where it was reserved. There is no overage billing: nothing is charged for usage beyond the allowance. Single invoices cost R$ 0.99 each, in purchases of at least 3, never expire and are used after the plan allowance."
       },
       "s9": {
         "title": "9. Billing, plan changes and cancellation",
-        "content": "Paid subscriptions are monthly, in Brazilian reais, and renew automatically until canceled. The base fee is charged at the start of the cycle and overage is charged after use; late authorizations may result in a later charge for the original period. Stripe processes payments, and activation requires payment confirmation. The current offer does not include annual subscriptions or prepaid packs. Plan changes and cancellation to return to Free take effect at the end of the current period, without immediate proration of the base fee. Use the subscription options and billing portal in the dashboard; stopping account use does not cancel a subscription. After a failed renewal, paid issuance may remain available for up to seven days after the paid period ends, depending on subscription status, and may then be blocked. Cancellation does not remove charges for usage already incurred. Send refund requests or billing disputes to the contact in these Terms; mandatory statutory rights remain protected, including withdrawal rights where applicable."
+        "content": "Plans are sold in Brazilian reais, on a monthly or annual cycle. Monthly renews automatically until cancelled (card, through Stripe, or Pix Automático, through Woovi). Annual is paid at once with 30% off the monthly price and does not renew on its own. Single invoices and the annual plan can also be paid by Pix (one-time charge, valid for 24 hours) or card. Activation depends on payment confirmation. While a paid plan is active, a new plan can only be bought at renewal; single invoices can be bought at any time. Plan changes and cancellation take effect at the end of the current period, without proration. For Pix Automático, cancelling in the dashboard stops future charges and keeps the period already paid. If a renewal fails, plan issuing may continue for up to seven days after the paid period ends and then be blocked; single invoices stay available. Not using the account does not cancel the subscription. Refund or dispute requests can be sent to the contact in these Terms; mandatory statutory rights remain, including the right of withdrawal where applicable."
       },
       "s10": {
         "title": "10. Fiscal documents and retention",
@@ -2297,7 +2307,7 @@
       },
       "companies": {
         "q": "Can I issue invoices for more than one CNPJ on Corvo?",
-        "a": "Yes. Corvo's Free plan includes 1 company. Paid plans allow unlimited companies, each with its own certificate and its own usage, without building a new integration for each one.",
+        "a": "Yes. Every plan allows unlimited companies, each with its own certificate and its own usage, without building a new integration for each one.",
         "link": "See the plans"
       },
       "payments": {

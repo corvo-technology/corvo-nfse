@@ -29,7 +29,7 @@ Corvo registers issuer companies, stores their A1 certificates, calculates taxes
 - Cancellation: \`POST /v1/invoices/:id/cancel\` with a \`reason\` (\`issue_error\`, \`service_not_provided\` or \`other\`). A \`queued\` invoice is cancelled immediately (\`200\`); an \`authorized\` NFS-e returns \`202\` with status \`cancelling\` while the cancellation event is sent to the Sefin, and the result arrives by webhook (\`nfse.invoice.cancelled\` or \`nfse.invoice.cancellation_rejected\`). An invoice still being issued (\`processing\`) records the request and is cancelled as soon as it is authorized. A \`description\` of 15–255 characters is required for an issued NFS-e or one being issued. Cancelling an issued NFS-e does not refund the credit. An invoice that cannot be cancelled (\`retry_pending\`, \`reconciliation_required\`, \`manual_review\`, \`rejected\`, \`failed\`) returns \`409 ERROR_INVOICE_NOT_CANCELLABLE\`; repeating the request on a \`cancelling\` or \`cancelled\` invoice, or on one with a pending cancellation, returns its current state.
 - Official SDKs in nine languages (same operations, \`X-API-Key\` auth, typed errors, webhook verification): Node.js (\`npm install corvo-nfse-node\`), Python (\`pip install corvo-nfse\`), Go (\`go get github.com/corvo-technology/corvo-nfse-go\`), PHP (\`composer require corvo-technology/corvo-nfse\`), Ruby (\`gem install corvo-nfse\`), Rust (\`cargo add corvo-nfse\`), Java (\`tech.corvo:corvo-nfse\`), Elixir (\`{:corvo_nfse, "~> 0.1.1"}\`) and .NET (\`dotnet add package Corvo.Nfse\`). Each reads \`CORVO_API_KEY\`.
 - Multi-company: one account can hold many issuer companies, each with its own certificate.
-- Pricing: free plan with 15 invoices a month and 1 company, no credit card. Paid plans and overage prices are public at \`GET https://api.corvo.tech/v1/plans\`.`;
+- Pricing: the first invoice is free (no plan needed, no credit card) and the sandbox is always free. Plans Solo, Equipe, Empresa and Escala (monthly, or annual with 30% off) and single invoices at R$ 0,99 are public at \`GET https://api.corvo.tech/v1/plans\`. There is no overage billing.`;
 
 const PT_INTRO = `# Corvo
 
@@ -45,7 +45,7 @@ A Corvo cadastra empresas emissoras, guarda os certificados A1, calcula os tribu
 - A emissão é assíncrona: \`POST /v1/invoices\` responde \`202\` e o resultado chega por \`GET /v1/invoices/:id\` ou por webhook. Envie \`Idempotency-Key\` para repetir com segurança.
 - \`POST /v1/invoices/calculate\` mostra os tributos sem emitir.
 - SDKs oficiais em nove linguagens; o Java usa a coordenada Maven \`tech.corvo:corvo-nfse\`.
-- Planos e preços públicos em \`GET https://api.corvo.tech/v1/plans\`.`;
+- Preço: a primeira nota é grátis (sem plano e sem cartão) e a homologação é sempre grátis. Planos Solo, Equipe, Empresa e Escala (mensal, ou anual com 30% de desconto) e notas avulsas a R$ 0,99 em \`GET https://api.corvo.tech/v1/plans\`. Não há cobrança de excedente.`;
 
 interface Labels {
   docs: string;
