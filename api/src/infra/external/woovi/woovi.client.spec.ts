@@ -176,8 +176,10 @@ describe('WooviClient', () => {
   it.each([
     [409, { error: 'conflict' }],
     [400, { error: 'Há outro cliente com esses dados' }],
+    [401, { errors: [{ message: 'appID inválido' }] }],
+    [503, { error: 'down' }],
   ])(
-    'goes on when the payer already exists in Woovi (%s)',
+    'never lets the optional payer registration block the contract (%s)',
     async (status, body) => {
       const fetchFn = fetchSequence(
         [status, body],
@@ -191,13 +193,40 @@ describe('WooviClient', () => {
     },
   );
 
-  it("stops with Woovi's reason when the payer is invalid, without creating the contract", async () => {
-    const fetchFn = fetchSequence([400, { error: 'taxID inválido' }]);
+  it('still carries the payer inside the contract, which is what Woovi validates', async () => {
+    const fetchFn = fetchSequence(
+      [401, { errors: [{ message: 'appID inválido' }] }],
+      [200, { subscription: { correlationID: 's1', paymentLinkUrl: 'u' } }],
+    );
+    const client = new WooviClient(config, fetchFn as never);
+    await client.createSubscription(subscriptionInput);
+    const body = JSON.parse(
+      (fetchFn.mock.calls as unknown as Array<[string, RequestInit]>)[1][1]
+        .body as string,
+    );
+    expect(body.customer).toEqual(payer);
+  });
+
+  it("reports Woovi's reason from the contract call when the payer is invalid", async () => {
+    const fetchFn = fetchSequence(
+      [400, { error: 'taxID inválido' }],
+      [400, { error: 'taxID inválido' }],
+    );
     const client = new WooviClient(config, fetchFn as never);
     await expect(client.createSubscription(subscriptionInput)).rejects.toThrow(
       /taxID inválido/,
     );
-    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a rejected credential on the contract call itself (502)', async () => {
+    const fetchFn = fetchSequence(
+      [401, { errors: [{ message: 'appID inválido' }] }],
+      [401, { errors: [{ message: 'appID inválido' }] }],
+    );
+    const client = new WooviClient(config, fetchFn as never);
+    await expect(
+      client.createSubscription(subscriptionInput),
+    ).rejects.toBeInstanceOf(BadGatewayException);
   });
 
   it('cancels a subscription with PUT /subscriptions/{id}/cancel', async () => {

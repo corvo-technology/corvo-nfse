@@ -96,26 +96,37 @@ export class WooviClient {
     );
   }
 
-  /** Registers the payer; a payer Woovi already knows is fine. */
-  private async upsertCustomer(
+  /**
+   * Registers the payer ahead of the contract, like the greenflow integration does. It is only a
+   * courtesy: the contract itself carries the payer and is what Woovi validates, so nothing here
+   * (known payer, missing permission, a blip) may block the purchase. The cause is logged.
+   */
+  private async registerPayer(
     customer: WooviCustomer,
     correlationID: string,
   ): Promise<void> {
-    const response = await this.send('POST', '/customer', {
-      ...customer,
-      correlationID,
-    });
-    if (response.ok || response.status === 409) return;
-    const text = await response
-      .clone()
-      .text()
-      .catch(() => '');
-    if (
-      response.status === 400 &&
-      this.reason(text) === 'Há outro cliente com esses dados'
-    )
-      return;
-    await this.fail(response, 'POST', '/customer');
+    try {
+      const response = await this.send('POST', '/customer', {
+        ...customer,
+        correlationID,
+      });
+      if (response.ok || response.status === 409) return;
+      const text = await response
+        .clone()
+        .text()
+        .catch(() => '');
+      if (
+        response.status === 400 &&
+        this.reason(text) === 'Há outro cliente com esses dados'
+      )
+        return;
+      await this.fail(response, 'POST', '/customer');
+    } catch (error) {
+      this.logger.warn({
+        event: 'woovi_payer_registration_skipped',
+        reason: error instanceof Error ? error.message : 'unknown',
+      });
+    }
   }
 
   async createCharge(input: {
@@ -165,7 +176,7 @@ export class WooviClient {
     comment: string;
     customer: WooviCustomer;
   }): Promise<WooviSubscription> {
-    await this.upsertCustomer(input.customer, input.customerCorrelationID);
+    await this.registerPayer(input.customer, input.customerCorrelationID);
     const { subscription } = await this.call<{
       subscription: {
         correlationID: string;
