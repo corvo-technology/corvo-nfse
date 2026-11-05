@@ -137,9 +137,9 @@ function FeaturedOption({
         {plan && BADGED_PLANS.has(plan.slug) && (
           <span className="whitespace-nowrap rounded-full border border-accent/60 px-2 py-0.5 font-mono text-[10px] font-semibold text-accent">{t(`plans.${plan.slug}.badge`)}</span>
         )}
-        <span className="shrink-0 whitespace-nowrap rounded-full bg-accent px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.08em] text-[#0a0a0a]">
-          {isCurrent ? t("currentPlan") : t("featured.recommended")}
-        </span>
+        {isCurrent && (<span className="shrink-0 whitespace-nowrap rounded-full bg-accent px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.08em] text-[#0a0a0a]">
+          {t("currentPlan")}
+        </span>)}
       </div>
       <p className="mt-3 text-[14px] text-text-3">{plan ? t(`plans.${plan.slug}.bestFor`) : t("featured.avulsoBestFor")}</p>
 
