@@ -56,26 +56,30 @@ export function PaymentsCard({
       {!canManage && <p className="border-b border-border px-5 py-3 text-[13px] text-text-3">{t("permissionHint")}</p>}
       <div className="divide-y divide-border">
         {card && (
-          <section data-testid="card-settings" className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <section data-testid="card-settings" className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
             <div>
               <h3 className="text-[13.5px] font-medium text-text">{t("card.title")}</h3>
               <p className="mt-1 text-[13px] text-text-3">{t("card.available")}</p>
             </div>
-            {canManage && <Button variant="secondary" className="max-sm:w-full" loading={busy === "portal"} onClick={onPortal}>{ts("openStripePortal")}</Button>}
+            {canManage && (
+              <div className="flex flex-col gap-2 sm:items-end">
+                <Button variant="secondary" className="max-sm:w-full" loading={busy === "portal"} onClick={onPortal}>{ts("openStripePortal")}</Button>
+              </div>
+            )}
           </section>
         )}
         {pix && (
-          <section data-testid="pix-settings" className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <section data-testid="pix-settings" className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
             <div>
               <h3 className="text-[13.5px] font-medium text-text">{t("pix.title")}</h3>
               <p className="mt-1 max-w-[460px] text-[13px] text-text-3">{pix.status === "pending" ? t("pix.pending") : t("pix.active")}</p>
             </div>
             {canManage && (
-              <div className="flex flex-wrap items-center gap-3">
-                {pix.status === "pending" && <Link href="/app/billing" className="text-[13px] text-accent underline-offset-4 hover:underline">{t("pix.viewQr")}</Link>}
+              <div className="flex flex-col gap-2 sm:items-end">
                 <Button variant="secondary" className="max-sm:w-full" loading={busy === "cancel-pix"} onClick={onCancelPix}>
                   {pix.status === "pending" ? tb("pix.cancelAuthorization") : tb("pixCancel")}
                 </Button>
+                {pix.status === "pending" && <Link href="/app/billing" className="text-[13px] text-accent underline-offset-4 hover:underline">{t("pix.viewQr")}</Link>}
               </div>
             )}
           </section>
