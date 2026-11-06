@@ -93,6 +93,13 @@ const enWithRetiredCredits: DocsTree = {
           ["GET", "`/v1/webhooks/deliveries`", "List deliveries", "200"],
           ["GET", "`/v1/webhooks/deliveries/stats`", "Fetch delivery statistics", "200"],
           ["POST", "`/v1/webhooks/deliveries/:id/retry`", "Schedule a retry", "200"],
+          ["GET", "`/v1/schedules`", "List schedules and recurrences", "200"],
+          ["GET", "`/v1/schedules/:id`", "Get a schedule", "200"],
+          ["GET", "`/v1/schedules/:id/runs`", "Run history of a schedule", "200"],
+          ["PATCH", "`/v1/schedules/:id`", "Change a schedule", "200"],
+          ["POST", "`/v1/schedules/:id/pause`", "Pause a schedule", "200"],
+          ["POST", "`/v1/schedules/:id/resume`", "Resume a schedule", "200"],
+          ["POST", "`/v1/schedules/:id/cancel`", "Cancel a schedule", "200"],
           ["GET", "`/v1/billing/plan`", "Fetch plan and consumption", "200"],
           ["GET", "`/v1/billing/usage`", "Fetch availability and quotas", "200"],
           ["POST", "`/v1/billing/upgrade`", "Schedule a plan change", "200"],
@@ -747,12 +754,14 @@ console.log(res.status); // 204`,
               { name: "customer", type: "object", required: false, description: "Optional: omit it or send `{}` for an invoice without tomador (the customer is left out of the DPS). When sent with any data, `taxId` is required (valid CPF or CNPJ, normalized); `name` is optional, `email` (optional; required when email sending is enabled; no email format validation in this DTO/domain) and `address` (optional: `street`, `city`, `state`, `zip`, `country` are optional strings; if you fill in city or state, fill in both; state must be valid)." },
               { name: "service", type: "object", required: true, description: "`code` is optional: without it the company `defaultServiceCode` is used and, if the company has none, `100901` (LC 116 item 10.09, representation of any nature); exactly 6 digits when provided. `municipalityCode` inherits the company municipality; when provided, exactly 7 digits and sets the service location. `description` is optional: when empty, the name of the service code is used. Empty, null or invalid values of the other fields do not use the defaults." },
               { name: "amount", type: "number", required: true, description: "Value in reais, positive, up to 9999999999.99 with at most 2 decimals." },
-              { name: "competenceDate", type: "string ISO 8601", required: true, description: "Valid competence date. Without `options.type` it cannot be in the future (`422` `ERROR_FUTURE_DATE`). With `options.type: \"SCHEDULE\"` a future date is accepted (see Scheduled invoices)." },
+              { name: "competenceDate", type: "string ISO 8601", required: true, description: "Valid competence date. Without `options.type` it cannot be in the future (`422` `ERROR_FUTURE_DATE`). With `SCHEDULE` or `RECURRING` it is the date of the first run, from tomorrow on (see Scheduled and recurring invoices)." },
               { name: "discount", type: "number", required: false, description: "Unconditional discount in BRL, from 0 up to the invoice amount, at most 2 decimal places." },
               { name: "deduction", type: "number", required: false, description: "Deduction from the ISS base declared by the issuer, in BRL: greater than 0 and less than `amount` minus `discount`, at most 2 decimal places (`0` is the same as omitting it). Sent in the DPS as `vDedRed/vDR`, it reduces the ISS tax base. The invoice is still issued for the full amount. The issuer is responsible for the declared value; Corvo does not check whether the deduction is allowed. IBS/CBS is still calculated on the amount without the deduction. See ISS base deduction." },
               { name: "email", type: "boolean", required: false, description: "Requests a notification; defaults to `false`." },
               { name: "options.email.send", type: "boolean", required: false, description: "When set, takes precedence over `email`." },
-              { name: "options.type", type: "string", required: false, description: "`IMMEDIATE` (default) or `SCHEDULE`. `SCHEDULE` schedules issuance for a future `competenceDate`; see Scheduled invoices." },
+              { name: "options.type", type: "string", required: false, description: "`IMMEDIATE` (default), `SCHEDULE` or `RECURRING`. `SCHEDULE` and `RECURRING` create a schedule instead of issuing now; see Scheduled and recurring invoices." },
+              { name: "options.recurrence.frequency", type: "string", required: false, description: "`WEEKLY`, `BIWEEKLY` or `MONTHLY`. Required with `RECURRING`; not allowed with the other types." },
+              { name: "options.recurrence.endsOn", type: "string YYYY-MM-DD", required: false, description: "Last day the recurrence may run (inclusive). Without it, it runs until paused or cancelled." },
             ],
           },
           examples: {
@@ -1074,26 +1083,60 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             { kind: "callout", tone: "warn", body: "`503` with `Retry-After` (seconds) when the tax calculator is unavailable: retry later, never estimate. The rate limit is the same as any authenticated endpoint (`429` with `Retry-After`). A future competence date is accepted only up to 15 days ahead." },
           ],
         },
-        { kind: "heading", level: 2, body: "Scheduled invoices" },
-        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` with a future `competenceDate` to have the invoice issued only on that day. Corvo releases issuance at 09:00 `America/Sao_Paulo` (12:00 UTC) on the `competenceDate`. Until then the invoice stays `status: \"queued\"` and `scheduledFor` holds the release instant (ISO); for immediate invoices `scheduledFor` is `null`." },
+        { kind: "heading", level: 2, body: "Scheduled and recurring invoices" },
+        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` to issue an invoice once on a future date, or `options.type: \"RECURRING\"` to repeat it every week, every two weeks or every month. Neither issues now: they create a **schedule**, and the response is the schedule (`202`), not an invoice. `competenceDate` is the date of the first run: from tomorrow on and up to 15 days ahead." },
         { kind: "table", head: ["Situation", "Result"], rows: [
           ["No `options.type` (or `IMMEDIATE`) and a future `competenceDate`", "`422` with `ERROR_FUTURE_DATE` in `details[].code`."],
-          ["`SCHEDULE` and a future `competenceDate` within the limit", "`202`, `status: queued`, `scheduledFor` set; issuance happens on that date."],
-          ["`SCHEDULE` and a `competenceDate` beyond the limit (default 15 days ahead)", "`422` with `ERROR_SCHEDULE_HORIZON_EXCEEDED` in `details[].code`."],
-          ["`SCHEDULE` and a `competenceDate` of today or in the past", "Immediate issuance, `scheduledFor: null`."],
+          ["`SCHEDULE` or `RECURRING` with a `competenceDate` from tomorrow on, within the limit (default 15 days ahead)", "`202` with the schedule (`id`, `kind`, `status: active`, `next_run_on`). The invoice only exists when the schedule runs."],
+          ["`SCHEDULE` or `RECURRING` with a `competenceDate` of today or in the past", "`422` with `first_date_too_soon` in `details[].code`. To issue now, use `IMMEDIATE`."],
+          ["`SCHEDULE` or `RECURRING` beyond the limit", "`422` with `schedule_horizon_exceeded`."],
+          ["`RECURRING` without `options.recurrence.frequency`", "`422` with `required`. A `recurrence` with `SCHEDULE` or `IMMEDIATE` gives `422` with `not_allowed`."],
+          ["`options.recurrence.endsOn` equal to or before the first date", "`422` with `ends_before_start`."],
+          ["More than 200 active schedules in the account", "`422` with `ERROR_SCHEDULE_LIMIT`."],
         ] },
-        { kind: "code", label: "Schedule an invoice", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
+        { kind: "code", label: "Create a monthly recurrence", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -H "Idempotency-Key: order_123_scheduled" \\
   -d '{
     "companyTaxId": "11222333000181",
-    "service": { "description": "Haircut" },
-    "amount": 50,
-    "competenceDate": "2026-10-20",
-    "options": { "type": "SCHEDULE" }
+    "service": { "description": "Monthly fee" },
+    "amount": 150,
+    "competenceDate": "2026-11-10",
+    "options": {
+      "type": "RECURRING",
+      "recurrence": { "frequency": "MONTHLY", "endsOn": "2027-10-10" }
+    }
   }'` },
-        { kind: "callout", tone: "warn", body: "Tax data is computed when the invoice is issued, using the configuration in force on the `competenceDate`. In `live`, the company must be ready and have an active certificate when you schedule. Before scheduling, `POST /v1/invoices/calculate` shows the calculation for that date. The `nfse.invoice.authorized` (or `rejected`) webhook arrives when issuance happens, not when you schedule." },
+        { kind: "code", label: "Response: the schedule", language: "json", code: `{
+  "data": {
+    "id": "8f6c2b1e-0d4a-4c43-9c1a-2d7f5e3b9a10",
+    "kind": "recurring",
+    "frequency": "MONTHLY",
+    "status": "active",
+    "pause_reason": null,
+    "company_id": "5b0e7c5a-5d0b-4f45-8d6c-3a2a1e9d7f20",
+    "anchor_on": "2026-11-10",
+    "next_run_on": "2026-11-10",
+    "ends_on": "2027-10-10",
+    "attempts": 0,
+    "last_run_on": null,
+    "invoice": { "amount": 150, "service": { "description": "Monthly fee" } },
+    "created_at": "2026-11-06T15:00:00.000Z"
+  }
+}` },
+        { kind: "callout", tone: "warn", body: "Contract change: `SCHEDULE` used to return the invoice (with `scheduledFor`); it now returns the schedule. The `id` in the response is the schedule's, and the invoice shows up in `GET /v1/invoices` when the schedule runs. The credit is no longer reserved when you create it: it is used when the schedule runs. Invoices scheduled before the change are still issued normally. Schedules are not accepted in a batch (`POST /v1/invoices/batches`)." },
+        { kind: "callout", tone: "accent", body: "Runs happen at 09:00 `America/Sao_Paulo`, Monday to Friday. A Saturday or Sunday date runs on Monday. The invoice takes the competence of the day it runs and uses the schedule's data at that moment. If a run cannot issue (for example, no notes available), it tries again on the next business day and you get an e-mail; after 3 failed attempts the schedule is paused and you get another e-mail. `POST /v1/schedules/:id/resume` continues from the next date, without catching up on what passed." },
+        { kind: "heading", level: 3, body: "Manage schedules" },
+        { kind: "table", head: ["Method", "Route", "Description", "Status"], rows: [
+          ["GET", "`/v1/schedules`", "List schedules (filters `status` and `companyId`)", "200"],
+          ["GET", "`/v1/schedules/:id`", "Get a schedule", "200"],
+          ["GET", "`/v1/schedules/:id/runs`", "Run history: due date, day it ran, result, issued invoice or error", "200"],
+          ["PATCH", "`/v1/schedules/:id`", "Change `invoice`, `endsOn`, `frequency` or `anchorOn`; applies to the next runs", "200"],
+          ["POST", "`/v1/schedules/:id/pause`", "Pause", "200"],
+          ["POST", "`/v1/schedules/:id/resume`", "Resume a paused schedule", "200"],
+          ["POST", "`/v1/schedules/:id/cancel`", "Cancel (final)", "200"],
+        ] },
+        { kind: "text", body: "A schedule has `id`, `kind` (`once` or `recurring`), `frequency`, `status` (`active`, `paused`, `completed`, `cancelled`), `pause_reason` (`customer` or `failures`), `company_id`, `anchor_on`, `next_run_on`, `ends_on`, `attempts` (failures in a row, 0 to 3), `last_run_on`, `invoice` (the body issued on each run) and `created_at`. Permissions: `nfse.invoices.view` to read and `nfse.invoices.issue` to create and change. A test key sees only test schedules, and a live key only live ones." },
         { kind: "heading", level: 2, body: "ISS base deduction" },
         { kind: "text", body: "The issuer can declare in `deduction` an amount that the municipality's legislation allows to be deducted from the ISS tax base. The value is sent in the DPS as `vDedRed/vDR` and reduces the ISS base; the invoice is still issued for the full amount (`amount`)." },
         { kind: "table", head: ["Field / tax", "How it is handled"], rows: [
@@ -2704,8 +2747,50 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             [
               "`nfse_issue`",
               "`nfse:write`",
-              "`company_tax_id` (CNPJ) or `company_id`, `amount` (or `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` required when a customer is sent), `description?`, `discount?`, `deduction?` (ISS base deduction declared by the issuer), `competence_date?` (default: today), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
-              "`{ invoice_id, access_key, status }`"
+              "`company_tax_id` (CNPJ) or `company_id`, `amount` (or `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` required when a customer is sent), `description?`, `discount?`, `deduction?` (ISS base deduction declared by the issuer), `competence_date?` (default: today), `emission_type?` (`IMMEDIATE`/`SCHEDULE`/`RECURRING`), `recurrence_frequency?` (`WEEKLY`/`BIWEEKLY`/`MONTHLY`, required with `RECURRING`), `recurrence_ends_on?`, `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
+              "`{ invoice_id, access_key, status }`; with `SCHEDULE` or `RECURRING`, `{ schedule_id, kind, frequency, status, next_run_on, ends_on }`"
+            ],
+            [
+              "`schedule_list`",
+              "`nfse:read`",
+              "`status?`, `company_id?`, `limit?`, `offset?`",
+              "`{ schedules [...], total, limit, offset }`"
+            ],
+            [
+              "`schedule_get`",
+              "`nfse:read`",
+              "`schedule_id`",
+              "the schedule"
+            ],
+            [
+              "`schedule_runs`",
+              "`nfse:read`",
+              "`schedule_id`, `limit?`, `offset?`",
+              "`{ runs [{ occurrence_on, ran_on, attempt, outcome, invoice_id?, error_code?, error_message? }], total }`"
+            ],
+            [
+              "`schedule_update`",
+              "`nfse:write`",
+              "`schedule_id` and what changes: `amount?`, `description?`, `customer?`, `send_email?`, `ends_on?` (or `null`), `frequency?`, `first_date?`",
+              "the schedule"
+            ],
+            [
+              "`schedule_pause`",
+              "`nfse:write`",
+              "`schedule_id`",
+              "the schedule"
+            ],
+            [
+              "`schedule_resume`",
+              "`nfse:write`",
+              "`schedule_id`",
+              "the schedule"
+            ],
+            [
+              "`schedule_cancel`",
+              "`nfse:write`",
+              "`schedule_id`",
+              "the schedule"
             ],
             [
               "`company_list`",
