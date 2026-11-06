@@ -6,41 +6,44 @@ export type HttpClientIpRequest = {
   ip?: string;
 };
 
-export type ClientIpResolutionOptions = {
-  bookingProxySecret?: string;
-};
-
+/**
+ * Resolves the caller's IP for rate limiting.
+ *
+ * Forwarded headers are only believed when they come from something we can
+ * authenticate or that the operator explicitly declared:
+ * - the Corvo web proxy, which proves itself with PROXY_SHARED_SECRET and
+ *   sends the real browser IP in `x-corvo-client-ip`;
+ * - Cloudflare, only when TRUST_CF_CONNECTING_IP=true (the origin must then
+ *   accept traffic from Cloudflare only).
+ * Otherwise the last `x-forwarded-for` entry is used: it is the one appended
+ * by our own reverse proxy, unlike the first, which the client can choose.
+ */
 export function resolveClientIp(
   req: HttpClientIpRequest,
-  options: ClientIpResolutionOptions = {},
+  env: NodeJS.ProcessEnv = process.env,
 ): string | undefined {
-  if (isAuthenticatedBookingProxy(req, options.bookingProxySecret)) {
-    const bookingClientIp = firstValidIpFromHeader(
-      req,
-      'x-greenflow-client-ip',
-    );
-    if (bookingClientIp) return bookingClientIp;
-  }
-
   const remoteIp = normalizeIp(req.ip);
+  if (!remoteIp || !isTrustedProxyIp(remoteIp)) return remoteIp;
 
-  if (remoteIp && isTrustedProxyIp(remoteIp)) {
-    return (
-      firstValidIpFromHeader(req, 'cf-connecting-ip') ??
-      firstValidIpFromHeader(req, 'x-forwarded-for') ??
-      remoteIp
-    );
+  if (isAuthenticatedWebProxy(req, env.PROXY_SHARED_SECRET)) {
+    const webClientIp = firstValidIpFromHeader(req, 'x-corvo-client-ip');
+    if (webClientIp) return webClientIp;
   }
 
-  return remoteIp;
+  if (env.TRUST_CF_CONNECTING_IP === 'true') {
+    const cloudflareIp = firstValidIpFromHeader(req, 'cf-connecting-ip');
+    if (cloudflareIp) return cloudflareIp;
+  }
+
+  return lastValidIpFromHeader(req, 'x-forwarded-for') ?? remoteIp;
 }
 
-function isAuthenticatedBookingProxy(
+function isAuthenticatedWebProxy(
   req: HttpClientIpRequest,
   expectedSecret: string | undefined,
 ): boolean {
   if (!expectedSecret) return false;
-  const providedSecret = firstHeader(req, 'x-greenflow-booking-proxy-secret');
+  const providedSecret = firstHeader(req, 'x-corvo-proxy-secret');
   if (!providedSecret) return false;
 
   const expected = Buffer.from(expectedSecret);
@@ -48,6 +51,18 @@ function isAuthenticatedBookingProxy(
   return (
     expected.length === provided.length && timingSafeEqual(expected, provided)
   );
+}
+
+function lastValidIpFromHeader(
+  req: HttpClientIpRequest,
+  name: string,
+): string | undefined {
+  const value = firstHeader(req, name);
+  return value
+    ?.split(',')
+    .map((entry) => normalizeIp(entry))
+    .reverse()
+    .find((entry): entry is string => entry !== undefined);
 }
 
 function firstValidIpFromHeader(

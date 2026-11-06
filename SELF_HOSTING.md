@@ -127,6 +127,10 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
 
 `deploy/Caddyfile` routes each domain to its application. Caddy obtains and renews TLS certificates and redirects HTTP to HTTPS. Certificate data is stored in persistent volumes. See [Caddy's automatic HTTPS requirements](https://caddyserver.com/docs/automatic-https).
 
+### Visitor IP and rate limits
+
+The web app sends the visitor's IP to the API together with `PROXY_SHARED_SECRET`; the API only believes it when the secret matches (`setup-env` generates it). Without the secret, every visitor shares one rate-limit bucket. `TRUST_CF_CONNECTING_IP` stays `false` unless Cloudflare is the only way to reach your server (firewall the origin to Cloudflare ranges first), because otherwise anyone can forge that header.
+
 ### External integrations
 
 Email login codes and invoice attachments use your email provider. Billing uses your Stripe account; its webhook endpoint is `/v1/webhooks/stripe` on your public API domain. WhatsApp/Meta credentials are not required to start the NFS-e application.

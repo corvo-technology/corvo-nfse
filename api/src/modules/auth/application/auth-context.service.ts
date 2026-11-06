@@ -168,7 +168,7 @@ const INVOICES_ISSUE_PERMISSIONS: TenantPermission[] = ['nfse.invoices.issue'];
 
 const INVOICES_VIEW_PERMISSIONS: TenantPermission[] = ['nfse.invoices.view'];
 
-function permissionsForApiKeyScope(scope: ApiKeyScope): TenantPermission[] {
+export function permissionsForApiKeyScope(scope: ApiKeyScope): TenantPermission[] {
   switch (scope) {
     case 'full_access':
       return [...FULL_ACCESS_PERMISSIONS];

@@ -9,6 +9,8 @@ import * as argon2 from 'argon2';
 import { ApiKey, ApiKeyEnvironment, ApiKeyScope } from '../domain/api-key';
 import { IApiKeyRepository } from '../domain/api-key.repository';
 import { AuthContext } from '../auth-context';
+import { TenantPermissionDeniedError } from '../domain/errors';
+import { permissionsForApiKeyScope } from './auth-context.service';
 
 const API_KEY_TOKEN_BYTE_LENGTH = 20;
 const API_KEY_LOOKUP_TOKEN_HEX_LENGTH = 12;
@@ -39,6 +41,7 @@ export class ApiKeyService {
     authContext: AuthContext,
     input: CreateApiKeyInput,
   ): Promise<CreatedApiKeyResult> {
+    this.assertScopeWithinCreatorPermissions(authContext, input.scope);
     const random = randomBytes(API_KEY_TOKEN_BYTE_LENGTH).toString('hex');
     const prefix = this.buildPrefix(input.environment, random);
     const plaintext = `corvo_${input.environment}_${random}`;
@@ -61,6 +64,21 @@ export class ApiKeyService {
       authContext.activeTenantId,
     );
     return { apiKey: saved, plaintext };
+  }
+
+  /** A key can never grant more than the member who creates it already has. */
+  private assertScopeWithinCreatorPermissions(
+    authContext: AuthContext,
+    scope: ApiKeyScope,
+  ): void {
+    const isTenantAdmin =
+      (authContext.principalType ?? 'tenant_member') === 'tenant_member' &&
+      authContext.role === 'admin';
+    if (isTenantAdmin) return;
+    const missing = permissionsForApiKeyScope(scope).find(
+      (permission) => !authContext.permissions.includes(permission),
+    );
+    if (missing) throw new TenantPermissionDeniedError(missing);
   }
 
   async list(authContext: AuthContext): Promise<ApiKey[]> {

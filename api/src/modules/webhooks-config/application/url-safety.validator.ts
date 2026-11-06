@@ -1,5 +1,7 @@
+import { lookup as dnsLookup, LookupAddress } from 'node:dns';
 import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
+import { BlockList, isIP } from 'node:net';
+import type { LookupOptions } from 'node:dns';
 import { WebhookValidationError } from '../domain/errors';
 
 const BLOCKED_HOSTNAMES = new Set([
@@ -8,34 +10,75 @@ const BLOCKED_HOSTNAMES = new Set([
   'metadata',
 ]);
 
-const PRIVATE_RANGES_V4: Array<[number, number]> = [
-  [0x00000000, 0x00ffffff], // 0.0.0.0/8
-  [0x0a000000, 0x0affffff], // 10.0.0.0/8
-  [0x7f000000, 0x7fffffff], // 127.0.0.0/8 (loopback)
-  [0xa9fe0000, 0xa9feffff], // 169.254.0.0/16 (link-local + cloud metadata)
-  [0xac100000, 0xac1fffff], // 172.16.0.0/12
-  [0xc0a80000, 0xc0a8ffff], // 192.168.0.0/16
-];
+// Everything a webhook must never reach: private, loopback, link-local/metadata, CGNAT, benchmarking,
+// multicast/reserved, and the IPv6 forms that embed or translate IPv4 (NAT64, 6to4).
+// IPv4-mapped IPv6 (::ffff:a.b.c.d, in dotted or hex form) is checked against the IPv4 rules by BlockList.
+const BLOCKED = new BlockList();
+for (const [network, prefix] of [
+  ['0.0.0.0', 8],
+  ['10.0.0.0', 8],
+  ['100.64.0.0', 10], // CGNAT
+  ['127.0.0.0', 8], // loopback
+  ['169.254.0.0', 16], // link-local + cloud metadata
+  ['172.16.0.0', 12],
+  ['192.0.0.0', 24],
+  ['192.168.0.0', 16],
+  ['198.18.0.0', 15], // benchmarking
+  ['224.0.0.0', 4], // multicast
+  ['240.0.0.0', 4], // reserved + broadcast
+] as const) {
+  BLOCKED.addSubnet(network, prefix, 'ipv4');
+}
+for (const [network, prefix] of [
+  ['::', 96], // unspecified, loopback and IPv4-compatible
+  ['fc00::', 7], // unique local
+  ['fe80::', 10], // link-local
+  ['fec0::', 10], // site-local (deprecated)
+  ['ff00::', 8], // multicast
+  ['64:ff9b::', 96], // NAT64
+  ['64:ff9b:1::', 48], // local-use NAT64
+  ['2002::', 16], // 6to4
+] as const) {
+  BLOCKED.addSubnet(network, prefix, 'ipv6');
+}
 
 export function isPrivateIp(ip: string): boolean {
   const version = isIP(ip);
-  if (version === 4) {
-    const num =
-      ip
-        .split('.')
-        .reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
-    return PRIVATE_RANGES_V4.some(([start, end]) => num >= start && num <= end);
-  }
-  if (version === 6) {
-    const lower = ip.toLowerCase();
-    if (lower === '::1' || lower === '::') return true;
-    const mapped = lower.match(/^::ffff:([0-9.]+)$/);
-    if (mapped) return isPrivateIp(mapped[1]);
-    if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // unique local
-    if (lower.startsWith('fe80:')) return true; // link-local
-    return false;
-  }
-  return false;
+  if (version === 0) return false;
+  return BLOCKED.check(ip, version === 4 ? 'ipv4' : 'ipv6');
+}
+
+/**
+ * DNS lookup for outbound webhook connections. It runs at connect time, so the address that is
+ * validated is the address that is used (a hostname cannot answer "public" at registration and
+ * "internal" at delivery).
+ */
+export function safeLookup(
+  hostname: string,
+  options: LookupOptions,
+  callback: (
+    err: NodeJS.ErrnoException | null,
+    address: string | LookupAddress[],
+    family?: number,
+  ) => void,
+): void {
+  dnsLookup(hostname, { ...options, all: true }, (error, addresses) => {
+    if (error) return callback(error, '', 0);
+    const list = addresses;
+    const blocked = list.find((entry) => isPrivateIp(entry.address));
+    if (blocked || list.length === 0) {
+      return callback(
+        new WebhookValidationError(
+          `Webhook hostname ${hostname} resolves to a private address`,
+          { host: hostname },
+        ),
+        '',
+        0,
+      );
+    }
+    if (options.all) return callback(null, list);
+    callback(null, list[0].address, list[0].family);
+  });
 }
 
 export async function assertNotPrivateHost(url: URL): Promise<void> {

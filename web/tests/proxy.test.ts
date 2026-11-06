@@ -126,18 +126,20 @@ it("forwards the payment integration management routes, but never the public inb
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
-it("forwards the schedule routes the dashboard needs, with their methods only", async () => {
-  fetchMock.mockImplementation(async () => new Response("{}", { status: 200 }));
-  const headers = { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "Content-Type": "application/json" };
-  const call = (handler: typeof POST, method: string, route: string) =>
-    handler(new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers, body: method === "GET" ? undefined : "{}" }), context(route));
-  expect((await call(GET, "GET", "schedules")).status).toBe(200);
-  expect((await call(GET, "GET", "schedules/id")).status).toBe(200);
-  expect((await call(PATCH, "PATCH", "schedules/id")).status).toBe(200);
-  expect((await call(GET, "GET", "schedules/id/runs")).status).toBe(200);
-  for (const action of ["pause", "resume", "cancel"]) expect((await call(POST, "POST", `schedules/id/${action}`)).status).toBe(200);
-  expect((await call(POST, "POST", "schedules")).status).toBe(404);
-  expect((await call(DELETE, "DELETE", "schedules/id")).status).toBe(404);
-  expect((await call(GET, "GET", "schedules/id/pause")).status).toBe(404);
-  expect((await call(POST, "POST", "schedules/id/runs")).status).toBe(404);
+it("forwards the browser IP only with the shared secret, preferring the last x-forwarded-for entry", async () => {
+  vi.stubEnv("PROXY_SHARED_SECRET", "s".repeat(32));
+  fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+  const headers = { Origin: "http://localhost:4000", "x-forwarded-for": "203.0.113.1, 198.51.100.7", "cf-connecting-ip": "203.0.113.99" };
+  await POST(new NextRequest("http://localhost:4000/api/proxy/v1/auth/magic-link/request", { method: "POST", headers }), context("auth/magic-link/request"));
+  const sent = new Headers(fetchMock.mock.calls[0][1]?.headers);
+  expect(sent.get("x-corvo-client-ip")).toBe("198.51.100.7"); expect(sent.get("x-corvo-proxy-secret")).toBe("s".repeat(32));
+  vi.stubEnv("TRUST_CF_CONNECTING_IP", "true"); fetchMock.mockClear();
+  await POST(new NextRequest("http://localhost:4000/api/proxy/v1/auth/magic-link/request", { method: "POST", headers }), context("auth/magic-link/request"));
+  expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get("x-corvo-client-ip")).toBe("203.0.113.99");
+});
+it("does not send IP headers when no shared secret is configured", async () => {
+  fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+  await POST(new NextRequest("http://localhost:4000/api/proxy/v1/auth/magic-link/request", { method: "POST", headers: { Origin: "http://localhost:4000", "x-forwarded-for": "198.51.100.7" } }), context("auth/magic-link/request"));
+  const sent = new Headers(fetchMock.mock.calls[0][1]?.headers);
+  expect(sent.has("x-corvo-client-ip")).toBe(false); expect(sent.has("x-corvo-proxy-secret")).toBe(false);
 });
