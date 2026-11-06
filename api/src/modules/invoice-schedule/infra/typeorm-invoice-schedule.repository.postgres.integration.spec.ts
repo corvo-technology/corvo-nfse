@@ -276,6 +276,36 @@ describePostgres('invoice schedule repository with restricted role', () => {
     ).toBe(1);
   });
 
+  it('review: a FOR UPDATE read waits for the runner and then sees what the runner saved', async () => {
+    const tenant = randomUUID();
+    await admin.query(`INSERT INTO "${schema}".tenants (id) VALUES ($1)`, [
+      tenant,
+    ]);
+    const created = schedule(tenant, '2026-11-09');
+    await repo.insert(created);
+    let release!: () => void;
+    const hold = new Promise<void>((done) => (release = done));
+    const runner = runInTransaction(tenant, async () => {
+      const [claimed] = await repo.claimDueForTenant(tenant, '2026-11-09', 10);
+      claimed!.recordIssued('2026-11-09'); // next_run_on moves to 2026-11-16
+      await repo.save(claimed!);
+      await hold;
+    });
+    await new Promise((done) => setTimeout(done, 150));
+    let seen: string | null | undefined;
+    const mutation = runInTransaction(tenant, async () => {
+      const row = await repo.findById(created.props.id, tenant, {
+        forUpdate: true,
+      });
+      seen = row?.props.nextRunOn;
+    });
+    await new Promise((done) => setTimeout(done, 300));
+    expect(seen).toBeUndefined(); // still blocked by the runner's row lock
+    release();
+    await Promise.all([runner, mutation]);
+    expect(seen).toBe('2026-11-16'); // and it read the runner's result, not a stale copy
+  });
+
   it('a run is unique per (schedule, occurrence, attempt) and listRuns returns newest first', async () => {
     const created = schedule(tenantA, '2026-11-09');
     await repo.insert(created);

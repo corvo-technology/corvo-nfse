@@ -17,7 +17,7 @@ import {
 import { ScheduleService, MAX_ACTIVE_SCHEDULES } from './schedule.service';
 
 const NOW = new Date('2026-11-06T15:00:00Z'); // Friday, São Paulo
-const TENANT = 'tenant-1';
+const TENANT = '11111111-1111-4111-8111-111111111111';
 const COMPANY = '44444444-4444-4444-8444-444444444444';
 const auth = (environment: 'test' | 'live' = 'live') =>
   ({
@@ -33,7 +33,11 @@ class MemoryRepo extends InvoiceScheduleRepository {
     this.rows.set(s.props.id, s);
     return Promise.resolve();
   }
-  findById(id: string, tenantId: string) {
+  lockedReads: boolean[] = [];
+  saveInTx: boolean[] = [];
+  inTx = { value: false };
+  findById(id: string, tenantId: string, options?: { forUpdate?: boolean }) {
+    if (options?.forUpdate) this.lockedReads.push(this.inTx.value);
     const found = this.rows.get(id);
     return Promise.resolve(found?.props.tenantId === tenantId ? found : null);
   }
@@ -44,6 +48,7 @@ class MemoryRepo extends InvoiceScheduleRepository {
     return Promise.resolve({ items, total: items.length });
   }
   save(s: InvoiceSchedule) {
+    this.saveInTx.push(this.inTx.value);
     this.rows.set(s.props.id, s);
     return Promise.resolve();
   }
@@ -75,10 +80,21 @@ function build() {
   const prepare = jest
     .fn<Promise<unknown>, [Record<string, unknown>, string, string]>()
     .mockResolvedValue({ kind: 'ready', invoice: { companyId: COMPANY } });
+  const unitOfWork = {
+    execute: async <T>(work: () => Promise<T>): Promise<T> => {
+      repo.inTx.value = true;
+      try {
+        return await work();
+      } finally {
+        repo.inTx.value = false;
+      }
+    },
+  };
   const service = new ScheduleService(
     repo,
     { prepareEmissionInEnvironment: prepare } as never,
     15,
+    unitOfWork as never,
   );
   return { service, repo, prepare };
 }
@@ -352,4 +368,16 @@ describe('ScheduleService management', () => {
       });
     },
   );
+
+  it('review: every mutation reads the row FOR UPDATE and saves inside one transaction (no lost update against the daily run)', async () => {
+    const { service, repo, id } = await created();
+    repo.lockedReads.length = 0;
+    repo.saveInTx.length = 0;
+    await service.update(id, TENANT, { endsOn: '2027-12-31' }, NOW);
+    await service.pause(id, TENANT);
+    await service.resume(id, TENANT, NOW);
+    await service.cancel(id, TENANT);
+    expect(repo.lockedReads).toEqual([true, true, true, true]);
+    expect(repo.saveInTx).toEqual([true, true, true, true]);
+  });
 });

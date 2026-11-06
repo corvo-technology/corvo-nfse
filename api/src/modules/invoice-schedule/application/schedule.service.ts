@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
+import { UnitOfWorkPort } from '@/infra/transactions/unit-of-work.port';
 import { validationExceptionFactory } from '@/shared/http/validation-pipe';
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
@@ -61,6 +63,7 @@ export class ScheduleService {
     @Inject(SCHEDULE_INVOICE_PORT)
     private readonly invoices: ScheduleInvoicePort,
     @Inject(SCHEDULE_HORIZON_DAYS) private readonly horizonDays: number,
+    private readonly unitOfWork: UnitOfWorkPort,
   ) {}
 
   /** `POST /invoices` with `options.type` SCHEDULE or RECURRING. */
@@ -136,53 +139,68 @@ export class ScheduleService {
     return this.repo.listRuns(id, tenantId, page);
   }
 
+  /**
+   * Reads the schedule FOR UPDATE, changes it and saves it in one transaction. The daily run locks
+   * the same row, so a change made at 09:00 waits for it and starts from what the run saved,
+   * instead of overwriting it with a stale copy.
+   */
+  private mutate(
+    id: string,
+    tenantId: string,
+    change: (schedule: InvoiceSchedule) => Promise<void> | void,
+  ): Promise<InvoiceSchedule> {
+    return runWithTenant(tenantId, () =>
+      this.unitOfWork.execute(async () => {
+        const schedule = await this.repo.findById(id, tenantId, {
+          forUpdate: true,
+        });
+        if (!schedule) throw new ScheduleNotFoundError();
+        await change(schedule);
+        await this.repo.save(schedule);
+        return schedule;
+      }),
+    );
+  }
+
   async update(
     id: string,
     tenantId: string,
     patch: UpdateSchedulePatch,
     now: Date = new Date(),
   ): Promise<InvoiceSchedule> {
-    const schedule = await this.get(id, tenantId);
-    const change: UpdateScheduleInput = {
-      endsOn: patch.endsOn,
-      frequency: patch.frequency,
-      anchorOn: patch.anchorOn,
-    };
-    if (patch.invoice) {
-      const merged = { ...schedule.props.invoiceInput, ...patch.invoice };
-      await assertEditableInvoicePatch(patch.invoice);
-      await this.validate(merged, tenantId, schedule.props.environment, now);
-      change.invoiceInput = merged;
-    }
-    schedule.update(change, todayInSaoPaulo(now), this.horizonDays);
-    await this.repo.save(schedule);
-    return schedule;
+    return this.mutate(id, tenantId, async (schedule) => {
+      const change: UpdateScheduleInput = {
+        endsOn: patch.endsOn,
+        frequency: patch.frequency,
+        anchorOn: patch.anchorOn,
+      };
+      if (patch.invoice) {
+        const merged = { ...schedule.props.invoiceInput, ...patch.invoice };
+        await assertEditableInvoicePatch(patch.invoice);
+        await this.validate(merged, tenantId, schedule.props.environment, now);
+        change.invoiceInput = merged;
+      }
+      schedule.update(change, todayInSaoPaulo(now), this.horizonDays);
+    });
   }
 
-  async pause(id: string, tenantId: string): Promise<InvoiceSchedule> {
-    const schedule = await this.get(id, tenantId);
-    schedule.pause();
-    await this.repo.save(schedule);
-    return schedule;
+  pause(id: string, tenantId: string): Promise<InvoiceSchedule> {
+    return this.mutate(id, tenantId, (schedule) => schedule.pause());
   }
 
-  async resume(
+  resume(
     id: string,
     tenantId: string,
     now: Date = new Date(),
   ): Promise<InvoiceSchedule> {
-    const schedule = await this.get(id, tenantId);
-    await this.assertRoomForOne(tenantId);
-    schedule.resume(todayInSaoPaulo(now));
-    await this.repo.save(schedule);
-    return schedule;
+    return this.mutate(id, tenantId, async (schedule) => {
+      await this.assertRoomForOne(tenantId);
+      schedule.resume(todayInSaoPaulo(now));
+    });
   }
 
-  async cancel(id: string, tenantId: string): Promise<InvoiceSchedule> {
-    const schedule = await this.get(id, tenantId);
-    schedule.cancel();
-    await this.repo.save(schedule);
-    return schedule;
+  cancel(id: string, tenantId: string): Promise<InvoiceSchedule> {
+    return this.mutate(id, tenantId, (schedule) => schedule.cancel());
   }
 
   private async assertRoomForOne(tenantId: string): Promise<void> {

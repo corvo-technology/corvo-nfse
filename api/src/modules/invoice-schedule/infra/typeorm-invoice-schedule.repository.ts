@@ -79,9 +79,18 @@ export class TypeOrmInvoiceScheduleRepository extends InvoiceScheduleRepository 
     );
   }
 
-  findById(id: string, tenantId: string): Promise<InvoiceSchedule | null> {
+  findById(
+    id: string,
+    tenantId: string,
+    options?: { forUpdate?: boolean },
+  ): Promise<InvoiceSchedule | null> {
     return runWithTenant(tenantId, async () => {
-      const row = await this.schedules().findOneBy({ id, tenantId });
+      const row = await this.schedules().findOne({
+        where: { id, tenantId },
+        ...(options?.forUpdate
+          ? { lock: { mode: 'pessimistic_write' as const } }
+          : {}),
+      });
       return row ? InvoiceSchedule.restore(toProps(row)) : null;
     });
   }

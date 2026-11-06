@@ -34,9 +34,11 @@ export interface ScheduleListResult<T> {
 
 export abstract class InvoiceScheduleRepository {
   abstract insert(schedule: InvoiceSchedule): Promise<void>;
+  /** `forUpdate` locks the row until the caller's transaction ends (needs one open). */
   abstract findById(
     id: string,
     tenantId: string,
+    options?: { forUpdate?: boolean },
   ): Promise<InvoiceSchedule | null>;
   abstract list(
     tenantId: string,
