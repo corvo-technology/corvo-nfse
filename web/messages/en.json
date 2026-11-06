@@ -1327,7 +1327,17 @@
     "blockedBuy": "You are out of quota. Buy single invoices or change plan to keep issuing.",
     "pixActive": "Your plan is charged monthly through Pix Automático.",
     "pixCancel": "Cancel Pix Automático",
-    "pixCancelled": "Pix Automático cancelled. Your plan stays active until the paid period ends."
+    "pixCancelled": "Pix Automático cancelled. Your plan stays active until the paid period ends.",
+    "summary": {
+      "available": "Available to issue",
+      "planLine": "Plan: {left} of {total}",
+      "avulsoLine": "Single: {count}",
+      "paidUntil": "Paid until {date}",
+      "periodLine": "Period {start} to {end}",
+      "companiesLine": "{count} active companies",
+      "companiesUnlimited": "{count} active companies (no limit)",
+      "noPlanHint": "No plan: you use your single invoices."
+    }
   },
   "Session": {
     "unavailable": "Could not retrieve your session. Check the API and try again.",

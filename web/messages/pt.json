@@ -1327,7 +1327,17 @@
     "blockedBuy": "Sua cota acabou. Compre notas avulsas ou mude de plano para continuar emitindo.",
     "pixActive": "Seu plano é cobrado todo mês por Pix Automático.",
     "pixCancel": "Cancelar Pix Automático",
-    "pixCancelled": "Pix Automático cancelado. O plano segue ativo até o fim do período pago."
+    "pixCancelled": "Pix Automático cancelado. O plano segue ativo até o fim do período pago.",
+    "summary": {
+      "available": "Disponíveis para emitir",
+      "planLine": "Plano: {left} de {total}",
+      "avulsoLine": "Avulsas: {count}",
+      "paidUntil": "Pago até {date}",
+      "periodLine": "Período {start} a {end}",
+      "companiesLine": "{count} empresas ativas",
+      "companiesUnlimited": "{count} empresas ativas (sem limite)",
+      "noPlanHint": "Sem plano: você usa as notas avulsas."
+    }
   },
   "Session": {
     "unavailable": "Não foi possível consultar sua sessão. Verifique a API e tente novamente.",
