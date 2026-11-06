@@ -2,6 +2,7 @@
 import { SDKS } from "../../sdks";
 import type { DocsTree } from "../types";
 import { municipalitiesPage } from "../municipalities-page";
+import { errorCatalogBlocks } from "../error-catalog-blocks";
 
 const ptWithRetiredCredits: DocsTree = {
   chrome: {
@@ -302,6 +303,7 @@ const ptWithRetiredCredits: DocsTree = {
             ["`ERROR_GONE`", "Operação encerrada, como a compra avulsa de créditos (410)."],
           ],
         },
+        ...errorCatalogBlocks("pt"),
         { kind: "heading", level: 2, body: "Boas práticas" },
         {
           kind: "list",

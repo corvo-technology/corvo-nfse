@@ -2,6 +2,7 @@
 import { SDKS } from "../../sdks";
 import type { DocsTree } from "../types";
 import { municipalitiesPage } from "../municipalities-page";
+import { errorCatalogBlocks } from "../error-catalog-blocks";
 
 const enWithRetiredCredits: DocsTree = {
   chrome: {
@@ -293,6 +294,7 @@ const enWithRetiredCredits: DocsTree = {
             ["`ERROR_GONE`", "Retired operation, such as one-off credit purchases (410)."],
           ],
         },
+        ...errorCatalogBlocks("en"),
         { kind: "heading", level: 2, body: "Best practices" },
         {
           kind: "list",

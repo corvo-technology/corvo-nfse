@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { errorCodeKey } from "@/lib/api-errors";
+import { INVOICE_REJECTION_CODES, REQUEST_ERRORS, VALIDATION_CODES } from "@/lib/docs/error-catalog";
 import pt from "@/messages/pt.json";
 import en from "@/messages/en.json";
 
@@ -39,5 +40,9 @@ describe("API error catalogue", () => {
   });
   it("Portuguese and English have the same codes", () => {
     expect(Object.keys(pt.ApiErrors).sort()).toEqual(Object.keys(en.ApiErrors).sort());
+  });
+  const documented = new Set([...REQUEST_ERRORS.map((entry) => entry.code), ...VALIDATION_CODES, ...INVOICE_REJECTION_CODES]);
+  it.each(codes)("%s is in the docs catalogue", (code) => {
+    expect(documented.has(code)).toBe(true);
   });
 });
