@@ -37,6 +37,9 @@ export interface PickerActionContext {
   isCurrent: boolean;
 }
 
+export const DEFAULT_NOTES = 100;
+export const DEFAULT_CYCLE: BillingCycle = "annual";
+
 const INCLUDES = ["nfse", "companies", "email", "mcp", "webhooks", "downloads"] as const;
 const planTitle = (slug: PlanSlug) => slug.charAt(0).toUpperCase() + slug.slice(1);
 const zoneKey = (slug: PlanSlug | null) => slug ?? "avulso";
@@ -233,17 +236,22 @@ function Ladder({ activeKey, cycle, currentSlug, onPick }: { activeKey: string; 
 
 export function PlanPicker({
   currentSlug,
+  currentCycle,
   renderAction,
 }: {
-  /** Plan the account is on today. */
+  /** Plan the account is on today: the picker opens on it. */
   currentSlug?: string;
+  /** Cycle that plan is paid on (defaults to the annual one when unknown). */
+  currentCycle?: BillingCycle;
   renderAction: (ctx: PickerActionContext) => ReactNode;
 }) {
   const t = useTranslations("Pricing");
   const locale = useLocale();
   const nf = new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US");
-  const [cycle, setCycle] = useState<BillingCycle>("monthly");
-  const [notes, setNotes] = useState(250);
+    // An account that already has a plan opens on it; everyone else on 100 notes, annual.
+  const currentPlan = PLANS.find((p) => p.slug === currentSlug);
+  const [cycle, setCycle] = useState<BillingCycle>(currentPlan ? (currentCycle ?? DEFAULT_CYCLE) : DEFAULT_CYCLE);
+  const [notes, setNotes] = useState(currentPlan ? currentPlan.credits : DEFAULT_NOTES);
   const [draft, setDraft] = useState<string | null>(null);
   const zones = useMemo(() => buildZones(cycle), [cycle]);
   const result = recommendForNotes(notes, cycle)!;

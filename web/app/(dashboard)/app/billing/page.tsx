@@ -21,6 +21,11 @@ const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
 );
 
+/** A plan paid more than ~2 months ahead is on the annual cycle; otherwise monthly. */
+function paidCycle(paidUntil: string | null): "monthly" | "annual" {
+  return paidUntil && new Date(paidUntil).getTime() - Date.now() > 62 * 86_400_000 ? "annual" : "monthly";
+}
+
 export default function BillingPage() {
   const t = useTranslations("Billing");
   const tCommon = useTranslations("Common");
@@ -125,6 +130,7 @@ export default function BillingPage() {
         </div>
         <PlanPicker
           currentSlug={billing.slug as PlanSlug}
+          currentCycle={paidCycle(billing.subscription.paidUntil)}
           renderAction={({ plan, cycle, avulsoUnits, isCurrent }) => {
             if (isCurrent) return <span className="inline-flex min-h-10 items-center text-[14px] text-accent">{t("currentPlan")}</span>;
             if (!canManage) return null;
