@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScheduleList, type ScheduleAction } from "@/components/schedules/schedule-list";
+import { ScheduleList } from "@/components/schedules/schedule-list";
 import { ScheduleForm } from "@/components/schedules/schedule-form";
 import { useScheduleActions } from "@/components/schedules/use-schedule-actions";
 
