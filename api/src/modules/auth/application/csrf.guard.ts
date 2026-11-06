@@ -49,12 +49,18 @@ export class CsrfGuard implements CanActivate {
     const origin = request.headers?.origin;
     if (typeof origin !== 'string' || !this.allowedOrigins.has(origin)) {
       recordCsrfFailure('origin');
-      throw new ForbiddenException('Invalid request origin');
+      throw new ForbiddenException({
+        code: 'CSRF_INVALID',
+        message: 'Invalid request origin',
+      });
     }
     const fetchSite = request.headers?.['sec-fetch-site'];
     if (fetchSite && fetchSite !== 'same-origin' && fetchSite !== 'same-site') {
       recordCsrfFailure('fetch_metadata');
-      throw new ForbiddenException('Cross-site request denied');
+      throw new ForbiddenException({
+        code: 'CSRF_INVALID',
+        message: 'Cross-site request denied',
+      });
     }
     const contentType = String(request.headers?.['content-type'] ?? '')
       .split(';', 1)[0]
@@ -69,25 +75,37 @@ export class CsrfGuard implements CanActivate {
       contentType !== 'multipart/form-data'
     ) {
       recordCsrfFailure('content_type');
-      throw new ForbiddenException('Unsupported content type');
+      throw new ForbiddenException({
+        code: 'CSRF_INVALID',
+        message: 'Unsupported content type',
+      });
     }
 
     const csrfToken =
       request.headers?.['x-csrf-token'] ?? request.headers?.['X-CSRF-Token'];
     if (!csrfToken || typeof csrfToken !== 'string') {
       recordCsrfFailure('missing_token');
-      throw new ForbiddenException('CSRF token required');
+      throw new ForbiddenException({
+        code: 'CSRF_INVALID',
+        message: 'CSRF token required',
+      });
     }
 
     const sessionId = request.authContext?.sessionId;
     if (!sessionId || typeof sessionId !== 'string') {
       recordCsrfFailure('missing_session');
-      throw new ForbiddenException('No active session');
+      throw new ForbiddenException({
+        code: 'SESSION_REQUIRED',
+        message: 'No active session',
+      });
     }
 
     if (!this.csrfService.validateToken(sessionId, csrfToken)) {
       recordCsrfFailure('invalid_token');
-      throw new ForbiddenException('Invalid CSRF token');
+      throw new ForbiddenException({
+        code: 'CSRF_INVALID',
+        message: 'Invalid CSRF token',
+      });
     }
 
     return true;

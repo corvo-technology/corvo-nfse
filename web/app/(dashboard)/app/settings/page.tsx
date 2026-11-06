@@ -9,9 +9,11 @@ import { PaymentsCard } from "@/components/settings/payments-card";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { useToast } from "@/components/ui/toast";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 export default function SettingsPage() {
   const t = useTranslations("Settings");
+  const apiError = useApiErrorText();
   const tc = useTranslations("Common");
   const tb = useTranslations("Billing");
   const { can } = useAuth();
@@ -38,7 +40,7 @@ export default function SettingsPage() {
   const fail = (cause: unknown) => {
     if (cause instanceof ApiError && cause.status === 429) toastError(tb("errors.ERROR_RATE_LIMIT_EXCEEDED", { seconds: cause.retryAfterSeconds ?? 60 }));
     else if (cause instanceof ApiError && cause.status === 409) toastError(tb("errors.customer_required"));
-    else toastError(cause instanceof ApiError && cause.status < 500 && cause.status > 0 ? cause.message : tb("errors.generic"));
+    else toastError(apiError(cause, tb("errors.generic")));
   };
 
   const openPortal = async () => {

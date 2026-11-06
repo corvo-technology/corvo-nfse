@@ -51,9 +51,10 @@ export class TurnstileVerificationService {
     const secret =
       this.config.get<AppConfiguration['turnstile']>('turnstile')?.secretKey;
     if (!secret) {
-      throw new ServiceUnavailableException(
-        'Turnstile verification is not configured',
-      );
+      throw new ServiceUnavailableException({
+        code: 'HUMAN_VERIFICATION_UNAVAILABLE',
+        message: 'Turnstile verification is not configured',
+      });
     }
 
     const body: Record<string, string> = {
@@ -79,11 +80,17 @@ export class TurnstileVerificationService {
       }
       payload = (await response.json()) as CloudflareTurnstileResponse;
     } catch {
-      throw new BadGatewayException('Turnstile verification unavailable');
+      throw new BadGatewayException({
+        code: 'HUMAN_VERIFICATION_UNAVAILABLE',
+        message: 'Turnstile verification unavailable',
+      });
     }
 
     if (typeof payload?.success !== 'boolean') {
-      throw new BadGatewayException('Invalid Turnstile verification response');
+      throw new BadGatewayException({
+        code: 'HUMAN_VERIFICATION_UNAVAILABLE',
+        message: 'Invalid Turnstile verification response',
+      });
     }
 
     if (!payload.success) {

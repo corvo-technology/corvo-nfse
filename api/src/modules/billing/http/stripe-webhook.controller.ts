@@ -31,9 +31,15 @@ export class StripeWebhookController {
     @Headers('stripe-signature') signature: string,
   ) {
     if (!req.rawBody || !signature)
-      throw new BadRequestException('Stripe signature and raw body required');
+      throw new BadRequestException({
+        code: 'BILLING_WEBHOOK_INVALID',
+        message: 'Stripe signature and raw body required',
+      });
     if (req.rawBody.length > MAX_STRIPE_WEBHOOK_BODY_BYTES)
-      throw new PayloadTooLargeException('Stripe webhook body too large');
+      throw new PayloadTooLargeException({
+        code: 'BILLING_WEBHOOK_INVALID',
+        message: 'Stripe webhook body too large',
+      });
     await this.billing.webhook(req.rawBody, signature);
     return { received: true };
   }

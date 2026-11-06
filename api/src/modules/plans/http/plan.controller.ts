@@ -71,12 +71,18 @@ export class PlanController {
     @Query('cycle') cycle: BillingCycle = 'monthly',
   ) {
     if (cycle !== 'monthly' && cycle !== 'annual')
-      throw new BadRequestException('Unsupported billing cycle');
+      throw new BadRequestException({
+        code: 'INVALID_BILLING_CYCLE',
+        message: 'Unsupported billing cycle',
+      });
     try {
       const result = this.pricing.recommendForNotes(notes, cycle);
       return data({ notes, cycle, ...result, currency: 'BRL' });
     } catch (error) {
-      throw new BadRequestException((error as Error).message);
+      throw new BadRequestException({
+        code: 'CHECKOUT_INVALID',
+        message: (error as Error).message,
+      });
     }
   }
 
@@ -86,11 +92,17 @@ export class PlanController {
     @Query('cycle') cycle: BillingCycle = 'monthly',
   ): Promise<{ data: PriceQuote }> {
     if (cycle !== 'monthly' && cycle !== 'annual')
-      throw new BadRequestException('Unsupported billing cycle');
+      throw new BadRequestException({
+        code: 'INVALID_BILLING_CYCLE',
+        message: 'Unsupported billing cycle',
+      });
     const plan = await this.planRepo.findBySlug(slug);
     // The no-plan placeholder and retired plans have no public price.
     if (!plan || !this.pricing.isPaidPlan(slug))
-      throw new NotFoundException(`Plan ${slug} not found`);
+      throw new NotFoundException({
+        code: 'PLAN_NOT_FOUND',
+        message: `Plan ${slug} not found`,
+      });
     return data(this.pricing.calculateQuote(slug, cycle));
   }
 }

@@ -42,7 +42,10 @@ export class WooviWebhookController {
   ) {
     const sent = (authorization ?? '').replace(/^Bearer /i, '');
     if (!this.config.webhookToken || !sameToken(sent, this.config.webhookToken))
-      throw new UnauthorizedException('Invalid webhook token');
+      throw new UnauthorizedException({
+        code: 'BILLING_WEBHOOK_INVALID',
+        message: 'Invalid webhook token',
+      });
     await this.payments.handleEvent(body ?? {});
     return { received: true };
   }

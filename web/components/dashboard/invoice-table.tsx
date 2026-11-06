@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { copyInvoiceHref } from "@/lib/invoice-copy";
 import { timeAgo } from "@/lib/i18n-helpers";
 import { formatScheduledDate, isScheduled } from "@/lib/invoice-schedule";
+import { useInvoiceErrorText } from "@/lib/use-api-error";
 
 type TimeAgoT = ReturnType<typeof import("next-intl").useTranslations>;
 
@@ -37,6 +38,7 @@ const STATUS_VARIANT: Record<Invoice["status"], BadgeVariant> = {
 
 export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }: InvoiceTableProps) {
   const t = useTranslations("Invoices");
+  const invoiceError = useInvoiceErrorText();
   const locale = useLocale();
   const { can } = useAuth();
   const rows = maxRows ? invoices.slice(0, maxRows) : invoices;
@@ -58,7 +60,7 @@ export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }
         <div className="flex min-w-0 flex-col">
           <span className="truncate text-text"><Link href={`/app/invoices/${inv.id}`} className="hover:text-accent">{inv.customerName || t("anonymousCustomer")}</Link></span>
           {(inv.status === "rejected" || inv.status === "failed") && (inv.lastErrorMessage || inv.lastErrorCode) ? (
-            <span className="truncate text-[12px] font-normal text-danger">{inv.lastErrorMessage ?? inv.lastErrorCode}</span>
+            <span className="truncate text-[12px] font-normal text-danger">{invoiceError(inv.lastErrorCode, inv.lastErrorMessage)}</span>
           ) : (
             <span className="truncate font-mono text-[12px] font-normal text-text-4">
               {inv.externalId ?? inv.id.slice(0, 12)}

@@ -85,7 +85,10 @@ export class StripeBillingAdapter extends BillingProvider {
   private async prices(slug: string) {
     const quote = this.pricing.calculateQuote(slug as PlanSlug, 'monthly');
     if (!quote.basePriceCents)
-      throw new BadRequestException('Free plan does not require checkout');
+      throw new BadRequestException({
+        code: 'FREE_PLAN_NO_CHECKOUT',
+        message: 'Free plan does not require checkout',
+      });
     const keys = [`corvo_${slug}_monthly`];
     const { data } = await this.stripe.prices.list({
       lookup_keys: keys,
@@ -99,9 +102,10 @@ export class StripeBillingAdapter extends BillingProvider {
       base.recurring?.interval !== 'month' ||
       base.metadata.plan_slug !== slug
     ) {
-      throw new ServiceUnavailableException(
-        'Stripe prices must be provisioned for the current catalog',
-      );
+      throw new ServiceUnavailableException({
+        code: 'BILLING_UNAVAILABLE',
+        message: 'Stripe prices must be provisioned for the current catalog',
+      });
     }
     return { base };
   }
@@ -244,7 +248,11 @@ export class StripeBillingAdapter extends BillingProvider {
     const base = sub.items.data.find(
       (i) => i.price.recurring?.usage_type !== 'metered',
     );
-    if (!base) throw new BadRequestException('Subscription has no plan item');
+    if (!base)
+      throw new BadRequestException({
+        code: 'BILLING_WEBHOOK_INVALID',
+        message: 'Subscription has no plan item',
+      });
     const oldSchedule = stripeId(sub.schedule);
     if (planSlug === 'free' || planSlug === base.price.metadata.plan_slug) {
       if (oldSchedule)
@@ -294,9 +302,10 @@ export class StripeBillingAdapter extends BillingProvider {
   }
   async portal(customerId: string) {
     if (!this.gateway.config.portalConfigurationId)
-      throw new ServiceUnavailableException(
-        'Stripe portal configuration is required',
-      );
+      throw new ServiceUnavailableException({
+        code: 'BILLING_UNAVAILABLE',
+        message: 'Stripe portal configuration is required',
+      });
     return (
       await this.stripe.billingPortal.sessions.create({
         customer: customerId,
@@ -318,10 +327,16 @@ export class StripeBillingAdapter extends BillingProvider {
         this.gateway.config.platformWebhookSecret,
       );
     } catch {
-      throw new BadRequestException('Invalid Stripe signature');
+      throw new BadRequestException({
+        code: 'BILLING_WEBHOOK_INVALID',
+        message: 'Invalid Stripe signature',
+      });
     }
     if (event.livemode !== this.gateway.config.secretKey.startsWith('sk_live_'))
-      throw new BadRequestException('Stripe event mode mismatch');
+      throw new BadRequestException({
+        code: 'BILLING_WEBHOOK_INVALID',
+        message: 'Stripe event mode mismatch',
+      });
     let subscriptionId: string | null = null;
     let customerId: string | null = null;
     let payment: { intentId: string; paid: boolean } | null = null;

@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/input";
 import { ServiceCodeCombobox } from "@/components/ui/service-code-combobox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 /** Mirrors the API rule `simples.ibscbs-effective`: from this date Simples Nacional invoices may need IBS/CBS classification. */
 const SIMPLES_IBSCBS_FROM = "2027-01-01";
@@ -37,6 +38,7 @@ export function CompanyFiscalGuide({ company }: { company: Company }) {
 
 function Guide({ company, canView, canManage }: { company: Company; canView: boolean; canManage: boolean }) {
   const t = useTranslations("CompanyFiscalGuide");
+  const apiError = useApiErrorText();
   const today = fiscalToday();
   const [revision, setRevision] = useState(0);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -52,7 +54,7 @@ function Guide({ company, canView, canManage }: { company: Company; canView: boo
     const abort = new AbortController();
     Promise.all([companies.fiscalProfiles(company.id, abort.signal), companies.serviceTaxProfiles(company.id, today, abort.signal)])
       .then(([profiles, services]) => { if (!abort.signal.aborted) setLoaded({ profiles, services, error: null }); })
-      .catch((cause: unknown) => { if (!abort.signal.aborted) setLoaded({ profiles: [], services: [], error: cause instanceof Error ? cause.message : t("failed") }); });
+      .catch((cause: unknown) => { if (!abort.signal.aborted) setLoaded({ profiles: [], services: [], error: apiError(cause, t("failed")) }); });
     return () => abort.abort();
   }, [company.id, today, revision, canView, t]);
 
@@ -65,7 +67,7 @@ function Guide({ company, canView, canManage }: { company: Company; canView: boo
     if (busy.current) return;
     busy.current = true; setSaving(true); setError(null);
     try { await action(); setLoaded(null); setRevision(value => value + 1); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : t("saveFailure")); }
+    catch (cause) { setError(apiError(cause, t("saveFailure"))); }
     finally { busy.current = false; setSaving(false); }
   };
   const header = <div><h2 className="text-base font-medium">{t("title")}</h2><p className="mt-0.5 text-[13px] text-text-3">{t("subtitle")}</p></div>;

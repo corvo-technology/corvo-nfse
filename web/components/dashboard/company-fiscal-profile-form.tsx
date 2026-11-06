@@ -8,6 +8,7 @@ import { allowsSpecialTaxRegime, fiscalToday, isSimpleNational, regimeKind, SPEC
 import type { Company, CompanyFiscalProfile, TaxRegimeKind } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 export const FISCAL_REGIMES: TaxRegimeKind[] = ["MEI", "SIMPLES_NACIONAL"];
 function nextDate(date: string): string {
@@ -20,6 +21,7 @@ export function CompanyFiscalProfileForm({ company, profile, onSaved, onCancel }
   company: Company; profile: CompanyFiscalProfile | null; onSaved: (profile: CompanyFiscalProfile) => void; onCancel: () => void;
 }) {
   const t = useTranslations("CompanyFiscal");
+  const apiError = useApiErrorText();
   const approved = profile?.reviewStatus === "approved";
   const minDate = approved && profile ? nextDate(profile.validFrom) : profile?.validFrom;
   const [regime, setRegime] = useState<TaxRegimeKind | "">(profile?.taxRegime ?? (company.taxRegime ? regimeKind(company.taxRegime) : ""));
@@ -48,7 +50,7 @@ export function CompanyFiscalProfileForm({ company, profile, onSaved, onCancel }
       onSaved(result);
     } catch (cause) {
       setIssues(mapIssues(cause, { taxRegime: "taxRegime", validFrom: "validFrom", specialTaxRegime: "specialTaxRegime", ibsCbsRegularFrom: "ibsCbsRegularFrom" }, (_code, fallback) => fallback));
-      setError(cause instanceof Error ? cause.message : t("saveFailure"));
+      setError(apiError(cause, t("saveFailure")));
     } finally { busy.current = false; setSaving(false); }
   }
   return <form onSubmit={submit} className="flex flex-col gap-4 border-t border-border pt-5" aria-label={t("profileTitle")} aria-busy={saving}>

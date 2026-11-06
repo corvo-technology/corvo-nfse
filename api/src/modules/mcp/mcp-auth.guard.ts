@@ -39,7 +39,10 @@ export class McpAuthGuard implements CanActivate {
     let payload: McpTokenPayload;
     try {
       if (!token)
-        throw new UnauthorizedException('Missing authorization header');
+        throw new UnauthorizedException({
+          code: 'MCP_AUTH_INVALID',
+          message: 'Missing authorization header',
+        });
       payload = await this.authService.validateAccessToken(token);
     } catch (error) {
       // RFC 9728: tell MCP clients where to discover the authorization server.

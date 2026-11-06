@@ -25,7 +25,10 @@ export function runWithTenant<T>(tenantId: string, work: () => T): T {
   requireTenantId(tenantId);
   const current = storage.getStore();
   if (current?.tenantId && current.tenantId !== tenantId)
-    throw new NotFoundException('Resource not found');
+    throw new NotFoundException({
+      code: 'RESOURCE_NOT_FOUND',
+      message: 'Resource not found',
+    });
   return storage.run({ tenantId, authUserId: current?.authUserId }, work);
 }
 

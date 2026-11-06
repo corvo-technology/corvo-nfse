@@ -91,7 +91,10 @@ export class ApiKeyService {
       authContext.activeTenantId,
     );
     if (!apiKey) {
-      throw new NotFoundException('API key not found');
+      throw new NotFoundException({
+        code: 'API_KEY_NOT_FOUND',
+        message: 'API key not found',
+      });
     }
     await this.apiKeyRepo.remove(apiKey, authContext.activeTenantId);
   }
@@ -102,7 +105,10 @@ export class ApiKeyService {
       tenantId,
     );
     if (!apiKey) {
-      throw new NotFoundException('API key not found');
+      throw new NotFoundException({
+        code: 'API_KEY_NOT_FOUND',
+        message: 'API key not found',
+      });
     }
     await this.apiKeyRepo.remove(apiKey, tenantId);
   }
@@ -114,20 +120,32 @@ export class ApiKeyService {
   async validate(rawKey: string): Promise<ApiKey> {
     const prefix = this.prefixFromRawKey(rawKey);
     if (!prefix) {
-      throw new UnauthorizedException('Invalid API key');
+      throw new UnauthorizedException({
+        code: 'API_KEY_INVALID',
+        message: 'Invalid API key',
+      });
     }
     const apiKey = await this.apiKeyRepo.findByKeyPrefix(prefix);
     if (!apiKey || apiKey.environment !== API_KEY_FORMAT.exec(rawKey)?.[1]) {
-      throw new UnauthorizedException('Invalid API key');
+      throw new UnauthorizedException({
+        code: 'API_KEY_INVALID',
+        message: 'Invalid API key',
+      });
     }
 
     const isValid = await argon2.verify(apiKey.keyHash, rawKey);
     if (!isValid) {
-      throw new UnauthorizedException('Invalid API key');
+      throw new UnauthorizedException({
+        code: 'API_KEY_INVALID',
+        message: 'Invalid API key',
+      });
     }
 
     if (apiKey.expiresAt && apiKey.expiresAt < new Date()) {
-      throw new UnauthorizedException('API key has expired');
+      throw new UnauthorizedException({
+        code: 'API_KEY_EXPIRED',
+        message: 'API key has expired',
+      });
     }
 
     return apiKey;

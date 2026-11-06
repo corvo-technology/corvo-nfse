@@ -39,7 +39,11 @@ export class AuthController {
   @ApiBearerAuth()
   logout(@Req() req: RequestWithAuthContext) {
     const sessionId = req.authContext?.sessionId;
-    if (!sessionId) throw new UnauthorizedException('Session is required');
+    if (!sessionId)
+      throw new UnauthorizedException({
+        code: 'SESSION_REQUIRED',
+        message: 'Session is required',
+      });
     return data({ loggedOut: true });
   }
 

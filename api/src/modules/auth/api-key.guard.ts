@@ -54,9 +54,11 @@ export class ApiKeyGuard implements CanActivate {
     const apiKey = await this.apiKeyService.validate(rawKey);
 
     if (!this.isApiKeyEndpoint(context)) {
-      throw new ForbiddenException(
-        'This endpoint is not available through API-key authentication',
-      );
+      throw new ForbiddenException({
+        code: 'API_KEY_NOT_ALLOWED',
+        message:
+          'This endpoint is not available through API-key authentication',
+      });
     }
 
     // The persisted key environment is authoritative for fiscal resources.

@@ -6,25 +6,31 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { ApiError, certificates } from "@/lib/api";
+import { errorCodeKey } from "@/lib/api-errors";
+import { useApiErrorText } from "@/lib/use-api-error";
 import type { Certificate } from "@/lib/types";
 
 const MAX_BYTES = 50 * 1024;
 
-function friendlyError(cause: unknown, t: (key: string) => string): string {
+function friendlyError(cause: unknown, t: (key: string) => string, apiError: (error: unknown, fallback: string) => string): string {
   if (cause instanceof ApiError) {
     const message = cause.message.toLowerCase();
+    const code = cause.code ? errorCodeKey(cause.code) : "";
     if (cause.status === 413) return t("certErr.tooLarge");
+    if (code === "certificate_tax_id_mismatch") return t("certErr.mismatch");
+    if (code === "certificate_expired") return t("certErr.expired");
     if (message.includes("does not match")) return t("certErr.mismatch");
     if (message.includes("expired")) return t("certErr.expired");
     if (message.includes("not yet valid")) return t("certErr.notYetValid");
     if (message.includes("invalid") || message.includes("password") || message.includes("pkcs")) return t("certErr.invalid");
   }
-  return cause instanceof Error && cause.message ? cause.message : t("failed");
+  return apiError(cause, t("failed"));
 }
 
 /** Uploads a PKCS#12 (.p12/.pfx) certificate for a company. */
 export function CertificateUpload({ companyId, onUploaded }: { companyId: string; onUploaded: (certificate: Certificate) => void }) {
   const t = useTranslations("CompanyDetail");
+  const apiError = useApiErrorText();
   const fileInput = useRef<HTMLInputElement>(null);
   const inFlight = useRef(false);
   const [file, setFile] = useState<File | null>(null);
@@ -56,7 +62,7 @@ export function CertificateUpload({ companyId, onUploaded }: { companyId: string
       body.append("password", password);
       onUploaded(await certificates.create(companyId, body));
     } catch (cause) {
-      setError(friendlyError(cause, t as unknown as (key: string) => string));
+      setError(friendlyError(cause, t as unknown as (key: string) => string, apiError));
     } finally {
       inFlight.current = false; setBusy(false); setPassword("");
     }

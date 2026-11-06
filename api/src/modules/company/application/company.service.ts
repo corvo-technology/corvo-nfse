@@ -231,7 +231,10 @@ export class CompanyService {
       normalized.environment &&
       normalized.environment !== company.environment
     )
-      throw new BadRequestException('Company environment is immutable');
+      throw new BadRequestException({
+        code: 'COMPANY_ENVIRONMENT_IMMUTABLE',
+        message: 'Company environment is immutable',
+      });
 
     // If any regime field was sent, a new fiscal profile row is appended when the
     // effective regime actually changed (never mutate an approved row in place).

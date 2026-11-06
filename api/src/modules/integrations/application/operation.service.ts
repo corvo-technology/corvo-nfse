@@ -34,7 +34,11 @@ export class OperationService {
     environment?: ExecutionEnvironment,
   ): Promise<IntegrationOperation> {
     const taxId = parseCustomerTaxId(input.taxId);
-    if (!taxId) throw new BadRequestException('Invalid CPF or CNPJ');
+    if (!taxId)
+      throw new BadRequestException({
+        code: 'INVALID_TAX_ID',
+        message: 'Invalid CPF or CNPJ',
+      });
     const current = (await this.get(tenantId, id, environment)).snapshot
       .customer;
     const updated = await this.operations.updateCustomer(id, tenantId, {
@@ -44,9 +48,10 @@ export class OperationService {
       taxIdMasked: false,
     });
     if (!updated)
-      throw new ConflictException(
-        'The invoice request of this operation is already fixed',
-      );
+      throw new ConflictException({
+        code: 'OPERATION_REQUEST_FIXED',
+        message: 'The invoice request of this operation is already fixed',
+      });
     return updated;
   }
 
@@ -59,7 +64,10 @@ export class OperationService {
     const operation = await this.get(tenantId, id, environment);
     // An invoice only reopens the sale when asking for its cancellation failed.
     if (operation.invoiceId && operation.blockReason !== 'cancel_failed')
-      throw new ConflictException('This operation already has an invoice');
+      throw new ConflictException({
+        code: 'OPERATION_HAS_INVOICE',
+        message: 'This operation already has an invoice',
+      });
     return this.emitter.run(operation);
   }
 
@@ -71,7 +79,10 @@ export class OperationService {
   ): Promise<IntegrationOperation> {
     const operation = await this.operations.findById(id, tenantId);
     if (!operation || (environment && operation.environment !== environment))
-      throw new NotFoundException('Operation not found');
+      throw new NotFoundException({
+        code: 'OPERATION_NOT_FOUND',
+        message: 'Operation not found',
+      });
     return operation;
   }
 }

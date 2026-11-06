@@ -21,7 +21,10 @@ export class PasswordlessWorkspaceService {
         const memberships = await this.workspaces.memberships(user.id);
         if (memberships.some((membership) => membership.isActive)) return;
         if (memberships.length)
-          throw new ForbiddenException('Tenant membership is inactive');
+          throw new ForbiddenException({
+            code: 'MEMBERSHIP_INACTIVE',
+            message: 'Tenant membership is inactive',
+          });
 
         const freePlanId = await this.workspaces.freePlanId();
         const grantFirstFreeNote = await this.workspaces.claimFirstFreeNote(

@@ -11,6 +11,7 @@ import { maskPhone, maskTaxId } from "@/lib/masks";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 export type CheckoutTarget =
   | { kind: "plan"; slug: CheckoutPlan; cycle: BillingCycle }
@@ -147,6 +148,7 @@ function CheckoutDialogInner({
   redirect?: (url: string) => void;
 }) {
   const t = useTranslations("Billing");
+  const apiError = useApiErrorText();
   const tp = useTranslations("Pricing");
   const [method, setMethod] = useState<PaymentMethod>("pix");
   const [payer, setPayer] = useState({ name: "", taxID: "", email: "", phone: "" });
@@ -193,7 +195,7 @@ function CheckoutDialogInner({
       else setPix(result);
     } catch (cause) {
       // A rejected request (invalid payer data, say) stays on the form with its reason, so nothing typed is lost.
-      if (cause instanceof ApiError && cause.status >= 400 && cause.status < 500 && cause.status !== 429) setError(cause.message);
+      if (cause instanceof ApiError && cause.status >= 400 && cause.status < 500 && cause.status !== 429) setError(apiError(cause, t("errors.generic")));
       else onError(cause);
     } finally {
       setBusy(false);
@@ -303,6 +305,3 @@ export function CheckoutDialog(props: Parameters<typeof CheckoutDialogInner>[0])
   return <CheckoutDialogInner key={JSON.stringify(props.target)} {...props} />;
 }
 
-export function purchaseErrorMessage(cause: unknown, fallback: string): string {
-  return cause instanceof ApiError && cause.status < 500 && cause.status > 0 ? cause.message : fallback;
-}

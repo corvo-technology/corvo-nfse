@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api";
-import { apiErrorMessage, errorCodeKey, mapIssues } from "@/lib/api-errors";
+import { apiErrorMessage, errorCodeKey, invoiceErrorText, mapIssues } from "@/lib/api-errors";
 import pt from "@/messages/pt.json";
 import en from "@/messages/en.json";
 
@@ -46,5 +46,18 @@ describe("every code the API validates has a Portuguese and an English text", ()
   it.each(codes)("%s", (code) => {
     expect((pt.ApiErrors as Record<string, string>)[code]).toBeTruthy();
     expect((en.ApiErrors as Record<string, string>)[code]).toBeTruthy();
+  });
+});
+
+describe("invoiceErrorText", () => {
+  const { has, text } = table({ fiscal_validation_failed: "A nota não passou na validação fiscal." });
+  it("translates our own codes", () => {
+    expect(invoiceErrorText("FISCAL_VALIDATION_FAILED", "English from the API", has, text)).toBe("A nota não passou na validação fiscal.");
+  });
+  it("keeps the authority's own Portuguese wording for a Sefin rejection", () => {
+    expect(invoiceErrorText("E0120", "Rejeição da Receita [E0120]: IM do prestador não deve ser informado", has, text)).toBe("Rejeição da Receita [E0120]: IM do prestador não deve ser informado");
+  });
+  it("falls back to the code when there is no message", () => {
+    expect(invoiceErrorText("E0999", null, has, text)).toBe("E0999");
   });
 });

@@ -770,10 +770,15 @@ describe('CompanyService company limit by plan', () => {
       saveWithLimit: jest.fn(),
       findByIdAndTenantId: jest.fn(),
     };
-    const profiles = { record: jest.fn(), current: jest.fn().mockResolvedValue(null) };
+    const profiles = {
+      record: jest.fn(),
+      current: jest.fn().mockResolvedValue(null),
+    };
     const service = new CompanyService(
       repo as never,
-      { getStatus: jest.fn().mockResolvedValue({ maxActiveCompanies }) } as never,
+      {
+        getStatus: jest.fn().mockResolvedValue({ maxActiveCompanies }),
+      } as never,
       new CompanyDomainService(),
       profiles as never,
     );
@@ -783,7 +788,11 @@ describe('CompanyService company limit by plan', () => {
   it('without a plan (limit 1) a live company is saved under the atomic limit', async () => {
     const { service, repo } = build(1);
     await service.create(input, tenant, 'live');
-    expect(repo.saveWithLimit).toHaveBeenCalledWith(expect.anything(), 1, tenant);
+    expect(repo.saveWithLimit).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      tenant,
+    );
     expect(repo.save).not.toHaveBeenCalled();
   });
 
@@ -801,4 +810,3 @@ describe('CompanyService company limit by plan', () => {
     expect(repo.saveWithLimit).not.toHaveBeenCalled();
   });
 });
-
