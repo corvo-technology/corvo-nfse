@@ -33,6 +33,7 @@ const deploySecrets = {
   SECRETS_ENCRYPTION_KEY: () => randomBytes(32).toString('base64'),
   NFSE_MASTER_KEY: () => randomBytes(32).toString('hex'),
   OTP_HMAC_SECRET: () => randomBytes(32).toString('hex'),
+  PROXY_SHARED_SECRET: () => randomBytes(32).toString('hex'),
 };
 
 const files = [

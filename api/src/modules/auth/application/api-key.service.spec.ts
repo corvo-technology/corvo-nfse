@@ -26,12 +26,43 @@ describe(ApiKeyService.name, () => {
     jest.resetAllMocks();
   });
 
+  describe('scope vs. creator permissions', () => {
+    const developer = {
+      activeTenantId: 'tenant-id',
+      role: 'developer',
+      permissions: ['api_keys.manage', 'nfse.invoices.issue'],
+    } as any;
+
+    it('rejects a full_access key from a developer (would add certificate management)', async () => {
+      await expect(
+        service.create(developer, {
+          name: 'k',
+          environment: 'test',
+          scope: 'full_access',
+        }),
+      ).rejects.toThrow(/permission/);
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('allows a developer to create a key within their own permissions', async () => {
+      (argon2.hash as jest.Mock).mockResolvedValue('hash');
+      repository.save.mockImplementation(async (key) => key);
+      await expect(
+        service.create(developer, {
+          name: 'k',
+          environment: 'test',
+          scope: 'invoices_issue',
+        }),
+      ).resolves.toBeDefined();
+    });
+  });
+
   it('stores the complete generated lookup prefix', async () => {
     (argon2.hash as jest.Mock).mockResolvedValue('hash');
     repository.save.mockImplementation(async (key) => key);
 
     const result = await service.create(
-      { activeTenantId: 'tenant-id' } as any,
+      { activeTenantId: 'tenant-id', role: 'admin', permissions: [] } as any,
       { name: 'Production', environment: 'live', scope: 'full_access' },
     );
 

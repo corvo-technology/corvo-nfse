@@ -10,7 +10,12 @@ describe('TurnstileController', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
-  it('accepts token and uses CF-Connecting-IP from a trusted proxy request', async () => {
+  afterEach(() => {
+    delete process.env.TRUST_CF_CONNECTING_IP;
+  });
+
+  it('accepts token and uses CF-Connecting-IP when Cloudflare is declared', async () => {
+    process.env.TRUST_CF_CONNECTING_IP = 'true';
     service.verify.mockResolvedValue({ success: true, hostname: 'site.test' });
 
     await expect(
@@ -25,12 +30,12 @@ describe('TurnstileController', () => {
     });
   });
 
-  it('accepts response and uses the first X-Forwarded-For IP', async () => {
+  it('accepts response and uses the last X-Forwarded-For IP (added by our proxy)', async () => {
     service.verify.mockResolvedValue({ success: false, errorCodes: [] });
 
     await controller.verify(
       {
-        headers: { 'x-forwarded-for': '198.51.100.2, 10.0.0.1' },
+        headers: { 'x-forwarded-for': '203.0.113.77, 198.51.100.2' },
         ip: '10.0.0.1',
       },
       { response: 'response-token' },

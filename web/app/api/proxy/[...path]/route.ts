@@ -1,4 +1,5 @@
 import { SeverityNumber } from "@opentelemetry/api-logs";
+import { isIP } from "node:net";
 import { after, NextRequest, NextResponse } from "next/server";
 import { loggerProvider, posthogConfigured, posthogLog } from "@/instrumentation";
 
@@ -85,6 +86,16 @@ function safeLocation(value: string | null): string | null {
     return url.protocol === "https:" && OAUTH_HOSTS.has(url.hostname) && !url.username && !url.password ? url.toString() : null;
   } catch { return null; }
 }
+/**
+ * Real browser IP for the API's rate limits. Same trust rule as the API: the Cloudflare header only
+ * when declared (TRUST_CF_CONNECTING_IP), otherwise the last x-forwarded-for entry added by our own proxy.
+ */
+function browserIp(request: NextRequest): string | undefined {
+  const cloudflare = request.headers.get("cf-connecting-ip")?.trim();
+  if (process.env.TRUST_CF_CONNECTING_IP === "true" && cloudflare && isIP(cloudflare)) return cloudflare;
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",").map((entry) => entry.trim()).filter((entry) => isIP(entry));
+  return forwarded?.at(-1);
+}
 const failure = (status: number, message: string) => NextResponse.json({ statusCode: status, message }, { status, headers: { "Cache-Control": "no-store" } });
 async function limitedBody(request: NextRequest, limit: number) {
   const reader = request.body?.getReader();
@@ -131,6 +142,9 @@ async function proxyRequest(request: NextRequest, context: { params: Promise<{ p
   for (const name of ["accept", "content-type", "origin", "sec-fetch-site", "x-csrf-token", "idempotency-key", "x-corvo-environment"]) {
     const value = request.headers.get(name); if (value) headers.set(name, value);
   }
+  // The API only believes this IP when the shared secret matches; otherwise every visitor looks like this server.
+  const proxySecret = process.env.PROXY_SHARED_SECRET; const clientIp = browserIp(request);
+  if (proxySecret && clientIp) { headers.set("x-corvo-proxy-secret", proxySecret); headers.set("x-corvo-client-ip", clientIp); }
   // Restrict credentials to session cookies; never proxy Bearer or integration keys.
   const cookie = request.headers.get("cookie")?.split(";").filter((entry) => sessionNames.has(entry.trim().split("=", 1)[0])).map((entry) => entry.trim()).join("; ");
   if (cookie) headers.set("cookie", cookie);

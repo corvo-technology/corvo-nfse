@@ -390,6 +390,10 @@ export const envSchema = z
       .default(5),
     // ─── OTP Configuration ────────────────────────────────────────
     OTP_HMAC_SECRET: z.string().min(32).optional(),
+    /** Shared with the web proxy so the API can trust the browser IP it forwards. */
+    PROXY_SHARED_SECRET: z.string().min(32).optional(),
+    /** Set to true only when the API is reachable through Cloudflare alone. */
+    TRUST_CF_CONNECTING_IP: z.enum(['true', 'false']).optional(),
     OTP_TTL_SECONDS: z.coerce.number().int().min(60).max(900).default(300),
     OTP_PROOF_TTL_SECONDS: z.coerce
       .number()
