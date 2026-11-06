@@ -139,6 +139,19 @@ Ferramentas novas no mesmo padrão de `nfse_issue`: `schedule_create`, `schedule
 - Horizonte da 1ª data: o mesmo `OUTBOX_SCHEDULE_MAX_DAYS`.
 - Destinatário dos e-mails: o mesmo do aviso de crédito baixo.
 
+## Respostas à checagem do construtor (decisões minhas, a conferir)
+
+- **Competência**: a nota recorrente tem sempre a competência do dia em que roda (data de São Paulo, de uma função única `todayInSaoPaulo`). Ocorrência de sábado que roda na segunda tem competência de segunda. Não há competência passada ou livre numa agenda. O `SCHEDULE` de hoje também só aceitava data futura, que era o próprio dia da liberação, então nada se perde. **Mudança:** um `once` marcado para sábado ou domingo agora roda na segunda (antes rodava no próprio dia às 09h).
+- **Erros do lote**: o `submitBatch` recusa **item a item** (validação ou regra de billing, como falta de crédito) e grava os demais na mesma transação por tenant. Só um erro inesperado derruba o lote inteiro, sem gravar nada, e nesse caso nenhuma agenda do tenant avança: o cron registra o erro e tenta no próximo dia útil.
+- **Falhas permanentes** (certificado vencido, empresa desativada, dados fiscais inválidos) seguem o mesmo fluxo de 3 tentativas, com o motivo no e-mail. Simples e previsível; o custo é 2 e-mails de "tentamos amanhã" que não adiantam. Se incomodar, depois vira "pausa na hora" para esses motivos.
+- **Idempotência e retentativa**: a chave `schedule:<id>:<occurrence_on>` não inclui a tentativa, de propósito: uma tentativa que falhou não gravou nota, então a seguinte pode reutilizar a chave. A nota é criada pelo `submitBatch` (sua própria transação) e o avanço da agenda e o log ficam numa transação logo depois. Se a API cair entre as duas, a próxima execução devolve a nota já criada (replay) e a agenda avança sem duplicar.
+- **Concorrência**: o cron seleciona e "reivindica" as agendas com `FOR UPDATE SKIP LOCKED` e confere `status = active` dentro da transação. Uma agenda pausada ou cancelada entre a seleção e a emissão não emite. Duas instâncias não pegam a mesma linha. A chave de idempotência é a segunda barreira.
+- **Ordem e crédito acabando no meio do lote**: processa a `next_run_on` mais antiga primeiro (e `created_at` como desempate), dentro do lock de billing do tenant. As que não tiveram crédito falham e contam 1 tentativa cada.
+- **`test` e `live`**: o cron roda para os dois. No `test` não há reserva de crédito (como hoje) e **não se envia e-mail de cobrança**, só o log.
+- **E-mails**: 1 e-mail de aviso por **tenant por dia**, listando as agendas que falharam ("tentamos de novo no próximo dia útil"), em vez de 1 por agenda. Pausa manual (cliente) não envia e-mail. O e-mail de **pausa por falhas** é 1 por agenda (é raro e importante). Destino: o mesmo do aviso de crédito baixo (`credits-alerts`), que é por tenant; o construtor confirma.
+- **Limites**: sem limite por plano. Teto técnico de 200 agendas ativas por tenant, para o cron não crescer sem controle. O tamanho do lote por chamada segue o limite que o `submitBatch` já tem.
+- **Permissões**: mesmas das notas (`nfse.invoices.issue` para criar e alterar, `nfse.invoices.view` para ler), também no MCP e nas API keys, `test` e `live`.
+
 ## O que fica para o construtor
 
 Nomes de rotas e DTOs, formato exato dos e-mails (templates no provedor), layout da tela, índices adicionais, métricas do cron.
