@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import SchedulesPage from "@/app/(dashboard)/app/schedules/page";
+import { SchedulePanel } from "@/components/schedules/schedule-panel";
 import { ApiError } from "@/lib/api";
 import type { InvoiceSchedule } from "@/lib/types";
 import messages from "@/messages/en.json";
@@ -33,7 +33,7 @@ const schedule = (over: Partial<InvoiceSchedule> = {}): InvoiceSchedule => ({
   anchorOn: "2026-11-09", nextRunOn: "2026-11-09", endsOn: null, attempts: 0, lastRunOn: null,
   invoice: { amount: 150 }, createdAt: "2026-11-06T15:00:00.000Z", ...over,
 });
-const renderPage = () => render(<NextIntlClientProvider locale="en" messages={messages}><SchedulesPage /></NextIntlClientProvider>);
+const renderPage = () => render(<NextIntlClientProvider locale="en" messages={messages}><SchedulePanel /></NextIntlClientProvider>);
 const page = (items: InvoiceSchedule[]) => ({ items, hasMore: false, nextCursor: null });
 const row = (id = "s1") => screen.getByTestId(`schedule-${id}`);
 
@@ -142,32 +142,15 @@ describe("Schedules page: actions", () => {
     expect(within(row()).getByText("Active")).toBeTruthy();
   });
 
-  it("without the issue permission there are no actions and no new-schedule button", async () => {
+  it("without the issue permission there are no actions", async () => {
     mocks.canIssue = false;
     renderPage();
     const r = await waitFor(() => row());
     expect(within(r).queryByRole("button", { name: "Pause" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "New schedule" })).toBeNull();
   });
 });
 
-describe("Schedules page: creating, editing and the run history", () => {
-  it("New schedule opens the form and the created schedule joins the list", async () => {
-    mocks.list.mockResolvedValue(page([]));
-    mocks.create.mockResolvedValue(schedule({ id: "new", kind: "once", frequency: null }));
-    renderPage();
-    await screen.findByText("No schedules yet");
-    fireEvent.click(screen.getByRole("button", { name: "New schedule" }));
-    const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText(/Company/), { target: { value: "c1" } });
-    fireEvent.change(within(dialog).getByLabelText(/Date of the first run/), { target: { value: "2099-01-05" } });
-    fireEvent.change(within(dialog).getByLabelText(/^Amount/), { target: { value: "10" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Create schedule" }));
-    await waitFor(() => expect(mocks.create).toHaveBeenCalled());
-    await waitFor(() => expect(screen.getByTestId("schedule-new")).toBeTruthy());
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  });
-
+describe("Schedules page: editing and the run history", () => {
   it("Edit opens the form with the schedule and the saved version replaces the row", async () => {
     mocks.update.mockResolvedValue(schedule({ invoice: { amount: 999 } }));
     renderPage();

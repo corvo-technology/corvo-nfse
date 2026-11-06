@@ -67,8 +67,7 @@
       "invoices": "Notas fiscais",
       "billing": "Plano",
       "agents": "Agentes de IA",
-      "integrations": "Integrações",
-      "schedules": "Agendadas"
+      "integrations": "Integrações"
     },
     "account": "CONTA",
     "balance": "SALDO",
@@ -1116,7 +1115,8 @@
       "scheduled": "Agendadas",
       "authorized": "Autorizadas",
       "processing": "Processando",
-      "rejected": "Rejeitadas"
+      "rejected": "Rejeitadas",
+      "cancelled": "Canceladas"
     },
     "form": {
       "company": "Empresa emissora",
@@ -2432,7 +2432,6 @@
   "Schedules": {
     "title": "Agendadas e recorrentes",
     "subtitle": "Notas que se emitem sozinhas. Rodam às 09h (Brasília) em dias úteis; uma data de fim de semana roda na segunda, e a nota leva a competência do dia em que roda.",
-    "new": "Nova agenda",
     "empty": {
       "title": "Nenhuma agenda ainda",
       "body": "Crie uma agenda para emitir uma nota numa data futura, ou para repeti-la toda semana, a cada duas semanas ou todo mês."

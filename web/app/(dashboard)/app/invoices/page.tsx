@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AlertTriangle, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { invoices as invoicesApi } from "@/lib/api";
@@ -14,15 +15,21 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { isScheduled } from "@/lib/invoice-schedule";
+import { SchedulePanel } from "@/components/schedules/schedule-panel";
 
-const FILTERS = ["all", "scheduled", "authorized", "processing", "rejected"] as const;
+const FILTERS = ["all", "scheduled", "authorized", "processing", "rejected", "cancelled"] as const;
 type Filter = (typeof FILTERS)[number];
 
 export default function InvoicesPage() {
+  return <Suspense><InvoicesList /></Suspense>;
+}
+
+function InvoicesList() {
   const t = useTranslations("Invoices");
   const { can } = useAuth();
   const tCommon = useTranslations("Common");
-  const [filter, setFilter] = useState<Filter>("all");
+  const params = useSearchParams();
+  const [filter, setFilter] = useState<Filter>(() => { const asked = params.get("filter"); return FILTERS.includes(asked as Filter) ? (asked as Filter) : "all"; });
   const { items: invoices, loading, loadingMore, hasMore, error, loadMore } = useCursorPagination((cursor, signal) => invoicesApi.list({ limit: 50, cursor }, signal), []);
   const failed = error !== null;
 
@@ -72,14 +79,15 @@ export default function InvoicesPage() {
         })}
       </div>
 
-      <p className="text-sm text-text-3">{t("loadedRecords", { count: all.length })}</p>
-      <Card className="dash-in dash-in-2 overflow-hidden" aria-live="polite">
+      {filter === "scheduled" && <SchedulePanel />}
+      {(filter !== "scheduled" || scheduled.length > 0) && <p className="text-sm text-text-3">{t("loadedRecords", { count: all.length })}</p>}
+      {(filter !== "scheduled" || scheduled.length > 0) && <Card className="dash-in dash-in-2 overflow-hidden" aria-live="polite">
         {failed ? (
           <EmptyState tone="danger" icon={AlertTriangle} title={t("loadFailed")} />
         ) : (
           <InvoiceTable invoices={filtered} loading={loading} emptyText={t("noInvoices")} timeAgoT={tCommon} />
         )}
-      </Card>
+      </Card>}
       {hasMore && <Button loading={loadingMore} onClick={() => void loadMore()}>{t("loadMore")}</Button>}
     </div>
   );

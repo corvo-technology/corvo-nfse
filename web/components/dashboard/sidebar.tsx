@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Bot,
   Building2,
-  CalendarClock,
   CreditCard,
   FileText,
   KeyRound,
@@ -37,7 +36,6 @@ const navMain: NavItem[] = [
   { key: "Sidebar.nav.overview", href: "/app", icon: LayoutDashboard },
   { key: "Sidebar.nav.companies", href: "/app/companies", icon: Building2 },
   { key: "Sidebar.nav.invoices", href: "/app/invoices", icon: FileText },
-  { key: "Sidebar.nav.schedules", href: "/app/schedules", icon: CalendarClock },
 ];
 
 const navAccount: NavItem[] = [
@@ -80,7 +78,7 @@ export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarPr
   const isActive = (href: string) => (href === "/app" ? activePath === "/app" : activePath.startsWith(href));
 
   const renderItem = ({ key, href, icon: Icon }: NavItem) => {
-    const permission = ({ "/app/companies": "nfse.companies.view", "/app/invoices": "nfse.invoices.view", "/app/schedules": "nfse.invoices.view", "/app/webhooks": "webhooks.view", "/app/api-keys": "api_keys.manage", "/app/billing": "billing.view", "/app/members": "settings.manage" } as Record<string, string>)[href];
+    const permission = ({ "/app/companies": "nfse.companies.view", "/app/invoices": "nfse.invoices.view", "/app/webhooks": "webhooks.view", "/app/api-keys": "api_keys.manage", "/app/billing": "billing.view", "/app/members": "settings.manage" } as Record<string, string>)[href];
     if (permission && !can(permission)) return null;
     const active = isActive(href);
     return (

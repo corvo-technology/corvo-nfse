@@ -67,8 +67,7 @@
       "invoices": "Tax invoices",
       "billing": "Plan",
       "agents": "AI agents",
-      "integrations": "Integrations",
-      "schedules": "Scheduled"
+      "integrations": "Integrations"
     },
     "account": "ACCOUNT",
     "balance": "BALANCE",
@@ -1116,7 +1115,8 @@
       "scheduled": "Scheduled",
       "authorized": "Authorized",
       "processing": "Processing",
-      "rejected": "Rejected"
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
     },
     "form": {
       "company": "Issuer company",
@@ -2432,7 +2432,6 @@
   "Schedules": {
     "title": "Scheduled and recurring",
     "subtitle": "Invoices that issue themselves. They run at 09:00 (Brasília) on business days; a weekend date runs on Monday, and the note takes the competence of the day it runs.",
-    "new": "New schedule",
     "empty": {
       "title": "No schedules yet",
       "body": "Create a schedule to issue a note on a future date, or to repeat it weekly, every two weeks or monthly."
