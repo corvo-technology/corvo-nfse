@@ -42,13 +42,19 @@ export class CookieAuthGuard implements CanActivate {
 
     const cookieValue = extractCookie(request, this.cookies.name('session'));
     if (!cookieValue) {
-      throw new UnauthorizedException('Session cookie is required');
+      throw new UnauthorizedException({
+        code: 'SESSION_REQUIRED',
+        message: 'Session cookie is required',
+      });
     }
 
     const session =
       await this.cookieSessionService.validateSession(cookieValue);
     if (!session) {
-      throw new UnauthorizedException('Invalid or expired session');
+      throw new UnauthorizedException({
+        code: 'SESSION_EXPIRED',
+        message: 'Invalid or expired session',
+      });
     }
 
     request.authContext = {

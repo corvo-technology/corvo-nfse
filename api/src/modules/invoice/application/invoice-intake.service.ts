@@ -56,7 +56,10 @@ export class InvoiceIntakeService {
     mode?: { allowFutureCompetence?: boolean },
   ): Promise<PreparedInvoiceInput> {
     if (!dto.companyId && !dto.companyTaxId)
-      throw new BadRequestException('companyId or companyTaxId is required');
+      throw new BadRequestException({
+        code: 'COMPANY_REQUIRED',
+        message: 'companyId or companyTaxId is required',
+      });
     const company = dto.companyId
       ? await this.companies.findById(dto.companyId, tenantId, environment)
       : await this.companies.findByTaxId(

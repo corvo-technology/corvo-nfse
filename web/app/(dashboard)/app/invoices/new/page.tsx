@@ -112,7 +112,7 @@ export default function NewInvoicePage() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err?.message ?? t("fields.companiesFailed"));
+        setError(apiErrorMessage(err, te.has, te, t("fields.companiesFailed")));
         setLoading(false);
       });
     return () => {
@@ -203,7 +203,7 @@ export default function NewInvoicePage() {
       setCalc({ key, result });
     } catch (err: unknown) {
       setCalc(null);
-      setCalcError(err instanceof ApiError && err.status === 503 ? t("calculate.unavailable") : err instanceof Error && err.message ? err.message : t("calculate.failed"));
+      setCalcError(err instanceof ApiError && err.status === 503 ? t("calculate.unavailable") : apiErrorMessage(err, te.has, te, t("calculate.failed")));
     } finally { setCalculating(false); }
   }
 

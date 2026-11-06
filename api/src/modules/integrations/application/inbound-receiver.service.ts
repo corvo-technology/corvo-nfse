@@ -39,7 +39,10 @@ export class InboundReceiverService {
       connection.state === 'draft' ||
       connection.state === 'disconnected'
     )
-      throw new NotFoundException('Not found');
+      throw new NotFoundException({
+        code: 'INBOUND_INVALID',
+        message: 'Not found',
+      });
 
     const connector = this.registry.get(connection.provider);
     const auth = await connector.authenticate(
@@ -50,7 +53,10 @@ export class InboundReceiverService {
       this.logger.warn(
         `Rejected ${connection.provider} delivery: ${auth.reason}`,
       );
-      throw new UnauthorizedException('Invalid webhook authentication');
+      throw new UnauthorizedException({
+        code: 'INBOUND_INVALID',
+        message: 'Invalid webhook authentication',
+      });
     }
 
     const base = {

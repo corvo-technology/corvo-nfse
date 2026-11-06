@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { ServiceCodeCombobox } from "@/components/ui/service-code-combobox";
 import { FISCAL_REGIMES } from "./company-fiscal-profile-form";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 const RATE_KEYS: WithholdingTax[] = ["irrf", "pis", "cofins", "csll", "inss"];
 const TEXT_FIELDS = ["name", "municipalServiceCode", "nbsCode", "cst", "classCode", "operationIndicator", "incidenceMunicipalityCode", "issRate", "effectiveFrom", "effectiveUntil", "classificationSource", "catalogVersion"] as const;
@@ -20,6 +21,7 @@ export function CompanyServiceProfileForm({ company, profile, date, onSaved, onC
   onSaved: (profile: CompanyServiceTaxProfile) => void; onCancel: () => void;
 }) {
   const t = useTranslations("CompanyFiscal");
+  const apiError = useApiErrorText();
   const [values, setValues] = useState<Record<TextField, string>>(() => Object.fromEntries(TEXT_FIELDS.map(key => [key, profile?.[key] ?? (key === "effectiveFrom" ? date : key === "classificationSource" ? "manual" : "")])) as Record<TextField, string>);
   const [code, setCode] = useState(profile?.serviceCode ?? company.defaultServiceCode ?? "");
   const [operationNature, setOperationNature] = useState<CompanyServiceTaxProfile["operationNature"]>(profile?.operationNature ?? "SERVICE");
@@ -58,7 +60,7 @@ export function CompanyServiceProfileForm({ company, profile, date, onSaved, onC
     } catch (cause) {
       const mapping = Object.fromEntries([...TEXT_FIELDS, "serviceCode", "issTaxation", "withholdingPolicy", ...RATE_KEYS.map(key => `withholdingRates.${key}`)].map(key => [key, key]));
       setIssues(mapIssues(cause, mapping, (_code, fallback) => fallback));
-      setError(cause instanceof Error ? cause.message : t("saveFailure"));
+      setError(apiError(cause, t("saveFailure")));
     } finally { busy.current = false; setSaving(false); }
   }
   return <form onSubmit={submit} className="flex flex-col gap-5 border-t border-border pt-5" aria-label={t("servicesTitle")} aria-busy={saving}>

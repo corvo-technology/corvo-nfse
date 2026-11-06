@@ -23,6 +23,15 @@ export function apiErrorMessage(error: unknown, has: (key: string) => boolean, t
 }
 
 /**
+ * Why an invoice was rejected or failed: our own codes get a translation; a Sefin/Receita rejection
+ * (E0120 and the like) keeps its Portuguese text, which is the authority's own wording.
+ */
+export function invoiceErrorText(code: string | null | undefined, message: string | null | undefined, has: (key: string) => boolean, text: (key: string) => string): string {
+  const key = code ? errorCodeKey(code) : "";
+  return key && has(key) ? text(key) : (message ?? code ?? "");
+}
+
+/**
  * Maps API issues to `{ formField: translated message }`. `fieldMap` converts
  * API paths ("address.zip") to form field names; unmapped issues go to `_form`.
  */

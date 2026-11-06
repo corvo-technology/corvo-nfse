@@ -47,7 +47,10 @@ export class TypeOrmDpsSequenceRepository implements IDpsSequenceRepository {
         );
 
         if (!result[0].length)
-          throw new NotFoundException('Resource not found');
+          throw new NotFoundException({
+            code: 'RESOURCE_NOT_FOUND',
+            message: 'Resource not found',
+          });
         await queryRunner.commitTransaction();
 
         return {

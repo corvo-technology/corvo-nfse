@@ -265,7 +265,10 @@ export class CompanyController {
   private requireAuthContext(req: RequestWithAuthContext): AuthContext {
     const context = req.authContext;
     if (!context)
-      throw new UnauthorizedException('Authentication context is required');
+      throw new UnauthorizedException({
+        code: 'TENANT_CONTEXT_REQUIRED',
+        message: 'Authentication context is required',
+      });
     return context;
   }
 
@@ -558,7 +561,11 @@ export class CompanyController {
       id,
       tenantId,
     );
-    if (!existing) throw new NotFoundException('Service tax profile not found');
+    if (!existing)
+      throw new NotFoundException({
+        code: 'SERVICE_PROFILE_NOT_FOUND',
+        message: 'Service tax profile not found',
+      });
     return data(
       await this.serviceTaxProfiles.upsert(
         id,

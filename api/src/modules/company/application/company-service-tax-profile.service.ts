@@ -98,12 +98,18 @@ export class CompanyServiceTaxProfileService {
     if (id !== null) {
       const existing = await this.profiles.findById(id, companyId, tenantId);
       if (!existing)
-        throw new NotFoundException('Service tax profile not found');
+        throw new NotFoundException({
+          code: 'SERVICE_PROFILE_NOT_FOUND',
+          message: 'Service tax profile not found',
+        });
       if (
         existing.reviewStatus === 'approved' &&
         existing.effectiveFrom === input.effectiveFrom
       )
-        throw new ConflictException('immutable_approved_profile');
+        throw new ConflictException({
+          code: 'IMMUTABLE_APPROVED_PROFILE',
+          message: 'immutable_approved_profile',
+        });
     }
     const issues = validateServiceTaxProfile(input);
     if (issues.length > 0) throw new FiscalValidationError(issues);
@@ -116,7 +122,11 @@ export class CompanyServiceTaxProfileService {
     id: string,
   ): Promise<CompanyServiceTaxProfile> {
     const existing = await this.profiles.findById(id, companyId, tenantId);
-    if (!existing) throw new NotFoundException('Service tax profile not found');
+    if (!existing)
+      throw new NotFoundException({
+        code: 'SERVICE_PROFILE_NOT_FOUND',
+        message: 'Service tax profile not found',
+      });
     if (existing.reviewStatus === 'approved') return existing;
     const issues = validateServiceTaxProfile(existing);
     if (issues.length > 0) throw new FiscalValidationError(issues);
@@ -135,11 +145,21 @@ export class CompanyServiceTaxProfileService {
     today: string,
   ): Promise<void> {
     const existing = await this.profiles.findById(id, companyId, tenantId);
-    if (!existing) throw new NotFoundException('Service tax profile not found');
+    if (!existing)
+      throw new NotFoundException({
+        code: 'SERVICE_PROFILE_NOT_FOUND',
+        message: 'Service tax profile not found',
+      });
     if (existing.reviewStatus === 'approved')
-      throw new ConflictException('immutable_approved_profile');
+      throw new ConflictException({
+        code: 'IMMUTABLE_APPROVED_PROFILE',
+        message: 'immutable_approved_profile',
+      });
     if (existing.effectiveUntil === null || existing.effectiveUntil >= today)
-      throw new ConflictException('service_profile_still_effective');
+      throw new ConflictException({
+        code: 'SERVICE_PROFILE_STILL_EFFECTIVE',
+        message: 'service_profile_still_effective',
+      });
     await this.profiles.delete(id, companyId, tenantId);
   }
 

@@ -24,15 +24,17 @@ export function assertReplayMatches(
     intent.cycle === expected.cycle &&
     intent.units === expected.units;
   if (!same)
-    throw new ConflictException(
-      'This Idempotency-Key was already used for a different purchase',
-    );
+    throw new ConflictException({
+      code: 'CHECKOUT_KEY_REUSED',
+      message: 'This Idempotency-Key was already used for a different purchase',
+    });
   if (
     intent.status !== 'paid' &&
     intent.expiresAt &&
     intent.expiresAt.getTime() <= Date.now()
   )
-    throw new ConflictException(
-      'This checkout expired: retry with a new Idempotency-Key',
-    );
+    throw new ConflictException({
+      code: 'CHECKOUT_EXPIRED',
+      message: 'This checkout expired: retry with a new Idempotency-Key',
+    });
 }

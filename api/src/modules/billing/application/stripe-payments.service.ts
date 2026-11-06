@@ -55,15 +55,20 @@ export class StripePaymentsService {
       try {
         assertAvulsoUnits(purchase.units);
       } catch (error) {
-        throw new BadRequestException((error as Error).message);
+        throw new BadRequestException({
+          code: 'CHECKOUT_INVALID',
+          message: (error as Error).message,
+        });
       }
       amountCents = purchase.units * AVULSO_UNIT_CENTS;
       name = `Corvo: ${purchase.units} notas avulsas`;
     } else {
       if (purchase.cycle !== 'annual')
-        throw new BadRequestException(
-          'Monthly plans are subscriptions: use the subscription checkout',
-        );
+        throw new BadRequestException({
+          code: 'USE_SUBSCRIPTION_CHECKOUT',
+          message:
+            'Monthly plans are subscriptions: use the subscription checkout',
+        });
       const quote = this.pricing.calculateQuote(purchase.planSlug, 'annual');
       amountCents = quote.chargeTotalCents;
       name = `Corvo ${quote.name} (anual)`;
@@ -77,7 +82,10 @@ export class StripePaymentsService {
       { name, amountCents, intentId },
     );
     if (!session.url)
-      throw new BadRequestException('Stripe did not return a payment url');
+      throw new BadRequestException({
+        code: 'CHECKOUT_UNAVAILABLE',
+        message: 'Stripe did not return a payment url',
+      });
     await this.intents.insert({
       id: randomUUID(),
       tenantId,

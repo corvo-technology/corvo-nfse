@@ -74,7 +74,11 @@ export class InvitationService {
       id,
       tenantId,
     );
-    if (!invitation) throw new NotFoundException('Invitation not found');
+    if (!invitation)
+      throw new NotFoundException({
+        code: 'INVITATION_NOT_FOUND',
+        message: 'Invitation not found',
+      });
     await this.invitationRepository.update(
       {
         ...invitation,

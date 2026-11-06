@@ -11,6 +11,7 @@ import { Toggle } from "@/components/ui/toggle";
 import type { IntegrationProvider } from "@/lib/api";
 import type { Company } from "@/lib/types";
 import { ConnectError, connectProvider } from "@/lib/integrations";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 interface ConnectFlowProps {
   providers: IntegrationProvider[];
@@ -31,6 +32,7 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
   const router = useRouter();
   const backToList = () => router.push("/app/integrations");
   const t = useTranslations("Integrations");
+  const apiError = useApiErrorText();
   const tc = useTranslations("Common");
   const locale = useLocale();
   const [step, setStep] = useState<Step>(initialProvider ? "details" : "platform");
@@ -66,7 +68,7 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
       setStep("done");
     } catch (cause) {
       const failed = cause instanceof ConnectError;
-      setError(`${failed ? t(`wizard.errors.${cause.step}`) : t("wizard.errors.create")}: ${cause instanceof Error ? cause.message : ""}`.trim());
+      setError(`${failed ? t(`wizard.errors.${cause.step}`) : t("wizard.errors.create")}: ${apiError(failed ? cause.original : cause, "")}`.trim());
     } finally {
       setBusy(false);
     }
