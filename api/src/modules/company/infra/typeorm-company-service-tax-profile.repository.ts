@@ -154,7 +154,10 @@ export class TypeOrmCompanyServiceTaxProfileRepository implements IServiceTaxPro
             );
       const [row] = this.rowsOf(rows);
       if (row === undefined)
-        throw new NotFoundException('Service tax profile not found');
+        throw new NotFoundException({
+          code: 'SERVICE_PROFILE_NOT_FOUND',
+          message: 'Service tax profile not found',
+        });
       return this.toDomain(row);
     });
   }
@@ -176,7 +179,11 @@ export class TypeOrmCompanyServiceTaxProfileRepository implements IServiceTaxPro
         [id, companyId, tenantId],
       );
       const [row] = this.rowsOf(rows);
-      if (!row) throw new NotFoundException('Service tax profile not found');
+      if (!row)
+        throw new NotFoundException({
+          code: 'SERVICE_PROFILE_NOT_FOUND',
+          message: 'Service tax profile not found',
+        });
       return this.toDomain(row);
     });
   }
@@ -188,7 +195,10 @@ export class TypeOrmCompanyServiceTaxProfileRepository implements IServiceTaxPro
         [id, companyId, tenantId],
       );
       if (affected === 0)
-        throw new NotFoundException('Service tax profile not found');
+        throw new NotFoundException({
+          code: 'SERVICE_PROFILE_NOT_FOUND',
+          message: 'Service tax profile not found',
+        });
     });
   }
 

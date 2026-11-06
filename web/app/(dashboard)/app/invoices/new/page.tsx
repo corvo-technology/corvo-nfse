@@ -11,7 +11,7 @@ import { Field } from "@/components/ui/input";
 import { ServiceCodeCombobox } from "@/components/ui/service-code-combobox";
 import { PageHeader } from "@/components/ui/page-header";
 import { useAuth } from "@/lib/auth";
-import { mapIssues } from "@/lib/api-errors";
+import { apiErrorMessage, errorCodeKey, fieldIssues, mapIssues } from "@/lib/api-errors";
 import { ApiError, companies as companiesApi, invoices as invoicesApi, schedules as schedulesApi, type CreateScheduleInput } from "@/lib/api";
 import { firstRecurringDate, todayInSaoPaulo } from "@/lib/recurrence";
 import type { ScheduleFrequency } from "@/lib/types";
@@ -26,6 +26,8 @@ const posthogConfigured = Boolean(
 );
 
 const FORM_ID = "new-invoice-form";
+/** Problems the user fixes on the company, not on this form. */
+const FIX_ON_COMPANY = new Set(["simples_rate_required", "company_not_ready", "certificate_not_found", "certificate_invalid", "certificate_expired", "certificate_tax_id_mismatch"]);
 
 function Section({ n, title, hint, delay, children }: { n: number; title: string; hint?: string; delay: number; children: React.ReactNode }) {
   return (
@@ -64,6 +66,7 @@ export default function NewInvoicePage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fixOnCompany, setFixOnCompany] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     companyId: "",
@@ -109,7 +112,7 @@ export default function NewInvoicePage() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err?.message ?? t("fields.companiesFailed"));
+        setError(apiErrorMessage(err, te.has, te, t("fields.companiesFailed")));
         setLoading(false);
       });
     return () => {
@@ -200,7 +203,7 @@ export default function NewInvoicePage() {
       setCalc({ key, result });
     } catch (err: unknown) {
       setCalc(null);
-      setCalcError(err instanceof ApiError && err.status === 503 ? t("calculate.unavailable") : err instanceof Error && err.message ? err.message : t("calculate.failed"));
+      setCalcError(err instanceof ApiError && err.status === 503 ? t("calculate.unavailable") : apiErrorMessage(err, te.has, te, t("calculate.failed")));
     } finally { setCalculating(false); }
   }
 
@@ -227,7 +230,8 @@ export default function NewInvoicePage() {
         // on a retry: the note is not issued twice and the schedule is not created twice.
         try { await schedulesApi.create(recurrenceInput(input), `${key}:recurrence`); }
         catch (cause) {
-          setError(cause instanceof ApiError && cause.status > 0 && cause.status < 500 && cause.message ? t("repeat.createdButFailedWith", { reason: cause.message }) : t("repeat.createdButFailed"));
+          const reason = apiErrorMessage(cause, te.has, te, "");
+          setError(reason ? t("repeat.createdButFailedWith", { reason }) : t("repeat.createdButFailed"));
           return;
         }
       }
@@ -241,9 +245,10 @@ export default function NewInvoicePage() {
       router.push(`/app/invoices/${created.id}`);
     } catch (err: unknown) {
       if (err instanceof ApiError && [0, 409, 502, 503].includes(err.status)) setUncertain(true);
-      const { _form, ...perField } = mapIssues(err, { "customer.taxId": "customerTaxId", "customer.name": "customerName", "customer.email": "customerEmail", "customer.address": "city", "customer.address.city": "city", "customer.address.state": "state", "service.code": "serviceCode", "service.municipalityCode": "municipalityCode", "service.description": "serviceDescription", amount: "amount", deduction: "deduction", competenceDate: "competenceDate", companyId: "companyId", companyTaxId: "companyId", "company.municipalityCode": "companyId" }, (code, fallback) => (te.has(code) ? te(code) : fallback));
+      const { _form, ...perField } = mapIssues(err, { "customer.taxId": "customerTaxId", "customer.name": "customerName", "customer.email": "customerEmail", "customer.address": "city", "customer.address.city": "city", "customer.address.state": "state", "service.code": "serviceCode", "service.municipalityCode": "municipalityCode", "service.description": "serviceDescription", amount: "amount", deduction: "deduction", competenceDate: "competenceDate", companyId: "companyId", companyTaxId: "companyId", "company.municipalityCode": "companyId" }, (code) => (te.has(code) ? te(code) : te("invalid")));
       setFieldErrors(perField);
-      setError(_form ?? (Object.keys(perField).length > 0 ? t("fields.fixFields") : err instanceof Error && err.message ? err.message : t("fields.createFailed")));
+      setFixOnCompany([...fieldIssues(err).map((issue) => issue.code), ...(err instanceof ApiError && err.code ? [err.code] : [])].some((code) => FIX_ON_COMPANY.has(errorCodeKey(code))));
+      setError(_form ?? (Object.keys(perField).length > 0 ? t("fields.fixFields") : apiErrorMessage(err, te.has, te, t("fields.createFailed"))));
     } finally { inFlight.current = false; setSubmitting(false); }
   }
 
@@ -419,7 +424,7 @@ export default function NewInvoicePage() {
           {error && (
             <div role="alert" className="banner banner-danger">
               <AlertTriangle size={16} aria-hidden className="mt-0.5 flex-none" />
-              {error}
+              <span>{error}{fixOnCompany && form.companyId && <> <Link href={`/app/companies/${form.companyId}`} className="underline">{t("fields.openCompany")}</Link></>}</span>
             </div>
           )}
         </form>

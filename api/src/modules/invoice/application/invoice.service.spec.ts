@@ -138,6 +138,7 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
       {} as never,
       {} as never,
       {} as never,
+      { isSimulated: (environment: string) => environment !== 'live' } as never,
     );
   });
 

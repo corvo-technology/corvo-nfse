@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { ApiError, schedules as schedulesApi, type CreateScheduleInput, type UpdateScheduleInput } from "@/lib/api";
+import { schedules as schedulesApi, type CreateScheduleInput, type UpdateScheduleInput } from "@/lib/api";
 import type { InvoiceSchedule, ScheduleFrequency } from "@/lib/types";
+import { apiErrorMessage } from "@/lib/api-errors";
 import { maskTaxId } from "@/lib/masks";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
@@ -34,6 +35,7 @@ const sub = (body: Body, key: string): Body => (body[key] as Body | undefined) ?
 
 export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Props) {
   const t = useTranslations("Schedules");
+  const te = useTranslations("ApiErrors");
   const editing = schedule !== undefined;
   const stored = schedule?.invoice ?? {};
   const customer = sub(stored, "customer");
@@ -112,13 +114,13 @@ export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Pr
       if (Object.keys(patch).length === 0) return onClose();
       setSaving(true);
       try { onSaved(await schedulesApi.update(schedule.id, patch)); onClose(); }
-      catch (cause) { setApiError(cause instanceof ApiError && cause.status > 0 && cause.status < 500 ? cause.message : t("form.failed")); }
+      catch (cause) { setApiError(apiErrorMessage(cause, te.has, te, t("form.failed"))); }
       finally { setSaving(false); }
       return;
     }
     setSaving(true);
     try { onSaved(await schedulesApi.create(createPayload())); onClose(); }
-    catch (cause) { setApiError(cause instanceof ApiError && cause.status > 0 && cause.status < 500 ? cause.message : t("form.failed")); }
+    catch (cause) { setApiError(apiErrorMessage(cause, te.has, te, t("form.failed"))); }
     finally { setSaving(false); }
   };
 

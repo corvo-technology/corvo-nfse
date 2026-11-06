@@ -142,11 +142,11 @@ describe("CheckoutDialog", () => {
   });
 
   it("keeps the dialog and the typed data when the provider rejects the request, showing its reason", async () => {
-    purchase.mockRejectedValueOnce(new ApiError(400, "Woovi: taxID inválido"));
+    purchase.mockRejectedValueOnce(new ApiError(400, "Woovi: taxID inválido", "ERROR_PIX_PROVIDER_ERROR"));
     const onError = vi.fn();
     open({ kind: "avulso", units: 5 }, vi.fn(), { onError });
     fireEvent.click(screen.getByText("Continuar"));
-    expect((await screen.findByRole("alert")).textContent).toContain("Woovi: taxID inválido");
+    expect((await screen.findByRole("alert")).textContent).toContain(pt.ApiErrors.pix_provider_error);
     expect(onError).not.toHaveBeenCalled();
     // Still on the form: the choices are there and the button works again for a retry.
     expect(screen.getByTestId("method-pix")).toBeTruthy();

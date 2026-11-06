@@ -30,11 +30,17 @@ export class TenantContextGuard implements CanActivate {
     const authContext = request.authContext;
 
     if (authContext === undefined) {
-      throw new UnauthorizedException('Authenticated context is required');
+      throw new UnauthorizedException({
+        code: 'TENANT_CONTEXT_REQUIRED',
+        message: 'Authenticated context is required',
+      });
     }
 
     if (!isUuid(authContext.activeTenantId)) {
-      throw new UnauthorizedException('An active tenant context is required');
+      throw new UnauthorizedException({
+        code: 'TENANT_CONTEXT_REQUIRED',
+        message: 'An active tenant context is required',
+      });
     }
 
     const routeTenantId = request.params?.tenantId;
@@ -43,14 +49,20 @@ export class TenantContextGuard implements CanActivate {
     }
 
     if (routeTenantId !== undefined && !isUuid(routeTenantId)) {
-      throw new BadRequestException('Invalid tenantId');
+      throw new BadRequestException({
+        code: 'TENANT_CONTEXT_REQUIRED',
+        message: 'Invalid tenantId',
+      });
     }
 
     if (
       routeTenantId !== undefined &&
       routeTenantId !== authContext.activeTenantId
     ) {
-      throw new ForbiddenException('Tenant access denied');
+      throw new ForbiddenException({
+        code: 'TENANT_ACCESS_DENIED',
+        message: 'Tenant access denied',
+      });
     }
 
     return true;

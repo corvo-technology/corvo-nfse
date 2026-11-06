@@ -43,7 +43,10 @@ export class McpConnectionController {
   private humanContext(req: RequestWithAuthContext) {
     const auth = req.authContext;
     if (!auth?.sessionId || auth.principalType === 'api_key') {
-      throw new UnauthorizedException('A logged-in user session is required');
+      throw new UnauthorizedException({
+        code: 'SESSION_REQUIRED',
+        message: 'A logged-in user session is required',
+      });
     }
     return auth;
   }

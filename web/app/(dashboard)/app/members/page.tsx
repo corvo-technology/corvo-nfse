@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 /** Member invitations are switched off for now; flip to true to bring the button back. */
 const INVITES_ENABLED = false;
@@ -20,6 +21,7 @@ const INVITES_ENABLED = false;
 export default function MembersPage() {
   const t = useTranslations("Members");
   const tCommon = useTranslations("Common");
+  const apiError = useApiErrorText();
   const [memberList, setMemberList] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export default function MembersPage() {
       const data = await collectAll((cursor) => members.list({ cursor, limit: 1000 }));
       setMemberList(data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("errors.loadFailed"));
+      setError(apiError(err, t("errors.loadFailed")));
     } finally {
       setLoading(false);
     }
@@ -63,7 +65,7 @@ export default function MembersPage() {
       setModalOpen(false);
       fetchMembers();
     } catch (err: unknown) {
-      setInviteError(err instanceof Error ? err.message : t("errors.inviteFailed"));
+      setInviteError(apiError(err, t("errors.inviteFailed")));
     } finally {
       setInviting(false);
     }
@@ -75,7 +77,7 @@ export default function MembersPage() {
       await members.remove(id);
       setMemberList((prev) => prev.filter((m) => m.id !== id));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("errors.removeFailed"));
+      setError(apiError(err, t("errors.removeFailed")));
     } finally {
       setRemovingId(null);
     }

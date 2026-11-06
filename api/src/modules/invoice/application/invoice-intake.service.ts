@@ -56,7 +56,10 @@ export class InvoiceIntakeService {
     mode?: { allowFutureCompetence?: boolean },
   ): Promise<PreparedInvoiceInput> {
     if (!dto.companyId && !dto.companyTaxId)
-      throw new BadRequestException('companyId or companyTaxId is required');
+      throw new BadRequestException({
+        code: 'COMPANY_REQUIRED',
+        message: 'companyId or companyTaxId is required',
+      });
     const company = dto.companyId
       ? await this.companies.findById(dto.companyId, tenantId, environment)
       : await this.companies.findByTaxId(
@@ -153,8 +156,8 @@ export class InvoiceIntakeService {
     throw new FiscalValidationError([
       {
         field: 'simplesRate',
-        code: 'required',
-        message: `Inform the Simples Nacional rate of the company (PATCH /companies/${company.id} with simplesRate)`,
+        code: 'simples_rate_required',
+        message: `The company's Simples Nacional rate is required to issue (set simplesRate with PATCH /companies/${company.id})`,
       },
     ]);
   }

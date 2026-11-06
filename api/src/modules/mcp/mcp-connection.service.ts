@@ -96,10 +96,17 @@ export class McpConnectionService {
 
   async revoke(id: string, auth: AuthContext): Promise<void> {
     const connection = await this.repo.findById(id, auth.activeTenantId);
-    if (!connection) throw new NotFoundException('Connection not found');
+    if (!connection)
+      throw new NotFoundException({
+        code: 'CONNECTION_NOT_FOUND',
+        message: 'Connection not found',
+      });
     if (connection.authUserId !== auth.authUserId && !this.canManageAll(auth)) {
       // Same answer as a missing row: do not reveal other members' connections.
-      throw new NotFoundException('Connection not found');
+      throw new NotFoundException({
+        code: 'CONNECTION_NOT_FOUND',
+        message: 'Connection not found',
+      });
     }
     if (connection.revokedAt) return;
 

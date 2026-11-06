@@ -125,21 +125,34 @@ export class McpAuthService {
       );
 
       if (!code || code.consumedAt || code.expiresAt.getTime() <= Date.now()) {
-        throw new UnauthorizedException(
-          'Invalid or expired authorization code',
-        );
+        throw new UnauthorizedException({
+          code: 'MCP_AUTH_INVALID',
+          message: 'Invalid or expired authorization code',
+        });
       }
       if (code.clientId !== params.clientId || !isMcpClientId(code.clientId)) {
-        throw new UnauthorizedException('Invalid OAuth client');
+        throw new UnauthorizedException({
+          code: 'MCP_AUTH_INVALID',
+          message: 'Invalid OAuth client',
+        });
       }
       if (code.redirectUri !== params.redirectUri) {
-        throw new UnauthorizedException('redirect_uri mismatch');
+        throw new UnauthorizedException({
+          code: 'MCP_AUTH_INVALID',
+          message: 'redirect_uri mismatch',
+        });
       }
       if (!verifyCodeChallenge(params.codeVerifier, code.codeChallenge)) {
-        throw new UnauthorizedException('PKCE verification failed');
+        throw new UnauthorizedException({
+          code: 'MCP_AUTH_INVALID',
+          message: 'PKCE verification failed',
+        });
       }
       if (!code.tenantId) {
-        throw new UnauthorizedException('Authorization code has no tenant');
+        throw new UnauthorizedException({
+          code: 'MCP_AUTH_INVALID',
+          message: 'Authorization code has no tenant',
+        });
       }
 
       await this.requireMembership(code.authUserId, code.tenantId);
@@ -149,9 +162,10 @@ export class McpAuthService {
         code.tenantId,
       );
       if (!consumed)
-        throw new UnauthorizedException(
-          'Invalid or expired authorization code',
-        );
+        throw new UnauthorizedException({
+          code: 'MCP_AUTH_INVALID',
+          message: 'Invalid or expired authorization code',
+        });
 
       const rawRefreshToken = nanoid(REFRESH_TOKEN_SIZE);
       const session: AuthSession = {
@@ -210,7 +224,10 @@ export class McpAuthService {
         !isMcpClientId(session.clientId) ||
         !session.activeTenantId
       ) {
-        throw new UnauthorizedException('Invalid refresh token');
+        throw new UnauthorizedException({
+          code: 'MCP_AUTH_INVALID',
+          message: 'Invalid refresh token',
+        });
       }
 
       const connection = await this.connectionsRepo.findBySession(
@@ -220,7 +237,10 @@ export class McpAuthService {
         session.clientId,
       );
       if (!connection || connection.revokedAt) {
-        throw new UnauthorizedException('No active MCP connection for session');
+        throw new UnauthorizedException({
+          code: 'MCP_AUTH_INVALID',
+          message: 'No active MCP connection for session',
+        });
       }
 
       await this.requireMembership(session.authUserId, session.activeTenantId);
@@ -233,7 +253,11 @@ export class McpAuthService {
         sha256(refreshToken),
         sha256(rawRefreshToken),
       );
-      if (!rotated) throw new UnauthorizedException('Invalid refresh token');
+      if (!rotated)
+        throw new UnauthorizedException({
+          code: 'MCP_AUTH_INVALID',
+          message: 'Invalid refresh token',
+        });
 
       const accessToken = await this.signAccessToken({
         sub: session.authUserId,
@@ -259,7 +283,10 @@ export class McpAuthService {
         audience: MCP_TOKEN_AUDIENCE,
       }));
     } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+      throw new UnauthorizedException({
+        code: 'MCP_AUTH_INVALID',
+        message: 'Invalid or expired token',
+      });
     }
 
     const tenantId =
@@ -272,7 +299,10 @@ export class McpAuthService {
       requireTenantId(userId);
       requireTenantId(connectionId);
     } catch {
-      throw new UnauthorizedException('Invalid token');
+      throw new UnauthorizedException({
+        code: 'MCP_AUTH_INVALID',
+        message: 'Invalid token',
+      });
     }
     return runWithTenant(tenantId, async () => {
       const connection = await this.connectionsRepo.findByIdAndOwner(
@@ -285,7 +315,10 @@ export class McpAuthService {
         !isMcpClientId(connection.clientId) ||
         connection.revokedAt
       )
-        throw new UnauthorizedException('Invalid or revoked connection');
+        throw new UnauthorizedException({
+          code: 'MCP_AUTH_INVALID',
+          message: 'Invalid or revoked connection',
+        });
       const session = await this.sessionsRepo.findActiveById(
         connection.sessionId,
       );
@@ -296,7 +329,10 @@ export class McpAuthService {
         session.clientId !== connection.clientId ||
         session.kind !== 'oauth_refresh'
       )
-        throw new UnauthorizedException('Invalid or revoked session');
+        throw new UnauthorizedException({
+          code: 'MCP_AUTH_INVALID',
+          message: 'Invalid or revoked session',
+        });
       await this.requireMembership(userId, tenantId);
       return {
         sub: userId,
@@ -385,7 +421,10 @@ export class McpAuthService {
       tenantId,
     );
     if (!membership?.isActive)
-      throw new UnauthorizedException('Tenant access denied');
+      throw new UnauthorizedException({
+        code: 'TENANT_ACCESS_DENIED',
+        message: 'Tenant access denied',
+      });
   }
 
   private async signAccessToken(

@@ -24,12 +24,18 @@ export function parseInstantWithOffset(
   fieldName = 'datetime',
 ): Date {
   if (!OFFSET_DATETIME_PATTERN.test(value)) {
-    throw new BadRequestException(`${fieldName} must include Z or UTC offset`);
+    throw new BadRequestException({
+      code: 'INVALID_DATETIME',
+      message: `${fieldName} must include Z or UTC offset`,
+    });
   }
 
   const parsed = DateTime.fromISO(value, { setZone: true });
   if (!parsed.isValid) {
-    throw new BadRequestException(`${fieldName} must be a valid ISO datetime`);
+    throw new BadRequestException({
+      code: 'INVALID_DATETIME',
+      message: `${fieldName} must be a valid ISO datetime`,
+    });
   }
 
   return parsed.toUTC().toJSDate();
@@ -37,16 +43,18 @@ export function parseInstantWithOffset(
 
 export function parseLocalDate(value: string, fieldName = 'date'): string {
   if (!DATE_ONLY_PATTERN.test(value)) {
-    throw new BadRequestException(
-      `${fieldName} must be a valid YYYY-MM-DD value`,
-    );
+    throw new BadRequestException({
+      code: 'INVALID_DATETIME',
+      message: `${fieldName} must be a valid YYYY-MM-DD value`,
+    });
   }
 
   const parsed = DateTime.fromISO(value, { zone: 'UTC' });
   if (!parsed.isValid || parsed.toISODate() !== value) {
-    throw new BadRequestException(
-      `${fieldName} must be a valid YYYY-MM-DD value`,
-    );
+    throw new BadRequestException({
+      code: 'INVALID_DATETIME',
+      message: `${fieldName} must be a valid YYYY-MM-DD value`,
+    });
   }
 
   return value;
@@ -89,7 +97,10 @@ export function localDateTimeToUtc(
   const parsed = DateTime.fromISO(`${localDate}T${time}`, { zone: timezone });
   assertValidTimezone(parsed, timezone);
   if (!parsed.isValid) {
-    throw new BadRequestException('local datetime must be valid');
+    throw new BadRequestException({
+      code: 'INVALID_DATETIME',
+      message: 'local datetime must be valid',
+    });
   }
   return parsed.toUTC().toJSDate();
 }
@@ -237,7 +248,10 @@ export function addLocalMonths(
 
 function assertValidTimezone(value: DateTime, timezone: string): void {
   if (!value.isValid) {
-    throw new BadRequestException(`timezone "${timezone}" is invalid`);
+    throw new BadRequestException({
+      code: 'INVALID_DATETIME',
+      message: `timezone "${timezone}" is invalid`,
+    });
   }
 }
 

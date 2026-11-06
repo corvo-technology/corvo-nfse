@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
 import { integrations, type IntegrationRule, type IntegrationRuleInput } from "@/lib/api";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 interface ConnectionSettingsProps {
   connectionId: string;
@@ -24,6 +25,7 @@ const toInput = (rule: IntegrationRule): IntegrationRuleInput => ({
 export function ConnectionSettings({ connectionId, canManage }: ConnectionSettingsProps) {
   const t = useTranslations("Integrations");
   const tc = useTranslations("Common");
+  const apiError = useApiErrorText();
   const { success, error: toastError } = useToast();
   const [rules, setRules] = useState<IntegrationRule[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -65,7 +67,7 @@ export function ConnectionSettings({ connectionId, canManage }: ConnectionSettin
       adopt(await integrations.rules(connectionId));
       success(t("detail.settings.saved"));
     } catch (cause) {
-      toastError(cause instanceof Error ? cause.message : String(cause));
+      toastError(apiError(cause, String(cause)));
     } finally {
       setBusy(false);
     }

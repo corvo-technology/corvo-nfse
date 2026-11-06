@@ -22,7 +22,10 @@ export class StripeGateway {
   }
   get stripe(): Stripe {
     if (!this.client)
-      throw new ServiceUnavailableException('Stripe billing is not configured');
+      throw new ServiceUnavailableException({
+        code: 'BILLING_UNAVAILABLE',
+        message: 'Stripe billing is not configured',
+      });
     return this.client;
   }
   get enabled(): boolean {

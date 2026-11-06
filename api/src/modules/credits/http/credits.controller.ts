@@ -63,7 +63,10 @@ export class CreditsController {
     try {
       return this.creditsService.previewPurchase(units);
     } catch (error) {
-      throw new BadRequestException((error as Error).message);
+      throw new BadRequestException({
+        code: 'CHECKOUT_INVALID',
+        message: (error as Error).message,
+      });
     }
   }
 
@@ -71,9 +74,11 @@ export class CreditsController {
   @RequirePermission('credits.manage')
   @ApiOperation({ summary: 'Moved: buy notes through POST /billing/checkout' })
   confirmPurchase() {
-    throw new GoneException(
-      'Notes are bought through POST /billing/checkout with kind "avulso"',
-    );
+    throw new GoneException({
+      code: 'ENDPOINT_GONE',
+      message:
+        'Notes are bought through POST /billing/checkout with kind "avulso"',
+    });
   }
 
   @Get('history')

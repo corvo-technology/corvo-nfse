@@ -16,12 +16,13 @@ import { cn } from "@/lib/utils";
 import { apiKeys, collectAll, type ApiKey } from "@/lib/api";
 import type { KeyEnvironment, KeyScope } from "@/lib/types";
 import { timeAgo } from "@/lib/i18n-helpers";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
 );
 
-function getApiKeyErrorMessage(error: unknown, fallback: string, tError: (key: string) => string): string {
+function getApiKeyErrorMessage(error: unknown, fallback: string, tError: (key: string) => string, apiError: (error: unknown, fallback: string) => string): string {
   if (!(error instanceof Error)) return fallback;
 
   const status = (error as Error & { status?: number }).status;
@@ -32,7 +33,7 @@ function getApiKeyErrorMessage(error: unknown, fallback: string, tError: (key: s
     return tError("permissionRequired");
   }
 
-  return error.message || fallback;
+  return apiError(error, fallback);
 }
 
 function daysUntil(isoDate: string): number {
@@ -43,6 +44,7 @@ function daysUntil(isoDate: string): number {
 
 export default function ApiKeysPage() {
   const t = useTranslations("ApiKeys");
+  const apiError = useApiErrorText();
   const tc = useTranslations("Common");
 
   const [keys, setKeys] = useState<ApiKey[]>([]);
@@ -68,7 +70,7 @@ export default function ApiKeysPage() {
       const data = await collectAll((cursor) => apiKeys.list({ cursor, limit: 1000 }));
       setKeys(data);
     } catch (err: unknown) {
-      setError(getApiKeyErrorMessage(err, t("errors.loadFailed"), (key) => t(`errors.${key}`)));
+      setError(getApiKeyErrorMessage(err, t("errors.loadFailed"), (key) => t(`errors.${key}`), apiError));
     } finally {
       setLoading(false);
     }
@@ -131,7 +133,7 @@ export default function ApiKeysPage() {
       // Refresh list (the new key won't show its full value in the list)
       fetchKeys();
     } catch (err: unknown) {
-      setCreateError(getApiKeyErrorMessage(err, t("errors.createFailed"), (key) => t(`errors.${key}`)));
+      setCreateError(getApiKeyErrorMessage(err, t("errors.createFailed"), (key) => t(`errors.${key}`), apiError));
     } finally {
       setCreating(false);
     }
@@ -146,7 +148,7 @@ export default function ApiKeysPage() {
       if (posthogConfigured) posthog.capture("api_key_revoked");
       setKeys((prev) => prev.filter((k) => k.id !== id));
     } catch (err: unknown) {
-      setError(getApiKeyErrorMessage(err, t("errors.revokeFailed"), (key) => t(`errors.${key}`)));
+      setError(getApiKeyErrorMessage(err, t("errors.revokeFailed"), (key) => t(`errors.${key}`), apiError));
     } finally {
       setRevokingId(null);
     }

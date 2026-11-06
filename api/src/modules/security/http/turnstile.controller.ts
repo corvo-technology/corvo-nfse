@@ -33,7 +33,10 @@ export class TurnstileController {
   async verify(@Req() req: HttpRequest, @Body() body: VerifyTurnstileDto) {
     const token = resolveToken(body);
     if (!token) {
-      throw new BadRequestException('Turnstile token is required');
+      throw new BadRequestException({
+        code: 'HUMAN_VERIFICATION_REQUIRED',
+        message: 'Turnstile token is required',
+      });
     }
 
     return data(

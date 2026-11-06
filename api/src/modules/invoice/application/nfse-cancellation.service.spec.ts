@@ -33,7 +33,7 @@ function cancelling(environment: 'test' | 'live' = 'test'): Invoice {
   return invoice;
 }
 
-function build(invoice: Invoice | null, result: unknown) {
+function build(invoice: Invoice | null, result: unknown, simulated = false) {
   const provider = { cancel: jest.fn().mockResolvedValue(result) };
   const lifecycle = { transition: jest.fn() };
   const webhooks = { publish: jest.fn() };
@@ -50,7 +50,10 @@ function build(invoice: Invoice | null, result: unknown) {
         .mockResolvedValue({ id: 'company-1', taxId: '11222333000181' }),
     } as never,
     certificates as never,
-    { resolve: jest.fn().mockReturnValue(provider) } as never,
+    {
+      resolve: jest.fn().mockReturnValue(provider),
+      isSimulated: jest.fn().mockReturnValue(simulated),
+    } as never,
     lifecycle as never,
     webhooks as never,
   );
@@ -130,6 +133,24 @@ describe('NfseCancellationService', () => {
     expect(ctx.provider.cancel).toHaveBeenCalledWith(
       expect.objectContaining({ p12Password: 'pw' }),
     );
+  });
+
+  it('signs the cancellation of a test invoice with the company certificate too (it lives in the Produção Restrita)', async () => {
+    const invoice = cancelling('test');
+    const ctx = build(invoice, { status: 'cancelled' });
+    await ctx.service.process(job(invoice));
+    expect(ctx.certificates.decryptCredentials).toHaveBeenCalledWith(
+      'company-1',
+      tenantId,
+      'test',
+    );
+  });
+
+  it('cancels a simulated test invoice without any certificate', async () => {
+    const invoice = cancelling('test');
+    const ctx = build(invoice, { status: 'cancelled' }, true);
+    await ctx.service.process(job(invoice));
+    expect(ctx.certificates.decryptCredentials).not.toHaveBeenCalled();
   });
 
   it('does nothing for an invoice that is no longer cancelling', async () => {

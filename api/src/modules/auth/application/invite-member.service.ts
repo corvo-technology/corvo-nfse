@@ -56,7 +56,10 @@ export class InviteMemberService {
       (m) => m.authUserId === user.id,
     );
     if (existingMembership) {
-      throw new ConflictException('User is already a member of this tenant');
+      throw new ConflictException({
+        code: 'MEMBER_ALREADY_EXISTS',
+        message: 'User is already a member of this tenant',
+      });
     }
 
     // Create membership with role-based permissions
@@ -96,7 +99,11 @@ export class InviteMemberService {
   async removeMember(tenantId: string, userId: string): Promise<void> {
     const members = await this.membershipService.listForTenant(tenantId);
     const membership = members.find((m) => m.authUserId === userId);
-    if (!membership) throw new NotFoundException('Member not found');
+    if (!membership)
+      throw new NotFoundException({
+        code: 'MEMBER_NOT_FOUND',
+        message: 'Member not found',
+      });
     // Mark as inactive
     await this.membershipService.update(
       {

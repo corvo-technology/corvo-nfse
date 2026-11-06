@@ -107,7 +107,10 @@ export class TurnstileProofGuard implements CanActivate {
     );
     if (!token) {
       recordHumanProofEvent('proof_missing', requirement.action);
-      throw new ForbiddenException('Human verification required');
+      throw new ForbiddenException({
+        code: 'HUMAN_VERIFICATION_REQUIRED',
+        message: 'Human verification required',
+      });
     }
 
     let proof: TurnstileAttestation | null;
@@ -115,9 +118,10 @@ export class TurnstileProofGuard implements CanActivate {
       proof = await this.attestations.consume(token);
     } catch {
       recordHumanProofEvent('proof_rejected', requirement.action);
-      throw new ServiceUnavailableException(
-        'Human verification is temporarily unavailable',
-      );
+      throw new ServiceUnavailableException({
+        code: 'HUMAN_VERIFICATION_UNAVAILABLE',
+        message: 'Human verification is temporarily unavailable',
+      });
     }
     const expectedSlug = requirement.slugParam
       ? request.params?.[requirement.slugParam]
@@ -128,7 +132,10 @@ export class TurnstileProofGuard implements CanActivate {
       (expectedSlug !== undefined && proof.slug !== expectedSlug)
     ) {
       recordHumanProofEvent('proof_rejected', requirement.action);
-      throw new ForbiddenException('Invalid or expired human verification');
+      throw new ForbiddenException({
+        code: 'HUMAN_VERIFICATION_INVALID',
+        message: 'Invalid or expired human verification',
+      });
     }
     recordHumanProofEvent(
       INLINE_TURNSTILE_ACTIONS.has(requirement.action)
@@ -163,7 +170,10 @@ export class TurnstileProofGuard implements CanActivate {
     });
     if (!verification.success) {
       recordHumanProofEvent('inline_verification_failed', requirement.action);
-      throw new ForbiddenException('Invalid or expired human verification');
+      throw new ForbiddenException({
+        code: 'HUMAN_VERIFICATION_INVALID',
+        message: 'Invalid or expired human verification',
+      });
     }
     recordHumanProofEvent('inline_proof_consumed', requirement.action);
     return true;

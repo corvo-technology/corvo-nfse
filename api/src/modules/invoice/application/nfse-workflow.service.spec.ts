@@ -154,7 +154,7 @@ describe('NfseWorkflowService payload — tomador opcional', () => {
       fakes.sequences,
       fakes.companies as any,
       {} as any,
-      {} as any,
+      { isSimulated: () => true } as any,
       {} as any,
       {} as any,
       {} as any,
@@ -415,7 +415,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     sequences: { reserveNext: jest.fn() },
     companies: { findById: jest.fn() },
     certificates: { decryptCredentials: jest.fn() },
-    providers: { resolve: jest.fn() },
+    providers: { resolve: jest.fn(), isSimulated: jest.fn() },
     lifecycle: { transition: jest.fn() },
     queues: { add: jest.fn() },
     webhooks: { findByTenantIdAndEvent: jest.fn() },
@@ -442,6 +442,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       pfxBuffer: Buffer.alloc(0),
       password: '',
     });
+    fakes.providers.isSimulated.mockReturnValue(false);
     fakes.lifecycle.transition.mockResolvedValue(undefined);
     fakes.queues.add.mockResolvedValue({
       id: 'job-id',
@@ -532,6 +533,35 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       expect(payload.preparedDps?.infDPS.tpAmb).toBe(tpAmb);
     },
   );
+
+  it('a test invoice uses the company certificate and goes to the Sefin Produção Restrita', async () => {
+    const invoice = createInvoice();
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(invoice.id),
+    );
+    fakes.config.get.mockReturnValue(undefined);
+
+    const payload = await callPayload(invoice);
+
+    expect(fakes.certificates.decryptCredentials).toHaveBeenCalledWith(
+      company.id,
+      invoice.tenantId,
+      'test',
+    );
+    expect(payload.preparedDps?.infDPS.tpAmb).toBe('2');
+  });
+
+  it('a test invoice needs no certificate while the simulator is on (CI and e2e)', async () => {
+    const invoice = createInvoice();
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(invoice.id),
+    );
+    fakes.providers.isSimulated.mockReturnValue(true);
+
+    await callPayload(invoice);
+
+    expect(fakes.certificates.decryptCredentials).not.toHaveBeenCalled();
+  });
 
   it('builds preparedDps from the latest fiscal snapshot and keeps the legacy payload', async () => {
     const invoice = createInvoice();

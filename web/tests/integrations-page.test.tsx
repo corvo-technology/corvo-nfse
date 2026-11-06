@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import IntegrationsPage from "@/app/(dashboard)/app/integrations/page";
 import NewIntegrationPage from "@/app/(dashboard)/app/integrations/new/page";
 import IntegrationDetailPage from "@/app/(dashboard)/app/integrations/[id]/page";
+import { ApiError } from "@/lib/api";
 import messages from "@/messages/en.json";
 
 const mocks = vi.hoisted(() => ({
@@ -243,12 +244,12 @@ describe("Connect page", () => {
 
   it("explains which step failed, cleans up and never shows the address", async () => {
     mocks.create.mockResolvedValue(connection({ state: "draft" }));
-    mocks.validate.mockRejectedValue(new Error("Woovi recusou o AppID informado"));
+    mocks.validate.mockRejectedValue(new ApiError(422, "Woovi recusou o AppID informado", "ERROR_INTEGRATION_CREDENTIAL_REFUSED"));
     mocks.disconnect.mockResolvedValue(connection({ state: "disconnected" }));
     await openWoovi();
     fill();
     fireEvent.click(screen.getByRole("button", { name: "Connect" }));
-    await screen.findByText(/Could not validate the credentials: Woovi recusou o AppID informado/);
+    await screen.findByText(new RegExp(`Could not validate the credentials: ${messages.ApiErrors.integration_credential_refused}`));
     expect(mocks.disconnect).toHaveBeenCalledWith("c1");
     expect(screen.queryByText("Connected!")).toBeNull();
     expect((screen.getByRole("button", { name: "Connect" }) as HTMLButtonElement).disabled).toBe(false);
@@ -426,12 +427,12 @@ describe("Connection page", () => {
   });
 
   it("shows the error and keeps the form open when the platform refuses the new key", async () => {
-    mocks.updateCredentials.mockRejectedValue(new Error("Woovi recusou o AppID informado"));
+    mocks.updateCredentials.mockRejectedValue(new ApiError(422, "Woovi recusou o AppID informado", "ERROR_INTEGRATION_CREDENTIAL_REFUSED"));
     await openDetails([], { provider: "abacatepay" }, "AbacatePay");
     fireEvent.click(screen.getByRole("button", { name: "Change" }));
     fireEvent.change(screen.getByLabelText("New key"), { target: { value: "bad" } });
     fireEvent.click(screen.getByRole("button", { name: "Test and save" }));
-    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith("Woovi recusou o AppID informado"));
+    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(messages.ApiErrors.integration_credential_refused));
     expect(screen.getByLabelText("New key")).toBeTruthy();
   });
 

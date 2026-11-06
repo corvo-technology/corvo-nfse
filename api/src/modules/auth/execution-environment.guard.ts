@@ -27,12 +27,17 @@ export class ExecutionEnvironmentGuard implements CanActivate {
       ? undefined
       : request.headers['x-corvo-environment'];
     if (selected !== undefined && selected !== 'test' && selected !== 'live') {
-      throw new BadRequestException('X-Corvo-Environment must be test or live');
+      throw new BadRequestException({
+        code: 'ENVIRONMENT_INVALID',
+        message: 'X-Corvo-Environment must be test or live',
+      });
     }
     if (request.body && Object.hasOwn(request.body, 'environment')) {
-      throw new BadRequestException(
-        'Select the environment through authentication or X-Corvo-Environment',
-      );
+      throw new BadRequestException({
+        code: 'ENVIRONMENT_INVALID',
+        message:
+          'Select the environment through authentication or X-Corvo-Environment',
+      });
     }
     request.authContext.executionEnvironment =
       keyEnvironment ?? selected ?? 'test';

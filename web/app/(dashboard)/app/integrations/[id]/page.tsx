@@ -17,11 +17,13 @@ import { ConnectionSettings } from "@/components/dashboard/integrations/connecti
 import { collectAll, companies as companiesApi, integrations, type IntegrationConnection, type IntegrationProvider } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { connectionStatus } from "@/lib/integrations";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 export default function IntegrationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const t = useTranslations("Integrations");
   const tc = useTranslations("Common");
+  const apiError = useApiErrorText();
   const router = useRouter();
   const { can } = useAuth();
   const { success, error: toastError } = useToast();
@@ -56,7 +58,7 @@ export default function IntegrationDetailPage() {
       success(t("detail.updated"));
       done?.();
     } catch (cause) {
-      toastError(cause instanceof Error ? cause.message : String(cause));
+      toastError(apiError(cause, String(cause)));
     } finally {
       setBusy(false);
       setConfirming(false);

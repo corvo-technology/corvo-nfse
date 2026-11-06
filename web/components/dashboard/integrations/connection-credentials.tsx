@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { integrations, type IntegrationConnection, type IntegrationProvider } from "@/lib/api";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 interface ConnectionCredentialsProps {
   connection: IntegrationConnection;
@@ -17,6 +18,7 @@ interface ConnectionCredentialsProps {
 /** Lists what the client typed when connecting (never its value) and lets them replace it. */
 export function ConnectionCredentials({ connection, provider, canManage, onUpdated }: ConnectionCredentialsProps) {
   const t = useTranslations("Integrations");
+  const apiError = useApiErrorText();
   const { success, error: toastError } = useToast();
   const [editing, setEditing] = useState<string | null>(null);
   const [value, setValue] = useState("");
@@ -33,7 +35,7 @@ export function ConnectionCredentials({ connection, provider, canManage, onUpdat
       setEditing(null);
       setValue("");
     } catch (cause) {
-      toastError(cause instanceof Error ? cause.message : String(cause));
+      toastError(apiError(cause, String(cause)));
     } finally {
       setBusy(false);
     }

@@ -108,7 +108,10 @@ export class TypeOrmCertificateRepository implements ICertificateRepository {
         .getRepository(CompanyOrmEntity)
         .findOneBy({ id: certificate.companyId, tenantId, environment });
       if (!company || company.deletedAt)
-        throw new NotFoundException('Resource not found');
+        throw new NotFoundException({
+          code: 'RESOURCE_NOT_FOUND',
+          message: 'Resource not found',
+        });
       const row = this.mapper.toPersistence(certificate);
       const { id, companyId, createdAt: _createdAt, ...mutable } = row;
       const parent = this.repo.manager

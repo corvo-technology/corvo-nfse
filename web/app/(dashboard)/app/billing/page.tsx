@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -30,6 +31,7 @@ function paidCycle(paidUntil: string | null): "monthly" | "annual" {
 
 export default function BillingPage() {
   const t = useTranslations("Billing");
+  const apiError = useApiErrorText();
   const tCommon = useTranslations("Common");
   const locale = useLocale();
   const intl = locale === "pt" ? "pt-BR" : "en-US";
@@ -65,8 +67,7 @@ export default function BillingPage() {
 
   const fail = (cause: unknown) => {
     if (cause instanceof ApiError && cause.status === 429) return toastError(t("errors.ERROR_RATE_LIMIT_EXCEEDED", { seconds: cause.retryAfterSeconds ?? 60 }));
-    if (cause instanceof ApiError && cause.status === 409) return toastError(cause.message.includes("Subscribe before") ? t("errors.customer_required") : cause.message);
-    toastError(cause instanceof ApiError && cause.status < 500 && cause.status > 0 ? cause.message : t("errors.generic"));
+    toastError(apiError(cause, t("errors.generic")));
   };
   const redirect = (url: string) => { window.location.assign(url); };
   const changePlan = async (slug: PlanSlug, direction: "upgrade" | "downgrade") => {

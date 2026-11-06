@@ -33,9 +33,16 @@ export class InboundController {
   ): Promise<{ received: true }> {
     const rawBody =
       req.rawBody ?? (Buffer.isBuffer(req.body) ? req.body : undefined);
-    if (!rawBody) throw new BadRequestException('Raw body required');
+    if (!rawBody)
+      throw new BadRequestException({
+        code: 'INBOUND_INVALID',
+        message: 'Raw body required',
+      });
     if (rawBody.length > MAX_INBOUND_BODY_BYTES)
-      throw new PayloadTooLargeException('Webhook body too large');
+      throw new PayloadTooLargeException({
+        code: 'INBOUND_INVALID',
+        message: 'Webhook body too large',
+      });
     const headers: Record<string, string> = {};
     for (const [name, value] of Object.entries(req.headers))
       if (value !== undefined)

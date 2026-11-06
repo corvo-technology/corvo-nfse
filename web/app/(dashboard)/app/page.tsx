@@ -17,9 +17,11 @@ import { cn } from "@/lib/utils";
 import type { BillingPlan } from "@/lib/types";
 import type { InvoiceOverview, OverviewPeriod } from "@/lib/api";
 import { AlertTriangle } from "lucide-react";
+import { useInvoiceErrorText } from "@/lib/use-api-error";
 
 export default function OverviewPage() {
   const t = useTranslations("Overview");
+  const invoiceError = useInvoiceErrorText();
   const { can, tenantId, fiscalEnvironment } = useAuth();
   const invoiceView = can("nfse.invoices.view");
   const billingView = can("billing.view");
@@ -127,7 +129,7 @@ export default function OverviewPage() {
               <Link href={`/app/invoices/${invoice.id}`} className="flex flex-col gap-1 px-4 py-3 transition-colors hover:bg-hover sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <span className="flex min-w-0 flex-col gap-0.5">
                   <span className="text-[14px] text-text">{t("attention.rejected")} · {invoice.customerName || invoice.serviceDescription}</span>
-                  {invoice.lastErrorMessage && <span className="truncate text-[13px] text-text-3">{invoice.lastErrorMessage}</span>}
+                  {invoice.lastErrorMessage && <span className="truncate text-[13px] text-text-3">{invoiceError(invoice.lastErrorCode, invoice.lastErrorMessage)}</span>}
                 </span>
                 {invoice.lastErrorCode && <span className="flex-none font-mono text-[12px] text-danger">{invoice.lastErrorCode}</span>}
               </Link>
