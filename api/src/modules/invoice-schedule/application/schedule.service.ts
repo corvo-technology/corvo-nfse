@@ -1,8 +1,10 @@
+import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { UnitOfWorkPort } from '@/infra/transactions/unit-of-work.port';
+import { IdempotencyConflictError } from '@/modules/invoice/domain/errors';
 import { validationExceptionFactory } from '@/shared/http/validation-pipe';
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
@@ -72,6 +74,7 @@ export class ScheduleService {
     tenantId: string,
     authContext: AuthContext,
     now: Date = new Date(),
+    idempotencyKey?: string,
   ): Promise<InvoiceSchedule> {
     const options: ScheduleOptions =
       (dto as { options?: ScheduleOptions }).options ?? {};
@@ -88,9 +91,19 @@ export class ScheduleService {
         'invalid_date',
         'competenceDate must be a valid date',
       );
+    const environment = executionEnvironment(authContext);
+    const requestHash = hashRequest(dto);
+    if (idempotencyKey) {
+      const replay = await this.replayOf(
+        tenantId,
+        environment,
+        idempotencyKey,
+        requestHash,
+      );
+      if (replay) return replay;
+    }
     await this.assertRoomForOne(tenantId);
 
-    const environment = executionEnvironment(authContext);
     const body = invoiceBody(dto);
     const companyId = await this.validate(body, tenantId, environment, now);
     const schedule = InvoiceSchedule.create(
@@ -104,12 +117,46 @@ export class ScheduleService {
         endsOn: options.recurrence?.endsOn ?? null,
         invoiceInput: { ...withoutCompanyTaxId(body), companyId },
         createdBy: authContext.authUserId ?? null,
+        idempotencyKey: idempotencyKey ?? null,
+        requestHash: idempotencyKey ? requestHash : null,
       },
       now,
       this.horizonDays,
     );
-    await this.repo.insert(schedule);
+    try {
+      await this.repo.insert(schedule);
+    } catch (error) {
+      // A concurrent request with the same key won the unique index: answer with its schedule.
+      if (idempotencyKey && (error as { code?: string }).code === '23505') {
+        const replay = await this.replayOf(
+          tenantId,
+          environment,
+          idempotencyKey,
+          requestHash,
+        );
+        if (replay) return replay;
+      }
+      throw error;
+    }
     return schedule;
+  }
+
+  /** The schedule a previous request with this key created, or a conflict if the request differs. */
+  private async replayOf(
+    tenantId: string,
+    environment: 'test' | 'live',
+    key: string,
+    requestHash: string,
+  ): Promise<InvoiceSchedule | null> {
+    const existing = await this.repo.findByIdempotencyKey(
+      tenantId,
+      environment,
+      key,
+    );
+    if (!existing) return null;
+    if (existing.props.requestHash !== requestHash)
+      throw new IdempotencyConflictError(key);
+    return existing;
   }
 
   async get(id: string, tenantId: string): Promise<InvoiceSchedule> {
@@ -288,4 +335,22 @@ async function assertEditableInvoicePatch(
     await validate(plainToInstance(CreateInvoiceDto, patch))
   ).filter((error) => Object.keys(patch).includes(error.property));
   if (errors.length > 0) throw validationExceptionFactory(errors);
+}
+
+/** Same request, same hash: keys sorted at every level so field order never matters. */
+function hashRequest(dto: unknown): string {
+  const canonical = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(canonical);
+    if (value && typeof value === 'object')
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>)
+          .filter(([, v]) => v !== undefined)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([k, v]) => [k, canonical(v)]),
+      );
+    return value;
+  };
+  return createHash('sha256')
+    .update(JSON.stringify(canonical(dto)))
+    .digest('hex');
 }

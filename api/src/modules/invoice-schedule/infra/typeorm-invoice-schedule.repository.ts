@@ -40,6 +40,8 @@ function toProps(row: InvoiceScheduleOrmEntity): InvoiceScheduleProps {
     attempts: row.attempts,
     lastRunOn: row.lastRunOn,
     createdBy: row.createdBy,
+    idempotencyKey: row.idempotencyKey,
+    requestHash: row.requestHash,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -90,6 +92,21 @@ export class TypeOrmInvoiceScheduleRepository extends InvoiceScheduleRepository 
         ...(options?.forUpdate
           ? { lock: { mode: 'pessimistic_write' as const } }
           : {}),
+      });
+      return row ? InvoiceSchedule.restore(toProps(row)) : null;
+    });
+  }
+
+  findByIdempotencyKey(
+    tenantId: string,
+    environment: 'test' | 'live',
+    key: string,
+  ): Promise<InvoiceSchedule | null> {
+    return runWithTenant(tenantId, async () => {
+      const row = await this.schedules().findOneBy({
+        tenantId,
+        environment,
+        idempotencyKey: key,
       });
       return row ? InvoiceSchedule.restore(toProps(row)) : null;
     });

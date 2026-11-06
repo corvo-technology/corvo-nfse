@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { IdempotencyConflictError } from '@/modules/invoice/domain/errors';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import {
   InvoiceSchedule,
@@ -29,6 +30,16 @@ const auth = (environment: 'test' | 'live' = 'live') =>
 class MemoryRepo extends InvoiceScheduleRepository {
   rows = new Map<string, InvoiceSchedule>();
   runs: ScheduleRun[] = [];
+  findByIdempotencyKey(tenantId: string, environment: string, key: string) {
+    return Promise.resolve(
+      [...this.rows.values()].find(
+        (s) =>
+          s.props.tenantId === tenantId &&
+          s.props.environment === environment &&
+          s.props.idempotencyKey === key,
+      ) ?? null,
+    );
+  }
   insert(s: InvoiceSchedule) {
     this.rows.set(s.props.id, s);
     return Promise.resolve();
@@ -94,7 +105,7 @@ function build() {
     repo,
     { prepareEmissionInEnvironment: prepare } as never,
     15,
-    unitOfWork as never,
+    unitOfWork,
   );
   return { service, repo, prepare };
 }
@@ -379,5 +390,86 @@ describe('ScheduleService management', () => {
     await service.cancel(id, TENANT);
     expect(repo.lockedReads).toEqual([true, true, true, true]);
     expect(repo.saveInTx).toEqual([true, true, true, true]);
+  });
+});
+
+describe('ScheduleService.createFromEmission: idempotency (review)', () => {
+  const recurringRequest = (amount = 150) =>
+    request(
+      { type: 'RECURRING', recurrence: { frequency: 'MONTHLY' } },
+      { amount },
+    );
+  const create = (
+    service: ScheduleService,
+    key: string | undefined,
+    amount = 150,
+  ) =>
+    service.createFromEmission(
+      recurringRequest(amount),
+      TENANT,
+      auth(),
+      NOW,
+      key,
+    );
+
+  it('the same key with the same request returns the schedule already created, not a second one', async () => {
+    const { service, repo } = build();
+    const first = await create(service, 'key-1');
+    const again = await create(service, 'key-1');
+    expect(again.props.id).toBe(first.props.id);
+    expect(repo.rows.size).toBe(1);
+  });
+
+  it('the same key with another request is a conflict, and nothing new is saved', async () => {
+    const { service, repo } = build();
+    await create(service, 'key-1', 150);
+    await expect(create(service, 'key-1', 999)).rejects.toBeInstanceOf(
+      IdempotencyConflictError,
+    );
+    expect(repo.rows.size).toBe(1);
+  });
+
+  it('different keys, or no key at all, create separate schedules', async () => {
+    const { service, repo } = build();
+    await create(service, 'key-1');
+    await create(service, 'key-2');
+    await create(service, undefined);
+    await create(service, undefined);
+    expect(repo.rows.size).toBe(4);
+  });
+
+  it('a concurrent request that wins the unique index is replayed, not an error', async () => {
+    const { service, repo } = build();
+    const winner = await create(service, 'key-1');
+    jest
+      .spyOn(repo, 'findByIdempotencyKey')
+      .mockResolvedValueOnce(null) // the lookup that raced
+      .mockResolvedValue(winner);
+    jest
+      .spyOn(repo, 'insert')
+      .mockRejectedValueOnce(
+        Object.assign(new Error('dup'), { code: '23505' }),
+      );
+    const out = await create(service, 'key-1');
+    expect(out.props.id).toBe(winner.props.id);
+  });
+
+  it('the same key is independent per environment', async () => {
+    const { service, repo } = build();
+    await service.createFromEmission(
+      recurringRequest(),
+      TENANT,
+      auth('test'),
+      NOW,
+      'k',
+    );
+    await service.createFromEmission(
+      recurringRequest(),
+      TENANT,
+      auth('live'),
+      NOW,
+      'k',
+    );
+    expect(repo.rows.size).toBe(2);
   });
 });

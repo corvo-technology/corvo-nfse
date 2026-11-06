@@ -90,6 +90,31 @@ describe('schedules and recurring invoices (e2e)', () => {
     expect(await invoiceCount()).toBe(before);
   });
 
+  it('review: retrying a SCHEDULE/RECURRING request with the same Idempotency-Key returns the same schedule', async () => {
+    const payload = body({
+      type: 'RECURRING',
+      recurrence: { frequency: 'WEEKLY' },
+    });
+    const send = () =>
+      request(ctx.app.getHttpServer())
+        .post('/v1/invoices')
+        .set(apiKeyHeader(testKey))
+        .set('Idempotency-Key', 'e2e-recurring-1')
+        .send(payload);
+    const first = await send().expect(202);
+    const again = await send().expect(202);
+    expect(again.body.data.id).toBe(first.body.data.id);
+    const other = await post(
+      body(
+        { type: 'RECURRING', recurrence: { frequency: 'WEEKLY' } },
+        { amount: 999 },
+      ),
+    )
+      .set('Idempotency-Key', 'e2e-recurring-1')
+      .expect(409);
+    expect(other.body.code).toBe('ERROR_IDEMPOTENCY_CONFLICT');
+  });
+
   it('SCHEDULE creates a single schedule', async () => {
     const res = await post(body({ type: 'SCHEDULE' })).expect(202);
     expect(res.body.data).toMatchObject({ kind: 'once', frequency: null });

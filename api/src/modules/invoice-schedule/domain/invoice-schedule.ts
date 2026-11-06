@@ -55,6 +55,9 @@ export interface InvoiceScheduleProps {
   attempts: number;
   lastRunOn: string | null;
   createdBy: string | null;
+  /** The caller's Idempotency-Key and a hash of the request, to replay a retry instead of duplicating. */
+  idempotencyKey: string | null;
+  requestHash: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -69,6 +72,8 @@ export interface CreateScheduleInput {
   endsOn: string | null;
   invoiceInput: Record<string, unknown>;
   createdBy: string | null;
+  idempotencyKey?: string | null;
+  requestHash?: string | null;
 }
 
 export interface UpdateScheduleInput {
@@ -137,6 +142,8 @@ export class InvoiceSchedule {
       attempts: 0,
       lastRunOn: null,
       createdBy: input.createdBy,
+      idempotencyKey: input.idempotencyKey ?? null,
+      requestHash: input.requestHash ?? null,
       createdAt: now,
       updatedAt: now,
     });

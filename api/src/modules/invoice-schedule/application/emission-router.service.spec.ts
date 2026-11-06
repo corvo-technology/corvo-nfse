@@ -45,12 +45,14 @@ describe('EmissionRouterService', () => {
     async (type) => {
       const { router, invoices, schedules, schedule } = build();
       const request = dto({ type, recurrence: { frequency: 'WEEKLY' } });
-      const out = await router.emit(request, TENANT, auth);
+      const out = await router.emit(request, TENANT, auth, 'key-9');
       expect(out).toEqual({ kind: 'schedule', schedule });
       expect(schedules.createFromEmission).toHaveBeenCalledWith(
         request,
         TENANT,
         auth,
+        undefined,
+        'key-9',
       );
       expect(invoices.emit).not.toHaveBeenCalled();
     },

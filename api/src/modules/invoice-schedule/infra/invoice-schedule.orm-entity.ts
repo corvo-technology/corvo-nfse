@@ -30,6 +30,11 @@ import {
   where: "status = 'active'",
 })
 @Index('idx_invoice_schedules_tenant', ['tenantId', 'createdAt'])
+@Index(
+  'uq_invoice_schedules_idempotency',
+  ['tenantId', 'environment', 'idempotencyKey'],
+  { unique: true, where: 'idempotency_key IS NOT NULL' },
+)
 export class InvoiceScheduleOrmEntity {
   @PrimaryGeneratedColumn('uuid') declare id: string;
   @Column({ name: 'tenant_id', type: 'uuid' }) declare tenantId: string;
@@ -61,6 +66,15 @@ export class InvoiceScheduleOrmEntity {
   declare lastRunOn: string | null;
   @Column({ name: 'created_by', type: 'varchar', length: 100, nullable: true })
   declare createdBy: string | null;
+  @Column({
+    name: 'idempotency_key',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  declare idempotencyKey: string | null;
+  @Column({ name: 'request_hash', type: 'varchar', length: 64, nullable: true })
+  declare requestHash: string | null;
   @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
   declare createdAt: Date;
   @Column({ name: 'updated_at', type: 'timestamptz', default: () => 'now()' })

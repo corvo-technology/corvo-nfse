@@ -38,6 +38,8 @@ export class EmissionRouterService {
           dto,
           tenantId,
           authContext,
+          undefined,
+          idempotencyKey,
         ),
       };
     if (options?.recurrence)

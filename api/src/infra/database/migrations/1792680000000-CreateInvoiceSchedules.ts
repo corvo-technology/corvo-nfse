@@ -31,6 +31,8 @@ export class CreateInvoiceSchedules1792680000000 implements MigrationInterface {
       attempts integer NOT NULL DEFAULT 0,
       last_run_on date,
       created_by varchar(100),
+      idempotency_key varchar(255),
+      request_hash varchar(64),
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now(),
       CONSTRAINT ck_invoice_schedules_environment CHECK (environment IN ('test','live')),
@@ -41,6 +43,9 @@ export class CreateInvoiceSchedules1792680000000 implements MigrationInterface {
     )`);
     await runner.query(
       `CREATE INDEX idx_invoice_schedules_due ON ${schema}.invoice_schedules (next_run_on) WHERE status = 'active'`,
+    );
+    await runner.query(
+      `CREATE UNIQUE INDEX uq_invoice_schedules_idempotency ON ${schema}.invoice_schedules (tenant_id, environment, idempotency_key) WHERE idempotency_key IS NOT NULL`,
     );
     await runner.query(
       `CREATE INDEX idx_invoice_schedules_tenant ON ${schema}.invoice_schedules (tenant_id, created_at DESC)`,

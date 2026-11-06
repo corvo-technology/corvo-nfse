@@ -287,8 +287,8 @@ describePostgres('invoice schedule repository with restricted role', () => {
     const hold = new Promise<void>((done) => (release = done));
     const runner = runInTransaction(tenant, async () => {
       const [claimed] = await repo.claimDueForTenant(tenant, '2026-11-09', 10);
-      claimed!.recordIssued('2026-11-09'); // next_run_on moves to 2026-11-16
-      await repo.save(claimed!);
+      claimed.recordIssued('2026-11-09'); // next_run_on moves to 2026-11-16
+      await repo.save(claimed);
       await hold;
     });
     await new Promise((done) => setTimeout(done, 150));
@@ -304,6 +304,43 @@ describePostgres('invoice schedule repository with restricted role', () => {
     release();
     await Promise.all([runner, mutation]);
     expect(seen).toBe('2026-11-16'); // and it read the runner's result, not a stale copy
+  });
+
+  it('review: the idempotency key is unique per (tenant, environment) and findByIdempotencyKey finds it', async () => {
+    const make = (environment: 'test' | 'live', key: string | null) =>
+      InvoiceSchedule.create(
+        {
+          tenantId: tenantA,
+          environment,
+          companyId: randomUUID(),
+          kind: 'once',
+          frequency: null,
+          firstOn: '2026-11-09',
+          endsOn: null,
+          invoiceInput: { amount: 1 },
+          createdBy: null,
+          idempotencyKey: key,
+          requestHash: key ? 'hash-1' : null,
+        },
+        NOW,
+        15,
+      );
+    const key = `k-${randomUUID()}`;
+    const first = make('live', key);
+    await repo.insert(first);
+    await expect(repo.insert(make('live', key))).rejects.toMatchObject({
+      code: '23505',
+    });
+    await repo.insert(make('test', key)); // another environment: fine
+    await repo.insert(make('live', null)); // no key: never conflicts
+    await repo.insert(make('live', null));
+    const found = await repo.findByIdempotencyKey(tenantA, 'live', key);
+    expect(found?.props).toMatchObject({
+      id: first.props.id,
+      idempotencyKey: key,
+      requestHash: 'hash-1',
+    });
+    expect(await repo.findByIdempotencyKey(tenantB, 'live', key)).toBeNull();
   });
 
   it('a run is unique per (schedule, occurrence, attempt) and listRuns returns newest first', async () => {

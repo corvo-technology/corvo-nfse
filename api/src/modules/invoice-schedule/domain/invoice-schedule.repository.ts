@@ -40,6 +40,11 @@ export abstract class InvoiceScheduleRepository {
     tenantId: string,
     options?: { forUpdate?: boolean },
   ): Promise<InvoiceSchedule | null>;
+  abstract findByIdempotencyKey(
+    tenantId: string,
+    environment: 'test' | 'live',
+    key: string,
+  ): Promise<InvoiceSchedule | null>;
   abstract list(
     tenantId: string,
     filter: ScheduleListFilter,
