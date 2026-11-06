@@ -57,7 +57,7 @@ export function BillingSummary({
           ? { kind: "scheduled", tone: "border-white/15 bg-white/[0.04] text-text-2", text: t("scheduled", { plan: planName(sub.scheduledPlan), date: sub.paidUntil ? date(sub.paidUntil) : "—" }), role: "status" }
           : null;
 
-  const companies = t("summary.companiesLine", { count: usage.activeCompanies });
+  const companies = usage.maxActiveCompanies === 999999 ? t("summary.companiesLine", { count: usage.activeCompanies }) : t("summary.companiesLimited", { count: usage.activeCompanies, max: usage.maxActiveCompanies });
   const pix = sub.pixSubscription;
   // The Stripe portal needs a Stripe customer: a plan paid by Pix has none.
   const showPortal = canManage && sub.stripePortalAvailable;

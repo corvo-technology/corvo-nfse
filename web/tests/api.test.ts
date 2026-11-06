@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { request, auth, certificates, companies, invoices, billing, webhooks, members, ApiError, setCsrfToken, getCsrfToken, onUnauthorized, unwrap, toPage, credits, collectAll } from "@/lib/api";
+import { isCompanyLimitError, request, auth, certificates, companies, invoices, billing, webhooks, members, ApiError, setCsrfToken, getCsrfToken, onUnauthorized, unwrap, toPage, credits, collectAll } from "@/lib/api";
 import { fieldIssues, mapIssues } from "@/lib/api-errors";
 import { session, company, invoice } from "./fixtures";
 const fetchMock = vi.fn<typeof fetch>();
@@ -178,3 +178,13 @@ describe("billing.cancelPix", () => {
   });
 });
 
+describe("isCompanyLimitError", () => {
+  it("recognises the API's company limit refusal, and nothing else", () => {
+    expect(isCompanyLimitError(new ApiError(422, "Company limit exceeded"))).toBe(true);
+    expect(isCompanyLimitError(new ApiError(422, "company_limit_exceeded"))).toBe(true);
+    expect(isCompanyLimitError(new ApiError(422, "Invalid CNPJ"))).toBe(false);
+    expect(isCompanyLimitError(new ApiError(500, "Company limit exceeded"))).toBe(false);
+    expect(isCompanyLimitError(new Error("Company limit exceeded"))).toBe(false);
+    expect(isCompanyLimitError(null)).toBe(false);
+  });
+});

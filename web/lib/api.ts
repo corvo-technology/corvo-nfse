@@ -36,6 +36,10 @@ export interface MagicLinkVerified { expiresAt: string; isNewUser: boolean; csrf
 export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string, public retryAfterSeconds?: number, public details?: ApiErrorDetail[], public requestId?: string) { super(message); this.name = "ApiError"; }
 }
+/** The API refused a new company because the account is at its limit (no plan allows one). */
+export function isCompanyLimitError(cause: unknown): boolean {
+  return cause instanceof ApiError && cause.status === 422 && /company[ _]limit[ _]exceeded/i.test(cause.message);
+}
 export type FiscalEnvironment = "test" | "live";
 const FISCAL_ENV_KEY = "corvo_fiscal_environment";
 export function getFiscalEnvironment(): FiscalEnvironment {

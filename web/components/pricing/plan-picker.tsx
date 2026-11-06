@@ -177,6 +177,7 @@ function FeaturedOption({
         </ul>
       </div>
 
+      {!plan && <p className="mt-8 border-t border-white/10 pt-6 text-[14px] text-text-2">{t("featured.avulsoCompanies")}</p>}
       {plan && (
         <ul className="mt-8 grid gap-x-6 gap-y-2 border-t border-white/10 pt-6 text-[14px] text-text-2 @lg:grid-cols-2">
           {INCLUDES.map((key) => (

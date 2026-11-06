@@ -108,6 +108,9 @@ describe("plan picker", () => {
     fireEvent.change(screen.getByRole("slider"), { target: { value: "0" } });
     expect(featured().textContent).toContain("R$ 2,97");
     expect(featured().textContent).toMatch(/avulsas|AVULSAS/);
+    // Avulso only means one company; the recurring plans are unlimited.
+    expect(featured().textContent).toContain("1 empresa");
+    expect(featured().textContent).toContain("ilimitadas");
     expect(row("avulso").getAttribute("aria-current")).toBe("true");
   });
 
@@ -134,6 +137,12 @@ describe("plan picker", () => {
     expect(action).toHaveBeenLastCalledWith(expect.objectContaining({ cycle: "annual", avulsoUnits: 10, plan: expect.objectContaining({ slug: "solo" }) }));
     fireEvent.change(screen.getByRole("slider"), { target: { value: "0" } });
     expect(action).toHaveBeenLastCalledWith(expect.objectContaining({ plan: null, avulsoUnits: 3 }));
+  });
+
+  it("a recurring plan promises unlimited companies, avulso only does not", () => {
+    renderPicker();
+    expect(featured().textContent).toContain("Empresas ilimitadas");
+    expect(featured().textContent).not.toContain("1 empresa");
   });
 
   it("never mentions overage in either language", () => {

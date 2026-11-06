@@ -817,7 +817,8 @@
       "effective": "Effective cost:",
       "perNote": "per invoice",
       "planLine": "Plan · {count} invoices",
-      "allPlans": "ALL PLANS"
+      "allPlans": "ALL PLANS",
+      "avulsoCompanies": "No plan: 1 company. Recurring plans have unlimited companies."
     }
   },
   "Flow": {
@@ -946,7 +947,7 @@
       },
       "s7": {
         "title": "7. Plans, allowances and renewal",
-        "content": "The Solo, Equipe, Empresa and Escala plans set the monthly invoice allowance shown in the offer and in the dashboard. Every account gets one free first invoice, once and without renewal, and does not need a plan to issue it. Test (sandbox) invoices are free, unlimited and do not use any allowance. On paid plans the allowance follows the monthly period shown in the dashboard; on the annual plan it renews every month for the 12 months. Allowances belong to the workspace, not to each member or API key. Unused plan invoices do not roll over or convert to money. When the allowance runs out, issuing is blocked until renewal, a plan change or a purchase of single invoices."
+        "content": "The Solo, Equipe, Empresa and Escala plans set the monthly invoice allowance shown in the offer and in the dashboard. Every account gets one free first invoice, once and without renewal, and does not need a plan to issue it. Test (sandbox) invoices are free, unlimited and do not use any allowance. On paid plans the allowance follows the monthly period shown in the dashboard; on the annual plan it renews every month for the 12 months. Allowances belong to the workspace, not to each member or API key. Unused plan invoices do not roll over or convert to money. When the allowance runs out, issuing is blocked until renewal, a plan change or a purchase of single invoices. Without a plan (single invoices only) the account can have 1 active company in production; the recurring plans allow unlimited companies."
       },
       "s8": {
         "title": "8. How usage and single invoices work",
@@ -1347,7 +1348,8 @@
       "paidUntil": "Paid until {date}",
       "periodLine": "Period {start} to {end}",
       "companiesLine": "{count, plural, one {# active company} other {# active companies}}",
-      "noPlanHint": "No plan: you use your single invoices."
+      "noPlanHint": "No plan: you use your single invoices.",
+      "companiesLimited": "{count} of {max, plural, one {# active company} other {# active companies}}"
     },
     "pix": {
       "pendingTitle": "Pix Automático waiting for authorization",
@@ -1482,7 +1484,8 @@
     "simplesRateRequired": "Enter the effective Simples rate.",
     "rateInvalid": "Enter a number, for example 6.54.",
     "rateRange": "The rate must be between 0 and 100.",
-    "rateDecimals": "Use at most 2 decimal places."
+    "rateDecimals": "Use at most 2 decimal places.",
+    "companyLimit": "Without a plan the account can have 1 company. Subscribe to a plan for unlimited companies."
   },
   "CompanyDetail": {
     "fiscalAdvanced": "Advanced mode (accountant)",
@@ -2397,7 +2400,7 @@
       },
       "companies": {
         "q": "Can I issue invoices for more than one CNPJ on Corvo?",
-        "a": "Yes. Every plan allows unlimited companies, each with its own certificate and its own usage, without building a new integration for each one.",
+        "a": "Yes. The recurring plans (Solo, Equipe, Empresa and Escala) have unlimited companies, each with its own certificate and its own usage, without building a new integration for each one. With single invoices only, no plan, the account has 1 company.",
         "link": "See the plans"
       },
       "payments": {

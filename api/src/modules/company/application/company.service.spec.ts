@@ -754,3 +754,51 @@ describe('CompanyService Simples rates on update', () => {
     );
   });
 });
+
+describe('CompanyService company limit by plan', () => {
+  const tenant = '11111111-1111-4111-8111-111111111111';
+  const input = {
+    legalName: 'Empresa',
+    taxId: '22.334.455/0001-86',
+    taxRegime: 'MEI' as const,
+    municipalityCode: '3550308',
+  };
+  const build = (maxActiveCompanies: number) => {
+    const repo = {
+      existsWithTaxId: jest.fn().mockResolvedValue(false),
+      save: jest.fn(),
+      saveWithLimit: jest.fn(),
+      findByIdAndTenantId: jest.fn(),
+    };
+    const profiles = { record: jest.fn(), current: jest.fn().mockResolvedValue(null) };
+    const service = new CompanyService(
+      repo as never,
+      { getStatus: jest.fn().mockResolvedValue({ maxActiveCompanies }) } as never,
+      new CompanyDomainService(),
+      profiles as never,
+    );
+    return { service, repo };
+  };
+
+  it('without a plan (limit 1) a live company is saved under the atomic limit', async () => {
+    const { service, repo } = build(1);
+    await service.create(input, tenant, 'live');
+    expect(repo.saveWithLimit).toHaveBeenCalledWith(expect.anything(), 1, tenant);
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('with a recurring plan (unlimited) there is no limit check at all', async () => {
+    const { service, repo } = build(999999);
+    await service.create(input, tenant, 'live');
+    expect(repo.save).toHaveBeenCalledTimes(1);
+    expect(repo.saveWithLimit).not.toHaveBeenCalled();
+  });
+
+  it('the test environment is never limited, even without a plan', async () => {
+    const { service, repo } = build(1);
+    await service.create(input, tenant, 'test');
+    expect(repo.save).toHaveBeenCalledTimes(1);
+    expect(repo.saveWithLimit).not.toHaveBeenCalled();
+  });
+});
+

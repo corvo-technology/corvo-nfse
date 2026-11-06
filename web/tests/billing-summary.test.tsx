@@ -130,11 +130,11 @@ describe("BillingSummary", () => {
     expect(document.body.textContent).not.toMatch(/Pix Automático/);
   });
 
-  it("without a plan there is no period line (there is nothing to renew), only the companies", () => {
-    renderIt(plan({ usage: { avulsoBalance: 3, activeCompanies: 1 } }));
+  it("without a plan there is no period line (nothing to renew) and the company limit shows: 1 of 1", () => {
+    renderIt(plan({ usage: { avulsoBalance: 3, activeCompanies: 1, maxActiveCompanies: 1 } }));
     const meta = screen.getByTestId("summary-meta").textContent ?? "";
     expect(meta).not.toMatch(/Período/);
-    expect(meta).toBe("1 empresa ativa");
+    expect(meta).toBe("1 de 1 empresa ativa");
   });
 
   it("with a plan the period shows, and the company count is plural-correct", () => {

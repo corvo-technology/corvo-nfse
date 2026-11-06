@@ -817,7 +817,8 @@
       "effective": "Custo efetivo:",
       "perNote": "por nota",
       "planLine": "Plano · {count} notas",
-      "allPlans": "TODOS OS PLANOS"
+      "allPlans": "TODOS OS PLANOS",
+      "avulsoCompanies": "Sem plano: 1 empresa. Os planos recorrentes têm empresas ilimitadas."
     }
   },
   "Flow": {
@@ -946,7 +947,7 @@
       },
       "s7": {
         "title": "7. Planos, cotas e renovação",
-        "content": "Os planos Solo, Equipe, Empresa e Escala definem a cota mensal de notas, apresentada na oferta e no painel. Cada conta recebe uma primeira nota grátis, uma única vez e sem renovação, e não precisa ter plano para emitir. Notas de teste (homologação) são grátis, ilimitadas e não consomem cota. Nos planos pagos, a cota acompanha o período mensal informado no painel; no plano anual, a cota renova todo mês durante os 12 meses. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas do plano não utilizadas não acumulam nem se convertem em dinheiro. Ao esgotar a cota, a emissão é bloqueada até a renovação, a troca de plano ou a compra de notas avulsas."
+        "content": "Os planos Solo, Equipe, Empresa e Escala definem a cota mensal de notas, apresentada na oferta e no painel. Cada conta recebe uma primeira nota grátis, uma única vez e sem renovação, e não precisa ter plano para emitir. Notas de teste (homologação) são grátis, ilimitadas e não consomem cota. Nos planos pagos, a cota acompanha o período mensal informado no painel; no plano anual, a cota renova todo mês durante os 12 meses. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas do plano não utilizadas não acumulam nem se convertem em dinheiro. Ao esgotar a cota, a emissão é bloqueada até a renovação, a troca de plano ou a compra de notas avulsas. Sem plano (apenas notas avulsas) a conta pode ter 1 empresa ativa em produção; os planos recorrentes permitem empresas ilimitadas."
       },
       "s8": {
         "title": "8. Como o consumo e as notas avulsas funcionam",
@@ -1347,7 +1348,8 @@
       "paidUntil": "Pago até {date}",
       "periodLine": "Período {start} a {end}",
       "companiesLine": "{count, plural, one {# empresa ativa} other {# empresas ativas}}",
-      "noPlanHint": "Sem plano: você usa as notas avulsas."
+      "noPlanHint": "Sem plano: você usa as notas avulsas.",
+      "companiesLimited": "{count} de {max, plural, one {# empresa ativa} other {# empresas ativas}}"
     },
     "pix": {
       "pendingTitle": "Pix Automático aguardando autorização",
@@ -1482,7 +1484,8 @@
     "simplesRateRequired": "Informe a alíquota efetiva do Simples.",
     "rateInvalid": "Informe um número, por exemplo 6.54.",
     "rateRange": "A alíquota deve estar entre 0 e 100.",
-    "rateDecimals": "Use no máximo 2 casas decimais."
+    "rateDecimals": "Use no máximo 2 casas decimais.",
+    "companyLimit": "Sem plano a conta pode ter 1 empresa. Assine um plano para cadastrar empresas ilimitadas."
   },
   "CompanyDetail": {
     "fiscalAdvanced": "Modo avançado (contador)",
@@ -2397,7 +2400,7 @@
       },
       "companies": {
         "q": "Posso emitir notas para mais de um CNPJ na Corvo?",
-        "a": "Sim. Todos os planos permitem empresas ilimitadas, cada uma com o seu certificado e o seu consumo, sem criar uma integração nova para cada uma.",
+        "a": "Sim. Os planos recorrentes (Solo, Equipe, Empresa e Escala) têm empresas ilimitadas, cada uma com o seu certificado e o seu consumo, sem criar uma integração nova para cada uma. Só com notas avulsas, sem plano, a conta tem 1 empresa.",
         "link": "Ver os planos"
       },
       "payments": {

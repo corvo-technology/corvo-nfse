@@ -10,7 +10,8 @@ const SEED_DATA: Record<PlanSlug, CreatePlanInput> = {
     description: 'Sem plano ativo: primeira nota grátis e notas avulsas',
     monthlyCreditAllowance: 0,
     dailyLimit: null,
-    maxActiveCompanies: 999999,
+    // Avulso only: one company. Every recurring plan allows unlimited companies.
+    maxActiveCompanies: 1,
     creditUnitPriceCents: 99,
     throughputRps: 10,
     includesWebhooks: true,

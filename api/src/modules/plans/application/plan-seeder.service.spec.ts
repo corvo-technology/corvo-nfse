@@ -22,3 +22,22 @@ it('seeds the no-plan placeholder with 0 notes and the four paid plans', async (
     creditUnitPriceCents: 99,
   });
 });
+
+it('seeds one company for "no plan" (avulso only) and unlimited companies for every recurring plan', async () => {
+  const save = jest.fn(async (plan: Plan) => plan);
+  const service = new PlanSeederService({
+    findBySlug: jest.fn().mockResolvedValue(null),
+    save,
+  } as never);
+  await service.seedIfMissing();
+  const limits = Object.fromEntries(
+    save.mock.calls.map(([plan]) => [plan.slug, plan.maxActiveCompanies]),
+  );
+  expect(limits).toEqual({
+    free: 1,
+    solo: 999999,
+    equipe: 999999,
+    empresa: 999999,
+    escala: 999999,
+  });
+});
