@@ -26,9 +26,11 @@ interface Props {
   onAction: (schedule: InvoiceSchedule, action: ScheduleAction) => void;
   /** Extra controls of a row (edit, history), added by the page. */
   renderExtra?: (schedule: InvoiceSchedule) => React.ReactNode;
+  /** Content under the row's card, such as the run history. */
+  renderBelow?: (schedule: InvoiceSchedule) => React.ReactNode;
 }
 
-export function ScheduleList({ schedules, companyNames, canManage, busy, onAction, renderExtra }: Props) {
+export function ScheduleList({ schedules, companyNames, canManage, busy, onAction, renderExtra, renderBelow }: Props) {
   const t = useTranslations("Schedules");
   const locale = useLocale();
   return (
@@ -64,6 +66,7 @@ export function ScheduleList({ schedules, companyNames, canManage, busy, onActio
               )}
               {(!canManage || !open) && renderExtra?.(s)}
             </Card>
+            {renderBelow?.(s)}
           </li>
         );
       })}

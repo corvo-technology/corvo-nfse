@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   resume: vi.fn(),
   cancel: vi.fn(),
   runs: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
   companies: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
@@ -20,7 +22,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/api", async (original) => ({
   ...(await original<typeof import("@/lib/api")>()),
-  schedules: { list: mocks.list, pause: mocks.pause, resume: mocks.resume, cancel: mocks.cancel, runs: mocks.runs, create: vi.fn(), update: vi.fn() },
+  schedules: { list: mocks.list, pause: mocks.pause, resume: mocks.resume, cancel: mocks.cancel, runs: mocks.runs, create: mocks.create, update: mocks.update },
   companies: { list: mocks.companies },
 }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (permission: string) => permission === "nfse.invoices.view" || (permission === "nfse.invoices.issue" && mocks.canIssue), fiscalEnvironment: "live" }) }));
@@ -146,5 +148,54 @@ describe("Schedules page: actions", () => {
     const r = await waitFor(() => row());
     expect(within(r).queryByRole("button", { name: "Pause" })).toBeNull();
     expect(screen.queryByRole("button", { name: "New schedule" })).toBeNull();
+  });
+});
+
+describe("Schedules page: creating, editing and the run history", () => {
+  it("New schedule opens the form and the created schedule joins the list", async () => {
+    mocks.list.mockResolvedValue(page([]));
+    mocks.create.mockResolvedValue(schedule({ id: "new", kind: "once", frequency: null }));
+    renderPage();
+    await screen.findByText("No schedules yet");
+    fireEvent.click(screen.getByRole("button", { name: "New schedule" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Company/), { target: { value: "c1" } });
+    fireEvent.change(within(dialog).getByLabelText(/Date of the first run/), { target: { value: "2099-01-05" } });
+    fireEvent.change(within(dialog).getByLabelText(/^Amount/), { target: { value: "10" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create schedule" }));
+    await waitFor(() => expect(mocks.create).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByTestId("schedule-new")).toBeTruthy());
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("Edit opens the form with the schedule and the saved version replaces the row", async () => {
+    mocks.update.mockResolvedValue(schedule({ invoice: { amount: 999 } }));
+    renderPage();
+    fireEvent.click(within(await waitFor(() => row())).getByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog");
+    expect((within(dialog).getByLabelText(/^Amount/) as HTMLInputElement).value).toBe("150");
+    fireEvent.change(within(dialog).getByLabelText(/^Amount/), { target: { value: "999" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith("s1", { invoice: { amount: 999 } }));
+    await waitFor(() => expect(within(row()).getByText("R$ 999,00")).toBeTruthy());
+  });
+
+  it("History opens the run log under the row and closes again", async () => {
+    mocks.runs.mockResolvedValue({ items: [{ id: "r1", occurrenceOn: "2026-11-07", ranOn: "2026-11-09", attempt: 1, outcome: "issued", invoiceId: "inv-1", errorCode: null, errorMessage: null, createdAt: "2026-11-09T12:00:00.000Z" }], hasMore: false, nextCursor: null });
+    renderPage();
+    const r = await waitFor(() => row());
+    fireEvent.click(within(r).getByRole("button", { name: "History" }));
+    await within(r).findByTestId("schedule-run");
+    expect(mocks.runs).toHaveBeenCalledWith("s1", {}, expect.anything());
+    fireEvent.click(within(r).getByRole("button", { name: "History" }));
+    expect(within(r).queryByTestId("schedule-run")).toBeNull();
+  });
+
+  it("anyone who can view still gets the history, but not Edit", async () => {
+    mocks.canIssue = false;
+    renderPage();
+    const r = await waitFor(() => row());
+    expect(within(r).getByRole("button", { name: "History" })).toBeTruthy();
+    expect(within(r).queryByRole("button", { name: "Edit" })).toBeNull();
   });
 });

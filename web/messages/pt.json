@@ -2465,6 +2465,45 @@
       "cancelled": "Agenda cancelada.",
       "failed": "Não foi possível concluir essa ação."
     },
-    "unknownCompany": "Empresa"
+    "unknownCompany": "Empresa",
+    "form": {
+      "titleNew": "Nova agenda",
+      "titleEdit": "Editar agenda",
+      "company": "Empresa",
+      "companyPlaceholder": "Escolha uma empresa",
+      "type": "Tipo",
+      "once": "Única",
+      "recurring": "Recorrente",
+      "frequency": "Frequência",
+      "firstDate": "Data da primeira execução",
+      "firstDateHint": "A partir de amanhã. As execuções acontecem às 09h em dias úteis; uma data de fim de semana roda na segunda.",
+      "endsOn": "Último dia",
+      "endsOnHint": "Sem ele, a agenda roda até você pausar ou cancelar.",
+      "amount": "Valor (R$)",
+      "description": "Descrição do serviço",
+      "customerName": "Nome do cliente",
+      "customerTaxId": "CPF ou CNPJ do cliente",
+      "customerEmail": "E-mail do cliente",
+      "customerHint": "O cliente é opcional. Ao preencher qualquer campo, o CPF ou CNPJ passa a ser obrigatório.",
+      "sendEmail": "Enviar a nota por e-mail ao cliente",
+      "create": "Criar agenda",
+      "save": "Salvar alterações",
+      "required": "Obrigatório",
+      "failed": "Não foi possível salvar a agenda.",
+      "editHint": "As mudanças valem para as próximas execuções. As notas já emitidas não mudam.",
+      "optional": "opcional"
+    },
+    "runs": {
+      "title": "Histórico de execuções",
+      "empty": "Nenhuma execução ainda. A primeira acontece no próximo dia útil às 09h.",
+      "issued": "Emitida",
+      "failed": "Falhou",
+      "due": "Prevista para {date}",
+      "ranOn": "Rodou em {date}",
+      "attempt": "Tentativa {n}",
+      "viewNote": "Ver nota",
+      "loadMore": "Carregar mais",
+      "loadFailed": "Não foi possível carregar o histórico."
+    }
   }
 }

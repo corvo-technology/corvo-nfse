@@ -2465,6 +2465,45 @@
       "cancelled": "Schedule cancelled.",
       "failed": "Could not complete that action."
     },
-    "unknownCompany": "Company"
+    "unknownCompany": "Company",
+    "form": {
+      "titleNew": "New schedule",
+      "titleEdit": "Edit schedule",
+      "company": "Company",
+      "companyPlaceholder": "Choose a company",
+      "type": "Type",
+      "once": "Single",
+      "recurring": "Recurring",
+      "frequency": "Frequency",
+      "firstDate": "Date of the first run",
+      "firstDateHint": "From tomorrow on. Runs happen at 09:00 on business days; a weekend date runs on Monday.",
+      "endsOn": "Last day",
+      "endsOnHint": "Without it, the schedule runs until you pause or cancel it.",
+      "amount": "Amount (BRL)",
+      "description": "Service description",
+      "customerName": "Customer name",
+      "customerTaxId": "Customer tax ID",
+      "customerEmail": "Customer email",
+      "customerHint": "The customer is optional. When you fill any field, the tax ID is required.",
+      "sendEmail": "Email the note to the customer",
+      "create": "Create schedule",
+      "save": "Save changes",
+      "required": "Required",
+      "failed": "Could not save the schedule.",
+      "editHint": "Changes apply to the next runs. Notes already issued do not change.",
+      "optional": "optional"
+    },
+    "runs": {
+      "title": "Run history",
+      "empty": "No runs yet. The first one happens on the next business day at 09:00.",
+      "issued": "Issued",
+      "failed": "Failed",
+      "due": "Due {date}",
+      "ranOn": "Ran {date}",
+      "attempt": "Attempt {n}",
+      "viewNote": "View note",
+      "loadMore": "Load more",
+      "loadFailed": "Could not load the run history."
+    }
   }
 }
