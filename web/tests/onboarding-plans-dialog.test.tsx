@@ -25,7 +25,7 @@ describe("PlansDialog", () => {
     renderDialog();
     await screen.findByText("Solo");
     expect(screen.getByText("50 notes per month")).toBeTruthy();
-    expect(screen.getByText(/49\.00/)).toBeTruthy();
+    expect(screen.getByText("R$49.00/month")).toBeTruthy();
     expect(screen.getByText("Equipe")).toBeTruthy();
     expect(screen.getByText("300 notes per month")).toBeTruthy();
   });
