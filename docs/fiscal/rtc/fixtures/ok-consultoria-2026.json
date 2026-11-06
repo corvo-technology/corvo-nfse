@@ -1,9 +1,9 @@
 {
  "capturedAt": "2026-10-15",
  "calculator": {
-  "app": "1.6.0",
-  "db": "V0059",
-  "dbDate": "2026-09-30",
+  "app": "1.6.2",
+  "db": "V0066",
+  "dbDate": "2026-10-28",
   "source": "local offline instance (docker eclipse-temurin:21-jre + api-regime-geral.jar)"
  },
  "description": "Consultoria em TI (NBS 115011000), CST 000 / cClassTrib 000001, base R$1000, 2026-12-10, SP/São Paulo. Real engine output.",
@@ -119,7 +119,7 @@
   }
  ],
  "expected": {
-  "calculatorVersion": "1.6.0/V0059",
+  "calculatorVersion": "1.6.2/V0066",
   "cbs": {
    "base": "1000.00",
    "rate": "0.90",

@@ -6,7 +6,7 @@
 #
 # Prints GET .../versao, then runs the base -> calculation flow from
 # docs/fiscal/rtc/fixtures/ok-consultoria-2026.json and fails unless the engine
-# returns vCBS=9.00 and vIBS=1.00 (the values captured for version 1.6.0/V0059).
+# returns vCBS=9.00 and vIBS=1.00 (the values captured for version 1.6.2/V0066).
 set -eu
 
 RTC_URL="${RTC_URL:?Set RTC_URL to the calculator base, e.g. RTC_URL=http://localhost:18080/api}"
