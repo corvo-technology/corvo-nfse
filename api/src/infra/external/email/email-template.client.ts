@@ -5,7 +5,9 @@ export type EmailTemplateAlias =
   | 'otp-code'
   | 'welcome'
   | 'nfse-documents-ready'
-  | 'credits-low';
+  | 'credits-low'
+  | 'schedule-retry'
+  | 'schedule-paused';
 
 export type EmailTemplateRef = {
   alias: EmailTemplateAlias;

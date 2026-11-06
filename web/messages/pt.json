@@ -1115,7 +1115,8 @@
       "scheduled": "Agendadas",
       "authorized": "Autorizadas",
       "processing": "Processando",
-      "rejected": "Rejeitadas"
+      "rejected": "Rejeitadas",
+      "cancelled": "Canceladas"
     },
     "form": {
       "company": "Empresa emissora",
@@ -1229,7 +1230,19 @@
     "copyAction": "Duplicar",
     "copyInvoice": "Duplicar nota de {name}",
     "copyBanner": "Dados copiados da nota de {name}. A competência é a de hoje; revise o que precisar antes de emitir.",
-    "copyFailed": "Não foi possível copiar a nota. Preencha os dados manualmente."
+    "copyFailed": "Não foi possível copiar a nota. Preencha os dados manualmente.",
+    "repeat": {
+      "label": "Repetir esta nota",
+      "hint": "Emite esta nota agora e as próximas automaticamente, às 09h em dia útil.",
+      "frequency": "Repetir",
+      "WEEKLY": "Toda semana",
+      "BIWEEKLY": "A cada duas semanas",
+      "MONTHLY": "Todo mês",
+      "endsOn": "Repetir até",
+      "next": "Próxima nota em {date}. Sem data, repete até você pausar.",
+      "createdButFailed": "A nota foi emitida, mas a recorrência não foi criada. Tente de novo: não emite outra nota.",
+      "createdButFailedWith": "A nota foi emitida, mas a recorrência não foi criada ({reason}). Tente de novo: não emite outra nota."
+    }
   },
   "Billing": {
     "title": "Plano e uso",
@@ -2414,6 +2427,121 @@
         "link": "Ver os SDKs",
         "link2": "Ver o MCP"
       }
+    }
+  },
+  "Schedules": {
+    "title": "Agendadas e recorrentes",
+    "subtitle": "Notas que se emitem sozinhas. Rodam às 09h (Brasília) em dias úteis; uma data de fim de semana roda na segunda, e a nota leva a competência do dia em que roda.",
+    "empty": {
+      "title": "Nenhuma agenda ainda",
+      "body": "Crie uma agenda para emitir uma nota numa data futura, ou para repeti-la toda semana, a cada duas semanas ou todo mês."
+    },
+    "loadFailed": "Não foi possível carregar suas agendas.",
+    "status": {
+      "active": "Ativa",
+      "paused": "Pausada",
+      "completed": "Concluída",
+      "cancelled": "Cancelada"
+    },
+    "kind": {
+      "once": "Única"
+    },
+    "frequency": {
+      "WEEKLY": "Semanal",
+      "BIWEEKLY": "Quinzenal",
+      "MONTHLY": "Mensal"
+    },
+    "nextRun": "Próxima nota: {date}",
+    "untilDate": "Até {date}",
+    "noEnd": "Sem prazo final",
+    "failures": "{count, plural, one {# tentativa falhou seguida} other {# tentativas falharam seguidas}}",
+    "pausedByFailures": "Pausada depois de 3 tentativas que falharam. Resolva a causa (por exemplo, compre mais notas) e retome.",
+    "pausedByYou": "Pausada por você.",
+    "actions": {
+      "pause": "Pausar",
+      "resume": "Retomar",
+      "cancel": "Cancelar",
+      "edit": "Editar",
+      "details": "Ver detalhes"
+    },
+    "confirm": {
+      "title": "Cancelar esta agenda?",
+      "body": "Cancelar é definitivo. As notas já emitidas continuam. Para recomeçar, você cria uma nova agenda.",
+      "yes": "Cancelar agenda",
+      "no": "Manter"
+    },
+    "toast": {
+      "paused": "Agenda pausada.",
+      "resumed": "Agenda retomada.",
+      "cancelled": "Agenda cancelada.",
+      "failed": "Não foi possível concluir essa ação."
+    },
+    "unknownCompany": "Empresa",
+    "form": {
+      "titleNew": "Nova agenda",
+      "titleEdit": "Editar agenda",
+      "company": "Empresa",
+      "companyPlaceholder": "Escolha uma empresa",
+      "type": "Tipo",
+      "once": "Única",
+      "recurring": "Recorrente",
+      "frequency": "Frequência",
+      "firstDate": "Data da primeira execução",
+      "firstDateHint": "A partir de amanhã. As execuções acontecem às 09h em dias úteis; uma data de fim de semana roda na segunda.",
+      "endsOn": "Último dia",
+      "endsOnHint": "Sem ele, a agenda roda até você pausar ou cancelar.",
+      "amount": "Valor (R$)",
+      "description": "Descrição do serviço",
+      "customerName": "Nome do cliente",
+      "customerTaxId": "CPF ou CNPJ do cliente",
+      "customerEmail": "E-mail do cliente",
+      "customerHint": "O cliente é opcional. Ao preencher qualquer campo, o CPF ou CNPJ passa a ser obrigatório.",
+      "sendEmail": "Enviar a nota por e-mail ao cliente",
+      "create": "Criar agenda",
+      "save": "Salvar alterações",
+      "required": "Obrigatório",
+      "failed": "Não foi possível salvar a agenda.",
+      "editHint": "As mudanças valem para as próximas execuções. As notas já emitidas não mudam.",
+      "optional": "opcional"
+    },
+    "runs": {
+      "title": "Histórico de execuções",
+      "empty": "Nenhuma execução ainda. A primeira acontece no próximo dia útil às 09h.",
+      "issued": "Emitida",
+      "failed": "Falhou",
+      "due": "Prevista para {date}",
+      "ranOn": "Rodou em {date}",
+      "attempt": "Tentativa {n}",
+      "viewNote": "Ver nota",
+      "loadMore": "Carregar mais",
+      "loadFailed": "Não foi possível carregar o histórico."
+    },
+    "to": "Para: {name}",
+    "noCustomer": "sem tomador",
+    "detail": {
+      "back": "Voltar para agendadas",
+      "note": "A nota",
+      "company": "Empresa",
+      "customer": "Para",
+      "email": "E-mail",
+      "taxId": "CPF/CNPJ",
+      "service": "Serviço",
+      "noService": "Descrição padrão da empresa",
+      "amount": "Valor",
+      "deduction": "Dedução do ISS",
+      "sendEmail": "Envio por e-mail",
+      "sendYes": "Envia o PDF e o XML ao cliente",
+      "sendNo": "Não envia",
+      "repeat": "Repetição",
+      "kind": "Tipo",
+      "firstRun": "Primeira execução",
+      "nextRun": "Próxima execução",
+      "endsOn": "Prazo final",
+      "attempts": "Tentativas seguidas que falharam",
+      "createdAt": "Criada em",
+      "notFound": "Agenda não encontrada.",
+      "loading": "Carregando a agenda",
+      "history": "Histórico"
     }
   }
 }

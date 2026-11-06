@@ -39,6 +39,7 @@ describe('InvoiceController', () => {
         invoiceService as never,
         {} as never,
         {} as never,
+        {} as never,
       );
 
       await expect(
@@ -67,6 +68,7 @@ describe('InvoiceController', () => {
 
       const controller = new InvoiceController(
         invoiceService as never,
+        {} as never,
         {} as never,
         {} as never,
       );
@@ -106,6 +108,7 @@ describe('InvoiceController', () => {
         invoiceService as never,
         {} as never,
         {} as never,
+        {} as never,
       );
 
       await expect(
@@ -125,6 +128,7 @@ describe('InvoiceController', () => {
 
       const controller = new InvoiceController(
         invoiceService as never,
+        {} as never,
         {} as never,
         {} as never,
       );
@@ -149,6 +153,7 @@ describe('InvoiceController', () => {
 
       const controller = new InvoiceController(
         invoiceService as never,
+        {} as never,
         {} as never,
         {} as never,
       );
@@ -183,6 +188,7 @@ describe('InvoiceController', () => {
         invoiceService as never,
         {} as never,
         {} as never,
+        {} as never,
       );
 
       await expect(
@@ -201,6 +207,7 @@ describe('InvoiceController', () => {
 
       const controller = new InvoiceController(
         invoiceService as never,
+        {} as never,
         {} as never,
         {} as never,
       );

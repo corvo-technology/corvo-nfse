@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { isCompanyLimitError, request, auth, certificates, companies, invoices, billing, webhooks, members, ApiError, setCsrfToken, getCsrfToken, onUnauthorized, unwrap, toPage, credits, collectAll } from "@/lib/api";
+import { isCompanyLimitError, schedules, request, auth, certificates, companies, invoices, billing, webhooks, members, ApiError, setCsrfToken, getCsrfToken, onUnauthorized, unwrap, toPage, credits, collectAll } from "@/lib/api";
 import { fieldIssues, mapIssues } from "@/lib/api-errors";
 import { session, company, invoice } from "./fixtures";
 const fetchMock = vi.fn<typeof fetch>();
@@ -186,5 +186,49 @@ describe("isCompanyLimitError", () => {
     expect(isCompanyLimitError(new ApiError(500, "Company limit exceeded"))).toBe(false);
     expect(isCompanyLimitError(new Error("Company limit exceeded"))).toBe(false);
     expect(isCompanyLimitError(null)).toBe(false);
+  });
+});
+
+describe("schedules", () => {
+  beforeEach(() => setCsrfToken("csrf"));
+  const wire = { id: "s1", kind: "recurring", frequency: "WEEKLY", status: "paused", pause_reason: "failures", company_id: "c1", anchor_on: "2026-11-09", next_run_on: null, ends_on: "2027-01-31", attempts: 3, last_run_on: "2026-11-11", invoice: { amount: 100 }, created_at: "2026-11-06T15:00:00.000Z" };
+
+  it("lists with the cursor and adapts snake_case to the app's shape", async () => {
+    fetchMock.mockResolvedValue(reply({ data: [wire], pagination: { limit: 50, hasMore: true, nextCursor: "50" } }));
+    const page = await schedules.list({ cursor: "0" });
+    expect(String(fetchMock.mock.calls[0][0])).toBe("/api/proxy/v1/schedules?cursor=0");
+    expect(page).toMatchObject({ hasMore: true, nextCursor: "50" });
+    expect(page.items[0]).toEqual({ id: "s1", kind: "recurring", frequency: "WEEKLY", status: "paused", pauseReason: "failures", companyId: "c1", anchorOn: "2026-11-09", nextRunOn: null, endsOn: "2027-01-31", attempts: 3, lastRunOn: "2026-11-11", invoice: { amount: 100 }, createdAt: "2026-11-06T15:00:00.000Z" });
+  });
+
+  it("pause, resume and cancel POST to the action and return the schedule", async () => {
+    fetchMock.mockImplementation(async () => reply({ data: { ...wire, status: "active" } }));
+    expect((await schedules.resume("s1")).status).toBe("active");
+    expect(fetchMock.mock.calls[0][1]?.method).toBe("POST");
+    expect(String(fetchMock.mock.calls[0][0])).toBe("/api/proxy/v1/schedules/s1/resume");
+    await schedules.pause("s1"); await schedules.cancel("s1");
+    expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual(["/api/proxy/v1/schedules/s1/resume", "/api/proxy/v1/schedules/s1/pause", "/api/proxy/v1/schedules/s1/cancel"]);
+  });
+
+  it("update PATCHes only what is sent", async () => {
+    fetchMock.mockResolvedValue(reply({ data: wire }));
+    await schedules.update("s1", { endsOn: null, frequency: "MONTHLY" });
+    expect(fetchMock.mock.calls[0][1]?.method).toBe("PATCH");
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ endsOn: null, frequency: "MONTHLY" });
+  });
+
+  it("runs adapts the log", async () => {
+    fetchMock.mockResolvedValue(reply({ data: [{ id: "r1", occurrence_on: "2026-11-07", ran_on: "2026-11-09", attempt: 1, outcome: "failed", invoice_id: null, error_code: "ERROR_QUOTA_EXCEEDED", error_message: "no credits", created_at: "2026-11-09T12:00:00.000Z" }], pagination: { hasMore: false, nextCursor: null } }));
+    const page = await schedules.runs("s1");
+    expect(String(fetchMock.mock.calls[0][0])).toBe("/api/proxy/v1/schedules/s1/runs");
+    expect(page.items[0]).toEqual({ id: "r1", occurrenceOn: "2026-11-07", ranOn: "2026-11-09", attempt: 1, outcome: "failed", invoiceId: null, errorCode: "ERROR_QUOTA_EXCEEDED", errorMessage: "no credits", createdAt: "2026-11-09T12:00:00.000Z" });
+  });
+
+  it("createSchedule posts the emission with its schedule options and returns the schedule", async () => {
+    fetchMock.mockResolvedValue(reply({ data: wire }, 202));
+    const created = await schedules.create({ companyId: "c1", amount: 100, competenceDate: "2026-11-09", options: { type: "RECURRING", recurrence: { frequency: "WEEKLY" } } });
+    expect(String(fetchMock.mock.calls[0][0])).toBe("/api/proxy/v1/invoices");
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).options).toEqual({ type: "RECURRING", recurrence: { frequency: "WEEKLY" } });
+    expect(created.id).toBe("s1");
   });
 });

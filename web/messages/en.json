@@ -1115,7 +1115,8 @@
       "scheduled": "Scheduled",
       "authorized": "Authorized",
       "processing": "Processing",
-      "rejected": "Rejected"
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
     },
     "form": {
       "company": "Issuer company",
@@ -1229,7 +1230,19 @@
     "copyAction": "Duplicate",
     "copyInvoice": "Duplicate invoice for {name}",
     "copyBanner": "Details copied from the invoice for {name}. The competence date is today; review anything you need before issuing.",
-    "copyFailed": "Could not copy the invoice. Fill in the details manually."
+    "copyFailed": "Could not copy the invoice. Fill in the details manually.",
+    "repeat": {
+      "label": "Repeat this invoice",
+      "hint": "Issues this invoice now and the next ones automatically, at 09:00 on business days.",
+      "frequency": "Repeat",
+      "WEEKLY": "Every week",
+      "BIWEEKLY": "Every two weeks",
+      "MONTHLY": "Every month",
+      "endsOn": "Repeat until",
+      "next": "Next invoice on {date}. With no date it repeats until you pause it.",
+      "createdButFailed": "The invoice was issued, but the recurrence was not created. Try again: it will not issue another invoice.",
+      "createdButFailedWith": "The invoice was issued, but the recurrence was not created ({reason}). Try again: it will not issue another invoice."
+    }
   },
   "Billing": {
     "title": "Plan and usage",
@@ -2414,6 +2427,121 @@
         "link": "See the SDKs",
         "link2": "See the MCP server"
       }
+    }
+  },
+  "Schedules": {
+    "title": "Scheduled and recurring",
+    "subtitle": "Invoices that issue themselves. They run at 09:00 (Brasília) on business days; a weekend date runs on Monday, and the note takes the competence of the day it runs.",
+    "empty": {
+      "title": "No schedules yet",
+      "body": "Create a schedule to issue a note on a future date, or to repeat it weekly, every two weeks or monthly."
+    },
+    "loadFailed": "Could not load your schedules.",
+    "status": {
+      "active": "Active",
+      "paused": "Paused",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "kind": {
+      "once": "Single"
+    },
+    "frequency": {
+      "WEEKLY": "Weekly",
+      "BIWEEKLY": "Every two weeks",
+      "MONTHLY": "Monthly"
+    },
+    "nextRun": "Next note: {date}",
+    "untilDate": "Until {date}",
+    "noEnd": "No end date",
+    "failures": "{count, plural, one {# failed attempt in a row} other {# failed attempts in a row}}",
+    "pausedByFailures": "Paused after 3 failed attempts. Fix the cause (for example, buy more notes) and resume.",
+    "pausedByYou": "Paused by you.",
+    "actions": {
+      "pause": "Pause",
+      "resume": "Resume",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "details": "View details"
+    },
+    "confirm": {
+      "title": "Cancel this schedule?",
+      "body": "Cancelling is final. Notes already issued stay. To start again you create a new schedule.",
+      "yes": "Cancel schedule",
+      "no": "Keep it"
+    },
+    "toast": {
+      "paused": "Schedule paused.",
+      "resumed": "Schedule resumed.",
+      "cancelled": "Schedule cancelled.",
+      "failed": "Could not complete that action."
+    },
+    "unknownCompany": "Company",
+    "form": {
+      "titleNew": "New schedule",
+      "titleEdit": "Edit schedule",
+      "company": "Company",
+      "companyPlaceholder": "Choose a company",
+      "type": "Type",
+      "once": "Single",
+      "recurring": "Recurring",
+      "frequency": "Frequency",
+      "firstDate": "Date of the first run",
+      "firstDateHint": "From tomorrow on. Runs happen at 09:00 on business days; a weekend date runs on Monday.",
+      "endsOn": "Last day",
+      "endsOnHint": "Without it, the schedule runs until you pause or cancel it.",
+      "amount": "Amount (BRL)",
+      "description": "Service description",
+      "customerName": "Customer name",
+      "customerTaxId": "Customer tax ID",
+      "customerEmail": "Customer email",
+      "customerHint": "The customer is optional. When you fill any field, the tax ID is required.",
+      "sendEmail": "Email the note to the customer",
+      "create": "Create schedule",
+      "save": "Save changes",
+      "required": "Required",
+      "failed": "Could not save the schedule.",
+      "editHint": "Changes apply to the next runs. Notes already issued do not change.",
+      "optional": "optional"
+    },
+    "runs": {
+      "title": "Run history",
+      "empty": "No runs yet. The first one happens on the next business day at 09:00.",
+      "issued": "Issued",
+      "failed": "Failed",
+      "due": "Due {date}",
+      "ranOn": "Ran {date}",
+      "attempt": "Attempt {n}",
+      "viewNote": "View note",
+      "loadMore": "Load more",
+      "loadFailed": "Could not load the run history."
+    },
+    "to": "For: {name}",
+    "noCustomer": "no customer",
+    "detail": {
+      "back": "Back to scheduled",
+      "note": "The invoice",
+      "company": "Company",
+      "customer": "For",
+      "email": "E-mail",
+      "taxId": "CPF/CNPJ",
+      "service": "Service",
+      "noService": "The company's default description",
+      "amount": "Amount",
+      "deduction": "ISS deduction",
+      "sendEmail": "E-mail delivery",
+      "sendYes": "Sends the PDF and XML to the customer",
+      "sendNo": "Does not send",
+      "repeat": "Repetition",
+      "kind": "Type",
+      "firstRun": "First run",
+      "nextRun": "Next run",
+      "endsOn": "Deadline",
+      "attempts": "Failed attempts in a row",
+      "createdAt": "Created on",
+      "notFound": "Schedule not found.",
+      "loading": "Loading the schedule",
+      "history": "History"
     }
   }
 }

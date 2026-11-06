@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call -- supertest/raw SQL responses are untyped */
+import { EmissionRouterService } from '@/modules/invoice-schedule/application/emission-router.service';
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -25,6 +26,7 @@ describe('Invoice overview HTTP contract', () => {
         { provide: InvoiceOverviewService, useValue: { get } },
         { provide: InvoiceService, useValue: {} },
         { provide: InvoiceBatchService, useValue: {} },
+        { provide: EmissionRouterService, useValue: {} },
         { provide: InvoiceCalculationService, useValue: {} },
       ],
     }).compile();

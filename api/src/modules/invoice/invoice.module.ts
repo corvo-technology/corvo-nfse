@@ -30,7 +30,7 @@ import { BillingUsageModule } from '@/modules/billing/billing-usage.module';
 import { PlansModule } from '@/modules/plans/plans.module';
 import { InvoiceWebhookPublisher } from './application/invoice-webhook.publisher';
 import { InvoiceLifecycleService } from './application/invoice-lifecycle.service';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { InvoiceDomainService } from './domain/invoice-domain.service';
@@ -58,6 +58,7 @@ import { InvoiceOverviewService } from './application/invoice-overview.service';
 import { INVOICE_OVERVIEW_REPOSITORY } from './domain/invoice-overview.repository';
 import { TypeOrmInvoiceOverviewRepository } from './infra/typeorm-invoice-overview.repository';
 import { CompanyModule } from '@/modules/company/company.module';
+import { InvoiceScheduleModule } from '@/modules/invoice-schedule/invoice-schedule.module';
 import { CertificateModule } from '@/modules/certificate/certificate.module';
 import { WebhooksConfigModule } from '@/modules/webhooks-config/webhooks-config.module';
 import { StorageModule } from '@/infra/storage/storage.module';
@@ -66,6 +67,7 @@ import { EmailModule } from '@/modules/email/email.module';
 
 @Module({
   imports: [
+    forwardRef(() => InvoiceScheduleModule),
     BillingUsageModule,
     CreditsModule,
     BullModule.registerQueue(

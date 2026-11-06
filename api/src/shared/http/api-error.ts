@@ -161,6 +161,21 @@ export const DOMAIN_ERRORS: Record<
     code: 'ERROR_TAX_REGIME_NOT_SUPPORTED',
     message: 'Only MEI and Simples Nacional companies are supported',
   },
+  ScheduleNotFoundError: {
+    status: 404,
+    code: 'ERROR_SCHEDULE_NOT_FOUND',
+    message: 'Schedule not found',
+  },
+  ScheduleLimitError: {
+    status: 422,
+    code: 'ERROR_SCHEDULE_LIMIT',
+    message: 'Active schedule limit reached',
+  },
+  ScheduleStateError: {
+    status: 409,
+    code: 'ERROR_SCHEDULE_STATE',
+    message: 'The schedule is not in a state that allows this',
+  },
   QuotaExceededError: {
     status: 422,
     code: 'ERROR_QUOTA_EXCEEDED',

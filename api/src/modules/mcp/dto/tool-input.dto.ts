@@ -95,9 +95,19 @@ export class NfseIssueInput {
   /** YYYY-MM-DD. Defaults to today (America/Sao_Paulo). */
   @IsOptional() @IsDateString() competence_date?: string;
 
-  @IsOptional() @IsIn(['IMMEDIATE', 'SCHEDULE']) emission_type?:
+  @IsOptional() @IsIn(['IMMEDIATE', 'SCHEDULE', 'RECURRING']) emission_type?:
     | 'IMMEDIATE'
-    | 'SCHEDULE';
+    | 'SCHEDULE'
+    | 'RECURRING';
+
+  /** Required with emission_type RECURRING. */
+  @IsOptional() @IsIn(['WEEKLY', 'BIWEEKLY', 'MONTHLY']) recurrence_frequency?:
+    | 'WEEKLY'
+    | 'BIWEEKLY'
+    | 'MONTHLY';
+
+  /** YYYY-MM-DD, last day a recurrence may run. Without it the recurrence runs until paused or cancelled. */
+  @IsOptional() @IsDateString() recurrence_ends_on?: string;
 
   @IsOptional() @IsBoolean() send_email?: boolean;
 
@@ -184,4 +194,46 @@ export class NfseIssueBatchInput {
   @ArrayNotEmpty()
   @ArrayMaxSize(50)
   invoices!: unknown[];
+}
+
+export class ScheduleListInput {
+  @IsOptional()
+  @IsIn(['active', 'paused', 'completed', 'cancelled'])
+  status?: 'active' | 'paused' | 'completed' | 'cancelled';
+  @IsOptional() @IsUUID() company_id?: string;
+  @IsOptional() @IsNumber() @Min(1) @Max(200) limit?: number;
+  @IsOptional() @IsNumber() @Min(0) offset?: number;
+}
+
+export class ScheduleIdInput {
+  @IsUUID() schedule_id!: string;
+}
+
+export class ScheduleRunsInput extends ScheduleIdInput {
+  @IsOptional() @IsNumber() @Min(1) @Max(200) limit?: number;
+  @IsOptional() @IsNumber() @Min(0) offset?: number;
+}
+
+export class ScheduleUpdateInput extends ScheduleIdInput {
+  @IsOptional() @IsNumber() @Min(0.01) amount?: number;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsNumber() @Min(0) discount?: number;
+  @IsOptional() @IsNumber() @Min(0) deduction?: number;
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CustomerInput)
+  customer?: CustomerInput;
+  @IsOptional() @IsBoolean() send_email?: boolean;
+  @IsOptional() @IsString() service_code?: string;
+  @IsOptional() @IsString() municipality_code?: string;
+  /** YYYY-MM-DD, or null to remove the deadline. */
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsDateString()
+  ends_on?: string | null;
+  @IsOptional() @IsIn(['WEEKLY', 'BIWEEKLY', 'MONTHLY']) frequency?:
+    | 'WEEKLY'
+    | 'BIWEEKLY'
+    | 'MONTHLY';
+  /** YYYY-MM-DD: moves the date the count of runs starts from. */
+  @IsOptional() @IsDateString() first_date?: string;
 }

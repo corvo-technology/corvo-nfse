@@ -1,4 +1,5 @@
 import { CreditsLowNotifier } from './credits-low.notifier';
+import { TenantRecipientsService } from './tenant-recipients.service';
 
 const tenantId = 'tenant-1';
 
@@ -46,8 +47,7 @@ function build(
   };
   const notifier = new CreditsLowNotifier(
     usage as never,
-    memberships as never,
-    users as never,
+    new TenantRecipientsService(memberships as never, users as never),
     email as never,
     locks as never,
   );

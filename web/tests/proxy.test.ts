@@ -125,3 +125,19 @@ it("forwards the payment integration management routes, but never the public inb
   expect((await call("GET", "integrations/connections/c1/credentials")).status).toBe(404);
   expect(fetchMock).not.toHaveBeenCalled();
 });
+
+it("forwards the schedule routes the dashboard needs, with their methods only", async () => {
+  fetchMock.mockImplementation(async () => new Response("{}", { status: 200 }));
+  const headers = { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "Content-Type": "application/json" };
+  const call = (handler: typeof POST, method: string, route: string) =>
+    handler(new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers, body: method === "GET" ? undefined : "{}" }), context(route));
+  expect((await call(GET, "GET", "schedules")).status).toBe(200);
+  expect((await call(GET, "GET", "schedules/id")).status).toBe(200);
+  expect((await call(PATCH, "PATCH", "schedules/id")).status).toBe(200);
+  expect((await call(GET, "GET", "schedules/id/runs")).status).toBe(200);
+  for (const action of ["pause", "resume", "cancel"]) expect((await call(POST, "POST", `schedules/id/${action}`)).status).toBe(200);
+  expect((await call(POST, "POST", "schedules")).status).toBe(404);
+  expect((await call(DELETE, "DELETE", "schedules/id")).status).toBe(404);
+  expect((await call(GET, "GET", "schedules/id/pause")).status).toBe(404);
+  expect((await call(POST, "POST", "schedules/id/runs")).status).toBe(404);
+});

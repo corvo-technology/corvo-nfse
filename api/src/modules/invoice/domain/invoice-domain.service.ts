@@ -308,7 +308,9 @@ export class InvoiceDomainService {
             message: `competenceDate cannot be more than ${this.scheduleMaxDays} days ahead`,
           });
         } else if (release > today) {
-          scheduledFor = release.set({ hour: SCHEDULE_RELEASE_HOUR }).toJSDate();
+          scheduledFor = release
+            .set({ hour: SCHEDULE_RELEASE_HOUR })
+            .toJSDate();
         }
       } else if (competenceDate > new Date()) {
         issues.push({
