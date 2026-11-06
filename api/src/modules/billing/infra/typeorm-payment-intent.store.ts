@@ -44,6 +44,14 @@ export class TypeOrmPaymentIntentStore extends PaymentIntentStore {
     });
     return rows.map(toDomain);
   }
+  async listPaid(tenantId: string, limit: number) {
+    const rows = await this.repo.find({
+      where: { tenantId, status: 'paid' },
+      order: { paidAt: 'DESC' },
+      take: limit,
+    });
+    return rows.map(toDomain);
+  }
   async findByRef(provider: string, providerRef: string) {
     const row = await this.repo.findOneBy({ provider, providerRef });
     return row ? toDomain(row) : null;

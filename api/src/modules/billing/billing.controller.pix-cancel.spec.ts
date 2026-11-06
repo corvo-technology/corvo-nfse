@@ -15,6 +15,7 @@ describe('BillingController Pix Automático cancel', () => {
       {} as never,
       {} as never,
       pix as never,
+      {} as never,
     );
     await expect(controller.cancelPix(req)).resolves.toEqual({
       data: { cancelled: true },

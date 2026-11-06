@@ -6,6 +6,7 @@ import { WooviClient } from '@/infra/external/woovi/woovi.client';
 import type { WooviConfig } from '@/infra/config/configuration.types';
 import { PaymentFulfillmentService } from './application/payment-fulfillment.service';
 import { CheckoutRouterService } from './application/checkout-router.service';
+import { PaymentHistoryService } from './application/payment-history.service';
 import { StripePaymentsService } from './application/stripe-payments.service';
 import { WooviPaymentsService } from './application/woovi-payments.service';
 import { PaymentIntentStore } from './domain/payment-intent';
@@ -47,12 +48,14 @@ import { PricingService } from '@/modules/plans/application/pricing.service';
     StripePaymentsService,
     WooviPaymentsService,
     CheckoutRouterService,
+    PaymentHistoryService,
   ],
   exports: [
     BillingService,
     WooviPaymentsService,
     StripePaymentsService,
     CheckoutRouterService,
+    PaymentHistoryService,
     WOOVI_CONFIG,
   ],
 })

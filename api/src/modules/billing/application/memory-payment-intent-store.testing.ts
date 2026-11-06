@@ -35,6 +35,14 @@ export class MemoryPaymentIntentStore extends PaymentIntentStore {
         .reverse(),
     );
   }
+  listPaid(tenantId: string, limit: number) {
+    return Promise.resolve(
+      this.rows
+        .filter((r) => r.tenantId === tenantId && r.status === 'paid')
+        .sort((a, b) => (b.paidAt?.getTime() ?? 0) - (a.paidAt?.getTime() ?? 0))
+        .slice(0, limit),
+    );
+  }
   insert(intent: PaymentIntent) {
     if (this.rows.some((r) => r.providerRef === intent.providerRef))
       return Promise.reject(Object.assign(new Error('dup'), { code: '23505' }));

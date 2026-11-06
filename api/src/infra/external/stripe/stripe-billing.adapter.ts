@@ -301,7 +301,11 @@ export class StripeBillingAdapter extends BillingProvider {
       await this.stripe.billingPortal.sessions.create({
         customer: customerId,
         configuration: this.gateway.config.portalConfigurationId,
-        return_url: this.gateway.config.checkoutCancelUrl,
+        // Back to the billing page (the cancel URL is `<billing>/cancel`), not the canceled-checkout page.
+        return_url: this.gateway.config.checkoutCancelUrl.replace(
+          /\/cancel\/?$/,
+          '',
+        ),
       })
     ).url;
   }

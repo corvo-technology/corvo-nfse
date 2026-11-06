@@ -3,7 +3,11 @@ import { PricingService } from '@/modules/plans/application/pricing.service';
 
 const req = { authContext: { activeTenantId: 'tenant-1' } } as never;
 
-function build(plan: { slug: string; name: string }, pixState: unknown = null) {
+function build(
+  plan: { slug: string; name: string },
+  pixState: unknown = null,
+  stripeCustomerId: string | null = null,
+) {
   const quota = {
     getStatus: jest.fn().mockResolvedValue({
       creditsUsed: 0,
@@ -26,7 +30,7 @@ function build(plan: { slug: string; name: string }, pixState: unknown = null) {
   };
   const usage = {
     status: jest.fn().mockResolvedValue({
-      billing: null,
+      billing: stripeCustomerId ? { stripeCustomerId } : null,
       blocked: false,
       hard_limit: 0,
       avulsoBalance: 0,
@@ -41,6 +45,7 @@ function build(plan: { slug: string; name: string }, pixState: unknown = null) {
     planRepo as never,
     {} as never,
     pix as never,
+    {} as never,
   );
 }
 
@@ -90,6 +95,23 @@ describe('BillingController.getCurrentPlan', () => {
     );
     expect(out.data).toMatchObject({
       subscription: { pix_subscription: null },
+    });
+  });
+
+  it('tells the screen whether the Stripe portal can open (only accounts with a Stripe customer)', async () => {
+    const withCard = await build(
+      { slug: 'solo', name: 'Solo' },
+      null,
+      'cus_1',
+    ).getCurrentPlan(req);
+    expect(withCard.data).toMatchObject({
+      subscription: { stripe_portal_available: true },
+    });
+    const pixOnly = await build({ slug: 'solo', name: 'Solo' }).getCurrentPlan(
+      req,
+    );
+    expect(pixOnly.data).toMatchObject({
+      subscription: { stripe_portal_available: false },
     });
   });
 });

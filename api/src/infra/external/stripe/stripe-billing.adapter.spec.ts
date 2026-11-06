@@ -93,6 +93,27 @@ describe('Stripe billing adapter', () => {
       paid: false,
     });
   });
+  it('returns from the Stripe portal to the billing page, not to the canceled-checkout page', async () => {
+    const create = jest
+      .fn()
+      .mockResolvedValue({ url: 'https://billing.stripe.test/p' });
+    const adapter = new StripeBillingAdapter(
+      {
+        config: configuration(),
+        stripe: { billingPortal: { sessions: { create } } },
+      } as unknown as StripeGateway,
+      new PricingService(),
+    );
+    await expect(adapter.portal('cus_1')).resolves.toBe(
+      'https://billing.stripe.test/p',
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customer: 'cus_1',
+        return_url: 'https://corvo.test/app/billing',
+      }),
+    );
+  });
   it('creates a hosted one-time card checkout with server-owned amount', async () => {
     const create = jest.fn().mockResolvedValue({
       id: 'cs_pay',

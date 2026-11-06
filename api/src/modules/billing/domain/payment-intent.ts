@@ -50,6 +50,8 @@ export abstract class PaymentIntentStore {
   ): Promise<PaymentIntent | null>;
   /** The tenant's Pix Automático contracts that can still charge (waiting authorization, or active), newest first. */
   abstract findLiveSubscriptions(tenantId: string): Promise<PaymentIntent[]>;
+  /** Paid payments of the tenant, newest first. */
+  abstract listPaid(tenantId: string, limit: number): Promise<PaymentIntent[]>;
   /** Throws an error with code '23505' on a duplicate (provider, providerRef). */
   abstract insert(intent: PaymentIntent): Promise<void>;
   /** Atomic pending/authorized/expired -> paid (a correct late payment is honored). False if already paid. */

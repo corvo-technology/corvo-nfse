@@ -19,6 +19,7 @@ import type { QuotaStatus } from '@/modules/plans/application/quota.service';
 import { BillingService } from './application/billing.service';
 import { CheckoutRouterService } from './application/checkout-router.service';
 import { WooviPaymentsService } from './application/woovi-payments.service';
+import { PaymentHistoryService } from './application/payment-history.service';
 import { BillingUsageService } from './application/billing-usage.service';
 import {
   CheckoutDto,
@@ -40,6 +41,7 @@ export class BillingController {
     private readonly planRepo: IPlanRepository,
     private readonly checkoutRouter: CheckoutRouterService,
     private readonly pix: WooviPaymentsService,
+    private readonly paymentHistory: PaymentHistoryService,
   ) {}
 
   @Get('plan')
@@ -69,6 +71,8 @@ export class BillingController {
         cancel_at_period_end: billing.billing?.cancelAtPeriodEnd ?? false,
         scheduled_plan: billing.billing?.pendingPlanSlug ?? null,
         blocked: billing.blocked,
+        // The Stripe portal needs a Stripe customer: accounts that only paid by Pix have none.
+        stripe_portal_available: !!billing.billing?.stripeCustomerId,
         pix_subscription: await this.pix.pixSubscriptionState(tenantId),
       },
       usage: {
@@ -86,6 +90,14 @@ export class BillingController {
         period_end: status.periodEnd?.toISOString(),
       },
     });
+  }
+
+  @Get('payments')
+  @RequirePermission('billing.view')
+  async payments(@Req() req: RequestWithAuthContext) {
+    return data(
+      await this.paymentHistory.list(req.authContext!.activeTenantId),
+    );
   }
 
   @Get('usage')
