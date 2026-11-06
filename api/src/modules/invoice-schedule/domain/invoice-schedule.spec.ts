@@ -230,7 +230,7 @@ describe('update', () => {
 
   it('a deadline already passed by the next occurrence completes the schedule', () => {
     const s = recurring();
-    s.update({ endsOn: '2026-11-09' }, '2026-11-10');
+    s.update({ endsOn: '2026-11-12' }, '2026-11-10');
     expect(s.props.status).toBe('completed');
   });
 
