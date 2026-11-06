@@ -67,7 +67,8 @@
       "invoices": "Notas fiscais",
       "billing": "Plano",
       "agents": "Agentes de IA",
-      "integrations": "Integrações"
+      "integrations": "Integrações",
+      "schedules": "Agendadas"
     },
     "account": "CONTA",
     "balance": "SALDO",
@@ -2415,5 +2416,55 @@
         "link2": "Ver o MCP"
       }
     }
+  },
+  "Schedules": {
+    "title": "Agendadas e recorrentes",
+    "subtitle": "Notas que se emitem sozinhas. Rodam às 09h (Brasília) em dias úteis; uma data de fim de semana roda na segunda, e a nota leva a competência do dia em que roda.",
+    "new": "Nova agenda",
+    "empty": {
+      "title": "Nenhuma agenda ainda",
+      "body": "Crie uma agenda para emitir uma nota numa data futura, ou para repeti-la toda semana, a cada duas semanas ou todo mês."
+    },
+    "loadFailed": "Não foi possível carregar suas agendas.",
+    "status": {
+      "active": "Ativa",
+      "paused": "Pausada",
+      "completed": "Concluída",
+      "cancelled": "Cancelada"
+    },
+    "kind": {
+      "once": "Única"
+    },
+    "frequency": {
+      "WEEKLY": "Semanal",
+      "BIWEEKLY": "Quinzenal",
+      "MONTHLY": "Mensal"
+    },
+    "nextRun": "Próxima nota: {date}",
+    "untilDate": "Até {date}",
+    "noEnd": "Sem prazo final",
+    "failures": "{count, plural, one {# tentativa falhou seguida} other {# tentativas falharam seguidas}}",
+    "pausedByFailures": "Pausada depois de 3 tentativas que falharam. Resolva a causa (por exemplo, compre mais notas) e retome.",
+    "pausedByYou": "Pausada por você.",
+    "actions": {
+      "pause": "Pausar",
+      "resume": "Retomar",
+      "cancel": "Cancelar",
+      "edit": "Editar",
+      "history": "Histórico"
+    },
+    "confirm": {
+      "title": "Cancelar esta agenda?",
+      "body": "Cancelar é definitivo. As notas já emitidas continuam. Para recomeçar, você cria uma nova agenda.",
+      "yes": "Cancelar agenda",
+      "no": "Manter"
+    },
+    "toast": {
+      "paused": "Agenda pausada.",
+      "resumed": "Agenda retomada.",
+      "cancelled": "Agenda cancelada.",
+      "failed": "Não foi possível concluir essa ação."
+    },
+    "unknownCompany": "Empresa"
   }
 }

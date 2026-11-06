@@ -1,4 +1,4 @@
-import type { PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -241,6 +241,23 @@ export type PurchaseRequest =
 export type PurchaseResult =
   | { method: "card"; url: string }
   | { method: "pix"; brCode: string | null; qrCodeImage: string | null; paymentLinkUrl: string; expiresAt: string | null };
+type ScheduleWire = { id: string; kind: InvoiceSchedule["kind"]; frequency: ScheduleFrequency | null; status: InvoiceSchedule["status"]; pause_reason: InvoiceSchedule["pauseReason"]; company_id: string; anchor_on: string; next_run_on: string | null; ends_on: string | null; attempts: number; last_run_on: string | null; invoice: Record<string, unknown>; created_at: string };
+type ScheduleRunWire = { id: string; occurrence_on: string; ran_on: string; attempt: number; outcome: ScheduleRun["outcome"]; invoice_id: string | null; error_code: string | null; error_message: string | null; created_at: string };
+const adaptSchedule = (w: ScheduleWire): InvoiceSchedule => ({ id: w.id, kind: w.kind, frequency: w.frequency, status: w.status, pauseReason: w.pause_reason, companyId: w.company_id, anchorOn: w.anchor_on, nextRunOn: w.next_run_on, endsOn: w.ends_on, attempts: w.attempts, lastRunOn: w.last_run_on, invoice: w.invoice, createdAt: w.created_at });
+const adaptScheduleRun = (w: ScheduleRunWire): ScheduleRun => ({ id: w.id, occurrenceOn: w.occurrence_on, ranOn: w.ran_on, attempt: w.attempt, outcome: w.outcome, invoiceId: w.invoice_id, errorCode: w.error_code, errorMessage: w.error_message, createdAt: w.created_at });
+/** What POST /invoices takes to create a schedule: the invoice body plus `options.type` SCHEDULE or RECURRING. */
+export interface CreateScheduleInput { companyId: string; amount: number; competenceDate: string; customer?: { name?: string; taxId?: string; email?: string }; service?: { description?: string }; options: { type: "SCHEDULE" | "RECURRING"; recurrence?: { frequency: ScheduleFrequency; endsOn?: string }; email?: { send: boolean } } }
+export interface UpdateScheduleInput { invoice?: Record<string, unknown>; endsOn?: string | null; frequency?: ScheduleFrequency; anchorOn?: string }
+export const schedules = {
+  list: async (params: PageParams & { status?: InvoiceSchedule["status"] } = {}, signal?: AbortSignal): Promise<Page<InvoiceSchedule>> => { const page = toPage(await request<ListBody<ScheduleWire>>(`/schedules${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptSchedule) }; },
+  get: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}`))),
+  runs: async (id: string, params: PageParams = {}, signal?: AbortSignal): Promise<Page<ScheduleRun>> => { const page = toPage(await request<ListBody<ScheduleRunWire>>(`/schedules/${idPath(id)}/runs${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptScheduleRun) }; },
+  create: async (input: CreateScheduleInput) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>("/invoices", json(input)))),
+  update: async (id: string, patch: UpdateScheduleInput) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}`, json(patch, "PATCH")))),
+  pause: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/pause`, json({})))),
+  resume: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/resume`, json({})))),
+  cancel: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/cancel`, json({})))),
+};
 export const webhooks = {
   list: async (params: PageParams = {}) => toPage(await request<ListBody<WebhookEndpoint>>(`/webhooks${query(params)}`)),
   create: async (data: { url: string; events: WebhookEvent[] }) => unwrap(await request<Envelope<WebhookEndpoint>>("/webhooks", json(data))),
