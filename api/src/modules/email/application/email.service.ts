@@ -5,6 +5,8 @@ import type {
   OtpEmailJobData,
   WelcomeEmailJobData,
   CreditsLowEmailJobData,
+  ScheduleRetryEmailJobData,
+  SchedulePausedEmailJobData,
 } from '@/infra/queues/email-job.types';
 
 export type EnqueueOtpInput = {
@@ -26,12 +28,30 @@ export type EnqueueCreditsLowInput = {
   total: number;
 };
 
+export type EnqueueScheduleRetryInput = {
+  to: string;
+  /** How many schedules failed this time. */
+  count: number;
+  /** Plain-text summary: "Acme Ltda (R$ 150,00); Beta ME (R$ 90,00)". */
+  schedules: string;
+  reason: string;
+};
+
+export type EnqueueSchedulePausedInput = {
+  to: string;
+  companyName: string;
+  amount: string;
+  reason: string;
+};
+
 const DEFAULT_APP_URL = 'https://corvo.tech/app';
 
-/** APP_URL may be the site origin or already end with /app; the billing page is /app/billing. */
-function billingUrl(appUrl: string): string {
-  return `${appUrl.replace(/\/+$/, '').replace(/\/app$/, '')}/app/billing`;
+/** APP_URL may be the site origin or already end with /app; the pages live under /app/... */
+function appPage(appUrl: string, path: string): string {
+  return `${appUrl.replace(/\/+$/, '').replace(/\/app$/, '')}/app/${path}`;
 }
+const billingUrl = (appUrl: string) => appPage(appUrl, 'billing');
+const schedulesUrl = (appUrl: string) => appPage(appUrl, 'schedules');
 
 @Injectable()
 export class EmailService {
@@ -125,5 +145,69 @@ export class EmailService {
     });
 
     this.logger.debug(`Credits-low email enqueued: ${emailId} → ${input.to}`);
+  }
+  async enqueueScheduleRetry(input: EnqueueScheduleRetryInput): Promise<void> {
+    const emailId = `schedule_retry_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const appUrl = this.config.get<string>('APP_URL') ?? DEFAULT_APP_URL;
+
+    const data: ScheduleRetryEmailJobData = {
+      emailId,
+      to: input.to,
+      template: {
+        alias: 'schedule-retry',
+        variables: {
+          count: String(input.count),
+          schedules: input.schedules,
+          reason: input.reason,
+          billing_url: billingUrl(appUrl),
+          schedules_url: schedulesUrl(appUrl),
+        },
+      },
+      kind: 'schedule-retry',
+    };
+
+    await this.queue.add('email', 'schedule-retry', data, {
+      attempts: 3,
+      backoffMs: 5_000,
+      removeOnComplete: true,
+      removeOnFail: 0,
+    });
+
+    this.logger.debug(
+      `Schedule retry email enqueued: ${emailId} → ${input.to}`,
+    );
+  }
+
+  async enqueueSchedulePaused(
+    input: EnqueueSchedulePausedInput,
+  ): Promise<void> {
+    const emailId = `schedule_paused_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const appUrl = this.config.get<string>('APP_URL') ?? DEFAULT_APP_URL;
+
+    const data: SchedulePausedEmailJobData = {
+      emailId,
+      to: input.to,
+      template: {
+        alias: 'schedule-paused',
+        variables: {
+          company_name: input.companyName,
+          amount: input.amount,
+          reason: input.reason,
+          schedules_url: schedulesUrl(appUrl),
+        },
+      },
+      kind: 'schedule-paused',
+    };
+
+    await this.queue.add('email', 'schedule-paused', data, {
+      attempts: 3,
+      backoffMs: 5_000,
+      removeOnComplete: true,
+      removeOnFail: 0,
+    });
+
+    this.logger.debug(
+      `Schedule paused email enqueued: ${emailId} → ${input.to}`,
+    );
   }
 }

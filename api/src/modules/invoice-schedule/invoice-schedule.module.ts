@@ -3,13 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import type { OutboxConfig } from '@/infra/config/configuration.types';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
+import { CompanyModule } from '@/modules/company/company.module';
+import { EmailModule } from '@/modules/email/email.module';
+import { CreditsAlertsModule } from '@/modules/credits-alerts/credits-alerts.module';
 import { InvoiceService } from '@/modules/invoice/application/invoice.service';
 import { InvoiceScheduleRepository } from './domain/invoice-schedule.repository';
 import { InvoiceScheduleOrmEntity } from './infra/invoice-schedule.orm-entity';
 import { InvoiceScheduleRunOrmEntity } from './infra/invoice-schedule-run.orm-entity';
 import { TypeOrmInvoiceScheduleRepository } from './infra/typeorm-invoice-schedule.repository';
 import { ScheduleFailureNotifier } from './domain/schedule-failure.notifier';
-import { LoggingScheduleFailureNotifier } from './application/logging-schedule-failure.notifier';
+import { ScheduleEmailNotifier } from './application/schedule-email.notifier';
 import { ScheduleRunner } from './application/schedule-runner.service';
 import { ScheduleCron } from './jobs/schedule.cron';
 import {
@@ -21,6 +24,9 @@ import {
 @Module({
   imports: [
     InvoiceModule,
+    CompanyModule,
+    EmailModule,
+    CreditsAlertsModule,
     TypeOrmModule.forFeature([
       InvoiceScheduleOrmEntity,
       InvoiceScheduleRunOrmEntity,
@@ -41,10 +47,9 @@ import {
       useFactory: (config: ConfigService) =>
         config.get<OutboxConfig>('outbox')?.scheduleMaxDays ?? 15,
     },
-    // Replaced by the e-mail notifier in the notifications task.
     {
       provide: ScheduleFailureNotifier,
-      useClass: LoggingScheduleFailureNotifier,
+      useClass: ScheduleEmailNotifier,
     },
     ScheduleService,
     ScheduleRunner,

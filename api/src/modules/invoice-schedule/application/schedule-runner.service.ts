@@ -310,7 +310,7 @@ export class ScheduleRunner {
     }
     for (const item of outcome.paused.filter(live)) {
       try {
-        await this.notifier.paused(item.schedule, item.reason);
+        await this.notifier.paused(item);
       } catch (error) {
         this.logNotifyFailure(tenantId, error);
       }

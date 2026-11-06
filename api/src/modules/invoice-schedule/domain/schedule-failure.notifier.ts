@@ -15,5 +15,5 @@ export abstract class ScheduleFailureNotifier {
     items: FailedScheduleItem[],
   ): Promise<void>;
   /** The schedule paused itself after its third failure. */
-  abstract paused(schedule: InvoiceSchedule, reason: string): Promise<void>;
+  abstract paused(item: FailedScheduleItem): Promise<void>;
 }

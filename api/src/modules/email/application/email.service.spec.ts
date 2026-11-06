@@ -95,4 +95,64 @@ describe('EmailService', () => {
       );
     });
   });
+  describe('schedule notices', () => {
+    const withUrl = () =>
+      new EmailService(mockQueue, {
+        get: jest.fn().mockReturnValue('https://corvo.tech/app'),
+      } as unknown as ConfigService);
+
+    it('enqueues the retry notice with the schedules, the reason and both links', async () => {
+      await withUrl().enqueueScheduleRetry({
+        to: 'admin@example.com',
+        count: 2,
+        schedules: 'Acme Ltda (R$ 150,00); Beta ME (R$ 90,00)',
+        reason: 'não há notas disponíveis na sua conta',
+      });
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        'email',
+        'schedule-retry',
+        expect.objectContaining({
+          kind: 'schedule-retry',
+          to: 'admin@example.com',
+          template: {
+            alias: 'schedule-retry',
+            variables: {
+              count: '2',
+              schedules: 'Acme Ltda (R$ 150,00); Beta ME (R$ 90,00)',
+              reason: 'não há notas disponíveis na sua conta',
+              billing_url: 'https://corvo.tech/app/billing',
+              schedules_url: 'https://corvo.tech/app/schedules',
+            },
+          },
+        }),
+        expect.any(Object),
+      );
+    });
+
+    it('enqueues the pause notice for one schedule', async () => {
+      await withUrl().enqueueSchedulePaused({
+        to: 'admin@example.com',
+        companyName: 'Acme Ltda',
+        amount: 'R$ 150,00',
+        reason: 'não há notas disponíveis na sua conta',
+      });
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        'email',
+        'schedule-paused',
+        expect.objectContaining({
+          kind: 'schedule-paused',
+          template: {
+            alias: 'schedule-paused',
+            variables: {
+              company_name: 'Acme Ltda',
+              amount: 'R$ 150,00',
+              reason: 'não há notas disponíveis na sua conta',
+              schedules_url: 'https://corvo.tech/app/schedules',
+            },
+          },
+        }),
+        expect.any(Object),
+      );
+    });
+  });
 });

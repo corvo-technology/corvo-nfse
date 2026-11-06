@@ -8,14 +8,11 @@ import {
   CREDITS_USAGE_CHANGED,
   type CreditsUsageChangedEvent,
 } from '@/modules/billing/application/credits-usage.events';
-import { MembershipService } from '@/modules/auth/application/membership.service';
-import { AuthUserService } from '@/modules/auth/application/auth-user.service';
 import { EmailService } from '@/modules/email/application/email.service';
+import { TenantRecipientsService } from './tenant-recipients.service';
 
 /** Share of the period's included credits that triggers the warning. */
 export const CREDITS_LOW_THRESHOLD = 0.8;
-/** Only these members receive billing warnings. */
-const RECIPIENT_ROLES = new Set(['admin', 'billing']);
 const DAY_MS = 86_400_000;
 
 /**
@@ -29,8 +26,7 @@ export class CreditsLowNotifier {
 
   constructor(
     private readonly usage: BillingUsageService,
-    private readonly memberships: MembershipService,
-    private readonly users: AuthUserService,
+    private readonly recipientsOf: TenantRecipientsService,
     private readonly email: EmailService,
     @Inject(LOCK_PORT) private readonly locks: LockPort,
   ) {}
@@ -58,7 +54,7 @@ export class CreditsLowNotifier {
     );
     if (!marker) return;
 
-    const recipients = await this.recipientEmails(tenantId);
+    const recipients = await this.recipientsOf.emailsFor(tenantId);
     if (recipients.length === 0) {
       this.logger.warn({ event: 'credits_low_no_recipients', tenantId });
       return;
@@ -78,21 +74,5 @@ export class CreditsLowNotifier {
       included,
       recipients: recipients.length,
     });
-  }
-
-  private async recipientEmails(tenantId: string): Promise<string[]> {
-    const members = (await this.memberships.listForTenant(tenantId)).filter(
-      (member) => member.isActive && RECIPIENT_ROLES.has(member.role),
-    );
-    if (members.length === 0) return [];
-    const users = await this.users.getUsersByIds(
-      members.map((member) => member.authUserId),
-      tenantId,
-    );
-    const emails = members.flatMap((member) => {
-      const address = users.get(member.authUserId)?.email?.trim();
-      return address ? [address.toLowerCase()] : [];
-    });
-    return [...new Set(emails)];
   }
 }
