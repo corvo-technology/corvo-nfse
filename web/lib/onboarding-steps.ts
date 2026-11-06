@@ -20,8 +20,8 @@ export function buildSteps(input: OnboardingInput): OnboardingStep[] {
   const steps: (OnboardingStep & { allowed: boolean })[] = [
     { key: "plans", done: flags.plansSeen, locked: false, allowed: manage },
     { key: "company", done: input.hasCompany, locked: false, allowed: manage },
-    { key: "certificate", done: input.hasCertificate, locked: false, allowed: can("nfse.certificates.manage") },
-    { key: "numbering", done: input.lastDpsNumber > 0 || flags.noPriorNotes, locked: false, allowed: manage },
+    { key: "certificate", done: input.hasCertificate, locked: !input.hasCompany, allowed: can("nfse.certificates.manage") },
+    { key: "numbering", done: input.lastDpsNumber > 0 || flags.noPriorNotes, locked: !input.hasCompany, allowed: manage },
     { key: "note", done: input.hasTestNote, locked: !(input.hasCompany && input.hasCertificate), allowed: can("nfse.invoices.issue") },
   ];
   return steps.filter((s) => s.allowed).map(({ key, done, locked }) => ({ key, done, locked }));

@@ -6,7 +6,9 @@ import { useAuth } from "@/lib/auth";
 import { readFlag, writeFlag, type OnboardingFlag } from "@/lib/onboarding-flags";
 import { buildSteps, type OnboardingStep } from "@/lib/onboarding-steps";
 
-interface Facts { scope: string; firstCompanyId: string | null; hasCertificate: boolean; lastDpsNumber: number; hasTestNote: boolean }
+/** A company older than this means an established customer, not a new account. */
+const NEW_ACCOUNT_DAYS = 14;
+interface Facts { scope: string; established: boolean; firstCompanyId: string | null; hasCertificate: boolean; lastDpsNumber: number; hasTestNote: boolean }
 const FLAGS: OnboardingFlag[] = ["hidden", "plansSeen", "noPriorNotes", "noteBannerDismissed"];
 const readFlags = (tenantId: string) => Object.fromEntries(FLAGS.map((flag) => [flag, readFlag(tenantId, flag)])) as Record<OnboardingFlag, boolean>;
 
@@ -27,7 +29,8 @@ export interface Onboarding {
 /** Progress of the first-steps card, read from real data. A failing query only leaves its own step undone. */
 export function useOnboarding(): Onboarding {
   const { can, tenantId, fiscalEnvironment } = useAuth();
-  const active = Boolean(tenantId) && fiscalEnvironment === "test";
+  const anyStep = can("nfse.companies.manage") || can("nfse.certificates.manage") || can("nfse.invoices.issue");
+  const active = Boolean(tenantId) && fiscalEnvironment === "test" && anyStep;
   const scope = `${tenantId}:${fiscalEnvironment}`;
   const [facts, setFacts] = useState<Facts | null>(null);
   const [flagState, setFlagState] = useState<{ tenantId: string; flags: Record<OnboardingFlag, boolean> } | null>(null);
@@ -41,14 +44,20 @@ export function useOnboarding(): Onboarding {
       const first = page ? [...page.items].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0] : undefined;
       const [hasCertificate, lastDpsNumber, hasTestNote] = first
         ? await Promise.all([
-            certificates.list(first.id, { limit: 1 }, abort.signal).then((p) => p.items.length > 0).catch(() => false),
+            certificates.list(first.id, { limit: 20 }, abort.signal).then((p) => p.items.some((c) => c.status === "active")).catch(() => false),
             companies.dpsSequence(first.id).then((s) => s.lastNumber).catch(() => 0),
             invoices.list({ limit: 1 }, abort.signal).then((p) => p.items.length > 0).catch(() => false),
           ])
         : [false, 0, false];
       if (abort.signal.aborted) return;
-      setFlagState({ tenantId, flags: readFlags(tenantId) });
-      setFacts({ scope, firstCompanyId: first?.id ?? null, hasCertificate, lastDpsNumber, hasTestNote });
+      // Choices made in this visit stay even if the browser could not store them.
+      setFlagState((previous) => {
+        const stored = readFlags(tenantId);
+        const kept = previous?.tenantId === tenantId ? previous.flags : null;
+        return { tenantId, flags: Object.fromEntries(FLAGS.map((flag) => [flag, stored[flag] || Boolean(kept?.[flag])])) as Record<OnboardingFlag, boolean> };
+      });
+      const established = first ? Date.now() - new Date(first.createdAt).getTime() > NEW_ACCOUNT_DAYS * 86400000 : false;
+      setFacts({ scope, established, firstCompanyId: first?.id ?? null, hasCertificate, lastDpsNumber, hasTestNote });
     })();
     return () => abort.abort();
   }, [active, tenantId, scope, revision]);
@@ -67,7 +76,7 @@ export function useOnboarding(): Onboarding {
 
   const done = steps.filter((s) => s.done).length;
   return {
-    visible: active && Boolean(current) && Boolean(flags) && !flags!.hidden && steps.length > 0,
+    visible: active && Boolean(current) && !current!.established && Boolean(flags) && !flags!.hidden && steps.length > 0,
     loading: active && !current,
     steps,
     firstCompanyId: current?.firstCompanyId ?? null,

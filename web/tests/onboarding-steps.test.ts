@@ -35,6 +35,15 @@ describe("buildSteps", () => {
     expect(step(buildSteps(input({ hasCompany: true, hasCertificate: true })), "note")?.locked).toBe(false);
   });
 
+  it("the certificate and the numbering need a company first", () => {
+    const without = buildSteps(input());
+    expect(step(without, "certificate")?.locked).toBe(true);
+    expect(step(without, "numbering")?.locked).toBe(true);
+    const withCompany = buildSteps(input({ hasCompany: true }));
+    expect(step(withCompany, "certificate")?.locked).toBe(false);
+    expect(step(withCompany, "numbering")?.locked).toBe(false);
+  });
+
   it("hides the steps the person has no permission for", () => {
     const keys = (can: (p: string) => boolean) => buildSteps(input({ can })).map((s) => s.key);
     expect(keys((p) => p !== "nfse.certificates.manage")).not.toContain("certificate");

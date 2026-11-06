@@ -1514,7 +1514,8 @@
           "progress": "{done} de {total}",
           "hide": "Ocultar",
           "doneLabel": "Feito",
-          "noteLocked": "Cadastre a empresa e envie o certificado para liberar",
+          "needsCompany": "Cadastre a empresa primeiro",
+      "noteLocked": "Cadastre a empresa e envie o certificado para liberar",
           "noPrior": "Nunca emiti notas antes",
           "allDoneTitle": "Tudo pronto",
           "allDoneBody": "Você pode emitir quantas notas de teste quiser, sem consumir créditos. Quando for emitir de verdade, troque para Produção no seletor aqui em cima."

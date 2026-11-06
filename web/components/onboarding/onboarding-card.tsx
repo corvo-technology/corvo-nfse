@@ -59,12 +59,10 @@ export function OnboardingCard() {
             <li key={step.key} className="flex items-center gap-3 border-t border-border py-3 first:border-t-0">
               {icon}
               <div className="min-w-0 flex-1">
-                {step.key === "note" ? (
-                  step.locked ? (
-                    <><p className="text-sm text-text-3">{label}</p><p className="text-[12.5px] text-text-4">{t("card.noteLocked")}</p></>
-                  ) : (
-                    <Link href="/app/invoices/new" className="inline-flex items-center gap-1 text-sm font-medium">{label}<ChevronRight size={14} aria-hidden /></Link>
-                  )
+                {step.locked ? (
+                  <><p className="text-sm text-text-3">{label}</p><p className="text-[12.5px] text-text-4">{t(step.key === "note" ? "card.noteLocked" : "card.needsCompany")}</p></>
+                ) : step.key === "note" ? (
+                  <Link href="/app/invoices/new" className="inline-flex items-center gap-1 text-sm font-medium">{label}<ChevronRight size={14} aria-hidden /></Link>
                 ) : (
                   <button type="button" className="inline-flex items-center gap-1 text-left text-sm font-medium" onClick={() => start(step.key as Exclude<StepKey, "note">)}>{label}<ChevronRight size={14} aria-hidden /></button>
                 )}

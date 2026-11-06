@@ -1514,7 +1514,8 @@
           "progress": "{done} of {total}",
           "hide": "Hide",
           "doneLabel": "Done",
-          "noteLocked": "Register the company and upload the certificate to unlock",
+          "needsCompany": "Register the company first",
+      "noteLocked": "Register the company and upload the certificate to unlock",
           "noPrior": "I never issued notes before",
           "allDoneTitle": "All set",
           "allDoneBody": "You can issue as many test notes as you like without using credits. When you are ready to issue for real, switch to Production in the selector up here."

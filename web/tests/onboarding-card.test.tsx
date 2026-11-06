@@ -18,9 +18,9 @@ vi.mock("@/components/dashboard/certificate-upload", () => ({ CertificateUpload:
 vi.mock("@/components/companies/dps-sequence-card", () => ({ DpsSequenceCard: ({ companyId }: { companyId: string }) => <div>sequence-{companyId}</div> }));
 
 const ORDER: StepKey[] = ["plans", "company", "certificate", "numbering", "note"];
-const state = (over: Partial<Onboarding> & { doneKeys?: StepKey[]; lockedNote?: boolean } = {}): Onboarding => {
-  const { doneKeys = [], lockedNote = true, ...rest } = over;
-  const steps: OnboardingStep[] = ORDER.map((key) => ({ key, done: doneKeys.includes(key), locked: key === "note" && lockedNote }));
+const state = (over: Partial<Onboarding> & { doneKeys?: StepKey[]; lockedNote?: boolean; lockedKeys?: StepKey[] } = {}): Onboarding => {
+  const { doneKeys = [], lockedNote = true, lockedKeys = [], ...rest } = over;
+  const steps: OnboardingStep[] = ORDER.map((key) => ({ key, done: doneKeys.includes(key), locked: (key === "note" && lockedNote) || lockedKeys.includes(key) }));
   const count = steps.filter((s) => s.done).length;
   return { visible: true, loading: false, steps, firstCompanyId: "c1", done: count, total: steps.length, allDone: count === steps.length, hide: mocks.hide, mark: mocks.mark, reload: mocks.reload, ...rest } as Onboarding;
 };
@@ -84,6 +84,14 @@ describe("OnboardingCard", () => {
     mocks.state = state({ lockedNote: false });
     renderCard();
     expect(screen.getByRole("link", { name: messages.Onboarding.steps.note }).getAttribute("href")).toBe("/app/invoices/new");
+  });
+
+  it("certificate and numbering are not clickable before a company exists, and say why", () => {
+    mocks.state = state({ lockedKeys: ["certificate", "numbering"] });
+    renderCard();
+    expect(screen.queryByRole("button", { name: messages.Onboarding.steps.certificate })).toBeNull();
+    expect(screen.queryByRole("button", { name: messages.Onboarding.steps.numbering })).toBeNull();
+    expect(screen.getAllByText("Register the company first")).toHaveLength(2);
   });
 
   it("when everything is done it says so and points to the environment selector", () => {

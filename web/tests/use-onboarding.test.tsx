@@ -17,6 +17,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 const page = <T,>(items: T[]) => ({ items, hasMore: false, nextCursor: null });
+const daysAgo = (days: number) => new Date(Date.now() - days * 86400000).toISOString();
 const company = (id: string, createdAt: string) => ({ id, createdAt });
 const stepOf = (result: { current: ReturnType<typeof useOnboarding> }, key: string) => result.current.steps.find((s) => s.key === key);
 
@@ -50,8 +51,8 @@ describe("useOnboarding", () => {
   });
 
   it("with several companies it follows the oldest one", async () => {
-    mocks.companies.mockResolvedValue(page([company("new", "2026-11-05T00:00:00Z"), company("old", "2026-01-01T00:00:00Z")]));
-    mocks.certificates.mockResolvedValue(page([{ id: "k" }]));
+    mocks.companies.mockResolvedValue(page([company("new", daysAgo(1)), company("old", daysAgo(5))]));
+    mocks.certificates.mockResolvedValue(page([{ id: "k", status: "active" }]));
     mocks.sequence.mockResolvedValue({ series: "1", lastNumber: 40 });
     const { result } = renderHook(() => useOnboarding());
     await waitFor(() => expect(result.current.visible).toBe(true));
@@ -63,7 +64,7 @@ describe("useOnboarding", () => {
   });
 
   it("a failing query leaves only its own step undone", async () => {
-    mocks.companies.mockResolvedValue(page([company("c1", "2026-01-01T00:00:00Z")]));
+    mocks.companies.mockResolvedValue(page([company("c1", daysAgo(3))]));
     mocks.certificates.mockRejectedValue(new Error("boom"));
     mocks.invoices.mockResolvedValue(page([{ id: "n1" }]));
     const { result } = renderHook(() => useOnboarding());
@@ -84,10 +85,44 @@ describe("useOnboarding", () => {
     expect(localStorage.getItem("corvo:onboarding:t1:hidden")).toBe("1");
   });
 
-  it("is not shown to someone with no permission for any step", async () => {
+  it("is not shown to someone with no permission for any step, and asks for nothing", async () => {
     mocks.auth.permissions = [];
     const { result } = renderHook(() => useOnboarding());
-    await waitFor(() => expect(mocks.companies).toHaveBeenCalled());
     expect(result.current.visible).toBe(false);
+    expect(mocks.companies).not.toHaveBeenCalled();
+  });
+
+  it("an expired or revoked certificate does not count", async () => {
+    mocks.companies.mockResolvedValue(page([company("c1", daysAgo(3))]));
+    mocks.certificates.mockResolvedValue(page([{ id: "a", status: "expired" }, { id: "b", status: "revoked" }]));
+    const { result } = renderHook(() => useOnboarding());
+    await waitFor(() => expect(result.current.visible).toBe(true));
+    expect(stepOf(result, "certificate")?.done).toBe(false);
+    expect(stepOf(result, "note")?.locked).toBe(true);
+  });
+
+  it("does not greet an established customer: the company is old", async () => {
+    mocks.companies.mockResolvedValue(page([company("c1", daysAgo(40))]));
+    const { result } = renderHook(() => useOnboarding());
+    await waitFor(() => expect(mocks.companies).toHaveBeenCalled());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.visible).toBe(false);
+  });
+
+  it("a recent company still gets the card", async () => {
+    mocks.companies.mockResolvedValue(page([company("c1", daysAgo(2))]));
+    const { result } = renderHook(() => useOnboarding());
+    await waitFor(() => expect(result.current.visible).toBe(true));
+  });
+
+  it("keeps a choice made in this visit even when the browser cannot store it", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
+    const { result } = renderHook(() => useOnboarding());
+    await waitFor(() => expect(result.current.visible).toBe(true));
+    act(() => result.current.mark("plansSeen"));
+    act(() => result.current.reload());
+    await waitFor(() => expect(mocks.companies).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(stepOf(result, "plans")?.done).toBe(true));
+    vi.restoreAllMocks();
   });
 });
