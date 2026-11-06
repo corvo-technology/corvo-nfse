@@ -1084,7 +1084,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ],
         },
         { kind: "heading", level: 2, body: "Scheduled and recurring invoices" },
-        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` to issue an invoice once on a future date, or `options.type: \"RECURRING\"` to repeat it every week, every two weeks or every month. Neither issues now: they create a **schedule**, and the response is the schedule (`202`), not an invoice. `competenceDate` is the date of the first run: from tomorrow on and up to 15 days ahead." },
+        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` to issue an invoice once on a future date, or `options.type: \"RECURRING\"` to repeat it every week, every two weeks or every month. Neither issues now: they create a **schedule**, and the response is the schedule (`202`), not an invoice. `competenceDate` is the date of the first run: from tomorrow on and up to 15 days ahead (up to 31 days for `RECURRING`, so a monthly one can start today)." },
         { kind: "table", head: ["Situation", "Result"], rows: [
           ["No `options.type` (or `IMMEDIATE`) and a future `competenceDate`", "`422` with `ERROR_FUTURE_DATE` in `details[].code`."],
           ["`SCHEDULE` or `RECURRING` with a `competenceDate` from tomorrow on, within the limit (default 15 days ahead)", "`202` with the schedule (`id`, `kind`, `status: active`, `next_run_on`). The invoice only exists when the schedule runs."],

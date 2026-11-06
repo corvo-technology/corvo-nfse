@@ -1064,7 +1064,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ],
         },
         { kind: "heading", level: 2, body: "Notas agendadas e recorrentes" },
-        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` para emitir uma nota uma única vez numa data futura, ou `options.type: \"RECURRING\"` para repeti-la toda semana, a cada duas semanas ou todo mês. Nenhum dos dois emite agora: criam uma **agenda**, e a resposta é a agenda (`202`), não uma nota. `competenceDate` é a data da primeira execução: de amanhã em diante e até 15 dias à frente." },
+        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` para emitir uma nota uma única vez numa data futura, ou `options.type: \"RECURRING\"` para repeti-la toda semana, a cada duas semanas ou todo mês. Nenhum dos dois emite agora: criam uma **agenda**, e a resposta é a agenda (`202`), não uma nota. `competenceDate` é a data da primeira execução: de amanhã em diante e até 15 dias à frente (até 31 dias em `RECURRING`, para uma mensal poder começar hoje)." },
         { kind: "table", head: ["Situação", "Resultado"], rows: [
           ["Sem `options.type` (ou `IMMEDIATE`) e `competenceDate` futura", "`422` com `ERROR_FUTURE_DATE` em `details[].code`."],
           ["`SCHEDULE` ou `RECURRING` com `competenceDate` de amanhã em diante, até o limite (padrão 15 dias à frente)", "`202` com a agenda (`id`, `kind`, `status: active`, `next_run_on`). A nota só existe quando a agenda roda."],
