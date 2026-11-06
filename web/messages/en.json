@@ -2462,7 +2462,7 @@
       "resume": "Resume",
       "cancel": "Cancel",
       "edit": "Edit",
-      "history": "History"
+      "details": "View details"
     },
     "confirm": {
       "title": "Cancel this schedule?",
@@ -2515,6 +2515,33 @@
       "viewNote": "View note",
       "loadMore": "Load more",
       "loadFailed": "Could not load the run history."
+    },
+    "to": "For: {name}",
+    "noCustomer": "no customer",
+    "detail": {
+      "back": "Back to scheduled",
+      "note": "The invoice",
+      "company": "Company",
+      "customer": "For",
+      "email": "E-mail",
+      "taxId": "CPF/CNPJ",
+      "service": "Service",
+      "noService": "The company's default description",
+      "amount": "Amount",
+      "deduction": "ISS deduction",
+      "sendEmail": "E-mail delivery",
+      "sendYes": "Sends the PDF and XML to the customer",
+      "sendNo": "Does not send",
+      "repeat": "Repetition",
+      "kind": "Type",
+      "firstRun": "First run",
+      "nextRun": "Next run",
+      "endsOn": "Deadline",
+      "attempts": "Failed attempts in a row",
+      "createdAt": "Created on",
+      "notFound": "Schedule not found.",
+      "loading": "Loading the schedule",
+      "history": "History"
     }
   }
 }

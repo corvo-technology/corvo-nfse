@@ -2462,7 +2462,7 @@
       "resume": "Retomar",
       "cancel": "Cancelar",
       "edit": "Editar",
-      "history": "Histórico"
+      "details": "Ver detalhes"
     },
     "confirm": {
       "title": "Cancelar esta agenda?",
@@ -2515,6 +2515,33 @@
       "viewNote": "Ver nota",
       "loadMore": "Carregar mais",
       "loadFailed": "Não foi possível carregar o histórico."
+    },
+    "to": "Para: {name}",
+    "noCustomer": "sem tomador",
+    "detail": {
+      "back": "Voltar para agendadas",
+      "note": "A nota",
+      "company": "Empresa",
+      "customer": "Para",
+      "email": "E-mail",
+      "taxId": "CPF/CNPJ",
+      "service": "Serviço",
+      "noService": "Descrição padrão da empresa",
+      "amount": "Valor",
+      "deduction": "Dedução do ISS",
+      "sendEmail": "Envio por e-mail",
+      "sendYes": "Envia o PDF e o XML ao cliente",
+      "sendNo": "Não envia",
+      "repeat": "Repetição",
+      "kind": "Tipo",
+      "firstRun": "Primeira execução",
+      "nextRun": "Próxima execução",
+      "endsOn": "Prazo final",
+      "attempts": "Tentativas seguidas que falharam",
+      "createdAt": "Criada em",
+      "notFound": "Agenda não encontrada.",
+      "loading": "Carregando a agenda",
+      "history": "Histórico"
     }
   }
 }

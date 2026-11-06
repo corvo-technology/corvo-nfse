@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, CalendarClock } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { ApiError, companies as companiesApi, schedules as schedulesApi } from "@/lib/api";
+import { companies as companiesApi, schedules as schedulesApi } from "@/lib/api";
 import type { InvoiceSchedule } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -11,25 +12,21 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/components/ui/toast";
 import { ScheduleList, type ScheduleAction } from "@/components/schedules/schedule-list";
 import { ScheduleForm } from "@/components/schedules/schedule-form";
-import { ScheduleRuns } from "@/components/schedules/schedule-runs";
+import { useScheduleActions } from "@/components/schedules/use-schedule-actions";
 
 /** The recurring and scheduled notes: what will run, when, and the controls (shown under the "Agendadas" filter of the notes list). */
 export function SchedulePanel() {
   const t = useTranslations("Schedules");
   const tc = useTranslations("Common");
   const { can } = useAuth();
-  const { success, error: toastError } = useToast();
   const canManage = can("nfse.invoices.issue");
   const [items, setItems] = useState<InvoiceSchedule[] | null>(null);
   const [names, setNames] = useState<Record<string, string>>({});
   const [failed, setFailed] = useState(false);
-  const [busy, setBusy] = useState<{ id: string; action: ScheduleAction } | null>(null);
   const [cancelling, setCancelling] = useState<InvoiceSchedule | null>(null);
   const [form, setForm] = useState<{ schedule?: InvoiceSchedule } | null>(null);
-  const [history, setHistory] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -46,18 +43,7 @@ export function SchedulePanel() {
 
   const replace = useCallback((next: InvoiceSchedule) => setItems((rows) => (rows ?? []).map((row) => (row.id === next.id ? next : row))), []);
 
-  const run = async (schedule: InvoiceSchedule, action: ScheduleAction) => {
-    if (busy) return;
-    setBusy({ id: schedule.id, action });
-    try {
-      replace(await schedulesApi[action](schedule.id));
-      success(t(`toast.${action === "pause" ? "paused" : action === "resume" ? "resumed" : "cancelled"}`));
-    } catch (cause) {
-      toastError(cause instanceof ApiError && cause.status < 500 && cause.status > 0 ? cause.message : t("toast.failed"));
-    } finally {
-      setBusy(null);
-    }
-  };
+  const { busy, run } = useScheduleActions(replace);
 
   const header = <p className="text-[13px] text-text-3">{t("subtitle")}</p>;
 
@@ -91,10 +77,9 @@ export function SchedulePanel() {
           renderExtra={(s) => (
             <>
               {canManage && (s.status === "active" || s.status === "paused") && <Button variant="ghost" onClick={() => setForm({ schedule: s })}>{t("actions.edit")}</Button>}
-              <Button variant="ghost" aria-expanded={history === s.id} onClick={() => setHistory(history === s.id ? null : s.id)}>{t("actions.history")}</Button>
+              <Link href={`/app/schedules/${s.id}`} className="btn btn-ghost">{t("actions.details")}</Link>
             </>
           )}
-          renderBelow={(s) => (history === s.id ? <div className="mt-3"><ScheduleRuns scheduleId={s.id} /></div> : null)}
         />
       )}
       {form && (

@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api";
 import type { InvoiceSchedule } from "@/lib/types";
 import messages from "@/messages/en.json";
 
+vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   pause: vi.fn(),
@@ -163,22 +164,20 @@ describe("Schedules page: editing and the run history", () => {
     await waitFor(() => expect(within(row()).getByText("R$ 999,00")).toBeTruthy());
   });
 
-  it("History opens the run log under the row and closes again", async () => {
-    mocks.runs.mockResolvedValue({ items: [{ id: "r1", occurrenceOn: "2026-11-07", ranOn: "2026-11-09", attempt: 1, outcome: "issued", invoiceId: "inv-1", errorCode: null, errorMessage: null, createdAt: "2026-11-09T12:00:00.000Z" }], hasMore: false, nextCursor: null });
+  it("each row says who the note is for and links to its details", async () => {
+    mocks.list.mockResolvedValue(page([schedule({ invoice: { amount: 150, customer: { name: "Padaria Estrela", taxId: "52998224725" } } }), schedule({ id: "s2", invoice: { amount: 10 } })]));
     renderPage();
     const r = await waitFor(() => row());
-    fireEvent.click(within(r).getByRole("button", { name: "History" }));
-    await within(r).findByTestId("schedule-run");
-    expect(mocks.runs).toHaveBeenCalledWith("s1", {}, expect.anything());
-    fireEvent.click(within(r).getByRole("button", { name: "History" }));
-    expect(within(r).queryByTestId("schedule-run")).toBeNull();
+    expect(within(r).getByText("For: Padaria Estrela")).toBeTruthy();
+    expect(within(row("s2")).getByText("For: no customer")).toBeTruthy();
+    expect(within(r).getByRole("link", { name: "View details" }).getAttribute("href")).toBe("/app/schedules/s1");
   });
 
-  it("anyone who can view still gets the history, but not Edit", async () => {
+  it("anyone who can view still gets the details, but not Edit", async () => {
     mocks.canIssue = false;
     renderPage();
     const r = await waitFor(() => row());
-    expect(within(r).getByRole("button", { name: "History" })).toBeTruthy();
+    expect(within(r).getByRole("link", { name: "View details" })).toBeTruthy();
     expect(within(r).queryByRole("button", { name: "Edit" })).toBeNull();
   });
 });

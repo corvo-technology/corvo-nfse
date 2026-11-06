@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatBRL } from "@/components/pricing/plan-picker";
+import { maskTaxId } from "@/lib/masks";
 import type { InvoiceSchedule, ScheduleStatus } from "@/lib/types";
 
 const STATUS_VARIANT: Record<ScheduleStatus, BadgeVariant> = { active: "accent", paused: "warn", completed: "gray", cancelled: "gray" };
@@ -13,6 +15,12 @@ const STATUS_VARIANT: Record<ScheduleStatus, BadgeVariant> = { active: "accent",
 export function formatDay(day: string, locale: string): string {
   const [y, m, d] = day.slice(0, 10).split("-");
   return locale === "pt" ? `${d}/${m}/${y}` : `${m}/${d}/${y}`;
+}
+
+/** Who the note is for: the name, else the CPF/CNPJ, else nothing (a note without tomador). */
+export function customerLabel(invoice: Record<string, unknown>): string | null {
+  const customer = (invoice.customer ?? {}) as { name?: string; taxId?: string };
+  return customer.name?.trim() || (customer.taxId ? maskTaxId(customer.taxId) : null);
 }
 
 export type ScheduleAction = "pause" | "resume" | "cancel";
@@ -44,7 +52,8 @@ export function ScheduleList({ schedules, companyNames, canManage, busy, onActio
             <Card className="flex flex-col gap-3 p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] font-medium text-text">{companyNames[s.companyId] ?? t("unknownCompany")}</p>
+                  <Link href={`/app/schedules/${s.id}`} className="block truncate text-[15px] font-medium text-text hover:underline">{companyNames[s.companyId] ?? t("unknownCompany")}</Link>
+                  <p className="mt-0.5 truncate text-[13px] text-text-3">{t("to", { name: customerLabel(s.invoice) ?? t("noCustomer") })}</p>
                   <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-text-3">
                     <span>{s.frequency ? t(`frequency.${s.frequency}`) : t("kind.once")}</span>
                     {amount && <span className="tabular-nums text-text-2">{amount}</span>}
