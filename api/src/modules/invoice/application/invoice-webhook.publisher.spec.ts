@@ -41,6 +41,7 @@ describe('InvoiceWebhookPublisher', () => {
     expect(webhooks.findByTenantIdAndEvent).toHaveBeenCalledWith(
       invoice.tenantId,
       'nfse.invoice.cancelled',
+      invoice.environment,
     );
     expect(outbox.enqueue).toHaveBeenCalledTimes(1);
     expect((outbox.enqueue.mock.calls as unknown[][])[0][0]).toMatchObject({

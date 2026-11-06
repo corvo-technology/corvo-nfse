@@ -5,6 +5,7 @@ export abstract class IWebhookConfigRepository {
   abstract listPage(
     tenantId: string,
     options: CursorQuery,
+    keyEnvironment?: 'test' | 'live',
   ): Promise<CursorPage<WebhookConfig>>;
   abstract findByTenantId(tenantId: string): Promise<WebhookConfig[]>;
   abstract findByIdAndTenantId(
@@ -14,6 +15,7 @@ export abstract class IWebhookConfigRepository {
   abstract findByTenantIdAndEvent(
     tenantId: string,
     event: string,
+    environment: 'test' | 'live',
   ): Promise<WebhookConfig[]>;
   abstract save(
     webhook: WebhookConfig,
