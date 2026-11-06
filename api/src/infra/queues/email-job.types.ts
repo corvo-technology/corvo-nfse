@@ -40,8 +40,24 @@ export type CreditsLowEmailJobData = {
   kind: 'credits-low';
 };
 
+export type ScheduleRetryEmailJobData = {
+  emailId: string;
+  to: string;
+  template: EmailTemplateRef;
+  kind: 'schedule-retry';
+};
+
+export type SchedulePausedEmailJobData = {
+  emailId: string;
+  to: string;
+  template: EmailTemplateRef;
+  kind: 'schedule-paused';
+};
+
 export type EmailJobData =
   | OtpEmailJobData
   | InvoiceEmailJobData
   | WelcomeEmailJobData
-  | CreditsLowEmailJobData;
+  | CreditsLowEmailJobData
+  | ScheduleRetryEmailJobData
+  | SchedulePausedEmailJobData;

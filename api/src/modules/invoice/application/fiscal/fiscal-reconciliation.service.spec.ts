@@ -362,6 +362,7 @@ describe('InvoiceWebhookPublisher', () => {
     expect(configs.findByTenantIdAndEvent).toHaveBeenCalledWith(
       tenantId,
       'nfse.invoice.fiscal_discrepancy',
+      'test',
     );
     expect(outbox.enqueue).toHaveBeenCalledTimes(1);
     expect(outbox.enqueue).toHaveBeenCalledWith(

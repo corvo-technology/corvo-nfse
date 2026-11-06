@@ -12,7 +12,9 @@ import { ServiceCodeCombobox } from "@/components/ui/service-code-combobox";
 import { PageHeader } from "@/components/ui/page-header";
 import { useAuth } from "@/lib/auth";
 import { mapIssues } from "@/lib/api-errors";
-import { ApiError, companies as companiesApi, invoices as invoicesApi } from "@/lib/api";
+import { ApiError, companies as companiesApi, invoices as invoicesApi, schedules as schedulesApi, type CreateScheduleInput } from "@/lib/api";
+import { firstRecurringDate, todayInSaoPaulo } from "@/lib/recurrence";
+import type { ScheduleFrequency } from "@/lib/types";
 import { isValidCnpj, isValidCpf, maskCurrency, maskDigits, maskState, cleanTaxId, maskTaxId, parseCurrency } from "@/lib/masks";
 import type { Company, InvoiceCalculation } from "@/lib/types";
 import { InvoiceCalculationPanel } from "@/components/dashboard/invoice-calculation-panel";
@@ -83,6 +85,9 @@ export default function NewInvoicePage() {
   const attempt = useRef<{ key: string; payload: string } | null>(null);
   const [uncertain, setUncertain] = useState(false);
   const [sendEmail, setSendEmail] = useState(true);
+  const [repeat, setRepeat] = useState(false);
+  const [frequency, setFrequency] = useState<ScheduleFrequency>("MONTHLY");
+  const [endsOn, setEndsOn] = useState("");
   const [calculating, setCalculating] = useState(false);
   const [calc, setCalc] = useState<{ key: string; result: InvoiceCalculation } | null>(null);
   const [calcError, setCalcError] = useState<string | null>(null);
@@ -163,6 +168,21 @@ export default function NewInvoicePage() {
     };
   }
 
+  const firstRepeatOn = firstRecurringDate(frequency, todayInSaoPaulo());
+
+  /** The same note as a recurrence body: starts one period from today, the company by id. */
+  function recurrenceInput(input: ReturnType<typeof buildInput>): CreateScheduleInput {
+    return {
+      companyId: form.companyId,
+      amount: input.amount,
+      competenceDate: firstRepeatOn,
+      ...(input.customer ? { customer: input.customer } : {}),
+      service: { ...(input.service.description ? { description: input.service.description } : {}), ...(input.service.code ? { code: input.service.code } : {}), ...(input.service.municipalityCode ? { municipalityCode: input.service.municipalityCode } : {}) },
+      ...(input.deduction ? { deduction: input.deduction } : {}),
+      options: { type: "RECURRING", recurrence: { frequency, ...(endsOn ? { endsOn } : {}) }, ...(sendEmail ? { email: { send: true } } : {}) },
+    };
+  }
+
   async function calculate() {
     if (calculating || !canSubmit) return;
     setCalculating(true);
@@ -202,6 +222,15 @@ export default function NewInvoicePage() {
       const input = buildInput(amount, form.externalId || `dashboard-${key}`);
       attempt.current = { key, payload: formSnapshot };
       const created = await invoicesApi.create(input, key);
+      if (repeat) {
+        // The first note is already issued; the recurrence takes over from the next period. Same key
+        // on a retry: the note is not issued twice and the schedule is not created twice.
+        try { await schedulesApi.create(recurrenceInput(input), `${key}:recurrence`); }
+        catch (cause) {
+          setError(cause instanceof ApiError && cause.status > 0 && cause.status < 500 && cause.message ? t("repeat.createdButFailedWith", { reason: cause.message }) : t("repeat.createdButFailed"));
+          return;
+        }
+      }
       if (posthogConfigured) {
         posthog.capture("invoice_created", {
           fiscal_environment: fiscalEnvironment,
@@ -359,6 +388,29 @@ export default function NewInvoicePage() {
                     </div>
                   )}
                 </Field>
+              </div>
+              <div className="flex flex-col gap-4 sm:col-span-2">
+                <label className="choice items-start">
+                  <input type="checkbox" checked={repeat} onChange={(event) => setRepeat(event.target.checked)} className="mt-0.5 h-4 w-4 flex-none accent-[var(--accent)]" />
+                  <span className="min-w-0">
+                    <span className="block text-[14px] text-text">{t("repeat.label")}</span>
+                    <span className="block text-[12.5px] text-text-4">{t("repeat.hint")}</span>
+                  </span>
+                </label>
+                {repeat && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label={t("repeat.frequency")}>
+                      {(c) => (
+                        <select {...c} className="field" value={frequency} onChange={(event) => setFrequency(event.target.value as ScheduleFrequency)}>
+                          {(["WEEKLY", "BIWEEKLY", "MONTHLY"] as const).map((value) => <option key={value} value={value}>{t(`repeat.${value}`)}</option>)}
+                        </select>
+                      )}
+                    </Field>
+                    <Field label={t("repeat.endsOn")} optionalLabel={t("fields.optional")} hint={t("repeat.next", { date: firstRepeatOn.split("-").reverse().join("/") })}>
+                      {(c) => <input {...c} type="date" className="field" min={firstRepeatOn} value={endsOn} onChange={(event) => setEndsOn(event.target.value)} />}
+                    </Field>
+                  </div>
+                )}
               </div>
             </div>
           </Section>

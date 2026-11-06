@@ -1,7 +1,7 @@
 import { CursorQuery } from '@/shared/http/pagination';
 import { Injectable } from '@nestjs/common';
 import { randomBytes } from 'crypto';
-import { WebhookConfig } from '../domain/webhook-config';
+import { WebhookConfig, webhookVisibleTo } from '../domain/webhook-config';
 import { IWebhookConfigRepository } from '../domain/webhook-config.repository';
 import { WebhookNotFoundError, WebhookValidationError } from '../domain/errors';
 import { PUBLIC_WEBHOOK_EVENT_TYPES } from '../domain/webhook-event';
@@ -9,8 +9,12 @@ import { assertNotPrivateHost } from './url-safety.validator';
 
 @Injectable()
 export class WebhookConfigService {
-  listPage(tenantId: string, options: CursorQuery) {
-    return this.repo.listPage(tenantId, options);
+  listPage(
+    tenantId: string,
+    options: CursorQuery,
+    keyEnvironment?: 'test' | 'live',
+  ) {
+    return this.repo.listPage(tenantId, options, keyEnvironment);
   }
 
   constructor(private readonly repo: IWebhookConfigRepository) {}
@@ -19,15 +23,21 @@ export class WebhookConfigService {
     return this.repo.findByTenantId(tenantId);
   }
 
-  async findOne(tenantId: string, id: string): Promise<WebhookConfig> {
+  async findOne(
+    tenantId: string,
+    id: string,
+    keyEnvironment?: 'test' | 'live',
+  ): Promise<WebhookConfig> {
     const webhook = await this.repo.findByIdAndTenantId(id, tenantId);
-    if (!webhook) throw new WebhookNotFoundError(id);
+    if (!webhook || !webhookVisibleTo(webhook, keyEnvironment))
+      throw new WebhookNotFoundError(id);
     return webhook;
   }
 
   async create(
     tenantId: string,
     data: { url: string; events: string[] },
+    keyEnvironment?: 'test' | 'live',
   ): Promise<WebhookConfig> {
     // Validate URL
     let parsedUrl: URL;
@@ -73,6 +83,7 @@ export class WebhookConfigService {
       url: data.url,
       events: data.events,
       secret,
+      environment: keyEnvironment ?? null,
       active: true,
       createdAt: now,
       updatedAt: now,
@@ -80,12 +91,20 @@ export class WebhookConfigService {
     return this.repo.save(webhook, tenantId);
   }
 
-  async remove(tenantId: string, id: string): Promise<void> {
-    const webhook = await this.findOne(tenantId, id);
+  async remove(
+    tenantId: string,
+    id: string,
+    keyEnvironment?: 'test' | 'live',
+  ): Promise<void> {
+    const webhook = await this.findOne(tenantId, id, keyEnvironment);
     await this.repo.remove(webhook, tenantId);
   }
 
-  async findByEvent(tenantId: string, event: string): Promise<WebhookConfig[]> {
-    return this.repo.findByTenantIdAndEvent(tenantId, event);
+  async findByEvent(
+    tenantId: string,
+    event: string,
+    environment: 'test' | 'live',
+  ): Promise<WebhookConfig[]> {
+    return this.repo.findByTenantIdAndEvent(tenantId, event, environment);
   }
 }

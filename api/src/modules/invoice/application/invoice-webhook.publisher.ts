@@ -25,6 +25,7 @@ export class InvoiceWebhookPublisher {
       const configs = await this.webhooks.findByTenantIdAndEvent(
         invoice.tenantId,
         type,
+        invoice.environment,
       );
       const event: WebhookEvent = {
         id: `evt_${crypto.randomUUID()}`,

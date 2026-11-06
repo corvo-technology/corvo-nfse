@@ -138,6 +138,15 @@ export class InvoiceBatchService {
       if (errors.length > 0) throw validationExceptionFactory(errors);
       // The key is not part of the invoice payload: keep the request hash identical to POST /invoices.
       const { idempotencyKey, ...dto } = item;
+      if (dto.options?.type === 'SCHEDULE' || dto.options?.type === 'RECURRING')
+        return {
+          kind: 'rejected',
+          error: {
+            code: 'ERROR_VALIDATION',
+            message:
+              'options.type SCHEDULE and RECURRING are not supported in a batch: create a schedule with POST /v1/invoices',
+          },
+        };
       return await this.invoices.prepareEmission(
         dto,
         tenantId,

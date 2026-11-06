@@ -43,6 +43,8 @@ import { ApiKeyEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
 import type { RequestWithAuthContext } from '@/modules/auth/auth-context';
 import { InvoiceService } from '../application/invoice.service';
 import { InvoiceBatchService } from '../application/invoice-batch.service';
+import { EmissionRouterService } from '@/modules/invoice-schedule/application/emission-router.service';
+import { toScheduleResponse } from '@/modules/invoice-schedule/http/schedule.dto';
 import {
   BatchInvoiceItemDto,
   CreateInvoiceBatchDto,
@@ -63,6 +65,7 @@ export class InvoiceController {
     private readonly invoiceService: InvoiceService,
     private readonly calculationService: InvoiceCalculationService,
     private readonly batchService: InvoiceBatchService,
+    private readonly emissionRouter: EmissionRouterService,
   ) {}
 
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
@@ -80,7 +83,9 @@ export class InvoiceController {
   })
   @ApiKeyEndpoint()
   @RequirePermission('nfse.invoices.issue')
-  @ApiOperation({ summary: 'Emit a new NFS-e invoice' })
+  @ApiOperation({
+    summary: 'Emit a new NFS-e invoice, or schedule it (SCHEDULE / RECURRING)',
+  })
   @ApiHeader({ name: 'idempotency-key', required: false })
   async emit(
     @Body() dto: CreateInvoiceDto,
@@ -88,12 +93,16 @@ export class InvoiceController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     const tenantId = req.authContext!.activeTenantId;
-    return this.invoiceService.emit(
+    const emitted = await this.emissionRouter.emit(
       dto,
       tenantId,
       req.authContext!,
       idempotencyKey,
     );
+    // SCHEDULE and RECURRING issue nothing yet: the answer is the schedule, not an invoice.
+    return emitted.kind === 'invoice'
+      ? emitted.invoice
+      : data(toScheduleResponse(emitted.schedule));
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })

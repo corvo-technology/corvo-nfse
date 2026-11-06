@@ -303,3 +303,69 @@ describe('IntegrationsController', () => {
     expect(await validate(ok)).toHaveLength(0);
   });
 });
+
+describe('IntegrationsController API key environment', () => {
+  const testKey = {
+    authContext: { activeTenantId: TENANT, apiKeyEnvironment: 'test' },
+  } as never;
+  const liveKey = {
+    authContext: { activeTenantId: TENANT, apiKeyEnvironment: 'live' },
+  } as never;
+  const session = { authContext: { activeTenantId: TENANT } } as never;
+  const body = (environment?: 'test' | 'live') =>
+    ({
+      provider: 'woovi',
+      companyId: 'co',
+      credentials: { appId: 'abc' },
+      environment,
+    }) as never;
+
+  it('does not show or open connections of the other environment to an API key', async () => {
+    const { controller, connections } = setup();
+    // The fixture connection is a test one.
+    await expect(controller.list(liveKey)).resolves.toEqual([]);
+    await expect(controller.list(testKey)).resolves.toHaveLength(1);
+    await expect(controller.get(liveKey, 'c1')).rejects.toThrow(
+      'Connection not found',
+    );
+    await expect(controller.pause(liveKey, 'c1')).rejects.toThrow(
+      'Connection not found',
+    );
+    await expect(controller.activate(liveKey, 'c1')).rejects.toThrow(
+      'Connection not found',
+    );
+    await expect(controller.disconnect(liveKey, 'c1')).rejects.toThrow(
+      'Connection not found',
+    );
+    await expect(controller.rules(liveKey, 'c1')).rejects.toThrow(
+      'Connection not found',
+    );
+    expect(
+      (connections as unknown as Record<string, jest.Mock>).create,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('creates connections only in the key environment', async () => {
+    const { controller, connections } = setup();
+    await expect(controller.create(testKey, body('live'))).rejects.toThrow(
+      'can only create test connections',
+    );
+    await controller.create(testKey, body());
+    expect(connections.create).toHaveBeenCalledWith(
+      TENANT,
+      expect.objectContaining({ environment: 'test' }),
+    );
+  });
+
+  it('keeps the dashboard flow: a session chooses the environment in the body', async () => {
+    const { controller, connections } = setup();
+    await controller.create(session, body('live'));
+    expect(connections.create).toHaveBeenCalledWith(
+      TENANT,
+      expect.objectContaining({ environment: 'live' }),
+    );
+    await expect(controller.create(session, body())).rejects.toThrow(
+      'environment must be test or live',
+    );
+  });
+});

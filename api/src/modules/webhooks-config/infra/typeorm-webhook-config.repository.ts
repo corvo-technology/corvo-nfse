@@ -9,7 +9,7 @@ import { queryCursorPage } from '@/shared/http/keyset-pagination';
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ArrayContains, Repository } from 'typeorm';
+import { ArrayContains, IsNull, Repository } from 'typeorm';
 import { WebhookConfig } from '../domain/webhook-config';
 import { IWebhookConfigRepository } from '../domain/webhook-config.repository';
 import { WebhookConfigEntity } from './webhook-config.orm-entity';
@@ -19,15 +19,23 @@ export class TypeOrmWebhookConfigRepository implements IWebhookConfigRepository 
   async listPage(
     tenantId: string,
     options: CursorQuery,
+    keyEnvironment?: 'test' | 'live',
   ): Promise<CursorPage<WebhookConfig>> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
+      const query = this.repo
+        .createQueryBuilder('webhook')
+        .where('webhook.tenant_id = :tenantId', { tenantId });
+      // Endpoints for both environments count as live (see webhookVisibleTo).
+      if (keyEnvironment)
+        query.andWhere(
+          "COALESCE(webhook.environment, 'live') = :keyEnvironment",
+          { keyEnvironment },
+        );
       return queryCursorPage(
-        this.repo
-          .createQueryBuilder('webhook')
-          .where('webhook.tenant_id = :tenantId', { tenantId }),
+        query,
         options,
-        ['webhooks', tenantId],
+        ['webhooks', tenantId, keyEnvironment ?? 'all'],
         (entity) => entity,
       );
     });
@@ -61,11 +69,16 @@ export class TypeOrmWebhookConfigRepository implements IWebhookConfigRepository 
   async findByTenantIdAndEvent(
     tenantId: string,
     event: string,
+    environment: 'test' | 'live',
   ): Promise<WebhookConfig[]> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
+      const base = { tenantId, active: true, events: ArrayContains([event]) };
       return this.repo.find({
-        where: { tenantId, active: true, events: ArrayContains([event]) },
+        where: [
+          { ...base, environment: IsNull() },
+          { ...base, environment },
+        ],
       });
     });
   }

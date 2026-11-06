@@ -522,3 +522,34 @@ export interface InvoiceCalculation {
   pendingFields: { field: string; reason: string }[];
   blocking: { code: string; message: string; step: string; category: string; retryable: boolean } | null;
 }
+
+export type ScheduleStatus = "active" | "paused" | "completed" | "cancelled";
+export type ScheduleFrequency = "WEEKLY" | "BIWEEKLY" | "MONTHLY";
+/** A scheduled (once) or recurring invoice. Dates are plain YYYY-MM-DD. */
+export interface InvoiceSchedule {
+  id: string;
+  kind: "once" | "recurring";
+  frequency: ScheduleFrequency | null;
+  status: ScheduleStatus;
+  pauseReason: "customer" | "failures" | null;
+  companyId: string;
+  anchorOn: string;
+  nextRunOn: string | null;
+  endsOn: string | null;
+  attempts: number;
+  lastRunOn: string | null;
+  /** The invoice body each run issues. */
+  invoice: Record<string, unknown>;
+  createdAt: string;
+}
+export interface ScheduleRun {
+  id: string;
+  occurrenceOn: string;
+  ranOn: string;
+  attempt: number;
+  outcome: "issued" | "failed";
+  invoiceId: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+}

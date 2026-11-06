@@ -20,7 +20,11 @@ export class WebhookDispatcherService {
     event: WebhookEvent,
     environment?: WebhookEnvironment,
   ): Promise<void> {
-    const webhooks = await this.configService.findByEvent(tenantId, event.type);
+    const webhooks = await this.configService.findByEvent(
+      tenantId,
+      event.type,
+      environment ?? event.environment,
+    );
 
     for (const webhook of webhooks) {
       const deliveryEnv = environment ?? event.environment;
@@ -42,10 +46,15 @@ export class WebhookDispatcherService {
   async test(
     tenantId: string,
     id: string,
+    keyEnvironment?: 'test' | 'live',
   ): Promise<
     { sent: true } | { sent: false; statusCode: number | null; error: string }
   > {
-    const webhook = await this.configService.findOne(tenantId, id);
+    const webhook = await this.configService.findOne(
+      tenantId,
+      id,
+      keyEnvironment,
+    );
     const testEvent: WebhookEvent = {
       id: `evt_test_${Date.now()}`,
       type: 'webhook.test',

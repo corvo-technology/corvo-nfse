@@ -34,10 +34,12 @@ export class WebhookDeliveryController {
     @Req() req: RequestWithAuthContext,
     @Query() options: WebhookDeliveryQuery,
   ) {
-    return this.deliveryService.listPage(
-      req.authContext!.activeTenantId,
-      options,
-    );
+    // An API key only sees deliveries of its own environment, whatever the query says.
+    const keyEnvironment = req.authContext!.apiKeyEnvironment;
+    return this.deliveryService.listPage(req.authContext!.activeTenantId, {
+      ...options,
+      environment: keyEnvironment ?? options.environment,
+    });
   }
 
   @Get('stats')
@@ -51,7 +53,7 @@ export class WebhookDeliveryController {
     return this.deliveryService.getStats(
       req.authContext!.activeTenantId,
       options.hours,
-      options.environment,
+      req.authContext!.apiKeyEnvironment ?? options.environment,
     );
   }
 
@@ -64,7 +66,11 @@ export class WebhookDeliveryController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
-    await this.outboxService.manualRetry(req.authContext!.activeTenantId, id);
+    await this.outboxService.manualRetry(
+      req.authContext!.activeTenantId,
+      id,
+      req.authContext!.apiKeyEnvironment,
+    );
     return { retried: true };
   }
 }

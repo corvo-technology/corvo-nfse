@@ -93,6 +93,13 @@ const ptWithRetiredCredits: DocsTree = {
           ["GET", "`/v1/webhooks/deliveries`", "Listar entregas", "200"],
           ["GET", "`/v1/webhooks/deliveries/stats`", "Consultar estatísticas", "200"],
           ["POST", "`/v1/webhooks/deliveries/:id/retry`", "Agendar nova tentativa", "200"],
+          ["GET", "`/v1/schedules`", "Listar agendas e recorrências", "200"],
+          ["GET", "`/v1/schedules/:id`", "Consultar uma agenda", "200"],
+          ["GET", "`/v1/schedules/:id/runs`", "Histórico de execuções de uma agenda", "200"],
+          ["PATCH", "`/v1/schedules/:id`", "Alterar uma agenda", "200"],
+          ["POST", "`/v1/schedules/:id/pause`", "Pausar uma agenda", "200"],
+          ["POST", "`/v1/schedules/:id/resume`", "Retomar uma agenda", "200"],
+          ["POST", "`/v1/schedules/:id/cancel`", "Cancelar uma agenda", "200"],
           ["GET", "`/v1/billing/plan`", "Consultar plano e consumo", "200"],
           ["GET", "`/v1/billing/usage`", "Consultar disponibilidade e cotas", "200"],
           ["POST", "`/v1/billing/upgrade`", "Agendar troca de plano", "200"],
@@ -729,12 +736,14 @@ console.log(res.status); // 204`,
               { name: "customer", type: "objeto", required: false, description: "Opcional: omita ou envie `{}` para uma nota sem tomador (o tomador não vai na DPS). Quando enviado com qualquer dado, `taxId` é obrigatório (CPF ou CNPJ válido, normalizado); `name` é opcional, `email` (opcional; obrigatório quando o envio de email está habilitado; sem validação de formato neste DTO) e `address` (opcional: `street`, `city`, `state`, `zip`, `country`; se preencher cidade ou UF, preencha ambas)." },
               { name: "service", type: "objeto", required: true, description: "`code` é opcional: sem ele vale o `defaultServiceCode` da empresa e, se ela não tiver, `100901` (LC 116 item 10.09, representação de qualquer natureza); quando informado, exatamente 6 dígitos. `municipalityCode` herda o município da empresa; quando informado, exatamente 7 dígitos e define o local da prestação. `description` é opcional: se vazia, usa-se o nome do código de serviço. Vazio, `null` ou valor inválido dos demais campos não aciona o padrão." },
               { name: "amount", type: "number", required: true, description: "Valor em reais, positivo, até 9999999999.99 e no máximo 2 casas decimais." },
-              { name: "competenceDate", type: "string ISO 8601", required: true, description: "Data de competência válida. Sem `options.type`, não pode ser futura (`422` `ERROR_FUTURE_DATE`). Com `options.type: \"SCHEDULE\"`, aceita data futura (veja Notas agendadas)." },
+              { name: "competenceDate", type: "string ISO 8601", required: true, description: "Data de competência válida. Sem `options.type`, não pode ser futura (`422` `ERROR_FUTURE_DATE`). Com `SCHEDULE` ou `RECURRING`, é a data da primeira execução, de amanhã em diante (veja Notas agendadas e recorrentes)." },
               { name: "discount", type: "number", required: false, description: "Desconto incondicional em reais, de 0 até o valor da nota, no máximo 2 casas decimais." },
               { name: "deduction", type: "number", required: false, description: "Dedução da base do ISS declarada pelo emitente, em reais: maior que 0 e menor que `amount` menos `discount`, no máximo 2 casas decimais (`0` equivale a omitir). Vai na DPS em `vDedRed/vDR` e reduz a base de cálculo do ISS. A nota continua sendo emitida pelo valor total. O emitente responde pelo valor declarado; a Corvo não confere se a dedução é permitida. O IBS/CBS segue calculado sobre o valor sem a dedução. Veja Dedução da base do ISS." },
               { name: "email", type: "boolean", required: false, description: "Solicita notificação; padrão `false`." },
               { name: "options.email.send", type: "boolean", required: false, description: "Quando definido, prevalece sobre `email`." },
-              { name: "options.type", type: "string", required: false, description: "`IMMEDIATE` (padrão) ou `SCHEDULE`. `SCHEDULE` agenda a emissão para a `competenceDate` futura; veja Notas agendadas." },
+              { name: "options.type", type: "string", required: false, description: "`IMMEDIATE` (padrão), `SCHEDULE` ou `RECURRING`. `SCHEDULE` e `RECURRING` criam uma agenda em vez de emitir agora; veja Notas agendadas e recorrentes." },
+              { name: "options.recurrence.frequency", type: "string", required: false, description: "`WEEKLY`, `BIWEEKLY` ou `MONTHLY`. Obrigatório com `RECURRING`; proibido nos outros tipos." },
+              { name: "options.recurrence.endsOn", type: "string YYYY-MM-DD", required: false, description: "Último dia em que a recorrência pode rodar (inclusive). Sem ele, roda até ser pausada ou cancelada." },
             ],
           },
           examples: {
@@ -1054,26 +1063,60 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
             { kind: "callout", tone: "warn", body: "`503` com `Retry-After` (segundos) quando a Calculadora de tributos está indisponível: tente de novo depois, sem estimar. O limite é o mesmo de qualquer endpoint autenticado (`429` com `Retry-After`). Data de competência futura só até 15 dias à frente." },
           ],
         },
-        { kind: "heading", level: 2, body: "Notas agendadas" },
-        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` com uma `competenceDate` futura para pedir que a nota seja emitida só naquele dia. A Corvo libera a emissão às 09:00 de `America/Sao_Paulo` (12:00 UTC) da `competenceDate`. Até lá a nota fica com `status: \"queued\"` e `scheduledFor` traz o instante da liberação (ISO); em notas imediatas `scheduledFor` é `null`." },
+        { kind: "heading", level: 2, body: "Notas agendadas e recorrentes" },
+        { kind: "text", body: "Use `options.type: \"SCHEDULE\"` para emitir uma nota uma única vez numa data futura, ou `options.type: \"RECURRING\"` para repeti-la toda semana, a cada duas semanas ou todo mês. Nenhum dos dois emite agora: criam uma **agenda**, e a resposta é a agenda (`202`), não uma nota. `competenceDate` é a data da primeira execução: de amanhã em diante e até 15 dias à frente (até 31 dias em `RECURRING`, para uma mensal poder começar hoje)." },
         { kind: "table", head: ["Situação", "Resultado"], rows: [
           ["Sem `options.type` (ou `IMMEDIATE`) e `competenceDate` futura", "`422` com `ERROR_FUTURE_DATE` em `details[].code`."],
-          ["`SCHEDULE` e `competenceDate` futura até o limite", "`202`, `status: queued`, `scheduledFor` preenchido; a emissão acontece na data."],
-          ["`SCHEDULE` e `competenceDate` além do limite (padrão 15 dias à frente)", "`422` com `ERROR_SCHEDULE_HORIZON_EXCEEDED` em `details[].code`."],
-          ["`SCHEDULE` e `competenceDate` de hoje ou passada", "Emissão imediata, `scheduledFor: null`."],
+          ["`SCHEDULE` ou `RECURRING` com `competenceDate` de amanhã em diante, até o limite (padrão 15 dias à frente)", "`202` com a agenda (`id`, `kind`, `status: active`, `next_run_on`). A nota só existe quando a agenda roda."],
+          ["`SCHEDULE` ou `RECURRING` com `competenceDate` de hoje ou passada", "`422` com `first_date_too_soon` em `details[].code`. Para emitir agora, use `IMMEDIATE`."],
+          ["`SCHEDULE` ou `RECURRING` além do limite", "`422` com `schedule_horizon_exceeded`."],
+          ["`RECURRING` sem `options.recurrence.frequency`", "`422` com `required`. `recurrence` com `SCHEDULE` ou `IMMEDIATE` dá `422` com `not_allowed`."],
+          ["`options.recurrence.endsOn` igual ou anterior à primeira data", "`422` com `ends_before_start`."],
+          ["Mais de 200 agendas ativas na conta", "`422` com `ERROR_SCHEDULE_LIMIT`."],
         ] },
-        { kind: "code", label: "Agendar uma nota", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
+        { kind: "code", label: "Criar uma recorrência mensal", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -H "Idempotency-Key: pedido_123_agendada" \\
   -d '{
     "companyTaxId": "11222333000181",
-    "service": { "description": "Corte de cabelo" },
-    "amount": 50,
-    "competenceDate": "2026-10-20",
-    "options": { "type": "SCHEDULE" }
+    "service": { "description": "Mensalidade" },
+    "amount": 150,
+    "competenceDate": "2026-11-10",
+    "options": {
+      "type": "RECURRING",
+      "recurrence": { "frequency": "MONTHLY", "endsOn": "2027-10-10" }
+    }
   }'` },
-        { kind: "callout", tone: "warn", body: "Os dados fiscais são calculados na hora de emitir, com a configuração vigente na `competenceDate`. Em `live`, a empresa precisa estar pronta e ter certificado ativo já no momento do agendamento. Antes de agendar, `POST /v1/invoices/calculate` mostra o cálculo para aquela data. O webhook `nfse.invoice.authorized` (ou `rejected`) chega quando a emissão ocorre, não no agendamento." },
+        { kind: "code", label: "Resposta: a agenda", language: "json", code: `{
+  "data": {
+    "id": "8f6c2b1e-0d4a-4c43-9c1a-2d7f5e3b9a10",
+    "kind": "recurring",
+    "frequency": "MONTHLY",
+    "status": "active",
+    "pause_reason": null,
+    "company_id": "5b0e7c5a-5d0b-4f45-8d6c-3a2a1e9d7f20",
+    "anchor_on": "2026-11-10",
+    "next_run_on": "2026-11-10",
+    "ends_on": "2027-10-10",
+    "attempts": 0,
+    "last_run_on": null,
+    "invoice": { "amount": 150, "service": { "description": "Mensalidade" } },
+    "created_at": "2026-11-06T15:00:00.000Z"
+  }
+}` },
+        { kind: "callout", tone: "warn", body: "Mudança de contrato: `SCHEDULE` antes devolvia a nota (com `scheduledFor`); agora devolve a agenda. O `id` da resposta é o da agenda, e a nota aparece em `GET /v1/invoices` quando a agenda roda. O crédito deixa de ser reservado no cadastro: é consumido na execução. Notas agendadas antes da mudança continuam sendo emitidas normalmente. Agendas não são aceitas em lote (`POST /v1/invoices/batches`)." },
+        { kind: "callout", tone: "accent", body: "As execuções acontecem às 09:00 de `America/Sao_Paulo`, de segunda a sexta. Uma data de sábado ou domingo roda na segunda-feira. A nota leva a competência do dia em que roda e usa os dados da agenda daquele momento. Se a execução não conseguir emitir (por exemplo, sem notas disponíveis), ela tenta de novo no dia útil seguinte e você recebe um e-mail; depois de 3 tentativas sem sucesso a agenda é pausada e você recebe outro e-mail. `POST /v1/schedules/:id/resume` retoma a partir da próxima data, sem recuperar o que passou." },
+        { kind: "heading", level: 3, body: "Gerenciar agendas" },
+        { kind: "table", head: ["Método", "Rota", "Descrição", "Status"], rows: [
+          ["GET", "`/v1/schedules`", "Listar agendas (filtros `status` e `companyId`)", "200"],
+          ["GET", "`/v1/schedules/:id`", "Consultar uma agenda", "200"],
+          ["GET", "`/v1/schedules/:id/runs`", "Histórico de execuções: data prevista, dia em que rodou, resultado, nota emitida ou erro", "200"],
+          ["PATCH", "`/v1/schedules/:id`", "Alterar `invoice`, `endsOn`, `frequency` ou `anchorOn`; vale para as próximas execuções", "200"],
+          ["POST", "`/v1/schedules/:id/pause`", "Pausar", "200"],
+          ["POST", "`/v1/schedules/:id/resume`", "Retomar uma agenda pausada", "200"],
+          ["POST", "`/v1/schedules/:id/cancel`", "Cancelar (definitivo)", "200"],
+        ] },
+        { kind: "text", body: "A agenda tem `id`, `kind` (`once` ou `recurring`), `frequency`, `status` (`active`, `paused`, `completed`, `cancelled`), `pause_reason` (`customer` ou `failures`), `company_id`, `anchor_on`, `next_run_on`, `ends_on`, `attempts` (falhas seguidas, de 0 a 3), `last_run_on`, `invoice` (o corpo emitido a cada execução) e `created_at`. Permissões: `nfse.invoices.view` para ler e `nfse.invoices.issue` para criar e alterar. Uma chave de teste vê só agendas de teste, e uma de produção só as de produção." },
         { kind: "heading", level: 2, body: "Dedução da base do ISS" },
         { kind: "text", body: "O emitente pode declarar em `deduction` um valor que a legislação do município permite abater da base de cálculo do ISS. O valor vai na DPS em `vDedRed/vDR` e reduz a base do ISS; a nota continua sendo emitida pelo valor total (`amount`)." },
         { kind: "table", head: ["Campo / tributo", "Como é tratado"], rows: [
@@ -2681,8 +2724,50 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             [
               "`nfse_issue`",
               "`nfse:write`",
-              "`company_tax_id` (CNPJ) ou `company_id`, `amount` (ou `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` obrigatório quando há tomador), `description?`, `discount?`, `deduction?` (dedução da base do ISS declarada pelo emitente), `competence_date?` (padrão: hoje), `emission_type?` (`IMMEDIATE`/`SCHEDULE`), `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
-              "`{ invoice_id, access_key, status }`"
+              "`company_tax_id` (CNPJ) ou `company_id`, `amount` (ou `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` obrigatório quando há tomador), `description?`, `discount?`, `deduction?` (dedução da base do ISS declarada pelo emitente), `competence_date?` (padrão: hoje), `emission_type?` (`IMMEDIATE`/`SCHEDULE`/`RECURRING`), `recurrence_frequency?` (`WEEKLY`/`BIWEEKLY`/`MONTHLY`, obrigatório com `RECURRING`), `recurrence_ends_on?`, `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
+              "`{ invoice_id, access_key, status }`; com `SCHEDULE` ou `RECURRING`, `{ schedule_id, kind, frequency, status, next_run_on, ends_on }`"
+            ],
+            [
+              "`schedule_list`",
+              "`nfse:read`",
+              "`status?`, `company_id?`, `limit?`, `offset?`",
+              "`{ schedules [...], total, limit, offset }`"
+            ],
+            [
+              "`schedule_get`",
+              "`nfse:read`",
+              "`schedule_id`",
+              "a agenda"
+            ],
+            [
+              "`schedule_runs`",
+              "`nfse:read`",
+              "`schedule_id`, `limit?`, `offset?`",
+              "`{ runs [{ occurrence_on, ran_on, attempt, outcome, invoice_id?, error_code?, error_message? }], total }`"
+            ],
+            [
+              "`schedule_update`",
+              "`nfse:write`",
+              "`schedule_id` e o que muda: `amount?`, `description?`, `customer?`, `send_email?`, `ends_on?` (ou `null`), `frequency?`, `first_date?`",
+              "a agenda"
+            ],
+            [
+              "`schedule_pause`",
+              "`nfse:write`",
+              "`schedule_id`",
+              "a agenda"
+            ],
+            [
+              "`schedule_resume`",
+              "`nfse:write`",
+              "`schedule_id`",
+              "a agenda"
+            ],
+            [
+              "`schedule_cancel`",
+              "`nfse:write`",
+              "`schedule_id`",
+              "a agenda"
             ],
             [
               "`company_list`",

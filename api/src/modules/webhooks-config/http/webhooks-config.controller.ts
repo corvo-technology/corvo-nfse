@@ -62,6 +62,7 @@ export class WebhooksConfigController {
     const configs = await this.configService.listPage(
       req.authContext!.activeTenantId,
       options,
+      req.authContext!.apiKeyEnvironment,
     );
     return configs.map(toPublicWebhookConfig);
   }
@@ -77,6 +78,7 @@ export class WebhooksConfigController {
     const config = await this.configService.create(
       req.authContext!.activeTenantId,
       body,
+      req.authContext!.apiKeyEnvironment,
     );
     return { ...toPublicWebhookConfig(config), secret: config.secret };
   }
@@ -89,7 +91,11 @@ export class WebhooksConfigController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
-    await this.configService.remove(req.authContext!.activeTenantId, id);
+    await this.configService.remove(
+      req.authContext!.activeTenantId,
+      id,
+      req.authContext!.apiKeyEnvironment,
+    );
     return { deleted: true };
   }
 
@@ -102,6 +108,10 @@ export class WebhooksConfigController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
-    return this.dispatcherService.test(req.authContext!.activeTenantId, id);
+    return this.dispatcherService.test(
+      req.authContext!.activeTenantId,
+      id,
+      req.authContext!.apiKeyEnvironment,
+    );
   }
 }
