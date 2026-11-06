@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import {
+  FiscalValidationError,
+  type FiscalIssueCode,
+} from '@/shared/fiscal/fiscal-validation-error';
+import {
   type Frequency,
   firstOccurrenceAfter,
   todayInSaoPaulo,
@@ -15,13 +19,14 @@ export type ScheduleEnvironment = 'test' | 'live';
 /** Failures in a row on the same occurrence before the schedule pauses itself. */
 export const MAX_FAILED_ATTEMPTS = 3;
 
-export class ScheduleValidationError extends Error {
+/** A 422 like any other fiscal validation: the existing filter renders it with `details`. */
+export class ScheduleValidationError extends FiscalValidationError {
   constructor(
     readonly field: string,
-    readonly code: string,
+    readonly code: FiscalIssueCode,
     message: string,
   ) {
-    super(message);
+    super([{ field, code, message }]);
     this.name = 'ScheduleValidationError';
   }
 }

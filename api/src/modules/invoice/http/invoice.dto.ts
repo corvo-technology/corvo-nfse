@@ -137,17 +137,42 @@ export class EmailOptionsDto {
   @IsOptional() @IsBoolean() send?: boolean;
 }
 
-export type InvoiceEmissionType = 'IMMEDIATE' | 'SCHEDULE';
+export type InvoiceEmissionType = 'IMMEDIATE' | 'SCHEDULE' | 'RECURRING';
+export type InvoiceRecurrenceFrequency = 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
+
+export class RecurrenceOptionsDto {
+  @IsIn(['WEEKLY', 'BIWEEKLY', 'MONTHLY'])
+  @ApiProperty({ enum: ['WEEKLY', 'BIWEEKLY', 'MONTHLY'] })
+  frequency!: InvoiceRecurrenceFrequency;
+
+  @IsOptional()
+  @IsDateString()
+  @ApiPropertyOptional({
+    example: '2027-06-30',
+    description:
+      'Last day the recurrence may run (inclusive). Without it the recurrence runs until paused or cancelled.',
+  })
+  endsOn?: string;
+}
 
 export class InvoiceOptionsDto {
   @IsOptional()
-  @IsIn(['IMMEDIATE', 'SCHEDULE'])
+  @IsIn(['IMMEDIATE', 'SCHEDULE', 'RECURRING'])
   @ApiPropertyOptional({
-    enum: ['IMMEDIATE', 'SCHEDULE'],
+    enum: ['IMMEDIATE', 'SCHEDULE', 'RECURRING'],
     description:
-      'SCHEDULE accepts a future competenceDate; the invoice is released at 09:00 America/Sao_Paulo (12:00 UTC) of that day.',
+      'SCHEDULE and RECURRING do not issue now: they create a schedule (HTTP 202 with the schedule) and competenceDate is the date of the first run, from tomorrow on. Runs happen at 09:00 America/Sao_Paulo on business days (Monday to Friday); a weekend date runs on Monday, and the note takes the competence of the day it runs.',
   })
   type?: InvoiceEmissionType;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RecurrenceOptionsDto)
+  @ApiPropertyOptional({
+    type: RecurrenceOptionsDto,
+    description: 'Required when type is RECURRING; not allowed otherwise.',
+  })
+  recurrence?: RecurrenceOptionsDto;
 
   @IsOptional()
   @ValidateNested()

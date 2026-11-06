@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import type { OutboxConfig } from '@/infra/config/configuration.types';
@@ -13,6 +13,8 @@ import { InvoiceScheduleRunOrmEntity } from './infra/invoice-schedule-run.orm-en
 import { TypeOrmInvoiceScheduleRepository } from './infra/typeorm-invoice-schedule.repository';
 import { ScheduleFailureNotifier } from './domain/schedule-failure.notifier';
 import { ScheduleEmailNotifier } from './application/schedule-email.notifier';
+import { EmissionRouterService } from './application/emission-router.service';
+import { ScheduleController } from './http/schedule.controller';
 import { ScheduleRunner } from './application/schedule-runner.service';
 import { ScheduleCron } from './jobs/schedule.cron';
 import {
@@ -23,7 +25,7 @@ import {
 
 @Module({
   imports: [
-    InvoiceModule,
+    forwardRef(() => InvoiceModule),
     CompanyModule,
     EmailModule,
     CreditsAlertsModule,
@@ -52,9 +54,11 @@ import {
       useClass: ScheduleEmailNotifier,
     },
     ScheduleService,
+    EmissionRouterService,
     ScheduleRunner,
     ScheduleCron,
   ],
-  exports: [ScheduleService, InvoiceScheduleRepository],
+  controllers: [ScheduleController],
+  exports: [ScheduleService, EmissionRouterService, InvoiceScheduleRepository],
 })
 export class InvoiceScheduleModule {}

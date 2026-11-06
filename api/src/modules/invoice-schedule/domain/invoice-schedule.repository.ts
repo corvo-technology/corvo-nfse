@@ -21,6 +21,7 @@ export type NewScheduleRun = Omit<ScheduleRun, 'id' | 'createdAt'>;
 export interface ScheduleListFilter {
   status?: ScheduleStatus;
   companyId?: string;
+  environment?: 'test' | 'live';
 }
 export interface SchedulePage {
   limit: number;

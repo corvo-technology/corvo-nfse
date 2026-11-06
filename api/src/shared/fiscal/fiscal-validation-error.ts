@@ -23,6 +23,9 @@ export type FiscalIssueCode =
   | 'unknown_field'
   | 'deduction_not_allowed_for_regime'
   | 'simples_sublimit_not_supported'
+  | 'first_date_too_soon'
+  | 'ends_before_start'
+  | 'not_allowed'
   | 'invalid';
 
 export interface FiscalIssue {

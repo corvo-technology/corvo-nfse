@@ -95,6 +95,7 @@ export class TypeOrmInvoiceScheduleRepository extends InvoiceScheduleRepository 
       const where: FindOptionsWhere<InvoiceScheduleOrmEntity> = { tenantId };
       if (filter.status) where.status = filter.status;
       if (filter.companyId) where.companyId = filter.companyId;
+      if (filter.environment) where.environment = filter.environment;
       const [rows, total] = await this.schedules().findAndCount({
         where,
         order: { createdAt: 'DESC', id: 'DESC' },

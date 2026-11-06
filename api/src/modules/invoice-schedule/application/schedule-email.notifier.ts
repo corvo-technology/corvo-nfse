@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CompanyService } from '@/modules/company/application/company.service';
 import { TenantRecipientsService } from '@/modules/credits-alerts/tenant-recipients.service';
 import { EmailService } from '@/modules/email/application/email.service';
@@ -21,6 +21,7 @@ export class ScheduleEmailNotifier extends ScheduleFailureNotifier {
   constructor(
     private readonly recipients: TenantRecipientsService,
     private readonly email: EmailService,
+    @Inject(CompanyService)
     private readonly companies: Pick<CompanyService, 'findById'>,
   ) {
     super();

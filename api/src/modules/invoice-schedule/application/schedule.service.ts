@@ -114,7 +114,11 @@ export class ScheduleService {
 
   list(
     tenantId: string,
-    filter: { status?: ScheduleStatus; companyId?: string },
+    filter: {
+      status?: ScheduleStatus;
+      companyId?: string;
+      environment?: 'test' | 'live';
+    },
     page: SchedulePage,
   ): Promise<ScheduleListResult<InvoiceSchedule>> {
     return this.repo.list(tenantId, filter, page);
