@@ -312,14 +312,14 @@ export class NfseWorkflowService {
       invoice.tenantId,
       invoice.environment,
     );
-    const credentials =
-      invoice.environment === 'live'
-        ? await this.certificates.decryptCredentials(
-            company.id,
-            invoice.tenantId,
-            invoice.environment,
-          )
-        : { pfxBuffer: Buffer.alloc(0), password: '' };
+    // The simulator never reaches the Sefin, so it needs no certificate; every other path signs with the company's.
+    const credentials = this.providers.isSimulated(invoice.environment)
+      ? { pfxBuffer: Buffer.alloc(0), password: '' }
+      : await this.certificates.decryptCredentials(
+          company.id,
+          invoice.tenantId,
+          invoice.environment,
+        );
     if (!invoice.dpsNumber) {
       const sequence = await this.sequences.reserveNext(
         company.id,
@@ -443,7 +443,7 @@ export class NfseWorkflowService {
           description: snapshot.serviceSnapshot.description,
           municipalityCode: snapshot.serviceSnapshot.municipalityCode,
           environment: invoice.environment,
-          sefin: this.sefinTarget(),
+          sefin: this.sefinTarget(invoice.environment),
           customer:
             taxId && customer
               ? {
@@ -503,9 +503,15 @@ export class NfseWorkflowService {
     };
   }
 
-  /** Where live invoices are received: the production Sefin unless the app runs in homologation mode. */
-  private sefinTarget(): 'production' | 'restricted' {
-    return this.config.get<string>('NFSE_SEFIN_ENVIRONMENT') === 'restricted'
+  /**
+   * Where the invoice is received: test always goes to the Sefin Produção Restrita; live goes to
+   * production unless the app runs in homologation mode (`NFSE_SEFIN_ENVIRONMENT=restricted`).
+   */
+  private sefinTarget(
+    environment: 'test' | 'live',
+  ): 'production' | 'restricted' {
+    return environment === 'test' ||
+      this.config.get<string>('NFSE_SEFIN_ENVIRONMENT') === 'restricted'
       ? 'restricted'
       : 'production';
   }

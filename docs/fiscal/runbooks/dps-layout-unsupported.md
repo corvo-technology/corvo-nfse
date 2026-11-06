@@ -20,6 +20,8 @@
 
 **Seleção por ambiente/data.** O padrão continua `FISCAL_DPS_LAYOUT=rtc-v1.01` (NT 004). A seleção explícita `nt009-r1` continua restrita a `NFSE_SEFIN_ENVIRONMENT=restricted`. Com `FISCAL_DPS_LAYOUT=auto`, Produção Restrita usa `nt009-r1`; produção usa `rtc-v1.01` até o instante `FISCAL_NT009_CUTOVER_AT` (ISO-8601 com offset; padrão `2026-12-01T00:00:00-03:00`). A partir desse instante, inclusive, produção usa `nt009-r1`. A decisão usa o `dhEmi` de cada DPS, inclusive em processos que atravessam a virada. Essa é a exceção à recusa de NT 009 para notas live destinadas à produção. O XSD de produção NT 009 ainda não foi publicado; conferir a compatibilidade do pacote oficial antes do corte.
 
+**Notas de teste.** Uma nota emitida com chave `test` vai sempre para a Produção Restrita (`tpAmb=2`, sem validade fiscal), assinada com o certificado da empresa cadastrada no ambiente de teste; por isso, em `FISCAL_DPS_LAYOUT=auto` ela sai no `nt009-r1`. `NFSE_TEST_PROVIDER=fake` mantém o simulador em processo e só deve ser usado em testes automatizados. Sem certificado ativo no ambiente de teste a API recusa a nota antes de enfileirar.
+
 **Rollback.** Defina `FISCAL_DPS_LAYOUT=rtc-v1.01` ou adie `FISCAL_NT009_CUTOVER_AT`. Ambas as opções usam somente configuração de ambiente, sem deploy de código; aplique o ambiente atualizado aos processos.
 
 **Pendência.** `vAjusteBCIBSCBSComExt` não está implementado, pois está ausente do pacote 20261020. A implementação fica pendente para a release 2 / XSD de produção.

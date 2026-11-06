@@ -1,3 +1,4 @@
+import { NfseProviderFactory } from '@/infra/external/nfse/nfse-provider.factory';
 import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import {
@@ -104,6 +105,7 @@ export class InvoiceService {
     private readonly quotaService: QuotaService,
     private readonly intake: InvoiceIntakeService,
     private readonly webhooks: InvoiceWebhookPublisher,
+    private readonly providers: NfseProviderFactory,
   ) {}
 
   async emit(
@@ -243,8 +245,9 @@ export class InvoiceService {
       environment,
     );
 
-    // 3. Ensure company is ready
-    if (environment === 'live') {
+    // 3. Ensure company is ready. Everything that reaches the Sefin (live, and test unless it is simulated)
+    // is signed with the company's certificate.
+    if (!this.providers.isSimulated(environment)) {
       await this.companyService.ensureReady(
         normalized.companyId,
         tenantId,

@@ -55,6 +55,7 @@ describe('IntegrationInvoiceIssuer', () => {
       { getStatus: jest.fn().mockResolvedValue({ dailyLimit: null }) } as never,
       new InvoiceIntakeService(companies as never, new InvoiceDomainService()),
       {} as never,
+      { isSimulated: (environment: string) => environment !== 'live' } as never,
     );
     issuer = new IntegrationInvoiceIssuer(service, repository as never);
   });

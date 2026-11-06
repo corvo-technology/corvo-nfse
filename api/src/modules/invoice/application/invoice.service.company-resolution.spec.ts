@@ -44,6 +44,7 @@ describe('InvoiceService.emit company resolution', () => {
       {} as never,
       new InvoiceIntakeService(companyService as never, invoiceDomain as never),
       {} as never,
+      { isSimulated: (environment: string) => environment !== 'live' } as never,
     );
   });
 

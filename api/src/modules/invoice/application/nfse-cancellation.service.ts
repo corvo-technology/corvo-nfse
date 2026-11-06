@@ -77,12 +77,13 @@ export class NfseCancellationService {
     invoice: Invoice,
     companyId: string,
   ): Promise<{ pfxBuffer: Buffer; password: string }> {
-    return invoice.environment === 'live'
-      ? this.certificates.decryptCredentials(
+    // Only the simulator runs without a certificate: test invoices live in the Produção Restrita now.
+    return this.providers.isSimulated(invoice.environment)
+      ? Promise.resolve({ pfxBuffer: Buffer.alloc(0), password: '' })
+      : this.certificates.decryptCredentials(
           companyId,
           invoice.tenantId,
           invoice.environment,
-        )
-      : Promise.resolve({ pfxBuffer: Buffer.alloc(0), password: '' });
+        );
   }
 }

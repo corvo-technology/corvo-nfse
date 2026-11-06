@@ -23,6 +23,11 @@ export const envSchema = z
     NFSE_SEFIN_ENVIRONMENT: z
       .enum(['production', 'restricted'])
       .default('production'),
+    /**
+     * Where `test` invoices go: `sefin` (default) emits them in the Sefin Produção Restrita with the
+     * company's certificate, no legal validity; `fake` is the in-process simulator, for automated tests.
+     */
+    NFSE_TEST_PROVIDER: z.enum(['sefin', 'fake']).default('sefin'),
     RESEND_API_KEY: z.string().trim().optional(),
     RESEND_BASE_URL: z.string().url().default('https://api.resend.com'),
     EMAIL_FROM: z.string().min(1).default('Corvo <noreply@corvo.tech>'),
