@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ApiError, billing as billingApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { BillingPlan, PaymentRecord } from "@/lib/types";
+import type { BillingPlan } from "@/lib/types";
 import { PaymentsCard } from "@/components/settings/payments-card";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
@@ -19,13 +19,13 @@ export default function SettingsPage() {
   const canManage = can("billing.manage");
   // null while loading.
   const [billing, setBilling] = useState<BillingPlan | null>(null);
-  const [payments, setPayments] = useState<PaymentRecord[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<"portal" | "cancel-pix" | null>(null);
 
   const load = useCallback((isCancelled: () => boolean = () => false) => {
-    Promise.all([billingApi.plan(), billingApi.payments()])
-      .then(([plan, history]) => { if (!isCancelled()) { setBilling(plan); setPayments(history); setFailed(false); } })
+    billingApi
+      .plan()
+      .then((plan) => { if (!isCancelled()) { setBilling(plan); setFailed(false); } })
       .catch(() => { if (!isCancelled()) setFailed(true); });
   }, []);
 
@@ -70,7 +70,7 @@ export default function SettingsPage() {
     <div className="flex max-w-[720px] flex-col gap-6">
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
-      <PaymentsCard billing={billing} payments={payments} failed={failed} canManage={canManage} busy={busy} onPortal={() => void openPortal()} onCancelPix={() => void cancelPix()} />
+      <PaymentsCard billing={billing} failed={failed} canManage={canManage} busy={busy} onPortal={() => void openPortal()} onCancelPix={() => void cancelPix()} />
 
       <section
         aria-labelledby="danger-zone"

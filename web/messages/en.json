@@ -543,30 +543,18 @@
       "title": "Payments",
       "card": {
         "title": "Card (Stripe)",
-        "available": "Manage your card, invoices and receipts in the Stripe portal.",
-        "none": "You have not paid by card yet."
+        "available": "Manage your card, invoices and receipts in the Stripe portal."
       },
       "pix": {
         "title": "Pix",
         "pending": "Pix Automático is waiting for your authorization in the bank app.",
         "active": "Pix Automático is active: the plan is charged every month.",
-        "single": "Your Pix payments are one-off, with no automatic charge.",
-        "none": "You have not paid by Pix yet.",
         "viewQr": "View QR code in Billing"
       },
-      "history": {
-        "title": "History",
-        "empty": "No payments yet.",
-        "avulso": "{count} single invoices",
-        "plan": "{name} plan, {cycle}",
-        "monthly": "monthly",
-        "annual": "annual",
-        "pix": "Pix",
-        "card": "Card"
-      },
-      "goToPlan": "See plan and invoices",
       "permissionHint": "Only members with billing permission can manage payments.",
-      "loadFailed": "Could not load your payments."
+      "loadFailed": "Could not load your payments.",
+      "elsewhere": "Payments and their history live in Billing.",
+      "openBilling": "Open Billing"
     }
   },
   "Members": {
@@ -1368,6 +1356,17 @@
       "cancelAuthorization": "Cancel authorization",
       "activeTitle": "Pix Automático active",
       "activeBody": "The plan is charged every month through Pix. You can cancel any time; the period already paid stays valid."
+    },
+    "history": {
+      "title": "Payments",
+      "empty": "No payments yet.",
+      "avulso": "{count} single invoices",
+      "plan": "{name} plan, {cycle}",
+      "monthly": "monthly",
+      "annual": "annual",
+      "pix": "Pix",
+      "card": "Card",
+      "loadFailed": "Could not load your payments."
     }
   },
   "Session": {

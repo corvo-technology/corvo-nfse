@@ -8,6 +8,8 @@ import { ApiError, billing as billingApi, type CheckoutPlan } from "@/lib/api";
 import type { BillingPlan } from "@/lib/types";
 import { PlanPicker, PLANS, type PlanSlug } from "@/components/pricing/plan-picker";
 import { BillingSummary } from "@/components/billing/billing-summary";
+import { PaymentHistory } from "@/components/billing/payment-history";
+import type { PaymentRecord } from "@/lib/types";
 import { CheckoutDialog, type CheckoutTarget } from "@/components/billing/checkout-dialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -33,6 +35,8 @@ export default function BillingPage() {
   const intl = locale === "pt" ? "pt-BR" : "en-US";
   const [billing, setBilling] = useState<BillingPlan | null>(null);
   const [failed, setFailed] = useState(false);
+  const [payments, setPayments] = useState<PaymentRecord[] | null>(null);
+  const [paymentsFailed, setPaymentsFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [target, setTarget] = useState<CheckoutTarget | null>(null);
   const [resume, setResume] = useState<{ brCode: string | null; paymentLinkUrl: string } | undefined>(undefined);
@@ -49,6 +53,14 @@ export default function BillingPage() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    billingApi.payments()
+      .then((rows) => { if (!cancelled) setPayments(rows); })
+      .catch(() => { if (!cancelled) setPaymentsFailed(true); });
+    return () => { cancelled = true; };
   }, []);
 
   const fail = (cause: unknown) => {
@@ -150,7 +162,9 @@ export default function BillingPage() {
         />
       </section>
 
-      <CheckoutDialog target={target} resume={resume} onPaid={() => void billingApi.plan().then(setBilling).catch(() => undefined)} onClose={() => { setTarget(null); setResume(undefined); }} onError={(cause) => { setTarget(null); fail(cause); }} redirect={redirect} />
+      <PaymentHistory payments={payments} failed={paymentsFailed} />
+
+      <CheckoutDialog target={target} resume={resume} onPaid={() => { void billingApi.plan().then(setBilling).catch(() => undefined); void billingApi.payments().then(setPayments).catch(() => undefined); }} onClose={() => { setTarget(null); setResume(undefined); }} onError={(cause) => { setTarget(null); fail(cause); }} redirect={redirect} />
     </div>
   );
 }

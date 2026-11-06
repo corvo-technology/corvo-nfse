@@ -543,30 +543,18 @@
       "title": "Pagamentos",
       "card": {
         "title": "Cartão (Stripe)",
-        "available": "Gerencie cartão, faturas e recibos no portal da Stripe.",
-        "none": "Você ainda não pagou com cartão."
+        "available": "Gerencie cartão, faturas e recibos no portal da Stripe."
       },
       "pix": {
         "title": "Pix",
         "pending": "O Pix Automático aguarda a sua autorização no app do banco.",
         "active": "Pix Automático ativo: o plano é cobrado todo mês.",
-        "single": "Seus pagamentos por Pix são avulsos, sem cobrança automática.",
-        "none": "Você ainda não pagou por Pix.",
         "viewQr": "Ver QR Code na Cobrança"
       },
-      "history": {
-        "title": "Histórico",
-        "empty": "Nenhum pagamento ainda.",
-        "avulso": "{count} notas avulsas",
-        "plan": "Plano {name}, {cycle}",
-        "monthly": "mensal",
-        "annual": "anual",
-        "pix": "Pix",
-        "card": "Cartão"
-      },
-      "goToPlan": "Ver plano e notas",
       "permissionHint": "Só membros com permissão de cobrança podem gerenciar os pagamentos.",
-      "loadFailed": "Não foi possível carregar os pagamentos."
+      "loadFailed": "Não foi possível carregar os pagamentos.",
+      "elsewhere": "Os pagamentos e o histórico ficam na Cobrança.",
+      "openBilling": "Abrir Cobrança"
     }
   },
   "Members": {
@@ -1368,6 +1356,17 @@
       "cancelAuthorization": "Cancelar autorização",
       "activeTitle": "Pix Automático ativo",
       "activeBody": "O plano é cobrado todo mês no Pix. Você pode cancelar quando quiser; o período já pago continua valendo."
+    },
+    "history": {
+      "title": "Pagamentos",
+      "empty": "Nenhum pagamento ainda.",
+      "avulso": "{count} notas avulsas",
+      "plan": "Plano {name}, {cycle}",
+      "monthly": "mensal",
+      "annual": "anual",
+      "pix": "Pix",
+      "card": "Cartão",
+      "loadFailed": "Não foi possível carregar os pagamentos."
     }
   },
   "Session": {
