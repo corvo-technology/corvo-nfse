@@ -10,7 +10,7 @@ export const ORGANIZATION_URL = SITE_URL;
 /** Official profiles for schema.org sameAs. The X profile is left out until its handle is confirmed in the repo or on the site. */
 export const ORGANIZATION_SAME_AS = ["https://github.com/corvo-technology"];
 /** Social-sharing card (1200x630), used by Open Graph and Twitter. */
-export const OG_IMAGE_PATH = "/open-graph-1200x630.png";
+export const OG_IMAGE_PATH = "/og-corvo-1200x630.png";
 
 const OPEN_GRAPH_LOCALE: Record<SeoLocale, string> = { en: "en_US", pt: "pt_BR" };
 

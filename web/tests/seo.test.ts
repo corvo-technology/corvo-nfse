@@ -21,8 +21,8 @@ describe("page metadata", () => {
   it("builds Open Graph and Twitter cards with the shared image in the page language", () => {
     const meta = pageMetadata({ locale: "pt", path: "/docs", title: "Docs", description: "d" });
     expect(meta.openGraph).toMatchObject({ locale: "pt_BR", url: pageUrl("pt", "/docs"), siteName: "Corvo" });
-    expect(JSON.stringify(meta.openGraph?.images)).toContain("/open-graph-1200x630.png");
-    expect(meta.twitter).toMatchObject({ card: "summary_large_image", images: ["/open-graph-1200x630.png"] });
+    expect(JSON.stringify(meta.openGraph?.images)).toContain("/og-corvo-1200x630.png");
+    expect(meta.twitter).toMatchObject({ card: "summary_large_image", images: ["/og-corvo-1200x630.png"] });
   });
 
   it("keeps titles and descriptions within search result limits", () => {
