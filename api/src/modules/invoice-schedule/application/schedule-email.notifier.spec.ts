@@ -28,7 +28,7 @@ const item = (
   code = 'ERROR_QUOTA_EXCEEDED',
   reason = 'Plan quota exceeded',
 ) => ({ schedule: s, code, reason });
-const brl = (value: string) => value.replace(/ /g, ' ');
+const brl = (value: string) => value.replace(/[\u00a0]/g, ' ');
 
 function build(
   recipients: string[] = ['admin@example.com', 'billing@example.com'],
