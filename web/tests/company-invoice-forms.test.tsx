@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CompanyForm } from "@/components/dashboard/company-form";
 import NewInvoicePage from "@/app/(dashboard)/app/invoices/new/page";
+import { ApiError } from "@/lib/api";
 import { companySetup } from "@/lib/company-setup";
 import type { Company } from "@/lib/types";
 import messages from "@/messages/en.json";
@@ -171,6 +172,19 @@ describe("Invoice company defaults", () => {
     expect(body).toMatchObject({ companyId: company.id, amount: 199, options: { type: "RECURRING", recurrence: { frequency: "WEEKLY" } } });
     expect(body.competenceDate > new Date().toLocaleDateString("sv-SE")).toBe(true);
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/app/invoices/invoice-1"));
+  });
+  it("explains a missing Simples rate in the user's language and links to the company, never the API's English", async () => {
+    mocks.create.mockRejectedValueOnce(new ApiError(422, "Request validation failed", "ERROR_VALIDATION", undefined, [{ field: "simplesRate", code: "ERROR_SIMPLES_RATE_REQUIRED", message: "The company's Simples Nacional rate is required to issue (set simplesRate with PATCH /companies/x)" }]));
+    await prepareInvoice(); fireEvent.click(screen.getByRole("button", { name: "Issue NFS-e" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(messages.ApiErrors.simples_rate_required);
+    expect(alert.textContent).not.toContain("PATCH");
+    expect(within(alert).getByRole("link", { name: messages.Invoices.fields.openCompany }).getAttribute("href")).toBe(`/app/companies/${company.id}`);
+  });
+  it("shows the translated text of a top-level error that has no field", async () => {
+    mocks.create.mockRejectedValueOnce(new ApiError(402, "Insufficient credits", "ERROR_INSUFFICIENT_CREDITS"));
+    await prepareInvoice(); fireEvent.click(screen.getByRole("button", { name: "Issue NFS-e" }));
+    expect((await screen.findByRole("alert")).textContent).toContain(messages.ApiErrors.insufficient_credits);
   });
   it("does not create a recurrence unless asked", async () => {
     await prepareInvoice(); fireEvent.click(screen.getByRole("button", { name: "Issue NFS-e" })); await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce());

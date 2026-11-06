@@ -26,6 +26,7 @@ export type FiscalIssueCode =
   | 'first_date_too_soon'
   | 'ends_before_start'
   | 'not_allowed'
+  | 'simples_rate_required'
   | 'invalid';
 
 export interface FiscalIssue {

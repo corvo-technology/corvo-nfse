@@ -337,7 +337,7 @@ describe('InvoiceIntakeService Simples rate requirement', () => {
     expect(error).toBeInstanceOf(FiscalValidationError);
     expect((error as FiscalValidationError).issues[0]).toMatchObject({
       field: 'simplesRate',
-      code: 'required',
+      code: 'simples_rate_required',
     });
   });
 

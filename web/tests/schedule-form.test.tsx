@@ -103,13 +103,14 @@ describe("ScheduleForm: create", () => {
   });
 
   it("an API refusal is shown and the form stays open", async () => {
-    mocks.create.mockRejectedValue(new ApiError(422, "The first date must be tomorrow or later"));
+    mocks.create.mockRejectedValue(new ApiError(422, "Request validation failed", "ERROR_VALIDATION", undefined, [{ field: "competenceDate", code: "ERROR_FIRST_DATE_TOO_SOON", message: "The first date must be tomorrow or later (English from the API)" }]));
     renderForm();
     fireEvent.change(screen.getByLabelText(/Company/), { target: { value: "c1" } });
     type(/Date of the first run/, "2026-11-09");
     type(/^Amount/, "10");
     submit(/Create schedule/);
-    await screen.findByText("The first date must be tomorrow or later");
+    await screen.findByText(messages.ApiErrors.first_date_too_soon);
+    expect(screen.queryByText(/English from the API/)).toBeNull();
     expect(onClose).not.toHaveBeenCalled();
     expect(onSaved).not.toHaveBeenCalled();
   });

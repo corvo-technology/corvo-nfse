@@ -153,8 +153,8 @@ export class InvoiceIntakeService {
     throw new FiscalValidationError([
       {
         field: 'simplesRate',
-        code: 'required',
-        message: `Inform the Simples Nacional rate of the company (PATCH /companies/${company.id} with simplesRate)`,
+        code: 'simples_rate_required',
+        message: `The company's Simples Nacional rate is required to issue (set simplesRate with PATCH /companies/${company.id})`,
       },
     ]);
   }
