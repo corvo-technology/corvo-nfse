@@ -121,18 +121,25 @@ export class TypeOrmInvoiceScheduleRepository extends InvoiceScheduleRepository 
     );
   }
 
-  async listDueTenantIds(today: string, limit: number): Promise<string[]> {
-    const rows = await runAsSystem('invoice-schedule-runner', () =>
-      this.schedules()
+  async listDueTenantIds(
+    today: string,
+    limit: number,
+    afterTenantId?: string,
+  ): Promise<string[]> {
+    const rows = await runAsSystem('invoice-schedule-runner', () => {
+      const query = this.schedules()
         .createQueryBuilder('s')
         .select('s.tenant_id', 'tenantId')
         .distinct(true)
         .where("s.status = 'active'")
-        .andWhere('s.next_run_on <= :today', { today })
+        .andWhere('s.next_run_on <= :today', { today });
+      if (afterTenantId)
+        query.andWhere('s.tenant_id > :afterTenantId', { afterTenantId });
+      return query
         .orderBy('s.tenant_id')
         .limit(limit)
-        .getRawMany<{ tenantId: string }>(),
-    );
+        .getRawMany<{ tenantId: string }>();
+    });
     return rows.map((row) => row.tenantId);
   }
 

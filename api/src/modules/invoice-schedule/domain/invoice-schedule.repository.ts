@@ -44,8 +44,16 @@ export abstract class InvoiceScheduleRepository {
   ): Promise<ScheduleListResult<InvoiceSchedule>>;
   abstract save(schedule: InvoiceSchedule): Promise<void>;
   abstract countActive(tenantId: string): Promise<number>;
-  /** System scope: tenants that have something due today or earlier. */
-  abstract listDueTenantIds(today: string, limit: number): Promise<string[]>;
+  /**
+   * System scope: tenants that have something due today or earlier, ordered by id. Pass the last
+   * id of the previous page as `afterTenantId`: a tenant whose schedules stay due after a failed
+   * attempt would otherwise be returned forever.
+   */
+  abstract listDueTenantIds(
+    today: string,
+    limit: number,
+    afterTenantId?: string,
+  ): Promise<string[]>;
   /**
    * Inside the caller's transaction: locks (FOR UPDATE SKIP LOCKED) the tenant's active schedules
    * due today or earlier, oldest first. Two runners never receive the same schedule.

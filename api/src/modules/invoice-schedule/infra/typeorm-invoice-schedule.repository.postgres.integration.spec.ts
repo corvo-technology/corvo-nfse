@@ -235,6 +235,22 @@ describePostgres('invoice schedule repository with restricted role', () => {
     expect(tenants).not.toContain(notDue);
   });
 
+  it('listDueTenantIds pages by tenant id so a tenant whose schedules stay due is visited once', async () => {
+    const tenants = [randomUUID(), randomUUID(), randomUUID()].sort();
+    for (const id of tenants)
+      await admin.query(`INSERT INTO "${schema}".tenants (id) VALUES ($1)`, [
+        id,
+      ]);
+    for (const id of tenants) await repo.insert(schedule(id, '2026-11-09'));
+    const first = await repo.listDueTenantIds('2026-11-10', 1000);
+    const mine = first.filter((id) => tenants.includes(id));
+    expect(mine).toEqual(tenants);
+    const after = await repo.listDueTenantIds('2026-11-10', 1000, tenants[1]);
+    expect(after).toContain(tenants[2]);
+    expect(after).not.toContain(tenants[0]);
+    expect(after).not.toContain(tenants[1]);
+  });
+
   it('a run is unique per (schedule, occurrence, attempt) and listRuns returns newest first', async () => {
     const created = schedule(tenantA, '2026-11-09');
     await repo.insert(created);
