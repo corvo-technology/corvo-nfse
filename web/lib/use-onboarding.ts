@@ -35,7 +35,6 @@ export function useOnboarding(): Onboarding {
 
   useEffect(() => {
     if (!active || !tenantId) return;
-    setFlagState({ tenantId, flags: readFlags(tenantId) });
     const abort = new AbortController();
     (async () => {
       const page = await companies.list({ limit: 100 }, abort.signal).catch(() => null);
@@ -47,7 +46,9 @@ export function useOnboarding(): Onboarding {
             invoices.list({ limit: 1 }, abort.signal).then((p) => p.items.length > 0).catch(() => false),
           ])
         : [false, 0, false];
-      if (!abort.signal.aborted) setFacts({ scope, firstCompanyId: first?.id ?? null, hasCertificate, lastDpsNumber, hasTestNote });
+      if (abort.signal.aborted) return;
+      setFlagState({ tenantId, flags: readFlags(tenantId) });
+      setFacts({ scope, firstCompanyId: first?.id ?? null, hasCertificate, lastDpsNumber, hasTestNote });
     })();
     return () => abort.abort();
   }, [active, tenantId, scope, revision]);
