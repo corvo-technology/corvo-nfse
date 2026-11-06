@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ApiError, billing as billingApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import type { BillingPlan, PaymentRecord } from "@/lib/types";
+import { PaymentsCard } from "@/components/settings/payments-card";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { useToast } from "@/components/ui/toast";
 
@@ -15,59 +15,62 @@ export default function SettingsPage() {
   const tc = useTranslations("Common");
   const tb = useTranslations("Billing");
   const { can } = useAuth();
-  const { error: toastError } = useToast();
+  const { error: toastError, success } = useToast();
   const canManage = can("billing.manage");
-  // null while loading; false when the plan could not be read or has no subscription.
-  const [hasSubscription, setHasSubscription] = useState<boolean | null>(null);
-  const [opening, setOpening] = useState(false);
+  // null while loading.
+  const [billing, setBilling] = useState<BillingPlan | null>(null);
+  const [payments, setPayments] = useState<PaymentRecord[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [busy, setBusy] = useState<"portal" | "cancel-pix" | null>(null);
+
+  const load = useCallback((isCancelled: () => boolean = () => false) => {
+    Promise.all([billingApi.plan(), billingApi.payments()])
+      .then(([plan, history]) => { if (!isCancelled()) { setBilling(plan); setPayments(history); setFailed(false); } })
+      .catch(() => { if (!isCancelled()) setFailed(true); });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    billingApi
-      .plan()
-      .then((plan) => { if (!cancelled) setHasSubscription(plan.subscription.status !== "none"); })
-      .catch(() => { if (!cancelled) setHasSubscription(false); });
+    load(() => cancelled);
     return () => { cancelled = true; };
-  }, []);
+  }, [load]);
+
+  const fail = (cause: unknown) => {
+    if (cause instanceof ApiError && cause.status === 429) toastError(tb("errors.ERROR_RATE_LIMIT_EXCEEDED", { seconds: cause.retryAfterSeconds ?? 60 }));
+    else if (cause instanceof ApiError && cause.status === 409) toastError(tb("errors.customer_required"));
+    else toastError(cause instanceof ApiError && cause.status < 500 && cause.status > 0 ? cause.message : tb("errors.generic"));
+  };
 
   const openPortal = async () => {
-    if (opening) return;
-    setOpening(true);
+    if (busy) return;
+    setBusy("portal");
     try {
       window.location.assign((await billingApi.portal()).url);
     } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 429) toastError(tb("errors.ERROR_RATE_LIMIT_EXCEEDED", { seconds: cause.retryAfterSeconds ?? 60 }));
-      else if (cause instanceof ApiError && cause.status === 409) toastError(tb("errors.customer_required"));
-      else toastError(cause instanceof ApiError && cause.status < 500 && cause.status > 0 ? cause.message : tb("errors.generic"));
-      setOpening(false);
+      fail(cause);
+      setBusy(null);
     }
   };
-  const portalHint = !canManage ? t("portalNoPermission") : hasSubscription === false ? t("portalNoSubscription") : t("portalDescription");
+
+  const cancelPix = async () => {
+    if (busy) return;
+    setBusy("cancel-pix");
+    try {
+      await billingApi.cancelPix();
+      success(tb("pixCancelled"));
+      load();
+    } catch (cause) {
+      fail(cause);
+    } finally {
+      setBusy(null);
+    }
+  };
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
-      <Card className="dash-in dash-in-2 overflow-hidden">
-        <h2 className="border-b border-border px-5 py-4 text-[14.5px] font-medium">{t("billing")}</h2>
-        <div className="flex flex-col gap-3 px-5 py-4">
-          <p className="text-sm text-text-3">{portalHint}</p>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="secondary"
-              className="max-sm:w-full"
-              loading={opening}
-              disabled={!canManage || hasSubscription !== true}
-              onClick={() => void openPortal()}
-            >
-              {t("openStripePortal")}
-            </Button>
-            {canManage && hasSubscription === false && (
-              <Link href="/app/billing" className="text-sm underline">{t("goToBilling")}</Link>
-            )}
-          </div>
-        </div>
-      </Card>
+      <PaymentsCard billing={billing} payments={payments} failed={failed} canManage={canManage} busy={busy} onPortal={() => void openPortal()} onCancelPix={() => void cancelPix()} />
 
       <section
         aria-labelledby="danger-zone"

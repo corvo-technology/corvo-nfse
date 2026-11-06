@@ -12,7 +12,7 @@ const plan = (p: Patch = {}) =>
     slug: p.slug ?? "free",
     name: p.name ?? "Sem plano",
     monthlyPriceCents: p.price ?? 0,
-    subscription: { status: "none", paidUntil: null, cancelAtPeriodEnd: false, scheduledPlan: null, blocked: false, pixSubscription: null, ...p.sub },
+    subscription: { status: "none", paidUntil: null, cancelAtPeriodEnd: false, scheduledPlan: null, blocked: false, pixSubscription: null, stripePortalAvailable: false, stripeSubscription: false, ...p.sub },
     usage: { creditsUsed: 0, creditsReserved: 0, creditsRemaining: 0, monthlyAllowance: 0, dailyUsage: 0, dailyLimit: null, activeCompanies: 1, maxActiveCompanies: 999999, periodStart: "2026-11-01T00:00:00Z", periodEnd: "2026-12-01T00:00:00Z", avulsoBalance: 0, ...p.usage },
   }) as BillingPlan;
 
@@ -79,7 +79,7 @@ describe("BillingSummary", () => {
   });
 
   it("account actions live in the card: manage billing and cancel Pix Automático", () => {
-    const h = renderIt(plan({ slug: "solo", name: "Solo", price: 5990, sub: { status: "active", pixSubscription: { status: "active", planSlug: "solo", brCode: null, paymentLinkUrl: null } }, usage: { monthlyAllowance: 100, creditsRemaining: 90 } }));
+    const h = renderIt(plan({ slug: "solo", name: "Solo", price: 5990, sub: { status: "active", stripePortalAvailable: true, pixSubscription: { status: "active", planSlug: "solo", brCode: null, paymentLinkUrl: null } }, usage: { monthlyAllowance: 100, creditsRemaining: 90 } }));
     fireEvent.click(screen.getByRole("button", { name: "Gerenciar cobrança" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancelar Pix Automático" }));
     expect(h.onPortal).toHaveBeenCalledTimes(1);
@@ -143,5 +143,10 @@ describe("BillingSummary", () => {
     expect(meta).toContain("Período 01/11/2026 a 01/12/2026");
     expect(meta).toContain("3 empresas ativas");
     expect(meta).not.toMatch(/sem limite/);
+  });
+
+  it("a plan paid by Pix only has no Stripe portal to manage (the button would only fail)", () => {
+    renderIt(plan({ slug: "equipe", name: "Equipe", price: 11990, sub: { status: "active", stripePortalAvailable: false }, usage: { monthlyAllowance: 250, creditsRemaining: 250 } }));
+    expect(screen.queryByRole("button", { name: "Gerenciar cobrança" })).toBeNull();
   });
 });

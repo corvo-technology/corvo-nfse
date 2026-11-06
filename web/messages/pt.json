@@ -531,19 +531,43 @@
     }
   },
   "Settings": {
-    "portalDescription": "Gerencie forma de pagamento, faturas e assinatura no portal da Stripe.",
-    "portalNoSubscription": "Assine um plano na página de Cobrança para gerenciar os pagamentos aqui.",
-    "portalNoPermission": "Só membros com permissão de cobrança podem abrir o portal de pagamentos.",
-    "goToBilling": "Ir para Cobrança",
     "title": "Configurações",
     "subtitle": "Configurações de ambiente e faturamento.",
     "billing": "Faturamento",
-    "stripeEnding": "····4242",
     "visa": "Visa",
     "receiptsTo": "Recibos enviados para financeiro@acme.com",
     "openStripePortal": "Abrir portal do Stripe",
     "deleteWorkspace": "Excluir workspace",
-    "deleteWorkspaceDesc": "Remover permanentemente este workspace e todos os seus dados. Esta ação não pode ser desfeita."
+    "deleteWorkspaceDesc": "Remover permanentemente este workspace e todos os seus dados. Esta ação não pode ser desfeita.",
+    "payments": {
+      "title": "Pagamentos",
+      "card": {
+        "title": "Cartão (Stripe)",
+        "available": "Gerencie cartão, faturas e recibos no portal da Stripe.",
+        "none": "Você ainda não pagou com cartão."
+      },
+      "pix": {
+        "title": "Pix",
+        "pending": "O Pix Automático aguarda a sua autorização no app do banco.",
+        "active": "Pix Automático ativo: o plano é cobrado todo mês.",
+        "single": "Seus pagamentos por Pix são avulsos, sem cobrança automática.",
+        "none": "Você ainda não pagou por Pix.",
+        "viewQr": "Ver QR Code na Cobrança"
+      },
+      "history": {
+        "title": "Histórico",
+        "empty": "Nenhum pagamento ainda.",
+        "avulso": "{count} notas avulsas",
+        "plan": "Plano {name}, {cycle}",
+        "monthly": "mensal",
+        "annual": "anual",
+        "pix": "Pix",
+        "card": "Cartão"
+      },
+      "goToPlan": "Ver plano e notas",
+      "permissionHint": "Só membros com permissão de cobrança podem gerenciar os pagamentos.",
+      "loadFailed": "Não foi possível carregar os pagamentos."
+    }
   },
   "Members": {
     "inviteUnavailable": "Convites estão desativados por enquanto.",

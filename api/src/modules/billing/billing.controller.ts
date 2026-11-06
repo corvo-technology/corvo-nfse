@@ -73,6 +73,8 @@ export class BillingController {
         blocked: billing.blocked,
         // The Stripe portal needs a Stripe customer: accounts that only paid by Pix have none.
         stripe_portal_available: !!billing.billing?.stripeCustomerId,
+        // Plan changes (upgrade/downgrade) are Stripe subscription changes: only with a live subscription.
+        stripe_subscription: !!billing.billing?.stripeSubscriptionId,
         pix_subscription: await this.pix.pixSubscriptionState(tenantId),
       },
       usage: {

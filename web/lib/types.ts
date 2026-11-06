@@ -470,12 +470,27 @@ export interface PixSubscription {
   paymentLinkUrl: string | null;
 }
 
+export interface PaymentRecord {
+  id: string;
+  kind: "plan" | "avulso";
+  planSlug: string | null;
+  cycle: "monthly" | "annual" | null;
+  units: number | null;
+  amountCents: number;
+  provider: "woovi" | "stripe";
+  paidAt: string | null;
+}
+
 export interface BillingSubscription {
   status: string; // "none" when there is no Stripe subscription
   paidUntil: string | null;
   cancelAtPeriodEnd: boolean;
   scheduledPlan: string | null;
   blocked: boolean;
+  /** The account has a Stripe customer: only then the Stripe portal can open. */
+  stripePortalAvailable: boolean;
+  /** A live Stripe subscription: only then upgrade/downgrade can be scheduled through Stripe. */
+  stripeSubscription: boolean;
   /** The account's Pix Automático contract: waiting for the payer to authorize, or active. */
   pixSubscription: PixSubscription | null;
 }

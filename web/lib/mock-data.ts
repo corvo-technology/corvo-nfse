@@ -145,7 +145,7 @@ export const MOCK_BILLING: BillingPlan = {
   slug: "developer",
   name: "Developer",
   monthlyPriceCents: 2990,
-  subscription: { status: "active", paidUntil: null, cancelAtPeriodEnd: false, scheduledPlan: null, blocked: false, pixSubscription: null },
+  subscription: { status: "active", paidUntil: null, cancelAtPeriodEnd: false, scheduledPlan: null, blocked: false, pixSubscription: null, stripePortalAvailable: false, stripeSubscription: false },
   usage: {
     creditsUsed: 87,
     creditsReserved: 3,

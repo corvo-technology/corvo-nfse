@@ -531,19 +531,43 @@
     }
   },
   "Settings": {
-    "portalDescription": "Manage your payment method, invoices and subscription in the Stripe portal.",
-    "portalNoSubscription": "Subscribe to a plan in Billing to manage payments here.",
-    "portalNoPermission": "Only members with billing permission can open the payment portal.",
-    "goToBilling": "Go to Billing",
     "title": "Settings",
     "subtitle": "Environment and billing settings.",
     "billing": "Billing",
-    "stripeEnding": "····4242",
     "visa": "Visa",
     "receiptsTo": "Receipts sent to financeiro@acme.com",
     "openStripePortal": "Open Stripe portal",
     "deleteWorkspace": "Delete workspace",
-    "deleteWorkspaceDesc": "Permanently remove this workspace and all its data. This action cannot be undone."
+    "deleteWorkspaceDesc": "Permanently remove this workspace and all its data. This action cannot be undone.",
+    "payments": {
+      "title": "Payments",
+      "card": {
+        "title": "Card (Stripe)",
+        "available": "Manage your card, invoices and receipts in the Stripe portal.",
+        "none": "You have not paid by card yet."
+      },
+      "pix": {
+        "title": "Pix",
+        "pending": "Pix Automático is waiting for your authorization in the bank app.",
+        "active": "Pix Automático is active: the plan is charged every month.",
+        "single": "Your Pix payments are one-off, with no automatic charge.",
+        "none": "You have not paid by Pix yet.",
+        "viewQr": "View QR code in Billing"
+      },
+      "history": {
+        "title": "History",
+        "empty": "No payments yet.",
+        "avulso": "{count} single invoices",
+        "plan": "{name} plan, {cycle}",
+        "monthly": "monthly",
+        "annual": "annual",
+        "pix": "Pix",
+        "card": "Card"
+      },
+      "goToPlan": "See plan and invoices",
+      "permissionHint": "Only members with billing permission can manage payments.",
+      "loadFailed": "Could not load your payments."
+    }
   },
   "Members": {
     "inviteUnavailable": "Invitations are turned off for now.",

@@ -7,6 +7,7 @@ function build(
   plan: { slug: string; name: string },
   pixState: unknown = null,
   stripeCustomerId: string | null = null,
+  stripeSubscriptionId: string | null = null,
 ) {
   const quota = {
     getStatus: jest.fn().mockResolvedValue({
@@ -30,7 +31,9 @@ function build(
   };
   const usage = {
     status: jest.fn().mockResolvedValue({
-      billing: stripeCustomerId ? { stripeCustomerId } : null,
+      billing: stripeCustomerId
+        ? { stripeCustomerId, stripeSubscriptionId: stripeSubscriptionId }
+        : null,
       blocked: false,
       hard_limit: 0,
       avulsoBalance: 0,
@@ -112,6 +115,36 @@ describe('BillingController.getCurrentPlan', () => {
     );
     expect(pixOnly.data).toMatchObject({
       subscription: { stripe_portal_available: false },
+    });
+  });
+
+  it('tells a live Stripe subscription (plan changes go through Stripe) from a card customer with none', async () => {
+    const live = await build(
+      { slug: 'solo', name: 'Solo' },
+      null,
+      'cus_1',
+      'sub_1',
+    ).getCurrentPlan(req);
+    expect(live.data).toMatchObject({
+      subscription: { stripe_subscription: true },
+    });
+    const oneTimeCard = await build(
+      { slug: 'solo', name: 'Solo' },
+      null,
+      'cus_1',
+      null,
+    ).getCurrentPlan(req);
+    expect(oneTimeCard.data).toMatchObject({
+      subscription: {
+        stripe_subscription: false,
+        stripe_portal_available: true,
+      },
+    });
+    const pixOnly = await build({ slug: 'solo', name: 'Solo' }).getCurrentPlan(
+      req,
+    );
+    expect(pixOnly.data).toMatchObject({
+      subscription: { stripe_subscription: false },
     });
   });
 });

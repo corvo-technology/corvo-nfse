@@ -102,7 +102,6 @@ export default function BillingPage() {
   }
 
   const sub = billing.subscription;
-  const hasSubscription = sub.status !== "none";
 
   return (
     <div className="flex max-w-[1000px] flex-col gap-6">
@@ -140,7 +139,7 @@ export default function BillingPage() {
               );
             const current = PLANS.find((p) => p.slug === billing.slug);
             // Annual is always a fresh purchase; monthly changes on an existing subscription are scheduled.
-            const onCurrentSubscription = hasSubscription && PLANS.some((p) => p.slug === billing.slug);
+            const onCurrentSubscription = sub.stripeSubscription && PLANS.some((p) => p.slug === billing.slug);
             const action = !onCurrentSubscription || cycle === "annual" ? "subscribe"
               : plan.monthlyCents > (current?.monthlyCents ?? 0) ? "upgrade" : "downgrade";
             return (

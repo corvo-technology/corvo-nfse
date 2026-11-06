@@ -38,7 +38,6 @@ export function BillingSummary({
   const intl = useLocale() === "pt" ? "pt-BR" : "en-US";
   const { usage, subscription: sub } = billing;
   const hasPlan = PLANS.some((p) => p.slug === billing.slug);
-  const hasSubscription = sub.status !== "none";
   const available = availableNotes(billing);
   const total = usage.monthlyAllowance;
   const planLeft = sub.blocked ? 0 : usage.creditsRemaining;
@@ -60,7 +59,8 @@ export function BillingSummary({
 
   const companies = t("summary.companiesLine", { count: usage.activeCompanies });
   const pix = sub.pixSubscription;
-  const showPortal = canManage && hasSubscription;
+  // The Stripe portal needs a Stripe customer: a plan paid by Pix has none.
+  const showPortal = canManage && sub.stripePortalAvailable;
 
   return (
     <Card data-testid="billing-summary" className="dash-in dash-in-1 flex flex-col gap-5 p-5 sm:p-6">
