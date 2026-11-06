@@ -8,10 +8,10 @@ import { companySetup } from "@/lib/company-setup";
 import type { Company } from "@/lib/types";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ environment: "test" as "test" | "live", list: vi.fn(), create: vi.fn(), push: vi.fn() }));
+const mocks = vi.hoisted(() => ({ environment: "test" as "test" | "live", list: vi.fn(), create: vi.fn(), schedule: vi.fn(), push: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: () => false, fiscalEnvironment: mocks.environment }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, back: vi.fn() }) }));
-vi.mock("@/lib/api", async (original) => ({ ...await original<typeof import("@/lib/api")>(), companies: { list: mocks.list }, invoices: { create: mocks.create } }));
+vi.mock("@/lib/api", async (original) => ({ ...await original<typeof import("@/lib/api")>(), companies: { list: mocks.list }, invoices: { create: mocks.create }, schedules: { create: mocks.schedule } }));
 
 const company: Company = {
   id: "company-1", tenantId: "tenant-1", legalName: "Example LTDA", taxId: "11222333000181", taxRegime: "Simples Nacional", simpleNational: true, simplesRate: "6.54",
@@ -39,8 +39,8 @@ async function prepareInvoice() {
   fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.sendEmail.label) }));
 }
 beforeEach(() => {
-  mocks.environment = "test"; mocks.list.mockReset(); mocks.create.mockReset(); mocks.push.mockReset();
-  mocks.list.mockResolvedValue({ items: [company], hasMore: false, nextCursor: null }); mocks.create.mockResolvedValue({ id: "invoice-1" });
+  mocks.environment = "test"; mocks.list.mockReset(); mocks.create.mockReset(); mocks.schedule.mockReset(); mocks.push.mockReset();
+  mocks.list.mockResolvedValue({ items: [company], hasMore: false, nextCursor: null }); mocks.create.mockResolvedValue({ id: "invoice-1" }); mocks.schedule.mockResolvedValue({ id: "schedule-1" });
   HTMLElement.prototype.scrollIntoView = vi.fn();
 });
 afterEach(cleanup);
@@ -160,6 +160,31 @@ describe("Invoice company defaults", () => {
     const issue = screen.getByRole("button", { name: "Issue NFS-e" }) as HTMLButtonElement; expect(issue.disabled).toBe(false);
     fireEvent.click(issue); await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce());
     expect(mocks.create.mock.calls[0][0]).toMatchObject({ amount: 199, deduction: 80 });
+  });
+  it("issues the first note now and creates the recurrence from the next period", async () => {
+    await prepareInvoice(); fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.repeat.label) }));
+    fireEvent.change(screen.getByLabelText(messages.Invoices.repeat.frequency), { target: { value: "WEEKLY" } });
+    fireEvent.click(screen.getByRole("button", { name: "Issue NFS-e" })); await waitFor(() => expect(mocks.schedule).toHaveBeenCalledOnce());
+    const [body, key] = mocks.schedule.mock.calls[0];
+    expect(mocks.create).toHaveBeenCalledOnce();
+    expect(key).toBe(`${mocks.create.mock.calls[0][1]}:recurrence`);
+    expect(body).toMatchObject({ companyId: company.id, amount: 199, options: { type: "RECURRING", recurrence: { frequency: "WEEKLY" } } });
+    expect(body.competenceDate > new Date().toLocaleDateString("sv-SE")).toBe(true);
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/app/invoices/invoice-1"));
+  });
+  it("does not create a recurrence unless asked", async () => {
+    await prepareInvoice(); fireEvent.click(screen.getByRole("button", { name: "Issue NFS-e" })); await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce());
+    expect(mocks.schedule).not.toHaveBeenCalled();
+  });
+  it("says the note was issued when only the recurrence fails, and retries without a second note", async () => {
+    mocks.schedule.mockRejectedValueOnce(new Error("boom"));
+    await prepareInvoice(); fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.repeat.label) }));
+    fireEvent.click(screen.getByRole("button", { name: "Issue NFS-e" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain(messages.Invoices.repeat.createdButFailed.slice(0, 30)));
+    expect(mocks.push).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Issue NFS-e" })); await waitFor(() => expect(mocks.push).toHaveBeenCalled());
+    expect(mocks.create.mock.calls[1][1]).toBe(mocks.create.mock.calls[0][1]);
+    expect(mocks.schedule.mock.calls[1][1]).toBe(mocks.schedule.mock.calls[0][1]);
   });
   it("omits the deduction when the field is empty", async () => {
     await prepareInvoice();

@@ -1230,7 +1230,19 @@
     "copyAction": "Duplicar",
     "copyInvoice": "Duplicar nota de {name}",
     "copyBanner": "Dados copiados da nota de {name}. A competência é a de hoje; revise o que precisar antes de emitir.",
-    "copyFailed": "Não foi possível copiar a nota. Preencha os dados manualmente."
+    "copyFailed": "Não foi possível copiar a nota. Preencha os dados manualmente.",
+    "repeat": {
+      "label": "Repetir esta nota",
+      "hint": "Emite esta nota agora e as próximas automaticamente, às 09h em dia útil.",
+      "frequency": "Repetir",
+      "WEEKLY": "Toda semana",
+      "BIWEEKLY": "A cada duas semanas",
+      "MONTHLY": "Todo mês",
+      "endsOn": "Repetir até",
+      "next": "Próxima nota em {date}. Sem data, repete até você pausar.",
+      "createdButFailed": "A nota foi emitida, mas a recorrência não foi criada. Tente de novo: não emite outra nota.",
+      "createdButFailedWith": "A nota foi emitida, mas a recorrência não foi criada ({reason}). Tente de novo: não emite outra nota."
+    }
   },
   "Billing": {
     "title": "Plano e uso",

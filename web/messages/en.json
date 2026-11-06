@@ -1230,7 +1230,19 @@
     "copyAction": "Duplicate",
     "copyInvoice": "Duplicate invoice for {name}",
     "copyBanner": "Details copied from the invoice for {name}. The competence date is today; review anything you need before issuing.",
-    "copyFailed": "Could not copy the invoice. Fill in the details manually."
+    "copyFailed": "Could not copy the invoice. Fill in the details manually.",
+    "repeat": {
+      "label": "Repeat this invoice",
+      "hint": "Issues this invoice now and the next ones automatically, at 09:00 on business days.",
+      "frequency": "Repeat",
+      "WEEKLY": "Every week",
+      "BIWEEKLY": "Every two weeks",
+      "MONTHLY": "Every month",
+      "endsOn": "Repeat until",
+      "next": "Next invoice on {date}. With no date it repeats until you pause it.",
+      "createdButFailed": "The invoice was issued, but the recurrence was not created. Try again: it will not issue another invoice.",
+      "createdButFailedWith": "The invoice was issued, but the recurrence was not created ({reason}). Try again: it will not issue another invoice."
+    }
   },
   "Billing": {
     "title": "Plan and usage",
