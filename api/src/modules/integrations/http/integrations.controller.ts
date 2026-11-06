@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
   HttpCode,
+  NotFoundException,
   Param,
   ParseIntPipe,
   ParseUUIDPipe,
@@ -40,6 +42,10 @@ import {
 const tenantOf = (req: RequestWithAuthContext) =>
   req.authContext!.activeTenantId;
 
+/** An API key is bound to one environment (test or live); dashboard sessions are not. */
+const keyEnvironmentOf = (req: RequestWithAuthContext) =>
+  req.authContext!.apiKeyEnvironment;
+
 @ApiTags('integrations')
 @Controller('integrations')
 export class IntegrationsController {
@@ -67,8 +73,21 @@ export class IntegrationsController {
     @Req() req: RequestWithAuthContext,
     @Body() body: CreateConnectionDto,
   ) {
+    const keyEnvironment = keyEnvironmentOf(req);
+    if (
+      keyEnvironment &&
+      body.environment &&
+      body.environment !== keyEnvironment
+    )
+      throw new BadRequestException(
+        `This API key can only create ${keyEnvironment} connections`,
+      );
+    const environment = keyEnvironment ?? body.environment;
+    if (!environment)
+      throw new BadRequestException('environment must be test or live');
     const connection = await this.connections.create(tenantOf(req), {
       ...body,
+      environment,
       activeFrom: body.activeFrom ? new Date(body.activeFrom) : undefined,
     });
     // Secrets that belong in the URL (e.g. AbacatePay's webhookSecret) are shown only here.
@@ -103,9 +122,10 @@ export class IntegrationsController {
   @RequirePermission('integrations.view')
   @ApiOperation({ summary: 'List connections' })
   async list(@Req() req: RequestWithAuthContext) {
-    return (await this.connections.list(tenantOf(req))).map((c) =>
-      this.present(c, req),
-    );
+    const keyEnvironment = keyEnvironmentOf(req);
+    return (await this.connections.list(tenantOf(req)))
+      .filter((c) => !keyEnvironment || c.environment === keyEnvironment)
+      .map((c) => this.present(c, req));
   }
 
   @Get('connections/:id')
@@ -116,7 +136,7 @@ export class IntegrationsController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
-    return this.present(await this.connections.get(tenantOf(req), id), req);
+    return this.present(await this.visibleConnection(req, id), req);
   }
 
   @Post('connections/:id/validate')
@@ -130,6 +150,7 @@ export class IntegrationsController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
+    await this.visibleConnection(req, id);
     return this.present(
       await this.connections.validate(tenantOf(req), id),
       req,
@@ -147,6 +168,7 @@ export class IntegrationsController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() body: UpdateCredentialsDto,
   ) {
+    await this.visibleConnection(req, id);
     return this.present(
       await this.connections.updateCredentials(
         tenantOf(req),
@@ -166,6 +188,7 @@ export class IntegrationsController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
+    await this.visibleConnection(req, id);
     return this.present(
       await this.connections.activate(tenantOf(req), id),
       req,
@@ -181,6 +204,7 @@ export class IntegrationsController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
+    await this.visibleConnection(req, id);
     return this.present(await this.connections.pause(tenantOf(req), id), req);
   }
 
@@ -193,6 +217,7 @@ export class IntegrationsController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
+    await this.visibleConnection(req, id);
     return this.present(
       await this.connections.disconnect(tenantOf(req), id),
       req,
@@ -207,6 +232,7 @@ export class IntegrationsController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
+    await this.visibleConnection(req, id);
     return (await this.connections.listRules(tenantOf(req), id)).map(
       presentRule,
     );
@@ -221,6 +247,7 @@ export class IntegrationsController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() body: PutRulesDto,
   ) {
+    await this.visibleConnection(req, id);
     const saved = await this.connections.replaceRules(
       tenantOf(req),
       id,
@@ -244,7 +271,7 @@ export class IntegrationsController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<IntegrationEventSummary[]> {
-    await this.connections.get(tenantOf(req), id);
+    await this.visibleConnection(req, id);
     return this.eventRepo.listByConnection(
       id,
       tenantOf(req),
@@ -263,7 +290,7 @@ export class IntegrationsController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await this.connections.get(tenantOf(req), id);
+    await this.visibleConnection(req, id);
     const rows = await this.operationService.list(
       tenantOf(req),
       id,
@@ -284,7 +311,12 @@ export class IntegrationsController {
     @Body() body: CompleteCustomerDto,
   ) {
     return presentOperation(
-      await this.operationService.completeCustomer(tenantOf(req), id, body),
+      await this.operationService.completeCustomer(
+        tenantOf(req),
+        id,
+        body,
+        keyEnvironmentOf(req),
+      ),
     );
   }
 
@@ -297,7 +329,23 @@ export class IntegrationsController {
     @Req() req: RequestWithAuthContext,
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<EventOutcome> {
-    return this.operationService.retry(tenantOf(req), id);
+    return this.operationService.retry(
+      tenantOf(req),
+      id,
+      keyEnvironmentOf(req),
+    );
+  }
+
+  /** The connection, or 404 when an API key of the other environment asks for it. */
+  private async visibleConnection(
+    req: RequestWithAuthContext,
+    id: string,
+  ): Promise<IntegrationConnection> {
+    const connection = await this.connections.get(tenantOf(req), id);
+    const keyEnvironment = keyEnvironmentOf(req);
+    if (keyEnvironment && connection.environment !== keyEnvironment)
+      throw new NotFoundException('Connection not found');
+    return connection;
   }
 
   private present(

@@ -86,6 +86,7 @@ export class EmailProcessor extends WorkerHost {
       const configs = await this.webhookConfigRepo.findByTenantIdAndEvent(
         tenantId,
         eventType,
+        environment,
       );
 
       for (const config of configs) {

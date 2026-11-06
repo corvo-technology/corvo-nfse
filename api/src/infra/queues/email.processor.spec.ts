@@ -47,6 +47,7 @@ describe('EmailProcessor', () => {
           active: true,
           url: 'https://example.com/webhook',
           secret: 'secret',
+          environment: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         },

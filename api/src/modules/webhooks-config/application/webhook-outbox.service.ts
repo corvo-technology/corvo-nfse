@@ -180,12 +180,20 @@ export class WebhookOutboxService {
     }
   }
 
-  async manualRetry(tenantId: string, deliveryId: string): Promise<void> {
+  async manualRetry(
+    tenantId: string,
+    deliveryId: string,
+    keyEnvironment?: 'test' | 'live',
+  ): Promise<void> {
     const delivery = await this.deliveryRepo.findByIdAndTenantId(
       deliveryId,
       tenantId,
     );
-    if (!delivery) throw new WebhookDeliveryNotFoundError(deliveryId);
+    if (
+      !delivery ||
+      (keyEnvironment && delivery.environment !== keyEnvironment)
+    )
+      throw new WebhookDeliveryNotFoundError(deliveryId);
 
     await this.deliveryRepo.update(deliveryId, tenantId, {
       status: 'manual_retry',

@@ -178,4 +178,29 @@ describe('WebhookOutboxService', () => {
     expect(secrets.findSecret).not.toHaveBeenCalled();
     expect(adapter.send).not.toHaveBeenCalled();
   });
+  describe('manualRetry environment', () => {
+    const liveDelivery = { ...baseDelivery, environment: 'live' as const };
+    const build = () => {
+      const repo = {
+        update: jest.fn(),
+        findByIdAndTenantId: jest.fn().mockResolvedValue(liveDelivery),
+      };
+      return { repo, service: buildService({ repo: repo as never }).service };
+    };
+
+    it('lets a test API key retry only test deliveries', async () => {
+      const { repo, service } = build();
+      await expect(
+        service.manualRetry('tenant-1', 'delivery-1', 'test'),
+      ).rejects.toThrow();
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('lets a live key (or a dashboard session) retry a live delivery', async () => {
+      const { repo, service } = build();
+      await service.manualRetry('tenant-1', 'delivery-1', 'live');
+      await service.manualRetry('tenant-1', 'delivery-1');
+      expect(repo.update).toHaveBeenCalledTimes(2);
+    });
+  });
 });

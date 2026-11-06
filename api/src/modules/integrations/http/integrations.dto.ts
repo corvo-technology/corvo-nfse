@@ -23,7 +23,7 @@ import { ServiceDto } from '@/modules/invoice/http/invoice.dto';
 export class CreateConnectionDto {
   @IsString() @IsNotEmpty() @MaxLength(40) provider!: string;
   @IsUUID() companyId!: string;
-  @IsIn(['test', 'live']) environment!: 'test' | 'live';
+  @IsOptional() @IsIn(['test', 'live']) environment?: 'test' | 'live';
   @IsObject() credentials!: Record<string, string>;
   @IsOptional() @IsDateString() activeFrom?: string;
 }

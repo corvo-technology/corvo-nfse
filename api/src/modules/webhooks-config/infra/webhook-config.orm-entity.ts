@@ -34,6 +34,10 @@ export class WebhookConfigEntity {
   @Column({ type: 'varchar', length: 255 })
   secret!: string;
 
+  /** NULL = both environments (older endpoints and dashboard-created ones). */
+  @Column({ type: 'varchar', length: 8, nullable: true })
+  environment!: 'test' | 'live' | null;
+
   @Column({ type: 'boolean', default: true })
   active!: boolean;
 
