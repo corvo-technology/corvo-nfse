@@ -34,7 +34,10 @@ export class CompanyFiscalProfileService {
   ): Promise<CompanyFiscalProfile> {
     const profile = await this.profiles.findById(profileId, tenantId);
     if (!profile || profile.companyId !== companyId)
-      throw new NotFoundException('Fiscal profile not found');
+      throw new NotFoundException({
+        code: 'FISCAL_PROFILE_NOT_FOUND',
+        message: 'Fiscal profile not found',
+      });
     return this.profiles.markApproved(
       profileId,
       tenantId,

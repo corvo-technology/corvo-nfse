@@ -52,6 +52,7 @@ describe('Invoice fiscal defaults and idempotency', () => {
       {} as never,
       new InvoiceIntakeService(companies as never, new InvoiceDomainService()),
       {} as never,
+      { isSimulated: (environment: string) => environment !== 'live' } as never,
     );
   });
 

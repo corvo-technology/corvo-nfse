@@ -41,7 +41,7 @@ export const pendingCount = (sales: IntegrationSale[]): number => sales.filter((
 
 export type ConnectStep = "create" | "validate" | "rules" | "activate";
 export class ConnectError extends Error {
-  constructor(message: string, readonly step: ConnectStep) { super(message); }
+  constructor(message: string, readonly step: ConnectStep, /** The error the API (or the network) raised, for the screen to translate. */ readonly original?: unknown) { super(message); }
 }
 
 export interface ConnectInput { provider: string; companyId: string; environment: "test" | "live"; credentials: Record<string, string>; sendEmail: boolean }
@@ -57,7 +57,7 @@ export async function connectProvider(input: ConnectInput, api: ConnectApi = def
   try {
     created = await api.create({ provider: input.provider, companyId: input.companyId, environment: input.environment, credentials: input.credentials, activeFrom: new Date().toISOString() });
   } catch (error) {
-    throw new ConnectError(messageOf(error), "create");
+    throw new ConnectError(messageOf(error), "create", error);
   }
   let step: ConnectStep = "validate";
   try {
@@ -71,7 +71,7 @@ export async function connectProvider(input: ConnectInput, api: ConnectApi = def
     return { connection: active, webhookUrl: created.webhookUrl, secrets: created.secrets ?? {} };
   } catch (error) {
     await api.disconnect(created.id).catch(() => undefined);
-    throw new ConnectError(messageOf(error), step);
+    throw new ConnectError(messageOf(error), step, error);
   }
 }
 

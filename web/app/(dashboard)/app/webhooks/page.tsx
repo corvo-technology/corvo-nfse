@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth";
 import { webhooks, collectAll, type WebhookEndpoint, type WebhookDelivery } from "@/lib/api";
 import { WEBHOOK_EVENT_OPTIONS, type WebhookEvent } from "@/lib/types";
 import { timeAgo } from "@/lib/i18n-helpers";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -39,6 +40,7 @@ export default function WebhooksPage() {
   const t = useTranslations("Webhooks");
   const { can, fiscalEnvironment: envFilter } = useAuth();
   const tc = useTranslations("Common");
+  const apiError = useApiErrorText();
   const { success, error: toastError } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedEvents, setSelectedEvents] = useState<WebhookEvent[]>([]);
@@ -84,7 +86,7 @@ export default function WebhooksPage() {
       setDeliveries(delData.items);
       setDeliveryCursor(delData.hasMore ? delData.nextCursor : null);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(apiError(err, "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -103,7 +105,7 @@ export default function WebhooksPage() {
       const next = await webhooks.deliveries({ hours: 24, limit: 50, environment: envFilter, cursor: deliveryCursor });
       setDeliveries((rows) => [...rows, ...next.items]);
       setDeliveryCursor(next.hasMore ? next.nextCursor : null);
-    } catch (err: unknown) { setError(err instanceof Error ? err.message : "Unknown error"); }
+    } catch (err: unknown) { setError(apiError(err, "Unknown error")); }
     finally { setMoreLoading(false); }
   };
 
@@ -138,7 +140,7 @@ export default function WebhooksPage() {
       fetchData();
       success(t("toasts.created"));
     } catch (err: unknown) {
-      setCreateError(err instanceof Error ? err.message : "Unknown error");
+      setCreateError(apiError(err, "Unknown error"));
     } finally {
       setCreating(false);
     }
@@ -153,7 +155,7 @@ export default function WebhooksPage() {
       fetchData();
       success(t("toasts.deleted"));
     } catch (err: unknown) {
-      toastError(err instanceof Error ? err.message : t("toasts.deleteFailed"));
+      toastError(apiError(err, t("toasts.deleteFailed")));
     } finally {
       setDeletingId(null);
     }
@@ -169,7 +171,7 @@ export default function WebhooksPage() {
         success(t("toasts.testSent"));
       } else toastError(result.statusCode ? t("toasts.testFailedStatus", { status: result.statusCode }) : t("toasts.testFailed"));
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t("toasts.testFailed");
+      const msg = apiError(err, t("toasts.testFailed"));
       toastError(msg);
     } finally {
       setTestingId(null);
@@ -185,7 +187,7 @@ export default function WebhooksPage() {
       fetchData();
       success(t("toasts.retrySuccess"));
     } catch (err: unknown) {
-      toastError(err instanceof Error ? err.message : t("toasts.retryFailed"));
+      toastError(apiError(err, t("toasts.retryFailed")));
     } finally {
       setRetryingId(null);
     }

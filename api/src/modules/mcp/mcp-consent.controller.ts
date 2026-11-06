@@ -120,9 +120,10 @@ export class McpConsentController {
       (scope) => !allowed.includes(SCOPE_PERMISSION[scope]),
     );
     if (missing.length > 0) {
-      throw new ForbiddenException(
-        `Your role in this workspace cannot grant: ${missing.join(', ')}`,
-      );
+      throw new ForbiddenException({
+        code: 'MCP_SCOPE_NOT_ALLOWED',
+        message: `Your role in this workspace cannot grant: ${missing.join(', ')}`,
+      });
     }
 
     const code = await this.mcpAuth.createAuthorizationCode({
@@ -143,7 +144,10 @@ export class McpConsentController {
   private requireHuman(req: RequestWithAuthContext): string {
     const auth = req.authContext;
     if (!auth?.sessionId || auth.principalType === 'api_key') {
-      throw new ForbiddenException('A logged-in user session is required');
+      throw new ForbiddenException({
+        code: 'SESSION_REQUIRED',
+        message: 'A logged-in user session is required',
+      });
     }
     return auth.authUserId;
   }

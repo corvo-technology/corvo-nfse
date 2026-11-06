@@ -73,14 +73,19 @@ describe('OpenNfseProvider Sefin target', () => {
       { get: () => value } as unknown as ConfigService,
     );
 
-  it('defaults to production', () => {
-    expect(build(undefined)['sefin']).toBe('production');
-    expect(build('production')['sefin']).toBe('production');
-    expect(build('anything-else')['sefin']).toBe('production');
+  it('sends live to production by default', () => {
+    expect(build(undefined)['sefinFor']('live')).toBe('production');
+    expect(build('production')['sefinFor']('live')).toBe('production');
+    expect(build('anything-else')['sefinFor']('live')).toBe('production');
   });
 
-  it('uses the Produção Restrita only when asked for', () => {
-    expect(build('restricted')['sefin']).toBe('restricted');
+  it('sends live to the Produção Restrita only when asked for', () => {
+    expect(build('restricted')['sefinFor']('live')).toBe('restricted');
+  });
+
+  it('always sends test to the Produção Restrita', () => {
+    expect(build(undefined)['sefinFor']('test')).toBe('restricted');
+    expect(build('production')['sefinFor']('test')).toBe('restricted');
   });
 });
 

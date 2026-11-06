@@ -16,10 +16,12 @@ import { Card } from "@/components/ui/card";
 import { DetailSkeleton } from "@/components/ui/detail-skeleton";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 export default function CompanyDetailPage() {
   const { id } = useParams<{ id: string }>(); const router = useRouter();
   const t = useTranslations("CompanyDetail"); const tc = useTranslations("Companies"); const locale = useLocale();
+  const apiError = useApiErrorText();
   const { can } = useAuth();
   const [company, setCompany] = useState<Company | null>(null); const [certs, setCerts] = useState<Certificate[]>([]);
   const [error, setError] = useState<string | null>(null); const [revision, setRevision] = useState(0);
@@ -31,7 +33,7 @@ export default function CompanyDetailPage() {
     const abort = new AbortController();
     Promise.all([companies.get(id, abort.signal), certificateView ? collectAll((cursor) => certificates.list(id, { cursor, limit: 1000 }, abort.signal)) : Promise.resolve([])])
       .then(([value, certificates]) => { if (!abort.signal.aborted) { setCompany(value); setCerts(certificates); setNow(Date.now()); setError(null); } })
-      .catch((cause) => { if (!abort.signal.aborted) setError(cause.message); });
+      .catch((cause) => { if (!abort.signal.aborted) setError(apiError(cause, t("failed"))); });
     return () => abort.abort();
   }, [id, certificateView, revision]);
   async function remove() {
@@ -41,7 +43,7 @@ export default function CompanyDetailPage() {
       if (confirmation.kind === "company") { await companies.delete(id); router.replace("/app/companies"); }
       else { await certificates.delete(id, confirmation.id); setCerts((rows) => rows.filter((item) => item.id !== confirmation.id)); setRevision((value) => value + 1); }
       setConfirmation(null);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : t("failed")); }
+    } catch (cause) { setError(apiError(cause, t("failed"))); }
     finally { setBusy(false); }
   }
   if (!company || company.id !== id) return error ? <div className="flex flex-col gap-4"><p role="alert">{error}</p><Button onClick={() => setRevision((value) => value + 1)}>{t("retry")}</Button></div> : <DetailSkeleton label={t("loading")} />;

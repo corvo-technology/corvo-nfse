@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { integrations, type IntegrationSale } from "@/lib/api";
 import { saleStatus } from "@/lib/integrations";
 import { cleanTaxId, maskTaxId } from "@/lib/masks";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 export interface SaleRow {
   sale: IntegrationSale;
@@ -26,6 +27,7 @@ interface SalesListProps {
 
 export function SalesList({ rows, canManage, onChanged }: SalesListProps) {
   const t = useTranslations("Integrations");
+  const apiError = useApiErrorText();
   const locale = useLocale();
   const { success, error: toastError } = useToast();
   const [fixing, setFixing] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export function SalesList({ rows, canManage, onChanged }: SalesListProps) {
       setTaxId("");
       onChanged();
     } catch (cause) {
-      toastError(`${t("detail.saleFailed")} ${cause instanceof Error ? cause.message : ""}`.trim());
+      toastError(`${t("detail.saleFailed")} ${apiError(cause, "")}`.trim());
     } finally {
       setSaleBusy(null);
     }

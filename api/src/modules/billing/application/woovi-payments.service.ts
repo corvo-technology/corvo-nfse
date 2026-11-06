@@ -65,7 +65,10 @@ export class WooviPaymentsService {
     try {
       assertAvulsoUnits(units);
     } catch (error) {
-      throw new BadRequestException((error as Error).message);
+      throw new BadRequestException({
+        code: 'CHECKOUT_INVALID',
+        message: (error as Error).message,
+      });
     }
     const replay = await this.replay(tenantId, idempotencyKey, {
       kind: 'avulso',
@@ -175,7 +178,10 @@ export class WooviPaymentsService {
               ? 'phone'
               : null;
     if (field)
-      throw new BadRequestException(`Pix Automático needs the payer ${field}`);
+      throw new BadRequestException({
+        code: 'PIX_PAYER_FIELD_REQUIRED',
+        message: `Pix Automático needs the payer ${field}`,
+      });
   }
 
   async handleEvent(payload: WooviEvent): Promise<void> {
@@ -346,7 +352,10 @@ export class WooviPaymentsService {
   async cancelPixSubscription(tenantId: string): Promise<void> {
     const contracts = await this.intents.findLiveSubscriptions(tenantId);
     if (contracts.length === 0)
-      throw new NotFoundException('No Pix Automático subscription to cancel');
+      throw new NotFoundException({
+        code: 'PIX_SUBSCRIPTION_NOT_FOUND',
+        message: 'No Pix Automático subscription to cancel',
+      });
     for (const contract of contracts) {
       await this.client.cancelSubscription(
         contract.checkout?.providerId ?? contract.providerRef,

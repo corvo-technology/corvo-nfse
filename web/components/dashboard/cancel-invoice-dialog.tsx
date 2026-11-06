@@ -8,6 +8,7 @@ import { CANCELLATION_DESCRIPTION_MAX, CANCELLATION_DESCRIPTION_MIN } from "@/li
 import type { CancellationReasonCode, Invoice } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 const CANCELLATION_OPTIONS: {
   id: "incorrect_data" | "duplicate_charge" | "service_not_provided" | "refund";
@@ -30,6 +31,7 @@ interface CancelInvoiceDialogProps {
 /** Issued and being-issued NFS-e need the Sefin justification (15–255 chars); queued ones are cancelled locally. */
 export function CancelInvoiceDialog({ invoice, open, onClose, onCancelled }: CancelInvoiceDialogProps) {
   const t = useTranslations("InvoiceDetail.cancel");
+  const apiError = useApiErrorText();
   const fiscal = invoice.status === "authorized" || invoice.status === "processing";
   const hint = invoice.status === "authorized" ? "fiscalHint" : invoice.status === "processing" ? "processingHint" : "queuedHint";
   const [selectedOption, setSelectedOption] = useState(CANCELLATION_OPTIONS[0]);
@@ -44,7 +46,7 @@ export function CancelInvoiceDialog({ invoice, open, onClose, onCancelled }: Can
     if (invalid || submitting) return;
     setSubmitting(true); setError(null);
     try { onCancelled(await invoices.cancel(invoice.id, { reason: selectedOption.reason, description: trimmed || undefined })); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : t("failed")); }
+    catch (cause) { setError(apiError(cause, t("failed"))); }
     finally { setSubmitting(false); }
   }
 

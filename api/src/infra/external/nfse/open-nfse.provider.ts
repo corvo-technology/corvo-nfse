@@ -52,7 +52,8 @@ const CANCELLATION_REASON: Record<
 @Injectable()
 export class OpenNfseProvider implements FiscalProvider {
   private readonly logger = new Logger(OpenNfseProvider.name);
-  private readonly sefin: SefinEnvironment;
+  /** `NFSE_SEFIN_ENVIRONMENT=restricted` forces every invoice, live included, to the homologation Sefin. */
+  private readonly homologationOnly: boolean;
   private readonly configuredLayout: ConfiguredDpsLayout;
   private readonly layoutPolicy: DpsLayoutPolicy;
 
@@ -60,30 +61,35 @@ export class OpenNfseProvider implements FiscalProvider {
     @InjectDataSource() private readonly database: DataSource,
     config: ConfigService,
   ) {
-    this.sefin =
-      config.get<SefinEnvironment>('NFSE_SEFIN_ENVIRONMENT') === 'restricted'
-        ? 'restricted'
-        : 'production';
+    this.homologationOnly =
+      config.get<SefinEnvironment>('NFSE_SEFIN_ENVIRONMENT') === 'restricted';
     this.configuredLayout =
       config.get<ConfiguredDpsLayout>('rtc.dpsLayout') ?? 'rtc-v1.01';
     this.layoutPolicy = {
       cutoverAt: config.get<string>('rtc.nt009CutoverAt'),
     };
-    if (this.sefin === 'restricted') {
+    if (this.homologationOnly) {
       this.logger.warn(
         'NFSE_SEFIN_ENVIRONMENT=restricted: live invoices go to the Sefin Produção Restrita (homologation), not to production.',
       );
     }
   }
 
-  private get ambiente(): Ambiente {
-    return this.sefin === 'restricted'
+  /** Test invoices always go to the Produção Restrita; live ones go to production unless homologation-only. */
+  private sefinFor(environment: 'test' | 'live'): SefinEnvironment {
+    return environment === 'test' || this.homologationOnly
+      ? 'restricted'
+      : 'production';
+  }
+
+  private ambienteFor(environment: 'test' | 'live'): Ambiente {
+    return this.sefinFor(environment) === 'restricted'
       ? Ambiente.ProducaoRestrita
       : Ambiente.Producao;
   }
 
   private store(
-    payload: Pick<IIssuePayload, 'invoiceId' | 'tenantId'>,
+    payload: Pick<IIssuePayload, 'invoiceId' | 'tenantId' | 'environment'>,
   ): RetryStore {
     const tenantId = payload.tenantId!;
     requireTenantId(tenantId);
@@ -91,7 +97,7 @@ export class OpenNfseProvider implements FiscalProvider {
     const identity = {
       id: payload.invoiceId!,
       tenantId: payload.tenantId!,
-      environment: 'live',
+      environment: payload.environment,
     };
     return {
       save: async (entry) =>
@@ -139,10 +145,8 @@ export class OpenNfseProvider implements FiscalProvider {
     retryStore?: RetryStore,
     at: Date = new Date(),
   ): NfseClient {
-    if (payload.environment !== 'live')
-      throw new Error('Real fiscal provider requires live');
     return new NfseClient({
-      ambiente: this.ambiente,
+      ambiente: this.ambienteFor(payload.environment),
       certificado: { pfx: payload.pfxBuffer, password: payload.p12Password },
       retryStore,
       dpsLayout:
@@ -150,7 +154,7 @@ export class OpenNfseProvider implements FiscalProvider {
           resolveDpsLayout({
             ...this.layoutPolicy,
             configured: this.configuredLayout,
-            sefinEnvironment: this.sefin,
+            sefinEnvironment: this.sefinFor(payload.environment),
             at,
           })
         ],
@@ -236,7 +240,7 @@ export class OpenNfseProvider implements FiscalProvider {
       idDps = prepared.infDPS.Id;
     } else {
       signed = await client.emitir({
-        ...issueParams(payload, this.sefin),
+        ...issueParams(payload, this.sefinFor(payload.environment)),
         nDPS: String(payload.number),
         dryRun: true,
       });
@@ -331,11 +335,11 @@ export class OpenNfseProvider implements FiscalProvider {
   }
   async queryByAccessKey(
     key: string,
-    _environment: 'test' | 'live',
+    environment: 'test' | 'live',
     credentials?: IIssuePayload,
   ): Promise<FiscalQueryResult> {
     if (!credentials) throw new Error('Certificate credentials are required');
-    const client = this.client(credentials);
+    const client = this.client({ ...credentials, environment });
     try {
       return {
         ...this.result(await client.fetchByChave(key)),
@@ -356,7 +360,7 @@ export class OpenNfseProvider implements FiscalProvider {
     const result = await this.queryByAccessKey(key, environment, credentials);
     if (!result.xmlAuthorized) throw new Error('Invoice not found');
     return renderInvoicePdf(parseNfseXml(result.xmlAuthorized), {
-      ambiente: this.ambiente,
+      ambiente: this.ambienteFor(environment),
     });
   }
 }

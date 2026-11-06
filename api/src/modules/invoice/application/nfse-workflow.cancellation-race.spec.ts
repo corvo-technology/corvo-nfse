@@ -47,7 +47,7 @@ function build(invoice: Invoice, transition: jest.Mock) {
       }),
     } as any,
     {} as any,
-    { resolve: () => provider } as any,
+    { resolve: () => provider, isSimulated: () => true } as any,
     { transition } as any,
     { add: jest.fn() } as any,
     { publish: jest.fn() } as any,

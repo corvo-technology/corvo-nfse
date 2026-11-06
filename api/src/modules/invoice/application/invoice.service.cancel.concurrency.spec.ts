@@ -154,6 +154,7 @@ function harness(
     {} as never,
     {} as never,
     webhooks as never,
+    { isSimulated: (environment: string) => environment !== 'live' } as never,
   );
 
   return {

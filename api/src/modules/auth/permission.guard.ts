@@ -35,7 +35,10 @@ export class PermissionGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<RequestWithAuthContext>();
     const authContext = request.authContext;
     if (!authContext) {
-      throw new UnauthorizedException('Authenticated context is required');
+      throw new UnauthorizedException({
+        code: 'TENANT_CONTEXT_REQUIRED',
+        message: 'Authenticated context is required',
+      });
     }
 
     const permission =
@@ -62,11 +65,12 @@ export class PermissionGuard implements CanActivate {
         }),
       )
     ) {
-      throw new ForbiddenException(
-        `One of these permissions is required: ${permissions
+      throw new ForbiddenException({
+        code: 'PERMISSION_DENIED',
+        message: `One of these permissions is required: ${permissions
           .map((item) => `"${item}"`)
           .join(', ')}`,
-      );
+      });
     }
     return true;
   }

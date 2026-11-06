@@ -54,7 +54,11 @@ export class BillingController {
     const status = await this.quotaService.getStatus(tenantId);
     const plan = await this.planRepo.findActiveByTenantId(tenantId);
     const billing = await this.billingUsage.status(tenantId);
-    if (!plan) throw new NotFoundException('No plan assigned');
+    if (!plan)
+      throw new NotFoundException({
+        code: 'NO_PLAN_ASSIGNED',
+        message: 'No plan assigned',
+      });
 
     return data({
       plan: {
@@ -123,7 +127,10 @@ export class BillingController {
     const method = body.method ?? 'card';
     if ((body.kind ?? 'plan') === 'avulso') {
       if (body.units === undefined)
-        throw new BadRequestException('units is required for avulso');
+        throw new BadRequestException({
+          code: 'CHECKOUT_INVALID',
+          message: 'units is required for avulso',
+        });
       return data(
         await this.checkoutRouter.start(
           tenantId,
@@ -133,7 +140,10 @@ export class BillingController {
       );
     }
     if (!body.plan_slug)
-      throw new BadRequestException('plan_slug is required for a plan');
+      throw new BadRequestException({
+        code: 'CHECKOUT_INVALID',
+        message: 'plan_slug is required for a plan',
+      });
     return data(
       await this.checkoutRouter.start(
         tenantId,

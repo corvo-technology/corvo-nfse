@@ -88,12 +88,14 @@ export class WooviClient {
       response.status === 401 ||
       response.status === 403
     )
-      throw new BadGatewayException(
-        `Woovi request failed (${response.status})`,
-      );
-    throw new BadRequestException(
-      `Woovi: ${this.reason(detail) || `request rejected (${response.status})`}`,
-    );
+      throw new BadGatewayException({
+        code: 'PIX_PROVIDER_ERROR',
+        message: `Woovi request failed (${response.status})`,
+      });
+    throw new BadRequestException({
+      code: 'PIX_PROVIDER_ERROR',
+      message: `Woovi: ${this.reason(detail) || `request rejected (${response.status})`}`,
+    });
   }
 
   /**

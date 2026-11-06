@@ -1,3 +1,4 @@
+import { NfseProviderFactory } from '@/infra/external/nfse/nfse-provider.factory';
 import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import {
@@ -104,6 +105,7 @@ export class InvoiceService {
     private readonly quotaService: QuotaService,
     private readonly intake: InvoiceIntakeService,
     private readonly webhooks: InvoiceWebhookPublisher,
+    private readonly providers: NfseProviderFactory,
   ) {}
 
   async emit(
@@ -243,8 +245,9 @@ export class InvoiceService {
       environment,
     );
 
-    // 3. Ensure company is ready
-    if (environment === 'live') {
+    // 3. Ensure company is ready. Everything that reaches the Sefin (live, and test unless it is simulated)
+    // is signed with the company's certificate.
+    if (!this.providers.isSimulated(environment)) {
       await this.companyService.ensureReady(
         normalized.companyId,
         tenantId,
@@ -442,9 +445,10 @@ export class InvoiceService {
     const invoice = await this.findById(id, tenantId, environment);
 
     if (!invoice.wasAuthorized) {
-      throw new NotFoundException(
-        'XML not available for non-authorized invoice',
-      );
+      throw new NotFoundException({
+        code: 'DOCUMENT_NOT_AVAILABLE',
+        message: 'XML not available for non-authorized invoice',
+      });
     }
 
     return this.documentStorage.getXml(
@@ -462,9 +466,10 @@ export class InvoiceService {
     const invoice = await this.findById(id, tenantId, environment);
 
     if (!invoice.wasAuthorized) {
-      throw new NotFoundException(
-        'PDF not available for non-authorized invoice',
-      );
+      throw new NotFoundException({
+        code: 'DOCUMENT_NOT_AVAILABLE',
+        message: 'PDF not available for non-authorized invoice',
+      });
     }
 
     return this.documentStorage.getPdf(
@@ -511,13 +516,19 @@ export class InvoiceService {
       invoice = await this.findById(id, tenantId, environment);
     } catch (e) {
       if (e instanceof InvoiceNotFoundError) {
-        throw new NotFoundException(e.message);
+        throw new NotFoundException({
+          code: 'INVOICE_NOT_FOUND',
+          message: e.message,
+        });
       }
       throw e;
     }
 
     if (!invoice.wasAuthorized || !invoice.documentsReadyAt) {
-      throw new ConflictException('Documents not ready');
+      throw new ConflictException({
+        code: 'DOCUMENTS_NOT_READY',
+        message: 'Documents not ready',
+      });
     }
 
     const snapshot = invoice.toSnapshot();
@@ -541,7 +552,10 @@ export class InvoiceService {
         mimeType: result.mimeType,
       };
     } catch {
-      throw new ServiceUnavailableException('Storage unavailable');
+      throw new ServiceUnavailableException({
+        code: 'STORAGE_UNAVAILABLE',
+        message: 'Storage unavailable',
+      });
     }
   }
 
@@ -556,31 +570,44 @@ export class InvoiceService {
       invoice = await this.findById(id, tenantId, environment);
     } catch (e) {
       if (e instanceof InvoiceNotFoundError) {
-        throw new NotFoundException(e.message);
+        throw new NotFoundException({
+          code: 'INVOICE_NOT_FOUND',
+          message: e.message,
+        });
       }
       throw e;
     }
 
     if (invoice.status === 'cancelling' || invoice.status === 'cancelled') {
-      throw new ConflictException(
-        'Invoice is cancelled; e-mail is not available',
-      );
+      throw new ConflictException({
+        code: 'INVOICE_CANCELLED_NO_EMAIL',
+        message: 'Invoice is cancelled; e-mail is not available',
+      });
     }
 
     if (invoice.status !== 'authorized' || !invoice.documentsReadyAt) {
-      throw new ConflictException('Documents not ready');
+      throw new ConflictException({
+        code: 'DOCUMENTS_NOT_READY',
+        message: 'Documents not ready',
+      });
     }
 
     const snapshot = invoice.toSnapshot();
     const customerEmail = snapshot.customerSnapshot?.email;
 
     if (!customerEmail) {
-      throw new UnprocessableEntityException('Customer has no email');
+      throw new UnprocessableEntityException({
+        code: 'CUSTOMER_EMAIL_MISSING',
+        message: 'Customer has no email',
+      });
     }
 
     // Validate idempotency key format if provided
     if (idempotencyKey && !/^[A-Za-z0-9_-]{1,64}$/.test(idempotencyKey)) {
-      throw new UnprocessableEntityException('Invalid idempotency key format');
+      throw new UnprocessableEntityException({
+        code: 'IDEMPOTENCY_KEY_INVALID',
+        message: 'Invalid idempotency key format',
+      });
     }
 
     const emailId =

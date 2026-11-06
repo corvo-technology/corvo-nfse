@@ -15,11 +15,14 @@ import { PageHeader } from "@/components/ui/page-header";
 import { copyInvoiceHref } from "@/lib/invoice-copy";
 import { timeAgo } from "@/lib/i18n-helpers";
 import { formatScheduledDate, isScheduled } from "@/lib/invoice-schedule";
+import { useApiErrorText, useInvoiceErrorText } from "@/lib/use-api-error";
 
 const pending = new Set(["queued", "processing", "retry_pending", "cancelling"]);
 const TONE: Record<string, string> = { queued: "bg-text-4", processing: "bg-accent", retry_pending: "bg-warn", authorized: "bg-ok", rejected: "bg-danger", failed: "bg-danger", reconciliation_required: "bg-warn", manual_review: "bg-warn", cancelling: "bg-warn", cancelled: "bg-text-4" };
 export default function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>(); const t = useTranslations("InvoiceDetail"); const ts = useTranslations("Invoices.status"); const tc = useTranslations("Common"); const locale = useLocale(); const { can } = useAuth(); const [cancelOpen, setCancelOpen] = useState(false);
+  const apiError = useApiErrorText();
+  const invoiceError = useInvoiceErrorText();
   const [invoice, setInvoice] = useState<Invoice | null>(null); const [events, setEvents] = useState<InvoiceEvent[]>([]);
   const [error, setError] = useState<string | null>(null); const [revision, setRevision] = useState(0); const [downloading, setDownloading] = useState(false); const downloadBusy = useRef(false);
   useEffect(() => {
@@ -35,7 +38,7 @@ export default function InvoiceDetailPage() {
         historyStatus = value.status;
         setInvoice(value); if (history) setEvents(history); setError(null);
         if (pending.has(value.status) && !document.hidden) timer = setTimeout(load, isScheduled(value) ? 60000 : 5000);
-      } catch (cause) { if (!abort.signal.aborted) setError(cause instanceof Error ? cause.message : t("failed")); }
+      } catch (cause) { if (!abort.signal.aborted) setError(apiError(cause, t("failed"))); }
       finally { running = false; }
     }
     const visibility = () => { clearTimeout(timer); if (!document.hidden) void load(); };
@@ -48,7 +51,7 @@ export default function InvoiceDetailPage() {
     try {
       const blob = await invoices[kind](id); const url = URL.createObjectURL(blob); const anchor = document.createElement("a");
       anchor.href = url; anchor.download = `nfse-${id}.${kind}`; document.body.appendChild(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : t("failed")); }
+    } catch (cause) { setError(apiError(cause, t("failed"))); }
     finally { downloadBusy.current = false; setDownloading(false); }
   }
   if (!invoice || invoice.id !== id) return error ? <div className="flex flex-col gap-4"><p role="alert">{error}</p><Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button></div> : <DetailSkeleton label={t("loading")} />;
@@ -60,7 +63,7 @@ export default function InvoiceDetailPage() {
     {error && <p role="alert" className="banner banner-danger">{error}</p>}
     {scheduled && <p role="status" className="banner banner-info">{t("scheduledBanner", { date: formatScheduledDate(invoice.scheduledFor!, locale, true) })}</p>}
     <Card className="grid gap-4 p-5 sm:grid-cols-2"><div><p className="eyebrow">{t("customer")}</p><p>{invoice.customerName || t("anonymousCustomer")}</p><p className="text-sm text-text-3">{invoice.customerTaxId}</p></div><div><p className="eyebrow">{t("amount")}</p><p>{money}</p></div>{invoice.deduction ? <div><p className="eyebrow">{t("deduction")}</p><p>{brl.format(invoice.deduction)}</p></div> : null}<div><p className="eyebrow">{t("reference")}</p><p>{invoice.externalId || "—"}</p></div><div><p className="eyebrow">{t("competence")}</p><p>{invoice.competenceDate.slice(0, 10)}</p></div><div className="sm:col-span-2"><p className="eyebrow">{t("service")}</p><p>{invoice.serviceDescription}</p><p className="text-sm text-text-3">{invoice.serviceSnapshot.code} · {invoice.serviceSnapshot.municipalityCode}</p></div>{invoice.cancellationReason && showsCancellationReason(invoice.status) && <div className="sm:col-span-2"><p className="eyebrow">{t("cancel.reasonLabel")}</p><p>{t(`cancel.reasons.${invoice.cancellationReason}`)}</p>{invoice.cancellationDescription && <p className="text-sm text-text-3">{invoice.cancellationDescription}</p>}</div>}</Card>
-    {invoice.lastErrorMessage && <p role="alert" className="banner banner-danger">{invoice.lastErrorCode}: {invoice.lastErrorMessage}</p>}
+    {invoice.lastErrorMessage && <p role="alert" className="banner banner-danger">{invoice.lastErrorCode}: {invoiceError(invoice.lastErrorCode, invoice.lastErrorMessage)}</p>}
     {showsCancellationRequested(invoice.status, invoice.cancellationRequestedAt) && <p className="banner">{t("cancel.requested")}</p>}
     <Card className="flex flex-col gap-4 p-5"><h2 className="font-medium">{t("documents")}</h2><div className="flex gap-3"><Button disabled={!hasDocuments || downloading} onClick={() => void download("pdf")}>PDF</Button><Button disabled={!hasDocuments || downloading} onClick={() => void download("xml")}>XML</Button></div>{!hasDocuments && <p className="text-sm text-text-3">{t("documentsHint")}</p>}</Card>
     <Card className="flex flex-col gap-5 p-5"><h2 className="font-medium">{t("events")}</h2>{events.length === 0 && <p className="text-sm text-text-3">{t("noEvents")}</p>}

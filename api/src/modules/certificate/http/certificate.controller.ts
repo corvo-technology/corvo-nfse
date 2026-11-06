@@ -66,10 +66,16 @@ export class CertificateController {
     @Body() body: UploadCertificateDto,
   ) {
     if (!file) {
-      throw new BadRequestException('Certificate file is required');
+      throw new BadRequestException({
+        code: 'CERTIFICATE_FILE_REQUIRED',
+        message: 'Certificate file is required',
+      });
     }
     if (!body.password) {
-      throw new BadRequestException('Certificate password is required');
+      throw new BadRequestException({
+        code: 'CERTIFICATE_PASSWORD_REQUIRED',
+        message: 'Certificate password is required',
+      });
     }
 
     const tenantId = req.authContext!.activeTenantId;

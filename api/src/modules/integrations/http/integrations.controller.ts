@@ -79,12 +79,16 @@ export class IntegrationsController {
       body.environment &&
       body.environment !== keyEnvironment
     )
-      throw new BadRequestException(
-        `This API key can only create ${keyEnvironment} connections`,
-      );
+      throw new BadRequestException({
+        code: 'INTEGRATION_ENVIRONMENT_INVALID',
+        message: `This API key can only create ${keyEnvironment} connections`,
+      });
     const environment = keyEnvironment ?? body.environment;
     if (!environment)
-      throw new BadRequestException('environment must be test or live');
+      throw new BadRequestException({
+        code: 'ENVIRONMENT_INVALID',
+        message: 'environment must be test or live',
+      });
     const connection = await this.connections.create(tenantOf(req), {
       ...body,
       environment,
@@ -344,7 +348,10 @@ export class IntegrationsController {
     const connection = await this.connections.get(tenantOf(req), id);
     const keyEnvironment = keyEnvironmentOf(req);
     if (keyEnvironment && connection.environment !== keyEnvironment)
-      throw new NotFoundException('Connection not found');
+      throw new NotFoundException({
+        code: 'CONNECTION_NOT_FOUND',
+        message: 'Connection not found',
+      });
     return connection;
   }
 

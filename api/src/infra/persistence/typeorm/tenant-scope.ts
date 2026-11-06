@@ -16,7 +16,11 @@ export function requireTenantId(tenantId: string): void {
 
 export function assertTenantOwnership(tenantId: string, owner: string): void {
   requireTenantId(tenantId);
-  if (owner !== tenantId) throw new NotFoundException('Resource not found');
+  if (owner !== tenantId)
+    throw new NotFoundException({
+      code: 'RESOURCE_NOT_FOUND',
+      message: 'Resource not found',
+    });
 }
 
 /** Update under the complete owner key; an ID collision can only fail the insert. */

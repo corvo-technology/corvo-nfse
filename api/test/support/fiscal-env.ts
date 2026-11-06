@@ -5,6 +5,7 @@ if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))
   throw new Error('Fiscal integration requires local PostgreSQL');
 url.pathname = '/corvo_test';
 process.env.NODE_ENV = 'test';
+process.env.NFSE_TEST_PROVIDER = 'fake';
 process.env.DATABASE_URL = url.toString();
 process.env.DB_SCHEMA = `fiscal_${randomUUID().replaceAll('-', '')}`;
 process.env.REDIS_KEY_PREFIX = process.env.DB_SCHEMA;

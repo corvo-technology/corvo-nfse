@@ -54,6 +54,7 @@ function build(invoice: Invoice, stored?: Invoice) {
     {} as never,
     {} as never,
     webhooks as never,
+    { isSimulated: (environment: string) => environment !== 'live' } as never,
   );
   return { service, lifecycle, webhooks, registerCancellationIntent };
 }

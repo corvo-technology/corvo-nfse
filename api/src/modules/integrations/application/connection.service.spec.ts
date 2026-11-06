@@ -6,7 +6,8 @@ import {
 import { ConnectionService } from './connection.service';
 import { CredentialsService } from './credentials.service';
 import { ConnectorRegistry } from '../domain/connector-registry';
-import type { Connector } from '../domain/connector';
+import { ConnectorAuthError, type Connector } from '../domain/connector';
+import { UnprocessableEntityException } from '@nestjs/common';
 import type { IntegrationConnection } from '../domain/integration-connection';
 import { IIntegrationConnectionRepository } from '../domain/integration-connection.repository';
 import { IIntegrationRuleRepository } from '../domain/integration-rule.repository';
@@ -146,6 +147,23 @@ describe('ConnectionService', () => {
       expect.objectContaining({ appId: 'abc' }),
       'live',
       { publicId: c.publicId },
+    );
+  });
+
+  it('validate() answers a platform refusal with a coded 422 the dashboard can translate', async () => {
+    const { service } = setup();
+    const c = await service.create(TENANT, input);
+    jest
+      .spyOn(connector, 'validateConnection')
+      .mockRejectedValueOnce(
+        new ConnectorAuthError('A AbacatePay recusou a chave'),
+      );
+    const error = await service.validate(TENANT, c.id).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(UnprocessableEntityException);
+    expect((error as UnprocessableEntityException).getResponse()).toMatchObject(
+      {
+        code: 'INTEGRATION_CREDENTIAL_REFUSED',
+      },
     );
   });
 

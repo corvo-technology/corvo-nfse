@@ -11,6 +11,7 @@ import { Field } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CompanyFiscalProfileForm } from "./company-fiscal-profile-form";
 import { CompanyServiceProfileForm } from "./company-service-profile-form";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 type Review = { kind: "profile"; value: CompanyFiscalProfile } | { kind: "service"; value: CompanyServiceTaxProfile };
 type Editor = { kind: "profile"; value: CompanyFiscalProfile | null } | { kind: "service"; value: CompanyServiceTaxProfile | null };
@@ -24,6 +25,7 @@ export function CompanyFiscalSetup({ company }: { company: Company }) {
 }
 function FiscalSetup({ company, canView, canManage }: { company: Company; canView: boolean; canManage: boolean }) {
   const t = useTranslations("CompanyFiscal");
+  const apiError = useApiErrorText();
   const [date, setDate] = useState(fiscalToday);
   const [revision, setRevision] = useState(0);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -39,7 +41,7 @@ function FiscalSetup({ company, canView, canManage }: { company: Company; canVie
     const abort = new AbortController();
     Promise.all([companies.fiscalProfiles(company.id, abort.signal), companies.serviceTaxProfiles(company.id, date, abort.signal)])
       .then(([profiles, services]) => { if (!abort.signal.aborted) setLoaded({ key: requestKey, profiles, services, error: null }); })
-      .catch((cause: unknown) => { if (!abort.signal.aborted) setLoaded({ key: requestKey, profiles: [], services: [], error: cause instanceof Error ? cause.message : t("failed") }); });
+      .catch((cause: unknown) => { if (!abort.signal.aborted) setLoaded({ key: requestKey, profiles: [], services: [], error: apiError(cause, t("failed")) }); });
     return () => abort.abort();
   }, [company.id, date, requestKey, canView, t]);
   const data = loaded?.key === requestKey ? loaded : null;
@@ -57,7 +59,7 @@ function FiscalSetup({ company, canView, canManage }: { company: Company; canVie
       if (review.kind === "profile") await companies.approveFiscalProfile(company.id, review.value.id);
       else await companies.approveServiceTaxProfile(company.id, review.value.id);
       refresh();
-    } catch (cause) { setApprovalError(cause instanceof Error ? cause.message : t("approvalFailure")); }
+    } catch (cause) { setApprovalError(apiError(cause, t("approvalFailure"))); }
     finally { busy.current = false; setApproving(false); }
   }
   const display = (value: string | boolean | null) => value === null || value === "" ? t("missing") : typeof value === "boolean" ? t(value ? "yes" : "no") : value;

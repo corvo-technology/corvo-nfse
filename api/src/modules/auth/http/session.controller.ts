@@ -104,8 +104,16 @@ async function requireSession(
 ) {
   if (req.authSession) return req.authSession;
   const value = extractCookie(req, cookies.name('session'));
-  if (!value) throw new UnauthorizedException('Session cookie is required');
+  if (!value)
+    throw new UnauthorizedException({
+      code: 'SESSION_REQUIRED',
+      message: 'Session cookie is required',
+    });
   const session = await sessions.validateSession(value);
-  if (!session) throw new UnauthorizedException('Invalid or expired session');
+  if (!session)
+    throw new UnauthorizedException({
+      code: 'SESSION_EXPIRED',
+      message: 'Invalid or expired session',
+    });
   return session;
 }

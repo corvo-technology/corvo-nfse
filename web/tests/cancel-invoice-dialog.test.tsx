@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CancelInvoiceDialog } from "@/components/dashboard/cancel-invoice-dialog";
 import type { Invoice } from "@/lib/types";
+import { ApiError } from "@/lib/api";
 import messages from "@/messages/en.json";
 
 const mocks = vi.hoisted(() => ({ cancel: vi.fn() }));
@@ -44,10 +45,10 @@ describe("CancelInvoiceDialog", () => {
   });
 
   it("shows the API error and keeps the dialog open", async () => {
-    mocks.cancel.mockRejectedValue(new Error("Invoice cannot be cancelled in its current status"));
+    mocks.cancel.mockRejectedValue(new ApiError(409, "Invoice cannot be cancelled in its current status", "ERROR_INVOICE_NOT_CANCELLABLE"));
     renderDialog({ ...base, status: "queued" } as Invoice);
     fireEvent.click(screen.getByRole("button", { name: t.confirm }));
-    expect((await screen.findByRole("alert")).textContent).toContain("cannot be cancelled");
+    expect((await screen.findByRole("alert")).textContent).toContain(messages.ApiErrors.invoice_not_cancellable);
   });
 
   it("enforces the 15 character boundary on the trimmed description and caps input at 255", () => {
@@ -76,12 +77,12 @@ describe("CancelInvoiceDialog", () => {
   });
 
   it("starts clean when a fresh instance is mounted after an error (page mounts it only while open)", async () => {
-    mocks.cancel.mockRejectedValue(new Error("boom failure"));
+    mocks.cancel.mockRejectedValue(new ApiError(409, "boom failure", "ERROR_CONCURRENT_INVOICE_TRANSITION"));
     const first = render(<NextIntlClientProvider locale="en" messages={messages}><CancelInvoiceDialog invoice={base} open onClose={vi.fn()} onCancelled={vi.fn()} /></NextIntlClientProvider>);
     fireEvent.click(screen.getByRole("radio", { name: new RegExp(t.options.refund.title) }));
     fireEvent.change(screen.getByLabelText(t.description), { target: { value: "a".repeat(20) } });
     fireEvent.click(screen.getByRole("button", { name: t.confirm }));
-    expect((await screen.findByRole("alert")).textContent).toContain("boom failure");
+    expect((await screen.findByRole("alert")).textContent).toContain(messages.ApiErrors.concurrent_invoice_transition);
     first.unmount();
     renderDialog(base);
     expect((screen.getByLabelText(t.description) as HTMLTextAreaElement).value).toBe("");

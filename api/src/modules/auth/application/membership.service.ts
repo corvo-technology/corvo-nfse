@@ -72,7 +72,11 @@ export class MembershipService {
       }
     }
 
-    if (!current) throw new NotFoundException('Member not found');
+    if (!current)
+      throw new NotFoundException({
+        code: 'MEMBER_NOT_FOUND',
+        message: 'Member not found',
+      });
     const updated = await this.membershipRepository.update(
       {
         ...membership,

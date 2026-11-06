@@ -4,12 +4,14 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { CompanyService } from '@/modules/company/application/company.service';
 import { ConnectorRegistry } from '../domain/connector-registry';
-import type {
-  ConnectionView,
-  IntegrationEnvironment,
+import {
+  ConnectorAuthError,
+  type ConnectionView,
+  type IntegrationEnvironment,
 } from '../domain/connector';
 import {
   InvalidConnectionTransitionError,
@@ -30,6 +32,20 @@ export interface CreateConnectionInput {
   activeFrom?: Date;
 }
 
+/** The platform refused the credential: a 422 the dashboard can translate, not a 500. */
+async function refusal<T>(check: () => Promise<T>): Promise<T> {
+  try {
+    return await check();
+  } catch (error) {
+    if (error instanceof ConnectorAuthError)
+      throw new UnprocessableEntityException({
+        code: 'INTEGRATION_CREDENTIAL_REFUSED',
+        message: error.message,
+      });
+    throw error;
+  }
+}
+
 @Injectable()
 export class ConnectionService {
   constructor(
@@ -45,12 +61,18 @@ export class ConnectionService {
     input: CreateConnectionInput,
   ): Promise<IntegrationConnection> {
     if (!this.registry.has(input.provider))
-      throw new BadRequestException(`Unknown provider: ${input.provider}`);
+      throw new BadRequestException({
+        code: 'INTEGRATION_PROVIDER_UNKNOWN',
+        message: `Unknown provider: ${input.provider}`,
+      });
     const { manifest } = this.registry.get(input.provider);
     const known = new Set(manifest.credentialFields.map((f) => f.key));
     for (const key of Object.keys(input.credentials))
       if (!known.has(key))
-        throw new BadRequestException(`Unexpected credential field: ${key}`);
+        throw new BadRequestException({
+          code: 'INTEGRATION_CREDENTIAL_INVALID',
+          message: `Unexpected credential field: ${key}`,
+        });
     const credentials: Record<string, string> = {};
     for (const field of manifest.credentialFields) {
       const value = input.credentials[field.key];
@@ -58,7 +80,10 @@ export class ConnectionService {
       else if (field.generate)
         credentials[field.key] = randomBytes(24).toString('base64url');
       else
-        throw new BadRequestException(`Missing credential field: ${field.key}`);
+        throw new BadRequestException({
+          code: 'INTEGRATION_CREDENTIAL_INVALID',
+          message: `Missing credential field: ${field.key}`,
+        });
     }
     await this.companies.findById(input.companyId, tenantId, input.environment);
     const now = new Date();
@@ -80,7 +105,11 @@ export class ConnectionService {
 
   async get(tenantId: string, id: string): Promise<IntegrationConnection> {
     const connection = await this.connections.findById(id, tenantId);
-    if (!connection) throw new NotFoundException('Connection not found');
+    if (!connection)
+      throw new NotFoundException({
+        code: 'CONNECTION_NOT_FOUND',
+        message: 'Connection not found',
+      });
     return connection;
   }
 
@@ -91,10 +120,12 @@ export class ConnectionService {
   async validate(tenantId: string, id: string): Promise<IntegrationConnection> {
     const connection = await this.get(tenantId, id);
     const connector = this.registry.get(connection.provider);
-    const { externalAccountId } = await connector.validateConnection(
-      this.credentials.open(connection.credentialsEnc),
-      connection.environment,
-      { publicId: connection.publicId },
+    const { externalAccountId } = await refusal(() =>
+      connector.validateConnection(
+        this.credentials.open(connection.credentialsEnc),
+        connection.environment,
+        { publicId: connection.publicId },
+      ),
     );
     return this.connections.update({
       ...connection,
@@ -114,7 +145,10 @@ export class ConnectionService {
   ): Promise<IntegrationConnection> {
     const connection = await this.get(tenantId, id);
     if (connection.state === 'disconnected')
-      throw new ConflictException('A disconnected connection cannot be edited');
+      throw new ConflictException({
+        code: 'CONNECTION_DISCONNECTED',
+        message: 'A disconnected connection cannot be edited',
+      });
     const connector = this.registry.get(connection.provider);
     const editable = new Set(
       connector.manifest.credentialFields
@@ -123,21 +157,30 @@ export class ConnectionService {
     );
     const keys = Object.keys(changes);
     if (keys.length === 0)
-      throw new BadRequestException('Send at least one credential to change');
+      throw new BadRequestException({
+        code: 'INTEGRATION_CREDENTIAL_REQUIRED',
+        message: 'Send at least one credential to change',
+      });
     for (const key of keys) {
       if (!editable.has(key))
-        throw new BadRequestException(`Cannot change credential field: ${key}`);
+        throw new BadRequestException({
+          code: 'INTEGRATION_CREDENTIAL_INVALID',
+          message: `Cannot change credential field: ${key}`,
+        });
       if (!changes[key]?.trim())
-        throw new BadRequestException(`Empty credential field: ${key}`);
+        throw new BadRequestException({
+          code: 'INTEGRATION_CREDENTIAL_INVALID',
+          message: `Empty credential field: ${key}`,
+        });
     }
     const merged = {
       ...this.credentials.open(connection.credentialsEnc),
       ...Object.fromEntries(keys.map((key) => [key, changes[key].trim()])),
     };
-    const { externalAccountId } = await connector.validateConnection(
-      merged,
-      connection.environment,
-      { publicId: connection.publicId },
+    const { externalAccountId } = await refusal(() =>
+      connector.validateConnection(merged, connection.environment, {
+        publicId: connection.publicId,
+      }),
     );
     return this.connections.update({
       ...connection,
@@ -152,11 +195,15 @@ export class ConnectionService {
   async activate(tenantId: string, id: string): Promise<IntegrationConnection> {
     const connection = await this.get(tenantId, id);
     if (!connection.externalAccountId)
-      throw new ConflictException(
-        'Validate the connection before activating it',
-      );
+      throw new ConflictException({
+        code: 'CONNECTION_NOT_VALIDATED',
+        message: 'Validate the connection before activating it',
+      });
     if ((await this.rules.countByConnection(id, tenantId)) === 0)
-      throw new ConflictException('Add at least one rule before activating');
+      throw new ConflictException({
+        code: 'CONNECTION_NEEDS_RULE',
+        message: 'Add at least one rule before activating',
+      });
     // Like emission, only production needs a ready company and a certificate.
     if (connection.environment === 'live')
       await this.companies.ensureReady(
@@ -224,7 +271,10 @@ export class ConnectionService {
       });
     } catch (error) {
       if (error instanceof InvalidConnectionTransitionError)
-        throw new ConflictException(error.message);
+        throw new ConflictException({
+          code: 'CONNECTION_STATE_INVALID',
+          message: error.message,
+        });
       throw error;
     }
   }

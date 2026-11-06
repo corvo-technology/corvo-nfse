@@ -106,7 +106,11 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
     return runWithTenant(tenantId, async () => {
       const profiles = this.profiles();
       const row = await profiles.findOneBy({ id, tenantId });
-      if (!row) throw new NotFoundException('Fiscal profile not found');
+      if (!row)
+        throw new NotFoundException({
+          code: 'FISCAL_PROFILE_NOT_FOUND',
+          message: 'Fiscal profile not found',
+        });
       return toDomain(
         await profiles.save({
           ...row,
@@ -131,7 +135,11 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
           where: { id: companyId, tenantId },
           lock: { mode: 'pessimistic_write' },
         });
-        if (!company) throw new NotFoundException('Company not found');
+        if (!company)
+          throw new NotFoundException({
+            code: 'COMPANY_NOT_FOUND',
+            message: 'Company not found',
+          });
 
         const profiles = manager.getRepository(CompanyFiscalProfileOrmEntity);
         const history = await profiles.find({
@@ -156,7 +164,10 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
             ]);
           if (input.validFrom === open.validFrom) {
             if (open.reviewStatus === 'approved')
-              throw new ConflictException('profile_validity_conflict');
+              throw new ConflictException({
+                code: 'PROFILE_VALIDITY_CONFLICT',
+                message: 'profile_validity_conflict',
+              });
             return toDomain(
               await profiles.save({ ...open, ...fieldsOf(input) }),
             );

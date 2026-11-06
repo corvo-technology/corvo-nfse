@@ -14,6 +14,7 @@ import { safeNextPath } from "@/lib/safe-next";
 import { cn } from "@/lib/utils";
 import { trackMeta } from "@/components/MetaPixel";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
+import { useApiErrorText } from "@/lib/use-api-error";
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -48,6 +49,7 @@ const OAUTH_ERRORS = new Set(["oauth_failed", "oauth_denied", "oauth_unavailable
 function LoginPageContent() {
   const locale = useLocale();
   const t = useTranslations("Login");
+  const apiError = useApiErrorText();
   const tCommon = useTranslations("Common");
   const searchParams = useSearchParams();
   const initialMode = searchParams.get("mode") === "login" ? "login" : "signup";
@@ -100,7 +102,7 @@ function LoginPageContent() {
     } else if (cause instanceof ApiError && [0, 502, 503].includes(cause.status)) {
       setError(t("errors.serviceUnavailable"));
     } else {
-      setError(cause instanceof ApiError && cause.status === 400 ? cause.message : t("errors.somethingWentWrong"));
+      setError(apiError(cause, t("errors.somethingWentWrong")));
     }
   };
   const handleSendCode = async () => {

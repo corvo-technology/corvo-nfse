@@ -24,6 +24,7 @@ describe('InvoiceService.prepareEmission', () => {
   let certificates: { getActive: jest.Mock };
   let repository: { findByIdempotencyKey: jest.Mock };
   let lifecycle: { submit: jest.Mock };
+  let providers: { isSimulated: jest.Mock };
   let service: InvoiceService;
 
   beforeEach(() => {
@@ -45,6 +46,7 @@ describe('InvoiceService.prepareEmission', () => {
     certificates = { getActive: jest.fn().mockResolvedValue({}) };
     repository = { findByIdempotencyKey: jest.fn().mockResolvedValue(null) };
     lifecycle = { submit: jest.fn() };
+    providers = { isSimulated: jest.fn().mockReturnValue(false) };
     service = new InvoiceService(
       repository as never,
       {} as never,
@@ -56,6 +58,7 @@ describe('InvoiceService.prepareEmission', () => {
       { getStatus: jest.fn() } as never,
       new InvoiceIntakeService(companies as never, new InvoiceDomainService()),
       {} as never,
+      providers as never,
     );
   });
 
@@ -66,6 +69,27 @@ describe('InvoiceService.prepareEmission', () => {
     expect(prepared.event.invoiceId).toBe(prepared.invoice.id);
     expect(prepared.invoice.status).toBe('queued');
     expect(lifecycle.submit).not.toHaveBeenCalled();
+  });
+
+  it('a test invoice needs a ready company and an active certificate, like a live one (it goes to the Sefin Produção Restrita)', async () => {
+    await service.prepareEmission(dto, 'tenant-1', testAuth);
+    expect(companies.ensureReady).toHaveBeenCalledWith(
+      expect.any(String),
+      'tenant-1',
+      'test',
+    );
+    expect(certificates.getActive).toHaveBeenCalledWith(
+      expect.any(String),
+      'tenant-1',
+      'test',
+    );
+  });
+
+  it('a test invoice needs neither while the simulator is on (CI and e2e)', async () => {
+    providers.isSimulated.mockReturnValue(true);
+    await service.prepareEmission(dto, 'tenant-1', testAuth);
+    expect(companies.ensureReady).not.toHaveBeenCalled();
+    expect(certificates.getActive).not.toHaveBeenCalled();
   });
 
   it('returns replay when the idempotency key exists with the same hash', async () => {
@@ -101,11 +125,8 @@ describe('InvoiceService.prepareEmission', () => {
     ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
 
-  it('checks company readiness and active certificate only in live', async () => {
-    await service.prepareEmission(dto, 'tenant-1', testAuth);
-    expect(companies.ensureReady).not.toHaveBeenCalled();
-    expect(certificates.getActive).not.toHaveBeenCalled();
-
+  it('a live invoice always needs a ready company and an active certificate', async () => {
+    providers.isSimulated.mockReturnValue(false);
     await service.prepareEmission(dto, 'tenant-1', liveAuth);
     expect(companies.ensureReady).toHaveBeenCalledTimes(1);
     expect(certificates.getActive).toHaveBeenCalledTimes(1);
