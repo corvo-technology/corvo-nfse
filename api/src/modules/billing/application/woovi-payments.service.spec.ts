@@ -311,37 +311,123 @@ describe('WooviPaymentsService.handleEvent', () => {
   });
 });
 
-describe('WooviPaymentsService Pix Automático cancel', () => {
-  const contract = async (f: ReturnType<typeof setup>) => {
-    await f.service.startPlan(tenant, 'solo', 'monthly', 'k', payer);
-    return f.store.rows[0]!;
+describe('WooviPaymentsService Pix Automático lifecycle', () => {
+  const contract = async (f: ReturnType<typeof setup>, key = 'k') => {
+    await f.service.startPlan(tenant, 'solo', 'monthly', key, payer);
+    return f.store.rows[f.store.rows.length - 1]!;
   };
-  it('cancels the live contract in Woovi and keeps the paid period', async () => {
+
+  it('is null when there is no open contract', async () => {
+    const f = setup();
+    await expect(f.service.pixSubscriptionState(tenant)).resolves.toBeNull();
+  });
+
+  it('a new contract is "pending" and exposes the QR so the payer can open it again', async () => {
+    const f = setup();
+    await contract(f);
+    await expect(f.service.pixSubscriptionState(tenant)).resolves.toEqual({
+      status: 'pending',
+      planSlug: 'solo',
+      brCode: '000201EMV',
+      paymentLinkUrl: expect.stringContaining('https://'),
+    });
+  });
+
+  it('becomes "active" once the bank approval arrives, and stops exposing the QR', async () => {
     const f = setup();
     const sub = await contract(f);
-    await expect(f.service.hasPixSubscription(tenant)).resolves.toBe(true);
-    await f.service.cancelPixSubscription(tenant);
-    expect(f.client.cancelSubscription).toHaveBeenCalledWith(
-      `gid-${sub.providerRef}`,
-    );
-    expect(f.store.rows[0]!.status).toBe('cancelled');
-    expect(f.billing.setPlan).not.toHaveBeenCalled();
-    await expect(f.service.hasPixSubscription(tenant)).resolves.toBe(false);
+    await f.service.handleEvent({
+      event: 'OPENPIX:SUBSCRIPTION_AUTHORIZED',
+      subscription: { correlationID: sub.providerRef },
+    });
+    await expect(f.service.pixSubscriptionState(tenant)).resolves.toEqual({
+      status: 'active',
+      planSlug: 'solo',
+      brCode: null,
+      paymentLinkUrl: null,
+    });
   });
-  it('reports not found when there is no live contract', async () => {
+
+  it('becomes "active" when the first charge is paid, even without an approval event', async () => {
+    const f = setup();
+    const sub = await contract(f);
+    await f.service.handleEvent({
+      event: 'OPENPIX:CHARGE_COMPLETED',
+      charge: {
+        correlationID: 'cycle-1',
+        value: 5990,
+        subscription: { correlationID: sub.providerRef },
+      },
+      pix: { value: 5990 },
+    });
+    expect(f.store.rows.find((r) => r.id === sub.id)!.status).toBe(
+      'authorized',
+    );
+    await expect(f.service.pixSubscriptionState(tenant)).resolves.toMatchObject(
+      {
+        status: 'active',
+      },
+    );
+  });
+
+  it('cancels every open contract in Woovi and keeps the paid period', async () => {
+    const f = setup();
+    const first = await contract(f, 'k1');
+    f.store.rows[0]!.status = 'pending';
+    // A second open contract (left over from an earlier attempt).
+    f.store.rows.push({
+      ...first,
+      id: 'older',
+      providerRef: 'older-ref',
+      idempotencyKey: 'older-key',
+      checkout: { ...first.checkout!, providerId: 'gid-older' },
+    });
+    await f.service.cancelPixSubscription(tenant);
+    expect(f.client.cancelSubscription).toHaveBeenCalledTimes(2);
+    expect(f.client.cancelSubscription).toHaveBeenCalledWith(
+      `gid-${first.providerRef}`,
+    );
+    expect(f.client.cancelSubscription).toHaveBeenCalledWith('gid-older');
+    expect(f.store.rows.every((r) => r.status === 'cancelled')).toBe(true);
+    expect(f.billing.setPlan).not.toHaveBeenCalled();
+    await expect(f.service.pixSubscriptionState(tenant)).resolves.toBeNull();
+  });
+
+  it('reports not found when there is no open contract', async () => {
     const f = setup();
     await expect(
       f.service.cancelPixSubscription(tenant),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(f.client.cancelSubscription).not.toHaveBeenCalled();
   });
-  it('does not mark it cancelled if Woovi refuses', async () => {
+
+  it('does not mark a contract cancelled if Woovi refuses', async () => {
     const f = setup();
     await contract(f);
     f.client.cancelSubscription.mockRejectedValueOnce(new Error('woovi down'));
     await expect(f.service.cancelPixSubscription(tenant)).rejects.toThrow(
       'woovi down',
     );
-    expect(f.store.rows[0]!.status).not.toBe('cancelled');
+    expect(f.store.rows[0]!.status).toBe('pending');
+  });
+
+  it('starting a new monthly contract retires the one still waiting for authorization', async () => {
+    const f = setup();
+    const old = await contract(f, 'first');
+    await f.service.startPlan(tenant, 'solo', 'monthly', 'second', payer);
+    expect(f.client.cancelSubscription).toHaveBeenCalledWith(
+      `gid-${old.providerRef}`,
+    );
+    expect(f.store.rows.find((r) => r.id === old.id)!.status).toBe('cancelled');
+    expect(f.store.rows.filter((r) => r.status === 'pending')).toHaveLength(1);
+  });
+
+  it('still creates the new contract if retiring the old one fails (it is only a courtesy)', async () => {
+    const f = setup();
+    await contract(f, 'first');
+    f.client.cancelSubscription.mockRejectedValueOnce(new Error('woovi down'));
+    await expect(
+      f.service.startPlan(tenant, 'solo', 'monthly', 'second', payer),
+    ).resolves.toMatchObject({ method: 'pix' });
   });
 });

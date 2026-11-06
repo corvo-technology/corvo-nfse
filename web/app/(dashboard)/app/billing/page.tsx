@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import posthog from "posthog-js";
-import { ApiError, billing as billingApi } from "@/lib/api";
+import { ApiError, billing as billingApi, type CheckoutPlan } from "@/lib/api";
 import type { BillingPlan } from "@/lib/types";
 import { PlanPicker, PLANS, type PlanSlug } from "@/components/pricing/plan-picker";
 import { BillingSummary } from "@/components/billing/billing-summary";
@@ -30,6 +30,7 @@ export default function BillingPage() {
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [target, setTarget] = useState<CheckoutTarget | null>(null);
+  const [resume, setResume] = useState<{ brCode: string | null; paymentLinkUrl: string } | undefined>(undefined);
   const { can, fiscalEnvironment } = useAuth();
   const { success, error: toastError } = useToast();
   const canManage = can("billing.manage");
@@ -111,6 +112,10 @@ export default function BillingPage() {
         busy={busy}
         onPortal={() => void openPortal()}
         onCancelPix={() => void cancelPix()}
+        onResumePix={(pix) => {
+          setResume({ brCode: pix.brCode, paymentLinkUrl: pix.paymentLinkUrl ?? "" });
+          setTarget({ kind: "plan", slug: pix.planSlug as CheckoutPlan, cycle: "monthly" });
+        }}
         onBuyNotes={() => document.getElementById("plans-heading")?.scrollIntoView({ behavior: "smooth", block: "start" })}
       />
 
@@ -140,7 +145,7 @@ export default function BillingPage() {
         />
       </section>
 
-      <CheckoutDialog target={target} onPaid={() => void billingApi.plan().then(setBilling).catch(() => undefined)} onClose={() => setTarget(null)} onError={(cause) => { setTarget(null); fail(cause); }} redirect={redirect} />
+      <CheckoutDialog target={target} resume={resume} onPaid={() => void billingApi.plan().then(setBilling).catch(() => undefined)} onClose={() => { setTarget(null); setResume(undefined); }} onError={(cause) => { setTarget(null); fail(cause); }} redirect={redirect} />
     </div>
   );
 }

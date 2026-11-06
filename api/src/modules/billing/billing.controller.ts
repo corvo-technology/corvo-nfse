@@ -69,7 +69,7 @@ export class BillingController {
         cancel_at_period_end: billing.billing?.cancelAtPeriodEnd ?? false,
         scheduled_plan: billing.billing?.pendingPlanSlug ?? null,
         blocked: billing.blocked,
-        pix_subscription: await this.pix.hasPixSubscription(tenantId),
+        pix_subscription: await this.pix.pixSubscriptionState(tenantId),
       },
       usage: {
         hard_limit: billing.hard_limit,

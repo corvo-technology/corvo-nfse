@@ -3,7 +3,7 @@ import { PricingService } from '@/modules/plans/application/pricing.service';
 
 const req = { authContext: { activeTenantId: 'tenant-1' } } as never;
 
-function build(plan: { slug: string; name: string }) {
+function build(plan: { slug: string; name: string }, pixState: unknown = null) {
   const quota = {
     getStatus: jest.fn().mockResolvedValue({
       creditsUsed: 0,
@@ -32,7 +32,7 @@ function build(plan: { slug: string; name: string }) {
       avulsoBalance: 0,
     }),
   };
-  const pix = { hasPixSubscription: jest.fn().mockResolvedValue(false) };
+  const pix = { pixSubscriptionState: jest.fn().mockResolvedValue(pixState) };
   return new BillingController(
     quota as never,
     {} as never,
@@ -65,6 +65,31 @@ describe('BillingController.getCurrentPlan', () => {
     );
     expect(out.data).toMatchObject({
       plan: { slug: 'equipe', monthly_price_cents: 11990 },
+    });
+  });
+
+  it('exposes the Pix Automático state so the screen can resume or cancel it', async () => {
+    const state = {
+      status: 'pending',
+      planSlug: 'equipe',
+      brCode: '000201EMV',
+      paymentLinkUrl: 'https://woovi.test/p',
+    };
+    const out = await build(
+      { slug: 'free', name: 'Sem plano' },
+      state,
+    ).getCurrentPlan(req);
+    expect(out.data).toMatchObject({
+      subscription: { pix_subscription: state },
+    });
+  });
+
+  it('pix_subscription is null when there is no open contract', async () => {
+    const out = await build({ slug: 'free', name: 'Sem plano' }).getCurrentPlan(
+      req,
+    );
+    expect(out.data).toMatchObject({
+      subscription: { pix_subscription: null },
     });
   });
 });

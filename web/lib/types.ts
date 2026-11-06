@@ -462,14 +462,22 @@ export interface BillingUsage {
   avulsoBalance: number;
 }
 
+export interface PixSubscription {
+  status: "pending" | "active";
+  planSlug: string;
+  /** Pix code to open the QR again while it is pending. */
+  brCode: string | null;
+  paymentLinkUrl: string | null;
+}
+
 export interface BillingSubscription {
   status: string; // "none" when there is no Stripe subscription
   paidUntil: string | null;
   cancelAtPeriodEnd: boolean;
   scheduledPlan: string | null;
   blocked: boolean;
-  /** A Pix Automático contract is charging this account monthly. */
-  pixSubscription: boolean;
+  /** The account's Pix Automático contract: waiting for the payer to authorize, or active. */
+  pixSubscription: PixSubscription | null;
 }
 
 export interface BillingPlan {

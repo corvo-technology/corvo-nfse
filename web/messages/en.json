@@ -1334,9 +1334,16 @@
       "avulsoLine": "Single: {count}",
       "paidUntil": "Paid until {date}",
       "periodLine": "Period {start} to {end}",
-      "companiesLine": "{count} active companies",
-      "companiesUnlimited": "{count} active companies (no limit)",
+      "companiesLine": "{count, plural, one {# active company} other {# active companies}}",
       "noPlanHint": "No plan: you use your single invoices."
+    },
+    "pix": {
+      "pendingTitle": "Pix Automático waiting for authorization",
+      "pendingBody": "Open the QR code, authorize in your bank app and pay the first charge. Until then the plan is not active yet.",
+      "viewQr": "View QR code",
+      "cancelAuthorization": "Cancel authorization",
+      "activeTitle": "Pix Automático active",
+      "activeBody": "The plan is charged every month through Pix. You can cancel any time; the period already paid stays valid."
     }
   },
   "Session": {

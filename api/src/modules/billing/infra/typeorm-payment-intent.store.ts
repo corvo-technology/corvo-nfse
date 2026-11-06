@@ -29,8 +29,8 @@ export class TypeOrmPaymentIntentStore extends PaymentIntentStore {
     const row = await this.repo.findOneBy({ tenantId, idempotencyKey });
     return row ? toDomain(row) : null;
   }
-  async findLiveSubscription(tenantId: string) {
-    const row = await this.repo.findOne({
+  async findLiveSubscriptions(tenantId: string) {
+    const rows = await this.repo.find({
       where: {
         tenantId,
         provider: 'woovi',
@@ -42,7 +42,7 @@ export class TypeOrmPaymentIntentStore extends PaymentIntentStore {
       },
       order: { createdAt: 'DESC' },
     });
-    return row ? toDomain(row) : null;
+    return rows.map(toDomain);
   }
   async findByRef(provider: string, providerRef: string) {
     const row = await this.repo.findOneBy({ provider, providerRef });

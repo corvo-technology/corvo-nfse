@@ -20,17 +20,19 @@ export class MemoryPaymentIntentStore extends PaymentIntentStore {
         null,
     );
   }
-  findLiveSubscription(tenantId: string) {
+  findLiveSubscriptions(tenantId: string) {
     return Promise.resolve(
-      this.rows.find(
-        (r) =>
-          r.tenantId === tenantId &&
-          r.provider === 'woovi' &&
-          r.kind === 'plan' &&
-          r.cycle === 'monthly' &&
-          r.idempotencyKey !== null &&
-          ['pending', 'authorized'].includes(r.status),
-      ) ?? null,
+      this.rows
+        .filter(
+          (r) =>
+            r.tenantId === tenantId &&
+            r.provider === 'woovi' &&
+            r.kind === 'plan' &&
+            r.cycle === 'monthly' &&
+            r.idempotencyKey !== null &&
+            ['pending', 'authorized'].includes(r.status),
+        )
+        .reverse(),
     );
   }
   insert(intent: PaymentIntent) {

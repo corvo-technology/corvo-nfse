@@ -12,11 +12,11 @@ const plan = (p: Patch = {}) =>
     slug: p.slug ?? "free",
     name: p.name ?? "Sem plano",
     monthlyPriceCents: p.price ?? 0,
-    subscription: { status: "none", paidUntil: null, cancelAtPeriodEnd: false, scheduledPlan: null, blocked: false, pixSubscription: false, ...p.sub },
+    subscription: { status: "none", paidUntil: null, cancelAtPeriodEnd: false, scheduledPlan: null, blocked: false, pixSubscription: null, ...p.sub },
     usage: { creditsUsed: 0, creditsReserved: 0, creditsRemaining: 0, monthlyAllowance: 0, dailyUsage: 0, dailyLimit: null, activeCompanies: 1, maxActiveCompanies: 999999, periodStart: "2026-11-01T00:00:00Z", periodEnd: "2026-12-01T00:00:00Z", avulsoBalance: 0, ...p.usage },
   }) as BillingPlan;
 
-const handlers = () => ({ onPortal: vi.fn(), onCancelPix: vi.fn(), onBuyNotes: vi.fn() });
+const handlers = () => ({ onPortal: vi.fn(), onCancelPix: vi.fn(), onBuyNotes: vi.fn(), onResumePix: vi.fn() });
 const renderIt = (billing: BillingPlan, extra: Partial<{ canManage: boolean; billingEnabled: boolean; busy: string | null }> = {}) => {
   const h = handlers();
   render(
@@ -50,7 +50,7 @@ describe("BillingSummary", () => {
   });
 
   it("period and active companies are one small line, not two cards", () => {
-    renderIt(plan({ usage: { avulsoBalance: 1, activeCompanies: 3, maxActiveCompanies: 999999 } }));
+    renderIt(plan({ slug: "equipe", name: "Equipe", price: 11990, sub: { status: "active" }, usage: { monthlyAllowance: 250, creditsRemaining: 250, avulsoBalance: 1, activeCompanies: 3, maxActiveCompanies: 999999 } }));
     const meta = screen.getByTestId("summary-meta").textContent ?? "";
     expect(meta).toContain("01/11/2026");
     expect(meta).toContain("01/12/2026");
@@ -79,7 +79,7 @@ describe("BillingSummary", () => {
   });
 
   it("account actions live in the card: manage billing and cancel Pix Automático", () => {
-    const h = renderIt(plan({ slug: "solo", name: "Solo", price: 5990, sub: { status: "active", pixSubscription: true }, usage: { monthlyAllowance: 100, creditsRemaining: 90 } }));
+    const h = renderIt(plan({ slug: "solo", name: "Solo", price: 5990, sub: { status: "active", pixSubscription: { status: "active", planSlug: "solo", brCode: null, paymentLinkUrl: null } }, usage: { monthlyAllowance: 100, creditsRemaining: 90 } }));
     fireEvent.click(screen.getByRole("button", { name: "Gerenciar cobrança" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancelar Pix Automático" }));
     expect(h.onPortal).toHaveBeenCalledTimes(1);
@@ -87,7 +87,7 @@ describe("BillingSummary", () => {
   });
 
   it("without permission or outside live mode the account actions are hidden or disabled", () => {
-    renderIt(plan({ slug: "solo", name: "Solo", sub: { status: "active", pixSubscription: true } }), { canManage: false });
+    renderIt(plan({ slug: "solo", name: "Solo", sub: { status: "active", pixSubscription: { status: "active", planSlug: "solo", brCode: null, paymentLinkUrl: null } } }), { canManage: false });
     expect(screen.queryByRole("button", { name: "Cancelar Pix Automático" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Gerenciar cobrança" })).toBeNull();
   });
@@ -96,5 +96,52 @@ describe("BillingSummary", () => {
     const h = renderIt(plan());
     fireEvent.click(within(screen.getByTestId("billing-summary")).getByRole("button", { name: "Comprar notas" }));
     expect(h.onBuyNotes).toHaveBeenCalledTimes(1);
+  });
+
+  const pending = { status: "pending" as const, planSlug: "equipe", brCode: "000201EMV", paymentLinkUrl: "https://woovi.test/p" };
+  const active = { status: "active" as const, planSlug: "equipe", brCode: null, paymentLinkUrl: null };
+
+  it("Pix Automático waiting for authorization: says so, lets the payer open the QR again, or cancel", () => {
+    const h = renderIt(plan({ usage: { avulsoBalance: 21 }, sub: { pixSubscription: pending } }));
+    const block = screen.getByTestId("pix-state");
+    expect(block.getAttribute("data-status")).toBe("pending");
+    expect(block.textContent).toMatch(/aguardando/i);
+    expect(block.textContent).not.toMatch(/todo mês/i);
+    fireEvent.click(within(block).getByRole("button", { name: "Ver QR Code" }));
+    expect(h.onResumePix).toHaveBeenCalledWith(pending);
+    fireEvent.click(within(block).getByRole("button", { name: "Cancelar autorização" }));
+    expect(h.onCancelPix).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "Cancelar Pix Automático" })).toBeNull();
+  });
+
+  it("Pix Automático active: says it charges every month and offers to cancel it", () => {
+    const h = renderIt(plan({ slug: "equipe", name: "Equipe", price: 11990, sub: { status: "active", pixSubscription: active }, usage: { monthlyAllowance: 250, creditsRemaining: 250 } }));
+    const block = screen.getByTestId("pix-state");
+    expect(block.getAttribute("data-status")).toBe("active");
+    expect(block.textContent).toMatch(/todo mês/i);
+    expect(within(block).queryByRole("button", { name: "Ver QR Code" })).toBeNull();
+    fireEvent.click(within(block).getByRole("button", { name: "Cancelar Pix Automático" }));
+    expect(h.onCancelPix).toHaveBeenCalledTimes(1);
+  });
+
+  it("no Pix block at all when there is no Pix contract", () => {
+    renderIt(plan({ usage: { avulsoBalance: 3 } }));
+    expect(screen.queryByTestId("pix-state")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Pix Automático/);
+  });
+
+  it("without a plan there is no period line (there is nothing to renew), only the companies", () => {
+    renderIt(plan({ usage: { avulsoBalance: 3, activeCompanies: 1 } }));
+    const meta = screen.getByTestId("summary-meta").textContent ?? "";
+    expect(meta).not.toMatch(/Período/);
+    expect(meta).toBe("1 empresa ativa");
+  });
+
+  it("with a plan the period shows, and the company count is plural-correct", () => {
+    renderIt(plan({ slug: "equipe", name: "Equipe", price: 11990, sub: { status: "active", paidUntil: "2026-12-01T00:00:00Z" }, usage: { monthlyAllowance: 250, creditsRemaining: 250, activeCompanies: 3 } }));
+    const meta = screen.getByTestId("summary-meta").textContent ?? "";
+    expect(meta).toContain("Período 01/11/2026 a 01/12/2026");
+    expect(meta).toContain("3 empresas ativas");
+    expect(meta).not.toMatch(/sem limite/);
   });
 });

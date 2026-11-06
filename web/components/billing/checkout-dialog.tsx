@@ -132,6 +132,7 @@ function CheckoutDialogInner({
   onClose,
   onError,
   onPaid,
+  resume,
   pollMs = POLL_MS,
   redirect = (url: string) => window.location.assign(url),
 }: {
@@ -140,6 +141,8 @@ function CheckoutDialogInner({
   onError: (cause: unknown) => void;
   /** Called once when the Pix payment is detected, so the page can refresh plan and balance. */
   onPaid?: () => void;
+  /** Opens a Pix that is already waiting (its QR again), instead of asking to buy. */
+  resume?: { brCode: string | null; paymentLinkUrl: string };
   pollMs?: number;
   redirect?: (url: string) => void;
 }) {
@@ -149,7 +152,9 @@ function CheckoutDialogInner({
   const [payer, setPayer] = useState({ name: "", taxID: "", email: "", phone: "" });
   const setField = (key: keyof typeof payer) => (e: React.ChangeEvent<HTMLInputElement>) => setPayer((current) => ({ ...current, [key]: e.target.value }));
   const [busy, setBusy] = useState(false);
-  const [pix, setPix] = useState<PixResult | null>(null);
+  const [pix, setPix] = useState<PixResult | null>(
+    resume ? { method: "pix", brCode: resume.brCode, qrCodeImage: null, paymentLinkUrl: resume.paymentLinkUrl, expiresAt: null } : null
+  );
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // One key per dialog opening: a retry replays the same charge instead of creating another.

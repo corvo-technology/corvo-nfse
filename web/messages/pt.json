@@ -1334,9 +1334,16 @@
       "avulsoLine": "Avulsas: {count}",
       "paidUntil": "Pago até {date}",
       "periodLine": "Período {start} a {end}",
-      "companiesLine": "{count} empresas ativas",
-      "companiesUnlimited": "{count} empresas ativas (sem limite)",
+      "companiesLine": "{count, plural, one {# empresa ativa} other {# empresas ativas}}",
       "noPlanHint": "Sem plano: você usa as notas avulsas."
+    },
+    "pix": {
+      "pendingTitle": "Pix Automático aguardando autorização",
+      "pendingBody": "Abra o QR Code, autorize no app do seu banco e pague a primeira cobrança. Até lá, o plano ainda não está ativo.",
+      "viewQr": "Ver QR Code",
+      "cancelAuthorization": "Cancelar autorização",
+      "activeTitle": "Pix Automático ativo",
+      "activeBody": "O plano é cobrado todo mês no Pix. Você pode cancelar quando quiser; o período já pago continua valendo."
     }
   },
   "Session": {

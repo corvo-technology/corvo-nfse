@@ -2,7 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { PLANS } from "@/lib/plans-catalog";
-import type { BillingPlan } from "@/lib/types";
+import type { BillingPlan, PixSubscription } from "@/lib/types";
 import { availableNotes } from "@/components/dashboard/notes-balance";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,6 +22,7 @@ export function BillingSummary({
   onPortal,
   onCancelPix,
   onBuyNotes,
+  onResumePix,
 }: {
   billing: BillingPlan;
   canManage: boolean;
@@ -30,6 +31,7 @@ export function BillingSummary({
   onPortal: () => void;
   onCancelPix: () => void;
   onBuyNotes: () => void;
+  onResumePix: (pix: PixSubscription) => void;
 }) {
   const t = useTranslations("Billing");
   const tp = useTranslations("Pricing");
@@ -56,8 +58,9 @@ export function BillingSummary({
           ? { kind: "scheduled", tone: "border-white/15 bg-white/[0.04] text-text-2", text: t("scheduled", { plan: planName(sub.scheduledPlan), date: sub.paidUntil ? date(sub.paidUntil) : "—" }), role: "status" }
           : null;
 
-  const companies = usage.maxActiveCompanies === 999999 ? t("summary.companiesUnlimited", { count: usage.activeCompanies }) : t("summary.companiesLine", { count: usage.activeCompanies });
-  const showActions = canManage && (hasSubscription || sub.pixSubscription);
+  const companies = t("summary.companiesLine", { count: usage.activeCompanies });
+  const pix = sub.pixSubscription;
+  const showPortal = canManage && hasSubscription;
 
   return (
     <Card data-testid="billing-summary" className="dash-in dash-in-1 flex flex-col gap-5 p-5 sm:p-6">
@@ -107,23 +110,41 @@ export function BillingSummary({
         </div>
       )}
 
+      {pix && (
+        <div data-testid="pix-state" data-status={pix.status} className="flex flex-col gap-3 rounded-[10px] border border-white/10 bg-white/[0.03] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-[14px] font-medium text-text">
+              <span aria-hidden className={cn("h-2 w-2 rounded-full", pix.status === "active" ? "bg-accent" : "bg-warn")} />
+              {pix.status === "active" ? t("pix.activeTitle") : t("pix.pendingTitle")}
+            </p>
+            <p className="mt-1 max-w-[520px] text-[12.5px] leading-relaxed text-text-3">{pix.status === "active" ? t("pix.activeBody") : t("pix.pendingBody")}</p>
+          </div>
+          {canManage && (
+            <div className="flex flex-wrap items-center gap-2">
+              {pix.status === "pending" && (pix.brCode || pix.paymentLinkUrl) && (
+                <Button variant="accent" size="sm" disabled={!billingEnabled} onClick={() => onResumePix(pix)}>{t("pix.viewQr")}</Button>
+              )}
+              <Button variant="secondary" size="sm" disabled={!billingEnabled || busy !== null} loading={busy === "cancel-pix"} onClick={onCancelPix}>
+                {pix.status === "pending" ? t("pix.cancelAuthorization") : t("pixCancel")}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
         <p data-testid="summary-meta" className="text-[12.5px] text-text-3">
-          {t("summary.periodLine", { start: date(usage.periodStart), end: date(usage.periodEnd) })} · {companies}
+          {hasPlan ? `${t("summary.periodLine", { start: date(usage.periodStart), end: date(usage.periodEnd) })} · ${companies}` : companies}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           {canManage && (
             <Button variant="accent" size="sm" disabled={!billingEnabled} onClick={onBuyNotes}>{t("avulso.buy")}</Button>
           )}
-          {showActions && hasSubscription && (
+          {showPortal && (
             <Button variant="secondary" size="sm" disabled={!billingEnabled || busy !== null} loading={busy === "portal"} onClick={onPortal}>{t("manage")}</Button>
-          )}
-          {showActions && sub.pixSubscription && (
-            <Button variant="secondary" size="sm" disabled={!billingEnabled || busy !== null} loading={busy === "cancel-pix"} onClick={onCancelPix}>{t("pixCancel")}</Button>
           )}
         </div>
       </div>
-      {sub.pixSubscription && <p className="-mt-2 text-[12px] text-text-4">{t("pixActive")}</p>}
     </Card>
   );
 }

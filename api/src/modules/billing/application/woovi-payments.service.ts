@@ -25,6 +25,13 @@ import {
 
 const CHARGE_TTL_SECONDS = 24 * 60 * 60;
 
+export interface PixSubscriptionState {
+  status: 'pending' | 'active';
+  planSlug: string;
+  brCode: string | null;
+  paymentLinkUrl: string | null;
+}
+
 export interface WooviEvent {
   event?: string;
   charge?: {
@@ -129,6 +136,7 @@ export class WooviPaymentsService {
         checkout: this.pixCheckout(charge, CHARGE_TTL_SECONDS),
       });
     }
+    await this.retirePendingContracts(tenantId);
     const sub = await this.client.createSubscription({
       correlationID: ref,
       customerCorrelationID: tenantId,
@@ -273,6 +281,8 @@ export class WooviPaymentsService {
       }
     }
     const row = cycle;
+    // The first paid charge is the approval: the contract is now active.
+    await this.intents.setStatus(contract.id, 'authorized', ['pending']);
     await this.settle(row, () =>
       this.fulfillment.activatePlan(
         contract.tenantId,
@@ -306,20 +316,62 @@ export class WooviPaymentsService {
     return intent.checkout;
   }
 
-  /** True while a Pix Automático contract can still charge this tenant. */
-  async hasPixSubscription(tenantId: string): Promise<boolean> {
-    return (await this.intents.findLiveSubscription(tenantId)) !== null;
+  /**
+   * Where the tenant's Pix Automático stands: `pending` (created, waiting for the payer to authorize
+   * and pay in the bank app; the QR is returned so it can be opened again) or `active`.
+   */
+  async pixSubscriptionState(
+    tenantId: string,
+  ): Promise<PixSubscriptionState | null> {
+    const contracts = await this.intents.findLiveSubscriptions(tenantId);
+    const active = contracts.find((c) => c.status === 'authorized');
+    if (active)
+      return {
+        status: 'active',
+        planSlug: active.planSlug!,
+        brCode: null,
+        paymentLinkUrl: null,
+      };
+    const pending = contracts[0];
+    if (!pending) return null;
+    return {
+      status: 'pending',
+      planSlug: pending.planSlug!,
+      brCode: pending.checkout?.brCode ?? null,
+      paymentLinkUrl: pending.checkout?.paymentLinkUrl ?? null,
+    };
   }
 
-  /** Stops future Pix Automático charges. The period already paid stays valid. */
+  /** Stops future Pix Automático charges: every open contract is cancelled. The period already paid stays valid. */
   async cancelPixSubscription(tenantId: string): Promise<void> {
-    const contract = await this.intents.findLiveSubscription(tenantId);
-    if (!contract)
+    const contracts = await this.intents.findLiveSubscriptions(tenantId);
+    if (contracts.length === 0)
       throw new NotFoundException('No Pix Automático subscription to cancel');
-    await this.client.cancelSubscription(
-      contract.checkout?.providerId ?? contract.providerRef,
-    );
-    await this.intents.setStatus(contract.id, 'cancelled');
+    for (const contract of contracts) {
+      await this.client.cancelSubscription(
+        contract.checkout?.providerId ?? contract.providerRef,
+      );
+      await this.intents.setStatus(contract.id, 'cancelled');
+    }
+  }
+
+  /** A new contract replaces one still waiting for authorization, so two never wait at once. */
+  private async retirePendingContracts(tenantId: string): Promise<void> {
+    for (const contract of await this.intents.findLiveSubscriptions(tenantId)) {
+      if (contract.status !== 'pending') continue;
+      try {
+        await this.client.cancelSubscription(
+          contract.checkout?.providerId ?? contract.providerRef,
+        );
+        await this.intents.setStatus(contract.id, 'cancelled', ['pending']);
+      } catch (error) {
+        // Only a courtesy: the new contract must not be blocked by it.
+        this.logger.warn({
+          event: 'woovi_pending_contract_not_retired',
+          reason: error instanceof Error ? error.message : 'unknown',
+        });
+      }
+    }
   }
 
   private pixCheckout(

@@ -14,7 +14,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 import { CheckoutDialog, type CheckoutTarget } from "@/components/billing/checkout-dialog";
 import { ApiError } from "@/lib/api";
 
-const open = (target: CheckoutTarget, redirect = vi.fn(), extra: { onPaid?: () => void; pollMs?: number; onError?: (c: unknown) => void } = {}) =>
+const open = (target: CheckoutTarget, redirect = vi.fn(), extra: { onPaid?: () => void; pollMs?: number; onError?: (c: unknown) => void; resume?: { brCode: string | null; paymentLinkUrl: string } } = {}) =>
   render(
     <NextIntlClientProvider locale="pt" messages={pt}>
       <CheckoutDialog target={target} onClose={() => {}} onError={() => {}} redirect={redirect} {...extra} />
@@ -161,5 +161,18 @@ describe("CheckoutDialog", () => {
     open({ kind: "avulso", units: 5 }, vi.fn(), { onError });
     fireEvent.click(screen.getByText("Continuar"));
     await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+  });
+
+  it("resumes a Pix that is waiting: shows its QR again with no new purchase, and watches for the plan", async () => {
+    plan.mockResolvedValue({ slug: "free", usage: { avulsoBalance: 0 } });
+    const onPaid = vi.fn();
+    open({ kind: "plan", slug: "equipe", cycle: "monthly" }, vi.fn(), { resume: { brCode: "000201EMV", paymentLinkUrl: "https://woovi.test/p" }, onPaid, pollMs: 5 });
+    expect((await screen.findByAltText("Pix QR Code")).getAttribute("src")).toMatch(/^data:image\//);
+    expect(purchase).not.toHaveBeenCalled();
+    expect(screen.queryByText("Continuar")).toBeNull();
+    // The payer approves in the bank app: the account is now on the plan.
+    plan.mockResolvedValue({ slug: "equipe", usage: { avulsoBalance: 0 } });
+    expect(await screen.findByText("Pagamento confirmado")).toBeTruthy();
+    expect(onPaid).toHaveBeenCalledTimes(1);
   });
 });
