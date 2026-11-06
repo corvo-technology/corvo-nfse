@@ -1508,6 +1508,24 @@
       "p2": "Você cadastra a empresa e o certificado digital, e o Corvo cuida da emissão, do PDF e do XML.",
       "p3": "No ambiente de teste você emite quantas notas quiser, sem consumir créditos. As notas de produção usam os créditos do seu plano."
     },
+    "card": {
+          "title": "Bem-vindo ao Corvo",
+          "subtitle": "Faça na ordem que quiser. Dá para emitir sem terminar.",
+          "progress": "{done} de {total}",
+          "hide": "Ocultar",
+          "doneLabel": "Feito",
+          "noteLocked": "Cadastre a empresa e envie o certificado para liberar",
+          "noPrior": "Nunca emiti notas antes",
+          "allDoneTitle": "Tudo pronto",
+          "allDoneBody": "Você pode emitir quantas notas de teste quiser, sem consumir créditos. Quando for emitir de verdade, troque para Produção no seletor aqui em cima."
+    },
+    "steps": {
+          "plans": "Conheça o Corvo e os planos",
+          "company": "Cadastre sua empresa",
+          "certificate": "Envie o certificado digital",
+          "numbering": "Informe a última nota emitida",
+          "note": "Emita sua primeira nota de teste"
+    },
     "plans": {
       "title": "Planos",
       "price": "{price}/mês",

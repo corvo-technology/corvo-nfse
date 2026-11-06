@@ -1508,6 +1508,24 @@
       "p2": "You register the company and its digital certificate, and Corvo takes care of the issuing, the PDF and the XML.",
       "p3": "In the test environment you can issue as many notes as you like without using credits. Production notes use your plan's credits."
     },
+    "card": {
+          "title": "Welcome to Corvo",
+          "subtitle": "Do it in any order. You can issue without finishing.",
+          "progress": "{done} of {total}",
+          "hide": "Hide",
+          "doneLabel": "Done",
+          "noteLocked": "Register the company and upload the certificate to unlock",
+          "noPrior": "I never issued notes before",
+          "allDoneTitle": "All set",
+          "allDoneBody": "You can issue as many test notes as you like without using credits. When you are ready to issue for real, switch to Production in the selector up here."
+    },
+    "steps": {
+          "plans": "Get to know Corvo and the plans",
+          "company": "Register your company",
+          "certificate": "Upload the digital certificate",
+          "numbering": "Enter the last note issued",
+          "note": "Issue your first test note"
+    },
     "plans": {
       "title": "Plans",
       "price": "{price}/month",
