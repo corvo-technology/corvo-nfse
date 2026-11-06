@@ -1526,6 +1526,13 @@
           "numbering": "Informe a última nota emitida",
           "note": "Emita sua primeira nota de teste"
     },
+    "note": {
+          "title": "Sua primeira nota de teste",
+          "status": "Status: autorizada quer dizer que a Receita aceitou a nota; processando, que ela ainda está sendo enviada; rejeitada, que a Receita recusou e o motivo aparece aqui.",
+          "files": "PDF e XML: o PDF é o documento para o seu cliente e o XML é o arquivo fiscal oficial. Os dois podem ser baixados nesta página.",
+          "env": "Esta é uma nota de teste: não tem validade legal e não consome créditos. Teste quantas quiser. Quando for emitir de verdade, troque para Produção no seletor aqui em cima.",
+          "dismiss": "Entendi"
+    },
     "plans": {
       "title": "Planos",
       "price": "{price}/mês",

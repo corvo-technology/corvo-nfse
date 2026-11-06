@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LogOut, Menu } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { setFiscalEnvironment } from "@/lib/api";
 import { EnvSwitch } from "@/components/dashboard/env-switch";
+import { HIGHLIGHT_ENV_EVENT } from "@/components/onboarding/first-note-banner";
 
 interface TopbarProps {
   page: string;
@@ -23,6 +24,15 @@ export function Topbar({ page, menuOpen, onMenuToggle }: TopbarProps) {
   const { session, logout, switchTenant, fiscalEnvironment, switchFiscalEnvironment } = useAuth();
   const [failure, setFailure] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [highlightEnv, setHighlightEnv] = useState(false);
+
+  // After the first test note the selector is pointed out for a few seconds.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onHighlight = () => { setHighlightEnv(true); clearTimeout(timer); timer = setTimeout(() => setHighlightEnv(false), 6000); };
+    window.addEventListener(HIGHLIGHT_ENV_EVENT, onHighlight);
+    return () => { window.removeEventListener(HIGHLIGHT_ENV_EVENT, onHighlight); clearTimeout(timer); };
+  }, []);
 
   const handleSignOut = async () => {
     if (busy) return;
@@ -39,6 +49,7 @@ export function Topbar({ page, menuOpen, onMenuToggle }: TopbarProps) {
   };
 
   const handleEnvironment = (env: "test" | "live") => {
+    setHighlightEnv(false);
     setFiscalEnvironment(env);
     switchFiscalEnvironment(env);
     window.dispatchEvent(new CustomEvent("fiscal-environment-change", { detail: env }));
@@ -79,7 +90,7 @@ export function Topbar({ page, menuOpen, onMenuToggle }: TopbarProps) {
           {t("Topbar.docs")}
         </Link>
 
-        <EnvSwitch value={fiscalEnvironment} onChange={handleEnvironment} />
+        <EnvSwitch value={fiscalEnvironment} onChange={handleEnvironment} highlight={highlightEnv} />
 
         {failure && <span role="alert" className="text-xs text-danger">{t("Session.actionFailed")}</span>}
         {(session?.availableTenants.length ?? 0) > 1 && <select aria-label={t("Session.workspace")} className="field max-w-40" disabled={busy} value={session?.activeTenantId} onChange={(event) => void handleTenant(event.target.value)}>{session?.availableTenants.map((item) => <option key={item.tenantId} value={item.tenantId}>{item.establishmentName}</option>)}</select>}
