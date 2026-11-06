@@ -1,3 +1,9 @@
+import {
+  resolveDpsLayout,
+  XML_LAYOUT,
+  type ConfiguredDpsLayout,
+  type DpsLayoutPolicy,
+} from '@/modules/invoice/domain/fiscal/dps/dps-layout';
 import { Injectable, Logger } from '@nestjs/common';
 import { renderInvoicePdf } from '@/modules/invoice/infra/danfse/danfse';
 import { ConfigService } from '@nestjs/config';
@@ -47,7 +53,8 @@ const CANCELLATION_REASON: Record<
 export class OpenNfseProvider implements FiscalProvider {
   private readonly logger = new Logger(OpenNfseProvider.name);
   private readonly sefin: SefinEnvironment;
-  private readonly dpsLayout: 'v1.01' | 'nt009-r1';
+  private readonly configuredLayout: ConfiguredDpsLayout;
+  private readonly layoutPolicy: DpsLayoutPolicy;
 
   constructor(
     @InjectDataSource() private readonly database: DataSource,
@@ -57,10 +64,11 @@ export class OpenNfseProvider implements FiscalProvider {
       config.get<SefinEnvironment>('NFSE_SEFIN_ENVIRONMENT') === 'restricted'
         ? 'restricted'
         : 'production';
-    this.dpsLayout =
-      config.get<string>('FISCAL_DPS_LAYOUT') === 'nt009-r1'
-        ? 'nt009-r1'
-        : 'v1.01';
+    this.configuredLayout =
+      config.get<ConfiguredDpsLayout>('rtc.dpsLayout') ?? 'rtc-v1.01';
+    this.layoutPolicy = {
+      cutoverAt: config.get<string>('rtc.nt009CutoverAt'),
+    };
     if (this.sefin === 'restricted') {
       this.logger.warn(
         'NFSE_SEFIN_ENVIRONMENT=restricted: live invoices go to the Sefin Produção Restrita (homologation), not to production.',
@@ -129,6 +137,7 @@ export class OpenNfseProvider implements FiscalProvider {
   private client(
     payload: Pick<IIssuePayload, 'environment' | 'pfxBuffer' | 'p12Password'>,
     retryStore?: RetryStore,
+    at: Date = new Date(),
   ): NfseClient {
     if (payload.environment !== 'live')
       throw new Error('Real fiscal provider requires live');
@@ -136,7 +145,15 @@ export class OpenNfseProvider implements FiscalProvider {
       ambiente: this.ambiente,
       certificado: { pfx: payload.pfxBuffer, password: payload.p12Password },
       retryStore,
-      dpsLayout: this.dpsLayout,
+      dpsLayout:
+        XML_LAYOUT[
+          resolveDpsLayout({
+            ...this.layoutPolicy,
+            configured: this.configuredLayout,
+            sefinEnvironment: this.sefin,
+            at,
+          })
+        ],
     });
   }
   private result(result: NfseEmitResult | NfseQueryResult): FiscalIssueResult {
@@ -254,8 +271,13 @@ export class OpenNfseProvider implements FiscalProvider {
   async issue(payload: IIssuePayload): Promise<FiscalIssueResult> {
     if (!payload.invoiceId || !payload.tenantId || !payload.number)
       throw new Error('Persistent invoice/DPS identity is required');
+    payload = { ...payload, issuedAt: payload.issuedAt ?? new Date() };
     const store = this.store(payload);
-    const client = this.client(payload, store);
+    const client = this.client(
+      payload,
+      store,
+      new Date(payload.preparedDps?.infDPS.dhEmi ?? payload.issuedAt!),
+    );
     try {
       let [pending] = await store.list();
       if (pending?.kind === 'emission') {

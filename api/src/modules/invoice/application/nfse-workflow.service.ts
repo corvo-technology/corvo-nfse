@@ -471,6 +471,9 @@ export class NfseWorkflowService {
         },
       },
       this.config.getOrThrow<RtcConfig>('rtc').dpsLayout,
+      {
+        cutoverAt: this.config.getOrThrow<RtcConfig>('rtc').nt009CutoverAt,
+      },
     );
     if (!built.ok) throw new DpsBuildRejectionError(built.error);
     return { ...payload, preparedDps: built.value };

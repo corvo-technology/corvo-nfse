@@ -9,14 +9,27 @@ describe('rtc environment configuration', () => {
     expect(env.RTC_CIRCUIT_FAILURE_THRESHOLD).toBe(5);
     expect(env.RTC_CIRCUIT_RESET_MS).toBe(30000);
     expect(env.FISCAL_DPS_LAYOUT).toBe('rtc-v1.01');
+    expect(env.FISCAL_NT009_CUTOVER_AT).toBe('2026-12-01T00:00:00-03:00');
   });
 
-  it('accepts the NT 009 release 1 layout', () => {
+  it('accepts the NT 009 release 1 layout only for the Produção Restrita', () => {
     const env = parseEnvConfig({
       NODE_ENV: 'test',
       FISCAL_DPS_LAYOUT: 'nt009-r1',
+      NFSE_SEFIN_ENVIRONMENT: 'restricted',
     });
     expect(env.FISCAL_DPS_LAYOUT).toBe('nt009-r1');
+
+    expect(() =>
+      parseEnvConfig({ NODE_ENV: 'test', FISCAL_DPS_LAYOUT: 'nt009-r1' }),
+    ).toThrow(/NFSE_SEFIN_ENVIRONMENT=restricted/);
+    expect(() =>
+      parseEnvConfig({
+        NODE_ENV: 'test',
+        FISCAL_DPS_LAYOUT: 'nt009-r1',
+        NFSE_SEFIN_ENVIRONMENT: 'production',
+      }),
+    ).toThrow(/NFSE_SEFIN_ENVIRONMENT=restricted/);
   });
 
   it('coerces overrides and rejects invalid values', () => {
@@ -51,5 +64,26 @@ describe('rtc environment configuration', () => {
     expect(() =>
       parseEnvConfig({ NODE_ENV: 'test', RTC_CALCULATOR_URL: 'not-a-url' }),
     ).toThrow();
+  });
+
+  it('accepts auto and validates the cutover timestamp', () => {
+    expect(
+      parseEnvConfig({
+        NODE_ENV: 'test',
+        FISCAL_DPS_LAYOUT: 'auto',
+      }),
+    ).toMatchObject({
+      FISCAL_DPS_LAYOUT: 'auto',
+    });
+    for (const date of [
+      'invalid',
+      '2026-12-01',
+      '2026-12-01T00:00:00',
+      '2026-02-30T00:00:00-03:00',
+    ]) {
+      expect(() =>
+        parseEnvConfig({ NODE_ENV: 'test', FISCAL_NT009_CUTOVER_AT: date }),
+      ).toThrow();
+    }
   });
 });

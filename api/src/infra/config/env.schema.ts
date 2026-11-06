@@ -276,7 +276,13 @@ export const envSchema = z
       .default(5),
     RTC_CIRCUIT_RESET_MS: z.coerce.number().int().positive().default(30000),
     RTC_EXPECTED_VERSION: z.string().trim().min(1).optional(),
-    FISCAL_DPS_LAYOUT: z.enum(['rtc-v1.01', 'nt009-r1']).default('rtc-v1.01'),
+    FISCAL_NT009_CUTOVER_AT: z
+      .string()
+      .datetime({ offset: true })
+      .default('2026-12-01T00:00:00-03:00'),
+    FISCAL_DPS_LAYOUT: z
+      .enum(['rtc-v1.01', 'nt009-r1', 'auto'])
+      .default('rtc-v1.01'),
     WHATSAPP_SEND_ATTEMPTS: z.coerce.number().int().positive().default(3),
     WHATSAPP_SEND_BACKOFF_MS: z.coerce.number().int().positive().default(5000),
     WHATSAPP_RECEIVE_CONCURRENCY: z.coerce
@@ -439,6 +445,19 @@ export const envSchema = z
       .default(3),
   })
   .superRefine((env, ctx) => {
+    // NT 009 release 1 is only accepted by the Sefin Produção Restrita until it
+    // reaches production; the current layout stays the production default.
+    if (
+      env.FISCAL_DPS_LAYOUT === 'nt009-r1' &&
+      env.NFSE_SEFIN_ENVIRONMENT !== 'restricted'
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['FISCAL_DPS_LAYOUT'],
+        message:
+          'FISCAL_DPS_LAYOUT=nt009-r1 requires NFSE_SEFIN_ENVIRONMENT=restricted (Produção Restrita only)',
+      });
+    }
     if (
       (env.NODE_ENV === 'production' || env.PUBLIC_CUSTOMER_SESSION_ENFORCED) &&
       !env.PUBLIC_CUSTOMER_SESSION_HMAC_SECRET
