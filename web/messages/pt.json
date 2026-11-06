@@ -1501,6 +1501,19 @@
     "rateDecimals": "Use no máximo 2 casas decimais.",
     "companyLimit": "Sem plano a conta pode ter 1 empresa. Assine um plano para cadastrar empresas ilimitadas."
   },
+  "Onboarding": {
+    "intro": {
+      "title": "Conheça o Corvo",
+      "p1": "O Corvo emite notas fiscais de serviço (NFS-e) direto na Receita, pela API ou por aqui no painel.",
+      "p2": "Você cadastra a empresa e o certificado digital, e o Corvo cuida da emissão, do PDF e do XML.",
+      "p3": "No ambiente de teste você emite quantas notas quiser, sem consumir créditos. As notas de produção usam os créditos do seu plano."
+    },
+    "plans": {
+      "title": "Planos",
+      "price": "{price}/mês",
+      "notes": "{count} notas por mês"
+    }
+  },
   "CompanyDetail": {
     "dps": {
       "title": "Numeração das notas",

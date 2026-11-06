@@ -1501,6 +1501,19 @@
     "rateDecimals": "Use at most 2 decimal places.",
     "companyLimit": "Without a plan the account can have 1 company. Subscribe to a plan for unlimited companies."
   },
+  "Onboarding": {
+    "intro": {
+      "title": "Get to know Corvo",
+      "p1": "Corvo issues service invoices (NFS-e) straight to the Receita, through the API or here in the dashboard.",
+      "p2": "You register the company and its digital certificate, and Corvo takes care of the issuing, the PDF and the XML.",
+      "p3": "In the test environment you can issue as many notes as you like without using credits. Production notes use your plan's credits."
+    },
+    "plans": {
+      "title": "Plans",
+      "price": "{price}/month",
+      "notes": "{count} notes per month"
+    }
+  },
   "CompanyDetail": {
     "dps": {
       "title": "Invoice numbering",
