@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import type { AuthContext } from '@/modules/auth/auth-context';
-import type { InvoiceService } from '@/modules/invoice/application/invoice.service';
+import type { EmissionRouterService } from '@/modules/invoice-schedule/application/emission-router.service';
 import type { CreateInvoiceDto } from '@/modules/invoice/http/invoice.dto';
 import { NfseIssueInput } from '../dto/tool-input.dto';
 import { invalidInput } from './tool-input-errors';
@@ -76,13 +76,23 @@ export const NFSE_ISSUE_PROPERTIES = {
   competence_date: {
     type: 'string',
     description:
-      'YYYY-MM-DD. Defaults to today (America/Sao_Paulo). A future date needs emission_type SCHEDULE.',
+      'YYYY-MM-DD. Defaults to today (America/Sao_Paulo). With emission_type SCHEDULE or RECURRING it is required and is the date of the first run (from tomorrow on).',
   },
   emission_type: {
     type: 'string',
-    enum: ['IMMEDIATE', 'SCHEDULE'],
+    enum: ['IMMEDIATE', 'SCHEDULE', 'RECURRING'],
     description:
-      'IMMEDIATE (default) or SCHEDULE: release the invoice on a future competence_date.',
+      'IMMEDIATE (default) issues now. SCHEDULE issues once on competence_date; RECURRING issues repeatedly starting on competence_date (needs recurrence_frequency). Both create a schedule and return its id: runs happen at 09:00 America/Sao_Paulo on business days, a weekend date runs on Monday, and each note takes the competence of the day it runs. Manage schedules with the schedule_* tools.',
+  },
+  recurrence_frequency: {
+    type: 'string',
+    enum: ['WEEKLY', 'BIWEEKLY', 'MONTHLY'],
+    description: 'Required with emission_type RECURRING.',
+  },
+  recurrence_ends_on: {
+    type: 'string',
+    description:
+      'YYYY-MM-DD, optional. Last day the recurrence may run. Without it, it runs until paused or cancelled.',
   },
   send_email: {
     type: 'boolean',
@@ -117,7 +127,7 @@ export const NFSE_ISSUE_TOOL = {
   description:
     'Emit a new NFS-e (Nota Fiscal de Serviços Eletrônica). Identify the issuing company with company_tax_id (its CNPJ) or company_id; call company_list if you do not know it. ' +
     'Minimal call: company_tax_id + amount. The customer is optional (omit it for an anonymous consumer invoice), and the competence date, service code and municipality default to today and to the company settings. ' +
-    'Returns immediately with the queued status; use nfse_query to follow it.',
+    'Returns immediately with the queued status; use nfse_query to follow it. With emission_type SCHEDULE or RECURRING nothing is issued yet: it returns the schedule (schedule_id) instead.',
   inputSchema: {
     type: 'object',
     properties: NFSE_ISSUE_PROPERTIES,
@@ -182,6 +192,30 @@ export function toCreateInvoiceDto(params: NfseIssueInput): CreateInvoiceDto {
     );
   }
 
+  const scheduling =
+    params.emission_type === 'SCHEDULE' || params.emission_type === 'RECURRING';
+  if (scheduling && !params.competence_date)
+    throw new Error(
+      'Invalid input: competence_date: required with SCHEDULE or RECURRING (the date of the first run, from tomorrow on)',
+    );
+  if (params.emission_type === 'RECURRING' && !params.recurrence_frequency)
+    throw new Error(
+      'Invalid input: recurrence_frequency: required when emission_type is RECURRING',
+    );
+  if (
+    params.emission_type !== 'RECURRING' &&
+    (params.recurrence_frequency || params.recurrence_ends_on)
+  )
+    throw new Error(
+      'Invalid input: recurrence_frequency and recurrence_ends_on are only allowed when emission_type is RECURRING',
+    );
+  const recurrence = params.recurrence_frequency
+    ? {
+        frequency: params.recurrence_frequency,
+        endsOn: params.recurrence_ends_on,
+      }
+    : undefined;
+
   // Map snake_case MCP input → the real camelCase CreateInvoiceDto.
   return {
     companyId: params.company_id,
@@ -200,9 +234,12 @@ export function toCreateInvoiceDto(params: NfseIssueInput): CreateInvoiceDto {
     deduction: params.deduction,
     competenceDate: params.competence_date ?? SAO_PAULO_DATE.format(new Date()),
     options:
-      params.emission_type || params.send_email !== undefined
+      params.emission_type ||
+      params.send_email !== undefined ||
+      recurrence !== undefined
         ? {
             type: params.emission_type,
+            recurrence,
             email:
               params.send_email === undefined
                 ? undefined
@@ -212,11 +249,24 @@ export function toCreateInvoiceDto(params: NfseIssueInput): CreateInvoiceDto {
   };
 }
 
-export function createNfseIssueHandler(invoiceService: InvoiceService) {
+export type NfseIssueResult =
+  | { invoice_id: string; access_key: string; status: string }
+  | {
+      schedule_id: string;
+      kind: string;
+      frequency: string | null;
+      status: string;
+      next_run_on: string | null;
+      ends_on: string | null;
+    };
+
+export function createNfseIssueHandler(
+  emitter: Pick<EmissionRouterService, 'emit'>,
+) {
   return async function nfseIssueHandler(
     rawParams: unknown,
     ctx: AuthContext,
-  ): Promise<{ invoice_id: string; access_key: string; status: string }> {
+  ): Promise<NfseIssueResult> {
     const params = plainToInstance(
       NfseIssueInput,
       rawParams as Record<string, unknown>,
@@ -225,16 +275,27 @@ export function createNfseIssueHandler(invoiceService: InvoiceService) {
     if (errors.length > 0) throw invalidInput(errors);
     const dto = toCreateInvoiceDto(params);
 
-    const invoice = await invoiceService.emit(
+    const emitted = await emitter.emit(
       dto,
       ctx.tenantId,
       ctx,
       params.idempotency_key,
     );
+    if (emitted.kind === 'schedule') {
+      const schedule = emitted.schedule.props;
+      return {
+        schedule_id: schedule.id,
+        kind: schedule.kind,
+        frequency: schedule.frequency,
+        status: schedule.status,
+        next_run_on: schedule.nextRunOn,
+        ends_on: schedule.endsOn,
+      };
+    }
     return {
-      invoice_id: invoice.id,
-      access_key: invoice.accessKey ?? '',
-      status: invoice.status,
+      invoice_id: emitted.invoice.id,
+      access_key: emitted.invoice.accessKey ?? '',
+      status: emitted.invoice.status,
     };
   };
 }

@@ -10,6 +10,24 @@ import { InvoiceService } from '../invoice/application/invoice.service';
 import { InvoiceBatchService } from '../invoice/application/invoice-batch.service';
 import { InvoiceCalculationService } from '../invoice/application/fiscal/invoice-calculation.service';
 import { QuotaService } from '@/modules/plans/application/quota.service';
+import { EmissionRouterService } from '@/modules/invoice-schedule/application/emission-router.service';
+import { ScheduleService } from '@/modules/invoice-schedule/application/schedule.service';
+import {
+  SCHEDULE_CANCEL_TOOL,
+  SCHEDULE_GET_TOOL,
+  SCHEDULE_LIST_TOOL,
+  SCHEDULE_PAUSE_TOOL,
+  SCHEDULE_RESUME_TOOL,
+  SCHEDULE_RUNS_TOOL,
+  SCHEDULE_UPDATE_TOOL,
+  createScheduleCancelHandler,
+  createScheduleGetHandler,
+  createScheduleListHandler,
+  createSchedulePauseHandler,
+  createScheduleResumeHandler,
+  createScheduleRunsHandler,
+  createScheduleUpdateHandler,
+} from './tools/schedule.tools';
 import { McpServer } from './mcp.server';
 import {
   NFSE_ISSUE_TOOL,
@@ -73,6 +91,8 @@ export class McpService {
   constructor(
     private readonly invoiceService: InvoiceService,
     private readonly invoiceBatchService: InvoiceBatchService,
+    private readonly emissionRouter: EmissionRouterService,
+    private readonly scheduleService: ScheduleService,
     private readonly calculationService: InvoiceCalculationService,
     private readonly quotaService: QuotaService,
     @Inject(INVOICE_REPOSITORY)
@@ -90,7 +110,7 @@ export class McpService {
     this.server.registerTool(
       NFSE_ISSUE_TOOL,
       this.wrapWithScopeCheck(
-        createNfseIssueHandler(this.invoiceService),
+        createNfseIssueHandler(this.emissionRouter),
         'nfse:write',
       ),
     );
@@ -115,6 +135,25 @@ export class McpService {
         'nfse:write',
       ),
     );
+    for (const [tool, handler] of [
+      [SCHEDULE_UPDATE_TOOL, createScheduleUpdateHandler(this.scheduleService)],
+      [SCHEDULE_PAUSE_TOOL, createSchedulePauseHandler(this.scheduleService)],
+      [SCHEDULE_RESUME_TOOL, createScheduleResumeHandler(this.scheduleService)],
+      [SCHEDULE_CANCEL_TOOL, createScheduleCancelHandler(this.scheduleService)],
+    ] as const)
+      this.server.registerTool(
+        tool,
+        this.wrapWithScopeCheck(handler, 'nfse:write'),
+      );
+    for (const [tool, handler] of [
+      [SCHEDULE_LIST_TOOL, createScheduleListHandler(this.scheduleService)],
+      [SCHEDULE_GET_TOOL, createScheduleGetHandler(this.scheduleService)],
+      [SCHEDULE_RUNS_TOOL, createScheduleRunsHandler(this.scheduleService)],
+    ] as const)
+      this.server.registerTool(
+        tool,
+        this.wrapWithScopeCheck(handler, 'nfse:read'),
+      );
     // nfse:read tools
     this.server.registerTool(
       COMPANY_LIST_TOOL,

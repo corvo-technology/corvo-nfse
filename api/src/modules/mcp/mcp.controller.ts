@@ -119,8 +119,24 @@ function invoicesIssuedBy(
   tool: string | undefined,
   result: McpResponse | null,
 ): number {
-  if (tool === 'nfse_issue') return 1;
+  // A schedule (SCHEDULE / RECURRING) issues nothing yet: it is not counted as an invoice.
+  if (tool === 'nfse_issue') return isScheduleResult(result) ? 0 : 1;
   return tool === 'nfse_issue_batch' ? newlyIssuedInBatch(result) : 0;
+}
+
+/** nfse_issue answers with a schedule (not an invoice) for SCHEDULE and RECURRING. */
+function isScheduleResult(result: McpResponse | null): boolean {
+  const content = (
+    result?.result as { content?: Array<{ text?: string }> } | undefined
+  )?.content;
+  try {
+    const parsed = JSON.parse(content?.[0]?.text ?? '{}') as {
+      schedule_id?: string;
+    };
+    return typeof parsed.schedule_id === 'string';
+  } catch {
+    return false;
+  }
 }
 
 /** Accepted items of an nfse_issue_batch result, excluding replays of earlier calls. */

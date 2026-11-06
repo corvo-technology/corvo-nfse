@@ -53,6 +53,29 @@ describe('InvoiceBatchService.emitBatch', () => {
     ).toHaveLength(2);
   });
 
+  it.each(['SCHEDULE', 'RECURRING'])(
+    'rejects an item with options.type %s: schedules are created one at a time with POST /invoices',
+    async (type) => {
+      const result = await service.emitBatch(
+        [
+          valid(),
+          valid({
+            options: { type, recurrence: { frequency: 'WEEKLY' } },
+            competenceDate: '2026-11-09',
+          }),
+        ],
+        tenantId,
+        auth,
+      );
+      expect(result).toMatchObject({ accepted: 1, rejected: 1 });
+      expect(result.results[1]).toMatchObject({
+        status: 'rejected',
+        error: { code: 'ERROR_VALIDATION' },
+      });
+      expect(invoices.prepareEmission).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('rejects items that are not objects', async () => {
     const result = await service.emitBatch(
       [null, 'text', valid()],

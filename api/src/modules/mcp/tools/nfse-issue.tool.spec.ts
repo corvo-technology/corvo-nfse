@@ -1,16 +1,14 @@
 import 'reflect-metadata';
 import { createNfseIssueHandler } from './nfse-issue.tool';
-import type { InvoiceService } from '@/modules/invoice/application/invoice.service';
 import type { AuthContext } from '@/modules/auth/auth-context';
 
 describe('MCP invoice fiscal defaults', () => {
   it('forwards omitted defaults and explicit overrides to the shared invoice service', async () => {
-    const emit = jest
-      .fn()
-      .mockResolvedValue({ id: 'invoice-1', status: 'queued' });
-    const handler = createNfseIssueHandler({
-      emit,
-    } as unknown as InvoiceService);
+    const emit = jest.fn().mockResolvedValue({
+      kind: 'invoice',
+      invoice: { id: 'invoice-1', status: 'queued' },
+    });
+    const handler = createNfseIssueHandler({ emit });
     const context = {
       tenantId: 'tenant-1',
       executionEnvironment: 'test',
@@ -62,13 +60,10 @@ describe('nfse_issue simple inputs', () => {
   } as AuthContext;
   const setup = () => {
     const emit = jest.fn().mockResolvedValue({
-      id: 'invoice-1',
-      accessKey: null,
-      status: 'queued',
+      kind: 'invoice',
+      invoice: { id: 'invoice-1', accessKey: null, status: 'queued' },
     });
-    const handler = createNfseIssueHandler({
-      emit,
-    } as unknown as InvoiceService);
+    const handler = createNfseIssueHandler({ emit });
     return { emit, handler };
   };
   const dtoOf = (emit: jest.Mock): Record<string, unknown> =>
@@ -253,5 +248,99 @@ describe('nfse_issue simple inputs', () => {
         context,
       ),
     ).rejects.toThrow(/customer\.email/);
+  });
+});
+
+describe('nfse_issue scheduling', () => {
+  const context = {
+    tenantId: 'tenant-1',
+    executionEnvironment: 'test',
+  } as AuthContext;
+  const scheduleOf = (over: Record<string, unknown> = {}) => ({
+    props: {
+      id: 'sch-1',
+      kind: 'recurring',
+      frequency: 'WEEKLY',
+      status: 'active',
+      nextRunOn: '2026-11-09',
+      endsOn: null,
+      ...over,
+    },
+  });
+  const setup = () => {
+    const emit = jest
+      .fn()
+      .mockResolvedValue({ kind: 'schedule', schedule: scheduleOf() });
+    return { emit, handler: createNfseIssueHandler({ emit }) };
+  };
+  const base = {
+    company_tax_id: '11.222.333/0001-81',
+    amount: 100,
+    competence_date: '2026-11-09',
+  };
+
+  it('RECURRING maps to options.recurrence and answers with the schedule, not an invoice', async () => {
+    const { emit, handler } = setup();
+    const out = await handler(
+      {
+        ...base,
+        emission_type: 'RECURRING',
+        recurrence_frequency: 'MONTHLY',
+        recurrence_ends_on: '2027-06-30',
+      },
+      context,
+    );
+    const dto = (emit.mock.calls as unknown[][])[0][0] as {
+      competenceDate: string;
+      options: Record<string, unknown>;
+    };
+    expect(dto.competenceDate).toBe('2026-11-09');
+    expect(dto.options).toMatchObject({
+      type: 'RECURRING',
+      recurrence: { frequency: 'MONTHLY', endsOn: '2027-06-30' },
+    });
+    expect(out).toEqual({
+      schedule_id: 'sch-1',
+      kind: 'recurring',
+      frequency: 'WEEKLY',
+      status: 'active',
+      next_run_on: '2026-11-09',
+      ends_on: null,
+    });
+  });
+
+  it('SCHEDULE needs no frequency', async () => {
+    const { emit, handler } = setup();
+    await handler({ ...base, emission_type: 'SCHEDULE' }, context);
+    expect(emit).toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      'RECURRING without a frequency',
+      { emission_type: 'RECURRING' },
+      /recurrence_frequency/,
+    ],
+    [
+      'a frequency without RECURRING',
+      { emission_type: 'SCHEDULE', recurrence_frequency: 'WEEKLY' },
+      /only allowed/,
+    ],
+    [
+      'a deadline without RECURRING',
+      { recurrence_ends_on: '2027-01-01' },
+      /only allowed/,
+    ],
+    [
+      'SCHEDULE without a date',
+      { emission_type: 'SCHEDULE', competence_date: undefined },
+      /competence_date/,
+    ],
+  ])('refuses %s', async (_label, extra, message) => {
+    const { emit, handler } = setup();
+    await expect(handler({ ...base, ...extra }, context)).rejects.toThrow(
+      message,
+    );
+    expect(emit).not.toHaveBeenCalled();
   });
 });
