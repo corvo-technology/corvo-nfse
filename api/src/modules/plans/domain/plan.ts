@@ -1,9 +1,11 @@
 import { randomUUID } from 'crypto';
 
-export type PlanSlug = 'free' | 'developer' | 'growth' | 'scale' | 'volume';
+/** `free` is the internal "no plan" placeholder (0 notes, not purchasable). */
+export type PaidPlanSlug = 'solo' | 'equipe' | 'empresa' | 'escala';
+export type PlanSlug = 'free' | PaidPlanSlug;
 
 export type SupportTier = 'community' | 'email' | 'priority';
-export type BillingCycle = 'monthly';
+export type BillingCycle = 'monthly' | 'annual';
 
 export interface PlanProps {
   id: string;

@@ -7,6 +7,7 @@ import {
   Body,
   Req,
   NotFoundException,
+  BadRequestException,
   Headers,
   Param,
 } from '@nestjs/common';
@@ -16,6 +17,9 @@ import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { QuotaService } from '@/modules/plans/application/quota.service';
 import type { QuotaStatus } from '@/modules/plans/application/quota.service';
 import { BillingService } from './application/billing.service';
+import { CheckoutRouterService } from './application/checkout-router.service';
+import { WooviPaymentsService } from './application/woovi-payments.service';
+import { PaymentHistoryService } from './application/payment-history.service';
 import { BillingUsageService } from './application/billing-usage.service';
 import {
   CheckoutDto,
@@ -35,6 +39,9 @@ export class BillingController {
     private readonly billingUsage: BillingUsageService,
     private readonly pricingService: PricingService,
     private readonly planRepo: IPlanRepository,
+    private readonly checkoutRouter: CheckoutRouterService,
+    private readonly pix: WooviPaymentsService,
+    private readonly paymentHistory: PaymentHistoryService,
   ) {}
 
   @Get('plan')
@@ -56,8 +63,7 @@ export class BillingController {
         monthly_allowance: plan.monthlyCreditAllowance,
         daily_limit: plan.dailyLimit,
         max_active_companies: plan.maxActiveCompanies,
-        monthly_price_cents: this.pricingService.calculateQuote(plan.slug)
-          .monthlyTotalCents,
+        monthly_price_cents: this.pricingService.monthlyPriceCents(plan.slug),
       },
       subscription: {
         status: billing.billing?.stripeStatus ?? 'none',
@@ -65,11 +71,15 @@ export class BillingController {
         cancel_at_period_end: billing.billing?.cancelAtPeriodEnd ?? false,
         scheduled_plan: billing.billing?.pendingPlanSlug ?? null,
         blocked: billing.blocked,
+        // The Stripe portal needs a Stripe customer: accounts that only paid by Pix have none.
+        stripe_portal_available: !!billing.billing?.stripeCustomerId,
+        // Plan changes (upgrade/downgrade) are Stripe subscription changes: only with a live subscription.
+        stripe_subscription: !!billing.billing?.stripeSubscriptionId,
+        pix_subscription: await this.pix.pixSubscriptionState(tenantId),
       },
       usage: {
-        overage_units: billing.overage_units,
-        overage_amount_cents: billing.overage_amount_cents,
         hard_limit: billing.hard_limit,
+        avulso_balance: billing.avulsoBalance,
         credits_used: status.creditsUsed,
         credits_reserved: status.creditsReserved,
         credits_remaining: status.creditsRemaining,
@@ -82,6 +92,14 @@ export class BillingController {
         period_end: status.periodEnd?.toISOString(),
       },
     });
+  }
+
+  @Get('payments')
+  @RequirePermission('billing.view')
+  async payments(@Req() req: RequestWithAuthContext) {
+    return data(
+      await this.paymentHistory.list(req.authContext!.activeTenantId),
+    );
   }
 
   @Get('usage')
@@ -101,10 +119,31 @@ export class BillingController {
     @Req() req: RequestWithAuthContext,
     @Headers('idempotency-key') key: string,
   ) {
+    const tenantId = req.authContext!.activeTenantId;
+    const method = body.method ?? 'card';
+    if ((body.kind ?? 'plan') === 'avulso') {
+      if (body.units === undefined)
+        throw new BadRequestException('units is required for avulso');
+      return data(
+        await this.checkoutRouter.start(
+          tenantId,
+          { kind: 'avulso', units: body.units, method },
+          key,
+        ),
+      );
+    }
+    if (!body.plan_slug)
+      throw new BadRequestException('plan_slug is required for a plan');
     return data(
-      await this.billing.checkout(
-        req.authContext!.activeTenantId,
-        body.plan_slug,
+      await this.checkoutRouter.start(
+        tenantId,
+        {
+          kind: 'plan',
+          planSlug: body.plan_slug,
+          cycle: body.cycle ?? 'monthly',
+          method,
+          customer: body.customer,
+        },
         key,
       ),
     );
@@ -122,6 +161,14 @@ export class BillingController {
         params.sessionId,
       ),
     );
+  }
+
+  @Post('pix/cancel')
+  @HttpCode(200)
+  @RequirePermission('billing.manage')
+  async cancelPix(@Req() req: RequestWithAuthContext) {
+    await this.pix.cancelPixSubscription(req.authContext!.activeTenantId);
+    return data({ cancelled: true });
   }
 
   @Post('portal')

@@ -56,7 +56,107 @@ describe('Stripe billing adapter', () => {
       ),
     ).toThrow('mode mismatch');
   });
-  it('creates hosted monthly checkout with server-owned BRL prices and a metered excess item', async () => {
+  it('reads a paid one-time checkout session as a payment event', () => {
+    const stripe = new Stripe('sk_test_fixture', {
+      apiVersion: BILLING_API_VERSION,
+    });
+    const adapter = new StripeBillingAdapter(
+      new StripeGateway(new ConfigService({ stripe: configuration() })),
+      new PricingService(),
+    );
+    const event = (payment_status: string) =>
+      JSON.stringify({
+        id: 'evt_pay',
+        type: 'checkout.session.completed',
+        livemode: false,
+        data: {
+          object: {
+            mode: 'payment',
+            payment_status,
+            customer: 'cus_fixture',
+            subscription: null,
+            metadata: { intent_id: 'intent-1', tenant_id: 't' },
+          },
+        },
+      });
+    const verify = (payload: string) =>
+      adapter.verifyEvent(
+        Buffer.from(payload),
+        stripe.webhooks.generateTestHeaderString({ payload, secret }),
+      );
+    expect(verify(event('paid')).payment).toEqual({
+      intentId: 'intent-1',
+      paid: true,
+    });
+    expect(verify(event('unpaid')).payment).toEqual({
+      intentId: 'intent-1',
+      paid: false,
+    });
+  });
+  it('returns from the Stripe portal to the billing page, not to the canceled-checkout page', async () => {
+    const create = jest
+      .fn()
+      .mockResolvedValue({ url: 'https://billing.stripe.test/p' });
+    const adapter = new StripeBillingAdapter(
+      {
+        config: configuration(),
+        stripe: { billingPortal: { sessions: { create } } },
+      } as unknown as StripeGateway,
+      new PricingService(),
+    );
+    await expect(adapter.portal('cus_1')).resolves.toBe(
+      'https://billing.stripe.test/p',
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customer: 'cus_1',
+        return_url: 'https://corvo.test/app/billing',
+      }),
+    );
+  });
+  it('creates a hosted one-time card checkout with server-owned amount', async () => {
+    const create = jest.fn().mockResolvedValue({
+      id: 'cs_pay',
+      url: 'https://checkout.stripe.com/pay',
+    });
+    const adapter = new StripeBillingAdapter(
+      {
+        config: configuration(),
+        stripe: { checkout: { sessions: { create } } },
+      } as unknown as StripeGateway,
+      new PricingService(),
+    );
+    await expect(
+      adapter.createPaymentCheckout('cus_fixture', 'tenant', {
+        name: 'Corvo: 10 notas avulsas',
+        amountCents: 990,
+        intentId: 'intent-1',
+      }),
+    ).resolves.toEqual({
+      id: 'cs_pay',
+      url: 'https://checkout.stripe.com/pay',
+    });
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'payment',
+        customer: 'cus_fixture',
+        allowed_payment_method_types: ['card'],
+        metadata: { tenant_id: 'tenant', intent_id: 'intent-1' },
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: 'brl',
+              unit_amount: 990,
+              product_data: { name: 'Corvo: 10 notas avulsas' },
+            },
+          },
+        ],
+      }),
+      { idempotencyKey: 'corvo:pay:intent-1' },
+    );
+  });
+  it('creates hosted monthly checkout with a single server-owned BRL base price', async () => {
     const config = configuration();
     const create = jest.fn().mockResolvedValue({
       id: 'cs_fixture',
@@ -71,19 +171,11 @@ describe('Stripe billing adapter', () => {
       data: [
         {
           id: 'price_base',
-          lookup_key: 'corvo_developer_monthly',
+          lookup_key: 'corvo_solo_monthly',
           currency: 'brl',
-          unit_amount: 2990,
+          unit_amount: 5990,
           recurring: { interval: 'month', usage_type: 'licensed' },
-          metadata: { plan_slug: 'developer' },
-        },
-        {
-          id: 'price_excess',
-          lookup_key: 'corvo_developer_overage',
-          currency: 'brl',
-          unit_amount: 12,
-          recurring: { interval: 'month', usage_type: 'metered' },
-          metadata: { plan_slug: 'developer' },
+          metadata: { plan_slug: 'solo' },
         },
       ],
     });
@@ -98,12 +190,7 @@ describe('Stripe billing adapter', () => {
       new PricingService(),
     );
     expect(
-      await adapter.createCheckout(
-        'cus_fixture',
-        'tenant',
-        'developer',
-        'intent',
-      ),
+      await adapter.createCheckout('cus_fixture', 'tenant', 'solo', 'intent'),
     ).toMatchObject({ id: 'cs_fixture' });
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -116,10 +203,7 @@ describe('Stripe billing adapter', () => {
           button_color: '#3fd6a8',
           logo: expect.objectContaining({ type: 'url' }) as unknown,
         }) as unknown,
-        line_items: [
-          { price: 'price_base', quantity: 1 },
-          { price: 'price_excess' },
-        ],
+        line_items: [{ price: 'price_base', quantity: 1 }],
         success_url:
           'https://corvo.test/app/billing/success?session_id={CHECKOUT_SESSION_ID}',
       }),
@@ -127,55 +211,8 @@ describe('Stripe billing adapter', () => {
     );
     prices.mockResolvedValueOnce({ data: [] });
     await expect(
-      adapter.createCheckout('cus_fixture', 'tenant', 'developer', 'intent2'),
+      adapter.createCheckout('cus_fixture', 'tenant', 'solo', 'intent2'),
     ).rejects.toThrow('must be provisioned');
-  });
-  it('recovers a dedicated late-usage invoice and finalizes it after cancellation', async () => {
-    const invoice = {
-      id: 'in_late',
-      status: 'draft',
-      metadata: { usage_report_id: 'report' },
-    };
-    const createInvoice = jest.fn().mockResolvedValue(invoice);
-    const createItem = jest.fn().mockResolvedValue({ id: 'ii_late' });
-    const finalize = jest
-      .fn()
-      .mockResolvedValue({ ...invoice, status: 'open' });
-    async function* invoices() {
-      yield invoice;
-    }
-    async function* items() {
-      yield { metadata: { usage_report_id: 'report' } };
-    }
-    const adapter = new StripeBillingAdapter(
-      {
-        stripe: {
-          invoices: {
-            list: invoices,
-            create: createInvoice,
-            finalizeInvoice: finalize,
-          },
-          invoiceItems: { list: items, create: createItem },
-        },
-      } as unknown as StripeGateway,
-      new PricingService(),
-    );
-    await adapter.reportInvoiceItem({
-      id: 'report',
-      customerId: 'cus',
-      invoiceId: 'in_origin',
-      units: 10,
-      unitCents: 15,
-      periodStart: new Date('2026-10-01'),
-      periodEnd: new Date('2026-11-01'),
-    });
-    expect(createInvoice).not.toHaveBeenCalled();
-    expect(createItem).not.toHaveBeenCalled();
-    expect(finalize).toHaveBeenCalledWith(
-      'in_late',
-      { auto_advance: true },
-      { idempotencyKey: 'finalize:report' },
-    );
   });
   it('disables API access cleanly when billing credentials are missing', () => {
     const gateway = new StripeGateway(

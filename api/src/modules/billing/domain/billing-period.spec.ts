@@ -4,42 +4,34 @@ function state(patch: Partial<BillingPeriodState> = {}): BillingPeriodState {
   return {
     id: 'period',
     tenantId: 'tenant',
-    planSlug: 'developer',
+    planSlug: 'solo',
     periodStart: new Date('2026-10-01'),
     periodEnd: new Date('2026-11-01'),
-    included: 200,
-    unitCents: 15,
+    included: 100,
     authorized: 0,
     reserved: 0,
-    reported: 0,
     customerId: 'customer',
     subscriptionId: 'sub',
-    meterEventName: 'meter',
-    pendingReport: null,
     ...patch,
   };
 }
 describe('BillingPeriod aggregate', () => {
-  it('allows the first excess without granting credits or changing the price', () => {
-    const period = new BillingPeriod(state({ authorized: 200 }));
-    period.reserve(false, null, 0);
-    period.settle(true);
-    expect(period.summary).toMatchObject({
-      overage_units: 1,
-      overage_amount_cents: 15,
-      hard_limit: 1000,
-    });
+  it('blocks the note after the included amount, without charging excess', () => {
+    const period = new BillingPeriod(state({ authorized: 100 }));
+    expect(() => period.reserve(false, null, 0)).toThrow(
+      expect.objectContaining({ code: 'monthly_limit_exceeded' }),
+    );
+    expect(period.summary).toEqual({ included_remaining: 0, hard_limit: 100 });
   });
-  it('counts reservations at the 5x cap and frees a failed attempt', () => {
-    const period = new BillingPeriod(state({ authorized: 999, reserved: 1 }));
+  it('counts reservations at the cap and frees a failed attempt', () => {
+    const period = new BillingPeriod(state({ authorized: 99, reserved: 1 }));
     expect(() => period.reserve(false, null, 0)).toThrow(
       expect.objectContaining({ code: 'monthly_limit_exceeded' }),
     );
     period.settle(false);
     period.reserve(false, null, 0);
     period.settle(true);
-    expect(period.state.authorized).toBe(1000);
-    expect(period.summary.overage_amount_cents).toBe(12000);
+    expect(period.state.authorized).toBe(100);
   });
   it('enforces paid access and free daily quota', () => {
     const period = new BillingPeriod(state());

@@ -74,7 +74,12 @@
     "buyCredits": "Buy credits →",
     "signOut": "Sign out",
     "creditsLabel": "Credits this month",
-    "creditsUsed": "{used} of {total} used"
+    "creditsUsed": "{used} of {total} used",
+    "notesAvailable": "Invoices available",
+    "planLine": "Plan: {left} of {total}",
+    "avulsoLine": "Single: {count}",
+    "buyNotes": "Buy invoices",
+    "manageBilling": "Plan and usage"
   },
   "Topbar": {
     "docs": "Docs",
@@ -132,7 +137,8 @@
       "authorized": "Authorized",
       "rejected": "Rejected",
       "processing": "Processing",
-      "credits": "Credits"
+      "credits": "Invoices available",
+      "notesHint": "Plan + single invoices"
     },
     "newInvoice": "New invoice",
     "invoicesPerDay": "Invoices per day",
@@ -525,19 +531,31 @@
     }
   },
   "Settings": {
-    "portalDescription": "Manage your payment method, invoices and subscription in the Stripe portal.",
-    "portalNoSubscription": "Subscribe to a plan in Billing to manage payments here.",
-    "portalNoPermission": "Only members with billing permission can open the payment portal.",
-    "goToBilling": "Go to Billing",
     "title": "Settings",
     "subtitle": "Environment and billing settings.",
     "billing": "Billing",
-    "stripeEnding": "····4242",
     "visa": "Visa",
     "receiptsTo": "Receipts sent to financeiro@acme.com",
     "openStripePortal": "Open Stripe portal",
     "deleteWorkspace": "Delete workspace",
-    "deleteWorkspaceDesc": "Permanently remove this workspace and all its data. This action cannot be undone."
+    "deleteWorkspaceDesc": "Permanently remove this workspace and all its data. This action cannot be undone.",
+    "payments": {
+      "title": "Payments",
+      "card": {
+        "title": "Card (Stripe)",
+        "available": "Manage your card, invoices and receipts in the Stripe portal."
+      },
+      "pix": {
+        "title": "Pix",
+        "pending": "Pix Automático is waiting for your authorization in the bank app.",
+        "active": "Pix Automático is active: the plan is charged every month.",
+        "viewQr": "View QR code in Billing"
+      },
+      "permissionHint": "Only members with billing permission can manage payments.",
+      "loadFailed": "Could not load your payments.",
+      "elsewhere": "Payments and their history live in Billing.",
+      "openBilling": "Open Billing"
+    }
   },
   "Members": {
     "inviteUnavailable": "Invitations are turned off for now.",
@@ -616,7 +634,7 @@
       "github_auth_failed": "GitHub login failed. Please try again.",
       "socialFailed": "Social login failed. Please try again.",
       "expiredCode": "Code expired. Please request a new one.",
-      "workspaceConflict": "This email cannot create another Free workspace. Use an account with an active membership.",
+      "workspaceConflict": "The workspace could not be created. Use an account that already has active access.",
       "invalidEmail": "Enter a valid email address.",
       "oauth_failed": "We could not sign you in with that provider. Try again or use the email code.",
       "oauth_denied": "You cancelled the sign-in. Pick another way to sign in when you are ready.",
@@ -641,10 +659,10 @@
         "desc": "Structured responses, examples in Node, Python, and Go."
       }
     },
-    "freeCreditsTag": "15 FREE INVOICES PER MONTH",
+    "freeCreditsTag": "FIRST INVOICE FREE",
     "headline": "From first integration to tax invoice in minutes.",
     "afterSignup": "AFTER SIGNUP",
-    "footerNote": "No credit card required. No contract. 15 free invoices to get started.",
+    "footerNote": "No credit card required. No contract. Your first invoice is free.",
     "magicLink": {
       "sendCode": "Send code",
       "sending": "Sending...",
@@ -665,7 +683,7 @@
     "subtitle": "Corvo is a REST API and MCP server to issue Brazilian service invoices (NFS-e) on the national standard for MEI and Simples Nacional companies. Built for AI agents, developers, SaaS products and ERPs.",
     "startFree": "Start free",
     "viewDocs": "View documentation",
-    "mono": "15 free invoices per month. No credit card required."
+    "mono": "Your first invoice is free. No credit card required."
   },
   "Nav": {
     "product": "Product",
@@ -681,151 +699,126 @@
   },
   "FreeTrial": {
     "eyebrow": "START FREE",
-    "title": "15 free invoices per month",
+    "title": "1 free invoice to get started",
     "subtitle": "No credit card required.",
-    "description": "Integrate NFS-e issuance into your product with up to 15 authorized invoices per month for one company. The allowance renews on the first day of each month.",
+    "description": "Create the account, integrate and issue your first production NFS-e without paying. After that, pick a plan or buy single invoices at R$ 0.99, from 3.",
     "startFree": "Start free",
-    "finePrint": "Limit of 3 production issuances per day. Allowances use UTC and do not roll over. Tests do not consume the allowance."
+    "finePrint": "One free invoice per person. Test invoices (sandbox) never use your allowance.",
+    "points": {
+      "test": {
+        "title": "Test before you pay",
+        "body": "The sandbox, the city's test environment, is free and unlimited. Issue test invoices as much as you want before going to production."
+      },
+      "certificate": {
+        "title": "Certificate stored with care",
+        "body": "The A1 certificate is encrypted at rest with AES-256-GCM."
+      }
+    }
   },
   "Pricing": {
     "eyebrow": "PRICING",
     "title": "Simple pricing. No surprises.",
-    "description": "Start for free and choose a plan that matches your invoice volume.",
-    "credits": "invoices / month",
-    "mostPopular": "MOST POPULAR",
-    "bestFor": "BEST FOR",
-    "includes": "INCLUDED",
-    "comingSoon": "Coming soon",
-    "buyCredits": "Choose plan",
-    "monthly": "Monthly",
+    "description": "Your first invoice is free. After that, pick a plan or buy single invoices.",
+    "cycle": {
+      "label": "Billing cycle",
+      "monthly": "Monthly",
+      "annual": "Annual",
+      "annualBadge": "30% off"
+    },
     "perMonth": "/month",
-    "overagePerNote": "{price} per extra invoice",
-    "recommended": "Recommended",
-    "calculator": {
-      "title": "How many invoices do you issue per month?",
-      "placeholder": "e.g. 500",
-      "button": "Find ideal plan",
-      "result": "Recommended plan:",
-      "overage": "Notes above quota:",
-      "custoExcedente": "Overage cost:",
-      "totalEstimado": "Estimated total:",
-      "porMes": "/month",
-      "free": {
-        "label": "Free plan",
-        "description": "15 invoices per month, 3 per day limit."
-      },
-      "custom": {
-        "label": "Contact us",
-        "description": "Volumes above 10,000 invoices/month."
-      }
-    },
-    "footnote": "Monthly allowances do not roll over. Free renews on the first day of the month in UTC; paid plans follow the subscription cycle. Authorized production overage is billed separately, up to the plan’s processing limit.",
-    "allPlans": "All plans",
-    "plans": {
-      "free": {
-        "name": "FREE",
-        "credits": "15",
-        "price": "R$ 0",
-        "unit": "",
-        "bestFor": "Test the API and validate your integration.",
-        "includes": {
-          "nfse": "NFS-e emission via API",
-          "companies": "1 company",
-          "dailyLimit": "3 invoices per day",
-          "email": "Email delivery",
-          "mcp": "AI agents via MCP",
-          "webhooks": "Status webhooks",
-          "downloads": "XML and PDF download"
-        }
-      },
-      "developer": {
-        "name": "DEVELOPER",
-        "badge": "Best value",
-        "credits": "200",
-        "price": "R$ 29.90",
-        "unit": "",
-        "bestFor": "Start issuing NFS-e for any number of companies.",
-        "includes": {
-          "nfse": "NFS-e emission via API",
-          "companies": "Unlimited companies",
-          "email": "Email delivery",
-          "mcp": "AI agents via MCP",
-          "webhooks": "Status webhooks",
-          "downloads": "XML and PDF download"
-        }
-      },
-      "growth": {
-        "name": "GROWTH",
-        "badge": "Most popular",
-        "credits": "850",
-        "price": "R$ 99.90",
-        "unit": "",
-        "bestFor": "Growing operations with higher volume.",
-        "includes": {
-          "nfse": "NFS-e emission via API",
-          "companies": "Unlimited companies",
-          "email": "Email delivery",
-          "mcp": "AI agents via MCP",
-          "webhooks": "Status webhooks",
-          "downloads": "XML and PDF download"
-        }
-      },
-      "scale": {
-        "name": "SCALE",
-        "credits": "3,000",
-        "price": "R$ 299.90",
-        "unit": "",
-        "bestFor": "High-volume platforms and operations.",
-        "includes": {
-          "nfse": "NFS-e emission via API",
-          "companies": "Unlimited companies",
-          "email": "Email delivery",
-          "mcp": "AI agents via MCP",
-          "webhooks": "Status webhooks",
-          "downloads": "XML and PDF download"
-        }
-      },
-      "volume": {
-        "name": "VOLUME",
-        "credits": "10,000",
-        "price": "R$ 699.90",
-        "unit": "",
-        "bestFor": "The highest volumes and multi-company operations.",
-        "includes": {
-          "nfse": "NFS-e emission via API",
-          "companies": "Unlimited companies",
-          "email": "Email delivery",
-          "mcp": "AI agents via MCP",
-          "webhooks": "Status webhooks",
-          "downloads": "XML and PDF download"
-        }
-      }
-    },
-    "fromPrice": "starting at",
-    "perExtra": "per extra invoice",
-    "ctaFree": "Start free",
-    "ctaPaid": "Choose plan",
-    "slider": {
-      "label": "Invoices per month",
-      "unit": "invoices / month",
-      "summaryPre": "Best plan for you:",
-      "summaryFree": "Fits the free plan. No credit card required."
-    },
-    "breakdown": {
-      "free": "Free, 3 per day limit",
-      "plan": "Plan",
-      "extra": "extra invoices",
-      "atVolume": "At {volume} invoices:",
-      "capped": "Capped at {max} invoices/month",
-      "notes": "invoices"
-    },
-    "effective": "Effective cost:",
-    "perNoteShort": "per invoice",
+    "notesPerMonth": "{count} invoices a month",
+    "billedOnce": "{total} billed once a year",
     "currentPlan": "Your plan",
+    "ctaPaid": "Choose plan",
+    "plans": {
+      "solo": {
+        "name": "SOLO",
+        "bestFor": "For a few invoices a month.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Unlimited companies",
+          "email": "Email delivery",
+          "mcp": "AI agents via MCP",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      },
+      "equipe": {
+        "name": "EQUIPE",
+        "bestFor": "For teams that issue regularly.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Unlimited companies",
+          "email": "Email delivery",
+          "mcp": "AI agents via MCP",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        },
+        "badge": "Most popular"
+      },
+      "empresa": {
+        "name": "EMPRESA",
+        "bestFor": "For companies with steady volume.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Unlimited companies",
+          "email": "Email delivery",
+          "mcp": "AI agents via MCP",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      },
+      "escala": {
+        "name": "ESCALA",
+        "bestFor": "For high-volume issuing.",
+        "includes": {
+          "nfse": "NFS-e emission via API",
+          "companies": "Unlimited companies",
+          "email": "Email delivery",
+          "mcp": "AI agents via MCP",
+          "webhooks": "Status webhooks",
+          "downloads": "XML and PDF download"
+        }
+      }
+    },
     "included": {
       "label": "Every plan includes",
       "mcp": "MCP for AI agents",
       "email": "Invoice delivery by email"
+    },
+    "freeNote": "Your first invoice is free, no credit card.",
+    "avulso": {
+      "title": "Single invoices",
+      "description": "No plan: {price} per invoice, from {min} invoices. They never expire.",
+      "units": "How many invoices?",
+      "total": "Total",
+      "buy": "Buy invoices",
+      "minimum": "Minimum {min} invoices.",
+      "balance": "Single invoices available"
+    },
+    "calculator": {
+      "title": "How many invoices do you issue a month?",
+      "label": "How many invoices a month?",
+      "result": "Best option",
+      "plan": "{name} plan",
+      "avulsoOnly": "Single invoices only",
+      "extra": "+ {count} single invoices",
+      "total": "Total per month",
+      "others": "Other options",
+      "unit": "invoices / month",
+      "slider": "Adjust invoices per month",
+      "zoneAvulso": "SINGLE"
+    },
+    "footnote": "Monthly quotas, no rollover. Need more? Buy single invoices or move to a bigger plan.",
+    "featured": {
+      "recommended": "Recommended",
+      "avulsoName": "SINGLE INVOICES",
+      "avulsoBestFor": "No plan, no subscription. Pay only for what you use, from 3.",
+      "effective": "Effective cost:",
+      "perNote": "per invoice",
+      "planLine": "Plan · {count} invoices",
+      "allPlans": "ALL PLANS",
+      "avulsoCompanies": "No plan: 1 company. Recurring plans have unlimited companies."
     }
   },
   "Flow": {
@@ -895,7 +888,7 @@
     "description": "One integration to automate NFS-e issuance and track your product's growth.",
     "ctaPrimary": "Start free",
     "ctaSecondary": "Explore API",
-    "subtext": "15 free invoices per month to get started."
+    "subtext": "Your first invoice is free. Test mode is always free."
   },
   "Footer": {
     "brand": "© Corvo. All rights reserved.",
@@ -950,19 +943,19 @@
       },
       "s6": {
         "title": "6. Acceptable use and abuse prevention",
-        "content": "Do not use the Service to issue false documents, act without company authorization, commit fraud, send spam, distribute unlawful content or violate third-party rights. Do not bypass allowances, company limits, request limits, access controls or Free plan eligibility rules, including through accounts or workspaces created for that purpose. Do not share API access beyond your contracted permissions or interfere with the Service or connected fiscal systems."
+        "content": "Do not use the Service to issue false documents, act without company authorization, commit fraud, send spam, distribute unlawful content or violate third-party rights. Do not bypass allowances, company limits, request limits, access controls or free first-invoice eligibility rules, including through accounts or workspaces created for that purpose. Do not share API access beyond your contracted permissions or interfere with the Service or connected fiscal systems."
       },
       "s7": {
         "title": "7. Plans, allowances and renewal",
-        "content": "Plans define the monthly invoice allowance, active company limit and usage limits shown in the offer and dashboard. Free allows one active company and up to 15 authorized production invoices per month, with a limit of 3 per day. Its allowance renews on the first day of each month; monthly and daily limits use UTC. Paid allowances follow the monthly subscription period shown in the dashboard. Allowances belong to the workspace, not to each member or API key. Unused allowance does not roll over or convert into cash. Once a limit is reached, new requests may be blocked until renewal or the purchase of appropriate capacity."
+        "content": "The Solo, Equipe, Empresa and Escala plans set the monthly invoice allowance shown in the offer and in the dashboard. Every account gets one free first invoice, once and without renewal, and does not need a plan to issue it. Test (sandbox) invoices are free, unlimited and do not use any allowance. On paid plans the allowance follows the monthly period shown in the dashboard; on the annual plan it renews every month for the 12 months. Allowances belong to the workspace, not to each member or API key. Unused plan invoices do not roll over or convert to money. When the allowance runs out, issuing is blocked until renewal, a plan change or a purchase of single invoices. Without a plan (single invoices only) the account can have 1 active company in production; the recurring plans allow unlimited companies."
       },
       "s8": {
-        "title": "8. How usage and overage are calculated",
-        "content": "Each authorized production NFS-e counts as one usage unit. Corvo reserves capacity when it receives a request while issuance is in progress. Rejected invoices and invoices that finish with a failure release that reservation; invoices still processing may temporarily reduce available capacity. If authorization completes after renewal, usage stays in the period in which it was reserved. Free does not allow paid overage. On paid plans, authorized invoices above the allowance incur additional charges at the plan’s unit rate, within a total monthly processing limit of five times the included allowance. Check usage, reservations and estimated overage in the dashboard."
+        "title": "8. How usage and single invoices work",
+        "content": "Each production NFS-e authorized uses one invoice. When a request arrives, Corvo reserves one invoice while the issuance is in progress: from the plan allowance first and, once it is spent, from the single-invoice balance. Rejected or failed issuances give the reservation back; invoices still processing may temporarily reduce the available capacity. If authorization happens after the cycle changes, usage stays in the period where it was reserved. There is no overage billing: nothing is charged for usage beyond the allowance. Single invoices cost R$ 0.99 each, in purchases of at least 3, never expire and are used after the plan allowance."
       },
       "s9": {
         "title": "9. Billing, plan changes and cancellation",
-        "content": "Paid subscriptions are monthly, in Brazilian reais, and renew automatically until canceled. The base fee is charged at the start of the cycle and overage is charged after use; late authorizations may result in a later charge for the original period. Stripe processes payments, and activation requires payment confirmation. The current offer does not include annual subscriptions or prepaid packs. Plan changes and cancellation to return to Free take effect at the end of the current period, without immediate proration of the base fee. Use the subscription options and billing portal in the dashboard; stopping account use does not cancel a subscription. After a failed renewal, paid issuance may remain available for up to seven days after the paid period ends, depending on subscription status, and may then be blocked. Cancellation does not remove charges for usage already incurred. Send refund requests or billing disputes to the contact in these Terms; mandatory statutory rights remain protected, including withdrawal rights where applicable."
+        "content": "Plans are sold in Brazilian reais, on a monthly or annual cycle. Monthly renews automatically until cancelled (card, through Stripe, or Pix Automático, through Woovi). Annual is paid at once with 30% off the monthly price and does not renew on its own. Single invoices and the annual plan can also be paid by Pix (one-time charge, valid for 24 hours) or card. Activation depends on payment confirmation. While a paid plan is active, a new plan can only be bought at renewal; single invoices can be bought at any time. Plan changes and cancellation take effect at the end of the current period, without proration. For Pix Automático, cancelling in the dashboard stops future charges and keeps the period already paid. If a renewal fails, plan issuing may continue for up to seven days after the paid period ends and then be blocked; single invoices stay available. Not using the account does not cancel the subscription. Refund or dispute requests can be sent to the contact in these Terms; mandatory statutory rights remain, including the right of withdrawal where applicable."
       },
       "s10": {
         "title": "10. Fiscal documents and retention",
@@ -1134,7 +1127,8 @@
     },
     "table": {
       "id": "ID",
-      "customer": "Customer", "number": "No.",
+      "customer": "Customer",
+      "number": "No.",
       "amount": "Amount",
       "status": "Status",
       "created": "Created"
@@ -1256,11 +1250,9 @@
     "manage": "Manage billing",
     "liveOnly": "To subscribe, change your plan or manage billing, switch to the production environment.",
     "allowance": "{count} invoices / month",
-    "overage": "{price} per extra invoice",
     "scheduled": "Switching to {plan} on {date}",
     "cancelsAtEnd": "Cancels at the end of the period",
     "blocked": "Billing is blocked. Update your payment method to keep issuing invoices.",
-    "overageUsed": "{count} extra invoices this period ({price})",
     "redirecting": "Redirecting to checkout…",
     "changeScheduled": "Plan change scheduled for {date}.",
     "changeScheduledNoDate": "Plan change scheduled.",
@@ -1296,6 +1288,87 @@
       "back": "Back to billing",
       "ctaIssue": "Issue an invoice",
       "failedNote": "If you were charged and this persists, contact support."
+    },
+    "checkout": {
+      "title": "Complete purchase",
+      "method": "Payment method",
+      "pix": "Pix",
+      "card": "Card",
+      "payerName": "Full name or company name",
+      "payerTaxId": "CPF or CNPJ",
+      "payerHint": "Required to authorize the monthly Pix in your bank app.",
+      "pay": "Continue",
+      "pixScan": "Scan with your bank app",
+      "pixAuthorize": "Open the link to authorize Pix Automático in your bank app.",
+      "pixCopy": "Copy Pix code",
+      "pixCopied": "Code copied",
+      "pixOpenLink": "Open payment link",
+      "pixWaiting": "As soon as the payment is confirmed, your plan or invoices are released automatically.",
+      "pixExpires": "Valid for 24 hours.",
+      "summaryPlanMonthly": "{name} plan, monthly",
+      "summaryPlanAnnual": "{name} plan, annual",
+      "summaryAvulso": "{count} single invoices",
+      "total": "Total",
+      "totalAnnualNote": "billed once a year",
+      "pixDesc": "Approved instantly. The code is valid for 24 hours.",
+      "cardDesc": "Secure payment through Stripe.",
+      "pixOrCopy": "or copy the Pix code",
+      "pixCode": "Pix copy and paste code",
+      "expiresIn": "Expires in {time}",
+      "waiting": "Waiting for payment…",
+      "confirmed": "Payment confirmed",
+      "confirmedAvulso": "Your {count} single invoices are in your balance.",
+      "confirmedPlan": "Your {name} plan is active.",
+      "done": "Done",
+      "authorizeTitle": "Authorize in your bank app",
+      "authorizeBody": "Open the link and approve Pix Automático. The first charge goes out as soon as you authorize.",
+      "authorizeOpen": "Open authorization",
+      "expired": "This code expired. Close and generate a new one.",
+      "payerEmail": "E-mail",
+      "payerPhone": "Phone with area code"
+    },
+    "avulso": {
+      "title": "Single invoices",
+      "description": "Need more? Buy them at R$ 0.99 each, from 3. They never expire and are used after your plan quota.",
+      "balance": "Single invoices available: {count}",
+      "units": "How many invoices?",
+      "total": "Total: {total}",
+      "buy": "Buy invoices",
+      "minimum": "Minimum 3 invoices."
+    },
+    "choose": "Choose plan",
+    "blockedBuy": "You are out of quota. Buy single invoices or change plan to keep issuing.",
+    "pixActive": "Your plan is charged monthly through Pix Automático.",
+    "pixCancel": "Cancel Pix Automático",
+    "pixCancelled": "Pix Automático cancelled. Your plan stays active until the paid period ends.",
+    "summary": {
+      "available": "Available to issue",
+      "planLine": "Plan: {left} of {total}",
+      "avulsoLine": "Single: {count}",
+      "paidUntil": "Paid until {date}",
+      "periodLine": "Period {start} to {end}",
+      "companiesLine": "{count, plural, one {# active company} other {# active companies}}",
+      "noPlanHint": "No plan: you use your single invoices.",
+      "companiesLimited": "{count} of {max, plural, one {# active company} other {# active companies}}"
+    },
+    "pix": {
+      "pendingTitle": "Pix Automático waiting for authorization",
+      "pendingBody": "Open the QR code, authorize in your bank app and pay the first charge. Until then the plan is not active yet.",
+      "viewQr": "View QR code",
+      "cancelAuthorization": "Cancel authorization",
+      "activeTitle": "Pix Automático active",
+      "activeBody": "The plan is charged every month through Pix. You can cancel any time; the period already paid stays valid."
+    },
+    "history": {
+      "title": "Payments",
+      "empty": "No payments yet.",
+      "avulso": "{count} single invoices",
+      "plan": "{name} plan, {cycle}",
+      "monthly": "monthly",
+      "annual": "annual",
+      "pix": "Pix",
+      "card": "Card",
+      "loadFailed": "Could not load your payments."
     }
   },
   "Session": {
@@ -1411,7 +1484,8 @@
     "simplesRateRequired": "Enter the effective Simples rate.",
     "rateInvalid": "Enter a number, for example 6.54.",
     "rateRange": "The rate must be between 0 and 100.",
-    "rateDecimals": "Use at most 2 decimal places."
+    "rateDecimals": "Use at most 2 decimal places.",
+    "companyLimit": "Without a plan the account can have 1 company. Subscribe to a plan for unlimited companies."
   },
   "CompanyDetail": {
     "fiscalAdvanced": "Advanced mode (accountant)",
@@ -2057,13 +2131,8 @@
   },
   "LandingAgents": {
     "eyebrow": "AI AGENTS",
-    "title": "Your AI agents can issue invoices.",
-    "description": "Connect Claude, Cursor or Codex to Corvo through MCP. Ask in plain language and the invoice goes out, with the same tax rules as the API.",
-    "points": {
-      "connect": "One command to connect, no key to copy.",
-      "approve": "You approve in the browser and pick test or production.",
-      "rules": "Same tax validation, email and webhooks as the API."
-    },
+    "title": "Ask in plain words. The invoice goes out.",
+    "description": "Connect Claude, Cursor or Codex to Corvo over MCP. The agent issues, calculates, cancels and looks up invoices under the same fiscal rules as the API. You approve in the browser and pick test or production.",
     "connectLabel": "CONNECT WITH ONE COMMAND",
     "copy": "Copy",
     "copied": "Copied",
@@ -2084,7 +2153,30 @@
         "queued": "Queued",
         "authorized": "Authorized"
       }
-    }
+    },
+    "asksLabel": "WHAT YOU CAN ASK",
+    "asks": [
+      {
+        "say": "How much ISS will a R$ 3,000 consulting invoice come to?",
+        "tool": "nfse_calculate"
+      },
+      {
+        "say": "Issue these 12 invoices from the spreadsheet, one per client.",
+        "tool": "nfse_issue_batch"
+      },
+      {
+        "say": "Cancel the Padaria Estrela invoice. The amount was wrong.",
+        "tool": "nfse_cancel"
+      },
+      {
+        "say": "Send me the PDF of the invoice I issued yesterday.",
+        "tool": "nfse_get_download_url"
+      },
+      {
+        "say": "Which invoices are still pending this week?",
+        "tool": "nfse_list"
+      }
+    ]
   },
   "LandingSdks": {
     "eyebrow": "SDKS",
@@ -2308,7 +2400,7 @@
       },
       "companies": {
         "q": "Can I issue invoices for more than one CNPJ on Corvo?",
-        "a": "Yes. Corvo's Free plan includes 1 company. Paid plans allow unlimited companies, each with its own certificate and its own usage, without building a new integration for each one.",
+        "a": "Yes. The recurring plans (Solo, Equipe, Empresa and Escala) have unlimited companies, each with its own certificate and its own usage, without building a new integration for each one. With single invoices only, no plan, the account has 1 company.",
         "link": "See the plans"
       },
       "payments": {

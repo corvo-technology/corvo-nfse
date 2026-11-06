@@ -21,6 +21,9 @@ export function LandingPage() {
       <Nav />
       <main>
         <Hero />
+        <ScrollReveal>
+          <AgentsSection />
+        </ScrollReveal>
         <DashboardShowcase />
         <ScrollReveal>
           <MultiCompanySection />
@@ -30,9 +33,6 @@ export function LandingPage() {
         </ScrollReveal>
         <IntegrationsSection />
         <SdksSection />
-        <ScrollReveal>
-          <AgentsSection />
-        </ScrollReveal>
         <FreeTrial />
         <Pricing />
         <ScrollReveal>

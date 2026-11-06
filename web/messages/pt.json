@@ -74,7 +74,12 @@
     "buyCredits": "Comprar créditos →",
     "signOut": "Sair",
     "creditsLabel": "Créditos do mês",
-    "creditsUsed": "{used} de {total} usados"
+    "creditsUsed": "{used} de {total} usados",
+    "notesAvailable": "Notas disponíveis",
+    "planLine": "Plano: {left} de {total}",
+    "avulsoLine": "Avulsas: {count}",
+    "buyNotes": "Comprar notas",
+    "manageBilling": "Plano e uso"
   },
   "Topbar": {
     "docs": "Docs",
@@ -132,7 +137,8 @@
       "authorized": "Autorizadas",
       "rejected": "Rejeitadas",
       "processing": "Em processamento",
-      "credits": "Créditos"
+      "credits": "Notas disponíveis",
+      "notesHint": "Plano + notas avulsas"
     },
     "newInvoice": "Nova nota",
     "invoicesPerDay": "Notas por dia",
@@ -525,19 +531,31 @@
     }
   },
   "Settings": {
-    "portalDescription": "Gerencie forma de pagamento, faturas e assinatura no portal da Stripe.",
-    "portalNoSubscription": "Assine um plano na página de Cobrança para gerenciar os pagamentos aqui.",
-    "portalNoPermission": "Só membros com permissão de cobrança podem abrir o portal de pagamentos.",
-    "goToBilling": "Ir para Cobrança",
     "title": "Configurações",
     "subtitle": "Configurações de ambiente e faturamento.",
     "billing": "Faturamento",
-    "stripeEnding": "····4242",
     "visa": "Visa",
     "receiptsTo": "Recibos enviados para financeiro@acme.com",
     "openStripePortal": "Abrir portal do Stripe",
     "deleteWorkspace": "Excluir workspace",
-    "deleteWorkspaceDesc": "Remover permanentemente este workspace e todos os seus dados. Esta ação não pode ser desfeita."
+    "deleteWorkspaceDesc": "Remover permanentemente este workspace e todos os seus dados. Esta ação não pode ser desfeita.",
+    "payments": {
+      "title": "Pagamentos",
+      "card": {
+        "title": "Cartão (Stripe)",
+        "available": "Gerencie cartão, faturas e recibos no portal da Stripe."
+      },
+      "pix": {
+        "title": "Pix",
+        "pending": "O Pix Automático aguarda a sua autorização no app do banco.",
+        "active": "Pix Automático ativo: o plano é cobrado todo mês.",
+        "viewQr": "Ver QR Code na Cobrança"
+      },
+      "permissionHint": "Só membros com permissão de cobrança podem gerenciar os pagamentos.",
+      "loadFailed": "Não foi possível carregar os pagamentos.",
+      "elsewhere": "Os pagamentos e o histórico ficam na Cobrança.",
+      "openBilling": "Abrir Cobrança"
+    }
   },
   "Members": {
     "inviteUnavailable": "Convites estão desativados por enquanto.",
@@ -616,7 +634,7 @@
       "github_auth_failed": "Falha no login com GitHub. Por favor, tente novamente.",
       "socialFailed": "Falha no login social. Por favor, tente novamente.",
       "expiredCode": "Código expirado. Solicite um novo.",
-      "workspaceConflict": "Este e-mail não pode criar outro workspace Free. Entre com uma conta com membership ativo.",
+      "workspaceConflict": "Não foi possível criar o workspace. Entre com uma conta que já tenha acesso ativo.",
       "invalidEmail": "Informe um e-mail válido.",
       "oauth_failed": "Não foi possível entrar com o provedor. Tente novamente ou use o código por e-mail.",
       "oauth_denied": "Você cancelou o login. Escolha outra forma de entrar quando quiser.",
@@ -641,10 +659,10 @@
         "desc": "Respostas estruturadas, exemplos em Node, Python e Go."
       }
     },
-    "freeCreditsTag": "15 NOTAS GRÁTIS POR MÊS",
+    "freeCreditsTag": "PRIMEIRA NOTA GRÁTIS",
     "headline": "Da primeira emissão à nota fiscal em minutos.",
     "afterSignup": "APÓS O CADASTRO",
-    "footerNote": "Sem cartão de crédito. Sem contrato. 15 notas grátis para começar.",
+    "footerNote": "Sem cartão de crédito. Sem contrato. A primeira nota é grátis.",
     "magicLink": {
       "sendCode": "Enviar código",
       "sending": "Enviando...",
@@ -665,7 +683,7 @@
     "subtitle": "A Corvo é uma API REST e um servidor MCP para emitir NFS-e (nota fiscal de serviço) no padrão nacional do Brasil, para empresas MEI e do Simples Nacional. Feita para agentes de IA, desenvolvedores, SaaS e ERPs.",
     "startFree": "Começar grátis",
     "viewDocs": "Ver documentação",
-    "mono": "15 notas grátis por mês. Sem cartão de crédito."
+    "mono": "A primeira nota é grátis. Sem cartão de crédito."
   },
   "Nav": {
     "product": "Produto",
@@ -681,151 +699,126 @@
   },
   "FreeTrial": {
     "eyebrow": "COMEÇAR GRÁTIS",
-    "title": "15 notas fiscais grátis por mês",
+    "title": "1 nota fiscal grátis para começar",
     "subtitle": "Sem cartão de crédito.",
-    "description": "Integre a emissão de NFS-e ao seu produto com até 15 notas autorizadas por mês, para uma empresa. A cota renova no primeiro dia de cada mês.",
+    "description": "Crie a conta, integre e emita a primeira NFS-e em produção sem pagar. Depois, escolha um plano ou compre notas avulsas a R$ 0,99, a partir de 3.",
     "startFree": "Começar grátis",
-    "finePrint": "Limite de 3 emissões por dia em produção. Cotas em UTC, sem acúmulo. Testes não consomem a cota."
+    "finePrint": "Uma nota grátis por pessoa. Notas de teste (homologação) nunca consomem cota.",
+    "points": {
+      "test": {
+        "title": "Teste antes de pagar",
+        "body": "A homologação, o ambiente de testes da prefeitura, é grátis e ilimitada. Emita notas de teste à vontade antes de ir para produção."
+      },
+      "certificate": {
+        "title": "Certificado guardado com cuidado",
+        "body": "O certificado A1 fica criptografado em repouso com AES-256-GCM."
+      }
+    }
   },
   "Pricing": {
     "eyebrow": "PREÇOS",
     "title": "Preços simples. Sem surpresas.",
-    "description": "Comece grátis e escolha um plano que acompanha o volume de notas do seu produto.",
-    "credits": "notas / mês",
-    "mostPopular": "MAIS POPULAR",
-    "bestFor": "IDEAL PARA",
-    "includes": "INCLUÍDO",
-    "comingSoon": "Em breve",
-    "buyCredits": "Escolher plano",
-    "monthly": "Mensal",
+    "description": "A primeira nota é grátis. Depois, escolha um plano ou compre notas avulsas.",
+    "cycle": {
+      "label": "Ciclo de cobrança",
+      "monthly": "Mensal",
+      "annual": "Anual",
+      "annualBadge": "30% off"
+    },
     "perMonth": "/mês",
-    "overagePerNote": "{price} por nota excedente",
-    "recommended": "Recomendado",
-    "calculator": {
-      "title": "Quanto você emite por mês?",
-      "placeholder": "Ex: 500",
-      "button": "Ver plano ideal",
-      "result": "Plano recomendado:",
-      "overage": "Notas acima da cota:",
-      "custoExcedente": "Custo excedente:",
-      "totalEstimado": "Total estimado:",
-      "porMes": "/mês",
-      "free": {
-        "label": "Plano gratuito",
-        "description": "15 notas por mês, limite de 3 por dia."
-      },
-      "custom": {
-        "label": "Fale conosco",
-        "description": "Volumes acima de 10.000 notas/mês."
-      }
-    },
-    "footnote": "Cotas mensais, sem acúmulo. No Free, renovação no primeiro dia do mês em UTC; nos pagos, pelo ciclo da assinatura. Excedentes autorizados em produção são cobrados à parte, até o limite de processamento do plano.",
-    "allPlans": "Todos os planos",
-    "plans": {
-      "free": {
-        "name": "FREE",
-        "credits": "15",
-        "price": "R$ 0",
-        "unit": "",
-        "bestFor": "Testar a API e validar a integração.",
-        "includes": {
-          "nfse": "Emissão de NFS-e via API",
-          "companies": "1 empresa",
-          "dailyLimit": "3 notas por dia",
-          "email": "Envio por e-mail",
-          "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
-        }
-      },
-      "developer": {
-        "name": "DEVELOPER",
-        "badge": "Melhor custo-benefício",
-        "credits": "200",
-        "price": "R$ 29,90",
-        "unit": "",
-        "bestFor": "Para começar a emitir NFS-e em qualquer número de empresas.",
-        "includes": {
-          "nfse": "Emissão de NFS-e via API",
-          "companies": "Empresas ilimitadas",
-          "email": "Envio por e-mail",
-          "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
-        }
-      },
-      "growth": {
-        "name": "GROWTH",
-        "badge": "Mais popular",
-        "credits": "850",
-        "price": "R$ 99,90",
-        "unit": "",
-        "bestFor": "Operações em crescimento com mais volume.",
-        "includes": {
-          "nfse": "Emissão de NFS-e via API",
-          "companies": "Empresas ilimitadas",
-          "email": "Envio por e-mail",
-          "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
-        }
-      },
-      "scale": {
-        "name": "SCALE",
-        "credits": "3.000",
-        "price": "R$ 299,90",
-        "unit": "",
-        "bestFor": "Plataformas e operações de alto volume.",
-        "includes": {
-          "nfse": "Emissão de NFS-e via API",
-          "companies": "Empresas ilimitadas",
-          "email": "Envio por e-mail",
-          "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
-        }
-      },
-      "volume": {
-        "name": "VOLUME",
-        "credits": "10.000",
-        "price": "R$ 699,90",
-        "unit": "",
-        "bestFor": "Maior volume e operações multiempresa.",
-        "includes": {
-          "nfse": "Emissão de NFS-e via API",
-          "companies": "Empresas ilimitadas",
-          "email": "Envio por e-mail",
-          "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
-        }
-      }
-    },
-    "fromPrice": "a partir de",
-    "perExtra": "por nota extra",
-    "ctaFree": "Começar grátis",
-    "ctaPaid": "Escolher plano",
-    "slider": {
-      "label": "Notas por mês",
-      "unit": "notas / mês",
-      "summaryPre": "Melhor plano para você:",
-      "summaryFree": "Cabe no plano gratuito. Sem cartão de crédito."
-    },
-    "breakdown": {
-      "free": "Grátis, limite de 3 por dia",
-      "plan": "Plano",
-      "extra": "notas extras",
-      "atVolume": "Com {volume} notas:",
-      "capped": "Limitado a {max} notas/mês",
-      "notes": "notas"
-    },
-    "effective": "Custo efetivo:",
-    "perNoteShort": "por nota",
+    "notesPerMonth": "{count} notas por mês",
+    "billedOnce": "{total} cobrados uma vez por ano",
     "currentPlan": "Seu plano",
+    "ctaPaid": "Escolher plano",
+    "plans": {
+      "solo": {
+        "name": "SOLO",
+        "bestFor": "Para quem emite poucas notas por mês.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Empresas ilimitadas",
+          "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      },
+      "equipe": {
+        "name": "EQUIPE",
+        "bestFor": "Para equipes que emitem com frequência.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Empresas ilimitadas",
+          "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        },
+        "badge": "Mais popular"
+      },
+      "empresa": {
+        "name": "EMPRESA",
+        "bestFor": "Para empresas com volume recorrente.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Empresas ilimitadas",
+          "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      },
+      "escala": {
+        "name": "ESCALA",
+        "bestFor": "Para alto volume de emissão.",
+        "includes": {
+          "nfse": "Emissão de NFS-e via API",
+          "companies": "Empresas ilimitadas",
+          "email": "Envio por e-mail",
+          "mcp": "Agentes de IA via MCP",
+          "webhooks": "Webhooks de status",
+          "downloads": "Download XML e PDF"
+        }
+      }
+    },
     "included": {
       "label": "Todos os planos incluem",
       "mcp": "MCP para agentes de IA",
       "email": "Envio da nota por e-mail"
+    },
+    "freeNote": "Sua primeira nota é grátis, sem cartão de crédito.",
+    "avulso": {
+      "title": "Notas avulsas",
+      "description": "Sem plano: {price} por nota, a partir de {min} notas. As notas não expiram.",
+      "units": "Quantas notas?",
+      "total": "Total",
+      "buy": "Comprar notas",
+      "minimum": "Mínimo de {min} notas.",
+      "balance": "Notas avulsas disponíveis"
+    },
+    "calculator": {
+      "title": "Quantas notas você emite por mês?",
+      "label": "Quantas notas por mês?",
+      "result": "Melhor opção",
+      "plan": "Plano {name}",
+      "avulsoOnly": "Só notas avulsas",
+      "extra": "+ {count} notas avulsas",
+      "total": "Total por mês",
+      "others": "Outras opções",
+      "unit": "notas / mês",
+      "slider": "Ajustar notas por mês",
+      "zoneAvulso": "AVULSO"
+    },
+    "footnote": "Cotas mensais, sem acúmulo. O que passar da cota você compra como nota avulsa, ou troca de plano.",
+    "featured": {
+      "recommended": "Recomendado",
+      "avulsoName": "NOTAS AVULSAS",
+      "avulsoBestFor": "Sem plano e sem mensalidade. Paga só o que usa, a partir de 3.",
+      "effective": "Custo efetivo:",
+      "perNote": "por nota",
+      "planLine": "Plano · {count} notas",
+      "allPlans": "TODOS OS PLANOS",
+      "avulsoCompanies": "Sem plano: 1 empresa. Os planos recorrentes têm empresas ilimitadas."
     }
   },
   "Flow": {
@@ -895,7 +888,7 @@
     "description": "Uma integração para automatizar a emissão de NFS-e e acompanhar o crescimento do seu produto.",
     "ctaPrimary": "Começar grátis",
     "ctaSecondary": "Explorar API",
-    "subtext": "15 notas gratuitas por mês para começar."
+    "subtext": "A primeira nota é grátis. Homologação sempre grátis."
   },
   "Footer": {
     "brand": "© Corvo. Todos os direitos reservados.",
@@ -950,19 +943,19 @@
       },
       "s6": {
         "title": "6. Uso permitido e prevenção de abuso",
-        "content": "Não use o Serviço para emitir documentos falsos, agir sem autorização de uma empresa, praticar fraude, enviar spam, distribuir conteúdo ilegal ou violar direitos de terceiros. Não tente contornar cotas, limites de empresas, limites de requisições, controles de acesso ou regras de elegibilidade do plano Free, inclusive por meio de contas ou workspaces criados para esse fim. Não compartilhe acesso à API fora das permissões contratadas nem interfira na operação do Serviço ou dos sistemas fiscais integrados."
+        "content": "Não use o Serviço para emitir documentos falsos, agir sem autorização de uma empresa, praticar fraude, enviar spam, distribuir conteúdo ilegal ou violar direitos de terceiros. Não tente contornar cotas, limites de empresas, limites de requisições, controles de acesso ou regras de elegibilidade da primeira nota grátis, inclusive por meio de contas ou workspaces criados para esse fim. Não compartilhe acesso à API fora das permissões contratadas nem interfira na operação do Serviço ou dos sistemas fiscais integrados."
       },
       "s7": {
         "title": "7. Planos, cotas e renovação",
-        "content": "Os planos definem a cota mensal de notas, o limite de empresas ativas e os limites de uso apresentados na oferta e no painel. O Free permite uma empresa ativa e até 15 notas autorizadas em produção por mês, com limite de 3 por dia. Sua cota renova no primeiro dia de cada mês; os limites mensal e diário seguem UTC. Nos planos pagos, a cota acompanha o período mensal da assinatura informado no painel. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas não utilizadas não acumulam nem se convertem em dinheiro. Ao atingir um limite, novas solicitações podem ser bloqueadas até a renovação ou a contratação de capacidade compatível."
+        "content": "Os planos Solo, Equipe, Empresa e Escala definem a cota mensal de notas, apresentada na oferta e no painel. Cada conta recebe uma primeira nota grátis, uma única vez e sem renovação, e não precisa ter plano para emitir. Notas de teste (homologação) são grátis, ilimitadas e não consomem cota. Nos planos pagos, a cota acompanha o período mensal informado no painel; no plano anual, a cota renova todo mês durante os 12 meses. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas do plano não utilizadas não acumulam nem se convertem em dinheiro. Ao esgotar a cota, a emissão é bloqueada até a renovação, a troca de plano ou a compra de notas avulsas. Sem plano (apenas notas avulsas) a conta pode ter 1 empresa ativa em produção; os planos recorrentes permitem empresas ilimitadas."
       },
       "s8": {
-        "title": "8. Como o consumo e os excedentes são calculados",
-        "content": "Cada NFS-e autorizada em produção conta como uma unidade de consumo. Ao receber uma solicitação, a Corvo reserva capacidade enquanto a emissão está em andamento. Emissões rejeitadas ou que terminem com falha liberam essa reserva; notas ainda em processamento podem reduzir temporariamente a capacidade disponível. Se a autorização ocorrer após a virada do ciclo, o consumo permanece no período em que foi reservado. O Free não permite excedentes pagos. Nos planos pagos, notas autorizadas acima da cota geram cobrança adicional pelo valor unitário do plano, dentro do limite total mensal de processamento de cinco vezes a cota incluída. Consulte consumo, reservas e estimativa de excedentes no painel."
+        "title": "8. Como o consumo e as notas avulsas funcionam",
+        "content": "Cada NFS-e autorizada em produção consome uma nota. Ao receber uma solicitação, a Corvo reserva uma nota enquanto a emissão está em andamento: primeiro da cota do plano e, se ela acabou, do saldo de notas avulsas. Emissões rejeitadas ou que terminem com falha devolvem a reserva; notas ainda em processamento podem reduzir temporariamente a capacidade disponível. Se a autorização ocorrer após a virada do ciclo, o consumo permanece no período em que foi reservado. Não há cobrança de excedente: nada é cobrado por uso além da cota. Notas avulsas custam R$ 0,99 cada, em compras de no mínimo 3, não expiram e são usadas depois da cota do plano."
       },
       "s9": {
         "title": "9. Cobrança, mudanças de plano e cancelamento",
-        "content": "As assinaturas pagas são mensais, em reais, com renovação automática até o cancelamento. A mensalidade é cobrada no início do ciclo e os excedentes são cobrados após o consumo; autorizações concluídas tardiamente podem gerar cobrança posterior referente ao período original. O pagamento é processado pela Stripe e a ativação depende da confirmação do pagamento. A oferta atual não inclui assinatura anual nem compra de pacotes pré-pagos. Mudanças de plano e cancelamento para retorno ao Free têm efeito ao final do período vigente, sem ajuste proporcional imediato da mensalidade. Use as opções de assinatura e o portal de cobrança no painel; deixar de usar a conta não cancela a assinatura. Em caso de falha de renovação, a emissão paga pode continuar por até sete dias após o fim do período pago, conforme o status da assinatura, e depois ser bloqueada. O cancelamento não elimina cobranças por consumo já realizado. Solicitações de reembolso ou contestação podem ser enviadas ao contato destes Termos; os direitos obrigatórios previstos em lei permanecem assegurados, inclusive o direito de arrependimento quando aplicável."
+        "content": "Os planos são vendidos em reais, no ciclo mensal ou anual. O mensal é renovado automaticamente até o cancelamento (cartão, pelo Stripe, ou Pix Automático, pela Woovi). O anual é pago de uma vez, com 30% de desconto sobre o valor mensal, e não renova sozinho. Notas avulsas e o plano anual também podem ser pagos por Pix (cobrança única, válida por 24 horas) ou cartão. A ativação depende da confirmação do pagamento. Enquanto houver um plano pago ativo, um novo plano só pode ser contratado na renovação; notas avulsas podem ser compradas a qualquer momento. Mudanças de plano e cancelamento têm efeito ao final do período vigente, sem ajuste proporcional. No Pix Automático, o cancelamento pelo painel interrompe as próximas cobranças e mantém o período já pago. Em caso de falha de renovação, a emissão pelo plano pode continuar por até sete dias após o fim do período pago e depois ser bloqueada; notas avulsas continuam disponíveis. Deixar de usar a conta não cancela a assinatura. Solicitações de reembolso ou contestação podem ser enviadas ao contato destes Termos; os direitos obrigatórios previstos em lei permanecem assegurados, inclusive o direito de arrependimento quando aplicável."
       },
       "s10": {
         "title": "10. Documentos fiscais e guarda",
@@ -1134,7 +1127,8 @@
     },
     "table": {
       "id": "ID",
-      "customer": "Cliente", "number": "Nº",
+      "customer": "Cliente",
+      "number": "Nº",
       "amount": "Valor",
       "status": "Status",
       "created": "Criada"
@@ -1256,11 +1250,9 @@
     "manage": "Gerenciar cobrança",
     "liveOnly": "Para assinar, alterar seu plano ou gerenciar a cobrança, selecione o ambiente de produção.",
     "allowance": "{count} notas / mês",
-    "overage": "{price} por nota extra",
     "scheduled": "Mudança para {plan} em {date}",
     "cancelsAtEnd": "Cancela ao fim do período",
     "blocked": "A cobrança está bloqueada. Atualize a forma de pagamento para continuar emitindo notas.",
-    "overageUsed": "{count} notas extras neste período ({price})",
     "redirecting": "Redirecionando para o checkout…",
     "changeScheduled": "Mudança de plano agendada para {date}.",
     "changeScheduledNoDate": "Mudança de plano agendada.",
@@ -1296,6 +1288,87 @@
       "back": "Voltar para cobrança",
       "ctaIssue": "Emitir uma nota",
       "failedNote": "Se houve cobrança e isso persistir, fale com o suporte."
+    },
+    "checkout": {
+      "title": "Finalizar compra",
+      "method": "Forma de pagamento",
+      "pix": "Pix",
+      "card": "Cartão",
+      "payerName": "Nome completo ou razão social",
+      "payerTaxId": "CPF ou CNPJ",
+      "payerHint": "Necessário para autorizar o Pix mensal no app do seu banco.",
+      "pay": "Continuar",
+      "pixScan": "Escaneie com o app do seu banco",
+      "pixAuthorize": "Abra o link para autorizar o Pix Automático no app do seu banco.",
+      "pixCopy": "Copiar código Pix",
+      "pixCopied": "Código copiado",
+      "pixOpenLink": "Abrir link de pagamento",
+      "pixWaiting": "Assim que o pagamento for confirmado, seu plano ou suas notas são liberados automaticamente.",
+      "pixExpires": "Válido por 24 horas.",
+      "summaryPlanMonthly": "Plano {name}, mensal",
+      "summaryPlanAnnual": "Plano {name}, anual",
+      "summaryAvulso": "{count} notas avulsas",
+      "total": "Total",
+      "totalAnnualNote": "cobrados uma vez por ano",
+      "pixDesc": "Aprova na hora. O código vale por 24 horas.",
+      "cardDesc": "Pagamento seguro pelo Stripe.",
+      "pixOrCopy": "ou copie o código Pix",
+      "pixCode": "Código Pix copia e cola",
+      "expiresIn": "Expira em {time}",
+      "waiting": "Aguardando o pagamento…",
+      "confirmed": "Pagamento confirmado",
+      "confirmedAvulso": "Suas {count} notas avulsas já estão no saldo.",
+      "confirmedPlan": "Seu plano {name} está ativo.",
+      "done": "Concluir",
+      "authorizeTitle": "Autorize no app do seu banco",
+      "authorizeBody": "Abra o link e aprove o Pix Automático. A primeira cobrança sai assim que você autorizar.",
+      "authorizeOpen": "Abrir autorização",
+      "expired": "Este código expirou. Feche e gere outro.",
+      "payerEmail": "E-mail",
+      "payerPhone": "Telefone com DDD"
+    },
+    "avulso": {
+      "title": "Notas avulsas",
+      "description": "Precisa de mais notas? Compre a R$ 0,99 cada, a partir de 3. Elas não expiram e são usadas depois da cota do plano.",
+      "balance": "Notas avulsas disponíveis: {count}",
+      "units": "Quantas notas?",
+      "total": "Total: {total}",
+      "buy": "Comprar notas",
+      "minimum": "Mínimo de 3 notas."
+    },
+    "choose": "Escolher plano",
+    "blockedBuy": "Sua cota acabou. Compre notas avulsas ou mude de plano para continuar emitindo.",
+    "pixActive": "Seu plano é cobrado todo mês por Pix Automático.",
+    "pixCancel": "Cancelar Pix Automático",
+    "pixCancelled": "Pix Automático cancelado. O plano segue ativo até o fim do período pago.",
+    "summary": {
+      "available": "Disponíveis para emitir",
+      "planLine": "Plano: {left} de {total}",
+      "avulsoLine": "Avulsas: {count}",
+      "paidUntil": "Pago até {date}",
+      "periodLine": "Período {start} a {end}",
+      "companiesLine": "{count, plural, one {# empresa ativa} other {# empresas ativas}}",
+      "noPlanHint": "Sem plano: você usa as notas avulsas.",
+      "companiesLimited": "{count} de {max, plural, one {# empresa ativa} other {# empresas ativas}}"
+    },
+    "pix": {
+      "pendingTitle": "Pix Automático aguardando autorização",
+      "pendingBody": "Abra o QR Code, autorize no app do seu banco e pague a primeira cobrança. Até lá, o plano ainda não está ativo.",
+      "viewQr": "Ver QR Code",
+      "cancelAuthorization": "Cancelar autorização",
+      "activeTitle": "Pix Automático ativo",
+      "activeBody": "O plano é cobrado todo mês no Pix. Você pode cancelar quando quiser; o período já pago continua valendo."
+    },
+    "history": {
+      "title": "Pagamentos",
+      "empty": "Nenhum pagamento ainda.",
+      "avulso": "{count} notas avulsas",
+      "plan": "Plano {name}, {cycle}",
+      "monthly": "mensal",
+      "annual": "anual",
+      "pix": "Pix",
+      "card": "Cartão",
+      "loadFailed": "Não foi possível carregar os pagamentos."
     }
   },
   "Session": {
@@ -1411,7 +1484,8 @@
     "simplesRateRequired": "Informe a alíquota efetiva do Simples.",
     "rateInvalid": "Informe um número, por exemplo 6.54.",
     "rateRange": "A alíquota deve estar entre 0 e 100.",
-    "rateDecimals": "Use no máximo 2 casas decimais."
+    "rateDecimals": "Use no máximo 2 casas decimais.",
+    "companyLimit": "Sem plano a conta pode ter 1 empresa. Assine um plano para cadastrar empresas ilimitadas."
   },
   "CompanyDetail": {
     "fiscalAdvanced": "Modo avançado (contador)",
@@ -2057,13 +2131,8 @@
   },
   "LandingAgents": {
     "eyebrow": "AGENTES DE IA",
-    "title": "Seus agentes de IA podem emitir notas.",
-    "description": "Conecte o Claude, o Cursor ou o Codex à Corvo por MCP. Peça em linguagem natural e a nota sai, com as mesmas regras fiscais da API.",
-    "points": {
-      "connect": "Um comando para conectar, sem chave para copiar.",
-      "approve": "Você aprova no navegador e escolhe teste ou produção.",
-      "rules": "Mesma validação fiscal, e-mail e webhooks da API."
-    },
+    "title": "Peça em português. A nota sai.",
+    "description": "Conecte o Claude, o Cursor ou o Codex à Corvo por MCP. O agente emite, calcula, cancela e busca notas com as mesmas regras fiscais da API. Você aprova no navegador e escolhe teste ou produção.",
     "connectLabel": "CONECTE EM UM COMANDO",
     "copy": "Copiar",
     "copied": "Copiado",
@@ -2084,7 +2153,30 @@
         "queued": "Na fila",
         "authorized": "Autorizada"
       }
-    }
+    },
+    "asksLabel": "O QUE VOCÊ PODE PEDIR",
+    "asks": [
+      {
+        "say": "Quanto de ISS vai dar numa nota de R$ 3.000 de consultoria?",
+        "tool": "nfse_calculate"
+      },
+      {
+        "say": "Emite essas 12 notas da planilha, uma por cliente.",
+        "tool": "nfse_issue_batch"
+      },
+      {
+        "say": "Cancela a nota da Padaria Estrela. Saiu com o valor errado.",
+        "tool": "nfse_cancel"
+      },
+      {
+        "say": "Me manda o PDF da nota que emiti ontem.",
+        "tool": "nfse_get_download_url"
+      },
+      {
+        "say": "Quais notas ficaram pendentes esta semana?",
+        "tool": "nfse_list"
+      }
+    ]
   },
   "LandingSdks": {
     "eyebrow": "SDKS",
@@ -2308,7 +2400,7 @@
       },
       "companies": {
         "q": "Posso emitir notas para mais de um CNPJ na Corvo?",
-        "a": "Sim. O plano Free da Corvo inclui 1 empresa. Os planos pagos permitem empresas ilimitadas, cada uma com o seu certificado e o seu consumo, sem criar uma integração nova para cada uma.",
+        "a": "Sim. Os planos recorrentes (Solo, Equipe, Empresa e Escala) têm empresas ilimitadas, cada uma com o seu certificado e o seu consumo, sem criar uma integração nova para cada uma. Só com notas avulsas, sem plano, a conta tem 1 empresa.",
         "link": "Ver os planos"
       },
       "payments": {

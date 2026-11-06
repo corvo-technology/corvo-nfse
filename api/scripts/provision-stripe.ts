@@ -29,72 +29,39 @@ async function provision() {
       { name: `Corvo ${quote.name}`, metadata: { corvo_product: productKey } },
       { idempotencyKey: productKey },
     );
-    const eventName = `corvo_${quote.slug}_overage`;
-    let meter: Stripe.Billing.Meter | undefined;
-    for await (const candidate of stripe.billing.meters.list({
-      status: 'active',
-      limit: 100,
-    })) {
-      if (candidate.event_name === eventName) {
-        meter = candidate;
-        break;
-      }
-    }
-    meter ??= await stripe.billing.meters.create(
-      {
-        display_name: `Corvo ${quote.name} excedente`,
-        event_name: eventName,
-        default_aggregation: { formula: 'sum' },
-        customer_mapping: {
-          event_payload_key: 'stripe_customer_id',
-          type: 'by_id',
+    const lookup = `corvo_${quote.slug}_monthly`;
+    const amount = quote.basePriceCents;
+    const metadata = {
+      plan_slug: quote.slug,
+      kind: 'base',
+      included: String(quote.monthlyAllowance),
+      version: '2',
+    };
+    const existing = (
+      await stripe.prices.list({ lookup_keys: [lookup], limit: 100 })
+    ).data.find((p) => p.lookup_key === lookup);
+    const matches =
+      existing?.active &&
+      existing.currency === 'brl' &&
+      existing.unit_amount === amount &&
+      existing.recurring?.interval === 'month' &&
+      existing.recurring.usage_type === 'licensed';
+    if (matches) await stripe.prices.update(existing.id, { metadata });
+    else {
+      await stripe.prices.create(
+        {
+          product: product.id,
+          currency: 'brl',
+          unit_amount: amount,
+          tax_behavior: 'unspecified',
+          metadata,
+          lookup_key: lookup,
+          transfer_lookup_key: true,
+          recurring: { interval: 'month' },
         },
-        value_settings: { event_payload_key: 'value' },
-      },
-      { idempotencyKey: `corvo:meter:${quote.slug}` },
-    );
-    for (const kind of ['base', 'overage'] as const) {
-      const lookup = `corvo_${quote.slug}_${kind === 'base' ? 'monthly' : 'overage'}`;
-      const amount =
-        kind === 'base' ? quote.basePriceCents : quote.perCreditOverageCents;
-      const metadata = {
-        plan_slug: quote.slug,
-        kind,
-        included: String(quote.monthlyAllowance),
-        version: '1',
-      };
-      const existing = (
-        await stripe.prices.list({ lookup_keys: [lookup], limit: 100 })
-      ).data.find((p) => p.lookup_key === lookup);
-      const matches =
-        existing?.active &&
-        existing.currency === 'brl' &&
-        existing.unit_amount === amount &&
-        existing.recurring?.interval === 'month' &&
-        (kind === 'base'
-          ? existing.recurring.usage_type === 'licensed'
-          : existing.recurring.meter === meter.id);
-      if (matches) await stripe.prices.update(existing.id, { metadata });
-      else {
-        await stripe.prices.create(
-          {
-            product: product.id,
-            currency: 'brl',
-            unit_amount: amount,
-            tax_behavior: 'unspecified',
-            metadata,
-            lookup_key: lookup,
-            transfer_lookup_key: true,
-            recurring:
-              kind === 'base'
-                ? { interval: 'month' }
-                : { interval: 'month', usage_type: 'metered', meter: meter.id },
-          },
-          { idempotencyKey: `${lookup}:${amount}:${existing?.id ?? 'new'}` },
-        );
-        if (existing)
-          await stripe.prices.update(existing.id, { active: false });
-      }
+        { idempotencyKey: `${lookup}:${amount}:${existing?.id ?? 'new'}` },
+      );
+      if (existing) await stripe.prices.update(existing.id, { active: false });
     }
   }
   const returnUrl =
@@ -156,7 +123,7 @@ async function provision() {
     }
   }
   process.stdout.write(
-    'Configure Stripe retries, receipts and branding in the Dashboard. Prices are BRL/month; overage is charged per authorized processing.\n',
+    'Configure Stripe retries, receipts and branding in the Dashboard. Prices are BRL/month; there is no overage billing.\n',
   );
 }
 void provision().catch((error) => {

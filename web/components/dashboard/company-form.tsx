@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth";
 import { cleanTaxId, isValidCnpj, maskCnpj, maskDigits, maskState, maskZip, onlyDigits } from "@/lib/masks";
 import { lookupCep } from "@/lib/viacep";
 import { mapIssues } from "@/lib/api-errors";
+import { isCompanyLimitError } from "@/lib/api";
 import type { Company, CompanyFormInput, TaxRegime } from "@/lib/types";
 
 const posthogConfigured = Boolean(
@@ -165,7 +166,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       const { _form, ...perField } = issues;
       setFieldErrors(perField);
       if (wizard && Object.keys(perField).length > 0) setStepIndex((index) => (perField.legalName || perField.taxId ? 0 : perField.street || perField.zip || perField.city || perField.state || perField.number ? 1 : index));
-      setError(_form ?? (Object.keys(perField).length > 0 ? t("fixFields") : cause instanceof Error ? cause.message : t("failed")));
+      setError(isCompanyLimitError(cause) ? t("companyLimit") : (_form ?? (Object.keys(perField).length > 0 ? t("fixFields") : cause instanceof Error ? cause.message : t("failed"))));
     }
     finally { busy.current = false; setSaving(false); }
   }

@@ -2,7 +2,6 @@ import { CreditsService } from './credits.service';
 
 describe('CreditsService', () => {
   const tenantId = '11111111-1111-4111-8111-111111111111';
-  const freePlanId = 'free-plan-uuid';
 
   const buildCache = () => ({
     get: jest.fn().mockResolvedValue(null),
@@ -10,21 +9,8 @@ describe('CreditsService', () => {
     delete: jest.fn().mockResolvedValue(undefined),
   });
 
-  const buildPlanRepo = (overrides: Record<string, unknown> = {}) => ({
-    findActiveByTenantId: jest.fn().mockResolvedValue({
-      id: freePlanId,
-      slug: 'free',
-      name: 'Free',
-      monthlyPriceCents: 0,
-      creditUnitPriceCents: 8,
-      throughputRps: 10,
-      active: true,
-      ...overrides,
-    }),
-  });
-
   const buildTxRepo = (calculateBalanceReturn = 150) => ({
-    save: jest.fn(),
+    save: jest.fn().mockResolvedValue(undefined),
     calculateBalance: jest.fn().mockResolvedValue(calculateBalanceReturn),
     findByTenantId: jest.fn(),
   });
@@ -32,12 +18,7 @@ describe('CreditsService', () => {
   it('reads balance from the ledger and caches it on first read', async () => {
     const cache = buildCache();
     const txRepo = buildTxRepo(150);
-    const planRepo = buildPlanRepo();
-    const service = new CreditsService(
-      cache as never,
-      txRepo,
-      planRepo as never,
-    );
+    const service = new CreditsService(cache as never, txRepo);
 
     const result = await service.getBalance(tenantId);
 
@@ -58,12 +39,7 @@ describe('CreditsService', () => {
       delete: jest.fn(),
     };
     const txRepo = buildTxRepo();
-    const planRepo = buildPlanRepo();
-    const service = new CreditsService(
-      cache as never,
-      txRepo,
-      planRepo as never,
-    );
+    const service = new CreditsService(cache as never, txRepo);
 
     const result = await service.getBalance(tenantId);
 
@@ -71,61 +47,74 @@ describe('CreditsService', () => {
     expect(txRepo.calculateBalance).not.toHaveBeenCalled();
   });
 
-  it('purchaseCredits grants floor(amount/unitPrice) credits and snapshots the plan', async () => {
+  it('grantAvulso credits whole notes at R$ 0,99 and records the payment ref', async () => {
     const cache = buildCache();
     const txRepo = buildTxRepo();
-    const planRepo = buildPlanRepo({ creditUnitPriceCents: 5 });
-    const service = new CreditsService(
-      cache as never,
-      txRepo,
-      planRepo as never,
-    );
+    const service = new CreditsService(cache as never, txRepo);
 
-    // R$ 10 with Developer plan (R$ 0,05/credit) = floor(1000/5) = 200 credits
-    const result = await service.purchaseCredits(tenantId, 1000, 'avulso');
+    const result = await service.grantAvulso(tenantId, 3, 'woovi:p1');
 
-    expect(result.creditsGranted).toBe(200);
-    expect(result.unitPriceCents).toBe(5);
+    expect(result.creditsGranted).toBe(3);
     expect(txRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId,
-        amount: 200,
+        amount: 3,
         type: 'purchase',
-        amountBrlCents: 1000,
-        unitPriceCentsApplied: 5,
-        planIdSnapshot: freePlanId,
         source: 'avulso',
+        amountBrlCents: 297,
+        unitPriceCentsApplied: 99,
+        stripeSessionId: 'woovi:p1',
       }),
       tenantId,
     );
-    expect(cache.delete).toHaveBeenCalled();
+    expect(cache.delete).toHaveBeenCalledWith(`credit:balance:${tenantId}`);
   });
 
-  it('purchaseCredits refuses avulso under R$ 10', async () => {
-    const cache = buildCache();
-    const txRepo = buildTxRepo();
-    const planRepo = buildPlanRepo();
-    const service = new CreditsService(
-      cache as never,
-      txRepo,
-      planRepo as never,
-    );
+  it.each([0, 1, 2, 3.5, -4, Number.NaN])(
+    'grantAvulso refuses %s notes (minimum 3, whole numbers)',
+    async (units) => {
+      const txRepo = buildTxRepo();
+      const service = new CreditsService(buildCache() as never, txRepo);
+      await expect(service.grantAvulso(tenantId, units, 'p')).rejects.toThrow(
+        /minimum/i,
+      );
+      expect(txRepo.save).not.toHaveBeenCalled();
+    },
+  );
 
-    await expect(
-      service.purchaseCredits(tenantId, 500, 'avulso'),
-    ).rejects.toThrow(/R\$ 10/);
-    expect(txRepo.save).not.toHaveBeenCalled();
+  it('grantAvulso is idempotent per payment ref (duplicate insert is not an error)', async () => {
+    const txRepo = buildTxRepo();
+    txRepo.save.mockRejectedValueOnce(
+      Object.assign(new Error('duplicate key'), { code: '23505' }),
+    );
+    const service = new CreditsService(buildCache() as never, txRepo);
+    const result = await service.grantAvulso(tenantId, 5, 'woovi:p1');
+    expect(result.creditsGranted).toBe(0);
+  });
+
+  it('grantAvulso rethrows non-duplicate failures', async () => {
+    const txRepo = buildTxRepo();
+    txRepo.save.mockRejectedValueOnce(new Error('db down'));
+    const service = new CreditsService(buildCache() as never, txRepo);
+    await expect(service.grantAvulso(tenantId, 5, 'p')).rejects.toThrow(
+      'db down',
+    );
+  });
+
+  it('previewPurchase prices notes at R$ 0,99 and enforces the minimum', () => {
+    const service = new CreditsService(buildCache() as never, buildTxRepo());
+    expect(service.previewPurchase(10)).toEqual({
+      units: 10,
+      unitPriceCents: 99,
+      totalCents: 990,
+    });
+    expect(() => service.previewPurchase(2)).toThrow(/minimum/i);
   });
 
   it('grantBonus inserts a bonus transaction and invalidates the cache', async () => {
     const cache = buildCache();
     const txRepo = buildTxRepo();
-    const planRepo = buildPlanRepo();
-    const service = new CreditsService(
-      cache as never,
-      txRepo,
-      planRepo as never,
-    );
+    const service = new CreditsService(cache as never, txRepo);
 
     await service.grantBonus(tenantId, 50, 'Signup bonus');
 
@@ -145,12 +134,7 @@ describe('CreditsService', () => {
   it('grantBonus rejects zero-amount', async () => {
     const cache = buildCache();
     const txRepo = buildTxRepo();
-    const planRepo = buildPlanRepo();
-    const service = new CreditsService(
-      cache as never,
-      txRepo,
-      planRepo as never,
-    );
+    const service = new CreditsService(cache as never, txRepo);
 
     await expect(service.grantBonus(tenantId, 0, 'nothing')).rejects.toThrow(
       /non-zero/,

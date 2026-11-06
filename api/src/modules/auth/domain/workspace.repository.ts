@@ -9,6 +9,8 @@ export interface NewWorkspace {
   currentPeriodEnd: Date;
   role: TenantMembershipRole;
   permissions: TenantPermission[];
+  /** Credit the one-time free note together with the workspace. */
+  grantFirstFreeNote: boolean;
 }
 
 export abstract class IWorkspaceRepository {
@@ -16,9 +18,10 @@ export abstract class IWorkspaceRepository {
   abstract lockUser(userId: string): Promise<void>;
   abstract memberships(userId: string): Promise<Array<{ isActive: boolean }>>;
   abstract freePlanId(): Promise<string>;
-  abstract hasFreeWorkspaceWithEmail(
-    email: string,
-    freePlanId: string,
+  /** Atomically claims the one-time free note for this person; false if already claimed. */
+  abstract claimFirstFreeNote(
+    emailKey: string,
+    tenantId: string,
   ): Promise<boolean>;
   abstract create(workspace: NewWorkspace): Promise<void>;
 }

@@ -145,7 +145,7 @@ export const MOCK_BILLING: BillingPlan = {
   slug: "developer",
   name: "Developer",
   monthlyPriceCents: 2990,
-  subscription: { status: "active", paidUntil: null, cancelAtPeriodEnd: false, scheduledPlan: null, blocked: false },
+  subscription: { status: "active", paidUntil: null, cancelAtPeriodEnd: false, scheduledPlan: null, blocked: false, pixSubscription: null, stripePortalAvailable: false, stripeSubscription: false },
   usage: {
     creditsUsed: 87,
     creditsReserved: 3,
@@ -157,7 +157,6 @@ export const MOCK_BILLING: BillingPlan = {
     maxActiveCompanies: 999999,
     periodStart: "2026-10-01",
     periodEnd: "2026-10-31",
-    overageUnits: 0,
-    overageAmountCents: 0,
+    avulsoBalance: 0,
   },
 };

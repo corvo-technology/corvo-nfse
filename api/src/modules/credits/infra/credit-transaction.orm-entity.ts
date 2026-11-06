@@ -44,6 +44,10 @@ import {
 @Index('idx_credit_transactions_reservation', ['reservedInvoiceId'], {
   where: `"is_reservation" = true`,
 })
+@Index('uq_credit_payment_ref', ['tenantId', 'stripeSessionId'], {
+  unique: true,
+  where: `stripe_session_id IS NOT NULL AND type = 'purchase' AND created_at >= TIMESTAMPTZ '2026-11-05 00:00:00+00'`,
+})
 @Unique('uq_credit_transactions_id_tenant', ['id', 'tenantId'])
 @ManagedIndex('idx_credit_transactions_cursor', { synchronize: false })
 export class CreditTransactionOrmEntity {

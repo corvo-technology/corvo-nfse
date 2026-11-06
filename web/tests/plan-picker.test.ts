@@ -1,39 +1,45 @@
 import { describe, expect, it } from "vitest";
-import {
-  PLANS,
-  calcMonthlyTotal,
-  findPlanForVolume,
-  formatBRLPerNote,
-} from "@/components/pricing/plan-picker";
+import { AVULSO_UNIT_CENTS, PLANS, chargeTotalCents, perMonthCents, recommendForNotes } from "@/lib/plans-catalog";
+import { readPricingCatalog } from "./helpers/pricing-catalog";
 
-describe("plan picker pricing", () => {
-  it("recommends Free up to 15 monthly invoices and a paid plan from 16", () => {
-    expect(PLANS.find((plan) => plan.slug === "free")).toEqual({
-      slug: "free", credits: 15, basePriceCents: 0, perCreditCents: 0,
-    });
-    expect(findPlanForVolume(15).slug).toBe("free");
-    expect(findPlanForVolume(16).slug).toBe("developer");
-  });
-  it("picking a plan at its full allowance recommends that same plan", () => {
-    for (const plan of PLANS) {
-      expect(findPlanForVolume(plan.credits).slug).toBe(plan.slug);
+describe("plan catalog", () => {
+  it("matches the billing catalog in the API (slugs, quota, monthly and annual price)", () => {
+    const catalog = readPricingCatalog();
+    expect(catalog.map((e) => e.slug)).toEqual(PLANS.map((p) => p.slug));
+    for (const entry of catalog) {
+      const plan = PLANS.find((p) => p.slug === entry.slug)!;
+      expect([plan.credits, plan.monthlyCents, plan.annualMonthlyCents]).toEqual([entry.monthlyAllowance, entry.basePriceCents, entry.annualMonthlyCents]);
     }
   });
 
-  it("shows the real per-note cost of a full plan with sub-cent precision", () => {
-    const perNote = (slug: string) => {
-      const plan = PLANS.find((p) => p.slug === slug)!;
-      return formatBRLPerNote(calcMonthlyTotal(plan.credits, plan) / plan.credits);
-    };
-    expect(perNote("developer")).toBe("R$ 0,1495");
-    expect(perNote("growth")).toBe("R$ 0,1175");
+  it("the annual price is 30% off the monthly one, charged 12 months at once", () => {
+    for (const plan of PLANS) {
+      expect(Math.abs(plan.annualMonthlyCents / plan.monthlyCents - 0.7)).toBeLessThan(0.005);
+    }
+    const solo = PLANS[0];
+    expect(perMonthCents(solo, "annual")).toBe(4190);
+    expect(chargeTotalCents(solo, "annual")).toBe(50280);
+    expect(chargeTotalCents(solo, "monthly")).toBe(5990);
   });
 
-  it("uses two decimals once a note costs a real or more", () => {
-    expect(formatBRLPerNote(2990 / 3)).toBe("R$ 9,97");
+  it("calculator: 250 notes -> Equipe; 110 -> Solo + 10 avulso; 3 -> avulso only", () => {
+    expect(recommendForNotes(250, "monthly")!.option).toEqual({ planSlug: "equipe", avulsoUnits: 0, totalCents: 11990 });
+    expect(recommendForNotes(110, "monthly")!.option).toEqual({ planSlug: "solo", avulsoUnits: 10, totalCents: 5990 + 10 * AVULSO_UNIT_CENTS });
+    expect(recommendForNotes(3, "monthly")!.option).toEqual({ planSlug: null, avulsoUnits: 3, totalCents: 297 });
+    expect(recommendForNotes(250, "annual")!.option.totalCents).toBe(8390);
   });
 
-  it("keeps the Enterprise overage in line with the backend (R$ 0,09)", () => {
-    expect(PLANS.find((p) => p.slug === "volume")!.perCreditCents).toBe(9);
+  it.each([0, -1, 2.5, Number.NaN, 1_000_001])("calculator rejects %s notes", (notes) => {
+    expect(recommendForNotes(notes, "monthly")).toBeNull();
+  });
+
+  it("calculator never suggests fewer than 3 avulso notes (the purchase minimum)", () => {
+    expect(recommendForNotes(101, "monthly")!.option).toEqual({ planSlug: "solo", avulsoUnits: 3, totalCents: 5990 + 3 * AVULSO_UNIT_CENTS });
+    expect(recommendForNotes(2, "monthly")!.option).toEqual({ planSlug: null, avulsoUnits: 3, totalCents: 297 });
+    for (const n of [1, 2, 101, 102, 351]) {
+      const r = recommendForNotes(n, "monthly")!;
+      for (const o of [r.option, ...r.alternatives]) expect(o.avulsoUnits === 0 || o.avulsoUnits >= 3).toBe(true);
+    }
   });
 });
+

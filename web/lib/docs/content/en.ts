@@ -99,7 +99,7 @@ const enWithRetiredCredits: DocsTree = {
           ["POST", "`/v1/billing/downgrade`", "Schedule a plan change", "200"],
           ["GET", "`/v1/plans`", "List plan prices (public)", "200"],
           ["GET", "`/v1/plans/:slug`", "Fetch one plan price (public)", "200"],
-          ["GET", "`/v1/plans/quote`", "Recommend a plan for a volume (public)", "200"],
+          ["GET", "`/v1/plans/recommend`", "Recommend the cheapest way to cover N notes a month (public)", "200"],
         ],
       },
       {
@@ -1785,15 +1785,15 @@ console.log(body.data.retried); // { data: { retried: true } }`,
   headers: { "X-API-Key": process.env.CORVO_API_KEY },
 });
 const body = await res.json();
-console.log(body.data.balance); // { data: { balance, overageUnits, ... } }`,
+console.log(body.data.balance); // { data: { balance, planRemaining, avulsoBalance, hardLimit } }`,
           },
           response: {
             label: "200 OK",
             json: `{
   "data": {
     "balance": 100,
-    "overageUnits": 0,
-    "overageAmountCents": 0,
+    "planRemaining": 0,
+    "avulsoBalance": 0,
     "hardLimit": null
   }
 }`,
@@ -1820,7 +1820,7 @@ console.log(plans.length, pagination.hasMore);`,
   "data": [
     {
       "id": "3ec51af3-c715-4755-95da-c9b0951973dd",
-      "slug": "developer",
+      "slug": "solo",
       "name": "Developer",
       "description": "Start issuing NFS-e for any number of companies",
       "monthlyCreditAllowance": 200,
@@ -1846,7 +1846,7 @@ console.log(plans.length, pagination.hasMore);`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Plan fields: `id`, `slug`, `name`, `description`, `monthlyCreditAllowance`, `dailyLimit` (number or null), `maxActiveCompanies`, `creditUnitPriceCents`, `throughputRps`, `includesWebhooks`, `includesXmlDownload`, `includesPdfDownload`, `includesApiKeys`, `supportTier`, `active`, `createdAt`, `updatedAt`. Slugs defined in the domain: `free`, `developer`, `growth`, `scale`, `volume`; `supportTier`: `community`, `email`, `priority`. Use the returned catalog to identify available plans — do not hard-code prices in the integration." },
+            { kind: "callout", tone: "accent", body: "Plan fields: `id`, `slug`, `name`, `description`, `monthlyCreditAllowance`, `dailyLimit` (number or null), `maxActiveCompanies`, `creditUnitPriceCents`, `throughputRps`, `includesWebhooks`, `includesXmlDownload`, `includesPdfDownload`, `includesApiKeys`, `supportTier`, `active`, `createdAt`, `updatedAt`. Slugs defined in the domain: `solo`, `equipe`, `empresa`, `escala` (and `free`, the internal no-plan placeholder); `supportTier`: `community`, `email`, `priority`. Use the returned catalog to identify available plans — do not hard-code prices in the integration." },
           ],
         },
         {
@@ -1891,7 +1891,7 @@ console.log(txs.length, pagination.nextCursor);`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "`type`: `purchase`, `subscription_charge`, `topup`, `overage`, `invoice_authorized`, `invoice_rejected`, `expiration`, `message_sent`, `refund`, `adjustment`, `bonus`. `source`: `subscription`, `avulso`, `bonus`. Fields ending in `Cents` use cents; `amount` here is credits, not currency." },
+            { kind: "callout", tone: "warn", body: "`type`: `purchase`, `subscription_charge`, `topup`, `invoice_authorized`, `invoice_rejected`, `expiration`, `message_sent`, `refund`, `adjustment`, `bonus`. `source`: `subscription`, `avulso`, `bonus`. Fields ending in `Cents` use cents; `amount` here is credits, not currency." },
           ],
         },
         {
@@ -1900,7 +1900,7 @@ console.log(txs.length, pagination.nextCursor);`,
           path: "/v1/credits/purchase/preview",
           scopes: ["full_access"],
           success: "410 Gone",
-          summary: "Retired: one-off credit purchases were replaced by monthly subscriptions and billed overage.",
+          summary: "Retired: notes are now bought through `POST /v1/billing/checkout` with `kind: \"avulso\"`.",
           params: {
             rows: [
               { name: "amountBrlCents", type: "number", required: true, description: "Positive integer, minimum 1000 (R$ 10)." },
@@ -1927,12 +1927,12 @@ console.log(res.status, body.code); // 410 "ERROR_GONE"`,
             json: `{
   "statusCode": 410,
   "code": "ERROR_GONE",
-  "message": "Credit purchases have been replaced by monthly subscriptions and billed overage",
+  "message": "Notes are bought through POST /v1/billing/checkout with kind \"avulso\"",
   "requestId": "9f1fc995-4ee4-4a92-b285-cf8dff227a97"
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "Always answers `410 Gone` with `code: \"ERROR_GONE\"`. To raise capacity, change plan in the dashboard; usage above the allowance is billed as overage." },
+            { kind: "callout", tone: "warn", body: "Always answers `410 Gone` with `code: \"ERROR_GONE\"`. To get more notes, buy single notes (R$ 0,99 each, from 3) or change plan through `POST /v1/billing/checkout`. There is no overage billing." },
           ],
         },
       ],
@@ -1965,17 +1965,16 @@ console.log(body.data.plan.slug); // { data: { plan, subscription, usage } }`,
             json: `{
   "data": {
     "plan": {
-      "slug": "developer",
-      "name": "Developer",
-      "monthly_allowance": 200,
+      "slug": "solo",
+      "name": "Solo",
+      "monthly_allowance": 100,
       "daily_limit": null,
       "max_active_companies": 999999,
-      "monthly_price_cents": 2990
+      "monthly_price_cents": 5990
     },
     "usage": {
-      "overage_units": 0,
-      "overage_amount_cents": 0,
-      "hard_limit": null,
+      "hard_limit": 100,
+      "avulso_balance": 0,
       "credits_used": 10,
       "credits_reserved": 2,
       "credits_remaining": 188,
@@ -2047,21 +2046,21 @@ console.log(body.data.canEmit); // { data: QuotaStatus }`,
           summary: "Schedules the switch to the target plan on the subscription.",
           params: {
             rows: [
-              { name: "plan_slug", type: "string", required: true, description: "Slug of the target plan, e.g. `\"growth\"`." },
+              { name: "plan_slug", type: "string", required: true, description: "Slug of the target plan, e.g. `\"equipe\"`." },
             ],
           },
           examples: {
             curl: `curl -X POST "$BASE_URL/billing/upgrade" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{ "plan_slug": "growth" }'`,
+  -d '{ "plan_slug": "equipe" }'`,
             node: `const res = await fetch(\`\${BASE_URL}/billing/upgrade\`, {
   method: "POST",
   headers: {
     "X-API-Key": process.env.CORVO_API_KEY,
     "Content-Type": "application/json",
   },
-  body: JSON.stringify({ plan_slug: "growth" }),
+  body: JSON.stringify({ plan_slug: "equipe" }),
 });
 const body = await res.json();
 console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at } }`,
@@ -2070,7 +2069,7 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
             label: "200 OK",
             json: `{
   "data": {
-    "scheduled_plan": "growth",
+    "scheduled_plan": "equipe",
     "effective_at": "2026-11-01T00:00:00.000Z"
   }
 }`,
@@ -2088,21 +2087,21 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
           summary: "Schedules a plan change for the end of the period.",
           params: {
             rows: [
-              { name: "plan_slug", type: "string", required: true, description: "Slug of the target plan, e.g. `\"developer\"`." },
+              { name: "plan_slug", type: "string", required: true, description: "Slug of the target plan, e.g. `\"solo\"`." },
             ],
           },
           examples: {
             curl: `curl -X POST "$BASE_URL/billing/downgrade" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{ "plan_slug": "developer" }'`,
+  -d '{ "plan_slug": "solo" }'`,
             node: `const res = await fetch(\`\${BASE_URL}/billing/downgrade\`, {
   method: "POST",
   headers: {
     "X-API-Key": process.env.CORVO_API_KEY,
     "Content-Type": "application/json",
   },
-  body: JSON.stringify({ plan_slug: "developer" }),
+  body: JSON.stringify({ plan_slug: "solo" }),
 });
 const body = await res.json();
 console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at } }`,
@@ -2111,7 +2110,7 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
             label: "200 OK",
             json: `{
   "data": {
-    "scheduled_plan": "developer",
+    "scheduled_plan": "solo",
     "effective_at": "2026-11-01T00:00:00.000Z"
   }
 }`,
@@ -2131,7 +2130,7 @@ console.log(body.data.scheduled_plan); // { data: { scheduled_plan, effective_at
           summary: "Lists the plans with their monthly price and allowance.",
           params: {
             rows: [
-              { name: "cycle", type: "string", required: false, description: "Only `monthly` is accepted (default)." },
+              { name: "cycle", type: "string", required: false, description: "`monthly` (default) or `annual`." },
               { name: "limit", type: "integer", required: false, description: "Defaults to `50`; integer from 1 to 1000." },
               { name: "cursor", type: "string", required: false, description: "`nextCursor` from the previous page." },
             ],
@@ -2147,12 +2146,12 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
             json: `{
   "data": [
     {
-      "slug": "developer",
-      "name": "Developer",
-      "monthlyAllowance": 200,
-      "basePriceCents": 2990,
-      "perCreditOverageCents": 18,
-      "monthlyTotalCents": 2990,
+      "slug": "solo",
+      "name": "Solo",
+      "monthlyAllowance": 100,
+      "basePriceCents": 5990,
+      "monthlyEquivalentCents": 5990,
+      "chargeTotalCents": 5990,
       "currency": "BRL"
     }
   ],
@@ -2176,71 +2175,68 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
           summary: "Fetches the price of one plan.",
           params: {
             rows: [
-              { name: "cycle", type: "string", required: false, description: "Only `monthly` is accepted (default)." },
+              { name: "cycle", type: "string", required: false, description: "`monthly` (default) or `annual`." },
             ],
           },
           examples: {
             curl: `curl "$BASE_URL/plans/growth"`,
             node: `const res = await fetch(\`\${BASE_URL}/plans/growth\`);
 const body = await res.json();
-console.log(body.data.monthlyTotalCents); // { data: PlanQuote }`,
+console.log(body.data.chargeTotalCents); // { data: PlanQuote }`,
           },
           response: {
             label: "200 OK",
             json: `{
   "data": {
-    "slug": "growth",
-    "name": "Growth",
-    "monthlyAllowance": 850,
-    "basePriceCents": 9990,
-    "perCreditOverageCents": 14,
-    "monthlyTotalCents": 9990,
+    "slug": "equipe",
+    "name": "Equipe",
+    "monthlyAllowance": 250,
+    "basePriceCents": 11990,
+    "monthlyEquivalentCents": 11990,
+    "chargeTotalCents": 11990,
     "currency": "BRL"
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "`slug` is `free`, `developer`, `growth`, `scale` or `volume`. An unknown plan returns `404`." },
+            { kind: "callout", tone: "warn", body: "`slug` is `solo`, `equipe`, `empresa` or `escala`. An unknown plan returns `404`." },
           ],
         },
         {
           kind: "endpoint",
           method: "GET",
-          path: "/v1/plans/quote",
+          path: "/v1/plans/recommend",
           scopes: ["public"],
           success: "200 OK",
-          summary: "Recommends the plan for a monthly volume of invoices and estimates the total cost.",
+          summary: "Cheapest way to cover N notes a month: a plan, a plan plus single notes, or single notes only.",
           params: {
             rows: [
-              { name: "volume", type: "integer", required: false, description: "Invoices per month. Required for a quote." },
-              { name: "cycle", type: "string", required: false, description: "Only `monthly` is accepted (default)." },
+              { name: "notes", type: "integer", required: true, description: "Notes per month, a whole number from 1 to 1000000." },
+              { name: "cycle", type: "string", required: false, description: "`monthly` (default) or `annual` (30% off, paid once a year)." },
             ],
           },
           examples: {
-            curl: `curl "$BASE_URL/plans/quote?volume=10000"`,
-            node: `const res = await fetch(\`\${BASE_URL}/plans/quote?volume=10000\`);
+            curl: `curl "$BASE_URL/plans/recommend?notes=250"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/recommend?notes=250\`);
 const body = await res.json();
-console.log(body.data.recommended_plan, body.data.total_estimated_cents); // { data: Quote | null }`,
+console.log(body.data.option.planSlug, body.data.option.totalCents);`,
           },
           response: {
             label: "200 OK",
             json: `{
   "data": {
-    "volume": 10000,
-    "recommended_plan": "volume",
-    "plan_name": "Volume",
-    "monthly_allowance": 10000,
-    "overage_credits": 0,
-    "overage_cost_cents": 0,
-    "base_price_cents": 69990,
-    "total_estimated_cents": 69990,
-    "currency": "BRL",
-    "billing_cycle": "monthly"
+    "notes": 250,
+    "cycle": "monthly",
+    "option": { "planSlug": "equipe", "avulsoUnits": 0, "totalCents": 11990 },
+    "alternatives": [
+      { "planSlug": "empresa", "avulsoUnits": 0, "totalCents": 23990 }
+    ],
+    "currency": "BRL"
   }
 }`,
           },
           notes: [
-            { kind: "callout", tone: "warn", body: "This route uses snake_case. `total_estimated_cents` is the plan price plus the estimated overage (`overage_credits` × the plan's price per credit). A missing, zero, negative or non-numeric `volume` returns `200` with `{ \"data\": null }`, not an error." },
+            { kind: "callout", tone: "warn", body: "`planSlug: null` means no plan, single notes only. `totalCents` is the cost per month in the chosen cycle. Single notes cost R$ 0,99 and are sold in lots of at least 3, so `avulsoUnits` is `0` or at least `3`. There is no overage billing. An invalid `notes` returns `400`." },
           ],
         },
       ],

@@ -49,7 +49,8 @@ describe("landing FAQ", () => {
       expect(screen.getByText(question)).toBeTruthy();
     const issues = screen.getByText("A Corvo emite a nota por mim?").closest("details")!.textContent!;
     for (const part of ["certificado A1", "e-mail", "MEI e Simples Nacional"]) expect(issues).toContain(part);
-    expect(screen.getByText(/empresas ilimitadas/)).toBeTruthy();
+    const companies = screen.getByText(/empresas ilimitadas/).textContent!;
+    expect(companies).toContain("Só com notas avulsas, sem plano, a conta tem 1 empresa");
     expect(screen.getByText(/Woovi e AbacatePay/)).toBeTruthy();
   });
 

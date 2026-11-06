@@ -309,7 +309,10 @@ export const envSchema = z
       .default(2000),
     SENTRY_CAPTURE_DISCONNECTS: booleanFromEnv.default(true),
     PAYMENT_ALLOWED_PROVIDERS: z.string().default('stripe'),
-    PAYMENT_DEFAULT_PROVIDER: z.enum(['stripe']).default('stripe'),
+    PAYMENT_DEFAULT_PROVIDER: z.enum(['stripe', 'woovi']).default('stripe'),
+    WOOVI_APP_ID: z.string().min(1).optional(),
+    WOOVI_WEBHOOK_TOKEN: z.string().min(16).optional(),
+    WOOVI_API_URL: z.string().url().default('https://api.woovi.com/api/v1'),
     STRIPE_SECRET_KEY: z.string().min(1).optional(),
     STRIPE_PUBLISHABLE_KEY: z.string().min(1).optional(),
     STRIPE_PORTAL_CONFIGURATION_ID: z.string().min(1).optional(),
@@ -454,7 +457,7 @@ export const envSchema = z
       .map((provider) => provider.trim())
       .filter(Boolean);
     const invalidPaymentProvider = allowedPaymentProviders.find(
-      (provider) => provider !== 'stripe',
+      (provider) => provider !== 'stripe' && provider !== 'woovi',
     );
     if (invalidPaymentProvider) {
       ctx.addIssue({
@@ -470,6 +473,18 @@ export const envSchema = z
         message:
           'PAYMENT_DEFAULT_PROVIDER must be enabled in PAYMENT_ALLOWED_PROVIDERS',
       });
+    }
+    const wooviEnabled = allowedPaymentProviders.includes('woovi');
+    if (env.NODE_ENV !== 'test' && wooviEnabled) {
+      for (const key of ['WOOVI_APP_ID', 'WOOVI_WEBHOOK_TOKEN'] as const) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [key],
+            message: `${key} is required when Woovi is enabled`,
+          });
+        }
+      }
     }
     const stripeEnabled = allowedPaymentProviders.includes('stripe');
     if (env.NODE_ENV !== 'test' && stripeEnabled) {

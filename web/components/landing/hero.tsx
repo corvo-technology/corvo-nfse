@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Conversation } from "@/components/landing/agents-section";
 
 import { motion, type Variants } from "motion/react";
 import { useTranslations, useLocale } from "next-intl";
@@ -27,15 +28,6 @@ export const fadeUp: Variants = {
     transition: { duration: 0.6, ease: "easeOut" },
   },
 };
-
-const REQUEST_SAMPLE = `curl -X POST https://api.corvo.tech/v1/invoices \\
-  -H "X-API-Key: $CORVO_API_KEY" \\
-  -H "Idempotency-Key: pedido_123_emissao" \\
-  -d '{
-    "companyTaxId": "11222333000181",
-    "amount": 100,
-    "service": { "description": "Consultoria" }
-  }'`;
 
 export function Hero() {
   const t = useTranslations("Hero");
@@ -84,18 +76,8 @@ export function Hero() {
           </motion.p>
         </motion.div>
 
-        <div className="mt-12 w-full min-w-0 border border-border bg-[#0b0b0b] lg:absolute lg:bottom-[-24px] lg:right-0 lg:mt-0 lg:w-[440px]">
-          <div className="flex items-center justify-between border-b border-border px-4 py-2 font-mono text-xs text-text-4">
-            <span>POST /v1/invoices</span>
-            <span className="text-accent">202 queued</span>
-          </div>
-          <pre
-            tabIndex={0}
-            aria-label="Exemplo de requisição para emitir NFS-e"
-            className="overflow-x-auto p-4 font-mono text-[12px] leading-[1.7] text-text-2"
-          >
-            <code>{REQUEST_SAMPLE}</code>
-          </pre>
+        <div className="mt-12 w-full min-w-0 lg:absolute lg:bottom-[-24px] lg:right-0 lg:mt-0 lg:w-[440px]">
+          <Conversation compact />
         </div>
       </div>
     </section>

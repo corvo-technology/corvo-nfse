@@ -47,7 +47,7 @@ it("keeps upstream unavailable errors generic and preserves 204 deletion", async
 });
 
 it("forwards the Stripe billing routes with their expected methods and nothing else", async () => {
-  const allowed: [string, "GET" | "POST"][] = [["billing/checkout", "POST"], ["billing/checkout/cs_test_123", "GET"], ["billing/portal", "POST"], ["billing/upgrade", "POST"], ["billing/downgrade", "POST"]];
+  const allowed: [string, "GET" | "POST"][] = [["billing/checkout", "POST"], ["billing/checkout/cs_test_123", "GET"], ["billing/portal", "POST"], ["billing/upgrade", "POST"], ["billing/downgrade", "POST"], ["billing/pix/cancel", "POST"], ["billing/payments", "GET"]];
   for (const [route, method] of allowed) {
     fetchMock.mockReset(); fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
     const request = new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers: { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin" } });
@@ -57,6 +57,8 @@ it("forwards the Stripe billing routes with their expected methods and nothing e
   }
   const wrongMethod = await GET(new NextRequest("http://localhost:4000/api/proxy/v1/billing/checkout"), context("billing/checkout"));
   expect(wrongMethod.status).toBe(404);
+  const wrongPixMethod = await GET(new NextRequest("http://localhost:4000/api/proxy/v1/billing/pix/cancel"), context("billing/pix/cancel"));
+  expect(wrongPixMethod.status).toBe(404);
 });
 it("forwards the pre-emission calculation and the company fiscal configuration routes", async () => {
   fetchMock.mockImplementation(async () => new Response("{}", { status: 200 }));

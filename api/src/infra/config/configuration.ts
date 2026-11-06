@@ -140,9 +140,17 @@ export default function configuration(): AppConfiguration {
     },
     payments: {
       allowedProviders: env.PAYMENT_ALLOWED_PROVIDERS.split(',').map(
-        (provider) => provider.trim() as 'stripe',
+        (provider) => provider.trim() as 'stripe' | 'woovi',
       ),
       defaultProvider: env.PAYMENT_DEFAULT_PROVIDER,
+    },
+    woovi: {
+      enabled: env.PAYMENT_ALLOWED_PROVIDERS.split(',')
+        .map((provider) => provider.trim())
+        .includes('woovi'),
+      appId: env.WOOVI_APP_ID ?? '',
+      webhookToken: env.WOOVI_WEBHOOK_TOKEN ?? '',
+      apiUrl: env.WOOVI_API_URL,
     },
     stripe: {
       enabled: env.PAYMENT_ALLOWED_PROVIDERS.split(',')

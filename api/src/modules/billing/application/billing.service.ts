@@ -1,5 +1,5 @@
 import { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { BillingRepository } from '../domain/billing.repository';
 import {
@@ -10,6 +10,8 @@ import { subscriptionDecision } from '../domain/subscription-policy';
 import { hasPaidAccess } from '../domain/billing-policy';
 import { BillingRuleError } from '../domain/billing-period';
 import { isSupportedStripeEvent } from '../domain/stripe-webhook-events';
+import { StripePaymentsService } from './stripe-payments.service';
+import { PAID_PLAN_SLUGS } from '@/modules/plans/application/pricing.service';
 
 @Injectable()
 export class BillingService {
@@ -18,6 +20,7 @@ export class BillingService {
     private readonly discovery: TenantWorkDiscovery,
     private readonly repository: BillingRepository,
     private readonly provider: BillingProvider,
+    @Optional() private readonly payments?: StripePaymentsService,
   ) {}
 
   async checkout(tenantId: string, planSlug: string, requestKey: string) {
@@ -159,10 +162,24 @@ export class BillingService {
       session_id: session.id,
       status: session.status,
       payment_status: session.paymentStatus,
-      activated:
-        session.subscriptionId === billing.stripeSubscriptionId &&
-        hasPaidAccess(billing.stripeStatus, billing.paidUntil),
+      activated: session.intentId
+        ? ((await this.payments?.isPaid(session.intentId)) ?? false)
+        : session.subscriptionId === billing.stripeSubscriptionId &&
+          hasPaidAccess(billing.stripeStatus, billing.paidUntil),
     };
+  }
+
+  /** True while a paid plan (from any provider) still covers today, grace included. */
+  async hasLiveEntitlement(tenantId: string): Promise<boolean> {
+    // Only a current plan counts: an account left on a retired plan (or on no plan)
+    // must be able to buy one, whatever its old subscription still says.
+    const { plan } = await this.repository.current(tenantId);
+    if (!(PAID_PLAN_SLUGS as string[]).includes(plan.slug)) return false;
+    const billing = await this.repository.billing(tenantId);
+    return hasPaidAccess(
+      billing?.stripeStatus ?? null,
+      billing?.paidUntil ?? null,
+    );
   }
 
   async changePlan(tenantId: string, slug: string) {
@@ -223,7 +240,11 @@ export class BillingService {
         : this.repository.lockedProviderEvent(event.id, work);
     await withLock(async () => {
       if (await this.repository.eventSeen(event.id)) return;
-      if (tenantId && event.subscriptionId) {
+      if (event.payment) {
+        // One-time card payment (avulso notes, prepaid annual plan).
+        if (event.payment.paid && this.payments)
+          await this.payments.complete(event.payment.intentId);
+      } else if (tenantId && event.subscriptionId) {
         await this.applySubscription(
           tenantId,
           await this.provider.subscription(event.subscriptionId),
@@ -264,6 +285,15 @@ export class BillingService {
       });
       return;
     }
+    if (!plan.active) {
+      // A subscription still priced on a retired plan must not pull the account back onto it.
+      this.logger.warn({
+        event: 'stripe_retired_plan_ignored',
+        subscriptionId: sub.id,
+        planSlug: plan.slug,
+      });
+      return;
+    }
     const tenant = await this.repository.current(tenantId);
     const decision = subscriptionDecision(tenant.plan.slug, sub);
     const entitledPlan = await this.repository.plan(decision.planSlug);
@@ -278,16 +308,11 @@ export class BillingService {
       pendingPlanSlug: sub.cancelAtPeriodEnd ? 'free' : sub.pendingPlanSlug,
       cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
     });
-    // Snapshot the purchased allowance/rate once. Later catalog changes do not reprice past use.
+    // Snapshot the purchased allowance once. Later catalog changes do not reprice past use.
     if (decision.purchased) {
       const { period } = await this.repository.current(tenantId);
-      if (
-        period.authorized === 0 &&
-        period.reserved === 0 &&
-        period.reported === 0
-      ) {
+      if (period.authorized === 0 && period.reserved === 0) {
         period.included = sub.included;
-        period.unitCents = sub.unitCents;
         await this.repository.savePeriod(period, tenantId);
       }
     }

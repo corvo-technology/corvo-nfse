@@ -1,4 +1,4 @@
-import type { ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -35,6 +35,10 @@ export interface MagicLinkVerified { expiresAt: string; isNewUser: boolean; csrf
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string, public retryAfterSeconds?: number, public details?: ApiErrorDetail[], public requestId?: string) { super(message); this.name = "ApiError"; }
+}
+/** The API refused a new company because the account is at its limit (no plan allows one). */
+export function isCompanyLimitError(cause: unknown): boolean {
+  return cause instanceof ApiError && cause.status === 422 && /company[ _]limit[ _]exceeded/i.test(cause.message);
 }
 export type FiscalEnvironment = "test" | "live";
 const FISCAL_ENV_KEY = "corvo_fiscal_environment";
@@ -203,10 +207,10 @@ export const invoices = {
   downloadUrl: async (id: string, format: "pdf" | "xml") => (await request<Envelope<{ downloadUrl: string; expiresAt: string; fileName: string; mimeType: string }>>(`/invoices/${idPath(id)}/download-url`, json({ format }))).data,
   email: async (id: string, idempotencyKey: string) => (await request<Envelope<{ emailId: string; status: string }>>(`/invoices/${idPath(id)}/email`, { ...json({}), headers: { "idempotency-key": idempotencyKey } })).data,
 };
-interface BillingWire { plan: { slug: string; name: string; monthly_price_cents: number }; subscription?: { status: string; paid_until: string | null; cancel_at_period_end: boolean; scheduled_plan: string | null; blocked: boolean }; usage: { overage_units?: number; overage_amount_cents?: number; credits_used: number; credits_reserved: number; credits_remaining: number; monthly_allowance: number; daily_usage: number; daily_limit: number | null; active_companies: number; max_active_companies: number; period_start?: string; period_end?: string } }
+interface BillingWire { plan: { slug: string; name: string; monthly_price_cents: number }; subscription?: { status: string; paid_until: string | null; cancel_at_period_end: boolean; scheduled_plan: string | null; blocked: boolean; pix_subscription?: PixSubscription | null; stripe_portal_available?: boolean; stripe_subscription?: boolean }; usage: { avulso_balance?: number; credits_used: number; credits_reserved: number; credits_remaining: number; monthly_allowance: number; daily_usage: number; daily_limit: number | null; active_companies: number; max_active_companies: number; period_start?: string; period_end?: string } }
 export function adaptBilling(wire: BillingWire): BillingPlan {
   const u = wire.usage;
-  return { slug: wire.plan.slug, name: wire.plan.name, monthlyPriceCents: wire.plan.monthly_price_cents, subscription: { status: wire.subscription?.status ?? "none", paidUntil: wire.subscription?.paid_until ?? null, cancelAtPeriodEnd: wire.subscription?.cancel_at_period_end ?? false, scheduledPlan: wire.subscription?.scheduled_plan ?? null, blocked: wire.subscription?.blocked ?? false }, usage: { creditsUsed: u.credits_used, creditsReserved: u.credits_reserved, creditsRemaining: u.credits_remaining, monthlyAllowance: u.monthly_allowance, dailyUsage: u.daily_usage, dailyLimit: u.daily_limit, activeCompanies: u.active_companies, maxActiveCompanies: u.max_active_companies, periodStart: u.period_start ?? "", periodEnd: u.period_end ?? "", overageUnits: u.overage_units ?? 0, overageAmountCents: u.overage_amount_cents ?? 0 } };
+  return { slug: wire.plan.slug, name: wire.plan.name, monthlyPriceCents: wire.plan.monthly_price_cents, subscription: { status: wire.subscription?.status ?? "none", paidUntil: wire.subscription?.paid_until ?? null, cancelAtPeriodEnd: wire.subscription?.cancel_at_period_end ?? false, scheduledPlan: wire.subscription?.scheduled_plan ?? null, blocked: wire.subscription?.blocked ?? false, pixSubscription: wire.subscription?.pix_subscription ?? null, stripePortalAvailable: wire.subscription?.stripe_portal_available ?? false, stripeSubscription: wire.subscription?.stripe_subscription ?? false }, usage: { creditsUsed: u.credits_used, creditsReserved: u.credits_reserved, creditsRemaining: u.credits_remaining, monthlyAllowance: u.monthly_allowance, dailyUsage: u.daily_usage, dailyLimit: u.daily_limit, activeCompanies: u.active_companies, maxActiveCompanies: u.max_active_companies, periodStart: u.period_start ?? "", periodEnd: u.period_end ?? "", avulsoBalance: u.avulso_balance ?? 0 } };
 }
 export const billing = {
   plan: async (signal?: AbortSignal) => adaptBilling(unwrap(await request<Envelope<BillingWire>>("/billing/plan", { signal }))),
@@ -215,9 +219,28 @@ export const billing = {
   checkout: async (planSlug: CheckoutPlan, idempotencyKey: string) => { const d = unwrap(await request<Envelope<{ session_id: string; url: string }>>("/billing/checkout", { ...json({ plan_slug: planSlug }), headers: { "idempotency-key": idempotencyKey } })); return { sessionId: d.session_id, url: d.url }; },
   checkoutStatus: async (sessionId: string) => { const d = unwrap(await request<Envelope<{ session_id: string; status: string; payment_status: string; activated: boolean }>>(`/billing/checkout/${idPath(sessionId)}`)); return { sessionId: d.session_id, status: d.status, paymentStatus: d.payment_status, activated: d.activated }; },
   portal: async () => unwrap(await request<Envelope<{ url: string }>>("/billing/portal", { method: "POST" })),
+  purchase: async (req: PurchaseRequest, idempotencyKey: string): Promise<PurchaseResult> => {
+    const body = req.kind === "avulso"
+      ? { kind: "avulso", units: req.units, method: req.method }
+      : { kind: "plan", plan_slug: req.planSlug, cycle: req.cycle, method: req.method, customer: req.customer };
+    return unwrap(await request<Envelope<PurchaseResult>>("/billing/checkout", { ...json(body), headers: { "idempotency-key": idempotencyKey } }));
+  },
+  payments: async (signal?: AbortSignal): Promise<PaymentRecord[]> => {
+    const rows = unwrap(await request<Envelope<Array<{ id: string; kind: "plan" | "avulso"; plan_slug: string | null; cycle: "monthly" | "annual" | null; units: number | null; amount_cents: number; provider: "woovi" | "stripe"; paid_at: string | null }>>>("/billing/payments", { signal }));
+    return rows.map((r) => ({ id: r.id, kind: r.kind, planSlug: r.plan_slug, cycle: r.cycle, units: r.units, amountCents: r.amount_cents, provider: r.provider, paidAt: r.paid_at }));
+  },
+  cancelPix: async () => { unwrap(await request<Envelope<{ cancelled: boolean }>>("/billing/pix/cancel", json({}))); },
   changePlan: async (planSlug: PlanSlug, direction: "upgrade" | "downgrade") => { const d = unwrap(await request<Envelope<{ scheduled_plan: string | null; effective_at: string | null }>>(`/billing/${direction}`, json({ plan_slug: planSlug }))); return { scheduledPlan: d.scheduled_plan, effectiveAt: d.effective_at }; },
 };
-export type CheckoutPlan = "developer" | "growth" | "scale" | "volume";
+export type CheckoutPlan = "solo" | "equipe" | "empresa" | "escala";
+export type PaymentMethod = "pix" | "card";
+export type Payer = { name: string; taxID: string; email: string; phone: string };
+export type PurchaseRequest =
+  | { kind: "plan"; planSlug: CheckoutPlan; cycle: "monthly" | "annual"; method: PaymentMethod; customer?: Payer }
+  | { kind: "avulso"; units: number; method: PaymentMethod };
+export type PurchaseResult =
+  | { method: "card"; url: string }
+  | { method: "pix"; brCode: string | null; qrCodeImage: string | null; paymentLinkUrl: string; expiresAt: string | null };
 export const webhooks = {
   list: async (params: PageParams = {}) => toPage(await request<ListBody<WebhookEndpoint>>(`/webhooks${query(params)}`)),
   create: async (data: { url: string; events: WebhookEvent[] }) => unwrap(await request<Envelope<WebhookEndpoint>>("/webhooks", json(data))),

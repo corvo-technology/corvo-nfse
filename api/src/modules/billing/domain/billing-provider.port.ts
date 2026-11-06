@@ -8,7 +8,6 @@ export interface ProviderSubscription {
   paidUntil: Date | null;
   paidPlanSlug: string | null;
   included: number;
-  unitCents: number;
   cancelAtPeriodEnd: boolean;
   pendingPlanSlug: string | null;
 }
@@ -20,12 +19,16 @@ export interface ProviderCheckout {
   paymentStatus: string;
   customerId: string | null;
   subscriptionId: string | null;
+  /** Our payment intent for a one-time (mode=payment) session. */
+  intentId?: string | null;
 }
 export interface ProviderEvent {
   id: string;
   type: string;
   customerId: string | null;
   subscriptionId: string | null;
+  /** Set for a completed one-time (mode=payment) checkout session. */
+  payment?: { intentId: string; paid: boolean } | null;
 }
 
 export abstract class BillingProvider {
@@ -46,6 +49,11 @@ export abstract class BillingProvider {
     planSlug: string,
     intentId: string,
   ): Promise<ProviderCheckout>;
+  abstract createPaymentCheckout(
+    customerId: string,
+    tenantId: string,
+    input: { name: string; amountCents: number; intentId: string },
+  ): Promise<{ id: string; url: string | null }>;
   abstract subscription(id: string): Promise<ProviderSubscription>;
   abstract scheduleChange(
     subscriptionId: string,
@@ -53,24 +61,4 @@ export abstract class BillingProvider {
   ): Promise<void>;
   abstract portal(customerId: string): Promise<string>;
   abstract verifyEvent(body: Buffer, signature: string): ProviderEvent;
-  abstract reportRoute(
-    subscriptionId: string,
-    periodEnd: Date,
-  ): Promise<{ route: 'meter' | 'invoice_item'; invoiceId: string | null }>;
-  abstract reportMeter(input: {
-    id: string;
-    name: string;
-    customerId: string;
-    units: number;
-    timestamp: number;
-  }): Promise<void>;
-  abstract reportInvoiceItem(input: {
-    id: string;
-    customerId: string;
-    invoiceId: string | null;
-    units: number;
-    unitCents: number;
-    periodStart: Date;
-    periodEnd: Date;
-  }): Promise<void>;
 }

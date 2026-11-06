@@ -13,15 +13,13 @@ import { CertificateOrmEntity } from '@/modules/certificate/infra/certificate.or
 import { CompanyOrmEntity } from '@/modules/company/infra/company.orm-entity';
 import { WebhookDeliveryOrmEntity } from '@/modules/webhooks-config/infra/webhook-delivery.orm-entity';
 import { TenantBillingOrmEntity } from './entities/tenant-billing.orm-entity';
-import { BillingUsagePeriod } from '@/modules/billing/infra/billing.orm-entity';
 
 export type TenantWork =
   | 'invoice-recovery'
   | 'certificate-expiry'
   | 'webhook-delivery'
   | 'plan-expiry'
-  | 'billing-reconciliation'
-  | 'billing-report';
+  | 'billing-reconciliation';
 
 /** Worker orchestration only: discover owner IDs, then enter a scoped operation. */
 @Injectable()
@@ -73,13 +71,6 @@ export class TenantWorkDiscovery {
           .where(
             "work.status IN ('pending','delayed','manual_retry') AND work.next_retry_at <= :now",
             { now },
-          );
-      } else if (kind === 'billing-report') {
-        query = this.database
-          .getRepository(BillingUsagePeriod)
-          .createQueryBuilder('work')
-          .where(
-            'work.stripe_customer_id IS NOT NULL AND (work.pending_report IS NOT NULL OR work.authorized - work.included > work.reported)',
           );
       } else {
         query = this.database

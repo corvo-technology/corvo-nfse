@@ -12,7 +12,6 @@ import { PlanSeederService } from '@/modules/plans/application/plan-seeder.servi
 import { TypeOrmBillingRepository } from './typeorm-billing.repository';
 import { BillingUsageService } from '../application/billing-usage.service';
 import { BillingService } from '../application/billing.service';
-import { OverageReportService } from '../application/overage-report.service';
 import type {
   BillingProvider,
   ProviderSubscription,
@@ -37,7 +36,6 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
   let repository: TypeOrmBillingRepository;
   let usage: BillingUsageService;
   let service: BillingService;
-  let reporter: OverageReportService;
   let provider: jest.Mocked<BillingProvider>;
   let context: TypeOrmTransactionContext;
   const start = new Date();
@@ -90,18 +88,8 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
       scheduleChange: jest.fn(),
       portal: jest.fn().mockResolvedValue('https://billing.stripe.com/test'),
       verifyEvent: jest.fn(),
-      reportRoute: jest
-        .fn()
-        .mockResolvedValue({ route: 'meter', invoiceId: null }),
-      reportMeter: jest.fn(),
-      reportInvoiceItem: jest.fn(),
     };
     service = new BillingService(
-      new TenantWorkDiscovery(db),
-      repository,
-      provider,
-    );
-    reporter = new OverageReportService(
       new TenantWorkDiscovery(db),
       repository,
       provider,
@@ -173,13 +161,12 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
       id: `sub_${tenantId}`,
       customerId: `cus_${tenantId}`,
       status: 'active',
-      planSlug: 'developer',
+      planSlug: 'solo',
       periodStart: start,
       periodEnd: end,
       paidUntil: end,
-      paidPlanSlug: 'developer',
-      included: 200,
-      unitCents: 15,
+      paidPlanSlug: 'solo',
+      included: 100,
       cancelAtPeriodEnd: false,
       pendingPlanSlug: null,
       ...patch,
@@ -193,13 +180,13 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     expect(tables.map((r) => r.table_name)).toEqual(['billing_usage_periods']);
     expect(db.hasMetadata(WebhookEventOrmEntity)).toBe(true);
   });
-  it('reserves atomically at 5x, and authorizes a reservation only once', async () => {
-    const id = await tenant('developer');
+  it('reserves atomically at the included cap, and authorizes a reservation only once', async () => {
+    const id = await tenant('solo');
     const current = await usage.status(id);
     await db.manager.update(
       BillingUsagePeriod,
       { id: current.period.id },
-      { authorized: 999 },
+      { authorized: 99 },
     );
     const results = await Promise.allSettled([reserve(id), reserve(id)]);
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
@@ -212,22 +199,21 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     await settle(id, invoice);
     await settle(id, invoice);
     expect(await usage.status(id)).toMatchObject({
-      period: { authorized: 1000, reserved: 0 },
-      overage_units: 800,
-      overage_amount_cents: 12000,
+      period: { authorized: 100, reserved: 0 },
+      included_remaining: 0,
     });
   });
-  it('releases failures without charging excess', async () => {
-    const id = await tenant('developer');
+  it('releases failed attempts back to the included amount', async () => {
+    const id = await tenant('solo');
     const invoice = await reserve(id);
     await settle(id, invoice, 'failed');
     expect(await usage.status(id)).toMatchObject({
       period: { authorized: 0, reserved: 0 },
-      overage_units: 0,
+      included_remaining: 100,
     });
   });
   it('retains the original period when an invoice finishes after renewal', async () => {
-    const id = await tenant('developer');
+    const id = await tenant('solo');
     const invoice = await reserve(id);
     const original = (await usage.status(id)).period.id;
     const nextEnd = new Date(end);
@@ -245,12 +231,12 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     expect((await usage.status(id)).period.authorized).toBe(0);
   });
   it('blocks unpaid legacy paid plans, preserving their historic credits', async () => {
-    const id = await tenant('developer');
+    const id = await tenant('solo');
     await repository.saveBilling(id, { paidUntil: null, stripeStatus: null });
     await expect(reserve(id)).rejects.toMatchObject({ code: 'plan_blocked' });
   });
   it('rolls back reservations with the surrounding fiscal transaction', async () => {
-    const id = await tenant('developer');
+    const id = await tenant('solo');
     await expect(
       repository.locked(id, async () => {
         await usage.reserve(id);
@@ -276,8 +262,8 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     });
     provider.checkout.mockImplementation(async () => session);
     const results = await Promise.all([
-      service.checkout(id, 'developer', 'request-1'),
-      service.checkout(id, 'developer', 'request-1'),
+      service.checkout(id, 'solo', 'request-1'),
+      service.checkout(id, 'solo', 'request-1'),
     ]);
     expect(results[0]).toEqual(results[1]);
     expect(provider.createCheckout).toHaveBeenCalledTimes(1);
@@ -288,9 +274,9 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
   it('checks Stripe for an existing subscription before opening another', async () => {
     const id = await tenant();
     provider.liveSubscriptions.mockResolvedValue(['existing']);
-    await expect(
-      service.checkout(id, 'developer', 'request'),
-    ).rejects.toMatchObject({ code: 'subscription_exists' });
+    await expect(service.checkout(id, 'solo', 'request')).rejects.toMatchObject(
+      { code: 'subscription_exists' },
+    );
     expect(provider.createCheckout).not.toHaveBeenCalled();
   });
   it('does not expose another tenant checkout', async () => {
@@ -311,7 +297,7 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     provider.subscription.mockResolvedValue(subscription(id));
     await service.webhook(Buffer.from('signed payload'), 'signature');
     await service.webhook(Buffer.from('signed payload'), 'signature');
-    expect((await repository.current(id)).plan.slug).toBe('developer');
+    expect((await repository.current(id)).plan.slug).toBe('solo');
     expect(provider.subscription).toHaveBeenCalledTimes(1);
     expect(
       await db.manager.count(WebhookEventOrmEntity, {
@@ -347,54 +333,5 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     provider.subscription.mockResolvedValue(subscription(id));
     await service.webhook(Buffer.from('event'), 'signature');
     expect(await repository.eventSeen('evt_failure')).toBe(true);
-  });
-  it('pins the same overage request across a failed send and reports only the delta', async () => {
-    const id = await tenant('developer');
-    const { period } = await usage.status(id);
-    await db.manager.update(
-      BillingUsagePeriod,
-      { id: period.id },
-      { authorized: 250 },
-    );
-    provider.reportMeter.mockRejectedValueOnce(new Error('timeout'));
-    await expect(reporter.reportPeriod(id, period.id)).rejects.toThrow(
-      'timeout',
-    );
-    const pending = (await repository.period(period.id, id))!.pendingReport!;
-    await db.manager.update(
-      BillingUsagePeriod,
-      { id: period.id },
-      { authorized: 260 },
-    );
-    await reporter.reportPeriod(id, period.id);
-    expect(provider.reportMeter.mock.calls[1][0]).toMatchObject({
-      id: pending.id,
-      units: 50,
-    });
-    await reporter.reportPeriod(id, period.id);
-    expect(provider.reportMeter.mock.calls[2][0].units).toBe(10);
-    expect((await repository.period(period.id, id))!.reported).toBe(60);
-  });
-  it('uses a pending invoice item for late finalized periods, never also a meter event', async () => {
-    const id = await tenant('developer');
-    const { period } = await usage.status(id);
-    await db.manager.update(
-      BillingUsagePeriod,
-      { id: period.id },
-      { authorized: 201 },
-    );
-    provider.reportRoute.mockResolvedValue({
-      route: 'invoice_item',
-      invoiceId: 'in_final',
-    });
-    await reporter.reportPeriod(id, period.id);
-    expect(provider.reportMeter).not.toHaveBeenCalled();
-    expect(provider.reportInvoiceItem).toHaveBeenCalledWith(
-      expect.objectContaining({
-        units: 1,
-        unitCents: 15,
-        invoiceId: 'in_final',
-      }),
-    );
   });
 });

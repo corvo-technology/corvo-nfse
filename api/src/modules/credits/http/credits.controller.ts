@@ -7,6 +7,8 @@ import {
   Query,
   Req,
   GoneException,
+  BadRequestException,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { RequirePermission } from '@/modules/auth/require-permission.decorator';
@@ -32,10 +34,12 @@ export class CreditsController {
   async getBalance(@Req() req: RequestWithAuthContext) {
     const tenantId = req.authContext!.activeTenantId;
     const usage = await this.usage.status(tenantId);
+    const planRemaining = usage.blocked ? 0 : usage.included_remaining;
     return {
-      balance: usage.included_remaining,
-      overageUnits: usage.overage_units,
-      overageAmountCents: usage.overage_amount_cents,
+      // Plan notes nobody can use (lapsed plan) are not part of the balance.
+      balance: planRemaining + usage.avulsoBalance,
+      planRemaining,
+      avulsoBalance: usage.avulsoBalance,
       hardLimit: usage.hard_limit,
     };
   }
@@ -49,24 +53,26 @@ export class CreditsController {
     return this.planRepo.listPage(options);
   }
 
-  @Post('purchase/preview')
+  @Get('purchase/preview')
   @ApiKeyEndpoint()
   @RequirePermission('credits.view')
   @ApiOperation({
-    summary: 'Preview credit conversion for an avulso amount',
+    summary: 'Price a one-off purchase of N notes (R$ 0,99 each)',
   })
-  previewPurchase() {
-    throw new GoneException(
-      'Credit purchases have been replaced by monthly subscriptions and billed overage',
-    );
+  previewPurchase(@Query('units', ParseIntPipe) units: number) {
+    try {
+      return this.creditsService.previewPurchase(units);
+    } catch (error) {
+      throw new BadRequestException((error as Error).message);
+    }
   }
 
   @Post('purchase/confirm')
   @RequirePermission('credits.manage')
-  @ApiOperation({ summary: 'Confirm avulso credit purchase' })
+  @ApiOperation({ summary: 'Moved: buy notes through POST /billing/checkout' })
   confirmPurchase() {
     throw new GoneException(
-      'Credit purchases have been replaced by monthly subscriptions and billed overage',
+      'Notes are bought through POST /billing/checkout with kind "avulso"',
     );
   }
 

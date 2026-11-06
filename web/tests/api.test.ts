@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { request, auth, certificates, companies, invoices, billing, webhooks, members, ApiError, setCsrfToken, getCsrfToken, onUnauthorized, unwrap, toPage, credits, collectAll } from "@/lib/api";
+import { isCompanyLimitError, request, auth, certificates, companies, invoices, billing, webhooks, members, ApiError, setCsrfToken, getCsrfToken, onUnauthorized, unwrap, toPage, credits, collectAll } from "@/lib/api";
 import { fieldIssues, mapIssues } from "@/lib/api-errors";
 import { session, company, invoice } from "./fixtures";
 const fetchMock = vi.fn<typeof fetch>();
@@ -72,12 +72,12 @@ describe("endpoint-specific contracts", () => {
     expect((await invoices.get("invoice-1")).customerName).toBe("Customer"); expect((await companies.get("company-1")).address.city).toBe("São Paulo");
   });
   it("adapts nested snake-case billing, subscription and paged lists", async () => {
-    fetchMock.mockResolvedValueOnce(reply({ data: { plan: { slug: "free", name: "Free", monthly_price_cents: 0 }, subscription: { status: "active", paid_until: "2026-11-01T00:00:00Z", cancel_at_period_end: false, scheduled_plan: "growth", blocked: false }, usage: { overage_units: 3, overage_amount_cents: 90, credits_used: 2, credits_reserved: 1, credits_remaining: 97, monthly_allowance: 100, daily_usage: 2, daily_limit: 10, active_companies: 1, max_active_companies: 1, period_start: "2026-10-01T00:00:00Z" } } })).mockResolvedValueOnce(reply(page([{ id: "wh-1", events: ["nfse.invoice.authorized"] }]))).mockResolvedValueOnce(reply(page([{ id: "user-1", email: "person@example.com" }])));
-    expect(await billing.plan()).toMatchObject({ slug: "free", subscription: { status: "active", scheduledPlan: "growth" }, usage: { creditsUsed: 2, overageUnits: 3, overageAmountCents: 90, periodStart: "2026-10-01T00:00:00Z" } });
+    fetchMock.mockResolvedValueOnce(reply({ data: { plan: { slug: "free", name: "Free", monthly_price_cents: 0 }, subscription: { status: "active", paid_until: "2026-11-01T00:00:00Z", cancel_at_period_end: false, scheduled_plan: "equipe", blocked: false }, usage: { avulso_balance: 3, credits_used: 2, credits_reserved: 1, credits_remaining: 97, monthly_allowance: 100, daily_usage: 2, daily_limit: 10, active_companies: 1, max_active_companies: 1, period_start: "2026-10-01T00:00:00Z" } } })).mockResolvedValueOnce(reply(page([{ id: "wh-1", events: ["nfse.invoice.authorized"] }]))).mockResolvedValueOnce(reply(page([{ id: "user-1", email: "person@example.com" }])));
+    expect(await billing.plan()).toMatchObject({ slug: "free", subscription: { status: "active", scheduledPlan: "equipe" }, usage: { creditsUsed: 2, avulsoBalance: 3, periodStart: "2026-10-01T00:00:00Z" } });
     expect((await webhooks.list()).items[0].id).toBe("wh-1"); expect((await members.list()).items[0].id).toBe("user-1");
   });
   it("sends the cursor (not offset) for deliveries and credit history and unwraps balance", async () => {
-    fetchMock.mockResolvedValueOnce(reply(page([{ id: "d1" }], true, "dc"))).mockResolvedValueOnce(reply(page([{ id: "t1" }]))).mockResolvedValueOnce(reply({ data: { tenantId: "t", balance: 5, overageUnits: 0, overageAmountCents: 0, hardLimit: null } }));
+    fetchMock.mockResolvedValueOnce(reply(page([{ id: "d1" }], true, "dc"))).mockResolvedValueOnce(reply(page([{ id: "t1" }]))).mockResolvedValueOnce(reply({ data: { tenantId: "t", balance: 5, hardLimit: null } }));
     const d = await webhooks.deliveries({ hours: 24, limit: 50, environment: "live", cursor: "abc" }); expect(d.nextCursor).toBe("dc");
     expect(String(fetchMock.mock.calls[0][0])).toContain("cursor=abc"); expect(String(fetchMock.mock.calls[0][0])).not.toContain("offset");
     expect((await credits.history({ limit: 10 })).items[0].id).toBe("t1"); expect((await credits.balance()).balance).toBe(5);
@@ -88,11 +88,11 @@ describe("endpoint-specific contracts", () => {
   });
   it("checkout sends plan_slug with an Idempotency-Key; portal and plan change adapt snake_case", async () => {
     setCsrfToken("csrf");
-    fetchMock.mockResolvedValueOnce(reply({ data: { session_id: "cs_1", url: "https://stripe.test/pay" } }, 201)).mockResolvedValueOnce(reply({ data: { url: "https://stripe.test/portal" } })).mockResolvedValueOnce(reply({ data: { scheduled_plan: "growth", effective_at: "2026-11-01T00:00:00Z" } })).mockResolvedValueOnce(reply({ data: { session_id: "cs_1", status: "complete", payment_status: "paid", activated: true } }));
-    expect(await billing.checkout("developer", "key-1")).toEqual({ sessionId: "cs_1", url: "https://stripe.test/pay" });
-    const init = fetchMock.mock.calls[0][1]; expect(JSON.parse(String(init?.body))).toEqual({ plan_slug: "developer" }); expect(new Headers(init?.headers).get("idempotency-key")).toBe("key-1");
+    fetchMock.mockResolvedValueOnce(reply({ data: { session_id: "cs_1", url: "https://stripe.test/pay" } }, 201)).mockResolvedValueOnce(reply({ data: { url: "https://stripe.test/portal" } })).mockResolvedValueOnce(reply({ data: { scheduled_plan: "equipe", effective_at: "2026-11-01T00:00:00Z" } })).mockResolvedValueOnce(reply({ data: { session_id: "cs_1", status: "complete", payment_status: "paid", activated: true } }));
+    expect(await billing.checkout("solo", "key-1")).toEqual({ sessionId: "cs_1", url: "https://stripe.test/pay" });
+    const init = fetchMock.mock.calls[0][1]; expect(JSON.parse(String(init?.body))).toEqual({ plan_slug: "solo" }); expect(new Headers(init?.headers).get("idempotency-key")).toBe("key-1");
     expect((await billing.portal()).url).toBe("https://stripe.test/portal");
-    expect(await billing.changePlan("growth", "upgrade")).toEqual({ scheduledPlan: "growth", effectiveAt: "2026-11-01T00:00:00Z" }); expect(String(fetchMock.mock.calls[2][0])).toContain("/billing/upgrade");
+    expect(await billing.changePlan("equipe", "upgrade")).toEqual({ scheduledPlan: "equipe", effectiveAt: "2026-11-01T00:00:00Z" }); expect(String(fetchMock.mock.calls[2][0])).toContain("/billing/upgrade");
     expect(await billing.checkoutStatus("cs_1")).toMatchObject({ activated: true, paymentStatus: "paid" });
   });
   it("exposes 409 billing conflicts and 422 validation details to forms", async () => {
@@ -150,5 +150,41 @@ describe("adaptInvoice", () => {
     expect(invoice.customerName).toBe("");
     expect(invoice.customerTaxId).toBe("");
     expect(invoice.serviceDescription).toBe("Corte");
+  });
+});
+
+describe("billing.purchase", () => {
+  it("posts the unified checkout body with an Idempotency-Key and returns the provider result", async () => {
+    setCsrfToken("csrf");
+    fetchMock.mockResolvedValueOnce(reply({ data: { method: "pix", brCode: "BR", qrCodeImage: null, paymentLinkUrl: "https://woovi.test/p", expiresAt: null } })).mockResolvedValueOnce(reply({ data: { method: "card", url: "https://stripe.test/s" } }));
+    const pix = await billing.purchase({ kind: "avulso", units: 10, method: "pix" }, "key-9");
+    expect(pix).toMatchObject({ method: "pix", brCode: "BR" });
+    const init = fetchMock.mock.calls[0][1];
+    expect(JSON.parse(String(init?.body))).toEqual({ kind: "avulso", units: 10, method: "pix" });
+    expect(new Headers(init?.headers).get("idempotency-key")).toBe("key-9");
+    await billing.purchase({ kind: "plan", planSlug: "solo", cycle: "annual", method: "card" }, "key-10");
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({ kind: "plan", plan_slug: "solo", cycle: "annual", method: "card" });
+  });
+});
+
+describe("billing.cancelPix", () => {
+  it("posts to the Pix cancel endpoint and the plan reports an active Pix subscription", async () => {
+    setCsrfToken("csrf");
+    fetchMock.mockResolvedValueOnce(reply({ data: { cancelled: true } })).mockResolvedValueOnce(reply({ data: { plan: { slug: "solo", name: "Solo", monthly_price_cents: 5990 }, subscription: { status: "active", paid_until: "2026-12-01T00:00:00Z", cancel_at_period_end: false, scheduled_plan: null, blocked: false, pix_subscription: { status: "pending", planSlug: "equipe", brCode: "000201EMV", paymentLinkUrl: "https://woovi.test/p" } }, usage: { credits_used: 1, credits_reserved: 0, credits_remaining: 99, monthly_allowance: 100, daily_usage: 0, daily_limit: null, active_companies: 1, max_active_companies: 999999 } } }));
+    await billing.cancelPix();
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/billing/pix/cancel");
+    expect(fetchMock.mock.calls[0][1]?.method).toBe("POST");
+    expect((await billing.plan()).subscription.pixSubscription).toEqual({ status: "pending", planSlug: "equipe", brCode: "000201EMV", paymentLinkUrl: "https://woovi.test/p" });
+  });
+});
+
+describe("isCompanyLimitError", () => {
+  it("recognises the API's company limit refusal, and nothing else", () => {
+    expect(isCompanyLimitError(new ApiError(422, "Company limit exceeded"))).toBe(true);
+    expect(isCompanyLimitError(new ApiError(422, "company_limit_exceeded"))).toBe(true);
+    expect(isCompanyLimitError(new ApiError(422, "Invalid CNPJ"))).toBe(false);
+    expect(isCompanyLimitError(new ApiError(500, "Company limit exceeded"))).toBe(false);
+    expect(isCompanyLimitError(new Error("Company limit exceeded"))).toBe(false);
+    expect(isCompanyLimitError(null)).toBe(false);
   });
 });

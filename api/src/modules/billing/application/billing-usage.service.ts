@@ -6,43 +6,59 @@ import { hasPaidAccess } from '../domain/billing-policy';
 @Injectable()
 export class BillingUsageService {
   constructor(private readonly repository: BillingRepository) {}
-  async status(tenantId: string) {
-    return this.repository.locked(tenantId, async () => {
-      const current = await this.repository.current(tenantId);
-      const blocked =
-        !current.plan.active ||
-        (current.plan.slug !== 'free' &&
-          !hasPaidAccess(
-            current.billing?.stripeStatus ?? null,
-            current.billing?.paidUntil ?? null,
-          ));
-      return {
-        ...current,
-        blocked,
-        dailyUsage: await this.repository.dailyUsage(tenantId),
-        ...new BillingPeriod(current.period).summary,
-      };
-    });
-  }
-  async reserve(tenantId: string): Promise<string> {
-    const current = await this.repository.current(tenantId);
-    const blocked =
+  private isBlocked(
+    current: Awaited<ReturnType<BillingRepository['current']>>,
+  ) {
+    return (
       !current.plan.active ||
       (current.plan.slug !== 'free' &&
         !hasPaidAccess(
           current.billing?.stripeStatus ?? null,
           current.billing?.paidUntil ?? null,
-        ));
-    const period = new BillingPeriod(current.period);
-    period.reserve(
-      blocked,
-      current.plan.dailyLimit,
-      current.plan.dailyLimit === null
-        ? 0
-        : await this.repository.dailyUsage(tenantId),
+        ))
     );
-    await this.repository.savePeriod(period.state, tenantId);
-    return period.state.id;
+  }
+  async status(tenantId: string) {
+    return this.repository.locked(tenantId, async () => {
+      const current = await this.repository.current(tenantId);
+      return {
+        ...current,
+        blocked: this.isBlocked(current),
+        dailyUsage: await this.repository.dailyUsage(tenantId),
+        avulsoBalance: await this.repository.avulsoBalance(tenantId),
+        ...new BillingPeriod(current.period).summary,
+      };
+    });
+  }
+  /**
+   * Reserves one note. The plan quota is spent first; when it is exhausted (or
+   * the plan lapsed) the avulso balance pays instead. Returns the period id
+   * when the plan paid, or null when the avulso balance did.
+   */
+  async reserve(tenantId: string): Promise<string | null> {
+    return this.repository.locked(tenantId, async () => {
+      const current = await this.repository.current(tenantId);
+      const period = new BillingPeriod(current.period);
+      try {
+        period.reserve(
+          this.isBlocked(current),
+          current.plan.dailyLimit,
+          current.plan.dailyLimit === null
+            ? 0
+            : await this.repository.dailyUsage(tenantId),
+        );
+      } catch (error) {
+        const code = error instanceof BillingRuleError ? error.code : null;
+        if (
+          (code === 'plan_blocked' || code === 'monthly_limit_exceeded') &&
+          (await this.repository.avulsoBalance(tenantId)) > 0
+        )
+          return null;
+        throw error;
+      }
+      await this.repository.savePeriod(period.state, tenantId);
+      return period.state.id;
+    });
   }
   async settle(
     invoiceId: string,

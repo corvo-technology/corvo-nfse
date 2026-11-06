@@ -43,6 +43,10 @@ export class StripeBillingAdapter extends BillingProvider {
       paymentStatus: session.payment_status,
       customerId: stripeId(session.customer),
       subscriptionId: stripeId(session.subscription),
+      intentId:
+        session.mode === 'payment'
+          ? (session.metadata?.intent_id ?? null)
+          : null,
     };
   }
   async createCustomer(tenantId: string, email: string | null) {
@@ -79,33 +83,27 @@ export class StripeBillingAdapter extends BillingProvider {
     return null;
   }
   private async prices(slug: string) {
-    const quote = this.pricing.calculateQuote(slug as PlanSlug);
+    const quote = this.pricing.calculateQuote(slug as PlanSlug, 'monthly');
     if (!quote.basePriceCents)
       throw new BadRequestException('Free plan does not require checkout');
-    const keys = [`corvo_${slug}_monthly`, `corvo_${slug}_overage`];
+    const keys = [`corvo_${slug}_monthly`];
     const { data } = await this.stripe.prices.list({
       lookup_keys: keys,
       active: true,
     });
     const base = data.find((p) => p.lookup_key === keys[0]);
-    const overage = data.find((p) => p.lookup_key === keys[1]);
     if (
       !base ||
-      !overage ||
       base.currency !== 'brl' ||
-      overage.currency !== 'brl' ||
       base.unit_amount !== quote.basePriceCents ||
-      overage.unit_amount !== quote.perCreditOverageCents ||
       base.recurring?.interval !== 'month' ||
-      overage.recurring?.usage_type !== 'metered' ||
-      base.metadata.plan_slug !== slug ||
-      overage.metadata.plan_slug !== slug
+      base.metadata.plan_slug !== slug
     ) {
       throw new ServiceUnavailableException(
         'Stripe prices must be provisioned for the current catalog',
       );
     }
-    return { base, overage };
+    return { base };
   }
   async createCheckout(
     customerId: string,
@@ -113,7 +111,7 @@ export class StripeBillingAdapter extends BillingProvider {
     planSlug: string,
     intentId: string,
   ) {
-    const { base, overage } = await this.prices(planSlug);
+    const { base } = await this.prices(planSlug);
     const success = new URL(this.gateway.config.checkoutSuccessUrl);
     success.searchParams.set('session_id', '{CHECKOUT_SESSION_ID}');
     const session = await this.stripe.checkout.sessions.create(
@@ -127,7 +125,7 @@ export class StripeBillingAdapter extends BillingProvider {
         allowed_payment_method_types: ['card'],
         locale: 'pt-BR',
         branding_settings: CHECKOUT_BRANDING,
-        line_items: [{ price: base.id, quantity: 1 }, { price: overage.id }],
+        line_items: [{ price: base.id, quantity: 1 }],
         success_url: success
           .toString()
           .replace('%7BCHECKOUT_SESSION_ID%7D', '{CHECKOUT_SESSION_ID}'),
@@ -136,6 +134,42 @@ export class StripeBillingAdapter extends BillingProvider {
       { idempotencyKey: `corvo:checkout:${intentId}` },
     );
     return this.checkoutView(session);
+  }
+  async createPaymentCheckout(
+    customerId: string,
+    tenantId: string,
+    input: { name: string; amountCents: number; intentId: string },
+  ) {
+    const success = new URL(this.gateway.config.checkoutSuccessUrl);
+    success.searchParams.set('session_id', '{CHECKOUT_SESSION_ID}');
+    const session = await this.stripe.checkout.sessions.create(
+      {
+        mode: 'payment',
+        ui_mode: 'hosted_page',
+        customer: customerId,
+        client_reference_id: tenantId,
+        metadata: { tenant_id: tenantId, intent_id: input.intentId },
+        allowed_payment_method_types: ['card'],
+        locale: 'pt-BR',
+        branding_settings: CHECKOUT_BRANDING,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: 'brl',
+              unit_amount: input.amountCents,
+              product_data: { name: input.name },
+            },
+          },
+        ],
+        success_url: success
+          .toString()
+          .replace('%7BCHECKOUT_SESSION_ID%7D', '{CHECKOUT_SESSION_ID}'),
+        cancel_url: this.gateway.config.checkoutCancelUrl,
+      },
+      { idempotencyKey: `corvo:pay:${input.intentId}` },
+    );
+    return { id: session.id, url: session.url };
   }
   async subscription(id: string): Promise<ProviderSubscription> {
     const sub = await this.stripe.subscriptions.retrieve(id, {
@@ -199,7 +233,6 @@ export class StripeBillingAdapter extends BillingProvider {
       paidUntil,
       paidPlanSlug,
       included: Number(base?.price.metadata.included ?? 0),
-      unitCents: overage?.price.unit_amount ?? 0,
       cancelAtPeriodEnd: sub.cancel_at_period_end || sub.cancel_at !== null,
       pendingPlanSlug: pending !== slug ? pending : null,
     };
@@ -221,7 +254,7 @@ export class StripeBillingAdapter extends BillingProvider {
       });
       return;
     }
-    const { base: nextBase, overage } = await this.prices(planSlug);
+    const { base: nextBase } = await this.prices(planSlug);
     if (sub.cancel_at_period_end)
       await this.stripe.subscriptions.update(sub.id, {
         cancel_at_period_end: false,
@@ -254,7 +287,7 @@ export class StripeBillingAdapter extends BillingProvider {
         {
           duration: { interval: 'month', interval_count: 1 },
           proration_behavior: 'none',
-          items: [{ price: nextBase.id, quantity: 1 }, { price: overage.id }],
+          items: [{ price: nextBase.id, quantity: 1 }],
         },
       ],
     });
@@ -268,7 +301,11 @@ export class StripeBillingAdapter extends BillingProvider {
       await this.stripe.billingPortal.sessions.create({
         customer: customerId,
         configuration: this.gateway.config.portalConfigurationId,
-        return_url: this.gateway.config.checkoutCancelUrl,
+        // Back to the billing page (the cancel URL is `<billing>/cancel`), not the canceled-checkout page.
+        return_url: this.gateway.config.checkoutCancelUrl.replace(
+          /\/cancel\/?$/,
+          '',
+        ),
       })
     ).url;
   }
@@ -287,9 +324,16 @@ export class StripeBillingAdapter extends BillingProvider {
       throw new BadRequestException('Stripe event mode mismatch');
     let subscriptionId: string | null = null;
     let customerId: string | null = null;
+    let payment: { intentId: string; paid: boolean } | null = null;
     if (event.type === 'checkout.session.completed') {
       subscriptionId = stripeId(event.data.object.subscription);
       customerId = stripeId(event.data.object.customer);
+      const intentId = event.data.object.metadata?.intent_id;
+      if (event.data.object.mode === 'payment' && intentId)
+        payment = {
+          intentId,
+          paid: event.data.object.payment_status === 'paid',
+        };
     } else if (
       [
         'customer.subscription.created',
@@ -311,117 +355,12 @@ export class StripeBillingAdapter extends BillingProvider {
       );
       customerId = stripeId(invoice.customer);
     }
-    return { id: event.id, type: event.type, subscriptionId, customerId };
-  }
-  async reportRoute(subscriptionId: string, periodEnd: Date) {
-    if (periodEnd > new Date())
-      return { route: 'meter' as const, invoiceId: null };
-    for await (const invoice of this.stripe.invoices.list({
-      subscription: subscriptionId,
-      limit: 100,
-    })) {
-      const match = invoice.lines.data.some(
-        (l) => l.period.end * 1000 === periodEnd.getTime(),
-      );
-      if (match)
-        return {
-          route:
-            invoice.status === 'draft'
-              ? ('meter' as const)
-              : ('invoice_item' as const),
-          invoiceId: invoice.id,
-        };
-    }
-    return { route: 'invoice_item' as const, invoiceId: null };
-  }
-  async reportMeter(input: {
-    id: string;
-    name: string;
-    customerId: string;
-    units: number;
-    timestamp: number;
-  }) {
-    await this.stripe.billing.meterEvents.create(
-      {
-        event_name: input.name,
-        identifier: input.id,
-        timestamp: input.timestamp,
-        payload: {
-          stripe_customer_id: input.customerId,
-          value: String(input.units),
-        },
-      },
-      { idempotencyKey: input.id },
-    );
-  }
-  async reportInvoiceItem(input: {
-    id: string;
-    customerId: string;
-    invoiceId: string | null;
-    units: number;
-    unitCents: number;
-    periodStart: Date;
-    periodEnd: Date;
-  }) {
-    // A dedicated invoice also collects late usage after cancellation.
-    // Metadata recovers both resources after the provider's idempotency window.
-    let invoice: Stripe.Invoice | null = null;
-    for await (const candidate of this.stripe.invoices.list({
-      customer: input.customerId,
-      limit: 100,
-    })) {
-      if (candidate.metadata?.usage_report_id === input.id) {
-        invoice = candidate;
-        break;
-      }
-    }
-    invoice ??= await this.stripe.invoices.create(
-      {
-        customer: input.customerId,
-        collection_method: 'charge_automatically',
-        auto_advance: false,
-        pending_invoice_items_behavior: 'exclude',
-        metadata: {
-          usage_report_id: input.id,
-          origin_invoice_id: input.invoiceId ?? '',
-        },
-      },
-      { idempotencyKey: `invoice:${input.id}` },
-    );
-    let exists = false;
-    for await (const item of this.stripe.invoiceItems.list({
-      customer: input.customerId,
-      limit: 100,
-    })) {
-      if (item.metadata?.usage_report_id === input.id) {
-        exists = true;
-        break;
-      }
-    }
-    if (!exists)
-      await this.stripe.invoiceItems.create(
-        {
-          customer: input.customerId,
-          invoice: invoice.id,
-          currency: 'brl',
-          amount: input.units * input.unitCents,
-          description: `${input.units} excess processing units — period ${input.periodStart.toISOString()} to ${input.periodEnd.toISOString()}`,
-          metadata: {
-            usage_report_id: input.id,
-            origin_invoice_id: input.invoiceId ?? '',
-          },
-          period: {
-            start: Math.floor(input.periodStart.getTime() / 1000),
-            end: Math.floor(input.periodEnd.getTime() / 1000),
-          },
-        },
-        { idempotencyKey: input.id },
-      );
-    if (invoice.status === 'draft')
-      await this.stripe.invoices.finalizeInvoice(
-        invoice.id,
-        { auto_advance: true },
-        { idempotencyKey: `finalize:${input.id}` },
-      );
+    return {
+      id: event.id,
+      type: event.type,
+      subscriptionId,
+      customerId,
+      payment,
+    };
   }
 }

@@ -17,7 +17,7 @@ import {
   type BillingState,
 } from '../domain/billing.repository';
 import type { BillingPeriodState } from '../domain/billing-period';
-import { calendarPeriod } from '../domain/billing-policy';
+import { calendarPeriod, rollPeriod } from '../domain/billing-policy';
 function nextMonth(date: Date): Date {
   const result = new Date(date);
   const day = result.getUTCDate();
@@ -99,8 +99,15 @@ export class TypeOrmBillingRepository extends BillingRepository {
         start = billing.currentPeriodStart;
         end = billing.currentPeriodEnd;
         if (now >= end) {
-          start = end;
-          end = nextMonth(end);
+          // Annual plans stay paid across many months: land on the month that contains `now`.
+          const rolled = rollPeriod(start, end, billing.paidUntil, now);
+          if (rolled.end > now) {
+            start = rolled.start;
+            end = rolled.end;
+          } else {
+            start = end;
+            end = nextMonth(end);
+          }
         }
       }
       const repo = this.manager.getRepository(BillingUsagePeriod);
@@ -116,14 +123,10 @@ export class TypeOrmBillingRepository extends BillingRepository {
           periodStart: start,
           periodEnd: end,
           included: plan.monthlyCreditAllowance,
-          unitCents: paid ? plan.creditUnitPriceCents : 0,
           authorized: 0,
           reserved: 0,
-          reported: 0,
-          pendingReport: null,
           customerId: paid ? (billing?.stripeCustomerId ?? null) : null,
           subscriptionId: paid ? (billing?.stripeSubscriptionId ?? null) : null,
-          meterEventName: paid ? `corvo_${plan.slug}_overage` : null,
         });
         await repo.insert(period);
       }
@@ -207,6 +210,19 @@ export class TypeOrmBillingRepository extends BillingRepository {
       return row?.periodId ?? null;
     });
   }
+  avulsoBalance(tenantId: string) {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const row = await this.manager
+        .getRepository(CreditTransactionOrmEntity)
+        .createQueryBuilder('t')
+        .select('COALESCE(SUM(t.amount), 0)', 'sum')
+        .where('t.tenant_id = :tenantId', { tenantId })
+        .andWhere("t.source IN ('avulso', 'bonus')")
+        .getRawOne<{ sum: string }>();
+      return Number(row?.sum ?? 0);
+    });
+  }
   dailyUsage(tenantId: string) {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
@@ -241,21 +257,6 @@ export class TypeOrmBillingRepository extends BillingRepository {
           })
         )?.tenantId ?? null
       );
-    });
-  }
-  reportablePeriods(tenantId: string) {
-    return runWithTenant(tenantId, async () => {
-      requireTenantId(tenantId);
-      return this.manager
-        .getRepository(BillingUsagePeriod)
-        .createQueryBuilder('p')
-        .where('p.stripe_customer_id IS NOT NULL AND p.tenant_id = :tenantId', {
-          tenantId,
-        })
-        .andWhere(
-          '(p.pending_report IS NOT NULL OR p.authorized - p.included > p.reported)',
-        )
-        .getMany();
     });
   }
   eventSeen(id: string) {

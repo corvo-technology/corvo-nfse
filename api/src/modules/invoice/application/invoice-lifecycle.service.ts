@@ -176,7 +176,9 @@ export class InvoiceLifecycleService {
         amount: -1,
         type: 'invoice_authorized',
         reservedInvoiceId: invoice.id,
-        periodId,
+        // null period = the avulso balance paid for this note.
+        periodId: periodId ?? undefined,
+        source: periodId === null ? 'avulso' : undefined,
         isReservation: true,
         description: `Reservation for invoice ${invoice.id}`,
         createdAt: new Date(),
@@ -318,6 +320,7 @@ export class InvoiceLifecycleService {
           tenantId: invoice.tenantId,
           amount: -reservation.amount,
           type: 'invoice_rejected',
+          source: reservation.source,
           relatedTransactionId: reservation.id,
           isReservation: false,
           description: `Refund for invoice ${invoice.id}`,

@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AgentsSection } from "@/components/landing/agents-section";
+import { AgentsSection, Conversation } from "@/components/landing/agents-section";
 import { MCP_SERVER_URL } from "@/lib/mcp-config";
 import en from "@/messages/en.json";
 import pt from "@/messages/pt.json";
@@ -29,9 +29,22 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("landing AI agents section", () => {
-  it("sells the idea and shows the scripted conversation with both tool calls", async () => {
+  it("sells the idea with real requests, each tied to a tool the MCP server actually has", () => {
     renderSection();
-    expect(screen.getByRole("heading", { name: "Your AI agents can issue invoices." })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Ask in plain words. The invoice goes out." })).toBeTruthy();
+    const tools = Array.from(document.querySelectorAll("[data-tool]")).map((el) => el.getAttribute("data-tool"));
+    expect(tools).toEqual(["nfse_calculate", "nfse_issue_batch", "nfse_cancel", "nfse_get_download_url", "nfse_list"]);
+    // No raw API snippet here any more: that belongs to the SDK section.
+    expect(screen.queryByText("POST /v1/invoices")).toBeNull();
+    expect(screen.queryByText("company_list")).toBeNull();
+  });
+
+  it("the scripted Claude Code conversation (shown in the hero) runs both tool calls and authorizes", async () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <Conversation />
+      </NextIntlClientProvider>,
+    );
     expect(screen.getByText("company_list")).toBeTruthy();
     expect(screen.getByText("nfse_issue")).toBeTruthy();
     expect(await screen.findByText("Authorized")).toBeTruthy();
