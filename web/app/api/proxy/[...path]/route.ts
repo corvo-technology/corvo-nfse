@@ -18,6 +18,7 @@ const routes: [RegExp, string[]][] = [
   [/^billing\/checkout$/, ["POST"]],
   [/^billing\/checkout\/[^/]+$/, ["GET"]],
   [/^billing\/(portal|upgrade|downgrade)$/, ["POST"]],
+  [/^billing\/pix\/cancel$/, ["POST"]],
   [/^credits(?:\/(plans|history))?$/, ["GET"]],
   [/^credits\/purchase\/preview$/, ["POST"]],
   [/^companies$/, ["GET", "POST"]],
