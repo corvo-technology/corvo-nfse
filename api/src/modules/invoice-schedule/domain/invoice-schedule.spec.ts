@@ -65,6 +65,21 @@ describe('InvoiceSchedule.create', () => {
     expect(once('2026-11-21').props.nextRunOn).toBe('2026-11-21');
   });
 
+  it('a recurring schedule may start a month ahead (issue now, repeat monthly), a single one still may not', () => {
+    expect(
+      recurring({ frequency: 'MONTHLY', firstOn: '2026-12-06' }).props
+        .nextRunOn,
+    ).toBe('2026-12-06');
+    expect(
+      recurring({ frequency: 'MONTHLY', firstOn: '2026-12-07' }).props
+        .nextRunOn,
+    ).toBe('2026-12-07');
+    expect(() => recurring({ firstOn: '2026-12-08' })).toThrow(
+      ScheduleValidationError,
+    );
+    expect(() => once('2026-12-06')).toThrow(ScheduleValidationError);
+  });
+
   it('a recurring schedule needs a frequency, a single one must not have it', () => {
     expect(() => recurring({ frequency: null })).toThrow(
       ScheduleValidationError,

@@ -83,6 +83,13 @@ export interface UpdateScheduleInput {
   anchorOn?: string;
 }
 
+/** A recurring schedule may start a full month ahead (issue now, repeat monthly); a single one keeps the plain horizon. */
+const RECURRING_MIN_HORIZON_DAYS = 31;
+const horizonFor = (kind: ScheduleKind, horizonDays: number): number =>
+  kind === 'recurring'
+    ? Math.max(horizonDays, RECURRING_MIN_HORIZON_DAYS)
+    : horizonDays;
+
 export class InvoiceSchedule {
   private constructor(private state: InvoiceScheduleProps) {}
 
@@ -92,8 +99,9 @@ export class InvoiceSchedule {
     horizonDays: number,
   ): InvoiceSchedule {
     const today = todayInSaoPaulo(now);
+    const horizon = horizonFor(input.kind, horizonDays);
     const lastAllowed = DateTime.fromISO(today, { zone: 'utc' })
-      .plus({ days: horizonDays })
+      .plus({ days: horizon })
       .toISODate()!;
     if (input.firstOn < tomorrowInSaoPaulo(now))
       throw new ScheduleValidationError(
@@ -105,7 +113,7 @@ export class InvoiceSchedule {
       throw new ScheduleValidationError(
         'competenceDate',
         'schedule_horizon_exceeded',
-        `The first date cannot be more than ${horizonDays} days ahead`,
+        `The first date cannot be more than ${horizon} days ahead`,
       );
     if (input.kind === 'recurring' && !input.frequency)
       throw new ScheduleValidationError(
@@ -220,19 +228,23 @@ export class InvoiceSchedule {
     const anchor = patch.anchorOn ?? this.state.anchorOn;
     const endsOn =
       patch.endsOn !== undefined ? patch.endsOn : this.state.endsOn;
+    const horizon =
+      horizonDays === undefined
+        ? undefined
+        : horizonFor(this.state.kind, horizonDays);
     if (
       patch.anchorOn &&
       patch.anchorOn !== this.state.anchorOn &&
-      horizonDays !== undefined &&
+      horizon !== undefined &&
       patch.anchorOn >
         DateTime.fromISO(today, { zone: 'utc' })
-          .plus({ days: horizonDays })
+          .plus({ days: horizon })
           .toISODate()!
     )
       throw new ScheduleValidationError(
         'competenceDate',
         'schedule_horizon_exceeded',
-        `The first date cannot be more than ${horizonDays} days ahead`,
+        `The first date cannot be more than ${horizon} days ahead`,
       );
     // Checked against the date the schedule will have AFTER this change, not the old one.
     if (
