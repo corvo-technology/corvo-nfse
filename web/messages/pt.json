@@ -74,7 +74,12 @@
     "buyCredits": "Comprar créditos →",
     "signOut": "Sair",
     "creditsLabel": "Créditos do mês",
-    "creditsUsed": "{used} de {total} usados"
+    "creditsUsed": "{used} de {total} usados",
+    "notesAvailable": "Notas disponíveis",
+    "planLine": "Plano: {left} de {total}",
+    "avulsoLine": "Avulsas: {count}",
+    "buyNotes": "Comprar notas",
+    "manageBilling": "Plano e uso"
   },
   "Topbar": {
     "docs": "Docs",
@@ -132,7 +137,8 @@
       "authorized": "Autorizadas",
       "rejected": "Rejeitadas",
       "processing": "Em processamento",
-      "credits": "Créditos"
+      "credits": "Notas disponíveis",
+      "notesHint": "Plano + notas avulsas"
     },
     "newInvoice": "Nova nota",
     "invoicesPerDay": "Notas por dia",

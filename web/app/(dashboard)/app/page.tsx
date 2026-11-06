@@ -1,5 +1,6 @@
 "use client";
 
+import { availableNotes } from "@/components/dashboard/notes-balance";
 import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
@@ -60,6 +61,7 @@ export default function OverviewPage() {
   }, [billingView, tenantId, scope]);
 
   const counts = overview?.data?.counts;
+  const available = billing?.data ? availableNotes(billing.data) : 0;
   const used = billing?.data?.usage.creditsUsed ?? 0;
   const allowance = billing?.data?.usage.monthlyAllowance ?? 0;
 
@@ -69,12 +71,12 @@ export default function OverviewPage() {
       { label: t("kpi.rejected"), value: error ? t("unavailable") : (counts?.rejected ?? 0), tone: (counts?.rejected ?? 0) > 0 ? "text-danger" : "text-text", loading },
       { label: t("kpi.processing"), value: error ? t("unavailable") : (counts?.processing ?? 0), tone: "text-text", loading },
     ] : []),
-    ...(billingView ? [{ label: t("kpi.credits"), value: billing?.error ? t("unavailable") : `${used}`, suffix: billing?.data ? `/${allowance}` : undefined, tone: "text-text", loading: billingLoading, hint: t("monthlyCycle") }] : []),
+    ...(billingView ? [{ label: t("kpi.credits"), value: billing?.error ? t("unavailable") : `${available}`, suffix: undefined as string | undefined, tone: available === 0 && billing?.data ? "text-warn" : "text-text", loading: billingLoading, hint: t("kpi.notesHint") }] : []),
   ];
 
   const recent = overview?.data?.recentInvoices ?? [];
   const rejectedRecent = recent.filter((invoice) => invoice.status === "rejected").slice(0, 3);
-  const creditsLow = billingView && allowance > 0 && used / allowance >= 0.8;
+  const creditsLow = billingView && allowance > 0 && used / allowance >= 0.8 && (billing?.data?.usage.avulsoBalance ?? 0) === 0;
   const hasAttention = rejectedRecent.length > 0 || creditsLow;
   const periodLabel = period === "7d" ? t("last7days") : t("last30days");
 

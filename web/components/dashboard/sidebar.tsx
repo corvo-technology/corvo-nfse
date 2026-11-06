@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth";
 import { billing } from "@/lib/api";
 import type { BillingPlan } from "@/lib/types";
 import { CorvoLogo } from "@/components/ui/corvo-logo";
+import { NotesBalance } from "@/components/dashboard/notes-balance";
 
 interface NavItem {
   key: string;
@@ -75,11 +76,6 @@ export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarPr
   }, [canViewBilling, tenantId]);
 
   const isActive = (href: string) => (href === "/app" ? activePath === "/app" : activePath.startsWith(href));
-
-  const used = plan?.usage.creditsUsed ?? 0;
-  const total = plan?.usage.monthlyAllowance ?? 0;
-  const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
-  const nearLimit = pct >= 80;
 
   const renderItem = ({ key, href, icon: Icon }: NavItem) => {
     const permission = ({ "/app/companies": "nfse.companies.view", "/app/invoices": "nfse.invoices.view", "/app/webhooks": "webhooks.view", "/app/api-keys": "api_keys.manage", "/app/billing": "billing.view", "/app/members": "settings.manage" } as Record<string, string>)[href];
@@ -138,33 +134,7 @@ export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarPr
         </div>
       </nav>
 
-      {plan && (
-        <div className="flex flex-col gap-3 rounded-[11px] border border-border bg-surface p-3.5">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="eyebrow">{t("Sidebar.creditsLabel")}</span>
-            <span className="font-mono text-[13px] text-text">
-              {used}
-              <span className="text-text-4">/{total}</span>
-            </span>
-          </div>
-          <div
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={total}
-            aria-valuenow={used}
-            aria-label={t("Sidebar.creditsUsed", { used, total })}
-            className="h-1 overflow-hidden rounded-full bg-track"
-          >
-            <div
-              className={cn("h-full rounded-full transition-[width] duration-500", nearLimit ? "bg-warn" : "bg-accent")}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          <Link href="/app/billing" onClick={onClose} className="text-[13px] text-accent transition-opacity hover:opacity-80">
-            {t("Billing.title")}
-          </Link>
-        </div>
-      )}
+      {plan && <NotesBalance plan={plan} onNavigate={onClose} />}
     </aside>
   );
 }

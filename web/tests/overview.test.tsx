@@ -28,7 +28,7 @@ beforeEach(() => {
   auth.tenantId = "tenant-a"; auth.fiscalEnvironment = "test";
   auth.permissions = ["nfse.invoices.view", "billing.view", "nfse.invoices.issue"];
   vi.mocked(invoices.overview).mockReset().mockImplementation(async (period) => overview(period));
-  vi.mocked(billing.plan).mockReset().mockResolvedValue({ usage: { creditsUsed: 4, monthlyAllowance: 100 } } as Awaited<ReturnType<typeof billing.plan>>);
+  vi.mocked(billing.plan).mockReset().mockResolvedValue({ subscription: { blocked: false }, usage: { creditsUsed: 4, monthlyAllowance: 100, creditsRemaining: 90, avulsoBalance: 6 } } as Awaited<ReturnType<typeof billing.plan>>);
 });
 
 describe("overview page", () => {
@@ -39,7 +39,7 @@ describe("overview page", () => {
     expect(screen.queryByText("Customer 5")).toBeNull();
     expect(screen.getAllByText("Customer 4").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: /View all/ }).getAttribute("href")).toBe("/app/invoices");
-    expect(screen.getByText("Monthly plan cycle")).toBeTruthy();
+    expect(screen.getByText("Plan + single invoices")).toBeTruthy();
   });
   it("switches periods without refetching monthly credits", async () => {
     renderPage();
@@ -82,13 +82,13 @@ describe("overview page", () => {
     vi.mocked(invoices.overview).mockRejectedValue(new Error("unavailable"));
     renderPage();
     await screen.findAllByRole("alert");
-    expect(screen.getByText(/^4/, { selector: "dd" })).toBeTruthy();
+    expect(screen.getByText(/^96/, { selector: "dd" })).toBeTruthy();
     expect(screen.queryByText("1201")).toBeNull();
   });
   it("hides invoice data and skips its request without permission", async () => {
     auth.permissions = ["billing.view"];
     renderPage();
-    await screen.findByText(/^4/, { selector: "dd" });
+    await screen.findByText(/^96/, { selector: "dd" });
     expect(invoices.overview).not.toHaveBeenCalled();
     expect(screen.queryByRole("heading", { name: "Recent invoices" })).toBeNull();
     expect(screen.queryByRole("group", { name: "Period" })).toBeNull();
@@ -98,7 +98,7 @@ describe("overview page", () => {
     renderPage();
     await screen.findAllByText("1201");
     expect(billing.plan).not.toHaveBeenCalled();
-    expect(screen.queryByText("Monthly plan cycle")).toBeNull();
+    expect(screen.queryByText("Plan + single invoices")).toBeNull();
   });
 });
 

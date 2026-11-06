@@ -74,7 +74,12 @@
     "buyCredits": "Buy credits →",
     "signOut": "Sign out",
     "creditsLabel": "Credits this month",
-    "creditsUsed": "{used} of {total} used"
+    "creditsUsed": "{used} of {total} used",
+    "notesAvailable": "Invoices available",
+    "planLine": "Plan: {left} of {total}",
+    "avulsoLine": "Single: {count}",
+    "buyNotes": "Buy invoices",
+    "manageBilling": "Plan and usage"
   },
   "Topbar": {
     "docs": "Docs",
@@ -132,7 +137,8 @@
       "authorized": "Authorized",
       "rejected": "Rejected",
       "processing": "Processing",
-      "credits": "Credits"
+      "credits": "Invoices available",
+      "notesHint": "Plan + single invoices"
     },
     "newInvoice": "New invoice",
     "invoicesPerDay": "Invoices per day",
