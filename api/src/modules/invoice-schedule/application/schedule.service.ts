@@ -1,8 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { validationExceptionFactory } from '@/shared/http/validation-pipe';
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
 import type { InvoiceService } from '@/modules/invoice/application/invoice.service';
-import type { CreateInvoiceDto } from '@/modules/invoice/http/invoice.dto';
+import { CreateInvoiceDto } from '@/modules/invoice/http/invoice.dto';
 import {
   InvoiceSchedule,
   ScheduleValidationError,
@@ -147,10 +150,11 @@ export class ScheduleService {
     };
     if (patch.invoice) {
       const merged = { ...schedule.props.invoiceInput, ...patch.invoice };
+      await assertEditableInvoicePatch(patch.invoice);
       await this.validate(merged, tenantId, schedule.props.environment, now);
       change.invoiceInput = merged;
     }
-    schedule.update(change, todayInSaoPaulo(now));
+    schedule.update(change, todayInSaoPaulo(now), this.horizonDays);
     await this.repo.save(schedule);
     return schedule;
   }
@@ -228,4 +232,42 @@ function withoutCompanyTaxId(
 ): Record<string, unknown> {
   const { companyTaxId: _taxId, ...rest } = body;
   return rest;
+}
+
+/** Fields the schedule itself owns: the PATCH body may not touch them. */
+const OWNED_BY_THE_SCHEDULE = [
+  'companyId',
+  'companyTaxId',
+  'competenceDate',
+] as const;
+
+/**
+ * The part of the invoice a PATCH may change: shaped like a normal emission (so a malformed body
+ * is a 4xx, not a crash further down) and never the company, the dates or the scheduling options.
+ */
+async function assertEditableInvoicePatch(
+  patch: Record<string, unknown>,
+): Promise<void> {
+  for (const key of OWNED_BY_THE_SCHEDULE)
+    if (patch[key] !== undefined)
+      throw new ScheduleValidationError(
+        `invoice.${key}`,
+        'not_allowed',
+        `invoice.${key} cannot be changed on a schedule`,
+      );
+  const options = patch.options;
+  if (options && typeof options === 'object')
+    for (const key of ['type', 'recurrence'])
+      if ((options as Record<string, unknown>)[key] !== undefined)
+        throw new ScheduleValidationError(
+          `invoice.options.${key}`,
+          'not_allowed',
+          `invoice.options.${key} cannot be changed on a schedule`,
+        );
+  // Only the fields the PATCH carries: a stored body made through MCP legitimately lacks fields
+  // the emission inherits from the company (e.g. service.code), so the rest is not judged here.
+  const errors = (
+    await validate(plainToInstance(CreateInvoiceDto, patch))
+  ).filter((error) => Object.keys(patch).includes(error.property));
+  if (errors.length > 0) throw validationExceptionFactory(errors);
 }

@@ -6,6 +6,11 @@ import {
   type NewScheduleRun,
 } from '../domain/invoice-schedule.repository';
 import { ScheduleRunner } from './schedule-runner.service';
+import { captureRuntimeException } from '@/infra/observability/sentry-reporter';
+
+jest.mock('@/infra/observability/sentry-reporter', () => ({
+  captureRuntimeException: jest.fn(),
+}));
 
 const NOW = new Date('2026-11-06T15:00:00Z'); // Friday, São Paulo
 
@@ -82,6 +87,14 @@ class MemoryRepo extends InvoiceScheduleRepository {
   addRun(run: NewScheduleRun) {
     this.runs.push(run);
     return Promise.resolve();
+  }
+  nextAttempt(scheduleId: string, _tenantId: string, occurrenceOn: string) {
+    const attempts = this.runs
+      .filter(
+        (r) => r.scheduleId === scheduleId && r.occurrenceOn === occurrenceOn,
+      )
+      .map((r) => r.attempt);
+    return Promise.resolve(Math.max(0, ...attempts) + 1);
   }
   listRuns() {
     return Promise.resolve({ items: [], total: 0 });
@@ -480,5 +493,39 @@ describe('ScheduleRunner.runDue: idempotency, state and isolation', () => {
       await repo.insert(schedule({ tenantId }));
     await runner.runDue('2026-11-09');
     expect(prepare).toHaveBeenCalledTimes(5);
+  });
+
+  it('review: the attempt number continues from the log, even when the counter was reset (pause and resume the same day)', async () => {
+    const { runner, repo } = build({ submit: () => noCredit });
+    const s = schedule({ kind: 'once' });
+    await repo.insert(s);
+    await repo.addRun({
+      tenantId: s.props.tenantId,
+      scheduleId: s.props.id,
+      occurrenceOn: '2026-11-09',
+      ranOn: '2026-11-09',
+      attempt: 1,
+      outcome: 'failed',
+      invoiceId: null,
+      errorCode: 'x',
+      errorMessage: 'x',
+    });
+    expect(s.props.attempts).toBe(0);
+    const result = await runner.runDue('2026-11-10');
+    expect(result.errors).toBe(0);
+    expect(repo.runs.map((r) => r.attempt)).toEqual([1, 2]);
+  });
+
+  it('review: an unexpected error is reported to Sentry, not only logged', async () => {
+    const { runner, repo } = build({
+      prepare: () => Promise.reject(new Error('db down')),
+    });
+    await repo.insert(schedule());
+    await runner.runDue('2026-11-09');
+    expect(captureRuntimeException).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'db down' }),
+      'api',
+      'invoice_schedule_tenant_run',
+    );
   });
 });

@@ -129,6 +129,29 @@ describe('ScheduleEmailNotifier.retryNotice', () => {
   });
 });
 
+describe('ScheduleEmailNotifier: the real billing refusals read in plain Portuguese', () => {
+  it.each([
+    ['monthly_limit_exceeded', /notas disponíveis/],
+    ['ERROR_MONTHLY_LIMIT_EXCEEDED', /notas disponíveis/],
+    ['ERROR_QUOTA_EXCEEDED', /notas disponíveis/],
+    ['ERROR_INSUFFICIENT_CREDITS', /notas disponíveis/],
+    ['daily_limit_exceeded', /limite diário/],
+    ['ERROR_DAILY_LIMIT_EXCEEDED', /limite diário/],
+    ['plan_blocked', /plano está bloqueado/],
+    ['ERROR_PLAN_BLOCKED', /plano está bloqueado/],
+  ])('%s', async (code, expected) => {
+    const { notifier, email } = build(['a@example.com']);
+    await notifier.retryNotice(TENANT, [
+      item(schedule(), code, 'Monthly processing limit reached'),
+    ]);
+    const [sent] = email.enqueueScheduleRetry.mock.calls[0] as [
+      { reason: string },
+    ];
+    expect(sent.reason).toMatch(expected);
+    expect(sent.reason).not.toMatch(/processing limit/);
+  });
+});
+
 describe('ScheduleEmailNotifier.paused', () => {
   it('sends one pause e-mail per recipient for that schedule', async () => {
     const { notifier, email } = build();

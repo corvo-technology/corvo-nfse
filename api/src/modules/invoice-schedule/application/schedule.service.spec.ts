@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import {
   InvoiceSchedule,
@@ -17,6 +18,7 @@ import { ScheduleService, MAX_ACTIVE_SCHEDULES } from './schedule.service';
 
 const NOW = new Date('2026-11-06T15:00:00Z'); // Friday, São Paulo
 const TENANT = 'tenant-1';
+const COMPANY = '44444444-4444-4444-8444-444444444444';
 const auth = (environment: 'test' | 'live' = 'live') =>
   ({
     activeTenantId: TENANT,
@@ -72,7 +74,7 @@ function build() {
   const repo = new MemoryRepo();
   const prepare = jest
     .fn<Promise<unknown>, [Record<string, unknown>, string, string]>()
-    .mockResolvedValue({ kind: 'ready', invoice: { companyId: 'comp-1' } });
+    .mockResolvedValue({ kind: 'ready', invoice: { companyId: COMPANY } });
   const service = new ScheduleService(
     repo,
     { prepareEmissionInEnvironment: prepare } as never,
@@ -113,13 +115,13 @@ describe('ScheduleService.createFromEmission', () => {
       anchorOn: '2026-11-09',
       nextRunOn: '2026-11-09',
       endsOn: '2027-06-30',
-      companyId: 'comp-1',
+      companyId: COMPANY,
       environment: 'live',
       createdBy: 'user-1',
       status: 'active',
     });
     expect(created.props.invoiceInput).toEqual({
-      companyId: 'comp-1',
+      companyId: COMPANY,
       amount: 150,
       customer: { name: 'Ana', taxId: '123.456.789-09' },
       options: { email: { send: true } },
@@ -268,7 +270,7 @@ describe('ScheduleService management', () => {
       NOW,
     );
     expect(updated.props.invoiceInput).toMatchObject({
-      companyId: 'comp-1',
+      companyId: COMPANY,
       amount: 300,
       customer: { name: 'Ana', taxId: '123.456.789-09' },
     });
@@ -310,4 +312,44 @@ describe('ScheduleService management', () => {
       nextRunOn: '2026-11-09', // the first date is still ahead of today
     });
   });
+
+  it.each([
+    ['companyId', { companyId: '33333333-3333-4333-8333-333333333333' }],
+    ['companyTaxId', { companyTaxId: '11222333000181' }],
+    ['competenceDate', { competenceDate: '2026-12-01' }],
+    ['options.type', { options: { type: 'IMMEDIATE' } }],
+    [
+      'options.recurrence',
+      { options: { recurrence: { frequency: 'WEEKLY' } } },
+    ],
+  ])(
+    'review: the PATCH cannot change %s (what the schedule owns)',
+    async (_name, invoice) => {
+      const { service, prepare, id } = await created();
+      prepare.mockClear();
+      await expect(
+        service.update(id, TENANT, { invoice }, NOW),
+      ).rejects.toBeInstanceOf(ScheduleValidationError);
+      expect(prepare).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['customer as a string', { customer: 'x' }],
+    ['amount as text', { amount: 'abc' }],
+  ])(
+    'review: a malformed body (%s) is a validation error, not a 500',
+    async (_name, invoice) => {
+      const { service, repo, prepare, id } = await created();
+      prepare.mockClear();
+      const error = await service
+        .update(id, TENANT, { invoice }, NOW)
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect(prepare).not.toHaveBeenCalled();
+      expect(repo.rows.get(id)?.props.invoiceInput).toMatchObject({
+        amount: 150,
+      });
+    },
+  );
 });

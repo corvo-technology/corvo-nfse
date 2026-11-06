@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
+import { captureRuntimeException } from '@/infra/observability/sentry-reporter';
 import { UnitOfWorkPort } from '@/infra/transactions/unit-of-work.port';
 import { InvoiceLifecycleService } from '@/modules/invoice/application/invoice-lifecycle.service';
 import type { BatchSubmitEntry } from '@/modules/invoice/application/invoice-lifecycle.service';
@@ -102,6 +103,7 @@ export class ScheduleRunner {
           summary.paused += outcome.paused.length;
         } catch (error) {
           summary.errors += 1;
+          captureRuntimeException(error, 'api', 'invoice_schedule_tenant_run');
           this.logger.error({
             event: 'invoice_schedule_tenant_run_failed',
             tenantId,
@@ -176,7 +178,12 @@ export class ScheduleRunner {
     for (const step of steps) {
       const final = settled.get(step.schedule) ?? step;
       const { schedule } = final;
-      const attempt = schedule.props.attempts + 1;
+      // From the log, not from the schedule's counter: that one resets on pause/resume and edits.
+      const attempt = await this.repo.nextAttempt(
+        schedule.props.id,
+        tenantId,
+        final.occurrenceOn,
+      );
       const base = {
         tenantId,
         scheduleId: schedule.props.id,

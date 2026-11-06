@@ -190,7 +190,9 @@ export class InvoiceSchedule {
     this.state.pauseReason = null;
     this.state.attempts = 0;
     // A single schedule is simply due again; a recurring one skips what passed.
-    if (this.state.kind === 'once') this.state.nextRunOn = today;
+    if (this.state.kind === 'once')
+      this.state.nextRunOn =
+        this.state.anchorOn > today ? this.state.anchorOn : today;
     else this.advance(today);
     this.touch();
   }
@@ -202,18 +204,42 @@ export class InvoiceSchedule {
     this.touch();
   }
 
-  update(patch: UpdateScheduleInput, today: string): void {
+  update(
+    patch: UpdateScheduleInput,
+    today: string,
+    horizonDays?: number,
+  ): void {
     this.assertEditable();
+    const anchor = patch.anchorOn ?? this.state.anchorOn;
+    const endsOn =
+      patch.endsOn !== undefined ? patch.endsOn : this.state.endsOn;
+    if (
+      patch.anchorOn &&
+      patch.anchorOn !== this.state.anchorOn &&
+      horizonDays !== undefined &&
+      patch.anchorOn >
+        DateTime.fromISO(today, { zone: 'utc' })
+          .plus({ days: horizonDays })
+          .toISODate()!
+    )
+      throw new ScheduleValidationError(
+        'competenceDate',
+        'schedule_horizon_exceeded',
+        `The first date cannot be more than ${horizonDays} days ahead`,
+      );
+    // Checked against the date the schedule will have AFTER this change, not the old one.
+    if (
+      (patch.endsOn !== undefined || patch.anchorOn !== undefined) &&
+      endsOn &&
+      endsOn <= anchor
+    )
+      throw new ScheduleValidationError(
+        'recurrence.endsOn',
+        'ends_before_start',
+        'recurrence.endsOn must be after the first date',
+      );
     if (patch.invoiceInput) this.state.invoiceInput = patch.invoiceInput;
-    if (patch.endsOn !== undefined) {
-      if (patch.endsOn && patch.endsOn <= this.state.anchorOn)
-        throw new ScheduleValidationError(
-          'recurrence.endsOn',
-          'ends_before_start',
-          'recurrence.endsOn must be after the first date',
-        );
-      this.state.endsOn = patch.endsOn;
-    }
+    if (patch.endsOn !== undefined) this.state.endsOn = patch.endsOn;
     const reschedules =
       (patch.frequency && patch.frequency !== this.state.frequency) ||
       (patch.anchorOn && patch.anchorOn !== this.state.anchorOn);

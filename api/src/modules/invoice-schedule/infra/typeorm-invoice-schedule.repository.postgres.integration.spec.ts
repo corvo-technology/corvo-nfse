@@ -251,6 +251,31 @@ describePostgres('invoice schedule repository with restricted role', () => {
     expect(after).not.toContain(tenants[1]);
   });
 
+  it('nextAttempt reads the log: 1 when empty, then one more than the highest attempt of that occurrence', async () => {
+    const created = schedule(tenantA, '2026-11-09');
+    await repo.insert(created);
+    const next = (day: string) =>
+      repo.nextAttempt(created.props.id, tenantA, day);
+    expect(await next('2026-11-09')).toBe(1);
+    const base = {
+      tenantId: tenantA,
+      scheduleId: created.props.id,
+      occurrenceOn: '2026-11-09',
+      ranOn: '2026-11-09',
+      outcome: 'failed' as const,
+      invoiceId: null,
+      errorCode: null,
+      errorMessage: null,
+    };
+    await repo.addRun({ ...base, attempt: 1 });
+    await repo.addRun({ ...base, attempt: 2 });
+    expect(await next('2026-11-09')).toBe(3);
+    expect(await next('2026-11-16')).toBe(1);
+    expect(
+      await repo.nextAttempt(created.props.id, tenantB, '2026-11-09'),
+    ).toBe(1);
+  });
+
   it('a run is unique per (schedule, occurrence, attempt) and listRuns returns newest first', async () => {
     const created = schedule(tenantA, '2026-11-09');
     await repo.insert(created);

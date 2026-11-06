@@ -241,4 +241,28 @@ describe('update', () => {
     s.update({ anchorOn: '2026-11-16' }, '2026-11-10');
     expect(s.props).toMatchObject({ status: 'paused', nextRunOn: null });
   });
+
+  it('review: a paused single schedule resumed before its date keeps that date', () => {
+    const s = once('2026-11-20');
+    s.pause();
+    s.resume('2026-11-12');
+    expect(s.props.nextRunOn).toBe('2026-11-20');
+  });
+
+  it('review: the new first date must be within the horizon', () => {
+    const s = recurring();
+    expect(() =>
+      s.update({ anchorOn: '2030-01-01' }, '2026-11-10', 15),
+    ).toThrow(ScheduleValidationError);
+    s.update({ anchorOn: '2026-11-20' }, '2026-11-10', 15);
+    expect(s.props.anchorOn).toBe('2026-11-20');
+  });
+
+  it('review: the deadline is checked against the NEW first date when both change', () => {
+    const s = recurring();
+    expect(() =>
+      s.update({ anchorOn: '2026-12-01', endsOn: '2026-11-20' }, '2026-11-10'),
+    ).toThrow(ScheduleValidationError);
+    expect(s.props.status).toBe('active');
+  });
 });

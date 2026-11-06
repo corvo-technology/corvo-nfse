@@ -86,11 +86,19 @@ export class ScheduleEmailNotifier extends ScheduleFailureNotifier {
   }
 }
 
-/** Credit problems get a plain explanation; anything else carries the refusal message. */
+/**
+ * Billing refusals get a plain explanation. The batch reports them as `monthly_limit_exceeded`,
+ * `daily_limit_exceeded` and `plan_blocked` (with or without the ERROR_ prefix); the HTTP path as
+ * ERROR_QUOTA_EXCEEDED. Anything else carries the refusal message.
+ */
 function reasonText(item: FailedScheduleItem): string {
-  return /QUOTA|CREDIT/i.test(item.code)
-    ? 'não há notas disponíveis na sua conta'
-    : item.reason;
+  if (/PLAN_BLOCKED/i.test(item.code))
+    return 'o plano está bloqueado (assinatura pendente ou carência vencida)';
+  if (/DAILY_LIMIT/i.test(item.code))
+    return 'o limite diário de emissão foi atingido';
+  if (/MONTHLY_LIMIT|QUOTA|CREDIT/i.test(item.code))
+    return 'não há notas disponíveis na sua conta';
+  return item.reason;
 }
 
 /** The invoice's total, from `amount` or from the itemized services. */

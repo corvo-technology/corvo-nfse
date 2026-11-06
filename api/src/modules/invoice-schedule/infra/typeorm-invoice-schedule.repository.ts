@@ -174,6 +174,24 @@ export class TypeOrmInvoiceScheduleRepository extends InvoiceScheduleRepository 
     );
   }
 
+  nextAttempt(
+    scheduleId: string,
+    tenantId: string,
+    occurrenceOn: string,
+  ): Promise<number> {
+    return runWithTenant(tenantId, async () => {
+      const row = await this.manager()
+        .getRepository(InvoiceScheduleRunOrmEntity)
+        .createQueryBuilder('r')
+        .select('MAX(r.attempt)', 'max')
+        .where('r.schedule_id = :scheduleId', { scheduleId })
+        .andWhere('r.tenant_id = :tenantId', { tenantId })
+        .andWhere('r.occurrence_on = :occurrenceOn', { occurrenceOn })
+        .getRawOne<{ max: number | null }>();
+      return Number(row?.max ?? 0) + 1;
+    });
+  }
+
   listRuns(
     scheduleId: string,
     tenantId: string,

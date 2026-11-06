@@ -65,6 +65,16 @@ export abstract class InvoiceScheduleRepository {
     limit: number,
   ): Promise<InvoiceSchedule[]>;
   abstract addRun(run: NewScheduleRun): Promise<void>;
+  /**
+   * Number of the next attempt for this occurrence, from the log: one more than the highest attempt
+   * already recorded. The schedule's own counter can be reset (pause and resume, edits) while the
+   * log, which is unique per (schedule, occurrence, attempt), keeps the history.
+   */
+  abstract nextAttempt(
+    scheduleId: string,
+    tenantId: string,
+    occurrenceOn: string,
+  ): Promise<number>;
   abstract listRuns(
     scheduleId: string,
     tenantId: string,
