@@ -1,0 +1,313 @@
+import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
+import {
+  InvoiceSchedule,
+  ScheduleStateError,
+  ScheduleValidationError,
+} from '../domain/invoice-schedule';
+import {
+  InvoiceScheduleRepository,
+  type NewScheduleRun,
+  type ScheduleRun,
+} from '../domain/invoice-schedule.repository';
+import {
+  ScheduleLimitError,
+  ScheduleNotFoundError,
+} from '../domain/schedule-errors';
+import { ScheduleService, MAX_ACTIVE_SCHEDULES } from './schedule.service';
+
+const NOW = new Date('2026-11-06T15:00:00Z'); // Friday, São Paulo
+const TENANT = 'tenant-1';
+const auth = (environment: 'test' | 'live' = 'live') =>
+  ({
+    activeTenantId: TENANT,
+    authUserId: 'user-1',
+    apiKeyEnvironment: environment,
+  }) as never;
+
+class MemoryRepo extends InvoiceScheduleRepository {
+  rows = new Map<string, InvoiceSchedule>();
+  runs: ScheduleRun[] = [];
+  insert(s: InvoiceSchedule) {
+    this.rows.set(s.props.id, s);
+    return Promise.resolve();
+  }
+  findById(id: string, tenantId: string) {
+    const found = this.rows.get(id);
+    return Promise.resolve(found?.props.tenantId === tenantId ? found : null);
+  }
+  list(tenantId: string) {
+    const items = [...this.rows.values()].filter(
+      (s) => s.props.tenantId === tenantId,
+    );
+    return Promise.resolve({ items, total: items.length });
+  }
+  save(s: InvoiceSchedule) {
+    this.rows.set(s.props.id, s);
+    return Promise.resolve();
+  }
+  countActive(tenantId: string) {
+    return Promise.resolve(
+      [...this.rows.values()].filter(
+        (s) => s.props.tenantId === tenantId && s.props.status === 'active',
+      ).length,
+    );
+  }
+  listDueTenantIds() {
+    return Promise.resolve([]);
+  }
+  claimDueForTenant() {
+    return Promise.resolve([]);
+  }
+  addRun(run: NewScheduleRun) {
+    this.runs.push({ ...run, id: String(this.runs.length), createdAt: NOW });
+    return Promise.resolve();
+  }
+  listRuns(scheduleId: string) {
+    const items = this.runs.filter((r) => r.scheduleId === scheduleId);
+    return Promise.resolve({ items, total: items.length });
+  }
+}
+
+function build() {
+  const repo = new MemoryRepo();
+  const prepare = jest
+    .fn<Promise<unknown>, [Record<string, unknown>, string, string]>()
+    .mockResolvedValue({ kind: 'ready', invoice: { companyId: 'comp-1' } });
+  const service = new ScheduleService(
+    repo,
+    { prepareEmissionInEnvironment: prepare } as never,
+    15,
+  );
+  return { service, repo, prepare };
+}
+
+const body = {
+  companyTaxId: '12.345.678/0001-90',
+  amount: 150,
+  customer: { name: 'Ana', taxId: '123.456.789-09' },
+  options: { email: { send: true } },
+};
+const request = (options: Record<string, unknown>, over = {}) =>
+  ({
+    ...body,
+    competenceDate: '2026-11-09',
+    ...over,
+    options: { ...body.options, ...options },
+  }) as never;
+
+describe('ScheduleService.createFromEmission', () => {
+  it('creates a recurring schedule and keeps the invoice body without the dates', async () => {
+    const { service, repo } = build();
+    const created = await service.createFromEmission(
+      request({
+        type: 'RECURRING',
+        recurrence: { frequency: 'MONTHLY', endsOn: '2027-06-30' },
+      }),
+      TENANT,
+      auth(),
+      NOW,
+    );
+    expect(created.props).toMatchObject({
+      kind: 'recurring',
+      frequency: 'MONTHLY',
+      anchorOn: '2026-11-09',
+      nextRunOn: '2026-11-09',
+      endsOn: '2027-06-30',
+      companyId: 'comp-1',
+      environment: 'live',
+      createdBy: 'user-1',
+      status: 'active',
+    });
+    expect(created.props.invoiceInput).toEqual({
+      companyId: 'comp-1',
+      amount: 150,
+      customer: { name: 'Ana', taxId: '123.456.789-09' },
+      options: { email: { send: true } },
+    });
+    expect(repo.rows.size).toBe(1);
+  });
+
+  it('SCHEDULE creates a single schedule', async () => {
+    const { service } = build();
+    const created = await service.createFromEmission(
+      request({ type: 'SCHEDULE' }),
+      TENANT,
+      auth(),
+      NOW,
+    );
+    expect(created.props).toMatchObject({ kind: 'once', frequency: null });
+  });
+
+  it('validates the invoice body like a normal emission, with today as the competence', async () => {
+    const { service, prepare } = build();
+    await service.createFromEmission(
+      request({ type: 'SCHEDULE' }),
+      TENANT,
+      auth('test'),
+      NOW,
+    );
+    expect(prepare).toHaveBeenCalledWith(
+      expect.objectContaining({ competenceDate: '2026-11-06', amount: 150 }),
+      TENANT,
+      'test',
+    );
+    const sent = prepare.mock.calls[0]?.[0];
+    expect(sent?.options).toEqual({ email: { send: true } });
+  });
+
+  it('a body the fiscal validation refuses stops the creation, nothing is saved', async () => {
+    const { service, repo, prepare } = build();
+    prepare.mockRejectedValue(
+      new FiscalValidationError([
+        { field: 'amount', code: 'required', message: 'amount is required' },
+      ]),
+    );
+    await expect(
+      service.createFromEmission(
+        request({ type: 'SCHEDULE' }),
+        TENANT,
+        auth(),
+        NOW,
+      ),
+    ).rejects.toBeInstanceOf(FiscalValidationError);
+    expect(repo.rows.size).toBe(0);
+  });
+
+  it('RECURRING without a frequency is a validation error', async () => {
+    const { service } = build();
+    await expect(
+      service.createFromEmission(
+        request({ type: 'RECURRING' }),
+        TENANT,
+        auth(),
+        NOW,
+      ),
+    ).rejects.toBeInstanceOf(ScheduleValidationError);
+  });
+
+  it('a recurrence on a SCHEDULE is refused', async () => {
+    const { service } = build();
+    await expect(
+      service.createFromEmission(
+        request({ type: 'SCHEDULE', recurrence: { frequency: 'WEEKLY' } }),
+        TENANT,
+        auth(),
+        NOW,
+      ),
+    ).rejects.toBeInstanceOf(ScheduleValidationError);
+  });
+
+  it('refuses the 201st active schedule of a tenant', async () => {
+    const { service, repo } = build();
+    jest.spyOn(repo, 'countActive').mockResolvedValue(MAX_ACTIVE_SCHEDULES);
+    await expect(
+      service.createFromEmission(
+        request({ type: 'SCHEDULE' }),
+        TENANT,
+        auth(),
+        NOW,
+      ),
+    ).rejects.toBeInstanceOf(ScheduleLimitError);
+  });
+});
+
+describe('ScheduleService management', () => {
+  async function created() {
+    const ctx = build();
+    const schedule = await ctx.service.createFromEmission(
+      request({ type: 'RECURRING', recurrence: { frequency: 'WEEKLY' } }),
+      TENANT,
+      auth(),
+      NOW,
+    );
+    return { ...ctx, id: schedule.props.id };
+  }
+
+  it('get and runs of another tenant are not found', async () => {
+    const { service, id } = await created();
+    await expect(service.get(id, 'other')).rejects.toBeInstanceOf(
+      ScheduleNotFoundError,
+    );
+    await expect(
+      service.runs(id, 'other', { limit: 10, offset: 0 }),
+    ).rejects.toBeInstanceOf(ScheduleNotFoundError);
+  });
+
+  it('pause, resume and cancel are persisted', async () => {
+    const { service, repo, id } = await created();
+    await service.pause(id, TENANT);
+    expect(repo.rows.get(id)?.props).toMatchObject({
+      status: 'paused',
+      pauseReason: 'customer',
+    });
+    await service.resume(id, TENANT, NOW);
+    expect(repo.rows.get(id)?.props.status).toBe('active');
+    await service.cancel(id, TENANT);
+    expect(repo.rows.get(id)?.props.status).toBe('cancelled');
+    await expect(service.resume(id, TENANT, NOW)).rejects.toBeInstanceOf(
+      ScheduleStateError,
+    );
+  });
+
+  it('resuming is refused when the tenant already has the maximum of active schedules', async () => {
+    const { service, repo, id } = await created();
+    await service.pause(id, TENANT);
+    jest.spyOn(repo, 'countActive').mockResolvedValue(MAX_ACTIVE_SCHEDULES);
+    await expect(service.resume(id, TENANT, NOW)).rejects.toBeInstanceOf(
+      ScheduleLimitError,
+    );
+  });
+
+  it('updating the invoice data merges it, validates it again and leaves the dates alone', async () => {
+    const { service, repo, prepare, id } = await created();
+    prepare.mockClear();
+    const updated = await service.update(
+      id,
+      TENANT,
+      { invoice: { amount: 300 } },
+      NOW,
+    );
+    expect(updated.props.invoiceInput).toMatchObject({
+      companyId: 'comp-1',
+      amount: 300,
+      customer: { name: 'Ana', taxId: '123.456.789-09' },
+    });
+    expect(updated.props.nextRunOn).toBe('2026-11-09');
+    expect(prepare).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 300, competenceDate: '2026-11-06' }),
+      TENANT,
+      'live',
+    );
+    expect(repo.rows.get(id)?.props.invoiceInput).toMatchObject({
+      amount: 300,
+    });
+  });
+
+  it('an invalid invoice update keeps the schedule untouched', async () => {
+    const { service, repo, prepare, id } = await created();
+    prepare.mockRejectedValue(new FiscalValidationError([]));
+    await expect(
+      service.update(id, TENANT, { invoice: { amount: -1 } }, NOW),
+    ).rejects.toBeInstanceOf(FiscalValidationError);
+    expect(repo.rows.get(id)?.props.invoiceInput).toMatchObject({
+      amount: 150,
+    });
+  });
+
+  it('updating only the deadline or frequency does not revalidate the invoice', async () => {
+    const { service, prepare, id } = await created();
+    prepare.mockClear();
+    const updated = await service.update(
+      id,
+      TENANT,
+      { frequency: 'MONTHLY', endsOn: '2027-12-31' },
+      NOW,
+    );
+    expect(prepare).not.toHaveBeenCalled();
+    expect(updated.props).toMatchObject({
+      frequency: 'MONTHLY',
+      endsOn: '2027-12-31',
+      nextRunOn: '2026-11-09', // the first date is still ahead of today
+    });
+  });
+});

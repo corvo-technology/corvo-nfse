@@ -1,0 +1,227 @@
+import { Inject, Injectable } from '@nestjs/common';
+import type { AuthContext } from '@/modules/auth/auth-context';
+import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
+import type { InvoiceService } from '@/modules/invoice/application/invoice.service';
+import type { CreateInvoiceDto } from '@/modules/invoice/http/invoice.dto';
+import {
+  InvoiceSchedule,
+  ScheduleValidationError,
+  type ScheduleKind,
+  type ScheduleStatus,
+  type UpdateScheduleInput,
+} from '../domain/invoice-schedule';
+import {
+  InvoiceScheduleRepository,
+  type SchedulePage,
+  type ScheduleRun,
+  type ScheduleListResult,
+} from '../domain/invoice-schedule.repository';
+import {
+  ScheduleLimitError,
+  ScheduleNotFoundError,
+} from '../domain/schedule-errors';
+import { type Frequency, todayInSaoPaulo } from '../domain/recurrence';
+
+/** Active schedules per workspace: keeps the daily run bounded. */
+export const MAX_ACTIVE_SCHEDULES = 200;
+export const SCHEDULE_HORIZON_DAYS = 'SCHEDULE_HORIZON_DAYS';
+export const SCHEDULE_INVOICE_PORT = 'SCHEDULE_INVOICE_PORT';
+
+export type ScheduleInvoicePort = Pick<
+  InvoiceService,
+  'prepareEmissionInEnvironment'
+>;
+
+/** What the emission request says about scheduling, read from `options`. */
+interface ScheduleOptions {
+  type?: string;
+  recurrence?: { frequency?: Frequency; endsOn?: string };
+}
+
+export interface UpdateSchedulePatch {
+  /** Fields of the invoice body to change (merged over what is stored). */
+  invoice?: Record<string, unknown>;
+  endsOn?: string | null;
+  frequency?: Frequency;
+  anchorOn?: string;
+}
+
+const KIND_BY_TYPE: Record<string, ScheduleKind> = {
+  SCHEDULE: 'once',
+  RECURRING: 'recurring',
+};
+
+@Injectable()
+export class ScheduleService {
+  constructor(
+    private readonly repo: InvoiceScheduleRepository,
+    @Inject(SCHEDULE_INVOICE_PORT)
+    private readonly invoices: ScheduleInvoicePort,
+    @Inject(SCHEDULE_HORIZON_DAYS) private readonly horizonDays: number,
+  ) {}
+
+  /** `POST /invoices` with `options.type` SCHEDULE or RECURRING. */
+  async createFromEmission(
+    dto: CreateInvoiceDto,
+    tenantId: string,
+    authContext: AuthContext,
+    now: Date = new Date(),
+  ): Promise<InvoiceSchedule> {
+    const options: ScheduleOptions =
+      (dto as { options?: ScheduleOptions }).options ?? {};
+    const kind = KIND_BY_TYPE[options.type ?? ''];
+    if (!kind)
+      throw new ScheduleValidationError(
+        'options.type',
+        'invalid',
+        'options.type must be SCHEDULE or RECURRING',
+      );
+    if (!/^\d{4}-\d{2}-\d{2}/.test(dto.competenceDate ?? ''))
+      throw new ScheduleValidationError(
+        'competenceDate',
+        'invalid_date',
+        'competenceDate must be a valid date',
+      );
+    await this.assertRoomForOne(tenantId);
+
+    const environment = executionEnvironment(authContext);
+    const body = invoiceBody(dto);
+    const companyId = await this.validate(body, tenantId, environment, now);
+    const schedule = InvoiceSchedule.create(
+      {
+        tenantId,
+        environment,
+        companyId,
+        kind,
+        frequency: options.recurrence?.frequency ?? null,
+        firstOn: dto.competenceDate.slice(0, 10),
+        endsOn: options.recurrence?.endsOn ?? null,
+        invoiceInput: { ...withoutCompanyTaxId(body), companyId },
+        createdBy: authContext.authUserId ?? null,
+      },
+      now,
+      this.horizonDays,
+    );
+    await this.repo.insert(schedule);
+    return schedule;
+  }
+
+  async get(id: string, tenantId: string): Promise<InvoiceSchedule> {
+    const schedule = await this.repo.findById(id, tenantId);
+    if (!schedule) throw new ScheduleNotFoundError();
+    return schedule;
+  }
+
+  list(
+    tenantId: string,
+    filter: { status?: ScheduleStatus; companyId?: string },
+    page: SchedulePage,
+  ): Promise<ScheduleListResult<InvoiceSchedule>> {
+    return this.repo.list(tenantId, filter, page);
+  }
+
+  async runs(
+    id: string,
+    tenantId: string,
+    page: SchedulePage,
+  ): Promise<ScheduleListResult<ScheduleRun>> {
+    await this.get(id, tenantId);
+    return this.repo.listRuns(id, tenantId, page);
+  }
+
+  async update(
+    id: string,
+    tenantId: string,
+    patch: UpdateSchedulePatch,
+    now: Date = new Date(),
+  ): Promise<InvoiceSchedule> {
+    const schedule = await this.get(id, tenantId);
+    const change: UpdateScheduleInput = {
+      endsOn: patch.endsOn,
+      frequency: patch.frequency,
+      anchorOn: patch.anchorOn,
+    };
+    if (patch.invoice) {
+      const merged = { ...schedule.props.invoiceInput, ...patch.invoice };
+      await this.validate(merged, tenantId, schedule.props.environment, now);
+      change.invoiceInput = merged;
+    }
+    schedule.update(change, todayInSaoPaulo(now));
+    await this.repo.save(schedule);
+    return schedule;
+  }
+
+  async pause(id: string, tenantId: string): Promise<InvoiceSchedule> {
+    const schedule = await this.get(id, tenantId);
+    schedule.pause();
+    await this.repo.save(schedule);
+    return schedule;
+  }
+
+  async resume(
+    id: string,
+    tenantId: string,
+    now: Date = new Date(),
+  ): Promise<InvoiceSchedule> {
+    const schedule = await this.get(id, tenantId);
+    await this.assertRoomForOne(tenantId);
+    schedule.resume(todayInSaoPaulo(now));
+    await this.repo.save(schedule);
+    return schedule;
+  }
+
+  async cancel(id: string, tenantId: string): Promise<InvoiceSchedule> {
+    const schedule = await this.get(id, tenantId);
+    schedule.cancel();
+    await this.repo.save(schedule);
+    return schedule;
+  }
+
+  private async assertRoomForOne(tenantId: string): Promise<void> {
+    if ((await this.repo.countActive(tenantId)) >= MAX_ACTIVE_SCHEDULES)
+      throw new ScheduleLimitError(MAX_ACTIVE_SCHEDULES);
+  }
+
+  /**
+   * The body is validated exactly like a normal emission, as if it were issued today.
+   * Nothing is persisted. Returns the company the body resolves to.
+   */
+  private async validate(
+    body: Record<string, unknown>,
+    tenantId: string,
+    environment: 'test' | 'live',
+    now: Date,
+  ): Promise<string> {
+    const prepared = await this.invoices.prepareEmissionInEnvironment(
+      { ...body, competenceDate: todayInSaoPaulo(now) } as CreateInvoiceDto,
+      tenantId,
+      environment,
+    );
+    return prepared.invoice.companyId;
+  }
+}
+
+/** The invoice request minus what the schedule owns: dates and the scheduling options. */
+function invoiceBody(dto: CreateInvoiceDto): Record<string, unknown> {
+  const {
+    competenceDate: _date,
+    options,
+    ...rest
+  } = dto as unknown as {
+    competenceDate: string;
+    options?: Record<string, unknown>;
+  } & Record<string, unknown>;
+  const kept: Record<string, unknown> = { ...rest };
+  if (options) {
+    const { type: _type, recurrence: _recurrence, ...others } = options;
+    if (Object.keys(others).length > 0) kept.options = others;
+  }
+  return kept;
+}
+
+function withoutCompanyTaxId(
+  body: Record<string, unknown>,
+): Record<string, unknown> {
+  const { companyTaxId: _taxId, ...rest } = body;
+  return rest;
+}
