@@ -1502,6 +1502,18 @@
     "companyLimit": "Without a plan the account can have 1 company. Subscribe to a plan for unlimited companies."
   },
   "CompanyDetail": {
+    "dps": {
+      "title": "Invoice numbering",
+      "hint": "If the company already issued notes in another system or in the Portal Nacional, enter the number of the last note it issued. The next Corvo note uses the following number, so the Receita does not refuse a repeated one.",
+      "current": "Last number used in Corvo: no. {number} (series {series})",
+      "none": "We have not issued any note here yet (series {series}).",
+      "label": "Number of the last note issued",
+      "help": "It is in the PDF or XML of the last note, in the DPS number field.",
+      "save": "Save numbering",
+      "saved": "Numbering updated. The next note will be no. {number}.",
+      "lower": "Corvo is already past that number, so the numbering stays at {number}.",
+      "invalid": "Enter a whole number, zero or more."
+    },
     "fiscalAdvanced": "Advanced mode (accountant)",
     "legalName": "Legal name",
     "taxRegime": "Tax regime",

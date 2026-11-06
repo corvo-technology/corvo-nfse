@@ -45,6 +45,7 @@ import {
   INVOICE_EVENT_REPOSITORY,
 } from './domain/invoice.repository';
 import { DPS_SEQUENCE_REPOSITORY } from './domain/dps-sequence';
+import { DpsSequenceController } from './http/dps-sequence.controller';
 import { InvoiceIntakeService } from './application/invoice-intake.service';
 import { InvoiceService } from './application/invoice.service';
 import { IntegrationInvoiceIssuer } from './application/integration-invoice-issuer';
@@ -104,7 +105,11 @@ import { EmailModule } from '@/modules/email/email.module';
     FiscalEngineModule,
   ],
   // Static overview route must be registered before InvoiceController's :id.
-  controllers: [InvoiceOverviewController, InvoiceController],
+  controllers: [
+    InvoiceOverviewController,
+    InvoiceController,
+    DpsSequenceController,
+  ],
   providers: [
     InvoiceOverviewService,
     {

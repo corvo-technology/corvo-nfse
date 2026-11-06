@@ -1502,6 +1502,18 @@
     "companyLimit": "Sem plano a conta pode ter 1 empresa. Assine um plano para cadastrar empresas ilimitadas."
   },
   "CompanyDetail": {
+    "dps": {
+      "title": "Numeração das notas",
+      "hint": "Se a empresa já emitiu notas em outro sistema ou no Portal Nacional, informe o número da última nota emitida. A próxima nota do Corvo usa o número seguinte e a Receita não recusa por número repetido.",
+      "current": "Última nota numerada no Corvo: nº {number} (série {series})",
+      "none": "Ainda não emitimos nenhuma nota por aqui (série {series}).",
+      "label": "Número da última nota emitida",
+      "help": "Está no PDF ou no XML da última nota, no campo Número da DPS.",
+      "save": "Salvar numeração",
+      "saved": "Numeração atualizada. A próxima nota será a nº {number}.",
+      "lower": "O Corvo já passou desse número, então a numeração continuou em {number}.",
+      "invalid": "Informe um número inteiro, zero ou maior."
+    },
     "fiscalAdvanced": "Modo avançado (contador)",
     "legalName": "Razão social",
     "taxRegime": "Regime tributário",
