@@ -30,6 +30,13 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("notes list filters", () => {
+  it("offers the spreadsheet import next to the new note button", async () => {
+    renderPage();
+    await screen.findAllByText("Padaria Estrela");
+    expect(screen.getByRole("link", { name: /import spreadsheet/i }).getAttribute("href")).toBe("/app/invoices/import");
+    expect(screen.getByRole("link", { name: /new invoice|new note/i }).getAttribute("href")).toBe("/app/invoices/new");
+  });
+
   it("Cancelled shows only the cancelled notes", async () => {
     renderPage();
     await screen.findAllByText("Padaria Estrela");

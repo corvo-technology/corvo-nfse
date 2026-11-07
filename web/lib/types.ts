@@ -553,3 +553,11 @@ export interface ScheduleRun {
   errorMessage: string | null;
   createdAt: string;
 }
+
+/** A spreadsheet import: read in the background, reviewed by the user, then emitted in chunks. */
+export type ImportStatus = "processing" | "ready" | "emitting" | "done" | "failed";
+export type ImportRowStatus = "valid" | "invalid" | "queued" | "accepted" | "rejected";
+export interface ImportCounters { total: number; valid: number; invalid: number; accepted: number; authorized: number; failed: number; pending: number }
+export interface ImportJob { id: string; status: ImportStatus; fileName: string; companyId: string | null; errorCode: string | null; emitStartedAt: string | null; emitFinishedAt: string | null; createdAt: string; counters: ImportCounters }
+export interface ImportRow { line: number; data: Record<string, unknown>; status: ImportRowStatus; errorCode: string | null; errorMessage: string | null; invoiceId: string | null }
+export interface ImportStart { id: string; status: ImportStatus; duplicateOf: string | null }

@@ -143,3 +143,22 @@ it("does not send IP headers when no shared secret is configured", async () => {
   const sent = new Headers(fetchMock.mock.calls[0][1]?.headers);
   expect(sent.has("x-corvo-client-ip")).toBe(false); expect(sent.has("x-corvo-proxy-secret")).toBe(false);
 });
+it("forwards the spreadsheet import routes with their methods, and allows a 10 MB upload only there", async () => {
+  fetchMock.mockImplementation(() => Promise.resolve(new Response("{}", { status: 200 })));
+  const origin = { origin: "http://localhost:4000" };
+  const call = (run: typeof GET, route: string, method: string, extra: RequestInit = {}) =>
+    run(new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers: origin, ...extra }), context(route));
+  for (const [run, route, method] of [
+    [POST, "imports", "POST"], [GET, "imports/template", "GET"], [GET, "imports/abc", "GET"], [DELETE, "imports/abc", "DELETE"],
+    [GET, "imports/abc/rows", "GET"], [PATCH, "imports/abc/rows/4", "PATCH"], [POST, "imports/abc/emit", "POST"], [GET, "imports/abc/errors.csv", "GET"],
+  ] as const) expect((await call(run, route, method)).status).not.toBe(404);
+  for (const [run, route, method] of [[PUT, "imports/abc", "PUT"], [POST, "imports/abc", "POST"], [DELETE, "imports", "DELETE"], [GET, "imports/abc/other", "GET"]] as const)
+    expect((await call(run, route, method)).status).toBe(404);
+  const headers = { ...origin, "Content-Type": "multipart/form-data; boundary=test" };
+  const big = await POST(new NextRequest("http://localhost:4000/api/proxy/v1/imports", { method: "POST", headers, body: "x".repeat(5 * 1024 * 1024) }), context("imports"));
+  expect(big.status).toBe(200);
+  const tooBig = await POST(new NextRequest("http://localhost:4000/api/proxy/v1/imports", { method: "POST", headers, body: "x".repeat(11 * 1024 * 1024) }), context("imports"));
+  expect(tooBig.status).toBe(413);
+  const otherRoute = await PATCH(new NextRequest("http://localhost:4000/api/proxy/v1/imports/abc/rows/4", { method: "PATCH", headers, body: "x".repeat(2 * 1024 * 1024) }), context("imports/abc/rows/4"));
+  expect(otherRoute.status).toBe(413);
+});
