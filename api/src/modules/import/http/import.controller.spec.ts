@@ -5,7 +5,7 @@ describe('ImportController POST /imports', () => {
   const review = { list: jest.fn() };
   const controller = new ImportController(
     intake as never,
-    {} as never,
+    review as never,
     {} as never,
   );
   const req = {
