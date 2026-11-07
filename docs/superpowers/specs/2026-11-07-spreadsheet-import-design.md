@@ -31,7 +31,7 @@ Critério de sucesso do dono do produto: **simplicidade e fluidez**. A revisão 
 
 - Uma linha ruim **nunca** impede as outras.
 - Reenviar a mesma planilha ou clicar em Emitir duas vezes **nunca** emite duas vezes.
-- Fórmulas e macros do Excel nunca são executadas; o arquivo não é guardado depois de lido (só as linhas).
+- Fórmulas e macros do Excel nunca são executadas; o arquivo é apagado do S3 depois de lido (ficam só as linhas).
 - Não prometer tempo exato ao usuário: o tempo mostrado é o medido.
 
 ## Fluxo
@@ -62,7 +62,7 @@ Normalização: só dígitos em documentos; valor `1.234,56` e `1234.56` viram c
 
 ## Estado e persistência
 
-Duas tabelas novas: `imports` (id, tenant, ambiente, usuário, nome do arquivo, status, empresa escolhida, tempos de início e fim da emissão) e `import_rows` (importação, número da linha, dados normalizados em JSON, status, erro, invoice id). O arquivo em si **não** é guardado. Migração nova em `api/src/infra/database/migrations`. Linhas e importações antigas expiram (limpeza em 30 dias).
+Duas tabelas novas: `imports` (id, tenant, ambiente, usuário, nome do arquivo, hash do arquivo, status, empresa escolhida, tempos de início e fim da emissão) e `import_rows` (importação, número da linha, dados normalizados em JSON, status, erro, invoice id). O arquivo só existe no S3 até ser lido. Migração nova em `api/src/infra/database/migrations`. Linhas e importações antigas expiram (limpeza em 30 dias).
 
 ## Permissões e limites
 
@@ -88,7 +88,7 @@ Duas tabelas novas: `imports` (id, tenant, ambiente, usuário, nome do arquivo, 
 10. **CNPJ do prestador.** Resolvido por `companyTaxId` dentro do tenant e do ambiente da importação, como o lote já faz. Se o mesmo CNPJ existir em teste e produção, vale o ambiente da importação.
 11. **Quem emite.** A importação guarda o usuário e o ambiente de quem clicou em Emitir. O trabalhador reconstrói o contexto de autenticação a partir disso e confere a permissão `nfse.invoices.issue` de novo a cada pedaço; se ela sumiu, as linhas restantes ficam pendentes com erro de permissão.
 12. **Créditos.** A reserva acontece por linha ao salvar o lote, então um pedaço pode ser aceito só em parte: as primeiras linhas em ordem entram, as demais saem rejeitadas por limite.
-13. **Arquivo entre o envio e a fila.** Os bytes ficam numa coluna temporária de `imports`, apagada assim que a leitura termina (ou falha). O 202 sai rápido, sem ler o arquivo no pedido.
+13. **Arquivo entre o envio e a fila.** Os bytes vão para o S3 (mesmo bucket e credenciais do armazenamento de PDF/XML), numa chave `imports/<tenant>/<ambiente>/<importId>`, sem usar o nome original. Um armazenamento pequeno e próprio (salvar, ler, apagar) é criado, porque o atual só conhece PDF e XML de nota. O arquivo é apagado assim que a leitura termina (com sucesso ou falha) e quando a importação é descartada; uma limpeza diária remove arquivos órfãos com mais de 24 horas. O arquivo nunca é entregue por link. O 202 sai rápido, sem ler o arquivo no pedido.
 14. **Validação sem gravar.** `prepareEmission` só consulta (chave de idempotência, empresa); se ele criar algum efeito colateral, separamos uma validação pura em `InvoiceService`.
 
 ## Fica para quem constrói
