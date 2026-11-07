@@ -3,7 +3,10 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
-import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
+import {
+  runAsSystem,
+  runWithTenant,
+} from '@/infra/persistence/typeorm/tenant-context.storage';
 import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
 import type {
   ImportCounters,
@@ -311,6 +314,17 @@ export class TypeOrmImportRepository extends ImportRepository {
       else qb.andWhere('m.company_id IS NULL');
       const row = await qb.getOne();
       return row ? toRecord(row) : null;
+    });
+  }
+
+  async deleteOlderThan(days: number): Promise<number> {
+    return runAsSystem('import-housekeeping', async () => {
+      const out = await this.imports()
+        .createQueryBuilder()
+        .delete()
+        .where('created_at < now() - make_interval(days => :days)', { days })
+        .execute();
+      return out.affected ?? 0;
     });
   }
 

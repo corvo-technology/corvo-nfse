@@ -79,5 +79,7 @@ export abstract class ImportRepository {
     companyId: string | null,
     fileHash: string,
   ): Promise<ImportRecord | null>;
+  /** Housekeeping across tenants: drops imports (and their rows) created more than `days` ago. */
+  abstract deleteOlderThan(days: number): Promise<number>;
   abstract delete(tenantId: string, id: string): Promise<void>;
 }

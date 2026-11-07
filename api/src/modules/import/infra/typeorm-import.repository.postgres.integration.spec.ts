@@ -282,6 +282,24 @@ describePostgres('import repository with restricted role', () => {
     expect(all.items[3]).toMatchObject({ errorCode: 'ERROR_VALIDATION' });
   });
 
+  it('drops only imports older than the given days, rows included', async () => {
+    const oldImp = await repo.create(base(tenantA));
+    const fresh = await repo.create(base(tenantA));
+    await repo.insertRows(tenantA, oldImp.id, [row(1, 'valid')]);
+    await admin.query(
+      `UPDATE "${schema}".imports SET created_at = now() - interval '40 days' WHERE id = $1`,
+      [oldImp.id],
+    );
+    expect(await repo.deleteOlderThan(30)).toBeGreaterThanOrEqual(1);
+    expect(await repo.findById(tenantA, 'live', oldImp.id)).toBeNull();
+    expect(await repo.findById(tenantA, 'live', fresh.id)).not.toBeNull();
+    const rows = await admin.query(
+      `SELECT 1 FROM "${schema}".import_rows WHERE import_id = $1`,
+      [oldImp.id],
+    );
+    expect(rows).toHaveLength(0);
+  });
+
   it('updates a row and deletes the import with its rows', async () => {
     const imp = await repo.create(base(tenantA));
     await repo.insertRows(tenantA, imp.id, [row(1, 'invalid')]);
