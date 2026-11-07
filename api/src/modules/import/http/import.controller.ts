@@ -27,6 +27,7 @@ import {
   executionEnvironment,
 } from '@/modules/auth/execution-environment.guard';
 import { RequirePermission } from '@/modules/auth/require-permission.decorator';
+import { CursorPage } from '@/shared/http/pagination';
 import { data } from '@/shared/http/response';
 import { ImportIntakeService } from '../application/import-intake.service';
 import { ImportEmitService } from '../application/import-emit.service';
@@ -109,9 +110,9 @@ export class ImportController {
     const views = await this.review.list(
       auth.activeTenantId,
       executionEnvironment(auth),
-      query.limit ?? 10,
+      Number(query.limit ?? 10),
     );
-    return { data: views.map(toImportResponse) };
+    return data(views.map(toImportResponse));
   }
 
   @Get('template')
@@ -178,7 +179,7 @@ export class ImportController {
     @Req() req: RequestWithAuthContext,
   ) {
     const auth = req.authContext!;
-    const limit = query.limit ?? DEFAULT_ROWS_PAGE;
+    const limit = Number(query.limit ?? DEFAULT_ROWS_PAGE);
     const page = await this.review.listRows(
       auth.activeTenantId,
       executionEnvironment(auth),
@@ -189,14 +190,11 @@ export class ImportController {
         limit,
       },
     );
-    return {
-      data: page.items.map(toRowResponse),
-      pagination: {
-        limit,
-        hasMore: page.nextCursor !== null,
-        nextCursor: page.nextCursor,
-      },
-    };
+    return new CursorPage(page.items.map(toRowResponse), {
+      limit,
+      hasMore: page.nextCursor !== null,
+      nextCursor: page.nextCursor,
+    });
   }
 
   @Patch(':id/rows/:line')
