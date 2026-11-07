@@ -117,13 +117,11 @@ export class TypeOrmImportRepository extends ImportRepository {
     await runWithTenant(tenantId, async () => {
       for (let i = 0; i < rows.length; i += INSERT_CHUNK)
         await this.rows().insert(
-          rows
-            .slice(i, i + INSERT_CHUNK)
-            .map((r) => ({
-              ...r,
-              tenantId,
-              importId,
-            })) as QueryDeepPartialEntity<ImportRowOrmEntity>[],
+          rows.slice(i, i + INSERT_CHUNK).map((r) => ({
+            ...r,
+            tenantId,
+            importId,
+          })) as QueryDeepPartialEntity<ImportRowOrmEntity>[],
         );
     });
   }
@@ -142,7 +140,9 @@ export class TypeOrmImportRepository extends ImportRepository {
   ): Promise<ImportCounters> {
     return runWithTenant(tenantId, async () => {
       const schema = this.schema();
-      const [raw] = await this.manager().query(
+      const [raw]: ImportCounters[] = await this.manager().query<
+        ImportCounters[]
+      >(
         `SELECT
            count(*)::int AS total,
            count(*) FILTER (WHERE r.status = 'valid')::int AS valid,
@@ -159,7 +159,7 @@ export class TypeOrmImportRepository extends ImportRepository {
          WHERE r.import_id = $1 AND m.tenant_id = $2 AND m.environment = $3`,
         [id, tenantId, env],
       );
-      return raw as ImportCounters;
+      return raw;
     });
   }
 
