@@ -30,7 +30,7 @@ export interface Onboarding {
 export function useOnboarding(): Onboarding {
   const { can, tenantId, fiscalEnvironment } = useAuth();
   const anyStep = can("nfse.companies.manage") || can("nfse.certificates.manage") || can("nfse.invoices.issue");
-  const active = Boolean(tenantId) && fiscalEnvironment === "test" && anyStep;
+  const active = Boolean(tenantId) && fiscalEnvironment === "live" && anyStep;
   const scope = `${tenantId}:${fiscalEnvironment}`;
   const [facts, setFacts] = useState<Facts | null>(null);
   const [flagState, setFlagState] = useState<{ tenantId: string; flags: Record<OnboardingFlag, boolean> } | null>(null);

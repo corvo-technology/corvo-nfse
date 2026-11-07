@@ -89,12 +89,12 @@ describe("OnboardingCard", () => {
   it("the note step links to the form when unlocked, and says what is missing when locked", () => {
     mocks.state = state({ doneKeys: ["plans", "company", "certificate", "numbering"], lockedNote: false });
     renderCard();
-    expect(screen.getByRole("link", { name: "Issue a test note" }).getAttribute("href")).toBe("/app/invoices/new");
+    expect(screen.getByRole("link", { name: "Issue my first note" }).getAttribute("href")).toBe("/app/invoices/new");
     cleanup();
     mocks.state = state({ doneKeys: ["plans", "company", "certificate", "numbering"] });
     renderCard();
     expect(screen.getByText("Register the company and upload the certificate to unlock")).toBeTruthy();
-    expect(screen.queryByRole("link", { name: "Issue a test note" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Issue my first note" })).toBeNull();
   });
 
   it("certificate and numbering without a company say why and can be skipped", () => {
@@ -121,6 +121,6 @@ describe("OnboardingCard", () => {
     mocks.state = state({ doneKeys: ORDER, lockedNote: false });
     renderCard();
     expect(screen.getByText("All set")).toBeTruthy();
-    expect(screen.getByText(/without using credits/)).toBeTruthy();
+    expect(screen.getByText(/Switch to Test/)).toBeTruthy();
   });
 });

@@ -6,7 +6,7 @@ import OverviewPage from "@/app/(dashboard)/app/page";
 import { invoices, billing } from "@/lib/api";
 import messages from "@/messages/en.json";
 
-vi.mock("@/lib/auth", () => ({ useAuth: () => ({ tenantId: "tenant-a", fiscalEnvironment: "test", can: () => true }) }));
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ tenantId: "tenant-a", fiscalEnvironment: "live", can: () => true }) }));
 vi.mock("@/lib/api", () => ({ invoices: { overview: vi.fn() }, billing: { plan: vi.fn() } }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 vi.mock("@/components/onboarding/onboarding-card", () => ({ OnboardingCard: () => <div data-testid="onboarding-card" /> }));

@@ -1516,8 +1516,8 @@
           "skip": "Skip",
           "back": "Back",
           "certificateHint": "The company's digital certificate signs the invoices. If you don't have one yet, skip and come back later.",
-          "noteHint": "Issue a test note: it is free, has no legal validity and does not use credits.",
-          "issueNote": "Issue a test note",
+          "noteHint": "This is a real invoice and uses one note from your balance. If you would rather not issue it now, skip: you can do it later.",
+          "issueNote": "Issue my first note",
           "brand": "Corvo",
           "progress": "{done} of {total}",
           "hide": "Go to dashboard",
@@ -1526,14 +1526,14 @@
       "noteLocked": "Register the company and upload the certificate to unlock",
           "noPrior": "I never issued notes before",
           "allDoneTitle": "All set",
-          "allDoneBody": "You can issue as many test notes as you like without using credits. When you are ready to issue for real, switch to Production in the selector up here."
+          "allDoneBody": "Want to try things without using a note from your balance? Switch to Test in the selector up here: there you can issue as many notes as you like, with no legal validity and no credits used."
     },
     "steps": {
           "plans": "Get to know Corvo and the plans",
           "company": "Register your company",
           "certificate": "Upload the digital certificate",
           "numbering": "Enter the last note issued",
-          "note": "Issue your first test note"
+          "note": "Issue your first note"
     },
     "note": {
           "title": "Your first test note",

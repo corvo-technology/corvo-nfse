@@ -5,7 +5,7 @@ import { useOnboarding } from "@/lib/use-onboarding";
 
 const mocks = vi.hoisted(() => ({
   companies: vi.fn(), certificates: vi.fn(), sequence: vi.fn(), invoices: vi.fn(),
-  auth: { env: "test" as "test" | "live", permissions: ["nfse.companies.manage", "nfse.certificates.manage", "nfse.invoices.issue"] },
+  auth: { env: "live" as "test" | "live", permissions: ["nfse.companies.manage", "nfse.certificates.manage", "nfse.invoices.issue"] },
 }));
 vi.mock("@/lib/api", () => ({
   companies: { list: mocks.companies, dpsSequence: mocks.sequence },
@@ -24,7 +24,7 @@ const stepOf = (result: { current: ReturnType<typeof useOnboarding> }, key: stri
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
-  mocks.auth.env = "test";
+  mocks.auth.env = "live";
   mocks.auth.permissions = ["nfse.companies.manage", "nfse.certificates.manage", "nfse.invoices.issue"];
   mocks.companies.mockResolvedValue(page([]));
   mocks.certificates.mockResolvedValue(page([]));
@@ -34,8 +34,8 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("useOnboarding", () => {
-  it("is off in live and calls nothing", async () => {
-    mocks.auth.env = "live";
+  it("is off in test and calls nothing", async () => {
+    mocks.auth.env = "test";
     const { result } = renderHook(() => useOnboarding());
     expect(result.current.visible).toBe(false);
     expect(mocks.companies).not.toHaveBeenCalled();
