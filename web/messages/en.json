@@ -2965,7 +2965,15 @@
       "waiting": "{count} waiting for credits",
       "open": "Open",
       "continue": "Continue",
-      "rows": "{count, plural, one {# row} other {# rows}}"
+      "rows": "{count, plural, one {# row} other {# rows}}",
+      "empty": "No imports in {env} yet.",
+      "emptyHint": "Switch the environment in the selector at the top to see the other one.",
+      "env_live": "Production",
+      "env_test": "Test",
+      "loadError": "Could not load the imports.",
+      "retry": "Try again",
+      "pendingBanner": "{count, plural, one {# import is waiting for credits} other {# imports are waiting for credits}}",
+      "pendingHint": "{notes, plural, one {# invoice} other {# invoices}} waiting ({amount}). Top up and continue where you left off."
     }
   }
 }

@@ -12,11 +12,12 @@ import { ImportReading } from "@/components/imports/import-reading";
 import { ImportProgress } from "@/components/imports/import-progress";
 import { ImportReview } from "@/components/imports/import-review";
 import { ImportUpload } from "@/components/imports/import-upload";
-import { RecentImports } from "@/components/imports/recent-imports";
+import { PendingCreditsBanner, RecentImports } from "@/components/imports/recent-imports";
 import { useAuth } from "@/lib/auth";
 import { importStage } from "@/lib/imports";
 import type { ImportStart } from "@/lib/types";
 import { useImport } from "@/lib/use-import";
+import { useRecentImports } from "@/lib/use-recent-imports";
 
 const HOME = "/app/invoices/import";
 
@@ -31,6 +32,7 @@ function ImportFlow() {
   const { can } = useAuth();
   const id = useSearchParams().get("id");
   const { job, error, refresh } = useImport(id);
+  const recent = useRecentImports(10, !id);
   const [duplicateOf, setDuplicateOf] = useState<string | null>(null);
   const restart = () => { setDuplicateOf(null); router.replace(HOME); };
   const started = (start: ImportStart) => { setDuplicateOf(start.duplicateOf); router.replace(`${HOME}?id=${encodeURIComponent(start.id)}`); };
@@ -49,8 +51,9 @@ function ImportFlow() {
         <EmptyState tone="danger" title={t("failed.title")} description={t("failed.fallback")} action={<Button variant="secondary" onClick={restart}>{t("failed.again")}</Button>} />
       ) : stage === "upload" ? (
         <>
+          <PendingCreditsBanner recent={recent} />
           <ImportUpload onStarted={started} />
-          <RecentImports />
+          <RecentImports recent={recent} />
         </>
       ) : !job || stage === "reading" ? (
         <ImportReading job={job} />

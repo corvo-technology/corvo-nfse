@@ -2965,7 +2965,15 @@
       "waiting": "{count} aguardando créditos",
       "open": "Abrir",
       "continue": "Continuar",
-      "rows": "{count, plural, one {# linha} other {# linhas}}"
+      "rows": "{count, plural, one {# linha} other {# linhas}}",
+      "empty": "Nenhuma importação em {env} ainda.",
+      "emptyHint": "Troque o ambiente no seletor do topo para ver as de outro ambiente.",
+      "env_live": "Produção",
+      "env_test": "Teste",
+      "loadError": "Não foi possível carregar as importações.",
+      "retry": "Tentar de novo",
+      "pendingBanner": "{count, plural, one {# importação está aguardando créditos} other {# importações estão aguardando créditos}}",
+      "pendingHint": "{notes, plural, one {# nota} other {# notas}} esperando ({amount}). Recarregue e continue de onde parou."
     }
   }
 }

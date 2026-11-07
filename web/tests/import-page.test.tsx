@@ -12,7 +12,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace }
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (p: string) => p === "nfse.invoices.issue" && mocks.canIssue }) }));
 vi.mock("@/lib/use-import", () => ({ useImport: () => ({ job: mocks.job, error: mocks.error, refresh: mocks.refresh }) }));
 vi.mock("@/components/imports/import-upload", () => ({ ImportUpload: ({ onStarted }: { onStarted: (s: unknown) => void }) => { mocks.started = onStarted; return <p>upload step</p>; } }));
-vi.mock("@/components/imports/recent-imports", () => ({ RecentImports: () => <p>recent imports</p> }));
+vi.mock("@/lib/use-recent-imports", () => ({ useRecentImports: () => ({ status: "ready", items: [], reload: () => undefined }) }));
+vi.mock("@/components/imports/recent-imports", () => ({ RecentImports: () => <p>recent imports</p>, PendingCreditsBanner: () => <p>pending banner</p> }));
 vi.mock("@/components/imports/import-reading", () => ({ ImportReading: () => <h2>Reading the spreadsheet</h2> }));
 vi.mock("@/components/imports/import-review", () => ({ ImportReview: (props: Record<string, () => void> & { duplicateOf: string | null }) => { mocks.review = props; return <p>review step {String(props.duplicateOf)}</p>; } }));
 vi.mock("@/components/imports/import-progress", () => ({ ImportProgress: ({ onAnother }: { onAnother: () => void }) => <button onClick={onAnother}>progress step</button> }));
@@ -28,6 +29,7 @@ describe("import page", () => {
     show();
     expect(screen.getByText("upload step")).toBeTruthy();
     expect(screen.getByText("recent imports")).toBeTruthy();
+    expect(screen.getByText("pending banner")).toBeTruthy();
     expect(screen.getByRole("link", { name: /back to invoices/i }).getAttribute("href")).toBe("/app/invoices");
     mocks.started?.({ id: "i1", status: "processing", duplicateOf: "old" });
     expect(mocks.replace).toHaveBeenCalledWith("/app/invoices/import?id=i1");
