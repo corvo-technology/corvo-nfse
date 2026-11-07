@@ -7,6 +7,10 @@ const GUIDANCE: [RegExp, string][] = [
     /\bE0120\b/,
     'Remova a Inscrição Municipal do cadastro da empresa e emita novamente: o município não tem dados complementares dela no cadastro nacional.',
   ],
+  [
+    /\bE0014\b/,
+    'Essa empresa já emitiu notas com esse número em outro sistema ou no Portal Nacional. Informe o número da última nota emitida (campo "Numeração das notas" na empresa, ou PUT /companies/{id}/dps-sequence) e emita novamente.',
+  ],
 ];
 
 export function explainRejection(message: string): string {

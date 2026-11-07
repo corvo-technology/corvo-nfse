@@ -66,4 +66,57 @@ export class TypeOrmDpsSequenceRepository implements IDpsSequenceRepository {
       }
     });
   }
+
+  async current(
+    companyId: string,
+    tenantId: string,
+    environment: import('@/shared/domain/execution-environment').ExecutionEnvironment,
+  ): Promise<{ series: string; lastNumber: number }> {
+    return this.raiseTo(companyId, tenantId, environment, 0);
+  }
+
+  async raiseTo(
+    companyId: string,
+    tenantId: string,
+    environment: import('@/shared/domain/execution-environment').ExecutionEnvironment,
+    lastNumber: number,
+  ): Promise<{ series: string; lastNumber: number }> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const companies = this.dataSource.getMetadata(CompanyOrmEntity).tablePath;
+      const sequences =
+        this.dataSource.getMetadata(DpsSequenceOrmEntity).tablePath;
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction('READ COMMITTED');
+      let rows: { series: string; current_number: string }[];
+      try {
+        rows = await queryRunner.query(
+          `INSERT INTO ${sequences} AS s (company_id, series, current_number)
+           SELECT c.id, '1', $4::bigint FROM ${companies} c
+           WHERE c.id = $1 AND c.tenant_id = $2 AND c.environment = $3 AND c.deleted_at IS NULL
+           ON CONFLICT (company_id) DO UPDATE
+             SET current_number = GREATEST(s.current_number, EXCLUDED.current_number),
+                 updated_at = now()
+           RETURNING series, current_number`,
+          [companyId, tenantId, environment, lastNumber],
+        );
+        await queryRunner.commitTransaction();
+      } catch (e) {
+        await queryRunner.rollbackTransaction();
+        throw e;
+      } finally {
+        await queryRunner.release();
+      }
+      if (!rows.length)
+        throw new NotFoundException({
+          code: 'RESOURCE_NOT_FOUND',
+          message: 'Resource not found',
+        });
+      return {
+        series: rows[0].series,
+        lastNumber: Number(rows[0].current_number),
+      };
+    });
+  }
 }

@@ -10,6 +10,7 @@ import type { Invoice, InvoiceEvent } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { CancelInvoiceDialog } from "@/components/dashboard/cancel-invoice-dialog";
 import { Card } from "@/components/ui/card";
+import { FirstNoteBanner } from "@/components/onboarding/first-note-banner";
 import { DetailSkeleton } from "@/components/ui/detail-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { copyInvoiceHref } from "@/lib/invoice-copy";
@@ -61,6 +62,7 @@ export default function InvoiceDetailPage() {
   const money = brl.format(invoice.amount);
   return <div className="flex max-w-[900px] flex-col gap-6"><PageHeader title={invoice.nfseNumber ? `${t("title")} ${invoice.nfseNumber}` : t("title")} subtitle={`${invoice.id} · ${scheduled ? ts("scheduled") : ts(invoice.status)}`} actions={<>{can("nfse.invoices.issue") && <Link href={copyInvoiceHref(invoice.id)} className="btn">{t("copy")}</Link>}{cancellable && <Button variant="danger" onClick={() => setCancelOpen(true)}>{t("cancel.open")}</Button>}<Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button></>} />
     {error && <p role="alert" className="banner banner-danger">{error}</p>}
+    <FirstNoteBanner invoiceId={invoice.id} />
     {scheduled && <p role="status" className="banner banner-info">{t("scheduledBanner", { date: formatScheduledDate(invoice.scheduledFor!, locale, true) })}</p>}
     <Card className="grid gap-4 p-5 sm:grid-cols-2"><div><p className="eyebrow">{t("customer")}</p><p>{invoice.customerName || t("anonymousCustomer")}</p><p className="text-sm text-text-3">{invoice.customerTaxId}</p></div><div><p className="eyebrow">{t("amount")}</p><p>{money}</p></div>{invoice.deduction ? <div><p className="eyebrow">{t("deduction")}</p><p>{brl.format(invoice.deduction)}</p></div> : null}<div><p className="eyebrow">{t("reference")}</p><p>{invoice.externalId || "—"}</p></div><div><p className="eyebrow">{t("competence")}</p><p>{invoice.competenceDate.slice(0, 10)}</p></div><div className="sm:col-span-2"><p className="eyebrow">{t("service")}</p><p>{invoice.serviceDescription}</p><p className="text-sm text-text-3">{invoice.serviceSnapshot.code} · {invoice.serviceSnapshot.municipalityCode}</p></div>{invoice.cancellationReason && showsCancellationReason(invoice.status) && <div className="sm:col-span-2"><p className="eyebrow">{t("cancel.reasonLabel")}</p><p>{t(`cancel.reasons.${invoice.cancellationReason}`)}</p>{invoice.cancellationDescription && <p className="text-sm text-text-3">{invoice.cancellationDescription}</p>}</div>}</Card>
     {invoice.lastErrorMessage && <p role="alert" className="banner banner-danger">{invoice.lastErrorCode}: {invoiceError(invoice.lastErrorCode, invoice.lastErrorMessage)}</p>}

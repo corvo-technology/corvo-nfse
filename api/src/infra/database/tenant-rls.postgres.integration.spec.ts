@@ -558,6 +558,22 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
     await expect(
       sequence.reserveNext(companyB, tenantA, 'test'),
     ).rejects.toThrow('Resource not found');
+    expect(await sequence.raiseTo(companyA, tenantA, 'test', 120)).toEqual({
+      series: '1',
+      lastNumber: 120,
+    });
+    // It only moves forward: a lower number is ignored, and the next DPS follows the highest.
+    expect(await sequence.raiseTo(companyA, tenantA, 'test', 5)).toEqual({
+      series: '1',
+      lastNumber: 120,
+    });
+    expect(await sequence.reserveNext(companyA, tenantA, 'test')).toEqual({
+      series: '1',
+      number: 121,
+    });
+    await expect(
+      sequence.raiseTo(companyB, tenantA, 'test', 10),
+    ).rejects.toThrow('Resource not found');
   });
   it('scopes company and invoice reads, saves and status mutations', async () => {
     const companies = new TypeOrmCompanyRepository(
