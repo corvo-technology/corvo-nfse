@@ -4,6 +4,8 @@ updates:
     directory: /api
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
     groups:
       minor-and-patch:
         update-types: [minor, patch]
@@ -11,12 +13,18 @@ updates:
     directory: /web
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
     groups:
       minor-and-patch:
         update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
+    cooldown:
+      default-days: 7
   - package-ecosystem: docker
     directory: /deploy
     schedule: { interval: weekly }
+    cooldown:
+      default-days: 7
