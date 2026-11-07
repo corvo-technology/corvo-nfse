@@ -3,37 +3,36 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ImportProgress } from "@/components/imports/import-progress";
-import type { ImportJob, ImportRow } from "@/lib/types";
+import type { ImportJob } from "@/lib/types";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ rows: vi.fn(), emit: vi.fn(), errorsCsv: vi.fn(), download: vi.fn(), toastError: vi.fn() }));
+const mocks = vi.hoisted(() => ({ emit: vi.fn(), errorsCsv: vi.fn(), download: vi.fn(), toastError: vi.fn() }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
-vi.mock("@/lib/api", async (original) => ({ ...(await original<typeof import("@/lib/api")>()), imports: { rows: mocks.rows, emit: mocks.emit, errorsCsv: mocks.errorsCsv } }));
+vi.mock("@/lib/api", async (original) => ({ ...(await original<typeof import("@/lib/api")>()), imports: { emit: mocks.emit, errorsCsv: mocks.errorsCsv } }));
 vi.mock("@/lib/download", () => ({ saveBlob: mocks.download }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ error: mocks.toastError, success: vi.fn() }) }));
 
 const job = (status: ImportJob["status"], counters: Partial<ImportJob["counters"]> = {}): ImportJob => ({
   id: "i1", status, fileName: "n.csv", companyId: null, errorCode: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "",
-  counters: { total: 10, valid: 0, invalid: 2, accepted: 8, authorized: 4, failed: 2, pending: 4, ...counters },
+  counters: { total: 10, valid: 0, invalid: 2, accepted: 8, authorized: 4, awaitingCredits: 0, failed: 2, pending: 4, ...counters },
 });
-const rejected = (line: number, errorCode: string): ImportRow => ({ line, data: {}, status: "rejected", errorCode, errorMessage: null, invoiceId: null });
 const show = (j: ImportJob, onRefresh = vi.fn().mockResolvedValue(undefined), onAnother = vi.fn()) => {
   render(<NextIntlClientProvider locale="en" messages={messages}><ImportProgress job={j} onRefresh={onRefresh} onAnother={onAnother} /></NextIntlClientProvider>);
   return { onRefresh, onAnother };
 };
+const tile = (label: string) => screen.getByText(label).parentElement?.textContent ?? "";
 
-beforeEach(() => { vi.clearAllMocks(); mocks.rows.mockResolvedValue({ items: [], hasMore: false, nextCursor: null }); });
+beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
 
 describe("ImportProgress", () => {
-  it("shows the three counters, what is still running and the bar while emitting", () => {
+  it("shows the counters, what is still running and the bar while emitting", () => {
     show(job("emitting"));
     expect(screen.getByRole("heading", { name: /issuing your invoices/i })).toBeTruthy();
-    for (const [label, n] of [["Accepted", "8"], ["Authorized", "4"], ["With errors", "2"], ["In progress", "4"]] as const)
-      expect(screen.getByText(label).parentElement?.textContent).toContain(n);
-    const bar = screen.getByRole("progressbar");
-    expect(bar.getAttribute("aria-valuenow")).toBe("50");
+    for (const [label, n] of [["Accepted", "8"], ["Authorized", "4"], ["With errors", "2"], ["In progress", "4"]] as const) expect(tile(label)).toContain(n);
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("50");
     expect(screen.getByText(/you can close this page/i)).toBeTruthy();
+    expect(screen.queryByText("Waiting for credits")).toBeNull();
   });
 
   it("when done, says so and offers the invoices or another import", () => {
@@ -54,21 +53,38 @@ describe("ImportProgress", () => {
     expect(screen.queryByRole("button", { name: /download only the errors/i })).toBeNull();
   });
 
-  it("offers to issue again the rows the plan limit turned away, and only those", async () => {
-    mocks.rows.mockResolvedValue({ items: [rejected(3, "ERROR_MONTHLY_LIMIT_EXCEEDED"), rejected(4, "ERROR_VALIDATION"), rejected(5, "ERROR_INSUFFICIENT_CREDITS")], hasMore: false, nextCursor: null });
-    mocks.emit.mockResolvedValue(job("emitting"));
-    const { onRefresh } = show(job("done", { failed: 3, pending: 0 }));
-    expect(await screen.findByText(/2 invoices were left without credits/i)).toBeTruthy();
-    expect(mocks.rows).toHaveBeenCalledWith("i1", { status: "rejected", limit: 200 }, expect.anything());
-    fireEvent.click(screen.getByRole("button", { name: /issue again/i }));
-    await waitFor(() => expect(onRefresh).toHaveBeenCalled());
-    expect(mocks.emit).toHaveBeenCalledWith("i1");
-  });
+  describe("when the credits ran out", () => {
+    const paused = (extra: Partial<ImportJob["counters"]> = {}) => job("done", { total: 300, invalid: 3, accepted: 20, authorized: 17, awaitingCredits: 277, failed: 3, pending: 0, ...extra });
 
-  it("shows no credit notice when nothing was turned away", async () => {
-    mocks.rows.mockResolvedValue({ items: [rejected(4, "ERROR_VALIDATION")], hasMore: false, nextCursor: null });
-    show(job("done", { failed: 1, pending: 0 }));
-    await waitFor(() => expect(mocks.rows).toHaveBeenCalled());
-    expect(screen.queryByRole("button", { name: /issue again/i })).toBeNull();
+    it("is not called an error: its own count, a calm title, and the way to continue", () => {
+      show(paused());
+      expect(screen.getByRole("heading", { name: /credits ran out/i })).toBeTruthy();
+      expect(screen.queryByRole("heading", { name: /import finished/i })).toBeNull();
+      expect(tile("Waiting for credits")).toContain("277");
+      expect(tile("With errors")).toContain("3");
+      expect(screen.getByText(/277 invoices are waiting for credits/i)).toBeTruthy();
+      expect(screen.getByRole("link", { name: /buy credits/i }).getAttribute("href")).toBe("/app/billing");
+      expect(screen.getByRole("button", { name: /issue the 277 that are left/i })).toBeTruthy();
+    });
+
+    it("issues the rest again with one click and reads the import again", async () => {
+      mocks.emit.mockResolvedValue(job("emitting"));
+      const { onRefresh } = show(paused());
+      fireEvent.click(screen.getByRole("button", { name: /issue the 277 that are left/i }));
+      await waitFor(() => expect(onRefresh).toHaveBeenCalled());
+      expect(mocks.emit).toHaveBeenCalledWith("i1");
+    });
+
+    it("says so when it still cannot issue", async () => {
+      mocks.emit.mockRejectedValue(new Error("no"));
+      show(paused({ awaitingCredits: 1 }));
+      fireEvent.click(screen.getByRole("button", { name: /issue the 1 that is left|issue the 1 that are left/i }));
+      await waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
+    });
+
+    it("shows the call to continue even while other invoices are still being processed", () => {
+      show(job("emitting", { awaitingCredits: 5, pending: 3 }));
+      expect(screen.getByRole("button", { name: /issue the 5 that are left/i })).toBeTruthy();
+    });
   });
 });

@@ -5,7 +5,7 @@ import type { ImportJob, ImportRow } from "@/lib/types";
 const row = (data: Record<string, unknown>): ImportRow => ({ line: 2, data, status: "invalid", errorCode: null, errorMessage: null, invoiceId: null });
 const job = (status: ImportJob["status"], counters: Partial<ImportJob["counters"]> = {}): ImportJob => ({
   id: "i1", status, fileName: "n.csv", companyId: null, errorCode: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "",
-  counters: { total: 10, valid: 8, invalid: 2, accepted: 0, authorized: 0, failed: 2, pending: 8, ...counters },
+  counters: { total: 10, valid: 8, invalid: 2, accepted: 0, authorized: 0, awaitingCredits: 0, failed: 2, pending: 8, ...counters },
 });
 
 describe("parseMoney", () => {
@@ -49,6 +49,10 @@ describe("percentDone", () => {
     expect(percentDone(job("done", { total: 10, invalid: 0, authorized: 10, failed: 0, pending: 0 }))).toBe(100);
     expect(percentDone(job("emitting", { total: 0, invalid: 0, authorized: 0, failed: 0, pending: 0 }))).toBe(0);
   });
+});
+
+it("a paused import (credits ran out) is not at 100%", () => {
+  expect(percentDone(job("done", { total: 10, invalid: 0, authorized: 4, awaitingCredits: 6, failed: 0, pending: 0 }))).toBe(40);
 });
 
 it("knows which rejections are worth sending again", () => {

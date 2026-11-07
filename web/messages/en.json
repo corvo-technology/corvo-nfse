@@ -1509,38 +1509,38 @@
       "p3": "In the test environment you can issue as many notes as you like without using credits. Production notes use your plan's credits."
     },
     "card": {
-          "title": "Welcome to Corvo",
-          "subtitle": "Do it in any order. You can issue without finishing.",
-                    "stepOf": "Step {n} of {total}",
-          "next": "Next",
-          "skip": "Skip",
-          "back": "Back",
-          "certificateHint": "The company's digital certificate signs the invoices. If you don't have one yet, skip and come back later.",
-          "noteHint": "This is a real invoice and uses one note from your balance. If you would rather not issue it now, skip: you can do it later.",
-          "issueNote": "Issue my first note",
-          "brand": "Corvo",
-          "progress": "{done} of {total}",
-          "hide": "Go to dashboard",
-          "doneLabel": "Done",
-          "needsCompany": "Register the company first",
+      "title": "Welcome to Corvo",
+      "subtitle": "Do it in any order. You can issue without finishing.",
+      "stepOf": "Step {n} of {total}",
+      "next": "Next",
+      "skip": "Skip",
+      "back": "Back",
+      "certificateHint": "The company's digital certificate signs the invoices. If you don't have one yet, skip and come back later.",
+      "noteHint": "This is a real invoice and uses one note from your balance. If you would rather not issue it now, skip: you can do it later.",
+      "issueNote": "Issue my first note",
+      "brand": "Corvo",
+      "progress": "{done} of {total}",
+      "hide": "Go to dashboard",
+      "doneLabel": "Done",
+      "needsCompany": "Register the company first",
       "noteLocked": "Register the company and upload the certificate to unlock",
-          "noPrior": "I never issued notes before",
-          "allDoneTitle": "All set",
-          "allDoneBody": "Want to try things without using a note from your balance? Switch to Test in the selector up here: there you can issue as many notes as you like, with no legal validity and no credits used."
+      "noPrior": "I never issued notes before",
+      "allDoneTitle": "All set",
+      "allDoneBody": "Want to try things without using a note from your balance? Switch to Test in the selector up here: there you can issue as many notes as you like, with no legal validity and no credits used."
     },
     "steps": {
-          "plans": "Get to know Corvo and the plans",
-          "company": "Register your company",
-          "certificate": "Upload the digital certificate",
-          "numbering": "Enter the last note issued",
-          "note": "Issue your first note"
+      "plans": "Get to know Corvo and the plans",
+      "company": "Register your company",
+      "certificate": "Upload the digital certificate",
+      "numbering": "Enter the last note issued",
+      "note": "Issue your first note"
     },
     "note": {
-          "title": "Your first test note",
-          "status": "Status: authorized means the Receita accepted the note; processing, that it is still being sent; rejected, that the Receita refused it and the reason shows up here.",
-          "files": "PDF and XML: the PDF is the document for your customer and the XML is the official tax file. Both can be downloaded on this page.",
-          "env": "This is a test note: it has no legal validity and does not use credits. Test as much as you like. When you are ready to issue for real, switch to Production in the selector up here.",
-          "dismiss": "Got it"
+      "title": "Your first test note",
+      "status": "Status: authorized means the Receita accepted the note; processing, that it is still being sent; rejected, that the Receita refused it and the reason shows up here.",
+      "files": "PDF and XML: the PDF is the document for your customer and the XML is the official tax file. Both can be downloaded on this page.",
+      "env": "This is a test note: it has no legal validity and does not use credits. Test as much as you like. When you are ready to issue for real, switch to Production in the selector up here.",
+      "dismiss": "Got it"
     },
     "plans": {
       "quotaNote": "Monthly quota, no rollover. Past the quota, buy single notes or change plan.",
@@ -1961,7 +1961,17 @@
     "usage_period_missing": "We could not find your plan's usage period. Contact support.",
     "email_already_free": "This e-mail already used the free note.",
     "turnstile_invalid": "The verification expired or is invalid. Try again.",
-    "integration_credential_refused": "The platform refused the credential. Check it and try again."
+    "integration_credential_refused": "The platform refused the credential. Check it and try again.",
+    "import_emit_failed": "Issuing this import was interrupted. Issue again to retry.",
+    "import_company_mismatch": "This row's CNPJ is not the company chosen for the import.",
+    "import_company_required": "This row has no company: fill in the CNPJ or choose the company when uploading.",
+    "import_empty": "The spreadsheet has no invoice rows.",
+    "import_too_many_rows": "The spreadsheet has more than 2,000 rows. Split it into smaller files.",
+    "import_unreadable": "The file could not be read. Check that it really is a CSV or an .xlsx.",
+    "import_not_found": "Import not found.",
+    "import_state": "The import is not in a state that allows this right now.",
+    "import_file_invalid": "Upload a .csv or .xlsx file.",
+    "import_file_too_large": "The file is larger than 10 MB."
   },
   "Legal": {
     "eyebrow": "LEGAL",
@@ -2902,21 +2912,38 @@
       "seeNotes": "See the invoices",
       "another": "Import another spreadsheet",
       "downloadErrors": "Download only the errors",
-      "noCredits": "{count, plural, one {# invoice was} other {# invoices were}} left without credits. Top up and issue again only {count, plural, one {that one} other {those}}.",
-      "reemit": "Issue again",
-      "reemitFailed": "Could not issue again."
+      "noCredits": "{count, plural, one {# invoice is} other {# invoices are}} waiting for credits.",
+      "reemit": "{count, plural, one {Issue the # that is left} other {Issue the # that are left}}",
+      "reemitFailed": "Could not issue again.",
+      "titlePaused": "Credits ran out before the end",
+      "bodyPaused": "The other invoices were already issued. Top up your credits and issue the ones that are left, without uploading the spreadsheet again.",
+      "awaiting": "Waiting for credits",
+      "buyCredits": "Buy credits"
     },
     "rowError": {
       "ERROR_IMPORT_COMPANY_MISMATCH": "This row's CNPJ is not the chosen company's.",
       "ERROR_IMPORT_COMPANY_REQUIRED": "This row has no company: fill in the CNPJ or choose the company.",
       "ERROR_IMPORT_EMIT_FAILED": "Issuing was interrupted. Issue again to retry.",
-      "ERROR_PLAN_BLOCKED": "Your plan is blocked.",
-      "ERROR_MONTHLY_LIMIT_EXCEEDED": "Monthly plan limit reached.",
-      "ERROR_DAILY_LIMIT_EXCEEDED": "Daily plan limit reached.",
-      "ERROR_INSUFFICIENT_CREDITS": "Not enough credits.",
-      "ERROR_QUOTA_EXCEEDED": "Plan limit reached.",
+      "ERROR_PLAN_BLOCKED": "Waiting: your plan is blocked.",
+      "ERROR_MONTHLY_LIMIT_EXCEEDED": "Waiting for credits: top up and issue again.",
+      "ERROR_DAILY_LIMIT_EXCEEDED": "Waiting: daily limit reached. Issue again tomorrow.",
+      "ERROR_INSUFFICIENT_CREDITS": "Waiting for credits: top up and issue again.",
+      "ERROR_QUOTA_EXCEEDED": "Waiting for credits: top up and issue again.",
       "ERROR_VALIDATION": "A field in this row is invalid.",
       "fallback": "This row has a problem."
+    },
+    "recent": {
+      "title": "Recent imports",
+      "reading": "Reading the spreadsheet",
+      "failed": "Could not be read",
+      "ready": "Ready to review",
+      "emitting": "Issuing",
+      "authorized": "{count} authorized",
+      "errors": "{count} with errors",
+      "waiting": "{count} waiting for credits",
+      "open": "Open",
+      "continue": "Continue",
+      "rows": "{count, plural, one {# row} other {# rows}}"
     }
   }
 }

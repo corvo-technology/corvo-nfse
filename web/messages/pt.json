@@ -1509,38 +1509,38 @@
       "p3": "No ambiente de teste você emite quantas notas quiser, sem consumir créditos. As notas de produção usam os créditos do seu plano."
     },
     "card": {
-          "title": "Bem-vindo ao Corvo",
-          "subtitle": "Faça na ordem que quiser. Dá para emitir sem terminar.",
-                    "stepOf": "Passo {n} de {total}",
-          "next": "Próximo",
-          "skip": "Pular",
-          "back": "Voltar",
-          "certificateHint": "O certificado digital da empresa assina as notas. Se você ainda não tem, pule e volte depois.",
-          "noteHint": "Esta é uma nota de verdade e usa uma nota do seu saldo. Se preferir não emitir agora, pule: dá para emitir depois.",
-          "issueNote": "Emitir minha primeira nota",
-          "brand": "Corvo",
-          "progress": "{done} de {total}",
-          "hide": "Ir para o painel",
-          "doneLabel": "Feito",
-          "needsCompany": "Cadastre a empresa primeiro",
+      "title": "Bem-vindo ao Corvo",
+      "subtitle": "Faça na ordem que quiser. Dá para emitir sem terminar.",
+      "stepOf": "Passo {n} de {total}",
+      "next": "Próximo",
+      "skip": "Pular",
+      "back": "Voltar",
+      "certificateHint": "O certificado digital da empresa assina as notas. Se você ainda não tem, pule e volte depois.",
+      "noteHint": "Esta é uma nota de verdade e usa uma nota do seu saldo. Se preferir não emitir agora, pule: dá para emitir depois.",
+      "issueNote": "Emitir minha primeira nota",
+      "brand": "Corvo",
+      "progress": "{done} de {total}",
+      "hide": "Ir para o painel",
+      "doneLabel": "Feito",
+      "needsCompany": "Cadastre a empresa primeiro",
       "noteLocked": "Cadastre a empresa e envie o certificado para liberar",
-          "noPrior": "Nunca emiti notas antes",
-          "allDoneTitle": "Tudo pronto",
-          "allDoneBody": "Quer testar sem gastar nota do saldo? Troque para Teste no seletor aqui em cima: lá você emite quantas notas quiser, sem validade legal e sem consumir créditos."
+      "noPrior": "Nunca emiti notas antes",
+      "allDoneTitle": "Tudo pronto",
+      "allDoneBody": "Quer testar sem gastar nota do saldo? Troque para Teste no seletor aqui em cima: lá você emite quantas notas quiser, sem validade legal e sem consumir créditos."
     },
     "steps": {
-          "plans": "Conheça o Corvo e os planos",
-          "company": "Cadastre sua empresa",
-          "certificate": "Envie o certificado digital",
-          "numbering": "Informe a última nota emitida",
-          "note": "Emita sua primeira nota"
+      "plans": "Conheça o Corvo e os planos",
+      "company": "Cadastre sua empresa",
+      "certificate": "Envie o certificado digital",
+      "numbering": "Informe a última nota emitida",
+      "note": "Emita sua primeira nota"
     },
     "note": {
-          "title": "Sua primeira nota de teste",
-          "status": "Status: autorizada quer dizer que a Receita aceitou a nota; processando, que ela ainda está sendo enviada; rejeitada, que a Receita recusou e o motivo aparece aqui.",
-          "files": "PDF e XML: o PDF é o documento para o seu cliente e o XML é o arquivo fiscal oficial. Os dois podem ser baixados nesta página.",
-          "env": "Esta é uma nota de teste: não tem validade legal e não consome créditos. Teste quantas quiser. Quando for emitir de verdade, troque para Produção no seletor aqui em cima.",
-          "dismiss": "Entendi"
+      "title": "Sua primeira nota de teste",
+      "status": "Status: autorizada quer dizer que a Receita aceitou a nota; processando, que ela ainda está sendo enviada; rejeitada, que a Receita recusou e o motivo aparece aqui.",
+      "files": "PDF e XML: o PDF é o documento para o seu cliente e o XML é o arquivo fiscal oficial. Os dois podem ser baixados nesta página.",
+      "env": "Esta é uma nota de teste: não tem validade legal e não consome créditos. Teste quantas quiser. Quando for emitir de verdade, troque para Produção no seletor aqui em cima.",
+      "dismiss": "Entendi"
     },
     "plans": {
       "quotaNote": "Cota mensal, sem acúmulo. Passou da cota, é só comprar notas avulsas ou trocar de plano.",
@@ -1961,7 +1961,17 @@
     "usage_period_missing": "Não encontramos o período de uso do seu plano. Fale com o suporte.",
     "email_already_free": "Este e-mail já usou a nota gratuita.",
     "turnstile_invalid": "A verificação expirou ou é inválida. Tente de novo.",
-    "integration_credential_refused": "A plataforma recusou a credencial informada. Confira e tente de novo."
+    "integration_credential_refused": "A plataforma recusou a credencial informada. Confira e tente de novo.",
+    "import_emit_failed": "A emissão da importação foi interrompida. Emita de novo para tentar outra vez.",
+    "import_company_mismatch": "O CNPJ desta linha não é o da empresa escolhida para a importação.",
+    "import_company_required": "Esta linha não tem empresa: preencha o CNPJ ou escolha a empresa ao enviar.",
+    "import_empty": "A planilha não tem linhas de notas.",
+    "import_too_many_rows": "A planilha tem mais de 2.000 linhas. Divida em arquivos menores.",
+    "import_unreadable": "Não foi possível ler o arquivo. Confira se é mesmo um CSV ou um .xlsx.",
+    "import_not_found": "Importação não encontrada.",
+    "import_state": "A importação não está num estado que permita isso agora.",
+    "import_file_invalid": "Envie um arquivo .csv ou .xlsx.",
+    "import_file_too_large": "O arquivo tem mais de 10 MB."
   },
   "Legal": {
     "eyebrow": "JURÍDICO",
@@ -2902,21 +2912,38 @@
       "seeNotes": "Ver as notas",
       "another": "Importar outra planilha",
       "downloadErrors": "Baixar só os erros",
-      "noCredits": "{count, plural, one {# nota ficou} other {# notas ficaram}} sem créditos. Recarregue e emita de novo só {count, plural, one {essa} other {essas}}.",
-      "reemit": "Emitir de novo",
-      "reemitFailed": "Não foi possível emitir de novo."
+      "noCredits": "{count, plural, one {# nota está} other {# notas estão}} aguardando créditos.",
+      "reemit": "{count, plural, one {Emitir a # que falta} other {Emitir as # que faltam}}",
+      "reemitFailed": "Não foi possível emitir de novo.",
+      "titlePaused": "Os créditos acabaram antes do fim",
+      "bodyPaused": "As outras notas já foram emitidas. Recarregue seus créditos e emita as que faltam, sem enviar a planilha de novo.",
+      "awaiting": "Aguardando créditos",
+      "buyCredits": "Comprar créditos"
     },
     "rowError": {
       "ERROR_IMPORT_COMPANY_MISMATCH": "O CNPJ desta linha não é o da empresa escolhida.",
       "ERROR_IMPORT_COMPANY_REQUIRED": "Esta linha não tem empresa: preencha o CNPJ ou escolha a empresa.",
       "ERROR_IMPORT_EMIT_FAILED": "A emissão foi interrompida. Emita de novo para tentar outra vez.",
-      "ERROR_PLAN_BLOCKED": "Seu plano está bloqueado.",
-      "ERROR_MONTHLY_LIMIT_EXCEEDED": "Limite mensal do plano atingido.",
-      "ERROR_DAILY_LIMIT_EXCEEDED": "Limite diário do plano atingido.",
-      "ERROR_INSUFFICIENT_CREDITS": "Créditos insuficientes.",
-      "ERROR_QUOTA_EXCEEDED": "Limite do plano atingido.",
+      "ERROR_PLAN_BLOCKED": "Aguardando: seu plano está bloqueado.",
+      "ERROR_MONTHLY_LIMIT_EXCEEDED": "Aguardando créditos: recarregue e emita de novo.",
+      "ERROR_DAILY_LIMIT_EXCEEDED": "Aguardando: limite diário atingido. Emita de novo amanhã.",
+      "ERROR_INSUFFICIENT_CREDITS": "Aguardando créditos: recarregue e emita de novo.",
+      "ERROR_QUOTA_EXCEEDED": "Aguardando créditos: recarregue e emita de novo.",
       "ERROR_VALIDATION": "Há um campo inválido nesta linha.",
       "fallback": "Esta linha tem um problema."
+    },
+    "recent": {
+      "title": "Importações recentes",
+      "reading": "Lendo a planilha",
+      "failed": "Não foi possível ler",
+      "ready": "Pronta para conferir",
+      "emitting": "Emitindo",
+      "authorized": "{count} autorizadas",
+      "errors": "{count} com erro",
+      "waiting": "{count} aguardando créditos",
+      "open": "Abrir",
+      "continue": "Continuar",
+      "rows": "{count, plural, one {# linha} other {# linhas}}"
     }
   }
 }
