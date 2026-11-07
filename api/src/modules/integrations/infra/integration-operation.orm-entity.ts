@@ -25,8 +25,7 @@ export class IntegrationOperationOrmEntity {
   blockReason!: string | null;
   @Column({ type: 'jsonb' }) snapshot!: Record<string, unknown>;
   @Column({ name: 'rule_id', type: 'uuid', nullable: true }) ruleId!:
-    | string
-    | null;
+    string | null;
   @Column({ name: 'emission_request', type: 'jsonb', nullable: true })
   emissionRequest!: Record<string, unknown> | null;
   @Column({
@@ -44,8 +43,7 @@ export class IntegrationOperationOrmEntity {
   })
   idempotencyKey!: string | null;
   @Column({ name: 'invoice_id', type: 'uuid', nullable: true }) invoiceId!:
-    | string
-    | null;
+    string | null;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })

@@ -36,11 +36,7 @@ export type ParsedDelivery =
 export type DeliveryAuth = { ok: true } | { ok: false; reason: string };
 
 export type CommercialState =
-  | 'pending'
-  | 'paid'
-  | 'refunded'
-  | 'disputed'
-  | 'canceled';
+  'pending' | 'paid' | 'refunded' | 'disputed' | 'canceled';
 
 export interface NormalizedCustomer {
   name: string | null;

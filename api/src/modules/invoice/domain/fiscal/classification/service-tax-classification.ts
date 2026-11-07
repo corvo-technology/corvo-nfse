@@ -7,9 +7,7 @@ import type {
 import type { DecimalString } from '../money';
 
 export type ClassificationSource =
-  | 'request_override'
-  | 'company_service_profile'
-  | 'official_catalog';
+  'request_override' | 'company_service_profile' | 'official_catalog';
 
 export interface ServiceTaxClassification {
   serviceCode: string;
