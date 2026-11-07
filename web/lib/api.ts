@@ -153,6 +153,7 @@ export interface CompanyWire extends Omit<Company, "address"> {
 export function adaptCompany(wire: CompanyWire): Company {
   return { ...wire, address: { street: wire.addressStreet, number: wire.addressNumber, complement: wire.addressComplement, district: wire.addressDistrict, city: wire.addressCity, state: wire.addressState, zip: wire.addressZip } };
 }
+export interface DpsSequence { series: string; lastNumber: number }
 export const companies = {
   fiscalProfiles: async (id: string, signal?: AbortSignal) => unwrap(await request<Envelope<CompanyFiscalProfile[]>>(`/companies/${idPath(id)}/fiscal-profile`, { signal })),
   saveFiscalProfile: async (id: string, input: FiscalProfileInput) => unwrap(await request<Envelope<CompanyFiscalProfile>>(`/companies/${idPath(id)}/fiscal-profile`, json(input, "PUT"))),
@@ -162,6 +163,8 @@ export const companies = {
   updateServiceTaxProfile: async (id: string, serviceId: string, input: Partial<ServiceTaxProfileInput>) => unwrap(await request<Envelope<CompanyServiceTaxProfile>>(`/companies/${idPath(id)}/service-tax-profiles/${idPath(serviceId)}`, json(input, "PATCH"))),
   approveServiceTaxProfile: async (id: string, serviceId: string) => unwrap(await request<Envelope<CompanyServiceTaxProfile>>(`/companies/${idPath(id)}/service-tax-profiles/${idPath(serviceId)}/approve`, json({}))),
 
+  dpsSequence: async (id: string, signal?: AbortSignal) => unwrap(await request<Envelope<DpsSequence>>(`/companies/${idPath(id)}/dps-sequence`, { signal })),
+  setDpsSequence: async (id: string, lastNumber: number) => unwrap(await request<Envelope<DpsSequence>>(`/companies/${idPath(id)}/dps-sequence`, json({ lastNumber }, "PUT"))),
   list: async (params: PageParams = {}, signal?: AbortSignal): Promise<Page<Company>> => { const page = toPage(await request<ListBody<CompanyWire>>(`/companies${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptCompany) }; },
   get: async (id: string, signal?: AbortSignal) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>(`/companies/${idPath(id)}`, { signal }))),
   create: async (data: CompanyFormInput & Pick<CreateCompanyInput, "taxId" | "taxRegime">) => adaptCompany(unwrap(await request<Envelope<CompanyWire>>("/companies", json(data)))),

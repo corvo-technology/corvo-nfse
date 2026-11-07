@@ -9,11 +9,13 @@ export type FiscalEnv = "test" | "live";
 interface EnvSwitchProps {
   value: FiscalEnv;
   onChange: (env: FiscalEnv) => void;
+  /** Draws attention to the selector (used once, after the first test note). */
+  highlight?: boolean;
 }
 
 const OPTIONS: FiscalEnv[] = ["test", "live"];
 
-export function EnvSwitch({ value, onChange }: EnvSwitchProps) {
+export function EnvSwitch({ value, onChange, highlight }: EnvSwitchProps) {
   const t = useTranslations("Topbar");
   const isLive = value === "live";
 
@@ -31,7 +33,8 @@ export function EnvSwitch({ value, onChange }: EnvSwitchProps) {
       aria-label={t("environment")}
       onKeyDown={onKeyDown}
       data-env-state={value}
-      className="relative grid h-9 grid-cols-2 items-center rounded-full border border-border bg-surface-alt p-[3px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)]"
+      data-highlight={highlight ? "true" : undefined}
+      className={`relative grid h-9 grid-cols-2 items-center rounded-full border border-border bg-surface-alt p-[3px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)] ${highlight ? "animate-pulse ring-2 ring-accent" : ""}`}
     >
       {/* Ambient glow that follows the active environment */}
       <span
