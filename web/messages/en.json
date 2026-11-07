@@ -2894,7 +2894,12 @@
       "total": "Total to issue",
       "emitWithAmount": "{count, plural, one {Issue # invoice} other {Issue # invoices}} · {amount}",
       "readyCount": "{count, plural, one {# invoice ready} other {# invoices ready}}",
-      "errorCount": "{count} with errors"
+      "errorCount": "{count} with errors",
+      "statReady": "Ready",
+      "statErrors": "With errors",
+      "noErrors": "No errors here. Everything is ready to issue.",
+      "noRows": "No rows in this list.",
+      "listTitle": "Spreadsheet rows"
     },
     "edit": {
       "title": "Fix row {line}",

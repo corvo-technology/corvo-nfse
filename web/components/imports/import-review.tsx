@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, Download, Trash2 } from "lucide-react";
+import { AlertTriangle, Download, Info, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -88,46 +88,70 @@ export function ImportReview({ job, duplicateOf, onChanged, onEmitted, onDiscard
     { id: "fix", header: t("review.fix"), action: true, align: "right", cell: (r) => (r.status === "invalid" ? <Button size="sm" variant="secondary" onClick={() => setEditing(r)}>{t("review.fix")}</Button> : null) },
   ];
 
-  return (
-    <div className="flex flex-col gap-5">
-      <section className="flex flex-col gap-1">
-        <p className="text-[12.5px] text-text-3">{t("review.total")}</p>
-        <p className="text-[40px] font-semibold leading-none tracking-tight tabular-nums text-text sm:text-[48px]">{money.format(counters.validAmount)}</p>
-        <p className="mt-1 text-[14.5px] text-text-3">{t("review.summary", { total: counters.total, valid: counters.valid, invalid: counters.invalid })}</p>
-      </section>
-      {duplicateOf && <p className="rounded-[10px] border border-border p-3 text-[13.5px] text-text-3">{t("review.duplicate")}</p>}
+  const stat = (testId: string, label: string, value: string, tone?: "danger") => (
+    <div data-testid={testId} className="flex flex-col gap-0.5">
+      <dt className="text-[12.5px] text-text-3">{label}</dt>
+      <dd className={cn("text-[22px] font-semibold leading-none tracking-tight tabular-nums", tone === "danger" ? "text-danger" : "text-text")}>{value}</dd>
+    </div>
+  );
+  const emptyText = filter === "invalid" ? t("review.noErrors") : t("review.noRows");
 
-      <div className="flex flex-wrap items-center gap-2.5">
-        <Button variant="accent" loading={busy === "emit"} disabled={counters.valid === 0 || busy !== null} onClick={() => run("emit", () => imports.emit(job.id), onEmitted, t("review.emitFailed"))}>
-          {counters.valid === 0 ? t("review.emitNone") : t("review.emitWithAmount", { count: counters.valid, amount: money.format(counters.validAmount) })}
-        </Button>
-        {counters.invalid > 0 && <Button variant="secondary" onClick={downloadErrors}><Download size={15} aria-hidden />{t("review.downloadErrors")}</Button>}
+  return (
+    <div className="flex flex-col gap-6">
+      <section aria-label={t("review.total")} className="flex flex-col gap-3">
+        <dl className="flex flex-wrap items-end gap-x-10 gap-y-4">
+          <div className="flex flex-col gap-1">
+            <dt className="text-[12.5px] text-text-3">{t("review.total")}</dt>
+            <dd className="text-[34px] font-semibold leading-none tracking-tight tabular-nums text-text sm:text-[40px]">{money.format(counters.validAmount)}</dd>
+          </div>
+          {stat("stat-ready", t("review.statReady"), String(counters.valid))}
+          {stat("stat-errors", t("review.statErrors"), String(counters.invalid), counters.invalid > 0 ? "danger" : undefined)}
+        </dl>
+        <p className="text-[13px] text-text-3">{t("upload.rows", { count: counters.total })}</p>
+        {duplicateOf && <p role="note" className="flex max-w-[640px] items-start gap-2 rounded-[10px] border border-border p-3 text-[13.5px] text-text-3"><Info size={15} aria-hidden className="mt-0.5 flex-none" />{t("review.duplicate")}</p>}
+      </section>
+
+      <section aria-labelledby="rows-title" className="flex flex-col gap-3">
+        <h2 id="rows-title" className="sr-only">{t("review.listTitle")}</h2>
+        <div data-testid="list-tools" className="flex flex-wrap items-center justify-between gap-3">
+          <div role="group" aria-label={t("review.table")} className="inline-flex rounded-[10px] border border-border p-0.5">
+            {(["all", "invalid"] as const).map((value) => (
+              <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)}
+                className={cn("flex items-center gap-2 rounded-[8px] px-3.5 py-1.5 text-[13.5px] transition-colors duration-150 motion-reduce:transition-none", filter === value ? "bg-active font-medium text-text" : "text-text-3 hover:text-text")}>
+                {value === "all" ? t("review.filterAll") : t("review.filterInvalid")}
+                <span className={cn("tabular-nums text-[12px]", value === "invalid" && counters.invalid > 0 ? "text-danger" : "text-text-4")}>{value === "all" ? counters.total : counters.invalid}</span>
+              </button>
+            ))}
+          </div>
+          {counters.invalid > 0 && <Button variant="ghost" size="sm" onClick={downloadErrors}><Download size={15} aria-hidden />{t("review.downloadErrors")}</Button>}
+        </div>
+
+        {list.items && list.items.length === 0 ? <p className="rounded-[12px] border border-border py-10 text-center text-[14px] text-text-3">{emptyText}</p> : list.items && (
+          <div className="overflow-hidden rounded-[12px] border border-border">
+            <DataTable
+              columns={columns} rows={list.items} rowKey={(r) => String(r.line)} caption={t("review.table")}
+              rowClassName={(r) => (r.line === flash ? "row-flash" : r.status === "invalid" || r.status === "rejected" ? "row-invalid" : undefined)}
+              expandedKey={editing ? String(editing.line) : null}
+              renderExpanded={(r) => <RowEditor key={r.line} row={r} problem={r.status === "invalid" ? problem(r) : null} importId={job.id} onSaved={saved} onCancel={() => setEditing(null)} />}
+            />
+          </div>
+        )}
+        {list.hasMore && <div><Button variant="secondary" loading={list.loadingMore} onClick={() => void list.loadMore()}>{t("review.loadMore")}</Button></div>}
+      </section>
+
+      <div data-testid="action-bar" className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-bg px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         {confirmDiscard ? (
           <span role="group" aria-label={t("review.discard")} className="flex items-center gap-2">
             <Button variant="danger" size="sm" loading={busy === "discard"} onClick={() => run("discard", () => imports.discard(job.id), onDiscarded, t("review.discardFailed"))}>{t("review.discard")}</Button>
             <Button variant="ghost" size="sm" onClick={() => setConfirmDiscard(false)}>{t("edit.cancel")}</Button>
           </span>
         ) : (
-          <Button variant="ghost" onClick={() => setConfirmDiscard(true)}><Trash2 size={15} aria-hidden />{t("review.discard")}</Button>
+          <Button variant="ghost" size="sm" onClick={() => setConfirmDiscard(true)}><Trash2 size={14} aria-hidden />{t("review.discard")}</Button>
         )}
+        <Button variant="accent" size="lg" loading={busy === "emit"} disabled={counters.valid === 0 || busy !== null} className="max-sm:w-full" onClick={() => run("emit", () => imports.emit(job.id), onEmitted, t("review.emitFailed"))}>
+          {counters.valid === 0 ? t("review.emitNone") : t("review.emitWithAmount", { count: counters.valid, amount: money.format(counters.validAmount) })}
+        </Button>
       </div>
-
-      <div role="group" aria-label={t("review.table")} className="flex gap-2">
-        {(["all", "invalid"] as const).map((value) => (
-          <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)}
-            className={cn("btn btn-sm", filter === value ? "btn-primary" : "btn-secondary")}>
-            {value === "all" ? t("review.filterAll") : t("review.filterInvalid")}
-          </button>
-        ))}
-      </div>
-
-      {list.items && list.items.length === 0 ? <p className="py-8 text-center text-[14px] text-text-3">{t("review.empty")}</p> : list.items && <DataTable
-          columns={columns} rows={list.items} rowKey={(r) => String(r.line)} caption={t("review.table")}
-          rowClassName={(r) => (r.line === flash ? "row-flash" : r.status === "invalid" || r.status === "rejected" ? "row-invalid" : undefined)}
-          expandedKey={editing ? String(editing.line) : null}
-          renderExpanded={(r) => <RowEditor key={r.line} row={r} problem={r.status === "invalid" ? problem(r) : null} importId={job.id} onSaved={saved} onCancel={() => setEditing(null)} />}
-        />}
-      {list.hasMore && <div><Button variant="secondary" loading={list.loadingMore} onClick={() => void list.loadMore()}>{t("review.loadMore")}</Button></div>}
     </div>
   );
 }

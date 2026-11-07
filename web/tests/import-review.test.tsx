@@ -35,7 +35,9 @@ afterEach(cleanup);
 describe("ImportReview", () => {
   it("summarizes the import and lists the rows, with the problem of a bad row in plain words", async () => {
     show();
-    expect(screen.getByText(/3 rows: 2 ready, 1 with errors/i)).toBeTruthy();
+    expect(screen.getByTestId("stat-ready").textContent).toMatch(/Ready.*2/);
+    expect(screen.getByTestId("stat-errors").textContent).toMatch(/With errors.*1/);
+    expect(screen.getByText(/3 rows/i)).toBeTruthy();
     expect(await screen.findAllByText("Cliente 2")).not.toHaveLength(0);
     expect(screen.getAllByText(/This row has no company/i).length).toBeGreaterThan(0);
   });
@@ -59,7 +61,7 @@ describe("ImportReview", () => {
   it("switches to all the rows and back", async () => {
     show();
     await screen.findAllByText("Cliente 2");
-    fireEvent.click(screen.getByRole("button", { name: /^all$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^all/i }));
     await waitFor(() => expect(mocks.rows).toHaveBeenLastCalledWith("i1", { status: undefined, cursor: undefined, limit: 50 }, expect.anything()));
     fireEvent.click(screen.getByRole("button", { name: /with errors/i }));
     await waitFor(() => expect(mocks.rows).toHaveBeenLastCalledWith("i1", { status: "invalid", cursor: undefined, limit: 50 }, expect.anything()));
@@ -157,5 +159,39 @@ describe("ImportReview", () => {
     fireEvent.click((await screen.findAllByRole("button", { name: /^fix$/i }))[0]!);
     fireEvent.click(screen.getByRole("button", { name: /save and check/i }));
     await waitFor(() => expect(document.querySelectorAll(".row-flash").length).toBeGreaterThan(0));
+  });
+
+  it("filters are tabs with their counts, not buttons that compete with the action", async () => {
+    show();
+    await screen.findAllByText("Cliente 2");
+    const all = screen.getByRole("button", { name: /^all/i });
+    const errors = screen.getByRole("button", { name: /with errors/i });
+    expect(all.textContent).toMatch(/3/);
+    expect(errors.textContent).toMatch(/1/);
+    expect(screen.getByTestId("action-bar").contains(all)).toBe(false);
+    expect(errors.className).not.toMatch(/btn-primary|btn-accent/);
+  });
+
+  it("keeps the main action and the discard in one bar that stays on screen, apart from the list tools", async () => {
+    show();
+    await screen.findAllByText("Cliente 2");
+    const bar = screen.getByTestId("action-bar");
+    expect(bar.className).toMatch(/sticky/);
+    expect(bar.contains(screen.getByRole("button", { name: /issue 2 invoices/i }))).toBe(true);
+    expect(bar.contains(screen.getByRole("button", { name: /discard import/i }))).toBe(true);
+    expect(bar.contains(screen.getByRole("button", { name: /download only the errors/i }))).toBe(false);
+    expect(screen.getByTestId("list-tools").contains(screen.getByRole("button", { name: /download only the errors/i }))).toBe(true);
+  });
+
+  it("says there are no errors, in a good way, when the list of errors is empty", async () => {
+    mocks.rows.mockResolvedValue(page([]));
+    show();
+    expect(await screen.findByText(/no errors here/i)).toBeTruthy();
+  });
+
+  it("says the list is empty when the whole list is empty", async () => {
+    mocks.rows.mockResolvedValue(page([]));
+    show({ job: job({ invalid: 0, valid: 0, total: 0 }) });
+    expect(await screen.findByText(/no rows in this list/i)).toBeTruthy();
   });
 });

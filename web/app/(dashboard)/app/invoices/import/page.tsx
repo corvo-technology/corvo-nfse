@@ -39,7 +39,7 @@ function ImportFlow() {
   const stage = id ? importStage(job) : "upload";
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="mx-auto flex w-full max-w-[1040px] flex-col gap-8">
       <div className="flex flex-col gap-3">
         <Link href="/app/invoices" className="inline-flex w-fit items-center gap-1.5 text-[13.5px] text-text-3 hover:text-text"><ArrowLeft size={14} aria-hidden />{t("back")}</Link>
         <PageHeader title={t("title")} subtitle={t("subtitle")} />

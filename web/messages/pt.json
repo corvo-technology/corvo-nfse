@@ -2894,7 +2894,12 @@
       "total": "Total a emitir",
       "emitWithAmount": "{count, plural, one {Emitir # nota} other {Emitir # notas}} · {amount}",
       "readyCount": "{count, plural, one {# nota pronta} other {# notas prontas}}",
-      "errorCount": "{count, plural, one {# com erro} other {# com erro}}"
+      "errorCount": "{count, plural, one {# com erro} other {# com erro}}",
+      "statReady": "Prontas",
+      "statErrors": "Com erro",
+      "noErrors": "Nenhum erro por aqui. Tudo pronto para emitir.",
+      "noRows": "Nenhuma linha nesta lista.",
+      "listTitle": "Linhas da planilha"
     },
     "edit": {
       "title": "Corrigir linha {line}",
