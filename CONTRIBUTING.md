@@ -37,3 +37,11 @@ Describe the problem, resulting behavior, and checks you ran. Include migration,
 Contributions to this repository are provided under the project's AGPL-3.0 license unless explicitly agreed otherwise with the maintainers.
 
 Report community conduct incidents through the private contact listed in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Follow [SECURITY.md](SECURITY.md) for vulnerability reports.
+
+## Sign your commits
+
+Corvo NFS-e is licensed under the AGPL-3.0. By contributing you confirm you have the right to submit your work under that license, following the [Developer Certificate of Origin](https://developercertificate.org/). Please sign off your commits:
+
+```bash
+git commit -s -m "fix: describe the change"
+```

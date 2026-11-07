@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://corvo.tech/en/docs
+    about: Endpoints, errors, webhooks and AI agents. Check it before opening an issue.
+  - name: Report a security vulnerability
+    url: https://github.com/corvo-technology/corvo-nfse/security/advisories/new
+    about: Please report vulnerabilities privately, not in a public issue.

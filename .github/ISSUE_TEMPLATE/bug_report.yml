@@ -1,0 +1,46 @@
+name: Bug report
+description: Something does not work as the documentation says.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use **fictional data only**. Never paste API keys, certificates, tokens, real CNPJ/CPF or customer information.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The smallest steps or request that shows the problem.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - API
+        - Dashboard
+        - Worker / issuance
+        - MCP
+        - Documentation
+        - Deploy / Docker
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: main at abc1234
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Fiscal environment
+      options: [test, live, not applicable]

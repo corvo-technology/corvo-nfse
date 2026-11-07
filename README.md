@@ -1,7 +1,7 @@
 # Corvo NFS-e
 
 <p align="center">
-  <img src="https://assets.greenflow.solutions/brand/corvo-faceted-green.png" alt="Corvo logo" width="160" />
+  <img src="web/public/corvo-mark.svg" alt="Corvo logo" width="96" />
 </p>
 
 <p align="center">
@@ -16,40 +16,41 @@
 
 Corvo is a REST API and MCP server to issue NFS-e on the national standard, focused on **MEI and Simples Nacional** companies. It registers issuer companies, stores their A1 certificates, calculates taxes before issuing, processes each invoice in the background, keeps the PDF and XML, and reports every status change by webhook. A dashboard and AI agents (Claude Code, Cursor, Codex and others) use the same API.
 
-[🚀 Quick start](#-quick-start) · [🔌 Use the API](#-use-the-api) · [🤖 AI agents](#-ai-agents-mcp) · [📦 Deploy](#-deploy-to-production) · [🛠️ Develop](#-develop) · [📚 Documentation](#-documentation) · [🤝 Contribute](CONTRIBUTING.md)
+[Quick start](#quick-start) · [Use the API](#use-the-api) · [AI agents](#ai-agents-mcp) · [Deploy](#deploy-to-production) · [Develop](#develop) · [Documentation](#documentation) · [Contribute](CONTRIBUTING.md)
 
-## 📑 Contents
+## Contents
 
-- [✨ What you can do](#-what-you-can-do)
-- [🧭 How it works](#-how-it-works)
-- [🚀 Quick start](#-quick-start)
-- [🔌 Use the API](#-use-the-api)
-- [🤖 AI agents (MCP)](#-ai-agents-mcp)
-- [📦 Deploy to production](#-deploy-to-production)
-- [🛠️ Develop](#-develop)
-- [🗂️ Repository structure](#-repository-structure)
-- [📚 Documentation](#-documentation)
-- [🤝 Community and license](#-community-and-license)
+- [What you can do](#what-you-can-do)
+- [How it works](#how-it-works)
+- [Quick start](#quick-start)
+- [Use the API](#use-the-api)
+- [AI agents (MCP)](#ai-agents-mcp)
+- [Deploy to production](#deploy-to-production)
+- [Develop](#develop)
+- [Repository structure](#repository-structure)
+- [Documentation](#documentation)
+- [Community and license](#community-and-license)
 
-## ✨ What you can do
+## What you can do
 
 | Capability | What it gives you |
 | --- | --- |
-| 🧾 Invoice API | Issue Brazilian electronic service invoices from your SaaS, ERP, or backend. Issuance is asynchronous and safe to retry with an `Idempotency-Key`. |
-| 🧮 Tax calculation | `POST /v1/invoices/calculate` shows ISS, withholdings and IBS/CBS (when they apply) before you issue, with no invoice and no credit used. |
-| ⏰ Scheduled invoices | Issue on a future competence date with `options.type: "SCHEDULE"`. |
-| 🚫 Cancellation | `POST /v1/invoices/:id/cancel` cancels a queued invoice immediately, or sends the cancellation event to the Sefin for an issued NFS-e (or one still being issued) and reports the result by webhook. |
-| 🏢 Multi-company | Manage many issuers, each with its fiscal profile and A1 certificate, in one workspace. |
-| 📄 Documents and delivery | PDF and XML storage, signed download links, email delivery and signed webhooks for every status change. |
-| 🤖 AI agents | A remote MCP server lets agents issue and query invoices, and `llms.txt` lets a coding agent write the integration for you. |
-| 📊 Dashboard | Companies, invoices, API keys, members, billing and connected agents, in English or Portuguese. |
-| 🧪 Fiscal environments | Test and live are kept apart. Test needs no certificate and has no fiscal value. |
-| 💳 Plans and credits | A free plan with 15 invoices a month, paid plans with monthly allowances, public prices at `GET /v1/plans`. |
+| Invoice API | Issue Brazilian electronic service invoices from your SaaS, ERP, or backend. Issuance is asynchronous and safe to retry with an `Idempotency-Key`. |
+| Tax calculation | `POST /v1/invoices/calculate` shows ISS, withholdings and IBS/CBS (when they apply) before you issue, with no invoice and no credit used. |
+| Scheduled and recurring invoices | Issue on a future date (`options.type: "SCHEDULE"`) or on a weekly, biweekly or monthly schedule (`"RECURRING"`). |
+| Cancellation | `POST /v1/invoices/:id/cancel` cancels a queued invoice immediately, or sends the cancellation event to the Sefin for an issued NFS-e (or one still being issued) and reports the result by webhook. |
+| Spreadsheet import | Upload a CSV or Excel file, review the problems, then issue hundreds of invoices at once with live counters. By dashboard, API or MCP. |
+| Multi-company | Manage many issuers, each with its fiscal profile and A1 certificate, in one workspace. |
+| Documents and delivery | PDF and XML storage, signed download links, email delivery and signed webhooks for every status change. |
+| AI agents | A remote MCP server lets agents issue and query invoices, and `llms.txt` lets a coding agent write the integration for you. |
+| Dashboard | Companies, invoices, API keys, members, billing and connected agents, in English or Portuguese. |
+| Fiscal environments | Test and live are kept apart. Test needs no certificate and has no fiscal value. |
+| Plans and credits | A free test environment, paid plans with monthly allowances and single-invoice credits. Public prices at `GET /v1/plans`. |
 
 > [!NOTE]
 > Corvo covers **NFS-e (services)** only, not NF-e or NFC-e. See [fiscal limitations](docs/fiscal/limitations.md) for what is not covered yet.
 
-## 🧭 How it works
+## How it works
 
 ```text
 Your app / ERP / AI agent
@@ -64,7 +65,7 @@ Your app / ERP / AI agent
 
 The API accepts a request and answers `202`. The worker classifies the service, calculates taxes, builds and signs the DPS, sends it to the national system, stores the result and notifies you.
 
-## 🚀 Quick start
+## Quick start
 
 You need **Docker with Compose v2** and **Node.js 24**. Docker installs the application dependencies; you do not need Yarn for this path.
 
@@ -90,10 +91,10 @@ With Yarn installed, `yarn local:up` runs the same command. This starts the dash
 
 | Open | Address |
 | --- | --- |
-| 📊 Dashboard | [localhost:4000](http://localhost:4000) |
-| 🔌 API | `http://localhost:3000/v1` |
-| 🤖 MCP server | `http://localhost:3000/mcp` |
-| 📚 Documentation | [localhost:4000/en/docs](http://localhost:4000/en/docs) |
+| Dashboard | [localhost:4000](http://localhost:4000) |
+| API | `http://localhost:3000/v1` |
+| MCP server | `http://localhost:3000/mcp` |
+| Documentation | [localhost:4000/en/docs](http://localhost:4000/en/docs) |
 
 ### 3. Configure the integrations you want to test
 
@@ -108,7 +109,7 @@ EMAIL_FROM=Corvo <noreply@yourdomain.com>
 
 Use a sender authorized by your provider. The local Stripe values only let the application start; replace them with Stripe test credentials to try billing. After editing the env file, run the same Compose command again. With Yarn, `yarn local:logs` follows the logs and `yarn local:down` stops the stack.
 
-## 🔌 Use the API
+## Use the API
 
 Create an API key in the dashboard (**API keys**; keys starting with `corvo_test_` use the test environment), then register a company and issue an invoice:
 
@@ -128,7 +129,7 @@ curl -X POST "$BASE_URL/invoices" \
 
 The second call returns `202` with the invoice in `queued` state. Follow it with `GET /v1/invoices/:id` or a webhook. Every endpoint, field and error is in the [API reference](http://localhost:4000/en/docs).
 
-## 🤖 AI agents (MCP)
+## AI agents (MCP)
 
 Agents connect to one address and approve access in the browser:
 
@@ -138,7 +139,7 @@ claude mcp add --transport http corvo http://localhost:3000/mcp
 
 The user signs in, picks the workspace and chooses **test** or **live** on the approval screen. The dashboard page **AI agents** lists connected apps, their usage, and lets you revoke them. To let a coding agent write the integration into your project instead, give it `/llms-full.txt`. See [AI agents (MCP)](http://localhost:4000/en/docs/mcp) and [Build with AI](http://localhost:4000/en/docs/llms).
 
-## 📦 Deploy to production
+## Deploy to production
 
 Production uses `deploy/.env` and the main Compose file. It runs with `NODE_ENV=production` and stores documents in an **external S3 bucket**. LocalStack belongs to the local environment.
 
@@ -163,7 +164,7 @@ yarn deploy:up   # validates the configuration, then builds and starts the stack
 
 Configure HTTPS in your hosting platform, or enable the optional Caddy proxy on a VPS. See the [self-hosting guide](SELF_HOSTING.md) for both options, updates and troubleshooting.
 
-## 🛠️ Develop
+## Develop
 
 Use Node.js 24 and Yarn 1.22.22:
 
@@ -187,19 +188,19 @@ yarn setup
 
 For development outside Docker, prepare the database and the env files of each application, then run `yarn dev`. Follow [CONTRIBUTING.md](CONTRIBUTING.md), [api/README.md](api/README.md) and [web/README.md](web/README.md).
 
-## 🗂️ Repository structure
+## Repository structure
 
 ```text
-⚙️  api/       NestJS API and background worker
-🖥️  web/       Next.js dashboard, website and API reference
-🐳 deploy/    Dockerfiles, production Compose and local override
-🧰 scripts/   Configuration setup and development commands
-📚 docs/      Fiscal rules, limitations, runbooks and design notes
+api/       NestJS API and background worker
+web/       Next.js dashboard, website and API reference
+deploy/    Dockerfiles, production Compose and local override
+scripts/   Configuration setup and development commands
+docs/      Fiscal rules, limitations, runbooks and design notes
 ```
 
 API and worker share backend code and run as separate production processes. Each application keeps its own dependencies and lockfile; root commands coordinate them.
 
-## 📚 Documentation
+## Documentation
 
 | Where | What |
 | --- | --- |
@@ -209,6 +210,10 @@ API and worker share backend code and run as separate production processes. Each
 | [deploy/README.md](deploy/README.md) | Docker files and the tax calculator. |
 | [docs/fiscal](docs/fiscal) | Fiscal rules, examples, limitations, observability and runbooks. |
 
-## 🤝 Community and license
+## Legal notice
+
+Corvo issues tax documents. Whoever runs it is responsible for the company data, for the A1 certificate and for what is issued. It is software, not tax advice: check the [fiscal limitations](docs/fiscal/limitations.md) before issuing in production. If you process personal data, the LGPD applies to you as the operator.
+
+## Community and license
 
 Corvo NFS-e is licensed under the [GNU Affero General Public License, version 3](LICENSE) (`AGPL-3.0-only`). Participation is governed by our [Code of Conduct](CODE_OF_CONDUCT.md); follow [CONTRIBUTING.md](CONTRIBUTING.md) to contribute. For private vulnerability reports, see [SECURITY.md](SECURITY.md).
