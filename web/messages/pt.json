@@ -2853,7 +2853,12 @@
     },
     "reading": {
       "title": "Lendo a planilha",
-      "body": "Conferindo cada linha. Isso leva alguns segundos."
+      "body": "Conferindo cada linha. Isso leva alguns segundos.",
+      "step1": "Lendo o arquivo",
+      "step2": "Conferindo cada linha",
+      "step3": "Pronta para conferir",
+      "count": "{done} de {total} linhas",
+      "file": "Arquivo: {name}"
     },
     "failed": {
       "title": "Não foi possível ler a planilha",

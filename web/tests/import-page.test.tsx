@@ -13,6 +13,7 @@ vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (p: string) => p === "nfse
 vi.mock("@/lib/use-import", () => ({ useImport: () => ({ job: mocks.job, error: mocks.error, refresh: mocks.refresh }) }));
 vi.mock("@/components/imports/import-upload", () => ({ ImportUpload: ({ onStarted }: { onStarted: (s: unknown) => void }) => { mocks.started = onStarted; return <p>upload step</p>; } }));
 vi.mock("@/components/imports/recent-imports", () => ({ RecentImports: () => <p>recent imports</p> }));
+vi.mock("@/components/imports/import-reading", () => ({ ImportReading: () => <h2>Reading the spreadsheet</h2> }));
 vi.mock("@/components/imports/import-review", () => ({ ImportReview: (props: Record<string, () => void> & { duplicateOf: string | null }) => { mocks.review = props; return <p>review step {String(props.duplicateOf)}</p>; } }));
 vi.mock("@/components/imports/import-progress", () => ({ ImportProgress: ({ onAnother }: { onAnother: () => void }) => <button onClick={onAnother}>progress step</button> }));
 

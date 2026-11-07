@@ -2853,7 +2853,12 @@
     },
     "reading": {
       "title": "Reading the spreadsheet",
-      "body": "Checking every row. This takes a few seconds."
+      "body": "Checking every row. This takes a few seconds.",
+      "step1": "Reading the file",
+      "step2": "Checking every row",
+      "step3": "Ready to review",
+      "count": "{done} of {total} rows",
+      "file": "File: {name}"
     },
     "failed": {
       "title": "We could not read the spreadsheet",

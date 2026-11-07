@@ -3,11 +3,12 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { ImportReading } from "@/components/imports/import-reading";
 import { ImportProgress } from "@/components/imports/import-progress";
 import { ImportReview } from "@/components/imports/import-review";
 import { ImportUpload } from "@/components/imports/import-upload";
@@ -51,10 +52,8 @@ function ImportFlow() {
           <ImportUpload onStarted={started} />
           <RecentImports />
         </>
-      ) : !job ? (
-        <Reading />
-      ) : stage === "reading" ? (
-        <Reading />
+      ) : !job || stage === "reading" ? (
+        <ImportReading job={job} />
       ) : stage === "failed" ? (
         <EmptyState tone="danger" title={t("failed.title")} description={job.errorCode && t.has(`failed.${job.errorCode}`) ? t(`failed.${job.errorCode}`) : t("failed.fallback")} action={<Button variant="secondary" onClick={restart}>{t("failed.again")}</Button>} />
       ) : stage === "review" ? (
@@ -62,19 +61,6 @@ function ImportFlow() {
       ) : (
         <ImportProgress job={job} onRefresh={refresh} onAnother={restart} />
       )}
-    </div>
-  );
-}
-
-function Reading() {
-  const t = useTranslations("Imports");
-  return (
-    <div role="status" className="flex max-w-[620px] items-start gap-3.5 rounded-[12px] border border-border p-6">
-      <Loader2 size={20} aria-hidden className="mt-0.5 motion-safe:animate-spin text-text-3" />
-      <div>
-        <h2 className="text-[16px] font-semibold text-text">{t("reading.title")}</h2>
-        <p className="mt-1 text-[14px] text-text-3">{t("reading.body")}</p>
-      </div>
     </div>
   );
 }
