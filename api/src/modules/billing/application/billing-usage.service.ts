@@ -1,11 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { ApplicationEventBus } from '@/shared/events/application-event-bus';
+import { accountNotice } from '@/shared/events/account-notice.events';
+
 import { BillingRepository } from '../domain/billing.repository';
 import { BillingPeriod, BillingRuleError } from '../domain/billing-period';
 import { hasPaidAccess } from '../domain/billing-policy';
 
 @Injectable()
 export class BillingUsageService {
-  constructor(private readonly repository: BillingRepository) {}
+  constructor(
+    private readonly repository: BillingRepository,
+    @Optional() private readonly eventBus?: ApplicationEventBus,
+  ) {}
   private isBlocked(
     current: Awaited<ReturnType<BillingRepository['current']>>,
   ) {
@@ -54,6 +60,11 @@ export class BillingUsageService {
           (await this.repository.avulsoBalance(tenantId)) > 0
         )
           return null;
+        // Out of notes: tell the admins (once a day), then fail the emission as before.
+        if (code === 'plan_blocked' || code === 'monthly_limit_exceeded')
+          this.eventBus?.publishBestEffort(
+            accountNotice(tenantId, { kind: 'credits-exhausted' }),
+          );
         throw error;
       }
       await this.repository.savePeriod(period.state, tenantId);

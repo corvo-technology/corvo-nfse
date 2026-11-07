@@ -40,4 +40,18 @@ export abstract class ICertificateRepository {
    * Runs as a single UPDATE query (batch, no N+1).
    */
   abstract expireExpiredCertificates(tenantId: string): Promise<string[]>;
+  /**
+   * Active certificates of live companies that expire within `days` days
+   * (and have not expired yet), with the company's display name.
+   */
+  abstract findExpiringSoon(
+    tenantId: string,
+    days: number,
+  ): Promise<ExpiringCertificate[]>;
 }
+
+export type ExpiringCertificate = {
+  companyId: string;
+  companyName: string;
+  validUntil: Date;
+};

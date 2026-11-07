@@ -45,11 +45,14 @@ function setup(
     savePeriod: jest.fn().mockResolvedValue(undefined),
     avulsoBalance: jest.fn().mockResolvedValue(opts.avulso ?? 0),
   };
+  const eventBus = { publishBestEffort: jest.fn() };
   return {
     repository,
     period,
+    eventBus,
     service: new BillingUsageService(
       repository as unknown as BillingRepository,
+      eventBus as never,
     ),
   };
 }
@@ -73,6 +76,18 @@ describe('BillingUsageService.reserve', () => {
     await expect(service.reserve('tenant')).rejects.toMatchObject({
       code: 'monthly_limit_exceeded',
     });
+  });
+
+  it('announces running out of notes, but not when avulso covers it', async () => {
+    const out = setup({ authorized: 100, avulso: 0 });
+    await expect(out.service.reserve('tenant')).rejects.toBeDefined();
+    expect(out.eventBus.publishBestEffort).toHaveBeenCalledWith(
+      expect.objectContaining({ notice: { kind: 'credits-exhausted' } }),
+    );
+
+    const covered = setup({ authorized: 100, avulso: 2 });
+    await covered.service.reserve('tenant');
+    expect(covered.eventBus.publishBestEffort).not.toHaveBeenCalled();
   });
 
   it('keeps avulso usable when the paid plan lapsed', async () => {

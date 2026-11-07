@@ -76,4 +76,49 @@ describe('AccountNoticeListener', () => {
     );
     expect(email.enqueueNotice).not.toHaveBeenCalled();
   });
+
+  it('sends the new billing and certificate notices to the workspace recipients', async () => {
+    const kinds = [
+      { kind: 'credits-exhausted' },
+      { kind: 'payment-failed' },
+      { kind: 'subscription-canceled' },
+      {
+        kind: 'certificate-expiring',
+        companyId: 'c1',
+        companyName: 'Acme',
+        stage: 7,
+        validUntil: new Date('2026-12-01T12:00:00Z'),
+      },
+    ] as const;
+    for (const notice of kinds) {
+      const { listener, email } = build();
+      await listener.handle(accountNotice('t1', notice));
+      expect(email.enqueueNotice).toHaveBeenCalledTimes(2);
+    }
+  });
+
+  it('does not repeat a notice inside its window', async () => {
+    const { listener, email } = build({ first: false });
+    await listener.handle(accountNotice('t1', { kind: 'credits-exhausted' }));
+    await listener.handle(accountNotice('t1', { kind: 'payment-failed' }));
+    expect(email.enqueueNotice).not.toHaveBeenCalled();
+  });
+
+  it('e-mails only the added member', async () => {
+    const { listener, email, recipients } = build();
+    await listener.handle(
+      accountNotice('t1', {
+        kind: 'member-added',
+        email: 'new@x.com',
+        role: 'billing',
+      }),
+    );
+    expect(recipients.emailsFor).not.toHaveBeenCalled();
+    expect(email.enqueueNotice).toHaveBeenCalledWith(
+      'new@x.com',
+      expect.objectContaining({
+        subject: expect.stringContaining('adicionado'),
+      }),
+    );
+  });
 });
