@@ -263,6 +263,45 @@ export class TypeOrmImportRepository extends ImportRepository {
     );
   }
 
+  async markDone(tenantId: string, importId: string): Promise<boolean> {
+    return runWithTenant(tenantId, async () => {
+      const schema = this.schema();
+      const out = await this.imports()
+        .createQueryBuilder()
+        .update()
+        .set({ status: 'done', emitFinishedAt: () => 'now()' })
+        .where(
+          `id = :importId AND tenant_id = :tenantId AND status = 'emitting'
+           AND NOT EXISTS (SELECT 1 FROM ${schema}.import_rows r WHERE r.import_id = :importId AND r.status = 'queued')`,
+          { importId, tenantId },
+        )
+        .execute();
+      return (out.affected ?? 0) > 0;
+    });
+  }
+
+  async updateEditableRow(
+    tenantId: string,
+    importId: string,
+    line: number,
+    patch: Partial<Omit<ImportRow, 'line'>>,
+  ): Promise<boolean> {
+    return runWithTenant(tenantId, async () => {
+      const schema = this.schema();
+      const out = await this.rows()
+        .createQueryBuilder()
+        .update()
+        .set(patch as QueryDeepPartialEntity<ImportRowOrmEntity>)
+        .where(
+          `import_id = :importId AND line = :line AND tenant_id = :tenantId AND status IN ('valid','invalid')
+           AND EXISTS (SELECT 1 FROM ${schema}.imports m WHERE m.id = :importId AND m.status = 'ready')`,
+          { importId, line, tenantId },
+        )
+        .execute();
+      return (out.affected ?? 0) > 0;
+    });
+  }
+
   findRow(
     tenantId: string,
     env: ExecutionEnvironment,

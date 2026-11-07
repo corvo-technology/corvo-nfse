@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import type { Job } from 'bullmq';
 import {
+  IMPORT_EMIT_ATTEMPTS,
   IMPORT_EMIT_QUEUE,
   ImportEmitService,
 } from '../application/import-emit.service';
@@ -15,6 +16,11 @@ export class ImportEmitProcessor extends WorkerHost {
   }
 
   async process(job: Job<ImportRef>): Promise<void> {
-    await this.emitter.run(job.data);
+    try {
+      await this.emitter.run(job.data);
+    } catch (error) {
+      if (job.attemptsMade + 1 < IMPORT_EMIT_ATTEMPTS) throw error;
+      await this.emitter.failRun(job.data);
+    }
   }
 }

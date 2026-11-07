@@ -104,4 +104,61 @@ describe('parseSpreadsheet (xlsx)', () => {
       },
     ]);
   });
+
+  it('does not blow up on a tiny file that declares a huge sheet (one cell far away)', async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Notas');
+    ws.getCell('A1').value = 'valor';
+    ws.getCell('XFD3000').value = 'x';
+    const bytes = Buffer.from(await wb.xlsx.writeBuffer());
+    const started = Date.now();
+    await expect(parseSpreadsheet(bytes, 'xlsx')).rejects.toMatchObject({
+      code: 'ERROR_IMPORT_EMPTY',
+    });
+    expect(Date.now() - started).toBeLessThan(1500);
+  });
+
+  it('rejects a workbook that would unzip to more than 50 MB', async () => {
+    const wb = new ExcelJS.Workbook();
+    wb.addWorksheet('Notas').addRow(['valor']);
+    const bytes = Buffer.from(await wb.xlsx.writeBuffer());
+    // Central directory entries start with PK\x01\x02; the uncompressed size sits 24 bytes in.
+    for (
+      let at = bytes.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+      at >= 0;
+      at = bytes.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]), at + 4)
+    )
+      bytes.writeUInt32LE(60 * 1024 * 1024, at + 24);
+    await expect(parseSpreadsheet(bytes, 'xlsx')).rejects.toMatchObject({
+      code: 'ERROR_IMPORT_UNREADABLE',
+    });
+  });
+
+  it('keeps the real sheet line when the header is not on the first row', async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Notas');
+    ws.getRow(3).values = ['Descrição', 'Valor'];
+    ws.getRow(4).values = ['Serviço', 10];
+    const { rows } = await parseSpreadsheet(
+      Buffer.from(await wb.xlsx.writeBuffer()),
+      'xlsx',
+    );
+    expect(rows).toEqual([
+      { line: 4, cells: { descricao: 'Serviço', valor: '10' } },
+    ]);
+  });
+
+  it('rounds the float noise of calculated cells to cents, and leaves real extra decimals alone', async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Notas');
+    ws.addRow(['Descrição', 'Valor']);
+    ws.addRow(['a', { formula: 'A*1.1', result: 110.00000000000001 }]);
+    ws.addRow(['b', 0.1 + 0.2]);
+    ws.addRow(['c', 10.005]);
+    const { rows } = await parseSpreadsheet(
+      Buffer.from(await wb.xlsx.writeBuffer()),
+      'xlsx',
+    );
+    expect(rows.map((r) => r.cells.valor)).toEqual(['110', '0.3', '10.005']);
+  });
 });

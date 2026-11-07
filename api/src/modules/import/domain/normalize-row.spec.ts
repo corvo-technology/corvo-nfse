@@ -70,4 +70,28 @@ describe('normalizeRow', () => {
       ).code,
     ).toBe('010101');
   });
+
+  it('restores the leading zeros Excel drops from CPF and CNPJ typed as numbers', () => {
+    const out = normalizeRow(
+      {
+        ...base,
+        tomadorDocumento: '1234567890',
+        cnpjPrestador: '345678000195',
+      },
+      TODAY,
+    );
+    expect(out.item.customer).toMatchObject({ taxId: '01234567890' });
+    expect(out.cnpjPrestador).toBe('00345678000195');
+    expect(
+      normalizeRow({ ...base, tomadorDocumento: '1234567890123' }, TODAY).item
+        .customer,
+    ).toMatchObject({ taxId: '01234567890123' });
+    expect(
+      normalizeRow({ ...base, tomadorDocumento: '52998224725' }, TODAY).item
+        .customer,
+    ).toMatchObject({ taxId: '52998224725' });
+    expect(
+      normalizeRow({ ...base, tomadorDocumento: '123' }, TODAY).item.customer,
+    ).toMatchObject({ taxId: '123' });
+  });
 });

@@ -56,11 +56,24 @@ describe('ImportEmitService', () => {
       expect(out.status).toBe('emitting');
     });
 
-    it('a second click while emitting enqueues nothing and returns the state', async () => {
+    it('a second click while emitting with nothing queued enqueues nothing', async () => {
       review.get.mockResolvedValue(view('emitting'));
+      repo.markRowsQueued.mockResolvedValue(0);
       await service.emit(T, 'live', 'i1');
       expect(queue.add).not.toHaveBeenCalled();
-      expect(repo.markRowsQueued).not.toHaveBeenCalled();
+      expect(repo.claimEmit).not.toHaveBeenCalled();
+    });
+
+    it('a click while emitting re-enqueues under the same job id, so a lost job is recovered and a live one is not doubled', async () => {
+      review.get.mockResolvedValue(view('emitting'));
+      repo.markRowsQueued.mockResolvedValue(5);
+      await service.emit(T, 'live', 'i1');
+      expect(queue.add).toHaveBeenCalledWith(
+        'emit',
+        ref,
+        expect.objectContaining({ jobId: 'import-emit-i1' }),
+      );
+      expect(repo.claimEmit).not.toHaveBeenCalled();
     });
 
     it('losing the claim race to another click enqueues nothing', async () => {
@@ -102,6 +115,18 @@ describe('ImportEmitService', () => {
       expect(repo.updateStatus).toHaveBeenCalledWith(T, 'i1', {
         status: 'done',
       });
+    });
+  });
+
+  describe('failRun', () => {
+    it('after the last attempt, rejects what is still queued with a retryable code so the import can settle', async () => {
+      repo.rejectQueued.mockResolvedValue(undefined);
+      await service.failRun(ref);
+      expect(repo.rejectQueued).toHaveBeenCalledWith(T, 'i1', {
+        code: 'ERROR_IMPORT_EMIT_FAILED',
+        message: expect.any(String),
+      });
+      expect(LIMIT_CODES).toContain('ERROR_IMPORT_EMIT_FAILED');
     });
   });
 

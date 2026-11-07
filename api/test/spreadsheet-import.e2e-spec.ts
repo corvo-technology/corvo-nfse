@@ -33,8 +33,15 @@ describe('spreadsheet import (e2e)', () => {
     remove: (t: string, e: string, id: string) =>
       Promise.resolve(void files.delete(`${t}/${e}/${id}`)),
   };
+  // Like BullMQ: adding a job whose id is already waiting or active does nothing.
+  const seenJobIds = new Set<string>();
   const queueFor = (queue: string) => ({
-    add: (name: string) => Promise.resolve(void jobs.push({ queue, name })),
+    add: (name: string, _data: unknown, opts?: { jobId?: string }) => {
+      if (opts?.jobId && seenJobIds.has(opts.jobId)) return Promise.resolve();
+      if (opts?.jobId) seenJobIds.add(opts.jobId);
+      jobs.push({ queue, name });
+      return Promise.resolve();
+    },
   });
 
   const csv = (lines: string[]) =>

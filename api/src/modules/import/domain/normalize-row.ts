@@ -9,6 +9,18 @@ export type NormalizedRow = {
 const digits = (value: string | undefined) =>
   value ? value.replace(/\D/g, '') : '';
 
+/** Excel turns a CPF/CNPJ typed as a number into digits without the leading zeros: put them back. */
+function restoreZeros(value: string, kind: 'person' | 'company'): string {
+  if (kind === 'company')
+    return value.length >= 8 && value.length < 14
+      ? value.padStart(14, '0')
+      : value;
+  if (value.length >= 9 && value.length < 11) return value.padStart(11, '0');
+  return value.length >= 12 && value.length < 14
+    ? value.padStart(14, '0')
+    : value;
+}
+
 /**
  * Reais as text to a number with exact cents. Anything unreadable comes back untouched,
  * so the invoice validation rejects it with its own catalog error.
@@ -52,7 +64,7 @@ export function normalizeRow(
   today: string,
 ): NormalizedRow {
   const customer: Record<string, string> = {};
-  const taxId = digits(cells.tomadorDocumento);
+  const taxId = restoreZeros(digits(cells.tomadorDocumento), 'person');
   if (taxId) customer.taxId = taxId;
   if (cells.tomadorNome?.trim()) customer.name = cells.tomadorNome.trim();
   if (cells.tomadorEmail?.trim()) customer.email = cells.tomadorEmail.trim();
@@ -68,6 +80,6 @@ export function normalizeRow(
     competenceDate: parseDate(cells.dataCompetencia, today),
   };
   if (Object.keys(customer).length) item.customer = customer;
-  const cnpj = digits(cells.cnpjPrestador);
+  const cnpj = restoreZeros(digits(cells.cnpjPrestador), 'company');
   return cnpj ? { item, cnpjPrestador: cnpj } : { item };
 }

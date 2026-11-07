@@ -24,6 +24,8 @@ const counters = {
 describe('ImportReviewService', () => {
   const repo = {
     updateStatus: jest.fn(),
+    markDone: jest.fn(),
+    updateEditableRow: jest.fn(),
     findById: jest.fn(),
     counters: jest.fn(),
     listRows: jest.fn(),
@@ -95,13 +97,14 @@ describe('ImportReviewService', () => {
       data: { amount: 'abc', companyId: 'c1' },
     });
     batch.checkItem.mockResolvedValue({ ok: true });
+    repo.updateEditableRow.mockResolvedValue(true);
     const out = await service.updateRow(T, 'live', 'i1', 4, { amount: 10 });
     expect(batch.checkItem).toHaveBeenCalledWith(
       { amount: 10, companyId: 'c1', idempotencyKey: 'import:i1:4' },
       T,
       expect.anything(),
     );
-    expect(repo.updateRow).toHaveBeenCalledWith(T, 'i1', 4, {
+    expect(repo.updateEditableRow).toHaveBeenCalledWith(T, 'i1', 4, {
       data: { amount: 10, companyId: 'c1' },
       status: 'valid',
       errorCode: null,
@@ -116,6 +119,7 @@ describe('ImportReviewService', () => {
       ok: false,
       error: { code: 'ERROR_VALIDATION', message: 'bad' },
     });
+    repo.updateEditableRow.mockResolvedValue(true);
     const out = await service.updateRow(T, 'live', 'i1', 4, { amount: 'x' });
     expect(out).toMatchObject({
       status: 'invalid',
@@ -123,6 +127,55 @@ describe('ImportReviewService', () => {
       errorMessage: 'bad',
     });
   });
+
+  it('refuses the edit when the row was queued for emission meanwhile (lost the race)', async () => {
+    repo.findRow.mockResolvedValue({ line: 4, status: 'valid', data: {} });
+    batch.checkItem.mockResolvedValue({ ok: true });
+    repo.updateEditableRow.mockResolvedValue(false);
+    await expect(
+      service.updateRow(T, 'live', 'i1', 4, { amount: 5 }),
+    ).rejects.toMatchObject({ name: 'ImportStateError' });
+  });
+
+  it('exposes an ownership check that answers not found for a foreign import', async () => {
+    await expect(service.assertOwned(T, 'live', 'i1')).resolves.toBeUndefined();
+    repo.findById.mockResolvedValue(null);
+    await expect(service.assertOwned(T, 'live', 'x')).rejects.toMatchObject({
+      name: 'ImportNotFoundError',
+    });
+  });
+
+  it.each(['=HYPERLINK("x")', '+cmd', '-1+2', '@SUM(A1)'])(
+    'neutralizes the spreadsheet formula %s in the error csv',
+    async (text) => {
+      repo.listRows
+        .mockResolvedValueOnce({
+          items: [
+            {
+              line: 2,
+              status: 'invalid',
+              errorCode: 'ERROR_VALIDATION',
+              errorMessage: 'm',
+              data: { amount: 5, service: { description: text } },
+            },
+          ],
+          nextCursor: null,
+        })
+        .mockResolvedValueOnce({ items: [], nextCursor: null });
+      let out = '';
+      for await (const chunk of service.errorsCsv(T, 'live', 'i1'))
+        out += chunk;
+      expect(out).toContain(
+        `;'${text.includes('"') ? text.replaceAll('"', '""') : text}`.replace(
+          `;'`,
+          text.includes('"') ? `;"'` : `;'`,
+        ),
+      );
+      expect(out).not.toMatch(
+        new RegExp(`;${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[;\n]`),
+      );
+    },
+  );
 
   it('refuses edits once the import is no longer ready, and on rows already emitted', async () => {
     repo.findById.mockResolvedValue(record({ status: 'emitting' }));

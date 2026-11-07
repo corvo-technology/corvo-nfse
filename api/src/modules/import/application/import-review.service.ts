@@ -22,8 +22,10 @@ const DISCARDABLE = new Set(['processing', 'ready', 'failed']);
 
 /** A cell for Excel in Brazil: ; separated, quoted when it holds ; " or a line break. */
 const cell = (value: unknown): string => {
-  const text =
+  let text =
     typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  // A text starting with = + - @ would run as a formula when the file is opened in Excel.
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   return /[;"\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 };
 
@@ -43,6 +45,14 @@ export class ImportReviewService {
     const record = await this.repo.findById(tenantId, env, id);
     if (!record) throw new ImportNotFoundError();
     return record;
+  }
+
+  async assertOwned(
+    tenantId: string,
+    env: ExecutionEnvironment,
+    id: string,
+  ): Promise<void> {
+    await this.owned(tenantId, env, id);
   }
 
   async get(
@@ -108,7 +118,9 @@ export class ImportReviewService {
           errorCode: checked.error.code,
           errorMessage: checked.error.message,
         };
-    await this.repo.updateRow(tenantId, id, line, next);
+    // Conditional in SQL: an Emit that queued this row after we read it wins, and the edit is refused.
+    if (!(await this.repo.updateEditableRow(tenantId, id, line, next)))
+      throw new ImportStateError();
     return { ...row, ...next };
   }
 

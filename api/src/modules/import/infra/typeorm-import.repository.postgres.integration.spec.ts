@@ -300,6 +300,43 @@ describePostgres('import repository with restricted role', () => {
     expect(rows).toHaveLength(0);
   });
 
+  it('closes as done only while emitting and with nothing queued', async () => {
+    const imp = await repo.create(base(tenantA));
+    await repo.insertRows(tenantA, imp.id, [row(1, 'queued')]);
+    await repo.updateStatus(tenantA, imp.id, { status: 'emitting' });
+    expect(await repo.markDone(tenantA, imp.id)).toBe(false); // a row is still queued
+    await repo.updateRow(tenantA, imp.id, 1, { status: 'accepted' });
+    expect(await repo.markDone(tenantA, imp.id)).toBe(true);
+    expect((await repo.findById(tenantA, 'live', imp.id))?.status).toBe('done');
+    expect(await repo.markDone(tenantA, imp.id)).toBe(false); // already done
+    const other = await repo.create(base(tenantA));
+    expect(await repo.markDone(tenantA, other.id)).toBe(false); // processing never closes
+  });
+
+  it('edits a row only while it is valid or invalid and the import is ready', async () => {
+    const imp = await repo.create(base(tenantA));
+    await repo.insertRows(tenantA, imp.id, [
+      row(1, 'invalid'),
+      row(2, 'queued'),
+    ]);
+    expect(
+      await repo.updateEditableRow(tenantA, imp.id, 1, { status: 'valid' }),
+    ).toBe(false); // import still processing
+    await repo.updateStatus(tenantA, imp.id, { status: 'ready' });
+    expect(
+      await repo.updateEditableRow(tenantA, imp.id, 1, {
+        status: 'valid',
+        errorCode: null,
+      }),
+    ).toBe(true);
+    expect(
+      await repo.updateEditableRow(tenantA, imp.id, 2, { status: 'valid' }),
+    ).toBe(false); // queued meanwhile
+    expect((await repo.findRow(tenantA, 'live', imp.id, 2))?.status).toBe(
+      'queued',
+    );
+  });
+
   it('updates a row and deletes the import with its rows', async () => {
     const imp = await repo.create(base(tenantA));
     await repo.insertRows(tenantA, imp.id, [row(1, 'invalid')]);

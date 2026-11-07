@@ -20,6 +20,8 @@ export const LIMIT_CODES = [
   'ERROR_DAILY_LIMIT_EXCEEDED',
   'ERROR_INSUFFICIENT_CREDITS',
   'ERROR_QUOTA_EXCEEDED',
+  // The job gave up after every attempt: nothing wrong with the row itself.
+  'ERROR_IMPORT_EMIT_FAILED',
 ];
 
 @Injectable()
@@ -41,7 +43,13 @@ export class ImportEmitService {
     id: string,
   ): Promise<ImportView> {
     const view = await this.review.get(tenantId, env, id);
-    if (view.status === 'emitting') return view;
+    if (view.status === 'emitting') {
+      // Already running, or its job was lost (restart, exhausted retries): queue what is waiting and
+      // enqueue under the fixed job id, which does nothing while a job for this import is alive.
+      if ((await this.repo.markRowsQueued(tenantId, id, LIMIT_CODES)) > 0)
+        await this.enqueue(tenantId, env, id);
+      return view;
+    }
     if (view.status !== 'ready' && view.status !== 'done')
       throw new ImportStateError();
 
@@ -53,21 +61,39 @@ export class ImportEmitService {
     }
     if (await this.repo.claimEmit(tenantId, id)) {
       try {
-        await this.queue.add(
-          'emit',
-          { tenantId, environment: env, importId: id },
-          {
-            attempts: IMPORT_EMIT_ATTEMPTS,
-            backoff: { type: 'exponential', delay: 5000 },
-            removeOnComplete: true,
-          },
-        );
+        await this.enqueue(tenantId, env, id);
       } catch (error) {
         await this.repo.updateStatus(tenantId, id, { status: view.status });
         throw error;
       }
     }
     return this.review.get(tenantId, env, id);
+  }
+
+  private enqueue(
+    tenantId: string,
+    environment: ExecutionEnvironment,
+    importId: string,
+  ) {
+    return this.queue.add(
+      'emit',
+      { tenantId, environment, importId },
+      {
+        jobId: `import-emit-${importId}`,
+        attempts: IMPORT_EMIT_ATTEMPTS,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: true,
+        removeOnFail: true,
+      },
+    );
+  }
+
+  /** The job gave up: turn what is still queued into a retryable rejection so the import can settle. */
+  async failRun(ref: ImportRef): Promise<void> {
+    await this.repo.rejectQueued(ref.tenantId, ref.importId, {
+      code: 'ERROR_IMPORT_EMIT_FAILED',
+      message: 'The emission was interrupted. Emit again to retry these rows.',
+    });
   }
 
   /** The job: emits queued rows one chunk at a time until none is left or the plan limit stops it. */

@@ -61,6 +61,15 @@ export abstract class ImportRepository {
     importId: string,
     error: { code: string; message: string },
   ): Promise<void>;
+  /** Closes an emitting import as done, only if no row is still queued. False when it did not apply. */
+  abstract markDone(tenantId: string, importId: string): Promise<boolean>;
+  /** Updates a row only while the import is ready and the row is valid or invalid. False when it did not apply. */
+  abstract updateEditableRow(
+    tenantId: string,
+    importId: string,
+    line: number,
+    patch: Partial<Omit<ImportRow, 'line'>>,
+  ): Promise<boolean>;
   abstract findRow(
     tenantId: string,
     env: ExecutionEnvironment,
