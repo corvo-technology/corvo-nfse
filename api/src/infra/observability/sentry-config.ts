@@ -1,8 +1,7 @@
 import type { ErrorEvent, NodeOptions } from '@sentry/nestjs';
 
 export type SentryEnvironment =
-  | NodeJS.ProcessEnv
-  | Record<string, string | undefined>;
+  NodeJS.ProcessEnv | Record<string, string | undefined>;
 
 export type ResolvedSentryConfig = {
   enabled: boolean;

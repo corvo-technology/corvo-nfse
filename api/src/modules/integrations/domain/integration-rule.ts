@@ -15,8 +15,7 @@ export interface IntegrationRule {
 import type { NormalizedOperation } from './connector';
 
 export type RuleSelection =
-  | { rule: IntegrationRule }
-  | { error: 'no_rule' | 'ambiguous_rule' };
+  { rule: IntegrationRule } | { error: 'no_rule' | 'ambiguous_rule' };
 
 /**
  * A product with its own rule uses it; any other product (or an operation

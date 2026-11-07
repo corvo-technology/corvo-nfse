@@ -481,8 +481,7 @@ function mapDatabaseError(error: QueryFailedError): {
   body: Record<string, unknown>;
 } | null {
   const driverError = error.driverError as
-    | { code?: string; constraint?: string }
-    | undefined;
+    { code?: string; constraint?: string } | undefined;
 
   if (driverError?.code === '23505') {
     return {

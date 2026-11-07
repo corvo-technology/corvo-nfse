@@ -23,18 +23,15 @@ export class IntegrationEventOrmEntity {
   @Column({ type: 'varchar', length: 20 }) state!: string;
   @Column({ type: 'integer' }) attempts!: number;
   @Column({ name: 'claim_token', type: 'uuid', nullable: true }) claimToken!:
-    | string
-    | null;
+    string | null;
   @Column({ name: 'locked_until', type: 'timestamptz', nullable: true })
   lockedUntil!: Date | null;
   @Column({ name: 'next_attempt_at', type: 'timestamptz' })
   nextAttemptAt!: Date;
   @Column({ name: 'last_error', type: 'text', nullable: true }) lastError!:
-    | string
-    | null;
+    string | null;
   @Column({ name: 'operation_id', type: 'uuid', nullable: true }) operationId!:
-    | string
-    | null;
+    string | null;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })

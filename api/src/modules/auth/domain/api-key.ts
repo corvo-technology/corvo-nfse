@@ -1,10 +1,7 @@
 export type ApiKeyEnvironment = 'live' | 'test';
 
 export type ApiKeyScope =
-  | 'full_access'
-  | 'invoices_issue'
-  | 'invoices_view'
-  | 'invoices_read_write';
+  'full_access' | 'invoices_issue' | 'invoices_view' | 'invoices_read_write';
 
 export type ApiKey = {
   id: string;

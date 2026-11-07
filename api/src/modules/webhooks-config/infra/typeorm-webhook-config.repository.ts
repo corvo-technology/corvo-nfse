@@ -6,7 +6,7 @@ import {
 } from '@/infra/persistence/typeorm/tenant-scope';
 import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import { queryCursorPage } from '@/shared/http/keyset-pagination';
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ArrayContains, IsNull, Repository } from 'typeorm';

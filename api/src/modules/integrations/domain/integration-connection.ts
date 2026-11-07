@@ -1,11 +1,7 @@
 import type { IntegrationEnvironment } from './connector';
 
 export type ConnectionState =
-  | 'draft'
-  | 'active'
-  | 'paused'
-  | 'reauth_required'
-  | 'disconnected';
+  'draft' | 'active' | 'paused' | 'reauth_required' | 'disconnected';
 
 export interface IntegrationConnection {
   id: string;

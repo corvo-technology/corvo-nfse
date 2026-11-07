@@ -2,8 +2,7 @@ import type { TaxRegimeKind } from '@/modules/company/domain/fiscal-profile';
 import { DEDUCTION_ALLOWED_CTRIBNAC } from '../dps/anexo1-rules';
 
 export type DeductionDecision =
-  | { allowed: true }
-  | { allowed: false; reason: string };
+  { allowed: true } | { allowed: false; reason: string };
 
 /**
  * Whether the issuer may declare a deduction from the ISS base (`vDedRed`).

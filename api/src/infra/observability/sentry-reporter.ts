@@ -1,11 +1,7 @@
 import * as Sentry from '@sentry/nestjs';
 
 export type SentryRuntime =
-  | 'api'
-  | 'webhooks'
-  | 'worker'
-  | 'baileys'
-  | 'canary';
+  'api' | 'webhooks' | 'worker' | 'baileys' | 'canary';
 
 export type UnhandledHttpContext = {
   statusCode: number;
@@ -91,12 +87,7 @@ export function captureTerminalWorkerException(
 }
 
 export type SentrySeverityLevel =
-  | 'fatal'
-  | 'error'
-  | 'warning'
-  | 'log'
-  | 'info'
-  | 'debug';
+  'fatal' | 'error' | 'warning' | 'log' | 'info' | 'debug';
 
 export function captureBaileysDisconnect(
   exception: Error,

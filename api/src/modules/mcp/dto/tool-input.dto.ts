@@ -99,15 +99,11 @@ export class NfseIssueInput {
   @IsOptional() @IsDateString() competence_date?: string;
 
   @IsOptional() @IsIn(['IMMEDIATE', 'SCHEDULE', 'RECURRING']) emission_type?:
-    | 'IMMEDIATE'
-    | 'SCHEDULE'
-    | 'RECURRING';
+    'IMMEDIATE' | 'SCHEDULE' | 'RECURRING';
 
   /** Required with emission_type RECURRING. */
   @IsOptional() @IsIn(['WEEKLY', 'BIWEEKLY', 'MONTHLY']) recurrence_frequency?:
-    | 'WEEKLY'
-    | 'BIWEEKLY'
-    | 'MONTHLY';
+    'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
 
   /** YYYY-MM-DD, last day a recurrence may run. Without it the recurrence runs until paused or cancelled. */
   @IsOptional() @IsDateString() recurrence_ends_on?: string;
@@ -234,9 +230,7 @@ export class ScheduleUpdateInput extends ScheduleIdInput {
   @IsDateString()
   ends_on?: string | null;
   @IsOptional() @IsIn(['WEEKLY', 'BIWEEKLY', 'MONTHLY']) frequency?:
-    | 'WEEKLY'
-    | 'BIWEEKLY'
-    | 'MONTHLY';
+    'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
   /** YYYY-MM-DD: moves the date the count of runs starts from. */
   @IsOptional() @IsDateString() first_date?: string;
 }
