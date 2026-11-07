@@ -43,6 +43,11 @@ import {
   UpdateImportRowDto,
   type UploadedImportFile,
 } from './import.dto';
+import {
+  toImportResponse,
+  toRowResponse,
+  toStartResponse,
+} from './import.response';
 
 @ApiTags('imports')
 @UseGuards(ExecutionEnvironmentGuard)
@@ -75,14 +80,16 @@ export class ImportController {
     if (!file) throw new ImportFileInvalidError();
     const auth = req.authContext!;
     return data(
-      await this.intake.start({
-        tenantId: auth.activeTenantId,
-        environment: executionEnvironment(auth),
-        userId: auth.authUserId,
-        fileName: file.originalname,
-        bytes: file.buffer,
-        companyId: body.companyId,
-      }),
+      toStartResponse(
+        await this.intake.start({
+          tenantId: auth.activeTenantId,
+          environment: executionEnvironment(auth),
+          userId: auth.authUserId,
+          fileName: file.originalname,
+          bytes: file.buffer,
+          companyId: body.companyId,
+        }),
+      ),
     );
   }
 
@@ -104,10 +111,12 @@ export class ImportController {
   ) {
     const auth = req.authContext!;
     return data(
-      await this.review.get(
-        auth.activeTenantId,
-        executionEnvironment(auth),
-        id,
+      toImportResponse(
+        await this.review.get(
+          auth.activeTenantId,
+          executionEnvironment(auth),
+          id,
+        ),
       ),
     );
   }
@@ -127,10 +136,12 @@ export class ImportController {
   ) {
     const auth = req.authContext!;
     return data(
-      await this.emitter.emit(
-        auth.activeTenantId,
-        executionEnvironment(auth),
-        id,
+      toImportResponse(
+        await this.emitter.emit(
+          auth.activeTenantId,
+          executionEnvironment(auth),
+          id,
+        ),
       ),
     );
   }
@@ -158,7 +169,7 @@ export class ImportController {
       },
     );
     return {
-      data: page.items,
+      data: page.items.map(toRowResponse),
       pagination: {
         limit,
         hasMore: page.nextCursor !== null,
@@ -181,12 +192,14 @@ export class ImportController {
   ) {
     const auth = req.authContext!;
     return data(
-      await this.review.updateRow(
-        auth.activeTenantId,
-        executionEnvironment(auth),
-        id,
-        line,
-        body.item,
+      toRowResponse(
+        await this.review.updateRow(
+          auth.activeTenantId,
+          executionEnvironment(auth),
+          id,
+          line,
+          body.item,
+        ),
       ),
     );
   }

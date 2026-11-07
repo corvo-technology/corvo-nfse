@@ -38,7 +38,7 @@ describe('ImportController POST /imports', () => {
       companyId: 'c1',
     });
     expect(out).toEqual({
-      data: { id: 'i1', status: 'processing', duplicateOf: null },
+      data: { id: 'i1', status: 'processing', duplicate_of: null },
     });
   });
 
