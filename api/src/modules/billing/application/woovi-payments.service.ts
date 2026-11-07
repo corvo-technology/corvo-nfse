@@ -1,8 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { ApplicationEventBus } from '@/shared/events/application-event-bus';
+import { accountNotice } from '@/shared/events/account-notice.events';
+
 import {
   BadRequestException,
   Injectable,
   Logger,
+  Optional,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -55,6 +59,7 @@ export class WooviPaymentsService {
     private readonly intents: PaymentIntentStore,
     private readonly fulfillment: PaymentFulfillmentService,
     private readonly pricing: PricingService,
+    @Optional() private readonly eventBus?: ApplicationEventBus,
   ) {}
 
   async startAvulso(
@@ -190,8 +195,13 @@ export class WooviPaymentsService {
         return this.onChargeCompleted(payload);
       case 'OPENPIX:CHARGE_EXPIRED': {
         const intent = await this.byRef(payload.charge?.correlationID);
-        if (intent)
+        if (intent) {
+          const before = intent.status;
           await this.intents.setStatus(intent.id, 'expired', ['pending']);
+          // Only the first delivery of an unpaid charge: a replay finds it already expired.
+          if (before === 'pending')
+            this.announce(intent.tenantId, 'pix-expired');
+        }
         return;
       }
       case 'OPENPIX:SUBSCRIPTION_AUTHORIZED':
@@ -240,6 +250,7 @@ export class WooviPaymentsService {
     const intent = await this.byRef(ref);
     if (intent) {
       if (paid !== intent.amountCents) {
+        const before = intent.status;
         this.logger.warn({
           event: 'woovi_amount_mismatch',
           ref,
@@ -251,6 +262,8 @@ export class WooviPaymentsService {
           'authorized',
           'expired',
         ]);
+        if (before !== 'mismatch')
+          this.announce(intent.tenantId, 'payment-mismatch');
         return;
       }
       if (!(await this.confirmedByWoovi(ref, intent.amountCents))) return;
@@ -304,7 +317,24 @@ export class WooviPaymentsService {
     onlyFrom?: Array<'pending'>,
   ): Promise<void> {
     const intent = await this.byRef(payload.subscription?.correlationID);
-    if (intent) await this.intents.setStatus(intent.id, status, onlyFrom);
+    if (!intent) return;
+    const before = intent.status;
+    await this.intents.setStatus(intent.id, status, onlyFrom);
+    if (before === status) return; // a replay: already told
+    if (status === 'rejected') this.announce(intent.tenantId, 'payment-failed');
+    else if (status === 'cancelled')
+      this.announce(intent.tenantId, 'subscription-canceled');
+  }
+
+  private announce(
+    tenantId: string,
+    kind:
+      | 'pix-expired'
+      | 'payment-mismatch'
+      | 'payment-failed'
+      | 'subscription-canceled',
+  ): void {
+    this.eventBus?.publishBestEffort(accountNotice(tenantId, { kind }));
   }
 
   private byRef(ref: string | undefined) {

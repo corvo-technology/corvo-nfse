@@ -194,14 +194,17 @@ function createHarness() {
   const memberships = {
     findByAuthUserAndTenant: jest.fn().mockResolvedValue({ isActive: true }),
   };
+  const eventBus = { publishBestEffort: jest.fn() };
   const service = new McpAuthService(
     repos.codesRepo as never,
     repos.sessionsRepo as never,
     repos.connectionsRepo as never,
     config as never,
     memberships as never,
+    { findById: jest.fn().mockResolvedValue({ name: 'Claude' }) } as never,
+    eventBus as never,
   );
-  return { service, config, memberships, ...repos };
+  return { service, config, memberships, eventBus, ...repos };
 }
 
 function seedCode(
@@ -352,6 +355,11 @@ describe('McpAuthService.exchangeCode', () => {
     const tokens = await exchange(harness, live.raw);
 
     expect(harness.connections[0].environment).toBe('live');
+    expect(harness.eventBus.publishBestEffort).toHaveBeenCalledWith(
+      expect.objectContaining({
+        notice: { kind: 'mcp-connected', clientName: 'Claude' },
+      }),
+    );
     const payload = await harness.service.validateAccessToken(
       tokens.accessToken,
     );
@@ -363,6 +371,7 @@ describe('McpAuthService.exchangeCode', () => {
     const first = seedCode(harness.codes);
     await exchange(harness, first.raw);
     expect(harness.connections[0].environment).toBe('test');
+    expect(harness.eventBus.publishBestEffort).not.toHaveBeenCalled();
 
     seedCode(harness.codes, {
       codeHash: sha256('switch-code'),

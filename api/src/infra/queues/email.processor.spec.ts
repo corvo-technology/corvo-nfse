@@ -1,6 +1,5 @@
 import { Job } from 'bullmq';
 import { MillionSendEmailProvider } from '@/infra/external/email/mmsend-email.provider';
-import { MillionSendTemplateClient } from '@/infra/external/email/email-template.client';
 import { WebhookOutboxService } from '@/modules/webhooks-config/application/webhook-outbox.service';
 import { IWebhookConfigRepository } from '@/modules/webhooks-config/domain/webhook-config.repository';
 import { EmailProcessor } from './email.processor';
@@ -10,12 +9,6 @@ describe('EmailProcessor', () => {
   const mockProvider = {
     send: jest.fn().mockResolvedValue({ id: 'email_123' }),
   } as unknown as jest.Mocked<MillionSendEmailProvider>;
-
-  const mockTemplates = {
-    render: jest
-      .fn()
-      .mockResolvedValue({ subject: 'Assunto', html: '<p>Corpo</p>' }),
-  } as unknown as jest.Mocked<MillionSendTemplateClient>;
 
   const mockOutbox = {
     enqueue: jest.fn().mockResolvedValue(undefined),
@@ -31,7 +24,6 @@ describe('EmailProcessor', () => {
 
   const processor = new EmailProcessor(
     mockProvider,
-    mockTemplates,
     mockOutbox,
     mockConfigRepo,
   );
@@ -84,32 +76,26 @@ describe('EmailProcessor', () => {
     });
   });
 
-  describe('template jobs', () => {
-    it('renders the MillionSend template before sending', async () => {
+  describe('rendered email jobs', () => {
+    it('sends the html and plain text it was given', async () => {
       mockProvider.send.mockResolvedValue({ id: 'email_1' });
       const job = {
         data: {
           emailId: 'welcome_001',
           to: 'user@example.com',
           kind: 'welcome',
-          template: {
-            alias: 'welcome',
-            variables: { user_name: 'Pedro', dashboard_url: 'https://x' },
-          },
+          email: { subject: 'Assunto', html: '<p>Corpo</p>', text: 'Corpo' },
         },
         id: 'job_3',
       } as unknown as Job<EmailJobData>;
 
       await processor.process(job);
 
-      expect(mockTemplates.render).toHaveBeenCalledWith({
-        alias: 'welcome',
-        variables: { user_name: 'Pedro', dashboard_url: 'https://x' },
-      });
       expect(mockProvider.send).toHaveBeenCalledWith({
         to: ['user@example.com'],
         subject: 'Assunto',
         html: '<p>Corpo</p>',
+        text: 'Corpo',
       });
     });
   });
@@ -123,10 +109,7 @@ describe('EmailProcessor', () => {
         data: {
           emailId: 'otp_001',
           to: 'user@example.com',
-          template: {
-            alias: 'otp-code',
-            variables: { code: '123456', expires_in_minutes: '5' },
-          },
+          email: { subject: 'Código', html: '<p>123456</p>', text: '123456' },
           kind: 'otp',
           code: '123456',
           expiresInMinutes: 5,

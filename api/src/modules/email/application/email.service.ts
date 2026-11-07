@@ -1,12 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { QueuePort } from '@/infra/redis/queue.port';
+import {
+  creditsLowEmail,
+  otpEmail,
+  schedulePausedEmail,
+  scheduleRetryEmail,
+  welcomeEmail,
+} from '@/infra/external/email/email-templates';
+import type { RenderedEmail } from '@/infra/external/email/email-templates';
 import type {
   OtpEmailJobData,
   WelcomeEmailJobData,
   CreditsLowEmailJobData,
   ScheduleRetryEmailJobData,
   SchedulePausedEmailJobData,
+  NoticeEmailJobData,
 } from '@/infra/queues/email-job.types';
 
 export type EnqueueOtpInput = {
@@ -68,13 +77,10 @@ export class EmailService {
     const data: OtpEmailJobData = {
       emailId,
       to: input.to,
-      template: {
-        alias: 'otp-code',
-        variables: {
-          code: input.code,
-          expires_in_minutes: String(input.expiresInMinutes),
-        },
-      },
+      email: otpEmail({
+        code: input.code,
+        expiresInMinutes: input.expiresInMinutes,
+      }),
       kind: 'otp',
       code: input.code,
       expiresInMinutes: input.expiresInMinutes,
@@ -97,13 +103,10 @@ export class EmailService {
     const data: WelcomeEmailJobData = {
       emailId,
       to: input.to,
-      template: {
-        alias: 'welcome',
-        variables: {
-          user_name: input.name,
-          dashboard_url: this.config.get<string>('APP_URL') ?? DEFAULT_APP_URL,
-        },
-      },
+      email: welcomeEmail({
+        name: input.name,
+        dashboardUrl: this.config.get<string>('APP_URL') ?? DEFAULT_APP_URL,
+      }),
       kind: 'welcome',
     };
 
@@ -123,17 +126,14 @@ export class EmailService {
     const data: CreditsLowEmailJobData = {
       emailId,
       to: input.to,
-      template: {
-        alias: 'credits-low',
-        variables: {
-          plan_name: input.planName,
-          remaining: String(input.remaining),
-          total: String(input.total),
-          billing_url: billingUrl(
-            this.config.get<string>('APP_URL') ?? DEFAULT_APP_URL,
-          ),
-        },
-      },
+      email: creditsLowEmail({
+        planName: input.planName,
+        remaining: input.remaining,
+        total: input.total,
+        billingUrl: billingUrl(
+          this.config.get<string>('APP_URL') ?? DEFAULT_APP_URL,
+        ),
+      }),
       kind: 'credits-low',
     };
 
@@ -153,16 +153,13 @@ export class EmailService {
     const data: ScheduleRetryEmailJobData = {
       emailId,
       to: input.to,
-      template: {
-        alias: 'schedule-retry',
-        variables: {
-          count: String(input.count),
-          schedules: input.schedules,
-          reason: input.reason,
-          billing_url: billingUrl(appUrl),
-          schedules_url: schedulesUrl(appUrl),
-        },
-      },
+      email: scheduleRetryEmail({
+        count: input.count,
+        schedules: input.schedules,
+        reason: input.reason,
+        billingUrl: billingUrl(appUrl),
+        schedulesUrl: schedulesUrl(appUrl),
+      }),
       kind: 'schedule-retry',
     };
 
@@ -187,15 +184,12 @@ export class EmailService {
     const data: SchedulePausedEmailJobData = {
       emailId,
       to: input.to,
-      template: {
-        alias: 'schedule-paused',
-        variables: {
-          company_name: input.companyName,
-          amount: input.amount,
-          reason: input.reason,
-          schedules_url: schedulesUrl(appUrl),
-        },
-      },
+      email: schedulePausedEmail({
+        companyName: input.companyName,
+        amount: input.amount,
+        reason: input.reason,
+        schedulesUrl: schedulesUrl(appUrl),
+      }),
       kind: 'schedule-paused',
     };
 
@@ -209,5 +203,17 @@ export class EmailService {
     this.logger.debug(
       `Schedule paused email enqueued: ${emailId} → ${input.to}`,
     );
+  }
+
+  /** Any ready-made e-mail (a notice built by the caller), sent through the same queue. */
+  async enqueueNotice(to: string, email: RenderedEmail): Promise<void> {
+    const emailId = `notice_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const data: NoticeEmailJobData = { emailId, to, email, kind: 'notice' };
+    await this.queue.add('email', 'notice', data, {
+      attempts: 3,
+      backoffMs: 5_000,
+      removeOnComplete: true,
+      removeOnFail: 0,
+    });
   }
 }

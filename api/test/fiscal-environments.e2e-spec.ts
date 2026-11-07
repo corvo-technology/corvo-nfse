@@ -31,7 +31,6 @@ import { ApiKeyService } from '@/modules/auth/application/api-key.service';
 import { CookieSessionService } from '@/modules/auth/application/cookie-session.service';
 import { AuthUserService } from '@/modules/auth/application/auth-user.service';
 import { MillionSendEmailProvider } from '@/infra/external/email/mmsend-email.provider';
-import { MillionSendTemplateClient } from '@/infra/external/email/email-template.client';
 import { REDIS_CLIENT } from '@/infra/redis/redis.constants';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
 import { IWebhookConfigRepository } from '@/modules/webhooks-config/domain/webhook-config.repository';
@@ -206,13 +205,6 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
             emails.push(message);
             return { id: 'local-email' };
           },
-        })
-        .overrideProvider(MillionSendTemplateClient)
-        .useValue({
-          render: async () => ({
-            subject: 'Nota fiscal',
-            html: '<p>Nota fiscal</p>',
-          }),
         })
         .overrideProvider(WebhookDispatcherAdapter)
         .useValue({

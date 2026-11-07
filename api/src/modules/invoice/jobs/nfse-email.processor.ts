@@ -14,9 +14,8 @@ import {
   type IInvoiceRepository,
 } from '../domain/invoice.repository';
 import { ICompanyRepository } from '@/modules/company/domain/company.repository';
-import { NFSE_TEST_DISCLAIMER } from '@/shared/fiscal/nfse-constants';
 import { formatBrl } from '@/shared/utils/currency';
-import { MillionSendTemplateClient } from '@/infra/external/email/email-template.client';
+import { nfseDocumentsReadyEmail } from '@/infra/external/email/email-templates';
 import {
   MillionSendEmailProvider,
   PermanentEmailError,
@@ -44,7 +43,6 @@ export class NfseEmailProcessor extends WorkerHost {
     private readonly invoiceRepo: IInvoiceRepository,
     private readonly companyRepo: ICompanyRepository,
     private readonly emailProvider: MillionSendEmailProvider,
-    private readonly templates: MillionSendTemplateClient,
     private readonly configService: ConfigService,
     private readonly workflow: NfseWorkflowService,
   ) {
@@ -116,27 +114,22 @@ export class NfseEmailProcessor extends WorkerHost {
         invoice.environment,
       );
       if (!company) throw new Error('Invoice company not found');
-      const { subject, html } = await this.templates.render({
-        alias: 'nfse-documents-ready',
-        variables: {
-          company_name: company?.tradeName ?? company?.legalName ?? 'Corvo',
-          customer_name: snapshot.customerSnapshot?.name ?? 'Consumidor',
-          invoice_amount: formatBrl(Number(snapshot.amount)),
-          invoice_number: String(nfseNumber),
-          invoice_issue_date: formatDateBr(snapshot.issuedAt ?? new Date()),
-          service_description: snapshot.serviceSnapshot.description,
-          access_key: snapshot.accessKey ?? '—',
-        },
+      const { subject, html, text } = nfseDocumentsReadyEmail({
+        companyName: company?.tradeName ?? company?.legalName ?? 'Corvo',
+        customerName: snapshot.customerSnapshot?.name ?? 'Consumidor',
+        amount: formatBrl(Number(snapshot.amount)),
+        number: String(nfseNumber),
+        issueDate: formatDateBr(snapshot.issuedAt ?? new Date()),
+        description: snapshot.serviceSnapshot.description,
+        accessKey: snapshot.accessKey ?? '—',
+        isTest: invoice.environment === 'test',
       });
 
       await this.emailProvider.send({
         to: [customerEmail],
-        subject:
-          invoice.environment === 'test' ? `[TESTE] ${subject}` : subject,
-        html:
-          invoice.environment === 'test'
-            ? `<p>${NFSE_TEST_DISCLAIMER}</p>${html}`
-            : html,
+        subject,
+        html,
+        text,
         attachments: [
           {
             filename: `nfse-${nfseNumber}.pdf`,

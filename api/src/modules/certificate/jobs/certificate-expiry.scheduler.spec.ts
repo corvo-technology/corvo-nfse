@@ -1,14 +1,28 @@
 import { CertificateExpiryScheduler } from './certificate-expiry.scheduler';
 
 describe('CertificateExpiryScheduler', () => {
-  let certRepo: { expireExpiredCertificates: jest.Mock };
-  let companyRepo: { batchRecomputeStatus: jest.Mock };
+  let certRepo: {
+    expireExpiredCertificates: jest.Mock;
+    findExpiringSoon: jest.Mock;
+  };
+  let eventBus: { publishBestEffort: jest.Mock };
+  let companyRepo: {
+    batchRecomputeStatus: jest.Mock;
+    findByIdAndTenantId: jest.Mock;
+  };
   let scheduler: CertificateExpiryScheduler;
 
   beforeEach(() => {
-    certRepo = { expireExpiredCertificates: jest.fn().mockResolvedValue([]) };
+    certRepo = {
+      expireExpiredCertificates: jest.fn().mockResolvedValue([]),
+      findExpiringSoon: jest.fn().mockResolvedValue([]),
+    };
+    eventBus = { publishBestEffort: jest.fn() };
     companyRepo = {
       batchRecomputeStatus: jest.fn().mockResolvedValue(undefined),
+      findByIdAndTenantId: jest
+        .fn()
+        .mockResolvedValue({ tradeName: null, legalName: 'Acme Ltda' }),
     };
     scheduler = new CertificateExpiryScheduler(
       {
@@ -17,6 +31,7 @@ describe('CertificateExpiryScheduler', () => {
       } as never,
       certRepo as any,
       companyRepo as any,
+      eventBus as never,
     );
   });
 
@@ -39,5 +54,47 @@ describe('CertificateExpiryScheduler', () => {
 
     expect(certRepo.expireExpiredCertificates).toHaveBeenCalledTimes(1);
     expect(companyRepo.batchRecomputeStatus).not.toHaveBeenCalled();
+  });
+
+  it('warns 30 days ahead, and 7 days ahead once it is closer', async () => {
+    const day = 86_400_000;
+    certRepo.findExpiringSoon.mockResolvedValue([
+      {
+        companyId: 'far',
+        companyName: 'Longe',
+        validUntil: new Date(Date.now() + 20 * day),
+      },
+      {
+        companyId: 'near',
+        companyName: 'Perto',
+        validUntil: new Date(Date.now() + 3 * day),
+      },
+    ]);
+
+    await scheduler.handleExpiry();
+
+    const stages = eventBus.publishBestEffort.mock.calls.map(([event]) => [
+      event.notice.companyId,
+      event.notice.stage,
+    ]);
+    expect(stages).toEqual([
+      ['far', 30],
+      ['near', 7],
+    ]);
+  });
+
+  it('announces a live company whose certificate just expired', async () => {
+    certRepo.expireExpiredCertificates.mockResolvedValue(['c1']);
+
+    await scheduler.handleExpiry();
+
+    expect(eventBus.publishBestEffort).toHaveBeenCalledWith(
+      expect.objectContaining({
+        notice: expect.objectContaining({
+          companyName: 'Acme Ltda',
+          stage: 0,
+        }),
+      }),
+    );
   });
 });

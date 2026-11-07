@@ -2,9 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { MillionSendEmailProvider } from '@/infra/external/email/mmsend-email.provider';
-import { MillionSendTemplateClient } from '@/infra/external/email/email-template.client';
 import { IWebhookConfigRepository } from '@/modules/webhooks-config/domain/webhook-config.repository';
 import { WebhookOutboxService } from '@/modules/webhooks-config/application/webhook-outbox.service';
+import type { RenderedEmail } from '@/infra/external/email/email-templates';
 import type { EmailJobData } from './email-job.types';
 import { WebhookEvent } from '@/modules/webhooks-config/domain/webhook-event';
 
@@ -15,7 +15,6 @@ export class EmailProcessor extends WorkerHost {
 
   constructor(
     private readonly provider: MillionSendEmailProvider,
-    private readonly templates: MillionSendTemplateClient,
     private readonly outboxService: WebhookOutboxService,
     private readonly webhookConfigRepo: IWebhookConfigRepository,
   ) {
@@ -28,15 +27,16 @@ export class EmailProcessor extends WorkerHost {
     this.logger.debug(`Processing email job ${data.kind} → ${data.to}`);
 
     try {
-      const { subject, html } =
-        'template' in data
-          ? await this.templates.render(data.template)
-          : { subject: data.subject, html: data.html };
+      const message: Pick<RenderedEmail, 'subject' | 'html'> &
+        Partial<Pick<RenderedEmail, 'text'>> =
+        'email' in data ? data.email : data;
+      const { subject, html, text } = message;
 
       const result = await this.provider.send({
         to: [data.to],
         subject,
         html,
+        ...(text ? { text } : {}),
       });
 
       this.logger.log(`Email ${data.kind} sent: ${result.id} → ${data.to}`);
