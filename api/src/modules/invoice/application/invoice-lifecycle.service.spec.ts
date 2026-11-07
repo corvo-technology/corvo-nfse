@@ -240,7 +240,7 @@ describe('InvoiceLifecycleService', () => {
       InvoiceEvent.create(invoice.id, null, 'queued'),
       null,
     );
-    const saved = (f.credits.save.mock.calls as unknown[][])[0]![0] as Record<
+    const saved = (f.credits.save.mock.calls as unknown[][])[0][0] as Record<
       string,
       unknown
     >;

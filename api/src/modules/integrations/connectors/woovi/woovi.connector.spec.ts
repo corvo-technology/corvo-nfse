@@ -4,9 +4,7 @@ import { join } from 'node:path';
 import { WooviConnector } from './woovi.connector';
 import type { WooviPublicKeyProvider } from './woovi-public-key.provider';
 import {
-  ConnectorAuthError,
   ConnectorDataError,
-  ConnectorTransientError,
   type ConnectionView,
   type OperationDelivery,
 } from '../../domain/connector';

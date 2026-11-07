@@ -27,7 +27,7 @@ describe('WebhookDeliveryController environment', () => {
   it('forces an API key to its own environment, whatever the query asks', async () => {
     const { controller, deliveries } = setup();
     await controller.findAll(keyOf('test'), { environment: 'live' } as never);
-    await controller.findAll(keyOf('test'), {} as never);
+    await controller.findAll(keyOf('test'), {});
     expect(deliveries.listPage).toHaveBeenNthCalledWith(
       1,
       tenantId,

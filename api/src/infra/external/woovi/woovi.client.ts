@@ -222,7 +222,9 @@ export class WooviClient {
         errors?: Array<{ message?: unknown }>;
       };
       const parts = Array.isArray(body.errors)
-        ? body.errors.map((e) => String(e.message ?? '')).filter(Boolean)
+        ? body.errors
+            .map((e) => (typeof e.message === 'string' ? e.message : ''))
+            .filter(Boolean)
         : [];
       const single = body.error ?? body.message;
       if (parts.length) return parts.join('; ').slice(0, 300);

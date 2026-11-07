@@ -97,7 +97,7 @@ describe('StripePaymentsService.start', () => {
     await expect(
       f.service.start(tenant, { kind: 'avulso', units: 9 }, 'same'),
     ).rejects.toBeInstanceOf(ConflictException);
-    f.store.rows[0]!.provider = 'woovi';
+    f.store.rows[0].provider = 'woovi';
     await expect(
       f.service.start(tenant, { kind: 'avulso', units: 5 }, 'same'),
     ).rejects.toBeInstanceOf(ConflictException);
@@ -123,7 +123,7 @@ describe('StripePaymentsService.complete', () => {
   it('credits the notes once even if the event is delivered twice', async () => {
     const f = setup('cus_1');
     await f.service.start(tenant, { kind: 'avulso', units: 10 }, 'k');
-    const ref = f.store.rows[0]!.providerRef;
+    const ref = f.store.rows[0].providerRef;
     await f.service.complete(ref);
     await f.service.complete(ref);
     expect(f.credits.grantAvulso).toHaveBeenCalledTimes(1);
@@ -136,12 +136,12 @@ describe('StripePaymentsService.complete', () => {
   it('puts the intent back to pending when delivery fails, so the redelivered event retries', async () => {
     const f = setup('cus_1');
     await f.service.start(tenant, { kind: 'avulso', units: 10 }, 'k');
-    const ref = f.store.rows[0]!.providerRef;
+    const ref = f.store.rows[0].providerRef;
     f.credits.grantAvulso.mockRejectedValueOnce(new Error('db blip'));
     await expect(f.service.complete(ref)).rejects.toThrow('db blip');
-    expect(f.store.rows[0]!.status).toBe('pending');
+    expect(f.store.rows[0].status).toBe('pending');
     await f.service.complete(ref);
-    expect(f.store.rows[0]!.status).toBe('paid');
+    expect(f.store.rows[0].status).toBe('paid');
   });
   it('ignores unknown intents', async () => {
     const f = setup('cus_1');

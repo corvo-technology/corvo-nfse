@@ -110,7 +110,7 @@ describe('WooviPaymentsService.startAvulso', () => {
   it('does not replay an expired charge: a new key is needed', async () => {
     const f = setup();
     await f.service.startAvulso(tenant, 5, 'old');
-    f.store.rows[0]!.expiresAt = new Date(Date.now() - 1000);
+    f.store.rows[0].expiresAt = new Date(Date.now() - 1000);
     await expect(
       f.service.startAvulso(tenant, 5, 'old'),
     ).rejects.toBeInstanceOf(ConflictException);
@@ -149,7 +149,7 @@ describe('WooviPaymentsService.startPlan', () => {
       expect.objectContaining({ valueCents: 5990, customer: payer }),
     );
     expect(out).toMatchObject({ method: 'pix', brCode: '000201EMV' });
-    expect(f.store.rows[0]!.checkout).toMatchObject({
+    expect(f.store.rows[0].checkout).toMatchObject({
       providerId: expect.stringContaining('gid-'),
     });
   });
@@ -172,17 +172,17 @@ describe('WooviPaymentsService.startPlan', () => {
   it('maps the Pix Automático approval and rejection events', async () => {
     const f = setup();
     await f.service.startPlan(tenant, 'solo', 'monthly', 'k4', payer);
-    const ref = f.store.rows[0]!.providerRef;
+    const ref = f.store.rows[0].providerRef;
     await f.service.handleEvent({
       event: 'PIX_AUTOMATIC_APPROVED',
       subscription: { correlationID: ref },
     });
-    expect(f.store.rows[0]!.status).toBe('authorized');
+    expect(f.store.rows[0].status).toBe('authorized');
     await f.service.handleEvent({
       event: 'PIX_AUTOMATIC_REJECTED',
       subscription: { correlationID: ref },
     });
-    expect(f.store.rows[0]!.status).toBe('rejected');
+    expect(f.store.rows[0].status).toBe('rejected');
   });
 });
 
@@ -196,7 +196,7 @@ describe('WooviPaymentsService.handleEvent', () => {
   it('credits avulso notes once even if the webhook is delivered twice', async () => {
     const f = setup();
     await f.service.startAvulso(tenant, 10, 'k');
-    const ref = f.store.rows[0]!.providerRef;
+    const ref = f.store.rows[0].providerRef;
     await f.service.handleEvent(completed(ref, 990));
     await f.service.handleEvent(completed(ref, 990));
     expect(f.credits.grantAvulso).toHaveBeenCalledTimes(1);
@@ -210,7 +210,7 @@ describe('WooviPaymentsService.handleEvent', () => {
   it('announces the credits added, but not when the grant was a replay', async () => {
     const f = setup();
     await f.service.startAvulso(tenant, 10, 'k');
-    const ref = f.store.rows[0]!.providerRef;
+    const ref = f.store.rows[0].providerRef;
     await f.service.handleEvent(completed(ref, 990));
     expect(f.eventBus.publishBestEffort).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -223,22 +223,22 @@ describe('WooviPaymentsService.handleEvent', () => {
     replay.credits.grantAvulso.mockResolvedValue({ creditsGranted: 0 });
     await replay.service.startAvulso(tenant, 10, 'k');
     await replay.service.handleEvent(
-      completed(replay.store.rows[0]!.providerRef, 990),
+      completed(replay.store.rows[0].providerRef, 990),
     );
     expect(replay.eventBus.publishBestEffort).not.toHaveBeenCalled();
   });
   it('does not credit when the paid value differs from the charge', async () => {
     const f = setup();
     await f.service.startAvulso(tenant, 10, 'k');
-    const ref = f.store.rows[0]!.providerRef;
+    const ref = f.store.rows[0].providerRef;
     await f.service.handleEvent(completed(ref, 100));
     expect(f.credits.grantAvulso).not.toHaveBeenCalled();
-    expect(f.store.rows[0]!.status).toBe('mismatch');
+    expect(f.store.rows[0].status).toBe('mismatch');
   });
   it('announces an unpaid Pix that expired and a payment of the wrong value, once each', async () => {
     const f = setup();
     await f.service.startAvulso(tenant, 3, 'k');
-    const ref = f.store.rows[0]!.providerRef;
+    const ref = f.store.rows[0].providerRef;
     const expired = {
       event: 'OPENPIX:CHARGE_EXPIRED',
       charge: { correlationID: ref },
@@ -252,7 +252,7 @@ describe('WooviPaymentsService.handleEvent', () => {
 
     const wrong = setup();
     await wrong.service.startAvulso(tenant, 10, 'k');
-    const wrongRef = wrong.store.rows[0]!.providerRef;
+    const wrongRef = wrong.store.rows[0].providerRef;
     await wrong.service.handleEvent(completed(wrongRef, 100));
     await wrong.service.handleEvent(completed(wrongRef, 100));
     expect(wrong.eventBus.publishBestEffort).toHaveBeenCalledTimes(1);
@@ -264,7 +264,7 @@ describe('WooviPaymentsService.handleEvent', () => {
   it('announces a rejected or cancelled Pix Automático, once each', async () => {
     const f = setup();
     await f.service.startPlan(tenant, 'solo', 'monthly', 'k', payer);
-    const sub = { correlationID: f.store.rows[0]!.providerRef };
+    const sub = { correlationID: f.store.rows[0].providerRef };
     const rejected = {
       event: 'OPENPIX:SUBSCRIPTION_REJECTED',
       subscription: sub,
@@ -287,19 +287,19 @@ describe('WooviPaymentsService.handleEvent', () => {
   it('still honors a correct payment that arrives after the charge expired', async () => {
     const f = setup();
     await f.service.startAvulso(tenant, 3, 'k');
-    const ref = f.store.rows[0]!.providerRef;
+    const ref = f.store.rows[0].providerRef;
     await f.service.handleEvent({
       event: 'OPENPIX:CHARGE_EXPIRED',
       charge: { correlationID: ref },
     });
-    expect(f.store.rows[0]!.status).toBe('expired');
+    expect(f.store.rows[0].status).toBe('expired');
     await f.service.handleEvent(completed(ref, 297));
     expect(f.credits.grantAvulso).toHaveBeenCalledTimes(1);
   });
   it('activates an annual plan for 12 months with a monthly period', async () => {
     const f = setup();
     await f.service.startPlan(tenant, 'equipe', 'annual', 'k', undefined);
-    const ref = f.store.rows[0]!.providerRef;
+    const ref = f.store.rows[0].providerRef;
     await f.service.handleEvent(completed(ref, 100680));
     expect(f.billing.setPlan).toHaveBeenCalledWith(tenant, 'id-equipe');
     const patch = f.activated[0] as {
@@ -326,12 +326,12 @@ describe('WooviPaymentsService.handleEvent', () => {
   it('renews a monthly Pix Automático contract on each new cycle charge, once per charge', async () => {
     const f = setup();
     await f.service.startPlan(tenant, 'solo', 'monthly', 'k', payer);
-    const sub = f.store.rows[0]!;
+    const sub = f.store.rows[0];
     await f.service.handleEvent({
       event: 'OPENPIX:SUBSCRIPTION_AUTHORIZED',
       subscription: { correlationID: sub.providerRef },
     });
-    expect(f.store.rows[0]!.status).toBe('authorized');
+    expect(f.store.rows[0].status).toBe('authorized');
     const cycle = {
       event: 'OPENPIX:CHARGE_COMPLETED',
       charge: {
@@ -348,29 +348,29 @@ describe('WooviPaymentsService.handleEvent', () => {
   it('ignores a webhook that Woovi itself does not confirm as paid', async () => {
     const f = setup();
     await f.service.startAvulso(tenant, 10, 'k');
-    const ref = f.store.rows[0]!.providerRef;
+    const ref = f.store.rows[0].providerRef;
     f.charges.set(ref, { status: 'ACTIVE', value: 990 });
     await f.service.handleEvent(completed(ref, 990));
     expect(f.credits.grantAvulso).not.toHaveBeenCalled();
-    expect(f.store.rows[0]!.status).toBe('pending');
+    expect(f.store.rows[0].status).toBe('pending');
   });
   it('puts the intent back to pending when delivery fails, so a redelivery retries', async () => {
     const f = setup();
     await f.service.startAvulso(tenant, 10, 'k');
-    const ref = f.store.rows[0]!.providerRef;
+    const ref = f.store.rows[0].providerRef;
     f.credits.grantAvulso.mockRejectedValueOnce(new Error('db blip'));
     await expect(f.service.handleEvent(completed(ref, 990))).rejects.toThrow(
       'db blip',
     );
-    expect(f.store.rows[0]!.status).toBe('pending');
+    expect(f.store.rows[0].status).toBe('pending');
     await f.service.handleEvent(completed(ref, 990));
     expect(f.credits.grantAvulso).toHaveBeenCalledTimes(2);
-    expect(f.store.rows[0]!.status).toBe('paid');
+    expect(f.store.rows[0].status).toBe('paid');
   });
   it('retries a monthly cycle whose activation failed once', async () => {
     const f = setup();
     await f.service.startPlan(tenant, 'solo', 'monthly', 'k', payer);
-    const sub = f.store.rows[0]!;
+    const sub = f.store.rows[0];
     const cycle = {
       event: 'OPENPIX:CHARGE_COMPLETED',
       charge: {
@@ -401,7 +401,7 @@ describe('WooviPaymentsService.handleEvent', () => {
 describe('WooviPaymentsService Pix Automático lifecycle', () => {
   const contract = async (f: ReturnType<typeof setup>, key = 'k') => {
     await f.service.startPlan(tenant, 'solo', 'monthly', key, payer);
-    return f.store.rows[f.store.rows.length - 1]!;
+    return f.store.rows[f.store.rows.length - 1];
   };
 
   it('is null when there is no open contract', async () => {
@@ -460,7 +460,7 @@ describe('WooviPaymentsService Pix Automático lifecycle', () => {
   it('cancels every open contract in Woovi and keeps the paid period', async () => {
     const f = setup();
     const first = await contract(f, 'k1');
-    f.store.rows[0]!.status = 'pending';
+    f.store.rows[0].status = 'pending';
     // A second open contract (left over from an earlier attempt).
     f.store.rows.push({
       ...first,
@@ -495,7 +495,7 @@ describe('WooviPaymentsService Pix Automático lifecycle', () => {
     await expect(f.service.cancelPixSubscription(tenant)).rejects.toThrow(
       'woovi down',
     );
-    expect(f.store.rows[0]!.status).toBe('pending');
+    expect(f.store.rows[0].status).toBe('pending');
   });
 
   it('starting a new monthly contract retires the one still waiting for authorization', async () => {

@@ -88,9 +88,7 @@ describe('planEmission', () => {
       rules: IntegrationRule[],
       description: string | null | undefined,
     ) => {
-      const plan = planEmission(
-        input({ rules, snap: { description } as Partial<NormalizedOperation> }),
-      );
+      const plan = planEmission(input({ rules, snap: { description } }));
       if (plan.kind !== 'issue') throw new Error('expected an issue plan');
       return plan.request.service;
     };

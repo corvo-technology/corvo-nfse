@@ -129,7 +129,7 @@ describe('WebhooksConfigController environment binding', () => {
 
   it('passes the key environment to list, delete and test', async () => {
     const { controller, service, dispatcher } = make();
-    await controller.findAll(testKey, {} as never);
+    await controller.findAll(testKey, {});
     await controller.remove(testKey, 'w1');
     await controller.test(testKey, 'w1');
     expect(service.listPage).toHaveBeenCalledWith(tenantId, {}, 'test');

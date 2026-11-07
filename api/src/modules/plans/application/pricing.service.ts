@@ -147,7 +147,7 @@ export class PricingService {
         };
       }),
     ].sort((a, b) => a.totalCents - b.totalCents);
-    return { option: options[0]!, alternatives: options.slice(1, 4) };
+    return { option: options[0], alternatives: options.slice(1, 4) };
   }
 
   listAllQuotes(cycle: BillingCycle): PriceQuote[] {
