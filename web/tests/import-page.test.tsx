@@ -12,10 +12,11 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace }
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (p: string) => p === "nfse.invoices.issue" && mocks.canIssue }) }));
 vi.mock("@/lib/use-import", () => ({ useImport: () => ({ job: mocks.job, error: mocks.error, refresh: mocks.refresh }) }));
 vi.mock("@/components/imports/import-upload", () => ({ ImportUpload: ({ onStarted }: { onStarted: (s: unknown) => void }) => { mocks.started = onStarted; return <p>upload step</p>; } }));
+vi.mock("@/components/imports/recent-imports", () => ({ RecentImports: () => <p>recent imports</p> }));
 vi.mock("@/components/imports/import-review", () => ({ ImportReview: (props: Record<string, () => void> & { duplicateOf: string | null }) => { mocks.review = props; return <p>review step {String(props.duplicateOf)}</p>; } }));
 vi.mock("@/components/imports/import-progress", () => ({ ImportProgress: ({ onAnother }: { onAnother: () => void }) => <button onClick={onAnother}>progress step</button> }));
 
-const job = (status: ImportJob["status"], errorCode: string | null = null): ImportJob => ({ id: "i1", status, fileName: "n.csv", companyId: null, errorCode, emitStartedAt: null, emitFinishedAt: null, createdAt: "", counters: { total: 1, valid: 1, invalid: 0, accepted: 0, authorized: 0, failed: 0, pending: 1 } });
+const job = (status: ImportJob["status"], errorCode: string | null = null): ImportJob => ({ id: "i1", status, fileName: "n.csv", companyId: null, errorCode, emitStartedAt: null, emitFinishedAt: null, createdAt: "", counters: { total: 1, valid: 1, invalid: 0, accepted: 0, authorized: 0, awaitingCredits: 0, failed: 0, pending: 1 } });
 const show = () => render(<NextIntlClientProvider locale="en" messages={messages}><ImportPage /></NextIntlClientProvider>);
 
 beforeEach(() => { vi.clearAllMocks(); mocks.id = null; mocks.job = null; mocks.error = null; mocks.canIssue = true; });
@@ -25,6 +26,7 @@ describe("import page", () => {
   it("starts with the upload and moves to the import by putting its id in the address", () => {
     show();
     expect(screen.getByText("upload step")).toBeTruthy();
+    expect(screen.getByText("recent imports")).toBeTruthy();
     expect(screen.getByRole("link", { name: /back to invoices/i }).getAttribute("href")).toBe("/app/invoices");
     mocks.started?.({ id: "i1", status: "processing", duplicateOf: "old" });
     expect(mocks.replace).toHaveBeenCalledWith("/app/invoices/import?id=i1");

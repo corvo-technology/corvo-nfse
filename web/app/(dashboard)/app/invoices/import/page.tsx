@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { ImportProgress } from "@/components/imports/import-progress";
 import { ImportReview } from "@/components/imports/import-review";
 import { ImportUpload } from "@/components/imports/import-upload";
+import { RecentImports } from "@/components/imports/recent-imports";
 import { useAuth } from "@/lib/auth";
 import { importStage } from "@/lib/imports";
 import type { ImportStart } from "@/lib/types";
@@ -46,7 +47,10 @@ function ImportFlow() {
       {id && error ? (
         <EmptyState tone="danger" title={t("failed.title")} description={t("failed.fallback")} action={<Button variant="secondary" onClick={restart}>{t("failed.again")}</Button>} />
       ) : stage === "upload" ? (
-        <ImportUpload onStarted={started} />
+        <>
+          <ImportUpload onStarted={started} />
+          <RecentImports />
+        </>
       ) : !job ? (
         <Reading />
       ) : stage === "reading" ? (

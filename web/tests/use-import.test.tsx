@@ -7,7 +7,7 @@ import type { ImportJob } from "@/lib/types";
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock("@/lib/api", () => ({ imports: { get: mocks.get } }));
 
-const job = (status: ImportJob["status"]): ImportJob => ({ id: "i1", status, fileName: "n.csv", companyId: null, errorCode: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "", counters: { total: 1, valid: 1, invalid: 0, accepted: 0, authorized: 0, failed: 0, pending: 1 } });
+const job = (status: ImportJob["status"]): ImportJob => ({ id: "i1", status, fileName: "n.csv", companyId: null, errorCode: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "", counters: { total: 1, valid: 1, invalid: 0, accepted: 0, authorized: 0, awaitingCredits: 0, failed: 0, pending: 1 } });
 const flush = async (ms = 0) => { await act(async () => { await vi.advanceTimersByTimeAsync(ms); }); };
 
 beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); });
