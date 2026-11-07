@@ -1,3 +1,5 @@
+import { ApplicationEventBus } from '@/shared/events/application-event-bus';
+import { accountNotice } from '@/shared/events/account-notice.events';
 import { CursorQuery } from '@/shared/http/pagination';
 import {
   Injectable,
@@ -35,7 +37,10 @@ export class ApiKeyService {
     return this.apiKeyRepo.listPage(authContext.activeTenantId, options);
   }
 
-  constructor(private readonly apiKeyRepo: IApiKeyRepository) {}
+  constructor(
+    private readonly apiKeyRepo: IApiKeyRepository,
+    private readonly eventBus: ApplicationEventBus,
+  ) {}
 
   async create(
     authContext: AuthContext,
@@ -63,6 +68,13 @@ export class ApiKeyService {
       apiKey,
       authContext.activeTenantId,
     );
+    if (saved.environment === 'live')
+      this.eventBus.publishBestEffort(
+        accountNotice(saved.tenantId, {
+          kind: 'api-key-created',
+          name: saved.name,
+        }),
+      );
     return { apiKey: saved, plaintext };
   }
 

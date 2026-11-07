@@ -30,14 +30,16 @@ function build(event: Event, seen = false) {
       customerId: event.customerId,
     }),
   };
+  const eventBus = { publishBestEffort: jest.fn() };
   const payments = { complete: jest.fn().mockResolvedValue(undefined) };
   const service = new BillingService(
     {} as TenantWorkDiscovery,
     repository as unknown as BillingRepository,
     provider as unknown as BillingProvider,
     payments as never,
+    eventBus as never,
   );
-  return { service, repository, provider, payments };
+  return { service, repository, provider, payments, eventBus };
 }
 
 describe('BillingService.webhook event handling', () => {
@@ -125,5 +127,35 @@ describe('BillingService.webhook event handling', () => {
       'customer.subscription.updated',
       createHash('sha256').update(body).digest('hex'),
     );
+  });
+
+  it.each([
+    ['invoice.payment_failed', 'payment-failed'],
+    ['customer.subscription.deleted', 'subscription-canceled'],
+  ])('announces %s to the workspace admins', async (type, kind) => {
+    const { service, eventBus } = build({
+      id: 'evt_n',
+      type,
+      customerId: 'cus_1',
+      subscriptionId: 'sub_1',
+    });
+    await service.webhook(body, 'sig');
+    expect(eventBus.publishBestEffort).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: 'tenant-1', notice: { kind } }),
+    );
+  });
+
+  it('does not announce a replayed event', async () => {
+    const { service, eventBus } = build(
+      {
+        id: 'evt_r',
+        type: 'invoice.payment_failed',
+        customerId: 'cus_1',
+        subscriptionId: 'sub_1',
+      },
+      true,
+    );
+    await service.webhook(body, 'sig');
+    expect(eventBus.publishBestEffort).not.toHaveBeenCalled();
   });
 });

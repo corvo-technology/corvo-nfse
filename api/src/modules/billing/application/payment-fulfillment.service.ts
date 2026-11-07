@@ -3,6 +3,8 @@ import type { PaymentIntent } from '../domain/payment-intent';
 import { BillingRepository } from '../domain/billing.repository';
 import { addUtcMonths } from '../domain/billing-policy';
 import { CreditsService } from '@/modules/credits/application/credits.service';
+import { ApplicationEventBus } from '@/shared/events/application-event-bus';
+import { accountNotice } from '@/shared/events/account-notice.events';
 import type { BillingCycle } from '@/modules/plans/domain/plan';
 
 /** Delivers what a confirmed payment bought, whichever provider took the money. */
@@ -11,15 +13,24 @@ export class PaymentFulfillmentService {
   constructor(
     private readonly credits: CreditsService,
     private readonly billing: BillingRepository,
+    private readonly eventBus: ApplicationEventBus,
   ) {}
 
   async apply(intent: PaymentIntent): Promise<void> {
     if (intent.kind === 'avulso') {
-      await this.credits.grantAvulso(
+      const granted = await this.credits.grantAvulso(
         intent.tenantId,
         intent.units!,
         `${intent.provider}:${intent.providerRef}`,
       );
+      // A redelivered webhook grants nothing, so it never e-mails twice.
+      if (granted.creditsGranted > 0)
+        this.eventBus.publishBestEffort(
+          accountNotice(intent.tenantId, {
+            kind: 'credits-added',
+            units: granted.creditsGranted,
+          }),
+        );
       return;
     }
     await this.activatePlan(intent.tenantId, intent.planSlug!, intent.cycle!);

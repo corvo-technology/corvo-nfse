@@ -1,9 +1,9 @@
-import type { EmailTemplateRef } from '@/infra/external/email/email-template.client';
+import type { RenderedEmail } from '@/infra/external/email/email-templates';
 
 export type OtpEmailJobData = {
   emailId: string;
   to: string;
-  template: EmailTemplateRef;
+  email: RenderedEmail;
   kind: 'otp';
   code: string;
   expiresInMinutes: number;
@@ -29,29 +29,36 @@ export type InvoiceEmailJobData = {
 export type WelcomeEmailJobData = {
   emailId: string;
   to: string;
-  template: EmailTemplateRef;
+  email: RenderedEmail;
   kind: 'welcome';
 };
 
 export type CreditsLowEmailJobData = {
   emailId: string;
   to: string;
-  template: EmailTemplateRef;
+  email: RenderedEmail;
   kind: 'credits-low';
 };
 
 export type ScheduleRetryEmailJobData = {
   emailId: string;
   to: string;
-  template: EmailTemplateRef;
+  email: RenderedEmail;
   kind: 'schedule-retry';
 };
 
 export type SchedulePausedEmailJobData = {
   emailId: string;
   to: string;
-  template: EmailTemplateRef;
+  email: RenderedEmail;
   kind: 'schedule-paused';
+};
+
+export type NoticeEmailJobData = {
+  emailId: string;
+  to: string;
+  email: RenderedEmail;
+  kind: 'notice';
 };
 
 export type EmailJobData =
@@ -60,4 +67,5 @@ export type EmailJobData =
   | WelcomeEmailJobData
   | CreditsLowEmailJobData
   | ScheduleRetryEmailJobData
-  | SchedulePausedEmailJobData;
+  | SchedulePausedEmailJobData
+  | NoticeEmailJobData;

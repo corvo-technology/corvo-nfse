@@ -6,6 +6,7 @@ export type SendEmailInput = {
   to: string[];
   subject: string;
   html: string;
+  text?: string;
   attachments?: Array<{
     filename: string;
     content: Buffer | string;
@@ -55,6 +56,7 @@ export class MillionSendEmailProvider {
         to: input.to,
         subject: input.subject,
         html: input.html,
+        ...(input.text ? { text: input.text } : {}),
         ...(input.attachments
           ? {
               attachments: input.attachments.map((a) => ({
