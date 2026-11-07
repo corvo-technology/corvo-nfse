@@ -2844,7 +2844,12 @@
       "send": "Upload spreadsheet",
       "fileInvalid": "Upload a .csv or .xlsx file.",
       "tooLarge": "The file is larger than 10 MB.",
-      "failed": "Could not upload the spreadsheet."
+      "failed": "Could not upload the spreadsheet.",
+      "dropActive": "Drop to upload",
+      "dropIdle": "Drop the spreadsheet here",
+      "dropOr": "or pick the file on your computer",
+      "rows": "{count, plural, one {# row} other {# rows}}",
+      "remove": "Remove file"
     },
     "reading": {
       "title": "Reading the spreadsheet",

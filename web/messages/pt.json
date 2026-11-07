@@ -2844,7 +2844,12 @@
       "send": "Enviar planilha",
       "fileInvalid": "Envie um arquivo .csv ou .xlsx.",
       "tooLarge": "O arquivo tem mais de 10 MB.",
-      "failed": "Não foi possível enviar a planilha."
+      "failed": "Não foi possível enviar a planilha.",
+      "dropActive": "Solte para enviar",
+      "dropIdle": "Solte a planilha aqui",
+      "dropOr": "ou escolha o arquivo no computador",
+      "rows": "{count, plural, one {# linha} other {# linhas}}",
+      "remove": "Remover arquivo"
     },
     "reading": {
       "title": "Lendo a planilha",

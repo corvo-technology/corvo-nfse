@@ -78,4 +78,38 @@ describe("ImportUpload", () => {
     fireEvent.click(screen.getByRole("button", { name: /download template/i }));
     await waitFor(() => expect(mocks.download).toHaveBeenCalledWith(blob, "modelo-importacao.csv"));
   });
+
+  it("shows the chosen file with its size and, for a csv, how many rows it has", async () => {
+    view();
+    pick(new File(["valor\n1\n2\n3\n"], "notas.csv", { type: "text/csv" }));
+    expect(screen.getByText("notas.csv")).toBeTruthy();
+    expect(await screen.findByText(/3 rows/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /remove file/i }));
+    expect(screen.queryByText("notas.csv")).toBeNull();
+    expect((screen.getByRole("button", { name: /upload spreadsheet/i }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("reacts while a file is dragged over the page, and takes the dropped file", () => {
+    view();
+    fireEvent.dragEnter(window, { dataTransfer: { types: ["Files"] } });
+    expect(screen.getByText(/drop to upload/i)).toBeTruthy();
+    fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [csv("solto.csv")] } });
+    expect(screen.queryByText(/drop to upload/i)).toBeNull();
+    expect(screen.getByText("solto.csv")).toBeTruthy();
+  });
+
+  it("stops the drag highlight when the file leaves the page, and ignores drags that are not files", () => {
+    view();
+    fireEvent.dragEnter(window, { dataTransfer: { types: ["text/plain"] } });
+    expect(screen.queryByText(/drop to upload/i)).toBeNull();
+    fireEvent.dragEnter(window, { dataTransfer: { types: ["Files"] } });
+    fireEvent.dragLeave(window, { dataTransfer: { types: ["Files"] }, relatedTarget: null });
+    expect(screen.queryByText(/drop to upload/i)).toBeNull();
+  });
+
+  it("refuses a dropped file of the wrong kind with the same message as the picker", () => {
+    view();
+    fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [csv("foto.png")] } });
+    expect(screen.getByRole("alert").textContent).toMatch(/\.csv or \.xlsx/i);
+  });
 });
