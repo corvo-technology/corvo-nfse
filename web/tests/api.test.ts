@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { isCompanyLimitError, schedules, request, auth, certificates, companies, invoices, billing, webhooks, members, ApiError, setCsrfToken, getCsrfToken, onUnauthorized, unwrap, toPage, credits, collectAll } from "@/lib/api";
+import { isCompanyLimitError, schedules, imports, request, auth, certificates, companies, invoices, billing, webhooks, members, ApiError, setCsrfToken, getCsrfToken, onUnauthorized, unwrap, toPage, credits, collectAll } from "@/lib/api";
 import { fieldIssues, mapIssues } from "@/lib/api-errors";
 import { session, company, invoice } from "./fixtures";
 const fetchMock = vi.fn<typeof fetch>();
@@ -230,5 +230,43 @@ describe("schedules", () => {
     expect(String(fetchMock.mock.calls[0][0])).toBe("/api/proxy/v1/invoices");
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).options).toEqual({ type: "RECURRING", recurrence: { frequency: "WEEKLY" } });
     expect(created.id).toBe("s1");
+  });
+});
+
+describe("imports", () => {
+  const importWire = { id: "i1", status: "ready", file_name: "n.csv", company_id: null, error_code: null, emit_started_at: null, emit_finished_at: null, created_at: "2026-11-07T10:00:00.000Z", counters: { total: 3, valid: 2, invalid: 1, accepted: 0, authorized: 0, failed: 1, pending: 2 } };
+  const rowWire = { line: 4, data: { amount: 10 }, status: "invalid", error_code: "ERROR_VALIDATION", error_message: "bad", invoice_id: null };
+  it("sends the file as multipart with the optional company, and reads the answer", async () => {
+    setCsrfToken("csrf");
+    fetchMock.mockResolvedValue(reply({ data: { id: "i1", status: "processing", duplicate_of: "old" } }, 202));
+    const file = new File(["valor\n1\n"], "n.csv", { type: "text/csv" });
+    expect(await imports.start(file, "c1")).toEqual({ id: "i1", status: "processing", duplicateOf: "old" });
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe("/api/proxy/v1/imports");
+    const body = options?.body as FormData;
+    expect(body.get("file")).toBeInstanceOf(File); expect(body.get("companyId")).toBe("c1");
+    fetchMock.mockResolvedValue(reply({ data: { id: "i2", status: "processing", duplicate_of: null } }, 202));
+    await imports.start(file); expect((fetchMock.mock.calls[1][1]?.body as FormData).has("companyId")).toBe(false);
+  });
+  it("reads an import and its rows page by page, in camelCase", async () => {
+    fetchMock.mockResolvedValue(reply({ data: importWire }));
+    expect(await imports.get("i1")).toEqual({ id: "i1", status: "ready", fileName: "n.csv", companyId: null, errorCode: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "2026-11-07T10:00:00.000Z", counters: importWire.counters });
+    fetchMock.mockResolvedValue(reply({ data: [rowWire], pagination: { hasMore: true, nextCursor: "4" } }));
+    const page = await imports.rows("i1", { status: "invalid", cursor: "2", limit: 50 });
+    expect(String(fetchMock.mock.calls[1][0])).toBe("/api/proxy/v1/imports/i1/rows?status=invalid&cursor=2&limit=50");
+    expect(page).toEqual({ items: [{ line: 4, data: { amount: 10 }, status: "invalid", errorCode: "ERROR_VALIDATION", errorMessage: "bad", invoiceId: null }], hasMore: true, nextCursor: "4" });
+  });
+  it("corrects a row, emits, discards and downloads the csv files", async () => {
+    setCsrfToken("csrf");
+    fetchMock.mockResolvedValue(reply({ data: rowWire }));
+    const row = await imports.updateRow("i1", 4, { amount: 10 });
+    expect(fetchMock.mock.calls[0][1]?.method).toBe("PATCH"); expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ item: { amount: 10 } }); expect(row.errorCode).toBe("ERROR_VALIDATION");
+    fetchMock.mockResolvedValue(reply({ data: { ...importWire, status: "emitting" } }, 202));
+    expect((await imports.emit("i1")).status).toBe("emitting"); expect(String(fetchMock.mock.calls[1][0])).toBe("/api/proxy/v1/imports/i1/emit");
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+    await imports.discard("i1"); expect(fetchMock.mock.calls[2][1]?.method).toBe("DELETE");
+    fetchMock.mockImplementation(() => Promise.resolve(new Response("a;b\n", { headers: { "Content-Type": "text/csv" } })));
+    expect(await (await imports.errorsCsv("i1")).text()).toBe("a;b\n"); expect(String(fetchMock.mock.calls[3][0])).toBe("/api/proxy/v1/imports/i1/errors.csv");
+    expect(await (await imports.template()).text()).toBe("a;b\n"); expect(String(fetchMock.mock.calls[4][0])).toBe("/api/proxy/v1/imports/template");
   });
 });

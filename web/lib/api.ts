@@ -1,4 +1,4 @@
-import type { InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -99,7 +99,7 @@ export async function request<T>(path: string, options: RequestInit = {}, binary
   if (mutation && !publicRequest) await ensureCsrf();
   const headers = new Headers(options.headers);
   headers.delete("Authorization"); headers.delete("x-api-key");
-  headers.set("Accept", binary ? "application/pdf, application/xml" : "application/json");
+  headers.set("Accept", binary ? "application/pdf, application/xml, text/csv" : "application/json");
   if (options.body instanceof FormData) headers.delete("Content-Type");
   else if (options.body) headers.set("Content-Type", "application/json");
   if (mutation && !publicRequest && csrfToken) headers.set("x-csrf-token", csrfToken);
@@ -321,4 +321,26 @@ export const mcp = {
   decide: async (params: McpConsentParams, decision: "allow" | "deny", tenantId?: string, environment?: "test" | "live") => unwrap(await request<Envelope<{ redirect_url: string }>>("/mcp/consent", json({ ...params, decision, ...(tenantId ? { tenant_id: tenantId } : {}), ...(environment ? { environment } : {}) }))),
   connections: async (params: PageParams = {}, signal?: AbortSignal) => toPage(await request<ListBody<McpConnection>>(`/mcp/connections${query(params)}`, { signal })),
   revoke: async (id: string) => unwrap(await request<Envelope<{ revoked: boolean }>>(`/mcp/connections/${idPath(id)}`, { method: "DELETE" })),
+};
+
+type ImportWire = { id: string; status: ImportJob["status"]; file_name: string; company_id: string | null; error_code: string | null; emit_started_at: string | null; emit_finished_at: string | null; created_at: string; counters: ImportJob["counters"] };
+type ImportRowWire = { line: number; data: Record<string, unknown>; status: ImportRow["status"]; error_code: string | null; error_message: string | null; invoice_id: string | null };
+const adaptImport = (w: ImportWire): ImportJob => ({ id: w.id, status: w.status, fileName: w.file_name, companyId: w.company_id, errorCode: w.error_code, emitStartedAt: w.emit_started_at, emitFinishedAt: w.emit_finished_at, createdAt: w.created_at, counters: w.counters });
+const adaptImportRow = (w: ImportRowWire): ImportRow => ({ line: w.line, data: w.data, status: w.status, errorCode: w.error_code, errorMessage: w.error_message, invoiceId: w.invoice_id });
+export const imports = {
+  /** Sends the spreadsheet; the answer is the import to follow, still being read. */
+  start: async (file: File, companyId?: string): Promise<ImportStart> => {
+    const body = new FormData();
+    body.append("file", file);
+    if (companyId) body.append("companyId", companyId);
+    const d = unwrap(await request<Envelope<{ id: string; status: ImportStatus; duplicate_of: string | null }>>("/imports", { method: "POST", body }));
+    return { id: d.id, status: d.status, duplicateOf: d.duplicate_of };
+  },
+  get: async (id: string, signal?: AbortSignal) => adaptImport(unwrap(await request<Envelope<ImportWire>>(`/imports/${idPath(id)}`, { signal }))),
+  rows: async (id: string, params: PageParams & { status?: ImportRow["status"] } = {}, signal?: AbortSignal): Promise<Page<ImportRow>> => { const page = toPage(await request<ListBody<ImportRowWire>>(`/imports/${idPath(id)}/rows${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptImportRow) }; },
+  updateRow: async (id: string, line: number, item: Record<string, unknown>) => adaptImportRow(unwrap(await request<Envelope<ImportRowWire>>(`/imports/${idPath(id)}/rows/${line}`, json({ item }, "PATCH")))),
+  emit: async (id: string) => adaptImport(unwrap(await request<Envelope<ImportWire>>(`/imports/${idPath(id)}/emit`, json({})))),
+  discard: (id: string) => request<null>(`/imports/${idPath(id)}`, { method: "DELETE" }),
+  errorsCsv: (id: string) => request<Blob>(`/imports/${idPath(id)}/errors.csv`, {}, true),
+  template: () => request<Blob>("/imports/template", {}, true),
 };
