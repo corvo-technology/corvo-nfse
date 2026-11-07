@@ -118,4 +118,4 @@ for (const row of rows) counts[["naoAtivo", "ambienteNacional", "emissorNacional
 const lines = rows.map((r) => `  ${JSON.stringify(r)}`).join(",\n");
 const source = { name: "Receita Federal, Portal da NFS-e: Monitoramento das Adesões", url: "https://www.gov.br/nfse/pt-br/municipios/monitoramento-adesoes", date: args.date };
 writeFileSync(OUT, `{\n"source": ${JSON.stringify(source)},\n"counts": ${JSON.stringify(counts)},\n"rows": [\n${lines}\n]\n}\n`);
-console.log(`Wrote ${rows.length} municipalities to ${OUT}`, counts);
+console.log("Wrote %d municipalities to %s", rows.length, OUT, counts);

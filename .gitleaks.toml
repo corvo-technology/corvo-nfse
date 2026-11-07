@@ -4,7 +4,7 @@ title = "Corvo secret scanning"
 useDefault = true
 
 # False positives only: placeholders in the documentation examples and fake keys
-# in two unit-test fixtures. Real credentials are still caught everywhere else.
+# in unit-test fixtures (tok_0123456789abcdef, S3CRET-0123456789...). Real credentials are still caught everywhere else.
 [allowlist]
 description = "Documentation example identifiers and unit-test fixtures"
 regexTarget = "line"
@@ -14,4 +14,6 @@ regexes = [
 paths = [
   '''api/src/infra/shared/secrets-cipher\.service\.spec\.ts''',
   '''api/src/modules/auth/application/api-key\.service\.spec\.ts''',
+  '''api/src/modules/integrations/connectors/woovi/woovi\.connector\.spec\.ts''',
+  '''api/src/modules/integrations/connectors/abacatepay/abacatepay\.connector\.spec\.ts''',
 ]

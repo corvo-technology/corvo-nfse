@@ -34,6 +34,7 @@ describe('inboundRawBody', () => {
   const request = require('supertest') as typeof import('supertest');
 
   function app() {
+    // nosemgrep: javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage -- test-only app that checks the raw-body middleware; it never serves a browser session
     const server = express();
     server.use(inboundRawBody());
     server.use(express.json());
