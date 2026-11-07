@@ -8,6 +8,8 @@ export type AccountNotice =
   | { kind: 'mcp-connected'; clientName: string }
   | { kind: 'credits-exhausted' }
   | { kind: 'payment-failed' }
+  | { kind: 'pix-expired' }
+  | { kind: 'payment-mismatch' }
   | { kind: 'subscription-canceled' }
   | { kind: 'member-added'; email: string; role: string }
   | {

@@ -11,6 +11,8 @@ import {
   creditsExhaustedEmail,
   memberAddedEmail,
   paymentFailedEmail,
+  paymentMismatchEmail,
+  pixExpiredEmail,
   subscriptionCanceledEmail,
   invoiceRejectedEmail,
   mcpConnectedEmail,
@@ -92,6 +94,14 @@ export class AccountNoticeListener {
         to = await this.recipients.emailsFor(tenantId);
         break;
       }
+      case 'pix-expired':
+        message = pixExpiredEmail({ billingUrl: this.page('billing') });
+        to = await this.recipients.emailsFor(tenantId);
+        break;
+      case 'payment-mismatch':
+        message = paymentMismatchEmail({ billingUrl: this.page('billing') });
+        to = await this.recipients.emailsFor(tenantId);
+        break;
       case 'subscription-canceled':
         message = subscriptionCanceledEmail({
           billingUrl: this.page('billing'),

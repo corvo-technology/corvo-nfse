@@ -52,6 +52,7 @@ function setup() {
       eventBus as never,
     ),
     new PricingService(),
+    eventBus as never,
   );
   return {
     service,
@@ -234,6 +235,55 @@ describe('WooviPaymentsService.handleEvent', () => {
     expect(f.credits.grantAvulso).not.toHaveBeenCalled();
     expect(f.store.rows[0]!.status).toBe('mismatch');
   });
+  it('announces an unpaid Pix that expired and a payment of the wrong value, once each', async () => {
+    const f = setup();
+    await f.service.startAvulso(tenant, 3, 'k');
+    const ref = f.store.rows[0]!.providerRef;
+    const expired = {
+      event: 'OPENPIX:CHARGE_EXPIRED',
+      charge: { correlationID: ref },
+    };
+    await f.service.handleEvent(expired);
+    await f.service.handleEvent(expired);
+    expect(f.eventBus.publishBestEffort).toHaveBeenCalledTimes(1);
+    expect(f.eventBus.publishBestEffort).toHaveBeenCalledWith(
+      expect.objectContaining({ notice: { kind: 'pix-expired' } }),
+    );
+
+    const wrong = setup();
+    await wrong.service.startAvulso(tenant, 10, 'k');
+    const wrongRef = wrong.store.rows[0]!.providerRef;
+    await wrong.service.handleEvent(completed(wrongRef, 100));
+    await wrong.service.handleEvent(completed(wrongRef, 100));
+    expect(wrong.eventBus.publishBestEffort).toHaveBeenCalledTimes(1);
+    expect(wrong.eventBus.publishBestEffort).toHaveBeenCalledWith(
+      expect.objectContaining({ notice: { kind: 'payment-mismatch' } }),
+    );
+  });
+
+  it('announces a rejected or cancelled Pix Automático, once each', async () => {
+    const f = setup();
+    await f.service.startPlan(tenant, 'solo', 'monthly', 'k', payer);
+    const sub = { correlationID: f.store.rows[0]!.providerRef };
+    const rejected = {
+      event: 'OPENPIX:SUBSCRIPTION_REJECTED',
+      subscription: sub,
+    };
+    await f.service.handleEvent(rejected);
+    await f.service.handleEvent(rejected);
+    expect(f.eventBus.publishBestEffort).toHaveBeenCalledTimes(1);
+    expect(f.eventBus.publishBestEffort).toHaveBeenCalledWith(
+      expect.objectContaining({ notice: { kind: 'payment-failed' } }),
+    );
+    await f.service.handleEvent({
+      event: 'OPENPIX:SUBSCRIPTION_CANCELLED',
+      subscription: sub,
+    });
+    expect(f.eventBus.publishBestEffort).toHaveBeenLastCalledWith(
+      expect.objectContaining({ notice: { kind: 'subscription-canceled' } }),
+    );
+  });
+
   it('still honors a correct payment that arrives after the charge expired', async () => {
     const f = setup();
     await f.service.startAvulso(tenant, 3, 'k');

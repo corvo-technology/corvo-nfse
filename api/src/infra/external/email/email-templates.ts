@@ -266,7 +266,7 @@ export function subscriptionCanceledEmail(input: {
 }): RenderedEmail {
   return emailLayout('Sua assinatura foi cancelada', [
     paragraph(
-      'Sua assinatura do Corvo foi cancelada e sua conta voltou ao plano gratuito.',
+      'Sua assinatura do Corvo foi cancelada. Veja seu plano e seus créditos na página de cobrança.',
     ),
     button(input.billingUrl, 'Ver planos'),
   ]);
@@ -311,5 +311,29 @@ export function certificateExpiringEmail(input: {
       `O certificado digital da empresa ${input.companyName} vence em ${input.validUntil}. Depois dessa data não será possível emitir notas.`,
     ),
     button(input.certificateUrl, 'Enviar novo certificado'),
+  ]);
+}
+
+export function pixExpiredEmail(input: { billingUrl: string }): RenderedEmail {
+  return emailLayout('Seu Pix expirou', [
+    paragraph(
+      'O Pix que você gerou no Corvo expirou sem ser pago, e nada foi cobrado.',
+    ),
+    paragraph('Se ainda quiser comprar, gere um novo Pix.'),
+    button(input.billingUrl, 'Gerar novo Pix'),
+  ]);
+}
+
+export function paymentMismatchEmail(input: {
+  billingUrl: string;
+}): RenderedEmail {
+  return emailLayout('Recebemos um valor diferente no seu Pix', [
+    paragraph(
+      'O valor pago no Pix é diferente do valor da cobrança, por isso não liberamos os créditos nem o plano.',
+    ),
+    paragraph(
+      'Responda a este atendimento pelo suporte para resolvermos, ou gere um novo Pix com o valor correto.',
+    ),
+    button(input.billingUrl, 'Ver cobrança'),
   ]);
 }
