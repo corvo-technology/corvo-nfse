@@ -1504,8 +1504,8 @@
   "Onboarding": {
     "intro": {
       "title": "Get to know Corvo",
-      "p1": "Corvo issues service invoices (NFS-e) straight to the Receita, through the API or here in the dashboard.",
-      "p2": "You register the company and its digital certificate, and Corvo takes care of the issuing, the PDF and the XML.",
+      "p1": "Corvo issues NFS-e on the National Standard, from the dashboard, the API or the MCP server, so you can use it with AI agents.",
+      "p2": "You register the company and its digital certificate, and Corvo takes care of the issuing, the PDF and the XML, and emails the invoice to your customer.",
       "p3": "In the test environment you can issue as many notes as you like without using credits. Production notes use your plan's credits."
     },
     "card": {

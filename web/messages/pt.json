@@ -1504,8 +1504,8 @@
   "Onboarding": {
     "intro": {
       "title": "Conheça o Corvo",
-      "p1": "O Corvo emite notas fiscais de serviço (NFS-e) direto na Receita, pela API ou por aqui no painel.",
-      "p2": "Você cadastra a empresa e o certificado digital, e o Corvo cuida da emissão, do PDF e do XML.",
+      "p1": "O Corvo emite NFS-e no Padrão Nacional, pelo painel, pela API ou pelo servidor MCP, para você usar com agentes de IA.",
+      "p2": "Você cadastra a empresa e o certificado digital, e o Corvo cuida da emissão, do PDF e do XML e envia a nota por e-mail para o seu cliente.",
       "p3": "No ambiente de teste você emite quantas notas quiser, sem consumir créditos. As notas de produção usam os créditos do seu plano."
     },
     "card": {
