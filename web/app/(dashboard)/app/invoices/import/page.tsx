@@ -66,7 +66,7 @@ function Reading() {
   const t = useTranslations("Imports");
   return (
     <div role="status" className="flex max-w-[620px] items-start gap-3.5 rounded-[12px] border border-border p-6">
-      <Loader2 size={20} aria-hidden className="mt-0.5 animate-spin text-text-3" />
+      <Loader2 size={20} aria-hidden className="mt-0.5 motion-safe:animate-spin text-text-3" />
       <div>
         <h2 className="text-[16px] font-semibold text-text">{t("reading.title")}</h2>
         <p className="mt-1 text-[14px] text-text-3">{t("reading.body")}</p>
