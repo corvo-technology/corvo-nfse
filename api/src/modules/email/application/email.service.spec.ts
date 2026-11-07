@@ -29,10 +29,10 @@ describe('EmailService', () => {
           kind: 'otp',
           to: 'user@example.com',
           code: '123456',
-          template: {
-            alias: 'otp-code',
-            variables: { code: '123456', expires_in_minutes: '5' },
-          },
+          email: expect.objectContaining({
+            subject: 'Seu código de acesso ao Corvo',
+            html: expect.stringContaining('123456'),
+          }),
         }),
         expect.any(Object),
       );
@@ -49,13 +49,10 @@ describe('EmailService', () => {
         expect.objectContaining({
           kind: 'welcome',
           to: 'new@example.com',
-          template: {
-            alias: 'welcome',
-            variables: {
-              user_name: 'Pedro',
-              dashboard_url: 'https://corvo.tech/app',
-            },
-          },
+          email: expect.objectContaining({
+            subject: 'Bem-vindo ao Corvo',
+            html: expect.stringContaining('href="https://corvo.tech/app"'),
+          }),
         }),
         expect.any(Object),
       );
@@ -81,15 +78,12 @@ describe('EmailService', () => {
         expect.objectContaining({
           kind: 'credits-low',
           to: 'admin@example.com',
-          template: {
-            alias: 'credits-low',
-            variables: {
-              plan_name: 'Gratuito',
-              remaining: '3',
-              total: '15',
-              billing_url: 'https://corvo.tech/app/billing',
-            },
-          },
+          email: expect.objectContaining({
+            html: expect.stringContaining(
+              'href="https://corvo.tech/app/billing"',
+            ),
+            text: expect.stringContaining('3 de 15'),
+          }),
         }),
         expect.any(Object),
       );
@@ -114,16 +108,12 @@ describe('EmailService', () => {
         expect.objectContaining({
           kind: 'schedule-retry',
           to: 'admin@example.com',
-          template: {
-            alias: 'schedule-retry',
-            variables: {
-              count: '2',
-              schedules: 'Acme Ltda (R$ 150,00); Beta ME (R$ 90,00)',
-              reason: 'não há notas disponíveis na sua conta',
-              billing_url: 'https://corvo.tech/app/billing',
-              schedules_url: 'https://corvo.tech/app/schedules',
-            },
-          },
+          email: expect.objectContaining({
+            text: expect.stringContaining('Acme Ltda (R$ 150,00)'),
+            html: expect.stringContaining(
+              'href="https://corvo.tech/app/billing"',
+            ),
+          }),
         }),
         expect.any(Object),
       );
@@ -141,15 +131,12 @@ describe('EmailService', () => {
         'schedule-paused',
         expect.objectContaining({
           kind: 'schedule-paused',
-          template: {
-            alias: 'schedule-paused',
-            variables: {
-              company_name: 'Acme Ltda',
-              amount: 'R$ 150,00',
-              reason: 'não há notas disponíveis na sua conta',
-              schedules_url: 'https://corvo.tech/app/schedules',
-            },
-          },
+          email: expect.objectContaining({
+            html: expect.stringContaining(
+              'href="https://corvo.tech/app/schedules"',
+            ),
+            text: expect.stringContaining('Acme Ltda'),
+          }),
         }),
         expect.any(Object),
       );

@@ -40,10 +40,6 @@ const fakeCompanyRepo = {
   }),
 };
 
-const fakeTemplates = {
-  render: jest.fn(),
-};
-
 const fakeConfig: { get: jest.Mock } = {
   get: jest.fn(),
 };
@@ -144,14 +140,6 @@ describe('NfseEmailProcessor', () => {
       id: 'email-123',
     });
 
-    fakeTemplates.render.mockImplementation(
-      ({ variables }: { variables: Record<string, string> }) =>
-        Promise.resolve({
-          subject: `Nota Fiscal N.º ${variables.invoice_number}`,
-          html: `<p>${variables.company_name}</p>`,
-        }),
-    );
-
     fakeWorkflow = { emailSent: jest.fn(), emailFailed: jest.fn() };
     processor = new NfseEmailProcessor(
       fakeLock,
@@ -159,7 +147,6 @@ describe('NfseEmailProcessor', () => {
       fakeInvoiceRepo as IInvoiceRepository,
       fakeCompanyRepo as any,
       fakeEmailProvider as MillionSendEmailProvider,
-      fakeTemplates as any,
       fakeConfig as any,
       fakeWorkflow as any,
     );
@@ -175,7 +162,9 @@ describe('NfseEmailProcessor', () => {
       expect(fakeEmailProvider.send).toHaveBeenCalledTimes(1);
       const call = jest.mocked(fakeEmailProvider.send!).mock.calls[0][0];
       expect(call.to).toEqual(['cliente@example.com']);
-      expect(call.subject).toBe('Nota Fiscal N.º 42');
+      expect(call.subject).toContain('nº 42');
+      expect(call.html).toContain('Empresa Teste');
+      expect(call.text).toContain('Empresa Teste');
       expect(call.idempotencyKey).toBe('job-email-1');
       expect(call.attachments).toHaveLength(2);
       expect(call.attachments![0]).toMatchObject({
