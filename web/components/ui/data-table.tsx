@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export interface Column<T> {
@@ -24,13 +24,34 @@ interface DataTableProps<T> {
   /** Accessible name for the table (visually hidden). */
   caption: string;
   className?: string;
+  /** Extra class for one row (a marker, a flash). */
+  rowClassName?: (row: T) => string | undefined;
+  /** Key of the row that shows `renderExpanded` right under it (for example an inline editor). */
+  expandedKey?: string | null;
+  renderExpanded?: (row: T) => ReactNode;
+}
+
+/** True from the md breakpoint up (and where the browser cannot tell, such as during tests). */
+function useIsDesktop(): boolean {
+  const [desktop, setDesktop] = useState(true);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia("(min-width: 768px)");
+    const sync = () => setDesktop(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+  return desktop;
 }
 
 /**
  * Table on md+, stacked cards below. Both share the same column definitions,
  * so adding a column keeps desktop and mobile in sync.
  */
-export function DataTable<T>({ columns, rows, rowKey, caption, className }: DataTableProps<T>) {
+export function DataTable<T>({ columns, rows, rowKey, caption, className, rowClassName, expandedKey, renderExpanded }: DataTableProps<T>) {
+  // The expanded content must exist once, so it goes in the layout that is on screen.
+  const desktop = useIsDesktop();
   const primary = columns.find((c) => c.primary) ?? columns[0];
   const actions = columns.filter((c) => c.action);
   const details = columns.filter((c) => c !== primary && !c.action && !c.hideOnMobile);
@@ -59,20 +80,25 @@ export function DataTable<T>({ columns, rows, rowKey, caption, className }: Data
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={rowKey(row)} className="row-hover border-t border-border text-[13.5px] text-text">
-                {columns.map((c) => (
-                  <td
-                    key={c.id}
-                    className={cn(
-                      "px-4 py-3.5 align-middle first:pl-5 last:pr-5",
-                      c.align === "right" && "text-right",
-                      c.className
-                    )}
-                  >
-                    {c.cell(row)}
-                  </td>
-                ))}
-              </tr>
+              <Fragment key={rowKey(row)}>
+                <tr className={cn("row-hover border-t border-border text-[13.5px] text-text", rowClassName?.(row))}>
+                  {columns.map((c) => (
+                    <td
+                      key={c.id}
+                      className={cn(
+                        "px-4 py-3.5 align-middle first:pl-5 last:pr-5",
+                        c.align === "right" && "text-right",
+                        c.className
+                      )}
+                    >
+                      {c.cell(row)}
+                    </td>
+                  ))}
+                </tr>
+                {desktop && renderExpanded && expandedKey === rowKey(row) && (
+                  <tr><td colSpan={columns.length} className="border-t border-border bg-active/40 p-4 sm:px-5">{renderExpanded(row)}</td></tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -81,7 +107,7 @@ export function DataTable<T>({ columns, rows, rowKey, caption, className }: Data
       {/* Mobile */}
       <ul className="divide-y divide-border md:hidden" aria-label={caption}>
         {rows.map((row) => (
-          <li key={rowKey(row)} className="flex flex-col gap-3 px-4 py-4">
+          <li key={rowKey(row)} className={cn("flex flex-col gap-3 px-4 py-4", rowClassName?.(row))}>
             <div className="min-w-0 text-[14px] font-medium text-text">{primary.cell(row)}</div>
             {details.length > 0 && (
               <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-[13px]">
@@ -96,6 +122,7 @@ export function DataTable<T>({ columns, rows, rowKey, caption, className }: Data
             {actions.length > 0 && (
               <div className="flex items-center justify-end gap-2">{actions.map((c) => <span key={c.id}>{c.cell(row)}</span>)}</div>
             )}
+            {!desktop && renderExpanded && expandedKey === rowKey(row) && <div className="border-t border-border pt-3">{renderExpanded(row)}</div>}
           </li>
         ))}
       </ul>

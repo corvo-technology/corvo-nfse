@@ -2885,7 +2885,11 @@
       "downloadFailed": "Could not download the file.",
       "discard": "Discard import",
       "discardFailed": "Could not discard.",
-      "noCustomer": "No customer"
+      "noCustomer": "No customer",
+      "total": "Total to issue",
+      "emitWithAmount": "{count, plural, one {Issue # invoice} other {Issue # invoices}} · {amount}",
+      "readyCount": "{count, plural, one {# invoice ready} other {# invoices ready}}",
+      "errorCount": "{count} with errors"
     },
     "edit": {
       "title": "Fix row {line}",

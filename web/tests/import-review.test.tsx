@@ -38,19 +38,36 @@ describe("ImportReview", () => {
     expect(screen.getByText(/3 rows: 2 ready, 1 with errors/i)).toBeTruthy();
     expect(await screen.findAllByText("Cliente 2")).not.toHaveLength(0);
     expect(screen.getAllByText(/This row has no company/i).length).toBeGreaterThan(0);
-    expect(mocks.rows).toHaveBeenCalledWith("i1", { status: undefined, cursor: undefined, limit: 50 }, expect.anything());
   });
 
-  it("filters to the rows with errors", async () => {
+  it("leads with the total to issue, in reais, big", () => {
+    show({ job: job({ validAmount: 722706.59, valid: 296, total: 300, invalid: 4 }) });
+    const total = screen.getByText("Total to issue").parentElement;
+    expect(total?.textContent).toMatch(/722,706\.59/);
+  });
+
+  it("opens on the rows with errors when there are some, and on all of them when there are none", async () => {
+    show();
+    await waitFor(() => expect(mocks.rows).toHaveBeenCalledWith("i1", { status: "invalid", cursor: undefined, limit: 50 }, expect.anything()));
+    expect(screen.getByRole("button", { name: /with errors/i }).getAttribute("aria-pressed")).toBe("true");
+    cleanup(); vi.clearAllMocks();
+    mocks.rows.mockResolvedValue(page([row(2)]));
+    show({ job: job({ invalid: 0, valid: 3 }) });
+    await waitFor(() => expect(mocks.rows).toHaveBeenCalledWith("i1", { status: undefined, cursor: undefined, limit: 50 }, expect.anything()));
+  });
+
+  it("switches to all the rows and back", async () => {
     show();
     await screen.findAllByText("Cliente 2");
+    fireEvent.click(screen.getByRole("button", { name: /^all$/i }));
+    await waitFor(() => expect(mocks.rows).toHaveBeenLastCalledWith("i1", { status: undefined, cursor: undefined, limit: 50 }, expect.anything()));
     fireEvent.click(screen.getByRole("button", { name: /with errors/i }));
     await waitFor(() => expect(mocks.rows).toHaveBeenLastCalledWith("i1", { status: "invalid", cursor: undefined, limit: 50 }, expect.anything()));
   });
 
   it("loads the next page on demand", async () => {
     mocks.rows.mockResolvedValueOnce(page([row(2)], "2")).mockResolvedValueOnce(page([row(3)]));
-    show();
+    show({ job: job({ invalid: 0, valid: 3 }) });
     await screen.findAllByText("Cliente 2");
     fireEvent.click(screen.getByRole("button", { name: /load more/i }));
     await screen.findAllByText("Cliente 3");
@@ -119,5 +136,26 @@ describe("ImportReview", () => {
   it("warns when the same file was uploaded before", () => {
     show({ duplicateOf: "old" });
     expect(screen.getByText(/already uploaded this exact spreadsheet/i)).toBeTruthy();
+  });
+
+  it("puts the amount on the issue button, so the person knows what is being confirmed", () => {
+    show({ job: job({ valid: 2, validAmount: 1500.5 }) });
+    expect(screen.getByRole("button", { name: /issue 2 invoices · .*1,500\.50/i })).toBeTruthy();
+  });
+
+  it("opens the fix form under its own row and marks the rows with a problem", async () => {
+    show();
+    fireEvent.click((await screen.findAllByRole("button", { name: /^fix$/i }))[0]!);
+    const editor = screen.getByLabelText(/customer e-mail/i).closest("tr");
+    expect(editor?.previousElementSibling?.textContent).toMatch(/Cliente 4/);
+    expect(document.querySelectorAll(".row-invalid").length).toBeGreaterThan(0);
+  });
+
+  it("flashes the row that was just fixed", async () => {
+    mocks.updateRow.mockResolvedValue(row(4));
+    show();
+    fireEvent.click((await screen.findAllByRole("button", { name: /^fix$/i }))[0]!);
+    fireEvent.click(screen.getByRole("button", { name: /save and check/i }));
+    await waitFor(() => expect(document.querySelectorAll(".row-flash").length).toBeGreaterThan(0));
   });
 });

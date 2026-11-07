@@ -413,3 +413,18 @@ html {
 }
 .kpi-tile:hover { background: color-mix(in oklch, var(--accent) 3%, transparent); }
 .kpi-tile:hover::before { opacity: 1; }
+
+/* Spreadsheet import: a row with a problem gets a quiet marker on its left edge; a fixed row flashes once. */
+.row-invalid {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+@keyframes row-flash {
+  from { background-color: color-mix(in oklab, var(--ok) 22%, transparent); }
+  to { background-color: transparent; }
+}
+.row-flash {
+  animation: row-flash 1.4s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .row-flash { animation: none; }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Download, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,8 @@ export function ImportReview({ job, duplicateOf, onChanged, onEmitted, onDiscard
   const t = useTranslations("Imports");
   const locale = useLocale();
   const toast = useToast();
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>(job.counters.invalid > 0 ? "invalid" : "all");
+  const [flash, setFlash] = useState<number | null>(null);
   const [editing, setEditing] = useState<ImportRow | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [busy, setBusy] = useState<"emit" | "discard" | null>(null);
@@ -44,6 +45,11 @@ export function ImportReview({ job, duplicateOf, onChanged, onEmitted, onDiscard
     [job.id, filter],
   );
   const money = new Intl.NumberFormat(locale, { style: "currency", currency: "BRL" });
+  useEffect(() => {
+    if (flash === null) return;
+    const timer = setTimeout(() => setFlash(null), 1500);
+    return () => clearTimeout(timer);
+  }, [flash]);
 
   const problem = (row: ImportRow) => rowProblem(row, t);
 
@@ -63,7 +69,7 @@ export function ImportReview({ job, duplicateOf, onChanged, onEmitted, onDiscard
   const saved = (row: ImportRow) => {
     list.setItems((rows) => (rows ?? []).map((current) => (current.line === row.line ? row : current)));
     void onChanged();
-    if (row.status === "valid") { setEditing(null); toast.success(t("edit.saved")); return false; }
+    if (row.status === "valid") { setEditing(null); setFlash(row.line); toast.success(t("edit.saved")); return false; }
     setEditing(row);
     return true;
   };
@@ -84,12 +90,16 @@ export function ImportReview({ job, duplicateOf, onChanged, onEmitted, onDiscard
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-[15px] text-text">{t("review.summary", { total: counters.total, valid: counters.valid, invalid: counters.invalid })}</p>
+      <section className="flex flex-col gap-1">
+        <p className="text-[12.5px] text-text-3">{t("review.total")}</p>
+        <p className="text-[40px] font-semibold leading-none tracking-tight tabular-nums text-text sm:text-[48px]">{money.format(counters.validAmount)}</p>
+        <p className="mt-1 text-[14.5px] text-text-3">{t("review.summary", { total: counters.total, valid: counters.valid, invalid: counters.invalid })}</p>
+      </section>
       {duplicateOf && <p className="rounded-[10px] border border-border p-3 text-[13.5px] text-text-3">{t("review.duplicate")}</p>}
 
       <div className="flex flex-wrap items-center gap-2.5">
         <Button variant="accent" loading={busy === "emit"} disabled={counters.valid === 0 || busy !== null} onClick={() => run("emit", () => imports.emit(job.id), onEmitted, t("review.emitFailed"))}>
-          {counters.valid === 0 ? t("review.emitNone") : t("review.emit", { count: counters.valid })}
+          {counters.valid === 0 ? t("review.emitNone") : t("review.emitWithAmount", { count: counters.valid, amount: money.format(counters.validAmount) })}
         </Button>
         {counters.invalid > 0 && <Button variant="secondary" onClick={downloadErrors}><Download size={15} aria-hidden />{t("review.downloadErrors")}</Button>}
         {confirmDiscard ? (
@@ -102,8 +112,6 @@ export function ImportReview({ job, duplicateOf, onChanged, onEmitted, onDiscard
         )}
       </div>
 
-      {editing && <RowEditor key={editing.line} row={editing} problem={editing.status === "invalid" ? problem(editing) : null} importId={job.id} onSaved={saved} onCancel={() => setEditing(null)} />}
-
       <div role="group" aria-label={t("review.table")} className="flex gap-2">
         {(["all", "invalid"] as const).map((value) => (
           <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)}
@@ -113,7 +121,12 @@ export function ImportReview({ job, duplicateOf, onChanged, onEmitted, onDiscard
         ))}
       </div>
 
-      {list.items && list.items.length === 0 ? <p className="py-8 text-center text-[14px] text-text-3">{t("review.empty")}</p> : list.items && <DataTable columns={columns} rows={list.items} rowKey={(r) => String(r.line)} caption={t("review.table")} />}
+      {list.items && list.items.length === 0 ? <p className="py-8 text-center text-[14px] text-text-3">{t("review.empty")}</p> : list.items && <DataTable
+          columns={columns} rows={list.items} rowKey={(r) => String(r.line)} caption={t("review.table")}
+          rowClassName={(r) => (r.line === flash ? "row-flash" : r.status === "invalid" || r.status === "rejected" ? "row-invalid" : undefined)}
+          expandedKey={editing ? String(editing.line) : null}
+          renderExpanded={(r) => <RowEditor key={r.line} row={r} problem={r.status === "invalid" ? problem(r) : null} importId={job.id} onSaved={saved} onCancel={() => setEditing(null)} />}
+        />}
       {list.hasMore && <div><Button variant="secondary" loading={list.loadingMore} onClick={() => void list.loadMore()}>{t("review.loadMore")}</Button></div>}
     </div>
   );
@@ -152,7 +165,7 @@ function RowEditor({ row, problem, importId, onSaved, onCancel }: { row: ImportR
   );
 
   return (
-    <form onSubmit={save} className="flex flex-col gap-4 rounded-[12px] border border-border-strong p-5">
+    <form onSubmit={save} className="flex flex-col gap-4">
       <h2 className="text-[16px] font-semibold text-text">{t("edit.title", { line: row.line })}</h2>
       {message && <p role="alert" className="text-[13px] text-danger">{message}</p>}
       <div className="grid gap-4 sm:grid-cols-2">

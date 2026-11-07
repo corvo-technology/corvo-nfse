@@ -2885,7 +2885,11 @@
       "downloadFailed": "Não foi possível baixar o arquivo.",
       "discard": "Descartar importação",
       "discardFailed": "Não foi possível descartar.",
-      "noCustomer": "Sem tomador"
+      "noCustomer": "Sem tomador",
+      "total": "Total a emitir",
+      "emitWithAmount": "{count, plural, one {Emitir # nota} other {Emitir # notas}} · {amount}",
+      "readyCount": "{count, plural, one {# nota pronta} other {# notas prontas}}",
+      "errorCount": "{count, plural, one {# com erro} other {# com erro}}"
     },
     "edit": {
       "title": "Corrigir linha {line}",
