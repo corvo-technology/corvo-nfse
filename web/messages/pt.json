@@ -1538,6 +1538,9 @@
           "dismiss": "Entendi"
     },
     "plans": {
+      "quotaNote": "Cota mensal, sem acúmulo. Passou da cota, é só comprar notas avulsas ou trocar de plano.",
+      "avulsoTitle": "Ou só notas avulsas, sem plano",
+      "avulsoBody": "Você paga só pelas notas que precisa: {price} cada, a partir de {min}. Sem mensalidade, as notas não expiram e valem depois da cota do plano. Sem plano, a conta tem 1 empresa.",
       "title": "Planos",
       "price": "{price}/mês",
       "notes": "{count} notas por mês"

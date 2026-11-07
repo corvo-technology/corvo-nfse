@@ -1538,6 +1538,9 @@
           "dismiss": "Got it"
     },
     "plans": {
+      "quotaNote": "Monthly quota, no rollover. Past the quota, buy single notes or change plan.",
+      "avulsoTitle": "Or just single notes, no plan",
+      "avulsoBody": "Pay only for the notes you need: {price} each, from {min}. No monthly fee, notes never expire and are used after your plan's quota. Without a plan the account has 1 company.",
       "title": "Plans",
       "price": "{price}/month",
       "notes": "{count} notes per month"

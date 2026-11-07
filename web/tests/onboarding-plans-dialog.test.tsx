@@ -30,6 +30,14 @@ describe("PlansDialog", () => {
     expect(screen.getByText("300 notes per month")).toBeTruthy();
   });
 
+  it("always offers single notes at R$0.99 from 3, even when the plans do not load", async () => {
+    mocks.list.mockRejectedValue(new Error("boom"));
+    renderDialog();
+    await screen.findByText(messages.Onboarding.plans.avulsoTitle);
+    expect(screen.getByText(/R\$0\.99 each, from 3/)).toBeTruthy();
+    expect(screen.getByText(/never expire/)).toBeTruthy();
+  });
+
   it("without plans (request failed) it still explains, with no error shown", async () => {
     mocks.list.mockRejectedValue(new Error("boom"));
     renderDialog();
