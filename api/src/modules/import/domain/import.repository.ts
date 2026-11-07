@@ -44,6 +44,12 @@ export abstract class ImportRepository {
     id: string,
     query: RowPageQuery,
   ): Promise<RowPage>;
+  abstract findRow(
+    tenantId: string,
+    env: ExecutionEnvironment,
+    importId: string,
+    line: number,
+  ): Promise<ImportRow | null>;
   abstract updateRow(
     tenantId: string,
     importId: string,

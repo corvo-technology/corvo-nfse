@@ -14,6 +14,7 @@ import {
   ImportIntakeService,
 } from './application/import-intake.service';
 import { ImportReaderService } from './application/import-reader.service';
+import { ImportReviewService } from './application/import-review.service';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ImportReaderService } from './application/import-reader.service';
     ImportFileStorage,
     ImportIntakeService,
     ImportReaderService,
+    ImportReviewService,
   ],
   controllers: [ImportController],
   exports: [ImportRepository, ImportFileStorage, ImportReaderService],

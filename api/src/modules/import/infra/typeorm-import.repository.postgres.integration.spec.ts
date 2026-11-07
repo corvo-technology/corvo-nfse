@@ -217,6 +217,17 @@ describePostgres('import repository with restricted role', () => {
     ).toHaveLength(1);
   });
 
+  it('finds one row inside its own import, environment and tenant only', async () => {
+    const imp = await repo.create(base(tenantA));
+    await repo.insertRows(tenantA, imp.id, [row(3, 'valid')]);
+    expect(await repo.findRow(tenantA, 'live', imp.id, 3)).toMatchObject({
+      line: 3,
+    });
+    expect(await repo.findRow(tenantA, 'live', imp.id, 4)).toBeNull();
+    expect(await repo.findRow(tenantA, 'test', imp.id, 3)).toBeNull();
+    expect(await repo.findRow(tenantB, 'live', imp.id, 3)).toBeNull();
+  });
+
   it('updates a row and deletes the import with its rows', async () => {
     const imp = await repo.create(base(tenantA));
     await repo.insertRows(tenantA, imp.id, [row(1, 'invalid')]);

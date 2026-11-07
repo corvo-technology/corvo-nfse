@@ -1,5 +1,21 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsUUID } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import {
+  DEFAULT_ROWS_PAGE,
+  MAX_ROWS_PAGE,
+  type ImportRowStatus,
+} from '../domain/import';
 
 export class StartImportDto {
   @ApiPropertyOptional({
@@ -16,3 +32,38 @@ export type UploadedImportFile = {
   buffer: Buffer;
   size: number;
 };
+
+export class ListImportRowsQuery {
+  @ApiPropertyOptional({
+    enum: ['valid', 'invalid', 'queued', 'accepted', 'rejected'],
+  })
+  @IsOptional()
+  @IsIn(['valid', 'invalid', 'queued', 'accepted', 'rejected'])
+  status?: ImportRowStatus;
+
+  @ApiPropertyOptional({ description: 'Opaque cursor from the previous page' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cursor?: string;
+
+  @ApiPropertyOptional({ default: DEFAULT_ROWS_PAGE, maximum: MAX_ROWS_PAGE })
+  @IsOptional()
+  @Type(() => Number)
+  @Transform(({ value }: { value: unknown }) =>
+    value === '' ? undefined : value,
+  )
+  @IsInt()
+  @Min(1)
+  @Max(MAX_ROWS_PAGE)
+  limit?: number;
+}
+
+export class UpdateImportRowDto {
+  @ApiPropertyOptional({
+    description:
+      'Fields of the invoice to change (same shape as POST /invoices).',
+  })
+  @IsObject()
+  item!: Record<string, unknown>;
+}

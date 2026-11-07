@@ -200,6 +200,25 @@ export class TypeOrmImportRepository extends ImportRepository {
     });
   }
 
+  findRow(
+    tenantId: string,
+    env: ExecutionEnvironment,
+    importId: string,
+    line: number,
+  ): Promise<ImportRow | null> {
+    return runWithTenant(tenantId, async () => {
+      const row = await this.rows()
+        .createQueryBuilder('r')
+        .innerJoin(ImportOrmEntity, 'm', 'm.id = r.import_id')
+        .where(
+          'r.import_id = :importId AND r.line = :line AND m.tenant_id = :tenantId AND m.environment = :env',
+          { importId, line, tenantId, env },
+        )
+        .getOne();
+      return row ? toRow(row) : null;
+    });
+  }
+
   async updateRow(
     tenantId: string,
     importId: string,
