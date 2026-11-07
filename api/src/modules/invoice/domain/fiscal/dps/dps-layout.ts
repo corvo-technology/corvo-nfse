@@ -1,8 +1,5 @@
 export type DpsLayoutStatus =
-  | 'published'
-  | 'homologated'
-  | 'in_production'
-  | 'restricted_and_scheduled';
+  'published' | 'homologated' | 'in_production' | 'restricted_and_scheduled';
 
 export interface DpsLayout {
   readonly id: 'rtc-v1.01' | 'nt009-r1';

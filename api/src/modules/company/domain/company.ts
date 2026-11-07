@@ -7,10 +7,7 @@ import { normalizeTaxID } from '@/shared/tax-id';
 export type CompanyEnvironment = ExecutionEnvironment;
 export type CompanyStatus = 'pending_setup' | 'ready' | 'blocked';
 export type TaxRegime =
-  | 'MEI'
-  | 'Simples Nacional'
-  | 'Lucro Presumido'
-  | 'Lucro Real';
+  'MEI' | 'Simples Nacional' | 'Lucro Presumido' | 'Lucro Real';
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 

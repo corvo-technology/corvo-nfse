@@ -1,11 +1,7 @@
 import { WebhookEvent } from './webhook-event';
 
 export type WebhookDeliveryStatus =
-  | 'pending'
-  | 'sent'
-  | 'delayed'
-  | 'failed'
-  | 'manual_retry';
+  'pending' | 'sent' | 'delayed' | 'failed' | 'manual_retry';
 
 export interface WebhookDelivery {
   id: string;
