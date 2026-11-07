@@ -2615,6 +2615,72 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           tone: "accent",
           body: "The environment (`test` or `live`) is set on the connection. If the platform reports that an event belongs to another environment, Corvo drops it and issues no invoice.",
         },
+        { kind: "heading", level: 2, body: "Using the API" },
+        {
+          kind: "text",
+          body: "Everything the dashboard does for payment integrations is also available by API, with an API key (`X-API-Key`).",
+        },
+        {
+          kind: "table",
+          head: ["Method", "Route", "Description"],
+          rows: [
+            ["GET", "`/v1/integrations/providers`", "Available platforms and the credential fields of each"],
+            ["POST", "`/v1/integrations/connections`", "Create a connection"],
+            ["GET", "`/v1/integrations/connections`", "List connections"],
+            ["GET", "`/v1/integrations/connections/:id`", "Get a connection"],
+            ["POST", "`/v1/integrations/connections/:id/validate`", "Check the credentials and identify the account"],
+            ["POST", "`/v1/integrations/connections/:id/activate`", "Start issuing automatically"],
+            ["POST", "`/v1/integrations/connections/:id/pause`", "Stop issuing; events are still stored"],
+            ["POST", "`/v1/integrations/connections/:id/disconnect`", "Disconnect for good"],
+            ["GET", "`/v1/integrations/connections/:id/rules`", "Get the service rules"],
+            ["PUT", "`/v1/integrations/connections/:id/rules`", "Replace the service rules"],
+            ["GET", "`/v1/integrations/connections/:id/events`", "Events received"],
+            ["GET", "`/v1/integrations/connections/:id/operations`", "Sales and the invoice status of each"],
+            ["PATCH", "`/v1/integrations/operations/:id/customer`", "Fill in the customer of a pending sale"],
+            ["POST", "`/v1/integrations/operations/:id/retry`", "Try to issue again"],
+            ["POST", "`/v1/integrations/inbound/:publicId`", "Address the payment platform calls (public, authenticated by the connector)"],
+          ],
+        },
+        {
+          kind: "callout",
+          tone: "accent",
+          body: "The management routes require `integrations.view` (read) or `integrations.manage` (create, activate, change rules). `full_access` API keys have both.",
+        },
+        {
+          kind: "code",
+          label: "1. Create the connection",
+          language: "bash",
+          code: `curl -X POST "$BASE_URL/v1/integrations/connections" \
+  -H "X-API-Key: $CORVO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "woovi",
+    "companyId": "<company id>",
+    "environment": "test",
+    "credentials": {},
+    "activeFrom": "2026-11-01T00:00:00Z"
+  }'`,
+        },
+        {
+          kind: "code",
+          label: "2. Set the service rule and activate",
+          language: "bash",
+          code: `curl -X PUT "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/rules" \
+  -H "X-API-Key: $CORVO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "rules": [ { "service": { "code": "010101", "description": "Consulting" }, "sendEmail": true } ] }'
+
+curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/validate" -H "X-API-Key: $CORVO_API_KEY"
+curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H "X-API-Key: $CORVO_API_KEY"`,
+        },
+        {
+          kind: "text",
+          body: "A rule without `externalProductId` applies to any product. To give a product a different service, send another rule with its `externalProductId`. Payments made before `activeFrom` are ignored.",
+        },
+        {
+          kind: "text",
+          body: "A sale that could not become an invoice shows up in `GET /v1/integrations/connections/:id/operations` with `fiscalStatus` and `blockReason` (see the table above). Fix it with `PATCH /v1/integrations/operations/:id/customer` or by adjusting the rules, then call `POST /v1/integrations/operations/:id/retry`. To cancel an invoice after a refund, use `POST /v1/invoices/:id/cancel`.",
+        },
       ],
     },
     "mcp": {

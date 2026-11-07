@@ -2592,6 +2592,72 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
           tone: "accent",
           body: "O ambiente (`test` ou `live`) é definido na conexão. Se a plataforma informar que o evento é de outro ambiente, a Corvo descarta o evento e não emite nota.",
         },
+        { kind: "heading", level: 2, body: "Pela API" },
+        {
+          kind: "text",
+          body: "Tudo o que o painel faz nas integrações de pagamento também está disponível pela API, com uma chave de API (`X-API-Key`).",
+        },
+        {
+          kind: "table",
+          head: ["Método", "Rota", "Descrição"],
+          rows: [
+            ["GET", "`/v1/integrations/providers`", "Plataformas disponíveis e os campos de credencial de cada uma"],
+            ["POST", "`/v1/integrations/connections`", "Criar uma conexão"],
+            ["GET", "`/v1/integrations/connections`", "Listar conexões"],
+            ["GET", "`/v1/integrations/connections/:id`", "Consultar uma conexão"],
+            ["POST", "`/v1/integrations/connections/:id/validate`", "Conferir as credenciais e identificar a conta"],
+            ["POST", "`/v1/integrations/connections/:id/activate`", "Começar a emitir automaticamente"],
+            ["POST", "`/v1/integrations/connections/:id/pause`", "Parar de emitir; os eventos continuam guardados"],
+            ["POST", "`/v1/integrations/connections/:id/disconnect`", "Desconectar de vez"],
+            ["GET", "`/v1/integrations/connections/:id/rules`", "Consultar as regras de serviço"],
+            ["PUT", "`/v1/integrations/connections/:id/rules`", "Substituir as regras de serviço"],
+            ["GET", "`/v1/integrations/connections/:id/events`", "Eventos recebidos"],
+            ["GET", "`/v1/integrations/connections/:id/operations`", "Vendas e o status da nota de cada uma"],
+            ["PATCH", "`/v1/integrations/operations/:id/customer`", "Preencher o tomador de uma venda pendente"],
+            ["POST", "`/v1/integrations/operations/:id/retry`", "Tentar emitir de novo"],
+            ["POST", "`/v1/integrations/inbound/:publicId`", "Endereço que a plataforma de pagamento chama (público, autenticado pelo conector)"],
+          ],
+        },
+        {
+          kind: "callout",
+          tone: "accent",
+          body: "As rotas de gestão exigem `integrations.view` (leitura) ou `integrations.manage` (criar, ativar, alterar regras). Chaves `full_access` têm as duas.",
+        },
+        {
+          kind: "code",
+          label: "1. Criar a conexão",
+          language: "bash",
+          code: `curl -X POST "$BASE_URL/v1/integrations/connections" \
+  -H "X-API-Key: $CORVO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "woovi",
+    "companyId": "<id da empresa>",
+    "environment": "test",
+    "credentials": {},
+    "activeFrom": "2026-11-01T00:00:00Z"
+  }'`,
+        },
+        {
+          kind: "code",
+          label: "2. Definir a regra de serviço e ativar",
+          language: "bash",
+          code: `curl -X PUT "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/rules" \
+  -H "X-API-Key: $CORVO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "rules": [ { "service": { "code": "010101", "description": "Consultoria" }, "sendEmail": true } ] }'
+
+curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/validate" -H "X-API-Key: $CORVO_API_KEY"
+curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H "X-API-Key: $CORVO_API_KEY"`,
+        },
+        {
+          kind: "text",
+          body: "Uma regra sem `externalProductId` vale para qualquer produto. Para dar outro serviço a um produto, envie outra regra com o `externalProductId` dele. Pagamentos anteriores a `activeFrom` são ignorados.",
+        },
+        {
+          kind: "text",
+          body: "Uma venda que não virou nota aparece em `GET /v1/integrations/connections/:id/operations` com `fiscalStatus` e `blockReason` (veja a tabela acima). Corrija com `PATCH /v1/integrations/operations/:id/customer` ou ajustando as regras e chame `POST /v1/integrations/operations/:id/retry`. Para cancelar uma nota depois de um reembolso, use `POST /v1/invoices/:id/cancel`.",
+        },
       ],
     },
     "mcp": {
