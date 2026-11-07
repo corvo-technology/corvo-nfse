@@ -94,4 +94,21 @@ describe('normalizeRow', () => {
       normalizeRow({ ...base, tomadorDocumento: '123' }, TODAY).item.customer,
     ).toMatchObject({ taxId: '123' });
   });
+
+  it('accepts dates with one-digit day or month and with - or . as separator', () => {
+    for (const [raw, iso] of [
+      ['7/11/2026', '2026-11-07'],
+      ['07-11-2026', '2026-11-07'],
+      ['7.1.2026', '2026-01-07'],
+      ['31/12/2026', '2026-12-31'],
+    ] as const)
+      expect(
+        normalizeRow({ ...base, dataCompetencia: raw }, TODAY).item
+          .competenceDate,
+      ).toBe(iso);
+    expect(
+      normalizeRow({ ...base, dataCompetencia: '31/2/2026' }, TODAY).item
+        .competenceDate,
+    ).toBe('31/2/2026');
+  });
 });

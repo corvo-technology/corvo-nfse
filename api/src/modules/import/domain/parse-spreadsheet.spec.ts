@@ -76,6 +76,61 @@ describe('parseSpreadsheet (csv)', () => {
   });
 });
 
+describe('parseSpreadsheet (csv edge cases)', () => {
+  it('reads Windows-1252 punctuation (dash, curly quotes) as itself, not as control characters', async () => {
+    const bytes = Buffer.concat([
+      Buffer.from('descricao;valor\n'),
+      Buffer.from([
+        0x54, 0xe9, 0x63, 0x6e, 0x69, 0x63, 0x6f, 0x20, 0x96, 0x20, 0x31, 0x94,
+      ]),
+      Buffer.from(';10\n'),
+    ]);
+    const { rows } = await parseSpreadsheet(bytes, 'csv');
+    expect(rows[0]?.cells.descricao).toBe('Técnico – 1”');
+  });
+
+  it('reads a UTF-16 file with a BOM, as Excel saves "Unicode text"', async () => {
+    const bytes = Buffer.concat([
+      Buffer.from([0xff, 0xfe]),
+      Buffer.from('valor;descricao\n10;Serviço\n', 'utf16le'),
+    ]);
+    const { rows } = await parseSpreadsheet(bytes, 'csv');
+    expect(rows[0]?.cells).toEqual({ valor: '10', descricao: 'Serviço' });
+  });
+
+  it('survives a stray double quote inside an unquoted field', async () => {
+    const { rows } = await parseSpreadsheet(
+      csv('descricao;valor\nTela 5" polegadas;10\n'),
+      'csv',
+    );
+    expect(rows[0]?.cells.descricao).toBe('Tela 5" polegadas');
+  });
+
+  it('does not build millions of rows out of blank lines, and still keeps the real line numbers', async () => {
+    const started = Date.now();
+    await expect(
+      parseSpreadsheet(csv('valor\n' + '\n'.repeat(3_000_000)), 'csv'),
+    ).rejects.toMatchObject({ code: 'ERROR_IMPORT_EMPTY' });
+    expect(Date.now() - started).toBeLessThan(5000);
+    const { rows } = await parseSpreadsheet(csv('valor\n\n\n5\n'), 'csv');
+    expect(rows).toEqual([{ line: 4, cells: { valor: '5' } }]);
+  });
+
+  it('takes the header from the first line that is not blank', async () => {
+    const { rows } = await parseSpreadsheet(csv('\n\nvalor\n7\n'), 'csv');
+    expect(rows).toEqual([{ line: 4, cells: { valor: '7' } }]);
+  });
+
+  it('stops counting at 2,000 rows even when many blank lines are mixed in', async () => {
+    const lines = Array.from({ length: 2001 }, (_, i) => `${i + 1}\n\n`).join(
+      '',
+    );
+    await expect(
+      parseSpreadsheet(csv('valor\n' + lines), 'csv'),
+    ).rejects.toMatchObject({ code: 'ERROR_IMPORT_TOO_MANY_ROWS' });
+  });
+});
+
 describe('parseSpreadsheet (xlsx)', () => {
   it('reads numeric, date and cached-formula cells as text', async () => {
     const wb = new ExcelJS.Workbook();

@@ -1,4 +1,5 @@
-import { parse } from 'csv-parse/sync';
+import { Readable } from 'node:stream';
+import { parse } from 'csv-parse';
 import ExcelJS from 'exceljs';
 import { columnFor, type ColumnKey } from './columns';
 import { ImportError } from './import-error';
@@ -12,14 +13,67 @@ export type ParsedSheet = { rows: ParsedRow[]; unknownColumns: string[] };
 
 const ZIP_MAGIC = Buffer.from([0x50, 0x4b]);
 
+/** What Windows-1252 puts at 0x80-0x9F, where Latin-1 only has control characters. */
+const CP1252_C1: Record<number, string> = {
+  0x80: '€',
+  0x82: '‚',
+  0x83: 'ƒ',
+  0x84: '„',
+  0x85: '…',
+  0x86: '†',
+  0x87: '‡',
+  0x88: 'ˆ',
+  0x89: '‰',
+  0x8a: 'Š',
+  0x8b: '‹',
+  0x8c: 'Œ',
+  0x8e: 'Ž',
+  0x91: '‘',
+  0x92: '’',
+  0x93: '“',
+  0x94: '”',
+  0x95: '•',
+  0x96: '–',
+  0x97: '—',
+  0x98: '˜',
+  0x99: '™',
+  0x9a: 'š',
+  0x9b: '›',
+  0x9c: 'œ',
+  0x9e: 'ž',
+  0x9f: 'Ÿ',
+};
+
+/** Not every Node build ships the windows-1252 table, so the few bytes that differ from Latin-1 are mapped by hand. */
+function decodeWindows1252(bytes: Buffer): string {
+  return bytes
+    .toString('latin1')
+    .replace(
+      /[\u0080-\u009f]/g,
+      (char) => CP1252_C1[char.charCodeAt(0)] ?? char,
+    );
+}
+
+/** Excel in Brazil saves UTF-8, "Unicode text" (UTF-16) or Windows-1252: tell them apart without guessing wrong. */
 function decodeText(bytes: Buffer): string {
-  const utf8 = bytes.toString('utf8').replace(/^\uFEFF/, '');
-  // Excel in Brazil often saves Windows-1252: bytes that are not valid UTF-8 show up as U+FFFD.
-  return utf8.includes('\uFFFD') ? bytes.toString('latin1') : utf8;
+  if (bytes[0] === 0xff && bytes[1] === 0xfe)
+    return new TextDecoder('utf-16le').decode(bytes.subarray(2));
+  if (bytes[0] === 0xfe && bytes[1] === 0xff)
+    return new TextDecoder('utf-16le').decode(
+      Buffer.from(bytes.subarray(2)).swap16(),
+    );
+  try {
+    return new TextDecoder('utf-8', { fatal: true })
+      .decode(bytes)
+      .replace(/^\uFEFF/, '');
+  } catch {
+    // Not valid UTF-8: Windows-1252 (which, unlike Latin-1, has the dash and curly quotes at 0x80-0x9F).
+    return decodeWindows1252(bytes);
+  }
 }
 
 function detectDelimiter(text: string): string {
-  const first = text.split(/\r?\n/, 1)[0] ?? '';
+  const first = text.split(/\r?\n/).find((line) => line.trim() !== '') ?? '';
   const counts = [';', '\t', ','].map(
     (d) => [d, first.split(d).length - 1] as const,
   );
@@ -143,7 +197,7 @@ async function parseXlsx(bytes: Buffer): Promise<ParsedSheet> {
   return toSheet(grid);
 }
 
-function parseCsv(bytes: Buffer): ParsedSheet {
+async function parseCsv(bytes: Buffer): Promise<ParsedSheet> {
   if (bytes.subarray(0, 2).equals(ZIP_MAGIC))
     throw new ImportError(
       'ERROR_IMPORT_UNREADABLE',
@@ -152,21 +206,35 @@ function parseCsv(bytes: Buffer): ParsedSheet {
   const text = decodeText(bytes);
   if (!text.trim())
     throw new ImportError('ERROR_IMPORT_EMPTY', 'The file has no rows');
-  let grid: string[][];
+  const parser = parse({
+    delimiter: detectDelimiter(text),
+    relax_column_count: true,
+    relax_quotes: true,
+    skip_empty_lines: true,
+    info: true,
+  });
+  Readable.from([text]).pipe(parser);
+  // Streamed, so blank lines never become rows and the row limit stops the reading early.
+  const grid: GridRow[] = [];
   try {
-    grid = parse(text, {
-      delimiter: detectDelimiter(text),
-      relax_column_count: true,
-      skip_empty_lines: false,
-      bom: true,
-    });
+    for await (const { record, info } of parser as AsyncIterable<{
+      record: string[];
+      info: { lines: number };
+    }>) {
+      if (record.every((cell) => !cell.trim())) continue;
+      grid.push({ line: info.lines, cells: record });
+      if (grid.length > MAX_IMPORT_ROWS + 1) {
+        parser.destroy();
+        break;
+      }
+    }
   } catch {
     throw new ImportError(
       'ERROR_IMPORT_UNREADABLE',
       'The CSV file could not be read',
     );
   }
-  return toSheet(grid.map((cells, index) => ({ line: index + 1, cells })));
+  return toSheet(grid);
 }
 
 export async function parseSpreadsheet(
