@@ -22,7 +22,8 @@ const DISCARDABLE = new Set(['processing', 'ready', 'failed']);
 
 /** A cell for Excel in Brazil: ; separated, quoted when it holds ; " or a line break. */
 const cell = (value: unknown): string => {
-  const text = value === undefined || value === null ? '' : String(value);
+  const text =
+    typeof value === 'string' || typeof value === 'number' ? String(value) : '';
   return /[;"\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 };
 
