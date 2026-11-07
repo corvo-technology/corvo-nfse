@@ -14,6 +14,10 @@ import {
   ImportIntakeService,
 } from './application/import-intake.service';
 import { ImportReaderService } from './application/import-reader.service';
+import {
+  IMPORT_EMIT_QUEUE,
+  ImportEmitService,
+} from './application/import-emit.service';
 import { ImportReviewService } from './application/import-review.service';
 
 @Module({
@@ -21,7 +25,10 @@ import { ImportReviewService } from './application/import-review.service';
     CompanyModule,
     InvoiceModule,
     TypeOrmModule.forFeature([ImportOrmEntity, ImportRowOrmEntity]),
-    BullModule.registerQueue({ name: IMPORT_READ_QUEUE }),
+    BullModule.registerQueue(
+      { name: IMPORT_READ_QUEUE },
+      { name: IMPORT_EMIT_QUEUE },
+    ),
   ],
   providers: [
     { provide: ImportRepository, useClass: TypeOrmImportRepository },
@@ -29,8 +36,14 @@ import { ImportReviewService } from './application/import-review.service';
     ImportIntakeService,
     ImportReaderService,
     ImportReviewService,
+    ImportEmitService,
   ],
   controllers: [ImportController],
-  exports: [ImportRepository, ImportFileStorage, ImportReaderService],
+  exports: [
+    ImportRepository,
+    ImportFileStorage,
+    ImportReaderService,
+    ImportEmitService,
+  ],
 })
 export class ImportModule {}

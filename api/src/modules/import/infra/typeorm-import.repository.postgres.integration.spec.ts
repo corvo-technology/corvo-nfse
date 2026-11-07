@@ -228,6 +228,60 @@ describePostgres('import repository with restricted role', () => {
     expect(await repo.findRow(tenantB, 'live', imp.id, 3)).toBeNull();
   });
 
+  it('claims the emit once: ready or done to emitting, never twice', async () => {
+    const imp = await repo.create(base(tenantA));
+    expect(await repo.claimEmit(tenantA, imp.id)).toBe(false); // still processing
+    await repo.updateStatus(tenantA, imp.id, { status: 'ready' });
+    const [first, second] = await Promise.all([
+      repo.claimEmit(tenantA, imp.id),
+      repo.claimEmit(tenantA, imp.id),
+    ]);
+    expect([first, second].filter(Boolean)).toHaveLength(1);
+    expect((await repo.findById(tenantA, 'live', imp.id))?.status).toBe(
+      'emitting',
+    );
+    await repo.updateStatus(tenantA, imp.id, { status: 'done' });
+    expect(await repo.claimEmit(tenantA, imp.id)).toBe(true);
+  });
+
+  it('queues valid rows and plan-limit rejections only, then rejects what is still queued', async () => {
+    const imp = await repo.create(base(tenantA));
+    const limited = {
+      ...row(3, 'rejected'),
+      errorCode: 'ERROR_MONTHLY_LIMIT_EXCEEDED',
+    };
+    const other = { ...row(4, 'rejected'), errorCode: 'ERROR_VALIDATION' };
+    await repo.insertRows(tenantA, imp.id, [
+      row(1, 'valid'),
+      row(2, 'invalid'),
+      limited,
+      other,
+      row(5, 'accepted'),
+    ]);
+    expect(
+      await repo.markRowsQueued(tenantA, imp.id, [
+        'ERROR_MONTHLY_LIMIT_EXCEEDED',
+      ]),
+    ).toBe(2);
+    await repo.rejectQueued(tenantA, imp.id, {
+      code: 'ERROR_MONTHLY_LIMIT_EXCEEDED',
+      message: 'limit',
+    });
+    const all = await repo.listRows(tenantA, 'live', imp.id, { limit: 10 });
+    expect(all.items.map((r) => [r.line, r.status])).toEqual([
+      [1, 'rejected'],
+      [2, 'invalid'],
+      [3, 'rejected'],
+      [4, 'rejected'],
+      [5, 'accepted'],
+    ]);
+    expect(all.items[0]).toMatchObject({
+      errorCode: 'ERROR_MONTHLY_LIMIT_EXCEEDED',
+      errorMessage: 'limit',
+    });
+    expect(all.items[3]).toMatchObject({ errorCode: 'ERROR_VALIDATION' });
+  });
+
   it('updates a row and deletes the import with its rows', async () => {
     const imp = await repo.create(base(tenantA));
     await repo.insertRows(tenantA, imp.id, [row(1, 'invalid')]);

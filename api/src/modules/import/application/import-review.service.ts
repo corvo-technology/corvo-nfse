@@ -51,7 +51,18 @@ export class ImportReviewService {
     id: string,
   ): Promise<ImportView> {
     const record = await this.owned(tenantId, env, id);
-    return { ...record, counters: await this.repo.counters(tenantId, env, id) };
+    const counters = await this.repo.counters(tenantId, env, id);
+    // The import is done when nothing is waiting or still being processed. Closed here, on read,
+    // because the city answers (and invoices turn final) long after the last chunk was sent.
+    if (record.status === 'emitting' && counters.pending === 0) {
+      const finished = new Date();
+      await this.repo.updateStatus(tenantId, id, {
+        status: 'done',
+        emitFinishedAt: finished,
+      });
+      return { ...record, status: 'done', emitFinishedAt: finished, counters };
+    }
+    return { ...record, counters };
   }
 
   async listRows(

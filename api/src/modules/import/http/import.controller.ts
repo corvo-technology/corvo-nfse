@@ -29,6 +29,7 @@ import {
 import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { data } from '@/shared/http/response';
 import { ImportIntakeService } from '../application/import-intake.service';
+import { ImportEmitService } from '../application/import-emit.service';
 import {
   ImportReviewService,
   TEMPLATE_CSV,
@@ -50,6 +51,7 @@ export class ImportController {
   constructor(
     private readonly intake: ImportIntakeService,
     private readonly review: ImportReviewService,
+    private readonly emitter: ImportEmitService,
   ) {}
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
@@ -103,6 +105,29 @@ export class ImportController {
     const auth = req.authContext!;
     return data(
       await this.review.get(
+        auth.activeTenantId,
+        executionEnvironment(auth),
+        id,
+      ),
+    );
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post(':id/emit')
+  @HttpCode(202)
+  @RequirePermission('nfse.invoices.issue')
+  @ApiOperation({
+    summary: 'Emit every valid row of the import',
+    description:
+      'Safe to call twice. After a plan limit stopped the import, call it again once credits are available: only the rows the limit turned away are sent.',
+  })
+  async emit(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Req() req: RequestWithAuthContext,
+  ) {
+    const auth = req.authContext!;
+    return data(
+      await this.emitter.emit(
         auth.activeTenantId,
         executionEnvironment(auth),
         id,

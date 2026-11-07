@@ -23,6 +23,7 @@ const counters = {
 
 describe('ImportReviewService', () => {
   const repo = {
+    updateStatus: jest.fn(),
     findById: jest.fn(),
     counters: jest.fn(),
     listRows: jest.fn(),
@@ -51,6 +52,20 @@ describe('ImportReviewService', () => {
       id: 'i1',
       status: 'ready',
       counters,
+    });
+  });
+
+  it('closes an emitting import once nothing is pending, and not before', async () => {
+    repo.findById.mockResolvedValue(record({ status: 'emitting' }));
+    repo.counters.mockResolvedValue({ ...counters, pending: 2 });
+    expect((await service.get(T, 'live', 'i1')).status).toBe('emitting');
+    expect(repo.updateStatus).not.toHaveBeenCalled();
+    repo.counters.mockResolvedValue({ ...counters, pending: 0 });
+    const done = await service.get(T, 'live', 'i1');
+    expect(done.status).toBe('done');
+    expect(repo.updateStatus).toHaveBeenCalledWith(T, 'i1', {
+      status: 'done',
+      emitFinishedAt: expect.any(Date),
     });
   });
 

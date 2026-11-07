@@ -2,7 +2,11 @@ import { ImportController } from './import.controller';
 
 describe('ImportController POST /imports', () => {
   const intake = { start: jest.fn() };
-  const controller = new ImportController(intake as never, {} as never);
+  const controller = new ImportController(
+    intake as never,
+    {} as never,
+    {} as never,
+  );
   const req = {
     authContext: {
       activeTenantId: 't1',

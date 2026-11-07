@@ -44,6 +44,23 @@ export abstract class ImportRepository {
     id: string,
     query: RowPageQuery,
   ): Promise<RowPage>;
+  /** Moves ready or done to emitting, once: false when someone else already did. */
+  abstract claimEmit(tenantId: string, importId: string): Promise<boolean>;
+  /**
+   * Queues what can be emitted: valid rows, rows already queued, and rows rejected for one of
+   * `retryCodes` (plan limits). Returns how many rows are queued now.
+   */
+  abstract markRowsQueued(
+    tenantId: string,
+    importId: string,
+    retryCodes: string[],
+  ): Promise<number>;
+  /** Rejects every row still queued with one error (the plan limit was reached). */
+  abstract rejectQueued(
+    tenantId: string,
+    importId: string,
+    error: { code: string; message: string },
+  ): Promise<void>;
   abstract findRow(
     tenantId: string,
     env: ExecutionEnvironment,

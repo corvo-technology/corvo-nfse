@@ -200,6 +200,66 @@ export class TypeOrmImportRepository extends ImportRepository {
     });
   }
 
+  async claimEmit(tenantId: string, importId: string): Promise<boolean> {
+    return runWithTenant(tenantId, async () => {
+      const out = await this.imports()
+        .createQueryBuilder()
+        .update()
+        .set({
+          status: 'emitting',
+          emitFinishedAt: null,
+          emitStartedAt: () => 'COALESCE(emit_started_at, now())',
+        })
+        .where(
+          "id = :importId AND tenant_id = :tenantId AND status IN ('ready','done')",
+          { importId, tenantId },
+        )
+        .execute();
+      return (out.affected ?? 0) > 0;
+    });
+  }
+
+  async markRowsQueued(
+    tenantId: string,
+    importId: string,
+    retryCodes: string[],
+  ): Promise<number> {
+    return runWithTenant(tenantId, async () => {
+      await this.rows()
+        .createQueryBuilder()
+        .update()
+        .set({ status: 'queued', errorCode: null, errorMessage: null })
+        .where(
+          "import_id = :importId AND tenant_id = :tenantId AND (status IN ('valid','queued') OR (status = 'rejected' AND error_code IN (:...retryCodes)))",
+          { importId, tenantId, retryCodes },
+        )
+        .execute();
+      return this.rows().countBy({ importId, tenantId, status: 'queued' });
+    });
+  }
+
+  async rejectQueued(
+    tenantId: string,
+    importId: string,
+    error: { code: string; message: string },
+  ): Promise<void> {
+    await runWithTenant(tenantId, () =>
+      this.rows()
+        .createQueryBuilder()
+        .update()
+        .set({
+          status: 'rejected',
+          errorCode: error.code,
+          errorMessage: error.message,
+        })
+        .where(
+          "import_id = :importId AND tenant_id = :tenantId AND status = 'queued'",
+          { importId, tenantId },
+        )
+        .execute(),
+    );
+  }
+
   findRow(
     tenantId: string,
     env: ExecutionEnvironment,

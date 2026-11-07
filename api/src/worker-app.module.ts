@@ -41,6 +41,7 @@ import {
   InvoiceWebhookPublisher,
 } from '@/modules/invoice/application/fiscal/fiscal-reconciliation.service';
 import { ImportModule } from '@/modules/import/import.module';
+import { ImportEmitProcessor } from '@/modules/import/jobs/import-emit.processor';
 import { ImportReadProcessor } from '@/modules/import/jobs/import-read.processor';
 import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
 
@@ -94,6 +95,7 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     NfseEmailProcessor,
     DocsRecoveryScheduler,
     ImportReadProcessor,
+    ImportEmitProcessor,
   ],
 })
 export class WorkerAppModule {}
