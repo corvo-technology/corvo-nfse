@@ -41,7 +41,7 @@ describe("OnboardingCard", () => {
     renderCard();
     expect(screen.getByText("1 of 5")).toBeTruthy();
     for (const label of Object.values(messages.Onboarding.steps)) expect(screen.getByText(label)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Hide" }));
+    fireEvent.click(screen.getByRole("button", { name: "Go to dashboard" }));
     expect(mocks.hide).toHaveBeenCalled();
   });
 

@@ -1511,8 +1511,11 @@
     "card": {
           "title": "Bem-vindo ao Corvo",
           "subtitle": "Faça na ordem que quiser. Dá para emitir sem terminar.",
+          "brand": "Corvo",
+          "start": "Começar",
+          "footnote": "Nada disso é obrigatório. Dá para ir direto ao painel.",
           "progress": "{done} de {total}",
-          "hide": "Ocultar",
+          "hide": "Ir para o painel",
           "doneLabel": "Feito",
           "needsCompany": "Cadastre a empresa primeiro",
       "noteLocked": "Cadastre a empresa e envie o certificado para liberar",

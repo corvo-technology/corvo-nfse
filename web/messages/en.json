@@ -1511,8 +1511,11 @@
     "card": {
           "title": "Welcome to Corvo",
           "subtitle": "Do it in any order. You can issue without finishing.",
+          "brand": "Corvo",
+          "start": "Start",
+          "footnote": "None of this is required. You can go straight to the dashboard.",
           "progress": "{done} of {total}",
-          "hide": "Hide",
+          "hide": "Go to dashboard",
           "doneLabel": "Done",
           "needsCompany": "Register the company first",
       "noteLocked": "Register the company and upload the certificate to unlock",
