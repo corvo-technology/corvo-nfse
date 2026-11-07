@@ -30,7 +30,10 @@ function setup() {
       return { status: 'COMPLETED', value: row?.amountCents ?? 5990 };
     }),
   };
-  const credits = { grantAvulso: jest.fn().mockResolvedValue({}) };
+  const credits = {
+    grantAvulso: jest.fn().mockResolvedValue({ creditsGranted: 10 }),
+  };
+  const eventBus = { publishBestEffort: jest.fn() };
   const activated: Array<Record<string, unknown>> = [];
   const billing = {
     locked: jest.fn(async (_t: string, work: () => Promise<unknown>) => work()),
@@ -43,10 +46,23 @@ function setup() {
   const service = new WooviPaymentsService(
     client as never,
     store,
-    new PaymentFulfillmentService(credits as never, billing as never),
+    new PaymentFulfillmentService(
+      credits as never,
+      billing as never,
+      eventBus as never,
+    ),
     new PricingService(),
   );
-  return { service, store, client, credits, billing, activated, charges };
+  return {
+    service,
+    store,
+    client,
+    credits,
+    billing,
+    activated,
+    charges,
+    eventBus,
+  };
 }
 
 const tenant = '11111111-1111-4111-8111-111111111111';
@@ -188,6 +204,27 @@ describe('WooviPaymentsService.handleEvent', () => {
       10,
       `woovi:${ref}`,
     );
+  });
+
+  it('announces the credits added, but not when the grant was a replay', async () => {
+    const f = setup();
+    await f.service.startAvulso(tenant, 10, 'k');
+    const ref = f.store.rows[0]!.providerRef;
+    await f.service.handleEvent(completed(ref, 990));
+    expect(f.eventBus.publishBestEffort).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: tenant,
+        notice: { kind: 'credits-added', units: 10 },
+      }),
+    );
+
+    const replay = setup();
+    replay.credits.grantAvulso.mockResolvedValue({ creditsGranted: 0 });
+    await replay.service.startAvulso(tenant, 10, 'k');
+    await replay.service.handleEvent(
+      completed(replay.store.rows[0]!.providerRef, 990),
+    );
+    expect(replay.eventBus.publishBestEffort).not.toHaveBeenCalled();
   });
   it('does not credit when the paid value differs from the charge', async () => {
     const f = setup();

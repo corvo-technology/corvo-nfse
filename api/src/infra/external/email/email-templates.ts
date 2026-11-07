@@ -186,3 +186,53 @@ export function nfseDocumentsReadyEmail(input: {
   );
   return input.isTest ? { ...email, subject: `[TESTE] ${subject}` } : email;
 }
+
+export function creditsAddedEmail(input: {
+  units: number;
+  billingUrl: string;
+}): RenderedEmail {
+  return emailLayout('Créditos adicionados', [
+    paragraph(
+      `${input.units} ${input.units === 1 ? 'nota foi adicionada' : 'notas foram adicionadas'} à sua conta.`,
+    ),
+    button(input.billingUrl, 'Ver créditos'),
+  ]);
+}
+
+export function invoiceRejectedEmail(input: {
+  reason: string;
+  invoiceUrl: string;
+}): RenderedEmail {
+  return emailLayout('Uma nota foi rejeitada', [
+    paragraph('Uma nota fiscal foi rejeitada e precisa de revisão.'),
+    paragraph(`Motivo: ${input.reason}`),
+    button(input.invoiceUrl, 'Revisar nota'),
+    note(
+      'Se outras notas forem rejeitadas na próxima hora, não enviaremos novos avisos: veja todas no painel.',
+    ),
+  ]);
+}
+
+export function apiKeyCreatedEmail(input: {
+  name: string;
+  keysUrl: string;
+}): RenderedEmail {
+  return emailLayout('Nova chave de API criada', [
+    paragraph(
+      `Uma chave de API de produção chamada "${input.name}" foi criada na sua conta.`,
+    ),
+    button(input.keysUrl, 'Ver chaves de API'),
+    note('Se não foi você ou alguém da sua equipe, revogue a chave agora.'),
+  ]);
+}
+
+export function mcpConnectedEmail(input: {
+  clientName: string;
+  connectionsUrl: string;
+}): RenderedEmail {
+  return emailLayout('Novo aplicativo conectado', [
+    paragraph(`${input.clientName} foi conectado à sua conta em produção.`),
+    button(input.connectionsUrl, 'Ver conexões'),
+    note('Se não reconhece essa conexão, desconecte-a agora.'),
+  ]);
+}

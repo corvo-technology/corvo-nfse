@@ -8,12 +8,14 @@ import {
   scheduleRetryEmail,
   welcomeEmail,
 } from '@/infra/external/email/email-templates';
+import type { RenderedEmail } from '@/infra/external/email/email-templates';
 import type {
   OtpEmailJobData,
   WelcomeEmailJobData,
   CreditsLowEmailJobData,
   ScheduleRetryEmailJobData,
   SchedulePausedEmailJobData,
+  NoticeEmailJobData,
 } from '@/infra/queues/email-job.types';
 
 export type EnqueueOtpInput = {
@@ -201,5 +203,17 @@ export class EmailService {
     this.logger.debug(
       `Schedule paused email enqueued: ${emailId} → ${input.to}`,
     );
+  }
+
+  /** Any ready-made e-mail (a notice built by the caller), sent through the same queue. */
+  async enqueueNotice(to: string, email: RenderedEmail): Promise<void> {
+    const emailId = `notice_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const data: NoticeEmailJobData = { emailId, to, email, kind: 'notice' };
+    await this.queue.add('email', 'notice', data, {
+      attempts: 3,
+      backoffMs: 5_000,
+      removeOnComplete: true,
+      removeOnFail: 0,
+    });
   }
 }
