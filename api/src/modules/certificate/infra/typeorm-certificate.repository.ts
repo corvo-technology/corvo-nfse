@@ -7,7 +7,10 @@ import { requireTenantId } from '@/infra/persistence/typeorm/tenant-scope';
 import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import { queryCursorPage } from '@/shared/http/keyset-pagination';
 import { Certificate } from '../domain/certificate';
-import { ICertificateRepository } from '../domain/certificate.repository';
+import {
+  ICertificateRepository,
+  type ExpiringCertificate,
+} from '../domain/certificate.repository';
 import { CertificateMapper } from './certificate.mapper';
 import { CertificateOrmEntity } from './certificate.orm-entity';
 import { CompanyOrmEntity } from '@/modules/company/infra/company.orm-entity';
@@ -169,6 +172,29 @@ export class TypeOrmCertificateRepository implements ICertificateRepository {
         [tenantId],
       );
       return rows.map((row) => row.company_id);
+    });
+  }
+
+  async findExpiringSoon(
+    tenantId: string,
+    days: number,
+  ): Promise<ExpiringCertificate[]> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const cert = this.repo.metadata.tablePath;
+      const company =
+        this.repo.manager.getRepository(CompanyOrmEntity).metadata.tablePath;
+      const rows = await this.repo.query<
+        Array<{ company_id: string; company_name: string; valid_until: Date }>
+      >(
+        `SELECT k.company_id, COALESCE(c.trade_name, c.legal_name) AS company_name, k.valid_until FROM ${cert} k JOIN ${company} c ON c.id = k.company_id WHERE k.status = 'active' AND k.deleted_at IS NULL AND k.valid_until > now() AND k.valid_until <= now() + make_interval(days => $2) AND c.tenant_id = $1 AND c.deleted_at IS NULL AND c.environment = 'live'`,
+        [tenantId, days],
+      );
+      return rows.map((row) => ({
+        companyId: row.company_id,
+        companyName: row.company_name,
+        validUntil: new Date(row.valid_until),
+      }));
     });
   }
 }

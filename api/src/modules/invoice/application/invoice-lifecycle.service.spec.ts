@@ -38,21 +38,24 @@ function build() {
     order.push(step);
   };
   const unitOfWork = {
-    execute: jest.fn(async (work: () => Promise<void>) => {
+    execute: jest.fn(async <T>(work: () => Promise<T>): Promise<T> => {
       active = true;
       try {
-        await work();
+        const result = await work();
         order.push('commit');
+        return result;
       } finally {
         active = false;
       }
     }),
   };
   const billing = {
-    locked: jest.fn(async (_tenantId: string, work: () => Promise<void>) => {
-      inTransaction('lock');
-      await work();
-    }),
+    locked: jest.fn(
+      async <T>(_tenantId: string, work: () => Promise<T>): Promise<T> => {
+        inTransaction('lock');
+        return work();
+      },
+    ),
   };
   const invoices = {
     findByIdempotencyKey: jest.fn().mockResolvedValue(null),
@@ -170,6 +173,9 @@ describe('InvoiceLifecycleService', () => {
 
   it('publishes the credits usage event after a live reservation only', async () => {
     const live = build();
+    live.invoices.findByIdAndTenantId.mockResolvedValue({
+      status: 'processing',
+    });
     const liveInvoice = newInvoice(undefined, 'live');
     await live.service.submit(
       liveInvoice,
@@ -184,6 +190,9 @@ describe('InvoiceLifecycleService', () => {
     );
 
     const test = build();
+    test.invoices.findByIdAndTenantId.mockResolvedValue({
+      status: 'processing',
+    });
     const testInvoice = newInvoice();
     await test.service.submit(
       testInvoice,
@@ -270,6 +279,46 @@ describe('InvoiceLifecycleService', () => {
         source: 'avulso',
       }),
       tenantId,
+    );
+  });
+
+  it('announces a live rejection but not a test one', async () => {
+    const live = build();
+    live.invoices.findByIdAndTenantId.mockResolvedValue({
+      status: 'processing',
+    });
+    const liveInvoice = newInvoice(undefined, 'live');
+    liveInvoice.transitionTo('processing');
+    liveInvoice.setRejected('E1', 'CNPJ inválido');
+    liveInvoice.transitionTo('rejected');
+    await live.service.transition(
+      liveInvoice,
+      InvoiceEvent.create(liveInvoice.id, 'processing', 'rejected'),
+    );
+    expect(live.eventBus.publishBestEffort).toHaveBeenCalledWith(
+      expect.objectContaining({
+        notice: {
+          kind: 'invoice-rejected',
+          invoiceId: liveInvoice.id,
+          reason: 'CNPJ inválido',
+        },
+      }),
+    );
+
+    const test = build();
+    test.invoices.findByIdAndTenantId.mockResolvedValue({
+      status: 'processing',
+    });
+    const testInvoice = newInvoice(undefined, 'test');
+    testInvoice.transitionTo('processing');
+    testInvoice.setRejected('E1', 'x');
+    testInvoice.transitionTo('rejected');
+    await test.service.transition(
+      testInvoice,
+      InvoiceEvent.create(testInvoice.id, 'processing', 'rejected'),
+    );
+    expect(test.eventBus.publishBestEffort).not.toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'account.notice' }),
     );
   });
 

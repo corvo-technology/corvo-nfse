@@ -186,3 +186,154 @@ export function nfseDocumentsReadyEmail(input: {
   );
   return input.isTest ? { ...email, subject: `[TESTE] ${subject}` } : email;
 }
+
+export function creditsAddedEmail(input: {
+  units: number;
+  billingUrl: string;
+}): RenderedEmail {
+  return emailLayout('Créditos adicionados', [
+    paragraph(
+      `${input.units} ${input.units === 1 ? 'nota foi adicionada' : 'notas foram adicionadas'} à sua conta.`,
+    ),
+    button(input.billingUrl, 'Ver créditos'),
+  ]);
+}
+
+export function invoiceRejectedEmail(input: {
+  reason: string;
+  invoiceUrl: string;
+}): RenderedEmail {
+  return emailLayout('Uma nota foi rejeitada', [
+    paragraph('Uma nota fiscal foi rejeitada e precisa de revisão.'),
+    paragraph(`Motivo: ${input.reason}`),
+    button(input.invoiceUrl, 'Revisar nota'),
+    note(
+      'Se outras notas forem rejeitadas na próxima hora, não enviaremos novos avisos: veja todas no painel.',
+    ),
+  ]);
+}
+
+export function apiKeyCreatedEmail(input: {
+  name: string;
+  keysUrl: string;
+}): RenderedEmail {
+  return emailLayout('Nova chave de API criada', [
+    paragraph(
+      `Uma chave de API de produção chamada "${input.name}" foi criada na sua conta.`,
+    ),
+    button(input.keysUrl, 'Ver chaves de API'),
+    note('Se não foi você ou alguém da sua equipe, revogue a chave agora.'),
+  ]);
+}
+
+export function mcpConnectedEmail(input: {
+  clientName: string;
+  connectionsUrl: string;
+}): RenderedEmail {
+  return emailLayout('Novo aplicativo conectado', [
+    paragraph(`${input.clientName} foi conectado à sua conta em produção.`),
+    button(input.connectionsUrl, 'Ver conexões'),
+    note('Se não reconhece essa conexão, desconecte-a agora.'),
+  ]);
+}
+
+export function creditsExhaustedEmail(input: {
+  billingUrl: string;
+}): RenderedEmail {
+  return emailLayout('Seus créditos acabaram', [
+    paragraph(
+      'Você usou todas as notas disponíveis e não conseguimos emitir uma nota.',
+    ),
+    paragraph('Adicione notas ou mude de plano para voltar a emitir.'),
+    button(input.billingUrl, 'Adicionar créditos'),
+  ]);
+}
+
+export function paymentFailedEmail(input: {
+  billingUrl: string;
+}): RenderedEmail {
+  return emailLayout('Não conseguimos cobrar sua assinatura', [
+    paragraph('O pagamento da sua assinatura do Corvo falhou.'),
+    paragraph(
+      'Atualize a forma de pagamento para não perder o acesso ao plano.',
+    ),
+    button(input.billingUrl, 'Atualizar pagamento'),
+  ]);
+}
+
+export function subscriptionCanceledEmail(input: {
+  billingUrl: string;
+}): RenderedEmail {
+  return emailLayout('Sua assinatura foi cancelada', [
+    paragraph(
+      'Sua assinatura do Corvo foi cancelada. Veja seu plano e seus créditos na página de cobrança.',
+    ),
+    button(input.billingUrl, 'Ver planos'),
+  ]);
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'administrador',
+  developer: 'desenvolvedor',
+  billing: 'cobrança',
+};
+
+export function memberAddedEmail(input: {
+  role: string;
+  appUrl: string;
+}): RenderedEmail {
+  return emailLayout('Você foi adicionado a uma conta no Corvo', [
+    paragraph(
+      `Você foi adicionado a uma conta no Corvo como ${ROLE_LABELS[input.role] ?? input.role}.`,
+    ),
+    paragraph(
+      'Entre com este e-mail para acessar. Enviaremos um código de acesso.',
+    ),
+    button(input.appUrl, 'Entrar no Corvo'),
+  ]);
+}
+
+export function certificateExpiringEmail(input: {
+  companyName: string;
+  stage: 30 | 7 | 0;
+  validUntil: string;
+  certificateUrl: string;
+}): RenderedEmail {
+  if (input.stage === 0)
+    return emailLayout('Certificado digital vencido', [
+      paragraph(
+        `O certificado digital da empresa ${input.companyName} venceu em ${input.validUntil}. Enquanto não for trocado, não é possível emitir notas.`,
+      ),
+      button(input.certificateUrl, 'Enviar novo certificado'),
+    ]);
+  return emailLayout(`Certificado digital vence em ${input.stage} dias`, [
+    paragraph(
+      `O certificado digital da empresa ${input.companyName} vence em ${input.validUntil}. Depois dessa data não será possível emitir notas.`,
+    ),
+    button(input.certificateUrl, 'Enviar novo certificado'),
+  ]);
+}
+
+export function pixExpiredEmail(input: { billingUrl: string }): RenderedEmail {
+  return emailLayout('Seu Pix expirou', [
+    paragraph(
+      'O Pix que você gerou no Corvo expirou sem ser pago, e nada foi cobrado.',
+    ),
+    paragraph('Se ainda quiser comprar, gere um novo Pix.'),
+    button(input.billingUrl, 'Gerar novo Pix'),
+  ]);
+}
+
+export function paymentMismatchEmail(input: {
+  billingUrl: string;
+}): RenderedEmail {
+  return emailLayout('Recebemos um valor diferente no seu Pix', [
+    paragraph(
+      'O valor pago no Pix é diferente do valor da cobrança, por isso não liberamos os créditos nem o plano.',
+    ),
+    paragraph(
+      'Responda a este atendimento pelo suporte para resolvermos, ou gere um novo Pix com o valor correto.',
+    ),
+    button(input.billingUrl, 'Ver cobrança'),
+  ]);
+}

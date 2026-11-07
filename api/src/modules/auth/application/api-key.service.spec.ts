@@ -20,7 +20,8 @@ describe(ApiKeyService.name, () => {
     remove: jest.fn(),
     touchLastUsed: jest.fn(),
   } as jest.Mocked<IApiKeyRepository>;
-  const service = new ApiKeyService(repository);
+  const eventBus = { publishBestEffort: jest.fn() };
+  const service = new ApiKeyService(repository, eventBus as never);
 
   beforeEach(() => {
     jest.resetAllMocks();

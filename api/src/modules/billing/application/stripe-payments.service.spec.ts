@@ -29,7 +29,11 @@ function setup(customerId: string | null = null) {
     provider as never,
     billing as never,
     store,
-    new PaymentFulfillmentService(credits as never, billing as never),
+    new PaymentFulfillmentService(
+      credits as never,
+      billing as never,
+      { publishBestEffort: jest.fn() } as never,
+    ),
     new PricingService(),
   );
   return { service, store, provider, credits, billing };

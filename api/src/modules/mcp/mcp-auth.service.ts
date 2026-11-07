@@ -3,6 +3,9 @@ import {
   runWithTenant,
 } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { requireTenantId } from '@/infra/persistence/typeorm/tenant-scope';
+import { IOAuthClientRepository } from '@/modules/auth/domain/oauth-client.repository';
+import { ApplicationEventBus } from '@/shared/events/application-event-bus';
+import { accountNotice } from '@/shared/events/account-notice.events';
 import { ITenantMembershipRepository } from '@/modules/auth/domain/tenant-membership.repository';
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -75,6 +78,9 @@ export class McpAuthService {
     private readonly config: ConfigService,
     @Inject(ITenantMembershipRepository)
     private readonly memberships: ITenantMembershipRepository,
+    @Inject(IOAuthClientRepository)
+    private readonly clients: IOAuthClientRepository,
+    private readonly eventBus: ApplicationEventBus,
   ) {}
 
   async createAuthorizationCode(params: {
@@ -178,6 +184,15 @@ export class McpAuthService {
         scopes,
         environment: code.environment ?? 'test',
       });
+      if (connection.environment === 'live') {
+        const client = await this.clients.findById(code.clientId);
+        this.eventBus.publishBestEffort(
+          accountNotice(code.tenantId, {
+            kind: 'mcp-connected',
+            clientName: client?.name ?? 'Um aplicativo de IA',
+          }),
+        );
+      }
 
       const accessToken = await this.signAccessToken({
         sub: code.authUserId,

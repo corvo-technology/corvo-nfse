@@ -54,10 +54,18 @@ export type SchedulePausedEmailJobData = {
   kind: 'schedule-paused';
 };
 
+export type NoticeEmailJobData = {
+  emailId: string;
+  to: string;
+  email: RenderedEmail;
+  kind: 'notice';
+};
+
 export type EmailJobData =
   | OtpEmailJobData
   | InvoiceEmailJobData
   | WelcomeEmailJobData
   | CreditsLowEmailJobData
   | ScheduleRetryEmailJobData
-  | SchedulePausedEmailJobData;
+  | SchedulePausedEmailJobData
+  | NoticeEmailJobData;

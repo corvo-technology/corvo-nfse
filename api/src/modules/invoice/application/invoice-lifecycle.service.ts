@@ -6,6 +6,7 @@ import { BillingRepository } from '@/modules/billing/domain/billing.repository';
 import { BillingUsageService } from '@/modules/billing/application/billing-usage.service';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ApplicationEventBus } from '@/shared/events/application-event-bus';
+import { accountNotice } from '@/shared/events/account-notice.events';
 import { creditsUsageChanged } from '@/modules/billing/application/credits-usage.events';
 import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import type { CachePort } from '@/infra/redis/cache.port';
@@ -279,6 +280,18 @@ export class InvoiceLifecycleService {
       );
       if (invoice.environment === 'live')
         await this.cache.delete(`credit:balance:${invoice.tenantId}`);
+      if (
+        applied &&
+        invoice.status === 'rejected' &&
+        invoice.environment === 'live'
+      )
+        this.eventBus?.publishBestEffort(
+          accountNotice(invoice.tenantId, {
+            kind: 'invoice-rejected',
+            invoiceId: invoice.id,
+            reason: invoice.toSnapshot().lastErrorMessage ?? 'Rejeição fiscal',
+          }),
+        );
       return applied;
     });
   }
