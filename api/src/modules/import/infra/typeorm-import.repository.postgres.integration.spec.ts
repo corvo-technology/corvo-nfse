@@ -144,9 +144,89 @@ describePostgres('import repository with restricted role', () => {
       invalid: 1,
       accepted: 3,
       authorized: 1,
+      awaitingCredits: 0,
       failed: 3, // invalid + rejected row + accepted-then-rejected invoice
       pending: 3, // valid + queued + accepted still processing
     });
+  });
+
+  it('keeps rows waiting for credits apart from real errors', async () => {
+    const imp = await repo.create(base(tenantA));
+    const limited = (line: number) => ({
+      ...row(line, 'rejected'),
+      errorCode: 'ERROR_MONTHLY_LIMIT_EXCEEDED',
+    });
+    await repo.insertRows(tenantA, imp.id, [
+      row(1, 'invalid'),
+      limited(2),
+      limited(3),
+      { ...row(4, 'rejected'), errorCode: 'ERROR_VALIDATION' },
+    ]);
+    expect(await repo.counters(tenantA, 'live', imp.id)).toMatchObject({
+      total: 4,
+      awaitingCredits: 2,
+      failed: 2,
+      pending: 0,
+    });
+  });
+
+  it('counts many imports at once and lists the newest first, scoped to tenant and environment', async () => {
+    const first = await repo.create(base(tenantA));
+    const second = await repo.create(base(tenantA));
+    await repo.create({ ...base(tenantA), environment: 'test' });
+    await repo.create(base(tenantB));
+    await repo.insertRows(tenantA, second.id, [
+      row(1, 'valid'),
+      row(2, 'valid'),
+    ]);
+    await admin.query(
+      `UPDATE "${schema}".imports SET created_at = now() - interval '1 hour' WHERE id = $1`,
+      [first.id],
+    );
+    const recent = await repo.listRecent(tenantA, 'live', 50);
+    expect(
+      recent
+        .map((r) => r.id)
+        .filter((id) => id === first.id || id === second.id),
+    ).toEqual([second.id, first.id]);
+    expect(await repo.listRecent(tenantA, 'live', 2)).toHaveLength(2);
+    const counts = await repo.countersMany(tenantA, 'live', [
+      first.id,
+      second.id,
+    ]);
+    expect(counts.get(second.id)).toMatchObject({
+      total: 2,
+      valid: 2,
+      pending: 2,
+    });
+    expect(counts.get(first.id)).toMatchObject({ total: 0 });
+    expect(
+      (await repo.listRecent(tenantA, 'live', 50)).every(
+        (r) => r.environment === 'live' && r.tenantId === tenantA,
+      ),
+    ).toBe(true);
+  });
+
+  it('lists accepted rows whose invoice failed afterwards, with the invoice error, by line', async () => {
+    const imp = await repo.create(base(tenantA));
+    const bad = await insertInvoice(tenantA, 'rejected');
+    const good = await insertInvoice(tenantA, 'authorized');
+    await admin.query(
+      `UPDATE "${schema}".nfse_invoices SET last_error_code = 'FISCAL_REJECTED', last_error_message = 'CPF do tomador não encontrado' WHERE id = $1`,
+      [bad],
+    );
+    await repo.insertRows(tenantA, imp.id, [
+      row(1, 'accepted', good),
+      row(2, 'accepted', bad),
+      row(3, 'valid'),
+    ]);
+    const out = await repo.listFailedInvoices(tenantA, 'live', imp.id, {
+      limit: 10,
+    });
+    expect(out.items.map((r) => [r.line, r.errorCode, r.errorMessage])).toEqual(
+      [[2, 'FISCAL_REJECTED', 'CPF do tomador não encontrado']],
+    );
+    expect(out.nextCursor).toBeNull();
   });
 
   it('pages rows by cursor without repeating or skipping any', async () => {

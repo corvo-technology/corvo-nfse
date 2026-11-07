@@ -8,6 +8,7 @@ import {
   runWithTenant,
 } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
+import { LIMIT_CODES } from '../domain/import';
 import type {
   ImportCounters,
   ImportRecord,
@@ -23,6 +24,17 @@ import { ImportOrmEntity } from './import.orm-entity';
 import { ImportRowOrmEntity } from './import-row.orm-entity';
 
 const INSERT_CHUNK = 500;
+
+const emptyCounters = (): ImportCounters => ({
+  total: 0,
+  valid: 0,
+  invalid: 0,
+  accepted: 0,
+  authorized: 0,
+  awaitingCredits: 0,
+  failed: 0,
+  pending: 0,
+});
 
 function toRecord(row: ImportOrmEntity): ImportRecord {
   return {
@@ -142,33 +154,115 @@ export class TypeOrmImportRepository extends ImportRepository {
     );
   }
 
-  counters(
+  async counters(
     tenantId: string,
     env: ExecutionEnvironment,
     id: string,
   ): Promise<ImportCounters> {
+    return (
+      (await this.countersMany(tenantId, env, [id])).get(id) ?? emptyCounters()
+    );
+  }
+
+  countersMany(
+    tenantId: string,
+    env: ExecutionEnvironment,
+    ids: string[],
+  ): Promise<Map<string, ImportCounters>> {
     return runWithTenant(tenantId, async () => {
+      const result = new Map<string, ImportCounters>(
+        ids.map((id) => [id, emptyCounters()]),
+      );
+      if (ids.length === 0) return result;
       const schema = this.schema();
-      const [raw]: ImportCounters[] = await this.manager().query<
-        ImportCounters[]
-      >(
-        `SELECT
+      const raw: Array<Record<string, number | string>> =
+        await this.manager().query(
+          `SELECT
+           r.import_id AS id,
            count(*)::int AS total,
            count(*) FILTER (WHERE r.status = 'valid')::int AS valid,
            count(*) FILTER (WHERE r.status = 'invalid')::int AS invalid,
            count(*) FILTER (WHERE r.status = 'accepted')::int AS accepted,
            count(*) FILTER (WHERE r.status = 'accepted' AND i.status = 'authorized')::int AS authorized,
-           count(*) FILTER (WHERE r.status IN ('invalid','rejected')
+           count(*) FILTER (WHERE r.status = 'rejected' AND r.error_code = ANY($4))::int AS "awaitingCredits",
+           count(*) FILTER (WHERE r.status = 'invalid'
+             OR (r.status = 'rejected' AND NOT (COALESCE(r.error_code, '') = ANY($4)))
              OR (r.status = 'accepted' AND i.status IN ('rejected','failed','manual_review')))::int AS failed,
            count(*) FILTER (WHERE r.status IN ('valid','queued')
              OR (r.status = 'accepted' AND i.status IN ('queued','processing','retry_pending','reconciliation_required')))::int AS pending
          FROM ${schema}.import_rows r
          JOIN ${schema}.imports m ON m.id = r.import_id
          LEFT JOIN ${schema}.nfse_invoices i ON i.id = r.invoice_id
-         WHERE r.import_id = $1 AND m.tenant_id = $2 AND m.environment = $3`,
-        [id, tenantId, env],
+         WHERE r.import_id = ANY($1) AND m.tenant_id = $2 AND m.environment = $3
+         GROUP BY r.import_id`,
+          [ids, tenantId, env, LIMIT_CODES],
+        );
+      for (const { id, ...counts } of raw)
+        result.set(String(id), counts as unknown as ImportCounters);
+      return result;
+    });
+  }
+
+  listRecent(
+    tenantId: string,
+    env: ExecutionEnvironment,
+    limit: number,
+  ): Promise<ImportRecord[]> {
+    return runWithTenant(tenantId, async () => {
+      const rows = await this.imports().find({
+        where: { tenantId, environment: env },
+        order: { createdAt: 'DESC', id: 'DESC' },
+        take: limit,
+      });
+      return rows.map(toRecord);
+    });
+  }
+
+  listFailedInvoices(
+    tenantId: string,
+    env: ExecutionEnvironment,
+    importId: string,
+    query: { cursor?: string; limit: number },
+  ): Promise<RowPage> {
+    return runWithTenant(tenantId, async () => {
+      const schema = this.schema();
+      const found: Array<{
+        line: number;
+        data: Record<string, unknown>;
+        invoice_id: string;
+        code: string | null;
+        message: string | null;
+      }> = await this.manager().query(
+        `SELECT r.line, r.data, r.invoice_id, i.last_error_code AS code, i.last_error_message AS message
+           FROM ${schema}.import_rows r
+           JOIN ${schema}.imports m ON m.id = r.import_id
+           JOIN ${schema}.nfse_invoices i ON i.id = r.invoice_id
+          WHERE r.import_id = $1 AND m.tenant_id = $2 AND m.environment = $3
+            AND r.status = 'accepted' AND i.status IN ('rejected','failed','manual_review')
+            AND r.line > $4
+          ORDER BY r.line LIMIT $5`,
+        [
+          importId,
+          tenantId,
+          env,
+          query.cursor ? Number(query.cursor) : 0,
+          query.limit + 1,
+        ],
       );
-      return raw;
+      const items: ImportRow[] = found.slice(0, query.limit).map((r) => ({
+        line: r.line,
+        data: r.data,
+        status: 'accepted',
+        errorCode: r.code,
+        errorMessage: r.message,
+        invoiceId: r.invoice_id,
+      }));
+      const last = items.at(-1);
+      return {
+        items,
+        nextCursor:
+          found.length > query.limit && last ? String(last.line) : null,
+      };
     });
   }
 

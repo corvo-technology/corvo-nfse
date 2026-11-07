@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { InvoiceBatchService } from '@/modules/invoice/application/invoice-batch.service';
 import {
+  LIMIT_CODES,
   MAX_ROWS_PAGE,
   type ImportCounters,
   type ImportRecord,
@@ -18,6 +19,17 @@ import { importAuthContext } from './system-auth-context';
 export type ImportView = ImportRecord & { counters: ImportCounters };
 
 const ERRORS_PAGE = 200;
+export const MAX_RECENT_IMPORTS = 20;
+const EMPTY_COUNTERS: ImportCounters = {
+  total: 0,
+  valid: 0,
+  invalid: 0,
+  accepted: 0,
+  authorized: 0,
+  awaitingCredits: 0,
+  failed: 0,
+  pending: 0,
+};
 const DISCARDABLE = new Set(['processing', 'ready', 'failed']);
 
 /** A cell for Excel in Brazil: ; separated, quoted when it holds ; " or a line break. */
@@ -53,6 +65,28 @@ export class ImportReviewService {
     id: string,
   ): Promise<void> {
     await this.owned(tenantId, env, id);
+  }
+
+  /** The newest imports with their counters, so the user can pick one up again later. */
+  async list(
+    tenantId: string,
+    env: ExecutionEnvironment,
+    limit: number,
+  ): Promise<ImportView[]> {
+    if (limit < 1 || limit > MAX_RECENT_IMPORTS)
+      throw new BadRequestException(
+        `limit must be between 1 and ${MAX_RECENT_IMPORTS}`,
+      );
+    const records = await this.repo.listRecent(tenantId, env, limit);
+    const counters = await this.repo.countersMany(
+      tenantId,
+      env,
+      records.map((record) => record.id),
+    );
+    return records.map((record) => ({
+      ...record,
+      counters: counters.get(record.id) ?? EMPTY_COUNTERS,
+    }));
   }
 
   async get(
@@ -152,15 +186,34 @@ export class ImportReviewService {
           cursor,
         });
         for (const row of page.items) {
-          const service = row.data.service as
-            | { description?: unknown }
-            | undefined;
-          yield `${[row.line, row.errorCode, row.errorMessage, service?.description, row.data.amount].map(cell).join(';')}\n`;
+          // Waiting for credits is not an error: those rows are emitted again after a top-up.
+          if (
+            status === 'rejected' &&
+            row.errorCode &&
+            LIMIT_CODES.includes(row.errorCode)
+          )
+            continue;
+          yield errorLine(row);
         }
         cursor = page.nextCursor ?? undefined;
       } while (cursor);
     }
+    // Rows that were accepted and then refused by the city: the error lives on the invoice.
+    let cursor: string | undefined;
+    do {
+      const page = await this.repo.listFailedInvoices(tenantId, env, id, {
+        limit: ERRORS_PAGE,
+        cursor,
+      });
+      for (const row of page.items) yield errorLine(row);
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
   }
+}
+
+function errorLine(row: ImportRow): string {
+  const service = row.data.service as { description?: unknown } | undefined;
+  return `${[row.line, row.errorCode, row.errorMessage, service?.description, row.data.amount].map(cell).join(';')}\n`;
 }
 
 export const TEMPLATE_CSV =

@@ -17,12 +17,16 @@ const counters = {
   invalid: 1,
   accepted: 0,
   authorized: 0,
+  awaitingCredits: 0,
   failed: 1,
   pending: 1,
 };
 
 describe('ImportReviewService', () => {
   const repo = {
+    countersMany: jest.fn(),
+    listRecent: jest.fn(),
+    listFailedInvoices: jest.fn(),
     updateStatus: jest.fn(),
     markDone: jest.fn(),
     updateEditableRow: jest.fn(),
@@ -161,7 +165,11 @@ describe('ImportReviewService', () => {
           ],
           nextCursor: null,
         })
-        .mockResolvedValueOnce({ items: [], nextCursor: null });
+        .mockResolvedValue({ items: [], nextCursor: null });
+      repo.listFailedInvoices.mockResolvedValue({
+        items: [],
+        nextCursor: null,
+      });
       let out = '';
       for await (const chunk of service.errorsCsv(T, 'live', 'i1'))
         out += chunk;
@@ -208,7 +216,7 @@ describe('ImportReviewService', () => {
     expect(repo.delete).not.toHaveBeenCalled();
   });
 
-  it('streams the error csv page by page, with a BOM, ; separators and escaped cells', async () => {
+  it('streams the error csv page by page, with a BOM, ; separators and escaped cells; leaving out rows that only wait for credits', async () => {
     repo.listRows
       .mockResolvedValueOnce({
         items: [
@@ -232,20 +240,64 @@ describe('ImportReviewService', () => {
             errorMessage: 'limit',
             data: {},
           },
+          {
+            line: 6,
+            status: 'rejected',
+            errorCode: 'ERROR_IDEMPOTENCY_CONFLICT',
+            errorMessage: 'conflict',
+            data: {},
+          },
         ],
         nextCursor: null,
       });
+    repo.listFailedInvoices.mockResolvedValueOnce({
+      items: [
+        {
+          line: 9,
+          status: 'accepted',
+          errorCode: 'FISCAL_REJECTED',
+          errorMessage: 'CPF não encontrado',
+          data: { amount: 10, service: { description: 'Serviço' } },
+        },
+      ],
+      nextCursor: null,
+    });
     let text = '';
     for await (const chunk of service.errorsCsv(T, 'live', 'i1')) text += chunk;
-    expect(text.startsWith('﻿linha;codigo;mensagem;descricao;valor\n')).toBe(
-      true,
-    );
+    expect(
+      text.startsWith('\uFEFFlinha;codigo;mensagem;descricao;valor\n'),
+    ).toBe(true);
     expect(text).toContain('2;ERROR_VALIDATION;"a; ""b""";Desc;x\n');
-    expect(text).toContain('5;ERROR_QUOTA_EXCEEDED;limit;;\n');
+    expect(text).not.toContain('ERROR_QUOTA_EXCEEDED');
+    expect(text).toContain('6;ERROR_IDEMPOTENCY_CONFLICT;conflict;;\n');
+    expect(text).toContain('9;FISCAL_REJECTED;CPF não encontrado;Serviço;10\n');
     expect(repo.listRows).toHaveBeenNthCalledWith(1, T, 'live', 'i1', {
       status: 'invalid',
       limit: 200,
       cursor: undefined,
     });
+  });
+
+  it('lists the recent imports with their counters, newest first', async () => {
+    repo.listRecent.mockResolvedValue([
+      record({ id: 'a' }),
+      record({ id: 'b' }),
+    ]);
+    repo.countersMany.mockResolvedValue(
+      new Map([
+        ['a', { ...counters, total: 1 }],
+        ['b', { ...counters, total: 2 }],
+      ]),
+    );
+    const out = await service.list(T, 'live', 10);
+    expect(repo.listRecent).toHaveBeenCalledWith(T, 'live', 10);
+    expect(out.map((v) => [v.id, v.counters.total])).toEqual([
+      ['a', 1],
+      ['b', 2],
+    ]);
+  });
+
+  it('refuses a list bigger than 20', async () => {
+    await expect(service.list(T, 'live', 21)).rejects.toThrow();
   });
 });

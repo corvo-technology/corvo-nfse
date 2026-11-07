@@ -67,3 +67,16 @@ export class UpdateImportRowDto {
   @IsObject()
   item!: Record<string, unknown>;
 }
+
+export class ListImportsQuery {
+  @ApiPropertyOptional({ default: 10, maximum: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @Transform(({ value }: { value: unknown }) =>
+    value === '' ? undefined : value,
+  )
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  limit?: number;
+}

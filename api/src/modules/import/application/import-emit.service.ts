@@ -4,26 +4,17 @@ import type { Queue } from 'bullmq';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { InvoiceBatchService } from '@/modules/invoice/application/invoice-batch.service';
 import { ImportRepository } from '../domain/import.repository';
+import { LIMIT_CODES } from '../domain/import';
 import { ImportStateError } from '../domain/import-error';
 import { rowKey, type ImportRef } from './import-reader.service';
 import { ImportReviewService, type ImportView } from './import-review.service';
 import { importAuthContext } from './system-auth-context';
 
+export { LIMIT_CODES };
 export const IMPORT_EMIT_QUEUE = 'import-emit';
 export const IMPORT_EMIT_ATTEMPTS = 3;
 /** Same size the batch accepts in one call. */
 const CHUNK = 50;
-/** Rejections that go away by topping up credits or waiting: those rows can be emitted again. */
-export const LIMIT_CODES = [
-  'ERROR_PLAN_BLOCKED',
-  'ERROR_MONTHLY_LIMIT_EXCEEDED',
-  'ERROR_DAILY_LIMIT_EXCEEDED',
-  'ERROR_INSUFFICIENT_CREDITS',
-  'ERROR_QUOTA_EXCEEDED',
-  // The job gave up after every attempt: nothing wrong with the row itself.
-  'ERROR_IMPORT_EMIT_FAILED',
-];
-
 @Injectable()
 export class ImportEmitService {
   constructor(

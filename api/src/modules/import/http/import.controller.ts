@@ -39,6 +39,7 @@ import { MAX_IMPORT_BYTES } from '../domain/import';
 import { ImportFileInvalidError } from '../domain/import-error';
 import {
   ListImportRowsQuery,
+  ListImportsQuery,
   StartImportDto,
   UpdateImportRowDto,
   type UploadedImportFile,
@@ -91,6 +92,26 @@ export class ImportController {
         }),
       ),
     );
+  }
+
+  @Get()
+  @RequirePermission('nfse.invoices.issue')
+  @ApiOperation({
+    summary: 'Recent imports with their counters (newest first, at most 20)',
+    description:
+      'Lets the user pick an import up again, for example after topping up credits.',
+  })
+  async list(
+    @Query() query: ListImportsQuery,
+    @Req() req: RequestWithAuthContext,
+  ) {
+    const auth = req.authContext!;
+    const views = await this.review.list(
+      auth.activeTenantId,
+      executionEnvironment(auth),
+      query.limit ?? 10,
+    );
+    return { data: views.map(toImportResponse) };
   }
 
   @Get('template')

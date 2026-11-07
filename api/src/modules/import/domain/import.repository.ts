@@ -38,6 +38,25 @@ export abstract class ImportRepository {
     env: ExecutionEnvironment,
     id: string,
   ): Promise<ImportCounters>;
+  /** Counters of several imports in one query. Imports with no rows get all zeros. */
+  abstract countersMany(
+    tenantId: string,
+    env: ExecutionEnvironment,
+    ids: string[],
+  ): Promise<Map<string, ImportCounters>>;
+  /** Newest imports first, for the "recent imports" list. */
+  abstract listRecent(
+    tenantId: string,
+    env: ExecutionEnvironment,
+    limit: number,
+  ): Promise<ImportRecord[]>;
+  /** Accepted rows whose invoice failed afterwards, with the invoice's own error. */
+  abstract listFailedInvoices(
+    tenantId: string,
+    env: ExecutionEnvironment,
+    importId: string,
+    query: { cursor?: string; limit: number },
+  ): Promise<RowPage>;
   abstract listRows(
     tenantId: string,
     env: ExecutionEnvironment,
