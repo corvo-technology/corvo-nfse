@@ -149,10 +149,10 @@ it("forwards the spreadsheet import routes with their methods, and allows a 10 M
   const call = (run: typeof GET, route: string, method: string, extra: RequestInit = {}) =>
     run(new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers: origin, ...extra }), context(route));
   for (const [run, route, method] of [
-    [POST, "imports", "POST"], [GET, "imports/template", "GET"], [GET, "imports/abc", "GET"], [DELETE, "imports/abc", "DELETE"],
+    [POST, "imports", "POST"], [GET, "imports", "GET"], [GET, "imports/template", "GET"], [GET, "imports/abc", "GET"], [DELETE, "imports/abc", "DELETE"],
     [GET, "imports/abc/rows", "GET"], [PATCH, "imports/abc/rows/4", "PATCH"], [POST, "imports/abc/emit", "POST"], [GET, "imports/abc/errors.csv", "GET"],
   ] as const) expect((await call(run, route, method)).status).not.toBe(404);
-  for (const [run, route, method] of [[PUT, "imports/abc", "PUT"], [POST, "imports/abc", "POST"], [DELETE, "imports", "DELETE"], [GET, "imports/abc/other", "GET"]] as const)
+  for (const [run, route, method] of [[PUT, "imports/abc", "PUT"], [POST, "imports/abc", "POST"], [DELETE, "imports", "DELETE"], [PUT, "imports", "PUT"], [GET, "imports/abc/other", "GET"]] as const)
     expect((await call(run, route, method)).status).toBe(404);
   const headers = { ...origin, "Content-Type": "multipart/form-data; boundary=test" };
   const big = await POST(new NextRequest("http://localhost:4000/api/proxy/v1/imports", { method: "POST", headers, body: "x".repeat(5 * 1024 * 1024) }), context("imports"));

@@ -36,7 +36,7 @@ const routes: [RegExp, string[]][] = [
   [/^schedules\/[^/]+$/, ["GET", "PATCH"]],
   [/^schedules\/[^/]+\/runs$/, ["GET"]],
   [/^schedules\/[^/]+\/(pause|resume|cancel)$/, ["POST"]],
-  [/^imports$/, ["POST"]],
+  [/^imports$/, ["GET", "POST"]],
   [/^imports\/template$/, ["GET"]],
   [/^imports\/[^/]+$/, ["GET", "DELETE"]],
   [/^imports\/[^/]+\/rows$/, ["GET"]],
