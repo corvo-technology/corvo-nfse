@@ -173,15 +173,10 @@ describe('ImportReviewService', () => {
       let out = '';
       for await (const chunk of service.errorsCsv(T, 'live', 'i1'))
         out += chunk;
-      expect(out).toContain(
-        `;'${text.includes('"') ? text.replaceAll('"', '""') : text}`.replace(
-          `;'`,
-          text.includes('"') ? `;"'` : `;'`,
-        ),
-      );
-      expect(out).not.toMatch(
-        new RegExp(`;${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[;\n]`),
-      );
+      // The description is the 4th cell of the data line: it must start with an apostrophe so Excel shows it as text.
+      const description = (out.split('\n')[1] ?? '').split(';')[3] ?? '';
+      expect(description.replace(/^"/, '').startsWith("'")).toBe(true);
+      expect(description).toContain(text.replaceAll('"', '""'));
     },
   );
 
