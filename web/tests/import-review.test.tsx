@@ -15,7 +15,7 @@ vi.mock("@/lib/api", async (original) => ({
 vi.mock("@/lib/download", () => ({ saveBlob: mocks.download }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ error: mocks.toastError, success: mocks.toastSuccess }) }));
 
-const job = (over: Partial<ImportJob["counters"]> = {}): ImportJob => ({ id: "i1", status: "ready", fileName: "n.csv", companyId: null, errorCode: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "", counters: { total: 3, valid: 2, invalid: 1, accepted: 0, authorized: 0, awaitingCredits: 0, failed: 1, pending: 2, ...over } });
+const job = (over: Partial<ImportJob["counters"]> = {}): ImportJob => ({ id: "i1", status: "ready", fileName: "n.csv", companyId: null, errorCode: null, rowsExpected: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "", counters: { total: 3, valid: 2, invalid: 1, accepted: 0, authorized: 0, awaitingCredits: 0, validAmount: 0, awaitingAmount: 0, failed: 1, pending: 2, ...over } });
 const row = (line: number, over: Partial<ImportRow> = {}): ImportRow => ({
   line, status: "valid", errorCode: null, errorMessage: null, invoiceId: null,
   data: { amount: 100 * line, competenceDate: "2026-11-07", customer: { name: `Cliente ${line}`, taxId: "52998224725", email: "c@x.com" }, service: { description: `Serviço ${line}`, code: "010101" } }, ...over,

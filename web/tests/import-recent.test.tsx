@@ -11,8 +11,8 @@ vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: str
 vi.mock("@/lib/api", async (original) => ({ ...(await original<typeof import("@/lib/api")>()), imports: { list: mocks.list } }));
 
 const job = (id: string, status: ImportJob["status"], counters: Partial<ImportJob["counters"]> = {}, fileName = `${id}.csv`): ImportJob => ({
-  id, status, fileName, companyId: null, errorCode: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "2026-11-07T12:05:00.000Z",
-  counters: { total: 300, valid: 0, invalid: 0, accepted: 0, authorized: 0, awaitingCredits: 0, failed: 0, pending: 0, ...counters },
+  id, status, fileName, companyId: null, errorCode: null, rowsExpected: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "2026-11-07T12:05:00.000Z",
+  counters: { total: 300, valid: 0, invalid: 0, accepted: 0, authorized: 0, awaitingCredits: 0, validAmount: 0, awaitingAmount: 0, failed: 0, pending: 0, ...counters },
 });
 const show = () => render(<NextIntlClientProvider locale="en" messages={messages}><RecentImports /></NextIntlClientProvider>);
 

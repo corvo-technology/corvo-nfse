@@ -13,8 +13,8 @@ vi.mock("@/lib/download", () => ({ saveBlob: mocks.download }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ error: mocks.toastError, success: vi.fn() }) }));
 
 const job = (status: ImportJob["status"], counters: Partial<ImportJob["counters"]> = {}): ImportJob => ({
-  id: "i1", status, fileName: "n.csv", companyId: null, errorCode: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "",
-  counters: { total: 10, valid: 0, invalid: 2, accepted: 8, authorized: 4, awaitingCredits: 0, failed: 2, pending: 4, ...counters },
+  id: "i1", status, fileName: "n.csv", companyId: null, errorCode: null, rowsExpected: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "",
+  counters: { total: 10, valid: 0, invalid: 2, accepted: 8, authorized: 4, awaitingCredits: 0, validAmount: 0, awaitingAmount: 0, failed: 2, pending: 4, ...counters },
 });
 const show = (j: ImportJob, onRefresh = vi.fn().mockResolvedValue(undefined), onAnother = vi.fn()) => {
   render(<NextIntlClientProvider locale="en" messages={messages}><ImportProgress job={j} onRefresh={onRefresh} onAnother={onAnother} /></NextIntlClientProvider>);
