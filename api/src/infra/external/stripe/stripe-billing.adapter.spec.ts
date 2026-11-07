@@ -141,6 +141,7 @@ describe('Stripe billing adapter', () => {
         mode: 'payment',
         customer: 'cus_fixture',
         allowed_payment_method_types: ['card'],
+        allow_promotion_codes: true,
         metadata: { tenant_id: 'tenant', intent_id: 'intent-1' },
         line_items: [
           {
@@ -197,6 +198,7 @@ describe('Stripe billing adapter', () => {
         mode: 'subscription',
         ui_mode: 'hosted_page',
         allowed_payment_method_types: ['card'],
+        allow_promotion_codes: true,
         branding_settings: expect.objectContaining({
           display_name: 'Corvo',
           background_color: '#0a0a0a',
