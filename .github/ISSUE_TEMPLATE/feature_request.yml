@@ -1,0 +1,22 @@
+name: Feature request
+description: An idea to improve Corvo.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you would like
+      description: How it could work. Alternatives you considered are welcome.
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Is it about NFS-e (services)?
+      description: NF-e and NFC-e are out of scope. See docs/fiscal/limitations.md.
+      options: ["Yes", "Not sure"]

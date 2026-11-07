@@ -13,8 +13,8 @@ DPS sequences use the owning company; invoice events use the owning invoice.
 Policies cover both visibility (`USING`) and writes (`WITH CHECK`). Without a
 tenant context these tables return no business rows and reject inserts.
 
-The implementation follows Greenflow's AsyncLocalStorage and PostgreSQL driver
-connection acquisition pattern. On **every acquisition**, master and replica
+The implementation uses an AsyncLocalStorage scope and a PostgreSQL driver
+connection acquisition hook. On **every acquisition**, master and replica
 connections receive `app.current_tenant_id`, `app.current_auth_user_id` and
 `app.system_context`. Values are reset even when the pool reuses a connection.
 Keep normal PostgreSQL pooling or PgBouncer in **session** pooling mode;

@@ -9,7 +9,7 @@ type Driver = {
   corvoRlsInstalled?: boolean;
 };
 
-/** Greenflow's acquisition hook, with strict scope and an unconditional reset on reuse. */
+/** The connection acquisition hook, with strict scope and an unconditional reset on reuse. */
 export function installRlsConnectionScope(
   dataSource: Pick<DataSource, 'driver'>,
 ): void {
