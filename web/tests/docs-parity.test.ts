@@ -36,11 +36,11 @@ describe("EN/PT docs parity", () => {
     expect(describeSection(en, en.pages[slug])).toEqual(describeSection(pt, pt.pages[slug]));
   });
 
-  it("documents exactly 33 endpoint operations", () => {
+  it("documents exactly 39 endpoint operations", () => {
     const allEndpoints = DOC_SLUGS.flatMap((slug) => endpoints(pt.pages[slug].blocks));
     const unique = new Set(allEndpoints.map((e) => `${e.method} ${e.path}`));
-    expect(allEndpoints).toHaveLength(33);
-    expect(unique.size).toBe(33);
+    expect(allEndpoints).toHaveLength(39);
+    expect(unique.size).toBe(39);
   });
 
   it.each([["en", en], ["pt", pt]] as const)("documents POST /v1/invoices/batches in the %s endpoint table and reference", (_lang, tree) => {

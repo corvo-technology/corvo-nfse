@@ -1,6 +1,7 @@
 // lib/docs/content/pt.ts
 import { SDKS } from "../../sdks";
 import type { DocsTree } from "../types";
+import { importsPage } from "../imports-page";
 import { municipalitiesPage } from "../municipalities-page";
 
 const ptWithRetiredCredits: DocsTree = {
@@ -2514,6 +2515,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         },
       ],
     },
+    imports: importsPage("pt"),
     municipalities: municipalitiesPage("pt"),
     "payment-integrations": {
       title: "Integrações de pagamento",
@@ -2768,6 +2770,48 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`nfse:write`",
               "`schedule_id`",
               "a agenda"
+            ],
+            [
+              "`import_create`",
+              "`nfse:write`",
+              "`content` (CSV) ou `content_base64` (.xlsx), `file_name?`, `company_id?`; até 1 MB e 2.000 linhas",
+              "`{ id, status, duplicate_of }`; a leitura é assíncrona"
+            ],
+            [
+              "`import_list`",
+              "`nfse:read`",
+              "`limit?` (1 a 20)",
+              "`{ imports [...] }` com contadores, das mais novas para as mais antigas"
+            ],
+            [
+              "`import_get`",
+              "`nfse:read`",
+              "`import_id`",
+              "a importação: `status`, `rows_expected`, `counters` (`valid_amount`, `awaiting_credits`...)"
+            ],
+            [
+              "`import_rows`",
+              "`nfse:read`",
+              "`import_id`, `status?`, `cursor?`, `limit?` (até 200)",
+              "`{ rows [{ line, data, status, error_code, error_message, invoice_id }], next_cursor, has_more }`"
+            ],
+            [
+              "`import_fix_row`",
+              "`nfse:write`",
+              "`import_id`, `line`, `item`",
+              "a linha, conferida de novo (`valid` ou `invalid` com o motivo)"
+            ],
+            [
+              "`import_emit`",
+              "`nfse:write`",
+              "`import_id`",
+              "a importação, `emitting`; chame de novo depois de recarregar créditos para enviar só as `awaiting_credits`"
+            ],
+            [
+              "`import_discard`",
+              "`nfse:write`",
+              "`import_id`",
+              "`{ import_id, discarded: true }`"
             ],
             [
               "`company_list`",

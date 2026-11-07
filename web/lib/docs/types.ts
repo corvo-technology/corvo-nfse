@@ -12,6 +12,7 @@ export type DocSlug =
   | "companies"
   | "certificates"
   | "invoices"
+  | "imports"
   | "webhooks"
   | "credits"
   | "billing"
