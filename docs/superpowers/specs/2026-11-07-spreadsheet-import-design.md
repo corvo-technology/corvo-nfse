@@ -91,6 +91,12 @@ Duas tabelas novas: `imports` (id, tenant, ambiente, usuário, nome do arquivo, 
 13. **Arquivo entre o envio e a fila.** Os bytes vão para o S3 (mesmo bucket e credenciais do armazenamento de PDF/XML), numa chave `imports/<tenant>/<ambiente>/<importId>`, sem usar o nome original. Um armazenamento pequeno e próprio (salvar, ler, apagar) é criado, porque o atual só conhece PDF e XML de nota. O arquivo é apagado assim que a leitura termina (com sucesso ou falha) e quando a importação é descartada; uma limpeza diária remove arquivos órfãos com mais de 24 horas. O arquivo nunca é entregue por link. O 202 sai rápido, sem ler o arquivo no pedido.
 14. **Validação sem gravar.** `prepareEmission` só consulta (chave de idempotência, empresa); se ele criar algum efeito colateral, separamos uma validação pura em `InvoiceService`.
 
+## Decisões confirmadas pelo dono do produto
+
+15. **Acompanhamento.** Três contadores: *aceitas*, *autorizadas* e *com erro*. A importação só é dada como concluída quando nada está em processamento. A economia de tempo e o valor em R$ contam só as autorizadas.
+16. **Mesma planilha reenviada.** Só avisa (mesmo hash de arquivo, mesmo tenant, ambiente e empresa), sem bloquear.
+17. **Conferência paginada, sempre.** Nenhuma resposta devolve todas as linhas. `GET /imports/:id/rows` usa cursor, tamanho padrão 50 e máximo 200. Os contadores vêm de uma agregação no banco, nunca de carregar linhas. O CSV de erros é gerado em fluxo (streaming), sem montar tudo na memória. Isso vale para a tela e para qualquer cliente futuro.
+
 ## Fica para quem constrói
 
 - Nomes exatos de classes, rotas dentro dos módulos e formato dos DTOs, seguindo o padrão do módulo `invoice-schedule`.
