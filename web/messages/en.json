@@ -2927,7 +2927,10 @@
       "titlePaused": "Credits ran out before the end",
       "bodyPaused": "The other invoices were already issued. Top up your credits and issue the ones that are left, without uploading the spreadsheet again.",
       "awaiting": "Waiting for credits",
-      "buyCredits": "Buy credits"
+      "buyCredits": "Buy credits",
+      "hero": "authorized of {total}",
+      "balance": "Current balance: {count, plural, one {# credit} other {# credits}}",
+      "waitingAmount": "{amount} waiting to be issued"
     },
     "rowError": {
       "ERROR_IMPORT_COMPANY_MISMATCH": "This row's CNPJ is not the chosen company's.",

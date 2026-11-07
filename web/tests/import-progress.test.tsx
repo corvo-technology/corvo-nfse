@@ -6,9 +6,9 @@ import { ImportProgress } from "@/components/imports/import-progress";
 import type { ImportJob } from "@/lib/types";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ emit: vi.fn(), errorsCsv: vi.fn(), download: vi.fn(), toastError: vi.fn() }));
+const mocks = vi.hoisted(() => ({ emit: vi.fn(), errorsCsv: vi.fn(), download: vi.fn(), toastError: vi.fn(), balance: vi.fn() }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
-vi.mock("@/lib/api", async (original) => ({ ...(await original<typeof import("@/lib/api")>()), imports: { emit: mocks.emit, errorsCsv: mocks.errorsCsv } }));
+vi.mock("@/lib/api", async (original) => ({ ...(await original<typeof import("@/lib/api")>()), imports: { emit: mocks.emit, errorsCsv: mocks.errorsCsv }, credits: { balance: mocks.balance } }));
 vi.mock("@/lib/download", () => ({ saveBlob: mocks.download }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ error: mocks.toastError, success: vi.fn() }) }));
 
@@ -22,14 +22,14 @@ const show = (j: ImportJob, onRefresh = vi.fn().mockResolvedValue(undefined), on
 };
 const tile = (label: string) => screen.getByText(label).parentElement?.textContent ?? "";
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); mocks.balance.mockResolvedValue({ tenantId: "t", balance: 3, hardLimit: null }); });
 afterEach(cleanup);
 
 describe("ImportProgress", () => {
   it("shows the counters, what is still running and the bar while emitting", () => {
     show(job("emitting"));
     expect(screen.getByRole("heading", { name: /issuing your invoices/i })).toBeTruthy();
-    for (const [label, n] of [["Accepted", "8"], ["Authorized", "4"], ["With errors", "2"], ["In progress", "4"]] as const) expect(tile(label)).toContain(n);
+    for (const [label, n] of [["Accepted", "8"], ["With errors", "2"], ["In progress", "4"]] as const) expect(tile(label)).toContain(n);
     expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("50");
     expect(screen.getByText(/you can close this page/i)).toBeTruthy();
     expect(screen.queryByText("Waiting for credits")).toBeNull();
@@ -53,6 +53,19 @@ describe("ImportProgress", () => {
     expect(screen.queryByRole("button", { name: /download only the errors/i })).toBeNull();
   });
 
+  it("leads with how many invoices were authorized, out of how many are being issued", () => {
+    show(job("emitting"));
+    const hero = screen.getByTestId("authorized-hero");
+    expect(hero.textContent).toContain("4");
+    expect(hero.textContent).toMatch(/authorized of 8/i);
+  });
+
+  it("draws the bar in two layers: final answers and invoices still in flight", () => {
+    show(job("emitting", { total: 10, invalid: 2, authorized: 4, failed: 2, pending: 2 }));
+    expect(screen.getByTestId("bar-final").style.width).toBe("50%");
+    expect(screen.getByTestId("bar-flight").style.width).toBe("25%");
+  });
+
   describe("when the credits ran out", () => {
     const paused = (extra: Partial<ImportJob["counters"]> = {}) => job("done", { total: 300, invalid: 3, accepted: 20, authorized: 17, awaitingCredits: 277, failed: 3, pending: 0, ...extra });
 
@@ -61,6 +74,7 @@ describe("ImportProgress", () => {
       expect(screen.getByRole("heading", { name: /credits ran out/i })).toBeTruthy();
       expect(screen.queryByRole("heading", { name: /import finished/i })).toBeNull();
       expect(tile("Waiting for credits")).toContain("277");
+      expect(screen.getByTestId("waiting-hero").textContent).toContain("277");
       expect(tile("With errors")).toContain("3");
       expect(screen.getByText(/277 invoices are waiting for credits/i)).toBeTruthy();
       expect(screen.getByRole("link", { name: /buy credits/i }).getAttribute("href")).toBe("/app/billing");
@@ -85,6 +99,22 @@ describe("ImportProgress", () => {
     it("shows the call to continue even while other invoices are still being processed", () => {
       show(job("emitting", { awaitingCredits: 5, pending: 3 }));
       expect(screen.getByRole("button", { name: /issue the 5 that are left/i })).toBeTruthy();
+    });
+
+    it("shows the money that is waiting and the current balance, and reads the balance again when the person comes back", async () => {
+      show(paused({ awaitingAmount: 12345.6 }));
+      expect(screen.getByText(/12,345\.60 waiting to be issued/i)).toBeTruthy();
+      expect(await screen.findByText(/current balance: 3 credits/i)).toBeTruthy();
+      mocks.balance.mockResolvedValue({ tenantId: "t", balance: 400, hardLimit: null });
+      fireEvent(window, new Event("focus"));
+      expect(await screen.findByText(/current balance: 400 credits/i)).toBeTruthy();
+    });
+
+    it("does not break when the balance cannot be read", async () => {
+      mocks.balance.mockRejectedValue(new Error("down"));
+      show(paused());
+      await waitFor(() => expect(mocks.balance).toHaveBeenCalled());
+      expect(screen.getByRole("button", { name: /issue the 277 that are left/i })).toBeTruthy();
     });
   });
 });

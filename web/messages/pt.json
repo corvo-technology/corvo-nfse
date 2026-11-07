@@ -2927,7 +2927,10 @@
       "titlePaused": "Os créditos acabaram antes do fim",
       "bodyPaused": "As outras notas já foram emitidas. Recarregue seus créditos e emita as que faltam, sem enviar a planilha de novo.",
       "awaiting": "Aguardando créditos",
-      "buyCredits": "Comprar créditos"
+      "buyCredits": "Comprar créditos",
+      "hero": "autorizadas de {total}",
+      "balance": "Saldo atual: {count, plural, one {# crédito} other {# créditos}}",
+      "waitingAmount": "{amount} esperando para serem emitidos"
     },
     "rowError": {
       "ERROR_IMPORT_COMPANY_MISMATCH": "O CNPJ desta linha não é o da empresa escolhida.",
