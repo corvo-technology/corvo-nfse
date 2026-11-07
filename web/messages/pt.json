@@ -1961,7 +1961,17 @@
     "usage_period_missing": "Não encontramos o período de uso do seu plano. Fale com o suporte.",
     "email_already_free": "Este e-mail já usou a nota gratuita.",
     "turnstile_invalid": "A verificação expirou ou é inválida. Tente de novo.",
-    "integration_credential_refused": "A plataforma recusou a credencial informada. Confira e tente de novo."
+    "integration_credential_refused": "A plataforma recusou a credencial informada. Confira e tente de novo.",
+    "import_emit_failed": "A emissão da importação foi interrompida. Emita de novo para tentar outra vez.",
+    "import_company_mismatch": "O CNPJ desta linha não é o da empresa escolhida para a importação.",
+    "import_company_required": "Esta linha não tem empresa: preencha o CNPJ ou escolha a empresa ao enviar.",
+    "import_empty": "A planilha não tem linhas de notas.",
+    "import_too_many_rows": "A planilha tem mais de 2.000 linhas. Divida em arquivos menores.",
+    "import_unreadable": "Não foi possível ler o arquivo. Confira se é mesmo um CSV ou um .xlsx.",
+    "import_not_found": "Importação não encontrada.",
+    "import_state": "A importação não está num estado que permita isso agora.",
+    "import_file_invalid": "Envie um arquivo .csv ou .xlsx.",
+    "import_file_too_large": "O arquivo tem mais de 10 MB."
   },
   "Legal": {
     "eyebrow": "JURÍDICO",
