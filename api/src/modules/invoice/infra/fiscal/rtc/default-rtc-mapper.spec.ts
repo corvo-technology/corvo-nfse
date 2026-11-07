@@ -31,8 +31,13 @@ describe('DefaultRtcMapper (real captured fixtures)', () => {
       ...f.steps[0].request,
       id: expect.any(String),
     });
+    // The version is echoed into the result: use the one the fixture was captured with.
     expect(
-      mapper.fromCalcResponse(f.steps[0].response, f.input, '1.6.0/V0059'),
+      mapper.fromCalcResponse(
+        f.steps[0].response,
+        f.input,
+        f.expected.calculatorVersion as string,
+      ),
     ).toEqual({
       ok: true,
       value: expect.objectContaining({
