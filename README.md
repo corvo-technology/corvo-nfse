@@ -1,7 +1,7 @@
 # Corvo NFS-e
 
 <p align="center">
-  <img src="web/public/corvo-mark.svg" alt="Corvo logo" width="96" />
+  <img src="web/public/brand/corvo-faceted-green.png" alt="Corvo logo" width="160" />
 </p>
 
 <p align="center">
