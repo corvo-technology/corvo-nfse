@@ -44,6 +44,8 @@ import { ImportReviewService } from './application/import-review.service';
     ImportFileStorage,
     ImportReaderService,
     ImportEmitService,
+    ImportIntakeService,
+    ImportReviewService,
   ],
 })
 export class ImportModule {}
