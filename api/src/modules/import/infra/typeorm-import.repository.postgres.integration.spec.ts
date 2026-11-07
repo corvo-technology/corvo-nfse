@@ -203,6 +203,20 @@ describePostgres('import repository with restricted role', () => {
     ).toBeNull();
   });
 
+  it('clears the rows of one import only', async () => {
+    const a = await repo.create(base(tenantA));
+    const b = await repo.create(base(tenantA));
+    await repo.insertRows(tenantA, a.id, [row(1, 'valid')]);
+    await repo.insertRows(tenantA, b.id, [row(1, 'valid')]);
+    await repo.deleteRows(tenantA, a.id);
+    expect(
+      (await repo.listRows(tenantA, 'live', a.id, { limit: 10 })).items,
+    ).toHaveLength(0);
+    expect(
+      (await repo.listRows(tenantA, 'live', b.id, { limit: 10 })).items,
+    ).toHaveLength(1);
+  });
+
   it('updates a row and deletes the import with its rows', async () => {
     const imp = await repo.create(base(tenantA));
     await repo.insertRows(tenantA, imp.id, [row(1, 'invalid')]);

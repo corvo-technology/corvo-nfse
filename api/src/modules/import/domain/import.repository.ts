@@ -31,6 +31,8 @@ export abstract class ImportRepository {
     importId: string,
     rows: ImportRow[],
   ): Promise<void>;
+  /** Drops every row, so a retried reading job starts clean. */
+  abstract deleteRows(tenantId: string, importId: string): Promise<void>;
   abstract counters(
     tenantId: string,
     env: ExecutionEnvironment,

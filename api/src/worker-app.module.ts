@@ -40,6 +40,8 @@ import {
   FiscalReconciliationService,
   InvoiceWebhookPublisher,
 } from '@/modules/invoice/application/fiscal/fiscal-reconciliation.service';
+import { ImportModule } from '@/modules/import/import.module';
+import { ImportReadProcessor } from '@/modules/import/jobs/import-read.processor';
 import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
 
 @Module({
@@ -68,6 +70,7 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     BullModule.registerQueue({ name: 'nfse-fiscal-reconcile' }),
     EmailExternalModule,
     EmailModule,
+    ImportModule,
   ],
   providers: [
     EventProcessorScheduler,
@@ -90,6 +93,7 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     DpsBuilder,
     NfseEmailProcessor,
     DocsRecoveryScheduler,
+    ImportReadProcessor,
   ],
 })
 export class WorkerAppModule {}

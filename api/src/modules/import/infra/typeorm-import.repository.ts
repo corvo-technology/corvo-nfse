@@ -126,6 +126,12 @@ export class TypeOrmImportRepository extends ImportRepository {
     });
   }
 
+  async deleteRows(tenantId: string, importId: string): Promise<void> {
+    await runWithTenant(tenantId, () =>
+      this.rows().delete({ importId, tenantId }),
+    );
+  }
+
   private schema(): string {
     const options = this.dataSource.options;
     return this.dataSource.driver.escape(
