@@ -22,8 +22,7 @@ export class PaymentIntentOrmEntity {
   @Column({ name: 'plan_slug', type: 'varchar', nullable: true })
   planSlug!: string | null;
   @Column({ type: 'varchar', length: 10, nullable: true }) cycle!:
-    | string
-    | null;
+    string | null;
   @Column({ type: 'integer', nullable: true }) units!: number | null;
   @Column({ name: 'amount_cents', type: 'integer' }) amountCents!: number;
   @Column({ type: 'varchar', length: 10 }) provider!: string;

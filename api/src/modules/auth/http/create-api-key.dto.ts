@@ -26,10 +26,7 @@ export class CreateApiKeyDto {
     'invoices_read_write',
   ])
   scope!:
-    | 'full_access'
-    | 'invoices_issue'
-    | 'invoices_view'
-    | 'invoices_read_write';
+    'full_access' | 'invoices_issue' | 'invoices_view' | 'invoices_read_write';
 
   @ApiProperty({ description: 'Expiration date (optional)', required: false })
   @IsOptional()

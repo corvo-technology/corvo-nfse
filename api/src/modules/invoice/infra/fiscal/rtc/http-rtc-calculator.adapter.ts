@@ -44,11 +44,7 @@ const recordVersionInfo = (version: string): void => {
 };
 
 type FailureReason =
-  | 'timeout'
-  | 'network'
-  | 'upstream_5xx'
-  | 'rate_limited'
-  | 'circuit_open';
+  'timeout' | 'network' | 'upstream_5xx' | 'rate_limited' | 'circuit_open';
 
 const unavailable = (
   reason: FailureReason,

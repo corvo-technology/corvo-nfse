@@ -286,9 +286,7 @@ export class AbacatePayConnector implements Connector {
 
 function toCustomer(
   customer:
-    | { name?: string; email?: string; taxId?: string }
-    | null
-    | undefined,
+    { name?: string; email?: string; taxId?: string } | null | undefined,
 ): NormalizedCustomer | null {
   if (!customer) return null;
   const masked = customer.taxId?.includes('*') ?? false;

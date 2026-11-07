@@ -52,9 +52,7 @@ export interface IIssuePayload {
 }
 
 export type FiscalCancellationReason =
-  | 'issue_error'
-  | 'service_not_provided'
-  | 'other';
+  'issue_error' | 'service_not_provided' | 'other';
 
 export interface ICancelPayload {
   invoiceId: string;

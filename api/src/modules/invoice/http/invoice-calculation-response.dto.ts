@@ -47,23 +47,19 @@ class ApplicabilityDto {
 class ClassificationDto {
   @ApiProperty() declare serviceCode: string;
   @ApiProperty({ type: String, nullable: true }) declare municipalServiceCode:
-    | string
-    | null;
+    string | null;
   @ApiProperty({ type: String, nullable: true }) declare nbsCode: string | null;
   @ApiProperty({ type: String, nullable: true }) declare cst: string | null;
   @ApiProperty({ type: String, nullable: true }) declare classCode:
-    | string
-    | null;
+    string | null;
   @ApiProperty({ type: String, nullable: true }) declare operationIndicator:
-    | string
-    | null;
+    string | null;
   @ApiProperty({
     enum: ['company_service_profile', 'request_override', 'official_catalog'],
   })
   declare source: string;
   @ApiProperty({ type: String, nullable: true }) declare serviceProfileId:
-    | string
-    | null;
+    string | null;
   @ApiProperty() declare operationNature: string;
   @ApiProperty({ type: 'object', additionalProperties: true })
   declare iss: object;
@@ -78,11 +74,9 @@ class CalculationMetadataDto {
   @ApiProperty({ enum: ['none', 'legacy', 'rtc', 'legacy+rtc'] })
   declare source: string;
   @ApiProperty({ type: String, nullable: true }) declare calculatorVersion:
-    | string
-    | null;
+    string | null;
   @ApiProperty({ type: String, nullable: true }) declare rulesVersion:
-    | string
-    | null;
+    string | null;
   @ApiProperty({ type: [String] }) declare legalReferences: string[];
 }
 class FiscalWarningDto {
@@ -149,8 +143,7 @@ export class InvoiceCalculationResponseDto implements InvoiceCalculationResponse
   @ApiProperty({ type: String, nullable: true, example: '1000.00' })
   declare netReceivableAmount: string | null;
   @ApiProperty({ type: Boolean, nullable: true }) declare collectionWaived:
-    | boolean
-    | null;
+    boolean | null;
   @ApiProperty({ type: CalculationMetadataDto, nullable: true })
   declare calculation: InvoiceCalculationResponse['calculation'];
   @ApiProperty({ type: [FiscalWarningDto] })

@@ -75,23 +75,21 @@ export class McpConnectionService {
         ? this.ownerEmails(rows, auth.activeTenantId)
         : Promise.resolve(new Map<string, string>()),
     ]);
-    return page.map(
-      (connection): ConnectionListItem => ({
-        id: connection.id,
-        tenant_id: connection.tenantId,
-        tenant_name: tenantNames.get(connection.tenantId) ?? 'Unknown',
-        client_name: clientNames.get(connection.clientId) ?? 'Aplicativo de IA',
-        scopes: connection.scopes,
-        environment: connection.environment,
-        granted_at: connection.grantedAt.toISOString(),
-        last_used_at: connection.lastUsedAt?.toISOString() ?? null,
-        tool_calls: connection.toolCallsCount,
-        invoices_issued: connection.invoicesIssuedCount,
-        revoked: connection.revokedAt !== null,
-        mine: connection.authUserId === auth.authUserId,
-        owner_email: emails.get(connection.authUserId) ?? null,
-      }),
-    );
+    return page.map((connection): ConnectionListItem => ({
+      id: connection.id,
+      tenant_id: connection.tenantId,
+      tenant_name: tenantNames.get(connection.tenantId) ?? 'Unknown',
+      client_name: clientNames.get(connection.clientId) ?? 'Aplicativo de IA',
+      scopes: connection.scopes,
+      environment: connection.environment,
+      granted_at: connection.grantedAt.toISOString(),
+      last_used_at: connection.lastUsedAt?.toISOString() ?? null,
+      tool_calls: connection.toolCallsCount,
+      invoices_issued: connection.invoicesIssuedCount,
+      revoked: connection.revokedAt !== null,
+      mine: connection.authUserId === auth.authUserId,
+      owner_email: emails.get(connection.authUserId) ?? null,
+    }));
   }
 
   async revoke(id: string, auth: AuthContext): Promise<void> {

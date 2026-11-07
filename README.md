@@ -1,7 +1,5 @@
-# Corvo NFS-e
-
 <p align="center">
-  <img src="web/public/corvo-mark.svg" alt="Corvo logo" width="96" />
+  <img src="web/public/brand/corvo-faceted-green.png" alt="Corvo logo" width="160" />
 </p>
 
 <p align="center">
@@ -12,6 +10,10 @@
   <a href="LICENSE"><img alt="License: AGPL-3.0-only" src="https://img.shields.io/badge/license-AGPL--3.0--only-blue" /></a>
   <img alt="Node.js 24" src="https://img.shields.io/badge/node-24-339933" />
   <img alt="TypeScript" src="https://img.shields.io/badge/typescript-strict-3178c6" />
+</p>
+
+<p align="center">
+  <strong>English</strong> · <a href="README.pt-BR.md">Português (Brasil)</a>
 </p>
 
 Corvo is a REST API and MCP server to issue NFS-e on the national standard, focused on **MEI and Simples Nacional** companies. It registers issuer companies, stores their A1 certificates, calculates taxes before issuing, processes each invoice in the background, keeps the PDF and XML, and reports every status change by webhook. A dashboard and AI agents (Claude Code, Cursor, Codex and others) use the same API.

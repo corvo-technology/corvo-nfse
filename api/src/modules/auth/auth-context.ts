@@ -1,10 +1,6 @@
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 export type UserRole =
-  | 'admin'
-  | 'manager'
-  | 'professional'
-  | 'developer'
-  | 'billing';
+  'admin' | 'manager' | 'professional' | 'developer' | 'billing';
 
 export type AuthorizationPrincipal = 'tenant_member' | 'api_key';
 

@@ -2,10 +2,7 @@ import { TenantMembershipRole } from './tenant-membership';
 import type { TenantPermission } from './permission';
 
 export type TenantInvitationStatus =
-  | 'pending'
-  | 'completed'
-  | 'revoked'
-  | 'expired';
+  'pending' | 'completed' | 'revoked' | 'expired';
 
 export interface TenantInvitation {
   id: string;
