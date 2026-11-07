@@ -6,7 +6,12 @@ import type { LockPort } from '@/infra/redis/lock.port';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import {
   apiKeyCreatedEmail,
+  certificateExpiringEmail,
   creditsAddedEmail,
+  creditsExhaustedEmail,
+  memberAddedEmail,
+  paymentFailedEmail,
+  subscriptionCanceledEmail,
   invoiceRejectedEmail,
   mcpConnectedEmail,
   type RenderedEmail,
@@ -20,6 +25,7 @@ import { TenantRecipientsService } from './tenant-recipients.service';
 
 const DEFAULT_APP_URL = 'https://corvo.tech/app';
 const HOUR_MS = 3_600_000;
+const DAY_MS = 24 * HOUR_MS;
 
 /** Turns account events into e-mails for the workspace admins. A failure never affects the action that caused it. */
 @Injectable()
@@ -45,6 +51,11 @@ export class AccountNoticeListener {
     return `${base}/app/${path}`;
   }
 
+  /** True the first time `key` is seen inside `ttlMs`: the same notice is not repeated. */
+  private async once(key: string, ttlMs: number): Promise<boolean> {
+    return (await this.locks.acquire(`notice:${key}`, { ttlMs })) !== null;
+  }
+
   async handle({ tenantId, notice }: AccountNoticeEvent): Promise<void> {
     let message: RenderedEmail;
     let to: string[];
@@ -65,6 +76,43 @@ export class AccountNoticeListener {
         message = invoiceRejectedEmail({
           reason: notice.reason,
           invoiceUrl: this.page(`invoices/${notice.invoiceId}`),
+        });
+        to = await this.recipients.emailsFor(tenantId);
+        break;
+      }
+      case 'credits-exhausted': {
+        if (!(await this.once(`exhausted:${tenantId}`, DAY_MS))) return;
+        message = creditsExhaustedEmail({ billingUrl: this.page('billing') });
+        to = await this.recipients.emailsFor(tenantId);
+        break;
+      }
+      case 'payment-failed': {
+        if (!(await this.once(`payment-failed:${tenantId}`, DAY_MS))) return;
+        message = paymentFailedEmail({ billingUrl: this.page('billing') });
+        to = await this.recipients.emailsFor(tenantId);
+        break;
+      }
+      case 'subscription-canceled':
+        message = subscriptionCanceledEmail({
+          billingUrl: this.page('billing'),
+        });
+        to = await this.recipients.emailsFor(tenantId);
+        break;
+      case 'member-added':
+        message = memberAddedEmail({
+          role: notice.role,
+          appUrl: this.page(''),
+        });
+        to = [notice.email];
+        break;
+      case 'certificate-expiring': {
+        const key = `cert:${notice.companyId}:${notice.stage}`;
+        if (!(await this.once(key, 40 * DAY_MS))) return;
+        message = certificateExpiringEmail({
+          companyName: notice.companyName,
+          stage: notice.stage,
+          validUntil: notice.validUntil.toLocaleDateString('pt-BR'),
+          certificateUrl: this.page(`companies/${notice.companyId}`),
         });
         to = await this.recipients.emailsFor(tenantId);
         break;

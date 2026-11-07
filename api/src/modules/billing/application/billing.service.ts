@@ -1,3 +1,5 @@
+import { ApplicationEventBus } from '@/shared/events/application-event-bus';
+import { accountNotice } from '@/shared/events/account-notice.events';
 import { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
@@ -21,6 +23,7 @@ export class BillingService {
     private readonly repository: BillingRepository,
     private readonly provider: BillingProvider,
     @Optional() private readonly payments?: StripePaymentsService,
+    @Optional() private readonly eventBus?: ApplicationEventBus,
   ) {}
 
   async checkout(tenantId: string, planSlug: string, requestKey: string) {
@@ -249,6 +252,7 @@ export class BillingService {
           tenantId,
           await this.provider.subscription(event.subscriptionId),
         );
+        this.announce(tenantId, event.type);
       } else
         this.logger.debug({
           event: 'stripe_event_ignored',
@@ -261,6 +265,18 @@ export class BillingService {
         createHash('sha256').update(body).digest('hex'),
       );
     });
+  }
+
+  /** Tells the admins about the two events they must act on; replays never get here (eventSeen). */
+  private announce(tenantId: string, type: string): void {
+    if (type === 'invoice.payment_failed')
+      this.eventBus?.publishBestEffort(
+        accountNotice(tenantId, { kind: 'payment-failed' }),
+      );
+    else if (type === 'customer.subscription.deleted')
+      this.eventBus?.publishBestEffort(
+        accountNotice(tenantId, { kind: 'subscription-canceled' }),
+      );
   }
 
   /** Verified provider state, never browser parameters or an unverified event payload. */

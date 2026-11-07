@@ -4,6 +4,8 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import { ApplicationEventBus } from '@/shared/events/application-event-bus';
+import { accountNotice } from '@/shared/events/account-notice.events';
 import { AuthUserService } from './auth-user.service';
 import { MembershipService } from './membership.service';
 
@@ -27,6 +29,7 @@ export class InviteMemberService {
   constructor(
     private readonly authUserService: AuthUserService,
     private readonly membershipService: MembershipService,
+    private readonly eventBus: ApplicationEventBus,
   ) {}
 
   async invite(
@@ -65,6 +68,13 @@ export class InviteMemberService {
       tenantId,
       role: dto.role,
     });
+    this.eventBus.publishBestEffort(
+      accountNotice(tenantId, {
+        kind: 'member-added',
+        email: dto.email,
+        role: dto.role,
+      }),
+    );
 
     return {
       userId: user.id,

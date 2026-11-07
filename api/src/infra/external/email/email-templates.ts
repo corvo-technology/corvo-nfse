@@ -236,3 +236,80 @@ export function mcpConnectedEmail(input: {
     note('Se não reconhece essa conexão, desconecte-a agora.'),
   ]);
 }
+
+export function creditsExhaustedEmail(input: {
+  billingUrl: string;
+}): RenderedEmail {
+  return emailLayout('Seus créditos acabaram', [
+    paragraph(
+      'Você usou todas as notas disponíveis e não conseguimos emitir uma nota.',
+    ),
+    paragraph('Adicione notas ou mude de plano para voltar a emitir.'),
+    button(input.billingUrl, 'Adicionar créditos'),
+  ]);
+}
+
+export function paymentFailedEmail(input: {
+  billingUrl: string;
+}): RenderedEmail {
+  return emailLayout('Não conseguimos cobrar sua assinatura', [
+    paragraph('O pagamento da sua assinatura do Corvo falhou.'),
+    paragraph(
+      'Atualize a forma de pagamento para não perder o acesso ao plano.',
+    ),
+    button(input.billingUrl, 'Atualizar pagamento'),
+  ]);
+}
+
+export function subscriptionCanceledEmail(input: {
+  billingUrl: string;
+}): RenderedEmail {
+  return emailLayout('Sua assinatura foi cancelada', [
+    paragraph(
+      'Sua assinatura do Corvo foi cancelada e sua conta voltou ao plano gratuito.',
+    ),
+    button(input.billingUrl, 'Ver planos'),
+  ]);
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'administrador',
+  developer: 'desenvolvedor',
+  billing: 'cobrança',
+};
+
+export function memberAddedEmail(input: {
+  role: string;
+  appUrl: string;
+}): RenderedEmail {
+  return emailLayout('Você foi adicionado a uma conta no Corvo', [
+    paragraph(
+      `Você foi adicionado a uma conta no Corvo como ${ROLE_LABELS[input.role] ?? input.role}.`,
+    ),
+    paragraph(
+      'Entre com este e-mail para acessar. Enviaremos um código de acesso.',
+    ),
+    button(input.appUrl, 'Entrar no Corvo'),
+  ]);
+}
+
+export function certificateExpiringEmail(input: {
+  companyName: string;
+  stage: 30 | 7 | 0;
+  validUntil: string;
+  certificateUrl: string;
+}): RenderedEmail {
+  if (input.stage === 0)
+    return emailLayout('Certificado digital vencido', [
+      paragraph(
+        `O certificado digital da empresa ${input.companyName} venceu em ${input.validUntil}. Enquanto não for trocado, não é possível emitir notas.`,
+      ),
+      button(input.certificateUrl, 'Enviar novo certificado'),
+    ]);
+  return emailLayout(`Certificado digital vence em ${input.stage} dias`, [
+    paragraph(
+      `O certificado digital da empresa ${input.companyName} vence em ${input.validUntil}. Depois dessa data não será possível emitir notas.`,
+    ),
+    button(input.certificateUrl, 'Enviar novo certificado'),
+  ]);
+}

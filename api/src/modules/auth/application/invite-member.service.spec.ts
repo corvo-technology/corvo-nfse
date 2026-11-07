@@ -9,9 +9,11 @@ describe('InviteMemberService', () => {
       listForTenant: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
     };
+    const publishBestEffort = jest.fn();
     const service = new InviteMemberService(
       authUserService as never,
       membershipService as never,
+      { publishBestEffort } as never,
     );
 
     await service.invite('tenant-1', {
@@ -24,6 +26,16 @@ describe('InviteMemberService', () => {
       expect.objectContaining({
         email: 'john@gmail.com',
         name: 'John',
+      }),
+    );
+    expect(publishBestEffort).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant-1',
+        notice: {
+          kind: 'member-added',
+          email: 'john@gmail.com',
+          role: 'developer',
+        },
       }),
     );
   });
