@@ -147,8 +147,6 @@ describePostgres('import repository with restricted role', () => {
       awaitingCredits: 0,
       validAmount: 1, // the one valid row (line 1) carries amount 1
       awaitingAmount: 0,
-      validAmount: 0,
-      awaitingAmount: 0,
       failed: 3, // invalid + rejected row + accepted-then-rejected invoice
       pending: 3, // valid + queued + accepted still processing
     });
