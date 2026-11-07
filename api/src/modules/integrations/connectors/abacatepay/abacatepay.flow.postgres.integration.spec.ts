@@ -43,7 +43,8 @@ jest.setTimeout(60_000);
 const schema = `integ_abacate_${randomUUID().replaceAll('-', '')}`;
 const tenant = randomUUID();
 const company = randomUUID();
-const HMAC_KEY = 'abacatepay-public-key';
+// A key made for this run: the connector and the signature in the test only need to agree with each other.
+const HMAC_KEY = randomBytes(24).toString('hex');
 const fixture = (name: string) =>
   readFileSync(join(__dirname, '__fixtures__', `${name}.json`), 'utf8');
 
