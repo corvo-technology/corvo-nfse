@@ -13,7 +13,7 @@ vi.mock("@/lib/api", async (original) => ({ ...(await original<typeof import("@/
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ fiscalEnvironment: mocks.env }) }));
 
 const job = (id: string, status: ImportJob["status"], counters: Partial<ImportJob["counters"]> = {}, fileName = `${id}.csv`): ImportJob => ({
-  id, status, fileName, companyId: null, errorCode: null, rowsExpected: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "2026-11-07T12:05:00.000Z",
+  id, status, fileName, companyId: null, errorCode: null, rowsExpected: null, unknownColumns: [], emitStartedAt: null, emitFinishedAt: null, createdAt: "2026-11-07T12:05:00.000Z",
   counters: { total: 300, valid: 0, invalid: 0, accepted: 0, authorized: 0, awaitingCredits: 0, validAmount: 0, awaitingAmount: 0, failed: 0, pending: 0, ...counters },
 });
 /** The two pieces share one fetch, as the page does. */

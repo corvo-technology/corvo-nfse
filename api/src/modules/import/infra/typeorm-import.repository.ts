@@ -50,6 +50,7 @@ function toRecord(row: ImportOrmEntity): ImportRecord {
     companyId: row.companyId,
     errorCode: row.errorCode,
     rowsExpected: row.rowsExpected,
+    unknownColumns: row.unknownColumns ?? [],
     emitStartedAt: row.emitStartedAt,
     emitFinishedAt: row.emitFinishedAt,
     createdAt: row.createdAt,
@@ -461,6 +462,43 @@ export class TypeOrmImportRepository extends ImportRepository {
         .createQueryBuilder()
         .delete()
         .where('created_at < now() - make_interval(days => :days)', { days })
+        .execute();
+      return out.affected ?? 0;
+    });
+  }
+
+  async deleteIfStatus(
+    tenantId: string,
+    id: string,
+    statuses: ImportStatus[],
+  ): Promise<boolean> {
+    return runWithTenant(tenantId, async () => {
+      const out = await this.imports()
+        .createQueryBuilder()
+        .delete()
+        .where(
+          'id = :id AND tenant_id = :tenantId AND status IN (:...statuses)',
+          {
+            id,
+            tenantId,
+            statuses,
+          },
+        )
+        .execute();
+      return (out.affected ?? 0) > 0;
+    });
+  }
+
+  async failStuck(hours: number): Promise<number> {
+    return runAsSystem('import-housekeeping', async () => {
+      const out = await this.imports()
+        .createQueryBuilder()
+        .update()
+        .set({ status: 'failed', errorCode: 'ERROR_IMPORT_UNREADABLE' })
+        .where(
+          "status = 'processing' AND created_at < now() - make_interval(hours => :hours)",
+          { hours },
+        )
         .execute();
       return out.affected ?? 0;
     });

@@ -326,10 +326,10 @@ export const mcp = {
   revoke: async (id: string) => unwrap(await request<Envelope<{ revoked: boolean }>>(`/mcp/connections/${idPath(id)}`, { method: "DELETE" })),
 };
 
-type ImportWire = { id: string; status: ImportJob["status"]; file_name: string; company_id: string | null; error_code: string | null; rows_expected: number | null; emit_started_at: string | null; emit_finished_at: string | null; created_at: string; counters: Omit<ImportJob["counters"], "awaitingCredits" | "validAmount" | "awaitingAmount"> & { awaiting_credits: number; valid_amount: number; awaiting_amount: number } };
+type ImportWire = { id: string; status: ImportJob["status"]; file_name: string; company_id: string | null; error_code: string | null; rows_expected: number | null; unknown_columns?: string[]; emit_started_at: string | null; emit_finished_at: string | null; created_at: string; counters: Omit<ImportJob["counters"], "awaitingCredits" | "validAmount" | "awaitingAmount"> & { awaiting_credits: number; valid_amount: number; awaiting_amount: number } };
 type ImportRowWire = { line: number; data: Record<string, unknown>; status: ImportRow["status"]; error_code: string | null; error_message: string | null; invoice_id: string | null };
 const adaptCounters = ({ awaiting_credits, valid_amount, awaiting_amount, ...rest }: ImportWire["counters"]): ImportJob["counters"] => ({ ...rest, awaitingCredits: awaiting_credits, validAmount: valid_amount, awaitingAmount: awaiting_amount });
-const adaptImport = (w: ImportWire): ImportJob => ({ id: w.id, status: w.status, fileName: w.file_name, companyId: w.company_id, errorCode: w.error_code, rowsExpected: w.rows_expected, emitStartedAt: w.emit_started_at, emitFinishedAt: w.emit_finished_at, createdAt: w.created_at, counters: adaptCounters(w.counters) });
+const adaptImport = (w: ImportWire): ImportJob => ({ id: w.id, status: w.status, fileName: w.file_name, companyId: w.company_id, errorCode: w.error_code, rowsExpected: w.rows_expected, unknownColumns: w.unknown_columns ?? [], emitStartedAt: w.emit_started_at, emitFinishedAt: w.emit_finished_at, createdAt: w.created_at, counters: adaptCounters(w.counters) });
 const adaptImportRow = (w: ImportRowWire): ImportRow => ({ line: w.line, data: w.data, status: w.status, errorCode: w.error_code, errorMessage: w.error_message, invoiceId: w.invoice_id });
 export const imports = {
   /** Sends the spreadsheet; the answer is the import to follow, still being read. */

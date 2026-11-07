@@ -23,6 +23,7 @@ export function toImportResponse(view: ImportView) {
     company_id: view.companyId,
     error_code: view.errorCode,
     rows_expected: view.rowsExpected,
+    unknown_columns: view.unknownColumns,
     emit_started_at: iso(view.emitStartedAt),
     emit_finished_at: iso(view.emitFinishedAt),
     created_at: iso(view.createdAt),

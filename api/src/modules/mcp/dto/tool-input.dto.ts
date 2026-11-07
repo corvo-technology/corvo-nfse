@@ -13,6 +13,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -260,7 +261,11 @@ export class ImportRowsInput extends ImportIdInput {
   @IsOptional()
   @IsIn(['valid', 'invalid', 'queued', 'accepted', 'rejected'])
   status?: 'valid' | 'invalid' | 'queued' | 'accepted' | 'rejected';
-  @IsOptional() @IsString() @MaxLength(20) cursor?: string;
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  @Matches(/^\d{1,9}$/, { message: 'cursor must be a number' })
+  cursor?: string;
   @IsOptional() @IsInt() @Min(1) @Max(200) limit?: number;
 }
 

@@ -108,6 +108,7 @@ export function ImportReview({ job, duplicateOf, onChanged, onEmitted, onDiscard
           {stat("stat-errors", t("review.statErrors"), String(counters.invalid), counters.invalid > 0 ? "danger" : undefined)}
         </dl>
         <p className="text-[13px] text-text-3">{t("upload.rows", { count: counters.total })}</p>
+        {job.unknownColumns.length > 0 && <p data-testid="ignored-columns" role="note" className="flex max-w-[640px] items-start gap-2 rounded-[10px] border border-border p-3 text-[13.5px] text-text-3"><Info size={15} aria-hidden className="mt-0.5 flex-none" />{t("review.ignoredColumns", { names: job.unknownColumns.join(", ") })}</p>}
         {duplicateOf && <p role="note" className="flex max-w-[640px] items-start gap-2 rounded-[10px] border border-border p-3 text-[13.5px] text-text-3"><Info size={15} aria-hidden className="mt-0.5 flex-none" />{t("review.duplicate")}</p>}
       </section>
 

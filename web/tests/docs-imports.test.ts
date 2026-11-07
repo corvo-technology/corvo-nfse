@@ -46,6 +46,15 @@ describe.each(["en", "pt"] as const)("spreadsheet import in the docs (%s)", (loc
     expect(docs).toContain("invoices_issue");
   });
 
+  it("explains the rules that were tightened: merged edits, fixed company, accepted dates, ignored columns", () => {
+    const docs = page(locale);
+    expect(docs).toMatch(locale === "pt" ? /campo a campo/ : /field by field/);
+    expect(docs).toMatch(locale === "pt" ? /não podem ser alterados/ : /cannot be changed/);
+    expect(docs).toContain("unknown_columns");
+    expect(docs).toContain("ERROR_IMPORT_COMPANY_NOT_FOUND");
+    expect(docs).toMatch(locale === "pt" ? /7\/11\/2026/ : /7\/11\/2026/);
+  });
+
   it("lists the MCP import tools in the MCP page, with the 1 MB limit", () => {
     const docs = tree(locale);
     for (const tool of ["import_create", "import_list", "import_get", "import_rows", "import_fix_row", "import_emit", "import_discard"])

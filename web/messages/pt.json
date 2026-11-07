@@ -1971,7 +1971,8 @@
     "import_not_found": "Importação não encontrada.",
     "import_state": "A importação não está num estado que permita isso agora.",
     "import_file_invalid": "Envie um arquivo .csv ou .xlsx.",
-    "import_file_too_large": "O arquivo tem mais de 10 MB."
+    "import_file_too_large": "O arquivo tem mais de 10 MB.",
+    "import_company_not_found": "O CNPJ escolhido para esta importação não está mais cadastrado."
   },
   "Legal": {
     "eyebrow": "JURÍDICO",
@@ -2866,7 +2867,8 @@
       "ERROR_IMPORT_TOO_MANY_ROWS": "A planilha tem mais de 2.000 linhas. Divida em arquivos menores.",
       "ERROR_IMPORT_UNREADABLE": "O arquivo não pôde ser lido. Confira se é mesmo um CSV ou um .xlsx.",
       "fallback": "O arquivo não pôde ser processado.",
-      "again": "Enviar outra planilha"
+      "again": "Enviar outra planilha",
+      "ERROR_IMPORT_COMPANY_NOT_FOUND": "Não foi possível usar a empresa escolhida: ela foi removida."
     },
     "review": {
       "summary": "{total, plural, one {# linha} other {# linhas}}: {valid} prontas, {invalid} com erro.",
@@ -2899,7 +2901,8 @@
       "statErrors": "Com erro",
       "noErrors": "Nenhum erro por aqui. Tudo pronto para emitir.",
       "noRows": "Nenhuma linha nesta lista.",
-      "listTitle": "Linhas da planilha"
+      "listTitle": "Linhas da planilha",
+      "ignoredColumns": "Colunas ignoradas: {names}. Não reconhecemos esses nomes e eles não foram usados."
     },
     "edit": {
       "title": "Corrigir linha {line}",

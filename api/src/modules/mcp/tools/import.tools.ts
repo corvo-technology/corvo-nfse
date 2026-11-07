@@ -102,7 +102,7 @@ export const IMPORT_ROWS_TOOL = {
 export const IMPORT_FIX_ROW_TOOL = {
   name: 'import_fix_row',
   description:
-    'Correct one row of an import that is ready, and check it again. Send the invoice fields that change in `item` (amount, competenceDate, customer {name, taxId, email}, service {description, code}); send customer and service whole, because they replace the stored ones. Returns the row, valid or still invalid with the reason.',
+    'Correct one row of an import that is ready, and check it again. Send the invoice fields that change in `item` (amount, competenceDate, customer {name, taxId, email}, service {description, code}); customer and service are merged field by field, so sending only the e-mail keeps the name. The company of a row (companyId, companyTaxId) cannot be changed. Returns the row, valid or still invalid with the reason.',
   inputSchema: {
     type: 'object',
     properties: {

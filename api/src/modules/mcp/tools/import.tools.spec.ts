@@ -51,6 +51,7 @@ const view = (status = 'ready') => ({
   companyId: null,
   errorCode: null,
   rowsExpected: 3,
+  unknownColumns: [],
   emitStartedAt: null,
   emitFinishedAt: null,
   createdAt: new Date('2026-11-07T10:00:00Z'),
@@ -224,6 +225,16 @@ describe('MCP import tools', () => {
     await expect(
       handler({ import_id: ID, status: 'nope' }, ctx()),
     ).rejects.toThrow(/status/);
+  });
+
+  it('import_rows refuses a cursor that is not a number', async () => {
+    const { review } = build();
+    await expect(
+      createImportRowsHandler(review as never)(
+        { import_id: ID, cursor: 'abc' },
+        ctx(),
+      ),
+    ).rejects.toThrow(/cursor/);
   });
 
   it('import_fix_row corrects one row and returns it checked again', async () => {

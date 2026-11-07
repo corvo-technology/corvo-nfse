@@ -1971,7 +1971,8 @@
     "import_not_found": "Import not found.",
     "import_state": "The import is not in a state that allows this right now.",
     "import_file_invalid": "Upload a .csv or .xlsx file.",
-    "import_file_too_large": "The file is larger than 10 MB."
+    "import_file_too_large": "The file is larger than 10 MB.",
+    "import_company_not_found": "The company chosen for this import no longer exists."
   },
   "Legal": {
     "eyebrow": "LEGAL",
@@ -2866,7 +2867,8 @@
       "ERROR_IMPORT_TOO_MANY_ROWS": "The spreadsheet has more than 2,000 rows. Split it into smaller files.",
       "ERROR_IMPORT_UNREADABLE": "The file could not be read. Check that it really is a CSV or an .xlsx.",
       "fallback": "The file could not be processed.",
-      "again": "Upload another spreadsheet"
+      "again": "Upload another spreadsheet",
+      "ERROR_IMPORT_COMPANY_NOT_FOUND": "The chosen company could not be used: it was removed."
     },
     "review": {
       "summary": "{total, plural, one {# row} other {# rows}}: {valid} ready, {invalid} with errors.",
@@ -2899,7 +2901,8 @@
       "statErrors": "With errors",
       "noErrors": "No errors here. Everything is ready to issue.",
       "noRows": "No rows in this list.",
-      "listTitle": "Spreadsheet rows"
+      "listTitle": "Spreadsheet rows",
+      "ignoredColumns": "Ignored columns: {names}. We did not recognize these names and did not use them."
     },
     "edit": {
       "title": "Fix row {line}",

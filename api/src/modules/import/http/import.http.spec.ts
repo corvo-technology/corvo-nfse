@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument -- supertest bodies are untyped */
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { DomainExceptionFilter } from '@/shared/http/domain-exception.filter';
 import request from 'supertest';
 import { ResponseInterceptor } from '@/shared/http/response.interceptor';
 import { ImportController } from './import.controller';
@@ -30,6 +31,7 @@ describe('imports over HTTP (real response interceptor)', () => {
         { provide: ImportReviewService, useValue: review },
         { provide: ImportEmitService, useValue: {} },
         { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
+        { provide: APP_FILTER, useClass: DomainExceptionFilter },
       ],
     }).compile();
     app = module.createNestApplication();
@@ -87,6 +89,7 @@ describe('imports over HTTP (real response interceptor)', () => {
         companyId: null,
         errorCode: null,
         rowsExpected: 3,
+        unknownColumns: [],
         emitStartedAt: null,
         emitFinishedAt: null,
         createdAt: new Date('2026-11-07T10:00:00Z'),
@@ -117,6 +120,7 @@ describe('imports over HTTP (real response interceptor)', () => {
       companyId: null,
       errorCode: null,
       rowsExpected: 1,
+      unknownColumns: [],
       emitStartedAt: null,
       emitFinishedAt: null,
       createdAt: new Date(),
@@ -149,5 +153,13 @@ describe('imports over HTTP (real response interceptor)', () => {
       line: 4,
       error_code: 'ERROR_VALIDATION',
     });
+  });
+
+  it('answers a file over 10 MB with 413 and the import code, not the generic payload error', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/imports')
+      .attach('file', Buffer.alloc(10 * 1024 * 1024 + 1024), 'grande.csv')
+      .expect(413);
+    expect(res.body.code).toBe('ERROR_IMPORT_FILE_TOO_LARGE');
   });
 });

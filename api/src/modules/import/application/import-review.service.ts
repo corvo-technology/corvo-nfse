@@ -7,6 +7,7 @@ import {
   type ImportCounters,
   type ImportRecord,
   type ImportRow,
+  type ImportStatus,
   type RowPage,
   type RowPageQuery,
 } from '../domain/import';
@@ -15,6 +16,22 @@ import { ImportNotFoundError, ImportStateError } from '../domain/import-error';
 import { ImportFileStorage } from '../infra/import-file-storage';
 import { rowKey } from './import-reader.service';
 import { importAuthContext } from './system-auth-context';
+
+const NESTED_FIELDS = ['customer', 'service'] as const;
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** The patch wins field by field, also inside customer and service, so editing the e-mail keeps the name. */
+function mergePatch(
+  stored: Record<string, unknown>,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  const data = { ...stored, ...patch };
+  for (const key of NESTED_FIELDS)
+    if (isObject(stored[key]) && isObject(patch[key]))
+      data[key] = { ...stored[key], ...patch[key] };
+  return data;
+}
 
 export type ImportView = ImportRecord & { counters: ImportCounters };
 
@@ -32,7 +49,7 @@ const EMPTY_COUNTERS: ImportCounters = {
   failed: 0,
   pending: 0,
 };
-const DISCARDABLE = new Set(['processing', 'ready', 'failed']);
+const DISCARDABLE = new Set<ImportStatus>(['processing', 'ready', 'failed']);
 
 /** A cell for Excel in Brazil: ; separated, quoted when it holds ; " or a line break. */
 const cell = (value: unknown): string => {
@@ -140,7 +157,11 @@ export class ImportReviewService {
     if (row.status !== 'valid' && row.status !== 'invalid')
       throw new ImportStateError();
 
-    const data = { ...row.data, ...patch };
+    if ('companyId' in patch || 'companyTaxId' in patch)
+      throw new BadRequestException(
+        'companyId and companyTaxId cannot be changed: the company of a row is set by the spreadsheet or the import',
+      );
+    const data = mergePatch(row.data, patch);
     const checked = await this.batch.checkItem(
       { ...data, idempotencyKey: rowKey(id, line) },
       tenantId,
@@ -167,8 +188,10 @@ export class ImportReviewService {
   ): Promise<void> {
     const record = await this.owned(tenantId, env, id);
     if (!DISCARDABLE.has(record.status)) throw new ImportStateError();
+    // Conditional: an Emit that claimed the import first wins, and the file is kept for it.
+    if (!(await this.repo.deleteIfStatus(tenantId, id, [...DISCARDABLE])))
+      throw new ImportStateError();
     await this.storage.remove(tenantId, env, id);
-    await this.repo.delete(tenantId, id);
   }
 
   /** Rows that need attention, one page at a time, so a large import never sits in memory. */

@@ -466,6 +466,59 @@ describePostgres('import repository with restricted role', () => {
     );
   });
 
+  it('deletes an import only while its status allows it, so a racing Emit wins', async () => {
+    const imp = await repo.create(base(tenantA));
+    await repo.updateStatus(tenantA, imp.id, { status: 'emitting' });
+    expect(
+      await repo.deleteIfStatus(tenantA, imp.id, [
+        'processing',
+        'ready',
+        'failed',
+      ]),
+    ).toBe(false);
+    expect(await repo.findById(tenantA, 'live', imp.id)).not.toBeNull();
+    await repo.updateStatus(tenantA, imp.id, { status: 'ready' });
+    expect(
+      await repo.deleteIfStatus(tenantA, imp.id, [
+        'processing',
+        'ready',
+        'failed',
+      ]),
+    ).toBe(true);
+    expect(await repo.findById(tenantA, 'live', imp.id)).toBeNull();
+  });
+
+  it('fails imports left processing for too long, whatever the reason, and leaves fresh ones alone', async () => {
+    const stuck = await repo.create(base(tenantA));
+    const fresh = await repo.create(base(tenantA));
+    await admin.query(
+      `UPDATE "${schema}".imports SET created_at = now() - interval '30 hours' WHERE id = $1`,
+      [stuck.id],
+    );
+    expect(await repo.failStuck(24)).toBeGreaterThanOrEqual(1);
+    expect(await repo.findById(tenantA, 'live', stuck.id)).toMatchObject({
+      status: 'failed',
+      errorCode: 'ERROR_IMPORT_UNREADABLE',
+    });
+    expect((await repo.findById(tenantA, 'live', fresh.id))?.status).toBe(
+      'processing',
+    );
+  });
+
+  it('remembers the columns it ignored', async () => {
+    const imp = await repo.create(base(tenantA));
+    expect(
+      (await repo.findById(tenantA, 'live', imp.id))?.unknownColumns,
+    ).toEqual([]);
+    await repo.updateStatus(tenantA, imp.id, {
+      status: 'processing',
+      unknownColumns: ['obs', 'cor'],
+    });
+    expect(
+      (await repo.findById(tenantA, 'live', imp.id))?.unknownColumns,
+    ).toEqual(['obs', 'cor']);
+  });
+
   it('updates a row and deletes the import with its rows', async () => {
     const imp = await repo.create(base(tenantA));
     await repo.insertRows(tenantA, imp.id, [row(1, 'invalid')]);

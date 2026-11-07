@@ -24,6 +24,7 @@ const counters = {
 
 describe('ImportReviewService', () => {
   const repo = {
+    deleteIfStatus: jest.fn(),
     countersMany: jest.fn(),
     listRecent: jest.fn(),
     listFailedInvoices: jest.fn(),
@@ -198,9 +199,14 @@ describe('ImportReviewService', () => {
 
   it('discards an import that was not emitted, and the file if it is still stored', async () => {
     repo.findById.mockResolvedValue(record({ status: 'processing' }));
+    repo.deleteIfStatus.mockResolvedValue(true);
     await service.discard(T, 'live', 'i1');
     expect(storage.remove).toHaveBeenCalledWith(T, 'live', 'i1');
-    expect(repo.delete).toHaveBeenCalledWith(T, 'i1');
+    expect(repo.deleteIfStatus).toHaveBeenCalledWith(T, 'i1', [
+      'processing',
+      'ready',
+      'failed',
+    ]);
   });
 
   it('refuses to discard an import that is emitting or done', async () => {
@@ -208,8 +214,54 @@ describe('ImportReviewService', () => {
     await expect(service.discard(T, 'live', 'i1')).rejects.toMatchObject({
       name: 'ImportStateError',
     });
-    expect(repo.delete).not.toHaveBeenCalled();
+    expect(repo.deleteIfStatus).not.toHaveBeenCalled();
   });
+
+  it('refuses the discard, and keeps the file, when an Emit claimed the import meanwhile', async () => {
+    repo.findById.mockResolvedValue(record({ status: 'ready' }));
+    repo.deleteIfStatus.mockResolvedValue(false);
+    await expect(service.discard(T, 'live', 'i1')).rejects.toMatchObject({
+      name: 'ImportStateError',
+    });
+    expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  it('keeps the stored customer and service fields the patch does not mention', async () => {
+    repo.findRow.mockResolvedValue({
+      line: 4,
+      status: 'valid',
+      data: {
+        amount: 10,
+        customer: { name: 'Ana', taxId: '52998224725' },
+        service: { description: 'Consultoria', code: '010101' },
+      },
+    });
+    batch.checkItem.mockResolvedValue({ ok: true });
+    repo.updateEditableRow.mockResolvedValue(true);
+    await service.updateRow(T, 'live', 'i1', 4, {
+      customer: { email: 'novo@x.com' },
+      service: { description: 'Outra' },
+    });
+    expect(batch.checkItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customer: { name: 'Ana', taxId: '52998224725', email: 'novo@x.com' },
+        service: { description: 'Outra', code: '010101' },
+      }),
+      T,
+      expect.anything(),
+    );
+  });
+
+  it.each(['companyId', 'companyTaxId'])(
+    'refuses to change %s of a row',
+    async (field) => {
+      repo.findRow.mockResolvedValue({ line: 4, status: 'valid', data: {} });
+      await expect(
+        service.updateRow(T, 'live', 'i1', 4, { [field]: 'x' }),
+      ).rejects.toThrow(/cannot be changed/);
+      expect(repo.updateEditableRow).not.toHaveBeenCalled();
+    },
+  );
 
   it('streams the error csv page by page, with a BOM, ; separators and escaped cells; leaving out rows that only wait for credits', async () => {
     repo.listRows

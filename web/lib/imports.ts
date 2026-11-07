@@ -34,8 +34,8 @@ export function rowFields(row: ImportRow): RowFields {
 }
 
 /**
- * What to send back for a corrected row. The API merges top-level keys, so customer and service go whole:
- * editing the e-mail must not drop the name. An amount that does not parse goes as typed, for the API to explain.
+ * What to send back for a corrected row. customer and service go whole (the API merges them field by field
+ * too, so either way editing the e-mail keeps the name). An amount that does not parse goes as typed, for the API to explain.
  */
 export function rowPatch(fields: RowFields): Record<string, unknown> {
   const pick = (entries: [string, string][]) => Object.fromEntries(entries.filter(([, value]) => value.trim() !== "").map(([key, value]) => [key, value.trim()]));
