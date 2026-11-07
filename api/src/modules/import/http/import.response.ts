@@ -5,8 +5,13 @@ import type { StartImportResult } from '../application/import-intake.service';
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
 
 function toCountersResponse(counters: ImportCounters) {
-  const { awaitingCredits, ...rest } = counters;
-  return { ...rest, awaiting_credits: awaitingCredits };
+  const { awaitingCredits, validAmount, awaitingAmount, ...rest } = counters;
+  return {
+    ...rest,
+    awaiting_credits: awaitingCredits,
+    valid_amount: validAmount,
+    awaiting_amount: awaitingAmount,
+  };
 }
 
 /** What the API shows of an import: snake_case like every other resource, and nothing internal. */
@@ -17,6 +22,7 @@ export function toImportResponse(view: ImportView) {
     file_name: view.fileName,
     company_id: view.companyId,
     error_code: view.errorCode,
+    rows_expected: view.rowsExpected,
     emit_started_at: iso(view.emitStartedAt),
     emit_finished_at: iso(view.emitFinishedAt),
     created_at: iso(view.createdAt),

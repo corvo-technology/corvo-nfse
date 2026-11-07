@@ -32,6 +32,8 @@ const emptyCounters = (): ImportCounters => ({
   accepted: 0,
   authorized: 0,
   awaitingCredits: 0,
+  validAmount: 0,
+  awaitingAmount: 0,
   failed: 0,
   pending: 0,
 });
@@ -47,6 +49,7 @@ function toRecord(row: ImportOrmEntity): ImportRecord {
     status: row.status as ImportStatus,
     companyId: row.companyId,
     errorCode: row.errorCode,
+    rowsExpected: row.rowsExpected,
     emitStartedAt: row.emitStartedAt,
     emitFinishedAt: row.emitFinishedAt,
     createdAt: row.createdAt,
@@ -185,6 +188,8 @@ export class TypeOrmImportRepository extends ImportRepository {
            count(*) FILTER (WHERE r.status = 'accepted')::int AS accepted,
            count(*) FILTER (WHERE r.status = 'accepted' AND i.status = 'authorized')::int AS authorized,
            count(*) FILTER (WHERE r.status = 'rejected' AND r.error_code = ANY($4))::int AS "awaitingCredits",
+           COALESCE(SUM(CASE WHEN r.status = 'valid' THEN (r.data->>'amount')::numeric END), 0)::float8 AS "validAmount",
+           COALESCE(SUM(CASE WHEN r.status = 'rejected' AND r.error_code = ANY($4) THEN (r.data->>'amount')::numeric END), 0)::float8 AS "awaitingAmount",
            count(*) FILTER (WHERE r.status = 'invalid'
              OR (r.status = 'rejected' AND NOT (COALESCE(r.error_code, '') = ANY($4)))
              OR (r.status = 'accepted' AND i.status IN ('rejected','failed','manual_review')))::int AS failed,

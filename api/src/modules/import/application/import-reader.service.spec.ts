@@ -162,4 +162,25 @@ describe('ImportReaderService', () => {
     });
     expect(storage.remove).toHaveBeenCalled();
   });
+
+  it('records how many rows to expect, then saves them in chunks so progress is visible while reading', async () => {
+    const lines = Array.from(
+      { length: 250 },
+      (_, i) => `12.345.678/0001-95;Serviço ${i};10,00`,
+    ).join('\n');
+    storage.read.mockResolvedValue(csv(`cnpj;descricao;valor\n${lines}\n`));
+    await service.read(ref);
+    expect(repo.updateStatus).toHaveBeenCalledWith('t1', 'imp1', {
+      status: 'processing',
+      rowsExpected: 250,
+    });
+    expect(
+      (repo.insertRows.mock.calls as unknown[][]).map(
+        (call) => (call[2] as unknown[]).length,
+      ),
+    ).toEqual([100, 100, 50]);
+    expect(repo.updateStatus).toHaveBeenLastCalledWith('t1', 'imp1', {
+      status: 'ready',
+    });
+  });
 });

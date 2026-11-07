@@ -27,6 +27,8 @@ const EMPTY_COUNTERS: ImportCounters = {
   accepted: 0,
   authorized: 0,
   awaitingCredits: 0,
+  validAmount: 0,
+  awaitingAmount: 0,
   failed: 0,
   pending: 0,
 };

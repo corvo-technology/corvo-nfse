@@ -24,6 +24,8 @@ export type ImportRecord = {
   status: ImportStatus;
   companyId: string | null;
   errorCode: string | null;
+  /** Rows the file turned out to have, known once it was parsed: lets the screen show reading progress. */
+  rowsExpected: number | null;
   emitStartedAt: Date | null;
   emitFinishedAt: Date | null;
   createdAt: Date;
@@ -31,7 +33,12 @@ export type ImportRecord = {
 
 export type NewImport = Omit<
   ImportRecord,
-  'status' | 'errorCode' | 'emitStartedAt' | 'emitFinishedAt' | 'createdAt'
+  | 'status'
+  | 'errorCode'
+  | 'rowsExpected'
+  | 'emitStartedAt'
+  | 'emitFinishedAt'
+  | 'createdAt'
 >;
 
 export type ImportRow = {
@@ -51,6 +58,10 @@ export type ImportCounters = {
   authorized: number;
   /** Turned away because credits or the plan limit ran out: not an error, it can be emitted again. */
   awaitingCredits: number;
+  /** Sum, in reais, of the rows ready to emit. */
+  validAmount: number;
+  /** Sum, in reais, of the rows waiting for credits. */
+  awaitingAmount: number;
   failed: number;
   /** Rows not final yet: waiting to be emitted, or accepted and still being processed. */
   pending: number;

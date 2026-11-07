@@ -35,6 +35,8 @@ export class ImportOrmEntity {
   declare companyId: string | null;
   @Column({ name: 'error_code', type: 'varchar', length: 100, nullable: true })
   declare errorCode: string | null;
+  @Column({ name: 'rows_expected', type: 'integer', nullable: true })
+  declare rowsExpected: number | null;
   @Column({ name: 'emit_started_at', type: 'timestamptz', nullable: true })
   declare emitStartedAt: Date | null;
   @Column({ name: 'emit_finished_at', type: 'timestamptz', nullable: true })

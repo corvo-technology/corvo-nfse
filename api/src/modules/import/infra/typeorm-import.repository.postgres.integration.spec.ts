@@ -145,9 +145,60 @@ describePostgres('import repository with restricted role', () => {
       accepted: 3,
       authorized: 1,
       awaitingCredits: 0,
+      validAmount: 1, // the one valid row (line 1) carries amount 1
+      awaitingAmount: 0,
+      validAmount: 0,
+      awaitingAmount: 0,
       failed: 3, // invalid + rejected row + accepted-then-rejected invoice
       pending: 3, // valid + queued + accepted still processing
     });
+  });
+
+  it('sums the amount of the ready rows and of the rows waiting for credits, in reais', async () => {
+    const imp = await repo.create(base(tenantA));
+    const money = (
+      line: number,
+      status: ImportRow['status'],
+      amount: unknown,
+      errorCode: string | null = null,
+    ): ImportRow => ({
+      line,
+      data: { amount },
+      status,
+      errorCode,
+      errorMessage: null,
+      invoiceId: null,
+    });
+    await repo.insertRows(tenantA, imp.id, [
+      money(1, 'valid', 1500.5),
+      money(2, 'valid', 99.9),
+      money(3, 'invalid', 'abc', 'ERROR_VALIDATION'),
+      money(4, 'rejected', 200, 'ERROR_MONTHLY_LIMIT_EXCEEDED'),
+      money(5, 'rejected', 7, 'ERROR_VALIDATION'),
+    ]);
+    expect(await repo.counters(tenantA, 'live', imp.id)).toMatchObject({
+      validAmount: 1600.4,
+      awaitingAmount: 200,
+    });
+    const empty = await repo.create(base(tenantA));
+    expect(await repo.counters(tenantA, 'live', empty.id)).toMatchObject({
+      validAmount: 0,
+      awaitingAmount: 0,
+    });
+  });
+
+  it('remembers how many rows the file has while it is still being read', async () => {
+    const imp = await repo.create(base(tenantA));
+    expect(
+      (await repo.findById(tenantA, 'live', imp.id))?.rowsExpected,
+    ).toBeNull();
+    await repo.updateStatus(tenantA, imp.id, {
+      status: 'processing',
+      rowsExpected: 300,
+    });
+    expect((await repo.findById(tenantA, 'live', imp.id))?.rowsExpected).toBe(
+      300,
+    );
   });
 
   it('keeps rows waiting for credits apart from real errors', async () => {

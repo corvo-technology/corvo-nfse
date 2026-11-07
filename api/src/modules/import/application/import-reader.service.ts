@@ -12,6 +12,7 @@ import { ImportFileStorage } from '../infra/import-file-storage';
 import { importAuthContext } from './system-auth-context';
 
 const READ_CONCURRENCY = 5;
+const SAVE_CHUNK = 100;
 
 export type ImportRef = {
   tenantId: string;
@@ -48,11 +49,20 @@ export class ImportReaderService {
         ? await this.companies.findById(record.companyId, tenantId, environment)
         : null;
       const today = todayInSaoPaulo();
-      const rows = await mapPool(sheet.rows, READ_CONCURRENCY, (row) =>
-        this.buildRow(ref, row, today, company),
-      );
       await this.repo.deleteRows(tenantId, importId);
-      await this.repo.insertRows(tenantId, importId, rows);
+      await this.repo.updateStatus(tenantId, importId, {
+        status: 'processing',
+        rowsExpected: sheet.rows.length,
+      });
+      // Saved chunk by chunk, so the screen can show the reading advance instead of a long wait.
+      for (let at = 0; at < sheet.rows.length; at += SAVE_CHUNK) {
+        const rows = await mapPool(
+          sheet.rows.slice(at, at + SAVE_CHUNK),
+          READ_CONCURRENCY,
+          (row) => this.buildRow(ref, row, today, company),
+        );
+        await this.repo.insertRows(tenantId, importId, rows);
+      }
       await this.repo.updateStatus(tenantId, importId, { status: 'ready' });
     } catch (error) {
       if (!(error instanceof ImportError)) throw error;

@@ -22,7 +22,12 @@ export abstract class ImportRepository {
     patch: Partial<
       Pick<
         ImportRecord,
-        'status' | 'errorCode' | 'emitStartedAt' | 'emitFinishedAt' | 'userId'
+        | 'status'
+        | 'errorCode'
+        | 'rowsExpected'
+        | 'emitStartedAt'
+        | 'emitFinishedAt'
+        | 'userId'
       >
     > & { status: ImportStatus },
   ): Promise<void>;
