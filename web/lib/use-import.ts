@@ -38,6 +38,7 @@ export function useImport(id: string | null) {
 
   useEffect(() => {
     generation.current += 1;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the import on mount; state is only set after the request answers
     void read();
     return () => {
       generation.current += 1;
