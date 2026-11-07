@@ -2543,5 +2543,108 @@
       "loading": "Loading the schedule",
       "history": "History"
     }
+  },
+  "Imports": {
+    "title": "Import spreadsheet",
+    "subtitle": "Upload a CSV or Excel file with your invoices, review it if you like, and issue them all at once.",
+    "back": "Back to invoices",
+    "openButton": "Import spreadsheet",
+    "upload": {
+      "dropTitle": "Choose the spreadsheet",
+      "dropHint": "CSV or Excel (.xlsx), up to 2,000 rows and 10 MB.",
+      "choose": "Choose file",
+      "change": "Change file",
+      "companyLabel": "Issuing company",
+      "companyAuto": "Whichever is in the spreadsheet's CNPJ column",
+      "companyHint": "Used for rows without a CNPJ. A row with another company's CNPJ is rejected.",
+      "template": "Download template",
+      "templateFailed": "Could not download the template.",
+      "send": "Upload spreadsheet",
+      "fileInvalid": "Upload a .csv or .xlsx file.",
+      "tooLarge": "The file is larger than 10 MB.",
+      "failed": "Could not upload the spreadsheet."
+    },
+    "reading": {
+      "title": "Reading the spreadsheet",
+      "body": "Checking every row. This takes a few seconds."
+    },
+    "failed": {
+      "title": "We could not read the spreadsheet",
+      "ERROR_IMPORT_EMPTY": "The spreadsheet has no invoice rows.",
+      "ERROR_IMPORT_TOO_MANY_ROWS": "The spreadsheet has more than 2,000 rows. Split it into smaller files.",
+      "ERROR_IMPORT_UNREADABLE": "The file could not be read. Check that it really is a CSV or an .xlsx.",
+      "fallback": "The file could not be processed.",
+      "again": "Upload another spreadsheet"
+    },
+    "review": {
+      "summary": "{total, plural, one {# row} other {# rows}}: {valid} ready, {invalid} with errors.",
+      "duplicate": "You have already uploaded this exact spreadsheet. If that was on purpose, go ahead.",
+      "filterAll": "All",
+      "filterInvalid": "With errors",
+      "table": "Spreadsheet rows",
+      "colLine": "Row",
+      "colCustomer": "Customer",
+      "colDescription": "Service",
+      "colAmount": "Amount",
+      "colStatus": "Status",
+      "ok": "Ready",
+      "fix": "Fix",
+      "empty": "No rows in this list.",
+      "loadMore": "Load more",
+      "emit": "Issue {count, plural, one {# invoice} other {# invoices}}",
+      "emitNone": "No row is ready to issue",
+      "emitFailed": "Could not start issuing.",
+      "downloadErrors": "Download only the errors",
+      "downloadFailed": "Could not download the file.",
+      "discard": "Discard import",
+      "discardFailed": "Could not discard.",
+      "noCustomer": "No customer"
+    },
+    "edit": {
+      "title": "Fix row {line}",
+      "customerName": "Customer name",
+      "customerTaxId": "Customer CPF or CNPJ",
+      "customerEmail": "Customer e-mail",
+      "description": "Service description",
+      "serviceCode": "Service code",
+      "amount": "Amount (R$)",
+      "competenceDate": "Competence date",
+      "optional": "optional",
+      "save": "Save and check",
+      "cancel": "Cancel",
+      "saved": "Row fixed.",
+      "stillInvalid": "There is still a problem with this row.",
+      "failed": "Could not save the fix.",
+      "locked": "Rows can no longer be edited."
+    },
+    "progress": {
+      "titleRunning": "Issuing your invoices",
+      "titleDone": "Import finished",
+      "bodyRunning": "You can close this page: the invoices keep being issued.",
+      "bodyDone": "Every invoice in this spreadsheet has an answer.",
+      "accepted": "Accepted",
+      "authorized": "Authorized",
+      "failed": "With errors",
+      "pending": "In progress",
+      "bar": "{percent}% done",
+      "seeNotes": "See the invoices",
+      "another": "Import another spreadsheet",
+      "downloadErrors": "Download only the errors",
+      "noCredits": "{count, plural, one {# invoice was} other {# invoices were}} left without credits. Top up and issue again only {count, plural, one {that one} other {those}}.",
+      "reemit": "Issue again",
+      "reemitFailed": "Could not issue again."
+    },
+    "rowError": {
+      "ERROR_IMPORT_COMPANY_MISMATCH": "This row's CNPJ is not the chosen company's.",
+      "ERROR_IMPORT_COMPANY_REQUIRED": "This row has no company: fill in the CNPJ or choose the company.",
+      "ERROR_IMPORT_EMIT_FAILED": "Issuing was interrupted. Issue again to retry.",
+      "ERROR_PLAN_BLOCKED": "Your plan is blocked.",
+      "ERROR_MONTHLY_LIMIT_EXCEEDED": "Monthly plan limit reached.",
+      "ERROR_DAILY_LIMIT_EXCEEDED": "Daily plan limit reached.",
+      "ERROR_INSUFFICIENT_CREDITS": "Not enough credits.",
+      "ERROR_QUOTA_EXCEEDED": "Plan limit reached.",
+      "ERROR_VALIDATION": "A field in this row is invalid.",
+      "fallback": "This row has a problem."
+    }
   }
 }

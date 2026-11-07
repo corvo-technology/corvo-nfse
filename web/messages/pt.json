@@ -2543,5 +2543,108 @@
       "loading": "Carregando a agenda",
       "history": "Histórico"
     }
+  },
+  "Imports": {
+    "title": "Importar planilha",
+    "subtitle": "Envie um CSV ou Excel com as notas, confira se quiser e emita tudo de uma vez.",
+    "back": "Voltar às notas",
+    "openButton": "Importar planilha",
+    "upload": {
+      "dropTitle": "Escolha a planilha",
+      "dropHint": "CSV ou Excel (.xlsx), até 2.000 linhas e 10 MB.",
+      "choose": "Escolher arquivo",
+      "change": "Trocar arquivo",
+      "companyLabel": "Empresa que emite",
+      "companyAuto": "A que estiver na coluna de CNPJ da planilha",
+      "companyHint": "Vale para as linhas sem CNPJ. Uma linha com CNPJ de outra empresa é recusada.",
+      "template": "Baixar modelo",
+      "templateFailed": "Não foi possível baixar o modelo.",
+      "send": "Enviar planilha",
+      "fileInvalid": "Envie um arquivo .csv ou .xlsx.",
+      "tooLarge": "O arquivo tem mais de 10 MB.",
+      "failed": "Não foi possível enviar a planilha."
+    },
+    "reading": {
+      "title": "Lendo a planilha",
+      "body": "Conferindo cada linha. Isso leva alguns segundos."
+    },
+    "failed": {
+      "title": "Não foi possível ler a planilha",
+      "ERROR_IMPORT_EMPTY": "A planilha não tem linhas de notas.",
+      "ERROR_IMPORT_TOO_MANY_ROWS": "A planilha tem mais de 2.000 linhas. Divida em arquivos menores.",
+      "ERROR_IMPORT_UNREADABLE": "O arquivo não pôde ser lido. Confira se é mesmo um CSV ou um .xlsx.",
+      "fallback": "O arquivo não pôde ser processado.",
+      "again": "Enviar outra planilha"
+    },
+    "review": {
+      "summary": "{total, plural, one {# linha} other {# linhas}}: {valid} prontas, {invalid} com erro.",
+      "duplicate": "Você já enviou esta mesma planilha antes. Se foi de propósito, siga em frente.",
+      "filterAll": "Todas",
+      "filterInvalid": "Com erro",
+      "table": "Linhas da planilha",
+      "colLine": "Linha",
+      "colCustomer": "Tomador",
+      "colDescription": "Serviço",
+      "colAmount": "Valor",
+      "colStatus": "Situação",
+      "ok": "Pronta",
+      "fix": "Corrigir",
+      "empty": "Nenhuma linha nesta lista.",
+      "loadMore": "Carregar mais",
+      "emit": "Emitir {count, plural, one {# nota} other {# notas}}",
+      "emitNone": "Nenhuma linha pronta para emitir",
+      "emitFailed": "Não foi possível iniciar a emissão.",
+      "downloadErrors": "Baixar só os erros",
+      "downloadFailed": "Não foi possível baixar o arquivo.",
+      "discard": "Descartar importação",
+      "discardFailed": "Não foi possível descartar.",
+      "noCustomer": "Sem tomador"
+    },
+    "edit": {
+      "title": "Corrigir linha {line}",
+      "customerName": "Nome do tomador",
+      "customerTaxId": "CPF ou CNPJ do tomador",
+      "customerEmail": "E-mail do tomador",
+      "description": "Descrição do serviço",
+      "serviceCode": "Código do serviço",
+      "amount": "Valor (R$)",
+      "competenceDate": "Data de competência",
+      "optional": "opcional",
+      "save": "Salvar e conferir",
+      "cancel": "Cancelar",
+      "saved": "Linha corrigida.",
+      "stillInvalid": "Ainda há um problema nesta linha.",
+      "failed": "Não foi possível salvar a correção.",
+      "locked": "As linhas não podem mais ser editadas."
+    },
+    "progress": {
+      "titleRunning": "Emitindo suas notas",
+      "titleDone": "Importação concluída",
+      "bodyRunning": "Pode fechar esta página: as notas continuam sendo emitidas.",
+      "bodyDone": "Todas as notas desta planilha têm uma resposta.",
+      "accepted": "Aceitas",
+      "authorized": "Autorizadas",
+      "failed": "Com erro",
+      "pending": "Em andamento",
+      "bar": "{percent}% concluído",
+      "seeNotes": "Ver as notas",
+      "another": "Importar outra planilha",
+      "downloadErrors": "Baixar só os erros",
+      "noCredits": "{count, plural, one {# nota ficou} other {# notas ficaram}} sem créditos. Recarregue e emita de novo só {count, plural, one {essa} other {essas}}.",
+      "reemit": "Emitir de novo",
+      "reemitFailed": "Não foi possível emitir de novo."
+    },
+    "rowError": {
+      "ERROR_IMPORT_COMPANY_MISMATCH": "O CNPJ desta linha não é o da empresa escolhida.",
+      "ERROR_IMPORT_COMPANY_REQUIRED": "Esta linha não tem empresa: preencha o CNPJ ou escolha a empresa.",
+      "ERROR_IMPORT_EMIT_FAILED": "A emissão foi interrompida. Emita de novo para tentar outra vez.",
+      "ERROR_PLAN_BLOCKED": "Seu plano está bloqueado.",
+      "ERROR_MONTHLY_LIMIT_EXCEEDED": "Limite mensal do plano atingido.",
+      "ERROR_DAILY_LIMIT_EXCEEDED": "Limite diário do plano atingido.",
+      "ERROR_INSUFFICIENT_CREDITS": "Créditos insuficientes.",
+      "ERROR_QUOTA_EXCEEDED": "Limite do plano atingido.",
+      "ERROR_VALIDATION": "Há um campo inválido nesta linha.",
+      "fallback": "Esta linha tem um problema."
+    }
   }
 }
