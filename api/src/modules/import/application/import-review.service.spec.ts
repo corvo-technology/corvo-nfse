@@ -1,0 +1,350 @@
+import { ImportReviewService } from './import-review.service';
+
+const T = 't1';
+const record = (over: object = {}) => ({
+  id: 'i1',
+  tenantId: T,
+  environment: 'live',
+  status: 'ready',
+  fileName: 'n.csv',
+  companyId: null,
+  createdAt: new Date(),
+  ...over,
+});
+const counters = {
+  total: 2,
+  valid: 1,
+  invalid: 1,
+  accepted: 0,
+  authorized: 0,
+  awaitingCredits: 0,
+  failed: 1,
+  pending: 1,
+};
+
+describe('ImportReviewService', () => {
+  const repo = {
+    deleteIfStatus: jest.fn(),
+    countersMany: jest.fn(),
+    listRecent: jest.fn(),
+    listFailedInvoices: jest.fn(),
+    updateStatus: jest.fn(),
+    markDone: jest.fn(),
+    updateEditableRow: jest.fn(),
+    findById: jest.fn(),
+    counters: jest.fn(),
+    listRows: jest.fn(),
+    findRow: jest.fn(),
+    updateRow: jest.fn(),
+    delete: jest.fn(),
+  };
+  const storage = { remove: jest.fn() };
+  const batch = { checkItem: jest.fn() };
+  let service: ImportReviewService;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    repo.findById.mockResolvedValue(record());
+    repo.counters.mockResolvedValue(counters);
+    storage.remove.mockResolvedValue(undefined);
+    service = new ImportReviewService(
+      repo as never,
+      storage as never,
+      batch as never,
+    );
+  });
+
+  it('returns the import with its counters', async () => {
+    expect(await service.get(T, 'live', 'i1')).toMatchObject({
+      id: 'i1',
+      status: 'ready',
+      counters,
+    });
+  });
+
+  it('closes an emitting import once nothing is pending, and not before', async () => {
+    repo.findById.mockResolvedValue(record({ status: 'emitting' }));
+    repo.counters.mockResolvedValue({ ...counters, pending: 2 });
+    expect((await service.get(T, 'live', 'i1')).status).toBe('emitting');
+    expect(repo.updateStatus).not.toHaveBeenCalled();
+    repo.counters.mockResolvedValue({ ...counters, pending: 0 });
+    const done = await service.get(T, 'live', 'i1');
+    expect(done.status).toBe('done');
+    expect(repo.updateStatus).toHaveBeenCalledWith(T, 'i1', {
+      status: 'done',
+      emitFinishedAt: expect.any(Date),
+    });
+  });
+
+  it('answers not found for another tenant or environment', async () => {
+    repo.findById.mockResolvedValue(null);
+    await expect(service.get(T, 'live', 'x')).rejects.toMatchObject({
+      name: 'ImportNotFoundError',
+    });
+    await expect(
+      service.listRows(T, 'live', 'x', { limit: 50 }),
+    ).rejects.toMatchObject({ name: 'ImportNotFoundError' });
+  });
+
+  it('lists rows one page at a time and refuses a page bigger than 200', async () => {
+    repo.listRows.mockResolvedValue({ items: [], nextCursor: null });
+    await service.listRows(T, 'live', 'i1', { limit: 50 });
+    expect(repo.listRows).toHaveBeenCalledWith(T, 'live', 'i1', { limit: 50 });
+    await expect(
+      service.listRows(T, 'live', 'i1', { limit: 201 }),
+    ).rejects.toThrow();
+  });
+
+  it('corrects a row and revalidates it', async () => {
+    repo.findRow.mockResolvedValue({
+      line: 4,
+      status: 'invalid',
+      data: { amount: 'abc', companyId: 'c1' },
+    });
+    batch.checkItem.mockResolvedValue({ ok: true });
+    repo.updateEditableRow.mockResolvedValue(true);
+    const out = await service.updateRow(T, 'live', 'i1', 4, { amount: 10 });
+    expect(batch.checkItem).toHaveBeenCalledWith(
+      { amount: 10, companyId: 'c1', idempotencyKey: 'import:i1:4' },
+      T,
+      expect.anything(),
+    );
+    expect(repo.updateEditableRow).toHaveBeenCalledWith(T, 'i1', 4, {
+      data: { amount: 10, companyId: 'c1' },
+      status: 'valid',
+      errorCode: null,
+      errorMessage: null,
+    });
+    expect(out.status).toBe('valid');
+  });
+
+  it('keeps the row invalid with the new error when the correction is still wrong', async () => {
+    repo.findRow.mockResolvedValue({ line: 4, status: 'invalid', data: {} });
+    batch.checkItem.mockResolvedValue({
+      ok: false,
+      error: { code: 'ERROR_VALIDATION', message: 'bad' },
+    });
+    repo.updateEditableRow.mockResolvedValue(true);
+    const out = await service.updateRow(T, 'live', 'i1', 4, { amount: 'x' });
+    expect(out).toMatchObject({
+      status: 'invalid',
+      errorCode: 'ERROR_VALIDATION',
+      errorMessage: 'bad',
+    });
+  });
+
+  it('refuses the edit when the row was queued for emission meanwhile (lost the race)', async () => {
+    repo.findRow.mockResolvedValue({ line: 4, status: 'valid', data: {} });
+    batch.checkItem.mockResolvedValue({ ok: true });
+    repo.updateEditableRow.mockResolvedValue(false);
+    await expect(
+      service.updateRow(T, 'live', 'i1', 4, { amount: 5 }),
+    ).rejects.toMatchObject({ name: 'ImportStateError' });
+  });
+
+  it('exposes an ownership check that answers not found for a foreign import', async () => {
+    await expect(service.assertOwned(T, 'live', 'i1')).resolves.toBeUndefined();
+    repo.findById.mockResolvedValue(null);
+    await expect(service.assertOwned(T, 'live', 'x')).rejects.toMatchObject({
+      name: 'ImportNotFoundError',
+    });
+  });
+
+  it.each(['=HYPERLINK("x")', '+cmd', '-1+2', '@SUM(A1)'])(
+    'neutralizes the spreadsheet formula %s in the error csv',
+    async (text) => {
+      repo.listRows
+        .mockResolvedValueOnce({
+          items: [
+            {
+              line: 2,
+              status: 'invalid',
+              errorCode: 'ERROR_VALIDATION',
+              errorMessage: 'm',
+              data: { amount: 5, service: { description: text } },
+            },
+          ],
+          nextCursor: null,
+        })
+        .mockResolvedValue({ items: [], nextCursor: null });
+      repo.listFailedInvoices.mockResolvedValue({
+        items: [],
+        nextCursor: null,
+      });
+      let out = '';
+      for await (const chunk of service.errorsCsv(T, 'live', 'i1'))
+        out += chunk;
+      // The description is the 4th cell of the data line: it must start with an apostrophe so Excel shows it as text.
+      const description = (out.split('\n')[1] ?? '').split(';')[3] ?? '';
+      expect(description.replace(/^"/, '').startsWith("'")).toBe(true);
+      expect(description).toContain(text.replaceAll('"', '""'));
+    },
+  );
+
+  it('refuses edits once the import is no longer ready, and on rows already emitted', async () => {
+    repo.findById.mockResolvedValue(record({ status: 'emitting' }));
+    await expect(
+      service.updateRow(T, 'live', 'i1', 4, {}),
+    ).rejects.toMatchObject({ name: 'ImportStateError' });
+    repo.findById.mockResolvedValue(record());
+    repo.findRow.mockResolvedValue({ line: 4, status: 'accepted', data: {} });
+    await expect(
+      service.updateRow(T, 'live', 'i1', 4, {}),
+    ).rejects.toMatchObject({ name: 'ImportStateError' });
+    repo.findRow.mockResolvedValue(null);
+    await expect(
+      service.updateRow(T, 'live', 'i1', 9, {}),
+    ).rejects.toMatchObject({ name: 'ImportNotFoundError' });
+  });
+
+  it('discards an import that was not emitted, and the file if it is still stored', async () => {
+    repo.findById.mockResolvedValue(record({ status: 'processing' }));
+    repo.deleteIfStatus.mockResolvedValue(true);
+    await service.discard(T, 'live', 'i1');
+    expect(storage.remove).toHaveBeenCalledWith(T, 'live', 'i1');
+    expect(repo.deleteIfStatus).toHaveBeenCalledWith(T, 'i1', [
+      'processing',
+      'ready',
+      'failed',
+    ]);
+  });
+
+  it('refuses to discard an import that is emitting or done', async () => {
+    repo.findById.mockResolvedValue(record({ status: 'done' }));
+    await expect(service.discard(T, 'live', 'i1')).rejects.toMatchObject({
+      name: 'ImportStateError',
+    });
+    expect(repo.deleteIfStatus).not.toHaveBeenCalled();
+  });
+
+  it('refuses the discard, and keeps the file, when an Emit claimed the import meanwhile', async () => {
+    repo.findById.mockResolvedValue(record({ status: 'ready' }));
+    repo.deleteIfStatus.mockResolvedValue(false);
+    await expect(service.discard(T, 'live', 'i1')).rejects.toMatchObject({
+      name: 'ImportStateError',
+    });
+    expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  it('keeps the stored customer and service fields the patch does not mention', async () => {
+    repo.findRow.mockResolvedValue({
+      line: 4,
+      status: 'valid',
+      data: {
+        amount: 10,
+        customer: { name: 'Ana', taxId: '52998224725' },
+        service: { description: 'Consultoria', code: '010101' },
+      },
+    });
+    batch.checkItem.mockResolvedValue({ ok: true });
+    repo.updateEditableRow.mockResolvedValue(true);
+    await service.updateRow(T, 'live', 'i1', 4, {
+      customer: { email: 'novo@x.com' },
+      service: { description: 'Outra' },
+    });
+    expect(batch.checkItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customer: { name: 'Ana', taxId: '52998224725', email: 'novo@x.com' },
+        service: { description: 'Outra', code: '010101' },
+      }),
+      T,
+      expect.anything(),
+    );
+  });
+
+  it.each(['companyId', 'companyTaxId'])(
+    'refuses to change %s of a row',
+    async (field) => {
+      repo.findRow.mockResolvedValue({ line: 4, status: 'valid', data: {} });
+      await expect(
+        service.updateRow(T, 'live', 'i1', 4, { [field]: 'x' }),
+      ).rejects.toThrow(/cannot be changed/);
+      expect(repo.updateEditableRow).not.toHaveBeenCalled();
+    },
+  );
+
+  it('streams the error csv page by page, with a BOM, ; separators and escaped cells; leaving out rows that only wait for credits', async () => {
+    repo.listRows
+      .mockResolvedValueOnce({
+        items: [
+          {
+            line: 2,
+            status: 'invalid',
+            errorCode: 'ERROR_VALIDATION',
+            errorMessage: 'a; "b"',
+            data: { amount: 'x', service: { description: 'Desc' } },
+          },
+        ],
+        nextCursor: '2',
+      })
+      .mockResolvedValueOnce({ items: [], nextCursor: null })
+      .mockResolvedValueOnce({
+        items: [
+          {
+            line: 5,
+            status: 'rejected',
+            errorCode: 'ERROR_QUOTA_EXCEEDED',
+            errorMessage: 'limit',
+            data: {},
+          },
+          {
+            line: 6,
+            status: 'rejected',
+            errorCode: 'ERROR_IDEMPOTENCY_CONFLICT',
+            errorMessage: 'conflict',
+            data: {},
+          },
+        ],
+        nextCursor: null,
+      });
+    repo.listFailedInvoices.mockResolvedValueOnce({
+      items: [
+        {
+          line: 9,
+          status: 'accepted',
+          errorCode: 'FISCAL_REJECTED',
+          errorMessage: 'CPF não encontrado',
+          data: { amount: 10, service: { description: 'Serviço' } },
+        },
+      ],
+      nextCursor: null,
+    });
+    let text = '';
+    for await (const chunk of service.errorsCsv(T, 'live', 'i1')) text += chunk;
+    expect(
+      text.startsWith('\uFEFFlinha;codigo;mensagem;descricao;valor\n'),
+    ).toBe(true);
+    expect(text).toContain('2;ERROR_VALIDATION;"a; ""b""";Desc;x\n');
+    expect(text).not.toContain('ERROR_QUOTA_EXCEEDED');
+    expect(text).toContain('6;ERROR_IDEMPOTENCY_CONFLICT;conflict;;\n');
+    expect(text).toContain('9;FISCAL_REJECTED;CPF não encontrado;Serviço;10\n');
+    expect(repo.listRows).toHaveBeenNthCalledWith(1, T, 'live', 'i1', {
+      status: 'invalid',
+      limit: 200,
+      cursor: undefined,
+    });
+  });
+
+  it('lists the recent imports with their counters, newest first', async () => {
+    repo.listRecent.mockResolvedValue([
+      record({ id: 'a' }),
+      record({ id: 'b' }),
+    ]);
+    repo.countersMany.mockResolvedValue(
+      new Map([
+        ['a', { ...counters, total: 1 }],
+        ['b', { ...counters, total: 2 }],
+      ]),
+    );
+    const out = await service.list(T, 'live', 10);
+    expect(repo.listRecent).toHaveBeenCalledWith(T, 'live', 10);
+    expect(out.map((v) => [v.id, v.counters.total])).toEqual([
+      ['a', 1],
+      ['b', 2],
+    ]);
+  });
+
+  it('refuses a list bigger than 20', async () => {
+    await expect(service.list(T, 'live', 21)).rejects.toThrow();
+  });
+});

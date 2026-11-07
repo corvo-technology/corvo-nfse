@@ -22,6 +22,7 @@ import { CompanyModule } from '@/modules/company/company.module';
 import { CertificateModule } from '@/modules/certificate/certificate.module';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
 import { InvoiceScheduleModule } from '@/modules/invoice-schedule/invoice-schedule.module';
+import { ImportModule } from '@/modules/import/import.module';
 import { IntegrationsModule } from '@/modules/integrations/integrations.module';
 import { WooviConnectorModule } from '@/modules/integrations/connectors/woovi/woovi.module';
 import { AbacatePayConnectorModule } from '@/modules/integrations/connectors/abacatepay/abacatepay.module';
@@ -52,6 +53,7 @@ import { SentryModule } from '@/infra/observability/sentry.module';
     CertificateModule,
     InvoiceModule,
     InvoiceScheduleModule,
+    ImportModule,
     IntegrationsModule,
     WooviConnectorModule,
     AbacatePayConnectorModule,

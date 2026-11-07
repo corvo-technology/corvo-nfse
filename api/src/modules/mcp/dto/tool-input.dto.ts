@@ -6,11 +6,14 @@ import {
   IsDateString,
   IsEmail,
   IsIn,
+  IsInt,
   IsNotEmpty,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -236,4 +239,37 @@ export class ScheduleUpdateInput extends ScheduleIdInput {
     | 'MONTHLY';
   /** YYYY-MM-DD: moves the date the count of runs starts from. */
   @IsOptional() @IsDateString() first_date?: string;
+}
+
+/** The spreadsheet travels as text: csv as is, or an xlsx encoded in base64. Exactly one is required (checked by the handler). */
+export class ImportCreateInput {
+  @IsOptional() @IsString() content?: string;
+  @IsOptional() @IsString() content_base64?: string;
+  @IsOptional() @IsString() @MaxLength(255) file_name?: string;
+  @IsOptional() @IsUUID() company_id?: string;
+}
+
+export class ImportListInput {
+  @IsOptional() @IsInt() @Min(1) @Max(20) limit?: number;
+}
+
+export class ImportIdInput {
+  @IsUUID() import_id!: string;
+}
+
+export class ImportRowsInput extends ImportIdInput {
+  @IsOptional()
+  @IsIn(['valid', 'invalid', 'queued', 'accepted', 'rejected'])
+  status?: 'valid' | 'invalid' | 'queued' | 'accepted' | 'rejected';
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  @Matches(/^\d{1,9}$/, { message: 'cursor must be a number' })
+  cursor?: string;
+  @IsOptional() @IsInt() @Min(1) @Max(200) limit?: number;
+}
+
+export class ImportFixRowInput extends ImportIdInput {
+  @IsInt() @Min(1) line!: number;
+  @IsObject() item!: Record<string, unknown>;
 }

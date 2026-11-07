@@ -6,6 +6,7 @@ export type SystemPurpose =
   | 'worker-discovery'
   | 'outbox-relay'
   | 'invoice-schedule-runner'
+  | 'import-housekeeping'
   | 'credential-lookup'
   | 'oauth-bootstrap'
   | 'workspace-bootstrap'

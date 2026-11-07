@@ -1,6 +1,7 @@
 // lib/docs/content/en.ts
 import { SDKS } from "../../sdks";
 import type { DocsTree } from "../types";
+import { importsPage } from "../imports-page";
 import { municipalitiesPage } from "../municipalities-page";
 
 const enWithRetiredCredits: DocsTree = {
@@ -2537,6 +2538,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         },
       ],
     },
+    imports: importsPage("en"),
     municipalities: municipalitiesPage("en"),
     "payment-integrations": {
       title: "Payment integrations",
@@ -2791,6 +2793,48 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
               "`nfse:write`",
               "`schedule_id`",
               "the schedule"
+            ],
+            [
+              "`import_create`",
+              "`nfse:write`",
+              "`content` (CSV) or `content_base64` (.xlsx), `file_name?`, `company_id?`; up to 1 MB and 2,000 rows",
+              "`{ id, status, duplicate_of }`; reading is asynchronous"
+            ],
+            [
+              "`import_list`",
+              "`nfse:read`",
+              "`limit?` (1 to 20)",
+              "`{ imports [...] }` with counters, newest first"
+            ],
+            [
+              "`import_get`",
+              "`nfse:read`",
+              "`import_id`",
+              "the import: `status`, `rows_expected`, `counters` (`valid_amount`, `awaiting_credits`...)"
+            ],
+            [
+              "`import_rows`",
+              "`nfse:read`",
+              "`import_id`, `status?`, `cursor?`, `limit?` (up to 200)",
+              "`{ rows [{ line, data, status, error_code, error_message, invoice_id }], next_cursor, has_more }`"
+            ],
+            [
+              "`import_fix_row`",
+              "`nfse:write`",
+              "`import_id`, `line`, `item`",
+              "the row, checked again (`valid`, or `invalid` with the reason)"
+            ],
+            [
+              "`import_emit`",
+              "`nfse:write`",
+              "`import_id`",
+              "the import, `emitting`; call again after topping up credits to send only the `awaiting_credits` rows"
+            ],
+            [
+              "`import_discard`",
+              "`nfse:write`",
+              "`import_id`",
+              "`{ import_id, discarded: true }`"
             ],
             [
               "`company_list`",

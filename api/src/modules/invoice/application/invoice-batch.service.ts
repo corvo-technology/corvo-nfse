@@ -112,6 +112,21 @@ export class InvoiceBatchService {
     };
   }
 
+  /**
+   * Validates one item exactly as the batch would, without saving anything. Used by the spreadsheet
+   * import to tell the user which rows are fine before anything is emitted.
+   */
+  async checkItem(
+    raw: unknown,
+    tenantId: string,
+    authContext: AuthContext,
+  ): Promise<{ ok: true } | { ok: false; error: BatchItemError }> {
+    const prepared = await this.prepare(raw, tenantId, authContext);
+    return prepared.kind === 'rejected'
+      ? { ok: false, error: prepared.error }
+      : { ok: true };
+  }
+
   private async prepare(
     raw: unknown,
     tenantId: string,

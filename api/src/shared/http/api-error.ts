@@ -176,6 +176,26 @@ export const DOMAIN_ERRORS: Record<
     code: 'ERROR_SCHEDULE_STATE',
     message: 'The schedule is not in a state that allows this',
   },
+  ImportNotFoundError: {
+    status: 404,
+    code: 'ERROR_IMPORT_NOT_FOUND',
+    message: 'Import not found',
+  },
+  ImportStateError: {
+    status: 409,
+    code: 'ERROR_IMPORT_STATE',
+    message: 'The import is not in a state that allows this',
+  },
+  ImportFileInvalidError: {
+    status: 400,
+    code: 'ERROR_IMPORT_FILE_INVALID',
+    message: 'Send a .csv or .xlsx file',
+  },
+  ImportFileTooLargeError: {
+    status: 413,
+    code: 'ERROR_IMPORT_FILE_TOO_LARGE',
+    message: 'The file is larger than 10 MB',
+  },
   QuotaExceededError: {
     status: 422,
     code: 'ERROR_QUOTA_EXCEEDED',

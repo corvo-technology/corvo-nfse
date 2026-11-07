@@ -8,6 +8,7 @@ import {
   AuthSessionOrmEntity,
 } from '@/infra/persistence/typeorm/entities/auth.orm-entities';
 import { CompanyModule } from '@/modules/company/company.module';
+import { ImportModule } from '@/modules/import/import.module';
 import { InvoiceScheduleModule } from '@/modules/invoice-schedule/invoice-schedule.module';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
 import { PlansModule } from '@/modules/plans/plans.module';
@@ -37,6 +38,7 @@ import { McpService } from './mcp.service';
     ]),
     InvoiceModule,
     InvoiceScheduleModule,
+    ImportModule,
     PlansModule,
     // Company listing for the company_list tool.
     CompanyModule,

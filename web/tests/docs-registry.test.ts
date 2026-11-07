@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest";
 import { DOC_GROUPS, DOC_SLUGS } from "@/lib/docs/registry";
 
 describe("docs registry structure", () => {
-  it("has exactly 17 slugs in 3 groups", () => {
+  it("has exactly 18 slugs in 3 groups", () => {
     expect(DOC_GROUPS.map((g) => g.key)).toEqual([
       "gettingStarted",
       "reference",
       "guides",
     ]);
-    expect(DOC_SLUGS).toHaveLength(17);
+    expect(DOC_SLUGS).toHaveLength(18);
   });
 
   it("has no duplicate slugs across groups", () => {
@@ -31,6 +31,7 @@ describe("docs registry structure", () => {
       "companies",
       "certificates",
       "invoices",
+      "imports",
       "webhooks",
       "billing",
     ]);

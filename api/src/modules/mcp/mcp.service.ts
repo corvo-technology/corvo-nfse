@@ -11,6 +11,9 @@ import { InvoiceBatchService } from '../invoice/application/invoice-batch.servic
 import { InvoiceCalculationService } from '../invoice/application/fiscal/invoice-calculation.service';
 import { QuotaService } from '@/modules/plans/application/quota.service';
 import { EmissionRouterService } from '@/modules/invoice-schedule/application/emission-router.service';
+import { ImportEmitService } from '@/modules/import/application/import-emit.service';
+import { ImportIntakeService } from '@/modules/import/application/import-intake.service';
+import { ImportReviewService } from '@/modules/import/application/import-review.service';
 import { ScheduleService } from '@/modules/invoice-schedule/application/schedule.service';
 import {
   SCHEDULE_CANCEL_TOOL,
@@ -28,6 +31,22 @@ import {
   createScheduleRunsHandler,
   createScheduleUpdateHandler,
 } from './tools/schedule.tools';
+import {
+  IMPORT_CREATE_TOOL,
+  IMPORT_DISCARD_TOOL,
+  IMPORT_EMIT_TOOL,
+  IMPORT_FIX_ROW_TOOL,
+  IMPORT_GET_TOOL,
+  IMPORT_LIST_TOOL,
+  IMPORT_ROWS_TOOL,
+  createImportCreateHandler,
+  createImportDiscardHandler,
+  createImportEmitHandler,
+  createImportFixRowHandler,
+  createImportGetHandler,
+  createImportListHandler,
+  createImportRowsHandler,
+} from './tools/import.tools';
 import { McpServer } from './mcp.server';
 import {
   NFSE_ISSUE_TOOL,
@@ -93,6 +112,9 @@ export class McpService {
     private readonly invoiceBatchService: InvoiceBatchService,
     private readonly emissionRouter: EmissionRouterService,
     private readonly scheduleService: ScheduleService,
+    private readonly importIntake: ImportIntakeService,
+    private readonly importReview: ImportReviewService,
+    private readonly importEmit: ImportEmitService,
     private readonly calculationService: InvoiceCalculationService,
     private readonly quotaService: QuotaService,
     @Inject(INVOICE_REPOSITORY)
@@ -149,6 +171,25 @@ export class McpService {
       [SCHEDULE_LIST_TOOL, createScheduleListHandler(this.scheduleService)],
       [SCHEDULE_GET_TOOL, createScheduleGetHandler(this.scheduleService)],
       [SCHEDULE_RUNS_TOOL, createScheduleRunsHandler(this.scheduleService)],
+    ] as const)
+      this.server.registerTool(
+        tool,
+        this.wrapWithScopeCheck(handler, 'nfse:read'),
+      );
+    for (const [tool, handler] of [
+      [IMPORT_CREATE_TOOL, createImportCreateHandler(this.importIntake)],
+      [IMPORT_FIX_ROW_TOOL, createImportFixRowHandler(this.importReview)],
+      [IMPORT_EMIT_TOOL, createImportEmitHandler(this.importEmit)],
+      [IMPORT_DISCARD_TOOL, createImportDiscardHandler(this.importReview)],
+    ] as const)
+      this.server.registerTool(
+        tool,
+        this.wrapWithScopeCheck(handler, 'nfse:write'),
+      );
+    for (const [tool, handler] of [
+      [IMPORT_LIST_TOOL, createImportListHandler(this.importReview)],
+      [IMPORT_GET_TOOL, createImportGetHandler(this.importReview)],
+      [IMPORT_ROWS_TOOL, createImportRowsHandler(this.importReview)],
     ] as const)
       this.server.registerTool(
         tool,

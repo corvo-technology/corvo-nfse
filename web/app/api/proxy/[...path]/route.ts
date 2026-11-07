@@ -36,6 +36,13 @@ const routes: [RegExp, string[]][] = [
   [/^schedules\/[^/]+$/, ["GET", "PATCH"]],
   [/^schedules\/[^/]+\/runs$/, ["GET"]],
   [/^schedules\/[^/]+\/(pause|resume|cancel)$/, ["POST"]],
+  [/^imports$/, ["GET", "POST"]],
+  [/^imports\/template$/, ["GET"]],
+  [/^imports\/[^/]+$/, ["GET", "DELETE"]],
+  [/^imports\/[^/]+\/rows$/, ["GET"]],
+  [/^imports\/[^/]+\/rows\/\d+$/, ["PATCH"]],
+  [/^imports\/[^/]+\/emit$/, ["POST"]],
+  [/^imports\/[^/]+\/errors\.csv$/, ["GET"]],
   [/^invoices\/calculate$/, ["POST"]],
   [/^invoices\/[^/]+(?:\/(events|pdf|xml))?$/, ["GET"]],
   [/^invoices\/[^/]+\/download-url$/, ["POST"]],
@@ -118,6 +125,11 @@ async function limitedBody(request: NextRequest, limit: number) {
   for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
   return body;
 }
+/** A certificate is tiny, a spreadsheet may reach 10 MB (plus the multipart envelope); everything else is JSON. */
+function bodyLimit(route: string): number {
+  if (/\/certificates$/.test(route)) return 64 * 1024;
+  return route === "imports" ? 10 * 1024 * 1024 + 64 * 1024 : 1024 * 1024;
+}
 async function proxyRequest(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
   if (path[0] !== "v1") return failure(404, "Route unavailable");
@@ -154,7 +166,7 @@ async function proxyRequest(request: NextRequest, context: { params: Promise<{ p
   if (cookie) headers.set("cookie", cookie);
   try {
     const mutation = !["GET", "HEAD"].includes(request.method);
-    const body = mutation ? await limitedBody(request, /\/certificates$/.test(route) ? 64 * 1024 : 1024 * 1024) : undefined;
+    const body = mutation ? await limitedBody(request, bodyLimit(route)) : undefined;
     const upstream = await fetch(target, { method: request.method, headers, body, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(30_000) });
     logProxyOutcome(route, request.method, upstream.status, "completed");
     const responseHeaders = new Headers({ "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
