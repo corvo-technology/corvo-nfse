@@ -5,24 +5,22 @@ import { useLocale, useTranslations } from "next-intl";
 import { plans } from "@/lib/api";
 import type { PlanQuote } from "@/lib/types";
 import { AVULSO_MIN_UNITS, AVULSO_UNIT_CENTS } from "@/lib/plans-catalog";
-import { Modal } from "@/components/ui/modal";
 
 /** First-steps explanation of the product and the plans. Informational only: nothing to pay here. */
-export function PlansDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function PlansInfo() {
   const t = useTranslations("Onboarding");
   const locale = useLocale();
   const [quotes, setQuotes] = useState<PlanQuote[]>([]);
 
   useEffect(() => {
-    if (!open) return;
     let cancelled = false;
     plans.list("monthly").then((page) => { if (!cancelled) setQuotes(page.items); }).catch(() => undefined);
     return () => { cancelled = true; };
-  }, [open]);
+  }, []);
 
   const money = new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US", { style: "currency", currency: "BRL" });
   return (
-    <Modal open={open} onClose={onClose} title={t("intro.title")} wide>
+    <>
       <div className="flex flex-col gap-2 text-sm text-text-3">
         <p>{t("intro.p1")}</p>
         <p>{t("intro.p2")}</p>
@@ -49,6 +47,6 @@ export function PlansDialog({ open, onClose }: { open: boolean; onClose: () => v
         <p className="text-sm font-medium">{t("plans.avulsoTitle")}</p>
         <p className="mt-1 text-[13px] text-text-2">{t("plans.avulsoBody", { price: money.format(AVULSO_UNIT_CENTS / 100), min: AVULSO_MIN_UNITS })}</p>
       </div>
-    </Modal>
+    </>
   );
 }

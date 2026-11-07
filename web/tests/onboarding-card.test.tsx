@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OnboardingCard } from "@/components/onboarding/onboarding-card";
@@ -12,7 +12,7 @@ vi.mock("@/lib/use-onboarding", () => ({ useOnboarding: () => mocks.state }));
 vi.mock("@/lib/api", () => ({ companies: { create: mocks.create } }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: () => true }) }));
-vi.mock("@/components/onboarding/plans-dialog", () => ({ PlansDialog: ({ open }: { open: boolean }) => (open ? <div>plans-dialog</div> : null) }));
+vi.mock("@/components/onboarding/plans-info", () => ({ PlansInfo: () => <div>plans-info</div> }));
 vi.mock("@/components/dashboard/company-form", () => ({ CompanyForm: ({ onFinish, onCancel }: { onFinish: (c: { id: string }) => void; onCancel: () => void }) => <div><button onClick={() => onFinish({ id: "c1" })}>finish-company</button><button onClick={onCancel}>cancel-company</button></div> }));
 vi.mock("@/components/dashboard/certificate-upload", () => ({ CertificateUpload: ({ companyId, onUploaded }: { companyId: string; onUploaded: () => void }) => <button onClick={onUploaded}>upload-for-{companyId}</button> }));
 vi.mock("@/components/companies/dps-sequence-card", () => ({ DpsSequenceCard: ({ companyId }: { companyId: string }) => <div>sequence-{companyId}</div> }));
@@ -36,62 +36,85 @@ describe("OnboardingCard", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("shows the progress and every step, and Hide asks to hide", () => {
-    mocks.state = state({ doneKeys: ["company"] });
+  it("opens on the first step that is not done and says which step it is", () => {
+    mocks.state = state({ doneKeys: ["plans"] });
     renderCard();
-    expect(screen.getByText("1 of 5")).toBeTruthy();
-    for (const label of Object.values(messages.Onboarding.steps)) expect(screen.getByText(label)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Go to dashboard" }));
-    expect(mocks.hide).toHaveBeenCalled();
+    expect(screen.getByText("Step 2 of 5")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: messages.Onboarding.steps.company })).toBeTruthy();
+    expect(screen.getByText("finish-company")).toBeTruthy();
   });
 
-  it("the plans step marks itself seen and opens the plans window", () => {
+  it("the plans screen is inline, marks itself seen, and Skip goes on to the next step", () => {
     renderCard();
-    fireEvent.click(screen.getByRole("button", { name: messages.Onboarding.steps.plans }));
+    expect(screen.getByText("plans-info")).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.mark).toHaveBeenCalledWith("plansSeen");
-    expect(screen.getByText("plans-dialog")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    expect(screen.getByRole("heading", { name: messages.Onboarding.steps.company })).toBeTruthy();
   });
 
-  it("the company step opens the form, and finishing it closes the window and reloads", () => {
+  it("a finished step shows Next, and Back returns to the previous step", () => {
+    mocks.state = state({ doneKeys: ["plans"] });
     renderCard();
-    fireEvent.click(screen.getByRole("button", { name: messages.Onboarding.steps.company }));
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("button", { name: "Next" })).toBeTruthy();
+    expect(screen.getByText("plans-info")).toBeTruthy();
+  });
+
+  it("finishing the company form reloads and moves to the certificate step", () => {
+    mocks.state = state({ doneKeys: ["plans"] });
+    renderCard();
     fireEvent.click(screen.getByText("finish-company"));
     expect(mocks.reload).toHaveBeenCalled();
-    expect(screen.queryByText("finish-company")).toBeNull();
+    expect(screen.getByRole("heading", { name: messages.Onboarding.steps.certificate })).toBeTruthy();
   });
 
-  it("the certificate step uploads for the oldest company and reloads", () => {
+  it("the certificate step uploads for the oldest company, reloads and moves on", () => {
+    mocks.state = state({ doneKeys: ["plans", "company"] });
     renderCard();
-    fireEvent.click(screen.getByRole("button", { name: messages.Onboarding.steps.certificate }));
     fireEvent.click(screen.getByText("upload-for-c1"));
     expect(mocks.reload).toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: messages.Onboarding.steps.numbering })).toBeTruthy();
   });
 
   it("the numbering step shows the numbering card and can say no note was issued before", () => {
+    mocks.state = state({ doneKeys: ["plans", "company", "certificate"] });
     renderCard();
-    fireEvent.click(screen.getByRole("button", { name: messages.Onboarding.steps.numbering }));
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText("sequence-c1")).toBeTruthy();
-    fireEvent.click(within(dialog).getByRole("button", { name: "I never issued notes before" }));
+    expect(screen.getByText("sequence-c1")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "I never issued notes before" }));
     expect(mocks.mark).toHaveBeenCalledWith("noPriorNotes");
+    expect(screen.getByRole("heading", { name: messages.Onboarding.steps.note })).toBeTruthy();
   });
 
-  it("a locked note step says what is missing and cannot be clicked; unlocked it links to the form", () => {
+  it("the note step links to the form when unlocked, and says what is missing when locked", () => {
+    mocks.state = state({ doneKeys: ["plans", "company", "certificate", "numbering"], lockedNote: false });
+    renderCard();
+    expect(screen.getByRole("link", { name: "Issue a test note" }).getAttribute("href")).toBe("/app/invoices/new");
+    cleanup();
+    mocks.state = state({ doneKeys: ["plans", "company", "certificate", "numbering"] });
     renderCard();
     expect(screen.getByText("Register the company and upload the certificate to unlock")).toBeTruthy();
-    expect(screen.queryByRole("link", { name: messages.Onboarding.steps.note })).toBeNull();
-    cleanup();
-    mocks.state = state({ lockedNote: false });
-    renderCard();
-    expect(screen.getByRole("link", { name: messages.Onboarding.steps.note }).getAttribute("href")).toBe("/app/invoices/new");
+    expect(screen.queryByRole("link", { name: "Issue a test note" })).toBeNull();
   });
 
-  it("certificate and numbering are not clickable before a company exists, and say why", () => {
-    mocks.state = state({ lockedKeys: ["certificate", "numbering"] });
+  it("certificate and numbering without a company say why and can be skipped", () => {
+    mocks.state = state({ doneKeys: ["plans"], firstCompanyId: null, lockedKeys: ["certificate", "numbering"] });
     renderCard();
-    expect(screen.queryByRole("button", { name: messages.Onboarding.steps.certificate })).toBeNull();
-    expect(screen.queryByRole("button", { name: messages.Onboarding.steps.numbering })).toBeNull();
-    expect(screen.getAllByText("Register the company first")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    expect(screen.getByText("Register the company first")).toBeTruthy();
+    expect(screen.queryByText("upload-for-c1")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    expect(screen.getByText("Register the company first")).toBeTruthy();
+    expect(screen.queryByText("sequence-c1")).toBeNull();
+  });
+
+  it("the last step ends with Go to dashboard, and the top button always hides", () => {
+    mocks.state = state({ doneKeys: ["plans", "company", "certificate", "numbering"] });
+    renderCard();
+    const buttons = screen.getAllByRole("button", { name: "Go to dashboard" });
+    expect(buttons).toHaveLength(2);
+    fireEvent.click(buttons[1]);
+    expect(mocks.hide).toHaveBeenCalledTimes(1);
   });
 
   it("when everything is done it says so and points to the environment selector", () => {

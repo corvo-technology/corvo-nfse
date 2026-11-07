@@ -1,135 +1,140 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, ChevronRight, Lock } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { companies } from "@/lib/api";
 import { useOnboarding } from "@/lib/use-onboarding";
-import type { StepKey } from "@/lib/onboarding-steps";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
 import { CompanyForm } from "@/components/dashboard/company-form";
 import { CertificateUpload } from "@/components/dashboard/certificate-upload";
 import { DpsSequenceCard } from "@/components/companies/dps-sequence-card";
-import { PlansDialog } from "@/components/onboarding/plans-dialog";
+import { PlansInfo } from "@/components/onboarding/plans-info";
 
-/** First steps for a new account: a full-screen welcome over the dashboard. Every step is optional and it can be skipped. */
+/**
+ * First steps for a new account: a full-screen welcome over the dashboard, one step per screen
+ * (no windows on top of windows, so it works on a phone). Every step can be skipped.
+ */
 export function OnboardingCard() {
   const t = useTranslations("Onboarding");
   const onboarding = useOnboarding();
-  const [open, setOpen] = useState<Exclude<StepKey, "note"> | null>(null);
-  if (!onboarding.visible) return null;
+  const [picked, setPicked] = useState<number | null>(null);
 
-  const close = () => { setOpen(null); onboarding.reload(); };
-  const start = (key: Exclude<StepKey, "note">) => {
-    if (key === "plans") onboarding.mark("plansSeen");
-    setOpen(key);
-  };
+  const { steps, visible } = onboarding;
+  const markRef = useRef(onboarding.mark);
+  useEffect(() => { markRef.current = onboarding.mark; });
+  const firstOpen = steps.findIndex((s) => !s.done);
+  const index = Math.max(0, Math.min(picked ?? Math.max(firstOpen, 0), steps.length - 1));
+  const step = steps[index];
+  const onPlans = visible && step?.key === "plans";
 
-  const skip = (
-    <button type="button" className="btn btn-ghost btn-sm" onClick={onboarding.hide}>{t("card.hide")}</button>
-  );
+  // The plans screen counts as seen as soon as it is shown.
+  useEffect(() => { if (onPlans) markRef.current("plansSeen"); }, [onPlans]);
 
-  const shell = (children: React.ReactNode) => (
-    <section aria-labelledby="onboarding-title" className="fixed inset-0 z-40 flex flex-col overflow-y-auto bg-bg">
-      <header className="flex flex-none items-center justify-between px-6 py-5 sm:px-10">
+  if (!visible || !step) return null;
+
+  const last = index === steps.length - 1;
+  const next = () => (last ? onboarding.hide() : setPicked(index + 1));
+  const completed = () => { onboarding.reload(); next(); };
+
+  const shell = (children: React.ReactNode, footer: React.ReactNode) => (
+    <section aria-labelledby="onboarding-title" className="fixed inset-0 z-40 flex flex-col bg-bg">
+      <header className="flex flex-none items-center justify-between px-5 py-4 sm:px-10 sm:py-5">
         <span className="text-[17px] font-semibold tracking-tight">{t("card.brand")}</span>
-        {skip}
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onboarding.hide}>{t("card.hide")}</button>
       </header>
-      <div className="mx-auto flex w-full max-w-[580px] flex-1 flex-col justify-center px-6 pb-16 sm:px-0">{children}</div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-[580px] flex-col px-5 pb-8 pt-2 sm:px-0 sm:pt-8">{children}</div>
+      </div>
+      <footer className="flex-none border-t border-border bg-bg px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-10">
+        <div className="mx-auto flex w-full max-w-[580px] items-center justify-between gap-3">{footer}</div>
+      </footer>
     </section>
   );
 
-  const modals = (
-    <>
-      <PlansDialog open={open === "plans"} onClose={close} />
-      <Modal open={open === "company"} onClose={close} title={t("steps.company")} wide>
-        <CompanyForm
-          onCancel={close}
-          onSave={async (input) => {
-            if (!input.taxRegime || !input.taxId) throw new Error("taxRegime and taxId are required");
-            return companies.create({ ...input, taxRegime: input.taxRegime, taxId: input.taxId });
-          }}
-          onFinish={close}
-        />
-      </Modal>
-      <Modal open={open === "certificate" && onboarding.firstCompanyId !== null} onClose={close} title={t("steps.certificate")}>
-        {onboarding.firstCompanyId && <CertificateUpload companyId={onboarding.firstCompanyId} onUploaded={close} />}
-      </Modal>
-      <Modal open={open === "numbering" && onboarding.firstCompanyId !== null} onClose={close} title={t("steps.numbering")}>
-        {onboarding.firstCompanyId && (
-          <div className="flex flex-col gap-3">
-            <DpsSequenceCard companyId={onboarding.firstCompanyId} canManage />
-            <Button variant="ghost" onClick={() => { onboarding.mark("noPriorNotes"); close(); }}>{t("card.noPrior")}</Button>
-          </div>
-        )}
-      </Modal>
-    </>
-  );
-
   if (onboarding.allDone)
-    return (
+    return shell(
       <>
-        {shell(
-          <>
-            <h1 id="onboarding-title" className="text-balance text-[32px] font-semibold leading-[1.1] tracking-tight">{t("card.allDoneTitle")}</h1>
-            <p className="mt-4 text-pretty text-[15px] leading-relaxed text-text-3">{t("card.allDoneBody")}</p>
-            <button type="button" className="btn btn-accent mt-8 self-start" onClick={onboarding.hide}>{t("card.hide")}</button>
-          </>
-        )}
-        {modals}
+        <h1 id="onboarding-title" className="text-balance text-[28px] font-semibold leading-[1.1] tracking-tight sm:text-[32px]">{t("card.allDoneTitle")}</h1>
+        <p className="mt-4 text-pretty text-[15px] leading-relaxed text-text-3">{t("card.allDoneBody")}</p>
+      </>,
+      <>
+        <span />
+        <Button variant="accent" onClick={onboarding.hide}>{t("card.hide")}</Button>
       </>
     );
 
-  return (
-    <>
-      {shell(
-        <>
-          <h1 id="onboarding-title" className="text-balance text-[32px] font-semibold leading-[1.1] tracking-tight">{t("card.title")}</h1>
-          <p className="mt-3 text-pretty text-[15px] leading-relaxed text-text-3">{t("card.subtitle")}</p>
-          <div className="mt-8 flex items-center gap-4">
-            <div className="flex flex-1 gap-1.5" aria-hidden>
-              {onboarding.steps.map((step) => <span key={step.key} className={`h-1 flex-1 rounded-full ${step.done ? "bg-accent" : "bg-track"}`} />)}
-            </div>
-            <span className="font-mono text-xs text-text-3">{t("card.progress", { done: onboarding.done, total: onboarding.total })}</span>
+  const lockedText = step.locked ? t(step.key === "note" ? "card.noteLocked" : "card.needsCompany") : null;
+
+  const body = (() => {
+    if (lockedText)
+      return (
+        <p className="flex items-start gap-2 rounded-[10px] border border-border p-4 text-sm text-text-3">
+          <Lock size={15} className="mt-0.5 flex-none text-text-4" aria-hidden />{lockedText}
+        </p>
+      );
+    switch (step.key) {
+      case "plans":
+        return <PlansInfo />;
+      case "company":
+        return (
+          <CompanyForm
+            onCancel={next}
+            onSave={async (input) => {
+              if (!input.taxRegime || !input.taxId) throw new Error("taxRegime and taxId are required");
+              return companies.create({ ...input, taxRegime: input.taxRegime, taxId: input.taxId });
+            }}
+            onFinish={completed}
+          />
+        );
+      case "certificate":
+        return (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-text-3">{t("card.certificateHint")}</p>
+            {onboarding.firstCompanyId && <CertificateUpload companyId={onboarding.firstCompanyId} onUploaded={completed} />}
           </div>
-          <ul className="mt-6 flex flex-col border-y border-border">
-            {onboarding.steps.map((step, index) => {
-              const label = t(`steps.${step.key}`);
-              const number = <span className="w-6 flex-none font-mono text-xs text-text-4" aria-hidden>{String(index + 1).padStart(2, "0")}</span>;
-              const row = "flex w-full items-center gap-3 py-4 text-left";
-              const state = step.done
-                ? <span className="flex items-center gap-1.5 text-[13px] text-ok"><Check size={15} aria-hidden />{t("card.doneLabel")}</span>
-                : <span className="flex items-center gap-1 text-[13px] text-text-3">{t("card.start")}<ChevronRight size={14} aria-hidden /></span>;
-              return (
-                <li key={step.key} className="border-t border-border first:border-t-0">
-                  {step.locked ? (
-                    <div className={`${row} opacity-60`}>
-                      {number}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[15px]">{label}</p>
-                        <p className="mt-0.5 text-[12.5px] text-text-4">{t(step.key === "note" ? "card.noteLocked" : "card.needsCompany")}</p>
-                      </div>
-                      <Lock size={15} className="flex-none text-text-4" aria-hidden />
-                    </div>
-                  ) : step.key === "note" ? (
-                    <Link href="/app/invoices/new" aria-label={label} className={`${row} -mx-3 rounded-lg px-3 hover:bg-hover`}>
-                      {number}<span className="flex-1 text-[15px] font-medium">{label}</span>{state}
-                    </Link>
-                  ) : (
-                    <button type="button" aria-label={label} className={`${row} -mx-3 cursor-pointer rounded-lg px-3 hover:bg-hover`} onClick={() => start(step.key as Exclude<StepKey, "note">)}>
-                      {number}<span className="flex-1 text-[15px] font-medium">{label}</span>{state}
-                    </button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mt-5 text-[13px] text-text-4">{t("card.footnote")}</p>
-        </>
+        );
+      case "numbering":
+        return (
+          <div className="flex flex-col gap-3">
+            {onboarding.firstCompanyId && <DpsSequenceCard companyId={onboarding.firstCompanyId} canManage />}
+            <Button variant="ghost" className="self-start" onClick={() => { onboarding.mark("noPriorNotes"); completed(); }}>{t("card.noPrior")}</Button>
+          </div>
+        );
+      case "note":
+        return (
+          <div className="flex flex-col items-start gap-4">
+            <p className="text-sm text-text-3">{t("card.noteHint")}</p>
+            <Link href="/app/invoices/new" className="btn btn-accent">{t("card.issueNote")}</Link>
+          </div>
+        );
+    }
+  })();
+
+  return shell(
+    <>
+      <div className="flex items-center gap-4">
+        <div className="flex flex-1 gap-1.5" aria-hidden>
+          {steps.map((s, i) => <span key={s.key} className={`h-1 flex-1 rounded-full ${s.done ? "bg-accent" : i === index ? "bg-text-3" : "bg-track"}`} />)}
+        </div>
+        <span className="font-mono text-xs text-text-3">{t("card.stepOf", { n: index + 1, total: steps.length })}</span>
+      </div>
+      <h1 id="onboarding-title" className="mt-6 flex items-center gap-2 text-balance text-[26px] font-semibold leading-[1.15] tracking-tight sm:text-[30px]">
+        {t(`steps.${step.key}`)}
+        {step.done && <Check size={20} className="flex-none text-ok" aria-label={t("card.doneLabel")} />}
+      </h1>
+      <div className="mt-6">{body}</div>
+    </>,
+    <>
+      {index > 0 ? <Button variant="ghost" onClick={() => setPicked(index - 1)}>{t("card.back")}</Button> : <span />}
+      {last ? (
+        <Button variant="accent" onClick={onboarding.hide}>{t("card.hide")}</Button>
+      ) : step.done ? (
+        <Button variant="accent" onClick={next}>{t("card.next")}</Button>
+      ) : (
+        <Button variant="secondary" onClick={next}>{t("card.skip")}</Button>
       )}
-      {modals}
     </>
   );
 }

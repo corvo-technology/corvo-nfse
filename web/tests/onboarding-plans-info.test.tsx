@@ -2,19 +2,19 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PlansDialog } from "@/components/onboarding/plans-dialog";
+import { PlansInfo } from "@/components/onboarding/plans-info";
 import messages from "@/messages/en.json";
 
 const mocks = vi.hoisted(() => ({ list: vi.fn() }));
 vi.mock("@/lib/api", () => ({ plans: { list: mocks.list } }));
 
 const quote = (slug: string, name: string, allowance: number, cents: number) => ({ slug, name, monthlyAllowance: allowance, basePriceCents: cents, monthlyEquivalentCents: cents, chargeTotalCents: cents, currency: "BRL" });
-const renderDialog = (open = true) => render(<NextIntlClientProvider locale="en" messages={messages}><PlansDialog open={open} onClose={() => undefined} /></NextIntlClientProvider>);
+const renderDialog = () => render(<NextIntlClientProvider locale="en" messages={messages}><PlansInfo /></NextIntlClientProvider>);
 
 beforeEach(() => { vi.clearAllMocks(); mocks.list.mockResolvedValue({ items: [quote("solo", "Solo", 50, 4900), quote("equipe", "Equipe", 300, 14900)], hasMore: false, nextCursor: null }); });
 afterEach(cleanup);
 
-describe("PlansDialog", () => {
+describe("PlansInfo", () => {
   it("explains the product and says tests do not use credits", async () => {
     renderDialog();
     await screen.findByText(messages.Onboarding.intro.p1);
@@ -47,11 +47,8 @@ describe("PlansDialog", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("does not fetch while closed and offers no payment button", async () => {
-    renderDialog(false);
-    expect(mocks.list).not.toHaveBeenCalled();
-    cleanup();
-    renderDialog(true);
+  it("offers no payment button", async () => {
+    renderDialog();
     await screen.findByText("Solo");
     expect(screen.queryByRole("button", { name: /pay|subscribe|buy/i })).toBeNull();
   });
