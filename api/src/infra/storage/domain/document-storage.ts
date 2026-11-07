@@ -47,3 +47,6 @@ export interface IDocumentStorage {
 }
 
 export const DOCUMENT_STORAGE = Symbol('DOCUMENT_STORAGE');
+
+/** The S3 client shared by every storage in the app (documents, import files). */
+export const S3_CLIENT = Symbol('S3_CLIENT');
