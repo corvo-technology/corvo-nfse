@@ -123,6 +123,8 @@ export class StripeBillingAdapter extends BillingProvider {
         metadata: { tenant_id: tenantId, intent_id: intentId },
         subscription_data: { metadata: { tenant_id: tenantId } },
         allowed_payment_method_types: ['card'],
+        // Coupons live in the Stripe dashboard; the customer types the code on the hosted page.
+        allow_promotion_codes: true,
         locale: 'pt-BR',
         branding_settings: CHECKOUT_BRANDING,
         line_items: [{ price: base.id, quantity: 1 }],
@@ -150,6 +152,8 @@ export class StripeBillingAdapter extends BillingProvider {
         client_reference_id: tenantId,
         metadata: { tenant_id: tenantId, intent_id: input.intentId },
         allowed_payment_method_types: ['card'],
+        // Coupons live in the Stripe dashboard; the customer types the code on the hosted page.
+        allow_promotion_codes: true,
         locale: 'pt-BR',
         branding_settings: CHECKOUT_BRANDING,
         line_items: [
