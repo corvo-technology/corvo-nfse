@@ -169,7 +169,7 @@ describe('WooviClient', () => {
     const body = JSON.parse(
       (fetchFn.mock.calls as unknown as Array<[string, RequestInit]>)[1][1]
         .body as string,
-    );
+    ) as { dayGenerateCharge: number };
     expect(body.dayGenerateCharge).toBe(27);
   });
 
@@ -203,7 +203,7 @@ describe('WooviClient', () => {
     const body = JSON.parse(
       (fetchFn.mock.calls as unknown as Array<[string, RequestInit]>)[1][1]
         .body as string,
-    );
+    ) as { customer: unknown };
     expect(body.customer).toEqual(payer);
   });
 

@@ -185,7 +185,7 @@ describe('WebhookOutboxService', () => {
         update: jest.fn(),
         findByIdAndTenantId: jest.fn().mockResolvedValue(liveDelivery),
       };
-      return { repo, service: buildService({ repo: repo as never }).service };
+      return { repo, service: buildService({ repo: repo }).service };
     };
 
     it('lets a test API key retry only test deliveries', async () => {

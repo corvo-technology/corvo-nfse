@@ -245,12 +245,15 @@ describe('IntegrationsController', () => {
       const replace = connections.replaceRules as jest.Mock;
       await controller.putRules(req, '11111111-1111-4111-8111-111111111111', {
         rules: [rule()],
-      } as never);
+      });
       await controller.putRules(req, '11111111-1111-4111-8111-111111111111', {
         rules: [rule({ cancelOnRefund: true })],
-      } as never);
-      expect(replace.mock.calls[0][2][0].cancelOnRefund).toBe(false);
-      expect(replace.mock.calls[1][2][0].cancelOnRefund).toBe(true);
+      });
+      const calls = replace.mock.calls as unknown as Array<
+        [unknown, unknown, Array<{ cancelOnRefund: boolean }>]
+      >;
+      expect(calls[0][2][0].cancelOnRefund).toBe(false);
+      expect(calls[1][2][0].cancelOnRefund).toBe(true);
     });
     it('only accepts a boolean', async () => {
       const dto = plainToInstance(PutRulesDto, {

@@ -73,10 +73,11 @@ describe('CertificateExpiryScheduler', () => {
 
     await scheduler.handleExpiry();
 
-    const stages = eventBus.publishBestEffort.mock.calls.map(([event]) => [
-      event.notice.companyId,
-      event.notice.stage,
-    ]);
+    const stages = (
+      eventBus.publishBestEffort.mock.calls as unknown as Array<
+        [{ notice: { companyId: string; stage: string } }]
+      >
+    ).map(([event]) => [event.notice.companyId, event.notice.stage]);
     expect(stages).toEqual([
       ['far', 30],
       ['near', 7],

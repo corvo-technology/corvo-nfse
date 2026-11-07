@@ -37,7 +37,7 @@ describe('PricingService catalog', () => {
   });
 
   it('rejects unknown plans and unknown cycles', () => {
-    expect(() => service.calculateQuote('free' as never, 'monthly')).toThrow(
+    expect(() => service.calculateQuote('free', 'monthly')).toThrow(
       'Unknown plan',
     );
     expect(() =>

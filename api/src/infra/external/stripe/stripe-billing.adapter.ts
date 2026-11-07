@@ -186,9 +186,6 @@ export class StripeBillingAdapter extends BillingProvider {
     const base = sub.items.data.find(
       (i) => i.price.recurring?.usage_type !== 'metered',
     );
-    const overage = sub.items.data.find(
-      (i) => i.price.recurring?.usage_type === 'metered',
-    );
     const slug = base?.price.metadata.plan_slug ?? null;
     let paidUntil: Date | null = null;
     let paidPlanSlug: string | null = null;

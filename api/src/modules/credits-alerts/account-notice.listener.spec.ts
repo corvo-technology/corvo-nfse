@@ -29,9 +29,13 @@ describe('AccountNoticeListener', () => {
       accountNotice('t1', { kind: 'credits-added', units: 10 }),
     );
     expect(email.enqueueNotice).toHaveBeenCalledTimes(2);
-    expect(email.enqueueNotice.mock.calls[0][1].subject).toBe(
-      'Créditos adicionados',
-    );
+    expect(
+      (
+        email.enqueueNotice.mock.calls as unknown as Array<
+          [unknown, { subject: string }]
+        >
+      )[0][1].subject,
+    ).toBe('Créditos adicionados');
   });
 
   it('sends security notices to admins only', async () => {
@@ -41,7 +45,13 @@ describe('AccountNoticeListener', () => {
     );
     expect(recipients.adminEmailsFor).toHaveBeenCalledWith('t1');
     expect(email.enqueueNotice).toHaveBeenCalledTimes(1);
-    expect(email.enqueueNotice.mock.calls[0][1].html).toContain('Prod');
+    expect(
+      (
+        email.enqueueNotice.mock.calls as unknown as Array<
+          [unknown, { html: string }]
+        >
+      )[0][1].html,
+    ).toContain('Prod');
   });
 
   it('warns about a rejected invoice once per hour', async () => {
@@ -54,9 +64,13 @@ describe('AccountNoticeListener', () => {
       }),
     );
     expect(first.email.enqueueNotice).toHaveBeenCalled();
-    expect(first.email.enqueueNotice.mock.calls[0][1].html).toContain(
-      'invoices/i1',
-    );
+    expect(
+      (
+        first.email.enqueueNotice.mock.calls as unknown as Array<
+          [unknown, { html: string }]
+        >
+      )[0][1].html,
+    ).toContain('invoices/i1');
 
     const again = build({ first: false });
     await again.listener.handle(

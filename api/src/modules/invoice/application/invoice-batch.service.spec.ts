@@ -223,13 +223,18 @@ describe('InvoiceBatchService.emitBatch', () => {
 
   describe('checkItem', () => {
     it('says ok for a valid item and saves nothing', async () => {
-      expect(await service.checkItem(valid(), tenantId, auth)).toEqual({ ok: true });
+      expect(await service.checkItem(valid(), tenantId, auth)).toEqual({
+        ok: true,
+      });
       expect(lifecycle.submitBatch).not.toHaveBeenCalled();
     });
 
     it('returns the item error instead of throwing when the item is invalid', async () => {
       const result = await service.checkItem({ amount: 'x' }, tenantId, auth);
-      expect(result).toMatchObject({ ok: false, error: { code: 'ERROR_VALIDATION' } });
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: 'ERROR_VALIDATION' },
+      });
     });
   });
 });
