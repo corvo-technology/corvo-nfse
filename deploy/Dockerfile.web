@@ -1,4 +1,4 @@
-FROM node:24-alpine AS base
+FROM node:25-alpine AS base
 
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -31,7 +31,7 @@ RUN printf 'NEXT_PUBLIC_META_PIXEL_ID=%s\nNEXT_PUBLIC_GA_ID=%s\nNEXT_PUBLIC_API_
 # Caps the Next.js build heap so it does not exhaust a small server.
 RUN NODE_OPTIONS=--max-old-space-size=3072 yarn build
 
-FROM node:24-alpine AS runner
+FROM node:25-alpine AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production
