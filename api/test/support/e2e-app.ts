@@ -1,5 +1,9 @@
 import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
+import {
+  Test,
+  type TestingModule,
+  type TestingModuleBuilder,
+} from '@nestjs/testing';
 import { DataSource } from 'typeorm';
 import { App } from 'supertest/types';
 import { AppModule } from '@/app.module';
@@ -12,6 +16,7 @@ import { TenantPlanService } from '@/modules/plans/application/tenant-plan.servi
 
 export type E2eTestApp = {
   app: INestApplication<App>;
+  moduleFixture: TestingModule;
   dataSource: DataSource;
   server: App;
   adminToken: string;
@@ -22,11 +27,14 @@ export type E2eTestApp = {
 
 export const TEST_EMAIL = `e2e-${randomUUID()}@test.com`;
 
-export async function createSeededE2eApp(): Promise<E2eTestApp> {
+export async function createSeededE2eApp(
+  configure?: (builder: TestingModuleBuilder) => TestingModuleBuilder,
+): Promise<E2eTestApp> {
   process.env.NODE_ENV = 'test';
   process.env.TURNSTILE_SECRET_KEY ??= 'test-turnstile-secret';
 
-  const builder = Test.createTestingModule({ imports: [AppModule] });
+  const base = Test.createTestingModule({ imports: [AppModule] });
+  const builder = configure ? configure(base) : base;
 
   const moduleFixture = await builder.compile();
   const app = moduleFixture.createNestApplication<INestApplication<App>>();
@@ -70,6 +78,7 @@ export async function createSeededE2eApp(): Promise<E2eTestApp> {
 
   return {
     app,
+    moduleFixture,
     dataSource,
     server,
     adminToken: '', // No longer used; use apiKey for authentication
