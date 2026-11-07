@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { AlertTriangle, Plus } from "lucide-react";
+import { AlertTriangle, FileSpreadsheet, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { invoices as invoicesApi } from "@/lib/api";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
@@ -26,6 +26,7 @@ export default function InvoicesPage() {
 
 function InvoicesList() {
   const t = useTranslations("Invoices");
+  const tImports = useTranslations("Imports");
   const { can } = useAuth();
   const tCommon = useTranslations("Common");
   const params = useSearchParams();
@@ -45,10 +46,18 @@ function InvoicesList() {
         title={t("title")}
         subtitle={t("subtitle")}
         actions={
-          can("nfse.invoices.issue") && <Link href="/app/invoices/new" className="btn btn-accent">
-            <Plus size={15} aria-hidden />
-            {t("new")}
-          </Link>
+          can("nfse.invoices.issue") && (
+            <>
+              <Link href="/app/invoices/import" className="btn btn-secondary">
+                <FileSpreadsheet size={15} aria-hidden />
+                {tImports("openButton")}
+              </Link>
+              <Link href="/app/invoices/new" className="btn btn-accent">
+                <Plus size={15} aria-hidden />
+                {t("new")}
+              </Link>
+            </>
+          )
         }
       />
 
