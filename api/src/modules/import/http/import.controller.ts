@@ -26,6 +26,7 @@ import {
   ExecutionEnvironmentGuard,
   executionEnvironment,
 } from '@/modules/auth/execution-environment.guard';
+import { ApiKeyEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
 import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { CursorPage } from '@/shared/http/pagination';
 import { data } from '@/shared/http/response';
@@ -64,6 +65,7 @@ export class ImportController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post()
   @HttpCode(202)
+  @ApiKeyEndpoint()
   @RequirePermission('nfse.invoices.issue')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
@@ -96,7 +98,8 @@ export class ImportController {
   }
 
   @Get()
-  @RequirePermission('nfse.invoices.issue')
+  @ApiKeyEndpoint()
+  @RequirePermission('nfse.invoices.view')
   @ApiOperation({
     summary: 'Recent imports with their counters (newest first, at most 20)',
     description:
@@ -116,7 +119,8 @@ export class ImportController {
   }
 
   @Get('template')
-  @RequirePermission('nfse.invoices.issue')
+  @ApiKeyEndpoint()
+  @RequirePermission('nfse.invoices.view')
   @Header('Content-Type', 'text/csv; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="modelo-importacao.csv"')
   @ApiOperation({ summary: 'Download the spreadsheet template' })
@@ -125,7 +129,8 @@ export class ImportController {
   }
 
   @Get(':id')
-  @RequirePermission('nfse.invoices.issue')
+  @ApiKeyEndpoint()
+  @RequirePermission('nfse.invoices.view')
   @ApiOperation({ summary: 'Status and counters of an import' })
   async get(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -146,6 +151,7 @@ export class ImportController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post(':id/emit')
   @HttpCode(202)
+  @ApiKeyEndpoint()
   @RequirePermission('nfse.invoices.issue')
   @ApiOperation({
     summary: 'Emit every valid row of the import',
@@ -169,7 +175,8 @@ export class ImportController {
   }
 
   @Get(':id/rows')
-  @RequirePermission('nfse.invoices.issue')
+  @ApiKeyEndpoint()
+  @RequirePermission('nfse.invoices.view')
   @ApiOperation({
     summary: 'Rows of an import, one page at a time (default 50, at most 200)',
   })
@@ -198,6 +205,7 @@ export class ImportController {
   }
 
   @Patch(':id/rows/:line')
+  @ApiKeyEndpoint()
   @RequirePermission('nfse.invoices.issue')
   @ApiOperation({
     summary:
@@ -225,6 +233,7 @@ export class ImportController {
 
   @Delete(':id')
   @HttpCode(204)
+  @ApiKeyEndpoint()
   @RequirePermission('nfse.invoices.issue')
   @ApiOperation({ summary: 'Discard an import that has not been emitted' })
   async discard(
@@ -240,7 +249,8 @@ export class ImportController {
   }
 
   @Get(':id/errors.csv')
-  @RequirePermission('nfse.invoices.issue')
+  @ApiKeyEndpoint()
+  @RequirePermission('nfse.invoices.view')
   @Header('Content-Type', 'text/csv; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="erros-importacao.csv"')
   @ApiOperation({ summary: 'CSV with the rows that need attention, streamed' })
