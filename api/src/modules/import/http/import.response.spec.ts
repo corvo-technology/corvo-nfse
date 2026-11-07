@@ -5,13 +5,16 @@ import {
 } from './import.response';
 
 describe('import responses (snake_case like the rest of the API)', () => {
-  it('maps an import with its counters', () => {
+  it('maps an import with its counters, the amounts and the ignored columns', () => {
     const counters = {
       total: 3,
       valid: 2,
       invalid: 1,
       accepted: 0,
       authorized: 0,
+      awaitingCredits: 5,
+      validAmount: 1600.4,
+      awaitingAmount: 200,
       failed: 1,
       pending: 2,
     };
@@ -25,6 +28,8 @@ describe('import responses (snake_case like the rest of the API)', () => {
       status: 'ready',
       companyId: 'c1',
       errorCode: null,
+      rowsExpected: 300,
+      unknownColumns: ['obs', 'cor'],
       emitStartedAt: null,
       emitFinishedAt: new Date('2026-11-07T10:00:00Z'),
       createdAt: new Date('2026-11-07T09:00:00Z'),
@@ -36,10 +41,23 @@ describe('import responses (snake_case like the rest of the API)', () => {
       file_name: 'n.csv',
       company_id: 'c1',
       error_code: null,
+      rows_expected: 300,
+      unknown_columns: ['obs', 'cor'],
       emit_started_at: null,
       emit_finished_at: '2026-11-07T10:00:00.000Z',
       created_at: '2026-11-07T09:00:00.000Z',
-      counters,
+      counters: {
+        total: 3,
+        valid: 2,
+        invalid: 1,
+        accepted: 0,
+        authorized: 0,
+        awaiting_credits: 5,
+        valid_amount: 1600.4,
+        awaiting_amount: 200,
+        failed: 1,
+        pending: 2,
+      },
     });
   });
 

@@ -24,6 +24,7 @@ export abstract class ImportRepository {
         ImportRecord,
         | 'status'
         | 'errorCode'
+        | 'unknownColumns'
         | 'rowsExpected'
         | 'emitStartedAt'
         | 'emitFinishedAt'
@@ -114,5 +115,13 @@ export abstract class ImportRepository {
   ): Promise<ImportRecord | null>;
   /** Housekeeping across tenants: drops imports (and their rows) created more than `days` ago. */
   abstract deleteOlderThan(days: number): Promise<number>;
+  /** Deletes only while the status is one of `statuses`: false when an Emit got there first. */
+  abstract deleteIfStatus(
+    tenantId: string,
+    id: string,
+    statuses: ImportStatus[],
+  ): Promise<boolean>;
+  /** Housekeeping across tenants: fails imports left `processing` for more than `hours`, with or without a file. */
+  abstract failStuck(hours: number): Promise<number>;
   abstract delete(tenantId: string, id: string): Promise<void>;
 }

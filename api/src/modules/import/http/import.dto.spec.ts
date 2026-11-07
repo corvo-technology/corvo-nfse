@@ -12,6 +12,12 @@ describe('ListImportRowsQuery', () => {
     expect(await check({})).toHaveLength(0);
   });
 
+  it('refuses a cursor that is not a plain number instead of failing later with a 500', async () => {
+    expect(await check({ cursor: '120' })).toHaveLength(0);
+    for (const cursor of ['abc', '1; DROP', '-1', '1.5', '99999999999'])
+      expect(await check({ cursor })).not.toHaveLength(0);
+  });
+
   it('refuses bigger pages, zero and unknown statuses', async () => {
     expect(await check({ limit: '201' })).not.toHaveLength(0);
     expect(await check({ limit: '0' })).not.toHaveLength(0);

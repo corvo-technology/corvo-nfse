@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -45,6 +46,7 @@ export class ListImportRowsQuery {
   @IsOptional()
   @IsString()
   @MaxLength(20)
+  @Matches(/^\d{1,9}$/, { message: 'cursor must be a number' })
   cursor?: string;
 
   @ApiPropertyOptional({ default: DEFAULT_ROWS_PAGE, maximum: MAX_ROWS_PAGE })

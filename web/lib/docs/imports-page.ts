@@ -14,6 +14,7 @@ const IMPORT_JSON = `{
     "company_id": null,
     "error_code": null,
     "rows_expected": 300,
+    "unknown_columns": [],
     "emit_started_at": null,
     "emit_finished_at": null,
     "created_at": "2026-11-07T13:05:21.000Z",
@@ -165,8 +166,8 @@ const { data, pagination } = await res.json();`,
       scopes: WRITE_SCOPES,
       success: "200 OK",
       summary: t(
-        "Corrects one row and checks it again, only while the import is `ready`. Send the changed fields in `item`. `customer` and `service` replace the stored objects, so send them whole. The answer is the row, `valid` or still `invalid` with the reason. A row already queued for issuing answers `409` with `ERROR_IMPORT_STATE`.",
-        "Corrige uma linha e a confere de novo, somente enquanto a importação estiver `ready`. Envie os campos alterados em `item`. `customer` e `service` substituem os objetos guardados, então envie-os inteiros. A resposta é a linha, `valid` ou ainda `invalid` com o motivo. Uma linha que já entrou na fila de emissão responde `409` com `ERROR_IMPORT_STATE`.",
+        "Corrects one row and checks it again, only while the import is `ready`. Send the changed fields in `item`. `customer` and `service` are merged field by field, so editing the e-mail keeps the name. `companyId` and `companyTaxId` cannot be changed. The answer is the row, `valid` or still `invalid` with the reason. A row already queued for issuing answers `409` with `ERROR_IMPORT_STATE`.",
+        "Corrige uma linha e a confere de novo, somente enquanto a importação estiver `ready`. Envie os campos alterados em `item`. `customer` e `service` são mesclados campo a campo, então alterar o e-mail mantém o nome. `companyId` e `companyTaxId` não podem ser alterados. A resposta é a linha, `valid` ou ainda `invalid` com o motivo. Uma linha que já entrou na fila de emissão responde `409` com `ERROR_IMPORT_STATE`.",
       ),
       params: { rows: [{ name: "item", type: "object", required: true, description: t("Invoice fields to change: `amount`, `competenceDate`, `customer { name, taxId, email }`, `service { description, code }`.", "Campos da nota a alterar: `amount`, `competenceDate`, `customer { name, taxId, email }`, `service { description, code }`.") }] },
       examples: {
@@ -222,8 +223,8 @@ export function importsPage(locale: DocsLocale): DocSection {
     ] },
     { kind: "heading", level: 2, body: t("The spreadsheet", "A planilha") },
     { kind: "text", body: t(
-      "The first line is the header. Names are matched without caring about case or accents, in Portuguese or English (`valor` or `amount`). CSV may use `;` or `,` and UTF-8 or Windows encodings. Amounts accept `1.234,56`, `1234.56` and `R$ 1.234,56`; dates accept `dd/mm/aaaa` and `aaaa-mm-dd`. Formulas are never run: only the stored value is read.",
-      "A primeira linha é o cabeçalho. Os nomes são reconhecidos sem diferenciar maiúsculas e acentos, em português ou inglês (`valor` ou `amount`). O CSV pode usar `;` ou `,` e codificação UTF-8 ou do Windows. Os valores aceitam `1.234,56`, `1234.56` e `R$ 1.234,56`; as datas aceitam `dd/mm/aaaa` e `aaaa-mm-dd`. Fórmulas nunca são executadas: só o valor guardado é lido.",
+      "The first line is the header. Names are matched without caring about case or accents, in Portuguese or English (`valor` or `amount`). CSV may use `;` or `,` and UTF-8, UTF-16 or Windows encodings. Amounts accept `1.234,56`, `1234.56` and `R$ 1.234,56`; dates accept `dd/mm/aaaa` (also `7/11/2026`, `07-11-2026` and `07.11.2026`) and `aaaa-mm-dd`. Columns that match no name below are ignored and listed in `unknown_columns` of the import. Formulas are never run: only the stored value is read.",
+      "A primeira linha é o cabeçalho. Os nomes são reconhecidos sem diferenciar maiúsculas e acentos, em português ou inglês (`valor` ou `amount`). O CSV pode usar `;` ou `,` e codificação UTF-8, UTF-16 ou do Windows. Os valores aceitam `1.234,56`, `1234.56` e `R$ 1.234,56`; as datas aceitam `dd/mm/aaaa` (também `7/11/2026`, `07-11-2026` e `07.11.2026`) e `aaaa-mm-dd`. Colunas que não casam com nenhum nome abaixo são ignoradas e listadas em `unknown_columns` da importação. Fórmulas nunca são executadas: só o valor guardado é lido.",
     ) },
     { kind: "table", head: [t("Column", "Coluna"), t("Required", "Obrigatória"), t("What it is", "O que é")], rows: [
       ["`cnpj_prestador`", t("if no company is chosen", "se não escolher a empresa"), t("CNPJ of the company that issues the row.", "CNPJ da empresa que emite a linha.")],
@@ -250,7 +251,7 @@ export function importsPage(locale: DocsLocale): DocSection {
       ["`ready`", t("Read. You can review, fix and emit.", "Lido. Dá para revisar, corrigir e emitir.")],
       ["`emitting`", t("Issuing. Some invoices may still be waiting for the city.", "Emitindo. Algumas notas podem ainda aguardar a prefeitura.")],
       ["`done`", t("Nothing is left in progress. Rows awaiting credits can still be issued again.", "Nada mais em andamento. Linhas aguardando créditos ainda podem ser emitidas de novo.")],
-      ["`failed`", t("The file could not be read (empty, too many rows or not a real spreadsheet); see `error_code`.", "O arquivo não pôde ser lido (vazio, linhas demais ou não é uma planilha de verdade); veja o `error_code`.")],
+      ["`failed`", t("The file could not be read (empty, too many rows or not a real spreadsheet), or the chosen company no longer exists (`ERROR_IMPORT_COMPANY_NOT_FOUND`); see `error_code`.", "O arquivo não pôde ser lido (vazio, linhas demais ou não é uma planilha de verdade), ou a empresa escolhida não existe mais (`ERROR_IMPORT_COMPANY_NOT_FOUND`); veja o `error_code`.")],
     ] },
     { kind: "text", body: t(
       "`counters`: `total`, `valid`, `invalid`, `accepted` (saved and queued for issuing), `authorized` (the city already authorized), `awaiting_credits` (turned away for lack of credits: **not an error**), `failed` (invalid rows plus invoices the city refused), `pending` (still waiting or in progress), `valid_amount` and `awaiting_amount` in BRL.",

@@ -51,6 +51,7 @@ import {
   toRowResponse,
   toStartResponse,
 } from './import.response';
+import { MapUploadLimitInterceptor } from './map-upload-limit.interceptor';
 
 @ApiTags('imports')
 @UseGuards(ExecutionEnvironmentGuard)
@@ -69,6 +70,7 @@ export class ImportController {
   @RequirePermission('nfse.invoices.issue')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
+    MapUploadLimitInterceptor,
     FileInterceptor('file', { limits: { fileSize: MAX_IMPORT_BYTES } }),
   )
   @ApiOperation({

@@ -26,6 +26,8 @@ export type ImportRecord = {
   errorCode: string | null;
   /** Rows the file turned out to have, known once it was parsed: lets the screen show reading progress. */
   rowsExpected: number | null;
+  /** Header names of the file that matched no column: they were ignored. */
+  unknownColumns: string[];
   emitStartedAt: Date | null;
   emitFinishedAt: Date | null;
   createdAt: Date;
@@ -35,6 +37,7 @@ export type NewImport = Omit<
   ImportRecord,
   | 'status'
   | 'errorCode'
+  | 'unknownColumns'
   | 'rowsExpected'
   | 'emitStartedAt'
   | 'emitFinishedAt'

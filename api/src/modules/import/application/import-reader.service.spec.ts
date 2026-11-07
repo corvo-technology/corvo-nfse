@@ -173,6 +173,7 @@ describe('ImportReaderService', () => {
     expect(repo.updateStatus).toHaveBeenCalledWith('t1', 'imp1', {
       status: 'processing',
       rowsExpected: 250,
+      unknownColumns: [],
     });
     expect(
       (repo.insertRows.mock.calls as unknown[][]).map(
@@ -181,6 +182,32 @@ describe('ImportReaderService', () => {
     ).toEqual([100, 100, 50]);
     expect(repo.updateStatus).toHaveBeenLastCalledWith('t1', 'imp1', {
       status: 'ready',
+    });
+  });
+
+  it('fails the import with its own code, without retrying, when the chosen company was deleted meanwhile', async () => {
+    repo.findById.mockResolvedValue(record({ companyId: 'c1' }));
+    storage.read.mockResolvedValue(csv('valor\n10\n'));
+    const gone = new Error('Company not found');
+    gone.name = 'CompanyNotFoundError';
+    companies.findById.mockRejectedValue(gone);
+    await service.read(ref);
+    expect(repo.updateStatus).toHaveBeenCalledWith('t1', 'imp1', {
+      status: 'failed',
+      errorCode: 'ERROR_IMPORT_COMPANY_NOT_FOUND',
+    });
+    expect(storage.remove).toHaveBeenCalled();
+  });
+
+  it('records the columns it did not recognize so the screen can say they were ignored', async () => {
+    storage.read.mockResolvedValue(
+      csv('cnpj;valor;obs;cor\n12.345.678/0001-95;10;x;y\n'),
+    );
+    await service.read(ref);
+    expect(repo.updateStatus).toHaveBeenCalledWith('t1', 'imp1', {
+      status: 'processing',
+      rowsExpected: 1,
+      unknownColumns: ['obs', 'cor'],
     });
   });
 });

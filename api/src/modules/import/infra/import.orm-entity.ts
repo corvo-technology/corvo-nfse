@@ -37,6 +37,8 @@ export class ImportOrmEntity {
   declare errorCode: string | null;
   @Column({ name: 'rows_expected', type: 'integer', nullable: true })
   declare rowsExpected: number | null;
+  @Column({ name: 'unknown_columns', type: 'jsonb', default: () => "'[]'" })
+  declare unknownColumns: string[];
   @Column({ name: 'emit_started_at', type: 'timestamptz', nullable: true })
   declare emitStartedAt: Date | null;
   @Column({ name: 'emit_finished_at', type: 'timestamptz', nullable: true })

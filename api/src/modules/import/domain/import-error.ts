@@ -1,7 +1,8 @@
 export type ImportErrorCode =
   | 'ERROR_IMPORT_EMPTY'
   | 'ERROR_IMPORT_TOO_MANY_ROWS'
-  | 'ERROR_IMPORT_UNREADABLE';
+  | 'ERROR_IMPORT_UNREADABLE'
+  | 'ERROR_IMPORT_COMPANY_NOT_FOUND';
 
 /** A whole-file problem. Row problems never throw: they become an invalid row. */
 export class ImportError extends Error {

@@ -51,8 +51,10 @@ export class ImportCleanupCron {
           });
         }
       }
+      // An import left processing with no file at all (a crash between saving it and uploading) has no key to find above.
+      const stuck = await this.repo.failStuck(ORPHAN_FILE_HOURS);
       const dropped = await this.repo.deleteOlderThan(KEEP_DAYS);
-      this.logger.log({ event: 'import_cleanup', orphans, dropped });
+      this.logger.log({ event: 'import_cleanup', orphans, stuck, dropped });
     } catch (error) {
       this.logger.error({
         event: 'import_cleanup_failed',

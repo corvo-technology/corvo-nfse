@@ -4,7 +4,11 @@ const old = { tenantId: 't1', environment: 'live' as const, importId: 'i1' };
 
 describe('ImportCleanupCron', () => {
   const storage = { listOlderThan: jest.fn(), remove: jest.fn() };
-  const repo = { findById: jest.fn(), deleteOlderThan: jest.fn() };
+  const repo = {
+    findById: jest.fn(),
+    deleteOlderThan: jest.fn(),
+    failStuck: jest.fn(),
+  };
   const reader = { markFailed: jest.fn() };
   let cron: ImportCleanupCron;
 
@@ -12,6 +16,7 @@ describe('ImportCleanupCron', () => {
     jest.resetAllMocks();
     storage.remove.mockResolvedValue(undefined);
     repo.deleteOlderThan.mockResolvedValue(0);
+    repo.failStuck.mockResolvedValue(0);
     reader.markFailed.mockResolvedValue(undefined);
     cron = new ImportCleanupCron(
       storage as never,
@@ -52,5 +57,12 @@ describe('ImportCleanupCron', () => {
     await expect(cron.run()).resolves.toBeUndefined();
     expect(storage.remove).toHaveBeenCalledTimes(1);
     expect(repo.deleteOlderThan).toHaveBeenCalledWith(30);
+  });
+
+  it('also fails an import left processing with no stored file (a crash between saving and uploading)', async () => {
+    storage.listOlderThan.mockResolvedValue([]);
+    repo.failStuck.mockResolvedValue(2);
+    await cron.run();
+    expect(repo.failStuck).toHaveBeenCalledWith(24);
   });
 });

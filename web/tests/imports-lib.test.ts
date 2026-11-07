@@ -4,7 +4,7 @@ import type { ImportJob, ImportRow } from "@/lib/types";
 
 const row = (data: Record<string, unknown>): ImportRow => ({ line: 2, data, status: "invalid", errorCode: null, errorMessage: null, invoiceId: null });
 const job = (status: ImportJob["status"], counters: Partial<ImportJob["counters"]> = {}): ImportJob => ({
-  id: "i1", status, fileName: "n.csv", companyId: null, errorCode: null, rowsExpected: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "",
+  id: "i1", status, fileName: "n.csv", companyId: null, errorCode: null, rowsExpected: null, unknownColumns: [], emitStartedAt: null, emitFinishedAt: null, createdAt: "",
   counters: { total: 10, valid: 8, invalid: 2, accepted: 0, authorized: 0, awaitingCredits: 0, validAmount: 0, awaitingAmount: 0, failed: 2, pending: 8, ...counters },
 });
 

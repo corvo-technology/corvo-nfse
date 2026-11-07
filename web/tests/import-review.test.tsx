@@ -15,7 +15,7 @@ vi.mock("@/lib/api", async (original) => ({
 vi.mock("@/lib/download", () => ({ saveBlob: mocks.download }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ error: mocks.toastError, success: mocks.toastSuccess }) }));
 
-const job = (over: Partial<ImportJob["counters"]> = {}): ImportJob => ({ id: "i1", status: "ready", fileName: "n.csv", companyId: null, errorCode: null, rowsExpected: null, emitStartedAt: null, emitFinishedAt: null, createdAt: "", counters: { total: 3, valid: 2, invalid: 1, accepted: 0, authorized: 0, awaitingCredits: 0, validAmount: 0, awaitingAmount: 0, failed: 1, pending: 2, ...over } });
+const job = (over: Partial<ImportJob["counters"]> = {}): ImportJob => ({ id: "i1", status: "ready", fileName: "n.csv", companyId: null, errorCode: null, rowsExpected: null, unknownColumns: [], emitStartedAt: null, emitFinishedAt: null, createdAt: "", counters: { total: 3, valid: 2, invalid: 1, accepted: 0, authorized: 0, awaitingCredits: 0, validAmount: 0, awaitingAmount: 0, failed: 1, pending: 2, ...over } });
 const row = (line: number, over: Partial<ImportRow> = {}): ImportRow => ({
   line, status: "valid", errorCode: null, errorMessage: null, invoiceId: null,
   data: { amount: 100 * line, competenceDate: "2026-11-07", customer: { name: `Cliente ${line}`, taxId: "52998224725", email: "c@x.com" }, service: { description: `Serviço ${line}`, code: "010101" } }, ...over,
@@ -193,5 +193,15 @@ describe("ImportReview", () => {
     mocks.rows.mockResolvedValue(page([]));
     show({ job: job({ invalid: 0, valid: 0, total: 0 }) });
     expect(await screen.findByText(/no rows in this list/i)).toBeTruthy();
+  });
+
+  it("says which spreadsheet columns were ignored, and says nothing when none was", () => {
+    show({ job: { ...job(), unknownColumns: ["obs", "cor"] } });
+    const note = screen.getByTestId("ignored-columns");
+    expect(note.textContent).toMatch(/obs, cor/);
+    expect(note.textContent).toMatch(/ignored/i);
+    cleanup();
+    show();
+    expect(screen.queryByTestId("ignored-columns")).toBeNull();
   });
 });

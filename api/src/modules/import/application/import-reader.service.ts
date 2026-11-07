@@ -46,13 +46,14 @@ export class ImportReaderService {
       const kind = /\.xlsx$/i.test(record.fileName) ? 'xlsx' : 'csv';
       const sheet = await parseSpreadsheet(bytes, kind);
       const company = record.companyId
-        ? await this.companies.findById(record.companyId, tenantId, environment)
+        ? await this.findCompany(record.companyId, tenantId, environment)
         : null;
       const today = todayInSaoPaulo();
       await this.repo.deleteRows(tenantId, importId);
       await this.repo.updateStatus(tenantId, importId, {
         status: 'processing',
         rowsExpected: sheet.rows.length,
+        unknownColumns: sheet.unknownColumns,
       });
       // Saved chunk by chunk, so the screen can show the reading advance instead of a long wait.
       for (let at = 0; at < sheet.rows.length; at += SAVE_CHUNK) {
@@ -70,6 +71,24 @@ export class ImportReaderService {
       return;
     }
     await this.storage.remove(tenantId, environment, importId);
+  }
+
+  /** A company deleted between the upload and the reading is a problem of this import, not a reason to retry. */
+  private async findCompany(
+    id: string,
+    tenantId: string,
+    environment: ExecutionEnvironment,
+  ) {
+    try {
+      return await this.companies.findById(id, tenantId, environment);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'CompanyNotFoundError')
+        throw new ImportError(
+          'ERROR_IMPORT_COMPANY_NOT_FOUND',
+          'The company chosen for this import no longer exists',
+        );
+      throw error;
+    }
   }
 
   async markFailed(ref: ImportRef, errorCode: ImportErrorCode): Promise<void> {
