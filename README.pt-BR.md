@@ -68,6 +68,8 @@ Seu app / ERP / agente de IA
 
 A API recebe o pedido e responde `202`. O worker classifica o serviço, calcula os tributos, monta e assina a DPS, envia ao sistema nacional, guarda o resultado e avisa você.
 
+Para ver o funcionamento por dentro, com diagramas (outbox, ledger de créditos, o que é gravado de forma atômica, status da nota e filas), leia [docs/architecture.md](docs/architecture.md).
+
 ## Início rápido
 
 Você precisa de **Docker com Compose v2** e **Node.js 24**. O Docker instala as dependências da aplicação; neste caminho você não precisa do Yarn.
@@ -211,6 +213,7 @@ A API e o worker compartilham código de backend e rodam como processos separado
 | [llms.txt](web/public/llms.txt) e `/llms-full.txt` | A mesma documentação para ferramentas de IA. |
 | [SELF_HOSTING.md](SELF_HOSTING.md) | Rodar o Corvo na sua própria infraestrutura. |
 | [deploy/README.md](deploy/README.md) | Arquivos Docker e a calculadora de tributos. |
+| [docs/architecture.md](docs/architecture.md) | Como funciona por dentro: outbox, ledger de créditos, transações, status e filas, com diagramas. |
 | [docs/fiscal](docs/fiscal) | Regras fiscais, exemplos, limitações, observabilidade e runbooks. |
 
 ## Aviso legal
