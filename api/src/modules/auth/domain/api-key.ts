@@ -11,6 +11,8 @@ export type ApiKey = {
   keyPrefix: string;
   keyHash: string;
   scope: ApiKeyScope;
+  /** Member who created the key; null for keys made before this was recorded. */
+  createdByUserId?: string;
   expiresAt?: Date;
   lastUsedAt?: Date;
   createdAt: Date;

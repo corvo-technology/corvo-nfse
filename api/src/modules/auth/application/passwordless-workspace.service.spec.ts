@@ -65,18 +65,42 @@ describe('PasswordlessWorkspaceService', () => {
   });
   it('leaves an existing active membership alone', async () => {
     const f = build();
-    f.workspaces.memberships.mockResolvedValue([{ isActive: true }]);
+    f.workspaces.memberships.mockResolvedValue([
+      { isActive: true, tenantId: user.id },
+    ]);
     await f.service.ensureWorkspace(user);
     expect(f.workspaces.freePlanId).not.toHaveBeenCalled();
     expect(f.workspaces.create).not.toHaveBeenCalled();
   });
   it('rejects inactive memberships', async () => {
     const f = build();
-    f.workspaces.memberships.mockResolvedValue([{ isActive: false }]);
+    f.workspaces.memberships.mockResolvedValue([
+      { isActive: false, tenantId: user.id },
+    ]);
     await expect(f.service.ensureWorkspace(user)).rejects.toThrow(
       ForbiddenException,
     );
     expect(f.workspaces.create).not.toHaveBeenCalled();
+  });
+  it('gives an invited user their own workspace instead of only the inviter tenant', async () => {
+    const f = build();
+    f.workspaces.memberships.mockResolvedValue([
+      { isActive: true, tenantId: 'inviter-tenant' },
+    ]);
+    await f.service.ensureWorkspace(user);
+    expect(f.workspaces.create).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: user.id }),
+    );
+  });
+  it('does not lock out a user whose invite was removed', async () => {
+    const f = build();
+    f.workspaces.memberships.mockResolvedValue([
+      { isActive: false, tenantId: 'inviter-tenant' },
+    ]);
+    await f.service.ensureWorkspace(user);
+    expect(f.workspaces.create).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: user.id }),
+    );
   });
   it('grants the first free note when the normalized e-mail claims it', async () => {
     const f = build();

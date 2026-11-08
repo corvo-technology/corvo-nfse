@@ -19,8 +19,13 @@ export class PasswordlessWorkspaceService {
         // Serialize first login for this account, including simultaneous challenges.
         await this.workspaces.lockUser(user.id);
         const memberships = await this.workspaces.memberships(user.id);
-        if (memberships.some((membership) => membership.isActive)) return;
-        if (memberships.length)
+        // The user's own workspace uses their id as tenant id. A membership in
+        // someone else's tenant (an invite) must neither replace it nor block it.
+        const own = memberships.find(
+          (membership) => membership.tenantId === user.id,
+        );
+        if (own?.isActive) return;
+        if (own)
           throw new ForbiddenException({
             code: 'MEMBERSHIP_INACTIVE',
             message: 'Tenant membership is inactive',

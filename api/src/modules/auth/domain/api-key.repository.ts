@@ -14,5 +14,6 @@ export abstract class IApiKeyRepository {
   ): Promise<ApiKey | null>;
   abstract save(apiKey: ApiKey, tenantId: string): Promise<ApiKey>;
   abstract remove(apiKey: ApiKey, tenantId: string): Promise<void>;
+  abstract removeByCreator(tenantId: string, userId: string): Promise<void>;
   abstract touchLastUsed(id: string, tenantId: string, at: Date): Promise<void>;
 }

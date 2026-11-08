@@ -18,6 +18,7 @@ describe(ApiKeyService.name, () => {
     findByIdAndTenantId: jest.fn(),
     save: jest.fn(),
     remove: jest.fn(),
+    removeByCreator: jest.fn(),
     touchLastUsed: jest.fn(),
   } as jest.Mocked<IApiKeyRepository>;
   const eventBus = { publishBestEffort: jest.fn() };
@@ -43,6 +44,27 @@ describe(ApiKeyService.name, () => {
         }),
       ).rejects.toThrow(/permission/);
       expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('records the creating member on the key', async () => {
+      (argon2.hash as jest.Mock).mockResolvedValue('hash');
+      repository.save.mockImplementation(async (key) => key);
+      await service.create(
+        { ...developer, authUserId: 'user-1' },
+        { name: 'k', environment: 'test', scope: 'invoices_issue' },
+      );
+      expect(repository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ createdByUserId: 'user-1' }),
+        'tenant-id',
+      );
+    });
+
+    it('revokes every key created by a removed member', async () => {
+      await service.revokeCreatedBy('tenant-id', 'user-1');
+      expect(repository.removeByCreator).toHaveBeenCalledWith(
+        'tenant-id',
+        'user-1',
+      );
     });
 
     it('allows a developer to create a key within their own permissions', async () => {

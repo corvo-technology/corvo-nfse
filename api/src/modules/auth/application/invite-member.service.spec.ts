@@ -14,6 +14,7 @@ describe('InviteMemberService', () => {
       authUserService as never,
       membershipService as never,
       { publishBestEffort } as never,
+      { revokeCreatedBy: jest.fn() } as never,
     );
 
     await service.invite('tenant-1', {
@@ -37,6 +38,32 @@ describe('InviteMemberService', () => {
           role: 'developer',
         },
       }),
+    );
+  });
+
+  it('revokes the API keys a member created when the member is removed', async () => {
+    const membership = { authUserId: 'user-1', isActive: true };
+    const membershipService = {
+      listForTenant: jest.fn().mockResolvedValue([membership]),
+      update: jest.fn(),
+    };
+    const apiKeyService = { revokeCreatedBy: jest.fn() };
+    const service = new InviteMemberService(
+      {} as never,
+      membershipService as never,
+      {} as never,
+      apiKeyService as never,
+    );
+
+    await service.removeMember('tenant-1', 'user-1');
+
+    expect(membershipService.update).toHaveBeenCalledWith(
+      expect.objectContaining({ isActive: false }),
+      'tenant-1',
+    );
+    expect(apiKeyService.revokeCreatedBy).toHaveBeenCalledWith(
+      'tenant-1',
+      'user-1',
     );
   });
 });

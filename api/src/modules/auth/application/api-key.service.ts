@@ -60,6 +60,10 @@ export class ApiKeyService {
       keyPrefix: prefix,
       keyHash,
       scope: input.scope,
+      createdByUserId:
+        (authContext.principalType ?? 'tenant_member') === 'tenant_member'
+          ? authContext.authUserId
+          : undefined,
       expiresAt: input.expiresAt,
       createdAt: new Date(),
     };
@@ -109,6 +113,11 @@ export class ApiKeyService {
       });
     }
     await this.apiKeyRepo.remove(apiKey, authContext.activeTenantId);
+  }
+
+  /** Revokes every key a member created; called when the member is removed. */
+  async revokeCreatedBy(tenantId: string, userId: string): Promise<void> {
+    await this.apiKeyRepo.removeByCreator(tenantId, userId);
   }
 
   async delete(tenantId: string, apiKeyId: string): Promise<void> {
