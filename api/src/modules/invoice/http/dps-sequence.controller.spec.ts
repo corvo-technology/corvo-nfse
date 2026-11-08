@@ -37,5 +37,6 @@ describe('E0014 guidance', () => {
     const text = explainRejection('Rejeição da Receita [E0014]: já existe');
     expect(text).toContain('E0014');
     expect(text).toContain('Numeração das notas');
+    expect(text).toContain('outra instalação do Corvo');
   });
 });

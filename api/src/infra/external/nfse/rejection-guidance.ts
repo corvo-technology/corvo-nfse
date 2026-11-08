@@ -9,7 +9,7 @@ const GUIDANCE: [RegExp, string][] = [
   ],
   [
     /\bE0014\b/,
-    'Essa empresa já emitiu notas com esse número em outro sistema ou no Portal Nacional. Informe o número da última nota emitida (campo "Numeração das notas" na empresa, ou PUT /companies/{id}/dps-sequence) e emita novamente.',
+    'A Receita já tem uma nota desse CNPJ com esse número: ela foi emitida em outro sistema, no Portal Nacional ou em outra instalação do Corvo que usa o mesmo CNPJ. Informe o número da última nota emitida (campo "Numeração das notas" na página da empresa, ou PUT /companies/{id}/dps-sequence) e emita novamente. Em teste, um número bem alto (por exemplo 500000) evita nova colisão.',
   ],
 ];
 

@@ -1577,7 +1577,8 @@
       "save": "Salvar numeração",
       "saved": "Numeração atualizada. A próxima nota será a nº {number}.",
       "lower": "O Corvo já passou desse número, então a numeração continuou em {number}.",
-      "invalid": "Informe um número inteiro, zero ou maior."
+      "invalid": "Informe um número inteiro, zero ou maior.",
+      "testNote": "No ambiente de teste, a numeração começa num número alto e aleatório. Assim este Corvo não repete números que outra instalação com o mesmo CNPJ já usou na Receita."
     },
     "fiscalAdvanced": "Modo avançado (contador)",
     "legalName": "Razão social",
