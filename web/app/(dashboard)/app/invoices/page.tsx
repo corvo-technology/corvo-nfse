@@ -16,8 +16,9 @@ import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { isScheduled } from "@/lib/invoice-schedule";
 import { SchedulePanel } from "@/components/schedules/schedule-panel";
+import { ManualReviewActions } from "@/components/invoices/manual-review-actions";
 
-const FILTERS = ["all", "scheduled", "authorized", "processing", "rejected", "cancelled"] as const;
+const FILTERS = ["all", "scheduled", "authorized", "processing", "manual_review", "rejected", "cancelled"] as const;
 type Filter = (typeof FILTERS)[number];
 
 export default function InvoicesPage() {
@@ -31,7 +32,12 @@ function InvoicesList() {
   const tCommon = useTranslations("Common");
   const params = useSearchParams();
   const [filter, setFilter] = useState<Filter>(() => { const asked = params.get("filter"); return FILTERS.includes(asked as Filter) ? (asked as Filter) : "all"; });
-  const { items: invoices, loading, loadingMore, hasMore, error, loadMore } = useCursorPagination((cursor, signal) => invoicesApi.list({ limit: 50, cursor }, signal), []);
+  // Manual review is read from the API so older invoices waiting for a decision are not missed.
+  const reviewing = filter === "manual_review";
+  const { items: invoices, loading, loadingMore, hasMore, error, loadMore, reload } = useCursorPagination(
+    (cursor, signal) => invoicesApi.list({ limit: 50, cursor, ...(reviewing ? { status: "manual_review" as const } : {}) }, signal),
+    [reviewing],
+  );
   const failed = error !== null;
 
   const all = invoices ?? [];
@@ -89,6 +95,7 @@ function InvoicesList() {
       </div>
 
       {filter === "scheduled" && <SchedulePanel />}
+      {reviewing && !loading && can("nfse.invoices.issue") && <ManualReviewActions invoiceIds={filtered.map((i) => i.id)} onDone={reload} />}
       {(filter !== "scheduled" || scheduled.length > 0) && <p className="text-sm text-text-3">{t("loadedRecords", { count: all.length })}</p>}
       {(filter !== "scheduled" || scheduled.length > 0) && <Card className="dash-in dash-in-2 overflow-hidden" aria-live="polite">
         {failed ? (

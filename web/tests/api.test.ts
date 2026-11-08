@@ -282,3 +282,20 @@ describe("imports", () => {
     expect(await (await imports.template()).text()).toBe("a;b\n"); expect(String(fetchMock.mock.calls[4][0])).toBe("/api/proxy/v1/imports/template");
   });
 });
+
+describe("manual review in batches", () => {
+  it("sends the invoices in chunks of 100 and joins the results", async () => {
+    const ids = Array.from({ length: 150 }, (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`);
+    fetchMock.mockImplementation(async (url, options) => {
+      if (!String(url).includes("/invoices/review")) return reply({ data: { csrfToken: "issued" } });
+      const body = JSON.parse(String(options?.body)) as { invoiceIds: string[] };
+      return reply({ data: { results: body.invoiceIds.map((id) => ({ id, outcome: "accepted" })) } });
+    });
+    const results = await invoices.review("retry", ids);
+    const reviews = fetchMock.mock.calls.filter(([url]) => String(url).includes("/invoices/review"));
+    expect(reviews).toHaveLength(2);
+    expect(JSON.parse(String(reviews[0][1]?.body)).invoiceIds).toHaveLength(100);
+    expect(JSON.parse(String(reviews[1][1]?.body))).toEqual({ action: "retry", invoiceIds: ids.slice(100) });
+    expect(results).toHaveLength(150);
+  });
+});

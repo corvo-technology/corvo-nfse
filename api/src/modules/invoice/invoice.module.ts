@@ -65,6 +65,9 @@ import { WebhooksConfigModule } from '@/modules/webhooks-config/webhooks-config.
 import { StorageModule } from '@/infra/storage/storage.module';
 import { NfseExternalModule } from '@/infra/external/nfse/nfse-external.module';
 import { EmailModule } from '@/modules/email/email.module';
+import { InvoiceReviewController } from './http/invoice-review.controller';
+import { InvoiceReviewService } from './application/invoice-review.service';
+import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
 
 @Module({
   imports: [
@@ -107,11 +110,14 @@ import { EmailModule } from '@/modules/email/email.module';
   // Static overview route must be registered before InvoiceController's :id.
   controllers: [
     InvoiceOverviewController,
+    InvoiceReviewController,
     InvoiceController,
     DpsSequenceController,
   ],
   providers: [
     InvoiceOverviewService,
+    InvoiceReviewService,
+    FiscalPortalBreaker,
     {
       provide: INVOICE_OVERVIEW_REPOSITORY,
       useClass: TypeOrmInvoiceOverviewRepository,
@@ -166,6 +172,7 @@ import { EmailModule } from '@/modules/email/email.module';
     InvoiceDomainService,
   ],
   exports: [
+    FiscalPortalBreaker,
     OutboxHandlerRegistry,
     OUTBOX_REPOSITORY,
     InvoiceService,

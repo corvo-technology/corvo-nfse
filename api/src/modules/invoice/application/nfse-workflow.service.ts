@@ -1,5 +1,5 @@
 import type { Company } from '@/modules/company/domain/company';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import {
   regApTribSNFor,
   type CompanyFiscalProfile,
@@ -23,6 +23,7 @@ import { NfseProviderFactory } from '@/infra/external/nfse/nfse-provider.factory
 import type {
   IIssuePayload,
   FiscalIssueResult,
+  FiscalQueryResult,
 } from '@/infra/external/nfse/nfse-fiscal-provider';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
 import {
@@ -30,6 +31,7 @@ import {
   type IDocumentStorage,
 } from '@/infra/storage/domain/document-storage';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
+import { FiscalPortalBreaker } from './fiscal-portal-breaker';
 import type { Invoice } from '../domain/invoice';
 import { ConcurrentInvoiceTransitionError } from '../domain/errors';
 import { InvoiceWebhookPublisher } from './invoice-webhook.publisher';
@@ -51,7 +53,14 @@ export interface FiscalJobData {
   companyId?: string;
   apiKeyEnvironment?: 'test' | 'live';
   attemptCount?: number;
+  /** ISO time the invoice first lost a conclusive answer; drives the manual review ceiling. */
+  uncertainSince?: string;
+  /** Set by a person on an invoice in manual review: confirm on the portal and discard it. */
+  review?: 'discard';
 }
+
+/** Error code of an invoice discarded after the portal confirmed its DPS was never registered. */
+export const DISCARDED_ERROR_CODE = 'DISCARDED_AFTER_REVIEW';
 
 /**
  * The DpsBuilder rejected the layout/schema: the invoice must be rejected
@@ -98,6 +107,7 @@ export class NfseWorkflowService {
     private readonly dpsBuilder: DpsBuilder,
     private readonly config: ConfigService,
     // Optional so the workflow keeps today's DPS where they are not provided.
+    @Optional() private readonly breaker?: FiscalPortalBreaker,
   ) {}
 
   async process(data: FiscalJobData): Promise<void> {
@@ -147,15 +157,31 @@ export class NfseWorkflowService {
       data.invoiceId,
       data.tenantId,
     );
+    if (!invoice) return;
+    if (data.companyId && data.companyId !== invoice.companyId)
+      throw new Error('Invoice/company job identity mismatch');
+    if (data.review === 'discard') return this.discard(invoice);
     if (
-      !invoice ||
       !['queued', 'processing', 'reconciliation_required'].includes(
         invoice.status,
       )
     )
       return;
-    if (data.companyId && data.companyId !== invoice.companyId)
-      throw new Error('Invoice/company job identity mismatch');
+    const uncertainSince = data.uncertainSince
+      ? new Date(data.uncertainSince)
+      : new Date();
+    if (
+      invoice.status === 'reconciliation_required' &&
+      this.pastUncertainCeiling(uncertainSince)
+    ) {
+      await this.toManualReview(
+        invoice,
+        `No conclusive answer from the fiscal portal for more than ${this.uncertainMaxHours()}h. Retry it with the same DPS or discard it in manual review.`,
+      );
+      return;
+    }
+    // While the portal is paused the job waits (PortalUnavailableError) without spending attempts.
+    await this.breaker?.assertAvailable(invoice.environment);
     let payload: IIssuePayload;
     try {
       payload = await this.payload(invoice);
@@ -191,6 +217,7 @@ export class NfseWorkflowService {
     try {
       result = await this.providers.resolve(invoice.environment).issue(payload);
     } catch (error: unknown) {
+      await this.breaker?.recordFailure(invoice.environment);
       invoice.setReconciliationRequired(
         error instanceof Error ? error.message : 'Uncertain fiscal result',
       );
@@ -203,73 +230,19 @@ export class NfseWorkflowService {
             'Uncertain fiscal result',
           ),
         );
-      await this.schedule(invoice);
-      throw error;
-    }
-    if (result.success) {
-      if (!result.xmlAuthorized || !result.accessKey)
-        throw new Error('Authorized fiscal result lacks XML/access key');
-      invoice.setAuthorized(result.accessKey, result.nfseNumber ?? 0);
-      // The authorized XML lives only in document storage, never in the database.
-      await this.documentStorage.saveXml(
-        invoice.tenantId,
-        invoice.id,
-        result.xmlAuthorized,
-        invoice.storageEnvironment,
-      );
-      await this.lifecycle.transition(
+      // Exactly one follow-up job: rethrowing would also retry this job and multiply them.
+      await this.schedule(
         invoice,
-        invoice.transitionTo('authorized', 'NFS-e authorized'),
+        (data.attemptCount ?? 0) + 1,
+        uncertainSince,
       );
-      await this.webhooks.publish(invoice, 'nfse.invoice.authorized', {
-        accessKey: result.accessKey,
-        nfseNumber: result.nfseNumber,
-      });
-      try {
-        await this.queues.add(
-          'nfse-doc-prep',
-          'prepare',
-          {
-            invoiceId: invoice.id,
-            companyId: invoice.companyId,
-            tenantId: invoice.tenantId,
-          },
-          {
-            attempts: 5,
-            backoffMs: 10000,
-            removeOnComplete: false,
-            removeOnFail: 1000,
-          },
-        );
-      } catch (error: unknown) {
-        this.logger.error(
-          { err: error, invoiceId: invoice.id },
-          'Document recovery will enqueue preparation',
-        );
-      }
-      try {
-        await this.queues.add(
-          'nfse-fiscal-reconcile',
-          'reconcile',
-          {
-            invoiceId: invoice.id,
-            companyId: invoice.companyId,
-            tenantId: invoice.tenantId,
-          },
-          {
-            idempotencyKey: `fiscal-reconcile:${invoice.id}`,
-            attempts: 5,
-            backoffMs: 10000,
-            removeOnComplete: false,
-            removeOnFail: 1000,
-          },
-        );
-      } catch (error: unknown) {
-        this.logger.error(
-          { err: error, invoiceId: invoice.id },
-          'Recovery will enqueue fiscal reconciliation',
-        );
-      }
+      return;
+    }
+    if (result.requiresReconciliation)
+      await this.breaker?.recordFailure(invoice.environment);
+    else await this.breaker?.recordSuccess(invoice.environment);
+    if (result.success) {
+      await this.authorize(invoice, result);
     } else if (result.requiresReconciliation) {
       if (invoice.status === 'processing')
         await this.lifecycle.transition(
@@ -277,18 +250,13 @@ export class NfseWorkflowService {
           invoice.transitionTo('reconciliation_required', result.errorMessage),
         );
       const attempts = data.attemptCount ?? 0;
-      if (attempts >= 5) {
-        await this.lifecycle.transition(
+      if (attempts >= 5)
+        await this.toManualReview(
           invoice,
-          invoice.transitionTo(
-            'manual_review',
-            'Automatic reconciliation exhausted',
-          ),
+          'Automatic reconciliation exhausted',
+          result.errorMessage,
         );
-        await this.webhooks.publish(invoice, 'nfse.invoice.manual_review', {
-          reason: result.errorMessage,
-        });
-      } else await this.schedule(invoice, attempts + 1);
+      else await this.schedule(invoice, attempts + 1, uncertainSince);
     } else {
       recordAuthorizationFailure(result.errorCode ?? 'ISSUE_REJECTED');
       invoice.setRejected(
@@ -304,6 +272,155 @@ export class NfseWorkflowService {
         errorMessage: result.errorMessage,
       });
     }
+  }
+
+  /** Saves the authorized XML, moves the invoice to authorized and starts the follow-up jobs. */
+  private async authorize(
+    invoice: Invoice,
+    result: Pick<
+      FiscalIssueResult,
+      'accessKey' | 'nfseNumber' | 'xmlAuthorized'
+    >,
+  ): Promise<void> {
+    if (!result.xmlAuthorized || !result.accessKey)
+      throw new Error('Authorized fiscal result lacks XML/access key');
+    invoice.setAuthorized(result.accessKey, result.nfseNumber ?? 0);
+    // The authorized XML lives only in document storage, never in the database.
+    await this.documentStorage.saveXml(
+      invoice.tenantId,
+      invoice.id,
+      result.xmlAuthorized,
+      invoice.storageEnvironment,
+    );
+    await this.lifecycle.transition(
+      invoice,
+      invoice.transitionTo('authorized', 'NFS-e authorized'),
+    );
+    await this.webhooks.publish(invoice, 'nfse.invoice.authorized', {
+      accessKey: result.accessKey,
+      nfseNumber: result.nfseNumber,
+    });
+    try {
+      await this.queues.add(
+        'nfse-doc-prep',
+        'prepare',
+        {
+          invoiceId: invoice.id,
+          companyId: invoice.companyId,
+          tenantId: invoice.tenantId,
+        },
+        {
+          attempts: 5,
+          backoffMs: 10000,
+          removeOnComplete: false,
+          removeOnFail: 1000,
+        },
+      );
+    } catch (error: unknown) {
+      this.logger.error(
+        { err: error, invoiceId: invoice.id },
+        'Document recovery will enqueue preparation',
+      );
+    }
+    try {
+      await this.queues.add(
+        'nfse-fiscal-reconcile',
+        'reconcile',
+        {
+          invoiceId: invoice.id,
+          companyId: invoice.companyId,
+          tenantId: invoice.tenantId,
+        },
+        {
+          idempotencyKey: `fiscal-reconcile:${invoice.id}`,
+          attempts: 5,
+          backoffMs: 10000,
+          removeOnComplete: false,
+          removeOnFail: 1000,
+        },
+      );
+    } catch (error: unknown) {
+      this.logger.error(
+        { err: error, invoiceId: invoice.id },
+        'Recovery will enqueue fiscal reconciliation',
+      );
+    }
+  }
+
+  private async toManualReview(
+    invoice: Invoice,
+    reason: string,
+    detail?: string,
+  ): Promise<void> {
+    invoice.setReconciliationRequired(detail ?? reason);
+    await this.lifecycle.transition(
+      invoice,
+      invoice.transitionTo('manual_review', reason),
+    );
+    await this.webhooks.publish(invoice, 'nfse.invoice.manual_review', {
+      reason: detail ?? reason,
+    });
+  }
+
+  private uncertainMaxHours(): number {
+    return this.breaker?.settings.uncertainMaxHours ?? 6;
+  }
+
+  private pastUncertainCeiling(since: Date): boolean {
+    return Date.now() - since.getTime() > this.uncertainMaxHours() * 3_600_000;
+  }
+
+  /**
+   * A person asked to discard an invoice in manual review. It is only rejected when the portal
+   * confirms its DPS was never registered; if the portal already has it, it becomes authorized
+   * (never a second NFS-e for the same service). Any other answer leaves it in manual review.
+   */
+  private async discard(invoice: Invoice): Promise<void> {
+    if (invoice.status !== 'manual_review') return;
+    await this.breaker?.assertAvailable(invoice.environment);
+    const found = await this.lookUpDps(invoice);
+    if (!found) return;
+    await this.breaker?.recordSuccess(invoice.environment);
+    if (found.status === 'authorized') return this.authorize(invoice, found);
+    if (found.status !== 'not_found')
+      return this.keepInReview(
+        invoice,
+        'Discard not confirmed: the portal did not say whether this DPS exists',
+      );
+    const message =
+      'Discarded in manual review: the fiscal portal confirmed this DPS was never registered';
+    invoice.setRejected(DISCARDED_ERROR_CODE, message);
+    await this.lifecycle.transition(
+      invoice,
+      invoice.transitionTo('rejected', message),
+    );
+    await this.webhooks.publish(invoice, 'nfse.invoice.rejected', {
+      errorCode: DISCARDED_ERROR_CODE,
+      errorMessage: message,
+    });
+  }
+
+  /** Asks the portal for the invoice's DPS; on failure the invoice stays in review with the reason. */
+  private async lookUpDps(invoice: Invoice): Promise<FiscalQueryResult | null> {
+    try {
+      const payload = await this.payload(invoice);
+      const idDps = invoice.toSnapshot().dpsId;
+      if (!idDps) throw new Error('Invoice has no DPS to look up');
+      return await this.providers
+        .resolve(invoice.environment)
+        .queryByDps(idDps, payload);
+    } catch (error: unknown) {
+      if (!(error instanceof DpsBuildRejectionError))
+        await this.breaker?.recordFailure(invoice.environment);
+      const reason = error instanceof Error ? error.message : 'no answer';
+      await this.keepInReview(invoice, `Discard not confirmed: ${reason}`);
+      return null;
+    }
+  }
+
+  private async keepInReview(invoice: Invoice, message: string): Promise<void> {
+    invoice.setReconciliationRequired(message.slice(0, 300));
+    await this.invoices.save(invoice, invoice.tenantId);
   }
 
   private async payload(invoice: Invoice): Promise<IIssuePayload> {
@@ -536,7 +653,11 @@ export class NfseWorkflowService {
       errorMessage,
     });
   }
-  private async schedule(invoice: Invoice, attemptCount = 0): Promise<void> {
+  private async schedule(
+    invoice: Invoice,
+    attemptCount = 0,
+    uncertainSince: Date = new Date(),
+  ): Promise<void> {
     await this.queues.add(
       'nfse-reconciliation',
       'reconcile',
@@ -545,6 +666,7 @@ export class NfseWorkflowService {
         companyId: invoice.companyId,
         tenantId: invoice.tenantId,
         attemptCount,
+        uncertainSince: uncertainSince.toISOString(),
       },
       {
         attempts: 5,

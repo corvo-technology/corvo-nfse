@@ -197,6 +197,16 @@ export interface InvoiceOverview {
 }
 type InvoiceBody = InvoiceWire;
 type EventWire = { id: string; invoiceId: string; fromStatus: InvoiceStatus | null; toStatus: InvoiceStatus; createdAt: string; reason: string | null };
+export type ReviewAction = "retry" | "discard";
+export type ReviewOutcome =
+  | { id: string; outcome: "accepted" }
+  | { id: string; outcome: "skipped"; reason: "not_found" | "not_in_manual_review" | "changed" };
+const REVIEW_BATCH = 100;
+export interface FiscalPortalStatus { environment: "test" | "live"; available: boolean; since: string | null; retryAt: string | null }
+/** Whether the national NFS-e portal is answering; while it is not, invoices wait in the queue. */
+export const fiscalPortal = {
+  status: async (signal?: AbortSignal) => unwrap(await request<Envelope<FiscalPortalStatus>>("/fiscal-portal/status", { signal })),
+};
 export const invoices = {
   overview: async (period: OverviewPeriod = "7d", signal?: AbortSignal): Promise<InvoiceOverview> => {
     const result = unwrap(await request<Envelope<Omit<InvoiceOverview, "recentInvoices"> & { recentInvoices: InvoiceWire[] }>>(`/invoices/overview${query({ period })}`, { signal }));
@@ -211,6 +221,15 @@ export const invoices = {
   pdf: (id: string) => request<Blob>(`/invoices/${idPath(id)}/pdf`, {}, true),
   events: async (id: string, params: PageParams = {}, signal?: AbortSignal): Promise<Page<InvoiceEvent>> => { const page = toPage(await request<ListBody<EventWire>>(`/invoices/${idPath(id)}/events${query(params)}`, { signal })); return { ...page, items: page.items.map((event) => ({ id: event.id, invoiceId: event.invoiceId, from: event.fromStatus, to: event.toStatus, at: event.createdAt, reason: event.reason } satisfies InvoiceEvent)) }; },
   downloadUrl: async (id: string, format: "pdf" | "xml") => (await request<Envelope<{ downloadUrl: string; expiresAt: string; fileName: string; mimeType: string }>>(`/invoices/${idPath(id)}/download-url`, json({ format }))).data,
+  /** Resolves invoices in manual review; sent in chunks of up to 100 (the API limit). */
+  review: async (action: ReviewAction, invoiceIds: string[]): Promise<ReviewOutcome[]> => {
+    const results: ReviewOutcome[] = [];
+    for (let start = 0; start < invoiceIds.length; start += REVIEW_BATCH) {
+      const chunk = invoiceIds.slice(start, start + REVIEW_BATCH);
+      results.push(...unwrap(await request<Envelope<{ results: ReviewOutcome[] }>>("/invoices/review", json({ action, invoiceIds: chunk }))).results);
+    }
+    return results;
+  },
   email: async (id: string, idempotencyKey: string) => (await request<Envelope<{ emailId: string; status: string }>>(`/invoices/${idPath(id)}/email`, { ...json({}), headers: { "idempotency-key": idempotencyKey } })).data,
 };
 interface BillingWire { plan: { slug: string; name: string; monthly_price_cents: number }; subscription?: { status: string; paid_until: string | null; cancel_at_period_end: boolean; scheduled_plan: string | null; blocked: boolean; pix_subscription?: PixSubscription | null; stripe_portal_available?: boolean; stripe_subscription?: boolean }; usage: { avulso_balance?: number; credits_used: number; credits_reserved: number; credits_remaining: number; monthly_allowance: number; daily_usage: number; daily_limit: number | null; active_companies: number; max_active_companies: number; period_start?: string; period_end?: string } }

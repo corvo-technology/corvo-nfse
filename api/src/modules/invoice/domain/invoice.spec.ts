@@ -273,16 +273,31 @@ describe('Invoice', () => {
       );
     });
 
-    it('rejects transition from manual_review (terminal)', () => {
+    const inManualReview = () => {
       const invoice = Invoice.create(defaultInput, 'tenant-123');
       invoice.setProcessing();
       invoice.transitionTo('reconciliation_required');
       invoice.transitionTo('manual_review');
+      return invoice;
+    };
 
-      expect(() => invoice.transitionTo('authorized')).toThrow(
-        InvalidInvoiceTransitionError,
-      );
-    });
+    it.each(['reconciliation_required', 'authorized', 'rejected'] as const)(
+      'resolves manual_review to %s (retry or portal answer)',
+      (target) => {
+        const invoice = inManualReview();
+        invoice.transitionTo(target);
+        expect(invoice.status).toBe(target);
+      },
+    );
+
+    it.each(['queued', 'processing', 'cancelled', 'failed'] as const)(
+      'never moves manual_review to %s',
+      (target) => {
+        expect(() => inManualReview().transitionTo(target)).toThrow(
+          InvalidInvoiceTransitionError,
+        );
+      },
+    );
   });
 
   describe('setDpsInfo', () => {

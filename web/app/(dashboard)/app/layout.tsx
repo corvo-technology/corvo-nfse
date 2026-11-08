@@ -11,6 +11,7 @@ import { ProfileNamePrompt } from "@/components/profile/name-prompt";
 import { canOpenPath, permissionForPath } from "@/lib/route-permissions";
 import { Topbar } from "@/components/dashboard/topbar";
 import { CorvoLogo } from "@/components/ui/corvo-logo";
+import { PortalStatusBanner } from "@/components/dashboard/portal-status-banner";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -113,6 +114,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           className="relative flex-1 outline-none"
         >
           <div className="mx-auto w-full max-w-[1120px] px-4 py-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+            {can("nfse.invoices.view") && <PortalStatusBanner environment={`${tenantId}:${fiscalEnvironment}`} />}
             <div key={`${tenantId}:${fiscalEnvironment}:${permission ?? "overview"}`}>{canOpenPath(pathname, can) ? children : <NoAccess />}</div>
           </div>
         </main>

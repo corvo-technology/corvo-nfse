@@ -1128,6 +1128,7 @@
       "scheduled": "Scheduled",
       "authorized": "Authorized",
       "processing": "Processing",
+      "manual_review": "Manual review",
       "rejected": "Rejected",
       "cancelled": "Cancelled"
     },
@@ -3036,5 +3037,34 @@
     "promptBody": "Your name is shown to your team, on invitations you send and in the e-mails Corvo sends you.",
     "continue": "Continue",
     "skip": "Not now"
+  },
+  "ManualReview": {
+    "title": "{count, plural, one {What to do with this invoice} other {What to do with the # invoices in manual review}}",
+    "why": "{count, plural, one {The national portal gave no conclusive answer, so we do not know yet whether the invoice was issued.} other {The national portal gave no conclusive answer for these invoices, so we do not know yet whether they were issued.}}",
+    "retry": {
+      "label": "Retry",
+      "hint": "sends it again with the same number. If the invoice already exists on the portal it is only confirmed: it is never issued twice.",
+      "button": "{count, plural, one {Retry} other {Retry all #}}"
+    },
+    "discard": {
+      "label": "Discard",
+      "hint": "we ask the portal first. It is discarded only if it was never registered, and its credit comes back. If it exists, it becomes authorized.",
+      "button": "{count, plural, one {Discard} other {Discard all #}}",
+      "confirmTitle": "{count, plural, one {Discard this invoice?} other {Discard # invoices?}}",
+      "confirmBody": "We will ask the national portal about {count, plural, one {this invoice} other {each invoice}}. Only an invoice that was never registered is discarded, and its credit comes back. One that already exists on the portal becomes authorized, because it is already a valid invoice. You can then issue a new one in place of a discarded invoice.",
+      "confirm": "{count, plural, one {Discard} other {Discard #}}",
+      "back": "Back"
+    },
+    "done": {
+      "retry": "{count, plural, =0 {No invoice was sent again.} one {# invoice went back to the portal.} other {# invoices went back to the portal.}}",
+      "discard": "{count, plural, =0 {No invoice was sent for discard.} one {We are confirming # invoice with the portal before discarding.} other {We are confirming # invoices with the portal before discarding.}}",
+      "skipped": "{count, plural, one {# had already left review.} other {# had already left review.}}"
+    },
+    "failed": "Could not finish. Please try again."
+  },
+  "PortalStatus": {
+    "title": "The national NFS-e portal is not answering.",
+    "titleSince": "The national NFS-e portal has not answered since {time}.",
+    "body": "Your invoices are kept in the queue and will be sent as soon as it is back. Nothing needs to be redone."
   }
 }

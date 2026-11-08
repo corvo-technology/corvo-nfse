@@ -44,6 +44,16 @@ export type QueueConfig = {
   nfseEmissionConcurrency: number;
 };
 
+/** How the worker reacts when the national NFS-e portal stops answering. */
+export type FiscalPortalConfig = {
+  /** Unanswered calls in a row that pause emission. */
+  breakerThreshold: number;
+  /** Pause before the next trial call to the portal. */
+  breakerCooldownMs: number;
+  /** An invoice without a conclusive answer for longer than this goes to manual review. */
+  uncertainMaxHours: number;
+};
+
 export interface OutboxConfig {
   relayIntervalMs: number;
   batchSize: number;

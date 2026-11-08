@@ -14,6 +14,7 @@ import {
   NfseWorkflowService,
   type FiscalJobData,
 } from '../application/nfse-workflow.service';
+import { runOrWaitForPortal } from './portal-wait';
 
 export type NfseEmissionJobData = FiscalJobData;
 
@@ -40,18 +41,20 @@ export class NfseEmissionProcessor
       this.config?.get<QueueConfig>('queue')?.nfseEmissionConcurrency;
     if (concurrency) this.worker.concurrency = concurrency;
   }
-  async process(job: Job<NfseEmissionJobData>): Promise<void> {
-    // The same lock protects emission and reconciliation for this invoice.
-    const lock = await this.locks.acquire(
-      `nfse:invoice:${job.data.invoiceId}`,
-      { ttlMs: 300000 },
-    );
-    if (!lock) throw new Error('Invoice is already being processed');
-    try {
-      await this.workflow.process(job.data);
-    } finally {
-      await this.locks.release(lock);
-    }
+  async process(job: Job<NfseEmissionJobData>, token?: string): Promise<void> {
+    await runOrWaitForPortal(job, token, async () => {
+      // The same lock protects emission and reconciliation for this invoice.
+      const lock = await this.locks.acquire(
+        `nfse:invoice:${job.data.invoiceId}`,
+        { ttlMs: 300000 },
+      );
+      if (!lock) throw new Error('Invoice is already being processed');
+      try {
+        await this.workflow.process(job.data);
+      } finally {
+        await this.locks.release(lock);
+      }
+    });
   }
 
   /** Fires on every failed attempt; only the last one is surfaced on the invoice. */

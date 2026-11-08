@@ -100,6 +100,11 @@ export default function configuration(): AppConfiguration {
       defaultBackoffMs: env.QUEUE_DEFAULT_BACKOFF_MS,
       nfseEmissionConcurrency: env.NFSE_EMISSION_CONCURRENCY,
     },
+    fiscalPortal: {
+      breakerThreshold: env.NFSE_PORTAL_BREAKER_THRESHOLD,
+      breakerCooldownMs: env.NFSE_PORTAL_BREAKER_COOLDOWN_MS,
+      uncertainMaxHours: env.NFSE_UNCERTAIN_MAX_HOURS,
+    },
     outbox: {
       relayIntervalMs: env.OUTBOX_RELAY_INTERVAL_MS,
       batchSize: env.OUTBOX_BATCH_SIZE,
