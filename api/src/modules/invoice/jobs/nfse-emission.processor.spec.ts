@@ -75,3 +75,30 @@ describe('NfseEmissionProcessor failure surfacing', () => {
     expect(workflow.handleEmissionExhausted).not.toHaveBeenCalled();
   });
 });
+
+describe('NfseEmissionProcessor concurrency', () => {
+  const withWorker = (config: unknown) => {
+    const processor = new NfseEmissionProcessor(
+      {} as any,
+      {} as any,
+      config as any,
+    );
+    const worker = { concurrency: 1 };
+    Object.defineProperty(processor, 'worker', { get: () => worker });
+    return { processor, worker };
+  };
+
+  it('sends as many invoices at once as the configuration allows', () => {
+    const { processor, worker } = withWorker({
+      get: () => ({ nfseEmissionConcurrency: 3 }),
+    });
+    processor.onApplicationBootstrap();
+    expect(worker.concurrency).toBe(3);
+  });
+
+  it('keeps the worker default when there is no configuration', () => {
+    const { processor, worker } = withWorker(undefined);
+    processor.onApplicationBootstrap();
+    expect(worker.concurrency).toBe(1);
+  });
+});
