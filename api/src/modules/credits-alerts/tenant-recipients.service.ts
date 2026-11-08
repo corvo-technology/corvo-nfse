@@ -24,6 +24,26 @@ export class TenantRecipientsService {
     return this.emailsWithRoles(tenantId, ADMIN_ROLES);
   }
 
+  /**
+   * The workspace's main admin: the account that created it (its id is the tenant id).
+   * If that account is no longer an active admin, every active admin is told instead.
+   */
+  async ownerEmailsFor(tenantId: string): Promise<string[]> {
+    const owner = (await this.memberships.listForTenant(tenantId)).find(
+      (member) =>
+        member.authUserId === tenantId &&
+        member.isActive &&
+        member.role === 'admin',
+    );
+    if (owner) {
+      const address = (await this.users.getUsersByIds([tenantId], tenantId))
+        .get(tenantId)
+        ?.email?.trim();
+      if (address) return [address.toLowerCase()];
+    }
+    return this.adminEmailsFor(tenantId);
+  }
+
   private async emailsWithRoles(
     tenantId: string,
     roles: Set<string>,

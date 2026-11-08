@@ -302,11 +302,20 @@ export const integrations = {
   retry: async (saleId: string) => unwrap(await request<Envelope<{ state: string; lastError?: string }>>(`/integrations/operations/${idPath(saleId)}/retry`, { method: "POST" })),
 };
 export interface Member { id: string; email: string; name: string; role: string; createdAt: string }
-export interface InviteResult { userId: string; email: string; role: string }
+export interface InviteResult { id: string; email: string; name: string; role: string; expiresAt: string; createdAt: string }
+export type Invitation = InviteResult
+export interface InvitationPreview { role: string; invitedBy: string }
 export const members = {
   list: async (params: PageParams = {}) => toPage(await request<ListBody<Member>>(`/auth/members${query(params)}`)),
   invite: async (data: { name: string; email: string; role: string }) => unwrap(await request<Envelope<InviteResult>>("/auth/invite", json(data))),
   remove: async (id: string) => unwrap(await request<Envelope<{ deleted: boolean }>>(`/auth/members/${idPath(id)}`, { method: "DELETE" })),
+};
+export const invitations = {
+  list: async () => unwrap(await request<Envelope<Invitation[]>>("/auth/invitations")),
+  resend: async (id: string) => unwrap(await request<Envelope<Invitation>>(`/auth/invitations/${idPath(id)}/resend`, { method: "POST" })),
+  revoke: async (id: string) => unwrap(await request<Envelope<{ revoked: boolean }>>(`/auth/invitations/${idPath(id)}`, { method: "DELETE" })),
+  preview: async (token: string) => unwrap(await request<Envelope<InvitationPreview>>("/auth/invitations/preview", json({ token }))),
+  accept: async (token: string) => unwrap(await request<Envelope<{ tenantId: string; role: string }>>("/auth/invitations/accept", json({ token }))),
 };
 export interface McpConsentContext {
   client: { id: string; name: string };

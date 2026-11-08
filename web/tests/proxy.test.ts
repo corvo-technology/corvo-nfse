@@ -162,3 +162,24 @@ it("forwards the spreadsheet import routes with their methods, and allows a 10 M
   const otherRoute = await PATCH(new NextRequest("http://localhost:4000/api/proxy/v1/imports/abc/rows/4", { method: "PATCH", headers, body: "x".repeat(2 * 1024 * 1024) }), context("imports/abc/rows/4"));
   expect(otherRoute.status).toBe(413);
 });
+
+it("forwards the member invitation routes with their methods, and nothing else under auth/invitations", async () => {
+  const allowed: [string, "GET" | "POST" | "DELETE"][] = [
+    ["auth/invite", "POST"], ["auth/invitations", "GET"], ["auth/invitations/preview", "POST"], ["auth/invitations/accept", "POST"],
+    ["auth/invitations/abc/resend", "POST"], ["auth/invitations/abc", "DELETE"],
+  ];
+  for (const [route, method] of allowed) {
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+    const request = new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers: { origin: "http://localhost:4000" } });
+    const handler = { GET, POST, DELETE }[method];
+    expect((await handler(request, context(route))).status, `${method} ${route}`).toBe(200);
+  }
+  expect(fetchMock).toHaveBeenCalledTimes(allowed.length);
+  fetchMock.mockClear();
+  for (const [route, method] of [["auth/invitations", "POST"], ["auth/invitations/preview", "GET"], ["auth/invitations/abc", "GET"], ["auth/invitations/abc/resend", "GET"], ["auth/invitations/abc/accept", "POST"]] as const) {
+    const request = new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers: { origin: "http://localhost:4000" } });
+    const handler = { GET, POST, DELETE }[method];
+    expect((await handler(request, context(route))).status, `${method} ${route}`).toBe(404);
+  }
+  expect(fetchMock).not.toHaveBeenCalled();
+});

@@ -7,6 +7,7 @@ function build(
   const recipients = {
     emailsFor: jest.fn().mockResolvedValue(opts.all ?? ['a@x.com', 'b@x.com']),
     adminEmailsFor: jest.fn().mockResolvedValue(opts.admins ?? ['a@x.com']),
+    ownerEmailsFor: jest.fn().mockResolvedValue(['owner@x.com']),
   };
   const email = { enqueueNotice: jest.fn().mockResolvedValue(undefined) };
   const config = { get: jest.fn().mockReturnValue('https://corvo.tech/app') };
@@ -118,21 +119,53 @@ describe('AccountNoticeListener', () => {
     expect(email.enqueueNotice).not.toHaveBeenCalled();
   });
 
-  it('e-mails only the added member', async () => {
+  it('sends the invitation only to the invited address, with the token in the link fragment', async () => {
     const { listener, email, recipients } = build();
     await listener.handle(
       accountNotice('t1', {
-        kind: 'member-added',
+        kind: 'member-invited',
         email: 'new@x.com',
+        name: 'Maria <b>Silva</b>',
         role: 'billing',
+        token: 'tok_123',
+        inviterName: 'Ana',
       }),
     );
     expect(recipients.emailsFor).not.toHaveBeenCalled();
-    expect(email.enqueueNotice).toHaveBeenCalledWith(
-      'new@x.com',
-      expect.objectContaining({
-        subject: expect.stringContaining('adicionado'),
+    expect(email.enqueueNotice).toHaveBeenCalledTimes(1);
+    const [to, message] = email.enqueueNotice.mock.calls[0] as unknown as [
+      string,
+      { subject: string; html: string },
+    ];
+    expect(to).toBe('new@x.com');
+    expect(message.subject).toContain('Convite');
+    expect(message.html).toContain(
+      'https://corvo.tech/accept-invite#token=tok_123',
+    );
+    expect(message.html).not.toContain('accept-invite?token');
+    // The invitee is greeted by the name the admin typed, and it cannot inject markup.
+    expect(message.html).toContain('Olá, Maria &lt;b&gt;Silva&lt;/b&gt;.');
+    expect(message.html).not.toContain('<b>Silva</b>');
+  });
+
+  it('tells only the main admin that the invite was accepted', async () => {
+    const { listener, email, recipients } = build();
+    await listener.handle(
+      accountNotice('t1', {
+        kind: 'member-joined',
+        name: 'Maria',
+        email: 'maria@x.com',
+        role: 'developer',
       }),
     );
+    expect(recipients.ownerEmailsFor).toHaveBeenCalledWith('t1');
+    expect(email.enqueueNotice).toHaveBeenCalledTimes(1);
+    const [to, message] = email.enqueueNotice.mock.calls[0] as unknown as [
+      string,
+      { subject: string; html: string },
+    ];
+    expect(to).toBe('owner@x.com');
+    expect(message.html).toContain('Maria');
+    expect(message.html).toContain('já tem acesso');
   });
 });

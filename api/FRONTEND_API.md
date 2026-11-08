@@ -182,7 +182,12 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | GET    | `/auth/me`                                             | S                               | Contexto do usuário/tenant                                                         |
 | GET    | `/auth/memberships`                                    | S                               | Memberships do tenant ativo                                                        |
 | GET    | `/auth/permissions`                                    | S                               | Catálogo de categorias/permissões                                                  |
-| POST   | `/auth/invite`                                         | S, `settings.manage`            | JSON: `email`, `name`, `role`; cria membership; 201                                |
+| POST   | `/auth/invite`                                         | S, `settings.manage`            | JSON: `email`, `name`, `role`; cria convite pendente e envia o link por e-mail; 201 |
+| GET    | `/auth/invitations`                                    | S, `settings.manage`            | Convites pendentes e não expirados                                                 |
+| POST   | `/auth/invitations/{id}/resend`                        | S, `settings.manage`            | Novo link e novos 7 dias; o link anterior deixa de valer; 429 em menos de 1 min    |
+| DELETE | `/auth/invitations/{id}`                               | S, `settings.manage`            | Cancela o convite                                                                  |
+| POST   | `/auth/invitations/preview`                            | S                               | JSON: `token`; papel e quem convidou; só para o e-mail convidado                   |
+| POST   | `/auth/invitations/accept`                             | S                               | JSON: `token`; cria a membership, avisa o admin principal; devolve `tenantId`      |
 | GET    | `/auth/members`                                        | S, `settings.manage`            | Membros: `id` do usuário, e-mail, nome, role, createdAt                            |
 | DELETE | `/auth/members/{id}`                                   | S, `settings.manage`            | ID do usuário; desativa membership                                                 |
 | POST   | `/auth/logout`                                         | S                               | Legado: apenas retorna `loggedOut`; usar `/auth/session/logout`                    |
@@ -902,8 +907,10 @@ ou `response.text()`, não `response.json()`.
   `/credits/purchase/confirm` concede créditos sem consultar o provedor.
   Não tratar uma chamada do navegador como comprovação de pagamento.
   Checkout e confirmação confiável via servidor/webhook precisam ser ligados.
-- **Convite**: `/auth/invite` cria usuário/membership, mas não envia convite
-  por e-mail. O usuário convidado pode iniciar login por código.
+- **Convite**: `/auth/invite` cria um convite pendente e envia por e-mail um link
+  com token de uso único (7 dias; só o hash fica no banco). A pessoa entra com o
+  mesmo e-mail e aceita em `/accept-invite`; só então vira membro e o admin
+  principal recebe um e-mail avisando.
 - **E-mail**: a configuração está no `.env`; entrega externa pelo MillionSend
   ainda precisa ser validada com destinatário real. Testes do login substituem
   somente a entrega, mantendo Postgres, Redis, OTP e guards reais.

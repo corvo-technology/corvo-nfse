@@ -10,6 +10,7 @@ export type SystemPurpose =
   | 'credential-lookup'
   | 'oauth-bootstrap'
   | 'workspace-bootstrap'
+  | 'invitation-accept'
   | 'billing-eligibility'
   | 'verified-provider-event'
   | 'integration-inbound';

@@ -11,7 +11,17 @@ export type AccountNotice =
   | { kind: 'pix-expired' }
   | { kind: 'payment-mismatch' }
   | { kind: 'subscription-canceled' }
-  | { kind: 'member-added'; email: string; role: string }
+  | {
+      kind: 'member-invited';
+      email: string;
+      /** The invitee's name, as the admin typed it. */
+      name: string;
+      role: string;
+      /** Single-use secret for the accept link. Lives only in this in-process event. */
+      token: string;
+      inviterName?: string;
+    }
+  | { kind: 'member-joined'; name: string; email: string; role: string }
   | {
       kind: 'certificate-expiring';
       companyId: string;

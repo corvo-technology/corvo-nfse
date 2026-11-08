@@ -558,15 +558,12 @@
     }
   },
   "Members": {
-    "inviteUnavailable": "Convites estão desativados por enquanto.",
     "title": "Membros",
     "subtitle": "Gerencie quem tem acesso ao seu workspace.",
     "invite": "Convidar",
     "loading": "Carregando...",
     "noMembers": "Nenhum membro ainda",
-    "temporaryPassword": "Senha temporária",
-    "passwordWarning": "Esta senha é exibida apenas uma vez. O usuário deve alterá-la no primeiro login.",
-    "invitationSent": "Acesso criado para {name} ({email}), com papel {role}.",
+    "invitationSent": "Convite enviado para {email}, com papel {role}.",
     "table": {
       "person": "Pessoa",
       "role": "Função",
@@ -603,7 +600,23 @@
       "inviteFailed": "Falha ao enviar convite",
       "removeFailed": "Falha ao remover membro"
     },
-    "codeLoginHint": "O membro pode entrar solicitando um código no login. Nenhum convite por e-mail foi enviado."
+    "codeLoginHint": "A pessoa recebe um e-mail com um link válido por 7 dias. Quando aceitar, você é avisado e ela já tem acesso.",
+    "pending": {
+      "title": "Convites pendentes",
+      "email": "E-mail",
+      "expires": "Expira",
+      "resend": "Reenviar",
+      "revoke": "Cancelar convite",
+      "resent": "Convite reenviado.",
+      "revoked": "Convite cancelado.",
+      "empty": "Nenhum convite pendente.",
+      "errors": {
+        "loadFailed": "Falha ao carregar convites",
+        "resendFailed": "Falha ao reenviar convite",
+        "revokeFailed": "Falha ao cancelar convite"
+      },
+      "actions": "Ações"
+    }
   },
   "Login": {
     "signupTitle": "Crie sua conta",
@@ -1390,7 +1403,9 @@
     "retry": "Tentar novamente",
     "forbidden": "Você não tem permissão para acessar esta página.",
     "actionFailed": "Não foi possível concluir a ação. Tente novamente.",
-    "workspace": "Workspace"
+    "workspace": "Workspace",
+    "noAccessTitle": "Sem acesso a esta página",
+    "backToOverview": "Voltar ao início"
   },
   "CompanyForm": {
     "legalName": "Razão social",
@@ -1972,7 +1987,12 @@
     "import_state": "A importação não está num estado que permita isso agora.",
     "import_file_invalid": "Envie um arquivo .csv ou .xlsx.",
     "import_file_too_large": "O arquivo tem mais de 10 MB.",
-    "import_company_not_found": "O CNPJ escolhido para esta importação não está mais cadastrado."
+    "import_company_not_found": "O CNPJ escolhido para esta importação não está mais cadastrado.",
+    "invitation_invalid": "Este convite não é válido ou já foi usado.",
+    "invitation_expired": "Este convite expirou. Peça um novo.",
+    "invitation_email_mismatch": "Entre com o e-mail que recebeu o convite.",
+    "invitation_limit_reached": "Há convites pendentes demais. Cancele alguns antes de convidar.",
+    "invitation_recently_sent": "Um convite acabou de ser enviado. Tente de novo em um minuto."
   },
   "Legal": {
     "eyebrow": "JURÍDICO",
@@ -2978,5 +2998,20 @@
       "pendingBanner": "{count, plural, one {# importação está aguardando créditos} other {# importações estão aguardando créditos}}",
       "pendingHint": "{notes, plural, one {# nota} other {# notas}} esperando ({amount}). Recarregue e continue de onde parou."
     }
+  },
+  "AcceptInvite": {
+    "loading": "Verificando o convite…",
+    "title": "Você foi convidado",
+    "subtitle": "{invitedBy} convidou você para uma conta no Corvo como {role}.",
+    "subtitleNoName": "Você foi convidado para uma conta no Corvo como {role}.",
+    "accept": "Aceitar convite",
+    "accepting": "Entrando…",
+    "switchAccount": "Sair e entrar com outro e-mail",
+    "goHome": "Ir para o painel",
+    "invalid": "Este convite não é válido ou já foi usado. Peça um novo para quem convidou você.",
+    "expired": "Este convite expirou. Peça um novo para quem convidou você.",
+    "mismatch": "Este convite é para outro e-mail. Entre com o e-mail que recebeu o convite.",
+    "missing": "Link de convite incompleto. Abra o link do e-mail novamente.",
+    "failed": "Não foi possível aceitar o convite. Tente novamente."
   }
 }
