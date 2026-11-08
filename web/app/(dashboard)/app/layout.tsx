@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useCompleteRegistration } from "@/lib/use-complete-registration";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { NoAccess } from "@/components/dashboard/no-access";
+import { ProfileNamePrompt } from "@/components/profile/name-prompt";
 import { canOpenPath, permissionForPath } from "@/lib/route-permissions";
 import { Topbar } from "@/components/dashboard/topbar";
 import { CorvoLogo } from "@/components/ui/corvo-logo";
@@ -99,6 +100,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {sidebarOpen && (
         <div aria-hidden className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={closeSidebar} />
       )}
+
+      <ProfileNamePrompt />
 
       <Sidebar activePath={pathname} open={sidebarOpen} onClose={closeSidebar} closeButtonRef={closeButtonRef} />
 

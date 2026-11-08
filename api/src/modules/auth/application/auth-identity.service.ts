@@ -71,7 +71,8 @@ export class AuthIdentityService {
     // 3. Create new user
     const newUser = await this.authUserService.createUser({
       email: input.email,
-      name: input.name || input.email.split('@')[0],
+      // Without a name from the provider, the person is asked in onboarding.
+      name: input.name ?? '',
     });
 
     // Create OAuth identity
@@ -133,7 +134,7 @@ export class AuthIdentityService {
     // Create new user
     const newUser = await this.authUserService.createUser({
       email,
-      name: email.split('@')[0],
+      name: '',
     });
     await this.identities.save(
       AuthIdentity.create({

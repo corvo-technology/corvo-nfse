@@ -3013,5 +3013,17 @@
     "mismatch": "Este convite é para outro e-mail. Entre com o e-mail que recebeu o convite.",
     "missing": "Link de convite incompleto. Abra o link do e-mail novamente.",
     "failed": "Não foi possível aceitar o convite. Tente novamente."
+  },
+  "Profile": {
+    "title": "Seu perfil",
+    "subtitle": "Entrou como {email}. Seu nome aparece nos convites e nos e-mails que você envia.",
+    "nameLabel": "Seu nome",
+    "namePlaceholder": "ex.: Maria Santos",
+    "save": "Salvar",
+    "saveFailed": "Não foi possível salvar seu nome. Tente novamente.",
+    "promptTitle": "Como podemos te chamar?",
+    "promptBody": "Seu nome aparece para sua equipe, nos convites que você envia e nos e-mails que o Corvo manda para você.",
+    "continue": "Continuar",
+    "skip": "Agora não"
   }
 }

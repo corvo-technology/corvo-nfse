@@ -16,6 +16,7 @@ import type { Request, Response } from 'express';
 import { ApiErrorResponses } from '@/infra/openapi/swagger';
 import { data } from '@/shared/http/response';
 import { AuthContextService } from '../application/auth-context.service';
+import { AuthUserService } from '../application/auth-user.service';
 
 import { CookiePolicyService } from '../application/cookie-policy.service';
 import { extractCookie } from '../application/cookie-reader';
@@ -39,7 +40,14 @@ export class SessionController {
     private readonly sessions: CookieSessionService,
     private readonly contexts: AuthContextService,
     private readonly cookies: CookiePolicyService,
+    private readonly users: AuthUserService,
   ) {}
+
+  /** Who is signed in, so the app can greet them and ask for a name when there is none. */
+  private async profile(authUserId: string) {
+    const user = await this.users.findById(authUserId);
+    return { name: user?.name ?? '', email: user?.email ?? '' };
+  }
 
   @Get()
   @Header('Cache-Control', 'no-store')
@@ -53,6 +61,7 @@ export class SessionController {
     return data({
       status: 'authenticated' as const,
       context,
+      profile: await this.profile(session.authUserId),
       activeTenantId: session.activeTenantId,
       availableTenants: context.availableTenants,
       permissions: context.permissions,
@@ -88,6 +97,7 @@ export class SessionController {
     const updated = await this.sessions.switchTenant(session, body.tenantId);
     return data({
       context,
+      profile: await this.profile(session.authUserId),
       activeTenantId: updated.activeTenantId,
       availableTenants: context.availableTenants,
       permissions: context.permissions,

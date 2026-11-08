@@ -3013,5 +3013,17 @@
     "mismatch": "This invitation is for a different e-mail. Sign in with the e-mail that received it.",
     "missing": "The invitation link is incomplete. Open the link from the e-mail again.",
     "failed": "We could not accept the invitation. Try again."
+  },
+  "Profile": {
+    "title": "Your profile",
+    "subtitle": "Signed in as {email}. Your name appears on invitations and in the e-mails you send.",
+    "nameLabel": "Your name",
+    "namePlaceholder": "e.g. Maria Santos",
+    "save": "Save",
+    "saveFailed": "We could not save your name. Try again.",
+    "promptTitle": "What should we call you?",
+    "promptBody": "Your name is shown to your team, on invitations you send and in the e-mails Corvo sends you.",
+    "continue": "Continue",
+    "skip": "Not now"
   }
 }

@@ -96,11 +96,15 @@ export function otpEmail(input: {
 }
 
 export function welcomeEmail(input: {
-  name: string;
+  name?: string;
   dashboardUrl: string;
 }): RenderedEmail {
   return emailLayout('Bem-vindo ao Corvo', [
-    paragraph(`Olá, ${input.name}! Sua conta no Corvo está pronta.`),
+    paragraph(
+      input.name?.trim()
+        ? `Olá, ${input.name.trim()}! Sua conta no Corvo está pronta.`
+        : 'Olá! Sua conta no Corvo está pronta.',
+    ),
     button(input.dashboardUrl, 'Abrir o Corvo'),
   ]);
 }
