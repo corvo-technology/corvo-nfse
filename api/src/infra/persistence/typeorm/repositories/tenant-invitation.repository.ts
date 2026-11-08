@@ -22,6 +22,10 @@ export class TypeOrmTenantInvitationRepository implements ITenantInvitationRepos
       role: entity.role as TenantInvitation['role'],
       permissions: entity.permissions as TenantInvitation['permissions'],
       status: entity.status as TenantInvitation['status'],
+      tokenHash: entity.tokenHash ?? undefined,
+      invitedByUserId: entity.invitedByUserId ?? undefined,
+      acceptedAt: entity.acceptedAt ?? undefined,
+      acceptedByUserId: entity.acceptedByUserId ?? undefined,
       expiresAt: entity.expiresAt ?? new Date(),
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
@@ -62,6 +66,47 @@ export class TypeOrmTenantInvitationRepository implements ITenantInvitationRepos
         .find({ where: { tenantId } });
       return entities.map((entity) => this.toDomain(entity));
     });
+  }
+
+  async listOpenByTenant(tenantId: string): Promise<TenantInvitation[]> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const entities = await this.db
+        .repository(TenantInvitationOrmEntity)
+        .createQueryBuilder('invitation')
+        .where('invitation.tenantId = :tenantId', { tenantId })
+        .andWhere("invitation.status = 'pending'")
+        .andWhere('invitation.expiresAt > now()')
+        .orderBy('invitation.createdAt', 'DESC')
+        .getMany();
+      return entities.map((entity) => this.toDomain(entity));
+    });
+  }
+
+  async findByTokenHash(tokenHash: string): Promise<TenantInvitation | null> {
+    const entity = await this.db
+      .repository(TenantInvitationOrmEntity)
+      .findOne({ where: { tokenHash } });
+    return entity ? this.toDomain(entity) : null;
+  }
+
+  async claim(id: string, userId: string, now: Date): Promise<boolean> {
+    const result = await this.db
+      .repository(TenantInvitationOrmEntity)
+      .createQueryBuilder()
+      .update()
+      .set({
+        status: 'completed',
+        acceptedAt: now,
+        acceptedByUserId: userId,
+        tokenHash: null,
+      })
+      .where("id = :id AND status = 'pending' AND expires_at > :now", {
+        id,
+        now,
+      })
+      .execute();
+    return (result.affected ?? 0) === 1;
   }
 
   async save(

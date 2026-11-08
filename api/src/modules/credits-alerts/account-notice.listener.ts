@@ -9,7 +9,8 @@ import {
   certificateExpiringEmail,
   creditsAddedEmail,
   creditsExhaustedEmail,
-  memberAddedEmail,
+  memberInvitedEmail,
+  memberJoinedEmail,
   paymentFailedEmail,
   paymentMismatchEmail,
   pixExpiredEmail,
@@ -51,6 +52,12 @@ export class AccountNoticeListener {
       .replace(/\/+$/, '')
       .replace(/\/app$/, '');
     return `${base}/app/${path}`;
+  }
+
+  private site(path: string): string {
+    return `${(this.config.get<string>('APP_URL') ?? DEFAULT_APP_URL)
+      .replace(/\/+$/, '')
+      .replace(/\/app$/, '')}/${path}`;
   }
 
   /** True the first time `key` is seen inside `ttlMs`: the same notice is not repeated. */
@@ -108,12 +115,23 @@ export class AccountNoticeListener {
         });
         to = await this.recipients.emailsFor(tenantId);
         break;
-      case 'member-added':
-        message = memberAddedEmail({
+      case 'member-invited':
+        // The token goes only into this one e-mail, in the URL fragment so it is never sent to a server.
+        message = memberInvitedEmail({
           role: notice.role,
-          appUrl: this.page(''),
+          inviterName: notice.inviterName,
+          acceptUrl: `${this.site('accept-invite')}#token=${encodeURIComponent(notice.token)}`,
         });
         to = [notice.email];
+        break;
+      case 'member-joined':
+        message = memberJoinedEmail({
+          name: notice.name,
+          email: notice.email,
+          role: notice.role,
+          membersUrl: this.page('members'),
+        });
+        to = await this.recipients.ownerEmailsFor(tenantId);
         break;
       case 'certificate-expiring': {
         const key = `cert:${notice.companyId}:${notice.stage}`;

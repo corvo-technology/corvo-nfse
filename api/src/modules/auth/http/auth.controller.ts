@@ -8,6 +8,7 @@ import {
   Get,
   Query,
   Param,
+  ParseUUIDPipe,
   Post,
   Req,
   UnauthorizedException,
@@ -22,6 +23,8 @@ import { MembershipService } from '../application/membership.service';
 import { TENANT_PERMISSION_CATEGORY_CATALOG } from '../domain/permission';
 import { InviteMemberDto } from './invite-member.dto';
 import { InviteMemberService } from '../application/invite-member.service';
+import { InvitationService } from '../application/invitation.service';
+import { InvitationTokenDto } from './invitation-token.dto';
 import { RequirePermission } from '../require-permission.decorator';
 
 @Controller('auth')
@@ -32,6 +35,7 @@ export class AuthController {
     private readonly authContextService: AuthContextService,
     private readonly membershipService: MembershipService,
     private readonly inviteMemberService: InviteMemberService,
+    private readonly invitationService: InvitationService,
   ) {}
 
   @Post('logout')
@@ -86,7 +90,75 @@ export class AuthController {
   ) {
     const authContext = req.authContext!;
     return data(
-      await this.inviteMemberService.invite(authContext.activeTenantId, dto),
+      await this.invitationService.invite(
+        authContext.activeTenantId,
+        authContext.authUserId,
+        dto,
+      ),
+    );
+  }
+
+  @Get('invitations')
+  @ApiBearerAuth()
+  @RequirePermission('settings.manage')
+  async listInvitations(@Req() req: RequestWithAuthContext) {
+    return data(
+      await this.invitationService.listOpen(req.authContext!.activeTenantId),
+    );
+  }
+
+  @Post('invitations/:id/resend')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @RequirePermission('settings.manage')
+  async resendInvitation(
+    @Req() req: RequestWithAuthContext,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return data(
+      await this.invitationService.resend(req.authContext!.activeTenantId, id),
+    );
+  }
+
+  @Delete('invitations/:id')
+  @ApiBearerAuth()
+  @RequirePermission('settings.manage')
+  async revokeInvitation(
+    @Req() req: RequestWithAuthContext,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    await this.invitationService.revoke(req.authContext!.activeTenantId, id);
+    return data({ revoked: true });
+  }
+
+  /** Any signed-in user may try a token; it only works for the e-mail it was sent to. */
+  @Post('invitations/preview')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  async previewInvitation(
+    @Req() req: RequestWithAuthContext,
+    @Body() body: InvitationTokenDto,
+  ) {
+    return data(
+      await this.invitationService.preview(
+        req.authContext!.authUserId,
+        body.token,
+      ),
+    );
+  }
+
+  @Post('invitations/accept')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  async acceptInvitation(
+    @Req() req: RequestWithAuthContext,
+    @Body() body: InvitationTokenDto,
+  ) {
+    return data(
+      await this.invitationService.accept(
+        req.authContext!.authUserId,
+        body.token,
+      ),
     );
   }
 

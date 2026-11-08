@@ -278,18 +278,40 @@ const ROLE_LABELS: Record<string, string> = {
   billing: 'cobrança',
 };
 
-export function memberAddedEmail(input: {
+export function memberInvitedEmail(input: {
   role: string;
-  appUrl: string;
+  inviterName?: string;
+  acceptUrl: string;
 }): RenderedEmail {
-  return emailLayout('Você foi adicionado a uma conta no Corvo', [
+  const who = input.inviterName
+    ? `${input.inviterName} convidou você`
+    : 'Você foi convidado';
+  return emailLayout('Convite para uma conta no Corvo', [
     paragraph(
-      `Você foi adicionado a uma conta no Corvo como ${ROLE_LABELS[input.role] ?? input.role}.`,
+      `${who} para uma conta no Corvo como ${ROLE_LABELS[input.role] ?? input.role}.`,
     ),
     paragraph(
-      'Entre com este e-mail para acessar. Enviaremos um código de acesso.',
+      'Entre com este mesmo e-mail e aceite o convite. O link vale por 7 dias e só pode ser usado uma vez.',
     ),
-    button(input.appUrl, 'Entrar no Corvo'),
+    button(input.acceptUrl, 'Aceitar convite'),
+    paragraph('Se você não esperava este convite, ignore este e-mail.'),
+  ]);
+}
+
+export function memberJoinedEmail(input: {
+  name: string;
+  email: string;
+  role: string;
+  membersUrl: string;
+}): RenderedEmail {
+  return emailLayout('Convite aceito', [
+    paragraph(
+      `${input.name || input.email} (${input.email}) aceitou o convite e já tem acesso à conta como ${ROLE_LABELS[input.role] ?? input.role}.`,
+    ),
+    paragraph(
+      'Se não reconhece essa pessoa, remova o acesso na página de membros.',
+    ),
+    button(input.membersUrl, 'Ver membros'),
   ]);
 }
 

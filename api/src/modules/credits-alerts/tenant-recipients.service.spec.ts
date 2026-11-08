@@ -47,3 +47,20 @@ describe('TenantRecipientsService.emailsFor', () => {
     expect(await service.emailsFor('tenant-1')).toEqual([]);
   });
 });
+
+describe('TenantRecipientsService.ownerEmailsFor', () => {
+  it('returns only the account that created the workspace while it is an active admin', async () => {
+    const { service } = build();
+    // build() makes u-admin an active admin; its id is the tenant id here.
+    expect(await service.ownerEmailsFor('u-admin')).toEqual([
+      'admin@example.com',
+    ]);
+  });
+
+  it('falls back to every active admin when the owner is no longer an active admin', async () => {
+    const { service } = build();
+    expect(await service.ownerEmailsFor('u-gone')).toEqual([
+      'admin@example.com',
+    ]);
+  });
+});

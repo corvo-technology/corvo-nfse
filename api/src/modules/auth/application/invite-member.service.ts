@@ -1,11 +1,5 @@
 import { CursorQuery } from '@/shared/http/pagination';
-import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-import { ApplicationEventBus } from '@/shared/events/application-event-bus';
-import { accountNotice } from '@/shared/events/account-notice.events';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuthUserService } from './auth-user.service';
 import { MembershipService } from './membership.service';
 import { ApiKeyService } from './api-key.service';
@@ -30,63 +24,8 @@ export class InviteMemberService {
   constructor(
     private readonly authUserService: AuthUserService,
     private readonly membershipService: MembershipService,
-    private readonly eventBus: ApplicationEventBus,
     private readonly apiKeyService: ApiKeyService,
   ) {}
-
-  async invite(
-    tenantId: string,
-    dto: {
-      email: string;
-      role: 'admin' | 'developer' | 'billing';
-      name: string;
-    },
-  ): Promise<{
-    userId: string;
-    email: string;
-    role: string;
-  }> {
-    // Check if user already exists in this tenant
-    const existingMembers =
-      await this.membershipService.listForTenant(tenantId);
-
-    // Create user (or get existing) — no password, invitee receives magic link
-    const user = await this.authUserService.createUser({
-      email: dto.email,
-      name: dto.name,
-    });
-
-    // Check if membership already exists
-    const existingMembership = existingMembers.find(
-      (m) => m.authUserId === user.id,
-    );
-    if (existingMembership) {
-      throw new ConflictException({
-        code: 'MEMBER_ALREADY_EXISTS',
-        message: 'User is already a member of this tenant',
-      });
-    }
-
-    // Create membership with role-based permissions
-    await this.membershipService.create({
-      authUserId: user.id,
-      tenantId,
-      role: dto.role,
-    });
-    this.eventBus.publishBestEffort(
-      accountNotice(tenantId, {
-        kind: 'member-added',
-        email: dto.email,
-        role: dto.role,
-      }),
-    );
-
-    return {
-      userId: user.id,
-      email: dto.email,
-      role: dto.role,
-    };
-  }
 
   async listMembers(tenantId: string): Promise<any[]> {
     const members = await this.membershipService.listForTenant(tenantId);

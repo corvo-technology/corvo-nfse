@@ -2,7 +2,10 @@ import { TenantMembershipRole } from './tenant-membership';
 import type { TenantPermission } from './permission';
 
 export type TenantInvitationStatus =
-  'pending' | 'completed' | 'revoked' | 'expired';
+  | 'pending'
+  | 'completed'
+  | 'revoked'
+  | 'expired';
 
 export interface TenantInvitation {
   id: string;
@@ -12,6 +15,11 @@ export interface TenantInvitation {
   role: TenantMembershipRole;
   permissions: TenantPermission[];
   status: TenantInvitationStatus;
+  /** SHA-256 of the single-use token sent by e-mail; the token itself is never stored. */
+  tokenHash?: string;
+  invitedByUserId?: string;
+  acceptedAt?: Date;
+  acceptedByUserId?: string;
   expiresAt: Date;
   createdAt: Date;
   updatedAt: Date;
