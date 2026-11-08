@@ -1403,7 +1403,9 @@
     "retry": "Try again",
     "forbidden": "You do not have permission to access this page.",
     "actionFailed": "Could not complete the action. Try again.",
-    "workspace": "Workspace"
+    "workspace": "Workspace",
+    "noAccessTitle": "No access to this page",
+    "backToOverview": "Back to overview"
   },
   "CompanyForm": {
     "legalName": "Legal name",

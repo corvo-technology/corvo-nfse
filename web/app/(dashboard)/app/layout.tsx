@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import { useCompleteRegistration } from "@/lib/use-complete-registration";
 import { Sidebar } from "@/components/dashboard/sidebar";
+import { NoAccess } from "@/components/dashboard/no-access";
+import { canOpenPath, permissionForPath } from "@/lib/route-permissions";
 import { Topbar } from "@/components/dashboard/topbar";
 import { CorvoLogo } from "@/components/ui/corvo-logo";
 
@@ -90,7 +92,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  const permission = pathname.startsWith("/app/companies") ? "nfse.companies.view" : pathname === "/app/invoices/new" ? "nfse.invoices.issue" : pathname.startsWith("/app/invoices") ? "nfse.invoices.view" : pathname.startsWith("/app/api-keys") ? "api_keys.manage" : pathname.startsWith("/app/members") ? "settings.manage" : pathname.startsWith("/app/webhooks") ? "webhooks.view" : pathname.startsWith("/app/billing") ? "billing.view" : null;
+  const permission = permissionForPath(pathname);
   return (
     <div key={tenantId} className="flex min-h-dvh flex-row bg-bg font-sans text-text">
       {/* Mobile scrim */}
@@ -108,7 +110,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           className="relative flex-1 outline-none"
         >
           <div className="mx-auto w-full max-w-[1120px] px-4 py-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-            <div key={`${tenantId}:${fiscalEnvironment}:${permission ?? "overview"}`}>{permission && !can(permission) ? <p role="alert">{t("Session.forbidden")}</p> : children}</div>
+            <div key={`${tenantId}:${fiscalEnvironment}:${permission ?? "overview"}`}>{canOpenPath(pathname, can) ? children : <NoAccess />}</div>
           </div>
         </main>
       </div>

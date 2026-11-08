@@ -19,6 +19,7 @@ import {
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
+import { canOpenPath } from "@/lib/route-permissions";
 import { billing } from "@/lib/api";
 import type { BillingPlan } from "@/lib/types";
 import { CorvoLogo } from "@/components/ui/corvo-logo";
@@ -28,8 +29,6 @@ interface NavItem {
   key: string;
   href: string;
   icon: LucideIcon;
-  /** Hidden for members without this permission. */
-  permission?: string;
 }
 
 const navMain: NavItem[] = [
@@ -39,7 +38,7 @@ const navMain: NavItem[] = [
 ];
 
 const navAccount: NavItem[] = [
-  { key: "Sidebar.nav.integrations", href: "/app/integrations", icon: Plug, permission: "integrations.view" },
+  { key: "Sidebar.nav.integrations", href: "/app/integrations", icon: Plug },
   { key: "Sidebar.nav.webhooks", href: "/app/webhooks", icon: Webhook },
   { key: "Sidebar.nav.apiKeys", href: "/app/api-keys", icon: KeyRound },
   { key: "Sidebar.nav.agents", href: "/app/agents", icon: Bot },
@@ -78,8 +77,8 @@ export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarPr
   const isActive = (href: string) => (href === "/app" ? activePath === "/app" : activePath.startsWith(href));
 
   const renderItem = ({ key, href, icon: Icon }: NavItem) => {
-    const permission = ({ "/app/companies": "nfse.companies.view", "/app/invoices": "nfse.invoices.view", "/app/webhooks": "webhooks.view", "/app/api-keys": "api_keys.manage", "/app/billing": "billing.view", "/app/members": "settings.manage" } as Record<string, string>)[href];
-    if (permission && !can(permission)) return null;
+    // Same table as the page guard: the menu never shows a page the member cannot open.
+    if (!canOpenPath(href, can)) return null;
     const active = isActive(href);
     return (
       <li key={href}>
@@ -130,7 +129,7 @@ export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarPr
         <ul className="flex flex-col gap-0.5">{navMain.map(renderItem)}</ul>
         <div className="flex flex-col gap-1">
           <p className="eyebrow px-3 py-1 text-text-5">{t("Sidebar.account")}</p>
-          <ul className="flex flex-col gap-0.5">{navAccount.filter((item) => !item.permission || can(item.permission)).map(renderItem)}</ul>
+          <ul className="flex flex-col gap-0.5">{navAccount.map(renderItem)}</ul>
         </div>
       </nav>
 
