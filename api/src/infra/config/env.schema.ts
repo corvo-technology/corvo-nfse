@@ -257,6 +257,14 @@ export const envSchema = z
       .default(300),
     QUEUE_DEFAULT_ATTEMPTS: z.coerce.number().int().positive().default(3),
     QUEUE_DEFAULT_BACKOFF_MS: z.coerce.number().int().positive().default(5000),
+    // Invoices sent to the fiscal portal at once by each worker. The DPS number is reserved
+    // atomically and each invoice has its own lock, so parallel emissions never share a number.
+    NFSE_EMISSION_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(10)
+      .default(3),
     OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
     OUTBOX_BATCH_SIZE: z.coerce.number().int().positive().default(50),
     OUTBOX_LEASE_MS: z.coerce.number().int().positive().default(120000),

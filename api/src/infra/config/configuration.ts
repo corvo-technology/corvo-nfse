@@ -98,6 +98,7 @@ export default function configuration(): AppConfiguration {
     queue: {
       defaultAttempts: env.QUEUE_DEFAULT_ATTEMPTS,
       defaultBackoffMs: env.QUEUE_DEFAULT_BACKOFF_MS,
+      nfseEmissionConcurrency: env.NFSE_EMISSION_CONCURRENCY,
     },
     outbox: {
       relayIntervalMs: env.OUTBOX_RELAY_INTERVAL_MS,

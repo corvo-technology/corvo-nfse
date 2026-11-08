@@ -40,6 +40,8 @@ export type RedisConfig = {
 export type QueueConfig = {
   defaultAttempts: number;
   defaultBackoffMs: number;
+  /** Invoices sent to the fiscal portal at the same time by each worker process. */
+  nfseEmissionConcurrency: number;
 };
 
 export interface OutboxConfig {

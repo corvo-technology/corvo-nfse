@@ -1,4 +1,11 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  OnApplicationBootstrap,
+  Optional,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { QueueConfig } from '@/infra/config/configuration.types';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import type { Job } from 'bullmq';
 import type { LockPort } from '@/infra/redis/lock.port';
@@ -12,12 +19,26 @@ export type NfseEmissionJobData = FiscalJobData;
 
 @Processor('nfse-emission')
 @Injectable()
-export class NfseEmissionProcessor extends WorkerHost {
+export class NfseEmissionProcessor
+  extends WorkerHost
+  implements OnApplicationBootstrap
+{
   constructor(
     @Inject(LOCK_PORT) private readonly locks: LockPort,
     private readonly workflow: NfseWorkflowService,
+    @Optional() private readonly config?: ConfigService,
   ) {
     super();
+  }
+
+  /**
+   * Several invoices go to the portal at once (`NFSE_EMISSION_CONCURRENCY`, default 3). Safe because
+   * the DPS number is reserved atomically and the per-invoice lock keeps one invoice in one worker slot.
+   */
+  onApplicationBootstrap(): void {
+    const concurrency =
+      this.config?.get<QueueConfig>('queue')?.nfseEmissionConcurrency;
+    if (concurrency) this.worker.concurrency = concurrency;
   }
   async process(job: Job<NfseEmissionJobData>): Promise<void> {
     // The same lock protects emission and reconciliation for this invoice.
