@@ -48,6 +48,17 @@ export class AuthUserService {
     return map;
   }
 
+  /** The name the person gave; an empty name means they were never asked. */
+  async updateName(userId: string, name: string): Promise<AuthUser> {
+    const user = await this.users.findById(userId);
+    if (!user) throw new Error('User not found');
+    return this.users.update({
+      ...user,
+      name: name.trim(),
+      updatedAt: new Date(),
+    });
+  }
+
   async markEmailVerified(
     userId: string,
     verifiedAt = new Date(),

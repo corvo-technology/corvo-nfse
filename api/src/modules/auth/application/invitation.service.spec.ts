@@ -65,6 +65,7 @@ function build(
       : opts.user;
   const authUsers = {
     findByEmail: jest.fn().mockResolvedValue(null),
+    updateName: jest.fn().mockResolvedValue(undefined),
     findById: jest.fn(async (id: string) =>
       id === INVITER ? { id, name: 'Ana', email: 'ana@x.com' } : user,
     ),
@@ -213,6 +214,57 @@ describe('InvitationService', () => {
           }),
         }),
       );
+    });
+
+    it('gives a new account the name the admin typed, so the team list shows it', async () => {
+      const f = build({
+        invitation: invitation({ name: 'Maria Souza' }),
+        user: {
+          id: USER,
+          email: 'maria@x.com',
+          name: '',
+          emailVerifiedAt: new Date(),
+        },
+      });
+      await f.service.accept(USER, 'good-token');
+      expect(f.authUsers.updateName).toHaveBeenCalledWith(USER, 'Maria Souza');
+    });
+
+    it('also replaces a name that was only the start of the e-mail', async () => {
+      const f = build({
+        invitation: invitation({ name: 'Maria Souza' }),
+        user: {
+          id: USER,
+          email: 'maria@x.com',
+          name: 'Maria',
+          emailVerifiedAt: new Date(),
+        },
+      });
+      await f.service.accept(USER, 'good-token');
+      expect(f.authUsers.updateName).toHaveBeenCalledWith(USER, 'Maria Souza');
+    });
+
+    it('keeps a name the person already chose', async () => {
+      const f = build({ invitation: invitation({ name: 'Maria Souza' }) });
+      await f.service.accept(USER, 'good-token');
+      expect(f.authUsers.updateName).not.toHaveBeenCalled();
+    });
+
+    it('still accepts when saving the name fails', async () => {
+      const f = build({
+        invitation: invitation(),
+        user: {
+          id: USER,
+          email: 'maria@x.com',
+          name: '',
+          emailVerifiedAt: new Date(),
+        },
+      });
+      f.authUsers.updateName.mockRejectedValue(new Error('db down'));
+      await expect(f.service.accept(USER, 'good-token')).resolves.toEqual({
+        tenantId: TENANT,
+        role: 'developer',
+      });
     });
 
     it('reactivates a removed member with the invited role', async () => {

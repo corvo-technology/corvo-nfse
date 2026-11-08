@@ -10,6 +10,7 @@ const routes: [RegExp, string[]][] = [
   [/^auth\/oauth\/(google|github)\/(authorize|callback)$/, ["GET"]],
   [/^auth\/session\/(logout|tenant)$/, ["POST"]],
   [/^auth\/(me|memberships|permissions|members)$/, ["GET"]],
+  [/^auth\/profile$/, ["PATCH"]],
   [/^auth\/invite$/, ["POST"]],
   [/^auth\/invitations$/, ["GET"]],
   [/^auth\/invitations\/(preview|accept)$/, ["POST"]],

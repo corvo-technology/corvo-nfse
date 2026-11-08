@@ -183,3 +183,14 @@ it("forwards the member invitation routes with their methods, and nothing else u
   }
   expect(fetchMock).not.toHaveBeenCalled();
 });
+
+it("forwards the profile name update with PATCH only", async () => {
+  fetchMock.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+  const headers = { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "Content-Type": "application/json" };
+  const response = await PATCH(new NextRequest("http://localhost:4000/api/proxy/v1/auth/profile", { method: "PATCH", headers, body: '{"name":"Ana"}' }), context("auth/profile"));
+  expect(response.status).toBe(200);
+  expect(String(fetchMock.mock.calls[0][0])).toBe("http://localhost:3000/v1/auth/profile");
+  fetchMock.mockClear();
+  for (const handler of [GET, POST, DELETE]) expect((await handler(new NextRequest("http://localhost:4000/api/proxy/v1/auth/profile", { method: handler === GET ? "GET" : handler === POST ? "POST" : "DELETE", headers: { origin: "http://localhost:4000" } }), context("auth/profile"))).status).toBe(404);
+  expect(fetchMock).not.toHaveBeenCalled();
+});

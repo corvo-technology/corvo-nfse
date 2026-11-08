@@ -33,6 +33,19 @@ describe('email templates', () => {
     expect(email.text).toContain('10 minutos');
   });
 
+  it('greets by name when there is one, and never invents one when there is not', () => {
+    const named = welcomeEmail({
+      name: 'Maria',
+      dashboardUrl: 'https://x.test',
+    });
+    expect(named.text).toContain('Olá, Maria!');
+    for (const name of ['', '   ', undefined]) {
+      const email = welcomeEmail({ name, dashboardUrl: 'https://x.test' });
+      expect(email.text).toContain('Olá! Sua conta');
+      expect(email.text).not.toContain('Olá, !');
+    }
+  });
+
   it('escapes user-provided text', () => {
     const email = welcomeEmail({
       name: '<script>x</script>',

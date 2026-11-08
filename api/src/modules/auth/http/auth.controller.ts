@@ -8,6 +8,7 @@ import {
   Get,
   Query,
   Param,
+  Patch,
   ParseUUIDPipe,
   Post,
   Req,
@@ -25,6 +26,8 @@ import { InviteMemberDto } from './invite-member.dto';
 import { InviteMemberService } from '../application/invite-member.service';
 import { InvitationService } from '../application/invitation.service';
 import { InvitationTokenDto } from './invitation-token.dto';
+import { UpdateProfileDto } from './update-profile.dto';
+import { AuthUserService } from '../application/auth-user.service';
 import { RequirePermission } from '../require-permission.decorator';
 
 @Controller('auth')
@@ -36,6 +39,7 @@ export class AuthController {
     private readonly membershipService: MembershipService,
     private readonly inviteMemberService: InviteMemberService,
     private readonly invitationService: InvitationService,
+    private readonly authUserService: AuthUserService,
   ) {}
 
   @Post('logout')
@@ -62,6 +66,20 @@ export class AuthController {
         authContext.activeTenantId,
       ),
     );
+  }
+
+  /** The signed-in person's own name. Any member may change it. */
+  @Patch('profile')
+  @ApiBearerAuth()
+  async updateProfile(
+    @Req() req: RequestWithAuthContext,
+    @Body() body: UpdateProfileDto,
+  ) {
+    const user = await this.authUserService.updateName(
+      req.authContext!.authUserId,
+      body.name,
+    );
+    return data({ name: user.name });
   }
 
   @Get('memberships')

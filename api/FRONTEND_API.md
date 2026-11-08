@@ -188,6 +188,7 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | DELETE | `/auth/invitations/{id}`                               | S, `settings.manage`            | Cancela o convite                                                                  |
 | POST   | `/auth/invitations/preview`                            | S                               | JSON: `token`; papel e quem convidou; só para o e-mail convidado                   |
 | POST   | `/auth/invitations/accept`                             | S                               | JSON: `token`; cria a membership, avisa o admin principal; devolve `tenantId`      |
+| PATCH  | `/auth/profile`                                        | S                               | JSON: `name` (1 a 100); o nome da própria pessoa. `GET /auth/session` devolve `profile: {name, email}` |
 | GET    | `/auth/members`                                        | S, `settings.manage`            | Membros: `id` do usuário, e-mail, nome, role, createdAt                            |
 | DELETE | `/auth/members/{id}`                                   | S, `settings.manage`            | ID do usuário; desativa membership                                                 |
 | POST   | `/auth/logout`                                         | S                               | Legado: apenas retorna `loggedOut`; usar `/auth/session/logout`                    |

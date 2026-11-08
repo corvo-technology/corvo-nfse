@@ -6,6 +6,7 @@ import { ApiError, billing as billingApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { BillingPlan } from "@/lib/types";
 import { PaymentsCard } from "@/components/settings/payments-card";
+import { NameForm } from "@/components/profile/name-form";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { useToast } from "@/components/ui/toast";
@@ -16,7 +17,8 @@ export default function SettingsPage() {
   const apiError = useApiErrorText();
   const tc = useTranslations("Common");
   const tb = useTranslations("Billing");
-  const { can } = useAuth();
+  const { can, profile } = useAuth();
+  const tp = useTranslations("Profile");
   const { error: toastError, success } = useToast();
   const canManage = can("billing.manage");
   // null while loading.
@@ -71,6 +73,14 @@ export default function SettingsPage() {
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
+
+      <section aria-labelledby="profile-title" className="dash-in flex flex-col gap-4 rounded-[12px] border border-border p-5">
+        <div className="flex flex-col gap-1">
+          <h2 id="profile-title" className="text-[14px] font-medium text-text">{tp("title")}</h2>
+          <p className="text-[13px] text-text-3">{tp("subtitle", { email: profile?.email ?? "" })}</p>
+        </div>
+        <NameForm key={profile?.name ?? ""} initial={profile?.name ?? ""} submitLabel={tp("save")} />
+      </section>
 
       <PaymentsCard billing={billing} failed={failed} canManage={canManage} busy={busy} onPortal={() => void openPortal()} onCancelPix={() => void cancelPix()} />
 
