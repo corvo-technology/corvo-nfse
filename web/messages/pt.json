@@ -1403,7 +1403,9 @@
     "retry": "Tentar novamente",
     "forbidden": "Você não tem permissão para acessar esta página.",
     "actionFailed": "Não foi possível concluir a ação. Tente novamente.",
-    "workspace": "Workspace"
+    "workspace": "Workspace",
+    "noAccessTitle": "Sem acesso a esta página",
+    "backToOverview": "Voltar ao início"
   },
   "CompanyForm": {
     "legalName": "Razão social",
