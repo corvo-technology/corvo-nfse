@@ -67,6 +67,8 @@ Your app / ERP / AI agent
 
 The API accepts a request and answers `202`. The worker classifies the service, calculates taxes, builds and signs the DPS, sends it to the national system, stores the result and notifies you.
 
+For the full picture with diagrams (outbox, credit ledger, what is committed atomically, invoice statuses and queues), see [docs/architecture.md](docs/architecture.md) (in Portuguese).
+
 ## Quick start
 
 You need **Docker with Compose v2** and **Node.js 24**. Docker installs the application dependencies; you do not need Yarn for this path.
@@ -210,6 +212,7 @@ API and worker share backend code and run as separate production processes. Each
 | [llms.txt](web/public/llms.txt) and `/llms-full.txt` | The same documentation for AI tools. |
 | [SELF_HOSTING.md](SELF_HOSTING.md) | Run Corvo on your own infrastructure. |
 | [deploy/README.md](deploy/README.md) | Docker files and the tax calculator. |
+| [docs/architecture.md](docs/architecture.md) | How it works inside: outbox, credit ledger, transactions, statuses and queues, with diagrams (in Portuguese). |
 | [docs/fiscal](docs/fiscal) | Fiscal rules, examples, limitations, observability and runbooks. |
 
 ## Legal notice
