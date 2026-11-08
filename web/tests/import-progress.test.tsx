@@ -14,7 +14,7 @@ vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ error: mocks.toastE
 
 const job = (status: ImportJob["status"], counters: Partial<ImportJob["counters"]> = {}): ImportJob => ({
   id: "i1", status, fileName: "n.csv", companyId: null, errorCode: null, rowsExpected: null, unknownColumns: [], emitStartedAt: null, emitFinishedAt: null, createdAt: "",
-  counters: { total: 10, valid: 0, invalid: 2, accepted: 8, authorized: 4, awaitingCredits: 0, validAmount: 0, awaitingAmount: 0, failed: 2, pending: 4, ...counters },
+  counters: { total: 10, valid: 0, invalid: 2, accepted: 8, authorized: 4, awaitingCredits: 0, validAmount: 0, awaitingAmount: 0, failed: 2, pending: 4, authorizedAmount: 0, pendingAmount: 0, failedAmount: 0, ...counters },
 });
 const show = (j: ImportJob, onRefresh = vi.fn().mockResolvedValue(undefined), onAnother = vi.fn()) => {
   render(<NextIntlClientProvider locale="en" messages={messages}><ImportProgress job={j} onRefresh={onRefresh} onAnother={onAnother} /></NextIntlClientProvider>);
@@ -115,6 +115,29 @@ describe("ImportProgress", () => {
       show(paused());
       await waitFor(() => expect(mocks.balance).toHaveBeenCalled());
       expect(screen.getByRole("button", { name: /issue the 277 that are left/i })).toBeTruthy();
+    });
+  });
+
+  describe("amounts and the live pulse", () => {
+    it("shows, in reais, what is authorized, still in progress and with errors", () => {
+      show(job("emitting", { authorizedAmount: 1500.5, pendingAmount: 820, failedAmount: 99.9 }));
+      expect(screen.getByTestId("amount-authorized").textContent).toContain("1,500.50");
+      expect(screen.getByTestId("amount-pending").textContent).toContain("820.00");
+      expect(screen.getByTestId("amount-failed").textContent).toContain("99.90");
+    });
+
+    it("leaves the error amount out while nothing failed", () => {
+      show(job("emitting", { authorizedAmount: 10, pendingAmount: 5, failedAmount: 0 }));
+      expect(screen.queryByTestId("amount-failed")).toBeNull();
+    });
+
+    it("pulses while issuing and goes quiet when done", () => {
+      const live = { updatedAt: Date.now(), changedAt: Date.now(), reconnecting: false };
+      const { unmount } = render(<NextIntlClientProvider locale="en" messages={messages}><ImportProgress job={job("emitting")} onRefresh={vi.fn()} onAnother={vi.fn()} live={live} /></NextIntlClientProvider>);
+      expect(screen.getByText("Live")).toBeTruthy();
+      unmount();
+      render(<NextIntlClientProvider locale="en" messages={messages}><ImportProgress job={job("done", { pending: 0 })} onRefresh={vi.fn()} onAnother={vi.fn()} live={live} /></NextIntlClientProvider>);
+      expect(screen.queryByText("Live")).toBeNull();
     });
   });
 });

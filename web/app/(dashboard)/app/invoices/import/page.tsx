@@ -31,7 +31,7 @@ function ImportFlow() {
   const router = useRouter();
   const { can } = useAuth();
   const id = useSearchParams().get("id");
-  const { job, error, refresh } = useImport(id);
+  const { job, error, refresh, reconnecting, updatedAt, changedAt } = useImport(id);
   const recent = useRecentImports(10, !id);
   const [duplicateOf, setDuplicateOf] = useState<string | null>(null);
   const restart = () => { setDuplicateOf(null); router.replace(HOME); };
@@ -47,7 +47,7 @@ function ImportFlow() {
         <PageHeader title={t("title")} subtitle={t("subtitle")} />
       </div>
 
-      {id && error ? (
+      {id && error && !job ? (
         <EmptyState tone="danger" title={t("failed.title")} description={t("failed.fallback")} action={<Button variant="secondary" onClick={restart}>{t("failed.again")}</Button>} />
       ) : stage === "upload" ? (
         <>
@@ -56,13 +56,13 @@ function ImportFlow() {
           <RecentImports recent={recent} />
         </>
       ) : !job || stage === "reading" ? (
-        <ImportReading job={job} />
+        <ImportReading job={job} live={{ updatedAt, changedAt, reconnecting }} />
       ) : stage === "failed" ? (
         <EmptyState tone="danger" title={t("failed.title")} description={job.errorCode && t.has(`failed.${job.errorCode}`) ? t(`failed.${job.errorCode}`) : t("failed.fallback")} action={<Button variant="secondary" onClick={restart}>{t("failed.again")}</Button>} />
       ) : stage === "review" ? (
         <ImportReview job={job} duplicateOf={duplicateOf} onChanged={refresh} onEmitted={() => void refresh()} onDiscarded={restart} />
       ) : (
-        <ImportProgress job={job} onRefresh={refresh} onAnother={restart} />
+        <ImportProgress job={job} onRefresh={refresh} onAnother={restart} live={{ updatedAt, changedAt, reconnecting }} />
       )}
     </div>
   );

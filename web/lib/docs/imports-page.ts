@@ -28,7 +28,10 @@ const IMPORT_JSON = `{
       "valid_amount": 718602.19,
       "awaiting_amount": 0,
       "failed": 3,
-      "pending": 297
+      "pending": 297,
+      "authorized_amount": 0,
+      "pending_amount": 718602.19,
+      "failed_amount": 0
     }
   }
 }`;
@@ -254,8 +257,8 @@ export function importsPage(locale: DocsLocale): DocSection {
       ["`failed`", t("The file could not be read (empty, too many rows or not a real spreadsheet), or the chosen company no longer exists (`ERROR_IMPORT_COMPANY_NOT_FOUND`); see `error_code`.", "O arquivo não pôde ser lido (vazio, linhas demais ou não é uma planilha de verdade), ou a empresa escolhida não existe mais (`ERROR_IMPORT_COMPANY_NOT_FOUND`); veja o `error_code`.")],
     ] },
     { kind: "text", body: t(
-      "`counters`: `total`, `valid`, `invalid`, `accepted` (saved and queued for issuing), `authorized` (the city already authorized), `awaiting_credits` (turned away for lack of credits: **not an error**), `failed` (invalid rows plus invoices the city refused), `pending` (still waiting or in progress), `valid_amount` and `awaiting_amount` in BRL.",
-      "`counters`: `total`, `valid`, `invalid`, `accepted` (salvas e na fila de emissão), `authorized` (a prefeitura já autorizou), `awaiting_credits` (recusadas por falta de créditos: **não são erro**), `failed` (linhas inválidas mais as notas que a prefeitura recusou), `pending` (ainda aguardando ou em andamento), `valid_amount` e `awaiting_amount` em reais.",
+      "`counters`: `total`, `valid`, `invalid`, `accepted` (saved and queued for issuing), `authorized` (the city already authorized), `awaiting_credits` (turned away for lack of credits: **not an error**), `failed` (invalid rows plus invoices the city refused), `pending` (still waiting or in progress), `valid_amount` and `awaiting_amount` in BRL. While issuing, `authorized_amount`, `pending_amount` and `failed_amount` show in BRL how much is already authorized, still in progress and refused (invalid rows never count, since they never went out).",
+      "`counters`: `total`, `valid`, `invalid`, `accepted` (salvas e na fila de emissão), `authorized` (a prefeitura já autorizou), `awaiting_credits` (recusadas por falta de créditos: **não são erro**), `failed` (linhas inválidas mais as notas que a prefeitura recusou), `pending` (ainda aguardando ou em andamento), `valid_amount` e `awaiting_amount` em reais. Durante a emissão, `authorized_amount`, `pending_amount` e `failed_amount` mostram em reais quanto já foi autorizado, quanto está em andamento e quanto foi recusado (linhas inválidas nunca entram, porque não chegaram a ser enviadas).",
     ) },
     ...endpoints(locale),
     { kind: "heading", level: 3, body: t("Other routes", "Outras rotas") },

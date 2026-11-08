@@ -234,7 +234,7 @@ describe("schedules", () => {
 });
 
 describe("imports", () => {
-  const importWire = { id: "i1", status: "ready", file_name: "n.csv", company_id: null, error_code: null, emit_started_at: null, emit_finished_at: null, created_at: "2026-11-07T10:00:00.000Z", counters: { total: 3, valid: 2, invalid: 1, accepted: 0, authorized: 0, awaiting_credits: 5, valid_amount: 1600.4, awaiting_amount: 200, failed: 1, pending: 2 }, rows_expected: 300, unknown_columns: ["obs", "cor"] };
+  const importWire = { id: "i1", status: "ready", file_name: "n.csv", company_id: null, error_code: null, emit_started_at: null, emit_finished_at: null, created_at: "2026-11-07T10:00:00.000Z", counters: { total: 3, valid: 2, invalid: 1, accepted: 0, authorized: 0, awaiting_credits: 5, valid_amount: 1600.4, awaiting_amount: 200, failed: 1, pending: 2, authorized_amount: 350.5, pending_amount: 1249.9, failed_amount: 99.9 }, rows_expected: 300, unknown_columns: ["obs", "cor"] };
   const rowWire = { line: 4, data: { amount: 10 }, status: "invalid", error_code: "ERROR_VALIDATION", error_message: "bad", invoice_id: null };
   it("sends the file as multipart with the optional company, and reads the answer", async () => {
     setCsrfToken("csrf");
@@ -250,11 +250,16 @@ describe("imports", () => {
   });
   it("reads an import and its rows page by page, in camelCase", async () => {
     fetchMock.mockResolvedValue(reply({ data: importWire }));
-    expect(await imports.get("i1")).toEqual({ id: "i1", status: "ready", fileName: "n.csv", companyId: null, errorCode: null, rowsExpected: 300, unknownColumns: ["obs", "cor"], emitStartedAt: null, emitFinishedAt: null, createdAt: "2026-11-07T10:00:00.000Z", counters: { total: 3, valid: 2, invalid: 1, accepted: 0, authorized: 0, awaitingCredits: 5, validAmount: 1600.4, awaitingAmount: 200, failed: 1, pending: 2 } });
+    expect(await imports.get("i1")).toEqual({ id: "i1", status: "ready", fileName: "n.csv", companyId: null, errorCode: null, rowsExpected: 300, unknownColumns: ["obs", "cor"], emitStartedAt: null, emitFinishedAt: null, createdAt: "2026-11-07T10:00:00.000Z", counters: { total: 3, valid: 2, invalid: 1, accepted: 0, authorized: 0, awaitingCredits: 5, validAmount: 1600.4, awaitingAmount: 200, failed: 1, pending: 2, authorizedAmount: 350.5, pendingAmount: 1249.9, failedAmount: 99.9 } });
     fetchMock.mockResolvedValue(reply({ data: [rowWire], pagination: { hasMore: true, nextCursor: "4" } }));
     const page = await imports.rows("i1", { status: "invalid", cursor: "2", limit: 50 });
     expect(String(fetchMock.mock.calls[1][0])).toBe("/api/proxy/v1/imports/i1/rows?status=invalid&cursor=2&limit=50");
     expect(page).toEqual({ items: [{ line: 4, data: { amount: 10 }, status: "invalid", errorCode: "ERROR_VALIDATION", errorMessage: "bad", invoiceId: null }], hasMore: true, nextCursor: "4" });
+  });
+  it("reads the amounts of an older API that does not send them as zero", async () => {
+    const older = Object.fromEntries(Object.entries(importWire.counters).filter(([key]) => !key.endsWith("_amount") || key === "valid_amount" || key === "awaiting_amount"));
+    fetchMock.mockResolvedValue(reply({ data: { ...importWire, counters: older } }));
+    expect((await imports.get("i1")).counters).toMatchObject({ authorizedAmount: 0, pendingAmount: 0, failedAmount: 0 });
   });
   it("lists the recent imports, newest first, with their counters", async () => {
     fetchMock.mockResolvedValue(reply({ data: [importWire, { ...importWire, id: "i2" }] }));

@@ -17,6 +17,9 @@ describe('import responses (snake_case like the rest of the API)', () => {
       awaitingAmount: 200,
       failed: 1,
       pending: 2,
+      authorizedAmount: 350.5,
+      pendingAmount: 1249.9,
+      failedAmount: 99.9,
     };
     const out = toImportResponse({
       id: 'i1',
@@ -57,6 +60,9 @@ describe('import responses (snake_case like the rest of the API)', () => {
         awaiting_amount: 200,
         failed: 1,
         pending: 2,
+        authorized_amount: 350.5,
+        pending_amount: 1249.9,
+        failed_amount: 99.9,
       },
     });
   });

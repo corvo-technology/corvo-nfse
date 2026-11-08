@@ -2964,7 +2964,11 @@
       "buyCredits": "Comprar créditos",
       "hero": "autorizadas de {total}",
       "balance": "Saldo atual: {count, plural, one {# crédito} other {# créditos}}",
-      "waitingAmount": "{amount} esperando para serem emitidos"
+      "waitingAmount": "{amount} esperando para serem emitidos",
+      "amountsLabel": "Valores",
+      "authorizedAmount": "Valor autorizado",
+      "pendingAmount": "Valor em processamento",
+      "failedAmount": "Valor com erro"
     },
     "rowError": {
       "ERROR_IMPORT_COMPANY_MISMATCH": "O CNPJ desta linha não é o da empresa escolhida.",
@@ -2998,6 +3002,12 @@
       "retry": "Tentar de novo",
       "pendingBanner": "{count, plural, one {# importação está aguardando créditos} other {# importações estão aguardando créditos}}",
       "pendingHint": "{notes, plural, one {# nota} other {# notas}} esperando ({amount}). Recarregue e continue de onde parou."
+    },
+    "live": {
+      "live": "Ao vivo",
+      "updated": "Ao vivo · atualizado há {seconds} s",
+      "reconnecting": "Conexão instável. Tentando de novo…",
+      "stalled": "Nada mudou há {minutes} min. As notas seguem com a prefeitura, que às vezes demora para responder; esta tela continua conferindo."
     }
   },
   "AcceptInvite": {
