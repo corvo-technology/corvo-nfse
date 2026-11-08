@@ -48,6 +48,9 @@ const EMPTY_COUNTERS: ImportCounters = {
   awaitingAmount: 0,
   failed: 0,
   pending: 0,
+  authorizedAmount: 0,
+  pendingAmount: 0,
+  failedAmount: 0,
 };
 const DISCARDABLE = new Set<ImportStatus>(['processing', 'ready', 'failed']);
 

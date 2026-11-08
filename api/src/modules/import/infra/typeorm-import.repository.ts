@@ -36,6 +36,9 @@ const emptyCounters = (): ImportCounters => ({
   awaitingAmount: 0,
   failed: 0,
   pending: 0,
+  authorizedAmount: 0,
+  pendingAmount: 0,
+  failedAmount: 0,
 });
 
 function toRecord(row: ImportOrmEntity): ImportRecord {
@@ -195,7 +198,14 @@ export class TypeOrmImportRepository extends ImportRepository {
              OR (r.status = 'rejected' AND NOT (COALESCE(r.error_code, '') = ANY($4)))
              OR (r.status = 'accepted' AND i.status IN ('rejected','failed','manual_review')))::int AS failed,
            count(*) FILTER (WHERE r.status IN ('valid','queued')
-             OR (r.status = 'accepted' AND i.status IN ('queued','processing','retry_pending','reconciliation_required')))::int AS pending
+             OR (r.status = 'accepted' AND i.status IN ('queued','processing','retry_pending','reconciliation_required')))::int AS pending,
+           COALESCE(SUM(CASE WHEN r.status = 'accepted' AND i.status = 'authorized' THEN (r.data->>'amount')::numeric END), 0)::float8 AS "authorizedAmount",
+           COALESCE(SUM(CASE WHEN r.status IN ('valid','queued')
+             OR (r.status = 'accepted' AND i.status IN ('queued','processing','retry_pending','reconciliation_required'))
+             THEN (r.data->>'amount')::numeric END), 0)::float8 AS "pendingAmount",
+           COALESCE(SUM(CASE WHEN (r.status = 'rejected' AND NOT (COALESCE(r.error_code, '') = ANY($4)))
+             OR (r.status = 'accepted' AND i.status IN ('rejected','failed','manual_review'))
+             THEN (r.data->>'amount')::numeric END), 0)::float8 AS "failedAmount"
          FROM ${schema}.import_rows r
          JOIN ${schema}.imports m ON m.id = r.import_id
          LEFT JOIN ${schema}.nfse_invoices i ON i.id = r.invoice_id

@@ -2964,7 +2964,11 @@
       "buyCredits": "Buy credits",
       "hero": "authorized of {total}",
       "balance": "Current balance: {count, plural, one {# credit} other {# credits}}",
-      "waitingAmount": "{amount} waiting to be issued"
+      "waitingAmount": "{amount} waiting to be issued",
+      "amountsLabel": "Amounts",
+      "authorizedAmount": "Authorized amount",
+      "pendingAmount": "Amount in progress",
+      "failedAmount": "Amount with errors"
     },
     "rowError": {
       "ERROR_IMPORT_COMPANY_MISMATCH": "This row's CNPJ is not the chosen company's.",
@@ -2998,6 +3002,12 @@
       "retry": "Try again",
       "pendingBanner": "{count, plural, one {# import is waiting for credits} other {# imports are waiting for credits}}",
       "pendingHint": "{notes, plural, one {# invoice} other {# invoices}} waiting ({amount}). Top up and continue where you left off."
+    },
+    "live": {
+      "live": "Live",
+      "updated": "Live · updated {seconds} s ago",
+      "reconnecting": "Unstable connection. Trying again…",
+      "stalled": "Nothing has changed for {minutes} min. The invoices are still with the city, which sometimes takes a while to answer; this screen keeps checking."
     }
   },
   "AcceptInvite": {

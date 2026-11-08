@@ -5,12 +5,23 @@ import type { StartImportResult } from '../application/import-intake.service';
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
 
 function toCountersResponse(counters: ImportCounters) {
-  const { awaitingCredits, validAmount, awaitingAmount, ...rest } = counters;
+  const {
+    awaitingCredits,
+    validAmount,
+    awaitingAmount,
+    authorizedAmount,
+    pendingAmount,
+    failedAmount,
+    ...rest
+  } = counters;
   return {
     ...rest,
     awaiting_credits: awaitingCredits,
     valid_amount: validAmount,
     awaiting_amount: awaitingAmount,
+    authorized_amount: authorizedAmount,
+    pending_amount: pendingAmount,
+    failed_amount: failedAmount,
   };
 }
 

@@ -149,6 +149,10 @@ describePostgres('import repository with restricted role', () => {
       awaitingAmount: 0,
       failed: 3, // invalid + rejected row + accepted-then-rejected invoice
       pending: 3, // valid + queued + accepted still processing
+      // Each row carries its line as amount.
+      authorizedAmount: 3, // line 3
+      pendingAmount: 13, // lines 1 + 5 + 7
+      failedAmount: 10, // lines 4 + 6; the invalid line 2 never went out
     });
   });
 
@@ -177,6 +181,10 @@ describePostgres('import repository with restricted role', () => {
     expect(await repo.counters(tenantA, 'live', imp.id)).toMatchObject({
       validAmount: 1600.4,
       awaitingAmount: 200,
+      // The invalid row ('abc') is never summed, so it cannot break the query.
+      pendingAmount: 1600.4,
+      failedAmount: 7,
+      authorizedAmount: 0,
     });
     const empty = await repo.create(base(tenantA));
     expect(await repo.counters(tenantA, 'live', empty.id)).toMatchObject({

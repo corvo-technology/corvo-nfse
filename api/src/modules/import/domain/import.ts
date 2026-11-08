@@ -1,10 +1,18 @@
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 
 export type ImportStatus =
-  'processing' | 'ready' | 'emitting' | 'done' | 'failed';
+  | 'processing'
+  | 'ready'
+  | 'emitting'
+  | 'done'
+  | 'failed';
 
 export type ImportRowStatus =
-  'valid' | 'invalid' | 'queued' | 'accepted' | 'rejected';
+  | 'valid'
+  | 'invalid'
+  | 'queued'
+  | 'accepted'
+  | 'rejected';
 
 export type ImportRecord = {
   id: string;
@@ -60,6 +68,15 @@ export type ImportCounters = {
   failed: number;
   /** Rows not final yet: waiting to be emitted, or accepted and still being processed. */
   pending: number;
+  /** Sum, in reais, of the invoices the city already authorized. */
+  authorizedAmount: number;
+  /** Sum, in reais, of the rows not final yet (the same rows as `pending`). */
+  pendingAmount: number;
+  /**
+   * Sum, in reais, of the rows sent that ended in error. Rows that failed the check
+   * before emitting (`invalid`) are left out: their amount may not even be a number.
+   */
+  failedAmount: number;
 };
 
 export type RowPageQuery = {

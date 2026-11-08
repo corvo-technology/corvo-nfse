@@ -18,7 +18,7 @@ vi.mock("@/components/imports/import-reading", () => ({ ImportReading: () => <h2
 vi.mock("@/components/imports/import-review", () => ({ ImportReview: (props: Record<string, () => void> & { duplicateOf: string | null }) => { mocks.review = props; return <p>review step {String(props.duplicateOf)}</p>; } }));
 vi.mock("@/components/imports/import-progress", () => ({ ImportProgress: ({ onAnother }: { onAnother: () => void }) => <button onClick={onAnother}>progress step</button> }));
 
-const job = (status: ImportJob["status"], errorCode: string | null = null): ImportJob => ({ id: "i1", status, fileName: "n.csv", companyId: null, errorCode, rowsExpected: null, unknownColumns: [], emitStartedAt: null, emitFinishedAt: null, createdAt: "", counters: { total: 1, valid: 1, invalid: 0, accepted: 0, authorized: 0, awaitingCredits: 0, validAmount: 0, awaitingAmount: 0, failed: 0, pending: 1 } });
+const job = (status: ImportJob["status"], errorCode: string | null = null): ImportJob => ({ id: "i1", status, fileName: "n.csv", companyId: null, errorCode, rowsExpected: null, unknownColumns: [], emitStartedAt: null, emitFinishedAt: null, createdAt: "", counters: { total: 1, valid: 1, invalid: 0, accepted: 0, authorized: 0, awaitingCredits: 0, validAmount: 0, awaitingAmount: 0, failed: 0, pending: 1, authorizedAmount: 0, pendingAmount: 0, failedAmount: 0 } });
 const show = () => render(<NextIntlClientProvider locale="en" messages={messages}><ImportPage /></NextIntlClientProvider>);
 
 beforeEach(() => { vi.clearAllMocks(); mocks.id = null; mocks.job = null; mocks.error = null; mocks.canIssue = true; });
@@ -65,6 +65,12 @@ describe("import page", () => {
     expect(screen.getByRole("alert")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /upload another spreadsheet/i }));
     expect(mocks.replace).toHaveBeenCalledWith("/app/invoices/import");
+  });
+
+  it("keeps the progress on screen when a read fails while an import is running", () => {
+    mocks.id = "i1"; mocks.job = job("emitting"); mocks.error = new Error("502"); show();
+    expect(screen.getByText("progress step")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("is closed to people who cannot issue invoices", () => {

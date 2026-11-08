@@ -8,7 +8,7 @@ import messages from "@/messages/en.json";
 
 const job = (rowsExpected: number | null, total: number): ImportJob => ({
   id: "i1", status: "processing", fileName: "notas.csv", companyId: null, errorCode: null, rowsExpected, emitStartedAt: null, emitFinishedAt: null, createdAt: "",
-  counters: { total, valid: 0, invalid: 0, accepted: 0, authorized: 0, awaitingCredits: 0, validAmount: 0, awaitingAmount: 0, failed: 0, pending: 0 },
+  counters: { total, valid: 0, invalid: 0, accepted: 0, authorized: 0, awaitingCredits: 0, validAmount: 0, awaitingAmount: 0, failed: 0, pending: 0, authorizedAmount: 0, pendingAmount: 0, failedAmount: 0 },
 });
 const show = (j: ImportJob | null) => render(<NextIntlClientProvider locale="en" messages={messages}><ImportReading job={j} /></NextIntlClientProvider>);
 const step = (name: RegExp) => screen.getByText(name).closest("li");

@@ -4,9 +4,11 @@ import { Check, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ImportJob } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ImportLiveStatus } from "./import-live-status";
+import type { ImportLive } from "./import-progress";
 
 /** The wait between sending the file and reviewing it, with the real advance: how many rows are already checked. */
-export function ImportReading({ job }: { job: ImportJob | null }) {
+export function ImportReading({ job, live }: { job: ImportJob | null; live?: ImportLive }) {
   const t = useTranslations("Imports");
   const total = job?.rowsExpected ?? null;
   const done = job?.counters.total ?? 0;
@@ -23,6 +25,7 @@ export function ImportReading({ job }: { job: ImportJob | null }) {
         <h2 className="text-[20px] font-semibold tracking-tight text-text">{t("reading.title")}</h2>
         {job && <p className="mt-1 truncate text-[13.5px] text-text-3">{t("reading.file", { name: job.fileName })}</p>}
       </div>
+      {job && live && <ImportLiveStatus updatedAt={live.updatedAt} changedAt={live.changedAt} reconnecting={live.reconnecting} />}
       <ol className="flex flex-col gap-3">
         {steps.map((step) => (
           <li key={step.label} data-state={step.state} aria-current={step.state === "active" ? "step" : undefined} className={cn("flex items-center gap-3 text-[14.5px]", step.state === "todo" ? "text-text-4" : "text-text")}>

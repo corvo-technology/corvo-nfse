@@ -11,9 +11,12 @@ import { saveBlob } from "@/lib/download";
 import { percentDone } from "@/lib/imports";
 import type { ImportJob } from "@/lib/types";
 import { useCountUp } from "@/lib/use-count-up";
+import { ImportLiveStatus } from "./import-live-status";
+
+export type ImportLive = { updatedAt: number | null; changedAt: number | null; reconnecting: boolean };
 
 /** Step four: the invoices going out, with the numbers moving while the page is open. */
-export function ImportProgress({ job, onRefresh, onAnother }: { job: ImportJob; onRefresh: () => Promise<unknown>; onAnother: () => void }) {
+export function ImportProgress({ job, onRefresh, onAnother, live }: { job: ImportJob; onRefresh: () => Promise<unknown>; onAnother: () => void; live?: ImportLive }) {
   const t = useTranslations("Imports");
   const locale = useLocale();
   const toast = useToast();
@@ -29,6 +32,16 @@ export function ImportProgress({ job, onRefresh, onAnother }: { job: ImportJob; 
   const authorized = useCountUp(counters.authorized);
   const waitingShown = useCountUp(waiting);
   const money = new Intl.NumberFormat(locale, { style: "currency", currency: "BRL" });
+  // Counted in cents so the reais glide like the invoices do.
+  const authorizedCents = useCountUp(Math.round(counters.authorizedAmount * 100));
+  const pendingCents = useCountUp(Math.round(counters.pendingAmount * 100));
+  const failedCents = useCountUp(Math.round(counters.failedAmount * 100));
+  const running = job.status === "emitting";
+  const amounts: Array<{ key: string; label: string; cents: number; tone: string }> = [
+    { key: "authorized", label: t("progress.authorizedAmount"), cents: authorizedCents, tone: "text-text" },
+    { key: "pending", label: t("progress.pendingAmount"), cents: pendingCents, tone: "text-text-2" },
+    ...(counters.failedAmount > 0 ? [{ key: "failed", label: t("progress.failedAmount"), cents: failedCents, tone: "text-danger" }] : []),
+  ];
 
   // The balance is read again whenever the person comes back to this tab (from Billing, after buying credits).
   const readBalance = useCallback(() => { credits.balance().then((b) => setBalance(b.balance)).catch(() => undefined); }, []);
@@ -64,9 +77,12 @@ export function ImportProgress({ job, onRefresh, onAnother }: { job: ImportJob; 
 
   return (
     <div className="flex max-w-[680px] flex-col gap-8">
-      <div>
-        <h2 className="text-[22px] font-semibold tracking-tight text-text">{title}</h2>
-        <p className="mt-1.5 text-[14.5px] text-text-3">{body}</p>
+      <div className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-[22px] font-semibold tracking-tight text-text">{title}</h2>
+          <p className="mt-1.5 text-[14.5px] text-text-3">{body}</p>
+        </div>
+        {running && live && <ImportLiveStatus updatedAt={live.updatedAt} changedAt={live.changedAt} reconnecting={live.reconnecting} />}
       </div>
 
       <div className="flex flex-col gap-4">
@@ -87,6 +103,15 @@ export function ImportProgress({ job, onRefresh, onAnother }: { job: ImportJob; 
           ))}
         </dl>
       </div>
+
+      <section aria-label={t("progress.amountsLabel")} data-testid="amounts" className="grid gap-px overflow-hidden rounded-[14px] border border-border bg-border sm:grid-cols-3">
+        {amounts.map((amount) => (
+          <div key={amount.key} data-testid={`amount-${amount.key}`} className="flex flex-col gap-1.5 bg-surface px-5 py-4">
+            <span className="text-[12.5px] text-text-3">{amount.label}</span>
+            <span className={`font-mono text-[22px] font-medium leading-none tabular-nums tracking-tight ${amount.tone}`}>{money.format(amount.cents / 100)}</span>
+          </div>
+        ))}
+      </section>
 
       {waiting > 0 && (
         <section role="status" aria-label={t("progress.awaiting")} className="flex flex-col gap-5 rounded-[14px] border-2 border-border-strong bg-active p-6 sm:p-8">
