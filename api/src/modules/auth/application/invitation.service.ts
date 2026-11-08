@@ -42,6 +42,12 @@ export type InvitationSummary = {
   createdAt: Date;
 };
 
+/** A name the person (or an admin) gave, not the part of the e-mail before the "@". */
+function hasRealName(user: AuthUser): boolean {
+  const name = user.name.trim().toLowerCase();
+  return name !== '' && name !== user.email.split('@')[0].trim().toLowerCase();
+}
+
 export function hashInvitationToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
@@ -216,6 +222,13 @@ export class InvitationService {
         return { invitation, joined: true as const };
       }),
     );
+
+    // A new account has no name yet: use the one the admin gave, so the team list shows it.
+    // The person can change it in Settings. A failure here must not undo the acceptance.
+    if (user && result.invitation.name && !hasRealName(user))
+      await this.authUsers
+        .updateName(user.id, result.invitation.name)
+        .catch(() => undefined);
 
     // Again after commit, so no cached copy of the old access list survives.
     await this.events.publishAndWait(authorizationContextChanged(authUserId));
