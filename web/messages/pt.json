@@ -1128,6 +1128,7 @@
       "scheduled": "Agendadas",
       "authorized": "Autorizadas",
       "processing": "Processando",
+      "manual_review": "Revisão manual",
       "rejected": "Rejeitadas",
       "cancelled": "Canceladas"
     },
@@ -3036,5 +3037,34 @@
     "promptBody": "Seu nome aparece para sua equipe, nos convites que você envia e nos e-mails que o Corvo manda para você.",
     "continue": "Continuar",
     "skip": "Agora não"
+  },
+  "ManualReview": {
+    "title": "{count, plural, one {O que fazer com esta nota} other {O que fazer com as # notas em revisão manual}}",
+    "why": "{count, plural, one {O portal nacional não deu uma resposta conclusiva, então ainda não sabemos se a nota foi emitida.} other {O portal nacional não deu uma resposta conclusiva para estas notas, então ainda não sabemos se elas foram emitidas.}}",
+    "retry": {
+      "label": "Tentar de novo",
+      "hint": "reenvia com o mesmo número. Se a nota já existir no portal, ela só é confirmada: nunca sai em dobro.",
+      "button": "{count, plural, one {Tentar de novo} other {Tentar de novo as #}}"
+    },
+    "discard": {
+      "label": "Descartar",
+      "hint": "consultamos o portal antes. Só descartamos se a nota nunca foi registrada, e o crédito volta. Se ela existir, fica autorizada.",
+      "button": "{count, plural, one {Descartar} other {Descartar as #}}",
+      "confirmTitle": "{count, plural, one {Descartar esta nota?} other {Descartar # notas?}}",
+      "confirmBody": "Vamos perguntar ao portal nacional por {count, plural, one {esta nota} other {cada nota}}. Só é descartada a que nunca foi registrada, e o crédito dela volta. A que já existir no portal fica autorizada, porque já é uma nota válida. Depois você pode emitir uma nova no lugar da descartada.",
+      "confirm": "{count, plural, one {Descartar} other {Descartar #}}",
+      "back": "Voltar"
+    },
+    "done": {
+      "retry": "{count, plural, =0 {Nenhuma nota foi reenviada.} one {# nota voltou para o portal.} other {# notas voltaram para o portal.}}",
+      "discard": "{count, plural, =0 {Nenhuma nota foi enviada para descarte.} one {Estamos confirmando # nota com o portal antes de descartar.} other {Estamos confirmando # notas com o portal antes de descartar.}}",
+      "skipped": "{count, plural, one {# já tinha saído da revisão.} other {# já tinham saído da revisão.}}"
+    },
+    "failed": "Não foi possível concluir. Tente de novo."
+  },
+  "PortalStatus": {
+    "title": "O portal nacional da NFS-e não está respondendo.",
+    "titleSince": "O portal nacional da NFS-e não responde desde {time}.",
+    "body": "Suas notas estão guardadas na fila e serão enviadas assim que ele voltar. Não é preciso refazer nada."
   }
 }

@@ -352,6 +352,24 @@ export class OpenNfseProvider implements FiscalProvider {
       await client.close();
     }
   }
+  async queryByDps(
+    idDps: string,
+    credentials: IIssuePayload,
+  ): Promise<FiscalQueryResult> {
+    const client = this.client(credentials);
+    try {
+      const status = await client.fetchDpsStatus(idDps);
+      return {
+        ...this.result(await client.fetchByChave(status.chaveAcesso)),
+        status: 'authorized',
+      };
+    } catch (error) {
+      if (error instanceof NotFoundError) return { status: 'not_found' };
+      throw error;
+    } finally {
+      await client.close();
+    }
+  }
   async retrievePdf(
     key: string,
     environment: 'test' | 'live',

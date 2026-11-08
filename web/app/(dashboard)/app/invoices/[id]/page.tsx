@@ -9,6 +9,7 @@ import { canCancelInvoice, showsCancellationRequested, showsCancellationReason }
 import type { Invoice, InvoiceEvent } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { CancelInvoiceDialog } from "@/components/dashboard/cancel-invoice-dialog";
+import { ManualReviewActions } from "@/components/invoices/manual-review-actions";
 import { Card } from "@/components/ui/card";
 import { FirstNoteBanner } from "@/components/onboarding/first-note-banner";
 import { DetailSkeleton } from "@/components/ui/detail-skeleton";
@@ -18,7 +19,9 @@ import { timeAgo } from "@/lib/i18n-helpers";
 import { formatScheduledDate, isScheduled } from "@/lib/invoice-schedule";
 import { useApiErrorText, useInvoiceErrorText } from "@/lib/use-api-error";
 
-const pending = new Set(["queued", "processing", "retry_pending", "cancelling"]);
+const pending = new Set(["queued", "processing", "retry_pending", "reconciliation_required", "cancelling"]);
+/** Scheduled invoices wait for their day; reconciliation asks the portal again every few minutes. */
+const pollMs = (invoice: Invoice) => (isScheduled(invoice) ? 60000 : invoice.status === "reconciliation_required" ? 30000 : 5000);
 const TONE: Record<string, string> = { queued: "bg-text-4", processing: "bg-accent", retry_pending: "bg-warn", authorized: "bg-ok", rejected: "bg-danger", failed: "bg-danger", reconciliation_required: "bg-warn", manual_review: "bg-warn", cancelling: "bg-warn", cancelled: "bg-text-4" };
 export default function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>(); const t = useTranslations("InvoiceDetail"); const ts = useTranslations("Invoices.status"); const tc = useTranslations("Common"); const locale = useLocale(); const { can } = useAuth(); const [cancelOpen, setCancelOpen] = useState(false);
@@ -38,7 +41,7 @@ export default function InvoiceDetailPage() {
         if (abort.signal.aborted) return;
         historyStatus = value.status;
         setInvoice(value); if (history) setEvents(history); setError(null);
-        if (pending.has(value.status) && !document.hidden) timer = setTimeout(load, isScheduled(value) ? 60000 : 5000);
+        if (pending.has(value.status) && !document.hidden) timer = setTimeout(load, pollMs(value));
       } catch (cause) { if (!abort.signal.aborted) setError(apiError(cause, t("failed"))); }
       finally { running = false; }
     }
@@ -67,6 +70,7 @@ export default function InvoiceDetailPage() {
     <Card className="grid gap-4 p-5 sm:grid-cols-2"><div><p className="eyebrow">{t("customer")}</p><p>{invoice.customerName || t("anonymousCustomer")}</p><p className="text-sm text-text-3">{invoice.customerTaxId}</p></div><div><p className="eyebrow">{t("amount")}</p><p>{money}</p></div>{invoice.deduction ? <div><p className="eyebrow">{t("deduction")}</p><p>{brl.format(invoice.deduction)}</p></div> : null}<div><p className="eyebrow">{t("reference")}</p><p>{invoice.externalId || "—"}</p></div><div><p className="eyebrow">{t("competence")}</p><p>{invoice.competenceDate.slice(0, 10)}</p></div><div className="sm:col-span-2"><p className="eyebrow">{t("service")}</p><p>{invoice.serviceDescription}</p><p className="text-sm text-text-3">{invoice.serviceSnapshot.code} · {invoice.serviceSnapshot.municipalityCode}</p></div>{invoice.cancellationReason && showsCancellationReason(invoice.status) && <div className="sm:col-span-2"><p className="eyebrow">{t("cancel.reasonLabel")}</p><p>{t(`cancel.reasons.${invoice.cancellationReason}`)}</p>{invoice.cancellationDescription && <p className="text-sm text-text-3">{invoice.cancellationDescription}</p>}</div>}</Card>
     {invoice.lastErrorMessage && <p role="alert" className="banner banner-danger">{invoice.lastErrorCode}: {invoiceError(invoice.lastErrorCode, invoice.lastErrorMessage)}</p>}
     {showsCancellationRequested(invoice.status, invoice.cancellationRequestedAt) && <p className="banner">{t("cancel.requested")}</p>}
+    {invoice.status === "manual_review" && can("nfse.invoices.issue") && <ManualReviewActions invoiceIds={[invoice.id]} onDone={() => setRevision((value) => value + 1)} />}
     <Card className="flex flex-col gap-4 p-5"><h2 className="font-medium">{t("documents")}</h2><div className="flex gap-3"><Button disabled={!hasDocuments || downloading} onClick={() => void download("pdf")}>PDF</Button><Button disabled={!hasDocuments || downloading} onClick={() => void download("xml")}>XML</Button></div>{!hasDocuments && <p className="text-sm text-text-3">{t("documentsHint")}</p>}</Card>
     <Card className="flex flex-col gap-5 p-5"><h2 className="font-medium">{t("events")}</h2>{events.length === 0 && <p className="text-sm text-text-3">{t("noEvents")}</p>}
       <ol className="flex flex-col">{events.map((event, index) => {

@@ -44,7 +44,8 @@ export const VALID_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
   authorized: ['cancelling'],
   cancelling: ['cancelled', 'authorized'],
   rejected: [],
-  manual_review: [],
+  // Resolved by a person: retried with the same DPS, or settled by what the portal answers.
+  manual_review: ['reconciliation_required', 'authorized', 'rejected'],
   failed: [],
   cancelled: [],
 };

@@ -265,6 +265,15 @@ export const envSchema = z
       .min(1)
       .max(10)
       .default(3),
+    // Portal outage: after this many unanswered calls in a row emission pauses for the cooldown,
+    // and an invoice left without a conclusive answer for the max hours goes to manual review.
+    NFSE_PORTAL_BREAKER_THRESHOLD: z.coerce.number().int().min(1).default(5),
+    NFSE_PORTAL_BREAKER_COOLDOWN_MS: z.coerce
+      .number()
+      .int()
+      .min(10_000)
+      .default(300_000),
+    NFSE_UNCERTAIN_MAX_HOURS: z.coerce.number().int().min(1).max(72).default(6),
     OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
     OUTBOX_BATCH_SIZE: z.coerce.number().int().positive().default(50),
     OUTBOX_LEASE_MS: z.coerce.number().int().positive().default(120000),

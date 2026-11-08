@@ -79,6 +79,11 @@ export class FakeNfseProvider implements FiscalProvider {
       ? { ...result, status: 'authorized' }
       : { status: 'not_found' };
   }
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async queryByDps(): Promise<FiscalQueryResult> {
+    // The simulation answers every emission at once, so nothing is left registered behind our back.
+    return { status: 'not_found' };
+  }
   async retrievePdf(
     key: string,
     environment: 'test' | 'live',

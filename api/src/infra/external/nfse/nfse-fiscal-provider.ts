@@ -52,7 +52,9 @@ export interface IIssuePayload {
 }
 
 export type FiscalCancellationReason =
-  'issue_error' | 'service_not_provided' | 'other';
+  | 'issue_error'
+  | 'service_not_provided'
+  | 'other';
 
 export interface ICancelPayload {
   invoiceId: string;
@@ -77,6 +79,14 @@ export interface FiscalProvider {
     key: string,
     environment: 'test' | 'live',
     credentials?: IIssuePayload,
+  ): Promise<FiscalQueryResult>;
+  /**
+   * Asks the portal whether this DPS was ever registered. `not_found` is the only answer that
+   * proves the invoice was never issued; `authorized` returns the NFS-e that already exists.
+   */
+  queryByDps(
+    idDps: string,
+    credentials: IIssuePayload,
   ): Promise<FiscalQueryResult>;
   retrievePdf(
     accessKey: string,

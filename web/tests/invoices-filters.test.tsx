@@ -67,3 +67,17 @@ describe("notes list filters", () => {
     expect(mocks.schedules).not.toHaveBeenCalled();
   });
 });
+
+describe("manual review filter", () => {
+  it("reads every invoice in manual review from the API and offers the batch actions", async () => {
+    renderPage();
+    await screen.findAllByText("Padaria Estrela");
+    mocks.invoices.mockResolvedValue({ items: [invoice("r1", "Bar Lua", "manual_review"), invoice("r2", "Café Mar", "manual_review")], hasMore: false, nextCursor: null });
+
+    fireEvent.click(screen.getByRole("button", { name: /Manual review/ }));
+
+    expect(await screen.findByRole("button", { name: "Retry all 2" })).toBeTruthy();
+    expect(mocks.invoices).toHaveBeenLastCalledWith(expect.objectContaining({ status: "manual_review" }), expect.anything());
+    expect(screen.queryAllByText("Padaria Estrela")).toHaveLength(0);
+  });
+});
