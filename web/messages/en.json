@@ -558,15 +558,12 @@
     }
   },
   "Members": {
-    "inviteUnavailable": "Invitations are turned off for now.",
     "title": "Members",
     "subtitle": "Manage who has access to your workspace.",
     "invite": "Invite",
     "loading": "Loading...",
     "noMembers": "No members yet",
-    "temporaryPassword": "Temporary password",
-    "passwordWarning": "This password is shown only once. The user must change it on first login.",
-    "invitationSent": "Access created for {name} ({email}) with role {role}.",
+    "invitationSent": "Invitation sent to {email} with the {role} role.",
     "table": {
       "person": "Person",
       "role": "Role",
@@ -603,7 +600,23 @@
       "inviteFailed": "Invite failed",
       "removeFailed": "Failed to remove member"
     },
-    "codeLoginHint": "The member can sign in by requesting an email code. No invitation email was sent."
+    "codeLoginHint": "They get an e-mail with a link valid for 7 days. When they accept, you are notified and they have access.",
+    "pending": {
+      "title": "Pending invitations",
+      "email": "E-mail",
+      "expires": "Expires",
+      "resend": "Resend",
+      "revoke": "Cancel invitation",
+      "resent": "Invitation resent.",
+      "revoked": "Invitation canceled.",
+      "empty": "No pending invitations.",
+      "errors": {
+        "loadFailed": "Failed to load invitations",
+        "resendFailed": "Failed to resend invitation",
+        "revokeFailed": "Failed to cancel invitation"
+      },
+      "actions": "Actions"
+    }
   },
   "Login": {
     "signupTitle": "Create your account",
@@ -1972,7 +1985,12 @@
     "import_state": "The import is not in a state that allows this right now.",
     "import_file_invalid": "Upload a .csv or .xlsx file.",
     "import_file_too_large": "The file is larger than 10 MB.",
-    "import_company_not_found": "The company chosen for this import no longer exists."
+    "import_company_not_found": "The company chosen for this import no longer exists.",
+    "invitation_invalid": "This invitation is not valid or was already used.",
+    "invitation_expired": "This invitation has expired. Ask for a new one.",
+    "invitation_email_mismatch": "Sign in with the e-mail that received the invitation.",
+    "invitation_limit_reached": "Too many pending invitations. Cancel some before inviting.",
+    "invitation_recently_sent": "An invitation was just sent. Try again in a minute."
   },
   "Legal": {
     "eyebrow": "LEGAL",
@@ -2978,5 +2996,20 @@
       "pendingBanner": "{count, plural, one {# import is waiting for credits} other {# imports are waiting for credits}}",
       "pendingHint": "{notes, plural, one {# invoice} other {# invoices}} waiting ({amount}). Top up and continue where you left off."
     }
+  },
+  "AcceptInvite": {
+    "loading": "Checking the invitation…",
+    "title": "You have been invited",
+    "subtitle": "{invitedBy} invited you to an account on Corvo as {role}.",
+    "subtitleNoName": "You have been invited to an account on Corvo as {role}.",
+    "accept": "Accept invitation",
+    "accepting": "Joining…",
+    "switchAccount": "Sign out and use another e-mail",
+    "goHome": "Go to the dashboard",
+    "invalid": "This invitation is not valid or was already used. Ask whoever invited you for a new one.",
+    "expired": "This invitation has expired. Ask whoever invited you for a new one.",
+    "mismatch": "This invitation is for a different e-mail. Sign in with the e-mail that received it.",
+    "missing": "The invitation link is incomplete. Open the link from the e-mail again.",
+    "failed": "We could not accept the invitation. Try again."
   }
 }

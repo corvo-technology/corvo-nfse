@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { members, collectAll, type Member, type InviteResult } from "@/lib/api";
+import { members, invitations, collectAll, type Member, type Invitation, type InviteResult } from "@/lib/api";
 import { timeAgo } from "@/lib/i18n-helpers";
-import { AlertTriangle, Check, UserPlus, Users } from "lucide-react";
+import { AlertTriangle, Check, Mail, UserPlus, Users } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,9 +14,6 @@ import { Field } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { useApiErrorText } from "@/lib/use-api-error";
-
-/** Member invitations are switched off for now; flip to true to bring the button back. */
-const INVITES_ENABLED = false;
 
 export default function MembersPage() {
   const t = useTranslations("Members");
@@ -33,6 +30,9 @@ export default function MembersPage() {
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [pending, setPending] = useState<Invitation[]>([]);
+  const [pendingBusyId, setPendingBusyId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const fetchMembers = useCallback(async () => {
     setLoading(true);
@@ -47,8 +47,16 @@ export default function MembersPage() {
     }
   }, [t]);
 
+  const fetchPending = useCallback(async () => {
+    try {
+      setPending(await invitations.list());
+    } catch (err: unknown) {
+      setError(apiError(err, t("pending.errors.loadFailed")));
+    }
+  }, [t]);
+
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchMembers(); }, [fetchMembers]);
+  useEffect(() => { fetchMembers(); fetchPending(); }, [fetchMembers, fetchPending]);
 
   async function handleInvite(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -63,7 +71,7 @@ export default function MembersPage() {
       });
       setInviteResult(result);
       setModalOpen(false);
-      fetchMembers();
+      fetchPending();
     } catch (err: unknown) {
       setInviteError(apiError(err, t("errors.inviteFailed")));
     } finally {
@@ -83,10 +91,37 @@ export default function MembersPage() {
     }
   }
 
+  async function handleResend(id: string) {
+    setPendingBusyId(id);
+    setNotice(null);
+    try {
+      await invitations.resend(id);
+      setNotice(t("pending.resent"));
+      fetchPending();
+    } catch (err: unknown) {
+      setError(apiError(err, t("pending.errors.resendFailed")));
+    } finally {
+      setPendingBusyId(null);
+    }
+  }
+
+  async function handleRevoke(id: string) {
+    setPendingBusyId(id);
+    setNotice(null);
+    try {
+      await invitations.revoke(id);
+      setPending((prev) => prev.filter((i) => i.id !== id));
+      setNotice(t("pending.revoked"));
+    } catch (err: unknown) {
+      setError(apiError(err, t("pending.errors.revokeFailed")));
+    } finally {
+      setPendingBusyId(null);
+    }
+  }
+
   const roleVariant: Record<string, BadgeVariant> = { admin: "accent", developer: "gray", billing: "info" };
 
   const openInvite = () => {
-    if (!INVITES_ENABLED) return;
     setModalOpen(true);
     setInviteResult(null);
     setInviteName("");
@@ -140,18 +175,53 @@ export default function MembersPage() {
     },
   ];
 
+  const pendingColumns: Column<Invitation>[] = [
+    {
+      id: "email",
+      header: t("pending.email"),
+      primary: true,
+      cell: (i) => (
+        <div className="flex min-w-0 flex-col">
+          {i.name && <span className="truncate text-text">{i.name}</span>}
+          <span className={`truncate font-mono text-[12px] ${i.name ? "font-normal text-text-4" : "text-text"}`}>{i.email}</span>
+        </div>
+      ),
+    },
+    {
+      id: "role",
+      header: t("table.role"),
+      cell: (i) => <Badge variant={roleVariant[i.role] ?? "gray"}>{i.role}</Badge>,
+    },
+    {
+      id: "expires",
+      header: t("pending.expires"),
+      cell: (i) => <span className="text-[13px] text-text-4">{new Date(i.expiresAt).toLocaleDateString()}</span>,
+    },
+    {
+      id: "actions",
+      header: t("pending.actions"),
+      action: true,
+      align: "right",
+      cell: (i) => (
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" size="sm" onClick={() => handleResend(i.id)} disabled={pendingBusyId === i.id}>
+            {t("pending.resend")}
+          </Button>
+          <Button variant="danger" size="sm" onClick={() => handleRevoke(i.id)} disabled={pendingBusyId === i.id}>
+            {t("pending.revoke")}
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={t("title")}
         subtitle={t("subtitle")}
         actions={
-          <Button
-            variant="accent"
-            onClick={openInvite}
-            disabled={!INVITES_ENABLED}
-            title={INVITES_ENABLED ? undefined : t("inviteUnavailable")}
-          >
+          <Button variant="accent" onClick={openInvite}>
             <UserPlus size={15} aria-hidden />
             {t("invite")}
           </Button>
@@ -172,7 +242,7 @@ export default function MembersPage() {
               <Check size={12} strokeWidth={3} />
             </span>
             <span className="text-[13.5px] text-text-2">
-              {t("invitationSent", { name: inviteName.trim(), email: inviteResult.email, role: inviteResult.role })}
+              {t("invitationSent", { email: inviteResult.email, role: inviteResult.role })}
             </span>
           </div>
           <p className="text-sm text-text-3">{t("codeLoginHint")}</p>
@@ -191,6 +261,28 @@ export default function MembersPage() {
           <DataTable columns={columns} rows={memberList} rowKey={(m) => m.id} caption={t("title")} />
         )}
       </Card>
+
+      {notice && (
+        <div role="status" className="banner banner-accent">
+          <Check size={16} aria-hidden className="mt-0.5 flex-none" />
+          {notice}
+        </div>
+      )}
+
+      {pending.length > 0 && (
+        <Card className="dash-in dash-in-1 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 pt-4 text-[13.5px] text-text-2">
+            <Mail size={15} aria-hidden />
+            {t("pending.title")}
+          </div>
+          <DataTable
+            columns={pendingColumns}
+            rows={pending}
+            rowKey={(i) => i.id}
+            caption={t("pending.title")}
+          />
+        </Card>
+      )}
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={t("modal.title")}>
         <form className="flex flex-col gap-5" onSubmit={handleInvite}>
