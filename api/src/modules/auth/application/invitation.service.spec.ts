@@ -118,6 +118,7 @@ describe('InvitationService', () => {
       expect(notice).toMatchObject({
         kind: 'member-invited',
         email: 'maria@x.com',
+        name: 'Maria',
         inviterName: 'Ana',
       });
       expect(f.memberships.create).not.toHaveBeenCalled();

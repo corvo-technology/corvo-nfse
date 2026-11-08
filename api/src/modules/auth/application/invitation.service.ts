@@ -309,6 +309,7 @@ export class InvitationService {
       accountNotice(invitation.tenantId, {
         kind: 'member-invited',
         email: invitation.email,
+        name: invitation.name,
         role: invitation.role,
         token,
         inviterName: inviter?.name || inviter?.email || undefined,

@@ -279,6 +279,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export function memberInvitedEmail(input: {
+  name?: string;
   role: string;
   inviterName?: string;
   acceptUrl: string;
@@ -287,6 +288,7 @@ export function memberInvitedEmail(input: {
     ? `${input.inviterName} convidou você`
     : 'Você foi convidado';
   return emailLayout('Convite para uma conta no Corvo', [
+    ...(input.name?.trim() ? [paragraph(`Olá, ${input.name.trim()}.`)] : []),
     paragraph(
       `${who} para uma conta no Corvo como ${ROLE_LABELS[input.role] ?? input.role}.`,
     ),

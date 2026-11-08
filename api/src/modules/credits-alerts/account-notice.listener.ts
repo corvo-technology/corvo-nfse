@@ -118,6 +118,7 @@ export class AccountNoticeListener {
       case 'member-invited':
         // The token goes only into this one e-mail, in the URL fragment so it is never sent to a server.
         message = memberInvitedEmail({
+          name: notice.name,
           role: notice.role,
           inviterName: notice.inviterName,
           acceptUrl: `${this.site('accept-invite')}#token=${encodeURIComponent(notice.token)}`,

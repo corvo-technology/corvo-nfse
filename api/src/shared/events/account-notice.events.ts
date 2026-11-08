@@ -14,6 +14,8 @@ export type AccountNotice =
   | {
       kind: 'member-invited';
       email: string;
+      /** The invitee's name, as the admin typed it. */
+      name: string;
       role: string;
       /** Single-use secret for the accept link. Lives only in this in-process event. */
       token: string;

@@ -125,6 +125,7 @@ describe('AccountNoticeListener', () => {
       accountNotice('t1', {
         kind: 'member-invited',
         email: 'new@x.com',
+        name: 'Maria <b>Silva</b>',
         role: 'billing',
         token: 'tok_123',
         inviterName: 'Ana',
@@ -142,6 +143,9 @@ describe('AccountNoticeListener', () => {
       'https://corvo.tech/accept-invite#token=tok_123',
     );
     expect(message.html).not.toContain('accept-invite?token');
+    // The invitee is greeted by the name the admin typed, and it cannot inject markup.
+    expect(message.html).toContain('Olá, Maria &lt;b&gt;Silva&lt;/b&gt;.');
+    expect(message.html).not.toContain('<b>Silva</b>');
   });
 
   it('tells only the main admin that the invite was accepted', async () => {
