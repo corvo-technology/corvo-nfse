@@ -37,6 +37,9 @@ export class ApiKeyOrmEntity {
   @Column({ type: 'varchar', length: 50 })
   scope!: string;
 
+  @Column({ name: 'created_by_user_id', type: 'uuid', nullable: true })
+  createdByUserId?: string;
+
   @Column({ name: 'last_used_at', type: 'timestamptz', nullable: true })
   lastUsedAt?: Date;
 

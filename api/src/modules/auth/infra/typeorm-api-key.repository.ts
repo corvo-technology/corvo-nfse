@@ -48,6 +48,7 @@ export class TypeormApiKeyRepository implements IApiKeyRepository {
       keyPrefix: entity.keyPrefix,
       keyHash: entity.keyHash,
       scope: entity.scope as ApiKey['scope'],
+      createdByUserId: entity.createdByUserId ?? undefined,
       lastUsedAt: entity.lastUsedAt,
       expiresAt: entity.expiresAt,
       createdAt: entity.createdAt,
@@ -96,6 +97,7 @@ export class TypeormApiKeyRepository implements IApiKeyRepository {
         keyPrefix: apiKey.keyPrefix,
         keyHash: apiKey.keyHash,
         scope: apiKey.scope,
+        createdByUserId: apiKey.createdByUserId,
         lastUsedAt: apiKey.lastUsedAt,
         expiresAt: apiKey.expiresAt,
       });
@@ -112,6 +114,13 @@ export class TypeormApiKeyRepository implements IApiKeyRepository {
     return runWithTenant(tenantId, async () => {
       assertTenantOwnership(tenantId, apiKey.tenantId);
       await this.repo.delete({ id: apiKey.id, tenantId });
+    });
+  }
+
+  async removeByCreator(tenantId: string, userId: string): Promise<void> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      await this.repo.delete({ tenantId, createdByUserId: userId });
     });
   }
 

@@ -63,7 +63,8 @@ export class AuthContextService {
       );
     const selected = activeTenantId
       ? memberships.find((membership) => membership.tenantId === activeTenantId)
-      : memberships[0];
+      : (memberships.find((membership) => membership.tenantId === authUserId) ??
+        memberships[0]);
 
     if (!selected) {
       if (activeTenantId) {

@@ -8,6 +8,7 @@ import { ApplicationEventBus } from '@/shared/events/application-event-bus';
 import { accountNotice } from '@/shared/events/account-notice.events';
 import { AuthUserService } from './auth-user.service';
 import { MembershipService } from './membership.service';
+import { ApiKeyService } from './api-key.service';
 
 @Injectable()
 export class InviteMemberService {
@@ -30,6 +31,7 @@ export class InviteMemberService {
     private readonly authUserService: AuthUserService,
     private readonly membershipService: MembershipService,
     private readonly eventBus: ApplicationEventBus,
+    private readonly apiKeyService: ApiKeyService,
   ) {}
 
   async invite(
@@ -123,5 +125,7 @@ export class InviteMemberService {
       },
       tenantId,
     );
+    // A removed member must not keep API access through keys they created.
+    await this.apiKeyService.revokeCreatedBy(tenantId, userId);
   }
 }

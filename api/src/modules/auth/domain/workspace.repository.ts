@@ -16,7 +16,9 @@ export interface NewWorkspace {
 export abstract class IWorkspaceRepository {
   /** Requires an active unit of work; serializes bootstrap for this account. */
   abstract lockUser(userId: string): Promise<void>;
-  abstract memberships(userId: string): Promise<Array<{ isActive: boolean }>>;
+  abstract memberships(
+    userId: string,
+  ): Promise<Array<{ isActive: boolean; tenantId: string }>>;
   abstract freePlanId(): Promise<string>;
   /** Atomically claims the one-time free note for this person; false if already claimed. */
   abstract claimFirstFreeNote(
