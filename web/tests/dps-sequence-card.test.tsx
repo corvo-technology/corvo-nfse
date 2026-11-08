@@ -12,7 +12,7 @@ vi.mock("@/lib/api", async (original) => ({
   companies: { dpsSequence: mocks.get, setDpsSequence: mocks.set },
 }));
 
-const renderCard = (canManage = true) => render(<NextIntlClientProvider locale="en" messages={messages}><DpsSequenceCard companyId="c1" canManage={canManage} /></NextIntlClientProvider>);
+const renderCard = (canManage = true, environment?: "test" | "live") => render(<NextIntlClientProvider locale="en" messages={messages}><DpsSequenceCard companyId="c1" canManage={canManage} environment={environment} /></NextIntlClientProvider>);
 const typeAndSave = (value: string) => {
   fireEvent.change(screen.getByLabelText(/Number of the last note issued/), { target: { value } });
   fireEvent.click(screen.getByRole("button", { name: "Save numbering" }));
@@ -22,6 +22,15 @@ beforeEach(() => { vi.clearAllMocks(); mocks.get.mockResolvedValue({ series: "1"
 afterEach(cleanup);
 
 describe("DpsSequenceCard", () => {
+  it("explains the random high start only for a test company", async () => {
+    const test = renderCard(true, "test");
+    await screen.findByText(/starts at a high random number/);
+    test.unmount();
+    renderCard(true, "live");
+    await screen.findByText(/Last number used in Corvo/);
+    expect(screen.queryByText(/starts at a high random number/)).toBeNull();
+  });
+
   it("shows where the numbering stands", async () => {
     renderCard();
     await screen.findByText("Last number used in Corvo: no. 7 (series 1)");

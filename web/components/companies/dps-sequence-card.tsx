@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
 
 /** Where the DPS numbering of a company stands, and the way to continue it from notes issued elsewhere. */
-export function DpsSequenceCard({ companyId, canManage }: { companyId: string; canManage: boolean }) {
+export function DpsSequenceCard({ companyId, canManage, environment }: { companyId: string; canManage: boolean; environment?: "test" | "live" }) {
   const t = useTranslations("CompanyDetail.dps");
   const errorText = useApiErrorText();
   const [sequence, setSequence] = useState<DpsSequence | null>(null);
@@ -47,6 +47,7 @@ export function DpsSequenceCard({ companyId, canManage }: { companyId: string; c
       <div>
         <h2 className="text-base font-medium">{t("title")}</h2>
         <p className="mt-1 text-sm text-text-3">{t("hint")}</p>
+        {environment === "test" && <p className="mt-2 text-sm text-text-3">{t("testNote")}</p>}
       </div>
       {sequence && (
         <p className="text-sm">

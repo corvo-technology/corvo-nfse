@@ -1577,7 +1577,8 @@
       "save": "Save numbering",
       "saved": "Numbering updated. The next note will be no. {number}.",
       "lower": "Corvo is already past that number, so the numbering stays at {number}.",
-      "invalid": "Enter a whole number, zero or more."
+      "invalid": "Enter a whole number, zero or more.",
+      "testNote": "In the test environment the numbering starts at a high random number. This keeps this Corvo from repeating numbers that another installation using the same CNPJ already used at the Receita."
     },
     "fiscalAdvanced": "Advanced mode (accountant)",
     "legalName": "Legal name",

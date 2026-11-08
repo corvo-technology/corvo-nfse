@@ -6,9 +6,24 @@ import { requireTenantId } from '@/infra/persistence/typeorm/tenant-scope';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { randomInt } from 'node:crypto';
 import { IDpsSequenceRepository } from '../domain/dps-sequence';
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+
+/**
+ * Test notes go to the Receita's Produção Restrita, one shared notebook per CNPJ that every Corvo
+ * installation using that CNPJ writes into. Each installation counts on its own, so two of them
+ * starting at 1 would repeat numbers (E0014). A test company therefore starts at a random high
+ * number: the installations no longer meet. Live companies start at 0, because their numbering
+ * continues whatever the company issued before and is set explicitly.
+ */
+export function initialDpsNumber(
+  environment: string,
+  random: (min: number, max: number) => number = randomInt,
+): number {
+  return environment === 'test' ? random(100_000, 900_000_000) : 0;
+}
 
 @Injectable()
 export class TypeOrmDpsSequenceRepository implements IDpsSequenceRepository {
@@ -36,8 +51,8 @@ export class TypeOrmDpsSequenceRepository implements IDpsSequenceRepository {
       try {
         // Ensure sequence row exists
         await queryRunner.query(
-          `INSERT INTO ${sequences} (company_id, series, current_number) SELECT c.id, '1', 0 FROM ${companies} c WHERE c.id = $1 AND c.tenant_id = $2 AND c.environment = $3 AND c.deleted_at IS NULL ON CONFLICT (company_id) DO NOTHING`,
-          [companyId, tenantId, environment],
+          `INSERT INTO ${sequences} (company_id, series, current_number) SELECT c.id, '1', $4::bigint FROM ${companies} c WHERE c.id = $1 AND c.tenant_id = $2 AND c.environment = $3 AND c.deleted_at IS NULL ON CONFLICT (company_id) DO NOTHING`,
+          [companyId, tenantId, environment, initialDpsNumber(environment)],
         );
 
         // Increment and return
@@ -72,7 +87,30 @@ export class TypeOrmDpsSequenceRepository implements IDpsSequenceRepository {
     tenantId: string,
     environment: import('@/shared/domain/execution-environment').ExecutionEnvironment,
   ): Promise<{ series: string; lastNumber: number }> {
-    return this.raiseTo(companyId, tenantId, environment, 0);
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const companies = this.dataSource.getMetadata(CompanyOrmEntity).tablePath;
+      const sequences =
+        this.dataSource.getMetadata(DpsSequenceOrmEntity).tablePath;
+      // Only reads: opening the screen must not create the row, or a test company
+      // would lose its random starting number.
+      const rows: { series: string; current_number: string }[] =
+        await this.dataSource.query(
+          `SELECT COALESCE(s.series, '1') AS series, COALESCE(s.current_number, 0) AS current_number
+           FROM ${companies} c LEFT JOIN ${sequences} s ON s.company_id = c.id
+           WHERE c.id = $1 AND c.tenant_id = $2 AND c.environment = $3 AND c.deleted_at IS NULL`,
+          [companyId, tenantId, environment],
+        );
+      if (!rows.length)
+        throw new NotFoundException({
+          code: 'RESOURCE_NOT_FOUND',
+          message: 'Resource not found',
+        });
+      return {
+        series: rows[0].series,
+        lastNumber: Number(rows[0].current_number),
+      };
+    });
   }
 
   async raiseTo(
