@@ -14,7 +14,10 @@ describe("soft 404 → real status", () => {
   const cases: [string, "404" | "410" | "pass"][] = [
     ["/pt/coming-soon", "410"],
     ["/en/coming-soon", "410"],
+    ["/coming-soon", "410"],
     ["/pt/funcionalidades", "410"],
+    ["/en/funcionalidades", "410"],
+    ["/funcionalidades", "410"],
     ["/mo", "410"],
     ["/month", "410"],
     ["/v1/plans", "404"],

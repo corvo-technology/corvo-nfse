@@ -7,6 +7,14 @@ const request = (path: string, headers: Record<string, string> = {}) =>
   new NextRequest(`https://www.corvo.tech${path}`, { headers });
 
 describe("locale proxy", () => {
+  it("sends an apex root to www and the locale in one hop", () => {
+    const response = proxy(new NextRequest("https://corvo.tech/"));
+    expect(response.status).toBe(307);
+    const loc = new URL(response.headers.get("location")!);
+    expect(loc.origin).toBe("https://www.corvo.tech");
+    expect(loc.pathname).toBe("/pt");
+  });
+
   it("sends the root to /pt when the browser sends no Accept-Language", () => {
     const response = proxy(request("/"));
     expect(response.status).toBe(307);

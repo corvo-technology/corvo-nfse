@@ -39,5 +39,6 @@ describe("/api-docs", () => {
   it("redirects /api-docs with 301 to /pt/api-docs", async () => {
     const redirects = await (nextConfig as { redirects: () => Promise<{ source: string; destination: string; statusCode?: number }[]> }).redirects();
     expect(redirects).toContainEqual({ source: "/api-docs", destination: "/pt/api-docs", statusCode: 301 });
+    expect(redirects).toContainEqual({ source: "/api-docs/", destination: "/pt/api-docs", statusCode: 301 });
   });
 });
