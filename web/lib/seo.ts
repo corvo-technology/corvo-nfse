@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 
+/**
+ * Public origin. The apex (`https://corvo.tech`) already 301s here at the edge;
+ * sitemaps, canonicals and in-app redirects must keep using this host.
+ */
 export const SITE_URL = "https://www.corvo.tech";
 export const SITE_NAME = "Corvo";
 export const SEO_LOCALES = ["en", "pt"] as const;

@@ -22,7 +22,7 @@ const nfse = {
 describe('email templates', () => {
   it('wraps every email with the Corvo logo', () => {
     expect(otpEmail({ code: '123456', expiresInMinutes: 10 }).html).toContain(
-      'https://corvo.tech/icon-192.png',
+      'https://www.corvo.tech/icon-192.png',
     );
   });
 

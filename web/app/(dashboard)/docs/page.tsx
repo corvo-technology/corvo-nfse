@@ -1,8 +1,6 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
-export default async function DocsRedirect() {
-  const store = await cookies();
-  const locale = store.get("NEXT_LOCALE")?.value === "en" ? "en" : "pt";
-  redirect(`/${locale}/docs`);
+/** Fallback if the proxy did not run. Same destination as the proxy 301: always /pt/docs, one hop. */
+export default function DocsRedirect() {
+  permanentRedirect("/pt/docs");
 }

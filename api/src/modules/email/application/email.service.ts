@@ -53,7 +53,7 @@ export type EnqueueSchedulePausedInput = {
   reason: string;
 };
 
-const DEFAULT_APP_URL = 'https://corvo.tech/app';
+const DEFAULT_APP_URL = 'https://www.corvo.tech/app';
 
 /** APP_URL may be the site origin or already end with /app; the pages live under /app/... */
 function appPage(appUrl: string, path: string): string {

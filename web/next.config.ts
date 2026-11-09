@@ -22,9 +22,16 @@ const nextConfig: NextConfig = {
   images: { formats: ["image/avif", "image/webp"] },
   // Two root layouts ([locale] and (dashboard)) need a global 404 page.
   experimental: { globalNotFound: true },
+  // The proxy collapses trailing slashes onto the final URL (for example /docs/ → /pt/docs).
+  // Next's own 308 to the slash-less path would run first and add a hop.
+  skipTrailingSlashRedirect: true,
   async redirects() {
     // /api-docs is outside the proxy matcher (it starts with "api"), so the redirect lives here.
-    return [{ source: "/api-docs", destination: "/pt/api-docs", statusCode: 301 }];
+    // Both forms in one hop: with skipTrailingSlashRedirect, /api-docs/ is not normalized first.
+    return [
+      { source: "/api-docs", destination: "/pt/api-docs", statusCode: 301 },
+      { source: "/api-docs/", destination: "/pt/api-docs", statusCode: 301 },
+    ];
   },
   async headers() {
     return [
