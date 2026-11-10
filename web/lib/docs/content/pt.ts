@@ -1207,12 +1207,139 @@ console.log(res.status, data.status, data.substitutesInvoiceId); // 202 "queued"
           ["Onde vale", "Nota avulsa, lote, planilha, agendas e recorrências, e as ferramentas do MCP."],
           ["Idempotência", "O hash da requisição é calculado antes do preenchimento, então repetir a mesma chamada continua devolvendo a mesma nota."],
         ] },
-        { kind: "table", head: ["Método", "Rota", "O que faz"], rows: [
-          ["GET", "`/v1/customers?search=&limit=&cursor=`", "Lista os clientes salvos, do mais recente para o mais antigo. `search` procura parte do nome ou o começo do documento."],
-          ["GET", "`/v1/customers/:taxId`", "Consulta um cliente pelo CPF ou CNPJ (com ou sem pontuação)."],
-          ["PATCH", "`/v1/customers/:taxId`", "Corrige `name` ou `email`. Envie `email: null` para apagar o e-mail."],
-          ["DELETE", "`/v1/customers/:taxId`", "Apaga o cadastro. As notas emitidas não mudam."],
-        ] },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/customers",
+          scopes: ["full_access", "invoices_view", "invoices_read_write"],
+          success: "200 OK",
+          summary: "Lista os clientes salvos do ambiente da chave, do mais recente para o mais antigo. `search` procura parte do nome ou o começo do CPF/CNPJ (a pontuação é ignorada).",
+          params: {
+            rows: [
+              { name: "search", type: "string", required: false, description: "Parte do nome ou começo do documento." },
+              { name: "limit", type: "number", required: false, description: "Itens por página (padrão 50)." },
+              { name: "cursor", type: "string", required: false, description: "Cursor devolvido pela página anterior." },
+            ],
+          },
+          examples: {
+            curl: `curl "$BASE_URL/customers?search=acme&limit=50" \\
+  -H "X-API-Key: $CORVO_API_KEY"`,
+            node: `const res = await fetch(\`\${BASE_URL}/customers?search=acme&limit=50\`, {
+  headers: { "X-API-Key": process.env.CORVO_API_KEY },
+});
+const { data } = await res.json();
+console.log(data.map((customer) => customer.name));`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": [
+    {
+      "taxId": "11222333000181",
+      "name": "Acme Ltda",
+      "email": "financeiro@acme.com.br",
+      "lastUsedAt": "2026-11-10T12:00:00.000Z",
+      "createdAt": "2026-11-01T12:00:00.000Z",
+      "updatedAt": "2026-11-10T12:00:00.000Z"
+    }
+  ],
+  "pagination": { "limit": 50, "hasMore": false, "nextCursor": null }
+}`,
+          },
+        },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/customers/:taxId",
+          scopes: ["full_access", "invoices_view", "invoices_read_write"],
+          success: "200 OK",
+          summary: "Consulta um cliente salvo pelo CPF ou CNPJ, com ou sem pontuação. Responde `404` quando o documento nunca foi salvo.",
+          examples: {
+            curl: `curl "$BASE_URL/customers/11222333000181" \\
+  -H "X-API-Key: $CORVO_API_KEY"`,
+            node: `const res = await fetch(\`\${BASE_URL}/customers/11222333000181\`, {
+  headers: { "X-API-Key": process.env.CORVO_API_KEY },
+});
+const { data } = await res.json();
+console.log(res.status, data?.name); // 200 "Acme Ltda"`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "taxId": "11222333000181",
+    "name": "Acme Ltda",
+    "email": "financeiro@acme.com.br",
+    "lastUsedAt": "2026-11-10T12:00:00.000Z",
+    "createdAt": "2026-11-01T12:00:00.000Z",
+    "updatedAt": "2026-11-10T12:00:00.000Z"
+  }
+}`,
+          },
+        },
+        {
+          kind: "endpoint",
+          method: "PATCH",
+          path: "/v1/customers/:taxId",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "200 OK",
+          summary: "Corrige o `name` ou o `email` de um cliente salvo. Envie só o que muda; `email: null` apaga o e-mail. A correção vale para as próximas notas.",
+          params: {
+            rows: [
+              { name: "name", type: "string", required: false, description: "Novo nome, até 300 caracteres." },
+              { name: "email", type: "string | null", required: false, description: "Novo e-mail, ou `null` para apagar." },
+            ],
+          },
+          examples: {
+            curl: `curl -X PATCH "$BASE_URL/customers/11222333000181" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H 'Content-Type: application/json' \\
+  -d '{"name":"Acme S.A."}'`,
+            node: `const res = await fetch(\`\${BASE_URL}/customers/11222333000181\`, {
+  method: "PATCH",
+  headers: { "X-API-Key": process.env.CORVO_API_KEY, "Content-Type": "application/json" },
+  body: JSON.stringify({ name: "Acme S.A." }),
+});
+const { data } = await res.json();
+console.log(data.name); // "Acme S.A."`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "taxId": "11222333000181",
+    "name": "Acme S.A.",
+    "email": "financeiro@acme.com.br",
+    "lastUsedAt": "2026-11-10T12:00:00.000Z",
+    "createdAt": "2026-11-01T12:00:00.000Z",
+    "updatedAt": "2026-11-10T12:00:00.000Z"
+  }
+}`,
+          },
+        },
+        {
+          kind: "endpoint",
+          method: "DELETE",
+          path: "/v1/customers/:taxId",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "200 OK",
+          summary: "Apaga o cliente salvo. As notas já emitidas não mudam, e o nome deixa de ser preenchido.",
+          examples: {
+            curl: `curl -X DELETE "$BASE_URL/customers/11222333000181" \\
+  -H "X-API-Key: $CORVO_API_KEY"`,
+            node: `const res = await fetch(\`\${BASE_URL}/customers/11222333000181\`, {
+  method: "DELETE",
+  headers: { "X-API-Key": process.env.CORVO_API_KEY },
+});
+console.log(res.status); // 200`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": null
+}`,
+          },
+        },
         { kind: "callout", tone: "accent", body: "Permissões: `nfse.invoices.view` para listar e consultar; `nfse.invoices.issue` para corrigir e apagar. Cliente inexistente responde `404`." },
         { kind: "heading", level: 2, body: "Dedução da base do ISS" },
         { kind: "text", body: "O emitente pode declarar em `deduction` um valor que a legislação do município permite abater da base de cálculo do ISS. O valor vai na DPS em `vDedRed/vDR` e reduz a base do ISS; a nota continua sendo emitida pelo valor total (`amount`)." },
@@ -2912,7 +3039,7 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             [
               "`schedule_update`",
               "`nfse:write`",
-              "`schedule_id` e o que muda: `amount?`, `description?`, `customer?`, `send_email?`, `ends_on?` (ou `null`), `frequency?`, `first_date?`",
+              "`schedule_id` e o que muda: `amount?`, `description?`, `purchase_order?`, `notes?` (texto vazio remove), `customer?`, `send_email?`, `ends_on?` (ou `null`), `frequency?`, `first_date?`",
               "a agenda"
             ],
             [
