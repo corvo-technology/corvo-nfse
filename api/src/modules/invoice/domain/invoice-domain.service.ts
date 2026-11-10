@@ -11,6 +11,10 @@ import { normalizeUf } from '@/shared/fiscal/uf';
 import { toDecimal } from './fiscal/money';
 import type { ServiceFiscalInput } from './fiscal/normalized-invoice';
 import type { CreateInvoiceDto } from '../http/invoice.dto';
+import {
+  normalizeForeignCustomer,
+  type ForeignCustomer,
+} from './foreign-customer';
 
 export const SCHEDULE_MAX_DAYS = 'SCHEDULE_MAX_DAYS';
 const SCHEDULE_ZONE = 'America/Sao_Paulo';
@@ -33,6 +37,8 @@ export interface NormalizedCustomerInput {
     zip?: string;
     municipalityCode?: string;
   };
+  /** Present for a customer outside Brazil; `taxId` is then absent. */
+  foreign?: ForeignCustomer;
 }
 
 export interface NormalizedInvoiceInput {
@@ -151,8 +157,14 @@ export class InvoiceDomainService {
     }
 
     // ── customer: sem nada ⇒ consumidor anônimo; com qualquer dado ⇒ CPF/CNPJ obrigatório ──
-    const rawTaxId = dto.customer?.taxId?.trim();
-    if (!rawTaxId && customerHasContent(dto.customer)) {
+    // A customer abroad has its own rules and replaces the CPF/CNPJ and the Brazilian address.
+    const isForeign =
+      dto.customer?.foreign !== undefined && dto.customer.foreign !== null;
+    const foreign = isForeign
+      ? normalizeForeignCustomer(dto.customer!, issues)
+      : undefined;
+    const rawTaxId = isForeign ? undefined : dto.customer?.taxId?.trim();
+    if (!isForeign && !rawTaxId && customerHasContent(dto.customer)) {
       issues.push({
         field: 'customer.taxId',
         code: 'required',
@@ -172,8 +184,10 @@ export class InvoiceDomainService {
     }
 
     // ── address: city + state must both be present or both absent ──
-    const hasCity = dto.customer?.address?.city?.trim();
-    const hasState = dto.customer?.address?.state?.trim();
+    const hasCity = isForeign ? undefined : dto.customer?.address?.city?.trim();
+    const hasState = isForeign
+      ? undefined
+      : dto.customer?.address?.state?.trim();
     if ((hasCity && !hasState) || (!hasCity && hasState)) {
       issues.push({
         field: 'customer.address',
@@ -423,7 +437,9 @@ export class InvoiceDomainService {
       companyId: dto.companyId,
       externalId: dto.externalId,
       environment,
-      customer: normalizeCustomerInput(dto.customer),
+      customer: foreign
+        ? normalizeForeignCustomerInput(dto.customer!, foreign)
+        : normalizeCustomerInput(dto.customer),
       service: {
         code: code!,
         municipalityCode: municipalityCode!,
@@ -458,6 +474,19 @@ function customerHasContent(customer: CreateInvoiceDto['customer']): boolean {
     Boolean(address?.country?.trim()) ||
     Boolean(address?.municipalityCode?.trim())
   );
+}
+
+/** The address abroad lives in `foreign`; `EX` is the conventional UF of a place outside Brazil. */
+function normalizeForeignCustomerInput(
+  customer: NonNullable<CreateInvoiceDto['customer']>,
+  foreign: ForeignCustomer,
+): NormalizedCustomerInput {
+  return {
+    name: customer.name!.trim(),
+    email: customer.email?.trim(),
+    address: { city: foreign.city, state: 'EX' },
+    foreign,
+  };
 }
 
 function normalizeCustomerInput(

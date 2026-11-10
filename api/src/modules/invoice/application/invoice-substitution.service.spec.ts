@@ -114,6 +114,34 @@ describe('InvoiceSubstitutionService', () => {
     expect(bodySent()).not.toHaveProperty('customer');
   });
 
+  it('repeats a customer abroad as issued, without a CPF/CNPJ or a Brazilian address', async () => {
+    const foreign = {
+      taxId: '12-3456789',
+      country: 'US',
+      postalCode: '94105',
+      city: 'San Francisco',
+      region: 'CA',
+      street: '1 Market St',
+      number: '100',
+      district: 'SoMa',
+    };
+    const source = original({
+      customer: {
+        name: 'Acme Inc.',
+        address: { city: 'San Francisco', state: 'EX' },
+        foreign,
+      },
+    });
+    invoices.findById.mockResolvedValue(source);
+    await service.substitute(source.id, TENANT, 'live', {
+      description: 'Descrição do serviço corrigida',
+    });
+    const customer = bodySent().customer as Record<string, unknown>;
+    expect(customer).toMatchObject({ name: 'Acme Inc.', foreign });
+    expect(customer.taxId).toBeUndefined();
+    expect(customer.address).toBeUndefined();
+  });
+
   it('refuses an invoice that is not authorized and issues nothing', async () => {
     const source = original({ authorized: false });
     invoices.findById.mockResolvedValue(source);

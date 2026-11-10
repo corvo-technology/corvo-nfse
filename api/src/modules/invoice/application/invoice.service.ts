@@ -289,6 +289,7 @@ export class InvoiceService {
                 state: normalized.customer.address.state,
                 municipalityCode: normalized.customer.address.municipalityCode,
               },
+              foreign: normalized.customer.foreign,
             }
           : null,
         service: {

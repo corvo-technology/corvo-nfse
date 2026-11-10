@@ -69,6 +69,8 @@ export class InvoiceSubstitutionService {
               name: customer.name,
               email: customer.email,
               address,
+              // A customer abroad is repeated as issued: it replaces the CPF/CNPJ and the address.
+              ...(customer.foreign ? { foreign: customer.foreign } : {}),
             },
           }
         : {}),

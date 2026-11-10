@@ -1,3 +1,4 @@
+import type { ForeignCustomer } from './foreign-customer';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { randomUUID } from 'crypto';
 import {
@@ -33,6 +34,8 @@ export interface CustomerSnapshot {
     /** Incidence municipality (7 digits) when explicitly informed. */
     municipalityCode?: string;
   };
+  /** Customer outside Brazil (DPS NIF or cNaoNIF, with the address abroad). */
+  foreign?: ForeignCustomer;
 }
 
 export interface ServiceSnapshot {
@@ -157,6 +160,10 @@ export class Invoice {
             name: input.customer.name,
             email: input.customer.email,
             address: input.customer.address,
+            // Only present for a customer abroad, so other snapshots keep their shape.
+            ...(input.customer.foreign
+              ? { foreign: input.customer.foreign }
+              : {}),
           }
         : null,
       serviceSnapshot: {

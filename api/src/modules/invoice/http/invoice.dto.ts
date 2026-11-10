@@ -46,6 +46,75 @@ export class CustomerAddressDto {
   municipalityCode?: string;
 }
 
+/** A customer outside Brazil. Replaces `customer.taxId` and `customer.address`. */
+export class ForeignCustomerDto {
+  @ApiPropertyOptional({
+    example: '12-3456789',
+    maxLength: 40,
+    description:
+      "Tax id in the customer's country (DPS NIF). Send this or noTaxIdReason, never both.",
+  })
+  @IsOptional()
+  @IsString()
+  taxId?: string;
+
+  @ApiPropertyOptional({
+    enum: ['exempt', 'not_required'],
+    description: 'Why the customer has no tax id (DPS cNaoNIF 1 or 2).',
+  })
+  @IsOptional()
+  @IsString()
+  noTaxIdReason?: string;
+
+  @ApiProperty({
+    example: 'US',
+    description: 'ISO 3166-1 alpha-2 country code, other than BR.',
+  })
+  @IsString()
+  country!: string;
+
+  @ApiProperty({ example: '94105', maxLength: 11 })
+  @IsString()
+  postalCode!: string;
+
+  @ApiProperty({ example: 'San Francisco', maxLength: 60 })
+  @IsString()
+  city!: string;
+
+  @ApiProperty({
+    example: 'CA',
+    maxLength: 60,
+    description: 'State, province or region.',
+  })
+  @IsString()
+  region!: string;
+
+  @ApiProperty({ example: '1 Market St', maxLength: 255 })
+  @IsString()
+  street!: string;
+
+  @ApiProperty({
+    example: '100',
+    maxLength: 60,
+    description: 'Street number. Required by the DPS.',
+  })
+  @IsString()
+  number!: string;
+
+  @ApiProperty({
+    example: 'SoMa',
+    maxLength: 60,
+    description: 'District or neighbourhood. Required by the DPS.',
+  })
+  @IsString()
+  district!: string;
+
+  @ApiPropertyOptional({ example: 'Suite 4', maxLength: 156 })
+  @IsOptional()
+  @IsString()
+  complement?: string;
+}
+
 export class CustomerDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() taxId?: string;
@@ -54,6 +123,16 @@ export class CustomerDto {
   @ValidateNested()
   @Type(() => CustomerAddressDto)
   address?: CustomerAddressDto;
+
+  @ApiPropertyOptional({
+    type: ForeignCustomerDto,
+    description:
+      'Customer outside Brazil. Cannot be sent with taxId (CPF/CNPJ) or address; name is then required. It does not declare a service export: the invoice keeps its tax treatment.',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ForeignCustomerDto)
+  foreign?: ForeignCustomerDto;
 }
 
 /**

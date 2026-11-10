@@ -1,5 +1,6 @@
 import {
   JustificativaSubstituicao,
+  CodigoNaoNif,
   buildDps,
   buildDpsXml,
   FinalidadeNFSe,
@@ -29,6 +30,7 @@ import {
   XML_LAYOUT,
 } from './dps-layout';
 import { isNt009IbsCbsOnlyEvent } from './nt009-events';
+import type { ForeignCustomer } from '../../foreign-customer';
 
 const STEP = 'DpsBuilder';
 const MAX_VIOLATIONS = 20;
@@ -115,12 +117,21 @@ export interface DpsBuildInput {
      * the homologation `tpAmb`, otherwise the Receita rejects it (E0006).
      */
     readonly sefin?: 'production' | 'restricted';
-    readonly customer: {
-      readonly kind: 'CPF' | 'CNPJ';
-      readonly taxId: string;
-      readonly name: string;
-      readonly email?: string;
-    } | null;
+    readonly customer:
+      | {
+          readonly kind: 'CPF' | 'CNPJ';
+          readonly taxId: string;
+          readonly name: string;
+          readonly email?: string;
+        }
+      | {
+          /** Customer outside Brazil: NIF (or the reason it has none) and the address abroad. */
+          readonly kind: 'FOREIGN';
+          readonly name: string;
+          readonly email?: string;
+          readonly foreign: ForeignCustomer;
+        }
+      | null;
     readonly discountAmount: DecimalString;
     /**
      * Issuer-declared deduction from the tax base. Sent as `vDedRed/vDR`; absent
@@ -471,7 +482,9 @@ export class DpsBuilder {
             ? { pTotTribSN: Number(simplesTotTrib.totalRate) }
             : {}),
       },
-      ...(input.invoice.customer !== null
+      // A customer abroad is added after the assembly: the simple path only knows CPF and CNPJ.
+      ...(input.invoice.customer !== null &&
+      input.invoice.customer.kind !== 'FOREIGN'
         ? {
             tomador: {
               documento:
@@ -528,6 +541,44 @@ export class DpsBuilder {
           valores: {
             ...dps.infDPS.valores,
             vDedRed: { vDR: deduction.toNumber() },
+          },
+        },
+      };
+    }
+    if (input.invoice.customer?.kind === 'FOREIGN') {
+      const { name, email, foreign } = input.invoice.customer;
+      dps = {
+        ...dps,
+        infDPS: {
+          ...dps.infDPS,
+          toma: {
+            identificador:
+              foreign.taxId !== undefined
+                ? { NIF: foreign.taxId }
+                : {
+                    cNaoNIF:
+                      foreign.noTaxIdReason === 'exempt'
+                        ? CodigoNaoNif.Dispensado
+                        : CodigoNaoNif.NaoExigido,
+                  },
+            xNome: name,
+            end: {
+              localidade: {
+                endExt: {
+                  cPais: foreign.country,
+                  cEndPost: foreign.postalCode,
+                  xCidade: foreign.city,
+                  xEstProvReg: foreign.region,
+                },
+              },
+              xLgr: foreign.street,
+              nro: foreign.number,
+              ...(foreign.complement !== undefined
+                ? { xCpl: foreign.complement }
+                : {}),
+              xBairro: foreign.district,
+            },
+            ...(email !== undefined ? { email } : {}),
           },
         },
       };

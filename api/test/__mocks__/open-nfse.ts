@@ -86,6 +86,7 @@ export const TipoTribISSQN = sdk.TipoTribISSQN;
 export const parseNfseXml = sdk.parseNfseXml;
 export const gerarDanfse = sdk.gerarDanfse;
 export const OpcaoSimplesNacional = sdk.OpcaoSimplesNacional;
+export const CodigoNaoNif = sdk.CodigoNaoNif;
 export const RegimeApuracaoSimplesNacional = sdk.RegimeApuracaoSimplesNacional;
 export const RegimeEspecialTributacao = sdk.RegimeEspecialTributacao;
 export const TipoAmbienteDps = sdk.TipoAmbienteDps;

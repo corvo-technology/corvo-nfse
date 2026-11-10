@@ -612,6 +612,19 @@ export class NfseWorkflowService {
           }),
         );
       }
+      // The legacy payload only identifies a customer by CPF or CNPJ.
+      if (customer?.foreign) {
+        throw new DpsBuildRejectionError(
+          fiscalError({
+            code: 'FISCAL_VALIDATION_FAILED',
+            message:
+              'A customer abroad (customer.foreign) cannot be issued without a fiscal calculation snapshot',
+            category: 'VALIDATION',
+            step: 'NfseWorkflow',
+            details: { fields: ['customer.foreign'] },
+          }),
+        );
+      }
       // A substitute must carry the `subst` group, which the legacy payload cannot.
       if (invoice.substitutesInvoiceId) {
         throw new DpsBuildRejectionError(
@@ -660,8 +673,14 @@ export class NfseWorkflowService {
           municipalityCode: snapshot.serviceSnapshot.municipalityCode,
           environment: invoice.environment,
           sefin: this.sefinTarget(invoice.environment),
-          customer:
-            taxId && customer
+          customer: customer?.foreign
+            ? {
+                kind: 'FOREIGN' as const,
+                name: customer.name,
+                ...(customer.email ? { email: customer.email } : {}),
+                foreign: customer.foreign,
+              }
+            : taxId && customer
               ? {
                   kind: taxId.length === 14 ? 'CNPJ' : 'CPF',
                   taxId,
