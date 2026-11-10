@@ -93,3 +93,4 @@ export const ValidationError = sdk.ValidationError;
 export const NotFoundError = sdk.NotFoundError;
 export const pendingEmissionId = sdk.pendingEmissionId;
 export const JustificativaCancelamento = sdk.JustificativaCancelamento;
+export const JustificativaSubstituicao = sdk.JustificativaSubstituicao;

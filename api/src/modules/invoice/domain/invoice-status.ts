@@ -41,7 +41,8 @@ export const VALID_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
   ],
   retry_pending: ['processing'],
   reconciliation_required: ['authorized', 'rejected', 'manual_review'],
-  authorized: ['cancelling'],
+  // `cancelled` directly only when a substitute NFS-e is authorized: the Sefin cancels the original itself.
+  authorized: ['cancelling', 'cancelled'],
   cancelling: ['cancelled', 'authorized'],
   rejected: [],
   // Resolved by a person: retried with the same DPS, or settled by what the portal answers.

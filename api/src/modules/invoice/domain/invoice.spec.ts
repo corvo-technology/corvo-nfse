@@ -477,3 +477,63 @@ describe('Invoice', () => {
     });
   });
 });
+
+describe('Invoice substitution', () => {
+  const base = {
+    companyId: 'company-123',
+    customer: { taxId: '12345678000195', name: 'Cliente' },
+    service: {
+      description: 'Consultoria',
+      code: '010601',
+      municipalityCode: '3550308',
+    },
+    amount: 100,
+    competenceDate: new Date('2026-10-13'),
+  };
+  const authorized = () => {
+    const invoice = Invoice.create(base, 'tenant-1');
+    invoice.transitionTo('processing');
+    invoice.setAuthorized('4'.repeat(50), 7);
+    invoice.transitionTo('authorized');
+    return invoice;
+  };
+
+  it('keeps the link to the original and the reason on the substitute', () => {
+    const substitute = Invoice.create(
+      {
+        ...base,
+        substitution: {
+          invoiceId: 'orig-1',
+          description: 'Texto corrigido ok',
+        },
+      },
+      'tenant-1',
+    );
+    expect(substitute.substitutesInvoiceId).toBe('orig-1');
+    expect(substitute.substitutionDescription).toBe('Texto corrigido ok');
+    expect(Invoice.create(base, 'tenant-1').substitutesInvoiceId).toBeNull();
+  });
+
+  it('moves an authorized invoice straight to cancelled when it is substituted', () => {
+    const original = authorized();
+    const event = original.markSubstituted('sub-1');
+    expect(event).toMatchObject({
+      fromStatus: 'authorized',
+      toStatus: 'cancelled',
+    });
+    expect(original.status).toBe('cancelled');
+    expect(original.cancelledAt).not.toBeNull();
+    expect(original.cancellationReason).toEqual({
+      code: 'other',
+      description: 'Substituída pela nota sub-1',
+    });
+  });
+
+  it('only an authorized invoice can be marked as substituted', () => {
+    const queued = Invoice.create(base, 'tenant-1');
+    expect(() => queued.markSubstituted('sub-1')).toThrow();
+    const original = authorized();
+    original.markSubstituted('sub-1');
+    expect(() => original.markSubstituted('sub-2')).toThrow();
+  });
+});

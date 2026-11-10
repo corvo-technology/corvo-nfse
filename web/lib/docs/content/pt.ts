@@ -94,6 +94,7 @@ const ptWithRetiredCredits: DocsTree = {
           ["GET", "`/v1/webhooks/deliveries`", "Listar entregas", "200"],
           ["GET", "`/v1/webhooks/deliveries/stats`", "Consultar estatísticas", "200"],
           ["POST", "`/v1/webhooks/deliveries/:id/retry`", "Agendar nova tentativa", "200"],
+          ["POST", "`/v1/invoices/:id/substitute`", "Substituir uma nota autorizada", "202"],
           ["GET", "`/v1/customers`", "Listar clientes salvos", "200"],
           ["GET", "`/v1/customers/:taxId`", "Consultar cliente salvo", "200"],
           ["PATCH", "`/v1/customers/:taxId`", "Corrigir cliente salvo", "200"],
@@ -1124,6 +1125,27 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ["POST", "`/v1/schedules/:id/cancel`", "Cancelar (definitivo)", "200"],
         ] },
         { kind: "text", body: "A agenda tem `id`, `kind` (`once` ou `recurring`), `frequency`, `status` (`active`, `paused`, `completed`, `cancelled`), `pause_reason` (`customer` ou `failures`), `company_id`, `anchor_on`, `next_run_on`, `ends_on`, `attempts` (falhas seguidas, de 0 a 3), `last_run_on`, `invoice` (o corpo emitido a cada execução) e `created_at`. Permissões: `nfse.invoices.view` para ler e `nfse.invoices.issue` para criar e alterar. Uma chave de teste vê só agendas de teste, e uma de produção só as de produção." },
+        { kind: "heading", level: 2, body: "Substituir uma nota" },
+        { kind: "text", body: "`POST /v1/invoices/:id/substitute` emite uma nota nova que substitui uma nota **autorizada**. A Receita cancela a original no mesmo ato em que autoriza a substituta, então não fica intervalo sem nota válida. A resposta é `202` com a substituta em `queued`, com `substitutesInvoiceId` apontando para a original." },
+        { kind: "table", head: ["Campo", "Regra"], rows: [
+          ["`description`", "Obrigatório, de 15 a 255 caracteres: o motivo da substituição. Vai na DPS em `subst/xMotivo`."],
+          ["`service.description`", "Opcional. Nova descrição do serviço."],
+          ["`purchaseOrder`, `notes`", "Opcionais. Omitir mantém o que a original tinha; texto vazio remove."],
+          ["O que não muda", "Tomador, data de competência e valor ficam como na original. Para MEI e Simples Nacional a Receita recusa a substituta que altera qualquer um deles (regra E0061). Para corrigir esses dados, cancele a nota e emita outra."],
+          ["Original", "Continua `authorized` até a Receita autorizar a substituta. Autorizada a substituta, a original passa a `cancelled` e você recebe `nfse.invoice.cancelled` com `substitutedBy`. Se a Receita recusar, a original não muda e a substituta fica `rejected`."],
+          ["Crédito", "A substituta usa um crédito, como qualquer nota emitida. O crédito da original não volta."],
+          ["Erros", "`409` `ERROR_INVOICE_NOT_SUBSTITUTABLE` quando a nota não está `authorized`; `404` quando não existe."],
+        ] },
+        { kind: "code", label: "Substituir uma nota", language: "bash", code: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/substitute" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: pedido_981_substituicao" \\
+  -d '{
+    "description": "Descricao do servico corrigida",
+    "service": { "description": "Consultoria em tecnologia, outubro/2026" },
+    "purchaseOrder": "PO-4521"
+  }'` },
+        { kind: "callout", tone: "warn", body: "O prazo para substituir e algumas regras (por exemplo, nota sem tomador identificado) são definidos por cada município. A Corvo não conhece esse prazo de antemão: se a Receita recusar, o código do erro vem na nota substituta. Envie `Idempotency-Key` para repetir a chamada sem emitir duas substitutas." },
         { kind: "heading", level: 2, body: "Clientes salvos" },
         { kind: "text", body: "Depois que uma nota com tomador é aceita, a Corvo guarda o CPF ou CNPJ, o nome e o e-mail desse cliente. Na nota seguinte para o mesmo documento, basta enviar `customer.taxId`: o `name` vem do cadastro. O que você envia na requisição sempre vale, e a nota já emitida nunca muda." },
         { kind: "table", head: ["Regra", "Detalhe"], rows: [

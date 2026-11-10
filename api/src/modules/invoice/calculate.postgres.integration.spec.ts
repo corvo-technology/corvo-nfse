@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { InvoiceSubstitutionService } from '@/modules/invoice/application/invoice-substitution.service';
 import { EmissionRouterService } from '@/modules/invoice-schedule/application/emission-router.service';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -292,6 +293,7 @@ describePostgres('POST /v1/invoices/calculate with PostgreSQL RLS', () => {
         ...FISCAL_ENGINE_INTERNAL_PROVIDERS,
         { provide: InvoiceBatchService, useValue: {} },
         { provide: EmissionRouterService, useValue: {} },
+        { provide: InvoiceSubstitutionService, useValue: {} },
         { provide: RTC_MAPPER, useClass: DefaultRtcMapper },
         { provide: ConfigService, useValue: config },
         {

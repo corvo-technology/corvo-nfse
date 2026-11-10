@@ -94,6 +94,7 @@ const enWithRetiredCredits: DocsTree = {
           ["GET", "`/v1/webhooks/deliveries`", "List deliveries", "200"],
           ["GET", "`/v1/webhooks/deliveries/stats`", "Fetch delivery statistics", "200"],
           ["POST", "`/v1/webhooks/deliveries/:id/retry`", "Schedule a retry", "200"],
+          ["POST", "`/v1/invoices/:id/substitute`", "Substitute an authorized invoice", "202"],
           ["GET", "`/v1/customers`", "List saved customers", "200"],
           ["GET", "`/v1/customers/:taxId`", "Get a saved customer", "200"],
           ["PATCH", "`/v1/customers/:taxId`", "Correct a saved customer", "200"],
@@ -1144,6 +1145,27 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ["POST", "`/v1/schedules/:id/cancel`", "Cancel (final)", "200"],
         ] },
         { kind: "text", body: "A schedule has `id`, `kind` (`once` or `recurring`), `frequency`, `status` (`active`, `paused`, `completed`, `cancelled`), `pause_reason` (`customer` or `failures`), `company_id`, `anchor_on`, `next_run_on`, `ends_on`, `attempts` (failures in a row, 0 to 3), `last_run_on`, `invoice` (the body issued on each run) and `created_at`. Permissions: `nfse.invoices.view` to read and `nfse.invoices.issue` to create and change. A test key sees only test schedules, and a live key only live ones." },
+        { kind: "heading", level: 2, body: "Substituting an invoice" },
+        { kind: "text", body: "`POST /v1/invoices/:id/substitute` issues a new invoice that replaces an **authorized** one. The Receita cancels the original in the same act that authorizes the substitute, so there is no gap without a valid invoice. The answer is `202` with the substitute in `queued`, with `substitutesInvoiceId` pointing at the original." },
+        { kind: "table", head: ["Field", "Rule"], rows: [
+          ["`description`", "Required, 15 to 255 characters: why the invoice is being substituted. Sent in the DPS as `subst/xMotivo`."],
+          ["`service.description`", "Optional. New service description."],
+          ["`purchaseOrder`, `notes`", "Optional. Omitting keeps what the original had; an empty text removes it."],
+          ["What does not change", "Customer, competence date and amount stay as in the original. For MEI and Simples Nacional the Receita refuses a substitute that changes any of them (rule E0061). To correct those, cancel the invoice and issue another."],
+          ["Original", "Stays `authorized` until the Receita authorizes the substitute. Once it does, the original becomes `cancelled` and you receive `nfse.invoice.cancelled` with `substitutedBy`. If the Receita refuses, the original does not change and the substitute is `rejected`."],
+          ["Credit", "The substitute uses a credit, like any issued invoice. The credit of the original is not returned."],
+          ["Errors", "`409` `ERROR_INVOICE_NOT_SUBSTITUTABLE` when the invoice is not `authorized`; `404` when it does not exist."],
+        ] },
+        { kind: "code", label: "Substituting an invoice", language: "bash", code: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/substitute" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: pedido_981_substituicao" \\
+  -d '{
+    "description": "Descricao do servico corrigida",
+    "service": { "description": "Consultoria em tecnologia, outubro/2026" },
+    "purchaseOrder": "PO-4521"
+  }'` },
+        { kind: "callout", tone: "warn", body: "The deadline to substitute and some rules (for example, an invoice without an identified customer) are set by each municipality. Corvo does not know that deadline in advance: if the Receita refuses, the error code comes on the substitute invoice. Send `Idempotency-Key` to repeat the call without issuing two substitutes." },
         { kind: "heading", level: 2, body: "Saved customers" },
         { kind: "text", body: "After an invoice with a customer is accepted, Corvo keeps the CPF or CNPJ, the name and the email of that customer. On the next invoice for the same document, send only `customer.taxId`: the `name` comes from the saved customer. What you send in the request always wins, and an invoice already issued never changes." },
         { kind: "table", head: ["Rule", "Detail"], rows: [
