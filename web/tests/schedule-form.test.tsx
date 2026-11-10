@@ -137,6 +137,23 @@ describe("ScheduleForm: edit", () => {
     expect(mocks.update).toHaveBeenCalledWith("s1", { invoice: { amount: 200 } });
   });
 
+  it("adds a purchase order and notes to an existing schedule, and clears them with an empty text", async () => {
+    mocks.update.mockResolvedValue(saved);
+    renderForm(existing());
+    type(/^Purchase order/, " PO-4521 "); type(/^Notes on the invoice/, "Instalment 2 of 3");
+    submit(/Save changes/);
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(1));
+    expect(mocks.update).toHaveBeenCalledWith("s1", { invoice: { purchaseOrder: "PO-4521", notes: "Instalment 2 of 3" } });
+
+    cleanup(); mocks.update.mockClear();
+    const withOrder = existing();
+    renderForm({ ...withOrder, invoice: { ...withOrder.invoice, purchaseOrder: "PO-1" } });
+    expect(field(/^Purchase order/).value).toBe("PO-1");
+    type(/^Purchase order/, "");
+    submit(/Save changes/);
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith("s1", { invoice: { purchaseOrder: "" } }));
+  });
+
   it("clearing the deadline sends null; changing the frequency sends it", async () => {
     mocks.update.mockResolvedValue(saved);
     renderForm(existing());

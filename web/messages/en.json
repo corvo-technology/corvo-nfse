@@ -2819,7 +2819,11 @@
       "required": "Required",
       "failed": "Could not save the schedule.",
       "editHint": "Changes apply to the next runs. Notes already issued do not change.",
-      "optional": "optional"
+      "optional": "optional",
+      "purchaseOrder": "Purchase order",
+      "purchaseOrderHint": "Printed on every invoice of this schedule.",
+      "notes": "Notes on the invoice",
+      "notesHint": "Free text printed on every invoice. It changes no tax."
     },
     "runs": {
       "title": "Run history",
@@ -2858,7 +2862,9 @@
       "createdAt": "Created on",
       "notFound": "Schedule not found.",
       "loading": "Loading the schedule",
-      "history": "History"
+      "history": "History",
+      "purchaseOrder": "Purchase order",
+      "notes": "Notes on the invoice"
     }
   },
   "Imports": {

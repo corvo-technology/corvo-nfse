@@ -166,6 +166,28 @@ describe('schedule MCP tools', () => {
     });
   });
 
+  it('schedule_update changes the purchase order and clears the notes with an empty text', async () => {
+    const service = build();
+    await createScheduleUpdateHandler(service)(
+      { schedule_id: ID, purchase_order: 'PO-4521', notes: '' },
+      ctx(),
+    );
+    expect(service.update).toHaveBeenCalledWith(ID, TENANT, {
+      invoice: { purchaseOrder: 'PO-4521', notes: '' },
+    });
+  });
+
+  it('schedule_update rejects a purchase order longer than the DPS accepts', async () => {
+    const service = build();
+    await expect(
+      createScheduleUpdateHandler(service)(
+        { schedule_id: ID, purchase_order: 'x'.repeat(61) },
+        ctx(),
+      ),
+    ).rejects.toBeDefined();
+    expect(service.update).not.toHaveBeenCalled();
+  });
+
   it('schedule_update with only dates does not touch the invoice body', async () => {
     const service = build();
     await createScheduleUpdateHandler(service)(
