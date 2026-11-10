@@ -41,6 +41,7 @@ import { MAX_IMPORT_BYTES } from '../domain/import';
 import { ImportFileInvalidError } from '../domain/import-error';
 import {
   ListImportRowsQuery,
+  EmitImportDto,
   ListImportsQuery,
   StartImportDto,
   UpdateImportRowDto,
@@ -163,6 +164,7 @@ export class ImportController {
   async emit(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Req() req: RequestWithAuthContext,
+    @Body() body: EmitImportDto,
   ) {
     const auth = req.authContext!;
     return data(
@@ -171,6 +173,7 @@ export class ImportController {
           auth.activeTenantId,
           executionEnvironment(auth),
           id,
+          { sendEmail: body.sendEmail === true },
         ),
       ),
     );

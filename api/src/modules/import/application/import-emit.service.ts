@@ -32,8 +32,13 @@ export class ImportEmitService {
     tenantId: string,
     env: ExecutionEnvironment,
     id: string,
+    options: { sendEmail?: boolean } = {},
   ): Promise<ImportView> {
     const view = await this.review.get(tenantId, env, id);
+    const markEmail = async () => {
+      if (options.sendEmail)
+        await this.repo.enableEmailOnQueued(tenantId, id);
+    };
     if (view.status === 'emitting') {
       // Already running, or its job was lost (restart, exhausted retries): queue what is waiting and
       // enqueue under the fixed job id, which does nothing while a job for this import is alive.
@@ -50,6 +55,7 @@ export class ImportEmitService {
       if (latest.status === 'emitting') return latest;
       throw new ImportStateError('There is nothing to emit in this import');
     }
+    await markEmail();
     if (await this.repo.claimEmit(tenantId, id)) {
       try {
         await this.enqueue(tenantId, env, id);

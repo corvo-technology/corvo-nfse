@@ -2967,6 +2967,7 @@
       "loadMore": "Load more",
       "emit": "Issue {count, plural, one {# invoice} other {# invoices}}",
       "emitNone": "No row is ready to issue",
+      "sendEmail": "Email each invoice to the customer (rows with an email)",
       "emitFailed": "Could not start issuing.",
       "downloadErrors": "Download only the errors",
       "downloadFailed": "Could not download the file.",

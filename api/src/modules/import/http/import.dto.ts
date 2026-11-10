@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsObject,
@@ -26,6 +27,16 @@ export class StartImportDto {
   @IsOptional()
   @IsUUID()
   companyId?: string;
+}
+
+export class EmitImportDto {
+  @ApiPropertyOptional({
+    description:
+      'Email each issued invoice to the customer. Only rows that have a customer email are sent.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  sendEmail?: boolean;
 }
 
 export type UploadedImportFile = {
