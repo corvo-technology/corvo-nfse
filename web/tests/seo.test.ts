@@ -7,6 +7,14 @@ import { sectionToMarkdown } from "@/lib/docs/to-markdown";
 import { SITE_COPY, localizedAlternates, pageMetadata, pageUrl } from "@/lib/seo";
 
 describe("page metadata", () => {
+  it("leaves the image to the page's own file when sharedImage is false, and uses the site card otherwise", () => {
+    const own = pageMetadata({ locale: "pt", path: "/blog/x", title: "T", description: "D", sharedImage: false });
+    expect(own.openGraph).not.toHaveProperty("images");
+    expect(own.twitter).not.toHaveProperty("images");
+    const shared = pageMetadata({ locale: "pt", title: "T", description: "D" });
+    expect(shared.openGraph?.images).toBeDefined();
+    expect(shared.twitter?.images).toBeDefined();
+  });
   it("gives every page its own canonical and both languages", () => {
     expect(localizedAlternates("pt", "/docs/invoices")).toEqual({
       canonical: "https://www.corvo.tech/pt/docs/invoices",

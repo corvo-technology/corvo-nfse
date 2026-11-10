@@ -111,6 +111,8 @@ interface PageMetadataInput {
   type?: "website" | "article";
   /** The page exists in one language only (the blog): canonical and hreflang list just that one. */
   onlyLocale?: SeoLocale;
+  /** false: the page has its own opengraph-image/twitter-image file, which Next adds; no site-wide image here. */
+  sharedImage?: boolean;
 }
 
 /** Metadata with canonical, hreflang, Open Graph and Twitter cards in the page's language. */
@@ -135,13 +137,13 @@ export function pageMetadata(input: PageMetadataInput): Metadata {
       url: pageUrl(locale, path),
       locale: OPEN_GRAPH_LOCALE[locale],
       alternateLocale: other,
-      images: [{ url: OG_IMAGE_PATH, width: 1200, height: 630, alt: copy.ogAlt, type: "image/png" }],
+      ...(input.sharedImage === false ? {} : { images: [{ url: OG_IMAGE_PATH, width: 1200, height: 630, alt: copy.ogAlt, type: "image/png" }] }),
     },
     twitter: {
       card: "summary_large_image",
       title: shownTitle,
       description: input.description,
-      images: [OG_IMAGE_PATH],
+      ...(input.sharedImage === false ? {} : { images: [OG_IMAGE_PATH] }),
     },
   };
 }
