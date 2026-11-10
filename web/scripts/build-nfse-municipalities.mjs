@@ -9,7 +9,11 @@
  *    https://servicodados.ibge.gov.br/api/v1/localidades/municipios
  *
  * Usage (download the two files first):
- *   node scripts/build-nfse-municipalities.mjs --xlsx municipios-aderentes-AAAAMMDD.xlsx --ibge municipios.json --date AAAA-MM-DD
+ *   node scripts/build-nfse-municipalities.mjs --xlsx municipios-aderentes-AAAAMMDD.xlsx --ibge municipios.json --date AAAA-MM-DD [--previous nfse-municipios.json]
+ *
+ * Since 2026-11-10 the spreadsheet no longer has a start-date column (the old one was column N). With --previous
+ * (a copy of the file as it was before this run), a municipality that has no date in the spreadsheet keeps the date
+ * it had; a municipality that was never dated stays "". The status always comes from the spreadsheet.
  *
  * The spreadsheet has no IBGE code, so each row is matched by state + name. A few names differ from the
  * IBGE spelling (or the municipality was renamed); those are listed in RENAMED below.
@@ -21,6 +25,8 @@ import { resolve } from "node:path";
 const args = Object.fromEntries(process.argv.slice(2).reduce((pairs, value, i, all) => (value.startsWith("--") ? [...pairs, [value.slice(2), all[i + 1]]] : pairs), []));
 for (const key of ["xlsx", "ibge", "date"]) if (!args[key]) throw new Error(`Missing --${key}`);
 const OUT = resolve(import.meta.dirname, "../lib/docs/data/nfse-municipios.json");
+/** IBGE code -> start date, from the file this run replaces. Empty without --previous. */
+const previousDates = new Map(args.previous ? JSON.parse(readFileSync(args.previous, "utf8")).rows.filter((row) => row[4]).map((row) => [row[0], row[4]]) : []);
 
 /** Same municipality, different name in the spreadsheet: [state, spreadsheet name (normalized)] -> IBGE code. */
 const RENAMED = new Map([
@@ -105,7 +111,7 @@ const rows = sheet.map((row) => {
   const key = `${row.B}|${normalize(row.C)}`;
   const match = RENAMED.has(key) ? byCode.get(RENAMED.get(key)) : byKey.get(key);
   if (!match) throw new Error(`No IBGE municipality for ${key}`);
-  return [match.id, match.nome, row.B, statusOf(row), isoDate(row.N)];
+  return [match.id, match.nome, row.B, statusOf(row), isoDate(row.N) || previousDates.get(match.id) || ""];
 });
 rows.sort((a, b) => a[2].localeCompare(b[2]) || a[1].localeCompare(b[1], "pt-BR"));
 

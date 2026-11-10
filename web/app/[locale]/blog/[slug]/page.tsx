@@ -45,6 +45,8 @@ export async function generateMetadata({
     keywords: post.keywords,
     type: "article",
     onlyLocale: BLOG_LOCALE,
+    // Each post has its own share card (opengraph-image.tsx next to this page).
+    sharedImage: false,
   });
   return {
     ...base,

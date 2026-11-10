@@ -1181,7 +1181,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
     }
   }'` },
         { kind: "callout", tone: "warn", body: "Informing a customer abroad **does not declare a service export**: the invoice keeps the same tax treatment. Exports (with the country of the result and the foreign trade data) are not supported yet. Confirm the classification with your accountant." },
-        { kind: "callout", tone: "accent", body: "It applies to single invoices, batches, schedules and the MCP tool `nfse_issue` (field `customer.foreign`, in snake_case). Spreadsheets do not accept a customer abroad yet, and it is not added to saved customers." },
+        { kind: "callout", tone: "accent", body: "It applies to single invoices, batches, schedules and the MCP tool `nfse_issue` (field `customer.foreign`, in snake_case). In spreadsheets, use the optional customer-abroad columns (see Importing a spreadsheet). It is not added to saved customers." },
         { kind: "heading", level: 2, body: "Substituting an invoice" },
         { kind: "text", body: "`POST /v1/invoices/:id/substitute` issues a new invoice that replaces an **authorized** one. The Receita cancels the original in the same act that authorizes the substitute, so there is no gap without a valid invoice. The answer is `202` with the substitute in `queued`, with `substitutesInvoiceId` pointing at the original." },
         { kind: "table", head: ["Field", "Rule"], rows: [
@@ -1253,7 +1253,7 @@ console.log(res.status, data.status, data.substitutesInvoiceId); // 202 "queued"
 }`,
           },
         },
-        { kind: "callout", tone: "warn", body: "The deadline to substitute and some rules (for example, an invoice without an identified customer) are set by each municipality. Corvo does not know that deadline in advance: if the Receita refuses, the error code comes on the substitute invoice. Send `Idempotency-Key` to repeat the call without issuing two substitutes." },
+        { kind: "callout", tone: "warn", body: "The deadline to substitute and some rules (for example, an invoice without an identified customer) are set by each municipality. Corvo does not know that deadline in advance: if the Receita refuses, the error code comes on the substitute invoice. Send `Idempotency-Key` to repeat the call without issuing two substitutes. On MCP, the tool is `nfse_substitute`." },
         { kind: "heading", level: 2, body: "Saved customers" },
         { kind: "text", body: "After an invoice with a customer is accepted, Corvo keeps the CPF or CNPJ, the name and the email of that customer. On the next invoice for the same document, send only `customer.taxId`: the `name` comes from the saved customer. What you send in the request always wins, and an invoice already issued never changes." },
         { kind: "table", head: ["Rule", "Detail"], rows: [
@@ -1397,7 +1397,7 @@ console.log(res.status); // 200`,
 }`,
           },
         },
-        { kind: "callout", tone: "accent", body: "Permissions: `nfse.invoices.view` to list and get; `nfse.invoices.issue` to correct and delete. An unknown customer answers `404`." },
+        { kind: "callout", tone: "accent", body: "Permissions: `nfse.invoices.view` to list and get; `nfse.invoices.issue` to correct and delete. An unknown customer answers `404`. On MCP: `customer_list`, `customer_update` and `customer_delete`." },
         { kind: "heading", level: 2, body: "ISS base deduction" },
         { kind: "text", body: "The issuer can declare in `deduction` an amount that the municipality's legislation allows to be deducted from the ISS tax base. The value is sent in the DPS as `vDedRed/vDR` and reduces the ISS base; the invoice is still issued for the full amount (`amount`)." },
         { kind: "table", head: ["Field / tax", "How it is handled"], rows: [
@@ -3183,6 +3183,30 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "`nfse:write`",
               "`invoice_id`, `reason` (`issue_error`, `service_not_provided` or `other`), `description?` (15–255 characters, required for an authorized NFS-e or one being issued)",
               "`{ invoice_id, status, cancelled_at }` (`cancelled`, `cancelling`, or `processing` with the request recorded)"
+            ],
+            [
+              "`nfse_substitute`",
+              "`nfse:write`",
+              "`invoice_id`, `description` (15–255 characters), `service_description?`, `purchase_order?`, `notes?` (an empty text removes it)",
+              "`{ invoice_id, status, substitutes_invoice_id }` (the substitute, in `queued`). Customer, competence date and amount do not change"
+            ],
+            [
+              "`customer_list`",
+              "`nfse:read`",
+              "`search?` (part of the name or start of the document), `limit?` (1 to 100, default 20), `offset?`",
+              "`{ customers: [{ tax_id, name, email, last_used_at }], total, limit, offset }`"
+            ],
+            [
+              "`customer_update`",
+              "`nfse:write`",
+              "`tax_id` and what changes: `name?`, `email?` (`null` removes it)",
+              "`{ tax_id, name, email, last_used_at }`"
+            ],
+            [
+              "`customer_delete`",
+              "`nfse:write`",
+              "`tax_id`",
+              "`{ tax_id, deleted: true }`"
             ],
             [
               "`nfse_query`",

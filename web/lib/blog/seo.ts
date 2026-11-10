@@ -1,7 +1,7 @@
 import { plain } from "./inline";
 import { BLOG_LOCALE, POSTS, readingMinutes, wordCount } from "./registry";
 import { CLUSTER_LABEL, type BlogPost } from "./types";
-import { OG_IMAGE_PATH, SITE_URL, pageUrl } from "@/lib/seo";
+import { SITE_URL, pageUrl } from "@/lib/seo";
 
 const ORG = { "@id": `${SITE_URL}/#organization` };
 
@@ -11,7 +11,6 @@ export const postPath = (slug: string) => `${BLOG_PATH}/${slug}`;
 export const postUrl = (slug: string) => pageUrl(BLOG_LOCALE, postPath(slug));
 export const feedUrl = () => `${blogUrl()}/feed.xml`;
 
-const imageUrl = `${SITE_URL}${OG_IMAGE_PATH}`;
 const blogId = () => `${blogUrl()}#blog`;
 
 /** BlogPosting + BreadcrumbList + FAQPage for one post. */
@@ -33,7 +32,8 @@ export function postStructuredData(post: BlogPost) {
       timeRequired: `PT${readingMinutes(post)}M`,
       articleSection: CLUSTER_LABEL[post.cluster],
       keywords: post.keywords.join(", "),
-      image: imageUrl,
+      // The share card generated for this post (app/[locale]/blog/[slug]/opengraph-image.tsx).
+      image: `${url}/opengraph-image`,
       author: ORG,
       publisher: ORG,
       isPartOf: { "@type": "Blog", "@id": blogId() },

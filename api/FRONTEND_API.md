@@ -237,6 +237,11 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | GET    | `/invoices/{id}/pdf`                                   | S/K, `nfse.invoices.view`       | Arquivo PDF; nota autorizada ou cancelada após autorização                                                    |
 | POST   | `/invoices/{id}/download-url`                          | S/K, `nfse.invoices.view`       | Body: `{format: "pdf"                                                              | "xml"}`; URL pré-assinada para download |
 | POST   | `/invoices/{id}/email`                                 | S/K, `nfse.invoices.issue`      | Header `Idempotency-Key`; reenvia e-mail da nota; 202                              |
+| POST   | `/invoices/{id}/substitute`                            | S/K, `nfse.invoices.issue`      | JSON: `description` (15–255), `service.description?`, `purchaseOrder?`, `notes?`; header `idempotency-key?`; 202; só nota `authorized` (409 `ERROR_INVOICE_NOT_SUBSTITUTABLE`) |
+| GET    | `/customers`                                           | S/K, `nfse.invoices.view`       | Query: `search?`, `limit?`, `cursor?`; clientes salvos, mais recente primeiro |
+| GET    | `/customers/{taxId}`                                   | S/K, `nfse.invoices.view`       | Cliente salvo por CPF/CNPJ (com ou sem pontuação); 404 se não existe |
+| PATCH  | `/customers/{taxId}`                                   | S/K, `nfse.invoices.issue`      | JSON: `name?`, `email?` (`null` apaga) |
+| DELETE | `/customers/{taxId}`                                   | S/K, `nfse.invoices.issue`      | Apaga o cadastro; as notas emitidas não mudam |
 | POST   | `/invoices/{id}/cancel`                                | S/K, `nfse.invoices.issue`      | JSON: `reason`, `description?`; 200 (queued → cancelled) ou 202 (authorized → cancelling; processing → pedido registrado) |
 | GET    | `/webhooks`                                            | S/K, `webhooks.view`            | Lista sem segredo                                                                  |
 | POST   | `/webhooks`                                            | S/K, `webhooks.manage`          | JSON: `url`, `events`; retorna segredo na criação; 201                             |
@@ -659,6 +664,17 @@ dessas ações.
   dígitos). `service.serviceProfileId` (uuid) é um campo separado de `fiscal`.
   Usado pelo motor fiscal como override da classificação; campos ausentes são preenchidos pelo perfil de serviço da
   empresa.
+- `customer.foreign`: cliente no exterior; **substitui** `customer.taxId` e
+  `customer.address` (enviar os dois junto dá 422 `not_allowed`) e exige
+  `customer.name`. Campos: `taxId` (NIF, até 40) **ou** `noTaxIdReason`
+  (`exempt` | `not_required`), `country` (ISO2, diferente de `BR`), `postalCode`
+  (até 11), `city`, `region`, `street`, `number`, `district` (até 60 cada;
+  `street` até 255) e `complement?` (até 156). Não declara exportação.
+- Cliente salvo: se `customer.taxId` vem sem `name` e o documento já foi usado
+  numa nota aceita, o nome vem do cadastro (`GET /customers`). Sem cadastro o
+  nome sai como `Consumidor`.
+- `purchaseOrder` (até 60, uma linha) e `notes` (até 2000): opcionais, vão na DPS
+  em `serv/infoCompl` (`xPed`, `xInfComp`) e não mudam nenhum tributo.
 - `amount`: > 0, no máximo 2 casas decimais.
 - `competenceDate`: data válida e não futura, exceto com `options.type = SCHEDULE`.
   Emissão agendada é liberada às 00:00 em `America/Sao_Paulo`; a resposta inclui
@@ -850,6 +866,10 @@ proxy do Next). `redirect_uri` aceitos no registro: `https`, `http` em
 | ------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `nfse_issue`        | `nfse:write` | `company_id`, `customer {name, tax_id, email?}`, `services [{description, quantity, unit_price}]`, `competence_date`, `service_code?`, `idempotency_key?` | `{ invoice_id, access_key, status }`                             |
 | `nfse_cancel`       | `nfse:write` | `invoice_id`, `reason` (`issue_error` \| `service_not_provided` \| `other`), `description?` (15-255 caracteres, obrigatória para NFS-e autorizada ou em emissão) | `{ invoice_id, status, cancelled_at }` (`cancelled`, `cancelling` ou `processing` com o pedido registrado) |
+| `nfse_substitute`   | `nfse:write` | `invoice_id`, `description` (15-255), `service_description?`, `purchase_order?`, `notes?` | `{ invoice_id, status, substitutes_invoice_id }` |
+| `customer_list`     | `nfse:read`  | `search?`, `limit?` (1-100), `offset?` | `{ customers, total, limit, offset }` |
+| `customer_update`   | `nfse:write` | `tax_id`, `name?`, `email?` (`null` apaga) | `{ tax_id, name, email, last_used_at }` |
+| `customer_delete`   | `nfse:write` | `tax_id` | `{ tax_id, deleted: true }` |
 | `nfse_query`        | `nfse:read`  | `access_key`                                                                                                                                   | `{ access_key, status, nfse_number, authorized_at, last_error }` |
 | `nfse_list`         | `nfse:read`  | `status?`, `limit?`, `cursor?`                                                                                                                 | `{ invoices, next_cursor }`                                      |
 | `nfse_download_pdf` | `nfse:read`  | `access_key`                                                                                                                                   | `{ access_key, pdf_base64 }`                                     |

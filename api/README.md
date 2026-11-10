@@ -130,7 +130,7 @@ The `test` environment uses a fake provider and needs no certificate. `live` req
 
 ## 🤖 MCP server
 
-`POST /mcp` (also served as `/v1/mcp`) is a JSON-RPC server for AI agents with the tools `company_list`, `nfse_issue`, `nfse_query`, `nfse_list` and `nfse_download_pdf`. Discovery is published at `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`, clients register at `/mcp/register`, and login and approval happen on the dashboard (`DASHBOARD_URL/mcp/authorize`). Each connection stays in the test or live environment chosen at approval. See `FRONTEND_API.md` for the dashboard calls.
+`POST /mcp` (also served as `/v1/mcp`) is a JSON-RPC server for AI agents with the tools `company_list`, `nfse_issue`, `nfse_cancel`, `nfse_substitute`, `nfse_query`, `nfse_list`, `nfse_download_pdf`, `customer_list`, `customer_update` and `customer_delete` (the full list is in `llms.txt`). Discovery is published at `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`, clients register at `/mcp/register`, and login and approval happen on the dashboard (`DASHBOARD_URL/mcp/authorize`). Each connection stays in the test or live environment chosen at approval. See `FRONTEND_API.md` for the dashboard calls.
 
 ## 🗄️ Database
 
