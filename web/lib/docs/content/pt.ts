@@ -1161,7 +1161,7 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
     }
   }'` },
         { kind: "callout", tone: "warn", body: "Informar um cliente no exterior **não declara exportação de serviço**: a nota segue com a mesma tributação. A exportação (com o país do resultado e os dados de comércio exterior) ainda não é suportada. Confirme o enquadramento com o seu contador." },
-        { kind: "callout", tone: "accent", body: "Vale para nota avulsa, lote, agendas e a ferramenta `nfse_issue` do MCP (campo `customer.foreign`, em snake_case). A planilha ainda não aceita cliente no exterior, e ele não entra nos clientes salvos." },
+        { kind: "callout", tone: "accent", body: "Vale para nota avulsa, lote, agendas e a ferramenta `nfse_issue` do MCP (campo `customer.foreign`, em snake_case). Na planilha, use as colunas opcionais de cliente no exterior (veja Importar planilha). Ele não entra nos clientes salvos." },
         { kind: "heading", level: 2, body: "Substituir uma nota" },
         { kind: "text", body: "`POST /v1/invoices/:id/substitute` emite uma nota nova que substitui uma nota **autorizada**. A Receita cancela a original no mesmo ato em que autoriza a substituta, então não fica intervalo sem nota válida. A resposta é `202` com a substituta em `queued`, com `substitutesInvoiceId` apontando para a original." },
         { kind: "table", head: ["Campo", "Regra"], rows: [
@@ -1233,7 +1233,7 @@ console.log(res.status, data.status, data.substitutesInvoiceId); // 202 "queued"
 }`,
           },
         },
-        { kind: "callout", tone: "warn", body: "O prazo para substituir e algumas regras (por exemplo, nota sem tomador identificado) são definidos por cada município. A Corvo não conhece esse prazo de antemão: se a Receita recusar, o código do erro vem na nota substituta. Envie `Idempotency-Key` para repetir a chamada sem emitir duas substitutas." },
+        { kind: "callout", tone: "warn", body: "O prazo para substituir e algumas regras (por exemplo, nota sem tomador identificado) são definidos por cada município. A Corvo não conhece esse prazo de antemão: se a Receita recusar, o código do erro vem na nota substituta. Envie `Idempotency-Key` para repetir a chamada sem emitir duas substitutas. No MCP, a ferramenta é `nfse_substitute`." },
         { kind: "heading", level: 2, body: "Clientes salvos" },
         { kind: "text", body: "Depois que uma nota com tomador é aceita, a Corvo guarda o CPF ou CNPJ, o nome e o e-mail desse cliente. Na nota seguinte para o mesmo documento, basta enviar `customer.taxId`: o `name` vem do cadastro. O que você envia na requisição sempre vale, e a nota já emitida nunca muda." },
         { kind: "table", head: ["Regra", "Detalhe"], rows: [
@@ -1377,7 +1377,7 @@ console.log(res.status); // 200`,
 }`,
           },
         },
-        { kind: "callout", tone: "accent", body: "Permissões: `nfse.invoices.view` para listar e consultar; `nfse.invoices.issue` para corrigir e apagar. Cliente inexistente responde `404`." },
+        { kind: "callout", tone: "accent", body: "Permissões: `nfse.invoices.view` para listar e consultar; `nfse.invoices.issue` para corrigir e apagar. Cliente inexistente responde `404`. No MCP: `customer_list`, `customer_update` e `customer_delete`." },
         { kind: "heading", level: 2, body: "Dedução da base do ISS" },
         { kind: "text", body: "O emitente pode declarar em `deduction` um valor que a legislação do município permite abater da base de cálculo do ISS. O valor vai na DPS em `vDedRed/vDR` e reduz a base do ISS; a nota continua sendo emitida pelo valor total (`amount`)." },
         { kind: "table", head: ["Campo / tributo", "Como é tratado"], rows: [
@@ -3180,6 +3180,30 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "`nfse:write`",
               "`invoice_id`, `reason` (`issue_error`, `service_not_provided` ou `other`), `description?` (15–255 caracteres, obrigatória para NFS-e autorizada ou em emissão)",
               "`{ invoice_id, status, cancelled_at }` (`cancelled`, `cancelling` ou `processing` com o pedido registrado)"
+            ],
+            [
+              "`nfse_substitute`",
+              "`nfse:write`",
+              "`invoice_id`, `description` (15–255 caracteres), `service_description?`, `purchase_order?`, `notes?` (texto vazio remove)",
+              "`{ invoice_id, status, substitutes_invoice_id }` (a substituta, em `queued`). Tomador, competência e valor não mudam"
+            ],
+            [
+              "`customer_list`",
+              "`nfse:read`",
+              "`search?` (parte do nome ou começo do documento), `limit?` (1 a 100, padrão 20), `offset?`",
+              "`{ customers: [{ tax_id, name, email, last_used_at }], total, limit, offset }`"
+            ],
+            [
+              "`customer_update`",
+              "`nfse:write`",
+              "`tax_id` e o que muda: `name?`, `email?` (`null` apaga)",
+              "`{ tax_id, name, email, last_used_at }`"
+            ],
+            [
+              "`customer_delete`",
+              "`nfse:write`",
+              "`tax_id`",
+              "`{ tax_id, deleted: true }`"
             ],
             [
               "`nfse_query`",

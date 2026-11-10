@@ -191,6 +191,8 @@ import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
     InvoiceCancellationPort,
     InvoiceBatchService,
     InvoiceCalculationService,
+    InvoiceSubstitutionService,
+    CustomerDirectory,
     InvoiceLifecycleService,
     InvoiceWebhookPublisher,
     INVOICE_REPOSITORY,

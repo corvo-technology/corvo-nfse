@@ -17,12 +17,14 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
   CANCELLATION_DESCRIPTION_MAX,
+  CANCELLATION_DESCRIPTION_MIN,
   CANCELLATION_REASON_CODES,
   type CancellationReasonCode,
 } from '@/modules/invoice/domain/cancellation-reason';
@@ -295,4 +297,33 @@ export class ImportRowsInput extends ImportIdInput {
 export class ImportFixRowInput extends ImportIdInput {
   @IsInt() @Min(1) line!: number;
   @IsObject() item!: Record<string, unknown>;
+}
+
+export class CustomerListInput {
+  @IsOptional() @IsString() @MaxLength(100) search?: string;
+  @IsOptional() @IsNumber() @Min(1) @Max(100) limit?: number;
+  @IsOptional() @IsNumber() @Min(0) offset?: number;
+}
+
+export class CustomerDeleteInput {
+  @IsString() @IsNotEmpty() tax_id!: string;
+}
+
+export class CustomerUpdateInput extends CustomerDeleteInput {
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(300) name?: string;
+  /** null removes the saved email. */
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsEmail()
+  email?: string | null;
+}
+
+export class NfseSubstituteInput {
+  @IsUUID() invoice_id!: string;
+  @IsString()
+  @MinLength(CANCELLATION_DESCRIPTION_MIN)
+  @MaxLength(CANCELLATION_DESCRIPTION_MAX)
+  description!: string;
+  @IsOptional() @IsString() service_description?: string;
+  @IsOptional() @IsString() @MaxLength(60) purchase_order?: string;
+  @IsOptional() @IsString() @MaxLength(2000) notes?: string;
 }

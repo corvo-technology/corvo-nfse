@@ -53,6 +53,39 @@ outbox message. Once a queue publication is acknowledged, a Redis reset can
 lose the job while the invoice stays queued; document recovery does not recover
 queued invoices.
 
+## Complementary info, saved customers, customer abroad and substitution
+
+purchaseOrder (max 60 chars, one line) and notes (max 2000) on POST /v1/invoices
+go in the DPS as serv/infoCompl/xPed and xInfComp; they change no tax. A blank
+value is dropped. Without a fiscal calculation snapshot the invoice is rejected
+instead of issued without them.
+
+Saved customers (table customers, per tenant and environment, row level
+security): after an invoice with a CPF/CNPJ and a name is accepted, the customer
+is remembered; on the next invoice with only customer.taxId the name is filled
+by InvoiceIntakeService (the request is not changed, so the idempotency hash
+is). Without a saved customer the name stays "Consumidor". GET /v1/customers
+(search), GET/PATCH/DELETE /v1/customers/:taxId; MCP customer_list,
+customer_update, customer_delete.
+
+Customer abroad: customer.foreign replaces customer.taxId and customer.address
+(taxId = NIF or noTaxIdReason exempt|not_required, country ISO2 other than BR,
+postalCode, city, region, street, number, district, complement?); customer.name
+is required. The DpsBuilder adds toma with NIF or cNaoNIF and end/endExt after
+buildDps. It does not declare an export: the tax treatment does not change.
+Spreadsheets accept the optional columns tomador_nif, tomador_sem_nif,
+tomador_pais, tomador_codigo_postal, tomador_cidade, tomador_regiao,
+tomador_logradouro, tomador_numero, tomador_bairro, tomador_complemento.
+
+Substitution: POST /v1/invoices/:id/substitute (MCP nfse_substitute) with
+description (15-255 chars, subst/xMotivo, reason 99) plus optional
+service.description, purchaseOrder and notes. Customer, competence date and
+amount are copied (Sefin rule E0061 for MEI and Simples Nacional). 202 with the
+substitute queued and substitutesInvoiceId; the original stays authorized until
+the substitute is authorized, then goes authorized -> cancelled
+(nfse.invoice.cancelled with substitutedBy). A refusal leaves it authorized. The
+substitute uses a credit. Not authorized -> 409 ERROR_INVOICE_NOT_SUBSTITUTABLE.
+
 ## Invoice cancellation
 
 POST /v1/invoices/:id/cancel with {"reason": "issue_error" | "service_not_provided"
@@ -260,7 +293,7 @@ at /.well-known/oauth-protected-resource and /.well-known/oauth-authorization-se
 GET /mcp/authorize redirects to the dashboard (DASHBOARD_URL/mcp/authorize), where
 login and consent happen; the dashboard calls GET/POST /v1/mcp/consent with its
 session cookie. Scopes nfse:read, nfse:write (a member can only grant what their
-role allows). Tools: nfse_issue, nfse_issue_batch, nfse_cancel, nfse_query, nfse_list, nfse_download_pdf,
+role allows). Tools: nfse_issue, nfse_issue_batch, nfse_cancel, nfse_substitute, nfse_query, nfse_list, nfse_download_pdf, customer_list, customer_update, customer_delete,
 tool
 failures return isError results. The user picks test or live on the consent screen; the connection stays in that environment (reconnect to switch). Dashboard lists
 connections with usage (GET /v1/mcp/connections) and revokes (DELETE
