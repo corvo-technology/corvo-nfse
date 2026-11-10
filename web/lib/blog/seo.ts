@@ -63,7 +63,7 @@ export function postStructuredData(post: BlogPost) {
   ];
 }
 
-export const BLOG_TITLE = "Blog da Corvo: nota fiscal de serviço (NFS-e) sem complicação";
+export const BLOG_TITLE = "Blog da Corvo: como emitir nota fiscal de serviço (NFS-e)";
 export const BLOG_DESCRIPTION =
   "Guias em português simples para MEI e empresas do Simples Nacional emitirem a nota fiscal de serviço (NFS-e): regras, certificado digital, planilha, agenda e IA.";
 

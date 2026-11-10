@@ -3,7 +3,7 @@ import type { BlogPost } from "../types";
 export const post: BlogPost = {
   slug: "como-emitir-nota-fiscal-de-servico-nfse",
   title: "Como emitir nota fiscal de serviço (NFS-e): guia simples para MEI e Simples Nacional",
-  seoTitle: "Como emitir nota fiscal de serviço (NFS-e) sem complicação",
+  seoTitle: "Como emitir nota fiscal de serviço (NFS-e) para MEI",
   description:
     "Entenda o que é a NFS-e, quem precisa emitir e os três jeitos de emitir a nota de serviço: no portal do governo, com a Corvo ou pelo seu contador.",
   publishedAt: "2026-11-10",
@@ -22,7 +22,7 @@ export const post: BlogPost = {
   blocks: [
     {
       kind: "p",
-      text: "Você prestou o serviço, o cliente pagou, e agora falta a nota. Se isso soa como uma tarefa que sempre sobra para o fim do mês, este guia é para você. Aqui está o essencial, em português simples, sem termo técnico que você não precise saber.",
+      text: "Prestou o serviço, o cliente pagou e falta a nota. Aqui estão as regras básicas e as formas de emitir, com cada termo explicado na primeira vez que aparece.",
     },
     { kind: "h2", text: "O que é a NFS-e" },
     {
@@ -72,11 +72,11 @@ export const post: BlogPost = {
     {
       kind: "ol",
       items: [
-        "**Crie a conta.** É grátis e não pede cartão de crédito.",
+        "Crie a conta. É grátis e não pede cartão de crédito.",
         "**Cadastre a empresa:** razão social, CNPJ, se é MEI ou Simples Nacional e o município. Antes de emitir notas de verdade, o painel também pede a **inscrição municipal** da empresa.",
-        "**Emita uma nota de teste.** Ela não tem valor fiscal, não precisa de certificado e não custa nada. Serve para você conhecer o painel sem medo de errar.",
+        "Emita uma nota de teste. Ela não tem valor fiscal, não precisa de certificado e não custa nada. Serve para você conhecer o painel sem medo de errar.",
         "**Envie o certificado digital A1 da empresa** para emitir notas de verdade. Não sabe o que é isso? Veja o [guia do certificado digital A1](/pt/blog/certificado-digital-a1-o-que-e-quando-precisa).",
-        "**Emita a nota real.** A primeira é grátis.",
+        "Emita a nota real. A primeira é grátis.",
       ],
     },
     { kind: "h2", text: "O que a Corvo faz por você" },

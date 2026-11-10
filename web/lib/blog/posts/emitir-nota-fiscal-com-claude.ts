@@ -22,7 +22,7 @@ export const post: BlogPost = {
   blocks: [
     {
       kind: "p",
-      text: "Imagine terminar um atendimento e, em vez de abrir um sistema, escrever uma frase: “emita a nota desse serviço”. É isso que a Corvo permite com assistentes de inteligência artificial como o Claude. Você conversa, confere e confirma. A emissão é feita pela sua própria conta, com a sua empresa.",
+      text: "A Corvo funciona com assistentes de inteligência artificial como o Claude: você escreve “emita a nota desse serviço”, o assistente prepara os dados e você confirma. A nota sai pela sua conta, com a sua empresa.",
     },
     { kind: "h2", text: "O que o assistente consegue fazer" },
     {
@@ -81,11 +81,11 @@ export const post: BlogPost = {
     {
       kind: "ul",
       items: [
-        "**Peça para conferir antes.** Escreva: “antes de emitir, me mostre os dados da nota e espere eu confirmar”.",
+        "Peça para conferir antes. Escreva: “antes de emitir, me mostre os dados da nota e espere eu confirmar”.",
         "**Confira você mesmo** os dados da empresa, o código do serviço e o regime tributário. O assistente não sabe isso melhor que você ou o seu contador.",
         "**Nunca envie o certificado digital nem senhas** na conversa. O certificado se envia só pelo painel da Corvo. Veja o [guia do certificado A1](/pt/blog/certificado-digital-a1-o-que-e-quando-precisa).",
         "**Use produção só para notas reais**, depois de testar.",
-        "**Dê só a permissão necessária.** Se você só quer consultar, não libere a emissão.",
+        "Dê só a permissão necessária. Se você só quer consultar, não libere a emissão.",
       ],
     },
     { kind: "h2", text: "Conversa, painel ou planilha?" },

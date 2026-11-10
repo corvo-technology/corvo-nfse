@@ -22,7 +22,7 @@ export const post: BlogPost = {
   blocks: [
     {
       kind: "p",
-      text: "Mensalidades, contratos de manutenção, assessorias, planos de acompanhamento: quando o serviço é o mesmo e o cliente também, repetir o formulário da nota todo mês é um trabalho que ninguém merece. A agenda faz isso por você.",
+      text: "Mensalidades, contratos de manutenção, assessorias, planos de acompanhamento: quando o serviço é o mesmo e o cliente também, repetir o formulário da nota todo mês é tempo perdido. A agenda existe para esse caso.",
     },
     { kind: "h2", text: "Como funciona" },
     {
@@ -38,7 +38,7 @@ export const post: BlogPost = {
     },
     {
       kind: "p",
-      text: "Na prática, a agenda serve bem para mensalidades, contratos de manutenção, assessorias e planos de acompanhamento: tudo que se repete com o mesmo cliente, o mesmo serviço e o mesmo valor.",
+      text: "A agenda serve bem para mensalidades, contratos de manutenção, assessorias e planos de acompanhamento: tudo que se repete com o mesmo cliente, o mesmo serviço e o mesmo valor.",
     },
     { kind: "h2", text: "Passo a passo" },
     {

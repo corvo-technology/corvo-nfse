@@ -22,7 +22,7 @@ export const post: BlogPost = {
   blocks: [
     {
       kind: "p",
-      text: "Quem presta o mesmo tipo de serviço para muita gente, como uma clínica, uma escola, um profissional que atende empresas ou um estúdio, conhece o fim do mês: uma lista de clientes e a tarefa de repetir o mesmo formulário dezenas de vezes. A planilha acaba com isso.",
+      text: "Quem presta o mesmo tipo de serviço para muita gente, como uma clínica, uma escola, um profissional que atende empresas ou um estúdio, conhece o fim do mês: uma lista de clientes e o mesmo formulário preenchido dezenas de vezes. A planilha troca isso por um envio só.",
     },
     { kind: "h2", text: "O que você precisa" },
     {

@@ -22,7 +22,7 @@ export const post: BlogPost = {
   blocks: [
     {
       kind: "p",
-      text: "“Certificado digital” é uma das expressões que mais assustam quem só quer emitir uma nota. A boa notícia: o conceito é simples e, na maioria dos casos, você faz isso uma vez por ano.",
+      text: "Certificado digital soa como burocracia, mas o conceito é simples e, em geral, você só lida com ele quando precisa renovar.",
     },
     { kind: "h2", text: "O que é o certificado A1" },
     {
@@ -61,7 +61,7 @@ export const post: BlogPost = {
         "Tenha o arquivo do certificado A1 da empresa e a **senha** dele, que você definiu na compra.",
         "Entre no painel da Corvo e abra a página da empresa que vai emitir.",
         "Clique em **Enviar certificado**, escolha o arquivo (.p12 ou .pfx, de até 50 KB) e informe a senha. A senha é usada só nesse envio.",
-        "Pronto: a empresa fica apta a emitir notas reais.",
+        "Depois disso, a empresa pode emitir notas reais.",
       ],
     },
     {
@@ -76,7 +76,7 @@ export const post: BlogPost = {
     {
       kind: "ul",
       items: [
-        "**Não mande o certificado por WhatsApp, e-mail ou chat.** Envie somente pelo painel de quem vai usá-lo.",
+        "Não mande o certificado por WhatsApp, e-mail ou chat. Envie somente pelo painel de quem vai usá-lo.",
         "**Não compartilhe a senha** junto com o arquivo.",
         "**Guarde uma cópia** em um lugar seguro, como o gerenciador de senhas ou um disco protegido.",
         "**Anote a data de validade** e renove antes de vencer, para não ficar sem poder emitir.",

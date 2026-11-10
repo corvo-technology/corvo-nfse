@@ -49,3 +49,16 @@ export function plain(text: string): string {
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/`([^`]+)`/g, "$1");
 }
+
+/** Keeps "NFS-e" in one piece when a title wraps, instead of breaking at the hyphen. */
+export function NoBreakTerms({ text }: { text: string }): ReactNode {
+  return text.split(/(NFS-e)/g).map((part, index) =>
+    part === "NFS-e" ? (
+      <span key={index} className="whitespace-nowrap">
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
+}

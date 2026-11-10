@@ -22,7 +22,7 @@ export const post: BlogPost = {
   blocks: [
     {
       kind: "p",
-      text: "Se a sua empresa é do Simples Nacional e emite nota de serviço pelo site da prefeitura, esse aviso é para você: a forma de emitir mudou. Aqui vai o que aconteceu, sem juridiquês, e o que você precisa fazer.",
+      text: "Se a sua empresa é do Simples Nacional e emite nota de serviço pelo site da prefeitura, a forma de emitir mudou. Este texto explica o que aconteceu e o que fazer.",
     },
     { kind: "h2", text: "O que mudou" },
     {
@@ -47,10 +47,10 @@ export const post: BlogPost = {
     {
       kind: "ol",
       items: [
-        "**Confirme que sua empresa é ME ou EPP optante do Simples Nacional.** Seu contador ou o seu comprovante de opção mostra isso.",
-        "**Veja como você emite hoje.** Se é pelo site da prefeitura, vale perguntar ao contador como a sua cidade ficou com a mudança.",
+        "Confirme que sua empresa é ME ou EPP optante do Simples Nacional. Seu contador ou o seu comprovante de opção mostra isso.",
+        "Veja como você emite hoje. Se é pelo site da prefeitura, vale perguntar ao contador como a sua cidade ficou com a mudança.",
         "**Escolha como emitir no sistema nacional:** pelo portal do governo, pelo contador ou por um emissor como a Corvo.",
-        "**Teste antes de emitir de verdade.** Na Corvo, o ambiente de teste é grátis e não tem valor fiscal.",
+        "Teste antes de emitir de verdade. Na Corvo, o ambiente de teste é grátis e não tem valor fiscal.",
         "**Separe o certificado digital A1 da empresa**, se for emitir por um emissor. O [guia do certificado A1](/pt/blog/certificado-digital-a1-o-que-e-quando-precisa) explica o que é.",
       ],
     },

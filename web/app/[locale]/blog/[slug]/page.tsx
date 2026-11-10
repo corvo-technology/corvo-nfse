@@ -5,11 +5,11 @@ import Link from "next/link";
 import { AnswerBox } from "@/components/blog/answer-box";
 import { CtaBand } from "@/components/blog/cta-band";
 import { PostBody } from "@/components/blog/post-body";
-import { PostCard } from "@/components/blog/post-card";
+import { PostRow } from "@/components/blog/post-row";
 import { Footer } from "@/components/landing/footer";
 import { Nav } from "@/components/landing/nav";
 import { JsonLd } from "@/components/seo/json-ld";
-import { Inline } from "@/lib/blog/inline";
+import { Inline, NoBreakTerms } from "@/lib/blog/inline";
 import {
   BLOG_LOCALE,
   FAQ_ANCHOR,
@@ -76,7 +76,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ local
       <JsonLd data={postStructuredData(post)} />
       <Nav />
       <main id="content" className="mx-auto w-full max-w-[1120px] px-6 pb-24 pt-10 sm:px-10 sm:pt-14">
-        <nav aria-label="Você está em" className="font-mono text-[12px] text-text-4">
+        <nav aria-label="Você está em" className="text-[13px] text-text-4">
           <ol className="flex flex-wrap items-center gap-2">
             <li>
               <Link href="/pt" className="transition-colors hover:text-text-2">
@@ -95,17 +95,11 @@ export default async function BlogPostPage({ params }: { params: Promise<{ local
         <article className="mt-8 grid min-w-0 gap-10 lg:grid-cols-[minmax(0,720px)_minmax(0,1fr)] lg:gap-x-16 lg:gap-y-0">
           <div className="min-w-0 lg:col-start-1 lg:row-start-1">
             <header>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] uppercase tracking-[0.08em] text-text-4">
-                <span className="rounded-full border border-accent-border px-2.5 py-0.5 text-accent">
-                  {CLUSTER_LABEL[post.cluster]}
-                </span>
-                <span>{readingMinutes(post)} min de leitura</span>
-              </div>
-              <h1 className="mt-5 text-[clamp(30px,5.4vw,50px)] font-semibold leading-[1.06] tracking-[-0.03em] text-balance">
-                {post.title}
+              <h1 className="text-[clamp(30px,5.4vw,50px)] font-semibold leading-[1.06] tracking-[-0.03em] text-balance">
+                <NoBreakTerms text={post.title} />
               </h1>
-              <p className="mt-5 font-mono text-[12.5px] leading-[1.7] text-text-4">
-                Por Corvo · Publicado em <time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
+              <p className="mt-5 text-[14px] leading-[1.7] text-text-4">
+                {CLUSTER_LABEL[post.cluster]} · {readingMinutes(post)} min de leitura · Publicado em <time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
                 {updated && (
                   <>
                     {" "}
@@ -121,21 +115,18 @@ export default async function BlogPostPage({ params }: { params: Promise<{ local
           {/* Mobile: title, answer, contents, body. Desktop: contents sit in a sticky right column. */}
           <nav
             aria-label="Neste artigo"
-            className="rounded-xl border border-border-soft bg-surface px-5 py-4 lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start lg:border-0 lg:bg-transparent lg:px-0 lg:py-0"
+            className="rounded-lg border border-border-soft bg-surface px-5 py-4 lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start lg:border-0 lg:bg-transparent lg:px-0 lg:py-0"
           >
-            <p className="eyebrow">Neste artigo</p>
-            <ol className="mt-3 space-y-2.5 text-[14px] leading-[1.45]">
-              {toc.map((entry, index) => (
-                <li key={entry.id} className="flex gap-3">
-                  <span aria-hidden="true" className="font-mono text-[11px] leading-[1.9] text-text-5">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
+            <p className="text-[13px] font-semibold text-text-2">Neste artigo</p>
+            <ul className="mt-3 space-y-2 border-l border-border-soft pl-4 text-[14px] leading-[1.45]">
+              {toc.map((entry) => (
+                <li key={entry.id}>
                   <a href={`#${entry.id}`} className="text-text-3 transition-colors hover:text-text">
                     {entry.text}
                   </a>
                 </li>
               ))}
-            </ol>
+            </ul>
           </nav>
 
           <div className="min-w-0 lg:col-start-1 lg:row-start-2">
@@ -149,9 +140,6 @@ export default async function BlogPostPage({ params }: { params: Promise<{ local
                   id={FAQ_ANCHOR}
                   className="scroll-mt-24 text-[26px] font-semibold leading-[1.2] tracking-[-0.02em] sm:text-[30px]"
                 >
-                  <span aria-hidden="true" className="mb-2 block font-mono text-[12px] font-normal tracking-[0.08em] text-accent">
-                    FAQ
-                  </span>
                   Perguntas frequentes
                 </h2>
                 <div className="mt-6 divide-y divide-border-soft border-y border-border-soft">
@@ -175,9 +163,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ local
           <h2 id="leia-tambem" className="text-[22px] font-semibold tracking-[-0.02em]">
             Leia também
           </h2>
-          <ul className="mt-6 grid gap-5 md:grid-cols-2">
+          <ul className="mt-4 border-y border-border-soft">
             {related.map((item) => (
-              <PostCard key={item.slug} post={item} headingLevel="h3" />
+              <PostRow key={item.slug} post={item} headingLevel="h3" />
             ))}
           </ul>
         </section>
