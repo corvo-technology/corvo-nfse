@@ -15,6 +15,7 @@ import {
   Webhook,
   X,
   type LucideIcon,
+  Contact,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ const navMain: NavItem[] = [
   { key: "Sidebar.nav.overview", href: "/app", icon: LayoutDashboard },
   { key: "Sidebar.nav.companies", href: "/app/companies", icon: Building2 },
   { key: "Sidebar.nav.invoices", href: "/app/invoices", icon: FileText },
+  { key: "Sidebar.nav.customers", href: "/app/customers", icon: Contact },
 ];
 
 const navAccount: NavItem[] = [

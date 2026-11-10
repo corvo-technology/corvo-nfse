@@ -67,7 +67,8 @@
       "invoices": "Notas fiscais",
       "billing": "Plano",
       "agents": "Agentes de IA",
-      "integrations": "Integrações"
+      "integrations": "Integrações",
+      "customers": "Clientes"
     },
     "account": "CONTA",
     "balance": "SALDO",
@@ -1224,7 +1225,8 @@
       "deduction": "Opcional. Valor que a legislação do município permite abater da base do ISS. Ele é descontado da base de cálculo e enviado na nota. O valor é declarado por você: o Corvo não confere se a dedução é permitida, então confirme com seu contador.",
       "serviceCodeFallback": "Opcional. Sem código na nota nem na empresa, usamos {code} (10.09, representação). Escolha o código da sua atividade.",
       "purchaseOrder": "Pedido, ordem de compra ou ordem de serviço que o cliente pediu para constar na nota. Não muda nenhum imposto.",
-      "notes": "Texto livre impresso na nota, como parcela ou número do contrato. Não muda nenhum imposto."
+      "notes": "Texto livre impresso na nota, como parcela ou número do contrato. Não muda nenhum imposto.",
+      "savedCustomer": "Cliente já usado em outra nota. Preenchemos o nome para você."
     },
     "summary": {
       "title": "Resumo da nota",
@@ -3076,5 +3078,46 @@
     "title": "O portal nacional da NFS-e não está respondendo.",
     "titleSince": "O portal nacional da NFS-e não responde desde {time}.",
     "body": "Suas notas estão guardadas na fila e serão enviadas assim que ele voltar. Não é preciso refazer nada."
+  },
+  "Customers": {
+    "title": "Clientes",
+    "subtitle": "Quem você já faturou. Na próxima nota, basta o CPF ou CNPJ: o nome vem preenchido.",
+    "loadFailed": "Não foi possível carregar os clientes.",
+    "loadMore": "Carregar mais",
+    "search": {
+      "label": "Buscar cliente",
+      "placeholder": "Nome, CPF ou CNPJ"
+    },
+    "columns": {
+      "name": "Nome",
+      "taxId": "CPF/CNPJ",
+      "email": "E-mail",
+      "lastUsed": "Última nota",
+      "actions": "Ações"
+    },
+    "empty": {
+      "title": "Nenhum cliente salvo ainda",
+      "body": "Os clientes aparecem aqui sozinhos depois da primeira nota emitida com CPF ou CNPJ e nome.",
+      "action": "Emitir uma nota",
+      "noMatch": "Nenhum cliente com esse nome ou documento."
+    },
+    "edit": {
+      "action": "Corrigir",
+      "open": "Corrigir {name}",
+      "title": "Corrigir cliente",
+      "optional": "opcional",
+      "emailHint": "Fica salvo para preencher o formulário. Deixe vazio para apagar.",
+      "note": "A correção vale para as próximas notas. As notas já emitidas não mudam.",
+      "save": "Salvar",
+      "nameRequired": "Informe o nome.",
+      "failed": "Não foi possível salvar o cliente."
+    },
+    "remove": {
+      "open": "Excluir {name}",
+      "title": "Excluir este cliente?",
+      "body": "{name} deixa de aparecer aqui e o nome não será mais preenchido. As notas já emitidas não mudam.",
+      "confirm": "Excluir cliente",
+      "failed": "Não foi possível excluir o cliente."
+    }
   }
 }

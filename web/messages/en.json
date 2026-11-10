@@ -67,7 +67,8 @@
       "invoices": "Tax invoices",
       "billing": "Plan",
       "agents": "AI agents",
-      "integrations": "Integrations"
+      "integrations": "Integrations",
+      "customers": "Customers"
     },
     "account": "ACCOUNT",
     "balance": "BALANCE",
@@ -1224,7 +1225,8 @@
       "deduction": "Optional. An amount your city's legislation allows you to deduct from the ISS base. It is subtracted from the tax base and sent on the invoice. You declare the value: Corvo does not check whether the deduction is allowed, so confirm it with your accountant.",
       "serviceCodeFallback": "Optional. With no code on the invoice or the company, we use {code} (10.09, representation). Pick your own activity code.",
       "purchaseOrder": "Purchase order or service order number the customer asked to see on the invoice. It changes no tax.",
-      "notes": "Free text printed on the invoice, such as the instalment or contract number. It changes no tax."
+      "notes": "Free text printed on the invoice, such as the instalment or contract number. It changes no tax.",
+      "savedCustomer": "You have invoiced this customer before, so we filled in the name."
     },
     "summary": {
       "title": "Invoice summary",
@@ -3076,5 +3078,46 @@
     "title": "The national NFS-e portal is not answering.",
     "titleSince": "The national NFS-e portal has not answered since {time}.",
     "body": "Your invoices are kept in the queue and will be sent as soon as it is back. Nothing needs to be redone."
+  },
+  "Customers": {
+    "title": "Customers",
+    "subtitle": "Who you have invoiced. On the next invoice the CPF or CNPJ is enough: the name is filled in.",
+    "loadFailed": "Could not load the customers.",
+    "loadMore": "Load more",
+    "search": {
+      "label": "Search customer",
+      "placeholder": "Name, CPF or CNPJ"
+    },
+    "columns": {
+      "name": "Name",
+      "taxId": "CPF/CNPJ",
+      "email": "Email",
+      "lastUsed": "Last invoice",
+      "actions": "Actions"
+    },
+    "empty": {
+      "title": "No saved customers yet",
+      "body": "Customers show up here on their own after the first invoice issued with a CPF or CNPJ and a name.",
+      "action": "Issue an invoice",
+      "noMatch": "No customer with that name or document."
+    },
+    "edit": {
+      "action": "Correct",
+      "open": "Correct {name}",
+      "title": "Correct customer",
+      "optional": "optional",
+      "emailHint": "Kept to fill in the form. Leave it empty to remove it.",
+      "note": "The correction applies to the next invoices. Invoices already issued do not change.",
+      "save": "Save",
+      "nameRequired": "Enter the name.",
+      "failed": "Could not save the customer."
+    },
+    "remove": {
+      "open": "Delete {name}",
+      "title": "Delete this customer?",
+      "body": "{name} no longer shows up here and the name will not be filled in anymore. Invoices already issued do not change.",
+      "confirm": "Delete customer",
+      "failed": "Could not delete the customer."
+    }
   }
 }

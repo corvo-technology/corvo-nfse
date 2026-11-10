@@ -9,10 +9,10 @@ import { companySetup } from "@/lib/company-setup";
 import type { Company } from "@/lib/types";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ environment: "test" as "test" | "live", list: vi.fn(), create: vi.fn(), schedule: vi.fn(), push: vi.fn() }));
+const mocks = vi.hoisted(() => ({ environment: "test" as "test" | "live", list: vi.fn(), create: vi.fn(), schedule: vi.fn(), push: vi.fn(), findCustomer: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: () => false, fiscalEnvironment: mocks.environment }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, back: vi.fn() }) }));
-vi.mock("@/lib/api", async (original) => ({ ...await original<typeof import("@/lib/api")>(), companies: { list: mocks.list }, invoices: { create: mocks.create }, schedules: { create: mocks.schedule } }));
+vi.mock("@/lib/api", async (original) => ({ ...await original<typeof import("@/lib/api")>(), companies: { list: mocks.list }, invoices: { create: mocks.create }, schedules: { create: mocks.schedule }, customers: { find: mocks.findCustomer } }));
 
 const company: Company = {
   id: "company-1", tenantId: "tenant-1", legalName: "Example LTDA", taxId: "11222333000181", taxRegime: "Simples Nacional", simpleNational: true, simplesRate: "6.54",
@@ -40,7 +40,7 @@ async function prepareInvoice() {
   fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.sendEmail.label) }));
 }
 beforeEach(() => {
-  mocks.environment = "test"; mocks.list.mockReset(); mocks.create.mockReset(); mocks.schedule.mockReset(); mocks.push.mockReset();
+  mocks.environment = "test"; mocks.list.mockReset(); mocks.create.mockReset(); mocks.schedule.mockReset(); mocks.push.mockReset(); mocks.findCustomer.mockReset(); mocks.findCustomer.mockResolvedValue(null);
   mocks.list.mockResolvedValue({ items: [company], hasMore: false, nextCursor: null }); mocks.create.mockResolvedValue({ id: "invoice-1" }); mocks.schedule.mockResolvedValue({ id: "schedule-1" });
   HTMLElement.prototype.scrollIntoView = vi.fn();
 });
@@ -122,6 +122,27 @@ describe("Company fiscal setup", () => {
 });
 
 describe("Invoice company defaults", () => {
+  it("fills the name and the email of a customer saved from an earlier invoice, once the document is complete", async () => {
+    mocks.findCustomer.mockResolvedValue({ taxId: "52998224725", name: "Maria da Silva", email: "maria@example.com", lastUsedAt: "", createdAt: "", updatedAt: "" });
+    renderUI(<NewInvoicePage />);
+    await waitFor(() => expect(screen.getByRole("option", { name: company.legalName })).toBeTruthy());
+    fill("CPF or CNPJ", "5299822472");
+    expect(mocks.findCustomer).not.toHaveBeenCalled();
+    fill("CPF or CNPJ", "52998224725");
+    await waitFor(() => expect(field("Name /").value).toBe("Maria da Silva"));
+    expect(mocks.findCustomer).toHaveBeenCalledWith("52998224725", expect.anything());
+    expect(field("Billing email").value).toBe("maria@example.com");
+    expect(screen.getByText(messages.Invoices.hints.savedCustomer)).toBeTruthy();
+  });
+  it("never replaces a name the person already typed", async () => {
+    mocks.findCustomer.mockResolvedValue({ taxId: "52998224725", name: "Maria da Silva", email: null, lastUsedAt: "", createdAt: "", updatedAt: "" });
+    renderUI(<NewInvoicePage />);
+    await waitFor(() => expect(screen.getByRole("option", { name: company.legalName })).toBeTruthy());
+    fill("Name /", "Maria S. Souza"); fill("CPF or CNPJ", "52998224725");
+    await waitFor(() => expect(mocks.findCustomer).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(field("Name /").value).toBe("Maria S. Souza");
+  });
   it("uses the paginated company list, sends its CNPJ and omits inherited service values", async () => {
     await prepareInvoice();
     expect(screen.getByText(/Company default: 010101/)).toBeTruthy(); expect(screen.getByRole("combobox", { name: /Default service code|Tax code/i })).toBeTruthy();
