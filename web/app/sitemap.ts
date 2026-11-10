@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { DOC_SLUGS } from "@/lib/docs/registry";
-import { DEFAULT_SEO_LOCALE, SEO_LOCALES, pageUrl } from "@/lib/seo";
+import { BLOG_LOCALE, POSTS } from "@/lib/blog/registry";
+import { BLOG_PATH, postPath } from "@/lib/blog/seo";
+import { DEFAULT_SEO_LOCALE, SEO_LOCALES, type SeoLocale, pageUrl } from "@/lib/seo";
 
 type Frequency = "weekly" | "monthly" | "yearly";
 interface SitemapPage {
@@ -9,6 +11,8 @@ interface SitemapPage {
   priority: number;
   /** ISO date of the last real content change. Update it when the page changes. */
   lastModified: string;
+  /** Languages the page exists in. Omitted means every language. */
+  locales?: readonly SeoLocale[];
 }
 
 /** Last content change per group of pages. */
@@ -39,25 +43,36 @@ export const PAGES: SitemapPage[] = [
 ];
 
 /**
- * Blog hook: return the published posts here once the blog exists, as
- * { path: "/blog/<slug>", lastModified: "<ISO date>" }. Empty on purpose, no content yet.
+ * The blog index and every post, in Portuguese only. `lastModified` is the date the content
+ * really changed (`updatedAt`), and the index moves with its newest post.
  */
 export function blogPages(): SitemapPage[] {
-  return [];
+  const locales = [BLOG_LOCALE] as const;
+  const newest = POSTS.reduce((max, post) => (post.updatedAt > max ? post.updatedAt : max), "1970-01-01");
+  return [
+    { path: BLOG_PATH, changeFrequency: "weekly", priority: 0.8, lastModified: newest, locales },
+    ...POSTS.map((post) => ({
+      path: postPath(post.slug),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+      lastModified: post.updatedAt,
+      locales,
+    })),
+  ];
 }
 
-/** One entry per language, each listing every translation (hreflang). */
+/** One entry per language the page exists in, each listing its translations (hreflang). */
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [...PAGES, ...blogPages()].flatMap(({ path, changeFrequency, priority, lastModified }) =>
-    SEO_LOCALES.map((locale) => ({
+  return [...PAGES, ...blogPages()].flatMap(({ path, changeFrequency, priority, lastModified, locales = SEO_LOCALES }) =>
+    locales.map((locale) => ({
       url: pageUrl(locale, path),
       lastModified,
       changeFrequency,
       priority,
       alternates: {
         languages: {
-          ...Object.fromEntries(SEO_LOCALES.map((value) => [value, pageUrl(value, path)])),
-          "x-default": pageUrl(DEFAULT_SEO_LOCALE, path),
+          ...Object.fromEntries(locales.map((value) => [value, pageUrl(value, path)])),
+          "x-default": pageUrl(locales.length === 1 ? locales[0] : DEFAULT_SEO_LOCALE, path),
         },
       },
     })),

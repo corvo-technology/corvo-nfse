@@ -24,7 +24,7 @@ export function Footer() {
               {t("features")}
             </Link>
             <Link
-              href="#pricing"
+              href={`/${locale}#pricing`}
               className="hover:text-text-2 transition-colors"
             >
               {t("pricing")}
@@ -34,6 +34,13 @@ export function Footer() {
               className="hover:text-text-2 transition-colors"
             >
               {t("docs")}
+            </Link>
+            {/* The blog exists in Portuguese only, so the link always goes to /pt/blog. */}
+            <Link
+              href="/pt/blog"
+              className="hover:text-text-2 transition-colors"
+            >
+              {t("blog")}
             </Link>
             <Link
               href={`/${locale}/terms`}

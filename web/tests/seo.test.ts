@@ -116,7 +116,27 @@ describe("robots and sitemap", () => {
               "/mcp/",
               "/api/",
             ],
+            "userAgent": "Claude-SearchBot",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
             "userAgent": "PerplexityBot",
+          },
+          {
+            "allow": "/",
+            "disallow": [
+              "/app/",
+              "/login",
+              "/mcp/",
+              "/api/",
+            ],
+            "userAgent": "Perplexity-User",
           },
           {
             "allow": "/",

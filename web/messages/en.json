@@ -704,7 +704,8 @@
     "docs": "Docs",
     "pricing": "Pricing",
     "signIn": "Sign in",
-    "startFree": "Start free"
+    "startFree": "Start free",
+    "blog": "Blog"
   },
   "Language": {
     "en": "EN",
@@ -918,7 +919,8 @@
     "security": "Security",
     "terms": "Terms",
     "privacy": "Privacy Notice",
-    "cookiePreferences": "Cookie preferences"
+    "cookiePreferences": "Cookie preferences",
+    "blog": "Blog"
   },
   "CookieConsent": {
     "message": "We use cookies and similar technologies, including Google Analytics and the Meta Pixel, to improve your experience, measure site traffic and understand signup campaigns. By clicking \"Accept\", you agree to this use.",
