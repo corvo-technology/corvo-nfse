@@ -42,6 +42,21 @@ export class AddressInput {
   @IsOptional() @IsString() zip?: string;
 }
 
+/** A customer outside Brazil. Replaces tax_id (CPF/CNPJ) and address. */
+export class ForeignCustomerInput {
+  @IsOptional() @IsString() tax_id?: string;
+  @IsOptional() @IsIn(['exempt', 'not_required']) no_tax_id_reason?:
+    'exempt' | 'not_required';
+  @IsString() country!: string;
+  @IsString() postal_code!: string;
+  @IsString() city!: string;
+  @IsString() region!: string;
+  @IsString() street!: string;
+  @IsString() number!: string;
+  @IsString() district!: string;
+  @IsOptional() @IsString() complement?: string;
+}
+
 export class CustomerInput {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() tax_id?: string;
@@ -50,6 +65,10 @@ export class CustomerInput {
   @ValidateNested()
   @Type(() => AddressInput)
   address?: AddressInput;
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ForeignCustomerInput)
+  foreign?: ForeignCustomerInput;
 }
 
 export class ServiceInput {
@@ -224,6 +243,10 @@ export class ScheduleUpdateInput extends ScheduleIdInput {
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsNumber() @Min(0) discount?: number;
   @IsOptional() @IsNumber() @Min(0) deduction?: number;
+  /** Purchase order printed on the next notes; an empty text removes it. */
+  @IsOptional() @IsString() @MaxLength(60) purchase_order?: string;
+  /** Free text printed on the next notes; an empty text removes it. */
+  @IsOptional() @IsString() @MaxLength(2000) notes?: string;
   @IsOptional()
   @ValidateNested()
   @Type(() => CustomerInput)

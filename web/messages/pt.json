@@ -2006,7 +2006,8 @@
     "invitation_expired": "Este convite expirou. Peça um novo.",
     "invitation_email_mismatch": "Entre com o e-mail que recebeu o convite.",
     "invitation_limit_reached": "Há convites pendentes demais. Cancele alguns antes de convidar.",
-    "invitation_recently_sent": "Um convite acabou de ser enviado. Tente de novo em um minuto."
+    "invitation_recently_sent": "Um convite acabou de ser enviado. Tente de novo em um minuto.",
+    "invoice_not_substitutable": "Só uma nota autorizada pode ser substituída."
   },
   "Legal": {
     "eyebrow": "JURÍDICO",
@@ -2819,7 +2820,11 @@
       "required": "Obrigatório",
       "failed": "Não foi possível salvar a agenda.",
       "editHint": "As mudanças valem para as próximas execuções. As notas já emitidas não mudam.",
-      "optional": "opcional"
+      "optional": "opcional",
+      "purchaseOrder": "Nº do pedido",
+      "purchaseOrderHint": "Sai impresso em cada nota desta agenda.",
+      "notes": "Observações na nota",
+      "notesHint": "Texto livre impresso em cada nota. Não muda nenhum imposto."
     },
     "runs": {
       "title": "Histórico de execuções",
@@ -2858,7 +2863,9 @@
       "createdAt": "Criada em",
       "notFound": "Agenda não encontrada.",
       "loading": "Carregando a agenda",
-      "history": "Histórico"
+      "history": "Histórico",
+      "purchaseOrder": "Nº do pedido",
+      "notes": "Observações na nota"
     }
   },
   "Imports": {

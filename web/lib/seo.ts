@@ -27,7 +27,7 @@ export const SITE_COPY: Record<SeoLocale, SiteCopy> = {
   en: {
     title: "Corvo — Brazilian NFS-e API for MEI and Simples Nacional",
     description:
-      "REST API to issue Brazilian NFS-e: MEI and Simples Nacional, tax calculation, multi-company, webhooks and AI agents (MCP). 15 free invoices a month.",
+      "REST API to issue Brazilian NFS-e: MEI and Simples Nacional, tax calculation, multi-company, webhooks and AI agents (MCP). The first invoice is free.",
     ogAlt: "Corvo — Brazilian NFS-e API for developers",
     tagline:
       "REST API and MCP server to issue Brazilian service invoices (NFS-e) for MEI and Simples Nacional companies.",
@@ -47,7 +47,7 @@ export const SITE_COPY: Record<SeoLocale, SiteCopy> = {
   pt: {
     title: "Corvo — API de NFS-e para MEI e Simples Nacional",
     description:
-      "API REST para emitir NFS-e: MEI e Simples Nacional, cálculo de tributos, multiempresa, webhooks e agentes de IA (MCP). 15 notas grátis por mês.",
+      "API REST para emitir NFS-e: MEI e Simples Nacional, cálculo de tributos, multiempresa, webhooks e agentes de IA (MCP). A primeira nota é grátis.",
     ogAlt: "Corvo — API de NFS-e para desenvolvedores",
     tagline:
       "API REST e servidor MCP para emitir notas fiscais de serviço (NFS-e) de empresas MEI e do Simples Nacional.",

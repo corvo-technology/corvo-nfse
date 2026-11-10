@@ -1,3 +1,4 @@
+import type { ForeignCustomer } from './foreign-customer';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { randomUUID } from 'crypto';
 import {
@@ -12,6 +13,7 @@ import {
   InvoiceNotCancellableError,
 } from './errors';
 import {
+  cancellationReason,
   assertFiscalCancellationReason,
   type CancellationReason,
   type CancellationReasonCode,
@@ -32,6 +34,8 @@ export interface CustomerSnapshot {
     /** Incidence municipality (7 digits) when explicitly informed. */
     municipalityCode?: string;
   };
+  /** Customer outside Brazil (DPS NIF or cNaoNIF, with the address abroad). */
+  foreign?: ForeignCustomer;
 }
 
 export interface ServiceSnapshot {
@@ -70,6 +74,10 @@ export interface InvoiceProps {
   discount?: number;
   /** Issuer-declared deduction from the ISS base, 2 decimals (DPS `vDedRed/vDR`). */
   deduction?: number;
+  /** Set on a substitute: the invoice it replaces once the Sefin authorizes it. */
+  substitutesInvoiceId?: string | null;
+  /** Why the original is being substituted (DPS `subst/xMotivo`, 15 to 255 characters). */
+  substitutionDescription?: string | null;
   currency: string;
   competenceDate: Date;
   scheduledFor?: Date | null;
@@ -118,6 +126,8 @@ export interface CreateInvoiceInput {
   amount: number;
   discount?: number;
   deduction?: number;
+  /** Makes this invoice the substitute of an authorized one. */
+  substitution?: { invoiceId: string; description: string };
   competenceDate: Date;
   scheduledFor?: Date;
   email?: {
@@ -150,6 +160,10 @@ export class Invoice {
             name: input.customer.name,
             email: input.customer.email,
             address: input.customer.address,
+            // Only present for a customer abroad, so other snapshots keep their shape.
+            ...(input.customer.foreign
+              ? { foreign: input.customer.foreign }
+              : {}),
           }
         : null,
       serviceSnapshot: {
@@ -171,6 +185,8 @@ export class Invoice {
       amount: input.amount,
       discount: input.discount,
       deduction: input.deduction,
+      substitutesInvoiceId: input.substitution?.invoiceId ?? null,
+      substitutionDescription: input.substitution?.description ?? null,
       currency: 'BRL',
       competenceDate: input.competenceDate,
       scheduledFor: input.scheduledFor ?? null,
@@ -320,6 +336,14 @@ export class Invoice {
     return this.props.deduction;
   }
 
+  get substitutesInvoiceId(): string | null {
+    return this.props.substitutesInvoiceId ?? null;
+  }
+
+  get substitutionDescription(): string | null {
+    return this.props.substitutionDescription ?? null;
+  }
+
   get amount(): number {
     return this.props.amount;
   }
@@ -412,6 +436,28 @@ export class Invoice {
     this.props.cancellationDescription = null;
     this.props.cancellationRequestedAt = null;
     this.props.updatedAt = new Date();
+  }
+
+  /**
+   * authorized → cancelled, without a cancellation event of our own: the Sefin cancelled this
+   * NFS-e when it authorized the substitute.
+   */
+  markSubstituted(substituteInvoiceId: string): InvoiceEvent {
+    if (this.props.status !== 'authorized')
+      throw new InvalidInvoiceTransitionError(this.props.status, 'cancelled');
+    this.recordCancellationReason(
+      cancellationReason(
+        'other',
+        `Substituída pela nota ${substituteInvoiceId}`,
+      ),
+    );
+    this.clearLastError();
+    const event = this.transitionTo(
+      'cancelled',
+      `Substituted by invoice ${substituteInvoiceId}`,
+    );
+    this.props.cancelledAt = event.createdAt;
+    return event;
   }
 
   confirmCancellation(): InvoiceEvent {

@@ -274,6 +274,76 @@ export class NfseWorkflowService {
     }
   }
 
+  /**
+   * The `subst` data of a substitute: the access key of the invoice it replaces. The original must
+   * still be authorized; anything else is refused here instead of at the Sefin.
+   */
+  private async substitutionFor(
+    invoice: Invoice,
+  ): Promise<{ accessKey: string; description: string } | undefined> {
+    const originalId = invoice.substitutesInvoiceId;
+    if (!originalId) return undefined;
+    const original = await this.invoices.findByIdAndTenantId(
+      originalId,
+      invoice.tenantId,
+    );
+    if (
+      !original ||
+      original.status !== 'authorized' ||
+      !original.accessKey ||
+      !invoice.substitutionDescription
+    )
+      throw new DpsBuildRejectionError(
+        fiscalError({
+          code: 'FISCAL_VALIDATION_FAILED',
+          message:
+            'The invoice to substitute is no longer authorized, so it cannot be substituted',
+          category: 'VALIDATION',
+          step: 'NfseWorkflow',
+          details: { fields: ['substitutesInvoiceId'] },
+        }),
+      );
+    return {
+      accessKey: original.accessKey,
+      description: invoice.substitutionDescription,
+    };
+  }
+
+  /**
+   * After a substitute is authorized, the Sefin has already cancelled the original: mirror it here.
+   * A failure is logged and never undoes the authorization, which is a fiscal fact.
+   */
+  private async settleSubstitution(substitute: Invoice): Promise<void> {
+    const originalId = substitute.substitutesInvoiceId;
+    if (!originalId) return;
+    try {
+      const original = await this.invoices.findByIdAndTenantId(
+        originalId,
+        substitute.tenantId,
+      );
+      if (!original || original.status !== 'authorized') {
+        this.logger.warn(
+          { invoiceId: substitute.id, originalId, status: original?.status },
+          'Substituted invoice was not authorized locally; left as is',
+        );
+        return;
+      }
+      await this.lifecycle.transition(
+        original,
+        original.markSubstituted(substitute.id),
+      );
+      await this.webhooks.publish(original, 'nfse.invoice.cancelled', {
+        reason: 'other',
+        substitutedBy: substitute.id,
+      });
+    } catch (error: unknown) {
+      this.logger.error(
+        { err: error, invoiceId: substitute.id, originalId },
+        'Substitute authorized, but the original could not be marked as cancelled',
+      );
+    }
+  }
+
   /** Saves the authorized XML, moves the invoice to authorized and starts the follow-up jobs. */
   private async authorize(
     invoice: Invoice,
@@ -300,6 +370,7 @@ export class NfseWorkflowService {
       accessKey: result.accessKey,
       nfseNumber: result.nfseNumber,
     });
+    await this.settleSubstitution(invoice);
     try {
       await this.queues.add(
         'nfse-doc-prep',
@@ -541,6 +612,32 @@ export class NfseWorkflowService {
           }),
         );
       }
+      // The legacy payload only identifies a customer by CPF or CNPJ.
+      if (customer?.foreign) {
+        throw new DpsBuildRejectionError(
+          fiscalError({
+            code: 'FISCAL_VALIDATION_FAILED',
+            message:
+              'A customer abroad (customer.foreign) cannot be issued without a fiscal calculation snapshot',
+            category: 'VALIDATION',
+            step: 'NfseWorkflow',
+            details: { fields: ['customer.foreign'] },
+          }),
+        );
+      }
+      // A substitute must carry the `subst` group, which the legacy payload cannot.
+      if (invoice.substitutesInvoiceId) {
+        throw new DpsBuildRejectionError(
+          fiscalError({
+            code: 'FISCAL_VALIDATION_FAILED',
+            message:
+              'A substitute invoice cannot be issued without a fiscal calculation snapshot',
+            category: 'VALIDATION',
+            step: 'NfseWorkflow',
+            details: { fields: ['substitutesInvoiceId'] },
+          }),
+        );
+      }
       // Same reasoning for the complementary info: never issue without what was asked.
       const { purchaseOrder, notes } = snapshot.serviceSnapshot;
       if (purchaseOrder !== undefined || notes !== undefined) {
@@ -563,6 +660,7 @@ export class NfseWorkflowService {
     const dpsSeries = snapshot.dpsSeries;
     if (dpsNumber === null || dpsSeries === null)
       throw new Error('Invoice DPS number is missing');
+    const substitution = await this.substitutionFor(invoice);
     const built = await this.dpsBuilder.build(
       {
         result: fiscalSnapshot.result,
@@ -575,8 +673,14 @@ export class NfseWorkflowService {
           municipalityCode: snapshot.serviceSnapshot.municipalityCode,
           environment: invoice.environment,
           sefin: this.sefinTarget(invoice.environment),
-          customer:
-            taxId && customer
+          customer: customer?.foreign
+            ? {
+                kind: 'FOREIGN' as const,
+                name: customer.name,
+                ...(customer.email ? { email: customer.email } : {}),
+                foreign: customer.foreign,
+              }
+            : taxId && customer
               ? {
                   kind: taxId.length === 14 ? 'CNPJ' : 'CPF',
                   taxId,
@@ -588,6 +692,7 @@ export class NfseWorkflowService {
           ...(snapshot.deduction !== undefined && snapshot.deduction > 0
             ? { deductionAmount: moneyString(toDecimal(snapshot.deduction)) }
             : {}),
+          ...(substitution ? { substitution } : {}),
           ...(snapshot.serviceSnapshot.purchaseOrder !== undefined
             ? { purchaseOrder: snapshot.serviceSnapshot.purchaseOrder }
             : {}),

@@ -2006,7 +2006,8 @@
     "invitation_expired": "This invitation has expired. Ask for a new one.",
     "invitation_email_mismatch": "Sign in with the e-mail that received the invitation.",
     "invitation_limit_reached": "Too many pending invitations. Cancel some before inviting.",
-    "invitation_recently_sent": "An invitation was just sent. Try again in a minute."
+    "invitation_recently_sent": "An invitation was just sent. Try again in a minute.",
+    "invoice_not_substitutable": "Only an authorized invoice can be substituted."
   },
   "Legal": {
     "eyebrow": "LEGAL",
@@ -2819,7 +2820,11 @@
       "required": "Required",
       "failed": "Could not save the schedule.",
       "editHint": "Changes apply to the next runs. Notes already issued do not change.",
-      "optional": "optional"
+      "optional": "optional",
+      "purchaseOrder": "Purchase order",
+      "purchaseOrderHint": "Printed on every invoice of this schedule.",
+      "notes": "Notes on the invoice",
+      "notesHint": "Free text printed on every invoice. It changes no tax."
     },
     "runs": {
       "title": "Run history",
@@ -2858,7 +2863,9 @@
       "createdAt": "Created on",
       "notFound": "Schedule not found.",
       "loading": "Loading the schedule",
-      "history": "History"
+      "history": "History",
+      "purchaseOrder": "Purchase order",
+      "notes": "Notes on the invoice"
     }
   },
   "Imports": {

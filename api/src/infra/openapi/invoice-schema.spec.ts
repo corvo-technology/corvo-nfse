@@ -1,4 +1,5 @@
 import { InvoiceCalculationService } from '@/modules/invoice/application/fiscal/invoice-calculation.service';
+import { InvoiceSubstitutionService } from '@/modules/invoice/application/invoice-substitution.service';
 import { EmissionRouterService } from '@/modules/invoice-schedule/application/emission-router.service';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -16,6 +17,7 @@ it('documents the actual 202 invoice response with nullable scheduledFor', async
       { provide: InvoiceService, useValue: {} },
       { provide: InvoiceBatchService, useValue: {} },
       { provide: EmissionRouterService, useValue: {} },
+      { provide: InvoiceSubstitutionService, useValue: {} },
       { provide: InvoiceCalculationService, useValue: {} },
     ],
   })

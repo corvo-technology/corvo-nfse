@@ -46,6 +46,7 @@ import {
 } from './domain/invoice.repository';
 import { DPS_SEQUENCE_REPOSITORY } from './domain/dps-sequence';
 import { DpsSequenceController } from './http/dps-sequence.controller';
+import { InvoiceSubstitutionService } from './application/invoice-substitution.service';
 import { InvoiceIntakeService } from './application/invoice-intake.service';
 import { CustomerRecorder } from './application/customer-recorder';
 import { CustomerDirectory } from './domain/customer-directory';
@@ -173,6 +174,7 @@ import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
     },
     InvoiceBatchService,
     InvoiceIntakeService,
+    InvoiceSubstitutionService,
     { provide: CustomerDirectory, useClass: TypeOrmCustomerDirectory },
     CustomerRecorder,
     InvoiceCalculationService,

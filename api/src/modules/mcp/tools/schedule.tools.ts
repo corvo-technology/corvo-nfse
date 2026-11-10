@@ -83,6 +83,18 @@ export const SCHEDULE_UPDATE_TOOL = {
       description: { type: 'string' },
       discount: { type: 'number' },
       deduction: { type: 'number' },
+      purchase_order: {
+        type: 'string',
+        maxLength: 60,
+        description:
+          'Purchase order printed on the next notes. Send an empty text to remove it.',
+      },
+      notes: {
+        type: 'string',
+        maxLength: 2000,
+        description:
+          'Free text printed on the next notes. Send an empty text to remove it.',
+      },
       customer: {
         type: 'object',
         properties: {
@@ -232,6 +244,9 @@ function invoicePatch(p: ScheduleUpdateInput, stored: Body): Body | undefined {
   if (p.amount !== undefined) patch.amount = p.amount;
   if (p.discount !== undefined) patch.discount = p.discount;
   if (p.deduction !== undefined) patch.deduction = p.deduction;
+  // An empty text clears the field: a blank value is dropped when the note is issued.
+  if (p.purchase_order !== undefined) patch.purchaseOrder = p.purchase_order;
+  if (p.notes !== undefined) patch.notes = p.notes;
   if (p.customer)
     patch.customer = {
       ...(stored.customer as Body | undefined),
