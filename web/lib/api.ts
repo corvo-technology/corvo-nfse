@@ -1,4 +1,4 @@
-import type { ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { SavedCustomer, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -282,6 +282,16 @@ export const schedules = {
   pause: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/pause`, json({})))),
   resume: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/resume`, json({})))),
   cancel: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/cancel`, json({})))),
+};
+export const customers = {
+  list: async (params: PageParams & { search?: string } = {}, signal?: AbortSignal): Promise<Page<SavedCustomer>> => toPage(await request<ListBody<SavedCustomer>>(`/customers${query(params)}`, { signal })),
+  /** Null when the document was never saved (the API answers 404). */
+  find: async (taxId: string, signal?: AbortSignal): Promise<SavedCustomer | null> => {
+    try { return unwrap(await request<Envelope<SavedCustomer>>(`/customers/${idPath(taxId)}`, { signal })); }
+    catch (cause) { if (cause instanceof ApiError && cause.status === 404) return null; throw cause; }
+  },
+  update: async (taxId: string, patch: { name?: string; email?: string | null }) => unwrap(await request<Envelope<SavedCustomer>>(`/customers/${idPath(taxId)}`, json(patch, "PATCH"))),
+  remove: async (taxId: string): Promise<void> => { await request<Envelope<null>>(`/customers/${idPath(taxId)}`, { method: "DELETE" }); },
 };
 export const webhooks = {
   list: async (params: PageParams = {}) => toPage(await request<ListBody<WebhookEndpoint>>(`/webhooks${query(params)}`)),

@@ -415,3 +415,86 @@ describe('InvoiceIntakeService regime restriction', () => {
     await expect(intake.prepare(dto, TENANT, 'test')).resolves.toBeDefined();
   });
 });
+
+describe('InvoiceIntakeService saved customer name', () => {
+  const company = Company.create(
+    {
+      legalName: 'Empresa',
+      taxId: '11222333000181',
+      taxRegime: 'MEI',
+      municipalityCode: '3550308',
+      defaultServiceCode: '060101',
+    },
+    'tenant',
+  );
+  const companies = { findById: jest.fn().mockResolvedValue(company) };
+  const customers = { find: jest.fn() };
+  const intake = new InvoiceIntakeService(
+    companies as never,
+    new InvoiceDomainService(),
+    undefined,
+    customers as never,
+  );
+  const dto = (customer?: Record<string, unknown>) => ({
+    companyId: company.id,
+    amount: 50,
+    competenceDate: '2026-01-01',
+    service: { description: 'Corte' },
+    ...(customer ? { customer } : {}),
+  });
+  const saved = { taxId: '52998224725', name: 'Maria da Silva', email: null };
+  beforeEach(() => {
+    customers.find.mockReset();
+    customers.find.mockResolvedValue(saved);
+  });
+
+  it('fills the name from the saved customer when only the document is sent', async () => {
+    const request = dto({ taxId: '529.982.247-25' });
+    const result = await intake.prepare(request, 'tenant', 'live');
+    expect(customers.find).toHaveBeenCalledWith(
+      { tenantId: 'tenant', environment: 'live' },
+      '52998224725',
+    );
+    expect(result.normalized.customer?.name).toBe('Maria da Silva');
+    // The request is not changed, so the idempotency hash stays the same.
+    expect(request.customer).toEqual({ taxId: '529.982.247-25' });
+  });
+
+  it('keeps the name sent in the request and does not look it up', async () => {
+    const result = await intake.prepare(
+      dto({ taxId: '52998224725', name: 'Maria S. Souza' }),
+      'tenant',
+      'live',
+    );
+    expect(result.normalized.customer?.name).toBe('Maria S. Souza');
+    expect(customers.find).not.toHaveBeenCalled();
+  });
+
+  it('follows as before when the customer was never saved', async () => {
+    customers.find.mockResolvedValue(null);
+    const result = await intake.prepare(
+      dto({ taxId: '52998224725' }),
+      'tenant',
+      'live',
+    );
+    expect(result.normalized.customer?.name).toBe('Consumidor');
+  });
+
+  it('does not look up an anonymous invoice or an invalid document', async () => {
+    await intake.prepare(dto(), 'tenant', 'live');
+    await expect(
+      intake.prepare(dto({ taxId: '111' }) as never, 'tenant', 'live'),
+    ).rejects.toBeInstanceOf(FiscalValidationError);
+    expect(customers.find).not.toHaveBeenCalled();
+  });
+
+  it('still issues when the lookup fails', async () => {
+    customers.find.mockRejectedValue(new Error('db down'));
+    const result = await intake.prepare(
+      dto({ taxId: '52998224725' }),
+      'tenant',
+      'live',
+    );
+    expect(result.normalized.customer?.name).toBe('Consumidor');
+  });
+});

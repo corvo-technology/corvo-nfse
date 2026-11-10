@@ -1,3 +1,4 @@
+import { CustomerRecorder } from './customer-recorder';
 import { INVOICE_CALCULATE_TAXES } from '../domain/invoice-message-types';
 import { OutboxService } from './outbox.service';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
@@ -70,6 +71,7 @@ export class InvoiceLifecycleService {
     private readonly events: IInvoiceEventRepository,
     private readonly credits: ICreditTransactionRepository,
     @Optional() private readonly eventBus?: ApplicationEventBus,
+    @Optional() private readonly customerRecorder?: CustomerRecorder,
   ) {}
 
   async submit(
@@ -92,6 +94,8 @@ export class InvoiceLifecycleService {
       );
       if (invoice.environment === 'live')
         await this.publishCreditsChanged(invoice.tenantId);
+      // After the commit: the invoice is accepted whether or not this succeeds.
+      await this.customerRecorder?.rememberFrom(invoice);
     });
   }
 
@@ -119,6 +123,10 @@ export class InvoiceLifecycleService {
           invoice.environment === 'live' && isWritten(outcomes[index]),
       );
       if (anyLive) await this.publishCreditsChanged(tenantId);
+      if (this.customerRecorder)
+        for (const [index, { invoice }] of entries.entries())
+          if (isWritten(outcomes[index]))
+            await this.customerRecorder.rememberFrom(invoice);
       return outcomes;
     });
   }
