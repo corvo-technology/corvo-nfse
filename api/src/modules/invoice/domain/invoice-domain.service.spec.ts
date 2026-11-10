@@ -727,3 +727,179 @@ describe('InvoiceDomainService complementary info', () => {
     ]);
   });
 });
+
+describe('InvoiceDomainService foreign customer', () => {
+  const service = new InvoiceDomainService();
+  const foreign = (over: Record<string, unknown> = {}) => ({
+    taxId: '12-3456789',
+    country: 'us',
+    postalCode: '94105',
+    city: 'San Francisco',
+    region: 'CA',
+    street: '1 Market St',
+    number: '100',
+    district: 'SoMa',
+    ...over,
+  });
+  // No email delivery here: these cases are about who the customer is.
+  const dtoWith = (customer: Record<string, unknown>) =>
+    validDto({ customer, options: undefined });
+  const issuesOf = (customer: Record<string, unknown>) => {
+    try {
+      service.normalizeAndValidate(dtoWith(customer), 'live');
+    } catch (error) {
+      if (error instanceof FiscalValidationError) return error.issues;
+      throw error;
+    }
+    return [];
+  };
+
+  it('accepts a customer abroad identified by its tax id, without CPF or CNPJ', () => {
+    const result = service.normalizeAndValidate(
+      dtoWith({
+        name: ' Acme Inc. ',
+        email: 'ap@acme.test',
+        foreign: foreign(),
+      }),
+      'live',
+    );
+    expect(result.customer).toMatchObject({
+      name: 'Acme Inc.',
+      email: 'ap@acme.test',
+      foreign: {
+        taxId: '12-3456789',
+        country: 'US',
+        postalCode: '94105',
+        city: 'San Francisco',
+        region: 'CA',
+        street: '1 Market St',
+        number: '100',
+        district: 'SoMa',
+      },
+    });
+    expect(result.customer?.taxId).toBeUndefined();
+  });
+
+  it('accepts a customer without a tax id when the reason is informed', () => {
+    const result = service.normalizeAndValidate(
+      dtoWith({
+        name: 'Acme Inc.',
+        foreign: foreign({ taxId: undefined, noTaxIdReason: 'not_required' }),
+      }),
+      'live',
+    );
+    expect(result.customer?.foreign).toMatchObject({
+      noTaxIdReason: 'not_required',
+    });
+    expect(result.customer?.foreign?.taxId).toBeUndefined();
+  });
+
+  it('requires the name and exactly one of tax id or reason', () => {
+    expect(issuesOf({ foreign: foreign() })).toEqual([
+      expect.objectContaining({ field: 'customer.name', code: 'required' }),
+    ]);
+    expect(
+      issuesOf({ name: 'Acme', foreign: foreign({ taxId: undefined }) }),
+    ).toEqual([
+      expect.objectContaining({
+        field: 'customer.foreign.taxId',
+        code: 'required',
+      }),
+    ]);
+    expect(
+      issuesOf({
+        name: 'Acme',
+        foreign: foreign({ noTaxIdReason: 'exempt' }),
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        field: 'customer.foreign.noTaxIdReason',
+        code: 'not_allowed',
+      }),
+    ]);
+    expect(
+      issuesOf({
+        name: 'Acme',
+        foreign: foreign({ taxId: undefined, noTaxIdReason: 'none' }),
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        field: 'customer.foreign.noTaxIdReason',
+        code: 'invalid_option',
+      }),
+    ]);
+  });
+
+  it('never mixes a CPF/CNPJ or a Brazilian address with a customer abroad', () => {
+    expect(
+      issuesOf({ name: 'Acme', taxId: '529.982.247-25', foreign: foreign() }),
+    ).toEqual([
+      expect.objectContaining({ field: 'customer.taxId', code: 'not_allowed' }),
+    ]);
+    expect(
+      issuesOf({
+        name: 'Acme',
+        address: { city: 'São Paulo', state: 'SP' },
+        foreign: foreign(),
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        field: 'customer.address',
+        code: 'not_allowed',
+      }),
+    ]);
+  });
+
+  it('refuses Brazil and unknown countries', () => {
+    for (const country of ['BR', 'br', 'QQ', 'USA', '']) {
+      expect(issuesOf({ name: 'Acme', foreign: foreign({ country }) })).toEqual(
+        [expect.objectContaining({ field: 'customer.foreign.country' })],
+      );
+    }
+  });
+
+  it('requires every address field and respects the DPS limits', () => {
+    for (const key of [
+      'postalCode',
+      'city',
+      'region',
+      'street',
+      'number',
+      'district',
+    ]) {
+      expect(
+        issuesOf({ name: 'Acme', foreign: foreign({ [key]: '  ' }) }),
+      ).toEqual([
+        expect.objectContaining({
+          field: `customer.foreign.${key}`,
+          code: 'required',
+        }),
+      ]);
+    }
+    expect(
+      issuesOf({
+        name: 'Acme',
+        foreign: foreign({ postalCode: 'x'.repeat(12) }),
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        field: 'customer.foreign.postalCode',
+        code: 'too_long',
+      }),
+    ]);
+    expect(
+      issuesOf({ name: 'Acme', foreign: foreign({ taxId: 'x'.repeat(41) }) }),
+    ).toEqual([
+      expect.objectContaining({
+        field: 'customer.foreign.taxId',
+        code: 'too_long',
+      }),
+    ]);
+    expect(issuesOf({ name: 'Acme', foreign: 'US' })).toEqual([
+      expect.objectContaining({
+        field: 'customer.foreign',
+        code: 'invalid_type',
+      }),
+    ]);
+  });
+});

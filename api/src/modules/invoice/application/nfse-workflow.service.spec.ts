@@ -695,6 +695,52 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     expect(fakes.providers.resolve).not.toHaveBeenCalled();
   });
 
+  const abroad = {
+    name: 'Acme Inc.',
+    foreign: {
+      taxId: '12-3456789',
+      country: 'US',
+      postalCode: '94105',
+      city: 'San Francisco',
+      region: 'CA',
+      street: '1 Market St',
+      number: '100',
+      district: 'SoMa',
+    },
+  };
+
+  it('sends a customer abroad in the preparedDps as toma with NIF and the address abroad', async () => {
+    const invoice = createInvoice(abroad);
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(invoice.id),
+    );
+
+    const payload = await callPayload(invoice);
+
+    expect(payload.preparedDps?.infDPS.toma).toMatchObject({
+      identificador: { NIF: '12-3456789' },
+      xNome: 'Acme Inc.',
+      end: { localidade: { endExt: { cPais: 'US' } }, xBairro: 'SoMa' },
+    });
+  });
+
+  it('rejects a customer abroad when there is no fiscal snapshot instead of issuing without the customer', async () => {
+    const invoice = createInvoice(abroad);
+    fakes.invoices.findByIdAndTenantId.mockResolvedValue(invoice);
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(null);
+    fakes.providers.resolve.mockReturnValue({ issue: jest.fn() });
+    const rejectSpy = spyOnReject();
+
+    await processInvoice(invoice);
+
+    expect(rejectSpy).toHaveBeenCalledWith(
+      invoice,
+      'FISCAL_VALIDATION_FAILED',
+      expect.stringContaining('customer.foreign'),
+    );
+    expect(fakes.providers.resolve).not.toHaveBeenCalled();
+  });
+
   it('hands preparedDps to the fiscal provider and enqueues the reconciliation', async () => {
     const invoice = createInvoice();
     fakes.invoices.findByIdAndTenantId.mockResolvedValue(invoice);
