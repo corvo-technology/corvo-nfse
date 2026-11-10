@@ -425,6 +425,8 @@ export interface Invoice {
   cancellationReason?: CancellationReasonCode | null; cancellationDescription?: string | null; cancelledAt?: string | null;
   /** Set when a cancellation was requested while the invoice was still being issued. */
   cancellationRequestedAt?: string | null;
+  /** On a substitute: the invoice it replaces once the Receita authorizes it. */
+  substitutesInvoiceId?: string | null; substitutionDescription?: string | null;
 }
 export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } | { companyId: string; companyTaxId?: string }) & {
   externalId?: string;

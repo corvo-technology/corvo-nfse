@@ -1,4 +1,5 @@
 import {
+  JustificativaSubstituicao,
   CodigoNaoNif,
   buildDps,
   buildDpsXml,
@@ -137,6 +138,14 @@ export interface DpsBuildInput {
      * or zero omits the group.
      */
     readonly deductionAmount?: DecimalString;
+    /**
+     * Makes this DPS the substitute of an authorized NFS-e: `subst` with the access key of the
+     * original, reason 99 (other) and the description. The Sefin cancels the original itself.
+     */
+    readonly substitution?: {
+      readonly accessKey: string;
+      readonly description: string;
+    };
     /** Customer purchase order, sent as `serv/infoCompl/xPed`. */
     readonly purchaseOrder?: string;
     /** Complementary information, sent as `serv/infoCompl/xInfComp`. */
@@ -570,6 +579,19 @@ export class DpsBuilder {
               xBairro: foreign.district,
             },
             ...(email !== undefined ? { email } : {}),
+          },
+        },
+      };
+    }
+    if (input.invoice.substitution !== undefined) {
+      dps = {
+        ...dps,
+        infDPS: {
+          ...dps.infDPS,
+          subst: {
+            chSubstda: input.invoice.substitution.accessKey,
+            cMotivo: JustificativaSubstituicao.Outros,
+            xMotivo: input.invoice.substitution.description,
           },
         },
       };

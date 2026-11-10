@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { InvoiceSubstitutionService } from '@/modules/invoice/application/invoice-substitution.service';
 import { EmissionRouterService } from '@/modules/invoice-schedule/application/emission-router.service';
 import { HTTP_CODE_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import type { Response } from 'express';
@@ -29,6 +30,7 @@ describe('InvoiceController.calculate', () => {
         { provide: InvoiceService, useValue: {} },
         { provide: InvoiceBatchService, useValue: {} },
         { provide: EmissionRouterService, useValue: {} },
+        { provide: InvoiceSubstitutionService, useValue: {} },
         { provide: InvoiceCalculationService, useValue: { calculate } },
       ],
     }).compile();

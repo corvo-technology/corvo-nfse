@@ -13,6 +13,7 @@ import {
   IsDateString,
   IsIn,
   MaxLength,
+  MinLength,
   Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -356,6 +357,56 @@ export class ListInvoicesQuery extends CursorQuery {
   @IsOptional() @IsDateString() from?: string;
   @IsOptional() @IsDateString() to?: string;
   @IsOptional() @IsString() externalId?: string;
+}
+
+export class SubstituteServiceDto {
+  @ApiPropertyOptional({ description: 'New service description.' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+/**
+ * Body of POST /invoices/:id/substitute. Only fields the Sefin lets a MEI or Simples Nacional
+ * issuer change are accepted (rule E0061): customer, competence date and amount stay as issued.
+ */
+export class SubstituteInvoiceDto {
+  @ApiProperty({
+    minLength: CANCELLATION_DESCRIPTION_MIN,
+    maxLength: CANCELLATION_DESCRIPTION_MAX,
+    description:
+      'Why the invoice is being substituted. Sent in the DPS as subst/xMotivo.',
+  })
+  @IsString()
+  @MinLength(CANCELLATION_DESCRIPTION_MIN)
+  @MaxLength(CANCELLATION_DESCRIPTION_MAX)
+  description!: string;
+
+  @ApiPropertyOptional({ type: SubstituteServiceDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SubstituteServiceDto)
+  service?: SubstituteServiceDto;
+
+  @ApiPropertyOptional({
+    maxLength: 60,
+    description:
+      'New purchase order. Omit to keep the original; send an empty text to remove it.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  purchaseOrder?: string;
+
+  @ApiPropertyOptional({
+    maxLength: 2000,
+    description:
+      'New notes. Omit to keep the original; send an empty text to remove it.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notes?: string;
 }
 
 export class CancelInvoiceDto {

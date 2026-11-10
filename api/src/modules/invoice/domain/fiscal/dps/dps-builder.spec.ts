@@ -691,6 +691,41 @@ describe('DpsBuilder', () => {
     expect(dps.infDPS.serv).toEqual(base.infDPS.serv);
   });
 
+  const ORIGINAL_KEY = '43144000000000000000000000000000000000000000000000';
+
+  it('adds the subst group that makes the DPS a substitute, schema valid', async () => {
+    const base = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          invoice: {
+            substitution: {
+              accessKey: ORIGINAL_KEY,
+              description: 'Descrição do serviço corrigida',
+            },
+          },
+        }),
+        RTC_V1_01,
+      ),
+    );
+    expect(dps.infDPS.subst).toEqual({
+      chSubstda: ORIGINAL_KEY,
+      cMotivo: '99',
+      xMotivo: 'Descrição do serviço corrigida',
+    });
+    // Nothing else changes: the customer, the competence and the amount stay as issued (E0061).
+    expect(dps.infDPS).toEqual({ ...base.infDPS, subst: dps.infDPS.subst });
+    const xml = buildDpsXml(dps);
+    expect(xml).toContain(`<chSubstda>${ORIGINAL_KEY}</chSubstda>`);
+    const validation = await validateDpsXml(xml, { throwOnInvalid: false });
+    expect(validation.valid).toBe(true);
+  });
+
+  it('has no subst group on an ordinary invoice', async () => {
+    const dps = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    expect(dps.infDPS.subst).toBeUndefined();
+  });
+
   it('maps ISS withholding to RetidoPeloTomador only when required', async () => {
     const retained = dpsFrom(
       await new DpsBuilder().build(

@@ -2006,7 +2006,8 @@
     "invitation_expired": "Este convite expirou. Peça um novo.",
     "invitation_email_mismatch": "Entre com o e-mail que recebeu o convite.",
     "invitation_limit_reached": "Há convites pendentes demais. Cancele alguns antes de convidar.",
-    "invitation_recently_sent": "Um convite acabou de ser enviado. Tente de novo em um minuto."
+    "invitation_recently_sent": "Um convite acabou de ser enviado. Tente de novo em um minuto.",
+    "invoice_not_substitutable": "Só uma nota autorizada pode ser substituída."
   },
   "Legal": {
     "eyebrow": "JURÍDICO",

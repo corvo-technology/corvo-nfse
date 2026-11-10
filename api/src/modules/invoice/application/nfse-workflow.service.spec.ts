@@ -741,6 +741,130 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     expect(fakes.providers.resolve).not.toHaveBeenCalled();
   });
 
+  const ORIGINAL_KEY = '43144000000000000000000000000000000000000000000000';
+  const authorizedOriginal = (): Invoice => {
+    const original = createInvoice();
+    original.transitionTo('processing');
+    original.setAuthorized(ORIGINAL_KEY, 7);
+    original.transitionTo('authorized');
+    return original;
+  };
+  const substituteOf = (original: Invoice): Invoice =>
+    Invoice.create(
+      {
+        companyId: company.id,
+        customer: { taxId: '12345678000195', name: 'Cliente Teste LTDA' },
+        service: {
+          description: 'Consultoria em TI, outubro',
+          code: '010601',
+          municipalityCode: '3550308',
+        },
+        amount: 1000,
+        competenceDate: new Date('2026-10-13'),
+        substitution: {
+          invoiceId: original.id,
+          description: 'Descrição do serviço corrigida',
+        },
+      },
+      tenantId,
+    );
+  const byId = (...known: Invoice[]) =>
+    fakes.invoices.findByIdAndTenantId.mockImplementation((id: string) =>
+      Promise.resolve(known.find((invoice) => invoice.id === id) ?? null),
+    );
+
+  it('sends the substitute with the subst group pointing at the original', async () => {
+    const original = authorizedOriginal();
+    const substitute = substituteOf(original);
+    byId(original, substitute);
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(substitute.id),
+    );
+
+    const payload = await callPayload(substitute);
+
+    expect(payload.preparedDps?.infDPS.subst).toEqual({
+      chSubstda: ORIGINAL_KEY,
+      cMotivo: '99',
+      xMotivo: 'Descrição do serviço corrigida',
+    });
+  });
+
+  it('cancels the original only after the substitute is authorized, and tells the webhook', async () => {
+    const original = authorizedOriginal();
+    const substitute = substituteOf(original);
+    byId(original, substitute);
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(substitute.id),
+    );
+    const statusWhenIssued: string[] = [];
+    fakes.providers.resolve.mockReturnValue({
+      issue: jest.fn().mockImplementation(() => {
+        statusWhenIssued.push(original.status);
+        return Promise.resolve(issueResult);
+      }),
+    });
+
+    await processInvoice(substitute);
+
+    expect(statusWhenIssued).toEqual(['authorized']);
+    expect(substitute.status).toBe('authorized');
+    expect(original.status).toBe('cancelled');
+    expect(original.cancellationReason).toEqual({
+      code: 'other',
+      description: `Substituída pela nota ${substitute.id}`,
+    });
+    expect(fakes.lifecycle.transition).toHaveBeenCalledWith(
+      original,
+      expect.objectContaining({
+        fromStatus: 'authorized',
+        toStatus: 'cancelled',
+      }),
+    );
+  });
+
+  it('leaves the original authorized when the Sefin refuses the substitute', async () => {
+    const original = authorizedOriginal();
+    const substitute = substituteOf(original);
+    byId(original, substitute);
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(substitute.id),
+    );
+    fakes.providers.resolve.mockReturnValue({
+      issue: jest.fn().mockResolvedValue({
+        success: false,
+        errorCode: 'E0050',
+        errorMessage: 'Substituição fora do prazo',
+        requiresReconciliation: false,
+      }),
+    });
+
+    await processInvoice(substitute);
+
+    expect(original.status).toBe('authorized');
+    expect(substitute.status).toBe('rejected');
+  });
+
+  it('refuses to send a substitute whose original is no longer authorized', async () => {
+    const original = createInvoice();
+    const substitute = substituteOf(original);
+    byId(original, substitute);
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(substitute.id),
+    );
+    fakes.providers.resolve.mockReturnValue({ issue: jest.fn() });
+    const rejectSpy = spyOnReject();
+
+    await processInvoice(substitute);
+
+    expect(rejectSpy).toHaveBeenCalledWith(
+      substitute,
+      'FISCAL_VALIDATION_FAILED',
+      expect.stringContaining('no longer authorized'),
+    );
+    expect(fakes.providers.resolve).not.toHaveBeenCalled();
+  });
+
   it('hands preparedDps to the fiscal provider and enqueues the reconciliation', async () => {
     const invoice = createInvoice();
     fakes.invoices.findByIdAndTenantId.mockResolvedValue(invoice);

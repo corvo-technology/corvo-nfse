@@ -2006,7 +2006,8 @@
     "invitation_expired": "This invitation has expired. Ask for a new one.",
     "invitation_email_mismatch": "Sign in with the e-mail that received the invitation.",
     "invitation_limit_reached": "Too many pending invitations. Cancel some before inviting.",
-    "invitation_recently_sent": "An invitation was just sent. Try again in a minute."
+    "invitation_recently_sent": "An invitation was just sent. Try again in a minute.",
+    "invoice_not_substitutable": "Only an authorized invoice can be substituted."
   },
   "Legal": {
     "eyebrow": "LEGAL",

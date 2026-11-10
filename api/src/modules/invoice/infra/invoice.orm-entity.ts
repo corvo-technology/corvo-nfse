@@ -211,6 +211,17 @@ export class InvoiceOrmEntity {
   })
   cancellationRequestedAt?: Date | null;
 
+  @Column({ name: 'substitutes_invoice_id', type: 'uuid', nullable: true })
+  substitutesInvoiceId?: string | null;
+
+  @Column({
+    name: 'substitution_description',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  substitutionDescription?: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 
