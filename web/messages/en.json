@@ -1267,6 +1267,29 @@
       "next": "Next invoice on {date}. With no date it repeats until you pause it.",
       "createdButFailed": "The invoice was issued, but the recurrence was not created. Try again: it will not issue another invoice.",
       "createdButFailedWith": "The invoice was issued, but the recurrence was not created ({reason}). Try again: it will not issue another invoice."
+    },
+    "foreign": {
+      "toggle": "Customer abroad",
+      "toggleHint": "For a customer outside Brazil, without a Brazilian document.",
+      "country": "Country",
+      "countryPlaceholder": "Choose the country",
+      "taxId": "Tax id (NIF)",
+      "taxIdHint": "The customer's taxpayer number in its own country.",
+      "noTaxId": "Customer without a tax id",
+      "noTaxIdHint": "Only if it has no NIF.",
+      "hasTaxId": "It has a tax id",
+      "reason": {
+        "exempt": "Exempt",
+        "not_required": "Not required"
+      },
+      "street": "Street",
+      "number": "Number",
+      "complement": "Complement",
+      "district": "District or neighbourhood",
+      "city": "City",
+      "region": "State, province or region",
+      "postalCode": "Postal code",
+      "notExport": "Informing a customer abroad does not declare a service export: the invoice keeps the same tax treatment. Confirm the classification with your accountant."
     }
   },
   "Billing": {
@@ -1743,7 +1766,23 @@
       "reasonLabel": "Cancellation reason"
     },
     "purchaseOrder": "Purchase order",
-    "notes": "Notes on the invoice"
+    "notes": "Notes on the invoice",
+    "substitute": {
+      "open": "Substitute invoice",
+      "title": "Substitute invoice",
+      "intro": "Issues a new invoice that replaces this one. The Receita cancels this invoice once it authorizes the new one; if it refuses, this one stays valid.",
+      "locked": "Customer, competence date and amount do not change. To correct one of them, cancel this invoice and issue another.",
+      "reason": "Reason for the substitution",
+      "reasonHint": "At least {min} characters. It goes on the invoice sent to the Receita.",
+      "serviceDescription": "Service description",
+      "purchaseOrder": "Purchase order",
+      "notes": "Notes on the invoice",
+      "optional": "optional",
+      "credit": "The new invoice uses a credit, like any issued invoice. The credit of this one is not returned.",
+      "keep": "Keep as is",
+      "confirm": "Substitute invoice",
+      "failed": "Could not substitute the invoice."
+    }
   },
   "FiscalDocs": {
     "title": "Corvo API — NFS-e",

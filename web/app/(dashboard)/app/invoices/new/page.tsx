@@ -21,6 +21,7 @@ import { InvoiceCalculationPanel } from "@/components/dashboard/invoice-calculat
 import { DEFAULT_SERVICE_CODE } from "@/lib/service-defaults";
 import { invoiceToFormValues } from "@/lib/invoice-copy";
 import { useSavedCustomer } from "@/components/invoices/use-saved-customer";
+import { countryOptions } from "@/lib/countries";
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -85,11 +86,25 @@ export default function NewInvoicePage() {
     deduction: "",
     purchaseOrder: "",
     notes: "",
+    // Customer abroad: replaces the CPF/CNPJ and the Brazilian address.
+    abroad: "",
+    foreignTaxId: "",
+    noTaxIdReason: "",
+    country: "",
+    postalCode: "",
+    foreignCity: "",
+    region: "",
+    street: "",
+    number: "",
+    district: "",
+    complement: "",
   });
+  const abroad = form.abroad === "yes";
+  const countries = useMemo(() => countryOptions(locale), [locale]);
 
   // What the saved customer filled last. A field the person typed over is never replaced.
   const filledFromSaved = useRef<{ name: string; email: string } | null>(null);
-  const savedCustomer = useSavedCustomer(cleanTaxId(form.customerTaxId), (customer) => {
+  const savedCustomer = useSavedCustomer(abroad ? "" : cleanTaxId(form.customerTaxId), (customer) => {
     const previous = filledFromSaved.current;
     const email = customer.email ?? "";
     filledFromSaved.current = { name: customer.name, email };
@@ -168,7 +183,21 @@ export default function NewInvoicePage() {
       companyTaxId: company?.taxId ?? "",
       externalId,
       // No customer data at all issues an anonymous-consumer invoice (no tomador).
-      customer: hasCustomer ? {
+      customer: abroad ? {
+        name: form.customerName.trim() || undefined,
+        email: form.customerEmail || undefined,
+        foreign: {
+          ...(form.noTaxIdReason ? { noTaxIdReason: form.noTaxIdReason as "exempt" | "not_required" } : { taxId: form.foreignTaxId.trim() }),
+          country: form.country,
+          postalCode: form.postalCode.trim(),
+          city: form.foreignCity.trim(),
+          region: form.region.trim(),
+          street: form.street.trim(),
+          number: form.number.trim(),
+          district: form.district.trim(),
+          ...(form.complement.trim() ? { complement: form.complement.trim() } : {}),
+        },
+      } : hasCustomer ? {
         taxId: cleanTaxId(form.customerTaxId),
         name: form.customerName.trim() || undefined,
         email: form.customerEmail || undefined,
@@ -266,7 +295,7 @@ export default function NewInvoicePage() {
       router.push(`/app/invoices/${created.id}`);
     } catch (err: unknown) {
       if (err instanceof ApiError && [0, 409, 502, 503].includes(err.status)) setUncertain(true);
-      const { _form, ...perField } = mapIssues(err, { "customer.taxId": "customerTaxId", "customer.name": "customerName", "customer.email": "customerEmail", "customer.address": "city", "customer.address.city": "city", "customer.address.state": "state", "service.code": "serviceCode", "service.municipalityCode": "municipalityCode", "service.description": "serviceDescription", amount: "amount", deduction: "deduction", purchaseOrder: "purchaseOrder", notes: "notes", competenceDate: "competenceDate", companyId: "companyId", companyTaxId: "companyId", "company.municipalityCode": "companyId" }, (code) => (te.has(code) ? te(code) : te("invalid")));
+      const { _form, ...perField } = mapIssues(err, { "customer.taxId": "customerTaxId", "customer.name": "customerName", "customer.email": "customerEmail", "customer.address": "city", "customer.address.city": "city", "customer.address.state": "state", "customer.foreign": "foreignTaxId", "customer.foreign.taxId": "foreignTaxId", "customer.foreign.noTaxIdReason": "foreignTaxId", "customer.foreign.country": "country", "customer.foreign.postalCode": "postalCode", "customer.foreign.city": "foreignCity", "customer.foreign.region": "region", "customer.foreign.street": "street", "customer.foreign.number": "number", "customer.foreign.district": "district", "customer.foreign.complement": "complement", "service.code": "serviceCode", "service.municipalityCode": "municipalityCode", "service.description": "serviceDescription", amount: "amount", deduction: "deduction", purchaseOrder: "purchaseOrder", notes: "notes", competenceDate: "competenceDate", companyId: "companyId", companyTaxId: "companyId", "company.municipalityCode": "companyId" }, (code) => (te.has(code) ? te(code) : te("invalid")));
       setFieldErrors(perField);
       setFixOnCompany([...fieldIssues(err).map((issue) => issue.code), ...(err instanceof ApiError && err.code ? [err.code] : [])].some((code) => FIX_ON_COMPANY.has(errorCodeKey(code))));
       setError(_form ?? (Object.keys(perField).length > 0 ? t("fields.fixFields") : apiErrorMessage(err, te.has, te, t("fields.createFailed"))));
@@ -295,18 +324,24 @@ export default function NewInvoicePage() {
   // disabled until this list is empty; the summary tells what is missing.
   const today = new Date().toLocaleDateString("sv-SE");
   const taxDigits = cleanTaxId(form.customerTaxId);
-  const hasCustomer = Boolean(taxDigits || form.customerName.trim() || form.customerEmail.trim() || form.city.trim() || form.state || sendEmail);
+  const hasCustomer = abroad || Boolean(taxDigits || form.customerName.trim() || form.customerEmail.trim() || form.city.trim() || form.state || sendEmail);
   const missing: string[] = [];
   if (!company || company.status === "blocked" || (isLive && company.status !== "ready") || !/^\d{7}$/.test(company.municipalityCode ?? "")) missing.push(t("fields.company"));
   // A customer needs a valid CPF/CNPJ; with no customer data the invoice has no tomador.
-  if (hasCustomer && !(taxDigits.length === 11 ? isValidCpf(taxDigits) : taxDigits.length === 14 && isValidCnpj(taxDigits))) missing.push(t("fields.taxId"));
+  if (abroad) {
+    // A customer abroad needs its name, its tax id (or the reason it has none) and the whole address.
+    if (!form.customerName.trim()) missing.push(t("fields.name"));
+    if (!form.noTaxIdReason && !form.foreignTaxId.trim()) missing.push(t("foreign.taxId"));
+    if (!form.country) missing.push(t("foreign.country"));
+    for (const [value, label] of [[form.postalCode, "postalCode"], [form.foreignCity, "city"], [form.region, "region"], [form.street, "street"], [form.number, "number"], [form.district, "district"]] as const) if (!value.trim()) missing.push(t(`foreign.${label}`));
+  } else if (hasCustomer && !(taxDigits.length === 11 ? isValidCpf(taxDigits) : taxDigits.length === 14 && isValidCnpj(taxDigits))) missing.push(t("fields.taxId"));
   if (!/^\d{6}$/.test(serviceCode)) missing.push(t("fields.serviceCode"));
   if (!/^\d{7}$/.test(municipalityCode)) missing.push(t("fields.municipalityCode"));
   if (!form.competenceDate || form.competenceDate > today) missing.push(t("fields.competence"));
   if (!hasAmount) missing.push(t("fields.amount"));
   if (deductionInvalid) missing.push(t("fields.deduction"));
   if ((sendEmail || form.customerEmail) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customerEmail.trim())) missing.push(t("fields.email"));
-  if (Boolean(form.city.trim()) !== Boolean(form.state)) missing.push(form.city.trim() ? t("fields.state") : t("fields.city"));
+  if (!abroad && Boolean(form.city.trim()) !== Boolean(form.state)) missing.push(form.city.trim() ? t("fields.state") : t("fields.city"));
   const canSubmit = missing.length === 0 && !uncertain;
 
   return (
@@ -343,6 +378,14 @@ export default function NewInvoicePage() {
           </Section>
 
           <Section n={2} title={t("form.customer")} hint={t("form.customerHint")} delay={2}>
+            <label className="choice items-start">
+              <input type="checkbox" checked={abroad} onChange={(event) => { setForm((f) => ({ ...f, abroad: event.target.checked ? "yes" : "" })); setFieldErrors({}); }} className="mt-0.5 h-4 w-4 flex-none accent-[var(--accent)]" />
+              <span className="min-w-0">
+                <span className="block text-[14px] text-text">{t("foreign.toggle")}</span>
+                <span className="block text-[12.5px] text-text-4">{t("foreign.toggleHint")}</span>
+              </span>
+            </label>
+            {!abroad && (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("fields.taxId")} error={fieldErrors.customerTaxId || undefined} required={hasCustomer} optionalLabel={hasCustomer ? undefined : t("fields.optional")}>
                 {(c) => (
@@ -355,6 +398,38 @@ export default function NewInvoicePage() {
                 )}
               </Field>
             </div>
+            )}
+            {abroad && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label={t("fields.name")} error={fieldErrors.customerName || undefined} required>
+                    {(c) => <input {...c} type="text" className="field" placeholder={t("placeholders.name")} value={form.customerName} onChange={set("customerName")} autoComplete="organization" required />}
+                  </Field>
+                  <Field label={t("foreign.country")} error={fieldErrors.country || undefined} required>
+                    {(c) => (
+                      <select {...c} className="field" value={form.country} onChange={set("country")} required>
+                        <option value="">{t("foreign.countryPlaceholder")}</option>
+                        {countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
+                      </select>
+                    )}
+                  </Field>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label={t("foreign.taxId")} error={fieldErrors.foreignTaxId || undefined} required={!form.noTaxIdReason} hint={t("foreign.taxIdHint")}>
+                    {(c) => <input {...c} type="text" className="field font-mono" maxLength={40} value={form.foreignTaxId} onChange={set("foreignTaxId")} disabled={Boolean(form.noTaxIdReason)} autoComplete="off" required={!form.noTaxIdReason} />}
+                  </Field>
+                  <Field label={t("foreign.noTaxId")} optionalLabel={t("fields.optional")} hint={t("foreign.noTaxIdHint")}>
+                    {(c) => (
+                      <select {...c} className="field" value={form.noTaxIdReason} onChange={(event) => setForm((f) => ({ ...f, noTaxIdReason: event.target.value, foreignTaxId: event.target.value ? "" : f.foreignTaxId }))}>
+                        <option value="">{t("foreign.hasTaxId")}</option>
+                        <option value="exempt">{t("foreign.reason.exempt")}</option>
+                        <option value="not_required">{t("foreign.reason.not_required")}</option>
+                      </select>
+                    )}
+                  </Field>
+                </div>
+              </>
+            )}
             <Field label={t("fields.email")} error={fieldErrors.customerEmail || undefined} required={sendEmail} optionalLabel={sendEmail ? undefined : t("fields.optional")} hint={t("hints.email")}>
               {(c) => (
                 <input {...c} type="email" inputMode="email" className="field" placeholder={t("placeholders.email")} value={form.customerEmail} onChange={set("customerEmail")} autoComplete="email" spellCheck={false} />
@@ -367,6 +442,7 @@ export default function NewInvoicePage() {
                 <span className="block text-[12.5px] text-text-4">{isLive ? t("sendEmail.hint") : t("sendEmail.hintTest")}</span>
               </span>
             </label>
+            {!abroad && (
             <div className="grid grid-cols-[1fr_96px] gap-4">
               <Field label={t("fields.city")} error={fieldErrors.city || undefined} optionalLabel={t("fields.optional")}>
                 {(c) => (
@@ -379,6 +455,41 @@ export default function NewInvoicePage() {
                 )}
               </Field>
             </div>
+            )}
+            {abroad && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label={t("foreign.street")} error={fieldErrors.street || undefined} required>
+                    {(c) => <input {...c} type="text" className="field" maxLength={255} value={form.street} onChange={set("street")} autoComplete="address-line1" required />}
+                  </Field>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label={t("foreign.number")} error={fieldErrors.number || undefined} required>
+                      {(c) => <input {...c} type="text" className="field" maxLength={60} value={form.number} onChange={set("number")} autoComplete="off" required />}
+                    </Field>
+                    <Field label={t("foreign.complement")} error={fieldErrors.complement || undefined} optionalLabel={t("fields.optional")}>
+                      {(c) => <input {...c} type="text" className="field" maxLength={156} value={form.complement} onChange={set("complement")} autoComplete="address-line2" />}
+                    </Field>
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label={t("foreign.district")} error={fieldErrors.district || undefined} required>
+                    {(c) => <input {...c} type="text" className="field" maxLength={60} value={form.district} onChange={set("district")} autoComplete="off" required />}
+                  </Field>
+                  <Field label={t("foreign.city")} error={fieldErrors.foreignCity || undefined} required>
+                    {(c) => <input {...c} type="text" className="field" maxLength={60} value={form.foreignCity} onChange={set("foreignCity")} autoComplete="address-level2" required />}
+                  </Field>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label={t("foreign.region")} error={fieldErrors.region || undefined} required>
+                    {(c) => <input {...c} type="text" className="field" maxLength={60} value={form.region} onChange={set("region")} autoComplete="address-level1" required />}
+                  </Field>
+                  <Field label={t("foreign.postalCode")} error={fieldErrors.postalCode || undefined} required>
+                    {(c) => <input {...c} type="text" className="field font-mono" maxLength={11} value={form.postalCode} onChange={set("postalCode")} autoComplete="postal-code" required />}
+                  </Field>
+                </div>
+                <p className="banner banner-accent text-[13px]">{t("foreign.notExport")}</p>
+              </>
+            )}
           </Section>
 
           <Section n={3} title={t("form.service")} hint={t("form.serviceHint")} delay={3}>
@@ -483,7 +594,7 @@ export default function NewInvoicePage() {
           <dl className="flex flex-col gap-2.5 border-t border-border-soft pt-4">
             <SummaryRow label={t("summary.issuer")} value={company ? company.tradeName || company.legalName : ""} />
             <SummaryRow label={t("summary.customer")} value={hasCustomer ? form.customerName || "—" : t("summary.noCustomer")} />
-            <SummaryRow label={t("summary.taxId")} value={form.customerTaxId} mono />
+            <SummaryRow label={t("summary.taxId")} value={abroad ? form.foreignTaxId || (form.noTaxIdReason ? t(`foreign.reason.${form.noTaxIdReason}`) : "") : form.customerTaxId} mono />
             <SummaryRow label={t("fields.serviceCode")} value={serviceCode} mono />
             <SummaryRow label={t("fields.municipalityCode")} value={municipalityCode} mono />
             <SummaryRow label={t("summary.competence")} value={competence} />

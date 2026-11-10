@@ -1,14 +1,15 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { invoices, collectAll } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { canCancelInvoice, showsCancellationRequested, showsCancellationReason } from "@/lib/invoice-cancellation";
+import { canCancelInvoice, canSubstituteInvoice, showsCancellationRequested, showsCancellationReason } from "@/lib/invoice-cancellation";
 import type { Invoice, InvoiceEvent } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { CancelInvoiceDialog } from "@/components/dashboard/cancel-invoice-dialog";
+import { SubstituteInvoiceDialog } from "@/components/dashboard/substitute-invoice-dialog";
 import { ManualReviewActions } from "@/components/invoices/manual-review-actions";
 import { Card } from "@/components/ui/card";
 import { FirstNoteBanner } from "@/components/onboarding/first-note-banner";
@@ -24,7 +25,7 @@ const pending = new Set(["queued", "processing", "retry_pending", "reconciliatio
 const pollMs = (invoice: Invoice) => (isScheduled(invoice) ? 60000 : invoice.status === "reconciliation_required" ? 30000 : 5000);
 const TONE: Record<string, string> = { queued: "bg-text-4", processing: "bg-accent", retry_pending: "bg-warn", authorized: "bg-ok", rejected: "bg-danger", failed: "bg-danger", reconciliation_required: "bg-warn", manual_review: "bg-warn", cancelling: "bg-warn", cancelled: "bg-text-4" };
 export default function InvoiceDetailPage() {
-  const { id } = useParams<{ id: string }>(); const t = useTranslations("InvoiceDetail"); const ts = useTranslations("Invoices.status"); const tc = useTranslations("Common"); const locale = useLocale(); const { can } = useAuth(); const [cancelOpen, setCancelOpen] = useState(false);
+  const { id } = useParams<{ id: string }>(); const t = useTranslations("InvoiceDetail"); const ts = useTranslations("Invoices.status"); const tc = useTranslations("Common"); const locale = useLocale(); const { can } = useAuth(); const [cancelOpen, setCancelOpen] = useState(false); const [substituteOpen, setSubstituteOpen] = useState(false); const router = useRouter();
   const apiError = useApiErrorText();
   const invoiceError = useInvoiceErrorText();
   const [invoice, setInvoice] = useState<Invoice | null>(null); const [events, setEvents] = useState<InvoiceEvent[]>([]);
@@ -59,11 +60,11 @@ export default function InvoiceDetailPage() {
     finally { downloadBusy.current = false; setDownloading(false); }
   }
   if (!invoice || invoice.id !== id) return error ? <div className="flex flex-col gap-4"><p role="alert">{error}</p><Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button></div> : <DetailSkeleton label={t("loading")} />;
-  const cancellable = canCancelInvoice(invoice.status, can("nfse.invoices.issue")); const hasDocuments = Boolean(invoice.authorizedAt); const scheduled = isScheduled(invoice);
+  const cancellable = canCancelInvoice(invoice.status, can("nfse.invoices.issue")); const substitutable = canSubstituteInvoice(invoice.status, can("nfse.invoices.issue")); const hasDocuments = Boolean(invoice.authorizedAt); const scheduled = isScheduled(invoice);
   const date = (value: string) => new Date(value).toLocaleString(locale === "pt" ? "pt-BR" : "en-US");
   const brl = new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US", { style: "currency", currency: "BRL" });
   const money = brl.format(invoice.amount);
-  return <div className="flex max-w-[900px] flex-col gap-6"><PageHeader title={invoice.nfseNumber ? `${t("title")} ${invoice.nfseNumber}` : t("title")} subtitle={`${invoice.id} · ${scheduled ? ts("scheduled") : ts(invoice.status)}`} actions={<>{can("nfse.invoices.issue") && <Link href={copyInvoiceHref(invoice.id)} className="btn">{t("copy")}</Link>}{cancellable && <Button variant="danger" onClick={() => setCancelOpen(true)}>{t("cancel.open")}</Button>}<Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button></>} />
+  return <div className="flex max-w-[900px] flex-col gap-6"><PageHeader title={invoice.nfseNumber ? `${t("title")} ${invoice.nfseNumber}` : t("title")} subtitle={`${invoice.id} · ${scheduled ? ts("scheduled") : ts(invoice.status)}`} actions={<>{can("nfse.invoices.issue") && <Link href={copyInvoiceHref(invoice.id)} className="btn">{t("copy")}</Link>}{substitutable && <Button onClick={() => setSubstituteOpen(true)}>{t("substitute.open")}</Button>}{cancellable && <Button variant="danger" onClick={() => setCancelOpen(true)}>{t("cancel.open")}</Button>}<Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button></>} />
     {error && <p role="alert" className="banner banner-danger">{error}</p>}
     <FirstNoteBanner invoiceId={invoice.id} />
     {scheduled && <p role="status" className="banner banner-info">{t("scheduledBanner", { date: formatScheduledDate(invoice.scheduledFor!, locale, true) })}</p>}
@@ -82,6 +83,7 @@ export default function InvoiceDetailPage() {
         </li>;
       })}</ol>
     </Card>
+    {substituteOpen && substitutable && <SubstituteInvoiceDialog invoice={invoice} open={substituteOpen} onClose={() => setSubstituteOpen(false)} onSubstituted={(substitute) => { setSubstituteOpen(false); router.push(`/app/invoices/${substitute.id}`); }} />}
     {cancelOpen && cancellable && <CancelInvoiceDialog invoice={invoice} open={cancelOpen} onClose={() => setCancelOpen(false)} onCancelled={(updated) => { setCancelOpen(false); setInvoice(updated); setRevision((value) => value + 1); }} />}
   </div>;
 }
