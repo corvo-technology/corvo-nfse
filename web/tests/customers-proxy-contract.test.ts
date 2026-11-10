@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { DELETE, GET, PATCH, POST, PUT } from "@/app/api/proxy/[...path]/route";
-import { ApiError, customers, setCsrfToken } from "@/lib/api";
+import { ApiError, customers, invoices, setCsrfToken } from "@/lib/api";
 
 /**
  * Every call the web client makes for saved customers must be allowed by the proxy: the route list
@@ -45,6 +45,17 @@ describe("web client and proxy agree on the customer routes", () => {
       const response = await handler(request, { params: Promise.resolve({ path: route.split("/") }) });
       expect(response.status, `${call.method} ${route}`).not.toBe(404);
     }
+    vi.unstubAllEnvs();
+  });
+
+  it("lets the substitute call through to the API", async () => {
+    await Promise.allSettled([invoices.substitute("inv-1", { description: "Service description corrected" }, "key-1")]);
+    expect(calls.map((c) => `${c.method} ${c.path.replace("/api/proxy/v1/", "")}`)).toContain("POST invoices/inv-1/substitute");
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("{}", { status: 200 }))));
+    vi.stubEnv("APP_ORIGIN", "http://localhost:4000"); vi.stubEnv("API_BASE_URL", "http://localhost:3000");
+    const request = new NextRequest("http://localhost:4000/api/proxy/v1/invoices/inv-1/substitute", { method: "POST", headers: { origin: "http://localhost:4000" } });
+    const response = await POST(request, { params: Promise.resolve({ path: ["v1", "invoices", "inv-1", "substitute"] }) });
+    expect(response.status).not.toBe(404);
     vi.unstubAllEnvs();
   });
 
