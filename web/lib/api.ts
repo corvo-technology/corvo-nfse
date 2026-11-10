@@ -391,7 +391,7 @@ export const imports = {
   get: async (id: string, signal?: AbortSignal) => adaptImport(unwrap(await request<Envelope<ImportWire>>(`/imports/${idPath(id)}`, { signal }))),
   rows: async (id: string, params: PageParams & { status?: ImportRow["status"] } = {}, signal?: AbortSignal): Promise<Page<ImportRow>> => { const page = toPage(await request<ListBody<ImportRowWire>>(`/imports/${idPath(id)}/rows${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptImportRow) }; },
   updateRow: async (id: string, line: number, item: Record<string, unknown>) => adaptImportRow(unwrap(await request<Envelope<ImportRowWire>>(`/imports/${idPath(id)}/rows/${line}`, json({ item }, "PATCH")))),
-  emit: async (id: string) => adaptImport(unwrap(await request<Envelope<ImportWire>>(`/imports/${idPath(id)}/emit`, json({})))),
+  emit: async (id: string, options: { sendEmail?: boolean } = {}) => adaptImport(unwrap(await request<Envelope<ImportWire>>(`/imports/${idPath(id)}/emit`, json(options.sendEmail ? { sendEmail: true } : {})))),
   discard: (id: string) => request<null>(`/imports/${idPath(id)}`, { method: "DELETE" }),
   errorsCsv: (id: string) => request<Blob>(`/imports/${idPath(id)}/errors.csv`, {}, true),
   template: () => request<Blob>("/imports/template", {}, true),
