@@ -3119,5 +3119,10 @@
       "confirm": "Delete customer",
       "failed": "Could not delete the customer."
     }
+  },
+  "MunicipalityNotice": {
+    "inactive": "The agreement of {name} ({uf}) with the national NFS-e standard is not active yet. The Receita may refuse this company's invoices until the municipality activates it.",
+    "unknown": "Code {code} is not on the official list of municipalities. Check the 7-digit IBGE code.",
+    "link": "See the status of municipalities"
   }
 }

@@ -1,4 +1,5 @@
 "use client";
+import { MunicipalityAgreementNotice } from "@/components/companies/municipality-agreement-notice";
 import { useState, useRef } from "react";
 import { Check, Loader2, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -258,6 +259,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
         </label>
       )}
       {field("municipalityCode", { required: true, maxLength: 7, mask: maskDigits(7), inputMode: "numeric", mono: true })}
+      <MunicipalityAgreementNotice municipalityCode={values.municipalityCode} taxRegime={values.taxRegime} className="sm:col-span-2" />
       <Field label={t("defaultServiceCode")} optionalLabel={t("optional")} error={fieldErrors.defaultServiceCode || undefined} hint={t("hints.defaultServiceCode")} className="sm:col-span-2">
         {(props) => <ServiceCodeCombobox {...props} value={values.defaultServiceCode} onChange={(code) => set("defaultServiceCode", code)} />}
       </Field>

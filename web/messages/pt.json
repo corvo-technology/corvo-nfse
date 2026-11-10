@@ -3119,5 +3119,10 @@
       "confirm": "Excluir cliente",
       "failed": "Não foi possível excluir o cliente."
     }
+  },
+  "MunicipalityNotice": {
+    "inactive": "O convênio de {name} ({uf}) com o padrão nacional da NFS-e ainda não está ativo. A Receita pode recusar as notas desta empresa até o município ativar o convênio.",
+    "unknown": "O código {code} não está na lista oficial de municípios. Confira o código IBGE de 7 dígitos.",
+    "link": "Ver a situação dos municípios"
   }
 }
