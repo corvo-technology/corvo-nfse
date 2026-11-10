@@ -287,6 +287,8 @@ export class InvoiceService {
           municipalityCode: normalized.service.municipalityCode,
           fiscal: normalized.service.fiscal,
           serviceProfileId: normalized.service.serviceProfileId,
+          purchaseOrder: normalized.service.purchaseOrder,
+          notes: normalized.service.notes,
         },
         amount: normalized.amount,
         discount: normalized.discount,

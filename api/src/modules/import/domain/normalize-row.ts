@@ -80,6 +80,8 @@ export function normalizeRow(
     competenceDate: parseDate(cells.dataCompetencia, today),
   };
   if (Object.keys(customer).length) item.customer = customer;
+  if (cells.pedido?.trim()) item.purchaseOrder = cells.pedido.trim();
+  if (cells.observacoes?.trim()) item.notes = cells.observacoes.trim();
   const cnpj = restoreZeros(digits(cells.cnpjPrestador), 'company');
   return cnpj ? { item, cnpjPrestador: cnpj } : { item };
 }

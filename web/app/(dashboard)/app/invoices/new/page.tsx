@@ -82,6 +82,8 @@ export default function NewInvoicePage() {
     competenceDate: new Date().toLocaleDateString("sv-SE"),
     amount: "",
     deduction: "",
+    purchaseOrder: "",
+    notes: "",
   });
 
   const inFlight = useRef(false);
@@ -166,6 +168,9 @@ export default function NewInvoicePage() {
       amount,
       // Declared by the issuer; empty or zero sends nothing.
       deduction: hasDeduction ? deductionNumber : undefined,
+      // Printed on the invoice; neither changes any tax. Empty sends nothing.
+      purchaseOrder: form.purchaseOrder.trim() || undefined,
+      notes: form.notes.trim() || undefined,
       competenceDate: form.competenceDate,
       email: sendEmail,
     };
@@ -182,6 +187,8 @@ export default function NewInvoicePage() {
       ...(input.customer ? { customer: input.customer } : {}),
       service: { ...(input.service.description ? { description: input.service.description } : {}), ...(input.service.code ? { code: input.service.code } : {}), ...(input.service.municipalityCode ? { municipalityCode: input.service.municipalityCode } : {}) },
       ...(input.deduction ? { deduction: input.deduction } : {}),
+      ...(input.purchaseOrder ? { purchaseOrder: input.purchaseOrder } : {}),
+      ...(input.notes ? { notes: input.notes } : {}),
       options: { type: "RECURRING", recurrence: { frequency, ...(endsOn ? { endsOn } : {}) }, ...(sendEmail ? { email: { send: true } } : {}) },
     };
   }
@@ -245,7 +252,7 @@ export default function NewInvoicePage() {
       router.push(`/app/invoices/${created.id}`);
     } catch (err: unknown) {
       if (err instanceof ApiError && [0, 409, 502, 503].includes(err.status)) setUncertain(true);
-      const { _form, ...perField } = mapIssues(err, { "customer.taxId": "customerTaxId", "customer.name": "customerName", "customer.email": "customerEmail", "customer.address": "city", "customer.address.city": "city", "customer.address.state": "state", "service.code": "serviceCode", "service.municipalityCode": "municipalityCode", "service.description": "serviceDescription", amount: "amount", deduction: "deduction", competenceDate: "competenceDate", companyId: "companyId", companyTaxId: "companyId", "company.municipalityCode": "companyId" }, (code) => (te.has(code) ? te(code) : te("invalid")));
+      const { _form, ...perField } = mapIssues(err, { "customer.taxId": "customerTaxId", "customer.name": "customerName", "customer.email": "customerEmail", "customer.address": "city", "customer.address.city": "city", "customer.address.state": "state", "service.code": "serviceCode", "service.municipalityCode": "municipalityCode", "service.description": "serviceDescription", amount: "amount", deduction: "deduction", purchaseOrder: "purchaseOrder", notes: "notes", competenceDate: "competenceDate", companyId: "companyId", companyTaxId: "companyId", "company.municipalityCode": "companyId" }, (code) => (te.has(code) ? te(code) : te("invalid")));
       setFieldErrors(perField);
       setFixOnCompany([...fieldIssues(err).map((issue) => issue.code), ...(err instanceof ApiError && err.code ? [err.code] : [])].some((code) => FIX_ON_COMPANY.has(errorCodeKey(code))));
       setError(_form ?? (Object.keys(perField).length > 0 ? t("fields.fixFields") : apiErrorMessage(err, te.has, te, t("fields.createFailed"))));
@@ -364,6 +371,16 @@ export default function NewInvoicePage() {
             <Field label={t("fields.description")} error={fieldErrors.serviceDescription || undefined} optionalLabel={t("fields.optional")} hint={t("hints.description")}>
               {(c) => (
                 <textarea {...c} className="field resize-y" rows={3} placeholder={t("placeholders.description")} value={form.serviceDescription} onChange={set("serviceDescription")} />
+              )}
+            </Field>
+            <Field label={t("fields.purchaseOrder")} error={fieldErrors.purchaseOrder || undefined} optionalLabel={t("fields.optional")} hint={t("hints.purchaseOrder")}>
+              {(c) => (
+                <input {...c} type="text" className="field" maxLength={60} placeholder={t("placeholders.purchaseOrder")} value={form.purchaseOrder} onChange={set("purchaseOrder")} autoComplete="off" />
+              )}
+            </Field>
+            <Field label={t("fields.notes")} error={fieldErrors.notes || undefined} optionalLabel={t("fields.optional")} hint={t("hints.notes")}>
+              {(c) => (
+                <textarea {...c} className="field resize-y" rows={2} maxLength={2000} placeholder={t("placeholders.notes")} value={form.notes} onChange={set("notes")} />
               )}
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">

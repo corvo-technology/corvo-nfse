@@ -112,6 +112,23 @@ describe('nfse_issue simple inputs', () => {
     });
   });
 
+  it('passes the purchase order and the notes to the invoice request', async () => {
+    const { emit, handler } = setup();
+    await handler(
+      {
+        company_tax_id: '11222333000181',
+        amount: 100,
+        purchase_order: 'PO-4521',
+        notes: 'Parcela 2 de 3',
+      },
+      context,
+    );
+    expect(dtoOf(emit)).toMatchObject({
+      purchaseOrder: 'PO-4521',
+      notes: 'Parcela 2 de 3',
+    });
+  });
+
   it('passes the declared deduction to the invoice request', async () => {
     const { emit, handler } = setup();
     await handler(

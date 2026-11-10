@@ -1193,7 +1193,9 @@
       "loadMoreCompanies": "Load more companies",
       "companyNotReady": "This company needs setup or is blocked from issuing in this environment.",
       "configureCompany": "View company setup",
-      "openCompany": "Open the company"
+      "openCompany": "Open the company",
+      "purchaseOrder": "Purchase order",
+      "notes": "Notes on the invoice"
     },
     "placeholders": {
       "reference": "order-12345",
@@ -1205,7 +1207,9 @@
       "description": "Technical consulting for software development",
       "amount": "1000.00",
       "serviceCode": "010701",
-      "municipalityCode": "3550308"
+      "municipalityCode": "3550308",
+      "purchaseOrder": "PO-4521",
+      "notes": "Instalment 2 of 3, contract 12/2026"
     },
     "loadedRecords": "Showing {count} loaded invoices. Filters apply to these records.",
     "loadMore": "Load more",
@@ -1218,7 +1222,9 @@
       "municipalityDefault": "Company municipality: {code}. Leave empty to use it, or enter another service location for this invoice.",
       "description": "Optional. When empty we use the service code's name.",
       "deduction": "Optional. An amount your city's legislation allows you to deduct from the ISS base. It is subtracted from the tax base and sent on the invoice. You declare the value: Corvo does not check whether the deduction is allowed, so confirm it with your accountant.",
-      "serviceCodeFallback": "Optional. With no code on the invoice or the company, we use {code} (10.09, representation). Pick your own activity code."
+      "serviceCodeFallback": "Optional. With no code on the invoice or the company, we use {code} (10.09, representation). Pick your own activity code.",
+      "purchaseOrder": "Purchase order or service order number the customer asked to see on the invoice. It changes no tax.",
+      "notes": "Free text printed on the invoice, such as the instalment or contract number. It changes no tax."
     },
     "summary": {
       "title": "Invoice summary",
@@ -1733,7 +1739,9 @@
       "confirm": "Cancel invoice",
       "failed": "We couldn't cancel the invoice.",
       "reasonLabel": "Cancellation reason"
-    }
+    },
+    "purchaseOrder": "Purchase order",
+    "notes": "Notes on the invoice"
   },
   "FiscalDocs": {
     "title": "Corvo API — NFS-e",

@@ -231,6 +231,28 @@ export class CreateInvoiceDto {
   @IsNumber()
   deduction?: number;
 
+  @ApiPropertyOptional({
+    example: 'PO-4521',
+    maxLength: 60,
+    description:
+      'Purchase order, service order or project number the customer asked to see on the invoice. Sent in the DPS as serv/infoCompl/xPed and printed on the DANFSe. Does not change any tax.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  purchaseOrder?: string;
+
+  @ApiPropertyOptional({
+    example: 'Parcela 2 de 3 do contrato 12/2026',
+    maxLength: 2000,
+    description:
+      'Free text printed on the invoice as complementary information (DPS serv/infoCompl/xInfComp). Does not change any tax.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notes?: string;
+
   @IsDateString() competenceDate!: string;
 
   @IsOptional() @IsBoolean() email?: boolean;

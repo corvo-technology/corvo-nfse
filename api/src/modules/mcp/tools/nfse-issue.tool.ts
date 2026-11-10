@@ -73,6 +73,18 @@ export const NFSE_ISSUE_PROPERTIES = {
     description:
       'Deduction from the ISS tax base in BRL, declared by the issuer (> 0 and less than amount minus discount). The issuer is responsible for the declared value; Corvo does not check whether the deduction is allowed.',
   },
+  purchase_order: {
+    type: 'string',
+    maxLength: 60,
+    description:
+      'Purchase order, service order or project number the customer asked to see on the invoice. Does not change any tax.',
+  },
+  notes: {
+    type: 'string',
+    maxLength: 2000,
+    description:
+      'Free text printed on the invoice as complementary information. Does not change any tax.',
+  },
   competence_date: {
     type: 'string',
     description:
@@ -232,6 +244,8 @@ export function toCreateInvoiceDto(params: NfseIssueInput): CreateInvoiceDto {
     amount: serviceAmount(params),
     discount: params.discount,
     deduction: params.deduction,
+    purchaseOrder: params.purchase_order,
+    notes: params.notes,
     competenceDate: params.competence_date ?? SAO_PAULO_DATE.format(new Date()),
     options:
       params.emission_type ||

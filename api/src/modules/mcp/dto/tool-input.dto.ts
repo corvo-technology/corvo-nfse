@@ -95,6 +95,12 @@ export class NfseIssueInput {
 
   @IsOptional() @IsNumber() @Min(0) deduction?: number;
 
+  /** Customer purchase order printed on the invoice (DPS xPed). */
+  @IsOptional() @IsString() @MaxLength(60) purchase_order?: string;
+
+  /** Free text printed on the invoice as complementary information (DPS xInfComp). */
+  @IsOptional() @IsString() @MaxLength(2000) notes?: string;
+
   /** YYYY-MM-DD. Defaults to today (America/Sao_Paulo). */
   @IsOptional() @IsDateString() competence_date?: string;
 
