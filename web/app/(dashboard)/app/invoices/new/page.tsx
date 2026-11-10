@@ -20,6 +20,7 @@ import type { Company, InvoiceCalculation } from "@/lib/types";
 import { InvoiceCalculationPanel } from "@/components/dashboard/invoice-calculation-panel";
 import { DEFAULT_SERVICE_CODE } from "@/lib/service-defaults";
 import { invoiceToFormValues } from "@/lib/invoice-copy";
+import { useSavedCustomer } from "@/components/invoices/use-saved-customer";
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -84,6 +85,19 @@ export default function NewInvoicePage() {
     deduction: "",
     purchaseOrder: "",
     notes: "",
+  });
+
+  // What the saved customer filled last. A field the person typed over is never replaced.
+  const filledFromSaved = useRef<{ name: string; email: string } | null>(null);
+  const savedCustomer = useSavedCustomer(cleanTaxId(form.customerTaxId), (customer) => {
+    const previous = filledFromSaved.current;
+    const email = customer.email ?? "";
+    filledFromSaved.current = { name: customer.name, email };
+    setForm((f) => ({
+      ...f,
+      customerName: !f.customerName.trim() || f.customerName === previous?.name ? customer.name : f.customerName,
+      customerEmail: !f.customerEmail.trim() || f.customerEmail === previous?.email ? email : f.customerEmail,
+    }));
   });
 
   const inFlight = useRef(false);
@@ -335,7 +349,7 @@ export default function NewInvoicePage() {
                   <input {...c} type="text" inputMode="text" autoCapitalize="characters" className="field font-mono tabular-nums" placeholder={t("placeholders.taxId")} value={form.customerTaxId} onChange={set("customerTaxId", maskTaxId)} maxLength={18} autoComplete="off" required={hasCustomer} />
                 )}
               </Field>
-              <Field label={t("fields.name")} error={fieldErrors.customerName || undefined} optionalLabel={t("fields.optional")}>
+              <Field label={t("fields.name")} error={fieldErrors.customerName || undefined} optionalLabel={t("fields.optional")} hint={savedCustomer && form.customerName === savedCustomer.name ? t("hints.savedCustomer") : undefined}>
                 {(c) => (
                   <input {...c} type="text" className="field" placeholder={t("placeholders.name")} value={form.customerName} onChange={set("customerName")} autoComplete="organization" />
                 )}

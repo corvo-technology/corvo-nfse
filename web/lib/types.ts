@@ -565,3 +565,6 @@ export interface ImportCounters { total: number; valid: number; invalid: number;
 export interface ImportJob { id: string; status: ImportStatus; fileName: string; companyId: string | null; errorCode: string | null; rowsExpected: number | null; unknownColumns: string[]; emitStartedAt: string | null; emitFinishedAt: string | null; createdAt: string; counters: ImportCounters }
 export interface ImportRow { line: number; data: Record<string, unknown>; status: ImportRowStatus; errorCode: string | null; errorMessage: string | null; invoiceId: string | null }
 export interface ImportStart { id: string; status: ImportStatus; duplicateOf: string | null }
+
+/** A customer (tomador) saved from an accepted invoice: the next invoice for the same document needs no name. */
+export interface SavedCustomer { taxId: string; name: string; email: string | null; lastUsedAt: string; createdAt: string; updatedAt: string }
