@@ -1136,7 +1136,23 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ["Crédito", "A substituta usa um crédito, como qualquer nota emitida. O crédito da original não volta."],
           ["Erros", "`409` `ERROR_INVOICE_NOT_SUBSTITUTABLE` quando a nota não está `authorized`; `404` quando não existe."],
         ] },
-        { kind: "code", label: "Substituir uma nota", language: "bash", code: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/substitute" \\
+        {
+          kind: "endpoint",
+          method: "POST",
+          path: "/v1/invoices/:id/substitute",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "202 Accepted",
+          summary: "Emite uma nota nova que substitui uma nota `authorized`. A original continua `authorized` até a Receita autorizar a substituta e só então passa a `cancelled`; se a Receita recusar, a original não muda. Tomador, data de competência e valor são copiados da original.",
+          params: {
+            rows: [
+              { name: "description", type: "string", required: true, description: "Obrigatório, de 15 a 255 caracteres: o motivo da substituição (DPS `subst/xMotivo`)." },
+              { name: "service.description", type: "string", required: false, description: "Nova descrição do serviço." },
+              { name: "purchaseOrder", type: "string", required: false, description: "Novo nº do pedido. Omitir mantém o da original; texto vazio remove." },
+              { name: "notes", type: "string", required: false, description: "Novas observações. Omitir mantém as da original; texto vazio remove." },
+            ],
+          },
+          examples: {
+            curl: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/substitute" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
   -H "Content-Type: application/json" \\
   -H "Idempotency-Key: pedido_981_substituicao" \\
@@ -1144,7 +1160,42 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
     "description": "Descricao do servico corrigida",
     "service": { "description": "Consultoria em tecnologia, outubro/2026" },
     "purchaseOrder": "PO-4521"
-  }'` },
+  }'`,
+            node: `const res = await fetch(\`\${BASE_URL}/invoices/\${process.env.INVOICE_ID}/substitute\`, {
+  method: "POST",
+  headers: {
+    "X-API-Key": process.env.CORVO_API_KEY,
+    "Content-Type": "application/json",
+    "Idempotency-Key": "pedido_981_substituicao",
+  },
+  body: JSON.stringify({
+    description: "Descricao do servico corrigida",
+    service: { description: "Consultoria em tecnologia, outubro/2026" },
+    purchaseOrder: "PO-4521",
+  }),
+});
+const { data } = await res.json();
+console.log(res.status, data.status, data.substitutesInvoiceId); // 202 "queued" "<id da original>"`,
+          },
+          response: {
+            label: "202 Accepted",
+            json: `{
+  "data": {
+    "id": "9b2f4c1e-7a35-4d0f-8c21-5e6a1b3d7f90",
+    "status": "queued",
+    "substitutesInvoiceId": "6f1c0e2a-4b7d-4c1e-9a55-2b8f7c3d9e10",
+    "substitutionDescription": "Descricao do servico corrigida",
+    "amount": 1000,
+    "serviceSnapshot": {
+      "description": "Consultoria em tecnologia, outubro/2026",
+      "code": "010601",
+      "municipalityCode": "3550308",
+      "purchaseOrder": "PO-4521"
+    }
+  }
+}`,
+          },
+        },
         { kind: "callout", tone: "warn", body: "O prazo para substituir e algumas regras (por exemplo, nota sem tomador identificado) são definidos por cada município. A Corvo não conhece esse prazo de antemão: se a Receita recusar, o código do erro vem na nota substituta. Envie `Idempotency-Key` para repetir a chamada sem emitir duas substitutas." },
         { kind: "heading", level: 2, body: "Clientes salvos" },
         { kind: "text", body: "Depois que uma nota com tomador é aceita, a Corvo guarda o CPF ou CNPJ, o nome e o e-mail desse cliente. Na nota seguinte para o mesmo documento, basta enviar `customer.taxId`: o `name` vem do cadastro. O que você envia na requisição sempre vale, e a nota já emitida nunca muda." },

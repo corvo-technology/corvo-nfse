@@ -1156,7 +1156,23 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ["Credit", "The substitute uses a credit, like any issued invoice. The credit of the original is not returned."],
           ["Errors", "`409` `ERROR_INVOICE_NOT_SUBSTITUTABLE` when the invoice is not `authorized`; `404` when it does not exist."],
         ] },
-        { kind: "code", label: "Substituting an invoice", language: "bash", code: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/substitute" \\
+        {
+          kind: "endpoint",
+          method: "POST",
+          path: "/v1/invoices/:id/substitute",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "202 Accepted",
+          summary: "Issues a new invoice that replaces an `authorized` one. The original stays `authorized` until the Receita authorizes the substitute and only then becomes `cancelled`; if the Receita refuses, the original does not change. Customer, competence date and amount are copied from the original.",
+          params: {
+            rows: [
+              { name: "description", type: "string", required: true, description: "Required, 15 to 255 characters: why the invoice is being substituted (DPS `subst/xMotivo`)." },
+              { name: "service.description", type: "string", required: false, description: "New service description." },
+              { name: "purchaseOrder", type: "string", required: false, description: "New purchase order. Omitting keeps the original; an empty text removes it." },
+              { name: "notes", type: "string", required: false, description: "New notes. Omitting keeps the original; an empty text removes it." },
+            ],
+          },
+          examples: {
+            curl: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/substitute" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
   -H "Content-Type: application/json" \\
   -H "Idempotency-Key: pedido_981_substituicao" \\
@@ -1164,7 +1180,42 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
     "description": "Descricao do servico corrigida",
     "service": { "description": "Consultoria em tecnologia, outubro/2026" },
     "purchaseOrder": "PO-4521"
-  }'` },
+  }'`,
+            node: `const res = await fetch(\`\${BASE_URL}/invoices/\${process.env.INVOICE_ID}/substitute\`, {
+  method: "POST",
+  headers: {
+    "X-API-Key": process.env.CORVO_API_KEY,
+    "Content-Type": "application/json",
+    "Idempotency-Key": "pedido_981_substituicao",
+  },
+  body: JSON.stringify({
+    description: "Descricao do servico corrigida",
+    service: { description: "Consultoria em tecnologia, outubro/2026" },
+    purchaseOrder: "PO-4521",
+  }),
+});
+const { data } = await res.json();
+console.log(res.status, data.status, data.substitutesInvoiceId); // 202 "queued" "<id da original>"`,
+          },
+          response: {
+            label: "202 Accepted",
+            json: `{
+  "data": {
+    "id": "9b2f4c1e-7a35-4d0f-8c21-5e6a1b3d7f90",
+    "status": "queued",
+    "substitutesInvoiceId": "6f1c0e2a-4b7d-4c1e-9a55-2b8f7c3d9e10",
+    "substitutionDescription": "Descricao do servico corrigida",
+    "amount": 1000,
+    "serviceSnapshot": {
+      "description": "Consultoria em tecnologia, outubro/2026",
+      "code": "010601",
+      "municipalityCode": "3550308",
+      "purchaseOrder": "PO-4521"
+    }
+  }
+}`,
+          },
+        },
         { kind: "callout", tone: "warn", body: "The deadline to substitute and some rules (for example, an invoice without an identified customer) are set by each municipality. Corvo does not know that deadline in advance: if the Receita refuses, the error code comes on the substitute invoice. Send `Idempotency-Key` to repeat the call without issuing two substitutes." },
         { kind: "heading", level: 2, body: "Saved customers" },
         { kind: "text", body: "After an invoice with a customer is accepted, Corvo keeps the CPF or CNPJ, the name and the email of that customer. On the next invoice for the same document, send only `customer.taxId`: the `name` comes from the saved customer. What you send in the request always wins, and an invoice already issued never changes." },
