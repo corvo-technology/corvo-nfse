@@ -1,3 +1,5 @@
+import { POSTS, postToMarkdown } from "@/lib/blog/registry";
+import { blogUrl, postUrl } from "@/lib/blog/seo";
 import { DOC_GROUPS, getDocsTree } from "@/lib/docs/registry";
 import { sectionToMarkdown } from "@/lib/docs/to-markdown";
 import { faqMarkdown } from "@/lib/landing-faq";
@@ -95,6 +97,16 @@ export const LLMS_PATHS: Record<SeoLocale, { index: string; full: string }> = {
 const allSlugs = () => DOC_GROUPS.flatMap((group) => group.slugs);
 const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
 
+/** One line per blog post, plus the index. The blog is written in Portuguese for both llms.txt files. */
+function blogGuides(locale: SeoLocale): string[] {
+  return [
+    `- [Blog](${blogUrl()}): ${
+      locale === "en" ? "technical guides on NFS-e by API, in Portuguese." : "guias técnicos sobre NFS-e por API."
+    }`,
+    ...POSTS.map((post) => `- [${post.title}](${postUrl(post.slug)}): ${oneLine(post.description)}`),
+  ];
+}
+
 export function buildLlmsTxt(locale: SeoLocale): string {
   const tree = getDocsTree(locale)!;
   const labels = LABELS[locale];
@@ -116,6 +128,7 @@ export function buildLlmsTxt(locale: SeoLocale): string {
   return [
     locale === "en" ? EN_INTRO : PT_INTRO,
     `## ${labels.docs}\n\n${docs.join("\n")}`,
+    `## ${locale === "en" ? "Guides (blog, in Portuguese)" : "Guias (blog)"}\n\n${blogGuides(locale).join("\n")}`,
     `## ${labels.faq}\n\n${faqMarkdown(locale)}`,
     `## ${labels.optional}\n\n${optional.join("\n")}`,
   ].join("\n\n") + "\n";
@@ -128,6 +141,7 @@ export function buildLlmsFull(locale: SeoLocale): string {
     sectionToMarkdown(tree.home, 2),
     `## ${LABELS[locale].faq}\n\n${faqMarkdown(locale)}`,
     ...allSlugs().map((slug) => `${sectionToMarkdown(tree.pages[slug], 2)}\n\nSource: ${pageUrl(locale, `/docs/${slug}`)}`),
+    ...POSTS.map((post) => postToMarkdown(post, postUrl(post.slug))),
   ].join("\n\n---\n\n");
   return `${body}\n`;
 }

@@ -7,11 +7,13 @@ import { cn } from "@/lib/utils";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 
-const navLinks = [
+const navLinks: { key: string; href: string; locale?: string }[] = [
   { key: "product", href: "#product" },
   { key: "integrations", href: "#integrations" },
   { key: "docs", href: "/docs" },
   { key: "pricing", href: "#pricing" },
+  // The blog exists in Portuguese only, so it always opens /pt/blog.
+  { key: "blog", href: "/blog", locale: "pt" },
 ];
 
 export function Nav() {
@@ -37,7 +39,7 @@ export function Nav() {
           {navLinks.map((link) => (
             <a
               key={link.key}
-              href={link.href.startsWith("/#") ? link.href : `/${locale}${link.href}`}
+              href={link.href.startsWith("/#") ? link.href : `/${link.locale ?? locale}${link.href}`}
               className="text-[14px] text-text-2 transition-colors hover:text-text"
             >
               {t(link.key)}
@@ -90,7 +92,7 @@ export function Nav() {
             {navLinks.map((link) => (
               <a
                 key={link.key}
-                href={link.href.startsWith("/#") ? link.href : `/${locale}${link.href}`}
+                href={link.href.startsWith("/#") ? link.href : `/${link.locale ?? locale}${link.href}`}
                 className="text-[14px] text-text-2 hover:text-text py-1"
                 onClick={() => setMobileOpen(false)}
               >

@@ -67,7 +67,9 @@ const isPublicPath = (logicalPath: string) =>
   publicPaths.has(logicalPath) ||
   logicalPath.startsWith("/app") ||
   logicalPath === "/docs" ||
-  logicalPath.startsWith("/docs/");
+  logicalPath.startsWith("/docs/") ||
+  logicalPath === "/blog" ||
+  logicalPath.startsWith("/blog/");
 
 export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -86,6 +88,14 @@ export function proxy(request: NextRequest) {
   if (pathname === "/docs" || pathname.startsWith("/docs/")) {
     const target = new URL(request.url);
     target.pathname = `/pt${pathname}`;
+    return NextResponse.redirect(target, 301);
+  }
+
+  // The blog exists in Portuguese only: /blog and /en/blog (with any sub-path) move to /pt/blog with one 301.
+  const blogMatch = pathname.match(/^(?:\/en)?(\/blog(?:\/.*)?)$/);
+  if (blogMatch) {
+    const target = new URL(request.url);
+    target.pathname = `/pt${blogMatch[1]}`;
     return NextResponse.redirect(target, 301);
   }
 

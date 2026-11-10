@@ -704,7 +704,8 @@
     "docs": "Docs",
     "pricing": "Preços",
     "signIn": "Entrar",
-    "startFree": "Começar grátis"
+    "startFree": "Começar grátis",
+    "blog": "Blog"
   },
   "Language": {
     "en": "EN",
@@ -918,7 +919,8 @@
     "security": "Segurança",
     "terms": "Termos",
     "privacy": "Aviso de Privacidade",
-    "cookiePreferences": "Preferências de cookies"
+    "cookiePreferences": "Preferências de cookies",
+    "blog": "Blog"
   },
   "CookieConsent": {
     "message": "Usamos cookies e tecnologias semelhantes, incluindo o Google Analytics e o Meta Pixel, para melhorar sua experiência, medir o tráfego do site e entender campanhas de cadastro. Ao clicar em \"Aceitar\", você concorda com esse uso.",

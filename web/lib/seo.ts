@@ -81,7 +81,14 @@ export function pageUrl(locale: SeoLocale, path = ""): string {
 }
 
 /** Canonical plus hreflang for every locale, with the default locale as x-default. */
-export function localizedAlternates(locale: SeoLocale, path = "") {
+export function localizedAlternates(locale: SeoLocale, path = "", only?: SeoLocale) {
+  // A page that exists in a single language lists only that language, so hreflang never points at a redirect.
+  if (only) {
+    return {
+      canonical: pageUrl(only, path),
+      languages: { [only]: pageUrl(only, path), "x-default": pageUrl(only, path) },
+    };
+  }
   return {
     canonical: pageUrl(locale, path),
     languages: {
@@ -102,20 +109,24 @@ interface PageMetadataInput {
   description: string;
   keywords?: string[];
   type?: "website" | "article";
+  /** The page exists in one language only (the blog): canonical and hreflang list just that one. */
+  onlyLocale?: SeoLocale;
 }
 
 /** Metadata with canonical, hreflang, Open Graph and Twitter cards in the page's language. */
 export function pageMetadata(input: PageMetadataInput): Metadata {
-  const locale = seoLocale(input.locale);
+  const locale = input.onlyLocale ?? seoLocale(input.locale);
   const copy = SITE_COPY[locale];
   const path = input.path ?? "";
   const shownTitle = input.absoluteTitle ? input.title : `${input.title} | ${SITE_NAME}`;
-  const other = SEO_LOCALES.filter((value) => value !== locale).map((value) => OPEN_GRAPH_LOCALE[value]);
+  const other = input.onlyLocale
+    ? []
+    : SEO_LOCALES.filter((value) => value !== locale).map((value) => OPEN_GRAPH_LOCALE[value]);
   return {
     title: input.absoluteTitle ? { absolute: input.title } : input.title,
     description: input.description,
     ...(input.keywords ? { keywords: input.keywords } : {}),
-    alternates: localizedAlternates(locale, path),
+    alternates: localizedAlternates(locale, path, input.onlyLocale),
     openGraph: {
       type: input.type ?? "website",
       siteName: SITE_NAME,
