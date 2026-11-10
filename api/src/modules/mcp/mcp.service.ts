@@ -94,6 +94,21 @@ import {
   createCompanyGetHandler,
 } from './tools/company-get.tool';
 
+import {
+  CUSTOMER_DELETE_TOOL,
+  CUSTOMER_LIST_TOOL,
+  CUSTOMER_UPDATE_TOOL,
+  createCustomerDeleteHandler,
+  createCustomerListHandler,
+  createCustomerUpdateHandler,
+} from './tools/customer.tools';
+import {
+  NFSE_SUBSTITUTE_TOOL,
+  createNfseSubstituteHandler,
+} from './tools/nfse-substitute.tool';
+import { CustomerDirectory } from '@/modules/invoice/domain/customer-directory';
+import { InvoiceSubstitutionService } from '@/modules/invoice/application/invoice-substitution.service';
+
 type ToolHandler = (params: unknown, ctx: AuthContext) => Promise<unknown>;
 
 /**
@@ -122,6 +137,8 @@ export class McpService {
     private readonly companyService: CompanyService,
     @Inject(ICompanyCertificateReader)
     private readonly certReader: ICompanyCertificateReader,
+    private readonly customers: CustomerDirectory,
+    private readonly substitutions: InvoiceSubstitutionService,
   ) {
     this.server = new McpServer();
     this.registerTools();
@@ -155,6 +172,28 @@ export class McpService {
       this.wrapWithScopeCheck(
         createCompanyCreateHandler(this.companyService),
         'nfse:write',
+      ),
+    );
+    this.server.registerTool(
+      NFSE_SUBSTITUTE_TOOL,
+      this.wrapWithScopeCheck(
+        createNfseSubstituteHandler(this.substitutions),
+        'nfse:write',
+      ),
+    );
+    for (const [tool, handler] of [
+      [CUSTOMER_UPDATE_TOOL, createCustomerUpdateHandler(this.customers)],
+      [CUSTOMER_DELETE_TOOL, createCustomerDeleteHandler(this.customers)],
+    ] as const)
+      this.server.registerTool(
+        tool,
+        this.wrapWithScopeCheck(handler, 'nfse:write'),
+      );
+    this.server.registerTool(
+      CUSTOMER_LIST_TOOL,
+      this.wrapWithScopeCheck(
+        createCustomerListHandler(this.customers),
+        'nfse:read',
       ),
     );
     for (const [tool, handler] of [

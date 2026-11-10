@@ -124,4 +124,55 @@ describe('normalizeRow', () => {
     expect(empty).not.toHaveProperty('purchaseOrder');
     expect(empty).not.toHaveProperty('notes');
   });
+
+  it('reads a customer abroad from its optional columns, without CPF or CNPJ', () => {
+    const { item } = normalizeRow(
+      {
+        ...base,
+        tomadorNome: 'Acme Inc.',
+        tomadorNif: ' 12-3456789 ',
+        tomadorPais: 'us',
+        tomadorCodigoPostal: '94105',
+        tomadorCidade: 'San Francisco',
+        tomadorRegiao: 'CA',
+        tomadorLogradouro: '1 Market St',
+        tomadorNumero: '100',
+        tomadorBairro: 'SoMa',
+      },
+      TODAY,
+    );
+    expect(item.customer).toEqual({
+      name: 'Acme Inc.',
+      foreign: {
+        taxId: '12-3456789',
+        country: 'US',
+        postalCode: '94105',
+        city: 'San Francisco',
+        region: 'CA',
+        street: '1 Market St',
+        number: '100',
+        district: 'SoMa',
+      },
+    });
+  });
+
+  it('translates the reason for having no tax id and leaves an unknown one for validation', () => {
+    const reasonOf = (tomadorSemNif: string) =>
+      (
+        normalizeRow({ ...base, tomadorPais: 'US', tomadorSemNif }, TODAY).item
+          .customer as { foreign: { noTaxIdReason: string } }
+      ).foreign.noTaxIdReason;
+    expect(reasonOf('Dispensado')).toBe('exempt');
+    expect(reasonOf('Não exigido')).toBe('not_required');
+    expect(reasonOf('not_required')).toBe('not_required');
+    expect(reasonOf('outro')).toBe('outro');
+  });
+
+  it('keeps a Brazilian customer untouched when no column of a customer abroad is filled', () => {
+    const { item } = normalizeRow(
+      { ...base, tomadorDocumento: '52998224725', tomadorNome: 'Maria' },
+      TODAY,
+    );
+    expect(item.customer).toEqual({ taxId: '52998224725', name: 'Maria' });
+  });
 });
