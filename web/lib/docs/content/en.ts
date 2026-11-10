@@ -1144,6 +1144,43 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ["POST", "`/v1/schedules/:id/cancel`", "Cancel (final)", "200"],
         ] },
         { kind: "text", body: "A schedule has `id`, `kind` (`once` or `recurring`), `frequency`, `status` (`active`, `paused`, `completed`, `cancelled`), `pause_reason` (`customer` or `failures`), `company_id`, `anchor_on`, `next_run_on`, `ends_on`, `attempts` (failures in a row, 0 to 3), `last_run_on`, `invoice` (the body issued on each run) and `created_at`. Permissions: `nfse.invoices.view` to read and `nfse.invoices.issue` to create and change. A test key sees only test schedules, and a live key only live ones." },
+        { kind: "heading", level: 2, body: "Customer abroad" },
+        { kind: "text", body: "For a customer outside Brazil, send `customer.foreign` instead of the CPF or CNPJ. The invoice identifies the customer by its NIF (the tax id in its own country) and carries the address abroad." },
+        { kind: "table", head: ["Field", "Rule"], rows: [
+          ["`customer.name`", "Required for a customer abroad."],
+          ["`foreign.taxId`", "Tax id in the customer's country (NIF), up to 40 characters. Send this field **or** `noTaxIdReason`, never both."],
+          ["`foreign.noTaxIdReason`", "When the customer has no tax id: `exempt` or `not_required`."],
+          ["`foreign.country`", "Two-letter country code (ISO 3166-1), other than `BR`."],
+          ["`foreign.postalCode`, `city`, `region`", "Postal code (up to 11), city and state, province or region (up to 60 each). Required."],
+          ["`foreign.street`, `number`, `district`", "Street (up to 255), number and district or neighbourhood (up to 60 each). The invoice layout requires all three."],
+          ["`foreign.complement`", "Optional, up to 156 characters."],
+          ["Cannot be combined", "`customer.taxId` and `customer.address` (the Brazilian address) answer `422` with `not_allowed`."],
+        ] },
+        { kind: "code", label: "Invoice for a customer abroad", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: pedido_981_emissao" \\
+  -d '{
+    "companyTaxId": "11222333000181",
+    "service": { "description": "Software development" },
+    "amount": 5000,
+    "competenceDate": "2026-11-10",
+    "customer": {
+      "name": "Acme Inc.",
+      "foreign": {
+        "taxId": "12-3456789",
+        "country": "US",
+        "postalCode": "94105",
+        "city": "San Francisco",
+        "region": "CA",
+        "street": "1 Market St",
+        "number": "100",
+        "district": "SoMa"
+      }
+    }
+  }'` },
+        { kind: "callout", tone: "warn", body: "Informing a customer abroad **does not declare a service export**: the invoice keeps the same tax treatment. Exports (with the country of the result and the foreign trade data) are not supported yet. Confirm the classification with your accountant." },
+        { kind: "callout", tone: "accent", body: "It applies to single invoices, batches, schedules and the MCP tool `nfse_issue` (field `customer.foreign`, in snake_case). Spreadsheets do not accept a customer abroad yet, and it is not added to saved customers." },
         { kind: "heading", level: 2, body: "Saved customers" },
         { kind: "text", body: "After an invoice with a customer is accepted, Corvo keeps the CPF or CNPJ, the name and the email of that customer. On the next invoice for the same document, send only `customer.taxId`: the `name` comes from the saved customer. What you send in the request always wins, and an invoice already issued never changes." },
         { kind: "table", head: ["Rule", "Detail"], rows: [
@@ -2965,7 +3002,7 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             [
               "`nfse_issue`",
               "`nfse:write`",
-              "`company_tax_id` (CNPJ) or `company_id`, `amount` (or `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` required when a customer is sent), `description?`, `discount?`, `deduction?` (ISS base deduction declared by the issuer), `purchase_order?` (purchase order number, up to 60 characters), `notes?` (free text printed on the invoice), `competence_date?` (default: today), `emission_type?` (`IMMEDIATE`/`SCHEDULE`/`RECURRING`), `recurrence_frequency?` (`WEEKLY`/`BIWEEKLY`/`MONTHLY`, required with `RECURRING`), `recurrence_ends_on?`, `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
+              "`company_tax_id` (CNPJ) or `company_id`, `amount` (or `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` or `customer {name, foreign {tax_id | no_tax_id_reason, country, postal_code, city, region, street, number, district}}` for a customer abroad (`tax_id` required when the customer is in Brazil), `description?`, `discount?`, `deduction?` (ISS base deduction declared by the issuer), `purchase_order?` (purchase order number, up to 60 characters), `notes?` (free text printed on the invoice), `competence_date?` (default: today), `emission_type?` (`IMMEDIATE`/`SCHEDULE`/`RECURRING`), `recurrence_frequency?` (`WEEKLY`/`BIWEEKLY`/`MONTHLY`, required with `RECURRING`), `recurrence_ends_on?`, `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
               "`{ invoice_id, access_key, status }`; with `SCHEDULE` or `RECURRING`, `{ schedule_id, kind, frequency, status, next_run_on, ends_on }`"
             ],
             [

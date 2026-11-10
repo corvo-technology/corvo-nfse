@@ -593,6 +593,104 @@ describe('DpsBuilder', () => {
     expect(none.infDPS.serv.infoCompl).toBeUndefined();
   });
 
+  const abroad = {
+    country: 'US',
+    postalCode: '94105',
+    city: 'San Francisco',
+    region: 'CA',
+    street: '1 Market St',
+    number: '100',
+    district: 'SoMa',
+  };
+
+  it('identifies a customer abroad by NIF with the address abroad, schema valid', async () => {
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          invoice: {
+            customer: {
+              kind: 'FOREIGN',
+              name: 'Acme Inc.',
+              email: 'ap@acme.test',
+              foreign: {
+                ...abroad,
+                taxId: '12-3456789',
+                complement: 'Suite 4',
+              },
+            },
+          },
+        }),
+        RTC_V1_01,
+      ),
+    );
+    expect(dps.infDPS.toma).toEqual({
+      identificador: { NIF: '12-3456789' },
+      xNome: 'Acme Inc.',
+      end: {
+        localidade: {
+          endExt: {
+            cPais: 'US',
+            cEndPost: '94105',
+            xCidade: 'San Francisco',
+            xEstProvReg: 'CA',
+          },
+        },
+        xLgr: '1 Market St',
+        nro: '100',
+        xCpl: 'Suite 4',
+        xBairro: 'SoMa',
+      },
+      email: 'ap@acme.test',
+    });
+    const xml = buildDpsXml(dps);
+    expect(xml).toContain('<NIF>12-3456789</NIF>');
+    expect(xml).toContain('<cPais>US</cPais>');
+    const validation = await validateDpsXml(xml, { throwOnInvalid: false });
+    expect(validation.valid).toBe(true);
+  });
+
+  it('uses cNaoNIF when the customer abroad has no tax id, schema valid', async () => {
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          invoice: {
+            customer: {
+              kind: 'FOREIGN',
+              name: 'Acme Inc.',
+              foreign: { ...abroad, noTaxIdReason: 'exempt' },
+            },
+          },
+        }),
+        RTC_V1_01,
+      ),
+    );
+    expect(dps.infDPS.toma?.identificador).toEqual({ cNaoNIF: '1' });
+    const validation = await validateDpsXml(buildDpsXml(dps), {
+      throwOnInvalid: false,
+    });
+    expect(validation.valid).toBe(true);
+  });
+
+  it('keeps the tax treatment of the invoice: a customer abroad is not an export by itself', async () => {
+    const base = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          invoice: {
+            customer: {
+              kind: 'FOREIGN',
+              name: 'Acme Inc.',
+              foreign: { ...abroad, taxId: '12-3456789' },
+            },
+          },
+        }),
+        RTC_V1_01,
+      ),
+    );
+    expect(dps.infDPS.valores).toEqual(base.infDPS.valores);
+    expect(dps.infDPS.serv).toEqual(base.infDPS.serv);
+  });
+
   it('maps ISS withholding to RetidoPeloTomador only when required', async () => {
     const retained = dpsFrom(
       await new DpsBuilder().build(

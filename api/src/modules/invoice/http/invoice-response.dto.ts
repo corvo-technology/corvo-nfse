@@ -24,6 +24,12 @@ export class CustomerSnapshotDto {
     state: string;
     country?: string;
   };
+
+  @ApiPropertyOptional({
+    description:
+      'Customer outside Brazil: taxId (NIF) or noTaxIdReason, and the address abroad.',
+  })
+  foreign?: Record<string, string>;
 }
 
 export class ServiceSnapshotDto {

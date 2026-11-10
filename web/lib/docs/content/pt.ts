@@ -1124,6 +1124,43 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ["POST", "`/v1/schedules/:id/cancel`", "Cancelar (definitivo)", "200"],
         ] },
         { kind: "text", body: "A agenda tem `id`, `kind` (`once` ou `recurring`), `frequency`, `status` (`active`, `paused`, `completed`, `cancelled`), `pause_reason` (`customer` ou `failures`), `company_id`, `anchor_on`, `next_run_on`, `ends_on`, `attempts` (falhas seguidas, de 0 a 3), `last_run_on`, `invoice` (o corpo emitido a cada execução) e `created_at`. Permissões: `nfse.invoices.view` para ler e `nfse.invoices.issue` para criar e alterar. Uma chave de teste vê só agendas de teste, e uma de produção só as de produção." },
+        { kind: "heading", level: 2, body: "Cliente no exterior" },
+        { kind: "text", body: "Para um cliente de fora do Brasil, envie `customer.foreign` no lugar do CPF ou CNPJ. A nota sai com o tomador identificado pelo NIF (a identificação fiscal no país dele) e com o endereço no exterior." },
+        { kind: "table", head: ["Campo", "Regra"], rows: [
+          ["`customer.name`", "Obrigatório para cliente no exterior."],
+          ["`foreign.taxId`", "Identificação fiscal no país do cliente (NIF), até 40 caracteres. Envie este campo **ou** `noTaxIdReason`, nunca os dois."],
+          ["`foreign.noTaxIdReason`", "Quando o cliente não tem identificação fiscal: `exempt` (dispensado) ou `not_required` (não exigido)."],
+          ["`foreign.country`", "Código do país em duas letras (ISO 3166-1), diferente de `BR`."],
+          ["`foreign.postalCode`, `city`, `region`", "Código postal (até 11), cidade e estado, província ou região (até 60 cada). Obrigatórios."],
+          ["`foreign.street`, `number`, `district`", "Logradouro (até 255), número e bairro ou distrito (até 60 cada). O leiaute da nota exige os três."],
+          ["`foreign.complement`", "Opcional, até 156 caracteres."],
+          ["Não pode vir junto", "`customer.taxId` e `customer.address` (o endereço brasileiro) retornam `422` com `not_allowed`."],
+        ] },
+        { kind: "code", label: "Nota para cliente no exterior", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: pedido_981_emissao" \\
+  -d '{
+    "companyTaxId": "11222333000181",
+    "service": { "description": "Software development" },
+    "amount": 5000,
+    "competenceDate": "2026-11-10",
+    "customer": {
+      "name": "Acme Inc.",
+      "foreign": {
+        "taxId": "12-3456789",
+        "country": "US",
+        "postalCode": "94105",
+        "city": "San Francisco",
+        "region": "CA",
+        "street": "1 Market St",
+        "number": "100",
+        "district": "SoMa"
+      }
+    }
+  }'` },
+        { kind: "callout", tone: "warn", body: "Informar um cliente no exterior **não declara exportação de serviço**: a nota segue com a mesma tributação. A exportação (com o país do resultado e os dados de comércio exterior) ainda não é suportada. Confirme o enquadramento com o seu contador." },
+        { kind: "callout", tone: "accent", body: "Vale para nota avulsa, lote, agendas e a ferramenta `nfse_issue` do MCP (campo `customer.foreign`, em snake_case). A planilha ainda não aceita cliente no exterior, e ele não entra nos clientes salvos." },
         { kind: "heading", level: 2, body: "Clientes salvos" },
         { kind: "text", body: "Depois que uma nota com tomador é aceita, a Corvo guarda o CPF ou CNPJ, o nome e o e-mail desse cliente. Na nota seguinte para o mesmo documento, basta enviar `customer.taxId`: o `name` vem do cadastro. O que você envia na requisição sempre vale, e a nota já emitida nunca muda." },
         { kind: "table", head: ["Regra", "Detalhe"], rows: [
@@ -2942,7 +2979,7 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             [
               "`nfse_issue`",
               "`nfse:write`",
-              "`company_tax_id` (CNPJ) ou `company_id`, `amount` (ou `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` obrigatório quando há tomador), `description?`, `discount?`, `deduction?` (dedução da base do ISS declarada pelo emitente), `purchase_order?` (nº do pedido, até 60 caracteres), `notes?` (texto livre impresso na nota), `competence_date?` (padrão: hoje), `emission_type?` (`IMMEDIATE`/`SCHEDULE`/`RECURRING`), `recurrence_frequency?` (`WEEKLY`/`BIWEEKLY`/`MONTHLY`, obrigatório com `RECURRING`), `recurrence_ends_on?`, `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
+              "`company_tax_id` (CNPJ) ou `company_id`, `amount` (ou `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` ou `customer {name, foreign {tax_id | no_tax_id_reason, country, postal_code, city, region, street, number, district}}` para cliente no exterior (`tax_id` obrigatório quando o tomador é do Brasil), `description?`, `discount?`, `deduction?` (dedução da base do ISS declarada pelo emitente), `purchase_order?` (nº do pedido, até 60 caracteres), `notes?` (texto livre impresso na nota), `competence_date?` (padrão: hoje), `emission_type?` (`IMMEDIATE`/`SCHEDULE`/`RECURRING`), `recurrence_frequency?` (`WEEKLY`/`BIWEEKLY`/`MONTHLY`, obrigatório com `RECURRING`), `recurrence_ends_on?`, `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
               "`{ invoice_id, access_key, status }`; com `SCHEDULE` ou `RECURRING`, `{ schedule_id, kind, frequency, status, next_run_on, ends_on }`"
             ],
             [

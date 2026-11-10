@@ -429,7 +429,7 @@ export interface Invoice {
 export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } | { companyId: string; companyTaxId?: string }) & {
   externalId?: string;
   /** Omit it for an invoice without tomador. When sent, `taxId` (CPF or CNPJ) is required. */
-  customer?: { taxId: string; name?: string; email?: string; address?: { city?: string; state?: string; country?: string } };
+  customer?: { taxId: string; name?: string; email?: string; address?: { city?: string; state?: string; country?: string }; /** Present on an invoice issued through the API for a customer outside Brazil; `taxId` is then empty. */ foreign?: ForeignCustomer };
   /** Omit code/municipalityCode to inherit the company defaults (code falls back to 100901). The description is optional. */
   service: { description?: string; code?: string; municipalityCode?: string };
   amount: number; competenceDate: string;
@@ -568,3 +568,6 @@ export interface ImportStart { id: string; status: ImportStatus; duplicateOf: st
 
 /** A customer (tomador) saved from an accepted invoice: the next invoice for the same document needs no name. */
 export interface SavedCustomer { taxId: string; name: string; email: string | null; lastUsedAt: string; createdAt: string; updatedAt: string }
+
+/** A customer outside Brazil: its tax id (or why it has none) and the address abroad. It does not declare a service export. */
+export interface ForeignCustomer { taxId?: string; noTaxIdReason?: "exempt" | "not_required"; country: string; postalCode: string; city: string; region: string; street: string; number: string; district: string; complement?: string }
