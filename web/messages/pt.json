@@ -2819,7 +2819,11 @@
       "required": "Obrigatório",
       "failed": "Não foi possível salvar a agenda.",
       "editHint": "As mudanças valem para as próximas execuções. As notas já emitidas não mudam.",
-      "optional": "opcional"
+      "optional": "opcional",
+      "purchaseOrder": "Nº do pedido",
+      "purchaseOrderHint": "Sai impresso em cada nota desta agenda.",
+      "notes": "Observações na nota",
+      "notesHint": "Texto livre impresso em cada nota. Não muda nenhum imposto."
     },
     "runs": {
       "title": "Histórico de execuções",
@@ -2858,7 +2862,9 @@
       "createdAt": "Criada em",
       "notFound": "Agenda não encontrada.",
       "loading": "Carregando a agenda",
-      "history": "Histórico"
+      "history": "Histórico",
+      "purchaseOrder": "Nº do pedido",
+      "notes": "Observações na nota"
     }
   },
   "Imports": {

@@ -46,6 +46,8 @@ export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Pr
   const [endsOn, setEndsOn] = useState(schedule?.endsOn ?? "");
   const [amount, setAmount] = useState(typeof stored.amount === "number" ? String(stored.amount) : "");
   const [description, setDescription] = useState(String(sub(stored, "service").description ?? ""));
+  const [purchaseOrder, setPurchaseOrder] = useState(typeof stored.purchaseOrder === "string" ? stored.purchaseOrder : "");
+  const [notes, setNotes] = useState(typeof stored.notes === "string" ? stored.notes : "");
   const [name, setName] = useState(String(customer.name ?? ""));
   const [taxId, setTaxId] = useState(maskTaxId(String(customer.taxId ?? "")));
   const [email, setEmail] = useState(String(customer.email ?? ""));
@@ -80,6 +82,8 @@ export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Pr
     competenceDate: firstDate,
     ...(customerBody() ? { customer: customerBody() } : {}),
     ...(description.trim() ? { service: { description: description.trim() } } : {}),
+    ...(purchaseOrder.trim() ? { purchaseOrder: purchaseOrder.trim() } : {}),
+    ...(notes.trim() ? { notes: notes.trim() } : {}),
     options: {
       type: recurring ? "RECURRING" : "SCHEDULE",
       ...(recurring ? { recurrence: { frequency, ...(endsOn ? { endsOn } : {}) } } : {}),
@@ -94,6 +98,9 @@ export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Pr
     if (toNumber(amount) !== stored.amount) invoice.amount = toNumber(amount);
     const service = sub(stored, "service");
     if (description.trim() !== String(service.description ?? "")) invoice.service = { ...service, description: description.trim() };
+    // An empty text clears the field: the API drops a blank value when the note is issued.
+    if (purchaseOrder.trim() !== (typeof stored.purchaseOrder === "string" ? stored.purchaseOrder : "")) invoice.purchaseOrder = purchaseOrder.trim();
+    if (notes.trim() !== (typeof stored.notes === "string" ? stored.notes : "")) invoice.notes = notes.trim();
     const now = customerBody() ?? {};
     if (JSON.stringify(now) !== JSON.stringify(Object.fromEntries(Object.entries(customer).filter(([k]) => ["name", "taxId", "email"].includes(k) && customer[k])))) invoice.customer = { ...customer, ...now };
     const options = sub(stored, "options");
@@ -176,6 +183,14 @@ export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Pr
           </Field>
           <Field label={t("form.description")} optionalLabel={t("form.optional")}>
             {(c) => <input {...c} type="text" className="field" value={description} onChange={(e) => setDescription(e.target.value)} />}
+          </Field>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label={t("form.purchaseOrder")} optionalLabel={t("form.optional")} hint={t("form.purchaseOrderHint")}>
+            {(c) => <input {...c} type="text" className="field" maxLength={60} value={purchaseOrder} onChange={(e) => setPurchaseOrder(e.target.value)} autoComplete="off" />}
+          </Field>
+          <Field label={t("form.notes")} optionalLabel={t("form.optional")} hint={t("form.notesHint")}>
+            {(c) => <textarea {...c} className="field resize-y" rows={2} maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} />}
           </Field>
         </div>
         <div className="flex flex-col gap-3">

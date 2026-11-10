@@ -120,6 +120,8 @@ export default function ScheduleDetailPage() {
           <Row label={d("service")}>{String(service.description ?? "") || d("noService")}</Row>
           <Row label={d("amount")}><span className="tabular-nums">{amount}</span></Row>
           {typeof body.deduction === "number" && <Row label={d("deduction")}><span className="tabular-nums">{formatBRL(Math.round(body.deduction * 100))}</span></Row>}
+          {typeof body.purchaseOrder === "string" && body.purchaseOrder.trim() !== "" && <Row label={d("purchaseOrder")}>{body.purchaseOrder}</Row>}
+          {typeof body.notes === "string" && body.notes.trim() !== "" && <Row label={d("notes")}><span className="whitespace-pre-line">{body.notes}</span></Row>}
           <Row label={d("sendEmail")}>{sendsEmail ? d("sendYes") : d("sendNo")}</Row>
         </dl>
       </Card>

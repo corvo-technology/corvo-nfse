@@ -224,6 +224,10 @@ export class ScheduleUpdateInput extends ScheduleIdInput {
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsNumber() @Min(0) discount?: number;
   @IsOptional() @IsNumber() @Min(0) deduction?: number;
+  /** Purchase order printed on the next notes; an empty text removes it. */
+  @IsOptional() @IsString() @MaxLength(60) purchase_order?: string;
+  /** Free text printed on the next notes; an empty text removes it. */
+  @IsOptional() @IsString() @MaxLength(2000) notes?: string;
   @IsOptional()
   @ValidateNested()
   @Type(() => CustomerInput)
