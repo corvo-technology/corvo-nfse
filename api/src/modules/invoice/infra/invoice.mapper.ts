@@ -80,6 +80,8 @@ export class InvoiceMapper {
       cancellationDescription: orm.cancellationDescription ?? null,
       cancelledAt: orm.cancelledAt ?? null,
       cancellationRequestedAt: orm.cancellationRequestedAt ?? null,
+      substitutesInvoiceId: orm.substitutesInvoiceId ?? null,
+      substitutionDescription: orm.substitutionDescription ?? null,
       createdAt: orm.createdAt,
       updatedAt: orm.updatedAt,
     };
@@ -138,6 +140,8 @@ export class InvoiceMapper {
     orm.cancellationDescription = snapshot.cancellationDescription ?? null;
     orm.cancelledAt = snapshot.cancelledAt ?? null;
     orm.cancellationRequestedAt = snapshot.cancellationRequestedAt ?? null;
+    orm.substitutesInvoiceId = snapshot.substitutesInvoiceId ?? null;
+    orm.substitutionDescription = snapshot.substitutionDescription ?? null;
     orm.createdAt = snapshot.createdAt;
     orm.updatedAt = snapshot.updatedAt;
     return orm;

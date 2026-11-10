@@ -122,6 +122,36 @@ describe("Company fiscal setup", () => {
 });
 
 describe("Invoice company defaults", () => {
+  it("issues for a customer abroad: its own fields replace the CPF/CNPJ and the Brazilian address", async () => {
+    mocks.create.mockResolvedValue({ id: "inv-9" });
+    renderUI(<NewInvoicePage />);
+    await waitFor(() => expect(screen.getByRole("option", { name: company.legalName })).toBeTruthy());
+    fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.foreign.toggle) }));
+    expect(screen.queryByLabelText(/CPF or CNPJ/i)).toBeNull();
+    fill("Name /", "Acme Inc."); fill("Service description", "Software development"); fill("Total amount", "19900");
+    fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.sendEmail.label) }));
+    expect((screen.getByRole("button", { name: messages.Invoices.submit }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText(new RegExp(`^${messages.Invoices.foreign.country}`)), { target: { value: "US" } });
+    fill("Tax id \\(NIF\\)", "12-3456789"); fill("Street", "1 Market St"); fill("Number", "100"); fill("District or neighbourhood", "SoMa"); fill("City", "San Francisco"); fill("State, province or region", "CA"); fill("Postal code", "94105");
+    fireEvent.click(screen.getByRole("button", { name: messages.Invoices.submit }));
+    await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1));
+    const sent = mocks.create.mock.calls[0][0];
+    expect(sent.customer).toEqual({ name: "Acme Inc.", email: undefined, foreign: { taxId: "12-3456789", country: "US", postalCode: "94105", city: "San Francisco", region: "CA", street: "1 Market St", number: "100", district: "SoMa" } });
+  });
+  it("sends the reason instead of a tax id when the customer abroad has none", async () => {
+    mocks.create.mockResolvedValue({ id: "inv-9" });
+    renderUI(<NewInvoicePage />);
+    await waitFor(() => expect(screen.getByRole("option", { name: company.legalName })).toBeTruthy());
+    fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.foreign.toggle) }));
+    fill("Name /", "Acme Inc."); fill("Service description", "Software development"); fill("Total amount", "19900");
+    fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.sendEmail.label) }));
+    fireEvent.change(screen.getByLabelText(new RegExp(`^${messages.Invoices.foreign.country}`)), { target: { value: "DE" } });
+    fireEvent.change(screen.getByLabelText(new RegExp(`^${messages.Invoices.foreign.noTaxId}`)), { target: { value: "not_required" } });
+    fill("Street", "Unter den Linden"); fill("Number", "1"); fill("District or neighbourhood", "Mitte"); fill("City", "Berlin"); fill("State, province or region", "BE"); fill("Postal code", "10117");
+    fireEvent.click(screen.getByRole("button", { name: messages.Invoices.submit }));
+    await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1));
+    expect(mocks.create.mock.calls[0][0].customer.foreign).toEqual({ noTaxIdReason: "not_required", country: "DE", postalCode: "10117", city: "Berlin", region: "BE", street: "Unter den Linden", number: "1", district: "Mitte" });
+  });
   it("fills the name and the email of a customer saved from an earlier invoice, once the document is complete", async () => {
     mocks.findCustomer.mockResolvedValue({ taxId: "52998224725", name: "Maria da Silva", email: "maria@example.com", lastUsedAt: "", createdAt: "", updatedAt: "" });
     renderUI(<NewInvoicePage />);

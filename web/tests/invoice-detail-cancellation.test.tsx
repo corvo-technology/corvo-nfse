@@ -8,7 +8,7 @@ import messages from "@/messages/en.json";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
-vi.mock("next/navigation", () => ({ useParams: () => ({ id: "inv-1" }) }));
+vi.mock("next/navigation", () => ({ useParams: () => ({ id: "inv-1" }), useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: () => true }) }));
 vi.mock("@/lib/api", () => ({ invoices: { get: mocks.get, events: vi.fn() }, collectAll: async () => [] }));
 
@@ -44,5 +44,18 @@ describe("invoice detail cancellation reason", () => {
     await renderPage(invoice({ status: "authorized" }));
     expect(screen.queryByText(t.cancel.reasonLabel)).toBeNull();
     expect(screen.queryByText(/Estorno do serviço prestado/)).toBeNull();
+  });
+});
+
+describe("invoice detail substitution", () => {
+  it("offers to substitute an authorized invoice, next to cancel", async () => {
+    await renderPage(invoice({ status: "authorized", cancellationReason: null, cancellationDescription: null }));
+    expect(screen.getByRole("button", { name: t.substitute.open })).toBeTruthy();
+    expect(screen.getByRole("button", { name: t.cancel.open })).toBeTruthy();
+  });
+
+  it("does not offer it for an invoice that is not authorized", async () => {
+    await renderPage(invoice({ status: "queued", authorizedAt: null }));
+    expect(screen.queryByRole("button", { name: t.substitute.open })).toBeNull();
   });
 });

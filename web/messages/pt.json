@@ -1267,6 +1267,29 @@
       "next": "Próxima nota em {date}. Sem data, repete até você pausar.",
       "createdButFailed": "A nota foi emitida, mas a recorrência não foi criada. Tente de novo: não emite outra nota.",
       "createdButFailedWith": "A nota foi emitida, mas a recorrência não foi criada ({reason}). Tente de novo: não emite outra nota."
+    },
+    "foreign": {
+      "toggle": "Cliente no exterior",
+      "toggleHint": "Para cliente de fora do Brasil, sem documento brasileiro.",
+      "country": "País",
+      "countryPlaceholder": "Escolha o país",
+      "taxId": "Identificação fiscal (NIF)",
+      "taxIdHint": "O número de contribuinte do cliente no país dele.",
+      "noTaxId": "Cliente sem identificação fiscal",
+      "noTaxIdHint": "Marque só se ele não tiver NIF.",
+      "hasTaxId": "Ele tem identificação fiscal",
+      "reason": {
+        "exempt": "Dispensado",
+        "not_required": "Não exigido"
+      },
+      "street": "Logradouro",
+      "number": "Número",
+      "complement": "Complemento",
+      "district": "Bairro ou distrito",
+      "city": "Cidade",
+      "region": "Estado, província ou região",
+      "postalCode": "Código postal",
+      "notExport": "Informar um cliente no exterior não declara exportação de serviço: a nota segue com a mesma tributação. Confirme o enquadramento com o seu contador."
     }
   },
   "Billing": {
@@ -1743,7 +1766,23 @@
       "reasonLabel": "Motivo do cancelamento"
     },
     "purchaseOrder": "Nº do pedido",
-    "notes": "Observações na nota"
+    "notes": "Observações na nota",
+    "substitute": {
+      "open": "Substituir nota",
+      "title": "Substituir nota",
+      "intro": "Emite uma nota nova que substitui esta. A Receita cancela esta nota quando autorizar a nova; se recusar, esta continua valendo.",
+      "locked": "Cliente, data de competência e valor não mudam. Para corrigir um deles, cancele esta nota e emita outra.",
+      "reason": "Motivo da substituição",
+      "reasonHint": "Mínimo de {min} caracteres. Vai na nota enviada à Receita.",
+      "serviceDescription": "Descrição do serviço",
+      "purchaseOrder": "Nº do pedido",
+      "notes": "Observações na nota",
+      "optional": "opcional",
+      "credit": "A nota nova usa um crédito, como qualquer nota emitida. O crédito desta não volta.",
+      "keep": "Manter como está",
+      "confirm": "Substituir nota",
+      "failed": "Não foi possível substituir a nota."
+    }
   },
   "FiscalDocs": {
     "title": "API Corvo — NFS-e",
@@ -2006,7 +2045,8 @@
     "invitation_expired": "Este convite expirou. Peça um novo.",
     "invitation_email_mismatch": "Entre com o e-mail que recebeu o convite.",
     "invitation_limit_reached": "Há convites pendentes demais. Cancele alguns antes de convidar.",
-    "invitation_recently_sent": "Um convite acabou de ser enviado. Tente de novo em um minuto."
+    "invitation_recently_sent": "Um convite acabou de ser enviado. Tente de novo em um minuto.",
+    "invoice_not_substitutable": "Só uma nota autorizada pode ser substituída."
   },
   "Legal": {
     "eyebrow": "JURÍDICO",
@@ -2819,7 +2859,11 @@
       "required": "Obrigatório",
       "failed": "Não foi possível salvar a agenda.",
       "editHint": "As mudanças valem para as próximas execuções. As notas já emitidas não mudam.",
-      "optional": "opcional"
+      "optional": "opcional",
+      "purchaseOrder": "Nº do pedido",
+      "purchaseOrderHint": "Sai impresso em cada nota desta agenda.",
+      "notes": "Observações na nota",
+      "notesHint": "Texto livre impresso em cada nota. Não muda nenhum imposto."
     },
     "runs": {
       "title": "Histórico de execuções",
@@ -2858,7 +2902,9 @@
       "createdAt": "Criada em",
       "notFound": "Agenda não encontrada.",
       "loading": "Carregando a agenda",
-      "history": "Histórico"
+      "history": "Histórico",
+      "purchaseOrder": "Nº do pedido",
+      "notes": "Observações na nota"
     }
   },
   "Imports": {

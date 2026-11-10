@@ -1,4 +1,4 @@
-import type { SavedCustomer, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { ForeignCustomer, SavedCustomer, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -182,7 +182,7 @@ export const certificates = {
 export type InvoiceWire = Omit<Invoice, "customerName" | "customerTaxId" | "serviceDescription">;
 export function adaptInvoice(props: InvoiceWire): Invoice {
   // Anonymous consumer invoices have no customer snapshot (the tomador is omitted from the DPS).
-  return { ...props, customerName: props.customerSnapshot?.name ?? "", customerTaxId: props.customerSnapshot?.taxId ?? "", serviceDescription: props.serviceSnapshot.description };
+  return { ...props, customerName: props.customerSnapshot?.name ?? "", customerTaxId: props.customerSnapshot?.taxId ?? props.customerSnapshot?.foreign?.taxId ?? "", serviceDescription: props.serviceSnapshot.description };
 }
 export interface InvoiceQuery extends PageParams { companyId?: string; status?: InvoiceStatus; from?: string; to?: string; externalId?: string }
 export type OverviewPeriod = "7d" | "30d";
@@ -216,6 +216,8 @@ export const invoices = {
   get: async (id: string, signal?: AbortSignal) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}`, { signal }))),
   create: async (data: CreateInvoiceInput, idempotencyKey: string) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>("/invoices", { ...json(data), headers: { "idempotency-key": idempotencyKey } }))),
   calculate: async (data: CreateInvoiceInput, signal?: AbortSignal) => unwrap(await request<Envelope<InvoiceCalculation>>("/invoices/calculate", { ...json(data), signal })),
+  /** Issues the substitute of an authorized invoice. Customer, competence and amount are copied by the API. */
+  substitute: async (id: string, data: SubstituteInvoiceInput, idempotencyKey: string) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}/substitute`, { ...json(data), headers: { "idempotency-key": idempotencyKey } }))),
   cancel: async (id: string, data: { reason: CancellationReasonCode; description?: string }) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}/cancel`, json(data)))),
   xml: (id: string) => request<Blob>(`/invoices/${idPath(id)}/xml`, {}, true),
   pdf: (id: string) => request<Blob>(`/invoices/${idPath(id)}/pdf`, {}, true),
@@ -271,7 +273,9 @@ type ScheduleRunWire = { id: string; occurrence_on: string; ran_on: string; atte
 const adaptSchedule = (w: ScheduleWire): InvoiceSchedule => ({ id: w.id, kind: w.kind, frequency: w.frequency, status: w.status, pauseReason: w.pause_reason, companyId: w.company_id, anchorOn: w.anchor_on, nextRunOn: w.next_run_on, endsOn: w.ends_on, attempts: w.attempts, lastRunOn: w.last_run_on, invoice: w.invoice, createdAt: w.created_at });
 const adaptScheduleRun = (w: ScheduleRunWire): ScheduleRun => ({ id: w.id, occurrenceOn: w.occurrence_on, ranOn: w.ran_on, attempt: w.attempt, outcome: w.outcome, invoiceId: w.invoice_id, errorCode: w.error_code, errorMessage: w.error_message, createdAt: w.created_at });
 /** What POST /invoices takes to create a schedule: the invoice body plus `options.type` SCHEDULE or RECURRING. */
-export interface CreateScheduleInput { companyId: string; amount: number; competenceDate: string; customer?: { name?: string; taxId?: string; email?: string; address?: { city?: string; state?: string } }; service?: { description?: string; code?: string; municipalityCode?: string }; deduction?: number; purchaseOrder?: string; notes?: string; options: { type: "SCHEDULE" | "RECURRING"; recurrence?: { frequency: ScheduleFrequency; endsOn?: string }; email?: { send: boolean } } }
+/** What a substitute can change (the Sefin forbids changing the customer, the competence date and the amount for MEI and Simples Nacional). */
+export interface SubstituteInvoiceInput { description: string; service?: { description?: string }; purchaseOrder?: string; notes?: string }
+export interface CreateScheduleInput { companyId: string; amount: number; competenceDate: string; customer?: { name?: string; taxId?: string; email?: string; address?: { city?: string; state?: string }; foreign?: ForeignCustomer }; service?: { description?: string; code?: string; municipalityCode?: string }; deduction?: number; purchaseOrder?: string; notes?: string; options: { type: "SCHEDULE" | "RECURRING"; recurrence?: { frequency: ScheduleFrequency; endsOn?: string }; email?: { send: boolean } } }
 export interface UpdateScheduleInput { invoice?: Record<string, unknown>; endsOn?: string | null; frequency?: ScheduleFrequency; anchorOn?: string }
 export const schedules = {
   list: async (params: PageParams & { status?: InvoiceSchedule["status"] } = {}, signal?: AbortSignal): Promise<Page<InvoiceSchedule>> => { const page = toPage(await request<ListBody<ScheduleWire>>(`/schedules${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptSchedule) }; },

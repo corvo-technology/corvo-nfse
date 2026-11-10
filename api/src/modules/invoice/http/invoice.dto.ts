@@ -13,6 +13,7 @@ import {
   IsDateString,
   IsIn,
   MaxLength,
+  MinLength,
   Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -45,6 +46,75 @@ export class CustomerAddressDto {
   municipalityCode?: string;
 }
 
+/** A customer outside Brazil. Replaces `customer.taxId` and `customer.address`. */
+export class ForeignCustomerDto {
+  @ApiPropertyOptional({
+    example: '12-3456789',
+    maxLength: 40,
+    description:
+      "Tax id in the customer's country (DPS NIF). Send this or noTaxIdReason, never both.",
+  })
+  @IsOptional()
+  @IsString()
+  taxId?: string;
+
+  @ApiPropertyOptional({
+    enum: ['exempt', 'not_required'],
+    description: 'Why the customer has no tax id (DPS cNaoNIF 1 or 2).',
+  })
+  @IsOptional()
+  @IsString()
+  noTaxIdReason?: string;
+
+  @ApiProperty({
+    example: 'US',
+    description: 'ISO 3166-1 alpha-2 country code, other than BR.',
+  })
+  @IsString()
+  country!: string;
+
+  @ApiProperty({ example: '94105', maxLength: 11 })
+  @IsString()
+  postalCode!: string;
+
+  @ApiProperty({ example: 'San Francisco', maxLength: 60 })
+  @IsString()
+  city!: string;
+
+  @ApiProperty({
+    example: 'CA',
+    maxLength: 60,
+    description: 'State, province or region.',
+  })
+  @IsString()
+  region!: string;
+
+  @ApiProperty({ example: '1 Market St', maxLength: 255 })
+  @IsString()
+  street!: string;
+
+  @ApiProperty({
+    example: '100',
+    maxLength: 60,
+    description: 'Street number. Required by the DPS.',
+  })
+  @IsString()
+  number!: string;
+
+  @ApiProperty({
+    example: 'SoMa',
+    maxLength: 60,
+    description: 'District or neighbourhood. Required by the DPS.',
+  })
+  @IsString()
+  district!: string;
+
+  @ApiPropertyOptional({ example: 'Suite 4', maxLength: 156 })
+  @IsOptional()
+  @IsString()
+  complement?: string;
+}
+
 export class CustomerDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() taxId?: string;
@@ -53,6 +123,16 @@ export class CustomerDto {
   @ValidateNested()
   @Type(() => CustomerAddressDto)
   address?: CustomerAddressDto;
+
+  @ApiPropertyOptional({
+    type: ForeignCustomerDto,
+    description:
+      'Customer outside Brazil. Cannot be sent with taxId (CPF/CNPJ) or address; name is then required. It does not declare a service export: the invoice keeps its tax treatment.',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ForeignCustomerDto)
+  foreign?: ForeignCustomerDto;
 }
 
 /**
@@ -277,6 +357,56 @@ export class ListInvoicesQuery extends CursorQuery {
   @IsOptional() @IsDateString() from?: string;
   @IsOptional() @IsDateString() to?: string;
   @IsOptional() @IsString() externalId?: string;
+}
+
+export class SubstituteServiceDto {
+  @ApiPropertyOptional({ description: 'New service description.' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+/**
+ * Body of POST /invoices/:id/substitute. Only fields the Sefin lets a MEI or Simples Nacional
+ * issuer change are accepted (rule E0061): customer, competence date and amount stay as issued.
+ */
+export class SubstituteInvoiceDto {
+  @ApiProperty({
+    minLength: CANCELLATION_DESCRIPTION_MIN,
+    maxLength: CANCELLATION_DESCRIPTION_MAX,
+    description:
+      'Why the invoice is being substituted. Sent in the DPS as subst/xMotivo.',
+  })
+  @IsString()
+  @MinLength(CANCELLATION_DESCRIPTION_MIN)
+  @MaxLength(CANCELLATION_DESCRIPTION_MAX)
+  description!: string;
+
+  @ApiPropertyOptional({ type: SubstituteServiceDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SubstituteServiceDto)
+  service?: SubstituteServiceDto;
+
+  @ApiPropertyOptional({
+    maxLength: 60,
+    description:
+      'New purchase order. Omit to keep the original; send an empty text to remove it.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  purchaseOrder?: string;
+
+  @ApiPropertyOptional({
+    maxLength: 2000,
+    description:
+      'New notes. Omit to keep the original; send an empty text to remove it.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notes?: string;
 }
 
 export class CancelInvoiceDto {

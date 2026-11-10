@@ -129,6 +129,39 @@ describe('nfse_issue simple inputs', () => {
     });
   });
 
+  it('passes a customer abroad without asking for a CPF or CNPJ', async () => {
+    const { emit, handler } = setup();
+    await handler(
+      {
+        company_tax_id: '11222333000181',
+        amount: 100,
+        customer: {
+          name: 'Acme Inc.',
+          foreign: {
+            tax_id: '12-3456789',
+            country: 'US',
+            postal_code: '94105',
+            city: 'San Francisco',
+            region: 'CA',
+            street: '1 Market St',
+            number: '100',
+            district: 'SoMa',
+          },
+        },
+      },
+      context,
+    );
+    expect(dtoOf(emit).customer).toMatchObject({
+      name: 'Acme Inc.',
+      foreign: {
+        taxId: '12-3456789',
+        country: 'US',
+        postalCode: '94105',
+        district: 'SoMa',
+      },
+    });
+  });
+
   it('passes the declared deduction to the invoice request', async () => {
     const { emit, handler } = setup();
     await handler(
