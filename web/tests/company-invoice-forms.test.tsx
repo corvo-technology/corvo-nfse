@@ -126,7 +126,7 @@ describe("Invoice company defaults", () => {
     mocks.create.mockResolvedValue({ id: "inv-9" });
     renderUI(<NewInvoicePage />);
     await waitFor(() => expect(screen.getByRole("option", { name: company.legalName })).toBeTruthy());
-    fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.foreign.toggle) }));
+    fireEvent.click(screen.getByRole("radio", { name: messages.Invoices.foreign.abroad }));
     expect(screen.queryByLabelText(/CPF or CNPJ/i)).toBeNull();
     fill("Name /", "Acme Inc."); fill("Service description", "Software development"); fill("Total amount", "19900");
     fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.sendEmail.label) }));
@@ -138,15 +138,25 @@ describe("Invoice company defaults", () => {
     const sent = mocks.create.mock.calls[0][0];
     expect(sent.customer).toEqual({ name: "Acme Inc.", email: undefined, foreign: { taxId: "12-3456789", country: "US", postalCode: "94105", city: "San Francisco", region: "CA", street: "1 Market St", number: "100", district: "SoMa" } });
   });
+  it("keeps the rarely used fields under More options and opens them when one is filled", async () => {
+    renderUI(<NewInvoicePage />);
+    await waitFor(() => expect(screen.getByRole("option", { name: company.legalName })).toBeTruthy());
+    const more = screen.getByText(messages.Invoices.more.title).closest("details") as HTMLDetailsElement;
+    expect(more.open).toBe(false);
+    expect(screen.getByRole("radio", { name: messages.Invoices.foreign.brazil })).toHaveProperty("checked", true);
+    fill("Purchase order", "PO-1");
+    await waitFor(() => expect(more.open).toBe(true));
+  });
   it("sends the reason instead of a tax id when the customer abroad has none", async () => {
     mocks.create.mockResolvedValue({ id: "inv-9" });
     renderUI(<NewInvoicePage />);
     await waitFor(() => expect(screen.getByRole("option", { name: company.legalName })).toBeTruthy());
-    fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.foreign.toggle) }));
+    fireEvent.click(screen.getByRole("radio", { name: messages.Invoices.foreign.abroad }));
     fill("Name /", "Acme Inc."); fill("Service description", "Software development"); fill("Total amount", "19900");
     fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(messages.Invoices.sendEmail.label) }));
     fireEvent.change(screen.getByLabelText(new RegExp(`^${messages.Invoices.foreign.country}`)), { target: { value: "DE" } });
-    fireEvent.change(screen.getByLabelText(new RegExp(`^${messages.Invoices.foreign.noTaxId}`)), { target: { value: "not_required" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: messages.Invoices.foreign.noTaxIdToggle }));
+    fireEvent.change(screen.getByLabelText(messages.Invoices.foreign.reasonLabel), { target: { value: "not_required" } });
     fill("Street", "Unter den Linden"); fill("Number", "1"); fill("District or neighbourhood", "Mitte"); fill("City", "Berlin"); fill("State, province or region", "BE"); fill("Postal code", "10117");
     fireEvent.click(screen.getByRole("button", { name: messages.Invoices.submit }));
     await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1));
