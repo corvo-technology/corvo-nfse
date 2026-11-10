@@ -19,7 +19,7 @@ export function PostCard({
         href={`/pt/blog/${post.slug}`}
         className="group relative flex h-full flex-col rounded-2xl border border-border-soft bg-surface p-6 transition-colors hover:border-accent-border hover:bg-accent-surface sm:p-7"
       >
-        <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.08em] text-text-4">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-[11px] uppercase tracking-[0.08em] text-text-4 [&>*]:whitespace-nowrap">
           <span className="rounded-full border border-accent-border px-2.5 py-0.5 text-accent">
             {CLUSTER_LABEL[post.cluster]}
           </span>

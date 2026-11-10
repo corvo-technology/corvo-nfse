@@ -63,9 +63,9 @@ export function postStructuredData(post: BlogPost) {
   ];
 }
 
-export const BLOG_TITLE = "Blog da Corvo: API de NFS-e, webhooks e agentes de IA";
+export const BLOG_TITLE = "Blog da Corvo: nota fiscal de serviço (NFS-e) sem complicação";
 export const BLOG_DESCRIPTION =
-  "Guias para desenvolvedores sobre emissão de NFS-e por API para MEI e Simples Nacional: integração assíncrona, idempotência, webhooks, MCP e cálculo de IBS/CBS.";
+  "Guias em português simples para MEI e empresas do Simples Nacional emitirem a nota fiscal de serviço (NFS-e): regras, certificado digital, planilha, agenda e IA.";
 
 /** Blog + ItemList + BreadcrumbList for the index. */
 export function indexStructuredData() {

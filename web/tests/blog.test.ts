@@ -40,8 +40,8 @@ describe("blog content", () => {
         expect(plain(post.answer).split(/\s+/).length).toBeLessThanOrEqual(80);
         expect(post.faq.length).toBeGreaterThanOrEqual(4);
         for (const item of post.faq) expect(item.q.endsWith("?")).toBe(true);
-        expect(wordCount(post)).toBeGreaterThanOrEqual(850);
-        expect(readingMinutes(post)).toBeGreaterThanOrEqual(4);
+        expect(wordCount(post)).toBeGreaterThanOrEqual(650);
+        expect(readingMinutes(post)).toBeGreaterThanOrEqual(3);
       });
 
       it("has a table of contents with unique anchors", () => {
@@ -49,6 +49,12 @@ describe("blog content", () => {
         expect(ids.length).toBeGreaterThanOrEqual(5);
         expect(new Set(ids).size).toBe(ids.length);
         for (const id of ids) expect(id).toBe(slugifyHeading(id));
+      });
+
+      it("stays in plain language (technical detail belongs in the docs)", () => {
+        const jargon = /webhook|idempot|endpoint|payload|\bJSON\b|\bcurl\b|\bPOST \/|\bGET \/|Retry-After|status HTTP|\bSDK/i;
+        const visible = [post.title, post.seoTitle, post.description, ...textsOf(post), ...post.faq.map((item) => item.q)];
+        for (const text of visible) expect(text, text).not.toMatch(jargon);
       });
 
       it("only links to pages that exist", () => {

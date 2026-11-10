@@ -101,7 +101,7 @@ const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
 function blogGuides(locale: SeoLocale): string[] {
   return [
     `- [Blog](${blogUrl()}): ${
-      locale === "en" ? "technical guides on NFS-e by API, in Portuguese." : "guias técnicos sobre NFS-e por API."
+      locale === "en" ? "plain-language guides on issuing NFS-e, in Portuguese." : "guias em linguagem simples sobre como emitir NFS-e."
     }`,
     ...POSTS.map((post) => `- [${post.title}](${postUrl(post.slug)}): ${oneLine(post.description)}`),
   ];

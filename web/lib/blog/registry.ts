@@ -1,15 +1,17 @@
 import { plain } from "./inline";
-import { post as apiNfse } from "./posts/api-de-nfse-emitir-nota-fiscal-de-servico";
-import { post as asincrona } from "./posts/emissao-assincrona-nfse-idempotencia-webhooks";
-import { post as agentes } from "./posts/emitir-nfse-com-agente-de-ia-mcp";
-import { post as tributos } from "./posts/ibs-cbs-nfse-reforma-tributaria-api";
+import { post as agenda } from "./posts/nota-fiscal-todo-mes-agendada";
+import { post as certificado } from "./posts/certificado-digital-a1-o-que-e-quando-precisa";
+import { post as claude } from "./posts/emitir-nota-fiscal-com-claude";
+import { post as planilha } from "./posts/emitir-varias-notas-fiscais-com-planilha";
+import { post as pilar } from "./posts/como-emitir-nota-fiscal-de-servico-nfse";
+import { post as simples } from "./posts/simples-nacional-nfse-nacional-novembro-2026";
 import type { BlogBlock, BlogPost } from "./types";
 
 /** The blog exists in Brazilian Portuguese only: the audience and the keywords are Brazilian. */
 export const BLOG_LOCALE = "pt" as const;
 
 /** Newest first. Posts with the same date keep the order written here. */
-export const POSTS: BlogPost[] = [apiNfse, asincrona, agentes, tributos].sort((a, b) =>
+export const POSTS: BlogPost[] = [pilar, simples, certificado, planilha, agenda, claude].sort((a, b) =>
   b.publishedAt.localeCompare(a.publishedAt),
 );
 

@@ -1,11 +1,11 @@
 /** Topic clusters. Each post belongs to one; related posts and the index chips use it. */
-export type BlogCluster = "api" | "integracao" | "agentes" | "tributos";
+export type BlogCluster = "basico" | "regras" | "rotina" | "ia";
 
 export const CLUSTER_LABEL: Record<BlogCluster, string> = {
-  api: "API de NFS-e",
-  integracao: "Integração",
-  agentes: "Agentes de IA",
-  tributos: "Tributos",
+  basico: "Primeiros passos",
+  regras: "Regras e prazos",
+  rotina: "No dia a dia",
+  ia: "Com inteligência artificial",
 };
 
 /**

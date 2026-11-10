@@ -13,6 +13,34 @@ import { BLOG_DESCRIPTION, BLOG_PATH, BLOG_TITLE, feedUrl, indexStructuredData }
 import { CLUSTER_LABEL } from "@/lib/blog/types";
 import { pageMetadata } from "@/lib/seo";
 
+/** The four everyday ways to issue a note, each linking to its guide. */
+const WAYS = [
+  {
+    tag: "Painel",
+    title: "Emita pelo painel",
+    body: "Cadastre a empresa, preencha o serviço e o valor, e a nota sai pronta, com PDF e XML.",
+    href: "/pt/blog/como-emitir-nota-fiscal-de-servico-nfse",
+  },
+  {
+    tag: "Planilha",
+    title: "Várias notas de uma vez",
+    body: "Envie uma planilha em Excel ou CSV, confira as linhas e emita tudo com um clique.",
+    href: "/pt/blog/emitir-varias-notas-fiscais-com-planilha",
+  },
+  {
+    tag: "Agenda",
+    title: "Nota todo mês, sozinha",
+    body: "Agende a nota do mesmo cliente e ela é emitida na data certa, sem você lembrar.",
+    href: "/pt/blog/nota-fiscal-todo-mes-agendada",
+  },
+  {
+    tag: "Conversa",
+    title: "Peça a nota a uma IA",
+    body: "Conecte o Claude e peça a nota numa conversa. Você confere antes de emitir.",
+    href: "/pt/blog/emitir-nota-fiscal-com-claude",
+  },
+];
+
 /** Only the Portuguese blog exists. */
 export function generateStaticParams() {
   return [{ locale: BLOG_LOCALE }];
@@ -48,11 +76,11 @@ export default async function BlogIndexPage({ params }: { params: Promise<{ loca
         <header className="max-w-[760px]">
           <p className="eyebrow !text-accent">Blog</p>
           <h1 className="mt-4 text-[clamp(34px,6vw,60px)] font-semibold leading-[1.02] tracking-[-0.03em] text-balance">
-            Nota fiscal de serviço, do ponto de vista de quem integra.
+            Nota fiscal de serviço sem complicação.
           </h1>
           <p className="mt-5 max-w-[60ch] text-[17px] leading-[1.7] text-text-3">
-            Guias práticos para desenvolvedores, SaaS e ERPs que emitem NFS-e de empresas MEI e do Simples Nacional por API:
-            integração assíncrona, idempotência, webhooks, agentes de IA (MCP) e cálculo de IBS/CBS.
+            Guias em português simples para MEI e empresas do Simples Nacional: o que é a NFS-e, o que mudou nas regras e como
+            emitir a nota sem perder tempo. Sem jargão, só o que você precisa fazer.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-2">
             {clusters.map((cluster) => (
@@ -79,6 +107,34 @@ export default async function BlogIndexPage({ params }: { params: Promise<{ loca
             <PostCard key={post.slug} post={post} />
           ))}
         </ul>
+
+        <section aria-labelledby="quem-somos" className="mt-20">
+          <p className="eyebrow !text-accent">Quem somos</p>
+          <h2 id="quem-somos" className="mt-3 max-w-[24ch] text-[28px] font-semibold leading-[1.1] tracking-[-0.02em] sm:text-[34px]">
+            A Corvo emite a nota de serviço por você.
+          </h2>
+          <p className="mt-4 max-w-[62ch] text-[16px] leading-[1.7] text-text-3">
+            Para MEI e empresas do Simples Nacional. Você cadastra a empresa uma vez e escolhe o jeito que for mais fácil no
+            seu dia a dia.
+          </p>
+          <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {WAYS.map((way) => (
+              <li key={way.title}>
+                <Link
+                  href={way.href}
+                  className="group flex h-full flex-col rounded-xl border border-border-soft bg-surface p-5 transition-colors hover:border-accent-border hover:bg-accent-surface"
+                >
+                  <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-accent">{way.tag}</span>
+                  <span className="mt-3 text-[17px] font-semibold leading-[1.3] text-text">{way.title}</span>
+                  <span className="mt-2 text-[14.5px] leading-[1.6] text-text-3">{way.body}</span>
+                  <span className="mt-auto pt-4 text-[13.5px] font-medium text-text-2 transition-colors group-hover:text-accent">
+                    Saiba mais
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
 
         <CtaBand />
       </main>
