@@ -126,6 +126,10 @@ export interface DpsBuildInput {
      * or zero omits the group.
      */
     readonly deductionAmount?: DecimalString;
+    /** Customer purchase order, sent as `serv/infoCompl/xPed`. */
+    readonly purchaseOrder?: string;
+    /** Complementary information, sent as `serv/infoCompl/xInfComp`. */
+    readonly notes?: string;
   };
   readonly emitente: {
     readonly cnpj: string;
@@ -515,6 +519,23 @@ export class DpsBuilder {
           valores: {
             ...dps.infDPS.valores,
             vDedRed: { vDR: deduction.toNumber() },
+          },
+        },
+      };
+    }
+    const { purchaseOrder, notes } = input.invoice;
+    if (purchaseOrder !== undefined || notes !== undefined) {
+      dps = {
+        ...dps,
+        infDPS: {
+          ...dps.infDPS,
+          serv: {
+            ...dps.infDPS.serv,
+            // Element order of TCInfoCompl: xPed comes before xInfComp.
+            infoCompl: {
+              ...(purchaseOrder !== undefined ? { xPed: purchaseOrder } : {}),
+              ...(notes !== undefined ? { xInfComp: notes } : {}),
+            },
           },
         },
       };

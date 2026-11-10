@@ -43,6 +43,15 @@ export class ServiceSnapshotDto {
 
   @ApiProperty()
   municipalityCode!: string;
+
+  @ApiPropertyOptional({ description: 'Customer purchase order (DPS xPed).' })
+  purchaseOrder?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Complementary information printed on the invoice (DPS xInfComp).',
+  })
+  notes?: string;
 }
 
 export class InvoiceResponseDto {

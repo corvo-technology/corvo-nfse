@@ -541,6 +541,20 @@ export class NfseWorkflowService {
           }),
         );
       }
+      // Same reasoning for the complementary info: never issue without what was asked.
+      const { purchaseOrder, notes } = snapshot.serviceSnapshot;
+      if (purchaseOrder !== undefined || notes !== undefined) {
+        throw new DpsBuildRejectionError(
+          fiscalError({
+            code: 'FISCAL_VALIDATION_FAILED',
+            message:
+              'purchaseOrder and notes cannot be issued without a fiscal calculation snapshot',
+            category: 'VALIDATION',
+            step: 'NfseWorkflow',
+            details: { fields: ['purchaseOrder', 'notes'] },
+          }),
+        );
+      }
       return payload;
     }
     // The numbering was already reserved and persisted above, so a failure from
@@ -573,6 +587,12 @@ export class NfseWorkflowService {
           discountAmount: moneyString(toDecimal(snapshot.discount ?? 0)),
           ...(snapshot.deduction !== undefined && snapshot.deduction > 0
             ? { deductionAmount: moneyString(toDecimal(snapshot.deduction)) }
+            : {}),
+          ...(snapshot.serviceSnapshot.purchaseOrder !== undefined
+            ? { purchaseOrder: snapshot.serviceSnapshot.purchaseOrder }
+            : {}),
+          ...(snapshot.serviceSnapshot.notes !== undefined
+            ? { notes: snapshot.serviceSnapshot.notes }
             : {}),
         },
         emitente: {

@@ -646,6 +646,55 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     expect(invoice.status).toBe('rejected');
   });
 
+  const invoiceWithInfo = (): Invoice =>
+    Invoice.create(
+      {
+        companyId: company.id,
+        customer: { taxId: '12345678000195', name: 'Cliente Teste LTDA' },
+        service: {
+          description: 'Consultoria em TI',
+          code: '010601',
+          municipalityCode: '3550308',
+          purchaseOrder: 'PO-4521',
+          notes: 'Parcela 2 de 3',
+        },
+        amount: 1000,
+        competenceDate: new Date('2026-10-13'),
+      },
+      tenantId,
+    );
+
+  it('sends the purchase order and the notes in the preparedDps as serv/infoCompl', async () => {
+    const invoice = invoiceWithInfo();
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(
+      fiscalSnapshot(invoice.id),
+    );
+
+    const payload = await callPayload(invoice);
+
+    expect(payload.preparedDps?.infDPS.serv.infoCompl).toEqual({
+      xPed: 'PO-4521',
+      xInfComp: 'Parcela 2 de 3',
+    });
+  });
+
+  it('rejects complementary info when there is no fiscal snapshot instead of issuing without it', async () => {
+    const invoice = invoiceWithInfo();
+    fakes.invoices.findByIdAndTenantId.mockResolvedValue(invoice);
+    fakes.fiscalSnapshots.findByInvoiceId.mockResolvedValue(null);
+    fakes.providers.resolve.mockReturnValue({ issue: jest.fn() });
+    const rejectSpy = spyOnReject();
+
+    await processInvoice(invoice);
+
+    expect(rejectSpy).toHaveBeenCalledWith(
+      invoice,
+      'FISCAL_VALIDATION_FAILED',
+      expect.stringContaining('purchaseOrder'),
+    );
+    expect(fakes.providers.resolve).not.toHaveBeenCalled();
+  });
+
   it('hands preparedDps to the fiscal provider and enqueues the reconciliation', async () => {
     const invoice = createInvoice();
     fakes.invoices.findByIdAndTenantId.mockResolvedValue(invoice);

@@ -541,6 +541,58 @@ describe('DpsBuilder', () => {
     expect(absent.infDPS.valores.vDedRed).toBeUndefined();
   });
 
+  it('adds serv/infoCompl with the purchase order and the notes, changing nothing else', async () => {
+    const base = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    const withInfo = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          invoice: { purchaseOrder: 'PO-4521', notes: 'Parcela 2 de 3' },
+        }),
+        RTC_V1_01,
+      ),
+    );
+
+    expect(withInfo.infDPS.serv.infoCompl).toEqual({
+      xPed: 'PO-4521',
+      xInfComp: 'Parcela 2 de 3',
+    });
+    expect(withInfo.infDPS).toEqual({
+      ...base.infDPS,
+      serv: {
+        ...base.infDPS.serv,
+        infoCompl: { xPed: 'PO-4521', xInfComp: 'Parcela 2 de 3' },
+      },
+    });
+  });
+
+  it('serializes infoCompl in the XML and keeps it schema valid', async () => {
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          invoice: { purchaseOrder: 'PO-4521', notes: 'Parcela 2 de 3' },
+        }),
+        RTC_V1_01,
+      ),
+    );
+    const xml = buildDpsXml(dps);
+    expect(xml).toContain('<xPed>PO-4521</xPed>');
+    expect(xml).toContain('<xInfComp>Parcela 2 de 3</xInfComp>');
+    const validation = await validateDpsXml(xml, { throwOnInvalid: false });
+    expect(validation.valid).toBe(true);
+  });
+
+  it('sends only the field that was informed and omits infoCompl when there is none', async () => {
+    const onlyOrder = dpsFrom(
+      await new DpsBuilder().build(
+        input({ invoice: { purchaseOrder: 'PO-1' } }),
+        RTC_V1_01,
+      ),
+    );
+    const none = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    expect(onlyOrder.infDPS.serv.infoCompl).toEqual({ xPed: 'PO-1' });
+    expect(none.infDPS.serv.infoCompl).toBeUndefined();
+  });
+
   it('maps ISS withholding to RetidoPeloTomador only when required', async () => {
     const retained = dpsFrom(
       await new DpsBuilder().build(

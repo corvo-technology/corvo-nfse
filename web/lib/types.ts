@@ -419,7 +419,7 @@ export interface Invoice {
   /** Deduction from the ISS base declared by the issuer. */
   deduction?: number;
   serviceDescription: string; customerSnapshot: CreateInvoiceInput["customer"] | null;
-  serviceSnapshot: Required<CreateInvoiceInput["service"]>; competenceDate: string;
+  serviceSnapshot: Required<CreateInvoiceInput["service"]> & { purchaseOrder?: string; notes?: string }; competenceDate: string;
   lastErrorCode?: string | null; lastErrorMessage?: string | null;
   authorizedAt?: string | null; scheduledFor?: string | null; createdAt: string; updatedAt: string;
   cancellationReason?: CancellationReasonCode | null; cancellationDescription?: string | null; cancelledAt?: string | null;
@@ -433,6 +433,10 @@ export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } |
   /** Omit code/municipalityCode to inherit the company defaults (code falls back to 100901). The description is optional. */
   service: { description?: string; code?: string; municipalityCode?: string };
   amount: number; competenceDate: string;
+  /** Customer purchase order printed on the invoice (DPS xPed, up to 60 characters). Changes no tax. */
+  purchaseOrder?: string;
+  /** Free text printed on the invoice as complementary information (DPS xInfComp, up to 2000 characters). Changes no tax. */
+  notes?: string;
   /**
    * Deduction from the ISS base declared by the issuer, in BRL (> 0 and < amount, max 2 decimals), sent in the DPS as `vDedRed/vDR`.
    * The issuer is responsible for the declared value; Corvo does not check whether the deduction is allowed.

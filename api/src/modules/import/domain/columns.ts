@@ -7,6 +7,8 @@ export const COLUMN_KEYS = [
   'valor',
   'codigoServico',
   'dataCompetencia',
+  'pedido',
+  'observacoes',
 ] as const;
 export type ColumnKey = (typeof COLUMN_KEYS)[number];
 
@@ -58,6 +60,20 @@ const ALIASES: Record<ColumnKey, string[]> = {
     'competencia',
     'competencedate',
     'data',
+  ],
+  pedido: [
+    'pedido',
+    'numeropedido',
+    'numerodopedido',
+    'ordemdecompra',
+    'ordemdeservico',
+    'purchaseorder',
+  ],
+  observacoes: [
+    'observacoes',
+    'observacao',
+    'informacoescomplementares',
+    'notes',
   ],
 };
 

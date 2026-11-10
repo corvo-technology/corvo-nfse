@@ -40,6 +40,10 @@ export interface ServiceSnapshot {
   municipalityCode: string;
   fiscal?: ServiceFiscalInput;
   serviceProfileId?: string;
+  /** Customer purchase order (DPS `serv/infoCompl/xPed`). */
+  purchaseOrder?: string;
+  /** Complementary information (DPS `serv/infoCompl/xInfComp`). */
+  notes?: string;
 }
 
 export interface TaxSnapshot {
@@ -108,6 +112,8 @@ export interface CreateInvoiceInput {
     municipalityCode: string;
     fiscal?: ServiceFiscalInput;
     serviceProfileId?: string;
+    purchaseOrder?: string;
+    notes?: string;
   };
   amount: number;
   discount?: number;
@@ -152,6 +158,13 @@ export class Invoice {
         municipalityCode: input.service.municipalityCode,
         fiscal: input.service.fiscal,
         serviceProfileId: input.service.serviceProfileId,
+        // Only present when informed, so older invoices keep the same snapshot shape.
+        ...(input.service.purchaseOrder !== undefined
+          ? { purchaseOrder: input.service.purchaseOrder }
+          : {}),
+        ...(input.service.notes !== undefined
+          ? { notes: input.service.notes }
+          : {}),
       },
       taxSnapshot: {},
       emailSnapshot: input.email ? { send: input.email.send } : undefined,

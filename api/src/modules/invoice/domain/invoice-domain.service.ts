@@ -41,6 +41,10 @@ export interface NormalizedInvoiceInput {
     description?: string;
     fiscal?: ServiceFiscalInput;
     serviceProfileId?: string;
+    /** Customer purchase order (DPS `serv/infoCompl/xPed`). */
+    purchaseOrder?: string;
+    /** Complementary information (DPS `serv/infoCompl/xInfComp`). */
+    notes?: string;
   };
   amount: number;
   discount?: number;
@@ -52,6 +56,65 @@ export interface NormalizedInvoiceInput {
   companyId: string;
   externalId?: string;
   environment: string;
+}
+
+/** XSD RTC v1.01: `xPed` is TSNumeroEndereco (1 to 60) and `xInfComp` is TSDescInfCompl (1 to 2000). */
+export const PURCHASE_ORDER_MAX = 60;
+export const NOTES_MAX = 2000;
+
+/** Control characters never belong in a fiscal document; notes may keep tab and line breaks. */
+function hasControlCharacter(text: string, allowLineBreaks: boolean): boolean {
+  for (const char of text) {
+    const code = char.charCodeAt(0);
+    if (code > 0x1f && code !== 0x7f) continue;
+    if (allowLineBreaks && (code === 0x09 || code === 0x0a || code === 0x0d))
+      continue;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Optional free text of the DPS `serv/infoCompl` group. A blank value means "not informed"
+ * and is dropped, because the schema refuses an empty element.
+ */
+function complementaryText(
+  field: 'purchaseOrder' | 'notes',
+  value: unknown,
+  max: number,
+  allowLineBreaks: boolean,
+  issues: FiscalIssue[],
+): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string') {
+    issues.push({
+      field,
+      code: 'invalid_type',
+      message: `${field} must be text`,
+    });
+    return undefined;
+  }
+  const text = value.trim();
+  if (text === '') return undefined;
+  if (text.length > max) {
+    issues.push({
+      field,
+      code: 'too_long',
+      message: `${field} must have at most ${max} characters`,
+    });
+    return undefined;
+  }
+  if (hasControlCharacter(text, allowLineBreaks)) {
+    issues.push({
+      field,
+      code: 'invalid',
+      message: allowLineBreaks
+        ? `${field} must not contain control characters`
+        : `${field} must be a single line without control characters`,
+    });
+    return undefined;
+  }
+  return text;
 }
 
 @Injectable()
@@ -274,6 +337,22 @@ export class InvoiceDomainService {
       }
     }
 
+    // ── complementary info: optional text, never taxes anything ──────────
+    const purchaseOrder = complementaryText(
+      'purchaseOrder',
+      dto.purchaseOrder,
+      PURCHASE_ORDER_MAX,
+      false,
+      issues,
+    );
+    const notes = complementaryText(
+      'notes',
+      dto.notes,
+      NOTES_MAX,
+      true,
+      issues,
+    );
+
     // ── competenceDate: immediate or scheduled ───────────────────────────────────
     let competenceDate: Date;
     let scheduledFor: Date | undefined;
@@ -348,6 +427,8 @@ export class InvoiceDomainService {
         description: dto.service.description?.trim(),
         fiscal: dto.service.fiscal,
         serviceProfileId: dto.service.serviceProfileId,
+        ...(purchaseOrder !== undefined ? { purchaseOrder } : {}),
+        ...(notes !== undefined ? { notes } : {}),
       },
       amount: Math.round(dto.amount * 100) / 100,
       discount,

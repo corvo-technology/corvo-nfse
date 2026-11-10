@@ -666,3 +666,64 @@ describe('SCHEDULE calendar days', () => {
     ).toBe('2026-11-11T12:00:00.000Z');
   });
 });
+
+describe('InvoiceDomainService complementary info', () => {
+  const service = new InvoiceDomainService();
+  const issuesOf = (overrides: Record<string, unknown>) => {
+    try {
+      service.normalizeAndValidate(validDto(overrides), 'live');
+    } catch (error) {
+      if (error instanceof FiscalValidationError) return error.issues;
+      throw error;
+    }
+    return [];
+  };
+
+  it('keeps the purchase order and the notes, trimmed', () => {
+    const result = service.normalizeAndValidate(
+      validDto({
+        purchaseOrder: '  PO-4521 ',
+        notes: ' Ref. contrato 12\nParcela 2 de 3 ',
+      }),
+      'live',
+    );
+    expect(result.service.purchaseOrder).toBe('PO-4521');
+    expect(result.service.notes).toBe('Ref. contrato 12\nParcela 2 de 3');
+  });
+
+  it('drops blank values, so the group never reaches the DPS empty', () => {
+    const result = service.normalizeAndValidate(
+      validDto({ purchaseOrder: '   ', notes: '' }),
+      'live',
+    );
+    expect(result.service.purchaseOrder).toBeUndefined();
+    expect(result.service.notes).toBeUndefined();
+  });
+
+  it('rejects values above the DPS limits (xPed 60, xInfComp 2000)', () => {
+    expect(issuesOf({ purchaseOrder: 'x'.repeat(61) })).toEqual([
+      expect.objectContaining({ field: 'purchaseOrder', code: 'too_long' }),
+    ]);
+    expect(issuesOf({ notes: 'x'.repeat(2001) })).toEqual([
+      expect.objectContaining({ field: 'notes', code: 'too_long' }),
+    ]);
+    expect(
+      issuesOf({ purchaseOrder: 'x'.repeat(60), notes: 'x'.repeat(2000) }),
+    ).toEqual([]);
+  });
+
+  it('rejects control characters and a line break in the purchase order', () => {
+    expect(issuesOf({ purchaseOrder: 'PO\n4521' })).toEqual([
+      expect.objectContaining({ field: 'purchaseOrder', code: 'invalid' }),
+    ]);
+    expect(issuesOf({ notes: 'texto\u0000oculto' })).toEqual([
+      expect.objectContaining({ field: 'notes', code: 'invalid' }),
+    ]);
+  });
+
+  it('rejects a value that is not text', () => {
+    expect(issuesOf({ purchaseOrder: 4521 })).toEqual([
+      expect.objectContaining({ field: 'purchaseOrder', code: 'invalid_type' }),
+    ]);
+  });
+});

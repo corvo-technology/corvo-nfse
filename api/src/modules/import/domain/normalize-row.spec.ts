@@ -111,4 +111,17 @@ describe('normalizeRow', () => {
         .competenceDate,
     ).toBe('31/2/2026');
   });
+
+  it('reads the purchase order and the notes when the cells are filled', () => {
+    const filled = normalizeRow(
+      { ...base, pedido: ' PO-4521 ', observacoes: ' Parcela 2 de 3 ' },
+      TODAY,
+    ).item;
+    expect(filled.purchaseOrder).toBe('PO-4521');
+    expect(filled.notes).toBe('Parcela 2 de 3');
+
+    const empty = normalizeRow({ ...base, pedido: '  ' }, TODAY).item;
+    expect(empty).not.toHaveProperty('purchaseOrder');
+    expect(empty).not.toHaveProperty('notes');
+  });
 });
