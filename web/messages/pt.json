@@ -1269,15 +1269,10 @@
       "createdButFailedWith": "A nota foi emitida, mas a recorrência não foi criada ({reason}). Tente de novo: não emite outra nota."
     },
     "foreign": {
-      "toggle": "Cliente no exterior",
-      "toggleHint": "Para cliente de fora do Brasil, sem documento brasileiro.",
       "country": "País",
       "countryPlaceholder": "Escolha o país",
       "taxId": "Identificação fiscal (NIF)",
       "taxIdHint": "O número de contribuinte do cliente no país dele.",
-      "noTaxId": "Cliente sem identificação fiscal",
-      "noTaxIdHint": "Marque só se ele não tiver NIF.",
-      "hasTaxId": "Ele tem identificação fiscal",
       "reason": {
         "exempt": "Dispensado",
         "not_required": "Não exigido"
@@ -1289,7 +1284,17 @@
       "city": "Cidade",
       "region": "Estado, província ou região",
       "postalCode": "Código postal",
-      "notExport": "Informar um cliente no exterior não declara exportação de serviço: a nota segue com a mesma tributação. Confirme o enquadramento com o seu contador."
+      "notExport": "Informar um cliente no exterior não declara exportação de serviço: a nota segue com a mesma tributação. Confirme o enquadramento com o seu contador.",
+      "groupLabel": "Onde o cliente está",
+      "brazil": "Brasil",
+      "abroad": "Exterior",
+      "noTaxIdToggle": "Cliente sem NIF",
+      "reasonLabel": "Motivo"
+    },
+    "more": {
+      "title": "Mais opções",
+      "hint": "Código, dedução, pedido, observações, referência e repetição",
+      "filled": "{count, plural, one {# preenchida} other {# preenchidas}}"
     }
   },
   "Billing": {

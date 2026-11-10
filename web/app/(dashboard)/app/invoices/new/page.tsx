@@ -31,22 +31,17 @@ const FORM_ID = "new-invoice-form";
 /** Problems the user fixes on the company, not on this form. */
 const FIX_ON_COMPANY = new Set(["simples_rate_required", "company_not_ready", "certificate_not_found", "certificate_invalid", "certificate_expired", "certificate_tax_id_mismatch"]);
 
-function Section({ n, title, hint, delay, children }: { n: number; title: string; hint?: string; delay: number; children: React.ReactNode }) {
+function Section({ title, delay, children }: { title: string; delay: number; children: React.ReactNode }) {
   return (
     <section className={`surface dash-in dash-in-${delay} p-5 sm:p-6`}>
-      <header className="mb-5 flex items-start gap-3.5">
-        <span aria-hidden className="mt-px flex h-6 w-6 flex-none items-center justify-center rounded-full border border-border-strong bg-active font-mono text-[11px] text-text-2">{n}</span>
-        <div className="min-w-0">
-          <h2 className="text-[15px] font-medium leading-6 text-text">{title}</h2>
-          {hint && <p className="text-[12.5px] text-text-4">{hint}</p>}
-        </div>
-      </header>
+      <h2 className="mb-4 border-b border-border-soft pb-3 text-[15px] font-medium leading-6 text-text">{title}</h2>
       <div className="flex flex-col gap-4">{children}</div>
     </section>
   );
 }
 
 function SummaryRow({ label, value, mono }: { label: string; value?: string; mono?: boolean }) {
+  if (!value) return null;
   return (
     <div className="flex items-baseline justify-between gap-4 text-[13px]">
       <dt className="flex-none text-text-4">{label}</dt>
@@ -344,6 +339,14 @@ export default function NewInvoicePage() {
   if (!abroad && Boolean(form.city.trim()) !== Boolean(form.state)) missing.push(form.city.trim() ? t("fields.state") : t("fields.city"));
   const canSubmit = missing.length === 0 && !uncertain;
 
+  // "More options" holds what most invoices do not need. It opens by itself when something in it is filled,
+  // wrong, or required (a company without a municipality); the person can still close it.
+  const MORE_ERROR_KEYS = ["serviceCode", "municipalityCode", "deduction", "purchaseOrder", "notes", "city", "state", "externalId"];
+  const moreFilled = [form.externalId, form.purchaseOrder, form.notes, form.deduction, form.serviceCode, form.municipalityCode, form.city, form.state].filter((value) => value.trim()).length + (repeat ? 1 : 0);
+  const needsMore = moreFilled > 0 || MORE_ERROR_KEYS.some((key) => fieldErrors[key]) || Boolean(company && !company.municipalityCode);
+  const [moreState, setMoreState] = useState<"auto" | "open" | "closed">("auto");
+  const moreOpen = moreState === "open" || (moreState === "auto" && needsMore);
+
   return (
     <div className="flex flex-col gap-7">
       <PageHeader title={t("newTitle")} subtitle={t("newSubtitle")} />
@@ -351,9 +354,8 @@ export default function NewInvoicePage() {
       {copyFailed && <p role="alert" className="banner banner-warn">{t("copyFailed")}</p>}
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <form id={FORM_ID} onSubmit={handleSubmit} className="flex min-w-0 flex-col gap-5" aria-busy={submitting}>
-          <Section n={1} title={t("form.company")} hint={t("form.companyHint")} delay={1}>
-            <div className="grid gap-4 sm:grid-cols-2">
+        <form id={FORM_ID} onSubmit={handleSubmit} className="flex min-w-0 flex-col gap-6" aria-busy={submitting}>
+          <div className="dash-in dash-in-1 flex flex-col gap-3">
               <Field label={t("fields.company")} error={fieldErrors.companyId || undefined} required>
                 {(c) => (
                   <select {...c} className="field" value={form.companyId} onChange={(event) => { setForm((previous) => ({ ...previous, companyId: event.target.value, serviceCode: "", municipalityCode: "" })); setFieldErrors({}); }} disabled={loading} required>
@@ -367,26 +369,21 @@ export default function NewInvoicePage() {
                   </select>
                 )}
               </Field>
-              <Field label={t("fields.reference")} optionalLabel={t("fields.optional")} hint={t("hints.reference")}>
-                {(c) => (
-                  <input {...c} type="text" className="field" placeholder={t("placeholders.reference")} value={form.externalId} onChange={set("externalId")} autoComplete="off" spellCheck={false} />
-                )}
-              </Field>
-            </div>
             {company && (company.status === "blocked" || (isLive && company.status !== "ready") || !/^\d{7}$/.test(company.municipalityCode ?? "")) && <p className="banner banner-warn">{t("fields.companyNotReady")} <Link href={`/app/companies/${company.id}`} className="underline">{t("fields.configureCompany")}</Link></p>}
             {nextCursor && <Button variant="ghost" onClick={loadMoreCompanies} loading={loadingMore}>{t("fields.loadMoreCompanies")}</Button>}
-          </Section>
+          </div>
 
-          <Section n={2} title={t("form.customer")} hint={t("form.customerHint")} delay={2}>
-            <label className="choice items-start">
-              <input type="checkbox" checked={abroad} onChange={(event) => { setForm((f) => ({ ...f, abroad: event.target.checked ? "yes" : "" })); setFieldErrors({}); }} className="mt-0.5 h-4 w-4 flex-none accent-[var(--accent)]" />
-              <span className="min-w-0">
-                <span className="block text-[14px] text-text">{t("foreign.toggle")}</span>
-                <span className="block text-[12.5px] text-text-4">{t("foreign.toggleHint")}</span>
-              </span>
-            </label>
+          <Section title={t("form.customer")} delay={2}>
+            <div role="radiogroup" aria-label={t("foreign.groupLabel")} className="inline-flex self-start rounded-[9px] border border-border-strong p-0.5">
+              {([["", t("foreign.brazil")], ["yes", t("foreign.abroad")]] as const).map(([value, label]) => (
+                <label key={value} className={`cursor-pointer rounded-[7px] px-3.5 py-1.5 text-[13px] transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--accent)] ${form.abroad === value ? "bg-active text-text" : "text-text-3 hover:text-text-2"}`}>
+                  <input type="radio" name="customer-origin" value={value} checked={form.abroad === value} onChange={() => { setForm((f) => ({ ...f, abroad: value })); setFieldErrors({}); }} className="sr-only" />
+                  {label}
+                </label>
+              ))}
+            </div>
             {!abroad && (
-            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("fields.taxId")} error={fieldErrors.customerTaxId || undefined} required={hasCustomer} optionalLabel={hasCustomer ? undefined : t("fields.optional")}>
                 {(c) => (
                   <input {...c} type="text" inputMode="text" autoCapitalize="characters" className="field font-mono tabular-nums" placeholder={t("placeholders.taxId")} value={form.customerTaxId} onChange={set("customerTaxId", maskTaxId)} maxLength={18} autoComplete="off" required={hasCustomer} />
@@ -397,7 +394,7 @@ export default function NewInvoicePage() {
                   <input {...c} type="text" className="field" placeholder={t("placeholders.name")} value={form.customerName} onChange={set("customerName")} autoComplete="organization" />
                 )}
               </Field>
-            </div>
+              </div>
             )}
             {abroad && (
               <>
@@ -415,61 +412,36 @@ export default function NewInvoicePage() {
                   </Field>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-2.5">
                   <Field label={t("foreign.taxId")} error={fieldErrors.foreignTaxId || undefined} required={!form.noTaxIdReason} hint={t("foreign.taxIdHint")}>
                     {(c) => <input {...c} type="text" className="field font-mono" maxLength={40} value={form.foreignTaxId} onChange={set("foreignTaxId")} disabled={Boolean(form.noTaxIdReason)} autoComplete="off" required={!form.noTaxIdReason} />}
                   </Field>
-                  <Field label={t("foreign.noTaxId")} optionalLabel={t("fields.optional")} hint={t("foreign.noTaxIdHint")}>
-                    {(c) => (
-                      <select {...c} className="field" value={form.noTaxIdReason} onChange={(event) => setForm((f) => ({ ...f, noTaxIdReason: event.target.value, foreignTaxId: event.target.value ? "" : f.foreignTaxId }))}>
-                        <option value="">{t("foreign.hasTaxId")}</option>
-                        <option value="exempt">{t("foreign.reason.exempt")}</option>
-                        <option value="not_required">{t("foreign.reason.not_required")}</option>
-                      </select>
-                    )}
-                  </Field>
+                    <label className="choice items-center">
+                      <input type="checkbox" checked={Boolean(form.noTaxIdReason)} onChange={(event) => setForm((f) => ({ ...f, noTaxIdReason: event.target.checked ? "exempt" : "", foreignTaxId: event.target.checked ? "" : f.foreignTaxId }))} className="h-4 w-4 flex-none accent-[var(--accent)]" />
+                      <span className="text-[13.5px] text-text-2">{t("foreign.noTaxIdToggle")}</span>
+                    </label>
+                  </div>
+                  {form.noTaxIdReason && (
+                    <Field label={t("foreign.reasonLabel")}>
+                      {(c) => (
+                        <select {...c} className="field" value={form.noTaxIdReason} onChange={set("noTaxIdReason")}>
+                          <option value="exempt">{t("foreign.reason.exempt")}</option>
+                          <option value="not_required">{t("foreign.reason.not_required")}</option>
+                        </select>
+                      )}
+                    </Field>
+                  )}
                 </div>
-              </>
-            )}
-            <Field label={t("fields.email")} error={fieldErrors.customerEmail || undefined} required={sendEmail} optionalLabel={sendEmail ? undefined : t("fields.optional")} hint={t("hints.email")}>
-              {(c) => (
-                <input {...c} type="email" inputMode="email" className="field" placeholder={t("placeholders.email")} value={form.customerEmail} onChange={set("customerEmail")} autoComplete="email" spellCheck={false} />
-              )}
-            </Field>
-            <label className="choice items-start">
-              <input type="checkbox" checked={sendEmail} onChange={(event) => { setSendEmail(event.target.checked); setFieldErrors((prev) => (prev.customerEmail ? { ...prev, customerEmail: "" } : prev)); }} className="mt-0.5 h-4 w-4 flex-none accent-[var(--accent)]" />
-              <span className="min-w-0">
-                <span className="block text-[14px] text-text">{t("sendEmail.label")}</span>
-                <span className="block text-[12.5px] text-text-4">{isLive ? t("sendEmail.hint") : t("sendEmail.hintTest")}</span>
-              </span>
-            </label>
-            {!abroad && (
-            <div className="grid grid-cols-[1fr_96px] gap-4">
-              <Field label={t("fields.city")} error={fieldErrors.city || undefined} optionalLabel={t("fields.optional")}>
-                {(c) => (
-                  <input {...c} type="text" className="field" placeholder={t("placeholders.city")} value={form.city} onChange={set("city")} autoComplete="address-level2" />
-                )}
-              </Field>
-              <Field label={t("fields.state")} error={fieldErrors.state || undefined} optionalLabel={t("fields.optional")}>
-                {(c) => (
-                  <input {...c} type="text" className="field font-mono uppercase" maxLength={2} placeholder={t("placeholders.state")} value={form.state} onChange={set("state", maskState)} autoComplete="address-level1" />
-                )}
-              </Field>
-            </div>
-            )}
-            {abroad && (
-              <>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-[2fr_1fr_1fr]">
                   <Field label={t("foreign.street")} error={fieldErrors.street || undefined} required>
                     {(c) => <input {...c} type="text" className="field" maxLength={255} value={form.street} onChange={set("street")} autoComplete="address-line1" required />}
                   </Field>
-                  <div className="grid grid-cols-2 gap-4">
                     <Field label={t("foreign.number")} error={fieldErrors.number || undefined} required>
                       {(c) => <input {...c} type="text" className="field" maxLength={60} value={form.number} onChange={set("number")} autoComplete="off" required />}
                     </Field>
                     <Field label={t("foreign.complement")} error={fieldErrors.complement || undefined} optionalLabel={t("fields.optional")}>
                       {(c) => <input {...c} type="text" className="field" maxLength={156} value={form.complement} onChange={set("complement")} autoComplete="address-line2" />}
                     </Field>
-                  </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label={t("foreign.district")} error={fieldErrors.district || undefined} required>
@@ -490,14 +462,65 @@ export default function NewInvoicePage() {
                 <p className="banner banner-accent text-[13px]">{t("foreign.notExport")}</p>
               </>
             )}
+            <div className="flex flex-col gap-2.5">
+            <Field label={t("fields.email")} error={fieldErrors.customerEmail || undefined} required={sendEmail} optionalLabel={sendEmail ? undefined : t("fields.optional")} hint={t("hints.email")}>
+              {(c) => (
+                <input {...c} type="email" inputMode="email" className="field" placeholder={t("placeholders.email")} value={form.customerEmail} onChange={set("customerEmail")} autoComplete="email" spellCheck={false} />
+              )}
+            </Field>
+            <label className="choice items-start">
+              <input type="checkbox" checked={sendEmail} onChange={(event) => { setSendEmail(event.target.checked); setFieldErrors((prev) => (prev.customerEmail ? { ...prev, customerEmail: "" } : prev)); }} className="mt-0.5 h-4 w-4 flex-none accent-[var(--accent)]" />
+              <span className="min-w-0">
+                <span className="block text-[14px] text-text">{t("sendEmail.label")}</span>
+                <span className="block text-[12.5px] text-text-4">{isLive ? t("sendEmail.hint") : t("sendEmail.hintTest")}</span>
+              </span>
+            </label>
+            </div>
           </Section>
 
-          <Section n={3} title={t("form.service")} hint={t("form.serviceHint")} delay={3}>
+          <Section title={t("form.service")} delay={3}>
             <Field label={t("fields.description")} error={fieldErrors.serviceDescription || undefined} optionalLabel={t("fields.optional")} hint={t("hints.description")}>
               {(c) => (
                 <textarea {...c} className="field resize-y" rows={3} placeholder={t("placeholders.description")} value={form.serviceDescription} onChange={set("serviceDescription")} />
               )}
             </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={t("fields.amount")} error={fieldErrors.amount || undefined} required>
+                {(c) => (
+                  <div className="relative">
+                    <span aria-hidden className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-[13px] text-text-4">R$</span>
+                    <input {...c} type="text" inputMode="numeric" className="field pl-10 text-right font-mono tabular-nums" placeholder="0,00" value={form.amount} onChange={set("amount", maskCurrency)} autoComplete="off" required />
+                  </div>
+                )}
+              </Field>
+              <Field label={t("fields.competence")} error={fieldErrors.competenceDate || undefined} required>
+                {(c) => <input {...c} type="date" className="field" max={today} value={form.competenceDate} onChange={set("competenceDate")} required />}
+              </Field>
+            </div>
+          </Section>
+
+          <details open={moreOpen} onToggle={(event) => setMoreState(event.currentTarget.open ? "open" : "closed")} className="dash-in dash-in-3 surface group p-5 sm:p-6">
+            <summary className="flex cursor-pointer list-none items-baseline justify-between gap-4 text-[15px] font-medium text-text [&::-webkit-details-marker]:hidden">
+              <span>{t("more.title")}</span>
+              <span className="text-[12.5px] font-normal text-text-4">{moreFilled > 0 ? t("more.filled", { count: moreFilled }) : t("more.hint")}</span>
+            </summary>
+            <div className="mt-5 flex flex-col gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={t("fields.serviceCode")} error={fieldErrors.serviceCode || undefined} optionalLabel={t("fields.optional")} hint={company?.defaultServiceCode ? t("hints.serviceCodeDefault", { code: company.defaultServiceCode }) : t("hints.serviceCodeFallback", { code: DEFAULT_SERVICE_CODE })}>
+                {(c) => <ServiceCodeCombobox id={c.id} aria-describedby={c["aria-describedby"]} aria-invalid={c["aria-invalid"]} value={form.serviceCode} onChange={(code) => { setForm((f) => ({ ...f, serviceCode: code })); setFieldErrors((previous) => ({ ...previous, serviceCode: "" })); }} placeholder={company?.defaultServiceCode ?? DEFAULT_SERVICE_CODE} />}
+              </Field>
+              <Field label={t("fields.municipalityCode")} error={fieldErrors.municipalityCode || undefined} required={!company?.municipalityCode} optionalLabel={company?.municipalityCode ? t("fields.optional") : undefined} hint={company?.municipalityCode ? t("hints.municipalityDefault", { code: company.municipalityCode }) : t("hints.municipalityCode")}>
+                {(c) => <input {...c} type="text" inputMode="numeric" className="field font-mono tabular-nums" placeholder={company?.municipalityCode ?? t("placeholders.municipalityCode")} value={form.municipalityCode} onChange={set("municipalityCode", maskDigits(7))} pattern="[0-9]{7}" maxLength={7} autoComplete="off" required={!company?.municipalityCode} />}
+              </Field>
+              </div>
+                <Field label={t("fields.deduction")} error={fieldErrors.deduction || (deductionInvalid ? t("fields.invalidDeduction") : undefined)} optionalLabel={t("fields.optional")} hint={t("hints.deduction")}>
+                  {(c) => (
+                    <div className="relative">
+                      <span aria-hidden className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-[13px] text-text-4">R$</span>
+                      <input {...c} type="text" inputMode="numeric" className="field pl-10 text-right font-mono tabular-nums" placeholder="0,00" value={form.deduction} onChange={set("deduction", maskCurrency)} autoComplete="off" />
+                    </div>
+                  )}
+                </Field>
             <Field label={t("fields.purchaseOrder")} error={fieldErrors.purchaseOrder || undefined} optionalLabel={t("fields.optional")} hint={t("hints.purchaseOrder")}>
               {(c) => (
                 <input {...c} type="text" className="field" maxLength={60} placeholder={t("placeholders.purchaseOrder")} value={form.purchaseOrder} onChange={set("purchaseOrder")} autoComplete="off" />
@@ -508,35 +531,25 @@ export default function NewInvoicePage() {
                 <textarea {...c} className="field resize-y" rows={2} maxLength={2000} placeholder={t("placeholders.notes")} value={form.notes} onChange={set("notes")} />
               )}
             </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("fields.serviceCode")} error={fieldErrors.serviceCode || undefined} optionalLabel={t("fields.optional")} hint={company?.defaultServiceCode ? t("hints.serviceCodeDefault", { code: company.defaultServiceCode }) : t("hints.serviceCodeFallback", { code: DEFAULT_SERVICE_CODE })}>
-                {(c) => <ServiceCodeCombobox id={c.id} aria-describedby={c["aria-describedby"]} aria-invalid={c["aria-invalid"]} value={form.serviceCode} onChange={(code) => { setForm((f) => ({ ...f, serviceCode: code })); setFieldErrors((previous) => ({ ...previous, serviceCode: "" })); }} placeholder={company?.defaultServiceCode ?? DEFAULT_SERVICE_CODE} />}
-              </Field>
-              <Field label={t("fields.municipalityCode")} error={fieldErrors.municipalityCode || undefined} required={!company?.municipalityCode} optionalLabel={company?.municipalityCode ? t("fields.optional") : undefined} hint={company?.municipalityCode ? t("hints.municipalityDefault", { code: company.municipalityCode }) : t("hints.municipalityCode")}>
-                {(c) => <input {...c} type="text" inputMode="numeric" className="field font-mono tabular-nums" placeholder={company?.municipalityCode ?? t("placeholders.municipalityCode")} value={form.municipalityCode} onChange={set("municipalityCode", maskDigits(7))} pattern="[0-9]{7}" maxLength={7} autoComplete="off" required={!company?.municipalityCode} />}
-              </Field>
-              <Field label={t("fields.competence")} error={fieldErrors.competenceDate || undefined} required>
-                {(c) => <input {...c} type="date" className="field" max={today} value={form.competenceDate} onChange={set("competenceDate")} required />}
-              </Field>
-              <Field label={t("fields.amount")} error={fieldErrors.amount || undefined} required>
+              <Field label={t("fields.reference")} optionalLabel={t("fields.optional")} hint={t("hints.reference")}>
                 {(c) => (
-                  <div className="relative">
-                    <span aria-hidden className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-[13px] text-text-4">R$</span>
-                    <input {...c} type="text" inputMode="numeric" className="field pl-10 text-right font-mono tabular-nums" placeholder="0,00" value={form.amount} onChange={set("amount", maskCurrency)} autoComplete="off" required />
-                  </div>
+                  <input {...c} type="text" className="field" placeholder={t("placeholders.reference")} value={form.externalId} onChange={set("externalId")} autoComplete="off" spellCheck={false} />
                 )}
               </Field>
-              <div className="sm:col-span-2">
-                <Field label={t("fields.deduction")} error={fieldErrors.deduction || (deductionInvalid ? t("fields.invalidDeduction") : undefined)} optionalLabel={t("fields.optional")} hint={t("hints.deduction")}>
-                  {(c) => (
-                    <div className="relative">
-                      <span aria-hidden className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-[13px] text-text-4">R$</span>
-                      <input {...c} type="text" inputMode="numeric" className="field pl-10 text-right font-mono tabular-nums" placeholder="0,00" value={form.deduction} onChange={set("deduction", maskCurrency)} autoComplete="off" />
-                    </div>
-                  )}
-                </Field>
-              </div>
-              <div className="flex flex-col gap-4 sm:col-span-2">
+              {!abroad && (
+                <div className="grid grid-cols-[1fr_96px] gap-4">
+              <Field label={t("fields.city")} error={fieldErrors.city || undefined} optionalLabel={t("fields.optional")}>
+                {(c) => (
+                  <input {...c} type="text" className="field" placeholder={t("placeholders.city")} value={form.city} onChange={set("city")} autoComplete="address-level2" />
+                )}
+              </Field>
+              <Field label={t("fields.state")} error={fieldErrors.state || undefined} optionalLabel={t("fields.optional")}>
+                {(c) => (
+                  <input {...c} type="text" className="field font-mono uppercase" maxLength={2} placeholder={t("placeholders.state")} value={form.state} onChange={set("state", maskState)} autoComplete="address-level1" />
+                )}
+              </Field>
+                </div>
+              )}
                 <label className="choice items-start">
                   <input type="checkbox" checked={repeat} onChange={(event) => setRepeat(event.target.checked)} className="mt-0.5 h-4 w-4 flex-none accent-[var(--accent)]" />
                   <span className="min-w-0">
@@ -544,8 +557,8 @@ export default function NewInvoicePage() {
                     <span className="block text-[12.5px] text-text-4">{t("repeat.hint")}</span>
                   </span>
                 </label>
-                {repeat && (
-                  <div className="grid gap-4 sm:grid-cols-2">
+              {repeat && (
+                <div className="grid gap-4 sm:grid-cols-2">
                     <Field label={t("repeat.frequency")}>
                       {(c) => (
                         <select {...c} className="field" value={frequency} onChange={(event) => setFrequency(event.target.value as ScheduleFrequency)}>
@@ -556,11 +569,10 @@ export default function NewInvoicePage() {
                     <Field label={t("repeat.endsOn")} optionalLabel={t("fields.optional")} hint={t("repeat.next", { date: firstRepeatOn.split("-").reverse().join("/") })}>
                       {(c) => <input {...c} type="date" className="field" min={firstRepeatOn} value={endsOn} onChange={(event) => setEndsOn(event.target.value)} />}
                     </Field>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-          </Section>
+          </details>
 
           {uncertain && <div className="banner banner-warn flex-col"><p>{t("fields.uncertain")}</p><Button onClick={() => router.push("/app/invoices")}>{t("fields.checkInvoices")}</Button></div>}
           {error && (
@@ -593,13 +605,13 @@ export default function NewInvoicePage() {
 
           <dl className="flex flex-col gap-2.5 border-t border-border-soft pt-4">
             <SummaryRow label={t("summary.issuer")} value={company ? company.tradeName || company.legalName : ""} />
-            <SummaryRow label={t("summary.customer")} value={hasCustomer ? form.customerName || "—" : t("summary.noCustomer")} />
+            <SummaryRow label={t("summary.customer")} value={hasCustomer ? form.customerName : t("summary.noCustomer")} />
             <SummaryRow label={t("summary.taxId")} value={abroad ? form.foreignTaxId || (form.noTaxIdReason ? t(`foreign.reason.${form.noTaxIdReason}`) : "") : form.customerTaxId} mono />
             <SummaryRow label={t("fields.serviceCode")} value={serviceCode} mono />
             <SummaryRow label={t("fields.municipalityCode")} value={municipalityCode} mono />
             <SummaryRow label={t("summary.competence")} value={competence} />
             {hasDeduction && <SummaryRow label={t("summary.deduction")} value={money.format(deductionNumber)} mono />}
-            <SummaryRow label={t("summary.email")} value={sendEmail ? form.customerEmail || t("summary.emailPending") : t("summary.emailOff")} />
+            <SummaryRow label={t("summary.email")} value={sendEmail ? form.customerEmail : t("summary.emailOff")} />
           </dl>
 
           {isLive && (
@@ -610,6 +622,12 @@ export default function NewInvoicePage() {
           )}
 
           <div className="flex flex-col gap-3">
+            <p id="invoice-missing" role="status" className={`text-[13px] leading-5 ${missing.length ? "text-text-3" : "text-accent"}`}>
+              {missing.length ? t("summary.missing", { fields: missing.join(", ") }) : t("summary.ready")}
+            </p>
+            <Button type="submit" form={FORM_ID} variant="accent" loading={submitting} disabled={!canSubmit} aria-describedby="invoice-missing" className="w-full">
+              {submitting ? t("submitting") : t("submit")}
+            </Button>
             <Button variant="ghost" onClick={calculate} loading={calculating} disabled={!canSubmit || submitting} className="w-full">
               {calculating ? t("calculate.calculating") : t("calculate.button")}
             </Button>
@@ -617,15 +635,6 @@ export default function NewInvoicePage() {
             {calc && (calc.key === JSON.stringify([form, sendEmail, fiscalEnvironment])
               ? <InvoiceCalculationPanel result={calc.result} format={(value) => money.format(Number(value))} />
               : <p role="status" className="text-[12.5px] text-text-4">{t("calculate.stale")}</p>)}
-          </div>
-
-          <div className="flex flex-col gap-2.5">
-            <Button type="submit" form={FORM_ID} variant="accent" loading={submitting} disabled={!canSubmit} aria-describedby="invoice-missing" className="w-full">
-              {submitting ? t("submitting") : t("submit")}
-            </Button>
-            <p id="invoice-missing" role="status" className={`text-[12.5px] ${missing.length ? "text-text-4" : "text-accent"}`}>
-              {missing.length ? t("summary.missing", { fields: missing.join(", ") }) : t("summary.ready")}
-            </p>
             <Button variant="ghost" onClick={() => router.back()} disabled={submitting} className="w-full">
               {tc("cancel")}
             </Button>

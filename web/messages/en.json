@@ -1269,15 +1269,10 @@
       "createdButFailedWith": "The invoice was issued, but the recurrence was not created ({reason}). Try again: it will not issue another invoice."
     },
     "foreign": {
-      "toggle": "Customer abroad",
-      "toggleHint": "For a customer outside Brazil, without a Brazilian document.",
       "country": "Country",
       "countryPlaceholder": "Choose the country",
       "taxId": "Tax id (NIF)",
       "taxIdHint": "The customer's taxpayer number in its own country.",
-      "noTaxId": "Customer without a tax id",
-      "noTaxIdHint": "Only if it has no NIF.",
-      "hasTaxId": "It has a tax id",
       "reason": {
         "exempt": "Exempt",
         "not_required": "Not required"
@@ -1289,7 +1284,17 @@
       "city": "City",
       "region": "State, province or region",
       "postalCode": "Postal code",
-      "notExport": "Informing a customer abroad does not declare a service export: the invoice keeps the same tax treatment. Confirm the classification with your accountant."
+      "notExport": "Informing a customer abroad does not declare a service export: the invoice keeps the same tax treatment. Confirm the classification with your accountant.",
+      "groupLabel": "Where the customer is",
+      "brazil": "Brazil",
+      "abroad": "Abroad",
+      "noTaxIdToggle": "Customer without a NIF",
+      "reasonLabel": "Reason"
+    },
+    "more": {
+      "title": "More options",
+      "hint": "Code, deduction, order, notes, reference and repeat",
+      "filled": "{count} filled"
     }
   },
   "Billing": {
