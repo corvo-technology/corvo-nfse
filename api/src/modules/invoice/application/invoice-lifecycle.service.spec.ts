@@ -103,6 +103,13 @@ function build() {
     }),
   };
   const eventBus = { publishBestEffort: jest.fn() };
+  // Records whether the commit had already happened, without touching `order`.
+  const rememberedAfterCommit: boolean[] = [];
+  const customerRecorder = {
+    rememberFrom: jest.fn(async () => {
+      rememberedAfterCommit.push(order.includes('commit'));
+    }),
+  };
   const service = new InvoiceLifecycleService(
     unitOfWork as never,
     cache as never,
@@ -113,9 +120,12 @@ function build() {
     events as never,
     credits as never,
     eventBus as never,
+    customerRecorder as never,
   );
   return {
     service,
+    customerRecorder,
+    rememberedAfterCommit,
     eventBus,
     unitOfWork,
     billing,
@@ -569,5 +579,33 @@ describe('InvoiceLifecycleService.submitBatch', () => {
       f.service.submitBatch(tenantId, [entry(), entry()]),
     ).rejects.toThrow('db down');
     expect(f.order).not.toContain('commit');
+  });
+});
+
+describe('InvoiceLifecycleService saved customers', () => {
+  it('remembers the customer only after the invoice is committed', async () => {
+    const f = build();
+    const invoice = newInvoice();
+    await f.service.submit(
+      invoice,
+      InvoiceEvent.create(invoice.id, null, 'queued'),
+      null,
+    );
+    expect(f.customerRecorder.rememberFrom).toHaveBeenCalledWith(invoice);
+    expect(f.rememberedAfterCommit).toEqual([true]);
+  });
+
+  it('does not remember the customer of an invoice that was not written', async () => {
+    const f = build();
+    const invoice = newInvoice();
+    f.unitOfWork.execute.mockRejectedValueOnce(new Error('write failed'));
+    await expect(
+      f.service.submit(
+        invoice,
+        InvoiceEvent.create(invoice.id, null, 'queued'),
+        null,
+      ),
+    ).rejects.toThrow('write failed');
+    expect(f.customerRecorder.rememberFrom).not.toHaveBeenCalled();
   });
 });

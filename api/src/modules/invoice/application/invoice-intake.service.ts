@@ -20,6 +20,8 @@ import {
   type NormalizedInvoiceInput,
 } from '../domain/invoice-domain.service';
 import type { CreateInvoiceDto } from '../http/invoice.dto';
+import { CustomerDirectory } from '../domain/customer-directory';
+import { parseCustomerTaxId } from '@/shared/tax-id';
 import {
   DEFAULT_SERVICE_CODE,
   defaultServiceDescription,
@@ -45,6 +47,8 @@ export class InvoiceIntakeService {
     private readonly domain: InvoiceDomainService,
     // Optional so the intake keeps working (rule off) where they are not provided.
     @Optional() private readonly profiles?: CompanyFiscalProfileService,
+    // Optional so the intake keeps working (no name lookup) where it is not provided.
+    @Optional() private readonly customers?: CustomerDirectory,
   ) {}
 
   private readonly logger = new Logger(InvoiceIntakeService.name);
@@ -77,9 +81,14 @@ export class InvoiceIntakeService {
         },
       ]);
     }
+    const withSavedName = await this.fillSavedCustomerName(
+      dto,
+      tenantId,
+      environment,
+    );
     const normalized = this.domain.normalizeAndValidate(
       {
-        ...dto,
+        ...withSavedName,
         companyId: company.id,
         ...(mode?.allowFutureCompetence
           ? { options: { ...dto.options, type: 'SCHEDULE' as const } }
@@ -115,6 +124,40 @@ export class InvoiceIntakeService {
       return { company, normalized: calculationInput, environment, warnings };
     }
     return { company, normalized, environment, warnings };
+  }
+
+  /**
+   * A customer sent with a CPF/CNPJ and no name gets the name saved from an earlier invoice.
+   * What the request carries always wins, and the request itself is left untouched, so the
+   * idempotency hash does not change. Without a saved customer, or if the lookup fails,
+   * the invoice follows as before.
+   */
+  private async fillSavedCustomerName(
+    dto: CreateInvoiceDto,
+    tenantId: string,
+    environment: ExecutionEnvironment,
+  ): Promise<CreateInvoiceDto> {
+    const customer = dto.customer;
+    if (!this.customers || !customer || customer.name?.trim()) return dto;
+    const parsed =
+      typeof customer.taxId === 'string'
+        ? parseCustomerTaxId(customer.taxId)
+        : null;
+    if (!parsed) return dto;
+    try {
+      const saved = await this.customers.find(
+        { tenantId, environment },
+        parsed.value,
+      );
+      return saved
+        ? { ...dto, customer: { ...customer, name: saved.name } }
+        : dto;
+    } catch (error) {
+      this.logger.warn(
+        `Saved customer lookup failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return dto;
+    }
   }
 
   /**

@@ -17,6 +17,9 @@ const SCHEDULE_ZONE = 'America/Sao_Paulo';
 // Scheduled invoices are released at 09:00 São Paulo (12:00 UTC), not at midnight.
 const SCHEDULE_RELEASE_HOUR = 9;
 
+/** Name used on the invoice when the request carries a customer without a name. */
+export const ANONYMOUS_CUSTOMER_NAME = 'Consumidor';
+
 export interface NormalizedCustomerInput {
   name: string;
   /** Absent for anonymous consumers. */
@@ -475,7 +478,7 @@ function normalizeCustomerInput(
   const state = address?.state?.trim();
   const city = address?.city?.trim();
   return {
-    name: customer.name?.trim() || 'Consumidor',
+    name: customer.name?.trim() || ANONYMOUS_CUSTOMER_NAME,
     taxId: parsedTaxId?.value,
     taxIdKind: parsedTaxId?.kind,
     email: customer.email?.trim(),
