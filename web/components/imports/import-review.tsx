@@ -8,7 +8,6 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Field, Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { ApiError, imports } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
 import { saveBlob } from "@/lib/download";
 import { rowFields, rowPatch, type RowFields } from "@/lib/imports";
 import type { ImportJob, ImportRow } from "@/lib/types";
@@ -33,7 +32,6 @@ export function ImportReview({ job, duplicateOf, onChanged, onEmitted, onDiscard
   const t = useTranslations("Imports");
   const locale = useLocale();
   const toast = useToast();
-  const { fiscalEnvironment } = useAuth();
   const [filter, setFilter] = useState<Filter>(job.counters.invalid > 0 ? "invalid" : "all");
   const [flash, setFlash] = useState<number | null>(null);
   const [editing, setEditing] = useState<ImportRow | null>(null);
@@ -143,14 +141,6 @@ export function ImportReview({ job, duplicateOf, onChanged, onEmitted, onDiscard
         {list.hasMore && <div><Button variant="secondary" loading={list.loadingMore} onClick={() => void list.loadMore()}>{t("review.loadMore")}</Button></div>}
       </section>
 
-      <label className="choice items-start">
-        <input type="checkbox" checked={sendEmail} onChange={(event) => setSendEmail(event.target.checked)} disabled={busy !== null} className="mt-0.5 h-4 w-4 flex-none accent-[var(--accent)]" />
-        <span className="min-w-0">
-          <span className="block text-[14px] text-text">{t("review.sendEmail")}</span>
-          <span className="block text-[12.5px] text-text-4">{fiscalEnvironment === "live" ? t("review.sendEmailHint") : t("review.sendEmailHintTest")}</span>
-        </span>
-      </label>
-
       <div data-testid="action-bar" className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-bg px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         {confirmDiscard ? (
           <span role="group" aria-label={t("review.discard")} className="flex items-center gap-2">
@@ -160,9 +150,15 @@ export function ImportReview({ job, duplicateOf, onChanged, onEmitted, onDiscard
         ) : (
           <Button variant="ghost" size="sm" onClick={() => setConfirmDiscard(true)}><Trash2 size={14} aria-hidden />{t("review.discard")}</Button>
         )}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 max-sm:w-full">
+        <label className="flex cursor-pointer items-center gap-2 text-[13.5px] text-text">
+          <input type="checkbox" checked={sendEmail} onChange={(event) => setSendEmail(event.target.checked)} disabled={busy !== null} className="h-4 w-4 flex-none accent-[var(--accent)]" />
+          {t("review.sendEmail")}
+        </label>
         <Button variant="accent" size="lg" loading={busy === "emit"} disabled={counters.valid === 0 || busy !== null} className="max-sm:w-full" onClick={() => run("emit", () => imports.emit(job.id, { sendEmail }), onEmitted, t("review.emitFailed"))}>
           {counters.valid === 0 ? t("review.emitNone") : t("review.emitWithAmount", { count: counters.valid, amount: money.format(counters.validAmount) })}
         </Button>
+        </div>
       </div>
     </div>
   );

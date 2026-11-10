@@ -12,7 +12,6 @@ vi.mock("@/lib/api", async (original) => ({
   ...(await original<typeof import("@/lib/api")>()),
   imports: { rows: mocks.rows, updateRow: mocks.updateRow, emit: mocks.emit, discard: mocks.discard, errorsCsv: mocks.errorsCsv },
 }));
-vi.mock("@/lib/auth", () => ({ useAuth: () => ({ fiscalEnvironment: "live" }) }));
 vi.mock("@/lib/download", () => ({ saveBlob: mocks.download }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ error: mocks.toastError, success: mocks.toastSuccess }) }));
 
@@ -120,7 +119,7 @@ describe("ImportReview", () => {
   it("sends the email by default and lets the user turn it off", async () => {
     mocks.emit.mockResolvedValue(job());
     const { onEmitted } = show();
-    const box = screen.getByRole("checkbox", { name: /email each invoice/i }) as HTMLInputElement;
+    const box = screen.getByRole("checkbox", { name: /email the invoice/i }) as HTMLInputElement;
     expect(box.checked).toBe(true);
     fireEvent.click(box);
     fireEvent.click(screen.getByRole("button", { name: /issue 2 invoices/i }));
