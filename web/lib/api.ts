@@ -100,7 +100,7 @@ export async function request<T>(path: string, options: RequestInit = {}, binary
   if (mutation && !publicRequest) await ensureCsrf();
   const headers = new Headers(options.headers);
   headers.delete("Authorization"); headers.delete("x-api-key");
-  headers.set("Accept", binary ? "application/pdf, application/xml, text/csv" : "application/json");
+  headers.set("Accept", binary ? "application/pdf, application/xml, text/csv, application/zip" : "application/json");
   if (options.body instanceof FormData) headers.delete("Content-Type");
   else if (options.body) headers.set("Content-Type", "application/json");
   if (mutation && !publicRequest && csrfToken) headers.set("x-csrf-token", csrfToken);
@@ -206,6 +206,17 @@ export interface FiscalPortalStatus { environment: "test" | "live"; available: b
 /** Whether the national NFS-e portal is answering; while it is not, invoices wait in the queue. */
 export const fiscalPortal = {
   status: async (signal?: AbortSignal) => unwrap(await request<Envelope<FiscalPortalStatus>>("/fiscal-portal/status", { signal })),
+};
+export interface InvoicePackageSummary { month: string; count: number; total: string; limit: number; companyName: string; companyTaxId: string }
+export interface AccountantSettings { email: string | null; lastSentMonth: string | null }
+export type AccountantSendStatus = "sent" | "skipped-test" | "skipped-no-email" | "skipped-empty" | "skipped-already-sent";
+/** The month package (ZIP with xml/, pdf/ and resumo.csv) and the monthly send to the accountant. */
+export const invoicePackages = {
+  summary: async (companyId: string, month: string, signal?: AbortSignal) => unwrap(await request<Envelope<InvoicePackageSummary>>(`/companies/${idPath(companyId)}/invoice-package/summary${query({ month })}`, { signal })),
+  download: (companyId: string, month: string) => request<Blob>(`/companies/${idPath(companyId)}/invoice-package${query({ month })}`, {}, true),
+  accountant: async (companyId: string, signal?: AbortSignal) => unwrap(await request<Envelope<AccountantSettings>>(`/companies/${idPath(companyId)}/accountant-package`, { signal })),
+  setAccountant: async (companyId: string, accountantEmail: string | null) => unwrap(await request<Envelope<AccountantSettings>>(`/companies/${idPath(companyId)}/accountant-package`, json({ accountantEmail }, "PUT"))),
+  sendToAccountant: async (companyId: string, month: string) => unwrap(await request<Envelope<{ status: AccountantSendStatus }>>(`/companies/${idPath(companyId)}/accountant-package/send`, json({ month }))).status,
 };
 export const invoices = {
   overview: async (period: OverviewPeriod = "7d", signal?: AbortSignal): Promise<InvoiceOverview> => {

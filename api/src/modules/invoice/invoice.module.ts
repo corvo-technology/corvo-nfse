@@ -74,6 +74,40 @@ import { EmailModule } from '@/modules/email/email.module';
 import { InvoiceReviewController } from './http/invoice-review.controller';
 import { InvoiceReviewService } from './application/invoice-review.service';
 import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
+import { InvoicePackageService } from './application/package/invoice-package.service';
+import { PackageLinkService } from './application/package/package-link.service';
+import { AccountantPackageService } from './application/package/accountant-package.service';
+import {
+  InvoicePackageController,
+  InvoicePackageLinkController,
+} from './http/invoice-package.controller';
+import { IInvoicePackageRepository } from './domain/invoice-package.repository';
+import { IAccountantPackageRepository } from './domain/accountant-package.repository';
+import { TypeOrmInvoicePackageRepository } from './infra/typeorm-invoice-package.repository';
+import { TypeOrmAccountantPackageRepository } from './infra/typeorm-accountant-package.repository';
+import { AccountantPackageController } from './http/accountant-package.controller';
+
+/** Month package for the accountant: ZIP download, temporary links and the monthly e-mail. */
+const ACCOUNTANT_PACKAGE = {
+  controllers: [
+    InvoicePackageController,
+    InvoicePackageLinkController,
+    AccountantPackageController,
+  ],
+  providers: [
+    InvoicePackageService,
+    PackageLinkService,
+    AccountantPackageService,
+    {
+      provide: IInvoicePackageRepository,
+      useClass: TypeOrmInvoicePackageRepository,
+    },
+    {
+      provide: IAccountantPackageRepository,
+      useClass: TypeOrmAccountantPackageRepository,
+    },
+  ],
+};
 
 @Module({
   imports: [
@@ -121,8 +155,10 @@ import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
     InvoiceController,
     DpsSequenceController,
     CustomerController,
+    ...ACCOUNTANT_PACKAGE.controllers,
   ],
   providers: [
+    ...ACCOUNTANT_PACKAGE.providers,
     InvoiceOverviewService,
     InvoiceReviewService,
     FiscalPortalBreaker,
@@ -183,6 +219,7 @@ import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
     InvoiceDomainService,
   ],
   exports: [
+    ...ACCOUNTANT_PACKAGE.providers,
     FiscalPortalBreaker,
     OutboxHandlerRegistry,
     OUTBOX_REPOSITORY,

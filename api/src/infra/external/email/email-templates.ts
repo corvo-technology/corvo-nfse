@@ -365,3 +365,60 @@ export function paymentMismatchEmail(input: {
     button(input.billingUrl, 'Ver cobrança'),
   ]);
 }
+
+/** The month package for the accountant: a download link, never an attachment. */
+export function accountantPackageEmail(input: {
+  companyName: string;
+  companyTaxId: string;
+  /** "novembro de 2026" */
+  monthLabel: string;
+  count: number;
+  /** "R$ 12.345,67" */
+  total: string;
+  downloadUrl: string;
+  /** "18/11/2026" */
+  expiresOn: string;
+}): RenderedEmail {
+  const cnpj =
+    input.companyTaxId.length === 14
+      ? input.companyTaxId.replace(
+          /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
+          '$1.$2.$3/$4-$5',
+        )
+      : input.companyTaxId;
+  return emailLayout(
+    `Notas fiscais de ${input.companyName}, ${input.monthLabel}`,
+    [
+      paragraph(
+        `${input.companyName} (CNPJ ${cnpj}) enviou o pacote das notas fiscais de serviço (NFS-e) de ${input.monthLabel}.`,
+      ),
+      details([
+        ['Notas', String(input.count)],
+        ['Valor total', input.total],
+      ]),
+      paragraph(
+        'O pacote traz o XML e o PDF de cada nota e uma planilha de resumo (resumo.csv). O valor total não inclui as notas canceladas.',
+      ),
+      button(input.downloadUrl, 'Baixar o pacote'),
+      note(
+        `O link vale até ${input.expiresOn} e abre sem login. Não o encaminhe a quem não deva ver essas notas.`,
+      ),
+    ],
+  );
+}
+
+export function accountantPackageFailedEmail(input: {
+  companyName: string;
+  monthLabel: string;
+  companyUrl: string;
+}): RenderedEmail {
+  return emailLayout('Não conseguimos enviar o pacote ao contador', [
+    paragraph(
+      `Não conseguimos enviar ao seu contador o pacote de ${input.monthLabel} da empresa ${input.companyName}.`,
+    ),
+    paragraph(
+      'Você pode baixar o pacote no painel ou tentar o envio de novo pela página da empresa.',
+    ),
+    button(input.companyUrl, 'Abrir a empresa'),
+  ]);
+}

@@ -172,4 +172,22 @@ export class CompanyOrmEntity {
 
   @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
   deletedAt?: Date;
+
+  // Monthly package for the accountant (invoice module). Null e-mail = off.
+  @Column({
+    name: 'accountant_email',
+    type: 'varchar',
+    length: 254,
+    nullable: true,
+  })
+  accountantEmail?: string | null;
+
+  /** YYYY-MM of the last package sent, so a month never goes out twice. */
+  @Column({
+    name: 'accountant_package_last_sent_month',
+    type: 'char',
+    length: 7,
+    nullable: true,
+  })
+  accountantPackageLastSentMonth?: string | null;
 }

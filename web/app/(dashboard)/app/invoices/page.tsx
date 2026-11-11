@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { isScheduled } from "@/lib/invoice-schedule";
 import { SchedulePanel } from "@/components/schedules/schedule-panel";
 import { ManualReviewActions } from "@/components/invoices/manual-review-actions";
+import { InvoicePackageButton } from "@/components/invoices/invoice-package-button";
 
 const FILTERS = ["all", "scheduled", "authorized", "processing", "manual_review", "rejected", "cancelled"] as const;
 type Filter = (typeof FILTERS)[number];
@@ -52,7 +53,9 @@ function InvoicesList() {
         title={t("title")}
         subtitle={t("subtitle")}
         actions={
-          can("nfse.invoices.issue") && (
+          <>
+            {can("nfse.invoices.view") && <InvoicePackageButton />}
+            {can("nfse.invoices.issue") && (
             <>
               <Link href="/app/invoices/import" className="btn btn-secondary">
                 <FileSpreadsheet size={15} aria-hidden />
@@ -63,7 +66,8 @@ function InvoicesList() {
                 {t("new")}
               </Link>
             </>
-          )
+            )}
+          </>
         }
       />
 
