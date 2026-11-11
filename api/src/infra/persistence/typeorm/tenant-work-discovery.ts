@@ -17,6 +17,7 @@ import { TenantBillingOrmEntity } from './entities/tenant-billing.orm-entity';
 export type TenantWork =
   | 'invoice-recovery'
   | 'certificate-expiry'
+  | 'portal-sync'
   | 'webhook-delivery'
   | 'plan-expiry'
   | 'billing-reconciliation';
@@ -62,6 +63,21 @@ export class TenantWorkDiscovery {
           )
           .where(
             "work.status = 'active' AND work.deleted_at IS NULL AND work.valid_until <= :now",
+            { now },
+          );
+      } else if (kind === 'portal-sync') {
+        // Workspaces with a certificate that can still sign: the only ones the portal answers.
+        owner = 'company.tenant_id';
+        query = this.database
+          .getRepository(CertificateOrmEntity)
+          .createQueryBuilder('work')
+          .innerJoin(
+            CompanyOrmEntity,
+            'company',
+            'company.id = work.company_id',
+          )
+          .where(
+            "work.status = 'active' AND work.deleted_at IS NULL AND work.valid_until > :now AND company.deleted_at IS NULL",
             { now },
           );
       } else if (kind === 'webhook-delivery') {

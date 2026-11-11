@@ -1882,6 +1882,7 @@ console.log(body.data.secret); // store the secret now — it is not returned ag
             "`nfse.invoice.fiscal_discrepancy`",
             "`nfse.invoice.cancelled`",
             "`nfse.invoice.cancellation_rejected`",
+            "`nfse.invoice.taker_rejected`",
           ],
         },
         {
@@ -2723,8 +2724,9 @@ async function issueWithRetry(buildBody, attempts = 3) {
             ["`nfse.invoice.email_sent`", "The notification email was sent; adds `sentAt`."],
             ["`nfse.invoice.email_failed`", "The notification email failed."],
             ["`nfse.invoice.fiscal_discrepancy`", "`invoiceId`, `status` and `differences[]` (`field`, `local`, `authorized`, `delta`, `kind`): difference between Corvo's calculation and the authorized NFS-e, above R$ 0.01 per tax. The authorized XML is not changed."],
-            ["`nfse.invoice.cancelled`", "The invoice was cancelled; adds `reason`."],
+            ["`nfse.invoice.cancelled`", "The invoice was cancelled; adds `reason`. When it was cancelled directly on the national portal, it also adds `source: \"portal\"`."],
             ["`nfse.invoice.cancellation_rejected`", "The Sefin refused the cancellation; the invoice is `authorized` again; adds `errorCode` and `errorMessage`."],
+            ["`nfse.invoice.taker_rejected`", "The taker rejected the invoice on the national portal; it stays `authorized`; adds `reason` (may be null) and `source: \"portal\"`."],
             ["`webhook.test`", "Sent by the test route; carries `{ \"message\": \"This is a test webhook event\" }`."],
           ],
         },

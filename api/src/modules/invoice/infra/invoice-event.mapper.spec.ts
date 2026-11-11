@@ -21,7 +21,32 @@ describe('InvoiceEventMapper', () => {
       toStatus: 'authorized',
       reason: 'NFS-e authorized',
       createdAt: new Date('2026-10-16T12:14:20.272Z'),
+      source: null,
+      portalEvent: null,
+      portalNsu: null,
     });
+  });
+
+  it('reads the portal origin of an entry', () => {
+    const row = Object.assign(new InvoiceEventOrmEntity(), {
+      id: '9034ce8e-0fc1-4482-86b8-1b5e6b697d45',
+      invoiceId: '3affb6fa-bfc8-4a94-9a5c-b4a938d3611f',
+      fromStatus: 'authorized',
+      toStatus: 'authorized',
+      reason: null,
+      createdAt: new Date('2026-10-16T12:14:20.272Z'),
+      source: 'portal',
+      portalEvent: 'REJEICAO_TOMADOR',
+      portalNsu: '77',
+    });
+    const mapper = new InvoiceEventMapper();
+
+    expect(mapper.toDomain(row).toSnapshot()).toMatchObject({
+      source: 'portal',
+      portalEvent: 'REJEICAO_TOMADOR',
+      portalNsu: 77,
+    });
+    expect(mapper.toPersistence(mapper.toDomain(row)).portalNsu).toBe('77');
   });
 
   it('returns the same data on every read', () => {

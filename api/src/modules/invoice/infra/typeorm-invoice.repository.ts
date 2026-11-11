@@ -18,6 +18,7 @@ import {
   ListInvoicesFilters,
   SaveInvoiceOptions,
 } from '../domain/invoice.repository';
+import type { PortalFlag } from '../domain/portal-flag';
 import { InvoiceMapper } from './invoice.mapper';
 import { InvoiceOrmEntity } from './invoice.orm-entity';
 
@@ -252,6 +253,25 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
         'environment',
       ]);
       return invoice;
+    });
+  }
+
+  async setPortalFlag(
+    invoiceId: string,
+    tenantId: string,
+    flag: PortalFlag | null,
+  ): Promise<void> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      await this.repo
+        .createQueryBuilder()
+        .update()
+        .set({ portalFlag: flag })
+        .where('id = :id AND tenant_id = :tenantId', {
+          id: invoiceId,
+          tenantId,
+        })
+        .execute();
     });
   }
 
