@@ -84,6 +84,39 @@ describe('AccountNoticeListener', () => {
     expect(again.email.enqueueNotice).not.toHaveBeenCalled();
   });
 
+  it('tells the workspace what the portal registered about an invoice, once per invoice', async () => {
+    const notices = [
+      {
+        kind: 'invoice-cancelled-on-portal',
+        invoiceId: 'i9',
+        nfseNumber: 42,
+        reason: 'Erro de digitação',
+      },
+      {
+        kind: 'invoice-rejected-by-taker',
+        invoiceId: 'i9',
+        nfseNumber: null,
+        reason: null,
+      },
+      { kind: 'invoice-blocked-on-portal', invoiceId: 'i9', nfseNumber: 42 },
+    ] as const;
+    for (const notice of notices) {
+      const { listener, email } = build();
+      await listener.handle(accountNotice('t1', notice));
+      expect(email.enqueueNotice).toHaveBeenCalledTimes(2);
+      expect(
+        (
+          email.enqueueNotice.mock.calls as unknown as Array<
+            [unknown, { html: string }]
+          >
+        )[0][1].html,
+      ).toContain('invoices/i9');
+      const again = build({ first: false });
+      await again.listener.handle(accountNotice('t1', notice));
+      expect(again.email.enqueueNotice).not.toHaveBeenCalled();
+    }
+  });
+
   it('does nothing when the workspace has no recipients', async () => {
     const { listener, email } = build({ admins: [] });
     await listener.handle(

@@ -18,6 +18,7 @@ import {
   type CancellationReason,
   type CancellationReasonCode,
 } from './cancellation-reason';
+import type { PortalFlag } from './portal-flag';
 import type { ServiceFiscalInput } from './fiscal/normalized-invoice';
 
 export type LastEmailStatus = 'queued' | 'sent' | 'failed';
@@ -103,6 +104,8 @@ export interface InvoiceProps {
   cancellationDescription?: string | null;
   cancelledAt?: Date | null;
   cancellationRequestedAt?: Date | null;
+  /** What the national portal reported after authorization; written only by the portal sync. */
+  portalFlag?: PortalFlag | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -456,6 +459,26 @@ export class Invoice {
       'cancelled',
       `Substituted by invoice ${substituteInvoiceId}`,
     );
+    this.props.cancelledAt = event.createdAt;
+    return event;
+  }
+
+  /**
+   * authorized → cancelled because the portal registered a cancellation Corvo did not ask for
+   * (made on the portal's own site, by the municipality, or by a substitution done elsewhere).
+   */
+  markCancelledOnPortal(detail: string | null): InvoiceEvent {
+    if (this.props.status !== 'authorized')
+      throw new InvalidInvoiceTransitionError(this.props.status, 'cancelled');
+    this.recordCancellationReason(
+      cancellationReason(
+        'other',
+        detail ? `Cancelada no portal: ${detail}` : 'Cancelada no portal',
+      ),
+    );
+    this.clearLastError();
+    // The portal event type and its reason travel with the timeline entry, so the text is just the reason.
+    const event = this.transitionTo('cancelled', detail ?? undefined);
     this.props.cancelledAt = event.createdAt;
     return event;
   }

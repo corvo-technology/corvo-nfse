@@ -26,6 +26,7 @@ import {
   type NfseEmitResult,
   type DpsDryRunResult,
   type NfseQueryResult,
+  type NsuQueryResult,
 } from 'open-nfse';
 import { InvoiceOrmEntity } from '@/modules/invoice/infra/invoice.orm-entity';
 import type {
@@ -333,6 +334,23 @@ export class OpenNfseProvider implements FiscalProvider {
       await client.close();
     }
   }
+  /**
+   * One page of the portal's per-CNPJ feed (`fetchByNsu`), read with the company's certificate.
+   * `test` reads the Produção Restrita; `live` reads production unless homologation-only is set.
+   */
+  async fetchPortalDocuments(
+    credentials: Pick<IIssuePayload, 'pfxBuffer' | 'p12Password'>,
+    environment: 'test' | 'live',
+    lastNsu: number,
+  ): Promise<NsuQueryResult> {
+    const client = this.client({ ...credentials, environment });
+    try {
+      return await client.fetchByNsu({ ultimoNsu: lastNsu });
+    } finally {
+      await client.close();
+    }
+  }
+
   async queryByAccessKey(
     key: string,
     environment: 'test' | 'live',

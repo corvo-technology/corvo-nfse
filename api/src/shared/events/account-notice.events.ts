@@ -29,6 +29,24 @@ export type AccountNotice =
       /** 30 or 7 days left, or 0 once it has expired. */
       stage: 30 | 7 | 0;
       validUntil: Date;
+    }
+  // What the national portal registered about an invoice after it was authorized.
+  | {
+      kind: 'invoice-cancelled-on-portal';
+      invoiceId: string;
+      nfseNumber: number | null;
+      reason: string | null;
+    }
+  | {
+      kind: 'invoice-rejected-by-taker';
+      invoiceId: string;
+      nfseNumber: number | null;
+      reason: string | null;
+    }
+  | {
+      kind: 'invoice-blocked-on-portal';
+      invoiceId: string;
+      nfseNumber: number | null;
     };
 
 export type AccountNoticeEvent = {

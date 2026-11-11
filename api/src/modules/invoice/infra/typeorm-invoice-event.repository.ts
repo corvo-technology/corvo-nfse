@@ -73,6 +73,35 @@ export class TypeOrmInvoiceEventRepository implements IInvoiceEventRepository {
     });
   }
 
+  async savePortalEntry(
+    event: InvoiceEvent,
+    tenantId: string,
+  ): Promise<boolean> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const result = await this.repo
+        .createQueryBuilder()
+        .insert()
+        .values({
+          ...this.mapper.toPersistence(event),
+          invoiceId: () =>
+            this.repo
+              .createQueryBuilder()
+              .subQuery()
+              .select('invoice.id')
+              .from(InvoiceOrmEntity, 'invoice')
+              .where(
+                'invoice.id = :invoiceId AND invoice.tenant_id = :tenantId',
+              )
+              .getQuery(),
+        })
+        .orIgnore()
+        .setParameters({ invoiceId: event.invoiceId, tenantId })
+        .execute();
+      return (result.raw as unknown[]).length > 0;
+    });
+  }
+
   async findByInvoiceId(
     invoiceId: string,
     tenantId: string,
