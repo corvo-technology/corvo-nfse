@@ -32,6 +32,8 @@ import { CompanyService } from '../application/company.service';
 import type { CurrentCompanyRegime } from '../application/company.service';
 import { CompanyFiscalProfileService } from '../application/company-fiscal-profile.service';
 import { CompanyServiceTaxProfileService } from '../application/company-service-tax-profile.service';
+import { MunicipalityAgreementService } from '../application/municipality-agreement.service';
+import type { MunicipalityAgreementView } from '../domain/municipality-agreement';
 import { ICompanyCertificateReader } from '../domain/i-company-certificate-reader';
 import {
   CreateCompanyDto,
@@ -56,6 +58,7 @@ function toView(
   company: Company,
   hasActiveCert: boolean,
   regime: CurrentCompanyRegime | null,
+  municipalityAgreement?: MunicipalityAgreementView,
 ) {
   const snapshot = company.toSnapshot();
   return {
@@ -64,6 +67,7 @@ function toView(
     taxRegime: regime?.taxRegime ?? null,
     simpleNational: regime?.simpleNational ?? false,
     specialRegime: regime?.specialRegime ?? null,
+    ...(municipalityAgreement ? { municipalityAgreement } : {}),
   };
 }
 
@@ -260,6 +264,7 @@ export class CompanyController {
     private readonly certReader: ICompanyCertificateReader,
     private readonly fiscalProfiles: CompanyFiscalProfileService,
     private readonly serviceTaxProfiles: CompanyServiceTaxProfileService,
+    private readonly municipalityAgreements: MunicipalityAgreementService,
   ) {}
 
   private requireAuthContext(req: RequestWithAuthContext): AuthContext {
@@ -346,7 +351,14 @@ export class CompanyController {
       tenantId,
     );
     const regime = await this.companyService.currentRegime(id, tenantId);
-    return data(toView(company, hasCert, regime));
+    const agreement = await this.municipalityAgreements.view(
+      id,
+      tenantId,
+      env,
+      hasCert,
+      company.toSnapshot().municipalityCode,
+    );
+    return data(toView(company, hasCert, regime, agreement));
   }
 
   @Patch(':id')

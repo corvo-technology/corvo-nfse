@@ -3175,6 +3175,8 @@
   "MunicipalityNotice": {
     "inactive": "O convênio de {name} ({uf}) com o padrão nacional da NFS-e ainda não está ativo. A Receita pode recusar as notas desta empresa até o município ativar o convênio.",
     "unknown": "O código {code} não está na lista oficial de municípios. Confira o código IBGE de 7 dígitos.",
+    "inactiveChecked": "A consulta à Receita mostra que o município {code} ainda não ativou o convênio com o padrão nacional da NFS-e. A Receita pode recusar as notas desta empresa até o município ativá-lo.",
+    "notFoundChecked": "A Receita não tem parâmetros para o código {code}. Confira o código IBGE de 7 dígitos.",
     "link": "Ver a situação dos municípios"
   }
 }

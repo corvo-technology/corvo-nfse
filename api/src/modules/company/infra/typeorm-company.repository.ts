@@ -17,6 +17,10 @@ import { ICompanyRepository } from '../domain/company.repository';
 import { Company } from '../domain/company';
 import { CompanyMapper } from './company.mapper';
 import { CompanyOrmEntity } from './company.orm-entity';
+import type {
+  MunicipalityAgreementAnswer,
+  StoredMunicipalityAgreement,
+} from '../domain/municipality-agreement';
 
 @Injectable()
 export class TypeOrmCompanyRepository implements ICompanyRepository {
@@ -230,6 +234,42 @@ export class TypeOrmCompanyRepository implements ICompanyRepository {
                   AND k.valid_until > now())
              THEN 'ready' ELSE 'pending_setup' END`,
         [companyIds, tenantId],
+      );
+    });
+  }
+
+  async findMunicipalityAgreement(
+    companyId: string,
+    tenantId: string,
+  ): Promise<StoredMunicipalityAgreement | null> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const row = await this.repo.findOne({
+        where: { id: companyId, tenantId, deletedAt: IsNull() },
+      });
+      if (!row?.municipalityAgreement || !row.municipalityAgreementCheckedAt)
+        return null;
+      return {
+        answer: row.municipalityAgreement,
+        checkedAt: new Date(row.municipalityAgreementCheckedAt),
+      };
+    });
+  }
+
+  async saveMunicipalityAgreement(
+    companyId: string,
+    tenantId: string,
+    answer: MunicipalityAgreementAnswer,
+    checkedAt: Date,
+  ): Promise<void> {
+    await runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      await this.repo.update(
+        { id: companyId, tenantId },
+        {
+          municipalityAgreement: answer,
+          municipalityAgreementCheckedAt: checkedAt,
+        },
       );
     });
   }
