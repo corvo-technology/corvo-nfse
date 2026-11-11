@@ -3175,6 +3175,8 @@
   "MunicipalityNotice": {
     "inactive": "The agreement of {name} ({uf}) with the national NFS-e standard is not active yet. The Receita may refuse this company's invoices until the municipality activates it.",
     "unknown": "Code {code} is not on the official list of municipalities. Check the 7-digit IBGE code.",
+    "inactiveChecked": "The Receita lookup shows that municipality {code} has not activated its agreement with the national NFS-e standard. The Receita may refuse this company's invoices until it does.",
+    "notFoundChecked": "The Receita has no parameters for code {code}. Check the 7-digit IBGE code.",
     "link": "See the status of municipalities"
   }
 }
