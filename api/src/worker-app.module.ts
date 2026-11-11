@@ -32,6 +32,7 @@ import { NfseEmailProcessor } from '@/modules/invoice/jobs/nfse-email.processor'
 import { NfseDocPrepProcessor } from '@/modules/invoice/jobs/nfse-doc-prep.processor';
 import { FiscalReconciliationProcessor } from '@/modules/invoice/jobs/fiscal-reconciliation.processor';
 import { DocsRecoveryScheduler } from '@/modules/invoice/jobs/docs-recovery.scheduler';
+import { AccountantPackageScheduler } from '@/modules/invoice/jobs/accountant-package.scheduler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FISCAL_RECONCILIATION_REPOSITORY } from '@/modules/invoice/domain/fiscal/reconciliation/fiscal-reconciliation.repository';
 import { TypeOrmFiscalReconciliationRepository } from '@/modules/invoice/infra/fiscal/typeorm-fiscal-reconciliation.repository';
@@ -95,6 +96,7 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     DpsBuilder,
     NfseEmailProcessor,
     DocsRecoveryScheduler,
+    AccountantPackageScheduler,
     ImportReadProcessor,
     ImportEmitProcessor,
     ImportCleanupCron,
