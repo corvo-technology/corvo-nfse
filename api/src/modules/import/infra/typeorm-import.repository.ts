@@ -356,7 +356,7 @@ export class TypeOrmImportRepository extends ImportRepository {
       await this.rows()
         .createQueryBuilder()
         .update()
-        .set({ data: () => "data || '{\"email\": true}'::jsonb" })
+        .set({ data: () => 'data || \'{"email": true}\'::jsonb' })
         .where(
           "import_id = :importId AND tenant_id = :tenantId AND status = 'queued' AND COALESCE(data->'customer'->>'email', '') <> ''",
           { importId, tenantId },

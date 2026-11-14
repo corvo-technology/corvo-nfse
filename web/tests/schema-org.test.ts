@@ -28,11 +28,11 @@ const files = (dir: string): string[] =>
   });
 
 describe("schema.org", () => {
-  it("builds FAQPage in one place only, from the landing FAQ text (so it cannot drift from the page)", () => {
+  it("builds FAQPage only in the landing FAQ and in the blog, each from its own visible text (so it cannot drift from the page)", () => {
     const offenders = [...files(join(ROOT, "app")), ...files(join(ROOT, "components")), ...files(join(ROOT, "lib"))]
       .filter((file) => readFileSync(file, "utf8").includes("FAQPage"))
       .map((file) => file.slice(ROOT.length + 1));
-    expect(offenders).toEqual(["lib/landing-faq.ts"]);
+    expect(offenders).toEqual(["lib/blog/seo.ts", "lib/landing-faq.ts"]);
   });
 
   it.each(["pt", "en"] as const)("%s landing JSON-LD has a FAQPage with the five questions, each answer pointing at a page of the site", async (locale) => {
