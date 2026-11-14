@@ -16,7 +16,7 @@ const base = (process.env.CORVO_API_BASE_URL ?? 'http://localhost:3000/v1').repl
 const timeoutMs = Number(process.env.CORVO_SCENARIO_TIMEOUT_SECONDS ?? 60) * 1000;
 const emit = !process.argv.includes('--no-emit');
 const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7);
-const EMAIL = 'pedrook16@gmail.com';
+const EMAIL = 'maria99@example.com';
 
 const redact = (text) => String(text).replaceAll(apiKey, '[REDACTED]');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

@@ -5,9 +5,9 @@ describe("needsName", () => {
   it.each([
     [{ name: "", email: "ana@x.com" }, true],
     [{ name: "   ", email: "ana@x.com" }, true],
-    [{ name: "pedrook16", email: "pedrook16@gmail.com" }, true],
-    [{ name: "PedroOk16", email: "pedrook16@gmail.com" }, true],
-    [{ name: "Pedro Henrique", email: "pedrook16@gmail.com" }, false],
+    [{ name: "maria99", email: "maria99@example.com" }, true],
+    [{ name: "Maria99", email: "maria99@example.com" }, true],
+    [{ name: "Maria Souza", email: "maria99@example.com" }, false],
     [{ name: "Ana", email: "ana.silva@x.com" }, false],
   ])("%j -> %s", (profile, expected) => {
     expect(needsName(profile)).toBe(expected);

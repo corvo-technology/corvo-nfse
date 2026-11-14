@@ -1,6 +1,5 @@
 # Fiscal rules verification — `TAX_RULES` (Fiscal Engine, Task 7)
 
-- **Plan:** `docs/superpowers/plans/2026-10-13-fiscal-engine-core.md` → "Task 7: TaxRule e TaxTransitionPolicy"
 - **Date consulted:** 2026-10-14
 - **Checked by:** Verboo Code agent (Task 7 implementation). Every quote below was extracted from the official text actually fetched on 2026-10-14 (Planalto consolidated texts, official CGIBS PDF, official gov.br portals). Nothing is marked "verified" unless its text was read.
 - **Rule applied:** where an official value diverges from the plan's `TAX_RULES`, the official text wins.

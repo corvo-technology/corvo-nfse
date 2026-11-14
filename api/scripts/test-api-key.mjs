@@ -36,7 +36,7 @@ const certificatePath = resolve(
     '~/Downloads/certificado_empresa_teste.p12'
   ).replace(/^~(?=\/)/, homedir()),
 );
-const email = process.env.CORVO_CUSTOMER_EMAIL ?? 'pedrook16@gmail.com';
+const email = process.env.CORVO_CUSTOMER_EMAIL ?? 'maria99@example.com';
 const sendEmail = !process.argv.includes('--no-email');
 const timeoutMs = Number(process.env.CORVO_SMOKE_TIMEOUT_SECONDS ?? 300) * 1000;
 const resume = process.argv
