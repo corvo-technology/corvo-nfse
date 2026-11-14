@@ -1,6 +1,7 @@
 import en from "@/messages/en.json";
 import pt from "@/messages/pt.json";
 import { SITE_URL, pageUrl, type SeoLocale } from "@/lib/seo";
+import { REPO_URL } from "@/lib/repo";
 
 /**
  * The landing FAQ, in one place for the three ways it is read: the visible section, the schema.org
@@ -15,6 +16,8 @@ export const FAQ_ITEMS = [
   { id: "payments", path: "/docs/payment-integrations" },
   // The SDK answer also covers the MCP server for AI agents, so it carries a second link.
   { id: "sdks", path: "/docs/sdks", extra: { path: "/docs/mcp" } },
+  // The code lives on GitHub, so this answer links outside the site.
+  { id: "opensource", path: "", external: REPO_URL },
 ] as const;
 
 export type FaqId = (typeof FAQ_ITEMS)[number]["id"];
@@ -41,7 +44,7 @@ export function landingFaq(locale: SeoLocale): FaqEntry[] {
       question: text.q,
       answer: text.a,
       linkLabel: text.link,
-      url: pageUrl(locale, item.path),
+      url: "external" in item ? item.external : pageUrl(locale, item.path),
       ...("extra" in item && text.link2 ? { extra: { label: text.link2, url: pageUrl(locale, item.extra.path) } } : {}),
     };
   });

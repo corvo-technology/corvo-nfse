@@ -9,7 +9,8 @@ export function FaqSection() {
   const t = useTranslations("LandingFaq");
   const locale = useLocale();
   // Each answer ends with a link to the part of the docs (or the page) that goes deeper.
-  const hrefOf = (item: (typeof FAQ_ITEMS)[number]) => `/${locale}${item.path}${"anchor" in item ? item.anchor : ""}`;
+  const hrefOf = (item: (typeof FAQ_ITEMS)[number]) =>
+    "external" in item ? item.external : `/${locale}${item.path}${"anchor" in item ? item.anchor : ""}`;
 
   return (
     <section id="faq" className="mx-auto max-w-[1120px] scroll-mt-20 px-6 pb-20 sm:px-10 sm:pb-28">
@@ -32,7 +33,11 @@ export function FaqSection() {
               <div className="pb-5 pr-10">
                 <p className="max-w-[62ch] text-[15px] leading-relaxed text-text-3">{t(`items.${item.id}.a`)}</p>
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-                  <Link href={hrefOf(item)} className="inline-flex items-center gap-1 text-[13.5px] text-accent underline-offset-4 hover:underline">
+                  <Link
+                    href={hrefOf(item)}
+                    {...("external" in item ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    className="inline-flex items-center gap-1 text-[13.5px] text-accent underline-offset-4 hover:underline"
+                  >
                     {t(`items.${item.id}.link`)} <ArrowUpRight size={13} aria-hidden />
                   </Link>
                   {"extra" in item && (

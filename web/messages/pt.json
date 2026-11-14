@@ -706,7 +706,8 @@
     "pricing": "Preços",
     "signIn": "Entrar",
     "startFree": "Começar grátis",
-    "blog": "Blog"
+    "blog": "Blog",
+    "github": "GitHub"
   },
   "Language": {
     "en": "EN",
@@ -921,7 +922,9 @@
     "terms": "Termos",
     "privacy": "Aviso de Privacidade",
     "cookiePreferences": "Preferências de cookies",
-    "blog": "Blog"
+    "blog": "Blog",
+    "github": "GitHub",
+    "license": "Código aberto · AGPL-3.0"
   },
   "CookieConsent": {
     "message": "Usamos cookies e tecnologias semelhantes, incluindo o Google Analytics e o Meta Pixel, para melhorar sua experiência, medir o tráfego do site e entender campanhas de cadastro. Ao clicar em \"Aceitar\", você concorda com esse uso.",
@@ -2553,6 +2556,21 @@
       }
     ]
   },
+  "LandingOpenSource": {
+    "eyebrow": "CÓDIGO ABERTO",
+    "title": "Código aberto, de ponta a ponta.",
+    "description": "A API, o worker e o painel são públicos sob a AGPL-3.0. Leia o código, rode nos seus servidores ou mande um pull request.",
+    "points": {
+      "license": "AGPL-3.0: use, altere e audite.",
+      "selfHost": "Rode você mesmo com Docker Compose: seus servidores, seus certificados A1, seus dados.",
+      "contribute": "Issues e pull requests são bem-vindos. Um mantenedor revisa cada mudança."
+    },
+    "star": "Dar uma estrela no GitHub",
+    "guide": "Guia de self-hosting",
+    "starHint": "Se a Corvo te poupa tempo, uma estrela ajuda outros desenvolvedores a encontrar o projeto.",
+    "codeLabel": "Rode a Corvo localmente",
+    "requirements": "Precisa de Docker Compose v2 e Node.js 24."
+  },
   "LandingSdks": {
     "eyebrow": "SDKS",
     "title": "Nove linguagens. Uma API.",
@@ -2788,6 +2806,11 @@
         "a": "Sim. A Corvo tem SDKs oficiais para Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir e .NET, com as mesmas operações em todos, e também dá para chamar a API REST direto. Para agentes de IA, a Corvo tem um servidor MCP: Claude Code, Cursor, Codex, VS Code, Windsurf e Claude Desktop conectam com login no navegador, e você escolhe o workspace e o ambiente (teste ou produção) na tela de aprovação.",
         "link": "Ver os SDKs",
         "link2": "Ver o MCP"
+      },
+      "opensource": {
+        "q": "A Corvo é código aberto? Posso rodar por conta própria?",
+        "a": "Sim. A API, o worker e o painel são públicos no GitHub sob a AGPL-3.0. Você pode ler o código, rodar nos seus servidores com Docker Compose e abrir issues e pull requests. O serviço hospedado em corvo.tech roda o mesmo projeto, e cuida dos certificados A1, dos dados e da cobrança por você.",
+        "link": "Ver o código no GitHub"
       }
     }
   },
