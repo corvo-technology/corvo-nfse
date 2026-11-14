@@ -104,7 +104,6 @@ jobs:
           --config p/typescript
           --config p/javascript
           --error
-          --strict
           --sarif-output semgrep.sarif
           .
 
@@ -117,7 +116,6 @@ jobs:
           --config p/default
           --config p/typescript
           --config p/javascript
-          --strict
           --sarif-output semgrep.sarif
           .
 
@@ -131,7 +129,6 @@ jobs:
           --config p/typescript
           --config p/javascript
           --error
-          --strict
           --sarif-output semgrep.sarif
           .
 

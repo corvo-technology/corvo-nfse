@@ -1,18 +1,10 @@
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 
 export type ImportStatus =
-  | 'processing'
-  | 'ready'
-  | 'emitting'
-  | 'done'
-  | 'failed';
+  'processing' | 'ready' | 'emitting' | 'done' | 'failed';
 
 export type ImportRowStatus =
-  | 'valid'
-  | 'invalid'
-  | 'queued'
-  | 'accepted'
-  | 'rejected';
+  'valid' | 'invalid' | 'queued' | 'accepted' | 'rejected';
 
 export type ImportRecord = {
   id: string;

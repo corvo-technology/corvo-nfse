@@ -36,8 +36,7 @@ export class ImportEmitService {
   ): Promise<ImportView> {
     const view = await this.review.get(tenantId, env, id);
     const markEmail = async () => {
-      if (options.sendEmail)
-        await this.repo.enableEmailOnQueued(tenantId, id);
+      if (options.sendEmail) await this.repo.enableEmailOnQueued(tenantId, id);
     };
     if (view.status === 'emitting') {
       // Already running, or its job was lost (restart, exhausted retries): queue what is waiting and
