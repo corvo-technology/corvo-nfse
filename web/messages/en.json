@@ -706,7 +706,8 @@
     "pricing": "Pricing",
     "signIn": "Sign in",
     "startFree": "Start free",
-    "blog": "Blog"
+    "blog": "Blog",
+    "github": "GitHub"
   },
   "Language": {
     "en": "EN",
@@ -921,7 +922,9 @@
     "terms": "Terms",
     "privacy": "Privacy Notice",
     "cookiePreferences": "Cookie preferences",
-    "blog": "Blog"
+    "blog": "Blog",
+    "github": "GitHub",
+    "license": "Open source · AGPL-3.0"
   },
   "CookieConsent": {
     "message": "We use cookies and similar technologies, including Google Analytics and the Meta Pixel, to improve your experience, measure site traffic and understand signup campaigns. By clicking \"Accept\", you agree to this use.",
@@ -2553,6 +2556,21 @@
       }
     ]
   },
+  "LandingOpenSource": {
+    "eyebrow": "OPEN SOURCE",
+    "title": "Open source, top to bottom.",
+    "description": "The API, the worker and the dashboard are public under AGPL-3.0. Read the code, run it on your own servers, or send a pull request.",
+    "points": {
+      "license": "AGPL-3.0: use it, change it, audit it.",
+      "selfHost": "Self-host with Docker Compose: your servers, your A1 certificates, your data.",
+      "contribute": "Issues and pull requests are welcome. A maintainer reviews every change."
+    },
+    "star": "Star on GitHub",
+    "guide": "Self-hosting guide",
+    "starHint": "If Corvo saves you time, a star helps other developers find it.",
+    "codeLabel": "Run Corvo locally",
+    "requirements": "Needs Docker Compose v2 and Node.js 24."
+  },
   "LandingSdks": {
     "eyebrow": "SDKS",
     "title": "Nine languages. One API.",
@@ -2788,6 +2806,11 @@
         "a": "Yes. Corvo has official SDKs for Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir and .NET, with the same operations in all of them, and you can also call the REST API directly. For AI agents, Corvo has an MCP server: Claude Code, Cursor, Codex, VS Code, Windsurf and Claude Desktop connect with a browser login, and you pick the workspace and the environment (test or live) on the approval screen.",
         "link": "See the SDKs",
         "link2": "See the MCP server"
+      },
+      "opensource": {
+        "q": "Is Corvo open source? Can I run it myself?",
+        "a": "Yes. The API, the worker and the dashboard are public on GitHub under AGPL-3.0. You can read the code, run it on your own servers with Docker Compose, and send issues and pull requests. The hosted service at corvo.tech runs the same project, with the A1 certificates, the data and the billing handled for you.",
+        "link": "See the code on GitHub"
       }
     }
   },
