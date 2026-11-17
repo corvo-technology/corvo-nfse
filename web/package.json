@@ -26,7 +26,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^1.66.0",
     "motion": "^13.1.1",
-    "next": "16.4.3",
+    "next": "16.4.5",
     "next-intl": "^4.14.9",
     "posthog-js": "^1.444.0",
     "qrcode": "1.5.4",
