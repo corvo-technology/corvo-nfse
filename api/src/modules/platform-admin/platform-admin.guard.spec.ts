@@ -10,9 +10,7 @@ describe('PlatformAdminGuard', () => {
   };
   const make = (result: { isAdmin: boolean; email: string | null }) => {
     const config = {
-      getOrThrow: jest
-        .fn()
-        .mockReturnValue({ hmacSecret: 'test-secret-aaaa' }),
+      getOrThrow: jest.fn().mockReturnValue({ hmacSecret: 'test-secret-aaaa' }),
     };
     const policy = { resolve: jest.fn().mockResolvedValue(result) };
     return {
