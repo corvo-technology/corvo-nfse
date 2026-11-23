@@ -3414,7 +3414,7 @@
       "amount": "Quantas notas (de 1 a 500)",
       "amountHint": "Número inteiro de 1 a 500.",
       "reason": "Motivo",
-      "reasonHint": "Escreva de 5 a 500 letras. Fica guardado no histórico.",
+      "reasonHint": "Escreva de 5 a 500 caracteres. Fica guardado no histórico.",
       "confirm": "Dar {amount} notas para {email}?",
       "submit": "Dar notas",
       "submitting": "Enviando...",
@@ -3424,7 +3424,7 @@
       "cancel": "Cancelar",
       "back": "Voltar",
       "errorAmount": "Use um número inteiro de 1 a 500.",
-      "errorReason": "O motivo precisa ter de 5 a 500 letras.",
+      "errorReason": "O motivo precisa ter de 5 a 500 caracteres.",
       "errorNotFound": "Este espaço não foi encontrado.",
       "errorGeneric": "Não foi possível dar as notas. Nada foi gravado. Tente de novo."
     },
