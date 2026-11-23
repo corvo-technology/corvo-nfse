@@ -29,3 +29,9 @@ it("user codifica o id", async () => {
   expect(String(fetchMock.mock.calls[0][0])).toBe("/api/proxy/v1/platform/users/x%2Fy");
 });
 it("formatBrl(1990, 'pt') contém '19,90'", () => expect(formatBrl(1990, "pt")).toContain("19,90"));
+it("audit monta limit e cursor na query", async () => {
+  fetchMock.mockResolvedValue(reply({ data: [{ id: "a1" }], pagination: { limit: 10, hasMore: true, nextCursor: "c2" } }));
+  const page = await platformAdmin.audit({ limit: 10, cursor: "c1" });
+  expect(String(fetchMock.mock.calls[0][0])).toBe("/api/proxy/v1/platform/audit?limit=10&cursor=c1");
+  expect(page).toEqual({ items: [{ id: "a1" }], hasMore: true, nextCursor: "c2" });
+});

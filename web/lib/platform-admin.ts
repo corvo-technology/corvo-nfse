@@ -1,4 +1,4 @@
-import { request, toPage, unwrap, type Page, type PageParams } from "./api";
+import { idPath, query, request, toPage, unwrap, type Page, type PageParams } from "./api";
 
 type Envelope<T> = { data: T };
 type ListBody<T> = { data: T[]; pagination?: { limit?: number; hasMore?: boolean; nextCursor?: string | null } };
@@ -44,13 +44,6 @@ export interface PlatformAuditEvent {
 }
 export interface CreditGrantResult { tenantId: string; amount: number; balance: number; replayed: boolean }
 export interface CreditGrantBody { amount: number; reason: string; notifyUser: boolean }
-
-function query(params: object): string {
-  const qs = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== "") qs.set(key, String(value));
-  return qs.size ? `?${qs}` : "";
-}
-const idPath = (id: string) => encodeURIComponent(id);
 
 export const platformAdmin = {
   overview: async (signal?: AbortSignal) => unwrap(await request<Envelope<PlatformOverview>>("/platform/overview", { signal })),

@@ -115,8 +115,8 @@ export async function request<T>(path: string, options: RequestInit = {}, binary
   return (binary ? response.blob() : response.json()) as Promise<T>;
 }
 const json = (body: unknown, method = "POST"): RequestInit => ({ method, body: JSON.stringify(body) });
-const idPath = (id: string) => encodeURIComponent(id);
-function query(params: object): string {
+export const idPath = (id: string) => encodeURIComponent(id);
+export function query(params: object): string {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== "") qs.set(key, String(value));
   return qs.size ? `?${qs}` : "";
