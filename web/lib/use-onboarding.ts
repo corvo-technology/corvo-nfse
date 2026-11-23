@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { certificates, companies, invoices } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { readFlag, writeFlag, type OnboardingFlag } from "@/lib/onboarding-flags";
+import { useBillingEnabled } from "@/lib/deployment-config-context";
 import { buildSteps, type OnboardingStep } from "@/lib/onboarding-steps";
 
 /** A company older than this means an established customer, not a new account. */
@@ -29,6 +30,7 @@ export interface Onboarding {
 /** Progress of the first-steps card, read from real data. A failing query only leaves its own step undone. */
 export function useOnboarding(): Onboarding {
   const { can, tenantId, fiscalEnvironment } = useAuth();
+  const billingEnabled = useBillingEnabled();
   const anyStep = can("nfse.companies.manage") || can("nfse.certificates.manage") || can("nfse.invoices.issue");
   const active = Boolean(tenantId) && fiscalEnvironment === "live" && anyStep;
   const scope = `${tenantId}:${fiscalEnvironment}`;
@@ -65,8 +67,8 @@ export function useOnboarding(): Onboarding {
   const current = facts?.scope === scope ? facts : null;
   const flags = flagState?.tenantId === tenantId ? flagState.flags : null;
   const steps = useMemo(() => (current && flags
-    ? buildSteps({ can, hasCompany: current.firstCompanyId !== null, hasCertificate: current.hasCertificate, lastDpsNumber: current.lastDpsNumber, hasTestNote: current.hasTestNote, flags })
-    : []), [current, flags, can]);
+    ? buildSteps({ can, hasCompany: current.firstCompanyId !== null, hasCertificate: current.hasCertificate, lastDpsNumber: current.lastDpsNumber, hasTestNote: current.hasTestNote, flags, billingEnabled })
+    : []), [current, flags, can, billingEnabled]);
 
   const setFlag = useCallback((flag: OnboardingFlag) => {
     if (!tenantId) return;

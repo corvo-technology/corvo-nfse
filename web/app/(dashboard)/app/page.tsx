@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import type { BillingPlan } from "@/lib/types";
 import type { InvoiceOverview, OverviewPeriod } from "@/lib/api";
+import { useBillingEnabled } from "@/lib/deployment-config-context";
 import { AlertTriangle } from "lucide-react";
 import { useInvoiceErrorText } from "@/lib/use-api-error";
 
@@ -25,7 +26,8 @@ export default function OverviewPage() {
   const invoiceError = useInvoiceErrorText();
   const { can, tenantId, fiscalEnvironment } = useAuth();
   const invoiceView = can("nfse.invoices.view");
-  const billingView = can("billing.view");
+  const billingEnabled = useBillingEnabled();
+  const billingView = billingEnabled && can("billing.view");
   const tc = useTranslations("Common");
   const locale = useLocale();
   const [period, setPeriod] = useState<OverviewPeriod>("7d");

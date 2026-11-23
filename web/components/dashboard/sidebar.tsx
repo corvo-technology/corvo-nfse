@@ -23,6 +23,7 @@ import { useAuth } from "@/lib/auth";
 import { canOpenPath } from "@/lib/route-permissions";
 import { billing } from "@/lib/api";
 import type { BillingPlan } from "@/lib/types";
+import { useBillingEnabled } from "@/lib/deployment-config-context";
 import { CorvoLogo } from "@/components/ui/corvo-logo";
 import { NotesBalance } from "@/components/dashboard/notes-balance";
 
@@ -62,7 +63,8 @@ export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarPr
   const [plan, setPlan] = useState<BillingPlan | null>(null);
   // `can` changes identity on every session refresh (e.g. each window focus);
   // depend on the boolean so the plan is not refetched each time.
-  const canViewBilling = can("billing.view");
+  const billingEnabled = useBillingEnabled();
+  const canViewBilling = billingEnabled && can("billing.view");
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +83,7 @@ export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarPr
   const renderItem = ({ key, href, icon: Icon }: NavItem) => {
     // Same table as the page guard: the menu never shows a page the member cannot open.
     if (!canOpenPath(href, can)) return null;
+    if (!billingEnabled && href === "/app/billing") return null;
     const active = isActive(href);
     return (
       <li key={href}>
@@ -135,7 +138,10 @@ export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarPr
         </div>
       </nav>
 
-      {plan && <NotesBalance plan={plan} onNavigate={onClose} />}
+      {!billingEnabled && (
+        <p className="px-3 text-[12.5px] text-text-4">{t("Sidebar.selfHosted")}</p>
+      )}
+      {billingEnabled && plan && <NotesBalance plan={plan} onNavigate={onClose} />}
     </aside>
   );
 }

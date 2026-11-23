@@ -70,6 +70,7 @@
       "integrations": "Integrations",
       "customers": "Customers"
     },
+    "selfHosted": "Self-hosted",
     "account": "ACCOUNT",
     "balance": "BALANCE",
     "buyCredits": "Buy credits →",

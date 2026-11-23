@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useBillingEnabled } from "@/lib/deployment-config-context";
 import { ApiError, billing as billingApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { BillingPlan } from "@/lib/types";
@@ -20,6 +21,7 @@ export default function SettingsPage() {
   const { can, profile } = useAuth();
   const tp = useTranslations("Profile");
   const { error: toastError, success } = useToast();
+  const billingEnabled = useBillingEnabled();
   const canManage = can("billing.manage");
   // null while loading.
   const [billing, setBilling] = useState<BillingPlan | null>(null);
@@ -34,10 +36,11 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
+    if (!billingEnabled) return;
     let cancelled = false;
     load(() => cancelled);
     return () => { cancelled = true; };
-  }, [load]);
+  }, [load, billingEnabled]);
 
   const fail = (cause: unknown) => {
     if (cause instanceof ApiError && cause.status === 429) toastError(tb("errors.ERROR_RATE_LIMIT_EXCEEDED", { seconds: cause.retryAfterSeconds ?? 60 }));
@@ -82,7 +85,7 @@ export default function SettingsPage() {
         <NameForm key={profile?.name ?? ""} initial={profile?.name ?? ""} submitLabel={tp("save")} />
       </section>
 
-      <PaymentsCard billing={billing} failed={failed} canManage={canManage} busy={busy} onPortal={() => void openPortal()} onCancelPix={() => void cancelPix()} />
+      {billingEnabled && <PaymentsCard billing={billing} failed={failed} canManage={canManage} busy={busy} onPortal={() => void openPortal()} onCancelPix={() => void cancelPix()} />}
 
       <section
         aria-labelledby="danger-zone"

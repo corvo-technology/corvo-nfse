@@ -8,6 +8,7 @@ import type { Invoice } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { useBillingEnabled } from "@/lib/deployment-config-context";
 import { useApiErrorText } from "@/lib/use-api-error";
 
 interface SubstituteInvoiceDialogProps {
@@ -23,6 +24,7 @@ interface SubstituteInvoiceDialogProps {
  */
 export function SubstituteInvoiceDialog({ invoice, open, onClose, onSubstituted }: SubstituteInvoiceDialogProps) {
   const t = useTranslations("InvoiceDetail.substitute");
+  const billingEnabled = useBillingEnabled();
   const apiError = useApiErrorText();
   const service = invoice.serviceSnapshot;
   const [reason, setReason] = useState("");
@@ -75,7 +77,7 @@ export function SubstituteInvoiceDialog({ invoice, open, onClose, onSubstituted 
             {(c) => <textarea {...c} className="field resize-y" rows={2} maxLength={2000} value={notes} onChange={(event) => setNotes(event.target.value)} />}
           </Field>
         </div>
-        <p className="text-[12.5px] text-text-4">{t("credit")}</p>
+        {billingEnabled && <p className="text-[12.5px] text-text-4">{t("credit")}</p>}
         {error && <p role="alert" className="banner banner-danger">{error}</p>}
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={onClose}>{t("keep")}</Button>

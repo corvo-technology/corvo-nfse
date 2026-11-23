@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import type { ImportJob } from "@/lib/types";
 import type { RecentImportsState } from "@/lib/use-recent-imports";
+import { useBillingEnabled } from "@/lib/deployment-config-context";
 import { cn } from "@/lib/utils";
 
 const href = (job: ImportJob) => `/app/invoices/import?id=${encodeURIComponent(job.id)}`;
@@ -15,8 +16,9 @@ const href = (job: ImportJob) => `/app/invoices/import?id=${encodeURIComponent(j
 export function PendingCreditsBanner({ recent }: { recent: RecentImportsState }) {
   const t = useTranslations("Imports");
   const locale = useLocale();
+  const billingEnabled = useBillingEnabled();
   const waiting = recent.items.filter((job) => job.counters.awaitingCredits > 0);
-  if (waiting.length === 0) return null;
+  if (!billingEnabled || waiting.length === 0) return null;
   const notes = waiting.reduce((sum, job) => sum + job.counters.awaitingCredits, 0);
   const amount = waiting.reduce((sum, job) => sum + job.counters.awaitingAmount, 0);
   const money = new Intl.NumberFormat(locale, { style: "currency", currency: "BRL" }).format(amount);
