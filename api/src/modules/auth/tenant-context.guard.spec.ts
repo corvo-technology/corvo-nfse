@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { PlatformAdminOnly } from './platform-admin-only.decorator';
 import { TenantContextGuard } from './tenant-context.guard';
 
 describe('TenantContextGuard', () => {
@@ -92,6 +93,41 @@ describe('TenantContextGuard', () => {
         }),
       ),
     ).toThrow(BadRequestException);
+  });
+
+  describe('rota /v1/platform/tenants/:tenantId', () => {
+    const request = () => ({
+      originalUrl: `/v1/platform/tenants/${otherTenantId}/credit-grants`,
+      params: { tenantId: otherTenantId },
+      authContext: {
+        authUserId: 'auth-1',
+        userId: 'user-1',
+        tenantId,
+        activeTenantId: tenantId,
+        role: 'admin',
+        permissions: [],
+        isPlatformAdmin: false,
+      },
+    });
+    const ctxWith = (adminOnly: boolean): ExecutionContext => {
+      @(adminOnly ? PlatformAdminOnly() : () => undefined)
+      class Controller {}
+      return {
+        switchToHttp: () => ({ getRequest: () => request() }),
+        getHandler: () => () => undefined,
+        getClass: () => Controller,
+      } as unknown as ExecutionContext;
+    };
+
+    it('com PLATFORM_ADMIN_ONLY deixa passar (a barreira é o PlatformAdminGuard)', () => {
+      expect(new TenantContextGuard().canActivate(ctxWith(true))).toBe(true);
+    });
+
+    it('sem PLATFORM_ADMIN_ONLY mantém a checagem de tenant', () => {
+      expect(() =>
+        new TenantContextGuard().canActivate(ctxWith(false)),
+      ).toThrow(ForbiddenException);
+    });
   });
 
   it('rejects malformed tenant route params', () => {
