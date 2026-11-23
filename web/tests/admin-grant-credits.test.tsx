@@ -61,6 +61,17 @@ describe("GrantCreditsButton", () => {
     expect(mocks.grant).not.toHaveBeenCalled();
   });
 
+  it("aceita os limites: quantidade 1 e 500, motivo de 5 e de 500 caracteres", () => {
+    setup(); open();
+    for (const [amount, reason] of [["1", "12345"], ["500", "x".repeat(500)]]) {
+      fill(amount, reason);
+      submit();
+      expect(screen.getByText(confirmText(amount))).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: t.back }));
+    }
+    expect(mocks.grant).not.toHaveBeenCalled();
+  });
+
   it("mostra a confirmação com quantidade e e-mail e só então chama a API", async () => {
     mocks.grant.mockResolvedValue({ tenantId: "t-1", amount: 10, balance: 15, replayed: false });
     const { onGranted } = setup(); open(); fill(); submit();

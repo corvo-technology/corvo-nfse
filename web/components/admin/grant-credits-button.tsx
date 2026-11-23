@@ -29,6 +29,7 @@ export function GrantCreditsButton({ tenantId, email, onGranted }: GrantCreditsB
   const apiError = useApiErrorText();
   const billingEnabled = useBillingEnabled();
   const idempotencyKey = useRef("");
+  const inFlight = useRef(false);
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("form");
   const [amount, setAmount] = useState("");
@@ -62,7 +63,8 @@ export function GrantCreditsButton({ tenantId, email, onGranted }: GrantCreditsB
   }
 
   async function send() {
-    if (submitting) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
     setSubmitting(true); setError(null);
     try {
       const granted = await platformAdmin.grantCredits(tenantId, { amount: parsedAmount, reason: trimmedReason, notifyUser }, idempotencyKey.current);
@@ -72,6 +74,7 @@ export function GrantCreditsButton({ tenantId, email, onGranted }: GrantCreditsB
     } catch (cause) {
       setError(apiError(cause, cause instanceof ApiError && cause.status === 404 ? t("errorNotFound") : t("errorGeneric")));
     } finally {
+      inFlight.current = false;
       setSubmitting(false);
     }
   }
