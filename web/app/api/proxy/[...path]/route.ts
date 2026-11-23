@@ -76,6 +76,9 @@ const routes: [RegExp, string[]][] = [
   [/^mcp\/consent$/, ["GET", "POST"]],
   [/^mcp\/connections$/, ["GET"]],
   [/^mcp\/connections\/[^/]+$/, ["DELETE"]],
+  [/^platform\/(overview|users|attention|audit)$/, ["GET"]],
+  [/^platform\/users\/[^/]+$/, ["GET"]],
+  [/^platform\/tenants\/[^/]+\/credit-grants$/, ["POST"]],
   [/^health\/(live|ready)$/, ["GET"]],
 ];
 // Session plus the short-lived social sign-in state cookie.

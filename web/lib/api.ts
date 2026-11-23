@@ -27,7 +27,7 @@ export function toPage<T>(body: { data: T[]; pagination?: { limit?: number; hasM
 export interface AvailableTenant { tenantId: string; membershipId: string; role: string; establishmentName: string }
 export interface AuthContext { authUserId: string; activeTenantId: string; role: string; permissions: string[]; availableTenants: AvailableTenant[] }
 export interface Profile { name: string; email: string }
-export interface SessionPayload { status: "authenticated"; context: AuthContext; profile?: Profile; activeTenantId: string; availableTenants: AvailableTenant[]; permissions: string[]; expiresAt: string; csrfToken: string }
+export interface SessionPayload { status: "authenticated"; context: AuthContext; profile?: Profile; activeTenantId: string; availableTenants: AvailableTenant[]; permissions: string[]; isPlatformAdmin?: boolean; expiresAt: string; csrfToken: string }
 export interface MagicLinkChallenge { challengeId: string; expiresAt: string; resendAvailableAt: string }
 export type OAuthProvider = "google" | "github";
 export type OAuthProviders = Record<OAuthProvider, boolean>;
@@ -115,8 +115,8 @@ export async function request<T>(path: string, options: RequestInit = {}, binary
   return (binary ? response.blob() : response.json()) as Promise<T>;
 }
 const json = (body: unknown, method = "POST"): RequestInit => ({ method, body: JSON.stringify(body) });
-const idPath = (id: string) => encodeURIComponent(id);
-function query(params: object): string {
+export const idPath = (id: string) => encodeURIComponent(id);
+export function query(params: object): string {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== "") qs.set(key, String(value));
   return qs.size ? `?${qs}` : "";
