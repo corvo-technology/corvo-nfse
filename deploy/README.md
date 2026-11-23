@@ -6,7 +6,7 @@ This directory contains the Dockerfiles for the API, worker, and web application
 | --- | --- |
 | `docker-compose.yml` | Production stack with external S3 storage. |
 | `docker-compose.local.yml` | Local override that adds LocalStack for testing. |
-| `.env.example` | Production configuration template. |
+| `.env.example` | Production configuration template. Sets `DEPLOYMENT_MODE=self_hosted` (billing off). |
 | `.env.local.example` | Local configuration template. |
 | `Caddyfile` | Optional HTTPS proxy for a VPS without its own hosting proxy. |
 

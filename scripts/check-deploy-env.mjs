@@ -11,8 +11,10 @@ const required = [
   'APP_ORIGIN', 'PUBLIC_API_URL',
   'STORAGE_S3_BUCKET', 'STORAGE_S3_ENDPOINT', 'STORAGE_S3_REGION',
   'STORAGE_S3_ACCESS_KEY_ID', 'STORAGE_S3_SECRET_ACCESS_KEY',
-  'RESEND_API_KEY', 'STRIPE_SECRET_KEY', 'STRIPE_PLATFORM_WEBHOOK_SECRET',
+  'RESEND_API_KEY',
 ];
+// Stripe is only needed where billing is on (cloud, the default).
+if (config.DEPLOYMENT_MODE !== 'self_hosted') required.push('STRIPE_SECRET_KEY', 'STRIPE_PLATFORM_WEBHOOK_SECRET');
 if (proxy) required.push('WEB_DOMAIN', 'API_DOMAIN');
 for (const key of required) {
   if (!config[key] || /[<>]|example\.com|_placeholder/.test(config[key])) errors.push(`Configure ${key}.`);
