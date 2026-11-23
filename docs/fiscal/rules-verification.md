@@ -86,6 +86,35 @@ Notes:
 
 ---
 
+## 3-A. Update 2026-11-23: Ato Conjunto RFB/CGIBS nº 7, de 11 de novembro de 2026
+
+**Source (text read in full, 3 pages):** `https://www.cgibs.gov.br/upload/arquivos/202611/13061456-ato-conjunto-7-rfb-cgibs-alteracao-ato-4.pdf` (altera o Ato Conjunto nº 4/2026; entra em vigor na publicação no DOU, 13/11/2026). Quotes (art. 1º, new wording of art. 1º of Ato 4):
+
+- III, "a": plataformas digitais (LC 214, art. 22, § 1º, e §§ 12 a 14): **1º de março de 2027**;
+- III, "b": serviços também sujeitos ao ISS, subitens 1.03, 1.05 e 1.09 da LC 116: **1º de março de 2027**;
+- III, "c": serviços também sujeitos ao ISS, subitem 16.01 da LC 116: **1º de março de 2027**;
+- III, "e": bens imateriais fora da LC 116 e fora do ICMS: **1º de janeiro de 2027**;
+- III, "f": taxas e valores condominiais: **1º de janeiro de 2027**;
+- III, "g": locações de bens móveis e imóveis: **1º de janeiro de 2027**;
+- III, "h": serviços não enquadrados nas alíneas "a" a "g": **1º de janeiro de 2027**;
+- III, "d" (demais subitens da LC 116, regra geral): not in the amended excerpt, i.e. unchanged: 01/10/2026;
+- § 1º: "Para os contribuintes optantes pelo [...] Simples Nacional, a obrigatoriedade de emissão dos documentos iniciar-se-á em: I - 1º de janeiro de 2027, em relação às hipóteses de que tratam as alíneas "d" a "h" do inciso III do caput; e II - 1º de março de 2027, em relação às demais hipóteses previstas no caput."
+
+**Effect on `TAX_RULES`:**
+
+| Field | Before | After | Why |
+|---|---|---|---|
+| `specificCategoriesFrom` | `2026-12-01` | `2027-03-01` | the categories listed by subitem (1.03, 1.05, 1.09, 16.01) and platforms move to 01/03/2027. With `specificCategoryServiceCodes` empty, no invoice changes behavior |
+| `generalFrom` | `2026-10-01` | `2026-10-01` | alínea "d" not changed by Ato 7 |
+| `simples.ibscbs-effective.effectiveFrom` | `2027-01-01` | `2027-01-01` | § 1º, I (alíneas "d" a "h"); the 01/03/2027 group of § 1º, II is not modeled |
+| `RULES_VERSION` | `2026.10-r1` | `2026.11-r1` | rules changed |
+
+**Not modeled (follow-up):** a single `specificCategoriesFrom` cannot say that alíneas "e" to "h" start on 01/01/2027 and "a" to "c" on 01/03/2027; `specificCategoryServiceCodes` stays empty because digital platforms, "bens imateriais", condomínio and locações are not identifiable by service code, and the subitens apply only to services "também sujeitos ao ISS". The conservative effect (information required from 01/10/2026 for every service) is unchanged.
+
+**"31/12/2026" is a secondary source.** It comes from the CGNFS-e orientation of 07/08/2026 and secondary sources; Ato 7 does not mention it. According to the CGIBS/RFB note on the postponement of validation rules, the absence of the IBS/CBS group does not reject NFS-e today and the validation planned for 03/08/2026 has no new date (that note was not re-read in this update; the CGNFS-e summary of Ato 7 is `https://www.gov.br/nfse/pt-br/noticias/cgnfs-e-informa-ato-conjunto-rfb-cgibs-no-7-2026-atualiza-o-cronograma-de-obrigatoriedade-de-emissao-da-nfs-e-para-ibs-e-cbs`).
+
+---
+
 ## 4. Rule `rounding.default` — `HALF_UP`, 2 places
 
 **Status: NOT VERIFIED as law (deliberately).** No source in this task's Step-1 list fixes a rounding rule for NFS-e/IBS-CBS computation (LC 214/2025, LC 116/2003, LC 227/2026, Ato Conjunto nº 4/2026, CGNFS-e orientation and Resolução CGSN texts read here contain no rounding mandate for this context). `mode: 'HALF_UP'`, `places: 2` is therefore encoded as an **internal computational convention**, pending fiscal confirmation (the plan already flags it as pending confirmation). It is not represented as legally verified.
@@ -117,8 +146,8 @@ Notes:
 | `ibscbs.test-phase.collectionWaived` | `true` | dispensa (LC 214, art. 348 § 1º, conditioned on accessory-obligation compliance) | verified, no change |
 | `ibscbs.test-phase.excludesSimplesNacional` | `true` | Simples not subject to 2026 rates (LC 214, art. 348, III, "c") | verified, no change |
 | `nfse.ibscbs-information.generalFrom` | `'2026-10-01'` | 01/10/2026 (Ato Conjunto RFB/CGIBS nº 4/2026, art. 1º, III, "d"; CGNFS-e 07/08/2026) | verified, no change |
-| `nfse.ibscbs-information.specificCategoriesFrom` | `'2026-12-01'` | 01/12/2026 (idem, alíneas "a"–"c", "e"–"h") | verified, no change |
-| `nfse.ibscbs-information.sefinToleranceUntil` | `'2026-12-31'` | non-rejection of NFS-e lacking IBS/CBS info until 31/12/2026 (CGNFS-e 07/08/2026) | verified, no change |
+| `nfse.ibscbs-information.specificCategoriesFrom` | `'2027-03-01'` (was `'2026-12-01'`) | Ato Conjunto nº 7/2026 art. 1º (nova redação do art. 1º, III, "a"–"c": 01/03/2027); see section 3-A | **changed on 2026-11-23** |
+| `nfse.ibscbs-information.sefinToleranceUntil` | `'2026-12-31'` | non-rejection of NFS-e lacking IBS/CBS info until 31/12/2026 (CGNFS-e 07/08/2026 only; **secondary source for the date**, no act read repeats it) | kept; see section 3-A |
 | `nfse.ibscbs-information.specificCategoryServiceCodes` | `[]` (fallback) | categories defined by LC 116 subitems/nature — no official 6-digit code list read | **empty retained, limitation recorded (3.1)** |
 | `simples.ibscbs-effective.effectiveFrom` | `'2027-01-01'` | 01/01/2027 (Ato 4 § 1º; LC 214 annexes "Vigência: 1º/1/2027"; Resolução CGSN nº 190/2026; CGNFS-e item 9) | verified, no change |
 | `rounding.default` | `'HALF_UP'`, `2` | no statutory source read | **not verified — internal convention, pending fiscal confirmation** |

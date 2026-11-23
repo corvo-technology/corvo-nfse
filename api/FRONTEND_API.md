@@ -692,7 +692,8 @@ dessas ações.
 > `DPS_LAYOUT_UNSUPPORTED` e `DPS_SCHEMA_VALIDATION_FAILED`.
 >
 > - MEI e Simples Nacional em 2026 **não** calculam IBS/CBS (a ausência dos
->   campos é tolerada até 31/12/2026).
+>   campos é tolerada até 31/12/2026, segundo a orientação da CGNFS-e de 07/08/2026;
+>   é referência, não prazo previsto em ato legal).
 > - Regime regular: o IBS/CBS é calculado pela Calculadora de Tributos oficial
 >   (rede privada da Corvo) com a **data da competência**. Com a Calculadora
 >   fora do ar a nota **não** é rejeitada de imediato: o processamento é

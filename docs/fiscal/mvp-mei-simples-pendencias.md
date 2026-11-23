@@ -23,7 +23,7 @@ Convenção de confiança usada abaixo:
 
 Primeiros clientes previstos: o próprio dono do produto e empresas em **São Paulo** e **Uberlândia** (a confirmar, ver §4).
 
-Para MEI e Simples em 2026 o plano 2 deixa a emissão seguir sem IBS/CBS (a ausência é tolerada até 31/12/2026). O plano 3 não é necessário para esse caso.
+Para MEI e Simples em 2026 o plano 2 deixa a emissão seguir sem IBS/CBS (a ausência é tolerada até 31/12/2026, data de fonte secundária: orientação da CGNFS-e de 07/08/2026). O plano 3 não é necessário para esse caso.
 
 ---
 
@@ -34,8 +34,8 @@ Para MEI e Simples em 2026 o plano 2 deixa a emissão seguir sem IBS/CBS (a aus�
 | 01/09/2023 | NFS-e Nacional obrigatória para o MEI (tomador PJ, ou PF que solicite a nota) |
 | 01/10/2026 | Início do preenchimento de IBS/CBS na NFS-e pela regra geral (Ato Conjunto RFB/CGIBS nº 4/2026) |
 | 01/11/2026 | Emissor Nacional obrigatório para ME/EPP do Simples (Resolução CGSN nº 191; houve adiamento de setembro) |
-| 01/12/2026 | Categorias específicas do Ato Conjunto nº 4/2026 |
-| 31/12/2026 | Fim da tolerância: até aqui a ausência dos campos de IBS/CBS não impede a autorização da nota |
+| ~~01/12/2026~~ | ~~Categorias específicas do Ato Conjunto nº 4/2026~~ Substituída pelo Ato Conjunto RFB/CGIBS nº 7/2026 (11/11/2026, DOU 13/11): 01/01/2027 para bens imateriais, condomínio, locações e demais serviços (alíneas "d" a "h" no Simples); 01/03/2027 para plataformas digitais e subitens 1.03, 1.05, 1.09 e 16.01 |
+| 31/12/2026 | Fim da tolerância: até aqui a ausência dos campos de IBS/CBS não impede a autorização da nota. **Fonte secundária** (orientação CGNFS-e de 07/08/2026); a validação prevista para 03/08/2026 foi adiada sem nova data |
 | **01/01/2027** | Campos de IBS/CBS passam a ser obrigatórios para optantes do Simples (e, segundo um blog, para o MEI) |
 
 ---
@@ -50,6 +50,7 @@ Para MEI e Simples em 2026 o plano 2 deixa a emissão seguir sem IBS/CBS (a aus�
 
 ### P2. Regra de MEI e Simples a partir de 01/01/2027 — **prazo duro**
 - **Atualização (2026-10-26): resolvido.** MEI e Simples que não optaram pelo regime regular emitem em 2027 sem destacar IBS/CBS (`NOT_APPLICABLE`). Quem optar pelo regime regular continua bloqueado. O texto abaixo é o registro da discussão original.
+- **Atualização (2026-11-23): decisão REABERTA, sem mudança de código.** Motivos: (1) o leiaute da NT 009 tem campos próprios para o Simples (`regApIBSCBSSN`, `gTribSN`); (2) nenhum texto oficial lido isenta o Simples ou o MEI de informar IBS/CBS, e o Ato Conjunto nº 7/2026 mantém a obrigação de emissão do Simples em 01/01/2027 (alíneas "d" a "h") e 01/03/2027 (demais casos); (3) para o MEI não há nenhuma fonte oficial lida. O código segue como está (sem destaque) até haver decisão com um contador ou resposta da CGNFS-e. Pendente.
 - **Situação atual do código (verificado):** as estratégias de MEI e Simples tratam IBS/CBS de 2027 como `UNSUPPORTED`. Isso **bloqueia a emissão** em 01/01/2027 se ninguém trocar essa regra. Foi um bloqueio conservador que eu deixei como marcador, não uma exigência legal.
 - **O que se sabe (fonte secundária):**
   - o Ato Conjunto RFB/CGIBS nº 4/2026 (30/07/2026) fixa 01/01/2027 para optantes do Simples preencherem os campos de IBS/CBS;
@@ -117,7 +118,7 @@ Para MEI e Simples em 2026 o plano 2 deixa a emissão seguir sem IBS/CBS (a aus�
 ### P8. Decisões pendentes herdadas do plano 2 (`docs/fiscal/limitations.md`)
 - **D1:** modo `block` ou `warn` para IBS/CBS obrigatório enquanto o adaptador real não existir. Não afeta MEI/Simples em 2026.
 - **D2:** quem pode aprovar um perfil fiscal em `live`.
-- **D3:** lista das categorias específicas do Ato Conjunto nº 4/2026 (subitens da LC 116).
+- **D3:** lista das categorias específicas do Ato Conjunto nº 4/2026, alterado pelo nº 7/2026 (subitens da LC 116).
 
 ---
 
