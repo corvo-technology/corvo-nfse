@@ -23,6 +23,15 @@ const ROUTE_PERMISSIONS: ReadonlyArray<readonly [prefix: string, permission: str
   ["/app/settings", "billing.view"],
 ];
 
+/**
+ * The platform admin pages need no tenant permission on purpose: access is decided only by the
+ * server-side admin gate (app/(dashboard)/app/admin/layout.tsx), never by a member's role.
+ */
+export function isPlatformAdminPath(pathname: string): boolean {
+  const path = pathname.split(/[?#]/)[0].replace(/\/+$/, "");
+  return path === "/app/admin" || path.startsWith("/app/admin/");
+}
+
 /** The permission a page needs, or null when every member may open it. */
 export function permissionForPath(pathname: string): string | null {
   const path = pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
