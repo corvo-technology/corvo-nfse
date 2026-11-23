@@ -58,7 +58,7 @@ Data: 2026-10-15 · Escopo: `feat/rtc-dps-reconciliation`.
 - A validação de NBS/CST/cClassTrib/cIndOp consulta o motor com a data da competência; com o motor fora do ar o erro é retryable (a invoice não é rejeitada na hora).
 
 ### 5.3 DPS (`DpsBuilder`)
-- Só o layout `rtc-v1.01` está em produção; qualquer outro ⇒ `DPS_LAYOUT_UNSUPPORTED`. **NT 009/2026 (V1.04.00) não é suportada.**
+- Só o layout `rtc-v1.01` está em produção (o `nt009-r1` fica restrito à Produção Restrita até o corte); layout não registrado ⇒ `DPS_LAYOUT_UNSUPPORTED`. **A NT 009 release 1 (leiaute V1.04.01) só roda no layout `nt009-r1`; ver [`nt-009-prontidao.md`](./nt-009-prontidao.md). Releases 2 e 3 não são suportadas.**
 - O grupo `IBSCBS` é apenas declaratório (`finNFSe`, `cIndOp`, `indDest`, CST e cClassTrib). `indFinal`, `tpOper`, `dest`, `imovel`, `gRefNFSe` e `tpEnteGov` **não** são preenchidos sem dado confirmado; se o XSD exigir algum deles em um cenário, a DPS falha por `DPS_SCHEMA_VALIDATION_FAILED` em vez de ser preenchida por suposição.
 - `vTotTrib` (total aproximado de tributos) segue zerado para todos os regimes (comportamento herdado); `regApTribSN` segue `1` (tributos federais e municipais pelo Simples) por padrão e não é configurável por empresa.
 - A numeração DPS é reservada antes da montagem; quando o builder rejeita (layout/schema) o número fica consumido e associado à invoice, nunca devolvido à sequência.
