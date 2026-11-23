@@ -100,6 +100,7 @@ export class CreditsService {
     tenantId: string,
     amount: number,
     description: string,
+    metadata?: Record<string, unknown>,
   ): Promise<{ tenantId: string; balance: number }> {
     if (amount === 0) {
       throw new Error('grantBonus: amount must be non-zero');
@@ -111,12 +112,18 @@ export class CreditsService {
         type: 'bonus',
         source: 'bonus',
         description,
+        ...(metadata ? { metadata } : {}),
         createdAt: new Date(),
       },
       tenantId,
     );
     await this.cache.delete(this.getCacheKey(tenantId));
     return this.getBalance(tenantId);
+  }
+
+  /** Drops the cached balance (e.g. after a rollback left a stale value in it). */
+  async invalidateBalance(tenantId: string): Promise<void> {
+    await this.cache.delete(this.getCacheKey(tenantId));
   }
 
   async refundCredits(
