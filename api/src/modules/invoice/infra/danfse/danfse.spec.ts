@@ -75,6 +75,45 @@ describe('buildDanfseView', () => {
     expect(view.header.watermark).toBe('CANCELADA');
     expect(view.additionalInfo).toContain('Nota de teste');
   });
+
+  it('marks a substituted note with the SUBSTITUÍDA watermark and none when valid', () => {
+    expect(buildDanfseView(nfse, { status: 'replaced' }).header.watermark).toBe(
+      'SUBSTITUÍDA',
+    );
+    expect(buildDanfseView(nfse).header.watermark).toBeUndefined();
+  });
+
+  describe('Finalidade (finNFSe)', () => {
+    function finalidade(group: unknown): string {
+      const infDPS = nfse.infNFSe.DPS.infDPS;
+      const withGroup = {
+        ...nfse,
+        infNFSe: {
+          ...nfse.infNFSe,
+          DPS: { ...nfse.infNFSe.DPS, infDPS: { ...infDPS, IBSCBS: group } },
+        },
+      } as unknown as typeof nfse;
+      const cell = buildDanfseView(withGroup)
+        .identification.flat()
+        .find((c) => c.label === 'Finalidade');
+      return cell?.value ?? '';
+    }
+    const trib = { valores: { trib: { gIBSCBS: {} } } };
+
+    it('maps 0, 1 and 2 as the official generator does', () => {
+      expect(finalidade({ ...trib, finNFSe: '0' })).toBe('NFS-e regular');
+      expect(finalidade({ ...trib, finNFSe: '1' })).toBe(
+        'NFS-e de substituição',
+      );
+      expect(finalidade({ ...trib, finNFSe: 2 })).toBe('NFS-e de ajuste');
+    });
+
+    it('prints "-" when finNFSe is missing or unknown, or there is no IBS/CBS group', () => {
+      expect(finalidade({ ...trib })).toBe('-');
+      expect(finalidade({ ...trib, finNFSe: '7' })).toBe('-');
+      expect(finalidade(undefined)).toBe('-');
+    });
+  });
 });
 
 describe('generateDanfse', () => {

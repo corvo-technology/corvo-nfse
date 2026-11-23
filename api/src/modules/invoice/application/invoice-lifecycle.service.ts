@@ -24,6 +24,7 @@ import {
   type InvoiceStatus,
 } from '../domain/invoice-status';
 import { cancellationMessage } from './invoice-cancel.handler';
+import { InvoicePdfRefresher } from './invoice-pdf-refresher';
 import {
   INVOICE_REPOSITORY,
   INVOICE_EVENT_REPOSITORY,
@@ -72,6 +73,7 @@ export class InvoiceLifecycleService {
     private readonly credits: ICreditTransactionRepository,
     @Optional() private readonly eventBus?: ApplicationEventBus,
     @Optional() private readonly customerRecorder?: CustomerRecorder,
+    @Optional() private readonly pdfRefresher?: InvoicePdfRefresher,
   ) {}
 
   async submit(
@@ -300,8 +302,23 @@ export class InvoiceLifecycleService {
             reason: invoice.toSnapshot().lastErrorMessage ?? 'Rejeição fiscal',
           }),
         );
+      // Cancelled by any route (Corvo, portal, substitution): the stored PDF gets its mark.
+      if (applied && invoice.status === 'cancelled')
+        await this.requestPdfRefresh(invoice);
       return applied;
     });
+  }
+
+  /** Never undoes a cancellation, which is a fiscal fact: a failure only leaves the PDF unmarked. */
+  private async requestPdfRefresh(invoice: Invoice): Promise<void> {
+    try {
+      await this.pdfRefresher?.request(invoice);
+    } catch (error: unknown) {
+      this.logger.error(
+        { err: error, invoiceId: invoice.id },
+        'Could not ask for the cancelled invoice PDF to be redone',
+      );
+    }
   }
 
   /**

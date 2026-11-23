@@ -84,6 +84,12 @@ const SITUACAO: Record<string, string> = {
   '103': 'NFS-e Avulsa',
   '107': 'NFS-e MEI',
 };
+/** finNFSe, as the official generator (ReceitaFederal/calculadora-rtc-gerador-danfse) prints it. */
+const FINALIDADE: Record<string, string> = {
+  '0': 'NFS-e regular',
+  '1': 'NFS-e de substituição',
+  '2': 'NFS-e de ajuste',
+};
 const EMITENTE: Record<string, string> = {
   '1': 'Prestador',
   '2': 'Tomador',
@@ -678,7 +684,7 @@ export function buildDanfseView(
         cell('Situação da NFS-e', SITUACAO[info.cStat] ?? dash(info.cStat), 1, {
           caps: true,
         }),
-        cell('Finalidade', dps.IBSCBS ? 'NFS-e regular' : DASH, 2, {
+        cell('Finalidade', FINALIDADE[String(dps.IBSCBS?.finNFSe)] ?? DASH, 2, {
           caps: true,
         }),
       ],

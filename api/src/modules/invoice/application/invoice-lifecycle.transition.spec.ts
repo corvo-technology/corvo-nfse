@@ -57,6 +57,7 @@ function capturingRepository(persisted: Record<string, unknown>[]) {
 function build(
   stored: InvoiceStatus | Invoice,
   reservation: { id: string; amount: number } | null,
+  pdfRefresher?: { request: jest.Mock },
 ) {
   const order: string[] = [];
   const persisted: Record<string, unknown>[] = [];
@@ -112,6 +113,9 @@ function build(
     invoices as never,
     events as never,
     credits as never,
+    undefined,
+    undefined,
+    pdfRefresher as never,
   );
   return {
     service,
@@ -565,5 +569,69 @@ describe('InvoiceLifecycleService.transition — cancellation requested during e
         });
       },
     );
+  });
+});
+
+describe('InvoiceLifecycleService.transition — PDF of a cancelled invoice', () => {
+  const reason = cancellationReason(
+    'issue_error',
+    'Valor informado incorretamente',
+  );
+  const okRefresher = () => ({
+    request: jest.fn().mockResolvedValue(undefined),
+  });
+
+  it('asks for the PDF to be redone when a cancellation is confirmed', async () => {
+    const refresher = okRefresher();
+    const ctx = build('cancelling', null, refresher);
+    const invoice = invoiceIn('authorized', 'live');
+    invoice.requestCancellation(reason);
+    await ctx.service.transition(invoice, invoice.confirmCancellation());
+    expect(refresher.request).toHaveBeenCalledWith(invoice);
+  });
+
+  it('asks for it when the substitute authorization cancels the original', async () => {
+    const refresher = okRefresher();
+    const ctx = build('authorized', null, refresher);
+    const invoice = invoiceIn('authorized', 'live');
+    await ctx.service.transition(invoice, invoice.markSubstituted('sub-1'));
+    expect(refresher.request).toHaveBeenCalledWith(invoice);
+  });
+
+  it('asks for it when the portal reports the cancellation', async () => {
+    const refresher = okRefresher();
+    const ctx = build('authorized', null, refresher);
+    const invoice = invoiceIn('authorized', 'live');
+    await ctx.service.transition(invoice, invoice.markCancelledOnPortal(null));
+    expect(refresher.request).toHaveBeenCalledWith(invoice);
+  });
+
+  it('does not ask when the transition was already applied (retry)', async () => {
+    const refresher = okRefresher();
+    const ctx = build('cancelled', null, refresher);
+    const invoice = invoiceIn('authorized', 'live');
+    invoice.requestCancellation(reason);
+    await ctx.service.transition(invoice, invoice.confirmCancellation());
+    expect(refresher.request).not.toHaveBeenCalled();
+  });
+
+  it('does not ask for other transitions', async () => {
+    const refresher = okRefresher();
+    const ctx = build('authorized', null, refresher);
+    const invoice = invoiceIn('authorized', 'live');
+    await ctx.service.transition(invoice, invoice.requestCancellation(reason));
+    expect(refresher.request).not.toHaveBeenCalled();
+  });
+
+  it('never fails the cancellation when the request fails', async () => {
+    const refresher = {
+      request: jest.fn().mockRejectedValue(new Error('redis')),
+    };
+    const ctx = build('cancelling', null, refresher);
+    const invoice = invoiceIn('authorized', 'live');
+    invoice.requestCancellation(reason);
+    await expect(
+      ctx.service.transition(invoice, invoice.confirmCancellation()),
+    ).resolves.toBe(true);
   });
 });

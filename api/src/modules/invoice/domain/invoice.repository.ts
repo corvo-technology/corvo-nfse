@@ -33,6 +33,8 @@ export interface SaveInvoiceOptions {
 }
 
 export interface IInvoiceRepository {
+  /** True when a substitute NFS-e (one with an access key) replaces this invoice. */
+  hasSubstitute(originalId: string, tenantId: string): Promise<boolean>;
   findByAccessKeyAndTenantId(
     accessKey: string,
     tenantId: string,

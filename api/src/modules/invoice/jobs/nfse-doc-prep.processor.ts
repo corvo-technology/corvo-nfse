@@ -2,7 +2,8 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { parseNfseXml, Ambiente } from 'open-nfse';
-import { renderInvoicePdf } from '../infra/danfse/danfse';
+import { renderInvoicePdf, type DanfseOptions } from '../infra/danfse/danfse';
+import { REFRESH_PDF_JOB } from '../application/invoice-pdf-refresher';
 import type { LockPort } from '@/infra/redis/lock.port';
 import { LOCK_PORT } from '@/infra/redis/redis.constants';
 import {
@@ -53,6 +54,7 @@ export class NfseDocPrepProcessor extends WorkerHost {
   }
 
   async process(job: Job<NfseDocPrepJobData>): Promise<void> {
+    if (job.name === REFRESH_PDF_JOB) return this.refreshPdf(job.data);
     const { invoiceId, tenantId, companyId } = job.data;
     const lockKey = `nfse:doc-prep:${invoiceId}`;
 
@@ -104,36 +106,7 @@ export class NfseDocPrepProcessor extends WorkerHost {
           invoice.storageEnvironment,
         ))
       ) {
-        const xml = await this.documentStorage.getXml(
-          tenantId,
-          invoiceId,
-          invoice.storageEnvironment,
-        );
-        const nfse = parseNfseXml(xml);
-
-        const ambiente = mapTpAmbToAmbiente(nfse.infNFSe.DPS.infDPS.tpAmb);
-        const urlConsultaPublica =
-          ambiente === Ambiente.ProducaoRestrita
-            ? NFSE_PUBLIC_CONSULTATION_URL.restrictedProduction
-            : NFSE_PUBLIC_CONSULTATION_URL.production;
-
-        const isTest = invoice.environment === 'test';
-        const pdfBuffer = await renderInvoicePdf(
-          nfse,
-          {
-            ambiente,
-            urlConsultaPublica,
-            observacoes: isTest ? NFSE_TEST_DISCLAIMER : undefined,
-          },
-          { notes: isTest ? [NFSE_TEST_DISCLAIMER] : [] },
-        );
-
-        await this.documentStorage.savePdf(
-          tenantId,
-          invoiceId,
-          pdfBuffer,
-          invoice.storageEnvironment,
-        );
+        await this.renderAndSavePdf(invoice);
         this.logger.debug(`PDF generated and saved for invoice ${invoiceId}`);
       }
 
@@ -212,6 +185,96 @@ export class NfseDocPrepProcessor extends WorkerHost {
     } finally {
       await this.lockService.release(lock);
     }
+  }
+
+  /**
+   * Redoes the stored PDF of a cancelled invoice with its CANCELADA / SUBSTITUÍDA watermark.
+   * Safe to repeat (same input, same file, overwritten). It never creates a PDF that was not
+   * there: doc-prep does that, and it already draws the mark for a cancelled invoice.
+   */
+  private async refreshPdf(data: NfseDocPrepJobData): Promise<void> {
+    const { invoiceId, tenantId } = data;
+    const lock = await this.lockService.acquire(`nfse:doc-prep:${invoiceId}`, {
+      ttlMs: LOCK_TTL_MS,
+    });
+    if (!lock) {
+      // Throwing hands the job back to the queue's retries.
+      throw new Error(
+        `PDF refresh of ${invoiceId} is locked by another worker`,
+      );
+    }
+    try {
+      const invoice = await this.invoiceRepo.findByIdAndTenantId(
+        invoiceId,
+        tenantId,
+      );
+      if (!invoice || invoice.status !== 'cancelled' || !invoice.wasAuthorized)
+        return;
+      if (
+        !(await this.documentStorage.exists(
+          tenantId,
+          invoiceId,
+          'pdf',
+          invoice.storageEnvironment,
+        ))
+      ) {
+        // Documents are still being prepared: retry once the PDF exists. Once they were
+        // ready and there is no PDF, this invoice never had one: nothing to mark.
+        if (!invoice.documentsReadyAt)
+          throw new Error(`PDF of ${invoiceId} is still being prepared`);
+        return;
+      }
+      await this.renderAndSavePdf(invoice);
+      this.logger.log(`PDF of cancelled invoice ${invoiceId} marked`);
+    } catch (e: unknown) {
+      this.logger.error({ err: e, invoiceId }, 'nfse-pdf refresh failed');
+      throw e;
+    } finally {
+      await this.lockService.release(lock);
+    }
+  }
+
+  private async renderAndSavePdf(invoice: Invoice): Promise<void> {
+    const xml = await this.documentStorage.getXml(
+      invoice.tenantId,
+      invoice.id,
+      invoice.storageEnvironment,
+    );
+    const nfse = parseNfseXml(xml);
+
+    const ambiente = mapTpAmbToAmbiente(nfse.infNFSe.DPS.infDPS.tpAmb);
+    const urlConsultaPublica =
+      ambiente === Ambiente.ProducaoRestrita
+        ? NFSE_PUBLIC_CONSULTATION_URL.restrictedProduction
+        : NFSE_PUBLIC_CONSULTATION_URL.production;
+
+    const isTest = invoice.environment === 'test';
+    const status = await this.watermarkOf(invoice);
+    const pdfBuffer = await renderInvoicePdf(
+      nfse,
+      {
+        ambiente,
+        urlConsultaPublica,
+        observacoes: isTest ? NFSE_TEST_DISCLAIMER : undefined,
+      },
+      { notes: isTest ? [NFSE_TEST_DISCLAIMER] : [], status },
+    );
+    await this.documentStorage.savePdf(
+      invoice.tenantId,
+      invoice.id,
+      pdfBuffer,
+      invoice.storageEnvironment,
+    );
+  }
+
+  /** The mark of a cancelled invoice: SUBSTITUÍDA when a substitute replaced it, else CANCELADA. */
+  private async watermarkOf(
+    invoice: Invoice,
+  ): Promise<DanfseOptions['status']> {
+    if (invoice.status !== 'cancelled') return undefined;
+    return (await this.invoiceRepo.hasSubstitute(invoice.id, invoice.tenantId))
+      ? 'replaced'
+      : 'cancelled';
   }
 
   private async emitWebhook(
