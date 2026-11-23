@@ -1,0 +1,37 @@
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  Req,
+} from '@nestjs/common';
+import { PlatformUserDetailService } from '../application/platform-user-detail.service';
+import type { PlatformUserDetail } from '../platform-admin.contract';
+import {
+  PlatformAdminRoute,
+  type RequestWithPlatformAdmin,
+} from '../platform-admin.guard';
+
+/** Invalid ids are indistinguishable from unknown ones: 404 RESOURCE_NOT_FOUND. */
+export const ParsePlatformUserIdPipe = new ParseUUIDPipe({
+  exceptionFactory: () =>
+    new NotFoundException({
+      code: 'RESOURCE_NOT_FOUND',
+      message: 'Resource not found',
+    }),
+});
+
+@PlatformAdminRoute()
+@Controller('platform/users')
+export class PlatformUserDetailController {
+  constructor(private readonly service: PlatformUserDetailService) {}
+
+  @Get(':id')
+  async get(
+    @Req() req: RequestWithPlatformAdmin,
+    @Param('id', ParsePlatformUserIdPipe) id: string,
+  ): Promise<{ data: PlatformUserDetail }> {
+    return { data: await this.service.view(req.platformAdmin!, id) };
+  }
+}
