@@ -82,8 +82,9 @@ describe("layout de /app/admin", () => {
     expect(notFound).toHaveBeenCalled();
 
     fetchMock.mockResolvedValue(ok({ data: { isPlatformAdmin: true } }));
-    render(await AdminLayout({ children: <p>secret</p> }));
+    render(<NextIntlClientProvider locale="en" messages={messages}>{await AdminLayout({ children: <p>secret</p> })}</NextIntlClientProvider>);
     expect(screen.getByText("secret")).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: messages.Admin.navLabel })).toBeTruthy();
   });
 });
 

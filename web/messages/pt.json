@@ -115,7 +115,7 @@
       "aria": "Mapa de calor de notas autorizadas por dia",
       "periodTotal": "Total no período",
       "authorizedNotes": "Notas autorizadas",
-      "note": "{count, plural, one {# nota} other {# notas}}",
+      "note": "{count, plural, =1 {# nota} other {# notas}}",
       "average": "média",
       "pinned": "Fixado",
       "vsAverage": "vs. média diária",
@@ -3097,7 +3097,7 @@
       "fix": "Corrigir",
       "empty": "Nenhuma linha nesta lista.",
       "loadMore": "Carregar mais",
-      "emit": "Emitir {count, plural, one {# nota} other {# notas}}",
+      "emit": "Emitir {count, plural, =1 {# nota} other {# notas}}",
       "emitNone": "Nenhuma linha pronta para emitir",
       "sendEmail": "Enviar a nota por email ao tomador",
       "emitFailed": "Não foi possível iniciar a emissão.",
@@ -3193,7 +3193,7 @@
       "loadError": "Não foi possível carregar as importações.",
       "retry": "Tentar de novo",
       "pendingBanner": "{count, plural, one {# importação está aguardando créditos} other {# importações estão aguardando créditos}}",
-      "pendingHint": "{notes, plural, one {# nota} other {# notas}} esperando ({amount}). Recarregue e continue de onde parou."
+      "pendingHint": "{notes, plural, =1 {# nota} other {# notas}} esperando ({amount}). Recarregue e continue de onde parou."
     },
     "live": {
       "live": "Ao vivo",
@@ -3307,6 +3307,8 @@
     "link": "Ver a situação dos municípios"
   },
   "Admin": {
+    "title": "Admin",
+    "navLabel": "Seções do admin",
     "nav": {
       "overview": "Visão geral",
       "users": "Usuários",
@@ -3325,7 +3327,7 @@
       "unknown": "Sem dado"
     },
     "overview": {
-      "title": "Visão geral",
+      "title": "Admin",
       "users": "Usuários",
       "usersTotal": "Total de usuários",
       "usersNew7d": "Novos nos últimos 7 dias",
@@ -3344,9 +3346,9 @@
       "revenueTotal": "Total",
       "revenueNote": "Assinaturas no cartão entram na soma desde {date}.",
       "revenueNoteNone": "Ainda não há assinaturas no cartão registradas na soma.",
-      "adminGrants": "Notas dadas pelo admin",
-      "adminGrantsNote": "Notas dadas pelo admin. Não contam como receita.",
-      "units": "{count, plural, one {# nota} other {# notas}}"
+      "adminGrants": "Notas dadas de presente",
+      "adminGrantsNote": "Notas que você deu a usuários. Não contam como receita.",
+      "units": "{count, plural, =1 {# nota} other {# notas}}"
     },
     "users": {
       "title": "Usuários",
@@ -3360,8 +3362,10 @@
         "invoicesMonth": "Notas no mês",
         "avulsoBalance": "Saldo avulso",
         "companies": "Empresas",
-        "lastActivity": "Última atividade"
+        "lastActivity": "Última atividade",
+        "actions": "Ações"
       },
+      "giveNotes": "Dar notas",
       "noPlan": "Sem plano",
       "noResults": "Nenhum usuário encontrado."
     },
@@ -3415,11 +3419,11 @@
       "amountHint": "Número inteiro de 1 a 500.",
       "reason": "Motivo",
       "reasonHint": "Escreva de 5 a 500 caracteres. Fica guardado no histórico.",
-      "confirm": "Dar {amount, plural, one {# nota} other {# notas}} para {email}?",
+      "confirm": "Dar {amount, plural, =1 {# nota} other {# notas}} para {email}?",
       "submit": "Dar notas",
       "submitting": "Enviando...",
-      "success": "Pronto. O saldo agora é de {balance, plural, one {# nota} other {# notas}}.",
-      "successReplayed": "Este pedido já tinha sido feito. Nada foi repetido. O saldo é de {balance, plural, one {# nota} other {# notas}}.",
+      "success": "Pronto. O saldo agora é de {balance, plural, =1 {# nota} other {# notas}}.",
+      "successReplayed": "Este pedido já tinha sido feito. Nada foi repetido. O saldo é de {balance, plural, =1 {# nota} other {# notas}}.",
       "notify": "Avisar o usuário por e-mail",
       "cancel": "Cancelar",
       "back": "Voltar",
@@ -3435,7 +3439,7 @@
       "failingWebhooks": "Webhooks falhando nas últimas 24 horas",
       "failedPayments": "Pagamentos que falharam",
       "emptySection": "Nada para ver aqui.",
-      "failedCount": "{count, plural, one {# falha} other {# falhas}}",
+      "failedCount": "{count, plural, =1 {# falha} other {# falhas}}",
       "sourceIntent": "Pagamento",
       "sourceSubscription": "Assinatura",
       "validUntil": "Vence em {date}",

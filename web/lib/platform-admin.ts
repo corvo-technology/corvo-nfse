@@ -14,7 +14,10 @@ export interface PlatformOverview {
   adminGrants: { units7d: number; units30d: number };
 }
 export interface PlatformUserRow {
-  id: string; email: string; name: string; createdAt: string; planSlug: string | null;
+  id: string; email: string; name: string;
+  /** Workspace the row's plan and balance come from; null when the user has none. */
+  tenantId: string | null;
+  createdAt: string; planSlug: string | null;
   liveInvoicesThisMonth: number; avulsoBalance: number; companiesCount: number; lastActivityAt: string | null;
 }
 export interface PlatformWorkspace {

@@ -47,6 +47,31 @@ describe('PlatformUsersReadRepository.list', () => {
     expect(calls[0].params).toContain(51);
   });
 
+  it('devolve o tenantId do workspace da linha (ou null sem workspace)', async () => {
+    const base = {
+      email: 'a@example.com',
+      name: 'A',
+      created_at: new Date('2026-11-01T00:00:00Z'),
+      plan_slug: null,
+      live_invoices: '0',
+      avulso_balance: '0',
+      companies_count: '0',
+      last_activity_at: null,
+    };
+    const { session } = sessionWith([
+      [
+        { id: 'u-1', sort_key: '2026-11-01T00:00:00.000000Z' },
+        { id: 'u-2', sort_key: '2026-10-01T00:00:00.000000Z' },
+      ],
+      [
+        { ...base, id: 'u-1', tenant_id: 't-1' },
+        { ...base, id: 'u-2', tenant_id: null },
+      ],
+    ]);
+    const page = await new PlatformUsersReadRepository(session, ds).list({});
+    expect(page.data.map((r) => r.tenantId)).toEqual(['t-1', null]);
+  });
+
   it('cursor inválido responde 400 ERROR_INVALID_CURSOR', async () => {
     const { session } = sessionWith([[]]);
     await expect(

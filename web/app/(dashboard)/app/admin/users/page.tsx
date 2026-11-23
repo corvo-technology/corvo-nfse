@@ -7,6 +7,7 @@ import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, DataTableSkeleton, type Column } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { GrantCreditsButton } from "@/components/admin/grant-credits-button";
 import { Field } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { useBillingEnabled } from "@/lib/deployment-config-context";
@@ -28,6 +29,7 @@ export default function AdminUsersPage() {
 
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
+  const [revision, setRevision] = useState(0);
   const [rows, setRows] = useState<PlatformUserRow[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,7 +69,10 @@ export default function AdminUsersPage() {
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [term]);
+  }, [term, revision]);
+
+  // After a grant the list is loaded again so the row's balance is current.
+  const refresh = useCallback(() => setRevision((value) => value + 1), []);
 
   const loadMore = useCallback(async () => {
     const controller = controllerRef.current;
@@ -80,7 +85,7 @@ export default function AdminUsersPage() {
       setRows((current) => [...current, ...page.items]);
       setNextCursor(page.hasMore ? page.nextCursor : null);
     } catch (cause) { if (!controller.signal.aborted) setError(apiError(cause, tc("loadFailed"))); }
-    finally { if (!controller.signal.aborted) { loadingMoreRef.current = false; setLoadingMore(false); } }
+    finally { setLoadingMore(false); if (!controller.signal.aborted) loadingMoreRef.current = false; }
   }, [nextCursor, term, apiError, tc]);
 
   const date = (value: string | null) => (value ? formatDate(value, locale) : "—");
@@ -89,7 +94,7 @@ export default function AdminUsersPage() {
       id: "email", header: t("columns.email"), primary: true,
       cell: (u) => <Link href={`/app/admin/users/${u.id}`} className="font-medium text-text underline-offset-2 hover:underline">{u.email}</Link>,
     },
-    { id: "name", header: t("columns.name"), cell: (u) => <span className="text-text-2">{u.name}</span> },
+    { id: "name", header: t("columns.name"), cell: (u) => <Link href={`/app/admin/users/${u.id}`} className="text-text-2 underline-offset-2 hover:underline">{u.name}</Link> },
     { id: "signedUpAt", header: t("columns.signedUpAt"), hideOnMobile: true, cell: (u) => <span className="text-[13px] text-text-3">{date(u.createdAt)}</span> },
     ...(billingEnabled ? [{
       id: "plan", header: t("columns.plan"),
@@ -102,6 +107,12 @@ export default function AdminUsersPage() {
     }] : []),
     { id: "companies", header: t("columns.companies"), align: "right" as const, hideOnMobile: true, cell: (u) => <span className="tabular-nums">{u.companiesCount}</span> },
     { id: "lastActivity", header: t("columns.lastActivity"), hideOnMobile: true, cell: (u) => <span className="text-[13px] text-text-4">{date(u.lastActivityAt)}</span> },
+    ...(billingEnabled ? [{
+      id: "actions", header: t("columns.actions"), action: true,
+      cell: (u: PlatformUserRow) => u.tenantId
+        ? <GrantCreditsButton tenantId={u.tenantId} email={u.email} onGranted={refresh} label={t("giveNotes")} size="sm" />
+        : null,
+    }] : []),
   ];
 
   const empty = !loading && rows.length === 0;
