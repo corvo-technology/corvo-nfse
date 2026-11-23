@@ -216,6 +216,7 @@ const ACCOUNTANT_PACKAGE = {
     CustomerRecorder,
     InvoiceCalculationService,
     InvoiceLifecycleService,
+    InvoicePdfRefresher,
     InvoiceWebhookPublisher,
     InvoiceDomainService,
   ],
