@@ -1,3 +1,4 @@
+import type { DataSource } from 'typeorm';
 import type {
   PlatformQuery,
   PlatformReadSession,
@@ -8,6 +9,8 @@ import {
   searchDigits,
 } from './platform-users.read-repository';
 import { encodeCursor } from '@/shared/http/pagination';
+
+const ds = { options: { schema: 'corvo' } } as unknown as DataSource;
 
 function sessionWith(rows: unknown[][]) {
   const calls: Array<{ sql: string; params: readonly unknown[] }> = [];
@@ -31,7 +34,7 @@ describe('platform users read helpers', () => {
 describe('PlatformUsersReadRepository.list', () => {
   it('limit 1000 vira 50 na consulta', async () => {
     const { session, calls } = sessionWith([[]]);
-    const page = await new PlatformUsersReadRepository(session).list({
+    const page = await new PlatformUsersReadRepository(session, ds).list({
       limit: 1000,
     });
     expect(calls[0].params).toContain(51);
@@ -40,14 +43,14 @@ describe('PlatformUsersReadRepository.list', () => {
 
   it('sem limit usa 50', async () => {
     const { session, calls } = sessionWith([[]]);
-    await new PlatformUsersReadRepository(session).list({});
+    await new PlatformUsersReadRepository(session, ds).list({});
     expect(calls[0].params).toContain(51);
   });
 
   it('cursor inválido responde 400 ERROR_INVALID_CURSOR', async () => {
     const { session } = sessionWith([[]]);
     await expect(
-      new PlatformUsersReadRepository(session).list({
+      new PlatformUsersReadRepository(session, ds).list({
         limit: 10,
         cursor: 'nao-e-cursor',
       }),
@@ -63,13 +66,38 @@ describe('PlatformUsersReadRepository.list', () => {
       id: '11111111-1111-4111-8111-111111111111',
     });
     await expect(
-      new PlatformUsersReadRepository(session).list({ limit: 10, cursor }),
+      new PlatformUsersReadRepository(session, ds).list({ limit: 10, cursor }),
     ).rejects.toMatchObject({ response: { code: 'ERROR_INVALID_CURSOR' } });
+  });
+
+  it('cursor com id que não é uuid responde 400, não 500', async () => {
+    const { session } = sessionWith([[]]);
+    const cursor = encodeCursor({
+      v: 1,
+      scope: 'x',
+      sort: '2026-01-01T00:00:00.000000Z',
+      id: 'nao-uuid',
+    });
+    await expect(
+      new PlatformUsersReadRepository(session, ds).list({ limit: 10, cursor }),
+    ).rejects.toMatchObject({ response: { code: 'ERROR_INVALID_CURSOR' } });
+  });
+
+  it('qualifica as tabelas com o schema', async () => {
+    const { session, calls } = sessionWith([[{ id: 'u', sort_key: 's' }], []]);
+    await new PlatformUsersReadRepository(session, ds).list({ limit: 10 });
+    expect(calls[0].sql).toContain('"corvo"."auth_users"');
+    expect(calls[1].sql).not.toMatch(/(FROM|JOIN) (?!"corvo"\.|LATERAL)[a-z]/);
+  });
+
+  it('recusa schema inválido', () => {
+    const bad = { options: { schema: 'a;b' } } as unknown as DataSource;
+    expect(() => new PlatformUsersReadRepository({} as never, bad)).toThrow();
   });
 
   it('passa o termo escapado como parâmetro, nunca no SQL', async () => {
     const { session, calls } = sessionWith([[]]);
-    await new PlatformUsersReadRepository(session).list({
+    await new PlatformUsersReadRepository(session, ds).list({
       limit: 10,
       search: '50%_',
     });

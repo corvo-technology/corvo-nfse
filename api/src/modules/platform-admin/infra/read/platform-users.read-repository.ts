@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import {
   CursorPage,
   encodeCursor,
@@ -45,7 +47,25 @@ type DerivedRow = {
 
 @Injectable()
 export class PlatformUsersReadRepository {
-  constructor(private readonly session: PlatformReadSession) {}
+  private readonly schema: string;
+
+  constructor(
+    private readonly session: PlatformReadSession,
+    @InjectDataSource() dataSource: DataSource,
+  ) {
+    const options = dataSource.options;
+    const schema =
+      ('schema' in options && typeof options.schema === 'string'
+        ? options.schema
+        : undefined) ?? 'corvo';
+    if (!/^[a-z_][a-z0-9_]*$/i.test(schema))
+      throw new Error('Invalid PostgreSQL schema name');
+    this.schema = schema;
+  }
+
+  private t(name: string): string {
+    return `"${this.schema}"."${name}"`;
+  }
 
   async list(
     query: PlatformUsersListQuery,
@@ -78,7 +98,7 @@ export class PlatformUsersReadRepository {
         ];
         if (digits.length >= MIN_CNPJ_DIGITS)
           parts.push(
-            `EXISTS (SELECT 1 FROM tenant_memberships m JOIN nfse_companies c ON c.tenant_id = m.tenant_id
+            `EXISTS (SELECT 1 FROM ${this.t('tenant_memberships')} m JOIN ${this.t('nfse_companies')} c ON c.tenant_id = m.tenant_id
                WHERE m.auth_user_id = u.id AND c.deleted_at IS NULL
                  AND regexp_replace(c.tax_id, '\\D', '', 'g') LIKE ${bind(digits)} || '%')`,
           );
@@ -90,7 +110,7 @@ export class PlatformUsersReadRepository {
         );
       const pageRows = await q<PageRow>(
         `SELECT u.id, to_char(u.created_at AT TIME ZONE 'UTC', ${SORT_FORMAT}) AS sort_key
-           FROM auth_users u
+           FROM ${this.t('auth_users')} u
           ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
           ORDER BY u.created_at DESC, u.id DESC
           LIMIT ${bind(limit + 1)}`,
@@ -105,7 +125,10 @@ export class PlatformUsersReadRepository {
           nextCursor: null,
         });
 
-      const derived = await q<DerivedRow>(DERIVED_SQL, [page.map((r) => r.id)]);
+      const derived = await q<DerivedRow>(
+        derivedSql((n) => this.t(n)),
+        [page.map((r) => r.id)],
+      );
       const byId = new Map(derived.map((r) => [r.id, r]));
       const data = page.flatMap((row) => {
         const d = byId.get(row.id);
@@ -146,42 +169,42 @@ function present(d: DerivedRow): PlatformUserRow {
 
 // Workspace of a row: the user's own tenant (tenant id = user id); otherwise the
 // workspace where the user is the oldest admin. Only runs for the ids of the page.
-const DERIVED_SQL = `
+const derivedSql = (t: (name: string) => string) => `
 SELECT u.id, u.email, u.name, u.created_at,
        p.slug AS plan_slug,
        COALESCE(inv.live_count, 0) AS live_invoices,
        COALESCE(bal.balance, 0) AS avulso_balance,
        COALESCE(co.n, 0) AS companies_count,
        GREATEST(inv.last_at, k.last_at, mc.last_at, u.last_login_at) AS last_activity_at
-  FROM auth_users u
+  FROM ${t('auth_users')} u
   LEFT JOIN LATERAL (
     SELECT c.tid FROM (
-      SELECT t.id AS tid, 0 AS pri, t.created_at AS ord FROM tenants t WHERE t.id = u.id
+      SELECT t.id AS tid, 0 AS pri, t.created_at AS ord FROM ${t('tenants')} t WHERE t.id = u.id
       UNION ALL
-      SELECT m.tenant_id, 1, m.created_at FROM tenant_memberships m
+      SELECT m.tenant_id, 1, m.created_at FROM ${t('tenant_memberships')} m
        WHERE m.auth_user_id = u.id AND m.role = 'admin' AND m.is_active
     ) c ORDER BY c.pri, c.ord, c.tid LIMIT 1
   ) w ON true
-  LEFT JOIN tenants tn ON tn.id = w.tid
-  LEFT JOIN plans p ON p.id = tn.plan_id
+  LEFT JOIN ${t('tenants')} tn ON tn.id = w.tid
+  LEFT JOIN ${t('plans')} p ON p.id = tn.plan_id
   LEFT JOIN LATERAL (
     SELECT count(*) FILTER (
              WHERE i.environment = 'live' AND i.status = 'authorized'
-               AND i.created_at >= date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo'
+               AND i.authorized_at >= date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo'
            ) AS live_count,
            max(i.created_at) AS last_at
-      FROM nfse_invoices i WHERE i.tenant_id = w.tid
+      FROM ${t('nfse_invoices')} i WHERE i.tenant_id = w.tid
   ) inv ON true
   LEFT JOIN LATERAL (
-    SELECT sum(ct.amount) AS balance FROM credit_transactions ct WHERE ct.tenant_id = w.tid
+    SELECT sum(ct.amount) AS balance FROM ${t('credit_transactions')} ct WHERE ct.tenant_id = w.tid AND ct.source IN ('avulso', 'bonus')
   ) bal ON true
   LEFT JOIN LATERAL (
-    SELECT count(*) AS n FROM nfse_companies c WHERE c.tenant_id = w.tid AND c.deleted_at IS NULL
+    SELECT count(*) AS n FROM ${t('nfse_companies')} c WHERE c.tenant_id = w.tid AND c.deleted_at IS NULL
   ) co ON true
   LEFT JOIN LATERAL (
-    SELECT max(a.last_used_at) AS last_at FROM api_keys a WHERE a.tenant_id = w.tid
+    SELECT max(a.last_used_at) AS last_at FROM ${t('api_keys')} a WHERE a.tenant_id = w.tid
   ) k ON true
   LEFT JOIN LATERAL (
-    SELECT max(m.last_used_at) AS last_at FROM mcp_connections m WHERE m.tenant_id = w.tid
+    SELECT max(m.last_used_at) AS last_at FROM ${t('mcp_connections')} m WHERE m.tenant_id = w.tid
   ) mc ON true
  WHERE u.id = ANY($1::uuid[])`;

@@ -67,8 +67,8 @@ describePostgres('PlatformUsersReadRepository (PostgreSQL)', () => {
   ): Promise<void> {
     await admin.query(
       `INSERT INTO ${table('nfse_invoices')}
-         (id,tenant_id,company_id,environment,status,customer_snapshot,service_snapshot,tax_snapshot,amount,competence_date,created_at)
-       VALUES ($1,$2,$3,$4,$5,'{}','{}','{}',10,'2026-11-01',$6)`,
+         (id,tenant_id,company_id,environment,status,customer_snapshot,service_snapshot,tax_snapshot,amount,competence_date,created_at,authorized_at)
+       VALUES ($1,$2,$3,$4,$5,'{}','{}','{}',10,'2026-11-01',$6,$6)`,
       [randomUUID(), tenantId, companyId, environment, status, createdAt],
     );
   }
@@ -84,7 +84,6 @@ describePostgres('PlatformUsersReadRepository (PostgreSQL)', () => {
     await admin.query(
       `CREATE ROLE "${role}" LOGIN PASSWORD '${password}' NOSUPERUSER NOBYPASSRLS NOINHERIT`,
     );
-    await admin.query(`ALTER ROLE "${role}" SET search_path = "${schema}"`);
     const [owner]: Array<{ role: string }> = await admin.query(
       'SELECT current_user AS role',
     );
@@ -120,7 +119,10 @@ describePostgres('PlatformUsersReadRepository (PostgreSQL)', () => {
     await runtime.initialize();
     installRlsConnectionScope(runtime);
     await new RlsConnectionScopeService(runtime).onModuleInit();
-    repo = new PlatformUsersReadRepository(new PlatformReadSession(runtime));
+    repo = new PlatformUsersReadRepository(
+      new PlatformReadSession(runtime),
+      runtime,
+    );
   }, 180000);
 
   afterAll(async () => {
@@ -244,15 +246,36 @@ describePostgres('PlatformUsersReadRepository (PostgreSQL)', () => {
     await addInvoice(u, testCompany, now, 'authorized', 'test');
     await addInvoice(u, company, '2020-01-01T00:00:00Z');
     await admin.query(
-      `INSERT INTO ${table('credit_transactions')} (id,tenant_id,amount,type) VALUES ($1,$2,7,'bonus'),($3,$2,-2,'usage')`,
-      [randomUUID(), u, randomUUID()],
+      `INSERT INTO ${table('credit_transactions')} (id,tenant_id,amount,type,source) VALUES
+       ($1,$2,7,'bonus','bonus'),($3,$2,3,'purchase','avulso'),($4,$2,100,'plan_grant','subscription'),($5,$2,50,'usage',NULL)`,
+      [randomUUID(), u, randomUUID(), randomUUID(), randomUUID()],
     );
     const [row] = (await repo.list({ limit: 50 })).data;
     expect(row).toMatchObject({
       planSlug: plan.slug,
       liveInvoicesThisMonth: 1,
-      avulsoBalance: 5,
+      avulsoBalance: 10,
       companiesCount: 2,
     });
+  });
+
+  it('sem tenant próprio usa o workspace onde é admin', async () => {
+    const shared = randomUUID();
+    await admin.query(`INSERT INTO ${table('tenants')} (id) VALUES ($1)`, [
+      shared,
+    ]);
+    const orphan = randomUUID();
+    await admin.query(
+      `INSERT INTO ${table('auth_users')} (id,email,name,created_at) VALUES ($1,'o@example.com','O','2026-11-02T10:00:00Z')`,
+      [orphan],
+    );
+    await admin.query(
+      `INSERT INTO ${table('tenant_memberships')} (auth_user_id,tenant_id,role) VALUES ($1,$2,'admin')`,
+      [orphan, shared],
+    );
+    await addCompany(shared, '11111111000111');
+    const [row] = (await repo.list({ limit: 50 })).data;
+    expect(row.id).toBe(orphan);
+    expect(row.companiesCount).toBe(1);
   });
 });
