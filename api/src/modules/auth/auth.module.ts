@@ -1,3 +1,7 @@
+import {
+  DEPLOYMENT_MODE,
+  deploymentModeFromEnv,
+} from '@/shared/deployment-mode';
 import { IWorkspaceRepository } from './domain/workspace.repository';
 import { TypeOrmWorkspaceRepository } from './infra/typeorm-workspace.repository';
 import { HttpApiRateLimitGuard } from '@/shared/http/rate-limit.guard';
@@ -109,6 +113,7 @@ import { AuthOauthModule } from './auth-oauth.module';
     // NEW: identity & magic-link providers
     MagicLinkService,
     PasswordlessWorkspaceService,
+    { provide: DEPLOYMENT_MODE, useValue: deploymentModeFromEnv() },
     { provide: IWorkspaceRepository, useClass: TypeOrmWorkspaceRepository },
     AuthIdentityService,
     TypeOrmAuthIdentityRepository,

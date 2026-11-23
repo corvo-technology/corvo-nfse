@@ -3,7 +3,8 @@ import { IPlanRepository } from '../domain/plan.repository';
 import { CreatePlanInput, Plan, PlanSlug } from '../domain/plan';
 import { Logger } from '@nestjs/common';
 
-const SEED_DATA: Record<PlanSlug, CreatePlanInput> = {
+/** `self-hosted` is created by a migration, never seeded: cloud has no such plan to show. */
+const SEED_DATA: Record<Exclude<PlanSlug, 'self-hosted'>, CreatePlanInput> = {
   free: {
     slug: 'free',
     name: 'Sem plano',
@@ -100,7 +101,7 @@ export class PlanSeederService implements OnApplicationBootstrap {
   async seedIfMissing(): Promise<void> {
     this.logger.log('Seeding plans if missing...');
 
-    const planSlugs = Object.keys(SEED_DATA) as PlanSlug[];
+    const planSlugs = Object.keys(SEED_DATA) as Array<keyof typeof SEED_DATA>;
 
     for (const slug of planSlugs) {
       const existing = await this.planRepo.findBySlug(slug);

@@ -12,7 +12,7 @@ const user: AuthUser = {
   createdAt: new Date(),
   updatedAt: new Date(),
 };
-function build() {
+function build(mode: 'cloud' | 'self_hosted' = 'cloud') {
   let active = false;
   const unitOfWork = {
     execute: jest.fn(async (work: () => Promise<void>) => {
@@ -30,19 +30,37 @@ function build() {
     }),
     memberships: jest.fn().mockResolvedValue([]),
     freePlanId: jest.fn().mockResolvedValue('free-plan'),
+    selfHostedPlanId: jest.fn().mockResolvedValue('self-hosted-plan'),
     claimFirstFreeNote: jest.fn().mockResolvedValue(true),
     create: jest.fn(async () => {
       expect(active).toBe(true);
     }),
   };
   return {
-    service: new PasswordlessWorkspaceService(unitOfWork as never, workspaces),
+    service: new PasswordlessWorkspaceService(
+      unitOfWork as never,
+      workspaces,
+      mode,
+    ),
     unitOfWork,
     workspaces,
   };
 }
 
 describe('PasswordlessWorkspaceService', () => {
+  it('assigns the self-hosted plan and no free note in self_hosted', async () => {
+    const f = build('self_hosted');
+    await f.service.ensureWorkspace(user);
+    expect(f.workspaces.freePlanId).not.toHaveBeenCalled();
+    expect(f.workspaces.claimFirstFreeNote).not.toHaveBeenCalled();
+    expect(f.workspaces.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        planId: 'self-hosted-plan',
+        grantFirstFreeNote: false,
+      }),
+    );
+  });
+
   it('creates the initial workspace inside the locked transaction', async () => {
     const f = build();
     await f.service.ensureWorkspace(user);

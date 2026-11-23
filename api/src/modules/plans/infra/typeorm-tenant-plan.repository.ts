@@ -39,6 +39,18 @@ export class TypeOrmTenantPlanRepository implements ITenantPlanRepository {
     });
   }
 
+  async moveAllTenantsTo(planId: string): Promise<number> {
+    return runAsSystem('workspace-bootstrap', async () => {
+      const result = await this.tenants
+        .createQueryBuilder()
+        .update()
+        .set({ planId })
+        .where('plan_id IS DISTINCT FROM :planId', { planId })
+        .execute();
+      return result.affected ?? 0;
+    });
+  }
+
   async save(
     assignment: TenantPlanAssignment,
     tenantId: string,

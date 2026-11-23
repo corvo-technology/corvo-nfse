@@ -20,6 +20,8 @@ export abstract class IWorkspaceRepository {
     userId: string,
   ): Promise<Array<{ isActive: boolean; tenantId: string }>>;
   abstract freePlanId(): Promise<string>;
+  /** The single plan of a self-hosted instance. */
+  abstract selfHostedPlanId(): Promise<string>;
   /** Atomically claims the one-time free note for this person; false if already claimed. */
   abstract claimFirstFreeNote(
     emailKey: string,

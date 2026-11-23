@@ -2,7 +2,8 @@ import { randomUUID } from 'crypto';
 
 /** `free` is the internal "no plan" placeholder (0 notes, not purchasable). */
 export type PaidPlanSlug = 'solo' | 'equipe' | 'empresa' | 'escala';
-export type PlanSlug = 'free' | PaidPlanSlug;
+/** `self-hosted` is the single plan of a self-hosted instance: it exists for the link, not for limits. */
+export type PlanSlug = 'free' | 'self-hosted' | PaidPlanSlug;
 
 export type SupportTier = 'community' | 'email' | 'priority';
 export type BillingCycle = 'monthly' | 'annual';

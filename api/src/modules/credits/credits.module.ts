@@ -7,6 +7,8 @@ import { TypeOrmCreditTransactionRepository } from './infra/typeorm-credit-trans
 import { ICreditTransactionRepository } from './domain/credit-transaction.repository';
 import { CreditsService } from './application/credits.service';
 import { CreditsController } from './http/credits.controller';
+import { NoopCreditTransactionRepository } from './infra/noop-credit-transaction.repository';
+import { IS_SELF_HOSTED } from '@/shared/deployment-mode';
 import { PlansModule } from '@/modules/plans/plans.module';
 
 @Module({
@@ -16,11 +18,13 @@ import { PlansModule } from '@/modules/plans/plans.module';
     AppRedisModule,
     forwardRef(() => PlansModule),
   ],
-  controllers: [CreditsController],
+  controllers: IS_SELF_HOSTED ? [] : [CreditsController],
   providers: [
     {
       provide: ICreditTransactionRepository,
-      useClass: TypeOrmCreditTransactionRepository,
+      useClass: IS_SELF_HOSTED
+        ? NoopCreditTransactionRepository
+        : TypeOrmCreditTransactionRepository,
     },
     CreditsService,
   ],

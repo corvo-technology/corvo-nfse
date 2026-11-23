@@ -12,6 +12,9 @@ import { TypeOrmTenantPlanRepository } from './infra/typeorm-tenant-plan.reposit
 import { TENANT_PLAN_REPOSITORY } from './domain/tenant-plan-assignment';
 import { TenantPlanService } from './application/tenant-plan.service';
 import { QuotaService } from './application/quota.service';
+import { UnlimitedQuotaService } from './application/unlimited-quota.service';
+import { SelfHostedPlanAssigner } from './application/self-hosted-plan-assigner.service';
+import { IS_SELF_HOSTED } from '@/shared/deployment-mode';
 import { FreeAbuseChecker } from './application/free-abuse-checker.service';
 import { CompanyOrmEntity } from '@/modules/company/infra/company.orm-entity';
 import { ICompanyRepository } from '@/modules/company/domain/company.repository';
@@ -47,9 +50,12 @@ import { SecurityModule } from '@/modules/security/security.module';
     PricingService,
     PlanSeederService,
     TenantPlanService,
-    QuotaService,
-    FreeAbuseChecker,
+    // self_hosted swaps the implementation behind the same token; cloud is unchanged.
+    IS_SELF_HOSTED
+      ? { provide: QuotaService, useClass: UnlimitedQuotaService }
+      : QuotaService,
     RedisRateLimiter,
+    ...(IS_SELF_HOSTED ? [SelfHostedPlanAssigner] : [FreeAbuseChecker]),
   ],
   exports: [
     IPlanRepository,
@@ -57,7 +63,7 @@ import { SecurityModule } from '@/modules/security/security.module';
     PricingService,
     TenantPlanService,
     QuotaService,
-    FreeAbuseChecker,
+    ...(IS_SELF_HOSTED ? [] : [FreeAbuseChecker]),
   ],
 })
 export class PlansModule {}

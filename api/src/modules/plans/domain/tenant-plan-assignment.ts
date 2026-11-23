@@ -69,6 +69,8 @@ export interface ITenantPlanRepository {
     assignment: TenantPlanAssignment,
     tenantId: string,
   ): Promise<TenantPlanAssignment>;
+  /** Links every tenant not yet on `planId` to it; returns how many moved. Instance-wide, system scope. */
+  moveAllTenantsTo(planId: string): Promise<number>;
   updatePeriod(tenantId: string, start: Date, end: Date): Promise<void>;
   scheduleDowngrade(tenantId: string, newPlanId: string | null): Promise<void>;
   findExpiredAssignments(
