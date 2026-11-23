@@ -196,7 +196,7 @@ export interface InvoiceOverview {
   recentInvoices: Invoice[];
 }
 type InvoiceBody = InvoiceWire;
-type EventWire = { id: string; invoiceId: string; fromStatus: InvoiceStatus | null; toStatus: InvoiceStatus; createdAt: string; reason: string | null };
+type EventWire = { id: string; invoiceId: string; fromStatus: InvoiceStatus | null; toStatus: InvoiceStatus; createdAt: string; reason: string | null; source?: "portal" | null; portalEvent?: string | null };
 export type ReviewAction = "retry" | "discard";
 export type ReviewOutcome =
   | { id: string; outcome: "accepted" }
@@ -232,7 +232,7 @@ export const invoices = {
   cancel: async (id: string, data: { reason: CancellationReasonCode; description?: string }) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}/cancel`, json(data)))),
   xml: (id: string) => request<Blob>(`/invoices/${idPath(id)}/xml`, {}, true),
   pdf: (id: string) => request<Blob>(`/invoices/${idPath(id)}/pdf`, {}, true),
-  events: async (id: string, params: PageParams = {}, signal?: AbortSignal): Promise<Page<InvoiceEvent>> => { const page = toPage(await request<ListBody<EventWire>>(`/invoices/${idPath(id)}/events${query(params)}`, { signal })); return { ...page, items: page.items.map((event) => ({ id: event.id, invoiceId: event.invoiceId, from: event.fromStatus, to: event.toStatus, at: event.createdAt, reason: event.reason } satisfies InvoiceEvent)) }; },
+  events: async (id: string, params: PageParams = {}, signal?: AbortSignal): Promise<Page<InvoiceEvent>> => { const page = toPage(await request<ListBody<EventWire>>(`/invoices/${idPath(id)}/events${query(params)}`, { signal })); return { ...page, items: page.items.map((event) => ({ id: event.id, invoiceId: event.invoiceId, from: event.fromStatus, to: event.toStatus, at: event.createdAt, reason: event.reason, source: event.source ?? null, portalEvent: event.portalEvent ?? null } satisfies InvoiceEvent)) }; },
   downloadUrl: async (id: string, format: "pdf" | "xml") => (await request<Envelope<{ downloadUrl: string; expiresAt: string; fileName: string; mimeType: string }>>(`/invoices/${idPath(id)}/download-url`, json({ format }))).data,
   /** Resolves invoices in manual review; sent in chunks of up to 100 (the API limit). */
   review: async (action: ReviewAction, invoiceIds: string[]): Promise<ReviewOutcome[]> => {

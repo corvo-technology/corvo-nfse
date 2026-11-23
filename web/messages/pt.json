@@ -376,6 +376,10 @@
           "cancellation_rejected": {
             "label": "Cancelamento recusado",
             "description": "A Sefin recusou o cancelamento; a nota continua autorizada."
+          },
+          "taker_rejected": {
+            "label": "Rejeição do tomador",
+            "description": "O tomador rejeitou a nota no portal nacional; a nota continua autorizada."
           }
         }
       }
@@ -1332,6 +1336,10 @@
       "title": "Mais opções",
       "hint": "Código, dedução, pedido, observações, referência e repetição",
       "filled": "{count, plural, one {# preenchida} other {# preenchidas}}"
+    },
+    "portalFlag": {
+      "taker_rejected": "Tomador rejeitou",
+      "blocked": "Bloqueada pelo município"
     }
   },
   "Billing": {
@@ -1824,7 +1832,30 @@
       "keep": "Manter como está",
       "confirm": "Substituir nota",
       "failed": "Não foi possível substituir a nota."
-    }
+    },
+    "portalFlag": {
+      "taker_rejected": "Tomador rejeitou",
+      "blocked": "Bloqueada pelo município"
+    },
+    "portalFlagHint": {
+      "taker_rejected": "O tomador rejeitou esta nota no portal nacional. Ela continua autorizada.",
+      "blocked": "O município bloqueou esta nota por ofício. Ela continua autorizada."
+    },
+    "portalEvent": {
+      "CANCELAMENTO": "Cancelada no portal nacional",
+      "CANCELAMENTO_POR_SUBSTITUICAO": "Cancelada por substituição no portal nacional",
+      "CANCELAMENTO_DEFERIDO_ANALISE_FISCAL": "Cancelamento deferido pela análise fiscal",
+      "CANCELAMENTO_POR_OFICIO": "Cancelada por ofício pelo município",
+      "REJEICAO_TOMADOR": "O tomador rejeitou a nota",
+      "REJEICAO_INTERMEDIARIO": "O intermediário rejeitou a nota",
+      "BLOQUEIO_POR_OFICIO": "Bloqueada pelo município",
+      "DESBLOQUEIO_POR_OFICIO": "Desbloqueada pelo município",
+      "CONFIRMACAO_TOMADOR": "O tomador confirmou a nota",
+      "CONFIRMACAO_TACITA": "Confirmação tácita do tomador",
+      "ANULACAO_REJEICAO": "Rejeição anulada",
+      "other": "Registrado no portal nacional"
+    },
+    "portalSource": "Portal nacional"
   },
   "FiscalDocs": {
     "title": "API Corvo — NFS-e",

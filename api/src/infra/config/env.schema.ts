@@ -274,6 +274,9 @@ export const envSchema = z
       .min(10_000)
       .default(300_000),
     NFSE_UNCERTAIN_MAX_HOURS: z.coerce.number().int().min(1).max(72).default(6),
+    // Reads what happened to issued invoices on the national portal (cancellations, taker rejections).
+    // Off by default: turn it on in live only after a round against the Produção Restrita was checked.
+    PORTAL_SYNC_ENABLED: booleanFromEnv.default(false),
     OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
     OUTBOX_BATCH_SIZE: z.coerce.number().int().positive().default(50),
     OUTBOX_LEASE_MS: z.coerce.number().int().positive().default(120000),

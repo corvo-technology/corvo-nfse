@@ -9,6 +9,9 @@ import {
   accountantPackageFailedEmail,
   apiKeyCreatedEmail,
   certificateExpiringEmail,
+  invoiceBlockedOnPortalEmail,
+  invoiceCancelledOnPortalEmail,
+  invoiceRejectedByTakerEmail,
   creditsAddedEmail,
   creditsExhaustedEmail,
   memberInvitedEmail,
@@ -155,6 +158,45 @@ export class AccountNoticeListener {
           companyName: notice.companyName,
           monthLabel: monthLabel(notice.month),
           companyUrl: this.page(`companies/${notice.companyId}`),
+        });
+        to = await this.recipients.emailsFor(tenantId);
+        break;
+      }
+      case 'invoice-cancelled-on-portal': {
+        if (
+          !(await this.once(
+            `portal:cancelled:${notice.invoiceId}`,
+            30 * DAY_MS,
+          ))
+        )
+          return;
+        message = invoiceCancelledOnPortalEmail({
+          nfseNumber: notice.nfseNumber,
+          reason: notice.reason,
+          invoiceUrl: this.page(`invoices/${notice.invoiceId}`),
+        });
+        to = await this.recipients.emailsFor(tenantId);
+        break;
+      }
+      case 'invoice-rejected-by-taker': {
+        if (!(await this.once(`portal:taker:${notice.invoiceId}`, 30 * DAY_MS)))
+          return;
+        message = invoiceRejectedByTakerEmail({
+          nfseNumber: notice.nfseNumber,
+          reason: notice.reason,
+          invoiceUrl: this.page(`invoices/${notice.invoiceId}`),
+        });
+        to = await this.recipients.emailsFor(tenantId);
+        break;
+      }
+      case 'invoice-blocked-on-portal': {
+        if (
+          !(await this.once(`portal:blocked:${notice.invoiceId}`, 30 * DAY_MS))
+        )
+          return;
+        message = invoiceBlockedOnPortalEmail({
+          nfseNumber: notice.nfseNumber,
+          invoiceUrl: this.page(`invoices/${notice.invoiceId}`),
         });
         to = await this.recipients.emailsFor(tenantId);
         break;

@@ -45,6 +45,8 @@ import { ImportModule } from '@/modules/import/import.module';
 import { ImportCleanupCron } from '@/modules/import/jobs/import-cleanup.cron';
 import { ImportEmitProcessor } from '@/modules/import/jobs/import-emit.processor';
 import { ImportReadProcessor } from '@/modules/import/jobs/import-read.processor';
+import { PortalSyncModule } from '@/modules/portal-sync/portal-sync.module';
+import { PortalSyncScheduler } from '@/modules/portal-sync/jobs/portal-sync.scheduler';
 import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
 
 @Module({
@@ -74,6 +76,7 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     EmailExternalModule,
     EmailModule,
     ImportModule,
+    PortalSyncModule,
   ],
   providers: [
     EventProcessorScheduler,
@@ -100,6 +103,7 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     ImportReadProcessor,
     ImportEmitProcessor,
     ImportCleanupCron,
+    PortalSyncScheduler,
   ],
 })
 export class WorkerAppModule {}
