@@ -184,6 +184,19 @@ describe('strategies', () => {
     });
   });
 
+  it('Simples com opção pelo regime regular: véspera (31/12/2026) sem IBS/CBS, dia 01/01/2027 com IBS/CBS', () => {
+    const regular = {
+      taxRegime: 'SIMPLES_NACIONAL' as const,
+      ibsCbsRegularOption: true,
+      ibsCbsRegularFrom: '2026-09-01',
+    };
+    const eve = plan(regular, { competenceDate: '2026-12-31' });
+    const day = plan(regular, { competenceDate: '2027-01-01' });
+    expect(eve.ok && eve.value.cbs.status).toBe('NOT_APPLICABLE');
+    expect(day.ok && day.value.cbs.status).toBe('REQUIRED');
+    expect(day.ok && day.value.ibs.status).toBe('REQUIRED');
+  });
+
   it('Simples ISS withholding required without simplesIssRate: MISSING_CONFIGURATION', () => {
     const r = plan(
       { taxRegime: 'SIMPLES_NACIONAL', simplesIssRate: null },

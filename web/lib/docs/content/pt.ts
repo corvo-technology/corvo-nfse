@@ -1021,9 +1021,9 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
     "calculation": {
       "source": "none",
       "calculatorVersion": null,
-      "rulesVersion": "2026.10-r1",
+      "rulesVersion": "2026.11-r1",
       "legalReferences": [
-        "Ato Conjunto RFB/CGIBS nº 4/2026; orientação CGNFS-e de 07/08/2026"
+        "Ato Conjunto RFB/CGIBS nº 4/2026, alterado pelo nº 7/2026; orientação CGNFS-e de 07/08/2026"
       ]
     },
     "warnings": [

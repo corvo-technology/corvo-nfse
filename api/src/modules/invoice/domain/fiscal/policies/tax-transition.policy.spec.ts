@@ -4,8 +4,8 @@ import { RULES_VERSION, TAX_RULES } from './rules';
 describe('TaxTransitionPolicy', () => {
   it('constructs from TAX_RULES and exposes the version', () => {
     const policy = new TaxTransitionPolicy();
-    expect(policy.rulesVersion).toBe('2026.10-r1');
-    expect(RULES_VERSION).toBe('2026.10-r1');
+    expect(policy.rulesVersion).toBe('2026.11-r1');
+    expect(RULES_VERSION).toBe('2026.11-r1');
   });
 
   it('selects the 2026 test-phase rule on dates inside its validity', () => {
@@ -53,9 +53,11 @@ describe('TaxTransitionPolicy', () => {
     expect(onGeneral.phase).toBe('REQUIRED');
     expect(onGeneral.toleratedBySefin).toBe(true);
 
-    const onSpecific = policy.ibsCbsInformation('999999', '2026-12-01');
-    expect(onSpecific.phase).toBe('REQUIRED');
-    expect(onSpecific.toleratedBySefin).toBe(true);
+    // Ato Conjunto nº 7/2026: o 01/12/2026 deixou de ser uma data do ato, e a
+    // regra geral (alínea "d") continua valendo para códigos fora da lista.
+    const onFormerDate = policy.ibsCbsInformation('999999', '2026-12-01');
+    expect(onFormerDate.phase).toBe('REQUIRED');
+    expect(onFormerDate.toleratedBySefin).toBe(true);
 
     const afterTolerance = policy.ibsCbsInformation('060101', '2027-01-01');
     expect(afterTolerance.phase).toBe('REQUIRED');
@@ -67,7 +69,7 @@ describe('TaxTransitionPolicy', () => {
     const result = policy.select('nfse.ibscbs-information', '2026-10-01');
     if (!result.ok) throw new Error(result.error.message);
     expect(result.value.parameters.generalFrom).toBe('2026-10-01');
-    expect(result.value.parameters.specificCategoriesFrom).toBe('2026-12-01');
+    expect(result.value.parameters.specificCategoriesFrom).toBe('2027-03-01');
   });
 
   it('keeps Simples IBS/CBS effective from 2027-01-01', () => {
@@ -77,5 +79,67 @@ describe('TaxTransitionPolicy', () => {
     const result = policy.select('simples.ibscbs-effective', '2027-01-01');
     if (!result.ok) throw new Error(result.error.message);
     expect(result.value.parameters.effectiveFrom).toBe('2027-01-01');
+  });
+
+  describe('datas do Ato Conjunto RFB/CGIBS nº 7/2026', () => {
+    const parameters = () => {
+      const result = new TaxTransitionPolicy().select(
+        'nfse.ibscbs-information',
+        '2026-11-23',
+      );
+      if (!result.ok) throw new Error(result.error.message);
+      return result.value.parameters;
+    };
+
+    it('mantém a regra geral em 01/10/2026 e põe as categorias específicas em 01/03/2027', () => {
+      expect(parameters().generalFrom).toBe('2026-10-01');
+      expect(parameters().specificCategoriesFrom).toBe('2027-03-01');
+    });
+
+    it('regra geral: não exigida na véspera e exigida no dia 01/10/2026', () => {
+      const policy = new TaxTransitionPolicy();
+      expect(policy.ibsCbsInformation('999999', '2026-09-30').phase).toBe(
+        'NOT_YET_REQUIRED',
+      );
+      expect(policy.ibsCbsInformation('999999', '2026-10-01').phase).toBe(
+        'REQUIRED',
+      );
+    });
+
+    it('categoria específica: não exigida em 28/02/2027 e exigida em 01/03/2027', () => {
+      const [base] = TAX_RULES.filter(
+        (r) => r.ruleKey === 'nfse.ibscbs-information',
+      );
+      if (base.ruleKey !== 'nfse.ibscbs-information')
+        throw new Error('regra inesperada');
+      const policy = new TaxTransitionPolicy([
+        {
+          ...base,
+          parameters: {
+            ...base.parameters,
+            specificCategoryServiceCodes: ['010301'],
+          },
+        },
+      ]);
+      expect(policy.ibsCbsInformation('010301', '2027-02-28').phase).toBe(
+        'NOT_YET_REQUIRED',
+      );
+      expect(policy.ibsCbsInformation('010301', '2027-03-01').phase).toBe(
+        'REQUIRED',
+      );
+      expect(policy.ibsCbsInformation('999999', '2027-02-28').phase).toBe(
+        'REQUIRED',
+      );
+    });
+
+    it('Simples: efeitos em 01/01/2027, na véspera ainda não', () => {
+      const policy = new TaxTransitionPolicy();
+      const eve = policy.select('simples.ibscbs-effective', '2026-12-31');
+      const day = policy.select('simples.ibscbs-effective', '2027-01-01');
+      if (!eve.ok || !day.ok) throw new Error('regra ausente');
+      expect(eve.value.parameters.effectiveFrom).toBe('2027-01-01');
+      expect('2026-12-31' >= eve.value.parameters.effectiveFrom).toBe(false);
+      expect('2027-01-01' >= day.value.parameters.effectiveFrom).toBe(true);
+    });
   });
 });

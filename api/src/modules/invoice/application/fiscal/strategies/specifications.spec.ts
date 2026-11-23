@@ -190,36 +190,37 @@ describe('requiresIbsCbs', () => {
       ruleKey: 'nfse.ibscbs-information',
       validFrom: '2026-10-01',
       validUntil: null,
-      legalReference: 'Ato Conjunto RFB/CGIBS nº 4/2026',
+      legalReference:
+        'Ato Conjunto RFB/CGIBS nº 4/2026, alterado pelo nº 7/2026',
       sourceUrl:
         'https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/rtc',
       status: 'published',
       parameters: {
         generalFrom: '2026-10-01',
-        specificCategoriesFrom: '2026-12-01',
+        specificCategoriesFrom: '2027-03-01',
         sefinToleranceUntil: '2026-12-31',
         specificCategoryServiceCodes: ['666666'],
       },
     };
     const custom = new TaxTransitionPolicy([specificRule]);
-    expect(
-      requiresIbsCbs({
-        competenceDate: '2026-11-15',
-        serviceCode: '666666',
-        policy: custom,
-      }),
-    ).toMatchObject({ satisfied: false });
+    // Ato Conjunto nº 7/2026: categorias específicas a partir de 01/03/2027.
+    for (const [date, satisfied] of [
+      ['2026-11-15', false],
+      ['2027-02-28', false],
+      ['2027-03-01', true],
+    ] as const) {
+      expect(
+        requiresIbsCbs({
+          competenceDate: date,
+          serviceCode: '666666',
+          policy: custom,
+        }).satisfied,
+      ).toBe(satisfied);
+    }
     expect(
       requiresIbsCbs({
         competenceDate: '2026-11-15',
         serviceCode: '060101',
-        policy: custom,
-      }).satisfied,
-    ).toBe(true);
-    expect(
-      requiresIbsCbs({
-        competenceDate: '2026-12-01',
-        serviceCode: '666666',
         policy: custom,
       }).satisfied,
     ).toBe(true);

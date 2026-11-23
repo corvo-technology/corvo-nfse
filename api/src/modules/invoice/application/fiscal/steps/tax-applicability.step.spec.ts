@@ -353,7 +353,7 @@ describe('TaxApplicabilityStep', () => {
     expect(applicability.legalReferences).toEqual(
       expect.arrayContaining([
         'LC 214/2025 (fase de teste 2026)',
-        'Ato Conjunto RFB/CGIBS nº 4/2026; orientação CGNFS-e de 07/08/2026',
+        'Ato Conjunto RFB/CGIBS nº 4/2026, alterado pelo nº 7/2026; orientação CGNFS-e de 07/08/2026',
         'LC 214/2025 e LC 227/2026 (Simples Nacional)',
       ]),
     );
@@ -377,7 +377,7 @@ describe('TaxApplicabilityStep', () => {
       'LC 214/2025 (fase de teste 2026)',
     );
     expect(applicability.legalReferences).toContain(
-      'Ato Conjunto RFB/CGIBS nº 4/2026; orientação CGNFS-e de 07/08/2026',
+      'Ato Conjunto RFB/CGIBS nº 4/2026, alterado pelo nº 7/2026; orientação CGNFS-e de 07/08/2026',
     );
   });
 });
