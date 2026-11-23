@@ -2632,17 +2632,45 @@
   },
   "LandingOpenSource": {
     "eyebrow": "OPEN SOURCE",
-    "title": "Open source, top to bottom.",
-    "description": "The API, the worker and the dashboard are public under AGPL-3.0. Read the code, run it on your own servers, or send a pull request.",
-    "points": {
-      "license": "AGPL-3.0: use it, change it, audit it.",
-      "selfHost": "Self-host with Docker Compose: your servers, your A1 certificates, your data.",
-      "contribute": "Issues and pull requests are welcome. A maintainer reviews every change."
+    "title": "Choose how to run Corvo.",
+    "description": "The same open source code, under AGPL-3.0. You decide whether we run it or you do.",
+    "cloud": {
+      "name": "Corvo Cloud",
+      "tagline": "Hosted at corvo.tech. We look after the server.",
+      "cta": "Start on Cloud",
+      "rows": {
+        "price": "From R$ 59.90/month, with Stripe or Pix.",
+        "operator": "Corvo: server, email and HTTPS.",
+        "data": "A1 certificates stored encrypted.",
+        "updates": "Automatic.",
+        "setup": "Already set up by us.",
+        "support": "By email."
+      }
+    },
+    "selfHosted": {
+      "name": "Self-hosted",
+      "tagline": "On your own server, with Docker Compose.",
+      "cta": "Self-hosting guide",
+      "rows": {
+        "price": "Free: you only pay for your server. Full code, AGPL-3.0.",
+        "operator": "You, with Docker Compose.",
+        "data": "Certificates and data stay on your server.",
+        "updates": "You apply each new version.",
+        "setup": "You set up email, S3 and HTTPS.",
+        "support": "Community, on GitHub."
+      }
+    },
+    "rowLabels": {
+      "price": "Price",
+      "operator": "Who runs it",
+      "data": "Certificates and data",
+      "updates": "Updates",
+      "setup": "Email, S3 and HTTPS",
+      "support": "Support"
     },
     "star": "Star on GitHub",
-    "guide": "Self-hosting guide",
-    "starHint": "If Corvo saves you time, a star helps other developers find it.",
-    "codeLabel": "Run Corvo locally",
+    "starHint": "Issues and pull requests are welcome. If Corvo saves you time, a star helps other developers find it.",
+    "codeLabel": "Want to try it on your computer?",
     "requirements": "Needs Docker Compose v2 and Node.js 24."
   },
   "LandingSdks": {
@@ -2883,7 +2911,7 @@
       },
       "opensource": {
         "q": "Is Corvo open source? Can I run it myself?",
-        "a": "Yes. The API, the worker and the dashboard are public on GitHub under AGPL-3.0. You can read the code, run it on your own servers with Docker Compose, and send issues and pull requests. The hosted service at corvo.tech runs the same project, with the A1 certificates, the data and the billing handled for you.",
+        "a": "Yes. The API, the worker and the dashboard are public on GitHub under AGPL-3.0. You can read the code, run it on your own servers with Docker Compose, and send issues and pull requests. The hosted service at corvo.tech (Corvo Cloud) runs the same project and handles the server, A1 certificates, updates and billing for you. Running it yourself is free: you only pay for your server and take care of email, S3, HTTPS and updates.",
         "link": "See the code on GitHub"
       }
     }

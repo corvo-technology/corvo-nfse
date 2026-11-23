@@ -2632,17 +2632,45 @@
   },
   "LandingOpenSource": {
     "eyebrow": "CÓDIGO ABERTO",
-    "title": "Código aberto, de ponta a ponta.",
-    "description": "A API, o worker e o painel são públicos sob a AGPL-3.0. Leia o código, rode nos seus servidores ou mande um pull request.",
-    "points": {
-      "license": "AGPL-3.0: use, altere e audite.",
-      "selfHost": "Rode você mesmo com Docker Compose: seus servidores, seus certificados A1, seus dados.",
-      "contribute": "Issues e pull requests são bem-vindos. Um mantenedor revisa cada mudança."
+    "title": "Escolha como rodar a Corvo.",
+    "description": "O mesmo código aberto, sob a AGPL-3.0. Você decide se a gente opera ou se você opera.",
+    "cloud": {
+      "name": "Corvo Cloud",
+      "tagline": "Hospedada em corvo.tech. A gente cuida do servidor.",
+      "cta": "Começar na Cloud",
+      "rows": {
+        "price": "A partir de R$ 59,90/mês, com Stripe ou Pix.",
+        "operator": "A Corvo: servidor, e-mail e HTTPS.",
+        "data": "Certificados A1 guardados criptografados.",
+        "updates": "Automáticas.",
+        "setup": "Já configurados por nós.",
+        "support": "Por e-mail."
+      }
+    },
+    "selfHosted": {
+      "name": "Self-hosted",
+      "tagline": "No seu servidor, com Docker Compose.",
+      "cta": "Ver guia de self-hosting",
+      "rows": {
+        "price": "Grátis: você paga só o seu servidor. Código completo, AGPL-3.0.",
+        "operator": "Você, com Docker Compose.",
+        "data": "Certificados e dados ficam no seu servidor.",
+        "updates": "Você aplica cada versão nova.",
+        "setup": "Você configura e-mail, S3 e HTTPS.",
+        "support": "Comunidade, no GitHub."
+      }
+    },
+    "rowLabels": {
+      "price": "Preço",
+      "operator": "Quem opera",
+      "data": "Certificados e dados",
+      "updates": "Atualizações",
+      "setup": "E-mail, S3 e HTTPS",
+      "support": "Suporte"
     },
     "star": "Dar uma estrela no GitHub",
-    "guide": "Guia de self-hosting",
-    "starHint": "Se a Corvo te poupa tempo, uma estrela ajuda outros desenvolvedores a encontrar o projeto.",
-    "codeLabel": "Rode a Corvo localmente",
+    "starHint": "Issues e pull requests são bem-vindos. Se a Corvo te poupa tempo, uma estrela ajuda outros desenvolvedores a encontrar o projeto.",
+    "codeLabel": "Quer testar no seu computador?",
     "requirements": "Precisa de Docker Compose v2 e Node.js 24."
   },
   "LandingSdks": {
@@ -2883,7 +2911,7 @@
       },
       "opensource": {
         "q": "A Corvo é código aberto? Posso rodar por conta própria?",
-        "a": "Sim. A API, o worker e o painel são públicos no GitHub sob a AGPL-3.0. Você pode ler o código, rodar nos seus servidores com Docker Compose e abrir issues e pull requests. O serviço hospedado em corvo.tech roda o mesmo projeto, e cuida dos certificados A1, dos dados e da cobrança por você.",
+        "a": "Sim. A API, o worker e o painel são públicos no GitHub sob a AGPL-3.0. Você pode ler o código, rodar nos seus servidores com Docker Compose e abrir issues e pull requests. O serviço hospedado em corvo.tech (Corvo Cloud) roda o mesmo projeto e cuida de servidor, certificados A1, atualizações e cobrança por você. Rodando por conta própria é grátis: você paga só o seu servidor e cuida de e-mail, S3, HTTPS e atualizações.",
         "link": "Ver o código no GitHub"
       }
     }

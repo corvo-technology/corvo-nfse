@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Footer } from "@/components/landing/footer";
 import { Nav } from "@/components/landing/nav";
 import { OpenSourceSection } from "@/components/landing/open-source-section";
+import { PLANS } from "@/lib/plans-catalog";
 import { REPO_URL, SELF_HOSTING_URL } from "@/lib/repo";
 import en from "@/messages/en.json";
 import pt from "@/messages/pt.json";
@@ -20,14 +21,28 @@ afterEach(cleanup);
 describe("open source on the landing", () => {
   it.each([
     ["en", "Star on GitHub", "Self-hosting guide"],
-    ["pt", "Dar uma estrela no GitHub", "Guia de self-hosting"],
+    ["pt", "Dar uma estrela no GitHub", "Ver guia de self-hosting"],
   ] as const)("the section asks for a star and links the self-hosting guide in %s", (locale, star, guide) => {
     wrap(locale, <OpenSourceSection />);
     const starLink = screen.getByRole("link", { name: new RegExp(star) });
     expect(starLink.getAttribute("href")).toBe(REPO_URL);
     expect(starLink.getAttribute("rel")).toContain("noopener");
     expect(screen.getByRole("link", { name: new RegExp(guide) }).getAttribute("href")).toBe(SELF_HOSTING_URL);
-    expect(screen.getByText("yarn local:up")).toBeTruthy();
+    expect(screen.getByText("node scripts/setup-env.mjs")).toBeTruthy();
+    expect(screen.getByText(/up -d --build --wait --wait-timeout 180/)).toBeTruthy();
+  });
+
+  it.each([
+    ["en", "Corvo Cloud", "Start on Cloud", "From R\\$ 59\\.90/month", "Free: you only pay for your server"],
+    ["pt", "Corvo Cloud", "Começar na Cloud", "A partir de R\\$ 59,90/mês", "Grátis: você paga só o seu servidor"],
+  ] as const)("shows Cloud and self-hosted side by side, with the Solo price from the catalog, in %s", (locale, cloud, cta, price, free) => {
+    wrap(locale, <OpenSourceSection />);
+    expect(screen.getByRole("heading", { name: cloud })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Self-hosted" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: cta }).getAttribute("href")).toBe("/login?mode=signup");
+    expect(screen.getByText(new RegExp(price))).toBeTruthy();
+    expect(screen.getByText(new RegExp(free))).toBeTruthy();
+    expect(PLANS.find((plan) => plan.slug === "solo")?.monthlyCents).toBe(5990);
   });
 
   it("the nav and the footer link to the repository, opening a new tab", () => {
