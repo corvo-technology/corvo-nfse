@@ -13,7 +13,7 @@ Cobre as seções 11 (adapter), 15, 16 e a parte de conciliação do briefing.
 ## 2. Fatos verificados e lacunas
 
 Verificado em `open-nfse` 0.11.0 (instalado):
-- Leiaute RTC v1.01 (bundle XSD 20260727), CNPJ alfanumérico em produção desde 10/08/2026; a NT 009/2026 (V1.04.00) está **adiada** segundo o README da lib.
+- Leiaute RTC v1.01 (bundle XSD 20260727), CNPJ alfanumérico em produção desde 10/08/2026; a NT 009/2026 (V1.04.01) está **adiada** segundo o README da lib.
 - `InfDPS.IBSCBS` (`RtcInfoIbsCbs`) é **declaratório**: `finNFSe`, `indFinal?`, `cIndOp`, `tpOper?`, `gRefNFSe?`, `tpEnteGov?`, `indDest`, `dest?`, `imovel?`, `valores.trib.gIBSCBS` (situação e classificação: CST, cClassTrib) e diferimentos opcionais. Não há campos de valor calculado de CBS/IBS que a Corvo deva preencher; os valores são consolidados pela Sefin.
 - `emitir(params)` exige `DpsCounter` e `RetryStore`; a própria lib orienta **`emitirDpsPronta(dps)`** para cenários avançados (incluindo IBSCBS) e este **não usa** `DpsCounter`.
 - A Corvo hoje usa `emitir(..., dryRun)` + `RetryStore` próprio (`OpenNfseProvider`) e sequência DPS própria (`DPS_SEQUENCE_REPOSITORY`).
@@ -44,7 +44,7 @@ Como as respostas não trazem vigência, a validação **consulta a Calculadora 
 - Entrada: `FiscalCalculationResult` + dados da invoice + emitente/tomador/numeração. Saída: objeto `DPS` tipado do `open-nfse` (`InfDPS`), nunca XML montado à mão.
 - Passos: selecionar layout ativo → prestador → tomador (ou omitido quando permitido) → serviço (`cTribNac`, descrição, município) → tributação municipal (ISS/retenções conforme o resultado) → grupo `IBSCBS` (somente quando a engine marcou obrigação ou declaração aplicável: `finNFSe`, `cIndOp`, `indDest`, CST/cClassTrib) → totais → validação.
 - Não decide regime, classificação ou aplicabilidade; só traduz o resultado da engine. Se faltar campo exigido pelo layout, devolve `DPS_SCHEMA_VALIDATION_FAILED` (não preenche por suposição).
-- Layout ativo por ambiente: `FISCAL_DPS_LAYOUT` (padrão `rtc-v1.01`), com registro `{layout, status: published|homologated|in_production, since}` em `domain/fiscal/policies/rules/` (código versionado). Layout publicado mas não implantado, ou NT 009/V1.04.00, → `DPS_LAYOUT_UNSUPPORTED` (bloqueio explícito). Nada de XML presumido, nada de editar `node_modules`; se a lib atrasar, atualização controlada da dependência e dos XSDs com testes.
+- Layout ativo por ambiente: `FISCAL_DPS_LAYOUT` (padrão `rtc-v1.01`), com registro `{layout, status: published|homologated|in_production, since}` em `domain/fiscal/policies/rules/` (código versionado). Layout publicado mas não implantado, ou NT 009/V1.04.01, → `DPS_LAYOUT_UNSUPPORTED` (bloqueio explícito). Nada de XML presumido, nada de editar `node_modules`; se a lib atrasar, atualização controlada da dependência e dos XSDs com testes.
 - Validação: guards da lib e validação XSD antes de transmitir; falha → `DPS_SCHEMA_VALIDATION_FAILED`, sem retry automático, invoice `rejected`.
 
 ## 6. Emissão com `emitirDpsPronta`
@@ -77,6 +77,6 @@ Adapter RTC (contrato, timeout, 5xx, 4xx, resposta inválida, indisponibilidade)
 
 ## 11. Fora de escopo
 
-NT 009/V1.04.00 (notas de crédito/débito, `vAjusteBC`, locação), cancelamento/substituição, salão-parceiro, NF-e/NFC-e.
+NT 009/V1.04.01 (notas de crédito/débito, `vAjusteBC`, locação), cancelamento/substituição, salão-parceiro, NF-e/NFC-e.
 - **E4:** competências de 2027 em diante ficam bloqueadas até o governo publicar as alíquotas (o motor as exige como entrada). Decidir se a Corvo aceitará, no futuro, alíquotas informadas por fonte oficial versionada (nunca estimadas).
 - **E5:** operação da atualização de versão (workflow semanal + runbook, Task 10 do plano).
