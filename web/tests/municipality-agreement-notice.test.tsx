@@ -4,10 +4,11 @@ import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it } from "vitest";
 import { MunicipalityAgreementNotice } from "@/components/companies/municipality-agreement-notice";
 import { findMunicipality, loadMunicipalities } from "@/lib/nfse-municipalities";
+import type { MunicipalityAgreementStatus } from "@/lib/types";
 import messages from "@/messages/pt.json";
 
-const show = (municipalityCode: string, taxRegime: string) =>
-  render(<NextIntlClientProvider locale="pt" messages={messages}><MunicipalityAgreementNotice municipalityCode={municipalityCode} taxRegime={taxRegime} /></NextIntlClientProvider>);
+const show = (municipalityCode: string, taxRegime: string, status?: MunicipalityAgreementStatus) =>
+  render(<NextIntlClientProvider locale="pt" messages={messages}><MunicipalityAgreementNotice municipalityCode={municipalityCode} taxRegime={taxRegime} agreement={status ? { status, checkedAt: null, agreementType: null } : undefined} /></NextIntlClientProvider>);
 /** Lets the lazy list load, so "nothing shown" is a real answer and not a pending one. */
 const settled = async () => { await loadMunicipalities(); await new Promise((resolve) => setTimeout(resolve, 0)); };
 afterEach(cleanup);
@@ -60,5 +61,30 @@ describe("MunicipalityAgreementNotice", () => {
     show("35503", "Simples Nacional");
     await settled();
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("trusts the Sefin answer over the static list: inactive warns even where the list says active", async () => {
+    show("3550308", "Simples Nacional", "inactive");
+    expect((await screen.findByRole("status")).textContent).toContain("consulta à Receita");
+  });
+
+  it("trusts the Sefin answer over the static list: active silences a list warning", async () => {
+    const { rows } = await loadMunicipalities();
+    show(String(rows.find((row) => row[3] === 0)![0]), "Simples Nacional", "active");
+    await settled();
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("keeps the MEI exemption on the Sefin answer", async () => {
+    show("3550308", "MEI", "inactive");
+    await settled();
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("falls back to the static list when the company was not verified yet", async () => {
+    const { rows } = await loadMunicipalities();
+    const [code, name] = rows.find((row) => row[3] === 0)!;
+    show(String(code), "Simples Nacional", "not_checked");
+    expect((await screen.findByRole("status")).textContent).toContain(name);
   });
 });
