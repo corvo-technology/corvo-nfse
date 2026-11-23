@@ -12,7 +12,7 @@ describe('PlatformAdminGuard', () => {
     const config = {
       getOrThrow: jest
         .fn()
-        .mockReturnValue({ hmacSecret: 'test-secret-0123456789' }),
+        .mockReturnValue({ hmacSecret: 'test-secret-aaaa' }),
     };
     const policy = { resolve: jest.fn().mockResolvedValue(result) };
     return {
