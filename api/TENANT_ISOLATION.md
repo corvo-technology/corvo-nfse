@@ -66,6 +66,10 @@ psql "$MIGRATION_DATABASE_URL" -v runtime_role=corvo_runtime \
 Do not use the runtime role for migrations, schema synchronization or seed tools
 that operate across accounts. Repository `synchronize` stays disabled.
 
+## Platform admin reads
+
+The platform admin area (`/v1/platform/*`) reads data from every tenant. It does so only under the `platform-admin` system purpose, inside a `READ ONLY` transaction (`SET TRANSACTION READ ONLY`), so a read path cannot write by accident. The only write is the credit grant, which runs on the target tenant and records an audit event in the same transaction. `platform_admin_audit_events` has no RLS and is kept forever. Who is admin comes from `PLATFORM_ADMIN_EMAILS` plus a verified e-mail, recomputed on every request.
+
 ## Verification
 
 The PostgreSQL integration suite creates isolated schemas and temporary roles
