@@ -107,6 +107,20 @@ describe("AuditPage", () => {
     expect(screen.queryByRole("button", { name: messages.Admin.common.loadMore })).toBeNull();
   });
 
+  it("clears the error alert after a successful retry of load more", async () => {
+    mocks.audit
+      .mockResolvedValueOnce({ items: [ev("a")], hasMore: true, nextCursor: "cur-1" })
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValueOnce({ items: [ev("b", { reason: "second page" })], hasMore: false, nextCursor: null });
+    renderPage(<AuditPage />);
+    const button = await screen.findByRole("button", { name: messages.Admin.common.loadMore });
+    fireEvent.click(button);
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: messages.Admin.common.loadMore }));
+    await screen.findAllByText("second page");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("shows the empty state", async () => {
     mocks.audit.mockResolvedValue({ items: [], hasMore: false, nextCursor: null });
     renderPage(<AuditPage />);

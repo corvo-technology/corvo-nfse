@@ -34,6 +34,7 @@ export default function AdminAuditPage() {
   const loadMore = useCallback(async () => {
     if (!cursor || moreLoading) return;
     setMoreLoading(true);
+    setFailed(false);
     try {
       const page = await platformAdmin.audit({ limit: PAGE_SIZE, cursor });
       setRows((current) => [...current, ...page.items]);
