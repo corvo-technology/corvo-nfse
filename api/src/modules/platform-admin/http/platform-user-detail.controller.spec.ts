@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { PLATFORM_ADMIN_ONLY } from '@/modules/auth/platform-admin-only.decorator';
 import type { PlatformAdminActor } from '../platform-admin.guard';
 import type { PlatformUserDetail } from '../platform-admin.contract';
 import {
@@ -32,5 +33,18 @@ describe('PlatformUserDetailController', () => {
     expect((error as NotFoundException).getResponse()).toMatchObject({
       code: 'RESOURCE_NOT_FOUND',
     });
+  });
+
+  it('a classe é marcada como PLATFORM_ADMIN_ONLY', () => {
+    expect(
+      Reflect.getMetadata(PLATFORM_ADMIN_ONLY, PlatformUserDetailController),
+    ).toBe(true);
+  });
+
+  it('sem ator na requisição responde 404 RESOURCE_NOT_FOUND', async () => {
+    const controller = new PlatformUserDetailController({} as never);
+    await expect(
+      controller.get({}, '00000000-0000-4000-8000-0000000000b2'),
+    ).rejects.toMatchObject({ response: { code: 'RESOURCE_NOT_FOUND' } });
   });
 });

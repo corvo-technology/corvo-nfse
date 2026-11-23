@@ -32,6 +32,13 @@ export class PlatformUserDetailController {
     @Req() req: RequestWithPlatformAdmin,
     @Param('id', ParsePlatformUserIdPipe) id: string,
   ): Promise<{ data: PlatformUserDetail }> {
-    return { data: await this.service.view(req.platformAdmin!, id) };
+    const actor = req.platformAdmin;
+    if (!actor) {
+      throw new NotFoundException({
+        code: 'RESOURCE_NOT_FOUND',
+        message: 'Resource not found',
+      });
+    }
+    return { data: await this.service.view(actor, id) };
   }
 }

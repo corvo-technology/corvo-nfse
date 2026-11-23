@@ -27,6 +27,106 @@ function groupByTenant<T extends Row>(rows: T[]): Map<string, T[]> {
   return map;
 }
 
+type TenantLists = Record<
+  | 'usage'
+  | 'balances'
+  | 'companies'
+  | 'invoices'
+  | 'credits'
+  | 'payments'
+  | 'apiKeys'
+  | 'mcp',
+  Map<string, Row[]>
+>;
+
+const str = (v: unknown) => v as string;
+const strOrNull = (v: unknown) => (v as string | null) ?? null;
+
+function toPlan(m: Row): Workspace['plan'] {
+  return m.plan_slug
+    ? { slug: str(m.plan_slug), name: str(m.plan_name) }
+    : null;
+}
+
+function toUsage(u: Row | undefined): Workspace['usage'] {
+  if (!u) return null;
+  return {
+    included: Number(u.included),
+    authorized: Number(u.authorized),
+    reserved: Number(u.reserved),
+    periodEnd: iso(u.period_end)!,
+  };
+}
+
+const toCompany = (c: Row): Workspace['companies'][number] => ({
+  id: str(c.id),
+  taxId: str(c.tax_id),
+  legalName: str(c.legal_name),
+  municipalityCode: str(c.municipality_code),
+  environment: str(c.environment),
+  certificateValidUntil: iso(c.certificate_valid_until),
+});
+
+const toInvoice = (i: Row): Workspace['recentInvoices'][number] => ({
+  id: str(i.id),
+  status: str(i.status),
+  amount: Number(i.amount),
+  environment: str(i.environment),
+  lastErrorCode: strOrNull(i.last_error_code),
+  createdAt: iso(i.created_at)!,
+});
+
+const toCredit = (c: Row): Workspace['credits'][number] => ({
+  id: str(c.id),
+  type: str(c.type),
+  source: strOrNull(c.source),
+  amount: Number(c.amount),
+  description: strOrNull(c.description),
+  createdAt: iso(c.created_at)!,
+});
+
+const toPayment = (p: Row): Workspace['payments'][number] => ({
+  id: str(p.id),
+  kind: str(p.kind),
+  provider: str(p.provider),
+  amountCents: Number(p.amount_cents),
+  status: str(p.status),
+  paidAt: iso(p.paid_at),
+});
+
+const toApiKey = (k: Row): Workspace['apiKeys'][number] => ({
+  id: str(k.id),
+  name: str(k.name),
+  keyPrefix: str(k.key_prefix),
+  environment: str(k.environment),
+  lastUsedAt: iso(k.last_used_at),
+});
+
+const toMcp = (c: Row): Workspace['mcpConnections'][number] => ({
+  id: str(c.id),
+  clientName: str(c.client_name),
+  lastUsedAt: iso(c.last_used_at),
+});
+
+function toWorkspace(m: Row, userId: string, l: TenantLists): Workspace {
+  const tenantId = str(m.tenant_id);
+  const rows = (map: Map<string, Row[]>) => map.get(tenantId) ?? [];
+  return {
+    tenantId,
+    role: str(m.role),
+    isOwn: tenantId === userId,
+    plan: toPlan(m),
+    usage: toUsage(rows(l.usage)[0]),
+    avulsoBalance: Number(rows(l.balances)[0]?.balance ?? 0),
+    companies: rows(l.companies).map(toCompany),
+    recentInvoices: rows(l.invoices).map(toInvoice),
+    credits: rows(l.credits).map(toCredit),
+    payments: rows(l.payments).map(toPayment),
+    apiKeys: rows(l.apiKeys).map(toApiKey),
+    mcpConnections: rows(l.mcp).map(toMcp),
+  };
+}
+
 /**
  * Everything the platform admin sees about one user and their workspaces.
  * Columns are listed explicitly: key_hash, encrypted_* certificate columns,
@@ -155,71 +255,17 @@ export class PlatformUserDetailReadRepository {
       ),
     );
 
-    const workspaces: Workspace[] = memberships.map((m) => {
-      const tenantId = m.tenant_id as string;
-      const u = usage.get(tenantId)?.[0];
-      return {
-        tenantId,
-        role: m.role as string,
-        isOwn: tenantId === userId,
-        plan: m.plan_slug
-          ? { slug: m.plan_slug as string, name: m.plan_name as string }
-          : null,
-        usage: u
-          ? {
-              included: Number(u.included),
-              authorized: Number(u.authorized),
-              reserved: Number(u.reserved),
-              periodEnd: iso(u.period_end)!,
-            }
-          : null,
-        avulsoBalance: Number(balances.get(tenantId)?.[0]?.balance ?? 0),
-        companies: (companies.get(tenantId) ?? []).map((c) => ({
-          id: c.id as string,
-          taxId: c.tax_id as string,
-          legalName: c.legal_name as string,
-          municipalityCode: c.municipality_code as string,
-          environment: c.environment as string,
-          certificateValidUntil: iso(c.certificate_valid_until),
-        })),
-        recentInvoices: (invoices.get(tenantId) ?? []).map((i) => ({
-          id: i.id as string,
-          status: i.status as string,
-          amount: Number(i.amount),
-          environment: i.environment as string,
-          lastErrorCode: (i.last_error_code as string | null) ?? null,
-          createdAt: iso(i.created_at)!,
-        })),
-        credits: (credits.get(tenantId) ?? []).map((c) => ({
-          id: c.id as string,
-          type: c.type as string,
-          source: (c.source as string | null) ?? null,
-          amount: Number(c.amount),
-          description: (c.description as string | null) ?? null,
-          createdAt: iso(c.created_at)!,
-        })),
-        payments: (payments.get(tenantId) ?? []).map((p) => ({
-          id: p.id as string,
-          kind: p.kind as string,
-          provider: p.provider as string,
-          amountCents: Number(p.amount_cents),
-          status: p.status as string,
-          paidAt: iso(p.paid_at),
-        })),
-        apiKeys: (apiKeys.get(tenantId) ?? []).map((k) => ({
-          id: k.id as string,
-          name: k.name as string,
-          keyPrefix: k.key_prefix as string,
-          environment: k.environment as string,
-          lastUsedAt: iso(k.last_used_at),
-        })),
-        mcpConnections: (mcp.get(tenantId) ?? []).map((c) => ({
-          id: c.id as string,
-          clientName: c.client_name as string,
-          lastUsedAt: iso(c.last_used_at),
-        })),
-      };
-    });
+    const lists: TenantLists = {
+      usage,
+      balances,
+      companies,
+      invoices,
+      credits,
+      payments,
+      apiKeys,
+      mcp,
+    };
+    const workspaces = memberships.map((m) => toWorkspace(m, userId, lists));
 
     return { user: this.mapUser(user), workspaces };
   }
