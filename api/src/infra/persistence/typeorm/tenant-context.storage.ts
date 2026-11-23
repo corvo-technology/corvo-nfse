@@ -13,7 +13,8 @@ export type SystemPurpose =
   | 'invitation-accept'
   | 'billing-eligibility'
   | 'verified-provider-event'
-  | 'integration-inbound';
+  | 'integration-inbound'
+  | 'platform-admin';
 export type DatabaseScope = {
   tenantId?: string;
   authUserId?: string;
@@ -32,6 +33,25 @@ export function runWithTenant<T>(tenantId: string, work: () => T): T {
       message: 'Resource not found',
     });
   return storage.run({ tenantId, authUserId: current?.authUserId }, work);
+}
+
+/** Runs with an empty database scope: any pooled connection acquired inside has no tenant and no system. */
+export function runWithoutDatabaseScope<T>(work: () => T): T {
+  return storage.run({}, work);
+}
+
+/**
+ * Platform-admin writes on a target tenant. It does not reset TypeOrmTransactionContext,
+ * so callers must open their own transaction inside it. Unlike runWithTenant it replaces the request's
+ * tenant scope (the interceptor wraps every request in the admin's own tenant) and does not
+ * enable `system`: RLS stays strict for the target tenant. Callers must be behind PlatformAdminGuard.
+ */
+export function runAsPlatformAdminOnTenant<T>(
+  tenantId: string,
+  work: () => T,
+): T {
+  requireTenantId(tenantId);
+  return storage.run({ tenantId }, work);
 }
 
 /** Account bootstrap reads only; RLS grants SELECT on this user's memberships. */
