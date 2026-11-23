@@ -128,8 +128,7 @@ export class StripeBillingAdapter extends BillingProvider {
         metadata: { tenant_id: tenantId, intent_id: intentId },
         subscription_data: { metadata: { tenant_id: tenantId } },
         allowed_payment_method_types: ['card'],
-        // Coupons live in the Stripe dashboard; the customer types the code on the hosted page.
-        allow_promotion_codes: true,
+        // Coupons only apply to the annual plan: the monthly subscription never offers a code field.
         locale: 'pt-BR',
         branding_settings: CHECKOUT_BRANDING,
         line_items: [{ price: base.id, quantity: 1 }],
@@ -145,7 +144,12 @@ export class StripeBillingAdapter extends BillingProvider {
   async createPaymentCheckout(
     customerId: string,
     tenantId: string,
-    input: { name: string; amountCents: number; intentId: string },
+    input: {
+      name: string;
+      amountCents: number;
+      intentId: string;
+      allowPromotionCodes?: boolean;
+    },
   ) {
     const success = new URL(this.gateway.config.checkoutSuccessUrl);
     success.searchParams.set('session_id', '{CHECKOUT_SESSION_ID}');
@@ -157,8 +161,8 @@ export class StripeBillingAdapter extends BillingProvider {
         client_reference_id: tenantId,
         metadata: { tenant_id: tenantId, intent_id: input.intentId },
         allowed_payment_method_types: ['card'],
-        // Coupons live in the Stripe dashboard; the customer types the code on the hosted page.
-        allow_promotion_codes: true,
+        // Coupons live in the Stripe dashboard; only the annual plan shows the code field.
+        ...(input.allowPromotionCodes ? { allow_promotion_codes: true } : {}),
         locale: 'pt-BR',
         branding_settings: CHECKOUT_BRANDING,
         line_items: [

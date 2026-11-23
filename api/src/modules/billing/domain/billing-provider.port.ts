@@ -54,7 +54,12 @@ export abstract class BillingProvider {
   abstract createPaymentCheckout(
     customerId: string,
     tenantId: string,
-    input: { name: string; amountCents: number; intentId: string },
+    input: {
+      name: string;
+      amountCents: number;
+      intentId: string;
+      allowPromotionCodes?: boolean;
+    },
   ): Promise<{ id: string; url: string | null }>;
   abstract subscription(id: string): Promise<ProviderSubscription>;
   abstract scheduleChange(
