@@ -26,6 +26,7 @@ describePostgres(
   () => {
     let admin: DataSource;
     let runtime: DataSource;
+    let stray: DataSource;
     let session: PlatformReadSession;
     const table = (name: string) => `"${schema}"."${name}"`;
 
@@ -84,10 +85,18 @@ describePostgres(
       await runtime.initialize();
       installRlsConnectionScope(runtime);
       await new RlsConnectionScopeService(runtime).onModuleInit();
+      // A second pool plays the "other repository" that would take its own connection.
+      stray = new DataSource({
+        ...options,
+        extra: { ...options.extra, max: 1 },
+      });
+      await stray.initialize();
+      installRlsConnectionScope(stray);
       session = new PlatformReadSession(runtime);
     }, 180000);
 
     afterAll(async () => {
+      if (stray?.isInitialized) await stray.destroy();
       if (runtime?.isInitialized) await runtime.destroy();
       if (admin?.isInitialized) {
         await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
@@ -138,9 +147,36 @@ describePostgres(
       ).rejects.toThrow(/read-only transaction/);
     });
 
+    it('acesso fora de q dentro do trabalho não escreve em nenhum tenant (RLS nega)', async () => {
+      const outcome = await session.run(async (q) => {
+        await q('SELECT 1');
+        try {
+          const res = await stray.query(
+            `UPDATE ${table('tenant_settings')} SET timezone='UTC'`,
+          );
+          return { res };
+        } catch (error) {
+          return { error };
+        }
+      });
+      const [rows]: Array<{ n: number }> = await admin.query(
+        `SELECT count(*)::int AS n FROM ${table('tenant_settings')} WHERE timezone='UTC'`,
+      );
+      expect(rows.n).toBe(0);
+      expect(outcome).toBeDefined();
+      await expect(
+        session.run(async () => {
+          await stray.query(
+            `INSERT INTO ${table('tenants')} (id) VALUES ($1)`,
+            [randomUUID()],
+          );
+        }),
+      ).rejects.toThrow();
+    });
+
     it('após o uso a conexão volta sem system_context', async () => {
       await session.run((q) => q('SELECT 1'));
-      const [row] = await runtime.query(
+      const [row]: Array<{ v: string }> = await runtime.query(
         "SELECT current_setting('app.system_context', true) AS v",
       );
       expect(row.v).not.toBe('on');

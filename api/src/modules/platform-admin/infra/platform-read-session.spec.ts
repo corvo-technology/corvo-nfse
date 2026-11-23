@@ -75,7 +75,7 @@ describe('PlatformReadSession', () => {
     expect(runner.release).toHaveBeenCalled();
   });
 
-  it('roda sob o escopo system platform-admin e sem tenant, mesmo dentro de runWithTenant', async () => {
+  it('só adquire a conexão sob system; o trabalho roda com escopo vazio, mesmo dentro de runWithTenant', async () => {
     const runner = makeRunner([]);
     let atConnect: unknown;
     runner.connect.mockImplementation(async () => {
@@ -87,7 +87,7 @@ describe('PlatformReadSession', () => {
         seen = getDatabaseScope();
       }),
     );
-    expect(seen).toEqual({ system: 'platform-admin' });
     expect(atConnect).toEqual({ system: 'platform-admin' });
+    expect(seen).toEqual({});
   });
 });

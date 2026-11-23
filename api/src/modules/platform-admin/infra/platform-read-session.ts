@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { runAsSystem } from '@/infra/persistence/typeorm/tenant-context.storage';
+import {
+  runAsSystem,
+  runWithoutDatabaseScope,
+} from '@/infra/persistence/typeorm/tenant-context.storage';
 
 export type PlatformQuery = <R = Record<string, unknown>>(
   sql: string,
@@ -16,10 +19,13 @@ export type PlatformQuery = <R = Record<string, unknown>>(
 export class PlatformReadSession {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
-  run<T>(work: (q: PlatformQuery) => Promise<T>): Promise<T> {
-    return runAsSystem('platform-admin', async () => {
-      const runner = this.dataSource.createQueryRunner();
-      await runner.connect();
+  async run<T>(work: (q: PlatformQuery) => Promise<T>): Promise<T> {
+    const runner = this.dataSource.createQueryRunner();
+    // The system scope is only needed to acquire the connection (session-level
+    // app.system_context=on). Everything else runs with an empty scope, so any
+    // other DB access inside `work` gets no tenant and no system context.
+    await runAsSystem('platform-admin', () => runner.connect());
+    return runWithoutDatabaseScope(async () => {
       try {
         await runner.startTransaction();
         await runner.query('SET TRANSACTION READ ONLY');

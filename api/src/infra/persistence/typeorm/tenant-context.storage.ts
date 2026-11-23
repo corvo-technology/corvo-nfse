@@ -35,8 +35,14 @@ export function runWithTenant<T>(tenantId: string, work: () => T): T {
   return storage.run({ tenantId, authUserId: current?.authUserId }, work);
 }
 
+/** Runs with an empty database scope: any pooled connection acquired inside has no tenant and no system. */
+export function runWithoutDatabaseScope<T>(work: () => T): T {
+  return storage.run({}, work);
+}
+
 /**
- * Platform-admin writes on a target tenant. Unlike runWithTenant it replaces the request's
+ * Platform-admin writes on a target tenant. It does not reset TypeOrmTransactionContext,
+ * so callers must open their own transaction inside it. Unlike runWithTenant it replaces the request's
  * tenant scope (the interceptor wraps every request in the admin's own tenant) and does not
  * enable `system`: RLS stays strict for the target tenant. Callers must be behind PlatformAdminGuard.
  */
