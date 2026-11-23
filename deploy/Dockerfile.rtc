@@ -2,8 +2,10 @@
 # Calculadora de Tributos (RTC), construída do repositório oficial no GitHub (licença MIT):
 # https://github.com/ReceitaFederal/calculadora-rtc-regime-regular
 # Para atualizar: troque RTC_TAG e RTC_COMMIT (veja docs/fiscal/runbooks/rtc-update.md).
+# JAVA_VERSION segue o pom da tag: a 1.6.x usa Java 21 (no Java 25 o Lombok não roda sozinho e a compilação falha); a 1.7.x exige Java 25.
+ARG JAVA_VERSION=21
 
-FROM eclipse-temurin:25-jdk AS build
+FROM eclipse-temurin:${JAVA_VERSION}-jdk AS build
 ARG RTC_REPO=https://github.com/ReceitaFederal/calculadora-rtc-regime-regular
 ARG RTC_TAG=1.6.1
 ARG RTC_COMMIT=150cccbe414d4a5edea703e4f7a424af5aa222c7
@@ -20,7 +22,7 @@ RUN --mount=type=cache,target=/root/.m2 \
  && ./mvnw -B -ntp flyway:migrate -Dflyway.configFiles=./flyway/flyway-pro.conf \
  && ./mvnw -B -ntp clean package -DskipTests
 
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:${JAVA_VERSION}-jre
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl \
  && rm -rf /var/lib/apt/lists/*

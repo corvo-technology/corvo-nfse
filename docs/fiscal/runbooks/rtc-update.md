@@ -2,7 +2,7 @@
 
 A Calculadora de Tributos é construída a partir do repositório oficial no GitHub (<https://github.com/ReceitaFederal/calculadora-rtc-regime-regular>, licença MIT), numa versão fixa. Isso evita depender do site do governo, cujo WAF derruba conexões do CI. A versão fica em dois lugares:
 
-- `deploy/Dockerfile.rtc`: `ARG RTC_TAG` (a tag) e `ARG RTC_COMMIT` (o commit completo dessa tag). O build para se a tag passar a apontar para outro commit.
+- `deploy/Dockerfile.rtc`: `ARG RTC_TAG` (a tag), `ARG RTC_COMMIT` (o commit completo dessa tag) e `ARG JAVA_VERSION` (a do `java.version` do `pom.xml` da tag: 21 na 1.6.x, 25 na 1.7.x). O build para se a tag passar a apontar para outro commit.
 - `deploy/rtc-pinned-version.txt`: o registro legível, no formato `"{versaoApp}/{versaoDb}"` (ex.: `1.6.1/V0059`).
 
 O workflow semanal `rtc-version-watch` abre um issue quando o repositório ganha uma tag mais nova que `RTC_TAG`. Este runbook descreve como atualizar com segurança.
@@ -15,7 +15,7 @@ O workflow semanal `rtc-version-watch` abre um issue quando o repositório ganha
    git ls-remote https://github.com/ReceitaFederal/calculadora-rtc-regime-regular 'refs/tags/<tag>'
    ```
    Veja a versão do banco (último `V00xx` em `flyway/sql/manutencao/` daquela tag) para o registro.
-3. **Atualizar os pins** em um PR: `RTC_TAG` e `RTC_COMMIT` em `deploy/Dockerfile.rtc`, `deploy/rtc-pinned-version.txt` e `docs/fiscal/homologation.md` (novo teste de homologação com a versão).
+3. **Atualizar os pins** em um PR: `RTC_TAG`, `RTC_COMMIT` e `JAVA_VERSION` em `deploy/Dockerfile.rtc`, `deploy/rtc-pinned-version.txt` e `docs/fiscal/homologation.md` (novo teste de homologação com a versão).
 4. **Construir e subir localmente** (precisa de uns 3 GB livres; o primeiro build leva alguns minutos):
    ```sh
    docker compose --env-file deploy/.env.local -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml build rtc-calculator
