@@ -47,6 +47,7 @@ import { ImportEmitProcessor } from '@/modules/import/jobs/import-emit.processor
 import { ImportReadProcessor } from '@/modules/import/jobs/import-read.processor';
 import { PortalSyncModule } from '@/modules/portal-sync/portal-sync.module';
 import { PortalSyncScheduler } from '@/modules/portal-sync/jobs/portal-sync.scheduler';
+import { IS_SELF_HOSTED } from '@/shared/deployment-mode';
 import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
 
 @Module({
@@ -81,7 +82,7 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
   providers: [
     EventProcessorScheduler,
     OutboxRelay,
-    BillingScheduler,
+    ...(IS_SELF_HOSTED ? [] : [BillingScheduler]),
     NfseWorkflowService,
     EmailProcessor,
     NfseEmissionProcessor,
