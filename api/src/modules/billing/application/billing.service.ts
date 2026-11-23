@@ -252,6 +252,12 @@ export class BillingService {
           tenantId,
           await this.provider.subscription(event.subscriptionId),
         );
+        if (event.type === 'invoice.paid' && event.invoice)
+          await this.payments?.recordSubscriptionInvoice(
+            tenantId,
+            (await this.repository.current(tenantId)).plan.slug,
+            event.invoice,
+          );
         this.announce(tenantId, event.type);
       } else
         this.logger.debug({
