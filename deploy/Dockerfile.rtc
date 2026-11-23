@@ -8,13 +8,13 @@ ARG RTC_REPO=https://github.com/ReceitaFederal/calculadora-rtc-regime-regular
 ARG RTC_TAG=1.6.1
 ARG RTC_COMMIT=150cccbe414d4a5edea703e4f7a424af5aa222c7
 RUN apt-get update \
- && apt-get install -y --no-install-recommends git ca-certificates \
+ && apt-get install -y --no-install-recommends git curl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 # A tag pode ser movida; o build para se o commit baixado não for o fixado.
 RUN git clone --depth 1 --branch "$RTC_TAG" "$RTC_REPO" . \
  && test "$(git rev-parse HEAD)" = "$RTC_COMMIT"
-# Gera o banco (SQLite) com as migrações do próprio repositório e empacota o jar.
+# (O mvnw baixa o Maven pelo curl.) Gera o banco (SQLite) com as migrações do próprio repositório e empacota o jar.
 RUN --mount=type=cache,target=/root/.m2 \
     mkdir -p calculadora/db \
  && ./mvnw -B -ntp flyway:migrate -Dflyway.configFiles=./flyway/flyway-pro.conf \
