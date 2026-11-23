@@ -5,7 +5,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends unzip curl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-RUN curl -fsSL "$RTC_ZIP_URL" -o /tmp/rtc.zip \
+RUN curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors --retry-connrefused "$RTC_ZIP_URL" -o /tmp/rtc.zip \
  && echo "$RTC_ZIP_SHA256  /tmp/rtc.zip" | sha256sum -c - \
  && unzip -q /tmp/rtc.zip -d /app \
  && rm -f /tmp/rtc.zip /app/codigo-fonte-backend.zip \
