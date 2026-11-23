@@ -82,6 +82,7 @@ jobs:
           build api web rtc-calculator
       - name: Start the tax calculator
         run: |
+          docker image ls corvo-rtc:local
           docker compose --env-file deploy/.env.local \
             -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml \
             up -d --wait --no-deps rtc-calculator
@@ -90,9 +91,6 @@ jobs:
           echo "RTC_URL=http://$ip:8080/api" >> "$GITHUB_ENV"
       - name: Calculator version
         run: curl -fsS "$RTC_URL/calculadora/dados-abertos/versao"
-      - name: Rounding sweep (temporary)
-        if: always()
-        run: node scripts/rtc-sweep.mjs
       - name: Calculator smoke test
         if: always()
         run: sh api/scripts/rtc-smoke.sh
