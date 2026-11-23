@@ -18,6 +18,22 @@ function build(found: typeof user | null = user) {
   return { service: new AuthUserService(repo as never), repo };
 }
 
+describe('AuthUserService.markLogin', () => {
+  it('only updates last_login_at', async () => {
+    const repo = {
+      findById: jest.fn(),
+      update: jest.fn(),
+      updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = new AuthUserService(repo as never);
+    const at = new Date('2026-11-23T12:00:00Z');
+    await service.markLogin('u1', at);
+    expect(repo.updateLastLoginAt).toHaveBeenCalledWith('u1', at);
+    expect(repo.update).not.toHaveBeenCalled();
+    expect(repo.findById).not.toHaveBeenCalled();
+  });
+});
+
 describe('AuthUserService.updateName', () => {
   it('saves the trimmed name and nothing else', async () => {
     const { service, repo } = build();

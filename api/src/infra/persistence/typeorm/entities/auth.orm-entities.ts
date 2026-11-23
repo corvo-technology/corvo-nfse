@@ -27,6 +27,9 @@ export class AuthUserOrmEntity {
   @Column({ name: 'primary_identity_type', type: 'text', nullable: true })
   primaryIdentityType!: string | null;
 
+  @Column({ name: 'last_login_at', type: 'timestamptz', nullable: true })
+  lastLoginAt!: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

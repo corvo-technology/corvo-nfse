@@ -6,6 +6,7 @@ export type AuthUser = {
   name: string;
   emailVerifiedAt: Date | null;
   primaryIdentityType: AuthIdentityProvider | null;
+  lastLoginAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
