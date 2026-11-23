@@ -349,7 +349,10 @@ function toAuthUser(row: AuthUserOrmEntity): AuthUser {
 }
 
 function toAuthUserRow(user: AuthUser): AuthUserOrmEntity {
-  return Object.assign(new AuthUserOrmEntity(), user);
+  // last_login_at is written only by updateLastLoginAt, so a save() built from a
+  // stale read can never overwrite a newer login.
+  const { lastLoginAt: _lastLoginAt, ...rest } = user;
+  return Object.assign(new AuthUserOrmEntity(), rest);
 }
 
 function toAuthSession(row: AuthSessionOrmEntity): AuthSession {
