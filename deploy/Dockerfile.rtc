@@ -1,15 +1,34 @@
-FROM eclipse-temurin:21-jre
-ARG RTC_ZIP_URL
-ARG RTC_ZIP_SHA256
+# syntax=docker/dockerfile:1
+# Calculadora de Tributos (RTC), construída do repositório oficial no GitHub (licença MIT):
+# https://github.com/ReceitaFederal/calculadora-rtc-regime-regular
+# Para atualizar: troque RTC_TAG e RTC_COMMIT (veja docs/fiscal/runbooks/rtc-update.md).
+
+FROM eclipse-temurin:25-jdk AS build
+ARG RTC_REPO=https://github.com/ReceitaFederal/calculadora-rtc-regime-regular
+ARG RTC_TAG=1.6.1
+ARG RTC_COMMIT=150cccbe414d4a5edea703e4f7a424af5aa222c7
 RUN apt-get update \
- && apt-get install -y --no-install-recommends unzip curl ca-certificates \
+ && apt-get install -y --no-install-recommends git ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+# A tag pode ser movida; o build para se o commit baixado não for o fixado.
+RUN git clone --depth 1 --branch "$RTC_TAG" "$RTC_REPO" . \
+ && test "$(git rev-parse HEAD)" = "$RTC_COMMIT"
+# Gera o banco (SQLite) com as migrações do próprio repositório e empacota o jar.
+RUN --mount=type=cache,target=/root/.m2 \
+    mkdir -p calculadora/db \
+ && ./mvnw -B -ntp flyway:migrate -Dflyway.configFiles=./flyway/flyway-pro.conf \
+ && ./mvnw -B -ntp clean package -DskipTests
+
+FROM eclipse-temurin:25-jre
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-RUN curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors --retry-connrefused "$RTC_ZIP_URL" -o /tmp/rtc.zip \
- && echo "$RTC_ZIP_SHA256  /tmp/rtc.zip" | sha256sum -c - \
- && unzip -q /tmp/rtc.zip -d /app \
- && rm -f /tmp/rtc.zip /app/codigo-fonte-backend.zip \
- && useradd -r -u 10001 rtc && chown -R rtc /app
+COPY --from=build /src/target/api-regime-geral.jar ./api-regime-geral.jar
+COPY --from=build /src/calculadora/db ./calculadora/db
+COPY --from=build /src/LICENSE ./LICENSE-calculadora-rtc.txt
+RUN useradd -r -u 10001 rtc && chown -R rtc /app
 USER rtc
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "api-regime-geral.jar", "--spring.profiles.active=offline"]

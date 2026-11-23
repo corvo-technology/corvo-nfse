@@ -3,9 +3,9 @@
 Capturado em **2026-10-15** contra a instância **offline** local (app `1.6.0`, dados `V0059` de 2026-09-30). Fonte do OpenAPI: `GET /api/api-docs` da própria instância (`openapi.json` nesta pasta). Fixtures reais em `fixtures/`.
 
 ## Distribuição e execução
-- Download oficial: `GET https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/download/url?platform=jar` devolve `{ "downloadUrl": "…/calculadora-jar.zip" }` (armazenamento da Serpro, ~88 MB). SHA-256 do zip capturado: ver `ZIP_SHA256.txt`.
-- O zip contém `api-regime-geral.jar`, `calculadora/db/calculadora-pro.db` (SQLite, regras e tabelas) e `codigo-fonte-backend.zip` (Spring Boot 3.5, Java 21). Não há arquivo de licença no pacote (decisão E1 do spec 3 segue aberta).
-- Execução: `java -jar api-regime-geral.jar --spring.profiles.active=offline` na pasta que contém `calculadora/db/`. Porta **8080**, context-path **`/api`**. Testado com `eclipse-temurin:21-jre`.
+- Código oficial: <https://github.com/ReceitaFederal/calculadora-rtc-regime-regular> (MIT). O `deploy/Dockerfile.rtc` clona uma tag fixa, gera o banco com `./mvnw flyway:migrate -Dflyway.configFiles=./flyway/flyway-pro.conf` e empacota o jar (`target/api-regime-geral.jar`). Veja `docs/fiscal/runbooks/rtc-update.md`.
+- Observação histórica: as capturas abaixo vieram do zip do governo (`piloto-cbs.tributos.gov.br`, `codigo-fonte-backend.zip`), que é o mesmo software (módulo `api-regime-geral`).
+- Execução: `java -jar api-regime-geral.jar --spring.profiles.active=offline` na pasta que contém `calculadora/db/`. Porta **8080**, context-path **`/api`**. A imagem usa `eclipse-temurin:25-jre`.
 - **Partida: ~4 min** (254 s medidos). Memória em regime: ~714 MiB. Latência de cálculo (warm): 25–440 ms.
 - O site público (`piloto-cbs.tributos.gov.br`) fica atrás de WAF que rejeita rajadas ("Request Rejected"); nunca usar como dependência de produção nem em CI intensivo.
 - Simples Nacional **não** é outro componente: é o campo `OpcaoSimplesNacional` (1 não optante, 2 MEI, 3 ME/EPP, 4 optante pendente) em entradas que o aceitam.

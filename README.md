@@ -91,7 +91,7 @@ docker compose --env-file deploy/.env.local \
   up -d --build --wait --wait-timeout 180
 ```
 
-With Yarn installed, `yarn local:up` runs the same command. This starts the dashboard, API, worker, PostgreSQL, Redis, LocalStack and the tax calculator. The calculator image is built from the official zip, whose address and checksum the setup already wrote to the env file (`RTC_ZIP_URL`, `RTC_ZIP_SHA256`); the build stops on purpose if the published file stops matching the checksum (see [deploy/README.md](deploy/README.md)). Database migrations run before the applications start.
+With Yarn installed, `yarn local:up` runs the same command. This starts the dashboard, API, worker, PostgreSQL, Redis, LocalStack and the tax calculator. The calculator image is built from the official open-source repository on GitHub, pinned to a fixed version (see [deploy/README.md](deploy/README.md)); no extra setting is needed. Database migrations run before the applications start.
 
 | Open | Address |
 | --- | --- |
@@ -155,7 +155,7 @@ After running the setup, edit `deploy/.env` using [deploy/.env.example](deploy/.
 | S3 storage | `STORAGE_S3_BUCKET`, `STORAGE_S3_ENDPOINT`, `STORAGE_S3_REGION`, `STORAGE_S3_ACCESS_KEY_ID`, `STORAGE_S3_SECRET_ACCESS_KEY` |
 | Email delivery and login codes | `RESEND_API_KEY`, `RESEND_BASE_URL`, `EMAIL_FROM` |
 | Stripe billing | `STRIPE_SECRET_KEY`, `STRIPE_PLATFORM_WEBHOOK_SECRET` |
-| Tax calculator | Filled by the setup (`RTC_ZIP_URL`, `RTC_ZIP_SHA256`); use a prebuilt `RTC_IMAGE` for reproducible deploys |
+| Tax calculator | Nothing to fill in; built from the pinned GitHub version (or set a prebuilt `RTC_IMAGE`) |
 
 > [!WARNING]
 > The setup generates the internal passwords and secrets. Keep them with your backups: encrypted certificates depend on them.

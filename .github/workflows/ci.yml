@@ -75,9 +75,8 @@ jobs:
         run: >-
           docker compose --env-file deploy/.env
           -f deploy/docker-compose.yml config --quiet
-      # rtc-calculator is skipped: its build downloads a zip from the government site, whose WAF resets GitHub runner connections.
       - name: Build images
         run: >-
           docker compose --env-file deploy/.env.local
           -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml
-          build api web
+          build api web rtc-calculator

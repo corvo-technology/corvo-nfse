@@ -87,9 +87,6 @@ services:
     build:
       context: ../
       dockerfile: deploy/Dockerfile.rtc
-      args:
-        RTC_ZIP_URL: ${RTC_ZIP_URL:?Informe RTC_ZIP_URL (veja deploy/README.md)}
-        RTC_ZIP_SHA256: ${RTC_ZIP_SHA256:?Informe RTC_ZIP_SHA256}
     init: true
     restart: unless-stopped
     mem_limit: 1536m
