@@ -234,7 +234,8 @@ function observeTypeOrmOperation<T>(
   attributes: Attributes,
   invoke: () => T | Promise<T>,
 ): Promise<T> {
-  const table = String(attributes['db.collection.name'] ?? 'unknown');
+  const collection = attributes['db.collection.name'];
+  const table = typeof collection === 'string' ? collection : 'unknown';
   const tracer = trace.getTracer(TRACER_NAME);
   return tracer.startActiveSpan(
     `typeorm.${operation} ${table}`,
