@@ -1,10 +1,10 @@
 {
- "capturedAt": "2026-10-15",
+ "capturedAt": "2026-11-23",
  "calculator": {
-  "app": "1.6.0",
-  "db": "V0059",
-  "dbDate": "2026-09-30",
-  "source": "local offline instance (docker eclipse-temurin:21-jre + api-regime-geral.jar)"
+  "app": "1.7.2",
+  "db": "V0073",
+  "dbDate": "2026-11-09",
+  "source": "deploy/Dockerfile.rtc (repositório oficial, tag 1.7.2)"
  },
  "description": "Unknown cClassTrib on the competence date.",
  "input": {
@@ -47,10 +47,11 @@
    },
    "status": 404,
    "response": {
-    "type": "http://localhost/errors/classificacao-tributaria-nao-encontrada",
-    "title": "Classificação tributária não encontrada",
+    "detail": "Classificação tributária não encontrada para código 999999 e data 2026-12-10 (CBS e IBS)",
+    "instance": "/api/calculadora/regime-geral",
     "status": 404,
-    "detail": "Classificação tributária não encontrada para código 999999 e data 2026-12-10 (CBS e IBS)"
+    "title": "Classificação tributária não encontrada",
+    "type": "http://localhost/errors/classificacao-tributaria-nao-encontrada"
    }
   }
  ],

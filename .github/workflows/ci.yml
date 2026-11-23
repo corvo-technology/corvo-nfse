@@ -90,17 +90,9 @@ jobs:
           echo "RTC_URL=http://$ip:8080/api" >> "$GITHUB_ENV"
       - name: Calculator version
         run: curl -fsS "$RTC_URL/calculadora/dados-abertos/versao"
-      - name: Recapture fixtures (temporary)
+      - name: Rounding sweep (temporary)
         if: always()
-        run: |
-          node scripts/rtc-capture-fixtures.mjs
-          git diff -- docs/fiscal/rtc/fixtures
-      - name: Upload recaptured fixtures
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: rtc-fixtures
-          path: docs/fiscal/rtc/fixtures
+        run: node scripts/rtc-sweep.mjs
       - name: Calculator smoke test
         if: always()
         run: sh api/scripts/rtc-smoke.sh

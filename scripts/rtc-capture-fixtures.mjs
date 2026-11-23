@@ -26,6 +26,11 @@ for (const name of (await readdir(dir)).filter((f) => f.endsWith('.json')).sort(
     const { status, response } = await call(step);
     if (status !== step.status) console.log(`  ${name}: status ${step.status} -> ${status}`);
     step.status = status;
+    // Tira o que muda a cada execução (carimbo de hora, endereço da instância).
+    if (response && typeof response === 'object') {
+      delete response.timestamp;
+      if (typeof response.type === 'string') response.type = response.type.replace(/^http:\/\/[^/]+\//, 'http://localhost/');
+    }
     step.response = response;
   }
   fixture.capturedAt = new Date().toISOString().slice(0, 10);

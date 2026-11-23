@@ -1,10 +1,10 @@
 {
- "capturedAt": "2026-10-15",
+ "capturedAt": "2026-11-23",
  "calculator": {
-  "app": "1.6.0",
-  "db": "V0059",
-  "dbDate": "2026-09-30",
-  "source": "local offline instance (docker eclipse-temurin:21-jre + api-regime-geral.jar)"
+  "app": "1.7.2",
+  "db": "V0073",
+  "dbDate": "2026-11-09",
+  "source": "deploy/Dockerfile.rtc (repositório oficial, tag 1.7.2)"
  },
  "description": "NFS-e base for IBS/CBS: 1000 - 100 discount - 30 ISS = 870 (2026 transition).",
  "input": {

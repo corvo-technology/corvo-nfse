@@ -48,7 +48,7 @@ Data: 2026-10-15 · Escopo: `feat/rtc-dps-reconciliation`.
 
 ### 5.1 Nada foi homologado contra a Sefin
 - **Produção Restrita da Sefin: não executado.** A emissão com DPS pronta foi exercitada apenas contra um transporte simulado (`MockAgent` + `NfseClientFake` do SDK) em `api/test/fiscal-dps-emission.e2e-spec.ts`. Isso prova o comportamento do cliente (assinar sem transmitir, timeout ⇒ consulta antes de reenviar, `Retry-After`, rejeição permanente, XSD), **não** que a Sefin aceita a DPS gerada. Sem certificado A1 de teste não há como marcar nada como homologado.
-- A Calculadora foi validada contra a versão `1.6.2/V0066` em ambiente local (fixtures reais em `docs/fiscal/rtc/fixtures`). O teste de contrato `rtc-integration` só roda com `RTC_CALCULATOR_URL`.
+- A Calculadora foi validada contra a versão `1.7.2/V0073` em ambiente local (fixtures reais em `docs/fiscal/rtc/fixtures`). O teste de contrato `rtc-integration` só roda com `RTC_CALCULATOR_URL`.
 
 ### 5.2 Calculadora RTC
 - **Competência ≥ 2027-01-01 (regime regular): bloqueada.** O motor exige alíquotas nominais que a base dele ainda não tem; sem elas responde 422 e a Corvo devolve `TAX_RATE_NOT_FOUND` (não retryable). Com alíquotas informadas o motor calcula, mas marca `calculoSimulado: true`, que a Corvo rejeita. Nenhuma alíquota é estimada.
