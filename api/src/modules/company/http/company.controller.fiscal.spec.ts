@@ -1,4 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import type { MunicipalityAgreementService } from '../application/municipality-agreement.service';
 import { CompanyController } from './company.controller';
 import type { CompanyService } from '../application/company.service';
 import type { CompanyFiscalProfileService } from '../application/company-fiscal-profile.service';
@@ -151,6 +152,7 @@ const makeController = (
     {} as ICompanyCertificateReader,
     fiscalProfiles as unknown as CompanyFiscalProfileService,
     serviceTaxProfiles as unknown as CompanyServiceTaxProfileService,
+    {} as MunicipalityAgreementService,
     {},
   );
   return { controller, companyService, fiscalProfiles, serviceTaxProfiles };

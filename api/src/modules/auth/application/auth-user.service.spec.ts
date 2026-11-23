@@ -2,7 +2,7 @@ import { AuthUserService } from './auth-user.service';
 
 const user = {
   id: 'u1',
-  email: 'pedrook16@gmail.com',
+  email: 'maria99@example.com',
   name: '',
   emailVerifiedAt: new Date(),
   primaryIdentityType: null,
@@ -21,13 +21,13 @@ function build(found: typeof user | null = user) {
 describe('AuthUserService.updateName', () => {
   it('saves the trimmed name and nothing else', async () => {
     const { service, repo } = build();
-    const result = await service.updateName('u1', '  Pedro Henrique  ');
-    expect(result.name).toBe('Pedro Henrique');
+    const result = await service.updateName('u1', '  Maria Souza  ');
+    expect(result.name).toBe('Maria Souza');
     expect(repo.update).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'u1',
         email: user.email,
-        name: 'Pedro Henrique',
+        name: 'Maria Souza',
       }),
     );
   });

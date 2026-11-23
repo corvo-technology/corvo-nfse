@@ -43,8 +43,10 @@ describe("llms.txt and llms-full.txt", () => {
   const CLIENTS = ["Claude Code", "Claude Desktop", "Cursor", "VS Code", "Codex", "Windsurf"];
 
   for (const locale of ["en", "pt"] as const) {
-    it(`never mentions AGPL in ${locale}`, () => {
-      expect(buildLlmsTxt(locale)).not.toMatch(/AGPL/i);
+    it(`says the project is open source under AGPL-3.0 and links the repository in ${locale}`, () => {
+      const index = buildLlmsTxt(locale);
+      expect(index).toMatch(/AGPL-3\.0/);
+      expect(index).toContain("https://github.com/corvo-technology/corvo-nfse");
     });
 
     it(`lists the 6 MCP clients and the legal links in ${locale}`, () => {

@@ -79,6 +79,7 @@ describe('CertificateService', () => {
       mockCompanyRepo,
       mockEncryptor,
       mockParser,
+      { refresh: jest.fn().mockResolvedValue(null) } as any,
     );
   });
 

@@ -1,4 +1,5 @@
 import { Index as ManagedIndex } from 'typeorm';
+import type { MunicipalityAgreementAnswer } from '../domain/municipality-agreement';
 import {
   ForeignKey,
   Index,
@@ -190,4 +191,15 @@ export class CompanyOrmEntity {
     nullable: true,
   })
   accountantPackageLastSentMonth?: string | null;
+
+  /** Last `consultarConvenio` answer; written only by the agreement store, never by the company mapper. */
+  @Column({ name: 'municipality_agreement', type: 'jsonb', nullable: true })
+  municipalityAgreement?: MunicipalityAgreementAnswer | null;
+
+  @Column({
+    name: 'municipality_agreement_checked_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  municipalityAgreementCheckedAt?: Date | null;
 }

@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { REPO_URL } from "@/lib/repo";
 
 const navLinks: { key: string; href: string; locale?: string }[] = [
   { key: "product", href: "#product" },
@@ -45,6 +46,14 @@ export function Nav() {
               {t(link.key)}
             </a>
           ))}
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[14px] text-text-2 transition-colors hover:text-text"
+          >
+            {t("github")}
+          </a>
         </div>
       </div>
 
@@ -99,6 +108,15 @@ export function Nav() {
                 {t(link.key)}
               </a>
             ))}
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[14px] text-text-2 hover:text-text py-1"
+              onClick={() => setMobileOpen(false)}
+            >
+              {t("github")}
+            </a>
             <div className="flex items-center gap-4 pt-2 border-t border-border-soft mt-1">
               <LocaleSwitcher />
               <Link

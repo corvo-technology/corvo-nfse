@@ -11,6 +11,7 @@ import {
   CertificateExpiredError,
   CertificateTaxIdMismatchError,
 } from '../domain/errors';
+import { MunicipalityAgreementService } from '@/modules/company/application/municipality-agreement.service';
 import { CertificateEncryptor } from '../infra/aes-encryptor';
 
 @Injectable()
@@ -37,6 +38,7 @@ export class CertificateService {
     private readonly companyRepo: ICompanyRepository,
     private readonly encryptor: CertificateEncryptor,
     private readonly parser: CertificateParserService,
+    private readonly municipalityAgreements: MunicipalityAgreementService,
   ) {}
 
   async upload(
@@ -114,6 +116,11 @@ export class CertificateService {
       companyForStatus.recomputeStatus(true); // just uploaded active cert
       await this.companyRepo.save(companyForStatus, tenantId);
     }
+
+    // Informative only: a failed check must never fail the upload.
+    await this.municipalityAgreements
+      .refresh(companyId, tenantId, environment)
+      .catch(() => undefined);
 
     return certificate.toMetadata();
   }

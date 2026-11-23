@@ -1,0 +1,7 @@
+# Falsos positivos do histórico: exemplos de Idempotency-Key na documentação.
+24ba98b91b7a8cf3e4b2cd74139441540958eca0:web/lib/docs/content/en.ts:generic-api-key:1215
+24ba98b91b7a8cf3e4b2cd74139441540958eca0:web/lib/docs/content/en.ts:generic-api-key:1226
+24ba98b91b7a8cf3e4b2cd74139441540958eca0:web/lib/docs/content/pt.ts:generic-api-key:1195
+24ba98b91b7a8cf3e4b2cd74139441540958eca0:web/lib/docs/content/pt.ts:generic-api-key:1206
+3336fc0b537cc10fd0b509fed728f266e2361867:web/lib/docs/content/en.ts:generic-api-key:1162
+3336fc0b537cc10fd0b509fed728f266e2361867:web/lib/docs/content/pt.ts:generic-api-key:1142

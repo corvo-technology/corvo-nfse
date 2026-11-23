@@ -377,6 +377,8 @@ export interface CompanyAddress {
   street?: string; number?: string; complement?: string; district?: string;
   city?: string; state?: string; zip?: string;
 }
+export type MunicipalityAgreementStatus = "not_checked" | "active" | "inactive" | "unknown" | "not_found";
+export interface MunicipalityAgreement { status: MunicipalityAgreementStatus; checkedAt: string | null; agreementType: string | null }
 export interface Company {
   id: string; tenantId: string; legalName: string; tradeName?: string;
   taxId: string; municipalReg?: string; /** Sends the municipal registration in the DPS. Off by default. */ sendMunicipalReg?: boolean; municipalityCode?: string; defaultServiceCode?: string;
@@ -385,6 +387,8 @@ export interface Company {
   simplesRate?: string; simplesIssRate?: string;
   environment: CompanyEnvironment; address: CompanyAddress;
   status: CompanyStatus; /** What is still missing before the company is ready, from the API. */ setupGaps?: SetupGap[];
+  /** What the Sefin said about the company's municipality; only on the single-company read. */
+  municipalityAgreement?: MunicipalityAgreement;
   createdAt: string; updatedAt: string;
 }
 export interface CreateCompanyInput {

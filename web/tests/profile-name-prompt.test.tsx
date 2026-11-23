@@ -8,7 +8,7 @@ import messages from "@/messages/en.json";
 const mocks = vi.hoisted(() => ({
   updateProfile: vi.fn(),
   refreshSession: vi.fn(),
-  profile: { name: "", email: "pedrook16@gmail.com" } as { name: string; email: string } | null,
+  profile: { name: "", email: "maria99@example.com" } as { name: string; email: string } | null,
 }));
 vi.mock("@/lib/api", async (original) => ({
   ...(await original<typeof import("@/lib/api")>()),
@@ -23,8 +23,8 @@ const renderPrompt = () => render(<NextIntlClientProvider locale="en" messages={
 beforeEach(() => {
   vi.clearAllMocks();
   sessionStorage.clear();
-  mocks.profile = { name: "", email: "pedrook16@gmail.com" };
-  mocks.updateProfile.mockResolvedValue({ name: "Pedro Henrique" });
+  mocks.profile = { name: "", email: "maria99@example.com" };
+  mocks.updateProfile.mockResolvedValue({ name: "Maria Souza" });
   mocks.refreshSession.mockResolvedValue(undefined);
 });
 afterEach(cleanup);
@@ -36,23 +36,23 @@ describe("first-access name screen", () => {
   });
 
   it("asks again for the name that was only taken from the e-mail", () => {
-    mocks.profile = { name: "pedrook16", email: "pedrook16@gmail.com" };
+    mocks.profile = { name: "maria99", email: "maria99@example.com" };
     renderPrompt();
     expect(screen.getByRole("heading", { name: "What should we call you?" })).toBeTruthy();
   });
 
   it("stays out of the way when the person already has a real name", () => {
-    mocks.profile = { name: "Pedro Henrique", email: "pedrook16@gmail.com" };
+    mocks.profile = { name: "Maria Souza", email: "maria99@example.com" };
     renderPrompt();
     expect(screen.queryByRole("heading")).toBeNull();
   });
 
   it("saves the trimmed name and reloads the session", async () => {
     renderPrompt();
-    fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "  Pedro Henrique " } });
+    fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "  Maria Souza " } });
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await waitFor(() => expect(mocks.refreshSession).toHaveBeenCalled());
-    expect(mocks.updateProfile).toHaveBeenCalledWith("Pedro Henrique");
+    expect(mocks.updateProfile).toHaveBeenCalledWith("Maria Souza");
   });
 
   it("does not send an empty name", () => {

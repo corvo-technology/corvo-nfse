@@ -5,6 +5,10 @@ import {
   type DpsLayoutPolicy,
 } from '@/modules/invoice/domain/fiscal/dps/dps-layout';
 import { Injectable, Logger } from '@nestjs/common';
+import type {
+  MunicipalityAgreementAnswer,
+  MunicipalityAgreementPort,
+} from '@/modules/company/domain/municipality-agreement';
 import { renderInvoicePdf } from '@/modules/invoice/infra/danfse/danfse';
 import { ConfigService } from '@nestjs/config';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
@@ -50,7 +54,9 @@ const CANCELLATION_REASON: Record<
 };
 
 @Injectable()
-export class OpenNfseProvider implements FiscalProvider {
+export class OpenNfseProvider
+  implements FiscalProvider, MunicipalityAgreementPort
+{
   private readonly logger = new Logger(OpenNfseProvider.name);
   /** `NFSE_SEFIN_ENVIRONMENT=restricted` forces every invoice, live included, to the homologation Sefin. */
   private readonly homologationOnly: boolean;
@@ -160,6 +166,43 @@ export class OpenNfseProvider implements FiscalProvider {
         ],
     });
   }
+  /** Municipality agreement with the Sefin (`consultarConvenio`). Always fresh: the caller stores the answer. */
+  async lookup(input: {
+    municipalityCode: string;
+    environment: 'test' | 'live';
+    pfxBuffer: Buffer;
+    password: string;
+  }): Promise<MunicipalityAgreementAnswer> {
+    const client = this.client({
+      environment: input.environment,
+      pfxBuffer: input.pfxBuffer,
+      p12Password: input.password,
+    });
+    try {
+      const result = await client.consultarConvenio(input.municipalityCode, {
+        useCache: false,
+      });
+      const agreement = result.parametrosConvenio;
+      if (!agreement)
+        return {
+          municipalityCode: input.municipalityCode,
+          found: false,
+          ...(result.mensagem ? { message: result.mensagem } : {}),
+        };
+      return {
+        municipalityCode: input.municipalityCode,
+        found: true,
+        agreementType: agreement.tipoConvenio,
+        nationalEnvironment: agreement.aderenteAmbienteNacional,
+        nationalIssuer: agreement.aderenteEmissorNacional,
+        rfbStandardIssuance: agreement.situacaoEmissaoPadraoContribuintesRFB,
+        ...(result.mensagem ? { message: result.mensagem } : {}),
+      };
+    } finally {
+      await client.close();
+    }
+  }
+
   private result(result: NfseEmitResult | NfseQueryResult): FiscalIssueResult {
     return {
       success: true,

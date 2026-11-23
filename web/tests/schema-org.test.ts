@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import sitemap from "@/app/sitemap";
 import { ORGANIZATION_SAME_AS, ORGANIZATION_URL, SITE_URL } from "@/lib/seo";
+import { REPO_URL } from "@/lib/repo";
 import { isValidElement, type ReactNode } from "react";
 import { JsonLd } from "@/components/seo/json-ld";
 import LandingPage from "@/app/[locale]/page";
@@ -28,18 +29,18 @@ const files = (dir: string): string[] =>
   });
 
 describe("schema.org", () => {
-  it("builds FAQPage in one place only, from the landing FAQ text (so it cannot drift from the page)", () => {
+  it("builds FAQPage only in the landing FAQ and in the blog, each from its own visible text (so it cannot drift from the page)", () => {
     const offenders = [...files(join(ROOT, "app")), ...files(join(ROOT, "components")), ...files(join(ROOT, "lib"))]
       .filter((file) => readFileSync(file, "utf8").includes("FAQPage"))
       .map((file) => file.slice(ROOT.length + 1));
-    expect(offenders).toEqual(["lib/landing-faq.ts"]);
+    expect(offenders).toEqual(["lib/blog/seo.ts", "lib/landing-faq.ts"]);
   });
 
-  it.each(["pt", "en"] as const)("%s landing JSON-LD has a FAQPage with the five questions, each answer pointing at a page of the site", async (locale) => {
+  it.each(["pt", "en"] as const)("%s landing JSON-LD has a FAQPage with the six questions, each answer pointing at a page of the site or at the repository", async (locale) => {
     const faq = jsonLd(await LandingPage({ params: Promise.resolve({ locale }) })).find((item) => item["@type"] === "FAQPage") as Record<string, unknown>;
     expect(faq).toMatchObject({ "@id": `${SITE_URL}/${locale}#faq`, inLanguage: locale === "pt" ? "pt-BR" : "en", isPartOf: { "@id": `${SITE_URL}/#website` } });
     const entities = faq.mainEntity as { "@type": string; name: string; acceptedAnswer: { "@type": string; text: string; url: string } }[];
-    expect(entities).toHaveLength(5);
+    expect(entities).toHaveLength(6);
     const known = new Set(sitemap().map((entry) => entry.url));
     for (const entity of entities) {
       expect(entity["@type"]).toBe("Question");
@@ -47,7 +48,7 @@ describe("schema.org", () => {
       expect(entity.acceptedAnswer["@type"]).toBe("Answer");
       expect(entity.acceptedAnswer.text.length).toBeGreaterThan(80);
       expect(entity.acceptedAnswer.text).not.toMatch(/<[a-z]/i);
-      expect(known.has(entity.acceptedAnswer.url)).toBe(true);
+      expect(known.has(entity.acceptedAnswer.url) || entity.acceptedAnswer.url === REPO_URL).toBe(true);
     }
   });
 

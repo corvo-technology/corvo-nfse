@@ -187,7 +187,7 @@ Checklist com critério de pronto cada item.
 
 | Item | Critério |
 |---|---|
-| Dados pessoais | Nenhuma ocorrência de e-mail ou nome pessoais no código (`api/scripts/api-scenarios.mjs`, `test-api-key.mjs` usam `pedrook16@gmail.com`). `git grep` limpo. |
+| Dados pessoais | Nenhum e-mail ou nome pessoal no código; scripts e testes usam dados fictícios (`maria99@example.com`). |
 | Marca antiga | Substituir `greenflow` por `corvo` em `api/llms.txt`, nomes de tracing e Sentry, `GreenflowCookieKind`, prefixos `gf_*` e `gf:attest:`, chave `greenflow:human-proof`. **[decisão minha]** como a produção tem 1 tenant, aceitar a invalidação única de sessões; fazer na mesma janela do PR e avisar. Os testes que usam `custom_greenflow` só renomeiam. |
 | Ativos externos | Logo do README e `stripe-branding.ts` deixam de apontar para `assets.greenflow.solutions`; o logo vai para o repositório. |
 | Histórico | `gitleaks detect` no histórico completo passa sem achados antes de publicar; o histórico não contém arquivos internos. O `.gitignore` indica que o repositório veio de repositórios anteriores, então vale revisar também arquivos grandes. |
