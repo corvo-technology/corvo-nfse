@@ -94,6 +94,14 @@ export class MagicLinkService {
     userAgent: string,
   ): Promise<MagicLinkVerifyResult> {
     await this.authUserService.markEmailVerified(user.id, new Date());
+    try {
+      await this.authUserService.markLogin(user.id);
+    } catch (err) {
+      // Recording the last login must never block sign-in.
+      this.logger.warn(
+        `Failed to record last login for ${user.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
 
     await this.workspaces.ensureWorkspace(user);
     if (isNew) await this.sendWelcome(user.email, user.name);

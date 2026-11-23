@@ -90,9 +90,7 @@ export class AuthUserService {
   }
 
   async markLogin(authUserId: string, now = new Date()): Promise<void> {
-    const user = await this.users.findById(authUserId);
-    if (!user) return;
-    await this.users.update({ ...user, updatedAt: now });
+    await this.users.updateLastLoginAt(authUserId, now);
   }
 }
 

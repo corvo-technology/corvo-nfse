@@ -98,13 +98,10 @@ export class TypeOrmAuthUserRepository implements IAuthUserRepository {
     return this.save(user);
   }
 
-  async updateLastLoginAt(
-    authUserId: string,
-    lastLoginAt: Date,
-  ): Promise<void> {
-    await this.db.repository(AuthUserOrmEntity).update(authUserId, {
-      updatedAt: lastLoginAt,
-    });
+  async updateLastLoginAt(authUserId: string, at: Date): Promise<void> {
+    await this.db
+      .repository(AuthUserOrmEntity)
+      .update(authUserId, { lastLoginAt: at });
   }
 }
 
@@ -345,6 +342,7 @@ function toAuthUser(row: AuthUserOrmEntity): AuthUser {
     emailVerifiedAt: row.emailVerifiedAt ?? null,
     primaryIdentityType:
       (row.primaryIdentityType as AuthUser['primaryIdentityType']) ?? null,
+    lastLoginAt: row.lastLoginAt ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
