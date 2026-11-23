@@ -94,6 +94,26 @@ describe('TenantContextGuard', () => {
     ).toThrow(BadRequestException);
   });
 
+  it('deixa passar /v1/platform/tenants/:tenantId (a barreira é o PlatformAdminGuard)', () => {
+    expect(
+      guard.canActivate(
+        createContext({
+          originalUrl: `/v1/platform/tenants/${otherTenantId}/credit-grants`,
+          params: { tenantId: otherTenantId },
+          authContext: {
+            authUserId: 'auth-1',
+            userId: 'user-1',
+            tenantId,
+            activeTenantId: tenantId,
+            role: 'admin',
+            permissions: [],
+            isPlatformAdmin: false,
+          },
+        }),
+      ),
+    ).toBe(true);
+  });
+
   it('rejects malformed tenant route params', () => {
     expect(() =>
       guard.canActivate(

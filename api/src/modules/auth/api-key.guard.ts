@@ -4,12 +4,14 @@ import {
   ExecutionContext,
   Injectable,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthContextService } from './application/auth-context.service';
 import { ApiKeyService } from './application/api-key.service';
 import { PUBLIC_ROUTE_KEY } from './application/public-route.decorator';
 import { API_KEY_ENDPOINT } from './api-key-endpoint.decorator';
+import { PLATFORM_ADMIN_ONLY } from './platform-admin-only.decorator';
 
 type HttpRequest = {
   headers?: Record<string, string | string[] | undefined>;
@@ -54,6 +56,13 @@ export class ApiKeyGuard implements CanActivate {
     const apiKey = await this.apiKeyService.validate(rawKey);
 
     if (!this.isApiKeyEndpoint(context)) {
+      // The platform admin does not exist for API keys: 404, never 403.
+      if (this.isPlatformAdminOnly(context)) {
+        throw new NotFoundException({
+          code: 'RESOURCE_NOT_FOUND',
+          message: 'Resource not found',
+        });
+      }
       throw new ForbiddenException({
         code: 'API_KEY_NOT_ALLOWED',
         message:
@@ -94,6 +103,15 @@ export class ApiKeyGuard implements CanActivate {
   private isApiKeyEndpoint(context: ExecutionContext): boolean {
     return Boolean(
       this.reflector.getAllAndOverride<boolean>(API_KEY_ENDPOINT, [
+        context.getHandler(),
+        context.getClass(),
+      ]),
+    );
+  }
+
+  private isPlatformAdminOnly(context: ExecutionContext): boolean {
+    return Boolean(
+      this.reflector.getAllAndOverride<boolean>(PLATFORM_ADMIN_ONLY, [
         context.getHandler(),
         context.getClass(),
       ]),
