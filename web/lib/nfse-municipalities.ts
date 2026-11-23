@@ -25,6 +25,12 @@ export async function loadMunicipalities(): Promise<MunicipalityData> {
   return (await import("@/lib/docs/data/nfse-municipios.json")).default as unknown as MunicipalityData;
 }
 
+/** The municipality with this 7-digit IBGE code, or undefined when the code is not on the official list. */
+export function findMunicipality(rows: readonly MunicipalityRow[], code: string): MunicipalityRow | undefined {
+  const wanted = Number(code);
+  return /^\d{7}$/.test(code) ? rows.find((row) => row[0] === wanted) : undefined;
+}
+
 /** "São Paulo" and "sao paulo" are the same search. */
 export const normalizeSearch = (text: string): string =>
   text.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();

@@ -16,10 +16,10 @@ const wrap = (locale: "en" | "pt") => render(<NextIntlClientProvider locale={loc
 afterEach(cleanup);
 
 describe("landing FAQ", () => {
-  it.each(["pt", "en"] as const)("has the five questions in %s, each with its answer in the page", (locale) => {
+  it.each(["pt", "en"] as const)("has the six questions in %s, each with its answer in the page", (locale) => {
     const { container } = wrap(locale);
     const items = container.querySelectorAll("details");
-    expect(items).toHaveLength(5);
+    expect(items).toHaveLength(6);
     for (const item of items) {
       expect(item.querySelector("summary")?.textContent?.trim().length).toBeGreaterThan(10);
       expect(item.querySelector("p")?.textContent?.trim().length).toBeGreaterThan(60);
@@ -29,7 +29,7 @@ describe("landing FAQ", () => {
   it("opens on the first question (municipalities) and keeps the others closed", () => {
     const { container } = wrap("pt");
     const open = [...container.querySelectorAll("details")].map((item) => item.open);
-    expect(open).toEqual([true, false, false, false, false]);
+    expect(open).toEqual([true, false, false, false, false, false]);
   });
 
   it("each answer links to where it goes deeper, in the visitor's language", () => {
@@ -41,6 +41,7 @@ describe("landing FAQ", () => {
     expect(link("Ver como conectar")).toBe("/pt/docs/payment-integrations");
     expect(link("Ver os SDKs")).toBe("/pt/docs/sdks");
     expect(link("Ver o MCP")).toBe("/pt/docs/mcp");
+    expect(link("Ver o código no GitHub")).toBe("https://github.com/corvo-technology/corvo-nfse");
   });
 
   it("covers municipalities, issuing (with email, certificate and regimes), several CNPJs, payment platforms and SDKs", () => {

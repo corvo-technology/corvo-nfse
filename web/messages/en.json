@@ -67,7 +67,8 @@
       "invoices": "Tax invoices",
       "billing": "Plan",
       "agents": "AI agents",
-      "integrations": "Integrations"
+      "integrations": "Integrations",
+      "customers": "Customers"
     },
     "account": "ACCOUNT",
     "balance": "BALANCE",
@@ -375,6 +376,10 @@
           "cancellation_rejected": {
             "label": "Cancellation rejected",
             "description": "The Sefin refused the cancellation; the invoice stays authorized."
+          },
+          "taker_rejected": {
+            "label": "Taker rejected",
+            "description": "The taker rejected the invoice on the national portal; it stays authorized."
           }
         }
       }
@@ -704,7 +709,9 @@
     "docs": "Docs",
     "pricing": "Pricing",
     "signIn": "Sign in",
-    "startFree": "Start free"
+    "startFree": "Start free",
+    "blog": "Blog",
+    "github": "GitHub"
   },
   "Language": {
     "en": "EN",
@@ -918,7 +925,10 @@
     "security": "Security",
     "terms": "Terms",
     "privacy": "Privacy Notice",
-    "cookiePreferences": "Cookie preferences"
+    "cookiePreferences": "Cookie preferences",
+    "blog": "Blog",
+    "github": "GitHub",
+    "license": "Open source · AGPL-3.0"
   },
   "CookieConsent": {
     "message": "We use cookies and similar technologies, including Google Analytics and the Meta Pixel, to improve your experience, measure site traffic and understand signup campaigns. By clicking \"Accept\", you agree to this use.",
@@ -1191,7 +1201,9 @@
       "loadMoreCompanies": "Load more companies",
       "companyNotReady": "This company needs setup or is blocked from issuing in this environment.",
       "configureCompany": "View company setup",
-      "openCompany": "Open the company"
+      "openCompany": "Open the company",
+      "purchaseOrder": "Purchase order",
+      "notes": "Notes on the invoice"
     },
     "placeholders": {
       "reference": "order-12345",
@@ -1203,7 +1215,9 @@
       "description": "Technical consulting for software development",
       "amount": "1000.00",
       "serviceCode": "010701",
-      "municipalityCode": "3550308"
+      "municipalityCode": "3550308",
+      "purchaseOrder": "PO-4521",
+      "notes": "Instalment 2 of 3, contract 12/2026"
     },
     "loadedRecords": "Showing {count} loaded invoices. Filters apply to these records.",
     "loadMore": "Load more",
@@ -1216,7 +1230,10 @@
       "municipalityDefault": "Company municipality: {code}. Leave empty to use it, or enter another service location for this invoice.",
       "description": "Optional. When empty we use the service code's name.",
       "deduction": "Optional. An amount your city's legislation allows you to deduct from the ISS base. It is subtracted from the tax base and sent on the invoice. You declare the value: Corvo does not check whether the deduction is allowed, so confirm it with your accountant.",
-      "serviceCodeFallback": "Optional. With no code on the invoice or the company, we use {code} (10.09, representation). Pick your own activity code."
+      "serviceCodeFallback": "Optional. With no code on the invoice or the company, we use {code} (10.09, representation). Pick your own activity code.",
+      "purchaseOrder": "Purchase order or service order number the customer asked to see on the invoice. It changes no tax.",
+      "notes": "Free text printed on the invoice, such as the instalment or contract number. It changes no tax.",
+      "savedCustomer": "You have invoiced this customer before, so we filled in the name."
     },
     "summary": {
       "title": "Invoice summary",
@@ -1257,6 +1274,38 @@
       "next": "Next invoice on {date}. With no date it repeats until you pause it.",
       "createdButFailed": "The invoice was issued, but the recurrence was not created. Try again: it will not issue another invoice.",
       "createdButFailedWith": "The invoice was issued, but the recurrence was not created ({reason}). Try again: it will not issue another invoice."
+    },
+    "foreign": {
+      "country": "Country",
+      "countryPlaceholder": "Choose the country",
+      "taxId": "Tax id (NIF)",
+      "taxIdHint": "The customer's taxpayer number in its own country.",
+      "reason": {
+        "exempt": "Exempt",
+        "not_required": "Not required"
+      },
+      "street": "Street",
+      "number": "Number",
+      "complement": "Complement",
+      "district": "District or neighbourhood",
+      "city": "City",
+      "region": "State, province or region",
+      "postalCode": "Postal code",
+      "notExport": "Informing a customer abroad does not declare a service export: the invoice keeps the same tax treatment. Confirm the classification with your accountant.",
+      "groupLabel": "Where the customer is",
+      "brazil": "Brazil",
+      "abroad": "Abroad",
+      "noTaxIdToggle": "Customer without a NIF",
+      "reasonLabel": "Reason"
+    },
+    "more": {
+      "title": "More options",
+      "hint": "Code, deduction, order, notes, reference and repeat",
+      "filled": "{count} filled"
+    },
+    "portalFlag": {
+      "taker_rejected": "Taker rejected",
+      "blocked": "Blocked by the municipality"
     }
   },
   "Billing": {
@@ -1731,7 +1780,48 @@
       "confirm": "Cancel invoice",
       "failed": "We couldn't cancel the invoice.",
       "reasonLabel": "Cancellation reason"
-    }
+    },
+    "purchaseOrder": "Purchase order",
+    "notes": "Notes on the invoice",
+    "substitute": {
+      "open": "Substitute invoice",
+      "title": "Substitute invoice",
+      "intro": "Issues a new invoice that replaces this one. The Receita cancels this invoice once it authorizes the new one; if it refuses, this one stays valid.",
+      "locked": "Customer, competence date and amount do not change. To correct one of them, cancel this invoice and issue another.",
+      "reason": "Reason for the substitution",
+      "reasonHint": "At least {min} characters. It goes on the invoice sent to the Receita.",
+      "serviceDescription": "Service description",
+      "purchaseOrder": "Purchase order",
+      "notes": "Notes on the invoice",
+      "optional": "optional",
+      "credit": "The new invoice uses a credit, like any issued invoice. The credit of this one is not returned.",
+      "keep": "Keep as is",
+      "confirm": "Substitute invoice",
+      "failed": "Could not substitute the invoice."
+    },
+    "portalFlag": {
+      "taker_rejected": "Taker rejected",
+      "blocked": "Blocked by the municipality"
+    },
+    "portalFlagHint": {
+      "taker_rejected": "The taker rejected this invoice on the national portal. It stays authorized.",
+      "blocked": "The municipality blocked this invoice by official letter. It stays authorized."
+    },
+    "portalEvent": {
+      "CANCELAMENTO": "Cancelled on the national portal",
+      "CANCELAMENTO_POR_SUBSTITUICAO": "Cancelled by substitution on the national portal",
+      "CANCELAMENTO_DEFERIDO_ANALISE_FISCAL": "Cancellation granted by fiscal review",
+      "CANCELAMENTO_POR_OFICIO": "Cancelled by the municipality",
+      "REJEICAO_TOMADOR": "The taker rejected the invoice",
+      "REJEICAO_INTERMEDIARIO": "The intermediary rejected the invoice",
+      "BLOQUEIO_POR_OFICIO": "Blocked by the municipality",
+      "DESBLOQUEIO_POR_OFICIO": "Unblocked by the municipality",
+      "CONFIRMACAO_TOMADOR": "The taker confirmed the invoice",
+      "CONFIRMACAO_TACITA": "Tacit confirmation by the taker",
+      "ANULACAO_REJEICAO": "Rejection annulled",
+      "other": "Registered on the national portal"
+    },
+    "portalSource": "National portal"
   },
   "FiscalDocs": {
     "title": "Corvo API — NFS-e",
@@ -1994,7 +2084,8 @@
     "invitation_expired": "This invitation has expired. Ask for a new one.",
     "invitation_email_mismatch": "Sign in with the e-mail that received the invitation.",
     "invitation_limit_reached": "Too many pending invitations. Cancel some before inviting.",
-    "invitation_recently_sent": "An invitation was just sent. Try again in a minute."
+    "invitation_recently_sent": "An invitation was just sent. Try again in a minute.",
+    "invoice_not_substitutable": "Only an authorized invoice can be substituted."
   },
   "Legal": {
     "eyebrow": "LEGAL",
@@ -2496,6 +2587,21 @@
       }
     ]
   },
+  "LandingOpenSource": {
+    "eyebrow": "OPEN SOURCE",
+    "title": "Open source, top to bottom.",
+    "description": "The API, the worker and the dashboard are public under AGPL-3.0. Read the code, run it on your own servers, or send a pull request.",
+    "points": {
+      "license": "AGPL-3.0: use it, change it, audit it.",
+      "selfHost": "Self-host with Docker Compose: your servers, your A1 certificates, your data.",
+      "contribute": "Issues and pull requests are welcome. A maintainer reviews every change."
+    },
+    "star": "Star on GitHub",
+    "guide": "Self-hosting guide",
+    "starHint": "If Corvo saves you time, a star helps other developers find it.",
+    "codeLabel": "Run Corvo locally",
+    "requirements": "Needs Docker Compose v2 and Node.js 24."
+  },
   "LandingSdks": {
     "eyebrow": "SDKS",
     "title": "Nine languages. One API.",
@@ -2731,6 +2837,11 @@
         "a": "Yes. Corvo has official SDKs for Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir and .NET, with the same operations in all of them, and you can also call the REST API directly. For AI agents, Corvo has an MCP server: Claude Code, Cursor, Codex, VS Code, Windsurf and Claude Desktop connect with a browser login, and you pick the workspace and the environment (test or live) on the approval screen.",
         "link": "See the SDKs",
         "link2": "See the MCP server"
+      },
+      "opensource": {
+        "q": "Is Corvo open source? Can I run it myself?",
+        "a": "Yes. The API, the worker and the dashboard are public on GitHub under AGPL-3.0. You can read the code, run it on your own servers with Docker Compose, and send issues and pull requests. The hosted service at corvo.tech runs the same project, with the A1 certificates, the data and the billing handled for you.",
+        "link": "See the code on GitHub"
       }
     }
   },
@@ -2807,7 +2918,11 @@
       "required": "Required",
       "failed": "Could not save the schedule.",
       "editHint": "Changes apply to the next runs. Notes already issued do not change.",
-      "optional": "optional"
+      "optional": "optional",
+      "purchaseOrder": "Purchase order",
+      "purchaseOrderHint": "Printed on every invoice of this schedule.",
+      "notes": "Notes on the invoice",
+      "notesHint": "Free text printed on every invoice. It changes no tax."
     },
     "runs": {
       "title": "Run history",
@@ -2846,7 +2961,9 @@
       "createdAt": "Created on",
       "notFound": "Schedule not found.",
       "loading": "Loading the schedule",
-      "history": "History"
+      "history": "History",
+      "purchaseOrder": "Purchase order",
+      "notes": "Notes on the invoice"
     }
   },
   "Imports": {
@@ -2909,6 +3026,7 @@
       "loadMore": "Load more",
       "emit": "Issue {count, plural, one {# invoice} other {# invoices}}",
       "emitNone": "No row is ready to issue",
+      "sendEmail": "Email the invoice to the customers",
       "emitFailed": "Could not start issuing.",
       "downloadErrors": "Download only the errors",
       "downloadFailed": "Could not download the file.",
@@ -3066,5 +3184,53 @@
     "title": "The national NFS-e portal is not answering.",
     "titleSince": "The national NFS-e portal has not answered since {time}.",
     "body": "Your invoices are kept in the queue and will be sent as soon as it is back. Nothing needs to be redone."
+  },
+  "Customers": {
+    "title": "Customers",
+    "subtitle": "Who you have invoiced. On the next invoice the CPF or CNPJ is enough: the name is filled in.",
+    "loadFailed": "Could not load the customers.",
+    "loadMore": "Load more",
+    "search": {
+      "label": "Search customer",
+      "placeholder": "Name, CPF or CNPJ"
+    },
+    "columns": {
+      "name": "Name",
+      "taxId": "CPF/CNPJ",
+      "email": "Email",
+      "lastUsed": "Last invoice",
+      "actions": "Actions"
+    },
+    "empty": {
+      "title": "No saved customers yet",
+      "body": "Customers show up here on their own after the first invoice issued with a CPF or CNPJ and a name.",
+      "action": "Issue an invoice",
+      "noMatch": "No customer with that name or document."
+    },
+    "edit": {
+      "action": "Correct",
+      "open": "Correct {name}",
+      "title": "Correct customer",
+      "optional": "optional",
+      "emailHint": "Kept to fill in the form. Leave it empty to remove it.",
+      "note": "The correction applies to the next invoices. Invoices already issued do not change.",
+      "save": "Save",
+      "nameRequired": "Enter the name.",
+      "failed": "Could not save the customer."
+    },
+    "remove": {
+      "open": "Delete {name}",
+      "title": "Delete this customer?",
+      "body": "{name} no longer shows up here and the name will not be filled in anymore. Invoices already issued do not change.",
+      "confirm": "Delete customer",
+      "failed": "Could not delete the customer."
+    }
+  },
+  "MunicipalityNotice": {
+    "inactive": "The agreement of {name} ({uf}) with the national NFS-e standard is not active yet. The Receita may refuse this company's invoices until the municipality activates it.",
+    "unknown": "Code {code} is not on the official list of municipalities. Check the 7-digit IBGE code.",
+    "inactiveChecked": "The Receita lookup shows that municipality {code} has not activated its agreement with the national NFS-e standard. The Receita may refuse this company's invoices until it does.",
+    "notFoundChecked": "The Receita has no parameters for code {code}. Check the 7-digit IBGE code.",
+    "link": "See the status of municipalities"
   }
 }

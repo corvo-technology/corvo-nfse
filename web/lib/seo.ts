@@ -31,7 +31,7 @@ export const SITE_COPY: Record<SeoLocale, SiteCopy> = {
   en: {
     title: "Corvo — Brazilian NFS-e API for MEI and Simples Nacional",
     description:
-      "REST API to issue Brazilian NFS-e: MEI and Simples Nacional, tax calculation, multi-company, webhooks and AI agents (MCP). 15 free invoices a month.",
+      "REST API to issue Brazilian NFS-e: MEI and Simples Nacional, tax calculation, multi-company, webhooks and AI agents (MCP). The first invoice is free.",
     ogAlt: "Corvo — Brazilian NFS-e API for developers",
     tagline:
       "REST API and MCP server to issue Brazilian service invoices (NFS-e) for MEI and Simples Nacional companies.",
@@ -51,7 +51,7 @@ export const SITE_COPY: Record<SeoLocale, SiteCopy> = {
   pt: {
     title: "Corvo — API de NFS-e para MEI e Simples Nacional",
     description:
-      "API REST para emitir NFS-e: MEI e Simples Nacional, cálculo de tributos, multiempresa, webhooks e agentes de IA (MCP). 15 notas grátis por mês.",
+      "API REST para emitir NFS-e: MEI e Simples Nacional, cálculo de tributos, multiempresa, webhooks e agentes de IA (MCP). A primeira nota é grátis.",
     ogAlt: "Corvo — API de NFS-e para desenvolvedores",
     tagline:
       "API REST e servidor MCP para emitir notas fiscais de serviço (NFS-e) de empresas MEI e do Simples Nacional.",
@@ -85,7 +85,14 @@ export function pageUrl(locale: SeoLocale, path = ""): string {
 }
 
 /** Canonical plus hreflang for every locale, with the default locale as x-default. */
-export function localizedAlternates(locale: SeoLocale, path = "") {
+export function localizedAlternates(locale: SeoLocale, path = "", only?: SeoLocale) {
+  // A page that exists in a single language lists only that language, so hreflang never points at a redirect.
+  if (only) {
+    return {
+      canonical: pageUrl(only, path),
+      languages: { [only]: pageUrl(only, path), "x-default": pageUrl(only, path) },
+    };
+  }
   return {
     canonical: pageUrl(locale, path),
     languages: {
@@ -106,20 +113,26 @@ interface PageMetadataInput {
   description: string;
   keywords?: string[];
   type?: "website" | "article";
+  /** The page exists in one language only (the blog): canonical and hreflang list just that one. */
+  onlyLocale?: SeoLocale;
+  /** false: the page has its own opengraph-image/twitter-image file, which Next adds; no site-wide image here. */
+  sharedImage?: boolean;
 }
 
 /** Metadata with canonical, hreflang, Open Graph and Twitter cards in the page's language. */
 export function pageMetadata(input: PageMetadataInput): Metadata {
-  const locale = seoLocale(input.locale);
+  const locale = input.onlyLocale ?? seoLocale(input.locale);
   const copy = SITE_COPY[locale];
   const path = input.path ?? "";
   const shownTitle = input.absoluteTitle ? input.title : `${input.title} | ${SITE_NAME}`;
-  const other = SEO_LOCALES.filter((value) => value !== locale).map((value) => OPEN_GRAPH_LOCALE[value]);
+  const other = input.onlyLocale
+    ? []
+    : SEO_LOCALES.filter((value) => value !== locale).map((value) => OPEN_GRAPH_LOCALE[value]);
   return {
     title: input.absoluteTitle ? { absolute: input.title } : input.title,
     description: input.description,
     ...(input.keywords ? { keywords: input.keywords } : {}),
-    alternates: localizedAlternates(locale, path),
+    alternates: localizedAlternates(locale, path, input.onlyLocale),
     openGraph: {
       type: input.type ?? "website",
       siteName: SITE_NAME,
@@ -128,13 +141,13 @@ export function pageMetadata(input: PageMetadataInput): Metadata {
       url: pageUrl(locale, path),
       locale: OPEN_GRAPH_LOCALE[locale],
       alternateLocale: other,
-      images: [{ url: OG_IMAGE_PATH, width: 1200, height: 630, alt: copy.ogAlt, type: "image/png" }],
+      ...(input.sharedImage === false ? {} : { images: [{ url: OG_IMAGE_PATH, width: 1200, height: 630, alt: copy.ogAlt, type: "image/png" }] }),
     },
     twitter: {
       card: "summary_large_image",
       title: shownTitle,
       description: input.description,
-      images: [OG_IMAGE_PATH],
+      ...(input.sharedImage === false ? {} : { images: [OG_IMAGE_PATH] }),
     },
   };
 }

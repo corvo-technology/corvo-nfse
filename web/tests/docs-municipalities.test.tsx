@@ -106,7 +106,10 @@ describe("the search on the page", () => {
     renderSearch();
     await screen.findByText("5.571 municípios");
     fireEvent.click(screen.getByRole("button", { name: /Convênio não ativo/ }));
-    expect(await screen.findByText("28 municípios")).toBeTruthy();
+    // The count comes from the data, so refreshing the list from the Receita never breaks this test.
+    const { counts } = (await import("@/lib/docs/data/nfse-municipios.json")).default;
+    expect(counts.naoAtivo).toBeGreaterThan(1);
+    expect(await screen.findByText(`${counts.naoAtivo} municípios`)).toBeTruthy();
   });
 
   it("pages through the results", async () => {

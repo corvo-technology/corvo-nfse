@@ -83,7 +83,7 @@ Copy [.env.example](.env.example) to `.env` for development outside Docker. The 
 | Email and sign-in | `RESEND_API_KEY`, `RESEND_BASE_URL`, `EMAIL_FROM`, `MAGIC_LINK_*`, `GOOGLE_*`, `GITHUB_*` |
 | Billing | `STRIPE_SECRET_KEY`, `STRIPE_PLATFORM_WEBHOOK_SECRET`, `STRIPE_PORTAL_CONFIGURATION_ID`, `STRIPE_CHECKOUT_*` |
 | Tax calculator | `RTC_CALCULATOR_URL`, `RTC_CALCULATOR_*`, `FISCAL_DPS_LAYOUT`, `FISCAL_IBSCBS_UNAVAILABLE_MODE` |
-| Outbox and scheduling | `OUTBOX_RELAY_INTERVAL_MS`, `OUTBOX_BATCH_SIZE`, `OUTBOX_SCHEDULE_MAX_DAYS`, `NFSE_EMISSION_CONCURRENCY`, `NFSE_PORTAL_BREAKER_*`, `NFSE_UNCERTAIN_MAX_HOURS` |
+| Outbox and scheduling | `OUTBOX_RELAY_INTERVAL_MS`, `OUTBOX_BATCH_SIZE`, `OUTBOX_SCHEDULE_MAX_DAYS`, `NFSE_EMISSION_CONCURRENCY`, `NFSE_PORTAL_BREAKER_*`, `NFSE_UNCERTAIN_MAX_HOURS`, `PORTAL_SYNC_ENABLED` |
 | Rate limits | `RATE_LIMIT_AUTHENTICATED`, `RATE_LIMIT_PUBLIC`, `RATE_LIMIT_PRE_AUTH` |
 | Observability | `OTEL_ENABLED`, `OTEL_SERVICE_NAME`, `SENTRY_ENABLED` |
 
@@ -130,7 +130,7 @@ The `test` environment uses a fake provider and needs no certificate. `live` req
 
 ## 🤖 MCP server
 
-`POST /mcp` (also served as `/v1/mcp`) is a JSON-RPC server for AI agents with the tools `company_list`, `nfse_issue`, `nfse_query`, `nfse_list` and `nfse_download_pdf`. Discovery is published at `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`, clients register at `/mcp/register`, and login and approval happen on the dashboard (`DASHBOARD_URL/mcp/authorize`). Each connection stays in the test or live environment chosen at approval. See `FRONTEND_API.md` for the dashboard calls.
+`POST /mcp` (also served as `/v1/mcp`) is a JSON-RPC server for AI agents with the tools `company_list`, `nfse_issue`, `nfse_cancel`, `nfse_substitute`, `nfse_query`, `nfse_list`, `nfse_download_pdf`, `customer_list`, `customer_update` and `customer_delete` (the full list is in `llms.txt`). Discovery is published at `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`, clients register at `/mcp/register`, and login and approval happen on the dashboard (`DASHBOARD_URL/mcp/authorize`). Each connection stays in the test or live environment chosen at approval. See `FRONTEND_API.md` for the dashboard calls.
 
 ## 🗄️ Database
 

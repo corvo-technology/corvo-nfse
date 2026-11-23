@@ -67,7 +67,8 @@
       "invoices": "Notas fiscais",
       "billing": "Plano",
       "agents": "Agentes de IA",
-      "integrations": "Integrações"
+      "integrations": "Integrações",
+      "customers": "Clientes"
     },
     "account": "CONTA",
     "balance": "SALDO",
@@ -375,6 +376,10 @@
           "cancellation_rejected": {
             "label": "Cancelamento recusado",
             "description": "A Sefin recusou o cancelamento; a nota continua autorizada."
+          },
+          "taker_rejected": {
+            "label": "Rejeição do tomador",
+            "description": "O tomador rejeitou a nota no portal nacional; a nota continua autorizada."
           }
         }
       }
@@ -704,7 +709,9 @@
     "docs": "Docs",
     "pricing": "Preços",
     "signIn": "Entrar",
-    "startFree": "Começar grátis"
+    "startFree": "Começar grátis",
+    "blog": "Blog",
+    "github": "GitHub"
   },
   "Language": {
     "en": "EN",
@@ -918,7 +925,10 @@
     "security": "Segurança",
     "terms": "Termos",
     "privacy": "Aviso de Privacidade",
-    "cookiePreferences": "Preferências de cookies"
+    "cookiePreferences": "Preferências de cookies",
+    "blog": "Blog",
+    "github": "GitHub",
+    "license": "Código aberto · AGPL-3.0"
   },
   "CookieConsent": {
     "message": "Usamos cookies e tecnologias semelhantes, incluindo o Google Analytics e o Meta Pixel, para melhorar sua experiência, medir o tráfego do site e entender campanhas de cadastro. Ao clicar em \"Aceitar\", você concorda com esse uso.",
@@ -1191,7 +1201,9 @@
       "loadMoreCompanies": "Carregar mais empresas",
       "companyNotReady": "Esta empresa precisa de configuração ou está bloqueada para emissão neste ambiente.",
       "configureCompany": "Ver configuração da empresa",
-      "openCompany": "Abrir a empresa"
+      "openCompany": "Abrir a empresa",
+      "purchaseOrder": "Nº do pedido",
+      "notes": "Observações na nota"
     },
     "placeholders": {
       "reference": "pedido-12345",
@@ -1203,7 +1215,9 @@
       "description": "Consultoria técnica em desenvolvimento de software",
       "amount": "1000.00",
       "serviceCode": "010701",
-      "municipalityCode": "3550308"
+      "municipalityCode": "3550308",
+      "purchaseOrder": "PO-4521",
+      "notes": "Parcela 2 de 3 do contrato 12/2026"
     },
     "loadedRecords": "Exibindo {count} notas carregadas. Os filtros se aplicam a estes registros.",
     "loadMore": "Carregar mais",
@@ -1216,7 +1230,10 @@
       "municipalityDefault": "Município da empresa: {code}. Deixe vazio para usá-lo ou informe outro local de prestação para esta nota.",
       "description": "Opcional. Se vazia, usamos o nome do código de serviço.",
       "deduction": "Opcional. Valor que a legislação do município permite abater da base do ISS. Ele é descontado da base de cálculo e enviado na nota. O valor é declarado por você: o Corvo não confere se a dedução é permitida, então confirme com seu contador.",
-      "serviceCodeFallback": "Opcional. Sem código na nota nem na empresa, usamos {code} (10.09, representação). Escolha o código da sua atividade."
+      "serviceCodeFallback": "Opcional. Sem código na nota nem na empresa, usamos {code} (10.09, representação). Escolha o código da sua atividade.",
+      "purchaseOrder": "Pedido, ordem de compra ou ordem de serviço que o cliente pediu para constar na nota. Não muda nenhum imposto.",
+      "notes": "Texto livre impresso na nota, como parcela ou número do contrato. Não muda nenhum imposto.",
+      "savedCustomer": "Cliente já usado em outra nota. Preenchemos o nome para você."
     },
     "summary": {
       "title": "Resumo da nota",
@@ -1257,6 +1274,38 @@
       "next": "Próxima nota em {date}. Sem data, repete até você pausar.",
       "createdButFailed": "A nota foi emitida, mas a recorrência não foi criada. Tente de novo: não emite outra nota.",
       "createdButFailedWith": "A nota foi emitida, mas a recorrência não foi criada ({reason}). Tente de novo: não emite outra nota."
+    },
+    "foreign": {
+      "country": "País",
+      "countryPlaceholder": "Escolha o país",
+      "taxId": "Identificação fiscal (NIF)",
+      "taxIdHint": "O número de contribuinte do cliente no país dele.",
+      "reason": {
+        "exempt": "Dispensado",
+        "not_required": "Não exigido"
+      },
+      "street": "Logradouro",
+      "number": "Número",
+      "complement": "Complemento",
+      "district": "Bairro ou distrito",
+      "city": "Cidade",
+      "region": "Estado, província ou região",
+      "postalCode": "Código postal",
+      "notExport": "Informar um cliente no exterior não declara exportação de serviço: a nota segue com a mesma tributação. Confirme o enquadramento com o seu contador.",
+      "groupLabel": "Onde o cliente está",
+      "brazil": "Brasil",
+      "abroad": "Exterior",
+      "noTaxIdToggle": "Cliente sem NIF",
+      "reasonLabel": "Motivo"
+    },
+    "more": {
+      "title": "Mais opções",
+      "hint": "Código, dedução, pedido, observações, referência e repetição",
+      "filled": "{count, plural, one {# preenchida} other {# preenchidas}}"
+    },
+    "portalFlag": {
+      "taker_rejected": "Tomador rejeitou",
+      "blocked": "Bloqueada pelo município"
     }
   },
   "Billing": {
@@ -1731,7 +1780,48 @@
       "confirm": "Cancelar nota",
       "failed": "Não foi possível cancelar a nota.",
       "reasonLabel": "Motivo do cancelamento"
-    }
+    },
+    "purchaseOrder": "Nº do pedido",
+    "notes": "Observações na nota",
+    "substitute": {
+      "open": "Substituir nota",
+      "title": "Substituir nota",
+      "intro": "Emite uma nota nova que substitui esta. A Receita cancela esta nota quando autorizar a nova; se recusar, esta continua valendo.",
+      "locked": "Cliente, data de competência e valor não mudam. Para corrigir um deles, cancele esta nota e emita outra.",
+      "reason": "Motivo da substituição",
+      "reasonHint": "Mínimo de {min} caracteres. Vai na nota enviada à Receita.",
+      "serviceDescription": "Descrição do serviço",
+      "purchaseOrder": "Nº do pedido",
+      "notes": "Observações na nota",
+      "optional": "opcional",
+      "credit": "A nota nova usa um crédito, como qualquer nota emitida. O crédito desta não volta.",
+      "keep": "Manter como está",
+      "confirm": "Substituir nota",
+      "failed": "Não foi possível substituir a nota."
+    },
+    "portalFlag": {
+      "taker_rejected": "Tomador rejeitou",
+      "blocked": "Bloqueada pelo município"
+    },
+    "portalFlagHint": {
+      "taker_rejected": "O tomador rejeitou esta nota no portal nacional. Ela continua autorizada.",
+      "blocked": "O município bloqueou esta nota por ofício. Ela continua autorizada."
+    },
+    "portalEvent": {
+      "CANCELAMENTO": "Cancelada no portal nacional",
+      "CANCELAMENTO_POR_SUBSTITUICAO": "Cancelada por substituição no portal nacional",
+      "CANCELAMENTO_DEFERIDO_ANALISE_FISCAL": "Cancelamento deferido pela análise fiscal",
+      "CANCELAMENTO_POR_OFICIO": "Cancelada por ofício pelo município",
+      "REJEICAO_TOMADOR": "O tomador rejeitou a nota",
+      "REJEICAO_INTERMEDIARIO": "O intermediário rejeitou a nota",
+      "BLOQUEIO_POR_OFICIO": "Bloqueada pelo município",
+      "DESBLOQUEIO_POR_OFICIO": "Desbloqueada pelo município",
+      "CONFIRMACAO_TOMADOR": "O tomador confirmou a nota",
+      "CONFIRMACAO_TACITA": "Confirmação tácita do tomador",
+      "ANULACAO_REJEICAO": "Rejeição anulada",
+      "other": "Registrado no portal nacional"
+    },
+    "portalSource": "Portal nacional"
   },
   "FiscalDocs": {
     "title": "API Corvo — NFS-e",
@@ -1994,7 +2084,8 @@
     "invitation_expired": "Este convite expirou. Peça um novo.",
     "invitation_email_mismatch": "Entre com o e-mail que recebeu o convite.",
     "invitation_limit_reached": "Há convites pendentes demais. Cancele alguns antes de convidar.",
-    "invitation_recently_sent": "Um convite acabou de ser enviado. Tente de novo em um minuto."
+    "invitation_recently_sent": "Um convite acabou de ser enviado. Tente de novo em um minuto.",
+    "invoice_not_substitutable": "Só uma nota autorizada pode ser substituída."
   },
   "Legal": {
     "eyebrow": "JURÍDICO",
@@ -2496,6 +2587,21 @@
       }
     ]
   },
+  "LandingOpenSource": {
+    "eyebrow": "CÓDIGO ABERTO",
+    "title": "Código aberto, de ponta a ponta.",
+    "description": "A API, o worker e o painel são públicos sob a AGPL-3.0. Leia o código, rode nos seus servidores ou mande um pull request.",
+    "points": {
+      "license": "AGPL-3.0: use, altere e audite.",
+      "selfHost": "Rode você mesmo com Docker Compose: seus servidores, seus certificados A1, seus dados.",
+      "contribute": "Issues e pull requests são bem-vindos. Um mantenedor revisa cada mudança."
+    },
+    "star": "Dar uma estrela no GitHub",
+    "guide": "Guia de self-hosting",
+    "starHint": "Se a Corvo te poupa tempo, uma estrela ajuda outros desenvolvedores a encontrar o projeto.",
+    "codeLabel": "Rode a Corvo localmente",
+    "requirements": "Precisa de Docker Compose v2 e Node.js 24."
+  },
   "LandingSdks": {
     "eyebrow": "SDKS",
     "title": "Nove linguagens. Uma API.",
@@ -2731,6 +2837,11 @@
         "a": "Sim. A Corvo tem SDKs oficiais para Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir e .NET, com as mesmas operações em todos, e também dá para chamar a API REST direto. Para agentes de IA, a Corvo tem um servidor MCP: Claude Code, Cursor, Codex, VS Code, Windsurf e Claude Desktop conectam com login no navegador, e você escolhe o workspace e o ambiente (teste ou produção) na tela de aprovação.",
         "link": "Ver os SDKs",
         "link2": "Ver o MCP"
+      },
+      "opensource": {
+        "q": "A Corvo é código aberto? Posso rodar por conta própria?",
+        "a": "Sim. A API, o worker e o painel são públicos no GitHub sob a AGPL-3.0. Você pode ler o código, rodar nos seus servidores com Docker Compose e abrir issues e pull requests. O serviço hospedado em corvo.tech roda o mesmo projeto, e cuida dos certificados A1, dos dados e da cobrança por você.",
+        "link": "Ver o código no GitHub"
       }
     }
   },
@@ -2807,7 +2918,11 @@
       "required": "Obrigatório",
       "failed": "Não foi possível salvar a agenda.",
       "editHint": "As mudanças valem para as próximas execuções. As notas já emitidas não mudam.",
-      "optional": "opcional"
+      "optional": "opcional",
+      "purchaseOrder": "Nº do pedido",
+      "purchaseOrderHint": "Sai impresso em cada nota desta agenda.",
+      "notes": "Observações na nota",
+      "notesHint": "Texto livre impresso em cada nota. Não muda nenhum imposto."
     },
     "runs": {
       "title": "Histórico de execuções",
@@ -2846,7 +2961,9 @@
       "createdAt": "Criada em",
       "notFound": "Agenda não encontrada.",
       "loading": "Carregando a agenda",
-      "history": "Histórico"
+      "history": "Histórico",
+      "purchaseOrder": "Nº do pedido",
+      "notes": "Observações na nota"
     }
   },
   "Imports": {
@@ -2909,6 +3026,7 @@
       "loadMore": "Carregar mais",
       "emit": "Emitir {count, plural, one {# nota} other {# notas}}",
       "emitNone": "Nenhuma linha pronta para emitir",
+      "sendEmail": "Enviar a nota por email ao tomador",
       "emitFailed": "Não foi possível iniciar a emissão.",
       "downloadErrors": "Baixar só os erros",
       "downloadFailed": "Não foi possível baixar o arquivo.",
@@ -3066,5 +3184,53 @@
     "title": "O portal nacional da NFS-e não está respondendo.",
     "titleSince": "O portal nacional da NFS-e não responde desde {time}.",
     "body": "Suas notas estão guardadas na fila e serão enviadas assim que ele voltar. Não é preciso refazer nada."
+  },
+  "Customers": {
+    "title": "Clientes",
+    "subtitle": "Quem você já faturou. Na próxima nota, basta o CPF ou CNPJ: o nome vem preenchido.",
+    "loadFailed": "Não foi possível carregar os clientes.",
+    "loadMore": "Carregar mais",
+    "search": {
+      "label": "Buscar cliente",
+      "placeholder": "Nome, CPF ou CNPJ"
+    },
+    "columns": {
+      "name": "Nome",
+      "taxId": "CPF/CNPJ",
+      "email": "E-mail",
+      "lastUsed": "Última nota",
+      "actions": "Ações"
+    },
+    "empty": {
+      "title": "Nenhum cliente salvo ainda",
+      "body": "Os clientes aparecem aqui sozinhos depois da primeira nota emitida com CPF ou CNPJ e nome.",
+      "action": "Emitir uma nota",
+      "noMatch": "Nenhum cliente com esse nome ou documento."
+    },
+    "edit": {
+      "action": "Corrigir",
+      "open": "Corrigir {name}",
+      "title": "Corrigir cliente",
+      "optional": "opcional",
+      "emailHint": "Fica salvo para preencher o formulário. Deixe vazio para apagar.",
+      "note": "A correção vale para as próximas notas. As notas já emitidas não mudam.",
+      "save": "Salvar",
+      "nameRequired": "Informe o nome.",
+      "failed": "Não foi possível salvar o cliente."
+    },
+    "remove": {
+      "open": "Excluir {name}",
+      "title": "Excluir este cliente?",
+      "body": "{name} deixa de aparecer aqui e o nome não será mais preenchido. As notas já emitidas não mudam.",
+      "confirm": "Excluir cliente",
+      "failed": "Não foi possível excluir o cliente."
+    }
+  },
+  "MunicipalityNotice": {
+    "inactive": "O convênio de {name} ({uf}) com o padrão nacional da NFS-e ainda não está ativo. A Receita pode recusar as notas desta empresa até o município ativar o convênio.",
+    "unknown": "O código {code} não está na lista oficial de municípios. Confira o código IBGE de 7 dígitos.",
+    "inactiveChecked": "A consulta à Receita mostra que o município {code} ainda não ativou o convênio com o padrão nacional da NFS-e. A Receita pode recusar as notas desta empresa até o município ativá-lo.",
+    "notFoundChecked": "A Receita não tem parâmetros para o código {code}. Confira o código IBGE de 7 dígitos.",
+    "link": "Ver a situação dos municípios"
   }
 }

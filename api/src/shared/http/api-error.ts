@@ -76,6 +76,11 @@ export const DOMAIN_ERRORS: Record<
     code: 'ERROR_INVOICE_NOT_CANCELLABLE',
     message: 'Invoice cannot be cancelled in its current status',
   },
+  InvoiceNotSubstitutableError: {
+    status: 409,
+    code: 'ERROR_INVOICE_NOT_SUBSTITUTABLE',
+    message: 'Only an authorized invoice can be substituted',
+  },
   ConcurrentInvoiceTransitionError: {
     status: 409,
     code: 'ERROR_CONCURRENT_INVOICE_TRANSITION',

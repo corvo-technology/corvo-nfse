@@ -24,6 +24,12 @@ export class CustomerSnapshotDto {
     state: string;
     country?: string;
   };
+
+  @ApiPropertyOptional({
+    description:
+      'Customer outside Brazil: taxId (NIF) or noTaxIdReason, and the address abroad.',
+  })
+  foreign?: Record<string, string>;
 }
 
 export class ServiceSnapshotDto {
@@ -43,6 +49,15 @@ export class ServiceSnapshotDto {
 
   @ApiProperty()
   municipalityCode!: string;
+
+  @ApiPropertyOptional({ description: 'Customer purchase order (DPS xPed).' })
+  purchaseOrder?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Complementary information printed on the invoice (DPS xInfComp).',
+  })
+  notes?: string;
 }
 
 export class InvoiceResponseDto {
@@ -201,6 +216,20 @@ export class InvoiceEventResponseDto {
 
   @ApiProperty()
   createdAt!: Date;
+
+  @ApiPropertyOptional({
+    enum: ['portal'],
+    nullable: true,
+    description:
+      '`portal` when the entry reports something the national portal registered; otherwise null.',
+  })
+  source?: 'portal' | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Portal event type, such as REJEICAO_TOMADOR.',
+  })
+  portalEvent?: string | null;
 }
 
 export class InvoiceStatusResponseDto {

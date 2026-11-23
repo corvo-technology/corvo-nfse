@@ -1,6 +1,10 @@
 import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { Company } from './company';
+import type {
+  MunicipalityAgreementAnswer,
+  StoredMunicipalityAgreement,
+} from './municipality-agreement';
 
 export abstract class ICompanyRepository {
   abstract listPage(
@@ -45,5 +49,15 @@ export abstract class ICompanyRepository {
   abstract batchRecomputeStatus(
     companyIds: string[],
     tenantId: string,
+  ): Promise<void>;
+  abstract findMunicipalityAgreement(
+    companyId: string,
+    tenantId: string,
+  ): Promise<StoredMunicipalityAgreement | null>;
+  abstract saveMunicipalityAgreement(
+    companyId: string,
+    tenantId: string,
+    answer: MunicipalityAgreementAnswer,
+    checkedAt: Date,
   ): Promise<void>;
 }

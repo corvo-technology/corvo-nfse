@@ -95,7 +95,14 @@ export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }
             <span className="text-[12px] text-text-3">{t("scheduledFor", { date: formatScheduledDate(inv.scheduledFor!, locale) })}</span>
           </div>
         ) : (
-          <Badge variant={STATUS_VARIANT[inv.status]}>{t(`status.${inv.status}`)}</Badge>
+          <div className="flex flex-col items-start gap-1">
+            <Badge variant={STATUS_VARIANT[inv.status]}>{t(`status.${inv.status}`)}</Badge>
+            {inv.portalFlag && inv.status === "authorized" && (
+              <Badge variant="warn" dot={false}>
+                {t(`portalFlag.${inv.portalFlag}`)}
+              </Badge>
+            )}
+          </div>
         ),
     },
     {

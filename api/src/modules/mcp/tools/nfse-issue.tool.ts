@@ -53,6 +53,42 @@ export const NFSE_ISSUE_PROPERTIES = {
         description: 'CPF or CNPJ of the customer',
       },
       email: { type: 'string' },
+      foreign: {
+        type: 'object',
+        description:
+          'Customer outside Brazil. Replaces tax_id and address; name is then required. It does not declare a service export.',
+        properties: {
+          tax_id: {
+            type: 'string',
+            description: "Tax id in the customer's country",
+          },
+          no_tax_id_reason: {
+            type: 'string',
+            enum: ['exempt', 'not_required'],
+            description: 'Only when the customer has no tax id',
+          },
+          country: {
+            type: 'string',
+            description: 'ISO 3166-1 alpha-2 code, other than BR',
+          },
+          postal_code: { type: 'string' },
+          city: { type: 'string' },
+          region: { type: 'string', description: 'State, province or region' },
+          street: { type: 'string' },
+          number: { type: 'string' },
+          district: { type: 'string' },
+          complement: { type: 'string' },
+        },
+        required: [
+          'country',
+          'postal_code',
+          'city',
+          'region',
+          'street',
+          'number',
+          'district',
+        ],
+      },
       address: {
         type: 'object',
         properties: {
@@ -72,6 +108,18 @@ export const NFSE_ISSUE_PROPERTIES = {
     type: 'number',
     description:
       'Deduction from the ISS tax base in BRL, declared by the issuer (> 0 and less than amount minus discount). The issuer is responsible for the declared value; Corvo does not check whether the deduction is allowed.',
+  },
+  purchase_order: {
+    type: 'string',
+    maxLength: 60,
+    description:
+      'Purchase order, service order or project number the customer asked to see on the invoice. Does not change any tax.',
+  },
+  notes: {
+    type: 'string',
+    maxLength: 2000,
+    description:
+      'Free text printed on the invoice as complementary information. Does not change any tax.',
   },
   competence_date: {
     type: 'string',
@@ -145,12 +193,26 @@ function roundCents(value: number): number {
 
 function toCustomer(customer: NfseIssueInput['customer']) {
   if (!customer) return undefined;
-  const { name, tax_id, email, address } = customer;
-  if (!name && !tax_id && !email && !address) return undefined;
+  const { name, tax_id, email, address, foreign } = customer;
+  if (!name && !tax_id && !email && !address && !foreign) return undefined;
   return {
     taxId: tax_id,
     name,
     email,
+    foreign: foreign
+      ? {
+          taxId: foreign.tax_id,
+          noTaxIdReason: foreign.no_tax_id_reason,
+          country: foreign.country,
+          postalCode: foreign.postal_code,
+          city: foreign.city,
+          region: foreign.region,
+          street: foreign.street,
+          number: foreign.number,
+          district: foreign.district,
+          complement: foreign.complement,
+        }
+      : undefined,
     address: address
       ? {
           street: address.street,
@@ -186,7 +248,8 @@ function serviceDescription(params: NfseIssueInput): string | undefined {
  */
 export function toCreateInvoiceDto(params: NfseIssueInput): CreateInvoiceDto {
   const customer = toCustomer(params.customer);
-  if (customer && !customer.taxId?.trim()) {
+  // A customer abroad has no CPF/CNPJ; the invoice validation checks its own fields.
+  if (customer && !customer.foreign && !customer.taxId?.trim()) {
     throw new Error(
       'Invalid input: customer.tax_id: required when a customer is sent; omit customer to issue without a tomador',
     );
@@ -232,6 +295,8 @@ export function toCreateInvoiceDto(params: NfseIssueInput): CreateInvoiceDto {
     amount: serviceAmount(params),
     discount: params.discount,
     deduction: params.deduction,
+    purchaseOrder: params.purchase_order,
+    notes: params.notes,
     competenceDate: params.competence_date ?? SAO_PAULO_DATE.format(new Date()),
     options:
       params.emission_type ||

@@ -351,6 +351,20 @@ export class TypeOrmImportRepository extends ImportRepository {
     });
   }
 
+  async enableEmailOnQueued(tenantId: string, importId: string): Promise<void> {
+    await runWithTenant(tenantId, async () => {
+      await this.rows()
+        .createQueryBuilder()
+        .update()
+        .set({ data: () => 'data || \'{"email": true}\'::jsonb' })
+        .where(
+          "import_id = :importId AND tenant_id = :tenantId AND status = 'queued' AND COALESCE(data->'customer'->>'email', '') <> ''",
+          { importId, tenantId },
+        )
+        .execute();
+    });
+  }
+
   async rejectQueued(
     tenantId: string,
     importId: string,

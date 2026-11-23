@@ -19,6 +19,9 @@ import { CompanyService } from './application/company.service';
 import { CompanyFiscalProfileService } from './application/company-fiscal-profile.service';
 import { CompanyServiceTaxProfileService } from './application/company-service-tax-profile.service';
 import { CompanyController } from './http/company.controller';
+import { MunicipalityAgreementService } from './application/municipality-agreement.service';
+import { MunicipalityAgreementPort } from './domain/municipality-agreement';
+import { OpenNfseProvider } from '@/infra/external/nfse/open-nfse.provider';
 import { CertificateModule } from '@/modules/certificate/certificate.module';
 
 @Module({
@@ -54,12 +57,15 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
       provide: ICompanyCertificateReader,
       useClass: CompanyCertificateReader,
     },
+    { provide: MunicipalityAgreementPort, useExisting: OpenNfseProvider },
+    MunicipalityAgreementService,
     CompanyService,
     CompanyDomainService,
     CompanyFiscalProfileService,
     CompanyServiceTaxProfileService,
   ],
   exports: [
+    MunicipalityAgreementService,
     CompanyService,
     CompanyDomainService,
     CompanyFiscalProfileService,

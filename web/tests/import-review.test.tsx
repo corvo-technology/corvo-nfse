@@ -110,10 +110,21 @@ describe("ImportReview", () => {
     const { onEmitted } = show();
     fireEvent.click(screen.getByRole("button", { name: /issue 2 invoices/i }));
     await waitFor(() => expect(onEmitted).toHaveBeenCalled());
-    expect(mocks.emit).toHaveBeenCalledWith("i1");
+    expect(mocks.emit).toHaveBeenCalledWith("i1", { sendEmail: true });
     cleanup();
     show({ job: job({ valid: 0, invalid: 3, total: 3 }) });
     expect((screen.getByRole("button", { name: /no row is ready/i }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("sends the email by default and lets the user turn it off", async () => {
+    mocks.emit.mockResolvedValue(job());
+    const { onEmitted } = show();
+    const box = screen.getByRole("checkbox", { name: /email the invoice/i }) as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    fireEvent.click(box);
+    fireEvent.click(screen.getByRole("button", { name: /issue 2 invoices/i }));
+    await waitFor(() => expect(onEmitted).toHaveBeenCalled());
+    expect(mocks.emit).toHaveBeenCalledWith("i1", { sendEmail: false });
   });
 
   it("downloads only the errors, and offers that only when there are errors", async () => {

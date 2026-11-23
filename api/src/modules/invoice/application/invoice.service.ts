@@ -87,6 +87,12 @@ function hashPayload(payload: unknown): string {
     .digest('hex');
 }
 
+/** Makes the emitted invoice the substitute of an authorized one. */
+export interface InvoiceSubstitution {
+  invoiceId: string;
+  description: string;
+}
+
 @Injectable()
 export class InvoiceService {
   private readonly logger = new Logger(InvoiceService.name);
@@ -128,12 +134,14 @@ export class InvoiceService {
     tenantId: string,
     environment: ExecutionEnvironment,
     idempotencyKeyHeader?: string,
+    substitution?: InvoiceSubstitution,
   ): Promise<Invoice> {
     const prepared = await this.prepareEmissionInEnvironment(
       dto,
       tenantId,
       environment,
       idempotencyKeyHeader,
+      substitution,
     );
     if (prepared.kind === 'replay') return prepared.invoice;
     const { invoice, event, requestHash } = prepared;
@@ -195,6 +203,7 @@ export class InvoiceService {
     tenantId: string,
     environment: ExecutionEnvironment,
     idempotencyKeyHeader?: string,
+    substitution?: InvoiceSubstitution,
   ): Promise<PreparedEmission> {
     // `@IsDateString` accepts forms `Date` cannot parse (2026-W53, 2026-366): fail as validation, not as a crash.
     const competence = new Date(dto.competenceDate);
@@ -265,6 +274,7 @@ export class InvoiceService {
       {
         environment,
         requestHash,
+        substitution,
         scheduledFor: normalized.scheduledFor,
         email: { send: normalized.emailSend },
         companyId: normalized.companyId,
@@ -279,6 +289,7 @@ export class InvoiceService {
                 state: normalized.customer.address.state,
                 municipalityCode: normalized.customer.address.municipalityCode,
               },
+              foreign: normalized.customer.foreign,
             }
           : null,
         service: {
@@ -287,6 +298,8 @@ export class InvoiceService {
           municipalityCode: normalized.service.municipalityCode,
           fiscal: normalized.service.fiscal,
           serviceProfileId: normalized.service.serviceProfileId,
+          purchaseOrder: normalized.service.purchaseOrder,
+          notes: normalized.service.notes,
         },
         amount: normalized.amount,
         discount: normalized.discount,

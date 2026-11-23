@@ -80,6 +80,11 @@ export abstract class ImportRepository {
     importId: string,
     retryCodes: string[],
   ): Promise<number>;
+  /** Turns on the email send for queued rows that have a customer email. */
+  abstract enableEmailOnQueued(
+    tenantId: string,
+    importId: string,
+  ): Promise<void>;
   /** Rejects every row still queued with one error (the plan limit was reached). */
   abstract rejectQueued(
     tenantId: string,

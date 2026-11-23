@@ -245,5 +245,5 @@ function errorLine(row: ImportRow): string {
 }
 
 export const TEMPLATE_CSV =
-  '﻿cnpj_prestador;tomador_documento;tomador_nome;tomador_email;descricao;valor;codigo_servico;data_competencia\n' +
-  ';123.456.789-09;Maria da Silva;maria@exemplo.com.br;Consultoria mensal;1.500,00;;07/11/2026\n';
+  '﻿cnpj_prestador;tomador_documento;tomador_nome;tomador_email;descricao;valor;codigo_servico;data_competencia;pedido;observacoes\n' +
+  ';123.456.789-09;Maria da Silva;maria@exemplo.com.br;Consultoria mensal;1.500,00;;07/11/2026;PO-4521;Parcela 2 de 3\n';

@@ -17,12 +17,14 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
   CANCELLATION_DESCRIPTION_MAX,
+  CANCELLATION_DESCRIPTION_MIN,
   CANCELLATION_REASON_CODES,
   type CancellationReasonCode,
 } from '@/modules/invoice/domain/cancellation-reason';
@@ -42,6 +44,21 @@ export class AddressInput {
   @IsOptional() @IsString() zip?: string;
 }
 
+/** A customer outside Brazil. Replaces tax_id (CPF/CNPJ) and address. */
+export class ForeignCustomerInput {
+  @IsOptional() @IsString() tax_id?: string;
+  @IsOptional() @IsIn(['exempt', 'not_required']) no_tax_id_reason?:
+    'exempt' | 'not_required';
+  @IsString() country!: string;
+  @IsString() postal_code!: string;
+  @IsString() city!: string;
+  @IsString() region!: string;
+  @IsString() street!: string;
+  @IsString() number!: string;
+  @IsString() district!: string;
+  @IsOptional() @IsString() complement?: string;
+}
+
 export class CustomerInput {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() tax_id?: string;
@@ -50,6 +67,10 @@ export class CustomerInput {
   @ValidateNested()
   @Type(() => AddressInput)
   address?: AddressInput;
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ForeignCustomerInput)
+  foreign?: ForeignCustomerInput;
 }
 
 export class ServiceInput {
@@ -94,6 +115,12 @@ export class NfseIssueInput {
   @IsOptional() @IsNumber() @Min(0) discount?: number;
 
   @IsOptional() @IsNumber() @Min(0) deduction?: number;
+
+  /** Customer purchase order printed on the invoice (DPS xPed). */
+  @IsOptional() @IsString() @MaxLength(60) purchase_order?: string;
+
+  /** Free text printed on the invoice as complementary information (DPS xInfComp). */
+  @IsOptional() @IsString() @MaxLength(2000) notes?: string;
 
   /** YYYY-MM-DD. Defaults to today (America/Sao_Paulo). */
   @IsOptional() @IsDateString() competence_date?: string;
@@ -218,6 +245,10 @@ export class ScheduleUpdateInput extends ScheduleIdInput {
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsNumber() @Min(0) discount?: number;
   @IsOptional() @IsNumber() @Min(0) deduction?: number;
+  /** Purchase order printed on the next notes; an empty text removes it. */
+  @IsOptional() @IsString() @MaxLength(60) purchase_order?: string;
+  /** Free text printed on the next notes; an empty text removes it. */
+  @IsOptional() @IsString() @MaxLength(2000) notes?: string;
   @IsOptional()
   @ValidateNested()
   @Type(() => CustomerInput)
@@ -266,4 +297,33 @@ export class ImportRowsInput extends ImportIdInput {
 export class ImportFixRowInput extends ImportIdInput {
   @IsInt() @Min(1) line!: number;
   @IsObject() item!: Record<string, unknown>;
+}
+
+export class CustomerListInput {
+  @IsOptional() @IsString() @MaxLength(100) search?: string;
+  @IsOptional() @IsNumber() @Min(1) @Max(100) limit?: number;
+  @IsOptional() @IsNumber() @Min(0) offset?: number;
+}
+
+export class CustomerDeleteInput {
+  @IsString() @IsNotEmpty() tax_id!: string;
+}
+
+export class CustomerUpdateInput extends CustomerDeleteInput {
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(300) name?: string;
+  /** null removes the saved email. */
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsEmail()
+  email?: string | null;
+}
+
+export class NfseSubstituteInput {
+  @IsUUID() invoice_id!: string;
+  @IsString()
+  @MinLength(CANCELLATION_DESCRIPTION_MIN)
+  @MaxLength(CANCELLATION_DESCRIPTION_MAX)
+  description!: string;
+  @IsOptional() @IsString() service_description?: string;
+  @IsOptional() @IsString() @MaxLength(60) purchase_order?: string;
+  @IsOptional() @IsString() @MaxLength(2000) notes?: string;
 }

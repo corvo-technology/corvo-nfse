@@ -7,6 +7,19 @@ export const COLUMN_KEYS = [
   'valor',
   'codigoServico',
   'dataCompetencia',
+  'pedido',
+  'observacoes',
+  // Customer abroad: optional columns, not part of the basic template.
+  'tomadorNif',
+  'tomadorSemNif',
+  'tomadorPais',
+  'tomadorCodigoPostal',
+  'tomadorCidade',
+  'tomadorRegiao',
+  'tomadorLogradouro',
+  'tomadorNumero',
+  'tomadorBairro',
+  'tomadorComplemento',
 ] as const;
 export type ColumnKey = (typeof COLUMN_KEYS)[number];
 
@@ -59,6 +72,35 @@ const ALIASES: Record<ColumnKey, string[]> = {
     'competencedate',
     'data',
   ],
+  pedido: [
+    'pedido',
+    'numeropedido',
+    'numerodopedido',
+    'ordemdecompra',
+    'ordemdeservico',
+    'purchaseorder',
+  ],
+  observacoes: [
+    'observacoes',
+    'observacao',
+    'informacoescomplementares',
+    'notes',
+  ],
+  tomadorNif: ['tomadornif', 'nif', 'niftomador', 'foreigntaxid'],
+  tomadorSemNif: ['tomadorsemnif', 'motivosemnif', 'notaxidreason'],
+  tomadorPais: ['tomadorpais', 'paistomador', 'pais', 'country'],
+  tomadorCodigoPostal: [
+    'tomadorcodigopostal',
+    'codigopostal',
+    'cepexterior',
+    'postalcode',
+  ],
+  tomadorCidade: ['tomadorcidade', 'cidadetomador', 'cidadeexterior'],
+  tomadorRegiao: ['tomadorregiao', 'tomadorestado', 'regiao', 'region'],
+  tomadorLogradouro: ['tomadorlogradouro', 'tomadorendereco', 'street'],
+  tomadorNumero: ['tomadornumero', 'numeroendereco'],
+  tomadorBairro: ['tomadorbairro', 'bairro', 'district'],
+  tomadorComplemento: ['tomadorcomplemento', 'complemento'],
 };
 
 const BY_ALIAS = new Map<string, ColumnKey>(

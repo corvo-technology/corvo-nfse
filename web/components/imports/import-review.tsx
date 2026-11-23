@@ -36,6 +36,7 @@ export function ImportReview({ job, duplicateOf, onChanged, onEmitted, onDiscard
   const [flash, setFlash] = useState<number | null>(null);
   const [editing, setEditing] = useState<ImportRow | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [sendEmail, setSendEmail] = useState(true);
   const [busy, setBusy] = useState<"emit" | "discard" | null>(null);
   const inFlight = useRef(false);
   const { counters } = job;
@@ -149,9 +150,15 @@ export function ImportReview({ job, duplicateOf, onChanged, onEmitted, onDiscard
         ) : (
           <Button variant="ghost" size="sm" onClick={() => setConfirmDiscard(true)}><Trash2 size={14} aria-hidden />{t("review.discard")}</Button>
         )}
-        <Button variant="accent" size="lg" loading={busy === "emit"} disabled={counters.valid === 0 || busy !== null} className="max-sm:w-full" onClick={() => run("emit", () => imports.emit(job.id), onEmitted, t("review.emitFailed"))}>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 max-sm:w-full">
+        <label className="flex cursor-pointer items-center gap-2 text-[13.5px] text-text">
+          <input type="checkbox" checked={sendEmail} onChange={(event) => setSendEmail(event.target.checked)} disabled={busy !== null} className="h-4 w-4 flex-none accent-[var(--accent)]" />
+          {t("review.sendEmail")}
+        </label>
+        <Button variant="accent" size="lg" loading={busy === "emit"} disabled={counters.valid === 0 || busy !== null} className="max-sm:w-full" onClick={() => run("emit", () => imports.emit(job.id, { sendEmail }), onEmitted, t("review.emitFailed"))}>
           {counters.valid === 0 ? t("review.emitNone") : t("review.emitWithAmount", { count: counters.valid, amount: money.format(counters.validAmount) })}
         </Button>
+        </div>
       </div>
     </div>
   );

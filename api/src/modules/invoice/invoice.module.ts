@@ -46,7 +46,13 @@ import {
 } from './domain/invoice.repository';
 import { DPS_SEQUENCE_REPOSITORY } from './domain/dps-sequence';
 import { DpsSequenceController } from './http/dps-sequence.controller';
+import { InvoiceSubstitutionService } from './application/invoice-substitution.service';
 import { InvoiceIntakeService } from './application/invoice-intake.service';
+import { CustomerRecorder } from './application/customer-recorder';
+import { CustomerDirectory } from './domain/customer-directory';
+import { CustomerOrmEntity } from './infra/customer.orm-entity';
+import { TypeOrmCustomerDirectory } from './infra/typeorm-customer-directory';
+import { CustomerController } from './http/customer.controller';
 import { InvoiceService } from './application/invoice.service';
 import { IntegrationInvoiceIssuer } from './application/integration-invoice-issuer';
 import { InvoiceIssuancePort } from '@/modules/integrations/domain/invoice-issuance.port';
@@ -97,6 +103,7 @@ import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
       DpsSequenceOrmEntity,
       InvoiceFiscalSnapshotOrmEntity,
       InvoiceFiscalReconciliationOrmEntity,
+      CustomerOrmEntity,
     ]),
     PlansModule,
     CompanyModule,
@@ -113,6 +120,7 @@ import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
     InvoiceReviewController,
     InvoiceController,
     DpsSequenceController,
+    CustomerController,
   ],
   providers: [
     InvoiceOverviewService,
@@ -166,6 +174,9 @@ import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
     },
     InvoiceBatchService,
     InvoiceIntakeService,
+    InvoiceSubstitutionService,
+    { provide: CustomerDirectory, useClass: TypeOrmCustomerDirectory },
+    CustomerRecorder,
     InvoiceCalculationService,
     InvoiceLifecycleService,
     InvoiceWebhookPublisher,
@@ -180,6 +191,8 @@ import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
     InvoiceCancellationPort,
     InvoiceBatchService,
     InvoiceCalculationService,
+    InvoiceSubstitutionService,
+    CustomerDirectory,
     InvoiceLifecycleService,
     InvoiceWebhookPublisher,
     INVOICE_REPOSITORY,

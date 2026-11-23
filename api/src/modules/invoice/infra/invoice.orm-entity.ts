@@ -50,6 +50,10 @@ import {
   'ck_nfse_invoices_status',
   `"status" IN ('queued', 'processing', 'authorized', 'rejected', 'retry_pending', 'reconciliation_required', 'manual_review', 'failed', 'cancelling', 'cancelled')`,
 )
+@Check(
+  'ck_nfse_invoices_portal_flag',
+  `"portal_flag" IN ('taker_rejected','blocked')`,
+)
 @Unique('uq_nfse_invoices_id_tenant', ['id', 'tenantId'])
 @ManagedIndex('idx_invoices_cursor', { synchronize: false })
 export class InvoiceOrmEntity {
@@ -210,6 +214,20 @@ export class InvoiceOrmEntity {
     nullable: true,
   })
   cancellationRequestedAt?: Date | null;
+
+  @Column({ name: 'substitutes_invoice_id', type: 'uuid', nullable: true })
+  substitutesInvoiceId?: string | null;
+
+  @Column({
+    name: 'substitution_description',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  substitutionDescription?: string | null;
+
+  @Column({ name: 'portal_flag', type: 'varchar', length: 20, nullable: true })
+  portalFlag?: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

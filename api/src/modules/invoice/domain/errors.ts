@@ -42,3 +42,10 @@ export class ConcurrentInvoiceTransitionError extends Error {
     this.name = 'ConcurrentInvoiceTransitionError';
   }
 }
+
+export class InvoiceNotSubstitutableError extends Error {
+  constructor(status: InvoiceStatus) {
+    super(`Invoice in status '${status}' cannot be substituted`);
+    this.name = 'InvoiceNotSubstitutableError';
+  }
+}

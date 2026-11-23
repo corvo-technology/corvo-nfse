@@ -7,6 +7,17 @@ export interface InvoiceEventSnapshot {
   toStatus: InvoiceStatus;
   reason: string | null;
   createdAt: Date;
+  /** `portal` when the entry comes from the national portal instead of Corvo's own work. */
+  source: 'portal' | null;
+  /** Portal event type (e.g. `REJEICAO_TOMADOR`), set with `source: 'portal'`. */
+  portalEvent: string | null;
+  /** NSU of the portal document that produced the entry; one entry per invoice and NSU. */
+  portalNsu: number | null;
+}
+
+export interface PortalOrigin {
+  event: string;
+  nsu: number;
 }
 
 export class InvoiceEvent {
@@ -25,6 +36,35 @@ export class InvoiceEvent {
       toStatus: to,
       reason: reason ?? null,
       createdAt: new Date(),
+      source: null,
+      portalEvent: null,
+      portalNsu: null,
+    });
+  }
+
+  /** A timeline entry for something the national portal reported about the invoice. */
+  static fromPortal(
+    invoiceId: string,
+    from: InvoiceStatus,
+    to: InvoiceStatus,
+    origin: PortalOrigin,
+    reason?: string,
+  ): InvoiceEvent {
+    return new InvoiceEvent({
+      ...InvoiceEvent.create(invoiceId, from, to, reason).props,
+      source: 'portal',
+      portalEvent: origin.event,
+      portalNsu: origin.nsu,
+    });
+  }
+
+  /** The same event, marked as coming from the portal. */
+  withPortal(origin: PortalOrigin): InvoiceEvent {
+    return new InvoiceEvent({
+      ...this.props,
+      source: 'portal',
+      portalEvent: origin.event,
+      portalNsu: origin.nsu,
     });
   }
 

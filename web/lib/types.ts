@@ -246,6 +246,7 @@ export const WEBHOOK_EVENT_OPTIONS = [
   { value: "nfse.invoice.fiscal_discrepancy", label: "Fiscal discrepancy", description: "The authorized invoice differs from the calculated taxes." },
   { value: "nfse.invoice.cancelled", label: "Invoice cancelled", description: "The invoice was cancelled (scheduled or at the Sefin)." },
   { value: "nfse.invoice.cancellation_rejected", label: "Cancellation rejected", description: "The Sefin refused the cancellation; the invoice stays authorized." },
+  { value: "nfse.invoice.taker_rejected", label: "Taker rejected", description: "The taker rejected the invoice on the national portal; it stays authorized." },
 ] as const;
 
 export type WebhookEvent = (typeof WEBHOOK_EVENT_OPTIONS)[number]["value"];
@@ -377,6 +378,8 @@ export interface CompanyAddress {
   street?: string; number?: string; complement?: string; district?: string;
   city?: string; state?: string; zip?: string;
 }
+export type MunicipalityAgreementStatus = "not_checked" | "active" | "inactive" | "unknown" | "not_found";
+export interface MunicipalityAgreement { status: MunicipalityAgreementStatus; checkedAt: string | null; agreementType: string | null }
 export interface Company {
   id: string; tenantId: string; legalName: string; tradeName?: string;
   taxId: string; municipalReg?: string; /** Sends the municipal registration in the DPS. Off by default. */ sendMunicipalReg?: boolean; municipalityCode?: string; defaultServiceCode?: string;
@@ -385,6 +388,8 @@ export interface Company {
   simplesRate?: string; simplesIssRate?: string;
   environment: CompanyEnvironment; address: CompanyAddress;
   status: CompanyStatus; /** What is still missing before the company is ready, from the API. */ setupGaps?: SetupGap[];
+  /** What the Sefin said about the company's municipality; only on the single-company read. */
+  municipalityAgreement?: MunicipalityAgreement;
   createdAt: string; updatedAt: string;
 }
 export interface CreateCompanyInput {
@@ -410,7 +415,10 @@ export interface Certificate {
 }
 export type InvoiceStatus = "queued" | "processing" | "authorized" | "rejected" | "retry_pending" | "reconciliation_required" | "manual_review" | "failed" | "cancelling" | "cancelled";
 export type CancellationReasonCode = "issue_error" | "service_not_provided" | "other";
+/** What the national portal says about an authorized invoice. */
+export type PortalFlag = "taker_rejected" | "blocked";
 export interface Invoice {
+  portalFlag?: PortalFlag | null;
   id: string; tenantId: string; companyId: string; externalId?: string | null;
   accessKey?: string | null; nfseNumber?: number | null; status: InvoiceStatus;
   amount: number; customerName: string; customerTaxId: string;
@@ -419,20 +427,26 @@ export interface Invoice {
   /** Deduction from the ISS base declared by the issuer. */
   deduction?: number;
   serviceDescription: string; customerSnapshot: CreateInvoiceInput["customer"] | null;
-  serviceSnapshot: Required<CreateInvoiceInput["service"]>; competenceDate: string;
+  serviceSnapshot: Required<CreateInvoiceInput["service"]> & { purchaseOrder?: string; notes?: string }; competenceDate: string;
   lastErrorCode?: string | null; lastErrorMessage?: string | null;
   authorizedAt?: string | null; scheduledFor?: string | null; createdAt: string; updatedAt: string;
   cancellationReason?: CancellationReasonCode | null; cancellationDescription?: string | null; cancelledAt?: string | null;
   /** Set when a cancellation was requested while the invoice was still being issued. */
   cancellationRequestedAt?: string | null;
+  /** On a substitute: the invoice it replaces once the Receita authorizes it. */
+  substitutesInvoiceId?: string | null; substitutionDescription?: string | null;
 }
 export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } | { companyId: string; companyTaxId?: string }) & {
   externalId?: string;
   /** Omit it for an invoice without tomador. When sent, `taxId` (CPF or CNPJ) is required. */
-  customer?: { taxId: string; name?: string; email?: string; address?: { city?: string; state?: string; country?: string } };
+  customer?: { taxId?: string; name?: string; email?: string; address?: { city?: string; state?: string; country?: string }; /** Present on an invoice issued through the API for a customer outside Brazil; `taxId` is then empty. */ foreign?: ForeignCustomer };
   /** Omit code/municipalityCode to inherit the company defaults (code falls back to 100901). The description is optional. */
   service: { description?: string; code?: string; municipalityCode?: string };
   amount: number; competenceDate: string;
+  /** Customer purchase order printed on the invoice (DPS xPed, up to 60 characters). Changes no tax. */
+  purchaseOrder?: string;
+  /** Free text printed on the invoice as complementary information (DPS xInfComp, up to 2000 characters). Changes no tax. */
+  notes?: string;
   /**
    * Deduction from the ISS base declared by the issuer, in BRL (> 0 and < amount, max 2 decimals), sent in the DPS as `vDedRed/vDR`.
    * The issuer is responsible for the declared value; Corvo does not check whether the deduction is allowed.
@@ -444,6 +458,8 @@ export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } |
 export interface InvoiceEvent {
   id: string; invoiceId: string; from: InvoiceStatus | null;
   to: InvoiceStatus; at: string; reason?: string | null;
+  /** `portal` when the entry reports something the national portal registered. */
+  source?: "portal" | null; portalEvent?: string | null;
 }
 
 // ── Billing types ─────────────────────────────────────────────────────────────
@@ -561,3 +577,9 @@ export interface ImportCounters { total: number; valid: number; invalid: number;
 export interface ImportJob { id: string; status: ImportStatus; fileName: string; companyId: string | null; errorCode: string | null; rowsExpected: number | null; unknownColumns: string[]; emitStartedAt: string | null; emitFinishedAt: string | null; createdAt: string; counters: ImportCounters }
 export interface ImportRow { line: number; data: Record<string, unknown>; status: ImportRowStatus; errorCode: string | null; errorMessage: string | null; invoiceId: string | null }
 export interface ImportStart { id: string; status: ImportStatus; duplicateOf: string | null }
+
+/** A customer (tomador) saved from an accepted invoice: the next invoice for the same document needs no name. */
+export interface SavedCustomer { taxId: string; name: string; email: string | null; lastUsedAt: string; createdAt: string; updatedAt: string }
+
+/** A customer outside Brazil: its tax id (or why it has none) and the address abroad. It does not declare a service export. */
+export interface ForeignCustomer { taxId?: string; noTaxIdReason?: "exempt" | "not_required"; country: string; postalCode: string; city: string; region: string; street: string; number: string; district: string; complement?: string }

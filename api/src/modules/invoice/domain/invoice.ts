@@ -1,3 +1,4 @@
+import type { ForeignCustomer } from './foreign-customer';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { randomUUID } from 'crypto';
 import {
@@ -12,10 +13,12 @@ import {
   InvoiceNotCancellableError,
 } from './errors';
 import {
+  cancellationReason,
   assertFiscalCancellationReason,
   type CancellationReason,
   type CancellationReasonCode,
 } from './cancellation-reason';
+import type { PortalFlag } from './portal-flag';
 import type { ServiceFiscalInput } from './fiscal/normalized-invoice';
 
 export type LastEmailStatus = 'queued' | 'sent' | 'failed';
@@ -32,6 +35,8 @@ export interface CustomerSnapshot {
     /** Incidence municipality (7 digits) when explicitly informed. */
     municipalityCode?: string;
   };
+  /** Customer outside Brazil (DPS NIF or cNaoNIF, with the address abroad). */
+  foreign?: ForeignCustomer;
 }
 
 export interface ServiceSnapshot {
@@ -40,6 +45,10 @@ export interface ServiceSnapshot {
   municipalityCode: string;
   fiscal?: ServiceFiscalInput;
   serviceProfileId?: string;
+  /** Customer purchase order (DPS `serv/infoCompl/xPed`). */
+  purchaseOrder?: string;
+  /** Complementary information (DPS `serv/infoCompl/xInfComp`). */
+  notes?: string;
 }
 
 export interface TaxSnapshot {
@@ -66,6 +75,10 @@ export interface InvoiceProps {
   discount?: number;
   /** Issuer-declared deduction from the ISS base, 2 decimals (DPS `vDedRed/vDR`). */
   deduction?: number;
+  /** Set on a substitute: the invoice it replaces once the Sefin authorizes it. */
+  substitutesInvoiceId?: string | null;
+  /** Why the original is being substituted (DPS `subst/xMotivo`, 15 to 255 characters). */
+  substitutionDescription?: string | null;
   currency: string;
   competenceDate: Date;
   scheduledFor?: Date | null;
@@ -91,6 +104,8 @@ export interface InvoiceProps {
   cancellationDescription?: string | null;
   cancelledAt?: Date | null;
   cancellationRequestedAt?: Date | null;
+  /** What the national portal reported after authorization; written only by the portal sync. */
+  portalFlag?: PortalFlag | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -108,10 +123,14 @@ export interface CreateInvoiceInput {
     municipalityCode: string;
     fiscal?: ServiceFiscalInput;
     serviceProfileId?: string;
+    purchaseOrder?: string;
+    notes?: string;
   };
   amount: number;
   discount?: number;
   deduction?: number;
+  /** Makes this invoice the substitute of an authorized one. */
+  substitution?: { invoiceId: string; description: string };
   competenceDate: Date;
   scheduledFor?: Date;
   email?: {
@@ -144,6 +163,10 @@ export class Invoice {
             name: input.customer.name,
             email: input.customer.email,
             address: input.customer.address,
+            // Only present for a customer abroad, so other snapshots keep their shape.
+            ...(input.customer.foreign
+              ? { foreign: input.customer.foreign }
+              : {}),
           }
         : null,
       serviceSnapshot: {
@@ -152,12 +175,21 @@ export class Invoice {
         municipalityCode: input.service.municipalityCode,
         fiscal: input.service.fiscal,
         serviceProfileId: input.service.serviceProfileId,
+        // Only present when informed, so older invoices keep the same snapshot shape.
+        ...(input.service.purchaseOrder !== undefined
+          ? { purchaseOrder: input.service.purchaseOrder }
+          : {}),
+        ...(input.service.notes !== undefined
+          ? { notes: input.service.notes }
+          : {}),
       },
       taxSnapshot: {},
       emailSnapshot: input.email ? { send: input.email.send } : undefined,
       amount: input.amount,
       discount: input.discount,
       deduction: input.deduction,
+      substitutesInvoiceId: input.substitution?.invoiceId ?? null,
+      substitutionDescription: input.substitution?.description ?? null,
       currency: 'BRL',
       competenceDate: input.competenceDate,
       scheduledFor: input.scheduledFor ?? null,
@@ -307,6 +339,14 @@ export class Invoice {
     return this.props.deduction;
   }
 
+  get substitutesInvoiceId(): string | null {
+    return this.props.substitutesInvoiceId ?? null;
+  }
+
+  get substitutionDescription(): string | null {
+    return this.props.substitutionDescription ?? null;
+  }
+
   get amount(): number {
     return this.props.amount;
   }
@@ -399,6 +439,48 @@ export class Invoice {
     this.props.cancellationDescription = null;
     this.props.cancellationRequestedAt = null;
     this.props.updatedAt = new Date();
+  }
+
+  /**
+   * authorized → cancelled, without a cancellation event of our own: the Sefin cancelled this
+   * NFS-e when it authorized the substitute.
+   */
+  markSubstituted(substituteInvoiceId: string): InvoiceEvent {
+    if (this.props.status !== 'authorized')
+      throw new InvalidInvoiceTransitionError(this.props.status, 'cancelled');
+    this.recordCancellationReason(
+      cancellationReason(
+        'other',
+        `Substituída pela nota ${substituteInvoiceId}`,
+      ),
+    );
+    this.clearLastError();
+    const event = this.transitionTo(
+      'cancelled',
+      `Substituted by invoice ${substituteInvoiceId}`,
+    );
+    this.props.cancelledAt = event.createdAt;
+    return event;
+  }
+
+  /**
+   * authorized → cancelled because the portal registered a cancellation Corvo did not ask for
+   * (made on the portal's own site, by the municipality, or by a substitution done elsewhere).
+   */
+  markCancelledOnPortal(detail: string | null): InvoiceEvent {
+    if (this.props.status !== 'authorized')
+      throw new InvalidInvoiceTransitionError(this.props.status, 'cancelled');
+    this.recordCancellationReason(
+      cancellationReason(
+        'other',
+        detail ? `Cancelada no portal: ${detail}` : 'Cancelada no portal',
+      ),
+    );
+    this.clearLastError();
+    // The portal event type and its reason travel with the timeline entry, so the text is just the reason.
+    const event = this.transitionTo('cancelled', detail ?? undefined);
+    this.props.cancelledAt = event.createdAt;
+    return event;
   }
 
   confirmCancellation(): InvoiceEvent {

@@ -27,11 +27,11 @@ describe('AuthIdentityService.findOrCreateUserByMagicLink', () => {
   it('does not invent a name from the e-mail: the person is asked in onboarding', async () => {
     const { service, authUserService, identities } = build();
     const { isNew } = await service.findOrCreateUserByMagicLink(
-      'pedrook16@gmail.com',
+      'maria99@example.com',
     );
     expect(isNew).toBe(true);
     expect(authUserService.createUser).toHaveBeenCalledWith({
-      email: 'pedrook16@gmail.com',
+      email: 'maria99@example.com',
       name: '',
     });
     expect(identities.save).toHaveBeenCalledTimes(1);

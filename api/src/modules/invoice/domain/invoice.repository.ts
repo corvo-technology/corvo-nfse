@@ -5,6 +5,7 @@ import { Invoice } from './invoice';
 import { InvoiceStatus } from './invoice-status';
 import { LastEmailStatus } from './invoice';
 import type { CancellationReasonCode } from './cancellation-reason';
+import type { PortalFlag } from './portal-flag';
 
 export interface ListInvoicesFilters {
   environment?: ExecutionEnvironment;
@@ -74,6 +75,15 @@ export interface IInvoiceRepository {
     tenantId: string,
     options?: SaveInvoiceOptions,
   ): Promise<Invoice>;
+  /**
+   * Sets or clears the portal badge. Kept out of `save` on purpose: only the portal event
+   * processor writes it, so a stale copy of the invoice can never overwrite it.
+   */
+  setPortalFlag(
+    invoiceId: string,
+    tenantId: string,
+    flag: PortalFlag | null,
+  ): Promise<void>;
   /** Persists only the DPS identity; never overwrites status or other fields. */
   saveDpsInfo(invoice: Invoice): Promise<void>;
   /**
@@ -135,6 +145,14 @@ export interface IInvoiceEventRepository {
     tenantId: string,
   ): Promise<void>;
   findByInvoiceId(invoiceId: string, tenantId: string): Promise<InvoiceEvent[]>;
+  /**
+   * Timeline entry of a portal document: a second write of the same invoice and NSU is ignored.
+   * Returns true when this call wrote it.
+   */
+  savePortalEntry(
+    event: import('./invoice-event').InvoiceEvent,
+    tenantId: string,
+  ): Promise<boolean>;
 }
 
 export const INVOICE_REPOSITORY = 'INVOICE_REPOSITORY';

@@ -238,6 +238,10 @@ export function importsPage(locale: DocsLocale): DocSection {
       ["`valor`", t("yes", "sim"), t("Amount in BRL, up to 2 decimals.", "Valor em reais, com até 2 casas decimais.")],
       ["`codigo_servico`", t("no", "não"), t("National service code (6 digits). Empty uses the company default.", "Código nacional do serviço (6 dígitos). Vazio usa o padrão da empresa.")],
       ["`data_competencia`", t("no", "não"), t("Competence date. Empty uses today (America/Sao_Paulo).", "Data de competência. Vazio usa hoje (America/Sao_Paulo).")],
+      ["`pedido`", t("no", "não"), t("Purchase order or service order number printed on the invoice (up to 60 characters).", "Número do pedido ou da ordem de serviço impresso na nota (até 60 caracteres).")],
+      ["`observacoes`", t("no", "não"), t("Free text printed on the invoice as complementary information (up to 2,000 characters).", "Texto livre impresso na nota como informação complementar (até 2.000 caracteres).")],
+      ["`tomador_nif`, `tomador_sem_nif`", t("no", "não"), t("Customer abroad: its tax id, or the reason it has none (`dispensado` or `nao exigido`). Used instead of `tomador_documento`.", "Cliente no exterior: a identificação fiscal dele, ou o motivo de não ter (`dispensado` ou `nao exigido`). Entra no lugar de `tomador_documento`.")],
+      ["`tomador_pais`, `tomador_codigo_postal`, `tomador_cidade`, `tomador_regiao`, `tomador_logradouro`, `tomador_numero`, `tomador_bairro`, `tomador_complemento`", t("for a customer abroad", "para cliente no exterior"), t("Address abroad. The country is the two-letter code (for example `US`); all are required except the complement. These columns are not in the basic template.", "Endereço no exterior. O país é o código de duas letras (por exemplo `US`); todos são obrigatórios, menos o complemento. Essas colunas não vêm no modelo básico.")],
     ] },
     { kind: "heading", level: 2, body: t("Rules", "Regras") },
     { kind: "table", head: [t("Rule", "Regra"), t("Detail", "Detalhe")], rows: [

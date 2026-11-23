@@ -86,6 +86,7 @@ export const TipoTribISSQN = sdk.TipoTribISSQN;
 export const parseNfseXml = sdk.parseNfseXml;
 export const gerarDanfse = sdk.gerarDanfse;
 export const OpcaoSimplesNacional = sdk.OpcaoSimplesNacional;
+export const CodigoNaoNif = sdk.CodigoNaoNif;
 export const RegimeApuracaoSimplesNacional = sdk.RegimeApuracaoSimplesNacional;
 export const RegimeEspecialTributacao = sdk.RegimeEspecialTributacao;
 export const TipoAmbienteDps = sdk.TipoAmbienteDps;
@@ -93,3 +94,13 @@ export const ValidationError = sdk.ValidationError;
 export const NotFoundError = sdk.NotFoundError;
 export const pendingEmissionId = sdk.pendingEmissionId;
 export const JustificativaCancelamento = sdk.JustificativaCancelamento;
+export const JustificativaSubstituicao = sdk.JustificativaSubstituicao;
+
+// Portal sync: the feed's enums, the events parser and the errors that mean the portal is down.
+export const TipoEvento = sdk.TipoEvento;
+export const StatusDistribuicao = sdk.StatusDistribuicao;
+export const parseEventoXml = sdk.parseEventoXml;
+export const NetworkError = sdk.NetworkError;
+export const ServerError = sdk.ServerError;
+export const TimeoutError = sdk.TimeoutError;
+export const TooManyRequestsError = sdk.TooManyRequestsError;

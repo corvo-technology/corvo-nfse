@@ -91,7 +91,9 @@ const isPublicPath = (logicalPath: string) =>
   publicPaths.has(logicalPath) ||
   logicalPath.startsWith("/app") ||
   logicalPath === "/docs" ||
-  logicalPath.startsWith("/docs/");
+  logicalPath.startsWith("/docs/") ||
+  logicalPath === "/blog" ||
+  logicalPath.startsWith("/blog/");
 
 const stripTrailingSlash = (pathname: string) =>
   pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
@@ -198,6 +200,10 @@ export function proxy(request: NextRequest) {
     const response = send(target, 301);
     if (response) return response;
   }
+
+  // The blog exists in Portuguese only: /blog and /en/blog (with any sub-path) move to /pt/blog with one 301.
+  const blogMatch = bare.match(/^(?:\/en)?(\/blog(?:\/.*)?)$/);
+  if (blogMatch) return redirectTo(request, `/pt${blogMatch[1]}`, 301);
 
   // Leftover trailing slash (/terms/ is already handled above). One hop, including to www.
   if (bare !== pathname) {

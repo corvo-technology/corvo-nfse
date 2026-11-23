@@ -41,6 +41,7 @@ import type { Response } from 'express';
 import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { ApiKeyEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
 import type { RequestWithAuthContext } from '@/modules/auth/auth-context';
+import { InvoiceSubstitutionService } from '../application/invoice-substitution.service';
 import { InvoiceService } from '../application/invoice.service';
 import { InvoiceBatchService } from '../application/invoice-batch.service';
 import { EmissionRouterService } from '@/modules/invoice-schedule/application/emission-router.service';
@@ -52,6 +53,7 @@ import {
 import { InvoiceBatchSummaryDto } from './invoice-batch-response.dto';
 import {
   CancelInvoiceDto,
+  SubstituteInvoiceDto,
   CreateInvoiceDto,
   GetDownloadUrlDto,
   ListInvoicesQuery,
@@ -66,6 +68,7 @@ export class InvoiceController {
     private readonly calculationService: InvoiceCalculationService,
     private readonly batchService: InvoiceBatchService,
     private readonly emissionRouter: EmissionRouterService,
+    private readonly substitutions: InvoiceSubstitutionService,
   ) {}
 
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
@@ -407,5 +410,43 @@ export class InvoiceController {
     );
     res.status(invoice.status === 'cancelled' ? 200 : 202);
     return invoice;
+  }
+
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  @Post(':id/substitute')
+  @HttpCode(202)
+  @ApiExtraModels(InvoiceResponseDto)
+  @ApiAcceptedResponse({
+    description:
+      'The substitute invoice, queued. The original stays authorized until the Sefin authorizes the substitute.',
+    schema: {
+      type: 'object',
+      required: ['data'],
+      properties: {
+        data: { $ref: getSchemaPath(InvoiceResponseDto) },
+      },
+    },
+  })
+  @ApiHeader({ name: 'idempotency-key', required: false })
+  @ApiKeyEndpoint()
+  @RequirePermission('nfse.invoices.issue')
+  @ApiOperation({
+    summary: 'Substitute an authorized invoice with a corrected one',
+    description:
+      'Issues a new NFS-e that replaces an authorized one. Only the service description, the purchase order and the notes can change: for MEI and Simples Nacional the Sefin refuses a substitute that changes the customer, the competence date or the amount (rule E0061). The original is cancelled only after the substitute is authorized; a refusal leaves it authorized. The substitute uses a credit like any issued invoice.',
+  })
+  async substitute(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: SubstituteInvoiceDto,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Req() req: RequestWithAuthContext,
+  ) {
+    return this.substitutions.substitute(
+      id,
+      req.authContext!.activeTenantId,
+      executionEnvironment(req.authContext!),
+      dto,
+      idempotencyKey,
+    );
   }
 }

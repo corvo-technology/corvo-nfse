@@ -1,4 +1,4 @@
-import type { ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { ForeignCustomer, SavedCustomer, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -182,7 +182,7 @@ export const certificates = {
 export type InvoiceWire = Omit<Invoice, "customerName" | "customerTaxId" | "serviceDescription">;
 export function adaptInvoice(props: InvoiceWire): Invoice {
   // Anonymous consumer invoices have no customer snapshot (the tomador is omitted from the DPS).
-  return { ...props, customerName: props.customerSnapshot?.name ?? "", customerTaxId: props.customerSnapshot?.taxId ?? "", serviceDescription: props.serviceSnapshot.description };
+  return { ...props, customerName: props.customerSnapshot?.name ?? "", customerTaxId: props.customerSnapshot?.taxId ?? props.customerSnapshot?.foreign?.taxId ?? "", serviceDescription: props.serviceSnapshot.description };
 }
 export interface InvoiceQuery extends PageParams { companyId?: string; status?: InvoiceStatus; from?: string; to?: string; externalId?: string }
 export type OverviewPeriod = "7d" | "30d";
@@ -196,7 +196,7 @@ export interface InvoiceOverview {
   recentInvoices: Invoice[];
 }
 type InvoiceBody = InvoiceWire;
-type EventWire = { id: string; invoiceId: string; fromStatus: InvoiceStatus | null; toStatus: InvoiceStatus; createdAt: string; reason: string | null };
+type EventWire = { id: string; invoiceId: string; fromStatus: InvoiceStatus | null; toStatus: InvoiceStatus; createdAt: string; reason: string | null; source?: "portal" | null; portalEvent?: string | null };
 export type ReviewAction = "retry" | "discard";
 export type ReviewOutcome =
   | { id: string; outcome: "accepted" }
@@ -216,10 +216,12 @@ export const invoices = {
   get: async (id: string, signal?: AbortSignal) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}`, { signal }))),
   create: async (data: CreateInvoiceInput, idempotencyKey: string) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>("/invoices", { ...json(data), headers: { "idempotency-key": idempotencyKey } }))),
   calculate: async (data: CreateInvoiceInput, signal?: AbortSignal) => unwrap(await request<Envelope<InvoiceCalculation>>("/invoices/calculate", { ...json(data), signal })),
+  /** Issues the substitute of an authorized invoice. Customer, competence and amount are copied by the API. */
+  substitute: async (id: string, data: SubstituteInvoiceInput, idempotencyKey: string) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}/substitute`, { ...json(data), headers: { "idempotency-key": idempotencyKey } }))),
   cancel: async (id: string, data: { reason: CancellationReasonCode; description?: string }) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}/cancel`, json(data)))),
   xml: (id: string) => request<Blob>(`/invoices/${idPath(id)}/xml`, {}, true),
   pdf: (id: string) => request<Blob>(`/invoices/${idPath(id)}/pdf`, {}, true),
-  events: async (id: string, params: PageParams = {}, signal?: AbortSignal): Promise<Page<InvoiceEvent>> => { const page = toPage(await request<ListBody<EventWire>>(`/invoices/${idPath(id)}/events${query(params)}`, { signal })); return { ...page, items: page.items.map((event) => ({ id: event.id, invoiceId: event.invoiceId, from: event.fromStatus, to: event.toStatus, at: event.createdAt, reason: event.reason } satisfies InvoiceEvent)) }; },
+  events: async (id: string, params: PageParams = {}, signal?: AbortSignal): Promise<Page<InvoiceEvent>> => { const page = toPage(await request<ListBody<EventWire>>(`/invoices/${idPath(id)}/events${query(params)}`, { signal })); return { ...page, items: page.items.map((event) => ({ id: event.id, invoiceId: event.invoiceId, from: event.fromStatus, to: event.toStatus, at: event.createdAt, reason: event.reason, source: event.source ?? null, portalEvent: event.portalEvent ?? null } satisfies InvoiceEvent)) }; },
   downloadUrl: async (id: string, format: "pdf" | "xml") => (await request<Envelope<{ downloadUrl: string; expiresAt: string; fileName: string; mimeType: string }>>(`/invoices/${idPath(id)}/download-url`, json({ format }))).data,
   /** Resolves invoices in manual review; sent in chunks of up to 100 (the API limit). */
   review: async (action: ReviewAction, invoiceIds: string[]): Promise<ReviewOutcome[]> => {
@@ -271,7 +273,9 @@ type ScheduleRunWire = { id: string; occurrence_on: string; ran_on: string; atte
 const adaptSchedule = (w: ScheduleWire): InvoiceSchedule => ({ id: w.id, kind: w.kind, frequency: w.frequency, status: w.status, pauseReason: w.pause_reason, companyId: w.company_id, anchorOn: w.anchor_on, nextRunOn: w.next_run_on, endsOn: w.ends_on, attempts: w.attempts, lastRunOn: w.last_run_on, invoice: w.invoice, createdAt: w.created_at });
 const adaptScheduleRun = (w: ScheduleRunWire): ScheduleRun => ({ id: w.id, occurrenceOn: w.occurrence_on, ranOn: w.ran_on, attempt: w.attempt, outcome: w.outcome, invoiceId: w.invoice_id, errorCode: w.error_code, errorMessage: w.error_message, createdAt: w.created_at });
 /** What POST /invoices takes to create a schedule: the invoice body plus `options.type` SCHEDULE or RECURRING. */
-export interface CreateScheduleInput { companyId: string; amount: number; competenceDate: string; customer?: { name?: string; taxId?: string; email?: string; address?: { city?: string; state?: string } }; service?: { description?: string; code?: string; municipalityCode?: string }; deduction?: number; options: { type: "SCHEDULE" | "RECURRING"; recurrence?: { frequency: ScheduleFrequency; endsOn?: string }; email?: { send: boolean } } }
+/** What a substitute can change (the Sefin forbids changing the customer, the competence date and the amount for MEI and Simples Nacional). */
+export interface SubstituteInvoiceInput { description: string; service?: { description?: string }; purchaseOrder?: string; notes?: string }
+export interface CreateScheduleInput { companyId: string; amount: number; competenceDate: string; customer?: { name?: string; taxId?: string; email?: string; address?: { city?: string; state?: string }; foreign?: ForeignCustomer }; service?: { description?: string; code?: string; municipalityCode?: string }; deduction?: number; purchaseOrder?: string; notes?: string; options: { type: "SCHEDULE" | "RECURRING"; recurrence?: { frequency: ScheduleFrequency; endsOn?: string }; email?: { send: boolean } } }
 export interface UpdateScheduleInput { invoice?: Record<string, unknown>; endsOn?: string | null; frequency?: ScheduleFrequency; anchorOn?: string }
 export const schedules = {
   list: async (params: PageParams & { status?: InvoiceSchedule["status"] } = {}, signal?: AbortSignal): Promise<Page<InvoiceSchedule>> => { const page = toPage(await request<ListBody<ScheduleWire>>(`/schedules${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptSchedule) }; },
@@ -282,6 +286,16 @@ export const schedules = {
   pause: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/pause`, json({})))),
   resume: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/resume`, json({})))),
   cancel: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/cancel`, json({})))),
+};
+export const customers = {
+  list: async (params: PageParams & { search?: string } = {}, signal?: AbortSignal): Promise<Page<SavedCustomer>> => toPage(await request<ListBody<SavedCustomer>>(`/customers${query(params)}`, { signal })),
+  /** Null when the document was never saved (the API answers 404). */
+  find: async (taxId: string, signal?: AbortSignal): Promise<SavedCustomer | null> => {
+    try { return unwrap(await request<Envelope<SavedCustomer>>(`/customers/${idPath(taxId)}`, { signal })); }
+    catch (cause) { if (cause instanceof ApiError && cause.status === 404) return null; throw cause; }
+  },
+  update: async (taxId: string, patch: { name?: string; email?: string | null }) => unwrap(await request<Envelope<SavedCustomer>>(`/customers/${idPath(taxId)}`, json(patch, "PATCH"))),
+  remove: async (taxId: string): Promise<void> => { await request<Envelope<null>>(`/customers/${idPath(taxId)}`, { method: "DELETE" }); },
 };
 export const webhooks = {
   list: async (params: PageParams = {}) => toPage(await request<ListBody<WebhookEndpoint>>(`/webhooks${query(params)}`)),
@@ -377,7 +391,7 @@ export const imports = {
   get: async (id: string, signal?: AbortSignal) => adaptImport(unwrap(await request<Envelope<ImportWire>>(`/imports/${idPath(id)}`, { signal }))),
   rows: async (id: string, params: PageParams & { status?: ImportRow["status"] } = {}, signal?: AbortSignal): Promise<Page<ImportRow>> => { const page = toPage(await request<ListBody<ImportRowWire>>(`/imports/${idPath(id)}/rows${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptImportRow) }; },
   updateRow: async (id: string, line: number, item: Record<string, unknown>) => adaptImportRow(unwrap(await request<Envelope<ImportRowWire>>(`/imports/${idPath(id)}/rows/${line}`, json({ item }, "PATCH")))),
-  emit: async (id: string) => adaptImport(unwrap(await request<Envelope<ImportWire>>(`/imports/${idPath(id)}/emit`, json({})))),
+  emit: async (id: string, options: { sendEmail?: boolean } = {}) => adaptImport(unwrap(await request<Envelope<ImportWire>>(`/imports/${idPath(id)}/emit`, json(options.sendEmail ? { sendEmail: true } : {})))),
   discard: (id: string) => request<null>(`/imports/${idPath(id)}`, { method: "DELETE" }),
   errorsCsv: (id: string) => request<Blob>(`/imports/${idPath(id)}/errors.csv`, {}, true),
   template: () => request<Blob>("/imports/template", {}, true),

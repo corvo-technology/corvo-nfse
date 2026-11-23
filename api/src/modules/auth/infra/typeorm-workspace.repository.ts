@@ -33,12 +33,10 @@ export class TypeOrmWorkspaceRepository extends IWorkspaceRepository {
   async memberships(
     userId: string,
   ): Promise<Array<{ isActive: boolean; tenantId: string }>> {
-    return this.db
-      .repository(TenantMembershipOrmEntity)
-      .find({
-        select: { isActive: true, tenantId: true },
-        where: { authUserId: userId },
-      });
+    return this.db.repository(TenantMembershipOrmEntity).find({
+      select: { isActive: true, tenantId: true },
+      where: { authUserId: userId },
+    });
   }
 
   async freePlanId(): Promise<string> {

@@ -59,6 +59,50 @@ function parseDate(raw: string | undefined, today: string): string {
     : raw;
 }
 
+const NO_TAX_ID_REASON: Record<string, string> = {
+  dispensado: 'exempt',
+  exempt: 'exempt',
+  naoexigido: 'not_required',
+  notrequired: 'not_required',
+};
+
+/**
+ * A customer abroad, when any of its columns is filled. The cells go through as typed: the
+ * invoice validation reports what is missing or invalid with its own catalog errors.
+ */
+function foreignCustomer(
+  cells: ParsedRow['cells'],
+): Record<string, string> | undefined {
+  const pick = (value: string | undefined) => value?.trim() || undefined;
+  const reason = pick(cells.tomadorSemNif);
+  const fields: Record<string, string | undefined> = {
+    taxId: pick(cells.tomadorNif),
+    noTaxIdReason: reason
+      ? (NO_TAX_ID_REASON[
+          reason
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z]/g, '')
+        ] ?? reason)
+      : undefined,
+    country: pick(cells.tomadorPais)?.toUpperCase(),
+    postalCode: pick(cells.tomadorCodigoPostal),
+    city: pick(cells.tomadorCidade),
+    region: pick(cells.tomadorRegiao),
+    street: pick(cells.tomadorLogradouro),
+    number: pick(cells.tomadorNumero),
+    district: pick(cells.tomadorBairro),
+    complement: pick(cells.tomadorComplemento),
+  };
+  const filled = Object.fromEntries(
+    Object.entries(fields).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  );
+  return Object.keys(filled).length > 0 ? filled : undefined;
+}
+
 export function normalizeRow(
   cells: ParsedRow['cells'],
   today: string,
@@ -68,6 +112,7 @@ export function normalizeRow(
   if (taxId) customer.taxId = taxId;
   if (cells.tomadorNome?.trim()) customer.name = cells.tomadorNome.trim();
   if (cells.tomadorEmail?.trim()) customer.email = cells.tomadorEmail.trim();
+  const foreign = foreignCustomer(cells);
 
   const service: Record<string, string> = {};
   if (cells.descricao?.trim()) service.description = cells.descricao.trim();
@@ -79,7 +124,10 @@ export function normalizeRow(
     amount: parseAmount(cells.valor),
     competenceDate: parseDate(cells.dataCompetencia, today),
   };
-  if (Object.keys(customer).length) item.customer = customer;
+  if (foreign) item.customer = { ...customer, foreign };
+  else if (Object.keys(customer).length) item.customer = customer;
+  if (cells.pedido?.trim()) item.purchaseOrder = cells.pedido.trim();
+  if (cells.observacoes?.trim()) item.notes = cells.observacoes.trim();
   const cnpj = restoreZeros(digits(cells.cnpjPrestador), 'company');
   return cnpj ? { item, cnpjPrestador: cnpj } : { item };
 }

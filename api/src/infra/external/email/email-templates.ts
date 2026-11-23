@@ -342,6 +342,51 @@ export function certificateExpiringEmail(input: {
   ]);
 }
 
+/** `NFS-e 123`, or just "A nota" when the number is not known. */
+function invoiceLabel(nfseNumber: number | null): string {
+  return nfseNumber ? `A NFS-e ${nfseNumber}` : 'Uma nota';
+}
+
+export function invoiceCancelledOnPortalEmail(input: {
+  nfseNumber: number | null;
+  reason: string | null;
+  invoiceUrl: string;
+}): RenderedEmail {
+  return emailLayout('Uma nota foi cancelada no portal', [
+    paragraph(
+      `${invoiceLabel(input.nfseNumber)} foi cancelada direto no portal nacional da NFS-e, não pelo Corvo. Ela já aparece como cancelada no painel.`,
+    ),
+    ...(input.reason ? [paragraph(`Motivo informado: ${input.reason}`)] : []),
+    button(input.invoiceUrl, 'Ver nota'),
+  ]);
+}
+
+export function invoiceRejectedByTakerEmail(input: {
+  nfseNumber: number | null;
+  reason: string | null;
+  invoiceUrl: string;
+}): RenderedEmail {
+  return emailLayout('O cliente rejeitou uma nota', [
+    paragraph(
+      `${invoiceLabel(input.nfseNumber)} foi rejeitada pelo tomador no portal nacional. Ela continua autorizada, mas vale conversar com o cliente.`,
+    ),
+    ...(input.reason ? [paragraph(`Motivo informado: ${input.reason}`)] : []),
+    button(input.invoiceUrl, 'Ver nota'),
+  ]);
+}
+
+export function invoiceBlockedOnPortalEmail(input: {
+  nfseNumber: number | null;
+  invoiceUrl: string;
+}): RenderedEmail {
+  return emailLayout('Uma nota foi bloqueada pelo município', [
+    paragraph(
+      `${invoiceLabel(input.nfseNumber)} foi bloqueada pelo município por ofício. Ela continua autorizada, mas procure a prefeitura para entender o motivo.`,
+    ),
+    button(input.invoiceUrl, 'Ver nota'),
+  ]);
+}
+
 export function pixExpiredEmail(input: { billingUrl: string }): RenderedEmail {
   return emailLayout('Seu Pix expirou', [
     paragraph(

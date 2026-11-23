@@ -94,6 +94,11 @@ const ptWithRetiredCredits: DocsTree = {
           ["GET", "`/v1/webhooks/deliveries`", "Listar entregas", "200"],
           ["GET", "`/v1/webhooks/deliveries/stats`", "Consultar estatísticas", "200"],
           ["POST", "`/v1/webhooks/deliveries/:id/retry`", "Agendar nova tentativa", "200"],
+          ["POST", "`/v1/invoices/:id/substitute`", "Substituir uma nota autorizada", "202"],
+          ["GET", "`/v1/customers`", "Listar clientes salvos", "200"],
+          ["GET", "`/v1/customers/:taxId`", "Consultar cliente salvo", "200"],
+          ["PATCH", "`/v1/customers/:taxId`", "Corrigir cliente salvo", "200"],
+          ["DELETE", "`/v1/customers/:taxId`", "Apagar cliente salvo", "200"],
           ["GET", "`/v1/schedules`", "Listar agendas e recorrências", "200"],
           ["GET", "`/v1/schedules/:id`", "Consultar uma agenda", "200"],
           ["GET", "`/v1/schedules/:id/runs`", "Histórico de execuções de uma agenda", "200"],
@@ -740,6 +745,8 @@ console.log(res.status); // 204`,
               { name: "competenceDate", type: "string ISO 8601", required: true, description: "Data de competência válida. Sem `options.type`, não pode ser futura (`422` `ERROR_FUTURE_DATE`). Com `SCHEDULE` ou `RECURRING`, é a data da primeira execução, de amanhã em diante (veja Notas agendadas e recorrentes)." },
               { name: "discount", type: "number", required: false, description: "Desconto incondicional em reais, de 0 até o valor da nota, no máximo 2 casas decimais." },
               { name: "deduction", type: "number", required: false, description: "Dedução da base do ISS declarada pelo emitente, em reais: maior que 0 e menor que `amount` menos `discount`, no máximo 2 casas decimais (`0` equivale a omitir). Vai na DPS em `vDedRed/vDR` e reduz a base de cálculo do ISS. A nota continua sendo emitida pelo valor total. O emitente responde pelo valor declarado; a Corvo não confere se a dedução é permitida. O IBS/CBS segue calculado sobre o valor sem a dedução. Veja Dedução da base do ISS." },
+              { name: "purchaseOrder", type: "string", required: false, description: "Número do pedido, da ordem de compra ou da ordem de serviço que o cliente pediu para constar na nota, com até 60 caracteres em uma linha. Vai na DPS em `serv/infoCompl/xPed` e sai impresso no PDF. Não muda nenhum tributo." },
+              { name: "notes", type: "string", required: false, description: "Texto livre impresso na nota como informação complementar, com até 2.000 caracteres (aceita quebra de linha). Vai na DPS em `serv/infoCompl/xInfComp`. Não muda nenhum tributo. Valor em branco equivale a omitir." },
               { name: "email", type: "boolean", required: false, description: "Solicita notificação; padrão `false`." },
               { name: "options.email.send", type: "boolean", required: false, description: "Quando definido, prevalece sobre `email`." },
               { name: "options.type", type: "string", required: false, description: "`IMMEDIATE` (padrão), `SCHEDULE` ou `RECURRING`. `SCHEDULE` e `RECURRING` criam uma agenda em vez de emitir agora; veja Notas agendadas e recorrentes." },
@@ -1118,6 +1125,259 @@ console.log(data.status, data.netReceivableAmount); // "ready" "50.00"`,
           ["POST", "`/v1/schedules/:id/cancel`", "Cancelar (definitivo)", "200"],
         ] },
         { kind: "text", body: "A agenda tem `id`, `kind` (`once` ou `recurring`), `frequency`, `status` (`active`, `paused`, `completed`, `cancelled`), `pause_reason` (`customer` ou `failures`), `company_id`, `anchor_on`, `next_run_on`, `ends_on`, `attempts` (falhas seguidas, de 0 a 3), `last_run_on`, `invoice` (o corpo emitido a cada execução) e `created_at`. Permissões: `nfse.invoices.view` para ler e `nfse.invoices.issue` para criar e alterar. Uma chave de teste vê só agendas de teste, e uma de produção só as de produção." },
+        { kind: "heading", level: 2, body: "Cliente no exterior" },
+        { kind: "text", body: "Para um cliente de fora do Brasil, envie `customer.foreign` no lugar do CPF ou CNPJ. A nota sai com o tomador identificado pelo NIF (a identificação fiscal no país dele) e com o endereço no exterior." },
+        { kind: "table", head: ["Campo", "Regra"], rows: [
+          ["`customer.name`", "Obrigatório para cliente no exterior."],
+          ["`foreign.taxId`", "Identificação fiscal no país do cliente (NIF), até 40 caracteres. Envie este campo **ou** `noTaxIdReason`, nunca os dois."],
+          ["`foreign.noTaxIdReason`", "Quando o cliente não tem identificação fiscal: `exempt` (dispensado) ou `not_required` (não exigido)."],
+          ["`foreign.country`", "Código do país em duas letras (ISO 3166-1), diferente de `BR`."],
+          ["`foreign.postalCode`, `city`, `region`", "Código postal (até 11), cidade e estado, província ou região (até 60 cada). Obrigatórios."],
+          ["`foreign.street`, `number`, `district`", "Logradouro (até 255), número e bairro ou distrito (até 60 cada). O leiaute da nota exige os três."],
+          ["`foreign.complement`", "Opcional, até 156 caracteres."],
+          ["Não pode vir junto", "`customer.taxId` e `customer.address` (o endereço brasileiro) retornam `422` com `not_allowed`."],
+        ] },
+        { kind: "code", label: "Nota para cliente no exterior", language: "bash", code: `curl -X POST "$BASE_URL/invoices" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: pedido_981_emissao" \\
+  -d '{
+    "companyTaxId": "11222333000181",
+    "service": { "description": "Software development" },
+    "amount": 5000,
+    "competenceDate": "2026-11-10",
+    "customer": {
+      "name": "Acme Inc.",
+      "foreign": {
+        "taxId": "12-3456789",
+        "country": "US",
+        "postalCode": "94105",
+        "city": "San Francisco",
+        "region": "CA",
+        "street": "1 Market St",
+        "number": "100",
+        "district": "SoMa"
+      }
+    }
+  }'` },
+        { kind: "callout", tone: "warn", body: "Informar um cliente no exterior **não declara exportação de serviço**: a nota segue com a mesma tributação. A exportação (com o país do resultado e os dados de comércio exterior) ainda não é suportada. Confirme o enquadramento com o seu contador." },
+        { kind: "callout", tone: "accent", body: "Vale para nota avulsa, lote, agendas e a ferramenta `nfse_issue` do MCP (campo `customer.foreign`, em snake_case). Na planilha, use as colunas opcionais de cliente no exterior (veja Importar planilha). Ele não entra nos clientes salvos." },
+        { kind: "heading", level: 2, body: "Substituir uma nota" },
+        { kind: "text", body: "`POST /v1/invoices/:id/substitute` emite uma nota nova que substitui uma nota **autorizada**. A Receita cancela a original no mesmo ato em que autoriza a substituta, então não fica intervalo sem nota válida. A resposta é `202` com a substituta em `queued`, com `substitutesInvoiceId` apontando para a original." },
+        { kind: "table", head: ["Campo", "Regra"], rows: [
+          ["`description`", "Obrigatório, de 15 a 255 caracteres: o motivo da substituição. Vai na DPS em `subst/xMotivo`."],
+          ["`service.description`", "Opcional. Nova descrição do serviço."],
+          ["`purchaseOrder`, `notes`", "Opcionais. Omitir mantém o que a original tinha; texto vazio remove."],
+          ["O que não muda", "Tomador, data de competência e valor ficam como na original. Para MEI e Simples Nacional a Receita recusa a substituta que altera qualquer um deles (regra E0061). Para corrigir esses dados, cancele a nota e emita outra."],
+          ["Original", "Continua `authorized` até a Receita autorizar a substituta. Autorizada a substituta, a original passa a `cancelled` e você recebe `nfse.invoice.cancelled` com `substitutedBy`. Se a Receita recusar, a original não muda e a substituta fica `rejected`."],
+          ["Crédito", "A substituta usa um crédito, como qualquer nota emitida. O crédito da original não volta."],
+          ["Erros", "`409` `ERROR_INVOICE_NOT_SUBSTITUTABLE` quando a nota não está `authorized`; `404` quando não existe."],
+        ] },
+        {
+          kind: "endpoint",
+          method: "POST",
+          path: "/v1/invoices/:id/substitute",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "202 Accepted",
+          summary: "Emite uma nota nova que substitui uma nota `authorized`. A original continua `authorized` até a Receita autorizar a substituta e só então passa a `cancelled`; se a Receita recusar, a original não muda. Tomador, data de competência e valor são copiados da original.",
+          params: {
+            rows: [
+              { name: "description", type: "string", required: true, description: "Obrigatório, de 15 a 255 caracteres: o motivo da substituição (DPS `subst/xMotivo`)." },
+              { name: "service.description", type: "string", required: false, description: "Nova descrição do serviço." },
+              { name: "purchaseOrder", type: "string", required: false, description: "Novo nº do pedido. Omitir mantém o da original; texto vazio remove." },
+              { name: "notes", type: "string", required: false, description: "Novas observações. Omitir mantém as da original; texto vazio remove." },
+            ],
+          },
+          examples: {
+            curl: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/substitute" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: pedido_981_substituicao" \\
+  -d '{
+    "description": "Descricao do servico corrigida",
+    "service": { "description": "Consultoria em tecnologia, outubro/2026" },
+    "purchaseOrder": "PO-4521"
+  }'`,
+            node: `const res = await fetch(\`\${BASE_URL}/invoices/\${process.env.INVOICE_ID}/substitute\`, {
+  method: "POST",
+  headers: {
+    "X-API-Key": process.env.CORVO_API_KEY,
+    "Content-Type": "application/json",
+    "Idempotency-Key": "pedido_981_substituicao",
+  },
+  body: JSON.stringify({
+    description: "Descricao do servico corrigida",
+    service: { description: "Consultoria em tecnologia, outubro/2026" },
+    purchaseOrder: "PO-4521",
+  }),
+});
+const { data } = await res.json();
+console.log(res.status, data.status, data.substitutesInvoiceId); // 202 "queued" "<id da original>"`,
+          },
+          response: {
+            label: "202 Accepted",
+            json: `{
+  "data": {
+    "id": "9b2f4c1e-7a35-4d0f-8c21-5e6a1b3d7f90",
+    "status": "queued",
+    "substitutesInvoiceId": "6f1c0e2a-4b7d-4c1e-9a55-2b8f7c3d9e10",
+    "substitutionDescription": "Descricao do servico corrigida",
+    "amount": 1000,
+    "serviceSnapshot": {
+      "description": "Consultoria em tecnologia, outubro/2026",
+      "code": "010601",
+      "municipalityCode": "3550308",
+      "purchaseOrder": "PO-4521"
+    }
+  }
+}`,
+          },
+        },
+        { kind: "callout", tone: "warn", body: "O prazo para substituir e algumas regras (por exemplo, nota sem tomador identificado) são definidos por cada município. A Corvo não conhece esse prazo de antemão: se a Receita recusar, o código do erro vem na nota substituta. Envie `Idempotency-Key` para repetir a chamada sem emitir duas substitutas. No MCP, a ferramenta é `nfse_substitute`." },
+        { kind: "heading", level: 2, body: "Clientes salvos" },
+        { kind: "text", body: "Depois que uma nota com tomador é aceita, a Corvo guarda o CPF ou CNPJ, o nome e o e-mail desse cliente. Na nota seguinte para o mesmo documento, basta enviar `customer.taxId`: o `name` vem do cadastro. O que você envia na requisição sempre vale, e a nota já emitida nunca muda." },
+        { kind: "table", head: ["Regra", "Detalhe"], rows: [
+          ["Escopo", "Um cadastro por documento em cada workspace e ambiente. `test` e `live` não se misturam."],
+          ["Preenchimento", "Só o `name`, e só quando a requisição não traz nome. O e-mail salvo não é usado para enviar a nota."],
+          ["Sem cadastro", "A nota segue como antes: sem `name`, o tomador sai como `Consumidor`. Envie o nome na primeira nota."],
+          ["Atualização", "O nome salvo acompanha a nota mais recente; um e-mail já salvo é mantido quando a nota não traz e-mail."],
+          ["Onde vale", "Nota avulsa, lote, planilha, agendas e recorrências, e as ferramentas do MCP."],
+          ["Idempotência", "O hash da requisição é calculado antes do preenchimento, então repetir a mesma chamada continua devolvendo a mesma nota."],
+        ] },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/customers",
+          scopes: ["full_access", "invoices_view", "invoices_read_write"],
+          success: "200 OK",
+          summary: "Lista os clientes salvos do ambiente da chave, do mais recente para o mais antigo. `search` procura parte do nome ou o começo do CPF/CNPJ (a pontuação é ignorada).",
+          params: {
+            rows: [
+              { name: "search", type: "string", required: false, description: "Parte do nome ou começo do documento." },
+              { name: "limit", type: "number", required: false, description: "Itens por página (padrão 50)." },
+              { name: "cursor", type: "string", required: false, description: "Cursor devolvido pela página anterior." },
+            ],
+          },
+          examples: {
+            curl: `curl "$BASE_URL/customers?search=acme&limit=50" \\
+  -H "X-API-Key: $CORVO_API_KEY"`,
+            node: `const res = await fetch(\`\${BASE_URL}/customers?search=acme&limit=50\`, {
+  headers: { "X-API-Key": process.env.CORVO_API_KEY },
+});
+const { data } = await res.json();
+console.log(data.map((customer) => customer.name));`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": [
+    {
+      "taxId": "11222333000181",
+      "name": "Acme Ltda",
+      "email": "financeiro@acme.com.br",
+      "lastUsedAt": "2026-11-10T12:00:00.000Z",
+      "createdAt": "2026-11-01T12:00:00.000Z",
+      "updatedAt": "2026-11-10T12:00:00.000Z"
+    }
+  ],
+  "pagination": { "limit": 50, "hasMore": false, "nextCursor": null }
+}`,
+          },
+        },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/customers/:taxId",
+          scopes: ["full_access", "invoices_view", "invoices_read_write"],
+          success: "200 OK",
+          summary: "Consulta um cliente salvo pelo CPF ou CNPJ, com ou sem pontuação. Responde `404` quando o documento nunca foi salvo.",
+          examples: {
+            curl: `curl "$BASE_URL/customers/11222333000181" \\
+  -H "X-API-Key: $CORVO_API_KEY"`,
+            node: `const res = await fetch(\`\${BASE_URL}/customers/11222333000181\`, {
+  headers: { "X-API-Key": process.env.CORVO_API_KEY },
+});
+const { data } = await res.json();
+console.log(res.status, data?.name); // 200 "Acme Ltda"`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "taxId": "11222333000181",
+    "name": "Acme Ltda",
+    "email": "financeiro@acme.com.br",
+    "lastUsedAt": "2026-11-10T12:00:00.000Z",
+    "createdAt": "2026-11-01T12:00:00.000Z",
+    "updatedAt": "2026-11-10T12:00:00.000Z"
+  }
+}`,
+          },
+        },
+        {
+          kind: "endpoint",
+          method: "PATCH",
+          path: "/v1/customers/:taxId",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "200 OK",
+          summary: "Corrige o `name` ou o `email` de um cliente salvo. Envie só o que muda; `email: null` apaga o e-mail. A correção vale para as próximas notas.",
+          params: {
+            rows: [
+              { name: "name", type: "string", required: false, description: "Novo nome, até 300 caracteres." },
+              { name: "email", type: "string | null", required: false, description: "Novo e-mail, ou `null` para apagar." },
+            ],
+          },
+          examples: {
+            curl: `curl -X PATCH "$BASE_URL/customers/11222333000181" \\
+  -H "X-API-Key: $CORVO_API_KEY" \\
+  -H 'Content-Type: application/json' \\
+  -d '{"name":"Acme S.A."}'`,
+            node: `const res = await fetch(\`\${BASE_URL}/customers/11222333000181\`, {
+  method: "PATCH",
+  headers: { "X-API-Key": process.env.CORVO_API_KEY, "Content-Type": "application/json" },
+  body: JSON.stringify({ name: "Acme S.A." }),
+});
+const { data } = await res.json();
+console.log(data.name); // "Acme S.A."`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": {
+    "taxId": "11222333000181",
+    "name": "Acme S.A.",
+    "email": "financeiro@acme.com.br",
+    "lastUsedAt": "2026-11-10T12:00:00.000Z",
+    "createdAt": "2026-11-01T12:00:00.000Z",
+    "updatedAt": "2026-11-10T12:00:00.000Z"
+  }
+}`,
+          },
+        },
+        {
+          kind: "endpoint",
+          method: "DELETE",
+          path: "/v1/customers/:taxId",
+          scopes: ["full_access", "invoices_issue", "invoices_read_write"],
+          success: "200 OK",
+          summary: "Apaga o cliente salvo. As notas já emitidas não mudam, e o nome deixa de ser preenchido.",
+          examples: {
+            curl: `curl -X DELETE "$BASE_URL/customers/11222333000181" \\
+  -H "X-API-Key: $CORVO_API_KEY"`,
+            node: `const res = await fetch(\`\${BASE_URL}/customers/11222333000181\`, {
+  method: "DELETE",
+  headers: { "X-API-Key": process.env.CORVO_API_KEY },
+});
+console.log(res.status); // 200`,
+          },
+          response: {
+            label: "200 OK",
+            json: `{
+  "data": null
+}`,
+          },
+        },
+        { kind: "callout", tone: "accent", body: "Permissões: `nfse.invoices.view` para listar e consultar; `nfse.invoices.issue` para corrigir e apagar. Cliente inexistente responde `404`. No MCP: `customer_list`, `customer_update` e `customer_delete`." },
         { kind: "heading", level: 2, body: "Dedução da base do ISS" },
         { kind: "text", body: "O emitente pode declarar em `deduction` um valor que a legislação do município permite abater da base de cálculo do ISS. O valor vai na DPS em `vDedRed/vDR` e reduz a base do ISS; a nota continua sendo emitida pelo valor total (`amount`)." },
         { kind: "table", head: ["Campo / tributo", "Como é tratado"], rows: [
@@ -1597,6 +1857,7 @@ console.log(body.data.secret); // guarde o secret agora`,
             "`nfse.invoice.fiscal_discrepancy`",
             "`nfse.invoice.cancelled`",
             "`nfse.invoice.cancellation_rejected`",
+            "`nfse.invoice.taker_rejected`",
           ],
         },
         {
@@ -2439,8 +2700,9 @@ const invoiceId = await emitirComRetry(pedido, \`pedido_\${pedido.externalId}_em
             ["`nfse.invoice.email_sent`", "`sentAt`."],
             ["`nfse.invoice.email_failed`", "Identificação e estado da nota."],
             ["`nfse.invoice.fiscal_discrepancy`", "`invoiceId`, `status` e `differences[]` (`field`, `local`, `authorized`, `delta`, `kind`): diferença entre o cálculo da Corvo e a NFS-e autorizada, acima de R$ 0,01 por tributo. O XML autorizado não é alterado."],
-            ["`nfse.invoice.cancelled`", "A nota foi cancelada; inclui `reason`."],
+            ["`nfse.invoice.cancelled`", "A nota foi cancelada; inclui `reason`. Quando o cancelamento foi feito direto no portal nacional, inclui também `source: \"portal\"`."],
             ["`nfse.invoice.cancellation_rejected`", "A Sefin recusou o cancelamento; a nota volta a `authorized`; inclui `errorCode` e `errorMessage`."],
+            ["`nfse.invoice.taker_rejected`", "O tomador rejeitou a nota no portal nacional; a nota continua `authorized`; inclui `reason` (pode ser nulo) e `source: \"portal\"`."],
             ["`webhook.test`", "`{ \"message\": \"This is a test webhook event\" }`."],
           ],
         },
@@ -2792,7 +3054,7 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             [
               "`nfse_issue`",
               "`nfse:write`",
-              "`company_tax_id` (CNPJ) ou `company_id`, `amount` (ou `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` (`tax_id` obrigatório quando há tomador), `description?`, `discount?`, `deduction?` (dedução da base do ISS declarada pelo emitente), `competence_date?` (padrão: hoje), `emission_type?` (`IMMEDIATE`/`SCHEDULE`/`RECURRING`), `recurrence_frequency?` (`WEEKLY`/`BIWEEKLY`/`MONTHLY`, obrigatório com `RECURRING`), `recurrence_ends_on?`, `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
+              "`company_tax_id` (CNPJ) ou `company_id`, `amount` (ou `services [{description, quantity, unit_price}]`), `customer? {tax_id, name?, email?}` ou `customer {name, foreign {tax_id | no_tax_id_reason, country, postal_code, city, region, street, number, district}}` para cliente no exterior (`tax_id` obrigatório quando o tomador é do Brasil), `description?`, `discount?`, `deduction?` (dedução da base do ISS declarada pelo emitente), `purchase_order?` (nº do pedido, até 60 caracteres), `notes?` (texto livre impresso na nota), `competence_date?` (padrão: hoje), `emission_type?` (`IMMEDIATE`/`SCHEDULE`/`RECURRING`), `recurrence_frequency?` (`WEEKLY`/`BIWEEKLY`/`MONTHLY`, obrigatório com `RECURRING`), `recurrence_ends_on?`, `send_email?`, `service_code?`, `external_id?`, `idempotency_key?`",
               "`{ invoice_id, access_key, status }`; com `SCHEDULE` ou `RECURRING`, `{ schedule_id, kind, frequency, status, next_run_on, ends_on }`"
             ],
             [
@@ -2816,7 +3078,7 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             [
               "`schedule_update`",
               "`nfse:write`",
-              "`schedule_id` e o que muda: `amount?`, `description?`, `customer?`, `send_email?`, `ends_on?` (ou `null`), `frequency?`, `first_date?`",
+              "`schedule_id` e o que muda: `amount?`, `description?`, `purchase_order?`, `notes?` (texto vazio remove), `customer?`, `send_email?`, `ends_on?` (ou `null`), `frequency?`, `first_date?`",
               "a agenda"
             ],
             [
@@ -2920,6 +3182,30 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "`nfse:write`",
               "`invoice_id`, `reason` (`issue_error`, `service_not_provided` ou `other`), `description?` (15–255 caracteres, obrigatória para NFS-e autorizada ou em emissão)",
               "`{ invoice_id, status, cancelled_at }` (`cancelled`, `cancelling` ou `processing` com o pedido registrado)"
+            ],
+            [
+              "`nfse_substitute`",
+              "`nfse:write`",
+              "`invoice_id`, `description` (15–255 caracteres), `service_description?`, `purchase_order?`, `notes?` (texto vazio remove)",
+              "`{ invoice_id, status, substitutes_invoice_id }` (a substituta, em `queued`). Tomador, competência e valor não mudam"
+            ],
+            [
+              "`customer_list`",
+              "`nfse:read`",
+              "`search?` (parte do nome ou começo do documento), `limit?` (1 a 100, padrão 20), `offset?`",
+              "`{ customers: [{ tax_id, name, email, last_used_at }], total, limit, offset }`"
+            ],
+            [
+              "`customer_update`",
+              "`nfse:write`",
+              "`tax_id` e o que muda: `name?`, `email?` (`null` apaga)",
+              "`{ tax_id, name, email, last_used_at }`"
+            ],
+            [
+              "`customer_delete`",
+              "`nfse:write`",
+              "`tax_id`",
+              "`{ tax_id, deleted: true }`"
             ],
             [
               "`nfse_query`",

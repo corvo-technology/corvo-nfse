@@ -541,6 +541,191 @@ describe('DpsBuilder', () => {
     expect(absent.infDPS.valores.vDedRed).toBeUndefined();
   });
 
+  it('adds serv/infoCompl with the purchase order and the notes, changing nothing else', async () => {
+    const base = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    const withInfo = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          invoice: { purchaseOrder: 'PO-4521', notes: 'Parcela 2 de 3' },
+        }),
+        RTC_V1_01,
+      ),
+    );
+
+    expect(withInfo.infDPS.serv.infoCompl).toEqual({
+      xPed: 'PO-4521',
+      xInfComp: 'Parcela 2 de 3',
+    });
+    expect(withInfo.infDPS).toEqual({
+      ...base.infDPS,
+      serv: {
+        ...base.infDPS.serv,
+        infoCompl: { xPed: 'PO-4521', xInfComp: 'Parcela 2 de 3' },
+      },
+    });
+  });
+
+  it('serializes infoCompl in the XML and keeps it schema valid', async () => {
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          invoice: { purchaseOrder: 'PO-4521', notes: 'Parcela 2 de 3' },
+        }),
+        RTC_V1_01,
+      ),
+    );
+    const xml = buildDpsXml(dps);
+    expect(xml).toContain('<xPed>PO-4521</xPed>');
+    expect(xml).toContain('<xInfComp>Parcela 2 de 3</xInfComp>');
+    const validation = await validateDpsXml(xml, { throwOnInvalid: false });
+    expect(validation.valid).toBe(true);
+  });
+
+  it('sends only the field that was informed and omits infoCompl when there is none', async () => {
+    const onlyOrder = dpsFrom(
+      await new DpsBuilder().build(
+        input({ invoice: { purchaseOrder: 'PO-1' } }),
+        RTC_V1_01,
+      ),
+    );
+    const none = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    expect(onlyOrder.infDPS.serv.infoCompl).toEqual({ xPed: 'PO-1' });
+    expect(none.infDPS.serv.infoCompl).toBeUndefined();
+  });
+
+  const abroad = {
+    country: 'US',
+    postalCode: '94105',
+    city: 'San Francisco',
+    region: 'CA',
+    street: '1 Market St',
+    number: '100',
+    district: 'SoMa',
+  };
+
+  it('identifies a customer abroad by NIF with the address abroad, schema valid', async () => {
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          invoice: {
+            customer: {
+              kind: 'FOREIGN',
+              name: 'Acme Inc.',
+              email: 'ap@acme.test',
+              foreign: {
+                ...abroad,
+                taxId: '12-3456789',
+                complement: 'Suite 4',
+              },
+            },
+          },
+        }),
+        RTC_V1_01,
+      ),
+    );
+    expect(dps.infDPS.toma).toEqual({
+      identificador: { NIF: '12-3456789' },
+      xNome: 'Acme Inc.',
+      end: {
+        localidade: {
+          endExt: {
+            cPais: 'US',
+            cEndPost: '94105',
+            xCidade: 'San Francisco',
+            xEstProvReg: 'CA',
+          },
+        },
+        xLgr: '1 Market St',
+        nro: '100',
+        xCpl: 'Suite 4',
+        xBairro: 'SoMa',
+      },
+      email: 'ap@acme.test',
+    });
+    const xml = buildDpsXml(dps);
+    expect(xml).toContain('<NIF>12-3456789</NIF>');
+    expect(xml).toContain('<cPais>US</cPais>');
+    const validation = await validateDpsXml(xml, { throwOnInvalid: false });
+    expect(validation.valid).toBe(true);
+  });
+
+  it('uses cNaoNIF when the customer abroad has no tax id, schema valid', async () => {
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          invoice: {
+            customer: {
+              kind: 'FOREIGN',
+              name: 'Acme Inc.',
+              foreign: { ...abroad, noTaxIdReason: 'exempt' },
+            },
+          },
+        }),
+        RTC_V1_01,
+      ),
+    );
+    expect(dps.infDPS.toma?.identificador).toEqual({ cNaoNIF: '1' });
+    const validation = await validateDpsXml(buildDpsXml(dps), {
+      throwOnInvalid: false,
+    });
+    expect(validation.valid).toBe(true);
+  });
+
+  it('keeps the tax treatment of the invoice: a customer abroad is not an export by itself', async () => {
+    const base = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          invoice: {
+            customer: {
+              kind: 'FOREIGN',
+              name: 'Acme Inc.',
+              foreign: { ...abroad, taxId: '12-3456789' },
+            },
+          },
+        }),
+        RTC_V1_01,
+      ),
+    );
+    expect(dps.infDPS.valores).toEqual(base.infDPS.valores);
+    expect(dps.infDPS.serv).toEqual(base.infDPS.serv);
+  });
+
+  const ORIGINAL_KEY = '43144000000000000000000000000000000000000000000000';
+
+  it('adds the subst group that makes the DPS a substitute, schema valid', async () => {
+    const base = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    const dps = dpsFrom(
+      await new DpsBuilder().build(
+        input({
+          invoice: {
+            substitution: {
+              accessKey: ORIGINAL_KEY,
+              description: 'Descrição do serviço corrigida',
+            },
+          },
+        }),
+        RTC_V1_01,
+      ),
+    );
+    expect(dps.infDPS.subst).toEqual({
+      chSubstda: ORIGINAL_KEY,
+      cMotivo: '99',
+      xMotivo: 'Descrição do serviço corrigida',
+    });
+    // Nothing else changes: the customer, the competence and the amount stay as issued (E0061).
+    expect(dps.infDPS).toEqual({ ...base.infDPS, subst: dps.infDPS.subst });
+    const xml = buildDpsXml(dps);
+    expect(xml).toContain(`<chSubstda>${ORIGINAL_KEY}</chSubstda>`);
+    const validation = await validateDpsXml(xml, { throwOnInvalid: false });
+    expect(validation.valid).toBe(true);
+  });
+
+  it('has no subst group on an ordinary invoice', async () => {
+    const dps = dpsFrom(await new DpsBuilder().build(input(), RTC_V1_01));
+    expect(dps.infDPS.subst).toBeUndefined();
+  });
+
   it('maps ISS withholding to RetidoPeloTomador only when required', async () => {
     const retained = dpsFrom(
       await new DpsBuilder().build(

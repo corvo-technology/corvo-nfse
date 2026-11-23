@@ -1,4 +1,5 @@
 "use client";
+import { MunicipalityAgreementNotice } from "@/components/companies/municipality-agreement-notice";
 import { useEffect, useState } from "react";
 import { Check, ChevronRight } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
@@ -54,6 +55,7 @@ export default function CompanyDetailPage() {
     <PageHeader title={company.tradeName || company.legalName} subtitle={`${company.taxId} · ${tc(`status.${company.status}`)}`} actions={can("nfse.companies.manage") && <><Button onClick={() => setEditing(true)}>{t("edit")}</Button><Button variant="danger" onClick={() => setConfirmation({ kind: "company", id })}>{t("delete")}</Button></>} />
     {error && <p role="alert" className="banner banner-danger">{error}</p>}
     <Card className="grid gap-4 p-5 sm:grid-cols-2"><div><p className="eyebrow">{t("legalName")}</p><p>{company.legalName}</p></div><div><p className="eyebrow">{t("taxRegime")}</p><p>{company.taxRegime ?? "—"}</p></div><div><p className="eyebrow">{t("municipalReg")}</p><p>{company.municipalReg || "—"}</p></div><div><p className="eyebrow">{t("municipality")}</p><p>{company.municipalityCode || "—"} · {company.address.city} {company.address.state}</p></div><div><p className="eyebrow">{t("defaultServiceCode")}</p><p className="font-mono">{company.defaultServiceCode || "—"}</p></div><div><p className="eyebrow">{t("environment")}</p><p>{t(`env.${company.environment}`)}</p></div></Card>
+    <MunicipalityAgreementNotice municipalityCode={company.municipalityCode} taxRegime={company.taxRegime} agreement={company.municipalityAgreement} />
     {company.status === "ready" && <p className="banner banner-ok"><Check size={16} aria-hidden className="mt-0.5 flex-none text-accent" />{t("setup.complete")}</p>}
     {company.status === "blocked" && <p role="alert" className="banner banner-danger">{t("blocked")}</p>}
     {company.status !== "blocked" && !setup.allDone && (
