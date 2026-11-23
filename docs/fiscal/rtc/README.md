@@ -5,7 +5,7 @@ Capturado em **2026-10-15** contra a instância **offline** local (app `1.6.0`, 
 ## Distribuição e execução
 - Código oficial: <https://github.com/ReceitaFederal/calculadora-rtc-regime-regular> (MIT). O `deploy/Dockerfile.rtc` clona uma tag fixa, gera o banco com `./mvnw flyway:migrate -Dflyway.configFiles=./flyway/flyway-pro.conf` e empacota o jar (`target/api-regime-geral.jar`). Veja `docs/fiscal/runbooks/rtc-update.md`.
 - Observação histórica: as capturas abaixo vieram do zip do governo (`piloto-cbs.tributos.gov.br`, `codigo-fonte-backend.zip`), que é o mesmo software (módulo `api-regime-geral`).
-- Execução: `java -jar api-regime-geral.jar --spring.profiles.active=offline` na pasta que contém `calculadora/db/`. Porta **8080**, context-path **`/api`**. A imagem usa `eclipse-temurin:21-jre` (1.6.x); a 1.7.x exige Java 25 (`JAVA_VERSION` no Dockerfile).
+- Execução: `java -jar api-regime-geral.jar --spring.profiles.active=offline` na pasta que contém `calculadora/db/`. Porta **8080**, context-path **`/api`**. A imagem usa `eclipse-temurin:25-jre` (a 1.7.x exige Java 25; a 1.6.x usa 21, via `JAVA_VERSION` no Dockerfile).
 - **Partida: ~4 min** (254 s medidos). Memória em regime: ~714 MiB. Latência de cálculo (warm): 25–440 ms.
 - O site público (`piloto-cbs.tributos.gov.br`) fica atrás de WAF que rejeita rajadas ("Request Rejected"); nunca usar como dependência de produção nem em CI intensivo.
 - Simples Nacional **não** é outro componente: é o campo `OpcaoSimplesNacional` (1 não optante, 2 MEI, 3 ME/EPP, 4 optante pendente) em entradas que o aceitam.

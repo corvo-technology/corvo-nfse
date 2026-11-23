@@ -80,3 +80,48 @@ jobs:
           docker compose --env-file deploy/.env.local
           -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml
           build api web rtc-calculator
+      - name: Start the tax calculator
+        run: |
+          docker compose --env-file deploy/.env.local \
+            -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml \
+            up -d --wait --no-deps rtc-calculator
+          ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
+            "$(docker compose --env-file deploy/.env.local -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml ps -q rtc-calculator)")"
+          echo "RTC_URL=http://$ip:8080/api" >> "$GITHUB_ENV"
+      - name: Calculator version
+        run: curl -fsS "$RTC_URL/calculadora/dados-abertos/versao"
+      - name: Recapture fixtures (temporary)
+        if: always()
+        run: |
+          node scripts/rtc-capture-fixtures.mjs
+          git diff -- docs/fiscal/rtc/fixtures
+      - name: Upload recaptured fixtures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rtc-fixtures
+          path: docs/fiscal/rtc/fixtures
+      - name: Calculator smoke test
+        if: always()
+        run: sh api/scripts/rtc-smoke.sh
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: always()
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: api/yarn.lock
+      - name: Calculator contract tests
+        if: always()
+        working-directory: api
+        env:
+          NODE_ENV: test
+          RTC_CALCULATOR_URL: ${{ env.RTC_URL }}
+        run: |
+          yarn install --frozen-lockfile
+          yarn jest rtc-integration
+      - name: Stop the tax calculator
+        if: always()
+        run: >-
+          docker compose --env-file deploy/.env.local
+          -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml
+          down -v

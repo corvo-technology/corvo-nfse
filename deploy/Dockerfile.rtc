@@ -2,13 +2,13 @@
 # Calculadora de Tributos (RTC), construída do repositório oficial no GitHub (licença MIT):
 # https://github.com/ReceitaFederal/calculadora-rtc-regime-regular
 # Para atualizar: troque RTC_TAG e RTC_COMMIT (veja docs/fiscal/runbooks/rtc-update.md).
-# JAVA_VERSION segue o pom da tag: a 1.6.x usa Java 21 (no Java 25 o Lombok não roda sozinho e a compilação falha); a 1.7.x exige Java 25.
-ARG JAVA_VERSION=21
+# JAVA_VERSION segue o pom da tag: a 1.7.x usa Java 25; a 1.6.x usa Java 21 (no Java 25 o Lombok não roda sozinho e a compilação falha).
+ARG JAVA_VERSION=25
 
 FROM eclipse-temurin:${JAVA_VERSION}-jdk AS build
 ARG RTC_REPO=https://github.com/ReceitaFederal/calculadora-rtc-regime-regular
-ARG RTC_TAG=1.6.1
-ARG RTC_COMMIT=150cccbe414d4a5edea703e4f7a424af5aa222c7
+ARG RTC_TAG=1.7.2
+ARG RTC_COMMIT=32df7196356e81f2df08e6023fc2b6dbc48036d3
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git curl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
