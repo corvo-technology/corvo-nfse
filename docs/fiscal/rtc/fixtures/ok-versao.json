@@ -1,10 +1,10 @@
 {
- "capturedAt": "2026-10-15",
+ "capturedAt": "2026-11-23",
  "calculator": {
-  "app": "1.6.2",
-  "db": "V0066",
-  "dbDate": "2026-10-28",
-  "source": "local offline instance (docker eclipse-temurin:21-jre + api-regime-geral.jar)"
+  "app": "1.7.2",
+  "db": "V0073",
+  "dbDate": "2026-11-09",
+  "source": "deploy/Dockerfile.rtc (repositório oficial, tag 1.7.2)"
  },
  "description": "Version endpoint of the local offline instance.",
  "steps": [
@@ -14,16 +14,16 @@
    "path": "/calculadora/dados-abertos/versao",
    "status": 200,
    "response": {
-    "versaoApp": "1.6.2",
-    "descricaoVersaoApp": "1.6.2",
-    "versaoDb": "V0066",
-    "descricaoVersaoDb": "Exclui classificação indevida da tabela CLASSIF_NBS_INDOP_LC.",
-    "dataVersaoDb": "2026-10-28",
-    "ambiente": "offline"
+    "ambiente": "offline",
+    "dataVersaoDb": "2026-11-09",
+    "descricaoVersaoApp": "1.7.2",
+    "descricaoVersaoDb": "Nova tabela de Classificações Tributárias (IT 2025.002 v.1.71), publicada em 30/10/2026.",
+    "versaoApp": "1.7.2",
+    "versaoDb": "V0073"
    }
   }
  ],
  "expected": {
-  "version": "1.6.2/V0066"
+  "version": "1.7.2/V0073"
  }
 }

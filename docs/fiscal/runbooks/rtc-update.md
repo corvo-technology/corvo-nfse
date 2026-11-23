@@ -1,38 +1,33 @@
 # Runbook: atualizar a Calculadora RTC
 
-A Calculadora de Tributos publica novas versões sem aviso: o zip oficial é substituído no mesmo endereço (aconteceu em 2026-10-14). A versão fixada vive em `deploy/rtc-pinned-version.txt` (formato `"{versaoApp}/{versaoDb}"`, ex.: `1.6.0/V0059`) e o hash em `docs/fiscal/rtc/ZIP_SHA256.txt`. O workflow semanal `rtc-version-watch` (`.github/workflows/rtc-version-watch.yml`) compara a versão publicada com a fixada e abre um issue quando divergem — este runbook descreve como atualizar com segurança.
+A Calculadora de Tributos é construída a partir do repositório oficial no GitHub (<https://github.com/ReceitaFederal/calculadora-rtc-regime-regular>, licença MIT), numa versão fixa. Isso evita depender do site do governo, cujo WAF derruba conexões do CI. A versão fica em dois lugares:
 
-Atenção: o site público fica atrás de um WAF que rejeita rajadas — **uma única requisição por tentativa**, com espaçamento entre elas, nunca rajadas.
+- `deploy/Dockerfile.rtc`: `ARG RTC_TAG` (a tag), `ARG RTC_COMMIT` (o commit completo dessa tag) e `ARG JAVA_VERSION` (a do `java.version` do `pom.xml` da tag: 25 na 1.7.x, 21 na 1.6.x). O build para se a tag passar a apontar para outro commit.
+- `deploy/rtc-pinned-version.txt`: o registro legível, no formato `"{versaoApp}/{versaoDb}"` (ex.: `1.7.2/V0073`).
+
+O workflow semanal `rtc-version-watch` abre um issue quando o repositório ganha uma tag mais nova que `RTC_TAG`. Este runbook descreve como atualizar com segurança.
 
 ## Passos
 
-1. **Descobrir a versão publicada e baixar o zip** (uma requisição por tentativa):
+1. **Escolher a tag** em <https://github.com/ReceitaFederal/calculadora-rtc-regime-regular/tags> e ler o `CHANGELOG.md` dela. Se mudar arredondamento ou regra de cálculo, é decisão fiscal: avise antes de seguir.
+2. **Pegar o commit completo da tag**:
    ```sh
-   curl -s 'https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/dados-abertos/versao'
-   # → {"versaoApp": "...", "versaoDb": "..."}  — registre "{versaoApp}/{versaoDb}"
-
-   curl -s 'https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/download/url?platform=jar'
-   # → {"downloadUrl": "…/calculadora-jar.zip"}
-
-   curl -fL -o /tmp/calculadora-jar.zip '<downloadUrl>'
-   shasum -a 256 /tmp/calculadora-jar.zip
+   git ls-remote https://github.com/ReceitaFederal/calculadora-rtc-regime-regular 'refs/tags/<tag>'
    ```
-2. **Reconstruir e publicar a imagem** com as variáveis novas e tag imutável:
+   Veja a versão do banco (último `V00xx` em `flyway/sql/manutencao/` daquela tag) para o registro.
+3. **Atualizar os pins** em um PR: `RTC_TAG`, `RTC_COMMIT` e `JAVA_VERSION` em `deploy/Dockerfile.rtc`, `deploy/rtc-pinned-version.txt` e `docs/fiscal/homologation.md` (novo teste de homologação com a versão).
+4. **Construir e subir localmente** (precisa de uns 3 GB livres; o primeiro build leva alguns minutos):
    ```sh
-   RTC_ZIP_URL='<downloadUrl>' RTC_ZIP_SHA256='<sha256-novo>' docker compose build rtc-calculator
-   docker tag rtc-calculator rtc-<versaoApp>-<versaoDb>
-   docker push <registry>/rtc-<versaoApp>-<versaoDb>
+   docker compose --env-file deploy/.env.local -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml build rtc-calculator
    ```
-3. **Subir em staging e validar** antes de qualquer produção:
+5. **Validar** (o CI já sobe a calculadora e roda o smoke e o contrato a cada PR) antes de qualquer produção (a calculadora leva cerca de 4 minutos para subir):
    ```sh
-   RTC_IMAGE=rtc-<versaoApp>-<versaoDb> docker compose up -d rtc-calculator
    RTC_URL=http://localhost:18080/api sh api/scripts/rtc-smoke.sh
    cd api && RTC_CALCULATOR_URL=http://localhost:18080/api yarn jest rtc-integration
    ```
-4. **Reexecutar a captura** (ver `docs/fiscal/rtc/README.md`): regenerar os fixtures sob `docs/fiscal/rtc/fixtures/` na versão nova e revisar o diff do `expected` no PR — se os valores mudaram, é decisão fiscal explícita, não ruído.
-5. **Atualizar os pins** em um PR: `deploy/rtc-pinned-version.txt`, `docs/fiscal/rtc/ZIP_SHA256.txt` e `docs/fiscal/homologation.md` (novo teste de homologação com a versão).
-6. **Promover**: `RTC_IMAGE=rtc-<versaoApp>-<versaoDb> docker compose up -d rtc-calculator` em produção, sempre a partir da imagem publicada — nunca rebuildando a partir do zip, que o governo substitui.
+6. **Reexecutar a captura**: com a calculadora de pé, `RTC_URL=http://<ip>:8080/api node scripts/rtc-capture-fixtures.mjs` reescreve as respostas em `docs/fiscal/rtc/fixtures/` (veja `docs/fiscal/rtc/README.md`). Depois ajuste os campos `expected` à mão. Regenerar os fixtures sob `docs/fiscal/rtc/fixtures/` na versão nova e revisar o diff do `expected` no PR. Se os valores mudaram, é decisão fiscal explícita, não ruído.
+7. **Publicar a imagem** (opcional, para deploys idênticos) com tag imutável `rtc-<versaoApp>-<versaoDb>` e apontar `RTC_IMAGE` para ela.
 
 ## Rollback
 
-Se a versão nova divergir da Sefin ou o smoke test falhar, voltar à tag anterior da imagem (`rtc-<versaoApp>-<versaoDb>` anterior) e redesplegar com `RTC_IMAGE` — não é preciso rebaixar zip nem rebuildar. Depois, reverter os pins no commit seguinte.
+Voltar `RTC_TAG`, `RTC_COMMIT` e `rtc-pinned-version.txt` ao valor anterior (ou apontar `RTC_IMAGE` para a tag da imagem anterior) e reconstruir. Como a tag fica fixa no GitHub, o build volta a dar o mesmo resultado.

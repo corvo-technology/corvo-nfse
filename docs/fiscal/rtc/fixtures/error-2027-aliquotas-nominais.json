@@ -1,10 +1,10 @@
 {
- "capturedAt": "2026-10-15",
+ "capturedAt": "2026-11-23",
  "calculator": {
-  "app": "1.6.0",
-  "db": "V0059",
-  "dbDate": "2026-09-30",
-  "source": "local offline instance (docker eclipse-temurin:21-jre + api-regime-geral.jar)"
+  "app": "1.7.2",
+  "db": "V0073",
+  "dbDate": "2026-11-09",
+  "source": "deploy/Dockerfile.rtc (repositório oficial, tag 1.7.2)"
  },
  "description": "From 2027-01-01 the engine requires nominal rates (not yet defined in its database). Corvo never sends estimated rates, so this is a blocking, non-retryable TAX_RATE_NOT_FOUND.",
  "input": {
@@ -47,10 +47,11 @@
    },
    "status": 422,
    "response": {
-    "type": "http://localhost/errors/aliquotas-nominais-nao-informadas",
-    "title": "Alíquotas nominais não informadas",
+    "detail": "As alíquotas nominais (os três campos cbs, ibsEstadual e ibsMunicipal) devem ser informadas para operações com fato gerador a partir de 01/01/2027",
+    "instance": "/api/calculadora/regime-geral",
     "status": 422,
-    "detail": "As alíquotas nominais (os três campos cbs, ibsEstadual e ibsMunicipal) devem ser informadas para operações com fato gerador a partir de 01/01/2027"
+    "title": "Alíquotas nominais não informadas",
+    "type": "http://localhost/errors/aliquotas-nominais-nao-informadas"
    }
   }
  ],

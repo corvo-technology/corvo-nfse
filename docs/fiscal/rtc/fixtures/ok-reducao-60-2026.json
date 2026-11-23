@@ -1,10 +1,10 @@
 {
- "capturedAt": "2026-10-15",
+ "capturedAt": "2026-11-23",
  "calculator": {
-  "app": "1.6.2",
-  "db": "V0066",
-  "dbDate": "2026-10-28",
-  "source": "local offline instance (docker eclipse-temurin:21-jre + api-regime-geral.jar)"
+  "app": "1.7.2",
+  "db": "V0073",
+  "dbDate": "2026-11-09",
+  "source": "deploy/Dockerfile.rtc (repositório oficial, tag 1.7.2)"
  },
  "description": "Engine contract fixture with a 60% rate reduction (cClassTrib 011001). The NBS was taken from the engine's own nbs-aplicaveis list only to exercise the contract; it is NOT a fiscal example of a real service pairing.",
  "input": {
@@ -62,8 +62,7 @@
            "pRedAliq": "60.00",
            "pAliqEfet": "0.04"
           },
-          "vIBSUF": "0.40",
-          "memoriaCalculo": "Operação de consumo com enquadramento legal em Art. 236, tributada conforme Tributação com alíquotas uniformes reduzidas em 60%. A base de cálculo utilizada é de R$ 1000.00000000, com alíquota de 0.100000%, sendo que esse regime define uma redução de 60.000000% na alíquota."
+          "vIBSUF": "0.40"
          },
          "gIBSMun": {
           "pIBSMun": "0.00",
@@ -71,8 +70,7 @@
            "pRedAliq": "60.00",
            "pAliqEfet": "0.00"
           },
-          "vIBSMun": "0.00",
-          "memoriaCalculo": "Operação de consumo com enquadramento legal em Art. 236, tributada conforme Tributação com alíquotas uniformes reduzidas em 60%. A base de cálculo utilizada é de R$ 1000.00000000, com alíquota de 0.000000%, sendo que esse regime define uma redução de 60.000000% na alíquota."
+          "vIBSMun": "0.00"
          },
          "vIBS": "0.40",
          "gCBS": {
@@ -81,9 +79,13 @@
            "pRedAliq": "60.00",
            "pAliqEfet": "0.36"
           },
-          "vCBS": "3.60",
-          "memoriaCalculo": "Operação de consumo com enquadramento legal em Art. 236, tributada conforme Tributação com alíquotas uniformes reduzidas em 60%. A base de cálculo utilizada é de R$ 1000.00000000, com alíquota de 0.900000%, sendo que esse regime define uma redução de 60.000000% na alíquota."
+          "vCBS": "3.60"
          }
+        },
+        "memoriaCalculo": {
+         "cbs": "Operação de consumo com enquadramento legal em Art. 236, tributada conforme Tributação com alíquotas uniformes reduzidas em 60%. A base de cálculo utilizada é de R$ 1.000,00, com alíquota de 0,90%, sendo que esse regime define uma redução de 60,00% na alíquota.",
+         "ibsUF": "Operação de consumo com enquadramento legal em Art. 236, tributada conforme Tributação com alíquotas uniformes reduzidas em 60%. A base de cálculo utilizada é de R$ 1.000,00, com alíquota de 0,10%, sendo que esse regime define uma redução de 60,00% na alíquota.",
+         "ibsMun": "Operação de consumo com enquadramento legal em Art. 236, tributada conforme Tributação com alíquotas uniformes reduzidas em 60%. A base de cálculo utilizada é de R$ 1.000,00, com alíquota de 0,00%, sendo que esse regime define uma redução de 60,00% na alíquota."
         }
        }
       },
@@ -131,7 +133,7 @@
   }
  ],
  "expected": {
-  "calculatorVersion": "1.6.2/V0066",
+  "calculatorVersion": "1.7.2/V0073",
   "cbs": {
    "base": "1000.00",
    "rate": "0.90",

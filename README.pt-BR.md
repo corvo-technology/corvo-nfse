@@ -92,7 +92,7 @@ docker compose --env-file deploy/.env.local \
   up -d --build --wait --wait-timeout 180
 ```
 
-Com o Yarn instalado, `yarn local:up` faz o mesmo. Isso sobe o painel, a API, o worker, o PostgreSQL, o Redis, o LocalStack e a calculadora de tributos. A imagem da calculadora é construída a partir do zip oficial, cujo endereço e checksum o setup já gravou no arquivo de ambiente (`RTC_ZIP_URL`, `RTC_ZIP_SHA256`); o build para de propósito se o arquivo publicado deixar de bater com o checksum (veja [deploy/README.md](deploy/README.md)). As migrações do banco rodam antes de as aplicações iniciarem.
+Com o Yarn instalado, `yarn local:up` faz o mesmo. Isso sobe o painel, a API, o worker, o PostgreSQL, o Redis, o LocalStack e a calculadora de tributos. A imagem da calculadora é construída a partir do repositório oficial de código aberto no GitHub, numa versão fixa (veja [deploy/README.md](deploy/README.md)); não precisa configurar nada. As migrações do banco rodam antes de as aplicações iniciarem.
 
 | Abra | Endereço |
 | --- | --- |
@@ -156,7 +156,7 @@ Depois de rodar o setup, edite o `deploy/.env` com base no [deploy/.env.example]
 | Armazenamento S3 | `STORAGE_S3_BUCKET`, `STORAGE_S3_ENDPOINT`, `STORAGE_S3_REGION`, `STORAGE_S3_ACCESS_KEY_ID`, `STORAGE_S3_SECRET_ACCESS_KEY` |
 | Envio de e-mail e códigos de login | `RESEND_API_KEY`, `RESEND_BASE_URL`, `EMAIL_FROM` |
 | Cobrança com Stripe | `STRIPE_SECRET_KEY`, `STRIPE_PLATFORM_WEBHOOK_SECRET` |
-| Calculadora de tributos | Preenchido pelo setup (`RTC_ZIP_URL`, `RTC_ZIP_SHA256`); use uma `RTC_IMAGE` pronta para deploys reproduzíveis |
+| Calculadora de tributos | Nada a preencher; construída da versão fixa no GitHub (ou informe uma `RTC_IMAGE` pronta) |
 
 > [!WARNING]
 > O setup gera as senhas e os segredos internos. Guarde-os junto com os seus backups: os certificados criptografados dependem deles.

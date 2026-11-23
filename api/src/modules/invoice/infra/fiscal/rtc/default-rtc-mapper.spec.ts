@@ -53,7 +53,7 @@ describe('DefaultRtcMapper (real captured fixtures)', () => {
     const r = mapper.fromCalcResponse(
       f.steps[0].response,
       f.input,
-      '1.6.0/V0059',
+      '1.7.2/V0073',
     );
     expect(r.ok && r.value.cbs).toEqual(f.expected.cbs);
     expect(r.ok && r.value.ibsState).toEqual(f.expected.ibsState);
