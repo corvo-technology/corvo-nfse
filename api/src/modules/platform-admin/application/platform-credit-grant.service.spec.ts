@@ -1,4 +1,4 @@
-import { HttpException } from '@nestjs/common';
+import { HttpException, Logger } from '@nestjs/common';
 import { getDatabaseScope } from '@/infra/persistence/typeorm/tenant-context.storage';
 import type { PlatformAuditInput } from '../infra/platform-admin-audit.repository';
 import { PlatformCreditGrantService } from './platform-credit-grant.service';
@@ -179,12 +179,37 @@ describe('PlatformCreditGrantService', () => {
 
   it('se até a linha de falha não grava, só registra no log e propaga o erro original', async () => {
     const w = build();
+    const logError = jest.spyOn(Logger.prototype, 'error').mockImplementation();
     const boom = new Error('db down');
     w.audit.insert.mockRejectedValue(boom);
     await expect(w.service.grant(actor, TENANT, input, 'key-1')).rejects.toBe(
       boom,
     );
     expect(w.credits.invalidateBalance).toHaveBeenCalled();
+    expect(logError).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'platform_admin_failure_audit_lost' }),
+    );
+    logError.mockRestore();
+  });
+
+  it('invalidateBalance falhando não mascara o resultado: 200, notice publicado e erro logado', async () => {
+    const w = build();
+    const logError = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    w.credits.invalidateBalance.mockRejectedValue(new Error('redis down'));
+    const result = await w.service.grant(
+      actor,
+      TENANT,
+      { ...input, notifyUser: true },
+      'key-1',
+    );
+    expect(result).toMatchObject({ replayed: false, amount: 10 });
+    expect(w.bus.publishBestEffort).toHaveBeenCalledTimes(1);
+    expect(logError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'platform_admin_balance_invalidation_failed',
+      }),
+    );
+    logError.mockRestore();
   });
 
   it('mesma chave, mesmo valor e motivo: devolve o original, replayed true, sem novo grantBonus', async () => {

@@ -98,7 +98,19 @@ export class PlatformCreditGrantService {
       throw error;
     } finally {
       // A rolled-back attempt may have left its in-transaction balance in the cache.
-      await this.credits.invalidateBalance(tenantId);
+      // Never let a cache failure mask the outcome (a committed grant stays a success).
+      try {
+        await this.credits.invalidateBalance(tenantId);
+      } catch (cacheError) {
+        this.logger.error({
+          event: 'platform_admin_balance_invalidation_failed',
+          tenantId,
+          error:
+            cacheError instanceof Error
+              ? cacheError.message
+              : String(cacheError),
+        });
+      }
     }
 
     if (input.notifyUser && !result.replayed)

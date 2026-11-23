@@ -1,5 +1,7 @@
 import 'reflect-metadata';
 import { HttpStatus, NotFoundException } from '@nestjs/common';
+import { PLATFORM_ADMIN_ONLY } from '@/modules/auth/platform-admin-only.decorator';
+import { PlatformAdminGuard } from '../platform-admin.guard';
 import { PlatformCreditGrantController } from './platform-credit-grant.controller';
 
 const TENANT = '11111111-1111-4111-8111-111111111111';
@@ -17,7 +19,10 @@ describe('PlatformCreditGrantController', () => {
     expect(Reflect.getMetadata('__httpCode__', handler)).toBe(HttpStatus.OK);
     expect(
       Reflect.getMetadata('__guards__', PlatformCreditGrantController),
-    ).toBeDefined();
+    ).toContain(PlatformAdminGuard);
+    expect(
+      Reflect.getMetadata(PLATFORM_ADMIN_ONLY, PlatformCreditGrantController),
+    ).toBe(true);
   });
 
   it('repassa ator, tenant, corpo e chave ao serviço e envolve em { data }', async () => {
