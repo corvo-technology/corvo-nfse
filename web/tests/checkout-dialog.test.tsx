@@ -109,7 +109,7 @@ describe("CheckoutDialog", () => {
     expect(screen.getByTestId("method-pix").getAttribute("aria-checked")).toBe("true");
     expect(screen.getByTestId("method-card").getAttribute("aria-checked")).toBe("false");
     expect(screen.getByText("Aprova na hora. O código vale por 24 horas.")).toBeTruthy();
-    expect(screen.getByText("Pagamento seguro pelo Stripe.")).toBeTruthy();
+    expect(screen.getByText("Pagamento seguro no cartão.")).toBeTruthy();
   });
 
   it("builds the QR code from the brCode even when Woovi only sends a hosted image url, and shows the countdown", async () => {

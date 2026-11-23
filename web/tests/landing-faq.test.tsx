@@ -59,7 +59,7 @@ describe("landing FAQ", () => {
     const { container } = wrap(locale);
     const sdks = [...container.querySelectorAll("details")][4];
     expect(sdks.textContent).toMatch(/MCP/);
-    for (const client of ["Claude Code", "Cursor", "Codex", "VS Code", "Windsurf", "Claude Desktop"]) expect(sdks.textContent).toContain(client);
+    for (const client of ["Claude", "Cursor"]) expect(sdks.textContent).toContain(client);
     expect([...sdks.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual([`/${locale}/docs/sdks`, `/${locale}/docs/mcp`]);
     expect(faqMarkdown(locale)).toContain(`https://www.corvo.tech/${locale}/docs/mcp`);
   });

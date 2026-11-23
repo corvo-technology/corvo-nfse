@@ -44,10 +44,10 @@ const INCLUDES = ["nfse", "companies", "email", "mcp", "webhooks", "downloads"] 
 const planTitle = (slug: PlanSlug) => slug.charAt(0).toUpperCase() + slug.slice(1);
 const zoneKey = (slug: PlanSlug | null) => slug ?? "avulso";
 
-/** Cost of one note: a fraction of a cent matters, so keep four decimals below R$ 1. */
+/** Cost of one note, rounded to the cent (R$ 0,42). */
 export function formatBRLPerNote(cents: number): string {
   const reais = cents / 100;
-  return `R$ ${reais.toFixed(reais >= 1 ? 2 : 4).replace(".", ",")}`;
+  return `R$ ${reais.toFixed(2).replace(".", ",")}`;
 }
 
 function CycleToggle({ cycle, onChange }: { cycle: BillingCycle; onChange: (c: BillingCycle) => void }) {

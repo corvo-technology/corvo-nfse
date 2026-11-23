@@ -40,7 +40,7 @@ describe("landing integrations", () => {
     expect(container.querySelector("section#integrations")).toBeTruthy();
     expect(screen.getByRole("heading", { level: 2, name: /A nota sai sozinha/ })).toBeTruthy();
     expect(screen.getAllByRole("listitem").length).toBeGreaterThanOrEqual(3);
-    expect(screen.getByText("Cadastre o webhook")).toBeTruthy();
+    expect(screen.getByText("Cole o endereço na plataforma")).toBeTruthy();
   });
 
   it("says a refund can cancel the invoice on its own, and that it is a setting the client turns on", () => {
