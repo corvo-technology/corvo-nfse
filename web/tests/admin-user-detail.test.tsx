@@ -84,8 +84,12 @@ describe("admin user detail page", () => {
     await screen.findByText("ana@example.com");
     expect(mocks.grantProps).toHaveBeenCalledWith(expect.objectContaining({ tenantId: "t-own", email: "ana@example.com" }));
     expect(screen.queryByText("grant-t-other")).toBeNull();
+    // One button at the top of the page and one inside the own workspace block.
+    const buttons = screen.getAllByText("grant-t-own");
+    expect(buttons).toHaveLength(2);
+    expect(screen.getByRole("banner").contains(buttons[0])).toBe(true);
     expect(mocks.user).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByText("grant-t-own"));
+    fireEvent.click(buttons[0]);
     await waitFor(() => expect(mocks.user).toHaveBeenCalledTimes(2));
   });
 

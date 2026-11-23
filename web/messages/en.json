@@ -115,7 +115,7 @@
       "aria": "Heatmap of authorized invoices per day",
       "periodTotal": "Period total",
       "authorizedNotes": "Authorized invoices",
-      "note": "{count, plural, one {# invoice} other {# invoices}}",
+      "note": "{count, plural, =1 {# invoice} other {# invoices}}",
       "average": "avg",
       "pinned": "Pinned",
       "vsAverage": "vs. daily average",
@@ -3097,7 +3097,7 @@
       "fix": "Fix",
       "empty": "No rows in this list.",
       "loadMore": "Load more",
-      "emit": "Issue {count, plural, one {# invoice} other {# invoices}}",
+      "emit": "Issue {count, plural, =1 {# invoice} other {# invoices}}",
       "emitNone": "No row is ready to issue",
       "sendEmail": "Email the invoice to the customers",
       "emitFailed": "Could not start issuing.",
@@ -3193,7 +3193,7 @@
       "loadError": "Could not load the imports.",
       "retry": "Try again",
       "pendingBanner": "{count, plural, one {# import is waiting for credits} other {# imports are waiting for credits}}",
-      "pendingHint": "{notes, plural, one {# invoice} other {# invoices}} waiting ({amount}). Top up and continue where you left off."
+      "pendingHint": "{notes, plural, =1 {# invoice} other {# invoices}} waiting ({amount}). Top up and continue where you left off."
     },
     "live": {
       "live": "Live",
@@ -3307,6 +3307,8 @@
     "link": "See the status of municipalities"
   },
   "Admin": {
+    "title": "Admin",
+    "navLabel": "Admin sections",
     "nav": {
       "overview": "Overview",
       "users": "Users",
@@ -3325,7 +3327,7 @@
       "unknown": "No data"
     },
     "overview": {
-      "title": "Overview",
+      "title": "Admin",
       "users": "Users",
       "usersTotal": "Total users",
       "usersNew7d": "New in the last 7 days",
@@ -3344,9 +3346,9 @@
       "revenueTotal": "Total",
       "revenueNote": "Card subscriptions are counted since {date}.",
       "revenueNoteNone": "No card subscriptions have been counted yet.",
-      "adminGrants": "Invoices given by the admin",
-      "adminGrantsNote": "Invoices given by the admin. They do not count as revenue.",
-      "units": "{count, plural, one {# invoice} other {# invoices}}"
+      "adminGrants": "Invoices given as a gift",
+      "adminGrantsNote": "Invoices you gave to users. They do not count as revenue.",
+      "units": "{count, plural, =1 {# invoice} other {# invoices}}"
     },
     "users": {
       "title": "Users",
@@ -3360,8 +3362,10 @@
         "invoicesMonth": "Invoices this month",
         "avulsoBalance": "Extra balance",
         "companies": "Companies",
-        "lastActivity": "Last activity"
+        "lastActivity": "Last activity",
+        "actions": "Actions"
       },
+      "giveNotes": "Give invoices",
       "noPlan": "No plan",
       "noResults": "No users found."
     },
@@ -3415,11 +3419,11 @@
       "amountHint": "A whole number from 1 to 500.",
       "reason": "Reason",
       "reasonHint": "Write 5 to 500 characters. It is kept in the history.",
-      "confirm": "Give {amount, plural, one {# invoice} other {# invoices}} to {email}?",
+      "confirm": "Give {amount, plural, =1 {# invoice} other {# invoices}} to {email}?",
       "submit": "Give invoices",
       "submitting": "Sending...",
-      "success": "Done. The balance is now {balance, plural, one {# invoice} other {# invoices}}.",
-      "successReplayed": "This request was already made. Nothing was repeated. The balance is {balance, plural, one {# invoice} other {# invoices}}.",
+      "success": "Done. The balance is now {balance, plural, =1 {# invoice} other {# invoices}}.",
+      "successReplayed": "This request was already made. Nothing was repeated. The balance is {balance, plural, =1 {# invoice} other {# invoices}}.",
       "notify": "Tell the user by email",
       "cancel": "Cancel",
       "back": "Back",
@@ -3435,7 +3439,7 @@
       "failingWebhooks": "Webhooks failing in the last 24 hours",
       "failedPayments": "Failed payments",
       "emptySection": "Nothing to see here.",
-      "failedCount": "{count, plural, one {# failure} other {# failures}}",
+      "failedCount": "{count, plural, =1 {# failure} other {# failures}}",
       "sourceIntent": "Payment",
       "sourceSubscription": "Subscription",
       "validUntil": "Expires on {date}",

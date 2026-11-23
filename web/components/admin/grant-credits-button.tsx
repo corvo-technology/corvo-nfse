@@ -21,10 +21,14 @@ interface GrantCreditsButtonProps {
   tenantId: string;
   email: string;
   onGranted: () => void;
+  /** Button text; the modal title is always the full name. */
+  label?: string;
+  variant?: "primary" | "secondary";
+  size?: "sm" | "md";
 }
 
 /** Platform-admin action: gives extra invoices to a workspace. One idempotency key per modal opening. */
-export function GrantCreditsButton({ tenantId, email, onGranted }: GrantCreditsButtonProps) {
+export function GrantCreditsButton({ tenantId, email, onGranted, label, variant = "secondary", size = "md" }: GrantCreditsButtonProps) {
   const t = useTranslations("Admin.grant");
   const apiError = useApiErrorText();
   const billingEnabled = useBillingEnabled();
@@ -81,7 +85,7 @@ export function GrantCreditsButton({ tenantId, email, onGranted }: GrantCreditsB
 
   return (
     <>
-      <Button variant="secondary" onClick={openModal}>{t("title")}</Button>
+      <Button variant={variant} size={size} onClick={openModal}>{label ?? t("title")}</Button>
       <Modal open={open} onClose={() => setOpen(false)} title={t("title")}>
         {step === "form" && (
           <form noValidate onSubmit={review} className="flex flex-col gap-4">

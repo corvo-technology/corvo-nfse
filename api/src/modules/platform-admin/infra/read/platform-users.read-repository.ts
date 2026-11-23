@@ -38,6 +38,7 @@ type DerivedRow = {
   id: string;
   email: string;
   name: string;
+  tenant_id: string | null;
   created_at: Date;
   plan_slug: string | null;
   live_invoices: string | number;
@@ -146,6 +147,7 @@ function present(d: DerivedRow): PlatformUserRow {
     id: d.id,
     email: d.email,
     name: d.name,
+    tenantId: d.tenant_id,
     createdAt: new Date(d.created_at).toISOString(),
     planSlug: d.plan_slug,
     liveInvoicesThisMonth: Number(d.live_invoices),
@@ -161,6 +163,7 @@ function present(d: DerivedRow): PlatformUserRow {
 // workspace where the user is the oldest admin. Only runs for the ids of the page.
 const derivedSql = (t: (name: string) => string) => `
 SELECT u.id, u.email, u.name, u.created_at,
+       w.tid AS tenant_id,
        p.slug AS plan_slug,
        COALESCE(inv.live_count, 0) AS live_invoices,
        COALESCE(bal.balance, 0) AS avulso_balance,

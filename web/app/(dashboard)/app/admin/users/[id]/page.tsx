@@ -137,6 +137,7 @@ export default function AdminUserDetailPage() {
   const tc = useTranslations("Admin.common");
   const locale = useLocale();
   const apiError = useApiErrorText();
+  const billing = useBillingEnabled();
   const [data, setData] = useState<PlatformUserDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
@@ -161,10 +162,14 @@ export default function AdminUserDetailPage() {
   }
 
   const { user, workspaces } = data;
+  const ownWorkspace = workspaces.find((workspace) => workspace.isOwn);
+  const grant = billing && ownWorkspace
+    ? <GrantCreditsButton tenantId={ownWorkspace.tenantId} email={user.email} onGranted={() => setRevision((value) => value + 1)} variant="primary" />
+    : null;
   const when = (value: string | null) => (value ? formatDate(value, locale) : tc("never"));
   return (
     <div className="flex max-w-[1000px] flex-col gap-6">
-      <PageHeader title={user.name || user.email} subtitle={t("title")} actions={back} />
+      <PageHeader title={user.name || user.email} subtitle={t("title")} actions={<>{grant}{back}</>} />
       {error && <p role="alert" className="banner banner-danger">{error}</p>}
       <Card className="grid gap-4 p-5 sm:grid-cols-2">
         <div><p className="eyebrow">{t("account")}</p><p>{user.email}</p></div>

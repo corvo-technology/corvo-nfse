@@ -8,14 +8,14 @@ import { DeploymentConfigProvider } from "@/lib/deployment-config-context";
 import type { PlatformUserRow } from "@/lib/platform-admin";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ users: vi.fn() }));
+const mocks = vi.hoisted(() => ({ users: vi.fn(), grant: vi.fn() }));
 vi.mock("@/lib/platform-admin", async (original) => ({
   ...(await original<typeof import("@/lib/platform-admin")>()),
-  platformAdmin: { users: mocks.users },
+  platformAdmin: { users: mocks.users, grantCredits: mocks.grant },
 }));
 
-const ana: PlatformUserRow = { id: "u-1", email: "ana@example.com", name: "Ana Souza", createdAt: "2026-11-01T12:00:00Z", planSlug: "pro", liveInvoicesThisMonth: 7, avulsoBalance: 12, companiesCount: 2, lastActivityAt: "2026-11-20T12:00:00Z" };
-const bia: PlatformUserRow = { ...ana, id: "u-2", email: "bia@example.com", name: "Bia Lima", planSlug: null, lastActivityAt: null };
+const ana: PlatformUserRow = { id: "u-1", email: "ana@example.com", name: "Ana Souza", tenantId: "t-1", createdAt: "2026-11-01T12:00:00Z", planSlug: "pro", liveInvoicesThisMonth: 7, avulsoBalance: 12, companiesCount: 2, lastActivityAt: "2026-11-20T12:00:00Z" };
+const bia: PlatformUserRow = { ...ana, id: "u-2", tenantId: null, email: "bia@example.com", name: "Bia Lima", planSlug: null, lastActivityAt: null };
 const page = (items: PlatformUserRow[], nextCursor: string | null = null) => ({ items, hasMore: nextCursor !== null, nextCursor });
 const t = messages.Admin.users;
 
@@ -30,7 +30,7 @@ function renderPage(billingEnabled = true) {
 }
 const table = async () => within(await screen.findByRole("table"));
 
-beforeEach(() => { mocks.users.mockReset(); mocks.users.mockResolvedValue(page([ana, bia])); });
+beforeEach(() => { mocks.grant.mockReset(); mocks.users.mockReset(); mocks.users.mockResolvedValue(page([ana, bia])); });
 afterEach(cleanup);
 
 describe("Admin users page", () => {
@@ -38,8 +38,9 @@ describe("Admin users page", () => {
     renderPage();
     const rows = await table();
     for (const label of Object.values(t.columns)) expect(rows.getByRole("columnheader", { name: label })).toBeTruthy();
-    expect(rows.getAllByRole("columnheader")).toHaveLength(8);
+    expect(rows.getAllByRole("columnheader")).toHaveLength(9);
     expect(rows.getByRole("link", { name: "ana@example.com" }).getAttribute("href")).toBe("/app/admin/users/u-1");
+    expect(rows.getByRole("link", { name: "Ana Souza" }).getAttribute("href")).toBe("/app/admin/users/u-1");
     expect(rows.getByText(t.noPlan)).toBeTruthy();
     expect(mocks.users).toHaveBeenCalledWith({ limit: 50 }, expect.anything());
   });
@@ -109,6 +110,35 @@ describe("Admin users page", () => {
     renderPage();
     expect(await screen.findByText(t.noResults)).toBeTruthy();
     expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("shows the give-notes button only for rows with a workspace", async () => {
+    renderPage();
+    const rows = await table();
+    // ana has a workspace; bia does not.
+    expect(rows.getAllByRole("button", { name: t.giveNotes })).toHaveLength(1);
+  });
+
+  it("hides the give-notes button when billing is off", async () => {
+    renderPage(false);
+    const rows = await table();
+    expect(rows.queryByRole("button", { name: t.giveNotes })).toBeNull();
+  });
+
+  it("opens the grant modal for the row's workspace and reloads the list after a grant", async () => {
+    mocks.grant.mockResolvedValue({ balance: 15, replayed: false });
+    renderPage();
+    const rows = await table();
+    fireEvent.click(rows.getByRole("button", { name: t.giveNotes }));
+    const g = messages.Admin.grant;
+    expect(await screen.findByText(g.description)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(new RegExp(g.amount.replace(/[()]/g, "\\$&"))), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText(new RegExp(g.reason)), { target: { value: "Support gift" } });
+    const dialog = () => within(screen.getByRole("dialog"));
+    fireEvent.click(dialog().getByRole("button", { name: g.submit }));
+    fireEvent.click(await within(screen.getByRole("dialog")).findByRole("button", { name: g.submit }));
+    await waitFor(() => expect(mocks.grant).toHaveBeenCalledWith("t-1", { amount: 3, reason: "Support gift", notifyUser: false }, expect.any(String)));
+    await waitFor(() => expect(mocks.users).toHaveBeenCalledTimes(2));
   });
 
   it("hides plan and avulso balance columns when self-hosted", async () => {

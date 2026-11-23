@@ -252,6 +252,7 @@ describePostgres('PlatformUsersReadRepository (PostgreSQL)', () => {
     );
     const [row] = (await repo.list({ limit: 50 })).data;
     expect(row).toMatchObject({
+      tenantId: u,
       planSlug: plan.slug,
       liveInvoicesThisMonth: 1,
       avulsoBalance: 10,
@@ -276,6 +277,18 @@ describePostgres('PlatformUsersReadRepository (PostgreSQL)', () => {
     await addCompany(shared, '11111111000111');
     const [row] = (await repo.list({ limit: 50 })).data;
     expect(row.id).toBe(orphan);
+    expect(row.tenantId).toBe(shared);
     expect(row.companiesCount).toBe(1);
+  });
+
+  it('sem nenhum workspace devolve tenantId nulo', async () => {
+    const lonely = randomUUID();
+    await admin.query(
+      `INSERT INTO ${table('auth_users')} (id,email,name,created_at) VALUES ($1,'l@example.com','L','2026-11-02T10:00:00Z')`,
+      [lonely],
+    );
+    const [row] = (await repo.list({ limit: 50 })).data;
+    expect(row.id).toBe(lonely);
+    expect(row.tenantId).toBeNull();
   });
 });

@@ -23,6 +23,8 @@ export type PlatformUserRow = {
   id: string;
   email: string;
   name: string;
+  /** Workspace the row's balance and plan come from; null when the user has none. */
+  tenantId: string | null;
   createdAt: string;
   planSlug: string | null;
   liveInvoicesThisMonth: number;
