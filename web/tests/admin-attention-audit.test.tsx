@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
+import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AttentionPage from "@/app/(dashboard)/app/admin/attention/page";
 import AuditPage from "@/app/(dashboard)/app/admin/audit/page";
@@ -16,6 +16,7 @@ vi.mock("@/lib/platform-admin", async (original) => ({
 }));
 
 const ta = messages.Admin.attention;
+const fmtAttention = createTranslator({ locale: "en", messages, namespace: "Admin.attention" });
 const tu = messages.Admin.audit;
 
 const FULL: PlatformAttention = {
@@ -46,7 +47,7 @@ describe("AttentionPage", () => {
     for (const heading of [ta.staleInvoices, ta.expiringCertificates, ta.failingWebhooks, ta.failedPayments]) {
       expect(screen.getByText(heading)).toBeTruthy();
     }
-    expect(screen.getByText(ta.failedCount.replace("{count}", "7"))).toBeTruthy();
+    expect(screen.getByText(fmtAttention("failedCount", { count: 7 }))).toBeTruthy();
     expect(screen.queryByText(ta.emptySection)).toBeNull();
   });
 

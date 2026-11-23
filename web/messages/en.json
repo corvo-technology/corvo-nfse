@@ -3346,7 +3346,7 @@
       "revenueNoteNone": "No card subscriptions have been counted yet.",
       "adminGrants": "Invoices given by the admin",
       "adminGrantsNote": "Invoices given by the admin. They do not count as revenue.",
-      "units": "{count} invoices"
+      "units": "{count, plural, one {# invoice} other {# invoices}}"
     },
     "users": {
       "title": "Users",
@@ -3415,11 +3415,11 @@
       "amountHint": "A whole number from 1 to 500.",
       "reason": "Reason",
       "reasonHint": "Write 5 to 500 characters. It is kept in the history.",
-      "confirm": "Give {amount} invoices to {email}?",
+      "confirm": "Give {amount, plural, one {# invoice} other {# invoices}} to {email}?",
       "submit": "Give invoices",
       "submitting": "Sending...",
-      "success": "Done. The balance is now {balance} invoices.",
-      "successReplayed": "This request was already made. Nothing was repeated. The balance is {balance} invoices.",
+      "success": "Done. The balance is now {balance, plural, one {# invoice} other {# invoices}}.",
+      "successReplayed": "This request was already made. Nothing was repeated. The balance is {balance, plural, one {# invoice} other {# invoices}}.",
       "notify": "Tell the user by email",
       "cancel": "Cancel",
       "back": "Back",
@@ -3435,7 +3435,7 @@
       "failingWebhooks": "Webhooks failing in the last 24 hours",
       "failedPayments": "Failed payments",
       "emptySection": "Nothing to see here.",
-      "failedCount": "{count} failures",
+      "failedCount": "{count, plural, one {# failure} other {# failures}}",
       "sourceIntent": "Payment",
       "sourceSubscription": "Subscription",
       "validUntil": "Expires on {date}",

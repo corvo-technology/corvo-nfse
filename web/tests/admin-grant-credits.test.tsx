@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
+import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GrantCreditsButton } from "@/components/admin/grant-credits-button";
 import { DeploymentConfigProvider } from "@/lib/deployment-config-context";
@@ -15,6 +15,7 @@ vi.mock("@/lib/platform-admin", async (original) => ({
 }));
 
 const t = messages.Admin.grant;
+const fmt = createTranslator({ locale: "en", messages, namespace: "Admin.grant" });
 const EMAIL = "ana@example.com";
 
 function setup(billingEnabled = true) {
@@ -34,7 +35,7 @@ function fill(amount = "10", reason = "Support gift") {
   fireEvent.change(screen.getByLabelText(new RegExp(t.reason)), { target: { value: reason } });
 }
 const submit = () => fireEvent.click(screen.getByRole("button", { name: t.submit }));
-const confirmText = (amount: string) => t.confirm.replace("{amount}", amount).replace("{email}", EMAIL);
+const confirmText = (amount: string) => fmt("confirm", { amount: Number(amount), email: EMAIL });
 
 afterEach(() => { cleanup(); mocks.grant.mockReset(); vi.restoreAllMocks(); });
 
@@ -80,7 +81,7 @@ describe("GrantCreditsButton", () => {
     fireEvent.click(screen.getByRole("button", { name: t.submit }));
     await waitFor(() => expect(onGranted).toHaveBeenCalledTimes(1));
     expect(mocks.grant).toHaveBeenCalledWith("t-1", { amount: 10, reason: "Support gift", notifyUser: false }, expect.any(String));
-    expect(screen.getByText(t.success.replace("{balance}", "15"))).toBeTruthy();
+    expect(screen.getByText(fmt("success", { balance: 15 }))).toBeTruthy();
   });
 
   it("reenviar após erro de rede usa a mesma Idempotency-Key; reabrir o modal gera outra", async () => {
@@ -94,7 +95,7 @@ describe("GrantCreditsButton", () => {
     await waitFor(() => expect(mocks.grant).toHaveBeenCalledTimes(2));
     expect(mocks.grant.mock.calls[0][2]).toBe("key-1");
     expect(mocks.grant.mock.calls[1][2]).toBe("key-1");
-    await waitFor(() => expect(screen.getByText(t.success.replace("{balance}", "10"))).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(fmt("success", { balance: 10 }))).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: messages.Common.close }));
     open();
     expect(n).toBe(2);
@@ -126,7 +127,7 @@ describe("GrantCreditsButton", () => {
     mocks.grant.mockResolvedValue({ tenantId: "t-1", amount: 10, balance: 42, replayed: true });
     const { onGranted } = setup(); open(); fill(); submit();
     fireEvent.click(screen.getByRole("button", { name: t.submit }));
-    await waitFor(() => expect(screen.getByText(t.successReplayed.replace("{balance}", "42"))).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(fmt("successReplayed", { balance: 42 }))).toBeTruthy());
     expect(onGranted).toHaveBeenCalledTimes(1);
   });
 });

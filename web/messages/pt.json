@@ -3346,7 +3346,7 @@
       "revenueNoteNone": "Ainda não há assinaturas no cartão registradas na soma.",
       "adminGrants": "Notas dadas pelo admin",
       "adminGrantsNote": "Notas dadas pelo admin. Não contam como receita.",
-      "units": "{count} notas"
+      "units": "{count, plural, one {# nota} other {# notas}}"
     },
     "users": {
       "title": "Usuários",
@@ -3415,11 +3415,11 @@
       "amountHint": "Número inteiro de 1 a 500.",
       "reason": "Motivo",
       "reasonHint": "Escreva de 5 a 500 caracteres. Fica guardado no histórico.",
-      "confirm": "Dar {amount} notas para {email}?",
+      "confirm": "Dar {amount, plural, one {# nota} other {# notas}} para {email}?",
       "submit": "Dar notas",
       "submitting": "Enviando...",
-      "success": "Pronto. O saldo agora é de {balance} notas.",
-      "successReplayed": "Este pedido já tinha sido feito. Nada foi repetido. O saldo é de {balance} notas.",
+      "success": "Pronto. O saldo agora é de {balance, plural, one {# nota} other {# notas}}.",
+      "successReplayed": "Este pedido já tinha sido feito. Nada foi repetido. O saldo é de {balance, plural, one {# nota} other {# notas}}.",
       "notify": "Avisar o usuário por e-mail",
       "cancel": "Cancelar",
       "back": "Voltar",
@@ -3435,7 +3435,7 @@
       "failingWebhooks": "Webhooks falhando nas últimas 24 horas",
       "failedPayments": "Pagamentos que falharam",
       "emptySection": "Nada para ver aqui.",
-      "failedCount": "{count} falhas",
+      "failedCount": "{count, plural, one {# falha} other {# falhas}}",
       "sourceIntent": "Pagamento",
       "sourceSubscription": "Assinatura",
       "validUntil": "Vence em {date}",

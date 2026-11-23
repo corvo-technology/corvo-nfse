@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
+import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AdminOverviewPage from "@/app/(dashboard)/app/admin/page";
 import { DeploymentConfigProvider } from "@/lib/deployment-config-context";
@@ -16,6 +16,7 @@ vi.mock("@/lib/platform-admin", async (original) => ({
 }));
 
 const t = messages.Admin.overview;
+const fmt = createTranslator({ locale: "en", messages, namespace: "Admin.overview" });
 const SINCE = "2026-11-10T12:00:00.000Z";
 const win = (authorized: number, rejected: number, rejectionRate: number | null) => ({ authorized, rejected, rejectionRate });
 const data = (since: string | null = SINCE): PlatformOverview => ({
@@ -108,8 +109,8 @@ describe("admin overview page", () => {
     setup();
     await waitFor(() => expect(screen.getByRole("region", { name: t.adminGrants })).toBeTruthy());
     const grants = section(t.adminGrants);
-    expect(grants.getByText(t.units.replace("{count}", "88"))).toBeTruthy();
-    expect(grants.getByText(t.units.replace("{count}", "15"))).toBeTruthy();
+    expect(grants.getByText(fmt("units", { count: 88 }))).toBeTruthy();
+    expect(grants.getByText(fmt("units", { count: 15 }))).toBeTruthy();
     expect(grants.getByText(t.adminGrantsNote)).toBeTruthy();
   });
 

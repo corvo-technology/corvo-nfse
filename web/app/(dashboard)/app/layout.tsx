@@ -43,7 +43,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     "/app/admin/attention": t("Admin.attention.title"),
     "/app/admin/audit": t("Admin.audit.title"),
   };
-  const page = pathToPage[pathname] ?? t("Dashboard.overview");
+  const page =
+    pathToPage[pathname] ??
+    (/^\/app\/admin\/users\/[^/]+$/.test(pathname) ? t("Admin.detail.title") : t("Dashboard.overview"));
 
   // Browser tab title follows the page.
   useEffect(() => {
