@@ -4,7 +4,9 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { LOCK_PORT } from '@/infra/redis/redis.constants';
 import type { LockPort } from '@/infra/redis/lock.port';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
+import { monthLabel } from '@/modules/invoice/application/package/package-month';
 import {
+  accountantPackageFailedEmail,
   apiKeyCreatedEmail,
   certificateExpiringEmail,
   invoiceBlockedOnPortalEmail,
@@ -145,6 +147,17 @@ export class AccountNoticeListener {
           stage: notice.stage,
           validUntil: notice.validUntil.toLocaleDateString('pt-BR'),
           certificateUrl: this.page(`companies/${notice.companyId}`),
+        });
+        to = await this.recipients.emailsFor(tenantId);
+        break;
+      }
+      case 'accountant-package-failed': {
+        const key = `accountant-package:${notice.companyId}:${notice.month}`;
+        if (!(await this.once(key, 40 * DAY_MS))) return;
+        message = accountantPackageFailedEmail({
+          companyName: notice.companyName,
+          monthLabel: monthLabel(notice.month),
+          companyUrl: this.page(`companies/${notice.companyId}`),
         });
         to = await this.recipients.emailsFor(tenantId);
         break;

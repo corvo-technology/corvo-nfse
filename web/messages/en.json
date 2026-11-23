@@ -1099,6 +1099,40 @@
     "view": "View company",
     "viewCompany": "View details for {name}"
   },
+  "InvoicePackage": {
+    "button": "Download month package",
+    "title": "Month package for your accountant",
+    "hint": "A ZIP with the XML and PDF of every authorized or cancelled note of the month (by competence) and a summary sheet.",
+    "company": "Company",
+    "month": "Competence month",
+    "download": "Download package",
+    "empty": "There are no authorized or cancelled notes in this month.",
+    "tooLarge": "This month has {count} notes and the package holds up to {limit}.",
+    "failed": "Could not download the package. Try again."
+  },
+  "AccountantPackage": {
+    "title": "Monthly package for your accountant",
+    "hint": "On the 1st of each month, in the morning, Corvo e-mails your accountant a link to download the previous month's package (XML, PDF and summary).",
+    "testNote": "Nothing is sent in the test environment.",
+    "toggle": "Send the month package to my accountant",
+    "email": "Accountant's e-mail",
+    "privacy": "The package holds your customers' data. The link works for 7 days and opens without sign-in.",
+    "invalid": "Enter a valid e-mail.",
+    "save": "Save",
+    "saved": "Done. The package will be sent to {email}.",
+    "off": "Sending is off.",
+    "active": "Sending is on for {email}.",
+    "sendMonth": "Month to send",
+    "sendNow": "Send to accountant now",
+    "sendStatus": {
+      "sent": "Sent to {email}.",
+      "skipped-test": "Nothing is sent in the test environment.",
+      "skipped-no-email": "Enter the accountant's e-mail first.",
+      "skipped-empty": "There are no notes in this month, nothing was sent.",
+      "skipped-already-sent": "This month was already sent."
+    },
+    "failed": "Could not complete. Try again."
+  },
   "Invoices": {
     "anonymousCustomer": "Unidentified consumer",
     "calculate": {
@@ -1883,6 +1917,13 @@
     "insufficient_credits": "You have no notes left. Buy more notes to issue.",
     "company_not_ready": "Complete the company's tax setup before issuing.",
     "company_not_found": "Company not found.",
+    "accountant_email_invalid": "Enter a valid e-mail for the accountant.",
+    "package_month_invalid": "Enter the month as YYYY-MM.",
+    "package_include_invalid": "Choose xml, pdf or both.",
+    "package_too_large": "This month has too many notes for one package (the limit is 500).",
+    "package_empty": "There are no authorized or cancelled notes in this month.",
+    "package_link_invalid": "This download link is not valid.",
+    "package_link_expired": "This download link has expired. Ask for a new one.",
     "certificate_not_found": "Register the company's digital certificate in this environment (test or production) to issue.",
     "certificate_invalid": "The digital certificate is invalid.",
     "certificate_expired": "The company's digital certificate has expired. Upload a new one.",

@@ -20,7 +20,8 @@ export type TenantWork =
   | 'portal-sync'
   | 'webhook-delivery'
   | 'plan-expiry'
-  | 'billing-reconciliation';
+  | 'billing-reconciliation'
+  | 'accountant-package';
 
 /** Worker orchestration only: discover owner IDs, then enter a scoped operation. */
 @Injectable()
@@ -64,6 +65,13 @@ export class TenantWorkDiscovery {
           .where(
             "work.status = 'active' AND work.deleted_at IS NULL AND work.valid_until <= :now",
             { now },
+          );
+      } else if (kind === 'accountant-package') {
+        query = this.database
+          .getRepository(CompanyOrmEntity)
+          .createQueryBuilder('work')
+          .where(
+            "work.accountant_email IS NOT NULL AND work.environment = 'live' AND work.deleted_at IS NULL",
           );
       } else if (kind === 'portal-sync') {
         // Workspaces with a certificate that can still sign: the only ones the portal answers.

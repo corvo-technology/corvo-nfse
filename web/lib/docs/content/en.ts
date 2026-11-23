@@ -83,6 +83,7 @@ const enWithRetiredCredits: DocsTree = {
           ["GET", "`/v1/invoices/:id`", "Fetch an invoice", "200"],
           ["GET", "`/v1/invoices/:id/xml`", "Download XML", "200"],
           ["GET", "`/v1/invoices/:id/pdf`", "Download PDF", "200"],
+          ["GET", "`/v1/companies/:companyId/invoice-package`", "Download the month package (ZIP)", "200"],
           ["GET", "`/v1/invoices/:id/events`", "Fetch event history", "200"],
           ["POST", "`/v1/invoices/:id/download-url`", "Generate a signed URL", "200"],
           ["POST", "`/v1/invoices/:id/email`", "Request email delivery", "202"],
@@ -1591,6 +1592,31 @@ await writeFile("nfse.pdf", Buffer.from(await res.arrayBuffer()));`,
           notes: [
             { kind: "callout", tone: "accent", body: "Returns PDF bytes with `Content-Type: application/pdf` and `Content-Disposition: inline; filename=\"nfse-<number-or-id>.pdf\"` — no JSON envelope." },
             { kind: "callout", tone: "warn", body: "The invoice must be `authorized`, otherwise `404`. Availability also depends on document storage." },
+          ],
+        },
+        {
+          kind: "endpoint",
+          method: "GET",
+          path: "/v1/companies/:companyId/invoice-package",
+          scopes: ["full_access", "invoices_view", "invoices_read_write"],
+          success: "200 OK",
+          summary: "Downloads the month package for the accountant: a ZIP with `xml/`, `pdf/` and `resumo.csv`.",
+          examples: {
+            curl: `curl "$BASE_URL/companies/$COMPANY_ID/invoice-package?month=2026-10" \\
+  -H "X-API-Key: $CORVO_API_KEY" --fail --output nfse-2026-10.zip`,
+            node: `import { writeFile } from "node:fs/promises";
+
+const res = await fetch(\`\${BASE_URL}/companies/\${process.env.COMPANY_ID}/invoice-package?month=2026-10\`, {
+  headers: { "X-API-Key": process.env.CORVO_API_KEY },
+});
+if (!res.ok) throw new Error(\`Package download failed: \${res.status}\`);
+await writeFile("nfse-2026-10.zip", Buffer.from(await res.arrayBuffer()));`,
+          },
+          response: { label: "200 OK", json: "" },
+          notes: [
+            { kind: "callout", tone: "accent", body: "Query: `month=YYYY-MM` (required, matches the invoice competence date) and `include=xml,pdf` (default both; `xml` or `pdf` alone makes a smaller package). Returns the ZIP as a stream, with `Content-Type: application/zip` and no JSON envelope." },
+            { kind: "callout", tone: "accent", body: "The ZIP holds `xml/` and `pdf/` (one file per invoice, named by the 6-digit number; cancelled invoices are prefixed `cancelada-`) and `resumo.csv`, always the last file: a ZIP without it is incomplete. `resumo.csv` has 14 columns, `;` separator, decimal comma, UTF-8 with BOM. Invoices whose documents are not ready, or cannot be read, are listed in it with `pendente` or `indisponível` in the `Documentos` column." },
+            { kind: "callout", tone: "warn", body: "Only `authorized` and `cancelled` invoices enter. A month with none returns `404` (`PACKAGE_EMPTY`); more than 500 returns `422` (`PACKAGE_TOO_LARGE`, with `count` and `limit`). Limited to 10 packages per hour per workspace (`429`). `GET /v1/companies/:companyId/invoice-package/summary?month=YYYY-MM` returns the count and total without building the ZIP." },
           ],
         },
         {
@@ -3233,6 +3259,12 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "`nfse:read`",
               "`access_key`, `format` (`pdf` or `xml`; authorized invoice)",
               "`{ download_url, expires_at, file_name, mime_type }` (signed URL, valid for one hour)"
+            ],
+            [
+              "`nfse_get_package_url`",
+              "`nfse:read`",
+              "`tax_id` (company CNPJ), `month` (`YYYY-MM`, by competence)",
+              "`{ month, note_count, download_url, expires_at, mime_type }` (ZIP with XML, PDF and `resumo.csv`; link valid for 7 days, opens without sign-in)"
             ]
           ]
         },

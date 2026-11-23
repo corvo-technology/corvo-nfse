@@ -1099,6 +1099,40 @@
     "view": "Ver empresa",
     "viewCompany": "Ver detalhes de {name}"
   },
+  "InvoicePackage": {
+    "button": "Baixar pacote do mês",
+    "title": "Pacote do mês para o contador",
+    "hint": "Um ZIP com o XML e o PDF de cada nota autorizada ou cancelada do mês (pela competência) e uma planilha de resumo.",
+    "company": "Empresa",
+    "month": "Mês de competência",
+    "download": "Baixar pacote",
+    "empty": "Não há notas autorizadas ou canceladas nesse mês.",
+    "tooLarge": "Esse mês tem {count} notas e o pacote comporta até {limit}.",
+    "failed": "Não foi possível baixar o pacote. Tente de novo."
+  },
+  "AccountantPackage": {
+    "title": "Pacote mensal para o contador",
+    "hint": "No dia 1 de cada mês, de manhã, o Corvo envia ao seu contador um link para baixar o pacote do mês anterior (XML, PDF e resumo).",
+    "testNote": "No ambiente de teste nada é enviado.",
+    "toggle": "Enviar o pacote do mês ao meu contador",
+    "email": "E-mail do contador",
+    "privacy": "O pacote tem dados dos seus clientes. O link vale 7 dias e abre sem login.",
+    "invalid": "Informe um e-mail válido.",
+    "save": "Salvar",
+    "saved": "Pronto. O pacote será enviado para {email}.",
+    "off": "Envio desligado.",
+    "active": "Envio ligado para {email}.",
+    "sendMonth": "Mês a enviar",
+    "sendNow": "Enviar agora ao contador",
+    "sendStatus": {
+      "sent": "Enviado para {email}.",
+      "skipped-test": "No ambiente de teste nada é enviado.",
+      "skipped-no-email": "Informe o e-mail do contador antes.",
+      "skipped-empty": "Não há notas nesse mês, nada foi enviado.",
+      "skipped-already-sent": "Esse mês já foi enviado."
+    },
+    "failed": "Não foi possível concluir. Tente de novo."
+  },
   "Invoices": {
     "anonymousCustomer": "Consumidor não identificado",
     "calculate": {
@@ -1883,6 +1917,13 @@
     "insufficient_credits": "Você está sem notas disponíveis. Compre mais notas para emitir.",
     "company_not_ready": "Complete o cadastro fiscal da empresa antes de emitir.",
     "company_not_found": "Empresa não encontrada.",
+    "accountant_email_invalid": "Informe um e-mail válido para o contador.",
+    "package_month_invalid": "Informe o mês no formato AAAA-MM.",
+    "package_include_invalid": "Escolha xml, pdf ou os dois.",
+    "package_too_large": "Esse mês tem notas demais para um pacote (o limite é 500).",
+    "package_empty": "Não há notas autorizadas ou canceladas nesse mês.",
+    "package_link_invalid": "Esse link de download não é válido.",
+    "package_link_expired": "Esse link de download expirou. Peça um novo.",
     "certificate_not_found": "Cadastre o certificado digital da empresa neste ambiente (teste ou produção) para emitir.",
     "certificate_invalid": "O certificado digital é inválido.",
     "certificate_expired": "O certificado digital da empresa venceu. Envie um novo.",

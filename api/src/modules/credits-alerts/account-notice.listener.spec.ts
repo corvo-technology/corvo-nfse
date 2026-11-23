@@ -145,6 +145,19 @@ describe('AccountNoticeListener', () => {
     }
   });
 
+  it('warns the workspace when the accountant package could not be sent', async () => {
+    const { listener, email } = build();
+    await listener.handle(
+      accountNotice('t1', {
+        kind: 'accountant-package-failed',
+        companyId: 'c1',
+        companyName: 'Acme',
+        month: '2026-10',
+      }),
+    );
+    expect(email.enqueueNotice).toHaveBeenCalledTimes(2);
+  });
+
   it('does not repeat a notice inside its window', async () => {
     const { listener, email } = build({ first: false });
     await listener.handle(accountNotice('t1', { kind: 'credits-exhausted' }));

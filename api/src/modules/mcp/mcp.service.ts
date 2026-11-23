@@ -108,6 +108,12 @@ import {
 } from './tools/nfse-substitute.tool';
 import { CustomerDirectory } from '@/modules/invoice/domain/customer-directory';
 import { InvoiceSubstitutionService } from '@/modules/invoice/application/invoice-substitution.service';
+import { InvoicePackageService } from '@/modules/invoice/application/package/invoice-package.service';
+import { PackageLinkService } from '@/modules/invoice/application/package/package-link.service';
+import {
+  NFSE_GET_PACKAGE_URL_TOOL,
+  createNfseGetPackageUrlHandler,
+} from './tools/nfse-get-package-url.tool';
 
 type ToolHandler = (params: unknown, ctx: AuthContext) => Promise<unknown>;
 
@@ -139,6 +145,8 @@ export class McpService {
     private readonly certReader: ICompanyCertificateReader,
     private readonly customers: CustomerDirectory,
     private readonly substitutions: InvoiceSubstitutionService,
+    private readonly invoicePackages: InvoicePackageService,
+    private readonly packageLinks: PackageLinkService,
   ) {
     this.server = new McpServer();
     this.registerTools();
@@ -288,6 +296,17 @@ export class McpService {
       NFSE_GET_DOWNLOAD_URL_TOOL,
       this.wrapWithScopeCheck(
         createNfseGetDownloadUrlHandler(this.invoiceService, this.invoiceRepo),
+        'nfse:read',
+      ),
+    );
+    this.server.registerTool(
+      NFSE_GET_PACKAGE_URL_TOOL,
+      this.wrapWithScopeCheck(
+        createNfseGetPackageUrlHandler(
+          this.companyService,
+          this.invoicePackages,
+          this.packageLinks,
+        ),
         'nfse:read',
       ),
     );

@@ -23,6 +23,13 @@ export type AccountNotice =
     }
   | { kind: 'member-joined'; name: string; email: string; role: string }
   | {
+      kind: 'accountant-package-failed';
+      companyId: string;
+      companyName: string;
+      /** YYYY-MM */
+      month: string;
+    }
+  | {
       kind: 'certificate-expiring';
       companyId: string;
       companyName: string;
