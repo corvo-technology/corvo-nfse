@@ -3,6 +3,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { Providers } from "../providers";
 import { CookieConsentWrapper } from "@/components/CookieConsentWrapper";
 import { ToastProvider } from "@/components/ui/toast";
+import { DeploymentConfigProvider } from "@/lib/deployment-config-context";
+import { fetchDeploymentConfig } from "@/lib/deployment-config";
 import { rootMetadata, rootViewport } from "@/lib/root-metadata";
 import "../globals.css";
 
@@ -21,6 +23,7 @@ export default async function DashboardRootLayout({
 }) {
   const cookieStore = await cookies();
   const locale = cookieStore.get("NEXT_LOCALE")?.value === "pt" ? "pt" : "en";
+  const config = await fetchDeploymentConfig();
   const messages = (await import(`../../messages/${locale}.json`)).default;
 
   return (
@@ -29,7 +32,9 @@ export default async function DashboardRootLayout({
         <NextIntlClientProvider messages={messages} locale={locale}>
           <CookieConsentWrapper />
           <Providers>
-            <ToastProvider>{children}</ToastProvider>
+            <DeploymentConfigProvider config={config}>
+              <ToastProvider>{children}</ToastProvider>
+            </DeploymentConfigProvider>
           </Providers>
         </NextIntlClientProvider>
       </body>

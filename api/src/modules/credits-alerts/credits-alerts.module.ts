@@ -5,13 +5,14 @@ import { BillingUsageModule } from '@/modules/billing/billing-usage.module';
 import { EmailModule } from '@/modules/email/email.module';
 import { AccountNoticeListener } from './account-notice.listener';
 import { CreditsLowNotifier } from './credits-low.notifier';
+import { IS_SELF_HOSTED } from '@/shared/deployment-mode';
 import { TenantRecipientsService } from './tenant-recipients.service';
 
 /** API-only: listens to credit usage events. The worker never publishes them. */
 @Module({
   imports: [AppRedisModule, AuthModule, BillingUsageModule, EmailModule],
   providers: [
-    CreditsLowNotifier,
+    ...(IS_SELF_HOSTED ? [] : [CreditsLowNotifier]),
     AccountNoticeListener,
     TenantRecipientsService,
   ],

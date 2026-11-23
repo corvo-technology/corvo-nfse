@@ -70,6 +70,7 @@
       "integrations": "Integrações",
       "customers": "Clientes"
     },
+    "selfHosted": "Self-hosted",
     "account": "CONTA",
     "balance": "SALDO",
     "buyCredits": "Comprar créditos →",
@@ -2060,6 +2061,7 @@
     "billing_rule": "Esta operação não é permitida pelas regras do seu plano.",
     "billing_unavailable": "A cobrança está indisponível no momento. Tente mais tarde.",
     "billing_webhook_invalid": "Notificação de pagamento inválida.",
+    "billing_disabled": "A cobrança não está disponível nesta instância.",
     "checkout_expired": "Este pagamento expirou. Comece de novo.",
     "checkout_invalid": "Dados da compra inválidos.",
     "checkout_key_reused": "Esta solicitação já foi usada em outra compra.",

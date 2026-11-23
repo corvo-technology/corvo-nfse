@@ -9,6 +9,16 @@ function optionalNonEmptyString() {
   );
 }
 
+function effectivePaymentProviders(env: {
+  DEPLOYMENT_MODE: 'cloud' | 'self_hosted';
+  PAYMENT_ALLOWED_PROVIDERS?: string;
+}): string {
+  return (
+    env.PAYMENT_ALLOWED_PROVIDERS ??
+    (env.DEPLOYMENT_MODE === 'self_hosted' ? '' : 'stripe')
+  );
+}
+
 export const envSchema = z
   .object({
     APP_NAME: z.string().min(1).default('corvo-backend'),
@@ -339,7 +349,14 @@ export const envSchema = z
       .max(60_000)
       .default(2000),
     SENTRY_CAPTURE_DISCONNECTS: booleanFromEnv.default(true),
-    PAYMENT_ALLOWED_PROVIDERS: z.string().default('stripe'),
+    /** `cloud` bills with Stripe; `self_hosted` has no billing, quotas or credits. */
+    DEPLOYMENT_MODE: z.enum(['cloud', 'self_hosted']).default('cloud'),
+    /** Who may create an account. Defaults to `open` in cloud and `closed` in self_hosted. */
+    AUTH_SIGNUP_MODE: z.enum(['open', 'allowlist', 'closed']).optional(),
+    /** Public by nature: served by GET /v1/config so the web needs no rebuild. */
+    TURNSTILE_SITE_KEY: optionalNonEmptyString(),
+    /** Defaults to `stripe` in cloud and to none in self_hosted. */
+    PAYMENT_ALLOWED_PROVIDERS: z.string().optional(),
     PAYMENT_DEFAULT_PROVIDER: z.enum(['stripe', 'woovi']).default('stripe'),
     WOOVI_APP_ID: z.string().min(1).optional(),
     WOOVI_WEBHOOK_TOKEN: z.string().min(16).optional(),
@@ -501,7 +518,8 @@ export const envSchema = z
         message: 'SENTRY_DSN is required when SENTRY_ENABLED=true',
       });
     }
-    const allowedPaymentProviders = env.PAYMENT_ALLOWED_PROVIDERS.split(',')
+    const allowedPaymentProviders = effectivePaymentProviders(env)
+      .split(',')
       .map((provider) => provider.trim())
       .filter(Boolean);
     const invalidPaymentProvider = allowedPaymentProviders.find(
@@ -514,7 +532,10 @@ export const envSchema = z
         message: `Unsupported payment provider: ${invalidPaymentProvider}`,
       });
     }
-    if (!allowedPaymentProviders.includes(env.PAYMENT_DEFAULT_PROVIDER)) {
+    if (
+      allowedPaymentProviders.length > 0 &&
+      !allowedPaymentProviders.includes(env.PAYMENT_DEFAULT_PROVIDER)
+    ) {
       ctx.addIssue({
         code: 'custom',
         path: ['PAYMENT_DEFAULT_PROVIDER'],
@@ -594,7 +615,16 @@ export const envSchema = z
         }
       }
     }
-  });
+  })
+  .transform((env) => ({
+    ...env,
+    PAYMENT_ALLOWED_PROVIDERS: effectivePaymentProviders(env),
+    AUTH_SIGNUP_MODE:
+      env.AUTH_SIGNUP_MODE ??
+      (env.DEPLOYMENT_MODE === 'self_hosted'
+        ? ('closed' as const)
+        : ('open' as const)),
+  }));
 
 export type EnvConfig = z.infer<typeof envSchema>;
 

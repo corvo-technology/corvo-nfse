@@ -1,5 +1,11 @@
 import { runAsSystem } from '@/infra/persistence/typeorm/tenant-context.storage';
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Optional,
+} from '@nestjs/common';
+import { DEPLOYMENT_MODE, type DeploymentMode } from '@/shared/deployment-mode';
 import { UnitOfWorkPort } from '@/infra/transactions/unit-of-work.port';
 import { IWorkspaceRepository } from '../domain/workspace.repository';
 import type { AuthUser } from '../domain/auth-user';
@@ -11,6 +17,9 @@ export class PasswordlessWorkspaceService {
   constructor(
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly workspaces: IWorkspaceRepository,
+    @Optional()
+    @Inject(DEPLOYMENT_MODE)
+    private readonly mode: DeploymentMode = 'cloud',
   ) {}
 
   async ensureWorkspace(user: AuthUser): Promise<void> {
@@ -31,17 +40,23 @@ export class PasswordlessWorkspaceService {
             message: 'Tenant membership is inactive',
           });
 
-        const freePlanId = await this.workspaces.freePlanId();
-        const grantFirstFreeNote = await this.workspaces.claimFirstFreeNote(
-          normalizeEmailKey(user.email),
-          user.id,
-        );
+        // A self-hosted instance has no Free plan and no free note to give.
+        const selfHosted = this.mode === 'self_hosted';
+        const planId = selfHosted
+          ? await this.workspaces.selfHostedPlanId()
+          : await this.workspaces.freePlanId();
+        const grantFirstFreeNote =
+          !selfHosted &&
+          (await this.workspaces.claimFirstFreeNote(
+            normalizeEmailKey(user.email),
+            user.id,
+          ));
 
         const now = new Date();
         await this.workspaces.create({
           tenantId: user.id,
           authUserId: user.id,
-          planId: freePlanId,
+          planId,
           billingEmail: user.email,
           currentPeriodStart: new Date(
             Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),

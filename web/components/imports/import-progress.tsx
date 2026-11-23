@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { credits, imports } from "@/lib/api";
+import { useBillingEnabled } from "@/lib/deployment-config-context";
 import { saveBlob } from "@/lib/download";
 import { percentDone } from "@/lib/imports";
 import type { ImportJob } from "@/lib/types";
@@ -44,7 +45,8 @@ export function ImportProgress({ job, onRefresh, onAnother, live }: { job: Impor
   ];
 
   // The balance is read again whenever the person comes back to this tab (from Billing, after buying credits).
-  const readBalance = useCallback(() => { credits.balance().then((b) => setBalance(b.balance)).catch(() => undefined); }, []);
+  const billingEnabled = useBillingEnabled();
+  const readBalance = useCallback(() => { if (!billingEnabled) return; credits.balance().then((b) => setBalance(b.balance)).catch(() => undefined); }, [billingEnabled]);
   useEffect(() => {
     if (waiting === 0) return;
     readBalance();
@@ -121,10 +123,10 @@ export function ImportProgress({ job, onRefresh, onAnother, live }: { job: Impor
             </p>
             <p className="mt-3 text-[15px] text-text">{t("progress.noCredits", { count: waiting })}</p>
             <p className="mt-1 text-[13.5px] text-text-3">{t("progress.waitingAmount", { amount: money.format(counters.awaitingAmount) })}</p>
-            {balance !== null && <p className="mt-1 text-[13.5px] font-medium text-text">{t("progress.balance", { count: balance })}</p>}
+            {billingEnabled && balance !== null && <p className="mt-1 text-[13.5px] font-medium text-text">{t("progress.balance", { count: balance })}</p>}
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <Link href="/app/billing" className="btn btn-secondary">{t("progress.buyCredits")}</Link>
+            {billingEnabled && <Link href="/app/billing" className="btn btn-secondary">{t("progress.buyCredits")}</Link>}
             <Button variant="accent" loading={busy} onClick={reemit}>{t("progress.reemit", { count: waiting })}</Button>
           </div>
         </section>

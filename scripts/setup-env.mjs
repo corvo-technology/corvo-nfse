@@ -23,6 +23,8 @@ const domainValues = domain
   : {};
 
 const deploySecrets = {
+  // The open-source stack has no billing: Stripe, credits and plan quotas are off.
+  DEPLOYMENT_MODE: () => 'self_hosted',
   RTC_ZIP_URL: () => rtcZipUrl,
   RTC_ZIP_SHA256: () => rtcZipSha256,
   POSTGRES_PASSWORD: () => randomBytes(24).toString('hex'),

@@ -9,6 +9,8 @@ export interface OnboardingInput {
   lastDpsNumber: number;
   hasTestNote: boolean;
   flags: Record<OnboardingFlag, boolean>;
+  /** False on a self-hosted instance: there are no plans to show. Defaults to true. */
+  billingEnabled?: boolean;
 }
 
 export interface OnboardingStep { key: StepKey; done: boolean; locked: boolean }
@@ -18,7 +20,7 @@ export function buildSteps(input: OnboardingInput): OnboardingStep[] {
   const { can, flags } = input;
   const manage = can("nfse.companies.manage");
   const steps: (OnboardingStep & { allowed: boolean })[] = [
-    { key: "plans", done: flags.plansSeen, locked: false, allowed: manage },
+    { key: "plans", done: flags.plansSeen, locked: false, allowed: manage && input.billingEnabled !== false },
     { key: "company", done: input.hasCompany, locked: false, allowed: manage },
     { key: "certificate", done: input.hasCertificate, locked: !input.hasCompany, allowed: can("nfse.certificates.manage") },
     { key: "numbering", done: input.lastDpsNumber > 0 || flags.noPriorNotes, locked: !input.hasCompany, allowed: manage },

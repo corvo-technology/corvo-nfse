@@ -15,6 +15,7 @@ import { lookupCep } from "@/lib/viacep";
 import { mapIssues } from "@/lib/api-errors";
 import { isCompanyLimitError } from "@/lib/api";
 import type { Company, CompanyFormInput, TaxRegime } from "@/lib/types";
+import { useBillingEnabled } from "@/lib/deployment-config-context";
 import { useApiErrorText } from "@/lib/use-api-error";
 
 const posthogConfigured = Boolean(
@@ -57,6 +58,7 @@ function Stepper({ current, reached, labels }: { current: number; reached: numbe
 
 export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyFormProps) {
   const t = useTranslations("CompanyForm");
+  const billingEnabled = useBillingEnabled();
   const apiError = useApiErrorText();
   const td = useTranslations("CompanyDetail");
   const te = useTranslations("ApiErrors");
@@ -169,7 +171,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       const { _form, ...perField } = issues;
       setFieldErrors(perField);
       if (wizard && Object.keys(perField).length > 0) setStepIndex((index) => (perField.legalName || perField.taxId ? 0 : perField.street || perField.zip || perField.city || perField.state || perField.number ? 1 : index));
-      setError(isCompanyLimitError(cause) ? t("companyLimit") : (_form ?? (Object.keys(perField).length > 0 ? t("fixFields") : apiError(cause, t("failed")))));
+      setError(billingEnabled && isCompanyLimitError(cause) ? t("companyLimit") : (_form ?? (Object.keys(perField).length > 0 ? t("fixFields") : apiError(cause, t("failed")))));
     }
     finally { busy.current = false; setSaving(false); }
   }

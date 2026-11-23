@@ -56,7 +56,7 @@ RESEND_BASE_URL=https://api.millionsend.com
 EMAIL_FROM=Corvo <noreply@yourdomain.com>
 ```
 
-Use a sender authorized by your provider. To test billing, replace `STRIPE_SECRET_KEY` and `STRIPE_PLATFORM_WEBHOOK_SECRET` with your Stripe test credentials. The local placeholder values only allow startup.
+Use a sender authorized by your provider. In `self_hosted` mode there is no billing to test. The Stripe placeholder values are ignored.
 
 Rerun `up` after changing an env file. With Yarn, the shortcuts are `yarn local:up`, `yarn local:logs`, and `yarn local:down`.
 
@@ -74,8 +74,9 @@ Edit `deploy/.env` using [the production example](deploy/.env.example).
 | `STORAGE_S3_ACCESS_KEY_ID` / `STORAGE_S3_SECRET_ACCESS_KEY` | Credentials that can access the bucket. |
 | `RESEND_API_KEY` / `RESEND_BASE_URL` | Email provider credentials and API endpoint. |
 | `EMAIL_FROM` | Sender authorized by the email provider. |
-| `STRIPE_SECRET_KEY` | Stripe secret key for your instance. |
-| `STRIPE_PLATFORM_WEBHOOK_SECRET` | Signing secret for your Stripe webhook. |
+| `DEPLOYMENT_MODE` | `self_hosted` (written by setup) turns billing, credits and plan limits off, so `STRIPE_*` is not needed. `cloud` is the paid service; going back to `cloud` is not supported. |
+| `STRIPE_SECRET_KEY` | Only in `cloud` mode: Stripe secret key. |
+| `STRIPE_PLATFORM_WEBHOOK_SECRET` | Only in `cloud` mode: signing secret for your Stripe webhook. |
 
 The setup already generates PostgreSQL passwords, session/OTP signing secrets, and certificate encryption keys. Generated passwords use hexadecimal so they can be embedded safely in connection URLs.
 

@@ -146,9 +146,9 @@ export default function configuration(): AppConfiguration {
       captureDisconnects: env.SENTRY_CAPTURE_DISCONNECTS,
     },
     payments: {
-      allowedProviders: env.PAYMENT_ALLOWED_PROVIDERS.split(',').map(
-        (provider) => provider.trim() as 'stripe' | 'woovi',
-      ),
+      allowedProviders: env.PAYMENT_ALLOWED_PROVIDERS.split(',')
+        .map((provider) => provider.trim())
+        .filter(Boolean) as Array<'stripe' | 'woovi'>,
       defaultProvider: env.PAYMENT_DEFAULT_PROVIDER,
     },
     woovi: {

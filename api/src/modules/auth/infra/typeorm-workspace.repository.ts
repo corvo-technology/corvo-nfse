@@ -46,6 +46,13 @@ export class TypeOrmWorkspaceRepository extends IWorkspaceRepository {
     return plan.id;
   }
 
+  async selfHostedPlanId(): Promise<string> {
+    const plan = await this.db
+      .repository(PlanOrmEntity)
+      .findOneByOrFail({ slug: 'self-hosted' });
+    return plan.id;
+  }
+
   async claimFirstFreeNote(
     emailKey: string,
     tenantId: string,

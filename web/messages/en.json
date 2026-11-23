@@ -70,6 +70,7 @@
       "integrations": "Integrations",
       "customers": "Customers"
     },
+    "selfHosted": "Self-hosted",
     "account": "ACCOUNT",
     "balance": "BALANCE",
     "buyCredits": "Buy credits →",
@@ -2060,6 +2061,7 @@
     "billing_rule": "This operation is not allowed by your plan's rules.",
     "billing_unavailable": "Billing is unavailable right now. Try again later.",
     "billing_webhook_invalid": "Invalid payment notification.",
+    "billing_disabled": "Billing is not available on this instance.",
     "checkout_expired": "This payment expired. Start again.",
     "checkout_invalid": "Invalid purchase data.",
     "checkout_key_reused": "This request was already used for a different purchase.",
