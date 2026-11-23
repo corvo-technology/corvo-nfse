@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import type { StripeConfig } from '@/infra/config/configuration.types';
 
-export const BILLING_API_VERSION = '2026-09-30.endive';
+export const BILLING_API_VERSION = '2026-10-28.endive';
 
 @Injectable()
 export class StripeGateway {
