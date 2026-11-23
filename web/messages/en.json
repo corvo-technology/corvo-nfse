@@ -699,7 +699,7 @@
   "Hero": {
     "badge": "Tax invoice infrastructure for developers",
     "title": "Issue NFS-e through an API or an AI agent.",
-    "subtitle": "Send the sale data and Corvo issues the NFS-e (Brazilian service invoice) for your MEI or Simples Nacional company. Use it through the API, or ask Claude and Cursor.",
+    "subtitle": "Send the sale data and Corvo issues the NFS-e (Brazilian service invoice) for your MEI or Simples Nacional company in Brazil. Use it through the API, or ask Claude and Cursor (via MCP).",
     "startFree": "Start free",
     "viewDocs": "View documentation",
     "mono": "Your first invoice is free. No credit card required."
