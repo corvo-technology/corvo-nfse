@@ -144,7 +144,7 @@ export function AgentsSection() {
   const locale = useLocale();
 
   return (
-    <section id="agents" className="mx-auto max-w-[1120px] border-t border-border px-6 py-16 sm:px-10 sm:py-24">
+    <section id="agents" className="mx-auto scroll-mt-20 max-w-[1120px] border-t border-border px-6 py-16 sm:px-10 sm:py-24">
       <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16">
         <div className="min-w-0">
           <h2 className="max-w-[460px] text-[clamp(32px,4.4vw,56px)] font-semibold leading-[1.02] tracking-[-0.035em] text-text text-balance">{t("title")}</h2>

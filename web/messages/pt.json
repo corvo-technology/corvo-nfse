@@ -699,7 +699,7 @@
   "Hero": {
     "badge": "Infraestrutura de notas fiscais para desenvolvedores",
     "title": "Emita NFS-e por API ou por agente de IA.",
-    "subtitle": "Envie os dados da venda e a Corvo emite a NFS-e (nota fiscal de serviço) para sua empresa MEI ou do Simples Nacional. Use pela API ou peça ao Claude e ao Cursor.",
+    "subtitle": "Envie os dados da venda e a Corvo emite a NFS-e (nota fiscal de serviço do Brasil) para sua empresa MEI ou do Simples Nacional. Use pela API ou peça ao Claude e ao Cursor (via MCP).",
     "startFree": "Começar grátis",
     "viewDocs": "Ver documentação",
     "mono": "A primeira nota é grátis. Sem cartão de crédito."

@@ -19,7 +19,7 @@ export function Footer() {
           </span>
           <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-xs text-text-4">
             <Link
-              href={`/${locale}#features`}
+              href={`/${locale}#agents`}
               className="hover:text-text-2 transition-colors"
             >
               {t("features")}
