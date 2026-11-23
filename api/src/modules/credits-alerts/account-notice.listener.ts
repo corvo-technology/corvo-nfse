@@ -31,7 +31,7 @@ import {
 } from '@/shared/events/account-notice.events';
 import { TenantRecipientsService } from './tenant-recipients.service';
 
-const DEFAULT_APP_URL = 'https://corvo.tech/app';
+const DEFAULT_APP_URL = 'https://www.corvo.tech/app';
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
 

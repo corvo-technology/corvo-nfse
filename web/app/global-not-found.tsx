@@ -4,7 +4,11 @@ import { rootMetadata } from "@/lib/root-metadata";
 import "./globals.css";
 
 // The app has two root layouts ([locale] and (dashboard)), so unmatched URLs use this page.
-export const metadata = { ...rootMetadata, title: "Page not found" };
+export const metadata = {
+  ...rootMetadata,
+  title: "Page not found",
+  robots: { index: false, follow: true },
+};
 
 export default function NotFound() {
   return (
@@ -13,11 +17,11 @@ export default function NotFound() {
     <div className="min-h-screen bg-bg text-text font-sans flex flex-col">
       {/* Nav */}
       <nav className="border-b border-border-soft px-6 sm:px-10 py-4 flex items-center justify-between">
-        <Link href="/">
+        <Link href="/pt">
           <CorvoWordmark size={16} variant="green" />
         </Link>
         <Link
-          href="/"
+          href="/pt"
           className="text-sm text-text-3 hover:text-text transition-colors"
         >
           Back to home
@@ -71,7 +75,7 @@ export default function NotFound() {
           {/* Actions */}
           <div className="flex items-center gap-3">
             <Link
-              href="/"
+              href="/pt"
               className="inline-flex items-center justify-center bg-[#ededec] text-[#0a0a0a] px-5 py-2.5 rounded-[8px] text-[14px] font-medium transition-[color,background-color,border-color,opacity,transform,box-shadow] hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
             >
               Go home
@@ -90,16 +94,16 @@ export default function NotFound() {
       <footer className="border-t border-border-soft px-6 sm:px-10 py-5">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           <span className="font-mono text-xs text-text-4">
-            corvo.tech
+            www.corvo.tech
           </span>
           <div className="flex items-center gap-1 font-mono text-xs text-text-4">
-            <Link href="/status" className="hover:text-text-2 transition-colors">Status</Link>
+            <Link href="/pt/status" className="hover:text-text-2 transition-colors">Status</Link>
             <span>·</span>
-            <Link href="/docs" className="hover:text-text-2 transition-colors">API</Link>
+            <Link href="/pt/docs" className="hover:text-text-2 transition-colors">API</Link>
             <span>·</span>
-            <Link href="/security" className="hover:text-text-2 transition-colors">Security</Link>
+            <Link href="/pt/security" className="hover:text-text-2 transition-colors">Security</Link>
             <span>·</span>
-            <Link href="/terms" className="hover:text-text-2 transition-colors">Terms</Link>
+            <Link href="/pt/terms" className="hover:text-text-2 transition-colors">Terms</Link>
           </div>
         </div>
       </footer>

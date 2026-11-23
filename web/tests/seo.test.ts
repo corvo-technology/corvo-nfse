@@ -172,6 +172,15 @@ describe("robots and sitemap", () => {
     `);
   });
 
+  it("publishes only https://www.corvo.tech, with no query string", () => {
+    for (const entry of sitemap()) {
+      expect(entry.url.startsWith("https://www.corvo.tech/")).toBe(true);
+      expect(entry.url.includes("://corvo.tech/")).toBe(false);
+      expect(entry.url.includes("?")).toBe(false);
+    }
+    expect(robots().sitemap).toBe("https://www.corvo.tech/sitemap.xml");
+  });
+
   it("lists every page in both languages with hreflang alternates", () => {
     const entries = sitemap();
     const urls = entries.map((entry) => entry.url);

@@ -8,8 +8,9 @@ import { DOC_SLUGS } from "@/lib/docs/registry";
 const LOCALE_DIR = join(__dirname, "..", "app", "[locale]");
 
 describe("legacy URLs without locale", () => {
-  it("has the 21 URLs from Search Console", () => {
-    expect(Object.keys(LEGACY_REDIRECTS)).toHaveLength(21);
+  it("has the Search Console URLs plus /start, which 404s without a locale", () => {
+    expect(LEGACY_REDIRECTS["/start"]).toBe("/pt/start");
+    expect(Object.keys(LEGACY_REDIRECTS)).toHaveLength(22);
   });
 
   for (const [from, to] of Object.entries(LEGACY_REDIRECTS)) {

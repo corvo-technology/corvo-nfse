@@ -5,7 +5,7 @@
 
 export type RenderedEmail = { subject: string; html: string; text: string };
 
-const LOGO_URL = 'https://corvo.tech/icon-192.png';
+const LOGO_URL = 'https://www.corvo.tech/icon-192.png';
 const GREEN = '#2f7a55';
 const FONT = "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
 
