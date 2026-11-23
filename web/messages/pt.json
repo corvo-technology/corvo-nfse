@@ -1423,7 +1423,7 @@
       "total": "Total",
       "totalAnnualNote": "cobrados uma vez por ano",
       "pixDesc": "Aprova na hora. O código vale por 24 horas.",
-      "cardDesc": "Pagamento seguro pelo Stripe.",
+      "cardDesc": "Pagamento seguro no cartão.",
       "pixOrCopy": "ou copie o código Pix",
       "pixCode": "Código Pix copia e cola",
       "expiresIn": "Expira em {time}",
@@ -2639,7 +2639,7 @@
       "tagline": "Hospedada em corvo.tech. A gente cuida do servidor.",
       "cta": "Começar na Cloud",
       "rows": {
-        "price": "A partir de R$ 59,90/mês, com Stripe ou Pix.",
+        "price": "A partir de R$ 59,90/mês, no cartão ou no Pix.",
         "operator": "A Corvo: servidor, e-mail e HTTPS.",
         "data": "Certificados A1 guardados criptografados.",
         "updates": "Automáticas.",
