@@ -3,6 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import type { PlatformAttention } from '../../platform-admin.contract';
 import { PlatformReadSession } from '../platform-read-session';
+import { schemaQualifier } from './schema-qualifier';
 
 export const STALE_INVOICE_MINUTES = 60;
 export const CERTIFICATE_DAYS = 15;
@@ -16,24 +17,13 @@ const iso = (value: Stamp): string => new Date(value).toISOString();
 /** Read-only "needs attention" lists across all tenants (admin panel). */
 @Injectable()
 export class PlatformAttentionReadRepository {
-  private readonly schema: string;
+  private readonly t: (table: string) => string;
 
   constructor(
     private readonly session: PlatformReadSession,
     @InjectDataSource() dataSource: DataSource,
   ) {
-    const options = dataSource.options;
-    const schema =
-      ('schema' in options && typeof options.schema === 'string'
-        ? options.schema
-        : undefined) ?? 'corvo';
-    if (!/^[a-z_][a-z0-9_]*$/i.test(schema))
-      throw new Error('Invalid PostgreSQL schema name');
-    this.schema = schema;
-  }
-
-  private t(name: string): string {
-    return `"${this.schema}"."${name}"`;
+    this.t = schemaQualifier(dataSource);
   }
 
   snapshot(now: Date): Promise<PlatformAttention> {

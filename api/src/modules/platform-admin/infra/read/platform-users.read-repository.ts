@@ -10,6 +10,7 @@ import {
 import { cursorScope, readKeysetCursor } from '@/shared/http/keyset-pagination';
 import type { PlatformUserRow } from '../../platform-admin.contract';
 import { PlatformReadSession } from '../platform-read-session';
+import { schemaQualifier } from './schema-qualifier';
 
 const MAX_PAGE = 50;
 const MIN_CNPJ_DIGITS = 4;
@@ -47,24 +48,13 @@ type DerivedRow = {
 
 @Injectable()
 export class PlatformUsersReadRepository {
-  private readonly schema: string;
+  private readonly t: (table: string) => string;
 
   constructor(
     private readonly session: PlatformReadSession,
     @InjectDataSource() dataSource: DataSource,
   ) {
-    const options = dataSource.options;
-    const schema =
-      ('schema' in options && typeof options.schema === 'string'
-        ? options.schema
-        : undefined) ?? 'corvo';
-    if (!/^[a-z_][a-z0-9_]*$/i.test(schema))
-      throw new Error('Invalid PostgreSQL schema name');
-    this.schema = schema;
-  }
-
-  private t(name: string): string {
-    return `"${this.schema}"."${name}"`;
+    this.t = schemaQualifier(dataSource);
   }
 
   async list(

@@ -6,6 +6,7 @@ import {
   PlatformReadSession,
   type PlatformQuery,
 } from '../platform-read-session';
+import { schemaQualifier } from './schema-qualifier';
 
 type Workspace = PlatformUserDetail['workspaces'][number];
 type Row = Record<string, unknown>;
@@ -134,14 +135,13 @@ function toWorkspace(m: Row, userId: string, l: TenantLists): Workspace {
  */
 @Injectable()
 export class PlatformUserDetailReadRepository {
-  private readonly s: string;
+  private readonly t: (table: string) => string;
 
   constructor(
     private readonly session: PlatformReadSession,
     @InjectDataSource() dataSource: DataSource,
   ) {
-    const schema = (dataSource.options as { schema?: string }).schema;
-    this.s = schema ? `"${schema.replaceAll('"', '""')}".` : '';
+    this.t = schemaQualifier(dataSource);
   }
 
   find(userId: string): Promise<PlatformUserDetail | null> {
@@ -152,18 +152,18 @@ export class PlatformUserDetailReadRepository {
     q: PlatformQuery,
     userId: string,
   ): Promise<PlatformUserDetail | null> {
-    const s = this.s;
+    const t = this.t;
     const [user] = await q(
-      `SELECT id, email, name, email_verified_at, created_at, last_login_at FROM ${s}auth_users WHERE id = $1`,
+      `SELECT id, email, name, email_verified_at, created_at, last_login_at FROM ${t('auth_users')} WHERE id = $1`,
       [userId],
     );
     if (!user) return null;
 
     const memberships = await q(
       `SELECT m.tenant_id, m.role, p.slug AS plan_slug, p.name AS plan_name
-         FROM ${s}tenant_memberships m
-         JOIN ${s}tenants t ON t.id = m.tenant_id
-         LEFT JOIN ${s}plans p ON p.id = t.plan_id
+         FROM ${t('tenant_memberships')} m
+         JOIN ${t('tenants')} t ON t.id = m.tenant_id
+         LEFT JOIN ${t('plans')} p ON p.id = t.plan_id
         WHERE m.auth_user_id = $1 AND m.is_active
         ORDER BY (m.tenant_id = $1) DESC, m.created_at ASC`,
       [userId],
@@ -176,7 +176,7 @@ export class PlatformUserDetailReadRepository {
     const usage = groupByTenant(
       await q(
         `SELECT DISTINCT ON (tenant_id) tenant_id, included, authorized, reserved, period_end
-           FROM ${s}billing_usage_periods
+           FROM ${t('billing_usage_periods')}
           WHERE tenant_id = ANY($1::uuid[]) AND period_start <= now() AND period_end > now()
           ORDER BY tenant_id, period_start DESC`,
         [tenantIds],
@@ -185,7 +185,7 @@ export class PlatformUserDetailReadRepository {
     const balances = groupByTenant(
       await q(
         `SELECT tenant_id, COALESCE(SUM(amount), 0)::int AS balance
-           FROM ${s}credit_transactions
+           FROM ${t('credit_transactions')}
           WHERE tenant_id = ANY($1::uuid[]) AND source IN ('avulso', 'bonus')
           GROUP BY tenant_id`,
         [tenantIds],
@@ -194,9 +194,9 @@ export class PlatformUserDetailReadRepository {
     const companies = groupByTenant(
       await q(
         `SELECT c.tenant_id, c.id, c.tax_id, c.legal_name, c.municipality_code, c.environment,
-                (SELECT max(k.valid_until) FROM ${s}nfse_certificates k
+                (SELECT max(k.valid_until) FROM ${t('nfse_certificates')} k
                   WHERE k.company_id = c.id AND k.status = 'active' AND k.deleted_at IS NULL) AS certificate_valid_until
-           FROM ${s}nfse_companies c
+           FROM ${t('nfse_companies')} c
           WHERE c.tenant_id = ANY($1::uuid[]) AND c.deleted_at IS NULL
           ORDER BY c.created_at ASC`,
         [tenantIds],
@@ -207,7 +207,7 @@ export class PlatformUserDetailReadRepository {
         `SELECT tenant_id, id, status, amount, environment, last_error_code, created_at FROM (
            SELECT tenant_id, id, status, amount, environment, last_error_code, created_at,
                   row_number() OVER (PARTITION BY tenant_id ORDER BY created_at DESC, id DESC) AS rn
-             FROM ${s}nfse_invoices WHERE tenant_id = ANY($1::uuid[])
+             FROM ${t('nfse_invoices')} WHERE tenant_id = ANY($1::uuid[])
          ) x WHERE rn <= ${LIST_LIMIT} ORDER BY created_at DESC, id DESC`,
         [tenantIds],
       ),
@@ -217,7 +217,7 @@ export class PlatformUserDetailReadRepository {
         `SELECT tenant_id, id, type, source, amount, description, created_at FROM (
            SELECT tenant_id, id, type, source, amount, description, created_at,
                   row_number() OVER (PARTITION BY tenant_id ORDER BY created_at DESC, id DESC) AS rn
-             FROM ${s}credit_transactions WHERE tenant_id = ANY($1::uuid[])
+             FROM ${t('credit_transactions')} WHERE tenant_id = ANY($1::uuid[])
          ) x WHERE rn <= ${LIST_LIMIT} ORDER BY created_at DESC, id DESC`,
         [tenantIds],
       ),
@@ -227,7 +227,7 @@ export class PlatformUserDetailReadRepository {
         `SELECT tenant_id, id, kind, provider, amount_cents, status, paid_at FROM (
            SELECT tenant_id, id, kind, provider, amount_cents, status, paid_at, created_at,
                   row_number() OVER (PARTITION BY tenant_id ORDER BY created_at DESC, id DESC) AS rn
-             FROM ${s}payment_intents WHERE tenant_id = ANY($1::uuid[])
+             FROM ${t('payment_intents')} WHERE tenant_id = ANY($1::uuid[])
          ) x WHERE rn <= ${LIST_LIMIT} ORDER BY created_at DESC, id DESC`,
         [tenantIds],
       ),
@@ -237,7 +237,7 @@ export class PlatformUserDetailReadRepository {
         `SELECT tenant_id, id, name, key_prefix, environment, last_used_at FROM (
            SELECT tenant_id, id, name, key_prefix, environment, last_used_at, created_at,
                   row_number() OVER (PARTITION BY tenant_id ORDER BY created_at DESC, id DESC) AS rn
-             FROM ${s}api_keys WHERE tenant_id = ANY($1::uuid[])
+             FROM ${t('api_keys')} WHERE tenant_id = ANY($1::uuid[])
          ) x WHERE rn <= ${LIST_LIMIT} ORDER BY created_at DESC, id DESC`,
         [tenantIds],
       ),
@@ -247,8 +247,8 @@ export class PlatformUserDetailReadRepository {
         `SELECT tenant_id, id, client_name, last_used_at FROM (
            SELECT c.tenant_id, c.id, COALESCE(o.name, c.client_id) AS client_name, c.last_used_at,
                   row_number() OVER (PARTITION BY c.tenant_id ORDER BY c.granted_at DESC, c.id DESC) AS rn
-             FROM ${s}mcp_connections c
-             LEFT JOIN ${s}auth_oauth_clients o ON o.id = c.client_id
+             FROM ${t('mcp_connections')} c
+             LEFT JOIN ${t('auth_oauth_clients')} o ON o.id = c.client_id
             WHERE c.tenant_id = ANY($1::uuid[]) AND c.auth_user_id = $2 AND c.revoked_at IS NULL
          ) x WHERE rn <= ${LIST_LIMIT} ORDER BY rn`,
         [tenantIds, userId],

@@ -8,6 +8,7 @@ import type {
   Windows,
 } from '../../platform-admin.contract';
 import { PlatformReadSession } from '../platform-read-session';
+import { schemaQualifier } from './schema-qualifier';
 
 const DAY_MS = 86_400_000;
 const BRT_OFFSET_MS = 3 * 3_600_000; // UTC-3 fixed (no DST)
@@ -48,16 +49,13 @@ function rev(subscriptionCents: number, avulsoCents: number): Rev {
 
 @Injectable()
 export class PlatformOverviewReadRepository {
+  private readonly t: (table: string) => string;
+
   constructor(
     private readonly session: PlatformReadSession,
-    @InjectDataSource() private readonly dataSource: DataSource,
-  ) {}
-
-  /** Raw SQL has no search_path on pooled connections: qualify with the schema. */
-  private t(name: string): string {
-    const options = this.dataSource.options as { schema?: string };
-    const schema = (options.schema ?? 'corvo').replaceAll('"', '""');
-    return `"${schema}".${name}`;
+    @InjectDataSource() dataSource: DataSource,
+  ) {
+    this.t = schemaQualifier(dataSource);
   }
 
   async snapshot(now: Date): Promise<PlatformOverview> {
