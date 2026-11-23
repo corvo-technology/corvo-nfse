@@ -6,6 +6,7 @@ import {
   ParseUUIDPipe,
   Req,
 } from '@nestjs/common';
+import { data, type DataEnvelope } from '@/shared/http/response';
 import { PlatformUserDetailService } from '../application/platform-user-detail.service';
 import type { PlatformUserDetail } from '../platform-admin.contract';
 import {
@@ -31,7 +32,7 @@ export class PlatformUserDetailController {
   async get(
     @Req() req: RequestWithPlatformAdmin,
     @Param('id', ParsePlatformUserIdPipe) id: string,
-  ): Promise<{ data: PlatformUserDetail }> {
+  ): Promise<DataEnvelope<PlatformUserDetail>> {
     const actor = req.platformAdmin;
     if (!actor) {
       throw new NotFoundException({
@@ -39,6 +40,6 @@ export class PlatformUserDetailController {
         message: 'Resource not found',
       });
     }
-    return { data: await this.service.view(actor, id) };
+    return data(await this.service.view(actor, id));
   }
 }

@@ -108,7 +108,7 @@ export class PlatformAttentionReadRepository {
         at: Stamp;
       }>(
         `WITH ${owner}
-         SELECT * FROM (
+         SELECT tenant_id, user_id, source, status, at FROM (
            SELECT p.tenant_id, COALESCE(o.auth_user_id, p.tenant_id) AS user_id,
                   'intent'::text AS source, p.status, p.created_at AS at
            FROM ${this.t('payment_intents')} p
