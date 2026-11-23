@@ -142,18 +142,6 @@ describe('CreditsService', () => {
     expect(txRepo.save).not.toHaveBeenCalled();
   });
 
-  it('grantBonus grava metadata', async () => {
-    const txRepo = buildTxRepo();
-    const service = new CreditsService(buildCache() as never, txRepo);
-
-    await service.grantBonus(tenantId, 5, 'x', { origin: 'platform_admin' });
-
-    expect(txRepo.save).toHaveBeenCalledWith(
-      expect.objectContaining({ metadata: { origin: 'platform_admin' } }),
-      tenantId,
-    );
-  });
-
   it('invalidateBalance apaga a chave do cache', async () => {
     const cache = buildCache();
     const service = new CreditsService(cache as never, buildTxRepo());

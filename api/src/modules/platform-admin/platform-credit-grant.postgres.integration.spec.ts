@@ -203,11 +203,13 @@ describePostgres('PlatformCreditGrantService on PostgreSQL (RLS role)', () => {
     const reason = 'motivo secreto da cortesia';
     await grant(tenant, randomUUID(), { ...body, reason });
     const history = JSON.stringify(await creditRepo.findByTenantId(tenant));
-    expect(history).toContain('platform_admin');
+    expect(history).not.toContain('platform_admin');
+    expect(history).not.toContain('idempotency');
     expect(history).not.toContain(reason);
     expect(history).not.toContain(actor.email);
     const [row] = await bonusRows(tenant);
     expect(row.description).toBe('Notas cedidas pela Corvo');
+    expect(row.metadata ?? null).toBeNull();
   });
 
   it('a concessão não altera a receita do overview (nenhum pagamento é criado)', async () => {

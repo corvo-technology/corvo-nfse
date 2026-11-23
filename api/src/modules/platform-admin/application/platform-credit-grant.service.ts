@@ -136,8 +136,8 @@ export class PlatformCreditGrantService {
       tenantId,
       input.amount,
       GRANT_DESCRIPTION,
-      // Never the reason or the actor: this metadata is shown to the customer.
-      { origin: 'platform_admin', idempotencyKey },
+      // No metadata on purpose: GET /credits/history (also an API-key endpoint)
+      // returns it to the customer. The key and reason live only in the audit row.
     );
     await this.audit.insert({
       actorUserId: actor.authUserId,

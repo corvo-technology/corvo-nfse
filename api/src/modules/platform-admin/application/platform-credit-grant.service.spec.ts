@@ -51,14 +51,9 @@ function build(opts: { tenantExists?: boolean } = {}) {
   };
   const credits = {
     grantBonus: jest.fn(
-      async (
-        tenantId: string,
-        amount: number,
-        description: string,
-        metadata?: Record<string, unknown>,
-      ) => {
+      async (tenantId: string, amount: number, description: string) => {
         log.push('grantBonus');
-        view().credits.push({ tenantId, amount, description, metadata });
+        view().credits.push({ tenantId, amount, description });
         balance += amount;
         cached = balance; // the cache keeps the in-transaction balance
         return { tenantId, balance };
@@ -314,11 +309,12 @@ describe('PlatformCreditGrantService', () => {
       TENANT,
       10,
       'Notas cedidas pela Corvo',
-      { origin: 'platform_admin', idempotencyKey: 'key-1' },
     );
     const stored = JSON.stringify(w.committed.credits);
     expect(stored).not.toContain('segredo interno');
     expect(stored).not.toContain(actor.email);
+    expect(stored).not.toContain('metadata');
+    expect(stored).not.toContain('platform_admin');
   });
 
   it('notifyUser publica credits-added só após o commit e não em repetição; padrão não publica', async () => {
