@@ -47,10 +47,10 @@
     "credits": "Créditos",
     "members": "Membros",
     "settings": "Configurações",
-    "eyebrow": "DASHBOARD",
+    "eyebrow": "PAINEL",
     "title": "Acompanhe cada nota emitida",
-    "description": "Notas fiscais, status de emissão, consumo do plano e documentos em um só lugar.",
-    "alt": "Dashboard da Corvo mostrando notas fiscais emitidas, status e consumo do plano"
+    "description": "Veja o que foi emitido, o que está na fila e quanto do plano você já usou.",
+    "alt": "Painel da Corvo mostrando as notas emitidas, o status e o consumo do plano"
   },
   "Sidebar": {
     "nav": {
@@ -699,7 +699,7 @@
   "Hero": {
     "badge": "Infraestrutura de notas fiscais para desenvolvedores",
     "title": "Emita NFS-e por API ou por agente de IA.",
-    "subtitle": "A Corvo é uma API REST e um servidor MCP para emitir NFS-e (nota fiscal de serviço) no padrão nacional do Brasil, para empresas MEI e do Simples Nacional. Feita para agentes de IA, desenvolvedores, SaaS e ERPs.",
+    "subtitle": "Envie os dados da venda e a Corvo emite a NFS-e (nota fiscal de serviço) para sua empresa MEI ou do Simples Nacional. Use pela API ou peça ao Claude e ao Cursor.",
     "startFree": "Começar grátis",
     "viewDocs": "Ver documentação",
     "mono": "A primeira nota é grátis. Sem cartão de crédito."
@@ -720,19 +720,19 @@
   },
   "FreeTrial": {
     "eyebrow": "COMEÇAR GRÁTIS",
-    "title": "1 nota fiscal grátis para começar",
+    "title": "A primeira nota é grátis.",
     "subtitle": "Sem cartão de crédito.",
-    "description": "Crie a conta, integre e emita a primeira NFS-e em produção sem pagar. Depois, escolha um plano ou compre notas avulsas a R$ 0,99, a partir de 3.",
+    "description": "Crie a conta e emita a primeira nota de verdade, sem pagar. Depois, escolha um plano ou compre notas avulsas por R$ 0,99 (mínimo de 3).",
     "startFree": "Começar grátis",
-    "finePrint": "Uma nota grátis por pessoa. Notas de teste (homologação) nunca consomem cota.",
+    "finePrint": "Uma nota grátis por pessoa. Notas de teste não contam.",
     "points": {
       "test": {
         "title": "Teste antes de pagar",
-        "body": "A homologação, o ambiente de testes da prefeitura, é grátis e ilimitada. Emita notas de teste à vontade antes de ir para produção."
+        "body": "O ambiente de teste é grátis e sem limite. Emita notas de teste antes de emitir de verdade."
       },
       "certificate": {
         "title": "Certificado guardado com cuidado",
-        "body": "O certificado A1 fica criptografado em repouso com AES-256-GCM."
+        "body": "O certificado A1 fica guardado com criptografia."
       }
     }
   },
@@ -744,7 +744,7 @@
       "label": "Ciclo de cobrança",
       "monthly": "Mensal",
       "annual": "Anual",
-      "annualBadge": "30% off"
+      "annualBadge": "30% de desconto"
     },
     "perMonth": "/mês",
     "notesPerMonth": "{count} notas por mês",
@@ -754,60 +754,60 @@
     "plans": {
       "solo": {
         "name": "SOLO",
-        "bestFor": "Para quem emite poucas notas por mês.",
+        "bestFor": "Até 100 notas por mês.",
         "includes": {
           "nfse": "Emissão de NFS-e via API",
           "companies": "Empresas ilimitadas",
           "email": "Envio por e-mail",
           "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
+          "webhooks": "Aviso quando a nota muda de status (webhook)",
+          "downloads": "Baixe o XML e o PDF"
         }
       },
       "equipe": {
         "name": "EQUIPE",
-        "bestFor": "Para equipes que emitem com frequência.",
+        "bestFor": "Até 250 notas por mês.",
         "includes": {
           "nfse": "Emissão de NFS-e via API",
           "companies": "Empresas ilimitadas",
           "email": "Envio por e-mail",
           "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
+          "webhooks": "Aviso quando a nota muda de status (webhook)",
+          "downloads": "Baixe o XML e o PDF"
         },
         "badge": "Mais popular"
       },
       "empresa": {
         "name": "EMPRESA",
-        "bestFor": "Para empresas com volume recorrente.",
+        "bestFor": "Até 600 notas por mês.",
         "includes": {
           "nfse": "Emissão de NFS-e via API",
           "companies": "Empresas ilimitadas",
           "email": "Envio por e-mail",
           "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
+          "webhooks": "Aviso quando a nota muda de status (webhook)",
+          "downloads": "Baixe o XML e o PDF"
         }
       },
       "escala": {
         "name": "ESCALA",
-        "bestFor": "Para alto volume de emissão.",
+        "bestFor": "Até 1.200 notas por mês.",
         "includes": {
           "nfse": "Emissão de NFS-e via API",
           "companies": "Empresas ilimitadas",
           "email": "Envio por e-mail",
           "mcp": "Agentes de IA via MCP",
-          "webhooks": "Webhooks de status",
-          "downloads": "Download XML e PDF"
+          "webhooks": "Aviso quando a nota muda de status (webhook)",
+          "downloads": "Baixe o XML e o PDF"
         }
       }
     },
     "included": {
       "label": "Todos os planos incluem",
-      "mcp": "MCP para agentes de IA",
+      "mcp": "Use com Claude e Cursor (MCP)",
       "email": "Envio da nota por e-mail"
     },
-    "freeNote": "Sua primeira nota é grátis, sem cartão de crédito.",
+    "freeNote": "A primeira nota é grátis, sem cartão de crédito.",
     "avulso": {
       "title": "Notas avulsas",
       "description": "Sem plano: {price} por nota, a partir de {min} notas. As notas não expiram.",
@@ -830,12 +830,12 @@
       "slider": "Ajustar notas por mês",
       "zoneAvulso": "AVULSO"
     },
-    "footnote": "Cotas mensais, sem acúmulo. O que passar da cota você compra como nota avulsa, ou troca de plano.",
+    "footnote": "As notas do mês não passam para o mês seguinte. Precisa de mais? Compre notas avulsas ou mude de plano.",
     "featured": {
       "recommended": "Recomendado",
       "avulsoName": "NOTAS AVULSAS",
       "avulsoBestFor": "Sem plano e sem mensalidade. Paga só o que usa, a partir de 3.",
-      "effective": "Custo efetivo:",
+      "effective": "Sai a",
       "perNote": "por nota",
       "planLine": "Plano · {count} notas",
       "allPlans": "TODOS OS PLANOS",
@@ -844,50 +844,50 @@
   },
   "Flow": {
     "eyebrow": "COMO FUNCIONA",
-    "title": "Da sua aplicação à nota fiscal.",
-    "description": "Um fluxo de emissão pensado para se integrar ao seu produto.",
+    "title": "Da sua aplicação à NFS-e.",
+    "description": "Quatro passos, do seu sistema até o cliente.",
     "steps": {
       "step1": "Sua aplicação envia os dados",
       "step1Desc": "Empresa emissora, cliente e descrição do serviço.",
-      "step2": "A Corvo processa a emissão",
-      "step2Desc": "Por meio das integrações fiscais disponíveis.",
-      "step3": "O documento é gerado",
-      "step3Desc": "Status e resultado disponíveis pela API.",
-      "step4": "Entrega ao cliente",
-      "step4Desc": "Consulta pelo dashboard ou envio por e-mail."
+      "step2": "A Corvo emite a nota",
+      "step2Desc": "Assina com o certificado da empresa e envia à Receita.",
+      "step3": "A nota fica pronta",
+      "step3Desc": "Você consulta o status pela API.",
+      "step4": "O cliente recebe a nota",
+      "step4Desc": "Veja no painel ou envie por e-mail."
     }
   },
   "MultiCompany": {
     "eyebrow": "MULTIEMPRESA",
     "title": "Um produto. Centenas de empresas.",
-    "description": "Construiu um SaaS ou ERP? Gerencie as notas fiscais de seus clientes sem criar uma integração diferente para cada empresa.",
+    "description": "Tem um SaaS ou ERP? Emita as notas dos seus clientes com uma só integração.",
     "items": {
-      "companies": "Cadastro e gerenciamento de empresas emissoras.",
-      "perCompany": "Controle e visibilidade por empresa.",
-      "documents": "Documentos centralizados e acessíveis.",
-      "limits": "Limites de empresas de acordo com o plano.",
-      "consumption": "Acompanhe o consumo de cada empresa."
+      "companies": "Cadastre cada empresa com o certificado dela.",
+      "perCompany": "Veja as notas de cada empresa separadas.",
+      "documents": "Baixe XML e PDF em um lugar só.",
+      "limits": "Empresas ilimitadas nos planos mensais. Sem plano, 1 empresa.",
+      "consumption": "Veja quantas notas cada empresa usou."
     }
   },
   "UseCases": {
     "eyebrow": "PARA QUEM CONSTRÓI SOFTWARE",
     "title": "Feita para quem constrói software.",
-    "description": "Da startup ao ERP — uma API para integrar emissão fiscal ao seu produto.",
+    "description": "Do SaaS pequeno ao ERP grande: uma API para emitir notas.",
     "saas": {
       "title": "SaaS",
-      "description": "Adicione emissão de NFS-e ao seu produto sem desenvolver toda a infraestrutura fiscal."
+      "description": "Emita NFS-e no seu produto sem montar a parte fiscal."
     },
     "erp": {
       "title": "ERPs e plataformas",
-      "description": "Centralize a emissão das empresas que utilizam sua plataforma."
+      "description": "Emita as notas de todos os clientes da sua plataforma."
     },
     "agencies": {
       "title": "Software houses",
-      "description": "Integre emissão fiscal aos sistemas que você desenvolve para seus clientes."
+      "description": "Coloque a emissão nos sistemas que você faz para seus clientes."
     },
     "companies": {
       "title": "Empresas",
-      "description": "Automatize a emissão de notas a partir dos seus processos internos."
+      "description": "Emita notas direto dos seus processos, sem digitar."
     }
   },
   "Developer": {
@@ -914,7 +914,7 @@
   "Footer": {
     "brand": "© Corvo. Todos os direitos reservados.",
     "product": "Produto",
-    "features": "Funcionalidades",
+    "features": "Produto",
     "pricing": "Preços",
     "companies": "Empresas",
     "developers": "Desenvolvedores",
@@ -2584,7 +2584,7 @@
   "LandingAgents": {
     "eyebrow": "AGENTES DE IA",
     "title": "Peça em português. A nota sai.",
-    "description": "Conecte o Claude, o Cursor ou o Codex à Corvo por MCP. O agente emite, calcula, cancela e busca notas com as mesmas regras fiscais da API. Você aprova no navegador e escolhe teste ou produção.",
+    "description": "Conecte o Claude, o Cursor ou o Codex à Corvo (via MCP, o jeito de a IA usar ferramentas). Ele emite, cancela e consulta notas. Você aprova no navegador.",
     "connectLabel": "CONECTE EM UM COMANDO",
     "copy": "Copiar",
     "copied": "Copiado",
@@ -2633,15 +2633,15 @@
   "LandingOpenSource": {
     "eyebrow": "CÓDIGO ABERTO",
     "title": "Escolha como rodar a Corvo.",
-    "description": "O mesmo código aberto, sob a AGPL-3.0. Você decide se a gente opera ou se você opera.",
+    "description": "O mesmo código aberto (licença AGPL-3.0). Rode no seu servidor ou use o nosso.",
     "cloud": {
       "name": "Corvo Cloud",
       "tagline": "Hospedada em corvo.tech. A gente cuida do servidor.",
       "cta": "Começar na Cloud",
       "rows": {
         "price": "A partir de R$ 59,90/mês, no cartão ou no Pix.",
-        "operator": "A Corvo: servidor, e-mail e HTTPS.",
-        "data": "Certificados A1 guardados criptografados.",
+        "operator": "A Corvo.",
+        "data": "Seu certificado digital A1 fica guardado com criptografia.",
         "updates": "Automáticas.",
         "setup": "Já configurados por nós.",
         "support": "Por e-mail."
@@ -2665,7 +2665,7 @@
       "operator": "Quem opera",
       "data": "Certificados e dados",
       "updates": "Atualizações",
-      "setup": "E-mail, S3 e HTTPS",
+      "setup": "E-mail, arquivos (S3) e HTTPS",
       "support": "Suporte"
     },
     "star": "Dar uma estrela no GitHub",
@@ -2676,11 +2676,11 @@
   "LandingSdks": {
     "eyebrow": "SDKS",
     "title": "Nove linguagens. Uma API.",
-    "description": "SDKs oficiais para Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir e .NET. As mesmas operações, as mesmas regras fiscais e a mesma autenticação: use a linguagem que você já tem em produção.",
+    "description": "Bibliotecas oficiais para a linguagem que você já usa. Mesmas operações e mesmas regras fiscais em todas.",
     "points": {
       "same": "As mesmas operações e os mesmos nomes de campo em todas as linguagens.",
-      "errors": "Os erros voltam como resultados tipados, com o código e o id da requisição.",
-      "webhooks": "Verificação de assinatura de webhook e chave de idempotência já incluídas."
+      "errors": "Os erros chegam com tipo, código e id da requisição, fáceis de tratar.",
+      "webhooks": "Já vem pronto: conferir a assinatura do webhook e evitar nota duplicada (chave de idempotência)."
     },
     "languagesLabel": "Linguagens suportadas",
     "tabsLabel": "Escolha uma linguagem",
@@ -2849,11 +2849,11 @@
     "steps": {
       "connect": {
         "title": "Conecte a plataforma",
-        "body": "Escolha a empresa que emite a nota e, se a plataforma pedir, cole a chave."
+        "body": "Escolha a empresa que emite a nota e, se a plataforma pedir, cole a chave de API."
       },
       "webhook": {
-        "title": "Cadastre o webhook",
-        "body": "Copie o endereço que a Corvo mostra e cole no painel da plataforma."
+        "title": "Cole o endereço na plataforma",
+        "body": "Copie o endereço (webhook) que a Corvo mostra e cole no painel da plataforma."
       },
       "done": {
         "title": "Pronto",
@@ -2885,12 +2885,12 @@
     "items": {
       "coverage": {
         "q": "A Corvo atende o município da minha empresa?",
-        "a": "A Corvo emite pelo ambiente nacional da NFS-e, da Receita Federal. Os municípios que já estão no padrão nacional aparecem na documentação, com busca por nome, estado ou código IBGE. Estar na lista não garante que cada nota seja aceita: quem decide é a Receita.",
+        "a": "A Corvo emite pelo ambiente nacional da Receita. Veja na documentação se seu município está na lista (busque por nome, estado ou código IBGE). Estar na lista não garante que toda nota seja aceita.",
         "link": "Ver a lista de municípios"
       },
       "issues": {
         "q": "A Corvo emite a nota por mim?",
-        "a": "Sim. Você envia os dados da venda por API, ou por uma integração de pagamento, e a Corvo monta a nota, assina com o certificado A1 da empresa (em teste não precisa), envia à Receita e devolve o resultado. Se você quiser, ela também envia o PDF e o XML por e-mail ao cliente. Hoje a Corvo atende empresas MEI e Simples Nacional.",
+        "a": "Sim. Você envia os dados da venda e a Corvo monta a nota, assina com o certificado A1 da empresa e envia à Receita. Se quiser, ela manda o PDF e o XML ao cliente por e-mail. Hoje atende empresas MEI e Simples Nacional.",
         "link": "Ver o guia de início"
       },
       "companies": {
@@ -2905,13 +2905,13 @@
       },
       "sdks": {
         "q": "A Corvo tem SDK para a minha linguagem ou MCP para agentes de IA?",
-        "a": "Sim. A Corvo tem SDKs oficiais para Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir e .NET, com as mesmas operações em todos, e também dá para chamar a API REST direto. Para agentes de IA, a Corvo tem um servidor MCP: Claude Code, Cursor, Codex, VS Code, Windsurf e Claude Desktop conectam com login no navegador, e você escolhe o workspace e o ambiente (teste ou produção) na tela de aprovação.",
+        "a": "Sim. Há bibliotecas oficiais para 9 linguagens, e também dá para chamar a API REST direto. Para agentes de IA, use o MCP: Claude, Cursor e outros conectam com login no navegador.",
         "link": "Ver os SDKs",
         "link2": "Ver o MCP"
       },
       "opensource": {
         "q": "A Corvo é código aberto? Posso rodar por conta própria?",
-        "a": "Sim. A API, o worker e o painel são públicos no GitHub sob a AGPL-3.0. Você pode ler o código, rodar nos seus servidores com Docker Compose e abrir issues e pull requests. O serviço hospedado em corvo.tech (Corvo Cloud) roda o mesmo projeto e cuida de servidor, certificados A1, atualizações e cobrança por você. Rodando por conta própria é grátis: você paga só o seu servidor e cuida de e-mail, S3, HTTPS e atualizações.",
+        "a": "Sim. A API, o processador de notas e o painel são públicos no GitHub sob a AGPL-3.0. Você pode ler o código, rodar nos seus servidores com Docker Compose e abrir issues e pull requests. O serviço hospedado em corvo.tech (Corvo Cloud) roda o mesmo projeto e cuida de servidor, certificados A1, atualizações e cobrança por você. Rodando por conta própria é grátis: você paga só o seu servidor e cuida de e-mail, S3, HTTPS e atualizações.",
         "link": "Ver o código no GitHub"
       }
     }

@@ -3,13 +3,9 @@ import pt from "@/messages/pt.json";
 import en from "@/messages/en.json";
 
 describe("hero citable definition", () => {
-  it.each([["pt", pt.Hero], ["en", en.Hero]])("%s names NFS-e, MEI, Simples Nacional and MCP", (_, hero) => {
-    for (const term of ["NFS-e", "MEI", "Simples Nacional", "MCP"]) expect(hero.subtitle).toContain(term);
+  it.each([["pt", pt.Hero], ["en", en.Hero]])("%s names NFS-e, MEI and Simples Nacional", (_, hero) => {
+    for (const term of ["NFS-e", "MEI", "Simples Nacional"]) expect(hero.subtitle).toContain(term);
     expect(hero.subtitle).not.toMatch(/AGPL/i);
-  });
-
-  it("pt names Brasil", () => {
-    expect(pt.Hero.subtitle).toContain("Brasil");
   });
 
   it.each([["pt", pt.Hero], ["en", en.Hero]])("%s adds no price to the subtitle", (_, hero) => {
