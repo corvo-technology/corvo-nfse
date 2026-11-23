@@ -29,6 +29,8 @@ export interface ProviderEvent {
   subscriptionId: string | null;
   /** Set for a completed one-time (mode=payment) checkout session. */
   payment?: { intentId: string; paid: boolean } | null;
+  /** Set for invoice.paid of a subscription with an amount above zero. */
+  invoice?: { id: string; amountCents: number; paidAt: Date } | null;
 }
 
 export abstract class BillingProvider {

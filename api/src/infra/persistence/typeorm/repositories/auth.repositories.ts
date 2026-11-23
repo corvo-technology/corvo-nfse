@@ -98,13 +98,10 @@ export class TypeOrmAuthUserRepository implements IAuthUserRepository {
     return this.save(user);
   }
 
-  async updateLastLoginAt(
-    authUserId: string,
-    lastLoginAt: Date,
-  ): Promise<void> {
-    await this.db.repository(AuthUserOrmEntity).update(authUserId, {
-      updatedAt: lastLoginAt,
-    });
+  async updateLastLoginAt(authUserId: string, at: Date): Promise<void> {
+    await this.db
+      .repository(AuthUserOrmEntity)
+      .update(authUserId, { lastLoginAt: at });
   }
 }
 
@@ -345,13 +342,17 @@ function toAuthUser(row: AuthUserOrmEntity): AuthUser {
     emailVerifiedAt: row.emailVerifiedAt ?? null,
     primaryIdentityType:
       (row.primaryIdentityType as AuthUser['primaryIdentityType']) ?? null,
+    lastLoginAt: row.lastLoginAt ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
 }
 
 function toAuthUserRow(user: AuthUser): AuthUserOrmEntity {
-  return Object.assign(new AuthUserOrmEntity(), user);
+  // last_login_at is written only by updateLastLoginAt, so a save() built from a
+  // stale read can never overwrite a newer login.
+  const { lastLoginAt: _lastLoginAt, ...rest } = user;
+  return Object.assign(new AuthUserOrmEntity(), rest);
 }
 
 function toAuthSession(row: AuthSessionOrmEntity): AuthSession {

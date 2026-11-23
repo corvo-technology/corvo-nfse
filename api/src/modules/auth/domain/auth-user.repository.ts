@@ -10,4 +10,5 @@ export abstract class IAuthUserRepository {
   abstract insertIfEmailAbsent(user: AuthUser): Promise<AuthUser | null>;
   abstract save(user: AuthUser): Promise<AuthUser>;
   abstract update(user: AuthUser): Promise<AuthUser>;
+  abstract updateLastLoginAt(authUserId: string, at: Date): Promise<void>;
 }

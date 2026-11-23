@@ -54,6 +54,7 @@ import { EmailModule } from '@/modules/email/email.module';
 import { ApiKeyController } from './application/api-key.controller';
 import { PasswordlessWorkspaceService } from './application/passwordless-workspace.service';
 import { AuthOauthModule } from './auth-oauth.module';
+import { PlatformAdminPolicy } from './application/platform-admin.policy';
 
 @Module({
   imports: [
@@ -97,6 +98,7 @@ import { AuthOauthModule } from './auth-oauth.module';
     PermissionGuard,
     RoutePermissionService,
     SensitiveAuthAuditService,
+    PlatformAdminPolicy,
     TenantContextGuard,
     TypeormApiKeyRepository,
     {
@@ -164,8 +166,10 @@ import { AuthOauthModule } from './auth-oauth.module';
     PermissionGuard,
     RoutePermissionService,
     SensitiveAuthAuditService,
+    PlatformAdminPolicy,
     TenantSettingsService,
     TenantContextGuard,
+    TypeOrmTenantRepository,
   ],
 })
 export class AuthModule {}

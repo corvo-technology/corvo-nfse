@@ -10,6 +10,7 @@ import type { PlanSlug } from '@/modules/plans/domain/plan';
 import {
   BillingProvider,
   type ProviderCheckout,
+  type ProviderEvent,
   type ProviderSubscription,
 } from '@/modules/billing/domain/billing-provider.port';
 import { stripeId } from './stripe-reference';
@@ -341,6 +342,7 @@ export class StripeBillingAdapter extends BillingProvider {
     let subscriptionId: string | null = null;
     let customerId: string | null = null;
     let payment: { intentId: string; paid: boolean } | null = null;
+    let paidInvoice: ProviderEvent['invoice'] = null;
     if (event.type === 'checkout.session.completed') {
       subscriptionId = stripeId(event.data.object.subscription);
       customerId = stripeId(event.data.object.customer);
@@ -370,6 +372,18 @@ export class StripeBillingAdapter extends BillingProvider {
         invoice.parent?.subscription_details?.subscription,
       );
       customerId = stripeId(invoice.customer);
+      const paidAtSeconds = invoice.status_transitions?.paid_at;
+      if (
+        event.type === 'invoice.paid' &&
+        subscriptionId &&
+        invoice.id &&
+        invoice.amount_paid > 0
+      )
+        paidInvoice = {
+          id: invoice.id,
+          amountCents: invoice.amount_paid,
+          paidAt: paidAtSeconds ? new Date(paidAtSeconds * 1000) : new Date(),
+        };
     }
     return {
       id: event.id,
@@ -377,6 +391,7 @@ export class StripeBillingAdapter extends BillingProvider {
       subscriptionId,
       customerId,
       payment,
+      invoice: paidInvoice,
     };
   }
 }

@@ -141,4 +141,13 @@ describe('CreditsService', () => {
     );
     expect(txRepo.save).not.toHaveBeenCalled();
   });
+
+  it('invalidateBalance apaga a chave do cache', async () => {
+    const cache = buildCache();
+    const service = new CreditsService(cache as never, buildTxRepo());
+
+    await service.invalidateBalance(tenantId);
+
+    expect(cache.delete).toHaveBeenCalledWith(`credit:balance:${tenantId}`);
+  });
 });

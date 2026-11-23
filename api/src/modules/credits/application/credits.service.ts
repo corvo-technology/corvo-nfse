@@ -119,6 +119,11 @@ export class CreditsService {
     return this.getBalance(tenantId);
   }
 
+  /** Drops the cached balance (e.g. after a rollback left a stale value in it). */
+  async invalidateBalance(tenantId: string): Promise<void> {
+    await this.cache.delete(this.getCacheKey(tenantId));
+  }
+
   async refundCredits(
     tenantId: string,
     amount: number,

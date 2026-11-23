@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Plug,
   Settings,
+  ShieldCheck,
   Users,
   Webhook,
   X,
@@ -50,6 +51,8 @@ const navAccount: NavItem[] = [
   { key: "Sidebar.nav.settings", href: "/app/settings", icon: Settings },
 ];
 
+const navAdmin: NavItem = { key: "Sidebar.nav.admin", href: "/app/admin", icon: ShieldCheck };
+
 interface SidebarProps {
   activePath: string;
   open: boolean;
@@ -59,7 +62,7 @@ interface SidebarProps {
 
 export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarProps) {
   const t = useTranslations();
-  const { can, tenantId } = useAuth();
+  const { can, tenantId, isPlatformAdmin } = useAuth();
   const [plan, setPlan] = useState<BillingPlan | null>(null);
   // `can` changes identity on every session refresh (e.g. each window focus);
   // depend on the boolean so the plan is not refetched each time.
@@ -136,6 +139,7 @@ export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarPr
           <p className="eyebrow px-3 py-1 text-text-5">{t("Sidebar.account")}</p>
           <ul className="flex flex-col gap-0.5">{navAccount.map(renderItem)}</ul>
         </div>
+        {isPlatformAdmin && <ul className="flex flex-col gap-0.5">{renderItem(navAdmin)}</ul>}
       </nav>
 
       {!billingEnabled && (

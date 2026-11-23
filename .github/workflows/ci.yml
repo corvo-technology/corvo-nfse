@@ -55,6 +55,55 @@ jobs:
       - name: Build
         run: yarn build
 
+  platform-admin-postgres:
+    name: Platform admin (Postgres and Redis)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: corvo
+          POSTGRES_PASSWORD: corvo
+          POSTGRES_DB: corvo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U corvo -d corvo_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: api/yarn.lock
+      - name: Install
+        run: yarn install --frozen-lockfile
+      # The specs create their own schema (owner role) and a restricted runtime
+      # role through scripts/provision-runtime-role.sql, so the service's default
+      # superuser is enough.
+      - name: Platform admin specs against Postgres
+        env:
+          NODE_ENV: test
+          MIGRATION_TEST_DATABASE_URL: postgresql://corvo:corvo@localhost:5432/corvo_test
+          AUTH_TEST_REDIS_URL: redis://localhost:6379
+        run: yarn jest src/modules/platform-admin --runInBand
+
   docker:
     name: Validate Docker and Compose
     runs-on: ubuntu-latest

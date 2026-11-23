@@ -24,6 +24,21 @@ const businessSources = sources(modules).filter((path) => {
   );
 });
 
+// The platform admin is a read model: its services read through dedicated read
+// repositories (PlatformReadSession, READ ONLY) and write only the audit row
+// and the tenant lookup of the credit grant. These exact dependencies are the
+// whole exemption; any other persistence import in those files still fails.
+const platformAdminExemptions: Record<string, string[]> = {
+  'platform-admin/application/platform-user-detail.service.ts': [
+    '../infra/platform-admin-audit.repository',
+    '../infra/read/platform-user-detail.read-repository',
+  ],
+  'platform-admin/application/platform-credit-grant.service.ts': [
+    '@/modules/auth/infra/typeorm-tenant.repository',
+    '../infra/platform-admin-audit.repository',
+  ],
+};
+
 describe('business persistence boundaries', () => {
   it.each(businessSources)(
     '%s uses repository contracts rather than persistence implementations',
@@ -42,12 +57,15 @@ describe('business persistence boundaries', () => {
         ) {
           const dependency = node.moduleSpecifier.text;
           if (
-            /^(typeorm|@nestjs\/typeorm)(\/|$)/.test(dependency) ||
-            /(?:\.orm-entit(?:y|ies)|\.mapper)$/.test(dependency) ||
-            /(?:^|\/)infra\/.*repository/.test(dependency) ||
-            /typeorm-(?:repository\.helper|transaction-context|unit-of-work)$/.test(
-              dependency,
-            )
+            !platformAdminExemptions[
+              relative(modules, path).replaceAll('\\', '/')
+            ]?.includes(dependency) &&
+            (/^(typeorm|@nestjs\/typeorm)(\/|$)/.test(dependency) ||
+              /(?:\.orm-entit(?:y|ies)|\.mapper)$/.test(dependency) ||
+              /(?:^|\/)infra\/.*repository/.test(dependency) ||
+              /typeorm-(?:repository\.helper|transaction-context|unit-of-work)$/.test(
+                dependency,
+              ))
           )
             violations.push(dependency);
         }

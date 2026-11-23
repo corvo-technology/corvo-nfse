@@ -1,7 +1,7 @@
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { canOpenPath, permissionForPath, ROUTE_PERMISSION_RULES } from "@/lib/route-permissions";
+import { canOpenPath, isPlatformAdminPath, permissionForPath, ROUTE_PERMISSION_RULES } from "@/lib/route-permissions";
 import { TENANT_ADMIN_PERMISSIONS, TENANT_ROLE_PERMISSIONS } from "../../api/src/modules/auth/domain/permission";
 
 const asCan = (role: keyof typeof TENANT_ROLE_PERMISSIONS) => {
@@ -83,6 +83,14 @@ describe("every dashboard page is covered", () => {
   });
 
   it.each(routes)("%s has a rule or is open on purpose", (route) => {
-    expect(permissionForPath(route) !== null || OPEN_TO_ALL.has(route)).toBe(true);
+    expect(permissionForPath(route) !== null || OPEN_TO_ALL.has(route) || isPlatformAdminPath(route)).toBe(true);
+  });
+
+  it("platform admin pages need no tenant permission (the server-side admin gate decides)", () => {
+    const adminRoutes = routes.filter(isPlatformAdminPath);
+    expect(adminRoutes).toContain("/app/admin");
+    expect(adminRoutes).toContain("/app/admin/users/x");
+    for (const route of adminRoutes) expect(permissionForPath(route)).toBeNull();
+    expect(isPlatformAdminPath("/app/administration")).toBe(false);
   });
 });
