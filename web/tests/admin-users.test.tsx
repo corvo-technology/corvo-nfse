@@ -62,13 +62,44 @@ describe("Admin users page", () => {
     expect(mocks.users).toHaveBeenLastCalledWith({ limit: 50, search: "bia" }, expect.anything());
   });
 
+  it("ignores a late load-more after the search changes", async () => {
+    mocks.users.mockResolvedValueOnce(page([ana], "cur-1"));
+    renderPage();
+    await table();
+    let resolveLate: (value: ReturnType<typeof page>) => void = () => {};
+    mocks.users.mockImplementationOnce(() => new Promise((resolve) => { resolveLate = resolve; }));
+    fireEvent.click(screen.getByRole("button", { name: messages.Admin.common.loadMore }));
+    fireEvent.click(screen.getByRole("button", { name: messages.Admin.common.loadMore }));
+    expect(mocks.users).toHaveBeenCalledTimes(2);
+    mocks.users.mockResolvedValue(page([bia]));
+    fireEvent.change(screen.getByLabelText(t.searchLabel), { target: { value: "bia" } });
+    await waitFor(() => expect(mocks.users).toHaveBeenLastCalledWith({ limit: 50, search: "bia" }, expect.anything()));
+    expect(await within(await screen.findByRole("table")).findByText("bia@example.com")).toBeTruthy();
+    resolveLate(page([{ ...ana, id: "u-9", email: "late@example.com" }], "cur-late"));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByText("late@example.com")).toBeNull();
+    expect(screen.queryByText("ana@example.com")).toBeNull();
+    expect(screen.queryByRole("button", { name: messages.Admin.common.loadMore })).toBeNull();
+  });
+
+  it("clears the old rows and cursor when a new search fails", async () => {
+    mocks.users.mockResolvedValueOnce(page([ana], "cur-1"));
+    renderPage();
+    await table();
+    mocks.users.mockRejectedValue(new Error("boom"));
+    fireEvent.change(screen.getByLabelText(t.searchLabel), { target: { value: "zzz" } });
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByText("ana@example.com")).toBeNull();
+    expect(screen.queryByRole("button", { name: messages.Admin.common.loadMore })).toBeNull();
+  });
+
   it("loads more with the next cursor", async () => {
     mocks.users.mockResolvedValueOnce(page([ana], "cur-1"));
     renderPage();
     await table();
     mocks.users.mockResolvedValueOnce(page([bia]));
     fireEvent.click(screen.getByRole("button", { name: messages.Admin.common.loadMore }));
-    await waitFor(() => expect(mocks.users).toHaveBeenLastCalledWith({ limit: 50, cursor: "cur-1" }));
+    await waitFor(() => expect(mocks.users).toHaveBeenLastCalledWith({ limit: 50, cursor: "cur-1" }, expect.anything()));
     expect(await within(screen.getByRole("table")).findByText("bia@example.com")).toBeTruthy();
     expect(screen.queryByRole("button", { name: messages.Admin.common.loadMore })).toBeNull();
   });

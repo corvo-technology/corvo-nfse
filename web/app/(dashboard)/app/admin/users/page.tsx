@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Users } from "lucide-react";
@@ -34,16 +34,35 @@ export default function AdminUsersPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const termRef = useRef("");
+
   // The search runs when the typing stops, not on every key.
   useEffect(() => {
-    const timer = setTimeout(() => setTerm(search.trim()), TYPING_PAUSE_MS);
+    const timer = setTimeout(() => {
+      const next = search.trim();
+      if (next === termRef.current) return;
+      // A new term drops the old rows and cursor right away, so they never pair with it.
+      termRef.current = next;
+      setRows([]);
+      setNextCursor(null);
+      setLoadingMore(false);
+      setError(null);
+      setLoading(true);
+      setTerm(next);
+    }, TYPING_PAUSE_MS);
     return () => clearTimeout(timer);
   }, [search]);
 
+  // One controller per search term: a new term aborts the previous load and any pending "load more".
+  const controllerRef = useRef<AbortController | null>(null);
+  const loadingMoreRef = useRef(false);
+
   useEffect(() => {
     const controller = new AbortController();
+    controllerRef.current = controller;
+    loadingMoreRef.current = false;
     platformAdmin.users({ limit: PAGE_SIZE, ...(term ? { search: term } : {}) }, controller.signal)
-      .then((page) => { setRows(page.items); setNextCursor(page.hasMore ? page.nextCursor : null); setError(null); })
+      .then((page) => { if (controller.signal.aborted) return; setRows(page.items); setNextCursor(page.hasMore ? page.nextCursor : null); setError(null); })
       .catch((cause: unknown) => { if (!controller.signal.aborted) setError(apiError(cause, tc("loadFailed"))); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
@@ -51,14 +70,17 @@ export default function AdminUsersPage() {
   }, [term]);
 
   const loadMore = useCallback(async () => {
-    if (!nextCursor) return;
+    const controller = controllerRef.current;
+    if (!nextCursor || !controller || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
-      const page = await platformAdmin.users({ limit: PAGE_SIZE, cursor: nextCursor, ...(term ? { search: term } : {}) });
+      const page = await platformAdmin.users({ limit: PAGE_SIZE, cursor: nextCursor, ...(term ? { search: term } : {}) }, controller.signal);
+      if (controller.signal.aborted) return;
       setRows((current) => [...current, ...page.items]);
       setNextCursor(page.hasMore ? page.nextCursor : null);
-    } catch (cause) { setError(apiError(cause, tc("loadFailed"))); }
-    finally { setLoadingMore(false); }
+    } catch (cause) { if (!controller.signal.aborted) setError(apiError(cause, tc("loadFailed"))); }
+    finally { if (!controller.signal.aborted) { loadingMoreRef.current = false; setLoadingMore(false); } }
   }, [nextCursor, term, apiError, tc]);
 
   const date = (value: string | null) => (value ? formatDate(value, locale) : "—");
