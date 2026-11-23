@@ -62,7 +62,7 @@ export class PlatformAdminGuard implements CanActivate {
       !auth.authUserId
     ) {
       this.logger.warn(
-        `Platform admin route refused (ineligible principal): ${route}`,
+        `Platform admin route refused (ineligible principal) for user ${auth?.authUserId ?? 'anonymous'} (authMode ${request.authMode ?? 'none'}): ${route}`,
       );
       throw notFound();
     }

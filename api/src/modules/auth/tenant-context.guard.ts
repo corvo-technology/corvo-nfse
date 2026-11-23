@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PUBLIC_ROUTE_KEY } from './application/public-route.decorator';
+import { PLATFORM_ADMIN_ONLY } from './platform-admin-only.decorator';
 import type { RequestWithAuthContext } from './auth-context';
 
 @Injectable()
@@ -44,7 +45,11 @@ export class TenantContextGuard implements CanActivate {
     }
 
     const routeTenantId = request.params?.tenantId;
-    if (routeTenantId !== undefined && isPlatformRoute(request)) {
+    if (
+      routeTenantId !== undefined &&
+      isPlatformRoute(request) &&
+      this.isPlatformAdminOnly(context)
+    ) {
       return true;
     }
 
@@ -66,6 +71,19 @@ export class TenantContextGuard implements CanActivate {
     }
 
     return true;
+  }
+
+  private isPlatformAdminOnly(context: ExecutionContext): boolean {
+    return (
+      typeof context.getHandler === 'function' &&
+      typeof context.getClass === 'function' &&
+      Boolean(
+        this.reflector.getAllAndOverride<boolean>(PLATFORM_ADMIN_ONLY, [
+          context.getHandler(),
+          context.getClass(),
+        ]),
+      )
+    );
   }
 }
 

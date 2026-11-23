@@ -114,4 +114,24 @@ describe('PlatformAdminGuard', () => {
       expect.stringContaining('/v1/platform/overview'),
     );
   });
+
+  it('registra Logger.warn com usuário e authMode ao recusar principal inelegível', async () => {
+    const { guard } = make({ isAdmin: true, email: 'a@b.co' });
+    await guard
+      .canActivate(
+        ctx({
+          authMode: 'api_key',
+          authContext: member,
+          path: '/v1/platform/x',
+        }),
+      )
+      .catch(() => undefined);
+    expect(Logger.prototype.warn).toHaveBeenCalledWith(
+      expect.stringMatching(/user-1.*api_key/),
+    );
+    await guard.canActivate(ctx({})).catch(() => undefined);
+    expect(Logger.prototype.warn).toHaveBeenCalledWith(
+      expect.stringContaining('anonymous'),
+    );
+  });
 });
