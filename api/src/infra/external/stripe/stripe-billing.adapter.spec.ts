@@ -141,7 +141,6 @@ describe('Stripe billing adapter', () => {
         mode: 'payment',
         customer: 'cus_fixture',
         allowed_payment_method_types: ['card'],
-        allow_promotion_codes: true,
         metadata: { tenant_id: 'tenant', intent_id: 'intent-1' },
         line_items: [
           {
@@ -155,6 +154,32 @@ describe('Stripe billing adapter', () => {
         ],
       }),
       { idempotencyKey: 'corvo:pay:intent-1' },
+    );
+  });
+  it('only offers promotion codes on a payment checkout when asked (annual)', async () => {
+    const create = jest.fn().mockResolvedValue({ id: 'cs', url: 'u' });
+    const adapter = new StripeBillingAdapter(
+      {
+        config: configuration(),
+        stripe: { checkout: { sessions: { create } } },
+      } as unknown as StripeGateway,
+      new PricingService(),
+    );
+    const base = { name: 'n', amountCents: 990, intentId: 'i' };
+    await adapter.createPaymentCheckout('cus', 't', base);
+    await adapter.createPaymentCheckout('cus', 't', {
+      ...base,
+      allowPromotionCodes: true,
+    });
+    expect(create).toHaveBeenNthCalledWith(
+      1,
+      expect.not.objectContaining({ allow_promotion_codes: expect.anything() }),
+      expect.anything(),
+    );
+    expect(create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ allow_promotion_codes: true }),
+      expect.anything(),
     );
   });
   it('creates hosted monthly checkout with a single server-owned BRL base price', async () => {
@@ -198,7 +223,6 @@ describe('Stripe billing adapter', () => {
         mode: 'subscription',
         ui_mode: 'hosted_page',
         allowed_payment_method_types: ['card'],
-        allow_promotion_codes: true,
         branding_settings: expect.objectContaining({
           display_name: 'Corvo',
           background_color: '#0a0a0a',
@@ -210,6 +234,11 @@ describe('Stripe billing adapter', () => {
           'https://corvo.test/app/billing/success?session_id={CHECKOUT_SESSION_ID}',
       }),
       { idempotencyKey: 'corvo:checkout:intent' },
+    );
+    expect(create).toHaveBeenNthCalledWith(
+      1,
+      expect.not.objectContaining({ allow_promotion_codes: expect.anything() }),
+      expect.anything(),
     );
     prices.mockResolvedValueOnce({ data: [] });
     await expect(

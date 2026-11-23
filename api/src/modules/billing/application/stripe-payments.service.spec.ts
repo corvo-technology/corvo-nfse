@@ -55,7 +55,10 @@ describe('StripePaymentsService.start', () => {
     expect(f.provider.createPaymentCheckout).toHaveBeenCalledWith(
       'cus_new',
       tenant,
-      expect.objectContaining({ amountCents: 990 }),
+      expect.objectContaining({
+        amountCents: 990,
+        allowPromotionCodes: false,
+      }),
     );
     expect(f.store.rows[0]).toMatchObject({
       provider: 'stripe',
@@ -75,7 +78,10 @@ describe('StripePaymentsService.start', () => {
     expect(f.provider.createPaymentCheckout).toHaveBeenCalledWith(
       'cus_1',
       tenant,
-      expect.objectContaining({ amountCents: 50280 }),
+      expect.objectContaining({
+        amountCents: 50280,
+        allowPromotionCodes: true,
+      }),
     );
   });
   it('rejects fewer than 3 notes and monthly plans (those are subscriptions)', async () => {

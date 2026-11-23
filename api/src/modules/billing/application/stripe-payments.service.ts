@@ -79,7 +79,13 @@ export class StripePaymentsService {
     const session = await this.provider.createPaymentCheckout(
       customerId,
       tenantId,
-      { name, amountCents, intentId },
+      {
+        name,
+        amountCents,
+        intentId,
+        // Coupons are only valid for the annual plan, never for avulso notes.
+        allowPromotionCodes: purchase.kind === 'plan',
+      },
     );
     if (!session.url)
       throw new BadRequestException({
