@@ -7,7 +7,9 @@ import {
   NotFoundException,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiExcludeController } from '@nestjs/swagger';
+import type { AppConfiguration, OtpConfig } from '@/infra/config/configuration';
 import type { RequestWithAuthContext } from '@/modules/auth/auth-context';
 import { PlatformAdminPolicy } from '@/modules/auth/application/platform-admin.policy';
 import { PlatformAdminOnly } from '@/modules/auth/platform-admin-only.decorator';
@@ -45,7 +47,10 @@ function notFound(): NotFoundException {
 export class PlatformAdminGuard implements CanActivate {
   private readonly logger = new Logger(PlatformAdminGuard.name);
 
-  constructor(private readonly policy: PlatformAdminPolicy) {}
+  constructor(
+    private readonly policy: PlatformAdminPolicy,
+    private readonly config: ConfigService<AppConfiguration>,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
@@ -78,7 +83,10 @@ export class PlatformAdminGuard implements CanActivate {
     request.platformAdmin = {
       authUserId: auth.authUserId,
       email,
-      ipHash: hashIp(resolveClientIp(request)),
+      ipHash: hashIp(
+        resolveClientIp(request),
+        this.config.getOrThrow<OtpConfig>('otp').hmacSecret,
+      ),
     };
     return true;
   }

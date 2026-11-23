@@ -9,8 +9,16 @@ describe('PlatformAdminGuard', () => {
     principalType: 'tenant_member',
   };
   const make = (result: { isAdmin: boolean; email: string | null }) => {
+    const config = {
+      getOrThrow: jest
+        .fn()
+        .mockReturnValue({ hmacSecret: 'test-secret-0123456789' }),
+    };
     const policy = { resolve: jest.fn().mockResolvedValue(result) };
-    return { policy, guard: new PlatformAdminGuard(policy as never) };
+    return {
+      policy,
+      guard: new PlatformAdminGuard(policy as never, config as never),
+    };
   };
   const expectNotFound = async (p: Promise<unknown>) => {
     const err = await p.catch((e: unknown) => e);

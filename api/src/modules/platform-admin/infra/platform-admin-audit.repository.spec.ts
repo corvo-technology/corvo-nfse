@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { TypeOrmRepositoryHelper } from '@/infra/persistence/typeorm/typeorm-repository.helper';
 import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
 import type { DataSource, EntityManager } from 'typeorm';
@@ -54,8 +55,13 @@ describe('PlatformAdminAuditRepository', () => {
   });
 
   it('hashIp é estável e nulo sem IP', () => {
-    expect(hashIp('1.2.3.4')).toMatch(/^[0-9a-f]{64}$/);
-    expect(hashIp('1.2.3.4')).toBe(hashIp('1.2.3.4'));
-    expect(hashIp(undefined)).toBeNull();
+    const secret = 'a-server-secret-with-enough-length-0123';
+    expect(hashIp('1.2.3.4', secret)).toMatch(/^[0-9a-f]{64}$/);
+    expect(hashIp('1.2.3.4', secret)).toBe(hashIp('1.2.3.4', secret));
+    expect(hashIp('1.2.3.4', secret)).not.toBe(
+      createHash('sha256').update('1.2.3.4').digest('hex'),
+    );
+    expect(hashIp('1.2.3.4', secret)).not.toBe(hashIp('1.2.3.4', 'other'));
+    expect(hashIp(undefined, secret)).toBeNull();
   });
 });

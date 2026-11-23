@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { TypeOrmRepositoryHelper } from '@/infra/persistence/typeorm/typeorm-repository.helper';
 import { queryCursorPage } from '@/shared/http/keyset-pagination';
@@ -34,8 +34,9 @@ export interface PlatformAuditEvent {
   createdAt: Date;
 }
 
-export function hashIp(ip: string | undefined): string | null {
-  return ip ? createHash('sha256').update(ip).digest('hex') : null;
+/** Keyed (HMAC-SHA256) so an IPv4 cannot be brute-forced out of the audit table. */
+export function hashIp(ip: string | undefined, secret: string): string | null {
+  return ip ? createHmac('sha256', secret).update(ip).digest('hex') : null;
 }
 
 function toEvent(row: PlatformAdminAuditOrmEntity): PlatformAuditEvent {
