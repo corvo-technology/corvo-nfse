@@ -11,6 +11,9 @@ export class InvoiceEventMapper {
       toStatus: orm.toStatus as InvoiceStatus,
       reason: orm.reason ?? null,
       createdAt: orm.createdAt,
+      source: orm.source === 'portal' ? 'portal' : null,
+      portalEvent: orm.portalEvent ?? null,
+      portalNsu: orm.portalNsu == null ? null : Number(orm.portalNsu),
     };
     return InvoiceEvent.reconstitute(snapshot);
   }
@@ -24,6 +27,10 @@ export class InvoiceEventMapper {
     orm.toStatus = snapshot.toStatus;
     orm.reason = snapshot.reason ?? undefined;
     orm.createdAt = snapshot.createdAt;
+    orm.source = snapshot.source ?? undefined;
+    orm.portalEvent = snapshot.portalEvent ?? undefined;
+    orm.portalNsu =
+      snapshot.portalNsu == null ? undefined : String(snapshot.portalNsu);
     return orm;
   }
 }

@@ -246,6 +246,7 @@ export const WEBHOOK_EVENT_OPTIONS = [
   { value: "nfse.invoice.fiscal_discrepancy", label: "Fiscal discrepancy", description: "The authorized invoice differs from the calculated taxes." },
   { value: "nfse.invoice.cancelled", label: "Invoice cancelled", description: "The invoice was cancelled (scheduled or at the Sefin)." },
   { value: "nfse.invoice.cancellation_rejected", label: "Cancellation rejected", description: "The Sefin refused the cancellation; the invoice stays authorized." },
+  { value: "nfse.invoice.taker_rejected", label: "Taker rejected", description: "The taker rejected the invoice on the national portal; it stays authorized." },
 ] as const;
 
 export type WebhookEvent = (typeof WEBHOOK_EVENT_OPTIONS)[number]["value"];
@@ -414,7 +415,10 @@ export interface Certificate {
 }
 export type InvoiceStatus = "queued" | "processing" | "authorized" | "rejected" | "retry_pending" | "reconciliation_required" | "manual_review" | "failed" | "cancelling" | "cancelled";
 export type CancellationReasonCode = "issue_error" | "service_not_provided" | "other";
+/** What the national portal says about an authorized invoice. */
+export type PortalFlag = "taker_rejected" | "blocked";
 export interface Invoice {
+  portalFlag?: PortalFlag | null;
   id: string; tenantId: string; companyId: string; externalId?: string | null;
   accessKey?: string | null; nfseNumber?: number | null; status: InvoiceStatus;
   amount: number; customerName: string; customerTaxId: string;
@@ -454,6 +458,8 @@ export type CreateInvoiceInput = ({ companyTaxId: string; companyId?: string } |
 export interface InvoiceEvent {
   id: string; invoiceId: string; from: InvoiceStatus | null;
   to: InvoiceStatus; at: string; reason?: string | null;
+  /** `portal` when the entry reports something the national portal registered. */
+  source?: "portal" | null; portalEvent?: string | null;
 }
 
 // ── Billing types ─────────────────────────────────────────────────────────────

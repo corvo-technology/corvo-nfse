@@ -6,6 +6,7 @@ import {
   ServiceSnapshot,
 } from '../domain/invoice';
 import type { CancellationReasonCode } from '../domain/cancellation-reason';
+import type { PortalFlag } from '../domain/portal-flag';
 import { InvoiceStatus } from '../domain/invoice-status';
 import { InvoiceOrmEntity } from './invoice.orm-entity';
 
@@ -82,6 +83,7 @@ export class InvoiceMapper {
       cancellationRequestedAt: orm.cancellationRequestedAt ?? null,
       substitutesInvoiceId: orm.substitutesInvoiceId ?? null,
       substitutionDescription: orm.substitutionDescription ?? null,
+      portalFlag: (orm.portalFlag as PortalFlag | null) ?? null,
       createdAt: orm.createdAt,
       updatedAt: orm.updatedAt,
     };

@@ -216,6 +216,20 @@ export class InvoiceEventResponseDto {
 
   @ApiProperty()
   createdAt!: Date;
+
+  @ApiPropertyOptional({
+    enum: ['portal'],
+    nullable: true,
+    description:
+      '`portal` when the entry reports something the national portal registered; otherwise null.',
+  })
+  source?: 'portal' | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Portal event type, such as REJEICAO_TOMADOR.',
+  })
+  portalEvent?: string | null;
 }
 
 export class InvoiceStatusResponseDto {

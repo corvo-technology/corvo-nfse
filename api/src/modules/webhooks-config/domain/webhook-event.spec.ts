@@ -43,8 +43,14 @@ describe('WebhookEvent Types', () => {
       );
     });
 
-    it('includes the eleven supported NFS-e event types', () => {
-      expect(PUBLIC_WEBHOOK_EVENT_TYPES).toHaveLength(11);
+    it('includes the taker rejection reported by the portal', () => {
+      expect(PUBLIC_WEBHOOK_EVENT_TYPES).toContain(
+        'nfse.invoice.taker_rejected',
+      );
+    });
+
+    it('includes the twelve supported NFS-e event types', () => {
+      expect(PUBLIC_WEBHOOK_EVENT_TYPES).toHaveLength(12);
     });
 
     it('all NFS-e event types follow the nfse.invoice.* pattern', () => {

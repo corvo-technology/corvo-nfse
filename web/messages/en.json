@@ -376,6 +376,10 @@
           "cancellation_rejected": {
             "label": "Cancellation rejected",
             "description": "The Sefin refused the cancellation; the invoice stays authorized."
+          },
+          "taker_rejected": {
+            "label": "Taker rejected",
+            "description": "The taker rejected the invoice on the national portal; it stays authorized."
           }
         }
       }
@@ -1298,6 +1302,10 @@
       "title": "More options",
       "hint": "Code, deduction, order, notes, reference and repeat",
       "filled": "{count} filled"
+    },
+    "portalFlag": {
+      "taker_rejected": "Taker rejected",
+      "blocked": "Blocked by the municipality"
     }
   },
   "Billing": {
@@ -1790,7 +1798,30 @@
       "keep": "Keep as is",
       "confirm": "Substitute invoice",
       "failed": "Could not substitute the invoice."
-    }
+    },
+    "portalFlag": {
+      "taker_rejected": "Taker rejected",
+      "blocked": "Blocked by the municipality"
+    },
+    "portalFlagHint": {
+      "taker_rejected": "The taker rejected this invoice on the national portal. It stays authorized.",
+      "blocked": "The municipality blocked this invoice by official letter. It stays authorized."
+    },
+    "portalEvent": {
+      "CANCELAMENTO": "Cancelled on the national portal",
+      "CANCELAMENTO_POR_SUBSTITUICAO": "Cancelled by substitution on the national portal",
+      "CANCELAMENTO_DEFERIDO_ANALISE_FISCAL": "Cancellation granted by fiscal review",
+      "CANCELAMENTO_POR_OFICIO": "Cancelled by the municipality",
+      "REJEICAO_TOMADOR": "The taker rejected the invoice",
+      "REJEICAO_INTERMEDIARIO": "The intermediary rejected the invoice",
+      "BLOQUEIO_POR_OFICIO": "Blocked by the municipality",
+      "DESBLOQUEIO_POR_OFICIO": "Unblocked by the municipality",
+      "CONFIRMACAO_TOMADOR": "The taker confirmed the invoice",
+      "CONFIRMACAO_TACITA": "Tacit confirmation by the taker",
+      "ANULACAO_REJEICAO": "Rejection annulled",
+      "other": "Registered on the national portal"
+    },
+    "portalSource": "National portal"
   },
   "FiscalDocs": {
     "title": "Corvo API — NFS-e",
