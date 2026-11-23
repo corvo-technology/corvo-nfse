@@ -7,6 +7,7 @@ import type { IWebhookConfigRepository } from '@/modules/webhooks-config/domain/
 import type { WebhookOutboxService } from '@/modules/webhooks-config/application/webhook-outbox.service';
 import type { Invoice } from '../domain/invoice';
 import { NfseDocPrepProcessor } from './nfse-doc-prep.processor';
+import * as danfse from '../infra/danfse/danfse';
 import type { NfseDocPrepJobData } from '@/infra/queues/nfse-doc-prep-job.types';
 
 jest.mock('open-nfse', () => {
@@ -39,6 +40,7 @@ const fakeInvoiceRepo: Partial<IInvoiceRepository> = {
   findByIdAndTenantId: jest.fn(),
   markDocumentsReady: jest.fn(),
   updateEmailStatus: jest.fn(),
+  hasSubstitute: jest.fn(),
 };
 
 const fakeQueueService: Partial<BullmqQueueService> = {
@@ -104,6 +106,7 @@ function buildInvoice(
     fiscalSchemaVersion: '1.00',
     issuedAt: new Date(),
     authorizedAt: new Date(),
+    wasAuthorized: true,
     lastErrorCode: null,
     lastErrorMessage: null,
     lastErrorProvider: null,
@@ -146,6 +149,7 @@ describe('NfseDocPrepProcessor', () => {
     (fakeDocStorage.savePdf as jest.Mock).mockResolvedValue('pdf-key');
     (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(null);
     (fakeInvoiceRepo.markDocumentsReady as jest.Mock).mockResolvedValue(false);
+    (fakeInvoiceRepo.hasSubstitute as jest.Mock).mockResolvedValue(false);
     (fakeQueueService.add as jest.Mock).mockResolvedValue({
       id: 'email-job-1',
     });
@@ -514,6 +518,162 @@ describe('NfseDocPrepProcessor', () => {
           ambiente: Ambiente.Producao,
         }),
       );
+    });
+  });
+});
+
+describe('NfseDocPrepProcessor — PDF reflects the invoice status', () => {
+  let processor: NfseDocPrepProcessor;
+  let render: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    (fakeLock.acquire as jest.Mock).mockResolvedValue({ key: 'k' });
+    (fakeLock.release as jest.Mock).mockResolvedValue(true);
+    (fakeDocStorage.getXml as jest.Mock).mockResolvedValue('<xml>fake</xml>');
+    (fakeDocStorage.savePdf as jest.Mock).mockResolvedValue('pdf-key');
+    (fakeInvoiceRepo.markDocumentsReady as jest.Mock).mockResolvedValue(false);
+    (fakeInvoiceRepo.hasSubstitute as jest.Mock).mockResolvedValue(false);
+    (
+      fakeWebhookConfigRepo.findByTenantIdAndEvent as jest.Mock
+    ).mockResolvedValue([]);
+    (parseNfseXml as jest.Mock).mockReturnValue({
+      infNFSe: { DPS: { infDPS: { tpAmb: '1' } } },
+    });
+    render = jest
+      .spyOn(danfse, 'renderInvoicePdf')
+      .mockResolvedValue(Buffer.from('%PDF-marked'));
+    processor = new NfseDocPrepProcessor(
+      fakeLock,
+      fakeDocStorage as IDocumentStorage,
+      fakeInvoiceRepo as IInvoiceRepository,
+      fakeQueueService as BullmqQueueService,
+      fakeWebhookConfigRepo as IWebhookConfigRepository,
+      fakeOutboxService as WebhookOutboxService,
+    );
+  });
+
+  afterEach(() => render.mockRestore());
+
+  const statusPassed = (): unknown =>
+    (render.mock.calls as [unknown, unknown, { status?: string }][])[0][2]
+      .status;
+
+  it('generates a valid invoice without any mark', async () => {
+    (fakeDocStorage.exists as jest.Mock).mockResolvedValue(false);
+    (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+      buildInvoice(),
+    );
+    await processor.process(makeJob());
+    expect(statusPassed()).toBeUndefined();
+  });
+
+  it('generates the PDF of an already cancelled invoice with the CANCELADA mark', async () => {
+    (fakeDocStorage.exists as jest.Mock).mockResolvedValue(false);
+    (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+      buildInvoice({ status: 'cancelled' }),
+    );
+    await processor.process(makeJob());
+    expect(statusPassed()).toBe('cancelled');
+  });
+
+  it('generates the PDF of a substituted invoice with the SUBSTITUÍDA mark', async () => {
+    (fakeDocStorage.exists as jest.Mock).mockResolvedValue(false);
+    (fakeInvoiceRepo.hasSubstitute as jest.Mock).mockResolvedValue(true);
+    (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+      buildInvoice({ status: 'cancelled' }),
+    );
+    await processor.process(makeJob());
+    expect(statusPassed()).toBe('replaced');
+  });
+
+  describe('refresh-pdf job', () => {
+    const refreshJob = () =>
+      ({
+        ...makeJob(),
+        name: 'refresh-pdf',
+      }) as unknown as Job<NfseDocPrepJobData>;
+
+    it('regenerates the stored PDF with the CANCELADA mark', async () => {
+      (fakeDocStorage.exists as jest.Mock).mockResolvedValue(true);
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        buildInvoice({ status: 'cancelled', documentsReadyAt: new Date() }),
+      );
+      await processor.process(refreshJob());
+      expect(statusPassed()).toBe('cancelled');
+      expect(fakeDocStorage.savePdf).toHaveBeenCalledWith(
+        'tenant-1',
+        'inv-1',
+        Buffer.from('%PDF-marked'),
+        'live',
+      );
+      expect(fakeInvoiceRepo.markDocumentsReady).not.toHaveBeenCalled();
+      expect(fakeQueueService.add).not.toHaveBeenCalled();
+    });
+
+    it('regenerates with the SUBSTITUÍDA mark when a substitute exists', async () => {
+      (fakeDocStorage.exists as jest.Mock).mockResolvedValue(true);
+      (fakeInvoiceRepo.hasSubstitute as jest.Mock).mockResolvedValue(true);
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        buildInvoice({ status: 'cancelled', documentsReadyAt: new Date() }),
+      );
+      await processor.process(refreshJob());
+      expect(statusPassed()).toBe('replaced');
+    });
+
+    it('is safe to run twice: the same PDF overwrites the same object', async () => {
+      (fakeDocStorage.exists as jest.Mock).mockResolvedValue(true);
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        buildInvoice({ status: 'cancelled', documentsReadyAt: new Date() }),
+      );
+      await processor.process(refreshJob());
+      await processor.process(refreshJob());
+      expect(fakeDocStorage.savePdf).toHaveBeenCalledTimes(2);
+      expect(fakeDocStorage.savePdf).toHaveBeenNthCalledWith(
+        2,
+        'tenant-1',
+        'inv-1',
+        Buffer.from('%PDF-marked'),
+        'live',
+      );
+    });
+
+    it('does nothing when the invoice is no longer cancelled', async () => {
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        buildInvoice({ status: 'authorized' }),
+      );
+      await processor.process(refreshJob());
+      expect(fakeDocStorage.savePdf).not.toHaveBeenCalled();
+    });
+
+    it('does not create a PDF for an invoice that never had one', async () => {
+      (fakeDocStorage.exists as jest.Mock).mockResolvedValue(false);
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        buildInvoice({ status: 'cancelled', documentsReadyAt: new Date() }),
+      );
+      await processor.process(refreshJob());
+      expect(fakeDocStorage.savePdf).not.toHaveBeenCalled();
+    });
+
+    it('fails to be retried when the documents are still being prepared', async () => {
+      (fakeDocStorage.exists as jest.Mock).mockResolvedValue(false);
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        buildInvoice({ status: 'cancelled', documentsReadyAt: null }),
+      );
+      await expect(processor.process(refreshJob())).rejects.toThrow(
+        /still being prepared/,
+      );
+    });
+
+    it('does nothing for an invoice that was never authorized', async () => {
+      const invoice = buildInvoice({ status: 'cancelled' });
+      (invoice as unknown as { wasAuthorized: boolean }).wasAuthorized = false;
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        invoice,
+      );
+      await processor.process(refreshJob());
+      expect(fakeDocStorage.exists).not.toHaveBeenCalled();
+      expect(fakeDocStorage.savePdf).not.toHaveBeenCalled();
     });
   });
 });

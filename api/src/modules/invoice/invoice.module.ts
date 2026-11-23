@@ -30,6 +30,7 @@ import { BillingUsageModule } from '@/modules/billing/billing-usage.module';
 import { PlansModule } from '@/modules/plans/plans.module';
 import { InvoiceWebhookPublisher } from './application/invoice-webhook.publisher';
 import { InvoiceLifecycleService } from './application/invoice-lifecycle.service';
+import { InvoicePdfRefresher } from './application/invoice-pdf-refresher';
 import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -231,6 +232,7 @@ const ACCOUNTANT_PACKAGE = {
     InvoiceSubstitutionService,
     CustomerDirectory,
     InvoiceLifecycleService,
+    InvoicePdfRefresher,
     InvoiceWebhookPublisher,
     INVOICE_REPOSITORY,
     INVOICE_EVENT_REPOSITORY,
