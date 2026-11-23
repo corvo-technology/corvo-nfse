@@ -28,6 +28,7 @@ import { WooviConnectorModule } from '@/modules/integrations/connectors/woovi/wo
 import { AbacatePayConnectorModule } from '@/modules/integrations/connectors/abacatepay/abacatepay.module';
 import { PublicConfigModule } from '@/modules/public-config/public-config.module';
 import { McpModule } from '@/modules/mcp/mcp.module';
+import { PlatformAdminModule } from '@/modules/platform-admin/platform-admin.module';
 import { StorageModule } from '@/infra/storage/storage.module';
 import { NfseExternalModule } from '@/infra/external/nfse/nfse-external.module';
 import { DomainExceptionFilter } from '@/shared/http/domain-exception.filter';
@@ -59,6 +60,7 @@ import { SentryModule } from '@/infra/observability/sentry.module';
     WooviConnectorModule,
     AbacatePayConnectorModule,
     McpModule,
+    PlatformAdminModule,
     PublicConfigModule,
     StorageModule.forRoot(),
     NfseExternalModule,

@@ -9,6 +9,7 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
+import { data, type DataEnvelope } from '@/shared/http/response';
 import { PlatformCreditGrantService } from '../application/platform-credit-grant.service';
 import {
   PlatformAdminRoute,
@@ -40,8 +41,8 @@ export class PlatformCreditGrantController {
     tenantId: string,
     @Headers('idempotency-key') idempotencyKey: string,
     @Body() body: PlatformCreditGrantDto,
-  ): Promise<{ data: CreditGrantResult }> {
-    const data = await this.grants.grant(
+  ): Promise<DataEnvelope<CreditGrantResult>> {
+    const result = await this.grants.grant(
       req.platformAdmin!,
       tenantId,
       {
@@ -51,6 +52,6 @@ export class PlatformCreditGrantController {
       },
       idempotencyKey,
     );
-    return { data };
+    return data(result);
   }
 }
