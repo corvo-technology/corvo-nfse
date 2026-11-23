@@ -23,6 +23,7 @@ import { extractCookie } from '../application/cookie-reader';
 import { CookieSessionService } from '../application/cookie-session.service';
 import { CsrfGuard } from '../application/csrf.guard';
 import { SwitchTenantDto } from '../application/auth.dto';
+import { PlatformAdminPolicy } from '../application/platform-admin.policy';
 import type { AuthSession } from '../domain/auth-session';
 
 type HttpRequest = Request & {
@@ -41,6 +42,7 @@ export class SessionController {
     private readonly contexts: AuthContextService,
     private readonly cookies: CookiePolicyService,
     private readonly users: AuthUserService,
+    private readonly platformAdmin: PlatformAdminPolicy,
   ) {}
 
   /** Who is signed in, so the app can greet them and ask for a name when there is none. */
@@ -60,6 +62,8 @@ export class SessionController {
     );
     return data({
       status: 'authenticated' as const,
+      isPlatformAdmin: (await this.platformAdmin.resolve(session.authUserId))
+        .isAdmin,
       context,
       profile: await this.profile(session.authUserId),
       activeTenantId: session.activeTenantId,
@@ -96,6 +100,8 @@ export class SessionController {
     );
     const updated = await this.sessions.switchTenant(session, body.tenantId);
     return data({
+      isPlatformAdmin: (await this.platformAdmin.resolve(session.authUserId))
+        .isAdmin,
       context,
       profile: await this.profile(session.authUserId),
       activeTenantId: updated.activeTenantId,

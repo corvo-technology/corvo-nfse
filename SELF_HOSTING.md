@@ -75,6 +75,7 @@ Edit `deploy/.env` using [the production example](deploy/.env.example).
 | `RESEND_API_KEY` / `RESEND_BASE_URL` | Email provider credentials and API endpoint. |
 | `EMAIL_FROM` | Sender authorized by the email provider. |
 | `DEPLOYMENT_MODE` | `self_hosted` (written by setup) turns billing, credits and plan limits off, so `STRIPE_*` is not needed. `cloud` is the paid service; going back to `cloud` is not supported. |
+| `PLATFORM_ADMIN_EMAILS` | Comma-separated, lowercase e-mails that become platform admins; empty = nobody. The e-mail must be verified. In self-hosted mode the credit grant does not exist. |
 | `STRIPE_SECRET_KEY` | Only in `cloud` mode: Stripe secret key. |
 | `STRIPE_PLATFORM_WEBHOOK_SECRET` | Only in `cloud` mode: signing secret for your Stripe webhook. |
 

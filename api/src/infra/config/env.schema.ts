@@ -351,6 +351,8 @@ export const envSchema = z
     SENTRY_CAPTURE_DISCONNECTS: booleanFromEnv.default(true),
     /** `cloud` bills with Stripe; `self_hosted` has no billing, quotas or credits. */
     DEPLOYMENT_MODE: z.enum(['cloud', 'self_hosted']).default('cloud'),
+    /** Comma-separated, lowercase e-mails that are platform admins (verified e-mail required). Empty = nobody. */
+    PLATFORM_ADMIN_EMAILS: z.string().optional(),
     /** Who may create an account. Defaults to `open` in cloud and `closed` in self_hosted. */
     AUTH_SIGNUP_MODE: z.enum(['open', 'allowlist', 'closed']).optional(),
     /** Public by nature: served by GET /v1/config so the web needs no rebuild. */
