@@ -149,3 +149,42 @@ describe('StripePaymentsService.complete', () => {
     expect(f.credits.grantAvulso).not.toHaveBeenCalled();
   });
 });
+
+describe('StripePaymentsService.recordSubscriptionInvoice', () => {
+  const paidAt = new Date('2026-11-01T12:00:00Z');
+  const invoice = { id: 'in_1', amountCents: 4900, paidAt };
+  it('insere linha paid stripe/plan/monthly com providerRef = invoice.id', async () => {
+    const f = setup('cus_1');
+    await f.service.recordSubscriptionInvoice(tenant, 'solo', invoice);
+    expect(f.store.rows).toHaveLength(1);
+    expect(f.store.rows[0]).toMatchObject({
+      tenantId: tenant,
+      kind: 'plan',
+      cycle: 'monthly',
+      provider: 'stripe',
+      providerRef: 'in_1',
+      status: 'paid',
+      idempotencyKey: null,
+      checkout: null,
+      units: null,
+      planSlug: 'solo',
+      amountCents: 4900,
+      paidAt,
+    });
+  });
+  it('duplicata (23505) é ignorada', async () => {
+    const f = setup('cus_1');
+    await f.service.recordSubscriptionInvoice(tenant, 'solo', invoice);
+    await expect(
+      f.service.recordSubscriptionInvoice(tenant, 'solo', invoice),
+    ).resolves.toBeUndefined();
+    expect(f.store.rows).toHaveLength(1);
+  });
+  it('outro erro do banco é propagado', async () => {
+    const f = setup('cus_1');
+    jest.spyOn(f.store, 'insert').mockRejectedValueOnce(new Error('db down'));
+    await expect(
+      f.service.recordSubscriptionInvoice(tenant, 'solo', invoice),
+    ).rejects.toThrow('db down');
+  });
+});

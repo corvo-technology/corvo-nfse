@@ -216,6 +216,51 @@ describe('Stripe billing adapter', () => {
       adapter.createCheckout('cus_fixture', 'tenant', 'solo', 'intent2'),
     ).rejects.toThrow('must be provisioned');
   });
+  describe('invoice.paid', () => {
+    function verify(invoice: Record<string, unknown>) {
+      const stripe = new Stripe('sk_test_fixture', {
+        apiVersion: BILLING_API_VERSION,
+      });
+      const adapter = new StripeBillingAdapter(
+        new StripeGateway(new ConfigService({ stripe: configuration() })),
+        new PricingService(),
+      );
+      const payload = JSON.stringify({
+        id: 'evt_inv',
+        type: 'invoice.paid',
+        livemode: false,
+        data: { object: { customer: 'cus_fixture', ...invoice } },
+      });
+      return adapter.verifyEvent(
+        Buffer.from(payload),
+        stripe.webhooks.generateTestHeaderString({ payload, secret }),
+      );
+    }
+    const parent = { subscription_details: { subscription: 'sub_fixture' } };
+    it('invoice.paid com assinatura expõe id, valor e data', () => {
+      const event = verify({
+        id: 'in_1',
+        amount_paid: 4900,
+        parent,
+        status_transitions: { paid_at: 1_700_000_000 },
+      });
+      expect(event.invoice).toEqual({
+        id: 'in_1',
+        amountCents: 4900,
+        paidAt: new Date(1_700_000_000_000),
+      });
+    });
+    it('invoice.paid de valor zero ou sem assinatura não expõe invoice', () => {
+      const paid = { status_transitions: { paid_at: 1_700_000_000 } };
+      expect(
+        verify({ id: 'in_0', amount_paid: 0, parent, ...paid }).invoice,
+      ).toBeNull();
+      expect(
+        verify({ id: 'in_2', amount_paid: 4900, parent: null, ...paid })
+          .invoice,
+      ).toBeNull();
+    });
+  });
   it('disables API access cleanly when billing credentials are missing', () => {
     const gateway = new StripeGateway(
       new ConfigService({ stripe: { enabled: true, secretKey: '' } }),

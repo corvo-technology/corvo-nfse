@@ -133,6 +133,35 @@ export class StripePaymentsService {
     }
   }
 
+  /** Records a paid Stripe subscription charge as revenue. A redelivered invoice is a no-op. */
+  async recordSubscriptionInvoice(
+    tenantId: string,
+    planSlug: string,
+    invoice: { id: string; amountCents: number; paidAt: Date },
+  ): Promise<void> {
+    try {
+      await this.intents.insert({
+        id: randomUUID(),
+        tenantId,
+        kind: 'plan',
+        planSlug,
+        cycle: 'monthly',
+        units: null,
+        amountCents: invoice.amountCents,
+        provider: 'stripe',
+        providerRef: invoice.id,
+        idempotencyKey: null,
+        status: 'paid',
+        expiresAt: null,
+        paidAt: invoice.paidAt,
+        checkout: null,
+        createdAt: new Date(),
+      });
+    } catch (error) {
+      if ((error as { code?: string } | null)?.code !== '23505') throw error;
+    }
+  }
+
   private async customerId(tenantId: string): Promise<string> {
     const state = await this.billing.billing(tenantId);
     if (state?.stripeCustomerId) return state.stripeCustomerId;

@@ -10,6 +10,7 @@ type Event = {
   customerId: string | null;
   subscriptionId: string | null;
   payment?: { intentId: string; paid: boolean } | null;
+  invoice?: { id: string; amountCents: number; paidAt: Date } | null;
 };
 
 function build(event: Event, seen = false) {
@@ -22,6 +23,7 @@ function build(event: Event, seen = false) {
     eventSeen: jest.fn().mockResolvedValue(seen),
     recordEvent: jest.fn().mockResolvedValue(undefined),
     billing: jest.fn().mockResolvedValue(null),
+    current: jest.fn().mockResolvedValue({ plan: { slug: 'solo' } }),
   };
   const provider = {
     verifyEvent: jest.fn().mockReturnValue(event),
@@ -31,7 +33,10 @@ function build(event: Event, seen = false) {
     }),
   };
   const eventBus = { publishBestEffort: jest.fn() };
-  const payments = { complete: jest.fn().mockResolvedValue(undefined) };
+  const payments = {
+    complete: jest.fn().mockResolvedValue(undefined),
+    recordSubscriptionInvoice: jest.fn().mockResolvedValue(undefined),
+  };
   const service = new BillingService(
     {} as TenantWorkDiscovery,
     repository as unknown as BillingRepository,
@@ -157,5 +162,55 @@ describe('BillingService.webhook event handling', () => {
     );
     await service.webhook(body, 'sig');
     expect(eventBus.publishBestEffort).not.toHaveBeenCalled();
+  });
+
+  describe('invoice.paid revenue', () => {
+    const paidAt = new Date('2026-11-01T12:00:00Z');
+    const invoice = { id: 'in_1', amountCents: 4900, paidAt };
+    const paidEvent = {
+      id: 'evt_inv',
+      type: 'invoice.paid',
+      customerId: 'cus_1',
+      subscriptionId: 'sub_1',
+      invoice,
+    };
+    it('invoice.paid grava a cobrança uma vez, com o plano atual do tenant', async () => {
+      const { service, payments } = build(paidEvent);
+      await service.webhook(body, 'sig');
+      expect(payments.recordSubscriptionInvoice).toHaveBeenCalledTimes(1);
+      expect(payments.recordSubscriptionInvoice).toHaveBeenCalledWith(
+        'tenant-1',
+        'solo',
+        invoice,
+      );
+    });
+    it('evento repetido (eventSeen) não grava de novo', async () => {
+      const { service, payments } = build(paidEvent, true);
+      await service.webhook(body, 'sig');
+      expect(payments.recordSubscriptionInvoice).not.toHaveBeenCalled();
+    });
+    it('invoice.payment_failed e subscription.updated não gravam', async () => {
+      for (const type of [
+        'invoice.payment_failed',
+        'customer.subscription.updated',
+      ]) {
+        const { service, payments } = build({
+          ...paidEvent,
+          type,
+          invoice: null,
+        });
+        await service.webhook(body, 'sig');
+        expect(payments.recordSubscriptionInvoice).not.toHaveBeenCalled();
+      }
+    });
+    it('invoice.paid sem valor (invoice ausente) só aplica a assinatura', async () => {
+      const { service, payments, provider } = build({
+        ...paidEvent,
+        invoice: null,
+      });
+      await service.webhook(body, 'sig');
+      expect(provider.subscription).toHaveBeenCalled();
+      expect(payments.recordSubscriptionInvoice).not.toHaveBeenCalled();
+    });
   });
 });
