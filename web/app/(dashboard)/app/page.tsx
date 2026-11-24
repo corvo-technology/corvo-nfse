@@ -54,16 +54,22 @@ export default function OverviewPage() {
     return () => controller.abort();
   }, [period, invoiceView, tenantId, overviewKey]);
 
+  const [billingAttempt, setBillingAttempt] = useState(0);
   useEffect(() => {
     if (!billingView || !tenantId) return;
     let cancelled = false;
-    billingApi.plan().then((data) => {
+    // One automatic retry: a single failed read must not turn the card into "Indisponível".
+    const load = (retry: boolean) => billingApi.plan().then((data) => {
       if (!cancelled) setBillingState({ key: scope, data });
     }).catch(() => {
-      if (!cancelled) setBillingState({ key: scope, error: true });
+      if (cancelled) return;
+      if (retry) timer = setTimeout(() => void load(false), 800);
+      else setBillingState((current) => current?.key === scope && current.data ? current : { key: scope, error: true });
     });
-    return () => { cancelled = true; };
-  }, [billingView, tenantId, scope]);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    void load(true);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [billingView, tenantId, scope, billingAttempt]);
 
   const counts = overview?.data?.counts;
   const available = billing?.data ? availableNotes(billing.data) : 0;
@@ -124,7 +130,12 @@ export default function OverviewPage() {
         </div>
       )}
 
-      {billing?.error && billingView && <div role="alert" className="banner banner-danger">{t("creditsLoadFailed")}</div>}
+      {billing?.error && billingView && (
+        <div role="alert" className="banner banner-danger flex items-center justify-between gap-3">
+          <span>{t("creditsLoadFailed")}</span>
+          <button type="button" className="btn btn-sm" onClick={() => { setBillingState(null); setBillingAttempt((n) => n + 1); }}>{tc("retry")}</button>
+        </div>
+      )}
       {hasAttention && <section aria-label={t("attention.title")} className="dash-in">
         <h2 className="mb-2 text-[13px] font-medium text-text-3">{t("attention.title")}</h2>
         <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-[12px] border border-warn/30 bg-surface">

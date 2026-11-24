@@ -31,7 +31,7 @@ export class TenantPlanService {
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59),
     );
 
-    return this.tenantPlanRepo.save(
+    return this.tenantPlanRepo.createIfMissing(
       TenantPlanAssignment.reconstitute({
         tenantId,
         plan: freePlan,

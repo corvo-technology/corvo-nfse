@@ -1,4 +1,5 @@
 import { data } from '@/shared/http/response';
+import { EntityNotFoundError } from 'typeorm';
 import {
   Controller,
   HttpCode,
@@ -10,6 +11,7 @@ import {
   BadRequestException,
   Headers,
   Param,
+  Logger,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ApiKeyEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
@@ -34,6 +36,7 @@ import type { RequestWithAuthContext } from '@/modules/auth/auth-context';
 @ApiTags('billing')
 @Controller('billing')
 export class BillingController {
+  private readonly logger = new Logger(BillingController.name);
   constructor(
     private readonly quotaService: QuotaService,
     private readonly billing: BillingService,
@@ -52,9 +55,7 @@ export class BillingController {
     @Req() req: RequestWithAuthContext,
   ): Promise<{ data: Record<string, unknown> }> {
     const tenantId = req.authContext!.activeTenantId;
-    const status = await this.quotaService.getStatus(tenantId);
-    const plan = await this.planRepo.findActiveByTenantId(tenantId);
-    const billing = await this.billingUsage.status(tenantId);
+    const { status, plan, billing } = await this.loadPlanState(tenantId);
     if (!plan)
       throw new NotFoundException({
         code: 'NO_PLAN_ASSIGNED',
@@ -97,6 +98,31 @@ export class BillingController {
         period_end: status.periodEnd?.toISOString(),
       },
     });
+  }
+
+  /**
+   * The tenant row must always be readable for its own session. When it is not (a connection whose
+   * tenant setting did not apply), retry once on a fresh connection and log it, so the page does not
+   * break on a transient miss but the event stays visible.
+   */
+  private async loadPlanState(tenantId: string) {
+    const load = async () => {
+      const status = await this.quotaService.getStatus(tenantId);
+      const plan = await this.planRepo.findActiveByTenantId(tenantId);
+      const billing = await this.billingUsage.status(tenantId);
+      return { status, plan, billing };
+    };
+    try {
+      return await load();
+    } catch (error) {
+      if (!(error instanceof EntityNotFoundError)) throw error;
+      this.logger.warn({
+        event: 'tenant_scope_miss_retry',
+        msg: 'Tenant row not visible on first read; retrying once',
+        tenantId,
+      });
+      return load();
+    }
   }
 
   @Get('payments')
