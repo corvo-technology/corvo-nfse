@@ -56,6 +56,28 @@ export class AccountantPackageController {
     );
   }
 
+  @Get('sends')
+  @ApiKeyEndpoint()
+  @RequirePermission('nfse.companies.view')
+  @ApiOperation({
+    summary: 'Last 12 attempts to send the package to the accountant',
+    description:
+      'status is sent (queued for e-mail, not proof of delivery), skipped-empty, skipped-too-large or failed.',
+  })
+  async sends(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Req() req: RequestWithAuthContext,
+  ) {
+    const auth = req.authContext!;
+    return data(
+      await this.accountant.listSends(
+        auth.activeTenantId,
+        companyId,
+        executionEnvironment(auth),
+      ),
+    );
+  }
+
   @Put()
   @ApiKeyEndpoint()
   @RequirePermission('nfse.companies.manage')
@@ -86,7 +108,7 @@ export class AccountantPackageController {
   @ApiOperation({
     summary: 'Send the package of a month to the accountant now',
     description:
-      'status is sent, or skipped-test, skipped-no-email or skipped-empty with nothing sent.',
+      'status is sent, or skipped-test, skipped-no-email, skipped-empty or skipped-too-large with nothing sent.',
   })
   async send(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
@@ -100,6 +122,9 @@ export class AccountantPackageController {
         companyId,
         executionEnvironment(auth),
         dto.month,
+        auth.apiKeyEnvironment || auth.mcpConnectionId
+          ? 'mcp-or-api'
+          : 'manual',
       ),
     });
   }

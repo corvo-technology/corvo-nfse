@@ -462,7 +462,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
     await expect(mcp.refreshTokens(tokens.refreshToken)).resolves.toBeDefined();
   });
 
-  it('enables and forces RLS on all 33 tenant tables', async () => {
+  it('enables and forces RLS on all 34 tenant tables', async () => {
     const rows: Array<{
       relrowsecurity: boolean;
       relforcerowsecurity: boolean;
@@ -470,7 +470,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       'SELECT relrowsecurity,relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$1 AND c.relrowsecurity',
       [schema],
     );
-    expect(rows).toHaveLength(33);
+    expect(rows).toHaveLength(34);
     expect(rows.every((row) => row.relforcerowsecurity)).toBe(true);
     const [flags]: Array<{ rolsuper: boolean; rolbypassrls: boolean }> =
       await runtime.query(
@@ -889,20 +889,24 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
   it('can reverse and reapply RLS policies in the isolated schema', async () => {
     const runner = admin.createQueryRunner();
     const migration = new EnableTenantRls1791750000000();
-    // The runtime waits for migrations by default (180s); here the policies are
-    // missing on purpose, so do not wait.
-    const previousWait = process.env.RLS_MIGRATIONS_WAIT_TIMEOUT_MS;
-    process.env.RLS_MIGRATIONS_WAIT_TIMEOUT_MS = '0';
+    const previousTimeout = process.env.RLS_MIGRATIONS_WAIT_TIMEOUT_MS;
     try {
       await migration.down(runner);
-      await expect(
-        new RlsConnectionScopeService(runtime).onModuleInit(),
-      ).rejects.toThrow('RLS policies are missing');
+      // Without this the service would wait for migrations to arrive.
+      process.env.RLS_MIGRATIONS_WAIT_TIMEOUT_MS = '0';
+      try {
+        await expect(
+          new RlsConnectionScopeService(runtime).onModuleInit(),
+        ).rejects.toThrow('RLS policies are missing');
+      } finally {
+        if (previousTimeout === undefined) {
+          delete process.env.RLS_MIGRATIONS_WAIT_TIMEOUT_MS;
+        } else {
+          process.env.RLS_MIGRATIONS_WAIT_TIMEOUT_MS = previousTimeout;
+        }
+      }
       await migration.up(runner);
     } finally {
-      if (previousWait === undefined)
-        delete process.env.RLS_MIGRATIONS_WAIT_TIMEOUT_MS;
-      else process.env.RLS_MIGRATIONS_WAIT_TIMEOUT_MS = previousWait;
       await runner.release();
     }
     expect(

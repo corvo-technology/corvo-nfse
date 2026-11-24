@@ -88,6 +88,7 @@ import { IInvoicePackageRepository } from './domain/invoice-package.repository';
 import { IAccountantPackageRepository } from './domain/accountant-package.repository';
 import { TypeOrmInvoicePackageRepository } from './infra/typeorm-invoice-package.repository';
 import { TypeOrmAccountantPackageRepository } from './infra/typeorm-accountant-package.repository';
+import { AccountantPackageSendOrmEntity } from './infra/accountant-package-send.orm-entity';
 import { AccountantPackageController } from './http/accountant-package.controller';
 
 /** Month package for the accountant: ZIP download, temporary links and the monthly e-mail. */
@@ -141,6 +142,7 @@ const ACCOUNTANT_PACKAGE = {
       InvoiceFiscalSnapshotOrmEntity,
       InvoiceFiscalReconciliationOrmEntity,
       CustomerOrmEntity,
+      AccountantPackageSendOrmEntity,
     ]),
     PlansModule,
     CompanyModule,

@@ -30,6 +30,22 @@ export type AccountNotice =
       month: string;
     }
   | {
+      kind: 'accountant-package-empty';
+      companyId: string;
+      companyName: string;
+      /** YYYY-MM */
+      month: string;
+    }
+  | {
+      kind: 'accountant-package-too-large';
+      companyId: string;
+      companyName: string;
+      /** YYYY-MM */
+      month: string;
+      count: number;
+      limit: number;
+    }
+  | {
       kind: 'certificate-expiring';
       companyId: string;
       companyName: string;

@@ -9,7 +9,9 @@ import {
 } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { monthLabel } from '@/modules/invoice/application/package/package-month';
 import {
+  accountantPackageEmptyEmail,
   accountantPackageFailedEmail,
+  accountantPackageTooLargeEmail,
   apiKeyCreatedEmail,
   certificateExpiringEmail,
   invoiceBlockedOnPortalEmail,
@@ -178,6 +180,30 @@ export class AccountNoticeListener {
           companyUrl: this.page(`companies/${notice.companyId}`),
         });
         to = await this.recipients.emailsFor(tenantId);
+        break;
+      }
+      case 'accountant-package-empty': {
+        const key = `accountant-package-empty:${notice.companyId}:${notice.month}`;
+        if (!(await this.once(key, 40 * DAY_MS))) return;
+        message = accountantPackageEmptyEmail({
+          companyName: notice.companyName,
+          monthLabel: monthLabel(notice.month),
+          companyUrl: this.page(`companies/${notice.companyId}`),
+        });
+        to = await this.recipients.ownerEmailsFor(tenantId);
+        break;
+      }
+      case 'accountant-package-too-large': {
+        const key = `accountant-package-too-large:${notice.companyId}:${notice.month}`;
+        if (!(await this.once(key, 40 * DAY_MS))) return;
+        message = accountantPackageTooLargeEmail({
+          companyName: notice.companyName,
+          monthLabel: monthLabel(notice.month),
+          count: notice.count,
+          limit: notice.limit,
+          companyUrl: this.page(`companies/${notice.companyId}`),
+        });
+        to = await this.recipients.ownerEmailsFor(tenantId);
         break;
       }
       case 'invoice-cancelled-on-portal': {

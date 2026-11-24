@@ -162,6 +162,49 @@ describe('AccountNoticeListener', () => {
     expect(email.enqueueNotice).toHaveBeenCalledTimes(2);
   });
 
+  it('tells only the owner when the accountant package was not sent for lack of notes or size, once per month', async () => {
+    const { listener, email, recipients } = build();
+    await listener.handle(
+      accountNotice('t1', {
+        kind: 'accountant-package-empty',
+        companyId: 'c1',
+        companyName: 'Acme',
+        month: '2026-10',
+      }),
+    );
+    await listener.handle(
+      accountNotice('t1', {
+        kind: 'accountant-package-too-large',
+        companyId: 'c1',
+        companyName: 'Acme',
+        month: '2026-10',
+        count: 700,
+        limit: 500,
+      }),
+    );
+    expect(recipients.ownerEmailsFor).toHaveBeenCalledTimes(2);
+    expect(email.enqueueNotice).toHaveBeenCalledTimes(2);
+    const [to, message] = email.enqueueNotice.mock.calls[0] as [
+      string,
+      { text: string },
+    ];
+    expect(to).toBe('owner@x.com');
+    expect(message.text).toContain('não houve notas no mês');
+  });
+
+  it('does not repeat the empty-month notice', async () => {
+    const { listener, email } = build({ first: false });
+    await listener.handle(
+      accountNotice('t1', {
+        kind: 'accountant-package-empty',
+        companyId: 'c1',
+        companyName: 'Acme',
+        month: '2026-10',
+      }),
+    );
+    expect(email.enqueueNotice).not.toHaveBeenCalled();
+  });
+
   it('does not repeat a notice inside its window', async () => {
     const { listener, email } = build({ first: false });
     await listener.handle(accountNotice('t1', { kind: 'credits-exhausted' }));
