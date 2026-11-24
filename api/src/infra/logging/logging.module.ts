@@ -46,6 +46,8 @@ const SENSITIVE_LOG_HEADER_NAMES = [
   'x-tax-id',
   'x-webhook-secret',
   'x-verify-token',
+  'x-corvo-proxy-secret',
+  'x-csrf-token',
 ];
 
 export const SENSITIVE_LOG_REDACTION_PATHS = [

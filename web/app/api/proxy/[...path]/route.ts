@@ -140,6 +140,8 @@ async function limitedBody(request: NextRequest, limit: number) {
       chunks.push(value);
     }
   } finally { reader.releaseLock(); }
+  // An empty body must not be forwarded at all: an empty buffer goes out chunked with no content-type, which the API rejects.
+  if (size === 0) return undefined;
   const body = new Uint8Array(size); let offset = 0;
   for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
   return body;
