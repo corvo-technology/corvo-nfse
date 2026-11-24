@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { DeploymentConfigProvider } from "@/lib/deployment-config-context";
 import { CLOUD_DEFAULT_CONFIG, type DeploymentConfig } from "@/lib/deployment-config";
-import { buildSteps } from "@/lib/onboarding-steps";
 import BillingLayout from "@/app/(dashboard)/app/billing/layout";
 import messages from "@/messages/en.json";
 
@@ -79,15 +78,5 @@ describe("billing route layout", () => {
   it("redirects to /app with billing off", async () => {
     hoisted.config = selfHosted;
     await expect(BillingLayout({ children: <p>billing page</p> })).rejects.toThrow("REDIRECT:/app");
-  });
-});
-
-describe("onboarding steps", () => {
-  const flags = { hidden: false, plansSeen: false, noPriorNotes: false, noteBannerDismissed: false };
-  const base = { can: () => true, hasCompany: false, hasCertificate: false, lastDpsNumber: 0, hasTestNote: false, flags };
-  it("drops the plans step when billing is off, keeps it otherwise", () => {
-    expect(buildSteps({ ...base, billingEnabled: false }).map((s) => s.key)).not.toContain("plans");
-    expect(buildSteps({ ...base, billingEnabled: true }).map((s) => s.key)).toContain("plans");
-    expect(buildSteps(base).map((s) => s.key)).toContain("plans");
   });
 });

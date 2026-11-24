@@ -10,8 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InvoiceTable } from "@/components/dashboard/invoice-table";
-import { GettingStartedCard } from "@/components/dashboard/getting-started-card";
-import { OnboardingCard } from "@/components/onboarding/onboarding-card";
+import { GettingStartedBanner } from "@/components/dashboard/getting-started-banner";
 import { InvoiceHeatmap } from "@/components/dashboard/invoice-heatmap";
 import { billing as billingApi, invoices as invoicesApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -116,8 +115,7 @@ export default function OverviewPage() {
           </>
         }
       />
-      <OnboardingCard />
-      <GettingStartedCard />
+      <GettingStartedBanner />
 
       {error && (
         <div role="alert" className="banner banner-danger dash-in">

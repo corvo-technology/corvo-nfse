@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { companies, type DpsSequence } from "@/lib/api";
+import { useScrollToHash } from "@/lib/use-scroll-to-hash";
 import { useApiErrorText } from "@/lib/use-api-error";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,8 @@ export function DpsSequenceCard({ companyId, canManage, environment }: { company
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useScrollToHash("numeracao");
 
   useEffect(() => {
     const abort = new AbortController();
@@ -43,7 +46,7 @@ export function DpsSequenceCard({ companyId, canManage, environment }: { company
   }
 
   return (
-    <Card className="flex flex-col gap-4 p-5">
+    <Card id="numeracao" className={`flex scroll-mt-24 flex-col gap-4 p-5`}>
       <div>
         <h2 className="text-base font-medium">{t("title")}</h2>
         <p className="mt-1 text-sm text-text-3">{t("hint")}</p>

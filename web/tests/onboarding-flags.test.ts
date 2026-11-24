@@ -6,16 +6,15 @@ afterEach(() => { vi.restoreAllMocks(); localStorage.clear(); });
 
 describe("onboarding flags", () => {
   it("remembers a flag per workspace and per flag", () => {
-    writeFlag("t1", "hidden");
-    expect(readFlag("t1", "hidden")).toBe(true);
-    expect(readFlag("t2", "hidden")).toBe(false);
-    expect(readFlag("t1", "plansSeen")).toBe(false);
+    writeFlag("t1", "noteBannerDismissed");
+    expect(readFlag("t1", "noteBannerDismissed")).toBe(true);
+    expect(readFlag("t2", "noteBannerDismissed")).toBe(false);
   });
 
   it("does not break when the browser storage is unavailable", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
-    expect(readFlag("t1", "hidden")).toBe(false);
-    expect(() => writeFlag("t1", "hidden")).not.toThrow();
+    expect(readFlag("t1", "noteBannerDismissed")).toBe(false);
+    expect(() => writeFlag("t1", "noteBannerDismissed")).not.toThrow();
   });
 });
