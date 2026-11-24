@@ -1,4 +1,4 @@
-import type { ForeignCustomer, SavedCustomer, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { ServiceFavorite, ServiceFavoriteInput, ForeignCustomer, SavedCustomer, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -184,7 +184,7 @@ export function adaptInvoice(props: InvoiceWire): Invoice {
   // Anonymous consumer invoices have no customer snapshot (the tomador is omitted from the DPS).
   return { ...props, customerName: props.customerSnapshot?.name ?? "", customerTaxId: props.customerSnapshot?.taxId ?? props.customerSnapshot?.foreign?.taxId ?? "", serviceDescription: props.serviceSnapshot.description };
 }
-export interface InvoiceQuery extends PageParams { companyId?: string; status?: InvoiceStatus; from?: string; to?: string; externalId?: string }
+export interface InvoiceQuery extends PageParams { companyId?: string; status?: InvoiceStatus; from?: string; to?: string; externalId?: string; customerTaxId?: string }
 export type OverviewPeriod = "7d" | "30d";
 export interface InvoiceOverview {
   period: OverviewPeriod;
@@ -297,6 +297,11 @@ export const schedules = {
   pause: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/pause`, json({})))),
   resume: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/resume`, json({})))),
   cancel: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/cancel`, json({})))),
+};
+export const serviceFavorites = {
+  list: async (companyId: string, signal?: AbortSignal) => unwrap(await request<Envelope<ServiceFavorite[]>>(`/companies/${idPath(companyId)}/service-favorites`, { signal })),
+  create: async (companyId: string, input: ServiceFavoriteInput) => unwrap(await request<Envelope<ServiceFavorite>>(`/companies/${idPath(companyId)}/service-favorites`, json(input))),
+  remove: async (companyId: string, id: string): Promise<void> => { await request<Envelope<{ deleted: true }>>(`/companies/${idPath(companyId)}/service-favorites/${idPath(id)}`, { method: "DELETE" }); },
 };
 export const customers = {
   list: async (params: PageParams & { search?: string } = {}, signal?: AbortSignal): Promise<Page<SavedCustomer>> => toPage(await request<ListBody<SavedCustomer>>(`/customers${query(params)}`, { signal })),

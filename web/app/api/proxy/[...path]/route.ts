@@ -36,6 +36,8 @@ const routes: [RegExp, string[]][] = [
   [/^companies\/[^/]+\/service-tax-profiles$/, ["GET", "POST"]],
   [/^companies\/[^/]+\/service-tax-profiles\/[^/]+$/, ["PATCH"]],
   [/^companies\/[^/]+\/service-tax-profiles\/[^/]+\/approve$/, ["POST"]],
+  [/^companies\/[^/]+\/service-favorites$/, ["GET", "POST"]],
+  [/^companies\/[^/]+\/service-favorites\/[^/]+$/, ["DELETE"]],
   [/^companies\/[^/]+\/invoice-package(?:\/summary)?$/, ["GET"]],
   [/^companies\/[^/]+\/accountant-package$/, ["GET", "PUT"]],
   [/^companies\/[^/]+\/accountant-package\/send$/, ["POST"]],

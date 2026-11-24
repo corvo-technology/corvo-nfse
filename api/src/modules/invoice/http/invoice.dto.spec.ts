@@ -1,6 +1,10 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { CreateInvoiceDto, InvoiceOptionsDto } from './invoice.dto';
+import {
+  CreateInvoiceDto,
+  InvoiceOptionsDto,
+  ListInvoicesQuery,
+} from './invoice.dto';
 
 describe('InvoiceOptionsDto emission type', () => {
   it.each(['IMMEDIATE', 'SCHEDULE', undefined])('accepts %s', async (type) => {
@@ -165,4 +169,21 @@ describe('CreateInvoiceDto inputs that used to crash after validation', () => {
       await failing({ companyId: '01927de2-1234-7890-abcd-ef0123456789' }),
     ).toEqual([]);
   });
+});
+
+describe('ListInvoicesQuery customerTaxId', () => {
+  const check = async (customerTaxId: string) =>
+    (await validate(plainToInstance(ListInvoicesQuery, { customerTaxId }))).map(
+      (error) => error.property,
+    );
+
+  it.each(['52998224725', '11222333000181'])('accepts %s', async (value) => {
+    expect(await check(value)).toEqual([]);
+  });
+  it.each(['529.982.247-25', '123', "1' OR '1'='1"])(
+    'rejects %s',
+    async (value) => {
+      expect(await check(value)).toContain('customerTaxId');
+    },
+  );
 });

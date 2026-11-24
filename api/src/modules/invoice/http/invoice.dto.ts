@@ -357,6 +357,13 @@ export class ListInvoicesQuery extends CursorQuery {
   @IsOptional() @IsDateString() from?: string;
   @IsOptional() @IsDateString() to?: string;
   @IsOptional() @IsString() externalId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Only invoices issued to this customer CPF/CNPJ (digits).',
+  })
+  @IsOptional()
+  @Matches(/^\d{11}$|^\d{14}$/)
+  customerTaxId?: string;
 }
 
 export class SubstituteServiceDto {

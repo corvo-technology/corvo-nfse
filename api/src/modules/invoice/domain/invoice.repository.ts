@@ -14,6 +14,8 @@ export interface ListInvoicesFilters {
   from?: Date;
   to?: Date;
   externalId?: string;
+  /** CPF/CNPJ digits of the customer snapshot. */
+  customerTaxId?: string;
 }
 
 /** A cancellation requested while the invoice is being issued. */
