@@ -417,6 +417,7 @@ describe('WooviPaymentsService Pix Automático lifecycle', () => {
       planSlug: 'solo',
       brCode: '000201EMV',
       paymentLinkUrl: expect.stringContaining('https://'),
+      paymentId: expect.any(String),
     });
   });
 
@@ -516,5 +517,55 @@ describe('WooviPaymentsService Pix Automático lifecycle', () => {
     await expect(
       f.service.startPlan(tenant, 'solo', 'monthly', 'second', payer),
     ).resolves.toMatchObject({ method: 'pix' });
+  });
+});
+
+describe('WooviPaymentsService.paymentStatus', () => {
+  const other = '22222222-2222-4222-8222-222222222222';
+
+  it('gives the payment id with the checkout and follows it from pending to paid', async () => {
+    const f = setup();
+    const out = await f.service.startAvulso(tenant, 10, 'status-1');
+    expect(out.paymentId).toEqual(expect.any(String));
+    expect(await f.service.paymentStatus(tenant, out.paymentId!)).toMatchObject(
+      { status: 'pending', kind: 'avulso', units: 10, paid_at: null },
+    );
+    f.store.rows[0].status = 'paid';
+    f.store.rows[0].paidAt = new Date('2026-11-24T16:57:44Z');
+    expect(await f.service.paymentStatus(tenant, out.paymentId!)).toMatchObject(
+      { status: 'paid', paid_at: '2026-11-24T16:57:44.000Z' },
+    );
+  });
+
+  it('keeps the same payment id when the purchase is replayed', async () => {
+    const f = setup();
+    const first = await f.service.startAvulso(tenant, 5, 'same-key');
+    const again = await f.service.startAvulso(tenant, 5, 'same-key');
+    expect(again.paymentId).toBe(first.paymentId);
+  });
+
+  it('maps expired and refused payments, and treats an authorized contract as confirmed', async () => {
+    const f = setup();
+    const out = await f.service.startAvulso(tenant, 5, 'k-map');
+    const status = async () =>
+      (await f.service.paymentStatus(tenant, out.paymentId!))!.status;
+    f.store.rows[0].status = 'expired';
+    expect(await status()).toBe('expired');
+    f.store.rows[0].status = 'mismatch';
+    expect(await status()).toBe('failed');
+    f.store.rows[0].status = 'authorized';
+    expect(await status()).toBe('paid');
+  });
+
+  it("never shows another tenant's payment", async () => {
+    const f = setup();
+    const out = await f.service.startAvulso(tenant, 5, 'k-iso');
+    expect(await f.service.paymentStatus(other, out.paymentId!)).toBeNull();
+    expect(
+      await f.service.paymentStatus(
+        tenant,
+        '33333333-3333-4333-8333-333333333333',
+      ),
+    ).toBeNull();
   });
 });

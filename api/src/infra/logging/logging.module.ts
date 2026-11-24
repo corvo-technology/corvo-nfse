@@ -32,6 +32,12 @@ const SENSITIVE_LOG_FIELD_NAMES = [
   'accessTokenEncrypted',
   'webhookSecret',
   'verifyToken',
+  // Woovi sends the webhook secret as `?authorization=` in the callback url.
+  'authorization',
+  'key',
+  'api_key',
+  'auth',
+  'secret_key',
 ];
 
 const SENSITIVE_LOG_HEADER_NAMES = [

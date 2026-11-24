@@ -14,6 +14,11 @@ export class MemoryPaymentIntentStore extends PaymentIntentStore {
       ) ?? null,
     );
   }
+  findById(tenantId: string, id: string) {
+    return Promise.resolve(
+      this.rows.find((r) => r.tenantId === tenantId && r.id === id) ?? null,
+    );
+  }
   findByRef(provider: string, ref: string) {
     return Promise.resolve(
       this.rows.find((r) => r.provider === provider && r.providerRef === ref) ??

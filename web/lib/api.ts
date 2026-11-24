@@ -274,6 +274,11 @@ export const billing = {
     const rows = unwrap(await request<Envelope<Array<{ id: string; kind: "plan" | "avulso"; plan_slug: string | null; cycle: "monthly" | "annual" | null; units: number | null; amount_cents: number; provider: "woovi" | "stripe"; paid_at: string | null }>>>("/billing/payments", { signal }));
     return rows.map((r) => ({ id: r.id, kind: r.kind, planSlug: r.plan_slug, cycle: r.cycle, units: r.units, amountCents: r.amount_cents, provider: r.provider, paidAt: r.paid_at }));
   },
+  /** How one Pix payment stands (the screen asks this while the QR is open). */
+  paymentStatus: async (paymentId: string, signal?: AbortSignal): Promise<PaymentStatus> => {
+    const d = unwrap(await request<Envelope<{ id: string; status: PaymentStatus["status"]; kind: "plan" | "avulso"; units: number | null; plan_slug: string | null; paid_at: string | null }>>(`/billing/payments/${idPath(paymentId)}/status`, { signal }));
+    return { id: d.id, status: d.status, kind: d.kind, units: d.units, planSlug: d.plan_slug, paidAt: d.paid_at };
+  },
   cancelPix: async () => { unwrap(await request<Envelope<{ cancelled: boolean }>>("/billing/pix/cancel", json({}))); },
   changePlan: async (planSlug: PlanSlug, direction: "upgrade" | "downgrade") => { const d = unwrap(await request<Envelope<{ scheduled_plan: string | null; effective_at: string | null }>>(`/billing/${direction}`, json({ plan_slug: planSlug }))); return { scheduledPlan: d.scheduled_plan, effectiveAt: d.effective_at }; },
 };
@@ -283,9 +288,10 @@ export type Payer = { name: string; taxID: string; email: string; phone: string 
 export type PurchaseRequest =
   | { kind: "plan"; planSlug: CheckoutPlan; cycle: "monthly" | "annual"; method: PaymentMethod; customer?: Payer }
   | { kind: "avulso"; units: number; method: PaymentMethod };
+export interface PaymentStatus { id: string; status: "pending" | "paid" | "expired" | "failed"; kind: "plan" | "avulso"; units: number | null; planSlug: string | null; paidAt: string | null }
 export type PurchaseResult =
   | { method: "card"; url: string }
-  | { method: "pix"; brCode: string | null; qrCodeImage: string | null; paymentLinkUrl: string; expiresAt: string | null };
+  | { method: "pix"; brCode: string | null; qrCodeImage: string | null; paymentLinkUrl: string; expiresAt: string | null; paymentId?: string };
 type ScheduleWire = { id: string; kind: InvoiceSchedule["kind"]; frequency: ScheduleFrequency | null; status: InvoiceSchedule["status"]; pause_reason: InvoiceSchedule["pauseReason"]; company_id: string; anchor_on: string; next_run_on: string | null; ends_on: string | null; attempts: number; last_run_on: string | null; invoice: Record<string, unknown>; created_at: string };
 type ScheduleRunWire = { id: string; occurrence_on: string; ran_on: string; attempt: number; outcome: ScheduleRun["outcome"]; invoice_id: string | null; error_code: string | null; error_message: string | null; created_at: string };
 const adaptSchedule = (w: ScheduleWire): InvoiceSchedule => ({ id: w.id, kind: w.kind, frequency: w.frequency, status: w.status, pauseReason: w.pause_reason, companyId: w.company_id, anchorOn: w.anchor_on, nextRunOn: w.next_run_on, endsOn: w.ends_on, attempts: w.attempts, lastRunOn: w.last_run_on, invoice: w.invoice, createdAt: w.created_at });

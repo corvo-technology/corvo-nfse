@@ -19,8 +19,11 @@ export type CheckoutTarget =
 
 type PixResult = Extract<PurchaseResult, { method: "pix" }>;
 
-const POLL_MS = 4000;
-const POLL_FOR_MS = 25 * 60_000;
+const POLL_MS = 3000;
+const BACKOFF_AFTER_MS = 2 * 60_000;
+/** Without a known expiry (Pix Automático), stop asking by itself after this long; coming back to the tab asks again. */
+const POLL_FOR_MS = 30 * 60_000;
+const EXPIRY_GRACE_MS = 60_000;
 
 function formatRemaining(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -54,31 +57,59 @@ function useCountdown(expiresAt: string | null): number | null {
   return expiresAt ? new Date(expiresAt).getTime() - now : null;
 }
 
-/** Watches the account until the purchase shows up (avulso balance grew, or the account is on the bought plan). */
-function usePaymentWatch(active: boolean, target: CheckoutTarget, pollMs: number, onPaid: () => void): boolean {
-  const [paid, setPaid] = useState(false);
+type WatchState = "pending" | "paid" | "expired" | "failed" | "session";
+
+/**
+ * Asks the API how this payment stands, every few seconds, until it is confirmed, expired or refused.
+ * Slows down after 2 minutes, stops after the code's expiry (a little grace), and asks again at once
+ * when the person comes back to the tab (a hidden tab's timers are slowed or frozen by the browser).
+ * A 401 stops it with its own state: the payment still goes through on the server.
+ */
+function usePaymentWatch(paymentId: string | null, expiresAt: string | null, pollMs: number, onPaid: () => void): WatchState {
+  const [result, setResult] = useState<{ id: string; state: WatchState } | null>(null);
   const onPaidRef = useRef(onPaid);
   useEffect(() => { onPaidRef.current = onPaid; }, [onPaid]);
   useEffect(() => {
-    if (!active) return;
+    if (!paymentId) return;
     let stopped = false;
-    let baseline: number | null = null;
+    let inFlight = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const controller = new AbortController();
     const startedAt = Date.now();
-    const check = async () => {
-      try {
-        const account = await billingApi.plan();
-        if (stopped) return;
-        const balance = account.usage.avulsoBalance ?? 0;
-        if (baseline === null) { baseline = balance; return; }
-        const done = target.kind === "avulso" ? balance >= baseline + target.units : account.slug === target.slug;
-        if (done) { stopped = true; setPaid(true); onPaidRef.current(); }
-      } catch { /* keep waiting: a failed poll must not break the screen */ }
+    const giveUpAt = expiresAt ? new Date(expiresAt).getTime() + EXPIRY_GRACE_MS : startedAt + POLL_FOR_MS;
+    const finish = (state: WatchState) => { stopped = true; clearTimeout(timer); setResult({ id: paymentId, state }); if (state === "paid") onPaidRef.current(); };
+    const schedule = () => {
+      clearTimeout(timer);
+      if (stopped || Date.now() > giveUpAt) return;
+      timer = setTimeout(() => void check(), Date.now() - startedAt > BACKOFF_AFTER_MS ? pollMs * 3 : pollMs);
     };
+    const check = async () => {
+      if (stopped || inFlight) return;
+      inFlight = true;
+      try {
+        const payment = await billingApi.paymentStatus(paymentId, controller.signal);
+        if (stopped) return;
+        if (payment.status !== "pending") { finish(payment.status); return; }
+      } catch (cause) {
+        if (stopped) return;
+        if (cause instanceof ApiError && cause.status === 401) { finish("session"); return; }
+        // Any other failure: keep waiting, a bad poll must not break the screen.
+      } finally { inFlight = false; }
+      schedule();
+    };
+    const recheck = () => { if (document.visibilityState === "visible") void check(); };
+    document.addEventListener("visibilitychange", recheck);
+    window.addEventListener("focus", recheck);
     void check();
-    const id = setInterval(() => { if (Date.now() - startedAt > POLL_FOR_MS) { clearInterval(id); return; } void check(); }, pollMs);
-    return () => { stopped = true; clearInterval(id); };
-  }, [active, target, pollMs]);
-  return paid;
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      controller.abort();
+      document.removeEventListener("visibilitychange", recheck);
+      window.removeEventListener("focus", recheck);
+    };
+  }, [paymentId, expiresAt, pollMs]);
+  return result && result.id === paymentId ? result.state : "pending";
 }
 
 function MethodCard({ value, selected, onSelect, title, description, icon }: { value: PaymentMethod; selected: boolean; onSelect: () => void; title: string; description: string; icon: React.ReactNode }) {
@@ -143,7 +174,7 @@ function CheckoutDialogInner({
   /** Called once when the Pix payment is detected, so the page can refresh plan and balance. */
   onPaid?: () => void;
   /** Opens a Pix that is already waiting (its QR again), instead of asking to buy. */
-  resume?: { brCode: string | null; paymentLinkUrl: string };
+  resume?: { brCode: string | null; paymentLinkUrl: string; paymentId?: string };
   pollMs?: number;
   redirect?: (url: string) => void;
 }) {
@@ -155,15 +186,16 @@ function CheckoutDialogInner({
   const setField = (key: keyof typeof payer) => (e: React.ChangeEvent<HTMLInputElement>) => setPayer((current) => ({ ...current, [key]: e.target.value }));
   const [busy, setBusy] = useState(false);
   const [pix, setPix] = useState<PixResult | null>(
-    resume ? { method: "pix", brCode: resume.brCode, qrCodeImage: null, paymentLinkUrl: resume.paymentLinkUrl, expiresAt: null } : null
+    resume ? { method: "pix", brCode: resume.brCode, qrCodeImage: null, paymentLinkUrl: resume.paymentLinkUrl, expiresAt: null, paymentId: resume.paymentId } : null
   );
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // One key per dialog opening: a retry replays the same charge instead of creating another.
-  const [key] = useState(() => crypto.randomUUID());
+  const [key, setKey] = useState(() => crypto.randomUUID());
   const qr = usePixQr(pix?.brCode ?? null);
   const remaining = useCountdown(pix?.expiresAt ?? null);
-  const paid = usePaymentWatch(pix !== null, target ?? { kind: "avulso", units: 0 }, pollMs, () => onPaid?.());
+  const watch = usePaymentWatch(pix?.paymentId ?? null, pix?.expiresAt ?? null, pollMs, () => onPaid?.());
+  const paid = watch === "paid";
 
   if (!target) return null;
   const plan = target.kind === "plan" ? PLANS.find((p) => p.slug === target.slug)! : null;
@@ -176,7 +208,8 @@ function CheckoutDialogInner({
       digits(payer.taxID).length >= 11 &&
       /.+@.+\..+/.test(payer.email.trim()) &&
       digits(payer.phone).length >= 10);
-  const expired = remaining !== null && remaining <= 0;
+  const expired = watch === "expired" || (remaining !== null && remaining <= 0);
+  const ended = expired || watch === "failed" || watch === "session";
 
   const summary =
     target.kind === "avulso"
@@ -200,6 +233,13 @@ function CheckoutDialogInner({
     } finally {
       setBusy(false);
     }
+  }
+
+  /** A fresh charge: new idempotency key, back to the form. */
+  function startOver() {
+    setKey(crypto.randomUUID());
+    setPix(null);
+    setCopied(false);
   }
 
   async function copy() {
@@ -270,14 +310,23 @@ function CheckoutDialogInner({
             )}
 
             <div className="flex w-full flex-col items-center gap-1.5 border-t border-white/10 pt-4">
-              <p role="status" className="flex items-center gap-2 text-[13px] text-text-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent/60" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
-                </span>
-                {expired ? t("checkout.expired") : t("checkout.waiting")}
-              </p>
-              {remaining !== null && !expired && <p className="font-mono text-[12px] tabular-nums text-text-3">{t("checkout.expiresIn", { time: formatRemaining(remaining) })}</p>}
+              {ended ? (
+                <>
+                  <p role="alert" className="text-[13.5px] font-medium text-text">
+                    {watch === "session" ? t("checkout.sessionExpired") : watch === "failed" ? t("checkout.failed") : t("checkout.expired")}
+                  </p>
+                  {watch !== "session" && <Button variant="accent" size="sm" onClick={startOver}>{t("checkout.startOver")}</Button>}
+                </>
+              ) : (
+                <p role="status" className="flex items-center gap-2 text-[13px] text-text-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent/60" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+                  </span>
+                  {t("checkout.waiting")}
+                </p>
+              )}
+              {remaining !== null && !ended && <p className="font-mono text-[12px] tabular-nums text-text-3">{t("checkout.expiresIn", { time: formatRemaining(remaining) })}</p>}
               {pix.brCode && <a href={pix.paymentLinkUrl} target="_blank" rel="noopener noreferrer" className="text-[12.5px] text-text-3 underline underline-offset-4 hover:text-text">{t("checkout.pixOpenLink")}</a>}
             </div>
           </div>

@@ -3,6 +3,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -59,6 +60,9 @@ export class ChangePlanDto {
   @ApiProperty({ enum: ['free', ...PAID_PLANS] })
   @IsIn(['free', ...PAID_PLANS])
   plan_slug!: string;
+}
+export class PaymentStatusParams {
+  @IsUUID() paymentId!: string;
 }
 export class CheckoutSessionParams {
   @IsString() @MaxLength(255) sessionId!: string;

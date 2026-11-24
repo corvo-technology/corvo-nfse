@@ -34,6 +34,18 @@ export interface PixSubscriptionState {
   planSlug: string;
   brCode: string | null;
   paymentLinkUrl: string | null;
+  /** The waiting payment, so its screen can follow it. */
+  paymentId?: string;
+}
+
+export interface PaymentStatusView {
+  id: string;
+  /** `paid` also covers an authorized Pix Automático contract. */
+  status: 'pending' | 'paid' | 'expired' | 'failed';
+  kind: 'plan' | 'avulso';
+  units: number | null;
+  plan_slug: string | null;
+  paid_at: string | null;
 }
 
 export interface WooviEvent {
@@ -349,7 +361,7 @@ export class WooviPaymentsService {
     const intent = await this.intents.findByKey(tenantId, key);
     if (!intent) return null;
     assertReplayMatches(intent, { provider: 'woovi', ...expected });
-    return intent.checkout;
+    return intent.checkout && { ...intent.checkout, paymentId: intent.id };
   }
 
   /**
@@ -375,6 +387,32 @@ export class WooviPaymentsService {
       planSlug: pending.planSlug!,
       brCode: pending.checkout?.brCode ?? null,
       paymentLinkUrl: pending.checkout?.paymentLinkUrl ?? null,
+      paymentId: pending.id,
+    };
+  }
+
+  /** What the waiting screen asks: how this tenant's payment stands (null for an unknown or foreign id). */
+  async paymentStatus(
+    tenantId: string,
+    id: string,
+  ): Promise<PaymentStatusView | null> {
+    const intent = await this.intents.findById(tenantId, id);
+    if (!intent) return null;
+    const status: PaymentStatusView['status'] =
+      intent.status === 'paid' || intent.status === 'authorized'
+        ? 'paid'
+        : intent.status === 'pending'
+          ? 'pending'
+          : intent.status === 'expired'
+            ? 'expired'
+            : 'failed';
+    return {
+      id: intent.id,
+      status,
+      kind: intent.kind,
+      units: intent.units,
+      plan_slug: intent.planSlug,
+      paid_at: intent.paidAt?.toISOString() ?? null,
     };
   }
 
@@ -432,9 +470,10 @@ export class WooviPaymentsService {
       'id' | 'provider' | 'expiresAt' | 'paidAt' | 'createdAt'
     >,
   ): Promise<PixCheckout> {
+    const id = randomUUID();
     await this.intents.insert({
       ...input,
-      id: randomUUID(),
+      id,
       provider: 'woovi',
       expiresAt: input.checkout?.expiresAt
         ? new Date(input.checkout.expiresAt)
@@ -442,6 +481,6 @@ export class WooviPaymentsService {
       paidAt: null,
       createdAt: new Date(),
     });
-    return input.checkout!;
+    return { ...input.checkout!, paymentId: id };
   }
 }
