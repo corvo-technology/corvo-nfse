@@ -117,6 +117,7 @@ export class TypeOrmAuthSessionRepository implements IAuthSessionRepository {
     previousHash: string,
     nextHash: string,
     now = new Date(),
+    nextExpiresAt?: Date,
   ): Promise<boolean> {
     requireTenantId(tenantId);
     const result = await this.repository().update(
@@ -130,7 +131,10 @@ export class TypeOrmAuthSessionRepository implements IAuthSessionRepository {
         refreshTokenHash: previousHash,
         expiresAt: MoreThan(now),
       },
-      { refreshTokenHash: nextHash },
+      {
+        refreshTokenHash: nextHash,
+        ...(nextExpiresAt ? { expiresAt: nextExpiresAt } : {}),
+      },
     );
     return result.affected === 1;
   }
@@ -232,6 +236,9 @@ export class TypeOrmAuthSessionRepository implements IAuthSessionRepository {
       .update(AuthSessionOrmEntity)
       .set({ revokedAt: now, updatedAt: now })
       .where('auth_user_id = :authUserId', { authUserId })
+      // Only browser sessions: MCP grants (kind 'oauth_refresh') are separate
+      // connected apps and end only by explicit revoke or refresh expiry.
+      .andWhere("kind = 'web'")
       .andWhere('revoked_at IS NULL');
     if (exceptSessionId) {
       qb.andWhere('id <> :exceptSessionId', { exceptSessionId });

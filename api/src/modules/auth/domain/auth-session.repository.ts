@@ -9,6 +9,7 @@ export abstract class IAuthSessionRepository {
     previousHash: string,
     nextHash: string,
     now?: Date,
+    nextExpiresAt?: Date,
   ): Promise<boolean>;
   abstract revokeOAuthSession(
     id: string,

@@ -141,6 +141,34 @@ import {
 } from './tools/service-favorite.tools';
 import { AccountantPackageService } from '@/modules/invoice/application/package/accountant-package.service';
 import { ServiceFavoritesService } from '@/modules/service-favorites/application/service-favorites.service';
+import { InvoiceOverviewService } from '@/modules/invoice/application/invoice-overview.service';
+import { BillingUsageService } from '@/modules/billing/application/billing-usage.service';
+import { CreditsService } from '@/modules/credits/application/credits.service';
+import { CertificateService } from '@/modules/certificate/application/certificate.service';
+import { CompanyFiscalProfileService } from '@/modules/company/application/company-fiscal-profile.service';
+import { CompanyServiceTaxProfileService } from '@/modules/company/application/company-service-tax-profile.service';
+import { SimplesRegistryPort } from '@/modules/company/domain/registry-check';
+import {
+  DPS_SEQUENCE_REPOSITORY,
+  type IDpsSequenceRepository,
+} from '@/modules/invoice/domain/dps-sequence';
+import {
+  INVOICES_OVERVIEW_TOOL,
+  createInvoicesOverviewHandler,
+} from './tools/invoices-overview.tool';
+import {
+  CREDITS_BALANCE_TOOL,
+  createCreditsBalanceHandler,
+} from './tools/credits-balance.tool';
+import { NFSE_GET_TOOL, createNfseGetHandler } from './tools/nfse-get.tool';
+import {
+  COMPANY_FISCAL_STATUS_TOOL,
+  createCompanyFiscalStatusHandler,
+} from './tools/company-fiscal-status.tool';
+import {
+  CNPJ_LOOKUP_TOOL,
+  createCnpjLookupHandler,
+} from './tools/cnpj-lookup.tool';
 
 type ToolHandler = (params: unknown, ctx: AuthContext) => Promise<unknown>;
 
@@ -176,6 +204,15 @@ export class McpService {
     private readonly packageLinks: PackageLinkService,
     private readonly accountantPackages: AccountantPackageService,
     private readonly serviceFavorites: ServiceFavoritesService,
+    private readonly invoiceOverview: InvoiceOverviewService,
+    private readonly billingUsage: BillingUsageService,
+    private readonly credits: CreditsService,
+    private readonly certificates: CertificateService,
+    private readonly fiscalProfiles: CompanyFiscalProfileService,
+    private readonly serviceTaxProfiles: CompanyServiceTaxProfileService,
+    private readonly cnpjRegistry: SimplesRegistryPort,
+    @Inject(DPS_SEQUENCE_REPOSITORY)
+    private readonly dpsSequences: IDpsSequenceRepository,
   ) {
     this.server = new McpServer();
     this.registerTools();
@@ -403,6 +440,33 @@ export class McpService {
         'nfse:read',
       ),
     );
+    // read tools: overview, credits, invoice detail, company fiscal, cnpj, review
+    for (const [tool, handler] of [
+      [
+        INVOICES_OVERVIEW_TOOL,
+        createInvoicesOverviewHandler(this.invoiceOverview),
+      ],
+      [
+        CREDITS_BALANCE_TOOL,
+        createCreditsBalanceHandler(this.billingUsage, this.credits),
+      ],
+      [NFSE_GET_TOOL, createNfseGetHandler(this.invoiceService)],
+      [
+        COMPANY_FISCAL_STATUS_TOOL,
+        createCompanyFiscalStatusHandler(
+          this.companyService,
+          this.fiscalProfiles,
+          this.serviceTaxProfiles,
+          this.certificates,
+          this.dpsSequences,
+        ),
+      ],
+      [CNPJ_LOOKUP_TOOL, createCnpjLookupHandler(this.cnpjRegistry)],
+    ] as const)
+      this.server.registerTool(
+        tool,
+        this.wrapWithScopeCheck(handler, 'nfse:read'),
+      );
   }
 
   private wrapWithScopeCheck(
