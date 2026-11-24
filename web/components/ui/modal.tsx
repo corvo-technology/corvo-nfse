@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -76,7 +77,8 @@ export function Modal({ open, onClose, title, children, wide }: ModalProps) {
 
   if (!open) return null;
 
-  return (
+  // Rendered on <body>: a parent with an animation/transform (like .dash-in) would trap the z-index and let later page content paint over the dialog.
+  return createPortal(
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 backdrop-blur-sm sm:items-center sm:p-4"
@@ -109,6 +111,7 @@ export function Modal({ open, onClose, title, children, wide }: ModalProps) {
         </div>
         <div className="overflow-y-auto px-5 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
