@@ -16,9 +16,20 @@ WORKDIR /src
 # A tag pode ser movida; o build para se o commit baixado não for o fixado.
 RUN git clone --depth 1 --branch "$RTC_TAG" "$RTC_REPO" . \
  && test "$(git rev-parse HEAD)" = "$RTC_COMMIT"
-# (O mvnw baixa o Maven pelo curl.) Gera o banco (SQLite) com as migrações do próprio repositório e empacota o jar.
+# O mvnw baixa o Maven pelo curl. Às vezes esse download vem cortado ("Could not find or load main class
+# org.apache.maven.wrapper.MavenWrapperMain"). Por isso a preparação do wrapper (e só ela) tenta de novo,
+# apagando o que veio pela metade. Erro de migração ou de compilação NÃO é repetido: falha na hora.
+# Depois gera o banco (SQLite) com as migrações do próprio repositório e empacota o jar.
 RUN --mount=type=cache,target=/root/.m2 \
-    mkdir -p calculadora/db \
+    ok=0; \
+    for i in 1 2 3 4; do \
+      if ./mvnw -B -ntp -v; then ok=1; break; fi; \
+      echo "Wrapper do Maven não baixou direito (tentativa $i de 4); limpando e tentando de novo"; \
+      rm -rf .mvn/wrapper/maven-wrapper.jar /root/.m2/wrapper; \
+      sleep $((i * 5)); \
+    done; \
+    test "$ok" = 1 \
+ && mkdir -p calculadora/db \
  && ./mvnw -B -ntp flyway:migrate -Dflyway.configFiles=./flyway/flyway-pro.conf \
  && ./mvnw -B -ntp clean package -DskipTests
 

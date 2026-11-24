@@ -26,6 +26,9 @@ function exempt(request: Request): boolean {
     /\/(health\/(live|ready)|webhooks\/stripe)$/.test(request.path)
   );
 }
+/** Remaining requests of the tightest budget already written to each response's headers. */
+const tightestRemaining = new WeakMap<object, number>();
+
 @Injectable()
 export class HttpApiRateLimitGuard implements CanActivate {
   constructor(
@@ -97,9 +100,16 @@ export class HttpApiRateLimitGuard implements CanActivate {
   ) {
     const result = await this.limiter.check(key, { max, windowMs });
     const response = context.switchToHttp().getResponse<Response>();
-    response.setHeader('X-RateLimit-Limit', max);
-    response.setHeader('X-RateLimit-Remaining', result.remaining);
-    response.setHeader('X-RateLimit-Reset', Math.ceil(result.resetAt / 1000));
+    // A request is checked against several budgets (identity, tenant, route). The headers
+    // describe the tightest one, so a client never sees a roomy tenant budget while its own
+    // session budget is the one about to run out.
+    const shown = tightestRemaining.get(response);
+    if (shown === undefined || result.remaining < shown) {
+      tightestRemaining.set(response, result.remaining);
+      response.setHeader('X-RateLimit-Limit', max);
+      response.setHeader('X-RateLimit-Remaining', result.remaining);
+      response.setHeader('X-RateLimit-Reset', Math.ceil(result.resetAt / 1000));
+    }
     if (!result.allowed) {
       response.setHeader(
         'Retry-After',

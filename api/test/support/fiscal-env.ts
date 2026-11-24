@@ -3,7 +3,11 @@ import { randomUUID, randomBytes } from 'node:crypto';
 const url = new URL(process.env.E2E_DATABASE_URL ?? process.env.DATABASE_URL!);
 if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))
   throw new Error('Fiscal integration requires local PostgreSQL');
-url.pathname = '/corvo_test';
+// Same database as the other e2e suites (E2E_DATABASE_URL); this suite isolates itself by schema.
+if (!url.pathname.replace(/^\//, '').includes('test'))
+  throw new Error(
+    'Fiscal integration requires a database with "test" in its name',
+  );
 process.env.NODE_ENV = 'test';
 process.env.NFSE_TEST_PROVIDER = 'fake';
 process.env.DATABASE_URL = url.toString();

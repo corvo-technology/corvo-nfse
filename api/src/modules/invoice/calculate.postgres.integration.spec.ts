@@ -275,8 +275,11 @@ describePostgres('POST /v1/invoices/calculate with PostgreSQL RLS', () => {
     const services = new CompanyServiceTaxProfileService(
       new TypeOrmCompanyServiceTaxProfileRepository(runtime),
     );
+    const companyRepository = new TypeOrmCompanyRepository(
+      runtime.getRepository(CompanyOrmEntity),
+    );
     const companies = new CompanyService(
-      new TypeOrmCompanyRepository(runtime.getRepository(CompanyOrmEntity)),
+      companyRepository,
       quota as never,
       new CompanyDomainService(),
       profiles,
@@ -298,7 +301,10 @@ describePostgres('POST /v1/invoices/calculate with PostgreSQL RLS', () => {
         { provide: ConfigService, useValue: config },
         {
           provide: IFiscalProfileReader,
-          useValue: new TypeOrmCompanyFiscalProfileReader(profiles),
+          useValue: new TypeOrmCompanyFiscalProfileReader(
+            profiles,
+            companyRepository,
+          ),
         },
         {
           provide: IServiceProfileReader,

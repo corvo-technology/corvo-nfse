@@ -9,6 +9,7 @@ import { gzipSync, gunzipSync } from 'node:zlib';
 import { NfseClient, Ambiente } from 'open-nfse';
 import { OpenNfseProvider } from '@/infra/external/nfse/open-nfse.provider';
 import { NfseWorkflowService } from '@/modules/invoice/application/nfse-workflow.service';
+import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { DataSource } from 'typeorm';
@@ -21,9 +22,11 @@ import {
   DeleteBucketCommand,
 } from '@aws-sdk/client-s3';
 import { createTypeOrmOptions } from '@/infra/database/typeorm.options';
+import { DEFAULT_SERVICE_CODE } from '@/modules/invoice/infra/fiscal/service-defaults';
+import { FiscalPortalBreaker } from '@/modules/invoice/application/fiscal-portal-breaker';
+import { entityDrift } from '@/infra/database/testing/entity-drift';
 import { InvoiceOrmEntity } from '@/modules/invoice/infra/invoice.orm-entity';
 import { CreditTransactionOrmEntity } from '@/modules/credits/infra/credit-transaction.orm-entity';
-import { BillingUsageService } from '@/modules/billing/application/billing-usage.service';
 import { InvoiceLifecycleService } from '@/modules/invoice/application/invoice-lifecycle.service';
 import { Invoice } from '@/modules/invoice/domain/invoice';
 import { InvoiceEvent } from '@/modules/invoice/domain/invoice-event';
@@ -43,6 +46,13 @@ import { ModulesContainer } from '@nestjs/core';
 // Disable the manual SDK mock used by the default unit suite.
 jest.unmock('open-nfse');
 
+/** A tenant admin creating the fixture keys; `create` needs the creator's role and permissions. */
+const asTenantAdmin = (activeTenantId: string): any => ({
+  activeTenantId,
+  principalType: 'tenant_member',
+  role: 'admin',
+  permissions: [],
+});
 const tenant = randomUUID();
 const otherTenant = randomUUID();
 const emails: any[] = [];
@@ -182,7 +192,10 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
         .useFactory({
           inject: [DataSource],
           factory: (database: DataSource) => {
-            const provider = new OpenNfseProvider(database);
+            const provider = new OpenNfseProvider(
+              database,
+              new ConfigService(),
+            );
             // Exercise the real SDK/certificate/XSD/retry store; only replace HTTP.
             jest.spyOn(provider as any, 'client').mockImplementation(
               (payload: any, retryStore: any) =>
@@ -228,21 +241,21 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
     );
     const keys = app.get(ApiKeyService);
     testKey = (
-      await keys.create({ activeTenantId: tenant } as any, {
+      await keys.create(asTenantAdmin(tenant), {
         name: 'test',
         environment: 'test',
         scope: 'full_access',
       })
     ).plaintext;
     liveKey = (
-      await keys.create({ activeTenantId: tenant } as any, {
+      await keys.create(asTenantAdmin(tenant), {
         name: 'live',
         environment: 'live',
         scope: 'full_access',
       })
     ).plaintext;
     otherKey = (
-      await keys.create({ activeTenantId: otherTenant } as any, {
+      await keys.create(asTenantAdmin(otherTenant), {
         name: 'other',
         environment: 'test',
         scope: 'full_access',
@@ -325,8 +338,7 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
   }, 30000);
 
   it('migrates a clean database with no ORM schema drift', async () => {
-    const diff = await db.driver.createSchemaBuilder().log();
-    expect(diff.upQueries.map((q) => q.query)).toEqual([]);
+    expect(await entityDrift(db)).toEqual([]);
     expect(await db.runMigrations()).toEqual([]);
   });
 
@@ -353,13 +365,15 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
       await upgrade.runMigrations();
       const legacyCompany = randomUUID(),
         legacyInvoice = randomUUID();
-      await upgrade.query(`INSERT INTO tenants(id) VALUES ($1)`, [tenant]);
+      await upgrade.query(`INSERT INTO "${schema}".tenants(id) VALUES ($1)`, [
+        tenant,
+      ]);
       await upgrade.query(
-        `INSERT INTO nfse_companies(id,tenant_id,legal_name,tax_id,tax_regime,environment,status) VALUES ($1,$2,'Legacy','11222333000181','MEI','production','ready')`,
+        `INSERT INTO "${schema}".nfse_companies(id,tenant_id,legal_name,tax_id,tax_regime,environment,status) VALUES ($1,$2,'Legacy','11222333000181','MEI','production','ready')`,
         [legacyCompany, tenant],
       );
       await upgrade.query(
-        `INSERT INTO nfse_invoices(id,company_id,tenant_id,status,customer_snapshot,service_snapshot,tax_snapshot,amount,competence_date,idempotency_key) VALUES ($1,$2,$3,'authorized','{}','{}','{}',100,'2026-09-01','legacy-order')`,
+        `INSERT INTO "${schema}".nfse_invoices(id,company_id,tenant_id,status,customer_snapshot,service_snapshot,tax_snapshot,amount,competence_date,idempotency_key) VALUES ($1,$2,$3,'authorized','{}','{}','{}',100,'2026-09-01','legacy-order')`,
         [legacyInvoice, legacyCompany, tenant],
       );
       upgrade.migrations = all;
@@ -368,7 +382,7 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
         'SeparateFiscalEnvironments1791589200000',
       );
       const company = await upgrade.query(
-        `SELECT environment FROM nfse_companies WHERE id=$1`,
+        `SELECT environment FROM "${schema}".nfse_companies WHERE id=$1`,
         [legacyCompany],
       );
       const invoice = await upgrade
@@ -377,9 +391,7 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
       expect(company[0].environment).toBe('live');
       expect(invoice.environment).toBe('live');
       expect(invoice.documentKeyVersion).toBe(1);
-      expect(
-        (await upgrade.driver.createSchemaBuilder().log()).upQueries,
-      ).toEqual([]);
+      expect(await entityDrift(upgrade)).toEqual([]);
     } finally {
       await upgrade.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
       await upgrade.destroy();
@@ -414,15 +426,14 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
         }),
       ]),
     );
+    // The municipal registration is optional even in live (the national system rejects the
+    // provider's IM for some municipalities), but when sent it cannot be blank.
     const live = await api('post', '/companies', liveKey)
-      .send({ ...base, municipalityCode })
+      .send({ ...base, municipalityCode, municipalReg: '   ' })
       .expect(422);
     expect(live.body.details).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          field: 'municipalReg',
-          code: 'ERROR_REQUIRED',
-        }),
+        expect.objectContaining({ field: 'municipalReg' }),
       ]),
     );
   });
@@ -599,6 +610,7 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
       tenantId: tenant,
       amount: 1,
       type: 'bonus',
+      source: 'bonus',
       isReservation: false,
     });
     const lifecycle = app.get(InvoiceLifecycleService);
@@ -611,11 +623,6 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
         },
         tenant,
       );
-    const usage = await app.get(BillingUsageService).status(tenant);
-    await db.query(
-      `UPDATE billing_usage_periods SET authorized = included - 1, reserved = 0 WHERE id = $1 AND tenant_id = $2`,
-      [usage.period.id, tenant],
-    );
     const a = make(),
       b = make();
     const results = await Promise.allSettled(
@@ -655,11 +662,14 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
         where: { type: 'invoice_rejected', tenantId: tenant },
       }),
     ).toBe(1);
-    // Remove the synthetic historical usage used to exercise the final allowance.
-    await db.query(
-      `UPDATE billing_usage_periods SET authorized = 1 WHERE id = $1 AND tenant_id = $2`,
-      [usage.period.id, tenant],
-    );
+    // The last credit was spent above; give the next live tests credits to issue with.
+    await wallet.save({
+      tenantId: tenant,
+      amount: 10,
+      type: 'bonus',
+      source: 'bonus',
+      isReservation: false,
+    });
   });
   it('uploads a password-protected real PKCS12 and keeps the password encrypted for live mTLS', async () => {
     const forge = require('node-forge');
@@ -741,6 +751,9 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
           data: JSON.stringify({ message: 'controlled outage' }),
         };
       });
+    // The portal breaker lives in Redis and counts failures across runs: start from a closed one,
+    // so the simulated outage below is the only failure it has seen.
+    await worker.get(FiscalPortalBreaker).recordSuccess('live');
     const issued = await api('post', '/invoices', liveKey)
       .set('X-Corvo-Environment', 'test')
       .set('Idempotency-Key', 'live-retry')
@@ -805,7 +818,7 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
     ).toBeGreaterThan(Date.now());
     // Advance only this fixture's persisted retry window, keeping the signed XML.
     await db.query(
-      `UPDATE nfse_invoices SET pending_emission=jsonb_set(pending_emission,'{notBefore}',to_jsonb($1::text)) WHERE id=$2`,
+      `UPDATE "${process.env.DB_SCHEMA}".nfse_invoices SET pending_emission=jsonb_set(pending_emission,'{notBefore}',to_jsonb($1::text)) WHERE id=$2`,
       [new Date(Date.now() - 1000).toISOString(), id],
     );
     http
@@ -917,15 +930,15 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
     await api('patch', `/companies/${testCompany}`)
       .send({ defaultServiceCode: null })
       .expect(200);
-    const noDefault = await api('post', '/invoices').send(payload).expect(422);
-    expect(noDefault.body.details).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          field: 'service.code',
-          code: 'ERROR_REQUIRED',
-        }),
-      ]),
-    );
+    // Without a company default the platform default service code (10.09) applies.
+    const noDefault = await api('post', '/invoices').send(payload).expect(202);
+    expect(
+      (
+        await db
+          .getRepository(InvoiceOrmEntity)
+          .findOneByOrFail({ id: noDefault.body.data.id })
+      ).serviceSnapshot,
+    ).toMatchObject({ code: DEFAULT_SERVICE_CODE });
     await api('patch', `/companies/${testCompany}`)
       .send({ municipalityCode: null })
       .expect(400);

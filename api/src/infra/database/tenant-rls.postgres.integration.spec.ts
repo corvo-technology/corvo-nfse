@@ -249,9 +249,11 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
     );
     return { helper, service };
   };
-  const createAuthUser = async (): Promise<AuthUser> => {
+  const createAuthUser = async (
+    emailFor: (id: string) => string = (id) => `${id}@example.invalid`,
+  ): Promise<AuthUser> => {
     const id = randomUUID();
-    const email = `${id}@example.invalid`;
+    const email = emailFor(id);
     await admin.query(
       `INSERT INTO ${table('auth_users')} (id,email,name) VALUES ($1,$2,'Bootstrap')`,
       [id, email],
@@ -267,7 +269,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
     };
   };
 
-  it('serializes simultaneous workspace bootstrap and rejects inactive membership and reused email', async () => {
+  it('serializes simultaneous workspace bootstrap, rejects inactive membership and grants the free note once per email', async () => {
     const account = await createAuthUser();
     const { service } = workspaceHarness();
     await Promise.all([
@@ -292,19 +294,24 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
     await expect(service.ensureWorkspace(account)).rejects.toThrow(
       'Tenant membership is inactive',
     );
-    const duplicate = await createAuthUser();
-    await admin.query(
-      `UPDATE ${table('tenant_billing')} SET billing_email=$1 WHERE tenant_id=$2`,
-      [duplicate.email.toUpperCase(), account.id],
+    // The same person signing up again with an alias (`+tag`) gets a workspace, but the
+    // first free note was already claimed by the first one, so no second note is granted.
+    const duplicate = await createAuthUser(() =>
+      account.email.replace('@', '+again@'),
     );
-    await expect(service.ensureWorkspace(duplicate)).rejects.toThrow(
-      'Email already belongs to a free workspace',
-    );
+    await service.ensureWorkspace(duplicate);
     expect(
       await admin.query(`SELECT 1 FROM ${table('tenants')} WHERE id=$1`, [
         duplicate.id,
       ]),
-    ).toEqual([]);
+    ).toHaveLength(1);
+    const freeNotes = (tenantId: string) =>
+      admin.query(
+        `SELECT 1 FROM ${table('credit_transactions')} WHERE tenant_id=$1 AND type='bonus'`,
+        [tenantId],
+      );
+    expect(await freeNotes(account.id)).toHaveLength(1);
+    expect(await freeNotes(duplicate.id)).toHaveLength(0);
   });
 
   it('rolls back workspace and billing when the membership insert fails', async () => {

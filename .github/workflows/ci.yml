@@ -14,51 +14,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  application:
-    name: Check ${{ matrix.service }}
+  # Every api test runs here: the unit ones and the ones that need a real Postgres
+  # (RLS, migrations, repositories, HTTP contract) and Redis. A spec skips itself
+  # when its database/Redis variable is missing, so the variables below are what
+  # turn them on; the "Nothing was skipped" step fails if one of them goes missing.
+  api:
+    name: Check api
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        service: [api, web]
-    defaults:
-      run:
-        working-directory: ${{ matrix.service }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          cache: yarn
-          cache-dependency-path: ${{ matrix.service }}/yarn.lock
-      - name: Install
-        run: yarn install --frozen-lockfile
-      - name: Lint
-        run: |
-          if [ '${{ matrix.service }}' = api ]; then
-            yarn lint:check
-          else
-            yarn lint
-          fi
-      - name: Typecheck production code
-        run: yarn typecheck
-      - name: Test
-        env:
-          NODE_ENV: test
-        run: |
-          if [ '${{ matrix.service }}' = api ]; then
-            yarn test --runInBand
-          else
-            yarn test
-          fi
-      - name: Build
-        run: yarn build
-
-  platform-admin-postgres:
-    name: Platform admin (Postgres and Redis)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:17-alpine
@@ -94,15 +57,120 @@ jobs:
           cache-dependency-path: api/yarn.lock
       - name: Install
         run: yarn install --frozen-lockfile
+      - name: Lint
+        run: yarn lint:check
+      - name: Typecheck production code
+        run: yarn typecheck
       # The specs create their own schema (owner role) and a restricted runtime
       # role through scripts/provision-runtime-role.sql, so the service's default
-      # superuser is enough.
-      - name: Platform admin specs against Postgres
+      # superuser is enough. Database names must end in _test. Specs that share
+      # database state need --runInBand.
+      - name: Test (unit, Postgres and Redis)
         env:
           NODE_ENV: test
           MIGRATION_TEST_DATABASE_URL: postgresql://corvo:corvo@localhost:5432/corvo_test
+          POSTGRES_POOL_TEST_DATABASE_URL: postgresql://corvo:corvo@localhost:5432/corvo_test
           AUTH_TEST_REDIS_URL: redis://localhost:6379
-        run: yarn jest src/modules/platform-admin --runInBand
+          RATE_LIMIT_TEST_REDIS_URL: redis://localhost:6379
+          REDIS_URL: redis://localhost:6379
+        run: yarn test --runInBand --ci --json --outputFile=jest-results.json
+      - name: Nothing was skipped
+        run: node ../scripts/assert-no-skipped-tests.mjs jest-results.json
+      - name: Build
+        run: yarn build
+
+  web:
+    name: Check web
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: web/yarn.lock
+      - name: Install
+        run: yarn install --frozen-lockfile
+      - name: Lint
+        run: yarn lint
+      - name: Typecheck production code
+        run: yarn typecheck
+      - name: Test
+        env:
+          NODE_ENV: test
+        run: yarn test
+      - name: Build
+        run: yarn build
+
+  # The HTTP end-to-end suites (real app, Postgres, Redis) and the fiscal
+  # integration suite, which also needs an S3-compatible store for the documents.
+  api-e2e:
+    name: E2E api (Postgres, Redis and S3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: corvo
+          POSTGRES_PASSWORD: corvo
+          POSTGRES_DB: corvo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U corvo -d corvo_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      # S3-compatible store for the fiscal documents (credentials test/test).
+      s3:
+        image: ministackorg/ministack:1.5.44
+        env:
+          SERVICES: s3
+        ports:
+          - 4566:4566
+    defaults:
+      run:
+        working-directory: api
+    env:
+      NODE_ENV: test
+      E2E_DATABASE_URL: postgresql://corvo:corvo@localhost:5432/corvo_test
+      REDIS_URL: redis://localhost:6379
+      E2E_STORAGE_S3_ENDPOINT: http://127.0.0.1:4566
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: api/yarn.lock
+      - name: Install
+        run: yarn install --frozen-lockfile
+      - name: Wait for S3
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4566/ >/dev/null && exit 0
+            sleep 1
+          done
+          echo "S3 did not come up" >&2
+          exit 1
+      - name: E2E (HTTP)
+        run: yarn test:e2e
+      - name: Fiscal integration
+        run: yarn test:fiscal:integration
 
   docker:
     name: Validate Docker and Compose
@@ -124,6 +192,8 @@ jobs:
         run: >-
           docker compose --env-file deploy/.env
           -f deploy/docker-compose.yml config --quiet
+      # The tax calculator image downloads Maven when it builds; the Dockerfile
+      # retries only that download (see deploy/Dockerfile.rtc).
       - name: Build images
         run: >-
           docker compose --env-file deploy/.env.local

@@ -34,7 +34,10 @@ export class TypeOrmIntegrationEventRepository extends IIntegrationEventReposito
           ...input,
           lastError: input.lastError ?? null,
           attempts: 0,
-          nextAttemptAt: () => 'now()',
+          // The application clock, the same one `claimBatch` compares against. The database
+          // `now()` has microseconds and can sit a hair after a millisecond-truncated
+          // `new Date()` taken right after the insert, leaving a fresh event "not due yet".
+          nextAttemptAt: new Date(),
         })
         .orIgnore()
         .returning('id')
