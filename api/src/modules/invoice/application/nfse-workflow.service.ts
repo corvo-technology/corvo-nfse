@@ -44,6 +44,7 @@ import {
   recordAuthorizationFailure,
   recordDpsValidationFailure,
 } from './fiscal/fiscal.metrics';
+import { DateTime } from 'luxon';
 import { fiscalError, type FiscalError } from '../domain/fiscal/fiscal-error';
 import { moneyString, toDecimal } from '../domain/fiscal/money';
 
@@ -494,7 +495,33 @@ export class NfseWorkflowService {
     await this.invoices.save(invoice, invoice.tenantId);
   }
 
+  /**
+   * Last line of defence before the DPS is built: the Receita rejects a competence later than dhEmi (E0015).
+   * Compared by calendar day in São Paulo, so a note scheduled for its competence day still goes out.
+   */
+  private assertCompetenceNotAfterIssue(invoice: Invoice): void {
+    const snapshot = invoice.toSnapshot();
+    const competenceDay = new Date(snapshot.competenceDate)
+      .toISOString()
+      .slice(0, 10);
+    const issueDay = DateTime.fromJSDate(dpsIssuedAt(snapshot), {
+      zone: 'America/Sao_Paulo',
+    }).toISODate();
+    if (competenceDay <= (issueDay ?? '')) return;
+    throw new DpsBuildRejectionError(
+      fiscalError({
+        code: 'COMPETENCE_DATE_IN_FUTURE',
+        message:
+          'The competence date is later than the issue date of the DPS. Use today or an earlier date, or schedule the emission.',
+        category: 'VALIDATION',
+        step: 'NfseWorkflow',
+        details: { competenceDate: competenceDay, issueDate: issueDay },
+      }),
+    );
+  }
+
   private async payload(invoice: Invoice): Promise<IIssuePayload> {
+    this.assertCompetenceNotAfterIssue(invoice);
     const company = await this.companies.findById(
       invoice.companyId,
       invoice.tenantId,
