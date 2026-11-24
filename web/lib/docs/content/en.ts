@@ -3249,10 +3249,52 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "`{ invoices, next_cursor }`"
             ],
             [
+              "`nfse_repeat`",
+              "`nfse:write`",
+              "`invoice_id` or `access_key` of the note to copy; optional `amount`, `description`, `competence_date`",
+              "`{ invoice_id, access_key, status, copied_from_invoice_id }`. Same customer, service and amount; uses a credit"
+            ],
+            [
+              "`nfse_email_resend`",
+              "`nfse:write`",
+              "`invoice_id`, `email?` (another destination)",
+              "`{ invoice_id, email_id, status }` (authorized invoice only)"
+            ],
+            [
+              "`company_update`",
+              "`nfse:write`",
+              "`company_id` and what changes: `trade_name?`, `municipality_code?`, `default_service_code?` (`null` removes it), `address?`. Never CNPJ, regime, certificate or deletion",
+              "`{ id, trade_name, municipality_code, default_service_code, address }`"
+            ],
+            [
+              "`accountant_package_send`",
+              "`nfse:write`",
+              "`company_id` or `tax_id`, `month?` (`YYYY-MM`, default previous month), `confirm`",
+              "Without `confirm: true` only a preview `{ month, recipient, note_count }`; with it, sends and returns `{ sent, status }`"
+            ],
+            [
+              "`service_favorite_list`",
+              "`nfse:read`",
+              "`company_id`",
+              "`{ favorites }`"
+            ],
+            [
+              "`service_favorite_create`",
+              "`nfse:write`",
+              "`company_id`, `label`, `description`, `service_code`, `amount_cents?`, `municipality_code?`",
+              "The saved favorite (up to 50 per company)"
+            ],
+            [
+              "`service_favorite_delete`",
+              "`nfse:write`",
+              "`company_id`, `favorite_id`",
+              "`{ favorite_id, deleted: true }`"
+            ],
+            [
               "`nfse_download_pdf`",
               "`nfse:read`",
-              "`access_key` (authorized invoice)",
-              "`{ access_key, pdf_base64 }`"
+              "`access_key` (authorized invoice), `inline?` (`true` returns base64)",
+              "`{ access_key, download_url, expires_at, file_name, mime_type }` (signed link, valid for one hour, preferred); with `inline: true`, `{ access_key, pdf_base64 }`"
             ],
             [
               "`nfse_get_download_url`",

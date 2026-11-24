@@ -868,12 +868,19 @@ proxy do Next). `redirect_uri` aceitos no registro: `https`, `http` em
 | `nfse_issue`        | `nfse:write` | `company_id`, `customer {name, tax_id, email?}`, `services [{description, quantity, unit_price}]`, `competence_date`, `service_code?`, `idempotency_key?` | `{ invoice_id, access_key, status }`                             |
 | `nfse_cancel`       | `nfse:write` | `invoice_id`, `reason` (`issue_error` \| `service_not_provided` \| `other`), `description?` (15-255 caracteres, obrigatória para NFS-e autorizada ou em emissão) | `{ invoice_id, status, cancelled_at }` (`cancelled`, `cancelling` ou `processing` com o pedido registrado) |
 | `nfse_substitute`   | `nfse:write` | `invoice_id`, `description` (15-255), `service_description?`, `purchase_order?`, `notes?` | `{ invoice_id, status, substitutes_invoice_id }` |
+| `nfse_repeat` | `nfse:write` | `invoice_id` ou `access_key`, `amount?`, `description?`, `competence_date?` | `{ invoice_id, access_key, status, copied_from_invoice_id }` |
+| `nfse_email_resend` | `nfse:write` | `invoice_id`, `email?` | `{ invoice_id, email_id, status }` |
+| `company_update` | `nfse:write` | `company_id`, `trade_name?`, `municipality_code?`, `default_service_code?`, `address?` | `{ id, trade_name, municipality_code, default_service_code, address }` |
+| `accountant_package_send` | `nfse:write` | `company_id` ou `tax_id`, `month?`, `confirm` (sem `true`, só prévia) | `{ sent, status, month, recipient, note_count }` |
+| `service_favorite_list` | `nfse:read` | `company_id` | `{ favorites }` |
+| `service_favorite_create` | `nfse:write` | `company_id`, `label`, `description`, `service_code`, `amount_cents?`, `municipality_code?` | favorito salvo |
+| `service_favorite_delete` | `nfse:write` | `company_id`, `favorite_id` | `{ favorite_id, deleted: true }` |
 | `customer_list`     | `nfse:read`  | `search?`, `limit?` (1-100), `offset?` | `{ customers, total, limit, offset }` |
 | `customer_update`   | `nfse:write` | `tax_id`, `name?`, `email?` (`null` apaga) | `{ tax_id, name, email, last_used_at }` |
 | `customer_delete`   | `nfse:write` | `tax_id` | `{ tax_id, deleted: true }` |
 | `nfse_query`        | `nfse:read`  | `access_key`                                                                                                                                   | `{ access_key, status, nfse_number, authorized_at, last_error }` |
 | `nfse_list`         | `nfse:read`  | `status?`, `limit?`, `cursor?`                                                                                                                 | `{ invoices, next_cursor }`                                      |
-| `nfse_download_pdf` | `nfse:read`  | `access_key`                                                                                                                                   | `{ access_key, pdf_base64 }`                                     |
+| `nfse_download_pdf` | `nfse:read`  | `access_key`, `inline?` | `{ access_key, download_url, expires_at, file_name, mime_type }` (link assinado, 1 hora); com `inline: true`, `{ access_key, pdf_base64 }` |
 
 Falhas de ferramenta voltam como resultado `{ isError: true, content: [{type:"text", text}] }`.
 

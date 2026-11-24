@@ -115,6 +115,33 @@ import {
   createNfseGetPackageUrlHandler,
 } from './tools/nfse-get-package-url.tool';
 
+import {
+  NFSE_REPEAT_TOOL,
+  createNfseRepeatHandler,
+} from './tools/nfse-repeat.tool';
+import {
+  NFSE_EMAIL_RESEND_TOOL,
+  createNfseEmailResendHandler,
+} from './tools/nfse-email-resend.tool';
+import {
+  COMPANY_UPDATE_TOOL,
+  createCompanyUpdateHandler,
+} from './tools/company-update.tool';
+import {
+  ACCOUNTANT_PACKAGE_SEND_TOOL,
+  createAccountantPackageSendHandler,
+} from './tools/accountant-package-send.tool';
+import {
+  SERVICE_FAVORITE_CREATE_TOOL,
+  SERVICE_FAVORITE_DELETE_TOOL,
+  SERVICE_FAVORITE_LIST_TOOL,
+  createServiceFavoriteCreateHandler,
+  createServiceFavoriteDeleteHandler,
+  createServiceFavoriteListHandler,
+} from './tools/service-favorite.tools';
+import { AccountantPackageService } from '@/modules/invoice/application/package/accountant-package.service';
+import { ServiceFavoritesService } from '@/modules/service-favorites/application/service-favorites.service';
+
 type ToolHandler = (params: unknown, ctx: AuthContext) => Promise<unknown>;
 
 /**
@@ -147,12 +174,78 @@ export class McpService {
     private readonly substitutions: InvoiceSubstitutionService,
     private readonly invoicePackages: InvoicePackageService,
     private readonly packageLinks: PackageLinkService,
+    private readonly accountantPackages: AccountantPackageService,
+    private readonly serviceFavorites: ServiceFavoritesService,
   ) {
     this.server = new McpServer();
     this.registerTools();
   }
 
   private registerTools(): void {
+    // write tools: repeat, email, company update, accountant, favorites
+    this.server.registerTool(
+      NFSE_REPEAT_TOOL,
+      this.wrapWithScopeCheck(
+        createNfseRepeatHandler(this.emissionRouter, this.invoiceRepo),
+        'nfse:write',
+      ),
+    );
+    this.server.registerTool(
+      NFSE_EMAIL_RESEND_TOOL,
+      this.wrapWithScopeCheck(
+        createNfseEmailResendHandler(this.invoiceService),
+        'nfse:write',
+      ),
+    );
+    this.server.registerTool(
+      COMPANY_UPDATE_TOOL,
+      this.wrapWithScopeCheck(
+        createCompanyUpdateHandler(this.companyService),
+        'nfse:write',
+      ),
+    );
+    this.server.registerTool(
+      ACCOUNTANT_PACKAGE_SEND_TOOL,
+      this.wrapWithScopeCheck(
+        createAccountantPackageSendHandler(
+          this.companyService,
+          this.accountantPackages,
+          this.invoicePackages,
+        ),
+        'nfse:write',
+      ),
+    );
+    this.server.registerTool(
+      SERVICE_FAVORITE_LIST_TOOL,
+      this.wrapWithScopeCheck(
+        createServiceFavoriteListHandler(
+          this.serviceFavorites,
+          this.companyService,
+        ),
+        'nfse:read',
+      ),
+    );
+    for (const [tool, handler] of [
+      [
+        SERVICE_FAVORITE_CREATE_TOOL,
+        createServiceFavoriteCreateHandler(
+          this.serviceFavorites,
+          this.companyService,
+        ),
+      ],
+      [
+        SERVICE_FAVORITE_DELETE_TOOL,
+        createServiceFavoriteDeleteHandler(
+          this.serviceFavorites,
+          this.companyService,
+        ),
+      ],
+    ] as const)
+      this.server.registerTool(
+        tool,
+        this.wrapWithScopeCheck(handler, 'nfse:write'),
+      );
+    // end of write tools block
     // nfse:write tools
     this.server.registerTool(
       NFSE_ISSUE_TOOL,
