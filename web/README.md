@@ -72,6 +72,11 @@ Copy [.env.example](.env.example) to `.env.local` for development outside Docker
 | `APP_ORIGIN` | Exact browser origin, checked on mutations. Required over HTTPS in production. |
 | `SITE_ACCESS_MODE` | `open` enables login and dashboard; `coming-soon` keeps the site in prelaunch mode. |
 | `NEXT_PUBLIC_MCP_URL` | Optional. Address shown to users for the MCP server (defaults to `https://api.corvo.tech/mcp`). |
+| `SUPPORT_WHATSAPP_NUMBER` | Optional, read at runtime. Digits with country code (e.g. `5551999999999`). Shows the "Precisa de ajuda?" WhatsApp button in the dashboard. |
+| `SUPPORT_WHATSAPP_MESSAGE` | Optional. Prefilled WhatsApp text (default: "Olá! Preciso de ajuda com a Corvo."). |
+| `SUPPORT_EMAIL` | Optional. Support e-mail, shown in the Ajuda menu. |
+| `COMMUNITY_WHATSAPP_URL` | Optional. Group invite, `https://chat.whatsapp.com/...` or `https://wa.me/...`. |
+| `SUPPORT_AVATAR_URL` | Optional. `https://` image shown on the help button. |
 | `NEXT_PUBLIC_GA_ID` | Optional analytics, only after consent; never on login or dashboard. |
 
 Browser requests go to `/api/proxy/v1`. The proxy forwards them to `API_BASE_URL`, passes only the session cookie and the CSRF header, and allows only the routes and methods listed in `app/api/proxy/[...path]/route.ts`. Production uses HTTPS so session cookies are secure.

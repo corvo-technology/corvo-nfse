@@ -84,6 +84,16 @@
     "buyNotes": "Comprar notas",
     "manageBilling": "Plano e uso"
   },
+  "Support": {
+    "community": "Comunidade",
+    "communityHint": "Grupo no WhatsApp",
+    "needHelp": "Precisa de ajuda?",
+    "needHelpHint": "Fale no WhatsApp",
+    "help": "Ajuda",
+    "whatsapp": "Falar no WhatsApp",
+    "group": "Grupo da comunidade",
+    "email": "Enviar e-mail"
+  },
   "Topbar": {
     "docs": "Docs",
     "user": "Usuário",

@@ -27,6 +27,7 @@ import type { BillingPlan } from "@/lib/types";
 import { useBillingEnabled } from "@/lib/deployment-config-context";
 import { CorvoLogo } from "@/components/ui/corvo-logo";
 import { NotesBalance } from "@/components/dashboard/notes-balance";
+import { SidebarHelp } from "@/components/support/support-contacts";
 
 interface NavItem {
   key: string;
@@ -139,6 +140,7 @@ export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarPr
           <p className="eyebrow px-3 py-1 text-text-5">{t("Sidebar.account")}</p>
           <ul className="flex flex-col gap-0.5">{navAccount.map(renderItem)}</ul>
         </div>
+        <SidebarHelp onNavigate={onClose} />
         {isPlatformAdmin && <ul className="flex flex-col gap-0.5">{renderItem(navAdmin)}</ul>}
       </nav>
 
