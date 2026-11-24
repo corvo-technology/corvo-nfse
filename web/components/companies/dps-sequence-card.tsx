@@ -19,6 +19,11 @@ export function DpsSequenceCard({ companyId, canManage, environment }: { company
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    // The page loads its data after render, so the browser cannot jump to #numeracao by itself.
+    if (window.location.hash === "#numeracao") document.getElementById("numeracao")?.scrollIntoView({ block: "center" });
+  }, []);
+
+  useEffect(() => {
     const abort = new AbortController();
     companies.dpsSequence(companyId, abort.signal).then(setSequence).catch(() => undefined);
     return () => abort.abort();
@@ -43,7 +48,7 @@ export function DpsSequenceCard({ companyId, canManage, environment }: { company
   }
 
   return (
-    <Card className="flex flex-col gap-4 p-5">
+    <Card id="numeracao" className="flex scroll-mt-24 flex-col gap-4 p-5">
       <div>
         <h2 className="text-base font-medium">{t("title")}</h2>
         <p className="mt-1 text-sm text-text-3">{t("hint")}</p>

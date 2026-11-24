@@ -94,7 +94,7 @@
   },
   "GettingStarted": {
     "title": "Comece por aqui",
-    "subtitle": "Três passos para emitir sua primeira nota.",
+    "subtitle": "Quatro passos para emitir sua primeira nota.",
     "progress": "{done} de {total}",
     "done": "Feito",
     "pending": "Falta fazer",
@@ -108,6 +108,12 @@
         "title": "Enviar certificado digital",
         "hint": "É ele que assina as suas notas.",
         "cta": "Enviar"
+      },
+      "dps": {
+        "title": "Já emitia notas pelo portal do governo? Informe o próximo número",
+        "hint": "Assim a Corvo continua de onde o portal parou e a nota não é recusada por número repetido.",
+        "cta": "Informar número",
+        "skip": "Nunca emiti notas antes"
       },
       "invoice": {
         "title": "Emitir a primeira nota",

@@ -94,7 +94,7 @@
   },
   "GettingStarted": {
     "title": "Start here",
-    "subtitle": "Three steps to issue your first invoice.",
+    "subtitle": "Four steps to issue your first invoice.",
     "progress": "{done} of {total}",
     "done": "Done",
     "pending": "To do",
@@ -108,6 +108,12 @@
         "title": "Upload the digital certificate",
         "hint": "It is what signs your invoices.",
         "cta": "Upload"
+      },
+      "dps": {
+        "title": "Already issuing invoices on the government portal? Enter the next number",
+        "hint": "So Corvo continues where the portal stopped and the invoice is not rejected for a repeated number.",
+        "cta": "Enter number",
+        "skip": "I never issued invoices before"
       },
       "invoice": {
         "title": "Issue your first invoice",
