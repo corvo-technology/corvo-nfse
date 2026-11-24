@@ -57,6 +57,37 @@ describe('HTTP rate limit policies', () => {
     });
     expect(first.setHeader).toHaveBeenCalledWith('X-RateLimit-Limit', 300);
   });
+  it('shows the headers of the tightest budget, not the last one checked', async () => {
+    const guard = new HttpApiRateLimitGuard(limiter, new Reflector(), config);
+    const { ctx } = context({
+      validatedApiKeyId: 'key-3',
+      authContext: { tenantId: 'tenant-3' },
+    });
+    const response = { setHeader: jest.fn() };
+    const http = ctx.switchToHttp();
+    jest.spyOn(ctx, 'switchToHttp').mockReturnValue({
+      ...http,
+      getResponse: () => response,
+    } as never);
+    check
+      .mockResolvedValueOnce({
+        allowed: true,
+        remaining: 299,
+        resetAt: Date.now() + 60000,
+      })
+      .mockResolvedValueOnce({
+        allowed: true,
+        remaining: 599,
+        resetAt: Date.now() + 60000,
+      });
+    await guard.canActivate(ctx);
+    expect(response.setHeader).toHaveBeenCalledTimes(3);
+    expect(response.setHeader).toHaveBeenCalledWith('X-RateLimit-Limit', 300);
+    expect(response.setHeader).not.toHaveBeenCalledWith(
+      'X-RateLimit-Limit',
+      600,
+    );
+  });
   it('adds a tenant-wide budget so extra keys or sessions do not multiply it', async () => {
     const guard = new HttpApiRateLimitGuard(limiter, new Reflector(), config);
     await guard.canActivate(

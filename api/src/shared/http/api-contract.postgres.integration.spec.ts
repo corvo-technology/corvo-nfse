@@ -29,6 +29,14 @@ if (
   throw new Error('API integration requires a local _test database');
 const describeIntegration = url && redisUrl ? describe : describe.skip;
 const schema = `api_contract_${randomUUID().replaceAll('-', '')}`;
+/** A tenant admin creating the fixture keys; `create` needs the creator's role and permissions. */
+const asTenantAdmin = (activeTenantId: string): AuthContext =>
+  ({
+    activeTenantId,
+    principalType: 'tenant_member',
+    role: 'admin',
+    permissions: [],
+  }) as unknown as AuthContext;
 const tenant = randomUUID();
 const otherTenant = randomUUID();
 const company = randomUUID();
@@ -110,14 +118,14 @@ describeIntegration('complete API module HTTP contract', () => {
     );
     const keys = app.get(ApiKeyService);
     key = (
-      await keys.create({ activeTenantId: tenant } as AuthContext, {
+      await keys.create(asTenantAdmin(tenant), {
         name: 'Test',
         environment: 'test',
         scope: 'full_access',
       })
     ).plaintext;
     otherKey = (
-      await keys.create({ activeTenantId: otherTenant } as AuthContext, {
+      await keys.create(asTenantAdmin(otherTenant), {
         name: 'Other',
         environment: 'test',
         scope: 'full_access',
@@ -345,7 +353,7 @@ describeIntegration('complete API module HTTP contract', () => {
       .post('/v1/webhooks/stripe')
       .send({})
       .expect(400);
-    expect(stripe.body.code).toBe('ERROR_BAD_REQUEST');
+    expect(stripe.body.code).toBe('ERROR_BILLING_WEBHOOK_INVALID');
     expect(stripe.headers['x-ratelimit-limit']).toBeUndefined();
   });
 });

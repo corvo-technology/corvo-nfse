@@ -3,7 +3,7 @@
   "rootDir": "..",
   "testEnvironment": "node",
   "maxWorkers": 1,
-  "testRegex": "test/.*\\.e2e-spec\\.ts$",
+  "testRegex": "test/(?!fiscal-).*\\.e2e-spec\\.ts$",
   "testPathIgnorePatterns": [
     "/node_modules/",
     "/\\.verboo-worktrees/",

@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import forge from 'node-forge';
+import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import {
   Ambiente,
@@ -404,7 +405,7 @@ describe('Ready DPS emission through OpenNfseProvider (preparedDps)', () => {
       'binary',
     );
 
-    provider = new OpenNfseProvider(db);
+    provider = new OpenNfseProvider(db, new ConfigService());
     jest
       .spyOn(provider as unknown as ProviderClientInternals, 'client')
       .mockImplementation(

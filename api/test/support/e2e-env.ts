@@ -30,3 +30,5 @@ process.env.NODE_ENV = 'test';
 process.env.NFSE_TEST_PROVIDER = 'fake';
 process.env.DATABASE_URL = e2eDatabaseUrl;
 process.env.DB_SCHEMA = 'corvo';
+// The dashboard-origin checks (cookie + CSRF flows) need the dashboard origin allowed.
+process.env.CORS_ORIGINS ??= 'http://localhost:4000';

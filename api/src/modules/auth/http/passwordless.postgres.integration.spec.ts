@@ -14,7 +14,6 @@ import { TenantMembershipOrmEntity } from '@/infra/persistence/typeorm/entities/
 import { PasswordlessWorkspaceService } from '../application/passwordless-workspace.service';
 import { AuthUserOrmEntity } from '@/infra/persistence/typeorm/entities/auth.orm-entities';
 import { TenantOrmEntity } from '@/infra/persistence/typeorm/entities/tenant.orm-entity';
-import { TenantBillingOrmEntity } from '@/infra/persistence/typeorm/entities/tenant-billing.orm-entity';
 
 const databaseUrl = process.env.MIGRATION_TEST_DATABASE_URL;
 const redisUrl = process.env.AUTH_TEST_REDIS_URL;
@@ -251,7 +250,7 @@ describeReal('Passwordless HTTP with real PostgreSQL and Redis', () => {
       .expect(401);
   });
 
-  it('does not recreate inactive memberships or grant a second free workspace for the same billing email', async () => {
+  it('does not recreate inactive memberships or grant a second free note for the same person', async () => {
     const user = await db
       .getRepository(AuthUserOrmEntity)
       .findOneByOrFail({ email });
@@ -261,17 +260,22 @@ describeReal('Passwordless HTTP with real PostgreSQL and Redis', () => {
     await expect(
       app.get(PasswordlessWorkspaceService).ensureWorkspace(user),
     ).rejects.toThrow('Tenant membership is inactive');
-    const otherEmail = `reused-${randomUUID()}@example.com`;
-    await db
-      .getRepository(TenantBillingOrmEntity)
-      .update({ tenantId: user.id }, { billingEmail: otherEmail });
-    const other = await db
-      .getRepository(AuthUserOrmEntity)
-      .save({ id: randomUUID(), email: otherEmail, name: 'Test' });
-    await expect(
-      app.get(PasswordlessWorkspaceService).ensureWorkspace(other),
-    ).rejects.toThrow('Email already belongs to a free workspace');
-    expect(await db.getRepository(TenantOrmEntity).count()).toBe(1);
-    expect(await db.getRepository(TenantMembershipOrmEntity).count()).toBe(1);
+    // The same person again with an alias (`+tag`) gets a workspace of their own, but the
+    // first free note was already claimed by `email`, so no second note is granted.
+    const other = await db.getRepository(AuthUserOrmEntity).save({
+      id: randomUUID(),
+      email: email.replace('@', '+again@'),
+      name: 'Test',
+    });
+    await app.get(PasswordlessWorkspaceService).ensureWorkspace(other);
+    expect(await db.getRepository(TenantOrmEntity).count()).toBe(2);
+    expect(await db.getRepository(TenantMembershipOrmEntity).count()).toBe(2);
+    const freeNotes = (tenantId: string) =>
+      db.query(
+        `SELECT 1 FROM "${schema}".credit_transactions WHERE tenant_id=$1 AND type='bonus'`,
+        [tenantId],
+      );
+    expect(await freeNotes(user.id)).toHaveLength(1);
+    expect(await freeNotes(other.id)).toHaveLength(0);
   });
 });

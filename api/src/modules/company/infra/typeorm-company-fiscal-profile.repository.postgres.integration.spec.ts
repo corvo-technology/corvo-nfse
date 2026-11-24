@@ -10,6 +10,7 @@ import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-t
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import type { NewFiscalProfile } from '../domain/fiscal-profile.repository';
 import { CreateCompanyFiscalProfiles1791780000000 } from '@/infra/database/migrations/1791780000000-CreateCompanyFiscalProfiles';
+import { DropCompanyRegimeColumns1791781000000 } from '@/infra/database/migrations/1791781000000-DropCompanyRegimeColumns';
 import { TypeOrmCompanyFiscalProfileRepository } from './typeorm-company-fiscal-profile.repository';
 
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -315,9 +316,24 @@ describePostgres(
     it('copies legacy company fiscal data when the migration runs on existing companies', async () => {
       const runner = admin.createQueryRunner();
       const migration = new CreateCompanyFiscalProfiles1791780000000();
+      const dropRegime = new DropCompanyRegimeColumns1791781000000();
       try {
+        // The legacy regime columns no longer exist; bring them back (as they were before
+        // the later drop migration) so the profile migration has legacy data to copy.
+        await dropRegime.down(runner);
+        await runner.query(
+          `SELECT set_config('app.system_context', 'on', false)`,
+        );
+        await runner.query(
+          `UPDATE "${schema}".nfse_companies SET tax_regime = 'MEI' WHERE id = $1`,
+          [companyA],
+        );
+        await runner.query(
+          `SELECT set_config('app.system_context', 'off', false)`,
+        );
         await migration.down(runner);
         await migration.up(runner);
+        await dropRegime.up(runner);
       } finally {
         await runner.release();
       }

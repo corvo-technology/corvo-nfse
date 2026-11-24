@@ -268,7 +268,7 @@ describePostgres('Stripe billing with real PostgreSQL transactions', () => {
     expect(results[0]).toEqual(results[1]);
     expect(provider.createCheckout).toHaveBeenCalledTimes(1);
     await expect(
-      service.checkout(id, 'growth', 'request-1'),
+      service.checkout(id, 'equipe', 'request-1'),
     ).rejects.toMatchObject({ code: 'idempotency_conflict' });
   });
   it('checks Stripe for an existing subscription before opening another', async () => {

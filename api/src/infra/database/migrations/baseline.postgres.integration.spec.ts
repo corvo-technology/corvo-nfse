@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
 import { createTypeOrmOptions } from '../typeorm.options';
+import { entityDrift } from '../testing/entity-drift';
 import { TenantOrmEntity } from '@/infra/persistence/typeorm/entities/tenant.orm-entity';
 import { TenantBillingOrmEntity } from '@/infra/persistence/typeorm/entities/tenant-billing.orm-entity';
 import {
@@ -110,12 +111,16 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
     expect(rows.map((r) => r.tablename).sort()).toEqual(
       [...db.entityMetadatas.map((m) => m.tableName), 'migrations'].sort(),
     );
-    expect(db.entityMetadatas).toHaveLength(26);
-    const diff = await db.driver.createSchemaBuilder().log();
-    expect(diff.upQueries.map((q) => q.query)).toEqual([]);
+    expect(new Set(db.entityMetadatas.map((m) => m.tableName)).size).toBe(
+      db.entityMetadatas.length,
+    );
+    expect(await entityDrift(db)).toEqual([]);
     expect(await db.runMigrations()).toEqual([]);
     await new PlanSeederService(plans).seedIfMissing();
-    expect(await plans.findAll()).toHaveLength(5);
+    // The catalog the seeder creates, plus the `self-hosted` plan created by its own migration.
+    expect((await plans.findAll()).map((p) => p.slug).sort()).toEqual(
+      ['empresa', 'equipe', 'escala', 'free', 'self-hosted', 'solo'].sort(),
+    );
   });
 
   it('persists plan upgrades, billing periods and scheduled downgrades through real repositories', async () => {
@@ -128,11 +133,9 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
     expect((await plans.findActiveByTenantId(tenantId))?.slug).toBe('free');
     const free = await service.getOrCreate(tenantId);
     expect(free.plan.slug).toBe('free');
-    const upgraded = await service.upgradePlan(tenantId, 'developer');
-    expect(upgraded.plan.slug).toBe('developer');
-    expect((await plans.findActiveByTenantId(tenantId))?.slug).toBe(
-      'developer',
-    );
+    const upgraded = await service.upgradePlan(tenantId, 'solo');
+    expect(upgraded.plan.slug).toBe('solo');
+    expect((await plans.findActiveByTenantId(tenantId))?.slug).toBe('solo');
     const scheduled = await service.scheduleDowngrade(tenantId, 'free');
     expect(scheduled.downgradeToPlanId).toBe(free.plan.id);
     await assignments.updatePeriod(
@@ -159,7 +162,7 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
     await expect(
       checker.assertTaxIdNotInFreeWorkspace(taxId),
     ).rejects.toBeInstanceOf(FreeAbuseDetectedError);
-    await service.upgradePlan(tenantId, 'developer');
+    await service.upgradePlan(tenantId, 'solo');
     await expect(
       checker.assertEmailNotInFreeWorkspace(email),
     ).resolves.toBeUndefined();
@@ -168,7 +171,7 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
     ).resolves.toBeUndefined();
     const paidId = randomUUID();
     await service.getOrCreate(paidId);
-    await service.upgradePlan(paidId, 'growth');
+    await service.upgradePlan(paidId, 'equipe');
     await expect(
       assignments.setBillingInfo(paidId, email, taxId),
     ).resolves.toBeUndefined();
@@ -293,9 +296,24 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
   });
 
   it('reverts and reapplies the last migration without touching other schemas', async () => {
-    await db.undoLastMigration();
-    await db.undoLastMigration();
-    await db.undoLastMigration();
+    // Revert down to (and including) AddCompanyServiceDefaults, which is the
+    // oldest of the three this test exercises. Counting from the end would break on every new
+    // migration, so the revert goes by name.
+    const tablesBefore = (
+      await db.query<Array<{ tablename: string }>>(
+        'SELECT tablename FROM pg_tables WHERE schemaname = $1',
+        [schema],
+      )
+    ).map((t) => t.tablename);
+    let reverted = 0;
+    for (;;) {
+      const last = await db.query<Array<{ name: string }>>(
+        `SELECT name FROM "${schema}".migrations ORDER BY id DESC LIMIT 1`,
+      );
+      await db.undoLastMigration();
+      reverted += 1;
+      if (last[0].name.startsWith('AddCompanyServiceDefaults')) break;
+    }
     const tenantId = randomUUID();
     await new TypeOrmTenantRepository(
       db.getRepository(TenantOrmEntity),
@@ -315,19 +333,13 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
       'SELECT tablename FROM pg_tables WHERE schemaname = $1',
       [schema],
     );
-    expect(tables.map((t) => t.tablename).sort()).toEqual(
-      [
-        ...db.entityMetadatas
-          .map((m) => m.tableName)
-          .filter(
-            (name) =>
-              name !== 'outbox_messages' && name !== 'company_fiscal_profiles',
-          ),
-        'migrations',
-      ].sort(),
-    );
+    const tablesAfter = tables.map((t) => t.tablename);
+    expect(tablesAfter).toEqual(expect.arrayContaining(['migrations']));
+    expect(tablesAfter).not.toContain('outbox_messages');
+    expect(tablesAfter).not.toContain('company_fiscal_profiles');
+    expect(tablesBefore).toEqual(expect.arrayContaining(tablesAfter));
     expect(await db.showMigrations()).toBe(true);
-    expect(await db.runMigrations()).toHaveLength(3);
+    expect(await db.runMigrations()).toHaveLength(reverted);
     const legacy = await db.query(
       `SELECT id, status, municipality_code, default_service_code FROM "${schema}".nfse_companies WHERE id IN ($1, $2)`,
       [readyId, blockedId],
@@ -348,6 +360,6 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
         }),
       ]),
     );
-    expect((await db.driver.createSchemaBuilder().log()).upQueries).toEqual([]);
+    expect(await entityDrift(db)).toEqual([]);
   });
 });

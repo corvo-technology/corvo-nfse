@@ -3,7 +3,11 @@ import { randomUUID, randomBytes } from 'node:crypto';
 const url = new URL(process.env.E2E_DATABASE_URL ?? process.env.DATABASE_URL!);
 if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))
   throw new Error('Fiscal integration requires local PostgreSQL');
-url.pathname = '/corvo_test';
+// Same database as the other e2e suites (E2E_DATABASE_URL); this suite isolates itself by schema.
+if (!url.pathname.replace(/^\//, '').includes('test'))
+  throw new Error(
+    'Fiscal integration requires a database with "test" in its name',
+  );
 process.env.NODE_ENV = 'test';
 process.env.NFSE_TEST_PROVIDER = 'fake';
 process.env.DATABASE_URL = url.toString();
@@ -13,8 +17,10 @@ process.env.STORAGE_PROVIDER = 's3';
 process.env.STORAGE_S3_ENDPOINT =
   process.env.E2E_STORAGE_S3_ENDPOINT ?? 'http://127.0.0.1:4566';
 process.env.STORAGE_S3_REGION = 'us-east-1';
-process.env.STORAGE_S3_ACCESS_KEY_ID = 'test';
-process.env.STORAGE_S3_SECRET_ACCESS_KEY = 'test';
+process.env.STORAGE_S3_ACCESS_KEY_ID =
+  process.env.E2E_STORAGE_S3_ACCESS_KEY ?? 'test';
+process.env.STORAGE_S3_SECRET_ACCESS_KEY =
+  process.env.E2E_STORAGE_S3_SECRET_KEY ?? 'test';
 process.env.STORAGE_S3_BUCKET = process.env.DB_SCHEMA.replaceAll('_', '-');
 process.env.NFSE_MASTER_KEY = randomBytes(32).toString('base64');
 process.env.SENTRY_ENABLED = 'false';
