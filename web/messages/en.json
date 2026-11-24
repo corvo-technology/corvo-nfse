@@ -1654,16 +1654,15 @@
   },
   "CompanyDetail": {
     "dps": {
-      "title": "Invoice numbering",
-      "hint": "If the company already issued notes in another system or in the Portal Nacional, enter the number of the last note it issued. The next Corvo note uses the following number, so the Receita does not refuse a repeated one.",
-      "current": "Last number used in Corvo: no. {number} (series {series})",
-      "none": "We have not issued any note here yet (series {series}).",
-      "label": "Number of the last note issued",
-      "help": "It is in the PDF or XML of the last note, in the DPS number field.",
-      "save": "Save numbering",
-      "saved": "Numbering updated. The next note will be no. {number}.",
-      "lower": "Corvo is already past that number, so the numbering stays at {number}.",
-      "invalid": "Enter a whole number, zero or more.",
+      "title": "Note number (DPS)",
+      "hint": "If you already issued notes on the government portal, enter the number of your next note so it does not repeat.",
+      "current": "Next note in Corvo: no. {next} (series {series})",
+      "none": "We have not issued any note here yet. The next one will be no. {next} (series {series}).",
+      "label": "Next note number (DPS)",
+      "help": "Add 1 to the number of the last note you issued. It is in the PDF or XML, in the DPS number field.",
+      "save": "Save number",
+      "saved": "Done. The next note will be no. {number}.",
+      "invalid": "Enter a whole number, 1 or more.",
       "testNote": "In the test environment the numbering starts at a high random number. This keeps this Corvo from repeating numbers that another installation using the same CNPJ already used at the Receita."
     },
     "fiscalAdvanced": "Advanced mode (accountant)",
@@ -1882,6 +1881,8 @@
     "clear": "Clear selected code"
   },
   "ApiErrors": {
+    "dps_number_already_used": "That note number was already used (probably on the government portal). Change the next number in the company settings and issue again.",
+    "dps_number_below_current": "That number is lower than one already used. Enter a number higher than your last note's.",
     "required": "Required field.",
     "blank": "Can't be blank.",
     "invalid_cnpj": "Invalid CNPJ.",

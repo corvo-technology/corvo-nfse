@@ -43,7 +43,7 @@ import type {
   FiscalCancellationReason,
 } from './nfse-fiscal-provider';
 import { issueParams, type SefinEnvironment } from './issue-params';
-import { explainRejection } from './rejection-guidance';
+import { explainRejection, rejectionCode } from './rejection-guidance';
 
 const CANCELLATION_REASON: Record<
   FiscalCancellationReason,
@@ -368,7 +368,7 @@ export class OpenNfseProvider
           requiresReconciliation: false,
           errorCode:
             error instanceof ReceitaRejectionError
-              ? error.codigo
+              ? rejectionCode(error.codigo)
               : 'INVALID_FISCAL_INPUT',
           errorMessage: explainRejection(error.message),
         };

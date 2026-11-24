@@ -9,11 +9,21 @@ const GUIDANCE: [RegExp, string][] = [
   ],
   [
     /\bE0014\b/,
-    'A Receita já tem uma nota desse CNPJ com esse número: ela foi emitida em outro sistema, no Portal Nacional ou em outra instalação do Corvo que usa o mesmo CNPJ. Informe o número da última nota emitida (campo "Numeração das notas" na página da empresa, ou PUT /companies/{id}/dps-sequence) e emita novamente. Em teste, um número bem alto (por exemplo 500000) evita nova colisão.',
+    'Esse número de nota já foi usado (provavelmente no portal do governo). Ajuste o próximo número nas configurações da empresa e emita de novo.',
   ],
 ];
 
 export function explainRejection(message: string): string {
   const hint = GUIDANCE.find(([pattern]) => pattern.test(message))?.[1];
   return hint ? `${message} ${hint}` : message;
+}
+
+/**
+ * Our own code for the Receita rejections the customer can fix. Everything else keeps the
+ * Receita's code (E0120 and the like), which is the authority's own wording.
+ */
+const OWN_CODES: [RegExp, string][] = [[/^E0014$/, 'DPS_NUMBER_ALREADY_USED']];
+
+export function rejectionCode(codigo: string): string {
+  return OWN_CODES.find(([pattern]) => pattern.test(codigo))?.[1] ?? codigo;
 }

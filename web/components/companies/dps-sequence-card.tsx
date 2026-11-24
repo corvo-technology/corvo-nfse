@@ -26,15 +26,15 @@ export function DpsSequenceCard({ companyId, canManage, environment }: { company
 
   async function save() {
     setMessage(null);
-    if (!/^\d{1,15}$/.test(value.trim())) return setError(t("invalid"));
+    if (!/^[1-9]\d{0,14}$/.test(value.trim())) return setError(t("invalid"));
     setError(null);
     setSaving(true);
     try {
-      const asked = Number(value);
-      const next = await companies.setDpsSequence(companyId, asked);
+      // The field is the number of the NEXT note; the API stores the last one used.
+      const next = await companies.setDpsSequence(companyId, Number(value) - 1);
       setSequence(next);
       setValue("");
-      setMessage(next.lastNumber > asked ? t("lower", { number: next.lastNumber }) : t("saved", { number: next.lastNumber + 1 }));
+      setMessage(t("saved", { number: next.lastNumber + 1 }));
     } catch (e) {
       setError(errorText(e, t("invalid")));
     } finally {
@@ -51,7 +51,7 @@ export function DpsSequenceCard({ companyId, canManage, environment }: { company
       </div>
       {sequence && (
         <p className="text-sm">
-          {sequence.lastNumber > 0 ? t("current", { number: sequence.lastNumber, series: sequence.series }) : t("none", { series: sequence.series })}
+          {sequence.lastNumber > 0 ? t("current", { next: sequence.lastNumber + 1, series: sequence.series }) : t("none", { next: 1, series: sequence.series })}
         </p>
       )}
       {canManage && (
