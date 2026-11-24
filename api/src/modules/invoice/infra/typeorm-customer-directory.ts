@@ -116,14 +116,17 @@ export class TypeOrmCustomerDirectory extends CustomerDirectory {
     change: { name?: string; email?: string | null },
   ): Promise<SavedCustomer | null> {
     return runWithTenant(scope.tenantId, async () => {
-      const row = await this.customers().findOne({
-        where: { ...scope, taxId },
-      });
+      const customers = this.customers();
+      const where = { ...scope, taxId };
+      const row = await customers.findOne({ where });
       if (!row) return null;
-      if (change.name !== undefined) row.name = change.name;
-      if (change.email !== undefined) row.email = change.email;
-      row.updatedAt = new Date();
-      return toCustomer(await this.customers().save(row));
+      const patch: { name?: string; email?: string | null; updatedAt: Date } = {
+        updatedAt: new Date(),
+      };
+      if (change.name !== undefined) patch.name = change.name;
+      if (change.email !== undefined) patch.email = change.email;
+      await customers.update(where, patch);
+      return toCustomer(await customers.findOneByOrFail(where));
     });
   }
 

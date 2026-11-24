@@ -194,7 +194,12 @@ export class InvitationService {
         const invitation = await this.usable(token, user);
         // Single use: only one concurrent accept gets past this line.
         if (
-          !(await this.invitations.claim(invitation.id, authUserId, new Date()))
+          !(await this.invitations.claim(
+            invitation.id,
+            invitation.tenantId,
+            authUserId,
+            new Date(),
+          ))
         )
           throw invalid();
 

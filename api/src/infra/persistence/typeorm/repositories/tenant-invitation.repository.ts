@@ -90,7 +90,13 @@ export class TypeOrmTenantInvitationRepository implements ITenantInvitationRepos
     return entity ? this.toDomain(entity) : null;
   }
 
-  async claim(id: string, userId: string, now: Date): Promise<boolean> {
+  async claim(
+    id: string,
+    tenantId: string,
+    userId: string,
+    now: Date,
+  ): Promise<boolean> {
+    requireTenantId(tenantId);
     const result = await this.db
       .repository(TenantInvitationOrmEntity)
       .createQueryBuilder()
@@ -101,10 +107,10 @@ export class TypeOrmTenantInvitationRepository implements ITenantInvitationRepos
         acceptedByUserId: userId,
         tokenHash: null,
       })
-      .where("id = :id AND status = 'pending' AND expires_at > :now", {
-        id,
-        now,
-      })
+      .where(
+        "id = :id AND tenant_id = :tenantId AND status = 'pending' AND expires_at > :now",
+        { id, tenantId, now },
+      )
       .execute();
     return (result.affected ?? 0) === 1;
   }

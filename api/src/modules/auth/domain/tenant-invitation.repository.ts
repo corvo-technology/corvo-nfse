@@ -15,7 +15,12 @@ export abstract class ITenantInvitationRepository {
   /** Looks across tenants: run inside the invitation system scope. */
   abstract findByTokenHash(tokenHash: string): Promise<TenantInvitation | null>;
   /** Single-use: true only for the one caller that moves a live pending invitation to completed. */
-  abstract claim(id: string, userId: string, now: Date): Promise<boolean>;
+  abstract claim(
+    id: string,
+    tenantId: string,
+    userId: string,
+    now: Date,
+  ): Promise<boolean>;
   abstract save(
     invitation: TenantInvitation,
     tenantId: string,

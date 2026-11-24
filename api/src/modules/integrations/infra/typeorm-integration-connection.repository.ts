@@ -20,9 +20,11 @@ export class TypeOrmIntegrationConnectionRepository extends IIntegrationConnecti
   }
 
   insert(connection: IntegrationConnection): Promise<IntegrationConnection> {
-    return runWithTenant(connection.tenantId, async () =>
-      this.toDomain(await this.repo.save(this.repo.create(connection))),
-    );
+    return runWithTenant(connection.tenantId, async () => {
+      const row = this.repo.create(connection);
+      await this.repo.insert(row);
+      return this.toDomain(row);
+    });
   }
 
   update(connection: IntegrationConnection): Promise<IntegrationConnection> {
