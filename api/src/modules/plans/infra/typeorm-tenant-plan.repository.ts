@@ -89,6 +89,46 @@ export class TypeOrmTenantPlanRepository implements ITenantPlanRepository {
     });
   }
 
+  async createIfMissing(
+    assignment: TenantPlanAssignment,
+    tenantId: string,
+  ): Promise<TenantPlanAssignment> {
+    return runWithTenant(tenantId, async () => {
+      const s = assignment.toSnapshot();
+      assertTenantOwnership(tenantId, s.tenantId);
+      await this.tenants.manager.transaction(async (manager) => {
+        await manager
+          .createQueryBuilder()
+          .insert()
+          .into(TenantOrmEntity)
+          .values({
+            id: s.tenantId,
+            planId: s.plan.id,
+            createdAt: s.createdAt,
+            updatedAt: s.updatedAt,
+          })
+          .orIgnore()
+          .execute();
+        await manager
+          .createQueryBuilder()
+          .insert()
+          .into(TenantBillingOrmEntity)
+          .values({
+            tenantId: s.tenantId,
+            currentPeriodStart: s.currentPeriodStart,
+            currentPeriodEnd: s.currentPeriodEnd,
+            downgradeToPlanId: s.downgradeToPlanId,
+            billingEmail: s.billingEmail,
+            billingTaxId: s.billingTaxId,
+            updatedAt: s.updatedAt,
+          })
+          .orIgnore()
+          .execute();
+      });
+      return (await this.findByTenantId(tenantId)) ?? assignment;
+    });
+  }
+
   async updatePeriod(tenantId: string, start: Date, end: Date): Promise<void> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);

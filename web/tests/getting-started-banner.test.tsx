@@ -46,7 +46,8 @@ describe("GettingStartedBanner", () => {
     await screen.findByText("2 de 4");
     expect(screen.getByText("Próximo: informar a numeração")).toBeTruthy();
     expect(go()).toBe("/app/companies/c1#numeracao");
-    expect(api.invoices).toHaveBeenCalledWith({ status: "authorized", limit: 1 }, expect.anything());
+    expect(api.invoices).toHaveBeenCalledWith({ status: "authorized", limit: 1 }, expect.anything(), "test");
+    expect(api.invoices).toHaveBeenCalledWith({ status: "authorized", limit: 1 }, expect.anything(), "live");
   });
 
   it("moves to the first invoice when the numbering sequence already moved", async () => {
@@ -75,31 +76,61 @@ describe("GettingStartedBanner", () => {
     await screen.findByText("3 de 4");
   });
 
-  it("counts numbering as done when a live note exists", async () => {
-    company();
-    api.certs.mockResolvedValue(page([]));
-    api.invoices.mockResolvedValue(page([{ id: "i1" }]));
-    renderBanner();
-    await screen.findByText("3 de 4");
-    expect(screen.getByText("Próximo: enviar o certificado")).toBeTruthy();
-  });
+  // Invoices by (params, environment): authorized notes per environment and any-status notes in the active one.
+  const invoicesBy = (authorized: { test?: boolean; live?: boolean; any?: boolean }) =>
+    api.invoices.mockImplementation(async (params: { status?: string }, _signal: unknown, env?: "test" | "live") => {
+      const has = params.status === "authorized" ? (env === "live" ? authorized.live : authorized.test) : authorized.any;
+      return page(has ? [{ id: "i1" }] : []);
+    });
+  const hidden = async () => {
+    await waitFor(() => expect(api.companies).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByTestId("getting-started")).toBeNull();
+  };
 
-  it("does not count production invoices while in the test environment", async () => {
+  it("is hidden for an established account with only authorized test notes", async () => {
     api.env = "test";
     company();
     api.certs.mockResolvedValue(page([{ status: "active" }]));
+    invoicesBy({ test: true, any: true });
     renderBanner();
-    await screen.findByText("2 de 4");
-    expect(api.invoices).not.toHaveBeenCalled();
+    await hidden();
   });
 
-  it("is hidden when all steps are done", async () => {
+  it("is hidden when the account has authorized live notes, even while viewing test", async () => {
+    api.env = "test";
+    company();
+    api.certs.mockResolvedValue(page([]));
+    invoicesBy({ live: true });
+    renderBanner();
+    await hidden();
+  });
+
+  it("is hidden with a valid certificate and any invoice, even if none is authorized", async () => {
     company();
     api.certs.mockResolvedValue(page([{ status: "active" }]));
-    api.invoices.mockResolvedValue(page([{ id: "i1" }]));
+    invoicesBy({ any: true });
     renderBanner();
-    await waitFor(() => expect(api.invoices).toHaveBeenCalled());
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(screen.queryByTestId("getting-started")).toBeNull();
+    await hidden();
+  });
+
+  it("shows step 1 for a brand-new account", async () => {
+    api.env = "test";
+    api.companies.mockResolvedValue(page([]));
+    invoicesBy({});
+    renderBanner();
+    await screen.findByText("0 de 4");
+  });
+
+  it.each([
+    ["certificates", () => api.certs.mockRejectedValue(new Error("404"))],
+    ["companies", () => api.companies.mockRejectedValue(new Error("500"))],
+  ])("shows nothing when the %s request fails", async (_name, fail) => {
+    company();
+    api.certs.mockResolvedValue(page([]));
+    invoicesBy({});
+    fail();
+    renderBanner();
+    await hidden();
   });
 });

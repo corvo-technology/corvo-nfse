@@ -69,6 +69,14 @@ export interface ITenantPlanRepository {
     assignment: TenantPlanAssignment,
     tenantId: string,
   ): Promise<TenantPlanAssignment>;
+  /**
+   * Creates the first assignment only when the tenant has none. Never overwrites an existing row
+   * (a plain `save` would reset plan, billing e-mail and created_at of a tenant that was just unreadable).
+   */
+  createIfMissing(
+    assignment: TenantPlanAssignment,
+    tenantId: string,
+  ): Promise<TenantPlanAssignment>;
   /** Links every tenant not yet on `planId` to it; returns how many moved. Instance-wide, system scope. */
   moveAllTenantsTo(planId: string): Promise<number>;
   updatePeriod(tenantId: string, start: Date, end: Date): Promise<void>;

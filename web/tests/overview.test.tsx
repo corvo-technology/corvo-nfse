@@ -76,7 +76,7 @@ describe("overview page", () => {
     vi.mocked(billing.plan).mockRejectedValue(new Error("unavailable"));
     renderPage();
     await screen.findAllByText("1201");
-    expect(screen.getByRole("alert").textContent).toContain("Could not load credits");
+    expect((await screen.findByRole("alert", {}, { timeout: 3000 })).textContent).toContain("Could not load credits");
     expect(screen.getAllByText("Customer 0").length).toBeGreaterThan(0);
   });
   it("preserves credits if overview fails", async () => {
@@ -121,5 +121,23 @@ describe("daily activity calendar", () => {
     expect(screen.getByRole("status").textContent).toContain("Oct 13");
     fireEvent.keyDown(first, { key: "Escape" });
     expect(screen.getByRole("status").textContent).toContain("Period total");
+  });
+
+  it("retries the credits once on its own and keeps the card when the second try works", async () => {
+    vi.mocked(billing.plan).mockRejectedValueOnce(new Error("500"));
+    renderPage();
+    await waitFor(() => expect(billing.plan).toHaveBeenCalledTimes(2), { timeout: 3000 });
+    await screen.findByText("96");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+  it("shows a retry button (not a dead card) when the credits keep failing", async () => {
+    vi.mocked(billing.plan).mockReset().mockRejectedValue(new Error("500"));
+    renderPage();
+    const alert = await screen.findByRole("alert", {}, { timeout: 3000 });
+    expect(billing.plan).toHaveBeenCalledTimes(2);
+    vi.mocked(billing.plan).mockResolvedValue({ subscription: { blocked: false }, usage: { creditsUsed: 4, monthlyAllowance: 100, creditsRemaining: 90, avulsoBalance: 6 } } as Awaited<ReturnType<typeof billing.plan>>);
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await screen.findByText("96");
+    expect(alert.isConnected).toBe(false);
   });
 });

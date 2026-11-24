@@ -1,3 +1,4 @@
+import { EntityNotFoundError } from 'typeorm';
 import { BillingController } from './billing.controller';
 import { PricingService } from '@/modules/plans/application/pricing.service';
 
@@ -146,5 +147,34 @@ describe('BillingController.getCurrentPlan', () => {
     expect(pixOnly.data).toMatchObject({
       subscription: { stripe_subscription: false },
     });
+  });
+
+  it('retries once when the tenant row is transiently not visible', async () => {
+    const controller = build({ slug: 'free', name: 'Sem plano' });
+    const usage = (
+      controller as never as { billingUsage: { status: jest.Mock } }
+    ).billingUsage;
+    const original = usage.status.getMockImplementation();
+    usage.status
+      .mockRejectedValueOnce(new EntityNotFoundError('TenantOrmEntity', {}))
+      .mockImplementation(original);
+    const out = await controller.getCurrentPlan(req);
+    expect(out.data).toMatchObject({ plan: { slug: 'free' } });
+    expect(usage.status).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not hide a persistent miss or other errors', async () => {
+    const controller = build({ slug: 'free', name: 'Sem plano' });
+    const usage = (
+      controller as never as { billingUsage: { status: jest.Mock } }
+    ).billingUsage;
+    usage.status.mockRejectedValue(
+      new EntityNotFoundError('TenantOrmEntity', {}),
+    );
+    await expect(controller.getCurrentPlan(req)).rejects.toBeInstanceOf(
+      EntityNotFoundError,
+    );
+    usage.status.mockRejectedValue(new Error('boom'));
+    await expect(controller.getCurrentPlan(req)).rejects.toThrow('boom');
   });
 });

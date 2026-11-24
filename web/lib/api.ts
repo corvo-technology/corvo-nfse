@@ -105,7 +105,7 @@ export async function request<T>(path: string, options: RequestInit = {}, binary
   else if (options.body) headers.set("Content-Type", "application/json");
   if (mutation && !publicRequest && csrfToken) headers.set("x-csrf-token", csrfToken);
   else headers.delete("x-csrf-token");
-  headers.set("X-Corvo-Environment", getFiscalEnvironment());
+  if (!headers.has("X-Corvo-Environment")) headers.set("X-Corvo-Environment", getFiscalEnvironment());
   let response: Response;
   const generation = csrfGeneration;
   try { response = await fetch(`${BASE}${path}`, { ...options, method, headers, credentials: "include", cache: "no-store" }); }
@@ -232,7 +232,8 @@ export const invoices = {
     const result = unwrap(await request<Envelope<Omit<InvoiceOverview, "recentInvoices"> & { recentInvoices: InvoiceWire[] }>>(`/invoices/overview${query({ period })}`, { signal }));
     return { ...result, recentInvoices: result.recentInvoices.map(adaptInvoice) };
   },
-  list: async (params: InvoiceQuery = {}, signal?: AbortSignal): Promise<Page<Invoice>> => { const page = toPage(await request<ListBody<InvoiceBody>>(`/invoices${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptInvoice) }; },
+  /** `environment` overrides the active one for this call only (used to look at both environments). */
+  list: async (params: InvoiceQuery = {}, signal?: AbortSignal, environment?: FiscalEnvironment): Promise<Page<Invoice>> => { const page = toPage(await request<ListBody<InvoiceBody>>(`/invoices${query(params)}`, { signal, ...(environment ? { headers: { "X-Corvo-Environment": environment } } : {}) })); return { ...page, items: page.items.map(adaptInvoice) }; },
   get: async (id: string, signal?: AbortSignal) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>(`/invoices/${idPath(id)}`, { signal }))),
   create: async (data: CreateInvoiceInput, idempotencyKey: string) => adaptInvoice(unwrap(await request<Envelope<InvoiceBody>>("/invoices", { ...json(data), headers: { "idempotency-key": idempotencyKey } }))),
   calculate: async (data: CreateInvoiceInput, signal?: AbortSignal) => unwrap(await request<Envelope<InvoiceCalculation>>("/invoices/calculate", { ...json(data), signal })),
