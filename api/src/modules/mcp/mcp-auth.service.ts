@@ -47,7 +47,9 @@ export const MCP_TOKEN_AUDIENCE = 'corvo-mcp';
 const ACCESS_TOKEN_TTL_SECONDS = 900;
 const ACCESS_TOKEN_TTL = '15m';
 const AUTHORIZATION_CODE_TTL_MS = 5 * 60 * 1000;
-const REFRESH_SESSION_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+// Sliding window: every refresh pushes the expiry 90 days ahead, so a grant
+// dies only after 90 days without the app using it (or on explicit revoke).
+const REFRESH_SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const CODE_SIZE = 32;
 const REFRESH_TOKEN_SIZE = 48;
 
@@ -267,6 +269,8 @@ export class McpAuthService {
         session.clientId,
         sha256(refreshToken),
         sha256(rawRefreshToken),
+        new Date(),
+        new Date(Date.now() + REFRESH_SESSION_TTL_MS),
       );
       if (!rotated)
         throw new UnauthorizedException({

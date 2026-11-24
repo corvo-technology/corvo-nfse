@@ -396,6 +396,65 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
     );
   });
 
+  it('keeps the MCP connection alive when the user logs in again or logs out on the web', async () => {
+    const account = await createAuthUser();
+    const { service, helper } = workspaceHarness();
+    await service.ensureWorkspace(account);
+    const sessions = new TypeOrmAuthSessionRepository(helper);
+    const mcp = new McpAuthService(
+      new TypeOrmOAuthAuthorizationCodeRepository(helper),
+      sessions,
+      new TypeOrmMcpConnectionRepository(helper),
+      new ConfigService({ auth: { jwtSecret: 'a'.repeat(32) } }),
+      new TypeOrmTenantMembershipRepository(helper),
+    );
+    const verifier = 'session-independence-verifier';
+    const code = await mcp.createAuthorizationCode({
+      clientId: 'corvo-mcp',
+      userId: account.id,
+      tenantId: account.id,
+      redirectUri: 'https://example.invalid/callback',
+      scope: 'nfse:read',
+      codeChallenge: createHash('sha256').update(verifier).digest('base64url'),
+      codeChallengeMethod: 'S256',
+    });
+    const tokens = await mcp.exchangeCode({
+      code,
+      codeVerifier: verifier,
+      clientId: 'corvo-mcp',
+      redirectUri: 'https://example.invalid/callback',
+    });
+    const now = new Date();
+    const webSession = await runAsSystem('test', () =>
+      sessions.save({
+        id: randomUUID(),
+        authUserId: account.id,
+        clientId: 'corvo-web',
+        refreshTokenHash: null,
+        kind: 'web',
+        sessionTokenHash: randomBytes(16).toString('hex'),
+        activeTenantId: account.id,
+        revokedAt: null,
+        expiresAt: new Date(Date.now() + 3600_000),
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
+
+    // New web login (CookieSessionService.createSession) revokes older web sessions.
+    const revoked = await runAsSystem('test', () =>
+      sessions.revokeAllForUser(account.id, 'new_session_created'),
+    );
+    expect(revoked).toBe(1);
+    expect(
+      await runAsSystem('test', () => sessions.findActiveById(webSession.id)),
+    ).toBeNull();
+    await expect(
+      mcp.validateAccessToken(tokens.accessToken),
+    ).resolves.toMatchObject({ sub: account.id });
+    await expect(mcp.refreshTokens(tokens.refreshToken)).resolves.toBeDefined();
+  });
+
   it('enables and forces RLS on all 29 tenant tables', async () => {
     const rows: Array<{
       relrowsecurity: boolean;
