@@ -19,6 +19,7 @@ import { CompanyService } from './application/company.service';
 import { CompanyFiscalProfileService } from './application/company-fiscal-profile.service';
 import { CompanyServiceTaxProfileService } from './application/company-service-tax-profile.service';
 import { CompanyController } from './http/company.controller';
+import { CnpjController } from './http/cnpj.controller';
 import { MunicipalityAgreementService } from './application/municipality-agreement.service';
 import { MunicipalityAgreementPort } from './domain/municipality-agreement';
 import { OpenNfseProvider } from '@/infra/external/nfse/open-nfse.provider';
@@ -34,7 +35,7 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
     ]),
     forwardRef(() => CertificateModule),
   ],
-  controllers: [CompanyController],
+  controllers: [CompanyController, CnpjController],
   providers: [
     {
       provide: ICompanyRepository,

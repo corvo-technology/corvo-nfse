@@ -10,6 +10,7 @@ vi.mock("@/lib/auth", () => ({ useAuth: () => ({ tenantId: "tenant-a", fiscalEnv
 vi.mock("@/lib/api", () => ({ invoices: { overview: vi.fn() }, billing: { plan: vi.fn() } }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 vi.mock("@/components/onboarding/onboarding-card", () => ({ OnboardingCard: () => <div data-testid="onboarding-card" /> }));
+vi.mock("@/components/dashboard/getting-started-card", () => ({ GettingStartedCard: () => null }));
 
 afterEach(cleanup);
 beforeEach(() => {
