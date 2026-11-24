@@ -5,6 +5,18 @@ const fetchMock = vi.fn<typeof fetch>();
 const context = (route: string) => ({ params: Promise.resolve({ path: ["v1", ...route.split("/")] }) });
 beforeEach(() => { vi.stubEnv("APP_ORIGIN", "http://localhost:4000"); vi.stubEnv("API_BASE_URL", "http://localhost:3000"); fetchMock.mockReset(); vi.stubGlobal("fetch", fetchMock); });
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+it("does not send a body (nor chunked encoding) when a POST has no body, but keeps JSON bodies", async () => {
+  fetchMock.mockImplementation(async () => new Response("{}", { status: 200 }));
+  const headers = { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "x-csrf-token": "csrf" };
+  await POST(new NextRequest("http://localhost:4000/api/proxy/v1/auth/invitations/abc/resend", { method: "POST", headers }), context("auth/invitations/abc/resend"));
+  const [, empty] = fetchMock.mock.calls[0];
+  expect(empty?.body).toBeUndefined();
+  expect(new Headers(empty?.headers).has("transfer-encoding")).toBe(false);
+  await POST(new NextRequest("http://localhost:4000/api/proxy/v1/invoices/id/cancel", { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: '{"reason":"1"}' }), context("invoices/id/cancel"));
+  const [, json] = fetchMock.mock.calls[1];
+  expect(new TextDecoder().decode(json?.body as Uint8Array)).toBe('{"reason":"1"}');
+  expect(new Headers(json?.headers).get("content-type")).toBe("application/json");
+});
 it("forwards original origin, CSRF and only recognized cookies, with no Bearer/API key", async () => {
   fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
   const response = await POST(new NextRequest("http://localhost:4000/api/proxy/v1/auth/session/logout", { method: "POST", headers: { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "x-csrf-token": "csrf", Cookie: "analytics=ignored; gf_session_dev=session; other=ignored", Authorization: "Bearer legacy", "x-api-key": "legacy" } }), context("auth/session/logout"));

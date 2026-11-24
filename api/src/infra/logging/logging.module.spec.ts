@@ -21,6 +21,8 @@ describe('SENSITIVE_LOG_REDACTION_PATHS', () => {
         'req.headers["taxid"]',
         'req.headers["pixkey"]',
         'req.headers["x-webhook-secret"]',
+        'req.headers["x-corvo-proxy-secret"]',
+        'req.headers["x-csrf-token"]',
         'req.body.passwordChangeToken',
         'req.body.client_secret',
         'req.body.secret',
@@ -87,6 +89,8 @@ describe('SENSITIVE_LOG_REDACTION_PATHS', () => {
           taxid: 'header-tax-id-secret',
           pixkey: 'header-pix-key-secret',
           'x-webhook-secret': 'header-sensitive-webhook-value',
+          'x-corvo-proxy-secret': 'header-proxy-secret-value',
+          'x-csrf-token': 'header-csrf-secret-value',
         },
         body: {
           passwordChangeToken: 'password-change-secret',
@@ -130,6 +134,8 @@ describe('SENSITIVE_LOG_REDACTION_PATHS', () => {
     expect(output).not.toContain('header-tax-id-secret');
     expect(output).not.toContain('header-pix-key-secret');
     expect(output).not.toContain('header-sensitive-webhook-value');
+    expect(output).not.toContain('header-proxy-secret-value');
+    expect(output).not.toContain('header-csrf-secret-value');
     expect(output).not.toContain('password-change-secret');
     expect(output).not.toContain('nested-client-secret');
     expect(output).not.toContain('body-token-secret');
