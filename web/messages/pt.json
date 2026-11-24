@@ -99,9 +99,21 @@
     "done": "Feito",
     "pending": "Falta fazer",
     "steps": {
-      "company": { "title": "Cadastrar empresa", "hint": "Informe o CNPJ e o resto vem da Receita.", "cta": "Cadastrar" },
-      "certificate": { "title": "Enviar certificado digital", "hint": "É ele que assina as suas notas.", "cta": "Enviar" },
-      "invoice": { "title": "Emitir a primeira nota", "hint": "Depois dos dois primeiros passos, é só preencher e emitir.", "cta": "Emitir nota" }
+      "company": {
+        "title": "Cadastrar empresa",
+        "hint": "Informe o CNPJ e o resto vem da Receita.",
+        "cta": "Cadastrar"
+      },
+      "certificate": {
+        "title": "Enviar certificado digital",
+        "hint": "É ele que assina as suas notas.",
+        "cta": "Enviar"
+      },
+      "invoice": {
+        "title": "Emitir a primeira nota",
+        "hint": "Depois dos dois primeiros passos, é só preencher e emitir.",
+        "cta": "Emitir nota"
+      }
     }
   },
   "Overview": {
@@ -1139,13 +1151,35 @@
     "sendMonth": "Mês a enviar",
     "sendNow": "Enviar agora ao contador",
     "sendStatus": {
-      "sent": "Enviado para {email}.",
+      "sent": "Pronto. Pedimos o envio para {email}.",
       "skipped-test": "No ambiente de teste nada é enviado.",
       "skipped-no-email": "Informe o e-mail do contador antes.",
       "skipped-empty": "Não há notas nesse mês, nada foi enviado.",
-      "skipped-already-sent": "Esse mês já foi enviado."
+      "skipped-already-sent": "Esse mês já foi enviado.",
+      "skipped-too-large": "Esse mês tem notas demais para um pacote só, nada foi enviado. Baixe o pacote em partes ou fale com o suporte."
     },
-    "failed": "Não foi possível concluir. Tente de novo."
+    "failed": "Não foi possível concluir. Tente de novo.",
+    "savedWithTest": "Pronto. O pacote será enviado para {email}. Enviamos um e-mail de teste para esse endereço — confira com seu contador.",
+    "history": {
+      "title": "Últimos envios",
+      "empty": "Nenhum envio ainda.",
+      "note": "“Enviado” quer dizer que o e-mail saiu da Corvo. Não garantimos que chegou à caixa do contador.",
+      "month": "{name}/{year}",
+      "sent": "{month} — enviado em {date} às {time} para {email} — {count, plural, one {# nota} other {# notas}}",
+      "skipped-empty": "{month} — não enviado: não houve notas no mês",
+      "skipped-too-large": "{month} — não enviado: o mês teve {count} notas, mais do que cabe em um pacote. Baixe em partes ou fale com o suporte",
+      "failed": "{month} — não conseguimos enviar em {date} às {time}. Tente de novo pelo botão “Enviar agora”"
+    },
+    "confirm": {
+      "title": "Enviar o pacote ao contador?",
+      "loading": "Conferindo as notas do mês…",
+      "summary": "Mês: {month}. Para: {email}. {count, plural, one {# nota} other {# notas}}, total de {total}.",
+      "empty": "Não há notas em {month}, então não há o que enviar.",
+      "tooLarge": "{month} tem {count} notas, e um pacote comporta até {limit}. Baixe o pacote em partes (períodos menores) ou fale com o suporte.",
+      "confirm": "Enviar agora",
+      "cancel": "Cancelar",
+      "close": "Fechar"
+    }
   },
   "Invoices": {
     "anonymousCustomer": "Consumidor não identificado",

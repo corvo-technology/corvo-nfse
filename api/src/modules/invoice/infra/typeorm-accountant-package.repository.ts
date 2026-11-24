@@ -4,15 +4,20 @@ import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storag
 import { TypeOrmRepositoryHelper } from '@/infra/persistence/typeorm/typeorm-repository.helper';
 import { CompanyOrmEntity } from '@/modules/company/infra/company.orm-entity';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
+import { AccountantPackageSendOrmEntity } from './accountant-package-send.orm-entity';
 import {
   IAccountantPackageRepository,
   type AccountantCompany,
+  type AccountantSendRecord,
+  type AccountantSendRecordStatus,
+  type NewAccountantSendRecord,
 } from '../domain/accountant-package.repository';
 
 const toCompany = (row: CompanyOrmEntity): AccountantCompany => ({
   id: row.id,
   tenantId: row.tenantId,
   name: row.tradeName ?? row.legalName,
+  taxId: row.taxId,
   environment: row.environment as ExecutionEnvironment,
   accountantEmail: row.accountantEmail ?? null,
   lastSentMonth: row.accountantPackageLastSentMonth ?? null,
@@ -90,5 +95,55 @@ export class TypeOrmAccountantPackageRepository implements IAccountantPackageRep
         { accountantPackageLastSentMonth: month },
       );
     });
+  }
+
+  recordSend(entry: NewAccountantSendRecord) {
+    return runWithTenant(entry.tenantId, async () => {
+      await this.db.repository(AccountantPackageSendOrmEntity).insert({
+        tenantId: entry.tenantId,
+        companyId: entry.companyId,
+        month: entry.month,
+        recipient: entry.recipient,
+        invoiceCount: entry.invoiceCount,
+        totalCents: String(entry.totalCents),
+        status: entry.status,
+        trigger: entry.trigger,
+      });
+    });
+  }
+
+  listSends(tenantId: string, companyId: string, limit: number) {
+    return runWithTenant(tenantId, async () => {
+      const rows = await this.db
+        .repository(AccountantPackageSendOrmEntity)
+        .find({
+          where: { tenantId, companyId },
+          order: { createdAt: 'DESC' },
+          take: limit,
+        });
+      return rows.map((row): AccountantSendRecord => ({
+        id: row.id,
+        month: row.month,
+        recipient: row.recipient,
+        invoiceCount: row.invoiceCount,
+        totalCents: Number(row.totalCents),
+        status: row.status as AccountantSendRecordStatus,
+        trigger: row.trigger as AccountantSendRecord['trigger'],
+        createdAt: row.createdAt,
+      }));
+    });
+  }
+
+  hasSend(
+    tenantId: string,
+    companyId: string,
+    month: string,
+    status: AccountantSendRecordStatus,
+  ) {
+    return runWithTenant(tenantId, () =>
+      this.db
+        .repository(AccountantPackageSendOrmEntity)
+        .exists({ where: { tenantId, companyId, month, status } }),
+    );
   }
 }

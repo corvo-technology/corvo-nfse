@@ -215,13 +215,15 @@ export const fiscalPortal = {
   status: async (signal?: AbortSignal) => unwrap(await request<Envelope<FiscalPortalStatus>>("/fiscal-portal/status", { signal })),
 };
 export interface InvoicePackageSummary { month: string; count: number; total: string; limit: number; companyName: string; companyTaxId: string }
-export interface AccountantSettings { email: string | null; lastSentMonth: string | null }
-export type AccountantSendStatus = "sent" | "skipped-test" | "skipped-no-email" | "skipped-empty" | "skipped-already-sent";
+export interface AccountantSettings { email: string | null; lastSentMonth: string | null; /** Only on save: a test e-mail was queued to the new address. */ testEmailSent?: boolean }
+export type AccountantSendStatus = "sent" | "skipped-test" | "skipped-no-email" | "skipped-empty" | "skipped-too-large" | "skipped-already-sent";
+export interface AccountantSendRecord { id: string; month: string; recipient: string; invoiceCount: number; totalCents: number; status: "sent" | "skipped-empty" | "skipped-too-large" | "failed"; trigger: "scheduled" | "manual" | "mcp-or-api"; createdAt: string }
 /** The month package (ZIP with xml/, pdf/ and resumo.csv) and the monthly send to the accountant. */
 export const invoicePackages = {
   summary: async (companyId: string, month: string, signal?: AbortSignal) => unwrap(await request<Envelope<InvoicePackageSummary>>(`/companies/${idPath(companyId)}/invoice-package/summary${query({ month })}`, { signal })),
   download: (companyId: string, month: string) => request<Blob>(`/companies/${idPath(companyId)}/invoice-package${query({ month })}`, {}, true),
   accountant: async (companyId: string, signal?: AbortSignal) => unwrap(await request<Envelope<AccountantSettings>>(`/companies/${idPath(companyId)}/accountant-package`, { signal })),
+  accountantSends: async (companyId: string, signal?: AbortSignal) => unwrap(await request<Envelope<AccountantSendRecord[]>>(`/companies/${idPath(companyId)}/accountant-package/sends`, { signal })),
   setAccountant: async (companyId: string, accountantEmail: string | null) => unwrap(await request<Envelope<AccountantSettings>>(`/companies/${idPath(companyId)}/accountant-package`, json({ accountantEmail }, "PUT"))),
   sendToAccountant: async (companyId: string, month: string) => unwrap(await request<Envelope<{ status: AccountantSendStatus }>>(`/companies/${idPath(companyId)}/accountant-package/send`, json({ month }))).status,
 };

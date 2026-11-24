@@ -99,9 +99,21 @@
     "done": "Done",
     "pending": "To do",
     "steps": {
-      "company": { "title": "Register your company", "hint": "Enter the CNPJ and we get the rest from the Receita.", "cta": "Register" },
-      "certificate": { "title": "Upload the digital certificate", "hint": "It is what signs your invoices.", "cta": "Upload" },
-      "invoice": { "title": "Issue your first invoice", "hint": "After the first two steps, just fill in and issue.", "cta": "Issue invoice" }
+      "company": {
+        "title": "Register your company",
+        "hint": "Enter the CNPJ and we get the rest from the Receita.",
+        "cta": "Register"
+      },
+      "certificate": {
+        "title": "Upload the digital certificate",
+        "hint": "It is what signs your invoices.",
+        "cta": "Upload"
+      },
+      "invoice": {
+        "title": "Issue your first invoice",
+        "hint": "After the first two steps, just fill in and issue.",
+        "cta": "Issue invoice"
+      }
     }
   },
   "Overview": {
@@ -1139,13 +1151,35 @@
     "sendMonth": "Month to send",
     "sendNow": "Send to accountant now",
     "sendStatus": {
-      "sent": "Sent to {email}.",
+      "sent": "Done. We asked for the e-mail to be sent to {email}.",
       "skipped-test": "Nothing is sent in the test environment.",
       "skipped-no-email": "Enter the accountant's e-mail first.",
       "skipped-empty": "There are no notes in this month, nothing was sent.",
-      "skipped-already-sent": "This month was already sent."
+      "skipped-already-sent": "This month was already sent.",
+      "skipped-too-large": "This month has too many notes for one package, nothing was sent. Download it in parts or contact support."
     },
-    "failed": "Could not complete. Try again."
+    "failed": "Could not complete. Try again.",
+    "savedWithTest": "Done. The package will be sent to {email}. We sent a test e-mail to that address — check with your accountant.",
+    "history": {
+      "title": "Latest sends",
+      "empty": "Nothing sent yet.",
+      "note": "“Sent” means the e-mail left Corvo. We cannot guarantee it reached the accountant’s inbox.",
+      "month": "{name} {year}",
+      "sent": "{month} — sent on {date} at {time} to {email} — {count, plural, one {# note} other {# notes}}",
+      "skipped-empty": "{month} — not sent: there were no notes in the month",
+      "skipped-too-large": "{month} — not sent: the month had {count} notes, more than one package holds. Download it in parts or contact support",
+      "failed": "{month} — we could not send it on {date} at {time}. Try again with “Send now”"
+    },
+    "confirm": {
+      "title": "Send the package to your accountant?",
+      "loading": "Checking the month’s notes…",
+      "summary": "Month: {month}. To: {email}. {count, plural, one {# note} other {# notes}}, total {total}.",
+      "empty": "There are no notes in {month}, so there is nothing to send.",
+      "tooLarge": "{month} has {count} notes and one package holds up to {limit}. Download it in parts (shorter periods) or contact support.",
+      "confirm": "Send now",
+      "cancel": "Cancel",
+      "close": "Close"
+    }
   },
   "Invoices": {
     "anonymousCustomer": "Unidentified consumer",
