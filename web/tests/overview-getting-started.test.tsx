@@ -9,8 +9,7 @@ import messages from "@/messages/en.json";
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ tenantId: "tenant-a", fiscalEnvironment: "live", can: () => true }) }));
 vi.mock("@/lib/api", () => ({ invoices: { overview: vi.fn() }, billing: { plan: vi.fn() } }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
-vi.mock("@/components/onboarding/onboarding-card", () => ({ OnboardingCard: () => <div data-testid="onboarding-card" /> }));
-vi.mock("@/components/dashboard/getting-started-card", () => ({ GettingStartedCard: () => null }));
+vi.mock("@/components/dashboard/getting-started-card", () => ({ GettingStartedCard: () => <div data-testid="getting-started" /> }));
 
 afterEach(cleanup);
 beforeEach(() => {
@@ -18,9 +17,9 @@ beforeEach(() => {
   vi.mocked(billing.plan).mockReset().mockResolvedValue({ subscription: { blocked: false }, usage: { creditsUsed: 0, monthlyAllowance: 0, creditsRemaining: 0, avulsoBalance: 0 } } as never);
 });
 
-describe("overview page onboarding", () => {
-  it("puts the first-steps card at the top of the dashboard", async () => {
+describe("overview page getting started", () => {
+  it("shows the Comece por aqui card on the dashboard", async () => {
     render(<NextIntlClientProvider locale="en" messages={messages}><OverviewPage /></NextIntlClientProvider>);
-    expect(await screen.findByTestId("onboarding-card")).toBeTruthy();
+    expect(await screen.findByTestId("getting-started")).toBeTruthy();
   });
 });

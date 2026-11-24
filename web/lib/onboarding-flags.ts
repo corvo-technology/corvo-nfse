@@ -1,5 +1,5 @@
-/** Preferences of the onboarding card that live only in this browser. Every access is guarded: storage can be blocked (private window), and the card must still work. */
-export type OnboardingFlag = "hidden" | "plansSeen" | "noPriorNotes" | "noteBannerDismissed";
+/** Preferences of the first-note banner that live only in this browser. Every access is guarded: storage can be blocked (private window), and the banner must still work. */
+export type OnboardingFlag = "noteBannerDismissed";
 
 const key = (tenantId: string, flag: OnboardingFlag) => `corvo:onboarding:${tenantId}:${flag}`;
 
