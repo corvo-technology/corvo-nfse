@@ -889,6 +889,10 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
   it('can reverse and reapply RLS policies in the isolated schema', async () => {
     const runner = admin.createQueryRunner();
     const migration = new EnableTenantRls1791750000000();
+    // The runtime waits for migrations by default (180s); here the policies are
+    // missing on purpose, so do not wait.
+    const previousWait = process.env.RLS_MIGRATIONS_WAIT_TIMEOUT_MS;
+    process.env.RLS_MIGRATIONS_WAIT_TIMEOUT_MS = '0';
     try {
       await migration.down(runner);
       await expect(
@@ -896,6 +900,9 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       ).rejects.toThrow('RLS policies are missing');
       await migration.up(runner);
     } finally {
+      if (previousWait === undefined)
+        delete process.env.RLS_MIGRATIONS_WAIT_TIMEOUT_MS;
+      else process.env.RLS_MIGRATIONS_WAIT_TIMEOUT_MS = previousWait;
       await runner.release();
     }
     expect(
