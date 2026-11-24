@@ -168,6 +168,7 @@ describe('InvoiceController', () => {
         tenantId,
         undefined,
         'test',
+        undefined,
       );
       expect(result).toEqual({
         data: {
@@ -175,6 +176,32 @@ describe('InvoiceController', () => {
           status: 'queued',
         },
       });
+    });
+
+    it('passes the edited destination e-mail to the service', async () => {
+      invoiceService.requestEmail.mockResolvedValue({
+        emailId: 'inv_1',
+        status: 'queued',
+      });
+      const controller = new InvoiceController(
+        invoiceService as never,
+        {} as never,
+        {} as never,
+        {} as never,
+      );
+      await controller.requestEmail(
+        invoiceId,
+        { authContext: { activeTenantId: tenantId } } as never,
+        undefined,
+        { email: 'novo@b.com' },
+      );
+      expect(invoiceService.requestEmail).toHaveBeenCalledWith(
+        invoiceId,
+        tenantId,
+        undefined,
+        'test',
+        'novo@b.com',
+      );
     });
 
     it('returns 404 when invoice is not authorized', async () => {

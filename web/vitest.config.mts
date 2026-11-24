@@ -9,5 +9,5 @@ export default defineConfig({
     },
   },
   esbuild: { jsx: "automatic" },
-  test: { include: ["tests/**/*.test.{ts,tsx}"], environment: "node", restoreMocks: true, server: { deps: { inline: ["next-intl"] } }, execArgv: ["--no-experimental-webstorage"] },
+  test: { setupFiles: ["./tests/helpers/clear-session.ts"], include: ["tests/**/*.test.{ts,tsx}"], environment: "node", restoreMocks: true, server: { deps: { inline: ["next-intl"] } }, execArgv: ["--no-experimental-webstorage"] },
 });

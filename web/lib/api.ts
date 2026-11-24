@@ -243,7 +243,7 @@ export const invoices = {
     }
     return results;
   },
-  email: async (id: string, idempotencyKey: string) => (await request<Envelope<{ emailId: string; status: string }>>(`/invoices/${idPath(id)}/email`, { ...json({}), headers: { "idempotency-key": idempotencyKey } })).data,
+  email: async (id: string, idempotencyKey: string, to?: string) => (await request<Envelope<{ emailId: string; status: string }>>(`/invoices/${idPath(id)}/email`, { ...json(to ? { email: to } : {}), headers: { "idempotency-key": idempotencyKey } })).data,
 };
 interface BillingWire { plan: { slug: string; name: string; monthly_price_cents: number }; subscription?: { status: string; paid_until: string | null; cancel_at_period_end: boolean; scheduled_plan: string | null; blocked: boolean; pix_subscription?: PixSubscription | null; stripe_portal_available?: boolean; stripe_subscription?: boolean }; usage: { avulso_balance?: number; credits_used: number; credits_reserved: number; credits_remaining: number; monthly_allowance: number; daily_usage: number; daily_limit: number | null; active_companies: number; max_active_companies: number; period_start?: string; period_end?: string } }
 export function adaptBilling(wire: BillingWire): BillingPlan {
