@@ -100,6 +100,23 @@ export class TypeOrmCertificateRepository implements ICertificateRepository {
       return row ? this.mapper.toDomain(row) : null;
     });
   }
+  async findActiveByCompanyIds(
+    companyIds: string[],
+    tenantId: string,
+    environment: ExecutionEnvironment,
+  ): Promise<Certificate[]> {
+    if (companyIds.length === 0) return [];
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const rows = await this.scoped(tenantId, environment)
+        .andWhere(
+          "cert.company_id IN (:...companyIds) AND cert.status = 'active'",
+          { companyIds },
+        )
+        .getMany();
+      return rows.map((row) => this.mapper.toDomain(row));
+    });
+  }
   async save(
     certificate: Certificate,
     tenantId: string,

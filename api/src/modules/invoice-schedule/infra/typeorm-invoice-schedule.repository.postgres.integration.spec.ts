@@ -276,6 +276,40 @@ describePostgres('invoice schedule repository with restricted role', () => {
     ).toBe(1);
   });
 
+  it('nextAttempts and addRuns do the work of many schedules in one statement each', async () => {
+    const one = schedule(tenantA, '2026-11-09');
+    const two = schedule(tenantA, '2026-11-09');
+    await repo.insert(one);
+    await repo.insert(two);
+    const run = (scheduleId: string, attempt: number) => ({
+      tenantId: tenantA,
+      scheduleId,
+      occurrenceOn: '2026-11-09',
+      ranOn: '2026-11-09',
+      attempt,
+      outcome: 'failed' as const,
+      invoiceId: null,
+      errorCode: null,
+      errorMessage: null,
+    });
+    await repo.addRuns(tenantA, [
+      run(one.props.id, 1),
+      run(one.props.id, 2),
+      run(two.props.id, 1),
+    ]);
+    const items = [
+      { scheduleId: one.props.id, occurrenceOn: '2026-11-09' },
+      { scheduleId: two.props.id, occurrenceOn: '2026-11-09' },
+      { scheduleId: two.props.id, occurrenceOn: '2026-11-16' },
+    ];
+    const next = await repo.nextAttempts(tenantA, items);
+    expect(next.get(`${one.props.id}:2026-11-09`)).toBe(3);
+    expect(next.get(`${two.props.id}:2026-11-09`)).toBe(2);
+    expect(next.get(`${two.props.id}:2026-11-16`)).toBe(1);
+    const other = await repo.nextAttempts(tenantB, items);
+    expect(other.get(`${one.props.id}:2026-11-09`)).toBe(1);
+  });
+
   it('review: a FOR UPDATE read waits for the runner and then sees what the runner saved', async () => {
     const tenant = randomUUID();
     await admin.query(`INSERT INTO "${schema}".tenants (id) VALUES ($1)`, [

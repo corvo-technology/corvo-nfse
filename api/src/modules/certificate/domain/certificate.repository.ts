@@ -24,6 +24,12 @@ export abstract class ICertificateRepository {
     tenantId: string,
     environment: import('@/shared/domain/execution-environment').ExecutionEnvironment,
   ): Promise<Certificate | null>;
+  /** Batch variant of findActiveByCompanyId: one query for many companies. */
+  abstract findActiveByCompanyIds(
+    companyIds: string[],
+    tenantId: string,
+    environment: import('@/shared/domain/execution-environment').ExecutionEnvironment,
+  ): Promise<Certificate[]>;
   abstract save(
     certificate: Certificate,
     tenantId: string,

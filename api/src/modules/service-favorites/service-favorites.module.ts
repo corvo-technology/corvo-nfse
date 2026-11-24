@@ -20,5 +20,6 @@ import { TypeOrmServiceFavoriteRepository } from './infra/typeorm-service-favori
       useClass: TypeOrmServiceFavoriteRepository,
     },
   ],
+  exports: [ServiceFavoritesService],
 })
 export class ServiceFavoritesModule {}
