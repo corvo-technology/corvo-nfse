@@ -326,6 +326,7 @@ export class InvoiceService {
       from: query.from ? new Date(query.from) : undefined,
       to: query.to ? new Date(query.to) : undefined,
       externalId: query.externalId,
+      customerTaxId: query.customerTaxId,
     };
 
     return this.invoiceRepo.listPage(tenantId, filters, query);
