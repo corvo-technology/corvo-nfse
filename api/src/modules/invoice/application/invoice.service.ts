@@ -577,6 +577,7 @@ export class InvoiceService {
     tenantId: string,
     idempotencyKey?: string,
     environment: ExecutionEnvironment = 'test',
+    toEmail?: string,
   ): Promise<{ emailId: string; status: string }> {
     let invoice: Invoice;
     try {
@@ -606,7 +607,7 @@ export class InvoiceService {
     }
 
     const snapshot = invoice.toSnapshot();
-    const customerEmail = snapshot.customerSnapshot?.email;
+    const customerEmail = toEmail ?? snapshot.customerSnapshot?.email;
 
     if (!customerEmail) {
       throw new UnprocessableEntityException({
@@ -640,7 +641,7 @@ export class InvoiceService {
     await this.queueService.add(
       'nfse-email',
       'deliver',
-      { invoiceId: id, tenantId },
+      { invoiceId: id, tenantId, ...(toEmail ? { toEmail } : {}) },
       {
         idempotencyKey: jobId,
         attempts: 3,

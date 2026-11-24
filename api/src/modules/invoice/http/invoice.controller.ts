@@ -57,6 +57,7 @@ import {
   CreateInvoiceDto,
   GetDownloadUrlDto,
   ListInvoicesQuery,
+  RequestInvoiceEmailDto,
 } from './invoice.dto';
 
 @UseGuards(ExecutionEnvironmentGuard)
@@ -345,11 +346,13 @@ export class InvoiceController {
   @RequirePermission('nfse.invoices.issue')
   @HttpCode(202)
   @ApiOperation({ summary: 'Request invoice email to customer' })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiHeader({ name: 'idempotency-key', required: false })
   async requestEmail(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Req() req: RequestWithAuthContext,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Body() dto?: RequestInvoiceEmailDto,
   ) {
     const tenantId = req.authContext!.activeTenantId;
     const result = await this.invoiceService.requestEmail(
@@ -357,6 +360,7 @@ export class InvoiceController {
       tenantId,
       idempotencyKey,
       executionEnvironment(req.authContext!),
+      dto?.email,
     );
     return data({
       emailId: result.emailId,

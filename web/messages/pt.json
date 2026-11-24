@@ -1342,6 +1342,17 @@
     "portalFlag": {
       "taker_rejected": "Tomador rejeitou",
       "blocked": "Bloqueada pelo município"
+    },
+    "fix": {
+      "title": "Corrigir a empresa",
+      "intro": "Resolva aqui mesmo. O que você já preencheu na nota continua salvo.",
+      "fixHere": "Corrigir aqui",
+      "certificate": "Certificado digital",
+      "municipalityCode": "Código IBGE do município",
+      "municipalityHint": "7 dígitos, ex.: 3550308",
+      "municipalityInvalid": "Informe um código IBGE com exatamente 7 dígitos.",
+      "save": "Salvar",
+      "failed": "Não foi possível salvar."
     }
   },
   "Billing": {
@@ -1856,7 +1867,18 @@
       "ANULACAO_REJEICAO": "Rejeição anulada",
       "other": "Registrado no portal nacional"
     },
-    "portalSource": "Portal nacional"
+    "portalSource": "Portal nacional",
+    "resend": {
+      "open": "Reenviar por e-mail",
+      "title": "Reenviar nota por e-mail",
+      "email": "E-mail de destino",
+      "hint": "Pode trocar o e-mail só para este envio.",
+      "invalid": "Informe um e-mail válido.",
+      "send": "Enviar",
+      "cancel": "Cancelar",
+      "sent": "Pronto! Enviando a nota para {email}.",
+      "failed": "Não foi possível reenviar o e-mail."
+    }
   },
   "FiscalDocs": {
     "title": "API Corvo — NFS-e",

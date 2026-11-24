@@ -177,6 +177,16 @@ describe('NfseEmailProcessor', () => {
       });
     });
 
+    it('sends to the edited address when the job carries toEmail', async () => {
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
+        buildInvoice({ customerEmail: 'cliente@example.com' }),
+      );
+      await processor.process(makeJob({ toEmail: 'novo@example.com' }));
+
+      const call = jest.mocked(fakeEmailProvider.send!).mock.calls[0][0];
+      expect(call.to).toEqual(['novo@example.com']);
+    });
+
     it('updates email status to sent on success', async () => {
       (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
         buildInvoice({ customerEmail: 'cliente@example.com' }),

@@ -22,6 +22,8 @@ import { DEFAULT_SERVICE_CODE } from "@/lib/service-defaults";
 import { invoiceToFormValues } from "@/lib/invoice-copy";
 import { useSavedCustomer } from "@/components/invoices/use-saved-customer";
 import { countryOptions } from "@/lib/countries";
+import { FixCompanyDialog, type CompanyFix } from "@/components/invoices/fix-company-dialog";
+import { clearInvoiceDraft, readInvoiceDraft, writeInvoiceDraft } from "@/lib/invoice-draft";
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -64,6 +66,8 @@ export default function NewInvoicePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fixOnCompany, setFixOnCompany] = useState(false);
+  const [certError, setCertError] = useState(false);
+  const [fixOpen, setFixOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     companyId: "",
@@ -133,7 +137,12 @@ export default function NewInvoicePage() {
         const list = data.items;
         setCompanies(list);
         setNextCursor(data.hasMore ? data.nextCursor : null);
-        setForm((prev) => ({ ...prev, companyId: list[0]?.id ?? "", serviceCode: "", municipalityCode: "" }));
+        // Coming back to the form (e.g. after leaving to fix something) restores what was typed; a copy (?from=) starts fresh.
+        const draft = new URLSearchParams(window.location.search).get("from") ? null : readInvoiceDraft(list.map((item) => item.id));
+        if (draft) {
+          setForm((prev) => ({ ...prev, ...(draft.form as Partial<typeof prev>), companyId: draft.companyId }));
+          setSendEmail(draft.sendEmail);
+        } else setForm((prev) => ({ ...prev, companyId: list[0]?.id ?? "", serviceCode: "", municipalityCode: "" }));
         setLoading(false);
       })
       .catch((err) => {
@@ -145,6 +154,11 @@ export default function NewInvoicePage() {
       cancelled = true;
     };
   }, [t, fiscalEnvironment]);
+
+  // Keeps the draft while the person works, so leaving and coming back loses nothing.
+  useEffect(() => {
+    if (!loading && form.companyId) writeInvoiceDraft(form.companyId, form, sendEmail);
+  }, [loading, form, sendEmail]);
 
   // `?from=<invoiceId>` pre-fills the form with an existing invoice; applied once, after the companies are known.
   useEffect(() => {
@@ -287,12 +301,15 @@ export default function NewInvoicePage() {
           email_delivery_requested: sendEmail,
         });
       }
+      clearInvoiceDraft();
       router.push(`/app/invoices/${created.id}`);
     } catch (err: unknown) {
       if (err instanceof ApiError && [0, 409, 502, 503].includes(err.status)) setUncertain(true);
       const { _form, ...perField } = mapIssues(err, { "customer.taxId": "customerTaxId", "customer.name": "customerName", "customer.email": "customerEmail", "customer.address": "city", "customer.address.city": "city", "customer.address.state": "state", "customer.foreign": "foreignTaxId", "customer.foreign.taxId": "foreignTaxId", "customer.foreign.noTaxIdReason": "foreignTaxId", "customer.foreign.country": "country", "customer.foreign.postalCode": "postalCode", "customer.foreign.city": "foreignCity", "customer.foreign.region": "region", "customer.foreign.street": "street", "customer.foreign.number": "number", "customer.foreign.district": "district", "customer.foreign.complement": "complement", "service.code": "serviceCode", "service.municipalityCode": "municipalityCode", "service.description": "serviceDescription", amount: "amount", deduction: "deduction", purchaseOrder: "purchaseOrder", notes: "notes", competenceDate: "competenceDate", companyId: "companyId", companyTaxId: "companyId", "company.municipalityCode": "companyId" }, (code) => (te.has(code) ? te(code) : te("invalid")));
       setFieldErrors(perField);
-      setFixOnCompany([...fieldIssues(err).map((issue) => issue.code), ...(err instanceof ApiError && err.code ? [err.code] : [])].some((code) => FIX_ON_COMPANY.has(errorCodeKey(code))));
+      const errorCodes = [...fieldIssues(err).map((issue) => errorCodeKey(issue.code)), ...(err instanceof ApiError && err.code ? [errorCodeKey(err.code)] : [])];
+      setFixOnCompany(errorCodes.some((code) => FIX_ON_COMPANY.has(code)));
+      setCertError(errorCodes.some((code) => code.startsWith("certificate_")));
       setError(_form ?? (Object.keys(perField).length > 0 ? t("fields.fixFields") : apiErrorMessage(err, te.has, te, t("fields.createFailed"))));
     } finally { inFlight.current = false; setSubmitting(false); }
   }
@@ -338,6 +355,8 @@ export default function NewInvoicePage() {
   if ((sendEmail || form.customerEmail) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customerEmail.trim())) missing.push(t("fields.email"));
   if (!abroad && Boolean(form.city.trim()) !== Boolean(form.state)) missing.push(form.city.trim() ? t("fields.state") : t("fields.city"));
   const canSubmit = missing.length === 0 && !uncertain;
+  /** What the person can fix right here, without leaving the form. */
+  const fixes: CompanyFix[] = company ? [...(company.setupGaps?.includes("certificate") || certError ? ["certificate" as const] : []), ...(!/^\d{7}$/.test(company.municipalityCode ?? "") ? ["municipality_code" as const] : [])] : [];
 
   // "More options" holds what most invoices do not need. It opens by itself when something in it is filled,
   // wrong, or required (a company without a municipality); the person can still close it.
@@ -369,7 +388,8 @@ export default function NewInvoicePage() {
                   </select>
                 )}
               </Field>
-            {company && (company.status === "blocked" || (isLive && company.status !== "ready") || !/^\d{7}$/.test(company.municipalityCode ?? "")) && <p className="banner banner-warn">{t("fields.companyNotReady")} <Link href={`/app/companies/${company.id}`} className="underline">{t("fields.configureCompany")}</Link></p>}
+            {company && (company.status === "blocked" || (isLive && company.status !== "ready") || !/^\d{7}$/.test(company.municipalityCode ?? "")) && <p className="banner banner-warn">{t("fields.companyNotReady")} <Link href={`/app/companies/${company.id}`} className="underline">{t("fields.configureCompany")}</Link>{fixes.length > 0 && <> <Button variant="ghost" onClick={() => setFixOpen(true)}>{t("fix.fixHere")}</Button></>}</p>}
+            {company && fixOpen && <FixCompanyDialog company={company} fixes={fixes} open={fixOpen} onClose={() => setFixOpen(false)} onFixed={(updated) => { setCompanies((previous) => previous.map((item) => (item.id === updated.id ? updated : item))); setCertError(false); setError(null); setFixOnCompany(false); setFixOpen(false); }} />}
             {nextCursor && <Button variant="ghost" onClick={loadMoreCompanies} loading={loadingMore}>{t("fields.loadMoreCompanies")}</Button>}
           </div>
 
@@ -578,7 +598,7 @@ export default function NewInvoicePage() {
           {error && (
             <div role="alert" className="banner banner-danger">
               <AlertTriangle size={16} aria-hidden className="mt-0.5 flex-none" />
-              <span>{error}{fixOnCompany && form.companyId && <> <Link href={`/app/companies/${form.companyId}`} className="underline">{t("fields.openCompany")}</Link></>}</span>
+              <span>{error}{fixOnCompany && form.companyId && <> <Link href={`/app/companies/${form.companyId}`} className="underline">{t("fields.openCompany")}</Link></>}{certError && company && fixes.length > 0 && <> <Button variant="ghost" onClick={() => setFixOpen(true)}>{t("fix.fixHere")}</Button></>}</span>
             </div>
           )}
         </form>

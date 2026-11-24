@@ -376,6 +376,25 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
       );
     });
 
+    it('sends to the edited address, even when the customer has no e-mail', async () => {
+      const invoice = makeAuthorizedInvoice({});
+      invoiceRepo.findByIdAndTenantId.mockResolvedValue(invoice);
+
+      await service.requestEmail(
+        'inv-1',
+        'tenant-1',
+        undefined,
+        'test',
+        'novo@b.com',
+      );
+
+      expect(capturedQueueAddCalls).toContainEqual([
+        'deliver',
+        { invoiceId: 'inv-1', tenantId: 'tenant-1', toEmail: 'novo@b.com' },
+        expect.anything(),
+      ]);
+    });
+
     it('enqueues nfse-email deliver job with correct payload', async () => {
       const invoice = makeAuthorizedInvoice({ customerEmail: 'a@b.com' });
       invoiceRepo.findByIdAndTenantId.mockResolvedValue(invoice);
