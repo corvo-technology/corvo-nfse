@@ -21,6 +21,7 @@ import { InvoiceCalculationPanel } from "@/components/dashboard/invoice-calculat
 import { DEFAULT_SERVICE_CODE } from "@/lib/service-defaults";
 import { invoiceToFormValues } from "@/lib/invoice-copy";
 import { useSavedCustomer } from "@/components/invoices/use-saved-customer";
+import { ServiceShortcuts, type ServiceFill } from "@/components/invoices/service-shortcuts";
 import { CustomerPicker } from "@/components/invoices/customer-picker";
 import { countryOptions } from "@/lib/countries";
 import { FixCompanyDialog, type CompanyFix } from "@/components/invoices/fix-company-dialog";
@@ -522,6 +523,12 @@ export default function NewInvoicePage() {
           </Section>
 
           <Section title={t("form.service")} delay={3}>
+            <ServiceShortcuts
+              companyId={form.companyId}
+              savedCustomerTaxId={savedCustomer ? cleanTaxId(form.customerTaxId) : null}
+              current={{ description: form.serviceDescription, serviceCode, municipalityCode: form.municipalityCode, amountCents: hasAmount ? Math.round(amountNumber * 100) : 0 }}
+              onApply={(fill: ServiceFill) => { setForm((f) => ({ ...f, ...fill })); setFieldErrors((previous) => ({ ...previous, serviceDescription: "", serviceCode: "", municipalityCode: "", amount: "" })); }}
+            />
             <Field label={t("fields.description")} error={fieldErrors.serviceDescription || undefined} optionalLabel={t("fields.optional")} hint={t("hints.description")}>
               {(c) => (
                 <textarea {...c} className="field resize-y" rows={3} placeholder={t("placeholders.description")} value={form.serviceDescription} onChange={set("serviceDescription")} />

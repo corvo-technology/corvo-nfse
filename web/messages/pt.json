@@ -1357,6 +1357,17 @@
       "taker_rejected": "Tomador rejeitou",
       "blocked": "Bloqueada pelo município"
     },
+    "shortcuts": {
+      "useLast": "Usar a última nota deste cliente",
+      "useLastHint": "Preenche descrição, código do serviço e valor com os da última nota emitida para ele.",
+      "favorites": "Serviços favoritos",
+      "remove": "Remover favorito {name}",
+      "save": "Salvar como favorito",
+      "nameLabel": "Nome do favorito",
+      "saveConfirm": "Salvar",
+      "cancel": "Cancelar",
+      "failed": "Não foi possível concluir. Tente de novo."
+    },
     "fix": {
       "title": "Corrigir a empresa",
       "intro": "Resolva aqui mesmo. O que você já preencheu na nota continua salvo.",
@@ -2061,6 +2072,8 @@
     "profile_validity_conflict": "Já existe um perfil nesse período.",
     "immutable_approved_profile": "Um perfil aprovado não pode ser alterado. Crie um novo.",
     "service_profile_not_found": "Perfil de serviço não encontrado.",
+    "service_favorite_not_found": "Serviço favorito não encontrado.",
+    "service_favorites_limit": "Você chegou ao limite de 50 serviços favoritos. Remova algum para salvar outro.",
     "service_profile_not_effective": "O perfil do serviço não está vigente na data da nota.",
     "service_profile_still_effective": "Este perfil de serviço ainda está vigente e não pode ser removido.",
     "no_effective_service_profile": "A empresa não tem perfil de serviço vigente para esta data.",

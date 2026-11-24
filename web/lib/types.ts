@@ -578,6 +578,10 @@ export interface ImportJob { id: string; status: ImportStatus; fileName: string;
 export interface ImportRow { line: number; data: Record<string, unknown>; status: ImportRowStatus; errorCode: string | null; errorMessage: string | null; invoiceId: string | null }
 export interface ImportStart { id: string; status: ImportStatus; duplicateOf: string | null }
 
+/** A service the company bills often, saved to fill the new-invoice form in one click. */
+export interface ServiceFavorite { id: string; companyId: string; label: string; description: string; serviceCode: string; amountCents: number | null; municipalityCode: string | null; createdAt: string }
+export interface ServiceFavoriteInput { label: string; description: string; serviceCode: string; amountCents?: number | null; municipalityCode?: string | null }
+
 /** A customer (tomador) saved from an accepted invoice: the next invoice for the same document needs no name. */
 export interface SavedCustomer { taxId: string; name: string; email: string | null; lastUsedAt: string; createdAt: string; updatedAt: string }
 

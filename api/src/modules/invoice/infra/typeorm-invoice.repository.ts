@@ -130,6 +130,12 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
           externalId: filters.externalId,
         });
       }
+      if (filters?.customerTaxId) {
+        queryBuilder.andWhere(
+          `invoice.customer_snapshot ->> 'taxId' = :customerTaxId`,
+          { customerTaxId: filters.customerTaxId },
+        );
+      }
       if (filters?.from) {
         queryBuilder.andWhere('invoice.competence_date >= :from', {
           from: filters.from,

@@ -1357,6 +1357,17 @@
       "taker_rejected": "Taker rejected",
       "blocked": "Blocked by the municipality"
     },
+    "shortcuts": {
+      "useLast": "Use this customer's last invoice",
+      "useLastHint": "Fills the description, service code and amount from the last invoice issued to them.",
+      "favorites": "Favorite services",
+      "remove": "Remove favorite {name}",
+      "save": "Save as favorite",
+      "nameLabel": "Favorite name",
+      "saveConfirm": "Save",
+      "cancel": "Cancel",
+      "failed": "Could not finish. Try again."
+    },
     "fix": {
       "title": "Fix the company",
       "intro": "Fix it right here. What you already filled in the note stays saved.",
@@ -2061,6 +2072,8 @@
     "profile_validity_conflict": "A profile already exists in that period.",
     "immutable_approved_profile": "An approved profile cannot be changed. Create a new one.",
     "service_profile_not_found": "Service profile not found.",
+    "service_favorite_not_found": "Favorite service not found.",
+    "service_favorites_limit": "You reached the limit of 50 favorite services. Remove one to save another.",
     "service_profile_not_effective": "The service profile is not effective on the invoice date.",
     "service_profile_still_effective": "This service profile is still effective and cannot be removed.",
     "no_effective_service_profile": "The company has no effective service profile for this date.",
