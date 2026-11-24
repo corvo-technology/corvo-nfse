@@ -71,7 +71,8 @@ Responses:
 ### Behavior changes that are not breaking
 
 - `GET /invoices/overview` without `period` now answers the documented 7 days (it answered 30 days and left `period` out of the body).
-- `POST /imports/{id}/emit` takes no body (`sendEmail` is optional); a call without a body answered 500 and now works. `POST /invoices/{id}/email` also takes no body.
+- `POST /imports/{id}/emit` and `POST /invoices/{id}/email` accept a request without a body: `requestBody.required` is `false`, and the schemas stay documented (`EmitImport` with the optional boolean `sendEmail`, `RequestInvoiceEmail` with the optional `email`). A call to `imports_emit` without a body answered 500 and now works.
+- Request integers are typed `integer`: `SetDpsSequence.lastNumber` (`int64`, 0 to 999999999999999, required), `CreateServiceFavorite.amountCents` (`int64`, at least 1) and `CursorPagination.limit`. SDKs that generated `number`/`double` for them should now use an integer type.
 - `PATCH /companies/{id}` no longer lists `taxId` in the request: the CNPJ cannot change (the same value is ignored, any other is a 422).
 - `POST /invoices/batches`: `results[].error.details` is a list of issues (it was documented as an object).
 

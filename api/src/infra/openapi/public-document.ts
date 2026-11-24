@@ -535,8 +535,8 @@ export function toPublicDocument(
         ...(operation.requestBody
           ? {
               requestBody: {
-                required: contract.bodyOptional ? false : true,
                 ...operation.requestBody,
+                required: !contract.bodyOptional,
               },
             }
           : {}),

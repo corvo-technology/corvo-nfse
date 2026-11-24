@@ -33,6 +33,9 @@ export class CreateServiceFavoriteDto {
   serviceCode!: string;
 
   @ApiPropertyOptional({
+    type: 'integer',
+    format: 'int64',
+    minimum: 1,
     nullable: true,
     description: 'Default amount in cents.',
   })

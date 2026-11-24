@@ -32,7 +32,8 @@ export class ApiErrorDto {
   @ApiProperty({ format: 'uuid' }) requestId!: string;
 }
 export class CursorPaginationDto {
-  @ApiProperty({ minimum: 1, maximum: 1000, default: 50 }) limit!: number;
+  @ApiProperty({ type: 'integer', minimum: 1, maximum: 1000, default: 50 })
+  limit!: number;
   @ApiProperty() hasMore!: boolean;
   @ApiProperty({ type: String, nullable: true }) nextCursor!: string | null;
 }
