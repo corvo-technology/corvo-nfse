@@ -13,12 +13,37 @@ DPS sequences use the owning company; invoice events use the owning invoice.
 Policies cover both visibility (`USING`) and writes (`WITH CHECK`). Without a
 tenant context these tables return no business rows and reject inserts.
 
-The implementation uses an AsyncLocalStorage scope and a PostgreSQL driver
-connection acquisition hook. On **every acquisition**, master and replica
-connections receive `app.current_tenant_id`, `app.current_auth_user_id` and
-`app.system_context`. Values are reset even when the pool reuses a connection.
-Keep normal PostgreSQL pooling or PgBouncer in **session** pooling mode;
-transaction/statement pooling is incompatible with these session settings.
+The implementation uses an AsyncLocalStorage scope and a hook on the PostgreSQL
+driver's connection acquisition (`rls-connection-scope.ts`). The scope is
+**transaction-local**, so it is correct behind PgBouncer in **transaction**
+pooling mode (the managed database runs that way: two statements of one client
+can run on different server connections, and session settings leak between
+requests):
+
+- an explicit transaction (`startTransaction`, `manager.transaction`) runs
+  `SELECT set_config('app.current_tenant_id', ..., true), set_config('app.current_auth_user_id', ..., true), set_config('app.system_context', ..., true)`
+  as its first statement (after `SET TRANSACTION ...`, which PostgreSQL requires
+  first), from the scope that was current when the transaction started;
+- a statement outside a transaction (autocommit) runs as
+  `BEGIN; set_config(..., true)` / the statement / `COMMIT` back to back on the
+  same checked-out client, so it never depends on session state;
+- nothing is ever set with `is_local = false`. `app.system_context` therefore
+  cannot survive on a server connection after a worker transaction ends, and a
+  request can never inherit another request's tenant or system scope;
+- a connection released inside an open transaction is destroyed, not reused.
+
+Cost: one extra round trip per autocommit statement (`BEGIN`+settings, statement,
+`COMMIT` instead of settings, statement). Statements inside a transaction cost
+nothing extra apart from the single settings statement.
+
+This works with plain pooling, PgBouncer in session mode and PgBouncer in
+transaction mode. Statement pooling is not supported (it forbids transactions).
+Do not use session-level `SET`/`set_config(..., false)` or session advisory locks
+in runtime code; use `SET LOCAL` and `pg_advisory_xact_lock`. After deploying
+this change, server connections that an older version left with session-level
+`app.*` values keep them until the pooler recycles them; the runtime sets every
+value explicitly inside each transaction, so it is unaffected, but restart the
+pooler (or wait for `server_lifetime`) if you also run other clients on it.
 
 Trusted bootstrap exceptions are explicit: credential prefix lookup, OAuth
 bootstrap, verified Stripe customer resolution, initial workspace creation,
@@ -55,7 +80,8 @@ constraint is deferred until commit to support reservation before invoice insert
 Production startup rejects superuser/BYPASSRLS connections. All runtimes reject
 missing RLS policies. Development logs a warning when an administrative database
 role would bypass policies; use the restricted role locally to exercise isolation.
-Migrations use their separate data source and do not install the runtime hook.
+Migrations use their separate data source and do not install the runtime hook
+(they run as the schema owner and never depend on `app.*`).
 
 ```sh
 psql "$MIGRATION_DATABASE_URL" -v runtime_role=corvo_runtime \
@@ -78,6 +104,19 @@ child ownership, membership selection, connection reuse/concurrency, internal
 worker discovery, repositories, composite references and migration reversal.
 The complete API contract suite also runs API and webhook modules with a
 restricted role, including native OAuth/MCP requests.
+
+`src/infra/database/rls-pgbouncer.postgres.integration.spec.ts` runs the same
+scope code behind a real PgBouncer in transaction mode with a `NOBYPASSRLS` role
+and fires concurrent tenant, transaction, `READ COMMITTED` and system work,
+asserting no cross-scope reads/writes and no missing rows. It needs
+`PGBOUNCER_TEST_URL` (CI runs `edoburu/pgbouncer` as a service). Locally:
+
+```sh
+docker run -d -p 127.0.0.1:6432:5432 -e DB_HOST=<postgres ip> -e DB_USER=corvo_pgb_runtime \
+  -e DB_PASSWORD=pgb -e POOL_MODE=transaction -e AUTH_TYPE=scram-sha-256 \
+  -e DEFAULT_POOL_SIZE=3 edoburu/pgbouncer
+PGBOUNCER_TEST_URL=postgresql://corvo_pgb_runtime:pgb@localhost:6432/corvo_test yarn test rls-pgbouncer
+```
 
 ```sh
 MIGRATION_TEST_DATABASE_URL=postgresql://corvo:changeme@localhost:5434/corvo_test \

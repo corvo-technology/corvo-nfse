@@ -21,13 +21,13 @@ export class PlatformReadSession {
 
   async run<T>(work: (q: PlatformQuery) => Promise<T>): Promise<T> {
     const runner = this.dataSource.createQueryRunner();
-    // The system scope is only needed to acquire the connection (session-level
-    // app.system_context=on). Everything else runs with an empty scope, so any
-    // other DB access inside `work` gets no tenant and no system context.
-    await runAsSystem('platform-admin', () => runner.connect());
+    await runner.connect();
     return runWithoutDatabaseScope(async () => {
       try {
-        await runner.startTransaction();
+        // The system scope is read when the transaction starts and lasts only for
+        // this transaction (transaction-local). Everything else runs with an empty
+        // scope, so any other DB access inside `work` gets no tenant and no system context.
+        await runAsSystem('platform-admin', () => runner.startTransaction());
         await runner.query('SET TRANSACTION READ ONLY');
         const q: PlatformQuery = <R>(
           sql: string,

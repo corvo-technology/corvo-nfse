@@ -75,11 +75,11 @@ describe('PlatformReadSession', () => {
     expect(runner.release).toHaveBeenCalled();
   });
 
-  it('só adquire a conexão sob system; o trabalho roda com escopo vazio, mesmo dentro de runWithTenant', async () => {
+  it('só abre a transação sob system (o escopo vale só para ela); o trabalho roda com escopo vazio, mesmo dentro de runWithTenant', async () => {
     const runner = makeRunner([]);
-    let atConnect: unknown;
-    runner.connect.mockImplementation(async () => {
-      atConnect = getDatabaseScope();
+    let atStart: unknown;
+    runner.startTransaction.mockImplementation(async () => {
+      atStart = getDatabaseScope();
     });
     let seen: unknown;
     await runWithTenant(randomUUID(), () =>
@@ -87,7 +87,7 @@ describe('PlatformReadSession', () => {
         seen = getDatabaseScope();
       }),
     );
-    expect(atConnect).toEqual({ system: 'platform-admin' });
+    expect(atStart).toEqual({ system: 'platform-admin' });
     expect(seen).toEqual({});
   });
 });
