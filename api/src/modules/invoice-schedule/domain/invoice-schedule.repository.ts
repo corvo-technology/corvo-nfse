@@ -82,6 +82,16 @@ export abstract class InvoiceScheduleRepository {
     tenantId: string,
     occurrenceOn: string,
   ): Promise<number>;
+  /**
+   * Batch variant of nextAttempt: one query for many (schedule, occurrence) pairs.
+   * The map key is `${scheduleId}:${occurrenceOn}`.
+   */
+  abstract nextAttempts(
+    tenantId: string,
+    items: Array<{ scheduleId: string; occurrenceOn: string }>,
+  ): Promise<Map<string, number>>;
+  /** Batch variant of addRun: one INSERT for the whole list. */
+  abstract addRuns(tenantId: string, runs: NewScheduleRun[]): Promise<void>;
   abstract listRuns(
     scheduleId: string,
     tenantId: string,

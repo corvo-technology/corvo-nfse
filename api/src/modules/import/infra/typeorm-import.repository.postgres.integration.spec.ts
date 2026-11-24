@@ -527,6 +527,39 @@ describePostgres('import repository with restricted role', () => {
     ).toEqual(['obs', 'cor']);
   });
 
+  it('settles many rows of an import in one statement', async () => {
+    const imp = await repo.create(base(tenantA));
+    await repo.insertRows(tenantA, imp.id, [
+      row(1, 'queued'),
+      row(2, 'queued'),
+      row(3, 'queued'),
+    ]);
+    await repo.settleRows(tenantA, imp.id, [
+      {
+        line: 1,
+        status: 'accepted',
+        invoiceId: null,
+        errorCode: null,
+        errorMessage: null,
+      },
+      {
+        line: 2,
+        status: 'rejected',
+        invoiceId: null,
+        errorCode: 'ERROR_VALIDATION',
+        errorMessage: 'bad',
+      },
+    ]);
+    const items = (await repo.listRows(tenantA, 'live', imp.id, { limit: 10 }))
+      .items;
+    expect(items.map((r) => r.status)).toEqual([
+      'accepted',
+      'rejected',
+      'queued',
+    ]);
+    expect(items[1]).toMatchObject({ errorCode: 'ERROR_VALIDATION' });
+  });
+
   it('updates a row and deletes the import with its rows', async () => {
     const imp = await repo.create(base(tenantA));
     await repo.insertRows(tenantA, imp.id, [row(1, 'invalid')]);
