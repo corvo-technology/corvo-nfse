@@ -93,27 +93,15 @@
     "live": "Produção"
   },
   "GettingStarted": {
-    "title": "Comece por aqui",
-    "subtitle": "Três passos para emitir sua primeira nota.",
     "progress": "{done} de {total}",
-    "done": "Feito",
-    "pending": "Falta fazer",
+    "next": "Próximo: {step}",
+    "skip": "Nunca emiti",
+    "go": "Ir",
     "steps": {
-      "company": {
-        "title": "Cadastrar empresa",
-        "hint": "Informe o CNPJ e o resto vem da Receita.",
-        "cta": "Cadastrar"
-      },
-      "certificate": {
-        "title": "Enviar certificado digital",
-        "hint": "É ele que assina as suas notas.",
-        "cta": "Enviar"
-      },
-      "invoice": {
-        "title": "Emitir a primeira nota",
-        "hint": "Depois dos dois primeiros passos, é só preencher e emitir.",
-        "cta": "Emitir nota"
-      }
+      "company": "cadastrar a empresa",
+      "certificate": "enviar o certificado",
+      "dps": "informar a numeração",
+      "invoice": "emitir a primeira nota"
     }
   },
   "Overview": {
@@ -1682,53 +1670,12 @@
     "companyLimit": "Sem plano a conta pode ter 1 empresa. Assine um plano para cadastrar empresas ilimitadas."
   },
   "Onboarding": {
-    "intro": {
-      "title": "Conheça o Corvo",
-      "p1": "O Corvo emite NFS-e no Padrão Nacional, pelo painel, pela API ou pelo servidor MCP, para você usar com agentes de IA.",
-      "p2": "Você cadastra a empresa e o certificado digital, e o Corvo cuida da emissão, do PDF e do XML e envia a nota por e-mail para o seu cliente.",
-      "p3": "No ambiente de teste você emite quantas notas quiser, sem consumir créditos. As notas de produção usam os créditos do seu plano."
-    },
-    "card": {
-      "title": "Bem-vindo ao Corvo",
-      "subtitle": "Faça na ordem que quiser. Dá para emitir sem terminar.",
-      "stepOf": "Passo {n} de {total}",
-      "next": "Próximo",
-      "skip": "Pular",
-      "back": "Voltar",
-      "certificateHint": "O certificado digital da empresa assina as notas. Se você ainda não tem, pule e volte depois.",
-      "noteHint": "Esta é uma nota de verdade e usa uma nota do seu saldo. Se preferir não emitir agora, pule: dá para emitir depois.",
-      "issueNote": "Emitir minha primeira nota",
-      "brand": "Corvo",
-      "progress": "{done} de {total}",
-      "hide": "Ir para o painel",
-      "doneLabel": "Feito",
-      "needsCompany": "Cadastre a empresa primeiro",
-      "noteLocked": "Cadastre a empresa e envie o certificado para liberar",
-      "noPrior": "Nunca emiti notas antes",
-      "allDoneTitle": "Tudo pronto",
-      "allDoneBody": "Quer testar sem gastar nota do saldo? Troque para Teste no seletor aqui em cima: lá você emite quantas notas quiser, sem validade legal e sem consumir créditos."
-    },
-    "steps": {
-      "plans": "Conheça o Corvo e os planos",
-      "company": "Cadastre sua empresa",
-      "certificate": "Envie o certificado digital",
-      "numbering": "Informe a última nota emitida",
-      "note": "Emita sua primeira nota"
-    },
     "note": {
       "title": "Sua primeira nota de teste",
       "status": "Status: autorizada quer dizer que a Receita aceitou a nota; processando, que ela ainda está sendo enviada; rejeitada, que a Receita recusou e o motivo aparece aqui.",
       "files": "PDF e XML: o PDF é o documento para o seu cliente e o XML é o arquivo fiscal oficial. Os dois podem ser baixados nesta página.",
       "env": "Esta é uma nota de teste: não tem validade legal e não consome créditos. Teste quantas quiser. Quando for emitir de verdade, troque para Produção no seletor aqui em cima.",
       "dismiss": "Entendi"
-    },
-    "plans": {
-      "quotaNote": "Cota mensal, sem acúmulo. Passou da cota, é só comprar notas avulsas ou trocar de plano.",
-      "avulsoTitle": "Ou só notas avulsas, sem plano",
-      "avulsoBody": "Você paga só pelas notas que precisa: {price} cada, a partir de {min}. Sem mensalidade, as notas não expiram e valem depois da cota do plano. Sem plano, a conta tem 1 empresa.",
-      "title": "Planos",
-      "price": "{price}/mês",
-      "notes": "{count} notas por mês"
     }
   },
   "CompanyDetail": {

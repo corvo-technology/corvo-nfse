@@ -93,27 +93,15 @@
     "live": "Production"
   },
   "GettingStarted": {
-    "title": "Start here",
-    "subtitle": "Three steps to issue your first invoice.",
     "progress": "{done} of {total}",
-    "done": "Done",
-    "pending": "To do",
+    "next": "Next: {step}",
+    "skip": "Never issued",
+    "go": "Go",
     "steps": {
-      "company": {
-        "title": "Register your company",
-        "hint": "Enter the CNPJ and we get the rest from the Receita.",
-        "cta": "Register"
-      },
-      "certificate": {
-        "title": "Upload the digital certificate",
-        "hint": "It is what signs your invoices.",
-        "cta": "Upload"
-      },
-      "invoice": {
-        "title": "Issue your first invoice",
-        "hint": "After the first two steps, just fill in and issue.",
-        "cta": "Issue invoice"
-      }
+      "company": "register the company",
+      "certificate": "upload the certificate",
+      "dps": "set the numbering",
+      "invoice": "issue the first invoice"
     }
   },
   "Overview": {
@@ -1682,53 +1670,12 @@
     "companyLimit": "Without a plan the account can have 1 company. Subscribe to a plan for unlimited companies."
   },
   "Onboarding": {
-    "intro": {
-      "title": "Get to know Corvo",
-      "p1": "Corvo issues NFS-e on the National Standard, from the dashboard, the API or the MCP server, so you can use it with AI agents.",
-      "p2": "You register the company and its digital certificate, and Corvo takes care of the issuing, the PDF and the XML, and emails the invoice to your customer.",
-      "p3": "In the test environment you can issue as many notes as you like without using credits. Production notes use your plan's credits."
-    },
-    "card": {
-      "title": "Welcome to Corvo",
-      "subtitle": "Do it in any order. You can issue without finishing.",
-      "stepOf": "Step {n} of {total}",
-      "next": "Next",
-      "skip": "Skip",
-      "back": "Back",
-      "certificateHint": "The company's digital certificate signs the invoices. If you don't have one yet, skip and come back later.",
-      "noteHint": "This is a real invoice and uses one note from your balance. If you would rather not issue it now, skip: you can do it later.",
-      "issueNote": "Issue my first note",
-      "brand": "Corvo",
-      "progress": "{done} of {total}",
-      "hide": "Go to dashboard",
-      "doneLabel": "Done",
-      "needsCompany": "Register the company first",
-      "noteLocked": "Register the company and upload the certificate to unlock",
-      "noPrior": "I never issued notes before",
-      "allDoneTitle": "All set",
-      "allDoneBody": "Want to try things without using a note from your balance? Switch to Test in the selector up here: there you can issue as many notes as you like, with no legal validity and no credits used."
-    },
-    "steps": {
-      "plans": "Get to know Corvo and the plans",
-      "company": "Register your company",
-      "certificate": "Upload the digital certificate",
-      "numbering": "Enter the last note issued",
-      "note": "Issue your first note"
-    },
     "note": {
       "title": "Your first test note",
       "status": "Status: authorized means the Receita accepted the note; processing, that it is still being sent; rejected, that the Receita refused it and the reason shows up here.",
       "files": "PDF and XML: the PDF is the document for your customer and the XML is the official tax file. Both can be downloaded on this page.",
       "env": "This is a test note: it has no legal validity and does not use credits. Test as much as you like. When you are ready to issue for real, switch to Production in the selector up here.",
       "dismiss": "Got it"
-    },
-    "plans": {
-      "quotaNote": "Monthly quota, no rollover. Past the quota, buy single notes or change plan.",
-      "avulsoTitle": "Or just single notes, no plan",
-      "avulsoBody": "Pay only for the notes you need: {price} each, from {min}. No monthly fee, notes never expire and are used after your plan's quota. Without a plan the account has 1 company.",
-      "title": "Plans",
-      "price": "{price}/month",
-      "notes": "{count} notes per month"
     }
   },
   "CompanyDetail": {

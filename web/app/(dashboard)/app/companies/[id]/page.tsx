@@ -19,6 +19,7 @@ import { Card } from "@/components/ui/card";
 import { DetailSkeleton } from "@/components/ui/detail-skeleton";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
+import { useScrollToHash } from "@/lib/use-scroll-to-hash";
 import { useApiErrorText } from "@/lib/use-api-error";
 
 export default function CompanyDetailPage() {
@@ -32,6 +33,7 @@ export default function CompanyDetailPage() {
   const [confirmation, setConfirmation] = useState<{ kind: "company" | "certificate"; id: string } | null>(null); const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const certificateView = can("nfse.certificates.view");
+  useScrollToHash("certificado", certificateView && company?.id === id);
   useEffect(() => {
     const abort = new AbortController();
     Promise.all([companies.get(id, abort.signal), certificateView ? collectAll((cursor) => certificates.list(id, { cursor, limit: 1000 }, abort.signal)) : Promise.resolve([])])
@@ -84,7 +86,7 @@ export default function CompanyDetailPage() {
     )}
     <CompanyFiscalGuide company={company} />
     <details className="group"><summary className="cursor-pointer text-sm underline">{t("fiscalAdvanced")}</summary><div className="mt-4"><CompanyFiscalSetup company={company} /></div></details>
-    {certificateView && <Card className="flex flex-col gap-4 p-5"><div className="flex items-center justify-between gap-4"><h2 className="text-base font-medium">{t("certificates")}</h2>{can("nfse.certificates.manage") && <Button onClick={() => setUploading(true)}>{t("upload")}</Button>}</div>{certs.length === 0 ? <p className="text-sm text-text-3">{t("noCertificates")}</p> : certs.map((cert) => <div key={cert.id} className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4"><div><p>{cert.subject}</p><p className="font-mono text-xs text-text-3">{cert.serialNumber}</p><p className="text-sm text-text-3">{t("validUntil")}: {date(cert.validUntil)} · {t(new Date(cert.validUntil).getTime() < now ? "expired" : cert.status)}</p>{new Date(cert.validUntil).getTime() >= now && new Date(cert.validUntil).getTime() - now < 30 * 86400000 && <p className="text-[12.5px] text-warn">{t("expiresSoon")}</p>}</div>{can("nfse.certificates.manage") && <Button variant="danger" onClick={() => setConfirmation({ kind: "certificate", id: cert.id })}>{t("revoke")}</Button>}</div>)}</Card>}
+    {certificateView && <Card id="certificado" className={`flex scroll-mt-24 flex-col gap-4 p-5`}><div className="flex items-center justify-between gap-4"><h2 className="text-base font-medium">{t("certificates")}</h2>{can("nfse.certificates.manage") && <Button onClick={() => setUploading(true)}>{t("upload")}</Button>}</div>{certs.length === 0 ? <p className="text-sm text-text-3">{t("noCertificates")}</p> : certs.map((cert) => <div key={cert.id} className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4"><div><p>{cert.subject}</p><p className="font-mono text-xs text-text-3">{cert.serialNumber}</p><p className="text-sm text-text-3">{t("validUntil")}: {date(cert.validUntil)} · {t(new Date(cert.validUntil).getTime() < now ? "expired" : cert.status)}</p>{new Date(cert.validUntil).getTime() >= now && new Date(cert.validUntil).getTime() - now < 30 * 86400000 && <p className="text-[12.5px] text-warn">{t("expiresSoon")}</p>}</div>{can("nfse.certificates.manage") && <Button variant="danger" onClick={() => setConfirmation({ kind: "certificate", id: cert.id })}>{t("revoke")}</Button>}</div>)}</Card>}
     <Modal open={editing} onClose={() => setEditing(false)} title={t("edit")} wide><CompanyForm company={company} onCancel={() => setEditing(false)} onSave={async (input) => { setCompany(await companies.update(id, input)); setEditing(false); }} /></Modal>
     <DpsSequenceCard companyId={id} canManage={can("nfse.companies.manage")} environment={company.environment} />
     <AccountantPackageCard companyId={id} canManage={can("nfse.companies.manage")} environment={company.environment} />
