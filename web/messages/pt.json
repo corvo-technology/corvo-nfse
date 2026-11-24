@@ -93,33 +93,15 @@
     "live": "Produção"
   },
   "GettingStarted": {
-    "title": "Comece por aqui",
-    "subtitle": "Quatro passos para emitir sua primeira nota.",
     "progress": "{done} de {total}",
-    "done": "Feito",
-    "pending": "Falta fazer",
+    "next": "Próximo: {step}",
+    "skip": "Nunca emiti",
+    "go": "Ir",
     "steps": {
-      "company": {
-        "title": "Cadastrar empresa",
-        "hint": "Informe o CNPJ e o resto vem da Receita.",
-        "cta": "Cadastrar"
-      },
-      "certificate": {
-        "title": "Enviar certificado digital",
-        "hint": "É ele que assina as suas notas.",
-        "cta": "Enviar"
-      },
-      "dps": {
-        "title": "Já emitia notas pelo portal do governo? Informe o próximo número",
-        "hint": "Assim a Corvo continua de onde o portal parou e a nota não é recusada por número repetido.",
-        "cta": "Informar número",
-        "skip": "Nunca emiti notas antes"
-      },
-      "invoice": {
-        "title": "Emitir a primeira nota",
-        "hint": "Depois dos dois primeiros passos, é só preencher e emitir.",
-        "cta": "Emitir nota"
-      }
+      "company": "cadastrar a empresa",
+      "certificate": "enviar o certificado",
+      "dps": "informar a numeração",
+      "invoice": "emitir a primeira nota"
     }
   },
   "Overview": {

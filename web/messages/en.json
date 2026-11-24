@@ -93,33 +93,15 @@
     "live": "Production"
   },
   "GettingStarted": {
-    "title": "Start here",
-    "subtitle": "Four steps to issue your first invoice.",
     "progress": "{done} of {total}",
-    "done": "Done",
-    "pending": "To do",
+    "next": "Next: {step}",
+    "skip": "Never issued",
+    "go": "Go",
     "steps": {
-      "company": {
-        "title": "Register your company",
-        "hint": "Enter the CNPJ and we get the rest from the Receita.",
-        "cta": "Register"
-      },
-      "certificate": {
-        "title": "Upload the digital certificate",
-        "hint": "It is what signs your invoices.",
-        "cta": "Upload"
-      },
-      "dps": {
-        "title": "Already issuing invoices on the government portal? Enter the next number",
-        "hint": "So Corvo continues where the portal stopped and the invoice is not rejected for a repeated number.",
-        "cta": "Enter number",
-        "skip": "I never issued invoices before"
-      },
-      "invoice": {
-        "title": "Issue your first invoice",
-        "hint": "After the first two steps, just fill in and issue.",
-        "cta": "Issue invoice"
-      }
+      "company": "register the company",
+      "certificate": "upload the certificate",
+      "dps": "set the numbering",
+      "invoice": "issue the first invoice"
     }
   },
   "Overview": {

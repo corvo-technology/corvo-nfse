@@ -9,7 +9,7 @@ import messages from "@/messages/en.json";
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ tenantId: "tenant-a", fiscalEnvironment: "live", can: () => true }) }));
 vi.mock("@/lib/api", () => ({ invoices: { overview: vi.fn() }, billing: { plan: vi.fn() } }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
-vi.mock("@/components/dashboard/getting-started-card", () => ({ GettingStartedCard: () => <div data-testid="getting-started" /> }));
+vi.mock("@/components/dashboard/getting-started-banner", () => ({ GettingStartedBanner: () => <div data-testid="getting-started" /> }));
 
 afterEach(cleanup);
 beforeEach(() => {
@@ -18,7 +18,7 @@ beforeEach(() => {
 });
 
 describe("overview page getting started", () => {
-  it("shows the Comece por aqui card on the dashboard", async () => {
+  it("shows the getting started banner on the dashboard", async () => {
     render(<NextIntlClientProvider locale="en" messages={messages}><OverviewPage /></NextIntlClientProvider>);
     expect(await screen.findByTestId("getting-started")).toBeTruthy();
   });

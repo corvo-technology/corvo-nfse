@@ -12,7 +12,7 @@ import { invoice } from "./fixtures";
 const auth = vi.hoisted(() => ({ tenantId: "tenant-a", fiscalEnvironment: "test", permissions: ["nfse.invoices.view", "billing.view", "nfse.invoices.issue"] }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ ...auth, can: (permission: string) => auth.permissions.includes(permission) }) }));
 vi.mock("@/lib/api", () => ({ invoices: { overview: vi.fn() }, billing: { plan: vi.fn() } }));
-vi.mock("@/components/dashboard/getting-started-card", () => ({ GettingStartedCard: () => null }));
+vi.mock("@/components/dashboard/getting-started-banner", () => ({ GettingStartedBanner: () => null }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 
 const overview = (period: OverviewPeriod = "7d", count = 1201): InvoiceOverview => ({
