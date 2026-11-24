@@ -23,17 +23,46 @@ requests):
 - an explicit transaction (`startTransaction`, `manager.transaction`) runs
   `SELECT set_config('app.current_tenant_id', ..., true), set_config('app.current_auth_user_id', ..., true), set_config('app.system_context', ..., true)`
   as its first statement (after `SET TRANSACTION ...`, which PostgreSQL requires
-  first), from the scope that was current when the transaction started;
-- a statement outside a transaction (autocommit) runs as
-  `BEGIN; set_config(..., true)` / the statement / `COMMIT` back to back on the
-  same checked-out client, so it never depends on session state;
+  first), from the scope that was current when the transaction started. After
+  `COMMIT AND CHAIN` / `ROLLBACK AND CHAIN` (a new transaction starts) the same
+  settings are applied again;
+- an autocommit statement without parameters goes out as ONE simple-protocol
+  message, `BEGIN; set_config(..., true); <statement>; COMMIT`, and only the
+  statement's result is returned. If it fails, the client sends `ROLLBACK`
+  before the next statement;
+- an autocommit statement with parameters (or several statements in one text)
+  needs three messages: `BEGIN; set_config(..., true)`, the statement, `COMMIT`
+  (node-postgres does not pipeline, so these are three round trips). If the
+  scope cannot be applied, the statement is never sent;
 - nothing is ever set with `is_local = false`. `app.system_context` therefore
   cannot survive on a server connection after a worker transaction ends, and a
   request can never inherit another request's tenant or system scope;
 - a connection released inside an open transaction is destroyed, not reused.
 
-Cost: one extra round trip per autocommit statement (`BEGIN`+settings, statement,
-`COMMIT` instead of settings, statement). Statements inside a transaction cost
+Concurrency on one client: jobs of more than one message (the autocommit jobs
+above and the first statement of a transaction, which carries the settings) run
+alone. Every later statement on the same client waits until the job and its
+cleanup are over, so callers that share one `QueryRunner` and fire queries at the
+same time never see each other's scope, and a failed statement never leaves an
+open transaction in front of the next one.
+
+Transaction boundaries are recognised after leading whitespace and comments:
+`BEGIN [WORK|TRANSACTION] [modes]`, `START TRANSACTION [modes]`, `COMMIT`, `END`,
+`ABORT`, `ROLLBACK` (optionally `AND [NO] CHAIN`). Savepoints pass through.
+`PREPARE TRANSACTION`, `COMMIT/ROLLBACK PREPARED` and malformed control
+statements throw (fail closed). Transaction control hidden inside a
+multi-statement text (`SELECT 1; COMMIT`) is not parsed: do not send it.
+`QueryRunner.stream()` / cursors work only inside an explicit transaction (the
+settings are queued ahead of the stream) and throw a clear error otherwise.
+Statements that PostgreSQL refuses inside a transaction block (`VACUUM`,
+`CREATE INDEX CONCURRENTLY`, ...) cannot run through the runtime connection;
+migrations use their own data source, which does not have this hook. A client is
+marked once wrapped, so the read-replica hook of TypeORM (which returns the
+master connection when there are no replicas) never wraps it twice.
+
+Cost per statement against PgBouncer (3000 x `SELECT 1`, one connection, local):
+no scope 0.39 ms; before 1.2 ms; now 0.39-0.45 ms (without parameters) and
+about 1.2 ms (with parameters, unchanged). Statements inside a transaction cost
 nothing extra apart from the single settings statement.
 
 This works with plain pooling, PgBouncer in session mode and PgBouncer in
@@ -106,9 +135,15 @@ The complete API contract suite also runs API and webhook modules with a
 restricted role, including native OAuth/MCP requests.
 
 `src/infra/database/rls-pgbouncer.postgres.integration.spec.ts` runs the same
-scope code behind a real PgBouncer in transaction mode with a `NOBYPASSRLS` role
-and fires concurrent tenant, transaction, `READ COMMITTED` and system work,
-asserting no cross-scope reads/writes and no missing rows. It needs
+scope code behind a real PgBouncer in transaction mode. The schema comes from the
+real migrations, the runtime role from `scripts/provision-runtime-role.sql` and
+the DataSource from the application's own `createTypeOrmOptions`, and the
+startup check (`RlsConnectionScopeService`) runs against it. It fires concurrent
+tenant, transaction, `READ COMMITTED` and system work, concurrent autocommit
+queries on one shared `QueryRunner` and a stream, asserting no cross-scope
+reads/writes and no missing rows. Unit tests for the statement classifier, the
+single-message path, streams and double wrapping are in
+`src/infra/database/rls-connection-scope.spec.ts`. It needs
 `PGBOUNCER_TEST_URL` (CI runs `edoburu/pgbouncer` as a service). Locally:
 
 ```sh
