@@ -459,6 +459,40 @@ export class TypeOrmImportRepository extends ImportRepository {
     );
   }
 
+  async settleRows(
+    tenantId: string,
+    importId: string,
+    settled: Array<{
+      line: number;
+      status: 'accepted' | 'rejected';
+      invoiceId: string | null;
+      errorCode: string | null;
+      errorMessage: string | null;
+    }>,
+  ): Promise<void> {
+    if (settled.length === 0) return;
+    await runWithTenant(tenantId, async () => {
+      const schema = this.schema();
+      await this.manager().query(
+        `UPDATE ${schema}.import_rows r
+         SET status = v.status, invoice_id = v.invoice_id,
+             error_code = v.error_code, error_message = v.error_message
+         FROM unnest($3::int[], $4::text[], $5::uuid[], $6::text[], $7::text[])
+              AS v(line, status, invoice_id, error_code, error_message)
+         WHERE r.import_id = $1 AND r.tenant_id = $2 AND r.line = v.line`,
+        [
+          importId,
+          tenantId,
+          settled.map((row) => row.line),
+          settled.map((row) => row.status),
+          settled.map((row) => row.invoiceId),
+          settled.map((row) => row.errorCode),
+          settled.map((row) => row.errorMessage),
+        ],
+      );
+    });
+  }
+
   findByFileHash(
     tenantId: string,
     env: ExecutionEnvironment,

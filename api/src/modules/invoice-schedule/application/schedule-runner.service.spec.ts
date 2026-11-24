@@ -96,6 +96,26 @@ class MemoryRepo extends InvoiceScheduleRepository {
       .map((r) => r.attempt);
     return Promise.resolve(Math.max(0, ...attempts) + 1);
   }
+  attemptQueries = 0;
+  insertStatements = 0;
+  async nextAttempts(
+    tenantId: string,
+    items: Array<{ scheduleId: string; occurrenceOn: string }>,
+  ) {
+    this.attemptQueries += 1;
+    const next = new Map<string, number>();
+    for (const { scheduleId, occurrenceOn } of items)
+      next.set(
+        `${scheduleId}:${occurrenceOn}`,
+        await this.nextAttempt(scheduleId, tenantId, occurrenceOn),
+      );
+    return next;
+  }
+  addRuns(_tenantId: string, runs: NewScheduleRun[]) {
+    this.insertStatements += 1;
+    this.runs.push(...runs);
+    return Promise.resolve();
+  }
   listRuns() {
     return Promise.resolve({ items: [], total: 0 });
   }
@@ -214,6 +234,16 @@ describe('ScheduleRunner.runDue: the happy path', () => {
       }),
     ]);
     expect(s.props).toMatchObject({ nextRunOn: '2026-11-16', attempts: 0 });
+  });
+
+  it('logs the runs of many schedules with one attempt query and one insert', async () => {
+    const { runner, repo } = build();
+    for (let i = 0; i < 25; i += 1) await repo.insert(schedule());
+    const result = await runner.runDue('2026-11-09');
+    expect(result.issued).toBe(25);
+    expect(repo.runs).toHaveLength(25);
+    expect(repo.attemptQueries).toBe(1);
+    expect(repo.insertStatements).toBe(1);
   });
 
   it('a single schedule completes after its run', async () => {

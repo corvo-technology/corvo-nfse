@@ -19,7 +19,7 @@ describe('ImportEmitService', () => {
     markRowsQueued: jest.fn(),
     rejectQueued: jest.fn(),
     listRows: jest.fn(),
-    updateRow: jest.fn(),
+    settleRows: jest.fn(),
     updateStatus: jest.fn(),
   };
   const review = { get: jest.fn() };
@@ -162,18 +162,23 @@ describe('ImportEmitService', () => {
         T,
         expect.objectContaining({ executionEnvironment: 'live' }),
       );
-      expect(repo.updateRow).toHaveBeenCalledWith(T, 'i1', 2, {
-        status: 'accepted',
-        invoiceId: 'inv-2',
-        errorCode: null,
-        errorMessage: null,
-      });
-      expect(repo.updateRow).toHaveBeenCalledWith(T, 'i1', 3, {
-        status: 'rejected',
-        invoiceId: null,
-        errorCode: 'ERROR_VALIDATION',
-        errorMessage: 'bad',
-      });
+      expect(repo.settleRows).toHaveBeenCalledTimes(1);
+      expect(repo.settleRows).toHaveBeenCalledWith(T, 'i1', [
+        {
+          line: 2,
+          status: 'accepted',
+          invoiceId: 'inv-2',
+          errorCode: null,
+          errorMessage: null,
+        },
+        {
+          line: 3,
+          status: 'rejected',
+          invoiceId: null,
+          errorCode: 'ERROR_VALIDATION',
+          errorMessage: 'bad',
+        },
+      ]);
     });
 
     it('when the plan limit is hit mid chunk, the rest is rejected for later and the run stops', async () => {
@@ -195,7 +200,10 @@ describe('ImportEmitService', () => {
       });
       review.get.mockResolvedValue(view('emitting'));
       await service.run(ref);
-      expect(repo.updateRow).toHaveBeenCalledTimes(50);
+      expect(repo.settleRows).toHaveBeenCalledTimes(1);
+      expect((repo.settleRows.mock.calls[0] as unknown[][])[2]).toHaveLength(
+        50,
+      );
       expect(repo.rejectQueued).toHaveBeenCalledWith(T, 'i1', {
         code: 'ERROR_MONTHLY_LIMIT_EXCEEDED',
         message: 'Monthly processing limit reached',
@@ -210,7 +218,7 @@ describe('ImportEmitService', () => {
       });
       batch.emitBatch.mockRejectedValue(new Error('db down'));
       await expect(service.run(ref)).rejects.toThrow('db down');
-      expect(repo.updateRow).not.toHaveBeenCalled();
+      expect(repo.settleRows).not.toHaveBeenCalled();
     });
 
     it('a replayed key (after a crash) counts as accepted', async () => {
@@ -229,12 +237,13 @@ describe('ImportEmitService', () => {
       });
       review.get.mockResolvedValue(view('emitting'));
       await service.run(ref);
-      expect(repo.updateRow).toHaveBeenCalledWith(
-        T,
-        'i1',
-        2,
-        expect.objectContaining({ status: 'accepted', invoiceId: 'inv-2' }),
-      );
+      expect(repo.settleRows).toHaveBeenCalledWith(T, 'i1', [
+        expect.objectContaining({
+          line: 2,
+          status: 'accepted',
+          invoiceId: 'inv-2',
+        }),
+      ]);
     });
   });
 });

@@ -112,6 +112,18 @@ export abstract class ImportRepository {
     line: number,
     patch: Partial<Omit<ImportRow, 'line'>>,
   ): Promise<void>;
+  /** Writes the result of many rows of one import in a single statement (one round trip per chunk). */
+  abstract settleRows(
+    tenantId: string,
+    importId: string,
+    settled: Array<{
+      line: number;
+      status: 'accepted' | 'rejected';
+      invoiceId: string | null;
+      errorCode: string | null;
+      errorMessage: string | null;
+    }>,
+  ): Promise<void>;
   abstract findByFileHash(
     tenantId: string,
     env: ExecutionEnvironment,

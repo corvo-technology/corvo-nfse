@@ -12,7 +12,10 @@ import {
 } from '@/modules/invoice/domain/invoice.repository';
 import type { CreateInvoiceDto } from '@/modules/invoice/http/invoice.dto';
 import type { InvoiceSchedule } from '../domain/invoice-schedule';
-import { InvoiceScheduleRepository } from '../domain/invoice-schedule.repository';
+import {
+  InvoiceScheduleRepository,
+  type NewScheduleRun,
+} from '../domain/invoice-schedule.repository';
 import {
   ScheduleFailureNotifier,
   type FailedScheduleItem,
@@ -175,15 +178,21 @@ export class ScheduleRunner {
     }
 
     const result: TenantOutcome = { issued: 0, failed: [], paused: [] };
-    for (const step of steps) {
-      const final = settled.get(step.schedule) ?? step;
+    // From the log, not from the schedule's counter: that one resets on pause/resume and edits.
+    // One query for every schedule of the tenant, and one INSERT for their runs.
+    const finals = steps.map((step) => settled.get(step.schedule) ?? step);
+    const attempts = await this.repo.nextAttempts(
+      tenantId,
+      finals.map((final) => ({
+        scheduleId: final.schedule.props.id,
+        occurrenceOn: final.occurrenceOn,
+      })),
+    );
+    const runs: NewScheduleRun[] = [];
+    for (const final of finals) {
       const { schedule } = final;
-      // From the log, not from the schedule's counter: that one resets on pause/resume and edits.
-      const attempt = await this.repo.nextAttempt(
-        schedule.props.id,
-        tenantId,
-        final.occurrenceOn,
-      );
+      const attempt =
+        attempts.get(`${schedule.props.id}:${final.occurrenceOn}`) ?? 1;
       const base = {
         tenantId,
         scheduleId: schedule.props.id,
@@ -193,7 +202,7 @@ export class ScheduleRunner {
       };
       if (final.state === 'issued') {
         schedule.recordIssued(today);
-        await this.repo.addRun({
+        runs.push({
           ...base,
           outcome: 'issued',
           invoiceId: final.invoiceId,
@@ -203,7 +212,7 @@ export class ScheduleRunner {
         result.issued += 1;
       } else if (final.state === 'failed') {
         const { paused } = schedule.recordFailure(today);
-        await this.repo.addRun({
+        runs.push({
           ...base,
           outcome: 'failed',
           invoiceId: null,
@@ -218,6 +227,7 @@ export class ScheduleRunner {
       }
       await this.repo.save(schedule);
     }
+    await this.repo.addRuns(tenantId, runs);
     return result;
   }
 
