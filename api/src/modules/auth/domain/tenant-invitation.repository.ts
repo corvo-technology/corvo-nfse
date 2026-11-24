@@ -12,6 +12,8 @@ export abstract class ITenantInvitationRepository {
   abstract listByTenant(tenantId: string): Promise<TenantInvitation[]>;
   /** Pending and not yet expired. */
   abstract listOpenByTenant(tenantId: string): Promise<TenantInvitation[]>;
+  /** Pending, expired ones included, so an admin can still resend them. */
+  abstract listPendingByTenant(tenantId: string): Promise<TenantInvitation[]>;
   /** Looks across tenants: run inside the invitation system scope. */
   abstract findByTokenHash(tokenHash: string): Promise<TenantInvitation | null>;
   /** Single-use: true only for the one caller that moves a live pending invitation to completed. */

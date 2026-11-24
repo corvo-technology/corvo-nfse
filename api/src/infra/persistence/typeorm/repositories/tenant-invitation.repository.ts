@@ -83,6 +83,19 @@ export class TypeOrmTenantInvitationRepository implements ITenantInvitationRepos
     });
   }
 
+  async listPendingByTenant(tenantId: string): Promise<TenantInvitation[]> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const entities = await this.db
+        .repository(TenantInvitationOrmEntity)
+        .find({
+          where: { tenantId, status: 'pending' },
+          order: { createdAt: 'DESC' },
+        });
+      return entities.map((entity) => this.toDomain(entity));
+    });
+  }
+
   async findByTokenHash(tokenHash: string): Promise<TenantInvitation | null> {
     const entity = await this.db
       .repository(TenantInvitationOrmEntity)

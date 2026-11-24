@@ -7,6 +7,10 @@ describe('safeNextPath', () => {
     );
   });
 
+  it('keeps the invitation page, so a social sign-in returns to accept it', () => {
+    expect(safeNextPath('/accept-invite')).toBe('/accept-invite');
+  });
+
   it.each([
     undefined,
     '',

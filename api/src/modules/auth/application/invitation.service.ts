@@ -40,6 +40,8 @@ export type InvitationSummary = {
   role: TenantMembershipRole;
   expiresAt: Date;
   createdAt: Date;
+  /** Past its date and still pending: the admin can resend it. */
+  expired: boolean;
 };
 
 /** A name the person (or an admin) gave, not the part of the e-mail before the "@". */
@@ -60,6 +62,7 @@ function summary(invitation: TenantInvitation): InvitationSummary {
     role: invitation.role,
     expiresAt: invitation.expiresAt,
     createdAt: invitation.createdAt,
+    expired: invitation.expiresAt.getTime() <= Date.now(),
   };
 }
 
@@ -140,7 +143,7 @@ export class InvitationService {
   }
 
   async listOpen(tenantId: string): Promise<InvitationSummary[]> {
-    return (await this.invitations.listOpenByTenant(tenantId)).map(summary);
+    return (await this.invitations.listPendingByTenant(tenantId)).map(summary);
   }
 
   /** A new link and a fresh 7 days; the previous link stops working. */

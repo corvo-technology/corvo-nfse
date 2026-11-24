@@ -5,7 +5,7 @@ export const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
 
 const DEFAULT_NEXT = '/app';
 /** Same allowlist as the login screen: pages the dashboard may resume after sign-in. */
-const ALLOWED_NEXT_PATHS = new Set(['/mcp/authorize']);
+const ALLOWED_NEXT_PATHS = new Set(['/mcp/authorize', '/accept-invite']);
 
 /** Returns `next` only for an allowed same-site path, otherwise the dashboard. */
 export function safeNextPath(next: unknown): string {

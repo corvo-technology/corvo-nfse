@@ -195,7 +195,9 @@ export default function MembersPage() {
     {
       id: "expires",
       header: t("pending.expires"),
-      cell: (i) => <span className="text-[13px] text-text-4">{new Date(i.expiresAt).toLocaleDateString()}</span>,
+      cell: (i) => i.expired
+        ? <Badge variant="gray">{t("pending.expired")}</Badge>
+        : <span className="text-[13px] text-text-4">{new Date(i.expiresAt).toLocaleDateString()}</span>,
     },
     {
       id: "actions",

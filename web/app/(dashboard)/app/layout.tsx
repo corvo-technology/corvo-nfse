@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
+import { shouldResumeInvite } from "@/lib/invite-token";
 import { useCompleteRegistration } from "@/lib/use-complete-registration";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { NoAccess } from "@/components/dashboard/no-access";
@@ -67,6 +68,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Auth gate
   useEffect(() => {
     if (status === "anonymous") router.replace("/login");
+  }, [status, router]);
+
+  // Signed in without coming back to the invitation page (e.g. a social sign-in): finish accepting it.
+  useEffect(() => {
+    if (status === "authenticated" && shouldResumeInvite()) router.replace("/accept-invite");
   }, [status, router]);
 
   // Drawer: Escape closes, body scroll locks, focus moves in and back out.

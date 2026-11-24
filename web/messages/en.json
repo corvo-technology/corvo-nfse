@@ -634,6 +634,7 @@
       "title": "Pending invitations",
       "email": "E-mail",
       "expires": "Expires",
+      "expired": "Expired",
       "resend": "Resend",
       "revoke": "Cancel invitation",
       "resent": "Invitation resent.",
