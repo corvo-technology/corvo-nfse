@@ -119,10 +119,10 @@ export default async function SecurityPage({
           <p className="text-[14.5px]">
             {t("questions")}{" "}
             <a
-              href="mailto:security@corvo.tech"
+              href="mailto:contato@corvo.tech"
               className="text-accent hover:underline"
             >
-              security@corvo.tech
+              contato@corvo.tech
             </a>
           </p>
         </div>

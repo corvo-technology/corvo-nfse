@@ -1046,7 +1046,7 @@
       },
       "s20": {
         "title": "20. Contato e informações da empresa",
-        "content": "Para dúvidas sobre estes Termos, solicitações de privacidade, cobrança ou encerramento, escreva para legal@corvo.tech. A responsável pelo Serviço é Greenflow Desenvolvimento de Software LTDA, CNPJ 61.469.487/0001-40, com endereço na Rua Doutor Arlindo Luz, 540, Sala 01, Centro, Ourinhos, São Paulo, CEP 19900-011, Brasil."
+        "content": "Para dúvidas sobre estes Termos, solicitações de privacidade, cobrança ou encerramento, escreva para contato@corvo.tech. A responsável pelo Serviço é Greenflow Desenvolvimento de Software LTDA, CNPJ 61.469.487/0001-40, com endereço na Rua Doutor Arlindo Luz, 540, Sala 01, Centro, Ourinhos, São Paulo, CEP 19900-011, Brasil."
       }
     },
     "description": "Regras de uso da Corvo para emissão de NFS-e: planos, renovação, consumo, cobrança, certificados e documentos fiscais."
@@ -1087,7 +1087,7 @@
     "disclosures": {
       "reporting": {
         "title": "Relato de vulnerabilidades",
-        "description": "Envie relatos para security@corvo.tech com os passos para reproduzir e o impacto observado. Não inclua senhas, certificados ou dados pessoais de terceiros."
+        "description": "Envie relatos para contato@corvo.tech com os passos para reproduzir e o impacto observado. Não inclua senhas, certificados ou dados pessoais de terceiros."
       },
       "credentials": {
         "title": "Suspeita de acesso indevido",
@@ -2251,7 +2251,7 @@
       },
       "s11": {
         "title": "11. Contato",
-        "content": "Para solicitações e dúvidas sobre dados pessoais, escreva para legal@corvo.tech. Endereço para correspondência: Greenflow Desenvolvimento de Software LTDA, Rua Doutor Arlindo Luz, 540, Sala 01, Centro, Ourinhos, São Paulo, CEP 19900-011, Brasil. Descreva sua relação com a conta ou com a empresa emissora; não envie senhas ou arquivos de certificado para esse contato."
+        "content": "Para solicitações e dúvidas sobre dados pessoais, escreva para contato@corvo.tech. Endereço para correspondência: Greenflow Desenvolvimento de Software LTDA, Rua Doutor Arlindo Luz, 540, Sala 01, Centro, Ourinhos, São Paulo, CEP 19900-011, Brasil. Descreva sua relação com a conta ou com a empresa emissora; não envie senhas ou arquivos de certificado para esse contato."
       },
       "s12": {
         "title": "12. Atualizações deste Aviso",
@@ -2302,7 +2302,7 @@
       },
       "s10": {
         "title": "10. Transferências internacionais e contato",
-        "content": "Quando o tratamento envolver transferência internacional, as partes devem observar os mecanismos e as garantias exigidos pela LGPD e pela regulamentação aplicável. Este Aditivo, por si só, não substitui as cláusulas-padrão ou outro instrumento exigido para uma transferência específica. Solicitações sobre instruções, fornecedores, medidas de segurança ou transferências devem ser enviadas para legal@corvo.tech."
+        "content": "Quando o tratamento envolver transferência internacional, as partes devem observar os mecanismos e as garantias exigidos pela LGPD e pela regulamentação aplicável. Este Aditivo, por si só, não substitui as cláusulas-padrão ou outro instrumento exigido para uma transferência específica. Solicitações sobre instruções, fornecedores, medidas de segurança ou transferências devem ser enviadas para contato@corvo.tech."
       }
     }
   },

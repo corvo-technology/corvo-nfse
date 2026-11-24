@@ -3,6 +3,10 @@
  * One function per email; the layout and blocks below keep them all alike.
  */
 
+/** E-mail de contato exibido nos e-mails; self-hosted pode trocar via SUPPORT_EMAIL. */
+export const supportEmail = (): string =>
+  process.env.SUPPORT_EMAIL?.trim() || 'contato@corvo.tech';
+
 export type RenderedEmail = { subject: string; html: string; text: string };
 
 const LOGO_URL = 'https://www.corvo.tech/icon-192.png';
@@ -405,7 +409,7 @@ export function paymentMismatchEmail(input: {
       'O valor pago no Pix é diferente do valor da cobrança, por isso não liberamos os créditos nem o plano.',
     ),
     paragraph(
-      'Responda a este atendimento pelo suporte para resolvermos, ou gere um novo Pix com o valor correto.',
+      `Escreva para ${supportEmail()} para resolvermos, ou gere um novo Pix com o valor correto.`,
     ),
     button(input.billingUrl, 'Ver cobrança'),
   ]);
@@ -498,7 +502,9 @@ export function accountantPackageTooLargeEmail(input: {
     paragraph(
       `Não enviamos ao seu contador o pacote de ${input.monthLabel} da empresa ${input.companyName}: o mês teve ${input.count} notas e o pacote comporta até ${input.limit}.`,
     ),
-    paragraph('Fale com o nosso suporte que enviamos o pacote em partes.'),
+    paragraph(
+      `Escreva para ${supportEmail()} que enviamos o pacote em partes.`,
+    ),
     button(input.companyUrl, 'Abrir a empresa'),
   ]);
 }

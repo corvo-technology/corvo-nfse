@@ -1046,7 +1046,7 @@
       },
       "s20": {
         "title": "20. Contact and company information",
-        "content": "For questions about these Terms, privacy requests, billing or account closure, email legal@corvo.tech. The Service is operated by Greenflow Desenvolvimento de Software LTDA, CNPJ 61.469.487/0001-40, at Rua Doutor Arlindo Luz, 540, Sala 01, Centro, Ourinhos, São Paulo, postal code 19900-011, Brazil."
+        "content": "For questions about these Terms, privacy requests, billing or account closure, email contato@corvo.tech. The Service is operated by Greenflow Desenvolvimento de Software LTDA, CNPJ 61.469.487/0001-40, at Rua Doutor Arlindo Luz, 540, Sala 01, Centro, Ourinhos, São Paulo, postal code 19900-011, Brazil."
       }
     },
     "description": "Rules for using Corvo to issue NFS-e: plans, renewal, usage, billing, certificates and fiscal documents."
@@ -1087,7 +1087,7 @@
     "disclosures": {
       "reporting": {
         "title": "Vulnerability reporting",
-        "description": "Send reports to security@corvo.tech with reproduction steps and observed impact. Do not include passwords, certificates or third-party personal data."
+        "description": "Send reports to contato@corvo.tech with reproduction steps and observed impact. Do not include passwords, certificates or third-party personal data."
       },
       "credentials": {
         "title": "Suspected unauthorized access",
@@ -2251,7 +2251,7 @@
       },
       "s11": {
         "title": "11. Contact",
-        "content": "For personal data requests and questions, email legal@corvo.tech. Correspondence address: Greenflow Desenvolvimento de Software LTDA, Rua Doutor Arlindo Luz, 540, Sala 01, Centro, Ourinhos, São Paulo, postal code 19900-011, Brazil. Describe your relationship with the account or issuer company; do not send passwords or certificate files to this contact."
+        "content": "For personal data requests and questions, email contato@corvo.tech. Correspondence address: Greenflow Desenvolvimento de Software LTDA, Rua Doutor Arlindo Luz, 540, Sala 01, Centro, Ourinhos, São Paulo, postal code 19900-011, Brazil. Describe your relationship with the account or issuer company; do not send passwords or certificate files to this contact."
       },
       "s12": {
         "title": "12. Notice updates",
@@ -2302,7 +2302,7 @@
       },
       "s10": {
         "title": "10. International transfers and contact",
-        "content": "Where processing involves an international transfer, the parties must follow the mechanisms and safeguards required by the LGPD and applicable regulations. This Addendum alone does not replace standard contractual clauses or another instrument required for a specific transfer. Send requests about instructions, providers, security measures or transfers to legal@corvo.tech."
+        "content": "Where processing involves an international transfer, the parties must follow the mechanisms and safeguards required by the LGPD and applicable regulations. This Addendum alone does not replace standard contractual clauses or another instrument required for a specific transfer. Send requests about instructions, providers, security measures or transfers to contato@corvo.tech."
       }
     }
   },
