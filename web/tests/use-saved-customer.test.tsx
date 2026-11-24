@@ -5,13 +5,14 @@ import { useSavedCustomer } from "@/components/invoices/use-saved-customer";
 import type { SavedCustomer } from "@/lib/types";
 
 const find = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/api", () => ({ customers: { find } }));
+const registry = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/api", () => ({ customers: { find, registry } }));
 
 const maria: SavedCustomer = { taxId: "52998224725", name: "Maria da Silva", email: "maria@exemplo.test", lastUsedAt: "", createdAt: "", updatedAt: "" };
 const flush = async () => { await act(async () => { await vi.advanceTimersByTimeAsync(400); }); };
 
 describe("useSavedCustomer", () => {
-  beforeEach(() => { vi.useFakeTimers(); find.mockReset(); });
+  beforeEach(() => { vi.useFakeTimers(); find.mockReset(); registry.mockReset(); });
   afterEach(() => { cleanup(); vi.useRealTimers(); });
 
   it("looks up a complete, valid document once and reports the saved customer", async () => {
@@ -57,5 +58,64 @@ describe("useSavedCustomer", () => {
     await flush();
     expect(onFound).not.toHaveBeenCalled();
     expect(result.current).toBeNull();
+  });
+
+  describe("registry for a new customer", () => {
+    const acme = { name: "ACME LTDA", city: "SAO PAULO", state: "SP" };
+
+    it("looks the CNPJ up in the registry when nothing was saved", async () => {
+      find.mockResolvedValue(null);
+      registry.mockResolvedValue(acme);
+      const onRegistry = vi.fn();
+      renderHook(() => useSavedCustomer("11222333000181", vi.fn(), onRegistry));
+      await flush();
+      expect(registry.mock.calls[0][0]).toBe("11222333000181");
+      expect(onRegistry).toHaveBeenCalledWith(acme);
+    });
+
+    it("does not ask the registry when the customer was already saved", async () => {
+      find.mockResolvedValue({ ...maria, taxId: "11222333000181" });
+      const onRegistry = vi.fn();
+      renderHook(() => useSavedCustomer("11222333000181", vi.fn(), onRegistry));
+      await flush();
+      expect(registry).not.toHaveBeenCalled();
+      expect(onRegistry).not.toHaveBeenCalled();
+    });
+
+    it("never looks a CPF up in the registry", async () => {
+      find.mockResolvedValue(null);
+      const onRegistry = vi.fn();
+      renderHook(() => useSavedCustomer("52998224725", vi.fn(), onRegistry));
+      await flush();
+      expect(find).toHaveBeenCalledTimes(1);
+      expect(registry).not.toHaveBeenCalled();
+      expect(onRegistry).not.toHaveBeenCalled();
+    });
+
+    it("stays quiet when the registry has no answer or breaks", async () => {
+      find.mockResolvedValue(null);
+      const onRegistry = vi.fn();
+      registry.mockResolvedValueOnce(null);
+      const first = renderHook(() => useSavedCustomer("11222333000181", vi.fn(), onRegistry));
+      await flush();
+      first.unmount();
+      registry.mockRejectedValueOnce(new Error("offline"));
+      renderHook(() => useSavedCustomer("11222333000181", vi.fn(), onRegistry));
+      await flush();
+      expect(registry).toHaveBeenCalledTimes(2);
+      expect(onRegistry).not.toHaveBeenCalled();
+    });
+
+    it("ignores a registry answer for a document that left the field", async () => {
+      let resolveRegistry: (value: typeof acme) => void = () => {};
+      find.mockResolvedValue(null);
+      registry.mockImplementationOnce(() => new Promise((resolve) => { resolveRegistry = resolve; }));
+      const onRegistry = vi.fn();
+      const { rerender } = renderHook(({ doc }) => useSavedCustomer(doc, vi.fn(), onRegistry), { initialProps: { doc: "11222333000181" } });
+      await flush();
+      rerender({ doc: "" });
+      await act(async () => { resolveRegistry(acme); });
+      expect(onRegistry).not.toHaveBeenCalled();
+    });
   });
 });

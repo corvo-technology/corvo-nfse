@@ -28,11 +28,11 @@ describe("web client and proxy agree on the customer routes", () => {
   it("every customers.* call is let through by the proxy", async () => {
     await Promise.allSettled([
       customers.list({ search: "maria", limit: 50 }), customers.find("52998224725"),
-      customers.update("52998224725", { name: "Maria S." }), customers.remove("52998224725"),
+      customers.update("52998224725", { name: "Maria S." }), customers.remove("52998224725"), customers.registry("11222333000181"),
     ]);
     const seen = calls.map((c) => `${c.method} ${c.path.replace("/api/proxy/v1/", "").split("?")[0]}`);
     expect(seen).toEqual(expect.arrayContaining([
-      "GET customers", "GET customers/52998224725", "PATCH customers/52998224725", "DELETE customers/52998224725",
+      "GET customers", "GET customers/52998224725", "GET customers/registry/11222333000181", "PATCH customers/52998224725", "DELETE customers/52998224725",
     ]));
     expect(calls[0]!.path).toContain("search=maria");
 

@@ -1211,6 +1211,7 @@
     "scheduledFor": "Emite em {date}",
     "filterLabel": "Filtrar por status",
     "fields": {
+      "pickCustomer": "Buscar cliente salvo",
       "company": "Empresa emissora",
       "reference": "Sua referência",
       "optional": "opcional",
@@ -1269,7 +1270,8 @@
       "serviceCodeFallback": "Opcional. Sem código na nota nem na empresa, usamos {code} (10.09, representação). Escolha o código da sua atividade.",
       "purchaseOrder": "Pedido, ordem de compra ou ordem de serviço que o cliente pediu para constar na nota. Não muda nenhum imposto.",
       "notes": "Texto livre impresso na nota, como parcela ou número do contrato. Não muda nenhum imposto.",
-      "savedCustomer": "Cliente já usado em outra nota. Preenchemos o nome para você."
+      "savedCustomer": "Cliente já usado em outra nota. Preenchemos o nome para você.",
+      "registryCustomer": "Preenchemos nome e cidade com os dados públicos do CNPJ. Confira antes de emitir. O e-mail você informa."
     },
     "summary": {
       "title": "Resumo da nota",
@@ -1871,6 +1873,12 @@
     "example": "Exemplo de integração no servidor",
     "catalog": "Endpoints",
     "access": "Acesso / permissão"
+  },
+  "CustomerPicker": {
+    "label": "Cliente salvo",
+    "placeholder": "Buscar por nome ou CPF/CNPJ",
+    "empty": "Nenhum cliente salvo com esse nome ou documento.",
+    "searching": "Buscando..."
   },
   "ServiceCode": {
     "label": "Código de tributação",

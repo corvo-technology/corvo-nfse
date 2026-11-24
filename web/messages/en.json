@@ -1211,6 +1211,7 @@
     "scheduledFor": "Issues on {date}",
     "filterLabel": "Filter by status",
     "fields": {
+      "pickCustomer": "Find a saved customer",
       "company": "Issuing company",
       "reference": "Your reference",
       "optional": "optional",
@@ -1269,7 +1270,8 @@
       "serviceCodeFallback": "Optional. With no code on the invoice or the company, we use {code} (10.09, representation). Pick your own activity code.",
       "purchaseOrder": "Purchase order or service order number the customer asked to see on the invoice. It changes no tax.",
       "notes": "Free text printed on the invoice, such as the instalment or contract number. It changes no tax.",
-      "savedCustomer": "You have invoiced this customer before, so we filled in the name."
+      "savedCustomer": "You have invoiced this customer before, so we filled in the name.",
+      "registryCustomer": "We filled in the name and city from the public CNPJ registry. Check them before issuing. You provide the email."
     },
     "summary": {
       "title": "Invoice summary",
@@ -1871,6 +1873,12 @@
     "example": "Server integration example",
     "catalog": "Endpoints",
     "access": "Access / permission"
+  },
+  "CustomerPicker": {
+    "label": "Saved customer",
+    "placeholder": "Search by name or CPF/CNPJ",
+    "empty": "No saved customer with that name or document.",
+    "searching": "Searching..."
   },
   "ServiceCode": {
     "label": "Service tax code",
