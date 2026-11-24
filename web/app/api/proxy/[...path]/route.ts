@@ -41,6 +41,7 @@ const routes: [RegExp, string[]][] = [
   [/^companies\/[^/]+\/accountant-package\/send$/, ["POST"]],
   [/^invoices$/, ["GET", "POST"]],
   [/^customers$/, ["GET"]],
+  [/^customers\/registry\/[^/]+$/, ["GET"]],
   [/^customers\/[^/]+$/, ["GET", "PATCH", "DELETE"]],
   [/^schedules$/, ["GET"]],
   [/^schedules\/[^/]+$/, ["GET", "PATCH"]],

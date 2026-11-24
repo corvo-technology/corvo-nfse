@@ -16,11 +16,12 @@ import { ApiError, companies as companiesApi, invoices as invoicesApi, schedules
 import { firstRecurringDate, todayInSaoPaulo } from "@/lib/recurrence";
 import type { ScheduleFrequency } from "@/lib/types";
 import { isValidCnpj, isValidCpf, maskCurrency, maskDigits, maskState, cleanTaxId, maskTaxId, parseCurrency } from "@/lib/masks";
-import type { Company, InvoiceCalculation } from "@/lib/types";
+import type { Company, CustomerRegistryInfo, InvoiceCalculation, SavedCustomer } from "@/lib/types";
 import { InvoiceCalculationPanel } from "@/components/dashboard/invoice-calculation-panel";
 import { DEFAULT_SERVICE_CODE } from "@/lib/service-defaults";
 import { invoiceToFormValues } from "@/lib/invoice-copy";
 import { useSavedCustomer } from "@/components/invoices/use-saved-customer";
+import { CustomerPicker } from "@/components/invoices/customer-picker";
 import { countryOptions } from "@/lib/countries";
 
 const posthogConfigured = Boolean(
@@ -99,6 +100,8 @@ export default function NewInvoicePage() {
 
   // What the saved customer filled last. A field the person typed over is never replaced.
   const filledFromSaved = useRef<{ name: string; email: string } | null>(null);
+  const filledFromRegistry = useRef<CustomerRegistryInfo | null>(null);
+  const [registryName, setRegistryName] = useState<string | null>(null);
   const savedCustomer = useSavedCustomer(abroad ? "" : cleanTaxId(form.customerTaxId), (customer) => {
     const previous = filledFromSaved.current;
     const email = customer.email ?? "";
@@ -108,7 +111,22 @@ export default function NewInvoicePage() {
       customerName: !f.customerName.trim() || f.customerName === previous?.name ? customer.name : f.customerName,
       customerEmail: !f.customerEmail.trim() || f.customerEmail === previous?.email ? email : f.customerEmail,
     }));
+  }, (info) => {
+    // New customer: name, city and UF from the public registry, never over what the person typed. No email.
+    const previous = filledFromRegistry.current;
+    filledFromRegistry.current = info;
+    setRegistryName(info.name);
+    setForm((f) => ({
+      ...f,
+      customerName: !f.customerName.trim() || f.customerName === previous?.name ? info.name : f.customerName,
+      city: info.city && (!f.city.trim() || f.city === previous?.city) ? info.city : f.city,
+      state: info.state && (!f.state || f.state === previous?.state) ? info.state : f.state,
+    }));
   });
+  const pickCustomer = (customer: SavedCustomer) => {
+    filledFromSaved.current = { name: customer.name, email: customer.email ?? "" };
+    setForm((f) => ({ ...f, customerTaxId: maskTaxId(customer.taxId), customerName: customer.name, customerEmail: customer.email ?? "" }));
+  };
 
   const inFlight = useRef(false);
   const attempt = useRef<{ key: string; payload: string } | null>(null);
@@ -383,13 +401,18 @@ export default function NewInvoicePage() {
               ))}
             </div>
             {!abroad && (
+              <Field label={t("fields.pickCustomer")} optionalLabel={t("fields.optional")}>
+                {(c) => <CustomerPicker id={c.id} onPick={pickCustomer} />}
+              </Field>
+            )}
+            {!abroad && (
               <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("fields.taxId")} error={fieldErrors.customerTaxId || undefined} required={hasCustomer} optionalLabel={hasCustomer ? undefined : t("fields.optional")}>
                 {(c) => (
                   <input {...c} type="text" inputMode="text" autoCapitalize="characters" className="field font-mono tabular-nums" placeholder={t("placeholders.taxId")} value={form.customerTaxId} onChange={set("customerTaxId", maskTaxId)} maxLength={18} autoComplete="off" required={hasCustomer} />
                 )}
               </Field>
-              <Field label={t("fields.name")} error={fieldErrors.customerName || undefined} optionalLabel={t("fields.optional")} hint={savedCustomer && form.customerName === savedCustomer.name ? t("hints.savedCustomer") : undefined}>
+              <Field label={t("fields.name")} error={fieldErrors.customerName || undefined} optionalLabel={t("fields.optional")} hint={savedCustomer && form.customerName === savedCustomer.name ? t("hints.savedCustomer") : !savedCustomer && registryName !== null && form.customerName === registryName && cleanTaxId(form.customerTaxId).length === 14 ? t("hints.registryCustomer") : undefined}>
                 {(c) => (
                   <input {...c} type="text" className="field" placeholder={t("placeholders.name")} value={form.customerName} onChange={set("customerName")} autoComplete="organization" />
                 )}

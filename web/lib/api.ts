@@ -1,4 +1,4 @@
-import type { ForeignCustomer, SavedCustomer, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { ForeignCustomer, SavedCustomer, CustomerRegistryInfo, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -304,6 +304,11 @@ export const customers = {
   find: async (taxId: string, signal?: AbortSignal): Promise<SavedCustomer | null> => {
     try { return unwrap(await request<Envelope<SavedCustomer>>(`/customers/${idPath(taxId)}`, { signal })); }
     catch (cause) { if (cause instanceof ApiError && cause.status === 404) return null; throw cause; }
+  },
+  /** Public registry data of a CNPJ (name, city, UF) to prefill a new customer. Null when unknown or unavailable: never throws. */
+  registry: async (cnpj: string, signal?: AbortSignal): Promise<CustomerRegistryInfo | null> => {
+    try { return unwrap(await request<Envelope<CustomerRegistryInfo | null>>(`/customers/registry/${idPath(cnpj)}`, { signal })); }
+    catch { return null; }
   },
   update: async (taxId: string, patch: { name?: string; email?: string | null }) => unwrap(await request<Envelope<SavedCustomer>>(`/customers/${idPath(taxId)}`, json(patch, "PATCH"))),
   remove: async (taxId: string): Promise<void> => { await request<Envelope<null>>(`/customers/${idPath(taxId)}`, { method: "DELETE" }); },
