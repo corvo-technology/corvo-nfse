@@ -43,7 +43,7 @@ const EXCLUDED = [
   /^\/billing\/(checkout|subscribe|portal|payments|plan-change|pix)/,
   /^\/customers\/registry/,
   /^\/invoice-package-links/,
-  /^\/plans/,
+  /^\/plans\/recommend/,
 ];
 
 function resolve(ref: string): unknown {

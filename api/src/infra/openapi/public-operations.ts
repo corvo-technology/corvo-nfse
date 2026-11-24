@@ -22,6 +22,10 @@ export interface PublicOperation {
   errors?: number[];
   /** Body schema of a `multipart/form-data` upload (the DTO cannot describe the file). */
   multipart?: Schema;
+  /** Properties of the request body DTO that the route does not take (immutable or ignored). */
+  dropBodyProps?: string[];
+  /** The route accepts a request without a body. */
+  bodyOptional?: boolean;
   /** The operation honors the `Idempotency-Key` header. */
   idempotent?: boolean;
   /** Query parameters the DTO does not declare. */
@@ -100,6 +104,8 @@ export const ADDED_IN_0_3_0: ReadonlySet<string> = new Set([
   'GET /integrations/connections/{id}/operations',
   'GET /integrations/connections/{id}/rules',
   'GET /integrations/providers',
+  'GET /plans',
+  'GET /plans/{slug}',
   'GET /schedules',
   'GET /schedules/{id}',
   'GET /schedules/{id}/runs',
@@ -174,6 +180,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
   'POST /invoices/calculate': {
     id: 'invoices_calculate',
     tag: 'Invoices',
+    ok: { 200: data(ref('InvoiceCalculation')) },
     description:
       'Previews the taxes of an invoice with the same body as `POST /invoices`, without reserving a credit, a DPS number or a document. Future competence dates are limited (15 days by default). A fiscal failure answers 200 with `blocked` and the partial result; 503 (with `Retry-After`) means the tax calculator is unavailable.',
     errors: [503],
@@ -312,6 +319,8 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
   'PATCH /companies/{id}': {
     id: 'companies_update',
     tag: 'Companies',
+    // The CNPJ is immutable: the same value is a no-op and any other is a 422.
+    dropBodyProps: ['taxId'],
     description:
       'Changes the listed fields; omitted fields stay. Send `null` in `municipalReg` to clear it. The CNPJ (`taxId`) cannot be changed.',
     ok: { 200: data(ref('Company')) },
@@ -623,6 +632,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
   'POST /imports/{id}/emit': {
     id: 'imports_emit',
     tag: 'Imports',
+    bodyOptional: true,
     description:
       'Sends every valid row to be issued. Safe to call twice. After a plan limit stopped the import, call it again once credits are available: only the rows the limit turned away are sent. With `sendEmail` each issued invoice is e-mailed to its customer.',
     ok: { 202: data(ref('ImportJob')) },
@@ -726,6 +736,26 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     tag: 'Credits and billing',
     description: 'The plan catalog with allowances and limits.',
     ok: { 200: page(ref('Plan')) },
+  },
+  'GET /plans': {
+    id: 'plans_list',
+    tag: 'Credits and billing',
+    ok: { 200: page(ref('PlanPrice')) },
+    paramDescriptions: {
+      cycle:
+        'Billing cycle of the prices (default `monthly`; `annual` is discounted).',
+    },
+  },
+  'GET /plans/{slug}': {
+    id: 'plans_get',
+    tag: 'Credits and billing',
+    ok: { 200: data(ref('PlanPrice')) },
+    errors: [400],
+    paramDescriptions: {
+      slug: 'The plan: `solo`, `equipe`, `empresa` or `escala`.',
+      cycle:
+        'Billing cycle of the price (default `monthly`; `annual` is discounted).',
+    },
   },
   'GET /credits/purchase/preview': {
     id: 'credits_previewPurchase',

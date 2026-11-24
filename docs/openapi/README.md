@@ -27,7 +27,7 @@
 
 ## What is in the document
 
-Included: every operation marked `@ApiKeyEndpoint()` in the API (usable with `x-api-key`) plus `GET /health/live`, the only route that needs no key.
+Included: every operation marked `@ApiKeyEndpoint()` in the API (usable with `x-api-key`) plus the routes that need no key: `GET /health/live` and the public price list (`GET /plans`, `GET /plans/{slug}`).
 
 Left out on purpose:
 
@@ -41,8 +41,8 @@ Left out on purpose:
 | `GET /customers/registry/{cnpj}` | Session-only duplicate of `GET /cnpj/{cnpj}`. |
 | `/webhooks/stripe`, `/webhooks/woovi`, `/integrations/inbound/*` | Inbound webhooks, signed by the payment provider. |
 | `/invoice-package-links/{token}` | Link opened from an e-mail, valid only for the package its token names. |
-| `/plans`, `/plans/{slug}`, `/plans/recommend` | Public price catalog without a key; it feeds the pricing page. The plan data a key can read is in `/billing/plan` and `/credits/plans`. |
-| `GET /health/ready` | Reports internal dependencies (database, Redis, storage). |
+| `GET /plans/recommend` | Helper of the pricing page (it suggests a plan for a number of notes). The price list itself, `GET /plans` and `GET /plans/{slug}`, is in the contract. |
+| `GET /health/ready` | Reports internal dependencies (database, Redis, storage): an operations probe, not part of the API. |
 | `POST /credits/purchase/confirm` | Retired (always `410 Gone`). |
 
 On a self-hosted instance (`DEPLOYMENT_MODE=self_hosted`) there is no billing: `/credits/*` is not mounted and `/billing/*` answers as disabled.
@@ -64,6 +64,7 @@ Where each part lives:
 - `api/src/infra/openapi/public-schemas.ts`: response schemas that have no DTO class.
 - Request bodies and query parameters come from the DTO classes (`@ApiProperty` and `class-validator`).
 - `api/src/infra/openapi/public-contract.spec.ts` lints the committed file (ids, schemas, enums, excluded routes).
+- `api/test/openapi-contract.e2e-spec.ts` (CI job "E2E api") calls the running API for a case of every operation it can reach (every resource, the calculate envelope, the binary downloads, schedule-on-create, paginated lists, 202 and 204 answers) and validates the real status, media type and body against the schema of this file. A route whose answer drifts from the contract fails there; a new public operation must get a case or be listed as unreachable in that test.
 
 ## Routes
 
@@ -158,6 +159,8 @@ Where each part lives:
 | `credits_listHistory` | GET | `/credits/history` | 0.2.0 | Get credit transaction history |
 | `credits_listPlans` | GET | `/credits/plans` | 0.2.0 | List all plans (free + paid tiers) |
 | `credits_previewPurchase` | GET | `/credits/purchase/preview` | 0.3.0 | Price a one-off purchase of N notes (R$ 0,99 each) |
+| `plans_get` | GET | `/plans/{slug}` | 0.3.0 | Get the price of one paid plan |
+| `plans_list` | GET | `/plans` | 0.3.0 | List the paid plans and their prices |
 | **Integrations** | | | | |
 | `integrationConnections_activate` | POST | `/integrations/connections/{id}/activate` | 0.3.0 | Start issuing invoices automatically |
 | `integrationConnections_create` | POST | `/integrations/connections` | 0.3.0 | Create a connection |

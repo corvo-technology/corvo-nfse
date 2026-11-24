@@ -99,6 +99,38 @@ function collectRefs(node: unknown, into: Set<string>) {
   }
 }
 
+/**
+ * OpenAPI 3.0: `nullable: true` does not by itself let `null` through an `enum`;
+ * the enum must list it. Without it a validator rejects the `null` the API sends.
+ */
+function allowNullInEnums(node: unknown) {
+  if (Array.isArray(node)) {
+    for (const item of node) allowNullInEnums(item);
+  } else if (node && typeof node === 'object') {
+    const record = node as Json;
+    if (
+      record.nullable === true &&
+      Array.isArray(record.enum) &&
+      !record.enum.includes(null)
+    )
+      record.enum = [...record.enum, null];
+    // `nullable` only widens the `type` beside it: on `allOf: [$ref]` the referenced
+    // object still refuses `null`. Spell the union out so every validator agrees.
+    if (
+      record.nullable === true &&
+      Array.isArray(record.allOf) &&
+      record.allOf.length === 1
+    ) {
+      const [inner] = record.allOf as Json[];
+      delete record.nullable;
+      delete record.allOf;
+      delete record.type;
+      record.anyOf = [inner, { type: 'object', nullable: true, enum: [null] }];
+    }
+    for (const value of Object.values(record)) allowNullInEnums(value);
+  }
+}
+
 function rewriteRefs(node: unknown, rename: Map<string, string>) {
   if (Array.isArray(node)) {
     for (const item of node) rewriteRefs(item, rename);
@@ -461,6 +493,20 @@ export function toPublicDocument(
       delete operation[NO_AUTH_OPERATION_EXTENSION];
       normalizeParameters(operation, contract, path);
       buildResponses(operation, contract, path, method, noAuth);
+      for (const property of contract.dropBodyProps ?? []) {
+        const target = (
+          operation.requestBody?.content?.['application/json']?.schema?.$ref as
+            string | undefined
+        )
+          ?.split('/')
+          .pop();
+        const body = target && source.components?.schemas?.[target];
+        if (body?.properties) delete body.properties[property];
+        if (Array.isArray(body?.required))
+          body.required = body.required.filter(
+            (name: string) => name !== property,
+          );
+      }
       const multipart = operation.requestBody?.content?.['multipart/form-data'];
       if (multipart && contract.multipart)
         multipart.schema = contract.multipart;
@@ -487,7 +533,12 @@ export function toPublicDocument(
         operationId: contract.id,
         ...(operation.parameters ? { parameters: operation.parameters } : {}),
         ...(operation.requestBody
-          ? { requestBody: { required: true, ...operation.requestBody } }
+          ? {
+              requestBody: {
+                required: contract.bodyOptional ? false : true,
+                ...operation.requestBody,
+              },
+            }
           : {}),
         responses: operation.responses,
         security: noAuth ? [] : [{ ApiKeyAuth: [] }],
@@ -594,5 +645,6 @@ export function toPublicDocument(
       .filter((name) => renamed[name])
       .map((name) => [name, renamed[name]]),
   );
+  allowNullInEnums(document);
   return document as OpenApiDocument;
 }

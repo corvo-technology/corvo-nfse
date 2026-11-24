@@ -188,7 +188,14 @@ export class InvoiceResponseDto {
   @ApiProperty({ type: String, nullable: true })
   dpsSeries!: string | null;
 
-  @ApiProperty({ type: Number, nullable: true })
+  @ApiProperty({
+    type: 'integer',
+    format: 'int64',
+    minimum: 1,
+    nullable: true,
+    description:
+      'The DPS number, a JSON integer (at most 15 digits, within the safe integer range of JavaScript). The leading zeros of the printed number are not kept.',
+  })
   dpsNumber!: number | null;
 
   @ApiProperty({
@@ -198,7 +205,14 @@ export class InvoiceResponseDto {
   })
   accessKey!: string | null;
 
-  @ApiProperty({ type: Number, nullable: true })
+  @ApiProperty({
+    type: 'integer',
+    format: 'int64',
+    minimum: 1,
+    nullable: true,
+    description:
+      'The NFS-e number, a JSON integer (at most 15 digits, within the safe integer range of JavaScript). The leading zeros of the printed number are not kept.',
+  })
   nfseNumber!: number | null;
 
   @ApiProperty()

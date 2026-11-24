@@ -164,7 +164,7 @@ export class ImportController {
   async emit(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Req() req: RequestWithAuthContext,
-    @Body() body: EmitImportDto,
+    @Body() body: EmitImportDto | undefined,
   ) {
     const auth = req.authContext!;
     return data(
@@ -173,7 +173,7 @@ export class ImportController {
           auth.activeTenantId,
           executionEnvironment(auth),
           id,
-          { sendEmail: body.sendEmail === true },
+          { sendEmail: body?.sendEmail === true },
         ),
       ),
     );

@@ -141,21 +141,21 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       id: uuid(),
       tenantId: uuid(),
       legalName: str(),
-      tradeName: str(),
+      tradeName: nullable(str()),
       taxId: str({ description: 'CNPJ, digits only.' }),
-      municipalReg: str(),
+      municipalReg: nullable(str()),
       sendMunicipalReg: bool(),
       municipalityCode: str({ description: '7-digit IBGE code.' }),
-      defaultServiceCode: str(),
-      addressStreet: str(),
-      addressNumber: str(),
-      addressComplement: str(),
-      addressDistrict: str(),
-      addressCity: str(),
-      addressState: str(),
-      addressZip: str(),
-      simplesRate: str({ description: 'Percent, e.g. "6.00".' }),
-      simplesIssRate: str({ description: 'Percent, e.g. "2.00".' }),
+      defaultServiceCode: nullable(str()),
+      addressStreet: nullable(str()),
+      addressNumber: nullable(str()),
+      addressComplement: nullable(str()),
+      addressDistrict: nullable(str()),
+      addressCity: nullable(str()),
+      addressState: nullable(str()),
+      addressZip: nullable(str()),
+      simplesRate: nullable(str({ description: 'Percent, e.g. "6.00".' })),
+      simplesIssRate: nullable(str({ description: 'Percent, e.g. "2.00".' })),
       fiscalSchemaVersion: str(),
       environment: str({ enum: ['test', 'live'] }),
       status: str({ enum: ['pending_setup', 'ready', 'blocked'] }),
@@ -302,6 +302,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
   DpsSequence: obj({
     series: str({ example: '00001' }),
     lastNumber: int({
+      format: 'int64',
       minimum: 0,
       description: 'The last DPS number used (0 when none yet).',
     }),
@@ -349,7 +350,12 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
   PackageSummary: obj({
     month: str({ example: '2026-10' }),
     count: int(),
-    total: num({ description: 'Sum of the amounts, in BRL.' }),
+    total: str({
+      pattern: '^\\d+\\.\\d{2}$',
+      example: '1234.50',
+      description:
+        'Sum of the gross amount of the authorized notes, in BRL, as a decimal string with two places.',
+    }),
     limit: int({ description: 'Most notes a package can hold.' }),
     companyName: str(),
     companyTaxId: str(),
@@ -679,6 +685,20 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     units: int(),
     unitPriceCents: int(),
     totalCents: int(),
+  }),
+  PlanPrice: obj({
+    slug: str({ enum: ['solo', 'equipe', 'empresa', 'escala'] }),
+    name: str(),
+    monthlyAllowance: int({ description: 'Notes included per month.' }),
+    basePriceCents: int({ description: 'Full monthly price, in centavos.' }),
+    monthlyEquivalentCents: int({
+      description:
+        'Price per month in the chosen cycle (the annual cycle is discounted).',
+    }),
+    chargeTotalCents: int({
+      description: 'What is charged at once for the chosen cycle.',
+    }),
+    currency: str({ enum: ['BRL'] }),
   }),
   BillingPlan: obj({
     plan: obj({

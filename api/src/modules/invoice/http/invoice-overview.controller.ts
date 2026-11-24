@@ -50,7 +50,12 @@ export class InvoiceOverviewController {
   ) {
     const auth = req.authContext!;
     return this.overview
-      .get(auth.activeTenantId, executionEnvironment(auth), query.period)
+      .get(
+        auth.activeTenantId,
+        executionEnvironment(auth),
+        // The documented default; the query object is not always an instance of the DTO.
+        query.period ?? '7d',
+      )
       .then(data);
   }
 }
