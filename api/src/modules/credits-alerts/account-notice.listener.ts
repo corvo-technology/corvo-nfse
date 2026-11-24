@@ -3,7 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LOCK_PORT } from '@/infra/redis/redis.constants';
 import type { LockPort } from '@/infra/redis/lock.port';
-import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
+import {
+  runWithoutDatabaseScope,
+  runWithTenant,
+} from '@/infra/persistence/typeorm/tenant-context.storage';
 import { monthLabel } from '@/modules/invoice/application/package/package-month';
 import {
   accountantPackageFailedEmail,
@@ -49,7 +52,22 @@ export class AccountNoticeListener {
 
   @OnEvent(ACCOUNT_NOTICE)
   async onNotice(event: AccountNoticeEvent): Promise<void> {
-    await runWithTenant(event.tenantId, () => this.handle(event));
+    try {
+      // The event is emitted inside the caller's async context. When the caller is
+      // another tenant's request (a platform admin granting credits), that scope
+      // would make runWithTenant refuse the notice's tenant, so start from a clean scope.
+      await runWithoutDatabaseScope(() =>
+        runWithTenant(event.tenantId, () => this.handle(event)),
+      );
+    } catch (error) {
+      // A notice is best-effort: it must never surface as an unhandled error.
+      this.logger.warn({
+        event: 'notice_failed',
+        tenantId: event.tenantId,
+        kind: event.notice.kind,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   private page(path: string): string {
