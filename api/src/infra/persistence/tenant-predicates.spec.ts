@@ -55,6 +55,9 @@ const tenantEntityClasses = tenantEntityFiles.flatMap((path) =>
 );
 
 // Entity class names contain "Tenant", so only the column / property counts.
+/** The identifiers of a text, to match whole names without a dynamic regex. */
+const words_ = (text: string) => new Set(text.match(/[A-Za-z0-9_$]+/g) ?? []);
+
 const TENANT = /tenantId|tenant_id|\.\.\.scope/;
 
 const guarded = new Set([
@@ -153,7 +156,8 @@ function violations(path: string): string[] {
       ts.forEachChild(node, collect);
     };
     collect(method);
-    return names.some((name) => new RegExp(`\\b${name}\\b`).test(chain));
+    const words = words_(chain);
+    return names.some((name) => words.has(name));
   };
   const visit = (node: ts.Node) => {
     if (
@@ -202,10 +206,8 @@ describe('tenant predicates beside RLS', () => {
 
   const checked = productionFiles.filter((path) => {
     if (tenantEntityFiles.includes(path)) return false;
-    const text = readFileSync(path, 'utf8');
-    return tenantEntityClasses.some((entity) =>
-      new RegExp(`\\b${entity}\\b`).test(text),
-    );
+    const words = words_(readFileSync(path, 'utf8'));
+    return tenantEntityClasses.some((entity) => words.has(entity));
   });
 
   it.each(checked.map((path) => [name(path), path]))(
