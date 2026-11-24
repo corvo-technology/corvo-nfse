@@ -3251,10 +3251,52 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "`{ invoices, next_cursor }`"
             ],
             [
+              "`nfse_repeat`",
+              "`nfse:write`",
+              "`invoice_id` ou `access_key` da nota a copiar; opcionais `amount`, `description`, `competence_date`",
+              "`{ invoice_id, access_key, status, copied_from_invoice_id }`. Mesmo tomador, serviço e valor; usa um crédito"
+            ],
+            [
+              "`nfse_email_resend`",
+              "`nfse:write`",
+              "`invoice_id`, `email?` (outro destinatário)",
+              "`{ invoice_id, email_id, status }` (só nota autorizada)"
+            ],
+            [
+              "`company_update`",
+              "`nfse:write`",
+              "`company_id` e o que muda: `trade_name?`, `municipality_code?`, `default_service_code?` (`null` remove), `address?`. Nunca CNPJ, regime, certificado ou exclusão",
+              "`{ id, trade_name, municipality_code, default_service_code, address }`"
+            ],
+            [
+              "`accountant_package_send`",
+              "`nfse:write`",
+              "`company_id` ou `tax_id`, `month?` (`YYYY-MM`, padrão mês anterior), `confirm`",
+              "Sem `confirm: true` só uma prévia `{ month, recipient, note_count }`; com ele, envia e devolve `{ sent, status }`"
+            ],
+            [
+              "`service_favorite_list`",
+              "`nfse:read`",
+              "`company_id`",
+              "`{ favorites }`"
+            ],
+            [
+              "`service_favorite_create`",
+              "`nfse:write`",
+              "`company_id`, `label`, `description`, `service_code`, `amount_cents?`, `municipality_code?`",
+              "O favorito salvo (até 50 por empresa)"
+            ],
+            [
+              "`service_favorite_delete`",
+              "`nfse:write`",
+              "`company_id`, `favorite_id`",
+              "`{ favorite_id, deleted: true }`"
+            ],
+            [
               "`nfse_download_pdf`",
               "`nfse:read`",
-              "`access_key` (nota autorizada)",
-              "`{ access_key, pdf_base64 }`"
+              "`access_key` (nota autorizada), `inline?` (`true` devolve base64)",
+              "`{ access_key, download_url, expires_at, file_name, mime_type }` (link assinado, válido por 1 hora, preferido); com `inline: true`, `{ access_key, pdf_base64 }`"
             ],
             [
               "`nfse_get_download_url`",

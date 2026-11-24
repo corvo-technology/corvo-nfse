@@ -118,6 +118,25 @@ describe('WebhookOutboxService', () => {
     expect(adapter.sign).toHaveBeenCalledWith(event, 'caller-secret');
   });
 
+  it('processNext reads the secret of a webhook once for many deliveries', async () => {
+    const due = [1, 2, 3].map((n) => ({
+      ...baseDelivery,
+      id: `delivery-${n}`,
+      payload: event,
+    }));
+    const { service, secrets } = buildService({
+      repo: {
+        update: jest.fn(),
+        claimDelivery: jest.fn().mockResolvedValue(true),
+        findPendingDeliveries: jest.fn().mockResolvedValue(due),
+      },
+    });
+
+    await service.processNext();
+
+    expect(secrets.findSecret).toHaveBeenCalledTimes(1);
+  });
+
   it('processNext resolves the secret via WebhookSecrets for each due delivery', async () => {
     const due = [{ ...baseDelivery, payload: event }];
     const { service, repo, adapter, secrets } = buildService({

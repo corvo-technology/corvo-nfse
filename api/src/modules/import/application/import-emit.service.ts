@@ -111,11 +111,13 @@ export class ImportEmitService {
         auth,
       );
       let limit: { code: string; message: string } | null = null;
+      const settled: Parameters<ImportRepository['settleRows']>[2] = [];
       for (const result of results) {
         const row = page.items[result.index];
         if (!row) continue;
         if (result.status === 'accepted') {
-          await this.repo.updateRow(tenantId, importId, row.line, {
+          settled.push({
+            line: row.line,
             status: 'accepted',
             invoiceId: result.invoice.id,
             errorCode: null,
@@ -123,7 +125,8 @@ export class ImportEmitService {
           });
           continue;
         }
-        await this.repo.updateRow(tenantId, importId, row.line, {
+        settled.push({
+          line: row.line,
           status: 'rejected',
           invoiceId: null,
           errorCode: result.error.code,
@@ -131,6 +134,8 @@ export class ImportEmitService {
         });
         if (LIMIT_CODES.includes(result.error.code)) limit ??= result.error;
       }
+      // One statement for the whole chunk, not one UPDATE per row.
+      await this.repo.settleRows(tenantId, importId, settled);
       if (limit) {
         await this.repo.rejectQueued(tenantId, importId, {
           code: limit.code,

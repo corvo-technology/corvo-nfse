@@ -96,6 +96,18 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
         'nfse_issue_batch',
         'nfse_list',
         'nfse_query',
+        'nfse_repeat',
+        'nfse_email_resend',
+        'company_update',
+        'accountant_package_send',
+        'service_favorite_list',
+        'service_favorite_create',
+        'service_favorite_delete',
+        'invoices_overview',
+        'credits_balance',
+        'nfse_get',
+        'company_fiscal_status',
+        'cnpj_lookup',
       ]),
     );
     for (const tool of tools) {

@@ -218,6 +218,51 @@ export class TypeOrmInvoiceScheduleRepository extends InvoiceScheduleRepository 
     });
   }
 
+  async nextAttempts(
+    tenantId: string,
+    items: Array<{ scheduleId: string; occurrenceOn: string }>,
+  ): Promise<Map<string, number>> {
+    const next = new Map<string, number>();
+    if (items.length === 0) return next;
+    const scheduleIds = [...new Set(items.map((item) => item.scheduleId))];
+    const days = [...new Set(items.map((item) => item.occurrenceOn))];
+    const rows = await runWithTenant(tenantId, () =>
+      this.manager()
+        .getRepository(InvoiceScheduleRunOrmEntity)
+        .createQueryBuilder('r')
+        .select('r.schedule_id', 'scheduleId')
+        .addSelect('r.occurrence_on::text', 'occurrenceOn')
+        .addSelect('MAX(r.attempt)', 'max')
+        .where('r.tenant_id = :tenantId', { tenantId })
+        .andWhere('r.schedule_id IN (:...scheduleIds)', { scheduleIds })
+        .andWhere('r.occurrence_on IN (:...days)', { days })
+        .groupBy('r.schedule_id')
+        .addGroupBy('r.occurrence_on')
+        .getRawMany<{
+          scheduleId: string;
+          occurrenceOn: string;
+          max: number;
+        }>(),
+    );
+    const highest = new Map<string, number>();
+    for (const row of rows)
+      highest.set(`${row.scheduleId}:${row.occurrenceOn}`, Number(row.max));
+    for (const { scheduleId, occurrenceOn } of items) {
+      const key = `${scheduleId}:${occurrenceOn}`;
+      next.set(key, (highest.get(key) ?? 0) + 1);
+    }
+    return next;
+  }
+
+  async addRuns(tenantId: string, runs: NewScheduleRun[]): Promise<void> {
+    if (runs.length === 0) return;
+    await runWithTenant(tenantId, () =>
+      this.manager()
+        .getRepository(InvoiceScheduleRunOrmEntity)
+        .insert(runs.map((run) => ({ ...run }))),
+    );
+  }
+
   listRuns(
     scheduleId: string,
     tenantId: string,

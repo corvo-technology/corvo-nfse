@@ -26,17 +26,16 @@ export class CompanyCertificateReader implements ICompanyCertificateReader {
     tenantId: string,
   ): Promise<Map<string, boolean>> {
     const result = new Map<string, boolean>();
-    // For each company, check if it has an active cert
-    await Promise.all(
-      companyIds.map(async (id) => {
-        const cert = await this.certRepo.findActiveByCompanyId(
-          id,
-          tenantId,
-          environment,
-        );
-        result.set(id, cert !== null && cert.validUntil > new Date());
-      }),
+    for (const id of companyIds) result.set(id, false);
+    // One query for the whole page, not one per company.
+    const certs = await this.certRepo.findActiveByCompanyIds(
+      companyIds,
+      tenantId,
+      environment,
     );
+    const now = new Date();
+    for (const cert of certs)
+      if (cert.validUntil > now) result.set(cert.companyId, true);
     return result;
   }
 }

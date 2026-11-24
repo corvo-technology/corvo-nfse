@@ -71,6 +71,8 @@ export class WebhookOutboxService {
       now,
     );
 
+    // Many deliveries share a few webhooks: read each secret once per run, not once per delivery.
+    const secrets = new Map<string, string>();
     for (const delivery of deliveries) {
       const event = delivery.payload;
       if (!event) {
@@ -88,10 +90,14 @@ export class WebhookOutboxService {
       if (!claimed) continue;
       let secret: string;
       try {
-        secret = await this.webhookSecrets.findSecret(
-          delivery.tenantId,
-          delivery.webhookConfigId,
-        );
+        const known = secrets.get(delivery.webhookConfigId);
+        secret =
+          known ??
+          (await this.webhookSecrets.findSecret(
+            delivery.tenantId,
+            delivery.webhookConfigId,
+          ));
+        secrets.set(delivery.webhookConfigId, secret);
       } catch (error) {
         this.logger.error(
           `Could not resolve secret for delivery ${delivery.id}: ${
