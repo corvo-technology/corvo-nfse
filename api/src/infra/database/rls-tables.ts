@@ -31,4 +31,5 @@ export const TENANT_RLS_TABLES = [
   'integration_rules',
   'integration_operations',
   'integration_events',
+  'accountant_package_sends',
 ] as const;

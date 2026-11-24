@@ -42,6 +42,7 @@ function setup(
     id: state.id,
     tenantId: state.tenantId,
     name: state.tradeName ?? state.legalName,
+    taxId: '11222333000181',
     environment: state.environment as 'test' | 'live',
     accountantEmail: state.accountantEmail,
     lastSentMonth: state.accountantPackageLastSentMonth,
@@ -60,12 +61,23 @@ function setup(
         return true;
       },
     ),
+    recordSend: jest.fn(),
+    hasSend: jest.fn(),
+    listSends: jest.fn(),
     setLastSentMonth: jest.fn(
       async (_t: string, _c: string, month: string | null) => {
         state.accountantPackageLastSentMonth = month;
       },
     ),
   };
+  const sends: Array<Record<string, unknown>> = [];
+  repo.recordSend.mockImplementation(async (entry: Record<string, unknown>) => {
+    sends.push(entry);
+  });
+  repo.hasSend.mockImplementation(
+    async (_t: string, _c: string, month: string, status: string) =>
+      sends.some((entry) => entry.month === month && entry.status === status),
+  );
   const packages = { summary: jest.fn().mockResolvedValue(summary) };
   const email = { enqueueNotice: jest.fn().mockResolvedValue(undefined) };
   const events = { publishBestEffort: jest.fn() };
@@ -83,7 +95,7 @@ function setup(
     email as never,
     events as never,
   );
-  return { service, state, repo, packages, email, events };
+  return { service, state, repo, packages, email, events, sends };
 }
 
 const dayOne = new Date('2026-11-01T11:30:00Z');
@@ -111,6 +123,37 @@ describe('AccountantPackageService', () => {
     expect(state.accountantPackageLastSentMonth).toBe('2026-10');
   });
 
+  it('records every send in the history with count, total, recipient and trigger', async () => {
+    const { service, sends } = setup(row());
+    await service.sendMonthly(TENANT, dayOne, false);
+    await service.sendNow(TENANT, 'company-1', 'live', '2026-10');
+    await service.sendNow(TENANT, 'company-1', 'live', '2026-10', 'mcp-or-api');
+    expect(sends).toEqual([
+      expect.objectContaining({
+        tenantId: TENANT,
+        companyId: 'company-1',
+        month: '2026-10',
+        recipient: 'contador@example.com',
+        invoiceCount: 3,
+        totalCents: 30000,
+        status: 'sent',
+        trigger: 'scheduled',
+      }),
+      expect.objectContaining({ status: 'sent', trigger: 'manual' }),
+      expect.objectContaining({ status: 'sent', trigger: 'mcp-or-api' }),
+    ]);
+  });
+
+  it('keeps a send even when the history cannot be written', async () => {
+    const { service, repo, email, state } = setup(row());
+    repo.recordSend.mockRejectedValue(new Error('db down'));
+    await expect(
+      service.sendNow(TENANT, 'company-1', 'live', '2026-10'),
+    ).resolves.toBe('sent');
+    expect(email.enqueueNotice).toHaveBeenCalledTimes(1);
+    expect(state.accountantPackageLastSentMonth).toBe('2026-10');
+  });
+
   it('does not send the same month twice when the job runs again', async () => {
     const { service, email } = setup(row());
     await service.sendMonthly(TENANT, dayOne, false);
@@ -130,6 +173,74 @@ describe('AccountantPackageService', () => {
     await service.sendMonthly(TENANT, dayOne, false);
     expect(email.enqueueNotice).not.toHaveBeenCalled();
     expect(state.accountantPackageLastSentMonth).toBeNull();
+  });
+
+  describe('months that cannot be sent', () => {
+    const empty = {
+      month: '2026-10',
+      count: 0,
+      total: '0.00',
+      limit: 500,
+      companyName: 'Acme',
+      companyTaxId: '1',
+    };
+    const big = { ...empty, count: 700, total: '70000.00' };
+
+    it('warns the owners once and records once when the scheduled month is empty', async () => {
+      const { service, events, sends } = setup(row(), empty);
+      await service.sendMonthly(TENANT, dayOne, false);
+      await service.sendMonthly(TENANT, dayOne, false);
+      expect(sends).toEqual([
+        expect.objectContaining({
+          status: 'skipped-empty',
+          trigger: 'scheduled',
+          invoiceCount: 0,
+        }),
+      ]);
+      expect(events.publishBestEffort).toHaveBeenCalledTimes(1);
+      expect(events.publishBestEffort).toHaveBeenCalledWith(
+        expect.objectContaining({
+          notice: expect.objectContaining({
+            kind: 'accountant-package-empty',
+            companyId: 'company-1',
+            month: '2026-10',
+          }),
+        }),
+      );
+    });
+
+    it('does not send a month over the limit, and warns with the size', async () => {
+      const { service, email, events, sends, state } = setup(row(), big);
+      await service.sendMonthly(TENANT, dayOne, false);
+      expect(email.enqueueNotice).not.toHaveBeenCalled();
+      expect(state.accountantPackageLastSentMonth).toBeNull();
+      expect(sends).toEqual([
+        expect.objectContaining({
+          status: 'skipped-too-large',
+          invoiceCount: 700,
+          totalCents: 7000000,
+        }),
+      ]);
+      expect(events.publishBestEffort).toHaveBeenCalledWith(
+        expect.objectContaining({
+          notice: expect.objectContaining({
+            kind: 'accountant-package-too-large',
+            count: 700,
+            limit: 500,
+          }),
+        }),
+      );
+    });
+
+    it('records a manual skip each time, without a notice', async () => {
+      const { service, events, sends } = setup(row(), empty);
+      await expect(
+        service.sendNow(TENANT, 'company-1', 'live', '2026-10'),
+      ).resolves.toBe('skipped-empty');
+      await service.sendNow(TENANT, 'company-1', 'live', '2026-10');
+      expect(sends).toHaveLength(2);
+      expect(events.publishBestEffort).not.toHaveBeenCalled();
+    });
   });
 
   it('never sends for a test company or one without an e-mail', async () => {
@@ -179,6 +290,23 @@ describe('AccountantPackageService', () => {
     expect(state.accountantPackageLastSentMonth).toBe('2026-10');
   });
 
+  it('records a failure in the history only on the last scheduled attempt, and on a manual send', async () => {
+    const { service, email, sends } = setup(row());
+    email.enqueueNotice.mockRejectedValueOnce(new Error('queue down'));
+    await service.sendMonthly(TENANT, dayOne, false);
+    expect(sends).toEqual([]);
+    email.enqueueNotice.mockRejectedValueOnce(new Error('queue down'));
+    await service.sendMonthly(TENANT, dayOne, true);
+    email.enqueueNotice.mockRejectedValueOnce(new Error('queue down'));
+    await expect(
+      service.sendNow(TENANT, 'company-1', 'live', '2026-10'),
+    ).rejects.toThrow('queue down');
+    expect(sends).toEqual([
+      expect.objectContaining({ status: 'failed', trigger: 'scheduled' }),
+      expect.objectContaining({ status: 'failed', trigger: 'manual' }),
+    ]);
+  });
+
   it('only sends companies of the tenant it is asked about', async () => {
     const { service, repo } = setup(row());
     await service.sendMonthly(TENANT, dayOne, false);
@@ -196,6 +324,61 @@ describe('AccountantPackageService', () => {
       expect(repo.setEmail).not.toHaveBeenCalled();
     });
 
+    it('sends a short test e-mail to a new address only, never twice for the same one', async () => {
+      const { service, email } = setup(row({ accountantEmail: null }));
+      const first = await service.setEmail(
+        TENANT,
+        'company-1',
+        'live',
+        'novo@example.com',
+      );
+      expect(first.testEmailSent).toBe(true);
+      expect(email.enqueueNotice).toHaveBeenCalledTimes(1);
+      const [to, message] = email.enqueueNotice.mock.calls[0] as [
+        string,
+        { text: string },
+      ];
+      expect(to).toBe('novo@example.com');
+      expect(message.text).toContain('Acme Ltda');
+      expect(message.text).toContain('11.222.333/0001-81');
+      expect(message.text).toContain('todo dia 1º');
+
+      const same = await service.setEmail(
+        TENANT,
+        'company-1',
+        'live',
+        ' Novo@Example.com ',
+      );
+      expect(same.testEmailSent).toBe(false);
+      const off = await service.setEmail(TENANT, 'company-1', 'live', null);
+      expect(off.testEmailSent).toBe(false);
+      expect(email.enqueueNotice).toHaveBeenCalledTimes(1);
+
+      await service.setEmail(TENANT, 'company-1', 'live', 'outro@example.com');
+      expect(email.enqueueNotice).toHaveBeenCalledTimes(2);
+    });
+
+    it('still saves the address when the test e-mail cannot be queued', async () => {
+      const { service, email, state } = setup(row({ accountantEmail: null }));
+      email.enqueueNotice.mockRejectedValueOnce(new Error('queue down'));
+      const result = await service.setEmail(
+        TENANT,
+        'company-1',
+        'live',
+        'novo@example.com',
+      );
+      expect(result.testEmailSent).toBe(false);
+      expect(state.accountantEmail).toBe('novo@example.com');
+    });
+
+    it('does not send a test e-mail for a test-mode company', async () => {
+      const { service, email } = setup(
+        row({ accountantEmail: null, environment: 'test' }),
+      );
+      await service.setEmail(TENANT, 'company-1', 'test', 'novo@example.com');
+      expect(email.enqueueNotice).not.toHaveBeenCalled();
+    });
+
     it('saves a valid address in lower case and turns off with blank', async () => {
       const { service, state } = setup(row({ accountantEmail: null }));
       await service.setEmail(
@@ -208,6 +391,34 @@ describe('AccountantPackageService', () => {
       await service.setEmail(TENANT, 'company-1', 'live', '  ');
       expect(state.accountantEmail).toBeNull();
     });
+  });
+});
+
+describe('AccountantPackageService history', () => {
+  it('lists the last 12 attempts of the company with ISO dates', async () => {
+    const { service, repo } = setup(row());
+    repo.listSends.mockResolvedValue([
+      {
+        id: 's1',
+        month: '2026-10',
+        recipient: 'contador@example.com',
+        invoiceCount: 3,
+        totalCents: 30000,
+        status: 'sent',
+        trigger: 'scheduled',
+        createdAt: new Date('2026-11-01T11:03:00Z'),
+      },
+    ]);
+    await expect(
+      service.listSends(TENANT, 'company-1', 'live'),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: 's1',
+        status: 'sent',
+        createdAt: '2026-11-01T11:03:00.000Z',
+      }),
+    ]);
+    expect(repo.listSends).toHaveBeenCalledWith(TENANT, 'company-1', 12);
   });
 });
 

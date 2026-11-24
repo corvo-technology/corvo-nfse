@@ -27,7 +27,7 @@ describe('accountant_package_send tool', () => {
       email: 'contador@x.com',
       lastSentMonth: null,
     });
-    summary.mockResolvedValue({ count: 7 });
+    summary.mockResolvedValue({ count: 7, limit: 500 });
     sendNow.mockResolvedValue('sent');
   });
 
@@ -64,7 +64,28 @@ describe('accountant_package_send tool', () => {
       companyId,
       'live',
       '2026-10',
+      'mcp-or-api',
     );
+  });
+
+  it('explains a too-large month, in the preview and on send', async () => {
+    summary.mockResolvedValue({ count: 612, limit: 500 });
+    await expect(
+      handler({ company_id: companyId, month: '2026-10' }, ctx),
+    ).resolves.toMatchObject({
+      status: 'preview',
+      message: expect.stringContaining(
+        'ask Corvo support to send the package in parts',
+      ),
+    });
+    sendNow.mockResolvedValue('skipped-too-large');
+    await expect(
+      handler({ company_id: companyId, month: '2026-10', confirm: true }, ctx),
+    ).resolves.toMatchObject({
+      sent: false,
+      status: 'skipped-too-large',
+      message: expect.stringContaining('more than 500 notes'),
+    });
   });
 
   it('reports a skipped send as not sent', async () => {

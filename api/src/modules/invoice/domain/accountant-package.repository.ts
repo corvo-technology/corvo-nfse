@@ -5,12 +5,37 @@ export interface AccountantCompany {
   id: string;
   tenantId: string;
   name: string;
+  taxId: string;
   environment: ExecutionEnvironment;
   /** Null = the monthly send is off. */
   accountantEmail: string | null;
   /** YYYY-MM of the last package sent. */
   lastSentMonth: string | null;
 }
+
+export type AccountantSendRecordStatus =
+  'sent' | 'skipped-empty' | 'skipped-too-large' | 'failed';
+export type AccountantSendTrigger = 'scheduled' | 'manual' | 'mcp-or-api';
+
+/** One attempt to send a month's package. */
+export interface AccountantSendRecord {
+  id: string;
+  month: string;
+  recipient: string;
+  invoiceCount: number;
+  totalCents: number;
+  status: AccountantSendRecordStatus;
+  trigger: AccountantSendTrigger;
+  createdAt: Date;
+}
+
+export type NewAccountantSendRecord = Omit<
+  AccountantSendRecord,
+  'id' | 'createdAt'
+> & {
+  tenantId: string;
+  companyId: string;
+};
 
 export abstract class IAccountantPackageRepository {
   abstract find(
@@ -40,4 +65,18 @@ export abstract class IAccountantPackageRepository {
     companyId: string,
     month: string | null,
   ): Promise<void>;
+  abstract recordSend(entry: NewAccountantSendRecord): Promise<void>;
+  /** Newest first. */
+  abstract listSends(
+    tenantId: string,
+    companyId: string,
+    limit: number,
+  ): Promise<AccountantSendRecord[]>;
+  /** True if this company already has a record of `status` for `month`. */
+  abstract hasSend(
+    tenantId: string,
+    companyId: string,
+    month: string,
+    status: AccountantSendRecordStatus,
+  ): Promise<boolean>;
 }

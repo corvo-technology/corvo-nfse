@@ -121,13 +121,17 @@ export function createAccountantPackageSendHandler(
       note_count: summary.count,
     };
 
+    const tooLarge = summary.count > summary.limit;
     if (params.confirm !== true)
       return {
         ...base,
         sent: false,
         status: 'preview',
-        message:
-          'Nothing was sent. Confirm with the user and call again with confirm: true to send.',
+        message: tooLarge
+          ? `Nothing was sent. The month has more than ${summary.limit} notes, so it cannot be sent by e-mail; ask Corvo support to send the package in parts.`
+          : summary.count === 0
+            ? 'Nothing was sent. The month has no notes, so there is nothing to send.'
+            : 'Nothing was sent. Confirm with the user and call again with confirm: true to send.',
       };
 
     const status = await accountant.sendNow(
@@ -135,6 +139,7 @@ export function createAccountantPackageSendHandler(
       companyId,
       environment,
       month,
+      'mcp-or-api',
     );
     return {
       ...base,
@@ -143,7 +148,11 @@ export function createAccountantPackageSendHandler(
       message:
         status === 'sent'
           ? 'Package sent to the accountant.'
-          : `Not sent: ${status}.`,
+          : status === 'skipped-too-large'
+            ? `Not sent: the month has more than ${summary.limit} notes; ask Corvo support to send the package in parts.`
+            : status === 'skipped-empty'
+              ? 'Not sent: the month has no notes.'
+              : `Not sent: ${status}.`,
     };
   };
 }

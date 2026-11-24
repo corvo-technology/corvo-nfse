@@ -5,7 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { isEmail } from 'class-validator';
-import { accountantPackageEmail } from '@/infra/external/email/email-templates';
+import {
+  accountantPackageEmail,
+  accountantWelcomeEmail,
+} from '@/infra/external/email/email-templates';
 import { EmailService } from '@/modules/email/application/email.service';
 import { ApplicationEventBus } from '@/shared/events/application-event-bus';
 import { accountNotice } from '@/shared/events/account-notice.events';
@@ -13,6 +16,9 @@ import type { ExecutionEnvironment } from '@/shared/domain/execution-environment
 import {
   IAccountantPackageRepository,
   type AccountantCompany,
+  type AccountantSendRecord,
+  type AccountantSendRecordStatus,
+  type AccountantSendTrigger,
 } from '../../domain/accountant-package.repository';
 import { PackageLinkService } from './package-link.service';
 import { InvoicePackageService, parseMonth } from './invoice-package.service';
@@ -23,12 +29,31 @@ export type AccountantSendStatus =
   | 'skipped-test'
   | 'skipped-no-email'
   | 'skipped-empty'
+  | 'skipped-too-large'
   | 'skipped-already-sent';
 
 export interface AccountantSettings {
   email: string | null;
   lastSentMonth: string | null;
 }
+
+export interface AccountantSettingsUpdate extends AccountantSettings {
+  /** True when a test e-mail was queued to the new address (only when the address changed). */
+  testEmailSent: boolean;
+}
+
+export interface AccountantSendView {
+  id: string;
+  month: string;
+  recipient: string;
+  invoiceCount: number;
+  totalCents: number;
+  status: AccountantSendRecordStatus;
+  trigger: AccountantSendTrigger;
+  createdAt: string;
+}
+
+const HISTORY_LIMIT = 12;
 
 const brl = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
@@ -86,7 +111,7 @@ export class AccountantPackageService {
     companyId: string,
     environment: ExecutionEnvironment,
     email: string | null,
-  ): Promise<AccountantSettings> {
+  ): Promise<AccountantSettingsUpdate> {
     const value = email?.trim().toLowerCase() || null;
     if (value && (value.length > 254 || !isEmail(value)))
       throw new BadRequestException({
@@ -95,7 +120,62 @@ export class AccountantPackageService {
       });
     const company = await this.find(tenantId, companyId, environment);
     await this.companies.setEmail(tenantId, company.id, value);
-    return { email: value, lastSentMonth: company.lastSentMonth };
+    // A short hello to the new address, so a wrong recipient is noticed. Never twice for the same address.
+    const testEmailSent =
+      value !== null &&
+      value !== company.accountantEmail &&
+      company.environment === 'live' &&
+      (await this.sendWelcome(company, value));
+    return {
+      email: value,
+      lastSentMonth: company.lastSentMonth,
+      testEmailSent,
+    };
+  }
+
+  private async sendWelcome(
+    company: AccountantCompany,
+    to: string,
+  ): Promise<boolean> {
+    try {
+      await this.email.enqueueNotice(
+        to,
+        accountantWelcomeEmail({
+          companyName: company.name,
+          companyTaxId: company.taxId,
+        }),
+      );
+      return true;
+    } catch (error) {
+      // Saving the address must not fail because the hello could not be queued.
+      this.logger.warn({
+        event: 'accountant_welcome_failed',
+        tenantId: company.tenantId,
+        companyId: company.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    }
+  }
+
+  /** The last attempts to send a package, newest first. */
+  async listSends(
+    tenantId: string,
+    companyId: string,
+    environment: ExecutionEnvironment,
+  ): Promise<AccountantSendView[]> {
+    const company = await this.find(tenantId, companyId, environment);
+    const rows = await this.companies.listSends(
+      tenantId,
+      company.id,
+      HISTORY_LIMIT,
+    );
+    return rows.map(
+      ({ createdAt, ...row }: AccountantSendRecord): AccountantSendView => ({
+        ...row,
+        createdAt: createdAt.toISOString(),
+      }),
+    );
   }
 
   /** "Send now": an explicit request, so it does not stop at an already-sent month. */
@@ -104,15 +184,16 @@ export class AccountantPackageService {
     companyId: string,
     environment: ExecutionEnvironment,
     month: string,
+    trigger: AccountantSendTrigger = 'manual',
   ): Promise<AccountantSendStatus> {
     parseMonth(month);
-    return this.deliver(
-      await this.find(tenantId, companyId, environment),
-      month,
-      {
-        force: true,
-      },
-    );
+    const company = await this.find(tenantId, companyId, environment);
+    try {
+      return await this.deliver(company, month, { force: true, trigger });
+    } catch (error) {
+      await this.record(company, month, 'failed', trigger);
+      throw error;
+    }
   }
 
   /**
@@ -127,7 +208,10 @@ export class AccountantPackageService {
     const month = previousMonth(now);
     for (const company of await this.companies.listEnabled(tenantId)) {
       try {
-        const status = await this.deliver(company, month, { force: false });
+        const status = await this.deliver(company, month, {
+          force: false,
+          trigger: 'scheduled',
+        });
         this.logger.log({
           event: 'accountant_package',
           tenantId,
@@ -143,7 +227,8 @@ export class AccountantPackageService {
           month,
           error: error instanceof Error ? error.message : String(error),
         });
-        if (lastAttempt)
+        if (lastAttempt) {
+          await this.record(company, month, 'failed', 'scheduled');
           this.events.publishBestEffort(
             accountNotice(tenantId, {
               kind: 'accountant-package-failed',
@@ -152,6 +237,7 @@ export class AccountantPackageService {
               month,
             }),
           );
+        }
       }
     }
   }
@@ -159,7 +245,7 @@ export class AccountantPackageService {
   private async deliver(
     company: AccountantCompany,
     month: string,
-    { force }: { force: boolean },
+    { force, trigger }: { force: boolean; trigger: AccountantSendTrigger },
   ): Promise<AccountantSendStatus> {
     if (company.environment !== 'live') return 'skipped-test';
     const to = company.accountantEmail;
@@ -173,7 +259,48 @@ export class AccountantPackageService {
       month,
     };
     const summary = await this.packages.summary(scope);
-    if (summary.count === 0) return 'skipped-empty';
+    const total = {
+      invoiceCount: summary.count,
+      totalCents: Math.round(Number(summary.total) * 100),
+    };
+    if (summary.count === 0 || summary.count > summary.limit) {
+      const empty = summary.count === 0;
+      const status = empty ? 'skipped-empty' : 'skipped-too-large';
+      // The hourly runs repeat the same skip: record it, and warn the owners, only the first time.
+      if (trigger === 'scheduled') {
+        if (
+          await this.companies.hasSend(
+            company.tenantId,
+            company.id,
+            month,
+            status,
+          )
+        )
+          return status;
+        await this.record(company, month, status, trigger, total);
+        this.events.publishBestEffort(
+          accountNotice(
+            company.tenantId,
+            empty
+              ? {
+                  kind: 'accountant-package-empty',
+                  companyId: company.id,
+                  companyName: company.name,
+                  month,
+                }
+              : {
+                  kind: 'accountant-package-too-large',
+                  companyId: company.id,
+                  companyName: company.name,
+                  month,
+                  count: summary.count,
+                  limit: summary.limit,
+                },
+          ),
+        );
+      } else await this.record(company, month, status, trigger, total);
+      return status;
+    }
 
     // Claim the month first: two runs at once cannot both pass this update.
     if (
@@ -207,6 +334,35 @@ export class AccountantPackageService {
       );
       throw error;
     }
+    await this.record(company, month, 'sent', trigger, total);
     return 'sent';
+  }
+
+  /** History is best-effort: losing a row must never undo or repeat a send. */
+  private async record(
+    company: AccountantCompany,
+    month: string,
+    status: AccountantSendRecordStatus,
+    trigger: AccountantSendTrigger,
+    total = { invoiceCount: 0, totalCents: 0 },
+  ): Promise<void> {
+    try {
+      await this.companies.recordSend({
+        tenantId: company.tenantId,
+        companyId: company.id,
+        month,
+        recipient: company.accountantEmail ?? '',
+        status,
+        trigger,
+        ...total,
+      });
+    } catch (error) {
+      this.logger.warn({
+        event: 'accountant_package_history_failed',
+        tenantId: company.tenantId,
+        companyId: company.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 }

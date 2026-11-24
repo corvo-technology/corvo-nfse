@@ -452,6 +452,57 @@ export function accountantPackageEmail(input: {
   );
 }
 
+function formatTaxId(taxId: string): string {
+  return taxId.length === 14
+    ? taxId.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+    : taxId;
+}
+
+/** Sent once to an accountant's address when a company sets it, so a wrong address is noticed. */
+export function accountantWelcomeEmail(input: {
+  companyName: string;
+  companyTaxId: string;
+}): RenderedEmail {
+  return emailLayout('Você vai receber as notas fiscais de uma empresa', [
+    paragraph(
+      `A empresa ${input.companyName} (CNPJ ${formatTaxId(input.companyTaxId)}) vai enviar as notas fiscais do mês para este e-mail todo dia 1º pela Corvo.`,
+    ),
+    note('Se não for você, ignore este e-mail e avise a empresa.'),
+  ]);
+}
+
+export function accountantPackageEmptyEmail(input: {
+  companyName: string;
+  monthLabel: string;
+  companyUrl: string;
+}): RenderedEmail {
+  return emailLayout('Não enviamos o pacote ao contador', [
+    paragraph(
+      `Não enviamos ao seu contador o pacote de ${input.monthLabel} da empresa ${input.companyName} porque não houve notas no mês.`,
+    ),
+    paragraph(
+      'Se você emitiu notas por outro meio, avise o contador por conta própria.',
+    ),
+    button(input.companyUrl, 'Abrir a empresa'),
+  ]);
+}
+
+export function accountantPackageTooLargeEmail(input: {
+  companyName: string;
+  monthLabel: string;
+  count: number;
+  limit: number;
+  companyUrl: string;
+}): RenderedEmail {
+  return emailLayout('O pacote do contador ficou grande demais', [
+    paragraph(
+      `Não enviamos ao seu contador o pacote de ${input.monthLabel} da empresa ${input.companyName}: o mês teve ${input.count} notas e o pacote comporta até ${input.limit}.`,
+    ),
+    paragraph('Fale com o nosso suporte que enviamos o pacote em partes.'),
+    button(input.companyUrl, 'Abrir a empresa'),
+  ]);
+}
+
 export function accountantPackageFailedEmail(input: {
   companyName: string;
   monthLabel: string;
