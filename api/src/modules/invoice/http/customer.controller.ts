@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { RequestWithAuthContext } from '@/modules/auth/auth-context';
 import { ApiKeyEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
 import {
@@ -25,6 +26,7 @@ import {
 } from '@/shared/http/pagination';
 import { data } from '@/shared/http/response';
 import { parseCustomerTaxId } from '@/shared/tax-id';
+import { CustomerRegistryPort } from '../domain/customer-registry';
 import {
   CustomerDirectory,
   type CustomerScope,
@@ -50,7 +52,10 @@ const notFound = () => new NotFoundException('Customer not found');
 @UseGuards(ExecutionEnvironmentGuard)
 @Controller('customers')
 export class CustomerController {
-  constructor(private readonly customers: CustomerDirectory) {}
+  constructor(
+    private readonly customers: CustomerDirectory,
+    private readonly registry: CustomerRegistryPort,
+  ) {}
 
   private scope(req: RequestWithAuthContext): CustomerScope {
     return {
@@ -87,6 +92,19 @@ export class CustomerController {
       hasMore: next < result.total,
       nextCursor: next < result.total ? String(next) : null,
     });
+  }
+
+  /** Public registry data to prefill a new customer. Null data when it is not a CNPJ or the registry has no answer. */
+  @Get('registry/:cnpj')
+  @RequirePermission('nfse.invoices.issue')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Look up a CNPJ in the public registry (name, city, state)',
+  })
+  async registryLookup(@Param('cnpj') cnpj: string) {
+    const parsed = parseCustomerTaxId(cnpj);
+    if (parsed?.kind !== 'CNPJ') return data(null);
+    return data(await this.registry.lookup(parsed.value));
   }
 
   @Get(':taxId')

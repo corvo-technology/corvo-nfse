@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CursorQuery } from '@/shared/http/pagination';
 import {
   IsBoolean,
+  IsEmail,
   IsDefined,
   IsNumber,
   IsOptional,
@@ -16,7 +17,7 @@ import {
   MinLength,
   Matches,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { INVOICE_STATUSES, type InvoiceStatus } from '../domain/invoice-status';
 import {
   CANCELLATION_DESCRIPTION_MAX,
@@ -428,4 +429,18 @@ export class CancelInvoiceDto {
     description: `Required (${CANCELLATION_DESCRIPTION_MIN}–${CANCELLATION_DESCRIPTION_MAX} characters) to cancel an authorized NFS-e or an invoice being issued (processing); optional for a queued invoice.`,
   })
   description?: string;
+}
+
+export class RequestInvoiceEmailDto {
+  @ApiPropertyOptional({
+    description:
+      'Send to this address instead of the customer e-mail on the invoice.',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsEmail()
+  @MaxLength(254)
+  email?: string;
 }

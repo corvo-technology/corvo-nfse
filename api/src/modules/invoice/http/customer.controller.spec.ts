@@ -23,7 +23,8 @@ describe('CustomerController', () => {
     update: jest.fn(),
     remove: jest.fn(),
   };
-  const controller = new CustomerController(directory as never);
+  const registry = { lookup: jest.fn() };
+  const controller = new CustomerController(directory as never, registry);
   beforeEach(() => jest.clearAllMocks());
 
   it('lists in the workspace and environment of the caller, with a cursor to the next page', async () => {
@@ -45,6 +46,29 @@ describe('CustomerController', () => {
       }),
     ]);
     expect(page.pagination).toMatchObject({ hasMore: true, nextCursor: '1' });
+  });
+
+  it('looks up a valid CNPJ in the public registry', async () => {
+    const info = { name: 'Acme Ltda', city: 'São Paulo', state: 'SP' };
+    registry.lookup.mockResolvedValue(info);
+    await expect(
+      controller.registryLookup('11.222.333/0001-81'),
+    ).resolves.toEqual({ data: info });
+    expect(registry.lookup).toHaveBeenCalledWith('11222333000181');
+  });
+
+  it('answers null data when the registry fails and never looks up a CPF or a bad document', async () => {
+    registry.lookup.mockResolvedValue(null);
+    await expect(controller.registryLookup('11222333000181')).resolves.toEqual({
+      data: null,
+    });
+    await expect(controller.registryLookup('52998224725')).resolves.toEqual({
+      data: null,
+    });
+    await expect(controller.registryLookup('123')).resolves.toEqual({
+      data: null,
+    });
+    expect(registry.lookup).toHaveBeenCalledTimes(1);
   });
 
   it('finds a customer by a document with punctuation', async () => {

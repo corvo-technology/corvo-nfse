@@ -10,6 +10,7 @@ import type { Invoice, InvoiceEvent } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { CancelInvoiceDialog } from "@/components/dashboard/cancel-invoice-dialog";
 import { SubstituteInvoiceDialog } from "@/components/dashboard/substitute-invoice-dialog";
+import { ResendEmailDialog } from "@/components/invoices/resend-email-dialog";
 import { ManualReviewActions } from "@/components/invoices/manual-review-actions";
 import { Card } from "@/components/ui/card";
 import { FirstNoteBanner } from "@/components/onboarding/first-note-banner";
@@ -25,7 +26,7 @@ const pending = new Set(["queued", "processing", "retry_pending", "reconciliatio
 const pollMs = (invoice: Invoice) => (isScheduled(invoice) ? 60000 : invoice.status === "reconciliation_required" ? 30000 : 5000);
 const TONE: Record<string, string> = { queued: "bg-text-4", processing: "bg-accent", retry_pending: "bg-warn", authorized: "bg-ok", rejected: "bg-danger", failed: "bg-danger", reconciliation_required: "bg-warn", manual_review: "bg-warn", cancelling: "bg-warn", cancelled: "bg-text-4" };
 export default function InvoiceDetailPage() {
-  const { id } = useParams<{ id: string }>(); const t = useTranslations("InvoiceDetail"); const ts = useTranslations("Invoices.status"); const tc = useTranslations("Common"); const locale = useLocale(); const { can } = useAuth(); const [cancelOpen, setCancelOpen] = useState(false); const [substituteOpen, setSubstituteOpen] = useState(false); const router = useRouter();
+  const { id } = useParams<{ id: string }>(); const t = useTranslations("InvoiceDetail"); const ts = useTranslations("Invoices.status"); const tc = useTranslations("Common"); const locale = useLocale(); const { can } = useAuth(); const [cancelOpen, setCancelOpen] = useState(false); const [substituteOpen, setSubstituteOpen] = useState(false); const [resendOpen, setResendOpen] = useState(false); const router = useRouter();
   const apiError = useApiErrorText();
   const invoiceError = useInvoiceErrorText();
   const [invoice, setInvoice] = useState<Invoice | null>(null); const [events, setEvents] = useState<InvoiceEvent[]>([]);
@@ -73,7 +74,7 @@ export default function InvoiceDetailPage() {
     {invoice.lastErrorMessage && <p role="alert" className="banner banner-danger">{invoice.lastErrorCode}: {invoiceError(invoice.lastErrorCode, invoice.lastErrorMessage)}</p>}
     {showsCancellationRequested(invoice.status, invoice.cancellationRequestedAt) && <p className="banner">{t("cancel.requested")}</p>}
     {invoice.status === "manual_review" && can("nfse.invoices.issue") && <ManualReviewActions invoiceIds={[invoice.id]} onDone={() => setRevision((value) => value + 1)} />}
-    <Card className="flex flex-col gap-4 p-5"><h2 className="font-medium">{t("documents")}</h2><div className="flex gap-3"><Button disabled={!hasDocuments || downloading} onClick={() => void download("pdf")}>PDF</Button><Button disabled={!hasDocuments || downloading} onClick={() => void download("xml")}>XML</Button></div>{!hasDocuments && <p className="text-sm text-text-3">{t("documentsHint")}</p>}</Card>
+    <Card className="flex flex-col gap-4 p-5"><h2 className="font-medium">{t("documents")}</h2><div className="flex gap-3"><Button disabled={!hasDocuments || downloading} onClick={() => void download("pdf")}>PDF</Button><Button disabled={!hasDocuments || downloading} onClick={() => void download("xml")}>XML</Button>{invoice.status === "authorized" && hasDocuments && can("nfse.invoices.issue") && <Button onClick={() => setResendOpen(true)}>{t("resend.open")}</Button>}</div>{!hasDocuments && <p className="text-sm text-text-3">{t("documentsHint")}</p>}</Card>
     <Card className="flex flex-col gap-5 p-5"><h2 className="font-medium">{t("events")}</h2>{events.length === 0 && <p className="text-sm text-text-3">{t("noEvents")}</p>}
       <ol className="flex flex-col">{events.map((event, index) => {
         const last = index === events.length - 1; const waiting = last && pending.has(event.to); const tone = TONE[event.to];
@@ -84,6 +85,7 @@ export default function InvoiceDetailPage() {
         </li>;
       })}</ol>
     </Card>
+    {resendOpen && <ResendEmailDialog invoiceId={invoice.id} defaultEmail={invoice.customerSnapshot?.email ?? ""} open={resendOpen} onClose={() => setResendOpen(false)} onSent={() => setResendOpen(false)} />}
     {substituteOpen && substitutable && <SubstituteInvoiceDialog invoice={invoice} open={substituteOpen} onClose={() => setSubstituteOpen(false)} onSubstituted={(substitute) => { setSubstituteOpen(false); router.push(`/app/invoices/${substitute.id}`); }} />}
     {cancelOpen && cancellable && <CancelInvoiceDialog invoice={invoice} open={cancelOpen} onClose={() => setCancelOpen(false)} onCancelled={(updated) => { setCancelOpen(false); setInvoice(updated); setRevision((value) => value + 1); }} />}
   </div>;

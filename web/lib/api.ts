@@ -1,4 +1,4 @@
-import type { ServiceFavorite, ServiceFavoriteInput, ForeignCustomer, SavedCustomer, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { ServiceFavorite, ServiceFavoriteInput, ForeignCustomer, SavedCustomer, CustomerRegistryInfo, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -150,6 +150,13 @@ export const credits = {
   history: async (params: PageParams = {}, signal?: AbortSignal) => toPage(await request<ListBody<CreditTransaction>>(`/credits/history${query(params)}`, { signal })),
 };
 export const plans = { list: async (cycle: "monthly" | "annual" = "monthly", params: PageParams = {}) => toPage(await request<ListBody<PlanQuote>>(`/plans${query({ cycle, ...params })}`)) };
+/** Public registry data of a CNPJ (same shape the API returns), used to pre-fill forms. */
+export interface CnpjProfile {
+  legalName: string; tradeName: string;
+  address: { zip: string; street: string; number: string; complement: string; district: string; city: string; state: string };
+  municipalityCode: string | null; simples: boolean | null; mei: boolean | null; active: boolean; situation: string;
+}
+export const cnpj = { lookup: async (taxId: string, signal?: AbortSignal) => unwrap(await request<Envelope<CnpjProfile>>(`/cnpj/${idPath(taxId)}`, { signal })) };
 export interface CompanyWire extends Omit<Company, "address"> {
   addressStreet?: string; addressNumber?: string; addressComplement?: string; addressDistrict?: string; addressCity?: string; addressState?: string; addressZip?: string;
 }
@@ -243,7 +250,7 @@ export const invoices = {
     }
     return results;
   },
-  email: async (id: string, idempotencyKey: string) => (await request<Envelope<{ emailId: string; status: string }>>(`/invoices/${idPath(id)}/email`, { ...json({}), headers: { "idempotency-key": idempotencyKey } })).data,
+  email: async (id: string, idempotencyKey: string, to?: string) => (await request<Envelope<{ emailId: string; status: string }>>(`/invoices/${idPath(id)}/email`, { ...json(to ? { email: to } : {}), headers: { "idempotency-key": idempotencyKey } })).data,
 };
 interface BillingWire { plan: { slug: string; name: string; monthly_price_cents: number }; subscription?: { status: string; paid_until: string | null; cancel_at_period_end: boolean; scheduled_plan: string | null; blocked: boolean; pix_subscription?: PixSubscription | null; stripe_portal_available?: boolean; stripe_subscription?: boolean }; usage: { avulso_balance?: number; credits_used: number; credits_reserved: number; credits_remaining: number; monthly_allowance: number; daily_usage: number; daily_limit: number | null; active_companies: number; max_active_companies: number; period_start?: string; period_end?: string } }
 export function adaptBilling(wire: BillingWire): BillingPlan {
@@ -309,6 +316,11 @@ export const customers = {
   find: async (taxId: string, signal?: AbortSignal): Promise<SavedCustomer | null> => {
     try { return unwrap(await request<Envelope<SavedCustomer>>(`/customers/${idPath(taxId)}`, { signal })); }
     catch (cause) { if (cause instanceof ApiError && cause.status === 404) return null; throw cause; }
+  },
+  /** Public registry data of a CNPJ (name, city, UF) to prefill a new customer. Null when unknown or unavailable: never throws. */
+  registry: async (cnpj: string, signal?: AbortSignal): Promise<CustomerRegistryInfo | null> => {
+    try { return unwrap(await request<Envelope<CustomerRegistryInfo | null>>(`/customers/registry/${idPath(cnpj)}`, { signal })); }
+    catch { return null; }
   },
   update: async (taxId: string, patch: { name?: string; email?: string | null }) => unwrap(await request<Envelope<SavedCustomer>>(`/customers/${idPath(taxId)}`, json(patch, "PATCH"))),
   remove: async (taxId: string): Promise<void> => { await request<Envelope<null>>(`/customers/${idPath(taxId)}`, { method: "DELETE" }); },

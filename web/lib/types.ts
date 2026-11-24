@@ -585,5 +585,8 @@ export interface ServiceFavoriteInput { label: string; description: string; serv
 /** A customer (tomador) saved from an accepted invoice: the next invoice for the same document needs no name. */
 export interface SavedCustomer { taxId: string; name: string; email: string | null; lastUsedAt: string; createdAt: string; updatedAt: string }
 
+/** What the public CNPJ registry says about a company: enough to start a new customer. No email on purpose. */
+export interface CustomerRegistryInfo { name: string; city: string | null; state: string | null }
+
 /** A customer outside Brazil: its tax id (or why it has none) and the address abroad. It does not declare a service export. */
 export interface ForeignCustomer { taxId?: string; noTaxIdReason?: "exempt" | "not_required"; country: string; postalCode: string; city: string; region: string; street: string; number: string; district: string; complement?: string }

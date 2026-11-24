@@ -50,7 +50,7 @@ export class NfseEmailProcessor extends WorkerHost {
   }
 
   async process(job: Job<NfseEmailJobData>): Promise<void> {
-    const { invoiceId, tenantId } = job.data;
+    const { invoiceId, tenantId, toEmail } = job.data;
     const lockKey = `nfse:email:${invoiceId}`;
 
     const lock = await this.lockService.acquire(lockKey, {
@@ -86,7 +86,10 @@ export class NfseEmailProcessor extends WorkerHost {
       if (invoice.status !== 'authorized' || !invoice.documentsReadyAt)
         throw new Error('Invoice documents are not ready');
       const snapshot = invoice.toSnapshot();
-      const customerEmail = snapshot.customerSnapshot?.email;
+      const customerEmail =
+        typeof toEmail === 'string' && toEmail
+          ? toEmail
+          : snapshot.customerSnapshot?.email;
 
       if (!customerEmail) {
         this.logger.warn(

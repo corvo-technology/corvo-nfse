@@ -92,6 +92,18 @@
     "test": "Test",
     "live": "Production"
   },
+  "GettingStarted": {
+    "title": "Start here",
+    "subtitle": "Three steps to issue your first invoice.",
+    "progress": "{done} of {total}",
+    "done": "Done",
+    "pending": "To do",
+    "steps": {
+      "company": { "title": "Register your company", "hint": "Enter the CNPJ and we get the rest from the Receita.", "cta": "Register" },
+      "certificate": { "title": "Upload the digital certificate", "hint": "It is what signs your invoices.", "cta": "Upload" },
+      "invoice": { "title": "Issue your first invoice", "hint": "After the first two steps, just fill in and issue.", "cta": "Issue invoice" }
+    }
+  },
   "Overview": {
     "title": "Overview",
     "last7days": "Last 7 days",
@@ -1211,6 +1223,7 @@
     "scheduledFor": "Issues on {date}",
     "filterLabel": "Filter by status",
     "fields": {
+      "pickCustomer": "Find a saved customer",
       "company": "Issuing company",
       "reference": "Your reference",
       "optional": "optional",
@@ -1269,7 +1282,8 @@
       "serviceCodeFallback": "Optional. With no code on the invoice or the company, we use {code} (10.09, representation). Pick your own activity code.",
       "purchaseOrder": "Purchase order or service order number the customer asked to see on the invoice. It changes no tax.",
       "notes": "Free text printed on the invoice, such as the instalment or contract number. It changes no tax.",
-      "savedCustomer": "You have invoiced this customer before, so we filled in the name."
+      "savedCustomer": "You have invoiced this customer before, so we filled in the name.",
+      "registryCustomer": "We filled in the name and city from the public CNPJ registry. Check them before issuing. You provide the email."
     },
     "summary": {
       "title": "Invoice summary",
@@ -1353,6 +1367,17 @@
       "saveConfirm": "Save",
       "cancel": "Cancel",
       "failed": "Could not finish. Try again."
+    },
+    "fix": {
+      "title": "Fix the company",
+      "intro": "Fix it right here. What you already filled in the note stays saved.",
+      "fixHere": "Fix here",
+      "certificate": "Digital certificate",
+      "municipalityCode": "Municipality IBGE code",
+      "municipalityHint": "7 digits, e.g. 3550308",
+      "municipalityInvalid": "Enter an IBGE code with exactly 7 digits.",
+      "save": "Save",
+      "failed": "Could not save."
     }
   },
   "Billing": {
@@ -1554,6 +1579,15 @@
       "zip": "00000-000",
       "simplesRate": "6.54",
       "simplesIssRate": "2.01"
+    },
+    "cnpj": {
+      "hint": "We fill in the rest with the Receita data.",
+      "loading": "Looking up the CNPJ...",
+      "found": "Receita data filled in. Check it and fix anything that is off.",
+      "isMei": "This CNPJ is a MEI.",
+      "isSimples": "This CNPJ is on Simples Nacional.",
+      "inactive": "The Receita says this CNPJ is not active. Check the number before you continue: you cannot issue invoices with an inactive CNPJ.",
+      "error": "We could not look up the CNPJ right now. Fill in the details by hand."
     },
     "cep": {
       "hint": "Auto-fills address and IBGE code.",
@@ -1867,7 +1901,18 @@
       "ANULACAO_REJEICAO": "Rejection annulled",
       "other": "Registered on the national portal"
     },
-    "portalSource": "National portal"
+    "portalSource": "National portal",
+    "resend": {
+      "open": "Resend by e-mail",
+      "title": "Resend the note by e-mail",
+      "email": "Destination e-mail",
+      "hint": "You can use a different address just for this send.",
+      "invalid": "Enter a valid e-mail.",
+      "send": "Send",
+      "cancel": "Cancel",
+      "sent": "Done! Sending the note to {email}.",
+      "failed": "Could not resend the e-mail."
+    }
   },
   "FiscalDocs": {
     "title": "Corvo API — NFS-e",
@@ -1882,6 +1927,12 @@
     "example": "Server integration example",
     "catalog": "Endpoints",
     "access": "Access / permission"
+  },
+  "CustomerPicker": {
+    "label": "Saved customer",
+    "placeholder": "Search by name or CPF/CNPJ",
+    "empty": "No saved customer with that name or document.",
+    "searching": "Searching..."
   },
   "ServiceCode": {
     "label": "Service tax code",
@@ -2008,6 +2059,8 @@
     "company_environment_immutable": "A company's environment cannot be changed.",
     "company_profile_missing": "The company's tax setup is missing.",
     "certificate_file_required": "Upload the certificate file (.pfx or .p12).",
+    "cnpj_invalid": "This CNPJ is not valid. Check the numbers.",
+    "cnpj_lookup_unavailable": "We could not look up the CNPJ right now. Fill in the details by hand.",
     "certificate_password_required": "Enter the certificate password.",
     "fiscal_profile_missing": "The company has no tax profile for this date. Set it up under Companies.",
     "fiscal_profile_not_effective": "The company's tax profile is not effective on the invoice date.",

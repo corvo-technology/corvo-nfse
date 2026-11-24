@@ -53,6 +53,8 @@ import { CustomerRecorder } from './application/customer-recorder';
 import { CustomerDirectory } from './domain/customer-directory';
 import { CustomerOrmEntity } from './infra/customer.orm-entity';
 import { TypeOrmCustomerDirectory } from './infra/typeorm-customer-directory';
+import { CustomerRegistryPort } from './domain/customer-registry';
+import { BrasilApiCustomerRegistry } from '@/infra/external/cnpj/brasilapi-customer-registry';
 import { CustomerController } from './http/customer.controller';
 import { InvoiceService } from './application/invoice.service';
 import { IntegrationInvoiceIssuer } from './application/integration-invoice-issuer';
@@ -213,6 +215,10 @@ const ACCOUNTANT_PACKAGE = {
     InvoiceIntakeService,
     InvoiceSubstitutionService,
     { provide: CustomerDirectory, useClass: TypeOrmCustomerDirectory },
+    {
+      provide: CustomerRegistryPort,
+      useFactory: () => new BrasilApiCustomerRegistry(),
+    },
     CustomerRecorder,
     InvoiceCalculationService,
     InvoiceLifecycleService,

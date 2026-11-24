@@ -1,4 +1,8 @@
 import { AccountNoticeListener } from './account-notice.listener';
+import {
+  runAsPlatformAdminOnTenant,
+  getDatabaseScope,
+} from '@/infra/persistence/typeorm/tenant-context.storage';
 import { accountNotice } from '@/shared/events/account-notice.events';
 
 function build(
@@ -213,5 +217,39 @@ describe('AccountNoticeListener', () => {
     expect(to).toBe('owner@x.com');
     expect(message.html).toContain('Maria');
     expect(message.html).toContain('já tem acesso');
+  });
+
+  it("delivers a notice emitted from another tenant's request scope (platform admin grant)", async () => {
+    const { listener, email, recipients } = build();
+    let seen: string | undefined;
+    recipients.emailsFor.mockImplementation(() => {
+      seen = getDatabaseScope()?.tenantId;
+      return Promise.resolve(['a@x.com']);
+    });
+    await runAsPlatformAdminOnTenant(
+      '11111111-1111-4111-8111-111111111111',
+      () =>
+        listener.onNotice(
+          accountNotice('22222222-2222-4222-8222-222222222222', {
+            kind: 'credits-added',
+            units: 10,
+          }),
+        ),
+    );
+    expect(seen).toBe('22222222-2222-4222-8222-222222222222');
+    expect(email.enqueueNotice).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs and skips instead of throwing when the notice cannot be handled', async () => {
+    const { listener, recipients } = build();
+    recipients.emailsFor.mockRejectedValue(new Error('tenant gone'));
+    await expect(
+      listener.onNotice(
+        accountNotice('22222222-2222-4222-8222-222222222222', {
+          kind: 'credits-added',
+          units: 10,
+        }),
+      ),
+    ).resolves.toBeUndefined();
   });
 });
