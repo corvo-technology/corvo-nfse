@@ -18,14 +18,18 @@ import {
   BadRequestException,
   ParseIntPipe,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
+import { PublicApiEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
 import { PricingService, PriceQuote } from '../application/pricing.service';
 import type { BillingCycle, PlanSlug } from '../domain/plan';
 import { IPlanRepository } from '../domain/plan.repository';
 import { PublicRoute } from '@/modules/auth/application/public-route.decorator';
 
 class PlanListQuery extends CursorQuery {
-  @IsOptional() @IsIn(['monthly', 'annual']) cycle?: BillingCycle;
+  @ApiPropertyOptional({ enum: ['monthly', 'annual'], default: 'monthly' })
+  @IsOptional()
+  @IsIn(['monthly', 'annual'])
+  cycle?: BillingCycle;
 }
 
 @Controller('plans')
@@ -38,6 +42,12 @@ export class PlanController {
   ) {}
 
   @Get()
+  @PublicApiEndpoint()
+  @ApiOperation({
+    summary: 'List the paid plans and their prices',
+    description:
+      'The public price list, to show prices in your own pages. It needs no API key.',
+  })
   @ApiCursorResponse()
   list(@Query() options: PlanListQuery) {
     const cycle = options.cycle ?? 'monthly';
@@ -87,6 +97,11 @@ export class PlanController {
   }
 
   @Get(':slug')
+  @PublicApiEndpoint()
+  @ApiOperation({
+    summary: 'Get the price of one paid plan',
+    description: 'It needs no API key.',
+  })
   async findBySlug(
     @Param('slug') slug: PlanSlug,
     @Query('cycle') cycle: BillingCycle = 'monthly',

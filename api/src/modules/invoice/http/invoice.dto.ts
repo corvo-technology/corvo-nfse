@@ -117,9 +117,30 @@ export class ForeignCustomerDto {
 }
 
 export class CustomerDto {
-  @IsOptional() @IsString() name?: string;
-  @IsOptional() @IsString() taxId?: string;
-  @IsOptional() @IsString() email?: string;
+  @ApiPropertyOptional({
+    example: 'Maria Souza',
+    description:
+      'Customer name. May be omitted when the customer was already saved: the name is filled from the CPF/CNPJ.',
+  })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiPropertyOptional({
+    example: '12345678909',
+    description: 'CPF (11 digits) or CNPJ (14 digits), punctuation optional.',
+  })
+  @IsOptional()
+  @IsString()
+  taxId?: string;
+
+  @ApiPropertyOptional({
+    format: 'email',
+    description: 'Where the invoice is e-mailed when `email` is true.',
+  })
+  @IsOptional()
+  @IsString()
+  email?: string;
   @IsOptional()
   @ValidateNested()
   @Type(() => CustomerAddressDto)
@@ -262,20 +283,33 @@ export class InvoiceOptionsDto {
 }
 
 export class CreateInvoiceDto {
-  /** Company id. Required unless `companyTaxId` is sent; wins if both are sent. */
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'Company id. Required unless `companyTaxId` is sent; wins if both are sent.',
+  })
   @ValidateIf(
     (o: CreateInvoiceDto) => !o.companyTaxId || o.companyId !== undefined,
   )
   @IsUUID()
   companyId?: string;
 
-  /** Company CNPJ (punctuation optional). Required unless `companyId` is sent. */
+  @ApiPropertyOptional({
+    example: '12345678000195',
+    description:
+      'Company CNPJ (punctuation optional). Required unless `companyId` is sent.',
+  })
   @ValidateIf((o: CreateInvoiceDto) => !o.companyId)
   @IsString()
   @IsNotEmpty()
   companyTaxId?: string;
 
-  /** Stored in a varchar(100) column. */
+  @ApiPropertyOptional({
+    maxLength: 100,
+    example: 'order-1042',
+    description:
+      'Your own reference. Returned on the invoice and usable as a filter in GET /invoices.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
@@ -292,10 +326,15 @@ export class CreateInvoiceDto {
   customer?: CustomerDto;
   @IsDefined() @ValidateNested() @Type(() => ServiceDto) service!: ServiceDto;
 
-  @IsNumber() amount!: number;
+  @ApiProperty({
+    example: 1500,
+    description: 'Gross amount in BRL, at most 2 decimals.',
+  })
+  @IsNumber()
+  amount!: number;
 
   @ApiPropertyOptional({
-    example: '100.50',
+    example: 100.5,
     description:
       'Unconditional discount (>= 0 and <= amount, max 2 decimals). Validated, never silently truncated.',
   })
@@ -334,9 +373,21 @@ export class CreateInvoiceDto {
   @MaxLength(2000)
   notes?: string;
 
-  @IsDateString() competenceDate!: string;
+  @ApiProperty({
+    example: '2026-11-24',
+    description:
+      'Competence date (ISO 8601). Without `options.type` it cannot be in the future (422 `ERROR_FUTURE_DATE`). With `options.type` SCHEDULE or RECURRING it is the date of the first run, from tomorrow on.',
+  })
+  @IsDateString()
+  competenceDate!: string;
 
-  @IsOptional() @IsBoolean() email?: boolean;
+  @ApiPropertyOptional({
+    description:
+      'Whether to e-mail the invoice to the customer once it is authorized (needs `customer.email`).',
+  })
+  @IsOptional()
+  @IsBoolean()
+  email?: boolean;
   @IsOptional()
   @ValidateNested()
   @Type(() => InvoiceOptionsDto)

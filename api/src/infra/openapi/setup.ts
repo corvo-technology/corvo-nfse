@@ -1,23 +1,32 @@
-import type { INestApplication } from '@nestjs/common';
+import type { INestApplication, Type } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { AppConfig, OpenApiConfig } from '@/infra/config/configuration';
 import { ApiErrorDto, CursorPaginationDto } from './swagger';
 
-export function setupOpenApi(app: INestApplication, config: ConfigService) {
-  const openApi = config.getOrThrow<OpenApiConfig>('openApi');
-  if (!openApi.enabled) return;
-  const appConfig = config.getOrThrow<AppConfig>('app');
+/** Builds the OpenAPI document of every route mounted on `app`, with the standard error responses. */
+export function createOpenApiDocument(
+  app: INestApplication,
+  version: string,
+  options: { standardResponses?: boolean; extraModels?: Type[] } = {},
+) {
   const document = SwaggerModule.createDocument(
     app,
     new DocumentBuilder()
       .setTitle('Corvo API')
-      .setVersion(appConfig.version)
+      .setVersion(version)
       .addApiKey({ type: 'apiKey', in: 'header', name: 'x-api-key' })
       .addCookieAuth('corvo_session')
       .build(),
-    { extraModels: [ApiErrorDto, CursorPaginationDto] },
+    {
+      extraModels: [
+        ApiErrorDto,
+        CursorPaginationDto,
+        ...(options.extraModels ?? []),
+      ],
+    },
   );
+  if (options.standardResponses === false) return document;
   // Protocol and operational endpoints retain their native schemas.
   for (const [path, pathItem] of Object.entries(document.paths)) {
     if (
@@ -92,6 +101,14 @@ export function setupOpenApi(app: INestApplication, config: ConfigService) {
       }
     }
   }
+  return document;
+}
+
+export function setupOpenApi(app: INestApplication, config: ConfigService) {
+  const openApi = config.getOrThrow<OpenApiConfig>('openApi');
+  if (!openApi.enabled) return;
+  const appConfig = config.getOrThrow<AppConfig>('app');
+  const document = createOpenApiDocument(app, appConfig.version);
   SwaggerModule.setup(`${appConfig.apiPrefix}/${openApi.path}`, app, document, {
     jsonDocumentUrl: `${appConfig.apiPrefix}/${openApi.jsonPath}`,
   });

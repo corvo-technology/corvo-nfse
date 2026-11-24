@@ -12,7 +12,7 @@ import {
   ParseUUIDPipe,
   Req,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiProperty } from '@nestjs/swagger';
 import { ArrayNotEmpty, IsArray, IsIn, IsUrl } from 'class-validator';
 import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { ApiKeyEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
@@ -26,9 +26,20 @@ import {
 import { WebhookConfig } from '../domain/webhook-config';
 
 class CreateWebhookConfigDto {
+  @ApiProperty({
+    format: 'uri',
+    example: 'https://example.com/webhooks/corvo',
+    description: 'HTTPS (or HTTP) address that receives the events.',
+  })
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
   url!: string;
 
+  @ApiProperty({
+    enum: PUBLIC_WEBHOOK_EVENT_TYPES,
+    isArray: true,
+    minItems: 1,
+    description: 'Events this endpoint receives.',
+  })
   @IsArray()
   @ArrayNotEmpty()
   @IsIn(PUBLIC_WEBHOOK_EVENT_TYPES, { each: true })

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { InvoiceStatus } from '../domain/invoice-status';
+import { INVOICE_STATUSES, type InvoiceStatus } from '../domain/invoice-status';
 import {
   CANCELLATION_REASON_CODES,
   type CancellationReasonCode,
@@ -60,40 +60,96 @@ export class ServiceSnapshotDto {
   notes?: string;
 }
 
+const ISO = { type: String, format: 'date-time' } as const;
+
+/**
+ * The invoice as the API returns it: the stored fields (never the request hash)
+ * plus the derived `documentsStatus`, `emailStatus` and `stage`.
+ */
 export class InvoiceResponseDto {
-  @ApiProperty()
+  @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiProperty()
+  @ApiProperty({ format: 'uuid' })
   companyId!: string;
 
-  @ApiProperty()
+  @ApiProperty({ format: 'uuid' })
   tenantId!: string;
 
-  @ApiPropertyOptional()
-  externalId?: string;
+  @ApiProperty({
+    enum: ['test', 'live'],
+    description: 'Environment the invoice was issued in.',
+  })
+  environment!: 'test' | 'live';
 
-  @ApiPropertyOptional()
-  idempotencyKey?: string;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: 'Your own reference, sent as `externalId` on creation.',
+  })
+  externalId!: string | null;
 
-  @ApiProperty()
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: 'The `Idempotency-Key` the invoice was created with.',
+  })
+  idempotencyKey!: string | null;
+
+  @ApiProperty({
+    enum: INVOICE_STATUSES,
+    description:
+      'Fiscal status. `queued` and `processing` are in flight; `retry_pending`, `reconciliation_required` and `manual_review` are unresolved emissions (see POST /invoices/review); `authorized`, `rejected`, `failed` and `cancelled` are final; `cancelling` is an authorized invoice whose cancellation event is being processed.',
+  })
   status!: InvoiceStatus;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
+    enum: ['pending', 'ready'],
+    description: 'Whether the PDF and XML can be downloaded.',
+  })
+  documentsStatus!: 'pending' | 'ready';
+
+  @ApiProperty({
+    enum: ['queued', 'sent', 'failed'],
+    nullable: true,
+    description: 'Null when no e-mail was requested yet.',
+  })
+  emailStatus!: LastEmailStatus | null;
+
+  @ApiProperty({
+    enum: [
+      'pending',
+      'authorized',
+      'documents_ready',
+      'completed',
+      'failed',
+      'cancelled',
+    ],
+    description:
+      'Single lifecycle view derived from the other fields: `completed` means authorized, documents ready and the requested e-mail resolved.',
+  })
+  stage!: string;
+
+  @ApiProperty({
     type: CustomerSnapshotDto,
     nullable: true,
     description:
       'Null for anonymous consumer invoices (tomador omitted from the DPS).',
   })
-  customerSnapshot?: CustomerSnapshotDto | null;
+  customerSnapshot!: CustomerSnapshotDto | null;
 
-  @ApiProperty()
+  @ApiProperty({ type: ServiceSnapshotDto })
   serviceSnapshot!: ServiceSnapshotDto;
 
-  @ApiProperty()
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: true,
+    description:
+      'Calculated taxes. Its keys depend on the tax regime and may grow; use POST /invoices/calculate to preview them.',
+  })
   taxSnapshot!: Record<string, unknown>;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Gross amount in BRL (2 decimals).' })
   amount!: number;
 
   @ApiPropertyOptional({
@@ -106,29 +162,58 @@ export class InvoiceResponseDto {
   })
   deduction?: number;
 
-  @ApiProperty()
+  @ApiPropertyOptional({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description: 'On a substitute: the invoice it replaces.',
+  })
+  substitutesInvoiceId?: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  substitutionDescription?: string | null;
+
+  @ApiProperty({ example: 'BRL' })
   currency!: string;
 
-  @ApiProperty()
+  @ApiProperty(ISO)
   competenceDate!: Date;
 
-  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  @ApiPropertyOptional({ ...ISO, nullable: true })
   scheduledFor?: Date | null;
 
-  @ApiPropertyOptional()
-  dpsId?: string;
+  @ApiProperty({ type: String, nullable: true })
+  dpsId!: string | null;
 
-  @ApiPropertyOptional()
-  dpsSeries?: string;
+  @ApiProperty({ type: String, nullable: true })
+  dpsSeries!: string | null;
 
-  @ApiPropertyOptional()
-  dpsNumber?: number;
+  @ApiProperty({
+    type: 'integer',
+    format: 'int64',
+    minimum: 1,
+    nullable: true,
+    description:
+      'The DPS number, a JSON integer (at most 15 digits, within the safe integer range of JavaScript). The leading zeros of the printed number are not kept.',
+  })
+  dpsNumber!: number | null;
 
-  @ApiPropertyOptional()
-  accessKey?: string;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: 'NFS-e access key (50 digits), once authorized.',
+  })
+  accessKey!: string | null;
 
-  @ApiPropertyOptional()
-  nfseNumber?: number;
+  @ApiProperty({
+    type: 'integer',
+    format: 'int64',
+    minimum: 1,
+    nullable: true,
+    description:
+      'The NFS-e number, a JSON integer (at most 15 digits, within the safe integer range of JavaScript). The leading zeros of the printed number are not kept.',
+  })
+  nfseNumber!: number | null;
 
   @ApiProperty()
   fiscalProvider!: string;
@@ -136,29 +221,41 @@ export class InvoiceResponseDto {
   @ApiProperty()
   fiscalSchemaVersion!: string;
 
-  @ApiPropertyOptional()
-  issuedAt?: Date;
+  @ApiProperty({ ...ISO, nullable: true })
+  issuedAt!: Date | null;
 
-  @ApiPropertyOptional()
-  authorizedAt?: Date;
+  @ApiProperty({ ...ISO, nullable: true })
+  authorizedAt!: Date | null;
 
-  @ApiPropertyOptional()
-  lastErrorCode?: string;
+  @ApiPropertyOptional({
+    type: 'object',
+    properties: { send: { type: 'boolean' } },
+    description: 'Whether the e-mail to the customer was requested.',
+  })
+  emailSnapshot?: { send?: boolean };
 
-  @ApiPropertyOptional()
-  lastErrorMessage?: string;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'Rejection or failure code of the last attempt: an `E`-prefixed Sefin rule (E0014) or one of Corvo (DPS_NUMBER_ALREADY_USED, DPS_NUMBER_BELOW_CURRENT, ...).',
+  })
+  lastErrorCode!: string | null;
 
-  @ApiPropertyOptional()
-  lastErrorProvider?: string;
+  @ApiProperty({ type: String, nullable: true })
+  lastErrorMessage!: string | null;
 
-  @ApiProperty()
-  documentsReady!: boolean;
+  @ApiProperty({ type: String, nullable: true })
+  lastErrorProvider!: string | null;
 
-  @ApiPropertyOptional()
-  lastEmail?: {
-    status: LastEmailStatus;
-    sentAt: Date | null;
-  };
+  @ApiProperty({ ...ISO, nullable: true })
+  documentsReadyAt!: Date | null;
+
+  @ApiProperty({ enum: ['queued', 'sent', 'failed'], nullable: true })
+  lastEmailStatus!: LastEmailStatus | null;
+
+  @ApiProperty({ ...ISO, nullable: true })
+  lastEmailSentAt!: Date | null;
 
   @ApiPropertyOptional({
     enum: CANCELLATION_REASON_CODES,
@@ -175,26 +272,32 @@ export class InvoiceResponseDto {
   cancellationDescription?: string | null;
 
   @ApiPropertyOptional({
-    type: String,
-    format: 'date-time',
+    ...ISO,
     nullable: true,
     description: 'When the invoice reached cancelled',
   })
   cancelledAt?: Date | null;
 
   @ApiPropertyOptional({
-    type: String,
-    format: 'date-time',
+    ...ISO,
     nullable: true,
     description:
       'Set when the cancellation was requested while the invoice was being issued (processing); it is cancelled at the Sefin as soon as it is authorized',
   })
   cancellationRequestedAt?: Date | null;
 
-  @ApiProperty()
+  @ApiPropertyOptional({
+    enum: ['taker_rejected', 'blocked'],
+    nullable: true,
+    description:
+      'What the national portal reported after authorization (customer rejected the invoice, or the portal blocked it).',
+  })
+  portalFlag?: 'taker_rejected' | 'blocked' | null;
+
+  @ApiProperty(ISO)
   createdAt!: Date;
 
-  @ApiProperty()
+  @ApiProperty(ISO)
   updatedAt!: Date;
 }
 

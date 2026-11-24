@@ -2,6 +2,7 @@
 import { SDKS } from "../../sdks";
 import type { DocsTree } from "../types";
 import { importsPage } from "../imports-page";
+import { companyToolsBlocks, creditsPreviewBlock, invoiceToolsBlocks } from "../reference-extras";
 import { municipalitiesPage } from "../municipalities-page";
 
 const ptWithRetiredCredits: DocsTree = {
@@ -140,6 +141,7 @@ const ptWithRetiredCredits: DocsTree = {
       description: "Bibliotecas oficiais para Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir e .NET.",
       blocks: [
         { kind: "text", body: "A Corvo tem SDKs oficiais em nove linguagens. Eles chamam a mesma API descrita nesta documentação, com as mesmas operações, nomes de campo e regras fiscais, então todos os guias daqui valem para todos eles." },
+        { kind: "callout", tone: "accent", body: "OpenAPI: `https://corvo.tech/openapi.json` é o contrato completo da API pública (operações, esquemas de requisição e resposta, erros, headers de limite de uso). Cada operação tem um `operationId` estável, como `invoices_create` ou `customers_search`; os métodos dos SDKs seguem esses nomes. Baixe para gerar um cliente ou conferir um escrito à mão." },
         { kind: "heading", level: 2, body: "Instalação" },
         {
           kind: "table",
@@ -603,6 +605,7 @@ console.log(body.data); // { data: null }`,
             { kind: "callout", tone: "warn", body: "Exclusão lógica, sem corpo na requisição. Retorna `404` se a empresa não for encontrada." },
           ],
         },
+        ...companyToolsBlocks("pt"),
       ],
     },
     certificates: {
@@ -1459,6 +1462,7 @@ console.log(res.status); // 200`,
               { name: "status", type: "string", required: false, description: "Um dos status fiscais: `queued`, `processing`, `authorized`, `rejected`, `retry_pending`, `reconciliation_required`, `manual_review`, `failed`, `cancelling`, `cancelled`." },
               { name: "from, to", type: "string ISO", required: false, description: "Datas ISO; filtro inclusivo pela competência, não por `createdAt`." },
               { name: "externalId", type: "string", required: false, description: "Correspondência exata." },
+              { name: "customerTaxId", type: "string", required: false, description: "Só as notas emitidas para este cliente, por CPF (11 dígitos) ou CNPJ (14 dígitos), somente dígitos." },
               { name: "limit", type: "integer", required: false, description: "Inteiro entre 1 e 1000; padrão `50`." },
               { name: "cursor", type: "string", required: false, description: "`nextCursor` da página anterior, mantendo os mesmos filtros." },
             ],
@@ -1683,7 +1687,7 @@ console.log(body.data.downloadUrl); // { data: { downloadUrl, expiresAt, ... } }
           path: "/v1/invoices/:id/email",
           scopes: ["full_access", "invoices_issue", "invoices_read_write"],
           success: "202 Accepted",
-          summary: "Solicita o envio de email com os documentos para o endereço armazenado em `customerSnapshot.email`.",
+          summary: "Solicita o envio de email com os documentos, por padrão para o endereço armazenado em `customerSnapshot.email`. Envie `{ \"email\": \"alguem@example.com\" }` no corpo para usar outro destinatário (por exemplo, reenviar para um endereço corrigido). A nota precisa estar autorizada, com os documentos prontos.",
           examples: {
             curl: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/email" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
@@ -1708,7 +1712,7 @@ console.log(body.data); // { data: { emailId, status } }`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Sem corpo de negócio: não aceita destinatário alternativo. Header opcional `Idempotency-Key`: 1–64 caracteres, somente letras, números, `_` e `-`; a deduplicação verifica a existência do job dessa nota/chave na fila. Em repetição, o status pode refletir o último estado do email. `202` não confirma entrega." },
+            { kind: "callout", tone: "accent", body: "Corpo opcional: `email` troca o destinatário. Header opcional `Idempotency-Key`: 1–64 caracteres, somente letras, números, `_` e `-`; a deduplicação verifica a existência do job dessa nota/chave na fila. Em repetição, o status pode refletir o último estado do email. `202` não confirma entrega." },
             { kind: "callout", tone: "warn", body: "A nota precisa estar autorizada e com documentos prontos. Erros: `404` nota ausente; `409` documentos não prontos; `422` cliente sem email ou chave de idempotência inválida." },
           ],
         },
@@ -1751,6 +1755,7 @@ console.log(res.status, body.data.status); // 202 "cancelling"`,
             { kind: "callout", tone: "warn", body: "`202` não confirma o cancelamento: aguarde `nfse.invoice.cancelled` ou `nfse.invoice.cancellation_rejected` (a nota volta a `authorized` com `lastErrorCode`). Cancelar uma NFS-e emitida não devolve o crédito; cancelar uma nota `queued` libera a reserva em live. Erros: `404` nota inexistente; `409` `ERROR_INVOICE_NOT_CANCELLABLE` (ex.: `retry_pending`, `reconciliation_required`, `manual_review`); `422` `ERROR_INVALID_CANCELLATION_REASON`. Se outro pedido já cancelou a nota, devolve o estado atual." },
           ],
         },
+        ...invoiceToolsBlocks("pt"),
       ],
     },
     webhooks: {
@@ -2124,12 +2129,12 @@ console.log(body.data, body.pagination); // { data: Plan[], pagination }`,
     {
       "id": "3ec51af3-c715-4755-95da-c9b0951973dd",
       "slug": "solo",
-      "name": "Developer",
+      "name": "Solo",
       "description": "Para começar a emitir NFS-e em qualquer número de empresas",
-      "monthlyCreditAllowance": 200,
+      "monthlyCreditAllowance": 100,
       "dailyLimit": null,
       "maxActiveCompanies": 999999,
-      "creditUnitPriceCents": 12,
+      "creditUnitPriceCents": 99,
       "throughputRps": 50,
       "includesWebhooks": true,
       "includesXmlDownload": true,
@@ -2198,47 +2203,7 @@ console.log(body.data, body.pagination); // { data: CreditTransaction[], paginat
             { kind: "callout", tone: "warn", body: "`type`: `purchase`, `subscription_charge`, `topup`, `invoice_authorized`, `invoice_rejected`, `expiration`, `message_sent`, `refund`, `adjustment`, `bonus`. `source`: `subscription`, `avulso`, `bonus`. Campos terminados em `Cents` usam centavos; `amount` neste objeto representa créditos, não reais." },
           ],
         },
-        {
-          kind: "endpoint",
-          method: "POST",
-          path: "/v1/credits/purchase/preview",
-          scopes: ["full_access"],
-          success: "410 Gone",
-          summary: "Descontinuado: notas avulsas agora são compradas em `POST /v1/billing/checkout` com `kind: \"avulso\"`.",
-          params: {
-            rows: [
-              { name: "amountBrlCents", type: "integer", required: true, description: "Inteiro positivo, mínimo `1000` (R$ 10)." },
-            ],
-          },
-          examples: {
-            curl: `curl -X POST "$BASE_URL/credits/purchase/preview" \\
-  -H "X-API-Key: $CORVO_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{ "amountBrlCents": 1000 }'`,
-            node: `const res = await fetch(\`\${BASE_URL}/credits/purchase/preview\`, {
-  method: "POST",
-  headers: {
-    "X-API-Key": process.env.CORVO_API_KEY,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ amountBrlCents: 1000 }),
-});
-const body = await res.json();
-console.log(res.status, body.code); // 410 "ERROR_GONE"`,
-          },
-          response: {
-            label: "410 Gone",
-            json: `{
-  "statusCode": 410,
-  "code": "ERROR_GONE",
-  "message": "Notes are bought through POST /v1/billing/checkout with kind \"avulso\"",
-  "requestId": "9f1fc995-4ee4-4a92-b285-cf8dff227a97"
-}`,
-          },
-          notes: [
-            { kind: "callout", tone: "warn", body: "Sempre responde `410 Gone` com `code: \"ERROR_GONE\"`. Para ter mais notas, compre notas avulsas (R$ 0,99 cada, a partir de 3) ou mude de plano em `POST /v1/billing/checkout`. Não há cobrança de excedente." },
-          ],
-        },
+        creditsPreviewBlock("pt"),
       ],
     },
     billing: {
@@ -2348,7 +2313,7 @@ console.log(body.data.canEmit); // { data: QuotaStatus }`,
           summary: "Agenda a troca para o plano de destino na assinatura.",
           params: {
             rows: [
-              { name: "plan_slug", type: "string", required: true, description: "Slug do plano de destino, por exemplo `growth`." },
+              { name: "plan_slug", type: "string", required: true, description: "Slug do plano de destino, por exemplo `equipe`." },
             ],
           },
           examples: {
@@ -2389,7 +2354,7 @@ console.log(body.data); // { data: { scheduled_plan, effective_at } }`,
           summary: "Agenda uma mudança de plano para o fim do período.",
           params: {
             rows: [
-              { name: "plan_slug", type: "string", required: true, description: "Slug do plano de destino, por exemplo `developer`." },
+              { name: "plan_slug", type: "string", required: true, description: "Slug do plano de destino, por exemplo `solo`." },
             ],
           },
           examples: {
@@ -2481,8 +2446,8 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
             ],
           },
           examples: {
-            curl: `curl "$BASE_URL/plans/growth"`,
-            node: `const res = await fetch(\`\${BASE_URL}/plans/growth\`);
+            curl: `curl "$BASE_URL/plans/equipe"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/equipe\`);
 const body = await res.json();
 console.log(body.data.chargeTotalCents); // { data: PlanQuote }`,
           },
@@ -2898,6 +2863,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             ["POST", "`/v1/integrations/connections/:id/pause`", "Parar de emitir; os eventos continuam guardados"],
             ["POST", "`/v1/integrations/connections/:id/disconnect`", "Desconectar de vez"],
             ["GET", "`/v1/integrations/connections/:id/rules`", "Consultar as regras de serviço"],
+            ["PUT", "`/v1/integrations/connections/:id/credentials`", "Troca as credenciais (por exemplo, depois de girar uma chave)"],
             ["PUT", "`/v1/integrations/connections/:id/rules`", "Substituir as regras de serviço"],
             ["GET", "`/v1/integrations/connections/:id/events`", "Eventos recebidos"],
             ["GET", "`/v1/integrations/connections/:id/operations`", "Vendas e o status da nota de cada uma"],

@@ -10,7 +10,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiProperty,
+  ApiPropertyOptional,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { IsOptional, IsString, Matches } from 'class-validator';
 import {
@@ -24,12 +29,21 @@ import { data } from '@/shared/http/response';
 import { AccountantPackageService } from '../application/package/accountant-package.service';
 
 export class UpdateAccountantPackageDto {
-  /** null or blank turns the monthly send off. */
-  @IsOptional() @IsString() accountantEmail?: string | null;
+  @ApiPropertyOptional({
+    type: String,
+    format: 'email',
+    nullable: true,
+    description: 'null or blank turns the monthly send off.',
+  })
+  @IsOptional()
+  @IsString()
+  accountantEmail?: string | null;
 }
 
 export class SendAccountantPackageDto {
-  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/) month!: string;
+  @ApiProperty({ example: '2026-10', pattern: '^\\d{4}-(0[1-9]|1[0-2])$' })
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/)
+  month!: string;
 }
 
 @UseGuards(ExecutionEnvironmentGuard)

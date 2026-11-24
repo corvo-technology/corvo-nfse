@@ -5,7 +5,9 @@ export class InvoiceBatchErrorDto {
   @ApiProperty({ example: 'ERROR_VALIDATION' }) code!: string;
   @ApiProperty({ example: 'Request validation failed' }) message!: string;
   @ApiPropertyOptional({
-    description: 'Field-level details, when the error has them.',
+    description:
+      'Field-level details, when the error has them (a list of issues for validation errors).',
+    oneOf: [{ type: 'array', items: { type: 'object' } }, { type: 'object' }],
   })
   details?: unknown;
 }

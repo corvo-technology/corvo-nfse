@@ -94,6 +94,16 @@ jobs:
         run: node ../scripts/assert-no-skipped-tests.mjs jest-results.json
       - name: Build
         run: yarn build
+      # The public OpenAPI contract is generated from the controllers and
+      # committed, so SDK maintainers can read it without running the API.
+      - name: OpenAPI contract is up to date
+        run: |
+          yarn openapi:generate
+          if ! git diff --quiet -- ../docs/openapi ../web/public/openapi.json; then
+            echo "::error::The public OpenAPI is out of date. Run 'yarn openapi:generate' in api/ and commit docs/openapi and web/public/openapi.json."
+            git --no-pager diff --stat -- ../docs/openapi ../web/public/openapi.json
+            exit 1
+          fi
 
   web:
     name: Check web

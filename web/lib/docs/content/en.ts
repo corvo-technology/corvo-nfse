@@ -2,6 +2,7 @@
 import { SDKS } from "../../sdks";
 import type { DocsTree } from "../types";
 import { importsPage } from "../imports-page";
+import { companyToolsBlocks, creditsPreviewBlock, invoiceToolsBlocks } from "../reference-extras";
 import { municipalitiesPage } from "../municipalities-page";
 
 const enWithRetiredCredits: DocsTree = {
@@ -138,6 +139,7 @@ const enWithRetiredCredits: DocsTree = {
       description: "Official libraries for Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir and .NET.",
       blocks: [
         { kind: "text", body: "Corvo has official SDKs in nine languages. They call the same API this documentation describes, with the same operations, field names and tax rules, so every guide here applies to all of them." },
+        { kind: "callout", tone: "accent", body: "OpenAPI: `https://corvo.tech/openapi.json` is the full contract of the public API (operations, request and response schemas, errors, rate-limit headers). Each operation has a stable `operationId` such as `invoices_create` or `customers_search`; the SDK methods follow those names. Download it to generate a client or to check a hand-written one." },
         { kind: "heading", level: 2, body: "Install" },
         {
           kind: "table",
@@ -610,6 +612,7 @@ console.log(body.data); // { data: null }`,
             { kind: "callout", tone: "warn", body: "Returns `404` if the company is not found." },
           ],
         },
+        ...companyToolsBlocks("en"),
       ],
     },
     certificates: {
@@ -1479,6 +1482,7 @@ console.log(res.status); // 200`,
               { name: "from", type: "string ISO 8601", required: false, description: "Inclusive filter by competence date — not by `createdAt`." },
               { name: "to", type: "string ISO 8601", required: false, description: "Inclusive filter by competence date — not by `createdAt`." },
               { name: "externalId", type: "string", required: false, description: "Exact match." },
+              { name: "customerTaxId", type: "string", required: false, description: "Only invoices issued to this customer, by CPF (11 digits) or CNPJ (14 digits), digits only." },
               { name: "limit", type: "integer", required: false, description: "Integer between 1 and 1000; defaults to `50`." },
               { name: "cursor", type: "string", required: false, description: "`nextCursor` from the previous page, keeping the same filters." },
             ],
@@ -1709,7 +1713,7 @@ console.log(body.data.downloadUrl); // { data: { downloadUrl, expiresAt, fileNam
           path: "/v1/invoices/:id/email",
           scopes: ["full_access", "invoices_issue", "invoices_read_write"],
           success: "202 Accepted",
-          summary: "Requests email delivery of the invoice to the address stored in `customerSnapshot.email`; no alternative recipient is accepted. The invoice must be authorized with documents ready.",
+          summary: "Requests email delivery of the invoice, by default to the address stored in `customerSnapshot.email`. Send `{ \"email\": \"someone@example.com\" }` in the body to use another recipient (for example to resend to a corrected address). The invoice must be authorized with documents ready.",
           examples: {
             curl: `curl -X POST "$BASE_URL/invoices/$INVOICE_ID/email" \\
   -H "X-API-Key: $CORVO_API_KEY" \\
@@ -1777,6 +1781,7 @@ console.log(res.status, body.data.status); // 202 "cancelling"`,
             { kind: "callout", tone: "warn", body: "`202` does not confirm the cancellation: wait for `nfse.invoice.cancelled` or `nfse.invoice.cancellation_rejected` (the invoice returns to `authorized` with `lastErrorCode`). Cancelling an issued NFS-e does not refund the credit; cancelling a queued invoice releases the live reservation. Errors: `404` invoice missing; `409` `ERROR_INVOICE_NOT_CANCELLABLE` (e.g. `retry_pending`, `reconciliation_required`, `manual_review`); `422` `ERROR_INVALID_CANCELLATION_REASON`. If another request already cancelled the invoice, the current state is returned." },
           ],
         },
+        ...invoiceToolsBlocks("en"),
       ],
     },
     webhooks: {
@@ -2152,12 +2157,12 @@ console.log(plans.length, pagination.hasMore);`,
     {
       "id": "3ec51af3-c715-4755-95da-c9b0951973dd",
       "slug": "solo",
-      "name": "Developer",
-      "description": "Start issuing NFS-e for any number of companies",
-      "monthlyCreditAllowance": 200,
+      "name": "Solo",
+      "description": "Para quem emite poucas notas por mês",
+      "monthlyCreditAllowance": 100,
       "dailyLimit": null,
       "maxActiveCompanies": 999999,
-      "creditUnitPriceCents": 12,
+      "creditUnitPriceCents": 99,
       "throughputRps": 50,
       "includesWebhooks": true,
       "includesXmlDownload": true,
@@ -2225,47 +2230,7 @@ console.log(txs.length, pagination.nextCursor);`,
             { kind: "callout", tone: "warn", body: "`type`: `purchase`, `subscription_charge`, `topup`, `invoice_authorized`, `invoice_rejected`, `expiration`, `message_sent`, `refund`, `adjustment`, `bonus`. `source`: `subscription`, `avulso`, `bonus`. Fields ending in `Cents` use cents; `amount` here is credits, not currency." },
           ],
         },
-        {
-          kind: "endpoint",
-          method: "POST",
-          path: "/v1/credits/purchase/preview",
-          scopes: ["full_access"],
-          success: "410 Gone",
-          summary: "Retired: notes are now bought through `POST /v1/billing/checkout` with `kind: \"avulso\"`.",
-          params: {
-            rows: [
-              { name: "amountBrlCents", type: "number", required: true, description: "Positive integer, minimum 1000 (R$ 10)." },
-            ],
-          },
-          examples: {
-            curl: `curl -X POST "$BASE_URL/credits/purchase/preview" \\
-  -H "X-API-Key: $CORVO_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{ "amountBrlCents": 1000 }'`,
-            node: `const res = await fetch(\`\${BASE_URL}/credits/purchase/preview\`, {
-  method: "POST",
-  headers: {
-    "X-API-Key": process.env.CORVO_API_KEY,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ amountBrlCents: 1000 }),
-});
-const body = await res.json();
-console.log(res.status, body.code); // 410 "ERROR_GONE"`,
-          },
-          response: {
-            label: "410 Gone",
-            json: `{
-  "statusCode": 410,
-  "code": "ERROR_GONE",
-  "message": "Notes are bought through POST /v1/billing/checkout with kind \"avulso\"",
-  "requestId": "9f1fc995-4ee4-4a92-b285-cf8dff227a97"
-}`,
-          },
-          notes: [
-            { kind: "callout", tone: "warn", body: "Always answers `410 Gone` with `code: \"ERROR_GONE\"`. To get more notes, buy single notes (R$ 0,99 each, from 3) or change plan through `POST /v1/billing/checkout`. There is no overage billing." },
-          ],
-        },
+        creditsPreviewBlock("en"),
       ],
     },
     billing: {
@@ -2510,8 +2475,8 @@ console.log(plans.map((p) => p.slug), pagination.hasMore);`,
             ],
           },
           examples: {
-            curl: `curl "$BASE_URL/plans/growth"`,
-            node: `const res = await fetch(\`\${BASE_URL}/plans/growth\`);
+            curl: `curl "$BASE_URL/plans/equipe"`,
+            node: `const res = await fetch(\`\${BASE_URL}/plans/equipe\`);
 const body = await res.json();
 console.log(body.data.chargeTotalCents); // { data: PlanQuote }`,
           },
@@ -2921,6 +2886,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             ["POST", "`/v1/integrations/connections/:id/pause`", "Stop issuing; events are still stored"],
             ["POST", "`/v1/integrations/connections/:id/disconnect`", "Disconnect for good"],
             ["GET", "`/v1/integrations/connections/:id/rules`", "Get the service rules"],
+            ["PUT", "`/v1/integrations/connections/:id/credentials`", "Replace the credentials (for example after rotating a key)"],
             ["PUT", "`/v1/integrations/connections/:id/rules`", "Replace the service rules"],
             ["GET", "`/v1/integrations/connections/:id/events`", "Events received"],
             ["GET", "`/v1/integrations/connections/:id/operations`", "Sales and the invoice status of each"],

@@ -213,6 +213,7 @@ A API e o worker compartilham código de backend e rodam como processos separado
 | [llms.txt](web/public/llms.txt) e `/llms-full.txt` | A mesma documentação para ferramentas de IA. |
 | [SELF_HOSTING.md](SELF_HOSTING.md) | Rodar o Corvo na sua própria infraestrutura. |
 | [deploy/README.md](deploy/README.md) | Arquivos Docker e a calculadora de tributos. |
+| [docs/openapi](docs/openapi) | O contrato da API pública (`openapi.json`, também em `https://corvo.tech/openapi.json`), a tabela de rotas e o changelog para quem mantém os SDKs. |
 | [docs/architecture.md](docs/architecture.md) | Como funciona por dentro: outbox, ledger de créditos, transações, status e filas, com diagramas. |
 | [docs/fiscal](docs/fiscal) | Regras fiscais, exemplos, limitações, observabilidade e runbooks. |
 
