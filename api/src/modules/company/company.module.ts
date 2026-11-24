@@ -75,6 +75,7 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
     IFiscalProfileRepository,
     IServiceTaxProfileRepository,
     ICompanyCertificateReader,
+    SimplesRegistryPort,
   ],
 })
 export class CompanyModule {}
