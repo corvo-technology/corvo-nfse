@@ -84,6 +84,16 @@
     "buyNotes": "Buy invoices",
     "manageBilling": "Plan and usage"
   },
+  "Support": {
+    "community": "Community",
+    "communityHint": "WhatsApp group",
+    "needHelp": "Need help?",
+    "needHelpHint": "Chat on WhatsApp",
+    "help": "Help",
+    "whatsapp": "Chat on WhatsApp",
+    "group": "Community group",
+    "email": "Send an e-mail"
+  },
   "Topbar": {
     "docs": "Docs",
     "user": "User",

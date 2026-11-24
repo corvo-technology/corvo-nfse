@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { setFiscalEnvironment } from "@/lib/api";
+import { SupportMenu, SupportPills } from "@/components/support/support-contacts";
 import { EnvSwitch } from "@/components/dashboard/env-switch";
 import { HIGHLIGHT_ENV_EVENT } from "@/components/onboarding/first-note-banner";
 
@@ -82,6 +83,8 @@ export function Topbar({ page, menuOpen, onMenuToggle }: TopbarProps) {
       </div>
 
       <div className="flex items-center gap-1.5 sm:gap-3">
+        <SupportPills />
+        <SupportMenu className="hidden sm:block xl:hidden" />
         <Link
           href={`/${locale}/docs`}
           aria-label={t("Topbar.docsLabel")}

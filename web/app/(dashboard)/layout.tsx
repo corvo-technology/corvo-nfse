@@ -5,6 +5,8 @@ import { CookieConsentWrapper } from "@/components/CookieConsentWrapper";
 import { ToastProvider } from "@/components/ui/toast";
 import { DeploymentConfigProvider } from "@/lib/deployment-config-context";
 import { fetchDeploymentConfig } from "@/lib/deployment-config";
+import { SupportContactsProvider } from "@/lib/support-contacts-context";
+import { readSupportContacts } from "@/lib/support-contacts";
 import { rootMetadata, rootViewport } from "@/lib/root-metadata";
 import "../globals.css";
 
@@ -24,6 +26,8 @@ export default async function DashboardRootLayout({
   const cookieStore = await cookies();
   const locale = cookieStore.get("NEXT_LOCALE")?.value === "pt" ? "pt" : "en";
   const config = await fetchDeploymentConfig();
+  // Read on every request so the owner can change the contacts without a rebuild.
+  const support = readSupportContacts();
   const messages = (await import(`../../messages/${locale}.json`)).default;
 
   return (
@@ -33,7 +37,9 @@ export default async function DashboardRootLayout({
           <CookieConsentWrapper />
           <Providers>
             <DeploymentConfigProvider config={config}>
-              <ToastProvider>{children}</ToastProvider>
+              <SupportContactsProvider contacts={support}>
+                <ToastProvider>{children}</ToastProvider>
+              </SupportContactsProvider>
             </DeploymentConfigProvider>
           </Providers>
         </NextIntlClientProvider>
