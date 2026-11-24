@@ -92,6 +92,18 @@
     "test": "Test",
     "live": "Production"
   },
+  "GettingStarted": {
+    "title": "Start here",
+    "subtitle": "Three steps to issue your first invoice.",
+    "progress": "{done} of {total}",
+    "done": "Done",
+    "pending": "To do",
+    "steps": {
+      "company": { "title": "Register your company", "hint": "Enter the CNPJ and we get the rest from the Receita.", "cta": "Register" },
+      "certificate": { "title": "Upload the digital certificate", "hint": "It is what signs your invoices.", "cta": "Upload" },
+      "invoice": { "title": "Issue your first invoice", "hint": "After the first two steps, just fill in and issue.", "cta": "Issue invoice" }
+    }
+  },
   "Overview": {
     "title": "Overview",
     "last7days": "Last 7 days",
@@ -1544,6 +1556,15 @@
       "simplesRate": "6.54",
       "simplesIssRate": "2.01"
     },
+    "cnpj": {
+      "hint": "We fill in the rest with the Receita data.",
+      "loading": "Looking up the CNPJ...",
+      "found": "Receita data filled in. Check it and fix anything that is off.",
+      "isMei": "This CNPJ is a MEI.",
+      "isSimples": "This CNPJ is on Simples Nacional.",
+      "inactive": "The Receita says this CNPJ is not active. Check the number before you continue: you cannot issue invoices with an inactive CNPJ.",
+      "error": "We could not look up the CNPJ right now. Fill in the details by hand."
+    },
     "cep": {
       "hint": "Auto-fills address and IBGE code.",
       "found": "Address and IBGE code filled in.",
@@ -1997,6 +2018,8 @@
     "company_environment_immutable": "A company's environment cannot be changed.",
     "company_profile_missing": "The company's tax setup is missing.",
     "certificate_file_required": "Upload the certificate file (.pfx or .p12).",
+    "cnpj_invalid": "This CNPJ is not valid. Check the numbers.",
+    "cnpj_lookup_unavailable": "We could not look up the CNPJ right now. Fill in the details by hand.",
     "certificate_password_required": "Enter the certificate password.",
     "fiscal_profile_missing": "The company has no tax profile for this date. Set it up under Companies.",
     "fiscal_profile_not_effective": "The company's tax profile is not effective on the invoice date.",

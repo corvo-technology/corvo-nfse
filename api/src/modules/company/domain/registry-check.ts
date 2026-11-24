@@ -8,6 +8,29 @@ export interface RegistryInfo {
   municipalityCode: string | null;
 }
 
+/** Registration data of a CNPJ, in a neutral shape any form can use to pre-fill itself. Empty text means unknown. */
+export interface CnpjProfile {
+  legalName: string;
+  tradeName: string;
+  address: {
+    zip: string;
+    street: string;
+    number: string;
+    complement: string;
+    district: string;
+    city: string;
+    state: string;
+  };
+  /** 7-digit IBGE code of the registered address, or null when unknown. */
+  municipalityCode: string | null;
+  simples: boolean | null;
+  mei: boolean | null;
+  /** False when the registry says the CNPJ is not active (suspended, unfit, closed). */
+  active: boolean;
+  /** Situation text from the registry (for example ATIVA, BAIXADA). */
+  situation: string;
+}
+
 export interface RegistryWarning {
   code: 'TAX_REGIME_REGISTRY_MISMATCH' | 'MEI_MUNICIPALITY_MISMATCH';
   message: string;
@@ -17,6 +40,8 @@ export interface RegistryWarning {
 export abstract class SimplesRegistryPort {
   /** Null when the registry is unavailable or the CNPJ is unknown. Never throws. */
   abstract lookup(cnpj: string): Promise<RegistryInfo | null>;
+  /** Full registration data for pre-filling forms. Same cache and rules as `lookup`. */
+  abstract lookupProfile(cnpj: string): Promise<CnpjProfile | null>;
 }
 
 export function registryWarnings(

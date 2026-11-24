@@ -92,6 +92,18 @@
     "test": "Teste",
     "live": "Produção"
   },
+  "GettingStarted": {
+    "title": "Comece por aqui",
+    "subtitle": "Três passos para emitir sua primeira nota.",
+    "progress": "{done} de {total}",
+    "done": "Feito",
+    "pending": "Falta fazer",
+    "steps": {
+      "company": { "title": "Cadastrar empresa", "hint": "Informe o CNPJ e o resto vem da Receita.", "cta": "Cadastrar" },
+      "certificate": { "title": "Enviar certificado digital", "hint": "É ele que assina as suas notas.", "cta": "Enviar" },
+      "invoice": { "title": "Emitir a primeira nota", "hint": "Depois dos dois primeiros passos, é só preencher e emitir.", "cta": "Emitir nota" }
+    }
+  },
   "Overview": {
     "title": "Visão geral",
     "last7days": "Últimos 7 dias",
@@ -1544,6 +1556,15 @@
       "simplesRate": "6.54",
       "simplesIssRate": "2.01"
     },
+    "cnpj": {
+      "hint": "Preenchemos o restante com os dados da Receita.",
+      "loading": "Buscando dados do CNPJ...",
+      "found": "Dados da Receita preenchidos. Confira e corrija se precisar.",
+      "isMei": "Este CNPJ é MEI.",
+      "isSimples": "Este CNPJ é do Simples Nacional.",
+      "inactive": "A Receita informa que este CNPJ não está ativo. Confira o número antes de continuar: com o CNPJ inativo não dá para emitir notas.",
+      "error": "Não deu para buscar o CNPJ agora. Preencha os dados à mão."
+    },
     "cep": {
       "hint": "Preenche endereço e código IBGE automaticamente.",
       "found": "Endereço e código IBGE preenchidos.",
@@ -1997,6 +2018,8 @@
     "company_environment_immutable": "O ambiente de uma empresa não pode ser alterado.",
     "company_profile_missing": "Falta o cadastro fiscal da empresa.",
     "certificate_file_required": "Envie o arquivo do certificado (.pfx ou .p12).",
+    "cnpj_invalid": "Esse CNPJ não é válido. Confira os números.",
+    "cnpj_lookup_unavailable": "Não deu para buscar o CNPJ agora. Preencha os dados à mão.",
     "certificate_password_required": "Informe a senha do certificado.",
     "fiscal_profile_missing": "A empresa não tem perfil fiscal para esta data. Cadastre em Empresas.",
     "fiscal_profile_not_effective": "O perfil fiscal da empresa não está vigente na data da nota.",

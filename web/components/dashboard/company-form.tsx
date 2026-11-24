@@ -13,7 +13,7 @@ import { useAuth } from "@/lib/auth";
 import { cleanTaxId, isValidCnpj, maskCnpj, maskDigits, maskState, maskZip, onlyDigits } from "@/lib/masks";
 import { lookupCep } from "@/lib/viacep";
 import { mapIssues } from "@/lib/api-errors";
-import { isCompanyLimitError } from "@/lib/api";
+import { cnpj as cnpjApi, isCompanyLimitError, type CnpjProfile } from "@/lib/api";
 import type { Company, CompanyFormInput, TaxRegime } from "@/lib/types";
 import { useBillingEnabled } from "@/lib/deployment-config-context";
 import { useApiErrorText } from "@/lib/use-api-error";
@@ -102,10 +102,38 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
     }).catch(() => { if (!controller.signal.aborted) setCepState("error"); });
   };
 
+  // CNPJ autofill: only a convenience. Any failure leaves the fields exactly as the user typed them.
+  const [cnpjState, setCnpjState] = useState<"idle" | "loading" | "found" | "error">("idle");
+  const [cnpjInfo, setCnpjInfo] = useState<Pick<CnpjProfile, "active" | "simples" | "mei"> | null>(null);
+  const cnpjRequest = useRef<AbortController | null>(null);
+  const onTaxIdChange = (raw: string) => {
+    const masked = maskCnpj(raw);
+    set("taxId", masked);
+    if (!wizard) return;
+    cnpjRequest.current?.abort();
+    setCnpjInfo(null);
+    if (!isValidCnpj(masked)) { setCnpjState("idle"); return; }
+    const controller = new AbortController(); cnpjRequest.current = controller; setCnpjState("loading");
+    cnpjApi.lookup(cleanTaxId(masked), controller.signal).then((profile) => {
+      if (controller.signal.aborted) return;
+      const a = profile.address;
+      setValues((previous) => ({
+        ...previous,
+        legalName: profile.legalName || previous.legalName, tradeName: profile.tradeName || previous.tradeName,
+        zip: a.zip ? maskZip(a.zip) : previous.zip, street: a.street || previous.street, number: a.number || previous.number, complement: a.complement || previous.complement,
+        district: a.district || previous.district, city: a.city || previous.city, state: a.state || previous.state,
+        municipalityCode: profile.municipalityCode || previous.municipalityCode,
+        taxRegime: previous.taxRegime || (profile.mei ? "MEI" : profile.simples ? "Simples Nacional" : ""),
+      }));
+      setCnpjInfo({ active: profile.active, simples: profile.simples, mei: profile.mei });
+      setCnpjState("found");
+    }).catch(() => { if (!controller.signal.aborted) setCnpjState("error"); });
+  };
+
   type FieldOptions = { required?: boolean; maxLength?: number; mask?: (value: string) => string; inputMode?: "numeric" | "text"; autoComplete?: string; mono?: boolean; span?: boolean; hint?: string; readOnly?: boolean };
   const field = (name: string, { required = false, maxLength = 200, mask, inputMode, autoComplete, mono, span, hint, readOnly }: FieldOptions = {}) => (
     <Field key={name} label={t(name)} error={fieldErrors[name] || undefined} required={required} optionalLabel={required ? undefined : t("optional")} hint={hint} className={span ? "sm:col-span-2" : undefined}>
-      {(props) => <input {...props} className={mono ? "field font-mono tabular-nums" : "field"} value={values[name]} required={required} readOnly={readOnly} aria-readonly={readOnly} maxLength={maxLength} inputMode={inputMode} autoComplete={autoComplete ?? "off"} spellCheck={false} placeholder={t.has(`placeholders.${name}`) ? t(`placeholders.${name}`) : undefined} onChange={(event) => set(name, mask ? mask(event.target.value) : event.target.value)} />}
+      {(props) => <input {...props} className={mono ? "field font-mono tabular-nums" : "field"} value={values[name]} required={required} readOnly={readOnly} aria-readonly={readOnly} maxLength={maxLength} inputMode={inputMode} autoComplete={autoComplete ?? "off"} spellCheck={false} placeholder={t.has(`placeholders.${name}`) ? t(`placeholders.${name}`) : undefined} onChange={(event) => (name === "taxId" ? onTaxIdChange(event.target.value) : set(name, mask ? mask(event.target.value) : event.target.value))} />}
     </Field>
   );
 
@@ -222,7 +250,15 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       {section(t("sectionCompany"), wizard ? t("stepHint.company") : undefined)}
       {field("legalName", { required: true, span: true })}
       {field("tradeName")}
-      {field("taxId", { required: true, maxLength: 18, mask: maskCnpj, inputMode: "text", mono: true, readOnly: !wizard, hint: wizard ? undefined : t("hints.taxIdLocked") })}
+      {field("taxId", { required: true, maxLength: 18, mask: maskCnpj, inputMode: "text", mono: true, readOnly: !wizard, hint: wizard ? (cnpjState === "idle" ? t("cnpj.hint") : undefined) : t("hints.taxIdLocked") })}
+      {wizard && <div className="sm:col-span-2 -mt-2 flex flex-col gap-2" role="status" aria-live="polite">
+        {cnpjState === "loading" && <p className="flex items-center gap-2 text-[12px] text-text-3"><Loader2 size={13} className="animate-spin" aria-hidden />{t("cnpj.loading")}</p>}
+        {cnpjState === "error" && <p className="text-[12px] text-text-3">{t("cnpj.error")}</p>}
+        {cnpjState === "found" && cnpjInfo && <>
+          {cnpjInfo.active ? <p className="text-[12px] text-ok">{t("cnpj.found")}{" "}{cnpjInfo.mei ? t("cnpj.isMei") : cnpjInfo.simples ? t("cnpj.isSimples") : ""}</p>
+            : <p role="alert" className="banner banner-danger">{t("cnpj.inactive")}</p>}
+        </>}
+      </div>}
     </fieldset>}
 
     {show("address") && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-6">

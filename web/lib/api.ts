@@ -150,6 +150,13 @@ export const credits = {
   history: async (params: PageParams = {}, signal?: AbortSignal) => toPage(await request<ListBody<CreditTransaction>>(`/credits/history${query(params)}`, { signal })),
 };
 export const plans = { list: async (cycle: "monthly" | "annual" = "monthly", params: PageParams = {}) => toPage(await request<ListBody<PlanQuote>>(`/plans${query({ cycle, ...params })}`)) };
+/** Public registry data of a CNPJ (same shape the API returns), used to pre-fill forms. */
+export interface CnpjProfile {
+  legalName: string; tradeName: string;
+  address: { zip: string; street: string; number: string; complement: string; district: string; city: string; state: string };
+  municipalityCode: string | null; simples: boolean | null; mei: boolean | null; active: boolean; situation: string;
+}
+export const cnpj = { lookup: async (taxId: string, signal?: AbortSignal) => unwrap(await request<Envelope<CnpjProfile>>(`/cnpj/${idPath(taxId)}`, { signal })) };
 export interface CompanyWire extends Omit<Company, "address"> {
   addressStreet?: string; addressNumber?: string; addressComplement?: string; addressDistrict?: string; addressCity?: string; addressState?: string; addressZip?: string;
 }

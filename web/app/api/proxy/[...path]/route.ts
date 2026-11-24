@@ -27,6 +27,7 @@ const routes: [RegExp, string[]][] = [
   [/^billing\/pix\/cancel$/, ["POST"]],
   [/^credits(?:\/(plans|history))?$/, ["GET"]],
   [/^credits\/purchase\/preview$/, ["POST"]],
+  [/^cnpj\/[A-Za-z0-9]{14}$/, ["GET"]],
   [/^companies$/, ["GET", "POST"]],
   [/^companies\/[^/]+$/, ["GET", "PATCH", "DELETE"]],
   [/^companies\/[^/]+\/certificates$/, ["GET", "POST"]],

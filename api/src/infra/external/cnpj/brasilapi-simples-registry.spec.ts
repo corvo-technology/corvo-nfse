@@ -88,6 +88,95 @@ describe('BrasilApiSimplesRegistry', () => {
     );
   });
 
+  describe('lookupProfile', () => {
+    const full = {
+      razao_social: 'EMPRESA EXEMPLO LTDA',
+      nome_fantasia: 'EXEMPLO',
+      descricao_situacao_cadastral: 'ATIVA',
+      codigo_situacao_cadastral: 2,
+      descricao_tipo_de_logradouro: 'RUA',
+      logradouro: 'DAS FLORES',
+      numero: '123',
+      complemento: 'SALA 4',
+      bairro: 'CENTRO',
+      municipio: 'SAO PAULO',
+      uf: 'sp',
+      cep: '01310100',
+      codigo_municipio_ibge: 3550308,
+      opcao_pelo_simples: true,
+      opcao_pelo_mei: false,
+    };
+
+    it('maps the registration data of the CNPJ', async () => {
+      const fetchFn = jest.fn().mockReturnValue(response(200, full));
+      const registry = new BrasilApiSimplesRegistry({ fetchFn });
+      await expect(registry.lookupProfile('11222333000181')).resolves.toEqual({
+        legalName: 'EMPRESA EXEMPLO LTDA',
+        tradeName: 'EXEMPLO',
+        address: {
+          zip: '01310100',
+          street: 'RUA DAS FLORES',
+          number: '123',
+          complement: 'SALA 4',
+          district: 'CENTRO',
+          city: 'SAO PAULO',
+          state: 'SP',
+        },
+        municipalityCode: '3550308',
+        simples: true,
+        mei: false,
+        active: true,
+        situation: 'ATIVA',
+      });
+    });
+
+    it('flags a CNPJ that is not active', async () => {
+      const fetchFn = jest.fn().mockReturnValue(
+        response(200, {
+          ...full,
+          codigo_situacao_cadastral: 8,
+          descricao_situacao_cadastral: 'BAIXADA',
+        }),
+      );
+      const profile = await new BrasilApiSimplesRegistry({
+        fetchFn,
+      }).lookupProfile('11222333000181');
+      expect(profile?.active).toBe(false);
+      expect(profile?.situation).toBe('BAIXADA');
+    });
+
+    it('shares the cache with lookup', async () => {
+      const fetchFn = jest.fn().mockImplementation(() => response(200, full));
+      const registry = new BrasilApiSimplesRegistry({ fetchFn });
+      await registry.lookup('11222333000181');
+      await registry.lookupProfile('11222333000181');
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns null on failure and on timeout', async () => {
+      const down = jest.fn().mockRejectedValue(new Error('down'));
+      await expect(
+        new BrasilApiSimplesRegistry({ fetchFn: down }).lookupProfile(
+          '11222333000181',
+        ),
+      ).resolves.toBeNull();
+      const hang = jest.fn().mockImplementation(
+        (_url: string, init: { signal: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            init.signal.addEventListener('abort', () =>
+              reject(new Error('aborted')),
+            );
+          }),
+      );
+      await expect(
+        new BrasilApiSimplesRegistry({
+          fetchFn: hang,
+          timeoutMs: 20,
+        }).lookupProfile('11222333000181'),
+      ).resolves.toBeNull();
+    });
+  });
+
   it('bounds the cache, dropping the oldest entry', async () => {
     const fetchFn = jest.fn().mockImplementation(() => response(200, body));
     const registry = new BrasilApiSimplesRegistry({ fetchFn });
