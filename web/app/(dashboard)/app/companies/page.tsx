@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Building2, Eye, Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
@@ -29,6 +29,18 @@ function formatCNPJ(taxId: string): string {
   return taxId.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
 }
 
+/** ?new=1 (from the getting-started banner) opens the form once; the param is dropped so refresh/back do not reopen it. */
+function useOpenOnNewParam(allowed: boolean, open: () => void) {
+  const router = useRouter();
+  const openRef = useRef(open);
+  useEffect(() => { openRef.current = open; });
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has("new")) return;
+    if (allowed) openRef.current();
+    router.replace("/app/companies");
+  }, [allowed, router]);
+}
+
 export default function CompaniesPage() {
   const router = useRouter();
   const t = useTranslations("Companies");
@@ -37,6 +49,8 @@ export default function CompaniesPage() {
   const locale = useLocale();
   const [showForm, setShowForm] = useState(false);
   const { items: companies, setItems: setCompanies, loading, loadingMore: moreLoading, hasMore, error, loadMore } = useCursorPagination((cursor, signal) => companiesApi.list({ limit: 50, cursor }, signal), []);
+  const canManage = can("nfse.companies.manage");
+  useOpenOnNewParam(canManage, () => setShowForm(true));
   const failed = error !== null;
   const moreFailed = false;
 

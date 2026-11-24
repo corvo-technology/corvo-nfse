@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { companies, type DpsSequence } from "@/lib/api";
+import { useScrollToHash } from "@/lib/use-scroll-to-hash";
 import { useApiErrorText } from "@/lib/use-api-error";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,10 +19,7 @@ export function DpsSequenceCard({ companyId, canManage, environment }: { company
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    // The page loads its data after render, so the browser cannot jump to #numeracao by itself.
-    if (window.location.hash === "#numeracao") document.getElementById("numeracao")?.scrollIntoView({ block: "center" });
-  }, []);
+  useScrollToHash("numeracao");
 
   useEffect(() => {
     const abort = new AbortController();
@@ -48,7 +46,7 @@ export function DpsSequenceCard({ companyId, canManage, environment }: { company
   }
 
   return (
-    <Card id="numeracao" className="flex scroll-mt-24 flex-col gap-4 p-5">
+    <Card id="numeracao" className={`flex scroll-mt-24 flex-col gap-4 p-5`}>
       <div>
         <h2 className="text-base font-medium">{t("title")}</h2>
         <p className="mt-1 text-sm text-text-3">{t("hint")}</p>

@@ -25,7 +25,7 @@ describe("GettingStartedBanner", () => {
     renderBanner();
     await screen.findByText("0 de 4");
     expect(screen.getByText("Próximo: cadastrar a empresa")).toBeTruthy();
-    expect(go()).toBe("/app/companies");
+    expect(go()).toBe("/app/companies?new=1");
   });
 
   it("points to the company certificate when only the company exists", async () => {
@@ -35,7 +35,7 @@ describe("GettingStartedBanner", () => {
     renderBanner();
     await screen.findByText("1 de 4");
     expect(screen.getByText("Próximo: enviar o certificado")).toBeTruthy();
-    expect(go()).toBe("/app/companies/c1");
+    expect(go()).toBe("/app/companies/c1#certificado");
   });
 
   it("points to the numbering after company and certificate, asking only for authorized invoices", async () => {

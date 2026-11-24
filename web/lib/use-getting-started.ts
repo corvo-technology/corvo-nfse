@@ -51,9 +51,9 @@ export function useGettingStarted(): GettingStarted | null {
   const skipFlag = hasCompany ? (`dpsSkipped:${current.companyId}` as const) : null;
   const dpsSkipped = skipFlag !== null && (skipped === skipFlag || readFlag(tenantId!, skipFlag));
   const steps = [
-    { key: "company", done: hasCompany, href: "/app/companies" },
-    { key: "certificate", done: current.hasCertificate, href: hasCompany ? `/app/companies/${current.companyId}` : "/app/companies" },
-    { key: "dps", done: current.hasDps || current.hasInvoice || dpsSkipped, href: hasCompany ? `/app/companies/${current.companyId}#numeracao` : "/app/companies" },
+    { key: "company", done: hasCompany, href: "/app/companies?new=1" },
+    { key: "certificate", done: current.hasCertificate, href: hasCompany ? `/app/companies/${current.companyId}#certificado` : "/app/companies?new=1" },
+    { key: "dps", done: current.hasDps || current.hasInvoice || dpsSkipped, href: hasCompany ? `/app/companies/${current.companyId}#numeracao` : "/app/companies?new=1" },
     { key: "invoice", done: current.hasInvoice, href: "/app/invoices/new" },
   ] as const;
   const next = steps.find((s) => !s.done);
