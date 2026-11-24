@@ -4,6 +4,7 @@ import {
 } from '@/shared/fiscal/fiscal-validation-error';
 import { parseCustomerTaxId } from '@/shared/tax-id';
 import { normalizeUf } from '@/shared/fiscal/uf';
+import { isAfterTodayInSaoPaulo } from './invoice-domain.service';
 
 export interface RawInvoiceInput {
   customer: {
@@ -175,7 +176,7 @@ export function normalizeInvoiceInput(
       });
       competenceDate = new Date();
     } else {
-      if (!allowFutureDate && parsed > new Date()) {
+      if (!allowFutureDate && isAfterTodayInSaoPaulo(parsed)) {
         issues.push({
           field: 'competenceDate',
           code: 'future_date',

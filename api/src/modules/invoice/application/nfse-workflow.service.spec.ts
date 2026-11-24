@@ -223,6 +223,27 @@ describe('NfseWorkflowService payload — tomador opcional', () => {
     expect(payload.issuedAt).toEqual(scheduledFor);
   });
 
+  it('refuses to build the DPS when the competence is after the issue day (E0015)', async () => {
+    const invoice = Invoice.create(
+      {
+        companyId: 'company-1',
+        customer: null,
+        service: {
+          description: 'Serviço',
+          code: '010101',
+          municipalityCode: '3550308',
+        },
+        amount: 100,
+        competenceDate: new Date('2099-10-14'),
+      },
+      'tenant-1',
+    );
+
+    await expect(callPayload(invoice)).rejects.toMatchObject({
+      error: { code: 'COMPETENCE_DATE_IN_FUTURE' },
+    });
+  });
+
   it('keeps the creation time as dhEmi for an immediate invoice', async () => {
     const invoice = createInvoice(null);
 

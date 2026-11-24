@@ -602,6 +602,35 @@ describe('SCHEDULE calendar days', () => {
       ),
     ).toThrow(FiscalValidationError);
   });
+  it('rejects tomorrow in São Paulo even when it is already that UTC day (evening)', () => {
+    jest.setSystemTime(new Date('2026-10-14T01:00:00Z')); // 22:00 of 13/10 in São Paulo
+    expect(() =>
+      new InvoiceDomainService().normalizeAndValidate(
+        input('2026-10-14', 'IMMEDIATE'),
+        'test',
+      ),
+    ).toThrow(FiscalValidationError);
+  });
+  it('accepts today in São Paulo as the competence date', () => {
+    jest.setSystemTime(new Date('2026-10-14T01:00:00Z'));
+    expect(
+      new InvoiceDomainService().normalizeAndValidate(
+        input('2026-10-13', 'IMMEDIATE'),
+        'test',
+      ).competenceDate,
+    ).toEqual(new Date('2026-10-13'));
+  });
+  it('rejects a competence date 4 days ahead on an immediate invoice with future_date', () => {
+    try {
+      new InvoiceDomainService().normalizeAndValidate(
+        input('2026-10-17', 'IMMEDIATE'),
+        'test',
+      );
+      throw new Error('should have thrown');
+    } catch (e) {
+      expect((e as FiscalValidationError).issues[0].code).toBe('future_date');
+    }
+  });
   it('releases tomorrow at local midnight', () => {
     expect(
       new InvoiceDomainService()

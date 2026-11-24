@@ -21,6 +21,14 @@ const SCHEDULE_ZONE = 'America/Sao_Paulo';
 // Scheduled invoices are released at 09:00 São Paulo (12:00 UTC), not at midnight.
 const SCHEDULE_RELEASE_HOUR = 9;
 
+/** The competence is a calendar date (stored at UTC midnight): today in São Paulo is still allowed. */
+export function isAfterTodayInSaoPaulo(competenceDate: Date): boolean {
+  return (
+    competenceDate.toISOString().slice(0, 10) >
+    (DateTime.now().setZone(SCHEDULE_ZONE).toISODate() ?? '')
+  );
+}
+
 /** Name used on the invoice when the request carries a customer without a name. */
 export const ANONYMOUS_CUSTOMER_NAME = 'Consumidor';
 
@@ -408,7 +416,7 @@ export class InvoiceDomainService {
             .set({ hour: SCHEDULE_RELEASE_HOUR })
             .toJSDate();
         }
-      } else if (competenceDate > new Date()) {
+      } else if (isAfterTodayInSaoPaulo(competenceDate)) {
         issues.push({
           field: 'competenceDate',
           code: 'future_date',
