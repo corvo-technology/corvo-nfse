@@ -44,6 +44,7 @@
     "migration:revert": "yarn typeorm migration:revert",
     "migration:show": "yarn typeorm migration:show",
     "postinstall": "patch-package",
+    "openapi:generate": "nest build && tsc-alias -p tsconfig.build.json && node dist/infra/openapi/generate-cli.js",
     "stripe:provision": "ts-node -r tsconfig-paths/register scripts/provision-stripe.ts"
   },
   "lint-staged": {

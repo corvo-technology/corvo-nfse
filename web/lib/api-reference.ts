@@ -38,7 +38,7 @@ export const API_DOCS_COPY: Record<SeoLocale, { title: string; description: stri
   pt: {
     title: "Referência da API de NFS-e",
     description: "Todos os endpoints da API REST da Corvo para emitir NFS-e: métodos, caminhos, códigos de status de sucesso e erros.",
-    intro: "Base URL: `https://api.corvo.tech/v1`. Autenticação pelo header `X-API-Key`. Cada seção leva à página da documentação com parâmetros e exemplos.",
+    intro: "Base URL: `https://api.corvo.tech/v1`. Autenticação pelo header `X-API-Key`. Contrato completo em OpenAPI: `https://corvo.tech/openapi.json`. Cada seção leva à página da documentação com parâmetros e exemplos.",
     errors: "Erros",
     method: "Método",
     endpoint: "Endpoint",
@@ -49,7 +49,7 @@ export const API_DOCS_COPY: Record<SeoLocale, { title: string; description: stri
   en: {
     title: "NFS-e API reference",
     description: "Every endpoint of the Corvo REST API to issue NFS-e: methods, paths, success status codes and errors.",
-    intro: "Base URL: `https://api.corvo.tech/v1`. Authenticate with the `X-API-Key` header. Each section links to the docs page with parameters and examples.",
+    intro: "Base URL: `https://api.corvo.tech/v1`. Authenticate with the `X-API-Key` header. Full contract in OpenAPI: `https://corvo.tech/openapi.json`. Each section links to the docs page with parameters and examples.",
     errors: "Errors",
     method: "Method",
     endpoint: "Endpoint",

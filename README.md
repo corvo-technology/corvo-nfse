@@ -212,6 +212,7 @@ API and worker share backend code and run as separate production processes. Each
 | [llms.txt](web/public/llms.txt) and `/llms-full.txt` | The same documentation for AI tools. |
 | [SELF_HOSTING.md](SELF_HOSTING.md) | Run Corvo on your own infrastructure. |
 | [deploy/README.md](deploy/README.md) | Docker files and the tax calculator. |
+| [docs/openapi](docs/openapi) | The public API contract (`openapi.json`, also at `https://corvo.tech/openapi.json`), its route table and the changelog for SDK maintainers. |
 | [docs/architecture.md](docs/architecture.md) | How it works inside: outbox, credit ledger, transactions, statuses and queues, with diagrams (in Portuguese). |
 | [docs/fiscal](docs/fiscal) | Fiscal rules, examples, limitations, observability and runbooks. |
 
