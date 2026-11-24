@@ -17,10 +17,8 @@ process.env.STORAGE_PROVIDER = 's3';
 process.env.STORAGE_S3_ENDPOINT =
   process.env.E2E_STORAGE_S3_ENDPOINT ?? 'http://127.0.0.1:4566';
 process.env.STORAGE_S3_REGION = 'us-east-1';
-process.env.STORAGE_S3_ACCESS_KEY_ID =
-  process.env.E2E_STORAGE_S3_ACCESS_KEY ?? 'test';
-process.env.STORAGE_S3_SECRET_ACCESS_KEY =
-  process.env.E2E_STORAGE_S3_SECRET_KEY ?? 'test';
+process.env.STORAGE_S3_ACCESS_KEY_ID = 'test';
+process.env.STORAGE_S3_SECRET_ACCESS_KEY = 'test';
 process.env.STORAGE_S3_BUCKET = process.env.DB_SCHEMA.replaceAll('_', '-');
 process.env.NFSE_MASTER_KEY = randomBytes(32).toString('base64');
 process.env.SENTRY_ENABLED = 'false';

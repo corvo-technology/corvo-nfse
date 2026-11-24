@@ -69,10 +69,7 @@ const s3 = new S3Client({
   endpoint: process.env.STORAGE_S3_ENDPOINT,
   region: 'us-east-1',
   forcePathStyle: true,
-  credentials: {
-    accessKeyId: process.env.STORAGE_S3_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.STORAGE_S3_SECRET_ACCESS_KEY!,
-  },
+  credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
 });
 const bucket = process.env.STORAGE_S3_BUCKET!;
 const pool = {

@@ -135,6 +135,13 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # S3-compatible store for the fiscal documents (credentials test/test).
+      s3:
+        image: ministackorg/ministack:1.5.44
+        env:
+          SERVICES: s3
+        ports:
+          - 4566:4566
     defaults:
       run:
         working-directory: api
@@ -142,9 +149,7 @@ jobs:
       NODE_ENV: test
       E2E_DATABASE_URL: postgresql://corvo:corvo@localhost:5432/corvo_test
       REDIS_URL: redis://localhost:6379
-      E2E_STORAGE_S3_ENDPOINT: http://127.0.0.1:9000
-      E2E_STORAGE_S3_ACCESS_KEY: corvo-e2e
-      E2E_STORAGE_S3_SECRET_KEY: corvo-e2e-secret
+      E2E_STORAGE_S3_ENDPOINT: http://127.0.0.1:4566
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -154,17 +159,13 @@ jobs:
           cache-dependency-path: api/yarn.lock
       - name: Install
         run: yarn install --frozen-lockfile
-      # A service cannot take a command, and MinIO needs "server /data".
-      - name: Start S3 (MinIO)
+      - name: Wait for S3
         run: |
-          docker run -d --name minio -p 9000:9000 \
-            -e MINIO_ROOT_USER=corvo-e2e -e MINIO_ROOT_PASSWORD=corvo-e2e-secret \
-            quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
           for i in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:9000/minio/health/ready && exit 0
+            curl -fsS http://127.0.0.1:4566/ >/dev/null && exit 0
             sleep 1
           done
-          docker logs minio
+          echo "S3 did not come up" >&2
           exit 1
       - name: E2E (HTTP)
         run: yarn test:e2e

@@ -425,7 +425,7 @@ describePostgres('integrations end to end on real PostgreSQL', () => {
     const event = eventRows[0];
     expect(event.state).toBe('retry_pending');
     await db.query(
-      `UPDATE ${t('integration_events')} SET next_attempt_at = now()`,
+      `UPDATE ${t('integration_events')} SET next_attempt_at = now() - interval '1 second'`,
     );
     await drain();
     expect(issuance.reservations).toBe(1);
