@@ -498,9 +498,7 @@ export function accountantPackageTooLargeEmail(input: {
     paragraph(
       `Não enviamos ao seu contador o pacote de ${input.monthLabel} da empresa ${input.companyName}: o mês teve ${input.count} notas e o pacote comporta até ${input.limit}.`,
     ),
-    paragraph(
-      'Baixe o pacote em partes (escolha períodos menores) pelo painel e envie ao contador, ou fale com o nosso suporte.',
-    ),
+    paragraph('Fale com o nosso suporte que enviamos o pacote em partes.'),
     button(input.companyUrl, 'Abrir a empresa'),
   ]);
 }

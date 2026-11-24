@@ -1156,7 +1156,7 @@
       "skipped-no-email": "Enter the accountant's e-mail first.",
       "skipped-empty": "There are no notes in this month, nothing was sent.",
       "skipped-already-sent": "This month was already sent.",
-      "skipped-too-large": "This month has too many notes for one package, nothing was sent. Download it in parts or contact support."
+      "skipped-too-large": "This month has too many notes for one package, nothing was sent. Contact support and we will send the package in parts."
     },
     "failed": "Could not complete. Try again.",
     "savedWithTest": "Done. The package will be sent to {email}. We sent a test e-mail to that address — check with your accountant.",
@@ -1167,7 +1167,7 @@
       "month": "{name} {year}",
       "sent": "{month} — sent on {date} at {time} to {email} — {count, plural, one {# note} other {# notes}}",
       "skipped-empty": "{month} — not sent: there were no notes in the month",
-      "skipped-too-large": "{month} — not sent: the month had {count} notes, more than one package holds. Download it in parts or contact support",
+      "skipped-too-large": "{month} — not sent: the month had {count} notes, more than one package holds. Contact support and we will send the package in parts",
       "failed": "{month} — we could not send it on {date} at {time}. Try again with “Send now”"
     },
     "confirm": {
@@ -1175,7 +1175,7 @@
       "loading": "Checking the month’s notes…",
       "summary": "Month: {month}. To: {email}. {count, plural, one {# note} other {# notes}}, total {total}.",
       "empty": "There are no notes in {month}, so there is nothing to send.",
-      "tooLarge": "{month} has {count} notes and one package holds up to {limit}. Download it in parts (shorter periods) or contact support.",
+      "tooLarge": "{month} has {count} notes and one package holds up to {limit}. Contact support and we will send the package in parts.",
       "confirm": "Send now",
       "cancel": "Cancel",
       "close": "Close"

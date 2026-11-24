@@ -74,7 +74,9 @@ describe('accountant_package_send tool', () => {
       handler({ company_id: companyId, month: '2026-10' }, ctx),
     ).resolves.toMatchObject({
       status: 'preview',
-      message: expect.stringContaining('download it in parts'),
+      message: expect.stringContaining(
+        'ask Corvo support to send the package in parts',
+      ),
     });
     sendNow.mockResolvedValue('skipped-too-large');
     await expect(

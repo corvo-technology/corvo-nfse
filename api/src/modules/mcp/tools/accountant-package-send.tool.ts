@@ -128,7 +128,7 @@ export function createAccountantPackageSendHandler(
         sent: false,
         status: 'preview',
         message: tooLarge
-          ? `Nothing was sent. The month has more than ${summary.limit} notes, so it cannot be sent by e-mail; download it in parts.`
+          ? `Nothing was sent. The month has more than ${summary.limit} notes, so it cannot be sent by e-mail; ask Corvo support to send the package in parts.`
           : summary.count === 0
             ? 'Nothing was sent. The month has no notes, so there is nothing to send.'
             : 'Nothing was sent. Confirm with the user and call again with confirm: true to send.',
@@ -149,7 +149,7 @@ export function createAccountantPackageSendHandler(
         status === 'sent'
           ? 'Package sent to the accountant.'
           : status === 'skipped-too-large'
-            ? `Not sent: the month has more than ${summary.limit} notes; download it in parts.`
+            ? `Not sent: the month has more than ${summary.limit} notes; ask Corvo support to send the package in parts.`
             : status === 'skipped-empty'
               ? 'Not sent: the month has no notes.'
               : `Not sent: ${status}.`,
