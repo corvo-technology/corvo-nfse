@@ -6,33 +6,10 @@ import { MailCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ApiError, invitations, type InvitationPreview } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { forgetInviteToken as forgetToken, takeInviteToken as takeToken } from "@/lib/invite-token";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
-
-const TOKEN_KEY = "corvo_invite_token";
-
-/**
- * The e-mail link carries the token in the URL fragment (`#token=…`), which the browser never sends to a server.
- * It is moved to sessionStorage and removed from the address bar before anything else happens, so it
- * survives the sign-in round trip without sitting in the URL, history or a referrer.
- */
-function takeToken(): string | null {
-  try {
-    const fromLink = new URLSearchParams(window.location.hash.slice(1)).get("token");
-    if (fromLink) {
-      sessionStorage.setItem(TOKEN_KEY, fromLink);
-      window.history.replaceState(null, "", window.location.pathname);
-    }
-    return sessionStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function forgetToken() {
-  try { sessionStorage.removeItem(TOKEN_KEY); } catch {}
-}
 
 type Problem = "invalid" | "expired" | "mismatch" | "missing" | "failed";
 
@@ -119,7 +96,7 @@ export default function AcceptInvitePage() {
         <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
           {problem === "mismatch" && <Button variant="accent" onClick={() => void switchAccount()}>{t("switchAccount")}</Button>}
           {(spent || problem === "missing" || problem === "failed") && status === "authenticated" && (
-            <Button variant="secondary" onClick={() => { if (spent || problem === "missing") forgetToken(); router.replace("/app"); }}>{t("goHome")}</Button>
+            <Button variant="secondary" onClick={() => { forgetToken(); router.replace("/app"); }}>{t("goHome")}</Button>
           )}
         </div>
       </Shell>

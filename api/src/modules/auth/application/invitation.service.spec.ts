@@ -45,6 +45,7 @@ function build(
       .mockResolvedValue(opts.pending ?? null),
     findByIdAndTenantId: jest.fn().mockResolvedValue(opts.invitation ?? null),
     listOpenByTenant: jest.fn().mockResolvedValue(opts.open ?? []),
+    listPendingByTenant: jest.fn().mockResolvedValue(opts.open ?? []),
     findByTokenHash: jest.fn(async (hash: string) =>
       opts.invitation && opts.invitation.tokenHash === hash
         ? opts.invitation

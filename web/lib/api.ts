@@ -375,7 +375,7 @@ export const integrations = {
   retry: async (saleId: string) => unwrap(await request<Envelope<{ state: string; lastError?: string }>>(`/integrations/operations/${idPath(saleId)}/retry`, { method: "POST" })),
 };
 export interface Member { id: string; email: string; name: string; role: string; createdAt: string }
-export interface InviteResult { id: string; email: string; name: string; role: string; expiresAt: string; createdAt: string }
+export interface InviteResult { id: string; email: string; name: string; role: string; expiresAt: string; createdAt: string; expired?: boolean }
 export type Invitation = InviteResult
 export interface InvitationPreview { role: string; invitedBy: string }
 export const members = {

@@ -634,6 +634,7 @@
       "title": "Convites pendentes",
       "email": "E-mail",
       "expires": "Expira",
+      "expired": "Expirado",
       "resend": "Reenviar",
       "revoke": "Cancelar convite",
       "resent": "Convite reenviado.",
