@@ -6,6 +6,7 @@ import {
   Param,
   ParseUUIDPipe,
   Put,
+  UnprocessableEntityException,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -69,20 +70,23 @@ export class DpsSequenceController {
   @ApiOperation({
     summary: 'Continue the DPS numbering from the last note issued elsewhere',
     description:
-      'Use it when the company already issued notes in another system or in the Portal Nacional, so the next DPS does not repeat a number the Receita has (E0014). It only moves forward: a number lower than the current one is ignored.',
+      'Use it when the company already issued notes in another system or in the Portal Nacional, so the next DPS does not repeat a number the Receita has (E0014). It only moves forward: a number lower than one already used is refused (DPS_NUMBER_BELOW_CURRENT).',
   })
   async set(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: SetDpsSequenceDto,
     @Req() req: RequestWithAuthContext,
   ) {
+    const tenantId = req.authContext!.activeTenantId;
+    const environment = executionEnvironment(req.authContext!);
+    const now = await this.sequences.current(id, tenantId, environment);
+    if (dto.lastNumber < now.lastNumber)
+      throw new UnprocessableEntityException({
+        code: 'DPS_NUMBER_BELOW_CURRENT',
+        message: 'The number is lower than one already used',
+      });
     return data(
-      await this.sequences.raiseTo(
-        id,
-        req.authContext!.activeTenantId,
-        executionEnvironment(req.authContext!),
-        dto.lastNumber,
-      ),
+      await this.sequences.raiseTo(id, tenantId, environment, dto.lastNumber),
     );
   }
 }

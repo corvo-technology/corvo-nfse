@@ -1654,16 +1654,15 @@
   },
   "CompanyDetail": {
     "dps": {
-      "title": "Numeração das notas",
-      "hint": "Se a empresa já emitiu notas em outro sistema ou no Portal Nacional, informe o número da última nota emitida. A próxima nota do Corvo usa o número seguinte e a Receita não recusa por número repetido.",
-      "current": "Última nota numerada no Corvo: nº {number} (série {series})",
-      "none": "Ainda não emitimos nenhuma nota por aqui (série {series}).",
-      "label": "Número da última nota emitida",
-      "help": "Está no PDF ou no XML da última nota, no campo Número da DPS.",
-      "save": "Salvar numeração",
-      "saved": "Numeração atualizada. A próxima nota será a nº {number}.",
-      "lower": "O Corvo já passou desse número, então a numeração continuou em {number}.",
-      "invalid": "Informe um número inteiro, zero ou maior.",
+      "title": "Número da nota (DPS)",
+      "hint": "Se você já emitia notas pelo portal do governo, informe o número da próxima nota para não repetir.",
+      "current": "Próxima nota no Corvo: nº {next} (série {series})",
+      "none": "Ainda não emitimos nenhuma nota por aqui. A próxima será a nº {next} (série {series}).",
+      "label": "Próximo número da nota (DPS)",
+      "help": "Some 1 ao número da última nota que você emitiu. Ele aparece no PDF ou no XML, no campo Número da DPS.",
+      "save": "Salvar número",
+      "saved": "Pronto. A próxima nota será a nº {number}.",
+      "invalid": "Informe um número inteiro, 1 ou maior.",
       "testNote": "No ambiente de teste, a numeração começa num número alto e aleatório. Assim este Corvo não repete números que outra instalação com o mesmo CNPJ já usou na Receita."
     },
     "fiscalAdvanced": "Modo avançado (contador)",
@@ -1882,6 +1881,8 @@
     "clear": "Remover código selecionado"
   },
   "ApiErrors": {
+    "dps_number_already_used": "Esse número de nota já foi usado (provavelmente no portal do governo). Ajuste o próximo número nas configurações da empresa e emita de novo.",
+    "dps_number_below_current": "Esse número é menor que um já usado. Informe um número maior que o da última nota.",
     "required": "Campo obrigatório.",
     "blank": "Não pode ficar em branco.",
     "invalid_cnpj": "CNPJ inválido.",

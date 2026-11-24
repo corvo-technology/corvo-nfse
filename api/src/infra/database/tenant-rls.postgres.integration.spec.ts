@@ -571,6 +571,16 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       series: '1',
       number: 121,
     });
+    // Concurrent allocations after raising the start never repeat a number nor go backwards.
+    await sequence.raiseTo(companyA, tenantA, 'test', 500);
+    const burst = await Promise.all(
+      Array.from({ length: 8 }, () =>
+        sequence.reserveNext(companyA, tenantA, 'test'),
+      ),
+    );
+    expect(burst.map((r) => r.number).sort((a, b) => a - b)).toEqual([
+      501, 502, 503, 504, 505, 506, 507, 508,
+    ]);
     await expect(
       sequence.raiseTo(companyB, tenantA, 'test', 10),
     ).rejects.toThrow('Resource not found');
