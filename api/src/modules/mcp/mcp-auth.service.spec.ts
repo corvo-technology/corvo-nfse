@@ -81,6 +81,8 @@ function createInMemoryRepos() {
         clientId: string,
         previousHash: string,
         nextHash: string,
+        _now?: Date,
+        nextExpiresAt?: Date,
       ) => {
         const session = sessions.find(
           (row) =>
@@ -95,6 +97,7 @@ function createInMemoryRepos() {
         );
         if (!session) return false;
         session.refreshTokenHash = nextHash;
+        if (nextExpiresAt) session.expiresAt = nextExpiresAt;
         return true;
       },
     ),
@@ -567,6 +570,23 @@ describe('McpAuthService.refreshTokens', () => {
     await expect(
       harness.service.refreshTokens(first.refreshToken),
     ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('grants 90 days at connect and slides the expiry on each refresh', async () => {
+    const harness = createHarness();
+    const day = 24 * 60 * 60 * 1000;
+    const first = await issueTokens(harness);
+    expect(
+      harness.sessions[0].expiresAt.getTime() - Date.now(),
+    ).toBeLessThanOrEqual(90 * day);
+    // 80 days later the grant is about to lapse; a refresh pushes it out again.
+    harness.sessions[0].expiresAt = new Date(Date.now() + 10 * day);
+
+    await harness.service.refreshTokens(first.refreshToken);
+
+    expect(
+      harness.sessions[0].expiresAt.getTime() - Date.now(),
+    ).toBeGreaterThan(89 * day);
   });
 
   it('does not touch connection last_used_at on refresh', async () => {
