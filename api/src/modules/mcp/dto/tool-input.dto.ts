@@ -195,6 +195,7 @@ export class NfseListInput {
 
 export class NfseDownloadPdfInput {
   @IsString() access_key!: string;
+  @IsOptional() @IsBoolean() inline?: boolean;
 }
 
 export class NfseGetDownloadUrlInput {
