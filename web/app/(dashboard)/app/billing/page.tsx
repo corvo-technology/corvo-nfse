@@ -41,7 +41,7 @@ export default function BillingPage() {
   const [paymentsFailed, setPaymentsFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [target, setTarget] = useState<CheckoutTarget | null>(null);
-  const [resume, setResume] = useState<{ brCode: string | null; paymentLinkUrl: string } | undefined>(undefined);
+  const [resume, setResume] = useState<{ brCode: string | null; paymentLinkUrl: string; paymentId?: string } | undefined>(undefined);
   const { can, fiscalEnvironment } = useAuth();
   const { success, error: toastError } = useToast();
   const canManage = can("billing.manage");
@@ -130,7 +130,7 @@ export default function BillingPage() {
         onPortal={() => void openPortal()}
         onCancelPix={() => void cancelPix()}
         onResumePix={(pix) => {
-          setResume({ brCode: pix.brCode, paymentLinkUrl: pix.paymentLinkUrl ?? "" });
+          setResume({ brCode: pix.brCode, paymentLinkUrl: pix.paymentLinkUrl ?? "", paymentId: pix.paymentId });
           setTarget({ kind: "plan", slug: pix.planSlug as CheckoutPlan, cycle: "monthly" });
         }}
         onBuyNotes={() => document.getElementById("plans-heading")?.scrollIntoView({ behavior: "smooth", block: "start" })}

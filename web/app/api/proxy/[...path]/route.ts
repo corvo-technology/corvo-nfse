@@ -21,6 +21,7 @@ const routes: [RegExp, string[]][] = [
   [/^auth\/api-keys\/[^/]+$/, ["DELETE"]],
   [/^plans(?:\/[^/]+)?$/, ["GET"]],
   [/^billing\/(plan|usage|payments)$/, ["GET"]],
+  [/^billing\/payments\/[^/]+\/status$/, ["GET"]],
   [/^billing\/checkout$/, ["POST"]],
   [/^billing\/checkout\/[^/]+$/, ["GET"]],
   [/^billing\/(portal|upgrade|downgrade)$/, ["POST"]],

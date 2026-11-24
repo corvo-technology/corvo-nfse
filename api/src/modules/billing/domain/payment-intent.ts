@@ -37,12 +37,19 @@ export interface PixCheckout {
   expiresAt: string | null;
   /** Provider's own id for the contract (Woovi globalID), used to cancel it. */
   providerId?: string | null;
+  /** Our payment id, so the screen can ask whether this very payment was confirmed. */
+  paymentId?: string;
 }
 
 export abstract class PaymentIntentStore {
   abstract findByKey(
     tenantId: string,
     idempotencyKey: string,
+  ): Promise<PaymentIntent | null>;
+  /** One payment of this tenant (null for another tenant's id). */
+  abstract findById(
+    tenantId: string,
+    id: string,
   ): Promise<PaymentIntent | null>;
   abstract findByRef(
     provider: string,

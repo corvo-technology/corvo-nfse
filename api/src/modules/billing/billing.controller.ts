@@ -25,6 +25,7 @@ import {
   CheckoutDto,
   ChangePlanDto,
   CheckoutSessionParams,
+  PaymentStatusParams,
 } from './http/billing.dto';
 import { PricingService } from '@/modules/plans/application/pricing.service';
 import { IPlanRepository } from '@/modules/plans/domain/plan.repository';
@@ -104,6 +105,25 @@ export class BillingController {
     return data(
       await this.paymentHistory.list(req.authContext!.activeTenantId),
     );
+  }
+
+  /** Polled by the Pix screen: tenant-scoped, so another account's payment id answers 404. */
+  @Get('payments/:paymentId/status')
+  @RequirePermission('billing.view')
+  async paymentStatus(
+    @Param() params: PaymentStatusParams,
+    @Req() req: RequestWithAuthContext,
+  ) {
+    const status = await this.pix.paymentStatus(
+      req.authContext!.activeTenantId,
+      params.paymentId,
+    );
+    if (!status)
+      throw new NotFoundException({
+        code: 'PAYMENT_NOT_FOUND',
+        message: 'Payment not found',
+      });
+    return data(status);
   }
 
   @Get('usage')

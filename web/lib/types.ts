@@ -484,6 +484,8 @@ export interface PixSubscription {
   /** Pix code to open the QR again while it is pending. */
   brCode: string | null;
   paymentLinkUrl: string | null;
+  /** The waiting payment, followed by the Pix screen until it is confirmed. */
+  paymentId?: string;
 }
 
 export interface PaymentRecord {

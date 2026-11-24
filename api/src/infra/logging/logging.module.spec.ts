@@ -240,4 +240,36 @@ describe('webhook secrets in URLs', () => {
       '/hook?a=1&signature=[REDACTED]',
     );
   });
+
+  it('hides the Woovi webhook secret that arrives as ?authorization= in the url', () => {
+    expect(
+      sanitizeRequestUrl('/v1/webhooks/woovi?authorization=s3cr3t-woovi'),
+    ).toBe('/v1/webhooks/woovi?authorization=[REDACTED]');
+    expect(
+      sanitizeRequestUrl('/hook?a=1&Authorization=abc&token=t&key=k&b=2'),
+    ).toBe(
+      '/hook?a=1&Authorization=[REDACTED]&token=[REDACTED]&key=[REDACTED]&b=2',
+    );
+    const logged = sanitizeHttpRequest({
+      url: '/v1/webhooks/woovi?authorization=s3cr3t-woovi',
+      originalUrl: '/v1/webhooks/woovi?authorization=s3cr3t-woovi',
+    });
+    expect(JSON.stringify(logged)).not.toContain('s3cr3t-woovi');
+  });
+
+  it('hides the Woovi webhook secret that arrives as ?authorization= in the url', () => {
+    expect(
+      sanitizeRequestUrl('/v1/webhooks/woovi?authorization=s3cr3t-woovi'),
+    ).toBe('/v1/webhooks/woovi?authorization=[REDACTED]');
+    expect(
+      sanitizeRequestUrl('/hook?a=1&Authorization=abc&token=t&key=k&b=2'),
+    ).toBe(
+      '/hook?a=1&Authorization=[REDACTED]&token=[REDACTED]&key=[REDACTED]&b=2',
+    );
+    const logged = sanitizeHttpRequest({
+      url: '/v1/webhooks/woovi?authorization=s3cr3t-woovi',
+      originalUrl: '/v1/webhooks/woovi?authorization=s3cr3t-woovi',
+    });
+    expect(JSON.stringify(logged)).not.toContain('s3cr3t-woovi');
+  });
 });

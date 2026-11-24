@@ -47,7 +47,7 @@ it("keeps upstream unavailable errors generic and preserves 204 deletion", async
 });
 
 it("forwards the Stripe billing routes with their expected methods and nothing else", async () => {
-  const allowed: [string, "GET" | "POST"][] = [["billing/checkout", "POST"], ["billing/checkout/cs_test_123", "GET"], ["billing/portal", "POST"], ["billing/upgrade", "POST"], ["billing/downgrade", "POST"], ["billing/pix/cancel", "POST"], ["billing/payments", "GET"]];
+  const allowed: [string, "GET" | "POST"][] = [["billing/checkout", "POST"], ["billing/checkout/cs_test_123", "GET"], ["billing/portal", "POST"], ["billing/upgrade", "POST"], ["billing/downgrade", "POST"], ["billing/pix/cancel", "POST"], ["billing/payments", "GET"], ["billing/payments/0b1c2d3e-aaaa-4bbb-8ccc-123456789abc/status", "GET"]];
   for (const [route, method] of allowed) {
     fetchMock.mockReset(); fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
     const request = new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers: { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin" } });

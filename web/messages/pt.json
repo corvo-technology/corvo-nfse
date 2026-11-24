@@ -1472,9 +1472,12 @@
       "authorizeTitle": "Autorize no app do seu banco",
       "authorizeBody": "Abra o link e aprove o Pix Automático. A primeira cobrança sai assim que você autorizar.",
       "authorizeOpen": "Abrir autorização",
-      "expired": "Este código expirou. Feche e gere outro.",
+      "expired": "Este código expirou. Gere outro para pagar.",
       "payerEmail": "E-mail",
-      "payerPhone": "Telefone com DDD"
+      "payerPhone": "Telefone com DDD",
+      "failed": "Este pagamento não foi concluído. Gere um novo Pix.",
+      "startOver": "Gerar novo Pix",
+      "sessionExpired": "Sua sessão expirou. Entre de novo para ver a confirmação: se você já pagou, o pagamento é liberado normalmente."
     },
     "avulso": {
       "title": "Notas avulsas",
@@ -2145,6 +2148,7 @@
     "use_subscription_checkout": "Planos mensais são assinaturas: use o pagamento da assinatura.",
     "pix_unavailable": "O Pix está indisponível no momento.",
     "pix_provider_error": "O provedor de Pix recusou a operação. Tente novamente.",
+    "payment_not_found": "Pagamento não encontrado.",
     "pix_payer_field_required": "Informe os dados do pagador para o Pix.",
     "pix_subscription_not_found": "Você não tem Pix Automático para cancelar.",
     "integration_credential_invalid": "Credencial inválida para esta integração.",

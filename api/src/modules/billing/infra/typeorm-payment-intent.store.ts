@@ -29,6 +29,10 @@ export class TypeOrmPaymentIntentStore extends PaymentIntentStore {
     const row = await this.repo.findOneBy({ tenantId, idempotencyKey });
     return row ? toDomain(row) : null;
   }
+  async findById(tenantId: string, id: string) {
+    const row = await this.repo.findOneBy({ tenantId, id });
+    return row ? toDomain(row) : null;
+  }
   async findLiveSubscriptions(tenantId: string) {
     const rows = await this.repo.find({
       where: {
