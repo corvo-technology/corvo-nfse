@@ -2,7 +2,7 @@
 
 This policy covers the Corvo NFS-e frontend, API, worker, and deployment configuration.
 
-**Report vulnerabilities privately**, never in a public issue: open a [private security advisory](https://github.com/corvo-technology/corvo-nfse/security/advisories/new) (repository **Security** tab, **Report a vulnerability**). Agree on disclosure with the maintainers before publishing exploitation details.
+**Report vulnerabilities privately**, never in a public issue: open a [private security advisory](https://github.com/corvo-technology/corvo-nfse/security/advisories/new) (repository **Security** tab, **Report a vulnerability**). If you cannot use GitHub, email contato@corvo.tech. Agree on disclosure with the maintainers before publishing exploitation details.
 
 Include the affected version or commit, impact, and a minimal reproduction using fictional data. Exclude credentials, real certificates, fiscal documents, and customer information.
 

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import { DataSource } from 'typeorm';
