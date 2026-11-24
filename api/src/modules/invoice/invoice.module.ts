@@ -232,6 +232,7 @@ const ACCOUNTANT_PACKAGE = {
     OutboxHandlerRegistry,
     OUTBOX_REPOSITORY,
     InvoiceService,
+    InvoiceOverviewService,
     InvoiceIssuancePort,
     InvoiceCancellationPort,
     InvoiceBatchService,

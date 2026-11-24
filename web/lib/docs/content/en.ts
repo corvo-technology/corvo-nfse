@@ -3206,6 +3206,11 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             ["`company_create`", "`nfse:write`", "`legal_name`, `tax_id`, `tax_regime`, `municipality_code`, `simples_rate` (required for Simples Nacional), `simples_iss_rate?` and optional fiscal data", "`{ id, legal_name, tax_id, status }`; certificates remain API-only"],
             ["`nfse_calculate`", "`nfse:read`", "`company_tax_id` or `company_id`, `amount`, optional `discount`, `deduction` and fiscal data", "Calculation result; no issue, credit reservation or DPS"],
             ["`billing_usage`", "`nfse:read`", "No parameters", "`QuotaStatus` with `canEmit`, allowance and usage"],
+            ["`invoices_overview`", "`nfse:read`", "`period?` (`7d` default or `30d`)", "`{ period, from, to, counts { authorized, rejected, processing }, dailyActivity, recentInvoices }`"],
+            ["`credits_balance`", "`nfse:read`", "`include_history?`, `limit?` (1 to 100), `cursor?`", "`{ balance, plan_remaining, avulso_balance, hard_limit }` plus `history` and `next_cursor` when requested"],
+            ["`nfse_get`", "`nfse:read`", "`invoice_id` (internal UUID)", "`{ invoice, events }` with the status timeline"],
+            ["`company_fiscal_status`", "`nfse:read`", "`company_id` or `tax_id`", "`{ company, fiscal_profile, service_tax_profiles, certificates (status and expiry only), dps_sequence }`"],
+            ["`cnpj_lookup`", "`nfse:read`", "`cnpj`", "`{ profile }` from the public registry: names, address, `municipalityCode`, `simples`, `mei`, `active`"],
             [
               "`nfse_cancel`",
               "`nfse:write`",

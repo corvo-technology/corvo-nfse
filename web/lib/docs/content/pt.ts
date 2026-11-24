@@ -3203,6 +3203,11 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "Sem parâmetros",
               "`QuotaStatus` com `canEmit`, franquia e uso"
             ],
+            ["`invoices_overview`", "`nfse:read`", "`period?` (`7d` padrão ou `30d`)", "`{ period, from, to, counts { authorized, rejected, processing }, dailyActivity, recentInvoices }`"],
+            ["`credits_balance`", "`nfse:read`", "`include_history?`, `limit?` (1 a 100), `cursor?`", "`{ balance, plan_remaining, avulso_balance, hard_limit }` e, se pedido, `history` e `next_cursor`"],
+            ["`nfse_get`", "`nfse:read`", "`invoice_id` (UUID interno)", "`{ invoice, events }` com a linha do tempo de status"],
+            ["`company_fiscal_status`", "`nfse:read`", "`company_id` ou `tax_id`", "`{ company, fiscal_profile, service_tax_profiles, certificates (só status e validade), dps_sequence }`"],
+            ["`cnpj_lookup`", "`nfse:read`", "`cnpj`", "`{ profile }` do cadastro público: nomes, endereço, `municipalityCode`, `simples`, `mei`, `active`"],
             [
               "`nfse_cancel`",
               "`nfse:write`",
