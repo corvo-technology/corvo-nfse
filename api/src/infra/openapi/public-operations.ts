@@ -244,6 +244,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
   'POST /invoices/{id}/email': {
     id: 'invoices_sendEmail',
     tag: 'Invoices',
+    bodyOptional: true,
     idempotent: true,
     description:
       'Queues the e-mail with the PDF and XML. Send `email` in the body to use another destination than the customer address (the invoice must be authorized with its documents ready).',

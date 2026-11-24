@@ -10,7 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { IsInt, Max, Min } from 'class-validator';
 import {
   ExecutionEnvironmentGuard,
@@ -26,7 +26,11 @@ import {
 } from '../domain/dps-sequence';
 
 export class SetDpsSequenceDto {
-  @ApiPropertyOptional({
+  @ApiProperty({
+    type: 'integer',
+    format: 'int64',
+    minimum: 0,
+    maximum: 999_999_999_999_999,
     example: 120,
     description:
       'The number of the last DPS the company already issued in this series (see the DPS number in the last note, PDF or XML). The next note uses the following number.',

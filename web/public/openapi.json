@@ -3859,6 +3859,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmitImport"
+              }
+            }
+          },
+          "required": false
+        },
         "responses": {
           "202": {
             "content": {
@@ -3891,6 +3901,9 @@
                 "$ref": "#/components/headers/X-Request-Id"
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
           },
           "401": {
             "$ref": "#/components/responses/Error401"
@@ -6121,7 +6134,7 @@
               }
             }
           },
-          "required": true
+          "required": false
         },
         "responses": {
           "202": {
@@ -9758,9 +9771,10 @@
         "properties": {
           "amountCents": {
             "description": "Default amount in cents.",
+            "format": "int64",
             "minimum": 1,
             "nullable": true,
-            "type": "number"
+            "type": "integer"
           },
           "description": {
             "maxLength": 2000,
@@ -10068,7 +10082,7 @@
             "default": 50,
             "maximum": 1000,
             "minimum": 1,
-            "type": "number"
+            "type": "integer"
           },
           "nextCursor": {
             "nullable": true,
@@ -10187,6 +10201,15 @@
       "EmailOptions": {
         "properties": {
           "send": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "EmitImport": {
+        "properties": {
+          "sendEmail": {
+            "description": "Email each issued invoice to the customer. Only rows that have a customer email are sent.",
             "type": "boolean"
           }
         },
@@ -12992,9 +13015,15 @@
           "lastNumber": {
             "description": "The number of the last DPS the company already issued in this series (see the DPS number in the last note, PDF or XML). The next note uses the following number.",
             "example": 120,
-            "type": "number"
+            "format": "int64",
+            "maximum": 999999999999999,
+            "minimum": 0,
+            "type": "integer"
           }
         },
+        "required": [
+          "lastNumber"
+        ],
         "type": "object"
       },
       "SubstituteInvoice": {

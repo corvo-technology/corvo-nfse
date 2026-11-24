@@ -164,7 +164,7 @@ export class ImportController {
   async emit(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Req() req: RequestWithAuthContext,
-    @Body() body: EmitImportDto | undefined,
+    @Body() body?: EmitImportDto,
   ) {
     const auth = req.authContext!;
     return data(
