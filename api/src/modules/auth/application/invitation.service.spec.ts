@@ -195,6 +195,7 @@ describe('InvitationService', () => {
       const result = await f.service.accept(USER, 'good-token');
       expect(f.invitations.claim).toHaveBeenCalledWith(
         'inv-1',
+        TENANT,
         USER,
         expect.any(Date),
       );

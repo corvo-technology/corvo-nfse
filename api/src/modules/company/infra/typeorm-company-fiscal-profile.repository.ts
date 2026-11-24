@@ -111,14 +111,13 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
           code: 'FISCAL_PROFILE_NOT_FOUND',
           message: 'Fiscal profile not found',
         });
-      return toDomain(
-        await profiles.save({
-          ...row,
-          reviewStatus: 'approved',
-          reviewedBy,
-          reviewedAt: at,
-        }),
-      );
+      const approval = {
+        reviewStatus: 'approved',
+        reviewedBy,
+        reviewedAt: at,
+      };
+      await profiles.update({ id, tenantId }, approval);
+      return toDomain(await profiles.findOneByOrFail({ id, tenantId }));
     });
   }
 
@@ -143,7 +142,7 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
 
         const profiles = manager.getRepository(CompanyFiscalProfileOrmEntity);
         const history = await profiles.find({
-          where: { companyId },
+          where: { companyId, tenantId },
           order: { validFrom: 'ASC' },
         });
         const earliest = history[0];
@@ -168,21 +167,25 @@ export class TypeOrmCompanyFiscalProfileRepository implements IFiscalProfileRepo
                 code: 'PROFILE_VALIDITY_CONFLICT',
                 message: 'profile_validity_conflict',
               });
+            await profiles.update({ id: open.id, tenantId }, fieldsOf(input));
             return toDomain(
-              await profiles.save({ ...open, ...fieldsOf(input) }),
+              await profiles.findOneByOrFail({ id: open.id, tenantId }),
             );
           }
-          await profiles.update(open.id, { validUntil: input.validFrom });
+          await profiles.update(
+            { id: open.id, tenantId },
+            { validUntil: input.validFrom },
+          );
         }
-        return toDomain(
-          await profiles.save({
-            ...fieldsOf(input),
-            tenantId,
-            companyId,
-            validFrom: input.validFrom,
-            validUntil: retroactive ? earliest.validFrom : null,
-          }),
-        );
+        const created = profiles.create({
+          ...fieldsOf(input),
+          tenantId,
+          companyId,
+          validFrom: input.validFrom,
+          validUntil: retroactive ? earliest.validFrom : null,
+        });
+        await profiles.insert(created);
+        return toDomain(created);
       }),
     );
   }
