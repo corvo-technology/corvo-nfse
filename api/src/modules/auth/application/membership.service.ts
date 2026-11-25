@@ -8,6 +8,7 @@ import { LastTenantAdminError } from '../domain/errors';
 import { ITenantMembershipRepository } from '../domain/tenant-membership.repository';
 import { permissionsForTenantRole } from '../domain/permission';
 import { ApplicationEventBus } from '@/shared/events/application-event-bus';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
 import { authorizationContextChanged } from './authorization.events';
 
 @Injectable()
@@ -20,6 +21,7 @@ export class MembershipService {
     @Inject(ITenantMembershipRepository)
     private readonly membershipRepository: ITenantMembershipRepository,
     private readonly events: ApplicationEventBus,
+    private readonly audit: AccountAuditRecorder,
   ) {}
 
   async create(input: {
@@ -87,6 +89,14 @@ export class MembershipService {
     await this.events.publishAndWait(
       authorizationContextChanged(updated.authUserId),
     );
+    // A reactivation (invitation accepted) is audited as such, not as a role change.
+    if (current.isActive && updated.isActive && current.role !== updated.role)
+      await this.audit.record({
+        tenantId,
+        action: 'member.role_changed',
+        target: { type: 'member', id: updated.authUserId },
+        metadata: { from: current.role, to: updated.role },
+      });
     return updated;
   }
 }

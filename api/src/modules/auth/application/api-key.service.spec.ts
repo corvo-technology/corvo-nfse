@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
+import * as sentry from '@/infra/observability/sentry-reporter';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
+import { failingAccountAudit } from '@/modules/account-audit/testing/failing-account-audit';
 import { ApiKeyService } from './api-key.service';
 import { IApiKeyRepository } from '../domain/api-key.repository';
 import { ApiKey } from '../domain/api-key';
@@ -22,10 +25,97 @@ describe(ApiKeyService.name, () => {
     touchLastUsed: jest.fn(),
   } as jest.Mocked<IApiKeyRepository>;
   const eventBus = { publishBestEffort: jest.fn() };
-  const service = new ApiKeyService(repository, eventBus as never);
+  const audit = new FakeAccountAudit();
+  const service = new ApiKeyService(repository, eventBus as never, audit);
 
   beforeEach(() => {
     jest.resetAllMocks();
+    audit.events.length = 0;
+  });
+
+  describe('audit', () => {
+    const admin = {
+      activeTenantId: 'tenant-id',
+      role: 'admin',
+      permissions: [],
+    } as any;
+
+    it('records api_key.created with the name and prefix, never the key or its hash', async () => {
+      (argon2.hash as jest.Mock).mockResolvedValue('argon2-secret-hash');
+      repository.save.mockImplementation(async (key) => key);
+
+      const { apiKey, plaintext } = await service.create(admin, {
+        name: 'Production',
+        environment: 'live',
+        scope: 'full_access',
+      });
+
+      expect(audit.events).toHaveLength(1);
+      expect(audit.events[0]).toMatchObject({
+        tenantId: 'tenant-id',
+        environment: 'live',
+        action: 'api_key.created',
+        target: { type: 'api_key', id: apiKey.id, label: 'Production' },
+        metadata: { key_prefix: apiKey.keyPrefix, scope: 'full_access' },
+      });
+      const dump = JSON.stringify(audit.events);
+      expect(dump).not.toContain(plaintext);
+      expect(dump).not.toContain('argon2-secret-hash');
+      expect(dump).not.toContain('keyHash');
+    });
+
+    it('records api_key.revoked on revoke and on delete', async () => {
+      const key = {
+        id: 'key-1',
+        tenantId: 'tenant-id',
+        name: 'CI',
+        environment: 'test',
+        keyPrefix: 'corvo_test_abcdef012345',
+        keyHash: 'argon2-secret-hash',
+        scope: 'invoices_issue',
+        createdAt: new Date(),
+      };
+      repository.findByIdAndTenantId.mockResolvedValue(key as ApiKey);
+      repository.remove.mockResolvedValue(undefined);
+
+      await service.revoke(admin, 'key-1');
+      await service.delete('tenant-id', 'key-1');
+
+      expect(audit.events.map((e) => e.action)).toEqual([
+        'api_key.revoked',
+        'api_key.revoked',
+      ]);
+      expect(audit.events[0]).toMatchObject({
+        environment: 'test',
+        target: { type: 'api_key', id: 'key-1', label: 'CI' },
+        metadata: { key_prefix: 'corvo_test_abcdef012345' },
+      });
+      expect(JSON.stringify(audit.events)).not.toContain('argon2-secret-hash');
+    });
+
+    it('records nothing when the key does not exist', async () => {
+      repository.findByIdAndTenantId.mockResolvedValue(null);
+      await expect(service.revoke(admin, 'nope')).rejects.toThrow();
+      expect(audit.events).toHaveLength(0);
+    });
+
+    it('keeps the action when the recorder fails', async () => {
+      jest.spyOn(sentry, 'captureRuntimeException').mockReturnValue(undefined);
+      (argon2.hash as jest.Mock).mockResolvedValue('hash');
+      repository.save.mockImplementation(async (key) => key);
+      const failing = new ApiKeyService(
+        repository,
+        eventBus as never,
+        failingAccountAudit(),
+      );
+      await expect(
+        failing.create(admin, {
+          name: 'k',
+          environment: 'test',
+          scope: 'invoices_issue',
+        }),
+      ).resolves.toMatchObject({ plaintext: expect.any(String) });
+    });
   });
 
   describe('scope vs. creator permissions', () => {

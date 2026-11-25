@@ -4,6 +4,9 @@ import {
   GoneException,
   NotFoundException,
 } from '@nestjs/common';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
+import * as sentry from '@/infra/observability/sentry-reporter';
+import { failingAccountAudit } from '@/modules/account-audit/testing/failing-account-audit';
 import { hashInvitationToken, InvitationService } from './invitation.service';
 import type { TenantInvitation } from '../domain/tenant-invitation';
 
@@ -83,15 +86,92 @@ function build(
   const unitOfWork = {
     execute: jest.fn((work: () => Promise<unknown>) => work()),
   };
+  const audit = new FakeAccountAudit();
   const service = new InvitationService(
     invitations as never,
     authUsers as never,
     memberships as never,
     events as never,
     unitOfWork as never,
+    audit,
   );
-  return { service, invitations, authUsers, memberships, events };
+  return { service, invitations, authUsers, memberships, events, audit };
 }
+
+describe('InvitationService audit', () => {
+  it('records member.invited with the role only, never the e-mail or the token', async () => {
+    const f = build();
+    await f.service.invite(TENANT, INVITER, {
+      email: 'maria@x.com',
+      name: 'Maria',
+      role: 'developer',
+    });
+    const notice = (
+      (f.events.publishBestEffort.mock.calls as unknown[][])[0][0] as {
+        notice: { token: string };
+      }
+    ).notice;
+    expect(f.audit.events).toHaveLength(1);
+    expect(f.audit.events[0]).toMatchObject({
+      tenantId: TENANT,
+      action: 'member.invited',
+      target: { type: 'invitation' },
+      metadata: { role: 'developer' },
+    });
+    const dump = JSON.stringify(f.audit.events);
+    expect(dump).not.toContain('maria@x.com');
+    expect(dump).not.toContain(notice.token);
+  });
+
+  it('records member.invited again when the invitation is resent', async () => {
+    const f = build({ invitation: invitation() });
+    await f.service.resend(TENANT, 'inv-1');
+    expect(f.audit.events.map((e) => e.action)).toEqual(['member.invited']);
+  });
+
+  it('records invitation.accepted as the person who accepted', async () => {
+    const f = build({ invitation: invitation() });
+    await f.service.accept(USER, 'good-token');
+    expect(f.audit.events).toHaveLength(1);
+    expect(f.audit.events[0]).toMatchObject({
+      tenantId: TENANT,
+      action: 'invitation.accepted',
+      actor: { type: 'user', id: USER },
+      target: { type: 'member', id: USER },
+      metadata: { role: 'developer' },
+    });
+    expect(JSON.stringify(f.audit.events)).not.toContain('maria@x.com');
+  });
+
+  it('records nothing when the person was already a member', async () => {
+    const f = build({
+      invitation: invitation(),
+      members: [{ authUserId: USER, isActive: true }],
+    });
+    await f.service.accept(USER, 'good-token');
+    expect(f.audit.events).toHaveLength(0);
+  });
+
+  it('keeps the action when the recorder fails', async () => {
+    jest.spyOn(sentry, 'captureRuntimeException').mockReturnValue(undefined);
+    const f = build();
+    const failing = new InvitationService(
+      f.invitations as never,
+      f.authUsers as never,
+      f.memberships as never,
+      f.events as never,
+      { execute: (work: () => Promise<unknown>) => work() } as never,
+      failingAccountAudit(),
+    );
+    await expect(
+      failing.invite(TENANT, INVITER, {
+        email: 'maria@x.com',
+        name: 'Maria',
+        role: 'developer',
+      }),
+    ).resolves.toMatchObject({ role: 'developer' });
+  });
+});
 
 describe('InvitationService', () => {
   describe('invite', () => {

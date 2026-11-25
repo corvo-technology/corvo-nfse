@@ -1,9 +1,13 @@
+import * as sentry from '@/infra/observability/sentry-reporter';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
+import { failingAccountAudit } from '@/modules/account-audit/testing/failing-account-audit';
 import { LastTenantAdminError } from '../domain/errors';
 import { ITenantMembershipRepository } from '../domain/tenant-membership.repository';
 import { makeMembership } from './auth-test-fixtures';
 import { MembershipService } from './membership.service';
 
-function setup() {
+function setup(audit: AccountAuditRecorder = new FakeAccountAudit()) {
   const repository: jest.Mocked<ITenantMembershipRepository> = {
     findByIdAndTenantId: jest.fn(),
     findByAuthUserAndTenant: jest.fn(),
@@ -21,7 +25,8 @@ function setup() {
   return {
     repository,
     events,
-    service: new MembershipService(repository, events as never),
+    audit: audit as FakeAccountAudit,
+    service: new MembershipService(repository, events as never, audit),
   };
 }
 
@@ -52,5 +57,61 @@ describe(MembershipService.name, () => {
     await expect(
       service.update({ ...admin, isActive: false }, admin.tenantId),
     ).rejects.toThrow(LastTenantAdminError);
+  });
+
+  describe('audit', () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    it('records member.role_changed with the old and the new role', async () => {
+      const { service, repository, audit } = setup();
+      const member = makeMembership({ role: 'developer', isActive: true });
+      repository.findByIdAndTenantId.mockResolvedValue(member);
+      repository.update.mockImplementation(async (m) => m);
+
+      await service.update({ ...member, role: 'admin' }, member.tenantId);
+
+      expect(audit.events).toHaveLength(1);
+      expect(audit.events[0]).toMatchObject({
+        tenantId: member.tenantId,
+        action: 'member.role_changed',
+        target: { type: 'member', id: member.authUserId },
+        metadata: { from: 'developer', to: 'admin' },
+      });
+    });
+
+    it('records nothing when the role did not change', async () => {
+      const { service, repository, audit } = setup();
+      const member = makeMembership({ role: 'developer', isActive: true });
+      repository.findByIdAndTenantId.mockResolvedValue(member);
+      repository.update.mockImplementation(async (m) => m);
+      await service.update(
+        { ...member, updatedAt: new Date() },
+        member.tenantId,
+      );
+      expect(audit.events).toHaveLength(0);
+    });
+
+    it('does not call a reactivation a role change', async () => {
+      const { service, repository, audit } = setup();
+      const member = makeMembership({ role: 'developer', isActive: false });
+      repository.findByIdAndTenantId.mockResolvedValue(member);
+      repository.update.mockImplementation(async (m) => m);
+      await service.update(
+        { ...member, role: 'admin', isActive: true },
+        member.tenantId,
+      );
+      expect(audit.events).toHaveLength(0);
+    });
+
+    it('keeps the action when the recorder fails', async () => {
+      jest.spyOn(sentry, 'captureRuntimeException').mockReturnValue(undefined);
+      const { service, repository } = setup(failingAccountAudit());
+      const member = makeMembership({ role: 'developer', isActive: true });
+      repository.findByIdAndTenantId.mockResolvedValue(member);
+      repository.update.mockImplementation(async (m) => m);
+      await expect(
+        service.update({ ...member, role: 'admin' }, member.tenantId),
+      ).resolves.toMatchObject({ role: 'admin' });
+    });
   });
 });

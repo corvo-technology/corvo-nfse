@@ -1,3 +1,4 @@
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
@@ -117,9 +118,14 @@ describePostgres('invitation links with strict RLS', () => {
     service = new InvitationService(
       new TypeOrmTenantInvitationRepository(helper),
       new AuthUserService(new TypeOrmAuthUserRepository(helper)),
-      new MembershipService(new TypeOrmTenantMembershipRepository(helper), bus),
+      new MembershipService(
+        new TypeOrmTenantMembershipRepository(helper),
+        bus,
+        new FakeAccountAudit(),
+      ),
       bus,
       new TypeOrmUnitOfWork(runtime, context),
+      new FakeAccountAudit(),
     );
   }, 180000);
 

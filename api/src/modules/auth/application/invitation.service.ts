@@ -9,6 +9,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
 import { runAsSystem } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { UnitOfWorkPort } from '@/infra/transactions/unit-of-work.port';
 import { ApplicationEventBus } from '@/shared/events/application-event-bus';
@@ -84,6 +85,7 @@ export class InvitationService {
     private readonly memberships: MembershipService,
     private readonly events: ApplicationEventBus,
     private readonly unitOfWork: UnitOfWorkPort,
+    private readonly audit: AccountAuditRecorder,
   ) {}
 
   async invite(
@@ -139,6 +141,7 @@ export class InvitationService {
       tenantId,
     );
     await this.sendInvitation(saved, token);
+    await this.recordInvited(saved);
     return summary(saved);
   }
 
@@ -162,6 +165,7 @@ export class InvitationService {
       tenantId,
     );
     await this.sendInvitation(saved, token);
+    await this.recordInvited(saved);
     return summary(saved);
   }
 
@@ -241,6 +245,18 @@ export class InvitationService {
     // Again after commit, so no cached copy of the old access list survives.
     await this.events.publishAndWait(authorizationContextChanged(authUserId));
     if (result.joined)
+      await this.audit.record({
+        tenantId: result.invitation.tenantId,
+        action: 'invitation.accepted',
+        actor: { type: 'user', id: authUserId },
+        target: {
+          type: 'member',
+          id: authUserId,
+          label: user?.name || result.invitation.name,
+        },
+        metadata: { role: result.invitation.role },
+      });
+    if (result.joined)
       this.events.publishBestEffort(
         accountNotice(result.invitation.tenantId, {
           kind: 'member-joined',
@@ -313,6 +329,16 @@ export class InvitationService {
       { ...invitation, status, updatedAt: new Date() },
       invitation.tenantId,
     );
+  }
+
+  /** Never the e-mail or the token: only that someone was invited, and with which role. */
+  private recordInvited(invitation: TenantInvitation): Promise<void> {
+    return this.audit.record({
+      tenantId: invitation.tenantId,
+      action: 'member.invited',
+      target: { type: 'invitation', id: invitation.id },
+      metadata: { role: invitation.role },
+    });
   }
 
   private newToken(): string {

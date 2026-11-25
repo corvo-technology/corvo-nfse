@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { WooviPaymentsService } from './woovi-payments.service';
 import { MemoryPaymentIntentStore } from './memory-payment-intent-store.testing';
 import { PaymentFulfillmentService } from './payment-fulfillment.service';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 import { PricingService } from '@/modules/plans/application/pricing.service';
 
 function setup() {
@@ -38,6 +39,7 @@ function setup() {
   const billing = {
     locked: jest.fn(async (_t: string, work: () => Promise<unknown>) => work()),
     plan: jest.fn(async (slug: string) => ({ id: `id-${slug}`, slug })),
+    current: jest.fn(async () => ({ plan: { id: 'id-free', slug: 'free' } })),
     setPlan: jest.fn(async () => undefined),
     saveBilling: jest.fn(async (_t: string, patch: Record<string, unknown>) => {
       activated.push(patch);
@@ -50,6 +52,7 @@ function setup() {
       credits as never,
       billing as never,
       eventBus as never,
+      new FakeAccountAudit(),
     ),
     new PricingService(),
     eventBus as never,
