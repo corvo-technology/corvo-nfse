@@ -589,6 +589,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       id: uuid(),
       tenantId: uuid(),
       webhookConfigId: uuid(),
+      invoiceId: uuid(),
       eventType: str(),
       environment: str({ enum: ['test', 'live'] }),
       url: str({ format: 'uri' }),
@@ -606,6 +607,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       createdAt: dateTime(),
     },
     [
+      'invoiceId',
       'payload',
       'statusCode',
       'responseBody',

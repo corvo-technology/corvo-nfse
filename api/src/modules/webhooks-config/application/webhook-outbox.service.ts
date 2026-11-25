@@ -1,5 +1,7 @@
 import { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ApplicationEventBus } from '@/shared/events/application-event-bus';
+import { accountNotice } from '@/shared/events/account-notice.events';
 import { IWebhookDeliveryRepository } from '../domain/webhook-delivery.repository';
 import {
   WebhookDeliveryHttpError,
@@ -16,6 +18,21 @@ import {
 const RETRY_DELAYS = [0, 60_000, 160_000, 900_000, 1_800_000]; // 0s, 60s, 160s, 15min, 30min
 const MAX_RETRIES = 5;
 const CLAIM_LEASE_MS = 2 * 60_000; // crashed sends are retried after this
+
+const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
+
+/** The invoice an event is about, when its body carries one. */
+export function invoiceIdOf(
+  event: WebhookEvent | undefined,
+): string | undefined {
+  const id = event?.data?.invoiceId;
+  return typeof id === 'string' && UUID.test(id) ? id : undefined;
+}
+
+/** What identifies a delivery in the logs: never the url, headers or body. */
+function logTag(delivery: Pick<WebhookDelivery, 'eventType' | 'invoiceId'>) {
+  return `eventType=${delivery.eventType} invoiceId=${delivery.invoiceId ?? '-'}`;
+}
 
 export type EnqueueWebhookInput = {
   tenantId: string;
@@ -37,6 +54,7 @@ export class WebhookOutboxService {
     private readonly adapter: WebhookDispatcherAdapter,
     @Inject(WEBHOOK_SECRETS)
     private readonly webhookSecrets: WebhookSecrets,
+    private readonly eventBus: ApplicationEventBus,
   ) {}
 
   async enqueue(delivery: EnqueueWebhookInput): Promise<WebhookDelivery> {
@@ -44,6 +62,7 @@ export class WebhookOutboxService {
       id: crypto.randomUUID(),
       tenantId: delivery.tenantId,
       webhookConfigId: delivery.webhookConfigId,
+      invoiceId: invoiceIdOf(delivery.payload),
       eventType: delivery.eventType,
       environment: delivery.environment,
       url: delivery.url,
@@ -54,7 +73,7 @@ export class WebhookOutboxService {
       createdAt: new Date(),
     };
     const saved = await this.deliveryRepo.save(record, delivery.tenantId);
-    this.logger.log(`Enqueued webhook delivery ${record.id}`);
+    this.logger.log(`Enqueued webhook delivery ${record.id} ${logTag(record)}`);
     return saved;
   }
 
@@ -135,7 +154,9 @@ export class WebhookOutboxService {
         durationMs: Date.now() - startTime,
         retryCount: delivery.retryCount,
       });
-      this.logger.log(`Webhook ${delivery.id} delivered successfully`);
+      this.logger.log(
+        `Webhook ${delivery.id} delivered successfully ${logTag(delivery)}`,
+      );
     } catch (error: unknown) {
       const statusCode =
         error instanceof WebhookDeliveryHttpError
@@ -168,7 +189,7 @@ export class WebhookOutboxService {
           durationMs: Date.now() - startTime,
         });
         this.logger.warn(
-          `Webhook ${delivery.id} failed, retry ${delivery.retryCount + 1} scheduled for ${nextRetryAt.toISOString()}`,
+          `Webhook ${delivery.id} failed, retry ${delivery.retryCount + 1} scheduled for ${nextRetryAt.toISOString()} ${logTag(delivery)}`,
         );
       } else {
         // Max retries exhausted
@@ -180,10 +201,27 @@ export class WebhookOutboxService {
           durationMs: Date.now() - startTime,
         });
         this.logger.error(
-          `Webhook ${delivery.id} failed after ${MAX_RETRIES} retries`,
+          `Webhook ${delivery.id} failed after ${MAX_RETRIES} retries ${logTag(delivery)}`,
         );
+        this.warnOwner(delivery);
       }
     }
+  }
+
+  /** Live deliveries only: the owner hears about a broken endpoint, at most once an hour per webhook. */
+  private warnOwner(delivery: WebhookDelivery): void {
+    if (
+      delivery.environment !== 'live' ||
+      delivery.eventType === 'webhook.test'
+    )
+      return;
+    this.eventBus.publishBestEffort(
+      accountNotice(delivery.tenantId, {
+        kind: 'webhook-delivery-failed',
+        webhookConfigId: delivery.webhookConfigId,
+        eventType: delivery.eventType,
+      }),
+    );
   }
 
   async manualRetry(
@@ -207,6 +245,8 @@ export class WebhookOutboxService {
       nextRetryAt: new Date(),
       lastError: undefined,
     });
-    this.logger.log(`Manual retry scheduled for delivery ${deliveryId}`);
+    this.logger.log(
+      `Manual retry scheduled for delivery ${deliveryId} ${logTag(delivery)}`,
+    );
   }
 }

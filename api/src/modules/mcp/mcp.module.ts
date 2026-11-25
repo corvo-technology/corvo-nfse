@@ -17,6 +17,7 @@ import { BillingUsageModule } from '@/modules/billing/billing-usage.module';
 import { BillingCoreModule } from '@/modules/billing/billing-core.module';
 import { CreditsModule } from '@/modules/credits/credits.module';
 import { PlansModule } from '@/modules/plans/plans.module';
+import { WebhooksConfigModule } from '@/modules/webhooks-config/webhooks-config.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { McpConnectionOrmEntity } from './infra/mcp-connection.orm-entity';
 import { TypeOrmMcpConnectionRepository } from './infra/mcp-connection.repository';
@@ -42,6 +43,7 @@ import { McpService } from './mcp.service';
       AuthSessionOrmEntity,
     ]),
     InvoiceModule,
+    WebhooksConfigModule,
     InvoiceScheduleModule,
     ImportModule,
     PlansModule,

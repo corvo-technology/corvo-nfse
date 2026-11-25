@@ -5635,8 +5635,10 @@ paths:
         - webhooks.manage
   /webhooks/deliveries:
     get:
-      description: |-
-        Recent deliveries (last 24 hours by default) with the endpoint answer, newest first.
+      description: >-
+        Recent deliveries (last 24 hours by default, up to 30 days with `hours`) with the endpoint
+        answer, newest first. Filter by `invoice_id`, `event_type` or `status`.
+
 
         Permission: `webhooks.view`.
       operationId: webhookDeliveries_list
@@ -5655,12 +5657,13 @@ paths:
           required: false
           schema:
             type: string
-        - description: Look back this many hours (default 24).
+        - description: Look back this many hours (default 24, at most 720 = 30 days).
           in: query
           name: hours
           required: false
           schema:
             default: 24
+            maximum: 720
             minimum: 0.01
             type: number
         - description: 'Only deliveries of this environment. Ignored with an API key: it always sees its own.'
@@ -5671,6 +5674,32 @@ paths:
             enum:
               - live
               - test
+            type: string
+        - description: Only deliveries about this invoice.
+          in: query
+          name: invoice_id
+          required: false
+          schema:
+            format: uuid
+            type: string
+        - description: Only this event, for example `nfse.invoice.authorized`.
+          in: query
+          name: event_type
+          required: false
+          schema:
+            maxLength: 100
+            type: string
+        - description: Only deliveries in this status.
+          in: query
+          name: status
+          required: false
+          schema:
+            enum:
+              - pending
+              - sent
+              - delayed
+              - failed
+              - manual_retry
             type: string
       responses:
         '200':
@@ -5776,12 +5805,13 @@ paths:
         Permission: `webhooks.view`.
       operationId: webhookDeliveries_stats
       parameters:
-        - description: Look back this many hours (default 24).
+        - description: Look back this many hours (default 24, at most 720 = 30 days).
           in: query
           name: hours
           required: false
           schema:
             default: 24
+            maximum: 720
             minimum: 0.01
             type: number
         - description: 'Only deliveries of this environment. Ignored with an API key: it always sees its own.'
@@ -9817,6 +9847,9 @@ components:
         eventType:
           type: string
         id:
+          format: uuid
+          type: string
+        invoiceId:
           format: uuid
           type: string
         lastError:

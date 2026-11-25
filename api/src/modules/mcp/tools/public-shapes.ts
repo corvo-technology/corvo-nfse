@@ -1,4 +1,5 @@
 import type { CreditTransaction } from '@/modules/credits/domain/credit-transaction';
+import type { WebhookDelivery } from '@/modules/webhooks-config/domain/webhook-delivery';
 import type { Invoice } from '@/modules/invoice/domain/invoice';
 
 /** Keeps only the last 4 digits of a CPF/CNPJ. */
@@ -91,5 +92,31 @@ export function toPublicCreditTransaction(tx: CreditTransaction) {
     description: t.description ?? null,
     source: t.source ?? null,
     created_at: t.createdAt,
+  };
+}
+
+const SNIPPET = 200;
+const snippet = (text: string | undefined): string | null =>
+  text ? text.slice(0, SNIPPET) : null;
+
+/**
+ * Compact view of a webhook delivery. An allowlist: no url (it may carry a token),
+ * no event body, no signature or secret, and only a short piece of the endpoint's answer.
+ */
+export function toPublicWebhookDelivery(delivery: WebhookDelivery) {
+  return {
+    id: delivery.id,
+    webhook_id: delivery.webhookConfigId,
+    event_type: delivery.eventType,
+    invoice_id: delivery.invoiceId ?? null,
+    environment: delivery.environment,
+    status: delivery.status,
+    http_status: delivery.statusCode ?? null,
+    attempts: delivery.retryCount,
+    next_attempt_at: delivery.nextRetryAt ?? null,
+    duration_ms: delivery.durationMs ?? null,
+    error: snippet(delivery.lastError ?? delivery.errorMessage),
+    response_snippet: snippet(delivery.responseBody),
+    created_at: delivery.createdAt,
   };
 }

@@ -48,6 +48,14 @@ import {
   createImportListHandler,
   createImportRowsHandler,
 } from './tools/import.tools';
+import {
+  WEBHOOK_DELIVERIES_LIST_TOOL,
+  WEBHOOK_DELIVERY_RETRY_TOOL,
+  createWebhookDeliveriesListHandler,
+  createWebhookDeliveryRetryHandler,
+} from './tools/webhook-delivery.tools';
+import { WebhookDeliveryService } from '@/modules/webhooks-config/application/webhook-delivery.service';
+import { WebhookOutboxService } from '@/modules/webhooks-config/application/webhook-outbox.service';
 import { McpServer, mcpInstructions } from './mcp.server';
 import {
   missingMemberPermissionMessage,
@@ -250,6 +258,8 @@ export class McpService {
     private readonly billingService: BillingService,
     private readonly woovi: WooviPaymentsService,
     private readonly invoiceReview: InvoiceReviewService,
+    private readonly webhookDeliveries: WebhookDeliveryService,
+    private readonly webhookOutbox: WebhookOutboxService,
   ) {
     this.server = new McpServer({
       instructions: mcpInstructions(IS_SELF_HOSTED),
@@ -330,6 +340,14 @@ export class McpService {
         tool,
         this.wrapWithScopeCheck(handler, 'nfse:write'),
       );
+    this.server.registerTool(
+      WEBHOOK_DELIVERY_RETRY_TOOL,
+      this.wrapWithScopeCheck(
+        createWebhookDeliveryRetryHandler(this.webhookOutbox),
+        'nfse:write',
+        'webhooks.manage',
+      ),
+    );
     // end of write tools block
     // nfse:write tools
     this.server.registerTool(
@@ -429,6 +447,14 @@ export class McpService {
         this.wrapWithScopeCheck(handler, 'nfse:read'),
       );
     // nfse:read tools
+    this.server.registerTool(
+      WEBHOOK_DELIVERIES_LIST_TOOL,
+      this.wrapWithScopeCheck(
+        createWebhookDeliveriesListHandler(this.webhookDeliveries),
+        'nfse:read',
+        'webhooks.view',
+      ),
+    );
     this.server.registerTool(
       COMPANY_LIST_TOOL,
       this.wrapWithScopeCheck(

@@ -8109,7 +8109,7 @@
     },
     "/webhooks/deliveries": {
       "get": {
-        "description": "Recent deliveries (last 24 hours by default) with the endpoint answer, newest first.\n\nPermission: `webhooks.view`.",
+        "description": "Recent deliveries (last 24 hours by default, up to 30 days with `hours`) with the endpoint answer, newest first. Filter by `invoice_id`, `event_type` or `status`.\n\nPermission: `webhooks.view`.",
         "operationId": "webhookDeliveries_list",
         "parameters": [
           {
@@ -8133,12 +8133,13 @@
             }
           },
           {
-            "description": "Look back this many hours (default 24).",
+            "description": "Look back this many hours (default 24, at most 720 = 30 days).",
             "in": "query",
             "name": "hours",
             "required": false,
             "schema": {
               "default": 24,
+              "maximum": 720,
               "minimum": 0.01,
               "type": "number"
             }
@@ -8152,6 +8153,42 @@
               "enum": [
                 "live",
                 "test"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only deliveries about this invoice.",
+            "in": "query",
+            "name": "invoice_id",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only this event, for example `nfse.invoice.authorized`.",
+            "in": "query",
+            "name": "event_type",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only deliveries in this status.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "pending",
+                "sent",
+                "delayed",
+                "failed",
+                "manual_retry"
               ],
               "type": "string"
             }
@@ -8312,12 +8349,13 @@
         "operationId": "webhookDeliveries_stats",
         "parameters": [
           {
-            "description": "Look back this many hours (default 24).",
+            "description": "Look back this many hours (default 24, at most 720 = 30 days).",
             "in": "query",
             "name": "hours",
             "required": false,
             "schema": {
               "default": 24,
+              "maximum": 720,
               "minimum": 0.01,
               "type": "number"
             }
@@ -13573,6 +13611,10 @@
             "type": "string"
           },
           "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "invoiceId": {
             "format": "uuid",
             "type": "string"
           },

@@ -49,6 +49,21 @@ describe('WebhookDeliveryController environment', () => {
     expect(deliveries.getStats).toHaveBeenCalledWith(tenantId, 24, 'live');
   });
 
+  it('passes the invoice, event and status filters to the list', async () => {
+    const { controller, deliveries } = setup();
+    const filters = {
+      invoice_id: '22222222-2222-4222-8222-222222222222',
+      event_type: 'nfse.invoice.authorized',
+      status: 'failed',
+      hours: 720,
+    };
+    await controller.findAll(keyOf(), filters);
+    expect(deliveries.listPage).toHaveBeenCalledWith(
+      tenantId,
+      expect.objectContaining(filters),
+    );
+  });
+
   it('keeps the dashboard filter for sessions', async () => {
     const { controller, deliveries } = setup();
     await controller.findAll(keyOf(), { environment: 'live' } as never);
