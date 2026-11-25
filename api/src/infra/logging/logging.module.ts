@@ -64,6 +64,11 @@ export const SENSITIVE_LOG_REDACTION_PATHS = [
     `req.query.${field}`,
     `req.query.*.${field}`,
   ]),
+  // MCP tool calls carry the A1 file and its password in JSON-RPC arguments.
+  ...['password', 'pfx_base64'].flatMap((field) => [
+    `req.body.params.arguments.${field}`,
+    `req.body.*.params.arguments.${field}`,
+  ]),
   'err.query',
   'err.parameters',
   'err.detail',

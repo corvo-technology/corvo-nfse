@@ -91,6 +91,10 @@ import {
   createCompanyCreateHandler,
 } from './tools/company-create.tool';
 import {
+  CERTIFICATE_UPLOAD_TOOL,
+  createCertificateUploadHandler,
+} from './tools/certificate-upload.tool';
+import {
   NFSE_CALCULATE_TOOL,
   createNfseCalculateHandler,
 } from './tools/nfse-calculate.tool';
@@ -321,6 +325,14 @@ export class McpService {
       this.wrapWithScopeCheck(
         createCompanyCreateHandler(this.companyService),
         'nfse:write',
+      ),
+    );
+    this.server.registerTool(
+      CERTIFICATE_UPLOAD_TOOL,
+      this.wrapWithScopeCheck(
+        createCertificateUploadHandler(this.companyService, this.certificates),
+        'nfse:certificates',
+        'nfse.certificates.manage',
       ),
     );
     this.server.registerTool(

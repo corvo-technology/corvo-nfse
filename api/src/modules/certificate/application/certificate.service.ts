@@ -13,6 +13,14 @@ import {
 } from '../domain/errors';
 import { MunicipalityAgreementService } from '@/modules/company/application/municipality-agreement.service';
 import { CertificateEncryptor } from '../infra/aes-encryptor';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
+
+function formatCnpj(taxId: string): string {
+  const digits = taxId.replace(/\D/g, '');
+  return digits.length === 14
+    ? digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+    : taxId;
+}
 
 @Injectable()
 export class CertificateService {
@@ -39,6 +47,7 @@ export class CertificateService {
     private readonly encryptor: CertificateEncryptor,
     private readonly parser: CertificateParserService,
     private readonly municipalityAgreements: MunicipalityAgreementService,
+    private readonly audit: AccountAuditRecorder,
   ) {}
 
   async upload(
@@ -106,6 +115,19 @@ export class CertificateService {
     );
     await this.certRepo.save(certificate, tenantId, environment);
 
+    // Audit after the write; never carries the file or the password.
+    await this.recordAudit({
+      tenantId,
+      environment,
+      action: existingActive ? 'certificate.replaced' : 'certificate.uploaded',
+      target: {
+        type: 'company',
+        id: companyId,
+        label: formatCnpj(company.taxId),
+      },
+      metadata: { valid_until: certificate.validUntil.toISOString() },
+    });
+
     // 8. Recompute company status
     const companyForStatus = await this.companyRepo.findByIdAndTenantId(
       companyId,
@@ -123,6 +145,17 @@ export class CertificateService {
       .catch(() => undefined);
 
     return certificate.toMetadata();
+  }
+
+  /** Audit is informative: a recorder failure must never fail the action. */
+  private async recordAudit(
+    input: Parameters<AccountAuditRecorder['record']>[0],
+  ): Promise<void> {
+    try {
+      await this.audit.record(input);
+    } catch {
+      // record() already logs; nothing to add (and nothing secret to leak).
+    }
   }
 
   async listByCompany(
@@ -181,6 +214,17 @@ export class CertificateService {
     // Recompute company status — cert no longer active
     company.recomputeStatus(false);
     await this.companyRepo.save(company, tenantId);
+
+    await this.recordAudit({
+      tenantId,
+      environment,
+      action: 'certificate.revoked',
+      target: {
+        type: 'company',
+        id: company.id,
+        label: formatCnpj(company.taxId),
+      },
+    });
   }
 
   async getActive(
