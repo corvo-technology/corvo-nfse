@@ -57,9 +57,41 @@ export class McpToolResult {
   constructor(readonly content: McpContent[]) {}
 }
 
+/**
+ * Text sent to the agent on `initialize`: the order of the tools for a new
+ * account. Self-hosted has no billing, so the purchase steps are left out.
+ */
+export function mcpInstructions(selfHosted: boolean): string {
+  const lines = [
+    'Corvo issues Brazilian NFS-e invoices. The person already signed in through OAuth. Follow this route:',
+    '1. cnpj_lookup: fetch the public registry data of the CNPJ.',
+    '2. company_create: create the issuing company with that data.',
+    '3. certificate_upload: send the A1 certificate. Take the password only from your own secret vault and never repeat it in the conversation.',
+    '4. company_fiscal_status: repeat until the company is ready to issue.',
+    '5. nfse_issue: issue the invoice.',
+    '6. credits_balance: check how many invoices are left.',
+  ];
+  if (!selfHosted) {
+    lines.push(
+      '7. credits_purchase: when credits run out, confirm the quantity and the total amount with the person, then show the QR Code and copy-and-paste code or the link. The person always completes the payment.',
+      '8. payment_status: repeat until the status is paid, then keep issuing.',
+    );
+  }
+  lines.push(
+    'If a tool says it lacks permission, ask the person to reconnect and tick that option when authorizing.',
+  );
+  return lines.join('\n');
+}
+
 type ToolHandler = (params: unknown, ctx: AuthContext) => Promise<unknown>;
 
 export class McpServer {
+  private readonly instructions?: string;
+
+  constructor(options: { instructions?: string } = {}) {
+    this.instructions = options.instructions;
+  }
+
   private readonly tools = new Map<
     string,
     { definition: ToolDefinition; handler: ToolHandler }
@@ -125,6 +157,7 @@ export class McpServer {
             ),
             capabilities: { tools: {} },
             serverInfo: { ...MCP_SERVER_INFO },
+            ...(this.instructions ? { instructions: this.instructions } : {}),
           },
         };
       case 'tools/list':

@@ -9,7 +9,7 @@ import { invalidInput } from './tool-input-errors';
 export const PAYMENT_STATUS_TOOL = {
   name: 'payment_status',
   description:
-    'Follow a credit purchase created with credits_purchase. Pass exactly one of payment_id (Pix or card) or session_id (card). Returns pending, paid (with the new credit balance), expired or cancelled. Poll every few seconds while the person pays; never assume it was paid.',
+    'Follow a credit purchase created with credits_purchase. Pass exactly one of payment_id (Pix or card) or session_id (card). Returns pending, paid (with the new credit balance), expired or cancelled. Poll every few seconds while the person pays; never assume it was paid. Once it is paid, go back to nfse_issue.',
   inputSchema: {
     type: 'object',
     properties: {

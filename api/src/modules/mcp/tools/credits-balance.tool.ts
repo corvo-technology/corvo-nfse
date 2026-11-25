@@ -16,7 +16,7 @@ import { invalidInput } from './tool-input-errors';
 export const CREDITS_BALANCE_TOOL = {
   name: 'credits_balance',
   description:
-    'Credit balance of the workspace (notes left in the plan plus avulso notes) and, optionally, the recent credit history. Use it to answer "quantas notas ainda posso emitir?" or "onde foram meus créditos?". Pass include_history=true to also get the latest credit transactions, paginated with limit and cursor.',
+    'Credit balance of the workspace (notes left in the plan plus avulso notes) and, optionally, the recent credit history. Use it to answer "quantas notas ainda posso emitir?" or "onde foram meus créditos?". Pass include_history=true to also get the latest credit transactions, paginated with limit and cursor. When the balance is too low, buy more with credits_purchase.',
   inputSchema: {
     type: 'object',
     properties: {

@@ -13,7 +13,7 @@ import { invalidInput } from './tool-input-errors';
 export const COMPANY_FISCAL_STATUS_TOOL = {
   name: 'company_fiscal_status',
   description:
-    'Read-only fiscal situation of one company: the current fiscal profile (tax regime, Simples Nacional, review status), the service tax profiles in effect today, the digital certificate status (active or expired and its expiry date; never the certificate file or password) and the DPS numbering (series and last number used). Use it to answer "meu certificado está válido?", "qual meu regime?" or "em que número de DPS estou?". Pass company_id or tax_id (CNPJ).',
+    'Read-only fiscal situation of one company: the current fiscal profile (tax regime, Simples Nacional, review status), the service tax profiles in effect today, the digital certificate status (active or expired and its expiry date; never the certificate file or password) and the DPS numbering (series and last number used). Use it to answer "meu certificado está válido?", "qual meu regime?" or "em que número de DPS estou?". Pass company_id or tax_id (CNPJ). When the company is ready to issue, the next step is nfse_issue; if the certificate is missing, call certificate_upload.',
   inputSchema: {
     type: 'object',
     properties: {
