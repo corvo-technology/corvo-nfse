@@ -15,11 +15,7 @@ function setup(view: unknown = null) {
       avulsoBalance: 50,
     }),
   };
-  const handler = createPaymentStatusHandler(
-    pix,
-    billing,
-    usage,
-  );
+  const handler = createPaymentStatusHandler(pix, billing, usage);
   return { handler, pix, billing, usage };
 }
 
