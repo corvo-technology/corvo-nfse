@@ -1,7 +1,8 @@
 "use client";
 import { MunicipalityAgreementNotice } from "@/components/companies/municipality-agreement-notice";
-import { useState, useRef } from "react";
-import { Check, Loader2, ShieldCheck } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
+import { Check, Loader2, Search, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { useAuth } from "@/lib/auth";
 import { cleanTaxId, isValidCnpj, maskCnpj, maskDigits, maskState, maskZip, onlyDigits } from "@/lib/masks";
 import { lookupCep } from "@/lib/viacep";
 import { mapIssues } from "@/lib/api-errors";
-import { cnpj as cnpjApi, isCompanyLimitError, type CnpjProfile } from "@/lib/api";
+import { ApiError, billing, cnpj as cnpjApi, companies as companiesApi, isCompanyLimitError } from "@/lib/api";
 import type { Company, CompanyFormInput, TaxRegime } from "@/lib/types";
 import { useBillingEnabled } from "@/lib/deployment-config-context";
 import { useApiErrorText } from "@/lib/use-api-error";
@@ -22,7 +23,7 @@ const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
 );
 
-const STEPS = ["company", "address", "fiscal", "certificate"] as const;
+const STEPS = ["cnpj", "data", "fiscal", "certificate"] as const;
 type Step = (typeof STEPS)[number];
 
 interface CompanyFormProps {
@@ -62,7 +63,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
   const apiError = useApiErrorText();
   const td = useTranslations("CompanyDetail");
   const te = useTranslations("ApiErrors");
-  const { can } = useAuth();
+  const { can, fiscalEnvironment } = useAuth();
   const wizard = !company;
   const canUploadCertificate = can("nfse.certificates.manage");
   const address = company?.address;
@@ -77,11 +78,14 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
   const [reached, setReached] = useState(0);
   const [created, setCreated] = useState<Company | null>(null);
   const [uploaded, setUploaded] = useState(false);
-  const step: Step = wizard ? STEPS[stepIndex] : "company";
+  const step: Step = wizard ? STEPS[stepIndex] : "cnpj";
+  // Review step: the summary card, until the person asks to edit the data.
+  const [editing, setEditing] = useState(false);
   // The rate is asked only of a Simples Nacional company; a MEI sees no extra field.
   const isSimples = (wizard ? values.taxRegime : company?.taxRegime) === "Simples Nacional";
   const rateValue = (name: string) => values[name].trim().replace(",", ".");
-  const show = (name: Step) => !wizard || step === name;
+  const showTaxId = !wizard || step === "cnpj";
+  const showFiscal = !wizard || step === "fiscal";
 
   const set = (name: string, value: string) => {
     setValues((previous) => ({ ...previous, [name]: value }));
@@ -102,38 +106,97 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
     }).catch(() => { if (!controller.signal.aborted) setCepState("error"); });
   };
 
-  // CNPJ autofill: only a convenience. Any failure leaves the fields exactly as the user typed them.
-  const [cnpjState, setCnpjState] = useState<"idle" | "loading" | "found" | "error">("idle");
-  const [cnpjInfo, setCnpjInfo] = useState<Pick<CnpjProfile, "active" | "simples" | "mei"> | null>(null);
+  // CNPJ first: the lookup fills the company; "unavailable" falls back to typing the data by hand.
+  const [cnpjState, setCnpjState] = useState<"idle" | "loading" | "found" | "notFound" | "unavailable">("idle");
+  const [cnpjInfo, setCnpjInfo] = useState<{ active: boolean; situation: string; simples: boolean | null; mei: boolean | null; legalName: string; city: string; state: string } | null>(null);
   const cnpjRequest = useRef<AbortController | null>(null);
+  const autoRegime = useRef(false);
+  // Newly opened CNPJs can be missing from the registry: the person may go on by hand after a not-found.
+  const [manualAnyway, setManualAnyway] = useState(false);
+  const clearProfile = () => {
+    setValues((previous) => ({ ...previous, legalName: "", tradeName: "", zip: "", street: "", number: "", complement: "", district: "", city: "", state: "", municipalityCode: "", taxRegime: autoRegime.current ? "" : previous.taxRegime }));
+    autoRegime.current = false; setEditing(false);
+  };
   const onTaxIdChange = (raw: string) => {
     const masked = maskCnpj(raw);
     set("taxId", masked);
     if (!wizard) return;
     cnpjRequest.current?.abort();
-    setCnpjInfo(null);
+    setCnpjInfo(null); setManualAnyway(false); clearProfile();
     if (!isValidCnpj(masked)) { setCnpjState("idle"); return; }
     const controller = new AbortController(); cnpjRequest.current = controller; setCnpjState("loading");
     cnpjApi.lookup(cleanTaxId(masked), controller.signal).then((profile) => {
       if (controller.signal.aborted) return;
       const a = profile.address;
+      autoRegime.current = true;
       setValues((previous) => ({
         ...previous,
-        legalName: profile.legalName || previous.legalName, tradeName: profile.tradeName || previous.tradeName,
-        zip: a.zip ? maskZip(a.zip) : previous.zip, street: a.street || previous.street, number: a.number || previous.number, complement: a.complement || previous.complement,
-        district: a.district || previous.district, city: a.city || previous.city, state: a.state || previous.state,
-        municipalityCode: profile.municipalityCode || previous.municipalityCode,
+        legalName: profile.legalName, tradeName: profile.tradeName,
+        zip: a.zip ? maskZip(a.zip) : "", street: a.street, number: a.number, complement: a.complement,
+        district: a.district, city: a.city, state: a.state,
+        municipalityCode: profile.municipalityCode ?? "",
         taxRegime: previous.taxRegime || (profile.mei ? "MEI" : profile.simples ? "Simples Nacional" : ""),
       }));
-      setCnpjInfo({ active: profile.active, simples: profile.simples, mei: profile.mei });
+      setCnpjInfo({ active: profile.active, situation: profile.situation, simples: profile.simples, mei: profile.mei, legalName: profile.legalName, city: a.city, state: a.state });
       setCnpjState("found");
-    }).catch(() => { if (!controller.signal.aborted) setCnpjState("error"); });
+    }).catch((cause: unknown) => {
+      if (controller.signal.aborted) return;
+      // Only an explicit "the Receita does not know it" is a typo; anything else is the lookup being down.
+      setCnpjState(cause instanceof ApiError && cause.status === 404 && cause.code === "CNPJ_NOT_FOUND" ? "notFound" : "unavailable");
+      setEditing(true);
+    });
   };
 
-  type FieldOptions = { required?: boolean; maxLength?: number; mask?: (value: string) => string; inputMode?: "numeric" | "text"; autoComplete?: string; mono?: boolean; span?: boolean; hint?: string; readOnly?: boolean };
-  const field = (name: string, { required = false, maxLength = 200, mask, inputMode, autoComplete, mono, span, hint, readOnly }: FieldOptions = {}) => (
+  // Before the person goes on: is this CNPJ already registered here, and is there room for one more company (live)?
+  const [preflight, setPreflight] = useState<{ ready: boolean; companies: { id: string; taxId: string }[]; limitReached: boolean }>({ ready: !wizard, companies: [], limitReached: false });
+  useEffect(() => {
+    if (!wizard) return;
+    const controller = new AbortController();
+    const checkLimit = billingEnabled && fiscalEnvironment === "live" && can("billing.view");
+    void (async () => {
+      const known: { id: string; taxId: string }[] = [];
+      try {
+        let cursor: string | undefined;
+        for (let page = 0; page < 20; page += 1) {
+          const result = await companiesApi.list({ limit: 50, cursor }, controller.signal);
+          known.push(...result.items.map(({ id, taxId }) => ({ id, taxId })));
+          if (!result.hasMore || !result.nextCursor) break;
+          cursor = result.nextCursor;
+        }
+      } catch { /* the API still refuses a duplicate when the company is saved */ }
+      let limitReached = false;
+      if (checkLimit) {
+        try {
+          const { usage } = await billing.plan(controller.signal);
+          limitReached = usage.maxActiveCompanies < 999999 && usage.activeCompanies >= usage.maxActiveCompanies;
+        } catch { /* the API still enforces the limit when the company is saved */ }
+      }
+      if (!controller.signal.aborted) setPreflight({ ready: true, companies: known, limitReached });
+    })();
+    return () => controller.abort();
+    // Runs once: the wizard opens with the environment and permissions it will use.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const cnpjValid = wizard && isValidCnpj(values.taxId);
+  const duplicate = cnpjValid ? preflight.companies.find((c) => cleanTaxId(c.taxId) === cleanTaxId(values.taxId)) : undefined;
+  type Outcome = "found" | "not_found" | "unavailable" | "inactive" | "duplicate" | "limit";
+  const settled = cnpjValid && preflight.ready && (cnpjState === "found" || cnpjState === "notFound" || cnpjState === "unavailable");
+  const outcome: Outcome | null = !settled ? null
+    : duplicate ? "duplicate"
+    : preflight.limitReached ? "limit"
+    : cnpjState === "notFound" ? "not_found"
+    : cnpjState === "unavailable" ? "unavailable"
+    : cnpjInfo?.active === false ? "inactive" : "found";
+  const manualEntry = outcome === "unavailable" || (outcome === "not_found" && manualAnyway);
+  const canContinue = outcome === "found" || manualEntry;
+  useEffect(() => {
+    if (outcome && posthogConfigured) posthog.capture("cnpj_lookup_result", { result: outcome });
+  }, [outcome]);
+
+  type FieldOptions = { required?: boolean; maxLength?: number; mask?: (value: string) => string; inputMode?: "numeric" | "text"; autoComplete?: string; mono?: boolean; span?: boolean; hint?: string; readOnly?: boolean; autoFocus?: boolean };
+  const field = (name: string, { required = false, maxLength = 200, mask, inputMode, autoComplete, mono, span, hint, readOnly, autoFocus }: FieldOptions = {}) => (
     <Field key={name} label={t(name)} error={fieldErrors[name] || undefined} required={required} optionalLabel={required ? undefined : t("optional")} hint={hint} className={span ? "sm:col-span-2" : undefined}>
-      {(props) => <input {...props} className={mono ? "field font-mono tabular-nums" : "field"} value={values[name]} required={required} readOnly={readOnly} aria-readonly={readOnly} maxLength={maxLength} inputMode={inputMode} autoComplete={autoComplete ?? "off"} spellCheck={false} placeholder={t.has(`placeholders.${name}`) ? t(`placeholders.${name}`) : undefined} onChange={(event) => (name === "taxId" ? onTaxIdChange(event.target.value) : set(name, mask ? mask(event.target.value) : event.target.value))} />}
+      {(props) => <input {...props} className={mono ? "field font-mono tabular-nums" : "field"} value={values[name]} required={required} readOnly={readOnly} aria-readonly={readOnly} autoFocus={autoFocus} maxLength={maxLength} inputMode={inputMode} autoComplete={autoComplete ?? "off"} spellCheck={false} placeholder={t.has(`placeholders.${name}`) ? t(`placeholders.${name}`) : undefined} onChange={(event) => (name === "taxId" ? onTaxIdChange(event.target.value) : set(name, mask ? mask(event.target.value) : event.target.value))} />}
     </Field>
   );
 
@@ -145,12 +208,13 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
 
   async function submit(event: React.FormEvent) {
     event.preventDefault(); if (busy.current) return;
-    if (wizard && step === "company") {
+    if (wizard && step === "cnpj") {
+      if (!canContinue) return;
       const problem = validateCompany();
       if (problem) { setError(problem); return; }
       setError(null); setStepIndex(1); setReached((r) => Math.max(r, 1)); return;
     }
-    if (wizard && step === "address") { setStepIndex(2); setReached((r) => Math.max(r, 2)); return; }
+    if (wizard && step === "data") { setStepIndex(2); setReached((r) => Math.max(r, 2)); return; }
     if (wizard && step === "certificate") return;
     const fiscalErrors: Record<string, string> = {};
     if (wizard && !(SUPPORTED_TAX_REGIMES as readonly string[]).includes(values.taxRegime)) fiscalErrors.taxRegime = t("regimeRequired");
@@ -198,7 +262,8 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       const issues = mapIssues(cause, { legalName: "legalName", tradeName: "tradeName", taxId: "taxId", municipalReg: "municipalReg", municipalityCode: "municipalityCode", defaultServiceCode: "defaultServiceCode", specialRegime: "specialRegime", simplesRate: "simplesRate", simplesIssRate: "simplesIssRate", "address.street": "street", "address.number": "number", "address.complement": "complement", "address.district": "district", "address.city": "city", "address.state": "state", "address.zip": "zip" }, (code, fallback) => (te.has(code) ? te(code) : fallback));
       const { _form, ...perField } = issues;
       setFieldErrors(perField);
-      if (wizard && Object.keys(perField).length > 0) setStepIndex((index) => (perField.legalName || perField.taxId ? 0 : perField.street || perField.zip || perField.city || perField.state || perField.number ? 1 : index));
+      if (wizard && Object.keys(perField).length > 0) setStepIndex((index) => (perField.taxId ? 0 : perField.legalName || perField.tradeName || perField.street || perField.zip || perField.city || perField.state || perField.number ? 1 : index));
+      if (wizard && (perField.legalName || perField.tradeName || perField.street || perField.zip || perField.city || perField.state || perField.number || perField.district || perField.complement)) setEditing(true);
       setError(billingEnabled && isCompanyLimitError(cause) ? t("companyLimit") : (_form ?? (Object.keys(perField).length > 0 ? t("fixFields") : apiError(cause, t("failed")))));
     }
     finally { busy.current = false; setSaving(false); }
@@ -243,25 +308,54 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
   }
 
   const last = !wizard || step === "fiscal";
-  return <form onSubmit={submit} className="company-sheet flex flex-col gap-6" aria-busy={saving} noValidate={wizard && step !== "company"}>
+  const summaryAddress = [[values.street, values.number].filter(Boolean).join(", "), values.district, [values.city, values.state].filter(Boolean).join("/"), values.zip].filter(Boolean).join(" · ");
+  return <form onSubmit={submit} className="company-sheet flex flex-col gap-6" aria-busy={saving} noValidate={wizard && step !== "cnpj"}>
     {wizard && <Stepper current={stepIndex} reached={reached} labels={STEPS.map((s) => t(`steps.${s}`))} />}
 
-    {show("company") && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
-      {section(t("sectionCompany"), wizard ? t("stepHint.company") : undefined)}
-      {field("legalName", { required: true, span: true })}
-      {field("tradeName")}
-      {field("taxId", { required: true, maxLength: 18, mask: maskCnpj, inputMode: "text", mono: true, readOnly: !wizard, hint: wizard ? (cnpjState === "idle" ? t("cnpj.hint") : undefined) : t("hints.taxIdLocked") })}
-      {wizard && <div className="sm:col-span-2 -mt-2 flex flex-col gap-2" role="status" aria-live="polite">
-        {cnpjState === "loading" && <p className="flex items-center gap-2 text-[12px] text-text-3"><Loader2 size={13} className="animate-spin" aria-hidden />{t("cnpj.loading")}</p>}
-        {cnpjState === "error" && <p className="text-[12px] text-text-3">{t("cnpj.error")}</p>}
-        {cnpjState === "found" && cnpjInfo && <>
-          {cnpjInfo.active ? <p className="text-[12px] text-ok">{t("cnpj.found")}{" "}{cnpjInfo.mei ? t("cnpj.isMei") : cnpjInfo.simples ? t("cnpj.isSimples") : ""}</p>
-            : <p role="alert" className="banner banner-danger">{t("cnpj.inactive")}</p>}
-        </>}
+    {showTaxId && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
+      {section(t("sectionCompany"), wizard ? t("stepHint.cnpj") : undefined)}
+      {!wizard && <>{field("legalName", { required: true, span: true })}{field("tradeName")}</>}
+      {field("taxId", { required: true, maxLength: 18, mask: maskCnpj, inputMode: "text", mono: true, readOnly: !wizard, autoFocus: wizard, span: wizard, hint: wizard ? (cnpjState === "idle" ? t("cnpj.hint") : undefined) : t("hints.taxIdLocked") })}
+      {wizard && <div className="sm:col-span-2 -mt-2 flex flex-col gap-3" role="status" aria-live="polite">
+        {(cnpjState === "loading" || (cnpjValid && !preflight.ready && cnpjState !== "idle")) && <p className="flex items-center gap-2 text-[13px] text-text-3"><Loader2 size={14} className="animate-spin" aria-hidden />{t("cnpj.loading")}</p>}
+        {outcome === "duplicate" && duplicate && <p role="alert" className="banner banner-danger"><span>{t("cnpj.duplicate")}{" "}<Link href={`/app/companies/${duplicate.id}`} className="underline">{t("openCompany")}</Link></span></p>}
+        {outcome === "limit" && <p role="alert" className="banner banner-danger"><span>{t("companyLimit")}{" "}<Link href="/app/billing" className="underline">{t("cnpj.seePlans")}</Link></span></p>}
+        {outcome === "inactive" && cnpjInfo && <p role="alert" className="banner banner-danger"><ShieldAlert size={16} aria-hidden className="mt-0.5 flex-none" /><span>{t("cnpj.inactive", { situation: cnpjInfo.situation || t("cnpj.inactiveFallback") })}</span></p>}
+        {outcome === "not_found" && <div role="alert" className="banner banner-danger flex-wrap items-center justify-between gap-2">
+          <span>{t("cnpj.notFound")}</span>
+          {!manualAnyway && <Button variant="ghost" onClick={() => { setManualAnyway(true); setEditing(true); if (posthogConfigured) posthog.capture("cnpj_lookup_result", { result: "not_found", manual: true }); }}>{t("cnpj.manualAnyway")}</Button>}
+        </div>}
+        {outcome === "unavailable" && <p role="alert" className="banner banner-warn">{t("cnpj.unavailable")}</p>}
+        {outcome === "found" && cnpjInfo && <div className="flex items-start gap-3 rounded-[12px] border border-accent-border bg-accent-surface px-4 py-3.5">
+          <Search size={16} aria-hidden className="mt-0.5 flex-none text-accent" />
+          <p className="text-[14px] text-text">{t("cnpj.found", { summary: [cnpjInfo.legalName, [cnpjInfo.city, cnpjInfo.state].filter(Boolean).join("/"), cnpjInfo.mei ? t("cnpj.isMei") : cnpjInfo.simples ? t("cnpj.isSimples") : ""].filter(Boolean).join(" · ") })}</p>
+        </div>}
       </div>}
+      {wizard && manualEntry && <>{field("legalName", { required: true, span: true })}{field("tradeName", { span: true })}</>}
     </fieldset>}
 
-    {show("address") && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-6">
+    {wizard && step === "data" && !editing && <div className="flex flex-col gap-4">
+      <div>
+        <span className="eyebrow block border-b border-border-soft pb-2">{t("sectionCompany")}</span>
+        <span className="mt-2 block text-[13px] text-text-3">{t("stepHint.data")}</span>
+      </div>
+      <div className="flex items-start justify-between gap-4 rounded-[12px] border border-border bg-surface px-4 py-4">
+        <dl className="flex min-w-0 flex-col gap-3 text-[14px]">
+          <div><dt className="field-label">{t("legalName")}</dt><dd className="text-text">{values.legalName || "—"}</dd></div>
+          {values.tradeName && <div><dt className="field-label">{t("tradeName")}</dt><dd className="text-text">{values.tradeName}</dd></div>}
+          <div><dt className="field-label">{t("address")}</dt><dd className="text-text">{summaryAddress || <span className="text-text-3">{t("addressMissing")}</span>}</dd></div>
+        </dl>
+        <Button variant="ghost" onClick={() => setEditing(true)}>{t("edit")}</Button>
+      </div>
+    </div>}
+
+    {wizard && step === "data" && editing && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
+      {section(t("sectionCompany"), t("stepHint.data"))}
+      {field("legalName", { required: true, span: true })}
+      {field("tradeName", { span: true })}
+    </fieldset>}
+
+    {(!wizard || (step === "data" && editing)) && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-6">
       {section(t("address"), wizard ? t("stepHint.address") : undefined)}
       <div className="grid gap-4 sm:col-span-6 sm:grid-cols-6">
         <div className="sm:col-span-2">
@@ -280,7 +374,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       </div>
     </fieldset>}
 
-    {show("fiscal") && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
+    {showFiscal && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
       {section(t("sectionFiscal"), wizard ? t("stepHint.fiscal") : undefined)}
       {wizard && <><Field label={t("taxRegime")} required error={fieldErrors.taxRegime}>{(props) => <select {...props} className="field" value={values.taxRegime} onChange={(event) => { set("taxRegime", event.target.value); if (!allowsSpecialTaxRegime(event.target.value as TaxRegime)) set("specialRegime", "0"); }}><option value="">{t("selectTaxRegime")}</option>{SUPPORTED_TAX_REGIMES.map((regime) => <option key={regime}>{regime}</option>)}</select>}</Field>
       {allowsSpecialTaxRegime(values.taxRegime as TaxRegime) && <Field label={t("specialRegime")} hint={t("specialRegimeHint")} error={fieldErrors.specialRegime}>{(props) => <select {...props} className="field" value={values.specialRegime} onChange={(event) => set("specialRegime", event.target.value)}>{SPECIAL_TAX_REGIME_CODES.map((code) => <option key={code} value={code}>{t(`specialRegimes.${code}`)}</option>)}</select>}</Field>}
@@ -309,7 +403,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       <div>{wizard && stepIndex > 0 && <Button variant="ghost" onClick={() => { setError(null); setStepIndex((i) => i - 1); }} disabled={saving}>{t("back")}</Button>}</div>
       <div className="flex gap-3">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>{t("cancel")}</Button>
-        <Button type="submit" variant="accent" loading={saving}>{last ? (wizard ? t("createCompany") : t("save")) : t("next")}</Button>
+        <Button type="submit" variant="accent" loading={saving} disabled={wizard && step === "cnpj" && !canContinue}>{last ? (wizard ? t("createCompany") : t("save")) : t("next")}</Button>
       </div>
     </div>
     {wizard && last && <p className="-mt-3 text-left text-[12.5px] text-text-4">{canUploadCertificate ? t("certificateNext") : td("noCertificatePermission")}</p>}

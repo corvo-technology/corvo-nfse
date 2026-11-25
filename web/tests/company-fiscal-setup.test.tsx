@@ -8,7 +8,11 @@ import type { Company, CompanyFiscalProfile, CompanyServiceTaxProfile } from "@/
 import messages from "@/messages/en.json";
 const api = vi.hoisted(() => ({ fiscalProfiles: vi.fn(), serviceTaxProfiles: vi.fn(), approveFiscalProfile: vi.fn(), approveServiceTaxProfile: vi.fn(), createServiceTaxProfile: vi.fn(), updateServiceTaxProfile: vi.fn(), saveFiscalProfile: vi.fn(), canManage: true }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ fiscalEnvironment: "live", can: (permission: string) => permission !== "nfse.certificates.manage" && (permission !== "nfse.companies.manage" || api.canManage) }) }));
-vi.mock("@/lib/api", async original => ({ ...await original<typeof import("@/lib/api")>(), companies: api }));
+vi.mock("@/lib/api", async original => {
+  const actual = await original<typeof import("@/lib/api")>();
+  // The Receita lookup is down here: the wizard falls back to typing the company by hand.
+  return { ...actual, cnpj: { lookup: () => Promise.reject(new actual.ApiError(503, "down", "CNPJ_LOOKUP_UNAVAILABLE")) }, companies: api };
+});
 const company: Company = { id: "company", tenantId: "tenant", legalName: "Test Company", taxId: "11222333000181", municipalityCode: "3550308", municipalReg: "12345", taxRegime: "MEI", simpleNational: true, environment: "live", status: "ready", setupGaps: [], address: {}, createdAt: "2026-01-01", updatedAt: "2026-01-01" };
 const profile: CompanyFiscalProfile = { id: "profile", companyId: company.id, tenantId: company.tenantId, taxRegime: "MEI", simpleNational: true, specialTaxRegime: null, ibsCbsRegularOption: false, ibsCbsRegularFrom: null, validFrom: "2026-01-01", validUntil: null, source: "company_api", reviewStatus: "unreviewed", reviewedBy: null, reviewedAt: null, createdAt: "2026-01-01" };
 const service: CompanyServiceTaxProfile = { id: "service", tenantId: "tenant", companyId: "company", name: "Haircut", serviceCode: "060101", municipalServiceCode: null, nbsCode: null, cst: null, classCode: null, operationIndicator: null, operationNature: "SERVICE", regimeApplicability: [], incidenceMunicipalityCode: null, issTaxation: null, issRate: null, issWithholdingDefault: false, withholdingPolicy: "UNKNOWN", withholdingRates: {}, effectiveFrom: "2026-01-01", effectiveUntil: null, classificationSource: "manual", reviewStatus: "unreviewed", catalogVersion: null, createdAt: "2026-01-01" };
@@ -58,8 +62,9 @@ describe("CompanyFiscalSetup", () => {
   it("creates the company in one call without a fiscal review step", async () => {
     const onSave = vi.fn().mockResolvedValue(company);
     renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} onFinish={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText(/Legal name/i), { target: { value: company.legalName } });
     fireEvent.change(screen.getByLabelText(/CNPJ/i), { target: { value: company.taxId } });
+    await screen.findByText(/Receita lookup is down/);
+    fireEvent.change(screen.getByLabelText(/Legal name/i), { target: { value: company.legalName } });
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.change(screen.getByLabelText(/IBGE/i), { target: { value: "3550308" } });

@@ -135,9 +135,12 @@ describe('BrasilApiSimplesRegistry', () => {
     await expect(
       registry.lookupProfile('27125453000109'),
     ).resolves.toMatchObject({
-      legalName: 'OLD N7 BARBEARIA LTDA',
-      simples: true,
-      active: true,
+      status: 'found',
+      profile: {
+        legalName: 'OLD N7 BARBEARIA LTDA',
+        simples: true,
+        active: true,
+      },
     });
     expect((fetchFn.mock.calls as unknown[][])[1]?.[0]).toBe(
       'https://minhareceita.org/27125453000109',
@@ -154,7 +157,7 @@ describe('BrasilApiSimplesRegistry', () => {
     const fetchFn = jest.fn().mockImplementation(() => response(403, {}));
     await expect(
       new BrasilApiSimplesRegistry({ fetchFn }).lookupProfile('27125453000109'),
-    ).resolves.toBeNull();
+    ).resolves.toEqual({ status: 'unavailable' });
     const logged = warn.mock.calls.map((c) => String(c[0]));
     expect(logged).toHaveLength(2);
     expect(logged[0]).toContain('HTTP 403');
@@ -179,22 +182,25 @@ describe('BrasilApiSimplesRegistry', () => {
         municipalityCode: '3170206',
       });
       await expect(registry.lookupProfile('27125453000109')).resolves.toEqual({
-        legalName: 'OLD N7 BARBEARIA LTDA',
-        tradeName: 'OLD N7 BARBEARIA',
-        address: {
-          zip: '38415204',
-          street: 'RUA ERMELINDA COSTA SAMPAIO',
-          number: '88',
-          complement: '',
-          district: 'TALISMA (LOTEAMENTO)',
-          city: 'UBERLANDIA',
-          state: 'MG',
+        status: 'found',
+        profile: {
+          legalName: 'OLD N7 BARBEARIA LTDA',
+          tradeName: 'OLD N7 BARBEARIA',
+          address: {
+            zip: '38415204',
+            street: 'RUA ERMELINDA COSTA SAMPAIO',
+            number: '88',
+            complement: '',
+            district: 'TALISMA (LOTEAMENTO)',
+            city: 'UBERLANDIA',
+            state: 'MG',
+          },
+          municipalityCode: '3170206',
+          simples: true,
+          mei: false,
+          active: true,
+          situation: 'ATIVA',
         },
-        municipalityCode: '3170206',
-        simples: true,
-        mei: false,
-        active: true,
-        situation: 'ATIVA',
       });
       expect(fetchFn).toHaveBeenCalledTimes(1);
     });
@@ -213,7 +219,10 @@ describe('BrasilApiSimplesRegistry', () => {
         new BrasilApiSimplesRegistry({ client }).lookupProfile(
           '27125453000109',
         ),
-      ).resolves.toMatchObject({ legalName: 'OLD N7 BARBEARIA LTDA' });
+      ).resolves.toMatchObject({
+        status: 'found',
+        profile: { legalName: 'OLD N7 BARBEARIA LTDA' },
+      });
       expect(fetchFn).toHaveBeenCalledTimes(1);
     });
   });
@@ -240,23 +249,28 @@ describe('BrasilApiSimplesRegistry', () => {
     it('maps the registration data of the CNPJ', async () => {
       const fetchFn = jest.fn().mockReturnValue(response(200, full));
       const registry = new BrasilApiSimplesRegistry({ fetchFn });
-      await expect(registry.lookupProfile('11222333000181')).resolves.toEqual({
-        legalName: 'EMPRESA EXEMPLO LTDA',
-        tradeName: 'EXEMPLO',
-        address: {
-          zip: '01310100',
-          street: 'RUA DAS FLORES',
-          number: '123',
-          complement: 'SALA 4',
-          district: 'CENTRO',
-          city: 'SAO PAULO',
-          state: 'SP',
+      const result = await registry.lookupProfile('11222333000181');
+      expect(result.status).toBe('found');
+      expect(result).toEqual({
+        status: 'found',
+        profile: {
+          legalName: 'EMPRESA EXEMPLO LTDA',
+          tradeName: 'EXEMPLO',
+          address: {
+            zip: '01310100',
+            street: 'RUA DAS FLORES',
+            number: '123',
+            complement: 'SALA 4',
+            district: 'CENTRO',
+            city: 'SAO PAULO',
+            state: 'SP',
+          },
+          municipalityCode: '3550308',
+          simples: true,
+          mei: false,
+          active: true,
+          situation: 'ATIVA',
         },
-        municipalityCode: '3550308',
-        simples: true,
-        mei: false,
-        active: true,
-        situation: 'ATIVA',
       });
     });
 
@@ -271,8 +285,10 @@ describe('BrasilApiSimplesRegistry', () => {
       const profile = await new BrasilApiSimplesRegistry({
         fetchFn,
       }).lookupProfile('11222333000181');
-      expect(profile?.active).toBe(false);
-      expect(profile?.situation).toBe('BAIXADA');
+      expect(profile.status === 'found' && profile.profile.active).toBe(false);
+      expect(profile.status === 'found' && profile.profile.situation).toBe(
+        'BAIXADA',
+      );
     });
 
     it('shares the cache with lookup', async () => {
@@ -283,13 +299,41 @@ describe('BrasilApiSimplesRegistry', () => {
       expect(fetchFn).toHaveBeenCalledTimes(1);
     });
 
-    it('returns null on failure and on timeout', async () => {
+    it('says not_found when every provider answers 404 and unavailable on failures', async () => {
+      const notFound = jest.fn().mockImplementation(() => response(404, {}));
+      await expect(
+        new BrasilApiSimplesRegistry({ fetchFn: notFound }).lookupProfile(
+          '11222333000181',
+        ),
+      ).resolves.toEqual({ status: 'not_found' });
+      const mixed = jest
+        .fn()
+        .mockImplementationOnce(() => response(404, {}))
+        .mockImplementationOnce(() => response(500, {}));
+      await expect(
+        new BrasilApiSimplesRegistry({ fetchFn: mixed }).lookupProfile(
+          '11222333000181',
+        ),
+      ).resolves.toEqual({ status: 'unavailable' });
+    });
+
+    it('keeps the not_found answer in the cache', async () => {
+      const fetchFn = jest.fn().mockImplementation(() => response(404, {}));
+      const registry = new BrasilApiSimplesRegistry({ fetchFn });
+      await registry.lookupProfile('11222333000181');
+      await expect(registry.lookupProfile('11222333000181')).resolves.toEqual({
+        status: 'not_found',
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+    });
+
+    it('answers unavailable on failure and on timeout', async () => {
       const down = jest.fn().mockRejectedValue(new Error('down'));
       await expect(
         new BrasilApiSimplesRegistry({ fetchFn: down }).lookupProfile(
           '11222333000181',
         ),
-      ).resolves.toBeNull();
+      ).resolves.toEqual({ status: 'unavailable' });
       const hang = jest.fn().mockImplementation(
         (_url: string, init: { signal: AbortSignal }) =>
           new Promise((_resolve, reject) => {
@@ -303,7 +347,7 @@ describe('BrasilApiSimplesRegistry', () => {
           fetchFn: hang,
           timeoutMs: 20,
         }).lookupProfile('11222333000181'),
-      ).resolves.toBeNull();
+      ).resolves.toEqual({ status: 'unavailable' });
     });
   });
 

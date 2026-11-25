@@ -4,6 +4,7 @@ import {
   Get,
   NotFoundException,
   Param,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -31,12 +32,17 @@ export class CnpjController {
         code: 'CNPJ_INVALID',
         message: 'The CNPJ is not valid',
       });
-    const profile = await this.registry.lookupProfile(cnpj);
-    if (!profile)
+    const result = await this.registry.lookupProfile(cnpj);
+    if (result.status === 'not_found')
       throw new NotFoundException({
-        code: 'CNPJ_LOOKUP_UNAVAILABLE',
-        message: 'The public registry has no answer for this CNPJ right now',
+        code: 'CNPJ_NOT_FOUND',
+        message: 'The public registry does not know this CNPJ',
       });
-    return data(profile);
+    if (result.status === 'unavailable')
+      throw new ServiceUnavailableException({
+        code: 'CNPJ_LOOKUP_UNAVAILABLE',
+        message: 'The public registry has no answer right now',
+      });
+    return data(result.profile);
   }
 }

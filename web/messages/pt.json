@@ -1658,13 +1658,18 @@
       "simplesIssRate": "2.01"
     },
     "cnpj": {
-      "hint": "Preenchemos o restante com os dados da Receita.",
-      "loading": "Buscando dados do CNPJ...",
-      "found": "Dados da Receita preenchidos. Confira e corrija se precisar.",
-      "isMei": "Este CNPJ é MEI.",
-      "isSimples": "Este CNPJ é do Simples Nacional.",
-      "inactive": "A Receita informa que este CNPJ não está ativo. Confira o número antes de continuar: com o CNPJ inativo não dá para emitir notas.",
-      "error": "Não deu para buscar o CNPJ agora. Preencha os dados à mão."
+      "hint": "Só os números já bastam.",
+      "loading": "Buscando na Receita...",
+      "found": "Encontramos: {summary}",
+      "isMei": "MEI",
+      "isSimples": "Simples Nacional",
+      "manualAnyway": "Preencher à mão mesmo assim",
+      "notFound": "Não achamos esse CNPJ na Receita. Confira os números.",
+      "unavailable": "A consulta da Receita está fora do ar. Você pode preencher à mão.",
+      "inactive": "Este CNPJ está {situation} na Receita. Não é possível emitir nota por ele.",
+      "inactiveFallback": "inativo",
+      "duplicate": "Esta empresa já está cadastrada.",
+      "seePlans": "Ver planos"
     },
     "cep": {
       "hint": "Preenche endereço e código IBGE automaticamente.",
@@ -1674,17 +1679,19 @@
       "loading": "Buscando CEP..."
     },
     "steps": {
-      "company": "Empresa",
-      "address": "Endereço",
+      "cnpj": "Empresa",
+      "data": "Conferir dados",
       "fiscal": "Fiscal",
-      "certificate": "Certificado",
-      "review": "Revisão fiscal"
+      "certificate": "Certificado"
     },
     "stepHint": {
-      "company": "Comece pelo CNPJ e pelo nome da empresa que vai emitir as notas.",
+      "cnpj": "Digite o CNPJ da empresa. A gente busca o resto na Receita.",
+      "data": "Confira se está tudo certo. Se precisar, é só editar.",
       "address": "Informe o CEP: o endereço e o código IBGE do município são preenchidos sozinhos.",
       "fiscal": "Informe o município fiscal. Em produção, informe também a inscrição municipal. O serviço padrão simplifica as próximas notas."
     },
+    "edit": "Editar",
+    "addressMissing": "Sem endereço no cadastro. Clique em Editar para informar.",
     "next": "Continuar",
     "back": "Voltar",
     "createCompany": "Criar empresa",
@@ -2096,7 +2103,8 @@
     "company_profile_missing": "Falta o cadastro fiscal da empresa.",
     "certificate_file_required": "Envie o arquivo do certificado (.pfx ou .p12).",
     "cnpj_invalid": "Esse CNPJ não é válido. Confira os números.",
-    "cnpj_lookup_unavailable": "Não deu para buscar o CNPJ agora. Preencha os dados à mão.",
+    "cnpj_lookup_unavailable": "A consulta da Receita está fora do ar. Você pode preencher à mão.",
+    "cnpj_not_found": "Não achamos esse CNPJ na Receita. Confira os números.",
     "certificate_password_required": "Informe a senha do certificado.",
     "fiscal_profile_missing": "A empresa não tem perfil fiscal para esta data. Cadastre em Empresas.",
     "fiscal_profile_not_effective": "O perfil fiscal da empresa não está vigente na data da nota.",
