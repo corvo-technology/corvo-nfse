@@ -123,3 +123,85 @@ describe('generateDanfse', () => {
     expect(pdf.toString('latin1').match(/\/Type \/Page\b/g)).toHaveLength(1);
   });
 });
+
+describe('foreign addresses (endExt) and recipient', () => {
+  const base = parseNfseXml(xml);
+  const abroad = {
+    xLgr: 'Main Street',
+    nro: '10',
+    xBairro: 'Downtown',
+    localidade: {
+      endExt: {
+        cPais: 'US',
+        cEndPost: '10001',
+        xCidade: 'New York',
+        xEstProvReg: 'NY',
+      },
+    },
+  };
+  function withParties(parties: Record<string, unknown>) {
+    const infDPS = base.infNFSe.DPS.infDPS;
+    return {
+      ...base,
+      infNFSe: {
+        ...base.infNFSe,
+        DPS: { ...base.infNFSe.DPS, infDPS: { ...infDPS, ...parties } },
+      },
+    } as unknown as typeof base;
+  }
+  const rows = (block: unknown): string =>
+    JSON.stringify((block as { rows?: unknown }).rows);
+  const grid = (view: ReturnType<typeof buildDanfseView>, title: string) =>
+    view.parties.find((b) => b.kind === 'grid' && b.title === title);
+
+  it('prints city/state and country/postal code for taker and intermediary', () => {
+    const view = buildDanfseView(
+      withParties({
+        toma: { identificador: { NIF: 'X123' }, xNome: 'Acme', end: abroad },
+        interm: {
+          identificador: { NIF: 'Y456' },
+          xNome: 'Broker',
+          end: abroad,
+        },
+      }),
+    );
+    for (const title of ['TOMADOR / ADQUIRENTE', 'INTERMEDIÁRIO DA OPERAÇÃO']) {
+      const text = rows(grid(view, title));
+      expect(text).toContain('New York / NY');
+      expect(text).toContain('US / 10001');
+      expect(text).toContain('Main Street, 10 - Downtown');
+    }
+  });
+
+  it('prints the foreign recipient, and collapses it when it is the taker', () => {
+    const dest = { identificador: { NIF: 'X123' }, xNome: 'Acme', end: abroad };
+    const ibscbs = { indDest: '1', dest, valores: { trib: { gIBSCBS: {} } } };
+    const different = buildDanfseView(
+      withParties({
+        toma: { identificador: { NIF: 'Z999' }, xNome: 'Other' },
+        IBSCBS: ibscbs,
+      }),
+    );
+    expect(rows(grid(different, 'DESTINATÁRIO DA OPERAÇÃO'))).toContain(
+      'New York / NY',
+    );
+
+    const same = buildDanfseView(
+      withParties({
+        toma: { identificador: { NIF: 'X123' }, xNome: 'Acme' },
+        IBSCBS: ibscbs,
+      }),
+    );
+    expect(JSON.stringify(same.parties)).toContain(
+      'O DESTINATÁRIO É O PRÓPRIO TOMADOR/ADQUIRENTE DA OPERAÇÃO',
+    );
+  });
+
+  it('survives a note without the issuer address', () => {
+    const noAddress = {
+      ...base,
+      infNFSe: { ...base.infNFSe, emit: undefined },
+    } as unknown as typeof base;
+    expect(() => buildDanfseView(noAddress)).not.toThrow();
+  });
+});

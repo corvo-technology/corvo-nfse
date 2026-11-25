@@ -19,6 +19,30 @@ jest.mock('open-nfse', () => {
   };
 });
 
+/** Parsed NFS-e with the shape the DANFSe builder reads (issuer address included). */
+const fakeNfse = (tpAmb: string | undefined) => ({
+  infNFSe: {
+    xLocEmi: 'Ourinhos',
+    xLocPrestacao: 'Ourinhos',
+    emit: {
+      enderNac: {
+        xLgr: 'Rua A',
+        nro: '1',
+        xBairro: 'Centro',
+        cMun: '3534708',
+        UF: 'SP',
+        CEP: '19900011',
+      },
+    },
+    DPS: {
+      infDPS: {
+        tpAmb,
+        serv: { locPrest: { cLocPrestacao: '3534708' } },
+      },
+    },
+  },
+});
+
 import { Ambiente, parseNfseXml, gerarDanfse } from 'open-nfse';
 
 const fakeLock: LockPort = {
@@ -158,16 +182,14 @@ describe('NfseDocPrepProcessor', () => {
     ).mockResolvedValue([]);
     (fakeOutboxService.enqueue as jest.Mock).mockResolvedValue(undefined);
 
-    (parseNfseXml as jest.Mock).mockReturnValue({
-      infNFSe: {
-        DPS: {
-          infDPS: {
-            tpAmb: '1',
-          },
-        },
-      },
-    });
+    (parseNfseXml as jest.Mock).mockReturnValue(fakeNfse('1'));
     (gerarDanfse as jest.Mock).mockResolvedValue(Buffer.from('%PDF-fake'));
+    // These tests check what is handed to the PDF library, not our own renderer.
+    jest
+      .spyOn(danfse, 'renderInvoicePdf')
+      .mockImplementation((nfse, libraryOptions) =>
+        gerarDanfse(nfse, libraryOptions),
+      );
 
     processor = new NfseDocPrepProcessor(
       fakeLock,
@@ -178,6 +200,8 @@ describe('NfseDocPrepProcessor', () => {
       fakeOutboxService as WebhookOutboxService,
     );
   });
+
+  afterEach(() => jest.restoreAllMocks());
 
   describe('happy path — generates PDF, marks ready, emits webhook and email', () => {
     it('generates PDF from XML and saves it', async () => {
@@ -464,9 +488,7 @@ describe('NfseDocPrepProcessor', () => {
 
   describe('ambiente mapping from tpAmb', () => {
     it('maps tpAmb "1" to Producao', async () => {
-      (parseNfseXml as jest.Mock).mockReturnValue({
-        infNFSe: { DPS: { infDPS: { tpAmb: '1' } } },
-      });
+      (parseNfseXml as jest.Mock).mockReturnValue(fakeNfse('1'));
       (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
         buildInvoice(),
       );
@@ -483,9 +505,7 @@ describe('NfseDocPrepProcessor', () => {
     });
 
     it('maps tpAmb "2" to ProducaoRestrita', async () => {
-      (parseNfseXml as jest.Mock).mockReturnValue({
-        infNFSe: { DPS: { infDPS: { tpAmb: '2' } } },
-      });
+      (parseNfseXml as jest.Mock).mockReturnValue(fakeNfse('2'));
       (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
         buildInvoice(),
       );
@@ -503,9 +523,7 @@ describe('NfseDocPrepProcessor', () => {
     });
 
     it('falls back to Producao when tpAmb is undefined', async () => {
-      (parseNfseXml as jest.Mock).mockReturnValue({
-        infNFSe: { DPS: { infDPS: { tpAmb: undefined } } },
-      });
+      (parseNfseXml as jest.Mock).mockReturnValue(fakeNfse(undefined));
       (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
         buildInvoice(),
       );
@@ -537,9 +555,7 @@ describe('NfseDocPrepProcessor — PDF reflects the invoice status', () => {
     (
       fakeWebhookConfigRepo.findByTenantIdAndEvent as jest.Mock
     ).mockResolvedValue([]);
-    (parseNfseXml as jest.Mock).mockReturnValue({
-      infNFSe: { DPS: { infDPS: { tpAmb: '1' } } },
-    });
+    (parseNfseXml as jest.Mock).mockReturnValue(fakeNfse('1'));
     render = jest
       .spyOn(danfse, 'renderInvoicePdf')
       .mockResolvedValue(Buffer.from('%PDF-marked'));

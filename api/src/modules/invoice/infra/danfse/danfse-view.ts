@@ -213,12 +213,15 @@ function buildPlaces(
   const info = nfse.infNFSe;
   const names = new Map<string, string>(Object.entries(extra ?? {}));
   const ufs = new Map<string, string>();
-  names.set(info.emit.enderNac.cMun, info.xLocEmi);
-  ufs.set(info.emit.enderNac.cMun, info.emit.enderNac.UF);
+  const issuerAddress = info.emit?.enderNac;
+  if (issuerAddress?.cMun) {
+    names.set(issuerAddress.cMun, info.xLocEmi);
+    ufs.set(issuerAddress.cMun, issuerAddress.UF);
+  }
   if (info.cLocIncid && info.xLocIncid)
     names.set(info.cLocIncid, info.xLocIncid);
-  const service = info.DPS.infDPS.serv.locPrest;
-  if ('cLocPrestacao' in service)
+  const service = info.DPS.infDPS.serv?.locPrest;
+  if (service && 'cLocPrestacao' in service)
     names.set(service.cLocPrestacao, info.xLocPrestacao);
   // A municipality with the same code as the issuer's shares its state.
   return {
@@ -545,7 +548,9 @@ export function buildDanfseView(
   const info = nfse.infNFSe;
   const dps = info.DPS.infDPS;
   const places = buildPlaces(nfse, options.municipalities);
-  const issuer = info.emit;
+  // `emit` is always in an authorized note; the guards only keep a malformed one from aborting the PDF.
+  const issuer = info.emit as NFSe['infNFSe']['emit'] | undefined;
+  const issuerAddress = issuer?.enderNac;
   const provider = dps.prest;
   const homologation = String(dps.tpAmb) === '2';
 
@@ -556,12 +561,15 @@ export function buildDanfseView(
       const address = addressLines(
         provider.end ?? {
           localidade: {
-            endNac: { cMun: issuer.enderNac.cMun, CEP: issuer.enderNac.CEP },
+            endNac: {
+              cMun: issuerAddress?.cMun ?? '',
+              CEP: issuerAddress?.CEP ?? '',
+            },
           },
-          xLgr: issuer.enderNac.xLgr,
-          nro: issuer.enderNac.nro,
-          xCpl: issuer.enderNac.xCpl,
-          xBairro: issuer.enderNac.xBairro,
+          xLgr: issuerAddress?.xLgr ?? '',
+          nro: issuerAddress?.nro ?? '',
+          xCpl: issuerAddress?.xCpl,
+          xBairro: issuerAddress?.xBairro ?? '',
         },
         places,
       );
@@ -571,15 +579,15 @@ export function buildDanfseView(
           cell('CNPJ / CPF / NIF', personId(provider.identificador), 1),
           cell(
             'Indicador Municipal (Inscrição)',
-            dash(provider.IM ?? issuer.IM),
+            dash(provider.IM ?? issuer?.IM),
             2,
           ),
-          cell('Telefone', formatPhone(provider.fone ?? issuer.fone), 3),
+          cell('Telefone', formatPhone(provider.fone ?? issuer?.fone), 3),
         ],
         [
           cell(
             'Nome / Nome Empresarial',
-            dash(provider.xNome ?? issuer.xNome),
+            dash(provider.xNome ?? issuer?.xNome),
             0,
             { span: 2 },
           ),
@@ -588,7 +596,7 @@ export function buildDanfseView(
         ],
         [
           cell('Endereço', address.street, 0, { span: 2 }),
-          cell('E-mail', dash(provider.email ?? issuer.email), 2, { span: 2 }),
+          cell('E-mail', dash(provider.email ?? issuer?.email), 2, { span: 2 }),
         ],
         [
           cell(
@@ -611,19 +619,24 @@ export function buildDanfseView(
   };
 
   const recipient = dps.IBSCBS?.dest;
-  const recipientBlock: Block =
-    String(dps.IBSCBS?.indDest) === '0'
-      ? {
-          kind: 'message',
-          message: 'O DESTINATÁRIO É O PRÓPRIO TOMADOR/ADQUIRENTE DA OPERAÇÃO',
-        }
-      : partyBlock(
-          'DESTINATÁRIO DA OPERAÇÃO',
-          'DESTINATÁRIO DA OPERAÇÃO NÃO IDENTIFICADO NA NFS-e',
-          recipient,
-          places,
-          false,
-        );
+  const recipientIsTaker =
+    String(dps.IBSCBS?.indDest) === '0' ||
+    (recipient !== undefined &&
+      dps.toma !== undefined &&
+      personId(recipient.identificador) !== DASH &&
+      personId(recipient.identificador) === personId(dps.toma.identificador));
+  const recipientBlock: Block = recipientIsTaker
+    ? {
+        kind: 'message',
+        message: 'O DESTINATÁRIO É O PRÓPRIO TOMADOR/ADQUIRENTE DA OPERAÇÃO',
+      }
+    : partyBlock(
+        'DESTINATÁRIO DA OPERAÇÃO',
+        'DESTINATÁRIO DA OPERAÇÃO NÃO IDENTIFICADO NA NFS-e',
+        recipient,
+        places,
+        false,
+      );
 
   const code = dps.serv.cServ;
   const place = dps.serv.locPrest;
@@ -641,7 +654,7 @@ export function buildDanfseView(
   return {
     title: `DANFSe ${info.chaveAcesso}`,
     header: {
-      municipality: `Município: ${[info.xLocEmi, issuer.enderNac.UF].filter(Boolean).join(' / ')}`,
+      municipality: `Município: ${[info.xLocEmi, issuerAddress?.UF].filter(Boolean).join(' / ')}`,
       generator: `Ambiente Gerador: ${String(info.ambGer) === '1' ? 'Prefeitura' : 'Sistema Nacional NFS-e'}`,
       environment: `Tipo de Ambiente: ${homologation ? 'Homologação' : 'Produção'}`,
       homologation,
