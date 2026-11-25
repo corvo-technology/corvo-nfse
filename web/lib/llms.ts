@@ -21,6 +21,10 @@ Corvo registers issuer companies, stores their A1 certificates, calculates taxes
 
 - API base URL: \`https://api.corvo.tech/v1\`. Authenticate with the \`X-API-Key\` header. Keys starting with \`corvo_test_\` use the test environment (no fiscal validity); keys starting with \`corvo_live_\` issue real invoices.
 - MCP server (AI agents): \`https://api.corvo.tech/mcp\`. Claude Code, Cursor, Codex, VS Code, Windsurf and Claude Desktop connect with OAuth in the browser; the user picks the workspace and the environment (test or live) on the approval screen.
+- MCP agent flow: \`cnpj_lookup\` → \`company_create\` → \`certificate_upload\` → \`company_fiscal_status\` → \`nfse_issue\` → \`credits_balance\` → \`credits_purchase\` → \`payment_status\` → keep issuing. The person always completes the payment (card or Pix).
+- MCP \`certificate_upload\` (optional scope \`nfse:certificates\`): \`tax_id\`, \`pfx_base64\` (up to 50 KB), \`password\`. The password stays in the agent's vault; Corvo stores it encrypted and never returns it.
+- MCP \`credits_purchase\` (optional scope \`billing:purchase\`): \`units\` and \`method\` (\`pix\` or \`card\`); returns the Pix QR Code and copy-and-paste code or the card checkout link. Not available on self-hosted installs.
+- MCP \`payment_status\` (scope \`billing:purchase\`): \`payment_id\` or \`session_id\`; returns pending, paid (with the new balance) or expired/cancelled.
 - Tax regimes: MEI and Simples Nacional only.
 - Issuance is asynchronous: \`POST /v1/invoices\` returns \`202\` and the result arrives by \`GET /v1/invoices/:id\` or by webhook. Send an \`Idempotency-Key\` header to retry safely.
 - Corvo serves only MEI and Simples Nacional (\`taxRegime\` is \`MEI\` or \`Simples Nacional\`; other regimes return \`422 ERROR_TAX_REGIME_NOT_SUPPORTED\`) and does not generate the DAS. An ME/EPP (Simples Nacional) must send its effective Simples rate as \`simplesRate\` when the company is created (\`simplesIssRate\` is optional, for ISS withholding) and updates it with \`PATCH /v1/companies/:id\`; it is sent on every NFS-e as \`pTotTribSN\`. A MEI sends no rate.
@@ -48,6 +52,10 @@ A Corvo cadastra empresas emissoras, guarda os certificados A1, calcula os tribu
 
 - URL base da API: \`https://api.corvo.tech/v1\`. Autentique com o header \`X-API-Key\`. Chaves \`corvo_test_\` usam o ambiente de teste (sem valor fiscal); chaves \`corvo_live_\` emitem notas reais.
 - Servidor MCP (agentes de IA): \`https://api.corvo.tech/mcp\`. Claude Code, Cursor, Codex, VS Code, Windsurf e Claude Desktop conectam com OAuth no navegador; o usuário escolhe o workspace e o ambiente (teste ou produção) na tela de aprovação.
+- Roteiro do agente no MCP: \`cnpj_lookup\` → \`company_create\` → \`certificate_upload\` → \`company_fiscal_status\` → \`nfse_issue\` → \`credits_balance\` → \`credits_purchase\` → \`payment_status\` → segue emitindo. O pagamento é sempre concluído pela pessoa (cartão ou Pix).
+- MCP \`certificate_upload\` (escopo opcional \`nfse:certificates\`): \`tax_id\`, \`pfx_base64\` (até 50 KB), \`password\`. A senha fica no cofre do agente; a Corvo guarda criptografado e nunca devolve.
+- MCP \`credits_purchase\` (escopo opcional \`billing:purchase\`): \`units\` e \`method\` (\`pix\` ou \`card\`); devolve o QR Code e o copia-e-cola do Pix ou o link de pagamento no cartão. Não existe em instalações self-hosted.
+- MCP \`payment_status\` (escopo \`billing:purchase\`): \`payment_id\` ou \`session_id\`; devolve pendente, pago (com o novo saldo) ou expirado/cancelado.
 - Regimes: só MEI e Simples Nacional.
 - A emissão é assíncrona: \`POST /v1/invoices\` responde \`202\` e o resultado chega por \`GET /v1/invoices/:id\` ou por webhook. Envie \`Idempotency-Key\` para repetir com segurança.
 - \`POST /v1/invoices/calculate\` mostra os tributos sem emitir.

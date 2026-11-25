@@ -61,4 +61,23 @@ describe("llms.txt and llms-full.txt", () => {
       expect(index).toMatch(locale === "en" ? /MEI and Simples Nacional only/ : /só MEI e Simples Nacional/);
     });
   }
+
+  it("llms.txt names the three new MCP tools in both languages", () => {
+    for (const locale of ["en", "pt"] as const) {
+      const index = buildLlmsTxt(locale);
+      for (const tool of ["certificate_upload", "credits_purchase", "payment_status"]) expect(index).toContain(tool);
+    }
+  });
+
+  it("the MCP docs page lists the optional scopes with the consent texts", () => {
+    const pt = JSON.stringify(getDocsTree("pt")!.pages.mcp.blocks);
+    expect(pt).toContain("nfse:certificates");
+    expect(pt).toContain("Enviar o certificado digital da empresa");
+    expect(pt).toContain("billing:purchase");
+    expect(pt).toContain("O pagamento é sempre feito por você.");
+    const en = JSON.stringify(getDocsTree("en")!.pages.mcp.blocks);
+    expect(en).toContain("nfse:certificates");
+    expect(en).toContain("billing:purchase");
+    for (const page of [pt, en]) for (const tool of ["certificate_upload", "credits_purchase", "payment_status"]) expect(page).toContain(tool);
+  });
 });
