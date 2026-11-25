@@ -3049,12 +3049,12 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             [
               "`nfse:certificates` (optional, unchecked by default)",
               "Send the company's digital certificate",
-              "Members who can manage certificates"
+              "admin"
             ],
             [
               "`billing:purchase` (optional, unchecked by default)",
               "Create credit charges (Pix or card). The payment is always made by you.",
-              "Members who can manage billing"
+              "admin, billing"
             ]
           ]
         },
@@ -3344,7 +3344,7 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         },
         {
           "kind": "text",
-          "body": "In Settings → Audit (for owners and admins), Corvo lists the actions that change something in the account, whether they come from the website, the API or an agent: companies, certificates, invoices, charges, access and sends to the accountant. Each row shows when, who (a person, an agent with the person who authorized it, an API key or System), the action and the item. Lookups and lists are not recorded. Passwords and certificates are never stored. Events are kept for 1 year."
+          "body": "In Settings → Audit (admin role only), Corvo lists the actions that change something in the account, whether they come from the website, the API or an agent: companies, certificates, invoices, charges, access and sends to the accountant. Each row shows when, who (a person, an agent with the person who authorized it, an API key or System), the action and the item. Lookups and lists are not recorded. Passwords and certificates are never stored. Events are kept for 1 year."
         },
         {
           "kind": "heading",

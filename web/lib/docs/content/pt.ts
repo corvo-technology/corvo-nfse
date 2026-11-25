@@ -3026,12 +3026,12 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             [
               "`nfse:certificates` (opcional, desmarcado por padrão)",
               "Enviar o certificado digital da empresa",
-              "Quem pode gerenciar certificados"
+              "admin"
             ],
             [
               "`billing:purchase` (opcional, desmarcado por padrão)",
               "Gerar cobranças de créditos (Pix ou cartão). O pagamento é sempre feito por você.",
-              "Quem pode gerenciar a cobrança"
+              "admin, billing"
             ]
           ]
         },
@@ -3341,7 +3341,7 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         },
         {
           "kind": "text",
-          "body": "Em Configurações → Auditoria (para donos e administradores), a Corvo lista as ações que mudam algo na conta, venham do site, da API ou de um agente: empresas, certificados, notas, cobranças, acessos e envios ao contador. Cada linha mostra quando, quem (pessoa, agente com a pessoa que o autorizou, chave de API ou Sistema), a ação e o item. Consultas e listagens não entram. Senhas e certificados nunca são gravados. Os eventos ficam por 1 ano."
+          "body": "Em Configurações → Auditoria (só para o papel admin), a Corvo lista as ações que mudam algo na conta, venham do site, da API ou de um agente: empresas, certificados, notas, cobranças, acessos e envios ao contador. Cada linha mostra quando, quem (pessoa, agente com a pessoa que o autorizou, chave de API ou Sistema), a ação e o item. Consultas e listagens não entram. Senhas e certificados nunca são gravados. Os eventos ficam por 1 ano."
         },
         {
           "kind": "heading",
