@@ -1657,13 +1657,17 @@
       "simplesIssRate": "2.01"
     },
     "cnpj": {
-      "hint": "We fill in the rest with the Receita data.",
-      "loading": "Looking up the CNPJ...",
-      "found": "Receita data filled in. Check it and fix anything that is off.",
-      "isMei": "This CNPJ is a MEI.",
-      "isSimples": "This CNPJ is on Simples Nacional.",
-      "inactive": "The Receita says this CNPJ is not active. Check the number before you continue: you cannot issue invoices with an inactive CNPJ.",
-      "error": "We could not look up the CNPJ right now. Fill in the details by hand."
+      "hint": "Numbers only is fine.",
+      "loading": "Looking it up at the Receita...",
+      "found": "We found: {summary}",
+      "isMei": "MEI",
+      "isSimples": "Simples Nacional",
+      "notFound": "We could not find this CNPJ at the Receita. Check the numbers.",
+      "unavailable": "The Receita lookup is down. You can fill in the details by hand.",
+      "inactive": "This CNPJ is {situation} at the Receita. You cannot issue invoices with it.",
+      "inactiveFallback": "not active",
+      "duplicate": "This company is already registered.",
+      "seePlans": "See plans"
     },
     "cep": {
       "hint": "Auto-fills address and IBGE code.",
@@ -1673,17 +1677,19 @@
       "loading": "Looking up ZIP code..."
     },
     "steps": {
-      "company": "Company",
-      "address": "Address",
+      "cnpj": "Company",
+      "data": "Check details",
       "fiscal": "Tax",
-      "certificate": "Certificate",
-      "review": "Fiscal review"
+      "certificate": "Certificate"
     },
     "stepHint": {
-      "company": "Start with the tax ID and name of the company that will issue invoices.",
-      "address": "Enter the ZIP code: the address and municipality IBGE code fill in automatically.",
+      "cnpj": "Type the company CNPJ. We look up the rest at the Receita.",
+      "data": "Check that everything is right. Edit it if you need to.",
+      "address": "Enter the ZIP code: the address and the municipality IBGE code fill in by themselves.",
       "fiscal": "Enter the fiscal municipality. Live mode also requires municipal registration. A default service code simplifies future invoices."
     },
+    "edit": "Edit",
+    "addressMissing": "No address on record. Click Edit to add one.",
     "next": "Continue",
     "back": "Back",
     "createCompany": "Create company",
@@ -2095,7 +2101,8 @@
     "company_profile_missing": "The company's tax setup is missing.",
     "certificate_file_required": "Upload the certificate file (.pfx or .p12).",
     "cnpj_invalid": "This CNPJ is not valid. Check the numbers.",
-    "cnpj_lookup_unavailable": "We could not look up the CNPJ right now. Fill in the details by hand.",
+    "cnpj_lookup_unavailable": "The Receita lookup is down. You can fill in the details by hand.",
+    "cnpj_not_found": "We could not find this CNPJ at the Receita. Check the numbers.",
     "certificate_password_required": "Enter the certificate password.",
     "fiscal_profile_missing": "The company has no tax profile for this date. Set it up under Companies.",
     "fiscal_profile_not_effective": "The company's tax profile is not effective on the invoice date.",

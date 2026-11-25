@@ -6,9 +6,10 @@ const VALID = '11222333000181';
 
 describe('cnpj_lookup tool', () => {
   it('returns the registry profile of a valid CNPJ', async () => {
-    const lookupProfile = jest
-      .fn()
-      .mockResolvedValue({ legalName: 'Corvo', mei: false, active: true });
+    const lookupProfile = jest.fn().mockResolvedValue({
+      status: 'found',
+      profile: { legalName: 'Corvo', mei: false, active: true },
+    });
     await expect(
       createCnpjLookupHandler({ lookupProfile })(
         { cnpj: '11.222.333/0001-81' },
@@ -28,11 +29,16 @@ describe('cnpj_lookup tool', () => {
     expect(lookupProfile).not.toHaveBeenCalled();
   });
 
-  it('fails when the registry has no answer', async () => {
+  it('tells an unknown CNPJ apart from a registry that is down', async () => {
     await expect(
       createCnpjLookupHandler({
-        lookupProfile: jest.fn().mockResolvedValue(null),
+        lookupProfile: jest.fn().mockResolvedValue({ status: 'not_found' }),
       })({ cnpj: VALID }, ctx),
-    ).rejects.toThrow(/no answer/);
+    ).rejects.toThrow(/CNPJ_NOT_FOUND/);
+    await expect(
+      createCnpjLookupHandler({
+        lookupProfile: jest.fn().mockResolvedValue({ status: 'unavailable' }),
+      })({ cnpj: VALID }, ctx),
+    ).rejects.toThrow(/CNPJ_LOOKUP_UNAVAILABLE/);
   });
 });

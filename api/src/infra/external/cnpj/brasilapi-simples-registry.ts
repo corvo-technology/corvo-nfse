@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   SimplesRegistryPort,
   type CnpjProfile,
+  type CnpjProfileResult,
   type RegistryInfo,
 } from '@/modules/company/domain/registry-check';
 import {
@@ -83,8 +84,12 @@ export class BrasilApiSimplesRegistry extends SimplesRegistryPort {
     return record ? toInfo(record) : null;
   }
 
-  async lookupProfile(cnpj: string): Promise<CnpjProfile | null> {
-    const record = await this.client.fetch(cnpj);
-    return record ? toProfile(record, toInfo(record)) : null;
+  async lookupProfile(cnpj: string): Promise<CnpjProfileResult> {
+    const result = await this.client.fetchResult(cnpj);
+    if (result.status !== 'found') return result;
+    return {
+      status: 'found',
+      profile: toProfile(result.record, toInfo(result.record)),
+    };
   }
 }

@@ -8,7 +8,7 @@ import { invalidInput } from './tool-input-errors';
 export const CNPJ_LOOKUP_TOOL = {
   name: 'cnpj_lookup',
   description:
-    'Look up the public registration data of any CNPJ (legal name, trade name, address, IBGE municipality code, whether it is Simples Nacional or MEI, and whether it is active). Use it to pre-fill a company or a customer before nfse_issue or company_create. It reads the public registry, not this workspace: use company_get for companies already registered here. Fails when the CNPJ is invalid or the registry has no answer right now. Next step of onboarding: company_create.',
+    'Look up the public registration data of any CNPJ (legal name, trade name, address, IBGE municipality code, whether it is Simples Nacional or MEI, and whether it is active). Use it to pre-fill a company or a customer before nfse_issue or company_create. It reads the public registry, not this workspace: use company_get for companies already registered here. Fails when the CNPJ is invalid, when the registry does not know it (CNPJ_NOT_FOUND) or when the registry has no answer right now (CNPJ_LOOKUP_UNAVAILABLE, try again later). Next step of onboarding: company_create.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -37,11 +37,15 @@ export function createCnpjLookupHandler(
     if (errors.length > 0) throw invalidInput(errors);
     const cnpj = normalizeCnpj(params.cnpj);
     if (!isValidCnpj(cnpj)) throw new Error('The CNPJ is not valid');
-    const profile = await registry.lookupProfile(cnpj);
-    if (!profile)
+    const result = await registry.lookupProfile(cnpj);
+    if (result.status === 'not_found')
       throw new Error(
-        'The public registry has no answer for this CNPJ right now',
+        'The public registry does not know this CNPJ (CNPJ_NOT_FOUND): ask the person to check the numbers',
       );
-    return { profile };
+    if (result.status === 'unavailable')
+      throw new Error(
+        'The public registry has no answer right now (CNPJ_LOOKUP_UNAVAILABLE): try again in a moment, or ask the person for the company data',
+      );
+    return { profile: result.profile };
   };
 }

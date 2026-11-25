@@ -31,6 +31,12 @@ export interface CnpjProfile {
   situation: string;
 }
 
+/** `not_found`: the registry answered and does not know the CNPJ. `unavailable`: it did not answer (down, rate limited). */
+export type CnpjProfileResult =
+  | { status: 'found'; profile: CnpjProfile }
+  | { status: 'not_found' }
+  | { status: 'unavailable' };
+
 export interface RegistryWarning {
   code: 'TAX_REGIME_REGISTRY_MISMATCH' | 'MEI_MUNICIPALITY_MISMATCH';
   message: string;
@@ -40,8 +46,8 @@ export interface RegistryWarning {
 export abstract class SimplesRegistryPort {
   /** Null when the registry is unavailable or the CNPJ is unknown. Never throws. */
   abstract lookup(cnpj: string): Promise<RegistryInfo | null>;
-  /** Full registration data for pre-filling forms. Same cache and rules as `lookup`. */
-  abstract lookupProfile(cnpj: string): Promise<CnpjProfile | null>;
+  /** Full registration data for pre-filling forms. Same cache and rules as `lookup`, but says whether the CNPJ is unknown or the registry is down. */
+  abstract lookupProfile(cnpj: string): Promise<CnpjProfileResult>;
 }
 
 export function registryWarnings(

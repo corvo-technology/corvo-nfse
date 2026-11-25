@@ -30,6 +30,11 @@ const NOT_FOUND_TTL_MS = 5 * MINUTE_MS;
 /** Oldest entries are dropped beyond this, so the cache cannot grow forever. */
 const MAX_CACHED = 1000;
 
+export type RegistryFetchResult =
+  | { status: 'found'; record: Record<string, unknown> }
+  | { status: 'not_found' }
+  | { status: 'unavailable' };
+
 type Entry = { at: number; ttl: number; body: Record<string, unknown> | null };
 
 /**
@@ -53,21 +58,33 @@ export class BrasilApiCnpjClient {
 
   /** Raw registry answer, or null when it is unavailable or does not know the CNPJ. */
   async fetch(cnpj: string): Promise<Record<string, unknown> | null> {
+    const result = await this.fetchResult(cnpj);
+    return result.status === 'found' ? result.record : null;
+  }
+
+  /** Same as `fetch`, but tells "the registry does not know this CNPJ" apart from "the registry did not answer". */
+  async fetchResult(cnpj: string): Promise<RegistryFetchResult> {
     // The new alphanumeric CNPJ keeps its letters: stripping them would query another company.
     const key = cnpj.replace(/[^0-9A-Za-z]/g, '').toUpperCase();
     const cached = this.cache.get(key);
-    if (cached && this.now() - cached.at < cached.ttl) return cached.body;
+    if (cached && this.now() - cached.at < cached.ttl)
+      return cached.body
+        ? { status: 'found', record: cached.body }
+        : { status: 'not_found' };
     let allNotFound = true;
     for (const url of PROVIDERS) {
       const result = await this.ask(url(key), key);
       if (result.record) {
         this.remember(key, result.record, DAY_MS);
-        return result.record;
+        return { status: 'found', record: result.record };
       }
       if (!result.notFound) allNotFound = false;
     }
-    if (allNotFound) this.remember(key, null, NOT_FOUND_TTL_MS);
-    return null;
+    if (allNotFound) {
+      this.remember(key, null, NOT_FOUND_TTL_MS);
+      return { status: 'not_found' };
+    }
+    return { status: 'unavailable' };
   }
 
   private async ask(

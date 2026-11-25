@@ -12,7 +12,11 @@ import messages from "@/messages/en.json";
 const mocks = vi.hoisted(() => ({ environment: "test" as "test" | "live", list: vi.fn(), create: vi.fn(), schedule: vi.fn(), push: vi.fn(), findCustomer: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: () => false, fiscalEnvironment: mocks.environment }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, back: vi.fn() }) }));
-vi.mock("@/lib/api", async (original) => ({ ...await original<typeof import("@/lib/api")>(), companies: { list: mocks.list }, invoices: { create: mocks.create }, schedules: { create: mocks.schedule }, customers: { find: mocks.findCustomer } }));
+vi.mock("@/lib/api", async (original) => {
+  const actual = await original<typeof import("@/lib/api")>();
+  // The Receita lookup is down in these tests: the wizard falls back to typing the company by hand.
+  return { ...actual, cnpj: { lookup: () => Promise.reject(new actual.ApiError(503, "down", "CNPJ_LOOKUP_UNAVAILABLE")) }, companies: { list: mocks.list }, invoices: { create: mocks.create }, schedules: { create: mocks.schedule }, customers: { find: mocks.findCustomer } };
+});
 
 const company: Company = {
   id: "company-1", tenantId: "tenant-1", legalName: "Example LTDA", taxId: "11222333000181", taxRegime: "Simples Nacional", simpleNational: true, simplesRate: "6.54",
@@ -28,8 +32,12 @@ function chooseService(code: string) {
   fireEvent.change(screen.getByRole("combobox", { name: /Default service code|Tax code/i }), { target: { value: code } });
   fireEvent.mouseDown(screen.getByRole("option", { name: new RegExp(code) }));
 }
-function reachFiscal() {
-  fill("Legal name", company.legalName); fill("CNPJ", company.taxId);
+// Not the CNPJ of the company already in the list: that one would be refused as a duplicate.
+const NEW_CNPJ = "27125453000109";
+async function reachFiscal() {
+  fill("CNPJ", NEW_CNPJ);
+  await screen.findByText(/Receita lookup is down/);
+  fill("Legal name", company.legalName);
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 }
@@ -49,19 +57,19 @@ afterEach(cleanup);
 describe("Company fiscal setup", () => {
   it("requires a seven-digit municipality in test mode and submits the chosen default service", async () => {
     const onSave = vi.fn().mockResolvedValue(company);
-    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); reachFiscal();
+    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); await reachFiscal();
     expect(field("IBGE").required).toBe(true); expect(field("Municipal registration").required).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Create company" }));
     expect(screen.getByText("Enter an IBGE municipality code with exactly 7 digits.")).toBeTruthy(); expect(onSave).not.toHaveBeenCalled();
     fill("IBGE", "3550308"); chooseService("010101"); fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } });
     fireEvent.click(screen.getByRole("button", { name: "Create company" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
-    expect(onSave.mock.calls[0][0]).toMatchObject({ taxId: company.taxId, municipalityCode: "3550308", defaultServiceCode: "010101" });
+    expect(onSave.mock.calls[0][0]).toMatchObject({ taxId: NEW_CNPJ, municipalityCode: "3550308", defaultServiceCode: "010101" });
     expect(onSave.mock.calls[0][0].municipalReg).toBeUndefined();
   });
   it("asks a Simples Nacional company for its rate and sends it", async () => {
     const onSave = vi.fn().mockResolvedValue(company);
-    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); reachFiscal();
+    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); await reachFiscal();
     fill("IBGE", "3550308"); fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "Simples Nacional" } });
     fireEvent.click(screen.getByRole("button", { name: "Create company" }));
     expect(screen.getByText("Enter the effective Simples rate.")).toBeTruthy(); expect(onSave).not.toHaveBeenCalled();
@@ -70,14 +78,14 @@ describe("Company fiscal setup", () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0][0]).toMatchObject({ simplesRate: "6.54", simplesIssRate: "2.01" });
   });
-  it("does not show the rate fields for a MEI", () => {
-    renderUI(<CompanyForm onSave={vi.fn()} onCancel={vi.fn()} />); reachFiscal();
+  it("does not show the rate fields for a MEI", async () => {
+    renderUI(<CompanyForm onSave={vi.fn()} onCancel={vi.fn()} />); await reachFiscal();
     fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } });
     expect(screen.queryByLabelText(/Effective Simples rate/i)).toBeNull();
   });
   it("lets a live company be created without a municipal registration", async () => {
     mocks.environment = "live"; const onSave = vi.fn();
-    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); reachFiscal(); fill("IBGE", "3550308");
+    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); await reachFiscal(); fill("IBGE", "3550308");
     expect(field("Municipal registration").required).toBe(false);
     fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } }); fireEvent.click(screen.getByRole("button", { name: "Create company" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
@@ -85,7 +93,7 @@ describe("Company fiscal setup", () => {
   });
   it("keeps the municipal registration off the invoice unless the user opts in", async () => {
     const onSave = vi.fn().mockResolvedValue(company);
-    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); reachFiscal(); fill("IBGE", "3550308");
+    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); await reachFiscal(); fill("IBGE", "3550308");
     const optIn = () => screen.queryByRole("checkbox", { name: /Send the municipal registration/ }) as HTMLInputElement | null;
     expect(optIn()).toBeNull();
     fill("Municipal registration", "12345");
@@ -96,7 +104,7 @@ describe("Company fiscal setup", () => {
   });
   it("sends the municipal registration only after ticking the option", async () => {
     const onSave = vi.fn().mockResolvedValue(company);
-    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); reachFiscal(); fill("IBGE", "3550308"); fill("Municipal registration", "12345");
+    renderUI(<CompanyForm onSave={onSave} onCancel={vi.fn()} />); await reachFiscal(); fill("IBGE", "3550308"); fill("Municipal registration", "12345");
     fireEvent.click(screen.getByRole("checkbox", { name: /Send the municipal registration/ }));
     fireEvent.change(screen.getByLabelText(/Tax regime/i), { target: { value: "MEI" } }); fireEvent.click(screen.getByRole("button", { name: "Create company" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
