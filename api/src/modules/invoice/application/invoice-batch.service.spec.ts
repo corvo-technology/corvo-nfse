@@ -1,6 +1,7 @@
 import { InvoiceBatchService } from './invoice-batch.service';
 import { IdempotencyConflictError } from '../domain/errors';
 import type { AuthContext } from '@/modules/auth/auth-context';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 const auth = { executionEnvironment: 'test' } as AuthContext;
 const tenantId = 'tenant-1';
@@ -22,6 +23,7 @@ describe('InvoiceBatchService.emitBatch', () => {
   let invoices: { prepareEmission: jest.Mock };
   let lifecycle: { submitBatch: jest.Mock };
   let service: InvoiceBatchService;
+  let audit: FakeAccountAudit;
 
   beforeEach(() => {
     let n = 0;
@@ -33,7 +35,12 @@ describe('InvoiceBatchService.emitBatch', () => {
         entries.map(() => ({ ok: true })),
       ),
     };
-    service = new InvoiceBatchService(invoices as never, lifecycle as never);
+    audit = new FakeAccountAudit();
+    service = new InvoiceBatchService(
+      invoices as never,
+      lifecycle as never,
+      audit,
+    );
   });
 
   it('rejects an item that fails DTO validation and still submits the others', async () => {
@@ -236,5 +243,33 @@ describe('InvoiceBatchService.emitBatch', () => {
         error: { code: 'ERROR_VALIDATION' },
       });
     });
+  });
+
+  it('records one invoice.batch_issued event for the whole batch', async () => {
+    await service.emitBatch(
+      [valid(), { companyTaxId: '11222333000181' }, valid()],
+      tenantId,
+      auth,
+    );
+    expect(audit.events).toHaveLength(1);
+    expect(audit.events[0]).toMatchObject({
+      action: 'invoice.batch_issued',
+      tenantId,
+      environment: 'test',
+      metadata: { accepted: 2, rejected: 1 },
+    });
+  });
+
+  it('records nothing when no item was accepted, or when asked not to', async () => {
+    await service.emitBatch([{ nope: 1 }], tenantId, auth);
+    await service.emitBatch([valid()], tenantId, auth, { audit: false });
+    expect(audit.events).toHaveLength(0);
+  });
+
+  it('keeps the batch when the recorder fails', async () => {
+    jest.spyOn(audit, 'record').mockRejectedValue(new Error('boom'));
+    await expect(
+      service.emitBatch([valid()], tenantId, auth),
+    ).resolves.toMatchObject({ accepted: 1 });
   });
 });

@@ -5,6 +5,7 @@ import type { AuthContext } from '@/modules/auth/auth-context';
 import { InvoiceDomainService } from '../domain/invoice-domain.service';
 import { InvoiceService } from './invoice.service';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 describe('InvoiceService.prepareEmission', () => {
   const testAuth = { executionEnvironment: 'test' } as AuthContext;
@@ -59,6 +60,7 @@ describe('InvoiceService.prepareEmission', () => {
       new InvoiceIntakeService(companies as never, new InvoiceDomainService()),
       {} as never,
       providers as never,
+      new FakeAccountAudit(),
     );
   });
 

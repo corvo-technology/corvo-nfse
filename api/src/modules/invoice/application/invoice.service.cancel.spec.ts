@@ -8,6 +8,7 @@ import {
 import type { InvoiceStatus } from '../domain/invoice-status';
 import { DEFAULT_CANCELLATION_DESCRIPTION } from '../domain/cancellation-reason';
 import { InvoiceService } from './invoice.service';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 const tenantId = '11111111-1111-4111-8111-111111111111';
 
@@ -43,6 +44,7 @@ function build(invoice: Invoice, stored?: Invoice) {
     findByIdAndTenantId
       .mockResolvedValueOnce(invoice)
       .mockResolvedValue(stored);
+  const audit = new FakeAccountAudit();
   const service = new InvoiceService(
     { findByIdAndTenantId, registerCancellationIntent } as never,
     {} as never,
@@ -55,14 +57,53 @@ function build(invoice: Invoice, stored?: Invoice) {
     {} as never,
     webhooks as never,
     { isSimulated: (environment: string) => environment !== 'live' } as never,
+    audit,
   );
-  return { service, lifecycle, webhooks, registerCancellationIntent };
+  return { service, lifecycle, webhooks, registerCancellationIntent, audit };
 }
 
 const fiscal = {
   reason: 'issue_error' as const,
   description: 'Valor do serviço informado incorretamente',
 };
+
+describe('InvoiceService.cancel audit', () => {
+  it('records invoice.cancelled after a cancellation is requested', async () => {
+    const invoice = invoiceIn('authorized');
+    const { service, audit } = build(invoice);
+    await service.cancel(invoice.id, tenantId, 'test', fiscal);
+    expect(audit.events).toHaveLength(1);
+    expect(audit.events[0]).toMatchObject({
+      action: 'invoice.cancelled',
+      tenantId,
+      environment: 'test',
+      target: { type: 'invoice', id: invoice.id, label: 'Cliente' },
+    });
+  });
+
+  it('records a cancellation intent on an invoice still being issued', async () => {
+    const invoice = invoiceIn('processing');
+    const { service, audit } = build(invoice);
+    await service.cancel(invoice.id, tenantId, 'test', fiscal);
+    expect(audit.events.map((e) => e.action)).toEqual(['invoice.cancelled']);
+  });
+
+  it('does not record a repeated cancel of an invoice already cancelled', async () => {
+    const invoice = invoiceIn('cancelled');
+    const { service, audit } = build(invoice);
+    await service.cancel(invoice.id, tenantId, 'test', fiscal);
+    expect(audit.events).toHaveLength(0);
+  });
+
+  it('keeps the action when the recorder fails', async () => {
+    const invoice = invoiceIn('authorized');
+    const { service, audit } = build(invoice);
+    jest.spyOn(audit, 'record').mockRejectedValue(new Error('boom'));
+    await expect(
+      service.cancel(invoice.id, tenantId, 'test', fiscal),
+    ).resolves.toBe(invoice);
+  });
+});
 
 describe('InvoiceService.cancel', () => {
   it('cancels a queued invoice locally and notifies without an outbox message', async () => {

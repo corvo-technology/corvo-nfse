@@ -3,6 +3,8 @@ import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { InvoiceBatchService } from '@/modules/invoice/application/invoice-batch.service';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
+import { recordSafely } from '@/shared/audit/record-safely';
 import { ImportRepository } from '../domain/import.repository';
 import { LIMIT_CODES } from '../domain/import';
 import { ImportStateError } from '../domain/import-error';
@@ -22,6 +24,7 @@ export class ImportEmitService {
     private readonly review: ImportReviewService,
     private readonly batch: InvoiceBatchService,
     @InjectQueue(IMPORT_EMIT_QUEUE) private readonly queue: Queue<ImportRef>,
+    private readonly audit: AccountAuditRecorder,
   ) {}
 
   /**
@@ -62,6 +65,13 @@ export class ImportEmitService {
         await this.repo.updateStatus(tenantId, id, { status: view.status });
         throw error;
       }
+      await recordSafely(this.audit, {
+        tenantId,
+        environment: env,
+        action: 'import.emitted',
+        target: { type: 'import', id, label: view.fileName },
+        metadata: { rows: queued },
+      });
     }
     return this.review.get(tenantId, env, id);
   }
@@ -109,6 +119,7 @@ export class ImportEmitService {
         })),
         tenantId,
         auth,
+        { audit: false },
       );
       let limit: { code: string; message: string } | null = null;
       const settled: Parameters<ImportRepository['settleRows']>[2] = [];

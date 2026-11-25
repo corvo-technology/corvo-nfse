@@ -72,6 +72,7 @@ import { TypeOrmInvoiceRepository } from './infra/typeorm-invoice.repository';
 import { TypeOrmInvoiceEventRepository } from './infra/typeorm-invoice-event.repository';
 import { TypeOrmInvoiceFiscalSnapshotRepository } from './infra/typeorm-invoice-fiscal-snapshot.repository';
 import { TypeOrmOutboxRepository } from './infra/typeorm-outbox.repository';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
 if (
@@ -283,6 +284,7 @@ describePostgres('POST /v1/invoices/calculate with PostgreSQL RLS', () => {
       quota as never,
       new CompanyDomainService(),
       profiles,
+      new FakeAccountAudit(),
     );
     intake = new InvoiceIntakeService(companies, new InvoiceDomainService());
     const helper = new TypeOrmRepositoryHelper(runtime, transactions);
@@ -328,6 +330,7 @@ describePostgres('POST /v1/invoices/calculate with PostgreSQL RLS', () => {
             {
               isSimulated: (environment: string) => environment !== 'live',
             } as never,
+            new FakeAccountAudit(),
           ),
         },
       ],

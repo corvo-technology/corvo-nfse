@@ -10,6 +10,7 @@ import {
   CompanyBlockedError,
   CompanyAlreadyExistsError,
 } from '../domain/errors';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 function createMockRepo() {
   return {
@@ -27,7 +28,13 @@ describe('CompanyService.findByTaxId', () => {
 
   function build() {
     const repo = createMockRepo();
-    const service = new CompanyService(repo, {} as any, {} as any, {} as any);
+    const service = new CompanyService(
+      repo,
+      {} as any,
+      {} as any,
+      {} as any,
+      new FakeAccountAudit(),
+    );
     return { repo, service };
   }
 
@@ -68,6 +75,7 @@ describe('CompanyService', () => {
     findEffective: jest.Mock;
   };
   let companyDomain: CompanyDomainService;
+  let audit: FakeAccountAudit;
 
   const tenantId = 'tenant-123';
   const VALID_CNPJ = '11222333000181';
@@ -98,12 +106,102 @@ describe('CompanyService', () => {
       current: jest.fn().mockResolvedValue(null),
       findEffective: jest.fn().mockResolvedValue(null),
     };
+    audit = new FakeAccountAudit();
     service = new CompanyService(
       mockRepo,
       { getStatus: jest.fn() } as any,
       companyDomain,
       mockProfiles as any,
+      audit,
     );
+  });
+
+  describe('audit', () => {
+    const existing = () => ({
+      ...mockCompany,
+      update: jest.fn(),
+      markDeleted: jest.fn(),
+    });
+
+    it('records company.created with the CNPJ as target label', async () => {
+      mockRepo.existsWithTaxId.mockResolvedValue(false);
+      mockRepo.save.mockImplementation(async (c) => c);
+      const created = await service.create(
+        {
+          legalName: 'New Company',
+          taxId: '22.334.455/0001-86',
+          taxRegime: 'MEI' as const,
+          municipalityCode: '3550308',
+        },
+        tenantId,
+      );
+      expect(audit.events).toHaveLength(1);
+      expect(audit.events[0]).toMatchObject({
+        action: 'company.created',
+        tenantId,
+        environment: 'test',
+        target: {
+          type: 'company',
+          id: created.id,
+          label: '22.334.455/0001-86',
+        },
+        metadata: { legal_name: 'New Company' },
+      });
+    });
+
+    it('records company.updated with the changed field names', async () => {
+      mockRepo.findByIdAndTenantId.mockResolvedValue(existing() as any);
+      mockRepo.save.mockImplementation(async (c) => c);
+      await service.update(
+        'company-id-1',
+        { legalName: 'Updated', tradeName: 'Up' },
+        tenantId,
+      );
+      expect(audit.events[0]).toMatchObject({
+        action: 'company.updated',
+        target: {
+          type: 'company',
+          id: 'company-id-1',
+          label: '11.222.333/0001-81',
+        },
+        metadata: { fields: 'legalName,tradeName' },
+      });
+    });
+
+    it('records company.deleted', async () => {
+      mockRepo.findByIdAndTenantId.mockResolvedValue(existing() as any);
+      mockRepo.save.mockImplementation(async (c) => c);
+      await service.delete('company-id-1', tenantId);
+      expect(audit.events[0]).toMatchObject({
+        action: 'company.deleted',
+        target: { type: 'company', id: 'company-id-1' },
+      });
+    });
+
+    it('records nothing when the write is refused', async () => {
+      mockRepo.existsWithTaxId.mockResolvedValue(true);
+      await expect(
+        service.create(
+          {
+            legalName: 'Dup',
+            taxId: '11.222.333/0001-81',
+            taxRegime: 'MEI' as const,
+            municipalityCode: '3550308',
+          },
+          tenantId,
+        ),
+      ).rejects.toBeInstanceOf(CompanyAlreadyExistsError);
+      expect(audit.events).toHaveLength(0);
+    });
+
+    it('keeps the action when the recorder fails', async () => {
+      jest.spyOn(audit, 'record').mockRejectedValue(new Error('boom'));
+      mockRepo.findByIdAndTenantId.mockResolvedValue(existing() as any);
+      mockRepo.save.mockImplementation(async (c) => c);
+      await expect(
+        service.delete('company-id-1', tenantId),
+      ).resolves.toBeUndefined();
+    });
   });
 
   describe('create', () => {
@@ -603,6 +701,7 @@ describe('CompanyService regime restriction', () => {
       { getStatus: jest.fn() } as never,
       new CompanyDomainService(),
       profiles as never,
+      new FakeAccountAudit(),
     );
     return { service, repo, profiles };
   };
@@ -652,6 +751,7 @@ describe('CompanyService registry check', () => {
       {} as never,
       new CompanyDomainService(),
       {} as never,
+      new FakeAccountAudit(),
       { lookup },
     );
 
@@ -717,6 +817,7 @@ describe('CompanyService Simples rates on update', () => {
       {} as never,
       new CompanyDomainService(),
       profiles as never,
+      new FakeAccountAudit(),
     );
     return { service, company, repo };
   };
@@ -781,6 +882,7 @@ describe('CompanyService company limit by plan', () => {
       } as never,
       new CompanyDomainService(),
       profiles as never,
+      new FakeAccountAudit(),
     );
     return { service, repo };
   };

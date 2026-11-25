@@ -6,6 +6,7 @@ import { InvoiceService } from './invoice.service';
 import { IntegrationInvoiceIssuer } from './integration-invoice-issuer';
 import type { Invoice } from '../domain/invoice';
 import type { CreateInvoiceDto } from '../http/invoice.dto';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 describe('IntegrationInvoiceIssuer', () => {
   const request = {
@@ -56,6 +57,7 @@ describe('IntegrationInvoiceIssuer', () => {
       new InvoiceIntakeService(companies as never, new InvoiceDomainService()),
       {} as never,
       { isSimulated: (environment: string) => environment !== 'live' } as never,
+      new FakeAccountAudit(),
     );
     issuer = new IntegrationInvoiceIssuer(service, repository as never);
   });

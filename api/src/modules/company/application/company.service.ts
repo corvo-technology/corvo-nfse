@@ -34,6 +34,9 @@ import {
   regimeKindFromLegacy,
 } from '../domain/fiscal-profile';
 import { todayInEstablishmentTimezone } from '@/shared/dates/date-time';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
+import { recordSafely } from '@/shared/audit/record-safely';
+import { formatTaxId } from '@/modules/invoice/infra/danfse/danfse-format';
 
 export interface CurrentCompanyRegime {
   taxRegime: TaxRegime | null;
@@ -63,6 +66,7 @@ export class CompanyService {
     private readonly quotaService: QuotaService,
     private readonly companyDomain: CompanyDomainService,
     private readonly profiles: CompanyFiscalProfileService,
+    private readonly audit: AccountAuditRecorder,
     @Optional() private readonly registry?: SimplesRegistryPort,
   ) {}
 
@@ -148,6 +152,18 @@ export class CompanyService {
       validFrom: todayInEstablishmentTimezone(),
       source: 'company_api',
       ...declarationReview(declaredBy),
+    });
+
+    await recordSafely(this.audit, {
+      tenantId,
+      environment,
+      action: 'company.created',
+      target: {
+        type: 'company',
+        id: company.id,
+        label: formatTaxId(company.taxId),
+      },
+      metadata: { legal_name: company.legalName },
     });
 
     return company;
@@ -305,6 +321,23 @@ export class CompanyService {
       });
     }
 
+    await recordSafely(this.audit, {
+      tenantId,
+      environment,
+      action: 'company.updated',
+      target: {
+        type: 'company',
+        id: company.id,
+        label: formatTaxId(company.taxId),
+      },
+      metadata: {
+        fields: Object.entries(input)
+          .filter(([, value]) => value !== undefined)
+          .map(([key]) => key)
+          .join(','),
+      },
+    });
+
     return company;
   }
 
@@ -359,6 +392,17 @@ export class CompanyService {
     const company = await this.findById(id, tenantId, environment);
     company.markDeleted();
     await this.companyRepo.save(company, tenantId);
+    await recordSafely(this.audit, {
+      tenantId,
+      environment,
+      action: 'company.deleted',
+      target: {
+        type: 'company',
+        id: company.id,
+        label: formatTaxId(company.taxId),
+      },
+      metadata: { legal_name: company.legalName },
+    });
   }
 
   async ensureReady(

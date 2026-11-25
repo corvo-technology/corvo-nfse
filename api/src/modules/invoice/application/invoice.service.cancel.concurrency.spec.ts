@@ -6,6 +6,7 @@ import type { InvoiceStatus } from '../domain/invoice-status';
 import { InvoiceMapper } from '../infra/invoice.mapper';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import { InvoiceService } from './invoice.service';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 const tenantId = '11111111-1111-4111-8111-111111111111';
 const fiscal = {
@@ -155,6 +156,7 @@ function harness(
     {} as never,
     webhooks as never,
     { isSimulated: (environment: string) => environment !== 'live' } as never,
+    new FakeAccountAudit(),
   );
 
   return {

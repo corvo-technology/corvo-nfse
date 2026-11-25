@@ -3,6 +3,9 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { validationExceptionFactory } from '@/shared/http/validation-pipe';
+import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
+import { recordSafely } from '@/shared/audit/record-safely';
 import { Invoice } from '../domain/invoice';
 import { BatchInvoiceItemDto } from '../http/invoice-batch.dto';
 import { InvoiceService, type PreparedEmission } from './invoice.service';
@@ -33,6 +36,7 @@ export class InvoiceBatchService {
   constructor(
     private readonly invoices: InvoiceService,
     private readonly lifecycle: InvoiceLifecycleService,
+    private readonly audit: AccountAuditRecorder,
   ) {}
 
   /**
@@ -44,6 +48,7 @@ export class InvoiceBatchService {
     items: unknown[],
     tenantId: string,
     authContext: AuthContext,
+    options: { audit?: boolean } = {},
   ): Promise<BatchResult> {
     const duplicates = duplicateKeyIndexes(items);
     const prepared = await mapPool(items, PREPARE_CONCURRENCY, (item, index) =>
@@ -104,6 +109,13 @@ export class InvoiceBatchService {
           };
     });
     const accepted = results.filter((r) => r.status === 'accepted').length;
+    if (accepted > 0 && options.audit !== false)
+      await recordSafely(this.audit, {
+        tenantId,
+        environment: executionEnvironment(authContext),
+        action: 'invoice.batch_issued',
+        metadata: { accepted, rejected: results.length - accepted },
+      });
     return {
       total: results.length,
       accepted,

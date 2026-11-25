@@ -60,6 +60,8 @@ import {
 } from '@/infra/storage/domain/document-storage';
 import { InvoiceIntakeService } from './invoice-intake.service';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
+import { recordSafely } from '@/shared/audit/record-safely';
 
 export type PreparedEmission =
   | { kind: 'replay'; invoice: Invoice }
@@ -112,6 +114,7 @@ export class InvoiceService {
     private readonly intake: InvoiceIntakeService,
     private readonly webhooks: InvoiceWebhookPublisher,
     private readonly providers: NfseProviderFactory,
+    private readonly audit: AccountAuditRecorder,
   ) {}
 
   async emit(
@@ -176,7 +179,40 @@ export class InvoiceService {
     this.logger.log(
       `Invoice ${invoice.id} emitted for company ${invoice.companyId}`,
     );
+    await recordSafely(this.audit, {
+      tenantId,
+      environment,
+      action: substitution ? 'invoice.substituted' : 'invoice.issued',
+      target: this.auditTarget(invoice),
+      metadata: substitution
+        ? { substitutes_invoice_id: substitution.invoiceId }
+        : {
+            amount: invoice.amount,
+            ...(invoice.nfseNumber !== null
+              ? { number: invoice.nfseNumber }
+              : {}),
+          },
+    });
     return invoice;
+  }
+
+  private auditTarget(invoice: Invoice) {
+    return {
+      type: 'invoice' as const,
+      id: invoice.id,
+      label: invoice.customerSnapshot?.name ?? 'Consumidor',
+    };
+  }
+
+  private auditCancelled(invoice: Invoice, environment: ExecutionEnvironment) {
+    return recordSafely(this.audit, {
+      tenantId: invoice.tenantId,
+      environment,
+      action: 'invoice.cancelled',
+      target: this.auditTarget(invoice),
+      metadata:
+        invoice.nfseNumber !== null ? { number: invoice.nfseNumber } : {},
+    });
   }
 
   /**
@@ -386,6 +422,7 @@ export class InvoiceService {
       await this.webhooks.publish(invoice, 'nfse.invoice.cancelled', {
         reason: input.reason,
       });
+    await this.auditCancelled(invoice, environment);
     return invoice;
   }
 
@@ -408,7 +445,10 @@ export class InvoiceService {
       invoice.tenantId,
       { code: reason.code, description: reason.description, requestedAt },
     );
-    if (written) return invoice;
+    if (written) {
+      await this.auditCancelled(invoice, environment);
+      return invoice;
+    }
     return this.currentAfterLostRace(
       invoice.id,
       invoice.tenantId,
@@ -651,6 +691,13 @@ export class InvoiceService {
         removeOnFail: 1000,
       },
     );
+
+    await recordSafely(this.audit, {
+      tenantId,
+      environment,
+      action: 'invoice.email_resent',
+      target: this.auditTarget(invoice),
+    });
 
     return { emailId, status: 'queued' };
   }

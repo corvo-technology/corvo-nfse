@@ -1,4 +1,5 @@
 import { ImportEmitService, LIMIT_CODES } from './import-emit.service';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 const T = 't1';
 const ref = { tenantId: T, environment: 'live' as const, importId: 'i1' };
@@ -26,16 +27,48 @@ describe('ImportEmitService', () => {
   const batch = { emitBatch: jest.fn() };
   const queue = { add: jest.fn() };
   let service: ImportEmitService;
+  let audit: FakeAccountAudit;
 
   beforeEach(() => {
     jest.resetAllMocks();
     queue.add.mockResolvedValue(undefined);
+    audit = new FakeAccountAudit();
     service = new ImportEmitService(
       repo as never,
       review as never,
       batch as never,
       queue as never,
+      audit,
     );
+  });
+
+  describe('audit', () => {
+    const start = () => {
+      review.get
+        .mockResolvedValueOnce({ ...view('ready'), fileName: 'notas.csv' })
+        .mockResolvedValueOnce(view('emitting'));
+      repo.markRowsQueued.mockResolvedValue(3);
+      repo.claimEmit.mockResolvedValue(true);
+    };
+
+    it('records import.emitted with the file name and row count', async () => {
+      start();
+      await service.emit(T, 'live', 'i1');
+      expect(audit.events).toHaveLength(1);
+      expect(audit.events[0]).toMatchObject({
+        action: 'import.emitted',
+        tenantId: T,
+        environment: 'live',
+        target: { type: 'import', id: 'i1', label: 'notas.csv' },
+        metadata: { rows: 3 },
+      });
+    });
+
+    it('keeps the action when the recorder fails', async () => {
+      start();
+      jest.spyOn(audit, 'record').mockRejectedValue(new Error('boom'));
+      await expect(service.emit(T, 'live', 'i1')).resolves.toBeDefined();
+    });
   });
 
   describe('emit', () => {
@@ -161,6 +194,7 @@ describe('ImportEmitService', () => {
         ],
         T,
         expect.objectContaining({ executionEnvironment: 'live' }),
+        { audit: false },
       );
       expect(repo.settleRows).toHaveBeenCalledTimes(1);
       expect(repo.settleRows).toHaveBeenCalledWith(T, 'i1', [
