@@ -11,6 +11,7 @@ import {
 import type { AuthContext } from '@/modules/auth/auth-context';
 import type { BillingUsageService } from '@/modules/billing/application/billing-usage.service';
 import type { CreditsService } from '@/modules/credits/application/credits.service';
+import { toPublicCreditTransaction } from './public-shapes';
 import { invalidInput } from './tool-input-errors';
 
 export const CREDITS_BALANCE_TOOL = {
@@ -69,7 +70,7 @@ export function createCreditsBalanceHandler(
         limit: params.limit ?? 20,
         cursor: params.cursor,
       });
-      result.history = page.data;
+      result.history = page.data.map(toPublicCreditTransaction);
       result.next_cursor = page.pagination.nextCursor;
     }
     return result;
