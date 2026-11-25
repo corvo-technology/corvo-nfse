@@ -13,8 +13,11 @@ import { useToast } from "@/components/ui/toast";
  * nobody knows yet whether the NFS-e exists. Both actions are safe against a duplicate:
  * "retry" sends it again with the same DPS (the portal is asked for it first) and "discard"
  * only rejects after the portal confirms the DPS was never registered.
+ *
+ * `dpsUsedByOther`: the portal already has this DPS number on ANOTHER note, so this invoice was
+ * never issued. Retrying would hit the same number again, so only "discard" is offered.
  */
-export function ManualReviewActions({ invoiceIds, onDone }: { invoiceIds: string[]; onDone: () => void }) {
+export function ManualReviewActions({ invoiceIds, onDone, dpsUsedByOther = false }: { invoiceIds: string[]; onDone: () => void; dpsUsedByOther?: boolean }) {
   const t = useTranslations("ManualReview");
   const toast = useToast();
   const apiError = useApiErrorText();
@@ -27,8 +30,9 @@ export function ManualReviewActions({ invoiceIds, onDone }: { invoiceIds: string
     try {
       const results = await invoices.review(action, invoiceIds);
       const accepted = results.filter((r) => r.outcome === "accepted").length;
-      const skipped = results.length - accepted;
-      toast.success(t(`done.${action}`, { count: accepted }) + (skipped ? ` ${t("done.skipped", { count: skipped })}` : ""));
+      const dpsUsed = results.filter((r) => r.outcome === "skipped" && r.reason === "dps_used_by_other_nfse").length;
+      const skipped = results.length - accepted - dpsUsed;
+      toast.success([t(`done.${action}`, { count: accepted }), ...(skipped ? [t("done.skipped", { count: skipped })] : []), ...(dpsUsed ? [t("done.skippedDpsUsed", { count: dpsUsed })] : [])].join(" "));
       setConfirmDiscard(false);
       onDone();
     } catch (cause) {
@@ -43,18 +47,20 @@ export function ManualReviewActions({ invoiceIds, onDone }: { invoiceIds: string
     <section aria-labelledby="manual-review-title" className="banner banner-warn flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <h2 id="manual-review-title" className="font-medium text-text">{t("title", { count })}</h2>
-        <p className="text-sm text-text-2">{t("why", { count })}</p>
+        <p className="text-sm text-text-2">{dpsUsedByOther ? t("dpsUsed.why") : t("why", { count })}</p>
       </div>
       <ul className="flex flex-col gap-1 text-[13px] text-text-2">
-        <li><strong className="font-medium text-text">{t("retry.label")}:</strong> {t("retry.hint")}</li>
-        <li><strong className="font-medium text-text">{t("discard.label")}:</strong> {t("discard.hint")}</li>
+        {!dpsUsedByOther && <li><strong className="font-medium text-text">{t("retry.label")}:</strong> {t("retry.hint")}</li>}
+        <li><strong className="font-medium text-text">{t("discard.label")}:</strong> {dpsUsedByOther ? t("dpsUsed.discardHint") : t("discard.hint")}</li>
       </ul>
       <div className="flex flex-wrap gap-2">
-        <Button variant="primary" loading={busy === "retry"} disabled={busy !== null} onClick={() => void run("retry")}>
-          <RotateCcw size={15} aria-hidden />
-          {t("retry.button", { count })}
-        </Button>
-        <Button variant="secondary" disabled={busy !== null} onClick={() => setConfirmDiscard(true)}>
+        {!dpsUsedByOther && (
+          <Button variant="primary" loading={busy === "retry"} disabled={busy !== null} onClick={() => void run("retry")}>
+            <RotateCcw size={15} aria-hidden />
+            {t("retry.button", { count })}
+          </Button>
+        )}
+        <Button variant={dpsUsedByOther ? "primary" : "secondary"} disabled={busy !== null} onClick={() => setConfirmDiscard(true)}>
           <Trash2 size={15} aria-hidden />
           {t("discard.button", { count })}
         </Button>
@@ -62,7 +68,7 @@ export function ManualReviewActions({ invoiceIds, onDone }: { invoiceIds: string
       {confirmDiscard && (
         <Modal open={confirmDiscard} onClose={() => setConfirmDiscard(false)} title={t("discard.confirmTitle", { count })}>
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-text-2">{t("discard.confirmBody", { count })}</p>
+            <p className="text-sm text-text-2">{dpsUsedByOther ? t("dpsUsed.confirmBody") : t("discard.confirmBody", { count })}</p>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" disabled={busy !== null} onClick={() => setConfirmDiscard(false)}>{t("discard.back")}</Button>
               <Button variant="danger" loading={busy === "discard"} disabled={busy !== null} onClick={() => void run("discard")}>{t("discard.confirm", { count })}</Button>

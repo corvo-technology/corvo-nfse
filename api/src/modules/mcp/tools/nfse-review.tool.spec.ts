@@ -99,6 +99,16 @@ describe('nfse_review tool', () => {
     ).rejects.toThrow(/changed/);
   });
 
+  it('explains why retry is refused when the DPS belongs to another note, and points to discard', async () => {
+    findByIdAndTenantId.mockResolvedValue(fakeInvoice('manual_review'));
+    apply.mockResolvedValue([
+      { id: invoiceId, outcome: 'skipped', reason: 'dps_used_by_other_nfse' },
+    ]);
+    await expect(
+      handler({ invoice_id: invoiceId, action: 'retry' }, ctx),
+    ).rejects.toThrow(/another NFS-e.*"discard".*nfse_repeat/);
+  });
+
   it('rejects an invalid id or action before touching anything', async () => {
     await expect(
       handler({ invoice_id: 'abc', action: 'retry' }, ctx),

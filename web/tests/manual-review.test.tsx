@@ -62,6 +62,34 @@ describe("ManualReviewActions", () => {
     expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
   });
 
+  it("only offers discard when the invoice number already belongs to another invoice", async () => {
+    mocks.review.mockResolvedValue([{ id: "a", outcome: "accepted" }]);
+    wrap(<ManualReviewActions invoiceIds={["a"]} dpsUsedByOther onDone={vi.fn()} />);
+
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    expect(screen.getByText(messages.ManualReview.dpsUsed.why)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(screen.getByText(messages.ManualReview.dpsUsed.confirmBody)).toBeTruthy();
+
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent === "Discard")!);
+    await waitFor(() => expect(mocks.review).toHaveBeenCalledWith("discard", ["a"]));
+  });
+
+  it("tells which invoices were not retried because their number belongs to another invoice", async () => {
+    mocks.review.mockResolvedValue([
+      { id: "a", outcome: "accepted" },
+      { id: "b", outcome: "skipped", reason: "dps_used_by_other_nfse" },
+    ]);
+    const onDone = vi.fn();
+    wrap(<ManualReviewActions invoiceIds={["a", "b"]} onDone={onDone} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry all 2" }));
+
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(mocks.success).toHaveBeenCalledWith("1 invoice went back to the portal. 1 was not retried: its number already belongs to another invoice. Discard it.");
+  });
+
   it("shows nothing without invoices", () => {
     const { container } = wrap(<ManualReviewActions invoiceIds={[]} onDone={vi.fn()} />);
     expect(container.textContent).toBe("");

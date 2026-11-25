@@ -3404,7 +3404,13 @@
     "done": {
       "retry": "{count, plural, =0 {No invoice was sent again.} one {# invoice went back to the portal.} other {# invoices went back to the portal.}}",
       "discard": "{count, plural, =0 {No invoice was sent for discard.} one {We are confirming # invoice with the portal before discarding.} other {We are confirming # invoices with the portal before discarding.}}",
-      "skipped": "{count, plural, one {# had already left review.} other {# had already left review.}}"
+      "skipped": "{count, plural, one {# had already left review.} other {# had already left review.}}",
+      "skippedDpsUsed": "{count, plural, one {# was not retried: its number already belongs to another invoice. Discard it.} other {# were not retried: their numbers already belong to other invoices. Discard them.}}"
+    },
+    "dpsUsed": {
+      "why": "The national portal already has another invoice with this invoice’s number (see the reason above). This invoice was not issued, and sending it again with the same number will not help.",
+      "discardHint": "marks this invoice as not issued and the credit comes back. Then issue the sale again (for example with “Duplicate”): the new invoice gets another number.",
+      "confirmBody": "The portal confirms this invoice’s number belongs to another invoice. It will be marked as not issued and the credit comes back. The other invoice does not change. Then issue the sale again with “Duplicate”: the new invoice gets another number."
     },
     "failed": "Could not finish. Please try again."
   },

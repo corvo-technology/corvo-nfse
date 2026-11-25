@@ -47,6 +47,12 @@ import {
 import { DateTime } from 'luxon';
 import { fiscalError, type FiscalError } from '../domain/fiscal/fiscal-error';
 import { moneyString, toDecimal } from '../domain/fiscal/money';
+import {
+  checkPortalNfse,
+  DPS_USED_BY_OTHER_NFSE,
+  dpsUsedByOtherNfseMessage,
+  type PortalNfseCheck,
+} from '../domain/fiscal/portal-nfse-match';
 
 export interface FiscalJobData {
   invoiceId: string;
@@ -99,6 +105,14 @@ function safeReason(message: string | undefined): string | undefined {
 
 /** Error code of an invoice discarded after the portal confirmed its DPS was never registered. */
 export const DISCARDED_ERROR_CODE = 'DISCARDED_AFTER_REVIEW';
+
+/** The portal returned a note for our DPS that could not be read, so it was not accepted. */
+export const PORTAL_NFSE_UNVERIFIED = 'PORTAL_NFSE_UNVERIFIED';
+
+type AuthorizedResult = Pick<
+  FiscalIssueResult,
+  'accessKey' | 'nfseNumber' | 'xmlAuthorized'
+>;
 
 /**
  * The DpsBuilder rejected the layout/schema: the invoice must be rejected
@@ -407,13 +421,106 @@ export class NfseWorkflowService {
     }
   }
 
-  /** Saves the authorized XML, moves the invoice to authorized and starts the follow-up jobs. */
+  /**
+   * Every path that takes an authorized NFS-e from the portal for this invoice (emission answer,
+   * reconciliation, manual-review sweep) comes through here. The portal answers by DPS id, so a
+   * DPS number already used by another emission returns THAT note: it is checked against the
+   * invoice first and, when it is not ours, the invoice goes to manual review instead.
+   */
   private async authorize(
     invoice: Invoice,
-    result: Pick<
-      FiscalIssueResult,
-      'accessKey' | 'nfseNumber' | 'xmlAuthorized'
-    >,
+    result: AuthorizedResult,
+  ): Promise<void> {
+    if (!result.xmlAuthorized || !result.accessKey)
+      throw new Error('Authorized fiscal result lacks XML/access key');
+    const check = await this.checkPortalNote(invoice, result.xmlAuthorized);
+    if (!check.matches) return this.refusePortalNote(invoice, check);
+    return this.markAuthorized(invoice, result);
+  }
+
+  /** What our invoice says, compared with the NFS-e the portal returned for its DPS. */
+  private async checkPortalNote(
+    invoice: Invoice,
+    xml: string,
+  ): Promise<PortalNfseCheck> {
+    const company = await this.companies.findById(
+      invoice.companyId,
+      invoice.tenantId,
+      invoice.environment,
+    );
+    const snapshot = invoice.toSnapshot();
+    const customer = snapshot.customerSnapshot;
+    return checkPortalNfse(xml, {
+      providerTaxId: company.taxId,
+      customerTaxId: customer?.foreign ? null : (customer?.taxId ?? null),
+      amount: snapshot.amount,
+      competenceDate: new Date(snapshot.competenceDate)
+        .toISOString()
+        .slice(0, 10),
+      series: snapshot.dpsSeries ?? '',
+      number: invoice.dpsNumber ?? 0,
+    });
+  }
+
+  /** The text and code shown on an invoice whose DPS the portal has on another note. */
+  private portalNoteError(
+    invoice: Invoice,
+    check: Exclude<PortalNfseCheck, { matches: true }>,
+  ): { code: string; message: string } {
+    const snapshot = invoice.toSnapshot();
+    if (check.differences.includes('unreadable'))
+      return {
+        code: PORTAL_NFSE_UNVERIFIED,
+        message: `O portal devolveu uma nota para o DPS ${snapshot.dpsNumber} (série ${snapshot.dpsSeries}) que não conseguimos conferir, então ela não foi aceita. Fale com o suporte antes de emitir de novo.`,
+      };
+    return {
+      code: DPS_USED_BY_OTHER_NFSE,
+      message: dpsUsedByOtherNfseMessage(
+        { series: snapshot.dpsSeries ?? '', number: snapshot.dpsNumber ?? 0 },
+        check.found,
+      ),
+    };
+  }
+
+  /**
+   * The portal's note is not this invoice's: never authorize, never store its XML. The invoice
+   * goes to manual review with the reason; a person discards it and issues the sale again.
+   */
+  private async refusePortalNote(
+    invoice: Invoice,
+    check: Exclude<PortalNfseCheck, { matches: true }>,
+  ): Promise<void> {
+    const { code, message } = this.portalNoteError(invoice, check);
+    this.logReconciliation('warn', invoice, 'portal_nfse_mismatch', {
+      errorCode: code,
+      differences: check.differences,
+      portalNfseNumber: check.found?.nfseNumber,
+      portalIssuedOn: check.found?.issuedOn,
+    });
+    invoice.setRejected(code, message);
+    if (invoice.status === 'manual_review') {
+      await this.invoices.save(invoice, invoice.tenantId);
+      return;
+    }
+    if (invoice.status === 'processing')
+      await this.lifecycle.transition(
+        invoice,
+        invoice.transitionTo('reconciliation_required', message),
+      );
+    await this.lifecycle.transition(
+      invoice,
+      invoice.transitionTo('manual_review', message),
+    );
+    await this.webhooks.publish(invoice, 'nfse.invoice.manual_review', {
+      reason: message,
+      errorCode: code,
+    });
+  }
+
+  /** Saves the authorized XML, moves the invoice to authorized and starts the follow-up jobs. */
+  private async markAuthorized(
+    invoice: Invoice,
+    result: AuthorizedResult,
   ): Promise<void> {
     if (!result.xmlAuthorized || !result.accessKey)
       throw new Error('Authorized fiscal result lacks XML/access key');
@@ -533,6 +640,8 @@ export class NfseWorkflowService {
    */
   private async sweepManualReview(invoice: Invoice): Promise<void> {
     if (invoice.status !== 'manual_review') return;
+    // The portal already said this DPS belongs to another note: asking again changes nothing.
+    if (invoice.toSnapshot().lastErrorCode === DPS_USED_BY_OTHER_NFSE) return;
     // Never reserve a DPS number here: without one there is nothing to look up.
     if (!invoice.toSnapshot().dpsNumber) {
       this.logReconciliation('warn', invoice, 'skipped', {
@@ -583,7 +692,7 @@ export class NfseWorkflowService {
     const found = await this.lookUpDps(invoice);
     if (!found) return;
     await this.breaker?.recordSuccess(invoice.environment);
-    if (found.status === 'authorized') return this.authorize(invoice, found);
+    if (found.status === 'authorized') return this.discardFound(invoice, found);
     if (found.status !== 'not_found')
       return this.keepInReview(
         invoice,
@@ -599,6 +708,47 @@ export class NfseWorkflowService {
     await this.webhooks.publish(invoice, 'nfse.invoice.rejected', {
       errorCode: DISCARDED_ERROR_CODE,
       errorMessage: message,
+    });
+  }
+
+  /**
+   * Discard found an NFS-e for the DPS. If it is ours, the invoice is authorized (never a second
+   * NFS-e). If it is another note, this invoice was never issued: it is rejected and its credit
+   * returns, keeping the reason. A note that cannot be read leaves the invoice in review.
+   */
+  private async discardFound(
+    invoice: Invoice,
+    found: FiscalQueryResult,
+  ): Promise<void> {
+    if (!found.xmlAuthorized || !found.accessKey)
+      throw new Error('Authorized fiscal result lacks XML/access key');
+    const check = await this.checkPortalNote(invoice, found.xmlAuthorized);
+    if (check.matches) return this.markAuthorized(invoice, found);
+    if (check.differences.includes('unreadable'))
+      return this.refusePortalNote(invoice, check);
+    this.logReconciliation(
+      'warn',
+      invoice,
+      'discarded_dps_used_by_other_nfse',
+      {
+        differences: check.differences,
+        portalNfseNumber: check.found?.nfseNumber,
+      },
+    );
+    const snapshot = invoice.toSnapshot();
+    const discarded = dpsUsedByOtherNfseMessage(
+      { series: snapshot.dpsSeries ?? '', number: snapshot.dpsNumber ?? 0 },
+      check.found,
+      true,
+    );
+    invoice.setRejected(DPS_USED_BY_OTHER_NFSE, discarded);
+    await this.lifecycle.transition(
+      invoice,
+      invoice.transitionTo('rejected', discarded),
+    );
+    await this.webhooks.publish(invoice, 'nfse.invoice.rejected', {
+      errorCode: DPS_USED_BY_OTHER_NFSE,
+      errorMessage: discarded,
     });
   }
 

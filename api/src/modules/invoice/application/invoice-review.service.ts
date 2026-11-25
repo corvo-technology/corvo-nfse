@@ -11,6 +11,7 @@ import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-aud
 import { recordSafely } from '@/shared/audit/record-safely';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import type { FiscalJobData } from './nfse-workflow.service';
+import { DPS_USED_BY_OTHER_NFSE } from '../domain/fiscal/portal-nfse-match';
 
 export const REVIEW_ACTIONS = ['retry', 'discard'] as const;
 export type ReviewAction = (typeof REVIEW_ACTIONS)[number];
@@ -21,7 +22,11 @@ export type ReviewOutcome =
   | {
       id: string;
       outcome: 'skipped';
-      reason: 'not_found' | 'not_in_manual_review' | 'changed';
+      reason:
+        | 'not_found'
+        | 'not_in_manual_review'
+        | 'changed'
+        | 'dps_used_by_other_nfse';
     };
 
 /**
@@ -30,8 +35,13 @@ export type ReviewOutcome =
  * - retry: back to reconciliation with the SAME DPS. The provider asks the portal for that DPS
  *   before sending it, so this never issues a second NFS-e: it ends authorized (already there or
  *   accepted now), rejected (refused now) or, if the portal is still silent, back in review.
- * - discard: a worker asks the portal for the DPS. Only "never registered" rejects the invoice
- *   (and refunds its credit); if the NFS-e exists it becomes authorized instead.
+ * - discard: a worker asks the portal for the DPS. "Never registered" rejects the invoice (and
+ *   refunds its credit); if OUR NFS-e exists it becomes authorized instead; if the DPS belongs to
+ *   another NFS-e (number already used elsewhere) it is rejected and refunded too.
+ *
+ * An invoice whose DPS number the portal already has on another note is never retried: the same
+ * number would be refused (E0014) or return that other note again. It can only be discarded; the
+ * sale is issued again as a new invoice, which takes a new number.
  */
 @Injectable()
 export class InvoiceReviewService {
@@ -75,6 +85,11 @@ export class InvoiceReviewService {
       companyId: invoice.companyId,
       tenantId: invoice.tenantId,
     };
+    if (
+      action === 'retry' &&
+      invoice.toSnapshot().lastErrorCode === DPS_USED_BY_OTHER_NFSE
+    )
+      return { id, outcome: 'skipped', reason: 'dps_used_by_other_nfse' };
     if (action === 'discard') {
       await this.queues.add(
         'nfse-reconciliation',
