@@ -103,6 +103,14 @@ const invoiceBody = (companyId: string, extra = {}) => ({
   competenceDate: '2026-09-01',
   ...extra,
 });
+const FISCAL_QUEUES = [
+  'email',
+  'nfse-emission',
+  'nfse-reconciliation',
+  'nfse-doc-prep',
+  'nfse-email',
+];
+const CLEANUP_STEP_MS = 10000;
 const waitFor = async <T>(
   read: () => Promise<T>,
   accept: (value: T) => boolean,
@@ -284,58 +292,125 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
   }, 60000);
 
   afterAll(async () => {
-    if (worker) await worker.close();
-    if (app) {
-      for (const name of [
-        'email',
-        'nfse-emission',
-        'nfse-reconciliation',
-        'nfse-doc-prep',
-        'nfse-email',
-      ])
-        await app
-          .get(BullmqQueueService)
-          .getQueue(name)
-          .obliterate({ force: true });
-      const redis = app.get<any>(REDIS_CLIENT);
-      let cursor = '0';
-      do {
-        const result = await redis.scan(
-          cursor,
-          'MATCH',
-          `${process.env.REDIS_KEY_PREFIX}:*`,
-          'COUNT',
-          1000,
-        );
-        cursor = result[0];
-        if (result[1].length) await redis.del(...result[1]);
-      } while (cursor !== '0');
-      await app.close();
-    }
-    try {
-      const listed = await s3.send(
-        new ListObjectsV2Command({ Bucket: bucket }),
-      );
-      if (listed.Contents?.length)
-        await s3.send(
-          new DeleteObjectsCommand({
-            Bucket: bucket,
-            Delete: {
-              Objects: listed.Contents.map((item) => ({ Key: item.Key })),
-            },
+    // Cleanup is best effort: the tests already ran and each run owns a random schema, bucket and
+    // Redis prefix. A step that stalls is reported by name (and what Postgres/Redis were doing)
+    // and skipped, so a stuck resource can never turn into an anonymous hook timeout.
+    const step = async (name: string, run: () => Promise<unknown>) => {
+      const started = Date.now();
+      let timer: NodeJS.Timeout | undefined;
+      const stalled = Symbol('stalled');
+      try {
+        const result = await Promise.race([
+          run(),
+          new Promise<symbol>((resolve) => {
+            timer = setTimeout(() => resolve(stalled), CLEANUP_STEP_MS);
           }),
+        ]);
+        if (result === stalled)
+          process.stderr.write(
+            `[fiscal e2e cleanup] "${name}" still running after ${CLEANUP_STEP_MS}ms, skipping it\n${await diagnose()}\n`,
+          );
+      } catch (error) {
+        process.stderr.write(
+          `[fiscal e2e cleanup] "${name}" failed after ${Date.now() - started}ms: ${String(error)}\n`,
         );
-      await s3.send(new DeleteBucketCommand({ Bucket: bucket }));
-    } catch {
-      /* Bucket may not exist if setup failed. */
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+    const diagnose = async () => {
+      try {
+        const rows = await Promise.race([
+          db.query(
+            `SELECT pid, state, wait_event_type, wait_event, left(query, 120) AS query
+               FROM pg_stat_activity
+              WHERE datname = current_database() AND pid <> pg_backend_pid() AND state <> 'idle'`,
+          ),
+          new Promise<string>((resolve) =>
+            setTimeout(() => resolve('pg_stat_activity unavailable'), 3000),
+          ),
+        ]);
+        return `non-idle Postgres sessions: ${JSON.stringify(rows)}`;
+      } catch (error) {
+        return `diagnosis failed: ${String(error)}`;
+      }
+    };
+
+    // In-flight jobs would make worker.close() wait for them, so let the queues go idle first.
+    await step('queues idle', async () => {
+      if (!app) return;
+      for (let n = 0; n < 100; n++) {
+        const counts = await Promise.all(
+          FISCAL_QUEUES.map((name) =>
+            app.get(BullmqQueueService).getQueue(name).getJobCounts('active'),
+          ),
+        );
+        if (counts.every((count) => count.active === 0)) return;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    });
+    await step('worker close', async () => worker?.close());
+    if (app) {
+      await step('redis cleanup', async () => {
+        for (const name of FISCAL_QUEUES)
+          await app
+            .get(BullmqQueueService)
+            .getQueue(name)
+            .obliterate({ force: true });
+        const redis = app.get<any>(REDIS_CLIENT);
+        let cursor = '0';
+        do {
+          const result = await redis.scan(
+            cursor,
+            'MATCH',
+            `${process.env.REDIS_KEY_PREFIX}:*`,
+            'COUNT',
+            1000,
+          );
+          cursor = result[0];
+          if (result[1].length) await redis.del(...result[1]);
+        } while (cursor !== '0');
+      });
+      await step('app close', async () => app.close());
     }
+    await step('s3 cleanup', async () => {
+      try {
+        const listed = await s3.send(
+          new ListObjectsV2Command({ Bucket: bucket }),
+        );
+        if (listed.Contents?.length)
+          await s3.send(
+            new DeleteObjectsCommand({
+              Bucket: bucket,
+              Delete: {
+                Objects: listed.Contents.map((item) => ({ Key: item.Key })),
+              },
+            }),
+          );
+        await s3.send(new DeleteBucketCommand({ Bucket: bucket }));
+      } catch {
+        /* Bucket may not exist if setup failed. */
+      }
+    });
     s3.destroy();
-    await fiscalTransport.close();
+    await step('fiscal transport close', async () => {
+      await fiscalTransport.close();
+    });
     if (db?.isInitialized) {
-      await db.query(`DROP SCHEMA "${process.env.DB_SCHEMA}" CASCADE`);
-      await db.destroy();
+      // DROP SCHEMA needs an exclusive lock on every table: give up instead of waiting forever
+      // behind a session that is still inside a transaction.
+      await step('drop schema', async () => {
+        const runner = db.createQueryRunner();
+        try {
+          await runner.query(`SET lock_timeout = '10s'`);
+          await runner.query(`DROP SCHEMA "${process.env.DB_SCHEMA}" CASCADE`);
+        } finally {
+          await runner.release();
+        }
+      });
+      await step('database close', async () => db.destroy());
     }
-  }, 30000);
+  }, 60000);
 
   it('migrates a clean database with no ORM schema drift', async () => {
     expect(await entityDrift(db)).toEqual([]);
@@ -942,5 +1017,14 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
     await api('patch', `/companies/${testCompany}`)
       .send({ municipalityCode: null })
       .expect(400);
+    // The worker is still preparing this invoice's documents; let it finish so no job is in
+    // flight (holding a connection and locks) when the suite shuts everything down.
+    await waitFor(
+      () =>
+        db
+          .getRepository(InvoiceOrmEntity)
+          .findOneByOrFail({ id: noDefault.body.data.id }),
+      (row) => !!row.documentsReadyAt,
+    );
   }, 20000);
 });
