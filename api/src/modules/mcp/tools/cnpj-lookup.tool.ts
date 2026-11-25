@@ -8,7 +8,7 @@ import { invalidInput } from './tool-input-errors';
 export const CNPJ_LOOKUP_TOOL = {
   name: 'cnpj_lookup',
   description:
-    'Look up the public registration data of any CNPJ (legal name, trade name, address, IBGE municipality code, whether it is Simples Nacional or MEI, and whether it is active). Use it to pre-fill a company or a customer before nfse_issue or company_create. It reads the public registry, not this workspace: use company_get for companies already registered here. Fails when the CNPJ is invalid, when the registry does not know it (CNPJ_NOT_FOUND) or when the registry has no answer right now (CNPJ_LOOKUP_UNAVAILABLE, try again later). Next step of onboarding: company_create.',
+    'Look up the public registration data of any CNPJ (legal name, trade name, address, IBGE municipality code, whether it is Simples Nacional or MEI, whether it is active, and its main activity (CNAE)). When the activity clearly matches a service code it also returns suggested_service_code: only a suggestion, confirm it with the person before using it as default_service_code. Use it to pre-fill a company or a customer before nfse_issue or company_create. It reads the public registry, not this workspace: use company_get for companies already registered here. Fails when the CNPJ is invalid, when the registry does not know it (CNPJ_NOT_FOUND) or when the registry has no answer right now (CNPJ_LOOKUP_UNAVAILABLE, try again later). Next step of onboarding: company_create.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -46,6 +46,12 @@ export function createCnpjLookupHandler(
       throw new Error(
         'The public registry has no answer right now (CNPJ_LOOKUP_UNAVAILABLE): try again in a moment, or ask the person for the company data',
       );
-    return { profile: result.profile };
+    const { suggestedServiceCode, ...profile } = result.profile;
+    return {
+      profile,
+      ...(suggestedServiceCode
+        ? { suggested_service_code: suggestedServiceCode }
+        : {}),
+    };
   };
 }

@@ -10,7 +10,7 @@ import { invalidInput } from './tool-input-errors';
 export const COMPANY_CREATE_TOOL = {
   name: 'company_create',
   description:
-    'Create an issuing company in the connected environment. A certificate is deliberately not accepted here: after the company is created, upload it with certificate_upload (needs the certificate permission granted when connecting).',
+    'Create an issuing company in the connected environment. A certificate is deliberately not accepted here: after the company is created, upload it with certificate_upload (needs the certificate permission granted when connecting). Do not pick default_service_code on your own: if cnpj_lookup returned suggested_service_code, show it to the person and set default_service_code only after they confirm it; otherwise leave it out.',
   inputSchema: {
     type: 'object',
     properties: {

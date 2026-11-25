@@ -1690,6 +1690,10 @@
       "address": "Informe o CEP: o endereço e o código IBGE do município são preenchidos sozinhos.",
       "fiscal": "Informe o município fiscal. Em produção, informe também a inscrição municipal. O serviço padrão simplifica as próximas notas."
     },
+    "serviceSuggestion": {
+      "text": "Sugestão pela atividade da empresa: {code} — {description}",
+      "use": "Usar"
+    },
     "edit": "Editar",
     "addressMissing": "Sem endereço no cadastro. Clique em Editar para informar.",
     "next": "Continuar",

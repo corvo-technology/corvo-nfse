@@ -155,6 +155,12 @@ describe('OpenAPI contract against the real API (e2e)', () => {
                 mei: false,
                 active: true,
                 situation: 'ATIVA',
+                cnae: { code: '9602501', description: 'Cabeleireiros' },
+                secondaryCnaes: [],
+                suggestedServiceCode: {
+                  code: '060101',
+                  description: 'Barbearia',
+                },
               },
             }),
         })

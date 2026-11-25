@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import {
   SimplesRegistryPort,
+  type CnaeActivity,
   type CnpjProfile,
   type CnpjProfileResult,
   type RegistryInfo,
 } from '@/modules/company/domain/registry-check';
+import { suggestServiceCode } from '@/modules/company/domain/cnae-service-code';
+import { defaultServiceDescription } from '@/modules/invoice/infra/fiscal/service-defaults';
 import {
   BrasilApiCnpjClient,
   sharedBrasilApiClient,
@@ -28,6 +31,16 @@ function toInfo(record: Record<string, unknown>): RegistryInfo {
   };
 }
 
+function toActivity(code: unknown, description: unknown): CnaeActivity | null {
+  const digits =
+    typeof code === 'number' || typeof code === 'string'
+      ? String(code).replace(/\D/g, '')
+      : '';
+  // BrasilAPI sends code 0 for "no activity".
+  if (!digits || /^0+$/.test(digits)) return null;
+  return { code: digits.padStart(7, '0'), description: text(description) };
+}
+
 function toProfile(
   record: Record<string, unknown>,
   info: RegistryInfo,
@@ -41,6 +54,15 @@ function toProfile(
   const situation = text(record.descricao_situacao_cadastral);
   // BrasilAPI sends the code as `situacao_cadastral`; 2 is ATIVA in the Receita table.
   const code = record.situacao_cadastral ?? record.codigo_situacao_cadastral;
+  const cnae = toActivity(record.cnae_fiscal, record.cnae_fiscal_descricao);
+  const secondary = Array.isArray(record.cnaes_secundarios)
+    ? record.cnaes_secundarios.flatMap((item: unknown) => {
+        const entry = (item ?? {}) as Record<string, unknown>;
+        const activity = toActivity(entry.codigo, entry.descricao);
+        return activity ? [activity] : [];
+      })
+    : [];
+  const suggested = cnae ? suggestServiceCode(cnae.code) : null;
   return {
     legalName: text(record.razao_social),
     tradeName: text(record.nome_fantasia),
@@ -59,6 +81,11 @@ function toProfile(
     // The text is the fallback when the code is missing.
     active: typeof code === 'number' ? code === 2 : situation === 'ATIVA',
     situation,
+    cnae,
+    secondaryCnaes: secondary,
+    suggestedServiceCode: suggested
+      ? { code: suggested, description: defaultServiceDescription(suggested) }
+      : null,
   };
 }
 

@@ -148,8 +148,8 @@ export function companyToolsBlocks(locale: DocsLocale): DocBlock[] {
       scopes: FULL,
       success: "200 OK",
       summary: t(
-        "Public registry data of a CNPJ (names, address, Simples Nacional, MEI, situation), to pre-fill a company or a customer form. Send the CNPJ with or without punctuation. `400` `CNPJ_INVALID` for a malformed CNPJ; `404` `CNPJ_NOT_FOUND` when the registry does not know the CNPJ; `503` `CNPJ_LOOKUP_UNAVAILABLE` when it has no answer right now. Needs `nfse.companies.manage` or `nfse.invoices.issue`; 20 requests per minute.",
-        "Dados públicos de um CNPJ (nomes, endereço, Simples Nacional, MEI, situação), para preencher o cadastro de uma empresa ou de um cliente. Envie o CNPJ com ou sem pontuação. `400` `CNPJ_INVALID` para um CNPJ malformado; `404` `CNPJ_NOT_FOUND` quando a Receita não conhece o CNPJ; `503` `CNPJ_LOOKUP_UNAVAILABLE` quando a Receita não responde agora. Exige `nfse.companies.manage` ou `nfse.invoices.issue`; 20 requisições por minuto.",
+        "Public registry data of a CNPJ (names, address, Simples Nacional, MEI, situation, activities/CNAE and `suggestedServiceCode`, a service code to suggest, never to apply without asking), to pre-fill a company or a customer form. Send the CNPJ with or without punctuation. `400` `CNPJ_INVALID` for a malformed CNPJ; `404` `CNPJ_NOT_FOUND` when the registry does not know the CNPJ; `503` `CNPJ_LOOKUP_UNAVAILABLE` when it has no answer right now. Needs `nfse.companies.manage` or `nfse.invoices.issue`; 20 requests per minute.",
+        "Dados públicos de um CNPJ (nomes, endereço, Simples Nacional, MEI, situação, atividades/CNAE e `suggestedServiceCode`, um código de serviço para sugerir, nunca para aplicar sem perguntar), para preencher o cadastro de uma empresa ou de um cliente. Envie o CNPJ com ou sem pontuação. `400` `CNPJ_INVALID` para um CNPJ malformado; `404` `CNPJ_NOT_FOUND` quando a Receita não conhece o CNPJ; `503` `CNPJ_LOOKUP_UNAVAILABLE` quando a Receita não responde agora. Exige `nfse.companies.manage` ou `nfse.invoices.issue`; 20 requisições por minuto.",
       ),
       params: {
         title: "Path",
