@@ -139,4 +139,76 @@ describe('DefaultRtcMapper (real captured fixtures)', () => {
     const r = mapper.fromCalcResponse(body, f.input, 'v');
     expect(r.ok && r.value.cbs?.amount).toBe('0.30');
   });
+
+  describe('memoriaCalculo (1.7.x)', () => {
+    const f = load('ok-consultoria-2026');
+    const clone = () => JSON.parse(JSON.stringify(f.steps[0].response));
+    const memoryOf = (body: unknown) => {
+      const r = mapper.fromCalcResponse(body, f.input, 'v');
+      return r.ok ? r.value.calculationMemory : null;
+    };
+
+    it('reads the memory from tribCalc.IBSCBS.memoriaCalculo (real 1.7.2 capture)', () => {
+      const ibscbs = f.steps[0].response.objetos[0].tribCalc.IBSCBS;
+      expect(memoryOf(f.steps[0].response)).toEqual([
+        ibscbs.memoriaCalculo.cbs,
+        ibscbs.memoriaCalculo.ibsUF,
+        ibscbs.memoriaCalculo.ibsMun,
+      ]);
+      expect(memoryOf(f.steps[0].response)?.every(Boolean)).toBe(true);
+    });
+
+    it('still accepts the memory inside gIBSCBS or inside each group', () => {
+      const inGroup = clone();
+      const ibscbs = inGroup.objetos[0].tribCalc.IBSCBS;
+      const memory = ibscbs.memoriaCalculo;
+      delete ibscbs.memoriaCalculo;
+      ibscbs.gIBSCBS.memoriaCalculo = memory;
+      expect(memoryOf(inGroup)).toEqual([
+        memory.cbs,
+        memory.ibsUF,
+        memory.ibsMun,
+      ]);
+
+      const legacy = clone();
+      const l = legacy.objetos[0].tribCalc.IBSCBS;
+      delete l.memoriaCalculo;
+      l.gIBSCBS.gCBS.memoriaCalculo = 'c';
+      l.gIBSCBS.gIBSUF.memoriaCalculo = 'u';
+      l.gIBSCBS.gIBSMun.memoriaCalculo = 'm';
+      expect(memoryOf(legacy)).toEqual(['c', 'u', 'm']);
+    });
+  });
+
+  describe('rounding of 1.7.2 (totals come from the engine, never recomputed)', () => {
+    // Exemplo do CHANGELOG 1.7.2: base 12,00, IBS 0,05% UF + 0,05% Município.
+    // Cada valor exibido é arredondado uma vez: vIBSUF 0.01, vIBSMun 0.01, vIBS 0.02.
+    // Recalcular pela alíquota somada (12,00 x 0,10%) daria 0.01, um centavo a menos.
+    it('keeps vIBS = vIBSUF + vIBSMun exactly as the engine published it', () => {
+      const f = load('ok-consultoria-2026');
+      const body = JSON.parse(JSON.stringify(f.steps[0].response));
+      const g = body.objetos[0].tribCalc.IBSCBS.gIBSCBS;
+      g.vBC = '12.00';
+      g.gIBSUF = { pIBSUF: '0.05', vIBSUF: '0.01' };
+      g.gIBSMun = { pIBSMun: '0.05', vIBSMun: '0.01' };
+      g.vIBS = '0.02';
+      const r = mapper.fromCalcResponse(body, f.input, 'v');
+      if (!r.ok) throw new Error('expected ok');
+      expect(r.value.ibsTotal).toEqual({ base: '12.00', amount: '0.02' });
+      expect(r.value.ibsState?.amount).toBe('0.01');
+      expect(r.value.ibsCity?.amount).toBe('0.01');
+    });
+
+    it('uses only the first item and ignores the engine totals', () => {
+      const f = load('ok-consultoria-2026');
+      const body = JSON.parse(JSON.stringify(f.steps[0].response));
+      const item = body.objetos[0];
+      item.tribCalc.IBSCBS.gIBSCBS.vBC = '14.00';
+      item.tribCalc.IBSCBS.gIBSCBS.gCBS.vCBS = '0.13';
+      (body.objetos as unknown[]).push(JSON.parse(JSON.stringify(item)));
+      body.total.tribCalc.IBSCBSTot.gCBS.vCBS = '0.26';
+      const r = mapper.fromCalcResponse(body, f.input, 'v');
+      expect(r.ok && r.value.cbs?.amount).toBe('0.13');
+    });
+  });
 });

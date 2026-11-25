@@ -9,7 +9,7 @@ O workflow semanal `rtc-version-watch` abre um issue quando o repositório ganha
 
 ## Passos
 
-1. **Escolher a tag** em <https://github.com/ReceitaFederal/calculadora-rtc-regime-regular/tags> e ler o `CHANGELOG.md` dela. Se mudar arredondamento ou regra de cálculo, é decisão fiscal: avise antes de seguir.
+1. **Escolher a tag** em <https://github.com/ReceitaFederal/calculadora-rtc-regime-regular/tags> e ler o `CHANGELOG.md` dela. Se mudar arredondamento ou regra de cálculo, é decisão fiscal: avise antes de seguir. A 1.7.x exige **Java 25** (`JAVA_VERSION=25`). A 1.7.2 mudou o arredondamento do `regime-geral`: cada valor é arredondado uma vez, os totais são a soma dos itens exibidos e `vIBS = vIBSUF + vIBSMun`, o que pode mudar centavos em relação à 1.7.0. A 1.7.0 também moveu a `memoriaCalculo` para `tribCalc.IBSCBS.memoriaCalculo`.
 2. **Pegar o commit completo da tag**:
    ```sh
    git ls-remote https://github.com/ReceitaFederal/calculadora-rtc-regime-regular 'refs/tags/<tag>'

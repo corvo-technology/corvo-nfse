@@ -100,6 +100,17 @@ Regra de MEI/Simples a partir de 01/01/2027, checagem de adesão do município a
 - Perfis de serviço usam `service-tax-profiles`, nome real do contrato atual;
   o plano original citava `fiscal-services`. Não foi criada rota alternativa.
 
+## Calculadora do Simples Nacional: quando revisitar
+
+A Receita publica uma calculadora própria do Simples Nacional (`calculadora-rtc-simples-nacional`, tag `1.0.2`).
+Não integramos ainda: ela precisa da alíquota efetiva do Simples da empresa (`aliquotasEfetivas`, do PGDAS-D, ainda
+indisponível), usa campos da NT 009 sem XSD publicado e vale a partir de 2027. Revisitar quando acontecer qualquer
+um destes:
+
+- saiu o endpoint assistido ou a release 16 do PGDAS-D;
+- a NT 009 teve o XSD publicado;
+- a data de obrigatoriedade para ME/EPP foi definida.
+
 Veja [exemplos](examples.md), [observabilidade](observability.md) e o
 [registro de homologação](homologation.md). A implementação e os testes de
 cálculo não acrescentam homologação na Produção Restrita.
