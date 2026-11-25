@@ -1,0 +1,16 @@
+name: receita-versions
+on:
+  schedule: [{ cron: '0 11 * * 1' }] # segunda 08:00 BRT
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check Receita repos for new versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/check-receita-versions.sh

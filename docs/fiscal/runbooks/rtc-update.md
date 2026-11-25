@@ -5,7 +5,7 @@ A Calculadora de Tributos é construída a partir do repositório oficial no Git
 - `deploy/Dockerfile.rtc`: `ARG RTC_TAG` (a tag), `ARG RTC_COMMIT` (o commit completo dessa tag) e `ARG JAVA_VERSION` (a do `java.version` do `pom.xml` da tag: 25 na 1.7.x, 21 na 1.6.x). O build para se a tag passar a apontar para outro commit.
 - `deploy/rtc-pinned-version.txt`: o registro legível, no formato `"{versaoApp}/{versaoDb}"` (ex.: `1.7.2/V0073`).
 
-O workflow semanal `rtc-version-watch` abre um issue quando o repositório ganha uma tag mais nova que `RTC_TAG`. Este runbook descreve como atualizar com segurança.
+O workflow semanal `receita-versions` (`scripts/check-receita-versions.sh`) abre um issue quando um dos 3 repositórios da Receita que acompanhamos ganha versão nova. Depois de atualizar, ajuste `RTC_TAG` em `deploy/Dockerfile.rtc` (regime-regular) ou `docs/fiscal/receita-versions.json` (DANFSe e Simples Nacional), senão o issue volta na próxima versão. Este runbook descreve como atualizar com segurança.
 
 ## Passos
 

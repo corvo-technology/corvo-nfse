@@ -28,4 +28,4 @@ The stack includes an internal `rtc-calculator` service (`Dockerfile.rtc`, Java 
 
 The first build downloads Maven dependencies and creates the database from the repository's SQL files, so it takes a few minutes and needs about 3 GB of free disk. The pinned version (`app/db`, e.g. `1.7.2/V0073`) is also recorded in `rtc-pinned-version.txt`. To reproduce deploys exactly, publish the built image in your registry with the tag `rtc-<versaoApp>-<versaoDb>` and set `RTC_IMAGE` to it. After an update, run the smoke test: `RTC_URL=http://localhost:18080/api sh api/scripts/rtc-smoke.sh`.
 
-The weekly `rtc-version-watch` workflow (`.github/workflows/rtc-version-watch.yml`) opens an issue when the repository publishes a tag newer than the pinned one. To update the calculator, follow the [calculator update runbook](../docs/fiscal/runbooks/rtc-update.md).
+The weekly `receita-versions` workflow (`.github/workflows/receita-versions.yml`) opens an issue when a tracked Receita repository publishes a newer version. To update the calculator, follow the [calculator update runbook](../docs/fiscal/runbooks/rtc-update.md).
