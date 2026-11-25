@@ -1,4 +1,23 @@
 {
+  "InvoiceOrigin": {
+    "label": "Source",
+    "yourReference": "Your reference",
+    "filterLabel": "Filter by source",
+    "all": "All sources",
+    "withCharge": "{origin} · charge {charge}",
+    "kind": {
+      "dashboard": "Dashboard",
+      "api": "API",
+      "integration": "Integration sale",
+      "schedule": "Schedule",
+      "import": "Spreadsheet import"
+    },
+    "integration": {
+      "woovi": "Pix sale (Woovi)",
+      "abacatepay": "Sale (AbacatePay)",
+      "generic": "Integration sale"
+    }
+  },
   "Common": {
     "loadMore": "Load more",
     "brand": "Corvo",

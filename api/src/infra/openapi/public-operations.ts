@@ -189,7 +189,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'invoices_list',
     tag: 'Invoices',
     description:
-      'Newest first. Filter by `status`, `companyId`, `externalId`, `customerTaxId` or a `from`/`to` competence-date range, and walk the pages with `cursor`. A test key lists only test invoices and a live key only live ones.',
+      'Newest first. Filter by `status`, `origin`, `companyId`, `externalId`, `customerTaxId` or a `from`/`to` competence-date range, and walk the pages with `cursor`. A test key lists only test invoices and a live key only live ones.',
     ok: { 200: page(ref('InvoiceResponseDto')) },
     paramDescriptions: {
       from: 'Only invoices with a competence date on or after this date (ISO 8601).',

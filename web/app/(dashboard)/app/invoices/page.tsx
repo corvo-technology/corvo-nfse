@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { isScheduled } from "@/lib/invoice-schedule";
+import { INVOICE_ORIGINS, type InvoiceOriginKind } from "@/lib/invoice-origin";
 import { SchedulePanel } from "@/components/schedules/schedule-panel";
 import { ManualReviewActions } from "@/components/invoices/manual-review-actions";
 import { InvoicePackageButton } from "@/components/invoices/invoice-package-button";
@@ -33,11 +34,14 @@ function InvoicesList() {
   const tCommon = useTranslations("Common");
   const params = useSearchParams();
   const [filter, setFilter] = useState<Filter>(() => { const asked = params.get("filter"); return FILTERS.includes(asked as Filter) ? (asked as Filter) : "all"; });
+  // Where the note came from is filtered by the API, so older pages are not missed either.
+  const [origin, setOrigin] = useState<InvoiceOriginKind | "">("");
+  const tOrigin = useTranslations("InvoiceOrigin");
   // Manual review is read from the API so older invoices waiting for a decision are not missed.
   const reviewing = filter === "manual_review";
   const { items: invoices, loading, loadingMore, hasMore, error, loadMore, reload } = useCursorPagination(
-    (cursor, signal) => invoicesApi.list({ limit: 50, cursor, ...(reviewing ? { status: "manual_review" as const } : {}) }, signal),
-    [reviewing],
+    (cursor, signal) => invoicesApi.list({ limit: 50, cursor, ...(reviewing ? { status: "manual_review" as const } : {}), ...(origin ? { origin } : {}) }, signal),
+    [reviewing, origin],
   );
   const failed = error !== null;
 
@@ -97,6 +101,14 @@ function InvoicesList() {
           );
         })}
       </div>
+
+      <label className="flex items-center gap-2 text-sm text-text-3">
+        <span>{tOrigin("filterLabel")}</span>
+        <select value={origin} onChange={(e) => setOrigin(e.target.value as InvoiceOriginKind | "")} className="min-h-10 rounded-md border border-border bg-transparent px-3 text-[13px] text-text">
+          <option value="">{tOrigin("all")}</option>
+          {INVOICE_ORIGINS.map((o) => <option key={o} value={o}>{tOrigin(`kind.${o}`)}</option>)}
+        </select>
+      </label>
 
       {!reviewing && !loading && countOf("manual_review") > 0 && (
         <p role="status" className="banner banner-warn flex flex-wrap items-center justify-between gap-2">

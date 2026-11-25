@@ -1,4 +1,7 @@
-import { TypeOrmInvoiceRepository } from './typeorm-invoice.repository';
+import {
+  applyOrigin,
+  TypeOrmInvoiceRepository,
+} from './typeorm-invoice.repository';
 import { Invoice } from '../domain/invoice';
 import type { InvoiceStatus } from '../domain/invoice-status';
 
@@ -381,5 +384,38 @@ describe('TypeOrmInvoiceRepository', () => {
       ).rejects.toThrow('A valid tenant context is required');
       expect(mockRepo.createQueryBuilder).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('applyOrigin', () => {
+  const clauses = (origin: Parameters<typeof applyOrigin>[1]) => {
+    const andWhere = jest.fn();
+    applyOrigin({ andWhere } as never, origin);
+    return (andWhere.mock.calls as string[][]).map((call) => call[0]);
+  };
+
+  it.each([
+    ['integration', "LIKE 'integ\\_%'"],
+    ['schedule', "LIKE 'schedule:%'"],
+    ['import', "LIKE 'import:%'"],
+  ] as const)('%s filters by the idempotency key prefix', (origin, like) => {
+    const [only, ...rest] = clauses(origin);
+    expect(rest).toEqual([]);
+    expect(only).toContain('idempotency_key');
+    expect(only).toContain(like);
+  });
+
+  it('dashboard excludes Corvo-made keys and keeps the dashboard reference', () => {
+    const [keys, ref] = clauses('dashboard');
+    expect(keys).toMatch(/^NOT \(.*integ.*schedule:.*import:/);
+    expect(ref).toBe("COALESCE(invoice.external_id, '') LIKE 'dashboard-%'");
+  });
+
+  it('api is everything that is neither Corvo-made nor from the dashboard', () => {
+    const [keys, ref] = clauses('api');
+    expect(keys).toMatch(/^NOT \(/);
+    expect(ref).toBe(
+      "NOT (COALESCE(invoice.external_id, '') LIKE 'dashboard-%')",
+    );
   });
 });

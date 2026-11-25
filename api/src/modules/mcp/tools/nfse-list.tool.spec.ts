@@ -47,4 +47,21 @@ describe('nfse_list tool', () => {
       },
     ]);
   });
+
+  it('passes the origin filter to the list and rejects unknown origins', async () => {
+    const list = jest
+      .fn()
+      .mockResolvedValue({ data: [], pagination: { nextCursor: null } });
+    const ctx = { tenantId: 't', activeTenantId: 't' } as never;
+    const handler = createNfseListHandler({ list } as never);
+    await handler({ origin: 'integration' }, ctx);
+    expect(list).toHaveBeenCalledWith(
+      't',
+      expect.objectContaining({ origin: 'integration' }),
+      expect.anything(),
+    );
+    await expect(handler({ origin: 'nope' }, ctx)).rejects.toThrow(
+      'Invalid input: origin',
+    );
+  });
 });

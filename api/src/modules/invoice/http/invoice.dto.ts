@@ -19,6 +19,7 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { INVOICE_STATUSES, type InvoiceStatus } from '../domain/invoice-status';
+import { INVOICE_ORIGINS, type InvoiceOrigin } from '../domain/invoice-origin';
 import {
   CANCELLATION_DESCRIPTION_MAX,
   CANCELLATION_DESCRIPTION_MIN,
@@ -416,6 +417,15 @@ export class ListInvoicesQuery extends CursorQuery {
   @IsOptional()
   @Matches(/^\d{11}$|^\d{14}$/)
   customerTaxId?: string;
+
+  @ApiPropertyOptional({
+    enum: INVOICE_ORIGINS,
+    description:
+      'Only invoices that came from here: `dashboard` (issued in the web app), `integration` (a sale from a connected payment platform), `schedule` (a scheduled or recurring invoice), `import` (a spreadsheet import) or `api` (sent by a client through the API, including AI agents).',
+  })
+  @IsOptional()
+  @IsIn(INVOICE_ORIGINS)
+  origin?: InvoiceOrigin;
 }
 
 export class SubstituteServiceDto {

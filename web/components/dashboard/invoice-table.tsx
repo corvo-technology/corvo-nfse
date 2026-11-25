@@ -9,9 +9,16 @@ import { DataTable, DataTableSkeleton, type Column } from "@/components/ui/data-
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAuth } from "@/lib/auth";
 import { copyInvoiceHref } from "@/lib/invoice-copy";
+import { invoiceOrigin, originText } from "@/lib/invoice-origin";
 import { timeAgo } from "@/lib/i18n-helpers";
 import { formatScheduledDate, isScheduled } from "@/lib/invoice-schedule";
 import { useInvoiceErrorText } from "@/lib/use-api-error";
+
+/** What sits under the customer name: where the note came from, or the client's own reference as sent. */
+function rowReference(inv: Invoice, tOrigin: Parameters<typeof originText>[1]): string {
+  const origin = invoiceOrigin(inv);
+  return origin.kind === "api" ? (inv.externalId ?? inv.id.slice(0, 12)) : originText(origin, tOrigin);
+}
 
 type TimeAgoT = ReturnType<typeof import("next-intl").useTranslations>;
 
@@ -38,6 +45,7 @@ const STATUS_VARIANT: Record<Invoice["status"], BadgeVariant> = {
 
 export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }: InvoiceTableProps) {
   const t = useTranslations("Invoices");
+  const tOrigin = useTranslations("InvoiceOrigin");
   const invoiceError = useInvoiceErrorText();
   const locale = useLocale();
   const { can } = useAuth();
@@ -63,7 +71,7 @@ export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }
             <span className="truncate text-[12px] font-normal text-danger">{invoiceError(inv.lastErrorCode, inv.lastErrorMessage)}</span>
           ) : (
             <span className="truncate font-mono text-[12px] font-normal text-text-4">
-              {inv.externalId ?? inv.id.slice(0, 12)}
+              {rowReference(inv, tOrigin)}
             </span>
           )}
         </div>

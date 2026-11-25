@@ -10,7 +10,12 @@ import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import { queryCursorPage } from '@/shared/http/keyset-pagination';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { Injectable, Logger } from '@nestjs/common';
-import { Repository, Not, type FindOptionsWhere } from 'typeorm';
+import {
+  Repository,
+  Not,
+  type FindOptionsWhere,
+  type SelectQueryBuilder,
+} from 'typeorm';
 import { Invoice, LastEmailStatus } from '../domain/invoice';
 import {
   CancellationIntent,
@@ -19,6 +24,10 @@ import {
   SaveInvoiceOptions,
 } from '../domain/invoice.repository';
 import type { PortalFlag } from '../domain/portal-flag';
+import {
+  ORIGIN_KEY_PREFIX,
+  type InvoiceOrigin,
+} from '../domain/invoice-origin';
 import { InvoiceMapper } from './invoice.mapper';
 import { InvoiceOrmEntity } from './invoice.orm-entity';
 
@@ -136,6 +145,7 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
           { customerTaxId: filters.customerTaxId },
         );
       }
+      if (filters?.origin) applyOrigin(queryBuilder, filters.origin);
       if (filters?.from) {
         queryBuilder.andWhere('invoice.competence_date >= :from', {
           from: filters.from,
@@ -463,4 +473,29 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
       }));
     });
   }
+}
+
+const keyStartsWith = (prefix: string) =>
+  `COALESCE(invoice.idempotency_key, '') LIKE '${prefix.replace(/[_%]/g, '\\$&')}%'`;
+
+/**
+ * Origin is read from the idempotency key and reference prefixes (see `originOf`). The tenant filter
+ * already narrows the rows, so these prefix tests need no index of their own.
+ */
+export function applyOrigin(
+  qb: SelectQueryBuilder<InvoiceOrmEntity>,
+  origin: InvoiceOrigin,
+): void {
+  if (
+    origin === 'integration' ||
+    origin === 'schedule' ||
+    origin === 'import'
+  ) {
+    qb.andWhere(keyStartsWith(ORIGIN_KEY_PREFIX[origin]));
+    return;
+  }
+  const corvoKeys = Object.values(ORIGIN_KEY_PREFIX).map(keyStartsWith);
+  qb.andWhere(`NOT (${corvoKeys.join(' OR ')})`);
+  const dashboard = `COALESCE(invoice.external_id, '') LIKE 'dashboard-%'`;
+  qb.andWhere(origin === 'dashboard' ? dashboard : `NOT (${dashboard})`);
 }
