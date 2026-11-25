@@ -1,6 +1,8 @@
 import {
   Body,
   Controller,
+  HttpCode,
+  HttpStatus,
   Inject,
   Param,
   ParseUUIDPipe,
@@ -57,6 +59,7 @@ export class DpsNumberingController {
   ) {}
 
   @Post('check')
+  @HttpCode(HttpStatus.OK)
   @ApiKeyEndpoint()
   @RequirePermission('nfse.companies.manage')
   @ApiOperation({
@@ -91,6 +94,7 @@ export class DpsNumberingController {
   }
 
   @Post('confirm')
+  @HttpCode(HttpStatus.OK)
   @ApiKeyEndpoint()
   @RequirePermission('nfse.companies.manage')
   @ApiOperation({

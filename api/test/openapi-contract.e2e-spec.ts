@@ -480,6 +480,16 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         body: { lastNumber: 10 },
         status: 200,
       });
+      // The test environment answers from the simulated provider, so the portal lookup runs for real.
+      await call('POST /companies/{id}/dps-sequence/check', {
+        path: `/companies/${id}/dps-sequence/check`,
+        status: 200,
+      });
+      await call('POST /companies/{id}/dps-sequence/confirm', {
+        path: `/companies/${id}/dps-sequence/confirm`,
+        body: { lastNumber: 12 },
+        status: 200,
+      });
       await call('GET /companies/{id}/fiscal-profile', {
         path: `/companies/${id}/fiscal-profile`,
         status: 200,
