@@ -45,6 +45,7 @@ export class InvoiceSubstitutionService {
     );
     if (original.status !== 'authorized' || !original.accessKey)
       throw new InvoiceNotSubstitutableError(original.status);
+    await this.invoices.assertNoteMatchesEnvironment(original, 'substituir');
     return this.invoices.emitInEnvironment(
       this.substituteBody(original, dto),
       tenantId,

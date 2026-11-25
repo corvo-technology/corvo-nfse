@@ -58,6 +58,7 @@ import {
   DOCUMENT_STORAGE,
   type IDocumentStorage,
 } from '@/infra/storage/domain/document-storage';
+import { noteTpAmb, tpAmbOf } from '../domain/fiscal/portal-nfse-match';
 import { InvoiceIntakeService } from './invoice-intake.service';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
@@ -410,6 +411,8 @@ export class InvoiceService {
         input,
         environment,
       );
+    if (invoice.status === 'authorized')
+      await this.assertNoteMatchesEnvironment(invoice, 'cancelar');
     const fiscal = invoice.status !== 'queued';
     const event = invoice.requestCancellation(
       cancellationReason(input.reason, input.description),
@@ -433,6 +436,38 @@ export class InvoiceService {
       });
     await this.auditCancelled(invoice, environment);
     return invoice;
+  }
+
+  /**
+   * The Sefin only takes an event (cancel, substitute) in the environment of the note. A note whose
+   * `tpAmb` differs from the invoice's environment (e.g. a Produção Restrita note on a live invoice)
+   * would be refused with E0803, so it is refused here with a clear text. A note we cannot read
+   * does not block: the Sefin remains the judge.
+   */
+  async assertNoteMatchesEnvironment(
+    invoice: Invoice,
+    action: 'cancelar' | 'substituir',
+  ): Promise<void> {
+    let tpAmb: '1' | '2' | null;
+    try {
+      tpAmb = noteTpAmb(
+        await this.documentStorage.getXml(
+          invoice.tenantId,
+          invoice.id,
+          invoice.storageEnvironment,
+        ),
+      );
+    } catch {
+      return;
+    }
+    if (!tpAmb || tpAmb === tpAmbOf(invoice.environment)) return;
+    const live = invoice.environment === 'live';
+    throw new UnprocessableEntityException({
+      code: 'INVOICE_NOTE_ENVIRONMENT_MISMATCH',
+      message: live
+        ? `Não é possível ${action} esta nota: o XML guardado é de uma nota de teste (Produção Restrita), sem valor fiscal, e não de uma nota de produção. Fale com o suporte.`
+        : `Não é possível ${action} esta nota: o XML guardado é de uma nota de produção e esta nota é de teste. Fale com o suporte.`,
+    });
   }
 
   /**

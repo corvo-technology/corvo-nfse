@@ -16,6 +16,8 @@ export function portalNfseXml(note: {
   competenceDate: string;
   series: string;
   number: number;
+  /** 1 = Produção (default, what a live invoice gets), 2 = Produção Restrita. */
+  tpAmb?: '1' | '2';
 }): string {
   const customer = note.customerCnpj
     ? `<toma><CNPJ>${note.customerCnpj}</CNPJ><xNome>Cliente</xNome></toma>`
@@ -23,9 +25,13 @@ export function portalNfseXml(note: {
       ? `<toma><CPF>${note.customerCpf}</CPF><xNome>Cliente</xNome></toma>`
       : '';
   return REAL_NFSE_XML.replace(
-    /<prest><CNPJ>\d+<\/CNPJ>/,
-    `<prest><CNPJ>${note.providerCnpj}</CNPJ>`,
+    /<tpAmb>\d<\/tpAmb>/,
+    `<tpAmb>${note.tpAmb ?? '1'}</tpAmb>`,
   )
+    .replace(
+      /<prest><CNPJ>\d+<\/CNPJ>/,
+      `<prest><CNPJ>${note.providerCnpj}</CNPJ>`,
+    )
     .replace(/<toma>.*?<\/toma>/s, customer)
     .replace(/<vServ>[^<]*<\/vServ>/, `<vServ>${note.amount}</vServ>`)
     .replace(

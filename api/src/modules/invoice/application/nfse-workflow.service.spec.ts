@@ -431,6 +431,7 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
       competenceDate: '2026-10-13',
       series: '1',
       number: 7,
+      tpAmb: '2', // a test invoice goes to the Produção Restrita
     }),
     requiresReconciliation: false,
   };

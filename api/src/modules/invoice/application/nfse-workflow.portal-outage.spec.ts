@@ -11,7 +11,10 @@ import {
   PORTAL_NFSE_UNVERIFIED,
   type FiscalJobData,
 } from './nfse-workflow.service';
-import { DPS_USED_BY_OTHER_NFSE } from '../domain/fiscal/portal-nfse-match';
+import {
+  DPS_USED_BY_OTHER_NFSE,
+  PORTAL_NFSE_WRONG_ENVIRONMENT,
+} from '../domain/fiscal/portal-nfse-match';
 import { portalNfseXml } from '../domain/fiscal/__fixtures__/portal-nfse-xml';
 
 jest.mock('./fiscal/fiscal.metrics');
@@ -41,6 +44,19 @@ const otherNoteXml = portalNfseXml({
   series: '1',
   number: 7,
 });
+/** The invoice's own DPS and values, but a Produção Restrita note (tpAmb 2): no fiscal value on a live invoice. */
+const testEnvironmentNote = {
+  accessKey: '35347082261469487000140000000000000126109728631021',
+  nfseNumber: 1,
+  xmlAuthorized: portalNfseXml({
+    providerCnpj: company.taxId,
+    amount: '100.00',
+    competenceDate: '2026-11-01',
+    series: '1',
+    number: 7,
+    tpAmb: '2',
+  }),
+};
 const authorized = {
   accessKey: '43144000000000000000000000000000000000000000000000',
   nfseNumber: 7,
@@ -238,6 +254,26 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
     expect(fakes.queues.add).not.toHaveBeenCalled();
   });
 
+  it('a live invoice never takes a Produção Restrita note, even with the same DPS and values', async () => {
+    const invoice = invoiceIn('queued');
+    provider.issue.mockResolvedValue({
+      success: true,
+      requiresReconciliation: false,
+      ...testEnvironmentNote,
+    });
+
+    await run(invoice);
+
+    const snapshot = invoice.toSnapshot();
+    expect(snapshot.status).toBe('manual_review');
+    expect(snapshot.lastErrorCode).toBe(PORTAL_NFSE_WRONG_ENVIRONMENT);
+    expect(snapshot.lastErrorMessage).toContain('é de teste');
+    expect(snapshot.accessKey).toBeNull();
+    expect(snapshot.authorizedAt).toBeNull();
+    expect(fakes.documentStorage.saveXml).not.toHaveBeenCalled();
+    expect(fakes.queues.add).not.toHaveBeenCalled();
+  });
+
   it('a reconciliation that finds another note for the same DPS goes to manual review', async () => {
     const invoice = invoiceIn('reconciliation_required');
     provider.issue.mockResolvedValue({
@@ -427,6 +463,28 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
       expect(invoice.toSnapshot().lastErrorCode).toBe(PORTAL_NFSE_UNVERIFIED);
       expect(invoice.toSnapshot().accessKey).toBeNull();
       expect(fakes.documentStorage.saveXml).not.toHaveBeenCalled();
+    });
+
+    it('refuses a Produção Restrita note on a live invoice and does not ask the portal again', async () => {
+      const invoice = invoiceIn('manual_review');
+      provider.queryByDps.mockResolvedValue({
+        status: 'authorized',
+        ...testEnvironmentNote,
+      });
+
+      await sweep(invoice);
+
+      expect(invoice.status).toBe('manual_review');
+      expect(invoice.toSnapshot().lastErrorCode).toBe(
+        PORTAL_NFSE_WRONG_ENVIRONMENT,
+      );
+      expect(invoice.toSnapshot().accessKey).toBeNull();
+      expect(fakes.documentStorage.saveXml).not.toHaveBeenCalled();
+      expect(fakes.queues.add).not.toHaveBeenCalled();
+
+      provider.queryByDps.mockClear();
+      await sweep(invoice);
+      expect(provider.queryByDps).not.toHaveBeenCalled();
     });
 
     it('refuses another note with the same DPS: stays in review with the reason, nothing stored or sent', async () => {

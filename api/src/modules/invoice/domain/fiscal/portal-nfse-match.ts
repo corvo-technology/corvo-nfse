@@ -4,8 +4,17 @@ import { parseNfseXml } from 'open-nfse';
 /** Error code of an invoice whose DPS number the portal already has on ANOTHER NFS-e. */
 export const DPS_USED_BY_OTHER_NFSE = 'DPS_NUMBER_USED_BY_OTHER_NFSE';
 
+/** Error code of an invoice whose portal note belongs to the other environment (test note on a live invoice, or the reverse). */
+export const PORTAL_NFSE_WRONG_ENVIRONMENT = 'PORTAL_NFSE_WRONG_ENVIRONMENT';
+
+/** The `tpAmb` a note of this environment carries: 1 = Produção, 2 = Produção Restrita (no legal value). */
+export const tpAmbOf = (environment: 'test' | 'live'): '1' | '2' =>
+  environment === 'live' ? '1' : '2';
+
 /** What our invoice says. The NFS-e the portal returns for its DPS must say the same. */
 export interface PortalNfseExpectation {
+  /** The invoice's environment: a live invoice only accepts a production note (tpAmb 1). */
+  environment: 'test' | 'live';
   providerTaxId: string;
   /** CPF/CNPJ of the customer, digits only; null for a consumer without one or a customer abroad. */
   customerTaxId: string | null;
@@ -25,7 +34,13 @@ export interface PortalNfseSummary {
 }
 
 export type PortalNfseField =
-  'provider' | 'customer' | 'amount' | 'competenceDate' | 'dps' | 'unreadable';
+  | 'environment'
+  | 'provider'
+  | 'customer'
+  | 'amount'
+  | 'competenceDate'
+  | 'dps'
+  | 'unreadable';
 
 export type PortalNfseCheck =
   | { matches: true }
@@ -34,6 +49,16 @@ export type PortalNfseCheck =
       differences: PortalNfseField[];
       found: PortalNfseSummary | null;
     };
+
+/** The `tpAmb` written in the note's DPS ('1' production, '2' restricted), or null if unreadable. */
+export function noteTpAmb(xml: string): '1' | '2' | null {
+  try {
+    const value = String(parseNfseXml(xml).infNFSe.DPS?.infDPS?.tpAmb ?? '');
+    return value === '1' || value === '2' ? value : null;
+  } catch {
+    return null;
+  }
+}
 
 const digits = (value: unknown): string | null =>
   typeof value === 'string' && value.trim()
@@ -77,6 +102,8 @@ export function checkPortalNfse(
     amount: cents(dps.valores?.vServPrest?.vServ),
   };
   const differences: PortalNfseField[] = [];
+  if (String(dps.tpAmb) !== tpAmbOf(expected.environment))
+    differences.push('environment');
   const provider = dps.prest?.identificador as
     { CNPJ?: string; CPF?: string } | undefined;
   if (
@@ -108,6 +135,17 @@ const brl = (amountInCents: number): string =>
   `R$ ${(amountInCents / 100).toFixed(2).replace('.', ',')}`;
 
 const brDate = (day: string): string => day.split('-').reverse().join('/');
+
+/** The sentence shown on an invoice whose portal note belongs to the other environment. */
+export function wrongEnvironmentMessage(
+  environment: 'test' | 'live',
+  found: PortalNfseSummary | null,
+): string {
+  const note = found ? `A nota nº ${found.nfseNumber}` : 'A nota';
+  return environment === 'live'
+    ? `${note} que o portal devolveu é de teste (Produção Restrita) e não tem valor fiscal, então não foi aceita. Esta nota não foi emitida. Descarte-a (o crédito volta) e emita a venda de novo.`
+    : `${note} que o portal devolveu é de produção, e esta nota é de teste, então não foi aceita. Descarte-a e emita de novo.`;
+}
 
 /** The sentence shown on the invoice (pt-BR), with what a person needs to find the other note. */
 export function dpsUsedByOtherNfseMessage(

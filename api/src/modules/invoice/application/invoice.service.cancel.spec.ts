@@ -7,6 +7,7 @@ import {
 } from '../domain/errors';
 import type { InvoiceStatus } from '../domain/invoice-status';
 import { DEFAULT_CANCELLATION_DESCRIPTION } from '../domain/cancellation-reason';
+import { REAL_NFSE_XML } from '../domain/fiscal/__fixtures__/portal-nfse-xml';
 import { InvoiceService } from './invoice.service';
 import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
@@ -35,7 +36,7 @@ function invoiceIn(status: InvoiceStatus): Invoice {
   });
 }
 
-function build(invoice: Invoice, stored?: Invoice) {
+function build(invoice: Invoice, stored?: Invoice, storage: unknown = {}) {
   const lifecycle = { transition: jest.fn().mockResolvedValue(true) };
   const webhooks = { publish: jest.fn() };
   const findByIdAndTenantId = jest.fn().mockResolvedValue(invoice);
@@ -48,7 +49,7 @@ function build(invoice: Invoice, stored?: Invoice) {
   const service = new InvoiceService(
     { findByIdAndTenantId, registerCancellationIntent } as never,
     {} as never,
-    {} as never,
+    storage as never,
     {} as never,
     {} as never,
     {} as never,
@@ -365,5 +366,56 @@ describe('InvoiceService.cancel', () => {
         expect(webhooks.publish).not.toHaveBeenCalled();
       },
     );
+  });
+});
+
+describe('InvoiceService.cancel with a note of another environment', () => {
+  const liveInvoice = () => {
+    const base = invoiceIn('authorized');
+    return Invoice.reconstitute({
+      ...base.toSnapshot(),
+      environment: 'live',
+    });
+  };
+  const storing = (xml: string) => ({
+    getXml: jest.fn().mockResolvedValue(xml),
+  });
+
+  it('refuses, in Portuguese, to cancel a live invoice whose stored note is a test one (tpAmb 2)', async () => {
+    const invoice = liveInvoice();
+    const { service, lifecycle } = build(
+      invoice,
+      undefined,
+      storing(REAL_NFSE_XML),
+    );
+    await expect(
+      service.cancel(invoice.id, tenantId, 'live', fiscal),
+    ).rejects.toMatchObject({
+      response: {
+        code: 'INVOICE_NOTE_ENVIRONMENT_MISMATCH',
+        message: expect.stringContaining('nota de teste (Produção Restrita)'),
+      },
+    });
+    expect(lifecycle.transition).not.toHaveBeenCalled();
+  });
+
+  it('cancels a live invoice whose stored note is a production one (tpAmb 1)', async () => {
+    const invoice = liveInvoice();
+    const { service, lifecycle } = build(
+      invoice,
+      undefined,
+      storing(REAL_NFSE_XML.replace('<tpAmb>2', '<tpAmb>1')),
+    );
+    await service.cancel(invoice.id, tenantId, 'live', fiscal);
+    expect(lifecycle.transition).toHaveBeenCalled();
+  });
+
+  it('leaves the decision to the Sefin when the stored XML cannot be read', async () => {
+    const invoice = liveInvoice();
+    const { service, lifecycle } = build(invoice, undefined, {
+      getXml: jest.fn().mockRejectedValue(new Error('missing')),
+    });
+    await service.cancel(invoice.id, tenantId, 'live', fiscal);
+    expect(lifecycle.transition).toHaveBeenCalled();
   });
 });
