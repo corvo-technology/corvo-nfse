@@ -5,6 +5,8 @@ import { validate } from 'class-validator';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { UnitOfWorkPort } from '@/infra/transactions/unit-of-work.port';
 import { IdempotencyConflictError } from '@/modules/invoice/domain/errors';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
+import { recordSafely } from '@/shared/audit/record-safely';
 import { validationExceptionFactory } from '@/shared/http/validation-pipe';
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
@@ -66,7 +68,26 @@ export class ScheduleService {
     private readonly invoices: ScheduleInvoicePort,
     @Inject(SCHEDULE_HORIZON_DAYS) private readonly horizonDays: number,
     private readonly unitOfWork: UnitOfWorkPort,
+    private readonly audit: AccountAuditRecorder,
   ) {}
+
+  /** Recorded after the write is committed, never inside the transaction. */
+  private async record(
+    action:
+      | 'schedule.created'
+      | 'schedule.paused'
+      | 'schedule.resumed'
+      | 'schedule.cancelled',
+    schedule: InvoiceSchedule,
+  ): Promise<InvoiceSchedule> {
+    await recordSafely(this.audit, {
+      tenantId: schedule.props.tenantId,
+      environment: schedule.props.environment,
+      action,
+      target: { type: 'schedule', id: schedule.props.id },
+    });
+    return schedule;
+  }
 
   /** `POST /invoices` with `options.type` SCHEDULE or RECURRING. */
   async createFromEmission(
@@ -138,7 +159,7 @@ export class ScheduleService {
       }
       throw error;
     }
-    return schedule;
+    return this.record('schedule.created', schedule);
   }
 
   /** The schedule a previous request with this key created, or a conflict if the request differs. */
@@ -231,23 +252,26 @@ export class ScheduleService {
     });
   }
 
-  pause(id: string, tenantId: string): Promise<InvoiceSchedule> {
-    return this.mutate(id, tenantId, (schedule) => schedule.pause());
+  async pause(id: string, tenantId: string): Promise<InvoiceSchedule> {
+    const schedule = await this.mutate(id, tenantId, (s) => s.pause());
+    return this.record('schedule.paused', schedule);
   }
 
-  resume(
+  async resume(
     id: string,
     tenantId: string,
     now: Date = new Date(),
   ): Promise<InvoiceSchedule> {
-    return this.mutate(id, tenantId, async (schedule) => {
+    const schedule = await this.mutate(id, tenantId, async (s) => {
       await this.assertRoomForOne(tenantId);
-      schedule.resume(todayInSaoPaulo(now));
+      s.resume(todayInSaoPaulo(now));
     });
+    return this.record('schedule.resumed', schedule);
   }
 
-  cancel(id: string, tenantId: string): Promise<InvoiceSchedule> {
-    return this.mutate(id, tenantId, (schedule) => schedule.cancel());
+  async cancel(id: string, tenantId: string): Promise<InvoiceSchedule> {
+    const schedule = await this.mutate(id, tenantId, (s) => s.cancel());
+    return this.record('schedule.cancelled', schedule);
   }
 
   private async assertRoomForOne(tenantId: string): Promise<void> {

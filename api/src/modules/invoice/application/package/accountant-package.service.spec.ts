@@ -3,6 +3,8 @@ import type { AccountantCompany } from '../../domain/accountant-package.reposito
 import { AccountantPackageService } from './accountant-package.service';
 import { PackageLinkService } from './package-link.service';
 import { monthLabel, previousMonth } from './package-month';
+import { runWithAuditActor } from '@/modules/account-audit/application/audit-actor.context';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 const TENANT = '11111111-1111-4111-8111-111111111111';
 
@@ -88,14 +90,16 @@ function setup(
       PUBLIC_API_URL: 'https://api.corvo.example',
     }),
   );
+  const audit = new FakeAccountAudit();
   const service = new AccountantPackageService(
     repo,
     packages as never,
     links,
     email as never,
     events as never,
+    audit,
   );
-  return { service, state, repo, packages, email, events, sends };
+  return { service, state, repo, packages, email, events, sends, audit };
 }
 
 const dayOne = new Date('2026-11-01T11:30:00Z');
@@ -391,6 +395,68 @@ describe('AccountantPackageService', () => {
       await service.setEmail(TENANT, 'company-1', 'live', '  ');
       expect(state.accountantEmail).toBeNull();
     });
+  });
+});
+
+describe('AccountantPackageService audit', () => {
+  const user = { type: 'user' as const, id: 'user-1' };
+
+  it('records accountant.package_sent for a manual send, as the requester', async () => {
+    const { service, audit } = setup(row());
+    await runWithAuditActor(user, () =>
+      service.sendNow(TENANT, 'company-1', 'live', '2026-10'),
+    );
+    expect(audit.events).toHaveLength(1);
+    expect(audit.events[0]).toMatchObject({
+      action: 'accountant.package_sent',
+      tenantId: TENANT,
+      environment: 'live',
+      target: {
+        type: 'company',
+        id: 'company-1',
+        label: '11.222.333/0001-81',
+      },
+      metadata: { month: '2026-10', invoice_count: 3 },
+      actor: user,
+    });
+  });
+
+  it('records the monthly send as Sistema', async () => {
+    const { service, audit } = setup(row());
+    await service.sendMonthly(TENANT, dayOne, false);
+    expect(audit.events).toHaveLength(1);
+    expect(audit.events[0]).toMatchObject({
+      action: 'accountant.package_sent',
+      actor: { type: 'system', id: null },
+    });
+  });
+
+  it('records nothing when the package was skipped', async () => {
+    const { service, audit } = setup(row({ environment: 'test' }));
+    await service.sendNow(TENANT, 'company-1', 'test', '2026-10');
+    expect(audit.events).toHaveLength(0);
+  });
+
+  it('records accountant.email_changed without the address', async () => {
+    const { service, audit } = setup(row());
+    await service.setEmail(TENANT, 'company-1', 'live', 'novo@example.com');
+    expect(audit.events).toHaveLength(1);
+    expect(audit.events[0]).toMatchObject({
+      action: 'accountant.email_changed',
+      target: { type: 'company', id: 'company-1' },
+    });
+    expect(JSON.stringify(audit.events)).not.toContain('novo@example.com');
+  });
+
+  it('keeps the action when the recorder fails', async () => {
+    const { service, audit } = setup(row());
+    jest.spyOn(audit, 'record').mockRejectedValue(new Error('boom'));
+    await expect(
+      service.sendNow(TENANT, 'company-1', 'live', '2026-10'),
+    ).resolves.toBe('sent');
+    await expect(
+      service.setEmail(TENANT, 'company-1', 'live', 'novo@example.com'),
+    ).resolves.toMatchObject({ email: 'novo@example.com' });
   });
 });
 

@@ -14,6 +14,7 @@ import type { CompanyService } from '@/modules/company/application/company.servi
 import type { CertificateService } from '@/modules/certificate/application/certificate.service';
 import { Invoice, type InvoiceProps } from '../domain/invoice';
 import { Queue } from 'bullmq';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 describe('InvoiceService — getDownloadUrl & requestEmail', () => {
   // Helper: build a minimal authorized invoice snapshot
@@ -76,6 +77,7 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
   let certificateService: jest.Mocked<CertificateService>;
 
   let service: InvoiceService;
+  let audit: FakeAccountAudit;
   // Module-level so tests can assert on the same mock queue instance
   let capturedQueueAddCalls: unknown[][] = [];
 
@@ -127,6 +129,7 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
     companyService = {} as jest.Mocked<CompanyService>;
     certificateService = {} as jest.Mocked<CertificateService>;
 
+    audit = new FakeAccountAudit();
     service = new InvoiceService(
       invoiceRepo,
       eventRepo,
@@ -139,6 +142,7 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
       {} as never,
       {} as never,
       { isSimulated: (environment: string) => environment !== 'live' } as never,
+      audit,
     );
   });
 
@@ -282,6 +286,33 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
   // -------------------------------------------------------------------------
   // requestEmail
   // -------------------------------------------------------------------------
+  describe('requestEmail audit', () => {
+    it('records invoice.email_resent without the e-mail address', async () => {
+      invoiceRepo.findByIdAndTenantId.mockResolvedValue(
+        makeAuthorizedInvoice(),
+      );
+      await service.requestEmail('inv-1', 'tenant-1', undefined, 'test');
+      expect(audit.events).toHaveLength(1);
+      expect(audit.events[0]).toMatchObject({
+        action: 'invoice.email_resent',
+        tenantId: 'tenant-1',
+        environment: 'test',
+        target: { type: 'invoice', id: 'inv-1', label: 'Cliente' },
+      });
+      expect(JSON.stringify(audit.events)).not.toContain('cliente@test.com');
+    });
+
+    it('keeps the action when the recorder fails', async () => {
+      invoiceRepo.findByIdAndTenantId.mockResolvedValue(
+        makeAuthorizedInvoice(),
+      );
+      jest.spyOn(audit, 'record').mockRejectedValue(new Error('boom'));
+      await expect(
+        service.requestEmail('inv-1', 'tenant-1', undefined, 'test'),
+      ).resolves.toMatchObject({ status: 'queued' });
+    });
+  });
+
   describe('requestEmail', () => {
     it('returns 404 when invoice does not exist for tenant', async () => {
       invoiceRepo.findByIdAndTenantId.mockResolvedValue(null);

@@ -9,6 +9,7 @@ import { InvoiceMapper } from '../infra/invoice.mapper';
 import { TypeOrmInvoiceRepository } from '../infra/typeorm-invoice.repository';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import { InvoiceService } from './invoice.service';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 const tenantId = '11111111-1111-4111-8111-111111111111';
 const T0 = new Date('2026-10-14T12:00:00.000Z');
@@ -298,6 +299,7 @@ function harness(initial: InvoiceStatus, environment: ExecutionEnvironment) {
     {} as never,
     webhooks as never,
     { isSimulated: (environment: string) => environment !== 'live' } as never,
+    new FakeAccountAudit(),
   );
 
   const load = async () =>

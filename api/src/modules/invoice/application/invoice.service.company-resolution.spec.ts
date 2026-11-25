@@ -4,6 +4,7 @@ import { InvoiceService } from './invoice.service';
 import { CompanyNotFoundError } from '@/modules/company/domain/errors';
 import type { CreateInvoiceDto } from '../http/invoice.dto';
 import type { AuthContext } from '@/modules/auth/auth-context';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 const STOP = new Error('stop after company resolution');
 
@@ -45,6 +46,7 @@ describe('InvoiceService.emit company resolution', () => {
       new InvoiceIntakeService(companyService as never, invoiceDomain as never),
       {} as never,
       { isSimulated: (environment: string) => environment !== 'live' } as never,
+      new FakeAccountAudit(),
     );
   });
 

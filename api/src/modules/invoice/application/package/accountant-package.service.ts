@@ -10,6 +10,12 @@ import {
   accountantWelcomeEmail,
 } from '@/infra/external/email/email-templates';
 import { EmailService } from '@/modules/email/application/email.service';
+import {
+  AccountAuditRecorder,
+  SYSTEM_ACTOR,
+} from '@/modules/account-audit/domain/account-audit';
+import { recordSafely } from '@/shared/audit/record-safely';
+import { formatTaxId } from '../../infra/danfse/danfse-format';
 import { ApplicationEventBus } from '@/shared/events/application-event-bus';
 import { accountNotice } from '@/shared/events/account-notice.events';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
@@ -77,7 +83,16 @@ export class AccountantPackageService {
     private readonly links: PackageLinkService,
     private readonly email: EmailService,
     private readonly events: ApplicationEventBus,
+    private readonly audit: AccountAuditRecorder,
   ) {}
+
+  private auditTarget(company: AccountantCompany) {
+    return {
+      type: 'company' as const,
+      id: company.id,
+      label: formatTaxId(company.taxId),
+    };
+  }
 
   private async find(
     tenantId: string,
@@ -120,6 +135,13 @@ export class AccountantPackageService {
       });
     const company = await this.find(tenantId, companyId, environment);
     await this.companies.setEmail(tenantId, company.id, value);
+    if (value !== company.accountantEmail)
+      await recordSafely(this.audit, {
+        tenantId,
+        environment: company.environment,
+        action: 'accountant.email_changed',
+        target: this.auditTarget(company),
+      });
     // A short hello to the new address, so a wrong recipient is noticed. Never twice for the same address.
     const testEmailSent =
       value !== null &&
@@ -335,6 +357,15 @@ export class AccountantPackageService {
       throw error;
     }
     await this.record(company, month, 'sent', trigger, total);
+    await recordSafely(this.audit, {
+      tenantId: company.tenantId,
+      environment: company.environment,
+      action: 'accountant.package_sent',
+      target: this.auditTarget(company),
+      metadata: { month, invoice_count: total.invoiceCount },
+      // The monthly job has no request: it is "Sistema".
+      ...(trigger === 'scheduled' ? { actor: SYSTEM_ACTOR } : {}),
+    });
     return 'sent';
   }
 

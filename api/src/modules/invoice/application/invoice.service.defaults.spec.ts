@@ -6,6 +6,7 @@ import type { AuthContext } from '@/modules/auth/auth-context';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { InvoiceDomainService } from '../domain/invoice-domain.service';
 import { InvoiceService } from './invoice.service';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 describe('Invoice fiscal defaults and idempotency', () => {
   const auth = { executionEnvironment: 'test' } as AuthContext;
@@ -53,6 +54,7 @@ describe('Invoice fiscal defaults and idempotency', () => {
       new InvoiceIntakeService(companies as never, new InvoiceDomainService()),
       {} as never,
       { isSimulated: (environment: string) => environment !== 'live' } as never,
+      new FakeAccountAudit(),
     );
   });
 

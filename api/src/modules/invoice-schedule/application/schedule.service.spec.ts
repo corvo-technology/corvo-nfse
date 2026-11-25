@@ -16,6 +16,7 @@ import {
   ScheduleNotFoundError,
 } from '../domain/schedule-errors';
 import { ScheduleService, MAX_ACTIVE_SCHEDULES } from './schedule.service';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 const NOW = new Date('2026-11-06T15:00:00Z'); // Friday, São Paulo
 const TENANT = '11111111-1111-4111-8111-111111111111';
@@ -101,13 +102,15 @@ function build() {
       }
     },
   };
+  const audit = new FakeAccountAudit();
   const service = new ScheduleService(
     repo,
     { prepareEmissionInEnvironment: prepare } as never,
     15,
     unitOfWork,
+    audit,
   );
-  return { service, repo, prepare };
+  return { service, repo, prepare, audit };
 }
 
 const body = {
@@ -471,5 +474,59 @@ describe('ScheduleService.createFromEmission: idempotency (review)', () => {
       'k',
     );
     expect(repo.rows.size).toBe(2);
+  });
+});
+
+describe('ScheduleService audit', () => {
+  const recurring = request({
+    type: 'RECURRING',
+    recurrence: { frequency: 'WEEKLY' },
+  });
+
+  it('records schedule.created, paused, resumed and cancelled after each write', async () => {
+    const { service, audit } = build();
+    const schedule = await service.createFromEmission(
+      recurring,
+      TENANT,
+      auth(),
+      NOW,
+    );
+    const id = schedule.props.id;
+    await service.pause(id, TENANT);
+    await service.resume(id, TENANT, NOW);
+    await service.cancel(id, TENANT);
+    expect(audit.events.map((e) => e.action)).toEqual([
+      'schedule.created',
+      'schedule.paused',
+      'schedule.resumed',
+      'schedule.cancelled',
+    ]);
+    expect(audit.events[0]).toMatchObject({
+      tenantId: TENANT,
+      environment: 'live',
+      target: { type: 'schedule', id },
+    });
+  });
+
+  it('records nothing when the action is refused', async () => {
+    const { service, audit } = build();
+    await expect(service.pause('missing', TENANT)).rejects.toBeInstanceOf(
+      ScheduleNotFoundError,
+    );
+    expect(audit.events).toHaveLength(0);
+  });
+
+  it('keeps the action when the recorder fails', async () => {
+    const { service, audit } = build();
+    jest.spyOn(audit, 'record').mockRejectedValue(new Error('boom'));
+    const schedule = await service.createFromEmission(
+      recurring,
+      TENANT,
+      auth(),
+      NOW,
+    );
+    await expect(
+      service.pause(schedule.props.id, TENANT),
+    ).resolves.toBeDefined();
   });
 });
