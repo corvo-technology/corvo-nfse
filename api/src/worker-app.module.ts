@@ -46,6 +46,8 @@ import { ImportCleanupCron } from '@/modules/import/jobs/import-cleanup.cron';
 import { ImportEmitProcessor } from '@/modules/import/jobs/import-emit.processor';
 import { ImportReadProcessor } from '@/modules/import/jobs/import-read.processor';
 import { PortalSyncModule } from '@/modules/portal-sync/portal-sync.module';
+import { AccountAuditModule } from '@/modules/account-audit/account-audit.module';
+import { AccountAuditRetentionScheduler } from '@/modules/account-audit/jobs/account-audit-retention.scheduler';
 import { PortalSyncScheduler } from '@/modules/portal-sync/jobs/portal-sync.scheduler';
 import { IS_SELF_HOSTED } from '@/shared/deployment-mode';
 import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
@@ -58,6 +60,7 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     AppLoggingModule,
     AppDatabaseModule,
     TypeOrmPersistenceModule,
+    AccountAuditModule.forRoot('worker'),
     AppRedisModule,
     HealthModule,
     ScheduleModule.forRoot(),
@@ -105,6 +108,7 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     ImportEmitProcessor,
     ImportCleanupCron,
     PortalSyncScheduler,
+    AccountAuditRetentionScheduler,
   ],
 })
 export class WorkerAppModule {}
