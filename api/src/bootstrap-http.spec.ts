@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import {
   GLOBAL_PREFIX_EXCLUDES,
   configureHttpGlobalPrefix,
+  emptyBodyProbe,
   inboundRawBody,
 } from './bootstrap-http';
 
@@ -79,5 +80,70 @@ describe('inboundRawBody', () => {
       .set('Content-Type', 'application/json')
       .send('{ not json');
     expect(res.status).toBe(400);
+  });
+});
+
+describe('emptyBodyProbe', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const express = require('express') as typeof import('express');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const http = require('http') as typeof import('http');
+
+  function send(
+    port: number,
+    headers: Record<string, string>,
+    chunks: string[],
+  ): Promise<{ emptyBody: unknown }> {
+    return new Promise((resolve, reject) => {
+      // nosemgrep: problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server -- loopback test server, no TLS needed
+      const req = http.request(
+        { port, method: 'POST', path: '/x', headers },
+        (res) => {
+          let data = '';
+          res.on('data', (c: Buffer) => (data += c.toString()));
+          res.on('end', () => resolve(JSON.parse(data) as never));
+        },
+      );
+      req.on('error', reject);
+      chunks.forEach((c) => req.write(c));
+      req.end();
+    });
+  }
+
+  async function run(
+    headers: Record<string, string>,
+    chunks: string[],
+  ): Promise<unknown> {
+    // nosemgrep: javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage -- test-only app
+    const server = express();
+    server.use(emptyBodyProbe());
+    server.use(express.json());
+    server.post('/x', (req, res) => {
+      res.json({ emptyBody: (req as { emptyBody?: boolean }).emptyBody });
+    });
+    const listener = server.listen(0);
+    try {
+      const { port } = listener.address() as { port: number };
+      return (await send(port, headers, chunks)).emptyBody;
+    } finally {
+      listener.close();
+    }
+  }
+
+  it('flags a chunked request with zero bytes as empty', async () => {
+    expect(await run({ 'Transfer-Encoding': 'chunked' }, [])).toBe(true);
+  });
+
+  it('flags a chunked request with bytes as not empty', async () => {
+    expect(await run({ 'Transfer-Encoding': 'chunked' }, ['a=1'])).toBe(false);
+  });
+
+  it('does not probe requests that declare a content type', async () => {
+    expect(
+      await run(
+        { 'Transfer-Encoding': 'chunked', 'Content-Type': 'application/json' },
+        ['{}'],
+      ),
+    ).toBeUndefined();
   });
 });

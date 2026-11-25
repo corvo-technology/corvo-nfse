@@ -25,6 +25,33 @@ describe('CsrfGuard', () => {
       ),
     ).toThrow(new ForbiddenException('Unsupported content type'));
   });
+
+  it('accepts chunked framing when the body was probed as empty', () => {
+    expect(
+      createGuard().canActivate(
+        contextFor({ 'transfer-encoding': 'chunked' }, { emptyBody: true }),
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects chunked framing without content type when the body is not empty', () => {
+    expect(() =>
+      createGuard().canActivate(
+        contextFor({ 'transfer-encoding': 'chunked' }, { emptyBody: false }),
+      ),
+    ).toThrow(new ForbiddenException('Unsupported content type'));
+    expect(() =>
+      createGuard().canActivate(contextFor({ 'transfer-encoding': 'chunked' })),
+    ).toThrow(new ForbiddenException('Unsupported content type'));
+  });
+
+  it('rejects text/plain even when the body is flagged empty', () => {
+    expect(() =>
+      createGuard().canActivate(
+        contextFor({ 'content-type': 'text/plain' }, { emptyBody: true }),
+      ),
+    ).toThrow(new ForbiddenException('Unsupported content type'));
+  });
 });
 
 function createGuard(): CsrfGuard {
@@ -39,10 +66,14 @@ function createGuard(): CsrfGuard {
   );
 }
 
-function contextFor(extraHeaders: Record<string, string>) {
+function contextFor(
+  extraHeaders: Record<string, string>,
+  extra: Record<string, unknown> = {},
+) {
   const request = {
     method: 'POST',
     authMode: 'cookie',
+    ...extra,
     authContext: { sessionId: 'session-1' },
     headers: {
       origin: 'http://localhost:8080',
