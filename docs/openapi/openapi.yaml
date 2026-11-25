@@ -1412,6 +1412,130 @@ paths:
         - Companies
       x-required-permissions:
         - nfse.companies.manage
+  /companies/{id}/dps-sequence/check:
+    post:
+      description: >-
+        Asks the government whether the next DPS numbers (up to 20 in a row) were already used. It
+        only reads: it issues nothing and changes no number. 503 `DPS_NUMBERING_CHECK_UNAVAILABLE`
+        means the government gave no answer: try again later.
+
+
+        Permission: `nfse.companies.manage`.
+      operationId: dpsSequence_check
+      parameters:
+        - description: Identifier (UUID) of the company.
+          in: path
+          name: id
+          required: true
+          schema:
+            format: uuid
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DpsNumberingCheck'
+                required:
+                  - data
+                type: object
+          description: OK
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      security:
+        - ApiKeyAuth: []
+      summary: Check the DPS numbering of a company with the government
+      tags:
+        - Companies
+      x-required-permissions:
+        - nfse.companies.manage
+  /companies/{id}/dps-sequence/confirm:
+    post:
+      description: >-
+        Marks the numbering as checked, so the first note is not held back. With `lastNumber` it
+        first moves the numbering forward (never back; a lower number answers 422
+        `DPS_NUMBER_BELOW_CURRENT`).
+
+
+        Permission: `nfse.companies.manage`.
+      operationId: dpsSequence_confirm
+      parameters:
+        - description: Identifier (UUID) of the company.
+          in: path
+          name: id
+          required: true
+          schema:
+            format: uuid
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmDpsNumbering'
+        required: false
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DpsSequence'
+                required:
+                  - data
+                type: object
+          description: OK
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security:
+        - ApiKeyAuth: []
+      summary: Confirm the DPS numbering of a company
+      tags:
+        - Companies
+      x-required-permissions:
+        - nfse.companies.manage
   /companies/{id}/fiscal-profile:
     get:
       description: >-
@@ -6798,6 +6922,17 @@ components:
       required:
         - taxId
       type: object
+    ConfirmDpsNumbering:
+      properties:
+        lastNumber:
+          description: >-
+            Optional. The last DPS number already used: the next note takes the following one. Omit
+            it to keep the numbering as it is.
+          format: int64
+          maximum: 999999999999999
+          minimum: 0
+          type: integer
+      type: object
     CreateCompany:
       properties:
         address:
@@ -7291,6 +7426,40 @@ components:
           type: boolean
       required:
         - deleted
+      type: object
+    DpsNumberingCheck:
+      properties:
+        checkedAt:
+          format: date-time
+          nullable: true
+          type: string
+        moreMayBeUsed:
+          description: True when every number asked was used, so more may be used after `suggestedNext`.
+          type: boolean
+        nextNumber:
+          description: The number the next note would take.
+          format: int64
+          type: integer
+        series:
+          example: '00001'
+          type: string
+        suggestedNext:
+          description: First number that is free for sure.
+          format: int64
+          type: integer
+        usedNumbers:
+          description: Numbers, from `nextNumber` on, that the government already has.
+          items:
+            format: int64
+            type: integer
+          type: array
+      required:
+        - series
+        - nextNumber
+        - usedNumbers
+        - suggestedNext
+        - moreMayBeUsed
+        - checkedAt
       type: object
     DpsSequence:
       properties:

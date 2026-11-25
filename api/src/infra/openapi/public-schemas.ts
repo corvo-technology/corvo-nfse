@@ -321,6 +321,28 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       description: 'The last DPS number used (0 when none yet).',
     }),
   }),
+  DpsNumberingCheck: obj({
+    series: str({ example: '00001' }),
+    nextNumber: int({
+      format: 'int64',
+      description: 'The number the next note would take.',
+    }),
+    usedNumbers: {
+      type: 'array',
+      items: int({ format: 'int64' }),
+      description:
+        'Numbers, from `nextNumber` on, that the government already has.',
+    },
+    suggestedNext: int({
+      format: 'int64',
+      description: 'First number that is free for sure.',
+    }),
+    moreMayBeUsed: bool({
+      description:
+        'True when every number asked was used, so more may be used after `suggestedNext`.',
+    }),
+    checkedAt: nullable(dateTime()),
+  }),
   AccountantSettings: obj({
     email: nullable(str({ format: 'email' })),
     lastSentMonth: nullable(

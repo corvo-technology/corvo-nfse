@@ -36,7 +36,7 @@ The old Swagger (served only in development) did not match the real answers. If 
 | Area | Operations |
 | --- | --- |
 | Invoices | `invoices_substitute` (`POST /invoices/{id}/substitute`), `invoices_review` (resolve `manual_review`), `invoicePackage_download` / `invoicePackage_summary` (monthly ZIP for the accountant), `fiscalPortal_status` |
-| Companies | `dpsSequence_get` / `dpsSequence_set` (continue the DPS numbering from another system; error `DPS_NUMBER_BELOW_CURRENT`), `accountantPackage_get` / `_update` / `_send` / `_listSends` |
+| Companies | `dpsSequence_get` / `dpsSequence_set` / `dpsSequence_check` / `dpsSequence_confirm` (check the numbering with the government before the first note; error `DPS_NUMBERING_CHECK_UNAVAILABLE`; continue the DPS numbering from another system; error `DPS_NUMBER_BELOW_CURRENT`), `accountantPackage_get` / `_update` / `_send` / `_listSends` |
 | Customers | `cnpj_lookup` (`GET /cnpj/{cnpj}`), `customers_search`, `customers_get`, `customers_update`, `customers_delete` |
 | Service favorites | `serviceFavorites_list` / `_create` / `_delete` |
 | Schedules | `schedules_list` / `_get` / `_update` / `_pause` / `_resume` / `_cancel` / `_listRuns` |

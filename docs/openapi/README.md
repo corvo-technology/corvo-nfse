@@ -102,6 +102,8 @@ Where each part lives:
 | `companies_get` | GET | `/companies/{id}` | 0.2.0 | Get a company by ID |
 | `companies_list` | GET | `/companies` | 0.2.0 | List companies for the current tenant |
 | `companies_update` | PATCH | `/companies/{id}` | 0.2.0 | Update a company |
+| `dpsSequence_check` | POST | `/companies/{id}/dps-sequence/check` | 0.3.0 | Check the DPS numbering of a company with the government |
+| `dpsSequence_confirm` | POST | `/companies/{id}/dps-sequence/confirm` | 0.3.0 | Confirm the DPS numbering of a company |
 | `dpsSequence_get` | GET | `/companies/{id}/dps-sequence` | 0.3.0 | Get the DPS numbering of a company |
 | `dpsSequence_set` | PUT | `/companies/{id}/dps-sequence` | 0.3.0 | Continue the DPS numbering from the last note issued elsewhere |
 | `fiscalProfiles_approve` | POST | `/companies/{id}/fiscal-profile/{profileId}/approve` | 0.2.0 | Approve a fiscal profile of the company |

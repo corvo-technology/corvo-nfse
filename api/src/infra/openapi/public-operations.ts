@@ -117,6 +117,8 @@ export const ADDED_IN_0_3_0: ReadonlySet<string> = new Set([
   'GET /companies/{companyId}/invoice-package/summary',
   'GET /companies/{companyId}/service-favorites',
   'GET /companies/{id}/dps-sequence',
+  'POST /companies/{id}/dps-sequence/check',
+  'POST /companies/{id}/dps-sequence/confirm',
   'GET /credits/purchase/preview',
   'GET /customers',
   'GET /customers/{taxId}',
@@ -376,6 +378,23 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
       'Use it when the company already issued notes in another system or in the Portal Nacional, so the next DPS does not repeat a number the Receita has (`E0014`). It only moves forward: a lower number answers 422 `DPS_NUMBER_BELOW_CURRENT`.',
     ok: { 200: data(ref('DpsSequence')) },
     errors: [422],
+  },
+  'POST /companies/{id}/dps-sequence/check': {
+    id: 'dpsSequence_check',
+    tag: 'Companies',
+    description:
+      'Asks the government whether the next DPS numbers (up to 20 in a row) were already used. It only reads: it issues nothing and changes no number. 503 `DPS_NUMBERING_CHECK_UNAVAILABLE` means the government gave no answer: try again later.',
+    ok: { 200: data(ref('DpsNumberingCheck')) },
+    errors: [503],
+  },
+  'POST /companies/{id}/dps-sequence/confirm': {
+    id: 'dpsSequence_confirm',
+    tag: 'Companies',
+    description:
+      'Marks the numbering as checked, so the first note is not held back. With `lastNumber` it first moves the numbering forward (never back; a lower number answers 422 `DPS_NUMBER_BELOW_CURRENT`).',
+    ok: { 200: data(ref('DpsSequence')) },
+    errors: [422],
+    bodyOptional: true,
   },
   'GET /companies/{id}/fiscal-profile': {
     id: 'fiscalProfiles_list',
