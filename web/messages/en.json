@@ -615,7 +615,7 @@
     "actions": {
       "company": { "created": "Created a company", "updated": "Updated a company", "deleted": "Deleted a company" },
       "certificate": { "uploaded": "Uploaded a certificate", "replaced": "Replaced a certificate", "revoked": "Removed a certificate" },
-      "invoice": { "issued": "Issued an invoice", "cancelled": "Cancelled an invoice", "substituted": "Replaced an invoice", "email_resent": "Resent an invoice email", "batch_issued": "Issued invoices in a batch" },
+      "invoice": { "issued": "Issued an invoice", "cancelled": "Cancelled an invoice", "substituted": "Replaced an invoice", "email_resent": "Resent an invoice email", "batch_issued": "Issued invoices in a batch", "review_retried": "Retried an invoice in review", "review_discarded": "Discarded an invoice in review" },
       "import": { "emitted": "Issued invoices from an import" },
       "schedule": { "created": "Created a schedule", "paused": "Paused a schedule", "resumed": "Resumed a schedule", "cancelled": "Cancelled a schedule" },
       "billing": { "charge_created": "Created a charge", "payment_confirmed": "Payment confirmed", "plan_changed": "Changed plan" },

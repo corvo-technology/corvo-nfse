@@ -14,6 +14,8 @@ export const ACCOUNT_AUDIT_ACTIONS = [
   'invoice.substituted',
   'invoice.email_resent',
   'invoice.batch_issued',
+  'invoice.review_retried',
+  'invoice.review_discarded',
   'import.emitted',
   'schedule.created',
   'schedule.paused',

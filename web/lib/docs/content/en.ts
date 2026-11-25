@@ -3246,6 +3246,12 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "`{ invoice_id, email_id, status }` (authorized invoice only)"
             ],
             [
+              "`nfse_review`",
+              "`nfse:write`",
+              "`invoice_id`, `action` (`retry` or `discard`)",
+              "`{ invoice_id, action, outcome, status, invoice }`. Only for notes in `manual_review`. `retry` re-checks the portal with the same DPS and never issues a second note; `discard` rejects only if the portal confirms it was never registered (the number is skipped)"
+            ],
+            [
               "`company_update`",
               "`nfse:write`",
               "`company_id` and what changes: `trade_name?`, `municipality_code?`, `default_service_code?` (`null` removes it), `address?`. Never CNPJ, regime, certificate or deletion",

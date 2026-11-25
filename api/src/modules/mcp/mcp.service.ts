@@ -7,6 +7,7 @@ import { ICompanyCertificateReader } from '@/modules/company/domain/i-company-ce
 import { Inject, Injectable } from '@nestjs/common';
 import type { AuthContext } from '../auth/auth-context';
 import { InvoiceService } from '../invoice/application/invoice.service';
+import { InvoiceReviewService } from '../invoice/application/invoice-review.service';
 import { InvoiceBatchService } from '../invoice/application/invoice-batch.service';
 import { InvoiceCalculationService } from '../invoice/application/fiscal/invoice-calculation.service';
 import { QuotaService } from '@/modules/plans/application/quota.service';
@@ -137,6 +138,10 @@ import {
   createNfseEmailResendHandler,
 } from './tools/nfse-email-resend.tool';
 import {
+  NFSE_REVIEW_TOOL,
+  createNfseReviewHandler,
+} from './tools/nfse-review.tool';
+import {
   COMPANY_UPDATE_TOOL,
   createCompanyUpdateHandler,
 } from './tools/company-update.tool';
@@ -244,6 +249,7 @@ export class McpService {
     private readonly checkoutRouter: CheckoutRouterService,
     private readonly billingService: BillingService,
     private readonly woovi: WooviPaymentsService,
+    private readonly invoiceReview: InvoiceReviewService,
   ) {
     this.server = new McpServer({
       instructions: mcpInstructions(IS_SELF_HOSTED),
@@ -266,6 +272,14 @@ export class McpService {
       this.wrapWithScopeCheck(
         createNfseEmailResendHandler(this.invoiceService),
         'nfse:write',
+      ),
+    );
+    this.server.registerTool(
+      NFSE_REVIEW_TOOL,
+      this.wrapWithScopeCheck(
+        createNfseReviewHandler(this.invoiceReview, this.invoiceRepo),
+        'nfse:write',
+        SCOPE_PERMISSION['nfse:write'],
       ),
     );
     this.server.registerTool(

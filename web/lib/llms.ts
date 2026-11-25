@@ -25,6 +25,7 @@ Corvo registers issuer companies, stores their A1 certificates, calculates taxes
 - MCP \`certificate_upload\` (optional scope \`nfse:certificates\`): \`tax_id\`, \`pfx_base64\` (up to 50 KB), \`password\`. The password stays in the agent's vault; Corvo stores it encrypted and never returns it.
 - MCP \`credits_purchase\` (optional scope \`billing:purchase\`): \`units\` and \`method\` (\`pix\` or \`card\`); returns the Pix QR Code and copy-and-paste code or the card checkout link. Not available on self-hosted installs.
 - MCP \`payment_status\` (scope \`billing:purchase\`): \`payment_id\` or \`session_id\`; returns pending, paid (with the new balance) or expired/cancelled.
+- MCP \`nfse_review\` (scope \`nfse:write\`): \`invoice_id\` and \`action\` (\`retry\` or \`discard\`) for an invoice in \`manual_review\`. \`retry\` asks the portal about the same DPS and never issues a second NFS-e; \`discard\` rejects only if the portal confirms the DPS was never registered (the number is skipped).
 - Tax regimes: MEI and Simples Nacional only.
 - Issuance is asynchronous: \`POST /v1/invoices\` returns \`202\` and the result arrives by \`GET /v1/invoices/:id\` or by webhook. Send an \`Idempotency-Key\` header to retry safely.
 - Corvo serves only MEI and Simples Nacional (\`taxRegime\` is \`MEI\` or \`Simples Nacional\`; other regimes return \`422 ERROR_TAX_REGIME_NOT_SUPPORTED\`) and does not generate the DAS. An ME/EPP (Simples Nacional) must send its effective Simples rate as \`simplesRate\` when the company is created (\`simplesIssRate\` is optional, for ISS withholding) and updates it with \`PATCH /v1/companies/:id\`; it is sent on every NFS-e as \`pTotTribSN\`. A MEI sends no rate.
@@ -56,6 +57,7 @@ A Corvo cadastra empresas emissoras, guarda os certificados A1, calcula os tribu
 - MCP \`certificate_upload\` (escopo opcional \`nfse:certificates\`): \`tax_id\`, \`pfx_base64\` (até 50 KB), \`password\`. A senha fica no cofre do agente; a Corvo guarda criptografado e nunca devolve.
 - MCP \`credits_purchase\` (escopo opcional \`billing:purchase\`): \`units\` e \`method\` (\`pix\` ou \`card\`); devolve o QR Code e o copia-e-cola do Pix ou o link de pagamento no cartão. Não existe em instalações self-hosted.
 - MCP \`payment_status\` (escopo \`billing:purchase\`): \`payment_id\` ou \`session_id\`; devolve pendente, pago (com o novo saldo) ou expirado/cancelado.
+- MCP \`nfse_review\` (escopo \`nfse:write\`): \`invoice_id\` e \`action\` (\`retry\` ou \`discard\`) para nota em \`manual_review\`. \`retry\` consulta o portal com o mesmo DPS e nunca emite uma segunda NFS-e; \`discard\` só rejeita se o portal confirmar que o DPS nunca foi registrado (o número é pulado).
 - Regimes: só MEI e Simples Nacional.
 - A emissão é assíncrona: \`POST /v1/invoices\` responde \`202\` e o resultado chega por \`GET /v1/invoices/:id\` ou por webhook. Envie \`Idempotency-Key\` para repetir com segurança.
 - \`POST /v1/invoices/calculate\` mostra os tributos sem emitir.

@@ -3243,6 +3243,12 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "`{ invoice_id, email_id, status }` (só nota autorizada)"
             ],
             [
+              "`nfse_review`",
+              "`nfse:write`",
+              "`invoice_id`, `action` (`retry` ou `discard`)",
+              "`{ invoice_id, action, outcome, status, invoice }`. Só para notas em `manual_review`. `retry` consulta o portal de novo com o mesmo DPS e nunca emite uma segunda nota; `discard` só rejeita se o portal confirmar que nunca foi registrada (o número é pulado)"
+            ],
+            [
               "`company_update`",
               "`nfse:write`",
               "`company_id` e o que muda: `trade_name?`, `municipality_code?`, `default_service_code?` (`null` remove), `address?`. Nunca CNPJ, regime, certificado ou exclusão",

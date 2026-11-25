@@ -615,7 +615,7 @@
     "actions": {
       "company": { "created": "Criou empresa", "updated": "Atualizou empresa", "deleted": "Excluiu empresa" },
       "certificate": { "uploaded": "Enviou certificado", "replaced": "Substituiu certificado", "revoked": "Removeu certificado" },
-      "invoice": { "issued": "Emitiu nota", "cancelled": "Cancelou nota", "substituted": "Substituiu nota", "email_resent": "Reenviou e-mail da nota", "batch_issued": "Emitiu notas em lote" },
+      "invoice": { "issued": "Emitiu nota", "cancelled": "Cancelou nota", "substituted": "Substituiu nota", "email_resent": "Reenviou e-mail da nota", "batch_issued": "Emitiu notas em lote", "review_retried": "Tentou de novo a nota em revisão", "review_discarded": "Descartou a nota em revisão" },
       "import": { "emitted": "Emitiu notas de uma importação" },
       "schedule": { "created": "Criou agendamento", "paused": "Pausou agendamento", "resumed": "Retomou agendamento", "cancelled": "Cancelou agendamento" },
       "billing": { "charge_created": "Gerou cobrança", "payment_confirmed": "Pagamento confirmado", "plan_changed": "Mudou de plano" },

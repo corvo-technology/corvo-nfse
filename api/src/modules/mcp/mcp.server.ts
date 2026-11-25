@@ -78,6 +78,7 @@ export function mcpInstructions(selfHosted: boolean): string {
     );
   }
   lines.push(
+    'If an invoice is in manual_review, explain it to the person and suggest nfse_review with retry; use discard only after the person explicitly confirms.',
     'If a tool says it lacks permission, ask the person to reconnect and tick that option when authorizing.',
   );
   return lines.join('\n');
