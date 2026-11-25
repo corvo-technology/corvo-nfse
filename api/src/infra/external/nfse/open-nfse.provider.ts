@@ -19,6 +19,7 @@ import {
   NfseClient,
   Ambiente,
   TipoAmbiente,
+  TipoAmbienteDps,
   buildDpsId,
   pendingEmissionId,
   ReceitaRejectionError,
@@ -94,6 +95,13 @@ export class OpenNfseProvider
     return this.sefinFor(environment) === 'restricted'
       ? Ambiente.ProducaoRestrita
       : Ambiente.Producao;
+  }
+
+  /** The `tpAmb` of an event: the same as the Sefin that receives it (1 production, 2 Produção Restrita). */
+  private tpAmbFor(environment: 'test' | 'live'): TipoAmbienteDps {
+    return this.sefinFor(environment) === 'production'
+      ? TipoAmbienteDps.Producao
+      : TipoAmbienteDps.Homologacao;
   }
 
   private store(
@@ -238,6 +246,8 @@ export class OpenNfseProvider
         autor: { CNPJ: payload.emitenteCnpj },
         cMotivo: CANCELLATION_REASON[payload.reason],
         xMotivo: payload.description,
+        // The library defaults the event's tpAmb to 2: a production note's event must say 1 (E0803).
+        tpAmb: this.tpAmbFor(payload.environment),
         retryStore: store,
       });
       return result.status === 'ok'

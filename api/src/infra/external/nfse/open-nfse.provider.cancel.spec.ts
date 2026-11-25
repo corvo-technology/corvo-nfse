@@ -1,5 +1,6 @@
 import {
   NfseClient,
+  type CancelarParams,
   ReceitaRejectionError,
   ValidationError,
   type PendingEvent,
@@ -50,6 +51,7 @@ describe('OpenNfseProvider.cancel', () => {
       autor: { CNPJ: payload.emitenteCnpj },
       cMotivo: '2',
       xMotivo: payload.description,
+      tpAmb: payload.environment === 'live' ? '1' : '2',
       retryStore: store,
     });
   });
@@ -198,4 +200,22 @@ describe('OpenNfseProvider.cancel', () => {
     await expect(provider.cancel(payload)).rejects.toThrow();
     expect(close).toHaveBeenCalledTimes(1);
   });
+});
+
+describe('OpenNfseProvider.cancel: tpAmb of the event (E0803)', () => {
+  it.each([
+    ['live', '1'],
+    ['test', '2'],
+  ] as const)(
+    'the 101101 event of a %s invoice carries <tpAmb>%s</tpAmb>',
+    async (environment, tpAmb) => {
+      const cancelar = jest
+        .spyOn(NfseClient.prototype as any, 'cancelar')
+        .mockResolvedValue({ status: 'ok', evento: {} });
+      const { provider } = providerWith();
+      await provider.cancel({ ...payload, environment });
+      const sent = cancelar.mock.calls[0][0] as CancelarParams;
+      expect(sent.tpAmb).toBe(tpAmb);
+    },
+  );
 });
