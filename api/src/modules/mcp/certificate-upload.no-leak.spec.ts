@@ -5,6 +5,7 @@ import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-a
 import { CertificateService } from '@/modules/certificate/application/certificate.service';
 import { CertificateInvalidError } from '@/modules/certificate/domain/errors';
 import type { AuthContext } from '../auth/auth-context';
+import { ITenantMembershipRepository } from '../auth/domain/tenant-membership.repository';
 import { McpService } from './mcp.service';
 
 const PASSWORD = 'S3nh@-Secreta-123';
@@ -12,6 +13,14 @@ const PFX = Buffer.from('PFX-MARKER-0123456789-abcdefghijklmnop-end');
 const PFX_B64 = PFX.toString('base64');
 
 const company = { id: 'company-1', taxId: '11222333000181' };
+
+function membershipSlot(): number {
+  const injected = Reflect.getMetadata('self:paramtypes', McpService) as {
+    index: number;
+    param: unknown;
+  }[];
+  return injected.find((p) => p.param === ITenantMembershipRepository)!.index;
+}
 
 function parsed() {
   return {
@@ -104,16 +113,13 @@ function build(fakeAudit: FakeAccountAudit) {
     { refresh: jest.fn().mockResolvedValue(null) } as never,
     fakeAudit,
   );
-  const deps: unknown[] = Array.from(
-    { length: McpService.length - 1 },
-    () => ({}),
-  );
+  const deps: unknown[] = Array.from({ length: McpService.length }, () => ({}));
   deps[10] = { findByTaxId: jest.fn().mockResolvedValue(company) };
   deps[21] = certificates;
-  deps.push({
+  deps[membershipSlot()] = {
     findByAuthUserAndTenant: () =>
       Promise.resolve({ role: 'admin', isActive: true }),
-  });
+  };
   const mcp = new (
     McpService as unknown as new (...args: unknown[]) => McpService
   )(...deps);
