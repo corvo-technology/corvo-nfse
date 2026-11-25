@@ -95,3 +95,7 @@ Legenda: esforço S (até 1 dia), M (2 a 4 dias), L (mais de 4 dias). "Dia 1" = 
 8. **Notas de crédito e débito:** algum cliente pede? Se não, ficam fora do roteiro até haver data.
 9. **Tolerância do grupo IBS/CBS** (orientação CGNFS-e de 07/08/2026, até 31/12/2026): vale também para o layout novo?
 10. **Certificado A1 de teste ativo** para o ensaio da seção 6?
+
+## 8. Decisão de 25/11/2026
+
+O dono decidiu **manter o layout `rtc-v1.01`** (o atual) em 01/12/2026. A troca para `nt009-r1` só acontece depois que o XSD oficial de produção for publicado e testado na Produção Restrita. A tolerância vai até 31/12/2026. Os lembretes ficam em [`fiscal-dates.json`](fiscal-dates.json).

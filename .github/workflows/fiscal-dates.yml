@@ -1,0 +1,16 @@
+name: fiscal-dates
+on:
+  schedule: [{ cron: '0 11 * * *' }] # todo dia 08:00 BRT
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Open reminder issues for upcoming fiscal dates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/check-fiscal-dates.sh
