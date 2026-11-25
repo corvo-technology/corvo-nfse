@@ -560,6 +560,7 @@
     }
   },
   "Settings": {
+    "tabs": { "label": "Seções de configurações", "general": "Geral", "audit": "Auditoria" },
     "title": "Configurações",
     "subtitle": "Configurações de ambiente e faturamento.",
     "billing": "Faturamento",
@@ -584,6 +585,45 @@
       "loadFailed": "Não foi possível carregar os pagamentos.",
       "elsewhere": "Os pagamentos e o histórico ficam na Cobrança.",
       "openBilling": "Abrir Cobrança"
+    }
+  },
+  "Audit": {
+    "title": "Auditoria",
+    "subtitle": "Quem fez o quê na sua conta. Guardamos os últimos 12 meses.",
+    "columns": { "when": "Quando", "who": "Quem", "action": "Ação", "item": "Item" },
+    "filters": {
+      "who": "Quem",
+      "period": "Período",
+      "all": "Todos",
+      "user": "Pessoas",
+      "agent": "Agentes",
+      "api_key": "Chaves de API",
+      "system": "Sistema",
+      "d7": "Últimos 7 dias",
+      "d30": "Últimos 30 dias",
+      "y1": "Último ano"
+    },
+    "agentBadge": "Agente",
+    "system": "Sistema",
+    "caption": "Histórico de ações da conta",
+    "loading": "Carregando a auditoria",
+    "empty": "Nada registrado neste período.",
+    "error": "Não foi possível carregar a auditoria.",
+    "loadMore": "Carregar mais",
+    "charge": { "pix": "Pix", "card": "Cartão" },
+    "credits": "{count, plural, one {# crédito} other {# créditos}}",
+    "actions": {
+      "company": { "created": "Criou empresa", "updated": "Atualizou empresa", "deleted": "Excluiu empresa" },
+      "certificate": { "uploaded": "Enviou certificado", "replaced": "Substituiu certificado", "revoked": "Removeu certificado" },
+      "invoice": { "issued": "Emitiu nota", "cancelled": "Cancelou nota", "substituted": "Substituiu nota", "email_resent": "Reenviou e-mail da nota", "batch_issued": "Emitiu notas em lote" },
+      "import": { "emitted": "Emitiu notas de uma importação" },
+      "schedule": { "created": "Criou agendamento", "paused": "Pausou agendamento", "resumed": "Retomou agendamento", "cancelled": "Cancelou agendamento" },
+      "billing": { "charge_created": "Gerou cobrança", "payment_confirmed": "Pagamento confirmado", "plan_changed": "Mudou de plano" },
+      "member": { "invited": "Convidou membro", "removed": "Removeu membro", "role_changed": "Mudou o papel de um membro" },
+      "invitation": { "accepted": "Aceitou convite" },
+      "api_key": { "created": "Criou chave de API", "revoked": "Revogou chave de API" },
+      "agent": { "connected": "Conectou agente", "disconnected": "Desconectou agente" },
+      "accountant": { "package_sent": "Enviou pacote ao contador", "email_changed": "Mudou e-mail do contador" }
     }
   },
   "Members": {

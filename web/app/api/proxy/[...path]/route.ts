@@ -17,6 +17,7 @@ const routes: [RegExp, string[]][] = [
   [/^auth\/invitations\/[^/]+\/resend$/, ["POST"]],
   [/^auth\/invitations\/[^/]+$/, ["DELETE"]],
   [/^auth\/members\/[^/]+$/, ["DELETE"]],
+  [/^audit-events$/, ["GET"]],
   [/^auth\/api-keys$/, ["GET", "POST"]],
   [/^auth\/api-keys\/[^/]+$/, ["DELETE"]],
   [/^plans(?:\/[^/]+)?$/, ["GET"]],

@@ -20,6 +20,7 @@ const ROUTE_PERMISSIONS: ReadonlyArray<readonly [prefix: string, permission: str
   ["/app/api-keys", "api_keys.manage"],
   ["/app/billing", "billing.view"],
   ["/app/members", "settings.manage"],
+  ["/app/settings/audit", "settings.manage"],
   ["/app/settings", "billing.view"],
 ];
 
