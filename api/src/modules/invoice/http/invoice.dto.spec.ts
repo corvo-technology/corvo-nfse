@@ -187,3 +187,20 @@ describe('ListInvoicesQuery customerTaxId', () => {
     },
   );
 });
+
+describe('ListInvoicesQuery origin', () => {
+  const check = async (origin: string) =>
+    (await validate(plainToInstance(ListInvoicesQuery, { origin }))).map(
+      (error) => error.property,
+    );
+
+  it.each(['dashboard', 'api', 'integration', 'schedule', 'import'])(
+    'accepts %s',
+    async (value) => {
+      expect(await check(value)).toEqual([]);
+    },
+  );
+  it('rejects an unknown origin', async () => {
+    expect(await check('charge')).toContain('origin');
+  });
+});

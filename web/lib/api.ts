@@ -1,3 +1,4 @@
+import type { InvoiceOriginKind } from "@/lib/invoice-origin";
 import type { ServiceFavorite, ServiceFavoriteInput, ForeignCustomer, SavedCustomer, CustomerRegistryInfo, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 import type { AuditActorFilter, AuditEvent } from "./audit";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
@@ -203,7 +204,7 @@ export function adaptInvoice(props: InvoiceWire): Invoice {
   // Anonymous consumer invoices have no customer snapshot (the tomador is omitted from the DPS).
   return { ...props, customerName: props.customerSnapshot?.name ?? "", customerTaxId: props.customerSnapshot?.taxId ?? props.customerSnapshot?.foreign?.taxId ?? "", serviceDescription: props.serviceSnapshot.description };
 }
-export interface InvoiceQuery extends PageParams { companyId?: string; status?: InvoiceStatus; from?: string; to?: string; externalId?: string; customerTaxId?: string }
+export interface InvoiceQuery extends PageParams { companyId?: string; status?: InvoiceStatus; from?: string; to?: string; externalId?: string; customerTaxId?: string; origin?: InvoiceOriginKind }
 export type OverviewPeriod = "7d" | "30d";
 export interface InvoiceOverview {
   period: OverviewPeriod;

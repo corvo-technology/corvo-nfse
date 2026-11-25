@@ -419,7 +419,7 @@ export type CancellationReasonCode = "issue_error" | "service_not_provided" | "o
 export type PortalFlag = "taker_rejected" | "blocked";
 export interface Invoice {
   portalFlag?: PortalFlag | null;
-  id: string; tenantId: string; companyId: string; externalId?: string | null;
+  id: string; tenantId: string; companyId: string; externalId?: string | null; idempotencyKey?: string | null;
   accessKey?: string | null; nfseNumber?: number | null; status: InvoiceStatus;
   amount: number; customerName: string; customerTaxId: string;
   /** Unconditional discount applied to the amount. */

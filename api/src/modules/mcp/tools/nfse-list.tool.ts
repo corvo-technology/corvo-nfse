@@ -4,6 +4,7 @@ import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
 import type { InvoiceService } from '@/modules/invoice/application/invoice.service';
 import { INVOICE_STATUSES } from '@/modules/invoice/domain/invoice-status';
+import { INVOICE_ORIGINS } from '@/modules/invoice/domain/invoice-origin';
 import { ListInvoicesQuery } from '@/modules/invoice/http/invoice.dto';
 import { NfseListInput } from '../dto/tool-input.dto';
 import { toDetailedInvoice } from './public-shapes';
@@ -11,13 +12,17 @@ import { toDetailedInvoice } from './public-shapes';
 export const NFSE_LIST_TOOL = {
   name: 'nfse_list',
   description:
-    'List NFS-e invoices for the tenant with optional status filter and cursor pagination.',
+    'List NFS-e invoices for the tenant with optional status and origin filters and cursor pagination.',
   inputSchema: {
     type: 'object',
     properties: {
       status: {
         type: 'string',
         description: `Filter by status (${INVOICE_STATUSES.join(', ')})`,
+      },
+      origin: {
+        type: 'string',
+        description: `Filter by where the invoice came from (${INVOICE_ORIGINS.join(', ')}): dashboard = issued in the web app, integration = a sale from a connected payment platform, schedule, import, api = sent by a client or AI agent`,
       },
       limit: { type: 'number', default: 50, minimum: 1, maximum: 1000 },
       cursor: {
@@ -50,6 +55,7 @@ export function createNfseListHandler(invoiceService: InvoiceService) {
       limit: params.limit ?? 50,
       cursor: params.cursor,
       status: params.status,
+      origin: params.origin,
     });
     const queryErrors = await validate(query);
     if (queryErrors.length > 0) {

@@ -1,4 +1,23 @@
 {
+  "InvoiceOrigin": {
+    "label": "Origem",
+    "yourReference": "Sua referência",
+    "filterLabel": "Filtrar por origem",
+    "all": "Todas as origens",
+    "withCharge": "{origin} · cobrança {charge}",
+    "kind": {
+      "dashboard": "Painel",
+      "api": "API",
+      "integration": "Venda pela integração",
+      "schedule": "Agendamento",
+      "import": "Importação de planilha"
+    },
+    "integration": {
+      "woovi": "Venda Pix (Woovi)",
+      "abacatepay": "Venda (AbacatePay)",
+      "generic": "Venda pela integração"
+    }
+  },
   "Common": {
     "loadMore": "Carregar mais",
     "brand": "Corvo",

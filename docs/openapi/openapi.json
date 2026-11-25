@@ -5557,7 +5557,7 @@
     },
     "/invoices": {
       "get": {
-        "description": "Newest first. Filter by `status`, `companyId`, `externalId`, `customerTaxId` or a `from`/`to` competence-date range, and walk the pages with `cursor`. A test key lists only test invoices and a live key only live ones.\n\nPermission: `nfse.invoices.view`.",
+        "description": "Newest first. Filter by `status`, `origin`, `companyId`, `externalId`, `customerTaxId` or a `from`/`to` competence-date range, and walk the pages with `cursor`. A test key lists only test invoices and a live key only live ones.\n\nPermission: `nfse.invoices.view`.",
         "operationId": "invoices_list",
         "parameters": [
           {
@@ -5587,6 +5587,22 @@
             "required": false,
             "schema": {
               "pattern": "^\\d{11}$|^\\d{14}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only invoices that came from here: `dashboard` (issued in the web app), `integration` (a sale from a connected payment platform), `schedule` (a scheduled or recurring invoice), `import` (a spreadsheet import) or `api` (sent by a client through the API, including AI agents).",
+            "in": "query",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "enum": [
+                "dashboard",
+                "api",
+                "integration",
+                "schedule",
+                "import"
+              ],
               "type": "string"
             }
           },

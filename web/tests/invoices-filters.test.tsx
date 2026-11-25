@@ -30,6 +30,13 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("notes list filters", () => {
+  it("filters by where the note came from, asking the API", async () => {
+    renderPage();
+    await screen.findAllByText("Padaria Estrela");
+    fireEvent.change(screen.getByLabelText("Filter by source"), { target: { value: "integration" } });
+    await waitFor(() => expect(mocks.invoices).toHaveBeenLastCalledWith(expect.objectContaining({ origin: "integration" }), expect.anything()));
+  });
+
   it("offers the spreadsheet import next to the new note button", async () => {
     renderPage();
     await screen.findAllByText("Padaria Estrela");

@@ -189,6 +189,7 @@ export class NfseQueryInput {
 
 export class NfseListInput {
   @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsString() origin?: string;
   @IsOptional() @IsNumber() @Min(1) @Max(1000) limit?: number;
   @IsOptional() @IsString() cursor?: string;
 }

@@ -7,6 +7,8 @@ import { LastEmailStatus } from './invoice';
 import type { CancellationReasonCode } from './cancellation-reason';
 import type { PortalFlag } from './portal-flag';
 
+import type { InvoiceOrigin } from './invoice-origin';
+
 export interface ListInvoicesFilters {
   environment?: ExecutionEnvironment;
   companyId?: string;
@@ -16,6 +18,8 @@ export interface ListInvoicesFilters {
   externalId?: string;
   /** CPF/CNPJ digits of the customer snapshot. */
   customerTaxId?: string;
+  /** Where the invoice came from; see `originOf`. */
+  origin?: InvoiceOrigin;
 }
 
 /** A cancellation requested while the invoice is being issued. */
