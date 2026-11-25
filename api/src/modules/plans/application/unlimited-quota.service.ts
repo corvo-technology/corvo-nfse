@@ -12,7 +12,7 @@ const UNLIMITED = 999999;
 @Injectable()
 export class UnlimitedQuotaService extends QuotaService {
   constructor(private readonly companies: ICompanyRepository) {
-    super(null as never, null as never, companies);
+    super(null as never, null as never, companies, null as never);
   }
 
   override async getStatus(tenantId: string): Promise<QuotaStatus> {

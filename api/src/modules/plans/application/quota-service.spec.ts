@@ -10,6 +10,7 @@ describe('QuotaService using the production implementation', () => {
   const assignments = { ensurePeriodFresh: jest.fn() };
   const credits = { status: jest.fn() };
   const companies = { countActiveByTenantId: jest.fn() };
+  const plans = { findBySlug: jest.fn() };
   const query = {
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
@@ -22,6 +23,7 @@ describe('QuotaService using the production implementation', () => {
     assignments as any,
     credits as any,
     companies as any,
+    plans as any,
   );
   beforeEach(() => {
     assignments.ensurePeriodFresh.mockResolvedValue({
@@ -116,6 +118,43 @@ describe('QuotaService using the production implementation', () => {
     });
     await expect(service.assertCanEmit('tenant')).rejects.toMatchObject({
       reason: 'no_credits',
+    });
+  });
+  it('lets a lapsed plan with avulso emit, and caps companies at the free plan', async () => {
+    const current = (await credits.status()) as { period: object };
+    credits.status.mockResolvedValue({
+      ...current,
+      blocked: true,
+      avulsoBalance: 10,
+    });
+    plans.findBySlug.mockResolvedValue({ maxActiveCompanies: 1 });
+    assignments.ensurePeriodFresh.mockResolvedValue({
+      plan: { ...plan, maxActiveCompanies: 5 },
+    });
+    companies.countActiveByTenantId.mockResolvedValue(1);
+    await expect(service.assertCanEmit('tenant')).resolves.toBeUndefined();
+    expect(await service.getStatus('tenant')).toMatchObject({
+      canEmit: true,
+      reason: undefined,
+      maxActiveCompanies: 1,
+    });
+    await expect(
+      service.assertCanCreateCompany('tenant'),
+    ).rejects.toMatchObject({ reason: 'company_limit_exceeded' });
+    companies.countActiveByTenantId.mockResolvedValue(0);
+    await expect(
+      service.assertCanCreateCompany('tenant'),
+    ).resolves.toBeUndefined();
+  });
+  it('keeps a lapsed plan blocked without avulso', async () => {
+    const current = (await credits.status()) as { period: object };
+    credits.status.mockResolvedValue({
+      ...current,
+      blocked: true,
+      avulsoBalance: 0,
+    });
+    await expect(service.assertCanEmit('tenant')).rejects.toMatchObject({
+      reason: 'plan_blocked',
     });
   });
 });
