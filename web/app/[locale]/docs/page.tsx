@@ -5,6 +5,7 @@ import { DocBlocks } from "@/components/docs/doc-blocks";
 import { DocsHeader } from "@/components/docs/docs-header";
 import { getDocsTree } from "@/lib/docs/registry";
 import { JsonLd } from "@/components/seo/json-ld";
+import { breadcrumbList, docsCrumbs } from "@/lib/structured-data";
 import { SITE_COPY, SITE_URL, pageMetadata, pageUrl, seoLocale } from "@/lib/seo";
 
 export async function generateMetadata({
@@ -44,14 +45,7 @@ export default async function DocsHomePage({
     publisher: { "@id": `${SITE_URL}/#organization` },
     isPartOf: { "@id": `${SITE_URL}/#website` },
   };
-  const breadcrumb = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Corvo", item: pageUrl(lang) },
-      { "@type": "ListItem", position: 2, name: lang === "pt" ? "Documentação" : "Docs", item: pageUrl(lang, "/docs") },
-    ],
-  };
+  const breadcrumb = breadcrumbList(docsCrumbs(lang));
 
   return (
     <>

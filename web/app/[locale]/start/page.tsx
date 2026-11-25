@@ -3,7 +3,8 @@ import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
 import { JsonLd } from "@/components/seo/json-ld";
-import { pageMetadata, pageUrl, seoLocale } from "@/lib/seo";
+import { SITE_NAME, pageMetadata, pageUrl, seoLocale } from "@/lib/seo";
+import { breadcrumbList } from "@/lib/structured-data";
 import { SIGNUP_HREF, START_COPY, START_PATH, START_SNIPPET } from "@/lib/start-page";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -38,7 +39,7 @@ export default async function StartPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-bg text-text font-sans">
-      <JsonLd data={howTo} />
+      <JsonLd data={[howTo, breadcrumbList([{ name: SITE_NAME, url: pageUrl(locale) }, { name: copy.title, url: pageUrl(locale, START_PATH) }])]} />
       <nav className="border-b border-border-soft px-6 sm:px-10 py-4 flex items-center justify-between">
         <Link href={`/${locale}`} aria-label={copy.backToHome}>
           <CorvoWordmark size={16} variant="green" />

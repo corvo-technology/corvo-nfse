@@ -86,7 +86,7 @@ describe("schema.org", () => {
     for (const file of [join(ROOT, "app", "[locale]", "docs", "page.tsx"), join(ROOT, "app", "[locale]", "docs", "[...section]", "page.tsx")]) {
       const source = readFileSync(file, "utf8");
       expect(source).toContain('"TechArticle"');
-      expect(source).toContain('"BreadcrumbList"');
+      expect(source).toContain("breadcrumbList(");
     }
   });
 });
