@@ -1662,6 +1662,7 @@
       "found": "Encontramos: {summary}",
       "isMei": "MEI",
       "isSimples": "Simples Nacional",
+      "manualAnyway": "Preencher à mão mesmo assim",
       "notFound": "Não achamos esse CNPJ na Receita. Confira os números.",
       "unavailable": "A consulta da Receita está fora do ar. Você pode preencher à mão.",
       "inactive": "Este CNPJ está {situation} na Receita. Não é possível emitir nota por ele.",

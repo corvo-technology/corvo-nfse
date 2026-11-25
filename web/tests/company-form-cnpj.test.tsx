@@ -117,12 +117,18 @@ describe("CompanyForm starts with the CNPJ", () => {
     expect(continueButton().disabled).toBe(true);
   });
 
-  it("says a CNPJ the Receita does not know is probably a typo and does not offer manual entry", async () => {
+  it("warns about a CNPJ the Receita does not know, but lets the person fill it in by hand anyway", async () => {
     api.state.lookup = () => Promise.reject(new ApiError(404, "no", "CNPJ_NOT_FOUND"));
     renderForm(); typeCnpj();
     expect(await screen.findByText(/could not find this CNPJ at the Receita/)).toBeTruthy();
     expect(screen.queryByLabelText(/legal name/i)).toBeNull();
     expect(continueButton().disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Fill in by hand anyway" }));
+    expect(input(/legal name/i)).toBeTruthy();
+    expect(continueButton().disabled).toBe(false);
+    fireEvent.change(input(/legal name/i), { target: { value: "MEI Nova" } });
+    fireEvent.click(continueButton());
+    expect(input(/legal name/i).value).toBe("MEI Nova");
   });
 
   it("lets the person type the company by hand when the Receita is down", async () => {

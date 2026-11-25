@@ -113,6 +113,8 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
   const autoRegime = useRef(false);
   // Service code suggested by the company's main activity; offered on the fiscal step, never applied by itself.
   const [suggestedService, setSuggestedService] = useState<{ code: string; description: string } | null>(null);
+  // Newly opened CNPJs can be missing from the registry: the person may go on by hand after a not-found.
+  const [manualAnyway, setManualAnyway] = useState(false);
   const clearProfile = () => {
     setValues((previous) => ({ ...previous, legalName: "", tradeName: "", zip: "", street: "", number: "", complement: "", district: "", city: "", state: "", municipalityCode: "", taxRegime: autoRegime.current ? "" : previous.taxRegime }));
     autoRegime.current = false; setEditing(false);
@@ -122,7 +124,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
     set("taxId", masked);
     if (!wizard) return;
     cnpjRequest.current?.abort();
-    setCnpjInfo(null); setSuggestedService(null); clearProfile();
+    setCnpjInfo(null); setSuggestedService(null); setManualAnyway(false); clearProfile();
     if (!isValidCnpj(masked)) { setCnpjState("idle"); return; }
     const controller = new AbortController(); cnpjRequest.current = controller; setCnpjState("loading");
     cnpjApi.lookup(cleanTaxId(masked), controller.signal).then((profile) => {
@@ -188,7 +190,8 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
     : cnpjState === "notFound" ? "not_found"
     : cnpjState === "unavailable" ? "unavailable"
     : cnpjInfo?.active === false ? "inactive" : "found";
-  const canContinue = outcome === "found" || outcome === "unavailable";
+  const manualEntry = outcome === "unavailable" || (outcome === "not_found" && manualAnyway);
+  const canContinue = outcome === "found" || manualEntry;
   useEffect(() => {
     if (outcome && posthogConfigured) posthog.capture("cnpj_lookup_result", { result: outcome });
   }, [outcome]);
@@ -321,14 +324,17 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
         {outcome === "duplicate" && duplicate && <p role="alert" className="banner banner-danger"><span>{t("cnpj.duplicate")}{" "}<Link href={`/app/companies/${duplicate.id}`} className="underline">{t("openCompany")}</Link></span></p>}
         {outcome === "limit" && <p role="alert" className="banner banner-danger"><span>{t("companyLimit")}{" "}<Link href="/app/billing" className="underline">{t("cnpj.seePlans")}</Link></span></p>}
         {outcome === "inactive" && cnpjInfo && <p role="alert" className="banner banner-danger"><ShieldAlert size={16} aria-hidden className="mt-0.5 flex-none" /><span>{t("cnpj.inactive", { situation: cnpjInfo.situation || t("cnpj.inactiveFallback") })}</span></p>}
-        {outcome === "not_found" && <p role="alert" className="banner banner-danger">{t("cnpj.notFound")}</p>}
+        {outcome === "not_found" && <div role="alert" className="banner banner-danger flex-wrap items-center justify-between gap-2">
+          <span>{t("cnpj.notFound")}</span>
+          {!manualAnyway && <Button variant="ghost" onClick={() => { setManualAnyway(true); setEditing(true); if (posthogConfigured) posthog.capture("cnpj_lookup_result", { result: "not_found", manual: true }); }}>{t("cnpj.manualAnyway")}</Button>}
+        </div>}
         {outcome === "unavailable" && <p role="alert" className="banner banner-warn">{t("cnpj.unavailable")}</p>}
         {outcome === "found" && cnpjInfo && <div className="flex items-start gap-3 rounded-[12px] border border-accent-border bg-accent-surface px-4 py-3.5">
           <Search size={16} aria-hidden className="mt-0.5 flex-none text-accent" />
           <p className="text-[14px] text-text">{t("cnpj.found", { summary: [cnpjInfo.legalName, [cnpjInfo.city, cnpjInfo.state].filter(Boolean).join("/"), cnpjInfo.mei ? t("cnpj.isMei") : cnpjInfo.simples ? t("cnpj.isSimples") : ""].filter(Boolean).join(" · ") })}</p>
         </div>}
       </div>}
-      {wizard && outcome === "unavailable" && <>{field("legalName", { required: true, span: true })}{field("tradeName", { span: true })}</>}
+      {wizard && manualEntry && <>{field("legalName", { required: true, span: true })}{field("tradeName", { span: true })}</>}
     </fieldset>}
 
     {wizard && step === "data" && !editing && <div className="flex flex-col gap-4">
