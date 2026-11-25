@@ -1,5 +1,6 @@
 import { CursorQuery } from '@/shared/http/pagination';
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
 import { AuthUserService } from './auth-user.service';
 import { MembershipService } from './membership.service';
 import { ApiKeyService } from './api-key.service';
@@ -25,6 +26,7 @@ export class InviteMemberService {
     private readonly authUserService: AuthUserService,
     private readonly membershipService: MembershipService,
     private readonly apiKeyService: ApiKeyService,
+    private readonly audit: AccountAuditRecorder,
   ) {}
 
   async listMembers(tenantId: string): Promise<any[]> {
@@ -55,6 +57,11 @@ export class InviteMemberService {
         code: 'MEMBER_NOT_FOUND',
         message: 'Member not found',
       });
+    // The name is only a label for the trail: never let its lookup stop the removal.
+    const name = await this.authUserService
+      .getUsersByIds([userId], tenantId)
+      .then((users) => users.get(userId)?.name)
+      .catch(() => undefined);
     // Mark as inactive
     await this.membershipService.update(
       {
@@ -66,5 +73,10 @@ export class InviteMemberService {
     );
     // A removed member must not keep API access through keys they created.
     await this.apiKeyService.revokeCreatedBy(tenantId, userId);
+    await this.audit.record({
+      tenantId,
+      action: 'member.removed',
+      target: { type: 'member', id: userId, label: name || null },
+    });
   }
 }

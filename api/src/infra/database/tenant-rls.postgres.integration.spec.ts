@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { PasswordlessWorkspaceService } from '@/modules/auth/application/passwordless-workspace.service';
 import { TypeOrmWorkspaceRepository } from '@/modules/auth/infra/typeorm-workspace.repository';
 import type { AuthUser } from '@/modules/auth/domain/auth-user';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 import { McpAuthService } from '@/modules/mcp/mcp-auth.service';
 import {
   TypeOrmOAuthAuthorizationCodeRepository,
@@ -357,6 +358,9 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       new TypeOrmMcpConnectionRepository(helper),
       new ConfigService({ auth: { jwtSecret: 'a'.repeat(32) } }),
       new TypeOrmTenantMembershipRepository(helper),
+      { findById: () => Promise.resolve(null) } as never,
+      { publishBestEffort: () => undefined } as never,
+      new FakeAccountAudit(),
     );
     const verifier = 'repository-contract-verifier';
     const challenge = createHash('sha256').update(verifier).digest('base64url');
@@ -414,6 +418,9 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       new TypeOrmMcpConnectionRepository(helper),
       new ConfigService({ auth: { jwtSecret: 'a'.repeat(32) } }),
       new TypeOrmTenantMembershipRepository(helper),
+      { findById: () => Promise.resolve(null) } as never,
+      { publishBestEffort: () => undefined } as never,
+      new FakeAccountAudit(),
     );
     const verifier = 'session-independence-verifier';
     const code = await mcp.createAuthorizationCode({

@@ -4,6 +4,7 @@ import {
 } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { requireTenantId } from '@/infra/persistence/typeorm/tenant-scope';
 import { IOAuthClientRepository } from '@/modules/auth/domain/oauth-client.repository';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
 import { ApplicationEventBus } from '@/shared/events/application-event-bus';
 import { accountNotice } from '@/shared/events/account-notice.events';
 import { ITenantMembershipRepository } from '@/modules/auth/domain/tenant-membership.repository';
@@ -83,6 +84,7 @@ export class McpAuthService {
     @Inject(IOAuthClientRepository)
     private readonly clients: IOAuthClientRepository,
     private readonly eventBus: ApplicationEventBus,
+    private readonly audit: AccountAuditRecorder,
   ) {}
 
   async createAuthorizationCode(params: {
@@ -200,8 +202,21 @@ export class McpAuthService {
         scopes,
         environment: code.environment ?? 'test',
       });
+      const client = await this.clients.findById(code.clientId);
+      await this.audit.record({
+        tenantId: code.tenantId,
+        environment: connection.environment,
+        action: 'agent.connected',
+        // The person who authorized it; the agent has not acted yet.
+        actor: { type: 'user', id: code.authUserId },
+        target: {
+          type: 'agent_connection',
+          id: connection.id,
+          label: client?.name ?? 'Aplicativo de IA',
+        },
+        metadata: { scopes: scopes.join(' ') },
+      });
       if (connection.environment === 'live') {
-        const client = await this.clients.findById(code.clientId);
         this.eventBus.publishBestEffort(
           accountNotice(code.tenantId, {
             kind: 'mcp-connected',

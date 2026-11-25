@@ -1,3 +1,4 @@
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
 import { CursorQuery } from '@/shared/http/pagination';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
@@ -58,6 +59,7 @@ export class McpConnectionService {
     private readonly clients: IOAuthClientRepository,
     @Inject(IAuthUserRepository)
     private readonly users: IAuthUserRepository,
+    private readonly audit: AccountAuditRecorder,
   ) {}
 
   async listPage(auth: AuthContext, options: CursorQuery) {
@@ -132,6 +134,17 @@ export class McpConnectionService {
         active_tenant_id: auth.activeTenantId,
       },
       createdAt: new Date(),
+    });
+    const client = await this.clients.findById(connection.clientId);
+    await this.audit.record({
+      tenantId: connection.tenantId,
+      environment: connection.environment,
+      action: 'agent.disconnected',
+      target: {
+        type: 'agent_connection',
+        id,
+        label: client?.name ?? 'Aplicativo de IA',
+      },
     });
   }
 

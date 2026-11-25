@@ -13,6 +13,7 @@ import { hasPaidAccess } from '../domain/billing-policy';
 import { BillingRuleError } from '../domain/billing-period';
 import { isSupportedStripeEvent } from '../domain/stripe-webhook-events';
 import { StripePaymentsService } from './stripe-payments.service';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
 import { PAID_PLAN_SLUGS } from '@/modules/plans/application/pricing.service';
 
 @Injectable()
@@ -24,6 +25,7 @@ export class BillingService {
     private readonly provider: BillingProvider,
     @Optional() private readonly payments?: StripePaymentsService,
     @Optional() private readonly eventBus?: ApplicationEventBus,
+    @Optional() private readonly audit?: AccountAuditRecorder,
   ) {}
 
   async checkout(tenantId: string, planSlug: string, requestKey: string) {
@@ -319,7 +321,8 @@ export class BillingService {
     const tenant = await this.repository.current(tenantId);
     const decision = subscriptionDecision(tenant.plan.slug, sub);
     const entitledPlan = await this.repository.plan(decision.planSlug);
-    if (entitledPlan && entitledPlan.id !== tenant.plan.id)
+    const planChanged = !!entitledPlan && entitledPlan.id !== tenant.plan.id;
+    if (entitledPlan && planChanged)
       await this.repository.setPlan(tenantId, entitledPlan.id);
     await this.repository.saveBilling(tenantId, {
       stripeSubscriptionId: sub.id,
@@ -330,6 +333,18 @@ export class BillingService {
       pendingPlanSlug: sub.cancelAtPeriodEnd ? 'free' : sub.pendingPlanSlug,
       cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
     });
+    // The actor is the signed-in member on a plan change request, "Sistema" on a webhook or the reconciler.
+    if (entitledPlan && planChanged)
+      await this.audit?.record({
+        tenantId,
+        action: 'billing.plan_changed',
+        target: {
+          type: 'plan',
+          id: entitledPlan.slug,
+          label: entitledPlan.slug,
+        },
+        metadata: { from: tenant.plan.slug, to: entitledPlan.slug },
+      });
     // Snapshot the purchased allowance once. Later catalog changes do not reprice past use.
     if (decision.purchased) {
       const { period } = await this.repository.current(tenantId);

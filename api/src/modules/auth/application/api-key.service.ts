@@ -1,5 +1,6 @@
 import { ApplicationEventBus } from '@/shared/events/application-event-bus';
 import { accountNotice } from '@/shared/events/account-notice.events';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
 import { CursorQuery } from '@/shared/http/pagination';
 import {
   Injectable,
@@ -40,6 +41,7 @@ export class ApiKeyService {
   constructor(
     private readonly apiKeyRepo: IApiKeyRepository,
     private readonly eventBus: ApplicationEventBus,
+    private readonly audit: AccountAuditRecorder,
   ) {}
 
   async create(
@@ -79,6 +81,7 @@ export class ApiKeyService {
           name: saved.name,
         }),
       );
+    await this.record('api_key.created', saved);
     return { apiKey: saved, plaintext };
   }
 
@@ -113,6 +116,7 @@ export class ApiKeyService {
       });
     }
     await this.apiKeyRepo.remove(apiKey, authContext.activeTenantId);
+    await this.record('api_key.revoked', apiKey);
   }
 
   /** Revokes every key a member created; called when the member is removed. */
@@ -132,6 +136,21 @@ export class ApiKeyService {
       });
     }
     await this.apiKeyRepo.remove(apiKey, tenantId);
+    await this.record('api_key.revoked', apiKey);
+  }
+
+  /** Name and prefix only: the key itself and its hash never reach the trail. */
+  private record(
+    action: 'api_key.created' | 'api_key.revoked',
+    apiKey: ApiKey,
+  ): Promise<void> {
+    return this.audit.record({
+      tenantId: apiKey.tenantId,
+      environment: apiKey.environment,
+      action,
+      target: { type: 'api_key', id: apiKey.id, label: apiKey.name },
+      metadata: { key_prefix: apiKey.keyPrefix, scope: apiKey.scope },
+    });
   }
 
   /**

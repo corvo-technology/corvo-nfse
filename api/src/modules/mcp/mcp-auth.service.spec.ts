@@ -1,6 +1,10 @@
 import { createHash, randomUUID } from 'crypto';
 import { UnauthorizedException } from '@nestjs/common';
 import { SignJWT } from 'jose';
+import * as sentry from '@/infra/observability/sentry-reporter';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
+import { failingAccountAudit } from '@/modules/account-audit/testing/failing-account-audit';
+import type { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
 import type { OAuthAuthorizationCode } from '../auth/domain/oauth-authorization-code';
 import type { AuthSession } from '../auth/domain/auth-session';
 import type { McpConnection } from './domain/mcp-connection';
@@ -183,7 +187,7 @@ function createInMemoryRepos() {
   };
 }
 
-function createHarness() {
+function createHarness(audit: AccountAuditRecorder = new FakeAccountAudit()) {
   const repos = createInMemoryRepos();
   const config = {
     getOrThrow: jest.fn().mockReturnValue({
@@ -206,8 +210,16 @@ function createHarness() {
     memberships as never,
     { findById: jest.fn().mockResolvedValue({ name: 'Claude' }) } as never,
     eventBus as never,
+    audit,
   );
-  return { service, config, memberships, eventBus, ...repos };
+  return {
+    service,
+    config,
+    memberships,
+    eventBus,
+    audit: audit as FakeAccountAudit,
+    ...repos,
+  };
 }
 
 function seedCode(
@@ -530,6 +542,58 @@ describe('McpAuthService.exchangeCode', () => {
       exchange(harness, raw, { clientId: 'other-client' }),
     ).rejects.toThrow(UnauthorizedException);
     expect(harness.sessions).toHaveLength(0);
+  });
+});
+
+describe('McpAuthService.exchangeCode audit', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('records agent.connected as the person who authorized, with the client name and scopes', async () => {
+    const harness = createHarness();
+    const { raw } = seedCode(harness.codes, {
+      scope: 'nfse:read nfse:write nfse:certificates',
+      environment: 'live',
+    });
+    await exchange(harness, raw);
+    expect(harness.audit.events).toHaveLength(1);
+    expect(harness.audit.events[0]).toMatchObject({
+      tenantId: TENANT_ID,
+      environment: 'live',
+      action: 'agent.connected',
+      actor: { type: 'user', id: USER_ID },
+      target: {
+        type: 'agent_connection',
+        id: harness.connections[0].id,
+        label: 'Claude',
+      },
+      metadata: { scopes: 'nfse:read nfse:write nfse:certificates' },
+    });
+  });
+
+  it('never stores tokens or the refresh token', async () => {
+    const harness = createHarness();
+    const { raw } = seedCode(harness.codes);
+    const tokens = await exchange(harness, raw);
+    const dump = JSON.stringify(harness.audit.events);
+    expect(dump).not.toContain(tokens.accessToken);
+    expect(dump).not.toContain(tokens.refreshToken);
+    expect(dump).not.toContain(raw);
+  });
+
+  it('records nothing when the code is rejected', async () => {
+    const harness = createHarness();
+    await expect(exchange(harness, 'unknown-code')).rejects.toThrow();
+    expect(harness.audit.events).toHaveLength(0);
+  });
+
+  it('keeps the connection when the recorder fails', async () => {
+    jest.spyOn(sentry, 'captureRuntimeException').mockReturnValue(undefined);
+    const harness = createHarness(failingAccountAudit());
+    const { raw } = seedCode(harness.codes);
+    await expect(exchange(harness, raw)).resolves.toMatchObject({
+      tokenType: 'Bearer',
+    });
+    expect(harness.connections).toHaveLength(1);
   });
 });
 

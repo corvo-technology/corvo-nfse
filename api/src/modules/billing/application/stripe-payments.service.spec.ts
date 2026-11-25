@@ -2,6 +2,7 @@ import { ConflictException } from '@nestjs/common';
 import { StripePaymentsService } from './stripe-payments.service';
 import { PaymentFulfillmentService } from './payment-fulfillment.service';
 import { MemoryPaymentIntentStore } from './memory-payment-intent-store.testing';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 import { PricingService } from '@/modules/plans/application/pricing.service';
 
 const tenant = '11111111-1111-4111-8111-111111111111';
@@ -23,6 +24,7 @@ function setup(customerId: string | null = null) {
     saveBilling: jest.fn().mockResolvedValue(undefined),
     locked: jest.fn(async (_t: string, work: () => Promise<unknown>) => work()),
     plan: jest.fn(async (slug: string) => ({ id: `id-${slug}`, slug })),
+    current: jest.fn(async () => ({ plan: { id: 'id-free', slug: 'free' } })),
     setPlan: jest.fn().mockResolvedValue(undefined),
   };
   const service = new StripePaymentsService(
@@ -33,6 +35,7 @@ function setup(customerId: string | null = null) {
       credits as never,
       billing as never,
       { publishBestEffort: jest.fn() } as never,
+      new FakeAccountAudit(),
     ),
     new PricingService(),
   );
