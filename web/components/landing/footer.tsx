@@ -1,8 +1,6 @@
-"use client";
-
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
-import { revokeConsent } from "@/lib/consent";
+import { CookiePreferencesButton } from "@/components/landing/cookie-preferences-button";
 import { REPO_URL } from "@/lib/repo";
 
 export function Footer() {
@@ -69,13 +67,7 @@ export function Footer() {
             >
               {t("github")}
             </a>
-            <button
-              type="button"
-              onClick={() => revokeConsent()}
-              className="hover:text-text-2 transition-colors cursor-pointer"
-            >
-              {t("cookiePreferences")}
-            </button>
+            <CookiePreferencesButton label={t("cookiePreferences")} />
           </div>
         </div>
       </div>

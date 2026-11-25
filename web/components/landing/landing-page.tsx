@@ -1,5 +1,3 @@
-"use client";
-
 import { Nav } from "@/components/landing/nav";
 import { Hero } from "@/components/landing/hero";
 import { DashboardShowcase } from "@/components/landing/dashboard-showcase";

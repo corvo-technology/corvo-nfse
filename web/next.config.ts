@@ -16,10 +16,13 @@ const noIndex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
 /** Static marketing pages: browsers revalidate, the CDN keeps them for an hour. */
 const publicCache = [{ key: "Cache-Control", value: "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400" }];
 
+const staticAssetCache = [{ key: "Cache-Control", value: "public, max-age=2592000, stale-while-revalidate=86400" }];
+
 const nextConfig: NextConfig = {
   output: "standalone",
   // AVIF first, WebP as fallback; the PNG source is only served to browsers without either.
-  images: { formats: ["image/avif", "image/webp"] },
+  // Optimized copies are kept for 30 days (the default is 4 hours); the source images rarely change.
+  images: { formats: ["image/avif", "image/webp"], minimumCacheTTL: 60 * 60 * 24 * 30 },
   // Two root layouts ([locale] and (dashboard)) need a global 404 page.
   experimental: { globalNotFound: true },
   // The proxy collapses trailing slashes onto the final URL (for example /docs/ → /pt/docs).
@@ -35,6 +38,8 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // Images and logos in /public: the browser keeps them for 30 days instead of 4 hours.
+      { source: "/:dir(dash|integrations|logos|brand)/:file*", headers: staticAssetCache },
       { source: "/app/:path*", headers: noIndex },
       { source: "/login", headers: noIndex },
       { source: "/mcp/:path*", headers: noIndex },

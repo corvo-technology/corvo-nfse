@@ -1,5 +1,3 @@
-"use client";
-
 import { useTranslations } from "next-intl";
 
 const cases = ["saas", "erp", "agencies", "companies"] as const;

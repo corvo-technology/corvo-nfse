@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowUpRight, Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";

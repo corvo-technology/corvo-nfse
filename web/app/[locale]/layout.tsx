@@ -8,6 +8,7 @@ import type { Metadata } from "next";
 import { Providers } from "../providers";
 import { CookieConsentWrapper } from "@/components/CookieConsentWrapper";
 import { ToastProvider } from "@/components/ui/toast";
+import { pickClientMessages } from "@/lib/client-messages";
 import { rootMetadata, rootViewport } from "@/lib/root-metadata";
 import "../globals.css";
 
@@ -50,7 +51,8 @@ export default async function LocaleLayout({
   }
 
   setRequestLocale(locale);
-  const messages = await getMessages();
+  // Only what client components read; the rest stays on the server.
+  const messages = pickClientMessages(await getMessages());
 
   const language = locale === "pt" ? "pt-BR" : "en";
   const identity = {
