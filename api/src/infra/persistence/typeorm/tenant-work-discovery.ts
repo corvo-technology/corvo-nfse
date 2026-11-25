@@ -12,6 +12,7 @@ import { InvoiceOrmEntity } from '@/modules/invoice/infra/invoice.orm-entity';
 import { CertificateOrmEntity } from '@/modules/certificate/infra/certificate.orm-entity';
 import { CompanyOrmEntity } from '@/modules/company/infra/company.orm-entity';
 import { WebhookDeliveryOrmEntity } from '@/modules/webhooks-config/infra/webhook-delivery.orm-entity';
+import { AccountAuditEventOrmEntity } from '@/modules/account-audit/infra/account-audit-event.orm-entity';
 import { TenantBillingOrmEntity } from './entities/tenant-billing.orm-entity';
 
 export type TenantWork =
@@ -21,7 +22,8 @@ export type TenantWork =
   | 'webhook-delivery'
   | 'plan-expiry'
   | 'billing-reconciliation'
-  | 'accountant-package';
+  | 'accountant-package'
+  | 'account-audit-retention';
 
 /** Worker orchestration only: discover owner IDs, then enter a scoped operation. */
 @Injectable()
@@ -73,6 +75,11 @@ export class TenantWorkDiscovery {
           .where(
             "work.accountant_email IS NOT NULL AND work.environment = 'live' AND work.deleted_at IS NULL",
           );
+      } else if (kind === 'account-audit-retention') {
+        query = this.database
+          .getRepository(AccountAuditEventOrmEntity)
+          .createQueryBuilder('work')
+          .where("work.occurred_at < now() - interval '365 days'");
       } else if (kind === 'portal-sync') {
         // Workspaces with a certificate that can still sign: the only ones the portal answers.
         owner = 'company.tenant_id';

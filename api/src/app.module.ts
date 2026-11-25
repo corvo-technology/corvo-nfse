@@ -30,6 +30,7 @@ import { AbacatePayConnectorModule } from '@/modules/integrations/connectors/aba
 import { PublicConfigModule } from '@/modules/public-config/public-config.module';
 import { McpModule } from '@/modules/mcp/mcp.module';
 import { PlatformAdminModule } from '@/modules/platform-admin/platform-admin.module';
+import { AccountAuditModule } from '@/modules/account-audit/account-audit.module';
 import { StorageModule } from '@/infra/storage/storage.module';
 import { NfseExternalModule } from '@/infra/external/nfse/nfse-external.module';
 import { DomainExceptionFilter } from '@/shared/http/domain-exception.filter';
@@ -44,6 +45,7 @@ import { SentryModule } from '@/infra/observability/sentry.module';
     AppDatabaseModule,
     TypeOrmPersistenceModule,
     AppRedisModule,
+    AccountAuditModule.forRoot('api'),
     AuthModule,
     HealthModule,
     CreditsModule,

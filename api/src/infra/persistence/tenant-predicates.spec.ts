@@ -94,6 +94,8 @@ const allowlist: Record<string, string> = {
     'scoped by auth_user_id (runWithAuthUser): lists the workspaces of one person across tenants, by design',
   'infra/persistence/typeorm/repositories/tenant-membership.repository.ts#listActiveWithEstablishmentByAuthUserAndProduct#find':
     'scoped by auth_user_id (runWithAuthUser): lists the workspaces of one person across tenants, by design',
+  'modules/account-audit/infra/typeorm-audit-actor-label.resolver.ts#userLabel#findOneBy':
+    'auth_users is a global table (no RLS): the actor is named by user id',
   'modules/billing/infra/typeorm-billing.repository.ts#customerTenant#findOneBy':
     'verified Stripe event: the Stripe customer id discovers the tenant (runAsSystem)',
   'modules/plans/infra/typeorm-tenant-plan.repository.ts#moveAllTenantsTo#update':
