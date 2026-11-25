@@ -7,9 +7,25 @@ const ctx = { activeTenantId: 'tenant-1', tenantId: 'tenant-1' } as never;
 
 describe('nfse_get tool', () => {
   it('returns the invoice and its events timeline for the tenant', async () => {
-    const findById = jest
-      .fn()
-      .mockResolvedValue({ toJSON: () => ({ id: ID, status: 'authorized' }) });
+    const findById = jest.fn().mockResolvedValue({
+      toJSON: () => ({
+        id: ID,
+        status: 'authorized',
+        tenantId: 'tenant-1',
+        idempotencyKey: 'k',
+        requestHash: 'h',
+        documentKeyVersion: 1,
+        fiscalSchemaVersion: '1.01',
+        lastErrorProvider: 'sefin',
+        emailSnapshot: { send: true },
+        updatedAt: new Date(),
+        accessKey: 'AK',
+        nfseNumber: 7,
+        dpsSeries: '1',
+        dpsNumber: 9,
+        customerSnapshot: { name: 'Ana', taxId: '123', email: 'a@x.com' },
+      }),
+    });
     const getEvents = jest
       .fn()
       .mockResolvedValue([
@@ -23,9 +39,29 @@ describe('nfse_get tool', () => {
     expect(findById).toHaveBeenCalledWith(ID, 'tenant-1', expect.anything());
     expect(getEvents).toHaveBeenCalledWith(ID, 'tenant-1', expect.anything());
     expect(result).toEqual({
-      invoice: { id: ID, status: 'authorized' },
+      invoice: {
+        id: ID,
+        status: 'authorized',
+        accessKey: 'AK',
+        nfseNumber: 7,
+        dpsSeries: '1',
+        dpsNumber: 9,
+        customerSnapshot: { name: 'Ana', taxId: '123', email: 'a@x.com' },
+      },
       events: [{ toStatus: 'queued' }, { toStatus: 'authorized' }],
     });
+    const json = JSON.stringify(result.invoice);
+    for (const forbidden of [
+      'tenantId',
+      'idempotencyKey',
+      'requestHash',
+      'documentKeyVersion',
+      'fiscalSchemaVersion',
+      'lastErrorProvider',
+      'emailSnapshot',
+      'updatedAt',
+    ])
+      expect(json).not.toContain(forbidden);
   });
 
   it('fails for an invoice of another tenant (not found)', async () => {

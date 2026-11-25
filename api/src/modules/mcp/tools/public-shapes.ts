@@ -28,6 +28,28 @@ export function toPublicInvoice(invoice: Invoice) {
   };
 }
 
+/**
+ * Detail view of an invoice for tools the agent acts on (nfse_get, nfse_list):
+ * everything about the note and its customer, minus internal bookkeeping.
+ */
+export function toDetailedInvoice(invoice: Invoice) {
+  const {
+    tenantId: _tenantId,
+    idempotencyKey: _idempotencyKey,
+    requestHash: _requestHash,
+    documentKeyVersion: _documentKeyVersion,
+    fiscalSchemaVersion: _fiscalSchemaVersion,
+    fiscalProvider: _fiscalProvider,
+    lastErrorProvider: _lastErrorProvider,
+    emailSnapshot: _emailSnapshot,
+    documentsReadyAt: _documentsReadyAt,
+    updatedAt: _updatedAt,
+    ...detail
+  } = invoice.toJSON() as ReturnType<Invoice['toJSON']> &
+    Record<string, unknown>;
+  return detail;
+}
+
 /** Compact view of a credit transaction: no tenant, payment or invoice ids. */
 export function toPublicCreditTransaction(tx: CreditTransaction) {
   const t = tx.toJSON();
