@@ -7175,9 +7175,7 @@ components:
               type: string
             state:
               type: string
-          required:
-            - city
-            - state
+          required: []
           type: object
         email:
           type: string

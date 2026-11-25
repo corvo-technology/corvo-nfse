@@ -10136,10 +10136,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "city",
-              "state"
-            ],
+            "required": [],
             "type": "object"
           },
           "email": {
