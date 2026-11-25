@@ -57,7 +57,33 @@ export interface FiscalJobData {
   /** ISO time the invoice first lost a conclusive answer; drives the manual review ceiling. */
   uncertainSince?: string;
   /** Set by a person on an invoice in manual review: confirm on the portal and discard it. */
-  review?: 'discard';
+  review?: 'discard' | 'sweep';
+}
+
+/** Delay before the next automatic reconciliation: 2, 4, 8, 16 min, then 30 min. */
+export function reconciliationDelayMs(attempt: number): number {
+  return Math.min(1800000, 60000 * 2 ** attempt);
+}
+
+/** `timeout` when the portal did not answer in time; `error` for any other failure. */
+export function failureKind(error: unknown): 'timeout' | 'error' {
+  const e = (error ?? {}) as { name?: string; code?: string; message?: string };
+  const text = [e.name, e.code, e.message]
+    .filter((v) => typeof v === 'string')
+    .join(' ');
+  return /time.?out|timed out|ETIMEDOUT|ECONNABORTED|abort/i.test(text)
+    ? 'timeout'
+    : 'error';
+}
+
+/** Short reason safe for logs: no markup (XML), no line breaks, bounded. */
+function safeReason(message: string | undefined): string | undefined {
+  if (!message) return undefined;
+  return message
+    .replace(/<[^>]*>?/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 200);
 }
 
 /** Error code of an invoice discarded after the portal confirmed its DPS was never registered. */
@@ -162,6 +188,7 @@ export class NfseWorkflowService {
     if (data.companyId && data.companyId !== invoice.companyId)
       throw new Error('Invoice/company job identity mismatch');
     if (data.review === 'discard') return this.discard(invoice);
+    if (data.review === 'sweep') return this.sweepManualReview(invoice);
     if (
       !['queued', 'processing', 'reconciliation_required'].includes(
         invoice.status,
@@ -175,6 +202,10 @@ export class NfseWorkflowService {
       invoice.status === 'reconciliation_required' &&
       this.pastUncertainCeiling(uncertainSince)
     ) {
+      this.logReconciliation('warn', invoice, 'manual_review', {
+        attempt: data.attemptCount ?? 0,
+        reason: 'uncertain_ceiling',
+      });
       await this.toManualReview(
         invoice,
         `No conclusive answer from the fiscal portal for more than ${this.uncertainMaxHours()}h. Retry it with the same DPS or discard it in manual review.`,
@@ -219,6 +250,12 @@ export class NfseWorkflowService {
       result = await this.providers.resolve(invoice.environment).issue(payload);
     } catch (error: unknown) {
       await this.breaker?.recordFailure(invoice.environment);
+      this.logReconciliation('warn', invoice, failureKind(error), {
+        attempt: data.attemptCount ?? 0,
+        nextDelayMs: reconciliationDelayMs((data.attemptCount ?? 0) + 1),
+        errorName: error instanceof Error ? error.name : undefined,
+        reason: safeReason(error instanceof Error ? error.message : undefined),
+      });
       invoice.setReconciliationRequired(
         error instanceof Error ? error.message : 'Uncertain fiscal result',
       );
@@ -243,8 +280,18 @@ export class NfseWorkflowService {
       await this.breaker?.recordFailure(invoice.environment);
     else await this.breaker?.recordSuccess(invoice.environment);
     if (result.success) {
+      this.logReconciliation('log', invoice, 'authorized', {
+        attempt: data.attemptCount ?? 0,
+      });
       await this.authorize(invoice, result);
     } else if (result.requiresReconciliation) {
+      const attempt = data.attemptCount ?? 0;
+      this.logReconciliation('warn', invoice, 'pending', {
+        attempt,
+        nextDelayMs:
+          attempt >= 5 ? undefined : reconciliationDelayMs(attempt + 1),
+        reason: safeReason(result.errorMessage),
+      });
       if (invoice.status === 'processing')
         await this.lifecycle.transition(
           invoice,
@@ -259,6 +306,10 @@ export class NfseWorkflowService {
         );
       else await this.schedule(invoice, attempts + 1, uncertainSince);
     } else {
+      this.logReconciliation('log', invoice, 'rejected', {
+        attempt: data.attemptCount ?? 0,
+        reason: safeReason(result.errorCode),
+      });
       recordAuthorizationFailure(result.errorCode ?? 'ISSUE_REJECTED');
       invoice.setRejected(
         result.errorCode ?? 'ISSUE_REJECTED',
@@ -440,6 +491,70 @@ export class NfseWorkflowService {
 
   private pastUncertainCeiling(since: Date): boolean {
     return Date.now() - since.getTime() > this.uncertainMaxHours() * 3_600_000;
+  }
+
+  private logReconciliation(
+    level: 'log' | 'warn',
+    invoice: Invoice,
+    outcome: string,
+    extra: Record<string, unknown>,
+  ): void {
+    this.logger[level](
+      {
+        invoiceId: invoice.id,
+        dpsId: invoice.toSnapshot().dpsId,
+        environment: invoice.environment,
+        outcome,
+        ...extra,
+      },
+      'Fiscal reconciliation attempt',
+    );
+  }
+
+  /**
+   * Periodic sweep over an invoice in manual review. QUERY ONLY: it asks the portal for the DPS and,
+   * if the NFS-e exists, authorizes the invoice like any reconciliation. Any other answer (not found,
+   * error, timeout) changes nothing: the invoice stays in review, nothing is sent or discarded.
+   */
+  private async sweepManualReview(invoice: Invoice): Promise<void> {
+    if (invoice.status !== 'manual_review') return;
+    // Never reserve a DPS number here: without one there is nothing to look up.
+    if (!invoice.toSnapshot().dpsNumber) {
+      this.logReconciliation('warn', invoice, 'skipped', {
+        source: 'manual_review_sweep',
+        reason: 'no_dps_number',
+      });
+      return;
+    }
+    await this.breaker?.assertAvailable(invoice.environment);
+    let found: FiscalQueryResult;
+    try {
+      const payload = await this.payload(invoice);
+      const idDps = invoice.toSnapshot().dpsId;
+      if (!idDps) throw new Error('Invoice has no DPS to look up');
+      found = await this.providers
+        .resolve(invoice.environment)
+        .queryByDps(idDps, payload);
+    } catch (error: unknown) {
+      if (!(error instanceof DpsBuildRejectionError))
+        await this.breaker?.recordFailure(invoice.environment);
+      this.logReconciliation('warn', invoice, failureKind(error), {
+        source: 'manual_review_sweep',
+        errorName: error instanceof Error ? error.name : undefined,
+        reason: safeReason(error instanceof Error ? error.message : undefined),
+      });
+      return;
+    }
+    await this.breaker?.recordSuccess(invoice.environment);
+    if (found.status === 'authorized') {
+      this.logReconciliation('log', invoice, 'authorized', {
+        source: 'manual_review_sweep',
+      });
+      return this.authorize(invoice, found);
+    }
+    this.logReconciliation('log', invoice, found.status, {
+      source: 'manual_review_sweep',
+    });
   }
 
   /**
@@ -823,7 +938,7 @@ export class NfseWorkflowService {
       {
         attempts: 5,
         backoffMs: 30000,
-        delayMs: Math.min(1800000, 60000 * 2 ** attemptCount),
+        delayMs: reconciliationDelayMs(attemptCount),
         removeOnComplete: true,
         removeOnFail: 1000,
       },

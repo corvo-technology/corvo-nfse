@@ -1,4 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
+import { Logger } from '@nestjs/common';
 import { Invoice } from '../domain/invoice';
 import { DpsBuilder } from '../domain/fiscal/dps/dps-builder';
 import type { IFiscalSnapshotRepository } from '../domain/fiscal/fiscal-snapshot.repository';
@@ -259,5 +260,129 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
       expect(provider.queryByDps).not.toHaveBeenCalled();
       expect(invoice.status).toBe('reconciliation_required');
     });
+  });
+
+  describe('manual review sweep (query only)', () => {
+    const sweep = (invoice: Invoice) => run(invoice, { review: 'sweep' });
+    let info: jest.SpyInstance;
+    let warn: jest.SpyInstance;
+    beforeEach(() => {
+      info = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+      warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    });
+    afterEach(() => {
+      info.mockRestore();
+      warn.mockRestore();
+    });
+
+    it('authorizes when the portal already has the DPS, without sending anything', async () => {
+      const invoice = invoiceIn('manual_review');
+      provider.queryByDps.mockResolvedValue({
+        status: 'authorized',
+        ...authorized,
+      });
+
+      await sweep(invoice);
+
+      expect(invoice.status).toBe('authorized');
+      expect(invoice.toSnapshot().accessKey).toBe(authorized.accessKey);
+      expect(fakes.documentStorage.saveXml).toHaveBeenCalled();
+      expect(fakes.queues.add).toHaveBeenCalledWith(
+        'nfse-doc-prep',
+        'prepare',
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(provider.issue).not.toHaveBeenCalled();
+    });
+
+    it('leaves the invoice untouched when the portal says not found', async () => {
+      const invoice = invoiceIn('manual_review');
+      provider.queryByDps.mockResolvedValue({ status: 'not_found' });
+
+      await sweep(invoice);
+
+      expect(invoice.status).toBe('manual_review');
+      expect(fakes.lifecycle.transition).not.toHaveBeenCalled();
+      expect(fakes.invoices.save).not.toHaveBeenCalled();
+      expect(fakes.queues.add).not.toHaveBeenCalled();
+      expect(provider.issue).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['timeout', new Error('Request timed out after 60000ms'), 'timeout'],
+      ['error', new Error('socket hang up'), 'error'],
+    ])('leaves it untouched on %s and logs the kind', async (_n, err, kind) => {
+      const invoice = invoiceIn('manual_review');
+      provider.queryByDps.mockRejectedValue(err);
+
+      await sweep(invoice);
+
+      expect(invoice.status).toBe('manual_review');
+      expect(fakes.lifecycle.transition).not.toHaveBeenCalled();
+      expect(fakes.invoices.save).not.toHaveBeenCalled();
+      expect(provider.issue).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          invoiceId: invoice.id,
+          dpsId: invoice.toSnapshot().dpsId,
+          outcome: kind,
+          source: 'manual_review_sweep',
+        }),
+        'Fiscal reconciliation attempt',
+      );
+    });
+
+    it('logs the authorized outcome without XML', async () => {
+      const invoice = invoiceIn('manual_review');
+      provider.queryByDps.mockResolvedValue({
+        status: 'authorized',
+        ...authorized,
+      });
+
+      await sweep(invoice);
+
+      expect(info).toHaveBeenCalledWith(
+        expect.objectContaining({
+          outcome: 'authorized',
+          invoiceId: invoice.id,
+        }),
+        'Fiscal reconciliation attempt',
+      );
+      expect(
+        JSON.stringify([...info.mock.calls, ...warn.mock.calls]),
+      ).not.toContain('<');
+    });
+
+    it('does nothing for an invoice that left manual review', async () => {
+      const invoice = invoiceIn('reconciliation_required');
+
+      await sweep(invoice);
+
+      expect(provider.queryByDps).not.toHaveBeenCalled();
+    });
+  });
+
+  it('logs each reconciliation attempt with the next delay and no XML', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    const invoice = invoiceIn('reconciliation_required');
+    provider.issue.mockRejectedValue(
+      new Error('Request timed out <Envelope>secret</Envelope>'),
+    );
+
+    await run(invoice, {
+      attemptCount: 2,
+      uncertainSince: new Date().toISOString(),
+    });
+
+    const [fields] = warn.mock.calls[0] as [Record<string, unknown>];
+    expect(fields).toMatchObject({
+      invoiceId: invoice.id,
+      outcome: 'timeout',
+      attempt: 2,
+      nextDelayMs: 480000,
+    });
+    expect(JSON.stringify(fields)).not.toContain('<');
+    warn.mockRestore();
   });
 });

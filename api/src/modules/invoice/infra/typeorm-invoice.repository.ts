@@ -245,6 +245,30 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
     });
   }
 
+  async findManualReview(
+    tenantId: string,
+    since: Date,
+    limit: number,
+  ): Promise<Array<{ id: string; tenantId: string; companyId: string }>> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      return (
+        this.repo
+          .createQueryBuilder('invoice')
+          .select('invoice.id', 'id')
+          .addSelect('invoice.tenant_id', 'tenantId')
+          .addSelect('invoice.company_id', 'companyId')
+          .where('invoice.tenant_id = :tenantId', { tenantId })
+          .andWhere("invoice.status = 'manual_review'")
+          .andWhere('invoice.created_at >= :since', { since })
+          // Random so a few permanently silent invoices never starve the others when the batch is small.
+          .orderBy('random()')
+          .limit(limit)
+          .getRawMany<{ id: string; tenantId: string; companyId: string }>()
+      );
+    });
+  }
+
   async save(
     invoice: Invoice,
     tenantId: string,
