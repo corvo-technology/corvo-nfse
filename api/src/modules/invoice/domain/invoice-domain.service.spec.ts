@@ -332,7 +332,27 @@ describe('InvoiceDomainService — optional customer, discount and fiscal input'
         name: 'Consumidor',
         taxId: '52998224725',
         taxIdKind: 'CPF',
-        address: { city: 'SIM', state: 'SS' },
+      });
+      // No address informed: nothing is invented (never "SIM"/"SS").
+      expect(result.customer?.address.city).toBeUndefined();
+      expect(result.customer?.address.state).toBeUndefined();
+    });
+
+    it('keeps the city and state that were informed', () => {
+      const result = service.normalizeAndValidate(
+        validDto({
+          customer: {
+            taxId: '529.982.247-25',
+            address: { city: ' Curitiba ', state: 'pr' },
+          },
+          options: {},
+        }),
+        'test',
+        defaults,
+      );
+      expect(result.customer?.address).toMatchObject({
+        city: 'Curitiba',
+        state: 'PR',
       });
     });
 

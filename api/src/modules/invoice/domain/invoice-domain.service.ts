@@ -40,8 +40,8 @@ export interface NormalizedCustomerInput {
   email?: string;
   address: {
     street?: string;
-    city: string;
-    state: string;
+    city?: string;
+    state?: string;
     zip?: string;
     municipalityCode?: string;
   };
@@ -521,8 +521,8 @@ function normalizeCustomerInput(
     email: customer.email?.trim(),
     address: {
       street: address?.street?.trim(),
-      city: city || 'SIM',
-      state: state ? normalizeUf(state) : 'SS',
+      city: city || undefined,
+      state: state ? normalizeUf(state) : undefined,
       zip: address?.zip ? normalizeCep(address.zip) : undefined,
       municipalityCode: address?.municipalityCode?.trim(),
     },

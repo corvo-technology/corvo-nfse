@@ -38,8 +38,8 @@ export interface NormalizedInvoiceInput {
     email?: string;
     address: {
       street?: string;
-      city: string;
-      state: string;
+      city?: string;
+      state?: string;
       zip?: string;
     };
   };
@@ -213,8 +213,10 @@ export function normalizeInvoiceInput(
       email: input.customer.email?.trim(),
       address: {
         street: input.customer.address?.street?.trim(),
-        city: hasCity2 ? input.customer.address!.city!.trim() : 'SIM',
-        state: hasState2 ? normalizeUf(input.customer.address!.state!) : 'SS',
+        city: hasCity2 ? input.customer.address!.city!.trim() : undefined,
+        state: hasState2
+          ? normalizeUf(input.customer.address!.state!)
+          : undefined,
       },
     },
     service: {

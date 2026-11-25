@@ -8,8 +8,18 @@ import type {
 } from '../http/invoice.dto';
 import { InvoiceService } from './invoice.service';
 
-/** Placeholders the normalization stores when a customer has no Brazilian address. */
-const NO_ADDRESS_STATES = new Set(['SS', 'EX']);
+/**
+ * Old invoices stored city "SIM" and state "SS" when no address was given, and
+ * "EX" marks a customer abroad. None of them is a real address to repeat.
+ */
+function isPlaceholderAddress(address: {
+  city?: string;
+  state?: string;
+}): boolean {
+  return (
+    address.state === 'SS' || address.state === 'EX' || address.city === 'SIM'
+  );
+}
 
 /**
  * Issues the substitute of an authorized NFS-e. The substitute repeats the original and changes
@@ -53,7 +63,7 @@ export class InvoiceSubstitutionService {
     const customer = snapshot.customerSnapshot;
     const service = snapshot.serviceSnapshot;
     const address =
-      customer?.address && !NO_ADDRESS_STATES.has(customer.address.state)
+      customer?.address && !isPlaceholderAddress(customer.address)
         ? {
             city: customer.address.city,
             state: customer.address.state,
