@@ -23,3 +23,13 @@ const EMISSION_IN_PROGRESS: Record<InvoiceStatus, boolean> = {
 
 /** A cancellation requested mid-emission is pending: show the marker while the invoice is still in an in-progress emission status. */
 export const showsCancellationRequested = (status: InvoiceStatus, requestedAt?: string | null) => Boolean(requestedAt) && EMISSION_IN_PROGRESS[status];
+
+/** The note went back from "cancelling" to "authorized": the Receita refused the cancellation, nothing was authorized again. */
+export const isCancellationRefused = (event: { from?: InvoiceStatus | null; to: InvoiceStatus; source?: string | null }) =>
+  event.source !== "portal" && event.from === "cancelling" && event.to === "authorized";
+
+/** Splits the backend reason ("Cancellation rejected: Rejeição da Receita [E0803]: ...") into the Receita code and its text. */
+export function cancellationRefusal(reason?: string | null): { code: string | null; message: string } {
+  const message = (reason ?? "").replace(/^Cancellation rejected:\s*/i, "").trim();
+  return { code: /\[(E\d+)\]/.exec(message)?.[1] ?? null, message };
+}
