@@ -212,6 +212,39 @@ describe('AccountNoticeListener', () => {
     expect(email.enqueueNotice).not.toHaveBeenCalled();
   });
 
+  it('tells the owner when a webhook gave up, with a link and no private data', async () => {
+    const { listener, email, recipients } = build();
+    await listener.handle(
+      accountNotice('t1', {
+        kind: 'webhook-delivery-failed',
+        webhookConfigId: 'w1',
+        eventType: 'nfse.invoice.authorized',
+      }),
+    );
+    expect(recipients.ownerEmailsFor).toHaveBeenCalledWith('t1');
+    expect(email.enqueueNotice).toHaveBeenCalledTimes(1);
+    const [to, message] = email.enqueueNotice.mock.calls[0] as unknown as [
+      string,
+      { subject: string; html: string; text: string },
+    ];
+    expect(to).toBe('owner@x.com');
+    expect(message.html).toContain('https://corvo.tech/app/webhooks');
+    expect(message.html).toContain('nfse.invoice.authorized');
+    expect(message.text).not.toMatch(/secret|signature|payload/i);
+  });
+
+  it('warns about the same webhook at most once an hour', async () => {
+    const { listener, email } = build({ first: false });
+    await listener.handle(
+      accountNotice('t1', {
+        kind: 'webhook-delivery-failed',
+        webhookConfigId: 'w1',
+        eventType: 'nfse.invoice.authorized',
+      }),
+    );
+    expect(email.enqueueNotice).not.toHaveBeenCalled();
+  });
+
   it('sends the invitation only to the invited address, with the token in the link fragment', async () => {
     const { listener, email, recipients } = build();
     await listener.handle(

@@ -247,7 +247,7 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | POST   | `/webhooks`                                            | S/K, `webhooks.manage`          | JSON: `url`, `events`; retorna segredo na criação; 201                             |
 | DELETE | `/webhooks/{id}`                                       | S/K, `webhooks.manage`          | Exclui configuração                                                                |
 | POST   | `/webhooks/{id}/test`                                  | S/K, `webhooks.manage`          | Envia evento de teste; 201                                                         |
-| GET    | `/webhooks/deliveries`                                 | S/K, `webhooks.view`            | Query: `hours?`, `limit?`, `offset?`, `environment=live\|test`; padrão ambos/24h   |
+| GET    | `/webhooks/deliveries`                                 | S/K, `webhooks.view`            | Query: `hours?` (até 720), `limit?`, `cursor?`, `environment=live\|test`, `invoice_id?`, `event_type?`, `status?`; padrão 24h |
 | GET    | `/webhooks/deliveries/stats`                           | S/K, `webhooks.view`            | Query: `hours?`, `environment?`; total/sent/failed/pending/delayed                 |
 | POST   | `/webhooks/deliveries/{id}/retry`                      | S/K, `webhooks.manage`          | Reenvio manual; 200                                                                |
 | POST   | `/public/security/turnstile/verify`                    | Público                         | JSON: `token` (ou `response` / `cfTurnstileResponse`); 201                         |

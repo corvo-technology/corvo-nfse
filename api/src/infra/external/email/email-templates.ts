@@ -391,6 +391,23 @@ export function invoiceBlockedOnPortalEmail(input: {
   ]);
 }
 
+/** A webhook gave up after every retry. No url, secret or body: only which event, and where to look. */
+export function webhookDeliveryFailedEmail(input: {
+  eventType: string;
+  webhooksUrl: string;
+}): RenderedEmail {
+  return emailLayout('Um aviso (webhook) não chegou ao seu sistema', [
+    paragraph(
+      `Tentamos enviar o aviso "${input.eventType}" ao seu sistema várias vezes e não conseguimos. Por isso paramos de tentar.`,
+    ),
+    paragraph(
+      'Veja o que aconteceu e envie de novo quando seu sistema estiver funcionando.',
+    ),
+    note('Você recebe no máximo um e-mail por hora para cada webhook.'),
+    button(input.webhooksUrl, 'Ver avisos enviados'),
+  ]);
+}
+
 export function pixExpiredEmail(input: { billingUrl: string }): RenderedEmail {
   return emailLayout('Seu Pix expirou', [
     paragraph(

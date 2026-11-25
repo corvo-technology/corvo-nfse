@@ -80,6 +80,7 @@ Responses:
 - Test-environment DPS numbering starts at a high number so it does not collide with notes issued before (`E0014`). Use `dpsSequence_set` to continue from the last number issued elsewhere.
 - A MEI or Simples Nacional issuer can only change the description, the purchase order and the notes in a substitute (`E0061`).
 - Removing a member from the workspace revokes the API keys that member created.
+- `GET /webhooks/deliveries` takes the filters `invoice_id`, `event_type` and `status`, and `hours` may be up to 720 (30 days); a larger value is a 400. Each `WebhookDelivery` has the new `invoiceId` (`null` for events without an invoice, such as `webhook.test`).
 
 ## 0.2.0 (2026-10-26)
 

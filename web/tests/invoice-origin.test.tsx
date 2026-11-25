@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "inv-1" }), useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: () => true }) }));
-vi.mock("@/lib/api", () => ({ invoices: { get: mocks.get, events: vi.fn() }, collectAll: async () => [] }));
+vi.mock("@/lib/api", () => ({ invoices: { get: mocks.get, events: vi.fn() }, webhooks: { deliveries: async () => ({ items: [], hasMore: false, nextCursor: null }) }, collectAll: async () => [] }));
 
 afterEach(() => { cleanup(); mocks.get.mockReset(); });
 

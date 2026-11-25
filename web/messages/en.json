@@ -362,6 +362,29 @@
     "recentDeliveries": "Recent deliveries",
     "last24h": "last 24h",
     "noDeliveries": "No deliveries in the last 24 hours",
+    "noDeliveriesFiltered": "No notices found with these filters.",
+    "filters": {
+      "period": "Period",
+      "status": "Status",
+      "event": "Notice",
+      "invoice": "Invoice (id)",
+      "invoicePlaceholder": "Paste the invoice id",
+      "invoiceInvalid": "The invoice id must look like 123e4567-e89b-12d3-a456-426614174000.",
+      "all": "All",
+      "clear": "Clear filters"
+    },
+    "periods": {
+      "24": "Last 24 hours",
+      "168": "Last 7 days",
+      "720": "Last 30 days"
+    },
+    "deliveryStatus": {
+      "pending": "Queued",
+      "sent": "Delivered",
+      "delayed": "Will try again",
+      "failed": "Not delivered",
+      "manual_retry": "Resend requested"
+    },
     "eventGroups": {
       "message": "Message",
       "contactSync": "Contact & sync",
@@ -1854,6 +1877,22 @@
     },
     "blocked": "This company is blocked and can't issue invoices. Contact support.",
     "defaultServiceCode": "Default service code"
+  },
+  "InvoiceWebhooks": {
+    "title": "Notices sent (webhooks)",
+    "hint": "What Corvo told your system about this invoice.",
+    "empty": "No notices were sent for this invoice in the last 30 days.",
+    "failed": "Could not load the notices.",
+    "event": "Notice",
+    "when": "When",
+    "status": "Status",
+    "code": "Answer",
+    "attempts": "Attempts",
+    "retry": "Resend",
+    "retried": "Resend requested. The notice goes out again in a moment.",
+    "retryFailed": "Could not request the resend.",
+    "seeAll": "See all notices",
+    "loading": "Loading notices..."
   },
   "InvoiceDetail": {
     "scheduledBanner": "Scheduled invoice: it will be issued automatically on {date}. Until then it stays queued.",
