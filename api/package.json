@@ -36,7 +36,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:fiscal:integration": "jest --config ./test/jest-fiscal.json --runInBand",
+    "test:fiscal:integration": "jest --config ./test/jest-fiscal.json --runInBand --forceExit",
     "typeorm": "typeorm-ts-node-commonjs -d src/infra/database/data-source.ts",
     "migration:create": "typeorm-ts-node-commonjs migration:create",
     "migration:generate": "yarn typeorm migration:generate",
