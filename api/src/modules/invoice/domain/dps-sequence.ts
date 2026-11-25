@@ -29,6 +29,20 @@ export interface IDpsSequenceRepository {
     environment: import('@/shared/domain/execution-environment').ExecutionEnvironment,
     lastNumber: number,
   ): Promise<{ series: string; lastNumber: number }>;
+
+  /** When the numbering was confirmed with the government (null: not yet). */
+  numberingCheckedAt(
+    companyId: string,
+    tenantId: string,
+    environment: import('@/shared/domain/execution-environment').ExecutionEnvironment,
+  ): Promise<Date | null>;
+
+  /** Records that the numbering was confirmed. Does not change the number. */
+  markNumberingChecked(
+    companyId: string,
+    tenantId: string,
+    environment: import('@/shared/domain/execution-environment').ExecutionEnvironment,
+  ): Promise<void>;
 }
 
 export const DPS_SEQUENCE_REPOSITORY = 'DPS_SEQUENCE_REPOSITORY';

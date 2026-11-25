@@ -6,10 +6,10 @@ import { DpsSequenceCard } from "@/components/companies/dps-sequence-card";
 import { ApiError } from "@/lib/api";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), set: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), set: vi.fn(), check: vi.fn(), confirm: vi.fn() }));
 vi.mock("@/lib/api", async (original) => ({
   ...(await original<typeof import("@/lib/api")>()),
-  companies: { dpsSequence: mocks.get, setDpsSequence: mocks.set },
+  companies: { dpsSequence: mocks.get, setDpsSequence: mocks.set, checkDpsNumbering: mocks.check, confirmDpsNumbering: mocks.confirm },
 }));
 
 const renderCard = (canManage = true, environment?: "test" | "live") => render(<NextIntlClientProvider locale="en" messages={messages}><DpsSequenceCard companyId="c1" canManage={canManage} environment={environment} /></NextIntlClientProvider>);
@@ -84,5 +84,42 @@ describe("DpsSequenceCard", () => {
     renderCard(false);
     await screen.findByText(/no\. 8/);
     expect(screen.queryByRole("button", { name: "Save number" })).toBeNull();
+  });
+
+  it("checks with the government and starts at the suggested number", async () => {
+    mocks.check.mockResolvedValue({ series: "1", nextNumber: 1, usedNumbers: [1, 2, 3], suggestedNext: 4, moreMayBeUsed: false, checkedAt: null });
+    mocks.confirm.mockResolvedValue({ series: "1", lastNumber: 3 });
+    renderCard();
+    await screen.findByText(/no\. 8/);
+    fireEvent.click(screen.getByRole("button", { name: "Check with the government" }));
+    await screen.findByText(/Notes no\. 1 to 3 were already used at the government/);
+    fireEvent.click(screen.getByRole("button", { name: "Start at no. 4" }));
+    await waitFor(() => expect(mocks.confirm).toHaveBeenCalledWith("c1", 3));
+    await screen.findByText("Done. The next note will be no. 4.");
+  });
+
+  it("confirms the numbering as it is when the next number is free", async () => {
+    mocks.check.mockResolvedValue({ series: "1", nextNumber: 8, usedNumbers: [], suggestedNext: 8, moreMayBeUsed: false, checkedAt: null });
+    mocks.confirm.mockResolvedValue({ series: "1", lastNumber: 7 });
+    renderCard();
+    await screen.findByText(/no\. 8/);
+    fireEvent.click(screen.getByRole("button", { name: "Check with the government" }));
+    await screen.findByText("All good: no. 8 is free at the government.");
+    fireEvent.click(screen.getByRole("button", { name: "Confirm numbering" }));
+    await waitFor(() => expect(mocks.confirm).toHaveBeenCalledWith("c1", undefined));
+  });
+
+  it("shows the translated error when the government does not answer", async () => {
+    mocks.check.mockRejectedValue(new ApiError(503, "x", "DPS_NUMBERING_CHECK_UNAVAILABLE"));
+    renderCard();
+    await screen.findByText(/no\. 8/);
+    fireEvent.click(screen.getByRole("button", { name: "Check with the government" }));
+    await screen.findByText(messages.ApiErrors.dps_numbering_check_unavailable);
+  });
+
+  it("without the manage permission there is no check button", async () => {
+    renderCard(false);
+    await screen.findByText(/no\. 8/);
+    expect(screen.queryByRole("button", { name: "Check with the government" })).toBeNull();
   });
 });

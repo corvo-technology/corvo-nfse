@@ -36,6 +36,7 @@ describe('McpService tool registration', () => {
         'credits_balance',
         'nfse_get',
         'company_fiscal_status',
+        'company_numbering_check',
         'cnpj_lookup',
       ]),
     );

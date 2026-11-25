@@ -157,4 +157,56 @@ export class TypeOrmDpsSequenceRepository implements IDpsSequenceRepository {
       };
     });
   }
+
+  async numberingCheckedAt(
+    companyId: string,
+    tenantId: string,
+    environment: import('@/shared/domain/execution-environment').ExecutionEnvironment,
+  ): Promise<Date | null> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const companies = this.dataSource.getMetadata(CompanyOrmEntity).tablePath;
+      const sequences =
+        this.dataSource.getMetadata(DpsSequenceOrmEntity).tablePath;
+      const rows: { checked_at: Date | null }[] = await this.dataSource.query(
+        `SELECT s.numbering_checked_at AS checked_at
+         FROM ${companies} c LEFT JOIN ${sequences} s ON s.company_id = c.id
+         WHERE c.id = $1 AND c.tenant_id = $2 AND c.environment = $3 AND c.deleted_at IS NULL`,
+        [companyId, tenantId, environment],
+      );
+      if (!rows.length)
+        throw new NotFoundException({
+          code: 'RESOURCE_NOT_FOUND',
+          message: 'Resource not found',
+        });
+      return rows[0].checked_at ? new Date(rows[0].checked_at) : null;
+    });
+  }
+
+  async markNumberingChecked(
+    companyId: string,
+    tenantId: string,
+    environment: import('@/shared/domain/execution-environment').ExecutionEnvironment,
+  ): Promise<void> {
+    await runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      const companies = this.dataSource.getMetadata(CompanyOrmEntity).tablePath;
+      const sequences =
+        this.dataSource.getMetadata(DpsSequenceOrmEntity).tablePath;
+      // Creates the row when missing (with the same starting number reserveNext would use).
+      const rows: unknown[] = await this.dataSource.query(
+        `INSERT INTO ${sequences} AS s (company_id, series, current_number, numbering_checked_at)
+         SELECT c.id, '1', $4::bigint, now() FROM ${companies} c
+         WHERE c.id = $1 AND c.tenant_id = $2 AND c.environment = $3 AND c.deleted_at IS NULL
+         ON CONFLICT (company_id) DO UPDATE SET numbering_checked_at = now()
+         RETURNING company_id`,
+        [companyId, tenantId, environment, initialDpsNumber(environment)],
+      );
+      if (!rows.length)
+        throw new NotFoundException({
+          code: 'RESOURCE_NOT_FOUND',
+          message: 'Resource not found',
+        });
+    });
+  }
 }
