@@ -27,6 +27,7 @@ import {
   subscriptionCanceledEmail,
   invoiceRejectedEmail,
   mcpConnectedEmail,
+  webhookDeliveryFailedEmail,
   type RenderedEmail,
 } from '@/infra/external/email/email-templates';
 import { EmailService } from '@/modules/email/application/email.service';
@@ -243,6 +244,22 @@ export class AccountNoticeListener {
           invoiceUrl: this.page(`invoices/${notice.invoiceId}`),
         });
         to = await this.recipients.emailsFor(tenantId);
+        break;
+      }
+      case 'webhook-delivery-failed': {
+        // One warning per hour for each webhook: an endpoint that is down must not fill the inbox.
+        if (
+          !(await this.once(
+            `webhook-failed:${notice.webhookConfigId}`,
+            HOUR_MS,
+          ))
+        )
+          return;
+        message = webhookDeliveryFailedEmail({
+          eventType: notice.eventType,
+          webhooksUrl: this.page('webhooks'),
+        });
+        to = await this.recipients.ownerEmailsFor(tenantId);
         break;
       }
       case 'api-key-created':

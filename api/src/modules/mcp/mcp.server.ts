@@ -79,6 +79,7 @@ export function mcpInstructions(selfHosted: boolean): string {
   }
   lines.push(
     'If an invoice is in manual_review, explain it to the person and suggest nfse_review with retry; use discard only after the person explicitly confirms.',
+    'If the person asks whether their system got a notice (webhook), use webhook_deliveries_list with the invoice_id; for a failed one, offer webhook_delivery_retry.',
     'If a tool says it lacks permission, ask the person to reconnect and tick that option when authorizing.',
   );
   return lines.join('\n');

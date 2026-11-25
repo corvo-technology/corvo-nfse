@@ -28,6 +28,9 @@ export class TypeormWebhookDeliveryRepository implements IWebhookDeliveryReposit
         tenantId,
         options.environment ?? null,
         options.hours ?? 24,
+        options.invoice_id ?? null,
+        options.event_type ?? null,
+        options.status ?? null,
       ];
       const cursor = readKeysetCursor(options.cursor, scope);
       if (cursor && !cursor.context) invalidCursor();
@@ -42,6 +45,16 @@ export class TypeormWebhookDeliveryRepository implements IWebhookDeliveryReposit
         query.andWhere('delivery.environment = :environment', {
           environment: options.environment,
         });
+      if (options.invoice_id)
+        query.andWhere('delivery.invoice_id = :invoiceId', {
+          invoiceId: options.invoice_id,
+        });
+      if (options.event_type)
+        query.andWhere('delivery.event_type = :eventType', {
+          eventType: options.event_type,
+        });
+      if (options.status)
+        query.andWhere('delivery.status = :status', { status: options.status });
       return queryCursorPage(
         query,
         options,
@@ -91,6 +104,7 @@ export class TypeormWebhookDeliveryRepository implements IWebhookDeliveryReposit
       id: entity.id,
       tenantId: entity.tenantId,
       webhookConfigId: entity.webhookConfigId,
+      invoiceId: entity.invoiceId ?? undefined,
       eventType: entity.eventType,
       environment: entity.environment as WebhookDelivery['environment'],
       url: entity.url,
@@ -145,6 +159,7 @@ export class TypeormWebhookDeliveryRepository implements IWebhookDeliveryReposit
         id: delivery.id,
         tenantId: delivery.tenantId,
         webhookConfigId: delivery.webhookConfigId,
+        invoiceId: delivery.invoiceId ?? null,
         eventType: delivery.eventType,
         environment: delivery.environment,
         url: delivery.url,

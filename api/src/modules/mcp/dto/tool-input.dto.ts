@@ -23,6 +23,10 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
+  MAX_DELIVERY_HOURS,
+  WEBHOOK_DELIVERY_STATUS_FILTERS,
+} from '@/shared/http/webhook-delivery-query';
+import {
   CANCELLATION_DESCRIPTION_MAX,
   CANCELLATION_DESCRIPTION_MIN,
   CANCELLATION_REASON_CODES,
@@ -192,6 +196,23 @@ export class NfseListInput {
   @IsOptional() @IsString() origin?: string;
   @IsOptional() @IsNumber() @Min(1) @Max(1000) limit?: number;
   @IsOptional() @IsString() cursor?: string;
+}
+
+export class WebhookDeliveriesListInput {
+  @IsOptional() @IsUUID() invoice_id?: string;
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^[a-z][a-z0-9._]*$/)
+  event_type?: string;
+  @IsOptional() @IsIn(WEBHOOK_DELIVERY_STATUS_FILTERS) status?: string;
+  @IsOptional() @IsNumber() @Min(0.01) @Max(MAX_DELIVERY_HOURS) hours?: number;
+  @IsOptional() @IsNumber() @Min(1) @Max(1000) limit?: number;
+  @IsOptional() @IsString() cursor?: string;
+}
+
+export class WebhookDeliveryRetryInput {
+  @IsUUID() delivery_id!: string;
 }
 
 export class NfseDownloadPdfInput {

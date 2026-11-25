@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, Plus, Webhook as WebhookIcon } from "lucide-react";
 import posthog from "posthog-js";
@@ -19,10 +19,15 @@ import { webhooks, collectAll, type WebhookEndpoint, type WebhookDelivery } from
 import { WEBHOOK_EVENT_OPTIONS, type WebhookEvent } from "@/lib/types";
 import { timeAgo } from "@/lib/i18n-helpers";
 import { useApiErrorText } from "@/lib/use-api-error";
+import { useDeliveryLabels } from "@/components/invoices/invoice-webhook-deliveries";
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
 );
+
+const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
+const PERIODS = ["24", "168", "720"] as const;
+const STATUSES: WebhookDelivery["status"][] = ["pending", "sent", "delayed", "failed", "manual_retry"];
 
 /* ------------------------------------------------------------------ */
 /*  Sub-components                                                     */
@@ -69,6 +74,27 @@ export default function WebhooksPage() {
 
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
+  /* Delivery filters */
+  const labels = useDeliveryLabels();
+  const [period, setPeriod] = useState<(typeof PERIODS)[number]>("24");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [eventFilter, setEventFilter] = useState("");
+  const [invoiceFilter, setInvoiceFilter] = useState("");
+  const invoiceId = invoiceFilter.trim();
+  const invoiceInvalid = invoiceId !== "" && !UUID.test(invoiceId);
+  const filtered = statusFilter !== "" || eventFilter !== "" || invoiceId !== "" || period !== "24";
+  const deliveryQuery = useMemo(
+    () => ({
+      hours: Number(period),
+      limit: 50,
+      environment: envFilter,
+      status: (statusFilter || undefined) as WebhookDelivery["status"] | undefined,
+      event_type: eventFilter || undefined,
+      invoice_id: invoiceId && UUID.test(invoiceId) ? invoiceId : undefined,
+    }),
+    [period, statusFilter, eventFilter, invoiceId, envFilter],
+  );
+
   /* Event groups (computed with translations) */
   const eventGroups = [{ label: t("eventGroups.nfse"), events: WEBHOOK_EVENT_OPTIONS }];
 
@@ -79,7 +105,7 @@ export default function WebhooksPage() {
     try {
       const [whData, delData] = await Promise.all([
         collectAll((cursor) => webhooks.list({ cursor, limit: 1000 })),
-        webhooks.deliveries({ hours: 24, limit: 50, environment: envFilter }),
+        webhooks.deliveries(deliveryQuery),
       ]);
 
       setEndpoints(whData);
@@ -90,7 +116,7 @@ export default function WebhooksPage() {
     } finally {
       setLoading(false);
     }
-  }, [envFilter]);
+  }, [deliveryQuery]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -101,8 +127,8 @@ export default function WebhooksPage() {
     if (!deliveryCursor || moreLoading) return;
     setMoreLoading(true);
     try {
-      // `hours` is fixed server-side across pages; keep the same filters.
-      const next = await webhooks.deliveries({ hours: 24, limit: 50, environment: envFilter, cursor: deliveryCursor });
+      // The cursor belongs to these filters; keep them the same across pages.
+      const next = await webhooks.deliveries({ ...deliveryQuery, cursor: deliveryCursor });
       setDeliveries((rows) => [...rows, ...next.items]);
       setDeliveryCursor(next.hasMore ? next.nextCursor : null);
     } catch (err: unknown) { setError(apiError(err, "Unknown error")); }
@@ -221,7 +247,7 @@ export default function WebhooksPage() {
   };
 
   const deliveryColumns: Column<WebhookDelivery>[] = [
-    { id: "event", header: t("table.event"), primary: true, cell: (d) => <span className="text-text">{d.eventType}</span> },
+    { id: "event", header: t("table.event"), primary: true, cell: (d) => <span className="text-text">{labels.event(d.eventType)}</span> },
     {
       id: "dest",
       header: t("table.destination"),
@@ -235,7 +261,7 @@ export default function WebhooksPage() {
     {
       id: "status",
       header: t("table.status"),
-      cell: (d) => <span className={cn("font-mono text-[12px]", deliveryColor[d.status] ?? "text-text-4")}>{d.status}</span>,
+      cell: (d) => <span className={cn("text-[12.5px]", deliveryColor[d.status] ?? "text-text-4")}>{labels.status(d.status)}</span>,
     },
     {
       id: "duration",
@@ -376,11 +402,49 @@ export default function WebhooksPage() {
       <Card className="dash-in dash-in-2 overflow-hidden">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-4 sm:px-5">
           <h2 className="text-[14.5px] font-medium text-text">{t("recentDeliveries")}</h2>
-          <span className="font-mono text-[11.5px] text-text-4">{t("last24h")}</span>
+          <span className="font-mono text-[11.5px] text-text-4">{t(`periods.${period}`)}</span>
+        </div>
+        <div className="flex flex-wrap items-end gap-3 border-t border-border px-4 py-3 sm:px-5">
+          <label className="flex flex-col gap-1 text-[12px] text-text-3">
+            <span>{t("filters.period")}</span>
+            <select value={period} onChange={(e) => setPeriod(e.target.value as (typeof PERIODS)[number])} className="min-h-10 rounded-md border border-border bg-transparent px-3 text-[13px] text-text">
+              {PERIODS.map((p) => <option key={p} value={p}>{t(`periods.${p}`)}</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-[12px] text-text-3">
+            <span>{t("filters.status")}</span>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="min-h-10 rounded-md border border-border bg-transparent px-3 text-[13px] text-text">
+              <option value="">{t("filters.all")}</option>
+              {STATUSES.map((s) => <option key={s} value={s}>{labels.status(s)}</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-[12px] text-text-3">
+            <span>{t("filters.event")}</span>
+            <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} className="min-h-10 rounded-md border border-border bg-transparent px-3 text-[13px] text-text">
+              <option value="">{t("filters.all")}</option>
+              {WEBHOOK_EVENT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{labels.event(o.value)}</option>)}
+            </select>
+          </label>
+          <label className="flex min-w-[220px] flex-1 flex-col gap-1 text-[12px] text-text-3">
+            <span>{t("filters.invoice")}</span>
+            <input
+              value={invoiceFilter}
+              onChange={(e) => setInvoiceFilter(e.target.value)}
+              placeholder={t("filters.invoicePlaceholder")}
+              aria-invalid={invoiceInvalid}
+              autoComplete="off"
+              spellCheck={false}
+              className="min-h-10 rounded-md border border-border bg-transparent px-3 font-mono text-[13px] text-text"
+            />
+          </label>
+          {filtered || invoiceFilter !== "" ? (
+            <Button variant="ghost" size="sm" onClick={() => { setPeriod("24"); setStatusFilter(""); setEventFilter(""); setInvoiceFilter(""); }}>{t("filters.clear")}</Button>
+          ) : null}
+          {invoiceInvalid && <p role="alert" className="w-full text-[12px] text-danger">{t("filters.invoiceInvalid")}</p>}
         </div>
         <div className="border-t border-border" aria-live="polite">
           {deliveries.length === 0 ? (
-            <EmptyState icon={WebhookIcon} title={t("noDeliveries")} className="py-10" />
+            <EmptyState icon={WebhookIcon} title={filtered ? t("noDeliveriesFiltered") : t("noDeliveries")} className="py-10" />
           ) : (
             <DataTable columns={deliveryColumns} rows={deliveries} rowKey={(d) => d.id} caption={t("recentDeliveries")} />
           )}

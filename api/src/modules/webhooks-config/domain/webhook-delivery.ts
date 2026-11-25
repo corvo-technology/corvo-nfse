@@ -7,6 +7,8 @@ export interface WebhookDelivery {
   id: string;
   tenantId: string;
   webhookConfigId: string;
+  /** The invoice the event is about; absent for events like `webhook.test`. */
+  invoiceId?: string;
   eventType: string;
   environment: 'live' | 'test';
   url: string;

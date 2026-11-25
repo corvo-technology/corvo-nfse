@@ -13,6 +13,7 @@ import { CancelInvoiceDialog } from "@/components/dashboard/cancel-invoice-dialo
 import { SubstituteInvoiceDialog } from "@/components/dashboard/substitute-invoice-dialog";
 import { ResendEmailDialog } from "@/components/invoices/resend-email-dialog";
 import { ManualReviewActions } from "@/components/invoices/manual-review-actions";
+import { InvoiceWebhookDeliveries } from "@/components/invoices/invoice-webhook-deliveries";
 import { Card } from "@/components/ui/card";
 import { FirstNoteBanner } from "@/components/onboarding/first-note-banner";
 import { DetailSkeleton } from "@/components/ui/detail-skeleton";
@@ -88,6 +89,7 @@ export default function InvoiceDetailPage() {
         </li>;
       })}</ol>
     </Card>
+    <InvoiceWebhookDeliveries invoiceId={invoice.id} />
     {resendOpen && <ResendEmailDialog invoiceId={invoice.id} defaultEmail={invoice.customerSnapshot?.email ?? ""} open={resendOpen} onClose={() => setResendOpen(false)} onSent={() => setResendOpen(false)} />}
     {substituteOpen && substitutable && <SubstituteInvoiceDialog invoice={invoice} open={substituteOpen} onClose={() => setSubstituteOpen(false)} onSubstituted={(substitute) => { setSubstituteOpen(false); router.push(`/app/invoices/${substitute.id}`); }} />}
     {cancelOpen && cancellable && <CancelInvoiceDialog invoice={invoice} open={cancelOpen} onClose={() => setCancelOpen(false)} onCancelled={(updated) => { setCancelOpen(false); setInvoice(updated); setRevision((value) => value + 1); }} />}

@@ -7,6 +7,12 @@ export type AccountNotice =
   | { kind: 'api-key-created'; name: string }
   | { kind: 'mcp-connected'; clientName: string }
   | { kind: 'credits-exhausted' }
+  // A webhook delivery gave up after every retry. Never carries the url, secret or body.
+  | {
+      kind: 'webhook-delivery-failed';
+      webhookConfigId: string;
+      eventType: string;
+    }
   | { kind: 'payment-failed' }
   | { kind: 'pix-expired' }
   | { kind: 'payment-mismatch' }

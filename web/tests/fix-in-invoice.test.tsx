@@ -20,6 +20,7 @@ vi.mock("@/lib/api", async (original) => ({
   companies: { list: mocks.list, get: mocks.get, update: mocks.update },
   invoices: { create: mocks.create, get: mocks.invoiceGet, events: vi.fn(), email: mocks.email },
   schedules: { create: vi.fn() },
+  webhooks: { deliveries: async () => ({ items: [], hasMore: false, nextCursor: null }) },
   customers: { find: mocks.findCustomer },
   collectAll: async () => [],
 }));

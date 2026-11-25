@@ -362,6 +362,29 @@
     "recentDeliveries": "Entregas recentes",
     "last24h": "últimas 24h",
     "noDeliveries": "Nenhuma entrega nas últimas 24 horas",
+    "noDeliveriesFiltered": "Nenhum aviso encontrado com esses filtros.",
+    "filters": {
+      "period": "Período",
+      "status": "Situação",
+      "event": "Aviso",
+      "invoice": "Nota (código)",
+      "invoicePlaceholder": "Cole o código da nota",
+      "invoiceInvalid": "O código da nota deve ser parecido com 123e4567-e89b-12d3-a456-426614174000.",
+      "all": "Todos",
+      "clear": "Limpar filtros"
+    },
+    "periods": {
+      "24": "Últimas 24 horas",
+      "168": "Últimos 7 dias",
+      "720": "Últimos 30 dias"
+    },
+    "deliveryStatus": {
+      "pending": "Na fila",
+      "sent": "Entregue",
+      "delayed": "Vai tentar de novo",
+      "failed": "Não entregue",
+      "manual_retry": "Reenvio pedido"
+    },
     "eventGroups": {
       "message": "Mensagem",
       "contactSync": "Contato e sincronização",
@@ -1863,6 +1886,22 @@
     },
     "blocked": "Esta empresa está bloqueada e não pode emitir notas. Entre em contato com o suporte.",
     "defaultServiceCode": "Código de serviço padrão"
+  },
+  "InvoiceWebhooks": {
+    "title": "Avisos enviados (webhooks)",
+    "hint": "O que a Corvo avisou ao seu sistema sobre esta nota.",
+    "empty": "Nenhum aviso enviado para esta nota nos últimos 30 dias.",
+    "failed": "Não foi possível carregar os avisos.",
+    "event": "Aviso",
+    "when": "Quando",
+    "status": "Situação",
+    "code": "Resposta",
+    "attempts": "Tentativas",
+    "retry": "Reenviar",
+    "retried": "Reenvio pedido. Em instantes o aviso é enviado de novo.",
+    "retryFailed": "Não foi possível pedir o reenvio.",
+    "seeAll": "Ver todos os avisos",
+    "loading": "Carregando avisos..."
   },
   "InvoiceDetail": {
     "scheduledBanner": "Nota agendada: será emitida automaticamente em {date}. Até lá ela fica na fila.",

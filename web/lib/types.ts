@@ -269,6 +269,8 @@ export interface WebhookDelivery {
   id: string;
   tenantId: string;
   webhookConfigId: string;
+  /** The invoice the event is about; null for events like the test event. */
+  invoiceId?: string | null;
   eventType: string;
   environment: KeyEnvironment;
   url: string;
@@ -288,6 +290,9 @@ export type WebhookDeliveriesQuery = {
   limit?: number; // default: 50
   cursor?: string;
   environment?: "live" | "test"; // default: "live"
+  invoice_id?: string;
+  event_type?: string;
+  status?: WebhookDelivery["status"];
 };
 
 export interface DeliveryStats {
