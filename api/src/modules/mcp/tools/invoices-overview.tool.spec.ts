@@ -9,7 +9,23 @@ describe('invoices_overview tool', () => {
       period: '30d',
       counts: { authorized: 3, rejected: 1, processing: 0 },
       dailyActivity: [],
-      recentInvoices: [{ toJSON: () => ({ id: 'inv-1' }) }],
+      recentInvoices: [
+        {
+          toJSON: () => ({
+            id: 'inv-1',
+            status: 'authorized',
+            tenantId: 'tenant-1',
+            idempotencyKey: 'key',
+            externalId: 'ext',
+            emailSnapshot: { send: true },
+            customerSnapshot: {
+              name: 'Ana',
+              taxId: '12345678901',
+              email: 'ana@x.com',
+            },
+          }),
+        },
+      ],
     });
     const result = await createInvoicesOverviewHandler({ get })(
       { period: '30d' },
@@ -18,8 +34,21 @@ describe('invoices_overview tool', () => {
     expect(get).toHaveBeenCalledWith('tenant-1', expect.anything(), '30d');
     expect(result).toMatchObject({
       counts: { authorized: 3 },
-      recentInvoices: [{ id: 'inv-1' }],
+      recentInvoices: [
+        { id: 'inv-1', customer_name: 'Ana', customer_tax_id: '***8901' },
+      ],
     });
+    const json = JSON.stringify(result);
+    for (const forbidden of [
+      'tenantId',
+      'idempotencyKey',
+      'externalId',
+      'emailSnapshot',
+      'ana@x.com',
+      '12345678901',
+    ]) {
+      expect(json).not.toContain(forbidden);
+    }
   });
 
   it('defaults to 7 days and rejects an unknown period', async () => {

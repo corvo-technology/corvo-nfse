@@ -4,6 +4,7 @@ import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
 import type { InvoiceOverviewService } from '@/modules/invoice/application/invoice-overview.service';
 import type { OverviewPeriod } from '@/modules/invoice/domain/invoice-overview.repository';
+import { toPublicInvoice } from './public-shapes';
 import { invalidInput } from './tool-input-errors';
 
 export const INVOICES_OVERVIEW_TOOL = {
@@ -47,7 +48,7 @@ export function createInvoicesOverviewHandler(
     );
     return {
       ...result,
-      recentInvoices: result.recentInvoices.map((invoice) => invoice.toJSON()),
+      recentInvoices: result.recentInvoices.map(toPublicInvoice),
     };
   };
 }

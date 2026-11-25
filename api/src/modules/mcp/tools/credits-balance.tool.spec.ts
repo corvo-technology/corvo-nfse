@@ -40,7 +40,21 @@ describe('credits_balance tool', () => {
 
   it('returns the paginated history on request, scoped to the tenant', async () => {
     const getHistoryPage = jest.fn().mockResolvedValue({
-      data: [{ id: 'tx-1' }],
+      data: [
+        {
+          toJSON: () => ({
+            id: 'tx-1',
+            tenantId: 'tenant-1',
+            amount: 3,
+            type: 'purchase',
+            stripeSessionId: 'cs_1',
+            reservedInvoiceId: 'inv-1',
+            isReservation: true,
+            metadata: { a: 1 },
+            createdAt: new Date('2026-01-01'),
+          }),
+        },
+      ],
       pagination: { nextCursor: 'next' },
     });
     const result = await createCreditsBalanceHandler(
@@ -52,9 +66,19 @@ describe('credits_balance tool', () => {
       cursor: 'abc',
     });
     expect(result).toMatchObject({
-      history: [{ id: 'tx-1' }],
+      history: [{ id: 'tx-1', amount: 3, type: 'purchase' }],
       next_cursor: 'next',
     });
+    const json = JSON.stringify(result);
+    for (const forbidden of [
+      'tenantId',
+      'stripeSessionId',
+      'reservedInvoiceId',
+      'isReservation',
+      'metadata',
+    ]) {
+      expect(json).not.toContain(forbidden);
+    }
   });
 
   it('rejects an out-of-range limit', async () => {

@@ -3,6 +3,7 @@ import { IsUUID, validate } from 'class-validator';
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
 import type { InvoiceService } from '@/modules/invoice/application/invoice.service';
+import { toDetailedInvoice } from './public-shapes';
 import { invalidInput } from './tool-input-errors';
 
 export const NFSE_GET_TOOL = {
@@ -47,7 +48,7 @@ export function createNfseGetHandler(
       environment,
     );
     return {
-      invoice: invoice.toJSON(),
+      invoice: toDetailedInvoice(invoice),
       events: events.map((event) => event.toJSON()),
     };
   };

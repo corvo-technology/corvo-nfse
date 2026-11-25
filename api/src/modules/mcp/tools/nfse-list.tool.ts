@@ -6,6 +6,7 @@ import type { InvoiceService } from '@/modules/invoice/application/invoice.servi
 import { INVOICE_STATUSES } from '@/modules/invoice/domain/invoice-status';
 import { ListInvoicesQuery } from '@/modules/invoice/http/invoice.dto';
 import { NfseListInput } from '../dto/tool-input.dto';
+import { toDetailedInvoice } from './public-shapes';
 
 export const NFSE_LIST_TOOL = {
   name: 'nfse_list',
@@ -64,7 +65,7 @@ export function createNfseListHandler(invoiceService: InvoiceService) {
     );
 
     return {
-      invoices: page.data.map((invoice) => invoice.toJSON()),
+      invoices: page.data.map(toDetailedInvoice),
       next_cursor: page.pagination.nextCursor,
     };
   };
