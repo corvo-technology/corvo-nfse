@@ -2011,6 +2011,8 @@
     "clear": "Clear selected code"
   },
   "ApiErrors": {
+    "invoice_note_environment_mismatch": "This note cannot be cancelled or replaced: the stored file is from a different environment (test or production) than the note. Contact support.",
+    "portal_nfse_wrong_environment": "This note was found on the portal in a different environment (test or production) than the company's. Check the environment and try again.",
     "reconciliation_uncertain": "The fiscal portal gave no conclusive answer for a long time. Retry with the same number or discard the invoice.",
     "discard_not_confirmed": "We could not confirm with the fiscal portal whether the invoice exists. Try again later.",
     "dps_number_already_used": "That note number was already used (probably on the government portal). Change the next number in the company settings and issue again.",

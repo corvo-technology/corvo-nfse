@@ -98,3 +98,60 @@ describe('OpenNfseProvider: the Sefin follows the invoice environment', () => {
     );
   });
 });
+
+describe('OpenNfseProvider.queryByDps: asks the portal of the invoice environment', () => {
+  const idDps = 'DPS353470826146948700014000001000000000000002';
+  const note = (tipoAmbiente: 'PRODUCAO' | 'HOMOLOGACAO') => ({
+    chaveAcesso: '3'.repeat(50),
+    xmlNfse: '<NFSe/>',
+    nfse: { infNFSe: { nNFSe: '1' } },
+    tipoAmbiente,
+  });
+  const query = async (
+    environment: 'live' | 'test',
+    answer: 'PRODUCAO' | 'HOMOLOGACAO',
+  ) => {
+    const p = provider();
+    const built: unknown[] = [];
+    jest.spyOn(p as never, 'client').mockImplementation(((
+      x: ICancelPayload,
+    ) => {
+      built.push(x.environment);
+      return {
+        fetchDpsStatus: jest.fn().mockResolvedValue({
+          chaveAcesso: '3'.repeat(50),
+          tipoAmbiente: answer,
+        }),
+        fetchByChave: jest.fn().mockResolvedValue(note(answer)),
+        close: jest.fn(),
+      };
+    }) as never);
+    const warn = jest
+      .spyOn((p as unknown as { logger: { warn: () => void } }).logger, 'warn')
+      .mockImplementation();
+    await p.queryByDps(idDps, payload(environment) as never);
+    return { built, warn, p };
+  };
+
+  it('a live lookup goes to production and stays quiet when the portal agrees', async () => {
+    const { built, warn, p } = await query('live', 'PRODUCAO');
+    expect(built).toEqual(['live']);
+    expect(
+      (p as unknown as { sefinFor: (e: string) => string }).sefinFor('live'),
+    ).toBe('production');
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('logs both sides when a live lookup comes back as a homologation note', async () => {
+    const { warn } = await query('live', 'HOMOLOGACAO');
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idDps,
+        invoiceEnvironment: 'live',
+        askedAmbiente: 'PRODUCAO',
+        noteTipoAmbiente: 'HOMOLOGACAO',
+      }),
+      expect.stringContaining('another environment'),
+    );
+  });
+});

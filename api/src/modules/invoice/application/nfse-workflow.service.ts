@@ -50,6 +50,8 @@ import { moneyString, toDecimal } from '../domain/fiscal/money';
 import {
   checkPortalNfse,
   DPS_USED_BY_OTHER_NFSE,
+  PORTAL_NFSE_WRONG_ENVIRONMENT,
+  wrongEnvironmentMessage,
   dpsUsedByOtherNfseMessage,
   type PortalNfseCheck,
 } from '../domain/fiscal/portal-nfse-match';
@@ -451,6 +453,7 @@ export class NfseWorkflowService {
     const snapshot = invoice.toSnapshot();
     const customer = snapshot.customerSnapshot;
     return checkPortalNfse(xml, {
+      environment: invoice.environment,
       providerTaxId: company.taxId,
       customerTaxId: customer?.foreign ? null : (customer?.taxId ?? null),
       amount: snapshot.amount,
@@ -472,6 +475,11 @@ export class NfseWorkflowService {
       return {
         code: PORTAL_NFSE_UNVERIFIED,
         message: `O portal devolveu uma nota para o DPS ${snapshot.dpsNumber} (série ${snapshot.dpsSeries}) que não conseguimos conferir, então ela não foi aceita. Fale com o suporte antes de emitir de novo.`,
+      };
+    if (check.differences.includes('environment'))
+      return {
+        code: PORTAL_NFSE_WRONG_ENVIRONMENT,
+        message: wrongEnvironmentMessage(invoice.environment, check.found),
       };
     return {
       code: DPS_USED_BY_OTHER_NFSE,
@@ -641,7 +649,12 @@ export class NfseWorkflowService {
   private async sweepManualReview(invoice: Invoice): Promise<void> {
     if (invoice.status !== 'manual_review') return;
     // The portal already said this DPS belongs to another note: asking again changes nothing.
-    if (invoice.toSnapshot().lastErrorCode === DPS_USED_BY_OTHER_NFSE) return;
+    const lastCode = invoice.toSnapshot().lastErrorCode;
+    if (
+      lastCode === DPS_USED_BY_OTHER_NFSE ||
+      lastCode === PORTAL_NFSE_WRONG_ENVIRONMENT
+    )
+      return;
     // Never reserve a DPS number here: without one there is nothing to look up.
     if (!invoice.toSnapshot().dpsNumber) {
       this.logReconciliation('warn', invoice, 'skipped', {

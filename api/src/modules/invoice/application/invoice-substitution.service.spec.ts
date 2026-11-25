@@ -45,17 +45,42 @@ const original = (
 };
 
 describe('InvoiceSubstitutionService', () => {
-  const invoices = { findById: jest.fn(), emitInEnvironment: jest.fn() };
+  const invoices = {
+    findById: jest.fn(),
+    emitInEnvironment: jest.fn(),
+    assertNoteMatchesEnvironment: jest.fn(),
+  };
   const service = new InvoiceSubstitutionService(invoices as never);
   beforeEach(() => {
     jest.clearAllMocks();
     invoices.emitInEnvironment.mockResolvedValue('substitute');
+    invoices.assertNoteMatchesEnvironment.mockResolvedValue(undefined);
   });
   const bodySent = () =>
     (invoices.emitInEnvironment.mock.calls as unknown[][])[0][0] as Record<
       string,
       unknown
     > & { customer?: { address?: unknown } };
+
+  it('does not substitute a note the Sefin would refuse for its environment', async () => {
+    const source = original();
+    invoices.findById.mockResolvedValue(source);
+    invoices.assertNoteMatchesEnvironment.mockRejectedValue(new Error('env'));
+    await expect(
+      service.substitute(
+        source.id,
+        TENANT,
+        'live',
+        { description: 'Descrição do serviço corrigida' },
+        undefined,
+      ),
+    ).rejects.toThrow('env');
+    expect(invoices.assertNoteMatchesEnvironment).toHaveBeenCalledWith(
+      source,
+      'substituir',
+    );
+    expect(invoices.emitInEnvironment).not.toHaveBeenCalled();
+  });
 
   it('repeats the original and changes only what was asked', async () => {
     const source = original();

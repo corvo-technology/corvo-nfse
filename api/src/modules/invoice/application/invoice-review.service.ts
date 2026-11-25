@@ -11,7 +11,10 @@ import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-aud
 import { recordSafely } from '@/shared/audit/record-safely';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import type { FiscalJobData } from './nfse-workflow.service';
-import { DPS_USED_BY_OTHER_NFSE } from '../domain/fiscal/portal-nfse-match';
+import {
+  DPS_USED_BY_OTHER_NFSE,
+  PORTAL_NFSE_WRONG_ENVIRONMENT,
+} from '../domain/fiscal/portal-nfse-match';
 
 export const REVIEW_ACTIONS = ['retry', 'discard'] as const;
 export type ReviewAction = (typeof REVIEW_ACTIONS)[number];
@@ -87,7 +90,9 @@ export class InvoiceReviewService {
     };
     if (
       action === 'retry' &&
-      invoice.toSnapshot().lastErrorCode === DPS_USED_BY_OTHER_NFSE
+      [DPS_USED_BY_OTHER_NFSE, PORTAL_NFSE_WRONG_ENVIRONMENT].includes(
+        invoice.toSnapshot().lastErrorCode ?? '',
+      )
     )
       return { id, outcome: 'skipped', reason: 'dps_used_by_other_nfse' };
     if (action === 'discard') {
