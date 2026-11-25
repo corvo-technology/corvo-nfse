@@ -2,6 +2,7 @@ import type { ConfigService } from '@nestjs/config';
 import { Invoice } from '../domain/invoice';
 import { DpsBuilder } from '../domain/fiscal/dps/dps-builder';
 import type { IFiscalSnapshotRepository } from '../domain/fiscal/fiscal-snapshot.repository';
+import { portalNfseXml } from '../domain/fiscal/__fixtures__/portal-nfse-xml';
 import { InvoiceWebhookPublisher } from './invoice-webhook.publisher';
 import { NfseWorkflowService } from './nfse-workflow.service';
 import {
@@ -23,7 +24,7 @@ const company = {
 
 describe('NfseWorkflowService first-emission numbering check', () => {
   const provider = { issue: jest.fn(), queryByDps: jest.fn() };
-  const numbering = { skipUsedNumbers: jest.fn() };
+  const numbering = { skipUsedNumbers: jest.fn(), skipForward: jest.fn() };
   const fakes = {
     invoices: {
       findByIdAndTenantId: jest.fn(),
@@ -193,5 +194,186 @@ describe('NfseWorkflowService first-emission numbering check', () => {
       'live',
     );
     expect(fakes.sequences.reserveNext).toHaveBeenCalledTimes(1);
+  });
+
+  describe('a number that turns out to be used later', () => {
+    const noteFor = (
+      number: number,
+      amount = '100.00',
+      day = '2026-11-01',
+    ) => ({
+      success: true,
+      requiresReconciliation: false,
+      accessKey: '43144000000000000000000000000000000000000000000000',
+      nfseNumber: number,
+      xmlAuthorized: portalNfseXml({
+        providerCnpj: company.taxId,
+        amount,
+        competenceDate: day,
+        series: '1',
+        number,
+      }),
+    });
+    const timeline = (): string[] =>
+      fakes.lifecycle.transition.mock.calls.map(
+        ([, event]: [unknown, { toSnapshot: () => { reason: string } }]) =>
+          event.toSnapshot().reason,
+      );
+
+    beforeEach(() => {
+      numbering.skipUsedNumbers.mockResolvedValue(null);
+      numbering.skipForward.mockResolvedValue({ from: 7, to: 7, nextFree: 8 });
+    });
+
+    it('E0014 on a DPS never sent: takes the next free number and emits the same invoice again', async () => {
+      const invoice = queued();
+      fakes.sequences.reserveNext
+        .mockResolvedValueOnce({ series: '1', number: 7 })
+        .mockResolvedValueOnce({ series: '1', number: 8 });
+      provider.issue
+        .mockResolvedValueOnce({
+          success: false,
+          requiresReconciliation: false,
+          errorCode: 'DPS_NUMBER_ALREADY_USED',
+          errorMessage: 'E0014',
+        })
+        .mockResolvedValueOnce(noteFor(8));
+
+      await run(invoice);
+
+      expect(numbering.skipForward).toHaveBeenCalledTimes(1);
+      expect(provider.issue).toHaveBeenCalledTimes(2);
+      expect(invoice.status).toBe('authorized');
+      expect(invoice.toSnapshot().dpsNumber).toBe(8);
+      expect(timeline()).toContain(
+        'NFS-e authorized. O número 7 já estava usado no governo; a nota saiu com o número 8.',
+      );
+    });
+
+    it('the portal answering with another note for our DPS also takes the next free number', async () => {
+      const invoice = queued();
+      fakes.sequences.reserveNext
+        .mockResolvedValueOnce({ series: '1', number: 7 })
+        .mockResolvedValueOnce({ series: '1', number: 8 });
+      provider.issue
+        .mockResolvedValueOnce(noteFor(7, '49.90', '2026-10-16'))
+        .mockResolvedValueOnce(noteFor(8));
+
+      await run(invoice);
+
+      expect(invoice.status).toBe('authorized');
+      expect(invoice.toSnapshot().dpsNumber).toBe(8);
+    });
+
+    it('Tentar de novo on manual review (DPS used by another note) emits with a new number', async () => {
+      const invoice = queued();
+      invoice.setDpsInfo('1', 7);
+      invoice.setProcessing();
+      invoice.transitionTo('reconciliation_required');
+      invoice.transitionTo('manual_review');
+      invoice.setRejected('DPS_NUMBER_USED_BY_OTHER_NFSE', 'outra nota');
+      provider.queryByDps.mockResolvedValue({
+        ...noteFor(7, '49.90', '2026-10-16'),
+        status: 'authorized',
+      });
+      fakes.sequences.reserveNext.mockResolvedValue({ series: '1', number: 8 });
+      provider.issue.mockResolvedValue(noteFor(8));
+
+      await service.process({
+        invoiceId: invoice.id,
+        tenantId,
+        companyId: company.id,
+        review: 'renumber',
+      });
+
+      expect(invoice.status).toBe('authorized');
+      expect(invoice.toSnapshot().dpsNumber).toBe(8);
+    });
+
+    it('Tentar de novo leaves the invoice in review when the portal does not confirm', async () => {
+      const invoice = queued();
+      invoice.setDpsInfo('1', 7);
+      invoice.setProcessing();
+      invoice.transitionTo('reconciliation_required');
+      invoice.transitionTo('manual_review');
+      invoice.setRejected('DPS_NUMBER_USED_BY_OTHER_NFSE', 'outra nota');
+      provider.queryByDps.mockResolvedValue({ status: 'not_found' });
+
+      await service.process({
+        invoiceId: invoice.id,
+        tenantId,
+        companyId: company.id,
+        review: 'renumber',
+      });
+
+      expect(provider.issue).not.toHaveBeenCalled();
+      expect(invoice.status).toBe('manual_review');
+    });
+
+    it('never renumbers when the portal note is ours', async () => {
+      const invoice = queued();
+      provider.issue.mockResolvedValueOnce(noteFor(7));
+
+      await run(invoice);
+
+      expect(numbering.skipForward).not.toHaveBeenCalled();
+      expect(invoice.status).toBe('authorized');
+      expect(invoice.toSnapshot().dpsNumber).toBe(7);
+    });
+
+    it('gives up after 3 new numbers and rejects as before', async () => {
+      const invoice = queued();
+      let n = 6;
+      fakes.sequences.reserveNext.mockImplementation(() =>
+        Promise.resolve({ series: '1', number: ++n }),
+      );
+      provider.issue.mockResolvedValue({
+        success: false,
+        requiresReconciliation: false,
+        errorCode: 'DPS_NUMBER_ALREADY_USED',
+        errorMessage: 'E0014',
+      });
+
+      await run(invoice);
+
+      expect(numbering.skipForward).toHaveBeenCalledTimes(3);
+      expect(provider.issue).toHaveBeenCalledTimes(4);
+      expect(invoice.status).toBe('rejected');
+    });
+
+    it('does not renumber a DPS that may already have been sent', async () => {
+      const invoice = queued();
+      invoice.setDpsInfo('1', 7);
+      invoice.setProcessing();
+      provider.issue.mockResolvedValueOnce({
+        success: false,
+        requiresReconciliation: false,
+        errorCode: 'DPS_NUMBER_ALREADY_USED',
+        errorMessage: 'E0014',
+      });
+
+      await run(invoice);
+
+      expect(numbering.skipForward).not.toHaveBeenCalled();
+      expect(invoice.status).toBe('rejected');
+    });
+
+    it('stays retryable when the portal cannot confirm the next free number', async () => {
+      const invoice = queued();
+      numbering.skipForward.mockRejectedValue(
+        new NumberingCheckUnavailableError(new Error('timeout')),
+      );
+      provider.issue.mockResolvedValueOnce({
+        success: false,
+        requiresReconciliation: false,
+        errorCode: 'DPS_NUMBER_ALREADY_USED',
+        errorMessage: 'E0014',
+      });
+
+      await expect(run(invoice)).rejects.toBeInstanceOf(
+        NumberingCheckUnavailableError,
+      );
+      expect(invoice.status).not.toBe('rejected');
+    });
   });
 });

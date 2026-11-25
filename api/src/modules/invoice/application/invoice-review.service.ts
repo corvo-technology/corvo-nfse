@@ -90,7 +90,27 @@ export class InvoiceReviewService {
     };
     if (
       action === 'retry' &&
-      [DPS_USED_BY_OTHER_NFSE, PORTAL_NFSE_WRONG_ENVIRONMENT].includes(
+      invoice.toSnapshot().lastErrorCode === DPS_USED_BY_OTHER_NFSE
+    ) {
+      // The portal's note is someone else's: emit again with the next free DPS number.
+      await this.queues.add(
+        'nfse-reconciliation',
+        'reconcile',
+        { ...job, review: 'renumber' },
+        {
+          idempotencyKey: `review-renumber:${invoice.id}`,
+          attempts: 5,
+          backoffMs: 30000,
+          removeOnComplete: true,
+          removeOnFail: 1000,
+        },
+      );
+      await this.recordAudit(invoice, environment, 'invoice.review_retried');
+      return { id, outcome: 'accepted' };
+    }
+    if (
+      action === 'retry' &&
+      [PORTAL_NFSE_WRONG_ENVIRONMENT].includes(
         invoice.toSnapshot().lastErrorCode ?? '',
       )
     )

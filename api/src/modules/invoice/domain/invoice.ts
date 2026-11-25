@@ -368,6 +368,18 @@ export class Invoice {
     return event;
   }
 
+  /**
+   * The DPS number turned out to be used by another note: forget it (it stays burned in the
+   * sequence) so a new one is reserved, and drop the error it left.
+   */
+  resetDpsForRenumbering(): void {
+    this.props.dpsId = null;
+    this.props.dpsSeries = null;
+    this.props.dpsNumber = null;
+    this.clearLastError();
+    this.props.updatedAt = new Date();
+  }
+
   setDpsInfo(series: string, number: number): void {
     this.props.dpsId = randomUUID();
     this.props.dpsSeries = series;

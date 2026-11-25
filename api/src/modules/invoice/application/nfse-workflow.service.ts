@@ -70,7 +70,7 @@ export interface FiscalJobData {
   /** ISO time the invoice first lost a conclusive answer; drives the manual review ceiling. */
   uncertainSince?: string;
   /** Set by a person on an invoice in manual review: confirm on the portal and discard it. */
-  review?: 'discard' | 'sweep';
+  review?: 'discard' | 'sweep' | 'renumber';
 }
 
 /** Delay before the next automatic reconciliation: 2, 4, 8, 16 min, then 30 min. */
@@ -127,6 +127,9 @@ type AuthorizedResult = Pick<
  * number already reserved by `payload()` stays associated with the invoice, so
  * it is never handed to another invoice.
  */
+/** Most times one emission may take a new DPS number because the government says it is used. */
+const MAX_RENUMBERS = 3;
+
 class DpsBuildRejectionError extends Error {
   constructor(readonly error: FiscalError) {
     super(error.message);
@@ -150,6 +153,9 @@ export class NfseWorkflowService {
   private readonly logger = new Logger(NfseWorkflowService.name);
   /** Numbers skipped for an invoice, written in its first timeline entry. */
   private readonly skipNotes = new WeakMap<Invoice, string>();
+  /** DPS numbers the government confirmed as used while this invoice was emitted, and the note for its timeline. */
+  private readonly burned = new WeakMap<Invoice, number[]>();
+  private readonly renumberNotes = new WeakMap<Invoice, string>();
   constructor(
     @Inject(INVOICE_REPOSITORY) private readonly invoices: IInvoiceRepository,
     @Inject(DPS_SEQUENCE_REPOSITORY)
@@ -214,16 +220,23 @@ export class NfseWorkflowService {
     });
   }
 
-  private async processTenant(data: FiscalJobData): Promise<void> {
-    const invoice = await this.invoices.findByIdAndTenantId(
-      data.invoiceId,
-      data.tenantId,
-    );
+  private async processTenant(
+    data: FiscalJobData,
+    loaded?: Invoice,
+    renumbers = 0,
+  ): Promise<void> {
+    const invoice =
+      loaded ??
+      (await this.invoices.findByIdAndTenantId(data.invoiceId, data.tenantId));
     if (!invoice) return;
     if (data.companyId && data.companyId !== invoice.companyId)
       throw new Error('Invoice/company job identity mismatch');
     if (data.review === 'discard') return this.discard(invoice);
     if (data.review === 'sweep') return this.sweepManualReview(invoice);
+    if (data.review === 'renumber') {
+      if (!(await this.reopenForRenumbering(invoice))) return;
+      return this.processTenant({ ...data, review: undefined }, invoice, 1);
+    }
     if (
       !['queued', 'processing', 'reconciliation_required'].includes(
         invoice.status,
@@ -247,6 +260,8 @@ export class NfseWorkflowService {
       );
       return;
     }
+    // A DPS never sent to the portal cannot be ours: a duplicate answer to it is proof it is used.
+    const neverSent = renumbers > 0 || invoice.status === 'queued';
     // While the portal is paused the job waits (PortalUnavailableError) without spending attempts.
     await this.breaker?.assertAvailable(invoice.environment);
     let payload: IIssuePayload;
@@ -261,6 +276,10 @@ export class NfseWorkflowService {
         error.error.message,
       );
       return;
+    }
+    if (renumbers > 0) {
+      await this.invoices.saveDpsInfo(invoice);
+      this.noteRenumbering(invoice);
     }
     if (invoice.status === 'queued') {
       const skipNote = this.skipNotes.get(invoice);
@@ -321,7 +340,9 @@ export class NfseWorkflowService {
       this.logReconciliation('log', invoice, 'authorized', {
         attempt: data.attemptCount ?? 0,
       });
-      await this.authorize(invoice, result);
+      await this.authorize(invoice, result, () =>
+        this.renumberAndRetry(invoice, data, renumbers),
+      );
     } else if (result.requiresReconciliation) {
       const attempt = data.attemptCount ?? 0;
       this.logReconciliation('warn', invoice, 'pending', {
@@ -343,6 +364,12 @@ export class NfseWorkflowService {
           result.errorMessage,
         );
       else await this.schedule(invoice, attempts + 1, uncertainSince);
+    } else if (
+      neverSent &&
+      result.errorCode === 'DPS_NUMBER_ALREADY_USED' &&
+      (await this.renumberAndRetry(invoice, data, renumbers))
+    ) {
+      return;
     } else {
       this.logReconciliation('log', invoice, 'rejected', {
         attempt: data.attemptCount ?? 0,
@@ -362,6 +389,107 @@ export class NfseWorkflowService {
         errorMessage: result.errorMessage,
       });
     }
+  }
+
+  /**
+   * The government confirmed the invoice's DPS number belongs to another note (E0014 on a DPS
+   * never sent, or the portal's note for it is someone else's). The number stays burned: probe
+   * forward, raise the sequence, and emit the SAME invoice again with a new DPS. Capped per
+   * emission; returns false when it should not or cannot (then the old behaviour applies). An
+   * unavailable portal throws, so the job stays retryable.
+   */
+  private async renumberAndRetry(
+    invoice: Invoice,
+    data: FiscalJobData,
+    renumbers: number,
+  ): Promise<boolean> {
+    const old = invoice.toSnapshot().dpsNumber;
+    if (!this.numbering || !old || renumbers >= MAX_RENUMBERS) return false;
+    try {
+      await this.numbering.skipForward(
+        invoice.companyId,
+        invoice.tenantId,
+        invoice.environment,
+      );
+    } catch (error: unknown) {
+      if (error instanceof NumberingNeedsConfirmationError) return false;
+      throw error;
+    }
+    this.burned.set(invoice, [...(this.burned.get(invoice) ?? []), old]);
+    this.logger.warn(
+      { invoiceId: invoice.id, burnedNumber: old, renumbers: renumbers + 1 },
+      'DPS number already used at the government; emitting again with the next free number',
+    );
+    invoice.resetDpsForRenumbering();
+    await this.processTenant(data, invoice, renumbers + 1);
+    return true;
+  }
+
+  /** Timeline text for the renumbered invoice, once its new number is known. */
+  private noteRenumbering(invoice: Invoice): void {
+    const burned = this.burned.get(invoice);
+    if (!burned?.length) return;
+    const used =
+      burned.length === 1
+        ? `O número ${burned[0]} já estava usado`
+        : `Os números ${burned.join(', ')} já estavam usados`;
+    const note = `${used} no governo; a nota saiu com o número ${invoice.dpsNumber}.`;
+    this.renumberNotes.set(invoice, note);
+    this.skipNotes.set(invoice, note);
+  }
+
+  /**
+   * "Tentar de novo" on a manual-review invoice whose DPS belongs to another note: the portal is
+   * asked again, and only when it still says the note is someone else's does the invoice go back
+   * to emission with a new number. Our own note is authorized; any doubt leaves it in review.
+   */
+  private async reopenForRenumbering(invoice: Invoice): Promise<boolean> {
+    if (invoice.status !== 'manual_review') return false;
+    if (invoice.toSnapshot().lastErrorCode !== DPS_USED_BY_OTHER_NFSE)
+      return false;
+    await this.breaker?.assertAvailable(invoice.environment);
+    const found = await this.lookUpDps(invoice);
+    if (!found) return false;
+    await this.breaker?.recordSuccess(invoice.environment);
+    if (found.status !== 'authorized' || !found.xmlAuthorized) {
+      await this.keepInReview(
+        invoice,
+        'Renumbering not done: the portal did not confirm the number is used',
+      );
+      return false;
+    }
+    const check = await this.checkPortalNote(invoice, found.xmlAuthorized);
+    if (check.matches) {
+      await this.markAuthorized(invoice, found);
+      return false;
+    }
+    if (
+      check.differences.includes('unreadable') ||
+      check.differences.includes('environment')
+    )
+      return false;
+    try {
+      await this.numbering?.skipForward(
+        invoice.companyId,
+        invoice.tenantId,
+        invoice.environment,
+      );
+    } catch (error: unknown) {
+      if (!(error instanceof NumberingNeedsConfirmationError)) throw error;
+      await this.keepInReview(invoice, error.message);
+      return false;
+    }
+    await this.lifecycle.transition(
+      invoice,
+      invoice.transitionTo(
+        'reconciliation_required',
+        'Retry with a new DPS number requested in manual review',
+      ),
+    );
+    const old = invoice.toSnapshot().dpsNumber;
+    if (old) this.burned.set(invoice, [old]);
+    invoice.resetDpsForRenumbering();
+    return true;
   }
 
   /**
@@ -443,11 +571,19 @@ export class NfseWorkflowService {
   private async authorize(
     invoice: Invoice,
     result: AuthorizedResult,
+    renumber?: () => Promise<boolean>,
   ): Promise<void> {
     if (!result.xmlAuthorized || !result.accessKey)
       throw new Error('Authorized fiscal result lacks XML/access key');
     const check = await this.checkPortalNote(invoice, result.xmlAuthorized);
-    if (!check.matches) return this.refusePortalNote(invoice, check);
+    if (!check.matches) {
+      // The portal proved the number belongs to another note: take the next free one.
+      const foreign =
+        !check.differences.includes('unreadable') &&
+        !check.differences.includes('environment');
+      if (foreign && renumber && (await renumber())) return;
+      return this.refusePortalNote(invoice, check);
+    }
     return this.markAuthorized(invoice, result);
   }
 
@@ -555,9 +691,13 @@ export class NfseWorkflowService {
       result.xmlAuthorized,
       invoice.storageEnvironment,
     );
+    const renumberNote = this.renumberNotes.get(invoice);
     await this.lifecycle.transition(
       invoice,
-      invoice.transitionTo('authorized', 'NFS-e authorized'),
+      invoice.transitionTo(
+        'authorized',
+        renumberNote ? `NFS-e authorized. ${renumberNote}` : 'NFS-e authorized',
+      ),
     );
     await this.webhooks.publish(invoice, 'nfse.invoice.authorized', {
       accessKey: result.accessKey,

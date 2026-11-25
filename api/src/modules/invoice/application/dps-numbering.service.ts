@@ -204,6 +204,19 @@ export class DpsNumberingService {
     environment: ExecutionEnvironment,
   ): Promise<SkippedNumbers | null> {
     if (!(await this.isPending(companyId, tenantId, environment))) return null;
+    return this.skipForward(companyId, tenantId, environment);
+  }
+
+  /**
+   * Asks the government from the next number on and raises the numbering past the numbers it
+   * confirms as used. Used on the first note and again whenever a number turns out to be taken
+   * (the number just burned is already behind the sequence, so the probe starts after it).
+   */
+  async skipForward(
+    companyId: string,
+    tenantId: string,
+    environment: ExecutionEnvironment,
+  ): Promise<SkippedNumbers | null> {
     const result = await this.check(companyId, tenantId, environment);
     if (result.moreMayBeUsed) throw new NumberingNeedsConfirmationError(result);
     const used = result.usedNumbers;

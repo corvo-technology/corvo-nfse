@@ -138,7 +138,7 @@ describe('InvoiceReviewService', () => {
     );
   });
 
-  it('never retries an invoice whose DPS the portal has on another note, but still discards it', async () => {
+  it('retries an invoice whose DPS the portal has on another note by emitting with a new number, and still discards it', async () => {
     const invoice = invoiceIn('manual_review');
     invoice.setRejected(DPS_USED_BY_OTHER_NFSE, 'já foi usado por outra nota');
     invoices.findByIdAndTenantId.mockResolvedValue(invoice);
@@ -151,13 +151,17 @@ describe('InvoiceReviewService', () => {
       'user-1',
     );
 
-    expect(retried).toEqual([
-      { id: invoice.id, outcome: 'skipped', reason: 'dps_used_by_other_nfse' },
-    ]);
+    expect(retried).toEqual([{ id: invoice.id, outcome: 'accepted' }]);
+    expect(queues.add).toHaveBeenCalledWith(
+      'nfse-reconciliation',
+      'reconcile',
+      expect.objectContaining({ invoiceId: invoice.id, review: 'renumber' }),
+      expect.objectContaining({
+        idempotencyKey: `review-renumber:${invoice.id}`,
+      }),
+    );
     expect(invoice.status).toBe('manual_review');
-    expect(lifecycle.transition).not.toHaveBeenCalled();
-    expect(queues.add).not.toHaveBeenCalled();
-    expect(audit.record).not.toHaveBeenCalled();
+    queues.add.mockClear();
 
     const discarded = await service.apply(
       tenantId,
