@@ -4,8 +4,12 @@ import {
   MCP_SUPPORTED_PROTOCOL_VERSIONS,
   McpServer,
   McpToolResult,
+  mcpInstructions,
   type McpRequest,
 } from './mcp.server';
+import { COMPANY_CREATE_TOOL } from './tools/company-create.tool';
+import { CERTIFICATE_UPLOAD_TOOL } from './tools/certificate-upload.tool';
+import { CREDITS_PURCHASE_TOOL } from './tools/credits-purchase.tool';
 
 const ctx = { tenantId: 'tenant-1' } as AuthContext;
 
@@ -173,5 +177,50 @@ describe('McpServer', () => {
       ctx,
     );
     expect(response?.result).toEqual({ content });
+  });
+  describe('route instructions', () => {
+    const route = [
+      'cnpj_lookup',
+      'company_create',
+      'certificate_upload',
+      'company_fiscal_status',
+      'nfse_issue',
+      'credits_balance',
+      'credits_purchase',
+      'payment_status',
+    ];
+
+    async function instructionsFrom(mcp: McpServer): Promise<string> {
+      const response = await mcp.handleRequest(initialize('2025-06-18'), ctx);
+      return (response?.result as { instructions: string }).instructions;
+    }
+
+    it('sends instructions on initialize that follow the agent route in order', async () => {
+      const text = await instructionsFrom(
+        new McpServer({ instructions: mcpInstructions(false) }),
+      );
+      const positions = route.map((name) => text.indexOf(name));
+      expect(positions.every((p) => p >= 0)).toBe(true);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+    });
+
+    it('says the person always completes the payment', () => {
+      expect(mcpInstructions(false)).toMatch(/person always (completes|pays)/i);
+    });
+
+    it('omits credits_purchase and payment_status when self-hosted', () => {
+      const text = mcpInstructions(true);
+      expect(text).toContain('credits_balance');
+      expect(text).not.toContain('credits_purchase');
+      expect(text).not.toContain('payment_status');
+    });
+
+    it('tool descriptions point to the next step of the route', () => {
+      expect(COMPANY_CREATE_TOOL.description).toContain('certificate_upload');
+      expect(CERTIFICATE_UPLOAD_TOOL.description).toContain(
+        'company_fiscal_status',
+      );
+      expect(CREDITS_PURCHASE_TOOL.description).toContain('payment_status');
+    });
   });
 });

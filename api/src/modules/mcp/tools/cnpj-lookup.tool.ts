@@ -8,7 +8,7 @@ import { invalidInput } from './tool-input-errors';
 export const CNPJ_LOOKUP_TOOL = {
   name: 'cnpj_lookup',
   description:
-    'Look up the public registration data of any CNPJ (legal name, trade name, address, IBGE municipality code, whether it is Simples Nacional or MEI, and whether it is active). Use it to pre-fill a company or a customer before nfse_issue or company_create. It reads the public registry, not this workspace: use company_get for companies already registered here. Fails when the CNPJ is invalid or the registry has no answer right now.',
+    'Look up the public registration data of any CNPJ (legal name, trade name, address, IBGE municipality code, whether it is Simples Nacional or MEI, and whether it is active). Use it to pre-fill a company or a customer before nfse_issue or company_create. It reads the public registry, not this workspace: use company_get for companies already registered here. Fails when the CNPJ is invalid or the registry has no answer right now. Next step of onboarding: company_create.',
   inputSchema: {
     type: 'object',
     properties: {

@@ -177,7 +177,7 @@ export const NFSE_ISSUE_TOOL = {
   description:
     'Emit a new NFS-e (Nota Fiscal de Serviços Eletrônica). Identify the issuing company with company_tax_id (its CNPJ) or company_id; call company_list if you do not know it. ' +
     'Minimal call: company_tax_id + amount. The customer is optional (omit it for an anonymous consumer invoice), and the competence date, service code and municipality default to today and to the company settings. ' +
-    'Returns immediately with the queued status; use nfse_query to follow it. With emission_type SCHEDULE or RECURRING nothing is issued yet: it returns the schedule (schedule_id) instead.',
+    'Returns immediately with the queued status; use nfse_query to follow it. With emission_type SCHEDULE or RECURRING nothing is issued yet: it returns the schedule (schedule_id) instead. If it fails for lack of credits, check credits_balance and then credits_purchase.',
   inputSchema: {
     type: 'object',
     properties: NFSE_ISSUE_PROPERTIES,

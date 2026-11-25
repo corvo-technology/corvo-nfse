@@ -47,7 +47,7 @@ import {
   createImportListHandler,
   createImportRowsHandler,
 } from './tools/import.tools';
-import { McpServer } from './mcp.server';
+import { McpServer, mcpInstructions } from './mcp.server';
 import {
   missingMemberPermissionMessage,
   missingScopeMessage,
@@ -245,7 +245,9 @@ export class McpService {
     private readonly billingService: BillingService,
     private readonly woovi: WooviPaymentsService,
   ) {
-    this.server = new McpServer();
+    this.server = new McpServer({
+      instructions: mcpInstructions(IS_SELF_HOSTED),
+    });
     this.registerTools();
     this.registerBillingTools();
   }
