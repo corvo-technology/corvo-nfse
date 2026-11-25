@@ -75,7 +75,43 @@ $(action_for "$repo")"
   gh issue create --title "$title" --body "$body"
 }
 
+# regime-regular: avisa se a Receita moveu a nossa tag para outro commit (o build do Docker pararia)
+check_tag_moved() {
+  local commit_ours remote title body
+  commit_ours="$(sed -n 's/^ARG RTC_COMMIT=//p' deploy/Dockerfile.rtc | tr -d '[:space:]')"
+  [ -n "$commit_ours" ] || { echo "AVISO: sem RTC_COMMIT, pulando checagem de tag movida." >&2; return 0; }
+  # tag anotada aparece também como refs/tags/X^{} (o commit real, listado por último)
+  remote="$(git ls-remote "https://github.com/$org/calculadora-rtc-regime-regular" "refs/tags/$rtc_ours" "refs/tags/$rtc_ours^{}" | awk '{c=$1} END{print c}')"
+  if [ -z "$remote" ]; then
+    echo "AVISO: não li a tag $rtc_ours, pulando checagem de tag movida." >&2
+    return 0
+  fi
+  if [ "$remote" = "$commit_ours" ]; then
+    echo "ok: tag $rtc_ours ainda aponta para $commit_ours"
+    return 0
+  fi
+  title="Receita: tag $rtc_ours de calculadora-rtc-regime-regular foi movida"
+  body="A tag $rtc_ours de calculadora-rtc-regime-regular agora aponta para $remote, mas o RTC_COMMIT em deploy/Dockerfile.rtc é $commit_ours. O build do Docker vai falhar.
+
+- Diferença: https://github.com/$org/calculadora-rtc-regime-regular/compare/$commit_ours...$remote
+
+O que fazer:
+
+1. Veja a diferença e procure se o que mudou é usado no resto do código (seção \"Tag movida pela Receita\" em docs/fiscal/runbooks/rtc-update.md).
+2. Se for seguro, atualize RTC_COMMIT em deploy/Dockerfile.rtc. Se mudar cálculo, é decisão fiscal: avise antes."
+  if $dry_run; then
+    printf 'DRY-RUN: abriria o issue:\n  %s\n%s\n\n' "$title" "$body"
+    return 0
+  fi
+  if gh issue list --state all --search "in:title \"$title\"" --json title --jq '.[].title' | grep -qxF -- "$title"; then
+    echo "já existe: $title"
+    return 0
+  fi
+  gh issue create --title "$title" --body "$body"
+}
+
 check calculadora-rtc-regime-regular "$rtc_ours"
+check_tag_moved
 for repo in calculadora-rtc-gerador-danfse calculadora-rtc-simples-nacional; do
   check "$repo" "$(jq -er --arg r "$repo" '.[$r]' "$versions_file")"
 done
