@@ -18,6 +18,7 @@ import { DataSource } from 'typeorm';
 import {
   NfseClient,
   Ambiente,
+  TipoAmbiente,
   buildDpsId,
   pendingEmissionId,
   ReceitaRejectionError,
@@ -420,16 +421,47 @@ export class OpenNfseProvider
     const client = this.client(credentials);
     try {
       const status = await client.fetchDpsStatus(idDps);
-      return {
-        ...this.result(await client.fetchByChave(status.chaveAcesso)),
-        status: 'authorized',
-      };
+      const note = await client.fetchByChave(status.chaveAcesso);
+      this.warnOnForeignEnvironment(
+        credentials.environment,
+        idDps,
+        status,
+        note,
+      );
+      return { ...this.result(note), status: 'authorized' };
     } catch (error) {
       if (error instanceof NotFoundError) return { status: 'not_found' };
       throw error;
     } finally {
       await client.close();
     }
+  }
+  /**
+   * The portal says which environment a note belongs to. When it disagrees with the one we asked
+   * (endpoint), log it with both sides so the cause can be traced; the workflow also refuses the note.
+   */
+  private warnOnForeignEnvironment(
+    environment: 'test' | 'live',
+    idDps: string,
+    status: { tipoAmbiente: TipoAmbiente },
+    note: { tipoAmbiente: TipoAmbiente; chaveAcesso: string },
+  ): void {
+    const asked =
+      this.ambienteFor(environment) === Ambiente.Producao
+        ? TipoAmbiente.Producao
+        : TipoAmbiente.Homologacao;
+    if (status.tipoAmbiente === asked && note.tipoAmbiente === asked) return;
+    this.logger.warn(
+      {
+        idDps,
+        invoiceEnvironment: environment,
+        askedAmbiente: this.ambienteFor(environment),
+        dpsStatusTipoAmbiente: status.tipoAmbiente,
+        noteTipoAmbiente: note.tipoAmbiente,
+        accessKey: note.chaveAcesso,
+      },
+      'The portal answered with a note of another environment than the one asked',
+    );
   }
   async retrievePdf(
     key: string,
