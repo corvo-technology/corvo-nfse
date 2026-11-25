@@ -4,7 +4,9 @@ import * as sentry from '@/infra/observability/sentry-reporter';
 import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 import { CertificateService } from '@/modules/certificate/application/certificate.service';
 import { CertificateInvalidError } from '@/modules/certificate/domain/errors';
+import { CompanyService } from '@/modules/company/application/company.service';
 import type { AuthContext } from '../auth/auth-context';
+import { ITenantMembershipRepository } from '../auth/domain/tenant-membership.repository';
 import { McpService } from './mcp.service';
 
 const PASSWORD = 'S3nh@-Secreta-123';
@@ -104,16 +106,27 @@ function build(fakeAudit: FakeAccountAudit) {
     { refresh: jest.fn().mockResolvedValue(null) } as never,
     fakeAudit,
   );
-  const deps: unknown[] = Array.from(
-    { length: McpService.length - 1 },
-    () => ({}),
-  );
-  deps[10] = { findByTaxId: jest.fn().mockResolvedValue(company) };
-  deps[21] = certificates;
-  deps.push({
+  const deps: unknown[] = Array.from({ length: McpService.length }, () => ({}));
+  const slotOf = (token: unknown): number => {
+    const types = Reflect.getMetadata('design:paramtypes', McpService) as
+      unknown[] | undefined;
+    const injected = Reflect.getMetadata('self:paramtypes', McpService) as {
+      index: number;
+      param: unknown;
+    }[];
+    const byToken = injected.find((p) => p.param === token);
+    const index = byToken ? byToken.index : (types ?? []).indexOf(token);
+    if (index < 0) throw new Error('McpService dependency slot not found');
+    return index;
+  };
+  deps[slotOf(CompanyService)] = {
+    findByTaxId: jest.fn().mockResolvedValue(company),
+  };
+  deps[slotOf(CertificateService)] = certificates;
+  deps[slotOf(ITenantMembershipRepository)] = {
     findByAuthUserAndTenant: () =>
       Promise.resolve({ role: 'admin', isActive: true }),
-  });
+  };
   const mcp = new (
     McpService as unknown as new (...args: unknown[]) => McpService
   )(...deps);

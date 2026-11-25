@@ -1,17 +1,20 @@
 import 'reflect-metadata';
 import type { AuthContext } from '../auth/auth-context';
+import { ITenantMembershipRepository } from '../auth/domain/tenant-membership.repository';
 import { missingScopeMessage } from './mcp-client-policy';
 import { McpService } from './mcp.service';
 
 function service(memberRole: string | null): McpService {
-  const deps: unknown[] = Array.from(
-    { length: McpService.length - 1 },
-    () => ({}),
-  );
-  deps.push({
+  const deps: unknown[] = Array.from({ length: McpService.length }, () => ({}));
+  const injected = Reflect.getMetadata('self:paramtypes', McpService) as {
+    index: number;
+    param: unknown;
+  }[];
+  const slot = injected.find((p) => p.param === ITenantMembershipRepository)!;
+  deps[slot.index] = {
     findByAuthUserAndTenant: () =>
       Promise.resolve(memberRole ? { role: memberRole, isActive: true } : null),
-  });
+  };
   return new (McpService as unknown as new (...args: unknown[]) => McpService)(
     ...deps,
   );
