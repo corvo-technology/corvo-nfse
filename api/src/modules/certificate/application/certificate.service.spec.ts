@@ -1,4 +1,7 @@
 import { CertificateService } from './certificate.service';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
+import { runWithAuditActor } from '@/modules/account-audit/application/audit-actor.context';
+import type { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
 import { CertificateEncryptor } from '../infra/aes-encryptor';
 import { ICertificateRepository } from '../domain/certificate.repository';
 import { ICompanyRepository } from '@/modules/company/domain/company.repository';
@@ -52,6 +55,7 @@ describe('CertificateService', () => {
   let mockCompanyRepo: jest.Mocked<ICompanyRepository>;
   let mockEncryptor: jest.Mocked<CertificateEncryptor>;
   let mockParser: jest.Mocked<CertificateParserService>;
+  let fakeAudit: FakeAccountAudit;
 
   const tenantId = 'tenant-123';
   const companyId = 'company-456';
@@ -74,12 +78,14 @@ describe('CertificateService', () => {
     mockCompanyRepo = createMockCompanyRepo();
     mockEncryptor = createMockEncryptor();
     mockParser = createMockParser();
+    fakeAudit = new FakeAccountAudit();
     service = new CertificateService(
       mockRepo,
       mockCompanyRepo,
       mockEncryptor,
       mockParser,
       { refresh: jest.fn().mockResolvedValue(null) } as any,
+      fakeAudit,
     );
   });
 
@@ -239,6 +245,92 @@ describe('CertificateService', () => {
       expect(existingCert.markRevoked).toHaveBeenCalled();
       expect(existingCert.markDeleted).toHaveBeenCalled();
     });
+
+    describe('audit', () => {
+      const arrange = (existing: unknown = null) => {
+        mockCompanyRepo.findByIdAndTenantId.mockResolvedValue(
+          mockCompany as any,
+        );
+        mockRepo.findActiveByCompanyId.mockResolvedValue(existing as any);
+        mockEncryptor.encrypt.mockResolvedValue({
+          encryptedBlob: Buffer.from('b'),
+          encryptedDek: Buffer.from('d'),
+          dekIv: Buffer.from('i'),
+        });
+        mockRepo.save.mockImplementation(async (cert) => cert);
+      };
+      const upload = () =>
+        service.upload(
+          companyId,
+          tenantId,
+          Buffer.from('fake-p12'),
+          'S3nh@-Secreta-123',
+          'live',
+        );
+
+      it('records certificate.uploaded with the company as target and no secrets', async () => {
+        arrange();
+        await upload();
+        expect(fakeAudit.events).toHaveLength(1);
+        const [event] = fakeAudit.events;
+        expect(event).toMatchObject({
+          tenantId,
+          environment: 'live',
+          action: 'certificate.uploaded',
+          target: {
+            type: 'company',
+            id: companyId,
+            label: '12.345.678/0001-90',
+          },
+        });
+        expect(event.metadata).toEqual({
+          valid_until: validParsedP12.validUntil.toISOString(),
+        });
+        expect(JSON.stringify(fakeAudit.events)).not.toContain(
+          'S3nh@-Secreta-123',
+        );
+      });
+
+      it('records certificate.replaced when an active one existed', async () => {
+        arrange({ markRevoked: jest.fn(), markDeleted: jest.fn() });
+        await upload();
+        expect(fakeAudit.events.map((e) => e.action)).toEqual([
+          'certificate.replaced',
+        ]);
+      });
+
+      it('records the agent as actor when called inside runWithAuditActor(agent)', async () => {
+        arrange();
+        await runWithAuditActor({ type: 'agent', id: 'conn-1' }, upload);
+        expect(fakeAudit.events[0].actor).toMatchObject({
+          type: 'agent',
+          id: 'conn-1',
+        });
+      });
+
+      it('still returns the certificate when the recorder fails', async () => {
+        arrange();
+        const failing: AccountAuditRecorder = {
+          record: jest.fn().mockRejectedValue(new Error('db down')),
+        };
+        const failingService = new CertificateService(
+          mockRepo,
+          mockCompanyRepo,
+          mockEncryptor,
+          mockParser,
+          { refresh: jest.fn().mockResolvedValue(null) } as any,
+          failing,
+        );
+        await expect(
+          failingService.upload(
+            companyId,
+            tenantId,
+            Buffer.from('fake-p12'),
+            'pw',
+          ),
+        ).resolves.toMatchObject({ companyId });
+      });
+    });
   });
 
   describe('listByCompany', () => {
@@ -315,6 +407,28 @@ describe('CertificateService', () => {
       expect(cert.markRevoked).toHaveBeenCalled();
       expect(cert.markDeleted).toHaveBeenCalled();
       expect(mockRepo.save).toHaveBeenCalledWith(cert, tenantId, 'test');
+    });
+
+    it('records certificate.revoked on revoke', async () => {
+      const cert = {
+        id: 'cert-1',
+        companyId,
+        markRevoked: jest.fn(),
+        markDeleted: jest.fn(),
+      };
+      mockRepo.findById.mockResolvedValue(cert as any);
+      mockCompanyRepo.findByIdAndTenantId.mockResolvedValue(mockCompany as any);
+      mockRepo.save.mockImplementation(async (c) => c);
+
+      await service.revoke('cert-1', tenantId, 'live');
+
+      expect(fakeAudit.events).toHaveLength(1);
+      expect(fakeAudit.events[0]).toMatchObject({
+        tenantId,
+        environment: 'live',
+        action: 'certificate.revoked',
+        target: { type: 'company', id: companyId },
+      });
     });
 
     it('throws when certificate not found', async () => {

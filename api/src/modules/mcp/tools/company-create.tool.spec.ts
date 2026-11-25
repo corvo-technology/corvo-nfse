@@ -27,7 +27,11 @@ describe('company_create', () => {
           executionEnvironment: 'test',
         } as never,
       ),
-    ).resolves.toMatchObject({ id: 'company-1', tax_id: '11222333000181' });
+    ).resolves.toMatchObject({
+      id: 'company-1',
+      tax_id: '11222333000181',
+      message: expect.stringContaining('certificate_upload'),
+    });
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
         legalName: 'Corvo Ltda',

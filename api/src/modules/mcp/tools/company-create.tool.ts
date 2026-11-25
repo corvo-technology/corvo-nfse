@@ -10,7 +10,7 @@ import { invalidInput } from './tool-input-errors';
 export const COMPANY_CREATE_TOOL = {
   name: 'company_create',
   description:
-    'Create an issuing company in the connected environment. A certificate is deliberately not accepted here: upload it only through the Companies API after the company is created.',
+    'Create an issuing company in the connected environment. A certificate is deliberately not accepted here: after the company is created, upload it with certificate_upload (needs the certificate permission granted when connecting).',
   inputSchema: {
     type: 'object',
     properties: {
@@ -101,7 +101,7 @@ export function createCompanyCreateHandler(companyService: CompanyService) {
       tax_id: snapshot.taxId,
       status: snapshot.status,
       message:
-        'Company created. Upload the certificate through the Companies API before issuing in live.',
+        'Company created. Upload the certificate with certificate_upload before issuing in live.',
     };
   };
 }

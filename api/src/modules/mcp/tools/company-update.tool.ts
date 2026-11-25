@@ -46,7 +46,7 @@ export class CompanyUpdateInput {
 export const COMPANY_UPDATE_TOOL = {
   name: 'company_update',
   description:
-    'Update the safe registration data of a company: trade name, address, default service code and municipality code. Send only what changes. It does NOT change the CNPJ, legal name, tax regime, rates, certificate or DPS numbering, and it cannot delete the company: those stay in the dashboard or the Companies API. Changing the municipality code changes the place of service of future invoices, so confirm it with the user.',
+    'Update the safe registration data of a company: trade name, address, default service code and municipality code. Send only what changes. It does NOT change the CNPJ, legal name, tax regime, rates, certificate (use certificate_upload) or DPS numbering, and it cannot delete the company: those stay in the dashboard or the Companies API. Changing the municipality code changes the place of service of future invoices, so confirm it with the user.',
   inputSchema: {
     type: 'object',
     properties: {
