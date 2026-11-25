@@ -22,7 +22,7 @@ services:
       SERVICES: s3
       AWS_DEFAULT_REGION: us-east-1
     ports:
-      - '127.0.0.1:4566:4566'
+      - '127.0.0.1:${LOCALSTACK_PORT:-4566}:4566'
     volumes:
       - localstackdata:/var/lib/localstack
       - ./scripts/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh:ro

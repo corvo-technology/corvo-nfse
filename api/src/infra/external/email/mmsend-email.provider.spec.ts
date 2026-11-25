@@ -98,10 +98,28 @@ describe('MillionSendEmailProvider', () => {
     ).rejects.toThrow('MillionSend API error: bad');
   });
 
-  it('boots locally without a key and fails explicitly when sending', async () => {
+  it('without a key in development, logs the email instead of sending', async () => {
     const config = {
       get: (key: string, fallback?: string) =>
         key === 'NODE_ENV' ? 'development' : fallback,
+    } as ConfigService;
+    const provider = new MillionSendEmailProvider(config);
+
+    await expect(
+      provider.send({
+        to: ['user@example.com'],
+        subject: 'Test',
+        html: '<p>Hi</p>',
+        text: 'code 123456',
+      }),
+    ).resolves.toEqual({ id: 'logged-locally' });
+    expect(mockEmailsSend).not.toHaveBeenCalled();
+  });
+
+  it('without a key outside development, fails explicitly when sending', async () => {
+    const config = {
+      get: (key: string, fallback?: string) =>
+        key === 'NODE_ENV' ? 'test' : fallback,
     } as ConfigService;
     const provider = new MillionSendEmailProvider(config);
 

@@ -2,6 +2,24 @@
 
 Run Corvo on your own infrastructure with Docker Compose. Use the local stack to explore the application, then configure production with your domains and external services.
 
+## Quick start (one command)
+
+Install Docker with Compose v2 (Docker Desktop on macOS), then:
+
+```bash
+git clone https://github.com/corvo-technology/corvo-nfse.git
+cd corvo-nfse
+./scripts/self-host.sh
+```
+
+The script checks Docker and free ports, creates the env files with random secrets, builds and starts everything, waits until it is healthy and prints the address. Run it again at any time; it keeps your files and data. Other commands: `./scripts/self-host.sh logs | down | reset` (`reset` deletes the data).
+
+- The first run takes several minutes (it compiles the app and the tax calculator) and needs about 10 GB of free disk space for Docker. "no space left on device" means Docker is out of space: run `docker builder prune`.
+- Ports `4000`, `3000` and `4566` must be free. To use others: `WEB_PORT=14000 API_PORT=13000 LOCALSTACK_PORT=14566 ./scripts/self-host.sh` (only on the first run; later edit `deploy/.env.local`). Downloads of stored documents expect LocalStack on `4566`.
+- Without an email provider, the sign-in code is printed in the worker logs: `docker compose -p corvo-nfse-local --env-file deploy/.env.local -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml logs --tail=20 worker`.
+
+The sections below explain the same steps manually.
+
 ## Choose an environment
 
 | Environment | Compose files | Env file | Document storage |

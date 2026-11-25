@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 
@@ -24,7 +24,9 @@ export class PermanentEmailError extends Error {}
 
 @Injectable()
 export class MillionSendEmailProvider {
+  private readonly logger = new Logger(MillionSendEmailProvider.name);
   private readonly client: Resend | null;
+  private readonly isDevelopment: boolean;
   private readonly from: string;
 
   constructor(private readonly config: ConfigService) {
@@ -41,11 +43,20 @@ export class MillionSendEmailProvider {
     if (!apiKey && this.config.get<string>('NODE_ENV') === 'production') {
       throw new Error('RESEND_API_KEY is required in production');
     }
+    this.isDevelopment = this.config.get<string>('NODE_ENV') === 'development';
     this.client = apiKey ? new Resend(apiKey, { baseUrl }) : null;
     this.from = from;
   }
 
   async send(input: SendEmailInput): Promise<SendEmailOutput> {
+    if (!this.client && this.isDevelopment) {
+      // Local stack without an email provider: print the message in the logs so
+      // you can read the sign-in code with `docker compose logs worker`.
+      this.logger.warn(
+        `[no RESEND_API_KEY] email to ${input.to.join(', ')} | ${input.subject}\n${input.text ?? input.html}`,
+      );
+      return { id: 'logged-locally' };
+    }
     if (!this.client) {
       throw new Error('RESEND_API_KEY is required to send email');
     }
