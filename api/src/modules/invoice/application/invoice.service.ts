@@ -72,6 +72,17 @@ export type PreparedEmission =
       requestHash: string;
     };
 
+/** The address kept on the invoice: only what was informed, or nothing. */
+function customerAddressSnapshot(address: {
+  city?: string;
+  state?: string;
+  municipalityCode?: string;
+}) {
+  const { city, state, municipalityCode } = address;
+  if (!city && !state && !municipalityCode) return undefined;
+  return { city, state, municipalityCode };
+}
+
 function hashPayload(payload: unknown): string {
   const canonical = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(canonical);
@@ -320,11 +331,8 @@ export class InvoiceService {
               taxId: normalized.customer.taxId,
               name: normalized.customer.name,
               email: normalized.customer.email,
-              address: {
-                city: normalized.customer.address.city,
-                state: normalized.customer.address.state,
-                municipalityCode: normalized.customer.address.municipalityCode,
-              },
+              // No address informed: store none, never a placeholder.
+              address: customerAddressSnapshot(normalized.customer.address),
               foreign: normalized.customer.foreign,
             }
           : null,

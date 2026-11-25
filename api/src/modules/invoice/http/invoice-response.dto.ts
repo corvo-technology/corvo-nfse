@@ -20,8 +20,8 @@ export class CustomerSnapshotDto {
 
   @ApiPropertyOptional()
   address?: {
-    city: string;
-    state: string;
+    city?: string;
+    state?: string;
     country?: string;
   };
 

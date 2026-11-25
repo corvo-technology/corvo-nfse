@@ -29,8 +29,9 @@ export interface CustomerSnapshot {
   name: string;
   email?: string;
   address?: {
-    city: string;
-    state: string;
+    /** Absent when the customer address was not informed. */
+    city?: string;
+    state?: string;
     country?: string;
     /** Incidence municipality (7 digits) when explicitly informed. */
     municipalityCode?: string;
