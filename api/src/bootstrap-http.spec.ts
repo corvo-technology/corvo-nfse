@@ -95,6 +95,7 @@ describe('emptyBodyProbe', () => {
     chunks: string[],
   ): Promise<{ emptyBody: unknown }> {
     return new Promise((resolve, reject) => {
+      // nosemgrep: problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server -- loopback test server, no TLS needed
       const req = http.request(
         { port, method: 'POST', path: '/x', headers },
         (res) => {
