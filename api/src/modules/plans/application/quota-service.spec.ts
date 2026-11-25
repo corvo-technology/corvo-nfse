@@ -33,6 +33,7 @@ describe('QuotaService using the production implementation', () => {
       blocked: false,
       dailyUsage: 0,
       included_remaining: 10,
+      avulsoBalance: 0,
       hard_limit: 30,
       period: {
         authorized: 3,
@@ -83,6 +84,38 @@ describe('QuotaService using the production implementation', () => {
     credits.status.mockResolvedValue({ ...current, blocked: true });
     await expect(service.assertCanEmit('tenant')).rejects.toMatchObject({
       reason: 'plan_blocked',
+    });
+  });
+  it('counts avulso and bonus notes when the plan allowance is spent', async () => {
+    const current = (await credits.status()) as {
+      period: Record<string, unknown>;
+    };
+    credits.status.mockResolvedValue({
+      ...current,
+      included_remaining: 0,
+      avulsoBalance: 1012,
+      period: { ...current.period, included: 0, authorized: 0, reserved: 0 },
+      hard_limit: 0,
+    });
+    await expect(service.assertCanEmit('tenant')).resolves.toBeUndefined();
+    expect(await service.getStatus('tenant')).toMatchObject({
+      canEmit: true,
+      creditsRemaining: 0,
+      avulsoBalance: 1012,
+    });
+  });
+  it('still blocks with the allowance spent and no avulso balance', async () => {
+    const current = (await credits.status()) as {
+      period: Record<string, unknown>;
+    };
+    credits.status.mockResolvedValue({
+      ...current,
+      avulsoBalance: 0,
+      hard_limit: 0,
+      period: { ...current.period, included: 0, authorized: 0, reserved: 0 },
+    });
+    await expect(service.assertCanEmit('tenant')).rejects.toMatchObject({
+      reason: 'no_credits',
     });
   });
 });

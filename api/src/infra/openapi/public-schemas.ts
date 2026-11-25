@@ -768,6 +768,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
         description: 'Why `canEmit` is false.',
       }),
       creditsRemaining: int(),
+      avulsoBalance: int(),
       creditsUsed: int(),
       creditsReserved: int(),
       monthlyAllowance: int(),

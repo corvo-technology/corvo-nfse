@@ -12406,6 +12406,9 @@
           "activeCompanies": {
             "type": "integer"
           },
+          "avulsoBalance": {
+            "type": "integer"
+          },
           "canEmit": {
             "type": "boolean"
           },
@@ -12455,6 +12458,7 @@
         "required": [
           "canEmit",
           "creditsRemaining",
+          "avulsoBalance",
           "creditsUsed",
           "creditsReserved",
           "monthlyAllowance",
