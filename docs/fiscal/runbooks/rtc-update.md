@@ -28,6 +28,12 @@ O workflow semanal `receita-versions` (`scripts/check-receita-versions.sh`) abre
 6. **Reexecutar a captura**: com a calculadora de pé, `RTC_URL=http://<ip>:8080/api node scripts/rtc-capture-fixtures.mjs` reescreve as respostas em `docs/fiscal/rtc/fixtures/` (veja `docs/fiscal/rtc/README.md`). Depois ajuste os campos `expected` à mão. Regenerar os fixtures sob `docs/fiscal/rtc/fixtures/` na versão nova e revisar o diff do `expected` no PR. Se os valores mudaram, é decisão fiscal explícita, não ruído.
 7. **Publicar a imagem** (opcional, para deploys idênticos) com tag imutável `rtc-<versaoApp>-<versaoDb>` e apontar `RTC_IMAGE` para ela.
 
+## Tag movida pela Receita
+
+Em 2026-11-25 a Receita moveu a tag `1.7.2` do commit `32df719` para `39363aa` ("release: calculadora-rtc-regime-regular 1.7.2", feito pelo bot de CI). O build parou, como esperado, na conferência do `RTC_COMMIT`. A diferença são só duas classes apagadas, sem nenhuma referência no código: `core/util/ArredondamentoUtils.java` (cópia velha; todos os imports usam `shared/util/ArredondamentoUtils`, que é idêntica nos dois commits) e `CaptchaException.java`. Por isso o resultado do cálculo é o mesmo e só trocamos o `RTC_COMMIT`. A produção (`rtc-4b4f9f`) segue no commit antigo até o próximo deploy.
+
+Se isso acontecer de novo: compare `git diff --stat <commit antigo> <commit novo>` no clone da Receita, procure as classes mexidas com `grep -r` na árvore nova e só então atualize o `RTC_COMMIT`. O `scripts/check-receita-versions.sh` abre um issue "tag movida" quando detecta isso.
+
 ## Rollback
 
 Voltar `RTC_TAG`, `RTC_COMMIT` e `rtc-pinned-version.txt` ao valor anterior (ou apontar `RTC_IMAGE` para a tag da imagem anterior) e reconstruir. Como a tag fica fixa no GitHub, o build volta a dar o mesmo resultado.

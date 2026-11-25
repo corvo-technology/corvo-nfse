@@ -8,7 +8,9 @@ ARG JAVA_VERSION=25
 FROM eclipse-temurin:${JAVA_VERSION}-jdk AS build
 ARG RTC_REPO=https://github.com/ReceitaFederal/calculadora-rtc-regime-regular
 ARG RTC_TAG=1.7.2
-ARG RTC_COMMIT=32df7196356e81f2df08e6023fc2b6dbc48036d3
+# A Receita moveu a tag 1.7.2 em 2026-11-25 (de 32df719 para 39363aa): o novo commit só apaga duas classes sem uso
+# (core/util/ArredondamentoUtils, cópia velha da que fica em shared/util, e CaptchaException). O código que roda é o mesmo.
+ARG RTC_COMMIT=39363aa84103c6d58f7e8e76acb2f592691ec382
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git curl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
