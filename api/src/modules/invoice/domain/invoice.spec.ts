@@ -340,6 +340,46 @@ describe('Invoice', () => {
       expect(invoice.toSnapshot().authorizedAt).toBeInstanceOf(Date);
       expect(invoice.status).toBe('queued');
     });
+
+    it('uses the portal processing time when given, and clears old errors', () => {
+      const invoice = Invoice.create(defaultInput, 'tenant-123');
+      invoice.setRejected('E0014', 'old', 'provider');
+      invoice.setReconciliationRequired('No conclusive answer');
+      const processedAt = new Date('2026-11-23T10:00:00Z');
+
+      invoice.setAuthorized('K'.repeat(50), 1, processedAt);
+
+      const snapshot = invoice.toSnapshot();
+      expect(snapshot.authorizedAt).toEqual(processedAt);
+      expect(snapshot.issuedAt).toEqual(processedAt);
+      expect(snapshot.lastErrorCode).toBeNull();
+      expect(snapshot.lastErrorMessage).toBeNull();
+      expect(snapshot.lastErrorProvider).toBeNull();
+    });
+
+    it('falls back to now when the processing time is invalid', () => {
+      const invoice = Invoice.create(defaultInput, 'tenant-123');
+      invoice.setAuthorized('K'.repeat(50), 1, new Date('nope'));
+      expect(invoice.toSnapshot().authorizedAt!.getTime()).toBeGreaterThan(
+        Date.now() - 5000,
+      );
+    });
+  });
+
+  describe('toJSON of an authorized invoice', () => {
+    it('hides a stale error text without code, keeps a rejected cancellation', () => {
+      const stale = Invoice.create(defaultInput, 'tenant-123');
+      stale.setReconciliationRequired('No conclusive answer');
+      (stale as unknown as { props: { status: string } }).props.status =
+        'authorized';
+      expect(stale.toJSON().lastErrorMessage).toBeNull();
+
+      const rejected = Invoice.create(defaultInput, 'tenant-123');
+      rejected.setRejected('E0100', 'Cancel refused');
+      (rejected as unknown as { props: { status: string } }).props.status =
+        'authorized';
+      expect(rejected.toJSON().lastErrorMessage).toBe('Cancel refused');
+    });
   });
 
   describe('setRejected', () => {

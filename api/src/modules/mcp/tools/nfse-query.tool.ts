@@ -75,7 +75,7 @@ export function createNfseQueryHandler(
       status: invoice.status,
       nfse_number: invoice.nfseNumber?.toString() ?? null,
       authorized_at: snapshot.authorizedAt?.toISOString() ?? null,
-      last_error: snapshot.lastErrorMessage ?? null,
+      last_error: invoice.toJSON().lastErrorMessage ?? null,
     };
   };
 }

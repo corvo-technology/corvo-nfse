@@ -61,3 +61,20 @@ describe("invoiceErrorText", () => {
     expect(invoiceErrorText("E0999", null, has, text)).toBe("E0999");
   });
 });
+
+describe("codeless reconciliation notes", () => {
+  const { has, text } = table({ reconciliation_uncertain: "O portal fiscal não deu uma resposta conclusiva.", discard_not_confirmed: "Não deu para confirmar." });
+  it("shows the Portuguese text for the 6h manual-review note", () => {
+    expect(invoiceErrorText(null, "No conclusive answer from the fiscal portal for more than 6h. Retry it with the same DPS or discard it in manual review.", has, text)).toBe("O portal fiscal não deu uma resposta conclusiva.");
+    expect(invoiceErrorText(null, "Discard not confirmed: no answer", has, text)).toBe("Não deu para confirmar.");
+  });
+  it("keeps other codeless text as is", () => {
+    expect(invoiceErrorText(null, "Something else", has, text)).toBe("Something else");
+  });
+  it("has the texts in both languages", () => {
+    for (const key of ["reconciliation_uncertain", "discard_not_confirmed"]) {
+      expect((pt.ApiErrors as Record<string, string>)[key]).toBeTruthy();
+      expect((en.ApiErrors as Record<string, string>)[key]).toBeTruthy();
+    }
+  });
+});
