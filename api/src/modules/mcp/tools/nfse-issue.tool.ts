@@ -1,8 +1,10 @@
+import { HttpException } from '@nestjs/common';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import type { AuthContext } from '@/modules/auth/auth-context';
 import type { EmissionRouterService } from '@/modules/invoice-schedule/application/emission-router.service';
 import type { CreateInvoiceDto } from '@/modules/invoice/http/invoice.dto';
+import { IS_SELF_HOSTED } from '@/shared/deployment-mode';
 import { NfseIssueInput } from '../dto/tool-input.dto';
 import { invalidInput } from './tool-input-errors';
 
@@ -325,6 +327,41 @@ export type NfseIssueResult =
       ends_on: string | null;
     };
 
+const OUT_OF_CREDITS_CODES = new Set([
+  'ERROR_INSUFFICIENT_CREDITS',
+  'ERROR_QUOTA_EXCEEDED',
+]);
+const OUT_OF_CREDITS_ERRORS = new Set([
+  'InsufficientCreditsError',
+  'QuotaExceededError',
+]);
+const BUY_CREDITS_HINT =
+  ' Sem créditos: use credits_purchase para gerar uma cobrança (Pix ou cartão) e payment_status para acompanhar.';
+
+function isOutOfCredits(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  if (OUT_OF_CREDITS_ERRORS.has(error.name)) return true;
+  const code = (error as { code?: unknown }).code;
+  if (typeof code === 'string' && OUT_OF_CREDITS_CODES.has(code)) return true;
+  if (error instanceof HttpException) {
+    const body = error.getResponse();
+    const bodyCode =
+      typeof body === 'object' && body !== null
+        ? (body as { code?: unknown }).code
+        : undefined;
+    return typeof bodyCode === 'string' && OUT_OF_CREDITS_CODES.has(bodyCode);
+  }
+  return false;
+}
+
+/** When credits run out, tell the agent how to buy more (not offered when self-hosted). */
+export function withBuyCreditsHint(error: unknown): unknown {
+  if (IS_SELF_HOSTED || !isOutOfCredits(error)) return error;
+  return new Error(`${(error as Error).message}${BUY_CREDITS_HINT}`, {
+    cause: error,
+  });
+}
+
 export function createNfseIssueHandler(
   emitter: Pick<EmissionRouterService, 'emit'>,
 ) {
@@ -340,12 +377,17 @@ export function createNfseIssueHandler(
     if (errors.length > 0) throw invalidInput(errors);
     const dto = toCreateInvoiceDto(params);
 
-    const emitted = await emitter.emit(
-      dto,
-      ctx.tenantId,
-      ctx,
-      params.idempotency_key,
-    );
+    let emitted;
+    try {
+      emitted = await emitter.emit(
+        dto,
+        ctx.tenantId,
+        ctx,
+        params.idempotency_key,
+      );
+    } catch (error) {
+      throw withBuyCreditsHint(error);
+    }
     if (emitted.kind === 'schedule') {
       const schedule = emitted.schedule.props;
       return {

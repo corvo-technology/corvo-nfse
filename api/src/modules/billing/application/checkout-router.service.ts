@@ -5,6 +5,8 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
+import { AVULSO_UNIT_CENTS } from '@/modules/credits/domain/avulso';
 import type { WooviConfig } from '@/infra/config/configuration.types';
 import type { WooviCustomer } from '@/infra/external/woovi/woovi.client';
 import type { BillingCycle, PlanSlug } from '@/modules/plans/domain/plan';
@@ -31,9 +33,39 @@ export class CheckoutRouterService {
     private readonly stripe: StripePaymentsService,
     private readonly billing: BillingService,
     @Inject(WOOVI_CONFIG) private readonly wooviConfig: WooviConfig,
+    private readonly audit: AccountAuditRecorder,
   ) {}
 
   async start(tenantId: string, request: CheckoutRequest, key: string) {
+    const result = await this.route(tenantId, request, key);
+    // After the provider answered; never carries the code, the link or any secret.
+    await this.audit.record({
+      tenantId,
+      environment: null,
+      action: 'billing.charge_created',
+      target: {
+        type: 'payment',
+        id: 'paymentId' in result ? (result.paymentId ?? null) : null,
+      },
+      metadata:
+        request.kind === 'avulso'
+          ? {
+              method: request.method,
+              kind: request.kind,
+              units: request.units,
+              amount_cents: request.units * AVULSO_UNIT_CENTS,
+            }
+          : {
+              method: request.method,
+              kind: request.kind,
+              plan_slug: request.planSlug,
+              cycle: request.cycle,
+            },
+    });
+    return result;
+  }
+
+  private async route(tenantId: string, request: CheckoutRequest, key: string) {
     if (typeof key !== 'string' || key.trim().length === 0 || key.length > 200)
       throw new BadRequestException({
         code: 'IDEMPOTENCY_KEY_INVALID',

@@ -169,6 +169,19 @@ import {
   CREDITS_BALANCE_TOOL,
   createCreditsBalanceHandler,
 } from './tools/credits-balance.tool';
+import {
+  CREDITS_PURCHASE_TOOL,
+  createCreditsPurchaseHandler,
+} from './tools/credits-purchase.tool';
+import {
+  PAYMENT_STATUS_TOOL,
+  createPaymentStatusHandler,
+} from './tools/payment-status.tool';
+import { CheckoutRouterService } from '@/modules/billing/application/checkout-router.service';
+import { BillingService } from '@/modules/billing/application/billing.service';
+import { WooviPaymentsService } from '@/modules/billing/application/woovi-payments.service';
+import { IS_SELF_HOSTED } from '@/shared/deployment-mode';
+import { SCOPE_PERMISSION } from './mcp-client-policy';
 import { NFSE_GET_TOOL, createNfseGetHandler } from './tools/nfse-get.tool';
 import {
   COMPANY_FISCAL_STATUS_TOOL,
@@ -224,9 +237,13 @@ export class McpService {
     private readonly dpsSequences: IDpsSequenceRepository,
     @Inject(ITenantMembershipRepository)
     private readonly memberships: ITenantMembershipRepository,
+    private readonly checkoutRouter: CheckoutRouterService,
+    private readonly billingService: BillingService,
+    private readonly woovi: WooviPaymentsService,
   ) {
     this.server = new McpServer();
     this.registerTools();
+    this.registerBillingTools();
   }
 
   private registerTools(): void {
@@ -478,6 +495,32 @@ export class McpService {
         tool,
         this.wrapWithScopeCheck(handler, 'nfse:read'),
       );
+  }
+
+  /** Buying credits has no meaning without billing, so self-hosted never lists these. */
+  private registerBillingTools(): void {
+    if (IS_SELF_HOSTED) return;
+    const permission = SCOPE_PERMISSION['billing:purchase'];
+    this.server.registerTool(
+      CREDITS_PURCHASE_TOOL,
+      this.wrapWithScopeCheck(
+        createCreditsPurchaseHandler(this.checkoutRouter),
+        'billing:purchase',
+        permission,
+      ),
+    );
+    this.server.registerTool(
+      PAYMENT_STATUS_TOOL,
+      this.wrapWithScopeCheck(
+        createPaymentStatusHandler(
+          this.woovi,
+          this.billingService,
+          this.billingUsage,
+        ),
+        'billing:purchase',
+        permission,
+      ),
+    );
   }
 
   private wrapWithScopeCheck(

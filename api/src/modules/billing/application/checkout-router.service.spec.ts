@@ -4,11 +4,13 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { CheckoutRouterService } from './checkout-router.service';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 
 const tenant = '11111111-1111-4111-8111-111111111111';
 const pixResult = { method: 'pix', brCode: 'BR', paymentLinkUrl: 'u' };
 
 function setup(wooviEnabled = true) {
+  const audit = new FakeAccountAudit();
   const woovi = {
     startAvulso: jest.fn().mockResolvedValue(pixResult),
     startPlan: jest.fn().mockResolvedValue(pixResult),
@@ -30,9 +32,49 @@ function setup(wooviEnabled = true) {
       webhookToken: 't',
       apiUrl: 'x',
     },
+    audit,
   );
-  return { service, woovi, stripe, billing };
+  return { service, woovi, stripe, billing, audit };
 }
+
+describe('CheckoutRouterService audit', () => {
+  it('records billing.charge_created with method, kind, units and amount, no secrets', async () => {
+    const f = setup();
+    f.woovi.startAvulso.mockResolvedValue({
+      method: 'pix',
+      brCode: 'SECRET-BR',
+      paymentLinkUrl: 'https://pay/1',
+      paymentId: 'pay-1',
+    });
+    await f.service.start(
+      tenant,
+      { kind: 'avulso', units: 50, method: 'pix' },
+      'k',
+    );
+    expect(f.audit.events).toHaveLength(1);
+    expect(f.audit.events[0]).toMatchObject({
+      tenantId: tenant,
+      environment: null,
+      action: 'billing.charge_created',
+      target: { type: 'payment', id: 'pay-1' },
+      metadata: {
+        method: 'pix',
+        kind: 'avulso',
+        units: 50,
+        amount_cents: 4950,
+      },
+    });
+    expect(JSON.stringify(f.audit.events)).not.toContain('SECRET-BR');
+  });
+  it('does not record when the provider fails', async () => {
+    const f = setup();
+    f.woovi.startAvulso.mockRejectedValue(new Error('boom'));
+    await expect(
+      f.service.start(tenant, { kind: 'avulso', units: 5, method: 'pix' }, 'k'),
+    ).rejects.toThrow('boom');
+    expect(f.audit.events).toHaveLength(0);
+  });
+});
 
 describe('CheckoutRouterService', () => {
   it('pix + avulso -> Woovi charge', async () => {

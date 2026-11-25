@@ -14,6 +14,7 @@ import { InvoiceModule } from '@/modules/invoice/invoice.module';
 import { ServiceFavoritesModule } from '@/modules/service-favorites/service-favorites.module';
 import { CertificateModule } from '@/modules/certificate/certificate.module';
 import { BillingUsageModule } from '@/modules/billing/billing-usage.module';
+import { BillingCoreModule } from '@/modules/billing/billing-core.module';
 import { CreditsModule } from '@/modules/credits/credits.module';
 import { PlansModule } from '@/modules/plans/plans.module';
 import { AuthModule } from '@/modules/auth/auth.module';
@@ -48,6 +49,7 @@ import { McpService } from './mcp.service';
     // Read tools: certificate status, credit balance/history.
     CertificateModule,
     BillingUsageModule,
+    BillingCoreModule,
     CreditsModule,
     // Company listing for the company_list tool.
     CompanyModule,
