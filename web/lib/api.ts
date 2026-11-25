@@ -394,7 +394,9 @@ export interface McpConsentContext {
   client: { id: string; name: string };
   redirect_host: string;
   scopes: { name: string; description: string }[];
-  tenants: { id: string; name: string; allowed_scopes: string[] }[];
+  /** Extra permissions, offered unchecked. Absent on an older API. */
+  optional_scopes?: { name: string; description: string }[];
+  tenants: { id: string; name: string; allowed_scopes: string[]; allowed_optional_scopes?: string[] }[];
 }
 export interface McpConsentParams { client_id: string; redirect_uri: string; scope?: string; state: string; code_challenge: string; code_challenge_method: string }
 export interface McpConnection {
@@ -403,7 +405,7 @@ export interface McpConnection {
 }
 export const mcp = {
   consentContext: async (params: McpConsentParams, signal?: AbortSignal) => unwrap(await request<Envelope<McpConsentContext>>(`/mcp/consent${query(params)}`, { signal })),
-  decide: async (params: McpConsentParams, decision: "allow" | "deny", tenantId?: string, environment?: "test" | "live") => unwrap(await request<Envelope<{ redirect_url: string }>>("/mcp/consent", json({ ...params, decision, ...(tenantId ? { tenant_id: tenantId } : {}), ...(environment ? { environment } : {}) }))),
+  decide: async (params: McpConsentParams, decision: "allow" | "deny", tenantId?: string, environment?: "test" | "live", scopes?: string[]) => unwrap(await request<Envelope<{ redirect_url: string }>>("/mcp/consent", json({ ...params, ...(scopes ? { scope: scopes.join(" ") } : {}), decision, ...(tenantId ? { tenant_id: tenantId } : {}), ...(environment ? { environment } : {}) }))),
   connections: async (params: PageParams = {}, signal?: AbortSignal) => toPage(await request<ListBody<McpConnection>>(`/mcp/connections${query(params)}`, { signal })),
   revoke: async (id: string) => unwrap(await request<Envelope<{ revoked: boolean }>>(`/mcp/connections/${idPath(id)}`, { method: "DELETE" })),
 };

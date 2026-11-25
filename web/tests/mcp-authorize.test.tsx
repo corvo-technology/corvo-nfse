@@ -28,9 +28,13 @@ const context = {
   client: { id: "corvo-mcp-abc12345", name: "Claude Code" },
   redirect_host: "localhost:7001",
   scopes: [{ name: "nfse:read", description: "Read" }, { name: "nfse:write", description: "Write" }],
+  optional_scopes: [
+    { name: "nfse:certificates", description: "Certificates" },
+    { name: "billing:purchase", description: "Purchases" },
+  ],
   tenants: [
-    { id: "t-1", name: "Acme", allowed_scopes: ["nfse:read", "nfse:write"] },
-    { id: "t-2", name: "Billing only", allowed_scopes: ["nfse:read"] },
+    { id: "t-1", name: "Acme", allowed_scopes: ["nfse:read", "nfse:write"], allowed_optional_scopes: ["nfse:certificates", "billing:purchase"] },
+    { id: "t-2", name: "Billing only", allowed_scopes: ["nfse:read"], allowed_optional_scopes: [] },
   ],
 };
 const assign = vi.fn();
@@ -65,7 +69,7 @@ describe("MCP authorize screen", () => {
     expect(screen.getByText("Tax preview")).toBeTruthy();
     expect(screen.getByText("Plan and quotas")).toBeTruthy();
     expect(screen.getByText("Create company")).toBeTruthy();
-    expect(screen.getByText(/A1 certificates and passwords/)).toBeTruthy();
+    expect(screen.getByText("If you allow it, the agent can upload the certificate. Corvo stores it encrypted and never returns the password.")).toBeTruthy();
     expect((screen.getByLabelText("Acme") as HTMLInputElement).checked).toBe(true);
     expect((screen.getByLabelText(/Billing only/) as HTMLInputElement).disabled).toBe(true);
   });
@@ -76,7 +80,7 @@ describe("MCP authorize screen", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Allow" }));
 
     await waitFor(() => expect(assign).toHaveBeenCalledWith("http://localhost:7001/callback?code=c1&state=st"));
-    expect(mocks.decide).toHaveBeenCalledWith(expect.objectContaining({ client_id: "corvo-mcp-abc12345", state: "st" }), "allow", "t-1", "test");
+    expect(mocks.decide).toHaveBeenCalledWith(expect.objectContaining({ client_id: "corvo-mcp-abc12345", state: "st" }), "allow", "t-1", "test", ["nfse:read", "nfse:write"]);
     await screen.findByText("Connected!");
   });
 
@@ -86,7 +90,36 @@ describe("MCP authorize screen", () => {
     expect((await screen.findByLabelText(/^Test/) as HTMLInputElement).checked).toBe(true);
     fireEvent.click(screen.getByLabelText(/^Production/));
     fireEvent.click(screen.getByRole("button", { name: "Allow" }));
-    await waitFor(() => expect(mocks.decide).toHaveBeenCalledWith(expect.anything(), "allow", "t-1", "live"));
+    await waitFor(() => expect(mocks.decide).toHaveBeenCalledWith(expect.anything(), "allow", "t-1", "live", ["nfse:read", "nfse:write"]));
+  });
+
+  it("shows the optional permissions unchecked and sends only the base scopes by default", async () => {
+    mocks.decide.mockResolvedValue({ redirect_url: "http://localhost:7001/callback?code=c1&state=st" });
+    renderPage();
+    const certificates = (await screen.findByLabelText(/Upload the company's digital certificate/)) as HTMLInputElement;
+    const purchase = screen.getByLabelText(/Create credit charges/) as HTMLInputElement;
+    expect(certificates.checked).toBe(false);
+    expect(purchase.checked).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Allow" }));
+    await waitFor(() => expect(mocks.decide).toHaveBeenCalledWith(expect.anything(), "allow", "t-1", "test", ["nfse:read", "nfse:write"]));
+  });
+
+  it("sends the optional scope the user ticks", async () => {
+    mocks.decide.mockResolvedValue({ redirect_url: "http://localhost:7001/callback?code=c1&state=st" });
+    renderPage();
+    fireEvent.click(await screen.findByLabelText(/Upload the company's digital certificate/));
+    fireEvent.click(screen.getByRole("button", { name: "Allow" }));
+    await waitFor(() => expect(mocks.decide).toHaveBeenCalledWith(expect.anything(), "allow", "t-1", "test", ["nfse:read", "nfse:write", "nfse:certificates"]));
+  });
+
+  it("disables an optional permission the role cannot grant", async () => {
+    mocks.consentContext.mockResolvedValue({
+      ...context,
+      tenants: [{ id: "t-1", name: "Acme", allowed_scopes: ["nfse:read", "nfse:write"], allowed_optional_scopes: ["nfse:certificates"] }],
+    });
+    renderPage();
+    expect(((await screen.findByLabelText(/Create credit charges/)) as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText(/Upload the company's digital certificate/) as HTMLInputElement).disabled).toBe(false);
   });
 
   it("denies without a workspace and shows the denied state", async () => {
@@ -95,7 +128,7 @@ describe("MCP authorize screen", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Deny" }));
 
     await screen.findByText("Access denied");
-    expect(mocks.decide).toHaveBeenCalledWith(expect.anything(), "deny", undefined, undefined);
+    expect(mocks.decide).toHaveBeenCalledWith(expect.anything(), "deny", undefined, undefined, undefined);
   });
 
   it("shows an invalid-link message when the parameters are missing or rejected", async () => {

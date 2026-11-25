@@ -2601,7 +2601,7 @@
     "wants": "{name} quer acessar sua conta Corvo",
     "returnTo": "Depois de decidir, você volta para {host}.",
     "canDo": "Acessos que você está concedendo",
-    "certificateNote": "Certificados A1 e senhas não são disponibilizados ao agente; o envio continua exclusivamente pela API.",
+    "certificateNote": "Se você permitir, o agente pode enviar o certificado. A Corvo guarda criptografado e nunca devolve a senha.",
     "workspace": "Workspace",
     "workspaceBlocked": "Seu papel neste workspace não permite estas permissões.",
     "manage": "Você pode revogar o acesso a qualquer momento em Agentes de IA.",
@@ -2614,9 +2614,15 @@
     "deniedTitle": "Acesso negado",
     "deniedBody": "Nenhuma permissão foi concedida.",
     "goDashboard": "Ir para o painel",
+    "optional": {
+      "title": "Permissões extras (opcionais)",
+      "blocked": "Seu papel neste workspace não permite esta permissão."
+    },
     "scopes": {
       "nfse:read": "Consultar e preparar operações",
-      "nfse:write": "Criar e alterar operações"
+      "nfse:write": "Criar e alterar operações",
+      "nfse:certificates": "Enviar o certificado digital da empresa",
+      "billing:purchase": "Gerar cobranças de créditos (Pix ou cartão). O pagamento é sempre feito por você."
     },
     "tools": {
       "read": {
@@ -2634,6 +2640,14 @@
         "companyDetail": "cadastrar emissor no ambiente selecionado",
         "invoices": "Emitir e cancelar NFS-e",
         "invoicesDetail": "iniciar emissão ou cancelamento"
+      },
+      "certificates": {
+        "upload": "Certificado digital",
+        "uploadDetail": "enviar o certificado A1 de uma empresa; a senha nunca volta"
+      },
+      "purchase": {
+        "credits": "Cobrança de créditos",
+        "creditsDetail": "gerar Pix ou link de cartão; você paga"
       }
     },
     "errors": {

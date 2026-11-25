@@ -151,7 +151,9 @@ describe('MCP tools (JSON-RPC over POST /v1/mcp) (e2e)', () => {
       text: string;
     }>;
     expect(res.body.result.isError).toBe(true);
-    expect(content[0].text).toContain('nfse:write');
+    expect(content[0].text).toContain(
+      'Criar empresas, emitir e cancelar notas fiscais',
+    );
   });
 
   it('nfse_query returns an error result for an unknown access key', async () => {

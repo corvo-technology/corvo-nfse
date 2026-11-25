@@ -3,7 +3,7 @@ import { Controller, Get, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { PublicRoute } from '../auth/application/public-route.decorator';
-import { MCP_SCOPES } from './mcp-client-policy';
+import { supportedScopes } from './mcp-client-policy';
 import { McpUrlService } from './mcp-urls.service';
 
 /**
@@ -35,7 +35,7 @@ export class McpDiscoveryController {
     return {
       resource: this.urls.mcpResource(req),
       authorization_servers: [this.urls.apiOrigin(req)],
-      scopes_supported: [...MCP_SCOPES],
+      scopes_supported: supportedScopes(),
       bearer_methods_supported: ['header'],
       resource_name: 'Corvo NFS-e',
     };
@@ -64,7 +64,7 @@ export class McpDiscoveryController {
       grant_types_supported: ['authorization_code', 'refresh_token'],
       code_challenge_methods_supported: ['S256'],
       token_endpoint_auth_methods_supported: ['none'],
-      scopes_supported: [...MCP_SCOPES],
+      scopes_supported: supportedScopes(),
     };
   }
 }

@@ -49,6 +49,15 @@ import {
 } from './tools/import.tools';
 import { McpServer } from './mcp.server';
 import {
+  missingMemberPermissionMessage,
+  missingScopeMessage,
+} from './mcp-client-policy';
+import {
+  permissionsForTenantRole,
+  type TenantPermission,
+} from '../auth/domain/permission';
+import { ITenantMembershipRepository } from '../auth/domain/tenant-membership.repository';
+import {
   NFSE_ISSUE_TOOL,
   createNfseIssueHandler,
 } from './tools/nfse-issue.tool';
@@ -213,6 +222,8 @@ export class McpService {
     private readonly cnpjRegistry: SimplesRegistryPort,
     @Inject(DPS_SEQUENCE_REPOSITORY)
     private readonly dpsSequences: IDpsSequenceRepository,
+    @Inject(ITenantMembershipRepository)
+    private readonly memberships: ITenantMembershipRepository,
   ) {
     this.server = new McpServer();
     this.registerTools();
@@ -472,11 +483,25 @@ export class McpService {
   private wrapWithScopeCheck(
     handler: ToolHandler,
     requiredScope: string,
+    memberPermission?: TenantPermission,
   ): ToolHandler {
     return async (params: unknown, ctx: AuthContext) => {
       const scopes = ctx.scope?.split(' ') ?? [];
       if (!scopes.includes(requiredScope)) {
-        throw new Error(`Forbidden: requires scope '${requiredScope}'`);
+        throw new Error(missingScopeMessage(requiredScope));
+      }
+      if (memberPermission) {
+        // The role may have changed since the person authorized the connection.
+        const membership = await this.memberships.findByAuthUserAndTenant(
+          ctx.authUserId,
+          ctx.activeTenantId,
+        );
+        if (
+          !membership?.isActive ||
+          !permissionsForTenantRole(membership.role).includes(memberPermission)
+        ) {
+          throw new Error(missingMemberPermissionMessage(memberPermission));
+        }
       }
       return handler(params, ctx);
     };
