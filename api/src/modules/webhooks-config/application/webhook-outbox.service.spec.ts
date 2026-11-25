@@ -46,6 +46,7 @@ describe('WebhookOutboxService', () => {
     const secrets = overrides.secrets ?? {
       findSecret: jest.fn().mockResolvedValue('test-secret'),
     };
+    const bus = { publishBestEffort: jest.fn() };
     const service = new WebhookOutboxService(
       {
         visit: async (_kind: string, work: (id: string) => Promise<void>) =>
@@ -54,9 +55,80 @@ describe('WebhookOutboxService', () => {
       repo as never,
       adapter,
       secrets,
+      bus as never,
     );
-    return { service, repo, adapter, secrets };
+    return { service, repo, adapter, secrets, bus };
   }
+
+  it('saves the invoice of the event with the delivery and logs it', async () => {
+    const invoiceId = '33333333-3333-4333-8333-333333333333';
+    const save = jest.fn((record: unknown) => Promise.resolve(record));
+    const { service } = buildService({
+      repo: { update: jest.fn(), save } as never,
+    });
+    const logSpy = jest
+      .spyOn(
+        (service as unknown as { logger: { log: () => void } }).logger,
+        'log',
+      )
+      .mockImplementation();
+    await service.enqueue({
+      tenantId: 'tenant-1',
+      webhookConfigId: 'config-1',
+      eventType: 'nfse.invoice.authorized',
+      environment: 'live',
+      url: 'https://example.test/webhook',
+      payload: { ...event, data: { invoiceId } },
+      secret: 'shh',
+    });
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ invoiceId }),
+      'tenant-1',
+    );
+    const line = String(logSpy.mock.calls[0][0]);
+    expect(line).toContain(`invoiceId=${invoiceId}`);
+    expect(line).toContain('eventType=nfse.invoice.authorized');
+    expect(line).not.toContain('shh');
+    expect(line).not.toContain('example.test');
+  });
+
+  it('does not invent an invoice for events without one', async () => {
+    const save = jest.fn((record: unknown) => Promise.resolve(record));
+    const { service } = buildService({
+      repo: { update: jest.fn(), save } as never,
+    });
+    await service.enqueue({
+      tenantId: 'tenant-1',
+      webhookConfigId: 'config-1',
+      eventType: 'webhook.test',
+      environment: 'test',
+      url: 'https://example.test/webhook',
+      payload: { ...event, data: { invoiceId: 'not-a-uuid' } },
+      secret: 'shh',
+    });
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ invoiceId: undefined }),
+      'tenant-1',
+    );
+  });
+
+  it('logs the event and invoice when a delivery goes through', async () => {
+    const { service } = buildService();
+    const logSpy = jest
+      .spyOn(
+        (service as unknown as { logger: { log: () => void } }).logger,
+        'log',
+      )
+      .mockImplementation();
+    await service.attemptDelivery(
+      { ...baseDelivery, invoiceId: 'inv-1' },
+      event,
+      'test-secret',
+    );
+    expect(String(logSpy.mock.calls[0][0])).toContain(
+      'delivered successfully eventType=webhook.test invoiceId=inv-1',
+    );
+  });
 
   it('records the HTTP status code after a successful delivery', async () => {
     const { service, repo } = buildService({
@@ -90,6 +162,54 @@ describe('WebhookOutboxService', () => {
       'tenant-1',
       expect.objectContaining({ status: 'delayed', statusCode: 405 }),
     );
+  });
+
+  describe('alert on final failure', () => {
+    const lastTry = {
+      ...baseDelivery,
+      environment: 'live' as const,
+      eventType: 'nfse.invoice.authorized',
+      retryCount: 4,
+    };
+    const failing = () => ({
+      sign: jest.fn().mockReturnValue('signature'),
+      send: jest.fn().mockRejectedValue(new WebhookDeliveryHttpError(500)),
+    });
+
+    it('warns the account once the last try fails', async () => {
+      const { service, bus } = buildService({ adapter: failing() });
+      await service.attemptDelivery(lastTry, event, 'test-secret');
+      expect(bus.publishBestEffort).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          notice: {
+            kind: 'webhook-delivery-failed',
+            webhookConfigId: 'config-1',
+            eventType: 'nfse.invoice.authorized',
+          },
+        }),
+      );
+    });
+
+    it('stays quiet while retries are left', async () => {
+      const { service, bus } = buildService({ adapter: failing() });
+      await service.attemptDelivery(
+        { ...lastTry, retryCount: 1 },
+        event,
+        'test-secret',
+      );
+      expect(bus.publishBestEffort).not.toHaveBeenCalled();
+    });
+
+    it('stays quiet for test deliveries', async () => {
+      const { service, bus } = buildService({ adapter: failing() });
+      await service.attemptDelivery(
+        { ...lastTry, environment: 'test' },
+        event,
+        'test-secret',
+      );
+      expect(bus.publishBestEffort).not.toHaveBeenCalled();
+    });
   });
 
   it('keeps statusCode empty for transport failures', async () => {

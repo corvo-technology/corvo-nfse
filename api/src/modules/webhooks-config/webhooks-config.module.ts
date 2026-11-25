@@ -49,6 +49,7 @@ import { EnvWebhookSecrets } from './infra/env-webhook-secrets';
   exports: [
     WebhookConfigService,
     WebhookOutboxService,
+    WebhookDeliveryService,
     WebhookEventEmitter,
     IWebhookConfigRepository,
     IWebhookDeliveryRepository,

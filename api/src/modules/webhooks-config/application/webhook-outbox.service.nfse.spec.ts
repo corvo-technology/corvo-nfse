@@ -90,6 +90,7 @@ describe('WebhookOutboxService - NFS-e Events', () => {
       repo as never,
       adapter,
       secrets,
+      { publishBestEffort: jest.fn() } as never,
     );
     return { service, repo, adapter, secrets };
   }

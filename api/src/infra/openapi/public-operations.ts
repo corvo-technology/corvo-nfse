@@ -55,13 +55,42 @@ const page = (schema: Schema): Schema => ({
 });
 const nothing = data({ type: 'object', nullable: true });
 
+/** Filters of the delivery list (the stats only use the period and the environment). */
+const DELIVERY_FILTERS: Schema[] = [
+  {
+    name: 'invoice_id',
+    in: 'query',
+    required: false,
+    description: 'Only deliveries about this invoice.',
+    schema: { type: 'string', format: 'uuid' },
+  },
+  {
+    name: 'event_type',
+    in: 'query',
+    required: false,
+    description: 'Only this event, for example `nfse.invoice.authorized`.',
+    schema: { type: 'string', maxLength: 100 },
+  },
+  {
+    name: 'status',
+    in: 'query',
+    required: false,
+    description: 'Only deliveries in this status.',
+    schema: {
+      type: 'string',
+      enum: ['pending', 'sent', 'delayed', 'failed', 'manual_retry'],
+    },
+  },
+];
+
 const DELIVERY_PARAMS: Schema[] = [
   {
     name: 'hours',
     in: 'query',
     required: false,
-    description: 'Look back this many hours (default 24).',
-    schema: { type: 'number', minimum: 0.01, default: 24 },
+    description:
+      'Look back this many hours (default 24, at most 720 = 30 days).',
+    schema: { type: 'number', minimum: 0.01, maximum: 720, default: 24 },
   },
   {
     name: 'environment',
@@ -703,9 +732,9 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'webhookDeliveries_list',
     tag: 'Webhooks',
     description:
-      'Recent deliveries (last 24 hours by default) with the endpoint answer, newest first.',
+      'Recent deliveries (last 24 hours by default, up to 30 days with `hours`) with the endpoint answer, newest first. Filter by `invoice_id`, `event_type` or `status`.',
     ok: { 200: page(ref('WebhookDelivery')) },
-    extraParams: DELIVERY_PARAMS,
+    extraParams: [...DELIVERY_PARAMS, ...DELIVERY_FILTERS],
   },
   'GET /webhooks/deliveries/stats': {
     id: 'webhookDeliveries_stats',

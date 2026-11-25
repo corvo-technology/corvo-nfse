@@ -11,7 +11,7 @@ vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: str
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "inv-1" }), useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ success: vi.fn(), error: vi.fn() }) }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: () => true }) }));
-vi.mock("@/lib/api", () => ({ invoices: { get: mocks.get, events: vi.fn() }, collectAll: async () => mocks.events() }));
+vi.mock("@/lib/api", () => ({ invoices: { get: mocks.get, events: vi.fn() }, webhooks: { deliveries: async () => ({ items: [], hasMore: false, nextCursor: null }) }, collectAll: async () => mocks.events() }));
 
 afterEach(() => { cleanup(); mocks.get.mockReset(); mocks.events.mockReset(); mocks.events.mockReturnValue([]); });
 
