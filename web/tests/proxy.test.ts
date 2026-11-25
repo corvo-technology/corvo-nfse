@@ -206,3 +206,12 @@ it("forwards the profile name update with PATCH only", async () => {
   for (const handler of [GET, POST, DELETE]) expect((await handler(new NextRequest("http://localhost:4000/api/proxy/v1/auth/profile", { method: handler === GET ? "GET" : handler === POST ? "POST" : "DELETE", headers: { origin: "http://localhost:4000" } }), context("auth/profile"))).status).toBe(404);
   expect(fetchMock).not.toHaveBeenCalled();
 });
+
+it("forwards GET audit-events and refuses POST", async () => {
+  fetchMock.mockReset(); fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+  const ok = await GET(new NextRequest("http://localhost:4000/api/proxy/v1/audit-events?actor_type=agent&limit=50"), context("audit-events"));
+  expect(ok.status).toBe(200);
+  expect(String(fetchMock.mock.calls[0][0])).toBe("http://localhost:3000/v1/audit-events?actor_type=agent&limit=50");
+  const refused = await POST(new NextRequest("http://localhost:4000/api/proxy/v1/audit-events", { method: "POST", headers: { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin" } }), context("audit-events"));
+  expect(refused.status).toBe(404);
+});

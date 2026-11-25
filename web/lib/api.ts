@@ -1,4 +1,5 @@
 import type { ServiceFavorite, ServiceFavoriteInput, ForeignCustomer, SavedCustomer, CustomerRegistryInfo, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { AuditActorFilter, AuditEvent } from "./audit";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -143,6 +144,13 @@ export const apiKeys = {
   list: async (params: PageParams = {}) => toPage(await request<ListBody<ApiKey>>(`/auth/api-keys${query(params)}`)),
   create: async (data: { name: string; environment: string; scope: string; expiresAt?: string }) => unwrap(await request<Envelope<ApiKeyCreated>>("/auth/api-keys", json(data))),
   delete: async (id: string) => unwrap(await request<Envelope<{ deleted: boolean }>>(`/auth/api-keys/${idPath(id)}`, { method: "DELETE" })),
+};
+/** Account audit trail (admins only). The wire already uses camelCase; only the filter name is snake_case. */
+export const auditEvents = {
+  list: async (params: { actorType?: Exclude<AuditActorFilter, "all">; from?: string; to?: string; cursor?: string; limit?: number } = {}, signal?: AbortSignal): Promise<Page<AuditEvent>> => {
+    const { actorType, ...rest } = params;
+    return toPage(await request<ListBody<AuditEvent>>(`/audit-events${query({ ...rest, actor_type: actorType })}`, { signal }));
+  },
 };
 // Avulso credit purchases are gone (preview/confirm return 410): balance and history only.
 export const credits = {

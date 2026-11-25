@@ -21,7 +21,9 @@ describe("permissionForPath", () => {
     ["/app/integrations/abc", "integrations.view"],
     ["/app/billing/success", "billing.view"],
     ["/app/members", "settings.manage"],
-    ["/app/members/", "settings.manage"],
+    ["/app/settings/audit", "settings.manage"],
+    ["/app/settings", "billing.view"],
+    ["/app/members/","settings.manage"],
     ["/app/members?x=1", "settings.manage"],
   ])("%s needs %s", (path, permission) => {
     expect(permissionForPath(path)).toBe(permission);

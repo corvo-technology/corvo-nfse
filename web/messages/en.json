@@ -560,6 +560,7 @@
     }
   },
   "Settings": {
+    "tabs": { "label": "Settings sections", "general": "General", "audit": "Audit" },
     "title": "Settings",
     "subtitle": "Environment and billing settings.",
     "billing": "Billing",
@@ -584,6 +585,45 @@
       "loadFailed": "Could not load your payments.",
       "elsewhere": "Payments and their history live in Billing.",
       "openBilling": "Open Billing"
+    }
+  },
+  "Audit": {
+    "title": "Audit",
+    "subtitle": "Who did what on your account. We keep the last 12 months.",
+    "columns": { "when": "When", "who": "Who", "action": "Action", "item": "Item" },
+    "filters": {
+      "who": "Who",
+      "period": "Period",
+      "all": "Everyone",
+      "user": "People",
+      "agent": "Agents",
+      "api_key": "API keys",
+      "system": "System",
+      "d7": "Last 7 days",
+      "d30": "Last 30 days",
+      "y1": "Last year"
+    },
+    "agentBadge": "Agent",
+    "system": "System",
+    "caption": "Account activity history",
+    "loading": "Loading the audit trail",
+    "empty": "Nothing recorded in this period.",
+    "error": "Could not load the audit trail.",
+    "loadMore": "Load more",
+    "charge": { "pix": "Pix", "card": "Card" },
+    "credits": "{count, plural, one {# credit} other {# credits}}",
+    "actions": {
+      "company": { "created": "Created a company", "updated": "Updated a company", "deleted": "Deleted a company" },
+      "certificate": { "uploaded": "Uploaded a certificate", "replaced": "Replaced a certificate", "revoked": "Removed a certificate" },
+      "invoice": { "issued": "Issued an invoice", "cancelled": "Cancelled an invoice", "substituted": "Replaced an invoice", "email_resent": "Resent an invoice email", "batch_issued": "Issued invoices in a batch" },
+      "import": { "emitted": "Issued invoices from an import" },
+      "schedule": { "created": "Created a schedule", "paused": "Paused a schedule", "resumed": "Resumed a schedule", "cancelled": "Cancelled a schedule" },
+      "billing": { "charge_created": "Created a charge", "payment_confirmed": "Payment confirmed", "plan_changed": "Changed plan" },
+      "member": { "invited": "Invited a member", "removed": "Removed a member", "role_changed": "Changed a member's role" },
+      "invitation": { "accepted": "Accepted an invitation" },
+      "api_key": { "created": "Created an API key", "revoked": "Revoked an API key" },
+      "agent": { "connected": "Connected an agent", "disconnected": "Disconnected an agent" },
+      "accountant": { "package_sent": "Sent the package to the accountant", "email_changed": "Changed the accountant's email" }
     }
   },
   "Members": {
