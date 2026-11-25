@@ -76,6 +76,16 @@ describe("notes list filters", () => {
 });
 
 describe("manual review filter", () => {
+  it("warns that notes need a decision and opens the filter from the banner", async () => {
+    mocks.invoices.mockResolvedValue({ items: [invoice("r1", "Bar Lua", "manual_review"), invoice("r2", "Café Mar", "manual_review"), invoice("a1", "Padaria Estrela", "authorized")], hasMore: false, nextCursor: null });
+    renderPage();
+    expect(await screen.findByText("2 invoices need your decision")).toBeTruthy();
+    mocks.invoices.mockResolvedValue({ items: [invoice("r1", "Bar Lua", "manual_review"), invoice("r2", "Café Mar", "manual_review")], hasMore: false, nextCursor: null });
+    fireEvent.click(screen.getByRole("button", { name: "Review and resolve" }));
+    expect(await screen.findByRole("button", { name: "Retry all 2" })).toBeTruthy();
+    expect(screen.queryByText("2 invoices need your decision")).toBeNull();
+  });
+
   it("reads every invoice in manual review from the API and offers the batch actions", async () => {
     renderPage();
     await screen.findAllByText("Padaria Estrela");

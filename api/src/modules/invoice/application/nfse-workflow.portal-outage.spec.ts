@@ -1,5 +1,7 @@
 import type { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { Invoice } from '../domain/invoice';
 import { DpsBuilder } from '../domain/fiscal/dps/dps-builder';
 import type { IFiscalSnapshotRepository } from '../domain/fiscal/fiscal-snapshot.repository';
@@ -27,6 +29,12 @@ const authorized = {
   nfseNumber: 7,
   xmlAuthorized: '<NFSe/>',
 };
+
+const realXml = readFileSync(
+  join(__dirname, '../infra/danfse/__fixtures__/authorized-nfse.xml'),
+  'utf8',
+);
+const PORTAL_TIME = new Date('2026-10-16T20:33:15-03:00');
 
 describe('NfseWorkflowService when the fiscal portal is down', () => {
   const provider = { issue: jest.fn(), queryByDps: jest.fn() };
@@ -225,6 +233,24 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
       expect(provider.issue).not.toHaveBeenCalled();
     });
 
+    it('authorizing from a discard clears the old error and uses the portal time', async () => {
+      const invoice = invoiceIn('manual_review');
+      invoice.setReconciliationRequired('No conclusive answer');
+      provider.queryByDps.mockResolvedValue({
+        status: 'authorized',
+        ...authorized,
+        xmlAuthorized: realXml,
+      });
+
+      await discard(invoice);
+
+      const snapshot = invoice.toSnapshot();
+      expect(snapshot.status).toBe('authorized');
+      expect(snapshot.lastErrorMessage).toBeNull();
+      expect(snapshot.authorizedAt).toEqual(PORTAL_TIME);
+      expect(snapshot.issuedAt).toEqual(PORTAL_TIME);
+    });
+
     it('authorizes instead when the NFS-e already exists on the portal', async () => {
       const invoice = invoiceIn('manual_review');
       provider.queryByDps.mockResolvedValue({
@@ -273,6 +299,39 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
     afterEach(() => {
       info.mockRestore();
       warn.mockRestore();
+    });
+
+    it('clears the old error and uses the portal processing time (dhProc)', async () => {
+      const invoice = invoiceIn('manual_review');
+      invoice.setReconciliationRequired('No conclusive answer');
+      provider.queryByDps.mockResolvedValue({
+        status: 'authorized',
+        ...authorized,
+        xmlAuthorized: realXml,
+      });
+
+      await sweep(invoice);
+
+      const snapshot = invoice.toSnapshot();
+      expect(snapshot.status).toBe('authorized');
+      expect(snapshot.lastErrorMessage).toBeNull();
+      expect(snapshot.lastErrorCode).toBeNull();
+      expect(snapshot.authorizedAt).toEqual(PORTAL_TIME);
+      expect(snapshot.issuedAt).toEqual(PORTAL_TIME);
+    });
+
+    it('falls back to now when the XML has no readable dhProc', async () => {
+      const invoice = invoiceIn('manual_review');
+      provider.queryByDps.mockResolvedValue({
+        status: 'authorized',
+        ...authorized,
+      });
+
+      await sweep(invoice);
+
+      expect(invoice.toSnapshot().authorizedAt!.getTime()).toBeGreaterThan(
+        Date.now() - 5000,
+      );
     });
 
     it('authorizes when the portal already has the DPS, without sending anything', async () => {

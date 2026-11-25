@@ -110,6 +110,12 @@ function InvoicesList() {
         </select>
       </label>
 
+      {!reviewing && !loading && countOf("manual_review") > 0 && (
+        <p role="status" className="banner banner-warn flex flex-wrap items-center justify-between gap-2">
+          <span>{t("needsDecision", { count: countOf("manual_review") })}</span>
+          <button type="button" className="btn btn-secondary" onClick={() => setFilter("manual_review")}>{t("needsDecisionAction")}</button>
+        </p>
+      )}
       {filter === "scheduled" && <SchedulePanel />}
       {reviewing && !loading && can("nfse.invoices.issue") && <ManualReviewActions invoiceIds={filtered.map((i) => i.id)} onDone={reload} />}
       {(filter !== "scheduled" || scheduled.length > 0) && <p className="text-sm text-text-3">{t("loadedRecords", { count: all.length })}</p>}

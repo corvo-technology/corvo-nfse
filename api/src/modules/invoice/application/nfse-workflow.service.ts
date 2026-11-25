@@ -6,7 +6,7 @@ import {
 } from '@/modules/company/domain/fiscal-profile';
 import { ConfigService } from '@nestjs/config';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
-import { buildDpsId } from 'open-nfse';
+import { buildDpsId, parseNfseXml } from 'open-nfse';
 import type { RtcConfig } from '@/infra/config/configuration';
 import {
   INVOICE_REPOSITORY,
@@ -77,6 +77,17 @@ export function failureKind(error: unknown): 'timeout' | 'error' {
 }
 
 /** Short reason safe for logs: no markup (XML), no line breaks, bounded. */
+/** The portal's processing time (dhProc) in the authorized NFS-e XML; null when it cannot be read. */
+function portalProcessedAt(xml: string): Date | null {
+  try {
+    const value: unknown = parseNfseXml(xml).infNFSe.dhProc;
+    const date = value instanceof Date ? value : new Date(String(value));
+    return Number.isNaN(date.getTime()) ? null : date;
+  } catch {
+    return null;
+  }
+}
+
 function safeReason(message: string | undefined): string | undefined {
   if (!message) return undefined;
   return message
@@ -406,7 +417,11 @@ export class NfseWorkflowService {
   ): Promise<void> {
     if (!result.xmlAuthorized || !result.accessKey)
       throw new Error('Authorized fiscal result lacks XML/access key');
-    invoice.setAuthorized(result.accessKey, result.nfseNumber ?? 0);
+    invoice.setAuthorized(
+      result.accessKey,
+      result.nfseNumber ?? 0,
+      portalProcessedAt(result.xmlAuthorized),
+    );
     // The authorized XML lives only in document storage, never in the database.
     await this.documentStorage.saveXml(
       invoice.tenantId,

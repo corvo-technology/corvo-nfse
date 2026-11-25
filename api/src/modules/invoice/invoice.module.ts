@@ -239,6 +239,7 @@ const ACCOUNTANT_PACKAGE = {
     InvoiceCancellationPort,
     InvoiceBatchService,
     InvoiceCalculationService,
+    InvoiceReviewService,
     InvoiceSubstitutionService,
     CustomerDirectory,
     InvoiceLifecycleService,

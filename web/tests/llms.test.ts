@@ -69,6 +69,14 @@ describe("llms.txt and llms-full.txt", () => {
     }
   });
 
+  it("llms.txt documents nfse_review in both languages", () => {
+    for (const locale of ["en", "pt"] as const) expect(buildLlmsTxt(locale)).toContain("nfse_review");
+    for (const locale of ["en", "pt"] as const) {
+      const page = JSON.stringify(getDocsTree(locale)!.pages.mcp.blocks);
+      expect(page).toContain("nfse_review");
+    }
+  });
+
   it("the MCP docs page lists the optional scopes with the consent texts", () => {
     const pt = JSON.stringify(getDocsTree("pt")!.pages.mcp.blocks);
     expect(pt).toContain("nfse:certificates");

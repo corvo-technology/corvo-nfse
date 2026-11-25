@@ -375,12 +375,23 @@ export class Invoice {
     this.props.updatedAt = new Date();
   }
 
-  setAuthorized(accessKey: string, nfseNumber: number): void {
+  /**
+   * `processedAt` is the portal's own processing time (dhProc); without it the moment we learned of
+   * the authorization is used. Any error left by an earlier attempt is dropped: the note is authorized.
+   */
+  setAuthorized(
+    accessKey: string,
+    nfseNumber: number,
+    processedAt?: Date | null,
+  ): void {
     const now = new Date();
+    const at =
+      processedAt && !Number.isNaN(processedAt.getTime()) ? processedAt : now;
     this.props.accessKey = accessKey;
     this.props.nfseNumber = nfseNumber;
-    this.props.authorizedAt = now;
-    this.props.issuedAt = now;
+    this.props.authorizedAt = at;
+    this.props.issuedAt = at;
+    this.clearLastError();
     this.props.updatedAt = now;
   }
 
@@ -519,6 +530,13 @@ export class Invoice {
   toJSON(): Omit<InvoiceProps, 'requestHash'> & Omit<InvoiceState, 'status'> {
     const { requestHash: _hash, ...props } = this.toSnapshot();
     const { documentsStatus, emailStatus, stage } = this.state;
+    // An authorized note with an error text but no error code carries a stale reconciliation
+    // message (rows from before the error was cleared on authorization): never show it.
+    // A rejected cancellation keeps its code, so it still shows.
+    if (props.status === 'authorized' && props.lastErrorCode === null) {
+      props.lastErrorMessage = null;
+      props.lastErrorProvider = null;
+    }
     return { ...props, documentsStatus, emailStatus, stage };
   }
 

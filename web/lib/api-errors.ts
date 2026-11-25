@@ -27,8 +27,24 @@ export function apiErrorMessage(error: unknown, has: (key: string) => boolean, t
  * (E0120 and the like) keeps its Portuguese text, which is the authority's own wording.
  */
 export function invoiceErrorText(code: string | null | undefined, message: string | null | undefined, has: (key: string) => boolean, text: (key: string) => string): string {
-  const key = code ? errorCodeKey(code) : "";
+  const key = code ? errorCodeKey(code) : codelessMessageKey(message);
   return key && has(key) ? text(key) : (message ?? code ?? "");
+}
+
+/** Reconciliation and manual-review notes have no error code, only our own English sentence. */
+function codelessMessageKey(message: string | null | undefined): string {
+  if (message?.startsWith("No conclusive answer from the fiscal portal")) return "reconciliation_uncertain";
+  if (message?.startsWith("Discard not confirmed")) return "discard_not_confirmed";
+  return "";
+}
+
+/**
+ * Whether the invoice page shows the error banner. An authorized note has no error to show,
+ * except a refused cancellation (it keeps its own error code).
+ */
+export function showsInvoiceError(invoice: { status: string; lastErrorCode?: string | null; lastErrorMessage?: string | null }): boolean {
+  if (!invoice.lastErrorMessage) return false;
+  return invoice.status !== "authorized" || Boolean(invoice.lastErrorCode);
 }
 
 /**

@@ -5,7 +5,10 @@ import {
   INVOICE_REPOSITORY,
   type IInvoiceRepository,
 } from '../domain/invoice.repository';
+import type { Invoice } from '../domain/invoice';
 import { ConcurrentInvoiceTransitionError } from '../domain/errors';
+import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
+import { recordSafely } from '@/shared/audit/record-safely';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import type { FiscalJobData } from './nfse-workflow.service';
 
@@ -36,6 +39,7 @@ export class InvoiceReviewService {
     @Inject(INVOICE_REPOSITORY) private readonly invoices: IInvoiceRepository,
     private readonly lifecycle: InvoiceLifecycleService,
     private readonly queues: BullmqQueueService,
+    private readonly audit: AccountAuditRecorder,
   ) {}
 
   async apply(
@@ -84,6 +88,7 @@ export class InvoiceReviewService {
           removeOnFail: 1000,
         },
       );
+      await this.recordAudit(invoice, environment, 'invoice.review_discarded');
       return { id, outcome: 'accepted' };
     }
     try {
@@ -115,6 +120,24 @@ export class InvoiceReviewService {
         removeOnFail: 1000,
       },
     );
+    await this.recordAudit(invoice, environment, 'invoice.review_retried');
     return { id, outcome: 'accepted' };
+  }
+
+  private recordAudit(
+    invoice: Invoice,
+    environment: ExecutionEnvironment,
+    action: 'invoice.review_retried' | 'invoice.review_discarded',
+  ) {
+    return recordSafely(this.audit, {
+      tenantId: invoice.tenantId,
+      environment,
+      action,
+      target: {
+        type: 'invoice',
+        id: invoice.id,
+        label: invoice.customerSnapshot?.name ?? 'Consumidor',
+      },
+    });
   }
 }

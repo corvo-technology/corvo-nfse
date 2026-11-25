@@ -33,15 +33,58 @@ describe('InvoiceReviewService', () => {
   const invoices = { findByIdAndTenantId: jest.fn() };
   const lifecycle = { transition: jest.fn() };
   const queues = { add: jest.fn() };
+  const audit = { record: jest.fn() };
   const service = new InvoiceReviewService(
     invoices as never,
     lifecycle as never,
     queues as never,
+    audit,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
     lifecycle.transition.mockResolvedValue(true);
+    audit.record.mockResolvedValue(undefined);
+  });
+
+  it('records an audit event for retry and for discard, and none for skipped invoices', async () => {
+    const retried = invoiceIn('manual_review');
+    const discarded = invoiceIn('manual_review');
+    const authorized = invoiceIn('authorized');
+    invoices.findByIdAndTenantId.mockImplementation((id: string) =>
+      Promise.resolve(
+        [retried, discarded, authorized].find((i) => i.id === id) ?? null,
+      ),
+    );
+
+    await service.apply(tenantId, 'live', 'retry', [retried.id], 'user-1');
+    await service.apply(tenantId, 'live', 'discard', [discarded.id], 'user-1');
+    await service.apply(tenantId, 'live', 'retry', [authorized.id], 'user-1');
+
+    expect(audit.record).toHaveBeenCalledTimes(2);
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId,
+        environment: 'live',
+        action: 'invoice.review_retried',
+        target: expect.objectContaining({ type: 'invoice', id: retried.id }),
+      }),
+    );
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'invoice.review_discarded',
+        target: expect.objectContaining({ id: discarded.id }),
+      }),
+    );
+  });
+
+  it('keeps going when the audit fails', async () => {
+    const invoice = invoiceIn('manual_review');
+    invoices.findByIdAndTenantId.mockResolvedValue(invoice);
+    audit.record.mockRejectedValue(new Error('db down'));
+    await expect(
+      service.apply(tenantId, 'live', 'retry', [invoice.id], 'user-1'),
+    ).resolves.toEqual([{ id: invoice.id, outcome: 'accepted' }]);
   });
 
   it('retry moves the invoice back to reconciliation and queues one job with the same invoice', async () => {
