@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TenantPlanService } from './tenant-plan.service';
 import { BillingUsageService } from '@/modules/billing/application/billing-usage.service';
 import { ICompanyRepository } from '@/modules/company/domain/company.repository';
+import { IPlanRepository } from '../domain/plan.repository';
 
 export enum QuotaExceededReason {
   NO_CREDITS = 'no_credits',
@@ -43,6 +44,7 @@ export class QuotaService {
     private readonly tenantPlanService: TenantPlanService,
     private readonly billingUsage: BillingUsageService,
     private readonly companyRepo: ICompanyRepository,
+    private readonly planRepo: IPlanRepository,
   ) {}
 
   async getStatus(tenantId: string): Promise<QuotaStatus> {
@@ -56,17 +58,33 @@ export class QuotaService {
     // Same rule as BillingUsageService.reserve: an exhausted plan allowance is covered by avulso notes.
     const planExhausted =
       usage.period.authorized + usage.period.reserved >= usage.hard_limit;
+    // A lapsed plan with avulso notes still emits (only the avulso pays); without them it stays blocked.
+    const hasAvulso = usage.avulsoBalance > 0;
     const reason = usage.blocked
-      ? QuotaExceededReason.PLAN_BLOCKED
-      : planExhausted && usage.avulsoBalance <= 0
+      ? hasAvulso
+        ? undefined
+        : QuotaExceededReason.PLAN_BLOCKED
+      : planExhausted && !hasAvulso
         ? QuotaExceededReason.NO_CREDITS
-        : assignment.plan.dailyLimit !== null &&
-            dailyUsage >= assignment.plan.dailyLimit
-          ? QuotaExceededReason.DAILY_LIMIT
-          : undefined;
+        : undefined;
+    const dailyExceeded =
+      assignment.plan.dailyLimit !== null &&
+      dailyUsage >= assignment.plan.dailyLimit;
+    const finalReason =
+      reason ?? (dailyExceeded ? QuotaExceededReason.DAILY_LIMIT : undefined);
+    // A lapsed plan never grants more companies than the free plan; existing ones stay usable.
+    let maxActiveCompanies = assignment.plan.maxActiveCompanies;
+    if (usage.blocked && hasAvulso) {
+      const free = await this.planRepo.findBySlug('free');
+      if (free)
+        maxActiveCompanies = Math.min(
+          maxActiveCompanies,
+          free.maxActiveCompanies,
+        );
+    }
     return {
-      canEmit: !reason,
-      reason,
+      canEmit: !finalReason,
+      reason: finalReason,
       creditsRemaining: usage.included_remaining,
       avulsoBalance: usage.avulsoBalance,
       creditsUsed: usage.period.authorized,
@@ -75,7 +93,7 @@ export class QuotaService {
       dailyUsage,
       dailyLimit: assignment.plan.dailyLimit,
       activeCompanies,
-      maxActiveCompanies: assignment.plan.maxActiveCompanies,
+      maxActiveCompanies,
       periodStart: usage.period.periodStart,
       periodEnd: usage.period.periodEnd,
     };

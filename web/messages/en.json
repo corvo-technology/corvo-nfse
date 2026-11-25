@@ -1562,6 +1562,7 @@
       "minimum": "Minimum 3 invoices."
     },
     "choose": "Choose plan",
+    "blockedAvulso": "Your plan lapsed, but you can still issue with your single invoices. To return to the plan, pay by card or Pix.",
     "blockedBuy": "You are out of quota. Buy single invoices or change plan to keep issuing.",
     "pixActive": "Your plan is charged monthly through Pix Automático.",
     "pixCancel": "Cancel Pix Automático",

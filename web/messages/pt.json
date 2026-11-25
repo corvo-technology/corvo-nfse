@@ -1562,6 +1562,7 @@
       "minimum": "Mínimo de 3 notas."
     },
     "choose": "Escolher plano",
+    "blockedAvulso": "Seu plano venceu, mas você ainda emite com suas notas avulsas. Para voltar ao plano, pague no cartão ou Pix.",
     "blockedBuy": "Sua cota acabou. Compre notas avulsas ou mude de plano para continuar emitindo.",
     "pixActive": "Seu plano é cobrado todo mês por Pix Automático.",
     "pixCancel": "Cancelar Pix Automático",
