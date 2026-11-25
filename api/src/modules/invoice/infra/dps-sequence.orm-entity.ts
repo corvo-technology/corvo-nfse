@@ -21,6 +21,9 @@ export class DpsSequenceOrmEntity {
   @Column({ name: 'current_number', type: 'bigint', default: 0 })
   currentNumber!: number;
 
+  @Column({ name: 'numbering_checked_at', type: 'timestamptz', nullable: true })
+  numberingCheckedAt!: Date | null;
+
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt!: Date;
 }

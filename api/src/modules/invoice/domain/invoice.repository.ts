@@ -39,6 +39,12 @@ export interface SaveInvoiceOptions {
 }
 
 export interface IInvoiceRepository {
+  /** True when the company already has a note registered at the government in this environment. */
+  hasIssuedNote(
+    companyId: string,
+    tenantId: string,
+    environment: ExecutionEnvironment,
+  ): Promise<boolean>;
   /** True when a substitute NFS-e (one with an access key) replaces this invoice. */
   hasSubstitute(originalId: string, tenantId: string): Promise<boolean>;
   findByAccessKeyAndTenantId(

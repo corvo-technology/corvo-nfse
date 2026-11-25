@@ -193,6 +193,11 @@ import { IS_SELF_HOSTED } from '@/shared/deployment-mode';
 import { SCOPE_PERMISSION } from './mcp-client-policy';
 import { NFSE_GET_TOOL, createNfseGetHandler } from './tools/nfse-get.tool';
 import {
+  COMPANY_NUMBERING_CHECK_TOOL,
+  createCompanyNumberingCheckHandler,
+} from './tools/company-numbering-check.tool';
+import { DpsNumberingService } from '@/modules/invoice/application/dps-numbering.service';
+import {
   COMPANY_FISCAL_STATUS_TOOL,
   createCompanyFiscalStatusHandler,
 } from './tools/company-fiscal-status.tool';
@@ -250,6 +255,7 @@ export class McpService {
     private readonly billingService: BillingService,
     private readonly woovi: WooviPaymentsService,
     private readonly invoiceReview: InvoiceReviewService,
+    private readonly dpsNumbering: DpsNumberingService,
   ) {
     this.server = new McpServer({
       instructions: mcpInstructions(IS_SELF_HOSTED),
@@ -515,6 +521,13 @@ export class McpService {
           this.serviceTaxProfiles,
           this.certificates,
           this.dpsSequences,
+        ),
+      ],
+      [
+        COMPANY_NUMBERING_CHECK_TOOL,
+        createCompanyNumberingCheckHandler(
+          this.companyService,
+          this.dpsNumbering,
         ),
       ],
       [CNPJ_LOOKUP_TOOL, createCnpjLookupHandler(this.cnpjRegistry)],

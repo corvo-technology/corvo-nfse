@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { companies, type DpsSequence } from "@/lib/api";
+import { companies, type DpsNumberingCheck, type DpsSequence } from "@/lib/api";
 import { useScrollToHash } from "@/lib/use-scroll-to-hash";
 import { useApiErrorText } from "@/lib/use-api-error";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ export function DpsSequenceCard({ companyId, canManage, environment }: { company
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [check, setCheck] = useState<DpsNumberingCheck | null>(null);
 
   useScrollToHash("numeracao");
 
@@ -45,6 +47,34 @@ export function DpsSequenceCard({ companyId, canManage, environment }: { company
     }
   }
 
+  async function runCheck() {
+    setMessage(null);
+    setError(null);
+    setChecking(true);
+    try {
+      setCheck(await companies.checkDpsNumbering(companyId));
+    } catch (e) {
+      setError(errorText(e, t("invalid")));
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function confirmCheck(lastNumber?: number) {
+    setError(null);
+    setSaving(true);
+    try {
+      const next = await companies.confirmDpsNumbering(companyId, lastNumber);
+      setSequence(next);
+      setCheck(null);
+      setMessage(t("confirmed", { number: next.lastNumber + 1 }));
+    } catch (e) {
+      setError(errorText(e, t("invalid")));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <Card id="numeracao" className={`flex scroll-mt-24 flex-col gap-4 p-5`}>
       <div>
@@ -64,6 +94,29 @@ export function DpsSequenceCard({ companyId, canManage, environment }: { company
           </Field>
           <Button type="submit" loading={saving}>{t("save")}</Button>
         </form>
+      )}
+      {canManage && (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="secondary" loading={checking} onClick={() => void runCheck()}>{checking ? t("checking") : t("check")}</Button>
+            <span className="text-sm text-text-3">{t("checkHint")}</span>
+          </div>
+          {check && (
+            <div role="status" className="flex flex-col gap-2 text-sm">
+              <p>
+                {check.usedNumbers.length === 0
+                  ? t("checkFree", { number: check.nextNumber })
+                  : t("checkUsed", { count: check.usedNumbers.length, first: check.usedNumbers[0], last: check.usedNumbers[check.usedNumbers.length - 1], next: check.suggestedNext })}
+                {check.moreMayBeUsed && ` ${t("checkMore")}`}
+              </p>
+              <div>
+                {check.usedNumbers.length === 0
+                  ? <Button type="button" loading={saving} onClick={() => void confirmCheck()}>{t("confirmFree")}</Button>
+                  : <Button type="button" loading={saving} onClick={() => void confirmCheck(check.suggestedNext - 1)}>{t("useSuggested", { next: check.suggestedNext })}</Button>}
+              </div>
+            </div>
+          )}
+        </div>
       )}
       {message && <p role="status" className="text-sm text-text-3">{message}</p>}
     </Card>

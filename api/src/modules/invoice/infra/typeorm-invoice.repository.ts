@@ -56,6 +56,23 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
     });
   }
 
+  async hasIssuedNote(
+    companyId: string,
+    tenantId: string,
+    environment: ExecutionEnvironment,
+  ): Promise<boolean> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      return this.repo
+        .createQueryBuilder('invoice')
+        .where(
+          'invoice.tenant_id = :tenantId AND invoice.company_id = :companyId AND invoice.environment = :environment AND invoice.access_key IS NOT NULL',
+          { tenantId, companyId, environment },
+        )
+        .getExists();
+    });
+  }
+
   async hasSubstitute(originalId: string, tenantId: string): Promise<boolean> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);

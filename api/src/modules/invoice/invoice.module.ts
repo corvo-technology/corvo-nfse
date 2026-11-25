@@ -47,6 +47,8 @@ import {
 } from './domain/invoice.repository';
 import { DPS_SEQUENCE_REPOSITORY } from './domain/dps-sequence';
 import { DpsSequenceController } from './http/dps-sequence.controller';
+import { DpsNumberingController } from './http/dps-numbering.controller';
+import { DpsNumberingService } from './application/dps-numbering.service';
 import { InvoiceSubstitutionService } from './application/invoice-substitution.service';
 import { InvoiceIntakeService } from './application/invoice-intake.service';
 import { CustomerRecorder } from './application/customer-recorder';
@@ -159,6 +161,7 @@ const ACCOUNTANT_PACKAGE = {
     InvoiceReviewController,
     InvoiceController,
     DpsSequenceController,
+    DpsNumberingController,
     CustomerController,
     ...ACCOUNTANT_PACKAGE.controllers,
   ],
@@ -167,6 +170,7 @@ const ACCOUNTANT_PACKAGE = {
     InvoiceOverviewService,
     InvoiceReviewService,
     FiscalPortalBreaker,
+    DpsNumberingService,
     {
       provide: INVOICE_OVERVIEW_REPOSITORY,
       useClass: TypeOrmInvoiceOverviewRepository,
@@ -231,6 +235,7 @@ const ACCOUNTANT_PACKAGE = {
   exports: [
     ...ACCOUNTANT_PACKAGE.providers,
     FiscalPortalBreaker,
+    DpsNumberingService,
     OutboxHandlerRegistry,
     OUTBOX_REPOSITORY,
     InvoiceService,

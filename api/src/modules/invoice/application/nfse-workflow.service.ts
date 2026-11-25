@@ -32,6 +32,11 @@ import {
 } from '@/infra/storage/domain/document-storage';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import { FiscalPortalBreaker } from './fiscal-portal-breaker';
+import {
+  DpsNumberingService,
+  NumberingNeedsConfirmationError,
+  skippedNumbersMessage,
+} from './dps-numbering.service';
 import type { Invoice } from '../domain/invoice';
 import { ConcurrentInvoiceTransitionError } from '../domain/errors';
 import { InvoiceWebhookPublisher } from './invoice-webhook.publisher';
@@ -143,6 +148,8 @@ function dpsIssuedAt(snapshot: {
 @Injectable()
 export class NfseWorkflowService {
   private readonly logger = new Logger(NfseWorkflowService.name);
+  /** Numbers skipped for an invoice, written in its first timeline entry. */
+  private readonly skipNotes = new WeakMap<Invoice, string>();
   constructor(
     @Inject(INVOICE_REPOSITORY) private readonly invoices: IInvoiceRepository,
     @Inject(DPS_SEQUENCE_REPOSITORY)
@@ -162,6 +169,7 @@ export class NfseWorkflowService {
     private readonly config: ConfigService,
     // Optional so the workflow keeps today's DPS where they are not provided.
     @Optional() private readonly breaker?: FiscalPortalBreaker,
+    @Optional() private readonly numbering?: DpsNumberingService,
   ) {}
 
   async process(data: FiscalJobData): Promise<void> {
@@ -255,9 +263,12 @@ export class NfseWorkflowService {
       return;
     }
     if (invoice.status === 'queued') {
+      const skipNote = this.skipNotes.get(invoice);
       const event = invoice.transitionTo(
         'processing',
-        'Starting fiscal emission',
+        skipNote
+          ? `Starting fiscal emission. ${skipNote}`
+          : 'Starting fiscal emission',
       );
       try {
         await this.lifecycle.transition(invoice, event);
@@ -813,6 +824,41 @@ export class NfseWorkflowService {
     );
   }
 
+  /**
+   * First emission of a company: the government is asked before a DPS number is reserved. Numbers
+   * it confirms as used are skipped (the numbering only moves forward) and the skip is written on
+   * the invoice timeline. If the portal does not answer the error is thrown as is: nothing is
+   * reserved and the job is retried, never emitted blind. If every number asked is used, the
+   * invoice is rejected (credit returned) so the owner adjusts the numbering.
+   */
+  private async skipUsedNumbers(invoice: Invoice): Promise<void> {
+    try {
+      const skipped = await this.numbering?.skipUsedNumbers(
+        invoice.companyId,
+        invoice.tenantId,
+        invoice.environment,
+      );
+      if (!skipped) return;
+      const note = skippedNumbersMessage(skipped);
+      this.skipNotes.set(invoice, note);
+      this.logger.warn({ invoiceId: invoice.id, ...skipped }, note);
+    } catch (error: unknown) {
+      if (!(error instanceof NumberingNeedsConfirmationError)) throw error;
+      throw new DpsBuildRejectionError(
+        fiscalError({
+          code: 'DPS_NUMBERING_NEEDS_CONFIRMATION',
+          message: error.message,
+          category: 'VALIDATION',
+          step: 'NfseWorkflow',
+          details: {
+            usedNumbers: error.check.usedNumbers,
+            suggestedNext: error.check.suggestedNext,
+          },
+        }),
+      );
+    }
+  }
+
   private async payload(invoice: Invoice): Promise<IIssuePayload> {
     this.assertCompetenceNotAfterIssue(invoice);
     const company = await this.companies.findById(
@@ -829,6 +875,7 @@ export class NfseWorkflowService {
           invoice.environment,
         );
     if (!invoice.dpsNumber) {
+      await this.skipUsedNumbers(invoice);
       const sequence = await this.sequences.reserveNext(
         company.id,
         invoice.tenantId,
