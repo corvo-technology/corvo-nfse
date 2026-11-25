@@ -1,6 +1,6 @@
 # MCP completo: depois do login, o agente faz tudo até emitir e comprar créditos
 
-Data: 2026-11-24. Status: rascunho para aprovação do dono.
+Data: 2026-11-24. Status: aprovado pelo dono em 2026-11-24.
 
 ## 1. Intenção
 
@@ -19,6 +19,7 @@ A senha do certificado fica protegida **do lado do agente** (essas plataformas t
 1. Ferramenta para enviar o certificado.
 2. Ferramentas para comprar créditos (Pix ou cartão) e acompanhar o pagamento.
 3. Instruções no MCP para o agente seguir o caminho login → empresa → certificado → nota → créditos sem ajuda.
+4. **Auditoria**: registro de tudo que pessoas e agentes fazem na conta, numa aba nova "Auditoria" em Configurações.
 
 **Não objetivos**
 - Criar conta pelo agente (descartado pelo dono: o agente sempre pede login).
@@ -92,13 +93,43 @@ payment_status(id)                        → pago → segue emitindo
 
 As descrições das ferramentas e o texto de instruções do `initialize` seguem esse roteiro.
 
+### 5.5 Auditoria (quem fez o quê e quando)
+
+**Tabela nova `account_audit_events`** (com RLS por conta): `id`, `tenant_id`, `environment`, `occurred_at`, `actor_type` (`user` | `agent` | `api_key` | `system`), `actor_id`, `actor_label` (nome da pessoa, nome do agente/conexão MCP ou da chave, "Sistema"), `action` (código estável, ex.: `company.created`), `target_type`, `target_id`, `target_label` (ex.: razão social, número da nota, CNPJ), `metadata` (jsonb pequeno, **nunca** segredo), `ip_hash`.
+
+**Quem aparece como "Quem"**: pessoa → nome do usuário; agente → nome da conexão MCP (ex.: "Claude", "ChatGPT") com selo "Agente" e o nome da pessoa que autorizou; chave de API → nome da chave; sistema → "Sistema" (jobs, webhooks de pagamento).
+
+**O que é registrado (primeira versão)** — ações que mudam algo, vindas do site, da API ou do MCP:
+- empresa: criou, editou, removeu;
+- certificado: enviou, trocou, removeu;
+- nota: emitiu, cancelou, substituiu, reenviou e-mail; lote/importação emitida; agendamento criado/pausado/retomado/cancelado;
+- cobrança: gerou cobrança (Pix/cartão), pagamento confirmado (Sistema), plano alterado;
+- acesso: membro convidado/removido/papel alterado, convite aceito, chave de API criada/revogada, agente conectado/desconectado;
+- contador: pacote enviado, e-mail do contador alterado.
+
+Leituras (listar, consultar) **não** entram, para não virar ruído. Gravação acontece no mesmo serviço que faz a ação (não em log de HTTP), para valer igual para site, API e MCP; uma falha ao gravar auditoria não derruba a ação, mas gera alerta no Sentry.
+
+**Tela**: Configurações → aba nova **"Auditoria"**, visível para quem pode gerenciar a conta (dono/admin). Lista igual à referência do dono:
+
+```
+Quando      Quem                       Ação                   Item
+há 6 h      Pedro Henrique             Emitiu nota            Nº 123 · Cliente X
+há 6 h      Claude (Agente) · Pedro    Enviou certificado     12.345.678/0001-90
+há 2 dias   Sistema                    Pagamento confirmado   Pix · 50 créditos
+```
+
+Filtros simples: por quem (pessoas / agentes / sistema) e por período; paginação por cursor ("carregar mais"). "Quando" relativo, com data exata ao passar o mouse. Textos das ações em português, a partir do código da ação.
+
+**Retenção**: 1 ano. *Decisão minha.*
+
 ## 6. Ordem de entrega
 
 1. Certificado pelo MCP (escopo, ferramenta, textos, teste de não vazamento).
 2. Compra de créditos pelo MCP (escopo, `credits_purchase`, `payment_status`, dica no erro de crédito).
-3. Instruções do MCP + documentação (página do MCP no site e `llms.txt`).
+3. Auditoria: tabela, gravação nas ações listadas, API de listagem e aba em Configurações.
+4. Instruções do MCP + documentação (página do MCP no site e `llms.txt`).
 
-As etapas 1 e 2 são independentes e podem andar em paralelo. Cada uma é um PR com CI verde.
+A auditoria (3) vem primeiro na base: a tabela e o serviço de gravação saem antes, para as etapas 1 e 2 já registrarem as ações novas. Depois, 1, 2 e o restante da 3 andam em paralelo. Cada uma é um PR com CI verde.
 
 ## 7. Restrições
 
@@ -110,6 +141,3 @@ As etapas 1 e 2 são independentes e podem andar em paralelo. Cada uma é um PR 
 - Texto exato das descrições e erros, seguindo o roteiro.
 - Formato da imagem do QR Code (PNG em base64 como conteúdo `image` do MCP, ou URL da imagem que a Woovi já fornece).
 
-## 9. Em aberto (decisão do dono)
-
-- Tabela de atividade da conta (quem fez o quê: membro ou agente) e tela "Atividade" no painel: entra neste projeto ou depois?
