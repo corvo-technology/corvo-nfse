@@ -204,6 +204,16 @@ describe('McpServer', () => {
       expect([...positions].sort((a, b) => a - b)).toEqual(positions);
     });
 
+    it('tells the agent how to handle manual_review', () => {
+      const text = mcpInstructions(false);
+      expect(text).toContain('manual_review');
+      expect(text).toMatch(/nfse_review with retry/);
+      expect(text).toMatch(
+        /discard only after the person explicitly confirms/i,
+      );
+      expect(mcpInstructions(true)).toContain('nfse_review');
+    });
+
     it('says the person always completes the payment', () => {
       expect(mcpInstructions(false)).toMatch(/person always (completes|pays)/i);
     });
