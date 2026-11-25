@@ -111,6 +111,8 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
   const [cnpjInfo, setCnpjInfo] = useState<{ active: boolean; situation: string; simples: boolean | null; mei: boolean | null; legalName: string; city: string; state: string } | null>(null);
   const cnpjRequest = useRef<AbortController | null>(null);
   const autoRegime = useRef(false);
+  // Service code suggested by the company's main activity; offered on the fiscal step, never applied by itself.
+  const [suggestedService, setSuggestedService] = useState<{ code: string; description: string } | null>(null);
   const clearProfile = () => {
     setValues((previous) => ({ ...previous, legalName: "", tradeName: "", zip: "", street: "", number: "", complement: "", district: "", city: "", state: "", municipalityCode: "", taxRegime: autoRegime.current ? "" : previous.taxRegime }));
     autoRegime.current = false; setEditing(false);
@@ -120,7 +122,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
     set("taxId", masked);
     if (!wizard) return;
     cnpjRequest.current?.abort();
-    setCnpjInfo(null); clearProfile();
+    setCnpjInfo(null); setSuggestedService(null); clearProfile();
     if (!isValidCnpj(masked)) { setCnpjState("idle"); return; }
     const controller = new AbortController(); cnpjRequest.current = controller; setCnpjState("loading");
     cnpjApi.lookup(cleanTaxId(masked), controller.signal).then((profile) => {
@@ -136,6 +138,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
         taxRegime: previous.taxRegime || (profile.mei ? "MEI" : profile.simples ? "Simples Nacional" : ""),
       }));
       setCnpjInfo({ active: profile.active, situation: profile.situation, simples: profile.simples, mei: profile.mei, legalName: profile.legalName, city: a.city, state: a.state });
+      setSuggestedService(profile.suggestedServiceCode ?? null);
       setCnpjState("found");
     }).catch((cause: unknown) => {
       if (controller.signal.aborted) return;
@@ -389,6 +392,12 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
       <Field label={t("defaultServiceCode")} optionalLabel={t("optional")} error={fieldErrors.defaultServiceCode || undefined} hint={t("hints.defaultServiceCode")} className="sm:col-span-2">
         {(props) => <ServiceCodeCombobox {...props} value={values.defaultServiceCode} onChange={(code) => set("defaultServiceCode", code)} />}
       </Field>
+      {wizard && suggestedService && values.defaultServiceCode !== suggestedService.code && (
+        <div className="flex items-center justify-between gap-3 rounded-[10px] border border-accent-border bg-accent-surface px-3.5 py-2.5 sm:col-span-2">
+          <p className="min-w-0 text-[13px] text-text-2">{t("serviceSuggestion.text", { code: suggestedService.code, description: suggestedService.description })}</p>
+          <Button variant="ghost" onClick={() => set("defaultServiceCode", suggestedService.code)}>{t("serviceSuggestion.use")}</Button>
+        </div>
+      )}
       {!wizard && <p className="field-hint sm:col-span-2">{t("editFiscalHint")}</p>}
     </fieldset>}
 

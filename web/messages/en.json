@@ -1688,6 +1688,10 @@
       "address": "Enter the ZIP code: the address and the municipality IBGE code fill in by themselves.",
       "fiscal": "Enter the fiscal municipality. Live mode also requires municipal registration. A default service code simplifies future invoices."
     },
+    "serviceSuggestion": {
+      "text": "Suggestion from the company activity: {code} — {description}",
+      "use": "Use"
+    },
     "edit": "Edit",
     "addressMissing": "No address on record. Click Edit to add one.",
     "next": "Continue",

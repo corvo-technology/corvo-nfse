@@ -21,6 +21,26 @@ describe('cnpj_lookup tool', () => {
     expect(lookupProfile).toHaveBeenCalledWith(VALID);
   });
 
+  it('returns the service code suggested by the activity next to the profile', async () => {
+    const lookupProfile = jest.fn().mockResolvedValue({
+      status: 'found',
+      profile: {
+        legalName: 'Corvo',
+        cnae: { code: '9602501', description: 'Cabeleireiros' },
+        suggestedServiceCode: { code: '060101', description: 'Barbearia' },
+      },
+    });
+    await expect(
+      createCnpjLookupHandler({ lookupProfile })({ cnpj: VALID }, ctx),
+    ).resolves.toEqual({
+      profile: {
+        legalName: 'Corvo',
+        cnae: { code: '9602501', description: 'Cabeleireiros' },
+      },
+      suggested_service_code: { code: '060101', description: 'Barbearia' },
+    });
+  });
+
   it('rejects an invalid CNPJ without calling the registry', async () => {
     const lookupProfile = jest.fn();
     await expect(

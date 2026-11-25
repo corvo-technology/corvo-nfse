@@ -163,6 +163,10 @@ export interface CnpjProfile {
   legalName: string; tradeName: string;
   address: { zip: string; street: string; number: string; complement: string; district: string; city: string; state: string };
   municipalityCode: string | null; simples: boolean | null; mei: boolean | null; active: boolean; situation: string;
+  /** Main activity and the others (CNAE, 7 digits). */
+  cnae?: { code: string; description: string } | null; secondaryCnaes?: { code: string; description: string }[];
+  /** Service code that fits the main activity: only a suggestion, the person decides. Absent or null when unsure. */
+  suggestedServiceCode?: { code: string; description: string } | null;
 }
 export const cnpj = { lookup: async (taxId: string, signal?: AbortSignal) => unwrap(await request<Envelope<CnpjProfile>>(`/cnpj/${idPath(taxId)}`, { signal })) };
 export interface CompanyWire extends Omit<Company, "address"> {

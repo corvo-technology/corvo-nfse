@@ -150,6 +150,35 @@ describe("CompanyForm starts with the CNPJ", () => {
   });
 });
 
+describe("CompanyForm service code suggestion", () => {
+  const suggestion = { code: "060101", description: "Barbearia, cabeleireiros, manicuros, pedicuros e congêneres" };
+  const reachFiscalStep = async () => {
+    typeCnpj();
+    await screen.findByText(/We found/);
+    await waitFor(() => expect(continueButton().disabled).toBe(false));
+    fireEvent.click(continueButton());
+    fireEvent.click(continueButton());
+  };
+  const serviceCombobox = () => screen.getByRole("combobox", { name: /Default service code/i }) as HTMLInputElement;
+
+  it("offers the code that fits the activity and applies it only when asked", async () => {
+    api.state.lookup = () => Promise.resolve({ ...profile, suggestedServiceCode: suggestion });
+    renderForm(); await reachFiscalStep();
+    expect(screen.getByText(/Suggestion from the company activity: 060101/)).toBeTruthy();
+    expect(serviceCombobox().value).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "Use" }));
+    expect(serviceCombobox().value).toContain("060101");
+    expect(screen.queryByText(/Suggestion from the company activity/)).toBeNull();
+  });
+
+  it("shows nothing when the activity has no sure match", async () => {
+    api.state.lookup = () => Promise.resolve({ ...profile, suggestedServiceCode: null });
+    renderForm(); await reachFiscalStep();
+    expect(screen.queryByText(/Suggestion from the company activity/)).toBeNull();
+    expect(serviceCombobox().value).toBe("");
+  });
+});
+
 describe("CompanyForm in edit mode", () => {
   const company: Company = {
     id: "company-1", tenantId: "tenant-1", legalName: "Example LTDA", tradeName: "Example", taxId: VALID, taxRegime: "MEI", simpleNational: true,

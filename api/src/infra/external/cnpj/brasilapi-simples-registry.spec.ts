@@ -200,6 +200,27 @@ describe('BrasilApiSimplesRegistry', () => {
           mei: false,
           active: true,
           situation: 'ATIVA',
+          cnae: {
+            code: '9602501',
+            description: 'Cabeleireiros, manicure e pedicure',
+          },
+          secondaryCnaes: [
+            {
+              code: '8599604',
+              description:
+                'Treinamento em desenvolvimento profissional e gerencial',
+            },
+            {
+              code: '9602502',
+              description:
+                'Atividades de estética e outros serviços de cuidados com a beleza',
+            },
+          ],
+          suggestedServiceCode: {
+            code: '060101',
+            description:
+              'Barbearia, cabeleireiros, manicuros, pedicuros e congêneres',
+          },
         },
       });
       expect(fetchFn).toHaveBeenCalledTimes(1);
@@ -270,8 +291,45 @@ describe('BrasilApiSimplesRegistry', () => {
           mei: false,
           active: true,
           situation: 'ATIVA',
+          cnae: null,
+          secondaryCnaes: [],
+          suggestedServiceCode: null,
         },
       });
+    });
+
+    it('maps the activities and suggests a service code only when the CNAE is a sure match', async () => {
+      const withCnae = (code: number, secondary: unknown[] = []) =>
+        jest.fn().mockReturnValue(
+          response(200, {
+            ...full,
+            cnae_fiscal: code,
+            cnae_fiscal_descricao: 'Atividade',
+            cnaes_secundarios: [{ codigo: 0, descricao: '' }, ...secondary],
+          }),
+        );
+      const profileOf = async (fetchFn: jest.Mock) => {
+        const result = await new BrasilApiSimplesRegistry({
+          fetchFn,
+        }).lookupProfile('11222333000181');
+        if (result.status !== 'found') throw new Error('not found');
+        return result.profile;
+      };
+      const known = await profileOf(
+        withCnae(6204000, [{ codigo: 9602501, descricao: 'Cabeleireiros' }]),
+      );
+      expect(known.cnae).toEqual({ code: '6204000', description: 'Atividade' });
+      expect(known.secondaryCnaes).toEqual([
+        { code: '9602501', description: 'Cabeleireiros' },
+      ]);
+      expect(known.suggestedServiceCode).toEqual({
+        code: '010601',
+        description: 'Assessoria e consultoria em informática',
+      });
+      // Ambiguous between LC 116 items 1.01 and 1.04: no suggestion.
+      const unsure = await profileOf(withCnae(6201501));
+      expect(unsure.cnae?.code).toBe('6201501');
+      expect(unsure.suggestedServiceCode).toBeNull();
     });
 
     it('flags a CNPJ that is not active', async () => {

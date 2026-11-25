@@ -29,6 +29,17 @@ export interface CnpjProfile {
   active: boolean;
   /** Situation text from the registry (for example ATIVA, BAIXADA). */
   situation: string;
+  /** Main activity (CNAE, 7 digits), or null when the registry does not send it. */
+  cnae: CnaeActivity | null;
+  /** Other activities of the company. */
+  secondaryCnaes: CnaeActivity[];
+  /** Default service code that fits the main activity, to suggest (never to apply by itself). Null when unsure. */
+  suggestedServiceCode: { code: string; description: string } | null;
+}
+
+export interface CnaeActivity {
+  code: string;
+  description: string;
 }
 
 /** `not_found`: the registry answered and does not know the CNPJ. `unavailable`: it did not answer (down, rate limited). */

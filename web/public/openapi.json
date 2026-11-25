@@ -215,7 +215,7 @@
     },
     "/cnpj/{cnpj}": {
       "get": {
-        "description": "Public registry data of a CNPJ (names, address, Simples/MEI, situation), to pre-fill a company or a customer. Answers 400 `CNPJ_INVALID` for a malformed CNPJ and 404 `CNPJ_NOT_FOUND` when the registry does not know the CNPJ and 503 `CNPJ_LOOKUP_UNAVAILABLE` when it has no answer right now. 20 requests per minute.\n\nPermission: `nfse.companies.manage` or `nfse.invoices.issue`.",
+        "description": "Public registry data of a CNPJ (names, address, Simples/MEI, situation, activities/CNAE and a suggested service code), to pre-fill a company or a customer. Answers 400 `CNPJ_INVALID` for a malformed CNPJ and 404 `CNPJ_NOT_FOUND` when the registry does not know the CNPJ and 503 `CNPJ_LOOKUP_UNAVAILABLE` when it has no answer right now. 20 requests per minute.\n\nPermission: `nfse.companies.manage` or `nfse.invoices.issue`.",
         "operationId": "cnpj_lookup",
         "parameters": [
           {
@@ -9317,6 +9317,24 @@
           "address": {
             "$ref": "#/components/schemas/PostalAddress"
           },
+          "cnae": {
+            "description": "Main activity (CNAE, 7 digits).",
+            "nullable": true,
+            "properties": {
+              "code": {
+                "example": "9602501",
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "description"
+            ],
+            "type": "object"
+          },
           "legalName": {
             "type": "string"
           },
@@ -9329,6 +9347,25 @@
             "nullable": true,
             "type": "string"
           },
+          "secondaryCnaes": {
+            "items": {
+              "properties": {
+                "code": {
+                  "example": "9602502",
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "description"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "simples": {
             "nullable": true,
             "type": "boolean"
@@ -9336,6 +9373,24 @@
           "situation": {
             "example": "ATIVA",
             "type": "string"
+          },
+          "suggestedServiceCode": {
+            "description": "Default service code (cTribNac) that fits the main activity. Only a suggestion: confirm it before using it. Null when no code is a sure match.",
+            "nullable": true,
+            "properties": {
+              "code": {
+                "example": "060101",
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "description"
+            ],
+            "type": "object"
           },
           "tradeName": {
             "type": "string"
@@ -9349,7 +9404,10 @@
           "simples",
           "mei",
           "active",
-          "situation"
+          "situation",
+          "cnae",
+          "secondaryCnaes",
+          "suggestedServiceCode"
         ],
         "type": "object"
       },

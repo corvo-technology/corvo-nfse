@@ -226,6 +226,20 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
         description: 'False when the registry says the CNPJ is not active.',
       }),
       situation: str({ example: 'ATIVA' }),
+      cnae: nullable(
+        obj({ code: str({ example: '9602501' }), description: str() }, [], {
+          description: 'Main activity (CNAE, 7 digits).',
+        }),
+      ),
+      secondaryCnaes: array(
+        obj({ code: str({ example: '9602502' }), description: str() }),
+      ),
+      suggestedServiceCode: nullable(
+        obj({ code: str({ example: '060101' }), description: str() }, [], {
+          description:
+            'Default service code (cTribNac) that fits the main activity. Only a suggestion: confirm it before using it. Null when no code is a sure match.',
+        }),
+      ),
     },
     [],
     { description: 'Empty text means the registry did not say.' },
