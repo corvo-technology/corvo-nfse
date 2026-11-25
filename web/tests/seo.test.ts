@@ -4,7 +4,7 @@ import sitemap from "@/app/sitemap";
 import { DOC_SLUGS } from "@/lib/docs/registry";
 import { getDocsTree } from "@/lib/docs/registry";
 import { sectionToMarkdown } from "@/lib/docs/to-markdown";
-import { SITE_COPY, localizedAlternates, pageMetadata, pageUrl } from "@/lib/seo";
+import { SITE_COPY, fitDescription, fitTitle, localizedAlternates, pageMetadata, pageUrl } from "@/lib/seo";
 
 describe("page metadata", () => {
   it("leaves the image to the page's own file when sharedImage is false, and uses the site card otherwise", () => {
@@ -38,6 +38,25 @@ describe("page metadata", () => {
       expect(copy.title.length).toBeLessThanOrEqual(60);
       expect(copy.description.length).toBeLessThanOrEqual(160);
     }
+  });
+});
+
+describe("title and description fit", () => {
+  it("gives short titles a product tail and leaves long ones alone", () => {
+    expect(fitTitle("Webhooks", "en")).toBe("Webhooks — NFS-e API");
+    expect(fitTitle("Referência da API de NFS-e", "pt")).toBe("Referência da API de NFS-e");
+  });
+
+  it("keeps descriptions within 160 characters and lengthens very short ones", () => {
+    for (const locale of ["pt", "en"] as const) {
+      expect(fitDescription("Webhooks.", locale).length).toBeGreaterThanOrEqual(100);
+      expect(fitDescription("palavra ".repeat(40), locale).length).toBeLessThanOrEqual(160);
+    }
+  });
+
+  it("gives a page its own canonical", () => {
+    const meta = pageMetadata({ locale: "pt", path: "/status", title: "Status do serviço", description: "Estado da API." });
+    expect(meta.alternates?.canonical).toBe("https://www.corvo.tech/pt/status");
   });
 });
 

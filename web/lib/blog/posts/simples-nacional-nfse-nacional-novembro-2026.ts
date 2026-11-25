@@ -3,7 +3,7 @@ import type { BlogPost } from "../types";
 export const post: BlogPost = {
   slug: "simples-nacional-nfse-nacional-novembro-2026",
   title: "Nota fiscal de serviço do Simples Nacional: o que mudou em 1º de novembro de 2026",
-  seoTitle: "NFS-e do Simples Nacional: o que mudou em novembro de 2026",
+  seoTitle: "NFS-e do Simples Nacional: o que mudou em nov/2026",
   description:
     "Desde 1º de novembro de 2026, ME e EPP do Simples Nacional emitem a NFS-e no padrão nacional. Entenda o que isso significa e o que fazer agora.",
   publishedAt: "2026-11-10",

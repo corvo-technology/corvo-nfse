@@ -3,7 +3,7 @@ import type { BlogPost } from "../types";
 export const post: BlogPost = {
   slug: "certificado-digital-a1-o-que-e-quando-precisa",
   title: "Certificado digital A1: o que é, quando você precisa e como guardar com segurança",
-  seoTitle: "Certificado digital A1: o que é e quando você precisa",
+  seoTitle: "Certificado digital A1: o que é e quando precisa",
   description:
     "O que é o certificado digital A1 da empresa, quando ele é necessário para emitir nota fiscal de serviço e como enviá-lo e guardá-lo com segurança.",
   publishedAt: "2026-11-10",

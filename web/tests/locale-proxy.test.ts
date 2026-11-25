@@ -37,6 +37,12 @@ describe("locale proxy", () => {
     expect(new URL(response.headers.get("location")!).pathname).toBe("/pt");
   });
 
+  it("sends crawlers from the root to /pt with a permanent 308", () => {
+    const response = proxy(request("/", { "user-agent": "Mozilla/5.0 (compatible; Googlebot/2.1)" }));
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe("https://www.corvo.tech/pt");
+  });
+
   it("does not send a hreflang Link header that could disagree with the HTML", () => {
     const response = proxy(request("/pt"));
     expect(response.headers.get("link")).toBeNull();

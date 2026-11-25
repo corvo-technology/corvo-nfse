@@ -1,3 +1,22 @@
+import type { Metadata } from "next";
+import { pageMetadata, seoLocale } from "@/lib/seo";
+
+const BRAND_COPY = {
+  pt: {
+    title: "Identidade visual",
+    description: "Marca, cores e tipografia da Corvo: veja as versões do símbolo e como usar a identidade visual em materiais e parcerias.",
+  },
+  en: {
+    title: "Brand guidelines",
+    description: "The Corvo mark, colors and typography: see the versions of the symbol and how to use the brand in materials and partnerships.",
+  },
+} as const;
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return pageMetadata({ locale, path: "/brand", ...BRAND_COPY[seoLocale(locale)] });
+}
+
 
 const marks = [
   {
