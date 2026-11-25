@@ -70,8 +70,11 @@ export function createCreditsPurchaseHandler(
     if (errors.length > 0) throw invalidInput(errors);
 
     const amountCents = params.units * AVULSO_UNIT_CENTS;
-    const amount = BRL.format(amountCents / 100).replace(/ /g, ' ');
-    let result;
+    const amount = BRL.format(amountCents / 100).replaceAll(
+      String.fromCharCode(160),
+      ' ',
+    );
+    let result: Awaited<ReturnType<typeof checkout.start>>;
     try {
       result = await checkout.start(
         ctx.activeTenantId,

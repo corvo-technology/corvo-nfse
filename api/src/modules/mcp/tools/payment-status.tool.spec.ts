@@ -16,9 +16,9 @@ function setup(view: unknown = null) {
     }),
   };
   const handler = createPaymentStatusHandler(
-    pix as never,
-    billing as never,
-    usage as never,
+    pix,
+    billing,
+    usage,
   );
   return { handler, pix, billing, usage };
 }

@@ -82,7 +82,7 @@ export function createPaymentStatusHandler(
       };
     }
 
-    let session;
+    let session: Awaited<ReturnType<typeof billing.checkoutStatus>>;
     try {
       session = await billing.checkoutStatus(tenantId, params.session_id!);
     } catch (error) {

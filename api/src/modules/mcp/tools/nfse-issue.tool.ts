@@ -377,7 +377,7 @@ export function createNfseIssueHandler(
     if (errors.length > 0) throw invalidInput(errors);
     const dto = toCreateInvoiceDto(params);
 
-    let emitted;
+    let emitted: Awaited<ReturnType<typeof emitter.emit>>;
     try {
       emitted = await emitter.emit(
         dto,
