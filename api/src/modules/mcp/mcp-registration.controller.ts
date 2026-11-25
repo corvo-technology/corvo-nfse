@@ -11,6 +11,7 @@ import {
   MCP_SCOPES,
   isAcceptableRedirectUri,
   parseScopes,
+  supportedScopes,
 } from './mcp-client-policy';
 import { RegisterClientDto } from './dto/register-client.dto';
 
@@ -92,7 +93,11 @@ export class McpRegistrationController {
       );
     }
 
-    const requested = body.scope === undefined ? [] : parseScopes(body.scope);
+    const offered = new Set(supportedScopes());
+    const requested =
+      body.scope === undefined
+        ? []
+        : parseScopes(body.scope).filter((name) => offered.has(name));
     const scopes = requested.length > 0 ? requested : [...MCP_SCOPES];
     const name = cleanClientName(body.client_name) || DEFAULT_CLIENT_NAME;
     const now = new Date();

@@ -48,6 +48,15 @@ function isJsonRpcRequest(value: unknown): value is McpRequest {
   return message.jsonrpc === '2.0' && typeof message.method === 'string';
 }
 
+export type McpContent =
+  | { type: 'text'; text: string }
+  | { type: 'image'; data: string; mimeType: string };
+
+/** Return this from a tool handler to send text and/or image content as is. */
+export class McpToolResult {
+  constructor(readonly content: McpContent[]) {}
+}
+
 type ToolHandler = (params: unknown, ctx: AuthContext) => Promise<unknown>;
 
 export class McpServer {
@@ -159,7 +168,12 @@ export class McpServer {
       return {
         jsonrpc: '2.0',
         id,
-        result: { content: [{ type: 'text', text: JSON.stringify(result) }] },
+        result: {
+          content:
+            result instanceof McpToolResult
+              ? result.content
+              : [{ type: 'text', text: JSON.stringify(result) }],
+        },
       };
     } catch (err) {
       // MCP reports tool failures as a normal result with isError so the agent can read and react to them.

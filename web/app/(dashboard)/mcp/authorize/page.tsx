@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Building2, Calculator, Check, FileSearch, Loader2, ReceiptText, ShieldCheck, WalletCards, X } from "lucide-react";
+import { Building2, Calculator, Check, CreditCard, FileKey2, FileSearch, Loader2, ReceiptText, ShieldCheck, WalletCards, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ApiError, mcp, type McpConsentContext, type McpConsentParams } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -39,6 +39,12 @@ const TOOL_GROUPS = {
     { icon: Building2, title: "tools.write.company", detail: "tools.write.companyDetail" },
     { icon: ReceiptText, title: "tools.write.invoices", detail: "tools.write.invoicesDetail" },
   ],
+  "nfse:certificates": [
+    { icon: FileKey2, title: "tools.certificates.upload", detail: "tools.certificates.uploadDetail" },
+  ],
+  "billing:purchase": [
+    { icon: CreditCard, title: "tools.purchase.credits", detail: "tools.purchase.creditsDetail" },
+  ],
 } as const;
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -60,6 +66,7 @@ function AuthorizeContent() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [environment, setEnvironment] = useState<"test" | "live">("test");
+  const [extras, setExtras] = useState<string[]>([]);
   const [busy, setBusy] = useState<"allow" | "deny" | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
@@ -89,12 +96,17 @@ function AuthorizeContent() {
     return () => controller.abort();
   }, [status, params, activeTenantId, t]);
 
+  // An extra only counts if the chosen workspace's role can grant it.
+  const grantedExtras = extras.filter((name) => context?.tenants.find((tenant) => tenant.id === selected)?.allowed_optional_scopes?.includes(name));
+
   const decide = async (decision: "allow" | "deny") => {
     if (!params || busy) return;
     setBusy(decision);
     setError(null);
     try {
-      const { redirect_url } = await mcp.decide(params, decision, decision === "allow" ? (selected ?? undefined) : undefined, decision === "allow" ? environment : undefined);
+      const allowing = decision === "allow";
+      const scopes = context ? [...context.scopes.map((scope) => scope.name), ...grantedExtras] : undefined;
+      const { redirect_url } = await mcp.decide(params, decision, allowing ? (selected ?? undefined) : undefined, allowing ? environment : undefined, allowing ? scopes : undefined);
       setOutcome({ kind: decision === "allow" ? "allowed" : "denied", url: redirect_url });
       window.location.assign(redirect_url);
     } catch (cause) {
@@ -141,6 +153,8 @@ function AuthorizeContent() {
   }
 
   const selectable = context.tenants.filter((tenant) => tenant.allowed_scopes.length === context.scopes.length);
+  const optional = context.optional_scopes ?? [];
+  const selectedTenant = context.tenants.find((tenant) => tenant.id === selected);
   const scopeLabel = (name: string, fallback: string) => (t.has(`scopes.${name}`) ? t(`scopes.${name}`) : fallback);
 
   return (
@@ -179,6 +193,32 @@ function AuthorizeContent() {
           </div>
           <p className="mt-3 text-[12px] leading-4 text-text-3">{t("certificateNote")}</p>
         </div>
+
+        {optional.length > 0 && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-[13px] font-medium">{t("optional.title")}</legend>
+            {optional.map((scope) => {
+              const grantable = selectedTenant?.allowed_optional_scopes?.includes(scope.name) ?? false;
+              const tools = TOOL_GROUPS[scope.name as keyof typeof TOOL_GROUPS];
+              return (
+                <label key={scope.name} className={cn("flex cursor-pointer items-start gap-3 rounded-[10px] border px-3 py-2.5 text-sm", grantedExtras.includes(scope.name) ? "border-accent-border bg-accent-surface" : "border-border", !grantable && "cursor-not-allowed opacity-50")}>
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={grantedExtras.includes(scope.name)}
+                    disabled={!grantable}
+                    onChange={(event) => setExtras((current) => (event.target.checked ? [...current, scope.name] : current.filter((name) => name !== scope.name)))}
+                  />
+                  <span className="flex flex-col">
+                    <span>{scopeLabel(scope.name, scope.description)}</span>
+                    {tools && <span className="text-[12px] text-text-3">{t(tools[0].detail)}</span>}
+                    {!grantable && <span className="text-[12px] text-text-3">{t("optional.blocked")}</span>}
+                  </span>
+                </label>
+              );
+            })}
+          </fieldset>
+        )}
 
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-[13px] font-medium">{t("workspace")}</legend>

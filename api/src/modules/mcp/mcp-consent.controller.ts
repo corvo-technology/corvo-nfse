@@ -15,24 +15,18 @@ import { data } from '@/shared/http/response';
 import type { RequestWithAuthContext } from '../auth/auth-context';
 import { IOAuthClientRepository } from '../auth/domain/oauth-client.repository';
 import type { OAuthClient } from '../auth/domain/oauth-client';
-import {
-  permissionsForTenantRole,
-  type TenantPermission,
-} from '../auth/domain/permission';
+import { permissionsForTenantRole } from '../auth/domain/permission';
 import { ITenantMembershipRepository } from '../auth/domain/tenant-membership.repository';
 import { ConsentDecisionDto, ConsentRequestDto } from './dto/consent.dto';
 import {
   MCP_SCOPES,
   SCOPE_DESCRIPTIONS,
+  SCOPE_PERMISSION,
   matchesRegisteredRedirectUri,
+  offeredOptionalScopes,
   parseScopes,
 } from './mcp-client-policy';
 import { McpAuthService } from './mcp-auth.service';
-
-const SCOPE_PERMISSION: Record<string, TenantPermission> = {
-  'nfse:read': 'nfse.invoices.view',
-  'nfse:write': 'nfse.invoices.issue',
-};
 
 /**
  * Consent API used by the dashboard screen `/mcp/authorize`. It runs behind
@@ -59,6 +53,7 @@ export class McpConsentController {
     const authUserId = this.requireHuman(req);
     const client = await this.requireClient(query);
     const requested = this.requestedScopes(query.scope, client);
+    const optional = offeredOptionalScopes();
     const rows =
       await this.memberships.listActiveWithEstablishmentByAuthUserAndProduct(
         authUserId,
@@ -71,10 +66,17 @@ export class McpConsentController {
         name,
         description: SCOPE_DESCRIPTIONS[name],
       })),
+      optional_scopes: optional.map((name) => ({
+        name,
+        description: SCOPE_DESCRIPTIONS[name],
+      })),
       tenants: rows.map((row) => ({
         id: row.tenantId,
         name: row.establishmentName,
         allowed_scopes: requested.filter((scope) =>
+          permissionsForTenantRole(row.role).includes(SCOPE_PERMISSION[scope]),
+        ),
+        allowed_optional_scopes: optional.filter((scope) =>
           permissionsForTenantRole(row.role).includes(SCOPE_PERMISSION[scope]),
         ),
       })),
@@ -114,7 +116,10 @@ export class McpConsentController {
         error_description: 'Selected workspace is not available for this user',
       });
     }
-    const granted = this.requestedScopes(body.scope, client);
+    const granted = [
+      ...this.requestedScopes(body.scope, client),
+      ...this.checkedOptionalScopes(body.scope),
+    ];
     const allowed = permissionsForTenantRole(membership.role);
     const missing = granted.filter(
       (scope) => !allowed.includes(SCOPE_PERMISSION[scope]),
@@ -171,10 +176,18 @@ export class McpConsentController {
     return client;
   }
 
+  /** Base scopes: what the client registered and asked for (default read + write). */
   private requestedScopes(scope: string | undefined, client: OAuthClient) {
-    const parsed = parseScopes(scope ?? '');
+    const base = new Set<string>(MCP_SCOPES);
+    const parsed = parseScopes(scope ?? '').filter((name) => base.has(name));
     const wanted = parsed.length > 0 ? parsed : [...MCP_SCOPES];
     return wanted.filter((name) => client.scopes.includes(name));
+  }
+
+  /** Optional scopes the person ticked; they need no prior client registration. */
+  private checkedOptionalScopes(scope: string | undefined): string[] {
+    const offered = new Set(offeredOptionalScopes());
+    return parseScopes(scope ?? '').filter((name) => offered.has(name));
   }
 }
 

@@ -2601,7 +2601,7 @@
     "wants": "{name} wants to access your Corvo account",
     "returnTo": "After you decide, you go back to {host}.",
     "canDo": "Access you are granting",
-    "certificateNote": "A1 certificates and passwords are never available to the agent; upload remains API-only.",
+    "certificateNote": "If you allow it, the agent can upload the certificate. Corvo stores it encrypted and never returns the password.",
     "workspace": "Workspace",
     "workspaceBlocked": "Your role in this workspace does not allow these permissions.",
     "manage": "You can revoke access at any time under AI agents.",
@@ -2614,9 +2614,15 @@
     "deniedTitle": "Access denied",
     "deniedBody": "No permission was granted.",
     "goDashboard": "Go to the dashboard",
+    "optional": {
+      "title": "Extra permissions (optional)",
+      "blocked": "Your role in this workspace cannot grant this permission."
+    },
     "scopes": {
       "nfse:read": "Read and prepare operations",
-      "nfse:write": "Create and change operations"
+      "nfse:write": "Create and change operations",
+      "nfse:certificates": "Upload the company's digital certificate",
+      "billing:purchase": "Create credit charges (Pix or card). You always make the payment yourself."
     },
     "tools": {
       "read": {
@@ -2634,6 +2640,14 @@
         "companyDetail": "register an issuer in the selected environment",
         "invoices": "Issue and cancel NFS-e",
         "invoicesDetail": "start an issuance or cancellation"
+      },
+      "certificates": {
+        "upload": "Digital certificate",
+        "uploadDetail": "upload a company's A1 certificate; the password is never returned"
+      },
+      "purchase": {
+        "credits": "Credit charges",
+        "creditsDetail": "create a Pix code or card link; you pay"
       }
     },
     "errors": {

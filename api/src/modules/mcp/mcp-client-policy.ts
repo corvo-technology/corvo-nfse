@@ -1,8 +1,16 @@
+import { IS_SELF_HOSTED } from '@/shared/deployment-mode';
+import type { TenantPermission } from '../auth/domain/permission';
+
 /** The pre-registered first-party OAuth client. */
 export const MCP_CLIENT_ID = 'corvo-mcp';
 /** Clients created through dynamic registration (RFC 7591) get this prefix. */
 export const MCP_DYNAMIC_CLIENT_PREFIX = 'corvo-mcp-';
 export const MCP_SCOPES = ['nfse:read', 'nfse:write'] as const;
+/** Extra scopes the person ticks (unchecked) on the consent screen. */
+export const MCP_OPTIONAL_SCOPES = [
+  'nfse:certificates',
+  'billing:purchase',
+] as const;
 export const MCP_CLIENT_ID_PATTERN = /^corvo-mcp(-[A-Za-z0-9_-]{8,40})?$/;
 
 export function isMcpClientId(clientId: string): boolean {
@@ -69,10 +77,46 @@ export function matchesRegisteredRedirectUri(
 export const SCOPE_DESCRIPTIONS: Record<string, string> = {
   'nfse:read': 'Consultar empresas, notas, cálculo fiscal e cotas',
   'nfse:write': 'Criar empresas, emitir e cancelar notas fiscais',
+  'nfse:certificates': 'Enviar o certificado digital da empresa',
+  'billing:purchase':
+    'Gerar cobranças de créditos (Pix ou cartão). O pagamento é sempre feito por você.',
 };
+
+/** Member permission needed to hold each scope. */
+export const SCOPE_PERMISSION: Record<string, TenantPermission> = {
+  'nfse:read': 'nfse.invoices.view',
+  'nfse:write': 'nfse.invoices.issue',
+  'nfse:certificates': 'nfse.certificates.manage',
+  'billing:purchase': 'billing.manage',
+};
+
+/** Optional scopes this deployment offers (no purchases when self-hosted). */
+export function offeredOptionalScopes(
+  selfHosted: boolean = IS_SELF_HOSTED,
+): string[] {
+  return MCP_OPTIONAL_SCOPES.filter(
+    (scope) => !(selfHosted && scope === 'billing:purchase'),
+  );
+}
+
+export function supportedScopes(
+  selfHosted: boolean = IS_SELF_HOSTED,
+): string[] {
+  return [...MCP_SCOPES, ...offeredOptionalScopes(selfHosted)];
+}
+
+export function missingScopeMessage(scope: string): string {
+  return `Esta conexão não tem permissão para: ${SCOPE_DESCRIPTIONS[scope] ?? scope}. Peça para a pessoa conectar a Corvo de novo e marcar essa opção na tela Autorizar Corvo.`;
+}
+
+export function missingMemberPermissionMessage(
+  permission: TenantPermission,
+): string {
+  return `Seu papel nesta conta não permite esta ação (${permission}). Peça a um administrador da conta.`;
+}
 
 /** Keeps only known scopes, preserving order and removing duplicates. */
 export function parseScopes(scope: string): string[] {
-  const known = new Set<string>(MCP_SCOPES);
+  const known = new Set<string>([...MCP_SCOPES, ...MCP_OPTIONAL_SCOPES]);
   return [...new Set(scope.split(/\s+/).filter((name) => known.has(name)))];
 }

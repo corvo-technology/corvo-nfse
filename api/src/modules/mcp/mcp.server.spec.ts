@@ -3,6 +3,7 @@ import type { AuthContext } from '../auth/auth-context';
 import {
   MCP_SUPPORTED_PROTOCOL_VERSIONS,
   McpServer,
+  McpToolResult,
   type McpRequest,
 } from './mcp.server';
 
@@ -150,5 +151,27 @@ describe('McpServer', () => {
         result: { isError: true, content: [{ type: 'text', text: 'nope' }] },
       });
     });
+  });
+
+  it('passes McpToolResult content through, including images', async () => {
+    const mcp = new McpServer();
+    const content = [
+      { type: 'text' as const, text: 'Scan this' },
+      { type: 'image' as const, data: 'QUJD', mimeType: 'image/png' },
+    ];
+    mcp.registerTool(
+      { name: 'rich', description: 'Rich', inputSchema: { type: 'object' } },
+      () => Promise.resolve(new McpToolResult(content)),
+    );
+    const response = await mcp.handleRequest(
+      {
+        jsonrpc: '2.0',
+        id: 7,
+        method: 'tools/call',
+        params: { name: 'rich', arguments: {} },
+      },
+      ctx,
+    );
+    expect(response?.result).toEqual({ content });
   });
 });
