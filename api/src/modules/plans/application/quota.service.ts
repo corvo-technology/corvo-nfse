@@ -24,6 +24,8 @@ export interface QuotaStatus {
   canEmit: boolean;
   reason?: QuotaExceededReason;
   creditsRemaining: number;
+  /** Avulso (bought or bonus) notes; they pay once the plan allowance is spent. */
+  avulsoBalance: number;
   creditsUsed: number;
   creditsReserved: number;
   monthlyAllowance: number;
@@ -51,9 +53,12 @@ export class QuotaService {
       await this.companyRepo.countActiveByTenantId(tenantId);
 
     const dailyUsage = usage.dailyUsage;
+    // Same rule as BillingUsageService.reserve: an exhausted plan allowance is covered by avulso notes.
+    const planExhausted =
+      usage.period.authorized + usage.period.reserved >= usage.hard_limit;
     const reason = usage.blocked
       ? QuotaExceededReason.PLAN_BLOCKED
-      : usage.period.authorized + usage.period.reserved >= usage.hard_limit
+      : planExhausted && usage.avulsoBalance <= 0
         ? QuotaExceededReason.NO_CREDITS
         : assignment.plan.dailyLimit !== null &&
             dailyUsage >= assignment.plan.dailyLimit
@@ -63,6 +68,7 @@ export class QuotaService {
       canEmit: !reason,
       reason,
       creditsRemaining: usage.included_remaining,
+      avulsoBalance: usage.avulsoBalance,
       creditsUsed: usage.period.authorized,
       creditsReserved: usage.period.reserved,
       monthlyAllowance: usage.period.included,
