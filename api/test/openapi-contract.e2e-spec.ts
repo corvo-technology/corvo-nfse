@@ -137,22 +137,25 @@ describe('OpenAPI contract against the real API (e2e)', () => {
             }),
           lookupProfile: () =>
             Promise.resolve({
-              legalName: 'Empresa Teste',
-              tradeName: '',
-              address: {
-                zip: '01001000',
-                street: 'Praça da Sé',
-                number: '1',
-                complement: '',
-                district: 'Sé',
-                city: 'São Paulo',
-                state: 'SP',
+              status: 'found',
+              profile: {
+                legalName: 'Empresa Teste',
+                tradeName: '',
+                address: {
+                  zip: '01001000',
+                  street: 'Praça da Sé',
+                  number: '1',
+                  complement: '',
+                  district: 'Sé',
+                  city: 'São Paulo',
+                  state: 'SP',
+                },
+                municipalityCode: '3550308',
+                simples: true,
+                mei: false,
+                active: true,
+                situation: 'ATIVA',
               },
-              municipalityCode: '3550308',
-              simples: true,
-              mei: false,
-              active: true,
-              situation: 'ATIVA',
             }),
         })
         .overrideProvider(ImportFileStorage)
