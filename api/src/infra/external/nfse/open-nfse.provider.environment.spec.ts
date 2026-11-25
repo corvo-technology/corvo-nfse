@@ -118,12 +118,10 @@ describe('OpenNfseProvider.queryByDps: asks the portal of the invoice environmen
     ) => {
       built.push(x.environment);
       return {
-        fetchDpsStatus: jest
-          .fn()
-          .mockResolvedValue({
-            chaveAcesso: '3'.repeat(50),
-            tipoAmbiente: answer,
-          }),
+        fetchDpsStatus: jest.fn().mockResolvedValue({
+          chaveAcesso: '3'.repeat(50),
+          tipoAmbiente: answer,
+        }),
         fetchByChave: jest.fn().mockResolvedValue(note(answer)),
         close: jest.fn(),
       };
