@@ -22,6 +22,7 @@ describe('nfse_list tool', () => {
             idempotencyKey: 'k',
             emailSnapshot: { send: true },
             fiscalSchemaVersion: '1.01',
+            secretInternal: 'x',
             lastErrorCode: 'E1',
             lastErrorMessage: 'bad',
             accessKey: 'AK',

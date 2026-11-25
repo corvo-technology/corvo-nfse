@@ -28,25 +28,56 @@ export function toPublicInvoice(invoice: Invoice) {
   };
 }
 
+/** Fields of an invoice that agents may see in the detail tools. Anything not listed stays hidden. */
+const DETAILED_INVOICE_FIELDS = [
+  'id',
+  'companyId',
+  'environment',
+  'externalId',
+  'status',
+  'customerSnapshot',
+  'serviceSnapshot',
+  'taxSnapshot',
+  'amount',
+  'discount',
+  'deduction',
+  'substitutesInvoiceId',
+  'substitutionDescription',
+  'currency',
+  'competenceDate',
+  'scheduledFor',
+  'dpsId',
+  'dpsSeries',
+  'dpsNumber',
+  'accessKey',
+  'nfseNumber',
+  'issuedAt',
+  'authorizedAt',
+  'lastErrorCode',
+  'lastErrorMessage',
+  'lastEmailStatus',
+  'lastEmailSentAt',
+  'cancellationReason',
+  'cancellationDescription',
+  'cancelledAt',
+  'cancellationRequestedAt',
+  'portalFlag',
+  'createdAt',
+  'documentsStatus',
+  'emailStatus',
+  'stage',
+] as const;
+
 /**
  * Detail view of an invoice for tools the agent acts on (nfse_get, nfse_list):
- * everything about the note and its customer, minus internal bookkeeping.
+ * an allowlist, so a new internal field on the entity is never exposed by default.
  */
 export function toDetailedInvoice(invoice: Invoice) {
-  const {
-    tenantId: _tenantId,
-    idempotencyKey: _idempotencyKey,
-    requestHash: _requestHash,
-    documentKeyVersion: _documentKeyVersion,
-    fiscalSchemaVersion: _fiscalSchemaVersion,
-    fiscalProvider: _fiscalProvider,
-    lastErrorProvider: _lastErrorProvider,
-    emailSnapshot: _emailSnapshot,
-    documentsReadyAt: _documentsReadyAt,
-    updatedAt: _updatedAt,
-    ...detail
-  } = invoice.toJSON() as ReturnType<Invoice['toJSON']> &
-    Record<string, unknown>;
+  const json = invoice.toJSON() as Record<string, unknown>;
+  const detail: Record<string, unknown> = {};
+  for (const field of DETAILED_INVOICE_FIELDS) {
+    if (field in json) detail[field] = json[field];
+  }
   return detail;
 }
 

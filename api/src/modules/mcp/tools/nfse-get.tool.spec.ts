@@ -19,6 +19,7 @@ describe('nfse_get tool', () => {
         lastErrorProvider: 'sefin',
         emailSnapshot: { send: true },
         updatedAt: new Date(),
+        secretInternal: 'x',
         accessKey: 'AK',
         nfseNumber: 7,
         dpsSeries: '1',
@@ -60,6 +61,7 @@ describe('nfse_get tool', () => {
       'lastErrorProvider',
       'emailSnapshot',
       'updatedAt',
+      'secretInternal',
     ])
       expect(json).not.toContain(forbidden);
   });
