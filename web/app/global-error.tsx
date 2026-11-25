@@ -2,11 +2,7 @@
 
 import { useEffect } from "react";
 import NextError from "next/error";
-import posthog from "posthog-js";
-
-const posthogConfigured = Boolean(
-  process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
-);
+import { posthogConfigured, withPostHog } from "@/lib/posthog";
 
 export default function GlobalError({
   error,
@@ -14,7 +10,8 @@ export default function GlobalError({
   error: Error & { digest?: string };
 }) {
   useEffect(() => {
-    if (posthogConfigured) posthog.captureException(error);
+    // posthog-js is loaded on demand: this file is part of every page's first load.
+    if (posthogConfigured) withPostHog((posthog) => posthog.captureException(error));
   }, [error]);
 
   return (
