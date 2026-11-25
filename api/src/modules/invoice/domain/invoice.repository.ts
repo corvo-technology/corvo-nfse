@@ -74,6 +74,12 @@ export interface IInvoiceRepository {
     olderThan: Date,
     limit: number,
   ): Promise<Array<{ id: string; tenantId: string; companyId: string }>>;
+  /** Invoices parked in manual review that are not older than `since`, in no fixed order. */
+  findManualReview(
+    tenantId: string,
+    since: Date,
+    limit: number,
+  ): Promise<Array<{ id: string; tenantId: string; companyId: string }>>;
   save(
     invoice: Invoice,
     tenantId: string,

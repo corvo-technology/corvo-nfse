@@ -287,6 +287,21 @@ export const envSchema = z
     // Reads what happened to issued invoices on the national portal (cancellations, taker rejections).
     // Off by default: turn it on in live only after a round against the Produção Restrita was checked.
     PORTAL_SYNC_ENABLED: booleanFromEnv.default(false),
+    // Query-only sweep (every 30 min) that asks the portal about invoices parked in manual review.
+    // It never sends anything: it only authorizes an invoice whose DPS the portal already has.
+    MANUAL_REVIEW_SWEEP_ENABLED: booleanFromEnv.default(true),
+    MANUAL_REVIEW_SWEEP_BATCH: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(500)
+      .default(50),
+    MANUAL_REVIEW_SWEEP_MAX_AGE_DAYS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(365)
+      .default(30),
     OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
     OUTBOX_BATCH_SIZE: z.coerce.number().int().positive().default(50),
     OUTBOX_LEASE_MS: z.coerce.number().int().positive().default(120000),

@@ -17,6 +17,7 @@ import { TenantBillingOrmEntity } from './entities/tenant-billing.orm-entity';
 
 export type TenantWork =
   | 'invoice-recovery'
+  | 'manual-review-sweep'
   | 'certificate-expiry'
   | 'portal-sync'
   | 'webhook-delivery'
@@ -54,6 +55,11 @@ export class TenantWorkDiscovery {
           .where(
             "work.status IN ('processing','reconciliation_required','authorized')",
           );
+      } else if (kind === 'manual-review-sweep') {
+        query = this.database
+          .getRepository(InvoiceOrmEntity)
+          .createQueryBuilder('work')
+          .where("work.status = 'manual_review'");
       } else if (kind === 'certificate-expiry') {
         owner = 'company.tenant_id';
         query = this.database
