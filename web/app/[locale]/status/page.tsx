@@ -1,5 +1,8 @@
+import { use } from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { CorvoWordmark } from "@/components/ui/corvo-logo";
+import { pageMetadata, seoLocale } from "@/lib/seo";
 
 /**
  * Component names only. There is no monitoring source behind this page yet, so it shows
@@ -26,15 +29,32 @@ const incidents = [
   },
 ];
 
-export default function StatusPage() {
+const STATUS_COPY = {
+  pt: {
+    title: "Status do serviço",
+    description: "Veja o estado da API, dos webhooks e do painel da Corvo, e o histórico de incidentes já resolvidos.",
+  },
+  en: {
+    title: "Service status",
+    description: "See the state of the Corvo API, webhooks and dashboard, and the history of incidents that were already resolved.",
+  },
+} as const;
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const copy = STATUS_COPY[seoLocale((await params).locale)];
+  return pageMetadata({ locale: (await params).locale, path: "/status", ...copy });
+}
+
+export default function StatusPage({ params }: { params?: Promise<{ locale: string }> }) {
+  const home = `/${seoLocale(params ? use(params).locale : "pt")}`;
   return (
     <div className="min-h-screen bg-bg text-text font-sans">
       <nav className="border-b border-border-soft px-10 py-4 flex items-center justify-between">
-        <Link href="/">
+        <Link href={home}>
           <CorvoWordmark size={16} variant="green" />
         </Link>
         <Link
-          href="/"
+          href={home}
           className="text-sm text-text-3 hover:text-text transition-colors"
         >
           Back to home

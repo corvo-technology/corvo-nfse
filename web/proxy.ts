@@ -236,6 +236,11 @@ export function proxy(request: NextRequest) {
     return notFound(request, locale);
   }
 
+  // Crawlers have no language to detect: the root goes to the default locale with one permanent hop.
+  if (pathname === "/" && isBot(request.headers.get("user-agent"))) {
+    return redirectTo(request, `/${routing.defaultLocale}`, 308);
+  }
+
   // i18n routing for locale-prefixed paths and root. "/" stays a 307 so Accept-Language is not cached.
   const response = handleI18nRouting(request);
   if (isBot(request.headers.get("user-agent"))) {

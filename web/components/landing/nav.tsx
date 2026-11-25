@@ -31,7 +31,7 @@ export function Nav() {
     >
       {/* Left */}
       <div className="flex items-center gap-8">
-        <Link href="/">
+        <Link href={`/${locale}`}>
           <CorvoWordmark size={16} variant="white" />
         </Link>
 

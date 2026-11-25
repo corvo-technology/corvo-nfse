@@ -119,25 +119,55 @@ interface PageMetadataInput {
   sharedImage?: boolean;
 }
 
+const TITLE_TAIL: Record<SeoLocale, string> = { en: " — NFS-e API", pt: " — API de NFS-e" };
+const DESCRIPTION_TAIL: Record<SeoLocale, string[]> = {
+  en: [" Corvo is a REST API to issue Brazilian NFS-e for MEI and Simples Nacional.", " The first invoice is free."],
+  pt: [" A Corvo é uma API REST para emitir NFS-e de MEI e Simples Nacional.", " A primeira nota é grátis."],
+};
+const MIN_TITLE = 30;
+const MAX_TITLE = 60;
+const MIN_DESCRIPTION = 120;
+const MAX_DESCRIPTION = 160;
+
+/** Title of at least 30 characters (with " | Corvo"): a short one gets the product tail. */
+export function fitTitle(title: string, locale: SeoLocale, absolute = false): string {
+  const length = absolute ? title.length : `${title} | ${SITE_NAME}`.length;
+  return length < MIN_TITLE ? `${title}${TITLE_TAIL[locale]}` : title;
+}
+
+/** Description between 120 and 160 characters: short ones get product sentences, long ones are cut at a word. */
+export function fitDescription(description: string, locale: SeoLocale): string {
+  let text = description.trim();
+  for (const tail of DESCRIPTION_TAIL[locale]) {
+    if (text.length >= MIN_DESCRIPTION) break;
+    if ((text + tail).length <= MAX_DESCRIPTION) text += tail;
+  }
+  if (text.length <= MAX_DESCRIPTION) return text;
+  const cut = text.slice(0, MAX_DESCRIPTION - 1);
+  return `${cut.slice(0, cut.lastIndexOf(" ")).replace(/[,;:.\s]+$/, "")}…`;
+}
+
 /** Metadata with canonical, hreflang, Open Graph and Twitter cards in the page's language. */
 export function pageMetadata(input: PageMetadataInput): Metadata {
   const locale = input.onlyLocale ?? seoLocale(input.locale);
   const copy = SITE_COPY[locale];
   const path = input.path ?? "";
-  const shownTitle = input.absoluteTitle ? input.title : `${input.title} | ${SITE_NAME}`;
+  const title = fitTitle(input.title, locale, input.absoluteTitle);
+  const description = fitDescription(input.description, locale);
+  const shownTitle = input.absoluteTitle ? title : `${title} | ${SITE_NAME}`;
   const other = input.onlyLocale
     ? []
     : SEO_LOCALES.filter((value) => value !== locale).map((value) => OPEN_GRAPH_LOCALE[value]);
   return {
-    title: input.absoluteTitle ? { absolute: input.title } : input.title,
-    description: input.description,
+    title: input.absoluteTitle ? { absolute: title } : title,
+    description,
     ...(input.keywords ? { keywords: input.keywords } : {}),
     alternates: localizedAlternates(locale, path, input.onlyLocale),
     openGraph: {
       type: input.type ?? "website",
       siteName: SITE_NAME,
       title: shownTitle,
-      description: input.description,
+      description,
       url: pageUrl(locale, path),
       locale: OPEN_GRAPH_LOCALE[locale],
       alternateLocale: other,
@@ -146,7 +176,7 @@ export function pageMetadata(input: PageMetadataInput): Metadata {
     twitter: {
       card: "summary_large_image",
       title: shownTitle,
-      description: input.description,
+      description,
       ...(input.sharedImage === false ? {} : { images: [OG_IMAGE_PATH] }),
     },
   };
