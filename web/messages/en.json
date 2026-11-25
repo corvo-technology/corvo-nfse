@@ -1913,6 +1913,8 @@
     "events": "Invoice progress",
     "noEvents": "No events recorded.",
     "timeline": {
+      "cancellationRefusedTitle": "Cancellation refused",
+      "cancellationRefused": "The Receita did not accept the cancellation. The note is still valid.",
       "scheduled": "Scheduled. Issuance will be released on {date}.",
       "queued": "We received the request and the invoice is waiting to be issued.",
       "processing": "We are sending the invoice to the city.",

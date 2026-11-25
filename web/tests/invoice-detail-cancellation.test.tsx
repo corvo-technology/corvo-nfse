@@ -6,14 +6,14 @@ import InvoiceDetailPage from "@/app/(dashboard)/app/invoices/[id]/page";
 import type { Invoice } from "@/lib/types";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), events: vi.fn(() => [] as unknown[]) }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "inv-1" }), useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ success: vi.fn(), error: vi.fn() }) }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: () => true }) }));
-vi.mock("@/lib/api", () => ({ invoices: { get: mocks.get, events: vi.fn() }, webhooks: { deliveries: async () => ({ items: [], hasMore: false, nextCursor: null }) }, collectAll: async () => [] }));
+vi.mock("@/lib/api", () => ({ invoices: { get: mocks.get, events: vi.fn() }, webhooks: { deliveries: async () => ({ items: [], hasMore: false, nextCursor: null }) }, collectAll: async () => mocks.events() }));
 
-afterEach(() => { cleanup(); mocks.get.mockReset(); });
+afterEach(() => { cleanup(); mocks.get.mockReset(); mocks.events.mockReset(); mocks.events.mockReturnValue([]); });
 
 const t = messages.InvoiceDetail;
 const invoice = (over: Partial<Invoice> = {}) =>
@@ -75,5 +75,21 @@ describe("invoice detail error banner and manual review", () => {
   it("puts the manual review actions on top for someone who can issue", async () => {
     await renderPage(invoice({ status: "manual_review", authorizedAt: null } as unknown as Partial<Invoice>));
     expect(screen.getByRole("button", { name: /Retry/ })).toBeTruthy();
+  });
+});
+
+describe("invoice timeline after a refused cancellation", () => {
+  it("shows a refusal step, not a second authorization", async () => {
+    mocks.events.mockReturnValue([
+      { id: "e1", invoiceId: "inv-1", from: "processing", to: "authorized", at: "2026-10-19T12:00:00.000Z" },
+      { id: "e2", invoiceId: "inv-1", from: "authorized", to: "cancelling", at: "2026-10-19T13:00:00.000Z", reason: "Cancellation requested" },
+      { id: "e3", invoiceId: "inv-1", from: "cancelling", to: "authorized", at: "2026-10-19T13:01:00.000Z", reason: "Cancellation rejected: Rejeição da Receita [E0803]: Ambiente informado diverge" },
+    ]);
+    await renderPage(invoice({ status: "authorized" }));
+    expect(await screen.findByText(t.timeline.cancellationRefusedTitle)).toBeTruthy();
+    expect(screen.getAllByText(t.timeline.authorized)).toHaveLength(1);
+    const text = screen.getByText(/The Receita did not accept the cancellation/).textContent;
+    expect(text).toContain("Ambiente informado diverge");
+    expect(text).not.toContain("Cancellation rejected");
   });
 });

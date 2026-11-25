@@ -1913,6 +1913,8 @@
     "events": "Andamento da nota",
     "noEvents": "Nenhum evento registrado.",
     "timeline": {
+      "cancellationRefusedTitle": "Cancelamento recusado",
+      "cancellationRefused": "A Receita não aceitou o cancelamento. A nota continua válida.",
       "scheduled": "Agendada. A emissão será liberada em {date}.",
       "queued": "Recebemos o pedido e a nota aguarda a vez de ser emitida.",
       "processing": "Estamos enviando a nota para a prefeitura.",

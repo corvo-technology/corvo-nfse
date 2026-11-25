@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { invoices, collectAll } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { showsInvoiceError } from "@/lib/api-errors";
-import { canCancelInvoice, canSubstituteInvoice, showsCancellationRequested, showsCancellationReason } from "@/lib/invoice-cancellation";
+import { canCancelInvoice, isCancellationRefused, cancellationRefusal, canSubstituteInvoice, showsCancellationRequested, showsCancellationReason } from "@/lib/invoice-cancellation";
 import type { Invoice, InvoiceEvent } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { CancelInvoiceDialog } from "@/components/dashboard/cancel-invoice-dialog";
@@ -66,6 +66,7 @@ export default function InvoiceDetailPage() {
   }
   if (!invoice || invoice.id !== id) return error ? <div className="flex flex-col gap-4"><p role="alert">{error}</p><Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button></div> : <DetailSkeleton label={t("loading")} />;
   const cancellable = canCancelInvoice(invoice.status, can("nfse.invoices.issue")); const substitutable = canSubstituteInvoice(invoice.status, can("nfse.invoices.issue")); const hasDocuments = Boolean(invoice.authorizedAt); const scheduled = isScheduled(invoice);
+  const refusalText = (reason?: string | null) => { const { code, message } = cancellationRefusal(reason); return message ? invoiceError(code, message) : ""; };
   const date = (value: string) => new Date(value).toLocaleString(locale === "pt" ? "pt-BR" : "en-US");
   const brl = new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US", { style: "currency", currency: "BRL" });
   const money = brl.format(invoice.amount); const origin = invoiceOrigin(invoice);
@@ -81,11 +82,11 @@ export default function InvoiceDetailPage() {
     <Card className="flex flex-col gap-4 p-5"><h2 className="font-medium">{t("documents")}</h2><div className="flex gap-3"><Button disabled={!hasDocuments || downloading} onClick={() => void download("pdf")}>PDF</Button><Button disabled={!hasDocuments || downloading} onClick={() => void download("xml")}>XML</Button>{invoice.status === "authorized" && hasDocuments && can("nfse.invoices.issue") && <Button onClick={() => setResendOpen(true)}>{t("resend.open")}</Button>}</div>{!hasDocuments && <p className="text-sm text-text-3">{t("documentsHint")}</p>}</Card>
     <Card className="flex flex-col gap-5 p-5"><h2 className="font-medium">{t("events")}</h2>{events.length === 0 && <p className="text-sm text-text-3">{t("noEvents")}</p>}
       <ol className="flex flex-col">{events.map((event, index) => {
-        const last = index === events.length - 1; const waiting = last && pending.has(event.to); const tone = TONE[event.to];
+        const last = index === events.length - 1; const waiting = last && pending.has(event.to); const refused = isCancellationRefused(event); const tone = refused ? "bg-warn" : TONE[event.to];
         return <li key={event.id} className="relative flex gap-4 pb-6 last:pb-0">
           {(!last || waiting) && <span aria-hidden className="absolute left-[7px] top-5 h-[calc(100%-1.25rem)] w-px bg-border-strong" />}
           <span aria-hidden className={`relative mt-1 size-[15px] shrink-0 rounded-full border-2 border-bg ${tone} ${waiting ? "animate-pulse" : ""}`} />
-          <div className="min-w-0 flex-1"><div className="flex flex-wrap items-baseline justify-between gap-x-3"><p className={last ? "font-medium text-text" : "text-text-2"}>{event.source === "portal" ? (event.portalEvent && t.has(`portalEvent.${event.portalEvent}`) ? t(`portalEvent.${event.portalEvent}`) : t("portalEvent.other")) : last && scheduled && event.to === "queued" ? ts("scheduled") : ts(event.to)}</p><time dateTime={event.at} title={date(event.at)} className="text-[12.5px] text-text-4">{timeAgo(event.at, tc)}</time></div><p className="text-sm text-text-3">{event.source === "portal" ? [t("portalSource"), event.reason].filter(Boolean).join(" · ") : last && scheduled && event.to === "queued" ? t("timeline.scheduled", { date: formatScheduledDate(invoice.scheduledFor!, locale, true) }) : t(`timeline.${event.to}`)}</p></div>
+          <div className="min-w-0 flex-1"><div className="flex flex-wrap items-baseline justify-between gap-x-3"><p className={last ? "font-medium text-text" : "text-text-2"}>{refused ? t("timeline.cancellationRefusedTitle") : event.source === "portal" ? (event.portalEvent && t.has(`portalEvent.${event.portalEvent}`) ? t(`portalEvent.${event.portalEvent}`) : t("portalEvent.other")) : last && scheduled && event.to === "queued" ? ts("scheduled") : ts(event.to)}</p><time dateTime={event.at} title={date(event.at)} className="text-[12.5px] text-text-4">{timeAgo(event.at, tc)}</time></div><p className="text-sm text-text-3">{refused ? [t("timeline.cancellationRefused"), refusalText(event.reason)].filter(Boolean).join(" ") : event.source === "portal" ? [t("portalSource"), event.reason].filter(Boolean).join(" · ") : last && scheduled && event.to === "queued" ? t("timeline.scheduled", { date: formatScheduledDate(invoice.scheduledFor!, locale, true) }) : t(`timeline.${event.to}`)}</p></div>
         </li>;
       })}</ol>
     </Card>
