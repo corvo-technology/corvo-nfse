@@ -263,9 +263,11 @@ export class DefaultRtcMapper implements RtcMapper {
     });
     if (!ibsCity.ok) return ibsCity;
 
-    // Até a 1.7.0 cada grupo trazia a sua memoriaCalculo; a partir da 1.7.2 ela vem
-    // num objeto único em gIBSCBS.memoriaCalculo ({ cbs, ibsUF, ibsMun }).
-    const memory = asRecord(group.memoriaCalculo);
+    // Desde a 1.7.0 a memória vem num objeto único em tribCalc.IBSCBS.memoriaCalculo
+    // ({ cbs, ibsUF, ibsMun }). Aceitamos também gIBSCBS.memoriaCalculo e, nas
+    // versões antigas, a memoriaCalculo dentro de cada grupo.
+    const memory =
+      asRecord(ibscbs?.memoriaCalculo) ?? asRecord(group.memoriaCalculo);
 
     return ok({
       calculatorVersion,
@@ -275,9 +277,9 @@ export class DefaultRtcMapper implements RtcMapper {
       ibsTotal: { base: moneyString(base), amount: moneyString(ibs) },
       legalReferences: [],
       calculationMemory: [
-        gCBS.memoriaCalculo ?? memory?.cbs,
-        gIBSUF.memoriaCalculo ?? memory?.ibsUF,
-        gIBSMun.memoriaCalculo ?? memory?.ibsMun,
+        memory?.cbs ?? gCBS.memoriaCalculo,
+        memory?.ibsUF ?? gIBSUF.memoriaCalculo,
+        memory?.ibsMun ?? gIBSMun.memoriaCalculo,
       ],
       collectionWaived: false,
     });
