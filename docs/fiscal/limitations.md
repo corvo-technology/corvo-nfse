@@ -114,3 +114,5 @@ um destes:
 Veja [exemplos](examples.md), [observabilidade](observability.md) e o
 [registro de homologação](homologation.md). A implementação e os testes de
 cálculo não acrescentam homologação na Produção Restrita.
+
+As datas fiscais que vêm aí estão em [`fiscal-dates.json`](fiscal-dates.json). O workflow `fiscal-dates` abre um issue 30 e 7 dias antes de cada uma (`scripts/check-fiscal-dates.sh`).

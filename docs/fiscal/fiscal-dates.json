@@ -1,0 +1,69 @@
+[
+  {
+    "date": "2026-12-01",
+    "title": "Virada do layout da NT 009 (DPS)",
+    "what": "A NT 009 passa a valer em produção. Com FISCAL_DPS_LAYOUT=auto a API ligaria o layout nt009-r1 à 00:00 de 01/12. Decisão do dono em 25/11/2026: manter rtc-v1.01 (layout atual) até o XSD oficial de produção sair e ser testado na homologação. A tolerância vai até 31/12/2026.",
+    "who": "Todas as empresas que emitem NFS-e pela Corvo.",
+    "check": "Ver se o XSD oficial de produção da NT 009 foi publicado. Testar o layout nt009-r1 na produção restrita antes de trocar FISCAL_DPS_LAYOUT.",
+    "sources": [
+      "api/src/modules/invoice/domain/fiscal/dps/dps-layout.ts",
+      "docs/fiscal/nt-009-prontidao.md"
+    ]
+  },
+  {
+    "date": "2026-12-31",
+    "title": "Fim da tolerância de IBS/CBS e da fase de teste",
+    "what": "Acaba a tolerância da Sefin para IBS/CBS (sefinToleranceUntil) e a fase de teste ibscbs.test-phase.",
+    "who": "Empresas do regime regular que emitem com IBS/CBS.",
+    "check": "Revisar FISCAL_IBSCBS_UNAVAILABLE_MODE e ver se a Calculadora RTC já está disponível para 2027.",
+    "sources": [
+      "api/src/modules/invoice/domain/fiscal/policies/rules/index.ts",
+      "api/src/infra/config/env.schema.ts",
+      "docs/fiscal/limitations.md"
+    ]
+  },
+  {
+    "date": "2027-01-01",
+    "title": "IBS/CBS passam a valer",
+    "what": "A Calculadora RTC ainda não tem alíquotas de 2027, então o regime regular recebe TAX_RATE_NOT_FOUND. A regra simples.ibscbs-effective começa. Continua aberta a decisão se MEI e Simples precisam destacar IBS/CBS. PIS e COFINS saem do cálculo da RTC.",
+    "who": "Regime regular (bloqueado sem alíquotas), Simples Nacional e MEI.",
+    "check": "Conseguir a resposta do contador sobre MEI/Simples antes desta data. Ver se a RTC publicou alíquotas de 2027.",
+    "sources": [
+      "docs/fiscal/limitations.md",
+      "docs/fiscal/mvp-mei-simples-pendencias.md",
+      "api/src/modules/invoice/domain/fiscal/policies/rules/index.ts"
+    ]
+  },
+  {
+    "date": "2027-03-01",
+    "title": "Categorias específicas de IBS/CBS",
+    "what": "Plataformas digitais e os subitens 1.03, 1.05, 1.09 e 16.01 passam a valer. Hoje existem só como parâmetro (specificCategoriesFrom), sem mapeamento.",
+    "who": "Empresas desses serviços.",
+    "check": "Mapear os subitens para códigos internos se houver equivalência oficial (item D3 de limitations.md).",
+    "sources": [
+      "api/src/modules/invoice/domain/fiscal/policies/rules/index.ts",
+      "docs/fiscal/limitations.md"
+    ]
+  },
+  {
+    "date": "2028-01-01",
+    "title": "Janela fixa de 2027 no código acaba",
+    "what": "O código tem a janela de 2027 escrita fixa (date >= '2027-01-01' && date < '2028-01-01'). Em 2028 o pedido de revisão do resultado fiscal some em silêncio.",
+    "who": "Todas as notas com competência a partir de 2028.",
+    "check": "Decidir a regra de revisão para 2028 e atualizar result-builder.ts e o teste que fixa o comportamento atual.",
+    "sources": [
+      "api/src/modules/invoice/domain/fiscal/result-builder.ts",
+      "api/src/modules/invoice/domain/fiscal/result-builder.spec.ts"
+    ]
+  },
+  {
+    "date": "2033-01-01",
+    "title": "ISS sai do cálculo da RTC",
+    "what": "A Calculadora RTC não aceita mais o campo ISS a partir de 2033.",
+    "who": "Todas as notas com competência a partir de 2033.",
+    "check": "Ver como a Corvo calcula o ISS a partir dessa data.",
+    "sources": [
+      "docs/fiscal/rtc/openapi.json"
+    ]
+  }
+]

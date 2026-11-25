@@ -480,6 +480,27 @@ describe('buildFiscalCalculationResult', () => {
     expect(result.requiresReview).toBe(true);
   });
 
+  // ATENCAO 2028: a janela de 2027 esta fixa em requiresReviewOf (result-builder.ts).
+  // Estes testes fixam o comportamento ATUAL; se a regra mudar em 2028, mude aqui de proposito.
+  // Lembrete: docs/fiscal/fiscal-dates.json (2028-01-01).
+  describe('janela fixa de 2027 em requiresReview (virada de 2028)', () => {
+    const reviewFor = (competenceDate: string): boolean =>
+      resultOf(context({ invoice: invoice({ competenceDate }) }))
+        .requiresReview;
+
+    it('2026-12-31: fora da janela, nao pede revisao', () => {
+      expect(reviewFor('2026-12-31')).toBe(false);
+    });
+
+    it('2027-06-01: dentro da janela, pede revisao', () => {
+      expect(reviewFor('2027-06-01')).toBe(true);
+    });
+
+    it('2028-01-01: a janela acaba e a revisao some em silencio (comportamento atual)', () => {
+      expect(reviewFor('2028-01-01')).toBe(false);
+    });
+  });
+
   it('marks the result for review when IBS/CBS was tolerated by Sefin', () => {
     const warnings: FiscalWarning[] = [
       {
