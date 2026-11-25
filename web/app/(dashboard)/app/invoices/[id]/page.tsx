@@ -69,7 +69,7 @@ export default function InvoiceDetailPage() {
   const brl = new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US", { style: "currency", currency: "BRL" });
   const money = brl.format(invoice.amount); const origin = invoiceOrigin(invoice);
   return <div className="flex max-w-[900px] flex-col gap-6"><PageHeader title={invoice.nfseNumber ? `${t("title")} ${invoice.nfseNumber}` : t("title")} subtitle={`${invoice.id} · ${scheduled ? ts("scheduled") : ts(invoice.status)}`} actions={<>{can("nfse.invoices.issue") && <Link href={copyInvoiceHref(invoice.id)} className="btn">{t("copy")}</Link>}{substitutable && <Button onClick={() => setSubstituteOpen(true)}>{t("substitute.open")}</Button>}{cancellable && <Button variant="danger" onClick={() => setCancelOpen(true)}>{t("cancel.open")}</Button>}<Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button></>} />
-    {invoice.status === "manual_review" && (can("nfse.invoices.issue") ? <ManualReviewActions invoiceIds={[invoice.id]} onDone={() => setRevision((value) => value + 1)} /> : <p role="status" className="banner banner-warn">{tReview("askAdmin")}</p>)}
+    {invoice.status === "manual_review" && (can("nfse.invoices.issue") ? <ManualReviewActions invoiceIds={[invoice.id]} dpsUsedByOther={invoice.lastErrorCode === "DPS_NUMBER_USED_BY_OTHER_NFSE"} onDone={() => setRevision((value) => value + 1)} /> : <p role="status" className="banner banner-warn">{tReview("askAdmin")}</p>)}
     {error && <p role="alert" className="banner banner-danger">{error}</p>}
     <FirstNoteBanner invoiceId={invoice.id} />
     {scheduled && <p role="status" className="banner banner-info">{t("scheduledBanner", { date: formatScheduledDate(invoice.scheduledFor!, locale, true) })}</p>}

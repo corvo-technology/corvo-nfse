@@ -1,6 +1,7 @@
 import { Invoice } from '../domain/invoice';
 import { ConcurrentInvoiceTransitionError } from '../domain/errors';
 import { InvoiceReviewService } from './invoice-review.service';
+import { DPS_USED_BY_OTHER_NFSE } from '../domain/fiscal/portal-nfse-match';
 
 const tenantId = '11111111-1111-4111-8111-111111111111';
 
@@ -134,6 +135,44 @@ describe('InvoiceReviewService', () => {
       expect.objectContaining({
         idempotencyKey: `review-discard:${invoice.id}`,
       }),
+    );
+  });
+
+  it('never retries an invoice whose DPS the portal has on another note, but still discards it', async () => {
+    const invoice = invoiceIn('manual_review');
+    invoice.setRejected(DPS_USED_BY_OTHER_NFSE, 'já foi usado por outra nota');
+    invoices.findByIdAndTenantId.mockResolvedValue(invoice);
+
+    const retried = await service.apply(
+      tenantId,
+      'live',
+      'retry',
+      [invoice.id],
+      'user-1',
+    );
+
+    expect(retried).toEqual([
+      { id: invoice.id, outcome: 'skipped', reason: 'dps_used_by_other_nfse' },
+    ]);
+    expect(invoice.status).toBe('manual_review');
+    expect(lifecycle.transition).not.toHaveBeenCalled();
+    expect(queues.add).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+
+    const discarded = await service.apply(
+      tenantId,
+      'live',
+      'discard',
+      [invoice.id],
+      'user-1',
+    );
+
+    expect(discarded).toEqual([{ id: invoice.id, outcome: 'accepted' }]);
+    expect(queues.add).toHaveBeenCalledWith(
+      'nfse-reconciliation',
+      'reconcile',
+      expect.objectContaining({ invoiceId: invoice.id, review: 'discard' }),
+      expect.anything(),
     );
   });
 

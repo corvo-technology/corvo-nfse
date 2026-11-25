@@ -592,8 +592,8 @@ export function invoiceToolsBlocks(locale: DocsLocale): DocBlock[] {
       json: `{ "data": { "results": [ { "id": "${INVOICE}", "outcome": "accepted" } ] } }`,
       notes: [
         t(
-          'A skipped invoice answers `{ "outcome": "skipped", "reason": "not_found" | "not_in_manual_review" | "changed" }`.',
-          'Uma nota ignorada responde `{ "outcome": "skipped", "reason": "not_found" | "not_in_manual_review" | "changed" }`.',
+          'A skipped invoice answers `{ "outcome": "skipped", "reason": "not_found" | "not_in_manual_review" | "changed" | "dps_used_by_other_nfse" }`. `dps_used_by_other_nfse`: retry refused because the portal already has this DPS number on another NFS-e (error code `DPS_NUMBER_USED_BY_OTHER_NFSE`); discard it and issue the sale again, which takes a new number.',
+          'Uma nota ignorada responde `{ "outcome": "skipped", "reason": "not_found" | "not_in_manual_review" | "changed" | "dps_used_by_other_nfse" }`. `dps_used_by_other_nfse`: a nova tentativa foi recusada porque o portal já tem esse número de DPS em outra nota (código `DPS_NUMBER_USED_BY_OTHER_NFSE`); descarte a nota e emita a venda de novo, que recebe outro número.',
         ),
       ],
     }),

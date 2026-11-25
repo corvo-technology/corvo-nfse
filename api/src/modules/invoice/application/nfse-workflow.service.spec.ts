@@ -13,6 +13,7 @@ import type { IIssuePayload } from '@/infra/external/nfse/nfse-fiscal-provider';
 import { buildInvoiceState } from '../domain/invoice-state';
 import { InvoiceWebhookPublisher } from './invoice-webhook.publisher';
 import { DpsBuilder } from '../domain/fiscal/dps/dps-builder';
+import { portalNfseXml } from '../domain/fiscal/__fixtures__/portal-nfse-xml';
 import type {
   FiscalSnapshot,
   IFiscalSnapshotRepository,
@@ -422,8 +423,15 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     success: true,
     accessKey: '43144000000000000000000000000000000000000000000000',
     nfseNumber: 7,
-    xmlAuthorized:
-      '<?xml version="1.0" encoding="UTF-8"?><NFSe><infNFSe Id="NFS1"/></NFSe>',
+    // The portal's note for this invoice's own DPS: checked against it before authorizing.
+    xmlAuthorized: portalNfseXml({
+      providerCnpj: company.taxId,
+      customerCnpj: '12345678000195',
+      amount: '1000.00',
+      competenceDate: '2026-10-13',
+      series: '1',
+      number: 7,
+    }),
     requiresReconciliation: false,
   };
 

@@ -220,7 +220,7 @@ type EventWire = { id: string; invoiceId: string; fromStatus: InvoiceStatus | nu
 export type ReviewAction = "retry" | "discard";
 export type ReviewOutcome =
   | { id: string; outcome: "accepted" }
-  | { id: string; outcome: "skipped"; reason: "not_found" | "not_in_manual_review" | "changed" };
+  | { id: string; outcome: "skipped"; reason: "not_found" | "not_in_manual_review" | "changed" | "dps_used_by_other_nfse" };
 const REVIEW_BATCH = 100;
 export interface FiscalPortalStatus { environment: "test" | "live"; available: boolean; since: string | null; retryAt: string | null }
 /** Whether the national NFS-e portal is answering; while it is not, invoices wait in the queue. */

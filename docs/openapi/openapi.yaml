@@ -8632,10 +8632,15 @@ components:
                       - skipped
                     type: string
                   reason:
+                    description: >-
+                      `dps_used_by_other_nfse`: retry refused because the portal already has this
+                      DPS number on another NFS-e; discard the invoice and issue the sale again (it
+                      gets a new number).
                     enum:
                       - not_found
                       - not_in_manual_review
                       - changed
+                      - dps_used_by_other_nfse
                     type: string
                 required:
                   - id

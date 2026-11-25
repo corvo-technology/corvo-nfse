@@ -1,7 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { Invoice } from '../domain/invoice';
 import { DpsBuilder } from '../domain/fiscal/dps/dps-builder';
 import type { IFiscalSnapshotRepository } from '../domain/fiscal/fiscal-snapshot.repository';
@@ -10,8 +8,11 @@ import { PortalUnavailableError } from './fiscal-portal-breaker';
 import {
   DISCARDED_ERROR_CODE,
   NfseWorkflowService,
+  PORTAL_NFSE_UNVERIFIED,
   type FiscalJobData,
 } from './nfse-workflow.service';
+import { DPS_USED_BY_OTHER_NFSE } from '../domain/fiscal/portal-nfse-match';
+import { portalNfseXml } from '../domain/fiscal/__fixtures__/portal-nfse-xml';
 
 jest.mock('./fiscal/fiscal.metrics');
 
@@ -24,16 +25,32 @@ const company = {
   municipalRegForDps: '123',
   municipalityCode: '3550308',
 };
+/** The NFS-e the portal returns for the test invoice's own DPS (1/7, R$ 100,00, 01/11/2026). */
+const realXml = portalNfseXml({
+  providerCnpj: company.taxId,
+  amount: '100.00',
+  competenceDate: '2026-11-01',
+  series: '1',
+  number: 7,
+});
+/** Another emission that already used DPS 1/7 of the same CNPJ: other value and day. */
+const otherNoteXml = portalNfseXml({
+  providerCnpj: company.taxId,
+  amount: '49.90',
+  competenceDate: '2026-10-16',
+  series: '1',
+  number: 7,
+});
 const authorized = {
   accessKey: '43144000000000000000000000000000000000000000000000',
   nfseNumber: 7,
-  xmlAuthorized: '<NFSe/>',
+  xmlAuthorized: realXml,
 };
-
-const realXml = readFileSync(
-  join(__dirname, '../infra/danfse/__fixtures__/authorized-nfse.xml'),
-  'utf8',
-);
+const otherNote = {
+  accessKey: '35347082261469487000140000000000000126109728631021',
+  nfseNumber: 1,
+  xmlAuthorized: otherNoteXml,
+};
 const PORTAL_TIME = new Date('2026-10-16T20:33:15-03:00');
 
 describe('NfseWorkflowService when the fiscal portal is down', () => {
@@ -203,6 +220,39 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
     expect(invoice.status).toBe('authorized');
   });
 
+  it('an emission answered with another note for the same DPS goes to manual review, not authorized', async () => {
+    const invoice = invoiceIn('queued');
+    provider.issue.mockResolvedValue({
+      success: true,
+      requiresReconciliation: false,
+      ...otherNote,
+    });
+
+    await run(invoice);
+
+    const snapshot = invoice.toSnapshot();
+    expect(snapshot.status).toBe('manual_review');
+    expect(snapshot.lastErrorCode).toBe(DPS_USED_BY_OTHER_NFSE);
+    expect(snapshot.accessKey).toBeNull();
+    expect(fakes.documentStorage.saveXml).not.toHaveBeenCalled();
+    expect(fakes.queues.add).not.toHaveBeenCalled();
+  });
+
+  it('a reconciliation that finds another note for the same DPS goes to manual review', async () => {
+    const invoice = invoiceIn('reconciliation_required');
+    provider.issue.mockResolvedValue({
+      success: true,
+      requiresReconciliation: false,
+      ...otherNote,
+    });
+
+    await run(invoice, { attemptCount: 1 });
+
+    expect(invoice.status).toBe('manual_review');
+    expect(invoice.toSnapshot().lastErrorCode).toBe(DPS_USED_BY_OTHER_NFSE);
+    expect(fakes.documentStorage.saveXml).not.toHaveBeenCalled();
+  });
+
   it('sends the invoice to manual review after the ceiling without calling the portal', async () => {
     const invoice = invoiceIn('reconciliation_required');
     const since = new Date(Date.now() - 7 * 3_600_000).toISOString();
@@ -264,6 +314,46 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
       expect(invoice.toSnapshot().accessKey).toBe(authorized.accessKey);
     });
 
+    it('rejects and refunds when the DPS belongs to another note, never attaching it', async () => {
+      const invoice = invoiceIn('manual_review');
+      invoice.setRejected(DPS_USED_BY_OTHER_NFSE, 'já foi usado');
+      provider.queryByDps.mockResolvedValue({
+        status: 'authorized',
+        ...otherNote,
+      });
+
+      await discard(invoice);
+
+      const snapshot = invoice.toSnapshot();
+      expect(snapshot.status).toBe('rejected');
+      expect(snapshot.lastErrorCode).toBe(DPS_USED_BY_OTHER_NFSE);
+      expect(snapshot.lastErrorMessage).toContain(
+        'Esta nota foi descartada sem ser emitida e o crédito voltou.',
+      );
+      expect(snapshot.accessKey).toBeNull();
+      expect(fakes.documentStorage.saveXml).not.toHaveBeenCalled();
+      expect(fakes.lifecycle.transition).toHaveBeenCalledWith(
+        invoice,
+        expect.objectContaining({ toStatus: 'rejected' }),
+      );
+      expect(provider.issue).not.toHaveBeenCalled();
+    });
+
+    it('keeps it in review when the portal note cannot be read', async () => {
+      const invoice = invoiceIn('manual_review');
+      provider.queryByDps.mockResolvedValue({
+        status: 'authorized',
+        ...authorized,
+        xmlAuthorized: '<NFSe/>',
+      });
+
+      await discard(invoice);
+
+      expect(invoice.status).toBe('manual_review');
+      expect(invoice.toSnapshot().lastErrorCode).toBe(PORTAL_NFSE_UNVERIFIED);
+      expect(fakes.documentStorage.saveXml).not.toHaveBeenCalled();
+    });
+
     it('stays in manual review with the reason when the portal does not answer', async () => {
       const invoice = invoiceIn('manual_review');
       provider.queryByDps.mockRejectedValue(new Error('timeout'));
@@ -320,18 +410,68 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
       expect(snapshot.issuedAt).toEqual(PORTAL_TIME);
     });
 
-    it('falls back to now when the XML has no readable dhProc', async () => {
+    it('never accepts a note it cannot read: stays in review, nothing stored', async () => {
       const invoice = invoiceIn('manual_review');
       provider.queryByDps.mockResolvedValue({
         status: 'authorized',
         ...authorized,
+        xmlAuthorized: realXml.replace(
+          /<dhProc>[^<]*<\/dhProc>/,
+          '<dhProc>sem data</dhProc>',
+        ),
       });
 
       await sweep(invoice);
 
-      expect(invoice.toSnapshot().authorizedAt!.getTime()).toBeGreaterThan(
-        Date.now() - 5000,
+      expect(invoice.status).toBe('manual_review');
+      expect(invoice.toSnapshot().lastErrorCode).toBe(PORTAL_NFSE_UNVERIFIED);
+      expect(invoice.toSnapshot().accessKey).toBeNull();
+      expect(fakes.documentStorage.saveXml).not.toHaveBeenCalled();
+    });
+
+    it('refuses another note with the same DPS: stays in review with the reason, nothing stored or sent', async () => {
+      const invoice = invoiceIn('manual_review');
+      provider.queryByDps.mockResolvedValue({
+        status: 'authorized',
+        ...otherNote,
+      });
+
+      await sweep(invoice);
+
+      const snapshot = invoice.toSnapshot();
+      expect(snapshot.status).toBe('manual_review');
+      expect(snapshot.lastErrorCode).toBe(DPS_USED_BY_OTHER_NFSE);
+      expect(snapshot.lastErrorMessage).toContain(
+        'O número de DPS 7 (série 1) já foi usado por outra nota (nº 1, de 16/10/2026, R$ 49,90). Esta nota não foi emitida.',
       );
+      expect(snapshot.accessKey).toBeNull();
+      expect(snapshot.nfseNumber).toBeNull();
+      expect(snapshot.authorizedAt).toBeNull();
+      expect(fakes.invoices.save).toHaveBeenCalledWith(invoice, tenantId);
+      expect(fakes.documentStorage.saveXml).not.toHaveBeenCalled();
+      expect(fakes.queues.add).not.toHaveBeenCalled();
+      expect(provider.issue).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          invoiceId: invoice.id,
+          outcome: 'portal_nfse_mismatch',
+          errorCode: DPS_USED_BY_OTHER_NFSE,
+          differences: ['amount', 'competenceDate'],
+          portalNfseNumber: '1',
+        }),
+        'Fiscal reconciliation attempt',
+      );
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('<');
+    });
+
+    it('does not ask the portal again for a DPS it already said belongs to another note', async () => {
+      const invoice = invoiceIn('manual_review');
+      invoice.setRejected(DPS_USED_BY_OTHER_NFSE, 'já foi usado');
+
+      await sweep(invoice);
+
+      expect(provider.queryByDps).not.toHaveBeenCalled();
+      expect(invoice.status).toBe('manual_review');
     });
 
     it('authorizes when the portal already has the DPS, without sending anything', async () => {

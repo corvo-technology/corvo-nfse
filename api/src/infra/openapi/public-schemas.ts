@@ -433,7 +433,14 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
             id: uuid(),
             outcome: str({ enum: ['skipped'] }),
             reason: str({
-              enum: ['not_found', 'not_in_manual_review', 'changed'],
+              enum: [
+                'not_found',
+                'not_in_manual_review',
+                'changed',
+                'dps_used_by_other_nfse',
+              ],
+              description:
+                '`dps_used_by_other_nfse`: retry refused because the portal already has this DPS number on another NFS-e; discard the invoice and issue the sale again (it gets a new number).',
             }),
           }),
         ],

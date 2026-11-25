@@ -908,7 +908,13 @@ describe('Fiscal environments with real HTTP, PostgreSQL, Redis, S3 and worker',
           data: JSON.stringify({
             chaveAcesso: accessKey,
             idDps: stored.dpsId,
-            nfseXmlGZipB64: gzipSync(xml).toString('base64'),
+            // The portal's note carries the DPS that was sent: the workflow checks it is ours.
+            nfseXmlGZipB64: gzipSync(
+              xml.replace(
+                /<DPS[\s>][\s\S]*<\/DPS>/,
+                captured[0].replace(/^<\?xml[^?]*\?>\s*/, ''),
+              ),
+            ).toString('base64'),
             tipoAmbiente: 1,
             dataHoraProcessamento: new Date().toISOString(),
           }),

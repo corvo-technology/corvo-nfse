@@ -3404,7 +3404,13 @@
     "done": {
       "retry": "{count, plural, =0 {Nenhuma nota foi reenviada.} one {# nota voltou para o portal.} other {# notas voltaram para o portal.}}",
       "discard": "{count, plural, =0 {Nenhuma nota foi enviada para descarte.} one {Estamos confirmando # nota com o portal antes de descartar.} other {Estamos confirmando # notas com o portal antes de descartar.}}",
-      "skipped": "{count, plural, one {# já tinha saído da revisão.} other {# já tinham saído da revisão.}}"
+      "skipped": "{count, plural, one {# já tinha saído da revisão.} other {# já tinham saído da revisão.}}",
+      "skippedDpsUsed": "{count, plural, one {# não foi reenviada: o número dela já é de outra nota. Descarte-a.} other {# não foram reenviadas: o número delas já é de outra nota. Descarte-as.}}"
+    },
+    "dpsUsed": {
+      "why": "O portal nacional já tem outra nota com o número desta (veja o motivo acima). Esta nota não foi emitida, e reenviar com o mesmo número não adianta.",
+      "discardHint": "marca esta nota como não emitida e o crédito volta. Depois emita a venda de novo (por exemplo com “Duplicar”): a nova nota recebe outro número.",
+      "confirmBody": "O portal confirma que o número desta nota pertence a outra nota. Ela será marcada como não emitida e o crédito volta. A outra nota não muda. Depois, emita a venda de novo com “Duplicar”: a nova nota recebe outro número."
     },
     "failed": "Não foi possível concluir. Tente de novo."
   },
