@@ -96,6 +96,44 @@ export function inboundRawBody() {
     /\/integrations\/inbound\//.test(req.path) ? parse(req, res, next) : next();
 }
 
+/**
+ * Proxies (Cloudflare, tunnels) re-encode a zero-length POST as
+ * `transfer-encoding: chunked` with no content-type. The CSRF guard must judge
+ * the real bytes, not the framing: this probes the stream and flags
+ * `req.emptyBody` when a mutation without content-type carries 0 bytes.
+ */
+export function emptyBodyProbe() {
+  return (
+    req: Request & { emptyBody?: boolean },
+    _res: Response,
+    next: NextFunction,
+  ) => {
+    const method = req.method.toUpperCase();
+    if (
+      ['GET', 'HEAD', 'OPTIONS'].includes(method) ||
+      req.headers['content-type'] ||
+      !req.headers['transfer-encoding'] ||
+      /\/integrations\/inbound\//.test(req.path)
+    )
+      return next();
+    let done = false;
+    const finish = (empty: boolean) => {
+      if (done) return;
+      done = true;
+      req.removeListener('data', onData);
+      req.emptyBody = empty;
+      if (!empty) req.pause();
+      next();
+    };
+    const onData = (chunk: Buffer) => {
+      if (chunk.length > 0) finish(false);
+    };
+    req.on('data', onData);
+    req.once('end', () => finish(true));
+    req.once('error', () => finish(false));
+  };
+}
+
 export function configureHttpTransport(app: NestExpressApplication): void {
   app.disable('x-powered-by');
   app.use(helmet());
@@ -106,6 +144,7 @@ export function configureHttpTransport(app: NestExpressApplication): void {
       next();
     },
   );
+  app.use(emptyBodyProbe());
   app.use(inboundRawBody());
   app.useBodyParser('json', { limit: '1mb' });
   app.useBodyParser('urlencoded', {

@@ -68,7 +68,8 @@ export class CsrfGuard implements CanActivate {
       .toLowerCase();
 
     const emptyRequestWithoutContentType =
-      contentType === '' && !requestHasBody(request.headers);
+      contentType === '' &&
+      (request.emptyBody === true || !requestHasBody(request.headers));
     if (
       !emptyRequestWithoutContentType &&
       contentType !== 'application/json' &&
