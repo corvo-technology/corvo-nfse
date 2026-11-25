@@ -5,6 +5,7 @@ import { CorvoWordmark } from "@/components/ui/corvo-logo";
 import { JsonLd } from "@/components/seo/json-ld";
 import { API_DOCS_COPY, API_DOCS_PATH, apiReference } from "@/lib/api-reference";
 import { SITE_URL, pageMetadata, pageUrl, seoLocale } from "@/lib/seo";
+import { breadcrumbList, docsCrumbs } from "@/lib/structured-data";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -44,12 +45,15 @@ export default async function ApiDocsPage({ params }: Props) {
     description: copy.description,
     url: pageUrl(locale, API_DOCS_PATH),
     inLanguage: locale === "pt" ? "pt-BR" : "en",
+    author: { "@id": `${SITE_URL}/#organization` },
     publisher: { "@id": `${SITE_URL}/#organization` },
+    isPartOf: { "@id": `${SITE_URL}/#website` },
   };
+  const breadcrumb = breadcrumbList(docsCrumbs(locale, { name: copy.title, url: pageUrl(locale, API_DOCS_PATH) }));
 
   return (
     <div className="min-h-screen bg-bg text-text font-sans">
-      <JsonLd data={structured} />
+      <JsonLd data={[structured, breadcrumb]} />
       <nav className="border-b border-border-soft px-6 sm:px-10 py-4 flex items-center justify-between">
         <Link href={`/${locale}`} aria-label="Corvo">
           <CorvoWordmark size={16} variant="green" />
