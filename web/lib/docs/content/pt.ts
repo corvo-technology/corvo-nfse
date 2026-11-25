@@ -3022,8 +3022,22 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "`nfse:write`",
               "Emitir notas",
               "admin, developer"
+            ],
+            [
+              "`nfse:certificates` (opcional, desmarcado por padrão)",
+              "Enviar o certificado digital da empresa",
+              "admin"
+            ],
+            [
+              "`billing:purchase` (opcional, desmarcado por padrão)",
+              "Gerar cobranças de créditos (Pix ou cartão). O pagamento é sempre feito por você.",
+              "admin, billing"
             ]
           ]
+        },
+        {
+          "kind": "text",
+          "body": "Os dois escopos opcionais aparecem como caixas separadas na tela de aprovação e vêm desmarcados. Se você permitir, o agente pode enviar o certificado. A Corvo guarda criptografado e nunca devolve a senha. Conexões antigas continuam funcionando; para usar as ferramentas novas, conecte o agente de novo e marque a caixa. Em instalações self-hosted (sem cobrança), a compra de créditos não é oferecida."
         },
         {
           "kind": "text",
@@ -3275,12 +3289,59 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "`nfse:read`",
               "`tax_id` (CNPJ da empresa), `month` (`YYYY-MM`, pela competência)",
               "`{ month, note_count, download_url, expires_at, mime_type }` (ZIP com XML, PDF e `resumo.csv`; link válido por 7 dias, abre sem login)"
+            ],
+            [
+              "`certificate_upload`",
+              "`nfse:certificates`",
+              "`tax_id` (CNPJ da empresa), `pfx_base64` (arquivo .pfx/.p12 em base64, até 50 KB), `password`",
+              "Só dados públicos: CNPJ, titular, validade e se substituiu outro certificado. A senha nunca é devolvida"
+            ],
+            [
+              "`credits_purchase`",
+              "`billing:purchase`",
+              "`units` (quantidade de créditos, mínimo 3), `method` (`pix` ou `card`)",
+              "Pix: `payment_id`, valor, validade, código copia-e-cola, imagem do QR Code e link de pagamento. Cartão: `checkout_url`, valor e `session_id`"
+            ],
+            [
+              "`payment_status`",
+              "`billing:purchase`",
+              "`payment_id` ou `session_id`",
+              "`pendente`, `pago` (com o novo saldo de créditos) ou `expirado`/`cancelado`"
             ]
           ]
         },
         {
           "kind": "text",
-          "body": "A chamada mais simples é `company_tax_id` mais `amount`: o tomador é opcional (omita para uma nota sem tomador; se enviar, `tax_id` é obrigatório), a data de competência é hoje por padrão, o código de serviço vem da empresa ou, sem ele, `100901` (LC 116 item 10.09), e a descrição vem do nome do código de serviço. Use `company_get` para consultar um CNPJ específico e `billing_usage` antes de emitir. Certificados A1 não são expostos no MCP e devem ser enviados somente pela API. Falhas das ferramentas voltam como resultado com `isError: true` e a mensagem em texto, para o agente ler e corrigir."
+          "body": "A chamada mais simples é `company_tax_id` mais `amount`: o tomador é opcional (omita para uma nota sem tomador; se enviar, `tax_id` é obrigatório), a data de competência é hoje por padrão, o código de serviço vem da empresa ou, sem ele, `100901` (LC 116 item 10.09), e a descrição vem do nome do código de serviço. Use `company_get` para consultar um CNPJ específico e `billing_usage` antes de emitir. O certificado A1 só pode ser enviado pelo MCP se você marcar a permissão `nfse:certificates`; sem ela, envie pelo painel ou pela API. Falhas das ferramentas voltam como resultado com `isError: true` e a mensagem em texto, para o agente ler e corrigir."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Do cadastro à primeira nota, pelo agente"
+        },
+        {
+          "kind": "code",
+          "label": "Roteiro do agente",
+          "language": "text",
+          "code": "(login OAuth)\ncnpj_lookup(cnpj)                         → dados da Receita\ncompany_create(...)                       → empresa\ncertificate_upload(cnpj, pfx, senha)      → certificado OK\ncompany_fiscal_status(cnpj)               → pronto para emitir\nnfse_issue(...)                           → nota\ncredits_balance()                         → saldo\ncredits_purchase(units, \"pix\"|\"card\")     → QR Code / link de cartão\npayment_status(id)                        → pago → segue emitindo"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "A senha do certificado fica no cofre do agente. A Corvo guarda criptografado e nunca devolve a senha nem o arquivo.",
+            "O certificado é validado como no site: um ativo por empresa e ambiente, e o novo substitui o anterior (a resposta avisa).",
+            "O pagamento é sempre feito por você, com cartão ou Pix. O agente só mostra o QR Code ou o link; depois consulta `payment_status` até a confirmação.",
+            "Antes de cobrar, o agente deve confirmar com você o valor e a quantidade de créditos. Quando faltar crédito, `nfse_issue` sugere `credits_purchase`."
+          ]
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Auditoria: quem fez o quê"
+        },
+        {
+          "kind": "text",
+          "body": "Em Configurações → Auditoria (só para o papel admin), a Corvo lista as ações que mudam algo na conta, venham do site, da API ou de um agente: empresas, certificados, notas, cobranças, acessos e envios ao contador. Cada linha mostra quando, quem (pessoa, agente com a pessoa que o autorizou, chave de API ou Sistema), a ação e o item. Consultas e listagens não entram. Senhas e certificados nunca são gravados. Os eventos ficam por 1 ano."
         },
         {
           "kind": "heading",

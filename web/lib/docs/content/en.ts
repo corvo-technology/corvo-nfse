@@ -3045,8 +3045,22 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "`nfse:write`",
               "Issue invoices",
               "admin, developer"
+            ],
+            [
+              "`nfse:certificates` (optional, unchecked by default)",
+              "Send the company's digital certificate",
+              "admin"
+            ],
+            [
+              "`billing:purchase` (optional, unchecked by default)",
+              "Create credit charges (Pix or card). The payment is always made by you.",
+              "admin, billing"
             ]
           ]
+        },
+        {
+          "kind": "text",
+          "body": "The two optional scopes appear as separate checkboxes on the approval screen and start unchecked. If you allow it, the agent can send the certificate. Corvo stores it encrypted and never returns the password. Older connections keep working; to use the new tools, connect the agent again and tick the box. On self-hosted installs (no billing), credit purchase is not offered."
         },
         {
           "kind": "text",
@@ -3278,12 +3292,59 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "`nfse:read`",
               "`tax_id` (company CNPJ), `month` (`YYYY-MM`, by competence)",
               "`{ month, note_count, download_url, expires_at, mime_type }` (ZIP with XML, PDF and `resumo.csv`; link valid for 7 days, opens without sign-in)"
+            ],
+            [
+              "`certificate_upload`",
+              "`nfse:certificates`",
+              "`tax_id` (company CNPJ), `pfx_base64` (.pfx/.p12 file in base64, up to 50 KB), `password`",
+              "Public data only: CNPJ, holder, expiry and whether it replaced another certificate. The password is never returned"
+            ],
+            [
+              "`credits_purchase`",
+              "`billing:purchase`",
+              "`units` (number of credits, minimum 3), `method` (`pix` or `card`)",
+              "Pix: `payment_id`, amount, expiry, copy-and-paste code, QR Code image and payment link. Card: `checkout_url`, amount and `session_id`"
+            ],
+            [
+              "`payment_status`",
+              "`billing:purchase`",
+              "`payment_id` or `session_id`",
+              "`pending`, `paid` (with the new credit balance) or `expired`/`cancelled`"
             ]
           ]
         },
         {
           "kind": "text",
-          "body": "The simplest call is `company_tax_id` plus `amount`: the customer is optional (omit it for an invoice without tomador; if you send one, `tax_id` is required), the competence date defaults to today, the service code comes from the company or falls back to `100901` (LC 116 item 10.09) and the description from the service code. Use `company_get` for one CNPJ and `billing_usage` before issuing. A1 certificates are not exposed over MCP and must be uploaded through the API only. Tool failures come back as a result with `isError: true` and the message as text, so the agent can read and fix them."
+          "body": "The simplest call is `company_tax_id` plus `amount`: the customer is optional (omit it for an invoice without tomador; if you send one, `tax_id` is required), the competence date defaults to today, the service code comes from the company or falls back to `100901` (LC 116 item 10.09) and the description from the service code. Use `company_get` for one CNPJ and `billing_usage` before issuing. The A1 certificate can be sent over MCP only if you tick the `nfse:certificates` permission; without it, upload through the dashboard or the API. Tool failures come back as a result with `isError: true` and the message as text, so the agent can read and fix them."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "From sign-up to the first invoice, through the agent"
+        },
+        {
+          "kind": "code",
+          "label": "Agent flow",
+          "language": "text",
+          "code": "(OAuth login)\ncnpj_lookup(cnpj)                         → Receita data\ncompany_create(...)                       → company\ncertificate_upload(cnpj, pfx, password)   → certificate OK\ncompany_fiscal_status(cnpj)               → ready to issue\nnfse_issue(...)                           → invoice\ncredits_balance()                         → balance\ncredits_purchase(units, \"pix\"|\"card\")     → QR Code / card link\npayment_status(id)                        → paid → keep issuing"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "The certificate password stays in the agent's vault. Corvo stores it encrypted and never returns the password or the file.",
+            "The certificate is validated like on the website: one active per company and environment, and the new one replaces the previous (the answer tells you).",
+            "The payment is always made by you, by card or Pix. The agent only shows the QR Code or the link, then checks `payment_status` until it is confirmed.",
+            "Before charging, the agent should confirm the amount and the number of credits with you. When credits run out, `nfse_issue` suggests `credits_purchase`."
+          ]
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "Audit: who did what"
+        },
+        {
+          "kind": "text",
+          "body": "In Settings → Audit (admin role only), Corvo lists the actions that change something in the account, whether they come from the website, the API or an agent: companies, certificates, invoices, charges, access and sends to the accountant. Each row shows when, who (a person, an agent with the person who authorized it, an API key or System), the action and the item. Lookups and lists are not recorded. Passwords and certificates are never stored. Events are kept for 1 year."
         },
         {
           "kind": "heading",
