@@ -1341,6 +1341,8 @@
       "purchaseOrder": "PO-4521",
       "notes": "Parcela 2 de 3 do contrato 12/2026"
     },
+    "needsDecision": "{count, plural, one {# nota precisa da sua decisão} other {# notas precisam da sua decisão}}",
+    "needsDecisionAction": "Ver e resolver",
     "loadedRecords": "Exibindo {count} notas carregadas. Os filtros se aplicam a estes registros.",
     "loadMore": "Carregar mais",
     "hints": {
@@ -1859,8 +1861,8 @@
       "authorized": "A prefeitura autorizou a nota. PDF e XML estão disponíveis.",
       "rejected": "A prefeitura rejeitou a nota. Revise os dados e emita novamente.",
       "retry_pending": "A emissão não foi concluída e uma nova tentativa será feita automaticamente.",
-      "reconciliation_required": "Não foi possível confirmar o estado da nota; estamos conferindo com a prefeitura.",
-      "manual_review": "A nota precisa de revisão manual da nossa equipe.",
+      "reconciliation_required": "Não tivemos resposta da prefeitura; estamos conferindo sozinhos, sem reenviar.",
+      "manual_review": "A prefeitura não confirmou a nota. Use “Tentar de novo” (mesmo número, sem risco de nota duplicada) ou “Descartar”. A Corvo também confere sozinha a cada 30 minutos.",
       "failed": "Não foi possível emitir a nota.",
       "cancelling": "Enviamos o cancelamento à Sefin e aguardamos a resposta.",
       "cancelled": "A nota foi cancelada."
@@ -1990,6 +1992,8 @@
     "clear": "Remover código selecionado"
   },
   "ApiErrors": {
+    "reconciliation_uncertain": "O portal fiscal não deu uma resposta conclusiva por muito tempo. Tente de novo com o mesmo número ou descarte a nota.",
+    "discard_not_confirmed": "Não deu para confirmar com o portal fiscal se a nota existe. Tente de novo mais tarde.",
     "dps_number_already_used": "Esse número de nota já foi usado (provavelmente no portal do governo). Ajuste o próximo número nas configurações da empresa e emita de novo.",
     "dps_number_below_current": "Esse número é menor que um já usado. Informe um número maior que o da última nota.",
     "required": "Campo obrigatório.",
@@ -3361,6 +3365,7 @@
     "skip": "Agora não"
   },
   "ManualReview": {
+    "askAdmin": "Peça a um admin da conta para resolver esta nota.",
     "title": "{count, plural, one {O que fazer com esta nota} other {O que fazer com as # notas em revisão manual}}",
     "why": "{count, plural, one {O portal nacional não deu uma resposta conclusiva, então ainda não sabemos se a nota foi emitida.} other {O portal nacional não deu uma resposta conclusiva para estas notas, então ainda não sabemos se elas foram emitidas.}}",
     "retry": {

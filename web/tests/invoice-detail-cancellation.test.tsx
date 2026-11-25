@@ -9,6 +9,7 @@ import messages from "@/messages/en.json";
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "inv-1" }), useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ success: vi.fn(), error: vi.fn() }) }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: () => true }) }));
 vi.mock("@/lib/api", () => ({ invoices: { get: mocks.get, events: vi.fn() }, collectAll: async () => [] }));
 
@@ -57,5 +58,22 @@ describe("invoice detail substitution", () => {
   it("does not offer it for an invoice that is not authorized", async () => {
     await renderPage(invoice({ status: "queued", authorizedAt: null }));
     expect(screen.queryByRole("button", { name: t.substitute.open })).toBeNull();
+  });
+});
+
+describe("invoice detail error banner and manual review", () => {
+  it("hides the old error text of an authorized invoice", async () => {
+    await renderPage(invoice({ status: "authorized", lastErrorCode: null, lastErrorMessage: "No conclusive answer from the fiscal portal for more than 6h." } as Partial<Invoice>));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows a codeless error without the leading colon, in the user's language", async () => {
+    await renderPage(invoice({ status: "manual_review", authorizedAt: null, lastErrorCode: null, lastErrorMessage: "Something odd" } as unknown as Partial<Invoice>));
+    expect(screen.getByRole("alert").textContent).toBe("Something odd");
+  });
+
+  it("puts the manual review actions on top for someone who can issue", async () => {
+    await renderPage(invoice({ status: "manual_review", authorizedAt: null } as unknown as Partial<Invoice>));
+    expect(screen.getByRole("button", { name: /Retry/ })).toBeTruthy();
   });
 });
