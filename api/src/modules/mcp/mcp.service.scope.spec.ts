@@ -5,6 +5,7 @@ import {
   missingMemberPermissionMessage,
   missingScopeMessage,
 } from './mcp-client-policy';
+import { ITenantMembershipRepository } from '../auth/domain/tenant-membership.repository';
 import { McpServer } from './mcp.server';
 import { McpService } from './mcp.service';
 
@@ -18,11 +19,16 @@ function wrapperWith(membership: Partial<TenantMembership> | null): Wrapper {
   const spy = jest
     .spyOn(McpServer.prototype, 'registerTool')
     .mockImplementation();
-  const deps: unknown[] = Array.from(
-    { length: McpService.length - 1 },
-    () => ({}),
-  );
-  deps.push({ findByAuthUserAndTenant: () => Promise.resolve(membership) });
+  const deps: unknown[] = Array.from({ length: McpService.length }, () => ({}));
+  // Later tasks append constructor params, so find the membership slot by its token.
+  const injected = Reflect.getMetadata('self:paramtypes', McpService) as {
+    index: number;
+    param: unknown;
+  }[];
+  const slot = injected.find((p) => p.param === ITenantMembershipRepository)!;
+  deps[slot.index] = {
+    findByAuthUserAndTenant: () => Promise.resolve(membership),
+  };
   const service = new (
     McpService as unknown as new (...args: unknown[]) => McpService
   )(...deps);

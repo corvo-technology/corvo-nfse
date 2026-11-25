@@ -50,7 +50,12 @@ describe('StripePaymentsService.start', () => {
       { kind: 'avulso', units: 10 },
       'k1',
     );
-    expect(out).toEqual({ method: 'card', url: 'https://stripe.test/pay' });
+    expect(out).toEqual({
+      method: 'card',
+      url: 'https://stripe.test/pay',
+      paymentId: f.store.rows[0].id,
+      sessionId: 'cs_1',
+    });
     expect(f.provider.createCustomer).toHaveBeenCalledWith(tenant, 'a@x.com');
     expect(f.billing.saveBilling).toHaveBeenCalledWith(tenant, {
       stripeCustomerId: 'cus_new',
@@ -123,8 +128,28 @@ describe('StripePaymentsService.start', () => {
       { kind: 'avulso', units: 5 },
       'same',
     );
-    expect(b).toEqual(a);
+    expect(b).toEqual({ ...a, sessionId: undefined });
     expect(f.provider.createPaymentCheckout).toHaveBeenCalledTimes(1);
+  });
+  it('returns the payment id and the session id for a new card checkout', async () => {
+    const f = setup('cus_1');
+    const out = await f.service.start(
+      tenant,
+      { kind: 'avulso', units: 5 },
+      'new',
+    );
+    expect(out.paymentId).toBe(f.store.rows[0].id);
+    expect(out.sessionId).toBe('cs_1');
+  });
+  it('returns the stored payment id on replay', async () => {
+    const f = setup('cus_1');
+    await f.service.start(tenant, { kind: 'avulso', units: 5 }, 'same');
+    const replay = await f.service.start(
+      tenant,
+      { kind: 'avulso', units: 5 },
+      'same',
+    );
+    expect(replay.paymentId).toBe(f.store.rows[0].id);
   });
 });
 

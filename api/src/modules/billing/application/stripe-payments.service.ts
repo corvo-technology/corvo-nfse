@@ -19,6 +19,10 @@ export type OneTimePurchase =
 export interface CardCheckout {
   method: 'card';
   url: string;
+  /** Row of the payment (also on an idempotent replay), so a caller can follow it. */
+  paymentId?: string;
+  /** Stripe checkout session id, only when the session was created now. */
+  sessionId?: string;
 }
 
 /** One-time card payments: avulso notes and prepaid annual plans. Monthly plans stay Stripe subscriptions. */
@@ -46,7 +50,11 @@ export class StripePaymentsService {
         cycle: purchase.kind === 'plan' ? purchase.cycle : null,
         units: purchase.kind === 'avulso' ? purchase.units : null,
       });
-      return { method: 'card', url: previous.checkout!.paymentLinkUrl };
+      return {
+        method: 'card',
+        url: previous.checkout!.paymentLinkUrl,
+        paymentId: previous.id,
+      };
     }
 
     let amountCents: number;
@@ -76,6 +84,7 @@ export class StripePaymentsService {
 
     const customerId = await this.customerId(tenantId);
     const intentId = randomUUID();
+    const paymentId = randomUUID();
     const session = await this.provider.createPaymentCheckout(
       customerId,
       tenantId,
@@ -93,7 +102,7 @@ export class StripePaymentsService {
         message: 'Stripe did not return a payment url',
       });
     await this.intents.insert({
-      id: randomUUID(),
+      id: paymentId,
       tenantId,
       kind: purchase.kind,
       planSlug: purchase.kind === 'plan' ? purchase.planSlug : null,
@@ -115,7 +124,12 @@ export class StripePaymentsService {
       },
       createdAt: new Date(),
     });
-    return { method: 'card', url: session.url };
+    return {
+      method: 'card',
+      url: session.url,
+      paymentId,
+      sessionId: session.id,
+    };
   }
 
   /** True once the purchase behind this Stripe session was delivered. */
