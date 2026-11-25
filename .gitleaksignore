@@ -7,3 +7,5 @@
 3336fc0b537cc10fd0b509fed728f266e2361867:web/lib/docs/content/pt.ts:generic-api-key:1142
 # Segredo HMAC falso de teste (já trocado no commit seguinte; sem reescrever histórico).
 9de9f3fdf4a1ba6db18c96f69048e703974f8732:api/src/modules/platform-admin/platform-admin.guard.spec.ts:generic-api-key:15
+# Falso positivo: chave HMAC fictícia do teste do interceptor de auditoria (já renomeada).
+9de7f9f600a87ee7110788055af2fc1d588dfe7c:api/src/modules/account-audit/http/audit-actor.interceptor.spec.ts:generic-api-key:8

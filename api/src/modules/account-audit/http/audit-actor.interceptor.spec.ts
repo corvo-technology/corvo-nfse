@@ -5,8 +5,8 @@ import type { AuditActorRef } from '../domain/account-audit';
 import { AuditActorInterceptor } from './audit-actor.interceptor';
 import { currentAuditActor } from '../application/audit-actor.context';
 
-const SECRET = 'otp-secret-with-at-least-32-characters-x';
-const config = { getOrThrow: () => ({ hmacSecret: SECRET }) };
+const HMAC_KEY = 'k'.repeat(40);
+const config = { getOrThrow: () => ({ hmacSecret: HMAC_KEY }) };
 
 function run(
   request: Record<string, unknown>,
@@ -57,7 +57,7 @@ describe('AuditActorInterceptor', () => {
       ip: '203.0.113.9',
       headers: {},
     });
-    expect(actor?.ipHash).toBe(hashIp('203.0.113.9', SECRET));
+    expect(actor?.ipHash).toBe(hashIp('203.0.113.9', HMAC_KEY));
     expect(JSON.stringify(actor)).not.toContain('203.0.113.9');
   });
 });
