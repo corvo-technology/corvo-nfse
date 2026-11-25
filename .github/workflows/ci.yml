@@ -137,7 +137,7 @@ jobs:
   api-e2e:
     name: E2E api (Postgres, Redis and S3)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:17-alpine
@@ -194,8 +194,10 @@ jobs:
           echo "S3 did not come up" >&2
           exit 1
       - name: E2E (HTTP)
+        timeout-minutes: 10
         run: yarn test:e2e
       - name: Fiscal integration
+        timeout-minutes: 10
         run: yarn test:fiscal:integration
 
   docker:
