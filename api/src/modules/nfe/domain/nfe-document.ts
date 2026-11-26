@@ -310,10 +310,7 @@ export class NfeDocument {
     return entry;
   }
 
-  private historyEntry(
-    from: NfeStatus | null,
-    to: NfeStatus,
-  ): NfeHistoryEntry {
+  private historyEntry(from: NfeStatus | null, to: NfeStatus): NfeHistoryEntry {
     return {
       tenantId: this.props.tenantId,
       documentId: this.props.id,

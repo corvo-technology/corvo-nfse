@@ -381,6 +381,24 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     ok: { 200: data(ref('NfeSettings')) },
     errors: [422],
   },
+  'POST /nfe/validate': {
+    id: 'nfe_validate',
+    tag: 'NF-e',
+    summary: 'Validate an NF-e without sending it',
+    description:
+      'Dry-run of `POST /nfe` (same body): runs the company checks, every validator and the official XSD, and answers `200` with `accessKeyPreview` (the key the next NF-e would get; it changes at each call) or `422` with all the problems at once. Nothing is saved, no credit is used and the SEFAZ is not called. Add `?includeXml=true` to get the preview XML (without a real signature).\n\nA `422` has `type` `validation` (fix the fields in `details`, `NFE_VALIDATION_FAILED`) or `configuration` (complete the company or wait for the release: `COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). Answers 404 while NF-e is not released for the workspace.\n\nPermission: `nfe.documents.issue`.',
+    ok: { 200: data(ref('NfeValidation')) },
+    errors: [422],
+    extraParams: [
+      {
+        name: 'includeXml',
+        in: 'query',
+        required: false,
+        description: 'Send `true` to receive the preview XML in `xml`.',
+        schema: { type: 'boolean', default: false },
+      },
+    ],
+  },
   'GET /companies/{id}/dps-sequence': {
     id: 'dpsSequence_get',
     tag: 'Companies',

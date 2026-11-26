@@ -10,7 +10,11 @@ import {
 import { destGroup } from './dest.group';
 import { detGroup, unitPriceText } from './det.group';
 import { emitGroup } from './emit.group';
-import { ibsCbsGroup, ibsCbsRequired, NfeIbsCbsNotSupportedError } from './ibs-cbs.group';
+import {
+  ibsCbsGroup,
+  ibsCbsRequired,
+  NfeIbsCbsNotSupportedError,
+} from './ibs-cbs.group';
 import { ideGroup } from './ide.group';
 import { infAdicGroup } from './inf-adic.group';
 import { infRespTecGroup } from './inf-resp-tec.group';
@@ -106,9 +110,7 @@ describe('NF-e groups', () => {
     });
 
     it('uses CNPJ, the real name in production and the IE of a contributor', () => {
-      expect(
-        destGroup(context(INTERESTADUAL, { tpAmb: 1 })),
-      ).toMatchObject({
+      expect(destGroup(context(INTERESTADUAL, { tpAmb: 1 }))).toMatchObject({
         CNPJ: '11222333000181',
         xNome: 'Comercial Carioca LTDA',
         indIEDest: 1,
@@ -218,9 +220,7 @@ describe('NF-e groups', () => {
   it('infAdic only when there is text', () => {
     expect(infAdicGroup(context())).toBeUndefined();
     expect(
-      infAdicGroup(
-        context({ ...SIMPLES_102, additionalInfo: 'Obs' }),
-      ),
+      infAdicGroup(context({ ...SIMPLES_102, additionalInfo: 'Obs' })),
     ).toEqual({ infCpl: 'Obs' });
   });
 
@@ -231,7 +231,9 @@ describe('NF-e groups', () => {
       email: 'suporte@corvo.tech',
       fone: '1133334444',
     });
-    expect(infRespTecGroup(context(SIMPLES_102, { respTec: null }))).toBeUndefined();
+    expect(
+      infRespTecGroup(context(SIMPLES_102, { respTec: null })),
+    ).toBeUndefined();
   });
 
   describe('IBS/CBS', () => {
@@ -241,13 +243,20 @@ describe('NF-e groups', () => {
     });
 
     it('is required from the date, by the issuer-local day', () => {
-      expect(ibsCbsRequired('2027-01-01T00:00:00-03:00', '2027-01-01')).toBe(true);
-      expect(ibsCbsRequired('2026-12-31T23:59:59-03:00', '2027-01-01')).toBe(false);
+      expect(ibsCbsRequired('2027-01-01T00:00:00-03:00', '2027-01-01')).toBe(
+        true,
+      );
+      expect(ibsCbsRequired('2026-12-31T23:59:59-03:00', '2027-01-01')).toBe(
+        false,
+      );
     });
 
     it('refuses to build while required but not implemented', () => {
       expect(() =>
-        ibsCbsGroup(context(SIMPLES_102, { dhEmi: '2027-02-01T10:00:00-03:00' }), '2027-01-01'),
+        ibsCbsGroup(
+          context(SIMPLES_102, { dhEmi: '2027-02-01T10:00:00-03:00' }),
+          '2027-01-01',
+        ),
       ).toThrow(NfeIbsCbsNotSupportedError);
     });
   });
@@ -255,7 +264,9 @@ describe('NF-e groups', () => {
 
 describe('NfeXmlBuilder', () => {
   const builder = () =>
-    NfeXmlBuilder.for(buildDraft(SIMPLES_102, issuerFixture(), SETTINGS, 'test'))
+    NfeXmlBuilder.for(
+      buildDraft(SIMPLES_102, issuerFixture(), SETTINGS, 'test'),
+    )
       .withNumber(1, 10)
       .withCnf('12345678')
       .withIssuedAt('2026-11-26T10:00:00-03:00')
@@ -293,7 +304,9 @@ describe('NfeXmlBuilder', () => {
   it('asks for the number, the cNF and the date', () => {
     const draft = buildDraft(SIMPLES_102, issuerFixture(), SETTINGS, 'test');
     expect(() => NfeXmlBuilder.for(draft).build()).toThrow(/withNumber/);
-    expect(() => NfeXmlBuilder.for(draft).withNumber(1, 1).build()).toThrow(/withCnf/);
+    expect(() => NfeXmlBuilder.for(draft).withNumber(1, 1).build()).toThrow(
+      /withCnf/,
+    );
     expect(() =>
       NfeXmlBuilder.for(draft).withNumber(1, 1).withCnf('12345678').build(),
     ).toThrow(/withIssuedAt/);

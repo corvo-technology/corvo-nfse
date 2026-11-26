@@ -852,6 +852,61 @@ describe('OpenAPI contract against the real API (e2e)', () => {
       });
       expect(res.body.data.stateRegistration).toBe('110042490114');
     });
+
+    it('validates an NF-e without sending it: 200 when complete, 422 with the problems otherwise', async () => {
+      await dataSource.query(
+        `UPDATE "${schema}".nfse_companies
+            SET address_street = 'Avenida Paulista', address_number = '1000', address_district = 'Bela Vista',
+                address_zip = '01310100', address_city = 'São Paulo'
+          WHERE id = $1`,
+        [companyId],
+      );
+      await dataSource.query(
+        `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
+         VALUES ('SP', 55, 2, now(), 'docs/fiscal/nfe-runbook.md') ON CONFLICT DO NOTHING`,
+      );
+      const nfe = {
+        companyId,
+        recipient: {
+          taxId: '123.456.789-09',
+          name: 'Maria da Silva',
+          indIeDest: 9,
+          address: {
+            street: 'Rua das Flores',
+            number: '10',
+            district: 'Centro',
+            zip: '01001-000',
+            cityCode: '3550308',
+            city: 'São Paulo',
+            state: 'SP',
+          },
+        },
+        items: [
+          {
+            code: 'SKU1',
+            description: 'Produto de teste',
+            ncm: '61091000',
+            cfop: '5102',
+            unit: 'UN',
+            quantity: 2,
+            unitPrice: 10,
+          },
+        ],
+        payments: [{ tPag: '17', amount: 20 }],
+      };
+      const ok = await call('POST /nfe/validate', {
+        body: nfe,
+        query: { includeXml: 'true' },
+        status: 200,
+      });
+      expect(ok.body.data.valid).toBe(true);
+      expect(ok.body.data.accessKeyPreview).toHaveLength(44);
+      const bad = await call('POST /nfe/validate', {
+        body: { ...nfe, payments: [{ tPag: '17', amount: 1 }] },
+        status: 422,
+      });
+      expect(bad.body.type).toBe('validation');
+    });
   });
 
   it('covers every operation, except the ones that need an outside service or a payment event', () => {

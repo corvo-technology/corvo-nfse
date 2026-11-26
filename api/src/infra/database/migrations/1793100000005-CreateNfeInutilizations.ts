@@ -58,8 +58,6 @@ export class CreateNfeInutilizations1793100000005 implements MigrationInterface 
   }
 
   async down(runner: QueryRunner): Promise<void> {
-    await runner.query(
-      `DROP TABLE ${this.schema(runner)}.nfe_inutilizations`,
-    );
+    await runner.query(`DROP TABLE ${this.schema(runner)}.nfe_inutilizations`);
   }
 }

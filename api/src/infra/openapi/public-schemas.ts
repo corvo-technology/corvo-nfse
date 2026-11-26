@@ -341,6 +341,22 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       }),
     ),
   }),
+  NfeValidation: obj(
+    {
+      valid: bool({ enum: [true] }),
+      accessKeyPreview: str({
+        minLength: 44,
+        maxLength: 44,
+        description:
+          'The key the next NF-e would get. The number is only read, not reserved, and `cNF` is random, so a real emission gets another key.',
+      }),
+      xml: str({
+        description:
+          'The preview XML with a placeholder signature. Only with `includeXml=true`.',
+      }),
+    },
+    ['xml'],
+  ),
   DpsSequence: obj({
     series: str({ example: '00001' }),
     lastNumber: int({

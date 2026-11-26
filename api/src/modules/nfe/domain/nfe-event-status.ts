@@ -1,9 +1,6 @@
 /** Cancellation (110111) and correction letter (110110) events. Design spec 8.3. */
 export type NfeEventStatus =
-  | 'pending'
-  | 'pending_check'
-  | 'registered'
-  | 'rejected';
+  'pending' | 'pending_check' | 'registered' | 'rejected';
 
 export const NFE_EVENT_TRANSITIONS: Record<NfeEventStatus, NfeEventStatus[]> = {
   pending: ['registered', 'rejected', 'pending_check'],

@@ -49,8 +49,6 @@ export class CreateNfeDocumentEvents1793100000003 implements MigrationInterface 
   }
 
   async down(runner: QueryRunner): Promise<void> {
-    await runner.query(
-      `DROP TABLE ${this.schema(runner)}.nfe_document_events`,
-    );
+    await runner.query(`DROP TABLE ${this.schema(runner)}.nfe_document_events`);
   }
 }

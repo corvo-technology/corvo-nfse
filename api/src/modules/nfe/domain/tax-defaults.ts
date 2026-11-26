@@ -24,9 +24,6 @@ export function applyTaxDefaults(
 }
 
 /** 1 when the recipient is in the issuer's UF, otherwise 2 (interstate). */
-export function deriveIdDest(
-  issuerUf: string,
-  recipientUf: string,
-): 1 | 2 {
+export function deriveIdDest(issuerUf: string, recipientUf: string): 1 | 2 {
   return issuerUf.toUpperCase() === recipientUf.toUpperCase() ? 1 : 2;
 }

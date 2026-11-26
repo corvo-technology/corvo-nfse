@@ -27,22 +27,28 @@ const builderOf = (input: Parameters<typeof buildDraft>[0]) =>
     });
 
 describe('NfeXmlBuilder against the NF-e 4.00 XSD', () => {
-  it.each(Object.entries(ALL_FIXTURES))('%s passes the validators', async (_, input) => {
-    expect(
-      await runValidators(NFE_PRE_SEND_VALIDATORS, draftOf(input), {
-        environment: 'test',
-      }),
-    ).toEqual([]);
-  });
+  it.each(Object.entries(ALL_FIXTURES))(
+    '%s passes the validators',
+    async (_, input) => {
+      expect(
+        await runValidators(NFE_PRE_SEND_VALIDATORS, draftOf(input), {
+          environment: 'test',
+        }),
+      ).toEqual([]);
+    },
+  );
 
-  it.each(Object.entries(ALL_FIXTURES))('%s passes the XSD', async (_, input) => {
-    const built = builderOf(input).build();
-    const result = await schema.validate(
-      withStructuralSignature(built.xml, built.referenceTag),
-      'nfe',
-    );
-    expect(result).toEqual({ ok: true });
-  });
+  it.each(Object.entries(ALL_FIXTURES))(
+    '%s passes the XSD',
+    async (_, input) => {
+      const built = builderOf(input).build();
+      const result = await schema.validate(
+        withStructuralSignature(built.xml, built.referenceTag),
+        'nfe',
+      );
+      expect(result).toEqual({ ok: true });
+    },
+  );
 
   it('escapes & < " and accents and still passes the XSD (Review Focus 3)', async () => {
     const built = builderOf(TEXTO_ESPECIAL).build();
@@ -51,7 +57,12 @@ describe('NfeXmlBuilder against the NF-e 4.00 XSD', () => {
     expect(built.xml).not.toContain('<especial>');
     // Parsed back, the text is exactly what the customer sent.
     const parsed = new XMLParser({ parseTagValue: false }).parse(built.xml) as {
-      NFe: { infNFe: { infAdic: { infCpl: string }; det: { prod: { xProd: string } } } };
+      NFe: {
+        infNFe: {
+          infAdic: { infCpl: string };
+          det: { prod: { xProd: string } };
+        };
+      };
     };
     expect(parsed.NFe.infNFe.det.prod.xProd).toBe(
       'Café & chá <especial> "premium" ação nº 1',

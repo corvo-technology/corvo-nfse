@@ -1,17 +1,15 @@
 import type { BuildContext, XmlNode } from './context';
 
-export function addressNode(
-  address: {
-    street: string;
-    number: string;
-    complement: string | null;
-    district: string;
-    cityCode: string;
-    city: string;
-    state: string;
-    zip: string;
-  },
-): XmlNode {
+export function addressNode(address: {
+  street: string;
+  number: string;
+  complement: string | null;
+  district: string;
+  cityCode: string;
+  city: string;
+  state: string;
+  zip: string;
+}): XmlNode {
   return {
     xLgr: address.street,
     nro: address.number,

@@ -123,7 +123,9 @@ export class NfeDocumentMapper {
     return row;
   }
 
-  itemsToPersistence(snapshot: NfeDocumentSnapshot): NfeDocumentItemOrmEntity[] {
+  itemsToPersistence(
+    snapshot: NfeDocumentSnapshot,
+  ): NfeDocumentItemOrmEntity[] {
     return snapshot.items.map((item) => {
       const row = new NfeDocumentItemOrmEntity();
       Object.assign(row, {

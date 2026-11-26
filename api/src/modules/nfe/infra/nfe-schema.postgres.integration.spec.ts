@@ -168,17 +168,22 @@ describePostgres('NF-e schema with real PostgreSQL', () => {
   });
 
   it.each(TABLES)('isolates tenants by RLS on %s', async (table) => {
-    const own = await runWithTenant(tenantA, () =>
-      runtime.query(q(`SELECT tenant_id FROM $S.${table}`)),
+    const own = await runWithTenant(
+      tenantA,
+      (): Promise<Array<{ tenant_id: string }>> =>
+        runtime.query(q(`SELECT tenant_id FROM $S.${table}`)),
     );
     expect(own.length).toBeGreaterThan(0);
     expect(
-      (own as Array<{ tenant_id: string }>).every((r) => r.tenant_id === tenantA),
+      (own as Array<{ tenant_id: string }>).every(
+        (r) => r.tenant_id === tenantA,
+      ),
     ).toBe(true);
     const none = await runWithTenant(tenantB, () =>
-      runtime.query(q(`SELECT tenant_id FROM $S.${table} WHERE tenant_id = $1`), [
-        tenantA,
-      ]),
+      runtime.query(
+        q(`SELECT tenant_id FROM $S.${table} WHERE tenant_id = $1`),
+        [tenantA],
+      ),
     );
     expect(none).toEqual([]);
   });

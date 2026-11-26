@@ -2115,6 +2115,7 @@
     "company_nfe_incomplete": "Complete the company registration (address, state registration and tax regime) to issue NF-e.",
     "uf_not_enabled": "NF-e is not released yet for the company's state.",
     "state_registration_invalid": "The state registration (IE) is not valid for the company's state. Check the number and the state.",
+    "nfe_schema_invalid": "The NF-e XML did not pass the layout validation. Check the fields and try again.",
     "nfe_validation_failed": "The NF-e has problems. Check the listed fields and send it again.",
     "tax_id_invalid": "The recipient's CPF or CNPJ is not valid.",
     "recipient_ie_invalid": "The recipient's state registration does not match the taxpayer type.",

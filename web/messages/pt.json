@@ -2115,6 +2115,7 @@
     "company_nfe_incomplete": "Complete o cadastro da empresa (endereço, inscrição estadual e regime) para emitir NF-e.",
     "uf_not_enabled": "A emissão de NF-e ainda não foi liberada para o estado da empresa.",
     "state_registration_invalid": "A inscrição estadual não é válida para o estado da empresa. Confira o número e o estado.",
+    "nfe_schema_invalid": "O XML da NF-e não passou na validação do layout. Confira os campos e tente de novo.",
     "nfe_validation_failed": "A NF-e tem problemas. Confira os campos indicados e envie de novo.",
     "tax_id_invalid": "O CPF ou CNPJ do destinatário não é válido.",
     "recipient_ie_invalid": "A inscrição estadual do destinatário não combina com o tipo de contribuinte informado.",

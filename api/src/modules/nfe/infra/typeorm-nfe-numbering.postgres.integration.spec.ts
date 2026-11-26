@@ -174,6 +174,26 @@ describePostgres('NF-e numbering with real PostgreSQL', () => {
     });
   });
 
+  it('peekNext reads the next number without reserving it', async () => {
+    expect(await inTransaction(() => numbering.peekNext(scope(9)))).toEqual({
+      series: 9,
+      number: 1,
+    });
+    await inTransaction(() => numbering.raiseTo(scope(9), 41));
+    expect(await inTransaction(() => numbering.peekNext(scope(9)))).toEqual({
+      series: 9,
+      number: 42,
+    });
+    expect(await inTransaction(() => numbering.peekNext(scope(9)))).toEqual({
+      series: 9,
+      number: 42,
+    });
+    expect(await inTransaction(() => numbering.reserveNext(scope(9)))).toEqual({
+      series: 9,
+      number: 42,
+    });
+  });
+
   it('refuses to go past 999999999', async () => {
     await inTransaction(() => numbering.raiseTo(scope(6), 999_999_999));
     await expect(

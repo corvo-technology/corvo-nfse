@@ -7,7 +7,7 @@ import type { NfeDraft } from '../nfe-draft';
  * line breaks and control characters would fail the XSD or be rejected with 225, so they are
  * reported here with the field instead.
  */
-const ACCEPTED = /^[ -~ -ÿ]*$/;
+const ACCEPTED = new RegExp('^[\\x20-\\x7E\\xA0-\\xFF]*$');
 
 export function isAcceptedText(value: string): boolean {
   return ACCEPTED.test(value);

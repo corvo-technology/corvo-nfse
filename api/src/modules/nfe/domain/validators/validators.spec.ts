@@ -54,13 +54,18 @@ describe('NFE_PRE_SEND_VALIDATORS', () => {
 
   describe('recipient state registration', () => {
     it('requires the IE of a contributor', async () => {
-      expect((await run({ recipient: recipient({ indIeDest: 1 }) }))[0]).toMatchObject({
+      expect(
+        (await run({ recipient: recipient({ indIeDest: 1 }) }))[0],
+      ).toMatchObject({
         code: 'RECIPIENT_IE_INVALID',
         field: 'recipient.stateRegistration',
       });
       expect(
         await run({
-          recipient: recipient({ indIeDest: 1, stateRegistration: '110.042.490.114' }),
+          recipient: recipient({
+            indIeDest: 1,
+            stateRegistration: '110.042.490.114',
+          }),
         }),
       ).toEqual([]);
     });
@@ -91,14 +96,19 @@ describe('NFE_PRE_SEND_VALIDATORS', () => {
   describe('CFOP and destination', () => {
     it('wants 5xxx inside the UF and 6xxx outside it', async () => {
       expect(
-        (await run({ items: [item({ cfop: '6102' })], payments: [{ tPag: '17', amount: 20 }] })).map(
-          (i) => i.code,
-        ),
+        (
+          await run({
+            items: [item({ cfop: '6102' })],
+            payments: [{ tPag: '17', amount: 20 }],
+          })
+        ).map((i) => i.code),
       ).toEqual(['CFOP_DESTINATION_MISMATCH']);
       const rj = recipient({
         address: { ...inputFixture().recipient.address, state: 'RJ' },
       });
-      expect((await run({ recipient: rj, items: [item({ cfop: '6102' })] }))).toEqual([]);
+      expect(
+        await run({ recipient: rj, items: [item({ cfop: '6102' })] }),
+      ).toEqual([]);
       expect(
         (await run({ recipient: rj })).map((i) => [i.field, i.code]),
       ).toEqual([['items[0].cfop', 'CFOP_DESTINATION_MISMATCH']]);
@@ -113,9 +123,7 @@ describe('NFE_PRE_SEND_VALIDATORS', () => {
 
   it('accepts CSOSN 400 and refuses any other', async () => {
     expect(await run({ items: [item({ tax: { csosn: '400' } })] })).toEqual([]);
-    expect(
-      await run({ items: [item({ tax: { csosn: '101' } })] }),
-    ).toEqual([
+    expect(await run({ items: [item({ tax: { csosn: '101' } })] })).toEqual([
       expect.objectContaining({
         field: 'items[0].tax.csosn',
         code: 'CSOSN_NOT_SUPPORTED',
@@ -161,7 +169,10 @@ describe('NFE_PRE_SEND_VALIDATORS', () => {
   describe('phase 1 scope', () => {
     it('refuses finNfe other than 1', async () => {
       expect(await run({ finNfe: 2 })).toEqual([
-        expect.objectContaining({ field: 'finNfe', code: 'OUT_OF_PHASE1_SCOPE' }),
+        expect.objectContaining({
+          field: 'finNfe',
+          code: 'OUT_OF_PHASE1_SCOPE',
+        }),
       ]);
     });
 

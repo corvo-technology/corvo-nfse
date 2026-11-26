@@ -6,6 +6,7 @@ import type {
   NumberingScope,
 } from '@/modules/fiscal-core/domain/ports/numbering.port';
 import { NfeNumberingExhaustedError } from '../domain/errors';
+import { INfeNumberPreview } from '../domain/nfe-number-preview';
 import { NfeNumberSequenceOrmEntity } from './nfe-number-sequence.orm-entity';
 
 export const NFE_LAST_NUMBER = 999_999_999;
@@ -16,7 +17,9 @@ export const NFE_LAST_NUMBER = 999_999_999;
  * The upsert takes the row lock, so concurrent reservations queue up and get consecutive numbers.
  */
 @Injectable()
-export class TypeormNfeNumbering implements DocumentNumbering {
+export class TypeormNfeNumbering
+  implements DocumentNumbering, INfeNumberPreview
+{
   constructor(private readonly db: TypeOrmRepositoryHelper) {}
 
   private table(): string {
@@ -41,6 +44,21 @@ export class TypeormNfeNumbering implements DocumentNumbering {
       const row = rows[0];
       if (!row) throw new NfeNumberingExhaustedError();
       return { series: row.series, number: row.current_number };
+    });
+  }
+
+  /** `current_number + 1`, read without a lock or a write: the next emission may still take another. */
+  peekNext(scope: NumberingScope): Promise<{ series: number; number: number }> {
+    return runWithTenant(scope.tenantId, async () => {
+      const rows: Array<{ current_number: number }> = await this.db
+        .manager()
+        .query(
+          `SELECT current_number FROM ${this.table()} WHERE company_id = $1 AND model = $2 AND series = $3`,
+          [scope.companyId, scope.model, scope.series],
+        );
+      const next = (rows[0]?.current_number ?? 0) + 1;
+      if (next > NFE_LAST_NUMBER) throw new NfeNumberingExhaustedError();
+      return { series: scope.series, number: next };
     });
   }
 

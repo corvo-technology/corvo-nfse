@@ -11,10 +11,7 @@ import { TypeOrmRepositoryHelper } from '@/infra/persistence/typeorm/typeorm-rep
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { queryCursorPage } from '@/shared/http/keyset-pagination';
 import { CursorPage, type CursorQuery } from '@/shared/http/pagination';
-import type {
-  NfeDocument,
-  NfeHistoryEntry,
-} from '../domain/nfe-document';
+import type { NfeDocument, NfeHistoryEntry } from '../domain/nfe-document';
 import {
   INfeDocumentRepository,
   type ListNfeFilters,
@@ -147,7 +144,10 @@ export class TypeOrmNfeDocumentRepository implements INfeDocumentRepository {
         page.data.length === 0
           ? []
           : await this.items.find({
-              where: { documentId: In(page.data.map((row) => row.id)), tenantId },
+              where: {
+                documentId: In(page.data.map((row) => row.id)),
+                tenantId,
+              },
             });
       return new CursorPage(
         page.data.map((row) =>
@@ -165,11 +165,7 @@ export class TypeOrmNfeDocumentRepository implements INfeDocumentRepository {
     return runWithTenant(entry.tenantId, async () => {
       await this.db
         .repository(NfeDocumentHistoryOrmEntity)
-        .insert(
-          this.mapper.historyToPersistence(
-            entry,
-          ) as QueryDeepPartialEntity<NfeDocumentHistoryOrmEntity>,
-        );
+        .insert(this.mapper.historyToPersistence(entry));
     });
   }
 
@@ -179,12 +175,10 @@ export class TypeOrmNfeDocumentRepository implements INfeDocumentRepository {
   ): Promise<Array<NfeHistoryEntry & { createdAt: Date }>> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
-      const rows = await this.db
-        .repository(NfeDocumentHistoryOrmEntity)
-        .find({
-          where: { documentId, tenantId },
-          order: { createdAt: 'ASC', id: 'ASC' },
-        });
+      const rows = await this.db.repository(NfeDocumentHistoryOrmEntity).find({
+        where: { documentId, tenantId },
+        order: { createdAt: 'ASC', id: 'ASC' },
+      });
       return rows.map((row) => ({
         tenantId: row.tenantId,
         documentId: row.documentId,

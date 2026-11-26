@@ -40,7 +40,10 @@ describe('NfeRequestDto', () => {
     expect(await problems({ ...valid(), payments: [] })).toContain('payments');
     const item = inputFixture().items[0];
     expect(
-      await problems({ ...valid(), items: Array.from({ length: 991 }, () => item) }),
+      await problems({
+        ...valid(),
+        items: Array.from({ length: 991 }, () => item),
+      }),
     ).toContain('items');
   });
 
@@ -85,8 +88,21 @@ describe('NfeRequestDto', () => {
   it('accepts only indIeDest 1, 2 or 9', async () => {
     const body = valid();
     expect(
-      await problems({ ...body, recipient: { ...body.recipient, indIeDest: 3 } }),
+      await problems({
+        ...body,
+        recipient: { ...body.recipient, indIeDest: 3 },
+      }),
     ).toContain('recipient.indIeDest');
+  });
+
+  it('wants the recipient and its address', async () => {
+    const { recipient: _omit, ...rest } = valid();
+    expect(await problems(rest)).toContain('recipient');
+    const body = valid();
+    const { address: _address, ...noAddress } = body.recipient;
+    expect(await problems({ ...body, recipient: noAddress })).toContain(
+      'recipient.address',
+    );
   });
 
   it('does not take totals from the customer', async () => {

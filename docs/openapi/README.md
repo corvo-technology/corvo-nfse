@@ -182,6 +182,7 @@ Where each part lives:
 | **NF-e** | | | | |
 | `companies_getNfeSettings` | GET | `/companies/{id}/nfe-settings` | 0.2.0 | Get the NF-e settings of the company |
 | `companies_updateNfeSettings` | PUT | `/companies/{id}/nfe-settings` | 0.2.0 | Set the NF-e settings of the company |
+| `nfe_validate` | POST | `/nfe/validate` | 0.2.0 | Validate an NF-e without sending it |
 | **Health** | | | | |
 | `health_live` | GET | `/health/live` | 0.3.0 | Liveness check |
 

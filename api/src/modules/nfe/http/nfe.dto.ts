@@ -8,6 +8,7 @@ import {
   IsIn,
   IsInt,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -105,6 +106,7 @@ export class NfeRecipientDto {
   email?: string | null;
 
   @ApiProperty({ type: NfeAddressDto })
+  @IsObject()
   @ValidateNested()
   @Type(() => NfeAddressDto)
   address!: NfeAddressDto;
@@ -144,7 +146,10 @@ export class NfeItemDto {
   @MaxLength(60)
   code!: string;
 
-  @ApiPropertyOptional({ nullable: true, description: 'GTIN, or leave out for "SEM GTIN".' })
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'GTIN, or leave out for "SEM GTIN".',
+  })
   @IsOptional()
   @IsString()
   @Matches(/^(\d{8}|\d{12}|\d{13}|\d{14})$/)
@@ -226,7 +231,10 @@ export class NfeItemDto {
 }
 
 export class NfePaymentDto {
-  @ApiProperty({ example: '17', description: 'Payment means (tPag), 2 digits.' })
+  @ApiProperty({
+    example: '17',
+    description: 'Payment means (tPag), 2 digits.',
+  })
   @IsString()
   @Matches(/^\d{2}$/)
   tPag!: string;
@@ -243,7 +251,10 @@ export class NfeRequestDto {
   @IsUUID()
   companyId!: string;
 
-  @ApiPropertyOptional({ maxLength: 60, description: 'Defaults to the one of the company.' })
+  @ApiPropertyOptional({
+    maxLength: 60,
+    description: 'Defaults to the one of the company.',
+  })
   @IsOptional()
   @IsString()
   @MinLength(1)
@@ -257,12 +268,17 @@ export class NfeRequestDto {
   @Max(4)
   finNfe?: number;
 
-  @ApiPropertyOptional({ enum: [1, 2], default: 1, description: 'DANFE layout: 1 portrait, 2 landscape.' })
+  @ApiPropertyOptional({
+    enum: [1, 2],
+    default: 1,
+    description: 'DANFE layout: 1 portrait, 2 landscape.',
+  })
   @IsOptional()
   @IsIn([1, 2])
   tpImp?: number;
 
   @ApiProperty({ type: NfeRecipientDto })
+  @IsObject()
   @ValidateNested()
   @Type(() => NfeRecipientDto)
   recipient!: NfeRecipientDto;

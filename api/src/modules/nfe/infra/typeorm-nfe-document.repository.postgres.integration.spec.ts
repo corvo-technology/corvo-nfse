@@ -150,17 +150,23 @@ describePostgres('NfeDocument repository with a restricted role', () => {
       accessKey: '3'.repeat(44),
       signedXml: '<NFe/>',
     });
-    expect(await repo.findByAccessKey('3'.repeat(44), tenantA, 'test')).not.toBeNull();
-    expect(await repo.findByAccessKey('3'.repeat(44), tenantA, 'live')).toBeNull();
+    expect(
+      await repo.findByAccessKey('3'.repeat(44), tenantA, 'test'),
+    ).not.toBeNull();
+    expect(
+      await repo.findByAccessKey('3'.repeat(44), tenantA, 'live'),
+    ).toBeNull();
   });
 
   it('finds by idempotency key within the tenant and environment', async () => {
     const doc = newDoc({ idempotencyKey: 'idem-lookup' });
     await repo.insert(doc);
-    expect((await repo.findByIdempotencyKey('idem-lookup', tenantA, 'test'))?.id).toBe(
-      doc.id,
-    );
-    expect(await repo.findByIdempotencyKey('idem-lookup', tenantA, 'live')).toBeNull();
+    expect(
+      (await repo.findByIdempotencyKey('idem-lookup', tenantA, 'test'))?.id,
+    ).toBe(doc.id);
+    expect(
+      await repo.findByIdempotencyKey('idem-lookup', tenantA, 'live'),
+    ).toBeNull();
   });
 
   it('keeps the history in the order the transitions happened', async () => {
@@ -176,7 +182,11 @@ describePostgres('NfeDocument repository with a restricted role', () => {
       'rejected',
       'queued',
     ]);
-    expect(history[1]).toMatchObject({ accessKey: '5'.repeat(44), attempt: 1, cStat: '225' });
+    expect(history[1]).toMatchObject({
+      accessKey: '5'.repeat(44),
+      attempt: 1,
+      cStat: '225',
+    });
   });
 
   it("does not show one tenant's document to another tenant", async () => {
@@ -187,7 +197,9 @@ describePostgres('NfeDocument repository with a restricted role', () => {
   });
 
   it('refuses a document of a company that belongs to another tenant', async () => {
-    await expect(repo.insert(newDoc({ companyId: companyB }))).rejects.toBeDefined();
+    await expect(
+      repo.insert(newDoc({ companyId: companyB })),
+    ).rejects.toBeDefined();
   });
 
   it('locks the row inside a transaction', async () => {
@@ -215,7 +227,10 @@ describePostgres('NfeDocument repository with a restricted role', () => {
       await repo.insert(doc);
       created.push(doc.id);
     }
-    const first = await repo.list(tenantA, 'test', { companyId: other, limit: 2 });
+    const first = await repo.list(tenantA, 'test', {
+      companyId: other,
+      limit: 2,
+    });
     expect(first.data).toHaveLength(2);
     expect(first.pagination.hasMore).toBe(true);
     expect(first.data[0].toSnapshot().items).toHaveLength(1);
@@ -226,9 +241,9 @@ describePostgres('NfeDocument repository with a restricted role', () => {
     });
     expect(second.data).toHaveLength(1);
     expect(second.pagination.hasMore).toBe(false);
-    expect(
-      [...first.data, ...second.data].map((d) => d.id).sort(),
-    ).toEqual([...created].sort());
+    expect([...first.data, ...second.data].map((d) => d.id).sort()).toEqual(
+      [...created].sort(),
+    );
     const queued = await repo.list(tenantA, 'test', {
       companyId: other,
       status: 'authorized',
