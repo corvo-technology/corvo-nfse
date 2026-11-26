@@ -44,10 +44,15 @@ describe('nfeReadinessMissing', () => {
     expect(nfeReadinessMissing(company(), settings())).toEqual([]);
   });
 
-  it('lists a missing zip, IE and CRT in order', () => {
+  it('lists a missing zip and IE in order; the CRT follows the tax regime, so it is not asked before any setting', () => {
     expect(nfeReadinessMissing(company({ zip: undefined }), null)).toEqual([
       'address_zip',
       'state_registration',
+    ]);
+  });
+
+  it('lists the CRT only when the regime has none (settings exist, CRT could not be derived)', () => {
+    expect(nfeReadinessMissing(company(), settings({ crt: null }))).toEqual([
       'crt',
     ]);
   });

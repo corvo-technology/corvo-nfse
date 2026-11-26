@@ -1,7 +1,7 @@
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { canOpenPath, isPlatformAdminPath, permissionForPath, ROUTE_PERMISSION_RULES } from "@/lib/route-permissions";
+import { canOpenPath, isPlatformAdminPath, parentSection, permissionForPath, ROUTE_PERMISSION_RULES } from "@/lib/route-permissions";
 import { TENANT_ADMIN_PERMISSIONS, TENANT_ROLE_PERMISSIONS } from "../../api/src/modules/auth/domain/permission";
 
 const asCan = (role: keyof typeof TENANT_ROLE_PERMISSIONS) => {
@@ -94,5 +94,19 @@ describe("every dashboard page is covered", () => {
     expect(adminRoutes).toContain("/app/admin/users/x");
     for (const route of adminRoutes) expect(permissionForPath(route)).toBeNull();
     expect(isPlatformAdminPath("/app/administration")).toBe(false);
+  });
+});
+
+describe("parentSection (the page title of a page inside a section)", () => {
+  const sections = ["/app", "/app/companies", "/app/nfe", "/app/nfe/new", "/app/invoices"];
+  it("a company or a note page belongs to its list", () => {
+    expect(parentSection("/app/companies/abc", sections)).toBe("/app/companies");
+    expect(parentSection("/app/nfe/n1", sections)).toBe("/app/nfe");
+    expect(parentSection("/app/invoices/i1/", sections)).toBe("/app/invoices");
+  });
+  it("the longest section wins, and the overview and the admin pages are never a parent", () => {
+    expect(parentSection("/app/nfe/new/x", sections)).toBe("/app/nfe/new");
+    expect(parentSection("/app/unknown/x", sections)).toBeUndefined();
+    expect(parentSection("/app/admin/users/1", ["/app/admin", "/app/admin/users"])).toBeUndefined();
   });
 });

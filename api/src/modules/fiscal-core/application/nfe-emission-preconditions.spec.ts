@@ -103,7 +103,7 @@ describe('NfeEmissionPreconditions', () => {
     ).resolves.toMatchObject({
       code: 'COMPANY_NFE_INCOMPLETE',
       category: 'CONFIGURATION',
-      details: { missing: ['address_zip', 'state_registration', 'crt'] },
+      details: { missing: ['address_zip', 'state_registration'] },
     });
   });
 

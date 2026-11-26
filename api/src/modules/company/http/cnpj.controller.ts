@@ -23,7 +23,11 @@ export class CnpjController {
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Get(':cnpj')
   @ApiKeyEndpoint()
-  @RequirePermission(['nfse.companies.manage', 'nfse.invoices.issue'])
+  @RequirePermission([
+    'nfse.companies.manage',
+    'nfse.invoices.issue',
+    'nfe.documents.issue',
+  ])
   @ApiOperation({ summary: 'Look up the registration data of a CNPJ' })
   async lookup(@Param('cnpj') raw: string) {
     const cnpj = normalizeCnpj(raw);
