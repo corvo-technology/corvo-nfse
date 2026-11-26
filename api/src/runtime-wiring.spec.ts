@@ -8,6 +8,7 @@ import { WooviConnectorModule } from './modules/integrations/connectors/woovi/wo
 import { AbacatePayConnectorModule } from './modules/integrations/connectors/abacatepay/abacatepay.module';
 import { PushinPayConnectorModule } from './modules/integrations/connectors/pushinpay/pushinpay.module';
 import { StripeConnectorModule } from './modules/integrations/connectors/stripe/stripe.module';
+import { KiwifyConnectorModule } from './modules/integrations/connectors/kiwify/kiwify.module';
 import { HotmartConnectorModule } from './modules/integrations/connectors/hotmart/hotmart.module';
 
 function importedModules(moduleClass: object): unknown[] {
@@ -46,6 +47,8 @@ describe('runtime wiring', () => {
     );
     expect(importedModules(AppModule)).toContain(StripeConnectorModule);
     expect(importedModules(WorkerAppModule)).toContain(StripeConnectorModule);
+    expect(importedModules(AppModule)).toContain(KiwifyConnectorModule);
+    expect(importedModules(WorkerAppModule)).toContain(KiwifyConnectorModule);
     expect(importedModules(AppModule)).toContain(HotmartConnectorModule);
     expect(importedModules(WorkerAppModule)).toContain(HotmartConnectorModule);
   });

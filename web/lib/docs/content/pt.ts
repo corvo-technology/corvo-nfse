@@ -2772,7 +2772,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     municipalities: municipalitiesPage("pt"),
     "payment-integrations": {
       title: "Integrações de pagamento",
-      description: "Conecte Woovi, AbacatePay, Stripe, PushinPay ou Hotmart e emita a NFS-e automaticamente a cada pagamento confirmado.",
+      description: "Conecte Woovi, AbacatePay, Stripe, PushinPay, Hotmart ou Kiwify e emita a NFS-e automaticamente a cada pagamento confirmado.",
       blocks: [
         {
           kind: "text",
@@ -2837,6 +2837,20 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "O CPF/CNPJ vem do cliente (`tax_ids` `br_cpf` ou `br_cnpj`) ou do Checkout (`customer_details.tax_ids`). Ligue \"Coletar CPF/CNPJ\" (`tax_id_collection`) no Checkout para a nota sair completa. Sem documento, a venda fica pendente (`customer_tax_id_missing`) ou sai sem tomador se a regra tiver `allowAnonymousCustomer`.",
             "A descrição do serviço na nota é o nome dos itens do Checkout ou da fatura (até 5 itens); sem eles, vale a descrição da regra ou o padrão da empresa.",
             "Reembolso: só o reembolso total (`charge.refunded` com `refunded` verdadeiro) é tratado; o parcial é ignorado e a nota segue como está. Contestação (`charge.dispute.created`) só sinaliza a venda, sem cancelar.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "Kiwify" },
+        {
+          kind: "list",
+          items: [
+            "Credenciais: `token`, o token do webhook que você escolhe na Kiwify (use um valor longo e aleatório), e, opcionalmente, `invoiceValue` (`total` ou `mine`). A Corvo gera o `webhookSecret` e exibe o endereço completo do webhook ao criar a conexão. Copie e guarde esse endereço.",
+            "Passo a passo: (1) na Kiwify, em Apps > Webhooks, crie um webhook com o `webhookUrl`, escolhendo os produtos; (2) defina um token e cole o mesmo token na Corvo, marcando os gatilhos `compra_aprovada`, `compra_reembolsada` e `chargeback`; (3) use \"Testar Webhook\" para conferir. Não inclua vendas de afiliados nem de coprodução: a nota é só das suas vendas.",
+            "A Corvo confere a assinatura na query `?signature=` (HMAC-SHA1 do corpo cru, chave = `token`, hex minúsculo) e o segredo da conexão no endereço. A Kiwify não manda data na assinatura, então o reenvio é barrado por `order_id` + `webhook_event_type`.",
+            "Cada compra aprovada (`order_approved`, `order_status` `paid`) vira uma nota, identificada por `kiwify:<order_id>`. Cada cobrança de assinatura tem um `order_id` novo e gera a sua própria nota; `subscription_renewed`, cancelamentos e período grátis são ignorados.",
+            "Só BRL e comprador brasileiro: outra moeda fica bloqueada com `unsupported_currency`; sem CPF/CNPJ, com documento inválido ou comprador de outro país, a venda fica pendente (`customer_tax_id_missing`) ou sai sem tomador se a regra tiver `allowAnonymousCustomer`.",
+            "Valor da nota: por padrão o total pago pelo comprador (`Commissions.charge_amount`). Com `invoiceValue` = `mine` usa a sua parte (`Commissions.my_commission`); se o aviso não trouxer esse valor, a venda vai para atenção em vez de usar o total.",
+            "A Kiwify não tem modo de teste: o \"Testar Webhook\" manda dados fictícios. Faça esse teste numa conexão de teste da Corvo, nunca numa conexão de produção.",
+            "Reembolso e chargeback ligam à venda pelo `order_id`. Com \"cancelar nota no reembolso\" ligado, o reembolso cancela a nota; sem isso (e no chargeback) a venda só é sinalizada (`refund_after_invoice`).",
           ],
         },
         { kind: "heading", level: 3, body: "Hotmart" },

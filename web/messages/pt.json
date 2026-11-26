@@ -17,6 +17,7 @@
       "abacatepay": "Venda (AbacatePay)",
       "pushinpay": "Venda (PushinPay)",
       "stripe": "Venda (Stripe)",
+      "kiwify": "Venda (Kiwify)",
       "hotmart": "Venda (Hotmart)",
       "generic": "Venda pela integração"
     }
@@ -2917,6 +2918,7 @@
       "abacatepay": "Checkout e pagamentos pagos na AbacatePay.",
       "pushinpay": "Pix, boleto e Pix recorrente pagos na PushinPay.",
       "stripe": "Cartão, Pix e boleto pagos no Stripe.",
+      "kiwify": "Vendas aprovadas na Kiwify.",
       "hotmart": "Compras de produtos digitais pagas na Hotmart.",
       "other": "Pagamentos confirmados."
     },

@@ -29,6 +29,7 @@ describe("invoiceOrigin", () => {
     ["integ_abc", "transparent:pix_1", "Sale (AbacatePay) · charge pix_1"],
     ["integ_abc", "pushinpay:9c8a1f4e-2b7d-4c6a", "Sale (PushinPay) · charge 9c8a1f4e"],
     ["integ_abc", "stripe_charge:ch_3SabcdefGHIJ", "Sale (Stripe) · charge ch_3Sabc"],
+    ["integ_abc", "kiwify:9b1c2d3e-0000-4000-8000-000000000001", "Sale (Kiwify) · charge 9b1c2d3e"],
     ["integ_abc", "hotmart:HP16015479281022", "Sale (Hotmart) · charge HP160154"],
     ["integ_abc", "weird", "Integration sale"],
     ["schedule:s1:2026-01-05", null, "Schedule"],
