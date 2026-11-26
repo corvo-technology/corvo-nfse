@@ -732,6 +732,24 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       }),
       { description: 'The NF-e authorities already used by emissions.' },
     ),
+    connection: obj({
+      state: str({
+        enum: [
+          'ok',
+          'portal_down',
+          'gov_unreachable_from_us',
+          'no_internet',
+          'emission_failures',
+        ],
+        description:
+          'What the connection tests see: `portal_down` when the national portal is down, or a problem on the Corvo side (`gov_unreachable_from_us`, `no_internet`, `emission_failures`). Invoices wait in the queue and are sent once the connection is back.',
+      }),
+      since: nullable(dateTime()),
+      ourSide: bool({
+        description:
+          'True when the trouble is on the Corvo side, not the portal.',
+      }),
+    }),
   }),
   Certificate: obj(
     {

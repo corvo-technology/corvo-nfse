@@ -104,6 +104,21 @@ describe("PortalStatusBanner", () => {
     expect(screen.getByRole("status").textContent).toContain(messages.PortalStatus.body);
   });
 
+  it("says plainly when the trouble is on our side, even while emission is not paused", async () => {
+    mocks.status.mockResolvedValue({ environment: "live", available: true, since: null, retryAt: null, connection: { state: "gov_unreachable_from_us", since: "2026-11-08T15:00:00.000Z", ourSide: true } });
+    wrap(<PortalStatusBanner environment="t:live" />);
+    const banner = await screen.findByRole("status");
+    expect(banner.textContent).toContain(messages.PortalStatus.ourSideTitle);
+    expect(banner.textContent).toContain(messages.PortalStatus.ourSideBody);
+    expect(banner.textContent).not.toMatch(/guara/i);
+  });
+
+  it("keeps the portal-down copy when the portal itself is down", async () => {
+    mocks.status.mockResolvedValue({ environment: "live", available: false, since: null, retryAt: null, connection: { state: "portal_down", since: null, ourSide: false } });
+    wrap(<PortalStatusBanner environment="t:live" />);
+    expect((await screen.findByRole("status")).textContent).toContain(messages.PortalStatus.title);
+  });
+
   it("stays hidden while the portal answers or the status cannot be read", async () => {
     mocks.status.mockResolvedValueOnce({ environment: "live", available: true, since: null, retryAt: null });
     const first = wrap(<PortalStatusBanner environment="t:live" />);

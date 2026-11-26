@@ -4,7 +4,7 @@ import { DpsBuilder } from '../domain/fiscal/dps/dps-builder';
 import type { IFiscalSnapshotRepository } from '../domain/fiscal/fiscal-snapshot.repository';
 import { portalNfseXml } from '../domain/fiscal/__fixtures__/portal-nfse-xml';
 import { InvoiceWebhookPublisher } from './invoice-webhook.publisher';
-import { NfseWorkflowService } from './nfse-workflow.service';
+import { describeCause, NfseWorkflowService } from './nfse-workflow.service';
 import {
   NumberingCheckUnavailableError,
   NumberingNeedsConfirmationError,
@@ -137,18 +137,23 @@ describe('NfseWorkflowService first-emission numbering check', () => {
     expect(fakes.lifecycle.transition).toHaveBeenCalled();
   });
 
-  it('when the portal does not answer the job fails to be retried, with no number reserved', async () => {
+  it('when the portal cannot run the check the note is still emitted with the next number (the government refuses a used one)', async () => {
     const invoice = queued();
     numbering.skipUsedNumbers.mockRejectedValue(
-      new NumberingCheckUnavailableError(new Error('timeout')),
+      new NumberingCheckUnavailableError(new Error('HTTP 400')),
     );
+    provider.issue.mockResolvedValue({
+      success: false,
+      requiresReconciliation: true,
+      errorMessage: 'pending',
+    });
 
-    await expect(run(invoice)).rejects.toBeInstanceOf(
-      NumberingCheckUnavailableError,
-    );
+    await run(invoice);
 
-    expect(fakes.sequences.reserveNext).not.toHaveBeenCalled();
-    expect(invoice.status).toBe('queued');
+    expect(fakes.sequences.reserveNext).toHaveBeenCalledTimes(1);
+    expect(provider.issue).toHaveBeenCalledTimes(1);
+    expect(invoice.toSnapshot().dpsNumber).toBe(7);
+    expect(invoice.status).not.toBe('rejected');
   });
 
   it('skips used numbers, emits with the next free one and writes it on the timeline', async () => {
@@ -375,5 +380,17 @@ describe('NfseWorkflowService first-emission numbering check', () => {
       );
       expect(invoice.status).not.toBe('rejected');
     });
+  });
+});
+
+describe('describeCause', () => {
+  it('keeps the error kind and HTTP status, never a body', () => {
+    const error = Object.assign(new Error('HTTP 403'), {
+      name: 'ForbiddenError',
+      status: 403,
+      body: '<secret/>',
+    });
+    expect(describeCause(error)).toBe('ForbiddenError HTTP 403 HTTP 403');
+    expect(describeCause('x')).toBe('x');
   });
 });

@@ -31,6 +31,15 @@ export function PortalStatusBanner({ environment }: { environment: string }) {
     return () => { abort.abort(); clearTimeout(timer); };
   }, [environment]);
 
+  if (status?.connection?.ourSide)
+    return (
+      <p role="status" className="banner banner-warn mb-6 flex items-start gap-2.5">
+        <CloudOff size={16} className="mt-0.5 shrink-0" aria-hidden />
+        <span>
+          <strong className="font-medium text-text">{t("ourSideTitle")}</strong> {t("ourSideBody")}
+        </span>
+      </p>
+    );
   if (!status || status.available) return null;
   const since = status.since
     ? new Date(status.since).toLocaleTimeString(locale === "pt" ? "pt-BR" : "en-US", { hour: "2-digit", minute: "2-digit" })

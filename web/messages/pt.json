@@ -2118,9 +2118,6 @@
     "state_registration_invalid": "A inscrição estadual não é válida para o estado da empresa. Confira o número e o estado.",
     "nfe_schema_invalid": "O XML da NF-e não passou na validação do layout. Confira os campos e tente de novo.",
     "nfe_validation_failed": "A NF-e tem problemas. Confira os campos indicados e envie de novo.",
-    "idempotency_key_required": "Envie o cabeçalho Idempotency-Key (de 1 a 200 caracteres) para emitir NF-e. Assim um reenvio nunca emite duas vezes.",
-    "idempotency_key_invalid": "O Idempotency-Key precisa ter de 1 a 200 caracteres.",
-    "idempotency_key_reused": "Essa chave de idempotência já foi usada com outro conteúdo. Use uma chave nova para uma nota nova.",
     "invoice_operation_not_supported": "Essa operação não existe para esse tipo de nota. Por exemplo, carta de correção, descarte e inutilização são só da NF-e.",
     "nfe_invalid_state": "Essa ação não vale para a situação atual da NF-e.",
     "nfe_download_format_invalid": "Formato de arquivo inválido. Use xml ou pdf.",
@@ -3519,7 +3516,9 @@
   "PortalStatus": {
     "title": "O portal nacional da NFS-e não está respondendo.",
     "titleSince": "O portal nacional da NFS-e não responde desde {time}.",
-    "body": "Suas notas estão guardadas na fila e serão enviadas assim que ele voltar. Não é preciso refazer nada."
+    "body": "Suas notas estão guardadas na fila e serão enviadas assim que ele voltar. Não é preciso refazer nada.",
+    "ourSideTitle": "Estamos com dificuldade para falar com o governo.",
+    "ourSideBody": "Suas notas ficam na fila e saem sozinhas assim que a conexão voltar."
   },
   "Customers": {
     "title": "Clientes",

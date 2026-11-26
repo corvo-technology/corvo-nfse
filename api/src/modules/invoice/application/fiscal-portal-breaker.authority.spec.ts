@@ -121,9 +121,16 @@ describe('FiscalPortalBreaker per authority', () => {
 
   it('other authorities use fiscal:breaker:<authority>:<part>', async () => {
     await breaker.recordFailure('test', sp);
-    expect([...redis.values.keys()]).toEqual([
-      'fiscal:breaker:nfe-sp-2:failures',
-    ]);
+    const keys = [...redis.values.keys()];
+    expect(keys.every((k) => k.startsWith('fiscal:breaker:nfe-sp-2:'))).toBe(
+      true,
+    );
+    expect(keys).toContain('fiscal:breaker:nfe-sp-2:failures');
+    // The per-minute counter is kept per authority too.
+    expect(await breaker.recentFailures('test', 60_000, Date.now(), sp)).toBe(
+      1,
+    );
+    expect(await breaker.recentFailures('test', 60_000)).toBe(0);
   });
 
   it('a success on the authority closes only that one', async () => {

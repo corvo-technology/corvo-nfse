@@ -4,8 +4,11 @@
 # Para atualizar: troque RTC_TAG e RTC_COMMIT (veja docs/fiscal/runbooks/rtc-update.md).
 # JAVA_VERSION segue o pom da tag: a 1.7.x usa Java 25; a 1.6.x usa Java 21 (no Java 25 o Lombok não roda sozinho e a compilação falha).
 ARG JAVA_VERSION=25
+# O build usa a imagem oficial do Maven (com o mesmo Java), sem o ./mvnw do repositório da Receita: o mvnw não traz o
+# maven-wrapper.jar e o baixava da internet, o que falhava de vez em quando. 3.9 é a mesma linha do wrapper (3.9.5).
+ARG MAVEN_VERSION=3.9
 
-FROM eclipse-temurin:${JAVA_VERSION}-jdk AS build
+FROM maven:${MAVEN_VERSION}-eclipse-temurin-${JAVA_VERSION} AS build
 ARG RTC_REPO=https://github.com/ReceitaFederal/calculadora-rtc-regime-regular
 ARG RTC_TAG=1.7.2
 # A Receita moveu a tag 1.7.2 em 2026-11-25 (de 32df719 para 39363aa): o novo commit só apaga duas classes sem uso
@@ -18,22 +21,13 @@ WORKDIR /src
 # A tag pode ser movida; o build para se o commit baixado não for o fixado.
 RUN git clone --depth 1 --branch "$RTC_TAG" "$RTC_REPO" . \
  && test "$(git rev-parse HEAD)" = "$RTC_COMMIT"
-# O mvnw baixa o Maven pelo curl. Às vezes esse download vem cortado ("Could not find or load main class
-# org.apache.maven.wrapper.MavenWrapperMain"). Por isso a preparação do wrapper (e só ela) tenta de novo,
-# apagando o que veio pela metade. Erro de migração ou de compilação NÃO é repetido: falha na hora.
-# Depois gera o banco (SQLite) com as migrações do próprio repositório e empacota o jar.
+# Gera o banco (SQLite) com as migrações do próprio repositório e empacota o jar.
+# Erro de migração ou de compilação falha na hora. Só as dependências (repositório Maven) vêm da rede, com cache do BuildKit.
 RUN --mount=type=cache,target=/root/.m2 \
-    ok=0; \
-    for i in 1 2 3 4; do \
-      if ./mvnw -B -ntp -v; then ok=1; break; fi; \
-      echo "Wrapper do Maven não baixou direito (tentativa $i de 4); limpando e tentando de novo"; \
-      rm -rf .mvn/wrapper/maven-wrapper.jar /root/.m2/wrapper; \
-      sleep $((i * 5)); \
-    done; \
-    test "$ok" = 1 \
+    mvn -B -ntp -v \
  && mkdir -p calculadora/db \
- && ./mvnw -B -ntp flyway:migrate -Dflyway.configFiles=./flyway/flyway-pro.conf \
- && ./mvnw -B -ntp clean package -DskipTests
+ && mvn -B -ntp flyway:migrate -Dflyway.configFiles=./flyway/flyway-pro.conf \
+ && mvn -B -ntp clean package -DskipTests
 
 FROM eclipse-temurin:${JAVA_VERSION}-jre
 RUN apt-get update \

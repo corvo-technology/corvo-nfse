@@ -50,6 +50,7 @@ import { ImportModule } from '@/modules/import/import.module';
 import { ImportCleanupCron } from '@/modules/import/jobs/import-cleanup.cron';
 import { ImportEmitProcessor } from '@/modules/import/jobs/import-emit.processor';
 import { ImportReadProcessor } from '@/modules/import/jobs/import-read.processor';
+import { PortalReachabilityModule } from '@/modules/portal-reachability/portal-reachability.module';
 import { PortalSyncModule } from '@/modules/portal-sync/portal-sync.module';
 import { NfeModule } from '@/modules/nfe/nfe.module';
 import { AccountAuditModule } from '@/modules/account-audit/account-audit.module';
@@ -93,6 +94,7 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     PortalSyncModule,
     // Registers the nfe.* handlers on the outbox registry the relay above reads.
     NfeModule,
+    PortalReachabilityModule,
   ],
   providers: [
     EventProcessorScheduler,

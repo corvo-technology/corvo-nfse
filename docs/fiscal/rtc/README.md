@@ -3,7 +3,7 @@
 Contrato verificado em 2026-10-15 (app `1.6.0`); fixtures recapturados em **2026-11-23** contra a instância **offline** (app `1.7.2`, dados `V0073`). Fonte do OpenAPI: `GET /api/api-docs` da própria instância (`openapi.json` nesta pasta). Fixtures reais em `fixtures/`.
 
 ## Distribuição e execução
-- Código oficial: <https://github.com/ReceitaFederal/calculadora-rtc-regime-regular> (MIT). O `deploy/Dockerfile.rtc` clona uma tag fixa, gera o banco com `./mvnw flyway:migrate -Dflyway.configFiles=./flyway/flyway-pro.conf` e empacota o jar (`target/api-regime-geral.jar`). Veja `docs/fiscal/runbooks/rtc-update.md`.
+- Código oficial: <https://github.com/ReceitaFederal/calculadora-rtc-regime-regular> (MIT). O `deploy/Dockerfile.rtc` clona uma tag fixa, gera o banco com `mvn flyway:migrate -Dflyway.configFiles=./flyway/flyway-pro.conf` e empacota o jar (o build usa a imagem oficial `maven:3.9-eclipse-temurin-25`, não o `./mvnw`, que baixava o Maven da internet e falhava às vezes; `target/api-regime-geral.jar`). Veja `docs/fiscal/runbooks/rtc-update.md`.
 - Observação histórica: as capturas abaixo vieram do zip do governo (`piloto-cbs.tributos.gov.br`, `codigo-fonte-backend.zip`), que é o mesmo software (módulo `api-regime-geral`).
 - Execução: `java -jar api-regime-geral.jar --spring.profiles.active=offline` na pasta que contém `calculadora/db/`. Porta **8080**, context-path **`/api`**. A imagem usa `eclipse-temurin:25-jre` (a 1.7.x exige Java 25; a 1.6.x usa 21, via `JAVA_VERSION` no Dockerfile).
 - **Partida: ~4 min** (254 s medidos). Memória em regime: ~714 MiB. Latência de cálculo (warm): 25–440 ms.

@@ -314,6 +314,15 @@ export const envSchema = z
       .min(1)
       .max(365)
       .default(30),
+    // Every minute the worker checks it can open a connection to the government NFS-e hosts and
+    // e-mails the operator (OPS_ALERT_EMAILS, comma-separated) when it cannot. Empty = nobody is e-mailed.
+    PORTAL_PROBE_ENABLED: booleanFromEnv.default(true),
+    // A host outside the government used to tell "our network is down" from "the portal is down".
+    PORTAL_PROBE_CONTROL_HOST: z.string().trim().min(1).default('1.1.1.1'),
+    OPS_ALERT_EMAILS: z.string().optional(),
+    // Calls to the portal that failed to connect in 10 minutes before the alert opens even when the
+    // tests pass. 0 turns this signal off.
+    OPS_ALERT_EMISSION_FAILURES: z.coerce.number().int().min(0).default(10),
     OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
     OUTBOX_BATCH_SIZE: z.coerce.number().int().positive().default(50),
     OUTBOX_LEASE_MS: z.coerce.number().int().positive().default(120000),

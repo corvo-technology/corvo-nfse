@@ -80,6 +80,7 @@ import { EmailModule } from '@/modules/email/email.module';
 import { InvoiceReviewController } from './http/invoice-review.controller';
 import { InvoiceReviewService } from './application/invoice-review.service';
 import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
+import { PortalReachabilityStore } from '@/modules/portal-reachability/reachability.store';
 import { InvoicePackageService } from './application/package/invoice-package.service';
 import { PackageLinkService } from './application/package/package-link.service';
 import { PackageContributorRegistry } from './application/package/package-contributor.registry';
@@ -174,6 +175,7 @@ const ACCOUNTANT_PACKAGE = {
     InvoiceOverviewService,
     InvoiceReviewService,
     FiscalPortalBreaker,
+    PortalReachabilityStore,
     DpsNumberingService,
     {
       provide: INVOICE_OVERVIEW_REPOSITORY,
@@ -239,6 +241,7 @@ const ACCOUNTANT_PACKAGE = {
   exports: [
     ...ACCOUNTANT_PACKAGE.providers,
     FiscalPortalBreaker,
+    PortalReachabilityStore,
     DpsNumberingService,
     OutboxHandlerRegistry,
     OUTBOX_REPOSITORY,

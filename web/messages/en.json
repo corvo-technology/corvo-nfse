@@ -2118,9 +2118,6 @@
     "state_registration_invalid": "The state registration (IE) is not valid for the company's state. Check the number and the state.",
     "nfe_schema_invalid": "The NF-e XML did not pass the layout validation. Check the fields and try again.",
     "nfe_validation_failed": "The NF-e has problems. Check the listed fields and send it again.",
-    "idempotency_key_required": "Send the Idempotency-Key header (1 to 200 characters) to issue an NF-e, so a retry never issues twice.",
-    "idempotency_key_invalid": "The Idempotency-Key must have 1 to 200 characters.",
-    "idempotency_key_reused": "This idempotency key was already used with different content. Use a new key for a new note.",
     "invoice_operation_not_supported": "This operation does not exist for this type of document. For example, correction letters, discard and inutilization are NF-e only.",
     "nfe_invalid_state": "This action does not apply to the current state of the NF-e.",
     "nfe_download_format_invalid": "Invalid file format. Use xml or pdf.",
@@ -3519,7 +3516,9 @@
   "PortalStatus": {
     "title": "The national NFS-e portal is not answering.",
     "titleSince": "The national NFS-e portal has not answered since {time}.",
-    "body": "Your invoices are kept in the queue and will be sent as soon as it is back. Nothing needs to be redone."
+    "body": "Your invoices are kept in the queue and will be sent as soon as it is back. Nothing needs to be redone.",
+    "ourSideTitle": "We are having trouble reaching the government.",
+    "ourSideBody": "Your invoices stay in the queue and go out by themselves as soon as the connection is back."
   },
   "Customers": {
     "title": "Customers",
