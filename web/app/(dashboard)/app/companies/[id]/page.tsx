@@ -10,6 +10,7 @@ import type { Company, Certificate } from "@/lib/types";
 import { CompanyForm } from "@/components/dashboard/company-form";
 import { DpsSequenceCard } from "@/components/companies/dps-sequence-card";
 import { AccountantPackageCard } from "@/components/companies/accountant-package-card";
+import { NfeSettingsForm } from "@/components/companies/nfe-settings-form";
 import { CertificateUpload } from "@/components/dashboard/certificate-upload";
 import { CompanyFiscalGuide } from "@/components/dashboard/company-fiscal-guide";
 import { CompanyFiscalSetup } from "@/components/dashboard/company-fiscal-setup";
@@ -26,7 +27,7 @@ export default function CompanyDetailPage() {
   const { id } = useParams<{ id: string }>(); const router = useRouter();
   const t = useTranslations("CompanyDetail"); const tc = useTranslations("Companies"); const locale = useLocale();
   const apiError = useApiErrorText();
-  const { can } = useAuth();
+  const { can, features } = useAuth();
   const [company, setCompany] = useState<Company | null>(null); const [certs, setCerts] = useState<Certificate[]>([]);
   const [error, setError] = useState<string | null>(null); const [revision, setRevision] = useState(0);
   const [editing, setEditing] = useState(false); const [uploading, setUploading] = useState(false);
@@ -90,6 +91,7 @@ export default function CompanyDetailPage() {
     <Modal open={editing} onClose={() => setEditing(false)} title={t("edit")} wide><CompanyForm company={company} onCancel={() => setEditing(false)} onSave={async (input) => { setCompany(await companies.update(id, input)); setEditing(false); }} /></Modal>
     <DpsSequenceCard companyId={id} canManage={can("nfse.companies.manage")} environment={company.environment} />
     <AccountantPackageCard companyId={id} canManage={can("nfse.companies.manage")} environment={company.environment} />
+    {features?.nfe && can("nfe.documents.view") && <NfeSettingsForm companyId={id} canManage={can("nfe.documents.manage")} />}
     <Modal open={uploading} onClose={() => setUploading(false)} title={t("upload")}><CertificateUpload companyId={id} onUploaded={(cert) => { setCerts([cert]); setUploading(false); setRevision((value) => value + 1); }} /></Modal>
     <Modal open={confirmation !== null} onClose={() => { if (!busy) setConfirmation(null); }} title={t("confirmTitle")}><p className="mb-5 text-sm text-text-3">{t(confirmation?.kind === "company" ? "confirmCompany" : "confirmCertificate")}</p><Button variant="danger" loading={busy} onClick={remove}>{t("confirm")}</Button></Modal>
   </div>;
