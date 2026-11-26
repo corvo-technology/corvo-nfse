@@ -15,6 +15,7 @@
     "integration": {
       "woovi": "Pix sale (Woovi)",
       "abacatepay": "Sale (AbacatePay)",
+      "pushinpay": "Sale (PushinPay)",
       "stripe": "Sale (Stripe)",
       "kiwify": "Sale (Kiwify)",
       "generic": "Integration sale"
@@ -2914,6 +2915,7 @@
     "providers": {
       "woovi": "Pix charges paid on Woovi.",
       "abacatepay": "Checkout and payments paid on AbacatePay.",
+      "pushinpay": "Pix, boleto and recurring Pix paid on PushinPay.",
       "stripe": "Card, Pix and boleto paid on Stripe.",
       "kiwify": "Approved sales on Kiwify.",
       "other": "Confirmed payments."
