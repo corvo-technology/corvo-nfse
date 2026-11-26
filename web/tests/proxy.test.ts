@@ -215,3 +215,37 @@ it("forwards GET audit-events and refuses POST", async () => {
   const refused = await POST(new NextRequest("http://localhost:4000/api/proxy/v1/audit-events", { method: "POST", headers: { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin" } }), context("audit-events"));
   expect(refused.status).toBe(404);
 });
+
+it("forwards the NF-e routes of /invoices with the exact methods, and the Idempotency-Key", async () => {
+  fetchMock.mockImplementation(async () => new Response("{}", { status: 200 }));
+  const headers = { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "Content-Type": "application/json", "Idempotency-Key": "key-1" };
+  const call = (handler: typeof POST, method: string, route: string) =>
+    handler(new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method, headers, body: method === "GET" ? undefined : "{}" }), context(route));
+  const allowed: [typeof POST, string, string][] = [
+    [POST, "POST", "invoices/validate"], [POST, "POST", "invoices"], [GET, "GET", "invoices"], [GET, "GET", "invoices/id"], [PUT, "PUT", "invoices/id"],
+    [POST, "POST", "invoices/id/sync"], [POST, "POST", "invoices/id/discard"], [POST, "POST", "invoices/id/corrections"], [POST, "POST", "invoices/id/cancel"],
+    [GET, "GET", "invoices/id/events"], [GET, "GET", "invoices/id/xml"], [GET, "GET", "invoices/id/pdf"], [POST, "POST", "invoices/id/download-url"],
+    [GET, "GET", "invoices/inutilizations"], [POST, "POST", "invoices/inutilizations"], [GET, "GET", "invoices/number-gaps"],
+    [GET, "GET", "companies/id/nfe-settings"], [PUT, "PUT", "companies/id/nfe-settings"],
+  ];
+  for (const [handler, method, route] of allowed) expect([route, method, (await call(handler, method, route)).status]).toEqual([route, method, 200]);
+  expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get("idempotency-key")).toBe("key-1");
+  fetchMock.mockClear();
+  const refused: [typeof POST, string, string][] = [
+    [DELETE, "DELETE", "invoices/id"], [DELETE, "DELETE", "invoices/id/discard"], [GET, "GET", "invoices/id/corrections"], [PUT, "PUT", "invoices/id/sync"],
+    [PATCH, "PATCH", "invoices/number-gaps"], [POST, "POST", "invoices/number-gaps"], [DELETE, "DELETE", "companies/id/nfe-settings"], [POST, "POST", "companies/id/nfe-settings"],
+    [PUT, "PUT", "nfe"], [POST, "POST", "nfe/validate"],
+  ];
+  for (const [handler, method, route] of refused) expect([route, method, (await call(handler, method, route)).status]).toEqual([route, method, 404]);
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+it("forwards the platform admin NF-e release with PUT only", async () => {
+  fetchMock.mockImplementation(async () => new Response("{}", { status: 200 }));
+  const headers = { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "Content-Type": "application/json" };
+  const route = "platform/tenants/t1/nfe-access";
+  const put = await PUT(new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method: "PUT", headers, body: "{}" }), context(route));
+  expect(put.status).toBe(200);
+  const post = await POST(new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method: "POST", headers, body: "{}" }), context(route));
+  expect(post.status).toBe(404);
+});
