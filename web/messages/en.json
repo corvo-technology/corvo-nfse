@@ -2121,6 +2121,7 @@
     "idempotency_key_invalid": "The Idempotency-Key must have 1 to 200 characters.",
     "idempotency_key_reused": "This idempotency key was already used with different content. Use a new key for a new note.",
     "nfe_invalid_state": "This action does not apply to the current state of the NF-e.",
+    "nfe_download_format_invalid": "Invalid file format. Use xml or pdf.",
     "justification_length": "The justification must have 15 to 255 characters.",
     "correction_length": "The correction must have 15 to 1000 characters.",
     "correction_limit_reached": "This NF-e already received the maximum of 20 correction letters.",
