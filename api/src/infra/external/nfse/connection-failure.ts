@@ -36,5 +36,8 @@ export function isConnectionFailure(error: unknown): boolean {
 export function failureMessage(error: unknown, fallback?: string): string {
   if (isConnectionFailure(error)) return NO_PORTAL_CONNECTION;
   if (error instanceof Error) return error.message;
+  // The library's retry results carry the failure as a plain object, not an Error instance.
+  const message = (error as { message?: unknown } | null)?.message;
+  if (typeof message === 'string' && message) return message;
   return fallback ?? 'Uncertain fiscal result';
 }

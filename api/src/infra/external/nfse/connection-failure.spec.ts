@@ -52,6 +52,12 @@ describe('connection failure text', () => {
     expect(failureMessage(error)).toBe('Requisição excedeu 60000ms.');
   });
 
+  it('keeps the message of a plain-object failure from the library', () => {
+    expect(failureMessage({ message: 'Requisição excedeu 60000ms.' })).toBe(
+      'Requisição excedeu 60000ms.',
+    );
+  });
+
   it('keeps other errors and non-errors as they are', () => {
     expect(failureMessage(new Error('boom'))).toBe('boom');
     expect(failureMessage('weird', 'Uncertain fiscal result')).toBe(

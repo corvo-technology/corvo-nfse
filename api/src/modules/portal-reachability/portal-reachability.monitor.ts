@@ -18,7 +18,7 @@ import {
   portalDownEmail,
   portalRecoveredEmail,
 } from './reachability.email';
-import { probeTls } from './reachability.probe';
+import { probeTcp } from './reachability.probe';
 import { advance, type ReachabilityEvent } from './reachability.state';
 import { PortalReachabilityStore } from './reachability.store';
 
@@ -81,10 +81,10 @@ export class PortalReachabilityMonitor {
       this.config.get<string>('PORTAL_PROBE_CONTROL_HOST') ??
       DEFAULT_CONTROL_HOST;
     const [sefin, adn, govControl, externalControl] = await Promise.all([
-      probeTls('sefin.nfse.gov.br'),
-      probeTls('adn.nfse.gov.br'),
-      probeTls('www.gov.br'),
-      probeTls(control),
+      probeTcp('sefin.nfse.gov.br'),
+      probeTcp('adn.nfse.gov.br'),
+      probeTcp('www.gov.br'),
+      probeTcp(control),
     ]);
     return { sefin, adn, govControl, externalControl };
   }
