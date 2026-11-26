@@ -93,7 +93,7 @@
     "nanoid": "3",
     "nestjs-pino": "^4.6.1",
     "node-forge": "1.4.3",
-    "open-nfse": "github:corvo-technology/open-nfse#a4bb1c8b7777922bfb224f71dbfcad730a9719e3",
+    "open-nfse": "github:corvo-technology/open-nfse#e3c2ee2edad84e85790a3ba58e4ac0b483df4c90",
     "pdfkit": "^0.20.2",
     "pg": "^8.23.1",
     "pino": "^10.4.0",
