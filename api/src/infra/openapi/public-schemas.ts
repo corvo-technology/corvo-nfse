@@ -49,6 +49,19 @@ const TAX_REGIME_KINDS = [
   'UNKNOWN',
 ];
 const REVIEW_STATUS = ['unreviewed', 'approved', 'rejected'];
+const NFE_STATUS_VALUES = [
+  'queued',
+  'processing',
+  'authorized',
+  'rejected',
+  'denied',
+  'retry_pending',
+  'reconciliation_required',
+  'manual_review',
+  'cancelling',
+  'cancelled',
+  'discarded',
+];
 
 /** Every error code the API can return in `code`, grouped by where it comes from. */
 export const API_ERROR_CODES = [
@@ -357,6 +370,100 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     },
     ['xml'],
   ),
+  NfeAccepted: obj(
+    {
+      id: uuid(),
+      status: str({ enum: NFE_STATUS_VALUES }),
+      replayed: bool({
+        enum: [true],
+        description:
+          'Present (and true) when the same `Idempotency-Key` with the same body had already created this NF-e: nothing new was written.',
+      }),
+    },
+    ['replayed'],
+  ),
+  NfeError: obj(
+    {
+      type: str({
+        enum: ['communication', 'validation', 'configuration'],
+        description:
+          '`validation`: the SEFAZ rejected or denied the note, fix what the message says. `communication`: the SEFAZ did not answer; Corvo checks by the key, you do not resend. `configuration`: complete the company or the release.',
+      }),
+      code: str({
+        description:
+          'The cStat of a SEFAZ rejection (`225`), or a Corvo code (`SEFAZ_NO_ANSWER`, `SEFAZ_UNAVAILABLE`, `CERTIFICATE_NOT_FOUND`...).',
+      }),
+      message: str(),
+      hint: str({ description: 'What to do about a known SEFAZ rejection.' }),
+    },
+    ['hint'],
+  ),
+  Nfe: obj({
+    id: uuid(),
+    companyId: uuid(),
+    environment: str({ enum: ['test', 'live'] }),
+    model: int({ enum: [55] }),
+    status: str({ enum: NFE_STATUS_VALUES }),
+    series: nullable(int()),
+    number: nullable(
+      int({
+        description:
+          'Assigned when the first attempt is made; it never changes.',
+      }),
+    ),
+    accessKey: nullable(
+      str({
+        minLength: 44,
+        maxLength: 44,
+        description:
+          'The 44-character key of the current attempt. A resubmission after a rejection draws a new key and keeps the number.',
+      }),
+    ),
+    issuedAt: nullable(dateTime()),
+    authorizedAt: nullable(dateTime()),
+    protocol: nullable(str()),
+    cStat: nullable(str()),
+    xMotivo: nullable(str()),
+    natOp: str(),
+    recipient: {
+      type: 'object',
+      additionalProperties: true,
+      description: 'The recipient as it went in the XML.',
+    },
+    items: array({
+      type: 'object',
+      additionalProperties: true,
+      description:
+        'Each item with its amounts as 2-place strings and the Simples tax groups used.',
+    }),
+    totals: obj({
+      vProd: str(),
+      vDesc: str(),
+      vFrete: str(),
+      vSeg: str(),
+      vOutro: str(),
+      vNF: str(),
+    }),
+    payment: {
+      type: 'object',
+      additionalProperties: true,
+      description: 'The payments (`tPag`, `amount`) and the change.',
+    },
+    additionalInfo: nullable(str()),
+    externalId: nullable(str()),
+    attempt: int({
+      description:
+        'How many times the XML was built and signed (1 on the first send).',
+    }),
+    lastError: { ...nullable({ type: 'object' }), allOf: [ref('NfeError')] },
+    nextCheckAt: nullable(
+      dateTime({
+        description: 'When Corvo looks at the SEFAZ again, if it does.',
+      }),
+    ),
+    createdAt: dateTime(),
+    updatedAt: dateTime(),
+  }),
   DpsSequence: obj({
     series: str({ example: '00001' }),
     lastNumber: int({

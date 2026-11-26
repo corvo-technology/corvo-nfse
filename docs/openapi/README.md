@@ -182,6 +182,12 @@ Where each part lives:
 | **NF-e** | | | | |
 | `companies_getNfeSettings` | GET | `/companies/{id}/nfe-settings` | 0.2.0 | Get the NF-e settings of the company |
 | `companies_updateNfeSettings` | PUT | `/companies/{id}/nfe-settings` | 0.2.0 | Set the NF-e settings of the company |
+| `nfe_create` | POST | `/nfe` | 0.2.0 | Issue an NF-e |
+| `nfe_discard` | POST | `/nfe/{id}/discard` | 0.2.0 | Give up a rejected NF-e |
+| `nfe_get` | GET | `/nfe/{id}` | 0.2.0 | Get an NF-e |
+| `nfe_list` | GET | `/nfe` | 0.2.0 | List NF-e |
+| `nfe_resubmit` | PUT | `/nfe/{id}` | 0.2.0 | Correct and send a rejected NF-e again |
+| `nfe_sync` | POST | `/nfe/{id}/sync` | 0.2.0 | Ask the SEFAZ about the NF-e by its key |
 | `nfe_validate` | POST | `/nfe/validate` | 0.2.0 | Validate an NF-e without sending it |
 | **Health** | | | | |
 | `health_live` | GET | `/health/live` | 0.3.0 | Liveness check |

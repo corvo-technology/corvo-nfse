@@ -909,6 +909,162 @@ describe('OpenAPI contract against the real API (e2e)', () => {
     });
   });
 
+  describe('nfe issuing', () => {
+    const nfeBody = () => ({
+      companyId,
+      recipient: {
+        taxId: '123.456.789-09',
+        name: 'Maria da Silva',
+        indIeDest: 9,
+        address: {
+          street: 'Rua das Flores',
+          number: '10',
+          district: 'Centro',
+          zip: '01001-000',
+          cityCode: '3550308',
+          city: 'São Paulo',
+          state: 'SP',
+        },
+      },
+      items: [
+        {
+          code: 'SKU1',
+          description: 'Produto de teste',
+          ncm: '61091000',
+          cfop: '5102',
+          unit: 'UN',
+          quantity: 2,
+          unitPrice: 10,
+        },
+      ],
+      payments: [{ tPag: '17', amount: 20 }],
+    });
+
+    const setStatus = (id: string, status: string, extra = '') =>
+      dataSource.query(
+        `UPDATE "${schema}".nfe_documents SET status = $2${extra} WHERE id = $1`,
+        [id, status],
+      );
+
+    it('issues, lists and reads an NF-e, then handles a rejection and a lost answer', async () => {
+      await dataSource.query(
+        `UPDATE "${schema}".nfse_companies
+            SET address_street = 'Avenida Paulista', address_number = '1000', address_district = 'Bela Vista',
+                address_zip = '01310100', address_city = 'São Paulo'
+          WHERE id = $1`,
+        [companyId],
+      );
+      await dataSource.query(
+        `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
+         VALUES ('SP', 55, 2, now(), 'docs/fiscal/nfe-runbook.md') ON CONFLICT DO NOTHING`,
+      );
+      await call('PUT /companies/{id}/nfe-settings', {
+        path: `/companies/${companyId}/nfe-settings`,
+        body: { stateRegistration: '110042490114', crt: 1 },
+        status: 200,
+      });
+
+      // The header is required.
+      const missing = await call('POST /nfe', {
+        body: nfeBody(),
+        status: 400,
+      });
+      expect(missing.body.code).toBe('ERROR_IDEMPOTENCY_KEY_REQUIRED');
+
+      const created = await call('POST /nfe', {
+        body: nfeBody(),
+        headers: { 'Idempotency-Key': 'e2e-nfe-1' },
+        status: 202,
+      });
+      const id = created.body.data.id as string;
+      expect(created.body.data.status).toBe('queued');
+
+      // The same key and body is the same note; another body with the key is a conflict.
+      const again = await call('POST /nfe', {
+        body: nfeBody(),
+        headers: { 'Idempotency-Key': 'e2e-nfe-1' },
+        status: 200,
+      });
+      expect(again.body.data).toEqual({ id, status: 'queued', replayed: true });
+      await call('POST /nfe', {
+        body: { ...nfeBody(), additionalInfo: 'outro corpo' },
+        headers: { 'Idempotency-Key': 'e2e-nfe-1' },
+        status: 409,
+      });
+
+      const list = await call('GET /nfe', {
+        query: { companyId, status: 'queued' },
+        status: 200,
+      });
+      expect(list.body.data.map((n: { id: string }) => n.id)).toContain(id);
+      const read = await call('GET /nfe/{id}', {
+        path: `/nfe/${id}`,
+        status: 200,
+      });
+      expect(read.body.data).toMatchObject({
+        id,
+        status: 'queued',
+        number: null,
+        lastError: null,
+        environment: 'test',
+      });
+
+      // A rejection shows its type, code and hint; the note is corrected and sent again.
+      await setStatus(
+        id,
+        'rejected',
+        `, last_error_type = 'validation', last_error_code = '225', last_error_message = 'Rejeição: Falha no Schema XML do lote de NFe'`,
+      );
+      const rejected = await call('GET /nfe/{id}', {
+        path: `/nfe/${id}`,
+        status: 200,
+      });
+      expect(rejected.body.data.lastError).toMatchObject({
+        type: 'validation',
+        code: '225',
+        hint: expect.stringContaining('schema'),
+      });
+      const resubmitted = await call('PUT /nfe/{id}', {
+        path: `/nfe/${id}`,
+        body: { ...nfeBody(), additionalInfo: 'corrigida' },
+        status: 202,
+      });
+      expect(resubmitted.body.data).toEqual({ id, status: 'queued' });
+
+      // A rejected note can also be given up; an authorized one cannot.
+      await setStatus(id, 'rejected');
+      const discarded = await call('POST /nfe/{id}/discard', {
+        path: `/nfe/${id}/discard`,
+        status: 200,
+      });
+      expect(discarded.body.data.status).toBe('discarded');
+      await setStatus(id, 'authorized');
+      const refused = await call('POST /nfe/{id}/discard', {
+        path: `/nfe/${id}/discard`,
+        status: 409,
+      });
+      expect(refused.body.code).toBe('ERROR_NFE_INVALID_STATE');
+
+      // A lost answer: the SEFAZ (the simulator) does not know the key yet, so sync leaves it waiting.
+      const lost = await call('POST /nfe', {
+        body: { ...nfeBody(), additionalInfo: 'resposta perdida' },
+        headers: { 'Idempotency-Key': 'e2e-nfe-2' },
+        status: 202,
+      });
+      const lostId = lost.body.data.id as string;
+      await setStatus(
+        lostId,
+        'reconciliation_required',
+        `, access_key = '35261112345678000195550010000000011234567810', signed_xml = '<NFe/>', issued_at = now()`,
+      );
+      const synced = await call('POST /nfe/{id}/sync', {
+        path: `/nfe/${lostId}/sync`,
+        status: 200,
+      });
+      expect(synced.body.data.status).toBe('reconciliation_required');
+    });
+  });
+
   it('covers every operation, except the ones that need an outside service or a payment event', () => {
     // These need a live Woovi/AbacatePay event, a delivery to a real URL or an outbound e-mail.
     // Their controllers return plain objects (wrapped in { data } by the interceptor) and are

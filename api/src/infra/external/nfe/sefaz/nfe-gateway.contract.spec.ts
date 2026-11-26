@@ -151,7 +151,7 @@ describe('NfeGateway authorization', () => {
     f.authorization(AUTHORIZED, 'ret-100');
     const outcome = await f.gateway.issuer.issue(AUTHORIZED, ctx);
     expect(outcome.kind).toBe('ok');
-    const value = (outcome as { value: NfeAuthorization }).value;
+    const value = (outcome as unknown as { value: NfeAuthorization }).value;
     expect(value).toMatchObject({
       protocol: '135260000000001',
       cStat: '100',
@@ -273,7 +273,7 @@ describe('NfeGateway consultation', () => {
   it('authorized carries the authorization and the protNFe', async () => {
     const outcome = await consult('ret-cons-100');
     expect(outcome.kind).toBe('ok');
-    const value = (outcome as { value: NfeConsultResult }).value;
+    const value = (outcome as unknown as { value: NfeConsultResult }).value;
     expect(value.status).toBe('authorized');
     expect(value.authorization).toMatchObject({
       protocol: '135260000000001',
@@ -291,7 +291,7 @@ describe('NfeGateway consultation', () => {
 
   it('a cancellation event makes it cancelled and lists the event', async () => {
     const outcome = await consult('ret-cons-cancelled');
-    const value = (outcome as { value: NfeConsultResult }).value;
+    const value = (outcome as unknown as { value: NfeConsultResult }).value;
     expect(value.status).toBe('cancelled');
     expect(value.events[0]).toMatchObject({
       tpEvento: '110111',

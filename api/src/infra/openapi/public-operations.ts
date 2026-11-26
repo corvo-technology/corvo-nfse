@@ -406,6 +406,67 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
       },
     ],
   },
+  'POST /nfe': {
+    id: 'nfe_create',
+    tag: 'NF-e',
+    summary: 'Issue an NF-e',
+    idempotent: true,
+    description:
+      'Issues an NF-e (model 55, Simples Nacional, homologation only). The answer is asynchronous: `202` with the `id` and `status: queued`; the result comes by webhook (`nfe.document.*`) or by `GET /nfe/{id}`. Same body as `POST /nfe/validate`, which is the way to check a note without issuing it.\n\n`Idempotency-Key` (1 to 200 characters) is **required**: without it the answer is `400 IDEMPOTENCY_KEY_REQUIRED`. Repeating a key with the same body answers `200` with the same `id` and `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.\n\nEverything that can be refused is refused here with `422` and nothing is saved or charged: `type` `validation` (fix the fields in `details`) or `configuration` (`COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). In `live`, each accepted NF-e reserves one credit, given back if the note ends rejected, denied or discarded. Answers 404 while NF-e is not released for the workspace.\n\nPermission: `nfe.documents.issue`.',
+    ok: {
+      200: data(ref('NfeAccepted')),
+      202: data(ref('NfeAccepted')),
+    },
+    errors: [400, 409, 422],
+  },
+  'GET /nfe': {
+    id: 'nfe_list',
+    tag: 'NF-e',
+    summary: 'List NF-e',
+    description:
+      'The NF-e of the environment of the key, newest first. Filter by `companyId` and `status`.\n\nPermission: `nfe.documents.view`.',
+    ok: { 200: page(ref('Nfe')) },
+  },
+  'GET /nfe/{id}': {
+    id: 'nfe_get',
+    tag: 'NF-e',
+    summary: 'Get an NF-e',
+    description:
+      'The NF-e with its state, number, key and protocol. While it is `reconciliation_required` or `manual_review`, `lastError.type` is `communication`: the SEFAZ did not answer and Corvo checks by the key, you must not issue it again. A SEFAZ rejection has `lastError.type` `validation`, the cStat in `lastError.code` and, for the known ones, a `hint`.\n\nPermission: `nfe.documents.view`.',
+    ok: { 200: data(ref('Nfe')) },
+  },
+  'POST /nfe/{id}/sync': {
+    id: 'nfe_sync',
+    tag: 'NF-e',
+    summary: 'Ask the SEFAZ about the NF-e by its key',
+    description:
+      'For an NF-e in `reconciliation_required` or `manual_review`: asks the SEFAZ what it has for the key and adopts it (authorized, denied or cancelled). If the SEFAZ still does not know the key after the waiting window, the **same** signed XML is sent again: the number and the key never change. An NF-e that is already settled is returned as it is; one still `queued`, `processing` or `retry_pending` answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.manage`.',
+    bodyOptional: true,
+    ok: { 200: data(ref('Nfe')) },
+    errors: [409],
+  },
+  'PUT /nfe/{id}': {
+    id: 'nfe_resubmit',
+    tag: 'NF-e',
+    summary: 'Correct and send a rejected NF-e again',
+    description:
+      'Only for an NF-e in `rejected`. The body is the same as `POST /nfe`: it replaces the content, keeps the **number** and draws a new key. Answers `202` (`queued`); the same body sent again answers `200` with `replayed: true`. In `live` it reserves one credit again (the rejection gave it back). Any other state answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.issue`.',
+    ok: {
+      200: data(ref('NfeAccepted')),
+      202: data(ref('NfeAccepted')),
+    },
+    errors: [409, 422],
+  },
+  'POST /nfe/{id}/discard': {
+    id: 'nfe_discard',
+    tag: 'NF-e',
+    summary: 'Give up a rejected NF-e',
+    description:
+      'Only for an NF-e in `rejected`: it ends `discarded` (the credit was already given back by the rejection). The number it used stays burned: it is a gap that an inutilization closes. Any other state answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.manage`.',
+    bodyOptional: true,
+    ok: { 200: data(ref('Nfe')) },
+    errors: [409],
+  },
   'GET /companies/{id}/dps-sequence': {
     id: 'dpsSequence_get',
     tag: 'Companies',
