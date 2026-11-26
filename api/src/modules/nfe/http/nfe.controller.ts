@@ -24,7 +24,10 @@ import {
 import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { NfeRoute } from '@/modules/fiscal-core/http/nfe-enabled.guard';
 import { data } from '@/shared/http/response';
+import { NfeCancelService } from '../application/nfe-cancel.service';
 import { NfeConsultService } from '../application/nfe-consult.service';
+import { NfeCorrectService } from '../application/nfe-correct.service';
+import { NfeTimelineService } from '../application/nfe-timeline.service';
 import { nfeNotFound } from '../application/nfe-errors';
 import {
   NfeIntakeService,
@@ -33,6 +36,11 @@ import {
 import { NfeResubmitService } from '../application/nfe-resubmit.service';
 import { INfeDocumentRepository } from '../domain/nfe-document.repository';
 import { NfeRequestDto } from './nfe.dto';
+import {
+  CancelNfeDto,
+  CorrectNfeDto,
+  toNfeEventResponse,
+} from './nfe-event.dto';
 import {
   ListNfeQuery,
   toNfeResponse,
@@ -66,6 +74,9 @@ export class NfeController {
     private readonly intake: NfeIntakeService,
     private readonly consult: NfeConsultService,
     private readonly resubmission: NfeResubmitService,
+    private readonly cancellation: NfeCancelService,
+    private readonly correction: NfeCorrectService,
+    private readonly timeline: NfeTimelineService,
     @Inject(INfeDocumentRepository)
     private readonly documents: INfeDocumentRepository,
   ) {}
@@ -182,5 +193,63 @@ export class NfeController {
       executionEnvironment(context),
     );
     return data(toNfeResponse(doc));
+  }
+
+  @Post(':id/cancel')
+  @HttpCode(202)
+  @ApiKeyEndpoint()
+  @RequirePermission('nfe.documents.manage')
+  @ApiOperation({ summary: 'Cancel an authorized NF-e' })
+  async cancel(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: CancelNfeDto,
+    @Req() req: RequestWithAuthContext,
+  ) {
+    const context = req.authContext!;
+    const doc = await this.cancellation.cancel(
+      id,
+      context.activeTenantId,
+      executionEnvironment(context),
+      dto.justification,
+    );
+    return data(toNfeResponse(doc));
+  }
+
+  @Post(':id/corrections')
+  @HttpCode(202)
+  @ApiKeyEndpoint()
+  @RequirePermission('nfe.documents.manage')
+  @ApiOperation({ summary: 'Send a correction letter (CC-e)' })
+  async correct(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: CorrectNfeDto,
+    @Req() req: RequestWithAuthContext,
+  ) {
+    const context = req.authContext!;
+    const event = await this.correction.correct(
+      id,
+      context.activeTenantId,
+      executionEnvironment(context),
+      dto.correction,
+    );
+    return data(toNfeEventResponse(event));
+  }
+
+  @Get(':id/events')
+  @ApiKeyEndpoint()
+  @RequirePermission('nfe.documents.view')
+  @ApiOperation({ summary: 'The timeline of an NF-e' })
+  async events(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Req() req: RequestWithAuthContext,
+  ) {
+    const context = req.authContext!;
+    return data(
+      await this.timeline.timeline(
+        id,
+        context.activeTenantId,
+        executionEnvironment(context),
+      ),
+    );
   }
 }

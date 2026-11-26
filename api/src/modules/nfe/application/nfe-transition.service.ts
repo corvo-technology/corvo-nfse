@@ -34,6 +34,14 @@ export interface NfeTransitionOptions {
   messages?: NewOutboxMessage[];
   /** Only apply when the stored state is one of these; otherwise nothing happens. */
   from?: NfeStatus[];
+  /**
+   * Replaces the webhook the destination state would send (`null`: none). A rejected cancellation
+   * goes back to `authorized` without saying "authorized" again.
+   */
+  webhook?: {
+    type: WebhookEvent['type'];
+    data?: Record<string, unknown>;
+  } | null;
 }
 
 export interface NfeTransitionResult {
@@ -85,7 +93,7 @@ export class NfeTransitionService {
       ),
     );
     if (!result.applied) return result;
-    await this.afterCommit(result.document, to);
+    await this.afterCommit(result.document, to, options.webhook);
     return result;
   }
 
@@ -152,7 +160,11 @@ export class NfeTransitionService {
   }
 
   /** Cache, usage event and webhook: none of them may undo or fail a fiscal fact. */
-  private async afterCommit(document: NfeDocument, to: NfeStatus) {
+  private async afterCommit(
+    document: NfeDocument,
+    to: NfeStatus,
+    override?: NfeTransitionOptions['webhook'],
+  ) {
     const { tenantId, environment } = document;
     if (environment === 'live') {
       try {
@@ -164,7 +176,8 @@ export class NfeTransitionService {
       }
       this.eventBus?.publishBestEffort(creditsUsageChanged(tenantId));
     }
-    const type = WEBHOOK_BY_STATUS[to];
+    const type =
+      override === undefined ? WEBHOOK_BY_STATUS[to] : override?.type;
     if (!type) return;
     const s = document.toSnapshot();
     await this.webhooks.publish(
@@ -185,6 +198,7 @@ export class NfeTransitionService {
         cStat: s.cStat,
         xMotivo: s.xMotivo,
         externalId: s.externalId,
+        ...(override?.data ?? {}),
       },
     );
   }

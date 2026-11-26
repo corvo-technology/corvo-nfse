@@ -57,6 +57,17 @@ export class NfeInutilizationOrmEntity {
   @Column({ name: 'xml_path', type: 'text', nullable: true })
   xmlPath!: string | null;
 
+  @Column({
+    name: 'idempotency_key',
+    type: 'varchar',
+    length: 200,
+    nullable: true,
+  })
+  idempotencyKey!: string | null;
+
+  @Column({ name: 'request_hash', type: 'char', length: 64, nullable: true })
+  requestHash!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

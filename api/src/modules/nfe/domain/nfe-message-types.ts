@@ -15,3 +15,17 @@ export interface NfeMessagePayload {
   tenantId: string;
   companyId: string;
 }
+
+/** What an event message carries: the document and the event (ids only), and which look this is. */
+export interface NfeEventMessagePayload extends NfeMessagePayload {
+  eventId: string;
+  attempt: number;
+}
+
+/** What `nfe.inutilize` carries: the request to send (ids only). */
+export interface NfeInutilizeMessagePayload {
+  inutilizationId: string;
+  tenantId: string;
+  companyId: string;
+  attempt: number;
+}

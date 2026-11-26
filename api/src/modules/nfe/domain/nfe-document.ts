@@ -352,6 +352,12 @@ export class NfeDocument {
     this.clearError();
   }
 
+  /** The customer asked to cancel: the reason and the moment stay on the document. */
+  recordCancellationRequest(reason: string, now: Date = new Date()): void {
+    this.props.cancelReason = reason;
+    this.props.cancelRequestedAt = now;
+  }
+
   /** What the customer sees as `lastError`; `null` clears it. */
   recordError(error: NfeLastError | null): void {
     this.props.lastErrorType = error?.type ?? null;

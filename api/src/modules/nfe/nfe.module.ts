@@ -16,7 +16,18 @@ import { FiscalWebhookPublisher } from '@/modules/fiscal-core/application/fiscal
 import { OutboxService } from '@/modules/invoice/application/outbox.service';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
 import { WebhooksConfigModule } from '@/modules/webhooks-config/webhooks-config.module';
+import { NfeCancelHandler } from './application/nfe-cancel.handler';
+import { NfeCancelService } from './application/nfe-cancel.service';
 import { NfeConsultService } from './application/nfe-consult.service';
+import { NfeCorrectHandler } from './application/nfe-correct.handler';
+import { NfeCorrectService } from './application/nfe-correct.service';
+import { NfeEventContext } from './application/nfe-event-context';
+import { NfeEventOutcomeService } from './application/nfe-event-outcome.service';
+import { NfeEventReconcile } from './application/nfe-event-reconcile';
+import { NfeEventSender } from './application/nfe-event-sender';
+import { NfeInutilizeHandler } from './application/nfe-inutilize.handler';
+import { NfeInutilizeService } from './application/nfe-inutilize.service';
+import { NfeTimelineService } from './application/nfe-timeline.service';
 import { NfeEmitHandler } from './application/nfe-emit.handler';
 import { NfeIntakeService } from './application/nfe-intake.service';
 import { NfeOutcomeService } from './application/nfe-outcome.service';
@@ -32,18 +43,26 @@ import { NfeValidateService } from './application/nfe-validate.service';
 import { INfeDocumentRepository } from './domain/nfe-document.repository';
 import { INfeNumberPreview } from './domain/nfe-number-preview';
 import { NfeController } from './http/nfe.controller';
+import { NfeInutilizationController } from './http/nfe-inutilization.controller';
+import { NfeNumberGapsScheduler } from './jobs/nfe-number-gaps.scheduler';
 import { NfeValidateController } from './http/nfe-validate.controller';
+import { NfeDocumentEventOrmEntity } from './infra/nfe-document-event.orm-entity';
 import { NfeDocumentHistoryOrmEntity } from './infra/nfe-document-history.orm-entity';
 import { NfeDocumentItemOrmEntity } from './infra/nfe-document-item.orm-entity';
 import { NfeDocumentOrmEntity } from './infra/nfe-document.orm-entity';
+import { NfeInutilizationOrmEntity } from './infra/nfe-inutilization.orm-entity';
 import { NfeNumberSequenceOrmEntity } from './infra/nfe-number-sequence.orm-entity';
 import { TypeOrmNfeDocumentRepository } from './infra/typeorm-nfe-document.repository';
+import { TypeormNfeEvents } from './infra/typeorm-nfe-events';
+import { TypeormNfeInutilizations } from './infra/typeorm-nfe-inutilizations';
+import { NfeNumberGapsQuery } from './infra/typeorm-nfe-number-gaps.query';
 import { TypeormNfeNumbering } from './infra/typeorm-nfe-numbering';
 import { NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
 
 /**
- * NF-e (model 55): documents, numbering, the dry-run, emission and consultation by key. Events,
- * the DANFE and the e-mail arrive in the next PRs.
+ * NF-e (model 55): documents, numbering, the dry-run, emission, consultation by key, the events
+ * (cancellation, correction letter, inutilization) and the numbering gaps. The DANFE and the e-mail
+ * arrive in the next PRs.
  *
  * `FiscalDocumentRegistry` gets the simulator when `NFE_TEST_PROVIDER` is `fake` and the real SEFAZ
  * gateway otherwise (homologation only: `NFE_PRODUCTION_ENABLED` keeps `tpAmb 1` closed).
@@ -61,9 +80,16 @@ import { NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
       NfeDocumentItemOrmEntity,
       NfeDocumentHistoryOrmEntity,
       NfeNumberSequenceOrmEntity,
+      NfeDocumentEventOrmEntity,
+      NfeInutilizationOrmEntity,
     ]),
   ],
-  controllers: [NfeValidateController, NfeController],
+  // The inutilization routes come first: `GET /nfe/inutilizations` is not `GET /nfe/:id`.
+  controllers: [
+    NfeValidateController,
+    NfeInutilizationController,
+    NfeController,
+  ],
   providers: [
     NfePreparation,
     NfeValidateService,
@@ -75,6 +101,21 @@ import { NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
     NfeSefazAccess,
     NfeEmitHandler,
     NfeReconcileHandler,
+    NfeEventContext,
+    NfeEventOutcomeService,
+    NfeEventSender,
+    NfeEventReconcile,
+    NfeCancelService,
+    NfeCancelHandler,
+    NfeCorrectService,
+    NfeCorrectHandler,
+    NfeInutilizeService,
+    NfeInutilizeHandler,
+    NfeTimelineService,
+    NfeNumberGapsScheduler,
+    NfeNumberGapsQuery,
+    TypeormNfeEvents,
+    TypeormNfeInutilizations,
     NfePrepareDocumentsPlaceholder,
     DocumentCreditLedger,
     FiscalWebhookPublisher,
