@@ -10,6 +10,7 @@ import {
   nfeReadinessMissing,
   type NfeMissingField,
 } from '../domain/nfe-readiness';
+import type { Company } from '../domain/company';
 import {
   NFE_SETTINGS_DEFAULTS,
   type NfeSettings,
@@ -25,7 +26,10 @@ import { CompanyService } from './company.service';
 export interface NfeSettingsView {
   companyId: string;
   stateRegistration: string | null;
+  /** What goes in the XML: the stored override, or the CRT of the tax regime of the company. */
   crt: number | null;
+  /** Tax regime of the company (its fiscal profile), to show why the CRT is what it is. */
+  taxRegime: string | null;
   defaultSeries: number;
   defaultNatOp: string;
   defaultCsosn: string;
@@ -56,7 +60,7 @@ export class CompanyNfeSettingsService {
       environment,
     );
     const stored = await this.settings.find(companyId, tenantId);
-    return view(companyId, stored, nfeReadinessMissing(company, stored));
+    return this.build(company, stored, tenantId);
   }
 
   async update(
@@ -83,7 +87,7 @@ export class CompanyNfeSettingsService {
       });
     const saved = await this.settings.upsert(companyId, tenantId, {
       stateRegistration: normalizeStateRegistration(input.stateRegistration),
-      crt: input.crt,
+      crt: input.crt ?? null,
       defaultSeries: input.defaultSeries ?? NFE_SETTINGS_DEFAULTS.defaultSeries,
       defaultNatOp: input.defaultNatOp ?? NFE_SETTINGS_DEFAULTS.defaultNatOp,
       defaultCsosn: input.defaultCsosn ?? NFE_SETTINGS_DEFAULTS.defaultCsosn,
@@ -92,7 +96,23 @@ export class CompanyNfeSettingsService {
       defaultCofinsCst:
         input.defaultCofinsCst ?? NFE_SETTINGS_DEFAULTS.defaultCofinsCst,
     });
-    return view(companyId, saved, nfeReadinessMissing(company, saved));
+    // Read again: the CRT shown is the one that follows the fiscal profile when nothing was set.
+    const stored = await this.settings.find(companyId, tenantId);
+    return this.build(company, stored ?? saved, tenantId);
+  }
+
+  private async build(
+    company: Company,
+    stored: NfeSettings | null,
+    tenantId: string,
+  ): Promise<NfeSettingsView> {
+    const regime = await this.companies.currentRegime(company.id, tenantId);
+    return view(
+      company.id,
+      stored,
+      nfeReadinessMissing(company, stored),
+      regime.taxRegime,
+    );
   }
 }
 
@@ -100,11 +120,13 @@ function view(
   companyId: string,
   stored: NfeSettings | null,
   missing: NfeMissingField[],
+  taxRegime: string | null,
 ): NfeSettingsView {
   return {
     companyId,
     stateRegistration: stored?.stateRegistration ?? null,
     crt: stored?.crt ?? null,
+    taxRegime,
     defaultSeries: stored?.defaultSeries ?? NFE_SETTINGS_DEFAULTS.defaultSeries,
     defaultNatOp: stored?.defaultNatOp ?? NFE_SETTINGS_DEFAULTS.defaultNatOp,
     defaultCsosn: stored?.defaultCsosn ?? NFE_SETTINGS_DEFAULTS.defaultCsosn,

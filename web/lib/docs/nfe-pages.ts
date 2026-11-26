@@ -155,14 +155,14 @@ function company(locale: DocsLocale): DocSection {
       { kind: "code", language: "bash", label: "PUT /v1/companies/:id/nfe-settings", code: `curl -X PUT https://api.corvo.tech/v1/companies/$COMPANY_ID/nfe-settings \\
   -H "X-API-Key: $CORVO_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{ "stateRegistration": "110042490114", "crt": 1, "defaultSeries": 1 }'` },
+  -d '{ "stateRegistration": "110042490114", "defaultSeries": 1 }'` },
       { kind: "code", language: "json", label: l("Response", "Resposta"), code: SETTINGS },
       {
         kind: "table",
         head: [l("Field", "Campo"), l("What it is", "O que é")],
         rows: [
           ["`stateRegistration`", l("IE of the company, digits only. Corvo checks it is valid for the company's state. `ISENTO` is not valid for an issuer.", "IE da empresa, só números. A Corvo confere se vale para o estado da empresa. `ISENTO` não vale para quem emite.")],
-          ["`crt`", l("`1` Simples Nacional or `4` Simples Nacional MEI. Other regimes are not accepted yet.", "`1` Simples Nacional ou `4` Simples Nacional MEI. Outros regimes ainda não são aceitos.")],
+          ["`crt`", l("Optional. It follows the tax regime of the company (`1` Simples Nacional, `4` MEI); send it only to override. Other regimes are not accepted yet.", "Opcional. Segue o regime tributário da empresa (`1` Simples Nacional, `4` MEI); só envie para forçar outro valor. Outros regimes ainda não são aceitos.")],
           ["`defaultSeries`", l("Series of the new notes (0 to 999, default 1).", "Série das notas novas (0 a 999, padrão 1).")],
           ["`defaultNatOp`", l("Nature of the operation when the note does not send one (default `Venda de mercadoria`).", "Natureza da operação quando a nota não manda uma (padrão `Venda de mercadoria`).")],
           ["`defaultCsosn`", l("`102` (no tax credit) or `400` (not taxed), used by items without their own `tax.csosn`.", "`102` (sem crédito de imposto) ou `400` (não tributada), usado pelos itens sem `tax.csosn` próprio.")],

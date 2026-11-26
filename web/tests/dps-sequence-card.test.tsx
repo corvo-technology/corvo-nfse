@@ -31,6 +31,12 @@ describe("DpsSequenceCard", () => {
     expect(screen.queryByText(/starts at a high random number/)).toBeNull();
   });
 
+  it("shows the current next number as the placeholder of the empty field", async () => {
+    renderCard();
+    await screen.findByText("Next note in Corvo: no. 8 (series 1)");
+    expect((screen.getByLabelText(/Next note number \(DPS\)/) as HTMLInputElement).placeholder).toBe("8");
+  });
+
   it("shows where the numbering stands", async () => {
     renderCard();
     await screen.findByText("Next note in Corvo: no. 8 (series 1)");

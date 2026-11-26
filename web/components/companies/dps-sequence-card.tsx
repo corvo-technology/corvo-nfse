@@ -90,7 +90,7 @@ export function DpsSequenceCard({ companyId, canManage, environment }: { company
       {canManage && (
         <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); void save(); }}>
           <Field label={t("label")} hint={t("help")} error={error ?? undefined} className="w-full max-w-xs">
-            {(c) => <Input {...c} inputMode="numeric" value={value} onChange={(e) => setValue(e.target.value)} />}
+            {(c) => <Input {...c} inputMode="numeric" placeholder={t("placeholder", { next: (sequence?.lastNumber ?? 0) + 1 })} value={value} onChange={(e) => setValue(e.target.value)} />}
           </Field>
           <Button type="submit" loading={saving}>{t("save")}</Button>
         </form>

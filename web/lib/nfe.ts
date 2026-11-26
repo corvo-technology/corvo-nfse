@@ -38,12 +38,12 @@ export interface NfeInutilization { id: string; companyId: string; series: numbe
 export interface NfeNumberGap { companyId: string; series: number; start: number; end: number }
 export type NfeMissingField = string;
 export interface NfeSettings {
-  companyId: string; stateRegistration: string | null; crt: number | null; defaultSeries: number; defaultNatOp: string; defaultCsosn: string; defaultOrigin: number; defaultPisCst: string; defaultCofinsCst: string;
+  companyId: string; stateRegistration: string | null; crt: number | null; /** Tax regime of the company (its fiscal profile), as the company API names it: `Simples Nacional`, `MEI`... */ taxRegime?: string | null; defaultSeries: number; defaultNatOp: string; defaultCsosn: string; defaultOrigin: number; defaultPisCst: string; defaultCofinsCst: string;
   enabledAt: string | null;
   /** What the company still lacks to issue an NF-e (`state_registration`, `crt`, `address`...). */
   missing: NfeMissingField[];
 }
-export interface NfeSettingsInput { stateRegistration: string; crt: 1 | 4; defaultSeries?: number; defaultNatOp?: string; defaultCsosn?: "102" | "400"; defaultOrigin?: number }
+export interface NfeSettingsInput { stateRegistration: string; /** Only to override: the CRT follows the tax regime of the company. */ crt?: 1 | 4; defaultSeries?: number; defaultNatOp?: string; defaultCsosn?: "102" | "400"; defaultOrigin?: number }
 export interface NfeListQuery extends PageParams { companyId?: string; status?: NfeStatus }
 export interface NfeDownload { downloadUrl: string; expiresAt: string; fileName: string; mimeType: string }
 
