@@ -51,6 +51,7 @@ import { ImportCleanupCron } from '@/modules/import/jobs/import-cleanup.cron';
 import { ImportEmitProcessor } from '@/modules/import/jobs/import-emit.processor';
 import { ImportReadProcessor } from '@/modules/import/jobs/import-read.processor';
 import { PortalSyncModule } from '@/modules/portal-sync/portal-sync.module';
+import { NfeModule } from '@/modules/nfe/nfe.module';
 import { AccountAuditModule } from '@/modules/account-audit/account-audit.module';
 import { AccountAuditRetentionScheduler } from '@/modules/account-audit/jobs/account-audit-retention.scheduler';
 import { PortalSyncScheduler } from '@/modules/portal-sync/jobs/portal-sync.scheduler';
@@ -90,6 +91,8 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     EmailModule,
     ImportModule,
     PortalSyncModule,
+    // Registers the nfe.* handlers on the outbox registry the relay above reads.
+    NfeModule,
   ],
   providers: [
     EventProcessorScheduler,

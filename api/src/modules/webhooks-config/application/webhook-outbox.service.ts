@@ -29,6 +29,14 @@ export function invoiceIdOf(
   return typeof id === 'string' && UUID.test(id) ? id : undefined;
 }
 
+/** The NF-e (or other non-NFS-e document) an event is about, when its body carries one. */
+export function documentIdOf(
+  event: WebhookEvent | undefined,
+): string | undefined {
+  const id = event?.data?.documentId;
+  return typeof id === 'string' && UUID.test(id) ? id : undefined;
+}
+
 /** What identifies a delivery in the logs: never the url, headers or body. */
 function logTag(delivery: Pick<WebhookDelivery, 'eventType' | 'invoiceId'>) {
   return `eventType=${delivery.eventType} invoiceId=${delivery.invoiceId ?? '-'}`;
@@ -63,6 +71,7 @@ export class WebhookOutboxService {
       tenantId: delivery.tenantId,
       webhookConfigId: delivery.webhookConfigId,
       invoiceId: invoiceIdOf(delivery.payload),
+      documentId: documentIdOf(delivery.payload),
       eventType: delivery.eventType,
       environment: delivery.environment,
       url: delivery.url,

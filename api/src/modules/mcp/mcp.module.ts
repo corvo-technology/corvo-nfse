@@ -32,6 +32,7 @@ import { McpConnectionService } from './mcp-connection.service';
 import { McpAuthService } from './mcp-auth.service';
 import { McpAuthGuard } from './mcp-auth.guard';
 import { McpService } from './mcp.service';
+import { McpNfe } from './tools/nfe-access';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { McpService } from './mcp.service';
     McpUrlService,
     HttpApiRateLimitGuard,
     McpService,
+    McpNfe,
     McpAuthService,
     McpAuthGuard,
     McpConnectionService,

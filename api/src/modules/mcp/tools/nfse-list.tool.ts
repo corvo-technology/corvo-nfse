@@ -7,15 +7,21 @@ import { INVOICE_STATUSES } from '@/modules/invoice/domain/invoice-status';
 import { INVOICE_ORIGINS } from '@/modules/invoice/domain/invoice-origin';
 import { ListInvoicesQuery } from '@/modules/invoice/http/invoice.dto';
 import { NfseListInput } from '../dto/tool-input.dto';
+import { TYPE_ALL_PROPERTY } from './nfe.tools';
 import { toDetailedInvoice } from './public-shapes';
 
 export const NFSE_LIST_TOOL = {
   name: 'nfse_list',
   description:
-    'List NFS-e invoices for the tenant with optional status and origin filters and cursor pagination.',
+    'List NFS-e invoices for the tenant with optional status and origin filters and cursor pagination. With type "nfe" it lists NF-e; with type "all", NFS-e and NF-e together (newest first); both need NF-e released and take only the status, company_id, limit and cursor filters.',
   inputSchema: {
     type: 'object',
     properties: {
+      type: TYPE_ALL_PROPERTY,
+      company_id: {
+        type: 'string',
+        description: 'Only this company (UUID). Only with type "nfe" or "all".',
+      },
       status: {
         type: 'string',
         description: `Filter by status (${INVOICE_STATUSES.join(', ')})`,
