@@ -225,7 +225,7 @@ export type ReviewOutcome =
   | { id: string; outcome: "accepted" }
   | { id: string; outcome: "skipped"; reason: "not_found" | "not_in_manual_review" | "changed" | "dps_used_by_other_nfse" };
 const REVIEW_BATCH = 100;
-export interface FiscalPortalStatus { environment: "test" | "live"; available: boolean; since: string | null; retryAt: string | null }
+export interface FiscalPortalStatus { environment: "test" | "live"; available: boolean; since: string | null; retryAt: string | null; connection?: { state: string; since: string | null; ourSide: boolean } }
 /** Whether the national NFS-e portal is answering; while it is not, invoices wait in the queue. */
 export const fiscalPortal = {
   status: async (signal?: AbortSignal) => unwrap(await request<Envelope<FiscalPortalStatus>>("/fiscal-portal/status", { signal })),

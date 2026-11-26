@@ -14,6 +14,8 @@ From the repository root, run `node scripts/setup-env.mjs` to generate the env f
 
 ## Platform admin
 
+`OPS_ALERT_EMAILS` (in `.env`, comma-separated) lists who is e-mailed when the servers cannot reach the government NFS-e portal. Every minute the worker opens a TLS connection to `sefin.nfse.gov.br`, `adn.nfse.gov.br`, `www.gov.br` and a control host outside the government (`PORTAL_PROBE_CONTROL_HOST`, default `1.1.1.1`); it only checks it can connect, with no certificate and no request. Three bad checks in a row open the alert, two good ones close it; each incident sends one "down" e-mail and one "recovered" e-mail. Real emissions that fail to connect (`OPS_ALERT_EMISSION_FAILURES` in 10 minutes, default 10, 0 = off) raise the same alert. The worker must be able to send e-mail (`RESEND_API_KEY`). Turn it all off with `PORTAL_PROBE_ENABLED=false`.
+
 `PLATFORM_ADMIN_EMAILS` (in `.env`, comma-separated, lowercase, no spaces) lists who can open `/app/admin`. Empty or missing means nobody is admin. The e-mail must be verified, and only a cookie session counts (API keys and MCP never are admin). The list is read at startup: restart the API after changing it. In self-hosted mode the credit grant does not exist.
 
 ## Web build variables

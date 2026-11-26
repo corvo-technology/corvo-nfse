@@ -123,6 +123,20 @@ describe('FiscalPortalBreaker', () => {
     });
   });
 
+  it('counts unanswered calls of the last minutes and forgets them after a success', async () => {
+    await failTimes(2);
+    clock += 3 * 60_000;
+    await failTimes(1);
+    expect(await breaker.recentFailures('live', 10 * 60_000)).toBe(3);
+    expect(await breaker.recentFailures('live', 2 * 60_000)).toBe(1);
+    expect(await breaker.recentFailures('test', 10 * 60_000)).toBe(0);
+    clock += 12 * 60_000;
+    expect(await breaker.recentFailures('live', 10 * 60_000)).toBe(0);
+    await failTimes(1);
+    await breaker.recordSuccess('live');
+    expect(await breaker.recentFailures('live', 10 * 60_000)).toBe(0);
+  });
+
   it('keeps the test and live portals apart', async () => {
     await failTimes(3);
     await expect(breaker.assertAvailable('test')).resolves.toBeUndefined();

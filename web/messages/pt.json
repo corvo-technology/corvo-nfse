@@ -3488,7 +3488,9 @@
   "PortalStatus": {
     "title": "O portal nacional da NFS-e não está respondendo.",
     "titleSince": "O portal nacional da NFS-e não responde desde {time}.",
-    "body": "Suas notas estão guardadas na fila e serão enviadas assim que ele voltar. Não é preciso refazer nada."
+    "body": "Suas notas estão guardadas na fila e serão enviadas assim que ele voltar. Não é preciso refazer nada.",
+    "ourSideTitle": "Estamos com dificuldade para falar com o governo.",
+    "ourSideBody": "Suas notas ficam na fila e saem sozinhas assim que a conexão voltar."
   },
   "Customers": {
     "title": "Clientes",
