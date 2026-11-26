@@ -6,13 +6,19 @@ import type {
   Uf,
 } from '@/modules/fiscal-core/domain/ports/authority.port';
 import type {
+  CancelCapability,
   ConsultCapability,
+  CorrectCapability,
+  EventReceipt,
   FiscalDocumentGateway,
+  InutilizeCapability,
+  InutilizeRequest,
   IssueCapability,
   SigningContext,
 } from '@/modules/fiscal-core/domain/ports/gateway.port';
 import type {
   LoadedCertificate,
+  SchemaId,
   SchemaValidator,
 } from '@/modules/fiscal-core/domain/ports/xml.port';
 import { CSTAT_MESSAGES, classifyCstat, explainCstat } from './cstat';
@@ -52,6 +58,9 @@ const parser = new XMLParser({
 const RET_AUTORIZACAO_ATTEMPTS = 3;
 const MAX_WAIT_MS = 5000;
 const CANCELLATION_EVENT = '110111';
+const CORRECTION_EVENT = '110110';
+/** cStat of an inutilization that was approved. */
+const INUTILIZATION_APPROVED = '102';
 /** cStat of a consultation that says the NF-e was cancelled. */
 const CANCELLED_CSTATS = new Set(['101', '151', '155']);
 /** cStat of a registered event (135 registered, 136 registered without linking, 155 late cancellation). */
@@ -177,10 +186,26 @@ function rejection(
   };
 }
 
+/** The element `name` of an XML text, as written (it keeps inheriting the NF-e namespace of its new parent). */
+function elementXml(xml: string, name: string): string | undefined {
+  return new RegExp(`<${name}\\b[\\s\\S]*?</${name}>`).exec(xml)?.[0];
+}
+
+/** The UF a key belongs to (its first two digits). */
+function ufOfKey(key: string): Uf {
+  const uf = Object.entries(UF_TABLE).find(
+    ([, info]) => info.cUF === key.slice(0, 2),
+  )?.[0];
+  if (!uf || !isUf(uf)) throw new Error('Access key with an unknown cUF');
+  return uf;
+}
+
 /**
  * SEFAZ transport for NF-e: service status, authorization (`NFeAutorizacao4`, synchronous, one
- * NF-e per lot) and consultation by key (`NFeConsultaProtocolo4`). Events and inutilization arrive
- * in PR 5. It never logs a message body (LGPD): the SOAP client logs only authority, duration and
+ * NF-e per lot), consultation by key (`NFeConsultaProtocolo4`), events (`NFeRecepcaoEvento4`:
+ * cancellation and correction letter) and inutilization (`NFeInutilizacao4`). The event and the
+ * inutilization arrive already built and signed (the application stores that XML and resends it
+ * as is). It never logs a message body (LGPD): the SOAP client logs only authority, duration and
  * outcome.
  */
 export class NfeGateway {
@@ -214,9 +239,30 @@ export class NfeGateway {
     consultByKey: (key, ctx) => this.consultByKey(key, ctx),
   };
 
+  readonly cancel: CancelCapability = {
+    cancel: (req, ctx) =>
+      this.sendEvent(ufOfKey(req.accessKey), req.signedXml, ctx),
+  };
+
+  readonly correct: CorrectCapability = {
+    correct: (req, ctx) =>
+      this.sendEvent(ufOfKey(req.accessKey), req.signedXml, ctx),
+  };
+
+  readonly inutilize: InutilizeCapability = {
+    inutilize: (req, ctx) => this.sendInutilization(req, ctx),
+  };
+
   /** The slice of this gateway the registry stores (the status capability has another shape). */
   asFiscalGateway(): FiscalDocumentGateway<SignedNfe> {
-    return { type: 'nfe', issuer: this.issuer, consult: this.consult };
+    return {
+      type: 'nfe',
+      issuer: this.issuer,
+      consult: this.consult,
+      cancel: this.cancel,
+      correct: this.correct,
+      inutilize: this.inutilize,
+    };
   }
 
   /** Same call with the cStat/xMotivo/tMed the spike prints (never the XML). */
@@ -360,10 +406,7 @@ export class NfeGateway {
     key: string,
     ctx: SigningContext,
   ): Promise<GatewayOutcome<NfeConsultResult>> {
-    const uf = Object.entries(UF_TABLE).find(
-      ([, info]) => info.cUF === key.slice(0, 2),
-    )?.[0];
-    if (!uf || !isUf(uf)) throw new Error('Access key with an unknown cUF');
+    const uf = ufOfKey(key);
     const message = consSitNFeXml(key, ctx.tpAmb);
     const schema = await this.validator.validate(message, 'consSitNFe');
     if (!schema.ok)
@@ -380,6 +423,125 @@ export class NfeGateway {
     );
     if (answer.kind !== 'ok') return this.communication(answer);
     return this.toConsult(answer.bodyXml, key);
+  }
+
+  /** `retEnvEvento`: lot 128 and then the status of the one event; 135/136/155 registered it. */
+  private async sendEvent(
+    uf: Uf,
+    signedXml: string | undefined,
+    ctx: SigningContext,
+  ): Promise<GatewayOutcome<EventReceipt>> {
+    if (!signedXml) throw new Error('The event needs its signed XML');
+    const schemaId: SchemaId = signedXml.includes(
+      `<tpEvento>${CORRECTION_EVENT}</tpEvento>`,
+    )
+      ? 'envCCe'
+      : 'envEvento';
+    const schema = await this.validator.validate(signedXml, schemaId);
+    if (!schema.ok)
+      // Never reaches the SEFAZ: the builder output already passes the same schema.
+      return {
+        kind: 'rejected',
+        code: 'NFE_SCHEMA_INVALID',
+        message: schema.errors[0]?.message ?? 'XML fora do layout',
+      };
+    const answer = await this.call(
+      uf,
+      ctx.tpAmb,
+      'RecepcaoEvento',
+      signedXml,
+      ctx.certificate,
+    );
+    if (answer.kind !== 'ok') return this.communication(answer);
+
+    const ret = asTree((parser.parse(answer.bodyXml) as Tree).retEnvEvento);
+    const lotStat = text(ret?.cStat);
+    if (!ret || !lotStat) return { kind: 'uncertain', reason: 'server' };
+    if (classifyCstat(lotStat) === 'unavailable')
+      return { kind: 'unavailable' };
+    // 128 is "lot processed"; any other lot code is a rejection of the whole request.
+    if (lotStat !== '128') return rejection(lotStat, text(ret.xMotivo));
+
+    const info = asTree(asTree(ret.retEvento)?.infEvento);
+    const cStat = text(info?.cStat);
+    if (!info || !cStat) return { kind: 'uncertain', reason: 'server' };
+    if (classifyCstat(cStat) === 'unavailable') return { kind: 'unavailable' };
+    if (!REGISTERED_EVENT_CSTATS.has(cStat))
+      return rejection(cStat, text(info.xMotivo));
+    const protocol = text(info.nProt);
+    if (!protocol) return { kind: 'uncertain', reason: 'server' };
+    const evento = elementXml(signedXml, 'evento');
+    const retEvento = elementXml(answer.bodyXml, 'retEvento');
+    const registeredAt = new Date(text(info.dhRegEvento) ?? '');
+    return {
+      kind: 'ok',
+      value: {
+        protocol,
+        cStat,
+        xMotivo: text(info.xMotivo) ?? CSTAT_MESSAGES[cStat],
+        procXml:
+          evento && retEvento
+            ? `<procEventoNFe xmlns="${NFE_NS}" versao="1.00">${evento}${retEvento}</procEventoNFe>`
+            : undefined,
+        registeredAt: Number.isNaN(registeredAt.getTime())
+          ? this.clock()
+          : registeredAt,
+      },
+    };
+  }
+
+  /** `retInutNFe`: 102 approved. Anything else is a rejection (563 and 206 are told apart by the caller). */
+  private async sendInutilization(
+    req: InutilizeRequest,
+    ctx: SigningContext,
+  ): Promise<GatewayOutcome<EventReceipt>> {
+    if (!req.signedXml)
+      throw new Error('The inutilization needs its signed XML');
+    if (!isUf(req.uf)) throw new Error('Unknown UF');
+    const schema = await this.validator.validate(req.signedXml, 'inutNFe');
+    if (!schema.ok)
+      return {
+        kind: 'rejected',
+        code: 'NFE_SCHEMA_INVALID',
+        message: schema.errors[0]?.message ?? 'XML fora do layout',
+      };
+    const answer = await this.call(
+      req.uf,
+      ctx.tpAmb,
+      'NfeInutilizacao',
+      req.signedXml,
+      ctx.certificate,
+    );
+    if (answer.kind !== 'ok') return this.communication(answer);
+
+    const info = asTree(
+      asTree((parser.parse(answer.bodyXml) as Tree).retInutNFe)?.infInut,
+    );
+    const cStat = text(info?.cStat);
+    if (!info || !cStat) return { kind: 'uncertain', reason: 'server' };
+    if (classifyCstat(cStat) === 'unavailable') return { kind: 'unavailable' };
+    if (cStat !== INUTILIZATION_APPROVED)
+      return rejection(cStat, text(info.xMotivo));
+    const protocol = text(info.nProt);
+    if (!protocol) return { kind: 'uncertain', reason: 'server' };
+    const inut = elementXml(req.signedXml, 'inutNFe');
+    const ret = elementXml(answer.bodyXml, 'retInutNFe');
+    const registeredAt = new Date(text(info.dhRecbto) ?? '');
+    return {
+      kind: 'ok',
+      value: {
+        protocol,
+        cStat,
+        xMotivo: text(info.xMotivo) ?? '',
+        procXml:
+          inut && ret
+            ? `<ProcInutNFe xmlns="${NFE_NS}" versao="4.00">${inut}${ret}</ProcInutNFe>`
+            : undefined,
+        registeredAt: Number.isNaN(registeredAt.getTime())
+          ? this.clock()
+          : registeredAt,
+      },
+    };
   }
 
   private toConsult(
