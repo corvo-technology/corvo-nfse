@@ -119,6 +119,7 @@ function toWorkspace(m: Row, userId: string, l: TenantLists): Workspace {
     plan: toPlan(m),
     usage: toUsage(rows(l.usage)[0]),
     avulsoBalance: Number(rows(l.balances)[0]?.balance ?? 0),
+    nfeEnabledAt: iso(m.nfe_enabled_at),
     companies: rows(l.companies).map(toCompany),
     recentInvoices: rows(l.invoices).map(toInvoice),
     credits: rows(l.credits).map(toCredit),
@@ -160,7 +161,7 @@ export class PlatformUserDetailReadRepository {
     if (!user) return null;
 
     const memberships = await q(
-      `SELECT m.tenant_id, m.role, p.slug AS plan_slug, p.name AS plan_name
+      `SELECT m.tenant_id, m.role, p.slug AS plan_slug, p.name AS plan_name, t.nfe_enabled_at
          FROM ${t('tenant_memberships')} m
          JOIN ${t('tenants')} t ON t.id = m.tenant_id
          LEFT JOIN ${t('plans')} p ON p.id = t.plan_id

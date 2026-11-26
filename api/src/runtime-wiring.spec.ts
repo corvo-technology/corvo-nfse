@@ -10,6 +10,7 @@ import { PushinPayConnectorModule } from './modules/integrations/connectors/push
 import { StripeConnectorModule } from './modules/integrations/connectors/stripe/stripe.module';
 import { KiwifyConnectorModule } from './modules/integrations/connectors/kiwify/kiwify.module';
 import { HotmartConnectorModule } from './modules/integrations/connectors/hotmart/hotmart.module';
+import { NfeModule } from './modules/nfe/nfe.module';
 
 function importedModules(moduleClass: object): unknown[] {
   const imports =
@@ -51,6 +52,11 @@ describe('runtime wiring', () => {
     expect(importedModules(WorkerAppModule)).toContain(KiwifyConnectorModule);
     expect(importedModules(AppModule)).toContain(HotmartConnectorModule);
     expect(importedModules(WorkerAppModule)).toContain(HotmartConnectorModule);
+  });
+
+  it('loads the NF-e module in both processes: the API takes the requests, the worker (which runs the outbox relay) the nfe.* messages', () => {
+    expect(importedModules(AppModule)).toContain(NfeModule);
+    expect(importedModules(WorkerAppModule)).toContain(NfeModule);
   });
 
   it('loads the PushinPay connector in both processes', () => {

@@ -172,6 +172,72 @@ describe('FakeNfeGateway scenarios', () => {
     ).toMatchObject({ kind: 'rejected', code: '573' });
   });
 
+  const eventXml = (tpEvento: string, nSeq: number) =>
+    `<envEvento><evento><infEvento><tpEvento>${tpEvento}</tpEvento><nSeqEvento>${nSeq}</nSeqEvento></infEvento></evento></envEvento>`;
+
+  it('remembers a cancellation: the consultation says cancelled and lists the event; a repeat is 573', async () => {
+    const gateway = make();
+    const doc = nfe('FAKE-100');
+    await gateway.issuer.issue(doc, ctx);
+    const request = {
+      accessKey: doc.accessKey,
+      reason: 'x',
+      justification: 'Cancelamento de teste',
+      signedXml: eventXml('110111', 1),
+    };
+    expect((await gateway.cancel.cancel(request, ctx)).kind).toBe('ok');
+    const consulted = await gateway.consult.consultByKey(doc.accessKey, ctx);
+    expect(consulted).toMatchObject({
+      kind: 'ok',
+      value: { status: 'cancelled', cStat: '101' },
+    });
+    expect(
+      (consulted as unknown as { value: NfeConsultResult }).value.events,
+    ).toEqual([expect.objectContaining({ tpEvento: '110111', nSeq: 1 })]);
+    expect(await gateway.cancel.cancel(request, ctx)).toMatchObject({
+      kind: 'rejected',
+      code: '573',
+    });
+  });
+
+  it('FAKE-EVT-TIMEOUT registers the event but loses the answer', async () => {
+    const gateway = make();
+    const doc = nfe('FAKE-100');
+    await gateway.issuer.issue(doc, ctx);
+    expect(
+      await gateway.correct.correct(
+        {
+          accessKey: doc.accessKey,
+          correction: 'FAKE-EVT-TIMEOUT correção de teste',
+          sequence: 1,
+          signedXml: eventXml('110110', 1),
+        },
+        ctx,
+      ),
+    ).toEqual({ kind: 'uncertain', reason: 'timeout' });
+    const consulted = await gateway.consult.consultByKey(doc.accessKey, ctx);
+    expect(
+      (consulted as unknown as { value: NfeConsultResult }).value.events,
+    ).toHaveLength(1);
+  });
+
+  it('inutilizing the same range twice is 563', async () => {
+    const gateway = make();
+    const request = {
+      uf: 'SP',
+      year: 26,
+      series: 1,
+      startNumber: 20,
+      endNumber: 22,
+      justification: 'Numeração pulada por falha',
+    };
+    expect((await gateway.inutilize.inutilize(request, ctx)).kind).toBe('ok');
+    expect(await gateway.inutilize.inutilize(request, ctx)).toMatchObject({
+      kind: 'rejected',
+      code: '563',
+    });
+  });
+
   it('reports the service as up', async () => {
     expect(
       await make().serviceStatus.status({

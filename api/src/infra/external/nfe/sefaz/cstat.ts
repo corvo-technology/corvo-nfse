@@ -39,11 +39,15 @@ export const CSTAT_MESSAGES: Record<string, string> = {
   '107': 'Serviço em Operação',
   '108': 'Serviço Paralisado Momentaneamente (curto prazo)',
   '109': 'Serviço Paralisado sem Previsão',
+  '102': 'Inutilização de número homologado',
+  '135': 'Evento registrado e vinculado a NF-e',
   '204': 'Duplicidade de NF-e',
   '217': 'Rejeição: NF-e não consta na base de dados da SEFAZ',
   '225': 'Rejeição: Falha no Schema XML do lote de NFe',
   '302': 'Uso Denegado: Irregularidade fiscal do destinatário',
   '539': 'Duplicidade de NF-e com diferença na Chave de Acesso',
+  '563':
+    'Rejeição: Já existe pedido de inutilização com a mesma faixa de numeração',
   '573': 'Rejeição: Duplicidade de Evento',
   '778': 'Rejeição: Informado NCM inexistente',
 };

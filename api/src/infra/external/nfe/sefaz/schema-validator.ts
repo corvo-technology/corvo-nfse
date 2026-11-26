@@ -15,6 +15,7 @@ const SCHEMAS_DIR = join(__dirname, 'schemas', SCHEMA_PACKAGE);
 /** Root XSD of each message. */
 export const SCHEMA_FILES: Record<SchemaId, string> = {
   nfe: 'nfe_v4.00.xsd',
+  nfeProc: 'procNFe_v4.00.xsd',
   enviNFe: 'enviNFe_v4.00.xsd',
   consStatServ: 'consStatServ_v4.00.xsd',
   consSitNFe: 'consSitNFe_v4.00.xsd',

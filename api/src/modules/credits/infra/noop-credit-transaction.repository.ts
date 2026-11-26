@@ -36,6 +36,9 @@ export class NoopCreditTransactionRepository extends ICreditTransactionRepositor
   findByReservedInvoiceId(): Promise<CreditTransaction | null> {
     return Promise.resolve(null);
   }
+  findByReservedDocument(): Promise<CreditTransaction | null> {
+    return Promise.resolve(null);
+  }
   confirm(): Promise<void> {
     return Promise.resolve();
   }

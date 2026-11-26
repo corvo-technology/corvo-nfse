@@ -195,6 +195,51 @@ export function nfseDocumentsReadyEmail(input: {
   return input.isTest ? { ...email, subject: `[TESTE] ${subject}` } : email;
 }
 
+/** The NF-e (model 55) sent to the customer: same layout as the NFS-e one, with the key and series. */
+export function nfeAuthorizedEmail(input: {
+  companyName: string;
+  customerName: string;
+  amount: string;
+  number: string;
+  series: string;
+  issueDate: string;
+  accessKey: string;
+  isTest: boolean;
+}): RenderedEmail {
+  const subject = `Sua nota fiscal eletrônica nº ${input.number} - ${input.companyName}`;
+  const email = emailLayout(
+    subject,
+    [
+      heading('Sua nota fiscal eletrônica está disponível'),
+      paragraph(
+        `Olá, ${input.customerName}! A empresa ${input.companyName} emitiu uma NF-e para você.`,
+      ),
+      details([
+        ['Valor da nota', input.amount],
+        ['Número', input.number],
+        ['Série', input.series],
+        ['Data de emissão', input.issueDate],
+        ['Chave de acesso', input.accessKey],
+      ]),
+      paragraph(
+        'Seguem anexos o XML da nota e o DANFE em PDF. Guarde o XML: ele é o documento fiscal. Este e-mail é apenas informativo, você não precisa fazer nada.',
+      ),
+      ...(input.isTest
+        ? [
+            note(
+              'Nota emitida em ambiente de teste (homologação): não tem valor fiscal.',
+            ),
+          ]
+        : []),
+      note(
+        `Enviado automaticamente em nome de ${input.companyName}. Não responda este e-mail; em caso de dúvidas, entre em contato diretamente com o emissor da nota.`,
+      ),
+    ],
+    { logo: false },
+  );
+  return input.isTest ? { ...email, subject: `[TESTE] ${subject}` } : email;
+}
+
 export function creditsAddedEmail(input: {
   units: number;
   billingUrl: string;

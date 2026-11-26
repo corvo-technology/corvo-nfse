@@ -3,6 +3,7 @@ import type { AuthUserService } from '../application/auth-user.service';
 import type { CookiePolicyService } from '../application/cookie-policy.service';
 import type { CookieSessionService } from '../application/cookie-session.service';
 import type { PlatformAdminPolicy } from '../application/platform-admin.policy';
+import type { NfeAccessPolicy } from '@/modules/fiscal-core/application/nfe-access.policy';
 import { SessionController } from './session.controller';
 
 const expiresAt = new Date('2030-01-01T00:00:00Z');
@@ -19,7 +20,7 @@ const context = {
   permissions: [],
 };
 
-function build(isAdmin: boolean) {
+function build(isAdmin: boolean, nfe = false) {
   const sessions = {
     generateCsrfToken: jest.fn().mockReturnValue('csrf'),
     switchTenant: jest.fn().mockResolvedValue(session),
@@ -31,14 +32,16 @@ function build(isAdmin: boolean) {
   const policy = {
     resolve: jest.fn().mockResolvedValue({ isAdmin, email: 'a@x.com' }),
   };
+  const nfeAccess = { isEnabled: jest.fn().mockResolvedValue(nfe) };
   const controller = new SessionController(
     sessions as unknown as CookieSessionService,
     contexts as unknown as AuthContextService,
     {} as unknown as CookiePolicyService,
     users as unknown as AuthUserService,
     policy as unknown as PlatformAdminPolicy,
+    nfeAccess as unknown as NfeAccessPolicy,
   );
-  return { controller, policy };
+  return { controller, policy, nfeAccess };
 }
 
 const req = { authSession: session } as never;
@@ -62,5 +65,19 @@ describe('SessionController platform admin flag', () => {
     const { controller } = build(true);
     const res = await controller.switchTenant(req, { tenantId: 't1' });
     expect(res.data.isPlatformAdmin).toBe(true);
+  });
+
+  it('devolve features.nfe conforme a liberação do tenant ativo', async () => {
+    const on = build(false, true);
+    expect((await on.controller.getSession(req)).data.features).toEqual({
+      nfe: true,
+    });
+    expect(on.nfeAccess.isEnabled).toHaveBeenCalledWith('t1');
+    const off = build(false, false);
+    expect((await off.controller.getSession(req)).data.features).toEqual({
+      nfe: false,
+    });
+    const switched = await on.controller.switchTenant(req, { tenantId: 't1' });
+    expect(switched.data.features).toEqual({ nfe: true });
   });
 });

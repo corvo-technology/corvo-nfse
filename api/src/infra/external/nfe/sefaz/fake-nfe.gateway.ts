@@ -17,6 +17,7 @@ import { CSTAT_MESSAGES, explainCstat } from './cstat';
 import type {
   NfeAuthorization,
   NfeConsultResult,
+  NfeEventRecord,
   SignedNfe,
 } from './signed-nfe';
 
@@ -33,6 +34,12 @@ import type {
  *    consultation returns the original authorization.
  *  - FAKE-108: the service is down (`unavailable`).
  *  - FAKE-EVT-REJ: the event services (cancel, CC-e, inutilization) answer `rejected` 573.
+ *  - FAKE-EVT-TIMEOUT in the justification or correction text: the event is registered, but the
+ *    answer is lost (`uncertain`); the consultation by key then shows it (`procEventoNFe`).
+ *
+ * A registered event is remembered: a repeated one (same key, type and sequence) is rejected 573,
+ * and the consultation lists the events (and says `cancelled` after a cancellation). A repeated
+ * inutilization of the same range is rejected 563, like the real service.
  */
 type Stored =
   | { state: 'authorized'; scenario: string; authorization: NfeAuthorization }
@@ -48,6 +55,8 @@ const REJECTING: Record<string, string> = {
 export class FakeNfeGateway implements FiscalDocumentGateway<SignedNfe> {
   readonly type: DocumentType = 'nfe';
   private readonly store = new Map<string, Stored>();
+  private readonly events = new Map<string, NfeEventRecord[]>();
+  private readonly inutilized = new Set<string>();
 
   constructor(private readonly now: () => Date = () => new Date()) {}
 
@@ -61,17 +70,19 @@ export class FakeNfeGateway implements FiscalDocumentGateway<SignedNfe> {
 
   readonly cancel: CancelCapability = {
     cancel: (req: CancelRequest) =>
-      Promise.resolve(this.event(req.accessKey, req.justification)),
+      Promise.resolve(
+        this.event(req.accessKey, req.justification, req.signedXml),
+      ),
   };
 
   readonly correct: CorrectCapability = {
     correct: (req: CorrectionRequest) =>
-      Promise.resolve(this.event(req.accessKey, req.correction)),
+      Promise.resolve(this.event(req.accessKey, req.correction, req.signedXml)),
   };
 
   readonly inutilize: InutilizeCapability = {
     inutilize: (req: InutilizeRequest) =>
-      Promise.resolve(this.event(undefined, req.justification)),
+      Promise.resolve(this.inutilization(req)),
   };
 
   readonly serviceStatus: ServiceStatusCapability = {
@@ -117,17 +128,19 @@ export class FakeNfeGateway implements FiscalDocumentGateway<SignedNfe> {
     const stored = this.store.get(key);
     if (stored?.state === 'authorized') {
       const { authorization } = stored;
+      const events = this.events.get(key) ?? [];
+      const cancelled = events.some((e) => e.tpEvento === '110111');
       return {
         kind: 'ok',
         value: {
-          status: 'authorized',
+          status: cancelled ? 'cancelled' : 'authorized',
           accessKey: key,
           protocol: authorization.protocol,
-          cStat: authorization.cStat,
+          cStat: cancelled ? '101' : authorization.cStat,
           xMotivo: authorization.xMotivo,
           xml: authorization.protNFeXml,
           authorization,
-          events: [],
+          events,
         },
       };
     }
@@ -159,17 +172,62 @@ export class FakeNfeGateway implements FiscalDocumentGateway<SignedNfe> {
   private event(
     accessKey: string | undefined,
     text: string,
+    signedXml?: string,
   ): GatewayOutcome<EventReceipt> {
     const scenario = accessKey
       ? this.store.get(accessKey)?.scenario
       : undefined;
     if (scenario === 'FAKE-EVT-REJ' || text.includes('FAKE-EVT-REJ'))
       return this.rejection('573');
+    const key = accessKey ?? '0'.repeat(44);
+    const tpEvento = /<tpEvento>(\d{6})<\/tpEvento>/.exec(signedXml ?? '')?.[1];
+    const nSeq = Number(
+      /<nSeqEvento>(\d+)<\/nSeqEvento>/.exec(signedXml ?? '')?.[1] ?? 1,
+    );
+    const protocol = `1352${key.slice(-11)}${nSeq}`;
+    if (tpEvento) {
+      const known = this.events.get(key) ?? [];
+      if (known.some((e) => e.tpEvento === tpEvento && e.nSeq === nSeq))
+        return this.rejection('573');
+      this.events.set(key, [
+        ...known,
+        {
+          tpEvento,
+          nSeq,
+          protocol,
+          procEventoXml: `<procEventoNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00">${signedXml ?? ''}</procEventoNFe>`,
+        },
+      ]);
+    }
+    if (text.includes('FAKE-EVT-TIMEOUT'))
+      return { kind: 'uncertain', reason: 'timeout' };
     return {
       kind: 'ok',
       value: {
-        protocol: `1352${(accessKey ?? '0'.repeat(44)).slice(-11)}`,
+        protocol,
         cStat: '135',
+        xMotivo: CSTAT_MESSAGES['135'],
+        procXml: `<procEventoNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00">${signedXml ?? ''}</procEventoNFe>`,
+        registeredAt: this.now(),
+      },
+    };
+  }
+
+  private inutilization(req: InutilizeRequest): GatewayOutcome<EventReceipt> {
+    if (req.justification.includes('FAKE-EVT-REJ'))
+      return this.rejection('573');
+    const range = `${req.series}:${req.startNumber}-${req.endNumber}`;
+    if (this.inutilized.has(range)) return this.rejection('563');
+    this.inutilized.add(range);
+    if (req.justification.includes('FAKE-EVT-TIMEOUT'))
+      return { kind: 'uncertain', reason: 'timeout' };
+    return {
+      kind: 'ok',
+      value: {
+        protocol: `1352${String(req.startNumber).padStart(11, '0')}`,
+        cStat: '102',
+        xMotivo: CSTAT_MESSAGES['102'],
+        procXml: `<ProcInutNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">${req.signedXml ?? ''}</ProcInutNFe>`,
         registeredAt: this.now(),
       },
     };

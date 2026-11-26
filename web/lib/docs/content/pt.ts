@@ -4,11 +4,12 @@ import type { DocsTree } from "../types";
 import { importsPage } from "../imports-page";
 import { companyToolsBlocks, creditsPreviewBlock, invoiceToolsBlocks } from "../reference-extras";
 import { municipalitiesPage } from "../municipalities-page";
+import { nfePages } from "../nfe-pages";
 
 const ptWithRetiredCredits: DocsTree = {
   chrome: {
     homeLabel: "Introdução",
-    groups: { gettingStarted: "Começando", reference: "Referência", guides: "Guias" },
+    groups: { gettingStarted: "Começando", reference: "Referência", guides: "Guias", nfe: "NF-e (produtos)" },
     copy: {
       copy: "Copiar",
       copied: "Copiado",
@@ -2770,6 +2771,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     },
     imports: importsPage("pt"),
     municipalities: municipalitiesPage("pt"),
+    ...nfePages("pt"),
     "payment-integrations": {
       title: "Integrações de pagamento",
       description: "Conecte Woovi, AbacatePay, Stripe, PushinPay, Hotmart ou Kiwify e emita a NFS-e automaticamente a cada pagamento confirmado.",
@@ -3374,6 +3376,25 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         {
           "kind": "text",
           "body": "A chamada mais simples é `company_tax_id` mais `amount`: o tomador é opcional (omita para uma nota sem tomador; se enviar, `tax_id` é obrigatório), a data de competência é hoje por padrão, o código de serviço vem da empresa ou, sem ele, `100901` (LC 116 item 10.09), e a descrição vem do nome do código de serviço. Use `company_get` para consultar um CNPJ específico e `billing_usage` antes de emitir. O certificado A1 só pode ser enviado pelo MCP se você marcar a permissão `nfse:certificates`; sem ela, envie pelo painel ou pela API. Falhas das ferramentas voltam como resultado com `isError: true` e a mensagem em texto, para o agente ler e corrigir."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "NF-e (produtos)"
+        },
+        {
+          "kind": "text",
+          "body": "Para contas com a NF-e liberada (teste, sem valor fiscal), as ferramentas `nfse_issue`, `nfse_list`, `nfse_get`, `nfse_cancel`, `nfse_review`, `nfse_get_download_url` e `nfse_download_pdf` aceitam `type`: `nfse` (padrão, nada muda) ou `nfe`. Em `nfse_list`, `type: \"all\"` lista NFS-e e NF-e juntas. Com `type: \"nfe\"` use `invoice_id` (não a chave de acesso). `nfse_issue` com `nfe` exige `company_id`, o objeto `nfe` (o mesmo corpo de `POST /v1/invoices`, sem `companyId`) e `idempotency_key`; `nfse_cancel` usa só `description` como justificativa. A Corvo não calcula imposto: o agente informa CFOP, NCM e CSOSN."
+        },
+        {
+          "kind": "list",
+          "items": [
+            "`nfe_validate` (`nfse:write`): teste a seco, devolve os problemas campo a campo e nunca o XML. Rode antes de emitir.",
+            "`nfe_settings_get` (`nfse:read`) e `nfe_settings_update` (`nfse:write`): IE, CRT, série e padrões da empresa, e o que falta para emitir.",
+            "`nfe_correct` (`nfse:write`): carta de correção de uma NF-e autorizada.",
+            "`nfe_number_gaps` (`nfse:read`) e `nfe_inutilize` (`nfse:write`): números pulados e a inutilização de uma faixa (peça a confirmação da pessoa antes).",
+            "Essas seis só aparecem na lista de ferramentas quando a NF-e está liberada para a conta; cancelar, corrigir e inutilizar exigem papel com `nfe.documents.manage`, e emitir e validar, `nfe.documents.issue`."
+          ]
         },
         {
           "kind": "heading",

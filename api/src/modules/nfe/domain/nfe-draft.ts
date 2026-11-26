@@ -64,6 +64,8 @@ export interface NfeDraft {
   changeCents: number;
   additionalInfo: string | null;
   externalId: string | null;
+  /** Whether the customer gets the documents by e-mail (default true). */
+  sendEmail?: boolean;
 }
 
 const clean = (value: string): string => value.trim();
@@ -145,5 +147,6 @@ export function buildDraft(
     changeCents: toCents(input.change ?? 0),
     additionalInfo: orNull(input.additionalInfo),
     externalId: orNull(input.externalId),
+    ...(input.sendEmail === false ? { sendEmail: false } : {}),
   };
 }

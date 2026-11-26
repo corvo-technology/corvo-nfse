@@ -1,3 +1,4 @@
+import type { DocumentRef } from '@/modules/fiscal-core/domain/document-type';
 import { runAsSystem } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { requireTenantId } from '@/infra/persistence/typeorm/tenant-scope';
@@ -210,6 +211,20 @@ export class TypeOrmBillingRepository extends BillingRepository {
       return row?.periodId ?? null;
     });
   }
+  async reservedPeriodFor(ref: DocumentRef) {
+    if (ref.type === 'nfse') return this.reservedPeriod(ref.id, ref.tenantId);
+    if (ref.type !== 'nfe')
+      throw new Error(`No credit reservation for ${ref.type}`);
+    return runWithTenant(ref.tenantId, async () => {
+      requireTenantId(ref.tenantId);
+      const row = await this.manager.findOneBy(CreditTransactionOrmEntity, {
+        reservedNfeDocumentId: ref.id,
+        tenantId: ref.tenantId,
+        isReservation: true,
+      });
+      return row?.periodId ?? null;
+    });
+  }
   avulsoBalance(tenantId: string) {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
@@ -242,7 +257,7 @@ export class TypeOrmBillingRepository extends BillingRepository {
         .where('r.tenant_id = :tenantId', { tenantId })
         .andWhere('r.created_at >= :today', { today })
         .andWhere(
-          "r.type = 'invoice_authorized' AND r.reserved_invoice_id IS NOT NULL",
+          "r.type = 'invoice_authorized' AND (r.reserved_invoice_id IS NOT NULL OR r.reserved_nfe_document_id IS NOT NULL)",
         )
         .andWhere(`NOT EXISTS (${refunds.getQuery()})`)
         .getCount();

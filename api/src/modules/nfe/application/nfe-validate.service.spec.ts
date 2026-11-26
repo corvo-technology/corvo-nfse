@@ -11,6 +11,7 @@ import type {
 import type { SchemaValidator } from '@/modules/fiscal-core/domain/ports/xml.port';
 import { XmllintSchemaValidator } from '@/infra/external/nfe/sefaz/schema-validator';
 import { inputFixture } from '../testing/draft-fixture';
+import { NfePreparation } from './nfe-preparation.service';
 import { NfeValidateService } from './nfe-validate.service';
 
 const TENANT = '00000000-0000-4000-8000-0000000000aa';
@@ -56,13 +57,15 @@ function setup(
   const peek = jest.fn().mockResolvedValue({ series: 1, number: 42 });
   const check = jest.fn().mockResolvedValue(options.blocked ?? null);
   const service = new NfeValidateService(
-    {
-      findById: jest.fn().mockResolvedValue(options.company ?? company()),
-    } as unknown as CompanyService,
-    {
-      find: jest.fn().mockResolvedValue(settings),
-    } as unknown as ICompanyNfeSettingsRepository,
-    { check } as unknown as NfeEmissionPreconditions,
+    new NfePreparation(
+      {
+        findById: jest.fn().mockResolvedValue(options.company ?? company()),
+      } as unknown as CompanyService,
+      {
+        find: jest.fn().mockResolvedValue(settings),
+      } as unknown as ICompanyNfeSettingsRepository,
+      { check } as unknown as NfeEmissionPreconditions,
+    ),
     { peekNext: peek },
     options.schema ?? new XmllintSchemaValidator(),
     { get: (key: string) => options.config?.[key] } as unknown as ConfigService,

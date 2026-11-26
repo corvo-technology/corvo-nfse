@@ -54,6 +54,8 @@ export type PlatformUserDetail = {
       periodEnd: string;
     } | null;
     avulsoBalance: number;
+    /** When NF-e was released for the workspace (null = off). */
+    nfeEnabledAt: string | null;
     companies: {
       id: string;
       taxId: string;
@@ -134,13 +136,19 @@ export type PlatformAttention = {
 export type PlatformAuditEvent = {
   id: string;
   actorEmail: string;
-  action: 'credit_grant' | 'user_viewed';
+  action: 'credit_grant' | 'user_viewed' | 'nfe_access_changed';
   targetTenantId: string | null;
   targetUserId: string | null;
   reason: string | null;
   payload: Record<string, unknown>;
   success: boolean;
   createdAt: string;
+};
+
+export type NfeAccessResult = {
+  tenantId: string;
+  enabled: boolean;
+  enabledAt: string | null;
 };
 
 export type CreditGrantResult = {

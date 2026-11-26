@@ -33,6 +33,8 @@ export interface CreditTransactionProps {
   channelSlug?: string;
   // Reservation fields for invoice lifecycle
   reservedInvoiceId?: string;
+  // NF-e reservations point here instead (the NFS-e column has a foreign key to nfse_invoices).
+  reservedNfeDocumentId?: string;
   // Type of the document the reservation is for; defaults to 'nfse'.
   reservedDocumentType?: DocumentType;
   periodId?: string;
@@ -95,6 +97,9 @@ export class CreditTransaction {
   }
   get reservedInvoiceId(): string | undefined {
     return this.props.reservedInvoiceId;
+  }
+  get reservedNfeDocumentId(): string | undefined {
+    return this.props.reservedNfeDocumentId;
   }
   get reservedDocumentType(): DocumentType {
     return this.props.reservedDocumentType ?? 'nfse';

@@ -191,6 +191,42 @@ describe('OpenAPI contract against the real API (e2e)', () => {
             Promise.resolve(documents.get(`${t}/${i}.pdf`) as Buffer),
           exists: (t: string, i: string, format: string) =>
             Promise.resolve(documents.has(`${t}/${i}.${format}`)),
+          // NF-e files, by reference (the key layout itself is tested in the storage spec).
+          saveFile: (
+            ref: { tenantId: string; environment: string; id: string },
+            name: string,
+            body: Buffer | string,
+          ) =>
+            Promise.resolve(
+              void documents.set(
+                `${ref.tenantId}/${ref.environment}/nfe/${ref.id}/${name}`,
+                body,
+              ),
+            ),
+          getFile: (
+            ref: { tenantId: string; environment: string; id: string },
+            name: string,
+          ) =>
+            Promise.resolve(
+              Buffer.from(
+                documents.get(
+                  `${ref.tenantId}/${ref.environment}/nfe/${ref.id}/${name}`,
+                ) as Buffer | string,
+              ),
+            ),
+          getFileSignedUrl: (
+            _ref: unknown,
+            name: string,
+            options: { downloadName: string },
+          ) =>
+            Promise.resolve({
+              url: `https://files.example/nfe/${name}`,
+              expiresAt: new Date(Date.now() + 60_000),
+              fileName: options.downloadName,
+              mimeType: name.endsWith('.pdf')
+                ? 'application/pdf'
+                : 'application/xml',
+            }),
           getSignedUrl: (_t: string, i: string, format: string) =>
             Promise.resolve({
               url: `https://files.example/${i}.${format}`,
@@ -866,6 +902,7 @@ describe('OpenAPI contract against the real API (e2e)', () => {
          VALUES ('SP', 55, 2, now(), 'docs/fiscal/nfe-runbook.md') ON CONFLICT DO NOTHING`,
       );
       const nfe = {
+        type: 'nfe',
         companyId,
         recipient: {
           taxId: '123.456.789-09',
@@ -894,18 +931,535 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         ],
         payments: [{ tPag: '17', amount: 20 }],
       };
-      const ok = await call('POST /nfe/validate', {
+      const ok = await call('POST /invoices/validate', {
         body: nfe,
         query: { includeXml: 'true' },
         status: 200,
       });
       expect(ok.body.data.valid).toBe(true);
       expect(ok.body.data.accessKeyPreview).toHaveLength(44);
-      const bad = await call('POST /nfe/validate', {
+      const bad = await call('POST /invoices/validate', {
         body: { ...nfe, payments: [{ tPag: '17', amount: 1 }] },
         status: 422,
       });
       expect(bad.body.type).toBe('validation');
+    });
+  });
+
+  describe('nfe issuing', () => {
+    const nfeBody = () => ({
+      type: 'nfe',
+      companyId,
+      recipient: {
+        taxId: '123.456.789-09',
+        name: 'Maria da Silva',
+        indIeDest: 9,
+        address: {
+          street: 'Rua das Flores',
+          number: '10',
+          district: 'Centro',
+          zip: '01001-000',
+          cityCode: '3550308',
+          city: 'São Paulo',
+          state: 'SP',
+        },
+      },
+      items: [
+        {
+          code: 'SKU1',
+          description: 'Produto de teste',
+          ncm: '61091000',
+          cfop: '5102',
+          unit: 'UN',
+          quantity: 2,
+          unitPrice: 10,
+        },
+      ],
+      payments: [{ tPag: '17', amount: 20 }],
+    });
+
+    const setStatus = (id: string, status: string, extra = '') =>
+      dataSource.query(
+        `UPDATE "${schema}".nfe_documents SET status = $2${extra} WHERE id = $1`,
+        [id, status],
+      );
+
+    it('issues, lists and reads an NF-e, then handles a rejection and a lost answer', async () => {
+      await dataSource.query(
+        `UPDATE "${schema}".nfse_companies
+            SET address_street = 'Avenida Paulista', address_number = '1000', address_district = 'Bela Vista',
+                address_zip = '01310100', address_city = 'São Paulo'
+          WHERE id = $1`,
+        [companyId],
+      );
+      await dataSource.query(
+        `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
+         VALUES ('SP', 55, 2, now(), 'docs/fiscal/nfe-runbook.md') ON CONFLICT DO NOTHING`,
+      );
+      await call('PUT /companies/{id}/nfe-settings', {
+        path: `/companies/${companyId}/nfe-settings`,
+        body: { stateRegistration: '110042490114', crt: 1 },
+        status: 200,
+      });
+
+      // The header is required.
+      const missing = await call('POST /invoices', {
+        body: nfeBody(),
+        status: 400,
+      });
+      expect(missing.body.code).toBe('ERROR_IDEMPOTENCY_KEY_REQUIRED');
+
+      const created = await call('POST /invoices', {
+        body: nfeBody(),
+        headers: { 'Idempotency-Key': 'e2e-nfe-1' },
+        status: 202,
+      });
+      const id = created.body.data.id as string;
+      expect(created.body.data.status).toBe('queued');
+
+      // The same key and body is the same note; another body with the key is a conflict.
+      const again = await call('POST /invoices', {
+        body: nfeBody(),
+        headers: { 'Idempotency-Key': 'e2e-nfe-1' },
+        status: 200,
+      });
+      expect(again.body.data).toEqual({
+        type: 'nfe',
+        id,
+        status: 'queued',
+        replayed: true,
+      });
+      await call('POST /invoices', {
+        body: { ...nfeBody(), additionalInfo: 'outro corpo' },
+        headers: { 'Idempotency-Key': 'e2e-nfe-1' },
+        status: 409,
+      });
+
+      const list = await call('GET /invoices', {
+        query: { type: 'nfe', companyId, status: 'queued' },
+        status: 200,
+      });
+      expect(list.body.data.map((n: { id: string }) => n.id)).toContain(id);
+      const read = await call('GET /invoices/{id}', {
+        path: `/invoices/${id}`,
+        status: 200,
+      });
+      expect(read.body.data).toMatchObject({
+        id,
+        status: 'queued',
+        number: null,
+        lastError: null,
+        environment: 'test',
+      });
+
+      // `type=all` mixes both kinds in one cursor list; walking it one by one loses and repeats nothing.
+      const everything = await call('GET /invoices', {
+        query: { type: 'all', companyId, limit: 100 },
+        status: 200,
+      });
+      const kinds = new Map(
+        everything.body.data.map((row: { id: string; type: string }) => [
+          row.id,
+          row.type,
+        ]),
+      );
+      expect(kinds.get(id)).toBe('nfe');
+      expect(kinds.get(ids.invoice)).toBe('nfse');
+      const walked: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await call('GET /invoices', {
+          query: {
+            type: 'all',
+            companyId,
+            limit: 2,
+            ...(cursor ? { cursor } : {}),
+          },
+          status: 200,
+        });
+        walked.push(...page.body.data.map((row: { id: string }) => row.id));
+        cursor = page.body.pagination.nextCursor ?? undefined;
+      } while (cursor);
+      expect(walked).toEqual(
+        everything.body.data.map((row: { id: string }) => row.id),
+      );
+
+      // What only an NF-e has is refused for an NFS-e, with a code that says so.
+      const refusals: Array<[string, string, object?]> = [
+        ['POST /invoices/{id}/sync', 'sync'],
+        ['POST /invoices/{id}/discard', 'discard'],
+        [
+          'POST /invoices/{id}/corrections',
+          'corrections',
+          { correction: 'Corrigir o endereço de entrega para Rua das Flores' },
+        ],
+      ];
+      for (const [key, suffix, payload] of refusals) {
+        const refused = await call(key, {
+          path: `/invoices/${ids.invoice}/${suffix}`,
+          ...(payload ? { body: payload } : {}),
+          status: 422,
+        });
+        expect(refused.body.code).toBe('ERROR_INVOICE_OPERATION_NOT_SUPPORTED');
+      }
+      const dryRun = await call('POST /invoices/validate', {
+        body: { type: 'nfse' },
+        status: 422,
+      });
+      expect(dryRun.body.code).toBe('ERROR_INVOICE_OPERATION_NOT_SUPPORTED');
+
+      // A rejection shows its type, code and hint; the note is corrected and sent again.
+      await setStatus(
+        id,
+        'rejected',
+        `, last_error_type = 'validation', last_error_code = '225', last_error_message = 'Rejeição: Falha no Schema XML do lote de NFe'`,
+      );
+      const rejected = await call('GET /invoices/{id}', {
+        path: `/invoices/${id}`,
+        status: 200,
+      });
+      expect(rejected.body.data.lastError).toMatchObject({
+        type: 'validation',
+        code: '225',
+        hint: expect.stringContaining('schema'),
+      });
+      const resubmitted = await call('PUT /invoices/{id}', {
+        path: `/invoices/${id}`,
+        body: { ...nfeBody(), additionalInfo: 'corrigida' },
+        status: 202,
+      });
+      expect(resubmitted.body.data).toEqual({
+        type: 'nfe',
+        id,
+        status: 'queued',
+      });
+
+      // A rejected note can also be given up; an authorized one cannot.
+      await setStatus(id, 'rejected');
+      const discarded = await call('POST /invoices/{id}/discard', {
+        path: `/invoices/${id}/discard`,
+        status: 200,
+      });
+      expect(discarded.body.data.status).toBe('discarded');
+      await setStatus(id, 'authorized');
+      const refused = await call('POST /invoices/{id}/discard', {
+        path: `/invoices/${id}/discard`,
+        status: 409,
+      });
+      expect(refused.body.code).toBe('ERROR_NFE_INVALID_STATE');
+
+      // A lost answer: the SEFAZ (the simulator) does not know the key yet, so sync leaves it waiting.
+      const lost = await call('POST /invoices', {
+        body: { ...nfeBody(), additionalInfo: 'resposta perdida' },
+        headers: { 'Idempotency-Key': 'e2e-nfe-2' },
+        status: 202,
+      });
+      const lostId = lost.body.data.id as string;
+      await setStatus(
+        lostId,
+        'reconciliation_required',
+        `, access_key = '35261112345678000195550010000000011234567810', signed_xml = '<NFe/>', issued_at = now()`,
+      );
+      const synced = await call('POST /invoices/{id}/sync', {
+        path: `/invoices/${lostId}/sync`,
+        status: 200,
+      });
+      expect(synced.body.data.status).toBe('reconciliation_required');
+    });
+  });
+
+  describe('nfe events', () => {
+    const accessKeyOf = (n: number) =>
+      `3526111234567800019555001${String(n + 500).padStart(9, '0')}1234567810`.slice(
+        0,
+        44,
+      );
+    const body = (extra: string) => ({
+      type: 'nfe',
+      companyId,
+      recipient: {
+        taxId: '123.456.789-09',
+        name: 'Maria da Silva',
+        indIeDest: 9,
+        address: {
+          street: 'Rua das Flores',
+          number: '10',
+          district: 'Centro',
+          zip: '01001-000',
+          cityCode: '3550308',
+          city: 'São Paulo',
+          state: 'SP',
+        },
+      },
+      items: [
+        {
+          code: 'SKU1',
+          description: 'Produto de teste',
+          ncm: '61091000',
+          cfop: '5102',
+          unit: 'UN',
+          quantity: 2,
+          unitPrice: 10,
+        },
+      ],
+      payments: [{ tPag: '17', amount: 20 }],
+      additionalInfo: extra,
+    });
+    /** An NF-e the SEFAZ authorized, as the worker would have left it (the simulator is not asked). */
+    const authorized = async (label: string, n: number) => {
+      const created = await call('POST /invoices', {
+        body: body(label),
+        headers: { 'Idempotency-Key': `e2e-events-${label}` },
+        status: 202,
+      });
+      const id = created.body.data.id as string;
+      await dataSource.query(
+        `UPDATE "${schema}".nfe_documents
+            SET status = 'authorized', series = 1, number = $2, access_key = $3, protocol = '135260000000001',
+                signed_xml = '<NFe/>', issued_at = now(), authorized_at = now()
+          WHERE id = $1`,
+        [id, 900 + n, accessKeyOf(n)],
+      );
+      return id;
+    };
+
+    it('cancels, corrects, lists the timeline, inutilizes a range and lists the gaps', async () => {
+      // Cancellation: the justification is checked, then the NF-e is cancelling and cannot be cancelled twice.
+      const toCancel = await authorized('cancel', 1);
+      const short = await call('POST /invoices/{id}/cancel', {
+        path: `/invoices/${toCancel}/cancel`,
+        body: { justification: 'curta' },
+        status: 422,
+      });
+      expect(short.body.code).toBe('ERROR_JUSTIFICATION_LENGTH');
+      const cancelled = await call('POST /invoices/{id}/cancel', {
+        path: `/invoices/${toCancel}/cancel`,
+        body: {
+          justification: 'Pedido cancelado pelo cliente antes da entrega',
+        },
+        status: 202,
+      });
+      expect(cancelled.body.data).toMatchObject({
+        id: toCancel,
+        status: 'cancelling',
+        cancelReason: 'Pedido cancelado pelo cliente antes da entrega',
+      });
+      const twice = await call('POST /invoices/{id}/cancel', {
+        path: `/invoices/${toCancel}/cancel`,
+        body: {
+          justification: 'Pedido cancelado pelo cliente antes da entrega',
+        },
+        status: 409,
+      });
+      expect(twice.body.code).toBe('ERROR_NFE_INVALID_STATE');
+
+      // Correction letters: each takes the next sequence.
+      const toCorrect = await authorized('correct', 2);
+      const tooShort = await call('POST /invoices/{id}/corrections', {
+        path: `/invoices/${toCorrect}/corrections`,
+        body: { correction: 'curta' },
+        status: 422,
+      });
+      expect(tooShort.body.code).toBe('ERROR_CORRECTION_LENGTH');
+      const first = await call('POST /invoices/{id}/corrections', {
+        path: `/invoices/${toCorrect}/corrections`,
+        body: { correction: 'Corrigir o endereço de entrega da observação' },
+        status: 202,
+      });
+      expect(first.body.data).toMatchObject({
+        sequence: 1,
+        status: 'pending',
+        type: 'correction',
+      });
+      const second = await call('POST /invoices/{id}/corrections', {
+        path: `/invoices/${toCorrect}/corrections`,
+        body: { correction: 'Corrigir também a informação adicional' },
+        status: 202,
+      });
+      expect(second.body.data.sequence).toBe(2);
+      const timeline = await call('GET /invoices/{id}/events', {
+        path: `/invoices/${toCorrect}/events`,
+        status: 200,
+      });
+      expect(
+        timeline.body.data
+          .filter((e: { kind: string }) => e.kind === 'event')
+          .map((e: { sequence: number }) => e.sequence),
+      ).toEqual([1, 2]);
+
+      // Inutilization: bad range, a free range, the same key again, an overlap, the list.
+      const inut = {
+        type: 'nfe',
+        companyId,
+        series: 7,
+        start: 10,
+        end: 12,
+        justification: 'Numeração pulada por falha do sistema emissor',
+      };
+      const inverted = await call('POST /invoices/inutilizations', {
+        body: { ...inut, start: 12, end: 10 },
+        status: 422,
+      });
+      expect(inverted.body.code).toBe('ERROR_INUTILIZATION_RANGE_INVALID');
+      const accepted = await call('POST /invoices/inutilizations', {
+        body: inut,
+        headers: { 'Idempotency-Key': 'e2e-inut-1' },
+        status: 202,
+      });
+      expect(accepted.body.data).toMatchObject({
+        status: 'pending',
+        series: 7,
+        start: 10,
+        end: 12,
+      });
+      const replayed = await call('POST /invoices/inutilizations', {
+        body: inut,
+        headers: { 'Idempotency-Key': 'e2e-inut-1' },
+        status: 200,
+      });
+      expect(replayed.body.data).toMatchObject({
+        id: accepted.body.data.id,
+        replayed: true,
+      });
+      const overlap = await call('POST /invoices/inutilizations', {
+        body: { ...inut, start: 12, end: 15 },
+        status: 409,
+      });
+      expect(overlap.body.code).toBe('ERROR_INUTILIZATION_RANGE_OVERLAP');
+      const inUse = await call('POST /invoices/inutilizations', {
+        body: { ...inut, series: 1, start: 901, end: 901 },
+        status: 409,
+      });
+      expect(inUse.body.code).toBe('ERROR_INUTILIZATION_RANGE_IN_USE');
+      const inutList = await call('GET /invoices/inutilizations', {
+        query: { type: 'nfe', companyId, status: 'pending' },
+        status: 200,
+      });
+      expect(inutList.body.data.map((i: { id: string }) => i.id)).toContain(
+        accepted.body.data.id,
+      );
+
+      // Gaps: the range voided by the request above (still pending) is a gap until the SEFAZ approves it.
+      const gaps = await call('GET /invoices/number-gaps', {
+        query: { type: 'nfe', companyId },
+        status: 200,
+      });
+      expect(gaps.body.data).toEqual(
+        expect.arrayContaining([{ companyId, series: 7, start: 1, end: 12 }]),
+      );
+    });
+  });
+
+  describe('nfe files', () => {
+    const body = () => ({
+      type: 'nfe',
+      companyId,
+      recipient: {
+        taxId: '123.456.789-09',
+        name: 'Maria da Silva',
+        indIeDest: 9,
+        address: {
+          street: 'Rua das Flores',
+          number: '10',
+          district: 'Centro',
+          zip: '01001-000',
+          cityCode: '3550308',
+          city: 'São Paulo',
+          state: 'SP',
+        },
+      },
+      items: [
+        {
+          code: 'SKU1',
+          description: 'Produto de teste',
+          ncm: '61091000',
+          cfop: '5102',
+          unit: 'UN',
+          quantity: 2,
+          unitPrice: 10,
+        },
+      ],
+      payments: [{ tPag: '17', amount: 20 }],
+      additionalInfo: 'arquivos',
+    });
+
+    it('serves the nfeProc, the DANFE and a signed link once the documents are ready; 409 before', async () => {
+      const created = await call('POST /invoices', {
+        body: body(),
+        headers: { 'Idempotency-Key': 'e2e-nfe-files' },
+        status: 202,
+      });
+      const id = created.body.data.id as string;
+      await dataSource.query(
+        `UPDATE "${schema}".nfe_documents
+            SET status = 'authorized', series = 1, number = 77, access_key = '35261111222333000181550010000000771123456780',
+                protocol = '135260000000001', signed_xml = '<NFe/>', issued_at = now(), authorized_at = now()
+          WHERE id = $1`,
+        [id],
+      );
+
+      // Not stored yet: every file route answers 409.
+      for (const [key, path, extra] of [
+        ['GET /invoices/{id}/xml', `/invoices/${id}/xml`, {}],
+        ['GET /invoices/{id}/pdf', `/invoices/${id}/pdf`, {}],
+        [
+          'POST /invoices/{id}/download-url',
+          `/invoices/${id}/download-url`,
+          { body: { format: 'xml' } },
+        ],
+      ] as const) {
+        const early = await call(key, { path, status: 409, ...extra });
+        expect(early.body.code).toBe('ERROR_DOCUMENTS_NOT_READY');
+      }
+      const unknown = await call('GET /invoices/{id}/xml', {
+        path: `/invoices/${randomUUID()}/xml`,
+        status: 404,
+      });
+      expect(unknown.body.code).toBe('ERROR_INVOICE_NOT_FOUND');
+
+      // What the worker leaves behind: the files and the ready mark.
+      const stored = `${tenantId}/test/nfe/${id}`;
+      documents.set(`${stored}/nfe-proc.xml`, '<nfeProc/>');
+      documents.set(`${stored}/danfe.pdf`, Buffer.from('%PDF-1.4 danfe'));
+      await dataSource.query(
+        `UPDATE "${schema}".nfe_documents SET documents_ready_at = now() WHERE id = $1`,
+        [id],
+      );
+
+      const xml = await call('GET /invoices/{id}/xml', {
+        path: `/invoices/${id}/xml`,
+        status: 200,
+      });
+      expect(xml.text).toBe('<nfeProc/>');
+      expect(xml.contentType).toContain('application/xml');
+      const pdf = await call('GET /invoices/{id}/pdf', {
+        path: `/invoices/${id}/pdf`,
+        status: 200,
+      });
+      expect(pdf.contentType).toContain('application/pdf');
+      expect(pdf.text.startsWith('%PDF')).toBe(true);
+      const link = await call('POST /invoices/{id}/download-url', {
+        path: `/invoices/${id}/download-url`,
+        body: { format: 'pdf' },
+        status: 200,
+      });
+      expect(link.body.data).toMatchObject({
+        fileName: 'nfe-77.pdf',
+        mimeType: 'application/pdf',
+      });
+      await call('POST /invoices/{id}/download-url', {
+        path: `/invoices/${id}/download-url`,
+        body: { format: 'zip' },
+        status: 400,
+      });
+      const read = await call('GET /invoices/{id}', {
+        path: `/invoices/${id}`,
+        status: 200,
+      });
+      expect(read.body.data).toMatchObject({
+        documentsReady: true,
+        emailStatus: null,
+      });
     });
   });
 

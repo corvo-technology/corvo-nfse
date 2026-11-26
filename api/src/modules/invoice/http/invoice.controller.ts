@@ -26,6 +26,7 @@ import {
   HttpCode,
   StreamableFile,
   UnauthorizedException,
+  Optional,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -35,6 +36,7 @@ import {
   ApiHeader,
   ApiExtraModels,
   ApiAcceptedResponse,
+  ApiBody,
   getSchemaPath,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -52,6 +54,19 @@ import {
 } from './invoice-batch.dto';
 import { InvoiceBatchSummaryDto } from './invoice-batch-response.dto';
 import {
+  UntypedBody,
+  rejectNfseOnlyFilters,
+  type InvoiceCall,
+  type InvoiceRoutes,
+} from '@/modules/fiscal-core/application/invoice-routes';
+import {
+  InvoiceTypeRouter,
+  type InvoiceGate,
+} from '@/modules/fiscal-core/application/invoice-type.router';
+import { RequireDocumentPermission } from '@/modules/auth/require-permission.decorator';
+import { validateDto } from '@/shared/http/validate-dto';
+import { UntypedBodyPipe } from './untyped-body.pipe';
+import {
   CancelInvoiceDto,
   SubstituteInvoiceDto,
   CreateInvoiceDto,
@@ -59,6 +74,19 @@ import {
   ListInvoicesQuery,
   RequestInvoiceEmailDto,
 } from './invoice.dto';
+
+const VIEW: InvoiceGate = {
+  nfse: 'nfse.invoices.view',
+  nfe: 'nfe.documents.view',
+};
+const ISSUE: InvoiceGate = {
+  nfse: 'nfse.invoices.issue',
+  nfe: 'nfe.documents.issue',
+};
+const CANCEL: InvoiceGate = {
+  nfse: 'nfse.invoices.issue',
+  nfe: 'nfe.documents.manage',
+};
 
 @UseGuards(ExecutionEnvironmentGuard)
 @ApiTags('invoices')
@@ -70,7 +98,32 @@ export class InvoiceController {
     private readonly batchService: InvoiceBatchService,
     private readonly emissionRouter: EmissionRouterService,
     private readonly substitutions: InvoiceSubstitutionService,
+    @Optional() private readonly types?: InvoiceTypeRouter,
   ) {}
+
+  private callOf(req: RequestWithAuthContext): InvoiceCall {
+    const auth = req.authContext!;
+    return {
+      tenantId: auth.activeTenantId,
+      environment: executionEnvironment(auth),
+      auth,
+    };
+  }
+
+  /** NFS-e by default; the NF-e takes the call when the document with the id is an NF-e. */
+  private byId<T>(
+    id: string,
+    req: RequestWithAuthContext,
+    gate: InvoiceGate,
+    nfse: () => Promise<T>,
+    other: (routes: InvoiceRoutes, call: InvoiceCall) => Promise<T>,
+  ): Promise<T> {
+    if (!this.types) return nfse();
+    const call = this.callOf(req);
+    return this.types.byId(id, call, gate, nfse, (routes) =>
+      other(routes, call),
+    );
+  }
 
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @Post()
@@ -86,16 +139,25 @@ export class InvoiceController {
     },
   })
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.issue')
+  @RequireDocumentPermission(ISSUE)
   @ApiOperation({
     summary: 'Emit a new NFS-e invoice, or schedule it (SCHEDULE / RECURRING)',
   })
+  @ApiBody({ type: CreateInvoiceDto })
   @ApiHeader({ name: 'idempotency-key', required: false })
   async emit(
     @Body() dto: CreateInvoiceDto,
     @Req() req: RequestWithAuthContext,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Res({ passthrough: true }) res?: Response,
   ) {
+    if ((dto as { type?: string }).type === 'nfe' && this.types) {
+      // The validation pipe let it through untouched: the NF-e validates its own body.
+      const call = this.callOf(req);
+      const routes = await this.types.forType('nfe', call, ISSUE.nfe);
+      return routes.create(dto, idempotencyKey, call, res!);
+    }
+    this.types?.assertNfse(this.callOf(req), ISSUE);
     const tenantId = req.authContext!.activeTenantId;
     const emitted = await this.emissionRouter.emit(
       dto,
@@ -200,13 +262,34 @@ export class InvoiceController {
 
   @Get()
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.view')
+  @RequireDocumentPermission(VIEW)
   @ApiOperation({ summary: 'List invoices for the tenant' })
   @ApiCursorResponse()
   async list(
     @Query() query: ListInvoicesQuery,
     @Req() req: RequestWithAuthContext,
   ) {
+    if (this.types && (query.type === 'nfe' || query.type === 'all')) {
+      const call = this.callOf(req);
+      const raw = { ...query } as Record<string, unknown>;
+      if (query.type === 'nfe')
+        return (await this.types.forType('nfe', call, VIEW.nfe)).list(
+          raw,
+          call,
+        );
+      rejectNfseOnlyFilters(raw, 'all');
+      return this.types.summaries(
+        {
+          companyId: query.companyId,
+          status: query.status,
+          limit: query.limit,
+          cursor: query.cursor,
+        },
+        call,
+        VIEW,
+      );
+    }
+    this.types?.assertNfse(this.callOf(req), VIEW);
     const tenantId = req.authContext!.activeTenantId;
     return this.invoiceService.list(
       tenantId,
@@ -217,29 +300,49 @@ export class InvoiceController {
 
   @Get(':id')
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.view')
+  @RequireDocumentPermission(VIEW)
   @ApiOperation({ summary: 'Get invoice by ID' })
   async findById(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Req() req: RequestWithAuthContext,
   ) {
-    const tenantId = req.authContext!.activeTenantId;
-    return this.invoiceService.findById(
+    return this.byId(
       id,
-      tenantId,
-      executionEnvironment(req.authContext!),
+      req,
+      VIEW,
+      () =>
+        this.invoiceService.findById(
+          id,
+          req.authContext!.activeTenantId,
+          executionEnvironment(req.authContext!),
+        ),
+      (routes, call) => routes.get(id, call),
     );
   }
 
   @RawResponse()
   @Get(':id/xml')
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.view')
+  @RequireDocumentPermission(VIEW)
   @ApiOperation({ summary: 'Download invoice XML' })
   async getXml(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Req() req: RequestWithAuthContext,
     @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile | string> {
+    return this.byId(
+      id,
+      req,
+      VIEW,
+      () => this.nfseXml(id, req, res),
+      (routes, call) => routes.xml(id, call, res),
+    );
+  }
+
+  private async nfseXml(
+    id: string,
+    req: RequestWithAuthContext,
+    res: Response,
   ): Promise<StreamableFile | string> {
     const tenantId = req.authContext!.activeTenantId;
     const xml = await this.invoiceService.getXml(
@@ -266,12 +369,26 @@ export class InvoiceController {
   @RawResponse()
   @Get(':id/pdf')
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.view')
+  @RequireDocumentPermission(VIEW)
   @ApiOperation({ summary: 'Download invoice PDF' })
   async getPdf(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Req() req: RequestWithAuthContext,
     @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    return this.byId(
+      id,
+      req,
+      VIEW,
+      () => this.nfsePdf(id, req, res),
+      (routes, call) => routes.pdf(id, call, res),
+    );
+  }
+
+  private async nfsePdf(
+    id: string,
+    req: RequestWithAuthContext,
+    res: Response,
   ): Promise<StreamableFile> {
     const tenantId = req.authContext!.activeTenantId;
     const pdf = await this.invoiceService.getPdf(
@@ -297,7 +414,7 @@ export class InvoiceController {
 
   @Get(':id/events')
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.view')
+  @RequireDocumentPermission(VIEW)
   @ApiOperation({ summary: 'Get invoice status transition events' })
   @ApiCursorResponse()
   async getEvents(
@@ -305,25 +422,46 @@ export class InvoiceController {
     @Req() req: RequestWithAuthContext,
     @Query() options: CursorQuery,
   ) {
-    const tenantId = req.authContext!.activeTenantId;
-    return this.invoiceService.getEventsPage(
+    return this.byId(
       id,
-      tenantId,
-      executionEnvironment(req.authContext!),
-      options,
+      req,
+      VIEW,
+      () =>
+        this.invoiceService.getEventsPage(
+          id,
+          req.authContext!.activeTenantId,
+          executionEnvironment(req.authContext!),
+          options,
+        ),
+      (routes, call) => routes.events(id, call),
     );
   }
 
   @Post(':id/download-url')
   @HttpCode(200)
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.view')
+  @RequireDocumentPermission(VIEW)
   @ApiOperation({ summary: 'Get a signed download URL for invoice PDF or XML' })
   async getDownloadUrl(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: GetDownloadUrlDto,
     @Req() req: RequestWithAuthContext,
     @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.byId(
+      id,
+      req,
+      VIEW,
+      () => this.nfseDownloadUrl(id, dto, req, res),
+      (routes, call) => routes.downloadUrl(id, dto.format, call, res),
+    );
+  }
+
+  private async nfseDownloadUrl(
+    id: string,
+    dto: GetDownloadUrlDto,
+    req: RequestWithAuthContext,
+    res: Response,
   ) {
     const tenantId = req.authContext!.activeTenantId;
     const result = await this.invoiceService.getDownloadUrl(
@@ -393,7 +531,8 @@ export class InvoiceController {
     },
   })
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.issue')
+  @RequireDocumentPermission(CANCEL)
+  @ApiBody({ type: CancelInvoiceDto })
   @ApiOperation({
     summary:
       'Cancel an invoice: 200 when a queued invoice is cancelled locally, 202 while the NFS-e cancellation event is processed or when the request is registered on a processing invoice',
@@ -402,18 +541,32 @@ export class InvoiceController {
   })
   async cancel(
     @Param('id', new ParseUUIDPipe()) id: string,
-    @Body() dto: CancelInvoiceDto,
+    @Body(UntypedBodyPipe) body: CancelInvoiceDto | UntypedBody,
     @Req() req: RequestWithAuthContext,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const invoice = await this.invoiceService.cancel(
+    return this.byId(
       id,
-      req.authContext!.activeTenantId,
-      executionEnvironment(req.authContext!),
-      dto,
+      req,
+      CANCEL,
+      async () => {
+        // The global pipe cannot validate this body: an NF-e takes another one.
+        const dto =
+          body instanceof UntypedBody
+            ? await validateDto(CancelInvoiceDto, body.raw)
+            : body;
+        const invoice = await this.invoiceService.cancel(
+          id,
+          req.authContext!.activeTenantId,
+          executionEnvironment(req.authContext!),
+          dto,
+        );
+        res.status(invoice.status === 'cancelled' ? 200 : 202);
+        return invoice;
+      },
+      (routes, call) =>
+        routes.cancel(id, body instanceof UntypedBody ? body.raw : body, call),
     );
-    res.status(invoice.status === 'cancelled' ? 200 : 202);
-    return invoice;
   }
 
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
