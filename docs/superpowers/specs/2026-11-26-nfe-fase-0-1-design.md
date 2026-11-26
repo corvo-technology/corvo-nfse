@@ -2,7 +2,11 @@
 
 Data: 2026-11-26. Status: proposta, só documento (nenhum código).
 
-Legenda: **[verificado]** = li a fonte citada. **[não verificado]** = vem de memória ou de fonte secundária; conferir antes de implementar.
+Legenda:
+- **[verificado]**: li a fonte citada.
+- **[não verificado]**: vem de memória ou de fonte secundária; conferir antes de implementar.
+- **[verificar no spike]**: confirmar no MOC ou na homologação durante o spike (seção 9.0).
+- **(decisão do orquestrador)**: decisão tomada na revisão do PR #310.
 
 ## 1. Intenção e porquê
 
@@ -27,11 +31,15 @@ Fase 1, NF-e MVP (mesma lista do concorrente enwp):
 7. **XML autorizado** (`nfeProc`) e **DANFE em PDF**.
 8. **Erros com tipo claro**: "comunicação" (o Corvo tenta de novo ou consulta) vs "validação/rejeição" (o cliente corrige os dados).
 
+A Fase 1 roda **só em homologação** e começa por um **spike de 2 a 3 dias** (seção 9.0), antes de todo o resto (decisão do orquestrador).
+
 ## 3. Fora do escopo (anti-objetivos)
 
 - **Não quebrar a NFS-e.** Nenhuma rota, evento, coluna ou caminho de S3 da NFS-e muda de nome ou de formato.
-- **Não calcular imposto.** O cliente informa CSOSN, CFOP, NCM etc. por item. O Corvo só valida formato e coerência; não calcula ICMS, ST nem DIFAL.
-- Regime normal (CRT 3), CSOSN além de 102 e 400, ST, importação/exportação, devolução, nota complementar e ajuste (só `finNFe=1`, normal).
+- **Não calcular imposto.** O cliente informa CFOP, NCM etc. por item. O Corvo só preenche os grupos de valor zero que o layout exige para o Simples (seção 8.2) e valida formato e coerência. Não calcula alíquota, base, ICMS, ST nem DIFAL.
+- Regime normal (CRT 3), CSOSN além de 102 e 400, ST, importação/exportação, devolução e `refNFe`, nota complementar e ajuste (só `finNFe=1`, normal). Também ficam de fora IPI, transportadora e volumes (só `modFrete=9`).
+- Emissão em produção (`tpAmb=1`). Ela só vem numa fase posterior, depois do aceite.
+- Visão geral unificada NFS-e + NF-e (decisão do orquestrador, YAGNI). A NF-e tem lista e página próprias.
 - NFC-e (Fase 3) e contingência SVC-AN/SVC-RS/EPEC (Fase 4). O desenho deixa espaço para as duas, sem implementá-las.
 - Manifestação do destinatário e distribuição DF-e.
 - Catálogo de produtos completo. No MVP os itens vêm na própria requisição (seção 8.2).
@@ -44,12 +52,13 @@ Fase 1, NF-e MVP (mesma lista do concorrente enwp):
   - Lista de NTs: https://hom.nfe.fazenda.gov.br/portal/listaConteudo.aspx?tipoConteudo=04BIflQt1aY%3D. Ela mostra versões da v1.00 (28/03/2025) à v1.31 (11/11/2025). Há menções a v1.36 (30/04/2026) e v1.40. **[não verificado qual vale]**
   - Fontes secundárias dizem que a obrigação para CRT 1/2/4 em produção começa em 04/01/2027 (https://www.contabeis.com.br/artigos/76943/nf-e-novas-regras-e-cronogramas-para-ibs-e-cbs-em-2026-2027/). **[não verificado no texto da NT]**
   - Decisão: os campos IBS/CBS ficam modelados (coluna/JSON por item e no total) e o builder sabe escrevê-los. Na Fase 1 eles não são exigidos de quem é do Simples. Uma flag por data liga a exigência sem migração.
-- Ambientes: a empresa no Corvo já pertence a um ambiente (`nfse_companies.environment`, `test | live`). `test` vira `tpAmb=2` (homologação) e `live` vira `tpAmb=1`. A Fase 1 vai só até homologação. Produção abre depois do roteiro da seção 10.3.
+- Ambientes: a empresa no Corvo já pertence a um ambiente (`nfse_companies.environment`, `test | live`). `test` vira `tpAmb=2` (homologação).
+- Trava dura (decisão do orquestrador): a variável `NFE_PRODUCTION_ENABLED`, com padrão `false`, bloqueia `tpAmb=1` mesmo com a flag `nfe_enabled` ligada. Uma empresa `live` que pede NF-e recebe o erro `CONFIGURATION` "NF-e em produção ainda não liberada".
 - Mapa de autorizadores do modelo 55 **[verificado só no espelho do sped-nfe, `storage/autorizadores.json`]**:
   - SEFAZ própria: AM, BA, GO, MG, MS, MT, PE, PR, RS, SP.
   - SVAN: MA.
   - SVRS: AC, AL, AP, CE, DF, ES, PA, PB, PI, RJ, RN, RO, RR, SC, SE, TO.
-  - A Fase 1 cobre SP mais as 16 UFs da SVRS.
+  - A Fase 1 tem como alvo SP e as UFs da SVRS. Mas só ficam liberadas as UFs que passarem pelo roteiro de homologação. No começo: SP e uma UF da SVRS (seção 6.2, decisão do orquestrador).
 - A SEFAZ usa certificados de servidor da cadeia ICP-Brasil, que o Node não confia por padrão **[não verificado por UF]**. A cadeia vai junto, versionada no código. `rejectUnauthorized: false` nunca entra.
 - Toda a infraestrutura atual se mantém: NestJS, TypeORM com RLS por tenant, BullMQ, outbox e S3.
 
@@ -99,7 +108,7 @@ Se a camada B passar de ~3 semanas sem autorizar em homologação, reavaliamos a
 
 **C. Reescrever tudo como `fiscal_documents` genérico e migrar a NFS-e.** Descartado: é risco alto sem ganho para o cliente agora.
 
-**Recomendação: B**, com uma view de leitura `fiscal_documents_v` (`UNION ALL` das duas tabelas, só colunas comuns) para a visão geral e o painel. A NFS-e pode migrar para as portas aos poucos (seção 6.6), sem precisar mudar de tabela.
+**Recomendação: B.** A NF-e tem lista e página próprias. A view unificada foi cortada das Fases 0 e 1 (decisão do orquestrador, YAGNI) e volta só quando alguém pedir a visão geral junta. As respostas atuais da API não mudam. A NFS-e pode migrar para as portas aos poucos (seção 6.6), sem precisar mudar de tabela.
 
 ## 6. Arquitetura: portas, adaptadores e SOLID
 
@@ -192,7 +201,8 @@ export class FiscalDocumentRegistry {           // espelha ConnectorRegistry
 - A **autoridade é configuração**, não `if (uf === 'SP')`. O arquivo `infra/external/nfe/sefaz/endpoints.ts` é uma tabela tipada: `{ uf -> autorizador }` e `{ autorizador × tpAmb × serviço -> url, versão, soapAction }`.
   - Um teste confere que as 27 UFs têm entrada e que toda URL é `https`.
   - Somar SVC-AN/SVC-RS é somar linhas com `tpEmis` 6/7.
-  - Uma UF fora do escopo devolve `UNSUPPORTED_UF` antes de qualquer envio.
+  - Liberar uma UF é separado de ter a URL dela (decisão do orquestrador). A tabela `nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)` lista o que passou pelo roteiro de homologação.
+  - Uma UF fora dessa lista devolve o erro `CONFIGURATION` `UF_NOT_ENABLED` ("UF ainda não liberada") antes de numerar.
 
 ### 6.3 Fluxo de emissão (Template Method / pipeline)
 
@@ -259,11 +269,22 @@ Cada arquivo tem uma responsabilidade. O domínio não importa nada de `infra/`,
 ## 7. Desenho da Fase 0 (fundação)
 
 1. **Tipo de documento.** `DocumentType` e `DocumentRef` no `fiscal-core`.
-2. **Créditos e preço por tipo.**
+2. **Créditos e preço por tipo.** A regra é espelhar a NFS-e exatamente (decisão do orquestrador). Hoje ela funciona assim (`invoice-lifecycle.service.ts`):
+   - Só cobra no ambiente `live`; `test` não reserva nada.
+   - Reserva 1 crédito e a cota do plano (`usage.reserve`) **ao enfileirar**, dentro do `billing.locked` e na mesma transação que grava a nota.
+   - Ao autorizar, confirma a reserva.
+   - Em `rejected`, `failed` ou `cancelled` vindo de antes da autorização, estorna (`REFUND_STATUSES`).
+   - **Cancelar uma nota já autorizada não estorna**: a saída de `authorized`/`cancelling` é ignorada (`FISCALLY_AUTHORIZED_ORIGINS`). A NF-e faz o mesmo.
+
+   O que entra para a NF-e: `denied` e `discarded` também estornam. CC-e e inutilização não cobram nada.
+
+   Como a Fase 1 é só homologação (`test`), **na prática nenhum crédito é cobrado na Fase 1**. A regra fica pronta para quando a produção abrir.
+
+   Preço:
    - Nova tabela `document_credit_prices (document_type pk, credits int, updated_at)`, com a semente `nfse=1, nfe=1, nfce=1`.
+   - O valor é lido **na hora da reserva** e gravado na própria reserva (`amount`). O estorno devolve o que foi reservado, não o preço atual.
    - Mudar o preço é um `UPDATE` (ou tela no admin da plataforma), sem migração.
-   - `credit_transactions` ganha `reserved_document_type` (padrão `'nfse'`). `reserveCredit` passa a reservar `credits` do tipo, em vez do `-1` fixo de `invoice-lifecycle.service.ts`.
-   - Cobra só a NF-e autorizada. Rejeitada, denegada, eventos (cancelamento, CC-e) e inutilização devolvem a reserva ou não cobram. A cota do plano (`usage.reserve`) conta NF-e igual à NFS-e.
+   - `credit_transactions` ganha `reserved_document_type` (padrão `'nfse'`). O `-1` fixo de `reserveCredit` passa a vir dessa tabela.
 3. **Armazenamento.**
    - `IDocumentStorage` ganha métodos por `DocumentRef` e nome de arquivo.
    - A NFS-e mantém `{tenant}/{env}/invoices/{id}/invoice.{xml|pdf}`.
@@ -274,12 +295,18 @@ Cada arquivo tem uma responsabilidade. O domínio não importa nada de `infra/`,
 5. **Outbox.** Tipos de mensagem `nfe.emit`, `nfe.reconcile`, `nfe.cancel`, `nfe.correct`, `nfe.inutilize`, `nfe.prepare_documents`, no mesmo `OutboxHandlerRegistry`.
 6. **Disjuntor.** O `FiscalPortalBreaker` passa a ter chave por autoridade (`nfse-sefin`, `nfe-sp-2`, `nfe-svrs-2`...). Uma SEFAZ fora do ar não trava a outra. `GET /v1/fiscal-portal/status` ganha os itens novos sem remover o atual.
 7. **Permissões.** Entram `nfe.documents.view`, `nfe.documents.issue` e `nfe.documents.manage` (cancelar, CC-e, inutilizar). Uma migração dá essas permissões aos papéis que já têm as equivalentes da NFS-e.
-8. **Empresa.**
-   - Nova tabela `company_nfe_settings`: `company_id pk`, `state_registration` (IE, validada por UF), `crt` (1 ou 4 na Fase 1), `default_series`, `enabled_at`.
-   - Também ganha `nfce_csc_id` e `nfce_csc_encrypted` (vazios até a Fase 3) e `contingency_mode` (`none`; Fase 4).
-   - O endereço completo da empresa (logradouro, número, bairro, CEP, código IBGE) passa a ser obrigatório para NF-e. Hoje é opcional.
+8. **Empresa** (decisão do orquestrador).
+   - Nova tabela `company_nfe_settings`:
+     - `company_id pk`, `state_registration` (IE, validada por UF), `crt` (1 ou 4 na Fase 1), `default_series`, `default_nat_op` (padrão "Venda de mercadoria"), `enabled_at`;
+     - padrões de imposto: `default_csosn` (102), `default_origin` (0), `default_pis_cst` e `default_cofins_cst` (49; seção 8.2);
+     - `nfce_csc_id` e `nfce_csc_encrypted` (vazios até a Fase 3) e `contingency_mode` (`none`; Fase 4).
+   - Para emitir NF-e, a empresa precisa de endereço completo (logradouro, número, bairro, CEP, código IBGE), UF, IE e CRT.
+     - Se faltar algo, dá erro `CONFIGURATION` só na NF-e, listando o que falta. A NFS-e não é afetada e não há migração de dados.
+     - O `cUF` sai da UF da empresa.
+   - Esses campos são editados pela API, pelo painel e pelo MCP: o `company_update` ganha os campos novos.
 9. **Liberação.** A flag `nfe_enabled` por tenant (admin da plataforma) esconde rotas, telas e ferramentas MCP até a liberação.
 10. **Critério de pronto.** Todos os testes atuais da NFS-e passam sem alteração; o snapshot do OpenAPI de `/v1/invoices` não muda; a suíte de contrato roda contra os adaptadores da NFS-e.
+11. **Trava de produção.** A variável `NFE_PRODUCTION_ENABLED` (padrão `false`) entra no `env.schema.ts`.
 
 ## 8. Desenho da Fase 1 (NF-e MVP)
 
@@ -287,14 +314,49 @@ Cada arquivo tem uma responsabilidade. O domínio não importa nada de `infra/`,
 
 - `nfe_documents`: `id`, `tenant_id`, `company_id`, `environment`, `model` (55), `series`, `number`, `access_key` (char 44, único por ambiente), `c_nf`, `tp_emis` (1), `issued_at` (dhEmi), `nat_op`, `id_dest`, `ind_final`, `ind_pres`, `status`, `c_stat`, `x_motivo`, `protocol`, `authorized_at`, `recipient` (jsonb), `totals` (jsonb), `payment` (jsonb), `transport` (jsonb, `modFrete=9` padrão), `additional_info`, `external_id`, `idempotency_key`, `request_hash`, `last_error_*`, `documents_ready_at`, campos de e-mail, `cancel_*` e `created/updated_at`.
   - RLS por tenant, como `nfse_invoices`.
-- `nfe_document_items`: `n_item`, `code`, `gtin` (ou `SEM GTIN`), `description`, `ncm`, `cest`, `cfop`, `unit`, `quantity`, `unit_price`, `total`, `discount`, `origin`, `csosn`, `ibs_cbs` (jsonb, opcional).
+  - Mais `fin_nfe` (1), `tp_imp` (1) e `attempt` (quantas versões assinadas o documento já teve; seção 8.3).
+- `nfe_document_items`: `n_item`, `code`, `gtin` (ou `SEM GTIN`), `description`, `ncm`, `cest`, `cfop`, `unit`, `quantity`, `unit_price`, `total`, `discount`, `freight`, `insurance`, `other`, `origin`, `csosn`, `pis_cst`, `cofins_cst`, `ibs_cbs` (jsonb, opcional).
+- `nfe_enabled_authorities`: a lista de UFs liberadas (seção 6.2).
 - `nfe_document_events`: `tp_evento` (110111 cancelamento, 110110 CC-e), `n_seq`, `status`, `protocol`, `text` e o caminho do XML.
 - `nfe_number_sequences`: pk `(company_id, model, series)`, `current_number`. A empresa já fixa o ambiente.
 - `nfe_inutilizations`: `company_id`, `model`, `series`, `start`, `end`, `justification`, `status`, `protocol`.
 
 ### 8.2 Entrada (itens) e destinatário
 
-No MVP os itens vêm inline. Um "produto favorito", no estilo do `service-favorites`, fica para a Fase 2. O destinatário exige documento, nome e endereço completo com código IBGE. `indIEDest` é 1, 2 ou 9; quando é 1, a IE é obrigatória. O destinatário fica salvo no diretório de clientes que já existe. Pagamento: `tPag` e valor. Frete: `modFrete=9` por padrão.
+`POST /v1/nfe` (decisão do orquestrador). O header `Idempotency-Key` é **obrigatório**.
+
+```jsonc
+{
+  "company_id": "…",
+  "nat_op": "Venda de mercadoria",        // opcional; padrão da empresa
+  "fin_nfe": 1,                           // opcional; só 1 na Fase 1
+  "tp_imp": 1,                            // opcional; DANFE retrato
+  "recipient": { "tax_id": "…", "name": "…", "ind_ie_dest": 9, "state_registration": null,
+                 "email": "…", "address": { "street": "…", "number": "…", "district": "…",
+                 "zip": "…", "city_code": "3534708", "state": "SP" } },
+  "items": [{ "code": "SKU1", "gtin": null, "description": "…", "ncm": "…", "cest": null,
+              "cfop": "5102", "unit": "UN", "quantity": 2, "unit_price": 10.00,
+              "discount": 0, "freight": 0, "insurance": 0, "other": 0,
+              "tax": { "origin": 0, "csosn": "102", "pis_cst": "49", "cofins_cst": "49" } }],  // tax opcional
+  "payments": [{ "t_pag": "17", "amount": 20.00 }],
+  "change": 0,                            // troco (vTroco), opcional
+  "additional_info": "…",
+  "external_id": "…"
+}
+```
+
+- **Totais**: o Corvo calcula `vProd`, `vDesc`, `vFrete`, `vSeg`, `vOutro` e `vNF` a partir dos itens. O cliente não manda totais. A soma dos pagamentos menos o troco precisa bater com `vNF`; se não bater, dá erro de validação.
+- **Transporte**: `modFrete=9` (sem frete) fixo. Transportadora e volumes ficam fora da Fase 1.
+- **Impostos por item** (decisão do orquestrador). Se o cliente omitir, o Corvo preenche os padrões do Simples a partir de `company_nfe_settings`, e cada item pode sobrescrever:
+  - ICMS: grupo `ICMSSN102`, com `orig` e `CSOSN` 102 ou 400.
+  - PIS e COFINS: grupos `PISOutr`/`COFINSOutr` com **CST 49** ("outras operações de saída"), base, alíquota e valor zerados.
+    - Por que 49 e não 99: o 49 é o código específico de saída. No Simples, PIS e COFINS são recolhidos no DAS, e a nota não tem débito próprio. O 99 ("outras operações") é genérico e serve também para entrada.
+    - **[verificar com contador]** e **[verificar no spike]** se os grupos e o CST são aceitos com valores zerados.
+  - Sem IPI.
+  - "Não calcular imposto" continua valendo: nenhuma alíquota ou base é calculada além dos grupos zerados que o layout exige.
+- **Destinatário**: exige documento, nome e endereço completo com código IBGE. `indIEDest` é 1, 2 ou 9; quando é 1, a IE é obrigatória. O destinatário fica salvo no diretório de clientes que já existe.
+- **Resposta**: `202 { data: { id, status: 'queued' } }`. O resultado chega por webhook e por `GET /v1/nfe/{id}` (polling).
+- **Dry-run**: `POST /v1/nfe/validate` é síncrono e devolve `200` (válido) ou `422` (com a lista de problemas).
 
 Em homologação, o `dest/xNome` precisa ser o texto fixo "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL". O Corvo troca o nome sozinho **[não verificado; regra conhecida do MOC]**.
 
@@ -311,7 +373,24 @@ denied, cancelled, discarded: finais
 ```
 
 - **Denegada**: o número foi usado e o XML denegado é guardado. Não dá para cancelar. Não cobra.
-- **Rejeitada**: o número não foi usado na SEFAZ. O cliente corrige e reenvia com o mesmo número, ou descarta. O número descartado entra numa lista "a inutilizar"; o usuário pode inutilizar a faixa com um clique. **[não verificado: confirmar no MOC que o número de uma nota rejeitada pode ser reaproveitado]**
+- **Rejeitada** (cStat de rejeição, nem autorizada nem denegada): o cliente corrige e reenvia (decisão do orquestrador).
+  - O documento **mantém o mesmo `nNF`** em todas as correções.
+  - Cada nova tentativa ganha um **`cNF` novo e, portanto, uma chave nova**, além de um XML assinado novo. O `attempt` sobe e a chave antiga fica no histórico de eventos. **[verificar no spike/MOC]**
+  - Se o cliente desistir, vai para `discarded`.
+- **Numeração** (decisão do orquestrador): ela nunca volta. Todo número que termina sem nota autorizada ou denegada (descartado ou abandonado) precisa ser inutilizado.
+  - Um job diário lista as lacunas por empresa e série. A API e a tela oferecem "inutilizar faixa".
+  - Na Fase 1, nada é inutilizado automaticamente.
+
+**Eventos** (decisão do orquestrador). Cada evento tem a própria máquina de estados:
+
+```
+CC-e / cancelamento:  pending → registered | rejected
+                      pending --timeout--> pending_check → registered | rejected | pending (reenvia o mesmo XML)
+Inutilização:         pending → homologada | rejected   (timeout: consulta e reenvia o mesmo pedido)
+```
+
+- O `nSeqEvento` é reservado com trava de linha no documento (`SELECT … FOR UPDATE` em `nfe_documents`), na mesma transação que cria o evento `pending`. Duas CC-e simultâneas nunca pegam o mesmo número.
+- Conciliação de eventos: consultar a NF-e pela chave (`NfeConsultaProtocolo4`), que devolve também os eventos registrados. **[verificar no spike]** se SP e SVRS devolvem `procEventoNFe` na consulta.
 
 ### 8.4 Chave de acesso
 
@@ -321,11 +400,13 @@ O `cNF` sai aleatório de `crypto.randomInt` e nunca é igual ao `nNF`. A rejei�
 
 A chave é **calculada e gravada antes do envio**. É isso que torna a conciliação simples.
 
+Para não sobrar número órfão se o processo cair, a reserva do número e a gravação do rascunho (número, `cNF`, chave e XML assinado) acontecem **numa única transação** no banco: ou os dois ficam, ou nenhum fica (decisão do orquestrador). A assinatura é local e rápida, então pode rodar dentro da transação. O envio à SEFAZ só acontece depois do commit.
+
 ### 8.5 Operações
 
-- **Validar** (`POST /v1/nfe/validate`): monta o XML com o número de prévia (sem reservar) e uma `Signature` só estrutural, e roda o XSD e a cadeia de validadores. Devolve a lista de problemas, mais o XML de prévia se pedido. Não chama a SEFAZ, não cobra, não grava.
-- **Emitir** (`POST /v1/nfe`, idempotente por `Idempotency-Key`):
-  1. Grava `queued` e reserva o crédito. Um job do outbox numera, monta, assina e **grava a chave e o XML assinado**.
+- **Validar** (`POST /v1/nfe/validate`, síncrono, `200` ou `422`): monta o XML com o número de prévia (sem reservar) e uma `Signature` só estrutural, e roda o XSD e a cadeia de validadores. Devolve a lista de problemas, mais o XML de prévia se pedido. Não chama a SEFAZ, não cobra, não grava.
+- **Emitir** (`POST /v1/nfe`, `Idempotency-Key` obrigatório, responde `202`):
+  1. Grava `queued` e reserva o crédito (seção 7, item 2). Um job do outbox numera, monta, assina e **grava a chave e o XML assinado** na mesma transação (seção 8.4).
   2. Envia com `indSinc=1` e uma nota por lote.
   3. Se a SEFAZ responder 103 (lote recebido), consulta o recibo até ter o resultado.
   4. cStat 100: autoriza, monta o `nfeProc` (NFe + protRetorno) e guarda.
@@ -339,7 +420,7 @@ A chave é **calculada e gravada antes do envio**. É isso que torna a concilia�
   - As tentativas automáticas seguem o mesmo `reconciliationDelayMs` (2, 4, 8, 16 e 30 min) e depois caem em revisão manual, como na NFS-e.
 - **Cancelar** (`POST /v1/nfe/{id}/cancel`): justificativa de 15 a 255 caracteres. Evento 110111 com `nProt`. O prazo legal padrão é de 24h **[não verificado; depende da UF]**. Fora do prazo, o Corvo mostra a rejeição da SEFAZ como ela vier, sem bloquear antes.
 - **CC-e** (`POST /v1/nfe/{id}/corrections`): evento 110110 com `nSeqEvento` incremental. A correção mais recente substitui as anteriores. Limites conhecidos: até 20 por nota, mínimo de 15 caracteres **[não verificado]**. O texto de `xCondUso` vai fixo no builder.
-- **Inutilizar** (`POST /v1/nfe/inutilizations`): empresa, série, faixa e justificativa. O Corvo recusa a faixa se houver nota não rejeitada nela.
+- **Inutilizar** (`POST /v1/nfe/inutilizations`): empresa, série, faixa e justificativa. O Corvo recusa a faixa se houver nela um documento que ainda não esteja em `discarded`. `GET /v1/nfe/number-gaps` lista as lacunas encontradas pelo job diário.
 - **Arquivos**: `GET /v1/nfe/{id}/xml` (o `nfeProc`), `GET /v1/nfe/{id}/pdf` (DANFE), `GET /v1/nfe/{id}/events` e `POST /v1/nfe/{id}/download-url`, reusando as URLs assinadas.
 
 ### 8.6 API, MCP e telas
@@ -348,7 +429,7 @@ A chave é **calculada e gravada antes do envio**. É isso que torna a concilia�
   - Os novos `operationId`s entram em `public-operations.ts` com a tag `NF-e`: `nfe_validate`, `nfe_create`, `nfe_list`, `nfe_get`, `nfe_sync`, `nfe_cancel`, `nfe_correct`, `nfe_xml`, `nfe_pdf`, `nfe_events`, `nfe_downloadUrl`, `nfeInutilizations_create`, `nfeInutilizations_list`.
   - `/v1/invoices` não muda.
 - **Ferramentas MCP**: `nfe_validate`, `nfe_issue`, `nfe_get`, `nfe_list`, `nfe_query` (consulta SEFAZ), `nfe_cancel`, `nfe_correct`, `nfe_inutilize`, `nfe_get_download_url`. Respeitam a flag e as permissões.
-- **Web**: uma seção "NF-e" no painel (lista, detalhe com linha do tempo de eventos e formulário de emissão com itens). A visão geral lê da `fiscal_documents_v`.
+- **Web**: uma seção "NF-e" no painel, com lista própria, detalhe com linha do tempo de eventos, formulário de emissão com itens e a tela "lacunas a inutilizar". A visão geral atual continua só com NFS-e.
 - **Conectores de venda** ficam fora da Fase 1. O `NormalizedOperation.items` já existe; com um mapa produto → NCM/CFOP/CSOSN, a regra do conector poderá escolher "NF-e" (Fase 2).
 
 ### 8.7 Tipos de erro
@@ -375,13 +456,32 @@ O `@nfewizard/danfe` (GPL-3.0) serve de referência de layout. Fixtures de PDF s
 - O job carrega o `companyId` e busca o certificado na hora.
 - O mTLS usa o PFX direto no `https.Agent` mais a cadeia ICP-Brasil versionada.
 - Logs levam chave, cStat, UF e duração; nunca o XML inteiro (traz CPF do destinatário, por causa da LGPD). Um teste "no-leak", como `certificate-upload.no-leak.spec.ts`, cobre o SOAP.
-- XSD: os schemas oficiais (pacote PL vigente) ficam versionados em `schemas/`. A validação usa uma implementação sem módulo nativo; candidata: `xmllint-wasm` **[não verificado: avaliar no spike]**.
+- XSD: os schemas oficiais (pacote PL vigente) ficam versionados em `schemas/`. O validador é o `xmllint-wasm`, sem módulo nativo; o plano B é o `libxmljs2` (nativo). A escolha sai do spike (decisão do orquestrador). **[verificar no spike]**
+- Cadeia ICP-Brasil: o arquivo da cadeia é atualizado por um script (`scripts/update-icp-brasil-chain.sh`), e o `docs/fiscal/fiscal-dates.json` ganha um lembrete periódico para rodar o script (decisão do orquestrador).
 - Fuso: `dhEmi` sai com o offset da UF do emitente. A SVRS cobre UFs com -04:00 e -05:00. A tabela de offset fica junto da de endpoints.
 
-## 9. Testes
+## 9. Plano e testes
+
+### 9.0 Spike primeiro (2 a 3 dias, decisão do orquestrador)
+
+Antes de qualquer outra parte da Fase 1, provar contra a homologação de SP e de uma UF da SVRS:
+- SOAP 1.2 com mTLS usando o A1 e a cadeia ICP-Brasil;
+- XML-DSig aceito pela SEFAZ;
+- XSD validado com o `xmllint-wasm` (ou o plano B);
+- `NfeStatusServico4` respondendo e uma autorização de ponta a ponta.
+
+O spike também responde aos itens marcados **[verificar no spike]**: reaproveitar o `nNF` com chave nova, grupos PIS/COFINS zerados, eventos na consulta e cStat de denegação. Se o spike falhar, a escolha da biblioteca (seção 5.1) é reaberta antes de seguir.
+
+### 9.1 Testes
 
 1. **Unidade**: chave e DV (casos conhecidos), `cNF` diferente de `nNF`, cada grupo do builder com fixture, validadores, máquina de estados e tabela de cStat.
-2. **Contrato** (seção 6.7): contra o simulado e o real com SOAP falso.
+2. **Contrato** (seção 6.7): contra o simulado e o real com SOAP falso. O `FakeNfeGateway` escolhe o cenário por um marcador no pedido (por exemplo, o `code` do primeiro item):
+   - 100: autorizado;
+   - 302: denegado;
+   - rejeições comuns, como 225 (falha no schema), 539 (duplicidade com chave diferente) e 778 (NCM inválido) **[verificar no spike: códigos]**;
+   - timeout depois do envio, com resultado desconhecido;
+   - 204: duplicidade (a consulta devolve a autorizada);
+   - 108: serviço paralisado.
 3. **XSD no CI**: toda fixture de saída (NF-e, eventos, inutilização) passa no schema oficial. O CI falha se o XML sair do schema.
 4. **Integração Postgres**: numeração concorrente (dois jobs nunca pegam o mesmo número), RLS e idempotência.
 5. **Roteiro manual de homologação** (`docs/runbooks/nfe-homologacao.md`, na Fase 1):
@@ -410,9 +510,8 @@ O `@nfewizard/danfe` (GPL-3.0) serve de referência de layout. Fixtures de PDF s
 
 ## 12. Perguntas em aberto (só o dono responde)
 
-1. Qual empresa com IE vai homologar em SP? A sua de Ourinhos tem IE e vende mercadoria? E para a SVRS, existe alguma empresa parceira?
-2. Quem entra no beta (flag `nfe_enabled`) e a partir de quando: só você, ou alguns clientes já em homologação?
-3. Confirma a regra "cobra só a NF-e autorizada; eventos, inutilização, rejeição e denegação não cobram"?
+1. Qual empresa com IE vai homologar em SP? A sua de Ourinhos tem IE e vende mercadoria? E para a SVRS, existe alguma empresa parceira numa UF atendida por ela?
+2. Quando começa o beta (flag `nfe_enabled`) e quem participa: só você, ou alguns clientes já em homologação?
 
 ## 13. Fases seguintes (resumo)
 
