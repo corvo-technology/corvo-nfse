@@ -545,7 +545,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
         'What `GET /invoices?type=all` shows of each document. Read the whole document with `GET /invoices/{id}`.',
     },
   ),
-  NfeDownloadUrl: obj({
+  NfeDownloadLink: obj({
     downloadUrl: str({ format: 'uri' }),
     expiresAt: dateTime(),
     fileName: str(),

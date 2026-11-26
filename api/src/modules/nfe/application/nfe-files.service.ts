@@ -8,7 +8,11 @@ import {
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import type { NfeDocument } from '../domain/nfe-document';
 import { INfeDocumentRepository } from '../domain/nfe-document.repository';
-import { nfeDocumentsNotReady, nfeNotFound } from './nfe-errors';
+import {
+  nfeDocumentsNotReady,
+  nfeDownloadFormatInvalid,
+  nfeNotFound,
+} from './nfe-errors';
 import { DANFE_FILE, NFE_PROC_FILE } from './nfe-files';
 
 export type NfeFileFormat = 'xml' | 'pdf';
@@ -71,6 +75,8 @@ export class NfeFilesService {
     environment: ExecutionEnvironment,
     format: NfeFileFormat,
   ): Promise<SignedDocumentUrl> {
+    // The HTTP pipe validates the body; this keeps a bad format from reaching the storage.
+    if (!Object.hasOwn(STORED, format)) throw nfeDownloadFormatInvalid();
     const { doc, ref } = await this.ready(id, tenantId, environment);
     return this.storage.getFileSignedUrl(ref, STORED[format], {
       downloadName: this.fileName(doc, format),

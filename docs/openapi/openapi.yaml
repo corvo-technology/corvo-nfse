@@ -4776,6 +4776,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
         '429':
           $ref: '#/components/responses/Error429'
         '500':
@@ -5195,6 +5197,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
         '429':
           $ref: '#/components/responses/Error429'
         '500':
