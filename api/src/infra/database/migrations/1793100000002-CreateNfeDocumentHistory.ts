@@ -21,7 +21,7 @@ export class CreateNfeDocumentHistory1793100000002 implements MigrationInterface
       attempt integer NOT NULL DEFAULT 0,
       c_stat varchar(10) NULL,
       x_motivo text NULL,
-      created_at timestamptz NOT NULL DEFAULT now(),
+      created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
       CONSTRAINT fk_nfe_document_history_document FOREIGN KEY (document_id, tenant_id) REFERENCES ${s}.nfe_documents(id, tenant_id) ON DELETE CASCADE
     )`);
     await runner.query(
