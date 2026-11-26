@@ -27,6 +27,7 @@ import { ImportModule } from '@/modules/import/import.module';
 import { IntegrationsModule } from '@/modules/integrations/integrations.module';
 import { WooviConnectorModule } from '@/modules/integrations/connectors/woovi/woovi.module';
 import { AbacatePayConnectorModule } from '@/modules/integrations/connectors/abacatepay/abacatepay.module';
+import { PushinPayConnectorModule } from '@/modules/integrations/connectors/pushinpay/pushinpay.module';
 import { PublicConfigModule } from '@/modules/public-config/public-config.module';
 import { McpModule } from '@/modules/mcp/mcp.module';
 import { PlatformAdminModule } from '@/modules/platform-admin/platform-admin.module';
@@ -63,6 +64,7 @@ import { SentryModule } from '@/infra/observability/sentry.module';
     IntegrationsModule,
     WooviConnectorModule,
     AbacatePayConnectorModule,
+    PushinPayConnectorModule,
     McpModule,
     PlatformAdminModule,
     PublicConfigModule,

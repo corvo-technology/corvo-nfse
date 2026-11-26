@@ -6,6 +6,7 @@ import { EventProcessorScheduler } from './modules/integrations/jobs/event-proce
 import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { WooviConnectorModule } from './modules/integrations/connectors/woovi/woovi.module';
 import { AbacatePayConnectorModule } from './modules/integrations/connectors/abacatepay/abacatepay.module';
+import { PushinPayConnectorModule } from './modules/integrations/connectors/pushinpay/pushinpay.module';
 
 function importedModules(moduleClass: object): unknown[] {
   const imports =
@@ -40,6 +41,13 @@ describe('runtime wiring', () => {
     expect(importedModules(AppModule)).toContain(AbacatePayConnectorModule);
     expect(importedModules(WorkerAppModule)).toContain(
       AbacatePayConnectorModule,
+    );
+  });
+
+  it('loads the PushinPay connector in both processes', () => {
+    expect(importedModules(AppModule)).toContain(PushinPayConnectorModule);
+    expect(importedModules(WorkerAppModule)).toContain(
+      PushinPayConnectorModule,
     );
   });
 });

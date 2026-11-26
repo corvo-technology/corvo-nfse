@@ -24,8 +24,8 @@ interface ConnectFlowProps {
 
 type Step = "platform" | "details" | "done";
 
-export function providerDescriptionKey(id: string): "woovi" | "abacatepay" | "other" {
-  return id === "woovi" || id === "abacatepay" ? id : "other";
+export function providerDescriptionKey(id: string): "woovi" | "abacatepay" | "pushinpay" | "other" {
+  return id === "woovi" || id === "abacatepay" || id === "pushinpay" ? id : "other";
 }
 
 export function ConnectFlow({ providers, companies, environment, initialProvider }: ConnectFlowProps) {

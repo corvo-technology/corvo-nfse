@@ -15,6 +15,7 @@
     "integration": {
       "woovi": "Pix sale (Woovi)",
       "abacatepay": "Sale (AbacatePay)",
+      "pushinpay": "Sale (PushinPay)",
       "generic": "Integration sale"
     }
   },
@@ -2912,6 +2913,7 @@
     "providers": {
       "woovi": "Pix charges paid on Woovi.",
       "abacatepay": "Checkout and payments paid on AbacatePay.",
+      "pushinpay": "Pix, boleto and recurring Pix paid on PushinPay.",
       "other": "Confirmed payments."
     },
     "status": {

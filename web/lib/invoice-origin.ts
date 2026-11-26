@@ -7,13 +7,13 @@ export type InvoiceOriginKind = (typeof INVOICE_ORIGINS)[number];
 export interface InvoiceOrigin {
   kind: InvoiceOriginKind;
   /** Integrations only: the platform the sale came from, when the reference tells. */
-  provider?: "woovi" | "abacatepay";
+  provider?: "woovi" | "abacatepay" | "pushinpay";
   /** Integrations only: the short id of the charge. */
   charge?: string;
 }
 
-/** The reference an integration writes is `<kind>:<id>`; `charge` is Woovi, the others AbacatePay. */
-const PROVIDER_BY_REFERENCE: Record<string, "woovi" | "abacatepay"> = { charge: "woovi", checkout: "abacatepay", transparent: "abacatepay" };
+/** The reference an integration writes is `<kind>:<id>`; `charge` is Woovi, `pushinpay` is PushinPay, the others AbacatePay. */
+const PROVIDER_BY_REFERENCE: Record<string, "woovi" | "abacatepay" | "pushinpay"> = { charge: "woovi", checkout: "abacatepay", transparent: "abacatepay", pushinpay: "pushinpay" };
 
 const shortId = (id: string) => (id.length > 12 ? id.slice(0, 8) : id);
 
