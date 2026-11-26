@@ -495,6 +495,8 @@ export function createNfeStack(
     messages,
     row,
     dispatch,
+    /** The settings every company of this stack answers with: a test changes `defaultSeries`. */
+    settings,
     company,
     /** Accepts a request and runs the emit message, like the relay would. */
     async issue(
