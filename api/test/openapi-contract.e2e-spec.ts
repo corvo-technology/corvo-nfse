@@ -1065,6 +1065,186 @@ describe('OpenAPI contract against the real API (e2e)', () => {
     });
   });
 
+  describe('nfe events', () => {
+    const accessKeyOf = (n: number) =>
+      `3526111234567800019555001${String(n + 500).padStart(9, '0')}1234567810`.slice(
+        0,
+        44,
+      );
+    const body = (extra: string) => ({
+      companyId,
+      recipient: {
+        taxId: '123.456.789-09',
+        name: 'Maria da Silva',
+        indIeDest: 9,
+        address: {
+          street: 'Rua das Flores',
+          number: '10',
+          district: 'Centro',
+          zip: '01001-000',
+          cityCode: '3550308',
+          city: 'São Paulo',
+          state: 'SP',
+        },
+      },
+      items: [
+        {
+          code: 'SKU1',
+          description: 'Produto de teste',
+          ncm: '61091000',
+          cfop: '5102',
+          unit: 'UN',
+          quantity: 2,
+          unitPrice: 10,
+        },
+      ],
+      payments: [{ tPag: '17', amount: 20 }],
+      additionalInfo: extra,
+    });
+    /** An NF-e the SEFAZ authorized, as the worker would have left it (the simulator is not asked). */
+    const authorized = async (label: string, n: number) => {
+      const created = await call('POST /nfe', {
+        body: body(label),
+        headers: { 'Idempotency-Key': `e2e-events-${label}` },
+        status: 202,
+      });
+      const id = created.body.data.id as string;
+      await dataSource.query(
+        `UPDATE "${schema}".nfe_documents
+            SET status = 'authorized', series = 1, number = $2, access_key = $3, protocol = '135260000000001',
+                signed_xml = '<NFe/>', issued_at = now(), authorized_at = now()
+          WHERE id = $1`,
+        [id, 900 + n, accessKeyOf(n)],
+      );
+      return id;
+    };
+
+    it('cancels, corrects, lists the timeline, inutilizes a range and lists the gaps', async () => {
+      // Cancellation: the justification is checked, then the NF-e is cancelling and cannot be cancelled twice.
+      const toCancel = await authorized('cancel', 1);
+      const short = await call('POST /nfe/{id}/cancel', {
+        path: `/nfe/${toCancel}/cancel`,
+        body: { justification: 'curta' },
+        status: 422,
+      });
+      expect(short.body.code).toBe('ERROR_JUSTIFICATION_LENGTH');
+      const cancelled = await call('POST /nfe/{id}/cancel', {
+        path: `/nfe/${toCancel}/cancel`,
+        body: {
+          justification: 'Pedido cancelado pelo cliente antes da entrega',
+        },
+        status: 202,
+      });
+      expect(cancelled.body.data).toMatchObject({
+        id: toCancel,
+        status: 'cancelling',
+        cancelReason: 'Pedido cancelado pelo cliente antes da entrega',
+      });
+      const twice = await call('POST /nfe/{id}/cancel', {
+        path: `/nfe/${toCancel}/cancel`,
+        body: {
+          justification: 'Pedido cancelado pelo cliente antes da entrega',
+        },
+        status: 409,
+      });
+      expect(twice.body.code).toBe('ERROR_NFE_INVALID_STATE');
+
+      // Correction letters: each takes the next sequence.
+      const toCorrect = await authorized('correct', 2);
+      const tooShort = await call('POST /nfe/{id}/corrections', {
+        path: `/nfe/${toCorrect}/corrections`,
+        body: { correction: 'curta' },
+        status: 422,
+      });
+      expect(tooShort.body.code).toBe('ERROR_CORRECTION_LENGTH');
+      const first = await call('POST /nfe/{id}/corrections', {
+        path: `/nfe/${toCorrect}/corrections`,
+        body: { correction: 'Corrigir o endereço de entrega da observação' },
+        status: 202,
+      });
+      expect(first.body.data).toMatchObject({
+        sequence: 1,
+        status: 'pending',
+        type: 'correction',
+      });
+      const second = await call('POST /nfe/{id}/corrections', {
+        path: `/nfe/${toCorrect}/corrections`,
+        body: { correction: 'Corrigir também a informação adicional' },
+        status: 202,
+      });
+      expect(second.body.data.sequence).toBe(2);
+      const timeline = await call('GET /nfe/{id}/events', {
+        path: `/nfe/${toCorrect}/events`,
+        status: 200,
+      });
+      expect(
+        timeline.body.data
+          .filter((e: { kind: string }) => e.kind === 'event')
+          .map((e: { sequence: number }) => e.sequence),
+      ).toEqual([1, 2]);
+
+      // Inutilization: bad range, a free range, the same key again, an overlap, the list.
+      const inut = {
+        companyId,
+        series: 7,
+        start: 10,
+        end: 12,
+        justification: 'Numeração pulada por falha do sistema emissor',
+      };
+      const inverted = await call('POST /nfe/inutilizations', {
+        body: { ...inut, start: 12, end: 10 },
+        status: 422,
+      });
+      expect(inverted.body.code).toBe('ERROR_INUTILIZATION_RANGE_INVALID');
+      const accepted = await call('POST /nfe/inutilizations', {
+        body: inut,
+        headers: { 'Idempotency-Key': 'e2e-inut-1' },
+        status: 202,
+      });
+      expect(accepted.body.data).toMatchObject({
+        status: 'pending',
+        series: 7,
+        start: 10,
+        end: 12,
+      });
+      const replayed = await call('POST /nfe/inutilizations', {
+        body: inut,
+        headers: { 'Idempotency-Key': 'e2e-inut-1' },
+        status: 200,
+      });
+      expect(replayed.body.data).toMatchObject({
+        id: accepted.body.data.id,
+        replayed: true,
+      });
+      const overlap = await call('POST /nfe/inutilizations', {
+        body: { ...inut, start: 12, end: 15 },
+        status: 409,
+      });
+      expect(overlap.body.code).toBe('ERROR_INUTILIZATION_RANGE_OVERLAP');
+      const inUse = await call('POST /nfe/inutilizations', {
+        body: { ...inut, series: 1, start: 901, end: 901 },
+        status: 409,
+      });
+      expect(inUse.body.code).toBe('ERROR_INUTILIZATION_RANGE_IN_USE');
+      const inutList = await call('GET /nfe/inutilizations', {
+        query: { companyId, status: 'pending' },
+        status: 200,
+      });
+      expect(inutList.body.data.map((i: { id: string }) => i.id)).toContain(
+        accepted.body.data.id,
+      );
+
+      // Gaps: the range voided by the request above (still pending) is a gap until the SEFAZ approves it.
+      const gaps = await call('GET /nfe/number-gaps', {
+        query: { companyId },
+        status: 200,
+      });
+      expect(gaps.body.data).toEqual(
+        expect.arrayContaining([{ companyId, series: 7, start: 1, end: 12 }]),
+      );
+    });
+  });
+
   it('covers every operation, except the ones that need an outside service or a payment event', () => {
     // These need a live Woovi/AbacatePay event, a delivery to a real URL or an outbound e-mail.
     // Their controllers return plain objects (wrapped in { data } by the interceptor) and are

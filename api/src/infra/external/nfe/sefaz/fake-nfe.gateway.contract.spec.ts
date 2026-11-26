@@ -191,9 +191,9 @@ describe('FakeNfeGateway scenarios', () => {
       kind: 'ok',
       value: { status: 'cancelled', cStat: '101' },
     });
-    expect((consulted as { value: NfeConsultResult }).value.events).toEqual([
-      expect.objectContaining({ tpEvento: '110111', nSeq: 1 }),
-    ]);
+    expect(
+      (consulted as unknown as { value: NfeConsultResult }).value.events,
+    ).toEqual([expect.objectContaining({ tpEvento: '110111', nSeq: 1 })]);
     expect(await gateway.cancel.cancel(request, ctx)).toMatchObject({
       kind: 'rejected',
       code: '573',
@@ -217,7 +217,7 @@ describe('FakeNfeGateway scenarios', () => {
     ).toEqual({ kind: 'uncertain', reason: 'timeout' });
     const consulted = await gateway.consult.consultByKey(doc.accessKey, ctx);
     expect(
-      (consulted as { value: NfeConsultResult }).value.events,
+      (consulted as unknown as { value: NfeConsultResult }).value.events,
     ).toHaveLength(1);
   });
 

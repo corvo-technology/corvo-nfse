@@ -46,6 +46,8 @@ export function toNfeResponse(doc: NfeDocument) {
     protocol: s.protocol,
     cStat: s.cStat,
     xMotivo: s.xMotivo,
+    cancelReason: s.cancelReason,
+    cancelRequestedAt: s.cancelRequestedAt,
     natOp: s.natOp,
     recipient: s.recipient,
     items: s.items.map((item) => ({

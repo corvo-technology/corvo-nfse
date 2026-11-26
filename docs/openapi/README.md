@@ -182,10 +182,16 @@ Where each part lives:
 | **NF-e** | | | | |
 | `companies_getNfeSettings` | GET | `/companies/{id}/nfe-settings` | 0.2.0 | Get the NF-e settings of the company |
 | `companies_updateNfeSettings` | PUT | `/companies/{id}/nfe-settings` | 0.2.0 | Set the NF-e settings of the company |
+| `nfeInutilizations_create` | POST | `/nfe/inutilizations` | 0.2.0 | Inutilize a range of NF-e numbers |
+| `nfeInutilizations_list` | GET | `/nfe/inutilizations` | 0.2.0 | List NF-e inutilizations |
+| `nfe_cancel` | POST | `/nfe/{id}/cancel` | 0.2.0 | Cancel an authorized NF-e |
+| `nfe_correct` | POST | `/nfe/{id}/corrections` | 0.2.0 | Send a correction letter (CC-e) |
 | `nfe_create` | POST | `/nfe` | 0.2.0 | Issue an NF-e |
 | `nfe_discard` | POST | `/nfe/{id}/discard` | 0.2.0 | Give up a rejected NF-e |
+| `nfe_events` | GET | `/nfe/{id}/events` | 0.2.0 | The timeline of an NF-e |
 | `nfe_get` | GET | `/nfe/{id}` | 0.2.0 | Get an NF-e |
 | `nfe_list` | GET | `/nfe` | 0.2.0 | List NF-e |
+| `nfe_numberGaps` | GET | `/nfe/number-gaps` | 0.2.0 | List the numbering gaps |
 | `nfe_resubmit` | PUT | `/nfe/{id}` | 0.2.0 | Correct and send a rejected NF-e again |
 | `nfe_sync` | POST | `/nfe/{id}/sync` | 0.2.0 | Ask the SEFAZ about the NF-e by its key |
 | `nfe_validate` | POST | `/nfe/validate` | 0.2.0 | Validate an NF-e without sending it |

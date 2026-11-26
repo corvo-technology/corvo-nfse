@@ -451,6 +451,10 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     },
     additionalInfo: nullable(str()),
     externalId: nullable(str()),
+    cancelReason: nullable(
+      str({ description: 'The justification of the cancellation asked for.' }),
+    ),
+    cancelRequestedAt: nullable(dateTime()),
     attempt: int({
       description:
         'How many times the XML was built and signed (1 on the first send).',
@@ -463,6 +467,83 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     ),
     createdAt: dateTime(),
     updatedAt: dateTime(),
+  }),
+  NfeEvent: obj({
+    id: uuid(),
+    documentId: uuid(),
+    type: str({ enum: ['cancellation', 'correction'] }),
+    tpEvento: str({
+      enum: ['110111', '110110'],
+      description: '110111 cancellation, 110110 correction letter (CC-e).',
+    }),
+    sequence: int({
+      description:
+        '`nSeqEvento`: always 1 for a cancellation; the n-th letter for a correction (at most 20).',
+    }),
+    status: str({
+      enum: ['pending', 'pending_check', 'registered', 'rejected'],
+      description:
+        '`pending_check`: the SEFAZ did not answer; Corvo checks by the key and does not send another.',
+    }),
+    text: nullable(
+      str({ description: 'The justification or the correction.' }),
+    ),
+    protocol: nullable(str()),
+    cStat: nullable(str()),
+    xMotivo: nullable(str({ description: 'The SEFAZ reason, as it came.' })),
+    createdAt: dateTime(),
+    updatedAt: dateTime(),
+  }),
+  NfeTimelineEntry: obj({
+    kind: str({
+      enum: ['status', 'event'],
+      description:
+        '`status`: the NF-e moved to `status`. `event`: a cancellation or correction letter, in its own `status`.',
+    }),
+    at: dateTime(),
+    status: str(),
+    from: nullable(str()),
+    tpEvento: nullable(str()),
+    sequence: nullable(int()),
+    eventId: nullable(uuid()),
+    cStat: nullable(str()),
+    xMotivo: nullable(str()),
+  }),
+  NfeInutilization: obj(
+    {
+      id: uuid(),
+      companyId: uuid(),
+      environment: str({ enum: ['test', 'live'] }),
+      model: int({ enum: [55] }),
+      series: int(),
+      start: int(),
+      end: int(),
+      justification: str(),
+      status: str({
+        enum: ['pending', 'homologada', 'rejected'],
+        description:
+          '`homologada`: the SEFAZ voided the range. `rejected`: it refused, and the range is free for a new request.',
+      }),
+      protocol: nullable(str()),
+      cStat: nullable(str()),
+      xMotivo: nullable(str()),
+      createdAt: dateTime(),
+      updatedAt: dateTime(),
+      replayed: bool({
+        enum: [true],
+        description:
+          'Present when the same `Idempotency-Key` with the same body had already created this request.',
+      }),
+    },
+    ['replayed'],
+  ),
+  NfeNumberGap: obj({
+    companyId: uuid(),
+    series: int(),
+    start: int(),
+    end: int({
+      description: 'Inclusive: a single number has `start` = `end`.',
+    }),
   }),
   DpsSequence: obj({
     series: str({ example: '00001' }),

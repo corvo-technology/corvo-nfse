@@ -467,6 +467,61 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     ok: { 200: data(ref('Nfe')) },
     errors: [409],
   },
+  'POST /nfe/{id}/cancel': {
+    id: 'nfe_cancel',
+    tag: 'NF-e',
+    summary: 'Cancel an authorized NF-e',
+    description:
+      'Only for an NF-e in `authorized`. The body is the justification (15 to 255 characters, `422 JUSTIFICATION_LENGTH`). Answers `202` with the NF-e in `cancelling`; the SEFAZ answer comes by webhook (`nfe.document.cancelled`, or `nfe.document.cancellation_rejected` with the reason as the SEFAZ wrote it, and the NF-e goes back to `authorized`) and in `GET /nfe/{id}/events`. If the SEFAZ does not answer, the event stays `pending_check` and Corvo checks by the key; the same signed request is the only one ever sent. The legal deadline depends on the state: past it, the SEFAZ rejection is shown as it comes. **Cancelling does not give the credit back** (the NF-e was authorized). Any other state answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.manage`.',
+    ok: { 202: data(ref('Nfe')) },
+    errors: [409, 422],
+  },
+  'POST /nfe/{id}/corrections': {
+    id: 'nfe_correct',
+    tag: 'NF-e',
+    summary: 'Send a correction letter (CC-e)',
+    description:
+      'Only for an NF-e in `authorized`. The body is the correction (15 to 1000 characters, `422 CORRECTION_LENGTH`); it cannot change values, taxes, the parties or the dates. Each letter takes the next `sequence` (`nSeqEvento`), even if two arrive at once; the 21st answers `422 CORRECTION_LIMIT_REACHED`. Answers `202` with the event in `pending`; the result comes by webhook (`nfe.document.corrected`) and in `GET /nfe/{id}/events`. The newest letter replaces the earlier ones. A letter costs no credit and does not change the state of the NF-e. Any other state answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.manage`.',
+    ok: { 202: data(ref('NfeEvent')) },
+    errors: [409, 422],
+  },
+  'GET /nfe/{id}/events': {
+    id: 'nfe_events',
+    tag: 'NF-e',
+    summary: 'The timeline of an NF-e',
+    description:
+      'The states the NF-e went through and its fiscal events (cancellation and correction letters), oldest first. An entry with `kind` `event` has its own `status` (`pending`, `pending_check`, `registered`, `rejected`).\n\nPermission: `nfe.documents.view`.',
+    ok: { 200: list(ref('NfeTimelineEntry')) },
+  },
+  'POST /nfe/inutilizations': {
+    id: 'nfeInutilizations_create',
+    tag: 'NF-e',
+    summary: 'Inutilize a range of NF-e numbers',
+    idempotent: true,
+    description:
+      'Voids the numbers `start` to `end` of a series that will never be used (the numbers of an NF-e that was `discarded`, or skipped). Answers `202` with the request in `pending`; the result comes by webhook (`nfe.inutilization.completed` or `nfe.inutilization.rejected`) and in `GET /nfe/inutilizations`. The range is refused with `409 INUTILIZATION_RANGE_IN_USE` when an NF-e that is not `discarded` holds a number in it, and with `409 INUTILIZATION_RANGE_OVERLAP` when another request, waiting or approved, covers part of it. A range that goes past the last number used raises the numbering to `end`, so the numbers voided are never emitted. The justification has 15 to 255 characters (`422 JUSTIFICATION_LENGTH`). `Idempotency-Key` is optional: repeating it with the same body answers `200` with `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.\n\nPermission: `nfe.documents.manage`.',
+    ok: {
+      200: data(ref('NfeInutilization')),
+      202: data(ref('NfeInutilization')),
+    },
+    errors: [400, 409, 422],
+  },
+  'GET /nfe/inutilizations': {
+    id: 'nfeInutilizations_list',
+    tag: 'NF-e',
+    summary: 'List NF-e inutilizations',
+    description:
+      'The inutilization requests of the environment of the key, newest first. Filter by `companyId` and `status`.\n\nPermission: `nfe.documents.view`.',
+    ok: { 200: page(ref('NfeInutilization')) },
+  },
+  'GET /nfe/number-gaps': {
+    id: 'nfe_numberGaps',
+    tag: 'NF-e',
+    summary: 'List the numbering gaps',
+    description:
+      'The numbers, from 1 to the last one used, that no NF-e holds (anything but `discarded`) and no approved inutilization covers, grouped in runs per company and series. It is computed when asked. A daily job only writes them to the log: nothing is inutilized by itself.\n\nPermission: `nfe.documents.view`.',
+    ok: { 200: list(ref('NfeNumberGap')) },
+  },
   'GET /companies/{id}/dps-sequence': {
     id: 'dpsSequence_get',
     tag: 'Companies',

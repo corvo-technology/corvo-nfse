@@ -112,7 +112,7 @@ Preencha depois de rodar (data, UF, resultado). Itens que dependem de PRs futuro
 | 4 | cStat da autorização (esperado 100) | PENDENTE | PENDENTE |
 | 5 | `PISOutr` e `COFINSOutr` com CST 49 zerados são aceitos? | PENDENTE | PENDENTE |
 | 6 | Mesmo `nNF` com `cNF` novo é aceito depois de uma rejeição? (rode com `NFE_SPIKE_SCENARIO=reject-ncm` e depois sem, com o mesmo `NFE_SPIKE_NUMBER`) | PENDENTE | PENDENTE |
-| 7 | A consulta pela chave devolve `procEventoNFe`? | [pendente: PR4/PR5] | [pendente: PR4/PR5] |
+| 7 | A consulta pela chave devolve `procEventoNFe`? (o PR 5 já usa essa resposta para conciliar eventos; o roteiro está no runbook) | [pendente: rodar o runbook do PR5] | [pendente: rodar o runbook do PR5] |
 | 8 | Quais cStat de denegação aparecem na prática? | [pendente: PR4/PR5] | [pendente: PR4/PR5] |
 | 9 | Regra do dígito verificador da chave com CNPJ alfanumérico | [pendente: PR4/PR5] | [pendente: PR4/PR5] |
 | 10 | As URLs de `endpoints.ts` respondem como esperado? | PENDENTE | PENDENTE |
