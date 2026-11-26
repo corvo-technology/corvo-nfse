@@ -7,7 +7,7 @@ export function ideGroup(ctx: BuildContext): XmlNode {
     cUF: ctx.cUF,
     cNF: ctx.cNF,
     natOp: draft.natOp,
-    mod: 55,
+    mod: draft.model,
     serie: ctx.series,
     nNF: ctx.number,
     dhEmi: ctx.dhEmi,

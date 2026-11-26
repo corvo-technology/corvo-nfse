@@ -31,4 +31,11 @@ export type XmlValue = string | number | XmlNode | XmlNode[] | undefined;
 export const HOMOLOGATION_RECIPIENT_NAME =
   'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL';
 
+/**
+ * Text of the first item of a NFC-e in homologation (`tpAmb` 2), instead of its description
+ * (rejection 373) [verificar na homologação]. Only the XML changes; the stored item does not.
+ */
+export const NFCE_HOMOLOGATION_ITEM_DESCRIPTION =
+  'NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL';
+
 export const NFE_NAMESPACE = 'http://www.portalfiscal.inf.br/nfe';

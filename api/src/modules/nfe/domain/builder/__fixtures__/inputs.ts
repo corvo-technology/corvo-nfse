@@ -1,3 +1,4 @@
+import type { NfceInput } from '@/modules/nfce/domain/nfce-input';
 import type { NfeInput } from '../../nfe-input';
 import { inputFixture } from '../../../testing/draft-fixture';
 
@@ -89,4 +90,57 @@ export const ALL_FIXTURES: Record<string, NfeInput> = {
   interestadual: INTERESTADUAL,
   'cpf-consumidor-final': CPF_CONSUMIDOR_FINAL,
   'texto-especial': TEXTO_ESPECIAL,
+};
+
+const NFCE_BASE: NfceInput = {
+  companyId: '00000000-0000-4000-8000-000000000001',
+  items: [{ ...inputFixture().items[0], code: 'SKU1' }],
+  payments: [{ tPag: '17', amount: 20 }],
+};
+
+/** The NFC-e request shapes: anonymous, with a CPF, paid by card and for delivery. */
+export const NFCE_ANONIMA: NfceInput = NFCE_BASE;
+
+export const NFCE_COM_CPF: NfceInput = {
+  ...NFCE_BASE,
+  recipient: { taxId: '123.456.789-09', name: 'Maria da Silva' },
+  items: [
+    NFCE_BASE.items[0],
+    { ...NFCE_BASE.items[0], code: 'SKU2', description: 'Segundo produto' },
+  ],
+  payments: [{ tPag: '01', amount: 50 }],
+  change: 10,
+};
+
+export const NFCE_CARTAO: NfceInput = {
+  ...NFCE_BASE,
+  payments: [
+    {
+      tPag: '03',
+      amount: 20,
+      card: {
+        tpIntegra: 1,
+        cnpj: '11222333000181',
+        tBand: '01',
+        cAut: 'A1B2C3',
+      },
+    },
+  ],
+};
+
+export const NFCE_ENTREGA: NfceInput = {
+  ...NFCE_BASE,
+  indPres: 4,
+  recipient: {
+    taxId: '123.456.789-09',
+    name: 'Maria da Silva',
+    address: inputFixture().recipient.address,
+  },
+};
+
+export const ALL_NFCE_FIXTURES: Record<string, NfceInput> = {
+  'nfce-anonima': NFCE_ANONIMA,
+  'nfce-com-cpf': NFCE_COM_CPF,
+  'nfce-cartao': NFCE_CARTAO,
+  'nfce-entrega': NFCE_ENTREGA,
 };

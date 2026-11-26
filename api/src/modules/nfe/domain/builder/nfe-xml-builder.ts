@@ -88,7 +88,7 @@ export class NfeXmlBuilder {
       cUF,
       issuedAt: dhEmi,
       cnpj: draft.issuer.cnpj,
-      model: 55,
+      model: draft.model,
       series,
       number,
       tpEmis: 1,
