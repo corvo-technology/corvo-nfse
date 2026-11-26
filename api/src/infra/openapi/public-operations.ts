@@ -180,6 +180,8 @@ export const TAGS: Record<string, string> = {
   'Credits and billing': 'Notes available, plan, usage and credit history.',
   Integrations:
     'Payment-platform connections that issue an invoice for each paid sale.',
+  'NF-e':
+    'NF-e (modelo 55, only in the homologation environment while the release is limited): company settings, issuing and queries.',
   Health: 'Service status.',
 };
 
@@ -363,6 +365,21 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     tag: 'Companies',
     description: 'Soft-deletes the company. Issued invoices are kept.',
     ok: { 200: nothing },
+  },
+  'GET /companies/{id}/nfe-settings': {
+    id: 'companies_getNfeSettings',
+    tag: 'NF-e',
+    description:
+      'The NF-e settings of the company (state registration, CRT, default series and Simples tax defaults) and `missing`, the list of what the company still lacks to issue an NF-e. Answers 404 while NF-e is not released for the workspace.\n\nPermission: `nfe.documents.view`.',
+    ok: { 200: data(ref('NfeSettings')) },
+  },
+  'PUT /companies/{id}/nfe-settings': {
+    id: 'companies_updateNfeSettings',
+    tag: 'NF-e',
+    description:
+      'Sets the NF-e settings of the company. The state registration is validated for the state of the company (422 `STATE_REGISTRATION_INVALID`). Fields left out take their defaults. Answers 404 while NF-e is not released for the workspace.\n\nPermission: `nfe.documents.manage`.',
+    ok: { 200: data(ref('NfeSettings')) },
+    errors: [422],
   },
   'GET /companies/{id}/dps-sequence': {
     id: 'dpsSequence_get',

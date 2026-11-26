@@ -89,6 +89,10 @@ tags:
     name: Credits and billing
   - description: Payment-platform connections that issue an invoice for each paid sale.
     name: Integrations
+  - description: >-
+      NF-e (modelo 55, only in the homologation environment while the release is limited): company
+      settings, issuing and queries.
+    name: NF-e
   - description: Service status.
     name: Health
 externalDocs:
@@ -1718,6 +1722,133 @@ paths:
         - Companies
       x-required-permissions:
         - nfse.companies.manage
+  /companies/{id}/nfe-settings:
+    get:
+      description: >-
+        The NF-e settings of the company (state registration, CRT, default series and Simples tax
+        defaults) and `missing`, the list of what the company still lacks to issue an NF-e. Answers
+        404 while NF-e is not released for the workspace.
+
+
+        Permission: `nfe.documents.view`.
+
+
+        Permission: `nfe.documents.view`.
+      operationId: companies_getNfeSettings
+      parameters:
+        - description: Identifier (UUID) of the company.
+          in: path
+          name: id
+          required: true
+          schema:
+            format: uuid
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NfeSettings'
+                required:
+                  - data
+                type: object
+          description: OK
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security:
+        - ApiKeyAuth: []
+      summary: Get the NF-e settings of the company
+      tags:
+        - NF-e
+      x-required-permissions:
+        - nfe.documents.view
+    put:
+      description: >-
+        Sets the NF-e settings of the company. The state registration is validated for the state of
+        the company (422 `STATE_REGISTRATION_INVALID`). Fields left out take their defaults. Answers
+        404 while NF-e is not released for the workspace.
+
+
+        Permission: `nfe.documents.manage`.
+
+
+        Permission: `nfe.documents.manage`.
+      operationId: companies_updateNfeSettings
+      parameters:
+        - description: Identifier (UUID) of the company.
+          in: path
+          name: id
+          required: true
+          schema:
+            format: uuid
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCompanyNfeSettings'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NfeSettings'
+                required:
+                  - data
+                type: object
+          description: OK
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security:
+        - ApiKeyAuth: []
+      summary: Set the NF-e settings of the company
+      tags:
+        - NF-e
+      x-required-permissions:
+        - nfe.documents.manage
   /companies/{id}/service-tax-profiles:
     get:
       description: >-
@@ -8904,6 +9035,75 @@ components:
         - checkedAt
         - agreementType
       type: object
+    NfeSettings:
+      properties:
+        companyId:
+          format: uuid
+          type: string
+        crt:
+          description: 1 Simples Nacional, 4 MEI.
+          enum:
+            - 1
+            - 4
+            - null
+          nullable: true
+          type: integer
+        defaultCofinsCst:
+          example: '49'
+          type: string
+        defaultCsosn:
+          enum:
+            - '102'
+            - '400'
+          type: string
+        defaultNatOp:
+          example: Venda de mercadoria
+          type: string
+        defaultOrigin:
+          maximum: 8
+          minimum: 0
+          type: integer
+        defaultPisCst:
+          example: '49'
+          type: string
+        defaultSeries:
+          maximum: 999
+          minimum: 0
+          type: integer
+        enabledAt:
+          format: date-time
+          nullable: true
+          type: string
+        missing:
+          items:
+            enum:
+              - address_street
+              - address_number
+              - address_district
+              - address_zip
+              - address_city_code
+              - address_state
+              - state_registration
+              - crt
+            type: string
+          type: array
+        stateRegistration:
+          example: '110042490114'
+          nullable: true
+          type: string
+      required:
+        - companyId
+        - stateRegistration
+        - crt
+        - defaultSeries
+        - defaultNatOp
+        - defaultCsosn
+        - defaultOrigin
+        - defaultPisCst
+        - defaultCofinsCst
+        - enabledAt
+        - missing
+      type: object
     Obligation:
       properties:
         missingFields:
@@ -9773,6 +9973,65 @@ components:
         tradeName:
           maxLength: 200
           type: string
+      type: object
+    UpdateCompanyNfeSettings:
+      properties:
+        crt:
+          description: 'Tax regime code (CRT): 1 Simples Nacional, 4 Simples Nacional MEI.'
+          enum:
+            - 1
+            - 4
+          type: number
+        defaultCofinsCst:
+          default: '49'
+          description: Default COFINS CST (zeroed group, Simples Nacional).
+          enum:
+            - '49'
+          pattern: ^49$
+          type: string
+        defaultCsosn:
+          default: '102'
+          description: Default CSOSN of the items (Simples Nacional, no credit).
+          enum:
+            - '102'
+            - '400'
+          type: string
+        defaultNatOp:
+          default: Venda de mercadoria
+          description: Nature of the operation used when the NF-e does not send one.
+          maxLength: 60
+          minLength: 1
+          type: string
+        defaultOrigin:
+          default: 0
+          description: Default origin of the goods.
+          maximum: 8
+          minimum: 0
+          type: number
+        defaultPisCst:
+          default: '49'
+          description: Default PIS CST (zeroed group, Simples Nacional).
+          enum:
+            - '49'
+          pattern: ^49$
+          type: string
+        defaultSeries:
+          default: 1
+          description: Series used by default on new NF-e.
+          maximum: 999
+          minimum: 0
+          type: number
+        stateRegistration:
+          description: >-
+            State registration (IE) of the company, digits (dots and dashes are accepted). Validated
+            for the state of the company; `ISENTO` is not valid for an issuer.
+          example: '110042490114'
+          maxLength: 18
+          minLength: 8
+          type: string
+      required:
+        - stateRegistration
+        - crt
       type: object
     UpdateCredentials:
       properties:

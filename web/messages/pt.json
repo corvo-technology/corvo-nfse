@@ -2111,6 +2111,7 @@
     "insufficient_credits": "Você está sem notas disponíveis. Compre mais notas para emitir.",
     "company_not_ready": "Complete o cadastro fiscal da empresa antes de emitir.",
     "company_not_found": "Empresa não encontrada.",
+    "state_registration_invalid": "A inscrição estadual não é válida para o estado da empresa. Confira o número e o estado.",
     "accountant_email_invalid": "Informe um e-mail válido para o contador.",
     "package_month_invalid": "Informe o mês no formato AAAA-MM.",
     "package_include_invalid": "Escolha xml, pdf ou os dois.",

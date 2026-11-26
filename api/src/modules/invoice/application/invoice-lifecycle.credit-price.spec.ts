@@ -36,7 +36,7 @@ function build(priceOf?: jest.Mock) {
     save: jest.fn().mockResolvedValue(undefined),
   };
   const service = new InvoiceLifecycleService(
-    { execute: <T>(work: () => Promise<T>) => work() } as never,
+    { execute: <T>(work: () => Promise<T>) => work() },
     { delete: jest.fn() } as never,
     {
       reserve: jest.fn().mockResolvedValue('period-1'),
@@ -50,7 +50,7 @@ function build(priceOf?: jest.Mock) {
     { publishBestEffort: jest.fn() } as never,
     undefined,
     undefined,
-    priceOf ? ({ priceOf } as never) : undefined,
+    priceOf ? { priceOf } : undefined,
   );
   return { service, credits, invoices };
 }

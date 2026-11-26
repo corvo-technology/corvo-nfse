@@ -313,6 +313,34 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     catalogVersion: nullable(str()),
     createdAt: dateTime(),
   }),
+  NfeSettings: obj({
+    companyId: uuid(),
+    stateRegistration: nullable(str({ example: '110042490114' })),
+    crt: nullable(
+      int({ enum: [1, 4], description: '1 Simples Nacional, 4 MEI.' }),
+    ),
+    defaultSeries: int({ minimum: 0, maximum: 999 }),
+    defaultNatOp: str({ example: 'Venda de mercadoria' }),
+    defaultCsosn: str({ enum: ['102', '400'] }),
+    defaultOrigin: int({ minimum: 0, maximum: 8 }),
+    defaultPisCst: str({ example: '49' }),
+    defaultCofinsCst: str({ example: '49' }),
+    enabledAt: nullable(dateTime()),
+    missing: array(
+      str({
+        enum: [
+          'address_street',
+          'address_number',
+          'address_district',
+          'address_zip',
+          'address_city_code',
+          'address_state',
+          'state_registration',
+          'crt',
+        ],
+      }),
+    ),
+  }),
   DpsSequence: obj({
     series: str({ example: '00001' }),
     lastNumber: int({

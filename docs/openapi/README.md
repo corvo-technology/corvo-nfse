@@ -179,6 +179,9 @@ Where each part lives:
 | `integrationOperations_completeCustomer` | PATCH | `/integrations/operations/{id}/customer` | 0.3.0 | Fill in the customer of an operation waiting for it |
 | `integrationOperations_retry` | POST | `/integrations/operations/{id}/retry` | 0.3.0 | Try to issue the invoice of an operation again |
 | `integrations_listProviders` | GET | `/integrations/providers` | 0.3.0 | List the payment platforms Corvo can connect to |
+| **NF-e** | | | | |
+| `companies_getNfeSettings` | GET | `/companies/{id}/nfe-settings` | 0.2.0 | Get the NF-e settings of the company |
+| `companies_updateNfeSettings` | PUT | `/companies/{id}/nfe-settings` | 0.2.0 | Set the NF-e settings of the company |
 | **Health** | | | | |
 | `health_live` | GET | `/health/live` | 0.3.0 | Liveness check |
 

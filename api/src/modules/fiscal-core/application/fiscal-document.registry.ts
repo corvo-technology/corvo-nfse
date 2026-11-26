@@ -13,16 +13,13 @@ export class FiscalDocumentRegistry {
   register<D>(gateway: FiscalDocumentGateway<D>): void {
     if (this.gateways.has(gateway.type))
       throw new Error(`Fiscal gateway already registered for ${gateway.type}`);
-    this.gateways.set(
-      gateway.type,
-      gateway as unknown as FiscalDocumentGateway<unknown>,
-    );
+    this.gateways.set(gateway.type, gateway);
   }
 
   get<D>(type: DocumentType): FiscalDocumentGateway<D> {
     const gateway = this.gateways.get(type);
     if (!gateway) throw new Error(`No fiscal gateway registered for ${type}`);
-    return gateway as unknown as FiscalDocumentGateway<D>;
+    return gateway;
   }
 
   has(type: DocumentType): boolean {

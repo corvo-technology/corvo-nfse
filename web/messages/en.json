@@ -2111,6 +2111,7 @@
     "insufficient_credits": "You have no notes left. Buy more notes to issue.",
     "company_not_ready": "Complete the company's tax setup before issuing.",
     "company_not_found": "Company not found.",
+    "state_registration_invalid": "The state registration (IE) is not valid for the company's state. Check the number and the state.",
     "accountant_email_invalid": "Enter a valid e-mail for the accountant.",
     "package_month_invalid": "Enter the month as YYYY-MM.",
     "package_include_invalid": "Choose xml, pdf or both.",
