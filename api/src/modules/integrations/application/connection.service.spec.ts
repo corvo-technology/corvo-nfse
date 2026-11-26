@@ -306,24 +306,22 @@ describe('ConnectionService with a choice field', () => {
           key: 'mode',
           label: 'Mode',
           secret: false,
-          choices: [
-            { value: 'total', label: 'Total' },
-            { value: 'share', label: 'Share' },
-          ],
+          optional: true,
+          options: ['total', 'mine'],
         },
       ],
     },
   };
 
-  it('uses the first choice when none is sent, and keeps a valid one', async () => {
+  it('leaves an optional field out when none is sent, and keeps a valid one', async () => {
     const { service } = setup(withChoice);
     const base = await service.create(TENANT, input);
-    expect(service.toView(base).credentials.mode).toBe('total');
+    expect(service.toView(base).credentials.mode).toBeUndefined();
     const picked = await service.create(TENANT, {
       ...input,
-      credentials: { appId: 'abc', mode: 'share' },
+      credentials: { appId: 'abc', mode: 'mine' },
     });
-    expect(service.toView(picked).credentials.mode).toBe('share');
+    expect(service.toView(picked).credentials.mode).toBe('mine');
   });
 
   it('rejects a value that is not offered, on create and on update', async () => {
@@ -339,8 +337,8 @@ describe('ConnectionService with a choice field', () => {
       service.updateCredentials(TENANT, c.id, { mode: 'half' }),
     ).rejects.toThrow(BadRequestException);
     const updated = await service.updateCredentials(TENANT, c.id, {
-      mode: 'share',
+      mode: 'mine',
     });
-    expect(service.toView(updated).credentials.mode).toBe('share');
+    expect(service.toView(updated).credentials.mode).toBe('mine');
   });
 });

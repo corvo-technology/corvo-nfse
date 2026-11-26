@@ -224,7 +224,7 @@ describe('HotmartConnector.normalize', () => {
   });
 
   describe('option "minha parte"', () => {
-    const share = connection('share');
+    const share = connection('mine');
     it('takes out coproducer and affiliate, keeps the producer', async () => {
       const op = await normalize(fixture('purchase-approved'), share);
       // 97.90 - 10.00 - 15.50
@@ -313,7 +313,7 @@ describe('HotmartConnector manifest and connection', () => {
     });
     const option = fields.find((f) => f.key === 'invoiceValue');
     expect(option?.secret).toBe(false);
-    expect(option?.choices?.map((c) => c.value)).toEqual(['total', 'share']);
+    expect(option?.options).toEqual(['total', 'mine']);
   });
   it('names the account from the URL secret, so a new hottok keeps the same id', async () => {
     const a = await connector.validateConnection(

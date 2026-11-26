@@ -2918,13 +2918,6 @@
       "hotmart": "Compras de produtos digitais pagas na Hotmart.",
       "other": "Pagamentos confirmados."
     },
-    "choices": {
-      "invoiceValue": {
-        "label": "Valor da nota",
-        "total": "Total pago pelo comprador",
-        "share": "Minha parte (total menos coprodutor e afiliado)"
-      }
-    },
     "status": {
       "active": "Ativa",
       "paused": "Pausada",
@@ -2941,6 +2934,15 @@
       "companyPlaceholder": "Escolha a empresa",
       "noCompanies": "Cadastre uma empresa antes de conectar.",
       "sendEmail": "Enviar a nota por e-mail ao cliente",
+      "fields": {
+        "invoiceValue": "Valor da nota"
+      },
+      "options": {
+        "invoiceValue": {
+          "total": "Total pago pelo comprador (padrão)",
+          "mine": "Minha parte da venda"
+        }
+      },
       "back": "Voltar",
       "connect": "Conectar",
       "connecting": "Conectando...",

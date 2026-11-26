@@ -26,7 +26,7 @@ const EVENT_STATE: Record<string, CommercialState> = {
 const BRAZILIAN_DOCUMENT_TYPES = new Set(['CPF', 'CNPJ']);
 /** What the producer does not keep, for the "minha parte" option. */
 const SHARED_SOURCES = new Set(['COPRODUCER', 'AFFILIATE']);
-const SHARE_OPTION = 'share';
+const SHARE_OPTION = 'mine';
 
 interface Money {
   value?: unknown;
@@ -125,13 +125,8 @@ export class HotmartConnector implements Connector {
         key: 'invoiceValue',
         label: 'Valor da nota',
         secret: false,
-        choices: [
-          { value: 'total', label: 'Total pago pelo comprador' },
-          {
-            value: SHARE_OPTION,
-            label: 'Minha parte (total menos coprodutor e afiliado)',
-          },
-        ],
+        optional: true,
+        options: ['total', SHARE_OPTION],
       },
     ],
     webhookInstructions: {

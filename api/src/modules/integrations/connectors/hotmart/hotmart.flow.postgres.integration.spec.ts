@@ -267,7 +267,7 @@ describePostgres('Hotmart connector through the real pipeline', () => {
 
   it('"minha parte" issues the total minus coproducer and affiliate', async () => {
     const { publicId, webhookSecret } = await activeConnection({
-      invoiceValue: 'share',
+      invoiceValue: 'mine',
     });
     await receiver.receive(
       publicId,

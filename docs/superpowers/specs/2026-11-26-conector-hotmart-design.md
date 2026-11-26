@@ -14,9 +14,9 @@ Webhook 2.0: envelope `id`, `creation_date` (ms), `event`, `version`, `data`. N�
 
 - `hottok` (secreto): colado pelo cliente.
 - `webhookSecret` (secreto, gerado, na URL): segredo da conexão.
-- `invoiceValue` (opção, não secreta): "Valor da nota". `total` (padrão) ou `share` ("minha parte").
+- `invoiceValue` (opção, não secreta): "Valor da nota". `total` (padrão) ou `mine` ("minha parte").
 
-Os dois segredos são obrigatórios, comparados em tempo constante. Sem `hottok` correto ou sem segredo da URL: 401. A opção `invoiceValue` fica junto das credenciais (já cifradas e editáveis pela tela), sem tabela nova; é o único campo com `choices` no manifesto (extensão aditiva). `externalAccountId` = digest do `webhookSecret` (estável; a Hotmart não identifica a conta).
+Os dois segredos são obrigatórios, comparados em tempo constante. Sem `hottok` correto ou sem segredo da URL: 401. A opção `invoiceValue` fica junto das credenciais (já cifradas e editáveis pela tela), sem tabela nova; é o único campo com `optional` e `options` no manifesto (mesmo mecanismo do conector Kiwify). `externalAccountId` = digest do `webhookSecret` (estável; a Hotmart não identifica a conta).
 
 ## Quando emite
 
@@ -31,7 +31,7 @@ Não conferimos o CNPJ do produtor (`producer.document`) com o da empresa conect
 
 ## Valor
 
-`total`: `full_price.value`. `share`: total menos comissões `COPRODUCER` e `AFFILIATE` (`commissions` aceito como lista ou objeto). Sem comissões legíveis, moeda diferente ou resultado <= 0: o evento vai para atenção (dados a completar) e não emite.
+`total`: `full_price.value`. `mine`: total menos comissões `COPRODUCER` e `AFFILIATE` (`commissions` aceito como lista ou objeto). Sem comissões legíveis, moeda diferente ou resultado <= 0: o evento vai para atenção (dados a completar) e não emite.
 
 ## Eventos de saída
 

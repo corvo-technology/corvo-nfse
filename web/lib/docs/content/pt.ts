@@ -2832,13 +2832,13 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
         {
           kind: "list",
           items: [
-            "Credenciais: `hottok`, o token do webhook da sua conta Hotmart, e a opção `invoiceValue` (\"Valor da nota\": `total` ou `share`). A Corvo gera o `webhookSecret` e exibe o endereço completo do webhook ao criar a conexão. Copie e guarde esse endereço.",
+            "Credenciais: `hottok`, o token do webhook da sua conta Hotmart, e a opção `invoiceValue` (\"Valor da nota\": `total` ou `mine`). A Corvo gera o `webhookSecret` e exibe o endereço completo do webhook ao criar a conexão. Copie e guarde esse endereço.",
             "Passo a passo: (1) em Ferramentas > Webhook, cadastre o `webhookUrl` para todos os produtos, com os eventos de compra aprovada, compra completa, reembolso, chargeback e protesto; (2) copie o `hottok` e cole na Corvo; (3) envie um teste pela Hotmart.",
             "A Hotmart não assina o webhook: a Corvo confere o cabeçalho `X-HOTMART-HOTTOK` e o segredo da conexão no endereço, os dois em tempo constante. Eventos que a Corvo não trata recebem resposta de sucesso e são ignorados, para a Hotmart não desativar o webhook.",
             "Cada compra paga vira uma nota, identificada por `hotmart:<transaction>`. `PURCHASE_APPROVED` e `PURCHASE_COMPLETE` são a mesma venda e nunca geram nota dobrada. Em assinatura, cada cobrança tem a sua `transaction` e gera uma nota.",
             "Só emite quando `invoice_by` é `SELLER`. Se a Hotmart emite a nota (`HOTMART` ou `business_model` `R`), a venda fica bloqueada com `seller_not_issuer`. Avisos de afiliado, sem comprador e sem preço, são ignorados.",
             "Só BRL. Comprador estrangeiro, ou documento que não seja CPF/CNPJ, vai para completar dados (`customer_tax_id_missing`): a Corvo não emite sozinha para estrangeiros. O CPF/CNPJ só chega se o checkout pedir esse dado.",
-            "Valor da nota: `total` usa o valor pago (`full_price`); `share` (\"minha parte\") desconta as comissões de coprodutor e afiliado. Se as comissões não vierem no aviso, a venda vai para atenção e não emite.",
+            "Valor da nota: `total` usa o valor pago (`full_price`); `mine` (\"minha parte\") desconta as comissões de coprodutor e afiliado. Se as comissões não vierem no aviso, a venda vai para atenção e não emite.",
             "Reembolso (`PURCHASE_REFUNDED`) e chargeback (`PURCHASE_CHARGEBACK`) cancelam a nota só se a regra tiver o cancelamento automático ligado; reembolso parcial é ignorado. Protesto (`PURCHASE_PROTEST`) só sinaliza a venda, sem cancelar.",
             "A Hotmart não informa o ambiente no aviso: vale o ambiente escolhido na conexão. Os campos dos avisos ainda precisam ser confirmados com um aviso real.",
           ],

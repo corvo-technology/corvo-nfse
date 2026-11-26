@@ -24,7 +24,7 @@ vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ success: mocks.succ
 const woovi = { id: "woovi", name: "Woovi", version: "1", credentialFields: [{ key: "webhookToken", label: "Webhook token (Authorization header)", secret: true, generate: true, revealOnce: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on Woovi." }, supportedFlows: [] };
 const abacate = { id: "abacatepay", name: "AbacatePay", version: "1", credentialFields: [{ key: "apiKey", label: "AbacatePay API key", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on AbacatePay." }, supportedFlows: [] };
 const stripe = { id: "stripe", name: "Stripe", version: "1", credentialFields: [{ key: "apiKey", label: "Stripe restricted key", secret: true }, { key: "webhookSigningSecret", label: "Webhook signing secret", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Add a webhook endpoint on Stripe." }, supportedFlows: ["charge"] };
-const hotmart = { id: "hotmart", name: "Hotmart", version: "1", credentialFields: [{ key: "hottok", label: "Hotmart hottok", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, choices: [{ value: "total", label: "Total" }, { value: "share", label: "Minha parte" }] }], webhookInstructions: { pt: "pt", en: "Add the webhook on Hotmart, paste your hottok and send a test." }, supportedFlows: ["purchase"] };
+const hotmart = { id: "hotmart", name: "Hotmart", version: "1", credentialFields: [{ key: "hottok", label: "Hotmart hottok", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Add the webhook on Hotmart, paste your hottok and send a test." }, supportedFlows: ["purchase"] };
 const company = { id: "co1", legalName: "Acme Ltda", tradeName: "Acme" };
 const connection = (over: Record<string, unknown> = {}) => ({ id: "c1", provider: "woovi", environment: "test", companyId: "co1", state: "active", externalAccountId: "acc", activeFrom: null, webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB", createdAt: "2026-10-29T12:00:00Z", ...over });
 const sale = (over: Record<string, unknown> = {}) => ({ id: "s1", operationKey: "charge:1", commercialState: "paid", fiscalStatus: "submitted", blockReason: null, amountCents: 4990, currency: "BRL", customer: { name: "Maria", email: null, taxId: "52998224725", taxIdMasked: false }, paidAt: "2026-10-29T15:00:00Z", invoiceId: "inv1", createdAt: "2026-10-29T15:00:00Z", updatedAt: "2026-10-29T15:00:00Z", ...over });
@@ -318,10 +318,10 @@ describe("Connect page", () => {
     expect(button.disabled).toBe(true);
     fireEvent.change(screen.getByLabelText(/Hotmart hottok/), { target: { value: "fake-hottok" } });
     expect(button.disabled).toBe(false);
-    fireEvent.change(option, { target: { value: "share" } });
+    fireEvent.change(option, { target: { value: "mine" } });
     fireEvent.click(button);
     await screen.findByText("Connected!");
-    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "hotmart", credentials: { hottok: "fake-hottok", invoiceValue: "share" } }));
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "hotmart", credentials: { hottok: "fake-hottok", invoiceValue: "mine" } }));
     expect(screen.getByText(/webhookSecret=S3/)).toBeTruthy();
     expect(screen.getByText("Add the webhook on Hotmart, paste your hottok and send a test.")).toBeTruthy();
   });

@@ -76,18 +76,14 @@ export class ConnectionService {
     const credentials: Record<string, string> = {};
     for (const field of manifest.credentialFields) {
       const value = input.credentials[field.key];
-      if (
-        field.choices &&
-        value &&
-        !field.choices.some((choice) => choice.value === value)
-      )
-        throw new BadRequestException({
-          code: 'INTEGRATION_CREDENTIAL_INVALID',
-          message: `Invalid value for credential field: ${field.key}`,
-        });
-      if (value) credentials[field.key] = value;
-      else if (field.choices?.length)
-        credentials[field.key] = field.choices[0].value;
+      if (value) {
+        if (field.options && !field.options.includes(value))
+          throw new BadRequestException({
+            code: 'INTEGRATION_CREDENTIAL_INVALID',
+            message: `Invalid value for ${field.key}`,
+          });
+        credentials[field.key] = value;
+      } else if (field.optional) continue;
       else if (field.generate)
         credentials[field.key] = randomBytes(24).toString('base64url');
       else
@@ -186,11 +182,9 @@ export class ConnectionService {
     }
     for (const field of connector.manifest.credentialFields)
       if (
-        field.choices &&
+        field.options &&
         keys.includes(field.key) &&
-        !field.choices.some(
-          (choice) => choice.value === changes[field.key].trim(),
-        )
+        !field.options.includes(changes[field.key].trim())
       )
         throw new BadRequestException({
           code: 'INTEGRATION_CREDENTIAL_INVALID',

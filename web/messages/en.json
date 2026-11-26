@@ -2918,13 +2918,6 @@
       "hotmart": "Digital product purchases paid on Hotmart.",
       "other": "Confirmed payments."
     },
-    "choices": {
-      "invoiceValue": {
-        "label": "Invoice amount",
-        "total": "Total paid by the buyer",
-        "share": "My share (total minus coproducer and affiliate)"
-      }
-    },
     "status": {
       "active": "Active",
       "paused": "Paused",
@@ -2941,6 +2934,15 @@
       "companyPlaceholder": "Choose the company",
       "noCompanies": "Register a company before connecting.",
       "sendEmail": "Email the invoice to the customer",
+      "fields": {
+        "invoiceValue": "Invoice amount"
+      },
+      "options": {
+        "invoiceValue": {
+          "total": "Total paid by the buyer (default)",
+          "mine": "My share of the sale"
+        }
+      },
       "back": "Back",
       "connect": "Connect",
       "connecting": "Connecting...",

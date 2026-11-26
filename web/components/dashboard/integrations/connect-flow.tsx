@@ -27,12 +27,6 @@ type Step = "platform" | "details" | "done";
 export function providerDescriptionKey(id: string): "woovi" | "abacatepay" | "stripe" | "hotmart" | "other" {
   return id === "woovi" || id === "abacatepay" || id === "stripe" || id === "hotmart" ? id : "other";
 }
-
-/** A setting field (not a secret) starts on its first option. */
-export function fieldValue(field: { key: string; choices?: { value: string }[] }, values: Record<string, string>): string {
-  return values[field.key] ?? field.choices?.[0]?.value ?? "";
-}
-
 export function ConnectFlow({ providers, companies, environment, initialProvider }: ConnectFlowProps) {
   const router = useRouter();
   const backToList = () => router.push("/app/integrations");
@@ -54,7 +48,7 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
 
   const provider = providers.find((p) => p.id === providerId) ?? null;
   const askedFields = provider?.credentialFields.filter((field) => !field.generate) ?? [];
-  const ready = Boolean(provider && companyId && askedFields.every((field) => fieldValue(field, credentials).trim()));
+  const ready = Boolean(provider && companyId && askedFields.every((field) => field.optional || (credentials[field.key] ?? "").trim()));
 
   async function submit() {
     if (!provider || !ready) return;
@@ -65,7 +59,10 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
         provider: provider.id,
         companyId,
         environment,
-        credentials: Object.fromEntries(askedFields.map((field) => [field.key, fieldValue(field, credentials).trim()])),
+        credentials: Object.fromEntries(askedFields.flatMap((field) => {
+          const value = (credentials[field.key] ?? field.options?.[0] ?? "").trim();
+          return value ? [[field.key, value] as const] : [];
+        })),
         sendEmail,
       });
       setWebhookUrl(result.webhookUrl);
@@ -126,11 +123,11 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
               )}
             </Field>
           )}
-          {askedFields.map((field) => field.choices ? (
-            <Field key={field.key} label={t.has(`choices.${field.key}.label`) ? t(`choices.${field.key}.label`) : field.label}>
+          {askedFields.map((field) => field.options ? (
+            <Field key={field.key} label={t.has(`wizard.fields.${field.key}`) ? t(`wizard.fields.${field.key}`) : field.label}>
               {(control) => (
-                <select {...control} className="field" value={fieldValue(field, credentials)} onChange={(e) => setCredentials({ ...credentials, [field.key]: e.target.value })}>
-                  {field.choices!.map((choice) => <option key={choice.value} value={choice.value}>{t.has(`choices.${field.key}.${choice.value}`) ? t(`choices.${field.key}.${choice.value}`) : choice.label}</option>)}
+                <select {...control} className="field" value={credentials[field.key] ?? field.options?.[0] ?? ""} onChange={(e) => setCredentials({ ...credentials, [field.key]: e.target.value })}>
+                  {field.options?.map((option) => <option key={option} value={option}>{t.has(`wizard.options.${field.key}.${option}`) ? t(`wizard.options.${field.key}.${option}`) : option}</option>)}
                 </select>
               )}
             </Field>

@@ -84,11 +84,10 @@ export interface CredentialField {
   inWebhookUrl?: boolean;
   /** Shown to the client only in the creation response, to paste into the platform (not part of the URL). */
   revealOnce?: boolean;
-  /**
-   * A setting, not a secret: the client picks one of these values. The first is the default,
-   * used when the client sends none.
-   */
-  choices?: Array<{ value: string; label: string }>;
+  /** The client may leave it empty (an optional setting, not a credential). */
+  optional?: boolean;
+  /** The allowed values, when the field is a choice; the first is the default. */
+  options?: string[];
 }
 
 export interface ConnectorManifest {
