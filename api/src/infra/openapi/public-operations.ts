@@ -517,7 +517,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     summary: 'Get a signed download URL for the NF-e XML or DANFE',
     description:
       'A short-lived signed URL for the `xml` (the `nfeProc`) or the `pdf` (the DANFE), to hand to a browser or another service without sharing the API key. The response is never cached. Before the documents are ready, `409 DOCUMENTS_NOT_READY`.\n\nPermission: `nfe.documents.view`.',
-    ok: { 200: data(ref('NfeDownloadUrl')) },
+    ok: { 200: data(ref('NfeDownloadLink')) },
     errors: [409],
   },
   'POST /nfe/inutilizations': {

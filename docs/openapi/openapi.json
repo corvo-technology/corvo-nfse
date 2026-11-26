@@ -8076,7 +8076,7 @@
                 "schema": {
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/NfeDownloadUrl"
+                      "$ref": "#/components/schemas/NfeDownloadLink"
                     }
                   },
                   "required": [
@@ -14579,6 +14579,35 @@
           "cityCode",
           "city",
           "state"
+        ],
+        "type": "object"
+      },
+      "NfeDownloadLink": {
+        "properties": {
+          "downloadUrl": {
+            "format": "uri",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "enum": [
+              "application/pdf",
+              "application/xml"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "downloadUrl",
+          "expiresAt",
+          "fileName",
+          "mimeType"
         ],
         "type": "object"
       },

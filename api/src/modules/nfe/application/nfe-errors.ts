@@ -181,3 +181,11 @@ export function nfeCertificateProblem(
     type: 'configuration',
   });
 }
+
+/** 400: a download link is for `xml` or `pdf` only. */
+export function nfeDownloadFormatInvalid(): BadRequestException {
+  return new BadRequestException({
+    code: 'NFE_DOWNLOAD_FORMAT_INVALID',
+    message: 'format must be xml or pdf',
+  });
+}

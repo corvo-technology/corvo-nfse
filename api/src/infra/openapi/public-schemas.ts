@@ -480,7 +480,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     createdAt: dateTime(),
     updatedAt: dateTime(),
   }),
-  NfeDownloadUrl: obj({
+  NfeDownloadLink: obj({
     downloadUrl: str({ format: 'uri' }),
     expiresAt: dateTime(),
     fileName: str(),
