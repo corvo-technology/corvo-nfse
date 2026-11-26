@@ -63,8 +63,9 @@ export class InvoiceReviewController {
       'available is false while emission is paused because the portal stopped answering; invoices wait in the queue and are sent once it answers again.',
   })
   async portalStatus(@Req() req: RequestWithAuthContext) {
-    return data(
-      await this.portal.status(executionEnvironment(req.authContext!)),
+    const status = await this.portal.status(
+      executionEnvironment(req.authContext!),
     );
+    return data({ ...status, authorities: await this.portal.authorities() });
   }
 }

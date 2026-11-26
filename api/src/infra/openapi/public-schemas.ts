@@ -448,6 +448,19 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     }),
     since: nullable(dateTime()),
     retryAt: nullable(dateTime()),
+    authorities: array(
+      obj({
+        authority: str({
+          example: 'nfe-sp-2',
+          description:
+            'An NF-e authority and environment: `nfe-<authority>-<tpAmb>`, `tpAmb` 1 production or 2 homologation.',
+        }),
+        available: bool(),
+        since: nullable(dateTime()),
+        retryAt: nullable(dateTime()),
+      }),
+      { description: 'The NF-e authorities already used by emissions.' },
+    ),
   }),
   Certificate: obj(
     {
