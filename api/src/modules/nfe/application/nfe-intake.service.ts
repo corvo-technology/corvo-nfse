@@ -19,8 +19,22 @@ import {
   nfeIdempotencyKeyReused,
 } from './nfe-errors';
 import { emitMessage } from './nfe-messages';
-import { NfePreparation } from './nfe-preparation.service';
+import { NfePreparation, type PreparedNfe } from './nfe-preparation.service';
 import { isValidIdempotencyKey, nfeRequestHash } from './nfe-request-hash';
+import { documentTypeOf } from './nfe-transition.service';
+
+/** What `submitWith` needs to accept a document of either model. */
+export interface NfeSubmission {
+  tenantId: string;
+  environment: ExecutionEnvironment;
+  companyId: string;
+  idempotencyKey: string;
+  requestHash: string;
+  /** 55 NF-e, 65 NFC-e. */
+  model: 55 | 65;
+  /** The preconditions and the validators of the model; throws when anything is refused. */
+  prepare: () => Promise<PreparedNfe>;
+}
 
 export interface NfeSubmitted {
   id: string;
@@ -59,13 +73,38 @@ export class NfeIntakeService {
     return key;
   }
 
-  async submit(
+  /** The NF-e (model 55). */
+  submit(
     tenantId: string,
     environment: ExecutionEnvironment,
     input: NfeInput,
     idempotencyKey: string,
   ): Promise<NfeSubmitted> {
-    const requestHash = nfeRequestHash(input);
+    return this.submitWith({
+      tenantId,
+      environment,
+      companyId: input.companyId,
+      idempotencyKey,
+      requestHash: nfeRequestHash(input),
+      model: 55,
+      prepare: () => this.preparation.prepare(tenantId, environment, input),
+    });
+  }
+
+  /**
+   * The shared path: replay by `Idempotency-Key`, then the checks of the model (`prepare`), then the
+   * single transaction that writes the document, the credit and the message. The NFC-e comes in here
+   * with `model: 65` (see `NfceIntakeService`).
+   */
+  async submitWith(submission: NfeSubmission): Promise<NfeSubmitted> {
+    const {
+      tenantId,
+      environment,
+      companyId,
+      idempotencyKey,
+      requestHash,
+      model,
+    } = submission;
     const earlier = await this.documents.findByIdempotencyKey(
       idempotencyKey,
       tenantId,
@@ -73,15 +112,12 @@ export class NfeIntakeService {
     );
     if (earlier) return this.replayOrConflict(earlier, requestHash);
 
-    const { draft } = await this.preparation.prepare(
-      tenantId,
-      environment,
-      input,
-    );
+    const { draft } = await submission.prepare();
     const document = NfeDocument.create({
       tenantId,
-      companyId: input.companyId,
+      companyId,
       environment,
+      model,
       idempotencyKey,
       requestHash,
       ...contentFromDraft(draft),
@@ -98,7 +134,7 @@ export class NfeIntakeService {
           );
           if (winner) return this.replayOrConflict(winner, requestHash);
           await this.ledger.reserve({
-            type: 'nfe',
+            type: documentTypeOf(model),
             id: document.id,
             tenantId,
             environment,

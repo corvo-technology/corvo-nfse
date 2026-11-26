@@ -53,7 +53,14 @@ export class NfeFilesService {
   }
 
   private fileName(doc: NfeDocument, format: NfeFileFormat): string {
-    return `nfe-${doc.toSnapshot().number ?? doc.id}.${format}`;
+    const s = doc.toSnapshot();
+    return `${s.model === 65 ? 'nfce' : 'nfe'}-${s.number ?? doc.id}.${format}`;
+  }
+
+  /** The DANFCE (the NFC-e PDF) arrives in NFC-e 4/5: until then a NFC-e has its XML only. */
+  private assertFormat(doc: NfeDocument, format: NfeFileFormat): void {
+    if (format === 'pdf' && doc.toSnapshot().model === 65)
+      throw nfeDocumentsNotReady();
   }
 
   async read(
@@ -63,6 +70,7 @@ export class NfeFilesService {
     format: NfeFileFormat,
   ): Promise<{ body: Buffer; fileName: string }> {
     const { doc, ref } = await this.ready(id, tenantId, environment);
+    this.assertFormat(doc, format);
     return {
       body: await this.storage.getFile(ref, STORED[format]),
       fileName: this.fileName(doc, format),
@@ -78,6 +86,7 @@ export class NfeFilesService {
     // The HTTP pipe validates the body; this keeps a bad format from reaching the storage.
     if (!Object.hasOwn(STORED, format)) throw nfeDownloadFormatInvalid();
     const { doc, ref } = await this.ready(id, tenantId, environment);
+    this.assertFormat(doc, format);
     return this.storage.getFileSignedUrl(ref, STORED[format], {
       downloadName: this.fileName(doc, format),
       expiresInSeconds: URL_TTL_SECONDS,

@@ -61,6 +61,10 @@ import { NfeReconcileHandler } from '../application/nfe-reconcile.handler';
 import { NfeResubmitService } from '../application/nfe-resubmit.service';
 import { NfeSefazAccess } from '../application/nfe-sefaz-access';
 import { NfeTransitionService } from '../application/nfe-transition.service';
+import { NfceIntakeService } from '@/modules/nfce/application/nfce-intake.service';
+import { NfcePreparation } from '@/modules/nfce/application/nfce-preparation.service';
+import { NfceResubmitService } from '@/modules/nfce/application/nfce-resubmit.service';
+import type { NfceInput } from '@/modules/nfce/domain/nfce-input';
 import type { NfeInput } from '../domain/nfe-input';
 import { TypeOrmNfeDocumentRepository } from '../infra/typeorm-nfe-document.repository';
 import { TypeormNfeEvents } from '../infra/typeorm-nfe-events';
@@ -216,33 +220,12 @@ export function createNfeStack(
   );
 
   const fake = new FakeNfeGateway(() => new Date());
+  const fakeNfce = new FakeNfeGateway(() => new Date(), 'nfce');
   const hooks: GatewayHooks = {};
-  const gateway: {
+  type Gateway = {
     -readonly [
       K in keyof FiscalDocumentGateway<SignedNfe>
     ]: FiscalDocumentGateway<SignedNfe>[K];
-  } = {
-    type: 'nfe',
-    issuer: {
-      issue: async (
-        doc: SignedNfe,
-        ctx: SigningContext,
-      ): Promise<GatewayOutcome<Authorization>> => {
-        await hooks.beforeIssue?.(doc);
-        const outcome = await fake.issuer.issue(doc, ctx);
-        await hooks.afterIssue?.(doc);
-        return outcome;
-      },
-    },
-    consult: {
-      consultByKey: (
-        key: string,
-        ctx: SigningContext,
-      ): Promise<GatewayOutcome<ConsultResult>> =>
-        hooks.consult
-          ? Promise.resolve(hooks.consult(key))
-          : fake.consult.consultByKey(key, ctx),
-    },
   };
   const viaHook = <
     R extends CancelRequest | CorrectionRequest | InutilizeRequest,
@@ -254,20 +237,54 @@ export function createNfeStack(
     const answer = hooks.beforeEvent?.(kind, request);
     return answer ? Promise.resolve(answer) : call();
   };
-  gateway.cancel = {
-    cancel: (req, ctx) =>
-      viaHook('cancel', req, () => fake.cancel.cancel(req, ctx)),
-  };
-  gateway.correct = {
-    correct: (req, ctx) =>
-      viaHook('correct', req, () => fake.correct.correct(req, ctx)),
-  };
-  gateway.inutilize = {
-    inutilize: (req, ctx) =>
-      viaHook('inutilize', req, () => fake.inutilize.inutilize(req, ctx)),
+  /** The simulator of one model behind the hooks a test sets; the NFC-e has no correction letter. */
+  const gatewayOf = (
+    type: 'nfe' | 'nfce',
+    simulator: FakeNfeGateway,
+  ): Gateway => {
+    const built: Gateway = {
+      type,
+      issuer: {
+        issue: async (
+          doc: SignedNfe,
+          ctx: SigningContext,
+        ): Promise<GatewayOutcome<Authorization>> => {
+          await hooks.beforeIssue?.(doc);
+          const outcome = await simulator.issuer.issue(doc, ctx);
+          await hooks.afterIssue?.(doc);
+          return outcome;
+        },
+      },
+      consult: {
+        consultByKey: (
+          key: string,
+          ctx: SigningContext,
+        ): Promise<GatewayOutcome<ConsultResult>> =>
+          hooks.consult
+            ? Promise.resolve(hooks.consult(key))
+            : simulator.consult.consultByKey(key, ctx),
+      },
+      cancel: {
+        cancel: (req, ctx) =>
+          viaHook('cancel', req, () => simulator.cancel.cancel(req, ctx)),
+      },
+      inutilize: {
+        inutilize: (req, ctx) =>
+          viaHook('inutilize', req, () =>
+            simulator.inutilize.inutilize(req, ctx),
+          ),
+      },
+    };
+    if (type === 'nfe')
+      built.correct = {
+        correct: (req, ctx) =>
+          viaHook('correct', req, () => simulator.correct.correct(req, ctx)),
+      };
+    return built;
   };
   const registry = new FiscalDocumentRegistry();
-  registry.register(gateway);
+  registry.register(gatewayOf('nfe', fake));
+  registry.register(gatewayOf('nfce', fakeNfce));
 
   const decryptor = {
     decryptCredentials: () => {
@@ -451,6 +468,12 @@ export function createNfeStack(
     { remember: remembered } as never,
     cache as never,
   );
+  const nfcePreparation = new NfcePreparation(
+    companies,
+    settingsRepository,
+    preconditions,
+  );
+  const nfceIntake = new NfceIntakeService(nfcePreparation, intake);
   const resubmit = new NfeResubmitService(
     documents,
     preparation,
@@ -471,6 +494,30 @@ export function createNfeStack(
       ...overrides,
     };
   };
+
+  /** A valid NFC-e request (cash, no consumer); `scenario` is the simulator's `cProd` switch. */
+  const nfceInput = (
+    scenario = 'FAKE-100',
+    environment: ExecutionEnvironment = 'test',
+    overrides: Partial<NfceInput> = {},
+  ): NfceInput => ({
+    companyId: company(environment).id,
+    items: [
+      {
+        code: scenario,
+        description: 'Produto de teste',
+        ncm: '61091000',
+        cfop: '5102',
+        unit: 'UN',
+        quantity: 2,
+        unitPrice: 10,
+      },
+    ],
+    payments: [{ tPag: '01', amount: 20 }],
+    ...overrides,
+  });
+
+  const nfceResubmit = new NfceResubmitService(nfcePreparation, resubmit);
 
   const messages = async (
     type?: string,
@@ -550,6 +597,8 @@ export function createNfeStack(
     redis,
     registry,
     fake,
+    /** The simulator behind the `nfce` gateway. */
+    fakeNfce,
     hooks,
     access,
     emit,
@@ -568,6 +617,8 @@ export function createNfeStack(
     timeline,
     consult,
     intake,
+    nfceIntake,
+    nfcePreparation,
     resubmit,
     deliveries,
     /** The files of the in-memory storage, by S3 key. */
@@ -582,12 +633,32 @@ export function createNfeStack(
     remembered,
     numbering,
     input,
+    nfceInput,
+    nfceResubmit,
+    /** Corrects a rejected NFC-e and sends it again. */
+    resubmitNfce: (id: string, body: NfceInput) =>
+      nfceResubmit.resubmit(id, h.tenantId, 'test', body),
     messages,
     row,
     dispatch,
     /** The settings every company of this stack answers with: a test changes `defaultSeries`. */
     settings,
     company,
+    /** Accepts a NFC-e and runs the emit message, like the relay would. */
+    async issueNfce(
+      scenario = 'FAKE-100',
+      environment: ExecutionEnvironment = 'test',
+      key = `k-${Math.random().toString(36).slice(2)}`,
+    ) {
+      const accepted = await nfceIntake.submit(
+        h.tenantId,
+        environment,
+        nfceInput(scenario, environment),
+        key,
+      );
+      await emit.process(accepted.id, h.tenantId, environment);
+      return accepted.id;
+    },
     /** Accepts a request and runs the emit message, like the relay would. */
     async issue(
       scenario = 'FAKE-100',

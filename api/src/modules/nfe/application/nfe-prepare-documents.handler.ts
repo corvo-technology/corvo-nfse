@@ -24,7 +24,11 @@ import { DANFE_FILE, NFE_PROC_FILE } from './nfe-files';
 import { sendEmailMessage } from './nfe-messages';
 import { buildNfeProc } from './nfe-proc';
 import { keyOf } from './nfe-outcome.service';
-import { NfeTransitionService } from './nfe-transition.service';
+import {
+  NfeTransitionService,
+  documentTypeOf,
+  nfeEventName,
+} from './nfe-transition.service';
 
 const XML = 'application/xml';
 const PDF = 'application/pdf';
@@ -37,6 +41,9 @@ const PREPARABLE = new Set(['authorized', 'cancelling', 'cancelled']);
  * documents ready (webhook `documents_ready`, and the e-mail to the customer when asked for), and
  * stores the XML of the events the SEFAZ registered and of the inutilizations it approved. A
  * cancellation redoes the DANFE with the CANCELADA mark.
+ *
+ * A NFC-e (model 65) gets its `nfeProc` only: its DANFCE and the e-mail come with the DANFCE
+ * (NFC-e 4/5), so for now `documents_ready` means the XML is stored and no e-mail is queued.
  *
  * Safe to run again: the files are the same bytes, the "ready" mark is first-write-wins and the
  * e-mail has its own dedupe key. The XML never goes to a log.
@@ -111,11 +118,12 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
         XML,
       );
     const cancelled = s.status === 'cancelled';
-    await this.ensureDanfe(ref, doc, cancelled);
+    const drawsDanfe = s.model === 55;
+    if (drawsDanfe) await this.ensureDanfe(ref, doc, cancelled);
     await this.storeEvents(ref, doc);
 
     // A cancellation that landed while the DANFE was being drawn: draw it again, with the mark.
-    if (!cancelled) {
+    if (!cancelled && drawsDanfe) {
       const now = await this.documents.findById(
         doc.id,
         doc.tenantId,
@@ -178,7 +186,10 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
   private async markReady(doc: NfeDocument): Promise<void> {
     const s = doc.toSnapshot();
     const emailWanted =
-      s.status === 'authorized' && s.sendEmail && Boolean(s.recipient?.email);
+      s.model === 55 &&
+      s.status === 'authorized' &&
+      s.sendEmail &&
+      Boolean(s.recipient?.email);
     let won = false;
     const stored = await this.transitions.touch(keyOf(doc), {
       change: (locked) => {
@@ -192,13 +203,13 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
     const ready = stored.toSnapshot();
     await this.webhooks.publish(
       {
-        type: 'nfe',
+        type: documentTypeOf(ready.model),
         id: ready.id,
         tenantId: ready.tenantId,
         environment: ready.environment,
         companyId: ready.companyId,
       },
-      'nfe.document.documents_ready',
+      nfeEventName(ready.model, 'document.documents_ready'),
       {
         status: ready.status,
         accessKey: ready.accessKey,

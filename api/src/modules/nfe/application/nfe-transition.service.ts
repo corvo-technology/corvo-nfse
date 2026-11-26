@@ -61,9 +61,12 @@ export function nfeEventName(
   return `${model === 65 ? 'nfce' : 'nfe'}.${suffix}` as WebhookEvent['type'];
 }
 
-/** The document type that credits and webhooks use for a model. */
+/** The document type that credits, webhooks and the fiscal gateway registry use for a model. */
 export const documentTypeOf = (model: 55 | 65): 'nfe' | 'nfce' =>
   model === 65 ? 'nfce' : 'nfe';
+
+/** The gateway of a model in the `FiscalDocumentRegistry`. */
+export const gatewayTypeOf = documentTypeOf;
 
 /** Webhook sent after the commit, by destination state (the suffix after `nfe.` / `nfce.`). */
 const WEBHOOK_BY_STATUS: Partial<Record<NfeStatus, string>> = {

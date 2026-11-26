@@ -40,6 +40,8 @@ export class TypeormNfePackageQuery {
       .andWhere('doc.environment = :environment', {
         environment: scope.environment,
       })
+      // Model 55 only: the NFC-e has no DANFE and its package comes with the DANFCE (NFC-e 4/5).
+      .andWhere('doc.model = 55')
       .andWhere("doc.status IN ('authorized', 'cancelled')")
       .andWhere(
         "(doc.issued_at AT TIME ZONE 'America/Sao_Paulo')::date >= :start",

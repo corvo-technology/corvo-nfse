@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { nfceUrlsFor } from '@/infra/external/nfe/sefaz/nfce-urls';
 import { dhEmiFor } from '@/infra/external/nfe/sefaz/uf';
 import type {
   NfeConsultResult,
@@ -37,7 +38,7 @@ import {
   keyOf,
 } from './nfe-outcome.service';
 import { NfeSefazAccess } from './nfe-sefaz-access';
-import { NfeTransitionService } from './nfe-transition.service';
+import { NfeTransitionService, gatewayTypeOf } from './nfe-transition.service';
 
 /** After this long without an answer from an open breaker, the job waits instead of failing. */
 const RETRY_DELAY_MS = 60_000;
@@ -47,7 +48,7 @@ const CERTIFICATE_NOT_FOUND = 'CERTIFICATE_NOT_FOUND';
 const CERTIFICATE_UNUSABLE = 'CERTIFICATE_UNUSABLE';
 
 /**
- * Emits one NF-e (outbox `nfe.emit`).
+ * Emits one NF-e or NFC-e (outbox `nfe.emit`; the model is the document's).
  *
  *  1. Under the row lock, `queued` (or `retry_pending`) becomes `processing`; for a new attempt the
  *     number is drawn (kept when the document already has one), the `cNF`, the key, the XML and its
@@ -120,6 +121,7 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
     );
     const issuer = nfeIssuerOf(company, settings);
     const uf = issuer.uf;
+    const model = doc.toSnapshot().model;
 
     let certificate: LoadedCertificate;
     try {
@@ -136,7 +138,7 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
     const started = await this.transitions.apply(keyOf(doc), 'processing', {
       from: ['queued', 'retry_pending'],
       change: async (locked) => {
-        locked.setAuthority(this.access.authorityOf(uf));
+        locked.setAuthority(this.access.authorityOf(uf, model));
         // A retry sends the very same signed XML: nothing new is numbered, keyed or signed.
         if (reuse) return;
         if (locked.number === null) {
@@ -144,45 +146,62 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
             companyId: locked.companyId,
             tenantId,
             environment,
-            model: 55,
-            series: settings?.defaultSeries ?? 1,
+            model,
+            series:
+              (model === 65
+                ? settings?.nfceDefaultSeries
+                : settings?.defaultSeries) ?? 1,
           });
           locked.assignNumber(next.series, next.number);
         }
         const { series, number } = locked.toSnapshot();
         const cNf = randomCnf(number as number);
         const issuedAtText = dhEmiFor(uf, new Date());
-        const built = NfeXmlBuilder.for(
+        const tpAmb = this.access.tpAmb(environment);
+        const base = NfeXmlBuilder.for(
           draftFromDocument(locked.toSnapshot(), issuer),
         )
           .withNumber(series as number, number as number)
           .withCnf(cNf)
           .withIssuedAt(issuedAtText)
-          .withTpAmb(this.access.tpAmb(environment))
+          .withTpAmb(tpAmb)
           .withVerProc(nfeVerProc(this.config))
-          .withRespTec(nfeRespTec(this.config))
-          .build();
+          .withRespTec(nfeRespTec(this.config));
+        // The NFC-e carries its QR Code (`infNFeSupl`), built with the key of this very attempt.
+        const urls = model === 65 ? nfceUrlsFor(uf, tpAmb) : null;
+        const built = (
+          urls
+            ? base.withSupplement({
+                qrCodeBase: urls.qrCode,
+                urlChave: urls.urlChave,
+              })
+            : base
+        ).build();
         locked.startAttempt(
           cNf,
           built.accessKey,
           this.access.sign(built.xml, certificate, environment),
           new Date(issuedAtText),
+          built.qrCode && built.urlChave
+            ? { qrCode: built.qrCode, urlChave: built.urlChave }
+            : undefined,
         );
       },
     });
     // Another worker took it first, or it moved on: nothing left to do here.
     if (!started.applied) return;
-    await this.send(started.document, uf, certificate);
+    await this.send(started.document, uf, certificate, model);
   }
 
   private async send(
     doc: NfeDocument,
     uf: Uf,
     certificate: LoadedCertificate,
+    model: 55 | 65,
   ): Promise<void> {
     const snapshot = doc.toSnapshot();
     const environment = doc.environment;
-    const authority = this.access.breakerAuthority(uf, environment);
+    const authority = this.access.breakerAuthority(uf, environment, model);
     try {
       await this.breaker.assertAvailable(environment, authority);
     } catch (error) {
@@ -190,8 +209,8 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
         return this.waitFor(doc, error.retryAt);
       throw error;
     }
-    const gateway = this.gateways.get<SignedNfe>('nfe');
-    const ctx = this.access.context(uf, environment, certificate);
+    const gateway = this.gateways.get<SignedNfe>(gatewayTypeOf(model));
+    const ctx = this.access.context(uf, environment, certificate, model);
     const signed: SignedNfe = {
       accessKey: snapshot.accessKey as string,
       signedXml: snapshot.signedXml as string,
