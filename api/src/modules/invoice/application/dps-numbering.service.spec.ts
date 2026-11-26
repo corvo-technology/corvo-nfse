@@ -185,11 +185,19 @@ describe('DpsNumberingService.skipUsedNumbers', () => {
     expect(provider.queryByDps).not.toHaveBeenCalled();
   });
 
+  it('never asks the Produção Restrita (test notes have no fiscal value)', async () => {
+    const { service, provider, sequences } = build();
+    expect(await service.skipUsedNumbers('c1', 't1', 'test')).toBeNull();
+    expect(await service.skipForward('c1', 't1', 'test')).toBeNull();
+    expect(provider.queryByDps).not.toHaveBeenCalled();
+    expect(sequences.raiseTo).not.toHaveBeenCalled();
+  });
+
   it('lets the portal error through so the emission is tried again, never guessing', async () => {
     const { service, provider, sequences } = build();
     provider.queryByDps.mockRejectedValue(new Error('503'));
     await expect(service.skipUsedNumbers('c1', 't1', 'live')).rejects.toThrow(
-      'Tente emitir de novo em alguns minutos',
+      'tente de novo em alguns minutos',
     );
     expect(sequences.raiseTo).not.toHaveBeenCalled();
   });

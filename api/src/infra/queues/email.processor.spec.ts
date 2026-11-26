@@ -2,7 +2,7 @@ import { Job } from 'bullmq';
 import { MillionSendEmailProvider } from '@/infra/external/email/mmsend-email.provider';
 import { WebhookOutboxService } from '@/modules/webhooks-config/application/webhook-outbox.service';
 import { IWebhookConfigRepository } from '@/modules/webhooks-config/domain/webhook-config.repository';
-import { EmailProcessor } from './email.processor';
+import { EmailProcessor, maskEmail } from './email.processor';
 import type { EmailJobData } from './email-job.types';
 
 describe('EmailProcessor', () => {
@@ -123,5 +123,12 @@ describe('EmailProcessor', () => {
 
       expect(mockOutbox.enqueue).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('maskEmail', () => {
+  it('keeps only the first letter and the domain', () => {
+    expect(maskEmail('fulana@gmail.com')).toBe('f***@gmail.com');
+    expect(maskEmail('sem-arroba')).toBe('***');
   });
 });

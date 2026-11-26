@@ -8,6 +8,13 @@ import type { RenderedEmail } from '@/infra/external/email/email-templates';
 import type { EmailJobData } from './email-job.types';
 import { WebhookEvent } from '@/modules/webhooks-config/domain/webhook-event';
 
+/** Hides the address in logs: only the first letter and the domain stay (j***@gmail.com). */
+export function maskEmail(to: string): string {
+  const at = to.lastIndexOf('@');
+  if (at < 1) return '***';
+  return `${to[0]}***${to.slice(at)}`;
+}
+
 @Processor('email')
 @Injectable()
 export class EmailProcessor extends WorkerHost {
@@ -24,7 +31,9 @@ export class EmailProcessor extends WorkerHost {
   async process(job: Job<EmailJobData>): Promise<void> {
     const { data } = job;
 
-    this.logger.debug(`Processing email job ${data.kind} → ${data.to}`);
+    this.logger.debug(
+      `Processing email job ${data.kind} → ${maskEmail(data.to)}`,
+    );
 
     try {
       const message: Pick<RenderedEmail, 'subject' | 'html'> &
@@ -39,10 +48,12 @@ export class EmailProcessor extends WorkerHost {
         ...(text ? { text } : {}),
       });
 
-      this.logger.log(`Email ${data.kind} sent: ${result.id} → ${data.to}`);
+      this.logger.log(
+        `Email ${data.kind} sent: ${result.id} → ${maskEmail(data.to)}`,
+      );
     } catch (err) {
       this.logger.error(
-        `Email ${data.kind} failed for ${data.to}: ${err instanceof Error ? err.message : String(err)}`,
+        `Email ${data.kind} failed for ${maskEmail(data.to)}: ${err instanceof Error ? err.message : String(err)}`,
       );
       throw err; // let BullMQ handle retries
     }
