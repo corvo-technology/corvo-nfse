@@ -220,8 +220,8 @@ jobs:
         run: >-
           docker compose --env-file deploy/.env
           -f deploy/docker-compose.yml config --quiet
-      # The tax calculator image downloads Maven when it builds; the Dockerfile
-      # retries only that download (see deploy/Dockerfile.rtc).
+      # The tax calculator image builds with the official Maven image, not the
+      # repository's ./mvnw (see deploy/Dockerfile.rtc).
       - name: Build images
         run: >-
           docker compose --env-file deploy/.env.local
