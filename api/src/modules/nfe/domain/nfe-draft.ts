@@ -1,7 +1,7 @@
 import type { NfeSettings } from '@/modules/company/domain/nfe-settings';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { Decimal } from '@/shared/types/money';
-import type { NfeAddress, NfeRecipient } from './nfe-document';
+import type { NfceCard, NfeAddress, NfeRecipient } from './nfe-document';
 import type { NfeItemTax } from './nfe-item';
 import type { NfeInput } from './nfe-input';
 import { applyTaxDefaults, deriveIdDest } from './tax-defaults';
@@ -45,10 +45,14 @@ export interface NfeDraftItem {
 export interface NfeDraftPayment {
   tPag: string;
   cents: number;
+  /** NFC-e only. */
+  card?: NfceCard;
 }
 
 /** A normalized request: what the validators check and the builder turns into XML. */
 export interface NfeDraft {
+  /** 55 = NF-e, 65 = NFC-e. */
+  model: 55 | 65;
   environment: ExecutionEnvironment;
   issuer: NfeIssuer;
   natOp: string;
@@ -57,7 +61,8 @@ export interface NfeDraft {
   indPres: number;
   indFinal: number;
   idDest: 1 | 2;
-  recipient: NfeRecipient;
+  /** Null on a NFC-e sold to an unidentified consumer; never on an NF-e. */
+  recipient: NfeRecipient | null;
   items: NfeDraftItem[];
   totals: NfeTotals;
   payments: NfeDraftPayment[];
@@ -78,28 +83,85 @@ const digits = (value: string): string => value.replace(/\D/g, '');
 const taxIdOf = (value: string): string =>
   value.replace(/[.\s/-]/g, '').toUpperCase();
 
+/** What an NF-e and a NFC-e share: the items with their taxes and totals, payments and free text. */
+export type NfeDraftBody = Pick<
+  NfeDraft,
+  | 'natOp'
+  | 'items'
+  | 'totals'
+  | 'payments'
+  | 'changeCents'
+  | 'additionalInfo'
+  | 'externalId'
+  | 'sendEmail'
+>;
+
+export type NfeDraftSettings = Pick<
+  NfeSettings,
+  | 'defaultNatOp'
+  | 'defaultOrigin'
+  | 'defaultCsosn'
+  | 'defaultPisCst'
+  | 'defaultCofinsCst'
+>;
+
+export function buildDraftBody(
+  input: Pick<
+    NfeInput,
+    | 'natOp'
+    | 'items'
+    | 'payments'
+    | 'change'
+    | 'additionalInfo'
+    | 'externalId'
+    | 'sendEmail'
+  >,
+  settings: NfeDraftSettings,
+): NfeDraftBody {
+  const taxes = applyTaxDefaults(input.items, settings);
+  const totals = computeTotals(input.items);
+  return {
+    natOp: clean(input.natOp ?? settings.defaultNatOp),
+    items: input.items.map((item, index) => ({
+      nItem: index + 1,
+      code: clean(item.code),
+      gtin: orNull(item.gtin),
+      description: clean(item.description),
+      ncm: clean(item.ncm),
+      cest: orNull(item.cest),
+      cfop: clean(item.cfop),
+      unit: clean(item.unit),
+      quantity: new Decimal(item.quantity).toFixed(4),
+      unitPrice: new Decimal(item.unitPrice).toFixed(10),
+      tax: taxes[index],
+      amounts: totals.items[index],
+    })),
+    totals,
+    payments: input.payments.map((p) => ({
+      tPag: clean(p.tPag),
+      cents: toCents(p.amount),
+    })),
+    changeCents: toCents(input.change ?? 0),
+    additionalInfo: orNull(input.additionalInfo),
+    externalId: orNull(input.externalId),
+    ...(input.sendEmail === false ? { sendEmail: false } : {}),
+  };
+}
+
 export function buildDraft(
   input: NfeInput,
   issuer: NfeIssuer,
-  settings: Pick<
-    NfeSettings,
-    | 'defaultNatOp'
-    | 'defaultOrigin'
-    | 'defaultCsosn'
-    | 'defaultPisCst'
-    | 'defaultCofinsCst'
-  >,
+  settings: NfeDraftSettings,
   environment: ExecutionEnvironment,
 ): NfeDraft {
   const address = input.recipient.address;
   const recipientUf = clean(address.state).toUpperCase();
   const indIeDest = input.recipient.indIeDest as 1 | 2 | 9;
-  const taxes = applyTaxDefaults(input.items, settings);
-  const totals = computeTotals(input.items);
   return {
+    ...buildDraftBody(input, settings),
+    model: 55,
     environment,
     issuer,
-    natOp: clean(input.natOp ?? settings.defaultNatOp),
     finNfe: input.finNfe ?? 1,
     tpImp: input.tpImp ?? 1,
     indPres: 1,
@@ -125,28 +187,5 @@ export function buildDraft(
         state: recipientUf,
       },
     },
-    items: input.items.map((item, index) => ({
-      nItem: index + 1,
-      code: clean(item.code),
-      gtin: orNull(item.gtin),
-      description: clean(item.description),
-      ncm: clean(item.ncm),
-      cest: orNull(item.cest),
-      cfop: clean(item.cfop),
-      unit: clean(item.unit),
-      quantity: new Decimal(item.quantity).toFixed(4),
-      unitPrice: new Decimal(item.unitPrice).toFixed(10),
-      tax: taxes[index],
-      amounts: totals.items[index],
-    })),
-    totals,
-    payments: input.payments.map((p) => ({
-      tPag: clean(p.tPag),
-      cents: toCents(p.amount),
-    })),
-    changeCents: toCents(input.change ?? 0),
-    additionalInfo: orNull(input.additionalInfo),
-    externalId: orNull(input.externalId),
-    ...(input.sendEmail === false ? { sendEmail: false } : {}),
   };
 }

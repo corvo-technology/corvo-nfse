@@ -12,7 +12,7 @@ if (
 const describePostgres = url ? describe : describe.skip;
 const schema = `nfce_pr1_${randomUUID().replaceAll('-', '')}`;
 
-/** The three migrations of NFC-e 1/5 (tenant release, model 65, series), both ways. */
+/** The migrations of NFC-e 1/5 and 2/5 (tenant release, model 65, series, recipient), both ways. */
 describePostgres('NFC-e model 65 migrations', () => {
   let db: DataSource;
 
@@ -29,6 +29,14 @@ describePostgres('NFC-e model 65 migrations', () => {
        SELECT t.id, c.id, $1, 1, 0 FROM "${schema}".tenants t JOIN "${schema}".nfse_companies c ON c.tenant_id = t.id LIMIT 1`,
       [model],
     );
+
+  const recipientNullable = async (): Promise<boolean> => {
+    const rows: Array<{ is_nullable: string }> = await db.query(
+      `SELECT is_nullable FROM information_schema.columns WHERE table_schema = $1 AND table_name = 'nfe_documents' AND column_name = 'recipient'`,
+      [schema],
+    );
+    return rows[0].is_nullable === 'YES';
+  };
 
   beforeAll(async () => {
     if (!url) throw new Error('Test database URL is required');
@@ -64,8 +72,26 @@ describePostgres('NFC-e model 65 migrations', () => {
     await expect(sequence(99)).rejects.toThrow(/ck_nfe_number_sequences_model/);
   });
 
+  it('a NFC-e may have no recipient, an NF-e may not', async () => {
+    const insert = (model: number, recipient: string | null) =>
+      db.query(
+        `INSERT INTO "${schema}".nfe_documents (tenant_id,company_id,environment,model,nat_op,id_dest,recipient,totals,payment,idempotency_key,request_hash)
+         SELECT t.id, c.id, 'test', $1, 'Venda', 1, $2::jsonb, '{}', '{}', $3, repeat('a',64)
+         FROM "${schema}".tenants t JOIN "${schema}".nfse_companies c ON c.tenant_id = t.id LIMIT 1`,
+        [model, recipient, randomUUID()],
+      );
+    await expect(insert(65, null)).resolves.toBeDefined();
+    await expect(insert(55, null)).rejects.toThrow(
+      /ck_nfe_documents_recipient|null value/,
+    );
+    await expect(insert(55, '{}')).resolves.toBeDefined();
+    await db.query(`DELETE FROM "${schema}".nfe_documents`);
+  });
+
   it('down fails while an NFC-e row exists, and works once it is gone; then up again', async () => {
-    // Newest first: series, model 65 (this one refuses to go with a model 65 row), tenant release.
+    // Newest first: recipient, series, model 65 (this one refuses to go with a model 65 row), tenant release.
+    await db.undoLastMigration();
+    expect(await recipientNullable()).toBe(false);
     await db.undoLastMigration();
     expect(await columns('company_nfe_settings')).not.toContain(
       'nfce_default_series',
@@ -80,6 +106,7 @@ describePostgres('NFC-e model 65 migrations', () => {
     expect(await columns('tenants')).not.toContain('nfce_enabled_at');
 
     await db.runMigrations();
+    expect(await recipientNullable()).toBe(true);
     expect(await columns('tenants')).toContain('nfce_enabled_at');
     expect(await columns('company_nfe_settings')).toContain(
       'nfce_default_series',

@@ -63,7 +63,7 @@ export class NfeEmailService {
     const s = doc.toSnapshot();
     // Never after a cancellation; a second delivery of the message finds it already sent.
     if (s.status !== 'authorized' || s.emailStatus === 'sent') return;
-    const to = s.recipient.email;
+    const to = s.recipient?.email;
     if (!to || !s.documentsReadyAt) return;
 
     try {
@@ -113,7 +113,7 @@ export class NfeEmailService {
     const number = String(s.number ?? '');
     const { subject, html, text } = nfeAuthorizedEmail({
       companyName: company.tradeName ?? company.legalName,
-      customerName: s.recipient.name,
+      customerName: s.recipient?.name ?? '',
       amount: formatBrl(Number(s.totals.vNF)),
       number,
       series: String(s.series ?? ''),

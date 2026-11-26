@@ -77,8 +77,9 @@ export class NfeDocumentOrmEntity {
   @Column({ name: 'authorized_at', type: 'timestamptz', nullable: true })
   authorizedAt!: Date | null;
 
-  @Column({ type: 'jsonb' })
-  recipient!: Record<string, unknown>;
+  /** Null only on a NFC-e (model 65) sold to an unidentified consumer. */
+  @Column({ type: 'jsonb', nullable: true })
+  recipient!: Record<string, unknown> | null;
 
   @Column({ type: 'jsonb' })
   totals!: Record<string, unknown>;

@@ -139,6 +139,7 @@ export class NfeIntakeService {
         `Could not invalidate the credit balance cache: ${String(error)}`,
       );
     }
+    if (!recipient?.taxId || !recipient.name) return;
     try {
       await runWithTenant(tenantId, () =>
         this.customers.remember(

@@ -39,7 +39,7 @@ export class NfeDocumentMapper {
       xMotivo: row.xMotivo,
       protocol: row.protocol,
       authorizedAt: row.authorizedAt,
-      recipient: row.recipient as unknown as NfeRecipient,
+      recipient: row.recipient as unknown as NfeRecipient | null,
       items: [...items]
         .sort((a, b) => a.nItem - b.nItem)
         .map((item) => this.itemToDomain(item)),

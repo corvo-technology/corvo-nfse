@@ -178,7 +178,7 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
   private async markReady(doc: NfeDocument): Promise<void> {
     const s = doc.toSnapshot();
     const emailWanted =
-      s.status === 'authorized' && s.sendEmail && Boolean(s.recipient.email);
+      s.status === 'authorized' && s.sendEmail && Boolean(s.recipient?.email);
     let won = false;
     const stored = await this.transitions.touch(keyOf(doc), {
       change: (locked) => {

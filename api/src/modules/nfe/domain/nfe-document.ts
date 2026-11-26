@@ -22,12 +22,14 @@ export interface NfeAddress {
 export interface NfeRecipient {
   /** CPF (11) or CNPJ (14, alphanumeric allowed), digits and letters only. */
   taxId: string;
+  /** Empty on a NFC-e whose consumer gave no name. */
   name: string;
   /** 1 contributor, 2 exempt, 9 non-contributor. */
   indIeDest: 1 | 2 | 9;
   stateRegistration: string | null;
   email: string | null;
-  address: NfeAddress;
+  /** Always set on an NF-e; the NFC-e consumer may have none (only a CPF). */
+  address: NfeAddress | null;
 }
 
 /** Totals as decimal strings with 2 places (what the `vProd`..`vNF` tags carry). */
@@ -40,9 +42,22 @@ export interface NfeTotalsSnapshot {
   vNF: string;
 }
 
+/** The `card` group of a payment (NFC-e: cards, PIX and other electronic payments). */
+export interface NfceCard {
+  /** 1 integrated with the sales system, 2 not integrated. */
+  tpIntegra: 1 | 2;
+  /** CNPJ of the payment institution. */
+  cnpj: string | null;
+  /** Card brand (`tBand`, 2 digits). */
+  tBand: string | null;
+  /** Authorization number. */
+  cAut: string | null;
+}
+
 export interface NfePayment {
   tPag: string;
   amount: string;
+  card?: NfceCard;
 }
 
 export interface NfePaymentSnapshot {
@@ -77,7 +92,8 @@ export interface NfeDocumentProps {
   xMotivo: string | null;
   protocol: string | null;
   authorizedAt: Date | null;
-  recipient: NfeRecipient;
+  /** Null on a NFC-e sold to an unidentified consumer; never on an NF-e. */
+  recipient: NfeRecipient | null;
   items: NfeItem[];
   totals: NfeTotalsSnapshot;
   payment: NfePaymentSnapshot;
@@ -120,7 +136,8 @@ export interface CreateNfeDocumentParams {
   indPres: number;
   finNfe: number;
   tpImp: number;
-  recipient: NfeRecipient;
+  /** Null on a NFC-e sold to an unidentified consumer; never on an NF-e. */
+  recipient: NfeRecipient | null;
   items: NfeItem[];
   totals: NfeTotalsSnapshot;
   payment: NfePaymentSnapshot;
@@ -157,7 +174,8 @@ export interface NfeContent {
   indPres: number;
   finNfe: number;
   tpImp: number;
-  recipient: NfeRecipient;
+  /** Null on a NFC-e sold to an unidentified consumer; never on an NF-e. */
+  recipient: NfeRecipient | null;
   items: NfeItem[];
   totals: NfeTotalsSnapshot;
   payment: NfePaymentSnapshot;
