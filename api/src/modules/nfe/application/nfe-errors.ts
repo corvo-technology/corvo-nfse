@@ -81,6 +81,14 @@ export function nfeNotFound(): NotFoundException {
   });
 }
 
+/** 409: the XML and the DANFE are not stored yet (or the NF-e never got authorized). */
+export function nfeDocumentsNotReady(): ConflictException {
+  return new ConflictException({
+    code: 'DOCUMENTS_NOT_READY',
+    message: 'Documents not ready',
+  });
+}
+
 const lengthIssue = (field: string, code: string, message: string) => ({
   field,
   code,

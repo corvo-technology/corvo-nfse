@@ -455,6 +455,18 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       str({ description: 'The justification of the cancellation asked for.' }),
     ),
     cancelRequestedAt: nullable(dateTime()),
+    documentsReady: bool({
+      description:
+        'True once the XML (`nfeProc`) and the DANFE can be downloaded; they stay available after a cancellation.',
+    }),
+    documentsReadyAt: nullable(dateTime()),
+    emailStatus: nullable(
+      str({
+        enum: ['queued', 'sent', 'failed'],
+        description: 'The e-mail with the XML and the DANFE to the recipient.',
+      }),
+    ),
+    emailSentAt: nullable(dateTime()),
     attempt: int({
       description:
         'How many times the XML was built and signed (1 on the first send).',
@@ -467,6 +479,12 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     ),
     createdAt: dateTime(),
     updatedAt: dateTime(),
+  }),
+  NfeDownloadUrl: obj({
+    downloadUrl: str({ format: 'uri' }),
+    expiresAt: dateTime(),
+    fileName: str(),
+    mimeType: str({ enum: ['application/pdf', 'application/xml'] }),
   }),
   NfeEvent: obj({
     id: uuid(),

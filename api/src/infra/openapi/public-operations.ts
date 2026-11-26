@@ -493,6 +493,33 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
       'The states the NF-e went through and its fiscal events (cancellation and correction letters), oldest first. An entry with `kind` `event` has its own `status` (`pending`, `pending_check`, `registered`, `rejected`).\n\nPermission: `nfe.documents.view`.',
     ok: { 200: list(ref('NfeTimelineEntry')) },
   },
+  'GET /nfe/{id}/xml': {
+    id: 'nfe_xml',
+    tag: 'NF-e',
+    summary: 'Download the NF-e XML (nfeProc)',
+    description:
+      'The `nfeProc`: the signed NF-e followed by the SEFAZ protocol, the file the customer keeps. Available once `documentsReady` is `true`; before that, and for an NF-e that was never authorized, `409 DOCUMENTS_NOT_READY`. It stays available after a cancellation (the cancellation XML is in the events).\n\nPermission: `nfe.documents.view`.',
+    file: { contentType: 'application/xml', description: 'The nfeProc XML.' },
+    errors: [409],
+  },
+  'GET /nfe/{id}/pdf': {
+    id: 'nfe_pdf',
+    tag: 'NF-e',
+    summary: 'Download the DANFE (PDF)',
+    description:
+      'The DANFE, portrait A4. A test company gets the mark `SEM VALOR FISCAL`; a cancelled NF-e gets `CANCELADA`. Available once `documentsReady` is `true`; before that, `409 DOCUMENTS_NOT_READY`.\n\nPermission: `nfe.documents.view`.',
+    file: { contentType: 'application/pdf', description: 'The DANFE PDF.' },
+    errors: [409],
+  },
+  'POST /nfe/{id}/download-url': {
+    id: 'nfe_downloadUrl',
+    tag: 'NF-e',
+    summary: 'Get a signed download URL for the NF-e XML or DANFE',
+    description:
+      'A short-lived signed URL for the `xml` (the `nfeProc`) or the `pdf` (the DANFE), to hand to a browser or another service without sharing the API key. The response is never cached. Before the documents are ready, `409 DOCUMENTS_NOT_READY`.\n\nPermission: `nfe.documents.view`.',
+    ok: { 200: data(ref('NfeDownloadUrl')) },
+    errors: [409],
+  },
   'POST /nfe/inutilizations': {
     id: 'nfeInutilizations_create',
     tag: 'NF-e',

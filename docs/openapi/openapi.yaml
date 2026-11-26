@@ -5659,6 +5659,75 @@ paths:
         - NF-e
       x-required-permissions:
         - nfe.documents.manage
+  /nfe/{id}/download-url:
+    post:
+      description: >-
+        A short-lived signed URL for the `xml` (the `nfeProc`) or the `pdf` (the DANFE), to hand to
+        a browser or another service without sharing the API key. The response is never cached.
+        Before the documents are ready, `409 DOCUMENTS_NOT_READY`.
+
+
+        Permission: `nfe.documents.view`.
+
+
+        Permission: `nfe.documents.view`.
+      operationId: nfe_downloadUrl
+      parameters:
+        - description: Identifier (UUID) of the resource.
+          in: path
+          name: id
+          required: true
+          schema:
+            format: uuid
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NfeDownloadUrl'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NfeDownloadUrl'
+                required:
+                  - data
+                type: object
+          description: OK
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security:
+        - ApiKeyAuth: []
+      summary: Get a signed download URL for the NF-e XML or DANFE
+      tags:
+        - NF-e
+      x-required-permissions:
+        - nfe.documents.view
   /nfe/{id}/events:
     get:
       description: >-
@@ -5716,6 +5785,67 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: The timeline of an NF-e
+      tags:
+        - NF-e
+      x-required-permissions:
+        - nfe.documents.view
+  /nfe/{id}/pdf:
+    get:
+      description: >-
+        The DANFE, portrait A4. A test company gets the mark `SEM VALOR FISCAL`; a cancelled NF-e
+        gets `CANCELADA`. Available once `documentsReady` is `true`; before that, `409
+        DOCUMENTS_NOT_READY`.
+
+
+        Permission: `nfe.documents.view`.
+
+
+        Permission: `nfe.documents.view`.
+      operationId: nfe_pdf
+      parameters:
+        - description: Identifier (UUID) of the resource.
+          in: path
+          name: id
+          required: true
+          schema:
+            format: uuid
+            type: string
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                format: binary
+                type: string
+          description: The DANFE PDF.
+          headers:
+            Content-Disposition:
+              description: Suggested file name.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security:
+        - ApiKeyAuth: []
+      summary: Download the DANFE (PDF)
       tags:
         - NF-e
       x-required-permissions:
@@ -5783,6 +5913,67 @@ paths:
         - NF-e
       x-required-permissions:
         - nfe.documents.manage
+  /nfe/{id}/xml:
+    get:
+      description: >-
+        The `nfeProc`: the signed NF-e followed by the SEFAZ protocol, the file the customer keeps.
+        Available once `documentsReady` is `true`; before that, and for an NF-e that was never
+        authorized, `409 DOCUMENTS_NOT_READY`. It stays available after a cancellation (the
+        cancellation XML is in the events).
+
+
+        Permission: `nfe.documents.view`.
+
+
+        Permission: `nfe.documents.view`.
+      operationId: nfe_xml
+      parameters:
+        - description: Identifier (UUID) of the resource.
+          in: path
+          name: id
+          required: true
+          schema:
+            format: uuid
+            type: string
+      responses:
+        '200':
+          content:
+            application/xml:
+              schema:
+                type: string
+          description: The nfeProc XML.
+          headers:
+            Content-Disposition:
+              description: Suggested file name.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security:
+        - ApiKeyAuth: []
+      summary: Download the NF-e XML (nfeProc)
+      tags:
+        - NF-e
+      x-required-permissions:
+        - nfe.documents.view
   /nfe/inutilizations:
     get:
       description: >-
@@ -10153,6 +10344,28 @@ components:
         cStat:
           nullable: true
           type: string
+        documentsReady:
+          description: >-
+            True once the XML (`nfeProc`) and the DANFE can be downloaded; they stay available after
+            a cancellation.
+          type: boolean
+        documentsReadyAt:
+          format: date-time
+          nullable: true
+          type: string
+        emailSentAt:
+          format: date-time
+          nullable: true
+          type: string
+        emailStatus:
+          description: The e-mail with the XML and the DANFE to the recipient.
+          enum:
+            - queued
+            - sent
+            - failed
+            - null
+          nullable: true
+          type: string
         environment:
           enum:
             - test
@@ -10275,6 +10488,10 @@ components:
         - externalId
         - cancelReason
         - cancelRequestedAt
+        - documentsReady
+        - documentsReadyAt
+        - emailStatus
+        - emailSentAt
         - attempt
         - lastError
         - nextCheckAt
@@ -10361,6 +10578,17 @@ components:
         - cityCode
         - city
         - state
+      type: object
+    NfeDownloadUrl:
+      properties:
+        format:
+          description: '`xml` is the `nfeProc`; `pdf` is the DANFE.'
+          enum:
+            - xml
+            - pdf
+          type: string
+      required:
+        - format
       type: object
     NfeError:
       properties:
@@ -10739,6 +10967,12 @@ components:
           type: array
         recipient:
           $ref: '#/components/schemas/NfeRecipient'
+        sendEmail:
+          default: true
+          description: >-
+            Send the XML and the DANFE to the e-mail of the recipient once the NF-e is authorized.
+            Only when the recipient has an e-mail; never in the dry-run.
+          type: boolean
         tpImp:
           default: 1
           description: 'DANFE layout: 1 portrait, 2 landscape.'

@@ -26,6 +26,7 @@ function toEvent(row: NfeDocumentEventOrmEntity): NfeFiscalEvent {
     text: row.text,
     requestXml: row.requestXml,
     procXml: row.procXml,
+    xmlPath: row.xmlPath,
     cStat: row.cStat,
     xMotivo: row.xMotivo,
     createdAt: row.createdAt,
@@ -142,6 +143,22 @@ export class TypeormNfeEvents {
         })
         .execute();
       return (result.affected ?? 0) > 0;
+    });
+  }
+
+  /** Where the `procEventoNFe` was stored: written once, never over a path already there. */
+  markStored(id: string, tenantId: string, xmlPath: string): Promise<void> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      await this.rows
+        .createQueryBuilder()
+        .update()
+        .set({ xmlPath, updatedAt: () => 'now()' })
+        .where('id = :id AND tenant_id = :tenantId AND xml_path IS NULL', {
+          id,
+          tenantId,
+        })
+        .execute();
     });
   }
 

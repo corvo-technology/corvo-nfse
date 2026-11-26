@@ -26,6 +26,7 @@ function toInutilization(row: NfeInutilizationOrmEntity): NfeInutilization {
     xMotivo: row.xMotivo,
     requestXml: row.requestXml,
     procXml: row.procXml,
+    xmlPath: row.xmlPath,
     idempotencyKey: row.idempotencyKey,
     requestHash: row.requestHash,
     createdAt: row.createdAt,
@@ -216,6 +217,22 @@ export class TypeormNfeInutilizations {
         })
         .execute();
       return (outcome.affected ?? 0) > 0;
+    });
+  }
+
+  /** Where the `procInutNFe` was stored: written once, never over a path already there. */
+  markStored(id: string, tenantId: string, xmlPath: string): Promise<void> {
+    return runWithTenant(tenantId, async () => {
+      requireTenantId(tenantId);
+      await this.rows
+        .createQueryBuilder()
+        .update()
+        .set({ xmlPath, updatedAt: () => 'now()' })
+        .where('id = :id AND tenant_id = :tenantId AND xml_path IS NULL', {
+          id,
+          tenantId,
+        })
+        .execute();
     });
   }
 }

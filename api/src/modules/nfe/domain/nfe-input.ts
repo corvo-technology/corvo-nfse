@@ -63,4 +63,6 @@ export interface NfeInput {
   change?: number;
   additionalInfo?: string;
   externalId?: string;
+  /** Send the NF-e to the recipient's e-mail once it is authorized (default true). */
+  sendEmail?: boolean;
 }

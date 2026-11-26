@@ -32,16 +32,18 @@ import { NfeEmitHandler } from './application/nfe-emit.handler';
 import { NfeIntakeService } from './application/nfe-intake.service';
 import { NfeOutcomeService } from './application/nfe-outcome.service';
 import { NfePreparation } from './application/nfe-preparation.service';
-import {
-  NfePrepareDocumentsPlaceholder,
-  NfeReconcileHandler,
-} from './application/nfe-reconcile.handler';
+import { NfeFilesService } from './application/nfe-files.service';
+import { NfeEmailService } from './application/nfe-email.service';
+import { NfePrepareDocumentsHandler } from './application/nfe-prepare-documents.handler';
+import { NfeReconcileHandler } from './application/nfe-reconcile.handler';
+import { NfeSendEmailHandler } from './application/nfe-send-email.handler';
 import { NfeResubmitService } from './application/nfe-resubmit.service';
 import { NfeSefazAccess } from './application/nfe-sefaz-access';
 import { NfeTransitionService } from './application/nfe-transition.service';
 import { NfeValidateService } from './application/nfe-validate.service';
 import { INfeDocumentRepository } from './domain/nfe-document.repository';
 import { INfeNumberPreview } from './domain/nfe-number-preview';
+import { NfeFilesController } from './http/nfe-files.controller';
 import { NfeController } from './http/nfe.controller';
 import { NfeInutilizationController } from './http/nfe-inutilization.controller';
 import { NfeNumberGapsScheduler } from './jobs/nfe-number-gaps.scheduler';
@@ -57,12 +59,13 @@ import { TypeormNfeEvents } from './infra/typeorm-nfe-events';
 import { TypeormNfeInutilizations } from './infra/typeorm-nfe-inutilizations';
 import { NfeNumberGapsQuery } from './infra/typeorm-nfe-number-gaps.query';
 import { TypeormNfeNumbering } from './infra/typeorm-nfe-numbering';
-import { NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
+import { NFE_DANFE_RENDERER, NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
+import { DanfeRenderer } from './infra/danfe/danfe-renderer';
 
 /**
  * NF-e (model 55): documents, numbering, the dry-run, emission, consultation by key, the events
- * (cancellation, correction letter, inutilization) and the numbering gaps. The DANFE and the e-mail
- * arrive in the next PRs.
+ * (cancellation, correction letter, inutilization), the numbering gaps, the stored documents
+ * (`nfeProc`, DANFE, event XML) and the e-mail to the customer.
  *
  * `FiscalDocumentRegistry` gets the simulator when `NFE_TEST_PROVIDER` is `fake` and the real SEFAZ
  * gateway otherwise (homologation only: `NFE_PRODUCTION_ENABLED` keeps `tpAmb 1` closed).
@@ -89,6 +92,7 @@ import { NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
     NfeValidateController,
     NfeInutilizationController,
     NfeController,
+    NfeFilesController,
   ],
   providers: [
     NfePreparation,
@@ -116,7 +120,10 @@ import { NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
     NfeNumberGapsQuery,
     TypeormNfeEvents,
     TypeormNfeInutilizations,
-    NfePrepareDocumentsPlaceholder,
+    NfePrepareDocumentsHandler,
+    NfeEmailService,
+    NfeFilesService,
+    NfeSendEmailHandler,
     DocumentCreditLedger,
     FiscalWebhookPublisher,
     OutboxService,
@@ -124,6 +131,7 @@ import { NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
     { provide: INfeNumberPreview, useExisting: TypeormNfeNumbering },
     { provide: INfeDocumentRepository, useClass: TypeOrmNfeDocumentRepository },
     { provide: NFE_SCHEMA_VALIDATOR, useClass: XmllintSchemaValidator },
+    { provide: NFE_DANFE_RENDERER, useClass: DanfeRenderer },
   ],
   exports: [INfeDocumentRepository, TypeormNfeNumbering],
 })

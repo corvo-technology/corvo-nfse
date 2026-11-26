@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEmail,
   IsIn,
   IsInt,
@@ -316,4 +317,13 @@ export class NfeRequestDto {
   @IsString()
   @MaxLength(255)
   externalId?: string;
+
+  @ApiPropertyOptional({
+    default: true,
+    description:
+      'Send the XML and the DANFE to the e-mail of the recipient once the NF-e is authorized. Only when the recipient has an e-mail; never in the dry-run.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  sendEmail?: boolean;
 }

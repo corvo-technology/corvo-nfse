@@ -191,6 +191,42 @@ describe('OpenAPI contract against the real API (e2e)', () => {
             Promise.resolve(documents.get(`${t}/${i}.pdf`) as Buffer),
           exists: (t: string, i: string, format: string) =>
             Promise.resolve(documents.has(`${t}/${i}.${format}`)),
+          // NF-e files, by reference (the key layout itself is tested in the storage spec).
+          saveFile: (
+            ref: { tenantId: string; environment: string; id: string },
+            name: string,
+            body: Buffer | string,
+          ) =>
+            Promise.resolve(
+              void documents.set(
+                `${ref.tenantId}/${ref.environment}/nfe/${ref.id}/${name}`,
+                body,
+              ),
+            ),
+          getFile: (
+            ref: { tenantId: string; environment: string; id: string },
+            name: string,
+          ) =>
+            Promise.resolve(
+              Buffer.from(
+                documents.get(
+                  `${ref.tenantId}/${ref.environment}/nfe/${ref.id}/${name}`,
+                ) as Buffer | string,
+              ),
+            ),
+          getFileSignedUrl: (
+            _ref: unknown,
+            name: string,
+            options: { downloadName: string },
+          ) =>
+            Promise.resolve({
+              url: `https://files.example/nfe/${name}`,
+              expiresAt: new Date(Date.now() + 60_000),
+              fileName: options.downloadName,
+              mimeType: name.endsWith('.pdf')
+                ? 'application/pdf'
+                : 'application/xml',
+            }),
           getSignedUrl: (_t: string, i: string, format: string) =>
             Promise.resolve({
               url: `https://files.example/${i}.${format}`,
@@ -1242,6 +1278,118 @@ describe('OpenAPI contract against the real API (e2e)', () => {
       expect(gaps.body.data).toEqual(
         expect.arrayContaining([{ companyId, series: 7, start: 1, end: 12 }]),
       );
+    });
+  });
+
+  describe('nfe files', () => {
+    const body = () => ({
+      companyId,
+      recipient: {
+        taxId: '123.456.789-09',
+        name: 'Maria da Silva',
+        indIeDest: 9,
+        address: {
+          street: 'Rua das Flores',
+          number: '10',
+          district: 'Centro',
+          zip: '01001-000',
+          cityCode: '3550308',
+          city: 'São Paulo',
+          state: 'SP',
+        },
+      },
+      items: [
+        {
+          code: 'SKU1',
+          description: 'Produto de teste',
+          ncm: '61091000',
+          cfop: '5102',
+          unit: 'UN',
+          quantity: 2,
+          unitPrice: 10,
+        },
+      ],
+      payments: [{ tPag: '17', amount: 20 }],
+      additionalInfo: 'arquivos',
+    });
+
+    it('serves the nfeProc, the DANFE and a signed link once the documents are ready; 409 before', async () => {
+      const created = await call('POST /nfe', {
+        body: body(),
+        headers: { 'Idempotency-Key': 'e2e-nfe-files' },
+        status: 202,
+      });
+      const id = created.body.data.id as string;
+      await dataSource.query(
+        `UPDATE "${schema}".nfe_documents
+            SET status = 'authorized', series = 1, number = 77, access_key = '35261111222333000181550010000000771123456780',
+                protocol = '135260000000001', signed_xml = '<NFe/>', issued_at = now(), authorized_at = now()
+          WHERE id = $1`,
+        [id],
+      );
+
+      // Not stored yet: every file route answers 409.
+      for (const [key, path, extra] of [
+        ['GET /nfe/{id}/xml', `/nfe/${id}/xml`, {}],
+        ['GET /nfe/{id}/pdf', `/nfe/${id}/pdf`, {}],
+        [
+          'POST /nfe/{id}/download-url',
+          `/nfe/${id}/download-url`,
+          { body: { format: 'xml' } },
+        ],
+      ] as const) {
+        const early = await call(key, { path, status: 409, ...extra });
+        expect(early.body.code).toBe('ERROR_DOCUMENTS_NOT_READY');
+      }
+      const unknown = await call('GET /nfe/{id}/xml', {
+        path: `/nfe/${randomUUID()}/xml`,
+        status: 404,
+      });
+      expect(unknown.body.code).toBe('ERROR_RESOURCE_NOT_FOUND');
+
+      // What the worker leaves behind: the files and the ready mark.
+      const stored = `${tenantId}/test/nfe/${id}`;
+      documents.set(`${stored}/nfe-proc.xml`, '<nfeProc/>');
+      documents.set(`${stored}/danfe.pdf`, Buffer.from('%PDF-1.4 danfe'));
+      await dataSource.query(
+        `UPDATE "${schema}".nfe_documents SET documents_ready_at = now() WHERE id = $1`,
+        [id],
+      );
+
+      const xml = await call('GET /nfe/{id}/xml', {
+        path: `/nfe/${id}/xml`,
+        status: 200,
+      });
+      expect(xml.text).toBe('<nfeProc/>');
+      expect(xml.contentType).toContain('application/xml');
+      const pdf = await call('GET /nfe/{id}/pdf', {
+        path: `/nfe/${id}/pdf`,
+        status: 200,
+      });
+      expect(pdf.contentType).toContain('application/pdf');
+      expect(pdf.text.startsWith('%PDF')).toBe(true);
+      const link = await call('POST /nfe/{id}/download-url', {
+        path: `/nfe/${id}/download-url`,
+        body: { format: 'pdf' },
+        status: 200,
+      });
+      expect(link.body.data).toMatchObject({
+        fileName: 'nfe-77.pdf',
+        mimeType: 'application/pdf',
+      });
+      await call('POST /nfe/{id}/download-url', {
+        path: `/nfe/${id}/download-url`,
+        body: { format: 'zip' },
+        status: 400,
+      });
+      const read = await call('GET /nfe/{id}', {
+        path: `/nfe/${id}`,
+        status: 200,
+      });
+      expect(read.body.data).toMatchObject({
+        documentsReady: true,
+        emailStatus: null,
+      });
     });
   });
 
