@@ -49,6 +49,11 @@ describe.each(["pt", "en"] as const)("payment integrations docs (%s)", (locale) 
       expect(text).toContain(term);
   });
 
+  it("documents how to connect Hotmart", () => {
+    for (const term of ["hottok", "X-HOTMART-HOTTOK", "PURCHASE_APPROVED", "PURCHASE_COMPLETE", "PURCHASE_REFUNDED", "PURCHASE_CHARGEBACK", "PURCHASE_PROTEST", "hotmart:<transaction>", "invoice_by", "invoiceValue"])
+      expect(text).toContain(term);
+  });
+
   it("authenticates the examples with X-API-Key, like the rest of the API", () => {
     expect(text).toContain("X-API-Key");
     expect(text).not.toContain("Authorization: Bearer");

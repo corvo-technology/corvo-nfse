@@ -24,10 +24,9 @@ interface ConnectFlowProps {
 
 type Step = "platform" | "details" | "done";
 
-export function providerDescriptionKey(id: string): "woovi" | "abacatepay" | "stripe" | "pushinpay" | "other" {
-  return id === "woovi" || id === "abacatepay" || id === "stripe" || id === "pushinpay" ? id : "other";
+export function providerDescriptionKey(id: string): "woovi" | "abacatepay" | "stripe" | "pushinpay" | "hotmart" | "other" {
+  return id === "woovi" || id === "abacatepay" || id === "stripe" || id === "pushinpay" || id === "hotmart" ? id : "other";
 }
-
 export function ConnectFlow({ providers, companies, environment, initialProvider }: ConnectFlowProps) {
   const router = useRouter();
   const backToList = () => router.push("/app/integrations");
@@ -49,7 +48,7 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
 
   const provider = providers.find((p) => p.id === providerId) ?? null;
   const askedFields = provider?.credentialFields.filter((field) => !field.generate) ?? [];
-  const ready = Boolean(provider && companyId && askedFields.every((field) => (credentials[field.key] ?? "").trim()));
+  const ready = Boolean(provider && companyId && askedFields.every((field) => field.optional || (credentials[field.key] ?? "").trim()));
 
   async function submit() {
     if (!provider || !ready) return;
@@ -60,7 +59,10 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
         provider: provider.id,
         companyId,
         environment,
-        credentials: Object.fromEntries(askedFields.map((field) => [field.key, credentials[field.key].trim()])),
+        credentials: Object.fromEntries(askedFields.flatMap((field) => {
+          const value = (credentials[field.key] ?? field.options?.[0] ?? "").trim();
+          return value ? [[field.key, value] as const] : [];
+        })),
         sendEmail,
       });
       setWebhookUrl(result.webhookUrl);
@@ -121,7 +123,15 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
               )}
             </Field>
           )}
-          {askedFields.map((field) => (
+          {askedFields.map((field) => field.options ? (
+            <Field key={field.key} label={t.has(`wizard.fields.${field.key}`) ? t(`wizard.fields.${field.key}`) : field.label}>
+              {(control) => (
+                <select {...control} className="field" value={credentials[field.key] ?? field.options?.[0] ?? ""} onChange={(e) => setCredentials({ ...credentials, [field.key]: e.target.value })}>
+                  {field.options?.map((option) => <option key={option} value={option}>{t.has(`wizard.options.${field.key}.${option}`) ? t(`wizard.options.${field.key}.${option}`) : option}</option>)}
+                </select>
+              )}
+            </Field>
+          ) : (
             <Field key={field.key} label={field.label} required>
               {(control) => (
                 <Input {...control} type={field.secret ? "password" : "text"} autoComplete="off" value={credentials[field.key] ?? ""} onChange={(e) => setCredentials({ ...credentials, [field.key]: e.target.value })} />

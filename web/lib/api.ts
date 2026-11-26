@@ -359,7 +359,7 @@ export const webhooks = {
   deliveryStats: async (hours = 24, environment = "live") => unwrap(await request<Envelope<DeliveryStats>>(`/webhooks/deliveries/stats${query({ hours, environment })}`)),
   retryDelivery: async (id: string) => unwrap(await request<Envelope<{ retried: boolean }>>(`/webhooks/deliveries/${idPath(id)}/retry`, { method: "POST" })),
 };
-export interface IntegrationProvider { id: string; name: string; version: string; credentialFields: { key: string; label: string; secret: boolean; generate?: boolean; inWebhookUrl?: boolean }[]; webhookInstructions: { pt: string; en: string }; supportedFlows: string[] }
+export interface IntegrationProvider { id: string; name: string; version: string; credentialFields: { key: string; label: string; secret: boolean; generate?: boolean; inWebhookUrl?: boolean; optional?: boolean; options?: string[] }[]; webhookInstructions: { pt: string; en: string }; supportedFlows: string[] }
 export type IntegrationConnectionState = "draft" | "active" | "paused" | "reauth_required" | "disconnected";
 export interface IntegrationConnection { id: string; provider: string; environment: "test" | "live"; companyId: string; state: IntegrationConnectionState; externalAccountId: string | null; activeFrom: string | null; webhookUrl: string; createdAt: string;
   /** Only in the create response: secrets the client must paste into the platform. */

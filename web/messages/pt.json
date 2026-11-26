@@ -17,6 +17,7 @@
       "abacatepay": "Venda (AbacatePay)",
       "pushinpay": "Venda (PushinPay)",
       "stripe": "Venda (Stripe)",
+      "hotmart": "Venda (Hotmart)",
       "generic": "Venda pela integração"
     }
   },
@@ -2916,6 +2917,7 @@
       "abacatepay": "Checkout e pagamentos pagos na AbacatePay.",
       "pushinpay": "Pix, boleto e Pix recorrente pagos na PushinPay.",
       "stripe": "Cartão, Pix e boleto pagos no Stripe.",
+      "hotmart": "Compras de produtos digitais pagas na Hotmart.",
       "other": "Pagamentos confirmados."
     },
     "status": {
@@ -2934,6 +2936,15 @@
       "companyPlaceholder": "Escolha a empresa",
       "noCompanies": "Cadastre uma empresa antes de conectar.",
       "sendEmail": "Enviar a nota por e-mail ao cliente",
+      "fields": {
+        "invoiceValue": "Valor da nota"
+      },
+      "options": {
+        "invoiceValue": {
+          "total": "Total pago pelo comprador (padrão)",
+          "mine": "Minha parte da venda"
+        }
+      },
       "back": "Voltar",
       "connect": "Conectar",
       "connecting": "Conectando...",
