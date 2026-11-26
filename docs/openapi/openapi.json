@@ -5910,7 +5910,7 @@
     },
     "/invoices": {
       "get": {
-        "description": "Newest first. Filter by `status`, `origin`, `companyId`, `externalId`, `customerTaxId` or a `from`/`to` competence-date range, and walk the pages with `cursor`. A test key lists only test invoices and a live key only live ones.\n\nPermission: `nfse.invoices.view`.",
+        "description": "Newest first. Filter by `status`, `origin`, `companyId`, `externalId`, `customerTaxId` or a `from`/`to` competence-date range, and walk the pages with `cursor`. A test key lists only test invoices and a live key only live ones.\n\n**With `type: \"nfe\"`:** The NF-e of the environment of the key, newest first. Filter by `companyId` and `status`.\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
         "operationId": "invoices_list",
         "parameters": [
           {
@@ -5930,6 +5930,21 @@
             "name": "cursor",
             "required": false,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "`nfse` (default) lists NFS-e. `nfe` lists NF-e (filters: `companyId`, `status`). `all` lists both in one summary shape (`companyId` and `status` only).",
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "default": "nfse",
+              "enum": [
+                "nfse",
+                "nfe",
+                "all"
+              ],
               "type": "string"
             }
           },
@@ -5970,21 +5985,22 @@
             }
           },
           {
+            "description": "Only this state. NFS-e states by default; NF-e states with `type=nfe`; either with `type=all`.",
             "in": "query",
             "name": "status",
             "required": false,
             "schema": {
               "enum": [
-                "queued",
+                "failed",
                 "processing",
+                "manual_review",
                 "authorized",
                 "rejected",
+                "cancelled",
                 "retry_pending",
+                "queued",
                 "reconciliation_required",
-                "manual_review",
-                "failed",
-                "cancelling",
-                "cancelled"
+                "cancelling"
               ],
               "type": "string"
             }
@@ -6022,22 +6038,62 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "properties": {
-                    "data": {
-                      "items": {
-                        "$ref": "#/components/schemas/Invoice"
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "data": {
+                          "items": {
+                            "$ref": "#/components/schemas/Invoice"
+                          },
+                          "type": "array"
+                        },
+                        "pagination": {
+                          "$ref": "#/components/schemas/CursorPagination"
+                        }
                       },
-                      "type": "array"
+                      "required": [
+                        "data",
+                        "pagination"
+                      ],
+                      "type": "object"
                     },
-                    "pagination": {
-                      "$ref": "#/components/schemas/CursorPagination"
+                    {
+                      "properties": {
+                        "data": {
+                          "items": {
+                            "$ref": "#/components/schemas/Nfe"
+                          },
+                          "type": "array"
+                        },
+                        "pagination": {
+                          "$ref": "#/components/schemas/CursorPagination"
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "pagination"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "items": {
+                            "$ref": "#/components/schemas/InvoiceSummary"
+                          },
+                          "type": "array"
+                        },
+                        "pagination": {
+                          "$ref": "#/components/schemas/CursorPagination"
+                        }
+                      },
+                      "required": [
+                        "data",
+                        "pagination"
+                      ],
+                      "type": "object"
                     }
-                  },
-                  "required": [
-                    "data",
-                    "pagination"
-                  ],
-                  "type": "object"
+                  ]
                 }
               }
             },
@@ -6083,11 +6139,12 @@
           "Invoices"
         ],
         "x-required-permissions": [
-          "nfse.invoices.view"
+          "nfse.invoices.view",
+          "nfe.documents.view"
         ]
       },
       "post": {
-        "description": "Issues an NFS-e for a company. Issuing is asynchronous: the answer is 202 with the invoice `queued`, and the final result comes by webhook or by polling `GET /invoices/{id}`. In `live`, each accepted invoice reserves one credit. With `options.type` `SCHEDULE` or `RECURRING` nothing is issued now: the answer is the schedule (see Schedules). Send `Idempotency-Key` to make retries safe. A test key issues on the restricted-production environment, with no fiscal value.\n\nPermission: `nfse.invoices.issue`.",
+        "description": "Issues an NFS-e for a company. Issuing is asynchronous: the answer is 202 with the invoice `queued`, and the final result comes by webhook or by polling `GET /invoices/{id}`. In `live`, each accepted invoice reserves one credit. With `options.type` `SCHEDULE` or `RECURRING` nothing is issued now: the answer is the schedule (see Schedules). Send `Idempotency-Key` to make retries safe. A test key issues on the restricted-production environment, with no fiscal value.\n\n**With `type: \"nfe\"`:** Issues an NF-e (model 55, Simples Nacional, homologation only). The answer is asynchronous: `202` with the `id` and `status: queued`; the result comes by webhook (`nfe.document.*`) or by `GET /invoices/{id}`. Same body as `POST /invoices/validate`, which is the way to check a note without issuing it.\n\n`Idempotency-Key` (1 to 200 characters) is **required**: without it the answer is `400 IDEMPOTENCY_KEY_REQUIRED`. Repeating a key with the same body answers `200` with the same `id` and `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.\n\nEverything that can be refused is refused here with `422` and nothing is saved or charged: `type` `validation` (fix the fields in `details`) or `configuration` (`COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). In `live`, each accepted NF-e reserves one credit, given back if the note ends rejected, denied or discarded. Answers 404 while NF-e is not released for the workspace.\n\nPermission: `nfse.invoices.issue` or `nfe.documents.issue`.",
         "operationId": "invoices_create",
         "parameters": [
           {
@@ -6098,26 +6155,75 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateInvoice"
+                "discriminator": {
+                  "mapping": {
+                    "nfe": "#/components/schemas/NfeInvoiceRequest",
+                    "nfse": "#/components/schemas/NfseInvoiceRequest"
+                  },
+                  "propertyName": "type"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/NfseInvoiceRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NfeInvoiceRequest"
+                  }
+                ]
               }
             }
           },
           "required": true
         },
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/NfeAccepted"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
           "202": {
             "content": {
               "application/json": {
                 "schema": {
                   "properties": {
                     "data": {
-                      "description": "The invoice, or the schedule when `options.type` is `SCHEDULE` or `RECURRING`.",
+                      "description": "The invoice, or the schedule when `options.type` is `SCHEDULE` or `RECURRING`, or `{ type: \"nfe\", id, status }` for an NF-e.",
                       "oneOf": [
                         {
                           "$ref": "#/components/schemas/Invoice"
                         },
                         {
                           "$ref": "#/components/schemas/Schedule"
+                        },
+                        {
+                          "$ref": "#/components/schemas/NfeAccepted"
                         }
                       ]
                     }
@@ -6157,6 +6263,12 @@
           "403": {
             "$ref": "#/components/responses/Error403"
           },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
           "429": {
             "$ref": "#/components/responses/Error429"
           },
@@ -6169,18 +6281,19 @@
             "ApiKeyAuth": []
           }
         ],
-        "summary": "Issue an invoice, or schedule one",
+        "summary": "Issue an invoice (NFS-e or NF-e), or schedule one",
         "tags": [
           "Invoices"
         ],
         "x-required-permissions": [
-          "nfse.invoices.issue"
+          "nfse.invoices.issue",
+          "nfe.documents.issue"
         ]
       }
     },
     "/invoices/{id}": {
       "get": {
-        "description": "Returns the invoice in its current state. Issuing is asynchronous: poll this route or use the invoice webhooks until `status` is final.\n\nPermission: `nfse.invoices.view`.",
+        "description": "Returns the invoice in its current state. Issuing is asynchronous: poll this route or use the invoice webhooks until `status` is final.\n\n**For an NF-e:** The NF-e with its state, number, key and protocol. While it is `reconciliation_required` or `manual_review`, `lastError.type` is `communication`: the SEFAZ did not answer and Corvo checks by the key, you must not issue it again. A SEFAZ rejection has `lastError.type` `validation`, the cStat in `lastError.code` and, for the known ones, a `hint`.\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
         "operationId": "invoices_get",
         "parameters": [
           {
@@ -6201,7 +6314,14 @@
                 "schema": {
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/Invoice"
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Invoice"
+                        },
+                        {
+                          "$ref": "#/components/schemas/Nfe"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -6253,13 +6373,129 @@
           "Invoices"
         ],
         "x-required-permissions": [
-          "nfse.invoices.view"
+          "nfse.invoices.view",
+          "nfe.documents.view"
+        ]
+      },
+      "put": {
+        "description": "Only for an NF-e in `rejected`. The body is the same as `POST /invoices` with `type: \"nfe\"`: it replaces the content, keeps the **number** and draws a new key. Answers `202` (`queued`); the same body sent again answers `200` with `replayed: true`. In `live` it reserves one credit again (the rejection gave it back). Any other state answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.issue`.",
+        "operationId": "invoices_resubmit",
+        "parameters": [
+          {
+            "description": "Identifier (UUID) of the invoice.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/NfeAccepted"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/NfeAccepted"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Accepted: the work continues in the background",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Correct and send a rejected NF-e again",
+        "tags": [
+          "Invoices"
+        ],
+        "x-required-permissions": [
+          "nfe.documents.issue"
         ]
       }
     },
     "/invoices/{id}/cancel": {
       "post": {
-        "description": "Answers 200 when a queued invoice is cancelled locally, and 202 while the NFS-e cancellation event is processed or when the request is registered on an invoice still being issued (`processing`, with `cancellationRequestedAt` set). `description` (15 to 255 characters) is required. An authorized invoice is cancelled at the Sefin (event 101101) and its credit is not refunded; if a processing emission ends rejected or failed the request is discarded and the reservation is refunded as usual. Repeating the request returns the current state (the first request wins). `retry_pending`, `reconciliation_required` and `manual_review` answer 409 `ERROR_INVOICE_NOT_CANCELLABLE`.\n\nPermission: `nfse.invoices.issue`.",
+        "description": "Answers 200 when a queued invoice is cancelled locally, and 202 while the NFS-e cancellation event is processed or when the request is registered on an invoice still being issued (`processing`, with `cancellationRequestedAt` set). `description` (15 to 255 characters) is required. An authorized invoice is cancelled at the Sefin (event 101101) and its credit is not refunded; if a processing emission ends rejected or failed the request is discarded and the reservation is refunded as usual. Repeating the request returns the current state (the first request wins). `retry_pending`, `reconciliation_required` and `manual_review` answer 409 `ERROR_INVOICE_NOT_CANCELLABLE`.\n\n**For an NF-e:** Only for an NF-e in `authorized`. The body is the justification (15 to 255 characters, `422 JUSTIFICATION_LENGTH`). Answers `202` with the NF-e in `cancelling`; the SEFAZ answer comes by webhook (`nfe.document.cancelled`, or `nfe.document.cancellation_rejected` with the reason as the SEFAZ wrote it, and the NF-e goes back to `authorized`) and in `GET /invoices/{id}/events`. If the SEFAZ does not answer, the event stays `pending_check` and Corvo checks by the key; the same signed request is the only one ever sent. The legal deadline depends on the state: past it, the SEFAZ rejection is shown as it comes. **Cancelling does not give the credit back** (the NF-e was authorized). Any other state answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfse.invoices.issue` or `nfe.documents.manage`.",
         "operationId": "invoices_cancel",
         "parameters": [
           {
@@ -6277,7 +6513,14 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CancelInvoice"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/CancelInvoice"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CancelNfe"
+                  }
+                ]
               }
             }
           },
@@ -6322,7 +6565,14 @@
                 "schema": {
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/Invoice"
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Invoice"
+                        },
+                        {
+                          "$ref": "#/components/schemas/Nfe"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -6360,6 +6610,9 @@
           "404": {
             "$ref": "#/components/responses/Error404"
           },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
           "422": {
             "$ref": "#/components/responses/Error422"
           },
@@ -6380,13 +6633,181 @@
           "Invoices"
         ],
         "x-required-permissions": [
-          "nfse.invoices.issue"
+          "nfse.invoices.issue",
+          "nfe.documents.manage"
+        ]
+      }
+    },
+    "/invoices/{id}/corrections": {
+      "post": {
+        "description": "Only for an NF-e in `authorized`. The body is the correction (15 to 1000 characters, `422 CORRECTION_LENGTH`); it cannot change values, taxes, the parties or the dates. Each letter takes the next `sequence` (`nSeqEvento`), even if two arrive at once; the 21st answers `422 CORRECTION_LIMIT_REACHED`. Answers `202` with the event in `pending`; the result comes by webhook (`nfe.document.corrected`) and in `GET /invoices/{id}/events`. The newest letter replaces the earlier ones. A letter costs no credit and does not change the state of the NF-e. Any other state answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.manage`.",
+        "operationId": "invoices_correct",
+        "parameters": [
+          {
+            "description": "Identifier (UUID) of the invoice.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/NfeEvent"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Accepted: the work continues in the background",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Send a correction letter (CC-e)",
+        "tags": [
+          "Invoices"
+        ],
+        "x-required-permissions": [
+          "nfe.documents.manage"
+        ]
+      }
+    },
+    "/invoices/{id}/discard": {
+      "post": {
+        "description": "Only for an NF-e in `rejected`: it ends `discarded` (the credit was already given back by the rejection). The number it used stays burned: it is a gap that an inutilization closes. Any other state answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.manage`.",
+        "operationId": "invoices_discard",
+        "parameters": [
+          {
+            "description": "Identifier (UUID) of the invoice.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Nfe"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Give up a rejected NF-e",
+        "tags": [
+          "Invoices"
+        ],
+        "x-required-permissions": [
+          "nfe.documents.manage"
         ]
       }
     },
     "/invoices/{id}/download-url": {
       "post": {
-        "description": "Returns a short-lived signed URL for the PDF or XML, to hand to a browser or another service without sharing the API key. The response is never cached.\n\nPermission: `nfse.invoices.view`.",
+        "description": "Returns a short-lived signed URL for the PDF or XML, to hand to a browser or another service without sharing the API key. The response is never cached.\n\n**For an NF-e:** A short-lived signed URL for the `xml` (the `nfeProc`) or the `pdf` (the DANFE), to hand to a browser or another service without sharing the API key. The response is never cached. Before the documents are ready, `409 DOCUMENTS_NOT_READY`.\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
         "operationId": "invoices_createDownloadUrl",
         "parameters": [
           {
@@ -6455,6 +6876,9 @@
           "404": {
             "$ref": "#/components/responses/Error404"
           },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
           "429": {
             "$ref": "#/components/responses/Error429"
           },
@@ -6472,7 +6896,8 @@
           "Invoices"
         ],
         "x-required-permissions": [
-          "nfse.invoices.view"
+          "nfse.invoices.view",
+          "nfe.documents.view"
         ]
       }
     },
@@ -6573,7 +6998,7 @@
     },
     "/invoices/{id}/events": {
       "get": {
-        "description": "The status transitions of the invoice, including what the national portal reported (`source: portal`).\n\nPermission: `nfse.invoices.view`.",
+        "description": "The status transitions of the invoice, including what the national portal reported (`source: portal`).\n\n**For an NF-e:** The states the NF-e went through and its fiscal events (cancellation and correction letters), oldest first. An entry with `kind` `event` has its own `status` (`pending`, `pending_check`, `registered`, `rejected`).\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
         "operationId": "invoices_listEvents",
         "parameters": [
           {
@@ -6612,22 +7037,40 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "properties": {
-                    "data": {
-                      "items": {
-                        "$ref": "#/components/schemas/InvoiceEvent"
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "data": {
+                          "items": {
+                            "$ref": "#/components/schemas/InvoiceEvent"
+                          },
+                          "type": "array"
+                        },
+                        "pagination": {
+                          "$ref": "#/components/schemas/CursorPagination"
+                        }
                       },
-                      "type": "array"
+                      "required": [
+                        "data",
+                        "pagination"
+                      ],
+                      "type": "object"
                     },
-                    "pagination": {
-                      "$ref": "#/components/schemas/CursorPagination"
+                    {
+                      "properties": {
+                        "data": {
+                          "items": {
+                            "$ref": "#/components/schemas/NfeTimelineEntry"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "data"
+                      ],
+                      "type": "object"
                     }
-                  },
-                  "required": [
-                    "data",
-                    "pagination"
-                  ],
-                  "type": "object"
+                  ]
                 }
               }
             },
@@ -6676,13 +7119,14 @@
           "Invoices"
         ],
         "x-required-permissions": [
-          "nfse.invoices.view"
+          "nfse.invoices.view",
+          "nfe.documents.view"
         ]
       }
     },
     "/invoices/{id}/pdf": {
       "get": {
-        "description": "The DANFSe PDF. Available once `documentsStatus` is `ready`.\n\nPermission: `nfse.invoices.view`.",
+        "description": "The DANFSe PDF. Available once `documentsStatus` is `ready`.\n\n**For an NF-e:** The DANFE, portrait A4. A test company gets the mark `SEM VALOR FISCAL`; a cancelled NF-e gets `CANCELADA`. Available once `documentsReady` is `true`; before that, `409 DOCUMENTS_NOT_READY`.\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
         "operationId": "invoices_downloadPdf",
         "parameters": [
           {
@@ -6737,6 +7181,9 @@
           "404": {
             "$ref": "#/components/responses/Error404"
           },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
           "429": {
             "$ref": "#/components/responses/Error429"
           },
@@ -6754,7 +7201,8 @@
           "Invoices"
         ],
         "x-required-permissions": [
-          "nfse.invoices.view"
+          "nfse.invoices.view",
+          "nfe.documents.view"
         ]
       }
     },
@@ -6856,9 +7304,91 @@
         ]
       }
     },
+    "/invoices/{id}/sync": {
+      "post": {
+        "description": "For an NF-e in `reconciliation_required` or `manual_review`: asks the SEFAZ what it has for the key and adopts it (authorized, denied or cancelled). If the SEFAZ still does not know the key after the waiting window, the **same** signed XML is sent again: the number and the key never change. An NF-e that is already settled is returned as it is; one still `queued`, `processing` or `retry_pending` answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.manage`.",
+        "operationId": "invoices_sync",
+        "parameters": [
+          {
+            "description": "Identifier (UUID) of the invoice.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Nfe"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Ask the SEFAZ about the NF-e by its key",
+        "tags": [
+          "Invoices"
+        ],
+        "x-required-permissions": [
+          "nfe.documents.manage"
+        ]
+      }
+    },
     "/invoices/{id}/xml": {
       "get": {
-        "description": "The authorized NFS-e XML. Available once `documentsStatus` is `ready`.\n\nPermission: `nfse.invoices.view`.",
+        "description": "The authorized NFS-e XML. Available once `documentsStatus` is `ready`.\n\n**For an NF-e:** The `nfeProc`: the signed NF-e followed by the SEFAZ protocol, the file the customer keeps. Available once `documentsReady` is `true`; before that, and for an NF-e that was never authorized, `409 DOCUMENTS_NOT_READY`. It stays available after a cancellation (the cancellation XML is in the events).\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
         "operationId": "invoices_downloadXml",
         "parameters": [
           {
@@ -6912,6 +7442,9 @@
           "404": {
             "$ref": "#/components/responses/Error404"
           },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
           "429": {
             "$ref": "#/components/responses/Error429"
           },
@@ -6929,7 +7462,8 @@
           "Invoices"
         ],
         "x-required-permissions": [
-          "nfse.invoices.view"
+          "nfse.invoices.view",
+          "nfe.documents.view"
         ]
       }
     },
@@ -7153,6 +7687,345 @@
         ]
       }
     },
+    "/invoices/inutilizations": {
+      "get": {
+        "description": "The inutilization requests of the environment of the key, newest first. Filter by `companyId` and `status`.\n\nPermission: `nfe.documents.view`.",
+        "operationId": "invoices_listInutilizations",
+        "parameters": [
+          {
+            "description": "Only `nfe`: inutilizations and number gaps exist only for NF-e.",
+            "in": "query",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "nfe"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor from the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only this company.",
+            "in": "query",
+            "name": "companyId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "pending",
+                "homologada",
+                "rejected"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/NfeInutilization"
+                      },
+                      "type": "array"
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/CursorPagination"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "pagination"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "List NF-e inutilizations",
+        "tags": [
+          "Invoices"
+        ],
+        "x-required-permissions": [
+          "nfe.documents.view"
+        ]
+      },
+      "post": {
+        "description": "Voids the numbers `start` to `end` of a series that will never be used (the numbers of an NF-e that was `discarded`, or skipped). Answers `202` with the request in `pending`; the result comes by webhook (`nfe.inutilization.completed` or `nfe.inutilization.rejected`) and in `GET /invoices/inutilizations?type=nfe`. The range is refused with `409 INUTILIZATION_RANGE_IN_USE` when an NF-e that is not `discarded` holds a number in it, and with `409 INUTILIZATION_RANGE_OVERLAP` when another request, waiting or approved, covers part of it. A range that goes past the last number used raises the numbering to `end`, so the numbers voided are never emitted. The justification has 15 to 255 characters (`422 JUSTIFICATION_LENGTH`). `Idempotency-Key` is optional: repeating it with the same body answers `200` with `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.\n\nPermission: `nfe.documents.manage`.",
+        "operationId": "invoices_createInutilization",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/NfeInutilization"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/NfeInutilization"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Accepted: the work continues in the background",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Inutilize a range of NF-e numbers",
+        "tags": [
+          "Invoices"
+        ],
+        "x-required-permissions": [
+          "nfe.documents.manage"
+        ]
+      }
+    },
+    "/invoices/number-gaps": {
+      "get": {
+        "description": "The numbers, from 1 to the last one used, that no NF-e holds (anything but `discarded`) and no approved inutilization covers, grouped in runs per company and series. It is computed when asked. A daily job only writes them to the log: nothing is inutilized by itself.\n\nPermission: `nfe.documents.view`.",
+        "operationId": "invoices_numberGaps",
+        "parameters": [
+          {
+            "description": "Only `nfe`: inutilizations and number gaps exist only for NF-e.",
+            "in": "query",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "nfe"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only this company.",
+            "in": "query",
+            "name": "companyId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/NfeNumberGap"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "List the numbering gaps",
+        "tags": [
+          "Invoices"
+        ],
+        "x-required-permissions": [
+          "nfe.documents.view"
+        ]
+      }
+    },
     "/invoices/overview": {
       "get": {
         "description": "Exactly 7 or 30 calendar days including today in America/Sao_Paulo. Counts and up to 5 recent invoices use creation time and current status. Daily activity counts currently authorized invoices by authorization time, including invoices created earlier. Credits are available separately from billing.\n\nPermission: `nfse.invoices.view`.",
@@ -7312,1510 +8185,21 @@
         ]
       }
     },
-    "/nfe": {
-      "get": {
-        "description": "The NF-e of the environment of the key, newest first. Filter by `companyId` and `status`.\n\nPermission: `nfe.documents.view`.\n\nPermission: `nfe.documents.view`.",
-        "operationId": "nfe_list",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 50,
-              "maximum": 1000,
-              "minimum": 1,
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Opaque cursor from the previous page",
-            "in": "query",
-            "name": "cursor",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Only this company.",
-            "in": "query",
-            "name": "companyId",
-            "required": false,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Only this state.",
-            "in": "query",
-            "name": "status",
-            "required": false,
-            "schema": {
-              "enum": [
-                "queued",
-                "processing",
-                "authorized",
-                "rejected",
-                "denied",
-                "retry_pending",
-                "reconciliation_required",
-                "manual_review",
-                "cancelling",
-                "cancelled",
-                "discarded"
-              ],
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "items": {
-                        "$ref": "#/components/schemas/Nfe"
-                      },
-                      "type": "array"
-                    },
-                    "pagination": {
-                      "$ref": "#/components/schemas/CursorPagination"
-                    }
-                  },
-                  "required": [
-                    "data",
-                    "pagination"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "OK",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "List NF-e",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.view"
-        ]
-      },
+    "/invoices/validate": {
       "post": {
-        "description": "Issues an NF-e (model 55, Simples Nacional, homologation only). The answer is asynchronous: `202` with the `id` and `status: queued`; the result comes by webhook (`nfe.document.*`) or by `GET /nfe/{id}`. Same body as `POST /nfe/validate`, which is the way to check a note without issuing it.\n\n`Idempotency-Key` (1 to 200 characters) is **required**: without it the answer is `400 IDEMPOTENCY_KEY_REQUIRED`. Repeating a key with the same body answers `200` with the same `id` and `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.\n\nEverything that can be refused is refused here with `422` and nothing is saved or charged: `type` `validation` (fix the fields in `details`) or `configuration` (`COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). In `live`, each accepted NF-e reserves one credit, given back if the note ends rejected, denied or discarded. Answers 404 while NF-e is not released for the workspace.\n\nPermission: `nfe.documents.issue`.\n\nPermission: `nfe.documents.issue`.",
-        "operationId": "nfe_create",
+        "description": "Dry-run of `POST /invoices` with `type: \"nfe\"` (same body): runs the company checks, every validator and the official XSD, and answers `200` with `accessKeyPreview` (the key the next NF-e would get; it changes at each call) or `422` with all the problems at once. Nothing is saved, no credit is used and the SEFAZ is not called. Add `?includeXml=true` to get the preview XML (without a real signature).\n\nA `422` has `type` `validation` (fix the fields in `details`, `NFE_VALIDATION_FAILED`) or `configuration` (complete the company or wait for the release: `COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). Answers 404 while NF-e is not released for the workspace.\n\nPermission: `nfe.documents.issue`.",
+        "operationId": "invoices_validate",
         "parameters": [
-          {
-            "$ref": "#/components/parameters/IdempotencyKey"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NfeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/NfeAccepted"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "OK",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/NfeAccepted"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Accepted: the work continues in the background",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "409": {
-            "$ref": "#/components/responses/Error409"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error422"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "Issue an NF-e",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.issue"
-        ]
-      }
-    },
-    "/nfe/{id}": {
-      "get": {
-        "description": "The NF-e with its state, number, key and protocol. While it is `reconciliation_required` or `manual_review`, `lastError.type` is `communication`: the SEFAZ did not answer and Corvo checks by the key, you must not issue it again. A SEFAZ rejection has `lastError.type` `validation`, the cStat in `lastError.code` and, for the known ones, a `hint`.\n\nPermission: `nfe.documents.view`.\n\nPermission: `nfe.documents.view`.",
-        "operationId": "nfe_get",
-        "parameters": [
-          {
-            "description": "Identifier (UUID) of the resource.",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Nfe"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "OK",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "Get an NF-e",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.view"
-        ]
-      },
-      "put": {
-        "description": "Only for an NF-e in `rejected`. The body is the same as `POST /nfe`: it replaces the content, keeps the **number** and draws a new key. Answers `202` (`queued`); the same body sent again answers `200` with `replayed: true`. In `live` it reserves one credit again (the rejection gave it back). Any other state answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.issue`.\n\nPermission: `nfe.documents.issue`.",
-        "operationId": "nfe_resubmit",
-        "parameters": [
-          {
-            "description": "Identifier (UUID) of the resource.",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NfeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/NfeAccepted"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "OK",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/NfeAccepted"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Accepted: the work continues in the background",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "409": {
-            "$ref": "#/components/responses/Error409"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error422"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "Correct and send a rejected NF-e again",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.issue"
-        ]
-      }
-    },
-    "/nfe/{id}/cancel": {
-      "post": {
-        "description": "Only for an NF-e in `authorized`. The body is the justification (15 to 255 characters, `422 JUSTIFICATION_LENGTH`). Answers `202` with the NF-e in `cancelling`; the SEFAZ answer comes by webhook (`nfe.document.cancelled`, or `nfe.document.cancellation_rejected` with the reason as the SEFAZ wrote it, and the NF-e goes back to `authorized`) and in `GET /nfe/{id}/events`. If the SEFAZ does not answer, the event stays `pending_check` and Corvo checks by the key; the same signed request is the only one ever sent. The legal deadline depends on the state: past it, the SEFAZ rejection is shown as it comes. **Cancelling does not give the credit back** (the NF-e was authorized). Any other state answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.manage`.\n\nPermission: `nfe.documents.manage`.",
-        "operationId": "nfe_cancel",
-        "parameters": [
-          {
-            "description": "Identifier (UUID) of the resource.",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CancelNfe"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Nfe"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Accepted: the work continues in the background",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "409": {
-            "$ref": "#/components/responses/Error409"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error422"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "Cancel an authorized NF-e",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.manage"
-        ]
-      }
-    },
-    "/nfe/{id}/corrections": {
-      "post": {
-        "description": "Only for an NF-e in `authorized`. The body is the correction (15 to 1000 characters, `422 CORRECTION_LENGTH`); it cannot change values, taxes, the parties or the dates. Each letter takes the next `sequence` (`nSeqEvento`), even if two arrive at once; the 21st answers `422 CORRECTION_LIMIT_REACHED`. Answers `202` with the event in `pending`; the result comes by webhook (`nfe.document.corrected`) and in `GET /nfe/{id}/events`. The newest letter replaces the earlier ones. A letter costs no credit and does not change the state of the NF-e. Any other state answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.manage`.\n\nPermission: `nfe.documents.manage`.",
-        "operationId": "nfe_correct",
-        "parameters": [
-          {
-            "description": "Identifier (UUID) of the resource.",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CorrectNfe"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/NfeEvent"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Accepted: the work continues in the background",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "409": {
-            "$ref": "#/components/responses/Error409"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error422"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "Send a correction letter (CC-e)",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.manage"
-        ]
-      }
-    },
-    "/nfe/{id}/discard": {
-      "post": {
-        "description": "Only for an NF-e in `rejected`: it ends `discarded` (the credit was already given back by the rejection). The number it used stays burned: it is a gap that an inutilization closes. Any other state answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.manage`.\n\nPermission: `nfe.documents.manage`.",
-        "operationId": "nfe_discard",
-        "parameters": [
-          {
-            "description": "Identifier (UUID) of the resource.",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Nfe"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "OK",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "409": {
-            "$ref": "#/components/responses/Error409"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "Give up a rejected NF-e",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.manage"
-        ]
-      }
-    },
-    "/nfe/{id}/download-url": {
-      "post": {
-        "description": "A short-lived signed URL for the `xml` (the `nfeProc`) or the `pdf` (the DANFE), to hand to a browser or another service without sharing the API key. The response is never cached. Before the documents are ready, `409 DOCUMENTS_NOT_READY`.\n\nPermission: `nfe.documents.view`.\n\nPermission: `nfe.documents.view`.",
-        "operationId": "nfe_downloadUrl",
-        "parameters": [
-          {
-            "description": "Identifier (UUID) of the resource.",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NfeDownloadUrl"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/NfeDownloadUrl"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "OK",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "409": {
-            "$ref": "#/components/responses/Error409"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "Get a signed download URL for the NF-e XML or DANFE",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.view"
-        ]
-      }
-    },
-    "/nfe/{id}/events": {
-      "get": {
-        "description": "The states the NF-e went through and its fiscal events (cancellation and correction letters), oldest first. An entry with `kind` `event` has its own `status` (`pending`, `pending_check`, `registered`, `rejected`).\n\nPermission: `nfe.documents.view`.\n\nPermission: `nfe.documents.view`.",
-        "operationId": "nfe_events",
-        "parameters": [
-          {
-            "description": "Identifier (UUID) of the resource.",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "items": {
-                        "$ref": "#/components/schemas/NfeTimelineEntry"
-                      },
-                      "type": "array"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "OK",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "The timeline of an NF-e",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.view"
-        ]
-      }
-    },
-    "/nfe/{id}/pdf": {
-      "get": {
-        "description": "The DANFE, portrait A4. A test company gets the mark `SEM VALOR FISCAL`; a cancelled NF-e gets `CANCELADA`. Available once `documentsReady` is `true`; before that, `409 DOCUMENTS_NOT_READY`.\n\nPermission: `nfe.documents.view`.\n\nPermission: `nfe.documents.view`.",
-        "operationId": "nfe_pdf",
-        "parameters": [
-          {
-            "description": "Identifier (UUID) of the resource.",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/pdf": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              }
-            },
-            "description": "The DANFE PDF.",
-            "headers": {
-              "Content-Disposition": {
-                "description": "Suggested file name.",
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "409": {
-            "$ref": "#/components/responses/Error409"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "Download the DANFE (PDF)",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.view"
-        ]
-      }
-    },
-    "/nfe/{id}/sync": {
-      "post": {
-        "description": "For an NF-e in `reconciliation_required` or `manual_review`: asks the SEFAZ what it has for the key and adopts it (authorized, denied or cancelled). If the SEFAZ still does not know the key after the waiting window, the **same** signed XML is sent again: the number and the key never change. An NF-e that is already settled is returned as it is; one still `queued`, `processing` or `retry_pending` answers `409 NFE_INVALID_STATE`.\n\nPermission: `nfe.documents.manage`.\n\nPermission: `nfe.documents.manage`.",
-        "operationId": "nfe_sync",
-        "parameters": [
-          {
-            "description": "Identifier (UUID) of the resource.",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Nfe"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "OK",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "409": {
-            "$ref": "#/components/responses/Error409"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "Ask the SEFAZ about the NF-e by its key",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.manage"
-        ]
-      }
-    },
-    "/nfe/{id}/xml": {
-      "get": {
-        "description": "The `nfeProc`: the signed NF-e followed by the SEFAZ protocol, the file the customer keeps. Available once `documentsReady` is `true`; before that, and for an NF-e that was never authorized, `409 DOCUMENTS_NOT_READY`. It stays available after a cancellation (the cancellation XML is in the events).\n\nPermission: `nfe.documents.view`.\n\nPermission: `nfe.documents.view`.",
-        "operationId": "nfe_xml",
-        "parameters": [
-          {
-            "description": "Identifier (UUID) of the resource.",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/xml": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "description": "The nfeProc XML.",
-            "headers": {
-              "Content-Disposition": {
-                "description": "Suggested file name.",
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "409": {
-            "$ref": "#/components/responses/Error409"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "Download the NF-e XML (nfeProc)",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.view"
-        ]
-      }
-    },
-    "/nfe/inutilizations": {
-      "get": {
-        "description": "The inutilization requests of the environment of the key, newest first. Filter by `companyId` and `status`.\n\nPermission: `nfe.documents.view`.\n\nPermission: `nfe.documents.view`.",
-        "operationId": "nfeInutilizations_list",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 50,
-              "maximum": 1000,
-              "minimum": 1,
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Opaque cursor from the previous page",
-            "in": "query",
-            "name": "cursor",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Only this company.",
-            "in": "query",
-            "name": "companyId",
-            "required": false,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "status",
-            "required": false,
-            "schema": {
-              "enum": [
-                "pending",
-                "homologada",
-                "rejected"
-              ],
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "items": {
-                        "$ref": "#/components/schemas/NfeInutilization"
-                      },
-                      "type": "array"
-                    },
-                    "pagination": {
-                      "$ref": "#/components/schemas/CursorPagination"
-                    }
-                  },
-                  "required": [
-                    "data",
-                    "pagination"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "OK",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "List NF-e inutilizations",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.view"
-        ]
-      },
-      "post": {
-        "description": "Voids the numbers `start` to `end` of a series that will never be used (the numbers of an NF-e that was `discarded`, or skipped). Answers `202` with the request in `pending`; the result comes by webhook (`nfe.inutilization.completed` or `nfe.inutilization.rejected`) and in `GET /nfe/inutilizations`. The range is refused with `409 INUTILIZATION_RANGE_IN_USE` when an NF-e that is not `discarded` holds a number in it, and with `409 INUTILIZATION_RANGE_OVERLAP` when another request, waiting or approved, covers part of it. A range that goes past the last number used raises the numbering to `end`, so the numbers voided are never emitted. The justification has 15 to 255 characters (`422 JUSTIFICATION_LENGTH`). `Idempotency-Key` is optional: repeating it with the same body answers `200` with `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.\n\nPermission: `nfe.documents.manage`.\n\nPermission: `nfe.documents.manage`.",
-        "operationId": "nfeInutilizations_create",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/IdempotencyKey"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InutilizeNfe"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/NfeInutilization"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "OK",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/NfeInutilization"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Accepted: the work continues in the background",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "409": {
-            "$ref": "#/components/responses/Error409"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error422"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "Inutilize a range of NF-e numbers",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.manage"
-        ]
-      }
-    },
-    "/nfe/number-gaps": {
-      "get": {
-        "description": "The numbers, from 1 to the last one used, that no NF-e holds (anything but `discarded`) and no approved inutilization covers, grouped in runs per company and series. It is computed when asked. A daily job only writes them to the log: nothing is inutilized by itself.\n\nPermission: `nfe.documents.view`.\n\nPermission: `nfe.documents.view`.",
-        "operationId": "nfe_numberGaps",
-        "parameters": [
-          {
-            "description": "Only this company.",
-            "in": "query",
-            "name": "companyId",
-            "required": false,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "items": {
-                        "$ref": "#/components/schemas/NfeNumberGap"
-                      },
-                      "type": "array"
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "OK",
-            "headers": {
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error500"
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "summary": "List the numbering gaps",
-        "tags": [
-          "NF-e"
-        ],
-        "x-required-permissions": [
-          "nfe.documents.view"
-        ]
-      }
-    },
-    "/nfe/validate": {
-      "post": {
-        "description": "Dry-run of `POST /nfe` (same body): runs the company checks, every validator and the official XSD, and answers `200` with `accessKeyPreview` (the key the next NF-e would get; it changes at each call) or `422` with all the problems at once. Nothing is saved, no credit is used and the SEFAZ is not called. Add `?includeXml=true` to get the preview XML (without a real signature).\n\nA `422` has `type` `validation` (fix the fields in `details`, `NFE_VALIDATION_FAILED`) or `configuration` (complete the company or wait for the release: `COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). Answers 404 while NF-e is not released for the workspace.\n\nPermission: `nfe.documents.issue`.\n\nPermission: `nfe.documents.issue`.",
-        "operationId": "nfe_validate",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "includeXml",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
-          },
           {
             "description": "Send `true` to receive the preview XML in `xml`.",
             "in": "query",
             "name": "includeXml",
             "required": false,
             "schema": {
-              "default": false,
               "type": "boolean"
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NfeRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "content": {
@@ -8873,9 +8257,9 @@
             "ApiKeyAuth": []
           }
         ],
-        "summary": "Validate an NF-e without sending it",
+        "summary": "Validate an NF-e without sending it (dry-run)",
         "tags": [
-          "NF-e"
+          "Invoices"
         ],
         "x-required-permissions": [
           "nfe.documents.issue"
@@ -11639,21 +11023,6 @@
         },
         "type": "object"
       },
-      "CorrectNfe": {
-        "properties": {
-          "correction": {
-            "description": "The correction to consider: 15 to 1000 characters (`CORRECTION_LENGTH`). It cannot change values, taxes, the parties or the dates.",
-            "example": "Corrigir o endereço de entrega para Rua das Flores, 20",
-            "maxLength": 1000,
-            "minLength": 15,
-            "type": "string"
-          }
-        },
-        "required": [
-          "correction"
-        ],
-        "type": "object"
-      },
       "CreateCompany": {
         "properties": {
           "address": {
@@ -13232,46 +12601,6 @@
         ],
         "type": "object"
       },
-      "InutilizeNfe": {
-        "properties": {
-          "companyId": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "end": {
-            "example": 12,
-            "maximum": 999999999,
-            "minimum": 1,
-            "type": "number"
-          },
-          "justification": {
-            "example": "Numeração pulada por falha do sistema emissor",
-            "maxLength": 255,
-            "minLength": 15,
-            "type": "string"
-          },
-          "series": {
-            "example": 1,
-            "maximum": 999,
-            "minimum": 0,
-            "type": "number"
-          },
-          "start": {
-            "example": 10,
-            "maximum": 999999999,
-            "minimum": 1,
-            "type": "number"
-          }
-        },
-        "required": [
-          "companyId",
-          "series",
-          "start",
-          "end",
-          "justification"
-        ],
-        "type": "object"
-      },
       "Invoice": {
         "properties": {
           "accessKey": {
@@ -14214,6 +13543,79 @@
         },
         "type": "object"
       },
+      "InvoiceSummary": {
+        "description": "What `GET /invoices?type=all` shows of each document. Read the whole document with `GET /invoices/{id}`.",
+        "properties": {
+          "accessKey": {
+            "nullable": true,
+            "type": "string"
+          },
+          "amount": {
+            "description": "Gross amount (NFS-e) or `vNF` (NF-e), a decimal text.",
+            "example": "150.00",
+            "nullable": true,
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "environment": {
+            "enum": [
+              "test",
+              "live"
+            ],
+            "type": "string"
+          },
+          "externalId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "issuedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "number": {
+            "description": "NFS-e number or NF-e number.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "status": {
+            "description": "The state, in the vocabulary of the type (NFS-e or NF-e statuses).",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "nfse",
+              "nfe"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "companyId",
+          "environment",
+          "status",
+          "number",
+          "accessKey",
+          "amount",
+          "externalId",
+          "issuedAt",
+          "createdAt"
+        ],
+        "type": "object"
+      },
       "MunicipalityAgreement": {
         "properties": {
           "agreementType": {
@@ -14440,6 +13842,13 @@
             ],
             "type": "object"
           },
+          "type": {
+            "description": "Always `nfe`. An NFS-e has no `type` field: a document without it is an NFS-e.",
+            "enum": [
+              "nfe"
+            ],
+            "type": "string"
+          },
           "updatedAt": {
             "format": "date-time",
             "type": "string"
@@ -14450,6 +13859,7 @@
           }
         },
         "required": [
+          "type",
           "id",
           "companyId",
           "environment",
@@ -14512,9 +13922,16 @@
               "discarded"
             ],
             "type": "string"
+          },
+          "type": {
+            "enum": [
+              "nfe"
+            ],
+            "type": "string"
           }
         },
         "required": [
+          "type",
           "id",
           "status"
         ],
@@ -14579,22 +13996,6 @@
           "cityCode",
           "city",
           "state"
-        ],
-        "type": "object"
-      },
-      "NfeDownloadUrl": {
-        "properties": {
-          "format": {
-            "description": "`xml` is the `nfeProc`; `pdf` is the DANFE.",
-            "enum": [
-              "xml",
-              "pdf"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "format"
         ],
         "type": "object"
       },
@@ -14799,6 +14200,28 @@
           "updatedAt"
         ],
         "type": "object"
+      },
+      "NfeInvoiceRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/NfeRequest"
+          },
+          {
+            "properties": {
+              "type": {
+                "description": "Selects the NF-e (model 55) instead of the NFS-e.",
+                "enum": [
+                  "nfe"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "NfeItem": {
         "properties": {
@@ -15261,6 +14684,26 @@
           "accessKeyPreview"
         ],
         "type": "object"
+      },
+      "NfseInvoiceRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CreateInvoice"
+          },
+          {
+            "properties": {
+              "type": {
+                "default": "nfse",
+                "description": "Optional: without it the request is an NFS-e, exactly as before.",
+                "enum": [
+                  "nfse"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        ]
       },
       "Obligation": {
         "properties": {

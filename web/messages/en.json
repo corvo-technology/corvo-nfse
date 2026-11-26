@@ -2120,6 +2120,7 @@
     "idempotency_key_required": "Send the Idempotency-Key header (1 to 200 characters) to issue an NF-e, so a retry never issues twice.",
     "idempotency_key_invalid": "The Idempotency-Key must have 1 to 200 characters.",
     "idempotency_key_reused": "This idempotency key was already used with different content. Use a new key for a new note.",
+    "invoice_operation_not_supported": "This operation does not exist for this type of document. For example, correction letters, discard and inutilization are NF-e only.",
     "nfe_invalid_state": "This action does not apply to the current state of the NF-e.",
     "justification_length": "The justification must have 15 to 255 characters.",
     "correction_length": "The correction must have 15 to 1000 characters.",
