@@ -215,7 +215,7 @@ export class TypeOrmBillingRepository extends BillingRepository {
     if (ref.type === 'nfse') return this.reservedPeriod(ref.id, ref.tenantId);
     // The NFC-e lives in the NF-e table: its reservation uses the same column.
     if (ref.type !== 'nfe' && ref.type !== 'nfce')
-      throw new Error(`No credit reservation for ${ref.type}`);
+      throw new Error(`No credit reservation for ${String(ref.type)}`);
     return runWithTenant(ref.tenantId, async () => {
       requireTenantId(ref.tenantId);
       const row = await this.manager.findOneBy(CreditTransactionOrmEntity, {

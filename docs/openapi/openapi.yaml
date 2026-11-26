@@ -4331,6 +4331,15 @@ paths:
         discarded. Answers 404 while NF-e is not released for the workspace.
 
 
+        **With `type: "nfce"`:** Issues a NFC-e (model 65, sale to the final consumer, Simples
+        Nacional, homologation only, QR Code v3 online, no CSC). Same body as the dry-run `POST
+        /invoices/validate` with `type: "nfce"`; the consumer is optional. Same rules as the NF-e:
+        `Idempotency-Key` required, `202` with `{ type: "nfce", id, status: "queued" }`, the result
+        by webhook (`nfce.document.*`) or `GET /invoices/{id}`, one credit reserved in `live`. The
+        note carries `qrCode` and `urlChave` once the first attempt is built. Answers 404 while
+        NFC-e is not released for the workspace.
+
+
         Permission: `nfse.invoices.issue` or `nfe.documents.issue`.
       operationId: invoices_create
       parameters:
@@ -4341,12 +4350,14 @@ paths:
             schema:
               discriminator:
                 mapping:
+                  nfce: '#/components/schemas/NfceInvoiceRequest'
                   nfe: '#/components/schemas/NfeInvoiceRequest'
                   nfse: '#/components/schemas/NfseInvoiceRequest'
                 propertyName: type
               oneOf:
                 - $ref: '#/components/schemas/NfseInvoiceRequest'
                 - $ref: '#/components/schemas/NfeInvoiceRequest'
+                - $ref: '#/components/schemas/NfceInvoiceRequest'
         required: true
       responses:
         '200':
@@ -4377,7 +4388,7 @@ paths:
                   data:
                     description: >-
                       The invoice, or the schedule when `options.type` is `SCHEDULE` or `RECURRING`,
-                      or `{ type: "nfe", id, status }` for an NF-e.
+                      or `{ type: "nfe" | "nfce", id, status }` for an NF-e or a NFC-e.
                     oneOf:
                       - $ref: '#/components/schemas/Invoice'
                       - $ref: '#/components/schemas/Schedule'
@@ -4413,7 +4424,7 @@ paths:
           $ref: '#/components/responses/Error500'
       security:
         - ApiKeyAuth: []
-      summary: Issue an invoice (NFS-e or NF-e), or schedule one
+      summary: Issue an invoice (NFS-e, NF-e or NFC-e), or schedule one
       tags:
         - Invoices
       x-required-permissions:
@@ -4431,6 +4442,10 @@ paths:
         did not answer and Corvo checks by the key, you must not issue it again. A SEFAZ rejection
         has `lastError.type` `validation`, the cStat in `lastError.code` and, for the known ones, a
         `hint`.
+
+
+        **For a NFC-e:** Same as the NF-e, with `type: "nfce"`, `model: 65`, `recipient` `null` when
+        the consumer was not identified, and the `qrCode` and `urlChave` of the current attempt.
 
 
         Permission: `nfse.invoices.view` or `nfe.documents.view`.
@@ -4588,6 +4603,12 @@ paths:
         Any other state answers `409 NFE_INVALID_STATE`.
 
 
+        **For a NFC-e:** Same as the NF-e, with `nfce.document.cancelled` and
+        `nfce.document.cancellation_rejected`. The state allows a short window after the
+        authorization (30 minutes in SP); past it the SEFAZ refuses, the NFC-e goes back to
+        `authorized` and `lastError` carries the refusal with a `hint`.
+
+
         Permission: `nfse.invoices.issue` or `nfe.documents.manage`.
       operationId: invoices_cancel
       parameters:
@@ -4685,7 +4706,8 @@ paths:
         CORRECTION_LIMIT_REACHED`. Answers `202` with the event in `pending`; the result comes by
         webhook (`nfe.document.corrected`) and in `GET /invoices/{id}/events`. The newest letter
         replaces the earlier ones. A letter costs no credit and does not change the state of the
-        NF-e. Any other state answers `409 NFE_INVALID_STATE`.
+        NF-e. Any other state answers `409 NFE_INVALID_STATE`. A NFC-e has no correction letter:
+        `422 INVOICE_OPERATION_NOT_SUPPORTED`.
 
 
         Permission: `nfe.documents.manage`.
@@ -5034,7 +5056,8 @@ paths:
 
         **For an NF-e:** The DANFE, portrait A4. A test company gets the mark `SEM VALOR FISCAL`; a
         cancelled NF-e gets `CANCELADA`. Available once `documentsReady` is `true`; before that,
-        `409 DOCUMENTS_NOT_READY`.
+        `409 DOCUMENTS_NOT_READY`. A NFC-e has no PDF yet (the DANFCE comes later): `409
+        DOCUMENTS_NOT_READY`.
 
 
         Permission: `nfse.invoices.view` or `nfe.documents.view`.
@@ -5230,7 +5253,7 @@ paths:
         **For an NF-e:** The `nfeProc`: the signed NF-e followed by the SEFAZ protocol, the file the
         customer keeps. Available once `documentsReady` is `true`; before that, and for an NF-e that
         was never authorized, `409 DOCUMENTS_NOT_READY`. It stays available after a cancellation
-        (the cancellation XML is in the events).
+        (the cancellation XML is in the events). A NFC-e has the same `nfeProc`.
 
 
         Permission: `nfse.invoices.view` or `nfe.documents.view`.
@@ -5441,19 +5464,22 @@ paths:
     get:
       description: >-
         The inutilization requests of the environment of the key, newest first. Filter by
-        `companyId` and `status`.
+        `companyId` and `status`. `type` picks the model: `nfe` (55) or `nfce` (65).
 
 
         Permission: `nfe.documents.view`.
       operationId: invoices_listInutilizations
       parameters:
-        - description: 'Only `nfe`: inutilizations and number gaps exist only for NF-e.'
+        - description: >-
+            `nfe` (model 55) or `nfce` (model 65): inutilizations and number gaps exist only for
+            these.
           in: query
           name: type
           required: true
           schema:
             enum:
               - nfe
+              - nfce
             type: string
         - in: query
           name: limit
@@ -5525,7 +5551,7 @@ paths:
           $ref: '#/components/responses/Error500'
       security:
         - ApiKeyAuth: []
-      summary: List NF-e inutilizations
+      summary: List NF-e or NFC-e inutilizations
       tags:
         - Invoices
       x-required-permissions:
@@ -5542,6 +5568,11 @@ paths:
         the numbers voided are never emitted. The justification has 15 to 255 characters (`422
         JUSTIFICATION_LENGTH`). `Idempotency-Key` is optional: repeating it with the same body
         answers `200` with `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.
+
+
+        **With `type: "nfce"`:** the same for the numbers of the NFC-e series (model 65, its own
+        numbering); the webhooks are `nfce.inutilization.completed` and
+        `nfce.inutilization.rejected`.
 
 
         Permission: `nfe.documents.manage`.
@@ -5605,7 +5636,7 @@ paths:
           $ref: '#/components/responses/Error500'
       security:
         - ApiKeyAuth: []
-      summary: Inutilize a range of NF-e numbers
+      summary: Inutilize a range of NF-e or NFC-e numbers
       tags:
         - Invoices
       x-required-permissions:
@@ -5621,13 +5652,16 @@ paths:
         Permission: `nfe.documents.view`.
       operationId: invoices_numberGaps
       parameters:
-        - description: 'Only `nfe`: inutilizations and number gaps exist only for NF-e.'
+        - description: >-
+            `nfe` (model 55) or `nfce` (model 65): inutilizations and number gaps exist only for
+            these.
           in: query
           name: type
           required: true
           schema:
             enum:
               - nfe
+              - nfce
             type: string
         - description: Only this company.
           in: query
@@ -8201,6 +8235,19 @@ components:
               - nfe.document.corrected
               - nfe.inutilization.completed
               - nfe.inutilization.rejected
+              - nfce.document.authorized
+              - nfce.document.rejected
+              - nfce.document.denied
+              - nfce.document.failed
+              - nfce.document.reconciliation_required
+              - nfce.document.manual_review
+              - nfce.document.documents_ready
+              - nfce.document.email_sent
+              - nfce.document.email_failed
+              - nfce.document.cancelled
+              - nfce.document.cancellation_rejected
+              - nfce.inutilization.completed
+              - nfce.inutilization.rejected
             type: string
           minItems: 1
           type: array
@@ -9862,6 +9909,7 @@ components:
           enum:
             - nfse
             - nfe
+            - nfce
           type: string
       required:
         - id
@@ -9898,6 +9946,135 @@ components:
         - status
         - checkedAt
         - agreementType
+      type: object
+    NfceCard:
+      properties:
+        cAut:
+          description: Authorization number.
+          maxLength: 128
+          minLength: 1
+          type: string
+        cnpj:
+          description: CNPJ of the payment institution.
+          maxLength: 18
+          type: string
+        tBand:
+          description: Card brand, 2 digits (table of the NT).
+          example: '01'
+          pattern: ^\d{2}$
+          type: string
+        tpIntegra:
+          default: 2
+          description: 1 payment integrated with the sales system (needs `cnpj` and `cAut`), 2 not integrated.
+          enum:
+            - 1
+            - 2
+          type: number
+      type: object
+    NfceInvoiceRequest:
+      allOf:
+        - $ref: '#/components/schemas/NfceRequest'
+        - properties:
+            type:
+              description: Selects the NFC-e (model 65, sale to the final consumer) instead of the NFS-e.
+              enum:
+                - nfce
+              type: string
+          required:
+            - type
+          type: object
+    NfcePayment:
+      properties:
+        amount:
+          description: Up to 2 decimals.
+          example: 20
+          minimum: 0
+          type: number
+        card:
+          allOf:
+            - $ref: '#/components/schemas/NfceCard'
+          description: Only with `tPag` 03, 04 or 17.
+        tPag:
+          description: Payment means (tPag), 2 digits.
+          example: '17'
+          pattern: ^\d{2}$
+          type: string
+      required:
+        - tPag
+        - amount
+      type: object
+    NfceRecipient:
+      properties:
+        address:
+          allOf:
+            - $ref: '#/components/schemas/NfeAddress'
+          description: Required for a delivery sale (`indPres` 4).
+        email:
+          format: email
+          maxLength: 60
+          type: string
+        name:
+          example: Maria da Silva
+          maxLength: 60
+          type: string
+        taxId:
+          description: >-
+            CPF or CNPJ of the consumer. Required from the limit of the state (R$ 10.000,00 by
+            default).
+          example: 123.456.789-09
+          maxLength: 18
+          minLength: 1
+          type: string
+      type: object
+    NfceRequest:
+      properties:
+        additionalInfo:
+          maxLength: 5000
+          type: string
+        change:
+          description: Change (vTroco), up to 2 decimals.
+          minimum: 0
+          type: number
+        companyId:
+          format: uuid
+          type: string
+        externalId:
+          maxLength: 255
+          type: string
+        indPres:
+          default: 1
+          description: >-
+            Buyer presence: 1 in person, 4 delivery (needs the consumer CPF/CNPJ, name and address),
+            5 in person outside the issuer establishment.
+          enum:
+            - 1
+            - 4
+            - 5
+          type: number
+        items:
+          items:
+            $ref: '#/components/schemas/NfeItem'
+          maxItems: 990
+          minItems: 1
+          type: array
+        payments:
+          items:
+            $ref: '#/components/schemas/NfcePayment'
+          maxItems: 100
+          minItems: 1
+          type: array
+        recipient:
+          $ref: '#/components/schemas/NfceRecipient'
+        sendEmail:
+          default: true
+          description: >-
+            Send the XML and the DANFCE to the e-mail of the consumer once the NFC-e is authorized.
+            Only when there is an e-mail; never in the dry-run.
+          type: boolean
+      required:
+        - companyId
+        - items
+        - payments
       type: object
     Nfe:
       properties:
@@ -9989,6 +10166,7 @@ components:
         model:
           enum:
             - 55
+            - 65
           type: integer
         natOp:
           type: string
@@ -10008,9 +10186,14 @@ components:
         protocol:
           nullable: true
           type: string
+        qrCode:
+          description: 'NFC-e only: the QR Code (`infNFeSupl`) of the current attempt. Absent on an NF-e.'
+          nullable: true
+          type: string
         recipient:
           additionalProperties: true
-          description: The recipient as it went in the XML.
+          description: The recipient as it went in the XML. `null` on a NFC-e sold to an unidentified consumer.
+          nullable: true
           type: object
         series:
           nullable: true
@@ -10052,12 +10235,21 @@ components:
             - vNF
           type: object
         type:
-          description: 'Always `nfe`. An NFS-e has no `type` field: a document without it is an NFS-e.'
+          description: >-
+            `nfe` (model 55) or `nfce` (model 65). An NFS-e has no `type` field: a document without
+            it is an NFS-e.
           enum:
             - nfe
+            - nfce
           type: string
         updatedAt:
           format: date-time
+          type: string
+        urlChave:
+          description: >-
+            NFC-e only: the address to consult the note by its key (`infNFeSupl`). Absent on an
+            NF-e.
+          nullable: true
           type: string
         xMotivo:
           nullable: true
@@ -10125,6 +10317,7 @@ components:
         type:
           enum:
             - nfe
+            - nfce
           type: string
       required:
         - type
@@ -10303,6 +10496,7 @@ components:
         model:
           enum:
             - 55
+            - 65
           type: integer
         protocol:
           nullable: true
@@ -12060,6 +12254,19 @@ components:
         - nfe.document.corrected
         - nfe.inutilization.completed
         - nfe.inutilization.rejected
+        - nfce.document.authorized
+        - nfce.document.rejected
+        - nfce.document.denied
+        - nfce.document.failed
+        - nfce.document.reconciliation_required
+        - nfce.document.manual_review
+        - nfce.document.documents_ready
+        - nfce.document.email_sent
+        - nfce.document.email_failed
+        - nfce.document.cancelled
+        - nfce.document.cancellation_rejected
+        - nfce.inutilization.completed
+        - nfce.inutilization.rejected
       type: string
     WebhookRetried:
       properties:

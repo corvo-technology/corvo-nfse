@@ -377,7 +377,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
   ),
   NfeAccepted: obj(
     {
-      type: str({ enum: ['nfe'] }),
+      type: str({ enum: ['nfe', 'nfce'] }),
       id: uuid(),
       status: str({ enum: NFE_STATUS_VALUES }),
       replayed: bool({
@@ -404,93 +404,112 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     },
     ['hint'],
   ),
-  Nfe: obj({
-    type: str({
-      enum: ['nfe'],
-      description:
-        'Always `nfe`. An NFS-e has no `type` field: a document without it is an NFS-e.',
-    }),
-    id: uuid(),
-    companyId: uuid(),
-    environment: str({ enum: ['test', 'live'] }),
-    model: int({ enum: [55] }),
-    status: str({ enum: NFE_STATUS_VALUES }),
-    series: nullable(int()),
-    number: nullable(
-      int({
+  Nfe: obj(
+    {
+      type: str({
+        enum: ['nfe', 'nfce'],
         description:
-          'Assigned when the first attempt is made; it never changes.',
+          '`nfe` (model 55) or `nfce` (model 65). An NFS-e has no `type` field: a document without it is an NFS-e.',
       }),
-    ),
-    accessKey: nullable(
-      str({
-        minLength: 44,
-        maxLength: 44,
+      id: uuid(),
+      companyId: uuid(),
+      environment: str({ enum: ['test', 'live'] }),
+      model: int({ enum: [55, 65] }),
+      status: str({ enum: NFE_STATUS_VALUES }),
+      series: nullable(int()),
+      number: nullable(
+        int({
+          description:
+            'Assigned when the first attempt is made; it never changes.',
+        }),
+      ),
+      accessKey: nullable(
+        str({
+          minLength: 44,
+          maxLength: 44,
+          description:
+            'The 44-character key of the current attempt. A resubmission after a rejection draws a new key and keeps the number.',
+        }),
+      ),
+      issuedAt: nullable(dateTime()),
+      authorizedAt: nullable(dateTime()),
+      protocol: nullable(str()),
+      cStat: nullable(str()),
+      xMotivo: nullable(str()),
+      natOp: str(),
+      recipient: nullable({
+        type: 'object',
+        additionalProperties: true,
         description:
-          'The 44-character key of the current attempt. A resubmission after a rejection draws a new key and keeps the number.',
+          'The recipient as it went in the XML. `null` on a NFC-e sold to an unidentified consumer.',
       }),
-    ),
-    issuedAt: nullable(dateTime()),
-    authorizedAt: nullable(dateTime()),
-    protocol: nullable(str()),
-    cStat: nullable(str()),
-    xMotivo: nullable(str()),
-    natOp: str(),
-    recipient: {
-      type: 'object',
-      additionalProperties: true,
-      description: 'The recipient as it went in the XML.',
+      items: array({
+        type: 'object',
+        additionalProperties: true,
+        description:
+          'Each item with its amounts as 2-place strings and the Simples tax groups used.',
+      }),
+      totals: obj({
+        vProd: str(),
+        vDesc: str(),
+        vFrete: str(),
+        vSeg: str(),
+        vOutro: str(),
+        vNF: str(),
+      }),
+      payment: {
+        type: 'object',
+        additionalProperties: true,
+        description: 'The payments (`tPag`, `amount`) and the change.',
+      },
+      additionalInfo: nullable(str()),
+      externalId: nullable(str()),
+      cancelReason: nullable(
+        str({
+          description: 'The justification of the cancellation asked for.',
+        }),
+      ),
+      cancelRequestedAt: nullable(dateTime()),
+      documentsReady: bool({
+        description:
+          'True once the XML (`nfeProc`) and the DANFE can be downloaded; they stay available after a cancellation.',
+      }),
+      documentsReadyAt: nullable(dateTime()),
+      emailStatus: nullable(
+        str({
+          enum: ['queued', 'sent', 'failed'],
+          description:
+            'The e-mail with the XML and the DANFE to the recipient.',
+        }),
+      ),
+      emailSentAt: nullable(dateTime()),
+      attempt: int({
+        description:
+          'How many times the XML was built and signed (1 on the first send).',
+      }),
+      lastError: { ...nullable({ type: 'object' }), allOf: [ref('NfeError')] },
+      nextCheckAt: nullable(
+        dateTime({
+          description: 'When Corvo looks at the SEFAZ again, if it does.',
+        }),
+      ),
+      qrCode: nullable(
+        str({
+          description:
+            'NFC-e only: the QR Code (`infNFeSupl`) of the current attempt. Absent on an NF-e.',
+        }),
+      ),
+      urlChave: nullable(
+        str({
+          description:
+            'NFC-e only: the address to consult the note by its key (`infNFeSupl`). Absent on an NF-e.',
+        }),
+      ),
+      createdAt: dateTime(),
+      updatedAt: dateTime(),
     },
-    items: array({
-      type: 'object',
-      additionalProperties: true,
-      description:
-        'Each item with its amounts as 2-place strings and the Simples tax groups used.',
-    }),
-    totals: obj({
-      vProd: str(),
-      vDesc: str(),
-      vFrete: str(),
-      vSeg: str(),
-      vOutro: str(),
-      vNF: str(),
-    }),
-    payment: {
-      type: 'object',
-      additionalProperties: true,
-      description: 'The payments (`tPag`, `amount`) and the change.',
-    },
-    additionalInfo: nullable(str()),
-    externalId: nullable(str()),
-    cancelReason: nullable(
-      str({ description: 'The justification of the cancellation asked for.' }),
-    ),
-    cancelRequestedAt: nullable(dateTime()),
-    documentsReady: bool({
-      description:
-        'True once the XML (`nfeProc`) and the DANFE can be downloaded; they stay available after a cancellation.',
-    }),
-    documentsReadyAt: nullable(dateTime()),
-    emailStatus: nullable(
-      str({
-        enum: ['queued', 'sent', 'failed'],
-        description: 'The e-mail with the XML and the DANFE to the recipient.',
-      }),
-    ),
-    emailSentAt: nullable(dateTime()),
-    attempt: int({
-      description:
-        'How many times the XML was built and signed (1 on the first send).',
-    }),
-    lastError: { ...nullable({ type: 'object' }), allOf: [ref('NfeError')] },
-    nextCheckAt: nullable(
-      dateTime({
-        description: 'When Corvo looks at the SEFAZ again, if it does.',
-      }),
-    ),
-    createdAt: dateTime(),
-    updatedAt: dateTime(),
-  }),
+    ['qrCode', 'urlChave'],
+  ),
   NfseInvoiceRequest: {
     allOf: [
       ref('CreateInvoice'),
@@ -541,7 +560,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
   InvoiceSummary: obj(
     {
       id: uuid(),
-      type: str({ enum: ['nfse', 'nfe'] }),
+      type: str({ enum: ['nfse', 'nfe', 'nfce'] }),
       companyId: uuid(),
       environment: str({ enum: ['test', 'live'] }),
       status: str({
@@ -618,7 +637,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       id: uuid(),
       companyId: uuid(),
       environment: str({ enum: ['test', 'live'] }),
-      model: int({ enum: [55] }),
+      model: int({ enum: [55, 65] }),
       series: int(),
       start: int(),
       end: int(),

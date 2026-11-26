@@ -33,7 +33,7 @@ export function toNfeResponse(doc: NfeDocument) {
   const error = toNfeHttpError(s);
   const lastError: NfeHttpError | null = error ? error.error : null;
   return {
-    type: 'nfe' as const,
+    type: s.model === 65 ? ('nfce' as const) : ('nfe' as const),
     id: s.id,
     companyId: s.companyId,
     environment: s.environment,
@@ -80,6 +80,8 @@ export function toNfeResponse(doc: NfeDocument) {
     attempt: s.attempt,
     lastError,
     nextCheckAt: s.nextCheckAt,
+    // NFC-e only (`infNFeSupl`); the NF-e answer has no such fields.
+    ...(s.model === 65 ? { qrCode: s.qrCode, urlChave: s.urlChave } : {}),
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
   };

@@ -192,17 +192,17 @@ describePostgres('NFC-e emission on PostgreSQL (simulated SEFAZ)', () => {
 
   it('a live NFC-e reserves one credit as nfce, confirms it on authorization and gives it back when rejected', async () => {
     const live = createNfeStack(h, { production: true });
-    const credits = (id: string) =>
-      h.admin.query(
+    const credits = async (id: string) => {
+      const rows: Array<{
+        amount: number;
+        is_reservation: boolean;
+        reserved_document_type: string;
+      }> = await h.admin.query(
         `SELECT amount, is_reservation, reserved_document_type FROM "${h.schema}".credit_transactions WHERE reserved_nfe_document_id = $1 ORDER BY created_at, id`,
         [id],
-      ) as Promise<
-        Array<{
-          amount: number;
-          is_reservation: boolean;
-          reserved_document_type: string;
-        }>
-      >;
+      );
+      return rows;
+    };
     const key = (id: string) => ({
       id,
       tenantId: h.tenantId,

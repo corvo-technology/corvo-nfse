@@ -9,18 +9,27 @@ import { FiscalDocumentRegistry } from '@/modules/fiscal-core/application/fiscal
 import { CompanyModule } from '@/modules/company/company.module';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
 import { NfeModule } from '@/modules/nfe/nfe.module';
+import { NfceIntakeService } from './application/nfce-intake.service';
 import { NfcePreparation } from './application/nfce-preparation.service';
+import { NfceResubmitService } from './application/nfce-resubmit.service';
 import { NfceValidateService } from './application/nfce-validate.service';
 import { NfceInvoiceRoutes } from './http/nfce-invoice.routes';
 
 /**
  * NFC-e (model 65). It lives in the NF-e tables with `model = 65` and reuses the NF-e machinery
- * (`NfeModule`); what only the NFC-e has (its DTO, validators, QR Code, routes) is here. No
+ * (`NfeModule`: emission, consultation, events, numbering, credits and webhooks all read the model of
+ * the document); what only the NFC-e has (its DTO, validators, QR Code, routes, gateway) is here. No
  * controllers: `/v1/invoices` serves it through `NfceInvoiceRoutes`, registered in the router.
  */
 @Module({
   imports: [CompanyModule, InvoiceModule, NfeModule],
-  providers: [NfcePreparation, NfceValidateService, NfceInvoiceRoutes],
+  providers: [
+    NfcePreparation,
+    NfceValidateService,
+    NfceIntakeService,
+    NfceResubmitService,
+    NfceInvoiceRoutes,
+  ],
 })
 export class NfceModule implements OnModuleInit {
   constructor(
