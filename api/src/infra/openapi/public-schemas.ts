@@ -372,6 +372,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
   ),
   NfeAccepted: obj(
     {
+      type: str({ enum: ['nfe'] }),
       id: uuid(),
       status: str({ enum: NFE_STATUS_VALUES }),
       replayed: bool({
@@ -399,6 +400,11 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     ['hint'],
   ),
   Nfe: obj({
+    type: str({
+      enum: ['nfe'],
+      description:
+        'Always `nfe`. An NFS-e has no `type` field: a document without it is an NFS-e.',
+    }),
     id: uuid(),
     companyId: uuid(),
     environment: str({ enum: ['test', 'live'] }),
@@ -480,6 +486,65 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     createdAt: dateTime(),
     updatedAt: dateTime(),
   }),
+  NfseInvoiceRequest: {
+    allOf: [
+      ref('CreateInvoice'),
+      {
+        type: 'object',
+        properties: {
+          type: str({
+            enum: ['nfse'],
+            default: 'nfse',
+            description:
+              'Optional: without it the request is an NFS-e, exactly as before.',
+          }),
+        },
+      },
+    ],
+  },
+  NfeInvoiceRequest: {
+    allOf: [
+      ref('NfeRequest'),
+      {
+        type: 'object',
+        required: ['type'],
+        properties: {
+          type: str({
+            enum: ['nfe'],
+            description: 'Selects the NF-e (model 55) instead of the NFS-e.',
+          }),
+        },
+      },
+    ],
+  },
+  InvoiceSummary: obj(
+    {
+      id: uuid(),
+      type: str({ enum: ['nfse', 'nfe'] }),
+      companyId: uuid(),
+      environment: str({ enum: ['test', 'live'] }),
+      status: str({
+        description:
+          'The state, in the vocabulary of the type (NFS-e or NF-e statuses).',
+      }),
+      number: nullable(int({ description: 'NFS-e number or NF-e number.' })),
+      accessKey: nullable(str()),
+      amount: nullable(
+        str({
+          description: 'Gross amount (NFS-e) or `vNF` (NF-e), a decimal text.',
+          example: '150.00',
+        }),
+      ),
+      externalId: nullable(str()),
+      issuedAt: nullable(dateTime()),
+      createdAt: dateTime(),
+    },
+    [],
+    {
+      description:
+        'What `GET /invoices?type=all` shows of each document. Read the whole document with `GET /invoices/{id}`.',
+    },
+  ),
   NfeDownloadUrl: obj({
     downloadUrl: str({ format: 'uri' }),
     expiresAt: dateTime(),
