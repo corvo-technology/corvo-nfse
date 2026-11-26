@@ -218,9 +218,14 @@ describe('OpenAPI contract against the real API (e2e)', () => {
     await dataSource.query(
       `INSERT INTO "${schema}"."nfse_companies"
          (id, tenant_id, legal_name, tax_id, municipality_code,
-          municipal_reg, environment, status, created_at, updated_at)
-       VALUES ($1, $2, 'Empresa Teste', $3, '3550308', '12345', 'test', 'ready', NOW(), NOW())`,
+          municipal_reg, environment, status, address_state, created_at, updated_at)
+       VALUES ($1, $2, 'Empresa Teste', $3, '3550308', '12345', 'test', 'ready', 'SP', NOW(), NOW())`,
       [companyId, tenantId, COMPANY_TAX_ID],
+    );
+    // NF-e answers 404 until the tenant is released (NFE_ENABLED comes from e2e-env.ts).
+    await dataSource.query(
+      `UPDATE "${schema}".tenants SET nfe_enabled_at = NOW() WHERE id = $1`,
+      [tenantId],
     );
   });
 
@@ -830,6 +835,22 @@ describe('OpenAPI contract against the real API (e2e)', () => {
       await call('POST /integrations/connections/{id}/disconnect', {
         path: `${base}/disconnect`,
       });
+    });
+  });
+
+  describe('nfe settings', () => {
+    it('sets and reads the NF-e settings of a company', async () => {
+      const path = `/companies/${companyId}/nfe-settings`;
+      await call('PUT /companies/{id}/nfe-settings', {
+        path,
+        body: { stateRegistration: '110042490114', crt: 1 },
+        status: 200,
+      });
+      const res = await call('GET /companies/{id}/nfe-settings', {
+        path,
+        status: 200,
+      });
+      expect(res.body.data.stateRegistration).toBe('110042490114');
     });
   });
 
