@@ -6,6 +6,7 @@ import { EventProcessorScheduler } from './modules/integrations/jobs/event-proce
 import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { WooviConnectorModule } from './modules/integrations/connectors/woovi/woovi.module';
 import { AbacatePayConnectorModule } from './modules/integrations/connectors/abacatepay/abacatepay.module';
+import { PushinPayConnectorModule } from './modules/integrations/connectors/pushinpay/pushinpay.module';
 import { StripeConnectorModule } from './modules/integrations/connectors/stripe/stripe.module';
 import { HotmartConnectorModule } from './modules/integrations/connectors/hotmart/hotmart.module';
 
@@ -47,5 +48,12 @@ describe('runtime wiring', () => {
     expect(importedModules(WorkerAppModule)).toContain(StripeConnectorModule);
     expect(importedModules(AppModule)).toContain(HotmartConnectorModule);
     expect(importedModules(WorkerAppModule)).toContain(HotmartConnectorModule);
+  });
+
+  it('loads the PushinPay connector in both processes', () => {
+    expect(importedModules(AppModule)).toContain(PushinPayConnectorModule);
+    expect(importedModules(WorkerAppModule)).toContain(
+      PushinPayConnectorModule,
+    );
   });
 });

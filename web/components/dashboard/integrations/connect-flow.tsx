@@ -24,8 +24,8 @@ interface ConnectFlowProps {
 
 type Step = "platform" | "details" | "done";
 
-export function providerDescriptionKey(id: string): "woovi" | "abacatepay" | "stripe" | "hotmart" | "other" {
-  return id === "woovi" || id === "abacatepay" || id === "stripe" || id === "hotmart" ? id : "other";
+export function providerDescriptionKey(id: string): "woovi" | "abacatepay" | "stripe" | "pushinpay" | "hotmart" | "other" {
+  return id === "woovi" || id === "abacatepay" || id === "stripe" || id === "pushinpay" || id === "hotmart" ? id : "other";
 }
 export function ConnectFlow({ providers, companies, environment, initialProvider }: ConnectFlowProps) {
   const router = useRouter();

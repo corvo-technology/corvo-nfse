@@ -23,6 +23,7 @@ vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ success: mocks.succ
 
 const woovi = { id: "woovi", name: "Woovi", version: "1", credentialFields: [{ key: "webhookToken", label: "Webhook token (Authorization header)", secret: true, generate: true, revealOnce: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on Woovi." }, supportedFlows: [] };
 const abacate = { id: "abacatepay", name: "AbacatePay", version: "1", credentialFields: [{ key: "apiKey", label: "AbacatePay API key", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on AbacatePay." }, supportedFlows: [] };
+const pushinpay = { id: "pushinpay", name: "PushinPay", version: "1", credentialFields: [{ key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "webhookToken", label: "Webhook token (x-corvo-token header)", secret: true, generate: true, revealOnce: true }], webhookInstructions: { pt: "pt", en: "Pass the address as webhook_url and set the x-corvo-token header." }, supportedFlows: [] };
 const stripe = { id: "stripe", name: "Stripe", version: "1", credentialFields: [{ key: "apiKey", label: "Stripe restricted key", secret: true }, { key: "webhookSigningSecret", label: "Webhook signing secret", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Add a webhook endpoint on Stripe." }, supportedFlows: ["charge"] };
 const hotmart = { id: "hotmart", name: "Hotmart", version: "1", credentialFields: [{ key: "hottok", label: "Hotmart hottok", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Add the webhook on Hotmart, paste your hottok and send a test." }, supportedFlows: ["purchase"] };
 const company = { id: "co1", legalName: "Acme Ltda", tradeName: "Acme" };
@@ -39,7 +40,7 @@ beforeEach(() => {
   mocks.search = "";
   mocks.list.mockResolvedValue([]);
   mocks.get.mockResolvedValue(connection());
-  mocks.providers.mockResolvedValue([woovi, abacate]);
+  mocks.providers.mockResolvedValue([woovi, abacate, pushinpay]);
   mocks.companies.mockResolvedValue({ items: [company], hasMore: false, nextCursor: null });
   mocks.sales.mockResolvedValue([]);
   mocks.rules.mockResolvedValue([rule()]);
@@ -274,6 +275,25 @@ describe("Connect page", () => {
     expect(screen.getByText(/webhookSecret=S3/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Copy the secret" })).toBeTruthy();
     expect(screen.getByText("Webhook secret")).toBeTruthy();
+    expect(screen.getByText(/shown only now/)).toBeTruthy();
+  });
+
+  it("PushinPay asks for no credential, shows the generated secret and header token once, and gives the guide", async () => {
+    mocks.create.mockResolvedValue(connection({ provider: "pushinpay", state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB?webhookSecret=S3", secrets: { webhookSecret: "S3", webhookToken: "TK9" } }));
+    mocks.validate.mockResolvedValue(connection());
+    mocks.putRules.mockResolvedValue([]);
+    mocks.activate.mockResolvedValue(connection());
+    mocks.search = "provider=pushinpay";
+    wrap(<NewIntegrationPage />);
+    await screen.findByLabelText(/Company that issues the invoice/);
+    expect(screen.queryByLabelText(/Webhook token/)).toBeNull();
+    fireEvent.change(screen.getByLabelText(/Company that issues the invoice/), { target: { value: "co1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Connect" }));
+    await screen.findByText("Connected!");
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "pushinpay", credentials: {} }));
+    expect(screen.getByText("TK9")).toBeTruthy();
+    expect(screen.getByText("Webhook token (x-corvo-token header)")).toBeTruthy();
+    expect(screen.getByText(/set the x-corvo-token header/)).toBeTruthy();
     expect(screen.getByText(/shown only now/)).toBeTruthy();
   });
 

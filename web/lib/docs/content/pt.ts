@@ -2772,7 +2772,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     municipalities: municipalitiesPage("pt"),
     "payment-integrations": {
       title: "Integrações de pagamento",
-      description: "Conecte Woovi, AbacatePay, Stripe ou Hotmart e emita a NFS-e automaticamente a cada pagamento confirmado.",
+      description: "Conecte Woovi, AbacatePay, Stripe, PushinPay ou Hotmart e emita a NFS-e automaticamente a cada pagamento confirmado.",
       blocks: [
         {
           kind: "text",
@@ -2811,6 +2811,17 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "O webhook traz o CPF/CNPJ mascarado, então a Corvo consulta o cliente na AbacatePay com a sua chave e usa o documento completo. Se o cliente não tiver documento, a venda fica pendente (`customer_tax_id_missing`) ou sai sem tomador se a regra tiver `allowAnonymousCustomer`.",
             "O `externalProductId` das regras é o `id` do item do checkout. A descrição do serviço na nota é o nome do produto (a Corvo o consulta pela chave); sem a permissão `PRODUCT:READ`, vale o padrão da empresa.",
             "Reembolso: marque também `checkout.refunded` e `transparent.refunded` no webhook. Sem o cancelamento automático, o reembolso ou a contestação depois da nota abre a pendência `refund_after_invoice` e a nota não é cancelada.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "PushinPay" },
+        {
+          kind: "list",
+          items: [
+            "Não há credencial para informar. A Corvo gera o `webhookSecret` (já dentro do `webhookUrl`) e o `webhookToken`, exibido uma única vez ao criar a conexão. Copie e guarde os dois. A PushinPay não assina os avisos: a autenticação é o segredo no endereço mais o cabeçalho com o token.",
+            "Passe o `webhookUrl` da Corvo como `webhook_url` ao criar cada cobrança no seu sistema (Pix, boleto ou Pix recorrente). No painel da PushinPay, configure o cabeçalho personalizado `x-corvo-token` com o `webhookToken`.",
+            "Tudo chega por webhook: a Corvo não consulta a API da PushinPay. O aviso não traz ambiente, e-mail nem descrição; o ambiente é o da conexão, a descrição do serviço vem da regra ou do padrão da empresa, e a nota não é enviada por e-mail ao cliente automaticamente.",
+            "Cada cobrança paga (`status: paid`) vira uma nota, identificada pelo `id`. Cada parcela de uma cobrança recorrente tem seu próprio `id` e gera sua própria nota.",
+            "Reembolso: o estorno chega com `status: canceled`. Se a cobrança já estava paga, a Corvo trata como reembolso total (não dá para distinguir reembolso parcial); se nunca foi paga, o aviso é ignorado. Disputas (MED) não têm webhook e não são tratadas.",
           ],
         },
         { kind: "heading", level: 3, body: "Stripe" },
