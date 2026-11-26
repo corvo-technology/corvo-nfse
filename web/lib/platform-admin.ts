@@ -26,6 +26,8 @@ export interface PlatformWorkspace {
   avulsoBalance: number;
   /** When NF-e was released for this workspace; null while it is off. */
   nfeEnabledAt: string | null;
+  /** When NFC-e was released for this workspace; null while it is off. */
+  nfceEnabledAt?: string | null;
   companies: { id: string; taxId: string; legalName: string; municipalityCode: string; environment: string; certificateValidUntil: string | null }[];
   recentInvoices: { id: string; status: string; amount: number; environment: string; lastErrorCode: string | null; createdAt: string }[];
   credits: { id: string; type: string; source: string | null; amount: number; description: string | null; createdAt: string }[];
@@ -44,7 +46,7 @@ export interface PlatformAttention {
   failedPayments: { tenantId: string; userId: string; source: "intent" | "subscription"; status: string; at: string }[];
 }
 export interface PlatformAuditEvent {
-  id: string; actorEmail: string; action: "credit_grant" | "user_viewed" | "nfe_access_changed"; targetTenantId: string | null; targetUserId: string | null;
+  id: string; actorEmail: string; action: "credit_grant" | "user_viewed" | "nfe_access_changed" | "nfce_access_set"; targetTenantId: string | null; targetUserId: string | null;
   reason: string | null; payload: Record<string, unknown>; success: boolean; createdAt: string;
 }
 export interface NfeAccessResult { tenantId: string; enabled: boolean; enabledAt: string | null }
@@ -66,6 +68,9 @@ export const platformAdmin = {
   /** Turns NF-e on or off for a workspace. Safe to repeat: the result is the same state. */
   setNfeAccess: async (tenantId: string, body: { enabled: boolean; reason: string }) =>
     unwrap(await request<Envelope<NfeAccessResult>>(`/platform/tenants/${idPath(tenantId)}/nfe-access`, { method: "PUT", body: JSON.stringify(body) })),
+  /** Turns NFC-e on or off for a workspace. */
+  setNfceAccess: async (tenantId: string, body: { enabled: boolean; reason: string }) =>
+    unwrap(await request<Envelope<NfeAccessResult>>(`/platform/tenants/${idPath(tenantId)}/nfce-access`, { method: "PUT", body: JSON.stringify(body) })),
 };
 
 /** Currency from integer cents, in the user's locale. */

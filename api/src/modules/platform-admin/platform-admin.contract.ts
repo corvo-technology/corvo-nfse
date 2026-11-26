@@ -56,6 +56,8 @@ export type PlatformUserDetail = {
     avulsoBalance: number;
     /** When NF-e was released for the workspace (null = off). */
     nfeEnabledAt: string | null;
+    /** When NFC-e was released for the workspace (null = off). */
+    nfceEnabledAt: string | null;
     companies: {
       id: string;
       taxId: string;
@@ -136,7 +138,11 @@ export type PlatformAttention = {
 export type PlatformAuditEvent = {
   id: string;
   actorEmail: string;
-  action: 'credit_grant' | 'user_viewed' | 'nfe_access_changed';
+  action:
+    | 'credit_grant'
+    | 'user_viewed'
+    | 'nfe_access_changed'
+    | 'nfce_access_set';
   targetTenantId: string | null;
   targetUserId: string | null;
   reason: string | null;

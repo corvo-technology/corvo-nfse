@@ -206,7 +206,8 @@
     "creditsLoadFailed": "Could not load credits.",
     "newService": "Service invoice (NFS-e)",
     "newProduct": "Product invoice (NF-e)",
-    "newChoose": "Which invoice do you want to issue?"
+    "newChoose": "Which invoice do you want to issue?",
+    "newConsumer": "Consumer sale (NFC-e)"
   },
   "Connections": {
     "title": "Connections",
@@ -4088,10 +4089,27 @@
       "actions": {
         "credit_grant": "Gave extra invoices",
         "user_viewed": "Opened a user",
-        "nfe_access_changed": "Changed NF-e release"
+        "nfe_access_changed": "Changed NF-e release",
+        "nfce_access_set": "Changed NFC-e release"
       },
       "success": "Done",
       "failure": "Failed"
+    },
+    "nfce": {
+      "on": "NFC-e is released for this account.",
+      "off": "NFC-e is not released for this account yet.",
+      "enable": "Release NFC-e",
+      "disable": "Turn NFC-e off",
+      "enableTitle": "Release NFC-e",
+      "disableTitle": "Turn NFC-e off",
+      "enableDescription": "The account will see consumer sales (NFC-e, in testing) in the dashboard, the API and MCP. NF-e and NFC-e are released separately.",
+      "disableDescription": "The account stops seeing NFC-e in the dashboard, the API and MCP. Notes already created are kept.",
+      "reason": "Reason",
+      "reasonHint": "Write 5 to 500 characters. It is kept in the history.",
+      "cancel": "Cancel",
+      "errorReason": "The reason must have 5 to 500 characters.",
+      "errorNotFound": "This workspace was not found.",
+      "errorGeneric": "Could not change the release. Nothing was saved. Try again."
     }
   }
 }

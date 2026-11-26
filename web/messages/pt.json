@@ -206,7 +206,8 @@
     "creditsLoadFailed": "Não foi possível carregar os créditos.",
     "newService": "Nota de serviço (NFS-e)",
     "newProduct": "Nota de produto (NF-e)",
-    "newChoose": "Que nota você quer emitir?"
+    "newChoose": "Que nota você quer emitir?",
+    "newConsumer": "Venda ao consumidor (NFC-e)"
   },
   "Connections": {
     "title": "Conexões",
@@ -4088,10 +4089,27 @@
       "actions": {
         "credit_grant": "Deu notas avulsas",
         "user_viewed": "Abriu um usuário",
-        "nfe_access_changed": "Mudou a liberação da NF-e"
+        "nfe_access_changed": "Mudou a liberação da NF-e",
+        "nfce_access_set": "Mudou a liberação da NFC-e"
       },
       "success": "Feito",
       "failure": "Falhou"
+    },
+    "nfce": {
+      "on": "NFC-e liberada para esta conta.",
+      "off": "NFC-e ainda não liberada para esta conta.",
+      "enable": "Liberar NFC-e",
+      "disable": "Desligar NFC-e",
+      "enableTitle": "Liberar NFC-e",
+      "disableTitle": "Desligar NFC-e",
+      "enableDescription": "A conta passa a ver a venda ao consumidor (NFC-e, em teste) no painel, na API e no MCP. A NF-e e a NFC-e têm liberações separadas.",
+      "disableDescription": "A conta deixa de ver a NFC-e no painel, na API e no MCP. As notas já criadas ficam guardadas.",
+      "reason": "Motivo",
+      "reasonHint": "Escreva de 5 a 500 caracteres. Fica guardado no histórico.",
+      "cancel": "Cancelar",
+      "errorReason": "O motivo precisa ter de 5 a 500 caracteres.",
+      "errorNotFound": "Este espaço não foi encontrado.",
+      "errorGeneric": "Não foi possível mudar a liberação. Nada foi gravado. Tente de novo."
     }
   }
 }

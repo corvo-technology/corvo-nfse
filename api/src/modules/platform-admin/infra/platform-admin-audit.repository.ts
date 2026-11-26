@@ -6,7 +6,10 @@ import type { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import { PlatformAdminAuditOrmEntity } from './platform-admin-audit.orm-entity';
 
 export type PlatformAuditAction =
-  'credit_grant' | 'user_viewed' | 'nfe_access_changed';
+  'credit_grant'
+  | 'user_viewed'
+  | 'nfe_access_changed'
+  | 'nfce_access_set';
 
 export interface PlatformAuditInput {
   actorUserId: string;

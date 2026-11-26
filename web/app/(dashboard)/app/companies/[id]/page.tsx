@@ -91,7 +91,7 @@ export default function CompanyDetailPage() {
     <Modal open={editing} onClose={() => setEditing(false)} title={t("edit")} wide><CompanyForm company={company} onCancel={() => setEditing(false)} onSave={async (input) => { setCompany(await companies.update(id, input)); setEditing(false); }} /></Modal>
     <DpsSequenceCard companyId={id} canManage={can("nfse.companies.manage")} environment={company.environment} />
     <AccountantPackageCard companyId={id} canManage={can("nfse.companies.manage")} environment={company.environment} />
-    {features?.nfe && can("nfe.documents.view") && <NfeSettingsForm companyId={id} state={company.address?.state} canManage={can("nfe.documents.manage")} />}
+    {(features?.nfe || features?.nfce) && can("nfe.documents.view") && <NfeSettingsForm companyId={id} state={company.address?.state} canManage={can("nfe.documents.manage")} />}
     <Modal open={uploading} onClose={() => setUploading(false)} title={t("upload")}><CertificateUpload companyId={id} onUploaded={(cert) => { setCerts([cert]); setUploading(false); setRevision((value) => value + 1); }} /></Modal>
     <Modal open={confirmation !== null} onClose={() => { if (!busy) setConfirmation(null); }} title={t("confirmTitle")}><p className="mb-5 text-sm text-text-3">{t(confirmation?.kind === "company" ? "confirmCompany" : "confirmCertificate")}</p><Button variant="danger" loading={busy} onClick={remove}>{t("confirm")}</Button></Modal>
   </div>;

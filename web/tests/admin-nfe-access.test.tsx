@@ -6,16 +6,16 @@ import { NfeAccessButton } from "@/components/admin/nfe-access-button";
 import { ApiError } from "@/lib/api";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ set: vi.fn() }));
-vi.mock("@/lib/platform-admin", async (original) => ({ ...(await original<typeof import("@/lib/platform-admin")>()), platformAdmin: { setNfeAccess: mocks.set } }));
+const mocks = vi.hoisted(() => ({ set: vi.fn(), setNfce: vi.fn() }));
+vi.mock("@/lib/platform-admin", async (original) => ({ ...(await original<typeof import("@/lib/platform-admin")>()), platformAdmin: { setNfeAccess: mocks.set, setNfceAccess: mocks.setNfce } }));
 
-const renderButton = (enabledAt: string | null, onChanged = vi.fn()) => {
-  render(<NextIntlClientProvider locale="en" messages={messages}><NfeAccessButton tenantId="t1" enabledAt={enabledAt} onChanged={onChanged} /></NextIntlClientProvider>);
+const renderButton = (enabledAt: string | null, onChanged = vi.fn(), type?: "nfe" | "nfce") => {
+  render(<NextIntlClientProvider locale="en" messages={messages}><NfeAccessButton tenantId="t1" enabledAt={enabledAt} type={type} onChanged={onChanged} /></NextIntlClientProvider>);
   return onChanged;
 };
 const submitButton = (name: string) => Array.from(screen.getByRole("dialog").querySelectorAll("button")).find((b) => b.textContent === name)!;
 
-beforeEach(() => { vi.clearAllMocks(); mocks.set.mockResolvedValue({ tenantId: "t1", enabled: true, enabledAt: "2026-11-26T12:00:00Z" }); });
+beforeEach(() => { vi.clearAllMocks(); mocks.set.mockResolvedValue({ tenantId: "t1", enabled: true, enabledAt: "2026-11-26T12:00:00Z" }); mocks.setNfce.mockResolvedValue({ tenantId: "t1", enabled: true, enabledAt: "2026-11-26T12:00:00Z" }); });
 afterEach(cleanup);
 
 describe("Admin NF-e release button", () => {
@@ -52,5 +52,17 @@ describe("Admin NF-e release button", () => {
     fireEvent.click(submitButton("Release NF-e"));
     await screen.findByText("This workspace was not found.");
     expect(onChanged).not.toHaveBeenCalled();
+  });
+
+  it("NFC-e: has its own switch, texts and call", async () => {
+    const onChanged = renderButton(null, vi.fn(), "nfce");
+    expect(screen.getByText("NFC-e is not released for this account yet.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Release NFC-e" }));
+    await screen.findByRole("dialog");
+    fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: "Teste do dono em homologação" } });
+    fireEvent.click(submitButton("Release NFC-e"));
+    await waitFor(() => expect(mocks.setNfce).toHaveBeenCalledWith("t1", { enabled: true, reason: "Teste do dono em homologação" }));
+    expect(mocks.set).not.toHaveBeenCalled();
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
   });
 });
