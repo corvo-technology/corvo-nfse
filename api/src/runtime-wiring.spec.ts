@@ -6,6 +6,7 @@ import { EventProcessorScheduler } from './modules/integrations/jobs/event-proce
 import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { WooviConnectorModule } from './modules/integrations/connectors/woovi/woovi.module';
 import { AbacatePayConnectorModule } from './modules/integrations/connectors/abacatepay/abacatepay.module';
+import { StripeConnectorModule } from './modules/integrations/connectors/stripe/stripe.module';
 
 function importedModules(moduleClass: object): unknown[] {
   const imports =
@@ -34,12 +35,14 @@ describe('runtime wiring', () => {
     expect(importedModules(WorkerAppModule)).toContain(IntegrationsModule);
   });
 
-  it('loads the Woovi and AbacatePay connectors in both processes, so the worker can normalize what the API stored', () => {
+  it('loads the Woovi, AbacatePay and Stripe connectors in both processes, so the worker can normalize what the API stored', () => {
     expect(importedModules(AppModule)).toContain(WooviConnectorModule);
     expect(importedModules(WorkerAppModule)).toContain(WooviConnectorModule);
     expect(importedModules(AppModule)).toContain(AbacatePayConnectorModule);
     expect(importedModules(WorkerAppModule)).toContain(
       AbacatePayConnectorModule,
     );
+    expect(importedModules(AppModule)).toContain(StripeConnectorModule);
+    expect(importedModules(WorkerAppModule)).toContain(StripeConnectorModule);
   });
 });

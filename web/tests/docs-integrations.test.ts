@@ -44,6 +44,11 @@ describe.each(["pt", "en"] as const)("payment integrations docs (%s)", (locale) 
       expect(text).toContain(term);
   });
 
+  it("documents how to connect Stripe", () => {
+    for (const term of ["rk_", "whsec_", "Stripe-Signature", "charge.succeeded", "charge.refunded", "charge.dispute.created", "stripe_charge", "tax_id_collection", "livemode"])
+      expect(text).toContain(term);
+  });
+
   it("authenticates the examples with X-API-Key, like the rest of the API", () => {
     expect(text).toContain("X-API-Key");
     expect(text).not.toContain("Authorization: Bearer");

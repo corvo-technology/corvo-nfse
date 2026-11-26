@@ -15,6 +15,7 @@
     "integration": {
       "woovi": "Pix sale (Woovi)",
       "abacatepay": "Sale (AbacatePay)",
+      "stripe": "Sale (Stripe)",
       "generic": "Integration sale"
     }
   },
@@ -2912,6 +2913,7 @@
     "providers": {
       "woovi": "Pix charges paid on Woovi.",
       "abacatepay": "Checkout and payments paid on AbacatePay.",
+      "stripe": "Card, Pix and boleto paid on Stripe.",
       "other": "Confirmed payments."
     },
     "status": {

@@ -1,0 +1,33 @@
+{
+  "id": "evt_1SucceededAAA",
+  "object": "event",
+  "api_version": "2025-10-29.clover",
+  "created": 1793286000,
+  "livemode": true,
+  "type": "charge.succeeded",
+  "data": {
+    "object": {
+      "id": "ch_3SabcdefGHIJ",
+      "object": "charge",
+      "amount": 10000,
+      "amount_captured": 10000,
+      "amount_refunded": 0,
+      "currency": "brl",
+      "paid": true,
+      "refunded": false,
+      "status": "succeeded",
+      "created": 1793285990,
+      "customer": "cus_Maria1",
+      "payment_intent": "pi_3SabcdefGHIJ",
+      "invoice": null,
+      "livemode": true,
+      "description": null,
+      "billing_details": {
+        "name": "Maria da Silva",
+        "email": "maria@example.com",
+        "phone": null,
+        "address": { "country": "BR" }
+      }
+    }
+  }
+}
