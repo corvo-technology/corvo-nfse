@@ -26,6 +26,7 @@ const abacate = { id: "abacatepay", name: "AbacatePay", version: "1", credential
 const pushinpay = { id: "pushinpay", name: "PushinPay", version: "1", credentialFields: [{ key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "webhookToken", label: "Webhook token (x-corvo-token header)", secret: true, generate: true, revealOnce: true }], webhookInstructions: { pt: "pt", en: "Pass the address as webhook_url and set the x-corvo-token header." }, supportedFlows: [] };
 const stripe = { id: "stripe", name: "Stripe", version: "1", credentialFields: [{ key: "apiKey", label: "Stripe restricted key", secret: true }, { key: "webhookSigningSecret", label: "Webhook signing secret", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Add a webhook endpoint on Stripe." }, supportedFlows: ["charge"] };
 const kiwify = { id: "kiwify", name: "Kiwify", version: "1", credentialFields: [{ key: "token", label: "Webhook token", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Create a webhook on Kiwify without affiliations or co-productions." }, supportedFlows: ["order"] };
+const hotmart = { id: "hotmart", name: "Hotmart", version: "1", credentialFields: [{ key: "hottok", label: "Hotmart hottok", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Add the webhook on Hotmart, paste your hottok and send a test." }, supportedFlows: ["purchase"] };
 const company = { id: "co1", legalName: "Acme Ltda", tradeName: "Acme" };
 const connection = (over: Record<string, unknown> = {}) => ({ id: "c1", provider: "woovi", environment: "test", companyId: "co1", state: "active", externalAccountId: "acc", activeFrom: null, webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB", createdAt: "2026-10-29T12:00:00Z", ...over });
 const sale = (over: Record<string, unknown> = {}) => ({ id: "s1", operationKey: "charge:1", commercialState: "paid", fiscalStatus: "submitted", blockReason: null, amountCents: 4990, currency: "BRL", customer: { name: "Maria", email: null, taxId: "52998224725", taxIdMasked: false }, paidAt: "2026-10-29T15:00:00Z", invoiceId: "inv1", createdAt: "2026-10-29T15:00:00Z", updatedAt: "2026-10-29T15:00:00Z", ...over });
@@ -367,6 +368,53 @@ describe("Connect page", () => {
     mocks.providers.mockResolvedValue([woovi, abacate, stripe, kiwify]);
     wrap(<NewIntegrationPage />);
     expect(await screen.findByText("Approved sales on Kiwify.")).toBeTruthy();
+  });
+
+  it("Hotmart asks for the hottok, offers the invoice amount option (total by default) and shows the guide", async () => {
+    mocks.providers.mockResolvedValue([woovi, abacate, stripe, hotmart]);
+    mocks.create.mockResolvedValue(connection({ provider: "hotmart", state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB?webhookSecret=S3", secrets: { webhookSecret: "S3" } }));
+    mocks.validate.mockResolvedValue(connection());
+    mocks.putRules.mockResolvedValue([]);
+    mocks.activate.mockResolvedValue(connection());
+    mocks.search = "provider=hotmart";
+    wrap(<NewIntegrationPage />);
+    await screen.findByLabelText(/Hotmart hottok/);
+    expect(screen.queryByLabelText(/^Webhook secret/)).toBeNull();
+    const option = screen.getByLabelText(/Invoice amount/) as HTMLSelectElement;
+    expect(option.value).toBe("total");
+    const button = screen.getByRole("button", { name: "Connect" }) as HTMLButtonElement;
+    fireEvent.change(screen.getByLabelText(/Company that issues the invoice/), { target: { value: "co1" } });
+    expect(button.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText(/Hotmart hottok/), { target: { value: "fake-hottok" } });
+    expect(button.disabled).toBe(false);
+    fireEvent.change(option, { target: { value: "mine" } });
+    fireEvent.click(button);
+    await screen.findByText("Connected!");
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "hotmart", credentials: { hottok: "fake-hottok", invoiceValue: "mine" } }));
+    expect(screen.getByText(/webhookSecret=S3/)).toBeTruthy();
+    expect(screen.getByText("Add the webhook on Hotmart, paste your hottok and send a test.")).toBeTruthy();
+  });
+
+  it("Hotmart sends the default option when the client does not touch it", async () => {
+    mocks.providers.mockResolvedValue([hotmart]);
+    mocks.create.mockResolvedValue(connection({ provider: "hotmart", state: "draft", secrets: { webhookSecret: "S3" } }));
+    mocks.validate.mockResolvedValue(connection());
+    mocks.putRules.mockResolvedValue([]);
+    mocks.activate.mockResolvedValue(connection());
+    mocks.search = "provider=hotmart";
+    wrap(<NewIntegrationPage />);
+    await screen.findByLabelText(/Hotmart hottok/);
+    fireEvent.change(screen.getByLabelText(/Company that issues the invoice/), { target: { value: "co1" } });
+    fireEvent.change(screen.getByLabelText(/Hotmart hottok/), { target: { value: "fake-hottok" } });
+    fireEvent.click(screen.getByRole("button", { name: "Connect" }));
+    await screen.findByText("Connected!");
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ credentials: { hottok: "fake-hottok", invoiceValue: "total" } }));
+  });
+
+  it("lists Hotmart among the platforms with its own description", async () => {
+    mocks.providers.mockResolvedValue([woovi, abacate, stripe, hotmart]);
+    wrap(<NewIntegrationPage />);
+    expect(await screen.findByText("Digital product purchases paid on Hotmart.")).toBeTruthy();
   });
 
   it("lists Stripe among the platforms with its own description", async () => {

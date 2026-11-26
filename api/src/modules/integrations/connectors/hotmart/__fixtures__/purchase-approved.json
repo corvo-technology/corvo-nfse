@@ -1,0 +1,35 @@
+{
+  "id": "00000000-0000-4000-8000-000000000001",
+  "creation_date": 1793286000000,
+  "event": "PURCHASE_APPROVED",
+  "version": "2.0.0",
+  "data": {
+    "product": { "id": 4000001, "name": "Curso de Exemplo" },
+    "buyer": {
+      "name": "Maria Compradora",
+      "email": "maria@example.com",
+      "document": "529.982.247-25",
+      "document_type": "CPF",
+      "address": { "country_iso": "BR" }
+    },
+    "producer": {
+      "name": "Produtor Exemplo",
+      "document": "11222333000181",
+      "legal_nature": "Pessoa Jurídica"
+    },
+    "commissions": [
+      { "value": 20, "currency_value": "BRL", "source": "PRODUCER" },
+      { "value": 10, "currency_value": "BRL", "source": "COPRODUCER" },
+      { "value": 15.5, "currency_value": "BRL", "source": "AFFILIATE" }
+    ],
+    "purchase": {
+      "transaction": "HP00000000000001",
+      "status": "APPROVED",
+      "approved_date": 1793285900000,
+      "full_price": { "value": 97.9, "currency_value": "BRL" },
+      "payment": { "type": "CREDIT_CARD", "installments_number": 1 },
+      "business_model": "I",
+      "invoice_by": "SELLER"
+    }
+  }
+}

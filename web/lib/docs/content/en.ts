@@ -2795,7 +2795,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     municipalities: municipalitiesPage("en"),
     "payment-integrations": {
       title: "Payment integrations",
-      description: "Connect Woovi, AbacatePay, Stripe or Kiwify and issue the NFS-e automatically for every confirmed payment.",
+      description: "Connect Woovi, AbacatePay, Stripe, PushinPay, Hotmart or Kiwify and issue the NFS-e automatically for every confirmed payment.",
       blocks: [
         {
           kind: "text",
@@ -2874,6 +2874,21 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Invoice amount: by default the total paid by the buyer (`Commissions.charge_amount`). With `invoiceValue` = `mine` it uses your share (`Commissions.my_commission`); if the notice has no such value, the sale goes to attention instead of using the total.",
             "Kiwify has no test mode: \"Test Webhook\" sends fake data. Run that test on a Corvo test connection, never on a production one.",
             "A refund and a chargeback link to the sale by `order_id`. With \"cancel invoice on refund\" on, a refund cancels the invoice; without it (and on a chargeback) the sale is only flagged (`refund_after_invoice`).",
+          ],
+        },
+        { kind: "heading", level: 3, body: "Hotmart" },
+        {
+          kind: "list",
+          items: [
+            "Credentials: `hottok`, the webhook token of your Hotmart account, and the `invoiceValue` option (\"Invoice amount\": `total` or `mine`). Corvo generates the `webhookSecret` and shows the full webhook URL when you create the connection. Copy and save that address.",
+            "Steps: (1) in Tools > Webhook, add the `webhookUrl` for all products with the events purchase approved, purchase complete, refund, chargeback and protest; (2) copy the `hottok` and paste it in Corvo; (3) send a test from Hotmart.",
+            "Hotmart does not sign the webhook: Corvo checks the `X-HOTMART-HOTTOK` header and the connection secret in the address, both in constant time. Events Corvo does not handle get a success response and are ignored, so Hotmart does not disable the webhook.",
+            "Each paid purchase becomes one invoice, identified by `hotmart:<transaction>`. `PURCHASE_APPROVED` and `PURCHASE_COMPLETE` are the same sale and never issue twice. For subscriptions, each charge has its own `transaction` and issues one invoice.",
+            "It only issues when `invoice_by` is `SELLER`. If Hotmart issues the invoice (`HOTMART` or `business_model` `R`), the sale is blocked with `seller_not_issuer`. Affiliate notices, with no buyer and no price, are ignored.",
+            "BRL only. A foreign buyer, or a document that is not a CPF/CNPJ, goes to complete data (`customer_tax_id_missing`): Corvo never issues on its own for foreigners. The CPF/CNPJ only arrives if the checkout asks for it.",
+            "Invoice amount: `total` uses the amount paid (`full_price`); `mine` (\"my share\") subtracts coproducer and affiliate commissions. If the notice has no commissions, the sale goes to attention and does not issue.",
+            "A refund (`PURCHASE_REFUNDED`) and a chargeback (`PURCHASE_CHARGEBACK`) cancel the invoice only if the rule has automatic cancellation on; a partial refund is ignored. A protest (`PURCHASE_PROTEST`) only flags the sale, without cancelling.",
+            "Hotmart does not report the environment in the notice: the environment chosen on the connection applies. The notice fields still need to be confirmed with a real notice.",
           ],
         },
         { kind: "heading", level: 2, body: "Sales that need attention" },
