@@ -729,7 +729,11 @@ describe('type nfce', () => {
     ]);
     router.forType.mockClear();
     await createNfeNumberGapsHandler(nfe)({}, ctx);
-    expect(router.forType.mock.calls[0][0]).toBe('nfe');
+    expect(router.forType).toHaveBeenCalledWith(
+      'nfe',
+      expect.anything(),
+      'nfe.documents.view',
+    );
     await expect(
       createNfeNumberGapsHandler(nfe)({ model: 57 }, ctx),
     ).rejects.toThrow('model');
