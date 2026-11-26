@@ -49,7 +49,7 @@ export const UF_TABLE: Record<Uf, UfInfo> = {
 };
 
 export function isUf(value: string): value is Uf {
-  return Object.prototype.hasOwnProperty.call(UF_TABLE, value);
+  return value in UF_TABLE;
 }
 
 /** dhEmi in the issuer UF's civil time: ISO with offset, no milliseconds. */
