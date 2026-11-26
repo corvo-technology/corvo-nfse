@@ -12,6 +12,8 @@ export abstract class INfeDocumentRepository {
   abstract insert(document: NfeDocument): Promise<void>;
   /** Writes the document row (items are immutable once inserted). */
   abstract save(document: NfeDocument): Promise<void>;
+  /** A corrected resubmission: the stored items give way to the ones of the document. */
+  abstract replaceItems(document: NfeDocument): Promise<void>;
   /** `forUpdate` locks the row until the surrounding transaction ends; it must run inside one. */
   abstract findById(
     id: string,

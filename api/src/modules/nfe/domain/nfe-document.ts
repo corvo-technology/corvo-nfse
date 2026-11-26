@@ -138,6 +138,28 @@ export interface NfeHistoryEntry {
   xMotivo: string | null;
 }
 
+export interface NfeLastError {
+  type: NfeErrorType;
+  code: string;
+  message: string;
+}
+
+/** The body of the document: what the customer sends and may correct before resubmitting. */
+export interface NfeContent {
+  natOp: string;
+  idDest: number;
+  indFinal: number;
+  indPres: number;
+  finNfe: number;
+  tpImp: number;
+  recipient: NfeRecipient;
+  items: NfeItem[];
+  totals: NfeTotalsSnapshot;
+  payment: NfePaymentSnapshot;
+  additionalInfo: string | null;
+  externalId: string | null;
+}
+
 export interface NfeTransitionInfo {
   cStat?: string | null;
   xMotivo?: string | null;
@@ -247,6 +269,11 @@ export class NfeDocument {
     return this.props.attempt;
   }
 
+  /** The history row of the creation (no previous state), written with the document. */
+  creationEntry(): NfeHistoryEntry {
+    return this.historyEntry(null, this.props.status);
+  }
+
   /** Moves along the state machine of design spec 8.3 and returns the history row to append. */
   transitionTo(
     status: NfeStatus,
@@ -308,6 +335,61 @@ export class NfeDocument {
     this.props.lastErrorMessage = null;
     this.props.lastErrorType = null;
     return entry;
+  }
+
+  /**
+   * The authorization data, without moving the state: `transitionTo('authorized')` is applied
+   * separately (by the transition service) so both happen under the same row lock.
+   */
+  recordAuthorization(
+    auth: NfeAuthorizationInfo,
+    now: Date = new Date(),
+  ): void {
+    this.props.protocol = auth.protocol ?? this.props.protocol;
+    this.props.authorizedAt = auth.authorizedAt ?? now;
+    if (auth.protNFeXml !== undefined) this.props.protNfeXml = auth.protNFeXml;
+    this.props.nextCheckAt = null;
+    this.clearError();
+  }
+
+  /** What the customer sees as `lastError`; `null` clears it. */
+  recordError(error: NfeLastError | null): void {
+    this.props.lastErrorType = error?.type ?? null;
+    this.props.lastErrorCode = error?.code ?? null;
+    this.props.lastErrorMessage = error?.message ?? null;
+  }
+
+  clearError(): void {
+    this.recordError(null);
+  }
+
+  /** The authority (SEFAZ) that serves this UF, kept for the breaker and for support. */
+  setAuthority(authority: string): void {
+    this.props.authority = authority;
+  }
+
+  /** When the next automatic look at the SEFAZ is due (`null` once there is none). */
+  scheduleCheck(nextCheckAt: Date | null, reconcileAttempts?: number): void {
+    this.props.nextCheckAt = nextCheckAt;
+    if (reconcileAttempts !== undefined)
+      this.props.reconcileAttempts = reconcileAttempts;
+  }
+
+  /**
+   * A rejected document corrected by the customer: the content is replaced, the number stays (the
+   * next attempt only draws a new `cNF`). The idempotency key stays the one the document was
+   * created with; the hash follows the latest body.
+   */
+  replaceContent(
+    content: NfeContent,
+    requestHash: string,
+    now: Date = new Date(),
+  ): void {
+    if (this.props.status !== 'rejected')
+      throw new InvalidNfeTransitionError(this.props.status, 'queued');
+    Object.assign(this.props, content, { requestHash, updatedAt: now });
+    this.props.reconcileAttempts = 0;
+    this.props.nextCheckAt = null;
   }
 
   private historyEntry(from: NfeStatus | null, to: NfeStatus): NfeHistoryEntry {

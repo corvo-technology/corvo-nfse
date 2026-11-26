@@ -65,6 +65,22 @@ export class TypeOrmNfeDocumentRepository implements INfeDocumentRepository {
     });
   }
 
+  async replaceItems(document: NfeDocument): Promise<void> {
+    const snapshot = document.toSnapshot();
+    return runWithTenant(snapshot.tenantId, async () => {
+      requireTenantId(snapshot.tenantId);
+      await this.items.delete({
+        documentId: snapshot.id,
+        tenantId: snapshot.tenantId,
+      });
+      const items = this.mapper.itemsToPersistence(snapshot);
+      if (items.length > 0)
+        await this.items.insert(
+          items as QueryDeepPartialEntity<NfeDocumentItemOrmEntity>[],
+        );
+    });
+  }
+
   async findById(
     id: string,
     tenantId: string,
