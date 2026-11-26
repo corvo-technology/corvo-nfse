@@ -6,10 +6,11 @@ import pt from "@/messages/pt.json";
 
 const purchase = vi.fn();
 const plan = vi.fn();
+const companiesList = vi.fn();
 const paymentStatus = vi.fn();
 vi.mock("@/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api")>();
-  return { ...actual, billing: { ...actual.billing, purchase: (...args: unknown[]) => purchase(...args), plan: (...args: unknown[]) => plan(...args), paymentStatus: (...args: unknown[]) => paymentStatus(...args) } };
+  return { ...actual, companies: { ...actual.companies, list: (...args: unknown[]) => companiesList(...args) }, billing: { ...actual.billing, purchase: (...args: unknown[]) => purchase(...args), plan: (...args: unknown[]) => plan(...args), paymentStatus: (...args: unknown[]) => paymentStatus(...args) } };
 });
 
 import { CheckoutDialog, type CheckoutTarget } from "@/components/billing/checkout-dialog";
@@ -22,19 +23,41 @@ const open = (target: CheckoutTarget, redirect = vi.fn(), extra: { onPaid?: () =
     </NextIntlClientProvider>
   );
 
+/** Presses "Continuar" once the form accepts it (the buyer is prefilled from the first company). */
+const proceed = async () => {
+  await waitFor(() => expect((screen.getByText("Continuar").closest("button") as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(screen.getByText("Continuar"));
+};
+
 describe("CheckoutDialog", () => {
-  beforeEach(() => { purchase.mockReset(); plan.mockReset(); paymentStatus.mockReset(); paymentStatus.mockResolvedValue({ id: "pay-1", status: "pending" }); plan.mockResolvedValue({ slug: "free", usage: { avulsoBalance: 0 } }); });
+  beforeEach(() => { companiesList.mockReset(); companiesList.mockResolvedValue({ items: [{ legalName: "Escritório Silva Ltda", taxId: "11222333000181" }] }); purchase.mockReset(); plan.mockReset(); paymentStatus.mockReset(); paymentStatus.mockResolvedValue({ id: "pay-1", status: "pending" }); plan.mockResolvedValue({ slug: "free", usage: { avulsoBalance: 0 } }); });
   afterEach(cleanup);
 
   it("avulso: shows units x R$ 0,99 and sends a Pix purchase with an idempotency key", async () => {
     purchase.mockResolvedValue({ method: "pix", brCode: "000201BR", qrCodeImage: "data:image/png;base64,AAA", paymentLinkUrl: "https://woovi.test/p", expiresAt: "2026-11-06T00:00:00Z" });
     open({ kind: "avulso", units: 10 });
     expect(screen.getByText("R$ 9,90")).toBeTruthy();
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     await waitFor(() => expect(screen.getByTestId("pix-result")).toBeTruthy());
-    expect(purchase).toHaveBeenCalledWith({ kind: "avulso", units: 10, method: "pix" }, expect.any(String));
+    expect(purchase).toHaveBeenCalledWith({ kind: "avulso", units: 10, method: "pix", customer: { name: "Escritório Silva Ltda", taxID: "11222333000181" } }, expect.any(String));
     expect((await screen.findByAltText("Pix QR Code")).getAttribute("src")).toMatch(/^data:image\//);
     expect(screen.getByText("Copiar código Pix")).toBeTruthy();
+  });
+
+  it("avulso Pix: asks for the buyer document when there is no company to prefill, and sends what was typed", async () => {
+    companiesList.mockResolvedValue({ items: [] });
+    purchase.mockResolvedValue({ method: "pix", brCode: "BR", qrCodeImage: null, paymentLinkUrl: "https://woovi.test/p", expiresAt: null });
+    open({ kind: "avulso", units: 10 });
+    const button = screen.getByText("Continuar").closest("button") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(screen.getByText(/A nota fiscal dos créditos sai em nome de quem pagar/)).toBeTruthy();
+    const [name, taxId] = screen.getAllByRole("textbox");
+    fireEvent.change(name, { target: { value: "Ana Souza" } });
+    fireEvent.change(taxId, { target: { value: "52998224725" } });
+    await waitFor(() => expect(button.disabled).toBe(false));
+    fireEvent.click(button);
+    await waitFor(() => expect(purchase).toHaveBeenCalled());
+    expect(purchase.mock.calls[0][0]).toMatchObject({ kind: "avulso", method: "pix", customer: { name: "Ana Souza", taxID: "52998224725" } });
   });
 
   it("card: redirects to the provider url", async () => {
@@ -42,9 +65,9 @@ describe("CheckoutDialog", () => {
     const redirect = vi.fn();
     open({ kind: "avulso", units: 5 }, redirect);
     fireEvent.click(screen.getByTestId("method-card"));
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     await waitFor(() => expect(redirect).toHaveBeenCalledWith("https://checkout.stripe.test/s"));
-    expect(purchase).toHaveBeenCalledWith({ kind: "avulso", units: 5, method: "card" }, expect.any(String));
+    expect(purchase).toHaveBeenCalledWith({ kind: "avulso", units: 5, method: "card", customer: undefined }, expect.any(String));
   });
 
   it("annual plan shows the year's total and needs no payer data", async () => {
@@ -52,7 +75,7 @@ describe("CheckoutDialog", () => {
     open({ kind: "plan", slug: "solo", cycle: "annual" });
     expect(screen.getByText(/R\$ 502,80/)).toBeTruthy();
     expect(screen.queryByText("CPF ou CNPJ")).toBeNull();
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     await waitFor(() => expect(purchase).toHaveBeenCalled());
     expect(purchase.mock.calls[0][0]).toMatchObject({ kind: "plan", planSlug: "solo", cycle: "annual", method: "pix" });
   });
@@ -116,7 +139,7 @@ describe("CheckoutDialog", () => {
   it("builds the QR code from the brCode even when Woovi only sends a hosted image url, and shows the countdown", async () => {
     purchase.mockResolvedValue({ method: "pix", brCode: "00020126580014BR.GOV.BCB.PIX0136abc", qrCodeImage: "https://api.woovi.test/qr/1.png", paymentLinkUrl: "https://woovi.test/p", expiresAt: new Date(Date.now() + 90 * 60_000 - 30_000).toISOString() });
     open({ kind: "avulso", units: 3 });
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     expect((await screen.findByAltText("Pix QR Code")).getAttribute("src")).toMatch(/^data:image\//);
     expect(screen.getByText(/Expira em 01:29:/)).toBeTruthy();
     expect(screen.getByText("Aguardando o pagamento…")).toBeTruthy();
@@ -129,7 +152,7 @@ describe("CheckoutDialog", () => {
     paymentStatus.mockResolvedValueOnce({ id: "pay-1", status: "pending" }).mockResolvedValue({ id: "pay-1", status: "paid" });
     const onPaid = vi.fn();
     open({ kind: "avulso", units: 10 }, vi.fn(), { onPaid, pollMs: 5 });
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     expect(await screen.findByText("Pagamento confirmado")).toBeTruthy();
     expect(screen.getByText("Suas 10 notas avulsas já estão no saldo.")).toBeTruthy();
     expect(paymentStatus).toHaveBeenCalledWith("pay-1", expect.anything());
@@ -140,7 +163,7 @@ describe("CheckoutDialog", () => {
     purchase.mockResolvedValue(pixResult());
     paymentStatus.mockResolvedValue({ id: "pay-1", status: "paid" });
     open({ kind: "plan", slug: "equipe", cycle: "annual" }, vi.fn(), { pollMs: 5 });
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     expect(await screen.findByText("Pagamento confirmado")).toBeTruthy();
     expect(screen.getByText("Seu plano EQUIPE está ativo.")).toBeTruthy();
   });
@@ -149,14 +172,14 @@ describe("CheckoutDialog", () => {
     purchase.mockResolvedValue(pixResult());
     paymentStatus.mockResolvedValue({ id: "pay-1", status: "expired" });
     open({ kind: "avulso", units: 5 }, vi.fn(), { pollMs: 5 });
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     expect(await screen.findByText("Este código expirou. Gere outro para pagar.")).toBeTruthy();
     const firstKey = purchase.mock.calls[0][1];
     fireEvent.click(screen.getByText("Gerar novo Pix"));
     expect(screen.getByText("Continuar")).toBeTruthy();
     purchase.mockResolvedValue(pixResult({ paymentId: "pay-2" }));
     paymentStatus.mockResolvedValue({ id: "pay-2", status: "pending" });
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     await waitFor(() => expect(purchase).toHaveBeenCalledTimes(2));
     expect(purchase.mock.calls[1][1]).not.toBe(firstKey);
     expect(await screen.findByText("Aguardando o pagamento…")).toBeTruthy();
@@ -166,7 +189,7 @@ describe("CheckoutDialog", () => {
     purchase.mockResolvedValue(pixResult());
     paymentStatus.mockResolvedValue({ id: "pay-1", status: "failed" });
     open({ kind: "avulso", units: 5 }, vi.fn(), { pollMs: 5 });
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     expect(await screen.findByText("Este pagamento não foi concluído. Gere um novo Pix.")).toBeTruthy();
   });
 
@@ -174,7 +197,7 @@ describe("CheckoutDialog", () => {
     purchase.mockResolvedValue(pixResult());
     paymentStatus.mockRejectedValue(new ApiError(401, "Unauthorized"));
     open({ kind: "avulso", units: 5 }, vi.fn(), { pollMs: 5 });
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     expect((await screen.findByRole("alert")).textContent).toContain("Sua sessão expirou");
     expect(screen.queryByText("Gerar novo Pix")).toBeNull();
     const calls = paymentStatus.mock.calls.length;
@@ -186,7 +209,7 @@ describe("CheckoutDialog", () => {
     purchase.mockResolvedValue(pixResult());
     paymentStatus.mockRejectedValueOnce(new ApiError(502, "bad gateway")).mockResolvedValue({ id: "pay-1", status: "paid" });
     open({ kind: "avulso", units: 5 }, vi.fn(), { pollMs: 5 });
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     expect(await screen.findByText("Pagamento confirmado")).toBeTruthy();
   });
 
@@ -195,7 +218,7 @@ describe("CheckoutDialog", () => {
     paymentStatus.mockResolvedValue({ id: "pay-1", status: "pending" });
     // A long interval: only the focus event can reach the API again soon.
     open({ kind: "avulso", units: 5 }, vi.fn(), { pollMs: 60_000 });
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     await waitFor(() => expect(paymentStatus).toHaveBeenCalledTimes(1));
     paymentStatus.mockResolvedValue({ id: "pay-1", status: "paid" });
     fireEvent(window, new Event("focus"));
@@ -205,7 +228,7 @@ describe("CheckoutDialog", () => {
   it("stops asking when the dialog goes away", async () => {
     purchase.mockResolvedValue(pixResult());
     const view = open({ kind: "avulso", units: 5 }, vi.fn(), { pollMs: 5 });
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     await waitFor(() => expect(paymentStatus.mock.calls.length).toBeGreaterThan(1));
     view.unmount();
     const calls = paymentStatus.mock.calls.length;
@@ -217,13 +240,13 @@ describe("CheckoutDialog", () => {
     purchase.mockRejectedValueOnce(new ApiError(400, "Woovi: taxID inválido", "ERROR_PIX_PROVIDER_ERROR"));
     const onError = vi.fn();
     open({ kind: "avulso", units: 5 }, vi.fn(), { onError });
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     expect((await screen.findByRole("alert")).textContent).toContain(pt.ApiErrors.pix_provider_error);
     expect(onError).not.toHaveBeenCalled();
     // Still on the form: the choices are there and the button works again for a retry.
     expect(screen.getByTestId("method-pix")).toBeTruthy();
     purchase.mockResolvedValueOnce({ method: "pix", brCode: "BR", qrCodeImage: null, paymentLinkUrl: "https://woovi.test/p", expiresAt: null });
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     await waitFor(() => expect(screen.getByTestId("pix-result")).toBeTruthy());
   });
 
@@ -231,7 +254,7 @@ describe("CheckoutDialog", () => {
     purchase.mockRejectedValueOnce(new ApiError(502, "Upstream service unavailable"));
     const onError = vi.fn();
     open({ kind: "avulso", units: 5 }, vi.fn(), { onError });
-    fireEvent.click(screen.getByText("Continuar"));
+    await proceed();
     await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
   });
 

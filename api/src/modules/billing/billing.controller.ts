@@ -180,7 +180,12 @@ export class BillingController {
       return data(
         await this.checkoutRouter.start(
           tenantId,
-          { kind: 'avulso', units: body.units, method },
+          {
+            kind: 'avulso',
+            units: body.units,
+            method,
+            customer: body.customer,
+          },
           key,
         ),
       );

@@ -77,10 +77,12 @@ const payer = {
   phone: '5511999999999',
 };
 
+const buyer = { name: ' Escritório Silva ', taxID: '11.222.333/0001-81' };
+
 describe('WooviPaymentsService.startAvulso', () => {
   it('charges units x R$ 0,99 for 24h and stores a pending intent', async () => {
     const f = setup();
-    const out = await f.service.startAvulso(tenant, 10, 'key-1');
+    const out = await f.service.startAvulso(tenant, 10, 'key-1', buyer);
     expect(f.client.createCharge).toHaveBeenCalledWith(
       expect.objectContaining({ valueCents: 990, expiresInSeconds: 86400 }),
     );
@@ -92,18 +94,49 @@ describe('WooviPaymentsService.startAvulso', () => {
       status: 'pending',
     });
   });
+  it('sends the buyer to Woovi with digits only, so the sale carries a CPF/CNPJ', async () => {
+    const f = setup();
+    await f.service.startAvulso(tenant, 10, 'key-c', {
+      ...buyer,
+      email: 'ana@x.com',
+    });
+    expect(f.client.createCharge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customer: {
+          name: 'Escritório Silva',
+          taxID: '11222333000181',
+          email: 'ana@x.com',
+        },
+      }),
+    );
+  });
+  it.each([
+    ['no buyer', undefined],
+    ['no name', { name: ' ', taxID: '11222333000181' }],
+    ['no document', { name: 'Ana' }],
+    ['a short document', { name: 'Ana', taxID: '123' }],
+  ])('refuses a Pix purchase with %s before calling Woovi', async (_n, who) => {
+    const f = setup();
+    await expect(
+      f.service.startAvulso(tenant, 10, 'k', who),
+    ).rejects.toMatchObject({
+      response: { code: 'PIX_PAYER_FIELD_REQUIRED' },
+    });
+    expect(f.client.createCharge).not.toHaveBeenCalled();
+    expect(f.store.rows).toHaveLength(0);
+  });
   it('rejects fewer than 3 notes before calling Woovi', async () => {
     const f = setup();
-    await expect(f.service.startAvulso(tenant, 2, 'k')).rejects.toThrow(
+    await expect(f.service.startAvulso(tenant, 2, 'k', buyer)).rejects.toThrow(
       /minimum/i,
     );
     expect(f.client.createCharge).not.toHaveBeenCalled();
   });
   it('refuses to replay a key for a different request', async () => {
     const f = setup();
-    await f.service.startAvulso(tenant, 5, 'same');
+    await f.service.startAvulso(tenant, 5, 'same', buyer);
     await expect(
-      f.service.startAvulso(tenant, 7, 'same'),
+      f.service.startAvulso(tenant, 7, 'same', buyer),
     ).rejects.toBeInstanceOf(ConflictException);
     await expect(
       f.service.startPlan(tenant, 'solo', 'annual', 'same', undefined),
@@ -112,16 +145,16 @@ describe('WooviPaymentsService.startAvulso', () => {
   });
   it('does not replay an expired charge: a new key is needed', async () => {
     const f = setup();
-    await f.service.startAvulso(tenant, 5, 'old');
+    await f.service.startAvulso(tenant, 5, 'old', buyer);
     f.store.rows[0].expiresAt = new Date(Date.now() - 1000);
     await expect(
-      f.service.startAvulso(tenant, 5, 'old'),
+      f.service.startAvulso(tenant, 5, 'old', buyer),
     ).rejects.toBeInstanceOf(ConflictException);
   });
   it('replays the same checkout for the same idempotency key', async () => {
     const f = setup();
-    const a = await f.service.startAvulso(tenant, 5, 'same');
-    const b = await f.service.startAvulso(tenant, 5, 'same');
+    const a = await f.service.startAvulso(tenant, 5, 'same', buyer);
+    const b = await f.service.startAvulso(tenant, 5, 'same', buyer);
     expect(b).toEqual(a);
     expect(f.client.createCharge).toHaveBeenCalledTimes(1);
   });
@@ -198,7 +231,7 @@ describe('WooviPaymentsService.handleEvent', () => {
 
   it('credits avulso notes once even if the webhook is delivered twice', async () => {
     const f = setup();
-    await f.service.startAvulso(tenant, 10, 'k');
+    await f.service.startAvulso(tenant, 10, 'k', buyer);
     const ref = f.store.rows[0].providerRef;
     await f.service.handleEvent(completed(ref, 990));
     await f.service.handleEvent(completed(ref, 990));
@@ -212,7 +245,7 @@ describe('WooviPaymentsService.handleEvent', () => {
 
   it('announces the credits added, but not when the grant was a replay', async () => {
     const f = setup();
-    await f.service.startAvulso(tenant, 10, 'k');
+    await f.service.startAvulso(tenant, 10, 'k', buyer);
     const ref = f.store.rows[0].providerRef;
     await f.service.handleEvent(completed(ref, 990));
     expect(f.eventBus.publishBestEffort).toHaveBeenCalledWith(
@@ -224,7 +257,7 @@ describe('WooviPaymentsService.handleEvent', () => {
 
     const replay = setup();
     replay.credits.grantAvulso.mockResolvedValue({ creditsGranted: 0 });
-    await replay.service.startAvulso(tenant, 10, 'k');
+    await replay.service.startAvulso(tenant, 10, 'k', buyer);
     await replay.service.handleEvent(
       completed(replay.store.rows[0].providerRef, 990),
     );
@@ -232,7 +265,7 @@ describe('WooviPaymentsService.handleEvent', () => {
   });
   it('does not credit when the paid value differs from the charge', async () => {
     const f = setup();
-    await f.service.startAvulso(tenant, 10, 'k');
+    await f.service.startAvulso(tenant, 10, 'k', buyer);
     const ref = f.store.rows[0].providerRef;
     await f.service.handleEvent(completed(ref, 100));
     expect(f.credits.grantAvulso).not.toHaveBeenCalled();
@@ -240,7 +273,7 @@ describe('WooviPaymentsService.handleEvent', () => {
   });
   it('announces an unpaid Pix that expired and a payment of the wrong value, once each', async () => {
     const f = setup();
-    await f.service.startAvulso(tenant, 3, 'k');
+    await f.service.startAvulso(tenant, 3, 'k', buyer);
     const ref = f.store.rows[0].providerRef;
     const expired = {
       event: 'OPENPIX:CHARGE_EXPIRED',
@@ -254,7 +287,7 @@ describe('WooviPaymentsService.handleEvent', () => {
     );
 
     const wrong = setup();
-    await wrong.service.startAvulso(tenant, 10, 'k');
+    await wrong.service.startAvulso(tenant, 10, 'k', buyer);
     const wrongRef = wrong.store.rows[0].providerRef;
     await wrong.service.handleEvent(completed(wrongRef, 100));
     await wrong.service.handleEvent(completed(wrongRef, 100));
@@ -289,7 +322,7 @@ describe('WooviPaymentsService.handleEvent', () => {
 
   it('still honors a correct payment that arrives after the charge expired', async () => {
     const f = setup();
-    await f.service.startAvulso(tenant, 3, 'k');
+    await f.service.startAvulso(tenant, 3, 'k', buyer);
     const ref = f.store.rows[0].providerRef;
     await f.service.handleEvent({
       event: 'OPENPIX:CHARGE_EXPIRED',
@@ -350,7 +383,7 @@ describe('WooviPaymentsService.handleEvent', () => {
   });
   it('ignores a webhook that Woovi itself does not confirm as paid', async () => {
     const f = setup();
-    await f.service.startAvulso(tenant, 10, 'k');
+    await f.service.startAvulso(tenant, 10, 'k', buyer);
     const ref = f.store.rows[0].providerRef;
     f.charges.set(ref, { status: 'ACTIVE', value: 990 });
     await f.service.handleEvent(completed(ref, 990));
@@ -359,7 +392,7 @@ describe('WooviPaymentsService.handleEvent', () => {
   });
   it('puts the intent back to pending when delivery fails, so a redelivery retries', async () => {
     const f = setup();
-    await f.service.startAvulso(tenant, 10, 'k');
+    await f.service.startAvulso(tenant, 10, 'k', buyer);
     const ref = f.store.rows[0].providerRef;
     f.credits.grantAvulso.mockRejectedValueOnce(new Error('db blip'));
     await expect(f.service.handleEvent(completed(ref, 990))).rejects.toThrow(
@@ -528,7 +561,7 @@ describe('WooviPaymentsService.paymentStatus', () => {
 
   it('gives the payment id with the checkout and follows it from pending to paid', async () => {
     const f = setup();
-    const out = await f.service.startAvulso(tenant, 10, 'status-1');
+    const out = await f.service.startAvulso(tenant, 10, 'status-1', buyer);
     expect(out.paymentId).toEqual(expect.any(String));
     expect(await f.service.paymentStatus(tenant, out.paymentId!)).toMatchObject(
       { status: 'pending', kind: 'avulso', units: 10, paid_at: null },
@@ -542,14 +575,14 @@ describe('WooviPaymentsService.paymentStatus', () => {
 
   it('keeps the same payment id when the purchase is replayed', async () => {
     const f = setup();
-    const first = await f.service.startAvulso(tenant, 5, 'same-key');
-    const again = await f.service.startAvulso(tenant, 5, 'same-key');
+    const first = await f.service.startAvulso(tenant, 5, 'same-key', buyer);
+    const again = await f.service.startAvulso(tenant, 5, 'same-key', buyer);
     expect(again.paymentId).toBe(first.paymentId);
   });
 
   it('maps expired and refused payments, and treats an authorized contract as confirmed', async () => {
     const f = setup();
-    const out = await f.service.startAvulso(tenant, 5, 'k-map');
+    const out = await f.service.startAvulso(tenant, 5, 'k-map', buyer);
     const status = async () =>
       (await f.service.paymentStatus(tenant, out.paymentId!))!.status;
     f.store.rows[0].status = 'expired';
@@ -562,7 +595,7 @@ describe('WooviPaymentsService.paymentStatus', () => {
 
   it("never shows another tenant's payment", async () => {
     const f = setup();
-    const out = await f.service.startAvulso(tenant, 5, 'k-iso');
+    const out = await f.service.startAvulso(tenant, 5, 'k-iso', buyer);
     expect(await f.service.paymentStatus(other, out.paymentId!)).toBeNull();
     expect(
       await f.service.paymentStatus(

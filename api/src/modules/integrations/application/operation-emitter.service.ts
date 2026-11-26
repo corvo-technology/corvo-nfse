@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { QuotaExceededError } from '@/modules/plans/application/quota.service';
 import { IdempotencyConflictError } from '@/modules/invoice/domain/errors';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
@@ -40,6 +40,8 @@ const COMMERCIAL_BLOCK: Record<string, BlockReason> = {
 /** Decides what an operation needs now and, when eligible, asks for the invoice. */
 @Injectable()
 export class OperationEmitter {
+  private readonly logger = new Logger(OperationEmitter.name);
+
   constructor(
     private readonly connections: ConnectionService,
     private readonly operations: IIntegrationOperationRepository,
@@ -243,6 +245,16 @@ export class OperationEmitter {
       status,
       reason,
     );
+    // Ids and codes only: never the buyer's data nor the sale's content.
+    this.logger.warn({
+      event: 'integration_operation_stopped',
+      tenantId: operation.tenantId,
+      connectionId: operation.connectionId,
+      operationId: operation.id,
+      operationKey: operation.operationKey,
+      state: status,
+      reason,
+    });
     return status === 'blocked'
       ? { state: 'processed', operationId: operation.id }
       : {

@@ -1567,6 +1567,7 @@
       "payerName": "Full name or company name",
       "payerTaxId": "CPF or CNPJ",
       "payerHint": "Required to authorize the monthly Pix in your bank app.",
+      "buyerHint": "The invoice for the credits is issued to the payer. Check the CPF or CNPJ.",
       "pay": "Continue",
       "pixScan": "Scan with your bank app",
       "pixAuthorize": "Open the link to authorize Pix Automático in your bank app.",
