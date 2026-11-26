@@ -7,9 +7,11 @@ import {
   NFE_INUTILIZE,
   NFE_PREPARE_DOCUMENTS,
   NFE_RECONCILE,
+  NFE_SEND_EMAIL,
   type NfeEventMessagePayload,
   type NfeInutilizeMessagePayload,
   type NfeMessagePayload,
+  type NfePrepareInutilizationPayload,
 } from '../domain/nfe-message-types';
 import type { NfeInutilization } from '../domain/nfe-event';
 import { CANCEL_TP_EVENTO } from '../domain/nfe-event';
@@ -71,8 +73,48 @@ export function reconcileMessage(
   );
 }
 
-export function prepareDocumentsMessage(doc: NfeDocument): NewOutboxMessage {
-  return base(doc, NFE_PREPARE_DOCUMENTS, `prepare:${doc.id}`);
+/**
+ * `nfe.prepare_documents`: with no event, the `nfeProc` and the DANFE of the authorization; with
+ * the event, the XML the SEFAZ registered for it (and the DANFE again, marked, after a cancellation).
+ */
+export function prepareDocumentsMessage(
+  doc: NfeDocument,
+  eventId?: string,
+): NewOutboxMessage {
+  const message = base(
+    doc,
+    NFE_PREPARE_DOCUMENTS,
+    eventId ? `prepare:${doc.id}:event:${eventId}` : `prepare:${doc.id}`,
+  );
+  return eventId
+    ? { ...message, payload: { ...message.payload, eventId } }
+    : message;
+}
+
+/** `nfe.prepare_documents` for the XML of an inutilization the SEFAZ approved. */
+export function prepareInutilizationMessage(
+  inutilization: Pick<NfeInutilization, 'id' | 'tenantId' | 'companyId'> & {
+    environment: NfeInutilization['environment'];
+  },
+): NewOutboxMessage {
+  const payload: NfePrepareInutilizationPayload = {
+    inutilizationId: inutilization.id,
+    tenantId: inutilization.tenantId,
+    companyId: inutilization.companyId,
+  };
+  return {
+    tenantId: inutilization.tenantId,
+    environment: inutilization.environment,
+    type: NFE_PREPARE_DOCUMENTS,
+    aggregateId: inutilization.id,
+    payload: { ...payload },
+    dedupeKey: `prepare:inutilization:${inutilization.id}`,
+  };
+}
+
+/** `nfe.send_email`: the NF-e to the recipient, once, with the documents ready. */
+export function sendEmailMessage(doc: NfeDocument): NewOutboxMessage {
+  return base(doc, NFE_SEND_EMAIL, `email:${doc.id}`);
 }
 
 /**

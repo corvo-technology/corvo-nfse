@@ -1,4 +1,11 @@
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  type S3Client,
+} from '@aws-sdk/client-s3';
 import { ConfigService } from '@nestjs/config';
+import { S3DocumentStorage } from '@/infra/storage/infra/s3-storage';
 import { FakeNfeGateway } from '@/infra/external/nfe/sefaz/fake-nfe.gateway';
 import type { SignedNfe } from '@/infra/external/nfe/sefaz/signed-nfe';
 import { BillingUsageService } from '@/modules/billing/application/billing-usage.service';
@@ -35,6 +42,10 @@ import { NfeCancelService } from '../application/nfe-cancel.service';
 import { NfeConsultService } from '../application/nfe-consult.service';
 import { NfeCorrectHandler } from '../application/nfe-correct.handler';
 import { NfeCorrectService } from '../application/nfe-correct.service';
+import { NfeEmailService } from '../application/nfe-email.service';
+import { NfePrepareDocumentsHandler } from '../application/nfe-prepare-documents.handler';
+import { NfeSendEmailHandler } from '../application/nfe-send-email.handler';
+import { DanfeRenderer } from '../infra/danfe/danfe-renderer';
 import { NfeEventContext } from '../application/nfe-event-context';
 import { NfeEventOutcomeService } from '../application/nfe-event-outcome.service';
 import { NfeEventReconcile } from '../application/nfe-event-reconcile';
@@ -360,6 +371,74 @@ export function createNfeStack(
     h.unitOfWork,
   );
   const timeline = new NfeTimelineService(documents, events);
+
+  // The storage is the real one (its keys are under test) over an S3 client kept in memory.
+  const objects = new Map<string, Buffer | string>();
+  const s3 = {
+    send: (command: unknown): Promise<unknown> => {
+      const input = (
+        command as { input: { Key: string; Body?: Buffer | string } }
+      ).input;
+      if (command instanceof PutObjectCommand) {
+        objects.set(input.Key, input.Body as Buffer | string);
+        return Promise.resolve({});
+      }
+      const body = objects.get(input.Key);
+      if (command instanceof HeadObjectCommand)
+        return body === undefined
+          ? Promise.reject(
+              Object.assign(new Error('NotFound'), {
+                $metadata: { httpStatusCode: 404 },
+              }),
+            )
+          : Promise.resolve({ $metadata: { httpStatusCode: 200 } });
+      if (command instanceof GetObjectCommand && body !== undefined)
+        return Promise.resolve({
+          Body: {
+            transformToString: () =>
+              Promise.resolve(Buffer.from(body).toString('utf8')),
+            transformToByteArray: () =>
+              Promise.resolve(Uint8Array.from(Buffer.from(body))),
+          },
+        });
+      return Promise.reject(new Error('NoSuchKey'));
+    },
+  };
+  const storage = new S3DocumentStorage(
+    new ConfigService({ 'storage.s3Bucket': 'test-bucket' }),
+    s3 as unknown as S3Client,
+  );
+  const renderer = new DanfeRenderer();
+  const prepareHandler = new NfePrepareDocumentsHandler(
+    handlers,
+    documents,
+    storage,
+    renderer,
+    events,
+    inutilizations,
+    transitions,
+    publisher,
+  );
+  const mailer = { send: jest.fn().mockResolvedValue({ id: 'mail-1' }) };
+  const emailService = new NfeEmailService(
+    documents,
+    storage,
+    {
+      findByIdAndTenantId: (
+        _id: string,
+        _tenant: string,
+        env: ExecutionEnvironment,
+      ) => Promise.resolve(company(env)),
+    } as never,
+    transitions,
+    publisher,
+    mailer as never,
+  );
+  const sendEmailHandler = new NfeSendEmailHandler(
+    handlers,
+    emailService,
+    config,
+  );
   const remembered = jest.fn().mockResolvedValue(undefined);
   const intake = new NfeIntakeService(
     preparation,
@@ -443,6 +522,8 @@ export function createNfeStack(
       'nfe.inutilize': inutilizeHandler,
       'nfe.reconcile': reconcile,
       'nfe.emit': { handle: (m) => emit.handle(m) },
+      'nfe.prepare_documents': prepareHandler,
+      'nfe.send_email': sendEmailHandler,
     };
     const found = await messages(type, aggregateId);
     for (const message of found) await handlerOf[type].handle(message);
@@ -488,6 +569,14 @@ export function createNfeStack(
     intake,
     resubmit,
     deliveries,
+    /** The files of the in-memory storage, by S3 key. */
+    objects,
+    storage,
+    renderer,
+    prepareHandler,
+    emailService,
+    /** The e-mail provider: `send` is a spy that resolves. */
+    mailer,
     cache,
     remembered,
     numbering,

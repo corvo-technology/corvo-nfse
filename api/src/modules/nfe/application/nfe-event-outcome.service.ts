@@ -4,6 +4,7 @@ import type { NewOutboxMessage } from '@/modules/invoice/domain/outbox-message';
 import type { NfeDocument } from '../domain/nfe-document';
 import { CANCEL_TP_EVENTO, type NfeFiscalEvent } from '../domain/nfe-event';
 import { TypeormNfeEvents } from '../infra/typeorm-nfe-events';
+import { prepareDocumentsMessage } from './nfe-messages';
 import { keyOf } from './nfe-outcome.service';
 import { NfeTransitionService } from './nfe-transition.service';
 
@@ -44,10 +45,13 @@ export class NfeEventOutcomeService {
       xMotivo: receipt.xMotivo,
     };
     const from = ['pending', 'pending_check'] as const;
+    // The XML of the event, and the DANFE marked after a cancellation, are stored by the worker.
+    const messages = [prepareDocumentsMessage(doc, event.id)];
     if (isCancel(event)) {
       const result = await this.transitions.apply(keyOf(doc), 'cancelled', {
         from: ['cancelling'],
         info: { cStat: receipt.cStat, xMotivo: receipt.xMotivo },
+        messages,
         change: async () => {
           await this.events.settle(
             event.id,
@@ -80,6 +84,7 @@ export class NfeEventOutcomeService {
           patch,
         );
       },
+      messages,
     });
     if (applied)
       await this.webhooks.publish(

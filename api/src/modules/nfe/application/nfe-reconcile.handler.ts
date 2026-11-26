@@ -4,7 +4,6 @@ import type { OutboxHandler } from '@/modules/invoice/domain/outbox-handler';
 import type { OutboxMessage } from '@/modules/invoice/domain/outbox-message';
 import {
   NFE_RECONCILE,
-  NFE_PREPARE_DOCUMENTS,
   type NfeEventMessagePayload,
   type NfeMessagePayload,
 } from '../domain/nfe-message-types';
@@ -49,27 +48,5 @@ export class NfeReconcileHandler implements OutboxHandler, OnModuleInit {
       message.environment,
       'automatic',
     );
-  }
-}
-
-/**
- * `nfe.prepare_documents` is enqueued with every authorization. The `nfeProc`, the DANFE and the
- * storage arrive in PR 6 (it replaces this handler); until then the message is acknowledged, so
- * the outbox does not count it as a failure.
- */
-@Injectable()
-export class NfePrepareDocumentsPlaceholder
-  implements OutboxHandler, OnModuleInit
-{
-  readonly type = NFE_PREPARE_DOCUMENTS;
-
-  constructor(private readonly registry: OutboxHandlerRegistry) {}
-
-  onModuleInit(): void {
-    this.registry.register(this);
-  }
-
-  handle(): Promise<void> {
-    return Promise.resolve();
   }
 }

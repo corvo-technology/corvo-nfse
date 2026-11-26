@@ -44,6 +44,7 @@ const routes: [RegExp, string[]][] = [
   [/^companies\/[^/]+\/invoice-package(?:\/summary)?$/, ["GET"]],
   [/^companies\/[^/]+\/accountant-package$/, ["GET", "PUT"]],
   [/^companies\/[^/]+\/accountant-package\/send$/, ["POST"]],
+  [/^companies\/[^/]+\/nfe-settings$/, ["GET", "PUT"]],
   [/^invoices$/, ["GET", "POST"]],
   [/^customers$/, ["GET"]],
   [/^customers\/registry\/[^/]+$/, ["GET"]],
@@ -60,6 +61,11 @@ const routes: [RegExp, string[]][] = [
   [/^imports\/[^/]+\/emit$/, ["POST"]],
   [/^imports\/[^/]+\/errors\.csv$/, ["GET"]],
   [/^invoices\/calculate$/, ["POST"]],
+  [/^invoices\/validate$/, ["POST"]],
+  [/^invoices\/inutilizations$/, ["GET", "POST"]],
+  [/^invoices\/number-gaps$/, ["GET"]],
+  [/^invoices\/[^/]+$/, ["PUT"]],
+  [/^invoices\/[^/]+\/(?:sync|discard|corrections)$/, ["POST"]],
   [/^invoices\/[^/]+(?:\/(events|pdf|xml))?$/, ["GET"]],
   [/^invoices\/[^/]+\/download-url$/, ["POST"]],
   [/^invoices\/[^/]+\/email$/, ["POST"]],
@@ -85,6 +91,7 @@ const routes: [RegExp, string[]][] = [
   [/^platform\/(overview|users|attention|audit)$/, ["GET"]],
   [/^platform\/users\/[^/]+$/, ["GET"]],
   [/^platform\/tenants\/[^/]+\/credit-grants$/, ["POST"]],
+  [/^platform\/tenants\/[^/]+\/nfe-access$/, ["PUT"]],
   [/^health\/(live|ready)$/, ["GET"]],
 ];
 // Session plus the short-lived social sign-in state cookie.

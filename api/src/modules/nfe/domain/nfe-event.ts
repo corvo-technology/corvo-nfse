@@ -17,6 +17,8 @@ export interface NfeFiscalEvent {
   /** The signed request. A resend sends exactly this text. */
   requestXml: string | null;
   procXml: string | null;
+  /** Where the registered `procEventoNFe` was stored (`null` until it is). */
+  xmlPath: string | null;
   cStat: string | null;
   xMotivo: string | null;
   createdAt: Date;
@@ -39,6 +41,8 @@ export interface NfeInutilization {
   xMotivo: string | null;
   requestXml: string | null;
   procXml: string | null;
+  /** Where the approved `procInutNFe` was stored (`null` until it is). */
+  xmlPath: string | null;
   idempotencyKey: string | null;
   requestHash: string | null;
   createdAt: Date;

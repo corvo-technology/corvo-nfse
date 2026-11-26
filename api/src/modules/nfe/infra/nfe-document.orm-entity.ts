@@ -138,6 +138,9 @@ export class NfeDocumentOrmEntity {
   @Column({ name: 'reconcile_attempts', type: 'integer', default: 0 })
   reconcileAttempts!: number;
 
+  @Column({ name: 'send_email', type: 'boolean', default: true })
+  sendEmail!: boolean;
+
   @Column({ name: 'documents_ready_at', type: 'timestamptz', nullable: true })
   documentsReadyAt!: Date | null;
 

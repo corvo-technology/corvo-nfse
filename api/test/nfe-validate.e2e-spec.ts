@@ -12,7 +12,7 @@ import {
   type E2eTestApp,
 } from './support/e2e-app';
 
-/** `POST /v1/nfe/validate` (the dry-run) against the real app and database. */
+/** `POST /v1/invoices/validate` (the dry-run) against the real app and database. */
 const COMPANY_TAX_ID = '11222333000181';
 
 const body = (overrides: Record<string, unknown> = {}) => ({
@@ -47,7 +47,7 @@ const body = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-describe('POST /v1/nfe/validate (e2e)', () => {
+describe('POST /v1/invoices/validate (e2e)', () => {
   let ctx: E2eTestApp;
   let db: DataSource;
   let tenantId: string;
@@ -57,9 +57,9 @@ describe('POST /v1/nfe/validate (e2e)', () => {
 
   const validate = (payload: unknown, query = '') =>
     request(ctx.app.getHttpServer())
-      .post(`/v1/nfe/validate${query}`)
+      .post(`/v1/invoices/validate${query}`)
       .set(apiKeyHeader(key))
-      .send(payload as object);
+      .send({ type: 'nfe', ...(payload as object) });
 
   const count = async (table: string): Promise<number> => {
     const rows: Array<{ n: string }> = await db.query(

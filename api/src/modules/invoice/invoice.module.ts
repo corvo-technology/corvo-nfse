@@ -64,6 +64,7 @@ import { InvoiceIssuancePort } from '@/modules/integrations/domain/invoice-issua
 import { IntegrationInvoiceCanceller } from './application/integration-invoice-canceller';
 import { InvoiceCancellationPort } from '@/modules/integrations/domain/invoice-cancellation.port';
 import { InvoiceBatchService } from './application/invoice-batch.service';
+import { InvoiceTypesController } from './http/invoice-types.controller';
 import { InvoiceController } from './http/invoice.controller';
 import { InvoiceOverviewController } from './http/invoice-overview.controller';
 import { InvoiceOverviewService } from './application/invoice-overview.service';
@@ -81,6 +82,7 @@ import { InvoiceReviewService } from './application/invoice-review.service';
 import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
 import { InvoicePackageService } from './application/package/invoice-package.service';
 import { PackageLinkService } from './application/package/package-link.service';
+import { PackageContributorRegistry } from './application/package/package-contributor.registry';
 import { AccountantPackageService } from './application/package/accountant-package.service';
 import {
   InvoicePackageController,
@@ -102,6 +104,7 @@ const ACCOUNTANT_PACKAGE = {
   ],
   providers: [
     InvoicePackageService,
+    PackageContributorRegistry,
     PackageLinkService,
     AccountantPackageService,
     {
@@ -155,10 +158,11 @@ const ACCOUNTANT_PACKAGE = {
     EmailModule,
     FiscalEngineModule,
   ],
-  // Static overview route must be registered before InvoiceController's :id.
+  // Static routes (overview, NF-e inutilizations and number gaps) go before InvoiceController's :id.
   controllers: [
     InvoiceOverviewController,
     InvoiceReviewController,
+    InvoiceTypesController,
     InvoiceController,
     DpsSequenceController,
     DpsNumberingController,

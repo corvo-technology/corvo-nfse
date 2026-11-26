@@ -76,7 +76,8 @@ describePostgres('NF-e emit/consult migrations', () => {
   });
 
   it('down then up again: both changes undo and redo without leftovers', async () => {
-    // The newest migration (inutilization idempotency, PR 5) sits on top of the two of this PR.
+    // The newest migrations (inutilization idempotency, PR 5, and send_email, PR 6) sit on top of the two of this PR.
+    await db.undoLastMigration();
     await db.undoLastMigration();
     await db.undoLastMigration();
     await db.undoLastMigration();

@@ -32,20 +32,20 @@ import { NfeEmitHandler } from './application/nfe-emit.handler';
 import { NfeIntakeService } from './application/nfe-intake.service';
 import { NfeOutcomeService } from './application/nfe-outcome.service';
 import { NfePreparation } from './application/nfe-preparation.service';
-import {
-  NfePrepareDocumentsPlaceholder,
-  NfeReconcileHandler,
-} from './application/nfe-reconcile.handler';
+import { NfeFilesService } from './application/nfe-files.service';
+import { NfePackageContributor } from './application/nfe-package.contributor';
+import { NfeEmailService } from './application/nfe-email.service';
+import { NfePrepareDocumentsHandler } from './application/nfe-prepare-documents.handler';
+import { NfeReconcileHandler } from './application/nfe-reconcile.handler';
+import { NfeSendEmailHandler } from './application/nfe-send-email.handler';
 import { NfeResubmitService } from './application/nfe-resubmit.service';
 import { NfeSefazAccess } from './application/nfe-sefaz-access';
 import { NfeTransitionService } from './application/nfe-transition.service';
 import { NfeValidateService } from './application/nfe-validate.service';
 import { INfeDocumentRepository } from './domain/nfe-document.repository';
 import { INfeNumberPreview } from './domain/nfe-number-preview';
-import { NfeController } from './http/nfe.controller';
-import { NfeInutilizationController } from './http/nfe-inutilization.controller';
+import { NfeInvoiceRoutes } from './http/nfe-invoice.routes';
 import { NfeNumberGapsScheduler } from './jobs/nfe-number-gaps.scheduler';
-import { NfeValidateController } from './http/nfe-validate.controller';
 import { NfeDocumentEventOrmEntity } from './infra/nfe-document-event.orm-entity';
 import { NfeDocumentHistoryOrmEntity } from './infra/nfe-document-history.orm-entity';
 import { NfeDocumentItemOrmEntity } from './infra/nfe-document-item.orm-entity';
@@ -53,16 +53,18 @@ import { NfeDocumentOrmEntity } from './infra/nfe-document.orm-entity';
 import { NfeInutilizationOrmEntity } from './infra/nfe-inutilization.orm-entity';
 import { NfeNumberSequenceOrmEntity } from './infra/nfe-number-sequence.orm-entity';
 import { TypeOrmNfeDocumentRepository } from './infra/typeorm-nfe-document.repository';
+import { TypeormNfePackageQuery } from './infra/typeorm-nfe-package.query';
 import { TypeormNfeEvents } from './infra/typeorm-nfe-events';
 import { TypeormNfeInutilizations } from './infra/typeorm-nfe-inutilizations';
 import { NfeNumberGapsQuery } from './infra/typeorm-nfe-number-gaps.query';
 import { TypeormNfeNumbering } from './infra/typeorm-nfe-numbering';
-import { NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
+import { NFE_DANFE_RENDERER, NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
+import { DanfeRenderer } from './infra/danfe/danfe-renderer';
 
 /**
  * NF-e (model 55): documents, numbering, the dry-run, emission, consultation by key, the events
- * (cancellation, correction letter, inutilization) and the numbering gaps. The DANFE and the e-mail
- * arrive in the next PRs.
+ * (cancellation, correction letter, inutilization), the numbering gaps, the stored documents
+ * (`nfeProc`, DANFE, event XML) and the e-mail to the customer.
  *
  * `FiscalDocumentRegistry` gets the simulator when `NFE_TEST_PROVIDER` is `fake` and the real SEFAZ
  * gateway otherwise (homologation only: `NFE_PRODUCTION_ENABLED` keeps `tpAmb 1` closed).
@@ -84,13 +86,9 @@ import { NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
       NfeInutilizationOrmEntity,
     ]),
   ],
-  // The inutilization routes come first: `GET /nfe/inutilizations` is not `GET /nfe/:id`.
-  controllers: [
-    NfeValidateController,
-    NfeInutilizationController,
-    NfeController,
-  ],
+  // No controllers: `/v1/invoices` serves NF-e through `NfeInvoiceRoutes`, registered in the router.
   providers: [
+    NfeInvoiceRoutes,
     NfePreparation,
     NfeValidateService,
     NfeIntakeService,
@@ -116,7 +114,12 @@ import { NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
     NfeNumberGapsQuery,
     TypeormNfeEvents,
     TypeormNfeInutilizations,
-    NfePrepareDocumentsPlaceholder,
+    NfePrepareDocumentsHandler,
+    NfeEmailService,
+    NfeFilesService,
+    NfePackageContributor,
+    TypeormNfePackageQuery,
+    NfeSendEmailHandler,
     DocumentCreditLedger,
     FiscalWebhookPublisher,
     OutboxService,
@@ -124,6 +127,7 @@ import { NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
     { provide: INfeNumberPreview, useExisting: TypeormNfeNumbering },
     { provide: INfeDocumentRepository, useClass: TypeOrmNfeDocumentRepository },
     { provide: NFE_SCHEMA_VALIDATOR, useClass: XmllintSchemaValidator },
+    { provide: NFE_DANFE_RENDERER, useClass: DanfeRenderer },
   ],
   exports: [INfeDocumentRepository, TypeormNfeNumbering],
 })

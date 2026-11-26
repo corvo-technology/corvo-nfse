@@ -38,7 +38,7 @@ export function nfeConfigurationError(
   });
 }
 
-/** 400: `POST /v1/nfe` and `PUT /v1/nfe/{id}` need the header, so a retry can never issue twice. */
+/** 400: `POST /v1/invoices` (`type: "nfe"`) and `PUT /v1/invoices/{id}` need the header, so a retry can never issue twice. */
 export function nfeIdempotencyKeyRequired(): BadRequestException {
   return new BadRequestException({
     code: 'IDEMPOTENCY_KEY_REQUIRED',
@@ -78,6 +78,14 @@ export function nfeNotFound(): NotFoundException {
   return new NotFoundException({
     code: 'RESOURCE_NOT_FOUND',
     message: 'Resource not found',
+  });
+}
+
+/** 409: the XML and the DANFE are not stored yet (or the NF-e never got authorized). */
+export function nfeDocumentsNotReady(): ConflictException {
+  return new ConflictException({
+    code: 'DOCUMENTS_NOT_READY',
+    message: 'Documents not ready',
   });
 }
 
@@ -171,5 +179,13 @@ export function nfeCertificateProblem(
     code,
     message,
     type: 'configuration',
+  });
+}
+
+/** 400: a download link is for `xml` or `pdf` only. */
+export function nfeDownloadFormatInvalid(): BadRequestException {
+  return new BadRequestException({
+    code: 'NFE_DOWNLOAD_FORMAT_INVALID',
+    message: 'format must be xml or pdf',
   });
 }

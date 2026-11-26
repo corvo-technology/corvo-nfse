@@ -80,18 +80,26 @@ Where each part lives:
 | `invoicePackage_summary` | GET | `/companies/{companyId}/invoice-package/summary` | 0.3.0 | Count and total of the month package, without building it |
 | `invoices_calculate` | POST | `/invoices/calculate` | 0.2.0 | Calculate taxes before issuing an invoice |
 | `invoices_cancel` | POST | `/invoices/{id}/cancel` | 0.2.0 | Cancel an invoice |
+| `invoices_correct` | POST | `/invoices/{id}/corrections` | 0.2.0 | Send a correction letter (CC-e) |
 | `invoices_createBatch` | POST | `/invoices/batches` | 0.2.0 | Emit up to 50 NFS-e in one request |
 | `invoices_createDownloadUrl` | POST | `/invoices/{id}/download-url` | 0.2.0 | Get a signed download URL for invoice PDF or XML |
-| `invoices_create` | POST | `/invoices` | 0.2.0 | Issue an invoice, or schedule one |
+| `invoices_createInutilization` | POST | `/invoices/inutilizations` | 0.2.0 | Inutilize a range of NF-e numbers |
+| `invoices_create` | POST | `/invoices` | 0.2.0 | Issue an invoice (NFS-e or NF-e), or schedule one |
+| `invoices_discard` | POST | `/invoices/{id}/discard` | 0.2.0 | Give up a rejected NF-e |
 | `invoices_downloadPdf` | GET | `/invoices/{id}/pdf` | 0.2.0 | Download invoice PDF |
 | `invoices_downloadXml` | GET | `/invoices/{id}/xml` | 0.2.0 | Download invoice XML |
 | `invoices_get` | GET | `/invoices/{id}` | 0.2.0 | Get invoice by ID |
 | `invoices_listEvents` | GET | `/invoices/{id}/events` | 0.2.0 | Get invoice status transition events |
+| `invoices_listInutilizations` | GET | `/invoices/inutilizations` | 0.2.0 | List NF-e inutilizations |
 | `invoices_list` | GET | `/invoices` | 0.2.0 | List invoices for the tenant |
+| `invoices_numberGaps` | GET | `/invoices/number-gaps` | 0.2.0 | List the numbering gaps |
 | `invoices_overview` | GET | `/invoices/overview` | 0.2.0 | Get invoice overview for the tenant and execution environment |
+| `invoices_resubmit` | PUT | `/invoices/{id}` | 0.2.0 | Correct and send a rejected NF-e again |
 | `invoices_review` | POST | `/invoices/review` | 0.3.0 | Resolve invoices in manual review (up to 100): retry or discard |
 | `invoices_sendEmail` | POST | `/invoices/{id}/email` | 0.2.0 | Request invoice email to customer |
 | `invoices_substitute` | POST | `/invoices/{id}/substitute` | 0.3.0 | Substitute an authorized invoice with a corrected one |
+| `invoices_sync` | POST | `/invoices/{id}/sync` | 0.2.0 | Ask the SEFAZ about the NF-e by its key |
+| `invoices_validate` | POST | `/invoices/validate` | 0.2.0 | Validate an NF-e without sending it (dry-run) |
 | **Companies** | | | | |
 | `accountantPackage_get` | GET | `/companies/{companyId}/accountant-package` | 0.3.0 | Accountant e-mail of the monthly package |
 | `accountantPackage_listSends` | GET | `/companies/{companyId}/accountant-package/sends` | 0.3.0 | Last 12 attempts to send the package to the accountant |
@@ -182,19 +190,6 @@ Where each part lives:
 | **NF-e** | | | | |
 | `companies_getNfeSettings` | GET | `/companies/{id}/nfe-settings` | 0.2.0 | Get the NF-e settings of the company |
 | `companies_updateNfeSettings` | PUT | `/companies/{id}/nfe-settings` | 0.2.0 | Set the NF-e settings of the company |
-| `nfeInutilizations_create` | POST | `/nfe/inutilizations` | 0.2.0 | Inutilize a range of NF-e numbers |
-| `nfeInutilizations_list` | GET | `/nfe/inutilizations` | 0.2.0 | List NF-e inutilizations |
-| `nfe_cancel` | POST | `/nfe/{id}/cancel` | 0.2.0 | Cancel an authorized NF-e |
-| `nfe_correct` | POST | `/nfe/{id}/corrections` | 0.2.0 | Send a correction letter (CC-e) |
-| `nfe_create` | POST | `/nfe` | 0.2.0 | Issue an NF-e |
-| `nfe_discard` | POST | `/nfe/{id}/discard` | 0.2.0 | Give up a rejected NF-e |
-| `nfe_events` | GET | `/nfe/{id}/events` | 0.2.0 | The timeline of an NF-e |
-| `nfe_get` | GET | `/nfe/{id}` | 0.2.0 | Get an NF-e |
-| `nfe_list` | GET | `/nfe` | 0.2.0 | List NF-e |
-| `nfe_numberGaps` | GET | `/nfe/number-gaps` | 0.2.0 | List the numbering gaps |
-| `nfe_resubmit` | PUT | `/nfe/{id}` | 0.2.0 | Correct and send a rejected NF-e again |
-| `nfe_sync` | POST | `/nfe/{id}/sync` | 0.2.0 | Ask the SEFAZ about the NF-e by its key |
-| `nfe_validate` | POST | `/nfe/validate` | 0.2.0 | Validate an NF-e without sending it |
 | **Health** | | | | |
 | `health_live` | GET | `/health/live` | 0.3.0 | Liveness check |
 

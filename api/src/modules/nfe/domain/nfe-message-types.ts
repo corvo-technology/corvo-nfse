@@ -5,6 +5,7 @@ export const NFE_CANCEL = 'nfe.cancel';
 export const NFE_CORRECT = 'nfe.correct';
 export const NFE_INUTILIZE = 'nfe.inutilize';
 export const NFE_PREPARE_DOCUMENTS = 'nfe.prepare_documents';
+export const NFE_SEND_EMAIL = 'nfe.send_email';
 
 /**
  * What every NF-e message carries: ids only. Never the certificate, the XML or the recipient's
@@ -12,6 +13,21 @@ export const NFE_PREPARE_DOCUMENTS = 'nfe.prepare_documents';
  */
 export interface NfeMessagePayload {
   documentId: string;
+  tenantId: string;
+  companyId: string;
+}
+
+/**
+ * `nfe.prepare_documents`: the documents of an authorized NF-e (no `eventId`), or the XML of an
+ * event that the SEFAZ registered (with its `eventId`), after the NF-e was cancelled or corrected.
+ */
+export interface NfePrepareDocumentsPayload extends NfeMessagePayload {
+  eventId?: string;
+}
+
+/** `nfe.prepare_documents` for the XML of an inutilization the SEFAZ approved (ids only). */
+export interface NfePrepareInutilizationPayload {
+  inutilizationId: string;
   tenantId: string;
   companyId: string;
 }

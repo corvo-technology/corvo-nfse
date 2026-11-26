@@ -8,6 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import {
   ALLOW_PLATFORM_ADMIN_PERMISSION,
+  PERMISSION_DENIED_AS,
   REQUIRED_TENANT_PERMISSION,
   RequiredTenantPermission,
 } from './require-permission.decorator';
@@ -57,6 +58,10 @@ export class PermissionGuard implements CanActivate {
       ),
     );
 
+    const deniedAs = this.reflector.getAllAndOverride<string | undefined>(
+      PERMISSION_DENIED_AS,
+      [context.getHandler(), context.getClass()],
+    );
     const permissions = Array.isArray(permission) ? permission : [permission];
     if (
       !permissions.some((item) =>
@@ -67,7 +72,10 @@ export class PermissionGuard implements CanActivate {
     ) {
       throw new ForbiddenException({
         code: 'PERMISSION_DENIED',
-        message: `One of these permissions is required: ${permissions
+        message: `One of these permissions is required: ${(deniedAs
+          ? [deniedAs]
+          : permissions
+        )
           .map((item) => `"${item}"`)
           .join(', ')}`,
       });

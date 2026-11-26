@@ -27,7 +27,7 @@ import {
   type InutilizationResult,
 } from '../infra/typeorm-nfe-inutilizations';
 import { certificateProblemOf, NfeEventContext } from './nfe-event-context';
-import { inutilizeMessage } from './nfe-messages';
+import { inutilizeMessage, prepareInutilizationMessage } from './nfe-messages';
 import { NfeSefazAccess } from './nfe-sefaz-access';
 
 /** After this many tries without an answer the request stays `pending` and is left to support. */
@@ -186,11 +186,19 @@ export class NfeInutilizeHandler implements OutboxHandler, OnModuleInit {
     to: 'homologada' | 'rejected',
     result: InutilizationResult,
   ): Promise<void> {
-    const applied = await this.inutilizations.settle(
-      inut.id,
-      inut.tenantId,
-      to,
-      result,
+    // The XML of an approved inutilization is stored by `nfe.prepare_documents`, queued with the answer.
+    const applied = await runWithTenant(inut.tenantId, () =>
+      this.unitOfWork.execute(async () => {
+        const settled = await this.inutilizations.settle(
+          inut.id,
+          inut.tenantId,
+          to,
+          result,
+        );
+        if (settled && to === 'homologada' && result.procXml)
+          await this.outbox.enqueue(prepareInutilizationMessage(inut));
+        return settled;
+      }),
     );
     if (!applied) return;
     await this.webhooks.publish(

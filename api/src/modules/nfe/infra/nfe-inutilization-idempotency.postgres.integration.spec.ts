@@ -46,6 +46,8 @@ describePostgres('AddNfeInutilizationIdempotency (up and down)', () => {
   });
 
   it('down removes them and up puts them back', async () => {
+    // The newest migration (send_email, PR 6) sits on top of this one.
+    await h.admin.undoLastMigration({ transaction: 'each' });
     await h.admin.undoLastMigration({ transaction: 'each' });
     expect(await columns()).not.toContain('idempotency_key');
     expect(await columns()).not.toContain('request_hash');

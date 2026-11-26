@@ -45,7 +45,7 @@ const isUniqueViolation = (error: unknown): boolean =>
   (error as { code?: unknown }).code === '23505';
 
 /**
- * `POST /v1/nfe/inutilizations`. One transaction: the number sequence of the (company, series) is
+ * `POST /v1/invoices/inutilizations`. One transaction: the number sequence of the (company, series) is
  * locked, and raised to the end of the range when the range goes beyond the current number (so
  * the numbers voided can never be emitted afterwards); then the range is refused when an NF-e that
  * is not `discarded` holds a number in it, or when another request (waiting or approved) overlaps
