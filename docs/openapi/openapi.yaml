@@ -8053,6 +8053,12 @@ components:
                 type: string
               label:
                 type: string
+              optional:
+                type: boolean
+              options:
+                items:
+                  type: string
+                type: array
               revealOnce:
                 type: boolean
               secret:
