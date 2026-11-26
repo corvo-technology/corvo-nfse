@@ -5,6 +5,7 @@ import {
   OpcaoSimplesNacional,
   RegimeApuracaoSimplesNacional,
   RegimeEspecialTributacao,
+  signDpsXml,
   TipoAmbienteDps,
   TipoRetISSQN,
   TipoTribISSQN,
@@ -19,6 +20,7 @@ import type { ServiceTaxClassification } from '../classification/service-tax-cla
 import type { FiscalCalculationResult } from '../fiscal-calculation-result';
 import type { FiscalError } from '../fiscal-error';
 import type { Result } from '../result';
+import forge from 'node-forge';
 import { DpsBuilder, type DpsBuildInput } from './dps-builder';
 
 const RTC_V1_01 = 'rtc-v1.01';
@@ -114,6 +116,28 @@ interface DpsInputOverrides {
   readonly invoice?: Partial<DpsBuildInput['invoice']>;
   readonly emitente?: Partial<DpsBuildInput['emitente']>;
 }
+
+/** Throwaway self-signed certificate: only the XML signature shape matters. */
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+function throwawayCertificate() {
+  const keys = forge.pki.rsa.generateKeyPair(1024);
+  const cert = forge.pki.createCertificate();
+  cert.publicKey = keys.publicKey;
+  cert.serialNumber = '01';
+  cert.validity.notBefore = new Date('2026-01-01T00:00:00Z');
+  cert.validity.notAfter = new Date('2027-01-01T00:00:00Z');
+  cert.setSubject([{ name: 'commonName', value: 'Corvo Teste' }]);
+  cert.setIssuer([{ name: 'commonName', value: 'Corvo Teste' }]);
+  cert.sign(keys.privateKey, forge.md.sha256.create());
+  return {
+    keyPem: forge.pki.privateKeyToPem(keys.privateKey) as string,
+    certPem: forge.pki.certificateToPem(cert) as string,
+    issuedOn: new Date('2026-01-01T00:00:00Z'),
+    expiresOn: new Date('2027-01-01T00:00:00Z'),
+    subject: 'CN=Corvo Teste',
+  };
+}
+/* eslint-enable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
 const input = (overrides: DpsInputOverrides = {}): DpsBuildInput => ({
   result: fiscalResult(overrides.result),
@@ -784,6 +808,42 @@ describe('DpsBuilder', () => {
     }
   });
 
+  it('signed Simples Nacional DPS for the Produção Restrita carries infDPS/indDest and passes the nt009-r1 XSD (E1235)', async () => {
+    const certificate = throwawayCertificate();
+    for (const customer of [
+      null,
+      { kind: 'CPF' as const, taxId: '52998224725', name: 'Tomador' },
+    ]) {
+      const simples = input({
+        result: {
+          taxRegime: 'SIMPLES_NACIONAL',
+          applicability: applicability({
+            strategy: 'simples',
+            customerRequired: false,
+            cbs: na('Simples sem opção pelo regime regular'),
+            ibs: na('Simples sem opção pelo regime regular'),
+          }),
+        },
+        invoice: { customer, environment: 'test', sefin: 'restricted' },
+        emitente: { simplesTotTrib: { regApTribSN: 1, totalRate: '4.00' } },
+      });
+      const dps = dpsFrom(await new DpsBuilder().build(simples, 'auto'));
+      const signed = signDpsXml(
+        buildDpsXml(dps, { layout: 'nt009-r1' }),
+        certificate,
+      );
+      expect(signed).toContain('<Signature');
+      // Sefin SefinNacional_1.6.0 (XSD 20261124): indDest is required in infDPS, right before serv.
+      expect(signed).toMatch(/<indDest>0<\/indDest><serv>/);
+      expect(signed).not.toContain('<IBSCBS>');
+      const validation = await validateDpsXml(signed, {
+        throwOnInvalid: false,
+        layout: 'nt009-r1',
+      });
+      expect(validation.violations).toEqual([]);
+    }
+  });
+
   it('rejects unknown or non-production layouts with DPS_LAYOUT_UNSUPPORTED', async () => {
     const unknown = errorFrom(
       await new DpsBuilder().build(input(), 'rtc-v1.04'),
@@ -888,7 +948,7 @@ describe('DpsBuilder', () => {
   });
 });
 
-describe('DpsBuilder — NT 009 release 1 (XSD 20261020, Produção Restrita)', () => {
+describe('DpsBuilder — NT 009 release 1 (XSD 20261124, Produção Restrita)', () => {
   const NT009 = 'nt009-r1';
   const ibscbsClassification = (serviceCode = '010601') =>
     classification({
