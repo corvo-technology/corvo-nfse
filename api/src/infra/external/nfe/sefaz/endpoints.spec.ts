@@ -6,7 +6,9 @@ import type {
 import {
   AuthorityNotConfiguredError,
   ENDPOINTS,
+  ENDPOINTS_65,
   TableAuthorityEndpointResolver,
+  WSDL_NAMESPACE,
 } from './endpoints';
 import {
   dhEmiFor,
@@ -27,6 +29,7 @@ describe('UF_TABLE', () => {
     expect(UF_TABLE.RJ.authorizer55).toBe('SVRS');
     expect(UF_TABLE.MA.authorizer55).toBe('SVAN');
     expect(UF_TABLE.SP.cUF).toBe('35');
+    expect(UF_TABLE.SP.authorizer65).toBe('SP');
   });
 });
 
@@ -88,6 +91,26 @@ describe('ENDPOINTS', () => {
     );
     for (const e of ENDPOINTS.filter((e) => e.tpAmb === 1))
       expect(hom.has(e.url)).toBe(false);
+  });
+});
+
+describe('ENDPOINTS_65', () => {
+  it('has the six services for SP in both environments, all model 65, on .gov.br hosts', () => {
+    for (const tpAmb of [1, 2])
+      expect(
+        ENDPOINTS_65.filter((e) => e.tpAmb === tpAmb && e.authority === 'SP')
+          .map((e) => e.service)
+          .sort(),
+      ).toEqual([...SERVICES].sort());
+    for (const e of ENDPOINTS_65) {
+      expect(e.model).toBe(65);
+      expect(new URL(e.url).hostname.endsWith('.gov.br')).toBe(true);
+      expect(e.soapAction.startsWith(`${WSDL_NAMESPACE}/`)).toBe(true);
+    }
+  });
+
+  it('has no model 55 row mixed in ENDPOINTS', () => {
+    expect(ENDPOINTS.every((e) => e.model === 55)).toBe(true);
   });
 });
 
@@ -172,15 +195,47 @@ describe('TableAuthorityEndpointResolver', () => {
     ).toThrow(AuthorityNotConfiguredError);
   });
 
-  it('throws for model 65', () => {
+  // Changed by the NFC-e (model 65 now has the SP rows): the old case fixed SP as "not configured".
+  it('throws for model 65 in a UF with no NFC-e row', () => {
     expect(() =>
       resolver.resolve({
         ...base,
         model: 65,
-        uf: 'SP',
+        uf: 'RJ',
         service: 'NfeStatusServico',
       }),
     ).toThrow(AuthorityNotConfiguredError);
+  });
+
+  it('resolves SP model 65 to the NFC-e hosts, in both environments', () => {
+    const hom = resolver.resolve({
+      ...base,
+      model: 65,
+      uf: 'SP',
+      service: 'NfeAutorizacao',
+    });
+    expect(hom.url).toBe(
+      'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeAutorizacao4.asmx',
+    );
+    const prod = resolver.resolve({
+      ...base,
+      tpAmb: 1,
+      model: 65,
+      uf: 'SP',
+      service: 'NfeAutorizacao',
+    });
+    expect(prod.url).toBe(
+      'https://nfce.fazenda.sp.gov.br/ws/NFeAutorizacao4.asmx',
+    );
+    expect(hom.soapAction).toBe(
+      'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote',
+    );
+  });
+
+  it('keeps model 55 for SP on the NF-e hosts', () => {
+    expect(
+      resolver.resolve({ ...base, uf: 'SP', service: 'NfeAutorizacao' }).url,
+    ).toContain('.nfe.fazenda.sp.gov.br');
   });
 });
 

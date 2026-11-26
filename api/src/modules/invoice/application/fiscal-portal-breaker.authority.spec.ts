@@ -1,6 +1,7 @@
 import {
   FiscalPortalBreaker,
   PortalUnavailableError,
+  nfceBreakerAuthority,
   nfeBreakerAuthority,
 } from './fiscal-portal-breaker';
 
@@ -160,5 +161,15 @@ describe('FiscalPortalBreaker per authority', () => {
       since: null,
       retryAt: null,
     });
+  });
+});
+
+describe('nfceBreakerAuthority', () => {
+  it('is apart from the NF-e one, per authority and environment', () => {
+    expect(nfceBreakerAuthority('SP', 2)).toBe('nfce-sp-2');
+    expect(nfceBreakerAuthority('SP', 1)).toBe('nfce-sp-1');
+    expect(nfceBreakerAuthority('SP', 2)).not.toBe(
+      nfeBreakerAuthority('SP', 2),
+    );
   });
 });

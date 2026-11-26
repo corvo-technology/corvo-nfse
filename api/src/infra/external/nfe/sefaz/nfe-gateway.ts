@@ -221,17 +221,23 @@ function ufOfKey(key: string): Uf {
  * outcome.
  */
 export class NfeGateway {
-  readonly type = 'nfe' as const;
+  readonly type: 'nfe' | 'nfce';
+  private readonly model: 55 | 65;
 
+  /** `options` picks the document type this instance serves: NF-e (model 55) by default, or NFC-e (65). */
   constructor(
     private readonly soap: SefazSoapClient,
     private readonly resolver: AuthorityEndpointResolver,
     private readonly validator: SchemaValidator,
     private readonly timeoutMs: number,
+    options: { type?: 'nfe' | 'nfce'; model?: 55 | 65 } = {},
     private readonly clock: () => Date = () => new Date(),
     private readonly sleep: (ms: number) => Promise<void> = (ms) =>
       new Promise((resolve) => setTimeout(resolve, ms)),
-  ) {}
+  ) {
+    this.type = options.type ?? 'nfe';
+    this.model = options.model ?? (this.type === 'nfce' ? 65 : 55);
+  }
 
   readonly serviceStatus = {
     status: async (
@@ -268,11 +274,12 @@ export class NfeGateway {
   /** The slice of this gateway the registry stores (the status capability has another shape). */
   asFiscalGateway(): FiscalDocumentGateway<SignedNfe> {
     return {
-      type: 'nfe',
+      type: this.type,
       issuer: this.issuer,
       consult: this.consult,
       cancel: this.cancel,
-      correct: this.correct,
+      // The NFC-e has no correction letter (Ajuste SINIEF 19/2016, cláusula 8ª, §1º).
+      ...(this.type === 'nfce' ? {} : { correct: this.correct }),
       inutilize: this.inutilize,
     };
   }
@@ -624,7 +631,7 @@ export class NfeGateway {
     const endpoint = this.resolver.resolve({
       uf,
       tpAmb,
-      model: 55,
+      model: this.model,
       tpEmis: 1,
       service,
     });

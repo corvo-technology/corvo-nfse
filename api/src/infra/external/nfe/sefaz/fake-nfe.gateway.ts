@@ -53,12 +53,21 @@ const REJECTING: Record<string, string> = {
 };
 
 export class FakeNfeGateway implements FiscalDocumentGateway<SignedNfe> {
-  readonly type: DocumentType = 'nfe';
+  readonly type: DocumentType;
   private readonly store = new Map<string, Stored>();
   private readonly events = new Map<string, NfeEventRecord[]>();
   private readonly inutilized = new Set<string>();
 
-  constructor(private readonly now: () => Date = () => new Date()) {}
+  /** `nfce` serves the NFC-e: the same simulator, but with no correction letter capability. */
+  constructor(
+    private readonly now: () => Date = () => new Date(),
+    type: 'nfe' | 'nfce' = 'nfe',
+  ) {
+    this.type = type;
+    // The NFC-e has no `correct` capability: the router answers INVOICE_OPERATION_NOT_SUPPORTED.
+    if (type === 'nfce')
+      delete (this as { correct?: CorrectCapability }).correct;
+  }
 
   readonly issuer: IssueCapability<SignedNfe> = {
     issue: (doc) => Promise.resolve(this.issueSync(doc)),

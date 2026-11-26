@@ -15,7 +15,10 @@ import type {
 } from '@/modules/fiscal-core/domain/ports/authority.port';
 import type { SigningContext } from '@/modules/fiscal-core/domain/ports/gateway.port';
 import type { LoadedCertificate } from '@/modules/fiscal-core/domain/ports/xml.port';
-import { nfeBreakerAuthority } from '@/modules/invoice/application/fiscal-portal-breaker';
+import {
+  nfceBreakerAuthority,
+  nfeBreakerAuthority,
+} from '@/modules/invoice/application/fiscal-portal-breaker';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 
 /** Stands in for the certificate when the simulator answers: it never reaches a SEFAZ. */
@@ -58,12 +61,20 @@ export class NfeSefazAccess {
     );
   }
 
-  authorityOf(uf: Uf): AuthorityId {
-    return UF_TABLE[uf].authorizer55;
+  authorityOf(uf: Uf, model: 55 | 65 = 55): AuthorityId {
+    return model === 65 ? UF_TABLE[uf].authorizer65 : UF_TABLE[uf].authorizer55;
   }
 
-  breakerAuthority(uf: Uf, environment: ExecutionEnvironment): string {
-    return nfeBreakerAuthority(this.authorityOf(uf), this.tpAmb(environment));
+  breakerAuthority(
+    uf: Uf,
+    environment: ExecutionEnvironment,
+    model: 55 | 65 = 55,
+  ): string {
+    const authority = this.authorityOf(uf, model);
+    const tpAmb = this.tpAmb(environment);
+    return model === 65
+      ? nfceBreakerAuthority(authority, tpAmb)
+      : nfeBreakerAuthority(authority, tpAmb);
   }
 
   async certificate(
@@ -96,6 +107,7 @@ export class NfeSefazAccess {
     uf: Uf,
     environment: ExecutionEnvironment,
     certificate: LoadedCertificate,
+    model: 55 | 65 = 55,
   ): SigningContext {
     const tpAmb = this.tpAmb(environment);
     let target: AuthorityEndpoint;
@@ -103,7 +115,7 @@ export class NfeSefazAccess {
       target = this.resolver.resolve({
         uf,
         tpAmb,
-        model: 55,
+        model,
         tpEmis: 1,
         service: 'NfeAutorizacao',
       });
@@ -111,7 +123,7 @@ export class NfeSefazAccess {
       // Only the simulator may go on without an endpoint table row.
       if (!this.isSimulated(environment)) throw error;
       target = {
-        authority: this.authorityOf(uf),
+        authority: this.authorityOf(uf, model),
         url: '',
         soapAction: '',
         version: '4.00',

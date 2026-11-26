@@ -11,7 +11,7 @@ import { UF_TABLE } from './uf';
 export interface EndpointRow {
   authority: AuthorityId;
   tpAmb: 1 | 2;
-  model: 55;
+  model: 55 | 65;
   tpEmis: TpEmis;
   service: SefazService;
   url: string;
@@ -34,7 +34,8 @@ export class AuthorityNotConfiguredError extends Error {
 
 export const WSDL_NAMESPACE = 'http://www.portalfiscal.inf.br/nfe/wsdl';
 
-function row(
+function rowOfModel(
+  model: 55 | 65,
   authority: AuthorityId,
   tpAmb: 1 | 2,
   service: SefazService,
@@ -46,13 +47,42 @@ function row(
   return {
     authority,
     tpAmb,
-    model: 55,
+    model,
     tpEmis: 1,
     service,
     url,
     version,
     soapAction: `${WSDL_NAMESPACE}/${operation}/${method}`,
   };
+}
+
+function row(
+  ...args: [
+    authority: AuthorityId,
+    tpAmb: 1 | 2,
+    service: SefazService,
+    url: string,
+    version: '4.00' | '1.00',
+    operation: string,
+    method: string,
+  ]
+): EndpointRow {
+  return rowOfModel(55, ...args);
+}
+
+/** Same as `row`, for the NFC-e (modelo 65). */
+function row65(
+  ...args: [
+    authority: AuthorityId,
+    tpAmb: 1 | 2,
+    service: SefazService,
+    url: string,
+    version: '4.00' | '1.00',
+    operation: string,
+    method: string,
+  ]
+): EndpointRow {
+  return rowOfModel(65, ...args);
 }
 
 /**
@@ -241,16 +271,45 @@ export const ENDPOINTS: EndpointRow[] = [
   row('SVRS', 1, 'RecepcaoEvento', 'https://nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx', '1.00', 'NFeRecepcaoEvento4', 'nfeRecepcaoEvento'),
 ];
 
+/**
+ * NFC-e 4.00, modelo 65, emissão normal (tpEmis 1). Only SP, the first UF of the NFC-e (kept apart
+ * from `ENDPOINTS`, which holds the model 55 rows of every authority).
+ *
+ * Source (verified 2026-11-26): SEFAZ-SP "Web Services da NFC-e",
+ * https://portal.fazenda.sp.gov.br/servicos/nfce/Paginas/WebServices.aspx. The SOAP actions are the
+ * same as the NF-e ones (same WSDL namespace). A UF only emits after the homologação roteiro.
+ */
+/* prettier-ignore */
+export const ENDPOINTS_65: EndpointRow[] = [
+  // SP homologação
+  row65('SP', 2, 'NfeStatusServico', 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeStatusServico4.asmx', '4.00', 'NFeStatusServico4', 'nfeStatusServicoNF'),
+  row65('SP', 2, 'NfeAutorizacao', 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeAutorizacao4.asmx', '4.00', 'NFeAutorizacao4', 'nfeAutorizacaoLote'),
+  row65('SP', 2, 'NfeRetAutorizacao', 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeRetAutorizacao4.asmx', '4.00', 'NFeRetAutorizacao4', 'nfeRetAutorizacaoLote'),
+  row65('SP', 2, 'NfeConsultaProtocolo', 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeConsultaProtocolo4.asmx', '4.00', 'NFeConsultaProtocolo4', 'nfeConsultaNF'),
+  row65('SP', 2, 'NfeInutilizacao', 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeInutilizacao4.asmx', '4.00', 'NFeInutilizacao4', 'nfeInutilizacaoNF'),
+  row65('SP', 2, 'RecepcaoEvento', 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeRecepcaoEvento4.asmx', '1.00', 'NFeRecepcaoEvento4', 'nfeRecepcaoEvento'),
+  // SP produção
+  row65('SP', 1, 'NfeStatusServico', 'https://nfce.fazenda.sp.gov.br/ws/NFeStatusServico4.asmx', '4.00', 'NFeStatusServico4', 'nfeStatusServicoNF'),
+  row65('SP', 1, 'NfeAutorizacao', 'https://nfce.fazenda.sp.gov.br/ws/NFeAutorizacao4.asmx', '4.00', 'NFeAutorizacao4', 'nfeAutorizacaoLote'),
+  row65('SP', 1, 'NfeRetAutorizacao', 'https://nfce.fazenda.sp.gov.br/ws/NFeRetAutorizacao4.asmx', '4.00', 'NFeRetAutorizacao4', 'nfeRetAutorizacaoLote'),
+  row65('SP', 1, 'NfeConsultaProtocolo', 'https://nfce.fazenda.sp.gov.br/ws/NFeConsultaProtocolo4.asmx', '4.00', 'NFeConsultaProtocolo4', 'nfeConsultaNF'),
+  row65('SP', 1, 'NfeInutilizacao', 'https://nfce.fazenda.sp.gov.br/ws/NFeInutilizacao4.asmx', '4.00', 'NFeInutilizacao4', 'nfeInutilizacaoNF'),
+  row65('SP', 1, 'RecepcaoEvento', 'https://nfce.fazenda.sp.gov.br/ws/NFeRecepcaoEvento4.asmx', '1.00', 'NFeRecepcaoEvento4', 'nfeRecepcaoEvento'),
+];
+
 export class TableAuthorityEndpointResolver implements AuthorityEndpointResolver {
-  constructor(private readonly rows: EndpointRow[] = ENDPOINTS) {}
+  constructor(
+    private readonly rows: EndpointRow[] = [...ENDPOINTS, ...ENDPOINTS_65],
+  ) {}
 
   resolve(q: AuthorityTarget & { service: SefazService }): AuthorityEndpoint {
     const info = UF_TABLE[q.uf];
+    const authority = q.model === 65 ? info?.authorizer65 : info?.authorizer55;
     const found =
-      q.model === 55 && info
+      authority !== undefined
         ? this.rows.find(
             (r) =>
-              r.authority === info.authorizer55 &&
+              r.authority === authority &&
               r.tpAmb === q.tpAmb &&
               r.model === q.model &&
               r.tpEmis === q.tpEmis &&
