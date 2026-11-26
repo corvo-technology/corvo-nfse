@@ -98,6 +98,10 @@ function overview(locale: DocsLocale): DocSection {
         "**Phase 1 limits.** Test mode only (homologação): notes issued now have no tax value and the SEFAZ production environment is closed. Only Simples Nacional and MEI companies (CRT 1 or 4), with CSOSN 102 or 400. Only the states SP and the ones served by the SVRS that Corvo already released. **Corvo does not calculate taxes**: you inform the CFOP, the NCM and the CSOSN of each item, as your accountant told you.",
         "**Limites da Fase 1.** Só teste (homologação): as notas emitidas agora não têm valor fiscal e a produção da SEFAZ está fechada. Só empresas do Simples Nacional e MEI (CRT 1 ou 4), com CSOSN 102 ou 400. Só SP e os estados da SVRS que a Corvo já liberou. **A Corvo não calcula imposto**: você informa o CFOP, o NCM e o CSOSN de cada item, como seu contador orientou.",
       )),
+      callout("accent", l(
+        "Selling to a consumer at the counter? That is the **NFC-e** (model 65), with its own page: same routes, `type: \"nfce\"`.",
+        "Vendendo para o consumidor no balcão? Essa é a **NFC-e** (modelo 65), com página própria: as mesmas rotas, `type: \"nfce\"`.",
+      )),
       heading(l("Release", "Liberação")),
       text(l(
         "NF-e is released account by account. While it is not released for your account, every NF-e route answers `404` and the NF-e screens and MCP tools do not appear; NFS-e is never affected. To get it released, talk to Corvo. On a self-hosted instance, the operator turns it on (see the runbook `docs/fiscal/runbooks/nfe-homologacao.md`).",
@@ -392,6 +396,148 @@ function files(locale: DocsLocale): DocSection {
   };
 }
 
+const NFCE_BODY = `{
+  "type": "nfce",
+  "companyId": "5b8b6a0e-3c6f-4f4e-9a1b-0d7a6d5c2e11",
+  "recipient": { "taxId": "123.456.789-09" },
+  "indPres": 1,
+  "items": [
+    {
+      "code": "CAFE1",
+      "description": "Café coado",
+      "ncm": "09012100",
+      "cfop": "5102",
+      "unit": "UN",
+      "quantity": 2,
+      "unitPrice": 8
+    }
+  ],
+  "payments": [
+    {
+      "tPag": "03",
+      "amount": 16,
+      "card": { "tpIntegra": 2, "tBand": "01" }
+    }
+  ]
+}`;
+
+const NFCE_ACCEPTED = `{
+  "data": {
+    "type": "nfce",
+    "id": "9d1c3b8e-5f2a-4a53-b0a4-7c1d7a2e4f10",
+    "status": "queued"
+  }
+}`;
+
+const NFCE_DOC = `{
+  "data": {
+    "type": "nfce",
+    "id": "9d1c3b8e-5f2a-4a53-b0a4-7c1d7a2e4f10",
+    "status": "authorized",
+    "number": 12,
+    "series": 1,
+    "accessKey": "35261111222333000181650010000000121234567891",
+    "qrCode": "https://www.nfce.fazenda.sp.gov.br/qrcode?p=...",
+    "urlChave": "https://www.nfce.fazenda.sp.gov.br/consulta",
+    "documentsReady": true
+  }
+}`;
+
+function nfce(locale: DocsLocale): DocSection {
+  const l = <T,>(en: T, pt: T) => loc(locale, en, pt);
+  return {
+    title: l("NFC-e: consumer sale", "NFC-e: venda ao consumidor"),
+    description: l(
+      "Issue the NFC-e (model 65), the note for a sale to the final consumer, through the same /v1/invoices routes, in test mode (homologação), starting in SP.",
+      "Emita a NFC-e (modelo 65), a nota da venda ao consumidor final, pelas mesmas rotas /v1/invoices, em teste (homologação), começando por SP.",
+    ),
+    blocks: [
+      text(l(
+        "The NFC-e is the note of the sale at the counter, to a consumer who often gives no name. It lives in the same routes as the NF-e and the NFS-e: `/v1/invoices`. Send `type: \"nfce\"` to create or validate one, and `?type=nfce` to list. A request without `type` is still an NFS-e. NFS-e and NF-e do not change.",
+        "A NFC-e é a nota da venda no balcão, para um consumidor que muitas vezes não dá nem o nome. Ela vive nas mesmas rotas da NF-e e da NFS-e: `/v1/invoices`. Mande `type: \"nfce\"` para criar ou validar, e `?type=nfce` para listar. Uma chamada sem `type` continua sendo NFS-e. A NFS-e e a NF-e não mudam.",
+      )),
+      callout("warn", l(
+        "**Test mode first.** The NFC-e only runs in homologação for now: notes issued here have no tax value and the production of the SEFAZ is closed. Corvo starts with **SP**; another state only enters after its own homologation. Only Simples Nacional and MEI companies, with CSOSN 102 or 400. **Corvo does not calculate taxes**: you inform the CFOP, the NCM and the CSOSN of each item.",
+        "**Primeiro em teste.** A NFC-e só roda em homologação por enquanto: as notas emitidas aqui não têm valor fiscal e a produção da SEFAZ está fechada. A Corvo começa por **SP**; outro estado só entra depois da homologação dele. Só empresas do Simples Nacional e MEI, com CSOSN 102 ou 400. **A Corvo não calcula imposto**: você informa o CFOP, o NCM e o CSOSN de cada item.",
+      )),
+      heading(l("Release and accreditation", "Liberação e credenciamento")),
+      list([
+        l("**Release in Corvo.** The NFC-e has its own release, apart from the NF-e: until it is released for your account every NFC-e route answers `404` and the screens and MCP tools do not show it. Ask Corvo; on a self-hosted instance, the operator turns it on (runbook `docs/fiscal/runbooks/nfce-homologacao.md`).", "**Liberação na Corvo.** A NFC-e tem liberação própria, separada da NF-e: enquanto não estiver liberada para a sua conta, toda rota de NFC-e responde `404` e as telas e ferramentas MCP não aparecem. Fale com a Corvo; numa instalação self-hosted, quem opera liga (runbook `docs/fiscal/runbooks/nfce-homologacao.md`)."),
+        l("**Accreditation at the SEFAZ.** The state registration (IE) of the company must be accredited to issue NFC-e at its state. It is done once, on the SEFAZ site, by the company or its accountant. Without it the SEFAZ refuses the notes.", "**Credenciamento na SEFAZ.** A inscrição estadual (IE) da empresa precisa estar credenciada para emitir NFC-e no estado dela. Faz-se uma vez, no site da SEFAZ, pela empresa ou pelo contador. Sem isso a SEFAZ recusa as notas."),
+        l("**No CSC needed.** Corvo uses the QR Code v3 (online), which does not take the CSC (the security code that older QR Codes asked for) nor its id. You have nothing to register or keep.", "**Sem CSC.** A Corvo usa o QR Code v3 (online), que não usa o CSC (o código de segurança que os QR Codes antigos pediam) nem o id dele. Você não tem nada para cadastrar ou guardar."),
+        l("**Series.** The NFC-e has its own series (`nfceDefaultSeries` in `PUT /v1/companies/:id/nfe-settings`, default 1) and its own numbering.", "**Série.** A NFC-e tem série própria (`nfceDefaultSeries` em `PUT /v1/companies/:id/nfe-settings`, padrão 1) e numeração própria."),
+      ]),
+      heading(l("Issue", "Emitir")),
+      text(l(
+        "Validate with `POST /v1/invoices/validate` (dry-run, same body) and issue with `POST /v1/invoices` and an `Idempotency-Key`, as in the NF-e. The body has no `natOp` and no recipient address, unless the sale is a delivery.",
+        "Valide com `POST /v1/invoices/validate` (teste a seco, mesmo corpo) e emita com `POST /v1/invoices` e uma `Idempotency-Key`, como na NF-e. O corpo não tem `natOp` nem endereço do destinatário, a não ser que a venda seja com entrega.",
+      )),
+      { kind: "code", language: "json", label: l("Request body", "Corpo da chamada"), code: NFCE_BODY },
+      { kind: "code", language: "json", label: l("Answer 202", "Resposta 202"), code: NFCE_ACCEPTED },
+      {
+        kind: "table",
+        head: [l("Field", "Campo"), l("What it is", "O que é")],
+        rows: [
+          ["`recipient`", l("Optional. The consumer may stay anonymous. `taxId` (CPF or CNPJ), `name` and `email` are all optional; with an e-mail the XML and the DANFCE are sent after the authorization (`sendEmail`).", "Opcional. O consumidor pode ficar sem identificação. `taxId` (CPF ou CNPJ), `name` e `email` são todos opcionais; com e-mail, o XML e o DANFCE são enviados depois da autorização (`sendEmail`).")],
+          ["limit / `NFCE_CONSUMER_ID_REQUIRED`", l("From the limit of the state (R$ 10.000,00 by default, compared in cents: R$ 9.999,99 goes, R$ 10.000,00 needs the CPF or CNPJ) the identification is required.", "A partir do limite do estado (R$ 10.000,00 por padrão, comparado em centavos: R$ 9.999,99 passa, R$ 10.000,00 exige o CPF ou CNPJ) a identificação é obrigatória.")],
+          ["`indPres`", l("How the sale happened: `1` in person at the store (default), `4` delivery, `5` in person outside the store. `4` needs the consumer `taxId`, `name` and `address`, otherwise `NFCE_DELIVERY_ADDRESS_REQUIRED` before any number is used.", "Como a venda aconteceu: `1` presencial na loja (padrão), `4` entrega em domicílio, `5` presencial fora da loja. O `4` exige `taxId`, `name` e `address` do consumidor, senão `NFCE_DELIVERY_ADDRESS_REQUIRED` antes de gastar número.")],
+          ["`payments[].card`", l("Optional, only for `tPag` 03 (credit), 04 (debit) and 17 (Pix): `tpIntegra` (`1` integrated, `2` not, the default), `cnpj` of the card operator, `tBand` (brand, 2 digits) and `cAut` (authorization). Integrated needs `cnpj` and `cAut` (`NFCE_CARD_DATA_REQUIRED`). Another means with card data answers `NFCE_CARD_NOT_ALLOWED`.", "Opcional, só para `tPag` 03 (crédito), 04 (débito) e 17 (Pix): `tpIntegra` (`1` integrado, `2` não, o padrão), `cnpj` da operadora, `tBand` (bandeira, 2 dígitos) e `cAut` (autorização). Integrado exige `cnpj` e `cAut` (`NFCE_CARD_DATA_REQUIRED`). Outro meio com dados de cartão responde `NFCE_CARD_NOT_ALLOWED`.")],
+        ],
+      },
+      heading(l("Read, QR Code and files", "Consultar, QR Code e arquivos")),
+      { kind: "code", language: "json", label: "GET /v1/invoices/:id", code: NFCE_DOC },
+      list([
+        l("`qrCode` is the text of the QR Code printed on the DANFCE and `urlChave` is the page where the consumer looks the note up. Both come with the authorized note.", "`qrCode` é o texto do QR Code impresso no DANFCE e `urlChave` é a página onde o consumidor consulta a nota. Os dois vêm com a nota autorizada."),
+        l("The **DANFCE** is the printed receipt: `GET /v1/invoices/:id/pdf` answers the cupom of **80 mm** and `GET /v1/invoices/:id/pdf?layout=a4` the same note on an A4 page. `GET /v1/invoices/:id/xml` answers the authorized XML and `POST /v1/invoices/:id/download-url` a temporary link.", "O **DANFCE** é o cupom impresso: `GET /v1/invoices/:id/pdf` responde o cupom de **80 mm** e `GET /v1/invoices/:id/pdf?layout=a4` a mesma nota numa página A4. `GET /v1/invoices/:id/xml` responde o XML autorizado e `POST /v1/invoices/:id/download-url` um link temporário."),
+        l("In test mode the first item shows the text `NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL`, as the SEFAZ demands. Your saved item is not changed.", "Em teste, o primeiro item mostra o texto `NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL`, como a SEFAZ exige. O item que você guardou não muda."),
+      ]),
+      heading(l("Cancel, no correction letter, inutilize", "Cancelar, sem carta de correção, inutilizar")),
+      list([
+        l("**Cancel** with `POST /v1/invoices/:id/cancel` (justification of 15 to 255 characters). The NFC-e is meant to be cancelled **within 30 minutes** of the authorization; after that, the SEFAZ may refuse and the answer says so. Talk to your accountant in that case.", "**Cancele** com `POST /v1/invoices/:id/cancel` (justificativa de 15 a 255 caracteres). A NFC-e deve ser cancelada **em até 30 minutos** depois da autorização; passado o prazo, a SEFAZ pode recusar e a resposta diz isso. Nesse caso, fale com o seu contador."),
+        l("**There is no correction letter (CC-e)** for the NFC-e: `POST /v1/invoices/:id/corrections` answers `422` `INVOICE_OPERATION_NOT_SUPPORTED`. Cancel it and issue another.", "**Não existe carta de correção (CC-e)** para a NFC-e: `POST /v1/invoices/:id/corrections` responde `422` `INVOICE_OPERATION_NOT_SUPPORTED`. Cancele e emita outra."),
+        l("**Inutilize** numbers with `POST /v1/invoices/inutilizations` and `type: \"nfce\"`; the gaps are in `GET /v1/invoices/number-gaps?type=nfce`. In SP the suggestion stays on until the accountant confirms the rules of the state.", "**Inutilize** números com `POST /v1/invoices/inutilizations` e `type: \"nfce\"`; as lacunas estão em `GET /v1/invoices/number-gaps?type=nfce`. Em SP a sugestão continua valendo até o contador confirmar as regras do estado."),
+        l("A rejected NFC-e is fixed with `PUT /v1/invoices/:id` (same number) or given up with `POST /v1/invoices/:id/discard`, like the NF-e.", "Uma NFC-e rejeitada se corrige com `PUT /v1/invoices/:id` (mesmo número) ou se descarta com `POST /v1/invoices/:id/discard`, como a NF-e."),
+      ]),
+      heading(l("Errors of the NFC-e", "Erros da NFC-e")),
+      {
+        kind: "table",
+        head: [l("Code", "Código"), l("Meaning", "Significado")],
+        rows: [
+          ["`NFCE_CONSUMER_ID_REQUIRED`", l("The total reached the limit of the state: give the consumer CPF or CNPJ.", "O total chegou ao limite do estado: informe o CPF ou CNPJ do consumidor.")],
+          ["`NFCE_DELIVERY_ADDRESS_REQUIRED`", l("A delivery sale (`indPres` 4) needs the consumer id, name and address.", "A venda com entrega (`indPres` 4) exige identificação, nome e endereço do consumidor.")],
+          ["`NFCE_IND_PRES_INVALID`", l("`indPres` must be 1, 4 or 5.", "`indPres` precisa ser 1, 4 ou 5.")],
+          ["`NFCE_CARD_DATA_REQUIRED` · `NFCE_CARD_BRAND_INVALID` · `NFCE_CARD_NOT_ALLOWED`", l("Problems in the `card` data of a payment.", "Problemas nos dados de `card` de um pagamento.")],
+          ["`NFCE_SCOPE_NOT_SUPPORTED`", l("Not supported yet: only a normal sale inside the state of the issuer.", "Ainda não suportado: só venda normal dentro do estado do emitente.")],
+          ["`INVOICE_OPERATION_NOT_SUPPORTED`", l("For example, a correction letter on a NFC-e.", "Por exemplo, carta de correção numa NFC-e.")],
+        ],
+      },
+      text(l(
+        "The other codes (`NFE_VALIDATION_FAILED`, `COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`, `IDEMPOTENCY_KEY_REUSED`...) are the ones of the NF-e: see NF-e: errors and hints.",
+        "Os outros códigos (`NFE_VALIDATION_FAILED`, `COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`, `IDEMPOTENCY_KEY_REUSED`...) são os da NF-e: veja NF-e: erros e dicas.",
+      )),
+      heading(l("Webhooks", "Webhooks")),
+      text(l(
+        "The NFC-e uses the same registration and signature as the other webhooks. The `data` carries `documentType: \"nfce\"` and `documentId`.",
+        "A NFC-e usa o mesmo cadastro e a mesma assinatura dos outros webhooks. O `data` traz `documentType: \"nfce\"` e `documentId`.",
+      )),
+      {
+        kind: "table",
+        head: [l("Event", "Evento"), l("When", "Quando")],
+        rows: [
+          ["`nfce.document.authorized`", l("The SEFAZ authorized the note.", "A SEFAZ autorizou a nota.")],
+          ["`nfce.document.rejected` · `nfce.document.denied`", l("The SEFAZ refused or denied it.", "A SEFAZ recusou ou denegou.")],
+          ["`nfce.document.failed`", l("A failure that needs your look.", "Uma falha que precisa do seu olhar.")],
+          ["`nfce.document.reconciliation_required` · `nfce.document.manual_review`", l("No answer, being checked; or the check could not confirm.", "Sem resposta, em conferência; ou a conferência não conseguiu confirmar.")],
+          ["`nfce.document.cancelled` · `nfce.document.cancellation_rejected`", l("Cancellation registered or refused.", "Cancelamento registrado ou recusado.")],
+          ["`nfce.document.documents_ready`", l("The XML and the DANFCE are ready.", "O XML e o DANFCE estão prontos.")],
+          ["`nfce.document.email_sent` · `nfce.document.email_failed`", l("The e-mail to the consumer went or failed.", "O e-mail ao consumidor foi enviado ou falhou.")],
+          ["`nfce.inutilization.completed` · `nfce.inutilization.rejected`", l("An inutilization was accepted or refused.", "Uma inutilização foi aceita ou recusada.")],
+        ],
+      }
+    ],
+  };
+}
+
 /** The NF-e docs group: one builder for both languages. */
 export function nfePages(locale: DocsLocale): Record<NfeSlug, DocSection> {
   return {
@@ -401,5 +547,6 @@ export function nfePages(locale: DocsLocale): Record<NfeSlug, DocSection> {
     "nfe-errors": errors(locale),
     "nfe-events": events(locale),
     "nfe-files": files(locale),
+    nfce: nfce(locale),
   };
 }
