@@ -18,6 +18,7 @@ export function issuerFixture(overrides: Partial<NfeIssuer> = {}): NfeIssuer {
     legalName: 'Empresa Teste LTDA',
     tradeName: 'Empresa Teste',
     uf: 'SP',
+    cUF: '35',
     stateRegistration: '110042490114',
     crt: 1,
     address: {

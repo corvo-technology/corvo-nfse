@@ -18,6 +18,8 @@ export interface NfeIssuer {
   legalName: string;
   tradeName: string | null;
   uf: string;
+  /** IBGE code of the UF (cUF). */
+  cUF: string;
   stateRegistration: string;
   crt: number | null;
   address: NfeAddress;
