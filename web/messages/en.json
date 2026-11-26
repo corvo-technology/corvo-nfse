@@ -16,6 +16,7 @@
       "woovi": "Pix sale (Woovi)",
       "abacatepay": "Sale (AbacatePay)",
       "stripe": "Sale (Stripe)",
+      "hotmart": "Sale (Hotmart)",
       "generic": "Integration sale"
     }
   },
@@ -2914,7 +2915,15 @@
       "woovi": "Pix charges paid on Woovi.",
       "abacatepay": "Checkout and payments paid on AbacatePay.",
       "stripe": "Card, Pix and boleto paid on Stripe.",
+      "hotmart": "Digital product purchases paid on Hotmart.",
       "other": "Confirmed payments."
+    },
+    "choices": {
+      "invoiceValue": {
+        "label": "Invoice amount",
+        "total": "Total paid by the buyer",
+        "share": "My share (total minus coproducer and affiliate)"
+      }
     },
     "status": {
       "active": "Active",

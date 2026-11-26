@@ -16,6 +16,7 @@
       "woovi": "Venda Pix (Woovi)",
       "abacatepay": "Venda (AbacatePay)",
       "stripe": "Venda (Stripe)",
+      "hotmart": "Venda (Hotmart)",
       "generic": "Venda pela integração"
     }
   },
@@ -2914,7 +2915,15 @@
       "woovi": "Cobranças Pix pagas na Woovi.",
       "abacatepay": "Checkout e pagamentos pagos na AbacatePay.",
       "stripe": "Cartão, Pix e boleto pagos no Stripe.",
+      "hotmart": "Compras de produtos digitais pagas na Hotmart.",
       "other": "Pagamentos confirmados."
+    },
+    "choices": {
+      "invoiceValue": {
+        "label": "Valor da nota",
+        "total": "Total pago pelo comprador",
+        "share": "Minha parte (total menos coprodutor e afiliado)"
+      }
     },
     "status": {
       "active": "Ativa",

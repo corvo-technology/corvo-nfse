@@ -1,0 +1,24 @@
+{
+  "id": "00000000-0000-4000-8000-000000000002",
+  "creation_date": 1793372400000,
+  "event": "PURCHASE_REFUNDED",
+  "version": "2.0.0",
+  "data": {
+    "product": { "id": 4000001, "name": "Curso de Exemplo" },
+    "buyer": {
+      "name": "Maria Compradora",
+      "email": "maria@example.com",
+      "document": "52998224725",
+      "document_type": "CPF"
+    },
+    "producer": { "name": "Produtor Exemplo", "document": "11222333000181" },
+    "purchase": {
+      "transaction": "HP00000000000001",
+      "status": "REFUNDED",
+      "approved_date": 1793285900000,
+      "full_price": { "value": 97.9, "currency_value": "BRL" },
+      "business_model": "I",
+      "invoice_by": "SELLER"
+    }
+  }
+}

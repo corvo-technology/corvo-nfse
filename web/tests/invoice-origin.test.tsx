@@ -28,6 +28,7 @@ describe("invoiceOrigin", () => {
     ["integ_abc", "checkout:bill_abc123xyz456", "Sale (AbacatePay) · charge bill_abc"],
     ["integ_abc", "transparent:pix_1", "Sale (AbacatePay) · charge pix_1"],
     ["integ_abc", "stripe_charge:ch_3SabcdefGHIJ", "Sale (Stripe) · charge ch_3Sabc"],
+    ["integ_abc", "hotmart:HP16015479281022", "Sale (Hotmart) · charge HP160154"],
     ["integ_abc", "weird", "Integration sale"],
     ["schedule:s1:2026-01-05", null, "Schedule"],
     ["import:i1:3", "linha-3", "Spreadsheet import"],

@@ -74,9 +74,9 @@ const connector: Connector = {
   validateConnection: () => Promise.resolve({ externalAccountId: 'acc-1' }),
 };
 
-function setup() {
+function setup(usedConnector: Connector = connector) {
   const registry = new ConnectorRegistry();
-  registry.register(connector);
+  registry.register(usedConnector);
   const repo = new MemoryConnections();
   const rules = new FakeRules();
   const cipher = {
@@ -292,5 +292,55 @@ describe('ConnectionService', () => {
   it('findByPublicId() returns null for an unknown id', async () => {
     const { service } = setup();
     await expect(service.findByPublicId('missing')).resolves.toBeNull();
+  });
+});
+
+describe('ConnectionService with a choice field', () => {
+  const withChoice: Connector = {
+    ...connector,
+    manifest: {
+      ...connector.manifest,
+      credentialFields: [
+        { key: 'appId', label: 'AppID', secret: true },
+        {
+          key: 'mode',
+          label: 'Mode',
+          secret: false,
+          choices: [
+            { value: 'total', label: 'Total' },
+            { value: 'share', label: 'Share' },
+          ],
+        },
+      ],
+    },
+  };
+
+  it('uses the first choice when none is sent, and keeps a valid one', async () => {
+    const { service } = setup(withChoice);
+    const base = await service.create(TENANT, input);
+    expect(service.toView(base).credentials.mode).toBe('total');
+    const picked = await service.create(TENANT, {
+      ...input,
+      credentials: { appId: 'abc', mode: 'share' },
+    });
+    expect(service.toView(picked).credentials.mode).toBe('share');
+  });
+
+  it('rejects a value that is not offered, on create and on update', async () => {
+    const { service } = setup(withChoice);
+    await expect(
+      service.create(TENANT, {
+        ...input,
+        credentials: { appId: 'abc', mode: 'half' },
+      }),
+    ).rejects.toThrow(BadRequestException);
+    const c = await service.create(TENANT, input);
+    await expect(
+      service.updateCredentials(TENANT, c.id, { mode: 'half' }),
+    ).rejects.toThrow(BadRequestException);
+    const updated = await service.updateCredentials(TENANT, c.id, {
+      mode: 'share',
+    });
+    expect(service.toView(updated).credentials.mode).toBe('share');
   });
 });

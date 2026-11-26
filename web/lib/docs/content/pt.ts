@@ -2772,7 +2772,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     municipalities: municipalitiesPage("pt"),
     "payment-integrations": {
       title: "Integrações de pagamento",
-      description: "Conecte Woovi, AbacatePay ou Stripe e emita a NFS-e automaticamente a cada pagamento confirmado.",
+      description: "Conecte Woovi, AbacatePay, Stripe ou Hotmart e emita a NFS-e automaticamente a cada pagamento confirmado.",
       blocks: [
         {
           kind: "text",
@@ -2826,6 +2826,21 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "O CPF/CNPJ vem do cliente (`tax_ids` `br_cpf` ou `br_cnpj`) ou do Checkout (`customer_details.tax_ids`). Ligue \"Coletar CPF/CNPJ\" (`tax_id_collection`) no Checkout para a nota sair completa. Sem documento, a venda fica pendente (`customer_tax_id_missing`) ou sai sem tomador se a regra tiver `allowAnonymousCustomer`.",
             "A descrição do serviço na nota é o nome dos itens do Checkout ou da fatura (até 5 itens); sem eles, vale a descrição da regra ou o padrão da empresa.",
             "Reembolso: só o reembolso total (`charge.refunded` com `refunded` verdadeiro) é tratado; o parcial é ignorado e a nota segue como está. Contestação (`charge.dispute.created`) só sinaliza a venda, sem cancelar.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "Hotmart" },
+        {
+          kind: "list",
+          items: [
+            "Credenciais: `hottok`, o token do webhook da sua conta Hotmart, e a opção `invoiceValue` (\"Valor da nota\": `total` ou `share`). A Corvo gera o `webhookSecret` e exibe o endereço completo do webhook ao criar a conexão. Copie e guarde esse endereço.",
+            "Passo a passo: (1) em Ferramentas > Webhook, cadastre o `webhookUrl` para todos os produtos, com os eventos de compra aprovada, compra completa, reembolso, chargeback e protesto; (2) copie o `hottok` e cole na Corvo; (3) envie um teste pela Hotmart.",
+            "A Hotmart não assina o webhook: a Corvo confere o cabeçalho `X-HOTMART-HOTTOK` e o segredo da conexão no endereço, os dois em tempo constante. Eventos que a Corvo não trata recebem resposta de sucesso e são ignorados, para a Hotmart não desativar o webhook.",
+            "Cada compra paga vira uma nota, identificada por `hotmart:<transaction>`. `PURCHASE_APPROVED` e `PURCHASE_COMPLETE` são a mesma venda e nunca geram nota dobrada. Em assinatura, cada cobrança tem a sua `transaction` e gera uma nota.",
+            "Só emite quando `invoice_by` é `SELLER`. Se a Hotmart emite a nota (`HOTMART` ou `business_model` `R`), a venda fica bloqueada com `seller_not_issuer`. Avisos de afiliado, sem comprador e sem preço, são ignorados.",
+            "Só BRL. Comprador estrangeiro, ou documento que não seja CPF/CNPJ, vai para completar dados (`customer_tax_id_missing`): a Corvo não emite sozinha para estrangeiros. O CPF/CNPJ só chega se o checkout pedir esse dado.",
+            "Valor da nota: `total` usa o valor pago (`full_price`); `share` (\"minha parte\") desconta as comissões de coprodutor e afiliado. Se as comissões não vierem no aviso, a venda vai para atenção e não emite.",
+            "Reembolso (`PURCHASE_REFUNDED`) e chargeback (`PURCHASE_CHARGEBACK`) cancelam a nota só se a regra tiver o cancelamento automático ligado; reembolso parcial é ignorado. Protesto (`PURCHASE_PROTEST`) só sinaliza a venda, sem cancelar.",
+            "A Hotmart não informa o ambiente no aviso: vale o ambiente escolhido na conexão. Os campos dos avisos ainda precisam ser confirmados com um aviso real.",
           ],
         },
         { kind: "heading", level: 2, body: "Vendas que precisam de atenção" },
