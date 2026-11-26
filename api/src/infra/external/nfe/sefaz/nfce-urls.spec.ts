@@ -28,7 +28,7 @@ describe('NFC-e URLs per UF', () => {
   });
 
   it('every UF with a model 65 endpoint has the two URLs', () => {
-    const wanted = ufsOf65().filter(({ uf }) => uf === 'SP');
+    const wanted = ufsOf65();
     expect(wanted.length).toBeGreaterThan(0);
     for (const { uf, tpAmb } of wanted)
       expect(() => nfceUrlsFor(uf, tpAmb)).not.toThrow();

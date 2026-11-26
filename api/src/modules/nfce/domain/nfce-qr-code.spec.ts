@@ -18,6 +18,6 @@ describe('nfceQrCodeOnline', () => {
   });
 
   it('refuses a result under 60 characters', () => {
-    expect(() => nfceQrCodeOnline('https://a.br', KEY, 1)).toThrow(/60/);
+    expect(() => nfceQrCodeOnline('http://a', KEY, 1)).toThrow(/60/);
   });
 });
