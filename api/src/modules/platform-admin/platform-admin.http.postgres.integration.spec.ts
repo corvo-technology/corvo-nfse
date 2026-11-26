@@ -25,7 +25,11 @@ describeReal(
     const http = () => request(ctx.app.getHttpServer());
 
     /** Every /v1/platform route with the verb it answers to. */
-    const routes: Array<{ method: 'get' | 'post'; path: () => string }> = [
+    const routes: Array<{
+      method: 'get' | 'post' | 'put';
+      path: () => string;
+      body?: object;
+    }> = [
       { method: 'get', path: () => '/v1/platform/overview' },
       { method: 'get', path: () => '/v1/platform/users' },
       {
@@ -38,17 +42,21 @@ describeReal(
         method: 'post',
         path: () => `/v1/platform/tenants/${ctx.member.tenantId}/credit-grants`,
       },
+      {
+        method: 'put',
+        path: () => `/v1/platform/tenants/${ctx.member.tenantId}/nfe-access`,
+        body: { enabled: true, reason: 'liberar para teste' },
+      },
     ];
     const call = (
       route: (typeof routes)[number],
       headers: Record<string, string>,
     ) => {
       const req = http()[route.method](route.path()).set(headers);
-      return route.method === 'post'
-        ? req
-            .set('Idempotency-Key', randomUUID())
-            .send({ amount: 5, reason: 'cortesia de teste' })
-        : req;
+      if (route.method === 'get') return req;
+      return req
+        .set('Idempotency-Key', randomUUID())
+        .send(route.body ?? { amount: 5, reason: 'cortesia de teste' });
     };
     const cookieHeaders = (who: { cookie: string; csrf?: string }) => ({
       Cookie: who.cookie,
@@ -205,6 +213,71 @@ describeReal(
       const text = JSON.stringify(history.body);
       expect(text).not.toContain('cortesia de teste');
       expect(text).not.toContain('example.com');
+    });
+
+    it('liberação de NF-e: liga e desliga a coluna com a auditoria; o contexto da sessão acompanha', async () => {
+      const put = (body: object) =>
+        http()
+          .put(`/v1/platform/tenants/${ctx.member.tenantId}/nfe-access`)
+          .set(cookieHeaders(ctx.admin))
+          .send(body);
+      const column = async () => {
+        const rows: Array<{ nfe_enabled_at: Date | null }> =
+          await ctx.owner.query(
+            `SELECT nfe_enabled_at FROM ${ctx.table('tenants')} WHERE id=$1`,
+            [ctx.member.tenantId],
+          );
+        return rows[0].nfe_enabled_at;
+      };
+      const features = async () =>
+        (
+          await http()
+            .get('/v1/auth/session')
+            .set({ Cookie: ctx.member.cookie })
+            .expect(200)
+        ).body.data.features;
+
+      expect(await column()).toBeNull();
+      const on = await put({ enabled: true, reason: 'liberar para teste' });
+      expect(on.status).toBe(200);
+      expect(on.body.data).toMatchObject({
+        tenantId: ctx.member.tenantId,
+        enabled: true,
+      });
+      expect(await column()).not.toBeNull();
+      expect(
+        await auditCount(
+          `action='nfe_access_changed' AND target_tenant_id=$1 AND success=true`,
+          [ctx.member.tenantId],
+        ),
+      ).toBe(1);
+      // With the global flag off (the default of this test app) the session never offers NF-e.
+      expect(await features()).toEqual({ nfe: false });
+
+      const off = await put({ enabled: false, reason: 'fim do teste de NF-e' });
+      expect(off.body.data).toMatchObject({ enabled: false, enabledAt: null });
+      expect(await column()).toBeNull();
+      expect(await auditCount(`action='nfe_access_changed'`, [])).toBe(2);
+    });
+
+    it('liberação de NF-e: motivo curto, corpo sem boolean ou tenant inexistente não gravam nada', async () => {
+      const before = await auditCount(`action='nfe_access_changed'`, []);
+      await http()
+        .put(`/v1/platform/tenants/${ctx.member.tenantId}/nfe-access`)
+        .set(cookieHeaders(ctx.admin))
+        .send({ enabled: true, reason: 'x' })
+        .expect(400);
+      await http()
+        .put(`/v1/platform/tenants/${ctx.member.tenantId}/nfe-access`)
+        .set(cookieHeaders(ctx.admin))
+        .send({ enabled: 'sim', reason: 'motivo válido' })
+        .expect(400);
+      await http()
+        .put(`/v1/platform/tenants/${randomUUID()}/nfe-access`)
+        .set(cookieHeaders(ctx.admin))
+        .send({ enabled: true, reason: 'motivo válido' })
+        .expect(404);
+      expect(await auditCount(`action='nfe_access_changed'`, [])).toBe(before);
     });
 
     it('concessão sem Idempotency-Key ou com corpo inválido não grava crédito', async () => {
