@@ -34,6 +34,16 @@ export const envSchema = z
       .enum(['production', 'restricted'])
       .default('production'),
     /**
+     * Optional HTTP CONNECT proxy (`http://user:pass@host:port`) used ONLY for calls to *.nfse.gov.br.
+     * Unset = direct connection. Contains credentials: never log it.
+     */
+    FISCAL_HTTPS_PROXY: z
+      .string()
+      .trim()
+      .url()
+      .refine((v) => /^https?:\/\//i.test(v), 'must be an http(s) URL')
+      .optional(),
+    /**
      * Where `test` invoices go: `sefin` (default) emits them in the Sefin Produção Restrita with the
      * company's certificate, no legal validity; `fake` is the in-process simulator, for automated tests.
      */

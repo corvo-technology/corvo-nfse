@@ -45,6 +45,7 @@ import type {
   FiscalCancellationReason,
 } from './nfse-fiscal-provider';
 import { issueParams, type SefinEnvironment } from './issue-params';
+import { GovProxyDispatchers, redactProxyUrl } from './gov-proxy';
 import { explainRejection, rejectionCode } from './rejection-guidance';
 
 const CANCELLATION_REASON: Record<
@@ -65,6 +66,8 @@ export class OpenNfseProvider
   private readonly homologationOnly: boolean;
   private readonly configuredLayout: ConfiguredDpsLayout;
   private readonly layoutPolicy: DpsLayoutPolicy;
+  /** Set when `FISCAL_HTTPS_PROXY` is configured: government calls go through that CONNECT proxy. */
+  private readonly govProxy?: GovProxyDispatchers;
 
   constructor(
     @InjectDataSource() private readonly database: DataSource,
@@ -77,6 +80,13 @@ export class OpenNfseProvider
     this.layoutPolicy = {
       cutoverAt: config.get<string>('rtc.nt009CutoverAt'),
     };
+    const proxyUrl = config.get<string>('FISCAL_HTTPS_PROXY');
+    if (proxyUrl) {
+      this.govProxy = new GovProxyDispatchers(proxyUrl);
+      this.logger.warn(
+        `FISCAL_HTTPS_PROXY set: calls to *.nfse.gov.br go through ${redactProxyUrl(proxyUrl)}.`,
+      );
+    }
     if (this.homologationOnly) {
       this.logger.warn(
         'NFSE_SEFIN_ENVIRONMENT=restricted: live invoices go to the Sefin Produção Restrita (homologation), not to production.',
@@ -165,6 +175,15 @@ export class OpenNfseProvider
       ambiente: this.ambienteFor(payload.environment),
       certificado: { pfx: payload.pfxBuffer, password: payload.p12Password },
       retryStore,
+      // Every endpoint of the client is *.nfse.gov.br, so the proxy dispatcher only ever sees those hosts.
+      ...(this.govProxy
+        ? {
+            dispatcher: this.govProxy.for(
+              payload.pfxBuffer,
+              payload.p12Password,
+            ),
+          }
+        : {}),
       dpsLayout:
         XML_LAYOUT[
           resolveDpsLayout({
