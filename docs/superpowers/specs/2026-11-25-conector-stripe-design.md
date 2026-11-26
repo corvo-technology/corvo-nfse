@@ -21,7 +21,7 @@ Isto não tem relação com o Stripe que o Corvo usa para cobrar os próprios cl
 2. No Stripe ele cria um endpoint de webhook com esse endereço e 3 eventos.
 3. O Stripe chama o Corvo. A API confere a assinatura, guarda o evento e responde rápido.
 4. O worker chama `parse` e `normalize`, monta uma `NormalizedOperation` e o `emission-planner` decide: emitir, bloquear ou pedir atenção. Nada muda aqui: o planner e o emissor são os mesmos.
-5. Reenvio do mesmo evento não emite duas vezes (a chave da operação é `charge:<id>`).
+5. Reenvio do mesmo evento não emite duas vezes (a chave da operação é `stripe_charge:<id>`).
 
 ## Credenciais e segurança
 
@@ -48,9 +48,13 @@ Decisão do orquestrador: a unidade é uma Charge do Stripe. Isso cobre Checkout
 | `charge.refunded` | `refunded` | só se reembolso total (`refunded: true`); parcial vira `ignored` |
 | `charge.dispute.created` | `disputed` | só sinaliza, não cancela |
 
-Qualquer outro evento: `ignored`. `deliveryId` = `event.id`. `operationKey` = `charge:<ch_...>`; no dispute, `refersTo` aponta para a charge.
+Qualquer outro evento: `ignored`. `deliveryId` = `event.id`. `operationKey` = `stripe_charge:<ch_...>`; no dispute, `refersTo` aponta para a charge.
 
-Reembolso parcial (decisão do orquestrador): nenhum cancelamento automático. Mesmo comportamento do Woovi: o evento parcial é ignorado e a nota segue como está. Falta confirmar no código se o aviso para revisão manual aparece (hoje só `refund_after_invoice` sinaliza, e só para reembolso total sem a opção ligada). Ver perguntas abertas.
+Reembolso parcial (decisão do orquestrador): nenhum cancelamento automático. Igual ao Woovi, o evento parcial é ignorado e a nota segue como está. O aviso para revisão manual fica para depois.
+
+Só cobrança confirmada (decisão do orquestrador): `charge.succeeded` só emite com `status === 'succeeded'` e `paid === true`. Pix e boleto ainda pendentes viram `ignored`.
+
+Chave da operação (decisão do orquestrador): `stripe_charge:<id>` em todo lugar, para não colidir com o `charge:` do Woovi.
 
 Só BRL (decisão do orquestrador): outra moeda vai com `currency` real e o planner bloqueia com `unsupported_currency`, motivo claro na tela.
 
@@ -67,7 +71,7 @@ Ambiente (decisão do orquestrador): `livemode: true` vira `environment: 'live'`
 ## Onde mexe
 
 - Novo: `connectors/stripe/` (`stripe.connector.ts`, `stripe.client.ts`, `stripe.module.ts`, `__fixtures__/`), módulo registrado em `app.module.ts` e `worker-app.module.ts` (os dois processos, como os outros) e no `runtime-wiring.spec.ts`.
-- Web: card e texto do passo a passo em `connect-flow.tsx` (hoje `providerDescriptionKey` só conhece woovi/abacatepay), textos em `messages/pt.json` e `en.json`, docs em `lib/docs/content/{pt,en}.ts`, origem da nota em `lib/invoice-origin.ts` (prefixo `charge` já é do Woovi, ver risco 2), logo na landing se quiserem.
+- Web: card e texto do passo a passo em `connect-flow.tsx` (hoje `providerDescriptionKey` só conhece woovi/abacatepay), textos em `messages/pt.json` e `en.json`, docs em `lib/docs/content/{pt,en}.ts`, origem da nota em `lib/invoice-origin.ts` (mapear o prefixo `stripe_charge` para a origem Stripe; `charge` continua sendo do Woovi), logo na landing se quiserem.
 - Passo a passo na tela: (1) criar chave restrita só leitura; (2) adicionar endpoint de webhook com os 3 eventos apontando para a URL do Corvo; (3) colar o `whsec_`.
 
 ## Testes
@@ -79,6 +83,4 @@ Ambiente (decisão do orquestrador): `livemode: true` vira `environment: 'live'`
 
 ## Riscos e perguntas abertas
 
-1. Reembolso parcial: o Woovi ignora em silêncio. Se queremos aviso visível para revisão manual, precisa de um motivo novo no emissor. Mínimo proposto: igual ao Woovi (ignorar); aviso fica para depois.
-2. Colisão de chaves: `operationKey` `charge:<id>` do Stripe e o `charge` do Woovi. Em `invoice-origin.ts` o prefixo identifica o provedor; proponho `stripe_charge:<id>` para o Stripe (`ch_...` já é único, mas o prefixo evita ambiguidade na tela).
-3. Pix e boleto pelo Stripe: `charge.succeeded` pode chegar com `status: pending` em métodos assíncronos. Proposta: só emitir se `status === 'succeeded'` e `paid === true`; o resto é `ignored`.
+Nenhuma. As três dúvidas iniciais foram resolvidas como decisões acima (reembolso parcial, prefixo `stripe_charge:`, só `succeeded` e `paid`).
