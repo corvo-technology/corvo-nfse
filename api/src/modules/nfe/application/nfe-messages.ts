@@ -16,6 +16,20 @@ import {
 import type { NfeInutilization } from '../domain/nfe-event';
 import { CANCEL_TP_EVENTO } from '../domain/nfe-event';
 
+/**
+ * What helps the customer after the SEFAZ refused a cancellation. A NFC-e can only be cancelled in
+ * the window the state allows (30 minutes in SP); cStat 501 is "prazo de cancelamento superior ao
+ * previsto" [cStat 501 a verificar na homologação]. Nothing for the NF-e: its text is the SEFAZ's.
+ */
+export function cancellationHint(
+  model: 55 | 65,
+  cStat: string,
+): string | undefined {
+  if (model === 65 && cStat === '501')
+    return 'A NFC-e só pode ser cancelada em até 30 minutos depois da autorização. Depois disso, fale com o contador.';
+  return undefined;
+}
+
 function base(
   doc: NfeDocument,
   type: string,

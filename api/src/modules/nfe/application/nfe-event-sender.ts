@@ -16,6 +16,7 @@ import { NfeEventContext, certificateProblemOf } from './nfe-event-context';
 import { NfeEventOutcomeService } from './nfe-event-outcome.service';
 import { eventReconcileMessage, eventSendMessage } from './nfe-messages';
 import { NfeSefazAccess } from './nfe-sefaz-access';
+import { gatewayTypeOf } from './nfe-transition.service';
 
 /** The breaker is open (or the service said 108/109): the same send is put off this long. */
 const RETRY_DELAY_MS = 60_000;
@@ -84,7 +85,12 @@ export class NfeEventSender {
       return this.outcomes.rejected(event, doc, problem.code, problem.message);
     }
 
-    const authority = this.access.breakerAuthority(issuer.uf, environment);
+    const model = doc.toSnapshot().model;
+    const authority = this.access.breakerAuthority(
+      issuer.uf,
+      environment,
+      model,
+    );
     try {
       await this.breaker.assertAvailable(environment, authority);
     } catch (error) {
@@ -103,8 +109,8 @@ export class NfeEventSender {
     }
 
     const snapshot = doc.toSnapshot();
-    const ctx = this.access.context(issuer.uf, environment, certificate);
-    const gateway = this.gateways.get<SignedNfe>('nfe');
+    const ctx = this.access.context(issuer.uf, environment, certificate, model);
+    const gateway = this.gateways.get<SignedNfe>(gatewayTypeOf(model));
     const text = event.text ?? '';
     const outcome: GatewayOutcome<EventReceipt> = cancel
       ? await (gateway.cancel?.cancel(

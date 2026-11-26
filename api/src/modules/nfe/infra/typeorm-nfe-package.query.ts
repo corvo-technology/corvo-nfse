@@ -32,25 +32,27 @@ export class TypeormNfePackageQuery {
 
   private query(scope: PackageScope) {
     const { start, end } = monthRange(scope.month);
-    return this.db
-      .repository(NfeDocumentOrmEntity)
-      .createQueryBuilder('doc')
-      .where('doc.tenant_id = :tenantId', { tenantId: scope.tenantId })
-      .andWhere('doc.company_id = :companyId', { companyId: scope.companyId })
-      .andWhere('doc.environment = :environment', {
-        environment: scope.environment,
-      })
-      // Model 55 only: the NFC-e has no DANFE and its package comes with the DANFCE (NFC-e 4/5).
-      .andWhere('doc.model = 55')
-      .andWhere("doc.status IN ('authorized', 'cancelled')")
-      .andWhere(
-        "(doc.issued_at AT TIME ZONE 'America/Sao_Paulo')::date >= :start",
-        { start },
-      )
-      .andWhere(
-        "(doc.issued_at AT TIME ZONE 'America/Sao_Paulo')::date < :end",
-        { end },
-      );
+    return (
+      this.db
+        .repository(NfeDocumentOrmEntity)
+        .createQueryBuilder('doc')
+        .where('doc.tenant_id = :tenantId', { tenantId: scope.tenantId })
+        .andWhere('doc.company_id = :companyId', { companyId: scope.companyId })
+        .andWhere('doc.environment = :environment', {
+          environment: scope.environment,
+        })
+        // Model 55 only: the NFC-e has no DANFE and its package comes with the DANFCE (NFC-e 4/5).
+        .andWhere('doc.model = 55')
+        .andWhere("doc.status IN ('authorized', 'cancelled')")
+        .andWhere(
+          "(doc.issued_at AT TIME ZONE 'America/Sao_Paulo')::date >= :start",
+          { start },
+        )
+        .andWhere(
+          "(doc.issued_at AT TIME ZONE 'America/Sao_Paulo')::date < :end",
+          { end },
+        )
+    );
   }
 
   summarize(

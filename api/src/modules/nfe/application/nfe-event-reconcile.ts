@@ -18,6 +18,7 @@ import { NfeEventContext, certificateProblemOf } from './nfe-event-context';
 import { NfeEventOutcomeService } from './nfe-event-outcome.service';
 import { eventReconcileMessage, eventSendMessage } from './nfe-messages';
 import { NfeSefazAccess } from './nfe-sefaz-access';
+import { gatewayTypeOf } from './nfe-transition.service';
 
 /** Looks at the SEFAZ for an event before a person has to step in (same schedule as the NF-e). */
 export const MAX_EVENT_LOOKS = 5;
@@ -67,7 +68,12 @@ export class NfeEventReconcile {
       tenantId,
       environment,
     );
-    const authority = this.access.breakerAuthority(issuer.uf, environment);
+    const model = snapshot.model;
+    const authority = this.access.breakerAuthority(
+      issuer.uf,
+      environment,
+      model,
+    );
     try {
       await this.breaker.assertAvailable(environment, authority);
     } catch (error) {
@@ -91,9 +97,9 @@ export class NfeEventReconcile {
       const problem = certificateProblemOf(error);
       return this.outcomes.rejected(event, doc, problem.code, problem.message);
     }
-    const ctx = this.access.context(issuer.uf, environment, certificate);
+    const ctx = this.access.context(issuer.uf, environment, certificate, model);
     const answer = (await this.gateways
-      .get<SignedNfe>('nfe')
+      .get<SignedNfe>(gatewayTypeOf(model))
       .consult.consultByKey(
         snapshot.accessKey,
         ctx,
