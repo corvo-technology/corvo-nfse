@@ -33,6 +33,7 @@ import { NfeIntakeService } from './application/nfe-intake.service';
 import { NfeOutcomeService } from './application/nfe-outcome.service';
 import { NfePreparation } from './application/nfe-preparation.service';
 import { NfeFilesService } from './application/nfe-files.service';
+import { NfePackageContributor } from './application/nfe-package.contributor';
 import { NfeEmailService } from './application/nfe-email.service';
 import { NfePrepareDocumentsHandler } from './application/nfe-prepare-documents.handler';
 import { NfeReconcileHandler } from './application/nfe-reconcile.handler';
@@ -55,6 +56,7 @@ import { NfeDocumentOrmEntity } from './infra/nfe-document.orm-entity';
 import { NfeInutilizationOrmEntity } from './infra/nfe-inutilization.orm-entity';
 import { NfeNumberSequenceOrmEntity } from './infra/nfe-number-sequence.orm-entity';
 import { TypeOrmNfeDocumentRepository } from './infra/typeorm-nfe-document.repository';
+import { TypeormNfePackageQuery } from './infra/typeorm-nfe-package.query';
 import { TypeormNfeEvents } from './infra/typeorm-nfe-events';
 import { TypeormNfeInutilizations } from './infra/typeorm-nfe-inutilizations';
 import { NfeNumberGapsQuery } from './infra/typeorm-nfe-number-gaps.query';
@@ -123,6 +125,8 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     NfePrepareDocumentsHandler,
     NfeEmailService,
     NfeFilesService,
+    NfePackageContributor,
+    TypeormNfePackageQuery,
     NfeSendEmailHandler,
     DocumentCreditLedger,
     FiscalWebhookPublisher,

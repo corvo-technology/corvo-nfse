@@ -81,6 +81,7 @@ import { InvoiceReviewService } from './application/invoice-review.service';
 import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
 import { InvoicePackageService } from './application/package/invoice-package.service';
 import { PackageLinkService } from './application/package/package-link.service';
+import { PackageContributorRegistry } from './application/package/package-contributor.registry';
 import { AccountantPackageService } from './application/package/accountant-package.service';
 import {
   InvoicePackageController,
@@ -102,6 +103,7 @@ const ACCOUNTANT_PACKAGE = {
   ],
   providers: [
     InvoicePackageService,
+    PackageContributorRegistry,
     PackageLinkService,
     AccountantPackageService,
     {
