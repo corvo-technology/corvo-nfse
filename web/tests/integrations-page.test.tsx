@@ -24,6 +24,7 @@ vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ success: mocks.succ
 const woovi = { id: "woovi", name: "Woovi", version: "1", credentialFields: [{ key: "webhookToken", label: "Webhook token (Authorization header)", secret: true, generate: true, revealOnce: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on Woovi." }, supportedFlows: [] };
 const abacate = { id: "abacatepay", name: "AbacatePay", version: "1", credentialFields: [{ key: "apiKey", label: "AbacatePay API key", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on AbacatePay." }, supportedFlows: [] };
 const pushinpay = { id: "pushinpay", name: "PushinPay", version: "1", credentialFields: [{ key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "webhookToken", label: "Webhook token (x-corvo-token header)", secret: true, generate: true, revealOnce: true }], webhookInstructions: { pt: "pt", en: "Pass the address as webhook_url and set the x-corvo-token header." }, supportedFlows: [] };
+const stripe = { id: "stripe", name: "Stripe", version: "1", credentialFields: [{ key: "apiKey", label: "Stripe restricted key", secret: true }, { key: "webhookSigningSecret", label: "Webhook signing secret", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Add a webhook endpoint on Stripe." }, supportedFlows: ["charge"] };
 const company = { id: "co1", legalName: "Acme Ltda", tradeName: "Acme" };
 const connection = (over: Record<string, unknown> = {}) => ({ id: "c1", provider: "woovi", environment: "test", companyId: "co1", state: "active", externalAccountId: "acc", activeFrom: null, webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB", createdAt: "2026-10-29T12:00:00Z", ...over });
 const sale = (over: Record<string, unknown> = {}) => ({ id: "s1", operationKey: "charge:1", commercialState: "paid", fiscalStatus: "submitted", blockReason: null, amountCents: 4990, currency: "BRL", customer: { name: "Maria", email: null, taxId: "52998224725", taxIdMasked: false }, paidAt: "2026-10-29T15:00:00Z", invoiceId: "inv1", createdAt: "2026-10-29T15:00:00Z", updatedAt: "2026-10-29T15:00:00Z", ...over });
@@ -293,6 +294,36 @@ describe("Connect page", () => {
     expect(screen.getByText("Webhook token (x-corvo-token header)")).toBeTruthy();
     expect(screen.getByText(/set the x-corvo-token header/)).toBeTruthy();
     expect(screen.getByText(/shown only now/)).toBeTruthy();
+  });
+
+  it("Stripe asks for the restricted key and the signing secret, generates the URL secret and shows the address only once", async () => {
+    mocks.providers.mockResolvedValue([woovi, abacate, stripe]);
+    mocks.create.mockResolvedValue(connection({ provider: "stripe", state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB?webhookSecret=S3", secrets: { webhookSecret: "S3" } }));
+    mocks.validate.mockResolvedValue(connection());
+    mocks.putRules.mockResolvedValue([]);
+    mocks.activate.mockResolvedValue(connection());
+    mocks.search = "provider=stripe";
+    wrap(<NewIntegrationPage />);
+    await screen.findByLabelText(/Stripe restricted key/);
+    expect(screen.queryByLabelText(/^Webhook secret/)).toBeNull();
+    const button = screen.getByRole("button", { name: "Connect" }) as HTMLButtonElement;
+    fireEvent.change(screen.getByLabelText(/Company that issues the invoice/), { target: { value: "co1" } });
+    fireEvent.change(screen.getByLabelText(/Stripe restricted key/), { target: { value: "rk_live_fake" } });
+    expect(button.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText(/Webhook signing secret/), { target: { value: "whsec_fake" } });
+    expect(button.disabled).toBe(false);
+    fireEvent.click(button);
+    await screen.findByText("Connected!");
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "stripe", credentials: { apiKey: "rk_live_fake", webhookSigningSecret: "whsec_fake" } }));
+    expect(screen.getByText(/webhookSecret=S3/)).toBeTruthy();
+    expect(screen.getByText("Add a webhook endpoint on Stripe.")).toBeTruthy();
+    expect(screen.getByText(/shown only now/)).toBeTruthy();
+  });
+
+  it("lists Stripe among the platforms with its own description", async () => {
+    mocks.providers.mockResolvedValue([woovi, abacate, stripe]);
+    wrap(<NewIntegrationPage />);
+    expect(await screen.findByText("Card, Pix and boleto paid on Stripe.")).toBeTruthy();
   });
 
   it("members without manage permission cannot use it", async () => {

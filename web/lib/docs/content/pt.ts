@@ -2824,6 +2824,21 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Reembolso: o estorno chega com `status: canceled`. Se a cobrança já estava paga, a Corvo trata como reembolso total (não dá para distinguir reembolso parcial); se nunca foi paga, o aviso é ignorado. Disputas (MED) não têm webhook e não são tratadas.",
           ],
         },
+        { kind: "heading", level: 3, body: "Stripe" },
+        {
+          kind: "list",
+          items: [
+            "Credenciais: `apiKey`, uma chave restrita (`rk_...`) só com leitura em Charges, Customers, Checkout Sessions e Invoices, e `webhookSigningSecret`, o `whsec_...` do endpoint. A Corvo gera o `webhookSecret` e exibe o endereço completo do webhook ao criar a conexão. Copie e guarde esse endereço.",
+            "Passo a passo: (1) em Desenvolvedores > Chaves de API, crie a chave restrita só de leitura; (2) em Desenvolvedores > Webhooks, adicione um endpoint com o `webhookUrl` e os eventos `charge.succeeded`, `charge.refunded` e `charge.dispute.created`; (3) copie o `whsec_...` do endpoint e cole na Corvo.",
+            "A Corvo confere a assinatura `Stripe-Signature` (HMAC-SHA256, tolerância de 5 minutos) e o segredo da conexão no endereço.",
+            "Cada cobrança (Charge) paga vira uma nota, identificada por `stripe_charge:<id>`. Só `charge.succeeded` com `status` `succeeded` e `paid` verdadeiro emite; Pix e boleto ainda pendentes são ignorados. Funciona com Checkout, Payment Links, assinaturas e Pix pelo Stripe.",
+            "Só BRL: cobrança em outra moeda fica bloqueada com `unsupported_currency`.",
+            "O `livemode` do evento precisa bater com o ambiente da conexão: eventos de teste não emitem nota em uma conexão `live`, e o inverso também.",
+            "O CPF/CNPJ vem do cliente (`tax_ids` `br_cpf` ou `br_cnpj`) ou do Checkout (`customer_details.tax_ids`). Ligue \"Coletar CPF/CNPJ\" (`tax_id_collection`) no Checkout para a nota sair completa. Sem documento, a venda fica pendente (`customer_tax_id_missing`) ou sai sem tomador se a regra tiver `allowAnonymousCustomer`.",
+            "A descrição do serviço na nota é o nome dos itens do Checkout ou da fatura (até 5 itens); sem eles, vale a descrição da regra ou o padrão da empresa.",
+            "Reembolso: só o reembolso total (`charge.refunded` com `refunded` verdadeiro) é tratado; o parcial é ignorado e a nota segue como está. Contestação (`charge.dispute.created`) só sinaliza a venda, sem cancelar.",
+          ],
+        },
         { kind: "heading", level: 2, body: "Vendas que precisam de atenção" },
         {
           kind: "text",

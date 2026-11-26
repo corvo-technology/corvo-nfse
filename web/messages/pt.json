@@ -16,6 +16,7 @@
       "woovi": "Venda Pix (Woovi)",
       "abacatepay": "Venda (AbacatePay)",
       "pushinpay": "Venda (PushinPay)",
+      "stripe": "Venda (Stripe)",
       "generic": "Venda pela integração"
     }
   },
@@ -2914,6 +2915,7 @@
       "woovi": "Cobranças Pix pagas na Woovi.",
       "abacatepay": "Checkout e pagamentos pagos na AbacatePay.",
       "pushinpay": "Pix, boleto e Pix recorrente pagos na PushinPay.",
+      "stripe": "Cartão, Pix e boleto pagos no Stripe.",
       "other": "Pagamentos confirmados."
     },
     "status": {
