@@ -3720,7 +3720,9 @@
       "crtFollows": "Vem do cadastro fiscal da empresa.",
       "crtEdit": "Mudar o regime da empresa",
       "crtUnsupported": "NF-e por enquanto só para Simples Nacional e MEI. Confira o regime no cadastro fiscal da empresa.",
-      "natOpPlaceholder": "Venda de mercadoria"
+      "natOpPlaceholder": "Venda de mercadoria",
+      "nfceSeries": "Série da NFC-e",
+      "nfceSeriesHint": "A série usada nas vendas ao consumidor. Na dúvida, deixe 1."
     },
     "detail": {
       "title": "NF-e",
@@ -3930,6 +3932,50 @@
         "homologada": "Aceito pela SEFAZ",
         "rejected": "Recusado"
       }
+    },
+    "consumer": {
+      "issue": "Emitir NFC-e",
+      "resubmit": "Enviar NFC-e de novo",
+      "tip": "A NFC-e pode ser cancelada em até 30 minutos depois da autorização e não tem carta de correção.",
+      "indPres": "Como foi a venda?",
+      "indPresHint": "Na maioria das vezes é “Presencial, na loja”.",
+      "indPres1": "Presencial, na loja",
+      "indPres4": "Entrega em domicílio",
+      "indPres5": "Presencial, fora da loja",
+      "items": "O que foi vendido",
+      "consumerOptional": "Consumidor (opcional)",
+      "consumerRequired": "Consumidor (obrigatório na entrega)",
+      "taxIdHint": "Só se o cliente pedir o CPF na nota. Vendas acima do limite do estado exigem a identificação.",
+      "emailHint": "Se você informar, o cliente recebe o XML e o DANFCE por e-mail.",
+      "sendEmail": "Enviar o XML e o DANFCE ao cliente por e-mail quando a nota for autorizada",
+      "required": "Preencha este campo.",
+      "deliveryNeeds": "Na venda com entrega, informe o CPF ou CNPJ do consumidor, o nome e o endereço.",
+      "cardBrand": "Bandeira do cartão",
+      "cardBrandNone": "Não informar",
+      "cardHint": "Deixe vazio se a maquininha não conversa com o seu sistema.",
+      "cardAuth": "Número da autorização",
+      "cardAuthPlaceholder": "Ex.: 123456",
+      "cardCnpj": "CNPJ da operadora do cartão",
+      "cardCnpjHint": "Só em pagamento integrado, junto com a autorização.",
+      "brands": {
+        "01": "Visa",
+        "02": "Mastercard",
+        "03": "American Express",
+        "04": "Sorocred",
+        "05": "Diners Club",
+        "06": "Elo",
+        "07": "Hipercard",
+        "08": "Aura",
+        "09": "Cabal",
+        "99": "Outra"
+      },
+      "typeTitle": "Que nota você quer emitir?",
+      "typeNfe": "NF-e (venda para empresa ou pessoa, com destinatário)",
+      "typeNfce": "Venda ao consumidor (NFC-e)",
+      "title": "Nova venda ao consumidor",
+      "subtitle": "Itens, forma de pagamento e, se o cliente pedir, o CPF. Nada é enviado quando você valida.",
+      "resubmitTitle": "Corrigir e reenviar a NFC-e",
+      "resubmitSubtitle": "Corrija o que a SEFAZ recusou e envie de novo. A nota mantém o mesmo número."
     }
   },
   "Admin": {

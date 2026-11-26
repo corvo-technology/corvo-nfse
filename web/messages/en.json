@@ -3720,7 +3720,9 @@
       "crtFollows": "It comes from the company's tax profile.",
       "crtEdit": "Change the company's regime",
       "crtUnsupported": "NF-e is only for Simples Nacional and MEI for now. Check the regime in the company's tax profile.",
-      "natOpPlaceholder": "Sale of goods"
+      "natOpPlaceholder": "Sale of goods",
+      "nfceSeries": "NFC-e series",
+      "nfceSeriesHint": "The series used on consumer sales. If unsure, leave 1."
     },
     "detail": {
       "title": "NF-e",
@@ -3930,6 +3932,50 @@
         "homologada": "Accepted by the SEFAZ",
         "rejected": "Refused"
       }
+    },
+    "consumer": {
+      "issue": "Issue NFC-e",
+      "resubmit": "Send NFC-e again",
+      "tip": "A NFC-e can be cancelled within 30 minutes of authorization and has no correction letter.",
+      "indPres": "How was the sale made?",
+      "indPresHint": "Most of the time it is “In person, at the store”.",
+      "indPres1": "In person, at the store",
+      "indPres4": "Home delivery",
+      "indPres5": "In person, outside the store",
+      "items": "What was sold",
+      "consumerOptional": "Consumer (optional)",
+      "consumerRequired": "Consumer (required for delivery)",
+      "taxIdHint": "Only if the customer asks for the CPF on the note. Sales above the state limit need the identification.",
+      "emailHint": "If you enter one, the customer gets the XML and the DANFCE by e-mail.",
+      "sendEmail": "Send the XML and the DANFCE to the customer by e-mail when the note is authorized",
+      "required": "Fill in this field.",
+      "deliveryNeeds": "For a delivery sale, fill in the consumer CPF or CNPJ, name and address.",
+      "cardBrand": "Card brand",
+      "cardBrandNone": "Do not inform",
+      "cardHint": "Leave empty if the card machine does not talk to your system.",
+      "cardAuth": "Authorization number",
+      "cardAuthPlaceholder": "E.g. 123456",
+      "cardCnpj": "CNPJ of the card operator",
+      "cardCnpjHint": "Only for an integrated payment, together with the authorization.",
+      "brands": {
+        "01": "Visa",
+        "02": "Mastercard",
+        "03": "American Express",
+        "04": "Sorocred",
+        "05": "Diners Club",
+        "06": "Elo",
+        "07": "Hipercard",
+        "08": "Aura",
+        "09": "Cabal",
+        "99": "Other"
+      },
+      "typeTitle": "Which note do you want to issue?",
+      "typeNfe": "NF-e (sale to a company or person, with a recipient)",
+      "typeNfce": "Consumer sale (NFC-e)",
+      "title": "New consumer sale",
+      "subtitle": "Items, payment method and, if the customer asks, the CPF. Nothing is sent when you validate.",
+      "resubmitTitle": "Fix and send the NFC-e again",
+      "resubmitSubtitle": "Fix what the SEFAZ refused and send it again. The note keeps the same number."
     }
   },
   "Admin": {

@@ -19,16 +19,19 @@ interface NfeSettingsFormProps {
   state?: string;
   /** Can the member change the settings (`nfe.documents.manage`)? */
   canManage: boolean;
+  /** NFC-e is released for the account: the series of the consumer sales is then asked too. */
+  nfce?: boolean;
 }
 
 /** The NF-e data of a company: state registration (IE), tax regime (CRT), series and the Simples defaults. */
-export function NfeSettingsForm({ companyId, state: uf = "", canManage }: NfeSettingsFormProps) {
+export function NfeSettingsForm({ companyId, state: uf = "", canManage, nfce = false }: NfeSettingsFormProps) {
   const t = useTranslations("Nfe.settings");
   const apiError = useApiErrorText();
   const [settings, setSettings] = useState<NfeSettings | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [stateRegistration, setStateRegistration] = useState("");
   const [series, setSeries] = useState("1");
+  const [nfceSeries, setNfceSeries] = useState("1");
   const [natOp, setNatOp] = useState("");
   const [csosn, setCsosn] = useState<"102" | "400">("102");
   const [saving, setSaving] = useState(false);
@@ -40,6 +43,7 @@ export function NfeSettingsForm({ companyId, state: uf = "", canManage }: NfeSet
     setSettings(value);
     setStateRegistration(value.stateRegistration ?? "");
     setSeries(String(value.defaultSeries));
+    setNfceSeries(String(value.nfceDefaultSeries ?? 1));
     setNatOp(value.defaultNatOp);
     setCsosn(value.defaultCsosn === "400" ? "400" : "102");
   }
@@ -58,7 +62,7 @@ export function NfeSettingsForm({ companyId, state: uf = "", canManage }: NfeSet
     if (saving) return;
     setSaving(true); setSaved(false); setError(null); setIeError(null);
     try {
-      fill(await updateNfeSettings(companyId, { stateRegistration: stateRegistration.trim(), defaultSeries: Number(series), defaultNatOp: natOp.trim() || undefined, defaultCsosn: csosn }));
+      fill(await updateNfeSettings(companyId, { stateRegistration: stateRegistration.trim(), defaultSeries: Number(series), ...(nfce ? { nfceDefaultSeries: Number(nfceSeries) } : {}), defaultNatOp: natOp.trim() || undefined, defaultCsosn: csosn }));
       setSaved(true);
     } catch (cause) {
       const text = apiError(cause, t("saveFailed"));
@@ -99,6 +103,11 @@ export function NfeSettingsForm({ companyId, state: uf = "", canManage }: NfeSet
         <Field label={t("series")} hint={t("seriesHint")}>
           {(control) => <Input {...control} type="number" min={0} max={999} placeholder="1" value={series} disabled={!canManage} onChange={(event) => setSeries(event.target.value)} />}
         </Field>
+        {nfce && (
+          <Field label={t("nfceSeries")} hint={t("nfceSeriesHint")}>
+            {(control) => <Input {...control} type="number" min={0} max={999} placeholder="1" value={nfceSeries} disabled={!canManage} onChange={(event) => setNfceSeries(event.target.value)} />}
+          </Field>
+        )}
         <Field label={t("natOp")} hint={t("natOpHint")}>
           {(control) => <Input {...control} maxLength={60} placeholder={t("natOpPlaceholder")} value={natOp} disabled={!canManage} onChange={(event) => setNatOp(event.target.value)} />}
         </Field>

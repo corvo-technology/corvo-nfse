@@ -21,6 +21,16 @@ export interface NfePaymentInput { tPag: string; amount: number }
 /** Body of the dry-run, of the issue and of the resubmission (same body). */
 export interface NfeCreateInput { companyId: string; natOp?: string; recipient: NfeRecipient; items: NfeItemInput[]; payments: NfePaymentInput[]; change?: number; additionalInfo?: string; externalId?: string; sendEmail?: boolean }
 
+/** Card data of a payment of the NFC-e; everything is optional (`tpIntegra` 2 = not integrated). */
+export interface NfceCardInput { tpIntegra?: 1 | 2; cnpj?: string; tBand?: string; cAut?: string }
+export interface NfcePaymentInput extends NfePaymentInput { card?: NfceCardInput }
+/** 1 in person, 4 delivery (needs the consumer's CPF/CNPJ, name and address), 5 in person outside the establishment. */
+export type NfceIndPres = 1 | 4 | 5;
+/** The consumer of a NFC-e: all optional. */
+export interface NfceRecipientInput { taxId?: string; name?: string; email?: string; address?: NfeAddress }
+/** Body of the NFC-e (`type: "nfce"`): there is no `natOp`, the sale is always to the final consumer. */
+export interface NfceCreateInput { companyId: string; recipient?: NfceRecipientInput; indPres?: NfceIndPres; items: NfeItemInput[]; payments: NfcePaymentInput[]; change?: number; additionalInfo?: string; externalId?: string; sendEmail?: boolean }
+
 export interface NfeLastError { type: "communication" | "validation" | "configuration"; code: string; message: string; hint?: string; issues?: ValidationIssue[] }
 export interface NfeItem { nItem: number; code: string; description: string; ncm: string; cfop: string; unit: string; quantity: string; unitPrice: string; total: string; tax?: { origin?: number; csosn?: string } }
 export type NfeKind = "nfe" | "nfce";
@@ -33,7 +43,7 @@ export interface NfeDocument {
   qrCode?: string | null; urlChave?: string | null;
   documentsReady: boolean; documentsReadyAt: string | null; emailStatus: string | null; emailSentAt: string | null; attempt: number; lastError: NfeLastError | null; nextCheckAt: string | null; createdAt: string; updatedAt: string;
 }
-export interface NfeAccepted { type: "nfe"; id: string; status: NfeStatus; replayed?: true }
+export interface NfeAccepted { type: NfeKind; id: string; status: NfeStatus; replayed?: true }
 /** One line of the timeline: a state the note went through, or a fiscal event (cancellation, correction letter). */
 export interface NfeTimelineEntry { kind: "status" | "event"; at: string; status: string; from: string | null; tpEvento: string | null; sequence: number | null; eventId: string | null; cStat: string | null; xMotivo: string | null }
 export interface NfeFiscalEvent { id: string; documentId: string; type: "cancellation" | "correction"; sequence: number; status: string; text: string; protocol: string | null; cStat: string | null; xMotivo: string | null }
@@ -41,12 +51,12 @@ export interface NfeInutilization { id: string; companyId: string; series: numbe
 export interface NfeNumberGap { companyId: string; series: number; start: number; end: number }
 export type NfeMissingField = string;
 export interface NfeSettings {
-  companyId: string; stateRegistration: string | null; crt: number | null; /** Tax regime of the company (its fiscal profile), as the company API names it: `Simples Nacional`, `MEI`... */ taxRegime?: string | null; defaultSeries: number; defaultNatOp: string; defaultCsosn: string; defaultOrigin: number; defaultPisCst: string; defaultCofinsCst: string;
+  companyId: string; stateRegistration: string | null; crt: number | null; /** Tax regime of the company (its fiscal profile), as the company API names it: `Simples Nacional`, `MEI`... */ taxRegime?: string | null; defaultSeries: number; /** Series of the NFC-e (1 when never set). */ nfceDefaultSeries?: number; defaultNatOp: string; defaultCsosn: string; defaultOrigin: number; defaultPisCst: string; defaultCofinsCst: string;
   enabledAt: string | null;
   /** What the company still lacks to issue an NF-e (`state_registration`, `crt`, `address`...). */
   missing: NfeMissingField[];
 }
-export interface NfeSettingsInput { stateRegistration: string; /** Only to override: the CRT follows the tax regime of the company. */ crt?: 1 | 4; defaultSeries?: number; defaultNatOp?: string; defaultCsosn?: "102" | "400"; defaultOrigin?: number }
+export interface NfeSettingsInput { stateRegistration: string; /** Only to override: the CRT follows the tax regime of the company. */ crt?: 1 | 4; defaultSeries?: number; nfceDefaultSeries?: number; defaultNatOp?: string; defaultCsosn?: "102" | "400"; defaultOrigin?: number }
 export interface NfeListQuery extends PageParams { companyId?: string; status?: NfeStatus; /** NF-e when omitted. */ type?: NfeKind }
 export interface NfeDownload { downloadUrl: string; expiresAt: string; fileName: string; mimeType: string }
 
@@ -55,6 +65,8 @@ const withKey = (data: unknown, idempotencyKey: string, method = "POST"): Reques
 
 /** The dry-run: nothing is numbered, sent or charged. A 422 carries `details` with the fields. */
 export const validateNfe = async (input: NfeCreateInput, signal?: AbortSignal) => unwrap(await request<Envelope<{ valid: true; accessKeyPreview: string }>>("/invoices/validate", { ...body({ type: "nfe", ...input }), signal }));
+/** The dry-run of a NFC-e: same answer, nothing is numbered, sent or charged. */
+export const validateNfce = async (input: NfceCreateInput, signal?: AbortSignal) => unwrap(await request<Envelope<{ valid: true; accessKeyPreview: string }>>("/invoices/validate", { ...body({ type: "nfce", ...input }), signal }));
 /** `idempotencyKey` is made once per form, so a double click never issues two notes. */
 export const createNfe = async (input: NfeCreateInput, idempotencyKey: string) => unwrap(await request<Envelope<NfeAccepted>>("/invoices", withKey({ type: "nfe", ...input }, idempotencyKey)));
 export const listNfe = async (params: NfeListQuery = {}, signal?: AbortSignal): Promise<Page<NfeDocument>> => toPage(await request<ListBody<NfeDocument>>(`/invoices${query({ type: "nfe", ...params })}`, { signal }));
@@ -78,13 +90,15 @@ export async function listNfeAndNfce(params: NfeListQuery = {}, signal?: AbortSi
   return { items, hasMore: more, nextCursor: more ? JSON.stringify(next) : null };
 }
 export const getNfe = async (id: string, signal?: AbortSignal) => unwrap(await request<Envelope<NfeDocument>>(`/invoices/${idPath(id)}`, { signal }));
+/** Issues a NFC-e (consumer sale). `idempotencyKey` is made once per form, like the NF-e. */
+export const createNfce = async (input: NfceCreateInput, idempotencyKey: string) => unwrap(await request<Envelope<NfeAccepted>>("/invoices", withKey({ type: "nfce", ...input }, idempotencyKey)));
 /** Asks the SEFAZ about a note that is waiting (`reconciliation_required`, `manual_review`). */
 export const syncNfe = async (id: string) => unwrap(await request<Envelope<NfeDocument>>(`/invoices/${idPath(id)}/sync`, body({})));
 export const cancelNfe = async (id: string, justification: string) => unwrap(await request<Envelope<NfeDocument>>(`/invoices/${idPath(id)}/cancel`, body({ justification })));
 export const correctNfe = async (id: string, correction: string) => unwrap(await request<Envelope<NfeFiscalEvent>>(`/invoices/${idPath(id)}/corrections`, body({ correction })));
 export const discardNfe = async (id: string) => unwrap(await request<Envelope<NfeDocument>>(`/invoices/${idPath(id)}/discard`, body({})));
 /** Sends a rejected note again with the same number (the same body as a new one). */
-export const resubmitNfe = async (id: string, input: NfeCreateInput, idempotencyKey: string) => unwrap(await request<Envelope<NfeAccepted>>(`/invoices/${idPath(id)}`, withKey(input, idempotencyKey, "PUT")));
+export const resubmitNfe = async (id: string, input: NfeCreateInput | NfceCreateInput, idempotencyKey: string) => unwrap(await request<Envelope<NfeAccepted>>(`/invoices/${idPath(id)}`, withKey(input, idempotencyKey, "PUT")));
 export const listNfeEvents = async (id: string, signal?: AbortSignal) => unwrap(await request<Envelope<NfeTimelineEntry[]>>(`/invoices/${idPath(id)}/events`, { signal }));
 /** The file itself (the API serves the authorized XML and the DANFE); for a link that expires use `nfeDownloadUrl`. */
 export const nfeFile = (id: string, kind: "xml" | "pdf", layout?: "80mm" | "a4") => request<Blob>(`/invoices/${idPath(id)}/${kind}${layout ? query({ layout }) : ""}`, {}, true);
