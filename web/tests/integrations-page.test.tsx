@@ -24,6 +24,7 @@ vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ success: mocks.succ
 const woovi = { id: "woovi", name: "Woovi", version: "1", credentialFields: [{ key: "webhookToken", label: "Webhook token (Authorization header)", secret: true, generate: true, revealOnce: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on Woovi." }, supportedFlows: [] };
 const abacate = { id: "abacatepay", name: "AbacatePay", version: "1", credentialFields: [{ key: "apiKey", label: "AbacatePay API key", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on AbacatePay." }, supportedFlows: [] };
 const stripe = { id: "stripe", name: "Stripe", version: "1", credentialFields: [{ key: "apiKey", label: "Stripe restricted key", secret: true }, { key: "webhookSigningSecret", label: "Webhook signing secret", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Add a webhook endpoint on Stripe." }, supportedFlows: ["charge"] };
+const kiwify = { id: "kiwify", name: "Kiwify", version: "1", credentialFields: [{ key: "token", label: "Webhook token", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Create a webhook on Kiwify without affiliations or co-productions." }, supportedFlows: ["order"] };
 const company = { id: "co1", legalName: "Acme Ltda", tradeName: "Acme" };
 const connection = (over: Record<string, unknown> = {}) => ({ id: "c1", provider: "woovi", environment: "test", companyId: "co1", state: "active", externalAccountId: "acc", activeFrom: null, webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB", createdAt: "2026-10-29T12:00:00Z", ...over });
 const sale = (over: Record<string, unknown> = {}) => ({ id: "s1", operationKey: "charge:1", commercialState: "paid", fiscalStatus: "submitted", blockReason: null, amountCents: 4990, currency: "BRL", customer: { name: "Maria", email: null, taxId: "52998224725", taxIdMasked: false }, paidAt: "2026-10-29T15:00:00Z", invoiceId: "inv1", createdAt: "2026-10-29T15:00:00Z", updatedAt: "2026-10-29T15:00:00Z", ...over });
@@ -298,6 +299,54 @@ describe("Connect page", () => {
     expect(screen.getByText(/webhookSecret=S3/)).toBeTruthy();
     expect(screen.getByText("Add a webhook endpoint on Stripe.")).toBeTruthy();
     expect(screen.getByText(/shown only now/)).toBeTruthy();
+  });
+
+  it("Kiwify asks for the token only, offers the invoice amount as a choice and shows the address once", async () => {
+    mocks.providers.mockResolvedValue([woovi, abacate, stripe, kiwify]);
+    mocks.create.mockResolvedValue(connection({ provider: "kiwify", state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB?webhookSecret=S4", secrets: { webhookSecret: "S4" } }));
+    mocks.validate.mockResolvedValue(connection());
+    mocks.putRules.mockResolvedValue([]);
+    mocks.activate.mockResolvedValue(connection());
+    mocks.search = "provider=kiwify";
+    wrap(<NewIntegrationPage />);
+    await screen.findByLabelText(/Webhook token/);
+    expect(screen.queryByLabelText(/^Webhook secret/)).toBeNull();
+    const button = screen.getByRole("button", { name: "Connect" }) as HTMLButtonElement;
+    fireEvent.change(screen.getByLabelText(/Company that issues the invoice/), { target: { value: "co1" } });
+    expect(button.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText(/Webhook token/), { target: { value: "tok_fake" } });
+    expect(button.disabled).toBe(false);
+    const amount = screen.getByLabelText(/Invoice amount/) as HTMLSelectElement;
+    expect(amount.value).toBe("total");
+    expect(screen.getByRole("option", { name: "My share of the sale" })).toBeTruthy();
+    fireEvent.change(amount, { target: { value: "mine" } });
+    fireEvent.click(button);
+    await screen.findByText("Connected!");
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "kiwify", credentials: { token: "tok_fake", invoiceValue: "mine" } }));
+    expect(screen.getByText(/webhookSecret=S4/)).toBeTruthy();
+    expect(screen.getByText("Create a webhook on Kiwify without affiliations or co-productions.")).toBeTruthy();
+  });
+
+  it("Kiwify sends the default amount choice when the client leaves it alone", async () => {
+    mocks.providers.mockResolvedValue([kiwify]);
+    mocks.create.mockResolvedValue(connection({ provider: "kiwify", state: "draft", webhookUrl: "https://x/PUB?webhookSecret=S4", secrets: { webhookSecret: "S4" } }));
+    mocks.validate.mockResolvedValue(connection());
+    mocks.putRules.mockResolvedValue([]);
+    mocks.activate.mockResolvedValue(connection());
+    mocks.search = "provider=kiwify";
+    wrap(<NewIntegrationPage />);
+    await screen.findByLabelText(/Webhook token/);
+    fireEvent.change(screen.getByLabelText(/Company that issues the invoice/), { target: { value: "co1" } });
+    fireEvent.change(screen.getByLabelText(/Webhook token/), { target: { value: "tok_fake" } });
+    fireEvent.click(screen.getByRole("button", { name: "Connect" }));
+    await screen.findByText("Connected!");
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ credentials: { token: "tok_fake", invoiceValue: "total" } }));
+  });
+
+  it("lists Kiwify among the platforms with its own description", async () => {
+    mocks.providers.mockResolvedValue([woovi, abacate, stripe, kiwify]);
+    wrap(<NewIntegrationPage />);
+    expect(await screen.findByText("Approved sales on Kiwify.")).toBeTruthy();
   });
 
   it("lists Stripe among the platforms with its own description", async () => {

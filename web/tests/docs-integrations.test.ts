@@ -49,6 +49,11 @@ describe.each(["pt", "en"] as const)("payment integrations docs (%s)", (locale) 
       expect(text).toContain(term);
   });
 
+  it("documents how to connect Kiwify", () => {
+    for (const term of ["?signature=", "HMAC-SHA1", "order_approved", "kiwify:<order_id>", "invoiceValue", "my_commission", "chargeback", "token"])
+      expect(text.toLowerCase()).toContain(term.toLowerCase());
+  });
+
   it("authenticates the examples with X-API-Key, like the rest of the API", () => {
     expect(text).toContain("X-API-Key");
     expect(text).not.toContain("Authorization: Bearer");

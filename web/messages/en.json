@@ -16,6 +16,7 @@
       "woovi": "Pix sale (Woovi)",
       "abacatepay": "Sale (AbacatePay)",
       "stripe": "Sale (Stripe)",
+      "kiwify": "Sale (Kiwify)",
       "generic": "Integration sale"
     }
   },
@@ -2914,6 +2915,7 @@
       "woovi": "Pix charges paid on Woovi.",
       "abacatepay": "Checkout and payments paid on AbacatePay.",
       "stripe": "Card, Pix and boleto paid on Stripe.",
+      "kiwify": "Approved sales on Kiwify.",
       "other": "Confirmed payments."
     },
     "status": {
@@ -2932,6 +2934,15 @@
       "companyPlaceholder": "Choose the company",
       "noCompanies": "Register a company before connecting.",
       "sendEmail": "Email the invoice to the customer",
+      "fields": {
+        "invoiceValue": "Invoice amount"
+      },
+      "options": {
+        "invoiceValue": {
+          "total": "Total paid by the buyer (default)",
+          "mine": "My share of the sale"
+        }
+      },
       "back": "Back",
       "connect": "Connect",
       "connecting": "Connecting...",

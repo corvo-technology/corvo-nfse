@@ -2795,7 +2795,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     municipalities: municipalitiesPage("en"),
     "payment-integrations": {
       title: "Payment integrations",
-      description: "Connect Woovi, AbacatePay or Stripe and issue the NFS-e automatically for every confirmed payment.",
+      description: "Connect Woovi, AbacatePay, Stripe or Kiwify and issue the NFS-e automatically for every confirmed payment.",
       blocks: [
         {
           kind: "text",
@@ -2849,6 +2849,20 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "The CPF/CNPJ comes from the customer (`tax_ids` `br_cpf` or `br_cnpj`) or from Checkout (`customer_details.tax_ids`). Turn on tax ID collection (`tax_id_collection`) in Checkout so the invoice goes out complete. Without a document, the sale stays pending (`customer_tax_id_missing`), or is issued without a customer if the rule has `allowAnonymousCustomer`.",
             "The service description on the invoice is the name of the Checkout or invoice items (up to 5); without them, the rule description or the company default is used.",
             "Refunds: only a full refund (`charge.refunded` with `refunded` true) is handled; a partial refund is ignored and the invoice stays as it is. A dispute (`charge.dispute.created`) only flags the sale, without cancelling.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "Kiwify" },
+        {
+          kind: "list",
+          items: [
+            "Credentials: `token`, the webhook token you choose in Kiwify (use a long random value), and optionally `invoiceValue` (`total` or `mine`). Corvo generates the `webhookSecret` and shows the full webhook URL when you create the connection. Copy and save that address.",
+            "Steps: (1) in Kiwify, Apps > Webhooks, create a webhook with the `webhookUrl`, choosing the products; (2) set a token and paste the same token in Corvo, ticking the triggers `compra_aprovada`, `compra_reembolsada` and `chargeback`; (3) use \"Test Webhook\" to check. Do not include affiliate or co-production sales: the invoice covers your own sales only.",
+            "Corvo checks the `?signature=` query (HMAC-SHA1 of the raw body, key = `token`, lowercase hex) and the connection secret in the address. Kiwify signs no timestamp, so a replay is stopped by `order_id` + `webhook_event_type`.",
+            "Each approved purchase (`order_approved`, `order_status` `paid`) becomes one invoice, identified by `kiwify:<order_id>`. Each subscription charge has a new `order_id` and gets its own invoice; `subscription_renewed`, cancellations and free-trial events are ignored.",
+            "BRL and Brazilian buyers only: another currency is blocked with `unsupported_currency`; with no CPF/CNPJ, an invalid document or a buyer from another country, the sale stays pending (`customer_tax_id_missing`), or is issued without a customer if the rule has `allowAnonymousCustomer`.",
+            "Invoice amount: by default the total paid by the buyer (`Commissions.charge_amount`). With `invoiceValue` = `mine` it uses your share (`Commissions.my_commission`); if the notice has no such value, the sale goes to attention instead of using the total.",
+            "Kiwify has no test mode: \"Test Webhook\" sends fake data. Run that test on a Corvo test connection, never on a production one.",
+            "A refund and a chargeback link to the sale by `order_id`. With \"cancel invoice on refund\" on, a refund cancels the invoice; without it (and on a chargeback) the sale is only flagged (`refund_after_invoice`).",
           ],
         },
         { kind: "heading", level: 2, body: "Sales that need attention" },

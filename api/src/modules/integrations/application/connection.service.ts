@@ -76,7 +76,14 @@ export class ConnectionService {
     const credentials: Record<string, string> = {};
     for (const field of manifest.credentialFields) {
       const value = input.credentials[field.key];
-      if (value) credentials[field.key] = value;
+      if (value) {
+        if (field.options && !field.options.includes(value))
+          throw new BadRequestException({
+            code: 'INTEGRATION_CREDENTIAL_INVALID',
+            message: `Invalid value for ${field.key}`,
+          });
+        credentials[field.key] = value;
+      } else if (field.optional) continue;
       else if (field.generate)
         credentials[field.key] = randomBytes(24).toString('base64url');
       else

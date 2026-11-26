@@ -16,6 +16,7 @@
       "woovi": "Venda Pix (Woovi)",
       "abacatepay": "Venda (AbacatePay)",
       "stripe": "Venda (Stripe)",
+      "kiwify": "Venda (Kiwify)",
       "generic": "Venda pela integração"
     }
   },
@@ -2914,6 +2915,7 @@
       "woovi": "Cobranças Pix pagas na Woovi.",
       "abacatepay": "Checkout e pagamentos pagos na AbacatePay.",
       "stripe": "Cartão, Pix e boleto pagos no Stripe.",
+      "kiwify": "Vendas aprovadas na Kiwify.",
       "other": "Pagamentos confirmados."
     },
     "status": {
@@ -2932,6 +2934,15 @@
       "companyPlaceholder": "Escolha a empresa",
       "noCompanies": "Cadastre uma empresa antes de conectar.",
       "sendEmail": "Enviar a nota por e-mail ao cliente",
+      "fields": {
+        "invoiceValue": "Valor da nota"
+      },
+      "options": {
+        "invoiceValue": {
+          "total": "Total pago pelo comprador (padrão)",
+          "mine": "Minha parte da venda"
+        }
+      },
       "back": "Voltar",
       "connect": "Conectar",
       "connecting": "Conectando...",

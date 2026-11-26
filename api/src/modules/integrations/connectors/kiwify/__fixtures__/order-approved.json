@@ -1,0 +1,29 @@
+{
+  "order_id": "9b1c2d3e-0000-4000-8000-000000000001",
+  "order_ref": "AbC123x",
+  "order_status": "paid",
+  "webhook_event_type": "order_approved",
+  "payment_method": "credit_card",
+  "approved_date": "2026-10-29 15:00",
+  "Customer": {
+    "full_name": "Maria da Silva",
+    "email": "maria@example.com",
+    "CPF": "529.982.247-25",
+    "mobile": "+5511999999999",
+    "country": "BR"
+  },
+  "Product": {
+    "product_id": "prod-0001",
+    "product_name": "Curso de Excel"
+  },
+  "Commissions": {
+    "charge_amount": 10000,
+    "product_base_price": 9000,
+    "my_commission": 8000,
+    "currency": "BRL"
+  },
+  "TrackingParameters": {
+    "src": null,
+    "utm_source": null
+  }
+}
