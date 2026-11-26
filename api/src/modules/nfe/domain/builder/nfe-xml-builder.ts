@@ -1,5 +1,6 @@
 import Builder from 'fast-xml-builder';
 import type { BuiltDocument } from '@/modules/fiscal-core/application/emission-pipeline';
+import { nfceQrCodeOnline } from '@/modules/nfce/domain/nfce-qr-code';
 import { buildAccessKey } from '../access-key';
 import type { NfeDraft } from '../nfe-draft';
 import {
@@ -19,8 +20,15 @@ import { pagGroup } from './pag.group';
 import { totalGroup } from './total.group';
 import { transpGroup } from './transp.group';
 
+/** `infNFeSupl` of the NFC-e: the QR Code base and the consultation URL of the UF. */
+export interface NfeSupplement {
+  qrCodeBase: string;
+  urlChave: string;
+}
+
 interface BuilderState {
   draft: NfeDraft;
+  supplement: NfeSupplement | null;
   series?: number;
   number?: number;
   cNF?: string;
@@ -47,7 +55,12 @@ export class NfeXmlBuilder {
   private constructor(private readonly state: BuilderState) {}
 
   static for(draft: NfeDraft): NfeXmlBuilder {
-    return new NfeXmlBuilder({ draft, verProc: 'Corvo', respTec: null });
+    return new NfeXmlBuilder({
+      draft,
+      verProc: 'Corvo',
+      respTec: null,
+      supplement: null,
+    });
   }
 
   withNumber(series: number, number: number): NfeXmlBuilder {
@@ -76,12 +89,24 @@ export class NfeXmlBuilder {
     return new NfeXmlBuilder({ ...this.state, respTec });
   }
 
+  /** Required for model 65; ignored (and refused) for model 55. */
+  withSupplement(supplement: NfeSupplement | null): NfeXmlBuilder {
+    return new NfeXmlBuilder({ ...this.state, supplement });
+  }
+
   build(): BuiltDocument {
     const { draft, series, number, cNF, dhEmi } = this.state;
     if (series === undefined || number === undefined)
       throw new Error('NfeXmlBuilder: withNumber() is required');
     if (!cNF) throw new Error('NfeXmlBuilder: withCnf() is required');
     if (!dhEmi) throw new Error('NfeXmlBuilder: withIssuedAt() is required');
+    const { supplement } = this.state;
+    if (draft.model === 65 && !supplement)
+      throw new Error(
+        'NfeXmlBuilder: withSupplement() is required for model 65',
+      );
+    if (draft.model === 55 && supplement)
+      throw new Error('NfeXmlBuilder: withSupplement() is only for model 65');
     const cUF = draft.issuer.cUF;
     const tpAmb = this.state.tpAmb ?? (draft.environment === 'live' ? 1 : 2);
     const accessKey = buildAccessKey({
@@ -121,9 +146,25 @@ export class NfeXmlBuilder {
     };
     // IBS/CBS sits on the items and on the total in the layout; it will be added here when required.
     ibsCbsGroup(ctx);
-    const document = { NFe: { '@_xmlns': NFE_NAMESPACE, infNFe } };
+    const qrCode = supplement
+      ? nfceQrCodeOnline(supplement.qrCodeBase, accessKey, tpAmb)
+      : undefined;
+    // `infNFeSupl` is a sibling right after `infNFe`; the signature is appended after it.
+    const document = {
+      NFe: {
+        '@_xmlns': NFE_NAMESPACE,
+        infNFe,
+        infNFeSupl:
+          supplement && qrCode
+            ? { qrCode, urlChave: supplement.urlChave }
+            : undefined,
+      },
+    };
     return {
       accessKey,
+      ...(supplement && qrCode
+        ? { qrCode, urlChave: supplement.urlChave }
+        : {}),
       xml: String(xml.build(stripUndefined(document))),
       referenceTag: 'infNFe',
     };

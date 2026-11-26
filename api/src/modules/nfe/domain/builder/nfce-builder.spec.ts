@@ -1,6 +1,13 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { XMLParser } from 'fast-xml-parser';
+import { makeTestA1 } from '../../../../../test/fixtures/nfe/test-a1';
+import { loadCertificate } from '@/infra/external/nfe/sefaz/certificate-loader';
 import { XmllintSchemaValidator } from '@/infra/external/nfe/sefaz/schema-validator';
-import { withStructuralSignature } from '@/infra/external/nfe/sefaz/xml-signer';
+import {
+  SefazXmlSigner,
+  withStructuralSignature,
+} from '@/infra/external/nfe/sefaz/xml-signer';
 import { buildNfceDraft } from '@/modules/nfce/domain/nfce-draft';
 import type { NfceInput } from '@/modules/nfce/domain/nfce-input';
 import { SETTINGS, issuerFixture } from '../../testing/draft-fixture';
@@ -24,7 +31,11 @@ const builderOf = (input: NfceInput, environment: 'test' | 'live' = 'test') =>
     .withNumber(1, 10)
     .withCnf('12345678')
     .withIssuedAt('2026-11-26T10:00:00-03:00')
-    .withVerProc('Corvo 0.0.1');
+    .withVerProc('Corvo 0.0.1')
+    .withSupplement({
+      qrCodeBase: 'https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode',
+      urlChave: 'https://www.homologacao.nfce.fazenda.sp.gov.br/consulta',
+    });
 
 const parse = (xml: string) =>
   new XMLParser({ parseTagValue: false, isArray: (n) => n === 'det' }).parse(
@@ -120,4 +131,62 @@ describe('NfeXmlBuilder, model 65', () => {
       ).toEqual({ ok: true });
     },
   );
+
+  describe('infNFeSupl', () => {
+    it('carries the QR Code v3 and the urlChave, after infNFe', () => {
+      const built = builderOf(NFCE_ANONIMA).build();
+      expect(built.qrCode).toBe(
+        `https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode?p=${built.accessKey}|3|2`,
+      );
+      expect(built.urlChave).toBe(
+        'https://www.homologacao.nfce.fazenda.sp.gov.br/consulta',
+      );
+      expect(built.xml).toContain(
+        `</infNFe><infNFeSupl><qrCode>${built.qrCode}</qrCode><urlChave>${built.urlChave}</urlChave></infNFeSupl></NFe>`,
+      );
+      expect(built.xml).not.toContain('CDATA');
+    });
+
+    it('uses tpAmb 1 in the QR of a live company', () => {
+      const built = builderOf(NFCE_ANONIMA, 'live')
+        .withSupplement({
+          qrCodeBase: 'https://www.nfce.fazenda.sp.gov.br/qrcode',
+          urlChave: 'https://www.nfce.fazenda.sp.gov.br/consulta',
+        })
+        .build();
+      expect(built.qrCode?.endsWith('|3|1')).toBe(true);
+    });
+
+    it('is required for model 65', () => {
+      const base = NfeXmlBuilder.for(
+        buildNfceDraft(NFCE_ANONIMA, issuerFixture(), SETTINGS, 'test'),
+      )
+        .withNumber(1, 10)
+        .withCnf('12345678')
+        .withIssuedAt('2026-11-26T10:00:00-03:00');
+      expect(() => base.build()).toThrow(
+        'NfeXmlBuilder: withSupplement() is required for model 65',
+      );
+    });
+
+    it('signed for real: Signature comes after infNFeSupl and the XSD passes', async () => {
+      const { pfx, password } = makeTestA1({ cnpj: '11222333000181' });
+      const built = builderOf(NFCE_COM_CPF).build();
+      const signed = new SefazXmlSigner().sign(
+        built.xml,
+        built.referenceTag,
+        loadCertificate(pfx, password),
+      );
+      expect(signed.indexOf('</infNFeSupl><Signature')).toBeGreaterThan(0);
+      expect(await schema.validate(signed, 'nfe')).toEqual({ ok: true });
+    });
+
+    it('produces the XML of the fixture, byte for byte', () => {
+      const expected = readFileSync(
+        join(__dirname, '__fixtures__', 'nfce-simples-102.xml'),
+        'utf8',
+      ).trim();
+      expect(builderOf(NFCE_ANONIMA).build().xml).toBe(expected);
+    });
+  });
 });

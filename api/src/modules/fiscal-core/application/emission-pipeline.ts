@@ -29,6 +29,9 @@ export interface BuiltDocument {
   accessKey: string;
   xml: string;
   referenceTag: 'infNFe';
+  /** NFC-e only: the `infNFeSupl` values the XML carries (the DANFCE prints the same). */
+  qrCode?: string;
+  urlChave?: string;
 }
 
 export type SignedDocument = BuiltDocument & { signedXml: string };
