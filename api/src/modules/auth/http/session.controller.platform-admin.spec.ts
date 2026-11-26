@@ -33,9 +33,8 @@ function build(isAdmin: boolean, nfe = false, nfce = false) {
     resolve: jest.fn().mockResolvedValue({ isAdmin, email: 'a@x.com' }),
   };
   const nfeAccess = {
-    isEnabled: jest.fn(
-      (_tenant: string, type: 'nfe' | 'nfce' = 'nfe') =>
-        Promise.resolve(type === 'nfce' ? nfce : nfe),
+    isEnabled: jest.fn((_tenant: string, type: 'nfe' | 'nfce' = 'nfe') =>
+      Promise.resolve(type === 'nfce' ? nfce : nfe),
     ),
   };
   const controller = new SessionController(

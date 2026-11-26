@@ -139,10 +139,7 @@ export type PlatformAuditEvent = {
   id: string;
   actorEmail: string;
   action:
-    | 'credit_grant'
-    | 'user_viewed'
-    | 'nfe_access_changed'
-    | 'nfce_access_set';
+    'credit_grant' | 'user_viewed' | 'nfe_access_changed' | 'nfce_access_set';
   targetTenantId: string | null;
   targetUserId: string | null;
   reason: string | null;
