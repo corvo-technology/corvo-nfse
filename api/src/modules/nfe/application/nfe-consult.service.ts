@@ -46,7 +46,7 @@ const SETTLED: NfeStatus[] = [
 export type SyncMode = 'manual' | 'automatic';
 
 /**
- * Reconciliation by key (`nfe.reconcile` and `POST /v1/nfe/{id}/sync`): asks the SEFAZ what it has
+ * Reconciliation by key (`nfe.reconcile` and `POST /v1/invoices/{id}/sync`): asks the SEFAZ what it has
  * for the key of the document and adopts it. Nothing here renumbers or rebuilds the XML; when the
  * SEFAZ still does not know the key after `uncertainMaxHours`, the SAME signed XML is sent again.
  */

@@ -5,7 +5,7 @@ import { TypeormNfeEvents } from '../infra/typeorm-nfe-events';
 import type { NfeTimelineEntry } from '../http/nfe-event.dto';
 import { nfeNotFound } from './nfe-errors';
 
-/** `GET /v1/nfe/{id}/events`: the states the NF-e went through and its fiscal events, oldest first. */
+/** `GET /v1/invoices/{id}/events`: the states the NF-e went through and its fiscal events, oldest first. */
 @Injectable()
 export class NfeTimelineService {
   constructor(

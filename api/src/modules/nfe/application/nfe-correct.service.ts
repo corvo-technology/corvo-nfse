@@ -27,7 +27,7 @@ export const CORRECTION_MIN = 15;
 export const CORRECTION_MAX = 1000;
 
 /**
- * `POST /v1/nfe/{id}/corrections`. Under the lock of the document row, the next `nSeqEvento` is
+ * `POST /v1/invoices/{id}/corrections`. Under the lock of the document row, the next `nSeqEvento` is
  * `max + 1` of the letters already made (rejected ones included), so two letters sent at the same
  * time never share a number. The signed request is stored as a `pending` event and `nfe.correct`
  * is queued; the NF-e stays `authorized` (a letter does not change its state).

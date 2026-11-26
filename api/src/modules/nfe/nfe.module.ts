@@ -44,11 +44,8 @@ import { NfeTransitionService } from './application/nfe-transition.service';
 import { NfeValidateService } from './application/nfe-validate.service';
 import { INfeDocumentRepository } from './domain/nfe-document.repository';
 import { INfeNumberPreview } from './domain/nfe-number-preview';
-import { NfeFilesController } from './http/nfe-files.controller';
-import { NfeController } from './http/nfe.controller';
-import { NfeInutilizationController } from './http/nfe-inutilization.controller';
+import { NfeInvoiceRoutes } from './http/nfe-invoice.routes';
 import { NfeNumberGapsScheduler } from './jobs/nfe-number-gaps.scheduler';
-import { NfeValidateController } from './http/nfe-validate.controller';
 import { NfeDocumentEventOrmEntity } from './infra/nfe-document-event.orm-entity';
 import { NfeDocumentHistoryOrmEntity } from './infra/nfe-document-history.orm-entity';
 import { NfeDocumentItemOrmEntity } from './infra/nfe-document-item.orm-entity';
@@ -89,14 +86,9 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
       NfeInutilizationOrmEntity,
     ]),
   ],
-  // The inutilization routes come first: `GET /nfe/inutilizations` is not `GET /nfe/:id`.
-  controllers: [
-    NfeValidateController,
-    NfeInutilizationController,
-    NfeController,
-    NfeFilesController,
-  ],
+  // No controllers: `/v1/invoices` serves NF-e through `NfeInvoiceRoutes`, registered in the router.
   providers: [
+    NfeInvoiceRoutes,
     NfePreparation,
     NfeValidateService,
     NfeIntakeService,

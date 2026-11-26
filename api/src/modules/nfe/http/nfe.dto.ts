@@ -246,7 +246,7 @@ export class NfePaymentDto {
   amount!: number;
 }
 
-/** Body of `POST /v1/nfe/validate` (and, later, `POST /v1/nfe`). */
+/** Body of `POST /v1/invoices/validate` (and, later, `POST /v1/invoices` (`type: "nfe"`)). */
 export class NfeRequestDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
