@@ -947,6 +947,14 @@ describe('OpenAPI contract against the real API (e2e)', () => {
   });
 
   describe('nfe issuing', () => {
+    it('GET /invoices?type=nfce answers 404 while NFC-e is not released', async () => {
+      const res = await call('GET /invoices', {
+        query: { type: 'nfce' },
+        status: 404,
+      });
+      expect(res.body.code).toBe('RESOURCE_NOT_FOUND');
+    });
+
     const nfeBody = () => ({
       type: 'nfe',
       companyId,

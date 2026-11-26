@@ -301,7 +301,8 @@ export class CreateInvoiceDto {
   static readonly bypassValidation = (value: unknown): boolean =>
     typeof value === 'object' &&
     value !== null &&
-    (value as { type?: unknown }).type === 'nfe';
+    ((value as { type?: unknown }).type === 'nfe' ||
+      (value as { type?: unknown }).type === 'nfce');
 
   /** Documented on `NfseInvoiceRequest`; the NFS-e is the default, so it can be left out. */
   @ApiHideProperty()
@@ -434,7 +435,7 @@ export class GetDownloadUrlDto {
 class IsStatusOfType implements ValidatorConstraintInterface {
   private allowed(args: ValidationArguments): readonly string[] {
     const type = (args.object as { type?: InvoiceListType }).type;
-    if (type === 'nfe') return NFE_STATUSES;
+    if (type === 'nfe' || type === 'nfce') return NFE_STATUSES;
     if (type === 'all') return [...INVOICE_STATUSES, ...NFE_STATUSES];
     return INVOICE_STATUSES;
   }
@@ -451,7 +452,7 @@ export class ListInvoicesQuery extends CursorQuery {
     enum: INVOICE_LIST_TYPES,
     default: 'nfse',
     description:
-      '`nfse` (default) lists NFS-e. `nfe` lists NF-e (filters: `companyId`, `status`). `all` lists both in one summary shape (`companyId` and `status` only).',
+      '`nfse` (default) lists NFS-e. `nfe` lists NF-e and `nfce` lists NFC-e (filters: `companyId`, `status`). `all` lists every type released for the workspace in one summary shape (`companyId` and `status` only).',
   })
   @IsOptional()
   @IsIn(INVOICE_LIST_TYPES)
