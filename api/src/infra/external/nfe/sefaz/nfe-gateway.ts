@@ -187,8 +187,20 @@ function rejection(
 }
 
 /** The element `name` of an XML text, as written (it keeps inheriting the NF-e namespace of its new parent). */
-function elementXml(xml: string, name: string): string | undefined {
-  return new RegExp(`<${name}\\b[\\s\\S]*?</${name}>`).exec(xml)?.[0];
+export function elementXml(xml: string, name: string): string | undefined {
+  const open = `<${name}`;
+  let from = 0;
+  for (;;) {
+    const start = xml.indexOf(open, from);
+    if (start < 0) return undefined;
+    const after = start + open.length;
+    // a word boundary after the name: `<NFe` must not match `<NFeProc`
+    if (!/\w/.test(xml.charAt(after))) {
+      const end = xml.indexOf(`</${name}>`, after);
+      return end < 0 ? undefined : xml.slice(start, end + name.length + 3);
+    }
+    from = start + 1;
+  }
 }
 
 /** The UF a key belongs to (its first two digits). */

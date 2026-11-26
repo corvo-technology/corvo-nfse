@@ -67,4 +67,12 @@ describe('buildNfeProc', () => {
     expect(() => buildNfeProc('<outra/>', PROT)).toThrow('not an NFe');
     expect(() => buildNfeProc(xml, '<retEnviNFe/>')).toThrow('not a protNFe');
   });
+
+  it('only accepts the element the tag names, anchored on the whole text', () => {
+    expect(() => buildNfeProc(`<NFeProc>${xml}</NFeProc>`, PROT)).toThrow(
+      'not an NFe',
+    );
+    expect(() => buildNfeProc('<NFe>x</NFe>tail', PROT)).toThrow('not an NFe');
+    expect(() => buildNfeProc('<NFe>', PROT)).toThrow('not an NFe');
+  });
 });

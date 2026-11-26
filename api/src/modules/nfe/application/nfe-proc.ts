@@ -5,9 +5,15 @@ const DECLARATION = /^\s*<\?xml[^>]*\?>\s*/;
 /** The text of a single element (`<tag ...>...</tag>`), or `null` when it is not what the XML is. */
 function elementOf(xml: string, tag: string): string | null {
   const text = xml.replace(DECLARATION, '').trim();
-  return new RegExp(`^<${tag}[\\s>][\\s\\S]*</${tag}>$`).test(text)
-    ? text
-    : null;
+  const open = `<${tag}`;
+  const close = `</${tag}>`;
+  const boundary = text.charAt(open.length);
+  const isElement =
+    text.startsWith(open) &&
+    (boundary === '>' || /\s/.test(boundary)) &&
+    text.length >= open.length + 1 + close.length &&
+    text.endsWith(close);
+  return isElement ? text : null;
 }
 
 /**

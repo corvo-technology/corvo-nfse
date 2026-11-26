@@ -7,7 +7,7 @@ export const cfopDestinationValidator: PreSendValidator<NfeDraft> = {
   validate(draft) {
     const first = String(draft.idDest === 1 ? 5 : 6);
     return draft.items.flatMap((item, index) =>
-      new RegExp(`^${first}\\d{3}$`).test(item.cfop)
+      /^\d{4}$/.test(item.cfop) && item.cfop.startsWith(first)
         ? []
         : [
             {

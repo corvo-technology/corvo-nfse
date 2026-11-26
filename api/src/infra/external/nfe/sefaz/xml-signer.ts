@@ -46,9 +46,24 @@ function hasSignature(xml: string): boolean {
   return /<(?:[\w-]+:)?Signature[\s>]/.test(xml);
 }
 
+/** The first opening tag `<tag ...>` of the XML (the name must end at a word boundary). */
+export function openingTag(xml: string, tag: string): string | null {
+  const open = `<${tag}`;
+  let from = 0;
+  for (;;) {
+    const start = xml.indexOf(open, from);
+    if (start < 0) return null;
+    if (!/\w/.test(xml.charAt(start + open.length))) {
+      const end = xml.indexOf('>', start + open.length);
+      return end < 0 ? null : xml.slice(start, end + 1);
+    }
+    from = start + 1;
+  }
+}
+
 function referenceId(xml: string, tag: ReferenceTag): string {
-  const element = new RegExp(`<${tag}\\b[^>]*>`).exec(xml);
-  const id = element ? /\bId="([^"]+)"/.exec(element[0]) : null;
+  const element = openingTag(xml, tag);
+  const id = element ? /\bId="([^"]+)"/.exec(element) : null;
   if (!id) throw new XmlSigningError(`<${tag}> without an Id attribute`);
   return id[1];
 }
