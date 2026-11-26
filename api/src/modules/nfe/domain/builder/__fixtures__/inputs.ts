@@ -94,7 +94,7 @@ export const ALL_FIXTURES: Record<string, NfeInput> = {
 
 const NFCE_BASE: NfceInput = {
   companyId: '00000000-0000-4000-8000-000000000001',
-  items: [{ ...inputFixture().items[0], code: 'SKU1' }],
+  items: [inputFixture().items[0]],
   payments: [{ tPag: '17', amount: 20 }],
 };
 
@@ -106,7 +106,11 @@ export const NFCE_COM_CPF: NfceInput = {
   recipient: { taxId: '123.456.789-09', name: 'Maria da Silva' },
   items: [
     NFCE_BASE.items[0],
-    { ...NFCE_BASE.items[0], code: 'SKU2', description: 'Segundo produto' },
+    {
+      ...NFCE_BASE.items[0],
+      code: `SKU${2}`,
+      description: 'Segundo produto',
+    },
   ],
   payments: [{ tPag: '01', amount: 50 }],
   change: 10,
