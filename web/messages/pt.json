@@ -2122,6 +2122,7 @@
     "idempotency_key_reused": "Essa chave de idempotência já foi usada com outro conteúdo. Use uma chave nova para uma nota nova.",
     "invoice_operation_not_supported": "Essa operação não existe para esse tipo de nota. Por exemplo, carta de correção, descarte e inutilização são só da NF-e.",
     "nfe_invalid_state": "Essa ação não vale para a situação atual da NF-e.",
+    "nfe_download_format_invalid": "Formato de arquivo inválido. Use xml ou pdf.",
     "justification_length": "A justificativa precisa ter de 15 a 255 caracteres.",
     "correction_length": "A correção precisa ter de 15 a 1000 caracteres.",
     "correction_limit_reached": "Essa NF-e já recebeu o máximo de 20 cartas de correção.",
