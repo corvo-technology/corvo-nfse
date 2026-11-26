@@ -522,6 +522,22 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       },
     ],
   },
+  NfceInvoiceRequest: {
+    allOf: [
+      ref('NfceRequest'),
+      {
+        type: 'object',
+        required: ['type'],
+        properties: {
+          type: str({
+            enum: ['nfce'],
+            description:
+              'Selects the NFC-e (model 65, sale to the final consumer) instead of the NFS-e.',
+          }),
+        },
+      },
+    ],
+  },
   InvoiceSummary: obj(
     {
       id: uuid(),

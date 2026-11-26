@@ -5809,6 +5809,16 @@ paths:
         workspace.
 
 
+        **With `type: "nfce"`:** the same dry-run for a NFC-e (model 65, sale to the final consumer,
+        homologation only): the consumer is optional (the CPF or CNPJ is required from the limit of
+        the state, R$ 10.000,00 by default, and for a delivery sale, `indPres` 4), payments may
+        carry the `card` group, and the preview XML has the QR Code (`infNFeSupl`). Besides
+        `NFE_VALIDATION_FAILED`, the issues can be `NFCE_CONSUMER_ID_REQUIRED`,
+        `NFCE_DELIVERY_ADDRESS_REQUIRED`, `NFCE_IND_PRES_INVALID`, `NFCE_CARD_DATA_REQUIRED`,
+        `NFCE_CARD_BRAND_INVALID`, `NFCE_CARD_NOT_ALLOWED`, `NFCE_NO_PAYMENT_AMOUNT` and
+        `NFCE_SCOPE_NOT_SUPPORTED`. Answers 404 while NFC-e is not released for the workspace.
+
+
         Permission: `nfe.documents.issue`.
       operationId: invoices_validate
       parameters:
@@ -5853,7 +5863,7 @@ paths:
           $ref: '#/components/responses/Error500'
       security:
         - ApiKeyAuth: []
-      summary: Validate an NF-e without sending it (dry-run)
+      summary: Validate an NF-e or NFC-e without sending it (dry-run)
       tags:
         - Invoices
       x-required-permissions:

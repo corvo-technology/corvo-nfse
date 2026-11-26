@@ -6,6 +6,8 @@ import * as forge from 'node-forge';
 import { DateTime } from 'luxon';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
+import type { CachePort } from '@/infra/redis/cache.port';
+import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import { SimplesRegistryPort } from '@/modules/company/domain/registry-check';
 import { ImportReaderService } from '@/modules/import/application/import-reader.service';
 import { ImportFileStorage } from '@/modules/import/infra/import-file-storage';
@@ -967,6 +969,59 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         status: 422,
       });
       expect(bad.body.type).toBe('validation');
+    });
+
+    it('POST /invoices/validate with type=nfce answers 200 with { data } and 422 with the issues', async () => {
+      await dataSource.query(
+        `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
+         VALUES ('SP', 65, 2, now(), 'docs/fiscal/nfe-runbook.md') ON CONFLICT DO NOTHING`,
+      );
+      await dataSource.query(
+        `UPDATE "${schema}".tenants SET nfce_enabled_at = NOW() WHERE id = $1`,
+        [tenantId],
+      );
+      await ctx.moduleFixture
+        .get<CachePort>(CACHE_PORT)
+        .delete(`nfce:enabled:${tenantId}`);
+      const nfce = {
+        type: 'nfce',
+        companyId,
+        items: [
+          {
+            code: 'SKU1',
+            description: 'Produto de teste',
+            ncm: '61091000',
+            cfop: '5102',
+            unit: 'UN',
+            quantity: 2,
+            unitPrice: 10,
+          },
+        ],
+        payments: [{ tPag: '17', amount: 20 }],
+      };
+      try {
+        const ok = await call('POST /invoices/validate', {
+          body: nfce,
+          query: { includeXml: 'true' },
+          status: 200,
+        });
+        expect(ok.body.data.valid).toBe(true);
+        expect(ok.body.data.accessKeyPreview.slice(20, 22)).toBe('65');
+        expect(ok.body.data.xml).toContain('<infNFeSupl>');
+        const bad = await call('POST /invoices/validate', {
+          body: { ...nfce, indPres: 4 },
+          status: 422,
+        });
+        expect(bad.body.type).toBe('validation');
+      } finally {
+        await dataSource.query(
+          `UPDATE "${schema}".tenants SET nfce_enabled_at = NULL WHERE id = $1`,
+          [tenantId],
+        );
+        await ctx.moduleFixture
+          .get<CachePort>(CACHE_PORT)
+          .delete(`nfce:enabled:${tenantId}`);
+      }
     });
   });
 

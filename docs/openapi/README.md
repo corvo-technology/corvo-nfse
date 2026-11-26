@@ -99,7 +99,7 @@ Where each part lives:
 | `invoices_sendEmail` | POST | `/invoices/{id}/email` | 0.2.0 | Request invoice email to customer |
 | `invoices_substitute` | POST | `/invoices/{id}/substitute` | 0.3.0 | Substitute an authorized invoice with a corrected one |
 | `invoices_sync` | POST | `/invoices/{id}/sync` | 0.2.0 | Ask the SEFAZ about the NF-e by its key |
-| `invoices_validate` | POST | `/invoices/validate` | 0.2.0 | Validate an NF-e without sending it (dry-run) |
+| `invoices_validate` | POST | `/invoices/validate` | 0.2.0 | Validate an NF-e or NFC-e without sending it (dry-run) |
 | **Companies** | | | | |
 | `accountantPackage_get` | GET | `/companies/{companyId}/accountant-package` | 0.3.0 | Accountant e-mail of the monthly package |
 | `accountantPackage_listSends` | GET | `/companies/{companyId}/accountant-package/sends` | 0.3.0 | Last 12 attempts to send the package to the accountant |

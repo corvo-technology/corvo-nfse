@@ -129,7 +129,12 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     { provide: NFE_SCHEMA_VALIDATOR, useClass: XmllintSchemaValidator },
     { provide: NFE_DANFE_RENDERER, useClass: DanfeRenderer },
   ],
-  exports: [INfeDocumentRepository, TypeormNfeNumbering],
+  exports: [
+    INfeDocumentRepository,
+    INfeNumberPreview,
+    TypeormNfeNumbering,
+    NFE_SCHEMA_VALIDATOR,
+  ],
 })
 export class NfeModule implements OnModuleInit {
   constructor(
