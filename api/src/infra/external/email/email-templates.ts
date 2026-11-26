@@ -240,6 +240,51 @@ export function nfeAuthorizedEmail(input: {
   return input.isTest ? { ...email, subject: `[TESTE] ${subject}` } : email;
 }
 
+/** The e-mail of an authorized NFC-e to the consumer who gave an address: the cupom (DANFCE) and the XML. */
+export function nfceAuthorizedEmail(input: {
+  companyName: string;
+  customerName: string;
+  amount: string;
+  number: string;
+  series: string;
+  issueDate: string;
+  accessKey: string;
+  isTest: boolean;
+}): RenderedEmail {
+  const subject = `Sua NFC-e nº ${input.number} - ${input.companyName}`;
+  const email = emailLayout(
+    subject,
+    [
+      heading('Sua NFC-e está disponível'),
+      paragraph(
+        `${input.customerName ? `Olá, ${input.customerName}!` : 'Olá!'} A empresa ${input.companyName} emitiu uma NFC-e (nota fiscal de consumidor) para você.`,
+      ),
+      details([
+        ['Valor da nota', input.amount],
+        ['Número', input.number],
+        ['Série', input.series],
+        ['Data de emissão', input.issueDate],
+        ['Chave de acesso', input.accessKey],
+      ]),
+      paragraph(
+        'Seguem anexos o cupom (DANFCE) em PDF e o XML da nota. Guarde o XML: ele é o documento fiscal. Este e-mail é apenas informativo, você não precisa fazer nada.',
+      ),
+      ...(input.isTest
+        ? [
+            note(
+              'Nota emitida em ambiente de teste (homologação): não tem valor fiscal.',
+            ),
+          ]
+        : []),
+      note(
+        `Enviado automaticamente em nome de ${input.companyName}. Não responda este e-mail; em caso de dúvidas, entre em contato diretamente com o emissor da nota.`,
+      ),
+    ],
+    { logo: false },
+  );
+  return input.isTest ? { ...email, subject: `[TESTE] ${subject}` } : email;
+}
+
 export function creditsAddedEmail(input: {
   units: number;
   billingUrl: string;

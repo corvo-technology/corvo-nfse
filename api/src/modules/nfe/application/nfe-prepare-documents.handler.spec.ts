@@ -41,6 +41,7 @@ function build(options: { doc?: NfeDocument | null } = {}) {
     inutilizations as never,
     { touch: jest.fn() } as never,
     { publish: jest.fn() } as never,
+    { type: 'nfce', render: jest.fn() } as never,
   );
   return { handler, storage, documents, inutilizations };
 }
@@ -50,6 +51,7 @@ describe('NfePrepareDocumentsHandler', () => {
     const registry = { register: jest.fn() };
     const handler = new NfePrepareDocumentsHandler(
       registry as never,
+      {} as never,
       {} as never,
       {} as never,
       {} as never,

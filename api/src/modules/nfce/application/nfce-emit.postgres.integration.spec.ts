@@ -169,27 +169,6 @@ describePostgres('NFC-e emission on PostgreSQL (simulated SEFAZ)', () => {
     expect(String(second.qr_code)).toContain(String(second.access_key));
   });
 
-  it('stores the nfeProc only (no DANFE, no e-mail yet) and says documents_ready as nfce', async () => {
-    const accepted = await s.nfceIntake.submit(
-      h.tenantId,
-      'test',
-      s.nfceInput('FAKE-100', 'test', {
-        recipient: { taxId: '123.456.789-09', email: 'maria@example.com' },
-      }),
-      'nfce-docs-1',
-    );
-    await s.emit.process(accepted.id, h.tenantId, 'test');
-    await s.dispatch('nfe.prepare_documents', accepted.id);
-    const keys = [...s.objects.keys()].filter((k) => k.includes(accepted.id));
-    expect(keys.some((k) => k.endsWith('nfe-proc.xml'))).toBe(true);
-    expect(keys.some((k) => k.endsWith('danfe.pdf'))).toBe(false);
-    expect(await s.messages('nfe.send_email', accepted.id)).toHaveLength(0);
-    expect(s.deliveries.at(-1)).toMatchObject({
-      eventType: 'nfce.document.documents_ready',
-      data: { documentType: 'nfce', emailRequested: false },
-    });
-  });
-
   it('a live NFC-e reserves one credit as nfce, confirms it on authorization and gives it back when rejected', async () => {
     const live = createNfeStack(h, { production: true });
     const credits = async (id: string) => {

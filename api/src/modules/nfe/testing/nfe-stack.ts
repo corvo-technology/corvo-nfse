@@ -46,6 +46,8 @@ import { NfeEmailService } from '../application/nfe-email.service';
 import { NfePrepareDocumentsHandler } from '../application/nfe-prepare-documents.handler';
 import { NfeSendEmailHandler } from '../application/nfe-send-email.handler';
 import { DanfeRenderer } from '../infra/danfe/danfe-renderer';
+import { DanfceRenderer } from '@/modules/nfce/infra/danfce/danfce-renderer';
+import { NfeFilesService } from '../application/nfe-files.service';
 import { NfeEventContext } from '../application/nfe-event-context';
 import { NfeEventOutcomeService } from '../application/nfe-event-outcome.service';
 import { NfeEventReconcile } from '../application/nfe-event-reconcile';
@@ -427,6 +429,7 @@ export function createNfeStack(
     s3 as unknown as S3Client,
   );
   const renderer = new DanfeRenderer();
+  const danfceRenderer = new DanfceRenderer();
   const prepareHandler = new NfePrepareDocumentsHandler(
     handlers,
     documents,
@@ -436,7 +439,9 @@ export function createNfeStack(
     inutilizations,
     transitions,
     publisher,
+    danfceRenderer,
   );
+  const files = new NfeFilesService(documents, storage, danfceRenderer);
   const mailer = { send: jest.fn().mockResolvedValue({ id: 'mail-1' }) };
   const emailService = new NfeEmailService(
     documents,
@@ -623,6 +628,7 @@ export function createNfeStack(
     deliveries,
     /** The files of the in-memory storage, by S3 key. */
     objects,
+    files,
     storage,
     renderer,
     prepareHandler,

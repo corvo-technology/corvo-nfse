@@ -19,8 +19,8 @@ import {
 } from '../domain/nfe-message-types';
 import { TypeormNfeEvents } from '../infra/typeorm-nfe-events';
 import { TypeormNfeInutilizations } from '../infra/typeorm-nfe-inutilizations';
-import { NFE_DANFE_RENDERER } from '../nfe.tokens';
-import { DANFE_FILE, NFE_PROC_FILE } from './nfe-files';
+import { NFCE_DANFCE_RENDERER, NFE_DANFE_RENDERER } from '../nfe.tokens';
+import { DANFCE_FILE, DANFE_FILE, NFE_PROC_FILE } from './nfe-files';
 import { sendEmailMessage } from './nfe-messages';
 import { buildNfeProc } from './nfe-proc';
 import { keyOf } from './nfe-outcome.service';
@@ -42,8 +42,8 @@ const PREPARABLE = new Set(['authorized', 'cancelling', 'cancelled']);
  * stores the XML of the events the SEFAZ registered and of the inutilizations it approved. A
  * cancellation redoes the DANFE with the CANCELADA mark.
  *
- * A NFC-e (model 65) gets its `nfeProc` only: its DANFCE and the e-mail come with the DANFCE
- * (NFC-e 4/5), so for now `documents_ready` means the XML is stored and no e-mail is queued.
+ * A NFC-e (model 65) gets its DANFCE (`danfce.pdf`, the 80 mm cupom) instead of the DANFE, and the
+ * e-mail goes only when the consumer gave an address.
  *
  * Safe to run again: the files are the same bytes, the "ready" mark is first-write-wins and the
  * e-mail has its own dedupe key. The XML never goes to a log.
@@ -63,6 +63,7 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
     private readonly inutilizations: TypeormNfeInutilizations,
     private readonly transitions: NfeTransitionService,
     private readonly webhooks: FiscalWebhookPublisher,
+    @Inject(NFCE_DANFCE_RENDERER) private readonly danfce: DocumentRenderer,
   ) {}
 
   onModuleInit(): void {
@@ -118,12 +119,11 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
         XML,
       );
     const cancelled = s.status === 'cancelled';
-    const drawsDanfe = s.model === 55;
-    if (drawsDanfe) await this.ensureDanfe(ref, doc, cancelled);
+    await this.ensureDanfe(ref, doc, cancelled);
     await this.storeEvents(ref, doc);
 
     // A cancellation that landed while the DANFE was being drawn: draw it again, with the mark.
-    if (!cancelled && drawsDanfe) {
+    if (!cancelled) {
       const now = await this.documents.findById(
         doc.id,
         doc.tenantId,
@@ -134,20 +134,25 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
     if (!s.documentsReadyAt) await this.markReady(doc);
   }
 
-  /** Draws the DANFE when there is none yet, or again when the NF-e is cancelled (the mark). */
+  /**
+   * Draws the DANFE (NF-e) or the DANFCE (NFC-e) when there is none yet, or again when the document
+   * is cancelled (the mark).
+   */
   private async ensureDanfe(
     ref: StorageRef,
     doc: NfeDocument,
     cancelled: boolean,
   ): Promise<void> {
-    if (!cancelled && (await this.storage.fileExists(ref, DANFE_FILE))) return;
     const s = doc.toSnapshot();
+    const file = s.model === 65 ? DANFCE_FILE : DANFE_FILE;
+    if (!cancelled && (await this.storage.fileExists(ref, file))) return;
     const xml = buildNfeProc(s.signedXml!, s.protNfeXml!);
-    const pdf = await this.danfe.render(xml, {
+    const renderer = s.model === 65 ? this.danfce : this.danfe;
+    const pdf = await renderer.render(xml, {
       homologation: doc.environment === 'test',
       cancelled,
     });
-    await this.storage.saveFile(ref, DANFE_FILE, pdf, PDF);
+    await this.storage.saveFile(ref, file, pdf, PDF);
   }
 
   /** The XML of each registered event (cancellation, correction letter) goes to its own file. */
@@ -186,10 +191,7 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
   private async markReady(doc: NfeDocument): Promise<void> {
     const s = doc.toSnapshot();
     const emailWanted =
-      s.model === 55 &&
-      s.status === 'authorized' &&
-      s.sendEmail &&
-      Boolean(s.recipient?.email);
+      s.status === 'authorized' && s.sendEmail && Boolean(s.recipient?.email);
     let won = false;
     const stored = await this.transitions.touch(keyOf(doc), {
       change: (locked) => {
