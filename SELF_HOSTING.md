@@ -76,6 +76,7 @@ Edit `deploy/.env` using [the production example](deploy/.env.example).
 | `EMAIL_FROM` | Sender authorized by the email provider. |
 | `DEPLOYMENT_MODE` | `self_hosted` (written by setup) turns billing, credits and plan limits off, so `STRIPE_*` is not needed. `cloud` is the paid service; going back to `cloud` is not supported. |
 | `PLATFORM_ADMIN_EMAILS` | Comma-separated, lowercase e-mails that become platform admins; empty = nobody. The e-mail must be verified. In self-hosted mode the credit grant does not exist. |
+| `OPS_ALERT_EMAILS` | Comma-separated e-mails of the operator. Every minute the worker tests the connection to the government NFS-e hosts and e-mails these addresses when the servers cannot reach them (and again when it is back). Empty = nobody is e-mailed. Turn the test off with `PORTAL_PROBE_ENABLED=false`. |
 | `STRIPE_SECRET_KEY` | Only in `cloud` mode: Stripe secret key. |
 | `STRIPE_PLATFORM_WEBHOOK_SECRET` | Only in `cloud` mode: signing secret for your Stripe webhook. |
 

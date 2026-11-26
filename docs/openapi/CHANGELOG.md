@@ -4,6 +4,10 @@ What changed in the public API since **2026-10-26** (version `0.2.0` of the SDKs
 
 Built from `git log --since=2026-10-26` and the diff of the controllers and DTOs against commit `0543600` (the last one of 2026-10-26).
 
+## Unreleased
+
+- `GET /fiscal-portal/status` answers a new field, `connection` (`state`, `since`, `ourSide`): what the connection tests see (`ok`, `portal_down`, `gov_unreachable_from_us`, `no_internet`, `emission_failures`). Additive; invoices wait in the queue in every state.
+
 ## 0.3.0 (2026-11-24)
 
 ### Breaking changes

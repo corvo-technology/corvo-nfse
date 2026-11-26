@@ -32,6 +32,7 @@ import {
 } from '@/infra/storage/domain/document-storage';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import { FiscalPortalBreaker } from './fiscal-portal-breaker';
+import { failureMessage } from '@/infra/external/nfse/connection-failure';
 import {
   DpsNumberingService,
   NumberingCheckUnavailableError,
@@ -325,7 +326,7 @@ export class NfseWorkflowService {
         reason: safeReason(error instanceof Error ? error.message : undefined),
       });
       invoice.setReconciliationRequired(
-        error instanceof Error ? error.message : 'Uncertain fiscal result',
+        failureMessage(error, 'Uncertain fiscal result'),
       );
       // An uncertain network result must retain the reservation and original DPS.
       if (invoice.status === 'processing')

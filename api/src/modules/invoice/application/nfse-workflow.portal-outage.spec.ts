@@ -205,6 +205,22 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
     });
   });
 
+  it('stores "Sem conexão com o portal do governo" when the connection could not be opened', async () => {
+    const invoice = invoiceIn('queued');
+    provider.issue.mockRejectedValue(
+      Object.assign(new Error('Requisição excedeu 60000ms.'), {
+        name: 'TimeoutError',
+        cause: { name: 'ConnectTimeoutError', code: 'UND_ERR_CONNECT_TIMEOUT' },
+      }),
+    );
+
+    await run(invoice);
+
+    expect(invoice.toSnapshot().lastErrorMessage).toBe(
+      'Sem conexão com o portal do governo',
+    );
+  });
+
   it('keeps the first uncertain time across follow-ups', async () => {
     const invoice = invoiceIn('reconciliation_required');
     provider.issue.mockResolvedValue({

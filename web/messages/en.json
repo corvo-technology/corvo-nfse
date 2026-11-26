@@ -3488,7 +3488,9 @@
   "PortalStatus": {
     "title": "The national NFS-e portal is not answering.",
     "titleSince": "The national NFS-e portal has not answered since {time}.",
-    "body": "Your invoices are kept in the queue and will be sent as soon as it is back. Nothing needs to be redone."
+    "body": "Your invoices are kept in the queue and will be sent as soon as it is back. Nothing needs to be redone.",
+    "ourSideTitle": "We are having trouble reaching the government.",
+    "ourSideBody": "Your invoices stay in the queue and go out by themselves as soon as the connection is back."
   },
   "Customers": {
     "title": "Customers",

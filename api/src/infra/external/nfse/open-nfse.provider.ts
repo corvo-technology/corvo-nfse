@@ -46,6 +46,7 @@ import type {
 } from './nfse-fiscal-provider';
 import { issueParams, type SefinEnvironment } from './issue-params';
 import { explainRejection, rejectionCode } from './rejection-guidance';
+import { failureMessage } from './connection-failure';
 
 const CANCELLATION_REASON: Record<
   FiscalCancellationReason,
@@ -237,7 +238,7 @@ export class OpenNfseProvider
           status: 'pending',
           errorMessage:
             replayed?.status === 'still_pending'
-              ? replayed.error.message
+              ? failureMessage(replayed.error)
               : 'Awaiting fiscal retry window',
         };
       }
@@ -252,7 +253,7 @@ export class OpenNfseProvider
       });
       return result.status === 'ok'
         ? { status: 'cancelled' }
-        : { status: 'pending', errorMessage: result.error.message };
+        : { status: 'pending', errorMessage: failureMessage(result.error) };
     } catch (error) {
       if (
         error instanceof ReceitaRejectionError ||
@@ -366,7 +367,7 @@ export class OpenNfseProvider
         requiresReconciliation: true,
         errorMessage:
           replayed?.status === 'still_pending'
-            ? replayed.error.message
+            ? failureMessage(replayed.error)
             : 'Awaiting fiscal retry window',
       };
     } catch (error) {
