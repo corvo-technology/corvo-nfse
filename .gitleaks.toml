@@ -16,4 +16,5 @@ paths = [
   '''api/src/modules/auth/application/api-key\.service\.spec\.ts''',
   '''api/src/modules/integrations/connectors/woovi/woovi\.connector\.spec\.ts''',
   '''api/src/modules/integrations/connectors/abacatepay/abacatepay\.connector\.spec\.ts''',
+  '''api/src/modules/integrations/connectors/pushinpay/pushinpay\.(connector|flow\.postgres\.integration)\.spec\.ts''',
 ]
