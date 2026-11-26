@@ -194,7 +194,7 @@ paths:
         503 `CNPJ_LOOKUP_UNAVAILABLE` when it has no answer right now. 20 requests per minute.
 
 
-        Permission: `nfse.companies.manage` or `nfse.invoices.issue`.
+        Permission: `nfse.companies.manage` or `nfse.invoices.issue` or `nfe.documents.issue`.
       operationId: cnpj_lookup
       parameters:
         - description: The CNPJ, with or without punctuation (`12345678000195` or `12.345.678/0001-95`).
@@ -242,6 +242,7 @@ paths:
       x-required-permissions:
         - nfse.companies.manage
         - nfse.invoices.issue
+        - nfe.documents.issue
   /companies:
     get:
       description: >-
@@ -2534,7 +2535,7 @@ paths:
       description: |-
         A customer saved from an accepted invoice, found by CPF or CNPJ (digits).
 
-        Permission: `nfse.invoices.view`.
+        Permission: `nfse.invoices.view` or `nfe.documents.issue`.
       operationId: customers_get
       parameters:
         - description: CPF (11 digits) or CNPJ (14 digits) of the customer, digits only.
@@ -2582,6 +2583,7 @@ paths:
         - Customers
       x-required-permissions:
         - nfse.invoices.view
+        - nfe.documents.issue
     patch:
       description: >-
         Corrects the name or e-mail of a saved customer. Send `email: null` to clear it. Issued
@@ -11643,7 +11645,9 @@ components:
     UpdateCompanyNfeSettings:
       properties:
         crt:
-          description: 'Tax regime code (CRT): 1 Simples Nacional, 4 Simples Nacional MEI.'
+          description: >-
+            Tax regime code (CRT). Leave it out: it follows the tax regime of the company (Simples
+            Nacional is 1, MEI is 4). Only send it to override.
           enum:
             - 1
             - 4
@@ -11697,7 +11701,6 @@ components:
           type: string
       required:
         - stateRegistration
-        - crt
       type: object
     UpdateCredentials:
       properties:

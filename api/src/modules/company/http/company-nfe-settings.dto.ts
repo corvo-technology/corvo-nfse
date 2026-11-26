@@ -22,13 +22,14 @@ export class UpdateCompanyNfeSettingsDto {
   @MaxLength(18)
   stateRegistration!: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     enum: [1, 4],
     description:
-      'Tax regime code (CRT): 1 Simples Nacional, 4 Simples Nacional MEI.',
+      'Tax regime code (CRT). Leave it out: it follows the tax regime of the company (Simples Nacional is 1, MEI is 4). Only send it to override.',
   })
+  @IsOptional()
   @IsIn([1, 4])
-  crt!: 1 | 4;
+  crt?: 1 | 4;
 
   @ApiPropertyOptional({
     minimum: 0,

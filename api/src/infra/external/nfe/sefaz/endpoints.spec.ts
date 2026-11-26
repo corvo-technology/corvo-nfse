@@ -1,10 +1,19 @@
-import type { Uf } from '@/modules/fiscal-core/domain/ports/authority.port';
+import type {
+  AuthorityId,
+  SefazService,
+  Uf,
+} from '@/modules/fiscal-core/domain/ports/authority.port';
 import {
   AuthorityNotConfiguredError,
   ENDPOINTS,
   TableAuthorityEndpointResolver,
 } from './endpoints';
-import { dhEmiFor, UF_TABLE } from './uf';
+import {
+  dhEmiFor,
+  SVC_AUTHORITY_BY_UF,
+  SVC_URL_AUTHORITY,
+  UF_TABLE,
+} from './uf';
 
 describe('UF_TABLE', () => {
   it('has the 27 UFs with unique IBGE codes', () => {
@@ -21,22 +30,109 @@ describe('UF_TABLE', () => {
   });
 });
 
+const SERVICES: SefazService[] = [
+  'NfeAutorizacao',
+  'NfeRetAutorizacao',
+  'NfeConsultaProtocolo',
+  'NfeStatusServico',
+  'RecepcaoEvento',
+  'NfeInutilizacao',
+];
+const OWN: AuthorityId[] = [
+  'AM',
+  'BA',
+  'GO',
+  'MG',
+  'MS',
+  'MT',
+  'PE',
+  'PR',
+  'RS',
+  'SP',
+];
+
 describe('ENDPOINTS', () => {
-  it('uses https everywhere and only SP and SVRS', () => {
-    for (const e of ENDPOINTS) expect(e.url.startsWith('https://')).toBe(true);
+  it('uses https everywhere, with well-formed URLs and no unexpected authority', () => {
+    for (const e of ENDPOINTS) {
+      expect(e.url).toMatch(/^https:\/\/[a-z0-9.-]+\/\S+$/i);
+      expect(() => new URL(e.url)).not.toThrow();
+    }
     expect(new Set(ENDPOINTS.map((e) => e.authority))).toEqual(
-      new Set(['SP', 'SVRS']),
+      new Set([...OWN, 'SVAN', 'SVRS']),
     );
   });
 
-  it('has the six services for each environment', () => {
-    for (const authority of ['SP', 'SVRS'])
+  it('has the six services for each authority and environment, once each', () => {
+    const authorities = new Set(ENDPOINTS.map((e) => e.authority));
+    for (const authority of authorities)
       for (const tpAmb of [1, 2])
         expect(
           ENDPOINTS.filter(
             (e) => e.authority === authority && e.tpAmb === tpAmb,
-          ),
-        ).toHaveLength(6);
+          )
+            .map((e) => e.service)
+            .sort(),
+        ).toEqual([...SERVICES].sort());
+  });
+
+  it('has no duplicate URL inside an environment', () => {
+    for (const tpAmb of [1, 2]) {
+      const urls = ENDPOINTS.filter((e) => e.tpAmb === tpAmb).map((e) => e.url);
+      expect(new Set(urls).size).toBe(urls.length);
+    }
+  });
+
+  it('keeps homologação and produção on different URLs', () => {
+    const hom = new Set(
+      ENDPOINTS.filter((e) => e.tpAmb === 2).map((e) => e.url),
+    );
+    for (const e of ENDPOINTS.filter((e) => e.tpAmb === 1))
+      expect(hom.has(e.url)).toBe(false);
+  });
+});
+
+describe('every UF', () => {
+  const resolver = new TableAuthorityEndpointResolver();
+  it.each(Object.keys(UF_TABLE) as Uf[])(
+    '%s resolves all services in both environments',
+    (uf) => {
+      for (const tpAmb of [1, 2] as const)
+        for (const service of SERVICES) {
+          const r = resolver.resolve({
+            uf,
+            tpAmb,
+            model: 55,
+            tpEmis: 1,
+            service,
+          });
+          expect(r.authority).toBe(UF_TABLE[uf].authorizer55);
+          expect(r.url.startsWith('https://')).toBe(true);
+          expect(r.soapAction).toContain('/wsdl/');
+        }
+    },
+  );
+
+  it('maps own-SEFAZ, SVAN and SVRS UFs', () => {
+    for (const uf of OWN as string[])
+      expect(UF_TABLE[uf as Uf].authorizer55).toBe(uf);
+    expect(
+      Object.keys(UF_TABLE).filter(
+        (u) => UF_TABLE[u as Uf].authorizer55 === 'SVAN',
+      ),
+    ).toEqual(['MA']);
+    expect(
+      Object.keys(UF_TABLE).filter(
+        (u) => UF_TABLE[u as Uf].authorizer55 === 'SVRS',
+      ),
+    ).toHaveLength(16);
+  });
+
+  it('has a contingency authority for every UF, with the same URLs as SVAN/SVRS', () => {
+    for (const uf of Object.keys(UF_TABLE) as Uf[])
+      expect(['SVC-AN', 'SVC-RS']).toContain(SVC_AUTHORITY_BY_UF[uf]);
+    expect(SVC_AUTHORITY_BY_UF.MA).toBe('SVC-AN');
+    expect(SVC_AUTHORITY_BY_UF.SP).toBe('SVC-RS');
+    expect(SVC_URL_AUTHORITY).toEqual({ 'SVC-AN': 'SVAN', 'SVC-RS': 'SVRS' });
   });
 });
 
@@ -66,9 +162,13 @@ describe('TableAuthorityEndpointResolver', () => {
     expect(r.authority).toBe('SVRS');
   });
 
-  it('throws for a UF without a row', () => {
+  it('throws when the table has no row', () => {
     expect(() =>
-      resolver.resolve({ ...base, uf: 'MG', service: 'NfeStatusServico' }),
+      new TableAuthorityEndpointResolver([]).resolve({
+        ...base,
+        uf: 'MG',
+        service: 'NfeStatusServico',
+      }),
     ).toThrow(AuthorityNotConfiguredError);
   });
 

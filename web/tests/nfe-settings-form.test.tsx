@@ -27,7 +27,7 @@ describe("NfeSettingsForm", () => {
     renderForm();
     await screen.findByText("This is still missing to issue NF-e:");
     expect(screen.getByText("State registration (IE)", { selector: "li" })).toBeTruthy();
-    expect(screen.getByText("Tax regime", { selector: "li" })).toBeTruthy();
+    expect(screen.getByText("The company's tax regime (Simples Nacional or MEI)", { selector: "li" })).toBeTruthy();
   });
 
   it("says the company is ready when nothing is missing", async () => {
@@ -37,14 +37,37 @@ describe("NfeSettingsForm", () => {
     expect((screen.getByLabelText(/State registration \(IE\)/) as HTMLInputElement).value).toBe("110042490114");
   });
 
-  it("saves the IE and the regime the person typed", async () => {
+  it("does not ask for the regime: it shows the one of the company, read only, with a link to change it", async () => {
+    mocks.get.mockResolvedValue(settings({ crt: 1, taxRegime: "Simples Nacional", missing: ["state_registration"] }));
+    renderForm();
+    await screen.findByText("This is still missing to issue NF-e:");
+    const regime = screen.getByTestId("nfe-regime");
+    expect(regime.textContent).toContain("Simples Nacional");
+    expect(regime.querySelector("select, input")).toBeNull();
+    expect(regime.querySelector("a")?.getAttribute("href")).toBe("/app/companies/c1#fiscal");
+    expect(screen.queryByText(/only for Simples Nacional and MEI/)).toBeNull();
+  });
+
+  it("shows MEI, and says NF-e is not available for another regime", async () => {
+    mocks.get.mockResolvedValue(settings({ crt: 4, taxRegime: "MEI", missing: [] }));
+    const first = renderForm();
+    await screen.findByText("All set: the company can issue NF-e.");
+    expect(screen.getByTestId("nfe-regime").textContent).toContain("MEI");
+    first.unmount();
+    mocks.get.mockResolvedValue(settings({ crt: null, taxRegime: "Lucro Presumido", missing: ["crt"] }));
+    renderForm();
+    await screen.findByText(/NF-e is only for Simples Nacional and MEI for now/);
+  });
+
+  it("saves the IE without sending any regime, and shows an example as the placeholder", async () => {
     mocks.update.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [] }));
     renderForm();
     await screen.findByText("This is still missing to issue NF-e:");
     fireEvent.change(screen.getByLabelText(/State registration \(IE\)/), { target: { value: "110042490114" } });
-    fireEvent.change(screen.getByLabelText(/Tax regime/), { target: { value: "1" } });
+    expect((screen.getByLabelText(/State registration \(IE\)/) as HTMLInputElement).placeholder).toMatch(/^e\.g\. /);
     fireEvent.click(screen.getByRole("button", { name: "Save NF-e data" }));
-    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith("c1", expect.objectContaining({ stateRegistration: "110042490114", crt: 1, defaultSeries: 1, defaultCsosn: "102" })));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith("c1", expect.objectContaining({ stateRegistration: "110042490114", defaultSeries: 1, defaultCsosn: "102" })));
+    expect(mocks.update.mock.calls[0][1]).not.toHaveProperty("crt");
     await screen.findByText("NF-e data saved.");
   });
 
@@ -53,7 +76,6 @@ describe("NfeSettingsForm", () => {
     renderForm();
     await screen.findByText("This is still missing to issue NF-e:");
     fireEvent.change(screen.getByLabelText(/State registration \(IE\)/), { target: { value: "123456789" } });
-    fireEvent.change(screen.getByLabelText(/Tax regime/), { target: { value: "1" } });
     fireEvent.click(screen.getByRole("button", { name: "Save NF-e data" }));
     const field = await screen.findByText(messages.ApiErrors.state_registration_invalid);
     expect(field.id).toMatch(/-err$/);

@@ -149,7 +149,7 @@ class NfeGapsInput {
 
 class NfeSettingsUpdateInput extends CompanyInput {
   @IsString() @MinLength(8) @MaxLength(18) state_registration!: string;
-  @IsIn([1, 4]) crt!: 1 | 4;
+  @IsOptional() @IsIn([1, 4]) crt?: 1 | 4;
   @IsOptional() @IsInt() @Min(0) @Max(999) default_series?: number;
   @IsOptional()
   @IsString()
@@ -431,7 +431,7 @@ export const NFE_SETTINGS_GET_TOOL = {
 export const NFE_SETTINGS_UPDATE_TOOL = {
   name: 'nfe_settings_update',
   description:
-    'Set the NF-e settings of a company: state registration (IE, validated for the state of the company) and CRT (1 Simples Nacional, 4 Simples Nacional MEI), plus optional defaults. Returns the settings and what is still missing.',
+    'Set the NF-e settings of a company: state registration (IE, validated for the state of the company) plus optional defaults. The CRT follows the tax regime of the company (Simples Nacional 1, MEI 4); send `crt` only to override it. Returns the settings and what is still missing.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -443,7 +443,7 @@ export const NFE_SETTINGS_UPDATE_TOOL = {
       default_csosn: { type: 'string', enum: ['102', '400'] },
       default_origin: { type: 'number', minimum: 0, maximum: 8 },
     },
-    required: ['company_id', 'state_registration', 'crt'],
+    required: ['company_id', 'state_registration'],
   },
 } as const;
 
