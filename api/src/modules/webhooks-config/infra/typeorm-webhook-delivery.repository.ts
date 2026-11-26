@@ -29,6 +29,7 @@ export class TypeormWebhookDeliveryRepository implements IWebhookDeliveryReposit
         options.environment ?? null,
         options.hours ?? 24,
         options.invoice_id ?? null,
+        options.document_id ?? null,
         options.event_type ?? null,
         options.status ?? null,
       ];
@@ -48,6 +49,10 @@ export class TypeormWebhookDeliveryRepository implements IWebhookDeliveryReposit
       if (options.invoice_id)
         query.andWhere('delivery.invoice_id = :invoiceId', {
           invoiceId: options.invoice_id,
+        });
+      if (options.document_id)
+        query.andWhere('delivery.document_id = :documentId', {
+          documentId: options.document_id,
         });
       if (options.event_type)
         query.andWhere('delivery.event_type = :eventType', {
@@ -105,6 +110,7 @@ export class TypeormWebhookDeliveryRepository implements IWebhookDeliveryReposit
       tenantId: entity.tenantId,
       webhookConfigId: entity.webhookConfigId,
       invoiceId: entity.invoiceId ?? undefined,
+      documentId: entity.documentId ?? undefined,
       eventType: entity.eventType,
       environment: entity.environment as WebhookDelivery['environment'],
       url: entity.url,
@@ -160,6 +166,7 @@ export class TypeormWebhookDeliveryRepository implements IWebhookDeliveryReposit
         tenantId: delivery.tenantId,
         webhookConfigId: delivery.webhookConfigId,
         invoiceId: delivery.invoiceId ?? null,
+        documentId: delivery.documentId ?? null,
         eventType: delivery.eventType,
         environment: delivery.environment,
         url: delivery.url,

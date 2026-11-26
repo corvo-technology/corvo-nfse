@@ -65,6 +65,13 @@ const DELIVERY_FILTERS: Schema[] = [
     schema: { type: 'string', format: 'uuid' },
   },
   {
+    name: 'document_id',
+    in: 'query',
+    required: false,
+    description: 'Only deliveries about this NF-e.',
+    schema: { type: 'string', format: 'uuid' },
+  },
+  {
     name: 'event_type',
     in: 'query',
     required: false,
@@ -786,7 +793,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'webhookDeliveries_list',
     tag: 'Webhooks',
     description:
-      'Recent deliveries (last 24 hours by default, up to 30 days with `hours`) with the endpoint answer, newest first. Filter by `invoice_id`, `event_type` or `status`.',
+      'Recent deliveries (last 24 hours by default, up to 30 days with `hours`) with the endpoint answer, newest first. Filter by `invoice_id` (NFS-e), `document_id` (NF-e), `event_type` or `status`.',
     ok: { 200: page(ref('WebhookDelivery')) },
     extraParams: [...DELIVERY_PARAMS, ...DELIVERY_FILTERS],
   },

@@ -50,13 +50,26 @@ describe('WebhookEvent Types', () => {
     });
 
     it('includes the twelve supported NFS-e event types', () => {
-      expect(PUBLIC_WEBHOOK_EVENT_TYPES).toHaveLength(12);
+      expect(
+        PUBLIC_WEBHOOK_EVENT_TYPES.filter((type) => type.startsWith('nfse.')),
+      ).toHaveLength(12);
     });
 
     it('all NFS-e event types follow the nfse.invoice.* pattern', () => {
-      for (const eventType of PUBLIC_WEBHOOK_EVENT_TYPES) {
+      for (const eventType of PUBLIC_WEBHOOK_EVENT_TYPES.filter((type) =>
+        type.startsWith('nfse.'),
+      )) {
         expect(eventType).toMatch(/^nfse\.invoice\./);
       }
+    });
+
+    it('the NF-e events are only an addition: nfe.document.* and nfe.inutilization.*', () => {
+      const nfe = PUBLIC_WEBHOOK_EVENT_TYPES.filter((type) =>
+        type.startsWith('nfe.'),
+      );
+      expect(nfe).toHaveLength(14);
+      for (const eventType of nfe)
+        expect(eventType).toMatch(/^nfe\.(document|inutilization)\./);
     });
   });
 
