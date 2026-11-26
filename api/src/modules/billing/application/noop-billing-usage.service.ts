@@ -58,4 +58,8 @@ export class NoopBillingUsageService extends BillingUsageService {
   override settle(): Promise<void> {
     return Promise.resolve();
   }
+
+  override settleDocument(): Promise<void> {
+    return Promise.resolve();
+  }
 }
