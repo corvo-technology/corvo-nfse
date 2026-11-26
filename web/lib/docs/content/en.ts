@@ -2836,6 +2836,21 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Refunds: also select `checkout.refunded` and `transparent.refunded` in the webhook. Without automatic cancellation, a refund or dispute after the invoice opens the `refund_after_invoice` pendency and the invoice is not cancelled.",
           ],
         },
+        { kind: "heading", level: 3, body: "Stripe" },
+        {
+          kind: "list",
+          items: [
+            "Credentials: `apiKey`, a restricted key (`rk_...`) with read-only access to Charges, Customers, Checkout Sessions and Invoices, and `webhookSigningSecret`, the endpoint `whsec_...`. Corvo generates the `webhookSecret` and shows the full webhook URL when you create the connection. Copy and save that address.",
+            "Steps: (1) in Developers > API keys, create the read-only restricted key; (2) in Developers > Webhooks, add an endpoint with the `webhookUrl` and the events `charge.succeeded`, `charge.refunded` and `charge.dispute.created`; (3) copy the endpoint `whsec_...` and paste it in Corvo.",
+            "Corvo checks the `Stripe-Signature` header (HMAC-SHA256, 5-minute tolerance) and the connection secret in the address.",
+            "Each paid Charge becomes one invoice, identified by `stripe_charge:<id>`. Only `charge.succeeded` with `status` `succeeded` and `paid` true issues; Pix and boleto still pending are ignored. It works with Checkout, Payment Links, subscriptions and Pix on Stripe.",
+            "BRL only: a charge in another currency is blocked with `unsupported_currency`.",
+            "The event `livemode` must match the connection environment: test events issue no invoice on a `live` connection, and the other way around.",
+            "The CPF/CNPJ comes from the customer (`tax_ids` `br_cpf` or `br_cnpj`) or from Checkout (`customer_details.tax_ids`). Turn on tax ID collection (`tax_id_collection`) in Checkout so the invoice goes out complete. Without a document, the sale stays pending (`customer_tax_id_missing`), or is issued without a customer if the rule has `allowAnonymousCustomer`.",
+            "The service description on the invoice is the name of the Checkout or invoice items (up to 5); without them, the rule description or the company default is used.",
+            "Refunds: only a full refund (`charge.refunded` with `refunded` true) is handled; a partial refund is ignored and the invoice stays as it is. A dispute (`charge.dispute.created`) only flags the sale, without cancelling.",
+          ],
+        },
         { kind: "heading", level: 2, body: "Sales that need attention" },
         {
           kind: "text",

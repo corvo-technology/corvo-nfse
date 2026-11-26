@@ -22,6 +22,7 @@ import { InvoiceModule } from '@/modules/invoice/invoice.module';
 import { IntegrationsModule } from '@/modules/integrations/integrations.module';
 import { WooviConnectorModule } from '@/modules/integrations/connectors/woovi/woovi.module';
 import { AbacatePayConnectorModule } from '@/modules/integrations/connectors/abacatepay/abacatepay.module';
+import { StripeConnectorModule } from '@/modules/integrations/connectors/stripe/stripe.module';
 import { EventProcessorScheduler } from '@/modules/integrations/jobs/event-processor.scheduler';
 import { FiscalEngineModule } from '@/modules/invoice/application/fiscal/fiscal-engine.module';
 import { CompanyModule } from '@/modules/company/company.module';
@@ -70,6 +71,7 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     IntegrationsModule,
     WooviConnectorModule,
     AbacatePayConnectorModule,
+    StripeConnectorModule,
     FiscalEngineModule,
     CompanyModule,
     CertificateModule,

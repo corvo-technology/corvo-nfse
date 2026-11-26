@@ -15,6 +15,7 @@
     "integration": {
       "woovi": "Venda Pix (Woovi)",
       "abacatepay": "Venda (AbacatePay)",
+      "stripe": "Venda (Stripe)",
       "generic": "Venda pela integração"
     }
   },
@@ -2912,6 +2913,7 @@
     "providers": {
       "woovi": "Cobranças Pix pagas na Woovi.",
       "abacatepay": "Checkout e pagamentos pagos na AbacatePay.",
+      "stripe": "Cartão, Pix e boleto pagos no Stripe.",
       "other": "Pagamentos confirmados."
     },
     "status": {
