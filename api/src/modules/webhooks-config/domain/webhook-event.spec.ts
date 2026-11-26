@@ -73,6 +73,39 @@ describe('WebhookEvent Types', () => {
     });
   });
 
+  describe('NFC-e Webhook Event Types', () => {
+    it('adds the nfce.* events and keeps every older one first, in the same order', () => {
+      const nfce = PUBLIC_WEBHOOK_EVENT_TYPES.filter((type) =>
+        type.startsWith('nfce.'),
+      );
+      expect(nfce).toEqual([
+        'nfce.document.authorized',
+        'nfce.document.rejected',
+        'nfce.document.denied',
+        'nfce.document.failed',
+        'nfce.document.reconciliation_required',
+        'nfce.document.manual_review',
+        'nfce.document.documents_ready',
+        'nfce.document.email_sent',
+        'nfce.document.email_failed',
+        'nfce.document.cancelled',
+        'nfce.document.cancellation_rejected',
+        'nfce.inutilization.completed',
+        'nfce.inutilization.rejected',
+      ]);
+      const older = PUBLIC_WEBHOOK_EVENT_TYPES.slice(0, 26);
+      expect(older.every((type) => !type.startsWith('nfce.'))).toBe(true);
+      expect(older[0]).toBe('nfse.invoice.authorized');
+      expect(older[25]).toBe('nfe.inutilization.rejected');
+    });
+
+    it('has no correction letter event for the NFC-e', () => {
+      expect(PUBLIC_WEBHOOK_EVENT_TYPES).not.toContain(
+        'nfce.document.corrected',
+      );
+    });
+  });
+
   describe('WebhookEventType union', () => {
     it('nfse.invoice.authorized is a valid WebhookEventType', () => {
       const eventType: WebhookEventType = 'nfse.invoice.authorized';

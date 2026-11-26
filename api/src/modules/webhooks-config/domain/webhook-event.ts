@@ -27,7 +27,21 @@ export type WebhookEventType =
   | 'nfe.document.cancellation_rejected'
   | 'nfe.document.corrected'
   | 'nfe.inutilization.completed'
-  | 'nfe.inutilization.rejected';
+  | 'nfe.inutilization.rejected'
+  // NFC-e events
+  | 'nfce.document.authorized'
+  | 'nfce.document.rejected'
+  | 'nfce.document.denied'
+  | 'nfce.document.failed'
+  | 'nfce.document.reconciliation_required'
+  | 'nfce.document.manual_review'
+  | 'nfce.document.documents_ready'
+  | 'nfce.document.email_sent'
+  | 'nfce.document.email_failed'
+  | 'nfce.document.cancelled'
+  | 'nfce.document.cancellation_rejected'
+  | 'nfce.inutilization.completed'
+  | 'nfce.inutilization.rejected';
 
 /** Event types a tenant may subscribe to through the public API. */
 export const PUBLIC_WEBHOOK_EVENT_TYPES = [
@@ -57,6 +71,19 @@ export const PUBLIC_WEBHOOK_EVENT_TYPES = [
   'nfe.document.corrected',
   'nfe.inutilization.completed',
   'nfe.inutilization.rejected',
+  'nfce.document.authorized',
+  'nfce.document.rejected',
+  'nfce.document.denied',
+  'nfce.document.failed',
+  'nfce.document.reconciliation_required',
+  'nfce.document.manual_review',
+  'nfce.document.documents_ready',
+  'nfce.document.email_sent',
+  'nfce.document.email_failed',
+  'nfce.document.cancelled',
+  'nfce.document.cancellation_rejected',
+  'nfce.inutilization.completed',
+  'nfce.inutilization.rejected',
 ] as const satisfies readonly WebhookEventType[];
 
 export type PublicWebhookEventType =

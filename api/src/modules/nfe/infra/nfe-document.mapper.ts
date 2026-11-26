@@ -65,6 +65,8 @@ export class NfeDocumentMapper {
       emailSentAt: row.emailSentAt,
       cancelReason: row.cancelReason,
       cancelRequestedAt: row.cancelRequestedAt,
+      qrCode: row.qrCode,
+      urlChave: row.urlChave,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });
@@ -119,6 +121,8 @@ export class NfeDocumentMapper {
       emailSentAt: s.emailSentAt,
       cancelReason: s.cancelReason,
       cancelRequestedAt: s.cancelRequestedAt,
+      qrCode: s.qrCode,
+      urlChave: s.urlChave,
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
     });

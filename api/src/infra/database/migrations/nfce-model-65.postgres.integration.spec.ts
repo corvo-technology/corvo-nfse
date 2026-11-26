@@ -68,6 +68,9 @@ describePostgres('NFC-e model 65 migrations', () => {
     expect(await columns('company_nfe_settings')).toContain(
       'nfce_default_series',
     );
+    expect(await columns('nfe_documents')).toEqual(
+      expect.arrayContaining(['qr_code', 'url_chave']),
+    );
     await expect(sequence(65)).resolves.toBeDefined();
     await expect(sequence(99)).rejects.toThrow(/ck_nfe_number_sequences_model/);
   });
@@ -89,7 +92,10 @@ describePostgres('NFC-e model 65 migrations', () => {
   });
 
   it('down fails while an NFC-e row exists, and works once it is gone; then up again', async () => {
-    // Newest first: recipient, series, model 65 (this one refuses to go with a model 65 row), tenant release.
+    // Newest first: QR columns, recipient, series, model 65 (this one refuses to go with a model 65 row), tenant release.
+    await db.undoLastMigration();
+    expect(await columns('nfe_documents')).not.toContain('qr_code');
+    expect(await columns('nfe_documents')).not.toContain('url_chave');
     await db.undoLastMigration();
     expect(await recipientNullable()).toBe(false);
     await db.undoLastMigration();
@@ -106,6 +112,9 @@ describePostgres('NFC-e model 65 migrations', () => {
     expect(await columns('tenants')).not.toContain('nfce_enabled_at');
 
     await db.runMigrations();
+    expect(await columns('nfe_documents')).toEqual(
+      expect.arrayContaining(['qr_code', 'url_chave']),
+    );
     expect(await recipientNullable()).toBe(true);
     expect(await columns('tenants')).toContain('nfce_enabled_at');
     expect(await columns('company_nfe_settings')).toContain(

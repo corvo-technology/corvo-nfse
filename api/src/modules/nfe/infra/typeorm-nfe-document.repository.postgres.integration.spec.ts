@@ -180,6 +180,28 @@ describePostgres('NfeDocument repository with a restricted role', () => {
     ).toBeNull();
   });
 
+  it('stores the QR Code and the urlChave of a NFC-e attempt, and clears them on a new attempt without them', async () => {
+    const doc = newDoc({ model: 65 });
+    await repo.insert(doc);
+    doc.transitionTo('processing');
+    doc.startAttempt('12345678', '6'.repeat(44), '<NFe/>', new Date(), {
+      qrCode: 'https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode?p=x|3|2',
+      urlChave: 'https://www.homologacao.nfce.fazenda.sp.gov.br/consulta',
+    });
+    await repo.save(doc);
+    expect(
+      (await repo.findById(doc.id, tenantA, 'test'))?.toSnapshot(),
+    ).toMatchObject({
+      qrCode: 'https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode?p=x|3|2',
+      urlChave: 'https://www.homologacao.nfce.fazenda.sp.gov.br/consulta',
+    });
+    const nfe = newDoc();
+    await repo.insert(nfe);
+    expect(
+      (await repo.findById(nfe.id, tenantA, 'test'))?.toSnapshot(),
+    ).toMatchObject({ qrCode: null, urlChave: null });
+  });
+
   it('finds by idempotency key within the tenant and environment', async () => {
     const doc = newDoc({ idempotencyKey: 'idem-lookup' });
     await repo.insert(doc);

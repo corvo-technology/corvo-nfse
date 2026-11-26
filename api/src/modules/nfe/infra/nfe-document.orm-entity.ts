@@ -157,6 +157,14 @@ export class NfeDocumentOrmEntity {
   @Column({ name: 'cancel_requested_at', type: 'timestamptz', nullable: true })
   cancelRequestedAt!: Date | null;
 
+  /** NFC-e only: the QR Code (`infNFeSupl/qrCode`) of the current attempt. */
+  @Column({ name: 'qr_code', type: 'text', nullable: true })
+  qrCode!: string | null;
+
+  /** NFC-e only: `infNFeSupl/urlChave`. */
+  @Column({ name: 'url_chave', type: 'varchar', length: 85, nullable: true })
+  urlChave!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

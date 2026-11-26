@@ -117,6 +117,9 @@ export interface NfeDocumentProps {
   emailSentAt: Date | null;
   cancelReason: string | null;
   cancelRequestedAt: Date | null;
+  /** NFC-e only: QR Code and `urlChave` of the current attempt (null on an NF-e). */
+  qrCode: string | null;
+  urlChave: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -254,6 +257,8 @@ export class NfeDocument {
       emailSentAt: null,
       cancelReason: null,
       cancelRequestedAt: null,
+      qrCode: null,
+      urlChave: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -333,9 +338,12 @@ export class NfeDocument {
     accessKey: string,
     signedXml: string,
     issuedAt: Date,
+    supplement?: { qrCode: string; urlChave: string },
     now: Date = new Date(),
   ): NfeHistoryEntry {
     this.props.attempt += 1;
+    this.props.qrCode = supplement?.qrCode ?? null;
+    this.props.urlChave = supplement?.urlChave ?? null;
     this.props.cNf = cNf;
     this.props.accessKey = accessKey;
     this.props.signedXml = signedXml;
