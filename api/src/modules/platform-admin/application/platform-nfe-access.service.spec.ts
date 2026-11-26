@@ -9,7 +9,7 @@ const actor = {
   ipHash: 'hash',
 };
 
-function build(updateResult: unknown) {
+function build(result: Date | null | 'missing' = null) {
   const log: string[] = [];
   const uow = {
     execute: jest.fn(async (work: () => Promise<unknown>) => {
@@ -24,18 +24,11 @@ function build(updateResult: unknown) {
       }
     }),
   };
-  const query = jest.fn(async () => {
+  const setEnabled = jest.fn(async (_id: string, enabled: boolean) => {
     log.push(`update:${getDatabaseScope()?.tenantId}`);
-    return updateResult;
+    return result === 'missing' ? null : { enabledAt: enabled ? result : null };
   });
-  const db = {
-    manager: () => ({
-      getRepository: () => ({
-        metadata: { tablePath: 'corvo.tenants' },
-      }),
-      query,
-    }),
-  };
+  const db = { setEnabled };
   const audit = {
     insert: jest.fn(async () => {
       log.push('audit');
@@ -53,16 +46,13 @@ function build(updateResult: unknown) {
     audit as never,
     cache as never,
   );
-  return { service, log, query, audit, cache };
+  return { service, log, setEnabled, audit, cache };
 }
 
 describe('PlatformNfeAccessService', () => {
   it('liga: grava a coluna e a auditoria na mesma transação e limpa o cache depois do commit', async () => {
     const at = new Date('2026-11-26T12:00:00Z');
-    const { service, log, query, audit, cache } = build([
-      [{ nfe_enabled_at: at }],
-      1,
-    ]);
+    const { service, log, setEnabled, audit, cache } = build(at);
 
     const result = await service.set(actor, TENANT, {
       enabled: true,
@@ -74,10 +64,7 @@ describe('PlatformNfeAccessService', () => {
       enabled: true,
       enabledAt: at.toISOString(),
     });
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('nfe_enabled_at'),
-      [TENANT, true],
-    );
+    expect(setEnabled).toHaveBeenCalledWith(TENANT, true);
     expect(audit.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'nfe_access_changed',
@@ -98,7 +85,7 @@ describe('PlatformNfeAccessService', () => {
   });
 
   it('desliga: coluna nula', async () => {
-    const { service, audit } = build([[{ nfe_enabled_at: null }], 1]);
+    const { service, audit } = build(new Date());
     const result = await service.set(actor, TENANT, {
       enabled: false,
       reason: 'fim do teste',
@@ -114,7 +101,7 @@ describe('PlatformNfeAccessService', () => {
   });
 
   it('tenant que não existe: 404, sem auditoria e sem limpar o cache', async () => {
-    const { service, audit, cache, log } = build([[], 0]);
+    const { service, audit, cache, log } = build('missing');
     await expect(
       service.set(actor, TENANT, { enabled: true, reason: 'tenant fantasma' }),
     ).rejects.toBeInstanceOf(NotFoundException);
