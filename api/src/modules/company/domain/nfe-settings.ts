@@ -18,6 +18,8 @@ export interface NfeSettings {
   stateRegistration: string | null;
   crt: Crt | null;
   defaultSeries: number;
+  /** Series of the NFC-e (model 65), apart from the NF-e one. */
+  nfceDefaultSeries: number;
   defaultNatOp: string;
   defaultCsosn: NfeCsosn;
   defaultOrigin: number;
@@ -32,6 +34,7 @@ export interface NfeSettingsInput {
   /** Only an override: left out, the CRT follows the tax regime of the company. */
   crt?: Crt | null;
   defaultSeries?: number;
+  nfceDefaultSeries?: number;
   defaultNatOp?: string;
   defaultCsosn?: NfeCsosn;
   defaultOrigin?: number;
@@ -41,6 +44,7 @@ export interface NfeSettingsInput {
 
 export const NFE_SETTINGS_DEFAULTS = {
   defaultSeries: 1,
+  nfceDefaultSeries: 1,
   defaultNatOp: 'Venda de mercadoria',
   defaultCsosn: '102' as NfeCsosn,
   defaultOrigin: 0,

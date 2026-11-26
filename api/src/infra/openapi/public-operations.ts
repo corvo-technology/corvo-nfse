@@ -246,7 +246,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'invoices_list',
     tag: 'Invoices',
     description:
-      'Newest first. Filter by `status`, `origin`, `companyId`, `externalId`, `customerTaxId` or a `from`/`to` competence-date range, and walk the pages with `cursor`. A test key lists only test invoices and a live key only live ones.\n\n**With `type: "nfe"`:** The NF-e of the environment of the key, newest first. Filter by `companyId` and `status`.',
+      'Newest first. Filter by `status`, `origin`, `companyId`, `externalId`, `customerTaxId` or a `from`/`to` competence-date range, and walk the pages with `cursor`. A test key lists only test invoices and a live key only live ones.\n\n**With `type: "nfe"`:** The NF-e of the environment of the key, newest first. Filter by `companyId` and `status`.\n\n**With `type: "nfce"`:** The NFC-e (model 65) of the environment of the key, newest first, with the same filters. Answers 404 while NFC-e (or NF-e, for `type: "nfe"`) is not released for the workspace.',
     ok: {
       200: {
         oneOf: [
@@ -256,6 +256,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
         ],
       },
     },
+    errors: [404],
     paramDescriptions: {
       from: 'Only invoices with a competence date on or after this date (ISO 8601).',
       to: 'Only invoices with a competence date on or before this date (ISO 8601).',

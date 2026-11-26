@@ -29,6 +29,7 @@ const input = (
   stateRegistration: '110042490114',
   crt: 1,
   defaultSeries: 1,
+  nfceDefaultSeries: 1,
   defaultNatOp: 'Venda de mercadoria',
   defaultCsosn: '102',
   defaultOrigin: 0,
@@ -129,16 +130,23 @@ describePostgres(
         stateRegistration: '110042490114',
         crt: 1,
         defaultCsosn: '102',
+        nfceDefaultSeries: 1,
       });
       const updated = await repo.upsert(
         companyA,
         tenantA,
-        input({ crt: 4, defaultCsosn: '400', defaultSeries: 2 }),
+        input({
+          crt: 4,
+          defaultCsosn: '400',
+          defaultSeries: 2,
+          nfceDefaultSeries: 6,
+        }),
       );
       expect(updated).toMatchObject({
         crt: 4,
         defaultCsosn: '400',
         defaultSeries: 2,
+        nfceDefaultSeries: 6,
       });
       const [{ count }]: Array<{ count: string }> = await admin.query(
         `SELECT count(*)::text AS count FROM "${schema}".company_nfe_settings WHERE company_id=$1`,

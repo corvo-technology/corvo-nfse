@@ -20,6 +20,10 @@ import {
 })
 @Check('ck_company_nfe_settings_crt', `"crt" IN (1, 4)`)
 @Check('ck_company_nfe_settings_series', `"default_series" BETWEEN 0 AND 999`)
+@Check(
+  'ck_company_nfe_settings_nfce_series',
+  `"nfce_default_series" BETWEEN 0 AND 999`,
+)
 @Check('ck_company_nfe_settings_csosn', `"default_csosn" IN ('102', '400')`)
 @Check('ck_company_nfe_settings_origin', `"default_origin" BETWEEN 0 AND 8`)
 @Check('ck_company_nfe_settings_contingency', `"contingency_mode" IN ('none')`)
@@ -44,6 +48,9 @@ export class CompanyNfeSettingsOrmEntity {
 
   @Column({ name: 'default_series', type: 'integer', default: 1 })
   defaultSeries!: number;
+
+  @Column({ name: 'nfce_default_series', type: 'smallint', default: 1 })
+  nfceDefaultSeries!: number;
 
   @Column({
     name: 'default_nat_op',

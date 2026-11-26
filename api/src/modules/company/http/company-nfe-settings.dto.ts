@@ -44,6 +44,19 @@ export class UpdateCompanyNfeSettingsDto {
   defaultSeries?: number;
 
   @ApiPropertyOptional({
+    minimum: 0,
+    maximum: 999,
+    default: 1,
+    description:
+      'Series used by default on new NFC-e (apart from the NF-e one).',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(999)
+  nfceDefaultSeries?: number;
+
+  @ApiPropertyOptional({
     default: 'Venda de mercadoria',
     maxLength: 60,
     description:

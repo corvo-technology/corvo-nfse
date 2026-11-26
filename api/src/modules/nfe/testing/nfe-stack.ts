@@ -194,6 +194,7 @@ export function createNfeStack(
     stateRegistration: '110042490114',
     crt: 1,
     defaultSeries: 1,
+    nfceDefaultSeries: 1,
     defaultNatOp: 'Venda de mercadoria',
     defaultCsosn: '102',
     defaultOrigin: 0,

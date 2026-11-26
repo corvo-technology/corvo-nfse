@@ -887,6 +887,30 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         status: 200,
       });
       expect(res.body.data.stateRegistration).toBe('110042490114');
+      expect(res.body.data.nfceDefaultSeries).toBe(1);
+    });
+
+    it('sets the NFC-e series apart from the NF-e one', async () => {
+      const path = `/companies/${companyId}/nfe-settings`;
+      const saved = await call('PUT /companies/{id}/nfe-settings', {
+        path,
+        body: {
+          stateRegistration: '110042490114',
+          crt: 1,
+          defaultSeries: 2,
+          nfceDefaultSeries: 7,
+        },
+        status: 200,
+      });
+      expect(saved.body.data).toMatchObject({
+        defaultSeries: 2,
+        nfceDefaultSeries: 7,
+      });
+      await call('PUT /companies/{id}/nfe-settings', {
+        path,
+        body: { stateRegistration: '110042490114', crt: 1 },
+        status: 200,
+      });
     });
 
     it('validates an NF-e without sending it: 200 when complete, 422 with the problems otherwise', async () => {
@@ -952,7 +976,7 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         query: { type: 'nfce' },
         status: 404,
       });
-      expect(res.body.code).toBe('RESOURCE_NOT_FOUND');
+      expect(res.body.code).toBe('ERROR_RESOURCE_NOT_FOUND');
     });
 
     const nfeBody = () => ({

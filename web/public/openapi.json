@@ -5912,7 +5912,7 @@
     },
     "/invoices": {
       "get": {
-        "description": "Newest first. Filter by `status`, `origin`, `companyId`, `externalId`, `customerTaxId` or a `from`/`to` competence-date range, and walk the pages with `cursor`. A test key lists only test invoices and a live key only live ones.\n\n**With `type: \"nfe\"`:** The NF-e of the environment of the key, newest first. Filter by `companyId` and `status`.\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
+        "description": "Newest first. Filter by `status`, `origin`, `companyId`, `externalId`, `customerTaxId` or a `from`/`to` competence-date range, and walk the pages with `cursor`. A test key lists only test invoices and a live key only live ones.\n\n**With `type: \"nfe\"`:** The NF-e of the environment of the key, newest first. Filter by `companyId` and `status`.\n\n**With `type: \"nfce\"`:** The NFC-e (model 65) of the environment of the key, newest first, with the same filters. Answers 404 while NFC-e (or NF-e, for `type: \"nfe\"`) is not released for the workspace.\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
         "operationId": "invoices_list",
         "parameters": [
           {
@@ -5936,7 +5936,7 @@
             }
           },
           {
-            "description": "`nfse` (default) lists NFS-e. `nfe` lists NF-e (filters: `companyId`, `status`). `all` lists both in one summary shape (`companyId` and `status` only).",
+            "description": "`nfse` (default) lists NFS-e. `nfe` lists NF-e and `nfce` lists NFC-e (filters: `companyId`, `status`). `all` lists every type released for the workspace in one summary shape (`companyId` and `status` only).",
             "in": "query",
             "name": "type",
             "required": false,
@@ -5945,6 +5945,7 @@
               "enum": [
                 "nfse",
                 "nfe",
+                "nfce",
                 "all"
               ],
               "type": "string"
@@ -6123,6 +6124,9 @@
           },
           "403": {
             "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
           },
           "429": {
             "$ref": "#/components/responses/Error429"
@@ -14591,6 +14595,12 @@
             },
             "type": "array"
           },
+          "nfceDefaultSeries": {
+            "description": "Series of the NFC-e (model 65).",
+            "maximum": 999,
+            "minimum": 0,
+            "type": "integer"
+          },
           "stateRegistration": {
             "example": "110042490114",
             "nullable": true,
@@ -14602,6 +14612,7 @@
           "stateRegistration",
           "crt",
           "defaultSeries",
+          "nfceDefaultSeries",
           "defaultNatOp",
           "defaultCsosn",
           "defaultOrigin",
@@ -15973,6 +15984,13 @@
           "defaultSeries": {
             "default": 1,
             "description": "Series used by default on new NF-e.",
+            "maximum": 999,
+            "minimum": 0,
+            "type": "number"
+          },
+          "nfceDefaultSeries": {
+            "default": 1,
+            "description": "Series used by default on new NFC-e (apart from the NF-e one).",
             "maximum": 999,
             "minimum": 0,
             "type": "number"

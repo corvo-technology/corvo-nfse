@@ -333,6 +333,11 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       int({ enum: [1, 4], description: '1 Simples Nacional, 4 MEI.' }),
     ),
     defaultSeries: int({ minimum: 0, maximum: 999 }),
+    nfceDefaultSeries: int({
+      minimum: 0,
+      maximum: 999,
+      description: 'Series of the NFC-e (model 65).',
+    }),
     defaultNatOp: str({ example: 'Venda de mercadoria' }),
     defaultCsosn: str({ enum: ['102', '400'] }),
     defaultOrigin: int({ minimum: 0, maximum: 8 }),

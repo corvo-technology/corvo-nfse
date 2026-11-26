@@ -30,6 +30,7 @@ const settings: NfeSettings = {
   stateRegistration: '110042490114',
   crt: 1,
   defaultSeries: 1,
+  nfceDefaultSeries: 1,
   defaultNatOp: 'Venda de mercadoria',
   defaultCsosn: '102',
   defaultOrigin: 0,
@@ -133,5 +134,62 @@ describe('NfeEmissionPreconditions', () => {
         model: 55,
       }),
     ).resolves.toMatchObject({ code: 'NFE_PRODUCTION_DISABLED' });
+  });
+
+  describe('model 65 (NFC-e)', () => {
+    it('locks production for the NFC-e too, naming it', async () => {
+      const { preconditions } = build();
+      await expect(
+        preconditions.check({
+          environment: 'live',
+          company: company(),
+          settings,
+          model: 65,
+        }),
+      ).resolves.toMatchObject({
+        code: 'NFE_PRODUCTION_DISABLED',
+        message: 'NFC-e em produção ainda não liberada',
+      });
+    });
+
+    it('asks for the UF released for model 65, not 55', async () => {
+      const { preconditions, isEnabled } = build();
+      await preconditions.check({
+        environment: 'test',
+        company: company(),
+        settings,
+        model: 65,
+      });
+      expect(isEnabled).toHaveBeenCalledWith('SP', 65, 2);
+    });
+
+    it('refuses a UF released only for the NF-e', async () => {
+      const isEnabled = jest.fn((_uf: string, model: 55 | 65) =>
+        Promise.resolve(model === 55),
+      );
+      const preconditions = new NfeEmissionPreconditions(
+        { get: jest.fn(() => false) } as unknown as ConfigService,
+        { isEnabled },
+      );
+      await expect(
+        preconditions.check({
+          environment: 'test',
+          company: company(),
+          settings,
+          model: 65,
+        }),
+      ).resolves.toMatchObject({
+        code: 'UF_NOT_ENABLED',
+        details: { uf: 'SP' },
+      });
+      await expect(
+        preconditions.check({
+          environment: 'test',
+          company: company(),
+          settings,
+          model: 55,
+        }),
+      ).resolves.toBeNull();
+    });
   });
 });
