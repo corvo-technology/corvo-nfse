@@ -65,15 +65,19 @@ cliente liberado e a UF dele liberada.
    ```
 
    A API guarda a resposta por até 1 minuto; depois disso o painel mostra a NF-e na conta.
-2. **Estado (UF).** Só depois de a UF passar pelo roteiro abaixo:
+2. **Estado (UF).** Todos os 27 estados já têm endereço da SEFAZ cadastrado (homologação e produção), mas
+   nenhum fica ligado sozinho: cada UF só vale depois de uma linha em `nfe_enabled_authorities`.
+   Antes de ligar, rode o teste de conexão (seção "Conferir os endereços" abaixo) e o roteiro completo.
 
    ```sql
+   -- 1) Homologação (tp_amb = 2): primeiro passo de qualquer UF
    INSERT INTO nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
    VALUES ('SP', 55, 2, now(), 'docs/fiscal/runbooks/nfe-homologacao.md');
    ```
 
-   `tp_amb = 2` é homologação. Linha com `tp_amb = 1` (produção) não adianta enquanto
-   `NFE_PRODUCTION_ENABLED=false`. Para tirar a UF: `DELETE` da linha.
+   Linha com `tp_amb = 1` (produção) não adianta enquanto `NFE_PRODUCTION_ENABLED=false`; veja "Produção
+   por estado" abaixo. Para tirar a UF: `DELETE` da linha. Ainda não existe tela nem rota de admin para
+   listar ou ligar UFs: por enquanto é SQL (anotado como melhoria futura).
 3. **Empresa.** A empresa `test` precisa de endereço completo, IE e CRT (painel, página da empresa, seção
    NF-e, ou `PUT /v1/companies/{id}/nfe-settings`) e do certificado A1.
 
@@ -107,6 +111,52 @@ vale pelo painel, pela API e pelo MCP; o roteiro abaixo usa o painel e diz a rot
 7. **Anote no relatório** ([`nfe-spike.md`](../nfe-spike.md)) o que diferiu de uma UF para a outra.
 
 Só depois de os passos 1 a 6 passarem numa UF, libere essa UF para os clientes (seção anterior).
+
+## Conferir os endereços
+
+O script `api/scripts/nfe-check-endpoints.ts` testa as 12 autoridades (10 SEFAZ próprias, SVAN e SVRS) e
+imprime uma tabela. Ele nunca imprime senha, PFX nem XML.
+
+```bash
+cd api
+# Sem certificado: só confere se o servidor da SEFAZ responde (DNS, TCP e TLS)
+yarn ts-node -r tsconfig-paths/register scripts/nfe-check-endpoints.ts
+
+# Com certificado: chama também o NfeStatusServico4 e mostra cStat/xMotivo
+NFE_SPIKE_PFX_PATH=/caminho/empresa.pfx NFE_SPIKE_PFX_PASSWORD='...' \
+  yarn ts-node -r tsconfig-paths/register scripts/nfe-check-endpoints.ts
+```
+
+- Por padrão olha a homologação. `NFE_CHECK_TP_AMB=1` olha a produção (só pergunta o status, não envia nota).
+- `NFE_CHECK_ONLY=SP,SVRS` limita a algumas autoridades.
+- "TLS ok" ou "alcançou (alerta TLS...)" quer dizer que o servidor está no ar. Algumas SEFAZ (AM, MG, PR)
+  recusam a conexão sem certificado, então para elas só o teste com certificado confirma de verdade
+  (esperado `cStat=107`).
+- `FALHOU` (DNS, timeout ou conexão recusada) quer dizer endereço errado ou SEFAZ fora do ar: não ligue a UF.
+
+Qual autoridade atende cada UF: SEFAZ própria em AM, BA, GO, MG, MS, MT, PE, PR, RS e SP; SVAN no MA;
+SVRS em todas as outras (AC, AL, AP, CE, DF, ES, PA, PB, PI, RJ, RN, RO, RR, SC, SE, TO). As tabelas ficam
+em `api/src/infra/external/nfe/sefaz/uf.ts` e `endpoints.ts`, com a data da última conferência. Os
+endereços de contingência (SVC-AN e SVC-RS) já estão mapeados por UF, mas ainda não são usados.
+
+## Produção por estado
+
+Fluxo recomendado com uma empresa parceira:
+
+1. O parceiro cria a conta e a empresa em ambiente de **teste** (empresa `test`), com certificado A1.
+2. Libere a NF-e para a conta (passo 1 acima) e a UF dele em homologação (`tp_amb = 2`).
+3. Rode o roteiro de homologação completo abaixo na UF dele. Só siga se os passos 1 a 6 passarem.
+4. Com a UF aprovada, ligue a produção para ela:
+   - `NFE_PRODUCTION_ENABLED=true` na API e no worker (vale para todas as UFs, mas cada UF ainda precisa da linha abaixo);
+   - a linha de produção da UF:
+
+     ```sql
+     INSERT INTO nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
+     VALUES ('SP', 55, 1, now(), 'docs/fiscal/runbooks/nfe-homologacao.md');
+     ```
+
+5. O parceiro cria a empresa de produção. A primeira nota real deve ser acompanhada de perto.
+6. Para voltar atrás numa UF: `DELETE` da linha `tp_amb = 1`. Para parar tudo: `NFE_PRODUCTION_ENABLED=false`.
 
 ## Atualizações periódicas
 

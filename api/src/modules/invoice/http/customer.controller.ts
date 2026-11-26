@@ -96,7 +96,7 @@ export class CustomerController {
 
   /** Public registry data to prefill a new customer. Null data when it is not a CNPJ or the registry has no answer. */
   @Get('registry/:cnpj')
-  @RequirePermission('nfse.invoices.issue')
+  @RequirePermission(['nfse.invoices.issue', 'nfe.documents.issue'])
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Look up a CNPJ in the public registry (name, city, state)',
@@ -109,7 +109,7 @@ export class CustomerController {
 
   @Get(':taxId')
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.view')
+  @RequirePermission(['nfse.invoices.view', 'nfe.documents.issue'])
   @ApiOperation({ summary: 'Get a saved customer by CPF or CNPJ' })
   async get(@Param('taxId') taxId: string, @Req() req: RequestWithAuthContext) {
     const customer = await this.customers.find(
