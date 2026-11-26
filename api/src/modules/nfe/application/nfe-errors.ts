@@ -38,7 +38,7 @@ export function nfeConfigurationError(
   });
 }
 
-/** 400: `POST /v1/nfe` and `PUT /v1/nfe/{id}` need the header, so a retry can never issue twice. */
+/** 400: `POST /v1/invoices` (`type: "nfe"`) and `PUT /v1/invoices/{id}` need the header, so a retry can never issue twice. */
 export function nfeIdempotencyKeyRequired(): BadRequestException {
   return new BadRequestException({
     code: 'IDEMPOTENCY_KEY_REQUIRED',

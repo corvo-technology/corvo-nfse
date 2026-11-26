@@ -88,6 +88,12 @@ export function validationExceptionFactory(
  */
 interface AllowsUnknownProperties {
   allowUnknownProperties?: boolean;
+  /**
+   * A DTO that shares its route with another kind of body (`POST /invoices` takes an NFS-e or,
+   * with `type: "nfe"`, an NF-e): when this says so for the value, the body goes through as it
+   * came and the handler hands it to the type that owns it. Own static only, never inherited.
+   */
+  bypassValidation?: (value: unknown) => boolean;
 }
 
 const pipeOptions = {
@@ -107,8 +113,17 @@ class CorvoValidationPipe extends ValidationPipe {
     super({ ...pipeOptions, forbidNonWhitelisted: true });
   }
 
-  override transform(value: unknown, metadata: ArgumentMetadata) {
+  override transform(
+    value: unknown,
+    metadata: ArgumentMetadata,
+  ): Promise<unknown> {
     const target = metadata.metatype as AllowsUnknownProperties | undefined;
+    if (
+      target &&
+      Object.prototype.hasOwnProperty.call(target, 'bypassValidation') &&
+      target.bypassValidation?.(value) === true
+    )
+      return Promise.resolve(value);
     return target?.allowUnknownProperties === true
       ? this.lenient.transform(value, metadata)
       : super.transform(value, metadata);

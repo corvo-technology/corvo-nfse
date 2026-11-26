@@ -41,7 +41,7 @@ export function checkedJustification(raw: string): string {
 }
 
 /**
- * `POST /v1/nfe/{id}/cancel`. In one transaction, under the document lock: `authorized` becomes
+ * `POST /v1/invoices/{id}/cancel`. In one transaction, under the document lock: `authorized` becomes
  * `cancelling`, the signed cancellation request is stored as a `pending` event (`nSeqEvento` is
  * always 1) and `nfe.cancel` is queued. The send, the SEFAZ answer and the credit (a cancellation
  * after the authorization never gives it back) are settled by the handler.

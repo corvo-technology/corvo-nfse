@@ -902,6 +902,7 @@ describe('OpenAPI contract against the real API (e2e)', () => {
          VALUES ('SP', 55, 2, now(), 'docs/fiscal/nfe-runbook.md') ON CONFLICT DO NOTHING`,
       );
       const nfe = {
+        type: 'nfe',
         companyId,
         recipient: {
           taxId: '123.456.789-09',
@@ -930,14 +931,14 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         ],
         payments: [{ tPag: '17', amount: 20 }],
       };
-      const ok = await call('POST /nfe/validate', {
+      const ok = await call('POST /invoices/validate', {
         body: nfe,
         query: { includeXml: 'true' },
         status: 200,
       });
       expect(ok.body.data.valid).toBe(true);
       expect(ok.body.data.accessKeyPreview).toHaveLength(44);
-      const bad = await call('POST /nfe/validate', {
+      const bad = await call('POST /invoices/validate', {
         body: { ...nfe, payments: [{ tPag: '17', amount: 1 }] },
         status: 422,
       });
@@ -947,6 +948,7 @@ describe('OpenAPI contract against the real API (e2e)', () => {
 
   describe('nfe issuing', () => {
     const nfeBody = () => ({
+      type: 'nfe',
       companyId,
       recipient: {
         taxId: '123.456.789-09',
@@ -1001,13 +1003,13 @@ describe('OpenAPI contract against the real API (e2e)', () => {
       });
 
       // The header is required.
-      const missing = await call('POST /nfe', {
+      const missing = await call('POST /invoices', {
         body: nfeBody(),
         status: 400,
       });
       expect(missing.body.code).toBe('ERROR_IDEMPOTENCY_KEY_REQUIRED');
 
-      const created = await call('POST /nfe', {
+      const created = await call('POST /invoices', {
         body: nfeBody(),
         headers: { 'Idempotency-Key': 'e2e-nfe-1' },
         status: 202,
@@ -1016,25 +1018,30 @@ describe('OpenAPI contract against the real API (e2e)', () => {
       expect(created.body.data.status).toBe('queued');
 
       // The same key and body is the same note; another body with the key is a conflict.
-      const again = await call('POST /nfe', {
+      const again = await call('POST /invoices', {
         body: nfeBody(),
         headers: { 'Idempotency-Key': 'e2e-nfe-1' },
         status: 200,
       });
-      expect(again.body.data).toEqual({ id, status: 'queued', replayed: true });
-      await call('POST /nfe', {
+      expect(again.body.data).toEqual({
+        type: 'nfe',
+        id,
+        status: 'queued',
+        replayed: true,
+      });
+      await call('POST /invoices', {
         body: { ...nfeBody(), additionalInfo: 'outro corpo' },
         headers: { 'Idempotency-Key': 'e2e-nfe-1' },
         status: 409,
       });
 
-      const list = await call('GET /nfe', {
-        query: { companyId, status: 'queued' },
+      const list = await call('GET /invoices', {
+        query: { type: 'nfe', companyId, status: 'queued' },
         status: 200,
       });
       expect(list.body.data.map((n: { id: string }) => n.id)).toContain(id);
-      const read = await call('GET /nfe/{id}', {
-        path: `/nfe/${id}`,
+      const read = await call('GET /invoices/{id}', {
+        path: `/invoices/${id}`,
         status: 200,
       });
       expect(read.body.data).toMatchObject({
@@ -1045,14 +1052,70 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         environment: 'test',
       });
 
+      // `type=all` mixes both kinds in one cursor list; walking it one by one loses and repeats nothing.
+      const everything = await call('GET /invoices', {
+        query: { type: 'all', companyId, limit: 100 },
+        status: 200,
+      });
+      const kinds = new Map(
+        everything.body.data.map((row: { id: string; type: string }) => [
+          row.id,
+          row.type,
+        ]),
+      );
+      expect(kinds.get(id)).toBe('nfe');
+      expect(kinds.get(ids.invoice)).toBe('nfse');
+      const walked: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await call('GET /invoices', {
+          query: {
+            type: 'all',
+            companyId,
+            limit: 2,
+            ...(cursor ? { cursor } : {}),
+          },
+          status: 200,
+        });
+        walked.push(...page.body.data.map((row: { id: string }) => row.id));
+        cursor = page.body.pagination.nextCursor ?? undefined;
+      } while (cursor);
+      expect(walked).toEqual(
+        everything.body.data.map((row: { id: string }) => row.id),
+      );
+
+      // What only an NF-e has is refused for an NFS-e, with a code that says so.
+      const refusals: Array<[string, string, object?]> = [
+        ['POST /invoices/{id}/sync', 'sync'],
+        ['POST /invoices/{id}/discard', 'discard'],
+        [
+          'POST /invoices/{id}/corrections',
+          'corrections',
+          { correction: 'Corrigir o endereço de entrega para Rua das Flores' },
+        ],
+      ];
+      for (const [key, suffix, payload] of refusals) {
+        const refused = await call(key, {
+          path: `/invoices/${ids.invoice}/${suffix}`,
+          ...(payload ? { body: payload } : {}),
+          status: 422,
+        });
+        expect(refused.body.code).toBe('ERROR_INVOICE_OPERATION_NOT_SUPPORTED');
+      }
+      const dryRun = await call('POST /invoices/validate', {
+        body: { type: 'nfse' },
+        status: 422,
+      });
+      expect(dryRun.body.code).toBe('ERROR_INVOICE_OPERATION_NOT_SUPPORTED');
+
       // A rejection shows its type, code and hint; the note is corrected and sent again.
       await setStatus(
         id,
         'rejected',
         `, last_error_type = 'validation', last_error_code = '225', last_error_message = 'Rejeição: Falha no Schema XML do lote de NFe'`,
       );
-      const rejected = await call('GET /nfe/{id}', {
-        path: `/nfe/${id}`,
+      const rejected = await call('GET /invoices/{id}', {
+        path: `/invoices/${id}`,
         status: 200,
       });
       expect(rejected.body.data.lastError).toMatchObject({
@@ -1060,29 +1123,33 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         code: '225',
         hint: expect.stringContaining('schema'),
       });
-      const resubmitted = await call('PUT /nfe/{id}', {
-        path: `/nfe/${id}`,
+      const resubmitted = await call('PUT /invoices/{id}', {
+        path: `/invoices/${id}`,
         body: { ...nfeBody(), additionalInfo: 'corrigida' },
         status: 202,
       });
-      expect(resubmitted.body.data).toEqual({ id, status: 'queued' });
+      expect(resubmitted.body.data).toEqual({
+        type: 'nfe',
+        id,
+        status: 'queued',
+      });
 
       // A rejected note can also be given up; an authorized one cannot.
       await setStatus(id, 'rejected');
-      const discarded = await call('POST /nfe/{id}/discard', {
-        path: `/nfe/${id}/discard`,
+      const discarded = await call('POST /invoices/{id}/discard', {
+        path: `/invoices/${id}/discard`,
         status: 200,
       });
       expect(discarded.body.data.status).toBe('discarded');
       await setStatus(id, 'authorized');
-      const refused = await call('POST /nfe/{id}/discard', {
-        path: `/nfe/${id}/discard`,
+      const refused = await call('POST /invoices/{id}/discard', {
+        path: `/invoices/${id}/discard`,
         status: 409,
       });
       expect(refused.body.code).toBe('ERROR_NFE_INVALID_STATE');
 
       // A lost answer: the SEFAZ (the simulator) does not know the key yet, so sync leaves it waiting.
-      const lost = await call('POST /nfe', {
+      const lost = await call('POST /invoices', {
         body: { ...nfeBody(), additionalInfo: 'resposta perdida' },
         headers: { 'Idempotency-Key': 'e2e-nfe-2' },
         status: 202,
@@ -1093,8 +1160,8 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         'reconciliation_required',
         `, access_key = '35261112345678000195550010000000011234567810', signed_xml = '<NFe/>', issued_at = now()`,
       );
-      const synced = await call('POST /nfe/{id}/sync', {
-        path: `/nfe/${lostId}/sync`,
+      const synced = await call('POST /invoices/{id}/sync', {
+        path: `/invoices/${lostId}/sync`,
         status: 200,
       });
       expect(synced.body.data.status).toBe('reconciliation_required');
@@ -1108,6 +1175,7 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         44,
       );
     const body = (extra: string) => ({
+      type: 'nfe',
       companyId,
       recipient: {
         taxId: '123.456.789-09',
@@ -1139,7 +1207,7 @@ describe('OpenAPI contract against the real API (e2e)', () => {
     });
     /** An NF-e the SEFAZ authorized, as the worker would have left it (the simulator is not asked). */
     const authorized = async (label: string, n: number) => {
-      const created = await call('POST /nfe', {
+      const created = await call('POST /invoices', {
         body: body(label),
         headers: { 'Idempotency-Key': `e2e-events-${label}` },
         status: 202,
@@ -1158,14 +1226,14 @@ describe('OpenAPI contract against the real API (e2e)', () => {
     it('cancels, corrects, lists the timeline, inutilizes a range and lists the gaps', async () => {
       // Cancellation: the justification is checked, then the NF-e is cancelling and cannot be cancelled twice.
       const toCancel = await authorized('cancel', 1);
-      const short = await call('POST /nfe/{id}/cancel', {
-        path: `/nfe/${toCancel}/cancel`,
+      const short = await call('POST /invoices/{id}/cancel', {
+        path: `/invoices/${toCancel}/cancel`,
         body: { justification: 'curta' },
         status: 422,
       });
       expect(short.body.code).toBe('ERROR_JUSTIFICATION_LENGTH');
-      const cancelled = await call('POST /nfe/{id}/cancel', {
-        path: `/nfe/${toCancel}/cancel`,
+      const cancelled = await call('POST /invoices/{id}/cancel', {
+        path: `/invoices/${toCancel}/cancel`,
         body: {
           justification: 'Pedido cancelado pelo cliente antes da entrega',
         },
@@ -1176,8 +1244,8 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         status: 'cancelling',
         cancelReason: 'Pedido cancelado pelo cliente antes da entrega',
       });
-      const twice = await call('POST /nfe/{id}/cancel', {
-        path: `/nfe/${toCancel}/cancel`,
+      const twice = await call('POST /invoices/{id}/cancel', {
+        path: `/invoices/${toCancel}/cancel`,
         body: {
           justification: 'Pedido cancelado pelo cliente antes da entrega',
         },
@@ -1187,14 +1255,14 @@ describe('OpenAPI contract against the real API (e2e)', () => {
 
       // Correction letters: each takes the next sequence.
       const toCorrect = await authorized('correct', 2);
-      const tooShort = await call('POST /nfe/{id}/corrections', {
-        path: `/nfe/${toCorrect}/corrections`,
+      const tooShort = await call('POST /invoices/{id}/corrections', {
+        path: `/invoices/${toCorrect}/corrections`,
         body: { correction: 'curta' },
         status: 422,
       });
       expect(tooShort.body.code).toBe('ERROR_CORRECTION_LENGTH');
-      const first = await call('POST /nfe/{id}/corrections', {
-        path: `/nfe/${toCorrect}/corrections`,
+      const first = await call('POST /invoices/{id}/corrections', {
+        path: `/invoices/${toCorrect}/corrections`,
         body: { correction: 'Corrigir o endereço de entrega da observação' },
         status: 202,
       });
@@ -1203,14 +1271,14 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         status: 'pending',
         type: 'correction',
       });
-      const second = await call('POST /nfe/{id}/corrections', {
-        path: `/nfe/${toCorrect}/corrections`,
+      const second = await call('POST /invoices/{id}/corrections', {
+        path: `/invoices/${toCorrect}/corrections`,
         body: { correction: 'Corrigir também a informação adicional' },
         status: 202,
       });
       expect(second.body.data.sequence).toBe(2);
-      const timeline = await call('GET /nfe/{id}/events', {
-        path: `/nfe/${toCorrect}/events`,
+      const timeline = await call('GET /invoices/{id}/events', {
+        path: `/invoices/${toCorrect}/events`,
         status: 200,
       });
       expect(
@@ -1221,18 +1289,19 @@ describe('OpenAPI contract against the real API (e2e)', () => {
 
       // Inutilization: bad range, a free range, the same key again, an overlap, the list.
       const inut = {
+        type: 'nfe',
         companyId,
         series: 7,
         start: 10,
         end: 12,
         justification: 'Numeração pulada por falha do sistema emissor',
       };
-      const inverted = await call('POST /nfe/inutilizations', {
+      const inverted = await call('POST /invoices/inutilizations', {
         body: { ...inut, start: 12, end: 10 },
         status: 422,
       });
       expect(inverted.body.code).toBe('ERROR_INUTILIZATION_RANGE_INVALID');
-      const accepted = await call('POST /nfe/inutilizations', {
+      const accepted = await call('POST /invoices/inutilizations', {
         body: inut,
         headers: { 'Idempotency-Key': 'e2e-inut-1' },
         status: 202,
@@ -1243,7 +1312,7 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         start: 10,
         end: 12,
       });
-      const replayed = await call('POST /nfe/inutilizations', {
+      const replayed = await call('POST /invoices/inutilizations', {
         body: inut,
         headers: { 'Idempotency-Key': 'e2e-inut-1' },
         status: 200,
@@ -1252,18 +1321,18 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         id: accepted.body.data.id,
         replayed: true,
       });
-      const overlap = await call('POST /nfe/inutilizations', {
+      const overlap = await call('POST /invoices/inutilizations', {
         body: { ...inut, start: 12, end: 15 },
         status: 409,
       });
       expect(overlap.body.code).toBe('ERROR_INUTILIZATION_RANGE_OVERLAP');
-      const inUse = await call('POST /nfe/inutilizations', {
+      const inUse = await call('POST /invoices/inutilizations', {
         body: { ...inut, series: 1, start: 901, end: 901 },
         status: 409,
       });
       expect(inUse.body.code).toBe('ERROR_INUTILIZATION_RANGE_IN_USE');
-      const inutList = await call('GET /nfe/inutilizations', {
-        query: { companyId, status: 'pending' },
+      const inutList = await call('GET /invoices/inutilizations', {
+        query: { type: 'nfe', companyId, status: 'pending' },
         status: 200,
       });
       expect(inutList.body.data.map((i: { id: string }) => i.id)).toContain(
@@ -1271,8 +1340,8 @@ describe('OpenAPI contract against the real API (e2e)', () => {
       );
 
       // Gaps: the range voided by the request above (still pending) is a gap until the SEFAZ approves it.
-      const gaps = await call('GET /nfe/number-gaps', {
-        query: { companyId },
+      const gaps = await call('GET /invoices/number-gaps', {
+        query: { type: 'nfe', companyId },
         status: 200,
       });
       expect(gaps.body.data).toEqual(
@@ -1283,6 +1352,7 @@ describe('OpenAPI contract against the real API (e2e)', () => {
 
   describe('nfe files', () => {
     const body = () => ({
+      type: 'nfe',
       companyId,
       recipient: {
         taxId: '123.456.789-09',
@@ -1314,7 +1384,7 @@ describe('OpenAPI contract against the real API (e2e)', () => {
     });
 
     it('serves the nfeProc, the DANFE and a signed link once the documents are ready; 409 before', async () => {
-      const created = await call('POST /nfe', {
+      const created = await call('POST /invoices', {
         body: body(),
         headers: { 'Idempotency-Key': 'e2e-nfe-files' },
         status: 202,
@@ -1330,22 +1400,22 @@ describe('OpenAPI contract against the real API (e2e)', () => {
 
       // Not stored yet: every file route answers 409.
       for (const [key, path, extra] of [
-        ['GET /nfe/{id}/xml', `/nfe/${id}/xml`, {}],
-        ['GET /nfe/{id}/pdf', `/nfe/${id}/pdf`, {}],
+        ['GET /invoices/{id}/xml', `/invoices/${id}/xml`, {}],
+        ['GET /invoices/{id}/pdf', `/invoices/${id}/pdf`, {}],
         [
-          'POST /nfe/{id}/download-url',
-          `/nfe/${id}/download-url`,
+          'POST /invoices/{id}/download-url',
+          `/invoices/${id}/download-url`,
           { body: { format: 'xml' } },
         ],
       ] as const) {
         const early = await call(key, { path, status: 409, ...extra });
         expect(early.body.code).toBe('ERROR_DOCUMENTS_NOT_READY');
       }
-      const unknown = await call('GET /nfe/{id}/xml', {
-        path: `/nfe/${randomUUID()}/xml`,
+      const unknown = await call('GET /invoices/{id}/xml', {
+        path: `/invoices/${randomUUID()}/xml`,
         status: 404,
       });
-      expect(unknown.body.code).toBe('ERROR_RESOURCE_NOT_FOUND');
+      expect(unknown.body.code).toBe('ERROR_INVOICE_NOT_FOUND');
 
       // What the worker leaves behind: the files and the ready mark.
       const stored = `${tenantId}/test/nfe/${id}`;
@@ -1356,20 +1426,20 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         [id],
       );
 
-      const xml = await call('GET /nfe/{id}/xml', {
-        path: `/nfe/${id}/xml`,
+      const xml = await call('GET /invoices/{id}/xml', {
+        path: `/invoices/${id}/xml`,
         status: 200,
       });
       expect(xml.text).toBe('<nfeProc/>');
       expect(xml.contentType).toContain('application/xml');
-      const pdf = await call('GET /nfe/{id}/pdf', {
-        path: `/nfe/${id}/pdf`,
+      const pdf = await call('GET /invoices/{id}/pdf', {
+        path: `/invoices/${id}/pdf`,
         status: 200,
       });
       expect(pdf.contentType).toContain('application/pdf');
       expect(pdf.text.startsWith('%PDF')).toBe(true);
-      const link = await call('POST /nfe/{id}/download-url', {
-        path: `/nfe/${id}/download-url`,
+      const link = await call('POST /invoices/{id}/download-url', {
+        path: `/invoices/${id}/download-url`,
         body: { format: 'pdf' },
         status: 200,
       });
@@ -1377,13 +1447,13 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         fileName: 'nfe-77.pdf',
         mimeType: 'application/pdf',
       });
-      await call('POST /nfe/{id}/download-url', {
-        path: `/nfe/${id}/download-url`,
+      await call('POST /invoices/{id}/download-url', {
+        path: `/invoices/${id}/download-url`,
         body: { format: 'zip' },
         status: 400,
       });
-      const read = await call('GET /nfe/{id}', {
-        path: `/nfe/${id}`,
+      const read = await call('GET /invoices/{id}', {
+        path: `/invoices/${id}`,
         status: 200,
       });
       expect(read.body.data).toMatchObject({

@@ -513,6 +513,8 @@ export function toPublicDocument(
             (name: string) => name !== property,
           );
       }
+      const json = operation.requestBody?.content?.['application/json'];
+      if (json && contract.requestBody) json.schema = contract.requestBody;
       const multipart = operation.requestBody?.content?.['multipart/form-data'];
       if (multipart && contract.multipart)
         multipart.schema = contract.multipart;

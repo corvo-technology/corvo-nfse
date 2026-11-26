@@ -21,8 +21,8 @@ import { NfeTransitionService } from './nfe-transition.service';
 const COMPANY_MISMATCH = 'COMPANY_MISMATCH';
 
 /**
- * What the customer can do with a rejected NF-e: correct and send it again (`PUT /v1/nfe/{id}`,
- * same number, new key) or give it up (`POST /v1/nfe/{id}/discard`). A rejection gave the credit
+ * What the customer can do with a rejected NF-e: correct and send it again (`PUT /v1/invoices/{id}`,
+ * same number, new key) or give it up (`POST /v1/invoices/{id}/discard`). A rejection gave the credit
  * back, so a resubmission reserves it again, like a new NF-e.
  */
 @Injectable()

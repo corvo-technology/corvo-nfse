@@ -26,7 +26,7 @@ const STORED: Record<NfeFileFormat, string> = {
 const URL_TTL_SECONDS = 3600;
 
 /**
- * The files of an NF-e (`nfeProc` and DANFE) for the routes `/v1/nfe/{id}/xml`, `/pdf` and
+ * The files of an NF-e (`nfeProc` and DANFE) for the routes `/v1/invoices/{id}/xml`, `/pdf` and
  * `/download-url`. They stay available after a cancellation; before they are stored (or for an NF-e
  * that never got authorized) the answer is 409 `DOCUMENTS_NOT_READY`.
  */
