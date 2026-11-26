@@ -32,3 +32,5 @@ process.env.DATABASE_URL = e2eDatabaseUrl;
 process.env.DB_SCHEMA = 'corvo';
 // The dashboard-origin checks (cookie + CSRF flows) need the dashboard origin allowed.
 process.env.CORS_ORIGINS ??= 'http://localhost:4000';
+// NF-e routes exist only with this flag (and a released tenant); read when the app module loads.
+process.env.NFE_ENABLED = 'true';

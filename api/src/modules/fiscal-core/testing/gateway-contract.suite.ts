@@ -70,14 +70,15 @@ export function describeGatewayContract<D>(
       expect(second).toEqual(first);
     });
 
-    (fixtures.denied === undefined ? it.skip : it)(
-      'turns a denial into denied',
-      async () => {
+    // Only adapters whose authority can deny (NF-e) supply a denial fixture; the others have none.
+    if (fixtures.denied !== undefined) {
+      const denied = fixtures.denied;
+      it('turns a denial into denied', async () => {
         const outcome = await settle(() =>
-          gateway.issuer.issue(fixtures.denied as D, fixtures.ctx),
+          gateway.issuer.issue(denied, fixtures.ctx),
         );
         expect(outcome.kind).toBe('denied');
-      },
-    );
+      });
+    }
   });
 }
