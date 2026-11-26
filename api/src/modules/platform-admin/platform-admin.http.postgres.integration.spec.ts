@@ -229,13 +229,15 @@ describeReal(
           );
         return rows[0].nfe_enabled_at;
       };
-      const features = async () =>
-        (
+      const features = async (): Promise<unknown> => {
+        const session: { data: { features: unknown } } = (
           await http()
             .get('/v1/auth/session')
             .set({ Cookie: ctx.member.cookie })
             .expect(200)
-        ).body.data.features;
+        ).body;
+        return session.data.features;
+      };
 
       expect(await column()).toBeNull();
       const on = await put({ enabled: true, reason: 'liberar para teste' });
