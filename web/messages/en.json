@@ -3647,13 +3647,17 @@
       "number": "Number / series",
       "amount": "Amount",
       "status": "Status",
-      "created": "Created"
+      "created": "Created",
+      "model": "Model",
+      "consumerAnonymous": "Consumer not identified"
     },
     "filters": {
       "company": "Company",
       "allCompanies": "All",
       "status": "Status",
-      "allStatuses": "All"
+      "allStatuses": "All",
+      "model": "Model",
+      "allModels": "All"
     },
     "status": {
       "queued": "Queued",
@@ -3760,7 +3764,14 @@
       "email": {
         "sent": "The note was sent by e-mail to the recipient.",
         "failed": "Could not send the e-mail to the recipient."
-      }
+      },
+      "consumer": "Consumer",
+      "consumerAnonymous": "Consumer not identified",
+      "danfce80": "DANFCE (80 mm)",
+      "danfceA4": "DANFCE (A4)",
+      "qrAlt": "QR Code of the NFC-e",
+      "consultLink": "Look up the note on the SEFAZ site",
+      "cancelWindow": "A NFC-e can be cancelled within 30 minutes of authorization. After that, talk to your accountant. A NFC-e has no correction letter: cancel it and issue another."
     },
     "timeline": {
       "empty": "No history yet.",

@@ -23,11 +23,14 @@ export interface NfeCreateInput { companyId: string; natOp?: string; recipient: 
 
 export interface NfeLastError { type: "communication" | "validation" | "configuration"; code: string; message: string; hint?: string; issues?: ValidationIssue[] }
 export interface NfeItem { nItem: number; code: string; description: string; ncm: string; cfop: string; unit: string; quantity: string; unitPrice: string; total: string; tax?: { origin?: number; csosn?: string } }
+export type NfeKind = "nfe" | "nfce";
 export interface NfeDocument {
-  type: "nfe"; id: string; companyId: string; environment: "test" | "live"; status: NfeStatus; series: number | null; number: number | null; accessKey: string | null;
+  type: NfeKind; id: string; companyId: string; environment: "test" | "live"; status: NfeStatus; series: number | null; number: number | null; accessKey: string | null;
   issuedAt: string | null; authorizedAt: string | null; protocol: string | null; cStat: string | null; xMotivo: string | null; cancelReason: string | null; cancelRequestedAt: string | null;
-  natOp: string; recipient: NfeRecipient; items: NfeItem[]; totals: { vProd: string; vDesc: string; vFrete: string; vSeg: string; vOutro: string; vNF: string };
+  natOp: string; /** Null on a NFC-e sold without identifying the consumer. */ recipient: NfeRecipient | null; items: NfeItem[]; totals: { vProd: string; vDesc: string; vFrete: string; vSeg: string; vOutro: string; vNF: string };
   payment: { payments: { tPag: string; amount: string }[]; change: string }; additionalInfo: string | null; externalId: string | null;
+  /** NFC-e only: the text of the QR Code (v3, no CSC) and the page where the consumer looks the note up. */
+  qrCode?: string | null; urlChave?: string | null;
   documentsReady: boolean; documentsReadyAt: string | null; emailStatus: string | null; emailSentAt: string | null; attempt: number; lastError: NfeLastError | null; nextCheckAt: string | null; createdAt: string; updatedAt: string;
 }
 export interface NfeAccepted { type: "nfe"; id: string; status: NfeStatus; replayed?: true }
@@ -44,7 +47,7 @@ export interface NfeSettings {
   missing: NfeMissingField[];
 }
 export interface NfeSettingsInput { stateRegistration: string; /** Only to override: the CRT follows the tax regime of the company. */ crt?: 1 | 4; defaultSeries?: number; defaultNatOp?: string; defaultCsosn?: "102" | "400"; defaultOrigin?: number }
-export interface NfeListQuery extends PageParams { companyId?: string; status?: NfeStatus }
+export interface NfeListQuery extends PageParams { companyId?: string; status?: NfeStatus; /** NF-e when omitted. */ type?: NfeKind }
 export interface NfeDownload { downloadUrl: string; expiresAt: string; fileName: string; mimeType: string }
 
 const body = (data: unknown, method = "POST"): RequestInit => ({ method, body: JSON.stringify(data) });
@@ -55,6 +58,25 @@ export const validateNfe = async (input: NfeCreateInput, signal?: AbortSignal) =
 /** `idempotencyKey` is made once per form, so a double click never issues two notes. */
 export const createNfe = async (input: NfeCreateInput, idempotencyKey: string) => unwrap(await request<Envelope<NfeAccepted>>("/invoices", withKey({ type: "nfe", ...input }, idempotencyKey)));
 export const listNfe = async (params: NfeListQuery = {}, signal?: AbortSignal): Promise<Page<NfeDocument>> => toPage(await request<ListBody<NfeDocument>>(`/invoices${query({ type: "nfe", ...params })}`, { signal }));
+
+/**
+ * NF-e and NFC-e in one list: asks for both types (each with its own cursor, kept inside one) and
+ * merges the page by creation date. Order is exact inside a page; across pages it is approximate.
+ */
+export async function listNfeAndNfce(params: NfeListQuery = {}, signal?: AbortSignal): Promise<Page<NfeDocument>> {
+  type Cursors = { nfe?: string; nfce?: string };
+  let cursors: Cursors = {};
+  try { cursors = params.cursor ? (JSON.parse(params.cursor) as Cursors) : {}; } catch { cursors = {}; }
+  const rest = { ...params, cursor: undefined, type: undefined };
+  const limit = Math.max(1, Math.ceil((params.limit ?? 50) / 2));
+  const kinds: NfeKind[] = (["nfe", "nfce"] as const).filter((kind) => !params.cursor || kind in cursors);
+  const pages = await Promise.all(kinds.map((kind) => listNfe({ ...rest, limit, ...(cursors[kind] ? { cursor: cursors[kind] } : {}), type: kind }, signal)));
+  const next: Cursors = {};
+  pages.forEach((page, index) => { if (page.hasMore && page.nextCursor) next[kinds[index]] = page.nextCursor; });
+  const items = pages.flatMap((page) => page.items).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const more = Object.keys(next).length > 0;
+  return { items, hasMore: more, nextCursor: more ? JSON.stringify(next) : null };
+}
 export const getNfe = async (id: string, signal?: AbortSignal) => unwrap(await request<Envelope<NfeDocument>>(`/invoices/${idPath(id)}`, { signal }));
 /** Asks the SEFAZ about a note that is waiting (`reconciliation_required`, `manual_review`). */
 export const syncNfe = async (id: string) => unwrap(await request<Envelope<NfeDocument>>(`/invoices/${idPath(id)}/sync`, body({})));
@@ -65,7 +87,7 @@ export const discardNfe = async (id: string) => unwrap(await request<Envelope<Nf
 export const resubmitNfe = async (id: string, input: NfeCreateInput, idempotencyKey: string) => unwrap(await request<Envelope<NfeAccepted>>(`/invoices/${idPath(id)}`, withKey(input, idempotencyKey, "PUT")));
 export const listNfeEvents = async (id: string, signal?: AbortSignal) => unwrap(await request<Envelope<NfeTimelineEntry[]>>(`/invoices/${idPath(id)}/events`, { signal }));
 /** The file itself (the API serves the authorized XML and the DANFE); for a link that expires use `nfeDownloadUrl`. */
-export const nfeFile = (id: string, kind: "xml" | "pdf") => request<Blob>(`/invoices/${idPath(id)}/${kind}`, {}, true);
+export const nfeFile = (id: string, kind: "xml" | "pdf", layout?: "80mm" | "a4") => request<Blob>(`/invoices/${idPath(id)}/${kind}${layout ? query({ layout }) : ""}`, {}, true);
 export const nfeDownloadUrl = async (id: string, format: "pdf" | "xml") => unwrap(await request<Envelope<NfeDownload>>(`/invoices/${idPath(id)}/download-url`, body({ format })));
 export const listInutilizations = async (params: PageParams & { companyId?: string } = {}, signal?: AbortSignal): Promise<Page<NfeInutilization>> => toPage(await request<ListBody<NfeInutilization>>(`/invoices/inutilizations${query({ type: "nfe", ...params })}`, { signal }));
 export const createInutilization = async (input: { companyId: string; series: number; start: number; end: number; justification: string }, idempotencyKey: string) => unwrap(await request<Envelope<NfeInutilization>>("/invoices/inutilizations", withKey({ type: "nfe", ...input }, idempotencyKey)));
@@ -78,13 +100,14 @@ export const NFE_PENDING: readonly NfeStatus[] = ["queued", "processing", "retry
 export const isNfePending = (status: NfeStatus) => NFE_PENDING.includes(status);
 
 /** What each action needs. The API checks again; this only keeps the buttons honest. */
-export const nfeActions = (doc: Pick<NfeDocument, "status" | "documentsReady">, can: (permission: string) => boolean) => {
+export const nfeActions = (doc: Pick<NfeDocument, "status" | "documentsReady"> & { type?: NfeKind }, can: (permission: string) => boolean) => {
   const manage = can("nfe.documents.manage");
   const issue = can("nfe.documents.issue");
   return {
     sync: manage && (doc.status === "reconciliation_required" || doc.status === "manual_review"),
     cancel: manage && doc.status === "authorized",
-    correct: manage && doc.status === "authorized",
+    // The NFC-e has no correction letter.
+    correct: manage && doc.status === "authorized" && doc.type !== "nfce",
     resubmit: issue && doc.status === "rejected",
     discard: manage && doc.status === "rejected",
     download: doc.documentsReady,
