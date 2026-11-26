@@ -16,6 +16,9 @@ import type {
   IIssuePayload,
 } from './nfse-fiscal-provider';
 
+/** Internal adapter code; it is never returned by the public API. */
+const CANCEL_CONTEXT_MISSING = 'CANCEL_CONTEXT_MISSING';
+
 /** Never lets an exception out: a timeout is uncertain, anything else is a network failure. */
 function communicationFailure(error: unknown): GatewayOutcome<never> {
   const name = error instanceof Error ? error.name : '';
@@ -101,7 +104,7 @@ export class NfseGatewayAdapter implements FiscalDocumentGateway<IIssuePayload> 
       if (!req.context)
         return {
           kind: 'rejected',
-          code: 'CANCEL_CONTEXT_MISSING',
+          code: CANCEL_CONTEXT_MISSING,
           message: 'NFS-e cancellation needs the provider payload',
         };
       try {

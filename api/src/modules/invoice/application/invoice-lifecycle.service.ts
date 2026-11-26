@@ -14,6 +14,10 @@ import type { CachePort } from '@/infra/redis/cache.port';
 import { ICreditTransactionRepository } from '@/modules/credits/domain/credit-transaction.repository';
 import { publicErrorCode } from '@/shared/http/api-error';
 import { BillingRuleError } from '@/modules/billing/domain/billing-period';
+import {
+  CREDIT_PRICE_READER,
+  type CreditPriceReader,
+} from '@/modules/fiscal-core/domain/credit-price';
 import { Invoice } from '../domain/invoice';
 import type { CancellationReason } from '../domain/cancellation-reason';
 import { ConcurrentInvoiceTransitionError } from '../domain/errors';
@@ -74,6 +78,9 @@ export class InvoiceLifecycleService {
     @Optional() private readonly eventBus?: ApplicationEventBus,
     @Optional() private readonly customerRecorder?: CustomerRecorder,
     @Optional() private readonly pdfRefresher?: InvoicePdfRefresher,
+    @Optional()
+    @Inject(CREDIT_PRICE_READER)
+    private readonly prices?: CreditPriceReader,
   ) {}
 
   async submit(
@@ -184,9 +191,10 @@ export class InvoiceLifecycleService {
     await this.credits.save(
       {
         tenantId: invoice.tenantId,
-        amount: -1,
+        amount: -((await this.prices?.priceOf('nfse')) ?? 1),
         type: 'invoice_authorized',
         reservedInvoiceId: invoice.id,
+        reservedDocumentType: 'nfse',
         // null period = the avulso balance paid for this note.
         periodId: periodId ?? undefined,
         source: periodId === null ? 'avulso' : undefined,

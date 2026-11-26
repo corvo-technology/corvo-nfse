@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import type { DocumentType } from '@/modules/fiscal-core/domain/document-type';
 
 export type CreditTransactionType =
   | 'purchase'
@@ -32,6 +33,8 @@ export interface CreditTransactionProps {
   channelSlug?: string;
   // Reservation fields for invoice lifecycle
   reservedInvoiceId?: string;
+  // Type of the document the reservation is for; defaults to 'nfse'.
+  reservedDocumentType?: DocumentType;
   periodId?: string;
   isReservation?: boolean;
   relatedTransactionId?: string;
@@ -92,6 +95,9 @@ export class CreditTransaction {
   }
   get reservedInvoiceId(): string | undefined {
     return this.props.reservedInvoiceId;
+  }
+  get reservedDocumentType(): DocumentType {
+    return this.props.reservedDocumentType ?? 'nfse';
   }
   get periodId(): string | undefined {
     return this.props.periodId;

@@ -95,6 +95,14 @@ export class CreditTransactionOrmEntity {
   @Column({ name: 'reserved_invoice_id', type: 'uuid', nullable: true })
   reservedInvoiceId?: string;
 
+  @Column({
+    name: 'reserved_document_type',
+    type: 'varchar',
+    length: 10,
+    default: 'nfse',
+  })
+  reservedDocumentType!: string;
+
   @Column({ name: 'period_id', type: 'uuid', nullable: true })
   periodId?: string;
 

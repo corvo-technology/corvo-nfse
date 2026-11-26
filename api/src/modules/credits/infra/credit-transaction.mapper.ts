@@ -2,6 +2,7 @@ import {
   CreditTransaction,
   CreditTransactionType,
 } from '../domain/credit-transaction';
+import type { DocumentType } from '@/modules/fiscal-core/domain/document-type';
 import { CreditTransactionOrmEntity } from './credit-transaction.orm-entity';
 
 export class CreditTransactionMapper {
@@ -20,6 +21,8 @@ export class CreditTransactionMapper {
       source: (orm.source as 'subscription' | 'avulso' | 'bonus') ?? undefined,
       channelSlug: orm.channelSlug ?? undefined,
       reservedInvoiceId: orm.reservedInvoiceId ?? undefined,
+      reservedDocumentType:
+        (orm.reservedDocumentType as DocumentType | undefined) ?? 'nfse',
       periodId: orm.periodId ?? undefined,
       isReservation: orm.isReservation,
       relatedTransactionId: orm.relatedTransactionId ?? undefined,
@@ -42,6 +45,7 @@ export class CreditTransactionMapper {
     orm.source = domain.source;
     orm.channelSlug = domain.channelSlug;
     orm.reservedInvoiceId = domain.reservedInvoiceId;
+    orm.reservedDocumentType = domain.reservedDocumentType;
     orm.periodId = domain.periodId;
     orm.isReservation = domain.isReservation;
     orm.relatedTransactionId = domain.relatedTransactionId;
