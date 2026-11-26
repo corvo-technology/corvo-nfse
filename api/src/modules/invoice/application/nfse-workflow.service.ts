@@ -34,6 +34,7 @@ import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import { FiscalPortalBreaker } from './fiscal-portal-breaker';
 import {
   DpsNumberingService,
+  NumberingCheckUnavailableError,
   NumberingNeedsConfirmationError,
   skippedNumbersMessage,
 } from './dps-numbering.service';
@@ -99,6 +100,16 @@ function portalProcessedAt(xml: string): Date | null {
   } catch {
     return null;
   }
+}
+
+/** Error kind, HTTP status and a short message: enough to trace a portal failure, no body or headers. */
+export function describeCause(cause: unknown): string {
+  if (!(cause instanceof Error)) return String(cause).slice(0, 120);
+  const status = (cause as { status?: unknown }).status;
+  const parts = [cause.name || cause.constructor?.name];
+  if (typeof status === 'number') parts.push(`HTTP ${status}`);
+  parts.push(cause.message.slice(0, 120));
+  return parts.join(' ');
 }
 
 function safeReason(message: string | undefined): string | undefined {
@@ -967,11 +978,29 @@ export class NfseWorkflowService {
   /**
    * First emission of a company: the government is asked before a DPS number is reserved. Numbers
    * it confirms as used are skipped (the numbering only moves forward) and the skip is written on
-   * the invoice timeline. If the portal does not answer the error is thrown as is: nothing is
-   * reserved and the job is retried, never emitted blind. If every number asked is used, the
-   * invoice is rejected (credit returned) so the owner adjusts the numbering.
+   * the invoice timeline. If the portal cannot run the check, the note goes on with the next number
+   * of the sequence: nothing is guessed, because the government refuses a DPS number already used
+   * (E0014) and that answer takes the next free number (renumberAndRetry). If every number asked is
+   * used, the invoice is rejected (credit returned) so the owner adjusts the numbering.
    */
   private async skipUsedNumbers(invoice: Invoice): Promise<void> {
+    try {
+      await this.skipUsedNumbersOrFail(invoice);
+    } catch (error: unknown) {
+      if (!(error instanceof NumberingCheckUnavailableError)) throw error;
+      this.logger.warn(
+        {
+          invoiceId: invoice.id,
+          companyId: invoice.companyId,
+          environment: invoice.environment,
+          cause: describeCause(error.cause),
+        },
+        'Numbering check before the first note was not possible; emitting with the next number of the sequence',
+      );
+    }
+  }
+
+  private async skipUsedNumbersOrFail(invoice: Invoice): Promise<void> {
     try {
       const skipped = await this.numbering?.skipUsedNumbers(
         invoice.companyId,

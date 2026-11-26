@@ -57,7 +57,7 @@ export class NumberingCheckUnavailableError extends Error {
   readonly code = DPS_NUMBERING_CHECK_UNAVAILABLE;
   constructor(cause?: unknown) {
     super(
-      'Não foi possível conferir a numeração das notas com o governo agora. Tente emitir de novo em alguns minutos.',
+      'O governo não respondeu agora à conferência da numeração das notas. Nada foi emitido nem alterado; tente de novo em alguns minutos.',
       { cause },
     );
   }
@@ -179,6 +179,8 @@ export class DpsNumberingService {
     environment: ExecutionEnvironment,
   ): Promise<boolean> {
     if (this.providers.isSimulated(environment)) return false;
+    // Produção Restrita notes have no fiscal value: a number used there does not matter.
+    if (environment === 'test') return false;
     if (
       await this.sequences.numberingCheckedAt(companyId, tenantId, environment)
     )
@@ -217,6 +219,8 @@ export class DpsNumberingService {
     tenantId: string,
     environment: ExecutionEnvironment,
   ): Promise<SkippedNumbers | null> {
+    // In test the burned number is already behind the sequence: the next one is simply taken.
+    if (environment === 'test') return null;
     const result = await this.check(companyId, tenantId, environment);
     if (result.moreMayBeUsed) throw new NumberingNeedsConfirmationError(result);
     const used = result.usedNumbers;
