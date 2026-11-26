@@ -69,11 +69,11 @@ export interface DanfeItem {
   ipiRate: string;
 }
 
-type Node = Record<string, unknown>;
+export type Node = Record<string, unknown>;
 
 const ARRAY_TAGS = new Set(['det', 'detPag', 'dup', 'vol', 'NFref', 'obsCont']);
 
-const parser = new XMLParser({
+export const nfeXmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
   parseTagValue: false,
@@ -83,15 +83,15 @@ const parser = new XMLParser({
   isArray: (name) => ARRAY_TAGS.has(name),
 });
 
-const node = (value: unknown): Node =>
+export const node = (value: unknown): Node =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Node)
     : {};
 
-const text = (value: unknown): string =>
+export const text = (value: unknown): string =>
   typeof value === 'string' || typeof value === 'number' ? String(value) : '';
 
-const list = (value: unknown): Node[] =>
+export const list = (value: unknown): Node[] =>
   Array.isArray(value) ? value.map(node) : value ? [node(value)] : [];
 
 /** `12345.5` as `12.345,50` (no currency sign: the DANFE columns say "R$" once). */
@@ -116,7 +116,7 @@ export function formatNumber(value: string): string {
 }
 
 /** An ISO date-time as written by the issuer (its own offset): `DD/MM/AAAA` and `HH:MM:SS`. */
-function splitDateTime(value: string): { date: string; time: string } {
+export function splitDateTime(value: string): { date: string; time: string } {
   const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2}:\d{2}))?/.exec(value);
   if (!match) return { date: DASH, time: DASH };
   return {
@@ -287,7 +287,7 @@ const TAX_FIELDS: Array<[string, string]> = [
  * rendering, so the formatting is tested without a PDF.
  */
 export function toDanfeView(nfeProcXml: string): DanfeView {
-  const tree = node(parser.parse(nfeProcXml));
+  const tree = node(nfeXmlParser.parse(nfeProcXml));
   const proc = node(tree.nfeProc);
   const inf = node(node(proc.NFe ?? tree.NFe).infNFe);
   if (!inf.ide) throw new Error('The XML is not an NF-e');
