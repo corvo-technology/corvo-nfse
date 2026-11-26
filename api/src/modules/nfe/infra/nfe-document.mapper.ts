@@ -21,7 +21,7 @@ export class NfeDocumentMapper {
       tenantId: row.tenantId,
       companyId: row.companyId,
       environment: row.environment as ExecutionEnvironment,
-      model: 55,
+      model: row.model === 65 ? 65 : 55,
       series: row.series,
       number: row.number,
       accessKey: row.accessKey,

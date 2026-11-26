@@ -28,11 +28,12 @@ describePostgres('NfeNumberGapsQuery on PostgreSQL', () => {
     status: string,
     companyId = h.companyId,
     environment = 'test',
+    model: 55 | 65 = 55,
   ) => {
     await h.admin.query(
       `INSERT INTO "${h.schema}".nfe_documents
          (id, tenant_id, company_id, environment, model, series, number, status, nat_op, id_dest, ind_final, ind_pres, recipient, totals, payment, transport, attempt, idempotency_key, request_hash)
-       VALUES ($1,$2,$3,$4,55,$5,$6,$7,'Venda',1,1,1,'{}'::jsonb,'{}'::jsonb,'{}'::jsonb,'{}'::jsonb,1,gen_random_uuid()::text,'h')`,
+       VALUES ($1,$2,$3,$4,$8,$5,$6,$7,'Venda',1,1,1,'{}'::jsonb,'{}'::jsonb,'{}'::jsonb,'{}'::jsonb,1,gen_random_uuid()::text,'h')`,
       [
         randomUUID(),
         h.tenantId,
@@ -41,6 +42,7 @@ describePostgres('NfeNumberGapsQuery on PostgreSQL', () => {
         seriesNumber,
         number,
         status,
+        model,
       ],
     );
   };
@@ -85,6 +87,24 @@ describePostgres('NfeNumberGapsQuery on PostgreSQL', () => {
       { companyId: h.companyId, series: n, start: 2, end: 2 },
       { companyId: h.companyId, series: n, start: 4, end: 5 },
     ]);
+  });
+
+  it('counts the NFC-e (65) of a series apart from the NF-e (55)', async () => {
+    const n = series++;
+    await document(n, 1, 'authorized');
+    await document(n, 3, 'authorized');
+    await document(n, 1, 'authorized', h.companyId, 'test', 65);
+    await sequence(n, 3);
+    // NF-e side: 2 is a gap. The NFC-e documents never fill it.
+    expect(
+      (await query.list(h.tenantId, 'test')).filter((g) => g.series === n),
+    ).toEqual([{ companyId: h.companyId, series: n, start: 2, end: 2 }]);
+    // NFC-e side has no sequence of its own here, so it has no gaps.
+    expect(
+      (await query.list(h.tenantId, 'test', undefined, 65)).filter(
+        (g) => g.series === n,
+      ),
+    ).toEqual([]);
   });
 
   it('a pending or rejected inutilization does not close a gap', async () => {

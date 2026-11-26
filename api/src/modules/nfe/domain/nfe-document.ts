@@ -58,7 +58,8 @@ export interface NfeDocumentProps {
   tenantId: string;
   companyId: string;
   environment: ExecutionEnvironment;
-  model: 55;
+  /** 55 = NF-e, 65 = NFC-e. */
+  model: 55 | 65;
   series: number | null;
   number: number | null;
   accessKey: string | null;
@@ -111,6 +112,8 @@ export interface CreateNfeDocumentParams {
   tenantId: string;
   companyId: string;
   environment: ExecutionEnvironment;
+  /** 55 (NF-e, the default) or 65 (NFC-e). */
+  model?: 55 | 65;
   natOp: string;
   idDest: number;
   indFinal: number;
@@ -191,7 +194,7 @@ export class NfeDocument {
       tenantId: params.tenantId,
       companyId: params.companyId,
       environment: params.environment,
-      model: 55,
+      model: params.model ?? 55,
       series: null,
       number: null,
       accessKey: null,

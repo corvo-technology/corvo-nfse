@@ -133,6 +133,28 @@ describePostgres('NfeDocument repository with a restricted role', () => {
     });
   });
 
+  it('stores an NFC-e (model 65) and keeps it apart by model', async () => {
+    const nfe = newDoc();
+    const nfce = newDoc({ model: 65 });
+    await repo.insert(nfe);
+    await repo.insert(nfce);
+    expect(
+      (await repo.findById(nfce.id, tenantA, 'test'))?.toSnapshot().model,
+    ).toBe(65);
+    expect(
+      await repo.findById(nfce.id, tenantA, 'test', { model: 55 }),
+    ).toBeNull();
+    expect(
+      (await repo.findById(nfce.id, tenantA, 'test', { model: 65 }))?.id,
+    ).toBe(nfce.id);
+    const only55 = await repo.list(tenantA, 'test', {
+      limit: 100,
+      model: 55,
+    });
+    expect(only55.data.map((d) => d.id)).toContain(nfe.id);
+    expect(only55.data.map((d) => d.id)).not.toContain(nfce.id);
+  });
+
   it('saves the numbering, the key and the new status', async () => {
     const doc = newDoc();
     await repo.insert(doc);
