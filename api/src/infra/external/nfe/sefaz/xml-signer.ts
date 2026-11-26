@@ -7,7 +7,7 @@ import type {
 /**
  * Algorithms fixed by the official `xmldsig-core-schema_v1.01.xsd` of the NF-e packages (the
  * schema pins every one of them with `fixed=`): inclusive C14N 1.0, RSA-SHA1 and SHA-1. SHA-1 is
- * not a choice: the MOC / layout 4.00 requires it and the SEFAZ rejects anything else (cStat 297).
+ * not a choice: the layout 4.00 XSD requires it, so any other algorithm fails the schema.
  */
 const ALGORITHMS = {
   canonicalization: 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315',
