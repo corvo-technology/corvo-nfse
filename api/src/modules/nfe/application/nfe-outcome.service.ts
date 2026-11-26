@@ -1,10 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import type {
   NfeAuthorization,
   NfeConsultResult,
 } from '@/infra/external/nfe/sefaz/signed-nfe';
 import type { GatewayOutcome } from '@/modules/fiscal-core/domain/gateway-outcome';
 import type { Authorization } from '@/modules/fiscal-core/domain/ports/gateway.port';
+import {
+  CUSTOMER_NAME_MAX,
+  CustomerDirectory,
+} from '@/modules/invoice/domain/customer-directory';
 import { FiscalPortalBreaker } from '@/modules/invoice/application/fiscal-portal-breaker';
 import type { NfeDocument } from '../domain/nfe-document';
 import { prepareDocumentsMessage } from './nfe-messages';
@@ -33,10 +37,34 @@ export const UNAVAILABLE_CODE = 'SEFAZ_UNAVAILABLE';
  */
 @Injectable()
 export class NfeOutcomeService {
+  private readonly logger = new Logger(NfeOutcomeService.name);
+
   constructor(
     private readonly transitions: NfeTransitionService,
     private readonly breaker: FiscalPortalBreaker,
+    @Optional() private readonly customers?: CustomerDirectory,
   ) {}
+
+  /**
+   * Saves the recipient of an authorized NF-e in the customers list (as the NFS-e does), so the next
+   * note for the same CPF/CNPJ is filled in. Best effort: it never fails or delays the note.
+   */
+  private async rememberRecipient(doc: NfeDocument): Promise<void> {
+    const { taxId, name, email } = doc.toSnapshot().recipient;
+    const clean = name?.trim();
+    if (!this.customers || !taxId || !clean || clean.length > CUSTOMER_NAME_MAX)
+      return;
+    try {
+      await this.customers.remember(
+        { tenantId: doc.tenantId, environment: doc.environment },
+        { taxId, name: clean, email: email ?? null },
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Could not remember the recipient of NF-e ${doc.id}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
 
   /**
    * @param consult asks the SEFAZ about the key (used when it says the NF-e is a duplicate).
@@ -98,6 +126,7 @@ export class NfeOutcomeService {
       // Same transaction: the documents (nfeProc, DANFE) are prepared once, after this commit.
       messages: [prepareDocumentsMessage(doc)],
     });
+    await this.rememberRecipient(doc);
     return this.settled(result);
   }
 
