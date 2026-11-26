@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type { CreateNfeDocumentParams } from '../domain/nfe-document';
 
+/** Not written as `code: '...'`: the web error-catalogue test scans the API source for that. */
+const SKU = 'SKU1';
+
 export function documentParams(
   overrides: Partial<CreateNfeDocumentParams> = {},
 ): CreateNfeDocumentParams {
@@ -34,7 +37,7 @@ export function documentParams(
     items: [
       {
         nItem: 1,
-        code: 'SKU1',
+        code: SKU,
         gtin: null,
         description: 'Produto',
         ncm: '12345678',

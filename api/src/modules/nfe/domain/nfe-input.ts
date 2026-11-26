@@ -1,0 +1,66 @@
+/**
+ * What the customer sends to `POST /v1/nfe` and `POST /v1/nfe/validate`, already parsed by the
+ * DTO (camelCase). Money and quantities arrive as JSON numbers and are read with `Decimal` from
+ * their shortest text form, never through float arithmetic.
+ */
+export interface NfeAddressInput {
+  street: string;
+  number: string;
+  complement?: string | null;
+  district: string;
+  zip: string;
+  cityCode: string;
+  city: string;
+  state: string;
+}
+
+export interface NfeRecipientInput {
+  taxId: string;
+  name: string;
+  indIeDest: number;
+  stateRegistration?: string | null;
+  email?: string | null;
+  address: NfeAddressInput;
+}
+
+export interface NfeItemTaxInput {
+  origin?: number;
+  csosn?: string;
+  pisCst?: string;
+  cofinsCst?: string;
+}
+
+export interface NfeItemInput {
+  code: string;
+  gtin?: string | null;
+  description: string;
+  ncm: string;
+  cest?: string | null;
+  cfop: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  discount?: number;
+  freight?: number;
+  insurance?: number;
+  other?: number;
+  tax?: NfeItemTaxInput;
+}
+
+export interface NfePaymentInput {
+  tPag: string;
+  amount: number;
+}
+
+export interface NfeInput {
+  companyId: string;
+  natOp?: string;
+  finNfe?: number;
+  tpImp?: number;
+  recipient: NfeRecipientInput;
+  items: NfeItemInput[];
+  payments: NfePaymentInput[];
+  change?: number;
+  additionalInfo?: string;
+  externalId?: string;
+}
