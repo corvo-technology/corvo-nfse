@@ -78,6 +78,9 @@ export const SCOPE_DESCRIPTIONS: Record<string, string> = {
   'nfse:read': 'Consultar empresas, notas, cálculo fiscal e cotas',
   'nfse:write': 'Criar empresas, emitir e cancelar notas fiscais',
   'nfse:certificates': 'Enviar o certificado digital da empresa',
+  'nfe:read': 'Consultar NF-e e configurações de NF-e da empresa',
+  'nfe:write': 'Emitir NF-e',
+  'nfe:manage': 'Cancelar, corrigir e inutilizar NF-e',
   'billing:purchase':
     'Gerar cobranças de créditos (Pix ou cartão). O pagamento é sempre feito por você.',
 };
@@ -87,6 +90,9 @@ export const SCOPE_PERMISSION: Record<string, TenantPermission> = {
   'nfse:read': 'nfse.invoices.view',
   'nfse:write': 'nfse.invoices.issue',
   'nfse:certificates': 'nfse.certificates.manage',
+  'nfe:read': 'nfe.documents.view',
+  'nfe:write': 'nfe.documents.issue',
+  'nfe:manage': 'nfe.documents.manage',
   'billing:purchase': 'billing.manage',
 };
 

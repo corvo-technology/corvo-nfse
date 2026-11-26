@@ -172,7 +172,10 @@ describe('AuthContextService', () => {
     );
 
     expect(result.principalType).toBe('api_key');
-    expect(result.permissions).toEqual(['nfse.invoices.view']);
+    expect(result.permissions).toEqual([
+      'nfse.invoices.view',
+      'nfe.documents.view',
+    ]);
     expect(result.apiKeyEnvironment).toBe('test');
   });
 });

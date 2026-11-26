@@ -38,6 +38,13 @@ export const envSchema = z
      * company's certificate, no legal validity; `fake` is the in-process simulator, for automated tests.
      */
     NFSE_TEST_PROVIDER: z.enum(['sefin', 'fake']).default('sefin'),
+    /** NF-e (modelo 55) is off until released: this flag AND `tenants.nfe_enabled_at` turn it on per tenant. */
+    NFE_ENABLED: booleanFromEnv.default(false),
+    /** Blocks tpAmb=1 (production) NF-e; only homologation is allowed while false. */
+    NFE_PRODUCTION_ENABLED: booleanFromEnv.default(false),
+    /** Where `test` NF-e go: `sefaz` (homologation) or `fake` (in-process simulator, automated tests). */
+    NFE_TEST_PROVIDER: z.enum(['sefaz', 'fake']).default('sefaz'),
+    NFE_SEFAZ_TIMEOUT_MS: z.coerce.number().int().min(1000).default(30000),
     RESEND_API_KEY: z.string().trim().optional(),
     RESEND_BASE_URL: z.string().url().default('https://api.resend.com'),
     EMAIL_FROM: z.string().min(1).default('Corvo <noreply@corvo.tech>'),

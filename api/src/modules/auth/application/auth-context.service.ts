@@ -155,6 +155,9 @@ const FULL_ACCESS_PERMISSIONS: TenantPermission[] = [
   'nfse.certificates.manage',
   'nfse.invoices.view',
   'nfse.invoices.issue',
+  'nfe.documents.view',
+  'nfe.documents.issue',
+  'nfe.documents.manage',
 ];
 
 const INVOICES_READ_WRITE_PERMISSIONS: TenantPermission[] = [
@@ -163,11 +166,20 @@ const INVOICES_READ_WRITE_PERMISSIONS: TenantPermission[] = [
   'nfse.companies.view',
   'nfse.certificates.view',
   'webhooks.view',
+  'nfe.documents.view',
+  'nfe.documents.issue',
+  'nfe.documents.manage',
 ];
 
-const INVOICES_ISSUE_PERMISSIONS: TenantPermission[] = ['nfse.invoices.issue'];
+const INVOICES_ISSUE_PERMISSIONS: TenantPermission[] = [
+  'nfse.invoices.issue',
+  'nfe.documents.issue',
+];
 
-const INVOICES_VIEW_PERMISSIONS: TenantPermission[] = ['nfse.invoices.view'];
+const INVOICES_VIEW_PERMISSIONS: TenantPermission[] = [
+  'nfse.invoices.view',
+  'nfe.documents.view',
+];
 
 export function permissionsForApiKeyScope(
   scope: ApiKeyScope,

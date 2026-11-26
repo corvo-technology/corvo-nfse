@@ -122,7 +122,11 @@ describe(ApiKeyService.name, () => {
     const developer = {
       activeTenantId: 'tenant-id',
       role: 'developer',
-      permissions: ['api_keys.manage', 'nfse.invoices.issue'],
+      permissions: [
+        'api_keys.manage',
+        'nfse.invoices.issue',
+        'nfe.documents.issue',
+      ],
     } as any;
 
     it('rejects a full_access key from a developer (would add certificate management)', async () => {

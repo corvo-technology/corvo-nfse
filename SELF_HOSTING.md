@@ -94,6 +94,8 @@ The redirect URL goes through the dashboard, so the session cookie belongs to th
 
 Only a verified provider email signs a user in or links an existing account.
 
+NF-e is off by default. `NFE_ENABLED=false` and `NFE_PRODUCTION_ENABLED=false` keep it that way; a tenant only sees NF-e when `NFE_ENABLED=true` and `tenants.nfe_enabled_at` is set, and production NF-e stays blocked until `NFE_PRODUCTION_ENABLED=true`. `NFE_TEST_PROVIDER` (`sefaz` or `fake`) and `NFE_SEFAZ_TIMEOUT_MS` tune the homologation transport.
+
 Optional settings include `STRIPE_PORTAL_CONFIGURATION_ID`, Turnstile credentials for endpoints that use it, Sentry, and OpenTelemetry. Keep `TURNSTILE_DEVELOPMENT_BYPASS_ENABLED=false` in production. The current email-code login does not use Turnstile.
 
 ```bash

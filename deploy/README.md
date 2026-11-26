@@ -16,6 +16,10 @@ From the repository root, run `node scripts/setup-env.mjs` to generate the env f
 
 `PLATFORM_ADMIN_EMAILS` (in `.env`, comma-separated, lowercase, no spaces) lists who can open `/app/admin`. Empty or missing means nobody is admin. The e-mail must be verified, and only a cookie session counts (API keys and MCP never are admin). The list is read at startup: restart the API after changing it. In self-hosted mode the credit grant does not exist.
 
+## NF-e
+
+NF-e is off by default (`NFE_ENABLED=false`, `NFE_PRODUCTION_ENABLED=false`). A tenant gets it only when `NFE_ENABLED=true` and `tenants.nfe_enabled_at` is set; production NF-e stays blocked until `NFE_PRODUCTION_ENABLED=true`. `NFE_TEST_PROVIDER` (`sefaz` or `fake`) and `NFE_SEFAZ_TIMEOUT_MS` are optional.
+
 ## Web build variables
 
 Next.js inlines `NEXT_PUBLIC_*` values into the browser bundle at build time. Supply them as build variables or Docker build args (`docker build -f deploy/Dockerfile.web --build-arg NEXT_PUBLIC_META_PIXEL_ID=... .`), or through Compose `web.build.args`. Setting runtime environment variables does not update these values; rebuild the image after changing them.
