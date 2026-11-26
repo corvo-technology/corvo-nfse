@@ -34,6 +34,9 @@ export interface ConsultResult {
 export interface EventReceipt {
   protocol: string;
   cStat: string;
+  xMotivo?: string;
+  /** The request and the SEFAZ answer joined (`procEventoNFe` / `ProcInutNFe`), when the type has one. */
+  procXml?: string;
   registeredAt?: Date;
 }
 
@@ -42,6 +45,8 @@ export interface CancelRequest {
   reason: string;
   justification: string;
   protocol?: string;
+  /** The event already built and signed, for types whose request is stored and resent as is. */
+  signedXml?: string;
   /** Type-specific data the adapter needs (opaque to the core). */
   context?: unknown;
 }
@@ -50,6 +55,7 @@ export interface CorrectionRequest {
   accessKey: string;
   correction: string;
   sequence: number;
+  signedXml?: string;
 }
 
 export interface InutilizeRequest {
@@ -59,6 +65,7 @@ export interface InutilizeRequest {
   startNumber: number;
   endNumber: number;
   justification: string;
+  signedXml?: string;
 }
 
 export interface IssueCapability<D> {

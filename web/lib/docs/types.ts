@@ -2,7 +2,7 @@
 export type DocsLocale = "en" | "pt";
 export const DOC_LOCALES: readonly DocsLocale[] = ["en", "pt"];
 
-export type DocGroupKey = "gettingStarted" | "reference" | "guides";
+export type DocGroupKey = "gettingStarted" | "reference" | "guides" | "nfe";
 
 export type DocSlug =
   | "sdks"
@@ -23,7 +23,13 @@ export type DocSlug =
   | "payment-integrations"
   | "municipalities"
   | "mcp"
-  | "llms";
+  | "llms"
+  | "nfe"
+  | "nfe-company"
+  | "nfe-issue"
+  | "nfe-errors"
+  | "nfe-events"
+  | "nfe-files";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 

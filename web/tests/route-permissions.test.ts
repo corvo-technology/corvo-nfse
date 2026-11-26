@@ -45,11 +45,11 @@ describe("the table agrees with the API", () => {
   });
 
   it("gives an admin every page", () => {
-    for (const [prefix] of ROUTE_PERMISSION_RULES) expect(canOpenPath(prefix, asCan("admin"))).toBe(true);
+    for (const [prefix] of ROUTE_PERMISSION_RULES) expect(canOpenPath(prefix, asCan("admin"), { nfe: true })).toBe(true);
   });
 
   const pages = (role: keyof typeof TENANT_ROLE_PERMISSIONS) =>
-    ROUTE_PERMISSION_RULES.map(([prefix]) => prefix).filter((prefix) => canOpenPath(prefix, asCan(role)));
+    ROUTE_PERMISSION_RULES.map(([prefix]) => prefix).filter((prefix) => canOpenPath(prefix, asCan(role), { nfe: true }));
 
   it("keeps a developer out of members and the billing role out of API keys and integrations", () => {
     expect(pages("developer")).not.toContain("/app/members");

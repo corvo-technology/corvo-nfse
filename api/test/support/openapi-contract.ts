@@ -24,7 +24,20 @@ export function documentedOperation(key: string): Json {
     Json | undefined;
   if (!operation)
     throw new Error(`"${key}" is not in docs/openapi/openapi.json`);
-  return operation;
+  // Shared error responses are `$ref`s to `#/components/responses/*`: resolve them.
+  const responses = Object.fromEntries(
+    Object.entries((operation.responses ?? {}) as Json).map(
+      ([status, response]: [string, Json]) => [
+        status,
+        typeof response.$ref === 'string'
+          ? (document.components.responses[
+              response.$ref.replace('#/components/responses/', '')
+            ] as Json)
+          : response,
+      ],
+    ),
+  );
+  return { ...operation, responses };
 }
 
 /** Every `METHOD /path` the document publishes. */

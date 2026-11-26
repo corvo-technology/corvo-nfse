@@ -5,6 +5,7 @@ export interface SchemaIssue {
 
 export type SchemaId =
   | 'nfe'
+  | 'nfeProc'
   | 'enviNFe'
   | 'consStatServ'
   | 'consSitNFe'

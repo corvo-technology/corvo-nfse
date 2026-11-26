@@ -1,3 +1,4 @@
+import type { DocumentRef } from '@/modules/fiscal-core/domain/document-type';
 import type { BillingPeriodState } from './billing-period';
 
 export interface BillingPlan {
@@ -66,6 +67,8 @@ export abstract class BillingRepository {
     invoiceId: string,
     tenantId: string,
   ): Promise<string | null>;
+  /** Same as `reservedPeriod`, for any fiscal document type. */
+  abstract reservedPeriodFor(ref: DocumentRef): Promise<string | null>;
   abstract dailyUsage(tenantId: string): Promise<number>;
   /** Spendable avulso + bonus notes: grants minus reservations, refunds included. */
   abstract avulsoBalance(tenantId: string): Promise<number>;

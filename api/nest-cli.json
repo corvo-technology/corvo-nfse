@@ -12,6 +12,14 @@
       {
         "include": "modules/invoice/infra/danfse/assets/*",
         "outDir": "dist"
+      },
+      {
+        "include": "infra/external/nfe/sefaz/certs/*",
+        "outDir": "dist"
+      },
+      {
+        "include": "infra/external/nfe/sefaz/schemas/**/*.xsd",
+        "outDir": "dist"
       }
     ],
     "plugins": [

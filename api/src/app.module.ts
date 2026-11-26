@@ -37,6 +37,7 @@ import { PlatformAdminModule } from '@/modules/platform-admin/platform-admin.mod
 import { AccountAuditModule } from '@/modules/account-audit/account-audit.module';
 import { StorageModule } from '@/infra/storage/storage.module';
 import { FiscalCoreModule } from '@/modules/fiscal-core/fiscal-core.module';
+import { NfeModule } from '@/modules/nfe/nfe.module';
 import { NfseExternalModule } from '@/infra/external/nfse/nfse-external.module';
 import { DomainExceptionFilter } from '@/shared/http/domain-exception.filter';
 import { SentryModule } from '@/infra/observability/sentry.module';
@@ -77,6 +78,7 @@ import { SentryModule } from '@/infra/observability/sentry.module';
     PublicConfigModule,
     StorageModule.forRoot(),
     FiscalCoreModule,
+    NfeModule,
     NfseExternalModule,
   ],
   controllers: [PlanController],

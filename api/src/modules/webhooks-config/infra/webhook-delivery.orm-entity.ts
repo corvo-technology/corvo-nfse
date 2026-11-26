@@ -27,6 +27,7 @@ import {
 @Index('idx_webhook_deliveries_retry', ['status', 'nextRetryAt'])
 @ManagedIndex('idx_webhook_deliveries_cursor', { synchronize: false })
 @ManagedIndex('idx_webhook_deliveries_invoice', { synchronize: false })
+@ManagedIndex('idx_webhook_deliveries_document', { synchronize: false })
 export class WebhookDeliveryOrmEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -40,6 +41,10 @@ export class WebhookDeliveryOrmEntity {
   /** The invoice the event is about, when there is one. */
   @Column({ name: 'invoice_id', type: 'uuid', nullable: true })
   invoiceId?: string | null;
+
+  /** The NF-e the event is about, when there is one (`invoice_id` stays null for it). */
+  @Column({ name: 'document_id', type: 'uuid', nullable: true })
+  documentId?: string | null;
 
   @Column({ name: 'event_type', type: 'varchar', length: 100 })
   eventType!: string;

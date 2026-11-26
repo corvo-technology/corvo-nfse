@@ -50,7 +50,7 @@ Corvo is a REST API and MCP server to issue NFS-e on the national standard, focu
 | Plans and credits | A free test environment, paid plans with monthly allowances and single-invoice credits. Public prices at `GET /v1/plans`. |
 
 > [!NOTE]
-> Corvo covers **NFS-e (services)** only, not NF-e or NFC-e. See [fiscal limitations](docs/fiscal/limitations.md) for what is not covered yet.
+> Corvo covers **NFS-e (services)**. NF-e (goods, model 55) exists only in test mode (homologação), in accounts where it was released, through the same `/v1/invoices` routes with `type: "nfe"`; NFC-e is not covered. See [fiscal limitations](docs/fiscal/limitations.md) for what is not covered yet.
 
 ## How it works
 

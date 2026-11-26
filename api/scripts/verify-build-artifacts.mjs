@@ -18,6 +18,32 @@ for (const entry of ENTRY_POINTS) {
   }
 }
 
+// Runtime assets of the SEFAZ layer (read from __dirname): schemas and the ICP-Brasil chain.
+const SEFAZ_ASSETS = [
+  'infra/external/nfe/sefaz/schemas/PL_010h_v1.03/nfe_v4.00.xsd',
+  'infra/external/nfe/sefaz/schemas/PL_010h_v1.03/leiauteNFe_v4.00.xsd',
+  'infra/external/nfe/sefaz/schemas/PL_010h_v1.03/procNFe_v4.00.xsd',
+  'infra/external/nfe/sefaz/certs/icp-brasil-chain.pem',
+];
+for (const asset of SEFAZ_ASSETS) {
+  if (!existsSync(join(DIST_DIR, asset))) {
+    console.error(`ERROR: Missing build asset: ${asset}`);
+    hasErrors = true;
+  }
+}
+
+// The DANFE reads the fonts of the DANFSe (modules/nfe/infra/danfe is a sibling folder of them).
+const FONT_ASSETS = [
+  'modules/invoice/infra/danfse/assets/LiberationSans-Regular.ttf',
+  'modules/invoice/infra/danfse/assets/LiberationSans-Bold.ttf',
+];
+for (const asset of FONT_ASSETS) {
+  if (!existsSync(join(DIST_DIR, asset))) {
+    console.error(`ERROR: Missing build asset: ${asset}`);
+    hasErrors = true;
+  }
+}
+
 const distFiles = readdirSync(DIST_DIR);
 if (distFiles.length === 0) {
   console.error('ERROR: dist/ directory is empty');

@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import archiver from 'archiver';
@@ -16,6 +17,9 @@ import {
   type IDocumentStorage,
 } from '@/infra/storage/domain/document-storage';
 import { ICompanyRepository } from '@/modules/company/domain/company.repository';
+import { Decimal } from '@/shared/types/money';
+import type { PackageContribution } from '../../domain/package-contributor';
+import { PackageContributorRegistry } from './package-contributor.registry';
 import {
   IInvoicePackageRepository,
   monthRange,
@@ -73,7 +77,11 @@ function fileBase(row: PackageInvoice): string {
   return row.summary.cancelled ? `cancelada-${name}` : name;
 }
 
-/** The month package: XML and PDF of every authorized or cancelled note, plus resumo.csv. */
+/**
+ * The month package: XML and PDF of every authorized or cancelled note, plus resumo.csv. When the
+ * month also has NF-e, they go in the `nfe/` folder with their own `nfe-resumo.csv` (added by the
+ * NF-e module through the contributor registry); without NF-e the ZIP is exactly the same.
+ */
 @Injectable()
 export class InvoicePackageService {
   private readonly logger = new Logger(InvoicePackageService.name);
@@ -82,6 +90,7 @@ export class InvoicePackageService {
     private readonly invoices: IInvoicePackageRepository,
     @Inject(DOCUMENT_STORAGE) private readonly storage: IDocumentStorage,
     private readonly companies: ICompanyRepository,
+    @Optional() private readonly contributors?: PackageContributorRegistry,
   ) {}
 
   private async company(scope: PackageScope) {
@@ -102,10 +111,22 @@ export class InvoicePackageService {
     return runWithTenant(scope.tenantId, async () => {
       const company = await this.company(scope);
       const { count, total } = await this.invoices.summarize(scope);
+      let extraCount = 0;
+      let extraCents = 0;
+      for (const contributor of this.contributors?.all() ?? []) {
+        const extra = await contributor.summarize(scope);
+        extraCount += extra.count;
+        extraCents += extra.totalCents;
+      }
       return {
         month: scope.month,
-        count,
-        total,
+        count: count + extraCount,
+        total:
+          extraCents === 0
+            ? total
+            : new Decimal(total)
+                .plus(new Decimal(extraCents).div(100))
+                .toFixed(2),
         limit: PACKAGE_MAX_INVOICES,
         companyName: company.tradeName ?? company.legalName,
         companyTaxId: company.taxId,
@@ -127,6 +148,30 @@ export class InvoicePackageService {
     return rows;
   }
 
+  /** The other documents of the month (NF-e), refused the same way when they do not fit. */
+  private async loadExtras(
+    scope: PackageScope,
+  ): Promise<PackageContribution[]> {
+    const found: PackageContribution[] = [];
+    for (const contributor of this.contributors?.all() ?? []) {
+      const contribution = await contributor.collect(
+        scope,
+        PACKAGE_MAX_INVOICES + 1,
+      );
+      if (contribution.entries.length > PACKAGE_MAX_INVOICES) {
+        const { count } = await contributor.summarize(scope);
+        throw new UnprocessableEntityException({
+          code: 'PACKAGE_TOO_LARGE',
+          message: `This month has ${count} notes; the package holds at most ${PACKAGE_MAX_INVOICES}`,
+          count,
+          limit: PACKAGE_MAX_INVOICES,
+        });
+      }
+      found.push(contribution);
+    }
+    return found;
+  }
+
   /**
    * Validates the request and returns the ZIP as a stream. The month is read up front, so
    * "too large" and "empty" are answered before any byte of the ZIP is sent.
@@ -135,30 +180,37 @@ export class InvoicePackageService {
     scope: PackageScope,
     include: PackageInclude,
   ): Promise<{ fileName: string; stream: Readable; count: number }> {
-    const { rows, company } = await runWithTenant(scope.tenantId, async () => ({
-      company: await this.company(scope),
-      rows: await this.load(scope),
-    }));
-    if (rows.length === 0)
+    const { rows, company, extras } = await runWithTenant(
+      scope.tenantId,
+      async () => ({
+        company: await this.company(scope),
+        rows: await this.load(scope),
+        extras: await this.loadExtras(scope),
+      }),
+    );
+    const extraCount = extras.reduce((sum, e) => sum + e.entries.length, 0);
+    if (rows.length === 0 && extraCount === 0)
       throw new NotFoundException({
         code: 'PACKAGE_EMPTY',
         message: 'No authorized or cancelled notes in this month',
       });
     const archive = archiver('zip', { zlib: { level: 6 } });
-    void this.fill(archive, scope, rows, include).catch((error: unknown) => {
-      this.logger.error({
-        event: 'invoice_package_failed',
-        tenantId: scope.tenantId,
-        companyId: scope.companyId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      // The client sees a cut ZIP without resumo.csv: that is how an incomplete package shows.
-      archive.destroy(error instanceof Error ? error : new Error('failed'));
-    });
+    void this.fill(archive, scope, rows, include, extras).catch(
+      (error: unknown) => {
+        this.logger.error({
+          event: 'invoice_package_failed',
+          tenantId: scope.tenantId,
+          companyId: scope.companyId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        // The client sees a cut ZIP without resumo.csv: that is how an incomplete package shows.
+        archive.destroy(error instanceof Error ? error : new Error('failed'));
+      },
+    );
     return {
       fileName: `nfse-${scope.month}-${company.taxId}.zip`,
       stream: archive,
-      count: rows.length,
+      count: rows.length + extraCount,
     };
   }
 
@@ -203,11 +255,25 @@ export class InvoicePackageService {
     await written;
   }
 
+  /** The files of the other documents, one at a time, then their own sheet. */
+  private async fillExtra(
+    archive: archiver.Archiver,
+    extra: PackageContribution,
+    include: PackageInclude,
+  ): Promise<void> {
+    for (const entry of extra.entries)
+      for (const file of await entry.read(include))
+        await this.add(archive, file.name, file.content);
+    if (extra.sheet)
+      await this.add(archive, extra.sheet.name, extra.sheet.content);
+  }
+
   private async fill(
     archive: archiver.Archiver,
     scope: PackageScope,
     rows: PackageInvoice[],
     include: PackageInclude,
+    extras: PackageContribution[] = [],
   ): Promise<void> {
     await runWithTenant(scope.tenantId, async () => {
       const summary: PackageSummaryRow[] = [];
@@ -238,6 +304,7 @@ export class InvoicePackageService {
           summary.push({ ...row.summary, documents: status });
         }
       }
+      for (const extra of extras) await this.fillExtra(archive, extra, include);
       // Last on purpose: a ZIP without resumo.csv is an incomplete ZIP.
       await this.add(
         archive,

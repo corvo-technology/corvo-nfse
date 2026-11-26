@@ -1,3 +1,4 @@
+import type { DocumentRef } from '@/modules/fiscal-core/domain/document-type';
 import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import {
   CreateCreditTransaction,
@@ -29,6 +30,10 @@ export abstract class ICreditTransactionRepository {
   abstract findByReservedInvoiceId(
     invoiceId: string,
     tenantId: string,
+  ): Promise<CreditTransaction | null>;
+  /** The live reservation of a fiscal document, whatever its type. */
+  abstract findByReservedDocument(
+    ref: DocumentRef,
   ): Promise<CreditTransaction | null>;
   /**
    * Confirm a reservation (mark it as no longer a reservation).

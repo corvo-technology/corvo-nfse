@@ -45,6 +45,11 @@ export const envSchema = z
     /** Where `test` NF-e go: `sefaz` (homologation) or `fake` (in-process simulator, automated tests). */
     NFE_TEST_PROVIDER: z.enum(['sefaz', 'fake']).default('sefaz'),
     NFE_SEFAZ_TIMEOUT_MS: z.coerce.number().int().min(1000).default(30000),
+    /** Responsible technician written in `infRespTec` (Corvo as the software house). All four or none. */
+    NFE_RESP_TEC_CNPJ: z.string().trim().optional(),
+    NFE_RESP_TEC_CONTACT: z.string().trim().optional(),
+    NFE_RESP_TEC_EMAIL: z.string().trim().optional(),
+    NFE_RESP_TEC_PHONE: z.string().trim().optional(),
     RESEND_API_KEY: z.string().trim().optional(),
     RESEND_BASE_URL: z.string().url().default('https://api.resend.com'),
     EMAIL_FROM: z.string().min(1).default('Corvo <noreply@corvo.tech>'),

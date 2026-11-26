@@ -35,6 +35,17 @@
     ]
   },
   {
+    "date": "2027-02-26",
+    "title": "Atualizar a cadeia ICP-Brasil da NF-e (lembrete trimestral)",
+    "what": "A cadeia de certificados ICP-Brasil usada no mTLS com a SEFAZ fica versionada no código e envelhece. Depois de rodar o script, anotar a nova data e o SHA-256 no README da pasta certs e marcar o próximo lembrete (3 meses depois).",
+    "who": "Todas as empresas que emitem NF-e pela Corvo.",
+    "check": "Rodar scripts/update-icp-brasil-chain.sh, conferir o git diff e abrir PR. Se a SEFAZ passar a falhar com erro de certificado do servidor, rodar antes do prazo.",
+    "sources": [
+      "scripts/update-icp-brasil-chain.sh",
+      "api/src/infra/external/nfe/sefaz/certs/README.md"
+    ]
+  },
+  {
     "date": "2027-03-01",
     "title": "Categorias específicas de IBS/CBS",
     "what": "Plataformas digitais e os subitens 1.03, 1.05, 1.09 e 16.01 passam a valer. Hoje existem só como parâmetro (specificCategoriesFrom), sem mapeamento.",
