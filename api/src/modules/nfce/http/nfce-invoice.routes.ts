@@ -7,6 +7,7 @@ import {
 import type { Response } from 'express';
 import {
   type InvoiceCall,
+  type InvoicePdfOptions,
   type InvoiceRoutes,
   rejectNfseOnlyFilters,
   type ResponseLike,
@@ -242,12 +243,14 @@ export class NfceInvoiceRoutes implements InvoiceRoutes, OnModuleInit {
     id: string,
     call: InvoiceCall,
     res: Response,
+    options?: InvoicePdfOptions,
   ): Promise<StreamableFile> {
     const file = await this.files.read(
       id,
       call.tenantId,
       call.environment,
       'pdf',
+      { layout: options?.layout },
     );
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${file.fileName}"`);

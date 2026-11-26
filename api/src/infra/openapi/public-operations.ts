@@ -299,7 +299,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'invoices_downloadPdf',
     tag: 'Invoices',
     description:
-      'The DANFSe PDF. Available once `documentsStatus` is `ready`.\n\n**For an NF-e:** The DANFE, portrait A4. A test company gets the mark `SEM VALOR FISCAL`; a cancelled NF-e gets `CANCELADA`. Available once `documentsReady` is `true`; before that, `409 DOCUMENTS_NOT_READY`. A NFC-e has no PDF yet (the DANFCE comes later): `409 DOCUMENTS_NOT_READY`.',
+      'The DANFSe PDF. Available once `documentsStatus` is `ready`.\n\n**For an NF-e:** The DANFE, portrait A4. A test company gets the mark `SEM VALOR FISCAL`; a cancelled NF-e gets `CANCELADA`. Available once `documentsReady` is `true`; before that, `409 DOCUMENTS_NOT_READY`. \n\n**For a NFC-e:** The DANFCE, the cupom of the sale: 80 mm wide (thermal-printer width, one page as tall as it needs) by default, or an A4 sheet with `?layout=a4`. The QR Code is drawn in the PDF. A test company gets `EMITIDA EM AMBIENTE DE HOMOLOGAÇÃO - SEM VALOR FISCAL`; a cancelled NFC-e gets `NFC-e CANCELADA`. Available once `documentsReady` is `true`; before that, `409 DOCUMENTS_NOT_READY`. `layout` is ignored for NFS-e and NF-e.',
     errors: [409],
     file: { contentType: 'application/pdf', description: 'The DANFSe PDF.' },
   },
@@ -318,7 +318,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'invoices_createDownloadUrl',
     tag: 'Invoices',
     description:
-      'Returns a short-lived signed URL for the PDF or XML, to hand to a browser or another service without sharing the API key. The response is never cached.\n\n**For an NF-e:** A short-lived signed URL for the `xml` (the `nfeProc`) or the `pdf` (the DANFE), to hand to a browser or another service without sharing the API key. The response is never cached. Before the documents are ready, `409 DOCUMENTS_NOT_READY`.',
+      'Returns a short-lived signed URL for the PDF or XML, to hand to a browser or another service without sharing the API key. The response is never cached.\n\n**For an NF-e:** A short-lived signed URL for the `xml` (the `nfeProc`) or the `pdf` (the DANFE), to hand to a browser or another service without sharing the API key. The response is never cached. Before the documents are ready, `409 DOCUMENTS_NOT_READY`.\n\n**For a NFC-e:** The `pdf` is the 80 mm DANFCE (the A4 sheet is only served by `GET /invoices/{id}/pdf?layout=a4`).',
     ok: { 200: data(ref('InvoiceDownloadUrl')) },
     errors: [409],
   },

@@ -58,7 +58,12 @@ import { TypeormNfeEvents } from './infra/typeorm-nfe-events';
 import { TypeormNfeInutilizations } from './infra/typeorm-nfe-inutilizations';
 import { NfeNumberGapsQuery } from './infra/typeorm-nfe-number-gaps.query';
 import { TypeormNfeNumbering } from './infra/typeorm-nfe-numbering';
-import { NFE_DANFE_RENDERER, NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
+import {
+  NFCE_DANFCE_RENDERER,
+  NFE_DANFE_RENDERER,
+  NFE_SCHEMA_VALIDATOR,
+} from './nfe.tokens';
+import { DanfceRenderer } from '@/modules/nfce/infra/danfce/danfce-renderer';
 import { DanfeRenderer } from './infra/danfe/danfe-renderer';
 
 /**
@@ -128,6 +133,7 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     { provide: INfeDocumentRepository, useClass: TypeOrmNfeDocumentRepository },
     { provide: NFE_SCHEMA_VALIDATOR, useClass: XmllintSchemaValidator },
     { provide: NFE_DANFE_RENDERER, useClass: DanfeRenderer },
+    { provide: NFCE_DANFCE_RENDERER, useClass: DanfceRenderer },
   ],
   exports: [
     INfeDocumentRepository,

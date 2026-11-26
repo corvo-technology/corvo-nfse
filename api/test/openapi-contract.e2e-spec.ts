@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call -- supertest bodies and raw SQL rows are untyped; node-forge ships no types */
 import { randomBytes, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { getQueueToken } from '@nestjs/bullmq';
 import * as argon2 from 'argon2';
 import * as forge from 'node-forge';
@@ -203,6 +205,15 @@ describe('OpenAPI contract against the real API (e2e)', () => {
               void documents.set(
                 `${ref.tenantId}/${ref.environment}/nfe/${ref.id}/${name}`,
                 body,
+              ),
+            ),
+          fileExists: (
+            ref: { tenantId: string; environment: string; id: string },
+            name: string,
+          ) =>
+            Promise.resolve(
+              documents.has(
+                `${ref.tenantId}/${ref.environment}/nfe/${ref.id}/${name}`,
               ),
             ),
           getFile: (
@@ -1757,6 +1768,71 @@ describe('OpenAPI contract against the real API (e2e)', () => {
       ).toBe(true);
     });
 
+    it('serves the DANFCE of a NFC-e: 80 mm by default, A4 with ?layout=a4, 409 before the documents are ready', async () => {
+      const created = await call('POST /invoices', {
+        body: nfceBody({ additionalInfo: 'cupom' }),
+        headers: { 'Idempotency-Key': 'e2e-nfce-danfce' },
+        status: 202,
+      });
+      const id = created.body.data.id as string;
+      await setNfce(
+        id,
+        `status = 'authorized', series = 1, number = 32, access_key = '35261111222333000181650010000000321123456780',
+         protocol = '135260000000002', signed_xml = '<NFe/>', issued_at = now(), authorized_at = now()`,
+      );
+      const early = await call('GET /invoices/{id}/pdf', {
+        path: `/invoices/${id}/pdf`,
+        status: 409,
+      });
+      expect(early.body.code).toBe('ERROR_DOCUMENTS_NOT_READY');
+
+      // What the worker leaves behind: the nfeProc and the cupom, then the ready mark.
+      const stored = `${tenantId}/test/nfe/${id}`;
+      documents.set(
+        `${stored}/nfe-proc.xml`,
+        readFileSync(
+          join(
+            __dirname,
+            '../src/modules/nfce/infra/danfce/__fixtures__/nfce-proc-simples.xml',
+          ),
+          'utf8',
+        ),
+      );
+      documents.set(`${stored}/danfce.pdf`, Buffer.from('%PDF-1.4 cupom 80mm'));
+      await setNfce(id, `documents_ready_at = now()`);
+
+      const cupom = await call('GET /invoices/{id}/pdf', {
+        path: `/invoices/${id}/pdf`,
+        status: 200,
+      });
+      expect(cupom.contentType).toContain('application/pdf');
+      expect(cupom.text).toContain('cupom 80mm');
+      const a4 = await call('GET /invoices/{id}/pdf', {
+        path: `/invoices/${id}/pdf`,
+        query: { layout: 'a4' },
+        status: 200,
+      });
+      expect(a4.contentType).toContain('application/pdf');
+      expect(a4.text.startsWith('%PDF-')).toBe(true);
+      expect(a4.text).not.toContain('cupom 80mm');
+      expect(a4.text).toContain('/MediaBox [0 0 595.28 841.89]');
+      const explicit = await call('GET /invoices/{id}/pdf', {
+        path: `/invoices/${id}/pdf`,
+        query: { layout: '80mm' },
+        status: 200,
+      });
+      expect(explicit.text).toContain('cupom 80mm');
+      const link = await call('POST /invoices/{id}/download-url', {
+        path: `/invoices/${id}/download-url`,
+        body: { format: 'pdf' },
+        status: 200,
+      });
+      expect(link.body.data).toMatchObject({
+        fileName: 'nfce-32.pdf',
+        mimeType: 'application/pdf',
+      });
+    });
+
     it('corrects a rejected NFC-e and sends it again, or gives it up', async () => {
       const created = await call('POST /invoices', {
         body: nfceBody({ additionalInfo: 'rejeitada' }),
@@ -1798,7 +1874,7 @@ describe('OpenAPI contract against the real API (e2e)', () => {
       });
     });
 
-    it('serves the nfeProc of a NFC-e, but no PDF until the DANFCE exists', async () => {
+    it('serves the nfeProc of a NFC-e once the documents are ready', async () => {
       const created = await call('POST /invoices', {
         body: nfceBody({ additionalInfo: 'arquivos' }),
         headers: { 'Idempotency-Key': 'e2e-nfce-files' },
@@ -1831,17 +1907,6 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         fileName: 'nfce-77.xml',
         mimeType: 'application/xml',
       });
-      for (const [key, path, extra] of [
-        ['GET /invoices/{id}/pdf', `/invoices/${id}/pdf`, {}],
-        [
-          'POST /invoices/{id}/download-url',
-          `/invoices/${id}/download-url`,
-          { body: { format: 'pdf' } },
-        ],
-      ] as const) {
-        const pdf = await call(key, { path, status: 409, ...extra });
-        expect(pdf.body.code).toBe('ERROR_DOCUMENTS_NOT_READY');
-      }
     });
 
     it('inutilizes a range of the NFC-e series, lists it and lists the gaps', async () => {

@@ -8,19 +8,28 @@ import {
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import type { NfeDocument } from '../domain/nfe-document';
 import { INfeDocumentRepository } from '../domain/nfe-document.repository';
+import { NFCE_DANFCE_RENDERER } from '../nfe.tokens';
+import type { DocumentRenderer } from '@/modules/fiscal-core/domain/ports/renderer.port';
 import {
   nfeDocumentsNotReady,
   nfeDownloadFormatInvalid,
   nfeNotFound,
 } from './nfe-errors';
-import { DANFE_FILE, NFE_PROC_FILE } from './nfe-files';
+import { DANFCE_FILE, DANFE_FILE, NFE_PROC_FILE } from './nfe-files';
 
 export type NfeFileFormat = 'xml' | 'pdf';
 
-const STORED: Record<NfeFileFormat, string> = {
-  xml: NFE_PROC_FILE,
-  pdf: DANFE_FILE,
-};
+/** Paper of the DANFCE: the 80 mm cupom (stored) or the A4 sheet (drawn when asked for). */
+export interface NfePdfOptions {
+  layout?: 'a4' | '80mm';
+}
+
+const storedName = (doc: NfeDocument, format: NfeFileFormat): string =>
+  format === 'xml'
+    ? NFE_PROC_FILE
+    : doc.toSnapshot().model === 65
+      ? DANFCE_FILE
+      : DANFE_FILE;
 
 /** Seconds a download link lives (same as the NFS-e one). */
 const URL_TTL_SECONDS = 3600;
@@ -36,6 +45,7 @@ export class NfeFilesService {
     @Inject(INfeDocumentRepository)
     private readonly documents: INfeDocumentRepository,
     @Inject(DOCUMENT_STORAGE) private readonly storage: IDocumentStorage,
+    @Inject(NFCE_DANFCE_RENDERER) private readonly danfce: DocumentRenderer,
   ) {}
 
   private async ready(
@@ -57,10 +67,20 @@ export class NfeFilesService {
     return `${s.model === 65 ? 'nfce' : 'nfe'}-${s.number ?? doc.id}.${format}`;
   }
 
-  /** The DANFCE (the NFC-e PDF) arrives in NFC-e 4/5: until then a NFC-e has its XML only. */
-  private assertFormat(doc: NfeDocument, format: NfeFileFormat): void {
-    if (format === 'pdf' && doc.toSnapshot().model === 65)
-      throw nfeDocumentsNotReady();
+  /** The DANFCE drawn from the stored `nfeProc` (the A4 sheet, or a cupom that was never stored). */
+  private async drawDanfce(
+    doc: NfeDocument,
+    ref: StorageRef,
+    layout: 'a4' | '80mm',
+  ): Promise<Buffer> {
+    const xml = (await this.storage.getFile(ref, NFE_PROC_FILE)).toString(
+      'utf8',
+    );
+    return this.danfce.render(xml, {
+      homologation: doc.environment === 'test',
+      cancelled: doc.toSnapshot().status === 'cancelled',
+      layout,
+    });
   }
 
   async read(
@@ -68,13 +88,18 @@ export class NfeFilesService {
     tenantId: string,
     environment: ExecutionEnvironment,
     format: NfeFileFormat,
+    options: NfePdfOptions = {},
   ): Promise<{ body: Buffer; fileName: string }> {
     const { doc, ref } = await this.ready(id, tenantId, environment);
-    this.assertFormat(doc, format);
-    return {
-      body: await this.storage.getFile(ref, STORED[format]),
-      fileName: this.fileName(doc, format),
-    };
+    const name = storedName(doc, format);
+    const isNfcePdf = format === 'pdf' && doc.toSnapshot().model === 65;
+    // The A4 sheet is never stored; a cupom authorized before the DANFCE existed is drawn on demand.
+    const body =
+      isNfcePdf &&
+      (options.layout === 'a4' || !(await this.storage.fileExists(ref, name)))
+        ? await this.drawDanfce(doc, ref, options.layout ?? '80mm')
+        : await this.storage.getFile(ref, name);
+    return { body, fileName: this.fileName(doc, format) };
   }
 
   async downloadUrl(
@@ -84,10 +109,21 @@ export class NfeFilesService {
     format: NfeFileFormat,
   ): Promise<SignedDocumentUrl> {
     // The HTTP pipe validates the body; this keeps a bad format from reaching the storage.
-    if (!Object.hasOwn(STORED, format)) throw nfeDownloadFormatInvalid();
+    if (format !== 'xml' && format !== 'pdf') throw nfeDownloadFormatInvalid();
     const { doc, ref } = await this.ready(id, tenantId, environment);
-    this.assertFormat(doc, format);
-    return this.storage.getFileSignedUrl(ref, STORED[format], {
+    const name = storedName(doc, format);
+    if (
+      format === 'pdf' &&
+      doc.toSnapshot().model === 65 &&
+      !(await this.storage.fileExists(ref, name))
+    )
+      await this.storage.saveFile(
+        ref,
+        name,
+        await this.drawDanfce(doc, ref, '80mm'),
+        'application/pdf',
+      );
+    return this.storage.getFileSignedUrl(ref, name, {
       downloadName: this.fileName(doc, format),
       expiresInSeconds: URL_TTL_SECONDS,
     });

@@ -6820,7 +6820,7 @@
     },
     "/invoices/{id}/download-url": {
       "post": {
-        "description": "Returns a short-lived signed URL for the PDF or XML, to hand to a browser or another service without sharing the API key. The response is never cached.\n\n**For an NF-e:** A short-lived signed URL for the `xml` (the `nfeProc`) or the `pdf` (the DANFE), to hand to a browser or another service without sharing the API key. The response is never cached. Before the documents are ready, `409 DOCUMENTS_NOT_READY`.\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
+        "description": "Returns a short-lived signed URL for the PDF or XML, to hand to a browser or another service without sharing the API key. The response is never cached.\n\n**For an NF-e:** A short-lived signed URL for the `xml` (the `nfeProc`) or the `pdf` (the DANFE), to hand to a browser or another service without sharing the API key. The response is never cached. Before the documents are ready, `409 DOCUMENTS_NOT_READY`.\n\n**For a NFC-e:** The `pdf` is the 80 mm DANFCE (the A4 sheet is only served by `GET /invoices/{id}/pdf?layout=a4`).\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
         "operationId": "invoices_createDownloadUrl",
         "parameters": [
           {
@@ -7139,7 +7139,7 @@
     },
     "/invoices/{id}/pdf": {
       "get": {
-        "description": "The DANFSe PDF. Available once `documentsStatus` is `ready`.\n\n**For an NF-e:** The DANFE, portrait A4. A test company gets the mark `SEM VALOR FISCAL`; a cancelled NF-e gets `CANCELADA`. Available once `documentsReady` is `true`; before that, `409 DOCUMENTS_NOT_READY`. A NFC-e has no PDF yet (the DANFCE comes later): `409 DOCUMENTS_NOT_READY`.\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
+        "description": "The DANFSe PDF. Available once `documentsStatus` is `ready`.\n\n**For an NF-e:** The DANFE, portrait A4. A test company gets the mark `SEM VALOR FISCAL`; a cancelled NF-e gets `CANCELADA`. Available once `documentsReady` is `true`; before that, `409 DOCUMENTS_NOT_READY`. \n\n**For a NFC-e:** The DANFCE, the cupom of the sale: 80 mm wide (thermal-printer width, one page as tall as it needs) by default, or an A4 sheet with `?layout=a4`. The QR Code is drawn in the PDF. A test company gets `EMITIDA EM AMBIENTE DE HOMOLOGAÇÃO - SEM VALOR FISCAL`; a cancelled NFC-e gets `NFC-e CANCELADA`. Available once `documentsReady` is `true`; before that, `409 DOCUMENTS_NOT_READY`. `layout` is ignored for NFS-e and NF-e.\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
         "operationId": "invoices_downloadPdf",
         "parameters": [
           {
@@ -7149,6 +7149,20 @@
             "required": true,
             "schema": {
               "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Paper of the NFC-e cupom (DANFCE): `80mm` (default, thermal-printer width) or `a4`. NFS-e and NF-e ignore it.",
+            "in": "query",
+            "name": "layout",
+            "required": false,
+            "schema": {
+              "default": "80mm",
+              "enum": [
+                "80mm",
+                "a4"
+              ],
               "type": "string"
             }
           }
@@ -7184,6 +7198,9 @@
                 "$ref": "#/components/headers/X-Request-Id"
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
           },
           "401": {
             "$ref": "#/components/responses/Error401"
