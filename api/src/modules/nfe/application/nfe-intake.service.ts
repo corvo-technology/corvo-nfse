@@ -30,7 +30,7 @@ export interface NfeSubmitted {
 }
 
 /**
- * `POST /v1/nfe`: accepts the NF-e and returns at once; the SEFAZ is called later by the worker.
+ * `POST /v1/invoices` (`type: "nfe"`): accepts the NF-e and returns at once; the SEFAZ is called later by the worker.
  * Everything that can be refused is refused here (preconditions, validators), before any write.
  * Once accepted, the document, its first history row, the credit reservation (live) and the
  * `nfe.emit` message commit together, under the tenant's billing lock, which also makes two

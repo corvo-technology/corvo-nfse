@@ -8,6 +8,9 @@
  */
 const ROUTE_PERMISSIONS: ReadonlyArray<readonly [prefix: string, permission: string]> = [
   // More specific paths first: the first match wins.
+  ["/app/nfe/new", "nfe.documents.issue"],
+  ["/app/nfe/number-gaps", "nfe.documents.view"],
+  ["/app/nfe", "nfe.documents.view"],
   ["/app/invoices/new", "nfse.invoices.issue"],
   ["/app/invoices/import", "nfse.invoices.issue"],
   ["/app/invoices", "nfse.invoices.view"],
@@ -42,8 +45,15 @@ export function permissionForPath(pathname: string): string | null {
   return null;
 }
 
+/** The NF-e pages exist only for accounts where NF-e was released (the session says so in `features.nfe`). */
+export function isNfePath(pathname: string): boolean {
+  const path = pathname.split(/[?#]/)[0].replace(/\/+$/, "");
+  return path === "/app/nfe" || path.startsWith("/app/nfe/");
+}
+
 /** True when the member may open the page. */
-export function canOpenPath(pathname: string, can: (permission: string) => boolean): boolean {
+export function canOpenPath(pathname: string, can: (permission: string) => boolean, features?: { nfe?: boolean }): boolean {
+  if (isNfePath(pathname) && features?.nfe !== true) return false;
   const permission = permissionForPath(pathname);
   return permission === null || can(permission);
 }

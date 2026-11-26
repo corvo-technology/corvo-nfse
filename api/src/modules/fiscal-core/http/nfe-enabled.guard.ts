@@ -28,5 +28,5 @@ export class NfeEnabledGuard implements CanActivate {
   }
 }
 
-/** Put on every `/v1/nfe*` controller or route. */
+/** Put on a route that exists only for NF-e (the company NF-e settings). `/v1/invoices` checks the release in `InvoiceTypeRouter`. */
 export const NfeRoute = () => applyDecorators(UseGuards(NfeEnabledGuard));

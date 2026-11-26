@@ -94,6 +94,7 @@ export interface NfeDocumentProps {
   lastErrorType: NfeErrorType | null;
   nextCheckAt: Date | null;
   reconcileAttempts: number;
+  sendEmail: boolean;
   documentsReadyAt: Date | null;
   emailStatus: string | null;
   emailSentAt: Date | null;
@@ -122,6 +123,7 @@ export interface CreateNfeDocumentParams {
   payment: NfePaymentSnapshot;
   additionalInfo?: string | null;
   externalId?: string | null;
+  sendEmail?: boolean;
   idempotencyKey: string;
   requestHash: string;
 }
@@ -158,6 +160,8 @@ export interface NfeContent {
   payment: NfePaymentSnapshot;
   additionalInfo: string | null;
   externalId: string | null;
+  /** Whether the customer gets the documents by e-mail once they are ready. */
+  sendEmail: boolean;
 }
 
 export interface NfeTransitionInfo {
@@ -223,6 +227,7 @@ export class NfeDocument {
       lastErrorType: null,
       nextCheckAt: null,
       reconcileAttempts: 0,
+      sendEmail: params.sendEmail ?? true,
       documentsReadyAt: null,
       emailStatus: null,
       emailSentAt: null,
@@ -350,6 +355,33 @@ export class NfeDocument {
     if (auth.protNFeXml !== undefined) this.props.protNfeXml = auth.protNFeXml;
     this.props.nextCheckAt = null;
     this.clearError();
+  }
+
+  /**
+   * The `nfeProc` and the DANFE are stored: first write wins, so a worker that loses the race (or a
+   * redelivered message) finds it already done and gets `false`.
+   */
+  markDocumentsReady(now: Date = new Date()): boolean {
+    if (this.props.documentsReadyAt) return false;
+    this.props.documentsReadyAt = now;
+    this.props.updatedAt = now;
+    return true;
+  }
+
+  /** The e-mail to the customer: asked for (`queued`), delivered (`sent`) or given up (`failed`). */
+  recordEmail(
+    status: 'queued' | 'sent' | 'failed',
+    now: Date = new Date(),
+  ): void {
+    this.props.emailStatus = status;
+    if (status === 'sent') this.props.emailSentAt = now;
+    this.props.updatedAt = now;
+  }
+
+  /** The customer asked to cancel: the reason and the moment stay on the document. */
+  recordCancellationRequest(reason: string, now: Date = new Date()): void {
+    this.props.cancelReason = reason;
+    this.props.cancelRequestedAt = now;
   }
 
   /** What the customer sees as `lastError`; `null` clears it. */

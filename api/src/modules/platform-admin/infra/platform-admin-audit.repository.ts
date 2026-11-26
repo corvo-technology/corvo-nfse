@@ -5,7 +5,8 @@ import { queryCursorPage } from '@/shared/http/keyset-pagination';
 import type { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import { PlatformAdminAuditOrmEntity } from './platform-admin-audit.orm-entity';
 
-export type PlatformAuditAction = 'credit_grant' | 'user_viewed';
+export type PlatformAuditAction =
+  'credit_grant' | 'user_viewed' | 'nfe_access_changed';
 
 export interface PlatformAuditInput {
   actorUserId: string;

@@ -1,4 +1,11 @@
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  type S3Client,
+} from '@aws-sdk/client-s3';
 import { ConfigService } from '@nestjs/config';
+import { S3DocumentStorage } from '@/infra/storage/infra/s3-storage';
 import { FakeNfeGateway } from '@/infra/external/nfe/sefaz/fake-nfe.gateway';
 import type { SignedNfe } from '@/infra/external/nfe/sefaz/signed-nfe';
 import { BillingUsageService } from '@/modules/billing/application/billing-usage.service';
@@ -16,8 +23,12 @@ import { NfeEmissionPreconditions } from '@/modules/fiscal-core/application/nfe-
 import type { GatewayOutcome } from '@/modules/fiscal-core/domain/gateway-outcome';
 import type {
   Authorization,
+  CancelRequest,
   ConsultResult,
+  CorrectionRequest,
+  EventReceipt,
   FiscalDocumentGateway,
+  InutilizeRequest,
   SigningContext,
 } from '@/modules/fiscal-core/domain/ports/gateway.port';
 import { FiscalPortalBreaker } from '@/modules/invoice/application/fiscal-portal-breaker';
@@ -26,7 +37,22 @@ import { TypeOrmOutboxRepository } from '@/modules/invoice/infra/typeorm-outbox.
 import { OutboxHandlerRegistry } from '@/modules/invoice/application/outbox-handler.registry';
 import type { OutboxMessage } from '@/modules/invoice/domain/outbox-message';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
+import { NfeCancelHandler } from '../application/nfe-cancel.handler';
+import { NfeCancelService } from '../application/nfe-cancel.service';
 import { NfeConsultService } from '../application/nfe-consult.service';
+import { NfeCorrectHandler } from '../application/nfe-correct.handler';
+import { NfeCorrectService } from '../application/nfe-correct.service';
+import { NfeEmailService } from '../application/nfe-email.service';
+import { NfePrepareDocumentsHandler } from '../application/nfe-prepare-documents.handler';
+import { NfeSendEmailHandler } from '../application/nfe-send-email.handler';
+import { DanfeRenderer } from '../infra/danfe/danfe-renderer';
+import { NfeEventContext } from '../application/nfe-event-context';
+import { NfeEventOutcomeService } from '../application/nfe-event-outcome.service';
+import { NfeEventReconcile } from '../application/nfe-event-reconcile';
+import { NfeEventSender } from '../application/nfe-event-sender';
+import { NfeInutilizeHandler } from '../application/nfe-inutilize.handler';
+import { NfeInutilizeService } from '../application/nfe-inutilize.service';
+import { NfeTimelineService } from '../application/nfe-timeline.service';
 import { NfeEmitHandler } from '../application/nfe-emit.handler';
 import { NfeIntakeService } from '../application/nfe-intake.service';
 import { NfeOutcomeService } from '../application/nfe-outcome.service';
@@ -37,6 +63,9 @@ import { NfeSefazAccess } from '../application/nfe-sefaz-access';
 import { NfeTransitionService } from '../application/nfe-transition.service';
 import type { NfeInput } from '../domain/nfe-input';
 import { TypeOrmNfeDocumentRepository } from '../infra/typeorm-nfe-document.repository';
+import { TypeormNfeEvents } from '../infra/typeorm-nfe-events';
+import { TypeormNfeInutilizations } from '../infra/typeorm-nfe-inutilizations';
+import { NfeNumberGapsQuery } from '../infra/typeorm-nfe-number-gaps.query';
 import { TypeormNfeNumbering } from '../infra/typeorm-nfe-numbering';
 import { inputFixture } from './draft-fixture';
 import { MemoryRedis } from './memory-redis';
@@ -49,6 +78,14 @@ export interface GatewayHooks {
   afterIssue?: (doc: SignedNfe) => Promise<void> | void;
   /** Replaces the answer of the consultation by key. */
   consult?: (key: string) => GatewayOutcome<ConsultResult>;
+  /**
+   * Runs before the simulator sees a cancellation, a correction letter or an inutilization; an
+   * outcome it returns is the answer and the simulator is not called (the request never "arrived").
+   */
+  beforeEvent?: (
+    kind: 'cancel' | 'correct' | 'inutilize',
+    request: CancelRequest | CorrectionRequest | InutilizeRequest,
+  ) => GatewayOutcome<EventReceipt> | undefined;
 }
 
 export interface DeliveryRecord {
@@ -179,7 +216,11 @@ export function createNfeStack(
 
   const fake = new FakeNfeGateway(() => new Date());
   const hooks: GatewayHooks = {};
-  const gateway: FiscalDocumentGateway<SignedNfe> = {
+  const gateway: {
+    -readonly [
+      K in keyof FiscalDocumentGateway<SignedNfe>
+    ]: FiscalDocumentGateway<SignedNfe>[K];
+  } = {
     type: 'nfe',
     issuer: {
       issue: async (
@@ -201,6 +242,28 @@ export function createNfeStack(
           ? Promise.resolve(hooks.consult(key))
           : fake.consult.consultByKey(key, ctx),
     },
+  };
+  const viaHook = <
+    R extends CancelRequest | CorrectionRequest | InutilizeRequest,
+  >(
+    kind: 'cancel' | 'correct' | 'inutilize',
+    request: R,
+    call: () => Promise<GatewayOutcome<EventReceipt>>,
+  ): Promise<GatewayOutcome<EventReceipt>> => {
+    const answer = hooks.beforeEvent?.(kind, request);
+    return answer ? Promise.resolve(answer) : call();
+  };
+  gateway.cancel = {
+    cancel: (req, ctx) =>
+      viaHook('cancel', req, () => fake.cancel.cancel(req, ctx)),
+  };
+  gateway.correct = {
+    correct: (req, ctx) =>
+      viaHook('correct', req, () => fake.correct.correct(req, ctx)),
+  };
+  gateway.inutilize = {
+    inutilize: (req, ctx) =>
+      viaHook('inutilize', req, () => fake.inutilize.inutilize(req, ctx)),
   };
   const registry = new FiscalDocumentRegistry();
   registry.register(gateway);
@@ -240,7 +303,142 @@ export function createNfeStack(
     outcomes,
     breaker,
   );
-  const reconcile = new NfeReconcileHandler(handlers, consult);
+  const events = new TypeormNfeEvents(h.helper);
+  const inutilizations = new TypeormNfeInutilizations(h.helper);
+  const gaps = new NfeNumberGapsQuery(h.helper);
+  const eventContext = new NfeEventContext(
+    companies,
+    settingsRepository,
+    access,
+  );
+  const eventOutcomes = new NfeEventOutcomeService(
+    transitions,
+    events,
+    publisher,
+  );
+  const sender = new NfeEventSender(
+    registry,
+    documents,
+    events,
+    eventContext,
+    access,
+    breaker,
+    eventOutcomes,
+  );
+  const eventReconcile = new NfeEventReconcile(
+    registry,
+    documents,
+    events,
+    eventContext,
+    access,
+    breaker,
+    eventOutcomes,
+  );
+  const reconcile = new NfeReconcileHandler(handlers, consult, eventReconcile);
+  const cancelService = new NfeCancelService(
+    documents,
+    eventContext,
+    access,
+    transitions,
+    events,
+  );
+  const correctService = new NfeCorrectService(
+    documents,
+    eventContext,
+    access,
+    transitions,
+    events,
+  );
+  const cancelHandler = new NfeCancelHandler(handlers, sender);
+  const correctHandler = new NfeCorrectHandler(handlers, sender);
+  const inutilizeService = new NfeInutilizeService(
+    eventContext,
+    access,
+    inutilizations,
+    numbering,
+    h.unitOfWork,
+    outbox,
+  );
+  const inutilizeHandler = new NfeInutilizeHandler(
+    handlers,
+    registry,
+    inutilizations,
+    eventContext,
+    access,
+    breaker,
+    publisher,
+    outbox,
+    h.unitOfWork,
+  );
+  const timeline = new NfeTimelineService(documents, events);
+
+  // The storage is the real one (its keys are under test) over an S3 client kept in memory.
+  const objects = new Map<string, Buffer | string>();
+  const s3 = {
+    send: (command: unknown): Promise<unknown> => {
+      const input = (
+        command as { input: { Key: string; Body?: Buffer | string } }
+      ).input;
+      if (command instanceof PutObjectCommand) {
+        objects.set(input.Key, input.Body as Buffer | string);
+        return Promise.resolve({});
+      }
+      const body = objects.get(input.Key);
+      if (command instanceof HeadObjectCommand)
+        return body === undefined
+          ? Promise.reject(
+              Object.assign(new Error('NotFound'), {
+                $metadata: { httpStatusCode: 404 },
+              }),
+            )
+          : Promise.resolve({ $metadata: { httpStatusCode: 200 } });
+      if (command instanceof GetObjectCommand && body !== undefined)
+        return Promise.resolve({
+          Body: {
+            transformToString: () =>
+              Promise.resolve(Buffer.from(body).toString('utf8')),
+            transformToByteArray: () =>
+              Promise.resolve(Uint8Array.from(Buffer.from(body))),
+          },
+        });
+      return Promise.reject(new Error('NoSuchKey'));
+    },
+  };
+  const storage = new S3DocumentStorage(
+    new ConfigService({ 'storage.s3Bucket': 'test-bucket' }),
+    s3 as unknown as S3Client,
+  );
+  const renderer = new DanfeRenderer();
+  const prepareHandler = new NfePrepareDocumentsHandler(
+    handlers,
+    documents,
+    storage,
+    renderer,
+    events,
+    inutilizations,
+    transitions,
+    publisher,
+  );
+  const mailer = { send: jest.fn().mockResolvedValue({ id: 'mail-1' }) };
+  const emailService = new NfeEmailService(
+    documents,
+    storage,
+    {
+      findByIdAndTenantId: (
+        _id: string,
+        _tenant: string,
+        env: ExecutionEnvironment,
+      ) => Promise.resolve(company(env)),
+    } as never,
+    transitions,
+    publisher,
+    mailer as never,
+  );
+  const sendEmailHandler = new NfeSendEmailHandler(
+    handlers,
+    emailService,
+    config,
+  );
   const remembered = jest.fn().mockResolvedValue(undefined);
   const intake = new NfeIntakeService(
     preparation,
@@ -309,6 +507,29 @@ export function createNfeStack(
       }));
   };
 
+  /**
+   * Hands every stored message of `type` (of one aggregate, when given) to its handler, oldest
+   * first, like the relay would. Handlers ignore what was already settled, so a message seen twice
+   * does nothing the second time.
+   */
+  const dispatch = async (type: string, aggregateId?: string) => {
+    const handlerOf: Record<
+      string,
+      { handle(m: OutboxMessage): Promise<void> }
+    > = {
+      'nfe.cancel': cancelHandler,
+      'nfe.correct': correctHandler,
+      'nfe.inutilize': inutilizeHandler,
+      'nfe.reconcile': reconcile,
+      'nfe.emit': { handle: (m) => emit.handle(m) },
+      'nfe.prepare_documents': prepareHandler,
+      'nfe.send_email': sendEmailHandler,
+    };
+    const found = await messages(type, aggregateId);
+    for (const message of found) await handlerOf[type].handle(message);
+    return found.length;
+  };
+
   const row = async (id: string): Promise<Record<string, unknown>> => {
     const rows: Array<Record<string, unknown>> = await h.admin.query(
       `SELECT * FROM "${h.schema}".nfe_documents WHERE id = $1`,
@@ -332,16 +553,39 @@ export function createNfeStack(
     access,
     emit,
     reconcile,
+    events,
+    inutilizations,
+    gaps,
+    sender,
+    eventReconcile,
+    cancelService,
+    correctService,
+    cancelHandler,
+    correctHandler,
+    inutilizeService,
+    inutilizeHandler,
+    timeline,
     consult,
     intake,
     resubmit,
     deliveries,
+    /** The files of the in-memory storage, by S3 key. */
+    objects,
+    storage,
+    renderer,
+    prepareHandler,
+    emailService,
+    /** The e-mail provider: `send` is a spy that resolves. */
+    mailer,
     cache,
     remembered,
     numbering,
     input,
     messages,
     row,
+    dispatch,
+    /** The settings every company of this stack answers with: a test changes `defaultSeries`. */
+    settings,
     company,
     /** Accepts a request and runs the emit message, like the relay would. */
     async issue(

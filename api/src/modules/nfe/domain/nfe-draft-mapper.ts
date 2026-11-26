@@ -48,6 +48,7 @@ export function contentFromDraft(draft: NfeDraft): NfeContent {
     },
     additionalInfo: draft.additionalInfo,
     externalId: draft.externalId,
+    sendEmail: draft.sendEmail !== false,
   };
 }
 

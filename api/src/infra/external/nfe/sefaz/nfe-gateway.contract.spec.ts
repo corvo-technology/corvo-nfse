@@ -4,6 +4,11 @@ import { MockAgent } from 'undici';
 import type { SigningContext } from '@/modules/fiscal-core/domain/ports/gateway.port';
 import { describeGatewayContract } from '@/modules/fiscal-core/testing/gateway-contract.suite';
 import { makeTestA1 } from '../../../../../test/fixtures/nfe/test-a1';
+import {
+  buildCancelEvent,
+  buildCorrectionEvent,
+} from '@/modules/nfe/domain/builder/env-evento.builder';
+import { buildInutilization } from '@/modules/nfe/domain/builder/inut-nfe.builder';
 import { loadCertificate } from './certificate-loader';
 import { TableAuthorityEndpointResolver } from './endpoints';
 import { NfeGateway } from './nfe-gateway';
@@ -14,6 +19,7 @@ import type {
   SignedNfe,
 } from './signed-nfe';
 import { SefazSoapClient } from './soap-client';
+import { withStructuralSignature } from './xml-signer';
 
 const FIXTURES = join(__dirname, '../../../../../test/fixtures/nfe');
 const soap = (name: string) =>
@@ -318,5 +324,177 @@ describe('NfeGateway consultation', () => {
     await expect(
       f.gateway.consult.consultByKey(`99${BASE_KEY.slice(2)}`, ctx),
     ).rejects.toThrow('unknown cUF');
+  });
+});
+
+describe('NfeGateway events and inutilization', () => {
+  const eventUrl = urlOf('RecepcaoEvento');
+  const inutUrl = urlOf('NfeInutilizacao');
+  const base = {
+    accessKey: BASE_KEY,
+    cnpj: '12345678000195',
+    cOrgao: '35',
+    tpAmb: 2 as const,
+    dhEvento: '2026-11-26T10:20:00-03:00',
+  };
+  const signedCancel = (() => {
+    const built = buildCancelEvent({
+      ...base,
+      nSeq: 1,
+      protocol: '135260000000001',
+      justification: 'Cancelamento por erro de digitação do pedido',
+    });
+    return withStructuralSignature(built.xml, built.referenceTag);
+  })();
+  const signedCorrection = (() => {
+    const built = buildCorrectionEvent({
+      ...base,
+      nSeq: 2,
+      correction: 'Corrigir o endereço de entrega da observação',
+    });
+    return withStructuralSignature(built.xml, built.referenceTag);
+  })();
+  const signedInut = (() => {
+    const built = buildInutilization({
+      cUF: '35',
+      tpAmb: 2,
+      ano: '26',
+      cnpj: '12345678000195',
+      model: 55,
+      series: 1,
+      start: 10,
+      end: 12,
+      justification: 'Numeração pulada por falha do sistema',
+    });
+    return withStructuralSignature(built.xml, built.referenceTag);
+  })();
+
+  it('cancel: 128 with event 135 is ok, with the protocol and the procEventoNFe', async () => {
+    const f = setup();
+    let sent = '';
+    f.on(
+      f.agent.get(eventUrl.origin),
+      eventUrl.pathname,
+      (body) => {
+        sent = body;
+        return true;
+      },
+      'ret-evento-135',
+    );
+    const outcome = await f.gateway.cancel.cancel(
+      {
+        accessKey: BASE_KEY,
+        reason: 'x',
+        justification: 'x',
+        signedXml: signedCancel,
+      },
+      ctx,
+    );
+    expect(sent).toContain('<tpEvento>110111</tpEvento>');
+    expect(outcome.kind).toBe('ok');
+    const value = (
+      outcome as unknown as {
+        value: import('@/modules/fiscal-core/domain/ports/gateway.port').EventReceipt;
+      }
+    ).value;
+    expect(value).toMatchObject({
+      protocol: '135260000000002',
+      cStat: '135',
+    });
+    expect(value.procXml).toMatch(/^<procEventoNFe /);
+    expect(value.procXml).toContain('<Signature');
+    expect(value.procXml).toContain('<retEvento');
+    expect(value.registeredAt?.toISOString()).toBe('2026-11-26T13:20:01.000Z');
+  });
+
+  it('correct: a duplicate event (573) is rejected with the code', async () => {
+    const f = setup();
+    f.on(
+      f.agent.get(eventUrl.origin),
+      eventUrl.pathname,
+      () => true,
+      'ret-evento-573',
+    );
+    expect(
+      await f.gateway.correct.correct(
+        {
+          accessKey: BASE_KEY,
+          correction: 'x',
+          sequence: 2,
+          signedXml: signedCorrection,
+        },
+        ctx,
+      ),
+    ).toMatchObject({ kind: 'rejected', code: '573' });
+  });
+
+  it('an event that fails the XSD never reaches the SEFAZ', async () => {
+    const f = setup();
+    const outcome = await f.gateway.cancel.cancel(
+      {
+        accessKey: BASE_KEY,
+        reason: 'x',
+        justification: 'x',
+        signedXml: signedCancel.replace('<tpAmb>2</tpAmb>', '<tpAmb>9</tpAmb>'),
+      },
+      ctx,
+    );
+    expect(outcome).toMatchObject({
+      kind: 'rejected',
+      code: 'NFE_SCHEMA_INVALID',
+    });
+  });
+
+  it('a timeout while sending the event is uncertain, never rejected', async () => {
+    const f = setup();
+    f.agent
+      .get(eventUrl.origin)
+      .intercept({ path: eventUrl.pathname, method: 'POST' })
+      .replyWithError(
+        Object.assign(new Error('timeout'), {
+          code: 'UND_ERR_HEADERS_TIMEOUT',
+        }),
+      );
+    expect(
+      await f.gateway.cancel.cancel(
+        {
+          accessKey: BASE_KEY,
+          reason: 'x',
+          justification: 'x',
+          signedXml: signedCancel,
+        },
+        ctx,
+      ),
+    ).toMatchObject({ kind: 'uncertain', reason: 'timeout' });
+  });
+
+  it('inutilize: 102 is ok with the protocol and the ProcInutNFe', async () => {
+    const f = setup();
+    f.on(
+      f.agent.get(inutUrl.origin),
+      inutUrl.pathname,
+      () => true,
+      'ret-inut-102',
+    );
+    const outcome = await f.gateway.inutilize.inutilize(
+      {
+        uf: 'SP',
+        year: 2026,
+        series: 1,
+        startNumber: 10,
+        endNumber: 12,
+        justification: 'x',
+        signedXml: signedInut,
+      },
+      ctx,
+    );
+    expect(outcome).toMatchObject({
+      kind: 'ok',
+      value: { protocol: '135260000000003', cStat: '102' },
+    });
+    const procXml = (outcome as unknown as { value: { procXml: string } }).value
+      .procXml;
+    expect(procXml).toMatch(/^<ProcInutNFe /);
+    expect(procXml).toContain('<retInutNFe');
   });
 });

@@ -1,5 +1,5 @@
 /**
- * What the customer sends to `POST /v1/nfe` and `POST /v1/nfe/validate`, already parsed by the
+ * What the customer sends to `POST /v1/invoices` (`type: "nfe"`) and `POST /v1/invoices/validate`, already parsed by the
  * DTO (camelCase). Money and quantities arrive as JSON numbers and are read with `Decimal` from
  * their shortest text form, never through float arithmetic.
  */
@@ -63,4 +63,6 @@ export interface NfeInput {
   change?: number;
   additionalInfo?: string;
   externalId?: string;
+  /** Send the NF-e to the recipient's e-mail once it is authorized (default true). */
+  sendEmail?: boolean;
 }

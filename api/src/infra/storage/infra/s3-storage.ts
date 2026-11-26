@@ -12,7 +12,15 @@ import type {
   IDocumentStorage,
   DocumentFormat,
   SignedDocumentUrl,
+  StorageRef,
 } from '../domain/document-storage';
+
+const FILE_NAME = /^[a-z0-9][a-z0-9._/-]{0,80}$/;
+
+const CONTENT_TYPES: Record<string, string> = {
+  xml: 'application/xml',
+  pdf: 'application/pdf',
+};
 
 @Injectable()
 export class S3DocumentStorage implements IDocumentStorage {
@@ -158,6 +166,90 @@ export class S3DocumentStorage implements IDocumentStorage {
       url,
       expiresAt: new Date(Date.now() + expiresIn * 1000),
       fileName: options.fileName,
+      mimeType,
+    };
+  }
+
+  /** The key of a file by reference; the name is checked so it can never leave the folder. */
+  private refKey(ref: StorageRef, fileName: string): string {
+    if (!FILE_NAME.test(fileName) || fileName.includes('..'))
+      throw new Error('Invalid file name');
+    const base = `${ref.tenantId}/${ref.environment}`;
+    if (ref.type === 'nfe') return `${base}/nfe/${ref.id}/${fileName}`;
+    if (ref.type === 'nfe-inutilization')
+      return `${base}/nfe-inutilizacoes/${ref.id}.xml`;
+    throw new Error(`The storage does not store files of type ${ref.type}`);
+  }
+
+  async saveFile(
+    ref: StorageRef,
+    fileName: string,
+    body: Buffer | string,
+    contentType: string,
+  ): Promise<string> {
+    const key = this.refKey(ref, fileName);
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      }),
+    );
+    this.logger.debug(`Saved file to S3: ${key}`);
+    return key;
+  }
+
+  async getFile(ref: StorageRef, fileName: string): Promise<Buffer> {
+    const response = await this.client.send(
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: this.refKey(ref, fileName),
+      }),
+    );
+    return Buffer.from(await response.Body!.transformToByteArray());
+  }
+
+  async fileExists(ref: StorageRef, fileName: string): Promise<boolean> {
+    try {
+      const response = await this.client.send(
+        new HeadObjectCommand({
+          Bucket: this.bucket,
+          Key: this.refKey(ref, fileName),
+        }),
+      );
+      return response.$metadata.httpStatusCode !== 404;
+    } catch (error: unknown) {
+      const e = error as { $metadata?: { httpStatusCode?: number } };
+      if (e.$metadata?.httpStatusCode === 404) return false;
+      throw error;
+    }
+  }
+
+  async getFileSignedUrl(
+    ref: StorageRef,
+    fileName: string,
+    options: { downloadName: string; expiresInSeconds?: number },
+  ): Promise<SignedDocumentUrl> {
+    const key = this.refKey(ref, fileName);
+    const expiresIn = options.expiresInSeconds ?? 300;
+    const mimeType =
+      CONTENT_TYPES[fileName.slice(fileName.lastIndexOf('.') + 1)] ??
+      'application/octet-stream';
+    const url = await getSignedUrl(
+      this.client,
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        ResponseContentDisposition: `attachment; filename="${options.downloadName}"`,
+        ResponseContentType: mimeType,
+      }),
+      { expiresIn },
+    );
+    return {
+      url,
+      expiresAt: new Date(Date.now() + expiresIn * 1000),
+      fileName: options.downloadName,
       mimeType,
     };
   }

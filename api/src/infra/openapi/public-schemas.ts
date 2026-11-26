@@ -372,6 +372,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
   ),
   NfeAccepted: obj(
     {
+      type: str({ enum: ['nfe'] }),
       id: uuid(),
       status: str({ enum: NFE_STATUS_VALUES }),
       replayed: bool({
@@ -399,6 +400,11 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     ['hint'],
   ),
   Nfe: obj({
+    type: str({
+      enum: ['nfe'],
+      description:
+        'Always `nfe`. An NFS-e has no `type` field: a document without it is an NFS-e.',
+    }),
     id: uuid(),
     companyId: uuid(),
     environment: str({ enum: ['test', 'live'] }),
@@ -451,6 +457,22 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     },
     additionalInfo: nullable(str()),
     externalId: nullable(str()),
+    cancelReason: nullable(
+      str({ description: 'The justification of the cancellation asked for.' }),
+    ),
+    cancelRequestedAt: nullable(dateTime()),
+    documentsReady: bool({
+      description:
+        'True once the XML (`nfeProc`) and the DANFE can be downloaded; they stay available after a cancellation.',
+    }),
+    documentsReadyAt: nullable(dateTime()),
+    emailStatus: nullable(
+      str({
+        enum: ['queued', 'sent', 'failed'],
+        description: 'The e-mail with the XML and the DANFE to the recipient.',
+      }),
+    ),
+    emailSentAt: nullable(dateTime()),
     attempt: int({
       description:
         'How many times the XML was built and signed (1 on the first send).',
@@ -463,6 +485,148 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     ),
     createdAt: dateTime(),
     updatedAt: dateTime(),
+  }),
+  NfseInvoiceRequest: {
+    allOf: [
+      ref('CreateInvoice'),
+      {
+        type: 'object',
+        properties: {
+          type: str({
+            enum: ['nfse'],
+            default: 'nfse',
+            description:
+              'Optional: without it the request is an NFS-e, exactly as before.',
+          }),
+        },
+      },
+    ],
+  },
+  NfeInvoiceRequest: {
+    allOf: [
+      ref('NfeRequest'),
+      {
+        type: 'object',
+        required: ['type'],
+        properties: {
+          type: str({
+            enum: ['nfe'],
+            description: 'Selects the NF-e (model 55) instead of the NFS-e.',
+          }),
+        },
+      },
+    ],
+  },
+  InvoiceSummary: obj(
+    {
+      id: uuid(),
+      type: str({ enum: ['nfse', 'nfe'] }),
+      companyId: uuid(),
+      environment: str({ enum: ['test', 'live'] }),
+      status: str({
+        description:
+          'The state, in the vocabulary of the type (NFS-e or NF-e statuses).',
+      }),
+      number: nullable(int({ description: 'NFS-e number or NF-e number.' })),
+      accessKey: nullable(str()),
+      amount: nullable(
+        str({
+          description: 'Gross amount (NFS-e) or `vNF` (NF-e), a decimal text.',
+          example: '150.00',
+        }),
+      ),
+      externalId: nullable(str()),
+      issuedAt: nullable(dateTime()),
+      createdAt: dateTime(),
+    },
+    [],
+    {
+      description:
+        'What `GET /invoices?type=all` shows of each document. Read the whole document with `GET /invoices/{id}`.',
+    },
+  ),
+  NfeDownloadLink: obj({
+    downloadUrl: str({ format: 'uri' }),
+    expiresAt: dateTime(),
+    fileName: str(),
+    mimeType: str({ enum: ['application/pdf', 'application/xml'] }),
+  }),
+  NfeEvent: obj({
+    id: uuid(),
+    documentId: uuid(),
+    type: str({ enum: ['cancellation', 'correction'] }),
+    tpEvento: str({
+      enum: ['110111', '110110'],
+      description: '110111 cancellation, 110110 correction letter (CC-e).',
+    }),
+    sequence: int({
+      description:
+        '`nSeqEvento`: always 1 for a cancellation; the n-th letter for a correction (at most 20).',
+    }),
+    status: str({
+      enum: ['pending', 'pending_check', 'registered', 'rejected'],
+      description:
+        '`pending_check`: the SEFAZ did not answer; Corvo checks by the key and does not send another.',
+    }),
+    text: nullable(
+      str({ description: 'The justification or the correction.' }),
+    ),
+    protocol: nullable(str()),
+    cStat: nullable(str()),
+    xMotivo: nullable(str({ description: 'The SEFAZ reason, as it came.' })),
+    createdAt: dateTime(),
+    updatedAt: dateTime(),
+  }),
+  NfeTimelineEntry: obj({
+    kind: str({
+      enum: ['status', 'event'],
+      description:
+        '`status`: the NF-e moved to `status`. `event`: a cancellation or correction letter, in its own `status`.',
+    }),
+    at: dateTime(),
+    status: str(),
+    from: nullable(str()),
+    tpEvento: nullable(str()),
+    sequence: nullable(int()),
+    eventId: nullable(uuid()),
+    cStat: nullable(str()),
+    xMotivo: nullable(str()),
+  }),
+  NfeInutilization: obj(
+    {
+      id: uuid(),
+      companyId: uuid(),
+      environment: str({ enum: ['test', 'live'] }),
+      model: int({ enum: [55] }),
+      series: int(),
+      start: int(),
+      end: int(),
+      justification: str(),
+      status: str({
+        enum: ['pending', 'homologada', 'rejected'],
+        description:
+          '`homologada`: the SEFAZ voided the range. `rejected`: it refused, and the range is free for a new request.',
+      }),
+      protocol: nullable(str()),
+      cStat: nullable(str()),
+      xMotivo: nullable(str()),
+      createdAt: dateTime(),
+      updatedAt: dateTime(),
+      replayed: bool({
+        enum: [true],
+        description:
+          'Present when the same `Idempotency-Key` with the same body had already created this request.',
+      }),
+    },
+    ['replayed'],
+  ),
+  NfeNumberGap: obj({
+    companyId: uuid(),
+    series: int(),
+    start: int(),
+    end: int({
+      description: 'Inclusive: a single number has `start` = `end`.',
+    }),
   }),
   DpsSequence: obj({
     series: str({ example: '00001' }),

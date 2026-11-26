@@ -80,14 +80,16 @@ export class NfeSefazAccess {
     return loadCertificate(pfxBuffer, password);
   }
 
+  /** `referenceTag` is the signed element: `infNFe` (the default), `infEvento` or `infInut`. */
   sign(
     xml: string,
     certificate: LoadedCertificate,
     environment: ExecutionEnvironment,
+    referenceTag: 'infNFe' | 'infEvento' | 'infInut' = 'infNFe',
   ): string {
     return this.isSimulated(environment)
-      ? withStructuralSignature(xml, 'infNFe')
-      : this.signer.sign(xml, 'infNFe', certificate);
+      ? withStructuralSignature(xml, referenceTag)
+      : this.signer.sign(xml, referenceTag, certificate);
   }
 
   context(

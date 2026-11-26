@@ -17,7 +17,7 @@ export class ListNfeQuery extends CursorQuery {
   status?: NfeStatus;
 }
 
-/** `POST /v1/nfe` and `PUT /v1/nfe/{id}`: the id to follow and where the note is now. */
+/** `POST /v1/invoices` (`type: nfe`) and `PUT /v1/invoices/{id}`: the id to follow and where the note is now. */
 export interface NfeAcceptedResponse {
   id: string;
   status: NfeStatus;
@@ -33,6 +33,7 @@ export function toNfeResponse(doc: NfeDocument) {
   const error = toNfeHttpError(s);
   const lastError: NfeHttpError | null = error ? error.error : null;
   return {
+    type: 'nfe' as const,
     id: s.id,
     companyId: s.companyId,
     environment: s.environment,
@@ -46,6 +47,8 @@ export function toNfeResponse(doc: NfeDocument) {
     protocol: s.protocol,
     cStat: s.cStat,
     xMotivo: s.xMotivo,
+    cancelReason: s.cancelReason,
+    cancelRequestedAt: s.cancelRequestedAt,
     natOp: s.natOp,
     recipient: s.recipient,
     items: s.items.map((item) => ({
@@ -70,6 +73,10 @@ export function toNfeResponse(doc: NfeDocument) {
     payment: s.payment,
     additionalInfo: s.additionalInfo,
     externalId: s.externalId,
+    documentsReady: s.documentsReadyAt !== null,
+    documentsReadyAt: s.documentsReadyAt,
+    emailStatus: s.emailStatus,
+    emailSentAt: s.emailSentAt,
     attempt: s.attempt,
     lastError,
     nextCheckAt: s.nextCheckAt,
