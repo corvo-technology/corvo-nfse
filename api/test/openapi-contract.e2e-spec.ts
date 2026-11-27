@@ -1820,12 +1820,20 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         path: `/invoices/${id}/events`,
         status: 200,
       });
+      // The cancellation is told once: the request, with the justification, and no row of its own.
       expect(
         timeline.body.data.some(
-          (entry: { kind: string; tpEvento: string | null }) =>
-            entry.kind === 'event' && entry.tpEvento === '110111',
+          (entry: { kind: string; status: string; text: string | null }) =>
+            entry.kind === 'status' &&
+            entry.status === 'cancelling' &&
+            entry.text === 'Pedido cancelado pelo cliente antes da entrega',
         ),
       ).toBe(true);
+      expect(
+        timeline.body.data.some(
+          (entry: { tpEvento: string | null }) => entry.tpEvento === '110111',
+        ),
+      ).toBe(false);
     });
 
     it('issues a NFC-e off-line (contingency "offline"): 201 at once with the key, the QR Code and the files; the same key answers 200', async () => {
