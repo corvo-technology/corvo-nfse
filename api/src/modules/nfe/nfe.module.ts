@@ -1,11 +1,12 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Module, Optional, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TableAuthorityEndpointResolver } from '@/infra/external/nfe/sefaz/endpoints';
 import { FakeNfeGateway } from '@/infra/external/nfe/sefaz/fake-nfe.gateway';
 import { NfeGateway } from '@/infra/external/nfe/sefaz/nfe-gateway';
 import { XmllintSchemaValidator } from '@/infra/external/nfe/sefaz/schema-validator';
-import { SefazSoapClient } from '@/infra/external/nfe/sefaz/soap-client';
+import { GovRouteSelector } from '@/modules/portal-reachability/gov-route.selector';
+import { createSefazSoapClient } from './application/sefaz-soap-client.factory';
 import { BillingUsageModule } from '@/modules/billing/billing-usage.module';
 import { CertificateModule } from '@/modules/certificate/certificate.module';
 import { CompanyModule } from '@/modules/company/company.module';
@@ -15,6 +16,7 @@ import { FiscalDocumentRegistry } from '@/modules/fiscal-core/application/fiscal
 import { FiscalWebhookPublisher } from '@/modules/fiscal-core/application/fiscal-webhook.publisher';
 import { OutboxService } from '@/modules/invoice/application/outbox.service';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
+import { EmailModule } from '@/modules/email/email.module';
 import { WebhooksConfigModule } from '@/modules/webhooks-config/webhooks-config.module';
 import { NfeCancelHandler } from './application/nfe-cancel.handler';
 import { NfeCancelService } from './application/nfe-cancel.service';
@@ -40,16 +42,26 @@ import { NfeReconcileHandler } from './application/nfe-reconcile.handler';
 import { NfeSendEmailHandler } from './application/nfe-send-email.handler';
 import { NfeResubmitService } from './application/nfe-resubmit.service';
 import { NfeSefazAccess } from './application/nfe-sefaz-access';
+import { NfeSvcAnnouncer } from './application/nfe-svc.announcer';
+import {
+  NfeSvcSwitchService,
+  SEFAZ_STATUS,
+} from './application/nfe-svc-switch.service';
+import { ReachabilitySefazStatus } from './application/reachability-sefaz-status';
 import { NfeTransitionService } from './application/nfe-transition.service';
 import { NfeValidateService } from './application/nfe-validate.service';
 import { INfeDocumentRepository } from './domain/nfe-document.repository';
 import { INfeNumberPreview } from './domain/nfe-number-preview';
 import { NfeInvoiceRoutes } from './http/nfe-invoice.routes';
 import { NfeNumberGapsScheduler } from './jobs/nfe-number-gaps.scheduler';
+import { NfeSvcSwitchScheduler } from './jobs/nfe-svc-switch.scheduler';
 import { NfeDocumentEventOrmEntity } from './infra/nfe-document-event.orm-entity';
 import { NfeDocumentHistoryOrmEntity } from './infra/nfe-document-history.orm-entity';
 import { NfeDocumentItemOrmEntity } from './infra/nfe-document-item.orm-entity';
 import { NfeDocumentOrmEntity } from './infra/nfe-document.orm-entity';
+import { NfeContingencyStateOrmEntity } from './infra/nfe-contingency-state.orm-entity';
+import { TypeormNfeContingencyStates } from './infra/typeorm-nfe-contingency-states';
+import { TypeormNfeSvcAudience } from './infra/typeorm-nfe-svc-audience';
 import { NfeInutilizationOrmEntity } from './infra/nfe-inutilization.orm-entity';
 import { NfeNumberSequenceOrmEntity } from './infra/nfe-number-sequence.orm-entity';
 import { TypeOrmNfeDocumentRepository } from './infra/typeorm-nfe-document.repository';
@@ -58,7 +70,12 @@ import { TypeormNfeEvents } from './infra/typeorm-nfe-events';
 import { TypeormNfeInutilizations } from './infra/typeorm-nfe-inutilizations';
 import { NfeNumberGapsQuery } from './infra/typeorm-nfe-number-gaps.query';
 import { TypeormNfeNumbering } from './infra/typeorm-nfe-numbering';
-import { NFE_DANFE_RENDERER, NFE_SCHEMA_VALIDATOR } from './nfe.tokens';
+import {
+  NFCE_DANFCE_RENDERER,
+  NFE_DANFE_RENDERER,
+  NFE_SCHEMA_VALIDATOR,
+} from './nfe.tokens';
+import { DanfceRenderer } from '@/modules/nfce/infra/danfce/danfce-renderer';
 import { DanfeRenderer } from './infra/danfe/danfe-renderer';
 
 /**
@@ -77,6 +94,7 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     WebhooksConfigModule,
     BillingUsageModule,
     CreditsModule,
+    EmailModule,
     TypeOrmModule.forFeature([
       NfeDocumentOrmEntity,
       NfeDocumentItemOrmEntity,
@@ -84,6 +102,7 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
       NfeNumberSequenceOrmEntity,
       NfeDocumentEventOrmEntity,
       NfeInutilizationOrmEntity,
+      NfeContingencyStateOrmEntity,
     ]),
   ],
   // No controllers: `/v1/invoices` serves NF-e through `NfeInvoiceRoutes`, registered in the router.
@@ -112,6 +131,12 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     NfeTimelineService,
     NfeNumberGapsScheduler,
     NfeNumberGapsQuery,
+    NfeSvcSwitchScheduler,
+    NfeSvcSwitchService,
+    NfeSvcAnnouncer,
+    TypeormNfeSvcAudience,
+    TypeormNfeContingencyStates,
+    { provide: SEFAZ_STATUS, useClass: ReachabilitySefazStatus },
     TypeormNfeEvents,
     TypeormNfeInutilizations,
     NfePrepareDocumentsHandler,
@@ -128,11 +153,15 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     { provide: INfeDocumentRepository, useClass: TypeOrmNfeDocumentRepository },
     { provide: NFE_SCHEMA_VALIDATOR, useClass: XmllintSchemaValidator },
     { provide: NFE_DANFE_RENDERER, useClass: DanfeRenderer },
+    { provide: NFCE_DANFCE_RENDERER, useClass: DanfceRenderer },
   ],
   exports: [
     INfeDocumentRepository,
     INfeNumberPreview,
     TypeormNfeNumbering,
+    NfeSefazAccess,
+    NfeTransitionService,
+    FiscalWebhookPublisher,
     NFE_SCHEMA_VALIDATOR,
     // What the NFC-e routes (`NfceModule`) reuse: the NFC-e runs on the same machinery.
     NfeIntakeService,
@@ -144,12 +173,15 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     NfeInutilizeService,
     TypeormNfeInutilizations,
     NfeNumberGapsQuery,
+    NfeSvcSwitchService,
+    TypeormNfeContingencyStates,
   ],
 })
 export class NfeModule implements OnModuleInit {
   constructor(
     private readonly registry: FiscalDocumentRegistry,
     private readonly config: ConfigService,
+    @Optional() private readonly routes?: GovRouteSelector,
   ) {}
 
   onModuleInit(): void {
@@ -161,7 +193,7 @@ export class NfeModule implements OnModuleInit {
     const timeoutMs = this.config.get<number>('NFE_SEFAZ_TIMEOUT_MS') ?? 30_000;
     this.registry.register(
       new NfeGateway(
-        new SefazSoapClient(),
+        createSefazSoapClient(this.routes),
         new TableAuthorityEndpointResolver(),
         new XmllintSchemaValidator(),
         timeoutMs,

@@ -71,6 +71,7 @@ import {
   SubstituteInvoiceDto,
   CreateInvoiceDto,
   GetDownloadUrlDto,
+  InvoicePdfQuery,
   ListInvoicesQuery,
   RequestInvoiceEmailDto,
 } from './invoice.dto';
@@ -379,13 +380,14 @@ export class InvoiceController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Req() req: RequestWithAuthContext,
     @Res({ passthrough: true }) res: Response,
+    @Query() query: InvoicePdfQuery,
   ): Promise<StreamableFile> {
     return this.byId(
       id,
       req,
       VIEW,
       () => this.nfsePdf(id, req, res),
-      (routes, call) => routes.pdf(id, call, res),
+      (routes, call) => routes.pdf(id, call, res, { layout: query.layout }),
     );
   }
 

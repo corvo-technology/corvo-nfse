@@ -27,7 +27,7 @@ export type Uf =
   | 'SE'
   | 'TO';
 
-/** 1 normal, 6 SVC-AN, 7 SVC-RS, 9 offline (only 1 is used before the contingency phase). */
+/** 1 normal, 6 SVC-AN, 7 SVC-RS, 9 NFC-e off-line (sent to the normal authorizer). */
 export type TpEmis = 1 | 6 | 7 | 9;
 
 export type SefazService =
@@ -50,7 +50,9 @@ export type AuthorityId =
   | 'RS'
   | 'SP'
   | 'SVAN'
-  | 'SVRS';
+  | 'SVRS'
+  | 'SVCAN'
+  | 'SVCRS';
 
 export interface AuthorityEndpoint {
   authority: AuthorityId;

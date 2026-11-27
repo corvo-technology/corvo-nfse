@@ -1,3 +1,4 @@
+import { endpointTpEmis } from '@/infra/external/nfe/sefaz/endpoints';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type {
   NfeConsultResult,
@@ -69,10 +70,12 @@ export class NfeEventReconcile {
       environment,
     );
     const model = snapshot.model;
+    const tpEmis = endpointTpEmis(snapshot.accessKey ?? '');
     const authority = this.access.breakerAuthority(
       issuer.uf,
       environment,
       model,
+      tpEmis,
     );
     try {
       await this.breaker.assertAvailable(environment, authority);
@@ -97,7 +100,13 @@ export class NfeEventReconcile {
       const problem = certificateProblemOf(error);
       return this.outcomes.rejected(event, doc, problem.code, problem.message);
     }
-    const ctx = this.access.context(issuer.uf, environment, certificate, model);
+    const ctx = this.access.context(
+      issuer.uf,
+      environment,
+      certificate,
+      model,
+      tpEmis,
+    );
     const answer = (await this.gateways
       .get<SignedNfe>(gatewayTypeOf(model))
       .consult.consultByKey(

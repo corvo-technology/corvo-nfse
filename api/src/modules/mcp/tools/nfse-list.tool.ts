@@ -13,14 +13,15 @@ import { toDetailedInvoice } from './public-shapes';
 export const NFSE_LIST_TOOL = {
   name: 'nfse_list',
   description:
-    'List NFS-e invoices for the tenant with optional status and origin filters and cursor pagination. With type "nfe" it lists NF-e; with type "all", NFS-e and NF-e together (newest first); both need NF-e released and take only the status, company_id, limit and cursor filters.',
+    'List NFS-e invoices for the tenant with optional status and origin filters and cursor pagination. With type "nfe" it lists NF-e, with type "nfce" NFC-e; with type "all", NFS-e, NF-e and NFC-e together (newest first); they need NF-e or NFC-e released and take only the status, company_id, limit and cursor filters.',
   inputSchema: {
     type: 'object',
     properties: {
       type: TYPE_ALL_PROPERTY,
       company_id: {
         type: 'string',
-        description: 'Only this company (UUID). Only with type "nfe" or "all".',
+        description:
+          'Only this company (UUID). Only with type "nfe", "nfce" or "all".',
       },
       status: {
         type: 'string',

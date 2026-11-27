@@ -28,7 +28,11 @@ function build(result: Date | null | 'missing' = null) {
     log.push(`update:${getDatabaseScope()?.tenantId}`);
     return result === 'missing' ? null : { enabledAt: enabled ? result : null };
   });
-  const db = { setEnabled };
+  const setNfceEnabled = jest.fn(async (_id: string, enabled: boolean) => {
+    log.push(`update-nfce:${getDatabaseScope()?.tenantId}`);
+    return result === 'missing' ? null : { enabledAt: enabled ? result : null };
+  });
+  const db = { setEnabled, setNfceEnabled };
   const audit = {
     insert: jest.fn(async () => {
       log.push('audit');
@@ -46,7 +50,7 @@ function build(result: Date | null | 'missing' = null) {
     audit as never,
     cache as never,
   );
-  return { service, log, setEnabled, audit, cache };
+  return { service, log, setEnabled, setNfceEnabled, audit, cache };
 }
 
 describe('PlatformNfeAccessService', () => {
@@ -108,5 +112,40 @@ describe('PlatformNfeAccessService', () => {
     expect(audit.insert).not.toHaveBeenCalled();
     expect(cache.delete).not.toHaveBeenCalled();
     expect(log).toContain('rollback');
+  });
+
+  it('NFC-e: grava nfce_enabled_at, audita nfce_access_set e limpa o cache nfce:enabled', async () => {
+    const at = new Date('2026-11-26T12:00:00Z');
+    const { service, log, setEnabled, setNfceEnabled, audit, cache } =
+      build(at);
+
+    const result = await service.set(actor, TENANT, {
+      enabled: true,
+      reason: 'teste da NFC-e',
+      type: 'nfce',
+    });
+
+    expect(result).toEqual({
+      tenantId: TENANT,
+      enabled: true,
+      enabledAt: at.toISOString(),
+    });
+    expect(setNfceEnabled).toHaveBeenCalledWith(TENANT, true);
+    expect(setEnabled).not.toHaveBeenCalled();
+    expect(audit.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'nfce_access_set',
+        targetTenantId: TENANT,
+        payload: { enabled: true },
+      }),
+    );
+    expect(cache.delete).toHaveBeenCalledWith(`nfce:enabled:${TENANT}`);
+    expect(log).toEqual([
+      'begin',
+      `update-nfce:${TENANT}`,
+      'audit',
+      'commit',
+      'cache-delete',
+    ]);
   });
 });

@@ -214,6 +214,14 @@ describe('McpServer', () => {
       expect(mcpInstructions(true)).toContain('nfse_review');
     });
 
+    it('explains NF-e and NFC-e: the type, the validation and what the NFC-e does not have', () => {
+      const text = mcpInstructions(true);
+      expect(text).toContain('type "nfe" or "nfce"');
+      expect(text).toMatch(/nfe_validate \(with type "nfe" or "nfce"\)/);
+      expect(text).toMatch(/NFC-e has no correction letter/);
+      expect(text).toMatch(/cancelled within 30 minutes/);
+    });
+
     it('says the person always completes the payment', () => {
       expect(mcpInstructions(false)).toMatch(/person always (completes|pays)/i);
     });

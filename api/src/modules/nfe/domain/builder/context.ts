@@ -1,3 +1,4 @@
+import type { TpEmis } from '@/modules/fiscal-core/domain/ports/authority.port';
 import type { NfeDraft } from '../nfe-draft';
 
 /** Responsible technician of the software (`infRespTec`); comes from the NFE_RESP_TEC_* settings. */
@@ -22,6 +23,18 @@ export interface BuildContext {
   accessKey: string;
   verProc: string;
   respTec: NfeRespTec | null;
+  /** 1 normal, 6/7 SVC, 9 NFC-e off-line. */
+  tpEmis: TpEmis;
+  /** Present only with `tpEmis` 6, 7 or 9: `dhCont` and `xJust`. */
+  contingency: NfeContingency | null;
+}
+
+/** The contingency of the emission: when it began (`dhCont`, with the UF offset) and why (`xJust`). */
+export interface NfeContingency {
+  tpEmis: 6 | 7 | 9;
+  dhCont: string;
+  /** 15 to 256 characters. */
+  xJust: string;
 }
 
 /** A tree for fast-xml-builder: keys keep their order, `@_` prefixes an attribute. */

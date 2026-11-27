@@ -16,12 +16,14 @@ interface NfeAccessButtonProps {
   tenantId: string;
   /** When NF-e was released for the workspace; null while it is off. */
   enabledAt: string | null;
+  /** Which release this switch controls; NF-e when omitted. */
+  type?: "nfe" | "nfce";
   onChanged: () => void;
 }
 
 /** Platform-admin action: releases NF-e (homologação) for one workspace, or takes it away. The reason is kept in the audit trail. */
-export function NfeAccessButton({ tenantId, enabledAt, onChanged }: NfeAccessButtonProps) {
-  const t = useTranslations("Admin.nfe");
+export function NfeAccessButton({ tenantId, enabledAt, type = "nfe", onChanged }: NfeAccessButtonProps) {
+  const t = useTranslations(type === "nfce" ? "Admin.nfce" : "Admin.nfe");
   const apiError = useApiErrorText();
   const enabled = enabledAt !== null;
   const [open, setOpen] = useState(false);
@@ -39,7 +41,7 @@ export function NfeAccessButton({ tenantId, enabledAt, onChanged }: NfeAccessBut
     if (!valid) { setReasonError(t("errorReason")); return; }
     inFlight.current = true; setSubmitting(true); setError(null); setReasonError(null);
     try {
-      await platformAdmin.setNfeAccess(tenantId, { enabled: !enabled, reason: trimmed });
+      await (type === "nfce" ? platformAdmin.setNfceAccess : platformAdmin.setNfeAccess)(tenantId, { enabled: !enabled, reason: trimmed });
       setOpen(false); onChanged();
     } catch (cause) {
       setError(apiError(cause, cause instanceof ApiError && cause.status === 404 ? t("errorNotFound") : t("errorGeneric")));

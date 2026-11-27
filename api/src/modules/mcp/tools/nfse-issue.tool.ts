@@ -179,7 +179,7 @@ export const NFSE_ISSUE_TOOL = {
     'Emit a new NFS-e (Nota Fiscal de Serviços Eletrônica). Identify the issuing company with company_tax_id (its CNPJ) or company_id; call company_list if you do not know it. ' +
     'Minimal call: company_tax_id + amount. The customer is optional (omit it for an anonymous consumer invoice), and the competence date, service code and municipality default to today and to the company settings. ' +
     'Returns immediately with the queued status; use nfse_query to follow it. With emission_type SCHEDULE or RECURRING nothing is issued yet: it returns the schedule (schedule_id) instead. If it fails for lack of credits, check credits_balance and then credits_purchase. ' +
-    'With type "nfe" it emits an NF-e (goods, model 55, homologação only, accounts where NF-e was released) instead: send company_id, the nfe object and a required idempotency_key; run nfe_validate first; follow it with nfse_get and type "nfe".',
+    'With type "nfe" it emits an NF-e (goods, model 55, homologação only, accounts where NF-e was released) instead: send company_id, the nfe object and a required idempotency_key; run nfe_validate first; follow it with nfse_get and type "nfe". With type "nfce" it emits a NFC-e (sale to the consumer, model 65, homologação only, accounts where NFC-e was released): same fields, the NFC-e body goes in the nfe object (no natOp; the consumer CPF is optional); run nfe_validate with type "nfce" first; follow it with nfse_get and type "nfce".',
   inputSchema: {
     type: 'object',
     properties: {

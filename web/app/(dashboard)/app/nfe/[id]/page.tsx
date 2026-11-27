@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import QRCode from "qrcode";
 import { useAuth } from "@/lib/auth";
 import { errorCodeKey } from "@/lib/api-errors";
 import { saveBlob } from "@/lib/download";
@@ -38,6 +39,7 @@ export default function NfeDetailPage() {
   const [correctOpen, setCorrectOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [qrImage, setQrImage] = useState<string | null>(null);
   const inFlight = useRef(false);
 
   useEffect(() => {
@@ -69,6 +71,14 @@ export default function NfeDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the texts change with the language, not with the note
   }, [id, revision]);
 
+  const qrText = nfe?.qrCode ?? null;
+  useEffect(() => {
+    if (!qrText) return;
+    let live = true;
+    QRCode.toDataURL(qrText, { margin: 1, width: 224, errorCorrectionLevel: "M" }).then((url) => { if (live) setQrImage(url); }).catch(() => { if (live) setQrImage(null); });
+    return () => { live = false; };
+  }, [qrText]);
+
   async function run(action: () => Promise<unknown>, done?: string) {
     if (inFlight.current) return;
     inFlight.current = true; setBusy(true); setError(null); setNotice(null);
@@ -80,6 +90,7 @@ export default function NfeDetailPage() {
   if (!nfe || nfe.id !== id) return error ? <div className="flex flex-col gap-4"><p role="alert">{error}</p><Button onClick={() => setRevision((value) => value + 1)}>{t("refresh")}</Button></div> : <DetailSkeleton label={t("loading")} />;
 
   const actions = nfeActions(nfe, can);
+  const consumerNote = nfe.type === "nfce";
   const date = (value: string | null) => (value ? new Date(value).toLocaleString(locale === "pt" ? "pt-BR" : "en-US") : "—");
   const money = (value: string) => new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US", { style: "currency", currency: "BRL" }).format(Number(value));
   const last = nfe.lastError;
@@ -89,7 +100,7 @@ export default function NfeDetailPage() {
   return (
     <div className="flex max-w-[900px] flex-col gap-6">
       <PageHeader
-        title={nfe.number ? `${t("title")} ${nfe.number}` : t("title")}
+        title={nfe.number ? `${consumerNote ? "NFC-e" : t("title")} ${nfe.number}` : consumerNote ? "NFC-e" : t("title")}
         subtitle={`${nfe.id} · ${tn(`status.${nfe.status}`)}`}
         actions={
           <>
@@ -112,17 +123,20 @@ export default function NfeDetailPage() {
           {last.issues && last.issues.length > 0 && <ul className="list-disc pl-5 text-sm">{last.issues.map((issue) => <li key={`${issue.field}-${issue.code}`}><span className="font-mono">{issue.field}</span>: {te.has(errorCodeKey(issue.code)) ? te(errorCodeKey(issue.code)) : issue.message}</li>)}</ul>}
         </div>
       )}
+      {(nfe.emissionType === 6 || nfe.emissionType === 7) && <p role="note" className="banner banner-warn">{t("svcIssued", { authority: nfe.emissionType === 6 ? "SVC-AN" : "SVC-RS" })}</p>}
+      {nfe.status === "contingency_pending" && <p role="status" className="banner banner-warn">{t("contingencyPending", { deadline: date(nfe.contingencyDeadlineAt ?? null) })}</p>}
       {nfe.status === "reconciliation_required" && <p role="status" className="banner banner-warn">{t("reconciling")}</p>}
       {nfe.status === "manual_review" && <p role="status" className="banner banner-warn">{t("manualReview")}</p>}
 
       <Card className="grid gap-4 p-5 sm:grid-cols-2">
-        <div><p className="eyebrow">{t("recipient")}</p><p>{nfe.recipient.name}</p><p className="text-sm text-text-3">{nfe.recipient.taxId}</p></div>
+        <div><p className="eyebrow">{consumerNote ? t("consumer") : t("recipient")}</p><p>{nfe.recipient?.name || t("consumerAnonymous")}</p>{nfe.recipient?.taxId && <p className="text-sm text-text-3">{nfe.recipient.taxId}</p>}</div>
         <div><p className="eyebrow">{t("amount")}</p><p>{money(nfe.totals.vNF)}</p></div>
-        <div><p className="eyebrow">{t("natOp")}</p><p>{nfe.natOp}</p></div>
+        {!consumerNote && <div><p className="eyebrow">{t("natOp")}</p><p>{nfe.natOp}</p></div>}
         <div><p className="eyebrow">{t("numberSeries")}</p><p className="font-mono">{nfe.number ? `${nfe.number} / ${nfe.series}` : "—"}</p></div>
         <div className="sm:col-span-2"><p className="eyebrow">{t("accessKey")}</p><p className="select-all break-all font-mono text-[13px]">{nfe.accessKey ?? "—"}</p></div>
         <div><p className="eyebrow">{t("protocol")}</p><p className="font-mono text-[13px]">{nfe.protocol ?? "—"}</p></div>
         <div><p className="eyebrow">{t("authorizedAt")}</p><p>{date(nfe.authorizedAt)}</p></div>
+        {nfe.contingencyAt && <div className="sm:col-span-2"><p className="eyebrow">{t("contingencyIssued")}</p><p>{date(nfe.contingencyAt)}{nfe.contingencyReason ? ` · ${nfe.contingencyReason}` : ""}</p></div>}
         {nfe.additionalInfo && <div className="sm:col-span-2"><p className="eyebrow">{t("additionalInfo")}</p><p className="whitespace-pre-line">{nfe.additionalInfo}</p></div>}
         {nfe.cancelReason && <div className="sm:col-span-2"><p className="eyebrow">{t("cancelReason")}</p><p>{nfe.cancelReason}</p></div>}
       </Card>
@@ -142,10 +156,25 @@ export default function NfeDetailPage() {
       <Card className="flex flex-col gap-4 p-5">
         <h2 className="font-medium">{t("documents")}</h2>
         <div className="flex flex-wrap gap-3">
-          <Button disabled={!actions.download || busy} onClick={() => void run(async () => saveBlob(await nfeFile(id, "pdf"), `nfe-${nfe.number ?? id}.pdf`))}>DANFE (PDF)</Button>
+          {consumerNote ? (
+            <>
+              <Button disabled={!actions.download || busy} onClick={() => void run(async () => saveBlob(await nfeFile(id, "pdf", "80mm"), `nfce-${nfe.number ?? id}.pdf`))}>{t("danfce80")}</Button>
+              <Button disabled={!actions.download || busy} onClick={() => void run(async () => saveBlob(await nfeFile(id, "pdf", "a4"), `nfce-${nfe.number ?? id}-a4.pdf`))}>{t("danfceA4")}</Button>
+            </>
+          ) : (
+            <Button disabled={!actions.download || busy} onClick={() => void run(async () => saveBlob(await nfeFile(id, "pdf"), `nfe-${nfe.number ?? id}.pdf`))}>DANFE (PDF)</Button>
+          )}
           <Button disabled={!actions.download || busy} onClick={() => void run(async () => saveBlob(await nfeFile(id, "xml"), `nfe-${nfe.number ?? id}.xml`))}>XML</Button>
         </div>
         {!actions.download && <p className="text-sm text-text-3">{t("documentsHint")}</p>}
+        {consumerNote && nfe.qrCode && qrImage && (
+          <div className="flex flex-wrap items-center gap-4">
+            {/* eslint-disable-next-line @next/next/no-img-element -- a data: URL made in the browser */}
+            <img src={qrImage} alt={t("qrAlt")} width={112} height={112} className="rounded-md bg-white p-1" />
+            {nfe.urlChave && <a href={nfe.urlChave} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline">{t("consultLink")}</a>}
+          </div>
+        )}
+        {consumerNote && nfe.status === "authorized" && <p role="note" className="text-sm text-text-3">{t("cancelWindow")}</p>}
         {nfe.emailStatus && t.has(`email.${nfe.emailStatus}`) && <p className="text-sm text-text-3">{t(`email.${nfe.emailStatus}`)}</p>}
       </Card>
 

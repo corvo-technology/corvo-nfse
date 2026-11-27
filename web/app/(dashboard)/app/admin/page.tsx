@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { SvcContingency } from "@/components/admin/svc-contingency";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { useBillingEnabled } from "@/lib/deployment-config-context";
@@ -33,6 +34,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 export default function AdminOverviewPage() {
   const t = useTranslations("Admin.overview");
   const tc = useTranslations("Admin.common");
+  const ts = useTranslations("Admin.svc");
   const locale = useLocale();
   const apiError = useApiErrorText();
   const billingEnabled = useBillingEnabled();
@@ -78,6 +80,10 @@ export default function AdminOverviewPage() {
               <Stat label={t("usersNew7d")} value={number(data.users.new7d)} />
               <Stat label={t("usersNew30d")} value={number(data.users.new30d)} />
             </div>
+          </Section>
+
+          <Section title={ts("title")}>
+            <SvcContingency />
           </Section>
 
           {(["live", "test"] as const).map((env) => (
