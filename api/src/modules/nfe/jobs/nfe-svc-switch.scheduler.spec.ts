@@ -2,51 +2,81 @@ import { NfeSvcSwitchScheduler } from './nfe-svc-switch.scheduler';
 
 const NOW = new Date('2026-11-26T15:00:00Z');
 
-function setup(
-  active: { uf: string; tpAmb: 1 | 2 }[] = [],
-  production = false,
-) {
-  const service = { evaluate: jest.fn(() => Promise.resolve('unchanged')) };
+function setup(opts: {
+  targets?: { uf: string; tpAmb: 1 | 2 }[];
+  active?: { uf: string; tpAmb: 1 | 2 }[];
+  production?: boolean;
+}) {
+  const service = {
+    evaluate: jest.fn(() => Promise.resolve('unchanged')),
+    clearSilently: jest.fn(() => Promise.resolve(true)),
+  };
+  const audience = {
+    monitoredTargets: jest.fn((_production: boolean) =>
+      Promise.resolve(opts.targets ?? []),
+    ),
+  };
   const scheduler = new NfeSvcSwitchScheduler(
     service as never,
-    { listActive: jest.fn(() => Promise.resolve(active)) } as never,
-    { get: () => production } as never,
+    { listActive: jest.fn(() => Promise.resolve(opts.active ?? [])) } as never,
+    { get: () => opts.production ?? false } as never,
+    audience as never,
   );
-  return { service, scheduler };
+  return { service, audience, scheduler };
 }
 
 const evaluated = (service: { evaluate: jest.Mock }) =>
   service.evaluate.mock.calls.map((c) => (c as unknown[]).slice(0, 2));
 
 describe('NfeSvcSwitchScheduler', () => {
-  it('evaluates every UF the code supports in homologação, once, with nothing to release', async () => {
-    const { service, scheduler } = setup();
+  it('watches nothing when no company has NF-e settings', async () => {
+    const { service, scheduler } = setup({});
     await scheduler.run(NOW);
-    const calls = evaluated(service);
-    expect(calls).toHaveLength(27);
-    expect(calls).toContainEqual(['SP', 2]);
-    expect(calls).toContainEqual(['AM', 2]);
-    expect(calls.some((c) => c[1] === 1)).toBe(false);
-    expect(service.evaluate).toHaveBeenCalledWith('SP', 2, NOW);
+    expect(service.evaluate).not.toHaveBeenCalled();
   });
 
-  it('evaluates production too when it is switched on', async () => {
-    const { service, scheduler } = setup([], true);
+  it('a company in PE only makes PE a target', async () => {
+    const { service, scheduler } = setup({ targets: [{ uf: 'PE', tpAmb: 1 }] });
     await scheduler.run(NOW);
-    expect(evaluated(service)).toHaveLength(54);
-    expect(evaluated(service)).toContainEqual(['SP', 1]);
+    expect(evaluated(service)).toEqual([['PE', 1]]);
+    expect(service.evaluate).toHaveBeenCalledWith('PE', 1, NOW);
   });
 
-  it('also evaluates a UF that is in the SVC in an environment no longer listed, so it can leave', async () => {
-    const { service, scheduler } = setup([{ uf: 'MG', tpAmb: 1 }]);
+  it('passes the production switch to the target query', async () => {
+    const { audience, scheduler } = setup({ production: true });
     await scheduler.run(NOW);
-    expect(service.evaluate).toHaveBeenCalledWith('MG', 1, NOW);
+    expect(audience.monitoredTargets).toHaveBeenCalledWith(true);
+  });
+
+  it('keeps SP: an SP company is evaluated', async () => {
+    const { service, scheduler } = setup({ targets: [{ uf: 'SP', tpAmb: 2 }] });
+    await scheduler.run(NOW);
+    expect(evaluated(service)).toEqual([['SP', 2]]);
+  });
+
+  it('clears quietly a UF stuck in the SVC that no company uses, and does not evaluate it', async () => {
+    const { service, scheduler } = setup({
+      targets: [{ uf: 'PE', tpAmb: 1 }],
+      active: [
+        { uf: 'GO', tpAmb: 2 },
+        { uf: 'PE', tpAmb: 1 },
+      ],
+    });
+    await scheduler.run(NOW);
+    expect(service.clearSilently).toHaveBeenCalledTimes(1);
+    expect(service.clearSilently).toHaveBeenCalledWith('GO', 2, NOW);
+    expect(evaluated(service)).toEqual([['PE', 1]]);
   });
 
   it('keeps going when one UF fails', async () => {
-    const { service, scheduler } = setup();
+    const { service, scheduler } = setup({
+      targets: [
+        { uf: 'SP', tpAmb: 2 },
+        { uf: 'PE', tpAmb: 2 },
+      ],
+    });
     service.evaluate.mockRejectedValueOnce(new Error('redis down'));
     await expect(scheduler.run(NOW)).resolves.toBeUndefined();
-    expect(service.evaluate).toHaveBeenCalledTimes(27);
+    expect(service.evaluate).toHaveBeenCalledTimes(2);
   });
 });

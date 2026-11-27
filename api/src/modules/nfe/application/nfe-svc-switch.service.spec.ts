@@ -2,7 +2,11 @@ import type {
   FiscalSituation,
   FiscalSituationQuery,
 } from '@/modules/fiscal-core/domain/fiscal-situation';
-import { NfeSvcSwitchService } from './nfe-svc-switch.service';
+import {
+  ENTER_AFTER,
+  LEAVE_AFTER,
+  NfeSvcSwitchService,
+} from './nfe-svc-switch.service';
 
 const OK: FiscalSituation = {
   breakerOpen: false,
@@ -15,6 +19,19 @@ const DOWN: FiscalSituation = {
   network: 'ok',
 };
 const NOW = new Date('2026-11-26T15:00:00Z');
+
+/** Evaluates enough minutes in a row for the hysteresis to let a change through; returns the last result. */
+async function settle(
+  service: NfeSvcSwitchService,
+  uf: 'SP' | 'AM' | 'PE',
+  tpAmb: 1 | 2,
+  times = Math.max(ENTER_AFTER, LEAVE_AFTER),
+) {
+  let result = await service.evaluate(uf, tpAmb, NOW);
+  for (let i = 1; i < times; i++)
+    result = await service.evaluate(uf, tpAmb, NOW);
+  return result;
+}
 
 function setup(opts: {
   mode?: 'none' | 'svc';
@@ -69,7 +86,7 @@ describe('NfeSvcSwitchService', () => {
   describe('entering', () => {
     it('enters when only the origin is down and the SVC answers', async () => {
       const t = setup({ situations: { 'nfe-sp-2': DOWN } });
-      expect(await t.service.evaluate('SP', 2, NOW)).toBe('entered');
+      expect(await settle(t.service, 'SP', 2)).toBe('entered');
       expect(t.states.enter).toHaveBeenCalledWith(
         'SP',
         2,
@@ -90,13 +107,13 @@ describe('NfeSvcSwitchService', () => {
 
     it('asks the SVC-RS (tpEmis 7) for a UF served by it', async () => {
       const t = setup({ situations: { 'nfe-am-1': DOWN } });
-      expect(await t.service.evaluate('AM', 1, NOW)).toBe('entered');
+      expect(await settle(t.service, 'AM', 1)).toBe('entered');
       expect(t.status.isUp).toHaveBeenCalledWith('AM', 1, 7);
     });
 
     it('does nothing while the origin looks normal', async () => {
       const t = setup({});
-      expect(await t.service.evaluate('SP', 2, NOW)).toBe('unchanged');
+      expect(await settle(t.service, 'SP', 2)).toBe('unchanged');
       expect(t.states.enter).not.toHaveBeenCalled();
     });
 
@@ -106,7 +123,7 @@ describe('NfeSvcSwitchService', () => {
         const t = setup({
           situations: { 'nfe-sp-2': { ...DOWN, network } },
         });
-        expect(await t.service.evaluate('SP', 2, NOW)).toBe('unchanged');
+        expect(await settle(t.service, 'SP', 2)).toBe('unchanged');
         expect(t.states.enter).not.toHaveBeenCalled();
         expect(t.announcer.entered).not.toHaveBeenCalled();
       },
@@ -117,7 +134,7 @@ describe('NfeSvcSwitchService', () => {
         situations: { 'nfe-sp-2': DOWN },
         up: { '6': false },
       });
-      expect(await t.service.evaluate('SP', 2, NOW)).toBe('unchanged');
+      expect(await settle(t.service, 'SP', 2)).toBe('unchanged');
       expect(t.states.enter).not.toHaveBeenCalled();
     });
 
@@ -125,12 +142,12 @@ describe('NfeSvcSwitchService', () => {
       const t = setup({
         situations: { 'nfe-sp-2': DOWN, 'nfe-svcan-2': DOWN },
       });
-      expect(await t.service.evaluate('SP', 2, NOW)).toBe('unchanged');
+      expect(await settle(t.service, 'SP', 2)).toBe('unchanged');
     });
 
     it('announces nothing when another worker already entered', async () => {
       const t = setup({ situations: { 'nfe-sp-2': DOWN }, wins: false });
-      expect(await t.service.evaluate('SP', 2, NOW)).toBe('unchanged');
+      expect(await settle(t.service, 'SP', 2)).toBe('unchanged');
       expect(t.announcer.entered).not.toHaveBeenCalled();
     });
   });
@@ -138,7 +155,7 @@ describe('NfeSvcSwitchService', () => {
   describe('leaving', () => {
     it('leaves when the origin is normal again and answers', async () => {
       const t = setup({ mode: 'svc' });
-      expect(await t.service.evaluate('SP', 2, NOW)).toBe('exited');
+      expect(await settle(t.service, 'SP', 2)).toBe('exited');
       expect(t.status.isUp).toHaveBeenCalledWith('SP', 2, 1);
       expect(t.announcer.exited).toHaveBeenCalledWith(
         expect.objectContaining({ uf: 'SP', tpAmb: 2, authority: 'SVCAN' }),
@@ -147,18 +164,18 @@ describe('NfeSvcSwitchService', () => {
 
     it('stays while the breaker of the origin is still open', async () => {
       const t = setup({ mode: 'svc', situations: { 'nfe-sp-2': DOWN } });
-      expect(await t.service.evaluate('SP', 2, NOW)).toBe('unchanged');
+      expect(await settle(t.service, 'SP', 2)).toBe('unchanged');
       expect(t.states.exit).not.toHaveBeenCalled();
     });
 
     it('stays while the origin does not answer', async () => {
       const t = setup({ mode: 'svc', up: { '1': false } });
-      expect(await t.service.evaluate('SP', 2, NOW)).toBe('unchanged');
+      expect(await settle(t.service, 'SP', 2)).toBe('unchanged');
     });
 
     it('announces the exit once even if two workers race', async () => {
       const t = setup({ mode: 'svc', wins: false });
-      expect(await t.service.evaluate('SP', 2, NOW)).toBe('unchanged');
+      expect(await settle(t.service, 'SP', 2)).toBe('unchanged');
       expect(t.announcer.exited).not.toHaveBeenCalled();
     });
   });
@@ -179,6 +196,70 @@ describe('NfeSvcSwitchService', () => {
       expect(await t.service.forceExit('SP', 2, 'ops@corvo.test', NOW)).toBe(
         false,
       );
+      expect(t.announcer.exited).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('hysteresis and unknown', () => {
+    it('enters only on the third consecutive authority_down minute', async () => {
+      const t = setup({ situations: { 'nfe-pe-1': DOWN } });
+      expect(await t.service.evaluate('PE', 1, NOW)).toBe('unchanged');
+      expect(await t.service.evaluate('PE', 1, NOW)).toBe('unchanged');
+      expect(t.states.enter).not.toHaveBeenCalled();
+      expect(await t.service.evaluate('PE', 1, NOW)).toBe('entered');
+      expect(t.announcer.entered).toHaveBeenCalledTimes(1);
+    });
+
+    it('a single healthy minute restarts the count (a flapping probe never enters)', async () => {
+      const t = setup({ situations: { 'nfe-pe-1': DOWN } });
+      await t.service.evaluate('PE', 1, NOW);
+      await t.service.evaluate('PE', 1, NOW);
+      t.reader.situation.mockImplementation(() => Promise.resolve(OK));
+      await t.service.evaluate('PE', 1, NOW);
+      t.reader.situation.mockImplementation((q: FiscalSituationQuery) =>
+        Promise.resolve(q.authority === 'nfe-pe-1' ? DOWN : OK),
+      );
+      await t.service.evaluate('PE', 1, NOW);
+      await t.service.evaluate('PE', 1, NOW);
+      expect(t.states.enter).not.toHaveBeenCalled();
+    });
+
+    it('leaves only after three consecutive healthy minutes; one bad minute restarts', async () => {
+      const t = setup({ mode: 'svc' });
+      expect(await t.service.evaluate('PE', 1, NOW)).toBe('unchanged');
+      expect(await t.service.evaluate('PE', 1, NOW)).toBe('unchanged');
+      t.status.isUp.mockResolvedValueOnce(false);
+      expect(await t.service.evaluate('PE', 1, NOW)).toBe('unchanged');
+      expect(await t.service.evaluate('PE', 1, NOW)).toBe('unchanged');
+      expect(await t.service.evaluate('PE', 1, NOW)).toBe('unchanged');
+      expect(await t.service.evaluate('PE', 1, NOW)).toBe('exited');
+      expect(t.announcer.exited).toHaveBeenCalledTimes(1);
+    });
+
+    it('an unknown probe (never probed, no certificate) is not authority_down: never enters', async () => {
+      const t = setup({
+        situations: {
+          'nfe-pe-1': {
+            breakerOpen: false,
+            authorityReachable: null,
+            network: 'ok',
+          },
+        },
+      });
+      for (let i = 0; i < 10; i++) await t.service.evaluate('PE', 1, NOW);
+      expect(t.states.enter).not.toHaveBeenCalled();
+      expect(t.announcer.entered).not.toHaveBeenCalled();
+    });
+
+    it('an unknown origin probe does not count as healthy: stays in the SVC', async () => {
+      const t = setup({ mode: 'svc', up: { '1': false } });
+      for (let i = 0; i < 10; i++) await t.service.evaluate('PE', 1, NOW);
+      expect(t.states.exit).not.toHaveBeenCalled();
+    });
+
+    it('clearSilently leaves with no announcement', async () => {
+      const t = setup({ mode: 'svc' });
+      expect(await t.service.clearSilently('PE', 1, NOW)).toBe(true);
       expect(t.announcer.exited).not.toHaveBeenCalled();
     });
   });

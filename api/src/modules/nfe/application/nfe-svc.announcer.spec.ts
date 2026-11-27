@@ -12,6 +12,14 @@ const change = {
 };
 
 function setup(opsEmails = 'ops@corvo.test, outro@corvo.test') {
+  const seen = new Set<string>();
+  const redis = {
+    set: jest.fn((key: string) => {
+      if (seen.has(key)) return Promise.resolve(null);
+      seen.add(key);
+      return Promise.resolve('OK');
+    }),
+  };
   const audience = {
     tenants: jest.fn(() => Promise.resolve([T1, T2, T3])),
   };
@@ -22,8 +30,9 @@ function setup(opsEmails = 'ops@corvo.test, outro@corvo.test') {
     webhooks as never,
     email as never,
     new ConfigService({ OPS_ALERT_EMAILS: opsEmails }),
+    redis as never,
   );
-  return { announcer, audience, webhooks, email };
+  return { announcer, audience, webhooks, email, redis };
 }
 
 describe('NfeSvcAnnouncer', () => {
@@ -106,5 +115,29 @@ describe('NfeSvcAnnouncer', () => {
     t.audience.tenants.mockRejectedValueOnce(new Error('db'));
     t.email.enqueueNotice.mockRejectedValue(new Error('smtp'));
     await expect(t.announcer.entered(change)).resolves.toBeUndefined();
+  });
+
+  it('e-mails an entered change once per UF and environment inside the cooldown', async () => {
+    const t = setup('ops@corvo.test');
+    await t.announcer.entered(change);
+    await t.announcer.entered(change);
+    expect(t.email.enqueueNotice).toHaveBeenCalledTimes(1);
+    await t.announcer.entered({ ...change, uf: 'PE' });
+    expect(t.email.enqueueNotice).toHaveBeenCalledTimes(2);
+  });
+
+  it('e-mails the exit once too, and still publishes every webhook', async () => {
+    const t = setup('ops@corvo.test');
+    await t.announcer.exited(change);
+    await t.announcer.exited(change);
+    expect(t.email.enqueueNotice).toHaveBeenCalledTimes(1);
+    expect(t.webhooks.publishTenantEvent).toHaveBeenCalledTimes(6);
+  });
+
+  it('a manual exit by the admin is always e-mailed', async () => {
+    const t = setup('ops@corvo.test');
+    await t.announcer.exited(change);
+    await t.announcer.exited({ ...change, by: 'ops@corvo.test' });
+    expect(t.email.enqueueNotice).toHaveBeenCalledTimes(2);
   });
 });

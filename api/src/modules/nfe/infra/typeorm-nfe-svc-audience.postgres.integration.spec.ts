@@ -59,4 +59,38 @@ describePostgres('NfeSvcAudience on PostgreSQL', () => {
       [h.tenantId, other].sort(),
     );
   });
+
+  describe('monitoredTargets', () => {
+    const addSettings = (companyId: string, tenantId: string) =>
+      h.admin.query(
+        `INSERT INTO "${h.schema}".company_nfe_settings (company_id, tenant_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+        [companyId, tenantId],
+      );
+    const clearSettings = () =>
+      h.admin.query(`DELETE FROM "${h.schema}".company_nfe_settings`);
+
+    it('is empty when no company has NF-e settings', async () => {
+      await clearSettings();
+      expect(await audience.monitoredTargets(true)).toEqual([]);
+    });
+
+    it('lists only the UF and environment of companies with settings', async () => {
+      await clearSettings();
+      await setState(h.companyId, 'PE');
+      await addSettings(h.companyId, h.tenantId);
+      expect(await audience.monitoredTargets(true)).toEqual([
+        { uf: 'PE', tpAmb: 2 },
+      ]);
+    });
+
+    it('lists production only when it is switched on', async () => {
+      await clearSettings();
+      await setState(h.liveCompanyId, 'GO');
+      await addSettings(h.liveCompanyId, h.tenantId);
+      expect(await audience.monitoredTargets(false)).toEqual([]);
+      expect(await audience.monitoredTargets(true)).toEqual([
+        { uf: 'GO', tpAmb: 1 },
+      ]);
+    });
+  });
 });
