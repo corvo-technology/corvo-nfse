@@ -3,7 +3,8 @@ import { parseEnvConfig } from './env.schema';
 describe('outbox environment configuration', () => {
   it('applies defaults', () => {
     const env = parseEnvConfig({ NODE_ENV: 'test' });
-    expect(env.OUTBOX_RELAY_INTERVAL_MS).toBe(2000);
+    expect(env.OUTBOX_RELAY_INTERVAL_MS).toBe(1000);
+    expect(env.WEBHOOK_RETRY_INTERVAL_MS).toBe(10000);
     expect(env.OUTBOX_BATCH_SIZE).toBe(50);
     expect(env.OUTBOX_LEASE_MS).toBe(120000);
     expect(env.OUTBOX_MAX_ATTEMPTS).toBe(10);

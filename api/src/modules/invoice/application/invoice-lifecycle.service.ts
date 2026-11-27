@@ -8,6 +8,7 @@ import { BillingUsageService } from '@/modules/billing/application/billing-usage
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ApplicationEventBus } from '@/shared/events/application-event-bus';
 import { accountNotice } from '@/shared/events/account-notice.events';
+import { liveInvoiceAuthorized } from '@/shared/events/live-invoice-authorized.events';
 import { creditsUsageChanged } from '@/modules/billing/application/credits-usage.events';
 import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import type { CachePort } from '@/infra/redis/cache.port';
@@ -300,6 +301,22 @@ export class InvoiceLifecycleService {
             kind: 'invoice-rejected',
             invoiceId: invoice.id,
             reason: invoice.toSnapshot().lastErrorMessage ?? 'Rejeição fiscal',
+            errorCode: invoice.toSnapshot().lastErrorCode ?? null,
+          }),
+        );
+      if (
+        applied &&
+        invoice.status === 'authorized' &&
+        invoice.environment === 'live'
+      )
+        this.eventBus?.publishBestEffort(
+          liveInvoiceAuthorized(invoice.tenantId, {
+            invoiceId: invoice.id,
+            authorizedAt: invoice.toSnapshot().authorizedAt ?? new Date(),
+            customerEmailed: Boolean(
+              invoice.toSnapshot().emailSnapshot?.send &&
+              invoice.toSnapshot().customerSnapshot?.email,
+            ),
           }),
         );
       // Cancelled by any route (Corvo, portal, substitution): the stored PDF gets its mark.
