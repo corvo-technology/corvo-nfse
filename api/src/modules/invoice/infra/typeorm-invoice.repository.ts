@@ -20,6 +20,7 @@ import { Invoice, LastEmailStatus } from '../domain/invoice';
 import {
   CancellationIntent,
   IInvoiceRepository,
+  InvoiceWorkRef,
   ListInvoicesFilters,
   SaveInvoiceOptions,
 } from '../domain/invoice.repository';
@@ -251,12 +252,17 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
     tenantId: string,
     olderThan: Date,
     limit: number,
-  ): Promise<Array<{ id: string; tenantId: string; companyId: string }>> {
+  ): Promise<InvoiceWorkRef[]> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
       const rows = await this.repo
         .createQueryBuilder('invoice')
-        .select(['invoice.id', 'invoice.tenantId', 'invoice.companyId'])
+        .select([
+          'invoice.id',
+          'invoice.tenantId',
+          'invoice.companyId',
+          'invoice.environment',
+        ])
         .where('invoice.tenant_id = :tenantId', { tenantId })
         .andWhere('invoice.status IN (:...statuses)', {
           statuses: ['processing', 'reconciliation_required'],
@@ -264,10 +270,11 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
         .andWhere('invoice.updated_at < :olderThan', { olderThan })
         .take(limit)
         .getMany();
-      return rows.map(({ id, tenantId, companyId }) => ({
+      return rows.map(({ id, tenantId, companyId, environment }) => ({
         id,
         tenantId,
         companyId,
+        environment: environment as ExecutionEnvironment,
       }));
     });
   }
@@ -276,7 +283,7 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
     tenantId: string,
     since: Date,
     limit: number,
-  ): Promise<Array<{ id: string; tenantId: string; companyId: string }>> {
+  ): Promise<InvoiceWorkRef[]> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
       return (
@@ -285,13 +292,14 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
           .select('invoice.id', 'id')
           .addSelect('invoice.tenant_id', 'tenantId')
           .addSelect('invoice.company_id', 'companyId')
+          .addSelect('invoice.environment', 'environment')
           .where('invoice.tenant_id = :tenantId', { tenantId })
           .andWhere("invoice.status = 'manual_review'")
           .andWhere('invoice.created_at >= :since', { since })
           // Random so a few permanently silent invoices never starve the others when the batch is small.
           .orderBy('random()')
           .limit(limit)
-          .getRawMany<{ id: string; tenantId: string; companyId: string }>()
+          .getRawMany<InvoiceWorkRef>()
       );
     });
   }
@@ -463,12 +471,24 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
     tenantId: string,
     olderThan: Date,
     limit: number,
-  ): Promise<Array<{ id: string; tenantId: string; companyId: string }>> {
+  ): Promise<
+    Array<{
+      id: string;
+      tenantId: string;
+      companyId: string;
+      environment: ExecutionEnvironment;
+    }>
+  > {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
       const rows = await this.repo
         .createQueryBuilder('invoice')
-        .select(['invoice.id', 'invoice.tenantId', 'invoice.companyId'])
+        .select([
+          'invoice.id',
+          'invoice.tenantId',
+          'invoice.companyId',
+          'invoice.environment',
+        ])
         .where(
           'invoice.status IN (:...statuses) AND invoice.tenant_id = :tenantId',
           {
@@ -487,6 +507,7 @@ export class TypeOrmInvoiceRepository implements IInvoiceRepository {
         id: r.id,
         tenantId: r.tenantId,
         companyId: r.companyId,
+        environment: r.environment as ExecutionEnvironment,
       }));
     });
   }

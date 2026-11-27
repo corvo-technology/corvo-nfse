@@ -1,4 +1,5 @@
 import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
+import { queueFor, queuesHolding } from '@/infra/redis/queue-routing';
 import { NfseProviderFactory } from '@/infra/external/nfse/nfse-provider.factory';
 import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
@@ -715,9 +716,13 @@ export class InvoiceService {
 
     const jobId = `email-resend-${id}-${emailId}`;
     if (idempotencyKey) {
-      const existing = await this.queueService
-        .getQueue('nfse-email')
-        .getJob(jobId);
+      // A test job queued before the split may still sit in the old shared queue.
+      const found = await Promise.all(
+        queuesHolding('nfse-email', environment).map((name) =>
+          this.queueService.getQueue(name).getJob(jobId),
+        ),
+      );
+      const existing = found.find(Boolean);
       if (existing)
         return { emailId, status: invoice.lastEmailStatus ?? 'queued' };
     }
@@ -725,7 +730,7 @@ export class InvoiceService {
     await this.invoiceRepo.updateEmailStatus(id, tenantId, 'queued');
 
     await this.queueService.add(
-      'nfse-email',
+      queueFor('nfse-email', environment),
       'deliver',
       { invoiceId: id, tenantId, ...(toEmail ? { toEmail } : {}) },
       {

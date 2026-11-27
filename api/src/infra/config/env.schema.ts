@@ -288,6 +288,9 @@ export const envSchema = z
       .min(1)
       .max(10)
       .default(3),
+    // Test (homologação) jobs run in their own `*-test` queues so they never delay production.
+    // This is how many jobs each test queue runs at once per worker (one number for all twins).
+    TEST_QUEUE_CONCURRENCY: z.coerce.number().int().min(1).max(10).default(2),
     // Portal outage: after this many unanswered calls in a row emission pauses for the cooldown,
     // and an invoice left without a conclusive answer for the max hours goes to manual review.
     NFSE_PORTAL_BREAKER_THRESHOLD: z.coerce.number().int().min(1).default(5),

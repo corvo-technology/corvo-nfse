@@ -42,6 +42,8 @@ export type QueueConfig = {
   defaultBackoffMs: number;
   /** Invoices sent to the fiscal portal at the same time by each worker process. */
   nfseEmissionConcurrency: number;
+  /** Jobs each test (`*-test`) queue runs at the same time per worker process. */
+  testQueueConcurrency: number;
 };
 
 /** Brake on calls to government hosts (per host, shared by every replica). */

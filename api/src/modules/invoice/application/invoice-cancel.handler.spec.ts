@@ -87,6 +87,42 @@ describe('InvoiceCancelHandler', () => {
     );
   });
 
+  it('sends a test cancellation to the test twin, so it never waits behind live ones', async () => {
+    const queue = { add: jest.fn() };
+    const handler = new InvoiceCancelHandler(
+      queue as never,
+      new OutboxHandlerRegistry(),
+    );
+    await handler.handle({
+      id: 'm1',
+      tenantId: 't1',
+      environment: 'test',
+      type: INVOICE_CANCEL,
+      aggregateId: 'i1',
+      dedupeKey: 'cancellation:e1',
+      status: 'claimed',
+      availableAt: new Date(),
+      leaseUntil: null,
+      attempts: 1,
+      lastError: null,
+      payload: {
+        invoiceId: 'i1',
+        companyId: 'c1',
+        tenantId: 't1',
+        requestId: 'e1',
+      },
+    });
+    expect(queue.add).toHaveBeenCalledWith(
+      'nfse-cancellation-test',
+      'cancel',
+      { invoiceId: 'i1', companyId: 'c1', tenantId: 't1' },
+      expect.objectContaining({
+        idempotencyKey: 'cancellation-e1',
+        ...QUEUE_RETENTION['nfse-cancellation-test'],
+      }),
+    );
+  });
+
   it('registers itself on module init', () => {
     const registry = new OutboxHandlerRegistry();
     const handler = new InvoiceCancelHandler({} as never, registry);

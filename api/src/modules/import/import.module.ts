@@ -16,6 +16,7 @@ import {
 import { ImportReaderService } from './application/import-reader.service';
 import {
   IMPORT_EMIT_QUEUE,
+  IMPORT_EMIT_TEST_QUEUE,
   ImportEmitService,
 } from './application/import-emit.service';
 import { ImportReviewService } from './application/import-review.service';
@@ -28,6 +29,7 @@ import { ImportReviewService } from './application/import-review.service';
     BullModule.registerQueue(
       { name: IMPORT_READ_QUEUE },
       { name: IMPORT_EMIT_QUEUE },
+      { name: IMPORT_EMIT_TEST_QUEUE },
     ),
   ],
   providers: [

@@ -1,4 +1,5 @@
 import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
+import { SPLIT_QUEUE_NAMES } from '@/infra/redis/queue-routing';
 import { InvoiceCalculationService } from './application/fiscal/invoice-calculation.service';
 import { CreditsModule } from '@/modules/credits/credits.module';
 import { ConfigService } from '@nestjs/config';
@@ -127,21 +128,14 @@ const ACCOUNTANT_PACKAGE = {
     PortalReachabilityReadModule,
     BillingUsageModule,
     CreditsModule,
-    BullModule.registerQueue(
-      { name: 'nfse-emission' },
-      { name: 'nfse-reconciliation' },
-      { name: 'nfse-cancellation' },
-      { name: 'nfse-doc-prep' },
-      { name: 'nfse-email' },
-      {
-        name: 'nfse-fiscal-reconcile',
-        defaultJobOptions: {
-          attempts: 5,
-          backoff: { type: 'fixed', delay: 10000 },
-          ...QUEUE_RETENTION['nfse-fiscal-reconcile'],
-        },
+    BullModule.registerQueue(...SPLIT_QUEUE_NAMES.map((name) => ({ name })), {
+      name: 'nfse-fiscal-reconcile',
+      defaultJobOptions: {
+        attempts: 5,
+        backoff: { type: 'fixed', delay: 10000 },
+        ...QUEUE_RETENTION['nfse-fiscal-reconcile'],
       },
-    ),
+    }),
     TypeOrmModule.forFeature([
       OutboxMessageOrmEntity,
       InvoiceOrmEntity,

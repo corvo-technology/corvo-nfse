@@ -38,6 +38,14 @@ export interface SaveInvoiceOptions {
   preserveCancellationRequest?: boolean;
 }
 
+/** What a recovery sweep needs to queue work: the environment picks the live or the test queue. */
+export interface InvoiceWorkRef {
+  id: string;
+  tenantId: string;
+  companyId: string;
+  environment: ExecutionEnvironment;
+}
+
 export interface IInvoiceRepository {
   /** True when the company already has a note registered at the government in this environment. */
   hasIssuedNote(
@@ -83,13 +91,13 @@ export interface IInvoiceRepository {
     tenantId: string,
     olderThan: Date,
     limit: number,
-  ): Promise<Array<{ id: string; tenantId: string; companyId: string }>>;
+  ): Promise<InvoiceWorkRef[]>;
   /** Invoices parked in manual review that are not older than `since`, in no fixed order. */
   findManualReview(
     tenantId: string,
     since: Date,
     limit: number,
-  ): Promise<Array<{ id: string; tenantId: string; companyId: string }>>;
+  ): Promise<InvoiceWorkRef[]>;
   save(
     invoice: Invoice,
     tenantId: string,
@@ -151,7 +159,15 @@ export interface IInvoiceRepository {
     tenantId: string,
     olderThan: Date,
     limit: number,
-  ): Promise<Array<{ id: string; tenantId: string; companyId: string }>>;
+  ): Promise<
+    Array<{
+      id: string;
+      tenantId: string;
+      companyId: string;
+      /** Decides the doc-prep queue (live or test twin). */
+      environment: ExecutionEnvironment;
+    }>
+  >;
 }
 
 export interface IInvoiceEventRepository {

@@ -1,4 +1,5 @@
 import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
+import { queueFor } from '@/infra/redis/queue-routing';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
 import type { OutboxHandler } from '@/modules/invoice/domain/outbox-handler';
@@ -27,7 +28,7 @@ export class InvoiceEmitHandler implements OutboxHandler, OnModuleInit {
       tenantId: string;
     };
     await this.queue.add(
-      'nfse-emission',
+      queueFor('nfse-emission', message.environment),
       'process',
       { invoiceId, companyId, tenantId },
       {

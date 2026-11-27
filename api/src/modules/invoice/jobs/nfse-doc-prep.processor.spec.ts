@@ -303,6 +303,26 @@ describe('NfseDocPrepProcessor', () => {
       );
     });
 
+    it('queues the automatic e-mail of a test invoice on the test e-mail queue', async () => {
+      (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue({
+        ...buildInvoice({ emailSnapshot: { send: true } }),
+        environment: 'test',
+      });
+      (fakeInvoiceRepo.markDocumentsReady as jest.Mock).mockResolvedValue(true);
+
+      await processor.process(makeJob());
+
+      expect(fakeQueueService.add).toHaveBeenCalledWith(
+        'nfse-email-test',
+        'deliver',
+        expect.anything(),
+        expect.objectContaining({
+          idempotencyKey: 'email-auto-inv-1',
+          ...QUEUE_RETENTION['nfse-email-test'],
+        }),
+      );
+    });
+
     it('skips PDF generation when pdf already exists', async () => {
       (fakeInvoiceRepo.findByIdAndTenantId as jest.Mock).mockResolvedValue(
         buildInvoice(),

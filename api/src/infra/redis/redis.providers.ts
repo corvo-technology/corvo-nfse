@@ -8,9 +8,17 @@ import { RedisLockService } from './redis-lock.service';
 import { RedisService } from './redis.service';
 import { BullmqQueueService } from './bullmq-queue.service';
 import { QueuePort } from './queue.port';
+import { SPLIT_QUEUE_NAMES } from './queue-routing';
 import { RedisRateLimiter } from '@/shared/http/redis-rate-limiter';
 
 export const REDIS_RATE_LIMITER = 'REDIS_RATE_LIMITER';
+
+/** Queues the shared BullmqQueueService can add to: every split queue with its test twin, plus the unsplit ones. */
+export const REGISTERED_QUEUE_NAMES: string[] = [
+  'email',
+  'nfse-fiscal-reconcile',
+  ...SPLIT_QUEUE_NAMES,
+];
 
 export const redisProviders = [
   RedisService,
@@ -18,37 +26,16 @@ export const redisProviders = [
   RedisLockService,
   {
     provide: BullmqQueueService,
-    useFactory: (
-      config: ConfigService,
-      email: Queue,
-      emission: Queue,
-      reconciliation: Queue,
-      cancellation: Queue,
-      docPrep: Queue,
-      nfseEmail: Queue,
-      fiscalReconcile: Queue,
-    ) =>
+    useFactory: (config: ConfigService, ...queues: Queue[]) =>
       new BullmqQueueService(
-        {
-          email,
-          'nfse-emission': emission,
-          'nfse-reconciliation': reconciliation,
-          'nfse-cancellation': cancellation,
-          'nfse-doc-prep': docPrep,
-          'nfse-email': nfseEmail,
-          'nfse-fiscal-reconcile': fiscalReconcile,
-        },
+        Object.fromEntries(
+          REGISTERED_QUEUE_NAMES.map((name, index) => [name, queues[index]]),
+        ),
         config.getOrThrow<QueueConfig>('queue'),
       ),
     inject: [
       ConfigService,
-      getQueueToken('email'),
-      getQueueToken('nfse-emission'),
-      getQueueToken('nfse-reconciliation'),
-      getQueueToken('nfse-cancellation'),
-      getQueueToken('nfse-doc-prep'),
-      getQueueToken('nfse-email'),
-      getQueueToken('nfse-fiscal-reconcile'),
+      ...REGISTERED_QUEUE_NAMES.map((name) => getQueueToken(name)),
     ],
   },
   { provide: QueuePort, useExisting: BullmqQueueService },

@@ -37,10 +37,17 @@ export class NfseEmissionProcessor
    * the DPS number is reserved atomically and the per-invoice lock keeps one invoice in one worker slot.
    */
   onApplicationBootstrap(): void {
-    const concurrency =
-      this.config?.get<QueueConfig>('queue')?.nfseEmissionConcurrency;
+    const concurrency = this.concurrencyFrom(
+      this.config?.get<QueueConfig>('queue'),
+    );
     if (concurrency) this.worker.concurrency = concurrency;
   }
+
+  /** The test twin (test-queue.processors.ts) overrides this with its own, lower number. */
+  protected concurrencyFrom(queue?: QueueConfig): number | undefined {
+    return queue?.nfseEmissionConcurrency;
+  }
+
   async process(job: Job<NfseEmissionJobData>, token?: string): Promise<void> {
     await runOrWaitForPortal(job, token, async () => {
       // The same lock protects emission and reconciliation for this invoice.

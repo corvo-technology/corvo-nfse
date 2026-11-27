@@ -109,6 +109,10 @@ const FISCAL_QUEUES = [
   'nfse-reconciliation',
   'nfse-doc-prep',
   'nfse-email',
+  'nfse-emission-test',
+  'nfse-reconciliation-test',
+  'nfse-doc-prep-test',
+  'nfse-email-test',
 ];
 const CLEANUP_STEP_MS = 10000;
 const waitFor = async <T>(

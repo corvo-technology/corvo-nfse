@@ -99,6 +99,7 @@ export default function configuration(): AppConfiguration {
       defaultAttempts: env.QUEUE_DEFAULT_ATTEMPTS,
       defaultBackoffMs: env.QUEUE_DEFAULT_BACKOFF_MS,
       nfseEmissionConcurrency: env.NFSE_EMISSION_CONCURRENCY,
+      testQueueConcurrency: env.TEST_QUEUE_CONCURRENCY,
     },
     fiscalPortal: {
       breakerThreshold: env.NFSE_PORTAL_BREAKER_THRESHOLD,

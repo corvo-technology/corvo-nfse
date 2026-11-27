@@ -1,3 +1,4 @@
+import { queueFor } from '@/infra/redis/queue-routing';
 import { Inject, Injectable } from '@nestjs/common';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
@@ -95,7 +96,7 @@ export class InvoiceReviewService {
     ) {
       // The portal's note is someone else's: emit again with the next free DPS number.
       await this.queues.add(
-        'nfse-reconciliation',
+        queueFor('nfse-reconciliation', environment),
         'reconcile',
         { ...job, review: 'renumber' },
         {
@@ -118,7 +119,7 @@ export class InvoiceReviewService {
       return { id, outcome: 'skipped', reason: 'dps_used_by_other_nfse' };
     if (action === 'discard') {
       await this.queues.add(
-        'nfse-reconciliation',
+        queueFor('nfse-reconciliation', environment),
         'reconcile',
         { ...job, review: 'discard' },
         {
@@ -147,7 +148,7 @@ export class InvoiceReviewService {
       throw error;
     }
     await this.queues.add(
-      'nfse-reconciliation',
+      queueFor('nfse-reconciliation', environment),
       'reconcile',
       {
         ...job,

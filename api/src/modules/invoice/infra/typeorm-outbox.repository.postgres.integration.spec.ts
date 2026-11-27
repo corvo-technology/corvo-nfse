@@ -95,7 +95,7 @@ describePostgres('outbox repository with restricted PostgreSQL role', () => {
   });
   const base = (dedupeKey: string, availableAt?: Date): NewOutboxMessage => ({
     tenantId: tenantA,
-    environment: 'test',
+    environment: 'live',
     type: 'invoice.emit',
     aggregateId: randomUUID(),
     payload: { invoiceId: 'x' },
@@ -125,6 +125,44 @@ describePostgres('outbox repository with restricted PostgreSQL role', () => {
     expect(
       claimed.every((m) => m.status === 'claimed' && m.attempts === 1),
     ).toBe(true);
+  });
+
+  it('claims live messages before test ones, even when the test ones are older and far more numerous', async () => {
+    const old = new Date(Date.now() - 600_000);
+    await runWithTenant(tenantA, async () => {
+      for (let i = 0; i < 30; i++)
+        await repo.insert({
+          ...base(`prio-test-${i}`, old),
+          environment: 'test',
+        });
+      for (let i = 0; i < 3; i++) await repo.insert(base(`prio-live-${i}`));
+    });
+    const now = new Date();
+    const claimed = await runAsSystem('outbox-relay', () =>
+      repo.claimBatch(now, 10, new Date(now.getTime() + 60_000)),
+    );
+    const keys = claimed.map((m) => m.dedupeKey);
+    // Every live message is in the batch, and listed before any test message.
+    for (let i = 0; i < 3; i++) expect(keys).toContain(`prio-live-${i}`);
+    const firstTest = claimed.findIndex((m) => m.environment === 'test');
+    const lastLive = claimed.map((m) => m.environment).lastIndexOf('live');
+    expect(firstTest).toBeGreaterThan(lastLive);
+    // The test flood is capped to a fifth of the batch (2 of 10).
+    expect(claimed.filter((m) => m.environment === 'test')).toHaveLength(2);
+  });
+
+  it('a full batch of live messages still lets one test message through, so test never starves', async () => {
+    await runWithTenant(tenantA, async () => {
+      for (let i = 0; i < 12; i++) await repo.insert(base(`sat-live-${i}`));
+      for (let i = 0; i < 3; i++)
+        await repo.insert({ ...base(`sat-test-${i}`), environment: 'test' });
+    });
+    const now = new Date();
+    const claimed = await runAsSystem('outbox-relay', () =>
+      repo.claimBatch(now, 10, new Date(now.getTime() + 60_000)),
+    );
+    expect(claimed.filter((m) => m.environment === 'live')).toHaveLength(10);
+    expect(claimed.filter((m) => m.environment === 'test')).toHaveLength(1);
   });
 
   it('two concurrent claimers never receive the same message', async () => {

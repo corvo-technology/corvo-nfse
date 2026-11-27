@@ -1,4 +1,5 @@
 import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
+import { queueFor } from '@/infra/redis/queue-routing';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
 import type { OutboxHandler } from '../domain/outbox-handler';
@@ -50,7 +51,7 @@ export class InvoiceCancelHandler implements OutboxHandler, OnModuleInit {
       requestId: string;
     };
     await this.queue.add(
-      'nfse-cancellation',
+      queueFor('nfse-cancellation', message.environment),
       'cancel',
       { invoiceId, companyId, tenantId },
       {

@@ -120,6 +120,33 @@ describe('InvoiceReviewService', () => {
     );
   });
 
+  it.each([
+    ['live', 'nfse-reconciliation'],
+    ['test', 'nfse-reconciliation-test'],
+  ] as const)(
+    'a %s retry or discard is queued on %s',
+    async (environment, queue) => {
+      const invoice = invoiceIn('manual_review');
+      invoices.findByIdAndTenantId.mockResolvedValue(invoice);
+      await service.apply(
+        tenantId,
+        environment,
+        'discard',
+        [invoice.id],
+        'user-1',
+      );
+      await service.apply(
+        tenantId,
+        environment,
+        'retry',
+        [invoice.id],
+        'user-1',
+      );
+      const used = (queues.add.mock.calls as unknown[][]).map((c) => c[0]);
+      expect(used).toEqual([queue, queue]);
+    },
+  );
+
   it('discard does not change the invoice: a worker asks the portal first', async () => {
     const invoice = invoiceIn('manual_review');
     invoices.findByIdAndTenantId.mockResolvedValue(invoice);
