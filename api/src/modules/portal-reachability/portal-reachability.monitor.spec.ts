@@ -205,7 +205,7 @@ describe('PortalReachabilityMonitor', () => {
       expect(results.authorities).toEqual({
         'nfe-sp-2': true,
         'nfce-sp-2': false,
-        'nfe-svcrs-2': true,
+        'nfe-svcan-2': true,
       });
       const hosts = probe.mock.calls.map((call: unknown[]) => call[0]);
       expect(hosts).toEqual(

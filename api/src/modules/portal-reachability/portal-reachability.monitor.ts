@@ -2,7 +2,11 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import * as Sentry from '@sentry/nestjs';
-import { ENDPOINTS, ENDPOINTS_65 } from '@/infra/external/nfe/sefaz/endpoints';
+import {
+  ENDPOINTS,
+  ENDPOINTS_65,
+  ENDPOINTS_SVC,
+} from '@/infra/external/nfe/sefaz/endpoints';
 import { LOCK_PORT } from '@/infra/redis/redis.constants';
 import type { Uf } from '@/modules/fiscal-core/domain/ports/authority.port';
 import {
@@ -111,7 +115,7 @@ export class PortalReachabilityMonitor {
     try {
       const enabled = await this.enabled.listEnabled();
       const targets = authorityHosts(
-        [...ENDPOINTS, ...ENDPOINTS_65],
+        [...ENDPOINTS, ...ENDPOINTS_65, ...ENDPOINTS_SVC],
         enabled.map((row) => ({ ...row, uf: row.uf as Uf })),
       );
       const hosts = [...new Set(targets.map((target) => target.host))];

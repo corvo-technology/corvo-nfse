@@ -1,9 +1,5 @@
 import type { EndpointRow } from '@/infra/external/nfe/sefaz/endpoints';
-import {
-  SVC_AUTHORITY_BY_UF,
-  SVC_URL_AUTHORITY,
-  UF_TABLE,
-} from '@/infra/external/nfe/sefaz/uf';
+import { UF_TABLE } from '@/infra/external/nfe/sefaz/uf';
 import type { Uf } from '@/modules/fiscal-core/domain/ports/authority.port';
 import {
   nfceBreakerAuthority,
@@ -36,13 +32,14 @@ export function authorityHosts(
     authority: EndpointRow['authority'],
     model: 55 | 65,
     tpAmb: 1 | 2,
+    tpEmis: EndpointRow['tpEmis'] = 1,
   ): string | undefined => {
     const row = rows.find(
       (r) =>
         r.authority === authority &&
         r.model === model &&
         r.tpAmb === tpAmb &&
-        r.tpEmis === 1 &&
+        r.tpEmis === tpEmis &&
         r.service === 'NfeStatusServico',
     );
     return row ? new URL(row.url).hostname : undefined;
@@ -60,10 +57,9 @@ export function authorityHosts(
       found.set(name, host);
     }
     if (model !== 55) continue;
-    const svc = SVC_AUTHORITY_BY_UF[uf];
-    const svcHost = statusHost(SVC_URL_AUTHORITY[svc], 55, tpAmb);
-    if (svcHost)
-      found.set(`nfe-${svc.toLowerCase().replace('-', '')}-${tpAmb}`, svcHost);
+    const svc = info.svc;
+    const svcHost = statusHost(svc, 55, tpAmb, svc === 'SVCAN' ? 6 : 7);
+    if (svcHost) found.set(nfeBreakerAuthority(svc, tpAmb), svcHost);
   }
   return [...found].map(([authority, host]) => ({ authority, host }));
 }
