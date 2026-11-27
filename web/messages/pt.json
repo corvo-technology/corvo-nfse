@@ -87,12 +87,12 @@
       "members": "Membros",
       "settings": "Configurações",
       "companies": "Empresas",
-      "invoices": "Notas fiscais",
+      "invoices": "Notas de serviço (NFS-e)",
       "billing": "Plano",
       "agents": "Agentes de IA",
       "integrations": "Integrações",
       "customers": "Clientes",
-      "nfe": "NF-e",
+      "nfe": "Notas de produto (NF-e)",
       "admin": "Admin"
     },
     "selfHosted": "Self-hosted",
@@ -203,7 +203,10 @@
       "creditsLow": "Créditos do ciclo quase no fim",
       "creditsLowDetail": "{used} de {allowance} usados"
     },
-    "creditsLoadFailed": "Não foi possível carregar os créditos."
+    "creditsLoadFailed": "Não foi possível carregar os créditos.",
+    "newService": "Nota de serviço (NFS-e)",
+    "newProduct": "Nota de produto (NF-e)",
+    "newChoose": "Que nota você quer emitir?"
   },
   "Connections": {
     "title": "Conexões",
@@ -607,7 +610,11 @@
     }
   },
   "Settings": {
-    "tabs": { "label": "Seções de configurações", "general": "Geral", "audit": "Auditoria" },
+    "tabs": {
+      "label": "Seções de configurações",
+      "general": "Geral",
+      "audit": "Auditoria"
+    },
     "title": "Configurações",
     "subtitle": "Configurações de ambiente e faturamento.",
     "billing": "Faturamento",
@@ -637,7 +644,12 @@
   "Audit": {
     "title": "Auditoria",
     "subtitle": "Quem fez o quê na sua conta. Guardamos os últimos 12 meses.",
-    "columns": { "when": "Quando", "who": "Quem", "action": "Ação", "item": "Item" },
+    "columns": {
+      "when": "Quando",
+      "who": "Quem",
+      "action": "Ação",
+      "item": "Item"
+    },
     "filters": {
       "who": "Quem",
       "period": "Período",
@@ -657,7 +669,10 @@
     "empty": "Nada registrado neste período.",
     "error": "Não foi possível carregar a auditoria.",
     "loadMore": "Carregar mais",
-    "charge": { "pix": "Pix", "card": "Cartão" },
+    "charge": {
+      "pix": "Pix",
+      "card": "Cartão"
+    },
     "credits": "{count, plural, one {# crédito} other {# créditos}}",
     "actions": {
       "company": { "created": "Criou empresa", "updated": "Atualizou empresa", "deleted": "Excluiu empresa" },
@@ -1816,7 +1831,8 @@
       "useSuggested": "Começar no nº {next}",
       "confirmFree": "Confirmar numeração",
       "confirmed": "Pronto. A próxima nota será a nº {number}.",
-      "testNote": "No ambiente de teste, a numeração começa num número alto e aleatório. Assim este Corvo não repete números que outra instalação com o mesmo CNPJ já usou na Receita."
+      "testNote": "No ambiente de teste, a numeração começa num número alto e aleatório. Assim este Corvo não repete números que outra instalação com o mesmo CNPJ já usou na Receita.",
+      "placeholder": "{next}"
     },
     "fiscalAdvanced": "Modo avançado (contador)",
     "legalName": "Razão social",
@@ -3795,13 +3811,12 @@
         "address_city_code": "Município da empresa",
         "address_state": "Estado (UF) da empresa",
         "state_registration": "Inscrição estadual (IE)",
-        "crt": "Regime tributário"
+        "crt": "Regime tributário da empresa (Simples Nacional ou MEI)"
       },
       "stateRegistration": "Inscrição estadual (IE)",
       "stateRegistrationHint": "Só os números. O Corvo confere se vale para o estado da empresa.",
       "crt": "Regime tributário",
       "crtHint": "Por enquanto só o Simples Nacional.",
-      "crtChoose": "Escolha o regime",
       "crt1": "Simples Nacional",
       "crt4": "Simples Nacional – MEI",
       "series": "Série",
@@ -3815,7 +3830,12 @@
       "save": "Salvar dados da NF-e",
       "saved": "Dados da NF-e salvos.",
       "saveFailed": "Não foi possível salvar. Confira os dados e tente de novo.",
-      "readOnly": "Só quem administra a conta pode mudar estes dados."
+      "readOnly": "Só quem administra a conta pode mudar estes dados.",
+      "stateRegistrationPlaceholder": "ex.: {example}",
+      "crtFollows": "Vem do cadastro fiscal da empresa.",
+      "crtEdit": "Mudar o regime da empresa",
+      "crtUnsupported": "NF-e por enquanto só para Simples Nacional e MEI. Confira o regime no cadastro fiscal da empresa.",
+      "natOpPlaceholder": "Venda de mercadoria"
     },
     "detail": {
       "title": "NF-e",
@@ -3906,7 +3926,7 @@
       "recipient": "Destinatário",
       "name": "Nome",
       "taxId": "CPF ou CNPJ",
-      "taxIdHint": "Pode digitar com ou sem pontos.",
+      "taxIdHint": "Digite o CPF ou CNPJ: se for um cliente já salvo ou um CNPJ, o resto é preenchido sozinho.",
       "indIeDest": "Inscrição estadual do destinatário",
       "indIeDestHint": "Escolha “Não contribuinte” para quem não tem inscrição estadual (a maioria das pessoas).",
       "ie9": "Não contribuinte",
@@ -3929,12 +3949,12 @@
       "items": {
         "title": "Itens",
         "item": "Item {number}",
-        "code": "Código",
+        "code": "Código do produto",
         "description": "Descrição",
         "ncm": "NCM",
-        "ncmHint": "8 dígitos",
+        "ncmHint": "8 dígitos que o seu contador informou.",
         "cfop": "CFOP",
-        "cfopHint": "5102 dentro do estado, 6102 para outro estado",
+        "cfopHint": "Escolhido pelo estado do destinatário: 5102 no mesmo estado, 6102 em outro. Dá para mudar.",
         "csosn": "CSOSN",
         "csosnHint": "Se não escolher, usa o da empresa.",
         "csosnDefault": "Padrão da empresa",
@@ -3943,7 +3963,16 @@
         "unitPrice": "Preço unitário",
         "add": "Adicionar item",
         "remove": "Remover o item {number}",
-        "removeShort": "Remover item"
+        "removeShort": "Remover item",
+        "codeHint": "Se deixar em branco, o Corvo usa ITEM-1, ITEM-2...",
+        "codePlaceholder": "ITEM-{number}",
+        "optional": "opcional",
+        "descriptionPlaceholder": "Ex.: Camiseta algodão tam. M",
+        "ncmPlaceholder": "ex.: 6109.10.00",
+        "ncmLookup": "Não sabe o NCM? Pesquise no portal do governo",
+        "csosnDefaultWith": "Padrão da empresa ({csosn})",
+        "lineTotal": "Total do item",
+        "useSaved": "Usar um produto de notas anteriores"
       },
       "payments": {
         "title": "Pagamento",
@@ -3953,7 +3982,9 @@
         "remove": "Remover o pagamento {number}",
         "change": "Troco",
         "changeHint": "Só se o cliente pagou a mais em dinheiro.",
-        "balance": "Pago (menos o troco): {paid} · Total: {total}"
+        "amountAuto": "Já preenchido com o total da nota.",
+        "balanceOk": "Pagamento confere com o total: {total}",
+        "balanceDiffers": "O pagamento ({paid}, já descontado o troco) é diferente do total da nota ({total})."
       },
       "paymentMeans": {
         "17": "Pix",
@@ -3964,7 +3995,26 @@
         "99": "Outros"
       },
       "additionalInfo": "Informações adicionais",
-      "sendEmail": "Enviar o XML e o DANFE ao destinatário por e-mail quando a nota for autorizada"
+      "sendEmail": "Enviar o XML e o DANFE ao destinatário por e-mail quando a nota for autorizada",
+      "optional": "opcional",
+      "natOpPlaceholder": "Venda de mercadoria",
+      "taxIdPlaceholder": "000.000.000-00 ou 00.000.000/0000-00",
+      "namePlaceholder": "Nome da pessoa ou razão social",
+      "stateRegistrationPlaceholder": "ex.: {example}",
+      "emailPlaceholder": "cliente@email.com",
+      "zipHint": "Preenche rua, bairro e cidade sozinho.",
+      "streetPlaceholder": "Rua das Flores",
+      "complementPlaceholder": "Sala 2, apto 31...",
+      "districtPlaceholder": "Centro",
+      "cityPlaceholder": "São Paulo",
+      "cityCodeKnown": "Município (código IBGE {code}) preenchido pelo CEP.",
+      "cityCodeChange": "alterar",
+      "autofilled": {
+        "customer": "Preenchido com o cliente salvo. Confira os dados.",
+        "cnpj": "Preenchido com os dados públicos do CNPJ. Confira os dados.",
+        "cep": "Endereço preenchido pelo CEP. Confira os dados."
+      },
+      "additionalInfoPlaceholder": "Ex.: pedido nº 123, entrega combinada para sexta."
     },
     "gaps": {
       "title": "Números pulados",

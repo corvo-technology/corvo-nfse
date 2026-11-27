@@ -142,8 +142,8 @@ describe("form helpers", () => {
       payment: { payments: [{ tPag: "17", amount: "20.00" }], change: "0.00" },
     } as unknown as NfeDocument;
     const form = fromDocument(doc);
-    expect(form.items[0]).toMatchObject({ quantity: "2", unitPrice: "10", csosn: "102" });
-    expect(form.payments).toEqual([{ tPag: "17", amount: "20" }]);
+    expect(form.items[0]).toMatchObject({ quantity: "2", unitPrice: "10,00", csosn: "102", cfopManual: true });
+    expect(form.payments).toEqual([{ tPag: "17", amount: "20,00" }]);
     expect(toCreateInput(form).recipient.address.complement).toBeUndefined();
   });
 });

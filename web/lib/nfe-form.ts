@@ -1,8 +1,9 @@
 import { errorCodeKey, fieldIssues } from "./api-errors";
+import { maskCurrency } from "./masks";
 import type { NfeCreateInput, NfeDocument, NfeItemInput } from "./nfe";
 
 /** What the person types: everything is text until it is sent. */
-export interface NfeItemForm { code: string; description: string; ncm: string; cfop: string; unit: string; quantity: string; unitPrice: string; csosn: "" | "102" | "400" }
+export interface NfeItemForm { code: string; description: string; ncm: string; cfop: string; unit: string; quantity: string; unitPrice: string; csosn: "" | "102" | "400"; /** True once the person typed the CFOP: it is then no longer suggested from the recipient's state. */ cfopManual?: boolean }
 export interface NfePaymentForm { tPag: string; amount: string }
 export interface NfeFormState {
   companyId: string;
@@ -28,13 +29,47 @@ export const emptyForm = (companyId = ""): NfeFormState => ({
 
 const text = (value: string) => value.trim();
 const optional = (value: string) => (value.trim() === "" ? undefined : value.trim());
-/** Accepts "10,5" as well as "10.5". */
-export const toNumber = (value: string) => Number(value.trim().replace(",", "."));
+/** Accepts "10,5", "10.5" and the BRL mask "1.234,56". */
+export const toNumber = (value: string) => {
+  const text = value.trim();
+  return Number(text.includes(",") ? text.replace(/\./g, "").replace(",", ".") : text);
+};
+
+/** A number as the BRL input shows it: 12.5 becomes "12,50". */
+export const toMoneyText = (value: number | string): string => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "";
+  // A price with more than 2 decimals (the NF-e allows 10) is kept as it is, not rounded.
+  if (Math.abs(number * 100 - Math.round(number * 100)) > 1e-6) return String(number).replace(".", ",");
+  return maskCurrency(String(Math.round(number * 100)));
+};
+
+/** The CFOP that fits the operation: 5102 inside the state of the issuer, 6102 for another state. Empty until both are known. */
+export function suggestedCfop(issuerState: string | undefined, recipientState: string): string {
+  const from = (issuerState ?? "").trim().toUpperCase();
+  const to = recipientState.trim().toUpperCase();
+  if (from.length !== 2 || to.length !== 2) return "";
+  return from === to ? "5102" : "6102";
+}
+
+/** NCM as people read it: 6109.10.00 (the API gets only the 8 digits). */
+export const maskNcm = (value: string): string => value.replace(/\D/g, "").slice(0, 8).replace(/^(\d{4})(\d)/, "$1.$2").replace(/^(\d{4})\.(\d{2})(\d)/, "$1.$2.$3");
+
+/** The quantity of an item times its price, in cents, so a line total never meets a float. */
+export const lineTotal = (item: Pick<NfeItemForm, "quantity" | "unitPrice">): number => {
+  const value = toNumber(item.quantity) * toNumber(item.unitPrice);
+  return Number.isFinite(value) ? Math.round((value + Number.EPSILON) * 100) / 100 : 0;
+};
+
+/** State registration (IE) example for a UF, to show as the placeholder. */
+const IE_EXAMPLES: Record<string, string> = { SP: "110.042.490.114", RJ: "99.999.99-3", MG: "062.307.904/0081", RS: "096/3277812", PR: "123.45678-50", SC: "251.040.852", BA: "123456-63", GO: "10.987.654-7", PE: "0321418-40", CE: "06.000001-5", DF: "07.300001.001-09" };
+export const ieExample = (uf: string): string => IE_EXAMPLES[uf.trim().toUpperCase()] ?? "110042490114";
 
 export function toCreateInput(form: NfeFormState): NfeCreateInput {
   const r = form.recipient;
-  const items: NfeItemInput[] = form.items.map((item) => ({
-    code: text(item.code), description: text(item.description), ncm: text(item.ncm).replace(/\D/g, ""), cfop: text(item.cfop), unit: text(item.unit),
+  const items: NfeItemInput[] = form.items.map((item, index) => ({
+    // `cProd` is mandatory in the XML, but nobody should have to invent it: ITEM-1, ITEM-2...
+    code: text(item.code) || `ITEM-${index + 1}`, description: text(item.description), ncm: text(item.ncm).replace(/\D/g, ""), cfop: text(item.cfop), unit: text(item.unit) || "UN",
     quantity: toNumber(item.quantity), unitPrice: toNumber(item.unitPrice),
     ...(item.csosn ? { tax: { csosn: item.csosn } } : {}),
   }));
@@ -49,7 +84,8 @@ export function toCreateInput(form: NfeFormState): NfeCreateInput {
     },
     items,
     payments: form.payments.map((payment) => ({ tPag: payment.tPag, amount: toNumber(payment.amount) })),
-    ...(optional(form.change) ? { change: toNumber(form.change) } : {}),
+    // Change only exists for cash: a leftover value of another means is never sent.
+    ...(optional(form.change) && form.payments.some((payment) => payment.tPag === "01") ? { change: toNumber(form.change) } : {}),
     ...(optional(form.additionalInfo) ? { additionalInfo: text(form.additionalInfo) } : {}),
     sendEmail: form.sendEmail,
   };
@@ -62,9 +98,9 @@ export function fromDocument(doc: NfeDocument): NfeFormState {
   return {
     companyId: doc.companyId, natOp: doc.natOp,
     recipient: { taxId: r.taxId, name: r.name, indIeDest: String(r.indIeDest) as "1" | "2" | "9", stateRegistration: r.stateRegistration ?? "", email: r.email ?? "", street: r.address.street, number: r.address.number, complement: r.address.complement ?? "", district: r.address.district, zip: r.address.zip, cityCode: r.address.cityCode, city: r.address.city, state: r.address.state },
-    items: doc.items.map((item) => ({ code: item.code, description: item.description, ncm: item.ncm, cfop: item.cfop, unit: item.unit, quantity: String(Number(item.quantity)), unitPrice: String(Number(item.unitPrice)), csosn: item.tax?.csosn === "400" ? "400" : item.tax?.csosn === "102" ? "102" : "" })),
-    payments: paid.map((payment) => ({ tPag: payment.tPag, amount: String(Number(payment.amount)) })),
-    change: Number(doc.payment.change) > 0 ? String(Number(doc.payment.change)) : "",
+    items: doc.items.map((item) => ({ code: item.code, description: item.description, ncm: item.ncm, cfop: item.cfop, unit: item.unit, quantity: String(Number(item.quantity)), unitPrice: toMoneyText(item.unitPrice), cfopManual: true, csosn: item.tax?.csosn === "400" ? "400" : item.tax?.csosn === "102" ? "102" : "" })),
+    payments: paid.map((payment) => ({ tPag: payment.tPag, amount: toMoneyText(payment.amount) })),
+    change: Number(doc.payment.change) > 0 ? toMoneyText(doc.payment.change) : "",
     additionalInfo: doc.additionalInfo ?? "", sendEmail: true,
   };
 }

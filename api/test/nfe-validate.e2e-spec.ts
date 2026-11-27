@@ -118,16 +118,17 @@ describe('POST /v1/invoices/validate (e2e)', () => {
         .delete(`nfe:enabled:${tenantId}`);
     });
 
-    it('answers 422 COMPANY_NFE_INCOMPLETE while the company has no IE and CRT', async () => {
+    it('answers 422 COMPANY_NFE_INCOMPLETE while the company has no IE', async () => {
       const res = await validate(body({ companyId }));
       expect(res.status).toBe(422);
       expect(res.body).toMatchObject({
         code: 'ERROR_COMPANY_NFE_INCOMPLETE',
         type: 'configuration',
       });
-      expect(res.body.details.map((d: any) => d.field)).toEqual(
-        expect.arrayContaining(['state_registration', 'crt']),
-      );
+      const fields = res.body.details.map((d: any) => d.field);
+      expect(fields).toContain('state_registration');
+      // The CRT follows the company's tax regime, so it is not asked for.
+      expect(fields).not.toContain('crt');
     });
 
     it('answers 422 UF_NOT_ENABLED while the UF has no row, before anything is numbered', async () => {

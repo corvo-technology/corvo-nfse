@@ -1,15 +1,18 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { fieldIssues } from "@/lib/api-errors";
-import { createNfe, resubmitNfe, validateNfe } from "@/lib/nfe";
-import { emptyPayment, issueErrors, paidPreview, PAYMENT_MEANS, toCreateInput, totalsPreview, type NfeFormState } from "@/lib/nfe-form";
+import { createNfe, getNfeSettings, resubmitNfe, validateNfe, type NfeSettings } from "@/lib/nfe";
+import { maskCurrency, maskState, maskTaxId, maskZip } from "@/lib/masks";
+import { rememberProducts } from "@/lib/nfe-products";
+import { emptyPayment, ieExample, issueErrors, paidPreview, PAYMENT_MEANS, suggestedCfop, toCreateInput, toMoneyText, totalsPreview, type NfeFormState, type NfeItemForm } from "@/lib/nfe-form";
 import type { Company } from "@/lib/types";
 import { useApiErrorText } from "@/lib/use-api-error";
 import { NfeItemsEditor } from "@/components/nfe/nfe-items-editor";
+import { useRecipientAutofill } from "@/components/nfe/use-recipient-autofill";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
@@ -42,10 +45,33 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
   // another content gets another key, because the API refuses one key with two contents.
   const key = useRef<{ body: string; value: string } | null>(null);
 
+  const [settings, setSettings] = useState<NfeSettings | null>(null);
+  const [editCityCode, setEditCityCode] = useState(false);
+  // The payment follows the total of the items until the person types it themselves.
+  const [payTouched, setPayTouched] = useState(resubmitId !== undefined || initial.payments.some((payment) => payment.amount.trim() !== ""));
+
+  // What the company already defines (nature of the operation, CSOSN): shown as the placeholder. A failure is quiet.
+  useEffect(() => {
+    if (!form.companyId) return;
+    const abort = new AbortController();
+    getNfeSettings(form.companyId, abort.signal).then((value) => { if (!abort.signal.aborted) setSettings(value); }).catch(() => undefined);
+    return () => abort.abort();
+  }, [form.companyId]);
+
+  const issuerState = companies.find((company) => company.id === form.companyId)?.address?.state;
+  const cfop = suggestedCfop(issuerState, form.recipient.state);
+  // 5102 inside the state, 6102 to another one: shown on the items whose CFOP the person did not type.
+  const items = form.items.map((item) => (item.cfopManual || !cfop ? item : { ...item, cfop }));
+
+  const setItems = (changed: NfeItemForm[]) => setForm((current) => ({
+    ...current, items: changed,
+    payments: !payTouched && current.payments.length === 1 ? [{ ...current.payments[0], amount: totalsPreview(changed) > 0 ? toMoneyText(totalsPreview(changed)) : "" }] : current.payments,
+  }));
   const setRecipient = (patch: Partial<NfeFormState["recipient"]>) => setForm((current) => ({ ...current, recipient: { ...current.recipient, ...patch } }));
+  const autofilled = useRecipientAutofill(form.recipient, (patch) => setRecipient(patch));
   const err = (field: string) => errors[field];
   const money = (value: number) => new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US", { style: "currency", currency: "BRL" }).format(value);
-  const total = totalsPreview(form.items);
+  const total = totalsPreview(items);
   const paid = paidPreview(form.payments, form.change);
   const translate = (code: string, fallback: string) => (te.has(code) ? te(code) : fallback);
 
@@ -61,7 +87,7 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
     if (inFlight.current) return;
     inFlight.current = true; setBusy(kind); setBanner(null); setErrors({}); setPreview(null);
     try {
-      const input = toCreateInput(form);
+      const input = toCreateInput({ ...form, items });
       if (kind === "validate") {
         const result = await validateNfe(input);
         setPreview(result.accessKeyPreview);
@@ -70,6 +96,7 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
       const body = JSON.stringify(input);
       if (key.current?.body !== body) key.current = { body, value: crypto.randomUUID() };
       const accepted = resubmitId ? await resubmitNfe(resubmitId, input, key.current.value) : await createNfe(input, key.current.value);
+      rememberProducts(items);
       router.push(`/app/nfe/${accepted.id}`);
     } catch (cause) { show(cause); }
     finally { inFlight.current = false; setBusy(null); }
@@ -91,13 +118,14 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
             </select>
           )}
         </Field>
-        <Field label={t("natOp")} hint={t("natOpHint")} error={err("natOp")}>{(c) => <Input {...c} maxLength={60} value={form.natOp} onChange={(e) => setForm({ ...form, natOp: e.target.value })} />}</Field>
+        <Field label={t("natOp")} hint={t("natOpHint")} error={err("natOp")}>{(c) => <Input {...c} maxLength={60} placeholder={settings?.defaultNatOp ?? t("natOpPlaceholder")} value={form.natOp} onChange={(e) => setForm({ ...form, natOp: e.target.value })} />}</Field>
       </Card>
 
       <Card className="grid gap-4 p-5 sm:grid-cols-6">
         <h2 className="font-medium sm:col-span-6">{t("recipient")}</h2>
-        <Field className="sm:col-span-3" label={t("name")} error={err("recipient.name")} required>{(c) => <Input {...c} maxLength={60} value={form.recipient.name} onChange={(e) => setRecipient({ name: e.target.value })} />}</Field>
-        <Field className="sm:col-span-3" label={t("taxId")} hint={t("taxIdHint")} error={err("recipient.taxId")} required>{(c) => <Input {...c} inputMode="text" value={form.recipient.taxId} onChange={(e) => setRecipient({ taxId: e.target.value })} />}</Field>
+        <Field className="sm:col-span-3" label={t("taxId")} hint={t("taxIdHint")} error={err("recipient.taxId")} required>{(c) => <Input {...c} inputMode="text" autoComplete="off" placeholder={t("taxIdPlaceholder")} value={form.recipient.taxId} onChange={(e) => setRecipient({ taxId: maskTaxId(e.target.value) })} />}</Field>
+        <Field className="sm:col-span-3" label={t("name")} error={err("recipient.name")} required>{(c) => <Input {...c} maxLength={60} placeholder={t("namePlaceholder")} value={form.recipient.name} onChange={(e) => setRecipient({ name: e.target.value })} />}</Field>
+        {autofilled && <p role="status" className="text-[12.5px] text-text-3 sm:col-span-6">{t(`autofilled.${autofilled}`)}</p>}
         <Field className="sm:col-span-3" label={t("indIeDest")} hint={t("indIeDestHint")} error={err("recipient.indIeDest")} required>
           {(c) => (
             <select {...c} className="field" value={form.recipient.indIeDest} onChange={(e) => setRecipient({ indIeDest: e.target.value as "1" | "2" | "9" })}>
@@ -107,22 +135,26 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
             </select>
           )}
         </Field>
-        {form.recipient.indIeDest === "1" && <Field className="sm:col-span-3" label={t("stateRegistration")} error={err("recipient.stateRegistration")} required>{(c) => <Input {...c} value={form.recipient.stateRegistration} onChange={(e) => setRecipient({ stateRegistration: e.target.value })} />}</Field>}
-        <Field className="sm:col-span-3" label={t("email")} hint={t("emailHint")} error={err("recipient.email")}>{(c) => <Input {...c} type="email" value={form.recipient.email} onChange={(e) => setRecipient({ email: e.target.value })} />}</Field>
-        <Field className="sm:col-span-4" label={t("street")} error={err("recipient.address.street")} required>{(c) => <Input {...c} maxLength={60} value={form.recipient.street} onChange={(e) => setRecipient({ street: e.target.value })} />}</Field>
-        <Field className="sm:col-span-2" label={t("number")} error={err("recipient.address.number")} required>{(c) => <Input {...c} maxLength={60} value={form.recipient.number} onChange={(e) => setRecipient({ number: e.target.value })} />}</Field>
-        <Field className="sm:col-span-3" label={t("complement")} error={err("recipient.address.complement")}>{(c) => <Input {...c} maxLength={60} value={form.recipient.complement} onChange={(e) => setRecipient({ complement: e.target.value })} />}</Field>
-        <Field className="sm:col-span-3" label={t("district")} error={err("recipient.address.district")} required>{(c) => <Input {...c} maxLength={60} value={form.recipient.district} onChange={(e) => setRecipient({ district: e.target.value })} />}</Field>
-        <Field className="sm:col-span-2" label={t("zip")} error={err("recipient.address.zip")} required>{(c) => <Input {...c} inputMode="numeric" value={form.recipient.zip} onChange={(e) => setRecipient({ zip: e.target.value })} />}</Field>
-        <Field className="sm:col-span-2" label={t("city")} error={err("recipient.address.city")} required>{(c) => <Input {...c} maxLength={60} value={form.recipient.city} onChange={(e) => setRecipient({ city: e.target.value })} />}</Field>
-        <Field className="sm:col-span-1" label={t("state")} error={err("recipient.address.state")} required>{(c) => <Input {...c} maxLength={2} value={form.recipient.state} onChange={(e) => setRecipient({ state: e.target.value })} />}</Field>
-        <Field className="sm:col-span-1" label={t("cityCode")} hint={t("cityCodeHint")} error={err("recipient.address.cityCode")} required>{(c) => <Input {...c} inputMode="numeric" maxLength={7} value={form.recipient.cityCode} onChange={(e) => setRecipient({ cityCode: e.target.value })} />}</Field>
+        {form.recipient.indIeDest === "1" && <Field className="sm:col-span-3" label={t("stateRegistration")} error={err("recipient.stateRegistration")} required>{(c) => <Input {...c} autoComplete="off" placeholder={t("stateRegistrationPlaceholder", { example: ieExample(form.recipient.state) })} value={form.recipient.stateRegistration} onChange={(e) => setRecipient({ stateRegistration: e.target.value })} />}</Field>}
+        <Field className="sm:col-span-3" label={t("email")} hint={t("emailHint")} error={err("recipient.email")} optionalLabel={t("optional")}>{(c) => <Input {...c} type="email" placeholder={t("emailPlaceholder")} value={form.recipient.email} onChange={(e) => setRecipient({ email: e.target.value })} />}</Field>
+        <Field className="sm:col-span-2" label={t("zip")} hint={t("zipHint")} error={err("recipient.address.zip")} required>{(c) => <Input {...c} inputMode="numeric" autoComplete="postal-code" placeholder="01001-000" value={form.recipient.zip} onChange={(e) => setRecipient({ zip: maskZip(e.target.value) })} />}</Field>
+        <Field className="sm:col-span-3" label={t("street")} error={err("recipient.address.street")} required>{(c) => <Input {...c} maxLength={60} placeholder={t("streetPlaceholder")} value={form.recipient.street} onChange={(e) => setRecipient({ street: e.target.value })} />}</Field>
+        <Field className="sm:col-span-1" label={t("number")} error={err("recipient.address.number")} required>{(c) => <Input {...c} maxLength={60} placeholder="123" value={form.recipient.number} onChange={(e) => setRecipient({ number: e.target.value })} />}</Field>
+        <Field className="sm:col-span-3" label={t("complement")} error={err("recipient.address.complement")} optionalLabel={t("optional")}>{(c) => <Input {...c} maxLength={60} placeholder={t("complementPlaceholder")} value={form.recipient.complement} onChange={(e) => setRecipient({ complement: e.target.value })} />}</Field>
+        <Field className="sm:col-span-3" label={t("district")} error={err("recipient.address.district")} required>{(c) => <Input {...c} maxLength={60} placeholder={t("districtPlaceholder")} value={form.recipient.district} onChange={(e) => setRecipient({ district: e.target.value })} />}</Field>
+        <Field className="sm:col-span-4" label={t("city")} error={err("recipient.address.city")} required>{(c) => <Input {...c} maxLength={60} placeholder={t("cityPlaceholder")} value={form.recipient.city} onChange={(e) => setRecipient({ city: e.target.value })} />}</Field>
+        <Field className="sm:col-span-2" label={t("state")} error={err("recipient.address.state")} required>{(c) => <Input {...c} maxLength={2} placeholder="SP" value={form.recipient.state} onChange={(e) => setRecipient({ state: maskState(e.target.value) })} />}</Field>
+        {/^\d{7}$/.test(form.recipient.cityCode) && !editCityCode && !err("recipient.address.cityCode") ? (
+          <p className="text-[12.5px] text-text-3 sm:col-span-6">{t("cityCodeKnown", { code: form.recipient.cityCode })} <button type="button" className="underline" onClick={() => setEditCityCode(true)}>{t("cityCodeChange")}</button></p>
+        ) : (
+          <Field className="sm:col-span-3" label={t("cityCode")} hint={t("cityCodeHint")} error={err("recipient.address.cityCode")} required>{(c) => <Input {...c} inputMode="numeric" maxLength={7} placeholder="3550308" value={form.recipient.cityCode} onChange={(e) => setRecipient({ cityCode: e.target.value.replace(/\D/g, "") })} />}</Field>
+        )}
       </Card>
 
       <Card className="flex flex-col gap-4 p-5">
         <h2 className="font-medium">{t("items.title")}</h2>
         <p className="text-sm text-text-3">{t("taxNotice")}</p>
-        <NfeItemsEditor items={form.items} onChange={(items) => setForm({ ...form, items })} errors={errors} />
+        <NfeItemsEditor items={items} onChange={setItems} errors={errors} defaultCsosn={settings?.defaultCsosn} suggestedCfop={cfop} />
         <p className="text-right text-sm text-text-2">{t("totalPreview")}: <strong className="font-mono">{money(total)}</strong></p>
       </Card>
 
@@ -137,17 +169,19 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
                 </select>
               )}
             </Field>
-            <Field label={t("payments.amount")} error={err(`payments[${index}].amount`)} required>{(c) => <Input {...c} inputMode="decimal" value={payment.amount} onChange={(e) => setForm({ ...form, payments: form.payments.map((p, i) => (i === index ? { ...p, amount: e.target.value } : p)) })} />}</Field>
-            {form.payments.length > 1 && <Button variant="ghost" onClick={() => setForm({ ...form, payments: form.payments.filter((_, i) => i !== index) })} aria-label={t("payments.remove", { number: index + 1 })}><Trash2 size={14} aria-hidden /></Button>}
+            <Field label={t("payments.amount")} hint={index === 0 && !payTouched ? t("payments.amountAuto") : undefined} error={err(`payments[${index}].amount`)} required>{(c) => <Input {...c} inputMode="decimal" placeholder="0,00" value={payment.amount} onChange={(e) => { setPayTouched(true); setForm({ ...form, payments: form.payments.map((p, i) => (i === index ? { ...p, amount: maskCurrency(e.target.value) } : p)) }); }} />}</Field>
+            {form.payments.length > 1 && <Button variant="ghost" onClick={() => { setPayTouched(true); setForm({ ...form, payments: form.payments.filter((_, i) => i !== index) }); }} aria-label={t("payments.remove", { number: index + 1 })}><Trash2 size={14} aria-hidden /></Button>}
           </div>
         ))}
-        <div><Button variant="secondary" onClick={() => setForm({ ...form, payments: [...form.payments, emptyPayment()] })}><Plus size={14} aria-hidden />{t("payments.add")}</Button></div>
-        <Field label={t("payments.change")} hint={t("payments.changeHint")} error={err("change")}>{(c) => <Input {...c} inputMode="decimal" value={form.change} onChange={(e) => setForm({ ...form, change: e.target.value })} />}</Field>
-        <p className={`text-right text-sm ${Math.abs(paid - total) < 0.005 ? "text-text-2" : "text-warn"}`}>{t("payments.balance", { paid: money(paid), total: money(total) })}</p>
+        <div><Button variant="secondary" onClick={() => { setPayTouched(true); setForm({ ...form, payments: [...form.payments, emptyPayment()] }); }}><Plus size={14} aria-hidden />{t("payments.add")}</Button></div>
+        {form.payments.some((payment) => payment.tPag === "01") && <Field label={t("payments.change")} hint={t("payments.changeHint")} error={err("change")} optionalLabel={t("optional")}>{(c) => <Input {...c} inputMode="decimal" placeholder="0,00" value={form.change} onChange={(e) => setForm({ ...form, change: maskCurrency(e.target.value) })} />}</Field>}
+        {Math.abs(paid - total) < 0.005
+          ? <p className="text-right text-sm text-text-2">{t("payments.balanceOk", { total: money(total) })}</p>
+          : <p role="alert" className="text-right text-sm text-warn">{t("payments.balanceDiffers", { paid: money(paid), total: money(total) })}</p>}
       </Card>
 
       <Card className="grid gap-4 p-5">
-        <Field label={t("additionalInfo")} error={err("additionalInfo")}>{(c) => <textarea {...c} className="field resize-y" rows={3} maxLength={5000} value={form.additionalInfo} onChange={(e) => setForm({ ...form, additionalInfo: e.target.value })} />}</Field>
+        <Field label={t("additionalInfo")} error={err("additionalInfo")}>{(c) => <textarea {...c} className="field resize-y" rows={3} placeholder={t("additionalInfoPlaceholder")} maxLength={5000} value={form.additionalInfo} onChange={(e) => setForm({ ...form, additionalInfo: e.target.value })} />}</Field>
         <label className="flex items-center gap-2 text-sm text-text-2"><input type="checkbox" checked={form.sendEmail} onChange={(e) => setForm({ ...form, sendEmail: e.target.checked })} />{t("sendEmail")}</label>
       </Card>
 

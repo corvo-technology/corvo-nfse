@@ -27,7 +27,9 @@ export function nfeReadinessMissing(
   if (blank(company.municipalityCode)) missing.push('address_city_code');
   if (blank(company.addressState)) missing.push('address_state');
   if (blank(settings?.stateRegistration)) missing.push('state_registration');
-  if (settings?.crt === null || settings?.crt === undefined)
+  // With no settings yet the IE is already listed; the CRT follows the tax regime, so it only
+  // counts as missing when the settings exist and the regime has no CRT (anything but Simples/MEI).
+  if (settings && (settings.crt === null || settings.crt === undefined))
     missing.push('crt');
   return missing;
 }
