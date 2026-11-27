@@ -232,6 +232,7 @@ export type AppConfiguration = {
   redis: RedisConfig;
   queue: QueueConfig;
   outbox: OutboxConfig;
+  webhooks: { retryIntervalMs: number };
   fiscal: FiscalConfig;
   rtc: RtcConfig;
   logging: LoggingConfig;

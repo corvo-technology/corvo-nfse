@@ -105,6 +105,7 @@ export default function configuration(): AppConfiguration {
       breakerCooldownMs: env.NFSE_PORTAL_BREAKER_COOLDOWN_MS,
       uncertainMaxHours: env.NFSE_UNCERTAIN_MAX_HOURS,
     },
+    webhooks: { retryIntervalMs: env.WEBHOOK_RETRY_INTERVAL_MS },
     outbox: {
       relayIntervalMs: env.OUTBOX_RELAY_INTERVAL_MS,
       batchSize: env.OUTBOX_BATCH_SIZE,
