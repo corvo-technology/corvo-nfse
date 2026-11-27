@@ -58,7 +58,7 @@ RUN --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
 COPY --from=build /app/dist ./dist
 # Used by the `migrations` service; baked in because a bind mount does not work when the Compose runs from a helper container (Coolify).
 COPY api/scripts/deploy-migrate.mjs ./scripts/deploy-migrate.mjs
-# One-off Redis cleanup (docs/operations/queue-cleanup.md); never run automatically.
+# One-off Redis cleanup (yarn queue:clean, dry run by default; --apply deletes); never run automatically.
 COPY api/scripts/queue-clean.mjs ./scripts/queue-clean.mjs
 COPY api/scripts/corvo-entrypoint.sh /usr/local/bin/corvo-entrypoint
 RUN chmod 0555 /usr/local/bin/corvo-entrypoint
