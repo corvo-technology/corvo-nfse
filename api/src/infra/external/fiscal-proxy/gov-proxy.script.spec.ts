@@ -22,6 +22,15 @@ describe('scripts/gov-proxy/gov-proxy.mjs', () => {
     expect(new Set(hosts)).toEqual(GOV_FISCAL_HOSTS);
   });
 
+  it('is listed in full in the runbook', () => {
+    const runbook = readFileSync(
+      join(__dirname, '../../../../../docs/fiscal/runbooks/proxy-governo.md'),
+      'utf8',
+    );
+    const listed = new Set(runbook.split('\n').map((line) => line.trim()));
+    for (const host of GOV_FISCAL_HOSTS) expect(listed.has(host)).toBe(true);
+  });
+
   describe('running', () => {
     let child: ChildProcess;
     const port = 40_000 + Math.floor(Math.random() * 10_000);

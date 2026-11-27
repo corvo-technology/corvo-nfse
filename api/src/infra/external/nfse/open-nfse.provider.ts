@@ -4,7 +4,7 @@ import {
   type ConfiguredDpsLayout,
   type DpsLayoutPolicy,
 } from '@/modules/invoice/domain/fiscal/dps/dps-layout';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import type {
   MunicipalityAgreementAnswer,
   MunicipalityAgreementPort,
@@ -15,8 +15,12 @@ import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storag
 import { requireTenantId } from '@/infra/persistence/typeorm/tenant-scope';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import type { Dispatcher } from 'undici';
+import { GovRouteSelector } from '@/modules/portal-reachability/gov-route.selector';
+import { certificateCacheKey } from '@/infra/external/fiscal-proxy/gov-proxy';
 import {
   NfseClient,
+  parsePfx,
   Ambiente,
   TipoAmbiente,
   TipoAmbienteDps,
@@ -70,6 +74,8 @@ export class OpenNfseProvider
   constructor(
     @InjectDataSource() private readonly database: DataSource,
     config: ConfigService,
+    /** Backup route: absent (tests) means every government call goes direct. */
+    @Optional() private readonly routes?: GovRouteSelector,
   ) {
     this.homologationOnly =
       config.get<SefinEnvironment>('NFSE_SEFIN_ENVIRONMENT') === 'restricted';
@@ -157,15 +163,38 @@ export class OpenNfseProvider
       delete: async () => {},
     };
   }
+  /**
+   * The backup route for this call: a CONNECT-proxy dispatcher while our network cannot reach the
+   * government, `undefined` (direct) otherwise. The client keeps mTLS end to end through the tunnel.
+   */
+  private async routeFor(
+    payload: Pick<IIssuePayload, 'environment' | 'pfxBuffer' | 'p12Password'>,
+  ): Promise<Dispatcher | undefined> {
+    if (!this.routes || !(await this.routes.useProxy())) return undefined;
+    try {
+      const host =
+        this.sefinFor(payload.environment) === 'restricted'
+          ? 'sefin.producaorestrita.nfse.gov.br'
+          : 'sefin.nfse.gov.br';
+      const pem = parsePfx(payload.pfxBuffer, payload.p12Password);
+      return await this.routes.dispatcherFor(host, 'nfse', pem);
+    } catch {
+      return undefined;
+    }
+  }
+
   private client(
     payload: Pick<IIssuePayload, 'environment' | 'pfxBuffer' | 'p12Password'>,
     retryStore?: RetryStore,
     at: Date = new Date(),
+    dispatcher?: Dispatcher,
   ): NfseClient {
     return new NfseClient({
       ambiente: this.ambienteFor(payload.environment),
       certificado: { pfx: payload.pfxBuffer, password: payload.p12Password },
       retryStore,
+      // Every endpoint of the client is Sefin/ADN, so the proxy only ever sees allowlisted hosts.
+      ...(dispatcher ? { dispatcher } : {}),
       dpsLayout:
         XML_LAYOUT[
           resolveDpsLayout({
@@ -184,11 +213,17 @@ export class OpenNfseProvider
     pfxBuffer: Buffer;
     password: string;
   }): Promise<MunicipalityAgreementAnswer> {
-    const client = this.client({
+    const route = {
       environment: input.environment,
       pfxBuffer: input.pfxBuffer,
       p12Password: input.password,
-    });
+    };
+    const client = this.client(
+      route,
+      undefined,
+      undefined,
+      await this.routeFor(route),
+    );
     try {
       const result = await client.consultarConvenio(input.municipalityCode, {
         useCache: false,
@@ -226,7 +261,12 @@ export class OpenNfseProvider
   /** Event 101101. The pending_emission slot (free once authorized) holds the signed event for replay. */
   async cancel(payload: ICancelPayload): Promise<FiscalCancelResult> {
     const store = this.store(payload);
-    const client = this.client(payload, store);
+    const client = this.client(
+      payload,
+      store,
+      undefined,
+      await this.routeFor(payload),
+    );
     try {
       const [pending] = await store.list();
       if (pending?.kind === 'cancelamento_simples') {
@@ -337,6 +377,7 @@ export class OpenNfseProvider
       payload,
       store,
       new Date(payload.preparedDps?.infDPS.dhEmi ?? payload.issuedAt!),
+      await this.routeFor(payload),
     );
     try {
       let [pending] = await store.list();
@@ -398,7 +439,12 @@ export class OpenNfseProvider
     environment: 'test' | 'live',
     lastNsu: number,
   ): Promise<NsuQueryResult> {
-    const client = this.client({ ...credentials, environment });
+    const client = this.client(
+      { ...credentials, environment },
+      undefined,
+      undefined,
+      await this.routeFor({ ...credentials, environment }),
+    );
     try {
       return await client.fetchByNsu({ ultimoNsu: lastNsu });
     } finally {
@@ -412,7 +458,12 @@ export class OpenNfseProvider
     credentials?: IIssuePayload,
   ): Promise<FiscalQueryResult> {
     if (!credentials) throw new Error('Certificate credentials are required');
-    const client = this.client({ ...credentials, environment });
+    const client = this.client(
+      { ...credentials, environment },
+      undefined,
+      undefined,
+      await this.routeFor({ ...credentials, environment }),
+    );
     try {
       return {
         ...this.result(await client.fetchByChave(key)),
@@ -429,7 +480,12 @@ export class OpenNfseProvider
     idDps: string,
     credentials: IIssuePayload,
   ): Promise<FiscalQueryResult> {
-    const client = this.client(credentials);
+    const client = this.client(
+      credentials,
+      undefined,
+      undefined,
+      await this.routeFor(credentials),
+    );
     try {
       const status = await client.fetchDpsStatus(idDps);
       const note = await client.fetchByChave(status.chaveAcesso);

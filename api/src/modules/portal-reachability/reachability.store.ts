@@ -2,9 +2,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '@/infra/redis/redis.constants';
 import { isOurSide, type PortalHealth } from './reachability.classifier';
+import { INITIAL_PROXY_STATE, type ProxyRouteState } from './proxy-route.state';
 import { INITIAL_STATE, type ReachabilityState } from './reachability.state';
 
 const STATE_KEY = 'ops:portal-reachability:state';
+const PROXY_KEY = 'ops:portal-reachability:proxy';
 const INCIDENTS_KEY = 'ops:portal-reachability:incidents';
 const KEEP_INCIDENTS = 20;
 
@@ -39,6 +41,24 @@ export class PortalReachabilityStore {
 
   async save(state: ReachabilityState): Promise<void> {
     await this.redis.set(STATE_KEY, JSON.stringify(state));
+  }
+
+  /** What the monitor last saw of the backup proxy. */
+  async loadProxy(): Promise<ProxyRouteState> {
+    const raw = await this.redis.get(PROXY_KEY);
+    if (!raw) return INITIAL_PROXY_STATE;
+    try {
+      return {
+        ...INITIAL_PROXY_STATE,
+        ...(JSON.parse(raw) as ProxyRouteState),
+      };
+    } catch {
+      return INITIAL_PROXY_STATE;
+    }
+  }
+
+  async saveProxy(state: ProxyRouteState): Promise<void> {
+    await this.redis.set(PROXY_KEY, JSON.stringify(state));
   }
 
   async recordIncident(incident: PortalIncident): Promise<void> {
