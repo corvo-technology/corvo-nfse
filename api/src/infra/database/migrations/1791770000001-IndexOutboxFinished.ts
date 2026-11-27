@@ -5,7 +5,7 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  * rows and costs nothing for the hot pending/claimed rows. A plain CREATE INDEX: no migration here
  * uses `transaction = false`, and the table is small enough to index in a moment at deploy.
  */
-export class IndexOutboxFinished1793810000001 implements MigrationInterface {
+export class IndexOutboxFinished1791770000001 implements MigrationInterface {
   private schema(runner: QueryRunner): string {
     const options = runner.connection.options;
     return runner.connection.driver.escape(

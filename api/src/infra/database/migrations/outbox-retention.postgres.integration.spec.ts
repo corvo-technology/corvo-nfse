@@ -4,6 +4,7 @@ import { runAsSystem } from '@/infra/persistence/typeorm/tenant-context.storage'
 import { runRetentionRule } from '@/infra/retention/data-retention';
 import { outboxRetentionRules } from '@/modules/invoice/infra/typeorm-outbox-retention';
 import { createTypeOrmOptions } from '../typeorm.options';
+import { IndexOutboxFinished1791770000001 } from './1791770000001-IndexOutboxFinished';
 
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
 if (
@@ -151,9 +152,15 @@ describePostgres('outbox retention', () => {
       return rows.length;
     };
     expect(await index()).toBe(1);
-    await db.undoLastMigration();
-    expect(await index()).toBe(0);
-    await db.runMigrations();
-    expect(await index()).toBe(1);
+    const migration = new IndexOutboxFinished1791770000001();
+    const runner = db.createQueryRunner();
+    try {
+      await migration.down(runner);
+      expect(await index()).toBe(0);
+      await migration.up(runner);
+      expect(await index()).toBe(1);
+    } finally {
+      await runner.release();
+    }
   });
 });
