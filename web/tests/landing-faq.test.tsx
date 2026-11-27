@@ -16,10 +16,10 @@ const wrap = (locale: "en" | "pt") => render(<NextIntlClientProvider locale={loc
 afterEach(cleanup);
 
 describe("landing FAQ", () => {
-  it.each(["pt", "en"] as const)("has the six questions in %s, each with its answer in the page", (locale) => {
+  it.each(["pt", "en"] as const)("has the seven questions in %s, each with its answer in the page", (locale) => {
     const { container } = wrap(locale);
     const items = container.querySelectorAll("details");
-    expect(items).toHaveLength(6);
+    expect(items).toHaveLength(7);
     for (const item of items) {
       expect(item.querySelector("summary")?.textContent?.trim().length).toBeGreaterThan(10);
       expect(item.querySelector("p")?.textContent?.trim().length).toBeGreaterThan(60);
@@ -29,7 +29,7 @@ describe("landing FAQ", () => {
   it("opens on the first question (municipalities) and keeps the others closed", () => {
     const { container } = wrap("pt");
     const open = [...container.querySelectorAll("details")].map((item) => item.open);
-    expect(open).toEqual([true, false, false, false, false, false]);
+    expect(open).toEqual([true, false, false, false, false, false, false]);
   });
 
   it("each answer links to where it goes deeper, in the visitor's language", () => {
@@ -37,6 +37,8 @@ describe("landing FAQ", () => {
     const link = (label: string) => screen.getByRole("link", { name: new RegExp(label) }).getAttribute("href");
     expect(link("Ver a lista de municípios")).toBe("/pt/docs/municipalities");
     expect(link("Ver o guia de início")).toBe("/pt/docs");
+    expect(link("Conhecer a NF-e")).toBe("/pt/nf-e");
+    expect(link("Conhecer a NFC-e")).toBe("/pt/nfc-e");
     expect(link("Ver os planos")).toBe("/pt#pricing");
     expect(link("Ver como conectar")).toBe("/pt/docs/payment-integrations");
     expect(link("Ver os SDKs")).toBe("/pt/docs/sdks");
@@ -52,12 +54,35 @@ describe("landing FAQ", () => {
     for (const part of ["certificado A1", "e-mail", "MEI e Simples Nacional"]) expect(issues).toContain(part);
     const companies = screen.getByText(/empresas ilimitadas/).textContent!;
     expect(companies).toContain("Só com notas avulsas, sem plano, a conta tem 1 empresa");
-    expect(screen.getByText(/Woovi e AbacatePay/)).toBeTruthy();
+    for (const platform of ["Mercado Pago", "Stripe", "Woovi", "AbacatePay", "Hotmart", "Monetizze"]) expect(screen.getByText(/Mercado Pago, Stripe, Asaas/).textContent).toContain(platform);
+  });
+
+  it.each(["pt", "en"] as const)("the invoice types answer names NFS-e, NF-e and NFC-e, says NF-e and NFC-e are in test, and links to both pages in %s", (locale) => {
+    const { container } = wrap(locale);
+    const types = [...container.querySelectorAll("details")][2];
+    for (const term of ["NFS-e", "NF-e", "NFC-e", "POST /v1/invoices", "homologação"]) expect(types.textContent).toContain(term);
+    expect([...types.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual([`/${locale}/nf-e`, `/${locale}/nfc-e`]);
+  });
+
+  it.each(["pt", "en"] as const)("the types answer follows NFE_PRODUCTION_ENABLED, in the page, the schema and llms.txt, in %s", (locale) => {
+    const answer = () => [...wrap(locale).container.querySelectorAll("details")][2].querySelector("p")!.textContent!;
+    expect(answer()).toMatch(/homologação/);
+    expect(faqMarkdown(locale)).toMatch(/homologação/);
+    cleanup();
+    vi.stubEnv("NFE_PRODUCTION_ENABLED", "true");
+    try {
+      expect(answer()).not.toMatch(/homologação|soon|em breve/);
+      expect(answer()).toMatch(/MCP/);
+      expect(faqMarkdown(locale)).not.toMatch(/homologação/);
+      expect(JSON.stringify(faqPageJsonLd(locale))).not.toMatch(/homologação/);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it.each(["pt", "en"] as const)("the SDK answer also covers the MCP server, with its own link, in %s", (locale) => {
     const { container } = wrap(locale);
-    const sdks = [...container.querySelectorAll("details")][4];
+    const sdks = [...container.querySelectorAll("details")][5];
     expect(sdks.textContent).toMatch(/MCP/);
     for (const client of ["Claude", "Cursor"]) expect(sdks.textContent).toContain(client);
     expect([...sdks.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual([`/${locale}/docs/sdks`, `/${locale}/docs/mcp`]);

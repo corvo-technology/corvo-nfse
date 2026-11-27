@@ -826,8 +826,8 @@
   },
   "Hero": {
     "badge": "Infraestrutura de notas fiscais para desenvolvedores",
-    "title": "Emita NFS-e por API ou por agente de IA.",
-    "subtitle": "Envie os dados da venda e a Corvo emite a NFS-e (nota fiscal de serviço do Brasil) para sua empresa MEI ou do Simples Nacional. Use pela API ou peça ao Claude e ao Cursor (via MCP).",
+    "title": "Emita nota fiscal por API ou por agente de IA.",
+    "subtitle": "Envie os dados da venda e a Corvo emite a nota fiscal da sua empresa MEI ou do Simples Nacional no Brasil: NFS-e (serviço) e, em teste, NF-e e NFC-e (produto). Use pela API ou peça ao Claude e ao Cursor (via MCP).",
     "startFree": "Começar grátis",
     "viewDocs": "Ver documentação",
     "mono": "A primeira nota é grátis. Sem cartão de crédito."
@@ -972,13 +972,13 @@
   },
   "Flow": {
     "eyebrow": "COMO FUNCIONA",
-    "title": "Da sua aplicação à NFS-e.",
-    "description": "Quatro passos, do seu sistema até o cliente.",
+    "title": "Da sua aplicação à nota fiscal.",
+    "description": "Quatro passos, do seu sistema até o cliente. O caminho é o mesmo para NFS-e, NF-e e NFC-e.",
     "steps": {
       "step1": "Sua aplicação envia os dados",
-      "step1Desc": "Empresa emissora, cliente e descrição do serviço.",
+      "step1Desc": "Empresa emissora, cliente e o serviço ou os produtos vendidos.",
       "step2": "A Corvo emite a nota",
-      "step2Desc": "Assina com o certificado da empresa e envia à Receita.",
+      "step2Desc": "Assina com o certificado da empresa e envia ao governo.",
       "step3": "A nota fica pronta",
       "step3Desc": "Você consulta o status pela API.",
       "step4": "O cliente recebe a nota",
@@ -1003,7 +1003,7 @@
     "description": "Do SaaS pequeno ao ERP grande: uma API para emitir notas.",
     "saas": {
       "title": "SaaS",
-      "description": "Emita NFS-e no seu produto sem montar a parte fiscal."
+      "description": "Emita nota fiscal no seu produto sem montar a parte fiscal."
     },
     "erp": {
       "title": "ERPs e plataformas",
@@ -3300,8 +3300,8 @@
     }
   },
   "LandingIntegrations": {
-    "title": "Vendeu no Pix? A nota sai sozinha.",
-    "description": "Conecte a Woovi ou a AbacatePay e a Corvo emite a NFS-e de cada pagamento aprovado, com os dados do cliente e do produto. Sem código e sem planilha.",
+    "title": "Vendeu online? A nota sai sozinha.",
+    "description": "São {count} plataformas, de Mercado Pago e Stripe a Hotmart e Kiwify. Conecte a sua e a Corvo emite a NFS-e de cada pagamento aprovado, com os dados do cliente e do produto. Sem código e sem planilha.",
     "steps": {
       "connect": {
         "title": "Conecte a plataforma",
@@ -3313,7 +3313,7 @@
       },
       "done": {
         "title": "Pronto",
-        "body": "Cada pagamento aprovado vira uma nota. Se faltar o CPF ou CNPJ, você completa na tela e ela sai."
+        "body": "Cada pagamento aprovado vira uma nota. Falta o CPF ou CNPJ? A venda espera em Vendas pendentes até você completar, e a nota sai."
       }
     },
     "platforms": {
@@ -3332,12 +3332,12 @@
     "guide": "Ver o guia de integrações",
     "refund": {
       "title": "Teve reembolso?",
-      "body": "A Corvo cancela a nota sozinha. É um ajuste que você liga quando quiser."
+      "body": "A Corvo cancela a nota sozinha, se você ligar essa regra. Na maioria das plataformas, a contestação (chargeback) só marca a venda, para você decidir."
     }
   },
   "LandingFaq": {
     "title": "Perguntas frequentes",
-    "description": "O que mais perguntam antes de integrar a emissão de NFS-e.",
+    "description": "O que mais perguntam antes de integrar a emissão de notas fiscais.",
     "docs": "Ver a documentação",
     "items": {
       "coverage": {
@@ -3350,6 +3350,13 @@
         "a": "Sim. Você envia os dados da venda e a Corvo monta a nota, assina com o certificado A1 da empresa e envia à Receita. Se quiser, ela manda o PDF e o XML ao cliente por e-mail. Hoje atende empresas MEI e Simples Nacional.",
         "link": "Ver o guia de início"
       },
+      "types": {
+        "q": "Quais tipos de nota a Corvo emite?",
+        "a": "NFS-e (nota de serviço, pelo padrão nacional), NF-e (nota de produto, modelo 55) e NFC-e (cupom fiscal do caixa, modelo 65). Os três usam a mesma chamada da API (POST /v1/invoices, com o campo type), a mesma chave e o mesmo crédito. A NF-e e a NFC-e estão em teste (homologação); a produção chega em breve. Agentes de IA também emitem todas pelo MCP.",
+        "aLive": "NFS-e (nota de serviço, pelo padrão nacional), NF-e (nota de produto, modelo 55) e NFC-e (cupom fiscal do caixa, modelo 65). Os três usam a mesma chamada da API (POST /v1/invoices, com o campo type), a mesma chave e o mesmo crédito. A NF-e e a NFC-e já emitem em produção, com valor fiscal. Agentes de IA também emitem todas pelo MCP.",
+        "link": "Conhecer a NF-e",
+        "link2": "Conhecer a NFC-e"
+      },
       "companies": {
         "q": "Posso emitir notas para mais de um CNPJ na Corvo?",
         "a": "Sim. Os planos recorrentes (Solo, Equipe, Empresa e Escala) têm empresas ilimitadas, cada uma com o seu certificado e o seu consumo, sem criar uma integração nova para cada uma. Só com notas avulsas, sem plano, a conta tem 1 empresa.",
@@ -3357,7 +3364,7 @@
       },
       "payments": {
         "q": "Com quais plataformas de pagamento a Corvo se integra?",
-        "a": "A Corvo se integra com Woovi e AbacatePay. Depois de conectar, cada pagamento aprovado vira uma NFS-e automaticamente, sem código. Se houver reembolso, a nota pode ser cancelada sozinha, se você ativar essa opção.",
+        "a": "A Corvo se integra com Mercado Pago, Stripe, Asaas, Pagar.me, Woovi, AbacatePay e PushinPay (pagamentos), e com Hotmart, Kiwify, Eduzz e Monetizze (infoprodutos). Cada pagamento aprovado vira uma NFS-e sozinho, sem código. Se houver reembolso, a nota pode ser cancelada sozinha, se você ativar essa regra.",
         "link": "Ver como conectar"
       },
       "sdks": {
@@ -4490,7 +4497,8 @@
   "NfePage": {
     "meta": {
       "title": "NF-e por API: nota de produto em uma chamada",
-      "description": "Emita NF-e (modelo 55) pela API da Corvo, com DANFE, carta de correção, cancelamento e o mesmo crédito da NFS-e. Disponível em teste (homologação)."
+      "description": "Emita NF-e (modelo 55) pela API da Corvo, com DANFE, carta de correção, cancelamento e o mesmo crédito da NFS-e. Disponível em teste (homologação).",
+      "descriptionLive": "Emita NF-e (modelo 55) pela API da Corvo, com DANFE, carta de correção, cancelamento e o mesmo crédito da NFS-e. Disponível em produção."
     },
     "crumb": "NF-e",
     "hero": {
@@ -4501,6 +4509,7 @@
       "docs": "Ler a documentação",
       "scope": "Para empresas do Simples Nacional e MEI. Você informa CFOP, NCM e CSOSN como o seu contador orienta.",
       "note": "Disponível em teste (homologação). Produção em breve.",
+      "noteLive": "Disponível em produção, com valor fiscal.",
       "release": "Funciona em todos os estados, sem configurar nada: é só cadastrar a empresa."
     },
     "code": {
@@ -4537,7 +4546,8 @@
       }
     },
     "lifecycle": {
-      "title": "Da emissão ao cancelamento, tudo pela API e pelo painel",
+      "title": "Da emissão ao cancelamento: pela API, pelo painel ou por agente de IA (MCP)",
+      "mcpHint": "Agentes de IA usam as ferramentas do MCP em cada passo. Para NFC-e é o mesmo caminho, com type \"nfce\" (ela não tem carta de correção).",
       "steps": {
         "validate": {
           "title": "Validar",
@@ -4571,7 +4581,8 @@
   "NfcePage": {
     "meta": {
       "title": "NFC-e por API: o cupom fiscal do seu caixa",
-      "description": "Emita NFC-e (modelo 65) pela API da Corvo, com QR Code, cupom em 80 mm ou A4 e contingência off-line. Disponível em teste (homologação), começando por SP."
+      "description": "Emita NFC-e (modelo 65) pela API da Corvo, com QR Code, cupom em 80 mm ou A4 e contingência off-line. Disponível em teste (homologação), começando por SP.",
+      "descriptionLive": "Emita NFC-e (modelo 65) pela API da Corvo, com QR Code, cupom em 80 mm ou A4 e contingência off-line. Disponível em produção, começando por SP."
     },
     "crumb": "NFC-e",
     "hero": {
@@ -4582,6 +4593,7 @@
       "docs": "Ler a documentação",
       "scope": "CPF do consumidor é opcional. Para empresas do Simples Nacional e MEI, com a inscrição estadual credenciada para NFC-e.",
       "note": "Disponível em teste (homologação). Produção em breve.",
+      "noteLive": "Disponível em produção, com valor fiscal.",
       "release": "Começa por São Paulo. Os outros estados chegam em breve."
     },
     "receipt": {

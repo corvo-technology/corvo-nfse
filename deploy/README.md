@@ -20,7 +20,7 @@ From the repository root, run `node scripts/setup-env.mjs` to generate the env f
 
 ## NF-e
 
-NF-e and NFC-e are open to every workspace in test (homologação), with nothing to release. Production stays blocked (`422 NFE_PRODUCTION_DISABLED`) until `NFE_PRODUCTION_ENABLED=true`, the only switch. `NFE_ENABLED` no longer exists: remove it from your environment. `NFE_TEST_PROVIDER` (`sefaz` or `fake`) and `NFE_SEFAZ_TIMEOUT_MS` are optional.
+NF-e and NFC-e are open to every workspace in test (homologação), with nothing to release. Production stays blocked (`422 NFE_PRODUCTION_DISABLED`) until `NFE_PRODUCTION_ENABLED=true`, the only switch. To go live set it to `true` on the api, the worker and the web: the web only uses it to swap the "test, production soon" notes on `/nf-e`, `/nfc-e` and the home FAQ for the production text (read at runtime, no rebuild; the pages refresh within a minute). `NFE_ENABLED` no longer exists: remove it from your environment. `NFE_TEST_PROVIDER` (`sefaz` or `fake`) and `NFE_SEFAZ_TIMEOUT_MS` are optional.
 
 ## Web build variables
 

@@ -55,11 +55,11 @@ describe("landing integrations", () => {
   it("says a refund can cancel the invoice on its own, and that it is a setting the client turns on", () => {
     wrap("pt", <IntegrationsSection />);
     expect(screen.getByText("Teve reembolso?")).toBeTruthy();
-    expect(screen.getByText(/cancela a nota sozinha.*liga quando quiser/)).toBeTruthy();
+    expect(screen.getByText(/cancela a nota sozinha.*se você ligar essa regra/)).toBeTruthy();
     cleanup();
     wrap("en", <IntegrationsSection />);
     expect(screen.getByText("Got a refund?")).toBeTruthy();
-    expect(screen.getByText(/cancels the invoice on its own.*turn on/)).toBeTruthy();
+    expect(screen.getByText(/cancels the invoice on its own.*turn that rule on/)).toBeTruthy();
   });
 
   it("sends people to sign up and to the integrations guide in their language", () => {

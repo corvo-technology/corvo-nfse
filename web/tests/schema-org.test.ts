@@ -36,11 +36,11 @@ describe("schema.org", () => {
     expect(offenders).toEqual(["lib/blog/seo.ts", "lib/landing-faq.ts"]);
   });
 
-  it.each(["pt", "en"] as const)("%s landing JSON-LD has a FAQPage with the six questions, each answer pointing at a page of the site or at the repository", async (locale) => {
+  it.each(["pt", "en"] as const)("%s landing JSON-LD has a FAQPage with the seven questions, each answer pointing at a page of the site or at the repository", async (locale) => {
     const faq = jsonLd(await LandingPage({ params: Promise.resolve({ locale }) })).find((item) => item["@type"] === "FAQPage") as Record<string, unknown>;
     expect(faq).toMatchObject({ "@id": `${SITE_URL}/${locale}#faq`, inLanguage: locale === "pt" ? "pt-BR" : "en", isPartOf: { "@id": `${SITE_URL}/#website` } });
     const entities = faq.mainEntity as { "@type": string; name: string; acceptedAnswer: { "@type": string; text: string; url: string } }[];
-    expect(entities).toHaveLength(6);
+    expect(entities).toHaveLength(7);
     const known = new Set(sitemap().map((entry) => entry.url));
     for (const entity of entities) {
       expect(entity["@type"]).toBe("Question");

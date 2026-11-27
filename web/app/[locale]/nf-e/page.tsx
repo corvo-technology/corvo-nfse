@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CardSection, CtaLink, MarketingShell, PageHero, StatusNote } from "@/components/marketing/blocks";
+import { nfeProductionEnabled } from "@/lib/nfe-availability";
 import { SITE_NAME, pageMetadata, pageUrl, seoLocale } from "@/lib/seo";
 import { breadcrumbList } from "@/lib/structured-data";
 
 type Props = { params: Promise<{ locale: string }> };
 
 const PATH = "/nf-e";
+
+/** The availability note depends on NFE_PRODUCTION_ENABLED, read at runtime: look again every minute. */
+export const revalidate = 60;
 
 /** The body of POST /v1/invoices for an NF-e, as in the NF-e docs (the recipient address and the item unit are required). */
 const REQUEST = `{
@@ -31,24 +35,26 @@ const REQUEST = `{
 }`;
 
 const FEATURES = ["danfe", "validate", "autofill", "correction", "svc", "webhooks"] as const;
+/** Each step: its API route and the MCP tool that does it (the shared tools take type "nfe"). */
 const STEPS = [
-  ["validate", "POST /invoices/validate"],
-  ["issue", "POST /invoices"],
-  ["download", "POST /invoices/:id/download-url"],
-  ["correct", "POST /invoices/:id/corrections"],
-  ["cancel", "POST /invoices/:id/cancel"],
+  ["validate", "POST /invoices/validate", "nfe_validate"],
+  ["issue", "POST /invoices", "nfse_issue"],
+  ["download", "POST /invoices/:id/download-url", "nfse_get_download_url"],
+  ["correct", "POST /invoices/:id/corrections", "nfe_correct"],
+  ["cancel", "POST /invoices/:id/cancel", "nfse_cancel"],
 ] as const;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = seoLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: "NfePage" });
-  return pageMetadata({ locale, path: PATH, title: t("meta.title"), description: t("meta.description") });
+  return pageMetadata({ locale, path: PATH, title: t("meta.title"), description: t(nfeProductionEnabled() ? "meta.descriptionLive" : "meta.description") });
 }
 
 export default async function NfePage({ params }: Props) {
   const locale = seoLocale((await params).locale);
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "NfePage" });
+  const note = t(nfeProductionEnabled() ? "hero.noteLive" : "hero.note");
 
   return (
     <MarketingShell jsonLd={breadcrumbList([{ name: SITE_NAME, url: pageUrl(locale) }, { name: t("crumb"), url: pageUrl(locale, PATH) }])}>
@@ -64,7 +70,7 @@ export default async function NfePage({ params }: Props) {
         }
         note={
           <div className="flex flex-col gap-4">
-            <StatusNote note={t("hero.note")} detail={t("hero.release")} />
+            <StatusNote note={note} detail={t("hero.release")} />
             <p className="max-w-[520px] text-[13.5px] leading-snug text-text-3">{t("hero.scope")}</p>
           </div>
         }
@@ -86,14 +92,16 @@ export default async function NfePage({ params }: Props) {
         <div className="mx-auto max-w-[1120px]">
           <h2 id="ciclo" className="max-w-[760px] text-balance text-[clamp(28px,3.8vw,44px)] font-semibold leading-[1.06] tracking-[-0.035em] text-text">{t("lifecycle.title")}</h2>
           <ol className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {STEPS.map(([key, code]) => (
+            {STEPS.map(([key, code, tool]) => (
               <li key={key} className="flex flex-col gap-2 rounded-[16px] border border-white/[0.08] bg-[#101010] p-5">
                 <code className="break-words font-mono text-[11.5px] text-accent">{code}</code>
+                <code className="break-words font-mono text-[11.5px] text-text-3">MCP: {tool}</code>
                 <p className="text-[16px] font-semibold text-text">{t(`lifecycle.steps.${key}.title`)}</p>
                 <p className="text-[14px] leading-snug text-text-2">{t(`lifecycle.steps.${key}.body`)}</p>
               </li>
             ))}
           </ol>
+          <p className="mt-6 max-w-[760px] text-[14px] leading-snug text-text-3">{t("lifecycle.mcpHint")}</p>
         </div>
       </section>
 
@@ -107,7 +115,7 @@ export default async function NfePage({ params }: Props) {
             <CtaLink href={`/${locale}#pricing`} variant="primary">{t("credit.plans")}</CtaLink>
             <CtaLink href={`/${locale}/nfc-e`} variant="secondary">{t("credit.other")}</CtaLink>
           </div>
-          <StatusNote note={t("hero.note")} detail={t("hero.release")} />
+          <StatusNote note={note} detail={t("hero.release")} />
         </div>
       </section>
     </MarketingShell>

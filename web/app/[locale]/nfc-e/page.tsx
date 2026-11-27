@@ -1,25 +1,30 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CardSection, CtaLink, MarketingShell, PageHero, PaperBand, StatusNote } from "@/components/marketing/blocks";
+import { nfeProductionEnabled } from "@/lib/nfe-availability";
 import { SITE_NAME, pageMetadata, pageUrl, seoLocale } from "@/lib/seo";
 import { breadcrumbList } from "@/lib/structured-data";
 
 type Props = { params: Promise<{ locale: string }> };
 
 const PATH = "/nfc-e";
+
+/** The availability note depends on NFE_PRODUCTION_ENABLED, read at runtime: look again every minute. */
+export const revalidate = 60;
 const FEATURES = ["print", "qr", "offline", "payment", "delivery", "cancel"] as const;
 const ROWS = ["for", "where", "recipient", "doc", "correction"] as const;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = seoLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: "NfcePage" });
-  return pageMetadata({ locale, path: PATH, title: t("meta.title"), description: t("meta.description") });
+  return pageMetadata({ locale, path: PATH, title: t("meta.title"), description: t(nfeProductionEnabled() ? "meta.descriptionLive" : "meta.description") });
 }
 
 export default async function NfcePage({ params }: Props) {
   const locale = seoLocale((await params).locale);
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "NfcePage" });
+  const note = t(nfeProductionEnabled() ? "hero.noteLive" : "hero.note");
 
   return (
     <MarketingShell jsonLd={breadcrumbList([{ name: SITE_NAME, url: pageUrl(locale) }, { name: t("crumb"), url: pageUrl(locale, PATH) }])}>
@@ -35,7 +40,7 @@ export default async function NfcePage({ params }: Props) {
         }
         note={
           <div className="flex flex-col gap-4">
-            <StatusNote note={t("hero.note")} detail={t("hero.release")} />
+            <StatusNote note={note} detail={t("hero.release")} />
             <p className="max-w-[520px] text-[13.5px] leading-snug text-text-3">{t("hero.scope")}</p>
           </div>
         }
@@ -87,7 +92,7 @@ export default async function NfcePage({ params }: Props) {
               <CtaLink href="/login?mode=signup" variant="primary" tone="paper">{t("compare.start")}</CtaLink>
               <CtaLink href={`/${locale}/nf-e`} variant="secondary" tone="paper">{t("compare.other")}</CtaLink>
             </div>
-            <StatusNote tone="paper" note={t("hero.note")} detail={t("hero.release")} />
+            <StatusNote tone="paper" note={note} detail={t("hero.release")} />
           </div>
         </div>
       </PaperBand>

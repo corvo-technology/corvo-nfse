@@ -2,10 +2,12 @@ import Link from "next/link";
 import { ArrowUpRight, Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { FAQ_ITEMS } from "@/lib/landing-faq";
+import { nfeProductionEnabled } from "@/lib/nfe-availability";
 
 export function FaqSection() {
   const t = useTranslations("LandingFaq");
   const locale = useLocale();
+  const live = nfeProductionEnabled();
   // Each answer ends with a link to the part of the docs (or the page) that goes deeper.
   const hrefOf = (item: (typeof FAQ_ITEMS)[number]) =>
     "external" in item ? item.external : `/${locale}${item.path}${"anchor" in item ? item.anchor : ""}`;
@@ -29,7 +31,7 @@ export function FaqSection() {
                 <Plus size={18} aria-hidden className="shrink-0 text-text-3 transition-transform duration-200 group-open:rotate-45" />
               </summary>
               <div className="pb-5 pr-10">
-                <p className="max-w-[62ch] text-[15px] leading-relaxed text-text-3">{t(`items.${item.id}.a`)}</p>
+                <p className="max-w-[62ch] text-[15px] leading-relaxed text-text-3">{item.id === "types" && live ? t("items.types.aLive") : t(`items.${item.id}.a`)}</p>
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
                   <Link
                     href={hrefOf(item)}

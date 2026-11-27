@@ -1,6 +1,7 @@
 import en from "@/messages/en.json";
 import pt from "@/messages/pt.json";
 import { SITE_URL, pageUrl, type SeoLocale } from "@/lib/seo";
+import { nfeProductionEnabled } from "@/lib/nfe-availability";
 import { REPO_URL } from "@/lib/repo";
 
 /**
@@ -11,6 +12,8 @@ import { REPO_URL } from "@/lib/repo";
 export const FAQ_ITEMS = [
   { id: "coverage", path: "/docs/municipalities" },
   { id: "issues", path: "/docs" },
+  // The three types of invoice: the answer links to the NF-e page and, as a second link, to the NFC-e page.
+  { id: "types", path: "/nf-e", extra: { path: "/nfc-e" } },
   // The visible link goes to the pricing section of the landing; machines get the landing itself.
   { id: "companies", path: "", anchor: "#pricing" },
   { id: "payments", path: "/docs/payment-integrations" },
@@ -35,14 +38,15 @@ export interface FaqEntry {
   extra?: { label: string; url: string };
 }
 
-export function landingFaq(locale: SeoLocale): FaqEntry[] {
+/** `live`: NF-e and NFC-e issue in production (NFE_PRODUCTION_ENABLED), which changes the types answer. */
+export function landingFaq(locale: SeoLocale, live = nfeProductionEnabled()): FaqEntry[] {
   const copy = MESSAGES[locale].LandingFaq.items;
   return FAQ_ITEMS.map((item) => {
-    const text = copy[item.id] as { q: string; a: string; link: string; link2?: string };
+    const text = copy[item.id] as { q: string; a: string; aLive?: string; link: string; link2?: string };
     return {
       id: item.id,
       question: text.q,
-      answer: text.a,
+      answer: live && text.aLive ? text.aLive : text.a,
       linkLabel: text.link,
       url: "external" in item ? item.external : pageUrl(locale, item.path),
       ...("extra" in item && text.link2 ? { extra: { label: text.link2, url: pageUrl(locale, item.extra.path) } } : {}),
