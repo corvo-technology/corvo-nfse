@@ -10,7 +10,9 @@ import { CompanyService } from '@/modules/company/application/company.service';
 import { ConnectorRegistry } from '../domain/connector-registry';
 import {
   ConnectorAuthError,
+  ConnectorCredentialRejected,
   type ConnectionView,
+  type Connector,
   type IntegrationEnvironment,
 } from '../domain/connector';
 import {
@@ -46,6 +48,23 @@ async function refusal<T>(check: () => Promise<T>): Promise<T> {
   }
 }
 
+/** Credentials the connector refuses to store (a 400 with its own code), before anything is saved. */
+function precheck(
+  connector: Connector,
+  credentials: Record<string, string>,
+): void {
+  try {
+    connector.checkCredentials?.(credentials);
+  } catch (error) {
+    if (error instanceof ConnectorCredentialRejected)
+      throw new BadRequestException({
+        code: error.code,
+        message: error.message,
+      });
+    throw error;
+  }
+}
+
 @Injectable()
 export class ConnectionService {
   constructor(
@@ -65,7 +84,8 @@ export class ConnectionService {
         code: 'INTEGRATION_PROVIDER_UNKNOWN',
         message: `Unknown provider: ${input.provider}`,
       });
-    const { manifest } = this.registry.get(input.provider);
+    const connector = this.registry.get(input.provider);
+    const { manifest } = connector;
     const known = new Set(manifest.credentialFields.map((f) => f.key));
     for (const key of Object.keys(input.credentials))
       if (!known.has(key))
@@ -92,6 +112,7 @@ export class ConnectionService {
           message: `Missing credential field: ${field.key}`,
         });
     }
+    precheck(connector, credentials);
     await this.companies.findById(input.companyId, tenantId, input.environment);
     const now = new Date();
     return this.connections.insert({
@@ -194,6 +215,7 @@ export class ConnectionService {
       ...this.credentials.open(connection.credentialsEnc),
       ...Object.fromEntries(keys.map((key) => [key, changes[key].trim()])),
     };
+    precheck(connector, merged);
     const { externalAccountId } = await refusal(() =>
       connector.validateConnection(merged, connection.environment, {
         publicId: connection.publicId,
@@ -211,10 +233,23 @@ export class ConnectionService {
 
   async activate(tenantId: string, id: string): Promise<IntegrationConnection> {
     const connection = await this.get(tenantId, id);
-    if (!connection.externalAccountId)
+    const connector = this.registry.get(connection.provider);
+    const stored = this.credentials.open(connection.credentialsEnc);
+    // A connector with an optional key may have no account id, but only while no key was typed.
+    const unidentifiedOk = connector.accountIdOptional && !stored.apiKey;
+    if (!connection.externalAccountId && !unidentifiedOk)
       throw new ConflictException({
         code: 'CONNECTION_NOT_VALIDATED',
         message: 'Validate the connection before activating it',
+      });
+    if (
+      connector.manifest.credentialFields.some(
+        (field) => field.afterUrl && !stored[field.key],
+      )
+    )
+      throw new ConflictException({
+        code: 'CONNECTION_WEBHOOK_SECRET_MISSING',
+        message: 'Paste the webhook signing secret to activate',
       });
     if ((await this.rules.countByConnection(id, tenantId)) === 0)
       throw new ConflictException({

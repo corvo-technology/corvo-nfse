@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { normalizeTaxID } from '@/shared/tax-id';
 import {
   ConnectorAuthError,
+  ConnectorCredentialRejected,
   ConnectorDataError,
   ConnectorTransientError,
   type CommercialState,
@@ -107,13 +108,16 @@ export class StripeConnector implements Connector {
       {
         key: 'apiKey',
         label:
-          'Chave restrita do Stripe (rk_..., somente leitura em Charges, Customers, Checkout Sessions e Invoices)',
+          'Chave restrita do Stripe (rk_..., só leitura). Não use a chave secreta (sk_)',
         secret: true,
+        optional: true,
       },
       {
         key: 'webhookSigningSecret',
         label: 'Segredo de assinatura do webhook (whsec_...)',
         secret: true,
+        optional: true,
+        afterUrl: true,
       },
       {
         key: 'webhookSecret',
@@ -124,13 +128,30 @@ export class StripeConnector implements Connector {
       },
     ],
     webhookInstructions: {
-      pt: 'No Stripe, passo 1: crie uma chave restrita (Desenvolvedores > Chaves de API) com leitura em Charges, Customers, Checkout Sessions e Invoices e cole em "Chave restrita". Passo 2: em Desenvolvedores > Webhooks, adicione um endpoint com o endereço do webhook e os eventos charge.succeeded, charge.refunded e charge.dispute.created. Passo 3: copie o segredo de assinatura (whsec_...) do endpoint e cole no campo correspondente. Para a nota sair completa, ligue "Coletar CPF/CNPJ" (tax_id_collection) no Checkout.',
-      en: 'In Stripe, step 1: create a restricted key (Developers > API keys) with read access to Charges, Customers, Checkout Sessions and Invoices and paste it in "Restricted key". Step 2: in Developers > Webhooks, add an endpoint with the webhook address and the events charge.succeeded, charge.refunded and charge.dispute.created. Step 3: copy the endpoint signing secret (whsec_...) and paste it in the matching field. For a complete invoice, turn on tax ID collection (tax_id_collection) in Checkout.',
+      pt: 'Passo 1 (opcional): no Stripe, em Desenvolvedores > Chaves de API, crie uma chave restrita (rk_) só de leitura, com leitura em Charges, Customers, Checkout Sessions e Invoices, e cole em "Chave restrita". Não use a chave secreta (sk_). A Corvo só consulta CPF/CNPJ, e-mail e itens da venda; não consegue cobrar, estornar nem alterar nada. Sem a chave, vendas sem CPF/CNPJ vão para "Vendas pendentes". Passo 2: copie o endereço do webhook mostrado aqui. Passo 3: no Stripe, em Desenvolvedores > Webhooks, adicione um endpoint com esse endereço e os eventos charge.succeeded, charge.refunded e charge.dispute.created. Passo 4: o Stripe mostra o segredo de assinatura (whsec_...) do endpoint; copie e cole aqui para ativar. Para a nota sair completa, ligue "Coletar CPF/CNPJ" (tax_id_collection) no Checkout.',
+      en: 'Step 1 (optional): in Stripe, under Developers > API keys, create a read-only restricted key (rk_) with read access to Charges, Customers, Checkout Sessions and Invoices and paste it in "Restricted key". Do not use the secret key (sk_). Corvo only looks up the tax ID, e-mail and sale items; it cannot charge, refund or change anything. Without the key, sales missing a tax ID go to "Pending sales". Step 2: copy the webhook address shown here. Step 3: in Stripe, under Developers > Webhooks, add an endpoint with that address and the events charge.succeeded, charge.refunded and charge.dispute.created. Step 4: Stripe shows the endpoint signing secret (whsec_...); copy it and paste it here to activate. For a complete invoice, turn on tax ID collection (tax_id_collection) in Checkout.',
     },
+    webhookEvents: [
+      'charge.succeeded',
+      'charge.refunded',
+      'charge.dispute.created',
+    ],
     supportedFlows: ['charge'],
   };
 
+  /** The restricted key is optional: without it the account stays unidentified. */
+  readonly accountIdOptional = true;
+
   constructor(private readonly client: StripeClient = new StripeClient()) {}
+
+  /** A full-access secret key (sk_) is refused, never stored. */
+  checkCredentials(credentials: Record<string, string>): void {
+    if (credentials.apiKey?.trim().startsWith('sk_'))
+      throw new ConnectorCredentialRejected(
+        'STRIPE_SECRET_KEY_REJECTED',
+        'Do not use the Stripe secret key (sk_). Create a read-only restricted key (rk_) instead.',
+      );
+  }
 
   authenticate(
     req: InboundRequest,
@@ -358,7 +379,9 @@ export class StripeConnector implements Connector {
   async validateConnection(
     credentials: Record<string, string>,
     _environment: IntegrationEnvironment,
-  ): Promise<{ externalAccountId: string }> {
+  ): Promise<{ externalAccountId: string | null }> {
+    // Without a key there is nothing to ask Stripe: the account stays unidentified.
+    if (!credentials.apiKey) return { externalAccountId: null };
     return {
       externalAccountId: await this.client.getAccountId(credentials.apiKey),
     };

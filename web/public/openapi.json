@@ -11837,6 +11837,9 @@
           "credentialFields": {
             "items": {
               "properties": {
+                "afterUrl": {
+                  "type": "boolean"
+                },
                 "generate": {
                   "type": "boolean"
                 },
@@ -11889,6 +11892,12 @@
           },
           "version": {
             "type": "string"
+          },
+          "webhookEvents": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "webhookInstructions": {
             "properties": {

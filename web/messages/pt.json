@@ -2289,6 +2289,8 @@
     "connection_needs_rule": "Adicione ao menos uma regra antes de ativar.",
     "connection_not_found": "Conexão não encontrada.",
     "connection_not_validated": "Valide a conexão antes de ativar.",
+    "connection_webhook_secret_missing": "Cole o segredo do webhook (whsec_...) para ativar.",
+    "stripe_secret_key_rejected": "Não use a chave secreta (sk_). Crie uma chave restrita (rk_) só de leitura no Stripe.",
     "connection_state_invalid": "Essa ação não é possível no estado atual da conexão.",
     "operation_has_invoice": "Esta operação já tem uma nota.",
     "operation_not_found": "Operação não encontrada.",
@@ -2952,6 +2954,25 @@
           "total": "Total pago pelo comprador (padrão)",
           "mine": "Minha parte da venda"
         }
+      },
+      "hints": {
+        "apiKey": "Opcional. Não use a chave secreta (sk_). Crie uma chave restrita (rk_) só de leitura: a Corvo só consulta CPF/CNPJ, e-mail e itens da venda; não consegue cobrar, estornar nem alterar nada. Sem ela, vendas sem CPF/CNPJ vão para \"Vendas pendentes\"."
+      },
+      "awaitingSecret": {
+        "title": "Falta ligar o webhook",
+        "body": "A conexão foi criada, mas ainda não está ativa. Siga os passos abaixo.",
+        "detailBody": "Esta conexão ainda não está ativa. Cole abaixo o segredo do webhook que a plataforma mostrou para ativar.",
+        "eventsLabel": "Eventos para marcar",
+        "steps": {
+          "one": "Copie o endereço do webhook acima.",
+          "two": "Na plataforma, crie um webhook novo com esse endereço e marque os eventos da lista.",
+          "three": "Ao salvar, a plataforma mostra um segredo (whsec_...). Copie e cole no campo abaixo."
+        },
+        "hint": "Enquanto o segredo não for colado, os avisos da plataforma são recusados e nenhuma nota é emitida.",
+        "save": "Salvar e ativar",
+        "error": "Não foi possível salvar o segredo e ativar a conexão",
+        "later": "Sem o segredo agora? Você pode colar depois, na página da conexão.",
+        "doLater": "Fazer depois"
       },
       "back": "Voltar",
       "connect": "Conectar",

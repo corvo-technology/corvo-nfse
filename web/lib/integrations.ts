@@ -47,7 +47,9 @@ export class ConnectError extends Error {
   constructor(message: string, readonly step: ConnectStep, /** The error the API (or the network) raised, for the screen to translate. */ readonly original?: unknown) { super(message); }
 }
 
-export interface ConnectInput { provider: string; companyId: string; environment: "test" | "live"; credentials: Record<string, string>; sendEmail: boolean }
+export interface ConnectInput { provider: string; companyId: string; environment: "test" | "live"; credentials: Record<string, string>; sendEmail: boolean;
+  /** The platform issues a secret only after our address is registered: leave the connection ready but not active, the client activates it after pasting the secret. */
+  awaitSecret?: boolean }
 type ConnectApi = Pick<typeof defaultApi, "create" | "validate" | "putRules" | "activate" | "disconnect">;
 
 /**
@@ -68,6 +70,8 @@ export async function connectProvider(input: ConnectInput, api: ConnectApi = def
     step = "rules";
     // No fixed description: each invoice describes what that sale was, using what the platform sent.
     await api.putRules(created.id, [{ service: {}, sendEmail: input.sendEmail }]);
+    // Waiting for the secret: the connection stays a draft, with the address already usable.
+    if (input.awaitSecret) return { connection: created, webhookUrl: created.webhookUrl, secrets: created.secrets ?? {} };
     step = "activate";
     const active = await api.activate(created.id);
     // The create response is the only one that carries secrets that belong in the URL.
