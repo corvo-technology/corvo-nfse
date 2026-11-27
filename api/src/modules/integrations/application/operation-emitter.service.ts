@@ -26,6 +26,10 @@ import { selectRule } from '../domain/integration-rule';
 import { IIntegrationRuleRepository } from '../domain/integration-rule.repository';
 import { InvoiceCancellationPort } from '../domain/invoice-cancellation.port';
 import { InvoiceIssuancePort } from '../domain/invoice-issuance.port';
+import {
+  SavedCustomerPort,
+  completeFromSaved,
+} from '../domain/saved-customer.port';
 import type { EventOutcome } from './event-handler';
 import { ConnectionService } from './connection.service';
 
@@ -51,6 +55,7 @@ export class OperationEmitter {
     private readonly cancellation: InvoiceCancellationPort,
     /** Optional so unit tests that do not care about notices can leave it out. */
     private readonly bus?: ApplicationEventBus,
+    private readonly savedCustomers?: SavedCustomerPort,
   ) {}
 
   private readonly noticeLogger = new Logger(OperationEmitter.name);
@@ -86,7 +91,7 @@ export class OperationEmitter {
           externalAccountId: operation.externalAccountId,
         },
         operation: {
-          snapshot: operation.snapshot,
+          snapshot: await this.withSavedCustomer(operation),
           commercialState: operation.commercialState,
         },
         rules,
@@ -301,6 +306,36 @@ export class OperationEmitter {
         operationId: operation.id,
         error: error instanceof Error ? error.name : 'unknown',
       });
+    }
+  }
+
+  /**
+   * A buyer the workspace already knows (same CPF/CNPJ) fills what the platform left out, such
+   * as the e-mail. A failed lookup never holds the sale back.
+   */
+  private async withSavedCustomer(
+    operation: IntegrationOperation,
+  ): Promise<IntegrationOperation['snapshot']> {
+    const { snapshot } = operation;
+    const customer = snapshot.customer;
+    if (!this.savedCustomers || !customer?.taxId || customer.taxIdMasked)
+      return snapshot;
+    try {
+      const saved = await this.savedCustomers.find(
+        operation.tenantId,
+        operation.environment,
+        customer.taxId,
+      );
+      return saved
+        ? { ...snapshot, customer: completeFromSaved(customer, saved) }
+        : snapshot;
+    } catch (error) {
+      this.noticeLogger.warn({
+        event: 'saved_customer_lookup_failed',
+        operationId: operation.id,
+        error: error instanceof Error ? error.name : 'unknown',
+      });
+      return snapshot;
     }
   }
 }

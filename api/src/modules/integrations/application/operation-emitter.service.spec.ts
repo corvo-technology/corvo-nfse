@@ -656,3 +656,101 @@ describe('OperationEmitter notices', () => {
     expect(published).toHaveLength(0);
   });
 });
+
+describe('OperationEmitter with saved customers', () => {
+  function withSaved(
+    saved: { name: string; email: string | null } | null | 'fail',
+  ) {
+    const ctx = setup();
+    ctx.rules.rules = ctx.rules.rules.map((rule) => ({
+      ...rule,
+      sendEmail: true,
+    }));
+    const find = jest
+      .fn()
+      .mockImplementation(() =>
+        saved === 'fail'
+          ? Promise.reject(new Error('db down'))
+          : Promise.resolve(saved),
+      );
+    const emitter = new OperationEmitter(
+      ctx.connections,
+      ctx.operations,
+      ctx.rules,
+      ctx.issuance,
+      ctx.events,
+      new FakeCancellation(),
+      undefined,
+      { find },
+    );
+    return { ...ctx, emitter, find };
+  }
+  const buyer = (over: Partial<NonNullable<NormalizedOperation['customer']>>) =>
+    snapshot({
+      customer: {
+        name: 'EMPRESA EXEMPLO',
+        email: null,
+        taxId: '11222333000181',
+        taxIdMasked: false,
+        ...over,
+      },
+    });
+
+  it('a Woovi sale without e-mail goes to the e-mail the workspace has saved for that CNPJ', async () => {
+    const { emitter, issuance, upsert, find } = withSaved({
+      name: 'Empresa Exemplo Ltda',
+      email: 'financeiro@exemplo.com',
+    });
+    await emitter.run(await upsert(buyer({})));
+    expect(find).toHaveBeenCalledWith(TENANT, 'test', '11222333000181');
+    expect(issuance.calls[0].request).toMatchObject({
+      email: true,
+      customer: {
+        name: 'EMPRESA EXEMPLO',
+        taxId: '11222333000181',
+        email: 'financeiro@exemplo.com',
+      },
+    });
+  });
+
+  it('what the platform sent wins when it is usable', async () => {
+    const { emitter, issuance, upsert } = withSaved({
+      name: 'Outro Nome',
+      email: 'saved@x.com',
+    });
+    await emitter.run(await upsert(buyer({ email: 'sent@x.com' })));
+    expect(issuance.calls[0].request.customer).toMatchObject({
+      name: 'EMPRESA EXEMPLO',
+      email: 'sent@x.com',
+    });
+  });
+
+  it('an obviously incomplete name is replaced by the saved one', async () => {
+    const { emitter, issuance, upsert } = withSaved({
+      name: 'Empresa Exemplo Ltda',
+      email: null,
+    });
+    await emitter.run(await upsert(buyer({ name: 'E' })));
+    expect(issuance.calls[0].request.customer?.name).toBe(
+      'Empresa Exemplo Ltda',
+    );
+  });
+
+  it('a buyer nobody knows, or a failing lookup, changes nothing and still issues', async () => {
+    for (const saved of [null, 'fail'] as const) {
+      const { emitter, issuance, upsert } = withSaved(saved);
+      await emitter.run(await upsert(buyer({})));
+      expect(issuance.calls).toHaveLength(1);
+      expect(issuance.calls[0].request.email).toBe(false);
+    }
+  });
+
+  it('does not look up a masked document', async () => {
+    const { emitter, upsert, find } = withSaved({
+      name: 'X Y Z',
+      email: 'a@b.com',
+    });
+    await emitter.run(await upsert(buyer({ taxId: null, taxIdMasked: true })));
+    expect(find).not.toHaveBeenCalled();
+  });
+});
