@@ -74,6 +74,15 @@ describe("connectProvider", () => {
     expect(a.putRules).toHaveBeenCalledWith("c1", [{ service: {}, sendEmail: true }]);
     expect(a.disconnect).not.toHaveBeenCalled();
   });
+  it("with awaitSecret it validates and sets the rule but leaves the connection as a draft, keeping the address", async () => {
+    const a = api();
+    const result = await connectProvider({ ...input, awaitSecret: true }, a);
+    expect(a.validate).toHaveBeenCalled();
+    expect(a.putRules).toHaveBeenCalled();
+    expect(a.activate).not.toHaveBeenCalled();
+    expect(result.connection.state).toBe("draft");
+    expect(result.webhookUrl).toContain("webhookSecret=s");
+  });
   it("a failure while creating leaves nothing to clean up", async () => {
     const a = api();
     a.create.mockRejectedValue(new Error("company not found"));

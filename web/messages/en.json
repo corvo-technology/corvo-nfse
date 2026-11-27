@@ -2289,6 +2289,8 @@
     "connection_needs_rule": "Add at least one rule before activating.",
     "connection_not_found": "Connection not found.",
     "connection_not_validated": "Validate the connection before activating it.",
+    "connection_webhook_secret_missing": "Paste the webhook secret (whsec_...) to activate.",
+    "stripe_secret_key_rejected": "Do not use the secret key (sk_). Create a read-only restricted key (rk_) in Stripe.",
     "connection_state_invalid": "This action is not possible in the connection's current state.",
     "operation_has_invoice": "This operation already has an invoice.",
     "operation_not_found": "Operation not found.",
@@ -2952,6 +2954,25 @@
           "total": "Total paid by the buyer (default)",
           "mine": "My share of the sale"
         }
+      },
+      "hints": {
+        "apiKey": "Optional. Do not use the secret key (sk_). Create a read-only restricted key (rk_): Corvo only looks up the tax ID, e-mail and sale items; it cannot charge, refund or change anything. Without it, sales missing a tax ID go to \"Pending sales\"."
+      },
+      "awaitingSecret": {
+        "title": "Webhook still to connect",
+        "body": "The connection was created but is not active yet. Follow the steps below.",
+        "detailBody": "This connection is not active yet. Paste the webhook secret the platform showed below to activate it.",
+        "eventsLabel": "Events to select",
+        "steps": {
+          "one": "Copy the webhook address above.",
+          "two": "On the platform, create a new webhook with that address and select the events in the list.",
+          "three": "When you save, the platform shows a secret (whsec_...). Copy it and paste it in the field below."
+        },
+        "hint": "Until the secret is pasted, the platform's notices are refused and no invoice is issued.",
+        "save": "Save and activate",
+        "error": "Could not save the secret and activate the connection",
+        "later": "No secret yet? You can paste it later, on the connection page.",
+        "doLater": "Do it later"
       },
       "back": "Back",
       "connect": "Connect",

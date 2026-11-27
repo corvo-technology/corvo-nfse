@@ -846,28 +846,40 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
   ),
 
   // --- Integrations --------------------------------------------------------
-  IntegrationProvider: obj({
-    id: str({ example: 'woovi' }),
-    name: str(),
-    version: str(),
-    credentialFields: array(
-      obj(
-        {
-          key: str(),
-          label: str(),
-          secret: bool(),
-          generate: bool(),
-          inWebhookUrl: bool(),
-          revealOnce: bool(),
-          optional: bool(),
-          options: array(str()),
-        },
-        ['generate', 'inWebhookUrl', 'revealOnce', 'optional', 'options'],
+  IntegrationProvider: obj(
+    {
+      id: str({ example: 'woovi' }),
+      name: str(),
+      version: str(),
+      credentialFields: array(
+        obj(
+          {
+            key: str(),
+            label: str(),
+            secret: bool(),
+            generate: bool(),
+            inWebhookUrl: bool(),
+            revealOnce: bool(),
+            optional: bool(),
+            afterUrl: bool(),
+            options: array(str()),
+          },
+          [
+            'generate',
+            'inWebhookUrl',
+            'revealOnce',
+            'optional',
+            'afterUrl',
+            'options',
+          ],
+        ),
       ),
-    ),
-    webhookInstructions: obj({ pt: str(), en: str() }),
-    supportedFlows: array(str()),
-  }),
+      webhookInstructions: obj({ pt: str(), en: str() }),
+      webhookEvents: array(str()),
+      supportedFlows: array(str()),
+    },
+    ['webhookEvents'],
+  ),
   IntegrationConnection: obj({
     id: uuid(),
     provider: str(),

@@ -101,6 +101,12 @@ export interface CredentialField {
   revealOnce?: boolean;
   /** The client may leave it empty (an optional setting, not a credential). */
   optional?: boolean;
+  /**
+   * The platform issues this value only after the endpoint exists (a signing secret): the client creates
+   * the connection without it, copies our webhook URL, and pastes the value in a second step. Deliveries
+   * are rejected until it is set, and the connection cannot be activated without it.
+   */
+  afterUrl?: boolean;
   /** The allowed values, when the field is a choice; the first is the default. */
   options?: string[];
 }
@@ -111,11 +117,17 @@ export interface ConnectorManifest {
   version: string;
   credentialFields: CredentialField[];
   webhookInstructions: { pt: string; en: string };
+  /** The events the client must tick when registering the webhook, for platforms where that is a manual step. */
+  webhookEvents?: string[];
   supportedFlows: string[];
 }
 
 export interface Connector {
   readonly manifest: ConnectorManifest;
+  /** True when the account can stay unidentified (an optional key): a validated connection may then have no account id. */
+  readonly accountIdOptional?: boolean;
+  /** Refuses credentials before they are stored, by throwing ConnectorCredentialRejected. Must never echo a secret. */
+  checkCredentials?(credentials: Record<string, string>): void;
   authenticate(
     req: InboundRequest,
     connection: ConnectionView,
@@ -136,11 +148,20 @@ export interface Connector {
     environment: IntegrationEnvironment,
     /** For platforms that identify nothing about the account: the id can come from the connection itself. */
     connection: { publicId: string },
-  ): Promise<{ externalAccountId: string }>;
+  ): Promise<{ externalAccountId: string | null }>;
 }
 
 /** Retry later with backoff. */
 export class ConnectorTransientError extends Error {}
+/** The credentials are of the wrong kind and must not even be stored (e.g. a full-access secret key). */
+export class ConnectorCredentialRejected extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 /** Credentials were rejected: the connection needs to be reauthorized. */
 export class ConnectorAuthError extends Error {}
 /** The data cannot become an invoice without a person looking at it. */
