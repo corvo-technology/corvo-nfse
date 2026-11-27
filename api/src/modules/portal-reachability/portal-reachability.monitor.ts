@@ -7,6 +7,10 @@ import {
   ENDPOINTS_65,
   ENDPOINTS_SVC,
 } from '@/infra/external/nfe/sefaz/endpoints';
+import {
+  probeViaProxy,
+  redactProxyUrl,
+} from '@/infra/external/fiscal-proxy/gov-proxy';
 import { LOCK_PORT } from '@/infra/redis/redis.constants';
 import type { Uf } from '@/modules/fiscal-core/domain/ports/authority.port';
 import {
@@ -29,7 +33,12 @@ import {
   PROBE_LABELS,
   portalDownEmail,
   portalRecoveredEmail,
+  proxyBackToDirectEmail,
+  proxyBrokenEmail,
+  proxyInUseEmail,
+  proxyRecoveredEmail,
 } from './reachability.email';
+import { advanceProxy } from './proxy-route.state';
 import { probeTcp } from './reachability.probe';
 import { advance, type ReachabilityEvent } from './reachability.state';
 import { PortalReachabilityStore } from './reachability.store';
@@ -37,6 +46,8 @@ import { PortalReachabilityStore } from './reachability.store';
 const EMISSION_WINDOW_MS = 10 * 60_000;
 const DEFAULT_EMISSION_FAILURES = 10;
 const DEFAULT_CONTROL_HOST = '1.1.1.1';
+/** The host tested through the backup proxy: a tunnel to it proves the proxy reaches the government. */
+const PROXY_PROBE_HOST = 'sefin.nfse.gov.br';
 
 /** The e-mails of the platform operator, from `OPS_ALERT_EMAILS` (comma-separated). */
 export function opsAlertEmails(raw: string | undefined): string[] {
@@ -103,7 +114,24 @@ export class PortalReachabilityMonitor {
         probeTcp(control),
         this.probeAuthorities(),
       ]);
-    return { sefin, adn, govControl, externalControl, authorities };
+    // The direct probes above never use the proxy: they measure our own route, which is what brings the
+    // calls back to it. This one only tells whether the backup would work.
+    const proxyUrl = this.proxyUrl();
+    const viaProxy = proxyUrl
+      ? await probeViaProxy(proxyUrl, PROXY_PROBE_HOST)
+      : undefined;
+    return {
+      sefin,
+      adn,
+      govControl,
+      externalControl,
+      authorities,
+      ...(viaProxy === undefined ? {} : { viaProxy }),
+    };
+  }
+
+  private proxyUrl(): string | undefined {
+    return this.config.get<string>('FISCAL_HTTPS_PROXY') || undefined;
   }
 
   /**
@@ -155,6 +183,8 @@ export class PortalReachabilityMonitor {
     now: Date,
   ): Promise<{ health: PortalHealth; event: ReachabilityEvent }> {
     if (probes.authorities) await this.saveAuthorities(probes.authorities, now);
+    if (probes.viaProxy !== undefined)
+      await this.checkProxy(probes.viaProxy, now);
     const probed = classifyProbes(probes);
     const health = probed !== 'ok' ? probed : await this.emissionHealth();
     const { state, event } = advance(await this.store.load(), health, now);
@@ -162,6 +192,43 @@ export class PortalReachabilityMonitor {
     if (event?.type === 'opened') await this.alertDown(event, probes);
     if (event?.type === 'closed') await this.alertRecovered(event);
     return { health, event };
+  }
+
+  /** Tells the operator when the backup proxy stops (or goes back to) answering. Never breaks the monitor. */
+  private async checkProxy(ok: boolean, now: Date): Promise<void> {
+    const proxyUrl = this.proxyUrl();
+    if (!proxyUrl) return;
+    try {
+      const { state, event } = advanceProxy(
+        await this.store.loadProxy(),
+        ok,
+        now,
+      );
+      await this.store.saveProxy(state);
+      const proxy = redactProxyUrl(proxyUrl);
+      if (event?.type === 'broken') {
+        this.logger.error(
+          { event: 'gov_proxy_broken', proxy, since: event.since },
+          'The backup proxy to the government is not answering',
+        );
+        await this.send(proxyBrokenEmail({ proxy, since: event.since }));
+      }
+      if (event?.type === 'recovered') {
+        this.logger.log(
+          { event: 'gov_proxy_recovered', proxy },
+          'The backup proxy to the government answers again',
+        );
+        await this.send(
+          proxyRecoveredEmail({
+            proxy,
+            since: event.since,
+            until: event.until,
+          }),
+        );
+      }
+    } catch (error: unknown) {
+      this.logger.warn({ err: error }, 'Could not check the backup proxy');
+    }
   }
 
   private async saveAuthorities(
@@ -211,6 +278,15 @@ export class PortalReachabilityMonitor {
       failedProbes,
     });
     await this.send(rendered);
+    const proxyUrl = this.proxyUrl();
+    if (proxyUrl && health === 'gov_unreachable_from_us')
+      await this.send(
+        proxyInUseEmail({
+          proxy: redactProxyUrl(proxyUrl),
+          since: event.since,
+          works: probes.viaProxy,
+        }),
+      );
   }
 
   private async alertRecovered(
@@ -237,6 +313,15 @@ export class PortalReachabilityMonitor {
         until: event.until,
       }),
     );
+    const proxyUrl = this.proxyUrl();
+    if (proxyUrl && health === 'gov_unreachable_from_us')
+      await this.send(
+        proxyBackToDirectEmail({
+          proxy: redactProxyUrl(proxyUrl),
+          since: event.since,
+          until: event.until,
+        }),
+      );
   }
 
   private async send(

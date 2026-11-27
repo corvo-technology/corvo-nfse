@@ -1,11 +1,12 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Module, Optional, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TableAuthorityEndpointResolver } from '@/infra/external/nfe/sefaz/endpoints';
 import { FakeNfeGateway } from '@/infra/external/nfe/sefaz/fake-nfe.gateway';
 import { NfeGateway } from '@/infra/external/nfe/sefaz/nfe-gateway';
 import { XmllintSchemaValidator } from '@/infra/external/nfe/sefaz/schema-validator';
-import { SefazSoapClient } from '@/infra/external/nfe/sefaz/soap-client';
+import { GovRouteSelector } from '@/modules/portal-reachability/gov-route.selector';
+import { createSefazSoapClient } from './application/sefaz-soap-client.factory';
 import { BillingUsageModule } from '@/modules/billing/billing-usage.module';
 import { CertificateModule } from '@/modules/certificate/certificate.module';
 import { CompanyModule } from '@/modules/company/company.module';
@@ -180,6 +181,7 @@ export class NfeModule implements OnModuleInit {
   constructor(
     private readonly registry: FiscalDocumentRegistry,
     private readonly config: ConfigService,
+    @Optional() private readonly routes?: GovRouteSelector,
   ) {}
 
   onModuleInit(): void {
@@ -191,7 +193,7 @@ export class NfeModule implements OnModuleInit {
     const timeoutMs = this.config.get<number>('NFE_SEFAZ_TIMEOUT_MS') ?? 30_000;
     this.registry.register(
       new NfeGateway(
-        new SefazSoapClient(),
+        createSefazSoapClient(this.routes),
         new TableAuthorityEndpointResolver(),
         new XmllintSchemaValidator(),
         timeoutMs,

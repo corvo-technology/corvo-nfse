@@ -118,3 +118,88 @@ export function portalRecoveredEmail(
     ),
   ]);
 }
+
+export interface ProxyEmailInput {
+  /** `host:port` of the proxy (no credentials). */
+  proxy: string;
+  since: string;
+}
+
+/** The incident is "our network cannot reach the government" and the backup route is configured. */
+export function proxyInUseEmail(
+  input: ProxyEmailInput & { works: boolean | undefined },
+): RenderedEmail {
+  const rows: Array<[string, string]> = [
+    ['Desde', when(input.since)],
+    ['Proxy de reserva', input.proxy],
+    [
+      'Teste pelo proxy',
+      input.works === undefined
+        ? 'não foi feito'
+        : input.works
+          ? 'funcionou'
+          : 'FALHOU',
+    ],
+  ];
+  return emailLayout(
+    '[Corvo] Chamadas ao governo passando pelo proxy de reserva',
+    [
+      paragraph(
+        input.works === false
+          ? 'Os servidores da Corvo não alcançam o governo e o proxy de reserva também não respondeu ao teste. As notas ficam na fila.'
+          : 'Os servidores da Corvo não alcançam o governo. A partir de agora as chamadas ao governo (NFS-e, NF-e e NFC-e) passam pelo proxy de reserva, fora da nossa rede.',
+      ),
+      details(rows),
+      paragraph(
+        'O que fazer: abra o chamado na Guara mesmo assim. A Corvo volta sozinha para a rota direta quando a conexão normal voltar.',
+      ),
+    ],
+  );
+}
+
+export function proxyBackToDirectEmail(
+  input: ProxyEmailInput & { until: string },
+): RenderedEmail {
+  return emailLayout(
+    '[Corvo] Chamadas ao governo voltaram para a rota direta',
+    [
+      paragraph(
+        'A conexão normal com o governo voltou. As chamadas deixaram de passar pelo proxy de reserva.',
+      ),
+      details([
+        ['Proxy de reserva usado desde', when(input.since)],
+        ['Voltou à rota direta', when(input.until)],
+        ['Duração', formatDuration(input.since, input.until)],
+        ['Proxy', input.proxy],
+      ]),
+    ],
+  );
+}
+
+export function proxyBrokenEmail(input: ProxyEmailInput): RenderedEmail {
+  return emailLayout('[Corvo] O proxy de reserva não está respondendo', [
+    paragraph(
+      'O teste que abre uma conexão com o governo pelo proxy de reserva está falhando. Hoje isso não atrapalha (a rota direta funciona), mas se a nossa rede cair a reserva não vai ajudar.',
+    ),
+    details([
+      ['Desde', when(input.since)],
+      ['Proxy', input.proxy],
+    ]),
+    paragraph(
+      'O que fazer: confira se a máquina do proxy está ligada e se o firewall libera o IP de saída da Guara. Passo a passo em docs/fiscal/runbooks/proxy-governo.md.',
+    ),
+  ]);
+}
+
+export function proxyRecoveredEmail(
+  input: ProxyEmailInput & { until: string },
+): RenderedEmail {
+  return emailLayout('[Corvo] O proxy de reserva voltou a responder', [
+    paragraph('O teste pelo proxy de reserva voltou a funcionar.'),
+    details([
+      ['Fora desde', when(input.since)],
+      ['Voltou', when(input.until)],
+      ['Proxy', input.proxy],
+    ]),
+  ]);
+}
