@@ -21,6 +21,8 @@ x-backend: &backend
     DASHBOARD_URL: ${APP_ORIGIN:?Configure APP_ORIGIN}
     APP_URL: ${APP_ORIGIN:?Configure APP_ORIGIN}/app
     PUBLIC_API_URL: ${PUBLIC_API_URL:?Configure PUBLIC_API_URL}
+    # Everything else the API and the worker read (NFE_*, DATA_RETENTION_ENABLED, TEST_QUEUE_CONCURRENCY,
+    # OUTBOX_*, GOV_RATE_LIMIT_*, ...) comes from the env file above; see deploy/.env.example.
     STRIPE_CHECKOUT_SUCCESS_URL: ${APP_ORIGIN}/app/billing/success
     STRIPE_CHECKOUT_CANCEL_URL: ${APP_ORIGIN}/app/billing/cancel
   init: true
@@ -130,8 +132,10 @@ services:
       dockerfile: deploy/Dockerfile.web
       args:
         NEXT_PUBLIC_API_URL: /api/proxy/v1
+        NEXT_PUBLIC_GA_ID: ${NEXT_PUBLIC_GA_ID:-}
         NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID:-}
-        ALLOW_MISSING_PIXEL: ${ALLOW_MISSING_PIXEL:-}
+        # The web build refuses an empty Meta Pixel id unless this is 1. Self-hosting has no pixel by default.
+        ALLOW_MISSING_PIXEL: ${ALLOW_MISSING_PIXEL:-1}
     environment:
       API_BASE_URL: http://api:3000
       APP_ORIGIN: ${APP_ORIGIN:?Configure APP_ORIGIN}
