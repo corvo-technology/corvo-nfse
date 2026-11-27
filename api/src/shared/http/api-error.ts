@@ -253,10 +253,19 @@ export function apiErrorBody(
   ) {
     details = body.details;
   }
+  // NF-e answers tell the customer who has to act: `communication`, `validation` or `configuration`.
+  const type =
+    statusCode < 500 &&
+    (body.type === 'communication' ||
+      body.type === 'validation' ||
+      body.type === 'configuration')
+      ? body.type
+      : undefined;
   return {
     statusCode,
     code,
     message,
+    ...(type ? { type } : {}),
     ...(details ? { details } : {}),
     requestId,
   };

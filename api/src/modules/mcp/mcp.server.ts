@@ -79,6 +79,7 @@ export function mcpInstructions(selfHosted: boolean): string {
   }
   lines.push(
     'If an invoice is in manual_review, explain it to the person and suggest nfse_review with retry; use discard only after the person explicitly confirms.',
+    'NF-e (goods, model 55) and NFC-e (sale to the consumer, model 65) are only for accounts where each was released, in homologação only. There the shared tools take type "nfe" or "nfce" (nfse_issue, nfse_list, nfse_get, nfse_cancel, nfse_review, nfse_get_download_url, nfse_download_pdf; type "all" in nfse_list). Fill the company with nfe_settings_update, always run nfe_validate (with type "nfe" or "nfce") before nfse_issue, and use nfe_correct (NF-e only: the NFC-e has no correction letter), nfe_number_gaps and nfe_inutilize (model 55 or 65) for the rest. A NFC-e can be cancelled within 30 minutes of the authorization. Corvo does not calculate taxes: the person informs CFOP, NCM and CSOSN.',
     'If the person asks whether their system got a notice (webhook), use webhook_deliveries_list with the invoice_id; for a failed one, offer webhook_delivery_retry.',
     'If a tool says it lacks permission, ask the person to reconnect and tick that option when authorizing.',
   );
@@ -86,6 +87,9 @@ export function mcpInstructions(selfHosted: boolean): string {
 }
 
 type ToolHandler = (params: unknown, ctx: AuthContext) => Promise<unknown>;
+
+/** A tool that is listed only for the connections this says yes to (the call itself checks again). */
+export type ToolVisibility = (ctx: AuthContext) => Promise<boolean>;
 
 export class McpServer {
   private readonly instructions?: string;
@@ -96,23 +100,41 @@ export class McpServer {
 
   private readonly tools = new Map<
     string,
-    { definition: ToolDefinition; handler: ToolHandler }
+    {
+      definition: ToolDefinition;
+      handler: ToolHandler;
+      visibleWhen?: ToolVisibility;
+    }
   >();
 
   /**
    * Registers a tool with its full definition (name, description, inputSchema)
    * so `tools/list` can return real metadata instead of placeholders.
    */
-  registerTool(definition: ToolDefinition, handler: ToolHandler): void {
-    this.tools.set(definition.name, { definition, handler });
+  registerTool(
+    definition: ToolDefinition,
+    handler: ToolHandler,
+    options: { visibleWhen?: ToolVisibility } = {},
+  ): void {
+    this.tools.set(definition.name, {
+      definition,
+      handler,
+      visibleWhen: options.visibleWhen,
+    });
   }
 
-  getToolDefinitions(): ToolDefinition[] {
-    return Array.from(this.tools.values()).map(({ definition }) => ({
-      name: definition.name,
-      description: definition.description,
-      inputSchema: definition.inputSchema,
-    }));
+  /** Every tool, or only the ones this connection may see when `ctx` is given. */
+  async getToolDefinitions(ctx?: AuthContext): Promise<ToolDefinition[]> {
+    const listed: ToolDefinition[] = [];
+    for (const { definition, visibleWhen } of this.tools.values()) {
+      if (ctx && visibleWhen && !(await visibleWhen(ctx))) continue;
+      listed.push({
+        name: definition.name,
+        description: definition.description,
+        inputSchema: definition.inputSchema,
+      });
+    }
+    return listed;
   }
 
   /**
@@ -143,11 +165,11 @@ export class McpServer {
     }
   }
 
-  private dispatch(
+  private async dispatch(
     request: McpRequest,
     id: number | string,
     authContext: AuthContext,
-  ): Promise<McpResponse> | McpResponse {
+  ): Promise<McpResponse> {
     switch (request.method) {
       case 'initialize':
         return {
@@ -166,7 +188,7 @@ export class McpServer {
         return {
           jsonrpc: '2.0',
           id,
-          result: { tools: this.getToolDefinitions() },
+          result: { tools: await this.getToolDefinitions(authContext) },
         };
       case 'tools/call':
         return this.handleToolCall(request, authContext);

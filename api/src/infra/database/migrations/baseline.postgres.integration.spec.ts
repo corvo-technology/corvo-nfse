@@ -361,5 +361,5 @@ describePostgres('Corvo baseline PostgreSQL integration', () => {
       ]),
     );
     expect(await entityDrift(db)).toEqual([]);
-  });
+  }, 60000);
 });

@@ -66,6 +66,7 @@ import { InvoiceIssuancePort } from '@/modules/integrations/domain/invoice-issua
 import { IntegrationInvoiceCanceller } from './application/integration-invoice-canceller';
 import { InvoiceCancellationPort } from '@/modules/integrations/domain/invoice-cancellation.port';
 import { InvoiceBatchService } from './application/invoice-batch.service';
+import { InvoiceTypesController } from './http/invoice-types.controller';
 import { InvoiceController } from './http/invoice.controller';
 import { InvoiceOverviewController } from './http/invoice-overview.controller';
 import { InvoiceOverviewService } from './application/invoice-overview.service';
@@ -80,10 +81,10 @@ import { NfseExternalModule } from '@/infra/external/nfse/nfse-external.module';
 import { EmailModule } from '@/modules/email/email.module';
 import { InvoiceReviewController } from './http/invoice-review.controller';
 import { InvoiceReviewService } from './application/invoice-review.service';
-import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
-import { PortalReachabilityStore } from '@/modules/portal-reachability/reachability.store';
+import { PortalReachabilityReadModule } from '@/modules/portal-reachability/portal-reachability-read.module';
 import { InvoicePackageService } from './application/package/invoice-package.service';
 import { PackageLinkService } from './application/package/package-link.service';
+import { PackageContributorRegistry } from './application/package/package-contributor.registry';
 import { AccountantPackageService } from './application/package/accountant-package.service';
 import {
   InvoicePackageController,
@@ -105,6 +106,7 @@ const ACCOUNTANT_PACKAGE = {
   ],
   providers: [
     InvoicePackageService,
+    PackageContributorRegistry,
     PackageLinkService,
     AccountantPackageService,
     {
@@ -121,6 +123,7 @@ const ACCOUNTANT_PACKAGE = {
 @Module({
   imports: [
     forwardRef(() => InvoiceScheduleModule),
+    PortalReachabilityReadModule,
     BillingUsageModule,
     CreditsModule,
     BullModule.registerQueue(
@@ -158,10 +161,11 @@ const ACCOUNTANT_PACKAGE = {
     EmailModule,
     FiscalEngineModule,
   ],
-  // Static overview route must be registered before InvoiceController's :id.
+  // Static routes (overview, NF-e inutilizations and number gaps) go before InvoiceController's :id.
   controllers: [
     InvoiceOverviewController,
     InvoiceReviewController,
+    InvoiceTypesController,
     InvoiceController,
     DpsSequenceController,
     DpsNumberingController,
@@ -172,8 +176,6 @@ const ACCOUNTANT_PACKAGE = {
     ...ACCOUNTANT_PACKAGE.providers,
     InvoiceOverviewService,
     InvoiceReviewService,
-    FiscalPortalBreaker,
-    PortalReachabilityStore,
     DpsNumberingService,
     {
       provide: INVOICE_OVERVIEW_REPOSITORY,
@@ -239,8 +241,7 @@ const ACCOUNTANT_PACKAGE = {
   ],
   exports: [
     ...ACCOUNTANT_PACKAGE.providers,
-    FiscalPortalBreaker,
-    PortalReachabilityStore,
+    PortalReachabilityReadModule,
     DpsNumberingService,
     OutboxHandlerRegistry,
     OUTBOX_REPOSITORY,

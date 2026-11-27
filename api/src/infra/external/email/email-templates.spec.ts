@@ -5,6 +5,8 @@ import {
   monthlySummaryEmail,
   paymentPendingEmail,
   emailLayout,
+  nfceAuthorizedEmail,
+  nfeAuthorizedEmail,
   formatFromHeader,
   nfseDocumentsReadyEmail,
   otpEmail,
@@ -286,6 +288,73 @@ describe('email templates', () => {
       isTest: false,
     });
     expect(email.subject).not.toMatch(/[\r\n]/);
+  });
+
+  it('writes the NF-e e-mail in plain pt-BR, with the key and the attachments named', () => {
+    const nfe = {
+      companyName: 'Acme',
+      customerName: 'Ana',
+      amount: 'R$ 100,00',
+      number: '10',
+      series: '1',
+      issueDate: '26/11/2026',
+      accessKey: '35261111222333000181550010000000101123456783',
+      isTest: false,
+    };
+    const live = nfeAuthorizedEmail(nfe);
+    expect(live.subject).toBe('Sua nota fiscal eletrônica nº 10 - Acme');
+    expect(live.text).toContain('Chave de acesso: 3526');
+    expect(live.text).toContain('XML da nota');
+    expect(live.text).toContain('DANFE em PDF');
+    expect(live.html).not.toContain('icon-192.png');
+    expect(live.text).not.toContain('homologação');
+    const test = nfeAuthorizedEmail({ ...nfe, isTest: true });
+    expect(test.subject).toBe(
+      '[TESTE] Sua nota fiscal eletrônica nº 10 - Acme',
+    );
+    expect(test.text).toContain('não tem valor fiscal');
+  });
+
+  it('writes the NFC-e e-mail with the cupom and the XML, with or without the name', () => {
+    const nfce = {
+      companyName: 'Acme',
+      customerName: '',
+      amount: 'R$ 20,00',
+      number: '31',
+      series: '1',
+      issueDate: '26/11/2026',
+      accessKey: '35261111222333000181650010000000311123456780',
+      isTest: false,
+    };
+    const live = nfceAuthorizedEmail(nfce);
+    expect(live.subject).toBe('Sua NFC-e nº 31 - Acme');
+    expect(live.text).toContain('Olá! A empresa Acme');
+    expect(live.text).toContain('DANFCE');
+    expect(live.text).toContain('Chave de acesso: 3526');
+    expect(live.text).not.toContain('homologação');
+    const test = nfceAuthorizedEmail({
+      ...nfce,
+      customerName: 'Ana',
+      isTest: true,
+    });
+    expect(test.subject).toBe('[TESTE] Sua NFC-e nº 31 - Acme');
+    expect(test.text).toContain('Olá, Ana!');
+    expect(test.text).toContain('não tem valor fiscal');
+  });
+
+  it('escapes what the issuer typed in the NF-e e-mail', () => {
+    const email = nfeAuthorizedEmail({
+      companyName: 'A & B <x>',
+      customerName: '"Ana"',
+      amount: 'R$ 1,00',
+      number: '1',
+      series: '1',
+      issueDate: '26/11/2026',
+      accessKey: '1',
+      isTest: false,
+    });
+    expect(email.html).toContain('A &amp; B &lt;x&gt;');
+    expect(email.html).not.toContain('<x>');
   });
 
   it('lays out plain blocks', () => {

@@ -10,6 +10,7 @@ import type { Company, Certificate } from "@/lib/types";
 import { CompanyForm } from "@/components/dashboard/company-form";
 import { DpsSequenceCard } from "@/components/companies/dps-sequence-card";
 import { AccountantPackageCard } from "@/components/companies/accountant-package-card";
+import { NfeSettingsForm } from "@/components/companies/nfe-settings-form";
 import { CertificateUpload } from "@/components/dashboard/certificate-upload";
 import { CompanyFiscalGuide } from "@/components/dashboard/company-fiscal-guide";
 import { CompanyFiscalSetup } from "@/components/dashboard/company-fiscal-setup";
@@ -26,7 +27,7 @@ export default function CompanyDetailPage() {
   const { id } = useParams<{ id: string }>(); const router = useRouter();
   const t = useTranslations("CompanyDetail"); const tc = useTranslations("Companies"); const locale = useLocale();
   const apiError = useApiErrorText();
-  const { can } = useAuth();
+  const { can, features } = useAuth();
   const [company, setCompany] = useState<Company | null>(null); const [certs, setCerts] = useState<Certificate[]>([]);
   const [error, setError] = useState<string | null>(null); const [revision, setRevision] = useState(0);
   const [editing, setEditing] = useState(false); const [uploading, setUploading] = useState(false);
@@ -85,11 +86,12 @@ export default function CompanyDetailPage() {
         </Card>
     )}
     <CompanyFiscalGuide company={company} />
-    <details className="group"><summary className="cursor-pointer text-sm underline">{t("fiscalAdvanced")}</summary><div className="mt-4"><CompanyFiscalSetup company={company} /></div></details>
+    <details id="fiscal" className="group scroll-mt-24"><summary className="cursor-pointer text-sm underline">{t("fiscalAdvanced")}</summary><div className="mt-4"><CompanyFiscalSetup company={company} /></div></details>
     {certificateView && <Card id="certificado" className={`flex scroll-mt-24 flex-col gap-4 p-5`}><div className="flex items-center justify-between gap-4"><h2 className="text-base font-medium">{t("certificates")}</h2>{can("nfse.certificates.manage") && <Button onClick={() => setUploading(true)}>{t("upload")}</Button>}</div>{certs.length === 0 ? <p className="text-sm text-text-3">{t("noCertificates")}</p> : certs.map((cert) => <div key={cert.id} className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4"><div><p>{cert.subject}</p><p className="font-mono text-xs text-text-3">{cert.serialNumber}</p><p className="text-sm text-text-3">{t("validUntil")}: {date(cert.validUntil)} · {t(new Date(cert.validUntil).getTime() < now ? "expired" : cert.status)}</p>{new Date(cert.validUntil).getTime() >= now && new Date(cert.validUntil).getTime() - now < 30 * 86400000 && <p className="text-[12.5px] text-warn">{t("expiresSoon")}</p>}</div>{can("nfse.certificates.manage") && <Button variant="danger" onClick={() => setConfirmation({ kind: "certificate", id: cert.id })}>{t("revoke")}</Button>}</div>)}</Card>}
     <Modal open={editing} onClose={() => setEditing(false)} title={t("edit")} wide><CompanyForm company={company} onCancel={() => setEditing(false)} onSave={async (input) => { setCompany(await companies.update(id, input)); setEditing(false); }} /></Modal>
     <DpsSequenceCard companyId={id} canManage={can("nfse.companies.manage")} environment={company.environment} />
     <AccountantPackageCard companyId={id} canManage={can("nfse.companies.manage")} environment={company.environment} />
+    {(features?.nfe || features?.nfce) && can("nfe.documents.view") && <NfeSettingsForm nfce={features?.nfce === true} companyId={id} state={company.address?.state} canManage={can("nfe.documents.manage")} />}
     <Modal open={uploading} onClose={() => setUploading(false)} title={t("upload")}><CertificateUpload companyId={id} onUploaded={(cert) => { setCerts([cert]); setUploading(false); setRevision((value) => value + 1); }} /></Modal>
     <Modal open={confirmation !== null} onClose={() => { if (!busy) setConfirmation(null); }} title={t("confirmTitle")}><p className="mb-5 text-sm text-text-3">{t(confirmation?.kind === "company" ? "confirmCompany" : "confirmCertificate")}</p><Button variant="danger" loading={busy} onClick={remove}>{t("confirm")}</Button></Modal>
   </div>;

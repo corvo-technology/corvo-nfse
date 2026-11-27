@@ -20,6 +20,24 @@ export function RequirePermission(permission: RequiredTenantPermission) {
   );
 }
 
+/** The permission the 403 names, when the route accepts more than one (see `RequireDocumentPermission`). */
+export const PERMISSION_DENIED_AS = 'permissionDeniedAs';
+
+/**
+ * For the `/v1/invoices` routes that serve more than one kind of document: the guard lets in a key
+ * with the permission of either type, and the router checks the one of the document it reaches.
+ * A caller with neither is told about the NFS-e permission, as before NF-e existed.
+ */
+export function RequireDocumentPermission(permissions: {
+  nfse: TenantPermission;
+  nfe: TenantPermission;
+}) {
+  return applyDecorators(
+    RequirePermission([permissions.nfse, permissions.nfe]),
+    SetMetadata(PERMISSION_DENIED_AS, permissions.nfse),
+  );
+}
+
 export function AllowPlatformAdminPermissionBypass() {
   return SetMetadata(ALLOW_PLATFORM_ADMIN_PERMISSION, true);
 }

@@ -19,6 +19,11 @@ import { CompanyService } from './application/company.service';
 import { CompanyFiscalProfileService } from './application/company-fiscal-profile.service';
 import { CompanyServiceTaxProfileService } from './application/company-service-tax-profile.service';
 import { CompanyController } from './http/company.controller';
+import { CompanyNfeSettingsController } from './http/company-nfe-settings.controller';
+import { CompanyNfeSettingsOrmEntity } from './infra/company-nfe-settings.orm-entity';
+import { TypeOrmCompanyNfeSettingsRepository } from './infra/typeorm-company-nfe-settings.repository';
+import { ICompanyNfeSettingsRepository } from './domain/company-nfe-settings.repository';
+import { CompanyNfeSettingsService } from './application/company-nfe-settings.service';
 import { CnpjController } from './http/cnpj.controller';
 import { MunicipalityAgreementService } from './application/municipality-agreement.service';
 import { MunicipalityAgreementPort } from './domain/municipality-agreement';
@@ -32,10 +37,15 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
       CompanyOrmEntity,
       CompanyFiscalProfileOrmEntity,
       CompanyServiceTaxProfileOrmEntity,
+      CompanyNfeSettingsOrmEntity,
     ]),
     forwardRef(() => CertificateModule),
   ],
-  controllers: [CompanyController, CnpjController],
+  controllers: [
+    CompanyController,
+    CompanyNfeSettingsController,
+    CnpjController,
+  ],
   providers: [
     {
       provide: ICompanyRepository,
@@ -48,6 +58,10 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
     {
       provide: IServiceTaxProfileRepository,
       useClass: TypeOrmCompanyServiceTaxProfileRepository,
+    },
+    {
+      provide: ICompanyNfeSettingsRepository,
+      useClass: TypeOrmCompanyNfeSettingsRepository,
     },
     {
       provide: SimplesRegistryPort,
@@ -64,6 +78,7 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
     CompanyDomainService,
     CompanyFiscalProfileService,
     CompanyServiceTaxProfileService,
+    CompanyNfeSettingsService,
   ],
   exports: [
     MunicipalityAgreementService,
@@ -71,6 +86,8 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
     CompanyDomainService,
     CompanyFiscalProfileService,
     CompanyServiceTaxProfileService,
+    CompanyNfeSettingsService,
+    ICompanyNfeSettingsRepository,
     ICompanyRepository,
     IFiscalProfileRepository,
     IServiceTaxProfileRepository,

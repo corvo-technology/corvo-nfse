@@ -6,22 +6,32 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { NfseGetDownloadUrlInput } from '../dto/tool-input.dto';
 import { findInvoiceByAccessKey } from './nfse-query.tool';
+import { TYPE_PROPERTY } from './nfe.tools';
 
 export const NFSE_GET_DOWNLOAD_URL_TOOL = {
   name: 'nfse_get_download_url',
   description:
-    'Generate a temporary signed download URL for the PDF or XML of an authorized NFS-e invoice. The URL expires in one hour.',
+    'Generate a temporary signed download URL for the PDF or XML of an authorized NFS-e invoice. The URL expires in one hour. With type "nfe" or "nfce" send invoice_id (the XML is the authorized nfeProc; the PDF is the DANFE, or the DANFCE of 80 mm for a NFC-e).',
   inputSchema: {
     type: 'object',
     properties: {
-      access_key: { type: 'string', description: 'The NFS-e access key' },
+      type: TYPE_PROPERTY,
+      invoice_id: {
+        type: 'string',
+        description:
+          'UUID of the NF-e or NFC-e. Only with type "nfe" or "nfce".',
+      },
+      access_key: {
+        type: 'string',
+        description: 'The NFS-e access key (required for NFS-e)',
+      },
       format: {
         type: 'string',
         enum: ['pdf', 'xml'],
         description: 'Document format to download',
       },
     },
-    required: ['access_key', 'format'],
+    required: ['format'],
   },
 } as const;
 

@@ -15,7 +15,7 @@ const EN_INTRO = `# Corvo
 
 > Corvo is a REST API and MCP server to issue Brazilian service invoices (NFS-e) on the national standard. It is built for developers, SaaS products, ERPs and AI agents that need to issue notes for MEI and Simples Nacional companies without learning the tax integration.
 
-Corvo registers issuer companies, stores their A1 certificates, calculates taxes before issuing, issues the NFS-e asynchronously, tracks every status change and delivers XML and PDF by link, webhook or email. Corvo covers NFS-e (services) only, not NF-e or NFC-e (goods and retail).
+Corvo registers issuer companies, stores their A1 certificates, calculates taxes before issuing, issues the NFS-e asynchronously, tracks every status change and delivers XML and PDF by link, webhook or email. Corvo covers NFS-e (services). NF-e (goods, model 55) exists only in test mode (homologação), for Simples Nacional companies in SP and SVRS states, in accounts where it was released; it uses the same \`/v1/invoices\` routes with \`type: "nfe"\` (see the NF-e docs pages) and Corvo does not calculate its taxes. NFC-e (retail) is not covered.
 
 ## Quick facts
 
@@ -47,7 +47,7 @@ const PT_INTRO = `# Corvo
 
 > ${SITE_COPY.pt.tagline}
 
-A Corvo cadastra empresas emissoras, guarda os certificados A1, calcula os tributos antes de emitir, emite a NFS-e de forma assíncrona, acompanha cada mudança de status e entrega XML e PDF por link, webhook ou e-mail. A Corvo cobre só NFS-e (serviços), não NF-e nem NFC-e.
+A Corvo cadastra empresas emissoras, guarda os certificados A1, calcula os tributos antes de emitir, emite a NFS-e de forma assíncrona, acompanha cada mudança de status e entrega XML e PDF por link, webhook ou e-mail. A Corvo cobre NFS-e (serviços). A NF-e (mercadorias, modelo 55) existe só em teste (homologação), para empresas do Simples Nacional em SP e nos estados da SVRS, nas contas em que foi liberada; usa as mesmas rotas \`/v1/invoices\` com \`type: "nfe"\` (veja as páginas de NF-e da documentação) e a Corvo não calcula os impostos dela. A NFC-e (varejo) não é coberta.
 
 ## Fatos rápidos
 

@@ -1,3 +1,4 @@
+import type { DocumentRef } from '@/modules/fiscal-core/domain/document-type';
 import { TypeOrmRepositoryHelper } from '@/infra/persistence/typeorm/typeorm-repository.helper';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { assertTenantOwnership } from '@/infra/persistence/typeorm/tenant-scope';
@@ -94,6 +95,27 @@ export class TypeOrmCreditTransactionRepository implements ICreditTransactionRep
         where: {
           reservedInvoiceId: invoiceId,
           tenantId,
+          isReservation: true,
+        },
+      });
+      return entity ? this.mapper.toDomain(entity) : null;
+    });
+  }
+
+  async findByReservedDocument(
+    ref: DocumentRef,
+  ): Promise<CreditTransaction | null> {
+    if (ref.type === 'nfse')
+      return this.findByReservedInvoiceId(ref.id, ref.tenantId);
+    // The NFC-e lives in the NF-e table: its reservation uses the same column.
+    if (ref.type !== 'nfe' && ref.type !== 'nfce')
+      throw new Error(`No credit reservation for ${String(ref.type)}`);
+    return runWithTenant(ref.tenantId, async () => {
+      requireTenantId(ref.tenantId);
+      const entity = await this.repo.findOne({
+        where: {
+          reservedNfeDocumentId: ref.id,
+          tenantId: ref.tenantId,
           isReservation: true,
         },
       });

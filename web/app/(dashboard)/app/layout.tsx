@@ -18,7 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations();
-  const { isAuthenticated, isLoading, status, refreshSession, tenantId, can, fiscalEnvironment } = useAuth();
+  const { isAuthenticated, isLoading, status, refreshSession, tenantId, can, fiscalEnvironment, features } = useAuth();
   useCompleteRegistration();
 
   // The drawer is tied to the path it was opened on, so navigating closes it
@@ -33,7 +33,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     "/app/companies": t("Companies.title"),
     "/app/invoices": t("Invoices.title"),
     "/app/invoices/new": t("Invoices.newTitle"),
+    "/app/nfe": t("Nfe.title"),
+    "/app/nfe/new": t("Nfe.new.title"),
+    "/app/nfe/number-gaps": t("Nfe.gaps.title"),
+    "/app/customers": t("Customers.title"),
     "/app/integrations": t("Integrations.title"),
+    "/app/schedules": t("Schedules.title"),
     "/app/webhooks": t("Webhooks.title"),
     "/app/api-keys": t("ApiKeys.title"),
     "/app/agents": t("Agents.title"),
@@ -64,6 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const path = window.location.pathname;
       if (/^\/app\/companies\/[^/]+$/.test(path)) router.replace("/app/companies");
       else if (/^\/app\/invoices\/(?!new$)[^/]+$/.test(path)) router.replace("/app/invoices");
+      else if (/^\/app\/nfe\/(?!new$|number-gaps$)[^/]+$/.test(path)) router.replace("/app/nfe");
     };
     window.addEventListener("fiscal-environment-change", onEnvironmentChange);
     return () => window.removeEventListener("fiscal-environment-change", onEnvironmentChange);
@@ -131,7 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         >
           <div className="mx-auto w-full max-w-[1120px] px-4 py-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
             {can("nfse.invoices.view") && <PortalStatusBanner environment={`${tenantId}:${fiscalEnvironment}`} />}
-            <div key={`${tenantId}:${fiscalEnvironment}:${permission ?? "overview"}`}>{canOpenPath(pathname, can) ? children : <NoAccess />}</div>
+            <div key={`${tenantId}:${fiscalEnvironment}:${permission ?? "overview"}`}>{canOpenPath(pathname, can, features) ? children : <NoAccess />}</div>
           </div>
         </main>
       </div>

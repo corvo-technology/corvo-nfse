@@ -29,7 +29,9 @@ export function toPage<T>(body: { data: T[]; pagination?: { limit?: number; hasM
 export interface AvailableTenant { tenantId: string; membershipId: string; role: string; establishmentName: string }
 export interface AuthContext { authUserId: string; activeTenantId: string; role: string; permissions: string[]; availableTenants: AvailableTenant[] }
 export interface Profile { name: string; email: string }
-export interface SessionPayload { status: "authenticated"; context: AuthContext; profile?: Profile; activeTenantId: string; availableTenants: AvailableTenant[]; permissions: string[]; isPlatformAdmin?: boolean; expiresAt: string; csrfToken: string }
+/** What the workspace may use besides the basics; today only NF-e (released per account by the platform). */
+export interface SessionFeatures { nfe: boolean; nfce?: boolean }
+export interface SessionPayload { status: "authenticated"; context: AuthContext; profile?: Profile; activeTenantId: string; availableTenants: AvailableTenant[]; permissions: string[]; isPlatformAdmin?: boolean; features?: SessionFeatures; expiresAt: string; csrfToken: string }
 export interface MagicLinkChallenge { challengeId: string; expiresAt: string; resendAvailableAt: string }
 export type OAuthProvider = "google" | "github";
 export type OAuthProviders = Record<OAuthProvider, boolean>;

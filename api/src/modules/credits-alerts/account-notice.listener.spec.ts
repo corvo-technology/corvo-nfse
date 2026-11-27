@@ -169,6 +169,29 @@ describe('AccountNoticeListener', () => {
     }
   });
 
+  it('warns the owner once that an off-line NFC-e is close to its deadline', async () => {
+    const notice = {
+      kind: 'nfce-contingency-deadline',
+      documentId: 'n1',
+      number: 7,
+      deadlineAt: new Date('2026-11-27T13:00:00Z'),
+    } as const;
+    const first = build();
+    await first.listener.handle(accountNotice('t1', notice));
+    const sent = first.email.enqueueNotice.mock.calls as unknown as Array<
+      [unknown, { subject: string; html: string }]
+    >;
+    expect(first.recipients.ownerEmailsFor).toHaveBeenCalledWith('t1');
+    expect(sent[0][1].subject).toBe(
+      'Uma NFC-e em contingência ainda não foi enviada',
+    );
+    expect(sent[0][1].html).toContain('NFC-e 7');
+    expect(sent[0][1].html).toContain('nfe/n1');
+    const again = build({ first: false });
+    await again.listener.handle(accountNotice('t1', notice));
+    expect(again.email.enqueueNotice).not.toHaveBeenCalled();
+  });
+
   it('does nothing when the workspace has no recipients', async () => {
     const { listener, email } = build({ admins: [] });
     await listener.handle(

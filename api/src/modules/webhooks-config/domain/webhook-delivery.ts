@@ -9,6 +9,8 @@ export interface WebhookDelivery {
   webhookConfigId: string;
   /** The invoice the event is about; absent for events like `webhook.test`. */
   invoiceId?: string;
+  /** The NF-e (or other fiscal document that is not an NFS-e invoice) the event is about. */
+  documentId?: string;
   eventType: string;
   environment: 'live' | 'test';
   url: string;

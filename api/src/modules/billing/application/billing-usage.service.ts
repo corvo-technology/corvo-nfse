@@ -2,6 +2,7 @@ import { Injectable, Optional } from '@nestjs/common';
 import { ApplicationEventBus } from '@/shared/events/application-event-bus';
 import { accountNotice } from '@/shared/events/account-notice.events';
 
+import type { DocumentRef } from '@/modules/fiscal-core/domain/document-type';
 import { BillingRepository } from '../domain/billing.repository';
 import { BillingPeriod, BillingRuleError } from '../domain/billing-period';
 import { hasPaidAccess } from '../domain/billing-policy';
@@ -79,6 +80,23 @@ export class BillingUsageService {
     if (!['authorized', 'rejected', 'failed', 'cancelled'].includes(status))
       return;
     const periodId = await this.repository.reservedPeriod(invoiceId, tenantId);
+    await this.settlePeriod(periodId, tenantId, status === 'authorized');
+  }
+
+  /** Same as `settle` for any fiscal document: an NF-e that ends `denied` or `discarded` also gives the note back. */
+  async settleDocument(ref: DocumentRef, status: string): Promise<void> {
+    if (ref.type === 'nfse') return this.settle(ref.id, ref.tenantId, status);
+    if (!['authorized', 'rejected', 'denied', 'discarded'].includes(status))
+      return;
+    const periodId = await this.repository.reservedPeriodFor(ref);
+    await this.settlePeriod(periodId, ref.tenantId, status === 'authorized');
+  }
+
+  private async settlePeriod(
+    periodId: string | null,
+    tenantId: string,
+    authorized: boolean,
+  ): Promise<void> {
     if (!periodId) return;
     const state = await this.repository.period(periodId, tenantId);
     if (!state)
@@ -88,7 +106,7 @@ export class BillingUsageService {
         'not_found',
       );
     const period = new BillingPeriod(state);
-    period.settle(status === 'authorized');
+    period.settle(authorized);
     await this.repository.savePeriod(period.state, tenantId);
   }
 }

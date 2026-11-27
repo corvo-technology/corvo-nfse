@@ -54,6 +54,10 @@ export type PlatformUserDetail = {
       periodEnd: string;
     } | null;
     avulsoBalance: number;
+    /** When NF-e was released for the workspace (null = off). */
+    nfeEnabledAt: string | null;
+    /** When NFC-e was released for the workspace (null = off). */
+    nfceEnabledAt: string | null;
     companies: {
       id: string;
       taxId: string;
@@ -131,16 +135,36 @@ export type PlatformAttention = {
   }[];
 };
 
+/** One UF whose NF-e goes through the SVC right now. */
+export type PlatformSvcState = {
+  uf: string;
+  tpAmb: 1 | 2;
+  authority: 'SVCAN' | 'SVCRS';
+  enteredAt: string | null;
+  dhCont: string | null;
+};
+
 export type PlatformAuditEvent = {
   id: string;
   actorEmail: string;
-  action: 'credit_grant' | 'user_viewed';
+  action:
+    | 'credit_grant'
+    | 'user_viewed'
+    | 'nfe_access_changed'
+    | 'nfce_access_set'
+    | 'svc_forced_exit';
   targetTenantId: string | null;
   targetUserId: string | null;
   reason: string | null;
   payload: Record<string, unknown>;
   success: boolean;
   createdAt: string;
+};
+
+export type NfeAccessResult = {
+  tenantId: string;
+  enabled: boolean;
+  enabledAt: string | null;
 };
 
 export type CreditGrantResult = {

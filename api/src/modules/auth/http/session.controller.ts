@@ -23,6 +23,7 @@ import { extractCookie } from '../application/cookie-reader';
 import { CookieSessionService } from '../application/cookie-session.service';
 import { CsrfGuard } from '../application/csrf.guard';
 import { SwitchTenantDto } from '../application/auth.dto';
+import { NfeAccessPolicy } from '@/modules/fiscal-core/application/nfe-access.policy';
 import { PlatformAdminPolicy } from '../application/platform-admin.policy';
 import type { AuthSession } from '../domain/auth-session';
 
@@ -43,7 +44,18 @@ export class SessionController {
     private readonly cookies: CookiePolicyService,
     private readonly users: AuthUserService,
     private readonly platformAdmin: PlatformAdminPolicy,
+    private readonly nfeAccess: NfeAccessPolicy,
   ) {}
+
+  /** What the app may show for the workspace. Only a flag per feature, nothing else about the tenant. */
+  private async features(tenantId: string | null | undefined) {
+    if (!tenantId) return { nfe: false, nfce: false };
+    const [nfe, nfce] = await Promise.all([
+      this.nfeAccess.isEnabled(tenantId),
+      this.nfeAccess.isEnabled(tenantId, 'nfce'),
+    ]);
+    return { nfe, nfce };
+  }
 
   /** Who is signed in, so the app can greet them and ask for a name when there is none. */
   private async profile(authUserId: string) {
@@ -69,6 +81,7 @@ export class SessionController {
       activeTenantId: session.activeTenantId,
       availableTenants: context.availableTenants,
       permissions: context.permissions,
+      features: await this.features(session.activeTenantId),
       expiresAt: session.expiresAt.toISOString(),
       csrfToken: this.sessions.generateCsrfToken(session.id),
     });
@@ -107,6 +120,7 @@ export class SessionController {
       activeTenantId: updated.activeTenantId,
       availableTenants: context.availableTenants,
       permissions: context.permissions,
+      features: await this.features(updated.activeTenantId),
       expiresAt: updated.expiresAt.toISOString(),
       csrfToken: this.sessions.generateCsrfToken(updated.id),
     });

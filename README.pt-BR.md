@@ -51,7 +51,7 @@ O Corvo é uma API REST e um servidor MCP para emitir NFS-e no padrão nacional,
 | Planos e créditos | Um ambiente de teste gratuito, planos pagos com franquia mensal e créditos avulsos por nota. Preços públicos em `GET /v1/plans`. |
 
 > [!NOTE]
-> O Corvo cobre apenas **NFS-e (serviços)**, não NF-e nem NFC-e. Veja as [limitações fiscais](docs/fiscal/limitations.md) para o que ainda não é coberto.
+> O Corvo cobre **NFS-e (serviços)**. A NF-e (mercadorias, modelo 55) existe só em teste (homologação), nas contas em que foi liberada, pelas mesmas rotas `/v1/invoices` com `type: "nfe"`; a NFC-e não é coberta. Veja as [limitações fiscais](docs/fiscal/limitations.md) para o que ainda não é coberto.
 
 ## Como funciona
 

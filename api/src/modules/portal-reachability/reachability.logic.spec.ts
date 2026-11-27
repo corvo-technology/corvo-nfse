@@ -48,6 +48,49 @@ describe('classifyProbes', () => {
     ).toBe('no_internet');
   });
 
+  it('says the portal is down when a SEFAZ answers but the NFS-e hosts and the gov control do not', () => {
+    const govBlocked = {
+      sefin: false,
+      adn: false,
+      govControl: false,
+      externalControl: true,
+    };
+    expect(
+      classifyProbes({ ...govBlocked, authorities: { 'nfe-sp-2': true } }),
+    ).toBe('portal_down');
+    expect(
+      classifyProbes({
+        ...govBlocked,
+        authorities: { 'nfe-sp-2': false, 'nfce-sp-2': true },
+      }),
+    ).toBe('portal_down');
+  });
+
+  it('keeps the old answers when no SEFAZ answers or none is probed', () => {
+    const govBlocked = {
+      sefin: false,
+      adn: false,
+      govControl: false,
+      externalControl: true,
+    };
+    expect(classifyProbes({ ...govBlocked, authorities: {} })).toBe(
+      'gov_unreachable_from_us',
+    );
+    expect(
+      classifyProbes({ ...govBlocked, authorities: { 'nfe-sp-2': false } }),
+    ).toBe('gov_unreachable_from_us');
+    expect(
+      classifyProbes({
+        ...govBlocked,
+        externalControl: false,
+        authorities: { 'nfe-sp-2': false },
+      }),
+    ).toBe('no_internet');
+    expect(classifyProbes({ ...up, authorities: { 'nfe-sp-2': false } })).toBe(
+      'ok',
+    );
+  });
+
   it('knows which classifications are on our side', () => {
     expect(isOurSide('gov_unreachable_from_us')).toBe(true);
     expect(isOurSide('no_internet')).toBe(true);

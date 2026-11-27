@@ -49,6 +49,20 @@ const TAX_REGIME_KINDS = [
   'UNKNOWN',
 ];
 const REVIEW_STATUS = ['unreviewed', 'approved', 'rejected'];
+const NFE_STATUS_VALUES = [
+  'queued',
+  'contingency_pending',
+  'processing',
+  'authorized',
+  'rejected',
+  'denied',
+  'retry_pending',
+  'reconciliation_required',
+  'manual_review',
+  'cancelling',
+  'cancelled',
+  'discarded',
+];
 
 /** Every error code the API can return in `code`, grouped by where it comes from. */
 export const API_ERROR_CODES = [
@@ -313,6 +327,410 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     catalogVersion: nullable(str()),
     createdAt: dateTime(),
   }),
+  NfeSettings: obj({
+    companyId: uuid(),
+    stateRegistration: nullable(str({ example: '110042490114' })),
+    crt: nullable(
+      int({ enum: [1, 4], description: '1 Simples Nacional, 4 MEI.' }),
+    ),
+    defaultSeries: int({ minimum: 0, maximum: 999 }),
+    nfceDefaultSeries: int({
+      minimum: 0,
+      maximum: 999,
+      description: 'Series of the NFC-e (model 65).',
+    }),
+    nfceAutoOffline: bool({
+      description:
+        'Issue the NFC-e off-line (contingency) by itself when the SEFAZ cannot be reached. Off by default.',
+    }),
+    defaultNatOp: str({ example: 'Venda de mercadoria' }),
+    defaultCsosn: str({ enum: ['102', '400'] }),
+    defaultOrigin: int({ minimum: 0, maximum: 8 }),
+    defaultPisCst: str({ example: '49' }),
+    defaultCofinsCst: str({ example: '49' }),
+    enabledAt: nullable(dateTime()),
+    missing: array(
+      str({
+        enum: [
+          'address_street',
+          'address_number',
+          'address_district',
+          'address_zip',
+          'address_city_code',
+          'address_state',
+          'state_registration',
+          'crt',
+        ],
+      }),
+    ),
+  }),
+  NfeValidation: obj(
+    {
+      valid: bool({ enum: [true] }),
+      accessKeyPreview: str({
+        minLength: 44,
+        maxLength: 44,
+        description:
+          'The key the next NF-e would get. The number is only read, not reserved, and `cNF` is random, so a real emission gets another key.',
+      }),
+      xml: str({
+        description:
+          'The preview XML with a placeholder signature. Only with `includeXml=true`.',
+      }),
+    },
+    ['xml'],
+  ),
+  NfeAccepted: obj(
+    {
+      type: str({ enum: ['nfe', 'nfce'] }),
+      id: uuid(),
+      status: str({ enum: NFE_STATUS_VALUES }),
+      replayed: bool({
+        enum: [true],
+        description:
+          'Present (and true) when the same `Idempotency-Key` with the same body had already created this NF-e: nothing new was written.',
+      }),
+    },
+    ['replayed'],
+  ),
+  NfceOfflineAccepted: obj(
+    {
+      type: str({ enum: ['nfce'] }),
+      id: uuid(),
+      status: str({ enum: NFE_STATUS_VALUES }),
+      replayed: bool({
+        enum: [true],
+        description:
+          'Present (and true) on the `200` answer to a repeated `Idempotency-Key`: nothing new was issued.',
+      }),
+      accessKey: str({
+        description:
+          'The 44-character key of the NFC-e (`tpEmis` 9 at position 35).',
+      }),
+      qrCode: str({
+        description:
+          'The QR Code v3 text of the off-line NFC-e, with the signature of the issuer. It is printed on the DANFCE.',
+      }),
+      xmlUrl: str({
+        description:
+          'Path to download the signed XML (`GET /invoices/{id}/xml`).',
+      }),
+      pdfUrl: str({
+        description:
+          'Path to download the DANFCE with the notice "EMITIDA EM CONTINGÊNCIA" (`GET /invoices/{id}/pdf`).',
+      }),
+    },
+    ['replayed'],
+  ),
+  NfeError: obj(
+    {
+      type: str({
+        enum: ['communication', 'validation', 'configuration'],
+        description:
+          '`validation`: the SEFAZ rejected or denied the note, fix what the message says. `communication`: the SEFAZ did not answer; Corvo checks by the key, you do not resend. `configuration`: complete the company or the release.',
+      }),
+      code: str({
+        description:
+          'The cStat of a SEFAZ rejection (`225`), or a Corvo code (`SEFAZ_NO_ANSWER`, `SEFAZ_UNAVAILABLE`, `CERTIFICATE_NOT_FOUND`...).',
+      }),
+      message: str(),
+      hint: str({ description: 'What to do about a known SEFAZ rejection.' }),
+    },
+    ['hint'],
+  ),
+  Nfe: obj(
+    {
+      type: str({
+        enum: ['nfe', 'nfce'],
+        description:
+          '`nfe` (model 55) or `nfce` (model 65). An NFS-e has no `type` field: a document without it is an NFS-e.',
+      }),
+      id: uuid(),
+      companyId: uuid(),
+      environment: str({ enum: ['test', 'live'] }),
+      model: int({ enum: [55, 65] }),
+      status: str({ enum: NFE_STATUS_VALUES }),
+      series: nullable(int()),
+      number: nullable(
+        int({
+          description:
+            'Assigned when the first attempt is made; it never changes.',
+        }),
+      ),
+      accessKey: nullable(
+        str({
+          minLength: 44,
+          maxLength: 44,
+          description:
+            'The 44-character key of the current attempt. A resubmission after a rejection draws a new key and keeps the number.',
+        }),
+      ),
+      issuedAt: nullable(dateTime()),
+      authorizedAt: nullable(dateTime()),
+      protocol: nullable(str()),
+      cStat: nullable(str()),
+      xMotivo: nullable(str()),
+      natOp: str(),
+      recipient: nullable({
+        type: 'object',
+        additionalProperties: true,
+        description:
+          'The recipient as it went in the XML. `null` on a NFC-e sold to an unidentified consumer.',
+      }),
+      items: array({
+        type: 'object',
+        additionalProperties: true,
+        description:
+          'Each item with its amounts as 2-place strings and the Simples tax groups used.',
+      }),
+      totals: obj({
+        vProd: str(),
+        vDesc: str(),
+        vFrete: str(),
+        vSeg: str(),
+        vOutro: str(),
+        vNF: str(),
+      }),
+      payment: {
+        type: 'object',
+        additionalProperties: true,
+        description: 'The payments (`tPag`, `amount`) and the change.',
+      },
+      additionalInfo: nullable(str()),
+      externalId: nullable(str()),
+      cancelReason: nullable(
+        str({
+          description: 'The justification of the cancellation asked for.',
+        }),
+      ),
+      cancelRequestedAt: nullable(dateTime()),
+      documentsReady: bool({
+        description:
+          'True once the XML (`nfeProc`) and the DANFE can be downloaded; they stay available after a cancellation.',
+      }),
+      documentsReadyAt: nullable(dateTime()),
+      emailStatus: nullable(
+        str({
+          enum: ['queued', 'sent', 'failed'],
+          description:
+            'The e-mail with the XML and the DANFE to the recipient.',
+        }),
+      ),
+      emailSentAt: nullable(dateTime()),
+      attempt: int({
+        description:
+          'How many times the XML was built and signed (1 on the first send).',
+      }),
+      lastError: { ...nullable({ type: 'object' }), allOf: [ref('NfeError')] },
+      nextCheckAt: nullable(
+        dateTime({
+          description: 'When Corvo looks at the SEFAZ again, if it does.',
+        }),
+      ),
+      qrCode: nullable(
+        str({
+          description:
+            'NFC-e only: the QR Code (`infNFeSupl`) of the current attempt. Absent on an NF-e.',
+        }),
+      ),
+      urlChave: nullable(
+        str({
+          description:
+            'NFC-e only: the address to consult the note by its key (`infNFeSupl`). Absent on an NF-e.',
+        }),
+      ),
+      emissionType: int({
+        description:
+          'NF-e only: the `tpEmis` of the current key. `1` normal, `6` issued through the SVC-AN and `7` through the SVC-RS (the SEFAZ Virtual de Contingência, used when the SEFAZ of the state is out). Absent on a NFC-e.',
+      }),
+      contingencyAt: nullable(
+        dateTime({
+          description:
+            'When it was issued in contingency (`dhCont`): off-line for a NFC-e (`tpEmis` 9) or through the SVC for a NF-e (`tpEmis` 6 or 7). `null` when it was issued normally.',
+        }),
+      ),
+      contingencyReason: nullable(
+        str({
+          description:
+            'The reason of the contingency emission (`xJust`), for a NFC-e off-line or a NF-e through the SVC.',
+        }),
+      ),
+      contingencyDeadlineAt: nullable(
+        dateTime({
+          description:
+            'NFC-e only: the limit (24 hours) to transmit an off-line NFC-e. Corvo warns by e-mail and webhook after 20 hours.',
+        }),
+      ),
+      createdAt: dateTime(),
+      updatedAt: dateTime(),
+    },
+    [
+      'qrCode',
+      'urlChave',
+      'emissionType',
+      'contingencyAt',
+      'contingencyReason',
+      'contingencyDeadlineAt',
+    ],
+  ),
+  NfseInvoiceRequest: {
+    allOf: [
+      ref('CreateInvoice'),
+      {
+        type: 'object',
+        properties: {
+          type: str({
+            enum: ['nfse'],
+            default: 'nfse',
+            description:
+              'Optional: without it the request is an NFS-e, exactly as before.',
+          }),
+        },
+      },
+    ],
+  },
+  NfeInvoiceRequest: {
+    allOf: [
+      ref('NfeRequest'),
+      {
+        type: 'object',
+        required: ['type'],
+        properties: {
+          type: str({
+            enum: ['nfe'],
+            description: 'Selects the NF-e (model 55) instead of the NFS-e.',
+          }),
+        },
+      },
+    ],
+  },
+  NfceInvoiceRequest: {
+    allOf: [
+      ref('NfceRequest'),
+      {
+        type: 'object',
+        required: ['type'],
+        properties: {
+          type: str({
+            enum: ['nfce'],
+            description:
+              'Selects the NFC-e (model 65, sale to the final consumer) instead of the NFS-e.',
+          }),
+        },
+      },
+    ],
+  },
+  InvoiceSummary: obj(
+    {
+      id: uuid(),
+      type: str({ enum: ['nfse', 'nfe', 'nfce'] }),
+      companyId: uuid(),
+      environment: str({ enum: ['test', 'live'] }),
+      status: str({
+        description:
+          'The state, in the vocabulary of the type (NFS-e or NF-e statuses).',
+      }),
+      number: nullable(int({ description: 'NFS-e number or NF-e number.' })),
+      accessKey: nullable(str()),
+      amount: nullable(
+        str({
+          description: 'Gross amount (NFS-e) or `vNF` (NF-e), a decimal text.',
+          example: '150.00',
+        }),
+      ),
+      externalId: nullable(str()),
+      issuedAt: nullable(dateTime()),
+      createdAt: dateTime(),
+    },
+    [],
+    {
+      description:
+        'What `GET /invoices?type=all` shows of each document. Read the whole document with `GET /invoices/{id}`.',
+    },
+  ),
+  NfeDownloadLink: obj({
+    downloadUrl: str({ format: 'uri' }),
+    expiresAt: dateTime(),
+    fileName: str(),
+    mimeType: str({ enum: ['application/pdf', 'application/xml'] }),
+  }),
+  NfeEvent: obj({
+    id: uuid(),
+    documentId: uuid(),
+    type: str({ enum: ['cancellation', 'correction'] }),
+    tpEvento: str({
+      enum: ['110111', '110110'],
+      description: '110111 cancellation, 110110 correction letter (CC-e).',
+    }),
+    sequence: int({
+      description:
+        '`nSeqEvento`: always 1 for a cancellation; the n-th letter for a correction (at most 20).',
+    }),
+    status: str({
+      enum: ['pending', 'pending_check', 'registered', 'rejected'],
+      description:
+        '`pending_check`: the SEFAZ did not answer; Corvo checks by the key and does not send another.',
+    }),
+    text: nullable(
+      str({ description: 'The justification or the correction.' }),
+    ),
+    protocol: nullable(str()),
+    cStat: nullable(str()),
+    xMotivo: nullable(str({ description: 'The SEFAZ reason, as it came.' })),
+    createdAt: dateTime(),
+    updatedAt: dateTime(),
+  }),
+  NfeTimelineEntry: obj({
+    kind: str({
+      enum: ['status', 'event'],
+      description:
+        '`status`: the NF-e moved to `status`. `event`: a cancellation or correction letter, in its own `status`.',
+    }),
+    at: dateTime(),
+    status: str(),
+    from: nullable(str()),
+    tpEvento: nullable(str()),
+    sequence: nullable(int()),
+    eventId: nullable(uuid()),
+    cStat: nullable(str()),
+    xMotivo: nullable(str()),
+  }),
+  NfeInutilization: obj(
+    {
+      id: uuid(),
+      companyId: uuid(),
+      environment: str({ enum: ['test', 'live'] }),
+      model: int({ enum: [55, 65] }),
+      series: int(),
+      start: int(),
+      end: int(),
+      justification: str(),
+      status: str({
+        enum: ['pending', 'homologada', 'rejected'],
+        description:
+          '`homologada`: the SEFAZ voided the range. `rejected`: it refused, and the range is free for a new request.',
+      }),
+      protocol: nullable(str()),
+      cStat: nullable(str()),
+      xMotivo: nullable(str()),
+      createdAt: dateTime(),
+      updatedAt: dateTime(),
+      replayed: bool({
+        enum: [true],
+        description:
+          'Present when the same `Idempotency-Key` with the same body had already created this request.',
+      }),
+    },
+    ['replayed'],
+  ),
+  NfeNumberGap: obj({
+    companyId: uuid(),
+    series: int(),
+    start: int(),
+    end: int({
+      description: 'Inclusive: a single number has `start` = `end`.',
+    }),
+  }),
   DpsSequence: obj({
     series: str({ example: '00001' }),
     lastNumber: int({
@@ -404,6 +822,19 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     }),
     since: nullable(dateTime()),
     retryAt: nullable(dateTime()),
+    authorities: array(
+      obj({
+        authority: str({
+          example: 'nfe-sp-2',
+          description:
+            'An NF-e authority and environment: `nfe-<authority>-<tpAmb>`, `tpAmb` 1 production or 2 homologation.',
+        }),
+        available: bool(),
+        since: nullable(dateTime()),
+        retryAt: nullable(dateTime()),
+      }),
+      { description: 'The NF-e authorities already used by emissions.' },
+    ),
     connection: obj({
       state: str({
         enum: [
@@ -421,6 +852,23 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
         description:
           'True when the trouble is on the Corvo side, not the portal.',
       }),
+      authorities: array(
+        obj({
+          authority: str({
+            example: 'nfe-sp-2',
+            description:
+              'An enabled SEFAZ authority and environment, named like the breaker list above.',
+          }),
+          reachable: bool({
+            description: 'True when the last TCP probe reached its host.',
+          }),
+          checkedAt: dateTime(),
+        }),
+        {
+          description:
+            'What the last connection probe saw for each enabled SEFAZ authority; empty when none is enabled or the data is not available.',
+        },
+      ),
     }),
   }),
   Certificate: obj(
@@ -585,6 +1033,36 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       'nfse.invoice.cancelled',
       'nfse.invoice.cancellation_rejected',
       'nfse.invoice.taker_rejected',
+      'nfe.document.authorized',
+      'nfe.document.rejected',
+      'nfe.document.denied',
+      'nfe.document.failed',
+      'nfe.document.reconciliation_required',
+      'nfe.document.manual_review',
+      'nfe.document.documents_ready',
+      'nfe.document.email_sent',
+      'nfe.document.email_failed',
+      'nfe.document.cancelled',
+      'nfe.document.cancellation_rejected',
+      'nfe.document.corrected',
+      'nfe.inutilization.completed',
+      'nfe.inutilization.rejected',
+      'nfce.document.authorized',
+      'nfce.document.rejected',
+      'nfce.document.denied',
+      'nfce.document.failed',
+      'nfce.document.reconciliation_required',
+      'nfce.document.manual_review',
+      'nfce.document.documents_ready',
+      'nfce.document.email_sent',
+      'nfce.document.email_failed',
+      'nfce.document.cancelled',
+      'nfce.document.cancellation_rejected',
+      'nfce.inutilization.completed',
+      'nfce.inutilization.rejected',
+      'nfce.contingency.deadline_near',
+      'nfe.contingency.entered',
+      'nfe.contingency.exited',
     ],
   }),
   Webhook: obj({
@@ -630,6 +1108,10 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       tenantId: uuid(),
       webhookConfigId: uuid(),
       invoiceId: uuid(),
+      documentId: uuid({
+        description:
+          'The NF-e the event is about (`nfe.*` events); `invoiceId` is absent for them.',
+      }),
       eventType: str(),
       environment: str({ enum: ['test', 'live'] }),
       url: str({ format: 'uri' }),
@@ -648,6 +1130,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     },
     [
       'invoiceId',
+      'documentId',
       'payload',
       'statusCode',
       'responseBody',

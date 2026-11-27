@@ -18,6 +18,7 @@ function build() {
   const provider = new OpenNfseProvider(
     {} as never,
     { get: () => undefined } as never,
+    undefined,
     limiter as never,
   );
   return { provider, limiter };

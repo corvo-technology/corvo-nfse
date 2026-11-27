@@ -4,7 +4,7 @@ import { availableNotes } from "@/components/dashboard/notes-balance";
 import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { NewInvoiceMenu } from "@/components/dashboard/new-invoice-menu";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
@@ -115,10 +115,7 @@ export default function OverviewPage() {
                 </button>
               ))}
             </div>}
-            {can("nfse.invoices.issue") && <Link href="/app/invoices/new" className="btn btn-accent">
-              <Plus size={15} aria-hidden />
-              {t("newInvoice")}
-            </Link>}
+            <NewInvoiceMenu />
           </>
         }
       />

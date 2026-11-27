@@ -15,7 +15,7 @@ const sources = (dir: string): string[] => readdirSync(dir, { withFileTypes: tru
   return entry.isDirectory() ? sources(path) : /\.tsx?$/.test(entry.name) ? [path] : [];
 });
 /** Path pieces that are one of a few fixed words rather than an id. */
-const WORDS: Record<string, string[]> = { direction: ["upgrade", "downgrade"], kind: ["xml", "pdf"] };
+const WORDS: Record<string, string[]> = { direction: ["upgrade", "downgrade"], kind: ["xml", "pdf"], "idPath(uf)": ["SP"], tpAmb: ["1", "2"] };
 const ID = "12345678901234"; // satisfies [^/]+, \d+ and the 14-character CNPJ pattern alike
 
 /** The text between the call's parentheses, skipping strings and `${...}` so nested brackets balance. */
@@ -69,7 +69,7 @@ function calls(source: string): { method: string; route: string }[] {
     const first = args.match(/^\s*([`"'])(\/(?:[^`"'\\]|\\.)*)\1/s);
     if (!first) continue; // the declaration `request<T>(path: string, ...)`
     const rest = args.slice(first[0].length);
-    const method = rest.match(/method:\s*"([A-Z]+)"/)?.[1] ?? rest.match(/\bjson\([\s\S]*,\s*"([A-Z]+)"\s*\)/)?.[1] ?? (/\bjson\(/.test(rest) ? "POST" : "GET");
+    const method = rest.match(/method:\s*"([A-Z]+)"/)?.[1] ?? rest.match(/\b(?:json|body|withKey)\([\s\S]*,\s*"([A-Z]+)"\s*\)/)?.[1] ?? (/\b(?:json|body|withKey)\(/.test(rest) ? "POST" : "GET");
     for (const path of expand(first[2])) found.push({ method, route: path.replace(/\?.*$/, "").slice(1) });
   }
   return found;

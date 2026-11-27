@@ -9,12 +9,18 @@ import { CreditsService } from './application/credits.service';
 import { CreditsController } from './http/credits.controller';
 import { NoopCreditTransactionRepository } from './infra/noop-credit-transaction.repository';
 import { IS_SELF_HOSTED } from '@/shared/deployment-mode';
+import { CREDIT_PRICE_READER } from '@/modules/fiscal-core/domain/credit-price';
+import { DocumentCreditPriceOrmEntity } from './infra/document-credit-price.orm-entity';
+import { TypeormCreditPriceReader } from './infra/typeorm-credit-price.reader';
 import { PlansModule } from '@/modules/plans/plans.module';
 
 @Module({
   imports: [
     BillingUsageModule,
-    TypeOrmModule.forFeature([CreditTransactionOrmEntity]),
+    TypeOrmModule.forFeature([
+      CreditTransactionOrmEntity,
+      DocumentCreditPriceOrmEntity,
+    ]),
     AppRedisModule,
     forwardRef(() => PlansModule),
   ],
@@ -27,7 +33,8 @@ import { PlansModule } from '@/modules/plans/plans.module';
         : TypeOrmCreditTransactionRepository,
     },
     CreditsService,
+    { provide: CREDIT_PRICE_READER, useClass: TypeormCreditPriceReader },
   ],
-  exports: [CreditsService, ICreditTransactionRepository],
+  exports: [CreditsService, ICreditTransactionRepository, CREDIT_PRICE_READER],
 })
 export class CreditsModule {}
