@@ -84,6 +84,11 @@ function retryAfter(response: Response): number | undefined {
   const seconds = Number(raw);
   return Number.isFinite(seconds) ? Math.max(0, seconds) : Math.max(0, Math.ceil((Date.parse(raw) - Date.now()) / 1000));
 }
+/** A dashboard call the proxy does not allow is our bug, not the user's: tell PostHog (path shape only, no ids). */
+function reportRouteUnavailable(url: string) {
+  const path = url ? new URL(url, "http://local").pathname.replace(/\/[^/]*\d[^/]*/g, "/:id") : "unknown";
+  void import("./posthog").then(({ loadPostHog }) => loadPostHog()).then((posthog) => posthog?.capture("proxy_route_unavailable", { path })).catch(() => {});
+}
 async function responseError(response: Response, publicRequest: boolean, generation: number): Promise<never> {
   const body = await response.json().catch(() => null);
   if (generation === csrfGeneration) {
@@ -91,6 +96,7 @@ async function responseError(response: Response, publicRequest: boolean, generat
     if (response.status === 403 && typeof body?.message === "string" && /CSRF token/i.test(body.message)) setCsrfToken(null);
   }
   const message = typeof body?.message === "string" ? body.message : `Request failed (${response.status})`;
+  if (body?.code === "proxy_route_unavailable") reportRouteUnavailable(response.url);
   const details = Array.isArray(body?.details) ? (body.details as ApiErrorDetail[]).filter((d) => d && typeof d.field === "string") : undefined;
   throw new ApiError(response.status, message, typeof body?.code === "string" ? body.code : undefined, retryAfter(response), details, typeof body?.requestId === "string" ? body.requestId : undefined);
 }

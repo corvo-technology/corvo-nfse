@@ -2068,6 +2068,7 @@
     "clear": "Remover código selecionado"
   },
   "ApiErrors": {
+    "proxy_route_unavailable": "Esta ação não está disponível agora. Avise o suporte da Corvo.",
     "invoice_note_environment_mismatch": "Não é possível cancelar ou substituir esta nota: o arquivo guardado é de outro ambiente (teste ou produção) do que o da nota. Fale com o suporte.",
     "portal_nfse_wrong_environment": "Esta nota foi encontrada no portal em outro ambiente (teste ou produção) do que o da empresa. Confira o ambiente e tente de novo.",
     "reconciliation_uncertain": "O portal fiscal não deu uma resposta conclusiva por muito tempo. Tente de novo com o mesmo número ou descarte a nota.",

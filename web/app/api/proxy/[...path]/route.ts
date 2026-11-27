@@ -1,101 +1,15 @@
 import { SeverityNumber } from "@opentelemetry/api-logs";
 import { isIP } from "node:net";
 import { after, NextRequest, NextResponse } from "next/server";
+import { proxyRoutes } from "@/lib/proxy-routes";
 import { loggerProvider, posthogConfigured, posthogLog } from "@/instrumentation";
 
-const routes: [RegExp, string[]][] = [
-  [/^auth\/magic-link\/(request|verify)$/, ["POST"]],
-  [/^auth\/session$/, ["GET"]],
-  [/^auth\/oauth\/providers$/, ["GET"]],
-  [/^auth\/oauth\/(google|github)\/(authorize|callback)$/, ["GET"]],
-  [/^auth\/session\/(logout|tenant)$/, ["POST"]],
-  [/^auth\/(me|memberships|permissions|members)$/, ["GET"]],
-  [/^auth\/profile$/, ["PATCH"]],
-  [/^auth\/invite$/, ["POST"]],
-  [/^auth\/invitations$/, ["GET"]],
-  [/^auth\/invitations\/(preview|accept)$/, ["POST"]],
-  [/^auth\/invitations\/[^/]+\/resend$/, ["POST"]],
-  [/^auth\/invitations\/[^/]+$/, ["DELETE"]],
-  [/^auth\/members\/[^/]+$/, ["DELETE"]],
-  [/^audit-events$/, ["GET"]],
-  [/^auth\/api-keys$/, ["GET", "POST"]],
-  [/^auth\/api-keys\/[^/]+$/, ["DELETE"]],
-  [/^plans(?:\/[^/]+)?$/, ["GET"]],
-  [/^billing\/(plan|usage|payments)$/, ["GET"]],
-  [/^billing\/payments\/[^/]+\/status$/, ["GET"]],
-  [/^billing\/checkout$/, ["POST"]],
-  [/^billing\/checkout\/[^/]+$/, ["GET"]],
-  [/^billing\/(portal|upgrade|downgrade)$/, ["POST"]],
-  [/^billing\/pix\/cancel$/, ["POST"]],
-  [/^credits(?:\/(plans|history))?$/, ["GET"]],
-  [/^credits\/purchase\/preview$/, ["POST"]],
-  [/^cnpj\/[A-Za-z0-9]{14}$/, ["GET"]],
-  [/^companies$/, ["GET", "POST"]],
-  [/^companies\/[^/]+$/, ["GET", "PATCH", "DELETE"]],
-  [/^companies\/[^/]+\/certificates$/, ["GET", "POST"]],
-  [/^companies\/[^/]+\/certificates\/[^/]+$/, ["DELETE"]],
-  [/^companies\/[^/]+\/fiscal-profile$/, ["GET", "PUT"]],
-  [/^companies\/[^/]+\/fiscal-profile\/[^/]+\/approve$/, ["POST"]],
-  [/^companies\/[^/]+\/service-tax-profiles$/, ["GET", "POST"]],
-  [/^companies\/[^/]+\/service-tax-profiles\/[^/]+$/, ["PATCH"]],
-  [/^companies\/[^/]+\/service-tax-profiles\/[^/]+\/approve$/, ["POST"]],
-  [/^companies\/[^/]+\/service-favorites$/, ["GET", "POST"]],
-  [/^companies\/[^/]+\/service-favorites\/[^/]+$/, ["DELETE"]],
-  [/^companies\/[^/]+\/invoice-package(?:\/summary)?$/, ["GET"]],
-  [/^companies\/[^/]+\/accountant-package$/, ["GET", "PUT"]],
-  [/^companies\/[^/]+\/accountant-package\/send$/, ["POST"]],
-  [/^invoices$/, ["GET", "POST"]],
-  [/^customers$/, ["GET"]],
-  [/^customers\/registry\/[^/]+$/, ["GET"]],
-  [/^customers\/[^/]+$/, ["GET", "PATCH", "DELETE"]],
-  [/^schedules$/, ["GET"]],
-  [/^schedules\/[^/]+$/, ["GET", "PATCH"]],
-  [/^schedules\/[^/]+\/runs$/, ["GET"]],
-  [/^schedules\/[^/]+\/(pause|resume|cancel)$/, ["POST"]],
-  [/^imports$/, ["GET", "POST"]],
-  [/^imports\/template$/, ["GET"]],
-  [/^imports\/[^/]+$/, ["GET", "DELETE"]],
-  [/^imports\/[^/]+\/rows$/, ["GET"]],
-  [/^imports\/[^/]+\/rows\/\d+$/, ["PATCH"]],
-  [/^imports\/[^/]+\/emit$/, ["POST"]],
-  [/^imports\/[^/]+\/errors\.csv$/, ["GET"]],
-  [/^invoices\/calculate$/, ["POST"]],
-  [/^invoices\/[^/]+(?:\/(events|pdf|xml))?$/, ["GET"]],
-  [/^invoices\/[^/]+\/download-url$/, ["POST"]],
-  [/^invoices\/[^/]+\/email$/, ["POST"]],
-  [/^invoices\/[^/]+\/cancel$/, ["POST"]],
-  [/^invoices\/[^/]+\/substitute$/, ["POST"]],
-  [/^webhooks$/, ["GET", "POST"]],
-  [/^webhooks\/deliveries(?:\/stats)?$/, ["GET"]],
-  [/^webhooks\/deliveries\/[^/]+\/retry$/, ["POST"]],
-  [/^webhooks\/[^/]+\/test$/, ["POST"]],
-  [/^webhooks\/[^/]+$/, ["DELETE"]],
-  [/^integrations\/providers$/, ["GET"]],
-  [/^integrations\/connections$/, ["GET", "POST"]],
-  [/^integrations\/connections\/[^/]+$/, ["GET"]],
-  [/^integrations\/connections\/[^/]+\/(?:validate|activate|pause|disconnect)$/, ["POST"]],
-  [/^integrations\/connections\/[^/]+\/rules$/, ["GET", "PUT"]],
-  [/^integrations\/connections\/[^/]+\/credentials$/, ["PUT"]],
-  [/^integrations\/connections\/[^/]+\/(?:events|operations)$/, ["GET"]],
-  [/^integrations\/operations$/, ["GET"]],
-  [/^integrations\/operations\/[^/]+$/, ["GET"]],
-  [/^integrations\/operations\/[^/]+\/(?:resolve|ignore)$/, ["POST"]],
-  [/^integrations\/operations\/[^/]+\/customer$/, ["PATCH"]],
-  [/^integrations\/operations\/[^/]+\/retry$/, ["POST"]],
-  [/^mcp\/consent$/, ["GET", "POST"]],
-  [/^mcp\/connections$/, ["GET"]],
-  [/^mcp\/connections\/[^/]+$/, ["DELETE"]],
-  [/^platform\/(overview|users|attention|audit)$/, ["GET"]],
-  [/^platform\/users\/[^/]+$/, ["GET"]],
-  [/^platform\/tenants\/[^/]+\/credit-grants$/, ["POST"]],
-  [/^health\/(live|ready)$/, ["GET"]],
-];
 // Session plus the short-lived social sign-in state cookie.
 const sessionNames = new Set(["gf_session_dev", "__Host-gf_session", "gf_oauth_state_dev", "__Host-gf_oauth_state"]);
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const OAUTH_HOSTS = new Set(["accounts.google.com", "github.com"]);
 
-function logProxyOutcome(route: string, method: string, status: number, outcome: "completed" | "body_rejected" | "upstream_unavailable") {
+function logProxyOutcome(route: string, method: string, status: number, outcome: "completed" | "body_rejected" | "upstream_unavailable" | "route_unavailable") {
   if (!posthogConfigured) return;
   posthogLog.emit({
     body: outcome === "completed" ? "API proxy request completed" : "API proxy request failed",
@@ -105,6 +19,7 @@ function logProxyOutcome(route: string, method: string, status: number, outcome:
       api_area: route.split("/", 1)[0],
       method,
       status_code: status,
+      ...(outcome === "route_unavailable" ? { route } : {}),
     },
   });
   after(async () => {
@@ -129,6 +44,12 @@ function browserIp(request: NextRequest): string | undefined {
   if (process.env.TRUST_CF_CONNECTING_IP === "true" && cloudflare && isIP(cloudflare)) return cloudflare;
   const forwarded = request.headers.get("x-forwarded-for")?.split(",").map((entry) => entry.trim()).filter((entry) => isIP(entry));
   return forwarded?.at(-1);
+}
+/** The proxy has no such route: a dashboard call nobody allowed. The code lets the screen say so instead of a generic error. */
+function routeUnavailable(route: string, method: string) {
+  // Ids stay out of the log: only the shape of the path.
+  logProxyOutcome(route.replace(/\/[^/]*\d[^/]*/g, "/:id"), method, 404, "route_unavailable");
+  return NextResponse.json({ statusCode: 404, message: "Route unavailable", code: "proxy_route_unavailable" }, { status: 404, headers: { "Cache-Control": "no-store" } });
 }
 const failure = (status: number, message: string) => NextResponse.json({ statusCode: status, message }, { status, headers: { "Cache-Control": "no-store" } });
 async function limitedBody(request: NextRequest, limit: number) {
@@ -165,7 +86,7 @@ async function proxyRequest(request: NextRequest, context: { params: Promise<{ p
     }
   } catch { return failure(400, "Invalid path"); }
   const route = path.slice(1).join("/");
-  if (!routes.some(([pattern, methods]) => pattern.test(route) && methods.includes(request.method))) return failure(404, "Route unavailable");
+  if (!proxyRoutes.some(([pattern, methods]) => pattern.test(route) && methods.includes(request.method))) return routeUnavailable(route, request.method);
   const development = process.env.NODE_ENV !== "production";
   const appOrigin = process.env.APP_ORIGIN ?? (development ? "http://localhost:4000" : undefined);
   if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
