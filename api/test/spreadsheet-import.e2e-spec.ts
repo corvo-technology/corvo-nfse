@@ -76,6 +76,9 @@ describe('spreadsheet import (e2e)', () => {
         .overrideProvider(getQueueToken('import-read'))
         .useValue(queueFor('import-read'))
         .overrideProvider(getQueueToken('import-emit'))
+        .useValue(queueFor('import-emit'))
+        // These imports are test-environment: they run on the test twin of the emit queue.
+        .overrideProvider(getQueueToken('import-emit-test'))
         .useValue(queueFor('import-emit')),
     );
     dataSource = ctx.dataSource;
