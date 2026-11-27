@@ -8305,6 +8305,7 @@ components:
               - nfce.document.cancellation_rejected
               - nfce.inutilization.completed
               - nfce.inutilization.rejected
+              - nfce.contingency.deadline_near
             type: string
           minItems: 1
           type: array
@@ -12445,6 +12446,7 @@ components:
         - nfce.document.cancellation_rejected
         - nfce.inutilization.completed
         - nfce.inutilization.rejected
+        - nfce.contingency.deadline_near
       type: string
     WebhookRetried:
       properties:

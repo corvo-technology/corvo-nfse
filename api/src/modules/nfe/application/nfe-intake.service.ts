@@ -18,7 +18,12 @@ import {
   nfeIdempotencyKeyRequired,
   nfeIdempotencyKeyReused,
 } from './nfe-errors';
-import { emitMessage, transmitMessage } from './nfe-messages';
+import { NFCE_CONTINGENCY_ALERT_AFTER_MS } from '@/modules/nfce/domain/contingency';
+import {
+  contingencyAlertMessage,
+  emitMessage,
+  transmitMessage,
+} from './nfe-messages';
 import { NfePreparation, type PreparedNfe } from './nfe-preparation.service';
 import { isValidIdempotencyKey, nfeRequestHash } from './nfe-request-hash';
 import { documentTypeOf } from './nfe-transition.service';
@@ -164,6 +169,16 @@ export class NfeIntakeService {
           await this.outbox.enqueue(
             offline ? transmitMessage(document) : emitMessage(document),
           );
+          if (offline)
+            await this.outbox.enqueue(
+              contingencyAlertMessage(
+                document,
+                new Date(
+                  offline.contingencyAt.getTime() +
+                    NFCE_CONTINGENCY_ALERT_AFTER_MS,
+                ),
+              ),
+            );
           return {
             id: document.id,
             status: document.status,

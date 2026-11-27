@@ -11506,7 +11506,8 @@
                 "nfce.document.cancelled",
                 "nfce.document.cancellation_rejected",
                 "nfce.inutilization.completed",
-                "nfce.inutilization.rejected"
+                "nfce.inutilization.rejected",
+                "nfce.contingency.deadline_near"
               ],
               "type": "string"
             },
@@ -16818,7 +16819,8 @@
           "nfce.document.cancelled",
           "nfce.document.cancellation_rejected",
           "nfce.inutilization.completed",
-          "nfce.inutilization.rejected"
+          "nfce.inutilization.rejected",
+          "nfce.contingency.deadline_near"
         ],
         "type": "string"
       },

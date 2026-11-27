@@ -1,6 +1,7 @@
 import type { NewOutboxMessage } from '@/modules/invoice/domain/outbox-message';
 import type { NfeDocument } from '../domain/nfe-document';
 import {
+  NFCE_CONTINGENCY_ALERT,
   NFE_CANCEL,
   NFE_CORRECT,
   NFE_EMIT,
@@ -63,6 +64,22 @@ export function emitMessage(doc: NfeDocument): NewOutboxMessage {
  */
 export function transmitMessage(doc: NfeDocument): NewOutboxMessage {
   return base(doc, NFE_EMIT, `emit:${doc.id}:${doc.attempt}:offline`);
+}
+
+/**
+ * The 20 h warning of an off-line NFC-e, queued with the note and due 20 hours after `dhCont`. The
+ * handler looks at the state when it runs: a note already transmitted gets no warning.
+ */
+export function contingencyAlertMessage(
+  doc: NfeDocument,
+  availableAt: Date,
+): NewOutboxMessage {
+  return base(
+    doc,
+    NFCE_CONTINGENCY_ALERT,
+    `contingency-alert:${doc.id}`,
+    availableAt,
+  );
 }
 
 /** The same attempt again, once the authority answers (never a new key: nothing was sent). */

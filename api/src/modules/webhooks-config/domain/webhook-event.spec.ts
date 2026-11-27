@@ -92,6 +92,7 @@ describe('WebhookEvent Types', () => {
         'nfce.document.cancellation_rejected',
         'nfce.inutilization.completed',
         'nfce.inutilization.rejected',
+        'nfce.contingency.deadline_near',
       ]);
       const older = PUBLIC_WEBHOOK_EVENT_TYPES.slice(0, 26);
       expect(older.every((type) => !type.startsWith('nfce.'))).toBe(true);
