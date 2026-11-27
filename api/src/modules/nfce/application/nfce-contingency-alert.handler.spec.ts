@@ -13,10 +13,13 @@ function build(environment: 'test' | 'live', status = 'contingency_pending') {
     contingencyAt: AT,
     contingencyReason: 'SEFAZ indisponivel',
   });
-  if (status !== 'contingency_pending')
-    (doc.transitionTo('processing'), doc.transitionTo(status as never));
-  const publish = jest.fn().mockResolvedValue(undefined);
-  const notices = jest.fn();
+  if (status !== 'contingency_pending') {
+    doc.transitionTo('processing');
+    doc.transitionTo(status as never);
+  }
+  const publish = jest.fn<Promise<void>, [unknown, string, unknown]>();
+  publish.mockResolvedValue(undefined);
+  const notices = jest.fn<void, [unknown]>();
   const handler = new NfceContingencyAlertHandler(
     { register: jest.fn() } as never,
     { findById: () => Promise.resolve(doc) } as never,
