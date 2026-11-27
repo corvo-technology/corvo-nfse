@@ -11,7 +11,7 @@ import { post as qualNota } from "./posts/nfse-nfe-ou-nfce-qual-nota-fiscal-emit
 import { post as integracoes } from "./posts/nota-fiscal-automatica-para-cada-venda-integracoes";
 import { post as infoprodutor } from "./posts/nota-fiscal-infoprodutor-hotmart-kiwify-eduzz-monetizze";
 import { post as reembolso } from "./posts/reembolso-chargeback-nota-fiscal-cancelar";
-import { post as vibecoder } from "./posts/vibecoder-nota-fiscal-saas-ia";
+import { post as emitirNotaNoSeuSistema } from "./posts/emitir-nota-fiscal-no-seu-sistema-saas";
 import type { BlogBlock, BlogPost } from "./types";
 
 /** The blog exists in Brazilian Portuguese only: the audience and the keywords are Brazilian. */
@@ -19,7 +19,7 @@ export const BLOG_LOCALE = "pt" as const;
 
 /** Newest first. Posts with the same date keep the order written here. */
 export const POSTS: BlogPost[] = [
-  vibecoder,
+  emitirNotaNoSeuSistema,
   nfeProduto,
   nfceCupom,
   qualNota,
