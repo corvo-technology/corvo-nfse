@@ -3332,7 +3332,7 @@
     "guide": "Read the integrations guide",
     "refund": {
       "title": "Got a refund?",
-      "body": "Corvo cancels the invoice on its own, if you turn that rule on. On a dispute (chargeback), the sale is only marked for you to decide."
+      "body": "Corvo cancels the invoice on its own, if you turn that rule on. On most platforms, a dispute (chargeback) only marks the sale, for you to decide."
     }
   },
   "LandingFaq": {
