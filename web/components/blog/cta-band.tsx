@@ -9,12 +9,12 @@ export function CtaBand() {
           id="blog-cta"
           className="max-w-[18ch] text-[clamp(30px,4.6vw,44px)] font-semibold leading-[1.05] tracking-[-0.03em] text-text text-balance"
         >
-          A primeira nota é grátis, e o teste também.
+          As 5 primeiras notas são grátis, e o teste também.
         </h2>
         <div>
           <p className="text-[16px] leading-[1.7] text-text-2 text-pretty">
             Crie a conta e emita uma nota de teste. Não pede cartão, não pede certificado e a nota não tem valor fiscal.
-            Quando você se sentir seguro, a primeira nota de verdade sai sem custo.
+            Quando você se sentir seguro, as primeiras notas de verdade saem sem custo.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
             <Link

@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryColumn } from 'typeorm';
 
-/** One row per person (normalized e-mail) that already received the first free note. */
+/** One row per person (normalized e-mail) that already received the welcome notes. */
 @Entity({ name: 'free_note_claims' })
 export class FreeNoteClaimOrmEntity {
   @PrimaryColumn({ name: 'email_key', type: 'varchar', length: 320 })

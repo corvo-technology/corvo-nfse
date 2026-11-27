@@ -76,7 +76,7 @@ export const post: BlogPost = {
         "**Cadastre a empresa:** razão social, CNPJ, se é MEI ou Simples Nacional e o município. Antes de emitir notas de verdade, o painel também pede a **inscrição municipal** da empresa.",
         "Emita uma nota de teste. Ela não tem valor fiscal, não precisa de certificado e não custa nada. Serve para você conhecer o painel sem medo de errar.",
         "**Envie o certificado digital A1 da empresa** para emitir notas de verdade. Não sabe o que é isso? Veja o [guia do certificado digital A1](/pt/blog/certificado-digital-a1-o-que-e-quando-precisa).",
-        "Emita a nota real. A primeira é grátis.",
+        "Emita a nota real. As 5 primeiras são grátis.",
       ],
     },
     { kind: "h2", text: "O que a Corvo faz por você" },
@@ -117,8 +117,8 @@ export const post: BlogPost = {
       a: "Em teste, sim. A NFS-e, a nota de serviço, já sai de verdade. A NF-e (nota de produto) e a NFC-e (nota de balcão) estão disponíveis só em teste (homologação), sem valor fiscal, e a produção chega em breve.",
     },
     {
-      q: "Quanto custa emitir a primeira nota?",
-      a: "A primeira nota é grátis, sem cartão de crédito. O ambiente de teste também é sempre grátis. Os planos e o preço das notas seguintes ficam na seção de preços do site.",
+      q: "Quanto custa emitir as primeiras notas?",
+      a: "As 5 primeiras notas são grátis, sem cartão de crédito. O ambiente de teste também é sempre grátis. Os planos e o preço das notas seguintes ficam na seção de preços do site.",
     },
     {
       q: "Preciso saber a alíquota do Simples Nacional?",

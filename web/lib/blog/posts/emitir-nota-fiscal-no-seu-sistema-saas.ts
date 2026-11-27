@@ -119,7 +119,7 @@ export const post: BlogPost = {
     {
       kind: "ol",
       items: [
-        "**Crie a conta na Corvo.** A primeira nota é grátis, sem plano e sem cartão. O ambiente de teste é sempre grátis.",
+        "**Crie a conta na Corvo.** As 5 primeiras notas são grátis, sem plano e sem cartão. O ambiente de teste é sempre grátis.",
         "**Gere uma chave de teste** no painel e deixe-a em uma variável de ambiente.",
         "**Cadastre um estabelecimento de teste** como empresa, com CNPJ, regime tributário e município.",
         "**Envie o [certificado digital A1](/pt/blog/certificado-digital-a1-o-que-e-quando-precisa)** do estabelecimento. Cada cliente seu precisa ter o dele.",
@@ -166,7 +166,7 @@ export const post: BlogPost = {
     },
     {
       q: "Dá para testar sem pagar?",
-      a: "Sim. O ambiente de teste é sempre grátis, e as notas dele não têm valor fiscal. A primeira nota em produção também é grátis, sem plano e sem cartão.",
+      a: "Sim. O ambiente de teste é sempre grátis, e as notas dele não têm valor fiscal. As 5 primeiras notas em produção também são grátis, sem plano e sem cartão.",
     },
     {
       q: "A Corvo emite nota de produto para os meus clientes?",

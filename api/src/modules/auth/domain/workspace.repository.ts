@@ -9,8 +9,8 @@ export interface NewWorkspace {
   currentPeriodEnd: Date;
   role: TenantMembershipRole;
   permissions: TenantPermission[];
-  /** Credit the one-time free note together with the workspace. */
-  grantFirstFreeNote: boolean;
+  /** Credit the one-time welcome notes together with the workspace. */
+  grantWelcomeNotes: boolean;
 }
 
 export abstract class IWorkspaceRepository {
@@ -22,8 +22,8 @@ export abstract class IWorkspaceRepository {
   abstract freePlanId(): Promise<string>;
   /** The single plan of a self-hosted instance. */
   abstract selfHostedPlanId(): Promise<string>;
-  /** Atomically claims the one-time free note for this person; false if already claimed. */
-  abstract claimFirstFreeNote(
+  /** Atomically claims the one-time welcome notes for this person; false if already claimed. */
+  abstract claimWelcomeNotes(
     emailKey: string,
     tenantId: string,
   ): Promise<boolean>;

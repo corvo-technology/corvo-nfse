@@ -31,7 +31,7 @@ export const SITE_COPY: Record<SeoLocale, SiteCopy> = {
   en: {
     title: "Corvo — Brazilian NFS-e API for MEI and Simples Nacional",
     description:
-      "REST API to issue Brazilian NFS-e: MEI and Simples Nacional, tax calculation, multi-company, webhooks and AI agents (MCP). The first invoice is free.",
+      "REST API to issue Brazilian NFS-e: MEI and Simples Nacional, tax calculation, multi-company, webhooks and AI agents (MCP). The first 5 invoices are free.",
     ogAlt: "Corvo — Brazilian NFS-e API for developers",
     tagline:
       "REST API and MCP server to issue Brazilian service invoices (NFS-e) for MEI and Simples Nacional companies.",
@@ -51,7 +51,7 @@ export const SITE_COPY: Record<SeoLocale, SiteCopy> = {
   pt: {
     title: "Corvo — API de NFS-e para MEI e Simples Nacional",
     description:
-      "API REST para emitir NFS-e: MEI e Simples Nacional, cálculo de tributos, multiempresa, webhooks e agentes de IA (MCP). A primeira nota é grátis.",
+      "API REST para emitir NFS-e: MEI e Simples Nacional, cálculo de tributos, multiempresa, webhooks e agentes de IA (MCP). As 5 primeiras notas são grátis.",
     ogAlt: "Corvo — API de NFS-e para desenvolvedores",
     tagline:
       "API REST e servidor MCP para emitir notas fiscais de serviço (NFS-e) de empresas MEI e do Simples Nacional.",
@@ -121,8 +121,8 @@ interface PageMetadataInput {
 
 const TITLE_TAIL: Record<SeoLocale, string> = { en: " — NFS-e API", pt: " — API de NFS-e" };
 const DESCRIPTION_TAIL: Record<SeoLocale, string[]> = {
-  en: [" Corvo is a REST API to issue Brazilian NFS-e for MEI and Simples Nacional.", " The first invoice is free."],
-  pt: [" A Corvo é uma API REST para emitir NFS-e de MEI e Simples Nacional.", " A primeira nota é grátis."],
+  en: [" Corvo is a REST API to issue Brazilian NFS-e for MEI and Simples Nacional.", " The first 5 invoices are free."],
+  pt: [" A Corvo é uma API REST para emitir NFS-e de MEI e Simples Nacional.", " As 5 primeiras notas são grátis."],
 };
 const MIN_TITLE = 30;
 const MAX_TITLE = 60;

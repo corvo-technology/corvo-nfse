@@ -40,14 +40,14 @@ export class PasswordlessWorkspaceService {
             message: 'Tenant membership is inactive',
           });
 
-        // A self-hosted instance has no Free plan and no free note to give.
+        // A self-hosted instance has no Free plan and no welcome notes to give.
         const selfHosted = this.mode === 'self_hosted';
         const planId = selfHosted
           ? await this.workspaces.selfHostedPlanId()
           : await this.workspaces.freePlanId();
-        const grantFirstFreeNote =
+        const grantWelcomeNotes =
           !selfHosted &&
-          (await this.workspaces.claimFirstFreeNote(
+          (await this.workspaces.claimWelcomeNotes(
             normalizeEmailKey(user.email),
             user.id,
           ));
@@ -74,7 +74,7 @@ export class PasswordlessWorkspaceService {
 
           role: 'admin',
           permissions: permissionsForTenantRole('admin'),
-          grantFirstFreeNote,
+          grantWelcomeNotes,
         });
       });
     });
