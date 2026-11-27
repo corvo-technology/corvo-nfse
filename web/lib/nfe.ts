@@ -49,7 +49,7 @@ export interface NfeDocument {
 }
 export interface NfeAccepted { type: NfeKind; id: string; status: NfeStatus; replayed?: true }
 /** One line of the timeline: a state the note went through, or a fiscal event (cancellation, correction letter). */
-export interface NfeTimelineEntry { kind: "status" | "event"; at: string; status: string; from: string | null; tpEvento: string | null; sequence: number | null; eventId: string | null; cStat: string | null; xMotivo: string | null }
+export interface NfeTimelineEntry { kind: "status" | "event"; at: string; status: string; from: string | null; tpEvento: string | null; sequence: number | null; eventId: string | null; text?: string | null; cStat: string | null; xMotivo: string | null }
 export interface NfeFiscalEvent { id: string; documentId: string; type: "cancellation" | "correction"; sequence: number; status: string; text: string; protocol: string | null; cStat: string | null; xMotivo: string | null }
 export interface NfeInutilization { id: string; companyId: string; series: number; start: number; end: number; justification: string; status: "pending" | "homologada" | "rejected"; protocol: string | null; cStat: string | null; xMotivo: string | null; createdAt: string; replayed?: true }
 export interface NfeNumberGap { companyId: string; series: number; start: number; end: number }

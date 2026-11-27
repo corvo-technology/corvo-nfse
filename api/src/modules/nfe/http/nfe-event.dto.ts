@@ -149,6 +149,8 @@ export interface NfeTimelineEntry {
   tpEvento: string | null;
   sequence: number | null;
   eventId: string | null;
+  /** The justification of a cancellation request or the text of a correction letter. */
+  text: string | null;
   cStat: string | null;
   xMotivo: string | null;
 }

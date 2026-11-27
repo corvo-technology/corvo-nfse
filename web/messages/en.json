@@ -3915,7 +3915,10 @@
     "timeline": {
       "empty": "No history yet.",
       "cancellation": "Cancellation",
-      "correction": "Correction letter {sequence}",
+      "correction": "Correction letter no. {sequence}",
+      "cancelRequested": "Cancellation requested",
+      "cancelRefused": "Cancellation refused",
+      "reason": "Reason: {text}",
       "eventStatus": {
         "pending": "Sending",
         "pending_check": "Checking with the SEFAZ",

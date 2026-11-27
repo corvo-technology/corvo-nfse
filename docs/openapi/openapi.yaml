@@ -5249,9 +5249,12 @@ paths:
         portal`).
 
 
-        **For an NF-e:** The states the NF-e went through and its fiscal events (cancellation and
-        correction letters), oldest first. An entry with `kind` `event` has its own `status`
-        (`pending`, `pending_check`, `registered`, `rejected`).
+        **For an NF-e:** The states the NF-e went through and its correction letters, oldest first.
+        A cancellation appears once: `cancelling` (the request, with the justification in `text`),
+        then `cancelled` with the SEFAZ answer (or `authorized` again with the reason of the
+        refusal). `cStat` and `xMotivo` come only on entries where the SEFAZ answered. An entry with
+        `kind` `event` (a correction letter) has its own `status` (`pending`, `pending_check`,
+        `registered`, `rejected`).
 
 
         Permission: `nfse.invoices.view` or `nfe.documents.view`.
@@ -11457,6 +11460,7 @@ components:
           format: date-time
           type: string
         cStat:
+          description: Only when the SEFAZ answered on this entry.
           nullable: true
           type: string
         eventId:
@@ -11468,8 +11472,10 @@ components:
           type: string
         kind:
           description: >-
-            `status`: the NF-e moved to `status`. `event`: a cancellation or correction letter, in
-            its own `status`.
+            `status`: the NF-e moved to `status`. `event`: a correction letter, in its own `status`.
+            A cancellation is not a separate entry: the request is the `cancelling` entry
+            (justification in `text`) and the SEFAZ answer is in the `cancelled` entry, or in the
+            entry that goes back to `authorized` when it refuses.
           enum:
             - status
             - event
@@ -11478,6 +11484,10 @@ components:
           nullable: true
           type: integer
         status:
+          type: string
+        text:
+          description: The justification of a cancellation request or the text of a correction letter.
+          nullable: true
           type: string
         tpEvento:
           nullable: true
@@ -11493,6 +11503,7 @@ components:
         - tpEvento
         - sequence
         - eventId
+        - text
         - cStat
         - xMotivo
       type: object

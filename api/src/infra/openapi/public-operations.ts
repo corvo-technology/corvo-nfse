@@ -312,7 +312,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'invoices_listEvents',
     tag: 'Invoices',
     description:
-      'The status transitions of the invoice, including what the national portal reported (`source: portal`).\n\n**For an NF-e:** The states the NF-e went through and its fiscal events (cancellation and correction letters), oldest first. An entry with `kind` `event` has its own `status` (`pending`, `pending_check`, `registered`, `rejected`).',
+      'The status transitions of the invoice, including what the national portal reported (`source: portal`).\n\n**For an NF-e:** The states the NF-e went through and its correction letters, oldest first. A cancellation appears once: `cancelling` (the request, with the justification in `text`), then `cancelled` with the SEFAZ answer (or `authorized` again with the reason of the refusal). `cStat` and `xMotivo` come only on entries where the SEFAZ answered. An entry with `kind` `event` (a correction letter) has its own `status` (`pending`, `pending_check`, `registered`, `rejected`).',
     ok: {
       200: {
         oneOf: [page(ref('InvoiceEvent')), list(ref('NfeTimelineEntry'))],
