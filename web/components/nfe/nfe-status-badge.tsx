@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 
 const VARIANT: Record<NfeStatus, "accent" | "warn" | "danger" | "info" | "gray"> = {
   queued: "gray",
+  contingency_pending: "warn",
   processing: "info",
   retry_pending: "warn",
   reconciliation_required: "warn",

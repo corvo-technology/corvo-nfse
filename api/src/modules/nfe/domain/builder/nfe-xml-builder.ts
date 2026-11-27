@@ -1,4 +1,5 @@
 import Builder from 'fast-xml-builder';
+import type { TpEmis } from '@/modules/fiscal-core/domain/ports/authority.port';
 import type { BuiltDocument } from '@/modules/fiscal-core/application/emission-pipeline';
 import { nfceQrCodeOnline } from '@/modules/nfce/domain/nfce-qr-code';
 import { buildAccessKey } from '../access-key';
@@ -6,6 +7,7 @@ import type { NfeDraft } from '../nfe-draft';
 import {
   NFE_NAMESPACE,
   type BuildContext,
+  type NfeContingency,
   type NfeRespTec,
   type XmlNode,
 } from './context';
@@ -21,10 +23,20 @@ import { totalGroup } from './total.group';
 import { transpGroup } from './transp.group';
 
 /** `infNFeSupl` of the NFC-e: the QR Code base and the consultation URL of the UF. */
-export interface NfeSupplement {
-  qrCodeBase: string;
+export type NfeSupplement = {
   urlChave: string;
-}
+} & (
+  | {
+      /** Online (`tpEmis` 1): the QR Code is `<base>?p=<key>|3|<tpAmb>`. */
+      qrCodeBase: string;
+      qrCodeOf?: undefined;
+    }
+  | {
+      /** Off-line (`tpEmis` 9): the caller builds and signs the QR Code once the key is known. */
+      qrCodeOf: (accessKey: string) => string;
+      qrCodeBase?: undefined;
+    }
+);
 
 interface BuilderState {
   draft: NfeDraft;
@@ -36,6 +48,7 @@ interface BuilderState {
   tpAmb?: 1 | 2;
   verProc: string;
   respTec: NfeRespTec | null;
+  contingency: NfeContingency | null;
 }
 
 const xml = new Builder({
@@ -60,6 +73,7 @@ export class NfeXmlBuilder {
       verProc: 'Corvo',
       respTec: null,
       supplement: null,
+      contingency: null,
     });
   }
 
@@ -94,6 +108,21 @@ export class NfeXmlBuilder {
     return new NfeXmlBuilder({ ...this.state, supplement });
   }
 
+  /**
+   * `tpEmis` 6, 7 or 9 with `dhCont` and `xJust` (15 to 256 characters). `null` (the default) is a
+   * normal emission, `tpEmis` 1.
+   */
+  withContingency(contingency: NfeContingency | null): NfeXmlBuilder {
+    if (contingency && !/^.{15,256}$/s.test(contingency.xJust.trim()))
+      throw new Error('NfeXmlBuilder: xJust must have 15 to 256 characters');
+    return new NfeXmlBuilder({
+      ...this.state,
+      contingency: contingency
+        ? { ...contingency, xJust: contingency.xJust.trim() }
+        : null,
+    });
+  }
+
   build(): BuiltDocument {
     const { draft, series, number, cNF, dhEmi } = this.state;
     if (series === undefined || number === undefined)
@@ -108,6 +137,8 @@ export class NfeXmlBuilder {
     if (draft.model === 55 && supplement)
       throw new Error('NfeXmlBuilder: withSupplement() is only for model 65');
     const cUF = draft.issuer.cUF;
+    const { contingency } = this.state;
+    const tpEmis: TpEmis = contingency?.tpEmis ?? 1;
     const tpAmb = this.state.tpAmb ?? (draft.environment === 'live' ? 1 : 2);
     const accessKey = buildAccessKey({
       cUF,
@@ -116,7 +147,7 @@ export class NfeXmlBuilder {
       model: draft.model,
       series,
       number,
-      tpEmis: 1,
+      tpEmis,
       cNF,
     });
     const ctx: BuildContext = {
@@ -130,6 +161,8 @@ export class NfeXmlBuilder {
       accessKey,
       verProc: this.state.verProc,
       respTec: this.state.respTec,
+      tpEmis,
+      contingency,
     };
     const infNFe: XmlNode = {
       '@_versao': '4.00',
@@ -147,7 +180,9 @@ export class NfeXmlBuilder {
     // IBS/CBS sits on the items and on the total in the layout; it will be added here when required.
     ibsCbsGroup(ctx);
     const qrCode = supplement
-      ? nfceQrCodeOnline(supplement.qrCodeBase, accessKey, tpAmb)
+      ? supplement.qrCodeOf
+        ? supplement.qrCodeOf(accessKey)
+        : nfceQrCodeOnline(supplement.qrCodeBase, accessKey, tpAmb)
       : undefined;
     // `infNFeSupl` is a sibling right after `infNFe`; the signature is appended after it.
     const document = {

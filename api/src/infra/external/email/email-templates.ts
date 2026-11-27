@@ -481,6 +481,24 @@ export function invoiceBlockedOnPortalEmail(input: {
   ]);
 }
 
+/** An off-line NFC-e is 20 hours old and the SEFAZ still has not received it. */
+export function nfceContingencyDeadlineEmail(input: {
+  number: number | null;
+  deadline: string;
+  documentUrl: string;
+}): RenderedEmail {
+  const label = input.number ? `A NFC-e ${input.number}` : 'Uma NFC-e';
+  return emailLayout('Uma NFC-e em contingência ainda não foi enviada', [
+    paragraph(
+      `${label} foi emitida em contingência off-line, já está com o consumidor e ainda não chegou à SEFAZ. O prazo para enviar é ${input.deadline}.`,
+    ),
+    paragraph(
+      'Continuamos tentando sozinhos. Se a SEFAZ continuar fora do ar perto do prazo, fale com o seu contador.',
+    ),
+    button(input.documentUrl, 'Ver nota'),
+  ]);
+}
+
 /** A webhook gave up after every retry. No url, secret or body: only which event, and where to look. */
 export function webhookDeliveryFailedEmail(input: {
   eventType: string;

@@ -95,9 +95,12 @@ export function toCreateInput(form: NfeFormState): NfeCreateInput {
 export function fromDocument(doc: NfeDocument): NfeFormState {
   const r = doc.recipient;
   const paid = doc.payment.payments;
+  const recipient = r
+    ? { taxId: r.taxId, name: r.name, indIeDest: String(r.indIeDest) as "1" | "2" | "9", stateRegistration: r.stateRegistration ?? "", email: r.email ?? "", street: r.address.street, number: r.address.number, complement: r.address.complement ?? "", district: r.address.district, zip: r.address.zip, cityCode: r.address.cityCode, city: r.address.city, state: r.address.state }
+    : emptyForm().recipient;
   return {
     companyId: doc.companyId, natOp: doc.natOp,
-    recipient: { taxId: r.taxId, name: r.name, indIeDest: String(r.indIeDest) as "1" | "2" | "9", stateRegistration: r.stateRegistration ?? "", email: r.email ?? "", street: r.address.street, number: r.address.number, complement: r.address.complement ?? "", district: r.address.district, zip: r.address.zip, cityCode: r.address.cityCode, city: r.address.city, state: r.address.state },
+    recipient,
     items: doc.items.map((item) => ({ code: item.code, description: item.description, ncm: item.ncm, cfop: item.cfop, unit: item.unit, quantity: String(Number(item.quantity)), unitPrice: toMoneyText(item.unitPrice), cfopManual: true, csosn: item.tax?.csosn === "400" ? "400" : item.tax?.csosn === "102" ? "102" : "" })),
     payments: paid.map((payment) => ({ tPag: payment.tPag, amount: toMoneyText(payment.amount) })),
     change: Number(doc.payment.change) > 0 ? toMoneyText(doc.payment.change) : "",

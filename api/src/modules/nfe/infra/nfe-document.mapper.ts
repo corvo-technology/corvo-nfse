@@ -67,6 +67,10 @@ export class NfeDocumentMapper {
       cancelRequestedAt: row.cancelRequestedAt,
       qrCode: row.qrCode,
       urlChave: row.urlChave,
+      contingencyAt: row.contingencyAt,
+      contingencyReason: row.contingencyReason,
+      contingencyAlertedAt: row.contingencyAlertedAt,
+      transmittedAt: row.transmittedAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });
@@ -123,6 +127,10 @@ export class NfeDocumentMapper {
       cancelRequestedAt: s.cancelRequestedAt,
       qrCode: s.qrCode,
       urlChave: s.urlChave,
+      contingencyAt: s.contingencyAt,
+      contingencyReason: s.contingencyReason,
+      contingencyAlertedAt: s.contingencyAlertedAt,
+      transmittedAt: s.transmittedAt,
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
     });

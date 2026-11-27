@@ -51,6 +51,7 @@ const TAX_REGIME_KINDS = [
 const REVIEW_STATUS = ['unreviewed', 'approved', 'rejected'];
 const NFE_STATUS_VALUES = [
   'queued',
+  'contingency_pending',
   'processing',
   'authorized',
   'rejected',
@@ -338,6 +339,10 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       maximum: 999,
       description: 'Series of the NFC-e (model 65).',
     }),
+    nfceAutoOffline: bool({
+      description:
+        'Issue the NFC-e off-line (contingency) by itself when the SEFAZ cannot be reached. Off by default.',
+    }),
     defaultNatOp: str({ example: 'Venda de mercadoria' }),
     defaultCsosn: str({ enum: ['102', '400'] }),
     defaultOrigin: int({ minimum: 0, maximum: 8 }),
@@ -384,6 +389,35 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
         enum: [true],
         description:
           'Present (and true) when the same `Idempotency-Key` with the same body had already created this NF-e: nothing new was written.',
+      }),
+    },
+    ['replayed'],
+  ),
+  NfceOfflineAccepted: obj(
+    {
+      type: str({ enum: ['nfce'] }),
+      id: uuid(),
+      status: str({ enum: NFE_STATUS_VALUES }),
+      replayed: bool({
+        enum: [true],
+        description:
+          'Present (and true) on the `200` answer to a repeated `Idempotency-Key`: nothing new was issued.',
+      }),
+      accessKey: str({
+        description:
+          'The 44-character key of the NFC-e (`tpEmis` 9 at position 35).',
+      }),
+      qrCode: str({
+        description:
+          'The QR Code v3 text of the off-line NFC-e, with the signature of the issuer. It is printed on the DANFCE.',
+      }),
+      xmlUrl: str({
+        description:
+          'Path to download the signed XML (`GET /invoices/{id}/xml`).',
+      }),
+      pdfUrl: str({
+        description:
+          'Path to download the DANFCE with the notice "EMITIDA EM CONTINGÊNCIA" (`GET /invoices/{id}/pdf`).',
       }),
     },
     ['replayed'],
@@ -505,10 +539,39 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
             'NFC-e only: the address to consult the note by its key (`infNFeSupl`). Absent on an NF-e.',
         }),
       ),
+      emissionType: int({
+        description:
+          'NF-e only: the `tpEmis` of the current key. `1` normal, `6` issued through the SVC-AN and `7` through the SVC-RS (the SEFAZ Virtual de Contingência, used when the SEFAZ of the state is out). Absent on a NFC-e.',
+      }),
+      contingencyAt: nullable(
+        dateTime({
+          description:
+            'When it was issued in contingency (`dhCont`): off-line for a NFC-e (`tpEmis` 9) or through the SVC for a NF-e (`tpEmis` 6 or 7). `null` when it was issued normally.',
+        }),
+      ),
+      contingencyReason: nullable(
+        str({
+          description:
+            'The reason of the contingency emission (`xJust`), for a NFC-e off-line or a NF-e through the SVC.',
+        }),
+      ),
+      contingencyDeadlineAt: nullable(
+        dateTime({
+          description:
+            'NFC-e only: the limit (24 hours) to transmit an off-line NFC-e. Corvo warns by e-mail and webhook after 20 hours.',
+        }),
+      ),
       createdAt: dateTime(),
       updatedAt: dateTime(),
     },
-    ['qrCode', 'urlChave'],
+    [
+      'qrCode',
+      'urlChave',
+      'emissionType',
+      'contingencyAt',
+      'contingencyReason',
+      'contingencyDeadlineAt',
+    ],
   ),
   NfseInvoiceRequest: {
     allOf: [
@@ -789,6 +852,23 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
         description:
           'True when the trouble is on the Corvo side, not the portal.',
       }),
+      authorities: array(
+        obj({
+          authority: str({
+            example: 'nfe-sp-2',
+            description:
+              'An enabled SEFAZ authority and environment, named like the breaker list above.',
+          }),
+          reachable: bool({
+            description: 'True when the last TCP probe reached its host.',
+          }),
+          checkedAt: dateTime(),
+        }),
+        {
+          description:
+            'What the last connection probe saw for each enabled SEFAZ authority; empty when none is enabled or the data is not available.',
+        },
+      ),
     }),
   }),
   Certificate: obj(
@@ -980,6 +1060,9 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       'nfce.document.cancellation_rejected',
       'nfce.inutilization.completed',
       'nfce.inutilization.rejected',
+      'nfce.contingency.deadline_near',
+      'nfe.contingency.entered',
+      'nfe.contingency.exited',
     ],
   }),
   Webhook: obj({

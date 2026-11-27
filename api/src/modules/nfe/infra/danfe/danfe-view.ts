@@ -48,6 +48,11 @@ export interface DanfeView {
   taxes: Array<{ label: string; value: string }>;
   transport: Array<{ label: string; value: string }>;
   items: DanfeItem[];
+  /**
+   * Set for a note issued in the SVC (`tpEmis` 6 or 7): "EMITIDA EM CONTINGÊNCIA SVC-AN em
+   * 26/11/2026 12:00:00. Motivo: ...". `null` for a normal note.
+   */
+  contingency: string | null;
   additionalInfo: string;
 }
 
@@ -286,6 +291,20 @@ const TAX_FIELDS: Array<[string, string]> = [
  * Reads the `nfeProc` (or a bare `NFe`) and returns what the DANFE prints. Pure: no I/O and no
  * rendering, so the formatting is tested without a PDF.
  */
+/** The notice of a note issued in the SVC (`tpEmis` 6 = SVC-AN, 7 = SVC-RS), from `dhCont` and `xJust`. */
+function contingencyOf(ide: Record<string, unknown>): string | null {
+  const tpEmis = text(ide.tpEmis);
+  if (tpEmis !== '6' && tpEmis !== '7') return null;
+  const since = splitDateTime(text(ide.dhCont));
+  const reason = text(ide.xJust);
+  return [
+    `EMITIDA EM CONTINGÊNCIA SVC-${tpEmis === '6' ? 'AN' : 'RS'}`,
+    since.date !== DASH ? ` em ${since.date} ${since.time}` : '',
+    '.',
+    reason ? ` Motivo: ${reason}` : '',
+  ].join('');
+}
+
 export function toDanfeView(nfeProcXml: string): DanfeView {
   const tree = node(nfeXmlParser.parse(nfeProcXml));
   const proc = node(tree.nfeProc);
@@ -328,6 +347,7 @@ export function toDanfeView(nfeProcXml: string): DanfeView {
     })),
     transport: transportOf(node(inf.transp)),
     items: list(inf.det).map(itemOf),
+    contingency: contingencyOf(ide),
     additionalInfo: [text(adicional.infCpl), text(adicional.infAdFisco)]
       .filter(Boolean)
       .join('\n'),

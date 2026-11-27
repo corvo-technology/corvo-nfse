@@ -1,6 +1,7 @@
 import { Global, Inject, Module, type OnModuleInit } from '@nestjs/common';
 import { FiscalDocumentRegistry } from '@/modules/fiscal-core/application/fiscal-document.registry';
 import { FiscalCoreModule } from '@/modules/fiscal-core/fiscal-core.module';
+import { PortalReachabilityReadModule } from '@/modules/portal-reachability/portal-reachability-read.module';
 import { NfseGatewayAdapter } from './nfse-gateway.adapter';
 import { OpenNfseProvider } from './open-nfse.provider';
 import { FakeNfseProvider } from './fake-nfse.provider';
@@ -10,7 +11,7 @@ import { FISCAL_PROVIDER, type FiscalProvider } from './nfse-fiscal-provider';
 
 @Global()
 @Module({
-  imports: [FiscalCoreModule],
+  imports: [FiscalCoreModule, PortalReachabilityReadModule],
   providers: [
     OpenNfseProvider,
     FakeNfseProvider,

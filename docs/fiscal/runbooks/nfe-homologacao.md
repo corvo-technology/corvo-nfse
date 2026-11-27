@@ -2,6 +2,8 @@
 
 Roteiro de homologação da NF-e: status do serviço, spike, eventos, como liberar um cliente e um estado, e o roteiro completo de aceite (SP e uma UF da SVRS).
 
+A NFC-e (venda ao consumidor, modelo 65) tem o runbook dela: [`nfce-homologacao.md`](./nfce-homologacao.md).
+
 ## Status do serviço
 
 Mostra se a SEFAZ da UF responde e se o mTLS com o certificado A1 funciona.

@@ -25,6 +25,22 @@ const NFE_ONLY = [
   'nfe_settings_update',
 ];
 
+/** A consumer sale: no recipient, no natOp. */
+const nfceBody = (companyKey: string) => ({
+  items: [
+    {
+      code: companyKey,
+      description: 'Café coado',
+      ncm: '09012100',
+      cfop: '5102',
+      unit: 'UN',
+      quantity: 1,
+      unitPrice: 8,
+    },
+  ],
+  payments: [{ tPag: '17', amount: 8 }],
+});
+
 const nfeBody = (companyKey: string) => ({
   recipient: {
     taxId: '123.456.789-09',
@@ -94,14 +110,16 @@ describe('MCP tools for NF-e (e2e)', () => {
     );
   };
 
-  const setRelease = async (on: boolean) => {
+  const setRelease = async (on: boolean, column = 'nfe_enabled_at') => {
     await db.query(
-      `UPDATE "${schema}".tenants SET nfe_enabled_at = ${on ? 'NOW()' : 'NULL'} WHERE id = $1`,
+      `UPDATE "${schema}".tenants SET ${column} = ${on ? 'NOW()' : 'NULL'} WHERE id = $1`,
       [ctx.tenantId],
     );
     await ctx.moduleFixture
       .get<CachePort>(CACHE_PORT)
-      .delete(`nfe:enabled:${ctx.tenantId}`);
+      .delete(
+        `${column === 'nfce_enabled_at' ? 'nfce' : 'nfe'}:enabled:${ctx.tenantId}`,
+      );
   };
 
   beforeAll(async () => {
@@ -170,9 +188,9 @@ describe('MCP tools for NF-e (e2e)', () => {
     });
 
     it('rejects an unknown type before anything runs', async () => {
-      const res = await call('nfse_list', { type: 'nfce' });
+      const res = await call('nfse_list', { type: 'bogus' });
       expect(res.isError).toBe(true);
-      expect(res.text).toContain('type must be one of');
+      expect(res.text).toContain('type must be one of nfse, nfe, nfce, all');
     });
 
     it('sets and reads the NF-e settings of the company', async () => {
@@ -279,11 +297,114 @@ describe('MCP tools for NF-e (e2e)', () => {
       expect(res.text.length).toBeGreaterThan(0);
     });
 
+    it('while NFC-e is not released, type nfce says so and NF-e keeps working', async () => {
+      const res = await call('nfse_list', { type: 'nfce' });
+      expect(res.isError).toBe(true);
+      expect(res.text).toContain('NFC-e não está liberada');
+      const nfe = await call('nfse_list', { type: 'nfe', limit: 5 });
+      expect(nfe.isError).toBe(false);
+    });
+
     it('turning the release off hides the tools again', async () => {
       await setRelease(false);
       const names = await listedNames();
       for (const name of NFE_ONLY) expect(names).not.toContain(name);
       await setRelease(true);
+    });
+  });
+
+  describe('NFC-e released (type nfce)', () => {
+    beforeAll(async () => {
+      await setRelease(true);
+      await setRelease(true, 'nfce_enabled_at');
+      await db.query(
+        `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
+         VALUES ('SP', 65, 2, now(), 'docs/fiscal/runbooks/nfce-homologacao.md')
+         ON CONFLICT DO NOTHING`,
+      );
+    });
+
+    afterAll(async () => {
+      await setRelease(false, 'nfce_enabled_at');
+      await setRelease(false);
+    });
+
+    it('with only NFC-e released the shared NF-e/NFC-e tools are listed, nfe_correct is not', async () => {
+      await setRelease(false);
+      const names = await listedNames();
+      expect(names).toContain('nfe_validate');
+      expect(names).toContain('nfe_settings_get');
+      expect(names).not.toContain('nfe_correct');
+      await setRelease(true);
+      expect(await listedNames()).toContain('nfe_correct');
+    });
+
+    it('nfe_validate with type nfce is a dry-run and shows no XML', async () => {
+      const ok = await call('nfe_validate', {
+        company_id: companyId,
+        type: 'nfce',
+        nfe: nfceBody('CAFE1'),
+      });
+      expect(ok.isError).toBe(false);
+      expect(ok.text).not.toContain('<NFe');
+    });
+
+    it('issues a NFC-e, reads it back, lists it, and cannot correct it', async () => {
+      const args = {
+        type: 'nfce',
+        company_id: companyId,
+        nfe: nfceBody('CAFE2'),
+        idempotency_key: `mcp-${randomUUID()}`,
+      };
+      const issued = await call('nfse_issue', args);
+      expect(issued.isError).toBe(false);
+      expect(issued.json).toMatchObject({ type: 'nfce' });
+      const id = issued.json.invoice_id as string;
+      expect((await call('nfse_issue', args)).json).toMatchObject({
+        invoice_id: id,
+        replayed: true,
+      });
+
+      const got = await call('nfse_get', { type: 'nfce', invoice_id: id });
+      expect(got.isError).toBe(false);
+      expect(got.json.invoice).toMatchObject({ id, type: 'nfce' });
+      expect(got.text).not.toContain('signedXml');
+
+      // an NF-e id is not a NFC-e: each type only sees its own documents
+      const wrong = await call('nfse_get', { type: 'nfe', invoice_id: id });
+      expect(wrong.isError).toBe(true);
+
+      const listed = await call('nfse_list', { type: 'nfce', limit: 10 });
+      expect(listed.json.invoices.map((i: { id: string }) => i.id)).toContain(
+        id,
+      );
+      const all = await call('nfse_list', { type: 'all', limit: 20 });
+      expect(
+        all.json.invoices.find((i: { id: string }) => i.id === id),
+      ).toMatchObject({ type: 'nfce' });
+
+      const correct = await call('nfe_correct', {
+        invoice_id: id,
+        correction: 'corrigir o endereço de entrega',
+      });
+      expect(correct.isError).toBe(true);
+      expect(correct.text).toContain('INVOICE_OPERATION_NOT_SUPPORTED');
+    });
+
+    it('nfe_number_gaps and nfe_settings take the NFC-e model and series', async () => {
+      const gaps = await call('nfe_number_gaps', {
+        company_id: companyId,
+        model: 65,
+      });
+      expect(gaps.isError).toBe(false);
+      const saved = await call('nfe_settings_update', {
+        company_id: companyId,
+        state_registration: '110042490114',
+        crt: 1,
+        nfce_default_series: 2,
+      });
+      expect(saved.isError).toBe(false);
+      expect(saved.json).toMatchObject({ nfceDefaultSeries: 2 });
     });
   });
 });

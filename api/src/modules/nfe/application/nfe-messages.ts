@@ -1,6 +1,7 @@
 import type { NewOutboxMessage } from '@/modules/invoice/domain/outbox-message';
 import type { NfeDocument } from '../domain/nfe-document';
 import {
+  NFCE_CONTINGENCY_ALERT,
   NFE_CANCEL,
   NFE_CORRECT,
   NFE_EMIT,
@@ -55,6 +56,33 @@ function base(
 /** First send (`emit:<id>:1`) or the one after a resubmission (`emit:<id>:<attempt + 1>`). */
 export function emitMessage(doc: NfeDocument): NewOutboxMessage {
   return base(doc, NFE_EMIT, `emit:${doc.id}:${doc.attempt + 1}`);
+}
+
+/**
+ * The first transmission of an off-line NFC-e (`tpEmis` 9): it was numbered, keyed and signed when it
+ * was issued, so this only sends that very XML (the emit handler reuses it, like a retry).
+ */
+export function transmitMessage(
+  doc: NfeDocument,
+  attempt: number = doc.attempt,
+): NewOutboxMessage {
+  return base(doc, NFE_EMIT, `emit:${doc.id}:${attempt}:offline`);
+}
+
+/**
+ * The 20 h warning of an off-line NFC-e, queued with the note and due 20 hours after `dhCont`. The
+ * handler looks at the state when it runs: a note already transmitted gets no warning.
+ */
+export function contingencyAlertMessage(
+  doc: NfeDocument,
+  availableAt: Date,
+): NewOutboxMessage {
+  return base(
+    doc,
+    NFCE_CONTINGENCY_ALERT,
+    `contingency-alert:${doc.id}`,
+    availableAt,
+  );
 }
 
 /** The same attempt again, once the authority answers (never a new key: nothing was sent). */

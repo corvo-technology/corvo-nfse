@@ -49,7 +49,12 @@ export class SessionController {
 
   /** What the app may show for the workspace. Only a flag per feature, nothing else about the tenant. */
   private async features(tenantId: string | null | undefined) {
-    return { nfe: tenantId ? await this.nfeAccess.isEnabled(tenantId) : false };
+    if (!tenantId) return { nfe: false, nfce: false };
+    const [nfe, nfce] = await Promise.all([
+      this.nfeAccess.isEnabled(tenantId),
+      this.nfeAccess.isEnabled(tenantId, 'nfce'),
+    ]);
+    return { nfe, nfce };
   }
 
   /** Who is signed in, so the app can greet them and ask for a name when there is none. */

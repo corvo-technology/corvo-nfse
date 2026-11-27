@@ -6,6 +6,7 @@ There are no tagged releases yet: the maintained version is the current code on 
 ## Unreleased
 
 ### Added
+- **NFC-e (venda ao consumidor), em teste.** A nota do balcão (modelo 65) pelas mesmas rotas `/v1/invoices` com `type: "nfce"`, no painel ("Venda ao consumidor"), no MCP e nas docs. QR Code v3, sem CSC; DANFCE em 80 mm e A4; cancelamento em até 30 minutos; sem carta de correção. Liberação própria por cliente, só em homologação e começando por SP.
 - **Spreadsheet import.** Upload a CSV or Excel file, review the rows, fix the ones with problems and issue hundreds of invoices with live counters. Available in the dashboard, in the API (`/v1/imports`) and through MCP (`import_*` tools). Invoices that wait for credits can be issued again after a top-up (#133).
 - **Scheduled and recurring invoices** with weekly, biweekly and monthly schedules, an e-mail on failures and MCP tools (#125).
 - **Onboarding** for new accounts, step by step, in production (#130).

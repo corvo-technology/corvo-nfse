@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({ get: vi.fn(), events: vi.fn(), sync: vi.fn(), 
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "n1" }) }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (permission: string) => mocks.permissions.has(permission) }) }));
+vi.mock("qrcode", () => ({ default: { toDataURL: vi.fn().mockResolvedValue("data:image/png;base64,AAAA") } }));
 vi.mock("@/lib/download", () => ({ saveBlob: mocks.save }));
 vi.mock("@/lib/nfe", async (original) => ({
   ...(await original<typeof import("@/lib/nfe")>()),
@@ -47,6 +48,19 @@ describe("NF-e detail", () => {
     expect(screen.queryByRole("link", { name: "Fix and send again" })).toBeNull();
     expect((button("XML") as HTMLButtonElement).disabled).toBe(false);
     expect(screen.getByText("Camiseta")).toBeTruthy();
+  });
+
+  it("issued through the SVC: says which one, the date and the reason", async () => {
+    mocks.get.mockResolvedValue(nfe({ emissionType: 6, contingencyAt: "2026-11-26T15:00:00.000Z", contingencyReason: "SEFAZ de origem indisponivel" }));
+    await renderPage();
+    expect(screen.getByText(/Issued through the SVC-AN contingency/)).toBeTruthy();
+    expect(screen.getByText(/SEFAZ de origem indisponivel/)).toBeTruthy();
+  });
+
+  it("a normal note has no SVC notice", async () => {
+    mocks.get.mockResolvedValue(nfe({ emissionType: 1 }));
+    await renderPage();
+    expect(screen.queryByText(/contingency:/)).toBeNull();
   });
 
   it("rejected: offers resubmit (to the filled form) and discard, and shows the error with its hint", async () => {
@@ -146,5 +160,31 @@ describe("NF-e detail", () => {
     await renderPage();
     expect(screen.getByText("Correction letter 1")).toBeTruthy();
     expect(screen.getByText("Registered")).toBeTruthy();
+  });
+
+  describe("NFC-e", () => {
+    const nfce = (over: Partial<NfeDocument> = {}) => nfe({ type: "nfce", recipient: null as never, natOp: "Venda", qrCode: "https://www.nfce.fazenda.sp.gov.br/qrcode?p=abc", urlChave: "https://www.nfce.fazenda.sp.gov.br/consulta", ...over } as Partial<NfeDocument>);
+
+    it("authorized: no correction letter; DANFCE 80 mm and A4 downloads; QR and the consult link", async () => {
+      mocks.get.mockResolvedValue(nfce());
+      mocks.file.mockResolvedValue(new Blob(["%PDF"]));
+      await renderPage();
+      expect(button("Correction letter")).toBeNull();
+      expect(button("Cancel note")).toBeTruthy();
+      expect(screen.getByText("Consumer not identified")).toBeTruthy();
+      expect(await screen.findByRole("img", { name: "QR Code of the NFC-e" })).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Look up the note on the SEFAZ site" }).getAttribute("href")).toBe("https://www.nfce.fazenda.sp.gov.br/consulta");
+      fireEvent.click(button("DANFCE (80 mm)")!);
+      await waitFor(() => expect(mocks.file).toHaveBeenCalledWith("n1", "pdf", "80mm"));
+      fireEvent.click(button("DANFCE (A4)")!);
+      await waitFor(() => expect(mocks.file).toHaveBeenCalledWith("n1", "pdf", "a4"));
+      expect(button("DANFE (PDF)")).toBeNull();
+    });
+
+    it("says that the cancellation is easy only in the first 30 minutes", async () => {
+      mocks.get.mockResolvedValue(nfce());
+      await renderPage();
+      expect(screen.getByText(/30 minutes/)).toBeTruthy();
+    });
   });
 });

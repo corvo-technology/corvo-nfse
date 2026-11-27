@@ -29,7 +29,8 @@ export type DocSlug =
   | "nfe-issue"
   | "nfe-errors"
   | "nfe-events"
-  | "nfe-files";
+  | "nfe-files"
+  | "nfce";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 

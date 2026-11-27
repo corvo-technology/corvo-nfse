@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PlatformAttentionModule } from './platform-attention.module';
 import { PlatformAuditModule } from './platform-audit.module';
+import { PlatformContingencyModule } from './platform-contingency.module';
 import { PlatformCreditGrantModule } from './platform-credit-grant.module';
 import { PlatformNfeAccessModule } from './platform-nfe-access.module';
 import { PlatformOverviewModule } from './platform-overview.module';
@@ -17,6 +18,7 @@ import { PlatformUsersModule } from './platform-users.module';
     PlatformAuditModule,
     PlatformCreditGrantModule,
     PlatformNfeAccessModule,
+    PlatformContingencyModule,
   ],
 })
 export class PlatformAdminModule {}

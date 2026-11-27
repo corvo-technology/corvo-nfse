@@ -97,4 +97,64 @@ describe('NfeDocument', () => {
       cStat: '225',
     });
   });
+  describe('off-line NFC-e (tpEmis 9)', () => {
+    const offline = () =>
+      NfeDocument.createOffline({
+        ...documentParams(),
+        model: 65,
+        contingencyAt: AT,
+        contingencyReason: 'SEFAZ indisponivel',
+      });
+
+    it('is born contingency_pending with tpEmis 9 and its reason', () => {
+      const doc = offline();
+      expect(doc.status).toBe('contingency_pending');
+      expect(doc.toSnapshot()).toMatchObject({
+        model: 65,
+        tpEmis: 9,
+        contingencyAt: AT,
+        contingencyReason: 'SEFAZ indisponivel',
+        transmittedAt: null,
+        contingencyAlertedAt: null,
+      });
+    });
+
+    it('never exists for the NF-e', () => {
+      expect(() =>
+        NfeDocument.createOffline({
+          ...documentParams(),
+          model: 55 as never,
+          contingencyAt: AT,
+          contingencyReason: 'SEFAZ indisponivel',
+        }),
+      ).toThrow('Only the NFC-e');
+    });
+
+    it('goes to processing, not straight to authorized', () => {
+      const doc = offline();
+      expect(() => doc.transitionTo('authorized')).toThrow(
+        InvalidNfeTransitionError,
+      );
+      expect(doc.transitionTo('processing')).toMatchObject({
+        fromStatus: 'contingency_pending',
+        toStatus: 'processing',
+      });
+      expect(doc.transitionTo('contingency_pending').toStatus).toBe(
+        'contingency_pending',
+      );
+    });
+
+    it('records the transmission and the alert; a new attempt clears the transmission', () => {
+      const doc = offline();
+      doc.markTransmitted(AT);
+      doc.markContingencyAlerted(AT);
+      expect(doc.toSnapshot()).toMatchObject({
+        transmittedAt: AT,
+        contingencyAlertedAt: AT,
+      });
+      doc.startAttempt('12345678', KEY_1, XML, AT);
+      expect(doc.toSnapshot().transmittedAt).toBeNull();
+      expect(doc.toSnapshot().contingencyAlertedAt).toBe(AT);
+    });
+  });
 });

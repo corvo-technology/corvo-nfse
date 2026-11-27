@@ -17,6 +17,8 @@ describe('NFE_VALID_TRANSITIONS (design spec 8.3)', () => {
     ['processing', 'denied'],
     ['processing', 'retry_pending'],
     ['processing', 'reconciliation_required'],
+    ['processing', 'contingency_pending'],
+    ['contingency_pending', 'processing'],
     ['retry_pending', 'processing'],
     ['reconciliation_required', 'authorized'],
     ['reconciliation_required', 'rejected'],
@@ -29,6 +31,7 @@ describe('NFE_VALID_TRANSITIONS (design spec 8.3)', () => {
     ['cancelling', 'cancelled'],
     ['cancelling', 'authorized'],
     ['rejected', 'queued'],
+    ['rejected', 'contingency_pending'],
     ['rejected', 'discarded'],
   ];
 
@@ -46,6 +49,8 @@ describe('NFE_VALID_TRANSITIONS (design spec 8.3)', () => {
   });
 
   it.each([
+    ['contingency_pending', 'authorized'],
+    ['contingency_pending', 'rejected'],
     ['denied', 'queued'],
     ['cancelled', 'authorized'],
     ['authorized', 'rejected'],

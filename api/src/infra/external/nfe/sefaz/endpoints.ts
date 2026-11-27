@@ -96,8 +96,8 @@ function row65(
  *   (https://github.com/nfephp-org/sped-nfe, LGPL-3.0, used here only as a data reference).
  * Not yet proven against the live services: run `yarn ts-node -r tsconfig-paths/register
  * scripts/nfe-check-endpoints.ts` and the homologação roteiro (docs/fiscal/runbooks/nfe-homologacao.md)
- * before enabling a UF. SVAN is unified with SVC-AN (same URLs); SVC-RS uses the SVRS URLs
- * (see SVC_AUTHORITY_BY_UF in uf.ts).
+ * before enabling a UF. The contingency authorities (SVCAN, SVCRS) have their own rows in
+ * `ENDPOINTS_SVC`.
  */
 /* prettier-ignore */
 export const ENDPOINTS: EndpointRow[] = [
@@ -297,14 +297,69 @@ export const ENDPOINTS_65: EndpointRow[] = [
   row65('SP', 1, 'RecepcaoEvento', 'https://nfce.fazenda.sp.gov.br/ws/NFeRecepcaoEvento4.asmx', '1.00', 'NFeRecepcaoEvento4', 'nfeRecepcaoEvento'),
 ];
 
+/**
+ * SVC-AN and SVC-RS, model 55 only (`tpEmis` 6 and 7), `NfeInutilizacao` left out (the SVC does not
+ * serve it). The paths are the ones of SVAN (SVC-AN) and SVRS (SVC-RS); only the SVC-AN hosts differ:
+ * `hom.svc.fazenda.gov.br` / `www.svc.fazenda.gov.br` **[não verificado: conferir no Portal NF-e
+ * "Relação de Serviços Web" e no MOC Anexo III antes de liberar a SVC em produção]**. SVC-RS uses the
+ * SVRS hosts `nfe-homologacao.svrs.rs.gov.br` / `nfe.svrs.rs.gov.br`. Derived from the SVAN and SVRS
+ * rows so a path is never written twice.
+ */
+const SVC_HOST_OF_SVAN: Record<string, string> = {
+  'hom.sefazvirtual.fazenda.gov.br': 'hom.svc.fazenda.gov.br',
+  'www.sefazvirtual.fazenda.gov.br': 'www.svc.fazenda.gov.br',
+};
+
+function svcRows(): EndpointRow[] {
+  const rows: EndpointRow[] = [];
+  for (const source of ENDPOINTS) {
+    if (source.service === 'NfeInutilizacao') continue;
+    if (source.authority !== 'SVAN' && source.authority !== 'SVRS') continue;
+    const host = new URL(source.url).hostname;
+    const url =
+      source.authority === 'SVAN'
+        ? source.url.replace(host, SVC_HOST_OF_SVAN[host] ?? host)
+        : source.url;
+    rows.push({
+      ...source,
+      authority: source.authority === 'SVAN' ? 'SVCAN' : 'SVCRS',
+      tpEmis: source.authority === 'SVAN' ? 6 : 7,
+      url,
+    });
+  }
+  return rows;
+}
+
+export const ENDPOINTS_SVC: EndpointRow[] = svcRows();
+
+/** The `tpEmis` that picks the endpoint of a note by its key: 6 and 7 go to the SVC, the rest to the origin. */
+export function endpointTpEmis(accessKey: string): TpEmis {
+  const digit = accessKey.charAt(34);
+  return digit === '6' ? 6 : digit === '7' ? 7 : 1;
+}
+
 export class TableAuthorityEndpointResolver implements AuthorityEndpointResolver {
   constructor(
-    private readonly rows: EndpointRow[] = [...ENDPOINTS, ...ENDPOINTS_65],
+    private readonly rows: EndpointRow[] = [
+      ...ENDPOINTS,
+      ...ENDPOINTS_65,
+      ...ENDPOINTS_SVC,
+    ],
   ) {}
 
   resolve(q: AuthorityTarget & { service: SefazService }): AuthorityEndpoint {
     const info = UF_TABLE[q.uf];
-    const authority = q.model === 65 ? info?.authorizer65 : info?.authorizer55;
+    let authority: AuthorityId | undefined;
+    let tpEmis: TpEmis = q.tpEmis;
+    if (q.tpEmis === 6 || q.tpEmis === 7) {
+      // The SVC serves the NF-e only, and only the one the UF belongs to (Ato COTEPE 39/2012).
+      const wanted = q.tpEmis === 6 ? 'SVCAN' : 'SVCRS';
+      if (q.model === 55 && info?.svc === wanted) authority = wanted;
+    } else {
+      // The off-line NFC-e (9) is transmitted to the normal authorizer.
+      tpEmis = 1;
+      authority = q.model === 65 ? info?.authorizer65 : info?.authorizer55;
+    }
     const found =
       authority !== undefined
         ? this.rows.find(
@@ -312,7 +367,7 @@ export class TableAuthorityEndpointResolver implements AuthorityEndpointResolver
               r.authority === authority &&
               r.tpAmb === q.tpAmb &&
               r.model === q.model &&
-              r.tpEmis === q.tpEmis &&
+              r.tpEmis === tpEmis &&
               r.service === q.service,
           )
         : undefined;

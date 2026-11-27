@@ -47,6 +47,8 @@ function context(
     accessKey: `${KEY}0`,
     verProc: 'Corvo 0.0.1',
     respTec: RESP_TEC,
+    tpEmis: 1,
+    contingency: null,
     ...overrides,
   };
 }

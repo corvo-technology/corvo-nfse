@@ -189,4 +189,57 @@ describe('NfeXmlBuilder, model 65', () => {
       expect(builderOf(NFCE_ANONIMA).build().xml).toBe(expected);
     });
   });
+  describe('contingency (tpEmis 9)', () => {
+    const contingency = {
+      tpEmis: 9 as const,
+      dhCont: '2026-11-26T10:00:00-03:00',
+      xJust: 'SEFAZ indisponivel',
+    };
+    const offline = (input: NfceInput = NFCE_ANONIMA) =>
+      builderOf(input)
+        .withContingency(contingency)
+        .withSupplement({
+          qrCodeOf: (key) =>
+            `https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode?p=${key}|3|2|26|20.00|||QUJD`,
+          urlChave: 'https://www.homologacao.nfce.fazenda.sp.gov.br/consulta',
+        });
+
+    it('writes tpEmis 9 in ide and in position 35 of the key, with dhCont and xJust at the end of ide', () => {
+      const built = offline().build();
+      expect(built.accessKey[34]).toBe('9');
+      const ide = parse(built.xml).NFe.infNFe.ide;
+      expect(ide.tpEmis).toBe('9');
+      expect(ide.dhCont).toBe('2026-11-26T10:00:00-03:00');
+      expect(ide.xJust).toBe('SEFAZ indisponivel');
+      expect(built.xml).toContain(
+        '</verProc><dhCont>2026-11-26T10:00:00-03:00</dhCont><xJust>SEFAZ indisponivel</xJust></ide>',
+      );
+      expect(built.qrCode).toContain(`?p=${built.accessKey}|3|2|26|`);
+    });
+
+    it('passes the XSD with a structural signature', async () => {
+      const built = offline().build();
+      expect(
+        await schema.validate(
+          withStructuralSignature(built.xml, built.referenceTag),
+          'nfe',
+        ),
+      ).toEqual({ ok: true });
+    });
+
+    it('without contingency the XML is the same as before', () => {
+      const built = builderOf(NFCE_ANONIMA).withContingency(null).build();
+      expect(built.accessKey[34]).toBe('1');
+      expect(built.xml).not.toContain('dhCont');
+    });
+
+    it('refuses an xJust with 14 characters', () => {
+      expect(() =>
+        builderOf(NFCE_ANONIMA).withContingency({
+          ...contingency,
+          xJust: '12345678901234',
+        }),
+      ).toThrow('xJust');
+    });
+  });
 });

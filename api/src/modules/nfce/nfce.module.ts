@@ -1,14 +1,17 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Module, Optional, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TableAuthorityEndpointResolver } from '@/infra/external/nfe/sefaz/endpoints';
 import { FakeNfeGateway } from '@/infra/external/nfe/sefaz/fake-nfe.gateway';
 import { NfeGateway } from '@/infra/external/nfe/sefaz/nfe-gateway';
 import { XmllintSchemaValidator } from '@/infra/external/nfe/sefaz/schema-validator';
-import { SefazSoapClient } from '@/infra/external/nfe/sefaz/soap-client';
+import { GovRouteSelector } from '@/modules/portal-reachability/gov-route.selector';
+import { createSefazSoapClient } from '@/modules/nfe/application/sefaz-soap-client.factory';
 import { FiscalDocumentRegistry } from '@/modules/fiscal-core/application/fiscal-document.registry';
 import { CompanyModule } from '@/modules/company/company.module';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
 import { NfeModule } from '@/modules/nfe/nfe.module';
+import { NfceContingencyAlertHandler } from './application/nfce-contingency-alert.handler';
+import { NfceOfflineService } from './application/nfce-offline.service';
 import { NfceIntakeService } from './application/nfce-intake.service';
 import { NfcePreparation } from './application/nfce-preparation.service';
 import { NfceResubmitService } from './application/nfce-resubmit.service';
@@ -27,6 +30,8 @@ import { NfceInvoiceRoutes } from './http/nfce-invoice.routes';
     NfcePreparation,
     NfceValidateService,
     NfceIntakeService,
+    NfceOfflineService,
+    NfceContingencyAlertHandler,
     NfceResubmitService,
     NfceInvoiceRoutes,
   ],
@@ -35,6 +40,7 @@ export class NfceModule implements OnModuleInit {
   constructor(
     private readonly registry: FiscalDocumentRegistry,
     private readonly config: ConfigService,
+    @Optional() private readonly routes?: GovRouteSelector,
   ) {}
 
   /**
@@ -50,7 +56,7 @@ export class NfceModule implements OnModuleInit {
     const timeoutMs = this.config.get<number>('NFE_SEFAZ_TIMEOUT_MS') ?? 30_000;
     this.registry.register(
       new NfeGateway(
-        new SefazSoapClient(),
+        createSefazSoapClient(this.routes),
         new TableAuthorityEndpointResolver(),
         new XmllintSchemaValidator(),
         timeoutMs,

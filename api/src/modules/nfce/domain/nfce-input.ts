@@ -37,4 +37,6 @@ export interface NfceInput {
   externalId?: string;
   /** Send the NFC-e to the consumer's e-mail once it is authorized (default true). */
   sendEmail?: boolean;
+  /** `offline`: issue in contingency (`tpEmis` 9) and transmit later. Left out, the company option decides. */
+  contingency?: 'offline';
 }
