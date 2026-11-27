@@ -11,6 +11,7 @@ import { setFiscalEnvironment } from "@/lib/api";
 import { SupportMenu, SupportPills } from "@/components/support/support-contacts";
 import { EnvSwitch } from "@/components/dashboard/env-switch";
 import { HIGHLIGHT_ENV_EVENT } from "@/components/onboarding/first-note-banner";
+import { Select } from "@/components/ui/select";
 
 interface TopbarProps {
   page: string;
@@ -96,7 +97,7 @@ export function Topbar({ page, menuOpen, onMenuToggle }: TopbarProps) {
         <EnvSwitch value={fiscalEnvironment} onChange={handleEnvironment} highlight={highlightEnv} />
 
         {failure && <span role="alert" className="text-xs text-danger">{t("Session.actionFailed")}</span>}
-        {(session?.availableTenants.length ?? 0) > 1 && <select aria-label={t("Session.workspace")} className="field max-w-40" disabled={busy} value={session?.activeTenantId} onChange={(event) => void handleTenant(event.target.value)}>{session?.availableTenants.map((item) => <option key={item.tenantId} value={item.tenantId}>{item.establishmentName}</option>)}</select>}
+        {(session?.availableTenants.length ?? 0) > 1 && <Select aria-label={t("Session.workspace")} className="max-w-40" disabled={busy} value={session?.activeTenantId} onChange={(event) => void handleTenant(event.target.value)}>{session?.availableTenants.map((item) => <option key={item.tenantId} value={item.tenantId}>{item.establishmentName}</option>)}</Select>}
         <LocaleSwitcher />
         <button
           type="button"

@@ -26,6 +26,7 @@ import { CustomerPicker } from "@/components/invoices/customer-picker";
 import { countryOptions } from "@/lib/countries";
 import { FixCompanyDialog, type CompanyFix } from "@/components/invoices/fix-company-dialog";
 import { clearInvoiceDraft, readInvoiceDraft, writeInvoiceDraft } from "@/lib/invoice-draft";
+import { Select } from "@/components/ui/select";
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -396,7 +397,7 @@ export default function NewInvoicePage() {
           <div className="dash-in dash-in-1 flex flex-col gap-3">
               <Field label={t("fields.company")} error={fieldErrors.companyId || undefined} required>
                 {(c) => (
-                  <select {...c} className="field" value={form.companyId} onChange={(event) => { setForm((previous) => ({ ...previous, companyId: event.target.value, serviceCode: "", municipalityCode: "" })); setFieldErrors({}); }} disabled={loading} required>
+                  <Select {...c} value={form.companyId} onChange={(event) => { setForm((previous) => ({ ...previous, companyId: event.target.value, serviceCode: "", municipalityCode: "" })); setFieldErrors({}); }} disabled={loading} required>
                     {loading && <option value="">{t("fields.loadingCompanies")}</option>}
                     {!loading && companies.length === 0 && <option value="">{t("fields.noCompanies")}</option>}
                     {companies.map((item) => (
@@ -404,7 +405,7 @@ export default function NewInvoicePage() {
                         {item.tradeName || item.legalName}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 )}
               </Field>
             {company && (company.status === "blocked" || (isLive && company.status !== "ready") || !/^\d{7}$/.test(company.municipalityCode ?? "")) && <p className="banner banner-warn">{t("fields.companyNotReady")} <Link href={`/app/companies/${company.id}`} className="underline">{t("fields.configureCompany")}</Link>{fixes.length > 0 && <> <Button variant="ghost" onClick={() => setFixOpen(true)}>{t("fix.fixHere")}</Button></>}</p>}
@@ -435,7 +436,7 @@ export default function NewInvoicePage() {
               </Field>
               <Field label={t("fields.name")} error={fieldErrors.customerName || undefined} optionalLabel={t("fields.optional")} hint={savedCustomer && form.customerName === savedCustomer.name ? t("hints.savedCustomer") : !savedCustomer && registryName !== null && form.customerName === registryName && cleanTaxId(form.customerTaxId).length === 14 ? t("hints.registryCustomer") : undefined}>
                 {(c) => (
-                  <input {...c} type="text" className="field" placeholder={t("placeholders.name")} value={form.customerName} onChange={set("customerName")} autoComplete="organization" />
+                  <input {...c} type="text" placeholder={t("placeholders.name")} value={form.customerName} onChange={set("customerName")} autoComplete="organization" />
                 )}
               </Field>
               </div>
@@ -444,14 +445,14 @@ export default function NewInvoicePage() {
               <>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label={t("fields.name")} error={fieldErrors.customerName || undefined} required>
-                    {(c) => <input {...c} type="text" className="field" placeholder={t("placeholders.name")} value={form.customerName} onChange={set("customerName")} autoComplete="organization" required />}
+                    {(c) => <input {...c} type="text" placeholder={t("placeholders.name")} value={form.customerName} onChange={set("customerName")} autoComplete="organization" required />}
                   </Field>
                   <Field label={t("foreign.country")} error={fieldErrors.country || undefined} required>
                     {(c) => (
-                      <select {...c} className="field" value={form.country} onChange={set("country")} required>
+                      <Select {...c} value={form.country} onChange={set("country")} required>
                         <option value="">{t("foreign.countryPlaceholder")}</option>
                         {countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
-                      </select>
+                      </Select>
                     )}
                   </Field>
                 </div>
@@ -468,36 +469,36 @@ export default function NewInvoicePage() {
                   {form.noTaxIdReason && (
                     <Field label={t("foreign.reasonLabel")}>
                       {(c) => (
-                        <select {...c} className="field" value={form.noTaxIdReason} onChange={set("noTaxIdReason")}>
+                        <Select {...c} value={form.noTaxIdReason} onChange={set("noTaxIdReason")}>
                           <option value="exempt">{t("foreign.reason.exempt")}</option>
                           <option value="not_required">{t("foreign.reason.not_required")}</option>
-                        </select>
+                        </Select>
                       )}
                     </Field>
                   )}
                 </div>
                 <div className="grid gap-4 sm:grid-cols-[2fr_1fr_1fr]">
                   <Field label={t("foreign.street")} error={fieldErrors.street || undefined} required>
-                    {(c) => <input {...c} type="text" className="field" maxLength={255} value={form.street} onChange={set("street")} autoComplete="address-line1" required />}
+                    {(c) => <input {...c} type="text" maxLength={255} value={form.street} onChange={set("street")} autoComplete="address-line1" required />}
                   </Field>
                     <Field label={t("foreign.number")} error={fieldErrors.number || undefined} required>
-                      {(c) => <input {...c} type="text" className="field" maxLength={60} value={form.number} onChange={set("number")} autoComplete="off" required />}
+                      {(c) => <input {...c} type="text" maxLength={60} value={form.number} onChange={set("number")} autoComplete="off" required />}
                     </Field>
                     <Field label={t("foreign.complement")} error={fieldErrors.complement || undefined} optionalLabel={t("fields.optional")}>
-                      {(c) => <input {...c} type="text" className="field" maxLength={156} value={form.complement} onChange={set("complement")} autoComplete="address-line2" />}
+                      {(c) => <input {...c} type="text" maxLength={156} value={form.complement} onChange={set("complement")} autoComplete="address-line2" />}
                     </Field>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label={t("foreign.district")} error={fieldErrors.district || undefined} required>
-                    {(c) => <input {...c} type="text" className="field" maxLength={60} value={form.district} onChange={set("district")} autoComplete="off" required />}
+                    {(c) => <input {...c} type="text" maxLength={60} value={form.district} onChange={set("district")} autoComplete="off" required />}
                   </Field>
                   <Field label={t("foreign.city")} error={fieldErrors.foreignCity || undefined} required>
-                    {(c) => <input {...c} type="text" className="field" maxLength={60} value={form.foreignCity} onChange={set("foreignCity")} autoComplete="address-level2" required />}
+                    {(c) => <input {...c} type="text" maxLength={60} value={form.foreignCity} onChange={set("foreignCity")} autoComplete="address-level2" required />}
                   </Field>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label={t("foreign.region")} error={fieldErrors.region || undefined} required>
-                    {(c) => <input {...c} type="text" className="field" maxLength={60} value={form.region} onChange={set("region")} autoComplete="address-level1" required />}
+                    {(c) => <input {...c} type="text" maxLength={60} value={form.region} onChange={set("region")} autoComplete="address-level1" required />}
                   </Field>
                   <Field label={t("foreign.postalCode")} error={fieldErrors.postalCode || undefined} required>
                     {(c) => <input {...c} type="text" className="field font-mono" maxLength={11} value={form.postalCode} onChange={set("postalCode")} autoComplete="postal-code" required />}
@@ -509,7 +510,7 @@ export default function NewInvoicePage() {
             <div className="flex flex-col gap-2.5">
             <Field label={t("fields.email")} error={fieldErrors.customerEmail || undefined} required={sendEmail} optionalLabel={sendEmail ? undefined : t("fields.optional")} hint={t("hints.email")}>
               {(c) => (
-                <input {...c} type="email" inputMode="email" className="field" placeholder={t("placeholders.email")} value={form.customerEmail} onChange={set("customerEmail")} autoComplete="email" spellCheck={false} />
+                <input {...c} type="email" inputMode="email" placeholder={t("placeholders.email")} value={form.customerEmail} onChange={set("customerEmail")} autoComplete="email" spellCheck={false} />
               )}
             </Field>
             <label className="choice items-start">
@@ -544,7 +545,7 @@ export default function NewInvoicePage() {
                 )}
               </Field>
               <Field label={t("fields.competence")} error={fieldErrors.competenceDate || undefined} required>
-                {(c) => <input {...c} type="date" className="field" max={today} value={form.competenceDate} onChange={set("competenceDate")} required />}
+                {(c) => <input {...c} type="date" max={today} value={form.competenceDate} onChange={set("competenceDate")} required />}
               </Field>
             </div>
           </Section>
@@ -573,7 +574,7 @@ export default function NewInvoicePage() {
                 </Field>
             <Field label={t("fields.purchaseOrder")} error={fieldErrors.purchaseOrder || undefined} optionalLabel={t("fields.optional")} hint={t("hints.purchaseOrder")}>
               {(c) => (
-                <input {...c} type="text" className="field" maxLength={60} placeholder={t("placeholders.purchaseOrder")} value={form.purchaseOrder} onChange={set("purchaseOrder")} autoComplete="off" />
+                <input {...c} type="text" maxLength={60} placeholder={t("placeholders.purchaseOrder")} value={form.purchaseOrder} onChange={set("purchaseOrder")} autoComplete="off" />
               )}
             </Field>
             <Field label={t("fields.notes")} error={fieldErrors.notes || undefined} optionalLabel={t("fields.optional")} hint={t("hints.notes")}>
@@ -583,14 +584,14 @@ export default function NewInvoicePage() {
             </Field>
               <Field label={t("fields.reference")} optionalLabel={t("fields.optional")} hint={t("hints.reference")}>
                 {(c) => (
-                  <input {...c} type="text" className="field" placeholder={t("placeholders.reference")} value={form.externalId} onChange={set("externalId")} autoComplete="off" spellCheck={false} />
+                  <input {...c} type="text" placeholder={t("placeholders.reference")} value={form.externalId} onChange={set("externalId")} autoComplete="off" spellCheck={false} />
                 )}
               </Field>
               {!abroad && (
                 <div className="grid grid-cols-[1fr_96px] gap-4">
               <Field label={t("fields.city")} error={fieldErrors.city || undefined} optionalLabel={t("fields.optional")}>
                 {(c) => (
-                  <input {...c} type="text" className="field" placeholder={t("placeholders.city")} value={form.city} onChange={set("city")} autoComplete="address-level2" />
+                  <input {...c} type="text" placeholder={t("placeholders.city")} value={form.city} onChange={set("city")} autoComplete="address-level2" />
                 )}
               </Field>
               <Field label={t("fields.state")} error={fieldErrors.state || undefined} optionalLabel={t("fields.optional")}>
@@ -611,13 +612,13 @@ export default function NewInvoicePage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                     <Field label={t("repeat.frequency")}>
                       {(c) => (
-                        <select {...c} className="field" value={frequency} onChange={(event) => setFrequency(event.target.value as ScheduleFrequency)}>
+                        <Select {...c} value={frequency} onChange={(event) => setFrequency(event.target.value as ScheduleFrequency)}>
                           {(["WEEKLY", "BIWEEKLY", "MONTHLY"] as const).map((value) => <option key={value} value={value}>{t(`repeat.${value}`)}</option>)}
-                        </select>
+                        </Select>
                       )}
                     </Field>
                     <Field label={t("repeat.endsOn")} optionalLabel={t("fields.optional")} hint={t("repeat.next", { date: firstRepeatOn.split("-").reverse().join("/") })}>
-                      {(c) => <input {...c} type="date" className="field" min={firstRepeatOn} value={endsOn} onChange={(event) => setEndsOn(event.target.value)} />}
+                      {(c) => <input {...c} type="date" min={firstRepeatOn} value={endsOn} onChange={(event) => setEndsOn(event.target.value)} />}
                     </Field>
                 </div>
               )}

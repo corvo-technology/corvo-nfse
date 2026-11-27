@@ -13,6 +13,7 @@ import type { IntegrationConnection, IntegrationProvider } from "@/lib/api";
 import type { Company } from "@/lib/types";
 import { ConnectError, connectProvider } from "@/lib/integrations";
 import { useApiErrorText } from "@/lib/use-api-error";
+import { Select } from "@/components/ui/select";
 
 interface ConnectFlowProps {
   providers: IntegrationProvider[];
@@ -125,19 +126,19 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
           ) : (
             <Field label={t("wizard.company")} required>
               {(control) => (
-                <select {...control} className="field" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+                <Select {...control} value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
                   <option value="">{t("wizard.companyPlaceholder")}</option>
                   {companies.map((company) => <option key={company.id} value={company.id}>{company.tradeName || company.legalName}</option>)}
-                </select>
+                </Select>
               )}
             </Field>
           )}
           {askedFields.map((field) => field.options ? (
             <Field key={field.key} label={t.has(`wizard.fields.${field.key}`) ? t(`wizard.fields.${field.key}`) : field.label}>
               {(control) => (
-                <select {...control} className="field" value={credentials[field.key] ?? field.options?.[0] ?? ""} onChange={(e) => setCredentials({ ...credentials, [field.key]: e.target.value })}>
+                <Select {...control} value={credentials[field.key] ?? field.options?.[0] ?? ""} onChange={(e) => setCredentials({ ...credentials, [field.key]: e.target.value })}>
                   {field.options?.map((option) => <option key={option} value={option}>{t.has(`wizard.options.${field.key}.${option}`) ? t(`wizard.options.${field.key}.${option}`) : option}</option>)}
-                </select>
+                </Select>
               )}
             </Field>
           ) : (

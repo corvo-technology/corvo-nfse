@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import type { MunicipalitiesBlock } from "@/lib/docs/types";
 import { filterMunicipalities, loadMunicipalities, type MunicipalityData, type MunicipalityStatus, type StatusFilter } from "@/lib/nfse-municipalities";
 import { cn } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
 
 const PAGE_SIZE = 50;
 const FILTERS: StatusFilter[] = ["all", "emissor", "ambiente", "inactive"];
@@ -53,14 +54,14 @@ export function MunicipalitiesSearch({ locale, labels }: Pick<MunicipalitiesBloc
       <div className="grid gap-3 sm:grid-cols-[1fr_11rem]">
         <label className="flex flex-col gap-1.5 text-[13px] text-text-3">
           {labels.searchLabel}
-          <input type="search" className="field" value={query} placeholder={labels.searchPlaceholder} autoComplete="off" onChange={(e) => change(setQuery)(e.target.value)} />
+          <input type="search" value={query} placeholder={labels.searchPlaceholder} autoComplete="off" onChange={(e) => change(setQuery)(e.target.value)} />
         </label>
         <label className="flex flex-col gap-1.5 text-[13px] text-text-3">
           {labels.stateLabel}
-          <select className="field" value={uf} onChange={(e) => change(setUf)(e.target.value)}>
+          <Select value={uf} onChange={(e) => change(setUf)(e.target.value)}>
             <option value="">{labels.allStates}</option>
             {states.map((state) => <option key={state} value={state}>{state}</option>)}
-          </select>
+          </Select>
         </label>
       </div>
 
