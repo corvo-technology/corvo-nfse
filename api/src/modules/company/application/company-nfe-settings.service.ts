@@ -32,6 +32,7 @@ export interface NfeSettingsView {
   taxRegime: string | null;
   defaultSeries: number;
   nfceDefaultSeries: number;
+  nfceAutoOffline: boolean;
   defaultNatOp: string;
   defaultCsosn: string;
   defaultOrigin: number;
@@ -92,6 +93,8 @@ export class CompanyNfeSettingsService {
       defaultSeries: input.defaultSeries ?? NFE_SETTINGS_DEFAULTS.defaultSeries,
       nfceDefaultSeries:
         input.nfceDefaultSeries ?? NFE_SETTINGS_DEFAULTS.nfceDefaultSeries,
+      nfceAutoOffline:
+        input.nfceAutoOffline ?? NFE_SETTINGS_DEFAULTS.nfceAutoOffline,
       defaultNatOp: input.defaultNatOp ?? NFE_SETTINGS_DEFAULTS.defaultNatOp,
       defaultCsosn: input.defaultCsosn ?? NFE_SETTINGS_DEFAULTS.defaultCsosn,
       defaultOrigin: input.defaultOrigin ?? NFE_SETTINGS_DEFAULTS.defaultOrigin,
@@ -133,6 +136,8 @@ function view(
     defaultSeries: stored?.defaultSeries ?? NFE_SETTINGS_DEFAULTS.defaultSeries,
     nfceDefaultSeries:
       stored?.nfceDefaultSeries ?? NFE_SETTINGS_DEFAULTS.nfceDefaultSeries,
+    nfceAutoOffline:
+      stored?.nfceAutoOffline ?? NFE_SETTINGS_DEFAULTS.nfceAutoOffline,
     defaultNatOp: stored?.defaultNatOp ?? NFE_SETTINGS_DEFAULTS.defaultNatOp,
     defaultCsosn: stored?.defaultCsosn ?? NFE_SETTINGS_DEFAULTS.defaultCsosn,
     defaultOrigin: stored?.defaultOrigin ?? NFE_SETTINGS_DEFAULTS.defaultOrigin,

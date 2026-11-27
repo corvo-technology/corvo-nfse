@@ -31,6 +31,29 @@ const storedName = (doc: NfeDocument, format: NfeFileFormat): string =>
       ? DANFCE_FILE
       : DANFE_FILE;
 
+/**
+ * While an off-line NFC-e (`tpEmis` 9) waits for its authorization it is already with the consumer:
+ * its files come from the signed XML on the document, with no protocol yet. Once the SEFAZ
+ * authorizes it, the documents are prepared as for any note and these rules no longer apply.
+ */
+const OFFLINE_BEFORE_PROOF = new Set([
+  'contingency_pending',
+  'processing',
+  'retry_pending',
+  'reconciliation_required',
+  'manual_review',
+]);
+
+const isOfflineBeforeProof = (doc: NfeDocument): boolean => {
+  const s = doc.toSnapshot();
+  return (
+    s.tpEmis === 9 &&
+    s.documentsReadyAt === null &&
+    s.signedXml !== null &&
+    OFFLINE_BEFORE_PROOF.has(s.status)
+  );
+};
+
 /** Seconds a download link lives (same as the NFS-e one). */
 const URL_TTL_SECONDS = 3600;
 
@@ -55,7 +78,8 @@ export class NfeFilesService {
   ): Promise<{ doc: NfeDocument; ref: StorageRef }> {
     const doc = await this.documents.findById(id, tenantId, environment);
     if (!doc) throw nfeNotFound();
-    if (!doc.toSnapshot().documentsReadyAt) throw nfeDocumentsNotReady();
+    if (!doc.toSnapshot().documentsReadyAt && !isOfflineBeforeProof(doc))
+      throw nfeDocumentsNotReady();
     return {
       doc,
       ref: { type: 'nfe', id: doc.id, tenantId, environment },
@@ -91,6 +115,8 @@ export class NfeFilesService {
     options: NfePdfOptions = {},
   ): Promise<{ body: Buffer; fileName: string }> {
     const { doc, ref } = await this.ready(id, tenantId, environment);
+    if (isOfflineBeforeProof(doc))
+      return this.offlineFile(doc, format, options);
     const name = storedName(doc, format);
     const isNfcePdf = format === 'pdf' && doc.toSnapshot().model === 65;
     // The A4 sheet is never stored; a cupom authorized before the DANFCE existed is drawn on demand.
@@ -99,6 +125,23 @@ export class NfeFilesService {
       (options.layout === 'a4' || !(await this.storage.fileExists(ref, name)))
         ? await this.drawDanfce(doc, ref, options.layout ?? '80mm')
         : await this.storage.getFile(ref, name);
+    return { body, fileName: this.fileName(doc, format) };
+  }
+
+  /** The signed XML, or the DANFCE drawn from it ("EMITIDA EM CONTINGÊNCIA"), straight from the document. */
+  private async offlineFile(
+    doc: NfeDocument,
+    format: NfeFileFormat,
+    options: NfePdfOptions = {},
+  ): Promise<{ body: Buffer; fileName: string }> {
+    const xml = doc.toSnapshot().signedXml as string;
+    const body =
+      format === 'xml'
+        ? Buffer.from(xml, 'utf8')
+        : await this.danfce.render(xml, {
+            homologation: doc.environment === 'test',
+            layout: options.layout ?? '80mm',
+          });
     return { body, fileName: this.fileName(doc, format) };
   }
 
@@ -112,7 +155,16 @@ export class NfeFilesService {
     if (format !== 'xml' && format !== 'pdf') throw nfeDownloadFormatInvalid();
     const { doc, ref } = await this.ready(id, tenantId, environment);
     const name = storedName(doc, format);
-    if (
+    // Stored now so a link can point at it; the authorization overwrites both with the final files.
+    if (isOfflineBeforeProof(doc)) {
+      const file = await this.offlineFile(doc, format);
+      await this.storage.saveFile(
+        ref,
+        name,
+        file.body,
+        format === 'xml' ? 'application/xml' : 'application/pdf',
+      );
+    } else if (
       format === 'pdf' &&
       doc.toSnapshot().model === 65 &&
       !(await this.storage.fileExists(ref, name))

@@ -320,6 +320,20 @@ export const envSchema = z
     // A host outside the government used to tell "our network is down" from "the portal is down".
     PORTAL_PROBE_CONTROL_HOST: z.string().trim().min(1).default('1.1.1.1'),
     OPS_ALERT_EMAILS: z.string().optional(),
+    /**
+     * Optional backup route to the government: an HTTP CONNECT proxy (`http://user:pass@host:port`) that
+     * runs OUTSIDE our host. Used only while the connection monitor says our network cannot reach the
+     * government (`gov_unreachable_from_us`); otherwise calls go direct. Contains credentials: never log it.
+     */
+    FISCAL_HTTPS_PROXY: z
+      .string()
+      .trim()
+      .url()
+      .refine(
+        (value) => value.startsWith('http://') || value.startsWith('https://'),
+        'must be an http(s) URL',
+      )
+      .optional(),
     // Calls to the portal that failed to connect in 10 minutes before the alert opens even when the
     // tests pass. 0 turns this signal off.
     OPS_ALERT_EMISSION_FAILURES: z.coerce.number().int().min(0).default(10),

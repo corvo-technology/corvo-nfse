@@ -65,6 +65,18 @@ describe("NFC-e docs", () => {
       expect(text, event).toContain(`nfce.document.${event}`);
     expect(text).toContain("nfce.inutilization.completed");
     expect(text).toContain("nfce.inutilization.rejected");
+    expect(text).toContain("nfce.contingency.deadline_near");
+  });
+
+  it.each(["en", "pt"] as const)("%s: explains the off-line NFC-e: the request, the option off by default, 20 and 24 hours, the locked fields", (locale) => {
+    const text = allText(page(locale, "nfce").blocks);
+    expect(text).toContain('contingency: "offline"');
+    expect(text).toContain("nfceAutoOffline");
+    expect(text).toContain("contingency_pending");
+    expect(text).toMatch(/20 (horas|hours)/);
+    expect(text).toMatch(/24 (horas|hours)/);
+    expect(text).toContain("NFCE_CONTINGENCY_FIELD_LOCKED");
+    expect(text).toContain("NFCE_OFFLINE_NOT_AVAILABLE");
   });
 
   it.each(["en", "pt"] as const)("%s: the JSON examples are valid and the request one is an NFC-e without natOp", (locale) => {
@@ -90,5 +102,16 @@ describe("NFC-e docs", () => {
   it("is in the llms-full export in both languages", () => {
     expect(buildLlmsFull("en")).toContain("NFC-e: consumer sale");
     expect(buildLlmsFull("pt")).toContain("NFC-e: venda ao consumidor");
+  });
+});
+
+describe("NF-e SVC docs", () => {
+  it.each(["en", "pt"] as const)("%s: the files and webhooks page explains the SVC and lists its events", (locale) => {
+    const text = allText(page(locale, "nfe-files").blocks);
+    expect(text).toContain("SVC-AN");
+    expect(text).toContain("tpEmis");
+    expect(text).toContain("nfe.contingency.entered");
+    expect(text).toContain("nfe.contingency.exited");
+    expect(text).toContain("EMITIDA EM CONTINGÊNCIA SVC");
   });
 });

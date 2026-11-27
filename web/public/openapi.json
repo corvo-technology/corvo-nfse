@@ -6150,7 +6150,7 @@
         ]
       },
       "post": {
-        "description": "Issues an NFS-e for a company. Issuing is asynchronous: the answer is 202 with the invoice `queued`, and the final result comes by webhook or by polling `GET /invoices/{id}`. In `live`, each accepted invoice reserves one credit. With `options.type` `SCHEDULE` or `RECURRING` nothing is issued now: the answer is the schedule (see Schedules). Send `Idempotency-Key` to make retries safe. A test key issues on the restricted-production environment, with no fiscal value.\n\n**With `type: \"nfe\"`:** Issues an NF-e (model 55, Simples Nacional, homologation only). The answer is asynchronous: `202` with the `id` and `status: queued`; the result comes by webhook (`nfe.document.*`) or by `GET /invoices/{id}`. Same body as `POST /invoices/validate`, which is the way to check a note without issuing it.\n\n`Idempotency-Key` (1 to 200 characters) is **required**: without it the answer is `400 IDEMPOTENCY_KEY_REQUIRED`. Repeating a key with the same body answers `200` with the same `id` and `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.\n\nEverything that can be refused is refused here with `422` and nothing is saved or charged: `type` `validation` (fix the fields in `details`) or `configuration` (`COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). In `live`, each accepted NF-e reserves one credit, given back if the note ends rejected, denied or discarded. Answers 404 while NF-e is not released for the workspace.\n\n**With `type: \"nfce\"`:** Issues a NFC-e (model 65, sale to the final consumer, Simples Nacional, homologation only, QR Code v3 online, no CSC). Same body as the dry-run `POST /invoices/validate` with `type: \"nfce\"`; the consumer is optional. Same rules as the NF-e: `Idempotency-Key` required, `202` with `{ type: \"nfce\", id, status: \"queued\" }`, the result by webhook (`nfce.document.*`) or `GET /invoices/{id}`, one credit reserved in `live`. The note carries `qrCode` and `urlChave` once the first attempt is built. Answers 404 while NFC-e is not released for the workspace.\n\nPermission: `nfse.invoices.issue` or `nfe.documents.issue`.",
+        "description": "Issues an NFS-e for a company. Issuing is asynchronous: the answer is 202 with the invoice `queued`, and the final result comes by webhook or by polling `GET /invoices/{id}`. In `live`, each accepted invoice reserves one credit. With `options.type` `SCHEDULE` or `RECURRING` nothing is issued now: the answer is the schedule (see Schedules). Send `Idempotency-Key` to make retries safe. A test key issues on the restricted-production environment, with no fiscal value.\n\n**With `type: \"nfe\"`:** Issues an NF-e (model 55, Simples Nacional, homologation only). The answer is asynchronous: `202` with the `id` and `status: queued`; the result comes by webhook (`nfe.document.*`) or by `GET /invoices/{id}`. Same body as `POST /invoices/validate`, which is the way to check a note without issuing it.\n\n`Idempotency-Key` (1 to 200 characters) is **required**: without it the answer is `400 IDEMPOTENCY_KEY_REQUIRED`. Repeating a key with the same body answers `200` with the same `id` and `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.\n\nEverything that can be refused is refused here with `422` and nothing is saved or charged: `type` `validation` (fix the fields in `details`) or `configuration` (`COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). In `live`, each accepted NF-e reserves one credit, given back if the note ends rejected, denied or discarded. Answers 404 while NF-e is not released for the workspace.\n\n**With `type: \"nfce\"`:** Issues a NFC-e (model 65, sale to the final consumer, Simples Nacional, homologation only, QR Code v3 online, no CSC). Same body as the dry-run `POST /invoices/validate` with `type: \"nfce\"`; the consumer is optional. Same rules as the NF-e: `Idempotency-Key` required, `202` with `{ type: \"nfce\", id, status: \"queued\" }`, the result by webhook (`nfce.document.*`) or `GET /invoices/{id}`, one credit reserved in `live`. The note carries `qrCode` and `urlChave` once the first attempt is built. Answers 404 while NFC-e is not released for the workspace.\n\n**Off-line NFC-e (`contingency: \"offline\"`):** the PDV asks for the contingency `tpEmis` 9. Corvo numbers, signs and answers **`201` at once** with `{ type: \"nfce\", id, status: \"contingency_pending\", accessKey, qrCode, xmlUrl, pdfUrl }`; the DANFCE says \"EMITIDA EM CONTINGÊNCIA\". Nothing is sent to the SEFAZ in this call: Corvo transmits when the authority answers and warns by e-mail and by webhook `nfce.contingency.deadline_near` after 20 hours (the limit is 24). Without `contingency`, a company that turned on \"issue off-line automatically\" gets the same answer when the SEFAZ cannot be reached; otherwise the NFC-e goes the normal way. A state with no off-line QR Code address answers `422 NFCE_OFFLINE_NOT_AVAILABLE`. The note can still be rejected after it was handed to the consumer: fix it with `PUT /invoices/{id}` (only the description, barcode, NCM, CEST, unit and `additionalInfo` may change, `422 NFCE_CONTINGENCY_FIELD_LOCKED` otherwise).\n\nPermission: `nfse.invoices.issue` or `nfe.documents.issue`.",
         "operationId": "invoices_create",
         "parameters": [
           {
@@ -6203,6 +6203,38 @@
               }
             },
             "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/NfceOfflineAccepted"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Created",
             "headers": {
               "X-RateLimit-Limit": {
                 "$ref": "#/components/headers/X-RateLimit-Limit"
@@ -11474,7 +11506,10 @@
                 "nfce.document.cancelled",
                 "nfce.document.cancellation_rejected",
                 "nfce.inutilization.completed",
-                "nfce.inutilization.rejected"
+                "nfce.inutilization.rejected",
+                "nfce.contingency.deadline_near",
+                "nfe.contingency.entered",
+                "nfe.contingency.exited"
               ],
               "type": "string"
             },
@@ -13748,6 +13783,70 @@
           }
         ]
       },
+      "NfceOfflineAccepted": {
+        "properties": {
+          "accessKey": {
+            "description": "The 44-character key of the NFC-e (`tpEmis` 9 at position 35).",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "pdfUrl": {
+            "description": "Path to download the DANFCE with the notice \"EMITIDA EM CONTINGÊNCIA\" (`GET /invoices/{id}/pdf`).",
+            "type": "string"
+          },
+          "qrCode": {
+            "description": "The QR Code v3 text of the off-line NFC-e, with the signature of the issuer. It is printed on the DANFCE.",
+            "type": "string"
+          },
+          "replayed": {
+            "description": "Present (and true) on the `200` answer to a repeated `Idempotency-Key`: nothing new was issued.",
+            "enum": [
+              true
+            ],
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "contingency_pending",
+              "processing",
+              "authorized",
+              "rejected",
+              "denied",
+              "retry_pending",
+              "reconciliation_required",
+              "manual_review",
+              "cancelling",
+              "cancelled",
+              "discarded"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "nfce"
+            ],
+            "type": "string"
+          },
+          "xmlUrl": {
+            "description": "Path to download the signed XML (`GET /invoices/{id}/xml`).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "status",
+          "accessKey",
+          "qrCode",
+          "xmlUrl",
+          "pdfUrl"
+        ],
+        "type": "object"
+      },
       "NfcePayment": {
         "properties": {
           "amount": {
@@ -13820,6 +13919,13 @@
           },
           "companyId": {
             "format": "uuid",
+            "type": "string"
+          },
+          "contingency": {
+            "description": "Issue in off-line contingency (`tpEmis` 9): the NFC-e is numbered, signed and returned at once (`201`, status `contingency_pending`, with `qrCode`, `xmlUrl` and `pdfUrl`) and Corvo transmits it when the SEFAZ answers, within 24 hours. Left out, the company option \"issue off-line automatically\" decides when the SEFAZ cannot be reached; without it the NFC-e goes the normal way (`202`).",
+            "enum": [
+              "offline"
+            ],
             "type": "string"
           },
           "externalId": {
@@ -13904,6 +14010,23 @@
             "format": "uuid",
             "type": "string"
           },
+          "contingencyAt": {
+            "description": "When it was issued in contingency (`dhCont`): off-line for a NFC-e (`tpEmis` 9) or through the SVC for a NF-e (`tpEmis` 6 or 7). `null` when it was issued normally.",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "contingencyDeadlineAt": {
+            "description": "NFC-e only: the limit (24 hours) to transmit an off-line NFC-e. Corvo warns by e-mail and webhook after 20 hours.",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "contingencyReason": {
+            "description": "The reason of the contingency emission (`xJust`), for a NFC-e off-line or a NF-e through the SVC.",
+            "nullable": true,
+            "type": "string"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -13936,6 +14059,10 @@
             ],
             "nullable": true,
             "type": "string"
+          },
+          "emissionType": {
+            "description": "NF-e only: the `tpEmis` of the current key. `1` normal, `6` issued through the SVC-AN and `7` through the SVC-RS (the SEFAZ Virtual de Contingência, used when the SEFAZ of the state is out). Absent on a NFC-e.",
+            "type": "integer"
           },
           "environment": {
             "enum": [
@@ -14027,6 +14154,7 @@
           "status": {
             "enum": [
               "queued",
+              "contingency_pending",
               "processing",
               "authorized",
               "rejected",
@@ -14145,6 +14273,7 @@
           "status": {
             "enum": [
               "queued",
+              "contingency_pending",
               "processing",
               "authorized",
               "rejected",
@@ -14820,6 +14949,10 @@
             },
             "type": "array"
           },
+          "nfceAutoOffline": {
+            "description": "Issue the NFC-e off-line (contingency) by itself when the SEFAZ cannot be reached. Off by default.",
+            "type": "boolean"
+          },
           "nfceDefaultSeries": {
             "description": "Series of the NFC-e (model 65).",
             "maximum": 999,
@@ -14838,6 +14971,7 @@
           "crt",
           "defaultSeries",
           "nfceDefaultSeries",
+          "nfceAutoOffline",
           "defaultNatOp",
           "defaultCsosn",
           "defaultOrigin",
@@ -16241,6 +16375,11 @@
             "minimum": 0,
             "type": "number"
           },
+          "nfceAutoOffline": {
+            "default": false,
+            "description": "Issue the NFC-e off-line (contingency, tpEmis 9) by itself when the SEFAZ cannot be reached. Off by default: a note issued off-line can still be rejected afterwards.",
+            "type": "boolean"
+          },
           "nfceDefaultSeries": {
             "default": 1,
             "description": "Series used by default on new NFC-e (apart from the NF-e one).",
@@ -16686,7 +16825,10 @@
           "nfce.document.cancelled",
           "nfce.document.cancellation_rejected",
           "nfce.inutilization.completed",
-          "nfce.inutilization.rejected"
+          "nfce.inutilization.rejected",
+          "nfce.contingency.deadline_near",
+          "nfe.contingency.entered",
+          "nfe.contingency.exited"
         ],
         "type": "string"
       },

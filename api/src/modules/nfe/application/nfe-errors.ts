@@ -73,6 +73,22 @@ export function nfeInvalidState(
   });
 }
 
+/**
+ * 422: an off-line NFC-e rejected by the SEFAZ is already with the consumer, so only the description,
+ * barcode, NCM, CEST, unit and the additional information may change (`details.fields` lists the rest).
+ */
+export function nfceContingencyFieldLocked(
+  fields: string[],
+): UnprocessableEntityException {
+  return new UnprocessableEntityException({
+    code: 'NFCE_CONTINGENCY_FIELD_LOCKED',
+    message:
+      'This NFC-e was issued off-line and is with the consumer: only the description, barcode, NCM, CEST, unit and additional information can change',
+    type: 'validation',
+    details: { fields },
+  });
+}
+
 /** 404, same answer as a route that does not exist (and as another tenant's document). */
 export function nfeNotFound(): NotFoundException {
   return new NotFoundException({

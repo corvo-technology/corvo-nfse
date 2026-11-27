@@ -18,6 +18,48 @@ export class FiscalWebhookPublisher {
     private readonly outbox: WebhookOutboxService,
   ) {}
 
+  /**
+   * An event that belongs to no document (the SVC of a UF was entered or left). Same envelope;
+   * `data` carries only what the caller gives. Best-effort like `publish`.
+   */
+  async publishTenantEvent(
+    tenantId: string,
+    environment: WebhookEvent['environment'],
+    type: WebhookEvent['type'],
+    data: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      const configs = await this.webhooks.findByTenantIdAndEvent(
+        tenantId,
+        type,
+        environment,
+      );
+      const event: WebhookEvent = {
+        id: `evt_${crypto.randomUUID()}`,
+        type,
+        environment,
+        createdAt: new Date().toISOString(),
+        data: { environment, ...data },
+      };
+      for (const config of configs)
+        if (config.active)
+          await this.outbox.enqueue({
+            tenantId,
+            webhookConfigId: config.id,
+            eventType: type,
+            environment,
+            url: config.url,
+            payload: event,
+            secret: config.secret,
+          });
+    } catch (error: unknown) {
+      this.logger.error(
+        { err: error, tenantId, type },
+        'Tenant webhook enqueue failed',
+      );
+    }
+  }
+
   async publish(
     ref: DocumentRef & { companyId: string },
     type: WebhookEvent['type'],

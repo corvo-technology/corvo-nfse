@@ -7,7 +7,7 @@ import { idPath, query, request, toPage, unwrap, type Page, type PageParams } fr
 type Envelope<T> = { data: T };
 type ListBody<T> = { data: T[]; pagination?: { limit?: number; hasMore?: boolean; nextCursor?: string | null } };
 
-export const NFE_STATUSES = ["queued", "processing", "authorized", "rejected", "denied", "retry_pending", "reconciliation_required", "manual_review", "cancelling", "cancelled", "discarded"] as const;
+export const NFE_STATUSES = ["queued", "contingency_pending", "processing", "authorized", "rejected", "denied", "retry_pending", "reconciliation_required", "manual_review", "cancelling", "cancelled", "discarded"] as const;
 export type NfeStatus = (typeof NFE_STATUSES)[number];
 
 /** A problem the API found in one field; `field` is a path such as `items[1].ncm`. */
@@ -41,6 +41,10 @@ export interface NfeDocument {
   payment: { payments: { tPag: string; amount: string }[]; change: string }; additionalInfo: string | null; externalId: string | null;
   /** NFC-e only: the text of the QR Code (v3, no CSC) and the page where the consumer looks the note up. */
   qrCode?: string | null; urlChave?: string | null;
+  /** NFC-e issued off-line (`tpEmis` 9): when, why, and the 24 h limit to transmit it. Null when it was issued online. */
+  contingencyAt?: string | null; contingencyReason?: string | null; contingencyDeadlineAt?: string | null;
+  /** NF-e only: the `tpEmis` of the key. 1 normal, 6 SVC-AN, 7 SVC-RS (issued through the SEFAZ Virtual de Contingência). */
+  emissionType?: 1 | 6 | 7;
   documentsReady: boolean; documentsReadyAt: string | null; emailStatus: string | null; emailSentAt: string | null; attempt: number; lastError: NfeLastError | null; nextCheckAt: string | null; createdAt: string; updatedAt: string;
 }
 export interface NfeAccepted { type: NfeKind; id: string; status: NfeStatus; replayed?: true }
@@ -51,12 +55,12 @@ export interface NfeInutilization { id: string; companyId: string; series: numbe
 export interface NfeNumberGap { companyId: string; series: number; start: number; end: number }
 export type NfeMissingField = string;
 export interface NfeSettings {
-  companyId: string; stateRegistration: string | null; crt: number | null; /** Tax regime of the company (its fiscal profile), as the company API names it: `Simples Nacional`, `MEI`... */ taxRegime?: string | null; defaultSeries: number; /** Series of the NFC-e (1 when never set). */ nfceDefaultSeries?: number; defaultNatOp: string; defaultCsosn: string; defaultOrigin: number; defaultPisCst: string; defaultCofinsCst: string;
+  companyId: string; stateRegistration: string | null; crt: number | null; /** Tax regime of the company (its fiscal profile), as the company API names it: `Simples Nacional`, `MEI`... */ taxRegime?: string | null; defaultSeries: number; /** Series of the NFC-e (1 when never set). */ nfceDefaultSeries?: number; /** Issue the NFC-e off-line by itself when the SEFAZ cannot be reached (off when never set). */ nfceAutoOffline?: boolean; defaultNatOp: string; defaultCsosn: string; defaultOrigin: number; defaultPisCst: string; defaultCofinsCst: string;
   enabledAt: string | null;
   /** What the company still lacks to issue an NF-e (`state_registration`, `crt`, `address`...). */
   missing: NfeMissingField[];
 }
-export interface NfeSettingsInput { stateRegistration: string; /** Only to override: the CRT follows the tax regime of the company. */ crt?: 1 | 4; defaultSeries?: number; nfceDefaultSeries?: number; defaultNatOp?: string; defaultCsosn?: "102" | "400"; defaultOrigin?: number }
+export interface NfeSettingsInput { stateRegistration: string; /** Only to override: the CRT follows the tax regime of the company. */ crt?: 1 | 4; defaultSeries?: number; nfceDefaultSeries?: number; nfceAutoOffline?: boolean; defaultNatOp?: string; defaultCsosn?: "102" | "400"; defaultOrigin?: number }
 export interface NfeListQuery extends PageParams { companyId?: string; status?: NfeStatus; /** NF-e when omitted. */ type?: NfeKind }
 export interface NfeDownload { downloadUrl: string; expiresAt: string; fileName: string; mimeType: string }
 
@@ -110,7 +114,7 @@ export const getNfeSettings = async (companyId: string, signal?: AbortSignal) =>
 export const updateNfeSettings = async (companyId: string, input: NfeSettingsInput) => unwrap(await request<Envelope<NfeSettings>>(`/companies/${idPath(companyId)}/nfe-settings`, body(input, "PUT")));
 
 /** Waiting for the SEFAZ or for Corvo: the detail page keeps looking while the note is in one of these. */
-export const NFE_PENDING: readonly NfeStatus[] = ["queued", "processing", "retry_pending", "reconciliation_required", "cancelling"];
+export const NFE_PENDING: readonly NfeStatus[] = ["queued", "contingency_pending", "processing", "retry_pending", "reconciliation_required", "cancelling"];
 export const isNfePending = (status: NfeStatus) => NFE_PENDING.includes(status);
 
 /** What each action needs. The API checks again; this only keeps the buttons honest. */
@@ -124,7 +128,8 @@ export const nfeActions = (doc: Pick<NfeDocument, "status" | "documentsReady"> &
     correct: manage && doc.status === "authorized" && doc.type !== "nfce",
     resubmit: issue && doc.status === "rejected",
     discard: manage && doc.status === "rejected",
-    download: doc.documentsReady,
+    // An off-line NFC-e is already with the consumer: its XML and DANFCE exist before the SEFAZ answers.
+    download: doc.documentsReady || doc.status === "contingency_pending",
   };
 };
 

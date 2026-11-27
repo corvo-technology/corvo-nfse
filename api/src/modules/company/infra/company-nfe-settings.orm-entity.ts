@@ -52,6 +52,9 @@ export class CompanyNfeSettingsOrmEntity {
   @Column({ name: 'nfce_default_series', type: 'smallint', default: 1 })
   nfceDefaultSeries!: number;
 
+  @Column({ name: 'nfce_auto_offline', type: 'boolean', default: false })
+  nfceAutoOffline!: boolean;
+
   @Column({
     name: 'default_nat_op',
     type: 'varchar',

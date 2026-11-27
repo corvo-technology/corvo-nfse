@@ -179,4 +179,30 @@ describe('DanfeRenderer', () => {
     expect(text.split(formatAccessKey(KEY)).length - 1).toBe(pages(pdf));
     expect(text).toContain('SEM VALOR FISCAL');
   });
+
+  describe('note issued in the SVC', () => {
+    const svc = (tpEmis: '6' | '7') =>
+      xml.replace(
+        '<tpEmis>1</tpEmis>',
+        `<tpEmis>${tpEmis}</tpEmis><dhCont>2026-11-26T12:00:00-03:00</dhCont><xJust>SEFAZ de origem indisponivel</xJust>`,
+      );
+
+    it('reads the contingency of the ide group', () => {
+      expect(toDanfeView(svc('6')).contingency).toBe(
+        'EMITIDA EM CONTINGÊNCIA SVC-AN em 26/11/2026 12:00:00. Motivo: SEFAZ de origem indisponivel',
+      );
+      expect(toDanfeView(svc('7')).contingency).toContain('SVC-RS');
+    });
+
+    it('prints "EMITIDA EM CONTINGÊNCIA SVC" with the date and the reason', async () => {
+      const { text } = await render(svc('6'));
+      expect(text).toContain('EMITIDA EM CONTINGÊNCIA SVC-AN em 26/11/2026');
+      expect(text).toContain('SEFAZ de origem indisponivel');
+    });
+
+    it('a normal note has no contingency notice and prints exactly what it did', async () => {
+      expect(toDanfeView(xml).contingency).toBeNull();
+      expect((await render(xml)).text).not.toContain('CONTINGÊNCIA');
+    });
+  });
 });

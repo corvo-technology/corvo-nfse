@@ -65,10 +65,15 @@ import { NfeSefazAccess } from '../application/nfe-sefaz-access';
 import { NfeTransitionService } from '../application/nfe-transition.service';
 import { NfceIntakeService } from '@/modules/nfce/application/nfce-intake.service';
 import { NfcePreparation } from '@/modules/nfce/application/nfce-preparation.service';
+import { NfceContingencyAlertHandler } from '@/modules/nfce/application/nfce-contingency-alert.handler';
+import { NfceOfflineService } from '@/modules/nfce/application/nfce-offline.service';
 import { NfceResubmitService } from '@/modules/nfce/application/nfce-resubmit.service';
+import type { FiscalSituation } from '@/modules/fiscal-core/domain/fiscal-situation';
 import type { NfceInput } from '@/modules/nfce/domain/nfce-input';
 import type { NfeInput } from '../domain/nfe-input';
 import { TypeOrmNfeDocumentRepository } from '../infra/typeorm-nfe-document.repository';
+import { NfeContingencyStateOrmEntity } from '../infra/nfe-contingency-state.orm-entity';
+import { TypeormNfeContingencyStates } from '../infra/typeorm-nfe-contingency-states';
 import { TypeormNfeEvents } from '../infra/typeorm-nfe-events';
 import { TypeormNfeInutilizations } from '../infra/typeorm-nfe-inutilizations';
 import { NfeNumberGapsQuery } from '../infra/typeorm-nfe-number-gaps.query';
@@ -168,6 +173,7 @@ export function createNfeStack(
     cache as never,
   );
   const redis = new MemoryRedis();
+  const noticeSpy = jest.fn();
   const breaker = new FiscalPortalBreaker(redis as never, config);
   const outcomes = new NfeOutcomeService(transitions, breaker);
 
@@ -201,6 +207,7 @@ export function createNfeStack(
     crt: 1,
     defaultSeries: 1,
     nfceDefaultSeries: 1,
+    nfceAutoOffline: false,
     defaultNatOp: 'Venda de mercadoria',
     defaultCsosn: '102',
     defaultOrigin: 0,
@@ -300,6 +307,9 @@ export function createNfeStack(
   } as unknown as ApplicationCertificateDecryptor;
   const access = new NfeSefazAccess(config, decryptor);
   const numbering = new TypeormNfeNumbering(h.helper);
+  const contingencyStates = new TypeormNfeContingencyStates(
+    h.runtime.getRepository(NfeContingencyStateOrmEntity),
+  );
   const handlers = new OutboxHandlerRegistry();
   const emit = new NfeEmitHandler(
     handlers,
@@ -313,6 +323,7 @@ export function createNfeStack(
     outcomes,
     breaker,
     config,
+    contingencyStates,
   );
   const consult = new NfeConsultService(
     documents,
@@ -523,7 +534,33 @@ export function createNfeStack(
     ...overrides,
   });
 
-  const nfceResubmit = new NfceResubmitService(nfcePreparation, resubmit);
+  /** What the reader of the situation answers (a test changes it); `normal` by default. */
+  const situation: { value: FiscalSituation } = {
+    value: { breakerOpen: false, authorityReachable: null, network: 'ok' },
+  };
+  const nfceOffline = new NfceOfflineService(
+    nfcePreparation,
+    intake,
+    access,
+    numbering,
+    companies,
+    settingsRepository,
+    { situation: () => Promise.resolve(situation.value) },
+    config,
+  );
+  const nfceResubmit = new NfceResubmitService(
+    nfcePreparation,
+    resubmit,
+    nfceOffline,
+    documents,
+  );
+  const alertHandler = new NfceContingencyAlertHandler(
+    handlers,
+    documents,
+    transitions,
+    publisher,
+    { publishBestEffort: noticeSpy } as never,
+  );
 
   const messages = async (
     type?: string,
@@ -576,6 +613,7 @@ export function createNfeStack(
       'nfe.inutilize': inutilizeHandler,
       'nfe.reconcile': reconcile,
       'nfe.emit': { handle: (m) => emit.handle(m) },
+      'nfce.contingency_alert': alertHandler,
       'nfe.prepare_documents': prepareHandler,
       'nfe.send_email': sendEmailHandler,
     };
@@ -624,6 +662,11 @@ export function createNfeStack(
     consult,
     intake,
     nfceIntake,
+    nfceOffline,
+    alertHandler,
+    /** The account notices the alert handler published (e-mail to the owner). */
+    noticeSpy,
+    situation,
     nfcePreparation,
     resubmit,
     deliveries,
@@ -639,6 +682,8 @@ export function createNfeStack(
     cache,
     remembered,
     numbering,
+    /** The SVC state per UF (a test enters or leaves the SVC through it). */
+    contingencyStates,
     input,
     nfceInput,
     nfceResubmit,
@@ -651,6 +696,23 @@ export function createNfeStack(
     /** The settings every company of this stack answers with: a test changes `defaultSeries`. */
     settings,
     company,
+    /** Issues an NFC-e off-line (`tpEmis` 9) and returns its id; nothing was sent to the SEFAZ yet. */
+    async issueNfceOffline(
+      scenario = 'FAKE-100',
+      environment: ExecutionEnvironment = 'test',
+      key = `k-${Math.random().toString(36).slice(2)}`,
+      now = new Date(),
+    ) {
+      const accepted = await nfceOffline.submit(
+        h.tenantId,
+        environment,
+        nfceInput(scenario, environment),
+        key,
+        'SEFAZ indisponivel',
+        now,
+      );
+      return accepted.id;
+    },
     /** Accepts a NFC-e and runs the emit message, like the relay would. */
     async issueNfce(
       scenario = 'FAKE-100',
