@@ -54,10 +54,6 @@ export type PlatformUserDetail = {
       periodEnd: string;
     } | null;
     avulsoBalance: number;
-    /** When NF-e was released for the workspace (null = off). */
-    nfeEnabledAt: string | null;
-    /** When NFC-e was released for the workspace (null = off). */
-    nfceEnabledAt: string | null;
     companies: {
       id: string;
       taxId: string;
@@ -150,6 +146,7 @@ export type PlatformAuditEvent = {
   action:
     | 'credit_grant'
     | 'user_viewed'
+    // Old events: the release no longer exists, but the audit log keeps what was done.
     | 'nfe_access_changed'
     | 'nfce_access_set'
     | 'svc_forced_exit';
@@ -159,12 +156,6 @@ export type PlatformAuditEvent = {
   payload: Record<string, unknown>;
   success: boolean;
   createdAt: string;
-};
-
-export type NfeAccessResult = {
-  tenantId: string;
-  enabled: boolean;
-  enabledAt: string | null;
 };
 
 export type CreditGrantResult = {

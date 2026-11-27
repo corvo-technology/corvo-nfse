@@ -1,6 +1,5 @@
 import { Logger } from '@nestjs/common';
 import type { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
-import type { NfeAccessPolicy } from '@/modules/fiscal-core/application/nfe-access.policy';
 import type { NfeNumberGapsQuery } from '../infra/typeorm-nfe-number-gaps.query';
 import { NfeNumberGapsScheduler } from './nfe-number-gaps.scheduler';
 
@@ -12,7 +11,7 @@ describe('NfeNumberGapsScheduler', () => {
       },
     );
 
-  it('logs one line per company and series with gaps, only for released tenants, and inutilizes nothing', async () => {
+  it('logs one line per company and series with gaps, for every tenant, and inutilizes nothing', async () => {
     const list = jest.fn((tenantId: string, environment: string) =>
       Promise.resolve(
         environment === 'test'
@@ -24,13 +23,9 @@ describe('NfeNumberGapsScheduler', () => {
           : [],
       ),
     );
-    const discovery = { visit: visit(['released', 'closed']) };
+    const discovery = { visit: visit(['one', 'two']) };
     const scheduler = new NfeNumberGapsScheduler(
       discovery as unknown as TenantWorkDiscovery,
-      {
-        isEnabled: (tenantId: string) =>
-          Promise.resolve(tenantId === 'released'),
-      } as unknown as NfeAccessPolicy,
       { list } as unknown as NfeNumberGapsQuery,
     );
     const log = jest
@@ -42,23 +37,25 @@ describe('NfeNumberGapsScheduler', () => {
         'nfe-number-gaps',
         expect.any(Function),
       );
-      expect(list).not.toHaveBeenCalledWith('closed', expect.anything());
-      expect(log.mock.calls.map((call) => call[0] as unknown)).toEqual([
-        {
-          tenantId: 'released',
+      expect(list).toHaveBeenCalledWith('two', 'test');
+      const lines = log.mock.calls.map((call) => call[0] as unknown);
+      for (const tenantId of ['one', 'two']) {
+        expect(lines).toContainEqual({
+          tenantId,
           environment: 'test',
           companyId: 'c1',
           series: 1,
           gaps: 2,
-        },
-        {
-          tenantId: 'released',
+        });
+        expect(lines).toContainEqual({
+          tenantId,
           environment: 'test',
           companyId: 'c1',
           series: 2,
           gaps: 1,
-        },
-      ]);
+        });
+      }
+      expect(lines).toHaveLength(4);
     } finally {
       log.mockRestore();
     }

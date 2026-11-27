@@ -1,10 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- supertest bodies and raw SQL rows are untyped */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call -- supertest bodies and raw SQL rows are untyped */
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import type { INestApplication } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
-import type { CachePort } from '@/infra/redis/cache.port';
-import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import {
   closeE2eApp,
   createSeededE2eApp,
@@ -110,18 +108,6 @@ describe('MCP tools for NF-e (e2e)', () => {
     );
   };
 
-  const setRelease = async (on: boolean, column = 'nfe_enabled_at') => {
-    await db.query(
-      `UPDATE "${schema}".tenants SET ${column} = ${on ? 'NOW()' : 'NULL'} WHERE id = $1`,
-      [ctx.tenantId],
-    );
-    await ctx.moduleFixture
-      .get<CachePort>(CACHE_PORT)
-      .delete(
-        `${column === 'nfce_enabled_at' ? 'nfce' : 'nfe'}:enabled:${ctx.tenantId}`,
-      );
-  };
-
   beforeAll(async () => {
     ctx = await createSeededE2eApp();
     app = ctx.app;
@@ -146,40 +132,11 @@ describe('MCP tools for NF-e (e2e)', () => {
     await closeE2eApp(ctx);
   });
 
-  describe('while NF-e is not released', () => {
-    it('lists no NF-e-only tool, and the shared ones keep working for NFS-e', async () => {
-      const names = await listedNames();
-      for (const name of NFE_ONLY) expect(names).not.toContain(name);
-      expect(names).toContain('nfse_list');
+  describe('for every workspace, with nothing to release', () => {
+    it('lists no NFS-e-only surprises: the shared tools keep working for NFS-e', async () => {
       const nfse = await call('nfse_list', { limit: 5 });
       expect(nfse.isError).toBe(false);
       expect(nfse.json).toHaveProperty('invoices');
-    });
-
-    it('answers that NF-e is not released, for type nfe and for the NF-e-only tools', async () => {
-      const shared = await call('nfse_list', { type: 'nfe' });
-      expect(shared.isError).toBe(true);
-      expect(shared.text).toContain('NF-e não está liberada');
-      const only = await call('nfe_settings_get', { company_id: companyId });
-      expect(only.isError).toBe(true);
-      expect(only.text).toContain('NF-e não está liberada');
-    });
-
-    it('type all falls back to the NFS-e list', async () => {
-      const all = await call('nfse_list', { type: 'all', limit: 5 });
-      expect(all.isError).toBe(false);
-      expect(all.json).toHaveProperty('invoices');
-    });
-  });
-
-  describe('with the tenant released', () => {
-    beforeAll(async () => {
-      await setRelease(true);
-      await db.query(
-        `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
-         VALUES ('SP', 55, 2, now(), 'docs/fiscal/nfe-runbook.md')
-         ON CONFLICT DO NOTHING`,
-      );
     });
 
     it('lists the six NF-e-only tools', async () => {
@@ -296,49 +253,9 @@ describe('MCP tools for NF-e (e2e)', () => {
       expect(res.isError).toBe(true);
       expect(res.text.length).toBeGreaterThan(0);
     });
-
-    it('while NFC-e is not released, type nfce says so and NF-e keeps working', async () => {
-      const res = await call('nfse_list', { type: 'nfce' });
-      expect(res.isError).toBe(true);
-      expect(res.text).toContain('NFC-e não está liberada');
-      const nfe = await call('nfse_list', { type: 'nfe', limit: 5 });
-      expect(nfe.isError).toBe(false);
-    });
-
-    it('turning the release off hides the tools again', async () => {
-      await setRelease(false);
-      const names = await listedNames();
-      for (const name of NFE_ONLY) expect(names).not.toContain(name);
-      await setRelease(true);
-    });
   });
 
-  describe('NFC-e released (type nfce)', () => {
-    beforeAll(async () => {
-      await setRelease(true);
-      await setRelease(true, 'nfce_enabled_at');
-      await db.query(
-        `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
-         VALUES ('SP', 65, 2, now(), 'docs/fiscal/runbooks/nfce-homologacao.md')
-         ON CONFLICT DO NOTHING`,
-      );
-    });
-
-    afterAll(async () => {
-      await setRelease(false, 'nfce_enabled_at');
-      await setRelease(false);
-    });
-
-    it('with only NFC-e released the shared NF-e/NFC-e tools are listed, nfe_correct is not', async () => {
-      await setRelease(false);
-      const names = await listedNames();
-      expect(names).toContain('nfe_validate');
-      expect(names).toContain('nfe_settings_get');
-      expect(names).not.toContain('nfe_correct');
-      await setRelease(true);
-      expect(await listedNames()).toContain('nfe_correct');
-    });
-
+  describe('NFC-e (type nfce)', () => {
     it('nfe_validate with type nfce is a dry-run and shows no XML', async () => {
       const ok = await call('nfe_validate', {
         company_id: companyId,

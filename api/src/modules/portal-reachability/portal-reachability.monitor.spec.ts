@@ -3,7 +3,6 @@ import * as Sentry from '@sentry/nestjs';
 import type { LockPort } from '@/infra/redis/lock.port';
 import type { EmailService } from '@/modules/email/application/email.service';
 import type { FiscalPortalBreaker } from '@/modules/invoice/application/fiscal-portal-breaker';
-import type { NfeEnabledAuthorities } from '@/modules/fiscal-core/domain/nfe-enabled-authorities';
 import type { AuthorityReachabilityStore } from './authority-reachability.store';
 import type { PortalAlertContext } from './portal-alert-context';
 import { probeTcp } from './reachability.probe';
@@ -40,7 +39,6 @@ describe('PortalReachabilityMonitor', () => {
   let incidents: PortalIncident[];
   let failures: number;
   let settings: Record<string, unknown>;
-  let enabled: { uf: string; model: 55 | 65; tpAmb: 1 | 2 }[];
   const saveAuthorities = jest.fn();
   const enqueueNotice = jest.fn();
   let clock: number;
@@ -67,9 +65,6 @@ describe('PortalReachabilityMonitor', () => {
         egressIp: async () => '203.0.113.9',
       } as unknown as PortalAlertContext,
       {} as LockPort,
-      {
-        listEnabled: async () => enabled,
-      } as unknown as NfeEnabledAuthorities,
       { save: saveAuthorities } as unknown as AuthorityReachabilityStore,
     );
 
@@ -82,7 +77,6 @@ describe('PortalReachabilityMonitor', () => {
     state = INITIAL_STATE;
     incidents = [];
     failures = 0;
-    enabled = [];
     clock = Date.UTC(2026, 10, 26, 12);
     settings = { OPS_ALERT_EMAILS: 'dono@corvo.tech, Socio@corvo.tech' };
     jest.clearAllMocks();
@@ -193,20 +187,23 @@ describe('PortalReachabilityMonitor', () => {
   describe('SEFAZ probes', () => {
     const probe = probeTcp as jest.Mock;
 
-    it('probes only the enabled authorities and the SVC target, once per host', async () => {
-      enabled = [
-        { uf: 'SP', model: 55, tpAmb: 2 },
-        { uf: 'SP', model: 65, tpAmb: 2 },
-      ];
+    it('probes the supported authorities and the SVC targets, once per host, in homologação', async () => {
       probe.mockImplementation((host: string) =>
         Promise.resolve(host !== 'homologacao.nfce.fazenda.sp.gov.br'),
       );
       const results = await build().probe();
-      expect(results.authorities).toEqual({
+      expect(results.authorities).toMatchObject({
         'nfe-sp-2': true,
         'nfce-sp-2': false,
         'nfe-svcan-2': true,
+        'nfe-svcrs-2': true,
       });
+      // Every UF has its NF-e authority; only the UFs with NFC-e addresses (SP) have a NFC-e one.
+      const names = Object.keys(results.authorities ?? {});
+      expect(names.filter((name) => name.startsWith('nfce-'))).toEqual([
+        'nfce-sp-2',
+      ]);
+      expect(names.some((name) => name.endsWith('-1'))).toBe(false);
       const hosts = probe.mock.calls.map((call: unknown[]) => call[0]);
       expect(hosts).toEqual(
         expect.arrayContaining(['sefin.nfse.gov.br', 'adn.nfse.gov.br']),
@@ -214,22 +211,14 @@ describe('PortalReachabilityMonitor', () => {
       expect(new Set(hosts).size).toBe(hosts.length);
     });
 
-    it('probes nothing extra when no UF is enabled', async () => {
+    it('also probes production when NFE_PRODUCTION_ENABLED is on', async () => {
       probe.mockResolvedValue(true);
+      settings = { ...settings, NFE_PRODUCTION_ENABLED: true };
       const results = await build().probe();
-      expect(results.authorities).toEqual({});
-      expect(probe).toHaveBeenCalledTimes(4);
-    });
-
-    it('still probes the NFS-e hosts when the enabled list cannot be read', async () => {
-      probe.mockResolvedValue(true);
-      const monitor = build();
-      (monitor as unknown as { enabled: NfeEnabledAuthorities }).enabled = {
-        isEnabled: jest.fn(),
-        listEnabled: () => Promise.reject(new Error('db down')),
-      };
-      const results = await monitor.probe();
-      expect(results).toMatchObject({ sefin: true, authorities: {} });
+      expect(results.authorities).toMatchObject({
+        'nfe-sp-1': true,
+        'nfce-sp-1': true,
+      });
     });
 
     it('saves what each SEFAZ answered on every round', async () => {

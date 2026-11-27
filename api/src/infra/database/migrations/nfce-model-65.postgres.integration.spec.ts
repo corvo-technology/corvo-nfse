@@ -63,8 +63,9 @@ describePostgres('NFC-e model 65 migrations', () => {
     }
   });
 
-  it('up: the tenant release, the NFC-e series and model 65 exist', async () => {
-    expect(await columns('tenants')).toContain('nfce_enabled_at');
+  it('up: the release gates are gone, the NFC-e series and model 65 exist', async () => {
+    expect(await columns('tenants')).not.toContain('nfce_enabled_at');
+    expect(await columns('tenants')).not.toContain('nfe_enabled_at');
     expect(await columns('company_nfe_settings')).toContain(
       'nfce_default_series',
     );
@@ -92,7 +93,10 @@ describePostgres('NFC-e model 65 migrations', () => {
   });
 
   it('down fails while an NFC-e row exists, and works once it is gone; then up again', async () => {
-    // Newest first: the SVC state table, the off-line option and the contingency columns, QR columns, recipient, series, model 65 (this one refuses to go with a model 65 row), tenant release.
+    // Newest first: the release gates (dropped), the SVC state table, the off-line option and the contingency columns, QR columns, recipient, series, model 65 (this one refuses to go with a model 65 row), tenant release.
+    await db.undoLastMigration();
+    expect(await columns('tenants')).toContain('nfce_enabled_at');
+    expect(await columns('tenants')).toContain('nfe_enabled_at');
     await db.undoLastMigration();
     await db.undoLastMigration();
     await db.undoLastMigration();
@@ -120,7 +124,7 @@ describePostgres('NFC-e model 65 migrations', () => {
       expect.arrayContaining(['qr_code', 'url_chave']),
     );
     expect(await recipientNullable()).toBe(true);
-    expect(await columns('tenants')).toContain('nfce_enabled_at');
+    expect(await columns('tenants')).not.toContain('nfce_enabled_at');
     expect(await columns('company_nfe_settings')).toContain(
       'nfce_default_series',
     );

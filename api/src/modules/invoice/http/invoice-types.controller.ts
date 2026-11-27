@@ -82,7 +82,7 @@ export class InvoiceTypesController {
       throw invoiceOperationNotSupported(unsupported);
     const call = this.callOf(req);
     const kind = checked.type === 'nfce' ? 'nfce' : 'nfe';
-    return { routes: await this.types.forType(kind, call, permission), call };
+    return { routes: this.types.forType(kind, call, permission), call };
   }
 
   /** The id has to be an NF-e: another kind is told the operation does not exist for it. */

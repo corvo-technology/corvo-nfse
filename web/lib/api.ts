@@ -30,7 +30,8 @@ export interface AvailableTenant { tenantId: string; membershipId: string; role:
 export interface AuthContext { authUserId: string; activeTenantId: string; role: string; permissions: string[]; availableTenants: AvailableTenant[] }
 export interface Profile { name: string; email: string }
 /** What the workspace may use besides the basics; today only NF-e (released per account by the platform). */
-export interface SessionFeatures { nfe: boolean; nfce?: boolean }
+/** What the app needs about the product: whether NF-e and NFC-e can be issued in production (the one release switch). */
+export interface SessionFeatures { nfeProduction: boolean }
 export interface SessionPayload { status: "authenticated"; context: AuthContext; profile?: Profile; activeTenantId: string; availableTenants: AvailableTenant[]; permissions: string[]; isPlatformAdmin?: boolean; features?: SessionFeatures; expiresAt: string; csrfToken: string }
 export interface MagicLinkChallenge { challengeId: string; expiresAt: string; resendAvailableAt: string }
 export type OAuthProvider = "google" | "github";

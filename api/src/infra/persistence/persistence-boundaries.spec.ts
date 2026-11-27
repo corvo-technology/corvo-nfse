@@ -40,10 +40,6 @@ const platformAdminExemptions: Record<string, string[]> = {
   'platform-admin/application/platform-contingency.service.ts': [
     '../infra/platform-admin-audit.repository',
   ],
-  'platform-admin/application/platform-nfe-access.service.ts': [
-    '../infra/platform-nfe-access.repository',
-    '../infra/platform-admin-audit.repository',
-  ],
 };
 
 describe('business persistence boundaries', () => {

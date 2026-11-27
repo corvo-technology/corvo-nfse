@@ -218,11 +218,7 @@ export function createNfeStack(
   const settingsRepository = {
     find: () => Promise.resolve(settings),
   } as unknown as ICompanyNfeSettingsRepository;
-  // The real preconditions: only the list of released UFs is a stub (everything is released).
-  const preconditions = new NfeEmissionPreconditions(config, {
-    isEnabled: () => Promise.resolve(true),
-    listEnabled: () => Promise.resolve([]),
-  });
+  const preconditions = new NfeEmissionPreconditions(config);
   const preparation = new NfePreparation(
     companies,
     settingsRepository,

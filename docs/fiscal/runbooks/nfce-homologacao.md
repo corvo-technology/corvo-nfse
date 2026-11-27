@@ -1,16 +1,16 @@
 # NFC-e em homologação (runbook)
 
-Como liberar, testar e acompanhar a NFC-e (venda ao consumidor, modelo 65). Ela usa a mesma máquina da NF-e
+Como testar e acompanhar a NFC-e (venda ao consumidor, modelo 65). Ela usa a mesma máquina da NF-e
 ([`nfe-homologacao.md`](./nfe-homologacao.md)): o status do serviço, o spike e a conferência dos endereços
 valem igual. Aqui está só o que é da NFC-e. Tudo em **homologação** (`tpAmb = 2`), começando por **SP**.
 
 ## O que a NFC-e precisa
 
-- **Três portões**, como na NF-e: `NFE_ENABLED=true` no ambiente da API e do worker, o cliente liberado para
-  NFC-e (`tenants.nfce_enabled_at`) e a UF liberada para o modelo 65 (`nfe_enabled_authorities`). Não existe
-  variável nova. A liberação da NFC-e é separada da NF-e: um cliente pode ter uma e não a outra.
-- **Produção fechada.** `NFE_PRODUCTION_ENABLED=false` também trava o modelo 65 (`NFE_PRODUCTION_DISABLED`).
-  Produção só por UF, depois do roteiro abaixo, pelos mesmos portões da NF-e.
+- **Nada para liberar em teste.** Toda conta emite NFC-e em homologação, sem variável, coluna por cliente ou
+  tabela de estados. O código só atende os estados que têm endereço de NFC-e (`ENDPOINTS_65` e `NFCE_URLS`,
+  hoje **SP**); outro estado responde `422 UF_NOT_ENABLED` até ganhar a linha nessas tabelas.
+- **Produção fechada.** `NFE_PRODUCTION_ENABLED=false` também trava o modelo 65 (`NFE_PRODUCTION_DISABLED`);
+  é o mesmo interruptor da NF-e.
 - **Sem CSC.** A Corvo só usa o QR Code v3 (online): não pede CSC nem id do CSC, e as colunas
   `nfce_csc_id` e `nfce_csc_encrypted` ficam vazias.
 - **Responsável técnico.** Reaproveita `NFE_RESP_TEC_CNPJ|CONTACT|EMAIL|PHONE`; sem as quatro, o grupo
@@ -32,30 +32,16 @@ passo da empresa (ou do contador), feito uma vez, no site da SEFAZ. Sem ele a SE
    desenvolvedor do sistema emissor **[não verificado]**; se valer onde você for ligar, a Corvo pode precisar se
    cadastrar como desenvolvedor do emissor naquele estado.
 
-## Liberar um cliente e um estado
+## Quem pode emitir
 
-Pelo painel da plataforma: **Admin > Usuários > (usuário) > Liberar NFC-e**, com um motivo de 5 a 500
-caracteres (fica na auditoria como `nfce_access_set`). O mesmo botão desliga. Pela API, como administrador da
-plataforma: `PUT /v1/platform/tenants/{tenantId}/nfce-access` com `{ "enabled": true, "reason": "..." }`.
-
-Por SQL (por exemplo numa instalação self-hosted sem o painel de admin):
-
-```sql
--- 1) o cliente
-UPDATE tenants SET nfce_enabled_at = now() WHERE id = '<tenant-id>';
--- desligar: nfce_enabled_at = NULL
-
--- 2) a UF, em homologação (tp_amb = 2), modelo 65
-INSERT INTO nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
-VALUES ('SP', 65, 2, now(), 'docs/fiscal/runbooks/nfce-homologacao.md');
-```
-
-A API guarda a resposta por até 1 minuto. A **segunda UF** (as que a SVRS atende no modelo 65) **fica sem
-linha** até haver fonte oficial da tabela de UFs e das URLs do QR Code dela: a lista de quem tem ambiente próprio
-em NFC-e (SP, PR, MG, GO, MT, MS e AM) veio de fonte secundária. Não invente.
+Toda conta, em homologação, para empresas de SP. Não há tela, rota de admin nem SQL de liberação.
 
 A empresa `test` precisa de endereço completo, IE (credenciada), CRT e certificado A1, como na NF-e, e da
 série da NFC-e se não for a 1.
+
+A **segunda UF** (as que a SVRS atende no modelo 65) **fica sem endereço** até haver fonte oficial da tabela de
+UFs e das URLs do QR Code dela: a lista de quem tem ambiente próprio em NFC-e (SP, PR, MG, GO, MT, MS e AM)
+veio de fonte secundária. Não invente.
 
 ## Roteiro de homologação (SP)
 
@@ -83,10 +69,11 @@ Empresa `test`, `NFE_PRODUCTION_ENABLED=false`. Cada passo vale pelo painel (**N
    (`type: "nfce"`). Esperado: `pending`, depois `homologada` (cStat 102), webhook `nfce.inutilization.completed`
    e a faixa some de `GET /v1/invoices/number-gaps?type=nfce`.
 9. **DANFCE.** Baixe o de 80 mm e o A4 (`/pdf?layout=a4`). Confira o QR Code lendo com o celular.
-10. **Com a liberação desligada** (botão **Desligar NFC-e**): a opção some da **Nova nota**, as rotas
-    `type: "nfce"` respondem 404 e o MCP não aceita `type: "nfce"`. A NF-e e a NFS-e seguem iguais.
+10. **Produção fechada** (`NFE_PRODUCTION_ENABLED=false`): no painel, em **PRODUÇÃO**, a **Nova nota** de consumidor
+    mostra "A NFC-e em produção ainda não está liberada" e o botão de emitir fica desligado; pela API, uma chave
+    live responde `422 NFE_PRODUCTION_DISABLED`.
 
-Só depois dos passos 1 a 10 passarem em SP, pense em produção para SP, pelos mesmos portões da NF-e.
+Só depois dos passos 1 a 10 passarem em SP, pense em produção, pelo mesmo interruptor da NF-e.
 
 ## O que conferir nos itens "verificar na homologação"
 
@@ -139,12 +126,7 @@ confirmar, registre aqui a decisão e a data.
 
 ## Produção por estado
 
-Igual à NF-e ([`nfe-homologacao.md`](./nfe-homologacao.md), "Produção por estado"), com o modelo 65:
-
-```sql
-INSERT INTO nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
-VALUES ('SP', 65, 1, now(), 'docs/fiscal/runbooks/nfce-homologacao.md');
-```
+Igual à NF-e ([`nfe-homologacao.md`](./nfe-homologacao.md), "Produção por estado"): `NFE_PRODUCTION_ENABLED=true`.
 
 Só depois de o credenciamento de produção, o roteiro acima e uma empresa parceira acompanhando a primeira
-nota real. Para voltar atrás: `DELETE` da linha `tp_amb = 1`; para parar tudo, `NFE_PRODUCTION_ENABLED=false`.
+nota real. Para parar tudo, `NFE_PRODUCTION_ENABLED=false`.

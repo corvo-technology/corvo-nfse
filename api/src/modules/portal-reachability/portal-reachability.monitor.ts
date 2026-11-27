@@ -7,16 +7,12 @@ import {
   ENDPOINTS_65,
   ENDPOINTS_SVC,
 } from '@/infra/external/nfe/sefaz/endpoints';
+import { supportedAuthorities } from '@/infra/external/nfe/sefaz/supported-authorities';
 import {
   probeViaProxy,
   redactProxyUrl,
 } from '@/infra/external/fiscal-proxy/gov-proxy';
 import { LOCK_PORT } from '@/infra/redis/redis.constants';
-import type { Uf } from '@/modules/fiscal-core/domain/ports/authority.port';
-import {
-  NFE_ENABLED_AUTHORITIES,
-  type NfeEnabledAuthorities,
-} from '@/modules/fiscal-core/domain/nfe-enabled-authorities';
 import type { LockPort } from '@/infra/redis/lock.port';
 import { EmailService } from '@/modules/email/application/email.service';
 import { FiscalPortalBreaker } from '@/modules/invoice/application/fiscal-portal-breaker';
@@ -82,8 +78,6 @@ export class PortalReachabilityMonitor {
     private readonly email: EmailService,
     private readonly context: PortalAlertContext,
     @Inject(LOCK_PORT) private readonly locks: LockPort,
-    @Inject(NFE_ENABLED_AUTHORITIES)
-    private readonly enabled: NfeEnabledAuthorities,
     private readonly authorityStore: AuthorityReachabilityStore,
   ) {}
 
@@ -135,16 +129,20 @@ export class PortalReachabilityMonitor {
   }
 
   /**
-   * One TCP probe per host of the enabled SEFAZ authorities (a host shared by two authorities is
-   * probed once). Never throws: with no enabled UF, or if the list cannot be read, it is empty and
-   * the NFS-e checks work as before.
+   * One TCP probe per host of the SEFAZ authorities the code supports (every UF for the NF-e, the
+   * UFs with NFC-e addresses for the NFC-e; homologação, plus production when
+   * `NFE_PRODUCTION_ENABLED` is on). A host shared by several authorities is probed once, so it is
+   * about a dozen TCP connections a minute. Never throws: on a failure it is empty and the NFS-e
+   * checks work as before.
    */
   private async probeAuthorities(): Promise<Record<string, boolean>> {
     try {
-      const enabled = await this.enabled.listEnabled();
       const targets = authorityHosts(
         [...ENDPOINTS, ...ENDPOINTS_65, ...ENDPOINTS_SVC],
-        enabled.map((row) => ({ ...row, uf: row.uf as Uf })),
+        supportedAuthorities({
+          production:
+            this.config.get<boolean>('NFE_PRODUCTION_ENABLED') === true,
+        }),
       );
       const hosts = [...new Set(targets.map((target) => target.host))];
       const answers = new Map(

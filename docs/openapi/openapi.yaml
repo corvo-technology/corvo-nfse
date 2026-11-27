@@ -1727,8 +1727,7 @@ paths:
     get:
       description: >-
         The NF-e settings of the company (state registration, CRT, default series and Simples tax
-        defaults) and `missing`, the list of what the company still lacks to issue an NF-e. Answers
-        404 while NF-e is not released for the workspace.
+        defaults) and `missing`, the list of what the company still lacks to issue an NF-e.
 
 
         Permission: `nfe.documents.view`.
@@ -1785,8 +1784,7 @@ paths:
     put:
       description: >-
         Sets the NF-e settings of the company. The state registration is validated for the state of
-        the company (422 `STATE_REGISTRATION_INVALID`). Fields left out take their defaults. Answers
-        404 while NF-e is not released for the workspace.
+        the company (422 `STATE_REGISTRATION_INVALID`). Fields left out take their defaults.
 
 
         Permission: `nfe.documents.manage`.
@@ -4402,8 +4400,8 @@ paths:
             type: string
         - description: >-
             `nfse` (default) lists NFS-e. `nfe` lists NF-e and `nfce` lists NFC-e (filters:
-            `companyId`, `status`). `all` lists every type released for the workspace in one summary
-            shape (`companyId` and `status` only).
+            `companyId`, `status`). `all` lists every type in one summary shape (`companyId` and
+            `status` only).
           in: query
           name: type
           required: false
@@ -4574,9 +4572,10 @@ paths:
 
         Everything that can be refused is refused here with `422` and nothing is saved or charged:
         `type` `validation` (fix the fields in `details`) or `configuration`
-        (`COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). In `live`, each
-        accepted NF-e reserves one credit, given back if the note ends rejected, denied or
-        discarded. Answers 404 while NF-e is not released for the workspace.
+        (`COMPANY_NFE_INCOMPLETE`, `NFE_PRODUCTION_DISABLED`; a NFC-e from a state that has no NFC-e
+        addresses yet answers `UF_NOT_ENABLED`). Every workspace can issue in `test`; in `live` the
+        answer is `NFE_PRODUCTION_DISABLED` until production is turned on. In `live`, each accepted
+        NF-e reserves one credit, given back if the note ends rejected, denied or discarded.
 
 
         **With `type: "nfce"`:** Issues a NFC-e (model 65, sale to the final consumer, Simples
@@ -4584,8 +4583,7 @@ paths:
         /invoices/validate` with `type: "nfce"`; the consumer is optional. Same rules as the NF-e:
         `Idempotency-Key` required, `202` with `{ type: "nfce", id, status: "queued" }`, the result
         by webhook (`nfce.document.*`) or `GET /invoices/{id}`, one credit reserved in `live`. The
-        note carries `qrCode` and `urlChave` once the first attempt is built. Answers 404 while
-        NFC-e is not released for the workspace.
+        note carries `qrCode` and `urlChave` once the first attempt is built.
 
 
         **Off-line NFC-e (`contingency: "offline"`):** the PDV asks for the contingency `tpEmis` 9.
@@ -6144,9 +6142,10 @@ paths:
 
 
         A `422` has `type` `validation` (fix the fields in `details`, `NFE_VALIDATION_FAILED`) or
-        `configuration` (complete the company or wait for the release: `COMPANY_NFE_INCOMPLETE`,
-        `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). Answers 404 while NF-e is not released for the
-        workspace.
+        `configuration` (complete the company or use a test key: `COMPANY_NFE_INCOMPLETE`,
+        `NFE_PRODUCTION_DISABLED`, and `UF_NOT_ENABLED` for a NFC-e from a state with no NFC-e
+        addresses yet). In `live`, while production is not turned on, the answer is `422
+        NFE_PRODUCTION_DISABLED`; use a test key.
 
 
         **With `type: "nfce"`:** the same dry-run for a NFC-e (model 65, sale to the final consumer,
@@ -6156,7 +6155,7 @@ paths:
         `NFE_VALIDATION_FAILED`, the issues can be `NFCE_CONSUMER_ID_REQUIRED`,
         `NFCE_DELIVERY_ADDRESS_REQUIRED`, `NFCE_IND_PRES_INVALID`, `NFCE_CARD_DATA_REQUIRED`,
         `NFCE_CARD_BRAND_INVALID`, `NFCE_CARD_NOT_ALLOWED`, `NFCE_NO_PAYMENT_AMOUNT` and
-        `NFCE_SCOPE_NOT_SUPPORTED`. Answers 404 while NFC-e is not released for the workspace.
+        `NFCE_SCOPE_NOT_SUPPORTED`.
 
 
         Permission: `nfe.documents.issue`.

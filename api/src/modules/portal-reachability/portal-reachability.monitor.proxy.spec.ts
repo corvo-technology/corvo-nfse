@@ -2,7 +2,6 @@ import type { ConfigService } from '@nestjs/config';
 import type { LockPort } from '@/infra/redis/lock.port';
 import type { EmailService } from '@/modules/email/application/email.service';
 import type { FiscalPortalBreaker } from '@/modules/invoice/application/fiscal-portal-breaker';
-import type { NfeEnabledAuthorities } from '@/modules/fiscal-core/domain/nfe-enabled-authorities';
 import { probeViaProxy } from '@/infra/external/fiscal-proxy/gov-proxy';
 import type { AuthorityReachabilityStore } from './authority-reachability.store';
 import type { PortalAlertContext } from './portal-alert-context';
@@ -64,7 +63,6 @@ describe('PortalReachabilityMonitor: backup proxy', () => {
         egressIp: async () => '203.0.113.9',
       } as unknown as PortalAlertContext,
       {} as LockPort,
-      { listEnabled: async () => [] } as unknown as NfeEnabledAuthorities,
       { save: async () => undefined } as unknown as AuthorityReachabilityStore,
     );
 

@@ -99,8 +99,6 @@ export const proxyRoutes: [RegExp, string[]][] = [
   [/^platform\/(overview|users|attention|audit)$/, ["GET"]],
   [/^platform\/users\/[^/]+$/, ["GET"]],
   [/^platform\/tenants\/[^/]+\/credit-grants$/, ["POST"]],
-  [/^platform\/tenants\/[^/]+\/nfe-access$/, ["PUT"]],
-  [/^platform\/tenants\/[^/]+\/nfce-access$/, ["PUT"]],
   [/^platform\/contingency$/, ["GET"]],
   [/^platform\/contingency\/[A-Za-z]{2}\/[12]\/exit$/, ["POST"]],
   [/^health\/(live|ready)$/, ["GET"]],

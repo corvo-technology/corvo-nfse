@@ -6,15 +6,15 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 
 /**
- * "Nova nota". Where NF-e is released and the member may issue it, the button asks which note
- * (service, product or consumer sale); everywhere else it goes straight to the NFS-e form, as before.
+ * "Nova nota". Where the member may issue NF-e, the button asks which note (service, product or
+ * consumer sale); otherwise it goes straight to the NFS-e form.
  */
 export function NewInvoiceMenu() {
   const t = useTranslations("Overview");
-  const { can, features } = useAuth();
+  const { can } = useAuth();
   const service = can("nfse.invoices.issue");
-  const product = features?.nfe === true && can("nfe.documents.issue");
-  const consumer = features?.nfce === true && can("nfe.documents.issue");
+  const product = can("nfe.documents.issue");
+  const consumer = product;
   if (!service && !product && !consumer) return null;
   if (service && !product && !consumer)
     return <Link href="/app/invoices/new" className="btn btn-accent"><Plus size={15} aria-hidden />{t("newInvoice")}</Link>;

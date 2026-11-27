@@ -24,10 +24,6 @@ export interface PlatformWorkspace {
   tenantId: string; role: string; isOwn: boolean; plan: { slug: string; name: string } | null;
   usage: { included: number; authorized: number; reserved: number; periodEnd: string } | null;
   avulsoBalance: number;
-  /** When NF-e was released for this workspace; null while it is off. */
-  nfeEnabledAt: string | null;
-  /** When NFC-e was released for this workspace; null while it is off. */
-  nfceEnabledAt?: string | null;
   companies: { id: string; taxId: string; legalName: string; municipalityCode: string; environment: string; certificateValidUntil: string | null }[];
   recentInvoices: { id: string; status: string; amount: number; environment: string; lastErrorCode: string | null; createdAt: string }[];
   credits: { id: string; type: string; source: string | null; amount: number; description: string | null; createdAt: string }[];
@@ -51,7 +47,6 @@ export interface PlatformAuditEvent {
 }
 /** A UF whose NF-e goes through the SVC right now. Mirrors `PlatformSvcState` of the API contract. */
 export interface PlatformSvcState { uf: string; tpAmb: 1 | 2; authority: "SVCAN" | "SVCRS"; enteredAt: string | null; dhCont: string | null }
-export interface NfeAccessResult { tenantId: string; enabled: boolean; enabledAt: string | null }
 export interface CreditGrantResult { tenantId: string; amount: number; balance: number; replayed: boolean }
 export interface CreditGrantBody { amount: number; reason: string; notifyUser: boolean }
 
@@ -67,17 +62,11 @@ export const platformAdmin = {
     unwrap(await request<Envelope<CreditGrantResult>>(`/platform/tenants/${idPath(tenantId)}/credit-grants`, {
       method: "POST", body: JSON.stringify(body), headers: { "idempotency-key": idempotencyKey },
     })),
-  /** Turns NF-e on or off for a workspace. Safe to repeat: the result is the same state. */
-  setNfeAccess: async (tenantId: string, body: { enabled: boolean; reason: string }) =>
-    unwrap(await request<Envelope<NfeAccessResult>>(`/platform/tenants/${idPath(tenantId)}/nfe-access`, { method: "PUT", body: JSON.stringify(body) })),
   /** The UFs whose NF-e is in the SVC (contingency) right now. */
   svcStates: async (signal?: AbortSignal) => unwrap(await request<Envelope<PlatformSvcState[]>>("/platform/contingency", { signal })),
   /** Takes one UF out of the SVC by hand. The reason is kept in the audit trail. */
   exitSvc: async (uf: string, tpAmb: 1 | 2, body: { reason: string }) =>
     unwrap(await request<Envelope<{ uf: string; tpAmb: 1 | 2; mode: "none" }>>(`/platform/contingency/${idPath(uf)}/${tpAmb}/exit`, { method: "POST", body: JSON.stringify(body) })),
-  /** Turns NFC-e on or off for a workspace. */
-  setNfceAccess: async (tenantId: string, body: { enabled: boolean; reason: string }) =>
-    unwrap(await request<Envelope<NfeAccessResult>>(`/platform/tenants/${idPath(tenantId)}/nfce-access`, { method: "PUT", body: JSON.stringify(body) })),
 };
 
 /** Currency from integer cents, in the user's locale. */

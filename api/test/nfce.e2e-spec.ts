@@ -3,8 +3,6 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import * as argon2 from 'argon2';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
-import type { CachePort } from '@/infra/redis/cache.port';
-import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import {
   apiKeyHeader,
   closeE2eApp,
@@ -72,10 +70,6 @@ describe('NFC-e emission routes (e2e)', () => {
       idempotencyKey ? req.set('Idempotency-Key', idempotencyKey) : req
     ).send(body as object);
   };
-  const dropCache = () =>
-    ctx.moduleFixture
-      .get<CachePort>(CACHE_PORT)
-      .delete(`nfce:enabled:${tenantId}`);
 
   beforeAll(async () => {
     ctx = await createSeededE2eApp();
@@ -108,33 +102,11 @@ describe('NFC-e emission routes (e2e)', () => {
     await closeE2eApp(ctx);
   });
 
-  it('answers 404 while the tenant has no NFC-e release, even with the NF-e released', async () => {
-    await db.query(
-      `UPDATE "${schema}".tenants SET nfe_enabled_at = NOW() WHERE id = $1`,
-      [tenantId],
-    );
-    await dropCache();
-    const res = await create(nfceBody(companyId), 'nfce-gate-1');
-    expect(res.status).toBe(404);
-    expect(res.body.code).toBe('ERROR_RESOURCE_NOT_FOUND');
-    const list = await api('get', '/invoices?type=nfce');
-    expect(list.status).toBe(404);
-  });
-
-  describe('with the NFC-e released', () => {
+  describe('with the company complete', () => {
     beforeAll(async () => {
       await api('put', `/companies/${companyId}/nfe-settings`)
         .send({ stateRegistration: '110042490114', crt: 1 })
         .expect(200);
-      await db.query(
-        `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
-         VALUES ('SP', 55, 2, now(), 'docs/fiscal/nfe-runbook.md'), ('SP', 65, 2, now(), 'docs/fiscal/nfe-runbook.md')`,
-      );
-      await db.query(
-        `UPDATE "${schema}".tenants SET nfce_enabled_at = NOW() WHERE id = $1`,
-        [tenantId],
-      );
-      await dropCache();
     });
 
     it('requires the Idempotency-Key', async () => {

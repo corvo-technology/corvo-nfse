@@ -4,8 +4,6 @@ import * as argon2 from 'argon2';
 import PDFDocument from 'pdfkit';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
-import type { CachePort } from '@/infra/redis/cache.port';
-import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import {
   FISCAL_SITUATION_READER,
   type FiscalSituation,
@@ -108,17 +106,6 @@ describe('off-line NFC-e (e2e)', () => {
           'Avenida Paulista', '1000', 'Bela Vista', '01310100', 'São Paulo', 'SP', NOW(), NOW())`,
       [companyId, tenantId, COMPANY_TAX_ID],
     );
-    await db.query(
-      `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
-       VALUES ('SP', 55, 2, now(), 'docs/fiscal/nfe-runbook.md'), ('SP', 65, 2, now(), 'docs/fiscal/nfe-runbook.md')`,
-    );
-    await db.query(
-      `UPDATE "${schema}".tenants SET nfe_enabled_at = NOW(), nfce_enabled_at = NOW() WHERE id = $1`,
-      [tenantId],
-    );
-    await ctx.moduleFixture
-      .get<CachePort>(CACHE_PORT)
-      .delete(`nfce:enabled:${tenantId}`);
     await setAutoOffline(false);
   });
 
@@ -311,7 +298,7 @@ describe('off-line NFC-e (e2e)', () => {
     });
   });
 
-  it('a state with no off-line QR Code address answers 422 NFCE_OFFLINE_NOT_AVAILABLE and saves nothing', async () => {
+  it('a state with no NFC-e addresses (so no off-line QR Code either) answers 422 UF_NOT_ENABLED and saves nothing', async () => {
     const mgCompany = randomUUID();
     await db.query(
       `INSERT INTO "${schema}".nfse_companies
@@ -321,10 +308,6 @@ describe('off-line NFC-e (e2e)', () => {
        VALUES ($1, $2, 'Empresa MG LTDA', '22333444000181', '3106200', 'test', 'ready',
           'Avenida Afonso Pena', '10', 'Centro', '30130000', 'Belo Horizonte', 'MG', NOW(), NOW())`,
       [mgCompany, tenantId],
-    );
-    await db.query(
-      `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
-       VALUES ('MG', 65, 2, now(), 'docs/fiscal/nfe-runbook.md')`,
     );
     await api('put', `/companies/${mgCompany}/nfe-settings`)
       .send({ stateRegistration: '0623079040081', crt: 1 })
@@ -338,7 +321,7 @@ describe('off-line NFC-e (e2e)', () => {
       'off-mg-1',
     );
     expect(res.status).toBe(422);
-    expect(res.body.code).toBe('ERROR_NFCE_OFFLINE_NOT_AVAILABLE');
+    expect(res.body.code).toBe('ERROR_UF_NOT_ENABLED');
     const after = await db.query(
       `SELECT count(*)::int AS n FROM "${schema}".nfe_documents WHERE company_id = $1`,
       [mgCompany],

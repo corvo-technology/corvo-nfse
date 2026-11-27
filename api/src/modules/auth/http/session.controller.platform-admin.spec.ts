@@ -3,7 +3,7 @@ import type { AuthUserService } from '../application/auth-user.service';
 import type { CookiePolicyService } from '../application/cookie-policy.service';
 import type { CookieSessionService } from '../application/cookie-session.service';
 import type { PlatformAdminPolicy } from '../application/platform-admin.policy';
-import type { NfeAccessPolicy } from '@/modules/fiscal-core/application/nfe-access.policy';
+import type { NfeEmissionPreconditions } from '@/modules/fiscal-core/application/nfe-emission-preconditions';
 import { SessionController } from './session.controller';
 
 const expiresAt = new Date('2030-01-01T00:00:00Z');
@@ -20,7 +20,7 @@ const context = {
   permissions: [],
 };
 
-function build(isAdmin: boolean, nfe = false, nfce = false) {
+function build(isAdmin: boolean, nfeProduction = false) {
   const sessions = {
     generateCsrfToken: jest.fn().mockReturnValue('csrf'),
     switchTenant: jest.fn().mockResolvedValue(session),
@@ -32,20 +32,16 @@ function build(isAdmin: boolean, nfe = false, nfce = false) {
   const policy = {
     resolve: jest.fn().mockResolvedValue({ isAdmin, email: 'a@x.com' }),
   };
-  const nfeAccess = {
-    isEnabled: jest.fn((_tenant: string, type: 'nfe' | 'nfce' = 'nfe') =>
-      Promise.resolve(type === 'nfce' ? nfce : nfe),
-    ),
-  };
+  const nfe = { productionEnabled: jest.fn(() => nfeProduction) };
   const controller = new SessionController(
     sessions as unknown as CookieSessionService,
     contexts as unknown as AuthContextService,
     {} as unknown as CookiePolicyService,
     users as unknown as AuthUserService,
     policy as unknown as PlatformAdminPolicy,
-    nfeAccess as unknown as NfeAccessPolicy,
+    nfe as unknown as NfeEmissionPreconditions,
   );
-  return { controller, policy, nfeAccess };
+  return { controller, policy };
 }
 
 const req = { authSession: session } as never;
@@ -71,25 +67,16 @@ describe('SessionController platform admin flag', () => {
     expect(res.data.isPlatformAdmin).toBe(true);
   });
 
-  it('devolve features.nfe conforme a liberação do tenant ativo', async () => {
-    const on = build(false, true);
-    expect((await on.controller.getSession(req)).data.features).toEqual({
-      nfe: true,
-      nfce: false,
-    });
-    expect(on.nfeAccess.isEnabled).toHaveBeenCalledWith('t1');
+  it('devolve features.nfeProduction conforme o interruptor de produção', async () => {
     const off = build(false, false);
     expect((await off.controller.getSession(req)).data.features).toEqual({
-      nfe: false,
-      nfce: false,
+      nfeProduction: false,
     });
-    const both = build(false, true, true);
-    expect((await both.controller.getSession(req)).data.features).toEqual({
-      nfe: true,
-      nfce: true,
+    const on = build(false, true);
+    expect((await on.controller.getSession(req)).data.features).toEqual({
+      nfeProduction: true,
     });
-    expect(both.nfeAccess.isEnabled).toHaveBeenCalledWith('t1', 'nfce');
     const switched = await on.controller.switchTenant(req, { tenantId: 't1' });
-    expect(switched.data.features).toEqual({ nfe: true, nfce: false });
+    expect(switched.data.features).toEqual({ nfeProduction: true });
   });
 });

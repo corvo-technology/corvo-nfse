@@ -2134,9 +2134,9 @@
     "insufficient_credits": "You have no notes left. Buy more notes to issue.",
     "company_not_ready": "Complete the company's tax setup before issuing.",
     "company_not_found": "Company not found.",
-    "nfe_production_disabled": "Production NF-e is not released yet.",
+    "nfe_production_disabled": "NF-e and NFC-e in production are not open yet. Use the test environment.",
     "company_nfe_incomplete": "Complete the company registration (address, state registration and tax regime) to issue NF-e.",
-    "uf_not_enabled": "NF-e is not released yet for the company's state.",
+    "uf_not_enabled": "NFC-e is not available yet for the company's state.",
     "state_registration_invalid": "The state registration (IE) is not valid for the company's state. Check the number and the state.",
     "nfe_schema_invalid": "The NF-e XML did not pass the layout validation. Check the fields and try again.",
     "nfe_validation_failed": "The NF-e has problems. Check the listed fields and send it again.",
@@ -3943,6 +3943,8 @@
     },
     "form": {
       "homologation": "Test mode (homologação): a note issued here has no tax value.",
+      "productionLocked": "NF-e in production is not open yet. Switch to TEST to issue notes with no tax value.",
+      "productionLockedNfce": "NFC-e in production is not open yet. Switch to TEST to issue notes with no tax value.",
       "failed": "Could not send the note. Try again.",
       "fixFields": "Fix the marked fields and try again.",
       "validate": "Validate",
@@ -4241,22 +4243,6 @@
       "errorNotFound": "This workspace was not found.",
       "errorGeneric": "Could not give the invoices. Nothing was saved. Try again."
     },
-    "nfe": {
-      "on": "NF-e is released for this account.",
-      "off": "NF-e is not released for this account yet.",
-      "enable": "Release NF-e",
-      "disable": "Turn NF-e off",
-      "enableTitle": "Release NF-e",
-      "disableTitle": "Turn NF-e off",
-      "enableDescription": "The account starts to see NF-e (test mode) in the dashboard, the API and MCP. The global NFE_ENABLED switch must also be on.",
-      "disableDescription": "The account stops seeing NF-e in the dashboard, the API and MCP. Notes already created are kept.",
-      "reason": "Reason",
-      "reasonHint": "Write 5 to 500 characters. It is kept in the history.",
-      "cancel": "Cancel",
-      "errorReason": "The reason must have 5 to 500 characters.",
-      "errorNotFound": "This workspace was not found.",
-      "errorGeneric": "Could not change the release. Nothing was saved. Try again."
-    },
     "attention": {
       "title": "Needs attention",
       "staleInvoices": "Invoices stuck for over 1 hour",
@@ -4289,22 +4275,6 @@
       },
       "success": "Done",
       "failure": "Failed"
-    },
-    "nfce": {
-      "on": "NFC-e is released for this account.",
-      "off": "NFC-e is not released for this account yet.",
-      "enable": "Release NFC-e",
-      "disable": "Turn NFC-e off",
-      "enableTitle": "Release NFC-e",
-      "disableTitle": "Turn NFC-e off",
-      "enableDescription": "The account will see consumer sales (NFC-e, in testing) in the dashboard, the API and MCP. NF-e and NFC-e are released separately.",
-      "disableDescription": "The account stops seeing NFC-e in the dashboard, the API and MCP. Notes already created are kept.",
-      "reason": "Reason",
-      "reasonHint": "Write 5 to 500 characters. It is kept in the history.",
-      "cancel": "Cancel",
-      "errorReason": "The reason must have 5 to 500 characters.",
-      "errorNotFound": "This workspace was not found.",
-      "errorGeneric": "Could not change the release. Nothing was saved. Try again."
     },
     "svc": {
       "title": "NF-e in contingency (SVC)",

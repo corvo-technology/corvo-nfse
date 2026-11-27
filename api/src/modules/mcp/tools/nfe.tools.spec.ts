@@ -1,15 +1,8 @@
 import 'reflect-metadata';
-import {
-  NotFoundException,
-  UnprocessableEntityException,
-} from '@nestjs/common';
+import { UnprocessableEntityException } from '@nestjs/common';
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { McpServer } from '../mcp.server';
-import {
-  McpNfe,
-  NFCE_NOT_AVAILABLE_MESSAGE,
-  NFE_NOT_AVAILABLE_MESSAGE,
-} from './nfe-access';
+import { McpNfe } from './nfe-access';
 import {
   NFE_CORRECT_TOOL,
   NFE_INUTILIZE_TOOL,
@@ -49,9 +42,6 @@ type Role = 'admin' | 'developer' | 'billing';
 
 function build(
   options: {
-    enabled?: boolean;
-    /** NFC-e released (default: same as `enabled`). */
-    nfce?: boolean;
     role?: Role;
     routes?: Record<string, unknown>;
   } = {},
@@ -117,12 +107,7 @@ function build(
     ...options.routes,
   };
   const router = {
-    forType: jest.fn().mockImplementation(async (type: string) => {
-      if (options.enabled === false) throw new NotFoundException();
-      if (type === 'nfce' && options.nfce === false)
-        throw new NotFoundException();
-      return routes;
-    }),
+    forType: jest.fn().mockImplementation(() => routes),
     owner: jest.fn().mockResolvedValue(routes),
     summaries: jest.fn().mockResolvedValue({
       data: [
@@ -142,17 +127,6 @@ function build(
       pagination: { nextCursor: null },
     }),
   };
-  const access = {
-    isEnabled: jest
-      .fn()
-      .mockImplementation((_tenant: string, type: string = 'nfe') =>
-        Promise.resolve(
-          type === 'nfce'
-            ? (options.nfce ?? options.enabled) !== false
-            : options.enabled !== false,
-        ),
-      ),
-  };
   const memberships = {
     findByAuthUserAndTenant: jest
       .fn()
@@ -164,11 +138,10 @@ function build(
   };
   const nfe = new McpNfe(
     router as never,
-    access as never,
     memberships as never,
     settings as never,
   );
-  return { nfe, routes, router, access, memberships, settings };
+  return { nfe, routes, router, memberships, settings };
 }
 
 const nfeBody = { recipient: { taxId: '12345678909' }, items: [] };
@@ -198,15 +171,7 @@ describe('byType', () => {
   });
 });
 
-describe('liberação e permissão', () => {
-  it('sem NF-e liberada a chamada diz que não está liberada, sem tocar nas rotas', async () => {
-    const { nfe, routes } = build({ enabled: false });
-    await expect(
-      createNfeGetHandler(nfe)({ invoice_id: ID }, ctx),
-    ).rejects.toThrow(NFE_NOT_AVAILABLE_MESSAGE);
-    expect(routes.get).not.toHaveBeenCalled();
-  });
-
+describe('permissão', () => {
   it('papel sem nfe.documents.manage não cancela, corrige nem inutiliza', async () => {
     const { nfe, routes } = build({ role: 'billing' });
     await expect(
@@ -339,7 +304,7 @@ describe('type nfe nas ferramentas compartilhadas', () => {
     expect(JSON.stringify(out)).not.toContain('12345678909');
   });
 
-  it('nfse_list type all: mistura os tipos; sem NF-e liberada cai na lista de NFS-e', async () => {
+  it('nfse_list type all: mistura os tipos; sem permissão de ler NF-e cai na lista de NFS-e', async () => {
     const nfseList = jest
       .fn()
       .mockResolvedValue({ invoices: [], next_cursor: null });
@@ -351,7 +316,11 @@ describe('type nfe nas ferramentas compartilhadas', () => {
     expect(out.invoices[0].type).toBe('nfe');
     expect(nfseList).not.toHaveBeenCalled();
 
-    const off = build({ enabled: false });
+    const off = build();
+    off.memberships.findByAuthUserAndTenant.mockResolvedValue({
+      role: 'admin',
+      isActive: false,
+    });
     await createAllListHandler(off.nfe, nfseList)(
       { type: 'all', limit: 5 },
       ctx,
@@ -518,36 +487,18 @@ describe('ferramentas só de NF-e', () => {
 });
 
 describe('tools/list', () => {
-  const NFE_ONLY = [
-    NFE_VALIDATE_TOOL,
-    NFE_CORRECT_TOOL,
-    NFE_INUTILIZE_TOOL,
-    NFE_NUMBER_GAPS_TOOL,
-    NFE_SETTINGS_GET_TOOL,
-    NFE_SETTINGS_UPDATE_TOOL,
-  ];
-
-  async function listed(enabled: boolean, nfce = enabled) {
-    const { nfe } = build({ enabled, nfce });
+  it('as seis ferramentas só de NF-e aparecem para todas as contas, sem liberação', async () => {
     const server = new McpServer();
-    for (const tool of NFE_ONLY)
-      server.registerTool(tool, async () => ({}), {
-        visibleWhen: (c) =>
-          tool.name === 'nfe_correct' ? nfe.isEnabled(c) : nfe.isEnabledAny(c),
-      });
-    server.registerTool(
-      { name: 'nfse_list', description: 'x', inputSchema: {} },
-      async () => ({}),
-    );
-    return (await server.getToolDefinitions(ctx)).map((t) => t.name);
-  }
-
-  it('sem a liberação nenhuma ferramenta só de NF-e aparece', async () => {
-    expect(await listed(false)).toEqual(['nfse_list']);
-  });
-
-  it('com a liberação as seis aparecem', async () => {
-    const names = await listed(true);
+    for (const tool of [
+      NFE_VALIDATE_TOOL,
+      NFE_CORRECT_TOOL,
+      NFE_INUTILIZE_TOOL,
+      NFE_NUMBER_GAPS_TOOL,
+      NFE_SETTINGS_GET_TOOL,
+      NFE_SETTINGS_UPDATE_TOOL,
+    ])
+      server.registerTool(tool, async () => ({}));
+    const names = (await server.getToolDefinitions(ctx)).map((t) => t.name);
     expect([...names].sort()).toEqual(
       [
         'nfe_correct',
@@ -556,10 +507,8 @@ describe('tools/list', () => {
         'nfe_settings_get',
         'nfe_settings_update',
         'nfe_validate',
-        'nfse_list',
       ].sort(),
     );
-    expect(names).toHaveLength(7);
   });
 });
 
@@ -587,18 +536,6 @@ describe('type nfce', () => {
       expect.anything(),
     );
     expect(out).toEqual({ type: 'nfce', invoice_id: ID, status: 'queued' });
-  });
-
-  it('NFC-e não liberada: mensagem própria, sem tocar nas rotas', async () => {
-    const { nfe, routes } = build({ enabled: true, nfce: false });
-    await expect(
-      createNfeGetHandler(nfe, 'nfce')({ invoice_id: ID }, ctx),
-    ).rejects.toThrow(NFCE_NOT_AVAILABLE_MESSAGE);
-    expect(routes.get).not.toHaveBeenCalled();
-    // the NF-e keeps working
-    await expect(
-      createNfeGetHandler(nfe)({ invoice_id: ID }, ctx),
-    ).resolves.toBeDefined();
   });
 
   it('get, list, cancel, review e downloads usam o tipo nfce', async () => {
@@ -634,25 +571,6 @@ describe('type nfce', () => {
     ).rejects.toThrow('inline is not available for NFC-e');
     const types = router.forType.mock.calls.map((c: unknown[]) => c[0]);
     expect(new Set(types)).toEqual(new Set(['nfce']));
-  });
-
-  it('nfse_list type all: quando só a NFC-e está liberada ainda mistura os tipos', async () => {
-    const { nfe, router } = build({ enabled: false, nfce: true });
-    nfe.isEnabled = jest
-      .fn()
-      .mockImplementation((_c: unknown, type: string = 'nfe') =>
-        Promise.resolve(type === 'nfce'),
-      );
-    const nfse = jest.fn().mockResolvedValue('nfse');
-    const out = (await createAllListHandler(nfe, nfse)(
-      { type: 'all' },
-      ctx,
-    )) as {
-      invoices: unknown[];
-    };
-    expect(router.summaries).toHaveBeenCalled();
-    expect(nfse).not.toHaveBeenCalled();
-    expect(out.invoices).toHaveLength(1);
   });
 
   it('nfe_validate com type nfce valida na rota da NFC-e (sem XML)', async () => {
@@ -786,17 +704,6 @@ describe('type nfce', () => {
         createdAt: null,
       }).type,
     ).toBe('nfce');
-  });
-
-  it('tools/list: só com a NFC-e liberada aparecem as ferramentas em comum, menos nfe_correct', async () => {
-    const { nfe } = build({ enabled: false, nfce: true });
-    nfe.isEnabled = jest
-      .fn()
-      .mockImplementation((_c: unknown, type: string = 'nfe') =>
-        Promise.resolve(type === 'nfce'),
-      );
-    expect(await nfe.isEnabledAny(ctx)).toBe(true);
-    expect(await nfe.isEnabled(ctx)).toBe(false);
   });
 });
 

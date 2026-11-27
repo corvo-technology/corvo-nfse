@@ -50,38 +50,20 @@ Roteiro de aceite do PR 5, em **SP** e numa UF da **SVRS**, sempre em homologaç
    o evento, o evento fica `pending_check`, o Corvo para de olhar depois de 5 tentativas e **não
    reenvia sozinho**: confira no portal da SEFAZ.
 
-## Liberar um cliente e um estado
+## O que liga a NF-e
 
-A NF-e só aparece quando as **três** coisas valem: `NFE_ENABLED=true` no ambiente da API e do worker, o
-cliente liberado e a UF dele liberada.
+Nada. A NF-e e a NFC-e em **teste (homologação)** estão abertas para toda conta e para todo estado que o
+código sabe atender: não existe variável de liberação, coluna por cliente nem tabela de estados. A empresa
+`test` só precisa de endereço completo, IE e CRT (painel, página da empresa, seção NF-e, ou
+`PUT /v1/companies/{id}/nfe-settings`) e do certificado A1.
 
-1. **Cliente (conta).** Pelo painel da plataforma: **Admin > Usuários > (usuário) > Liberar NF-e**, com um
-   motivo de 5 a 500 caracteres (fica na auditoria como `nfe_access_changed`). O mesmo botão desliga.
-   Pela API, como administrador da plataforma: `PUT /v1/platform/tenants/{tenantId}/nfe-access` com
-   `{ "enabled": true, "reason": "..." }`. Se preferir SQL (por exemplo numa instalação self-hosted sem o
-   painel de admin):
+O **único interruptor** é o da produção: `NFE_PRODUCTION_ENABLED` (padrão `false`) na API e no worker. Com
+ele desligado, uma empresa de produção que pede NF-e ou NFC-e recebe `422 NFE_PRODUCTION_DISABLED`, e o painel
+avisa e deixa o botão de emitir desligado (o **Validar** continua). Como ligar a produção: veja "Produção por
+estado" abaixo.
 
-   ```sql
-   UPDATE tenants SET nfe_enabled_at = now() WHERE id = '<tenant-id>';
-   -- desligar: nfe_enabled_at = NULL
-   ```
-
-   A API guarda a resposta por até 1 minuto; depois disso o painel mostra a NF-e na conta.
-2. **Estado (UF).** Todos os 27 estados já têm endereço da SEFAZ cadastrado (homologação e produção), mas
-   nenhum fica ligado sozinho: cada UF só vale depois de uma linha em `nfe_enabled_authorities`.
-   Antes de ligar, rode o teste de conexão (seção "Conferir os endereços" abaixo) e o roteiro completo.
-
-   ```sql
-   -- 1) Homologação (tp_amb = 2): primeiro passo de qualquer UF
-   INSERT INTO nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
-   VALUES ('SP', 55, 2, now(), 'docs/fiscal/runbooks/nfe-homologacao.md');
-   ```
-
-   Linha com `tp_amb = 1` (produção) não adianta enquanto `NFE_PRODUCTION_ENABLED=false`; veja "Produção
-   por estado" abaixo. Para tirar a UF: `DELETE` da linha. Ainda não existe tela nem rota de admin para
-   listar ou ligar UFs: por enquanto é SQL (anotado como melhoria futura).
-3. **Empresa.** A empresa `test` precisa de endereço completo, IE e CRT (painel, página da empresa, seção
-   NF-e, ou `PUT /v1/companies/{id}/nfe-settings`) e do certificado A1.
+O monitor de conexão e a chave da SVC olham todos os estados (NF-e) e os estados com endereço de NFC-e
+(hoje SP), em homologação, e também em produção quando `NFE_PRODUCTION_ENABLED=true`.
 
 ## Roteiro de homologação completo (aceite do PR 7)
 
@@ -107,12 +89,12 @@ vale pelo painel, pela API e pelo MCP; o roteiro abaixo usa o painel e diz a rot
    de 15 a 255 caracteres), duas **Cartas de correção** na mesma nota (`sequence` 1 e 2) e, em
    **NF-e > Números pulados**, **Inutilizar faixa** com a justificativa. Esperado: eventos `registered`,
    nota `cancelled`, inutilização `homologada` (cStat 102) e a faixa some da lista.
-6. **Com a liberação desligada** (botão **Desligar NF-e**, ou `NFE_ENABLED=false`): o item NF-e some do
-   menu, as páginas `/app/nfe` mostram "sem acesso", as rotas de NF-e respondem 404 e as ferramentas
-   `nfe_*` somem do MCP. A NFS-e segue igual.
+6. **Produção fechada** (`NFE_PRODUCTION_ENABLED=false`): no painel, troque para **PRODUÇÃO** e abra **Nova NF-e**.
+   Esperado: o aviso "A NF-e em produção ainda não está liberada", sem o aviso de homologação, e o botão de
+   emitir desligado. Pela API, uma chave live responde `422 NFE_PRODUCTION_DISABLED`.
 7. **Anote no relatório** ([`nfe-spike.md`](../nfe-spike.md)) o que diferiu de uma UF para a outra.
 
-Só depois de os passos 1 a 6 passarem numa UF, libere essa UF para os clientes (seção anterior).
+Só depois de os passos 1 a 6 passarem, pense em produção (seção "Produção por estado").
 
 ## Conferir os endereços
 
@@ -146,19 +128,12 @@ endereços de contingência (SVC-AN e SVC-RS) já estão mapeados por UF, mas ai
 Fluxo recomendado com uma empresa parceira:
 
 1. O parceiro cria a conta e a empresa em ambiente de **teste** (empresa `test`), com certificado A1.
-2. Libere a NF-e para a conta (passo 1 acima) e a UF dele em homologação (`tp_amb = 2`).
-3. Rode o roteiro de homologação completo abaixo na UF dele. Só siga se os passos 1 a 6 passarem.
-4. Com a UF aprovada, ligue a produção para ela:
-   - `NFE_PRODUCTION_ENABLED=true` na API e no worker (vale para todas as UFs, mas cada UF ainda precisa da linha abaixo);
-   - a linha de produção da UF:
-
-     ```sql
-     INSERT INTO nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
-     VALUES ('SP', 55, 1, now(), 'docs/fiscal/runbooks/nfe-homologacao.md');
-     ```
-
-5. O parceiro cria a empresa de produção. A primeira nota real deve ser acompanhada de perto.
-6. Para voltar atrás numa UF: `DELETE` da linha `tp_amb = 1`. Para parar tudo: `NFE_PRODUCTION_ENABLED=false`.
+2. Rode o roteiro de homologação completo abaixo na UF dele. Só siga se os passos 1 a 6 passarem.
+3. Com a UF aprovada, ligue a produção: `NFE_PRODUCTION_ENABLED=true` na API e no worker. É um interruptor
+   só, para todas as contas e estados (não há mais tabela por estado): ligue só quando todos os estados que
+   os clientes usam estiverem conferidos.
+4. O parceiro cria a empresa de produção. A primeira nota real deve ser acompanhada de perto.
+5. Para parar tudo: `NFE_PRODUCTION_ENABLED=false`.
 
 ## Atualizações periódicas
 

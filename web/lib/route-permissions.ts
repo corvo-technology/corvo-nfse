@@ -45,15 +45,8 @@ export function permissionForPath(pathname: string): string | null {
   return null;
 }
 
-/** The NF-e pages exist only for accounts where NF-e was released (the session says so in `features.nfe`). */
-export function isNfePath(pathname: string): boolean {
-  const path = pathname.split(/[?#]/)[0].replace(/\/+$/, "");
-  return path === "/app/nfe" || path.startsWith("/app/nfe/");
-}
-
 /** True when the member may open the page. */
-export function canOpenPath(pathname: string, can: (permission: string) => boolean, features?: { nfe?: boolean; nfce?: boolean }): boolean {
-  if (isNfePath(pathname) && features?.nfe !== true && features?.nfce !== true) return false;
+export function canOpenPath(pathname: string, can: (permission: string) => boolean): boolean {
   const permission = permissionForPath(pathname);
   return permission === null || can(permission);
 }
