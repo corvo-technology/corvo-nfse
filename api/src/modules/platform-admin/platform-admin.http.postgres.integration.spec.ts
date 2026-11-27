@@ -254,12 +254,63 @@ describeReal(
         ),
       ).toBe(1);
       // With the global flag off (the default of this test app) the session never offers NF-e.
-      expect(await features()).toEqual({ nfe: false });
+      expect(await features()).toEqual({ nfe: false, nfce: false });
 
       const off = await put({ enabled: false, reason: 'fim do teste de NF-e' });
       expect(off.body.data).toMatchObject({ enabled: false, enabledAt: null });
       expect(await column()).toBeNull();
       expect(await auditCount(`action='nfe_access_changed'`, [])).toBe(2);
+    });
+
+    it('liberação de NFC-e: coluna própria, auditoria nfce_access_set e a NF-e não muda', async () => {
+      const put = (body: object) =>
+        http()
+          .put(`/v1/platform/tenants/${ctx.member.tenantId}/nfce-access`)
+          .set(cookieHeaders(ctx.admin))
+          .send(body);
+      const columns = async () => {
+        const rows: Array<{
+          nfe_enabled_at: Date | null;
+          nfce_enabled_at: Date | null;
+        }> = await ctx.owner.query(
+          `SELECT nfe_enabled_at, nfce_enabled_at FROM ${ctx.table('tenants')} WHERE id=$1`,
+          [ctx.member.tenantId],
+        );
+        return rows[0];
+      };
+
+      const before = await columns();
+      expect(before.nfce_enabled_at).toBeNull();
+      const on = await put({
+        enabled: true,
+        reason: 'liberar NFC-e para teste',
+      });
+      expect(on.status).toBe(200);
+      expect(on.body.data).toMatchObject({
+        tenantId: ctx.member.tenantId,
+        enabled: true,
+      });
+      const after = await columns();
+      expect(after.nfce_enabled_at).not.toBeNull();
+      expect(after.nfe_enabled_at).toEqual(before.nfe_enabled_at);
+      expect(
+        await auditCount(
+          `action='nfce_access_set' AND target_tenant_id=$1 AND success=true`,
+          [ctx.member.tenantId],
+        ),
+      ).toBe(1);
+
+      const off = await put({
+        enabled: false,
+        reason: 'fim do teste de NFC-e',
+      });
+      expect(off.body.data).toMatchObject({ enabled: false, enabledAt: null });
+      expect((await columns()).nfce_enabled_at).toBeNull();
+      await http()
+        .put(`/v1/platform/tenants/${randomUUID()}/nfce-access`)
+        .set(cookieHeaders(ctx.admin))
+        .send({ enabled: true, reason: 'motivo válido' })
+        .expect(404);
     });
 
     it('liberação de NF-e: motivo curto, corpo sem boolean ou tenant inexistente não gravam nada', async () => {
