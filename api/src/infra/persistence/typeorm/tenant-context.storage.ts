@@ -14,7 +14,8 @@ export type SystemPurpose =
   | 'billing-eligibility'
   | 'verified-provider-event'
   | 'integration-inbound'
-  | 'platform-admin';
+  | 'platform-admin'
+  | 'data_retention';
 export type DatabaseScope = {
   tenantId?: string;
   authUserId?: string;

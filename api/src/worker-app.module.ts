@@ -61,6 +61,9 @@ import { NfceModule } from '@/modules/nfce/nfce.module';
 import { NfeModule } from '@/modules/nfe/nfe.module';
 import { AccountAuditModule } from '@/modules/account-audit/account-audit.module';
 import { AccountAuditRetentionScheduler } from '@/modules/account-audit/jobs/account-audit-retention.scheduler';
+import { OutboxRetentionScheduler } from '@/modules/invoice/jobs/outbox-retention.scheduler';
+import { OUTBOX_RETENTION } from '@/modules/invoice/domain/outbox-retention';
+import { TypeOrmOutboxRetention } from '@/modules/invoice/infra/typeorm-outbox-retention';
 import { PortalSyncScheduler } from '@/modules/portal-sync/jobs/portal-sync.scheduler';
 import { IS_SELF_HOSTED } from '@/shared/deployment-mode';
 import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
@@ -132,6 +135,8 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     ImportCleanupCron,
     PortalSyncScheduler,
     AccountAuditRetentionScheduler,
+    OutboxRetentionScheduler,
+    { provide: OUTBOX_RETENTION, useClass: TypeOrmOutboxRetention },
     ...(IS_SELF_HOSTED
       ? []
       : [LifecycleMonthlySummaryScheduler, LifecyclePaymentReminderScheduler]),
