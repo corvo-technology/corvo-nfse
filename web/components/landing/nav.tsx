@@ -10,7 +10,7 @@ import { REPO_URL } from "@/lib/repo";
 
 const navLinks: { key: string; href: string; locale?: string }[] = [
   { key: "product", href: "#agents" },
-  { key: "integrations", href: "#integrations" },
+  { key: "integrations", href: "/integrations" },
   { key: "docs", href: "/docs" },
   { key: "pricing", href: "#pricing" },
   // The blog exists in Portuguese only, so it always opens /pt/blog.
