@@ -19,7 +19,8 @@ export const recipientIeValidator: PreSendValidator<NfeDraft> = {
         {
           field: 'recipient.indIeDest',
           code: 'RECIPIENT_IE_INVALID',
-          message: 'indIeDest must be 1, 2 or 9',
+          message:
+            'indIeDest must be 1 (contributor), 2 (exempt) or 9 (non-contributor)',
         },
       ];
     if (indIeDest === 1)

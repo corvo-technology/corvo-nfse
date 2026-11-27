@@ -156,6 +156,16 @@ describe('DanfeRenderer', () => {
     expect(text).not.toContain('CANCELADA');
   });
 
+  it('prints the protocol with its date and time, as the SEFAZ answers', async () => {
+    const protocol = xml.replace(
+      /<dhRecbto>[^<]*<\/dhRecbto>/,
+      '<dhRecbto>2026-11-27T14:35:09-03:00</dhRecbto>',
+    );
+    const { text } = await render(protocol);
+    expect(text).toContain('135260000000001 - 27/11/2026 14:35:09');
+    expect(text).not.toContain('- - -');
+  });
+
   it('adds the CANCELADA mark and drops the homologation one when asked', async () => {
     const { text } = await render(xml, {
       cancelled: true,

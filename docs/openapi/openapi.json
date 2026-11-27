@@ -14607,6 +14607,14 @@
             "nullable": true,
             "type": "string"
           },
+          "documentsStatus": {
+            "description": "Same as for an NFS-e: `ready` once the XML and the DANFE are stored (the same as `documentsReady`).",
+            "enum": [
+              "pending",
+              "ready"
+            ],
+            "type": "string"
+          },
           "emailSentAt": {
             "format": "date-time",
             "nullable": true,
@@ -14714,6 +14722,18 @@
             "nullable": true,
             "type": "integer"
           },
+          "stage": {
+            "description": "Same as for an NFS-e: `completed` means authorized, documents ready and the requested e-mail resolved.",
+            "enum": [
+              "pending",
+              "authorized",
+              "documents_ready",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "type": "string"
+          },
           "status": {
             "enum": [
               "queued",
@@ -14810,6 +14830,8 @@
           "cancelRequestedAt",
           "documentsReady",
           "documentsReadyAt",
+          "documentsStatus",
+          "stage",
           "emailStatus",
           "emailSentAt",
           "attempt",
@@ -15394,8 +15416,6 @@
             "enum": [
               1
             ],
-            "maximum": 4,
-            "minimum": 1,
             "type": "number"
           },
           "items": {

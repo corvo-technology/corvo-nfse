@@ -21,6 +21,7 @@ import { TypeormNfeEvents } from '../infra/typeorm-nfe-events';
 import { TypeormNfeInutilizations } from '../infra/typeorm-nfe-inutilizations';
 import { NFCE_DANFCE_RENDERER, NFE_DANFE_RENDERER } from '../nfe.tokens';
 import { DANFCE_FILE, DANFE_FILE, NFE_PROC_FILE } from './nfe-files';
+import { nfeLifecycle } from '../domain/nfe-lifecycle';
 import { sendEmailMessage } from './nfe-messages';
 import { buildNfeProc } from './nfe-proc';
 import { keyOf } from './nfe-outcome.service';
@@ -227,6 +228,8 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
         protocol: ready.protocol,
         externalId: ready.externalId,
         documentsReadyAt: ready.documentsReadyAt?.toISOString() ?? null,
+        documentsStatus: 'ready',
+        stage: nfeLifecycle(ready).stage,
         emailRequested: emailWanted,
       },
     );

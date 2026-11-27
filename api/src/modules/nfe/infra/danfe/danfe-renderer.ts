@@ -516,7 +516,7 @@ function stamp(doc: Doc, headerTop: number, marks: string[]): void {
     doc.fillColor(INK).font('regular').fontSize(7);
     const folio = `Folha ${index + 1}/${range.count}`;
     if (index === 0)
-      doc.text(folio, cm(LEFT + 8.3), cm(headerTop) + 88, {
+      doc.text(folio, cm(LEFT + 8.3), cm(headerTop) + 85, {
         width: cm(3.9),
         align: 'center',
         lineBreak: false,
