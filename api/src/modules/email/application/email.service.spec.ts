@@ -50,7 +50,7 @@ describe('EmailService', () => {
           kind: 'welcome',
           to: 'new@example.com',
           email: expect.objectContaining({
-            subject: 'Bem-vindo ao Corvo',
+            subject: 'Sua conta no Corvo está pronta',
             html: expect.stringContaining('href="https://www.corvo.tech/app"'),
           }),
         }),

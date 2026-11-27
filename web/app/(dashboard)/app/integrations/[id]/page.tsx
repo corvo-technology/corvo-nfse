@@ -13,6 +13,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
 import { ConnectionCredentials } from "@/components/dashboard/integrations/connection-credentials";
 import { ConnectionInfo } from "@/components/dashboard/integrations/connection-info";
+import { WebhookSecretForm } from "@/components/dashboard/integrations/webhook-secret-form";
 import { ConnectionSettings } from "@/components/dashboard/integrations/connection-settings";
 import { collectAll, companies as companiesApi, integrations, type IntegrationConnection, type IntegrationProvider } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -69,6 +70,8 @@ export default function IntegrationDetailPage() {
   if (!connection || connection.id !== id) return <DetailSkeleton label={tc("loading")} />;
 
   const status = connectionStatus(connection);
+  const secretField = provider?.credentialFields.find((field) => field.afterUrl);
+  const waitingSecret = Boolean(secretField) && connection.state === "draft" && canManage;
   const switchable = connection.state === "active" || connection.state === "paused";
 
   return (
@@ -81,6 +84,14 @@ export default function IntegrationDetailPage() {
       />
 
       {connection.state === "reauth_required" && <p role="alert" className="banner banner-danger">{t("detail.reconnectHint")}</p>}
+
+      {waitingSecret && secretField && (
+        <Card className="flex flex-col gap-3 p-5">
+          <h2 className="font-medium">{t("wizard.awaitingSecret.title")}</h2>
+          <p className="text-[13.5px] text-text-3">{t("wizard.awaitingSecret.detailBody")}</p>
+          <WebhookSecretForm connectionId={connection.id} field={secretField} onActivated={setConnection} />
+        </Card>
+      )}
 
       {switchable && (
         <Card className="p-5">

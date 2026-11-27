@@ -60,8 +60,8 @@ export class TypeOrmCustomerDirectory extends CustomerDirectory {
         `INSERT INTO ${table} AS saved (tenant_id, environment, tax_id, name, email)
          VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (tenant_id, environment, tax_id) DO UPDATE SET
-           name = EXCLUDED.name,
-           email = COALESCE(EXCLUDED.email, saved.email),
+           name = COALESCE(NULLIF(btrim(saved.name), ''), EXCLUDED.name),
+           email = COALESCE(NULLIF(btrim(saved.email), ''), NULLIF(btrim(EXCLUDED.email), '')),
            last_used_at = now(),
            updated_at = now()`,
         [

@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Toggle } from "@/components/ui/toggle";
-import type { IntegrationProvider } from "@/lib/api";
+import { WebhookSecretForm } from "@/components/dashboard/integrations/webhook-secret-form";
+import type { IntegrationConnection, IntegrationProvider } from "@/lib/api";
 import type { Company } from "@/lib/types";
 import { ConnectError, connectProvider } from "@/lib/integrations";
 import { useApiErrorText } from "@/lib/use-api-error";
@@ -46,9 +47,13 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
   const [secrets, setSecrets] = useState<Record<string, string>>({});
   const [copiedSecret, setCopiedSecret] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [connectionId, setConnectionId] = useState("");
+  const [activated, setActivated] = useState(false);
 
   const provider = providers.find((p) => p.id === providerId) ?? null;
-  const askedFields = provider?.credentialFields.filter((field) => !field.generate) ?? [];
+  // A secret the platform issues after our address exists is asked in the second step, not here.
+  const afterUrlField = provider?.credentialFields.find((field) => field.afterUrl);
+  const askedFields = provider?.credentialFields.filter((field) => !field.generate && !field.afterUrl) ?? [];
   const ready = Boolean(provider && companyId && askedFields.every((field) => field.optional || (credentials[field.key] ?? "").trim()));
 
   async function submit() {
@@ -65,7 +70,10 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
           return value ? [[field.key, value] as const] : [];
         })),
         sendEmail,
+        awaitSecret: Boolean(afterUrlField),
       });
+      setConnectionId(result.connection.id);
+      setActivated(result.connection.state === "active");
       setWebhookUrl(result.webhookUrl);
       setSecrets(result.secrets);
       setStep("done");
@@ -91,7 +99,7 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
 
   return (
     <Card className="flex max-w-[640px] flex-col gap-4 p-5 sm:p-6">
-      {step === "done" && <h2 className="text-[17px] font-medium text-text">{t("wizard.done.title")}</h2>}
+      {step === "done" && <h2 className="text-[17px] font-medium text-text">{afterUrlField && !activated ? t("wizard.awaitingSecret.title") : t("wizard.done.title")}</h2>}
       {step === "platform" && (
         <div className="flex flex-col gap-3">
           <p className="text-[14px] text-text-3">{t("wizard.stepPlatform")}</p>
@@ -133,7 +141,7 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
               )}
             </Field>
           ) : (
-            <Field key={field.key} label={field.label} required>
+            <Field key={field.key} label={field.label} required={!field.optional} hint={t.has(`wizard.hints.${field.key}`) ? t(`wizard.hints.${field.key}`) : undefined}>
               {(control) => (
                 <Input {...control} type={field.secret ? "password" : "text"} autoComplete="off" value={credentials[field.key] ?? ""} onChange={(e) => setCredentials({ ...credentials, [field.key]: e.target.value })} />
               )}
@@ -150,7 +158,7 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
 
       {step === "done" && provider && (
         <div className="flex flex-col gap-4">
-          <p className="text-[14px] text-text-2">{t("wizard.done.body")}</p>
+          <p className="text-[14px] text-text-2">{afterUrlField && !activated ? t("wizard.awaitingSecret.body") : t("wizard.done.body")}</p>
           <div className="flex flex-col gap-1.5">
             <span className="field-label">{t("wizard.done.urlLabel")}</span>
             <div className="flex items-center gap-2">
@@ -173,9 +181,24 @@ export function ConnectFlow({ providers, companies, environment, initialProvider
               </div>
             </div>
           ))}
+          {afterUrlField && !activated && (provider.webhookEvents?.length ?? 0) > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <span className="field-label">{t("wizard.awaitingSecret.eventsLabel")}</span>
+              <ul className="flex flex-wrap gap-2">
+                {provider.webhookEvents?.map((event) => <li key={event}><code className="rounded-[8px] border border-border bg-black/20 px-2 py-1 font-mono text-[12.5px] text-text-2">{event}</code></li>)}
+              </ul>
+            </div>
+          )}
+          {afterUrlField && !activated && (
+            <ol className="list-decimal pl-5 text-[13.5px] text-text-2 [&>li]:mb-1">
+              {(["one", "two", "three"] as const).map((n) => <li key={n}>{t(`wizard.awaitingSecret.steps.${n}`)}</li>)}
+            </ol>
+          )}
           <p className="text-[13.5px] text-text-3">{provider.webhookInstructions[locale === "pt" ? "pt" : "en"]}</p>
           {Object.keys(secrets).length > 0 && <p role="alert" className="text-[13px] text-warn">{t("wizard.done.secretWarning")}</p>}
-          <Button variant="accent" className="ml-auto" onClick={backToList}>{t("wizard.done.finish")}</Button>
+          {afterUrlField && !activated && connectionId && <WebhookSecretForm connectionId={connectionId} field={afterUrlField} onActivated={(connection: IntegrationConnection) => { setActivated(connection.state === "active"); }} />}
+          {afterUrlField && !activated && <p className="text-[13px] text-text-3">{t("wizard.awaitingSecret.later")}</p>}
+          <Button variant={afterUrlField && !activated ? "ghost" : "accent"} className="ml-auto" onClick={backToList}>{afterUrlField && !activated ? t("wizard.awaitingSecret.doLater") : t("wizard.done.finish")}</Button>
         </div>
       )}
     </Card>

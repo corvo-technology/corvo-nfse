@@ -3951,6 +3951,121 @@ paths:
         - Integrations
       x-required-permissions:
         - integrations.manage
+  /integrations/operations:
+    get:
+      description: >-
+        Sales of every connection that wait for you (no invoice yet, `fiscalStatus`
+        `needs_attention`), newest first.
+
+
+        Permission: `integrations.view`.
+      operationId: integrationOperations_listPending
+      parameters:
+        - description: test or live (default live). An API key uses its own.
+          in: query
+          name: environment
+          required: false
+          schema:
+            type: string
+        - description: How many sales (1 to 100, default 50).
+          in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/IntegrationOperation'
+                    type: array
+                required:
+                  - data
+                type: object
+          description: OK
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security:
+        - ApiKeyAuth: []
+      summary: Sales of all connections that wait for you to complete them
+      tags:
+        - Integrations
+      x-required-permissions:
+        - integrations.view
+  /integrations/operations/{id}:
+    get:
+      description: |-
+        One sale, with the service (code and description) its invoice would carry.
+
+        Permission: `integrations.view`.
+      operationId: integrationOperations_get
+      parameters:
+        - description: Identifier (UUID) of the operation.
+          in: path
+          name: id
+          required: true
+          schema:
+            format: uuid
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/IntegrationOperationDetail'
+                required:
+                  - data
+                type: object
+          description: OK
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security:
+        - ApiKeyAuth: []
+      summary: One sale, with the service its invoice would describe
+      tags:
+        - Integrations
+      x-required-permissions:
+        - integrations.view
   /integrations/operations/{id}/customer:
     patch:
       description: >-
@@ -4010,6 +4125,139 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: Fill in the customer of an operation waiting for it
+      tags:
+        - Integrations
+      x-required-permissions:
+        - integrations.manage
+  /integrations/operations/{id}/ignore:
+    post:
+      description: >-
+        Marks a sale as one that needs no invoice (`blockReason` `ignored_by_user`). The reason is
+        kept in the audit trail. Answers 409 `OPERATION_HAS_INVOICE` when it already has one.
+
+
+        Permission: `integrations.manage`.
+      operationId: integrationOperations_ignore
+      parameters:
+        - description: Identifier (UUID) of the operation.
+          in: path
+          name: id
+          required: true
+          schema:
+            format: uuid
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IgnoreOperation'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/IntegrationOperation'
+                required:
+                  - data
+                type: object
+          description: OK
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security:
+        - ApiKeyAuth: []
+      summary: Mark a sale as one that needs no invoice
+      tags:
+        - Integrations
+      x-required-permissions:
+        - integrations.manage
+  /integrations/operations/{id}/resolve:
+    post:
+      description: >-
+        Completes the data of a sale that waits for you (customer with CPF/CNPJ, name, e-mail and
+        address; service code and description; whether to e-mail the invoice) and issues its
+        invoice. Safe to repeat: a sale never gets two invoices. Answers 409
+        `OPERATION_HAS_INVOICE`, `OPERATION_NOT_RESOLVABLE` or `OPERATION_REQUEST_FIXED`, and 400
+        `INVALID_TAX_ID`.
+
+
+        Permission: `integrations.manage`.
+      operationId: integrationOperations_resolve
+      parameters:
+        - description: Identifier (UUID) of the operation.
+          in: path
+          name: id
+          required: true
+          schema:
+            format: uuid
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveOperation'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/IntegrationOperationResolved'
+                required:
+                  - data
+                type: object
+          description: OK
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security:
+        - ApiKeyAuth: []
+      summary: Complete the data of a sale (customer, service) and issue its invoice
       tags:
         - Integrations
       x-required-permissions:
@@ -8601,6 +8849,14 @@ components:
         - timestamp
         - uptime
       type: object
+    IgnoreOperation:
+      properties:
+        reason:
+          maxLength: 200
+          type: string
+      required:
+        - reason
+      type: object
     ImportCounters:
       properties:
         accepted:
@@ -8878,6 +9134,9 @@ components:
             - disputed
             - canceled
           type: string
+        connectionId:
+          format: uuid
+          type: string
         createdAt:
           format: date-time
           type: string
@@ -8887,6 +9146,22 @@ components:
         customer:
           nullable: true
           properties:
+            address:
+              properties:
+                city:
+                  type: string
+                country:
+                  type: string
+                municipalityCode:
+                  type: string
+                state:
+                  type: string
+                street:
+                  type: string
+                zip:
+                  type: string
+              required: []
+              type: object
             email:
               nullable: true
               type: string
@@ -8904,6 +9179,11 @@ components:
             - taxId
             - taxIdMasked
           type: object
+        environment:
+          enum:
+            - test
+            - live
+          type: string
         fiscalStatus:
           enum:
             - none
@@ -8924,11 +9204,17 @@ components:
           format: date-time
           nullable: true
           type: string
+        provider:
+          example: woovi
+          type: string
         updatedAt:
           format: date-time
           type: string
       required:
         - id
+        - connectionId
+        - provider
+        - environment
         - operationKey
         - commercialState
         - fiscalStatus
@@ -8940,6 +9226,114 @@ components:
         - invoiceId
         - createdAt
         - updatedAt
+      type: object
+    IntegrationOperationDetail:
+      properties:
+        amountCents:
+          type: integer
+        blockReason:
+          nullable: true
+          type: string
+        commercialState:
+          enum:
+            - pending
+            - paid
+            - refunded
+            - disputed
+            - canceled
+          type: string
+        connectionId:
+          format: uuid
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        currency:
+          example: BRL
+          type: string
+        customer:
+          additionalProperties: true
+          nullable: true
+          type: object
+        environment:
+          enum:
+            - test
+            - live
+          type: string
+        fiscalStatus:
+          enum:
+            - none
+            - blocked
+            - needs_attention
+            - submitted
+          type: string
+        id:
+          format: uuid
+          type: string
+        invoiceId:
+          format: uuid
+          nullable: true
+          type: string
+        lastError:
+          description: What the last attempt said, when it was refused.
+          nullable: true
+          type: string
+        operationKey:
+          type: string
+        paidAt:
+          format: date-time
+          nullable: true
+          type: string
+        provider:
+          example: woovi
+          type: string
+        sendEmail:
+          description: Whether the invoice would be e-mailed to the customer.
+          type: boolean
+        service:
+          properties:
+            code:
+              nullable: true
+              type: string
+            description:
+              nullable: true
+              type: string
+          required:
+            - code
+            - description
+          type: object
+        updatedAt:
+          format: date-time
+          type: string
+      required:
+        - id
+        - connectionId
+        - provider
+        - environment
+        - operationKey
+        - commercialState
+        - fiscalStatus
+        - blockReason
+        - amountCents
+        - currency
+        - customer
+        - paidAt
+        - invoiceId
+        - createdAt
+        - updatedAt
+        - service
+        - lastError
+        - sendEmail
+      type: object
+    IntegrationOperationResolved:
+      properties:
+        operation:
+          $ref: '#/components/schemas/IntegrationOperation'
+        outcome:
+          $ref: '#/components/schemas/IntegrationOperationRetry'
+      required:
+        - outcome
+        - operation
       type: object
     IntegrationOperationRetry:
       properties:
@@ -8962,6 +9356,8 @@ components:
         credentialFields:
           items:
             properties:
+              afterUrl:
+                type: boolean
               generate:
                 type: boolean
               inWebhookUrl:
@@ -8997,6 +9393,10 @@ components:
           type: array
         version:
           type: string
+        webhookEvents:
+          items:
+            type: string
+          type: array
         webhookInstructions:
           properties:
             en:
@@ -11130,6 +11530,15 @@ components:
           maxLength: 254
           type: string
       type: object
+    ResolveOperation:
+      properties:
+        customer:
+          $ref: '#/components/schemas/SaleCustomer'
+        sendEmail:
+          type: boolean
+        service:
+          $ref: '#/components/schemas/SaleService'
+      type: object
     ReviewInvoices:
       properties:
         action:
@@ -11150,6 +11559,52 @@ components:
       required:
         - action
         - invoiceIds
+      type: object
+    SaleAddress:
+      properties:
+        city:
+          maxLength: 60
+          type: string
+        country:
+          pattern: ^[A-Za-z]{2}$
+          type: string
+        municipalityCode:
+          pattern: ^\d{7}$
+          type: string
+        state:
+          pattern: ^[A-Za-z]{2}$
+          type: string
+        street:
+          maxLength: 255
+          type: string
+        zip:
+          pattern: ^\d{8}$
+          type: string
+      type: object
+    SaleCustomer:
+      properties:
+        address:
+          $ref: '#/components/schemas/SaleAddress'
+        email:
+          format: email
+          type: string
+        name:
+          maxLength: 200
+          type: string
+        taxId:
+          maxLength: 30
+          type: string
+      required:
+        - taxId
+      type: object
+    SaleService:
+      properties:
+        code:
+          pattern: ^\d{6}$
+          type: string
+        description:
+          maxLength: 200
+          type: string
       type: object
     SavedCustomer:
       properties:

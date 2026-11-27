@@ -19,6 +19,12 @@ export interface WooviSubscription {
   /** Pix copy-and-paste / QR payload of the first charge (pixRecurring.emv). */
   brCode: string | null;
 }
+/** The buyer on a one-off charge: Woovi only needs who and which document. */
+export interface WooviChargeCustomer {
+  name: string;
+  taxID: string;
+  email?: string;
+}
 export interface WooviCustomer {
   name: string;
   taxID: string;
@@ -136,6 +142,7 @@ export class WooviClient {
     valueCents: number;
     comment: string;
     expiresInSeconds: number;
+    customer?: WooviChargeCustomer;
   }): Promise<WooviCharge> {
     const { charge } = await this.call<{ charge: WooviCharge }>(
       'POST',
@@ -145,6 +152,7 @@ export class WooviClient {
         value: input.valueCents,
         comment: input.comment,
         expiresIn: input.expiresInSeconds,
+        ...(input.customer ? { customer: input.customer } : {}),
       },
     );
     return {

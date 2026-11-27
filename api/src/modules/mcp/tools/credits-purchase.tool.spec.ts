@@ -25,26 +25,84 @@ function text(result: McpToolResult): Record<string, unknown> {
   return JSON.parse(first.text) as Record<string, unknown>;
 }
 
+const firstCompany = (
+  legalName = 'Escritório Silva Ltda',
+  taxId = '11222333000181',
+) => ({
+  listPage: jest.fn().mockResolvedValue({
+    data: [{ toSnapshot: () => ({ legalName, taxId }) }],
+  }),
+});
+
 describe('credits_purchase', () => {
-  it('starts an avulso Pix charge with a tool-generated idempotency key', async () => {
+  it('starts an avulso Pix charge for the first company, with a tool-generated idempotency key', async () => {
     const start = jest.fn().mockResolvedValue(pix);
-    await createCreditsPurchaseHandler({ start })(
+    await createCreditsPurchaseHandler({ start }, firstCompany())(
       { units: 50, method: 'pix' },
       ctx,
     );
     expect(start).toHaveBeenCalledWith(
       'tenant-1',
-      { kind: 'avulso', units: 50, method: 'pix' },
+      {
+        kind: 'avulso',
+        units: 50,
+        method: 'pix',
+        customer: { name: 'Escritório Silva Ltda', taxID: '11222333000181' },
+      },
       expect.stringMatching(/^mcp-[0-9a-f-]{36}$/),
+    );
+  });
+
+  it('uses the tax_id and name given, without looking at companies', async () => {
+    const start = jest.fn().mockResolvedValue(pix);
+    const companies = firstCompany();
+    await createCreditsPurchaseHandler({ start }, companies)(
+      { units: 5, method: 'pix', tax_id: '529.982.247-25', name: 'Ana' },
+      ctx,
+    );
+    expect(companies.listPage).not.toHaveBeenCalled();
+    expect(start).toHaveBeenCalledWith(
+      'tenant-1',
+      expect.objectContaining({
+        customer: { name: 'Ana', taxID: '529.982.247-25' },
+      }),
+      expect.any(String),
+    );
+  });
+
+  it('asks for a tax_id in Portuguese when Pix has no buyer and no company', async () => {
+    const start = jest.fn();
+    const none = { listPage: jest.fn().mockResolvedValue({ data: [] }) };
+    await expect(
+      createCreditsPurchaseHandler({ start }, none)(
+        { units: 5, method: 'pix' },
+        ctx,
+      ),
+    ).rejects.toThrow(/tax_id/);
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it('card does not need a buyer', async () => {
+    const start = jest
+      .fn()
+      .mockResolvedValue({ method: 'card', url: 'https://stripe.test/pay' });
+    await createCreditsPurchaseHandler({ start }, firstCompany())(
+      { units: 5, method: 'card' },
+      ctx,
+    );
+    expect(start).toHaveBeenCalledWith(
+      'tenant-1',
+      { kind: 'avulso', units: 5, method: 'card' },
+      expect.any(String),
     );
   });
 
   it('returns the copy-and-paste code, the payment link and a PNG QR image', async () => {
     const start = jest.fn().mockResolvedValue(pix);
-    const result = await createCreditsPurchaseHandler({ start })(
-      { units: 3, method: 'pix' },
-      ctx,
-    );
+    const result = await createCreditsPurchaseHandler(
+      { start },
+      firstCompany(),
+    )({ units: 3, method: 'pix' }, ctx);
     expect(result).toBeInstanceOf(McpToolResult);
     expect(text(result)).toMatchObject({
       payment_id: 'pay-1',
@@ -66,10 +124,10 @@ describe('credits_purchase', () => {
 
   it('returns the payment link and no image when Pix has no copy-and-paste code', async () => {
     const start = jest.fn().mockResolvedValue({ ...pix, brCode: null });
-    const result = await createCreditsPurchaseHandler({ start })(
-      { units: 3, method: 'pix' },
-      ctx,
-    );
+    const result = await createCreditsPurchaseHandler(
+      { start },
+      firstCompany(),
+    )({ units: 3, method: 'pix' }, ctx);
     expect(result.content).toHaveLength(1);
     expect(text(result).payment_link_url).toBe(pix.paymentLinkUrl);
   });
@@ -81,10 +139,10 @@ describe('credits_purchase', () => {
       paymentId: 'pay-2',
       sessionId: 'cs_1',
     });
-    const result = await createCreditsPurchaseHandler({ start })(
-      { units: 10, method: 'card' },
-      ctx,
-    );
+    const result = await createCreditsPurchaseHandler(
+      { start },
+      firstCompany(),
+    )({ units: 10, method: 'card' }, ctx);
     expect(result.content).toHaveLength(1);
     expect(text(result)).toMatchObject({
       payment_id: 'pay-2',
@@ -96,10 +154,10 @@ describe('credits_purchase', () => {
 
   it('shows the price: 50 units cost 4950 cents and "R$ 49,50"', async () => {
     const start = jest.fn().mockResolvedValue(pix);
-    const result = await createCreditsPurchaseHandler({ start })(
-      { units: 50, method: 'pix' },
-      ctx,
-    );
+    const result = await createCreditsPurchaseHandler(
+      { start },
+      firstCompany(),
+    )({ units: 50, method: 'pix' }, ctx);
     expect(text(result)).toMatchObject({
       amount_cents: 4950,
       amount: 'R$ 49,50',
@@ -109,7 +167,10 @@ describe('credits_purchase', () => {
   it('refuses fewer than 3 units without charging', async () => {
     const start = jest.fn();
     await expect(
-      createCreditsPurchaseHandler({ start })({ units: 2, method: 'pix' }, ctx),
+      createCreditsPurchaseHandler({ start }, firstCompany())(
+        { units: 2, method: 'pix' },
+        ctx,
+      ),
     ).rejects.toThrow(/Invalid input: units/);
     expect(start).not.toHaveBeenCalled();
   });
@@ -122,7 +183,10 @@ describe('credits_purchase', () => {
       }),
     );
     await expect(
-      createCreditsPurchaseHandler({ start })({ units: 5, method: 'pix' }, ctx),
+      createCreditsPurchaseHandler({ start }, firstCompany())(
+        { units: 5, method: 'pix' },
+        ctx,
+      ),
     ).rejects.toThrow(
       'Pix indisponível agora. Tente com cartão (method: card).',
     );

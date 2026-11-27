@@ -35,6 +35,8 @@ import type { IntegrationRule } from '../domain/integration-rule';
 import {
   CompleteCustomerDto,
   CreateConnectionDto,
+  IgnoreOperationDto,
+  ResolveOperationDto,
   PutRulesDto,
   UpdateCredentialsDto,
 } from './integrations.dto';
@@ -303,6 +305,91 @@ export class IntegrationsController {
     return rows.map(presentOperation);
   }
 
+  @Get('operations')
+  @ApiKeyEndpoint()
+  @RequirePermission('integrations.view')
+  @ApiOperation({
+    summary: 'Sales of all connections that wait for you to complete them',
+  })
+  async pendingOperations(
+    @Req() req: RequestWithAuthContext,
+    @Query('environment') environment?: string,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
+  ) {
+    const wanted = environment === 'test' ? 'test' : 'live';
+    const env = keyEnvironmentOf(req) ?? wanted;
+    const rows = await this.operationService.listNeedingAttention(
+      tenantOf(req),
+      env,
+      clampLimit(limit),
+    );
+    return rows.map(presentOperation);
+  }
+
+  @Get('operations/:id')
+  @ApiKeyEndpoint()
+  @RequirePermission('integrations.view')
+  @ApiOperation({
+    summary: 'One sale, with the service its invoice would describe',
+  })
+  async operation(
+    @Req() req: RequestWithAuthContext,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    const { operation, service, lastError, sendEmail } =
+      await this.operationService.detail(
+        tenantOf(req),
+        id,
+        keyEnvironmentOf(req),
+      );
+    return { ...presentOperation(operation), service, lastError, sendEmail };
+  }
+
+  @Post('operations/:id/resolve')
+  @HttpCode(200)
+  @ApiKeyEndpoint()
+  @RequirePermission('integrations.manage')
+  @ApiOperation({
+    summary:
+      'Complete the data of a sale (customer, service) and issue its invoice',
+  })
+  async resolve(
+    @Req() req: RequestWithAuthContext,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: ResolveOperationDto,
+  ) {
+    const { outcome, operation } = await this.operationService.resolve(
+      tenantOf(req),
+      id,
+      body,
+      keyEnvironmentOf(req),
+    );
+    return {
+      outcome,
+      operation: presentOperation(operation),
+    };
+  }
+
+  @Post('operations/:id/ignore')
+  @HttpCode(200)
+  @ApiKeyEndpoint()
+  @RequirePermission('integrations.manage')
+  @ApiOperation({ summary: 'Mark a sale as one that needs no invoice' })
+  async ignore(
+    @Req() req: RequestWithAuthContext,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: IgnoreOperationDto,
+  ) {
+    return presentOperation(
+      await this.operationService.ignore(
+        tenantOf(req),
+        id,
+        body.reason,
+        keyEnvironmentOf(req),
+      ),
+    );
+  }
+
   @Patch('operations/:id/customer')
   @ApiKeyEndpoint()
   @RequirePermission('integrations.manage')
@@ -395,6 +482,9 @@ const presentRule = (rule: IntegrationRule) => ({
 
 const presentOperation = (op: IntegrationOperation) => ({
   id: op.id,
+  connectionId: op.connectionId,
+  provider: op.provider,
+  environment: op.environment,
   operationKey: op.operationKey,
   commercialState: op.commercialState,
   fiscalStatus: op.fiscalStatus,

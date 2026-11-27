@@ -8,7 +8,10 @@ import {
 import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
 import { AVULSO_UNIT_CENTS } from '@/modules/credits/domain/avulso';
 import type { WooviConfig } from '@/infra/config/configuration.types';
-import type { WooviCustomer } from '@/infra/external/woovi/woovi.client';
+import type {
+  WooviChargeCustomer,
+  WooviCustomer,
+} from '@/infra/external/woovi/woovi.client';
 import type { BillingCycle, PlanSlug } from '@/modules/plans/domain/plan';
 import { WOOVI_CONFIG } from '../http/woovi-webhook.controller';
 import { BillingService } from './billing.service';
@@ -16,13 +19,18 @@ import { StripePaymentsService } from './stripe-payments.service';
 import { WooviPaymentsService } from './woovi-payments.service';
 
 export type CheckoutRequest =
-  | { kind: 'avulso'; units: number; method: 'pix' | 'card' }
+  | {
+      kind: 'avulso';
+      units: number;
+      method: 'pix' | 'card';
+      customer?: Partial<WooviChargeCustomer>;
+    }
   | {
       kind: 'plan';
       planSlug: PlanSlug;
       cycle: BillingCycle;
       method: 'pix' | 'card';
-      customer?: WooviCustomer;
+      customer?: Partial<WooviCustomer>;
     };
 
 /** One entry point for "buy a plan or notes, with Pix or card". */
@@ -88,7 +96,7 @@ export class CheckoutRouterService {
           message: 'Pix payments are not enabled',
         });
       return request.kind === 'avulso'
-        ? this.woovi.startAvulso(tenantId, request.units, key)
+        ? this.woovi.startAvulso(tenantId, request.units, key, request.customer)
         : this.woovi.startPlan(
             tenantId,
             request.planSlug,

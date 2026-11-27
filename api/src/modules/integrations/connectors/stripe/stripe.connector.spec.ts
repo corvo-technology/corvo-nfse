@@ -517,6 +517,31 @@ describe('StripeConnector.validateConnection', () => {
     ).resolves.toEqual({ externalAccountId: 'acct_1ABC' });
     expect(getAccountId).toHaveBeenCalledWith('rk_fake_key');
   });
+  it('without a key it asks nothing and leaves the account unidentified', async () => {
+    const getAccountId = jest.fn();
+    const connector = new StripeConnector({
+      getAccountId,
+    } as unknown as StripeClient);
+    await expect(
+      connector.validateConnection({ webhookSecret: 'x' }, 'live'),
+    ).resolves.toEqual({ externalAccountId: null });
+    expect(getAccountId).not.toHaveBeenCalled();
+  });
+  it('refuses a full-access secret key (sk_) without echoing it', () => {
+    const connector = new StripeConnector();
+    expect(() =>
+      connector.checkCredentials({ apiKey: 'sk_live_supersecret' }),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'STRIPE_SECRET_KEY_REJECTED',
+        message: expect.not.stringContaining('supersecret') as string,
+      }) as Error,
+    );
+    expect(() =>
+      connector.checkCredentials({ apiKey: 'rk_live_ok' }),
+    ).not.toThrow();
+    expect(() => connector.checkCredentials({})).not.toThrow();
+  });
   it('a refused key becomes an auth error', async () => {
     const connector = new StripeConnector({
       getAccountId: jest.fn().mockRejectedValue(new ConnectorAuthError('401')),
@@ -535,8 +560,13 @@ describe('StripeConnector.manifest', () => {
       supportedFlows: ['charge'],
     });
     expect(manifest.credentialFields).toEqual([
-      expect.objectContaining({ key: 'apiKey', secret: true }),
-      expect.objectContaining({ key: 'webhookSigningSecret', secret: true }),
+      expect.objectContaining({ key: 'apiKey', secret: true, optional: true }),
+      expect.objectContaining({
+        key: 'webhookSigningSecret',
+        secret: true,
+        optional: true,
+        afterUrl: true,
+      }),
       expect.objectContaining({
         key: 'webhookSecret',
         secret: true,

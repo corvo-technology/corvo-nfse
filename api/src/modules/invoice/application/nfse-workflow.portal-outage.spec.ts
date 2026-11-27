@@ -1,5 +1,6 @@
 import type { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
+import { HttpStatusError, NetworkError, TimeoutError } from 'open-nfse';
 import { Invoice } from '../domain/invoice';
 import { DpsBuilder } from '../domain/fiscal/dps/dps-builder';
 import type { IFiscalSnapshotRepository } from '../domain/fiscal/fiscal-snapshot.repository';
@@ -15,6 +16,10 @@ import {
   DPS_USED_BY_OTHER_NFSE,
   PORTAL_NFSE_WRONG_ENVIRONMENT,
 } from '../domain/fiscal/portal-nfse-match';
+import {
+  PORTAL_DPS_QUERY_REJECTED,
+  reconciliationJobKey,
+} from './reconciliation-job';
 import { portalNfseXml } from '../domain/fiscal/__fixtures__/portal-nfse-xml';
 
 jest.mock('./fiscal/fiscal.metrics');
@@ -192,7 +197,7 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
 
   it('a network error counts against the portal and schedules exactly one follow-up', async () => {
     const invoice = invoiceIn('queued');
-    provider.issue.mockRejectedValue(new Error('ECONNRESET'));
+    provider.issue.mockRejectedValue(new NetworkError('ECONNRESET'));
 
     await expect(run(invoice)).resolves.toBeUndefined();
 
@@ -202,6 +207,73 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
     expect(reconciliationJobs()[0][2]).toMatchObject({
       attemptCount: 1,
       uncertainSince: expect.any(String),
+    });
+  });
+
+  describe('when the portal refuses the DPS lookup (HTTP 400)', () => {
+    const refused = () =>
+      new HttpStatusError(
+        400,
+        '{"erro":"Identificador de DPS invalido","cnpj":"11.222.333/0001-81","email":"a@b.com"}',
+      );
+
+    it('stops automatic attempts and moves to manual review with the portal detail', async () => {
+      const invoice = invoiceIn('reconciliation_required');
+      provider.issue.mockRejectedValue(refused());
+
+      await run(invoice, { attemptCount: 1 });
+
+      expect(invoice.status).toBe('manual_review');
+      expect(reconciliationJobs()).toHaveLength(0);
+      const snapshot = invoice.toSnapshot();
+      expect(snapshot.lastErrorCode).toBe(PORTAL_DPS_QUERY_REJECTED);
+      expect(snapshot.lastErrorMessage).toBe(
+        'O portal recusou a consulta desta nota (código 400). Veja o detalhe.',
+      );
+      expect(snapshot.lastErrorProvider).toContain(
+        'Identificador de DPS invalido',
+      );
+      expect(snapshot.lastErrorProvider).not.toContain('11.222.333');
+      expect(snapshot.lastErrorProvider).not.toContain('a@b.com');
+      const reasons = fakes.lifecycle.transition.mock.calls.map(
+        ([, event]) => (event as { reason?: string }).reason,
+      );
+      expect(reasons.at(-1)).toContain('Detalhe do portal');
+    });
+
+    it('does not count as a portal outage', async () => {
+      const invoice = invoiceIn('reconciliation_required');
+      provider.issue.mockRejectedValue(refused());
+
+      await run(invoice);
+
+      expect(breaker.recordFailure).not.toHaveBeenCalled();
+    });
+
+    it('the sweep records it once and then stops asking the portal', async () => {
+      const invoice = invoiceIn('manual_review');
+      provider.queryByDps.mockRejectedValue(refused());
+
+      await run(invoice, { review: 'sweep' });
+      await run(invoice, { review: 'sweep' });
+
+      expect(provider.queryByDps).toHaveBeenCalledTimes(1);
+      expect(invoice.status).toBe('manual_review');
+      expect(invoice.toSnapshot().lastErrorCode).toBe(
+        PORTAL_DPS_QUERY_REJECTED,
+      );
+      expect(breaker.recordFailure).not.toHaveBeenCalled();
+    });
+  });
+
+  it('chains each follow-up on a stable job id so a second chain collides', async () => {
+    const invoice = invoiceIn('queued');
+    provider.issue.mockRejectedValue(new NetworkError('ECONNRESET'));
+
+    await run(invoice);
+
+    expect(reconciliationJobs()[0][3]).toMatchObject({
+      idempotencyKey: reconciliationJobKey(invoice.id, 1),
     });
   });
 
@@ -406,15 +478,25 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
       expect(fakes.documentStorage.saveXml).not.toHaveBeenCalled();
     });
 
+    it('an HTTP 400 answer from the portal does not count as an outage', async () => {
+      const invoice = invoiceIn('manual_review');
+      provider.queryByDps.mockRejectedValue(new HttpStatusError(400, ''));
+
+      await discard(invoice);
+
+      expect(breaker.recordFailure).not.toHaveBeenCalled();
+      expect(invoice.status).toBe('manual_review');
+    });
+
     it('stays in manual review with the reason when the portal does not answer', async () => {
       const invoice = invoiceIn('manual_review');
-      provider.queryByDps.mockRejectedValue(new Error('timeout'));
+      provider.queryByDps.mockRejectedValue(new TimeoutError(60000));
 
       await discard(invoice);
 
       expect(invoice.status).toBe('manual_review');
       expect(invoice.toSnapshot().lastErrorMessage).toBe(
-        'Discard not confirmed: timeout',
+        'Discard not confirmed: no answer',
       );
       expect(fakes.invoices.save).toHaveBeenCalledWith(invoice, tenantId);
       expect(breaker.recordFailure).toHaveBeenCalledWith('live');
