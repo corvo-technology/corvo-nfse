@@ -207,13 +207,19 @@ describe('NF-e groups', () => {
 
   it('pag lists the payments and the change only when there is one', () => {
     expect(pagGroup(context())).toEqual({
-      detPag: [{ tPag: '17', vPag: '20.00' }],
+      detPag: [
+        {
+          tPag: '17',
+          vPag: '20.00',
+          card: { tpIntegra: 2 },
+        },
+      ],
       vTroco: undefined,
     });
     expect(pagGroup(context(INTERESTADUAL))).toEqual({
       detPag: [
         { tPag: '01', vPag: '100.00' },
-        { tPag: '17', vPag: '100.00' },
+        { tPag: '17', vPag: '100.00', card: { tpIntegra: 2 } },
       ],
       vTroco: '12.61',
     });

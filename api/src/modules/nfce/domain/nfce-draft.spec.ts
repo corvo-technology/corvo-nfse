@@ -68,8 +68,12 @@ describe('buildNfceDraft', () => {
     });
   });
 
-  it('a payment without card keeps no card', () => {
-    expect(draftOf(nfce()).payments[0]).toEqual({ tPag: '17', cents: 2000 });
+  it('PIX without card gets the minimal one (rejection 391)', () => {
+    expect(draftOf(nfce()).payments[0]).toEqual({
+      tPag: '17',
+      cents: 2000,
+      card: { tpIntegra: 2, cnpj: null, tBand: null, cAut: null },
+    });
   });
 });
 

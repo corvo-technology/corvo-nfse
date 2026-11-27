@@ -1,6 +1,7 @@
 import type { NfeSettings } from '@/modules/company/domain/nfe-settings';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { Decimal } from '@/shared/types/money';
+import { paymentCard } from './card';
 import type { NfceCard, NfeAddress, NfeRecipient } from './nfe-document';
 import type { NfeItemTax } from './nfe-item';
 import type { NfeInput } from './nfe-input';
@@ -140,6 +141,7 @@ export function buildDraftBody(
     payments: input.payments.map((p) => ({
       tPag: clean(p.tPag),
       cents: toCents(p.amount),
+      card: paymentCard(p.tPag.trim(), p.card),
     })),
     changeCents: toCents(input.change ?? 0),
     additionalInfo: orNull(input.additionalInfo),

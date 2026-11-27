@@ -2,11 +2,11 @@ import type { PreSendValidator } from '@/modules/fiscal-core/application/emissio
 import type { ValidationIssue } from '@/modules/fiscal-core/domain/ports/tax-validator.port';
 import type { NfeDraft } from '@/modules/nfe/domain/nfe-draft';
 import { isValidCnpj } from '@/shared/fiscal/cnpj';
-import { CARD_BRANDS, CARD_PAYMENT_TYPES } from '../consumer-limits';
+import { CARD_BRANDS, CARD_PAYMENT_TYPES } from '../card';
 
-/** The `card` group (rejections 392, 437, 443) and where it may appear, plus the no-payment `tPag` 90. */
+/** The `card` group (rejections 391, 392, 437, 443) and where it may appear, plus the no-payment `tPag` 90. */
 export const cardValidator: PreSendValidator<NfeDraft> = {
-  name: 'nfce-card',
+  name: 'card',
   validate(draft) {
     const issues: ValidationIssue[] = [];
     draft.payments.forEach((payment, index) => {

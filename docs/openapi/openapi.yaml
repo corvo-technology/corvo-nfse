@@ -10523,7 +10523,9 @@ components:
         card:
           allOf:
             - $ref: '#/components/schemas/NfceCard'
-          description: Only with `tPag` 03, 04 or 17.
+          description: >-
+            Cards, PIX and other electronic payments. The SEFAZ requires it with `tPag` 03, 04 and
+            17 (rejection 391): left out, Corvo sends `tpIntegra` 2 (not integrated).
         tPag:
           description: Payment means (tPag), 2 digits.
           example: '17'
@@ -11268,6 +11270,12 @@ components:
           example: 20
           minimum: 0
           type: number
+        card:
+          allOf:
+            - $ref: '#/components/schemas/NfceCard'
+          description: >-
+            Cards, PIX and other electronic payments. The SEFAZ requires it with `tPag` 03, 04 and
+            17 (rejection 391): left out, Corvo sends `tpIntegra` 2 (not integrated).
         tPag:
           description: Payment means (tPag), 2 digits.
           example: '17'

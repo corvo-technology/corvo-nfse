@@ -1,3 +1,5 @@
+import type { NfceCard } from './nfe-document';
+
 /**
  * What the customer sends to `POST /v1/invoices` (`type: "nfe"`) and `POST /v1/invoices/validate`, already parsed by the
  * DTO (camelCase). Money and quantities arrive as JSON numbers and are read with `Decimal` from
@@ -50,6 +52,8 @@ export interface NfeItemInput {
 export interface NfePaymentInput {
   tPag: string;
   amount: number;
+  /** Cards, PIX and other electronic payments; left out, `tPag` 03, 04 and 17 get `tpIntegra` 2. */
+  card?: Partial<NfceCard>;
 }
 
 export interface NfeInput {

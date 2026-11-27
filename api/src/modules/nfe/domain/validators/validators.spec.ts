@@ -23,6 +23,27 @@ describe('NFE_PRE_SEND_VALIDATORS', () => {
     expect(await run()).toEqual([]);
   });
 
+  describe('card', () => {
+    const pay = (tPag: string, card?: NfeInput['payments'][0]['card']) =>
+      run({ payments: [{ tPag, amount: 20, card }] });
+    const codes = (issues: Array<{ code: string }>) =>
+      issues.map((i) => i.code);
+
+    it('Pix without card passes: the minimal group is added', async () => {
+      expect(await pay('17')).toEqual([]);
+    });
+
+    it('integrated payment (tpIntegra 1) without CNPJ and authorization is refused', async () => {
+      expect(codes(await pay('03', { tpIntegra: 1 }))).toEqual([
+        'NFCE_CARD_DATA_REQUIRED',
+      ]);
+    });
+
+    it('card with cash is refused', async () => {
+      expect(codes(await pay('01', {}))).toEqual(['NFCE_CARD_NOT_ALLOWED']);
+    });
+  });
+
   describe('tax id', () => {
     it('accepts a CNPJ and an alphanumeric CNPJ', async () => {
       expect(

@@ -1,5 +1,6 @@
 import type { PreSendValidator } from '@/modules/fiscal-core/application/emission-pipeline';
 import type { NfeDraft } from '../nfe-draft';
+import { cardValidator } from './card.validator';
 import { cfopDestinationValidator } from './cfop-destination.validator';
 import { csosnValidator } from './csosn.validator';
 import { ncmValidator } from './ncm.validator';
@@ -17,6 +18,7 @@ export const NFE_PRE_SEND_VALIDATORS: PreSendValidator<NfeDraft>[] = [
   cfopDestinationValidator,
   csosnValidator,
   paymentsTotalValidator,
+  cardValidator,
   textCharsetValidator,
   phase1ScopeValidator,
 ];

@@ -7,7 +7,7 @@ import { phase1ScopeValidator } from '@/modules/nfe/domain/validators/phase1-sco
 import { taxIdValidator } from '@/modules/nfe/domain/validators/tax-id.validator';
 import { textCharsetValidator } from '@/modules/nfe/domain/validators/text-charset.validator';
 import type { NfeDraft } from '@/modules/nfe/domain/nfe-draft';
-import { cardValidator } from './card.validator';
+import { cardValidator } from '@/modules/nfe/domain/validators/card.validator';
 import { consumerIdValidator } from './consumer-id.validator';
 import { deliveryAddressValidator } from './delivery-address.validator';
 import { indPresValidator } from './ind-pres.validator';
