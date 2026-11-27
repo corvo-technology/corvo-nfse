@@ -67,6 +67,13 @@ const ISO = { type: String, format: 'date-time' } as const;
  * plus the derived `documentsStatus`, `emailStatus` and `stage`.
  */
 export class InvoiceResponseDto {
+  @ApiProperty({
+    enum: ['nfse'],
+    description:
+      'The kind of note. Always `nfse` here; NF-e and NFC-e answer `nfe` and `nfce`.',
+  })
+  type!: 'nfse';
+
   @ApiProperty({ format: 'uuid' })
   id!: string;
 

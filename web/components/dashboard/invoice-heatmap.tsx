@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ArrowRight } from "lucide-react";
 import type { InvoiceOverview } from "@/lib/api";
+import { invoiceHref } from "@/lib/invoice-href";
 import { cn } from "@/lib/utils";
 
 // Date-only API values stay in UTC for display so the browser's timezone cannot shift a day.
@@ -225,7 +226,7 @@ export function InvoiceHeatmap({
                 <ul className="flex flex-col gap-1.5">
                   {dayInvoices.slice(0, 3).map((invoice) => (
                     <li key={invoice.id}>
-                      <Link href={`/app/invoices/${invoice.id}`} className="flex items-center justify-between gap-3 rounded-md py-0.5 text-[12px] text-text-3 transition-colors hover:text-text">
+                      <Link href={invoiceHref(invoice)} className="flex items-center justify-between gap-3 rounded-md py-0.5 text-[12px] text-text-3 transition-colors hover:text-text">
                         <span className="truncate">{invoice.customerName || t("heatmap.anonymous")}</span>
                         <ArrowRight size={12} aria-hidden className="flex-none text-text-4" />
                       </Link>
