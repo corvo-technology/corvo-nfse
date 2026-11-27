@@ -346,6 +346,90 @@ describe('off-line NFC-e (e2e)', () => {
     expect(after[0].n).toBe(before[0].n);
   });
 
+  describe('PUT /invoices/{id} on an off-line NFC-e the SEFAZ rejected', () => {
+    const rejectedOffline = async (idem: string) => {
+      const created = await create(
+        nfceBody(companyId, { contingency: 'offline', additionalInfo: idem }),
+        idem,
+      );
+      const id = created.body.data.id as string;
+      await db.query(
+        `UPDATE "${schema}".nfe_documents SET status = 'rejected', c_stat = '225' WHERE id = $1`,
+        [id],
+      );
+      return { id, accessKey: created.body.data.accessKey as string };
+    };
+    const put = (id: string, body: unknown) =>
+      api('put', `/invoices/${id}`).send(body as object);
+
+    it('a free field: 202, same key, back to contingency_pending with a new transmit message', async () => {
+      const { id, accessKey } = await rejectedOffline('off-put-1');
+      const res = await put(
+        id,
+        nfceBody(companyId, {
+          contingency: 'offline',
+          additionalInfo: 'texto corrigido',
+          items: [
+            {
+              code: 'SKU1',
+              description: 'Camiseta polo',
+              ncm: '61091000',
+              cfop: '5102',
+              unit: 'UN',
+              quantity: 2,
+              unitPrice: 10,
+            },
+          ],
+        }),
+      );
+      expect(res.status).toBe(202);
+      expect(res.body.data).toMatchObject({
+        type: 'nfce',
+        id,
+        status: 'contingency_pending',
+      });
+      const stored = await row(id);
+      expect(stored).toMatchObject({
+        status: 'contingency_pending',
+        attempt: 2,
+        contingency_reason:
+          'Emissao em contingencia off-line solicitada pelo emitente',
+      });
+      const detail = await api('get', `/invoices/${id}`);
+      expect(detail.body.data.accessKey).toBe(accessKey);
+      expect(await emitMessages(id)).toBe(2);
+    });
+
+    it('a value: 422 NFCE_CONTINGENCY_FIELD_LOCKED with the fields, nothing changes', async () => {
+      const { id } = await rejectedOffline('off-put-2');
+      const res = await put(
+        id,
+        nfceBody(companyId, {
+          contingency: 'offline',
+          additionalInfo: 'off-put-2',
+          items: [
+            {
+              code: 'SKU1',
+              description: 'Produto de teste',
+              ncm: '61091000',
+              cfop: '5102',
+              unit: 'UN',
+              quantity: 2,
+              unitPrice: 11,
+            },
+          ],
+          payments: [{ tPag: '17', amount: 22 }],
+        }),
+      );
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe('ERROR_NFCE_CONTINGENCY_FIELD_LOCKED');
+      expect(res.body.details.fields).toEqual(
+        expect.arrayContaining(['items[0].unitPrice', 'payment', 'totals']),
+      );
+      expect((await row(id)).status).toBe('rejected');
+    });
+  });
+
   it('refuses a contingency value other than "offline" (400)', async () => {
     const res = await create(
       nfceBody(companyId, { contingency: 'svc' }),

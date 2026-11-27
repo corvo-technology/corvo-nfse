@@ -528,7 +528,6 @@ export function createNfeStack(
     ...overrides,
   });
 
-  const nfceResubmit = new NfceResubmitService(nfcePreparation, resubmit);
   /** What the reader of the situation answers (a test changes it); `normal` by default. */
   const situation: { value: FiscalSituation } = {
     value: { breakerOpen: false, authorityReachable: null, network: 'ok' },
@@ -542,6 +541,12 @@ export function createNfeStack(
     settingsRepository,
     { situation: () => Promise.resolve(situation.value) },
     config,
+  );
+  const nfceResubmit = new NfceResubmitService(
+    nfcePreparation,
+    resubmit,
+    nfceOffline,
+    documents,
   );
   const alertHandler = new NfceContingencyAlertHandler(
     handlers,

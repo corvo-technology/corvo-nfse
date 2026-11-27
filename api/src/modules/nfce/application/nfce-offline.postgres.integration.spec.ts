@@ -267,4 +267,109 @@ describePostgres('off-line NFC-e on PostgreSQL (simulated SEFAZ)', () => {
       ).toHaveLength(0);
     });
   });
+  describe('correction of a rejected off-line NFC-e', () => {
+    const rejected = async () => {
+      const id = await s.issueNfceOffline('FAKE-225');
+      await s.dispatch('nfe.emit', id);
+      expect((await s.row(id)).status).toBe('rejected');
+      return id;
+    };
+    const withItem = (change: Record<string, unknown>) => {
+      const base = s.nfceInput('FAKE-225');
+      return { ...base, items: [{ ...base.items[0], ...change }] };
+    };
+
+    it('changing a free field keeps number, series, cNF and key, rebuilds the XML and transmits it again', async () => {
+      const id = await rejected();
+      const before = await s.row(id);
+      const accepted = await s.resubmitNfce(
+        id,
+        withItem({ description: 'Camiseta polo azul' }),
+      );
+      expect(accepted).toMatchObject({ id, status: 'contingency_pending' });
+      const after = await s.row(id);
+      expect(after).toMatchObject({
+        status: 'contingency_pending',
+        tp_emis: 9,
+        access_key: before.access_key,
+        number: before.number,
+        series: before.series,
+        c_nf: before.c_nf,
+        attempt: 2,
+        transmitted_at: null,
+        last_error_code: null,
+      });
+      // In homologation the XML carries a fixed text in the first item: the stored item is what changed.
+      const stored = await s.documents.findById(id, h.tenantId, 'test');
+      expect(stored?.toSnapshot().items[0].description).toBe(
+        'Camiseta polo azul',
+      );
+      expect(String(after.signed_xml)).toContain('<Signature');
+      expect(String(after.qr_code)).toBe(String(before.qr_code));
+      expect(
+        (await s.messages('nfe.emit', id)).map((m) => m.dedupeKey),
+      ).toContain(`emit:${id}:2:offline`);
+
+      const issue = jest
+        .spyOn(s.fakeNfce.issuer, 'issue')
+        .mockResolvedValueOnce({
+          kind: 'ok',
+          value: {
+            accessKey: String(after.access_key),
+            protocol: '135260000000777',
+            authorizedAt: new Date(),
+            cStat: '100',
+            xMotivo: 'Autorizado o uso da NF-e',
+            protNFeXml: '<protNFe/>',
+          },
+        });
+      try {
+        await s.dispatch('nfe.emit', id);
+      } finally {
+        issue.mockRestore();
+      }
+      expect(await s.row(id)).toMatchObject({
+        status: 'authorized',
+        access_key: before.access_key,
+      });
+      expect(authorizedEvents(id)).toHaveLength(1);
+      expect(await history(id)).toEqual([
+        'contingency_pending',
+        'processing',
+        'rejected',
+        'contingency_pending',
+        'processing',
+        'authorized',
+      ]);
+    });
+
+    it('changing the unit price is refused with the paths, and nothing changes', async () => {
+      const id = await rejected();
+      const before = await s.row(id);
+      await expect(
+        s.resubmitNfce(id, {
+          ...withItem({ unitPrice: 11 }),
+          payments: [{ tPag: '01', amount: 22 }],
+        }),
+      ).rejects.toMatchObject({
+        response: {
+          code: 'NFCE_CONTINGENCY_FIELD_LOCKED',
+          details: { fields: expect.arrayContaining(['items[0].unitPrice']) },
+        },
+      });
+      expect(await s.row(id)).toMatchObject({
+        status: 'rejected',
+        attempt: before.attempt,
+        signed_xml: before.signed_xml,
+      });
+    });
+
+    it('an online NFC-e rejected goes back to queued with a new key, as before', async () => {
+      const id = await s.issueNfce('FAKE-225');
+      const before = await s.row(id);
+      expect(before.status).toBe('rejected');
+      await s.resubmitNfce(id, s.nfceInput('FAKE-100'));
+      expect(await s.row(id)).toMatchObject({ status: 'queued', tp_emis: 1 });
+    });
+  });
 });

@@ -65,6 +65,18 @@ describe("NFC-e docs", () => {
       expect(text, event).toContain(`nfce.document.${event}`);
     expect(text).toContain("nfce.inutilization.completed");
     expect(text).toContain("nfce.inutilization.rejected");
+    expect(text).toContain("nfce.contingency.deadline_near");
+  });
+
+  it.each(["en", "pt"] as const)("%s: explains the off-line NFC-e: the request, the option off by default, 20 and 24 hours, the locked fields", (locale) => {
+    const text = allText(page(locale, "nfce").blocks);
+    expect(text).toContain('contingency: "offline"');
+    expect(text).toContain("nfceAutoOffline");
+    expect(text).toContain("contingency_pending");
+    expect(text).toMatch(/20 (horas|hours)/);
+    expect(text).toMatch(/24 (horas|hours)/);
+    expect(text).toContain("NFCE_CONTINGENCY_FIELD_LOCKED");
+    expect(text).toContain("NFCE_OFFLINE_NOT_AVAILABLE");
   });
 
   it.each(["en", "pt"] as const)("%s: the JSON examples are valid and the request one is an NFC-e without natOp", (locale) => {

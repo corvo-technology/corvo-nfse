@@ -35,6 +35,8 @@ import type { NfeDocument } from '@/modules/nfe/domain/nfe-document';
 import { draftFromDocument } from '@/modules/nfe/domain/nfe-draft-mapper';
 import { centsToString } from '@/modules/nfe/domain/totals';
 import { TypeormNfeNumbering } from '@/modules/nfe/infra/typeorm-nfe-numbering';
+import type { Uf } from '@/modules/fiscal-core/domain/ports/authority.port';
+import type { NfeIssuer } from '@/modules/nfe/domain/nfe-draft';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import type { NfceInput } from '../domain/nfce-input';
 import {
@@ -239,9 +241,56 @@ export class NfceOfflineService {
       series: settings.nfceDefaultSeries ?? 1,
     });
     document.assignNumber(next.series, next.number);
+    this.construct(document, issuer, certificate, environment, {
+      cNf: randomCnf(next.number),
+      issuedAtText: dhEmiFor(issuer.uf, now),
+      reason,
+    });
+  }
+
+  /**
+   * A correction of an off-line NFC-e that the SEFAZ rejected: the same number, series, `cNF`, `dhEmi`
+   * and `dhCont`, so the key is the same, with the corrected body, signed again. The certificate is
+   * loaded now, before the transaction, and the returned function runs inside it.
+   */
+  async rebuilder(
+    prepared: PreparedNfe,
+    tenantId: string,
+    environment: ExecutionEnvironment,
+  ): Promise<(locked: NfeDocument, prepared: PreparedNfe) => void> {
+    const certificate = await this.loadCertificate(
+      prepared.company.id,
+      tenantId,
+      environment,
+    );
+    return (locked, again) => {
+      const issuer = nfeIssuerOf(again.company, again.settings);
+      const s = locked.toSnapshot();
+      if (!s.cNf || !s.issuedAt || !s.contingencyReason || !s.contingencyAt)
+        throw new Error('The off-line NFC-e has no issuance data to rebuild');
+      this.construct(locked, issuer, certificate, environment, {
+        cNf: s.cNf,
+        issuedAtText: dhEmiFor(issuer.uf, s.issuedAt),
+        dhContText: dhEmiFor(issuer.uf, s.contingencyAt),
+        reason: s.contingencyReason,
+      });
+    };
+  }
+
+  /** The XML (key, QR Code, signature) of the document as it is now, written as its next attempt. */
+  private construct(
+    document: NfeDocument,
+    issuer: NfeIssuer & { uf: Uf },
+    certificate: LoadedCertificate,
+    environment: ExecutionEnvironment,
+    p: {
+      cNf: string;
+      issuedAtText: string;
+      dhContText?: string;
+      reason: string;
+    },
+  ): void {
     const snapshot = document.toSnapshot();
-    const cNf = randomCnf(next.number);
-    const issuedAtText = dhEmiFor(issuer.uf, now);
     const tpAmb = this.access.tpAmb(environment);
     const urls = nfceUrlsFor(issuer.uf, tpAmb);
     const draft = draftFromDocument(snapshot, issuer);
@@ -249,7 +298,7 @@ export class NfceOfflineService {
     const qrParams = (accessKey: string): NfceQrOfflineParams => ({
       accessKey,
       tpAmb,
-      day: dayOf(issuedAtText),
+      day: dayOf(p.issuedAtText),
       vNF: centsToString(draft.totals.vNF),
       destIdType:
         recipientId.length === 11 ? '2' : recipientId.length === 14 ? '1' : '',
@@ -259,13 +308,17 @@ export class NfceOfflineService {
           : '',
     });
     const built = NfeXmlBuilder.for(draft)
-      .withNumber(next.series, next.number)
-      .withCnf(cNf)
-      .withIssuedAt(issuedAtText)
+      .withNumber(snapshot.series as number, snapshot.number as number)
+      .withCnf(p.cNf)
+      .withIssuedAt(p.issuedAtText)
       .withTpAmb(tpAmb)
       .withVerProc(nfeVerProc(this.config))
       .withRespTec(nfeRespTec(this.config))
-      .withContingency({ tpEmis: 9, dhCont: issuedAtText, xJust: reason })
+      .withContingency({
+        tpEmis: 9,
+        dhCont: p.dhContText ?? p.issuedAtText,
+        xJust: p.reason,
+      })
       .withSupplement({
         urlChave: urls.urlChave,
         qrCodeOf: (accessKey) => {
@@ -283,10 +336,10 @@ export class NfceOfflineService {
       })
       .build();
     document.startAttempt(
-      cNf,
+      p.cNf,
       built.accessKey,
       this.access.sign(built.xml, certificate, environment),
-      new Date(issuedAtText),
+      new Date(p.issuedAtText),
       built.qrCode && built.urlChave
         ? { qrCode: built.qrCode, urlChave: built.urlChave }
         : undefined,
