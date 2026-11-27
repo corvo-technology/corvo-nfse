@@ -69,6 +69,18 @@ export class NfseClient {
   async replayPendingEvents(_store?: any): Promise<any[]> {
     return [];
   }
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async fetchByNsu(_params: any): Promise<any> {
+    return { documentos: [] };
+  }
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async fetchByChave(_key: string): Promise<any> {
+    return {};
+  }
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async fetchDpsStatus(_idDps: string): Promise<any> {
+    return {};
+  }
   async close(): Promise<void> {}
 }
 
@@ -104,6 +116,7 @@ export const JustificativaSubstituicao = sdk.JustificativaSubstituicao;
 export const TipoEvento = sdk.TipoEvento;
 export const StatusDistribuicao = sdk.StatusDistribuicao;
 export const parseEventoXml = sdk.parseEventoXml;
+export const HttpStatusError = sdk.HttpStatusError;
 export const NetworkError = sdk.NetworkError;
 export const ServerError = sdk.ServerError;
 export const TimeoutError = sdk.TimeoutError;

@@ -50,6 +50,7 @@ import type {
 import { issueParams, type SefinEnvironment } from './issue-params';
 import { explainRejection, rejectionCode } from './rejection-guidance';
 import { failureMessage } from './connection-failure';
+import { GovRateLimiter } from './gov-rate-limiter';
 
 const CANCELLATION_REASON: Record<
   FiscalCancellationReason,
@@ -75,6 +76,7 @@ export class OpenNfseProvider
     config: ConfigService,
     /** Backup route: absent (tests) means every government call goes direct. */
     @Optional() private readonly routes?: GovRouteSelector,
+    @Optional() private readonly limiter?: GovRateLimiter,
   ) {
     this.homologationOnly =
       config.get<SefinEnvironment>('NFSE_SEFIN_ENVIRONMENT') === 'restricted';
@@ -95,6 +97,39 @@ export class OpenNfseProvider
     return environment === 'test' || this.homologationOnly
       ? 'restricted'
       : 'production';
+  }
+
+  /**
+   * One call to a government host, behind the shared rate limit. `sefin` serves issue, cancel and
+   * the DPS/note lookups; `adn` serves the portal feed and the municipal parameters. A 429 (or a
+   * 503 with Retry-After) pauses the host for every replica.
+   */
+  private async gov<T>(
+    environment: 'test' | 'live',
+    host: 'sefin' | 'adn',
+    call: () => Promise<T>,
+  ): Promise<T> {
+    if (!this.limiter) return call();
+    const key = `${host}:${this.sefinFor(environment)}`;
+    await this.limiter.acquire(key);
+    try {
+      return await call();
+    } catch (error) {
+      await this.limiter.noteError(key, error);
+      throw error;
+    }
+  }
+
+  /** `replayPendingEvents` answers with the error instead of throwing it: the pause must still happen. */
+  private async noteReplayError(
+    environment: 'test' | 'live',
+    result: { status: string; error?: unknown } | undefined,
+  ): Promise<void> {
+    if (result?.error)
+      await this.limiter?.noteError(
+        `sefin:${this.sefinFor(environment)}`,
+        result.error,
+      );
   }
 
   private ambienteFor(environment: 'test' | 'live'): Ambiente {
@@ -224,9 +259,11 @@ export class OpenNfseProvider
       await this.routeFor(route),
     );
     try {
-      const result = await client.consultarConvenio(input.municipalityCode, {
-        useCache: false,
-      });
+      const result = await this.gov(input.environment, 'adn', () =>
+        client.consultarConvenio(input.municipalityCode, {
+          useCache: false,
+        }),
+      );
       const agreement = result.parametrosConvenio;
       if (!agreement)
         return {
@@ -269,7 +306,10 @@ export class OpenNfseProvider
     try {
       const [pending] = await store.list();
       if (pending?.kind === 'cancelamento_simples') {
-        const [replayed] = await client.replayPendingEvents(store);
+        const [replayed] = await this.gov(payload.environment, 'sefin', () =>
+          client.replayPendingEvents(store),
+        );
+        await this.noteReplayError(payload.environment, replayed);
         if (replayed?.status === 'success') return { status: 'cancelled' };
         if (replayed?.status === 'failed_permanent')
           return this.cancelRejection(replayed.error);
@@ -281,15 +321,19 @@ export class OpenNfseProvider
               : 'Awaiting fiscal retry window',
         };
       }
-      const result = await client.cancelar({
-        chaveAcesso: payload.accessKey,
-        autor: { CNPJ: payload.emitenteCnpj },
-        cMotivo: CANCELLATION_REASON[payload.reason],
-        xMotivo: payload.description,
-        // The library defaults the event's tpAmb to 2: a production note's event must say 1 (E0803).
-        tpAmb: this.tpAmbFor(payload.environment),
-        retryStore: store,
-      });
+      const result = await this.gov(payload.environment, 'sefin', () =>
+        client.cancelar({
+          chaveAcesso: payload.accessKey,
+          autor: { CNPJ: payload.emitenteCnpj },
+          cMotivo: CANCELLATION_REASON[payload.reason],
+          xMotivo: payload.description,
+          // The library defaults the event's tpAmb to 2: a production note's event must say 1 (E0803).
+          tpAmb: this.tpAmbFor(payload.environment),
+          retryStore: store,
+        }),
+      );
+      if (result.status !== 'ok')
+        await this.noteReplayError(payload.environment, result);
       return result.status === 'ok'
         ? { status: 'cancelled' }
         : { status: 'pending', errorMessage: failureMessage(result.error) };
@@ -381,9 +425,16 @@ export class OpenNfseProvider
     try {
       let [pending] = await store.list();
       if (pending?.kind === 'emission') {
+        const { idDps } = pending;
         try {
-          const status = await client.fetchDpsStatus(pending.idDps);
-          return this.result(await client.fetchByChave(status.chaveAcesso));
+          const status = await this.gov(payload.environment, 'sefin', () =>
+            client.fetchDpsStatus(idDps),
+          );
+          return this.result(
+            await this.gov(payload.environment, 'sefin', () =>
+              client.fetchByChave(status.chaveAcesso),
+            ),
+          );
         } catch (error) {
           if (!(error instanceof NotFoundError)) throw error;
         }
@@ -392,7 +443,10 @@ export class OpenNfseProvider
         pending = await this.prepareEmission(client, payload);
         await store.save(pending);
       }
-      const [replayed] = await client.replayPendingEvents(store);
+      const [replayed] = await this.gov(payload.environment, 'sefin', () =>
+        client.replayPendingEvents(store),
+      );
+      await this.noteReplayError(payload.environment, replayed);
       if (replayed?.status === 'success_emission')
         return this.result(replayed.emission);
       if (replayed?.status === 'failed_permanent')
@@ -445,7 +499,9 @@ export class OpenNfseProvider
       await this.routeFor({ ...credentials, environment }),
     );
     try {
-      return await client.fetchByNsu({ ultimoNsu: lastNsu });
+      return await this.gov(environment, 'adn', () =>
+        client.fetchByNsu({ ultimoNsu: lastNsu }),
+      );
     } finally {
       await client.close();
     }
@@ -465,7 +521,9 @@ export class OpenNfseProvider
     );
     try {
       return {
-        ...this.result(await client.fetchByChave(key)),
+        ...this.result(
+          await this.gov(environment, 'sefin', () => client.fetchByChave(key)),
+        ),
         status: 'authorized',
       };
     } catch (error) {
@@ -486,8 +544,12 @@ export class OpenNfseProvider
       await this.routeFor(credentials),
     );
     try {
-      const status = await client.fetchDpsStatus(idDps);
-      const note = await client.fetchByChave(status.chaveAcesso);
+      const status = await this.gov(credentials.environment, 'sefin', () =>
+        client.fetchDpsStatus(idDps),
+      );
+      const note = await this.gov(credentials.environment, 'sefin', () =>
+        client.fetchByChave(status.chaveAcesso),
+      );
       this.warnOnForeignEnvironment(
         credentials.environment,
         idDps,

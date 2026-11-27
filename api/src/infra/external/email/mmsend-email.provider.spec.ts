@@ -46,6 +46,26 @@ describe('MillionSendEmailProvider', () => {
     expect(result.id).toBe('email_123');
   });
 
+  it('sends with the company name as sender and keeps the Corvo address', async () => {
+    const provider = new MillionSendEmailProvider(
+      mockConfig as unknown as ConfigService,
+    );
+    await provider.send({
+      to: ['user@example.com'],
+      subject: 'Test',
+      html: '<p>Hello</p>',
+      fromName: 'Greenflow',
+      replyTo: 'contato@greenflow.com',
+    });
+    expect(mockEmailsSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: 'Greenflow <noreply@corvo.com>',
+        replyTo: 'contato@greenflow.com',
+      }),
+      undefined,
+    );
+  });
+
   it.each([[400], [422]])(
     'a %s answer is permanent: retrying the same address cannot work',
     async (statusCode) => {

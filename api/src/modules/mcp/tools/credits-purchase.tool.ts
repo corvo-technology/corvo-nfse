@@ -1,9 +1,19 @@
 import { randomUUID } from 'node:crypto';
 import { HttpException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { IsIn, IsInt, Min, validate } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+  validate,
+} from 'class-validator';
 import QRCode from 'qrcode';
 import type { AuthContext } from '@/modules/auth/auth-context';
+import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
+import type { CompanyService } from '@/modules/company/application/company.service';
 import type { CheckoutRouterService } from '@/modules/billing/application/checkout-router.service';
 import {
   AVULSO_MIN_UNITS,
@@ -32,6 +42,16 @@ export const CREDITS_PURCHASE_TOOL = {
         enum: ['pix', 'card'],
         description: 'How the person will pay.',
       },
+      tax_id: {
+        type: 'string',
+        description:
+          'Pix only: CPF or CNPJ of the buyer, who receives the invoice for these credits. Omit to use the first company of the workspace.',
+      },
+      name: {
+        type: 'string',
+        description:
+          'Pix only: name of the buyer. Omit to use the company name.',
+      },
     },
     required: ['units', 'method'],
   },
@@ -40,6 +60,8 @@ export const CREDITS_PURCHASE_TOOL = {
 class CreditsPurchaseInput {
   @IsInt() @Min(AVULSO_MIN_UNITS) units!: number;
   @IsIn(['pix', 'card']) method!: 'pix' | 'card';
+  @IsOptional() @IsString() @MaxLength(20) tax_id?: string;
+  @IsOptional() @IsString() @MaxLength(120) name?: string;
 }
 
 const BRL = new Intl.NumberFormat('pt-BR', {
@@ -57,7 +79,31 @@ function errorCode(error: unknown): string | undefined {
 
 export function createCreditsPurchaseHandler(
   checkout: Pick<CheckoutRouterService, 'start'>,
+  companies?: Pick<CompanyService, 'listPage'>,
 ) {
+  /** The buyer who receives the invoice: what was passed, else the workspace's first company. */
+  async function buyer(
+    params: CreditsPurchaseInput,
+    ctx: AuthContext,
+  ): Promise<{ name?: string; taxID?: string }> {
+    if (params.tax_id?.trim())
+      return { name: params.name?.trim(), taxID: params.tax_id };
+    const page = await companies?.listPage(
+      ctx.tenantId,
+      { limit: 1 },
+      executionEnvironment(ctx),
+    );
+    const company = page?.data[0]?.toSnapshot();
+    if (!company)
+      throw new Error(
+        'Informe tax_id (CPF ou CNPJ de quem recebe a nota) para pagar com Pix, ou cadastre uma empresa antes.',
+      );
+    return {
+      name: params.name?.trim() || company.legalName,
+      taxID: company.taxId,
+    };
+  }
+
   return async function creditsPurchaseHandler(
     rawParams: unknown,
     ctx: AuthContext,
@@ -78,7 +124,14 @@ export function createCreditsPurchaseHandler(
     try {
       result = await checkout.start(
         ctx.activeTenantId,
-        { kind: 'avulso', units: params.units, method: params.method },
+        {
+          kind: 'avulso',
+          units: params.units,
+          method: params.method,
+          ...(params.method === 'pix'
+            ? { customer: await buyer(params, ctx) }
+            : {}),
+        },
         `mcp-${randomUUID()}`,
       );
     } catch (error) {

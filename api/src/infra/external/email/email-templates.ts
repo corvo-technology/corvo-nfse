@@ -103,11 +103,11 @@ export function welcomeEmail(input: {
   name?: string;
   dashboardUrl: string;
 }): RenderedEmail {
-  return emailLayout('Bem-vindo ao Corvo', [
+  return emailLayout('Sua conta no Corvo está pronta', [
     paragraph(
       input.name?.trim()
-        ? `Olá, ${input.name.trim()}! Sua conta no Corvo está pronta.`
-        : 'Olá! Sua conta no Corvo está pronta.',
+        ? `Olá, ${input.name.trim()}. Sua conta no Corvo está pronta.`
+        : 'Olá. Sua conta no Corvo está pronta.',
     ),
     button(input.dashboardUrl, 'Abrir o Corvo'),
   ]);
@@ -134,13 +134,12 @@ export function scheduleRetryEmail(input: {
   billingUrl: string;
   schedulesUrl: string;
 }): RenderedEmail {
-  return emailLayout('Notas agendadas aguardando créditos', [
+  return emailLayout('Notas agendadas não foram emitidas', [
     paragraph(
-      `${input.count} nota(s) agendada(s) não puderam ser emitidas: ${input.reason}`,
+      `${input.count} ${input.count === 1 ? 'nota agendada não foi emitida' : 'notas agendadas não foram emitidas'}: ${input.reason}`,
     ),
     paragraph(input.schedules),
     button(input.billingUrl, 'Ver plano e créditos'),
-    note(`Também dá para revisar em ${input.schedulesUrl}`),
   ]);
 }
 
@@ -158,6 +157,119 @@ export function schedulePausedEmail(input: {
   ]);
 }
 
+const LOWERCASE_WORDS = new Set(['da', 'de', 'do', 'das', 'dos', 'e']);
+
+/** "PEDRO HENRIQUE DA SILVA" becomes "Pedro Henrique da Silva". Names already in mixed case stay as they are. */
+export function toTitleCase(name: string): string {
+  const clean = name.replace(/\s+/g, ' ').trim();
+  if (clean !== clean.toLocaleUpperCase('pt-BR')) return clean;
+  return clean
+    .toLocaleLowerCase('pt-BR')
+    .split(' ')
+    .map((word, i) =>
+      i > 0 && LOWERCASE_WORDS.has(word)
+        ? word
+        : word.charAt(0).toLocaleUpperCase('pt-BR') + word.slice(1),
+    )
+    .join(' ');
+}
+
+/** One line of plain text: no line breaks or control characters, so nothing can end up in another header. */
+function singleLine(value: string): string {
+  return Array.from(value)
+    .map((c) => (c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127 ? ' ' : c))
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const DISPLAY_NAME_MAX = 64;
+
+/** A company name that is safe to show as the sender name: one line, no quotes, brackets or backslashes, at most 64 characters. */
+export function senderDisplayName(name: string | null | undefined): string {
+  const clean = singleLine(name ?? '')
+    .replace(/["<>\\]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, DISPLAY_NAME_MAX)
+    .trim();
+  return clean || 'Corvo';
+}
+
+const NEEDS_QUOTING = /[()<>[\]:;@,."]/;
+
+/** `Greenflow <noreply@corvo.tech>`; the name is quoted (RFC 5322) only when it has special characters. */
+export function formatFromHeader(
+  displayName: string | null | undefined,
+  address: string,
+): string {
+  const name = senderDisplayName(displayName);
+  const shown = NEEDS_QUOTING.test(name) ? `"${name}"` : name;
+  return `${shown} <${address}>`;
+}
+
+const SERVICE_MAX = 140;
+
+function truncate(value: string, max: number): string {
+  const clean = singleLine(value);
+  return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}…` : clean;
+}
+
+export type InvoiceEmailRow = { label: string; value: string };
+
+/** The e-mail that delivers an invoice to the taker. It looks like it comes from the issuing company, not from Corvo. */
+function invoiceEmailLayout(input: {
+  subject: string;
+  greeting: string;
+  headline: string;
+  rows: InvoiceEmailRow[];
+  service: { description: string; amount: string };
+  attachmentsLine: string;
+  footer: string;
+}): RenderedEmail {
+  const rowsHtml = input.rows
+    .map(
+      (r) =>
+        `<tr><td style="padding:4px 16px 4px 0;font-size:14px;color:#6b7280;vertical-align:top;white-space:nowrap">${escapeHtml(r.label)}</td><td style="padding:4px 0;font-size:14px;color:#111827;text-align:right;vertical-align:top;word-break:break-word">${escapeHtml(r.value)}</td></tr>`,
+    )
+    .join('');
+  const divider =
+    '<div style="margin:16px 0;border-top:1px solid #ececec"></div>';
+  const html = `<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.subject)}</title></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:${FONT}">
+<table role="presentation" width="100%" style="background:#f5f5f5"><tr><td align="center" style="padding:32px 16px">
+<table role="presentation" width="100%" style="max-width:520px">
+<tr><td style="padding:28px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px">
+<p style="margin:0 0 4px;font-size:16px;line-height:1.5;color:#111827">${escapeHtml(input.greeting)}</p>
+<p style="margin:0;font-size:18px;font-weight:700;line-height:1.4;color:#111827">${escapeHtml(input.headline)}</p>
+${divider}
+<table role="presentation" width="100%" style="border-collapse:collapse">${rowsHtml}</table>
+${divider}
+<table role="presentation" width="100%" style="border-collapse:collapse"><tr><td style="padding:0 16px 0 0;font-size:14px;font-weight:700;color:#111827;vertical-align:top;word-break:break-word">${escapeHtml(input.service.description)}</td><td style="padding:0;font-size:14px;font-weight:700;color:#111827;text-align:right;vertical-align:top;white-space:nowrap">${escapeHtml(input.service.amount)}</td></tr></table>
+<p style="margin:16px 0 0;font-size:14px;line-height:1.5;color:#374151">${escapeHtml(input.attachmentsLine)}</p>
+</td></tr>
+<tr><td style="padding:16px 8px 0;font-size:12px;line-height:1.5;color:#9ca3af;text-align:center">${escapeHtml(input.footer)}</td></tr>
+</table></td></tr></table></body></html>`;
+  const text = [
+    `${input.greeting}\n${input.headline}`,
+    input.rows.map((r) => `${r.label}: ${r.value}`).join('\n'),
+    `${input.service.description}: ${input.service.amount}`,
+    input.attachmentsLine,
+    input.footer,
+  ].join('\n\n');
+  return { subject: input.subject, html, text };
+}
+
+function invoiceFooter(company: string): string {
+  return `Este e-mail foi enviado pelo sistema de emissão de nota fiscal Corvo. Em caso de dúvidas, fale direto com ${company}.`;
+}
+
+function invoiceGreeting(customerName: string | null | undefined): string {
+  const name = toTitleCase(customerName ?? '');
+  return name ? `Olá, ${name},` : 'Olá,';
+}
+
 export function nfseDocumentsReadyEmail(input: {
   companyName: string;
   customerName: string;
@@ -165,34 +277,32 @@ export function nfseDocumentsReadyEmail(input: {
   number: string;
   issueDate: string;
   description: string;
-  accessKey: string;
+  /** Authorization protocol, shown only when we have one. */
+  protocol?: string | null;
   isTest: boolean;
 }): RenderedEmail {
-  const subject = `Sua nota fiscal nº ${input.number} - ${input.companyName}`;
-  const email = emailLayout(
-    subject,
-    [
-      heading('Sua nota fiscal está disponível'),
-      paragraph(
-        `Olá, ${input.customerName}! A empresa ${input.companyName} emitiu uma nota fiscal de serviços para você.`,
-      ),
-      details([
-        ['Valor do serviço', input.amount],
-        ['Número da nota', input.number],
-        ['Data de emissão', input.issueDate],
-        ['Serviço', input.description],
-        ['Chave de acesso', input.accessKey],
-      ]),
-      paragraph(
-        'Os documentos fiscais seguem anexados a este e-mail: NFS-e.pdf e NFS-e.xml. Este e-mail é apenas informativo, você não precisa fazer nada.',
-      ),
-      note(
-        `Enviado automaticamente em nome de ${input.companyName}. Não responda este e-mail; em caso de dúvidas, entre em contato diretamente com o emissor da nota.`,
-      ),
-    ],
-    { logo: false },
-  );
-  return input.isTest ? { ...email, subject: `[TESTE] ${subject}` } : email;
+  const company = senderDisplayName(input.companyName);
+  const rows: InvoiceEmailRow[] = [
+    { label: 'Emitente', value: company },
+    { label: 'Número', value: input.number },
+    { label: 'Data de emissão', value: input.issueDate },
+  ];
+  const protocol = input.protocol?.trim();
+  if (protocol)
+    rows.push({ label: 'Protocolo de autorização', value: protocol });
+  const subject = `${company} - Sua nota fiscal nº ${singleLine(input.number)}`;
+  return invoiceEmailLayout({
+    subject: input.isTest ? `[TESTE] ${subject}` : subject,
+    greeting: invoiceGreeting(input.customerName),
+    headline: 'Você recebeu uma nota fiscal',
+    rows,
+    service: {
+      description: truncate(input.description, SERVICE_MAX),
+      amount: input.amount,
+    },
+    attachmentsLine: 'O PDF e o XML da nota estão anexados a este e-mail.',
+    footer: invoiceFooter(company),
+  });
 }
 
 /** The NF-e (model 55) sent to the customer: same layout as the NFS-e one, with the key and series. */
@@ -302,11 +412,64 @@ export function invoiceRejectedEmail(input: {
   invoiceUrl: string;
 }): RenderedEmail {
   return emailLayout('Uma nota foi rejeitada', [
-    paragraph('Uma nota fiscal foi rejeitada e precisa de revisão.'),
-    paragraph(`Motivo: ${input.reason}`),
+    paragraph(
+      `Uma nota fiscal foi rejeitada e precisa de revisão. Motivo: ${input.reason}`,
+    ),
     button(input.invoiceUrl, 'Revisar nota'),
     note(
       'Se outras notas forem rejeitadas na próxima hora, não enviaremos novos avisos: veja todas no painel.',
+    ),
+  ]);
+}
+
+/** A sale from a payment platform that could not become an invoice. Reason and next step in plain words. */
+export function integrationSaleNeedsAttentionEmail(input: {
+  platform: string;
+  amount: string;
+  date: string;
+  buyerName: string | null;
+  reasonTitle: string;
+  reasonAction: string;
+  saleUrl: string;
+  pendingCount: number;
+}): RenderedEmail {
+  const rows: Array<[string, string]> = [
+    ['Plataforma', input.platform],
+    ['Valor', input.amount],
+    ['Data', input.date],
+  ];
+  if (input.buyerName) rows.push(['Cliente', input.buyerName]);
+  return emailLayout('Uma venda está esperando você para virar nota', [
+    paragraph(
+      `Recebemos uma venda de ${input.platform}, mas ainda não conseguimos emitir a nota fiscal dela.`,
+    ),
+    details(rows),
+    paragraph(`O que aconteceu: ${input.reasonTitle}`),
+    paragraph(`O que fazer: ${input.reasonAction}`),
+    button(input.saleUrl, 'Resolver esta venda'),
+    ...(input.pendingCount > 1
+      ? [
+          note(
+            `Você tem ${input.pendingCount} vendas esperando. Veja todas no painel.`,
+          ),
+        ]
+      : []),
+  ]);
+}
+
+/** One e-mail a day when many sales wait, instead of one per sale. */
+export function integrationSalesDigestEmail(input: {
+  count: number;
+  listUrl: string;
+}): RenderedEmail {
+  return emailLayout('Vendas esperando você para virar nota', [
+    paragraph(
+      `Você tem ${input.count} ${input.count === 1 ? 'venda' : 'vendas'} das integrações que ainda não viraram nota fiscal.`,
+    ),
+    paragraph('Abra cada uma, complete os dados e emita a nota.'),
+    button(input.listUrl, 'Ver vendas pendentes'),
+    note(
+      'Para não lotar sua caixa de entrada, enviamos no máximo 1 resumo por dia.',
     ),
   ]);
 }
@@ -340,9 +503,8 @@ export function creditsExhaustedEmail(input: {
 }): RenderedEmail {
   return emailLayout('Seus créditos acabaram', [
     paragraph(
-      'Você usou todas as notas disponíveis e não conseguimos emitir uma nota.',
+      'Você usou todas as notas e não conseguimos emitir uma nota. Adicione notas ou mude de plano para voltar a emitir.',
     ),
-    paragraph('Adicione notas ou mude de plano para voltar a emitir.'),
     button(input.billingUrl, 'Adicionar créditos'),
   ]);
 }
@@ -351,9 +513,8 @@ export function paymentFailedEmail(input: {
   billingUrl: string;
 }): RenderedEmail {
   return emailLayout('Não conseguimos cobrar sua assinatura', [
-    paragraph('O pagamento da sua assinatura do Corvo falhou.'),
     paragraph(
-      'Atualize a forma de pagamento para não perder o acesso ao plano.',
+      'O pagamento da sua assinatura falhou. Atualize a forma de pagamento para não perder o plano.',
     ),
     button(input.billingUrl, 'Atualizar pagamento'),
   ]);
@@ -390,11 +551,10 @@ export function memberInvitedEmail(input: {
     paragraph(
       `${who} para uma conta no Corvo como ${ROLE_LABELS[input.role] ?? input.role}.`,
     ),
-    paragraph(
-      'Entre com este mesmo e-mail e aceite o convite. O link vale por 7 dias e só pode ser usado uma vez.',
-    ),
     button(input.acceptUrl, 'Aceitar convite'),
-    paragraph('Se você não esperava este convite, ignore este e-mail.'),
+    note(
+      'Entre com este mesmo e-mail. O link vale por 7 dias e só pode ser usado uma vez. Se não esperava o convite, ignore este e-mail.',
+    ),
   ]);
 }
 
@@ -408,10 +568,8 @@ export function memberJoinedEmail(input: {
     paragraph(
       `${input.name || input.email} (${input.email}) aceitou o convite e já tem acesso à conta como ${ROLE_LABELS[input.role] ?? input.role}.`,
     ),
-    paragraph(
-      'Se não reconhece essa pessoa, remova o acesso na página de membros.',
-    ),
     button(input.membersUrl, 'Ver membros'),
+    note('Se não reconhece essa pessoa, remova o acesso na página de membros.'),
   ]);
 }
 
@@ -504,24 +662,20 @@ export function webhookDeliveryFailedEmail(input: {
   eventType: string;
   webhooksUrl: string;
 }): RenderedEmail {
-  return emailLayout('Um aviso (webhook) não chegou ao seu sistema', [
+  return emailLayout('Um aviso não chegou ao seu sistema', [
     paragraph(
-      `Tentamos enviar o aviso "${input.eventType}" ao seu sistema várias vezes e não conseguimos. Por isso paramos de tentar.`,
+      `Tentamos enviar o aviso "${input.eventType}" ao seu sistema várias vezes e não conseguimos. Envie de novo quando ele voltar a funcionar.`,
     ),
-    paragraph(
-      'Veja o que aconteceu e envie de novo quando seu sistema estiver funcionando.',
-    ),
-    note('Você recebe no máximo um e-mail por hora para cada webhook.'),
     button(input.webhooksUrl, 'Ver avisos enviados'),
+    note('Você recebe no máximo um e-mail por hora para cada webhook.'),
   ]);
 }
 
 export function pixExpiredEmail(input: { billingUrl: string }): RenderedEmail {
   return emailLayout('Seu Pix expirou', [
     paragraph(
-      'O Pix que você gerou no Corvo expirou sem ser pago, e nada foi cobrado.',
+      'O Pix expirou sem ser pago e nada foi cobrado. Se ainda quiser comprar, gere um novo.',
     ),
-    paragraph('Se ainda quiser comprar, gere um novo Pix.'),
     button(input.billingUrl, 'Gerar novo Pix'),
   ]);
 }

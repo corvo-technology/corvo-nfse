@@ -60,6 +60,8 @@ import { BrasilApiCustomerRegistry } from '@/infra/external/cnpj/brasilapi-custo
 import { CustomerController } from './http/customer.controller';
 import { InvoiceService } from './application/invoice.service';
 import { IntegrationInvoiceIssuer } from './application/integration-invoice-issuer';
+import { SavedCustomerPort } from '@/modules/integrations/domain/saved-customer.port';
+import { IntegrationSavedCustomers } from './application/integration-saved-customers';
 import { InvoiceIssuancePort } from '@/modules/integrations/domain/invoice-issuance.port';
 import { IntegrationInvoiceCanceller } from './application/integration-invoice-canceller';
 import { InvoiceCancellationPort } from '@/modules/integrations/domain/invoice-cancellation.port';
@@ -217,6 +219,7 @@ const ACCOUNTANT_PACKAGE = {
     DpsBuilder,
     InvoiceService,
     { provide: InvoiceIssuancePort, useClass: IntegrationInvoiceIssuer },
+    { provide: SavedCustomerPort, useClass: IntegrationSavedCustomers },
     {
       provide: InvoiceCancellationPort,
       useClass: IntegrationInvoiceCanceller,
@@ -245,6 +248,7 @@ const ACCOUNTANT_PACKAGE = {
     InvoiceService,
     InvoiceOverviewService,
     InvoiceIssuancePort,
+    SavedCustomerPort,
     InvoiceCancellationPort,
     InvoiceBatchService,
     InvoiceCalculationService,

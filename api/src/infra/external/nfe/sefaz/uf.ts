@@ -233,3 +233,47 @@ export function dhEmiFor(uf: Uf, now: Date): string {
   const shifted = new Date(now.getTime() + hours * 3_600_000);
   return `${shifted.toISOString().slice(0, 19)}${offset}`;
 }
+
+export type SvcAuthorityId = 'SVC-AN' | 'SVC-RS';
+
+/**
+ * Contingency authority (tpEmis 6 = SVC-AN, 7 = SVC-RS) of each UF, per the Portal NF-e "Relação de
+ * Serviços Web" (last verified 2026-11-26). Data only for now: nothing emits in contingency yet.
+ * The SVC-AN URLs are the SVAN ones and the SVC-RS URLs are the SVRS ones (same hosts and paths),
+ * so no extra rows are needed in `ENDPOINTS`.
+ */
+export const SVC_AUTHORITY_BY_UF: Record<Uf, SvcAuthorityId> = {
+  AC: 'SVC-RS',
+  AL: 'SVC-RS',
+  AM: 'SVC-AN',
+  AP: 'SVC-RS',
+  BA: 'SVC-AN',
+  CE: 'SVC-AN',
+  DF: 'SVC-RS',
+  ES: 'SVC-RS',
+  GO: 'SVC-AN',
+  MA: 'SVC-AN',
+  MG: 'SVC-RS',
+  MS: 'SVC-AN',
+  MT: 'SVC-AN',
+  PA: 'SVC-AN',
+  PB: 'SVC-RS',
+  PE: 'SVC-AN',
+  PI: 'SVC-AN',
+  PR: 'SVC-AN',
+  RJ: 'SVC-RS',
+  RN: 'SVC-RS',
+  RO: 'SVC-RS',
+  RR: 'SVC-RS',
+  RS: 'SVC-RS',
+  SC: 'SVC-RS',
+  SE: 'SVC-RS',
+  SP: 'SVC-RS',
+  TO: 'SVC-RS',
+};
+
+/** Authority whose URLs a contingency authority uses. */
+export const SVC_URL_AUTHORITY: Record<SvcAuthorityId, AuthorityId> = {
+  'SVC-AN': 'SVAN',
+  'SVC-RS': 'SVRS',
+};

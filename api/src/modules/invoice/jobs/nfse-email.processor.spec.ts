@@ -162,7 +162,8 @@ describe('NfseEmailProcessor', () => {
       expect(fakeEmailProvider.send).toHaveBeenCalledTimes(1);
       const call = jest.mocked(fakeEmailProvider.send!).mock.calls[0][0];
       expect(call.to).toEqual(['cliente@example.com']);
-      expect(call.subject).toContain('nº 42');
+      expect(call.subject).toBe('Empresa Teste - Sua nota fiscal nº 42');
+      expect(call.fromName).toBe('Empresa Teste');
       expect(call.html).toContain('Empresa Teste');
       expect(call.text).toContain('Empresa Teste');
       expect(call.idempotencyKey).toBe('job-email-1');

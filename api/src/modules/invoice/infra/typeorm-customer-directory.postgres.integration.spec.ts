@@ -107,11 +107,21 @@ describePostgres('customer directory with restricted role', () => {
     });
   });
 
-  it('keeps one row per document: the name follows the latest invoice and a saved email survives an invoice without one', async () => {
+  it('keeps one row per document and never replaces a saved name or email with what an invoice carries', async () => {
     await directory.remember(live(tenantA), { taxId: CNPJ, name: 'Acme S.A.' });
+    await directory.remember(live(tenantA), {
+      taxId: CNPJ,
+      name: 'ACME',
+      email: 'outro@acme.test',
+    });
+    await directory.remember(live(tenantA), {
+      taxId: CNPJ,
+      name: 'Acme',
+      email: '',
+    });
     const saved = await directory.find(live(tenantA), CNPJ);
     expect(saved).toMatchObject({
-      name: 'Acme S.A.',
+      name: 'Acme Ltda',
       email: 'financeiro@acme.test',
     });
     const listed = await directory.list(
@@ -120,6 +130,32 @@ describePostgres('customer directory with restricted role', () => {
       { limit: 50, offset: 0 },
     );
     expect(listed.items.filter((c) => c.taxId === CNPJ)).toHaveLength(1);
+  });
+
+  it('fills an empty saved email from an invoice, and an explicit edit still wins', async () => {
+    await directory.remember(live(tenantA), { taxId: CPF, name: 'Maria' });
+    expect((await directory.find(live(tenantA), CPF))?.email).toBeNull();
+    await directory.remember(live(tenantA), {
+      taxId: CPF,
+      name: 'Maria Z',
+      email: 'maria@x.test',
+    });
+    expect(await directory.find(live(tenantA), CPF)).toMatchObject({
+      name: 'Maria',
+      email: 'maria@x.test',
+    });
+    await directory.update(live(tenantA), CPF, {
+      name: 'Maria da Silva',
+      email: null,
+    });
+    await directory.remember(live(tenantA), {
+      taxId: CPF,
+      name: 'Maria',
+      email: 'maria@x.test',
+    });
+    expect((await directory.find(live(tenantA), CPF))?.name).toBe(
+      'Maria da Silva',
+    );
   });
 
   it('never mixes workspaces or environments', async () => {
@@ -138,7 +174,7 @@ describePostgres('customer directory with restricted role', () => {
     expect(
       await directory.update(live(tenantB), CNPJ, { name: 'Invasor' }),
     ).toBeNull();
-    expect((await directory.find(live(tenantA), CNPJ))?.name).toBe('Acme S.A.');
+    expect((await directory.find(live(tenantA), CNPJ))?.name).toBe('Acme Ltda');
   });
 
   it('searches by part of the name or the start of the document, most recent first', async () => {

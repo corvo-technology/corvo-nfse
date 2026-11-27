@@ -86,6 +86,11 @@ function retryAfter(response: Response): number | undefined {
   const seconds = Number(raw);
   return Number.isFinite(seconds) ? Math.max(0, seconds) : Math.max(0, Math.ceil((Date.parse(raw) - Date.now()) / 1000));
 }
+/** A dashboard call the proxy does not allow is our bug, not the user's: tell PostHog (path shape only, no ids). */
+function reportRouteUnavailable(url: string) {
+  const path = url ? new URL(url, "http://local").pathname.replace(/\/[^/]*\d[^/]*/g, "/:id") : "unknown";
+  void import("./posthog").then(({ loadPostHog }) => loadPostHog()).then((posthog) => posthog?.capture("proxy_route_unavailable", { path })).catch(() => {});
+}
 async function responseError(response: Response, publicRequest: boolean, generation: number): Promise<never> {
   const body = await response.json().catch(() => null);
   if (generation === csrfGeneration) {
@@ -93,6 +98,7 @@ async function responseError(response: Response, publicRequest: boolean, generat
     if (response.status === 403 && typeof body?.message === "string" && /CSRF token/i.test(body.message)) setCsrfToken(null);
   }
   const message = typeof body?.message === "string" ? body.message : `Request failed (${response.status})`;
+  if (body?.code === "proxy_route_unavailable") reportRouteUnavailable(response.url);
   const details = Array.isArray(body?.details) ? (body.details as ApiErrorDetail[]).filter((d) => d && typeof d.field === "string") : undefined;
   throw new ApiError(response.status, message, typeof body?.code === "string" ? body.code : undefined, retryAfter(response), details, typeof body?.requestId === "string" ? body.requestId : undefined);
 }
@@ -287,7 +293,7 @@ export const billing = {
   portal: async () => unwrap(await request<Envelope<{ url: string }>>("/billing/portal", { method: "POST" })),
   purchase: async (req: PurchaseRequest, idempotencyKey: string): Promise<PurchaseResult> => {
     const body = req.kind === "avulso"
-      ? { kind: "avulso", units: req.units, method: req.method }
+      ? { kind: "avulso", units: req.units, method: req.method, customer: req.customer }
       : { kind: "plan", plan_slug: req.planSlug, cycle: req.cycle, method: req.method, customer: req.customer };
     return unwrap(await request<Envelope<PurchaseResult>>("/billing/checkout", { ...json(body), headers: { "idempotency-key": idempotencyKey } }));
   },
@@ -308,7 +314,7 @@ export type PaymentMethod = "pix" | "card";
 export type Payer = { name: string; taxID: string; email: string; phone: string };
 export type PurchaseRequest =
   | { kind: "plan"; planSlug: CheckoutPlan; cycle: "monthly" | "annual"; method: PaymentMethod; customer?: Payer }
-  | { kind: "avulso"; units: number; method: PaymentMethod };
+  | { kind: "avulso"; units: number; method: PaymentMethod; customer?: { name: string; taxID: string } };
 export interface PaymentStatus { id: string; status: "pending" | "paid" | "expired" | "failed"; kind: "plan" | "avulso"; units: number | null; planSlug: string | null; paidAt: string | null }
 export type PurchaseResult =
   | { method: "card"; url: string }
@@ -361,16 +367,19 @@ export const webhooks = {
   deliveryStats: async (hours = 24, environment = "live") => unwrap(await request<Envelope<DeliveryStats>>(`/webhooks/deliveries/stats${query({ hours, environment })}`)),
   retryDelivery: async (id: string) => unwrap(await request<Envelope<{ retried: boolean }>>(`/webhooks/deliveries/${idPath(id)}/retry`, { method: "POST" })),
 };
-export interface IntegrationProvider { id: string; name: string; version: string; credentialFields: { key: string; label: string; secret: boolean; generate?: boolean; inWebhookUrl?: boolean; optional?: boolean; options?: string[] }[]; webhookInstructions: { pt: string; en: string }; supportedFlows: string[] }
+export interface IntegrationProvider { id: string; name: string; version: string; credentialFields: { key: string; label: string; secret: boolean; generate?: boolean; inWebhookUrl?: boolean; optional?: boolean; afterUrl?: boolean; options?: string[] }[]; webhookInstructions: { pt: string; en: string }; webhookEvents?: string[]; supportedFlows: string[] }
 export type IntegrationConnectionState = "draft" | "active" | "paused" | "reauth_required" | "disconnected";
 export interface IntegrationConnection { id: string; provider: string; environment: "test" | "live"; companyId: string; state: IntegrationConnectionState; externalAccountId: string | null; activeFrom: string | null; webhookUrl: string; createdAt: string;
   /** Only in the create response: secrets the client must paste into the platform. */
   secrets?: Record<string, string> }
 export interface IntegrationSale {
-  id: string; operationKey: string; commercialState: "pending" | "paid" | "refunded" | "disputed" | "canceled"; fiscalStatus: "none" | "blocked" | "needs_attention" | "submitted";
-  blockReason: string | null; amountCents: number; currency: string; customer: { name: string | null; email: string | null; taxId: string | null; taxIdMasked: boolean } | null;
+  id: string; connectionId?: string; provider?: string; environment?: "test" | "live"; operationKey: string; commercialState: "pending" | "paid" | "refunded" | "disputed" | "canceled"; fiscalStatus: "none" | "blocked" | "needs_attention" | "submitted";
+  blockReason: string | null; amountCents: number; currency: string; customer: { name: string | null; email: string | null; taxId: string | null; taxIdMasked: boolean; address?: SaleAddress } | null;
   paidAt: string | null; invoiceId: string | null; createdAt: string; updatedAt: string;
 }
+export interface SaleAddress { street?: string; city?: string; state?: string; zip?: string; country?: string; municipalityCode?: string }
+export interface IntegrationSaleDetail extends IntegrationSale { service: { code: string | null; description: string | null }; lastError: string | null; sendEmail: boolean }
+export interface ResolveSaleInput { customer?: { name?: string; taxId: string; email?: string; address?: SaleAddress }; service?: { code?: string; description?: string }; sendEmail?: boolean }
 export interface IntegrationRuleInput { externalProductId?: string | null; service: { description?: string; code?: string }; sendEmail: boolean; allowAnonymousCustomer?: boolean; cancelOnRefund?: boolean }
 export interface IntegrationRule { id: string; externalProductId: string | null; service: { description?: string; code?: string }; sendEmail: boolean; allowAnonymousCustomer: boolean; cancelOnRefund: boolean }
 export interface IntegrationEvent { id: string; deliveryId: string; externalType: string; state: "received" | "processing" | "retry_pending" | "processed" | "ignored" | "needs_attention" | "dead"; attempts: number; lastError: string | null; operationId: string | null; createdAt: string }
@@ -389,6 +398,10 @@ export const integrations = {
   rules: async (id: string) => unwrap(await request<Envelope<IntegrationRule[]>>(`/integrations/connections/${idPath(id)}/rules`)),
   events: async (id: string, limit = 20) => unwrap(await request<Envelope<IntegrationEvent[]>>(`/integrations/connections/${idPath(id)}/events${query({ limit })}`)),
   sales: async (id: string, limit = 50) => unwrap(await request<Envelope<IntegrationSale[]>>(`/integrations/connections/${idPath(id)}/operations${query({ limit })}`)),
+  pending: async (environment: "test" | "live", limit = 100) => unwrap(await request<Envelope<IntegrationSale[]>>(`/integrations/operations${query({ environment, limit })}`)),
+  sale: async (saleId: string) => unwrap(await request<Envelope<IntegrationSaleDetail>>(`/integrations/operations/${idPath(saleId)}`)),
+  resolve: async (saleId: string, data: ResolveSaleInput) => unwrap(await request<Envelope<{ outcome: { state: string; lastError?: string }; operation: IntegrationSale }>>(`/integrations/operations/${idPath(saleId)}/resolve`, json(data))),
+  ignore: async (saleId: string, reason: string) => unwrap(await request<Envelope<IntegrationSale>>(`/integrations/operations/${idPath(saleId)}/ignore`, json({ reason }))),
   completeCustomer: async (saleId: string, data: { taxId: string; name?: string; email?: string }) => unwrap(await request<Envelope<IntegrationSale>>(`/integrations/operations/${idPath(saleId)}/customer`, json(data, "PATCH"))),
   retry: async (saleId: string) => unwrap(await request<Envelope<{ state: string; lastError?: string }>>(`/integrations/operations/${idPath(saleId)}/retry`, { method: "POST" })),
 };

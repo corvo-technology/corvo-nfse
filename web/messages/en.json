@@ -676,59 +676,18 @@
     },
     "credits": "{count, plural, one {# credit} other {# credits}}",
     "actions": {
-      "company": {
-        "created": "Created a company",
-        "updated": "Updated a company",
-        "deleted": "Deleted a company"
-      },
-      "certificate": {
-        "uploaded": "Uploaded a certificate",
-        "replaced": "Replaced a certificate",
-        "revoked": "Removed a certificate"
-      },
-      "invoice": {
-        "issued": "Issued an invoice",
-        "cancelled": "Cancelled an invoice",
-        "substituted": "Replaced an invoice",
-        "email_resent": "Resent an invoice email",
-        "batch_issued": "Issued invoices in a batch",
-        "review_retried": "Retried an invoice in review",
-        "review_discarded": "Discarded an invoice in review"
-      },
-      "import": {
-        "emitted": "Issued invoices from an import"
-      },
-      "schedule": {
-        "created": "Created a schedule",
-        "paused": "Paused a schedule",
-        "resumed": "Resumed a schedule",
-        "cancelled": "Cancelled a schedule"
-      },
-      "billing": {
-        "charge_created": "Created a charge",
-        "payment_confirmed": "Payment confirmed",
-        "plan_changed": "Changed plan"
-      },
-      "member": {
-        "invited": "Invited a member",
-        "removed": "Removed a member",
-        "role_changed": "Changed a member's role"
-      },
-      "invitation": {
-        "accepted": "Accepted an invitation"
-      },
-      "api_key": {
-        "created": "Created an API key",
-        "revoked": "Revoked an API key"
-      },
-      "agent": {
-        "connected": "Connected an agent",
-        "disconnected": "Disconnected an agent"
-      },
-      "accountant": {
-        "package_sent": "Sent the package to the accountant",
-        "email_changed": "Changed the accountant's email"
-      }
+      "company": { "created": "Created a company", "updated": "Updated a company", "deleted": "Deleted a company" },
+      "certificate": { "uploaded": "Uploaded a certificate", "replaced": "Replaced a certificate", "revoked": "Removed a certificate" },
+      "invoice": { "issued": "Issued an invoice", "cancelled": "Cancelled an invoice", "substituted": "Replaced an invoice", "email_resent": "Resent an invoice email", "batch_issued": "Issued invoices in a batch", "review_retried": "Retried an invoice in review", "review_discarded": "Discarded an invoice in review" },
+      "import": { "emitted": "Issued invoices from an import" },
+      "schedule": { "created": "Created a schedule", "paused": "Paused a schedule", "resumed": "Resumed a schedule", "cancelled": "Cancelled a schedule" },
+      "billing": { "charge_created": "Created a charge", "payment_confirmed": "Payment confirmed", "plan_changed": "Changed plan" },
+      "member": { "invited": "Invited a member", "removed": "Removed a member", "role_changed": "Changed a member's role" },
+      "invitation": { "accepted": "Accepted an invitation" },
+      "api_key": { "created": "Created an API key", "revoked": "Revoked an API key" },
+      "agent": { "connected": "Connected an agent", "disconnected": "Disconnected an agent" },
+      "accountant": { "package_sent": "Sent the package to the accountant", "email_changed": "Changed the accountant's email" },
+      "integration": { "sale_resolved": "Completed an integration sale", "sale_ignored": "Ignored an integration sale" }
     }
   },
   "Members": {
@@ -1366,7 +1325,8 @@
       "processing": "Processing",
       "manual_review": "Manual review",
       "rejected": "Rejected",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "sales": "Pending sales"
     },
     "form": {
       "company": "Issuer company",
@@ -1626,6 +1586,7 @@
       "payerName": "Full name or company name",
       "payerTaxId": "CPF or CNPJ",
       "payerHint": "Required to authorize the monthly Pix in your bank app.",
+      "buyerHint": "The invoice for the credits is issued to the payer. Check the CPF or CNPJ.",
       "pay": "Continue",
       "pixScan": "Scan with your bank app",
       "pixAuthorize": "Open the link to authorize Pix Automático in your bank app.",
@@ -2125,6 +2086,7 @@
     "clear": "Clear selected code"
   },
   "ApiErrors": {
+    "proxy_route_unavailable": "This action is not available right now. Please tell Corvo support.",
     "invoice_note_environment_mismatch": "This note cannot be cancelled or replaced: the stored file is from a different environment (test or production) than the note. Contact support.",
     "portal_nfse_wrong_environment": "This note was found on the portal in a different environment (test or production) than the company's. Check the environment and try again.",
     "reconciliation_uncertain": "The fiscal portal gave no conclusive answer for a long time. Retry with the same number or discard the invoice.",
@@ -2382,9 +2344,13 @@
     "connection_needs_rule": "Add at least one rule before activating.",
     "connection_not_found": "Connection not found.",
     "connection_not_validated": "Validate the connection before activating it.",
+    "connection_webhook_secret_missing": "Paste the webhook secret (whsec_...) to activate.",
+    "stripe_secret_key_rejected": "Do not use the secret key (sk_). Create a read-only restricted key (rk_) in Stripe.",
     "connection_state_invalid": "This action is not possible in the connection's current state.",
     "operation_has_invoice": "This operation already has an invoice.",
     "operation_not_found": "Operation not found.",
+    "operation_not_resolvable": "This sale is not waiting for data. Refresh the page.",
+    "invalid_address": "Send both city and state of the address, or leave both empty.",
     "operation_request_fixed": "This operation's invoice request is already fixed.",
     "inbound_invalid": "Invalid webhook request.",
     "webhook_not_found": "Webhook not found.",
@@ -3044,6 +3010,25 @@
           "mine": "My share of the sale"
         }
       },
+      "hints": {
+        "apiKey": "Optional. Do not use the secret key (sk_). Create a read-only restricted key (rk_): Corvo only looks up the tax ID, e-mail and sale items; it cannot charge, refund or change anything. Without it, sales missing a tax ID go to \"Pending sales\"."
+      },
+      "awaitingSecret": {
+        "title": "Webhook still to connect",
+        "body": "The connection was created but is not active yet. Follow the steps below.",
+        "detailBody": "This connection is not active yet. Paste the webhook secret the platform showed below to activate it.",
+        "eventsLabel": "Events to select",
+        "steps": {
+          "one": "Copy the webhook address above.",
+          "two": "On the platform, create a new webhook with that address and select the events in the list.",
+          "three": "When you save, the platform shows a secret (whsec_...). Copy it and paste it in the field below."
+        },
+        "hint": "Until the secret is pasted, the platform's notices are refused and no invoice is issued.",
+        "save": "Save and activate",
+        "error": "Could not save the secret and activate the connection",
+        "later": "No secret yet? You can paste it later, on the connection page.",
+        "doLater": "Do it later"
+      },
       "back": "Back",
       "connect": "Connect",
       "connecting": "Connecting...",
@@ -3092,7 +3077,8 @@
         "blocked": "Not issued",
         "processing": "Processing",
         "cancelRequested": "Cancellation requested",
-        "cancelFailed": "Could not cancel the invoice"
+        "cancelFailed": "Could not cancel the invoice",
+        "ignored": "Ignored"
       },
       "fixCustomer": "Add CPF/CNPJ",
       "taxIdLabel": "Customer CPF or CNPJ",
@@ -3162,9 +3148,151 @@
       "attention": "Need attention",
       "viewInvoice": "View invoice",
       "allGood": "All good: no sale needs you.",
-      "attentionBanner": "{count} sales need you",
+      "attentionBanner": "{count, plural, one {# sale needs you} other {# sales need you}}",
       "empty": "No sales received yet. Make a test payment to see it here.",
       "noneAttention": "No sale needs attention."
+    },
+    "reasons": {
+      "connection_inactive": {
+        "title": "The integration is paused or turned off.",
+        "action": "Turn the integration back on and try this sale again."
+      },
+      "before_active_from": {
+        "title": "The sale is older than the date the integration started.",
+        "action": "If you still want an invoice, issue it from the invoices screen."
+      },
+      "refunded": {
+        "title": "The sale was refunded.",
+        "action": "No invoice is issued for a refunded sale."
+      },
+      "disputed": {
+        "title": "The sale is under dispute on the platform.",
+        "action": "Wait for the dispute to end; the invoice is only issued if the sale stays paid."
+      },
+      "not_paid": {
+        "title": "The sale is not paid yet.",
+        "action": "The invoice is issued by itself as soon as the payment is confirmed."
+      },
+      "unsupported_currency": {
+        "title": "The sale was not made in reais.",
+        "action": "Corvo only issues invoices for sales in reais (BRL)."
+      },
+      "invalid_amount": {
+        "title": "The sale amount is not valid.",
+        "action": "Check the amount on the platform; an invoice needs an amount above zero."
+      },
+      "seller_not_issuer": {
+        "title": "The platform says another company issues the invoice for this sale.",
+        "action": "If you should issue it yourself, use the invoices screen."
+      },
+      "no_rule": {
+        "title": "There is no issuing rule for this sale.",
+        "action": "Open the integration and set the default service for invoices."
+      },
+      "ambiguous_rule": {
+        "title": "More than one rule fits this sale.",
+        "action": "Open the integration and keep a single rule for each product."
+      },
+      "customer_tax_id_missing": {
+        "title": "The customer's CPF or CNPJ is missing.",
+        "action": "Enter the customer's document and issue the invoice."
+      },
+      "refund_after_invoice": {
+        "title": "The sale was refunded after the invoice was issued.",
+        "action": "Cancel the invoice if needed."
+      },
+      "cancel_requested": {
+        "title": "Cancelling the invoice was requested because of the refund.",
+        "action": "Nothing to do: follow the cancellation on the invoice."
+      },
+      "cancel_failed": {
+        "title": "We could not cancel the invoice after the refund.",
+        "action": "Try again or cancel the invoice from the invoices screen."
+      },
+      "quota_exceeded": {
+        "title": "You are out of invoice credits.",
+        "action": "Buy more credits or change plan, then try again."
+      },
+      "company_not_ready": {
+        "title": "The company is not ready to issue yet.",
+        "action": "Check the digital certificate and the company data, then try again."
+      },
+      "invoice_rejected": {
+        "title": "The data of this sale was refused when issuing the invoice.",
+        "action": "Fix the customer or service data and issue again."
+      },
+      "ignored_by_user": {
+        "title": "You marked this sale as not needing an invoice.",
+        "action": "Nothing to do."
+      }
+    },
+    "errors": {
+      "emailRequired": "The invoice was going to be e-mailed, but the customer has no e-mail. Now the invoice is issued without sending; try again.",
+      "noCorrelationId": "Platform notice without the charge identifier. An invoice cannot be issued from it.",
+      "refundNoOriginal": "Refund notice that does not say which payment was returned. It cannot be used.",
+      "badAmount": "The amount sent by the platform is not valid. An invoice cannot be issued from it.",
+      "notReadable": "We could not read this notice from the platform.",
+      "refundNotFound": "Refund of a payment that is not a Corvo sale.",
+      "unknown": "This notice could not be used. Technical detail:"
+    },
+    "reasonLabel": "Reason",
+    "whatToDo": "What to do",
+    "resolveAction": "Resolve",
+    "tryAgainDone": "Invoice issued.",
+    "tryAgainStill": "It could not be issued yet:",
+    "viewSale": "Open the sale",
+    "pendingSales": {
+      "tab": "Pending sales",
+      "title": "Sales waiting for you",
+      "intro": "Sales from your integrations that did not become invoices yet. Complete the data and issue.",
+      "empty": "No sale is waiting for you.",
+      "banner": "{count, plural, one {# integration sale is waiting for you} other {# integration sales are waiting for you}}",
+      "bannerAction": "See sales",
+      "status": "Waiting for you",
+      "origin": "Pix sale ({provider})",
+      "originOther": "Sale ({provider})",
+      "loadError": "Could not load the pending sales."
+    },
+    "resolve": {
+      "title": "Complete the sale",
+      "back": "Back",
+      "notFound": "Sale not found.",
+      "amount": "Amount (comes from the payment)",
+      "paidAt": "Paid on",
+      "source": "Source",
+      "customerTitle": "Customer",
+      "taxId": "CPF or CNPJ",
+      "lookupCnpj": "Look up CNPJ data",
+      "lookupFound": "CNPJ data filled in.",
+      "lookupFail": "We did not find this CNPJ. Fill it in by hand.",
+      "name": "Name or company name",
+      "email": "E-mail",
+      "emailHint": "Optional. Without an e-mail the invoice is issued and not sent to the customer.",
+      "sendEmail": "E-mail the invoice to the customer",
+      "addressTitle": "Address (optional)",
+      "zip": "ZIP code (CEP)",
+      "street": "Street",
+      "city": "City",
+      "state": "State",
+      "serviceTitle": "Service",
+      "serviceCode": "Service code",
+      "serviceDescription": "Description on the invoice",
+      "serviceHint": "It comes from what the integration uses. Change it only for this sale if needed.",
+      "emit": "Issue invoice",
+      "issued": "Invoice issued.",
+      "viewInvoice": "View invoice",
+      "stillFailing": "The invoice was not issued yet:",
+      "taxIdInvalid": "Enter a valid CPF or CNPJ (11 or 14 characters).",
+    "addressIncomplete": "Enter city and state together, or leave both empty.",
+      "ignoreTitle": "Does this sale need no invoice?",
+      "ignoreHint": "If you will not issue an invoice for this sale, say why. It is kept, without an invoice.",
+      "ignoreReason": "Reason",
+      "ignore": "Ignore this sale",
+      "ignored": "Sale ignored.",
+      "alreadyIssued": "This sale already has an invoice.",
+      "noPermission": "To complete the sale, ask for the permission to manage integrations.",
+      "anonymousTip": "Prefer to always issue without the customer's document? Turn on \"Issue even without the customer's CPF/CNPJ\" in the integration settings. It is faster, but the invoice has no identified customer.",
+      "settingsLink": "Open the integration settings"
     }
   },
   "LandingIntegrations": {
@@ -3617,7 +3745,7 @@
       "title": "Correct customer",
       "optional": "optional",
       "emailHint": "Kept to fill in the form. Leave it empty to remove it.",
-      "note": "The correction applies to the next invoices. Invoices already issued do not change.",
+      "note": "The correction applies to the next invoices and is no longer replaced by data from other invoices. Invoices already issued do not change.",
       "save": "Save",
       "nameRequired": "Enter the name.",
       "failed": "Could not save the customer."

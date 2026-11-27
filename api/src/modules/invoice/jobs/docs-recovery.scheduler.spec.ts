@@ -3,6 +3,7 @@ import { DocsRecoveryScheduler } from './docs-recovery.scheduler';
 import type { IInvoiceRepository } from '../domain/invoice.repository';
 import type { IFiscalReconciliationRepository } from '../domain/fiscal/reconciliation/fiscal-reconciliation.repository';
 import type { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
+import { reconciliationJobKey } from '../application/reconciliation-job';
 import * as scheduledTaskTelemetry from '@/shared/observability/scheduled-task-telemetry';
 
 describe('DocsRecoveryScheduler', () => {
@@ -109,14 +110,66 @@ describe('DocsRecoveryScheduler', () => {
     expect(addMock).toHaveBeenCalledWith(
       'nfse-reconciliation',
       'recover',
-      { invoiceId: row.id, tenantId: row.tenantId, companyId: row.companyId },
       {
+        invoiceId: row.id,
+        tenantId: row.tenantId,
+        companyId: row.companyId,
+        attemptCount: 0,
+      },
+      {
+        idempotencyKey: reconciliationJobKey(row.id, 0),
         attempts: 5,
         backoffMs: 30000,
         removeOnComplete: true,
-        removeOnFail: 1000,
+        removeOnFail: true,
       },
     );
+  });
+
+  describe('reconciliation storm', () => {
+    const row = { id: 'inv-1767', tenantId: 'tenant-a', companyId: 'comp-1' };
+    const getJobStatus = mockQueueService.getJobStatus as jest.Mock;
+
+    it('does not queue a second chain while the invoice has a pending job', async () => {
+      findPendingReconciliation.mockImplementation(async (tenantId: string) =>
+        tenantId === row.tenantId ? [row] : [],
+      );
+      for (const state of ['delayed', 'active', 'waiting']) {
+        getJobStatus.mockImplementation(async (_queue: string, id: string) =>
+          id === reconciliationJobKey(row.id, 1).replace(/:/g, '_')
+            ? state
+            : null,
+        );
+        await scheduler.handle();
+      }
+      expect(addMock).not.toHaveBeenCalled();
+    });
+
+    it('over a day of runs a stuck invoice never has more than one chain', async () => {
+      // A tiny queue with BullMQ's rule: adding an id that already exists is ignored.
+      const pending = new Set<string>();
+      addMock.mockImplementation(
+        async (
+          _q: string,
+          _n: string,
+          _d: unknown,
+          o: { idempotencyKey: string },
+        ) => {
+          pending.add(o.idempotencyKey.replace(/:/g, '_'));
+          return { id: o.idempotencyKey };
+        },
+      );
+      getJobStatus.mockImplementation(async (_q: string, id: string) =>
+        pending.has(id) ? 'delayed' : null,
+      );
+      findPendingReconciliation.mockImplementation(async (tenantId: string) =>
+        tenantId === row.tenantId ? [row] : [],
+      );
+
+      for (let run = 0; run < 288; run++) await scheduler.handle();
+
+      expect(addMock).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('enqueues a doc-prep job for each invoice returned by the query', async () => {
@@ -285,5 +338,37 @@ describe('DocsRecoveryScheduler', () => {
       (call: unknown[]) => call[0] === 'nfse-fiscal-reconcile',
     );
     expect(reconcileCalls).toHaveLength(0);
+  });
+
+  it('re-queues at most the per-run cap across all tenants and kinds of work', async () => {
+    const capped = new DocsRecoveryScheduler(
+      discovery,
+      mockInvoiceRepo,
+      mockQueueService,
+      mockReconciliationRepo,
+      { get: () => 3 } as never,
+    );
+    const rows = (tenantId: string) =>
+      Array.from({ length: 5 }, (_, n) => ({
+        id: `${tenantId}-${n}`,
+        tenantId,
+        companyId: 'comp',
+      }));
+    findPendingReconciliation.mockImplementation(async (t: string) =>
+      rows(t).slice(0, 2),
+    );
+    findAuthorizedWithoutDocuments.mockImplementation(
+      async (t: string, _c: Date, limit: number) => rows(t).slice(0, limit),
+    );
+    await capped.handle();
+    expect(addMock).toHaveBeenCalledTimes(3);
+    // tenant-b is not even asked once the budget is spent
+    expect(findPendingReconciliation).toHaveBeenCalledTimes(1);
+    expect(findAuthorizedWithoutDocuments).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.any(Date),
+      1,
+    );
+    expect(findAuthorizedWithoutReconciliation).not.toHaveBeenCalled();
   });
 });

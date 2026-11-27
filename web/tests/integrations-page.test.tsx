@@ -24,7 +24,7 @@ vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ success: mocks.succ
 const woovi = { id: "woovi", name: "Woovi", version: "1", credentialFields: [{ key: "webhookToken", label: "Webhook token (Authorization header)", secret: true, generate: true, revealOnce: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on Woovi." }, supportedFlows: [] };
 const abacate = { id: "abacatepay", name: "AbacatePay", version: "1", credentialFields: [{ key: "apiKey", label: "AbacatePay API key", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Create a webhook on AbacatePay." }, supportedFlows: [] };
 const pushinpay = { id: "pushinpay", name: "PushinPay", version: "1", credentialFields: [{ key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "webhookToken", label: "Webhook token (x-corvo-token header)", secret: true, generate: true, revealOnce: true }], webhookInstructions: { pt: "pt", en: "Pass the address as webhook_url and set the x-corvo-token header." }, supportedFlows: [] };
-const stripe = { id: "stripe", name: "Stripe", version: "1", credentialFields: [{ key: "apiKey", label: "Stripe restricted key", secret: true }, { key: "webhookSigningSecret", label: "Webhook signing secret", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Add a webhook endpoint on Stripe." }, supportedFlows: ["charge"] };
+const stripe = { id: "stripe", name: "Stripe", version: "1", credentialFields: [{ key: "apiKey", label: "Stripe restricted key", secret: true, optional: true }, { key: "webhookSigningSecret", label: "Webhook signing secret", secret: true, optional: true, afterUrl: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Add a webhook endpoint on Stripe." }, webhookEvents: ["charge.succeeded", "charge.refunded"], supportedFlows: ["charge"] };
 const kiwify = { id: "kiwify", name: "Kiwify", version: "1", credentialFields: [{ key: "token", label: "Webhook token", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Create a webhook on Kiwify without affiliations or co-productions." }, supportedFlows: ["order"] };
 const hotmart = { id: "hotmart", name: "Hotmart", version: "1", credentialFields: [{ key: "hottok", label: "Hotmart hottok", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Add the webhook on Hotmart, paste your hottok and send a test." }, supportedFlows: ["purchase"] };
 const company = { id: "co1", legalName: "Acme Ltda", tradeName: "Acme" };
@@ -140,7 +140,7 @@ describe("Sales on the list", () => {
     expect(screen.getAllByRole("link", { name: "View invoice" }).map((a) => a.getAttribute("href"))).toEqual(expect.arrayContaining(["/app/invoices/inv-a", "/app/invoices/inv-b"]));
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith("b"));
-    expect(screen.getAllByText("1 sales need you").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1 sale needs you").length).toBeGreaterThan(0);
   });
 
   it("says so when no sale arrived yet", async () => {
@@ -148,22 +148,24 @@ describe("Sales on the list", () => {
     expect(await screen.findByText(/No sales received yet/)).toBeTruthy();
   });
 
-  it("completes the customer document of a waiting sale and issues it, then refreshes", async () => {
-    mocks.completeCustomer.mockResolvedValue(sale());
-    mocks.retry.mockResolvedValue({ state: "processed" });
+  it("shows the reason in plain words on the row, with Resolve first and Try again second", async () => {
     listWith([waiting("s2")]);
-    fireEvent.click(await screen.findByRole("button", { name: "Add CPF/CNPJ" }));
-    const input = screen.getByLabelText(/Customer CPF or CNPJ/);
-    const save = screen.getByRole("button", { name: "Save and issue" }) as HTMLButtonElement;
-    expect(save.disabled).toBe(true);
-    fireEvent.change(input, { target: { value: "529.982.247-25" } });
-    expect(save.disabled).toBe(false);
-    const loads = mocks.list.mock.calls.length;
-    fireEvent.click(save);
-    await waitFor(() => expect(mocks.completeCustomer).toHaveBeenCalledWith("s2", { taxId: "52998224725" }));
-    await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith("s2"));
-    expect(mocks.completeCustomer.mock.invocationCallOrder[0]).toBeLessThan(mocks.retry.mock.invocationCallOrder[0]);
-    await waitFor(() => expect(mocks.list.mock.calls.length).toBeGreaterThan(loads));
+    expect((await screen.findAllByText("The customer's CPF or CNPJ is missing.")).length).toBeGreaterThan(0);
+    const resolve = screen.getByRole("link", { name: "Resolve" });
+    expect(resolve.getAttribute("href")).toBe("/app/integrations/sales/s2");
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Joao" }).getAttribute("href")).toBe("/app/integrations/sales/s2");
+  });
+
+  it("Try again always answers: the invoice was issued, or what still blocks it", async () => {
+    mocks.retry.mockResolvedValueOnce({ state: "needs_attention", lastError: "customer.email: customer.email is required when email notification is enabled" });
+    listWith([waiting("s2")]);
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(await screen.findByText(/It could not be issued yet:.*customer has no e-mail/)).toBeTruthy();
+    mocks.retry.mockResolvedValueOnce({ state: "processed" });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(mocks.success).toHaveBeenCalledWith("Invoice issued."));
+    expect(await screen.findByText("Invoice issued.", { selector: "p" })).toBeTruthy();
   });
 
   it("offers a retry for a sale that was held by a paused connection", async () => {
@@ -177,7 +179,7 @@ describe("Sales on the list", () => {
     mocks.permissions = new Set(["integrations.view"]);
     listWith([waiting("s2")]);
     await screen.findByText("CPF/CNPJ missing");
-    expect(screen.queryByRole("button", { name: "Add CPF/CNPJ" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Resolve" })).toBeNull();
   });
 
   it("shows no sales section when there is no integration yet", async () => {
@@ -298,28 +300,52 @@ describe("Connect page", () => {
     expect(screen.getByText(/shown only now/)).toBeTruthy();
   });
 
-  it("Stripe asks for the restricted key and the signing secret, generates the URL secret and shows the address only once", async () => {
+  it("Stripe creates with no key, shows the address and events first, then saves the signing secret and activates", async () => {
     mocks.providers.mockResolvedValue([woovi, abacate, stripe]);
     mocks.create.mockResolvedValue(connection({ provider: "stripe", state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB?webhookSecret=S3", secrets: { webhookSecret: "S3" } }));
-    mocks.validate.mockResolvedValue(connection());
+    mocks.validate.mockResolvedValue(connection({ state: "draft" }));
     mocks.putRules.mockResolvedValue([]);
-    mocks.activate.mockResolvedValue(connection());
+    mocks.updateCredentials.mockResolvedValue(connection({ state: "draft" }));
+    mocks.activate.mockResolvedValue(connection({ state: "active" }));
     mocks.search = "provider=stripe";
     wrap(<NewIntegrationPage />);
     await screen.findByLabelText(/Stripe restricted key/);
-    expect(screen.queryByLabelText(/^Webhook secret/)).toBeNull();
+    expect(screen.queryByLabelText(/Webhook signing secret/)).toBeNull();
+    expect(screen.getByText(/Do not use the secret key \(sk_\)/)).toBeTruthy();
     const button = screen.getByRole("button", { name: "Connect" }) as HTMLButtonElement;
     fireEvent.change(screen.getByLabelText(/Company that issues the invoice/), { target: { value: "co1" } });
-    fireEvent.change(screen.getByLabelText(/Stripe restricted key/), { target: { value: "rk_live_fake" } });
-    expect(button.disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText(/Webhook signing secret/), { target: { value: "whsec_fake" } });
     expect(button.disabled).toBe(false);
     fireEvent.click(button);
-    await screen.findByText("Connected!");
-    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "stripe", credentials: { apiKey: "rk_live_fake", webhookSigningSecret: "whsec_fake" } }));
+    await screen.findByText("Webhook still to connect");
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "stripe", credentials: {} }));
+    expect(mocks.activate).not.toHaveBeenCalled();
     expect(screen.getByText(/webhookSecret=S3/)).toBeTruthy();
+    expect(screen.getByText("charge.succeeded")).toBeTruthy();
     expect(screen.getByText("Add a webhook endpoint on Stripe.")).toBeTruthy();
-    expect(screen.getByText(/shown only now/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/Webhook signing secret/), { target: { value: " whsec_fake " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save and activate" }));
+    await screen.findByText("Connected!");
+    expect(mocks.updateCredentials).toHaveBeenCalledWith("c1", { webhookSigningSecret: "whsec_fake" });
+    expect(mocks.activate).toHaveBeenCalledWith("c1");
+  });
+
+  it("Stripe shows why the secret could not be saved and keeps the form", async () => {
+    mocks.providers.mockResolvedValue([woovi, abacate, stripe]);
+    mocks.create.mockResolvedValue(connection({ provider: "stripe", state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB?webhookSecret=S3", secrets: { webhookSecret: "S3" } }));
+    mocks.validate.mockResolvedValue(connection({ state: "draft" }));
+    mocks.putRules.mockResolvedValue([]);
+    mocks.updateCredentials.mockResolvedValue(connection({ state: "draft" }));
+    mocks.activate.mockRejectedValue(new ApiError(409, "Paste", "ERROR_CONNECTION_WEBHOOK_SECRET_MISSING"));
+    mocks.search = "provider=stripe";
+    wrap(<NewIntegrationPage />);
+    await screen.findByLabelText(/Stripe restricted key/);
+    fireEvent.change(screen.getByLabelText(/Company that issues the invoice/), { target: { value: "co1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Connect" }));
+    await screen.findByText("Webhook still to connect");
+    fireEvent.change(screen.getByLabelText(/Webhook signing secret/), { target: { value: "whsec_x" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save and activate" }));
+    await screen.findByText("Paste the webhook secret (whsec_...) to activate.");
+    expect(screen.getByLabelText(/Webhook signing secret/)).toBeTruthy();
   });
 
   it("Kiwify asks for the token only, offers the invoice amount as a choice and shows the address once", async () => {
@@ -439,13 +465,26 @@ describe("Connection page", () => {
     await screen.findByRole("heading", { level: 1, name });
   }
 
+  it("a Stripe draft asks for the signing secret and activates once it is pasted", async () => {
+    mocks.permissions.add("integrations.manage");
+    mocks.providers.mockResolvedValue([woovi, abacate, stripe]);
+    mocks.updateCredentials.mockResolvedValue(connection({ provider: "stripe", state: "draft" }));
+    mocks.activate.mockResolvedValue(connection({ provider: "stripe", state: "active" }));
+    await openDetails([], { provider: "stripe", state: "draft" }, "Stripe");
+    expect(screen.getByText("Webhook still to connect")).toBeTruthy();
+    fireEvent.change(screen.getAllByLabelText(/Webhook signing secret/)[0], { target: { value: "whsec_late" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save and activate" }));
+    await waitFor(() => expect(mocks.activate).toHaveBeenCalledWith("c1"));
+    expect(mocks.updateCredentials).toHaveBeenCalledWith("c1", { webhookSigningSecret: "whsec_late" });
+  });
+
   it("shows only what belongs to the integration: settings, connection and disconnect, not the sales", async () => {
     await openDetails([sale(), waiting("s2")]);
     expect(screen.getAllByText("Acme").length).toBeGreaterThan(0);
     expect(await screen.findByRole("switch", { name: "Email the invoice to the customer" })).toBeTruthy();
     expect(screen.queryByLabelText(/Service description/)).toBeNull();
     expect(screen.queryByText("Latest sales")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Add CPF/CNPJ" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Resolve" })).toBeNull();
     expect(screen.getByText("https://api.corvo.tech/v1/integrations/inbound/PUB")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Disconnect" })).toBeTruthy();
   });

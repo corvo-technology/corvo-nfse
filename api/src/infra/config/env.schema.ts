@@ -295,6 +295,23 @@ export const envSchema = z
       .int()
       .min(10_000)
       .default(300_000),
+    // Brake on calls to each government host (shared by all replicas): requests per second,
+    // the burst allowed after a quiet moment, and how long a caller waits for its turn.
+    GOV_RATE_LIMIT_PER_SECOND: z.coerce.number().min(0.1).max(100).default(5),
+    GOV_RATE_LIMIT_BURST: z.coerce.number().int().min(1).max(500).default(10),
+    GOV_RATE_LIMIT_MAX_WAIT_MS: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(60_000)
+      .default(10_000),
+    // Most items the recovery job puts back in the queue per run (every 5 minutes).
+    DOCS_RECOVERY_MAX_PER_RUN: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(500)
+      .default(50),
     NFSE_UNCERTAIN_MAX_HOURS: z.coerce.number().int().min(1).max(72).default(6),
     // Reads what happened to issued invoices on the national portal (cancellations, taker rejections).
     // Off by default: turn it on in live only after a round against the Produção Restrita was checked.

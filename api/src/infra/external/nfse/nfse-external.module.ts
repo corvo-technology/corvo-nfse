@@ -3,6 +3,7 @@ import { FiscalDocumentRegistry } from '@/modules/fiscal-core/application/fiscal
 import { FiscalCoreModule } from '@/modules/fiscal-core/fiscal-core.module';
 import { PortalReachabilityReadModule } from '@/modules/portal-reachability/portal-reachability-read.module';
 import { NfseGatewayAdapter } from './nfse-gateway.adapter';
+import { GovRateLimiter } from './gov-rate-limiter';
 import { OpenNfseProvider } from './open-nfse.provider';
 import { FakeNfseProvider } from './fake-nfse.provider';
 import { NfseProviderFactory } from './nfse-provider.factory';
@@ -13,6 +14,7 @@ import { FISCAL_PROVIDER, type FiscalProvider } from './nfse-fiscal-provider';
 @Module({
   imports: [FiscalCoreModule, PortalReachabilityReadModule],
   providers: [
+    GovRateLimiter,
     OpenNfseProvider,
     FakeNfseProvider,
     NfseProviderFactory,
@@ -21,7 +23,12 @@ import { FISCAL_PROVIDER, type FiscalProvider } from './nfse-fiscal-provider';
     // Kept for Phase 3 compatibility — processors still inject FISCAL_PROVIDER directly
     { provide: FISCAL_PROVIDER, useExisting: OpenNfseProvider },
   ],
-  exports: [NfseProviderFactory, FakeNfseProvider, OpenNfseProvider],
+  exports: [
+    NfseProviderFactory,
+    FakeNfseProvider,
+    OpenNfseProvider,
+    GovRateLimiter,
+  ],
 })
 export class NfseExternalModule implements OnModuleInit {
   constructor(

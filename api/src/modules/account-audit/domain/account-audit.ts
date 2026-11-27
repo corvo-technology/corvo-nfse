@@ -30,7 +30,8 @@ export type AuditTargetType =
   | 'invitation'
   | 'api_key'
   | 'agent_connection'
-  | 'accountant';
+  | 'accountant'
+  | 'integration_sale';
 
 export type AuditMetadata = Record<string, string | number | boolean | null>;
 

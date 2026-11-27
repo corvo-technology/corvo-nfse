@@ -13,6 +13,20 @@ export type AccountNotice =
       webhookConfigId: string;
       eventType: string;
     }
+  // A sale from a payment platform could not become an invoice and waits for the client.
+  | {
+      kind: 'integration-sale-needs-attention';
+      operationId: string;
+      connectionId: string;
+      provider: string;
+      amountCents: number;
+      paidAt: Date;
+      buyerName: string | null;
+      /** A BlockReason code. */
+      reason: string;
+      /** Sales of the workspace waiting right now, this one included. */
+      pendingCount: number;
+    }
   | { kind: 'payment-failed' }
   | { kind: 'pix-expired' }
   | { kind: 'payment-mismatch' }

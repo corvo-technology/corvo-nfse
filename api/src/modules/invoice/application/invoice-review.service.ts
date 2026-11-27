@@ -11,6 +11,7 @@ import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-aud
 import { recordSafely } from '@/shared/audit/record-safely';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import type { FiscalJobData } from './nfse-workflow.service';
+import { reconciliationJobKey } from './reconciliation-job';
 import {
   DPS_USED_BY_OTHER_NFSE,
   PORTAL_NFSE_WRONG_ENVIRONMENT,
@@ -154,10 +155,11 @@ export class InvoiceReviewService {
         uncertainSince: new Date().toISOString(),
       },
       {
+        idempotencyKey: reconciliationJobKey(invoice.id, 0),
         attempts: 5,
         backoffMs: 30000,
         removeOnComplete: true,
-        removeOnFail: 1000,
+        removeOnFail: true,
       },
     );
     await this.recordAudit(invoice, environment, 'invoice.review_retried');

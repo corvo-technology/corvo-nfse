@@ -1,5 +1,7 @@
+import { HttpStatusError, NetworkError, ServerError } from 'open-nfse';
 import {
   FiscalPortalBreaker,
+  isPortalOutage,
   PortalUnavailableError,
 } from './fiscal-portal-breaker';
 
@@ -147,5 +149,29 @@ describe('FiscalPortalBreaker', () => {
     await breaker.recordSuccess('live');
     await failTimes(2);
     await expect(breaker.assertAvailable('live')).resolves.toBeUndefined();
+  });
+
+  it('a single failure hours later does not bring back the start time of an old outage', async () => {
+    await failTimes(3);
+    const old = (await breaker.status('live')).since?.getTime();
+    clock += 7 * 60 * 60_000;
+    await failTimes(1);
+    const status = await breaker.status('live');
+    expect(status.available).toBe(true);
+    expect(status.since).toBeNull();
+    expect(old).toBeLessThan(clock);
+  });
+
+  it('the banner goes away on its own when no call tries the portal again', async () => {
+    await failTimes(3);
+    clock += 2 * 60_000 + 1;
+    expect((await breaker.status('live')).available).toBe(true);
+  });
+
+  it('only a real non-answer counts as an outage', () => {
+    expect(isPortalOutage(new NetworkError('down'))).toBe(true);
+    expect(isPortalOutage(new ServerError(502, ''))).toBe(true);
+    expect(isPortalOutage(new HttpStatusError(400, ''))).toBe(false);
+    expect(isPortalOutage(new Error('our bug'))).toBe(false);
   });
 });
