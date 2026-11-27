@@ -1,3 +1,5 @@
+import type { KeepJobs } from 'bullmq';
+
 export type QueueName = string;
 
 export type QueueJobPayload = Record<string, unknown>;
@@ -28,8 +30,8 @@ export type EnqueueOptions = {
   backoffMs?: number;
   delayMs?: number;
   idempotencyKey?: string;
-  removeOnComplete?: boolean;
-  removeOnFail?: number | boolean;
+  removeOnComplete?: boolean | number | KeepJobs;
+  removeOnFail?: boolean | number | KeepJobs;
   priority?: number;
   jobId?: string;
 };

@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
 import { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -136,8 +137,7 @@ export class DocsRecoveryScheduler {
             {
               attempts: 5,
               backoffMs: 10_000,
-              removeOnComplete: false,
-              removeOnFail: 1000,
+              ...QUEUE_RETENTION['nfse-doc-prep'],
             },
           );
           budget--;
@@ -181,8 +181,7 @@ export class DocsRecoveryScheduler {
               idempotencyKey: `fiscal-reconcile:${id}`,
               attempts: 5,
               backoffMs: 10_000,
-              removeOnComplete: false,
-              removeOnFail: 1000,
+              ...QUEUE_RETENTION['nfse-fiscal-reconcile'],
             },
           );
           budget--;

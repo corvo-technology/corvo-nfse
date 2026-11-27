@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
 import type { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
 import { DocsRecoveryScheduler } from './docs-recovery.scheduler';
 import type { IInvoiceRepository } from '../domain/invoice.repository';
@@ -215,8 +216,7 @@ describe('DocsRecoveryScheduler', () => {
       {
         attempts: 5,
         backoffMs: 10_000,
-        removeOnComplete: false,
-        removeOnFail: 1000,
+        ...QUEUE_RETENTION['nfse-doc-prep'],
       },
     );
     expect(addMock).toHaveBeenNthCalledWith(
@@ -227,8 +227,7 @@ describe('DocsRecoveryScheduler', () => {
       {
         attempts: 5,
         backoffMs: 10_000,
-        removeOnComplete: false,
-        removeOnFail: 1000,
+        ...QUEUE_RETENTION['nfse-fiscal-reconcile'],
       },
     );
   });
@@ -304,8 +303,7 @@ describe('DocsRecoveryScheduler', () => {
         idempotencyKey: 'fiscal-reconcile:inv-1',
         attempts: 5,
         backoffMs: 10_000,
-        removeOnComplete: false,
-        removeOnFail: 1000,
+        ...QUEUE_RETENTION['nfse-doc-prep'],
       },
     );
     expect(addMock).toHaveBeenNthCalledWith(
@@ -317,8 +315,7 @@ describe('DocsRecoveryScheduler', () => {
         idempotencyKey: 'fiscal-reconcile:inv-2',
         attempts: 5,
         backoffMs: 10_000,
-        removeOnComplete: false,
-        removeOnFail: 1000,
+        ...QUEUE_RETENTION['nfse-fiscal-reconcile'],
       },
     );
   });

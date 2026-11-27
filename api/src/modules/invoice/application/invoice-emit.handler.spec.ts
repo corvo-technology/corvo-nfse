@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
 import { InvoiceEmitHandler, INVOICE_EMIT } from './invoice-emit.handler';
 import { OutboxHandlerRegistry } from '@/modules/invoice/application/outbox-handler.registry';
 
@@ -31,8 +32,7 @@ describe('InvoiceEmitHandler', () => {
         idempotencyKey: 'emission-i1',
         attempts: 5,
         backoffMs: 5000,
-        removeOnComplete: false,
-        removeOnFail: 1000,
+        ...QUEUE_RETENTION['nfse-emission'],
       },
     );
   });
