@@ -285,7 +285,7 @@ export const billing = {
   portal: async () => unwrap(await request<Envelope<{ url: string }>>("/billing/portal", { method: "POST" })),
   purchase: async (req: PurchaseRequest, idempotencyKey: string): Promise<PurchaseResult> => {
     const body = req.kind === "avulso"
-      ? { kind: "avulso", units: req.units, method: req.method }
+      ? { kind: "avulso", units: req.units, method: req.method, customer: req.customer }
       : { kind: "plan", plan_slug: req.planSlug, cycle: req.cycle, method: req.method, customer: req.customer };
     return unwrap(await request<Envelope<PurchaseResult>>("/billing/checkout", { ...json(body), headers: { "idempotency-key": idempotencyKey } }));
   },
@@ -306,7 +306,7 @@ export type PaymentMethod = "pix" | "card";
 export type Payer = { name: string; taxID: string; email: string; phone: string };
 export type PurchaseRequest =
   | { kind: "plan"; planSlug: CheckoutPlan; cycle: "monthly" | "annual"; method: PaymentMethod; customer?: Payer }
-  | { kind: "avulso"; units: number; method: PaymentMethod };
+  | { kind: "avulso"; units: number; method: PaymentMethod; customer?: { name: string; taxID: string } };
 export interface PaymentStatus { id: string; status: "pending" | "paid" | "expired" | "failed"; kind: "plan" | "avulso"; units: number | null; planSlug: string | null; paidAt: string | null }
 export type PurchaseResult =
   | { method: "card"; url: string }

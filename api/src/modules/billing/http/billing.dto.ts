@@ -17,8 +17,8 @@ const PAID_PLANS = ['solo', 'equipe', 'empresa', 'escala'] as const;
 export class PayerDto {
   @IsString() @MaxLength(120) name!: string;
   @IsString() @MaxLength(20) taxID!: string;
-  @IsString() @MaxLength(200) email!: string;
-  @IsString() @MaxLength(30) phone!: string;
+  @IsOptional() @IsString() @MaxLength(200) email?: string;
+  @IsOptional() @IsString() @MaxLength(30) phone?: string;
 }
 
 /** Plan or avulso notes, paid with Pix (Woovi) or card (Stripe). */
@@ -50,7 +50,10 @@ export class CheckoutDto {
   @IsIn(['pix', 'card'])
   method?: 'pix' | 'card';
 
-  @ApiPropertyOptional({ description: 'Payer data, required for monthly Pix' })
+  @ApiPropertyOptional({
+    description:
+      'Payer data: required for monthly Pix (name, taxID, email, phone) and for a Pix avulso purchase (name and taxID, the CPF or CNPJ that receives the invoice)',
+  })
   @IsOptional()
   @ValidateNested()
   @Type(() => PayerDto)

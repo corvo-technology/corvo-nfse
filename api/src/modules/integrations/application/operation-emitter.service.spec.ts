@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { OperationEmitter } from './operation-emitter.service';
 import {
   MemoryEvents,
@@ -436,6 +437,20 @@ describe('OperationEmitter', () => {
     });
   });
 
+  it('logs a blocked stop with its reason and no customer data', async () => {
+    const { emitter, upsert } = setup();
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    await upsert(snapshot({ commercialState: 'refunded' }));
+    const late = await upsert(snapshot());
+    await emitter.run(late);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ state: 'blocked', reason: 'refunded' }),
+    );
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('Maria');
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('52998224725');
+    warn.mockRestore();
+  });
+
   it('a refund before any invoice blocks the emission', async () => {
     const { emitter, issuance, upsert, operations } = setup();
     await upsert(snapshot({ commercialState: 'refunded' }));
@@ -450,6 +465,7 @@ describe('OperationEmitter', () => {
 
   it('a masked customer needs attention; completing the customer and retrying issues', async () => {
     const { emitter, issuance, upsert, operations } = setup();
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
     const op = await upsert(
       snapshot({
         customer: { name: 'M', email: null, taxId: null, taxIdMasked: true },
@@ -461,6 +477,16 @@ describe('OperationEmitter', () => {
       lastError: 'customer_tax_id_missing',
     });
     expect(issuance.calls).toHaveLength(0);
+    expect(warn).toHaveBeenCalledWith({
+      event: 'integration_operation_stopped',
+      tenantId: TENANT,
+      connectionId: 'c1',
+      operationId: op.id,
+      operationKey: 'charge:1',
+      state: 'needs_attention',
+      reason: 'customer_tax_id_missing',
+    });
+    warn.mockRestore();
     const fixed = await operations.updateCustomer(op.id, TENANT, {
       name: 'Maria',
       email: null,

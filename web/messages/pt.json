@@ -1569,6 +1569,7 @@
       "payerName": "Nome completo ou razão social",
       "payerTaxId": "CPF ou CNPJ",
       "payerHint": "Necessário para autorizar o Pix mensal no app do seu banco.",
+      "buyerHint": "A nota fiscal dos créditos sai em nome de quem pagar. Confira o CPF ou CNPJ.",
       "pay": "Continuar",
       "pixScan": "Escaneie com o app do seu banco",
       "pixAuthorize": "Abra o link para autorizar o Pix Automático no app do seu banco.",
@@ -3667,7 +3668,7 @@
       "title": "Corrigir cliente",
       "optional": "opcional",
       "emailHint": "Fica salvo para preencher o formulário. Deixe vazio para apagar.",
-      "note": "A correção vale para as próximas notas. As notas já emitidas não mudam.",
+      "note": "A correção vale para as próximas notas e não é mais trocada por dados de outras notas. As notas já emitidas não mudam.",
       "save": "Salvar",
       "nameRequired": "Informe o nome.",
       "failed": "Não foi possível salvar o cliente."

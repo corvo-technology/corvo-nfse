@@ -46,6 +46,8 @@ const COMMERCIAL_BLOCK: Record<string, BlockReason> = {
 /** Decides what an operation needs now and, when eligible, asks for the invoice. */
 @Injectable()
 export class OperationEmitter {
+  private readonly logger = new Logger(OperationEmitter.name);
+
   constructor(
     private readonly connections: ConnectionService,
     private readonly operations: IIntegrationOperationRepository,
@@ -57,8 +59,6 @@ export class OperationEmitter {
     private readonly bus?: ApplicationEventBus,
     private readonly savedCustomers?: SavedCustomerPort,
   ) {}
-
-  private readonly noticeLogger = new Logger(OperationEmitter.name);
 
   /** Throws on unexpected errors so the caller retries; the frozen request makes a retry safe. */
   async run(operation: IntegrationOperation): Promise<EventOutcome> {
@@ -258,6 +258,16 @@ export class OperationEmitter {
       status,
       reason,
     );
+    // Ids and codes only: never the buyer's data nor the sale's content.
+    this.logger.warn({
+      event: 'integration_operation_stopped',
+      tenantId: operation.tenantId,
+      connectionId: operation.connectionId,
+      operationId: operation.id,
+      operationKey: operation.operationKey,
+      state: status,
+      reason,
+    });
     if (status === 'needs_attention') await this.tellOwners(operation, reason);
     return status === 'blocked'
       ? { state: 'processed', operationId: operation.id }
@@ -301,7 +311,7 @@ export class OperationEmitter {
         }),
       );
     } catch (error) {
-      this.noticeLogger.warn({
+      this.logger.warn({
         event: 'integration_notice_failed',
         operationId: operation.id,
         error: error instanceof Error ? error.name : 'unknown',
@@ -330,7 +340,7 @@ export class OperationEmitter {
         ? { ...snapshot, customer: completeFromSaved(customer, saved) }
         : snapshot;
     } catch (error) {
-      this.noticeLogger.warn({
+      this.logger.warn({
         event: 'saved_customer_lookup_failed',
         operationId: operation.id,
         error: error instanceof Error ? error.name : 'unknown',

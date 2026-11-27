@@ -289,6 +289,33 @@ describe('WooviConnector.normalize', () => {
     expect(JSON.stringify(op)).not.toContain('Joao');
     expect(JSON.stringify(op)).not.toContain('11144477735');
   });
+  it('uses the Pix payer when the charge customer has no document', async () => {
+    const data = JSON.parse(fixture('charge-completed.json')) as {
+      charge: { customer: { taxID?: unknown } };
+    };
+    delete data.charge.customer.taxID;
+    const op = await run(JSON.stringify(data));
+    expect(op.customer).toMatchObject({
+      taxId: '11144477735',
+      taxIdMasked: false,
+    });
+  });
+  it('uses the Pix payer when the charge has no customer at all (fixture without customer)', async () => {
+    const op = await run(fixture('charge-completed-no-customer.json'));
+    expect(op.customer).toEqual({
+      name: 'Joao Pagador',
+      email: 'joao@example.com',
+      taxId: '11144477735',
+      taxIdMasked: false,
+    });
+  });
+  it('keeps no customer when neither the charge nor the payer has a document', async () => {
+    const data = JSON.parse(fixture('charge-completed-no-customer.json')) as {
+      pix: { payer: { taxID?: unknown } };
+    };
+    delete data.pix.payer.taxID;
+    expect((await run(JSON.stringify(data))).customer).toBeNull();
+  });
   it('accepts a taxID that is a plain string', async () => {
     const data = JSON.parse(fixture('charge-completed.json')) as {
       charge: { customer: { taxID: unknown } };
@@ -322,6 +349,7 @@ describe('WooviConnector.normalize', () => {
       charge: { customer?: unknown };
     };
     delete data.charge.customer;
+    delete (data as { pix?: { payer?: unknown } }).pix?.payer;
     expect((await run(JSON.stringify(data))).customer).toBeNull();
   });
   it('a customer without a taxID has taxId null and is not masked', async () => {
@@ -329,6 +357,7 @@ describe('WooviConnector.normalize', () => {
       charge: { customer: { taxID?: unknown } };
     };
     delete data.charge.customer.taxID;
+    delete (data as { pix?: { payer?: unknown } }).pix?.payer;
     expect((await run(JSON.stringify(data))).customer).toMatchObject({
       taxId: null,
       taxIdMasked: false,

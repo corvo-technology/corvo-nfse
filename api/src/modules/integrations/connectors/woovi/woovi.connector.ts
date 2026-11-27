@@ -43,6 +43,7 @@ interface WooviWebhook {
     customer?: WooviCustomer;
   };
   pix?: {
+    payer?: WooviCustomer;
     time?: string;
     transactionID?: string;
     endToEndId?: string;
@@ -80,6 +81,22 @@ function verifies(rawBody: Buffer, signature: string, publicKey: string) {
   } catch {
     return false;
   }
+}
+
+function hasTaxId(customer: WooviCustomer | undefined): boolean {
+  const raw =
+    typeof customer?.taxID === 'string'
+      ? customer.taxID
+      : customer?.taxID?.taxID;
+  return typeof raw === 'string' && raw.trim().length > 0;
+}
+
+/** The charge customer is the buyer; the Pix payer only fills in when the charge names no document. */
+function buyerOf(body: WooviWebhook): WooviCustomer | undefined {
+  const customer = body.charge?.customer;
+  return hasTaxId(customer) || !hasTaxId(body.pix?.payer)
+    ? customer
+    : { ...body.pix?.payer, name: body.pix?.payer?.name ?? customer?.name };
 }
 
 function toCustomer(
@@ -259,8 +276,8 @@ export class WooviConnector implements Connector {
       currency: 'BRL',
       amountCents: charge.value as number,
       discountCents: 0,
-      // The Pix payer is deliberately not used: only the charge customer is the buyer.
-      customer: toCustomer(charge.customer),
+      // The charge customer is the buyer; the Pix payer is only a fallback for a missing document.
+      customer: toCustomer(buyerOf(body)),
       items: [],
       description:
         typeof charge.comment === 'string' && charge.comment.trim()
