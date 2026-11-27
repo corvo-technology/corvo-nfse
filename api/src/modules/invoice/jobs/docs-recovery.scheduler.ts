@@ -10,6 +10,11 @@ import {
   FISCAL_RECONCILIATION_REPOSITORY,
   type IFiscalReconciliationRepository,
 } from '../domain/fiscal/reconciliation/fiscal-reconciliation.repository';
+import {
+  isPendingJobState,
+  reconciliationJobKey,
+  reconciliationJobKeys,
+} from '../application/reconciliation-job';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
 import { observeScheduledTask } from '@/shared/observability/scheduled-task-telemetry';
 
@@ -48,6 +53,17 @@ export class DocsRecoveryScheduler {
     );
   }
 
+  private async hasPendingReconciliation(invoiceId: string): Promise<boolean> {
+    for (const key of reconciliationJobKeys(invoiceId)) {
+      const state = await this.queueService.getJobStatus(
+        'nfse-reconciliation',
+        key.replace(/:/g, '_'),
+      );
+      if (isPendingJobState(state)) return true;
+    }
+    return false;
+  }
+
   @Cron('*/5 * * * *')
   async handle(): Promise<void> {
     await observeScheduledTask('invoice.docs-recovery', () => this.recover());
@@ -68,19 +84,35 @@ export class DocsRecoveryScheduler {
         )
       ).slice(0, budget);
       for (const i of fiscal) {
-        budget--;
-        await this.jitter();
-        await this.queueService.add(
-          'nfse-reconciliation',
-          'recover',
-          { invoiceId: i.id, tenantId: i.tenantId, companyId: i.companyId },
-          {
-            attempts: 5,
-            backoffMs: 30000,
-            removeOnComplete: true,
-            removeOnFail: 1000,
-          },
-        );
+        if (budget <= 0) break;
+        try {
+          // One reconciliation chain per invoice: while one is queued, delayed or running, recovery waits.
+          if (await this.hasPendingReconciliation(i.id)) continue;
+          await this.jitter();
+          await this.queueService.add(
+            'nfse-reconciliation',
+            'recover',
+            {
+              invoiceId: i.id,
+              tenantId: i.tenantId,
+              companyId: i.companyId,
+              attemptCount: 0,
+            },
+            {
+              idempotencyKey: reconciliationJobKey(i.id, 0),
+              attempts: 5,
+              backoffMs: 30000,
+              removeOnComplete: true,
+              removeOnFail: true,
+            },
+          );
+          budget--;
+        } catch (err) {
+          this.logger.error(
+            `Failed to re-enqueue reconciliation for invoice ${i.id}:`,
+            err,
+          );
+        }
       }
       const pending =
         budget > 0
@@ -94,7 +126,7 @@ export class DocsRecoveryScheduler {
           : [];
 
       for (const { id, tenantId, companyId } of pending) {
-        budget--;
+        if (budget <= 0) break;
         await this.jitter();
         try {
           await this.queueService.add(
@@ -108,6 +140,7 @@ export class DocsRecoveryScheduler {
               removeOnFail: 1000,
             },
           );
+          budget--;
           this.logger.log(`Re-enqueued doc-prep for invoice ${id}`);
         } catch (err) {
           this.logger.error(
@@ -137,7 +170,7 @@ export class DocsRecoveryScheduler {
           : [];
 
       for (const { id, tenantId, companyId } of withoutReconciliation) {
-        budget--;
+        if (budget <= 0) break;
         await this.jitter();
         try {
           await this.queueService.add(
@@ -152,6 +185,7 @@ export class DocsRecoveryScheduler {
               removeOnFail: 1000,
             },
           );
+          budget--;
           this.logger.log(
             `Re-enqueued fiscal reconciliation for invoice ${id}`,
           );
