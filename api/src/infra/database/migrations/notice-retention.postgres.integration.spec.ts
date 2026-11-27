@@ -6,7 +6,7 @@ import { noticeRetentionRules } from '@/infra/retention/notice-retention';
 import { IntegrationOperationOrmEntity } from '@/modules/integrations/infra/integration-operation.orm-entity';
 import { TypeOrmIntegrationOperationRepository } from '@/modules/integrations/infra/typeorm-integration-operation.repository';
 import { createTypeOrmOptions } from '../typeorm.options';
-import { IndexNoticeRetention1793900000000 } from './1793900000000-IndexNoticeRetention';
+import { IndexNoticeRetention1792990000000 } from './1792990000000-IndexNoticeRetention';
 
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
 if (
@@ -454,7 +454,7 @@ describePostgres('notice retention', () => {
       return rows.length;
     };
     expect(await count()).toBe(2);
-    const migration = new IndexNoticeRetention1793900000000();
+    const migration = new IndexNoticeRetention1792990000000();
     const runner = db.createQueryRunner();
     try {
       await migration.down(runner);
