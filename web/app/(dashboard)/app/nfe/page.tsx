@@ -22,7 +22,13 @@ export default function NfeListPage() {
   const t = useTranslations("Nfe");
   const tc = useTranslations("Common");
   const locale = useLocale();
-  const { can } = useAuth();
+  const { can, fiscalEnvironment, features } = useAuth();
+  const notice =
+    fiscalEnvironment !== "live"
+      ? t("homologationNotice")
+      : features.nfeProduction
+        ? t("liveNotice")
+        : t("form.productionLocked");
   const [model, setModel] = useState<NfeKind | "all">("nfe");
   const [companyId, setCompanyId] = useState("");
   const [status, setStatus] = useState<NfeStatus | "">("");
@@ -74,7 +80,7 @@ export default function NfeListPage() {
           </>
         }
       />
-      <p role="note" className="banner">{t("homologationNotice")}</p>
+      <p role="note" className="banner">{notice}</p>
       <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 text-sm text-text-3">
           <span>{t("filters.model")}</span>
