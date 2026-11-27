@@ -150,6 +150,8 @@ const DETAILED_NFE_FIELDS = [
   'externalId',
   'documentsReady',
   'documentsReadyAt',
+  'documentsStatus',
+  'stage',
   'emailStatus',
   'emailSentAt',
   'attempt',

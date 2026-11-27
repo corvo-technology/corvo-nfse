@@ -18,6 +18,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { NumericOption } from '@/shared/http/numeric-option';
 import {
   NfeAddressDto,
   NfeItemDto,
@@ -71,7 +72,7 @@ export class NfceCardDto {
       '1 payment integrated with the sales system (needs `cnpj` and `cAut`), 2 not integrated.',
   })
   @IsOptional()
-  @IsIn([1, 2])
+  @NumericOption('tpIntegra', [1, 2])
   tpIntegra?: 1 | 2;
 
   @ApiPropertyOptional({ description: 'CNPJ of the payment institution.' })
@@ -133,7 +134,7 @@ export class NfceRequestDto {
       'Buyer presence: 1 in person, 4 delivery (needs the consumer CPF/CNPJ, name and address), 5 in person outside the issuer establishment.',
   })
   @IsOptional()
-  @IsIn([1, 4, 5])
+  @NumericOption('indPres', [1, 4, 5])
   indPres?: 1 | 4 | 5;
 
   @ApiProperty({ type: [NfeItemDto], minItems: 1, maxItems: 990 })

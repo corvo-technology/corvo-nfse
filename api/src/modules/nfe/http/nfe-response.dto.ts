@@ -3,6 +3,7 @@ import { IsIn, IsOptional, IsUUID } from 'class-validator';
 import { CursorQuery } from '@/shared/http/pagination';
 import { NFCE_CONTINGENCY_DEADLINE_MS } from '@/modules/nfce/domain/contingency';
 import type { NfeDocument } from '../domain/nfe-document';
+import { nfeLifecycle } from '../domain/nfe-lifecycle';
 import { NFE_STATUSES, type NfeStatus } from '../domain/nfe-status';
 import { toNfeHttpError, type NfeHttpError } from './nfe-error-http';
 
@@ -33,6 +34,7 @@ export function toNfeResponse(doc: NfeDocument) {
   const s = doc.toSnapshot();
   const error = toNfeHttpError(s);
   const lastError: NfeHttpError | null = error ? error.error : null;
+  const lifecycle = nfeLifecycle(s);
   return {
     type: s.model === 65 ? ('nfce' as const) : ('nfe' as const),
     id: s.id,
@@ -76,6 +78,8 @@ export function toNfeResponse(doc: NfeDocument) {
     externalId: s.externalId,
     documentsReady: s.documentsReadyAt !== null,
     documentsReadyAt: s.documentsReadyAt,
+    documentsStatus: lifecycle.documentsStatus,
+    stage: lifecycle.stage,
     emailStatus: s.emailStatus,
     emailSentAt: s.emailSentAt,
     attempt: s.attempt,

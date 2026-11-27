@@ -10680,6 +10680,14 @@ components:
           format: date-time
           nullable: true
           type: string
+        documentsStatus:
+          description: >-
+            Same as for an NFS-e: `ready` once the XML and the DANFE are stored (the same as
+            `documentsReady`).
+          enum:
+            - pending
+            - ready
+          type: string
         emailSentAt:
           format: date-time
           nullable: true
@@ -10762,6 +10770,18 @@ components:
         series:
           nullable: true
           type: integer
+        stage:
+          description: >-
+            Same as for an NFS-e: `completed` means authorized, documents ready and the requested
+            e-mail resolved.
+          enum:
+            - pending
+            - authorized
+            - documents_ready
+            - completed
+            - failed
+            - cancelled
+          type: string
         status:
           enum:
             - queued
@@ -10845,6 +10865,8 @@ components:
         - cancelRequestedAt
         - documentsReady
         - documentsReadyAt
+        - documentsStatus
+        - stage
         - emailStatus
         - emailSentAt
         - attempt
@@ -11309,8 +11331,6 @@ components:
           default: 1
           enum:
             - 1
-          maximum: 4
-          minimum: 1
           type: number
         items:
           items:

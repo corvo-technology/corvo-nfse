@@ -95,6 +95,52 @@ describe('NfeRequestDto', () => {
     ).toContain('recipient.indIeDest');
   });
 
+  it.each([
+    ['9', 9],
+    [9, 9],
+    ['1', 1],
+    ['2', 2],
+    [' 9 ', 9],
+  ])(
+    'accepts indIeDest %p and turns it into the number',
+    async (sent, expected) => {
+      const body = valid();
+      const dto = plainToInstance(NfeRequestDto, {
+        ...body,
+        recipient: { ...body.recipient, indIeDest: sent },
+      });
+      expect(dto.recipient.indIeDest).toBe(expected);
+      const errors = await validate(dto, {
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      });
+      expect(
+        errors.flatMap((e) => (e.children ?? []).map((c) => c.property)),
+      ).not.toContain('indIeDest');
+    },
+  );
+
+  it('refuses indIeDest "3" and "abc" with a message that says what is accepted', async () => {
+    for (const sent of ['3', 'abc']) {
+      const body = valid();
+      const errors = await validate(
+        plainToInstance(NfeRequestDto, {
+          ...body,
+          recipient: { ...body.recipient, indIeDest: sent },
+        }),
+        { whitelist: true },
+      );
+      const message = JSON.stringify(errors);
+      expect(message).toContain('indIeDest must be one of 1, 2, 9');
+      expect(message).toContain('as a number or text');
+    }
+  });
+
+  it('accepts finNfe and tpImp as text too', async () => {
+    expect(await problems({ ...valid(), finNfe: '1', tpImp: '1' })).toEqual([]);
+    expect(await problems({ ...valid(), tpImp: '3' })).toContain('tpImp');
+  });
+
   it('wants the recipient and its address', async () => {
     const { recipient: _omit, ...rest } = valid();
     expect(await problems(rest)).toContain('recipient');

@@ -6,8 +6,6 @@ import {
   IsArray,
   IsBoolean,
   IsEmail,
-  IsIn,
-  IsInt,
   IsNumber,
   IsObject,
   IsOptional,
@@ -20,6 +18,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { NumericOption } from '@/shared/http/numeric-option';
 
 const money = { maxDecimalPlaces: 2, allowNaN: false, allowInfinity: false };
 
@@ -91,7 +90,7 @@ export class NfeRecipientDto {
     description:
       '1 contributor (needs `stateRegistration`), 2 exempt, 9 non-contributor.',
   })
-  @IsIn([1, 2, 9])
+  @NumericOption('indIeDest', [1, 2, 9])
   indIeDest!: 1 | 2 | 9;
 
   @ApiPropertyOptional({ nullable: true, maxLength: 18 })
@@ -116,9 +115,7 @@ export class NfeRecipientDto {
 export class NfeItemTaxDto {
   @ApiPropertyOptional({ minimum: 0, maximum: 8 })
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Max(8)
+  @NumericOption('origin', [0, 1, 2, 3, 4, 5, 6, 7, 8])
   origin?: number;
 
   @ApiPropertyOptional({ enum: ['102', '400'] })
@@ -264,9 +261,7 @@ export class NfeRequestDto {
 
   @ApiPropertyOptional({ enum: [1], default: 1 })
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(4)
+  @NumericOption('finNfe', [1, 2, 3, 4])
   finNfe?: number;
 
   @ApiPropertyOptional({
@@ -275,7 +270,7 @@ export class NfeRequestDto {
     description: 'DANFE layout: 1 portrait, 2 landscape.',
   })
   @IsOptional()
-  @IsIn([1, 2])
+  @NumericOption('tpImp', [1, 2])
   tpImp?: number;
 
   @ApiProperty({ type: NfeRecipientDto })

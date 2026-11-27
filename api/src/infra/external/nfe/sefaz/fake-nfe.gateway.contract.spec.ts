@@ -59,6 +59,15 @@ describe('FakeNfeGateway scenarios', () => {
     }
   });
 
+  it('writes the reception time (Brasília) in the protocol, as the SEFAZ does', async () => {
+    const issued = await make().issuer.issue(nfe('PROD-ANY'), ctx);
+    expect(issued.kind).toBe('ok');
+    if (issued.kind === 'ok')
+      expect(issued.value.protNFeXml).toContain(
+        '<dhRecbto>2026-11-26T09:00:00-03:00</dhRecbto>',
+      );
+  });
+
   it.each([
     ['FAKE-225', '225'],
     ['FAKE-539', '539'],

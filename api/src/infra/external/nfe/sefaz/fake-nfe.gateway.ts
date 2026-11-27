@@ -245,13 +245,14 @@ export class FakeNfeGateway implements FiscalDocumentGateway<SignedNfe> {
   private authorize(doc: SignedNfe): NfeAuthorization {
     const protocol = `135${doc.accessKey.slice(0, 12)}`;
     const authorizedAt = this.now();
+    const receivedAt = spTimestamp(authorizedAt);
     return {
       accessKey: doc.accessKey,
       protocol,
       authorizedAt,
       cStat: '100',
       xMotivo: CSTAT_MESSAGES['100'],
-      protNFeXml: `<protNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><infProt><tpAmb>2</tpAmb><chNFe>${doc.accessKey}</chNFe><nProt>${protocol}</nProt><cStat>100</cStat><xMotivo>${CSTAT_MESSAGES['100']}</xMotivo></infProt></protNFe>`,
+      protNFeXml: `<protNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><infProt><tpAmb>2</tpAmb><chNFe>${doc.accessKey}</chNFe><nProt>${protocol}</nProt><dhRecbto>${receivedAt}</dhRecbto><cStat>100</cStat><xMotivo>${CSTAT_MESSAGES['100']}</xMotivo></infProt></protNFe>`,
     };
   }
 
@@ -267,4 +268,10 @@ export class FakeNfeGateway implements FiscalDocumentGateway<SignedNfe> {
 
 function scenarioOf(signedXml: string): string {
   return /<cProd>([^<]*)<\/cProd>/.exec(signedXml)?.[1] ?? 'FAKE-100';
+}
+
+/** `dhRecbto` as the SEFAZ writes it: wall clock of Brasília with the -03:00 offset. */
+function spTimestamp(date: Date): string {
+  const shifted = new Date(date.getTime() - 3 * 3_600_000);
+  return `${shifted.toISOString().slice(0, 19)}-03:00`;
 }

@@ -509,6 +509,23 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
           'True once the XML (`nfeProc`) and the DANFE can be downloaded; they stay available after a cancellation.',
       }),
       documentsReadyAt: nullable(dateTime()),
+      documentsStatus: str({
+        enum: ['pending', 'ready'],
+        description:
+          'Same as for an NFS-e: `ready` once the XML and the DANFE are stored (the same as `documentsReady`).',
+      }),
+      stage: str({
+        enum: [
+          'pending',
+          'authorized',
+          'documents_ready',
+          'completed',
+          'failed',
+          'cancelled',
+        ],
+        description:
+          'Same as for an NFS-e: `completed` means authorized, documents ready and the requested e-mail resolved.',
+      }),
       emailStatus: nullable(
         str({
           enum: ['queued', 'sent', 'failed'],
