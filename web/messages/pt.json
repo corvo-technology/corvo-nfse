@@ -4511,7 +4511,7 @@
     },
     "code": {
       "label": "Exemplo de chamada da API",
-      "result": "{ \"status\": \"queued\" } → autorizada · DANFE pronto"
+      "result": "status: queued → autorizada · DANFE pronto"
     },
     "features": {
       "title": "O que a NF-e da Corvo faz",

@@ -4511,7 +4511,7 @@
     },
     "code": {
       "label": "API call example",
-      "result": "{ \"status\": \"queued\" } → authorized · DANFE ready"
+      "result": "status: queued → authorized · DANFE ready"
     },
     "features": {
       "title": "What Corvo NF-e does",
