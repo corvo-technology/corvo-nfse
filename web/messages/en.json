@@ -3782,6 +3782,7 @@
     "title": "NF-e",
     "subtitle": "Goods invoices (NF-e, model 55).",
     "homologationNotice": "NF-e is in test mode (homologação): notes here have no tax value. Corvo does not calculate taxes: you enter the CFOP, NCM and CSOSN of each item.",
+    "liveNotice": "Production notes, with tax value. Corvo does not calculate taxes: you enter the CFOP, NCM and CSOSN of each item.",
     "loadFailed": "Could not load the notes. Try again.",
     "loadMore": "Load more",
     "empty": "No NF-e here yet.",

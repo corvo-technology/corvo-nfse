@@ -3782,6 +3782,7 @@
     "title": "NF-e",
     "subtitle": "Notas fiscais de produto (NF-e, modelo 55).",
     "homologationNotice": "A NF-e está em teste (homologação): as notas aqui não têm valor fiscal. O Corvo não calcula impostos: você informa CFOP, NCM e CSOSN de cada item.",
+    "liveNotice": "Notas de produção, com valor fiscal. O Corvo não calcula impostos: você informa CFOP, NCM e CSOSN de cada item.",
     "loadFailed": "Não foi possível carregar as notas. Tente de novo.",
     "loadMore": "Carregar mais",
     "empty": "Nenhuma NF-e por aqui ainda.",

@@ -6,9 +6,9 @@ import NfeListPage from "@/app/(dashboard)/app/nfe/page";
 import type { NfeDocument } from "@/lib/nfe";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ list: vi.fn(), permissions: new Set<string>() }));
+const mocks = vi.hoisted(() => ({ environment: "test" as "test" | "live", nfeProduction: false, list: vi.fn(), permissions: new Set<string>() }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
-vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (permission: string) => mocks.permissions.has(permission) }) }));
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (permission: string) => mocks.permissions.has(permission), fiscalEnvironment: mocks.environment, features: { nfeProduction: mocks.nfeProduction } }) }));
 vi.mock("@/lib/api", async (original) => ({
   ...(await original<typeof import("@/lib/api")>()),
   companies: { list: async () => ({ items: [{ id: "c1", legalName: "Acme Ltda", tradeName: "Acme" }], hasMore: false, nextCursor: null }) },
@@ -25,12 +25,29 @@ const renderPage = () => render(<NextIntlClientProvider locale="en" messages={me
 
 beforeEach(() => {
   mocks.permissions = new Set(["nfe.documents.view", "nfe.documents.issue"]);
+  mocks.environment = "test";
+  mocks.nfeProduction = false;
   mocks.list.mockReset();
   mocks.list.mockResolvedValue({ items: [nfe(), nfe({ id: "n2", status: "rejected", recipient: { name: "João", taxId: "1" } as never, lastError: { type: "validation", code: "X", message: "NCM invalid" } })], hasMore: true, nextCursor: "next" });
 });
 afterEach(cleanup);
 
 describe("NF-e list", () => {
+  it("shows the notice for the environment: test, production off, production on", async () => {
+    const { unmount } = renderPage();
+    expect(await screen.findByText(messages.Nfe.homologationNotice)).toBeTruthy();
+    unmount();
+    mocks.environment = "live";
+    const second = renderPage();
+    expect(await screen.findByText(messages.Nfe.form.productionLocked)).toBeTruthy();
+    expect(screen.queryByText(messages.Nfe.homologationNotice)).toBeNull();
+    second.unmount();
+    mocks.nfeProduction = true;
+    renderPage();
+    expect(await screen.findByText(messages.Nfe.liveNotice)).toBeTruthy();
+    expect(screen.queryByText(messages.Nfe.homologationNotice)).toBeNull();
+  });
+
   it("lists the notes with number, amount and state, linking each to its page", async () => {
     renderPage();
     const link = (await screen.findAllByRole("link", { name: "Maria da Silva" }))[0];
