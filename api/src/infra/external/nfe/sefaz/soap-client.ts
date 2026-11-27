@@ -255,15 +255,7 @@ export class SefazSoapClient {
       this.agents.set(key, cached);
       return cached;
     }
-    const agent = new Agent({
-      connect: {
-        key: certificate.keyPem,
-        cert: certificate.certPem,
-        ca: SEFAZ_TRUST_ROOTS,
-        rejectUnauthorized: true,
-        timeout: timeoutMs,
-      },
-    });
+    const agent = new Agent(sefazAgentOptions(certificate, timeoutMs));
     this.agents.set(key, agent);
     if (this.agents.size > AGENT_CACHE_SIZE) {
       const [oldest] = this.agents.keys();
@@ -274,4 +266,26 @@ export class SefazSoapClient {
     }
     return agent;
   }
+}
+
+/**
+ * Options of the undici Agent that talks to the SEFAZ. undici 8 negotiates HTTP/2 by
+ * default, and the SEFAZ web services break on it (ERR_HTTP2_STREAM_ERROR in production),
+ * so HTTP/1.1 only, as the gov proxy already does.
+ */
+export function sefazAgentOptions(
+  certificate: Pick<LoadedCertificate, 'keyPem' | 'certPem'>,
+  timeoutMs: number,
+): Agent.Options {
+  return {
+    allowH2: false,
+    connect: {
+      key: certificate.keyPem,
+      cert: certificate.certPem,
+      ca: SEFAZ_TRUST_ROOTS,
+      rejectUnauthorized: true,
+      timeout: timeoutMs,
+      ALPNProtocols: ['http/1.1'],
+    },
+  };
 }
