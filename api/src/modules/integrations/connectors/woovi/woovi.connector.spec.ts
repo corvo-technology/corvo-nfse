@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { WooviConnector } from './woovi.connector';
 import type { WooviPublicKeyProvider } from './woovi-public-key.provider';
+import { planEmission } from '../../domain/emission-planner';
 import {
   ConnectorDataError,
   type ConnectionView,
@@ -288,6 +289,33 @@ describe('WooviConnector.normalize', () => {
     expect(JSON.stringify(op)).not.toContain('Joao');
     expect(JSON.stringify(op)).not.toContain('11144477735');
   });
+  it('uses the Pix payer when the charge customer has no document', async () => {
+    const data = JSON.parse(fixture('charge-completed.json')) as {
+      charge: { customer: { taxID?: unknown } };
+    };
+    delete data.charge.customer.taxID;
+    const op = await run(JSON.stringify(data));
+    expect(op.customer).toMatchObject({
+      taxId: '11144477735',
+      taxIdMasked: false,
+    });
+  });
+  it('uses the Pix payer when the charge has no customer at all (fixture without customer)', async () => {
+    const op = await run(fixture('charge-completed-no-customer.json'));
+    expect(op.customer).toEqual({
+      name: 'Joao Pagador',
+      email: 'joao@example.com',
+      taxId: '11144477735',
+      taxIdMasked: false,
+    });
+  });
+  it('keeps no customer when neither the charge nor the payer has a document', async () => {
+    const data = JSON.parse(fixture('charge-completed-no-customer.json')) as {
+      pix: { payer: { taxID?: unknown } };
+    };
+    delete data.pix.payer.taxID;
+    expect((await run(JSON.stringify(data))).customer).toBeNull();
+  });
   it('accepts a taxID that is a plain string', async () => {
     const data = JSON.parse(fixture('charge-completed.json')) as {
       charge: { customer: { taxID: unknown } };
@@ -321,6 +349,7 @@ describe('WooviConnector.normalize', () => {
       charge: { customer?: unknown };
     };
     delete data.charge.customer;
+    delete (data as { pix?: { payer?: unknown } }).pix?.payer;
     expect((await run(JSON.stringify(data))).customer).toBeNull();
   });
   it('a customer without a taxID has taxId null and is not masked', async () => {
@@ -328,6 +357,7 @@ describe('WooviConnector.normalize', () => {
       charge: { customer: { taxID?: unknown } };
     };
     delete data.charge.customer.taxID;
+    delete (data as { pix?: { payer?: unknown } }).pix?.payer;
     expect((await run(JSON.stringify(data))).customer).toMatchObject({
       taxId: null,
       taxIdMasked: false,
@@ -479,5 +509,67 @@ describe('WooviConnector.validateConnection', () => {
     expect(first.externalAccountId).toMatch(/^woovi:[0-9a-f]{24}$/);
     expect(first.externalAccountId).not.toBe(other.externalAccountId);
     expect(first.externalAccountId).not.toContain('pub-1');
+  });
+});
+
+describe('A paid Woovi sale from a company with a CNPJ and no e-mail', () => {
+  const body = fixture('charge-completed-cnpj-no-email.json');
+  const { connector } = setup();
+  const delivery: OperationDelivery = {
+    kind: 'operation',
+    deliveryId: 'd',
+    externalType: 'OPENPIX:CHARGE_COMPLETED',
+  };
+
+  it('reads the buyer name and the CNPJ given as an object', async () => {
+    const op = await connector.normalize({
+      connection,
+      payload: body,
+      delivery,
+    });
+    expect(op.customer).toEqual({
+      name: 'EMPRESA EXEMPLO SOCIEDADE INDIVIDUAL DE ADVOCACIA',
+      email: null,
+      taxId: '11222333000181',
+      taxIdMasked: false,
+    });
+  });
+
+  it('still becomes an invoice, just without the e-mail, when the connection sends e-mail', async () => {
+    const op = await connector.normalize({
+      connection,
+      payload: body,
+      delivery,
+    });
+    const plan = planEmission({
+      tenantId: 't',
+      provider: 'woovi',
+      connection: {
+        id: 'c',
+        companyId: 'co',
+        state: 'active',
+        activeFrom: null,
+        environment: 'live',
+        externalAccountId: 'woovi:abc',
+      },
+      operation: { snapshot: op, commercialState: op.commercialState },
+      rules: [
+        {
+          id: 'r',
+          tenantId: 't',
+          connectionId: 'c',
+          externalProductId: null,
+          service: {},
+          sendEmail: true,
+          allowAnonymousCustomer: false,
+          cancelOnRefund: false,
+        },
+      ],
+    });
+    expect(plan.kind).toBe('issue');
+    if (plan.kind === 'issue') {
+      expect(plan.request.email).toBe(false);
+      expect(plan.request.amount).toBe(9.9);
+    }
   });
 });

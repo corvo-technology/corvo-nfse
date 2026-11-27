@@ -82,11 +82,19 @@ describe('CheckoutRouterService', () => {
     await expect(
       f.service.start(
         tenant,
-        { kind: 'avulso', units: 10, method: 'pix' },
+        {
+          kind: 'avulso',
+          units: 10,
+          method: 'pix',
+          customer: { name: 'Ana', taxID: '52998224725' },
+        },
         'k',
       ),
     ).resolves.toBe(pixResult);
-    expect(f.woovi.startAvulso).toHaveBeenCalledWith(tenant, 10, 'k');
+    expect(f.woovi.startAvulso).toHaveBeenCalledWith(tenant, 10, 'k', {
+      name: 'Ana',
+      taxID: '52998224725',
+    });
   });
   it('pix + plan -> Woovi plan flow with cycle and payer', async () => {
     const f = setup();

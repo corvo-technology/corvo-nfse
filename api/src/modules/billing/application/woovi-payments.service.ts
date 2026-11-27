@@ -24,6 +24,7 @@ import { PricingService } from '@/modules/plans/application/pricing.service';
 import type { BillingCycle, PlanSlug } from '@/modules/plans/domain/plan';
 import {
   WooviClient,
+  type WooviChargeCustomer,
   type WooviCustomer,
 } from '@/infra/external/woovi/woovi.client';
 
@@ -78,6 +79,7 @@ export class WooviPaymentsService {
     tenantId: string,
     units: number,
     idempotencyKey: string,
+    customer?: Partial<WooviChargeCustomer>,
   ): Promise<PixCheckout> {
     try {
       assertAvulsoUnits(units);
@@ -87,6 +89,7 @@ export class WooviPaymentsService {
         message: (error as Error).message,
       });
     }
+    const buyer = this.assertBuyer(customer);
     const replay = await this.replay(tenantId, idempotencyKey, {
       kind: 'avulso',
       planSlug: null,
@@ -101,6 +104,7 @@ export class WooviPaymentsService {
       valueCents: amountCents,
       comment: `Corvo: ${units} notas avulsas`,
       expiresInSeconds: CHARGE_TTL_SECONDS,
+      customer: buyer,
     });
     return this.save({
       tenantId,
@@ -121,7 +125,7 @@ export class WooviPaymentsService {
     planSlug: PlanSlug,
     cycle: BillingCycle,
     idempotencyKey: string,
-    customer: WooviCustomer | undefined,
+    customer: Partial<WooviCustomer> | undefined,
   ): Promise<PixCheckout> {
     const quote = this.pricing.calculateQuote(planSlug, cycle);
     if (cycle === 'monthly') this.assertPayer(customer);
@@ -163,7 +167,7 @@ export class WooviPaymentsService {
       planName: `Corvo ${quote.name}`,
       valueCents: quote.chargeTotalCents,
       comment: `Corvo ${quote.name} (mensal)`,
-      customer: customer!,
+      customer: customer as WooviCustomer,
     });
     return this.save({
       ...base,
@@ -178,9 +182,32 @@ export class WooviPaymentsService {
     });
   }
 
+  /**
+   * The charge must name its buyer (name and CPF/CNPJ), otherwise the sale reaches the invoicing
+   * integration without a tax id and no note can be issued to them.
+   */
+  private assertBuyer(
+    customer: Partial<WooviChargeCustomer> | undefined,
+  ): WooviChargeCustomer {
+    const name = customer?.name?.trim();
+    const taxID = (customer?.taxID ?? '').replace(/\D/g, '');
+    const email = customer?.email?.trim();
+    if (!name)
+      throw new BadRequestException({
+        code: 'PIX_PAYER_FIELD_REQUIRED',
+        message: 'The Pix charge needs the buyer name',
+      });
+    if (taxID.length !== 11 && taxID.length !== 14)
+      throw new BadRequestException({
+        code: 'PIX_PAYER_FIELD_REQUIRED',
+        message: 'The Pix charge needs the buyer CPF or CNPJ',
+      });
+    return { name, taxID, ...(email ? { email } : {}) };
+  }
+
   /** A recurring Pix needs the payer's basics: Woovi rejects the contract without them. */
   private assertPayer(
-    customer: WooviCustomer | undefined,
+    customer: Partial<WooviCustomer> | undefined,
   ): asserts customer is WooviCustomer {
     const missing = (value: string | undefined) => !value || !value.trim();
     const field = !customer

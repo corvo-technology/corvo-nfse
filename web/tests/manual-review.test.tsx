@@ -62,6 +62,16 @@ describe("ManualReviewActions", () => {
     expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
   });
 
+  it("says the action is unavailable when the proxy refuses the route, not the generic failure", async () => {
+    const { ApiError } = await import("@/lib/api");
+    mocks.review.mockRejectedValue(new ApiError(404, "Route unavailable", "proxy_route_unavailable"));
+    wrap(<ManualReviewActions invoiceIds={["a"]} onDone={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(messages.ApiErrors.proxy_route_unavailable));
+  });
+
   it("only offers discard when the invoice number already belongs to another invoice", async () => {
     mocks.review.mockResolvedValue([{ id: "a", outcome: "accepted" }]);
     wrap(<ManualReviewActions invoiceIds={["a"]} dpsUsedByOther onDone={vi.fn()} />);

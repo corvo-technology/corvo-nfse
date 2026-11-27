@@ -2,11 +2,14 @@ import {
   creditsLowEmail,
   emailLayout,
   nfeAuthorizedEmail,
+  formatFromHeader,
   nfseDocumentsReadyEmail,
   otpEmail,
   paragraph,
   schedulePausedEmail,
   scheduleRetryEmail,
+  senderDisplayName,
+  toTitleCase,
   welcomeEmail,
 } from './email-templates';
 
@@ -17,7 +20,6 @@ const nfse = {
   number: '42',
   issueDate: '07/11/2026',
   description: 'Consultoria',
-  accessKey: 'ABC123',
 };
 
 describe('email templates', () => {
@@ -39,11 +41,11 @@ describe('email templates', () => {
       name: 'Maria',
       dashboardUrl: 'https://x.test',
     });
-    expect(named.text).toContain('Olá, Maria!');
+    expect(named.text).toContain('Olá, Maria.');
     for (const name of ['', '   ', undefined]) {
       const email = welcomeEmail({ name, dashboardUrl: 'https://x.test' });
-      expect(email.text).toContain('Olá! Sua conta');
-      expect(email.text).not.toContain('Olá, !');
+      expect(email.text).toContain('Olá. Sua conta');
+      expect(email.text).not.toContain('Olá, .');
     }
   });
 
@@ -96,10 +98,87 @@ describe('email templates', () => {
     ).not.toContain('[TESTE]');
   });
 
-  it('leaves the logo out of the invoice email only', () => {
-    expect(
-      nfseDocumentsReadyEmail({ ...nfse, isTest: false }).html,
-    ).not.toContain('icon-192.png');
+  it('writes the invoice email as the issuing company, not as Corvo', () => {
+    const email = nfseDocumentsReadyEmail({
+      ...nfse,
+      companyName: 'Greenflow',
+      customerName: 'PEDRO HENRIQUE DA SILVA',
+      amount: 'R$ 1.500,00',
+      isTest: false,
+    });
+    expect(email.subject).toBe('Greenflow - Sua nota fiscal nº 42');
+    expect(email.text).toContain('Olá, Pedro Henrique da Silva,');
+    expect(email.text).toContain('Você recebeu uma nota fiscal');
+    expect(email.text).toContain('Emitente: Greenflow');
+    expect(email.text).toContain('Número: 42');
+    expect(email.text).toContain('Data de emissão: 07/11/2026');
+    expect(email.text).toContain('Consultoria: R$ 1.500,00');
+    expect(email.text).toContain(
+      'Este e-mail foi enviado pelo sistema de emissão de nota fiscal Corvo. Em caso de dúvidas, fale direto com Greenflow.',
+    );
+    expect(email.html).not.toContain('icon-192.png');
+    expect(email.html).not.toContain('#2f7a55');
+    expect(email.text).not.toContain('!');
+    expect(email.text).not.toContain('Chave de acesso');
+    expect(email.text).not.toContain('Protocolo');
+  });
+
+  it('shows the protocol only when there is one, and greets without a name', () => {
+    const withProtocol = nfseDocumentsReadyEmail({
+      ...nfse,
+      customerName: '  ',
+      protocol: '123456',
+      isTest: false,
+    });
+    expect(withProtocol.text).toContain('Protocolo de autorização: 123456');
+    expect(withProtocol.text.startsWith('Olá,\n')).toBe(true);
+  });
+
+  it('cuts a long service description', () => {
+    const email = nfseDocumentsReadyEmail({
+      ...nfse,
+      description: 'x'.repeat(300),
+      isTest: false,
+    });
+    expect(email.text).not.toContain('x'.repeat(141));
+    expect(email.text).toContain('…');
+  });
+
+  it('turns ALL CAPS names into Title Case and leaves mixed case alone', () => {
+    expect(toTitleCase('MARIA DAS GRAÇAS E SILVA')).toBe(
+      'Maria das Graças e Silva',
+    );
+    expect(toTitleCase('DA SILVA')).toBe('Da Silva');
+    expect(toTitleCase('Ana de Souza')).toBe('Ana de Souza');
+    expect(toTitleCase('  ')).toBe('');
+  });
+
+  it('cleans the sender name and quotes it only when needed', () => {
+    expect(formatFromHeader('Greenflow', 'noreply@corvo.tech')).toBe(
+      'Greenflow <noreply@corvo.tech>',
+    );
+    expect(formatFromHeader('Acme Ltda.', 'noreply@corvo.tech')).toBe(
+      '"Acme Ltda." <noreply@corvo.tech>',
+    );
+    expect(formatFromHeader('', 'noreply@corvo.tech')).toBe(
+      'Corvo <noreply@corvo.tech>',
+    );
+    expect(senderDisplayName('x'.repeat(100))).toHaveLength(64);
+  });
+
+  it('does not let a company name inject headers or addresses', () => {
+    const evil = 'Evil"\r\nBcc: x@y.com <a@b.com>';
+    const name = senderDisplayName(evil);
+    expect(name).not.toMatch(/["<>\r\n]/);
+    const from = formatFromHeader(evil, 'noreply@corvo.tech');
+    expect(from).not.toMatch(/[\r\n]/);
+    expect(from.endsWith(' <noreply@corvo.tech>')).toBe(true);
+    const email = nfseDocumentsReadyEmail({
+      ...nfse,
+      companyName: evil,
+      isTest: false,
+    });
+    expect(email.subject).not.toMatch(/[\r\n]/);
   });
 
   it('writes the NF-e e-mail in plain pt-BR, with the key and the attachments named', () => {

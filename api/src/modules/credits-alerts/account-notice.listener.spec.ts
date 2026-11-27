@@ -328,4 +328,72 @@ describe('AccountNoticeListener', () => {
       ),
     ).resolves.toBeUndefined();
   });
+
+  describe('integration sale waiting for the client', () => {
+    const sale = (operationId: string, pendingCount = 1) =>
+      accountNotice('t1', {
+        kind: 'integration-sale-needs-attention',
+        operationId,
+        connectionId: 'c1',
+        provider: 'woovi',
+        amountCents: 990,
+        paidAt: new Date('2026-11-26T15:00:00Z'),
+        buyerName: 'ACME LTDA',
+        reason: 'customer_tax_id_missing',
+        pendingCount,
+      });
+    const withMemoryLocks = () => {
+      const made = build();
+      const taken = new Set<string>();
+      const locks = {
+        acquire: jest.fn((key: string) => {
+          if (taken.has(key)) return Promise.resolve(null);
+          taken.add(key);
+          return Promise.resolve({});
+        }),
+      };
+      const listener = new AccountNoticeListener(
+        {
+          emailsFor: jest.fn(),
+          ownerEmailsFor: jest.fn().mockResolvedValue(['owner@x.com']),
+        } as never,
+        made.email as never,
+        { get: jest.fn().mockReturnValue('https://corvo.tech/app') } as never,
+        locks as never,
+      );
+      return { listener, email: made.email };
+    };
+    const sent = (email: { enqueueNotice: jest.Mock }) =>
+      email.enqueueNotice.mock.calls as unknown as Array<
+        [string, { subject: string; html: string; text: string }]
+      >;
+
+    it('tells the owner platform, amount, date, buyer, plain reason and a button to the sale', async () => {
+      const { listener, email } = withMemoryLocks();
+      await listener.handle(sale('op1'));
+      const [to, message] = sent(email)[0];
+      expect(to).toBe('owner@x.com');
+      expect(message.text).toContain('Woovi');
+      expect(message.text).toContain('R$');
+      expect(message.text).toContain('26/11/2026');
+      expect(message.text).toContain('ACME LTDA');
+      expect(message.text).toContain('Falta o CPF ou CNPJ do cliente');
+      expect(message.html).toContain('app/integrations/sales/op1');
+    });
+
+    it('sends one notice per sale, however many times it is announced', async () => {
+      const { listener, email } = withMemoryLocks();
+      await listener.handle(sale('op1'));
+      await listener.handle(sale('op1'));
+      expect(email.enqueueNotice).toHaveBeenCalledTimes(1);
+    });
+
+    it('after 5 sales in a day sends a single summary and then stays quiet', async () => {
+      const { listener, email } = withMemoryLocks();
+      for (let n = 1; n <= 8; n++) await listener.handle(sale(`op${n}`, n));
+      const subjects = sent(email).map(([, m]) => m.subject);
+      expect(subjects).toHaveLength(6);
+      expect(subjects[5]).toBe('Vendas esperando você para virar nota');
+    });
+  });
 });
