@@ -123,6 +123,7 @@ export default function NfeDetailPage() {
           {last.issues && last.issues.length > 0 && <ul className="list-disc pl-5 text-sm">{last.issues.map((issue) => <li key={`${issue.field}-${issue.code}`}><span className="font-mono">{issue.field}</span>: {te.has(errorCodeKey(issue.code)) ? te(errorCodeKey(issue.code)) : issue.message}</li>)}</ul>}
         </div>
       )}
+      {nfe.status === "contingency_pending" && <p role="status" className="banner banner-warn">{t("contingencyPending", { deadline: date(nfe.contingencyDeadlineAt ?? null) })}</p>}
       {nfe.status === "reconciliation_required" && <p role="status" className="banner banner-warn">{t("reconciling")}</p>}
       {nfe.status === "manual_review" && <p role="status" className="banner banner-warn">{t("manualReview")}</p>}
 
@@ -134,6 +135,7 @@ export default function NfeDetailPage() {
         <div className="sm:col-span-2"><p className="eyebrow">{t("accessKey")}</p><p className="select-all break-all font-mono text-[13px]">{nfe.accessKey ?? "—"}</p></div>
         <div><p className="eyebrow">{t("protocol")}</p><p className="font-mono text-[13px]">{nfe.protocol ?? "—"}</p></div>
         <div><p className="eyebrow">{t("authorizedAt")}</p><p>{date(nfe.authorizedAt)}</p></div>
+        {nfe.contingencyAt && <div className="sm:col-span-2"><p className="eyebrow">{t("contingencyIssued")}</p><p>{date(nfe.contingencyAt)}{nfe.contingencyReason ? ` · ${nfe.contingencyReason}` : ""}</p></div>}
         {nfe.additionalInfo && <div className="sm:col-span-2"><p className="eyebrow">{t("additionalInfo")}</p><p className="whitespace-pre-line">{nfe.additionalInfo}</p></div>}
         {nfe.cancelReason && <div className="sm:col-span-2"><p className="eyebrow">{t("cancelReason")}</p><p>{nfe.cancelReason}</p></div>}
       </Card>

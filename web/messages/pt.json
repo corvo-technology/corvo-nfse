@@ -3661,6 +3661,7 @@
     },
     "status": {
       "queued": "Na fila",
+      "contingency_pending": "Emitida sem internet, falta enviar",
       "processing": "Enviando",
       "authorized": "Autorizada",
       "rejected": "Rejeitada",
@@ -3722,7 +3723,9 @@
       "crtUnsupported": "NF-e por enquanto só para Simples Nacional e MEI. Confira o regime no cadastro fiscal da empresa.",
       "natOpPlaceholder": "Venda de mercadoria",
       "nfceSeries": "Série da NFC-e",
-      "nfceSeriesHint": "A série usada nas vendas ao consumidor. Na dúvida, deixe 1."
+      "nfceSeriesHint": "A série usada nas vendas ao consumidor. Na dúvida, deixe 1.",
+      "nfceAutoOffline": "Emitir em contingência off-line automaticamente",
+      "nfceAutoOfflineHint": "Quando a SEFAZ não responde, a NFC-e sai na hora com o aviso de contingência e é enviada depois. Ela pode ser rejeitada mais tarde, depois de já ter sido entregue ao cliente. Desligado por padrão."
     },
     "detail": {
       "title": "NF-e",
@@ -3756,6 +3759,8 @@
       "documentsHint": "Os arquivos ficam prontos depois que a SEFAZ autoriza a nota.",
       "events": "Histórico",
       "hint": "O que fazer",
+      "contingencyPending": "Esta NFC-e foi emitida em contingência off-line e ainda não foi enviada à SEFAZ. Ela já pode ser entregue ao cliente. O envio é automático e o prazo é até {deadline}.",
+      "contingencyIssued": "Emitida em contingência",
       "reconciling": "Não tivemos resposta da SEFAZ. Estamos conferindo pela chave de acesso, sem emitir de novo.",
       "manualReview": "A SEFAZ ainda não confirmou esta nota. Use “Conferir na SEFAZ” para perguntar de novo.",
       "errorType": {

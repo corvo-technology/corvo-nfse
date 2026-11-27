@@ -51,6 +51,7 @@ const TAX_REGIME_KINDS = [
 const REVIEW_STATUS = ['unreviewed', 'approved', 'rejected'];
 const NFE_STATUS_VALUES = [
   'queued',
+  'contingency_pending',
   'processing',
   'authorized',
   'rejected',
@@ -338,6 +339,10 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       maximum: 999,
       description: 'Series of the NFC-e (model 65).',
     }),
+    nfceAutoOffline: bool({
+      description:
+        'Issue the NFC-e off-line (contingency) by itself when the SEFAZ cannot be reached. Off by default.',
+    }),
     defaultNatOp: str({ example: 'Venda de mercadoria' }),
     defaultCsosn: str({ enum: ['102', '400'] }),
     defaultOrigin: int({ minimum: 0, maximum: 8 }),
@@ -505,10 +510,33 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
             'NFC-e only: the address to consult the note by its key (`infNFeSupl`). Absent on an NF-e.',
         }),
       ),
+      contingencyAt: nullable(
+        dateTime({
+          description:
+            'NFC-e only: when it was issued off-line (`tpEmis` 9, `dhCont`). `null` when it was issued online.',
+        }),
+      ),
+      contingencyReason: nullable(
+        str({
+          description: 'NFC-e only: the reason of the off-line emission (`xJust`).',
+        }),
+      ),
+      contingencyDeadlineAt: nullable(
+        dateTime({
+          description:
+            'NFC-e only: the limit (24 hours) to transmit an off-line NFC-e. Corvo warns by e-mail and webhook after 20 hours.',
+        }),
+      ),
       createdAt: dateTime(),
       updatedAt: dateTime(),
     },
-    ['qrCode', 'urlChave'],
+    [
+      'qrCode',
+      'urlChave',
+      'contingencyAt',
+      'contingencyReason',
+      'contingencyDeadlineAt',
+    ],
   ),
   NfseInvoiceRequest: {
     allOf: [

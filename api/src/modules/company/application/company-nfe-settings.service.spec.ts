@@ -37,6 +37,7 @@ function build(
     crt: 1,
     defaultSeries: 1,
     nfceDefaultSeries: 1,
+    nfceAutoOffline: false,
     defaultNatOp: 'Venda de mercadoria',
     defaultCsosn: '102',
     defaultOrigin: 0,
@@ -66,6 +67,7 @@ const settingsRow = (companyId: string): NfeSettings => ({
   crt: null,
   defaultSeries: 1,
   nfceDefaultSeries: 1,
+  nfceAutoOffline: false,
   defaultNatOp: 'Venda de mercadoria',
   defaultCsosn: '102',
   defaultOrigin: 0,
@@ -84,6 +86,7 @@ describe('CompanyNfeSettingsService', () => {
       taxRegime: 'Simples Nacional',
       defaultSeries: 1,
       nfceDefaultSeries: 1,
+      nfceAutoOffline: false,
       defaultCsosn: '102',
       missing: ['state_registration'],
     });
@@ -118,6 +121,27 @@ describe('CompanyNfeSettingsService', () => {
       'c',
       tenantId,
       expect.objectContaining({ defaultSeries: 2, nfceDefaultSeries: 9 }),
+    );
+  });
+
+  it('keeps the off-line NFC-e option off unless asked, and saves it when it is', async () => {
+    const { service, repo } = build(company('SP'));
+    await service.update('c', tenantId, 'test', {
+      stateRegistration: '110042490114',
+    });
+    expect(repo.upsert).toHaveBeenLastCalledWith(
+      'c',
+      tenantId,
+      expect.objectContaining({ nfceAutoOffline: false }),
+    );
+    await service.update('c', tenantId, 'test', {
+      stateRegistration: '110042490114',
+      nfceAutoOffline: true,
+    });
+    expect(repo.upsert).toHaveBeenLastCalledWith(
+      'c',
+      tenantId,
+      expect.objectContaining({ nfceAutoOffline: true }),
     );
   });
 

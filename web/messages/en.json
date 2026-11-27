@@ -3661,6 +3661,7 @@
     },
     "status": {
       "queued": "Queued",
+      "contingency_pending": "Issued offline, to be sent",
       "processing": "Sending",
       "authorized": "Authorized",
       "rejected": "Rejected",
@@ -3722,7 +3723,9 @@
       "crtUnsupported": "NF-e is only for Simples Nacional and MEI for now. Check the regime in the company's tax profile.",
       "natOpPlaceholder": "Sale of goods",
       "nfceSeries": "NFC-e series",
-      "nfceSeriesHint": "The series used on consumer sales. If unsure, leave 1."
+      "nfceSeriesHint": "The series used on consumer sales. If unsure, leave 1.",
+      "nfceAutoOffline": "Issue in offline contingency automatically",
+      "nfceAutoOfflineHint": "When the SEFAZ does not answer, the NFC-e is issued at once with the contingency notice and sent later. It can still be rejected afterwards, after the customer already has it. Off by default."
     },
     "detail": {
       "title": "NF-e",
@@ -3756,6 +3759,8 @@
       "documentsHint": "The files are ready after the SEFAZ authorizes the note.",
       "events": "History",
       "hint": "What to do",
+      "contingencyPending": "This NFC-e was issued in offline contingency and was not sent to the SEFAZ yet. It can already be handed to the customer. It is sent automatically, and the limit is {deadline}.",
+      "contingencyIssued": "Issued in contingency",
       "reconciling": "The SEFAZ did not answer. We are checking by the access key, without issuing again.",
       "manualReview": "The SEFAZ has not confirmed this note yet. Use “Check with the SEFAZ” to ask again.",
       "errorType": {

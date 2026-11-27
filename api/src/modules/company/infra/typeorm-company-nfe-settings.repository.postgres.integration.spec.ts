@@ -30,6 +30,7 @@ const input = (
   crt: 1,
   defaultSeries: 1,
   nfceDefaultSeries: 1,
+  nfceAutoOffline: false,
   defaultNatOp: 'Venda de mercadoria',
   defaultCsosn: '102',
   defaultOrigin: 0,

@@ -120,6 +120,14 @@ export interface NfeDocumentProps {
   /** NFC-e only: QR Code and `urlChave` of the current attempt (null on an NF-e). */
   qrCode: string | null;
   urlChave: string | null;
+  /** NFC-e issued off-line (`tpEmis` 9): when it was issued in contingency (`dhCont`). */
+  contingencyAt: Date | null;
+  /** The reason in `xJust` (15 to 256 characters). */
+  contingencyReason: string | null;
+  /** When the 20 h warning about the 24 h deadline was sent (once). */
+  contingencyAlertedAt: Date | null;
+  /** When the current attempt was handed to the SEFAZ; null while it was never sent. */
+  transmittedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -259,9 +267,35 @@ export class NfeDocument {
       cancelRequestedAt: null,
       qrCode: null,
       urlChave: null,
+      contingencyAt: null,
+      contingencyReason: null,
+      contingencyAlertedAt: null,
+      transmittedAt: null,
       createdAt: now,
       updatedAt: now,
     });
+  }
+
+  /**
+   * A NFC-e issued off-line (`tpEmis` 9): born `contingency_pending`, to be numbered, signed and
+   * keyed right away by the caller. Only the NFC-e has an off-line emission.
+   */
+  static createOffline(
+    params: CreateNfeDocumentParams & {
+      model: 65;
+      contingencyAt: Date;
+      contingencyReason: string;
+    },
+    now: Date = new Date(),
+  ): NfeDocument {
+    if (params.model !== 65)
+      throw new Error('Only the NFC-e (model 65) is issued off-line');
+    const doc = NfeDocument.create(params, now);
+    doc.props.status = 'contingency_pending';
+    doc.props.tpEmis = 9;
+    doc.props.contingencyAt = params.contingencyAt;
+    doc.props.contingencyReason = params.contingencyReason;
+    return doc;
   }
 
   static reconstitute(props: NfeDocumentProps): NfeDocument {
@@ -348,8 +382,21 @@ export class NfeDocument {
     this.props.accessKey = accessKey;
     this.props.signedXml = signedXml;
     this.props.issuedAt = issuedAt;
+    this.props.transmittedAt = null;
     this.props.updatedAt = now;
     return this.historyEntry(this.props.status, this.props.status);
+  }
+
+  /** The 20 h warning of an off-line NFC-e was sent. */
+  markContingencyAlerted(at: Date): void {
+    this.props.contingencyAlertedAt = at;
+    this.props.updatedAt = at;
+  }
+
+  /** Written and committed right before the SOAP call: proof that the attempt may have reached the SEFAZ. */
+  markTransmitted(at: Date): void {
+    this.props.transmittedAt = at;
+    this.props.updatedAt = at;
   }
 
   markAuthorized(
