@@ -5,14 +5,21 @@ const tenantId = 'tenant-1';
 
 function build(
   period: { included: number; authorized: number; reserved: number },
-  options: { lockHeld?: boolean } = {},
+  options: {
+    lockHeld?: boolean;
+    perDay?: number | null;
+    forecastOn?: boolean;
+    periodDaysLeft?: number;
+  } = {},
 ) {
   const usage = {
     status: jest.fn().mockResolvedValue({
       plan: { name: 'Gratuito' },
       period: {
         id: 'period-1',
-        periodEnd: new Date(Date.now() + 10 * 86_400_000),
+        periodEnd: new Date(
+          Date.now() + (options.periodDaysLeft ?? 10) * 86_400_000 - 60_000,
+        ),
         ...period,
       },
     }),
@@ -45,13 +52,21 @@ function build(
         options.lockHeld ? null : { key: 'k', token: 't', ttlMs: 1 },
       ),
   };
+  const pace = {
+    perDay: jest.fn().mockResolvedValue(options.perDay ?? null),
+  };
+  const settings = {
+    isOn: jest.fn().mockReturnValue(options.forecastOn ?? true),
+  };
   const notifier = new CreditsLowNotifier(
     usage as never,
     new TenantRecipientsService(memberships as never, users as never),
     email as never,
     locks as never,
+    pace as never,
+    settings as never,
   );
-  return { notifier, email, locks, users };
+  return { notifier, email, locks, users, pace, settings };
 }
 
 describe('CreditsLowNotifier', () => {
@@ -82,7 +97,58 @@ describe('CreditsLowNotifier', () => {
       planName: 'Gratuito',
       remaining: 3,
       total: 15,
+      daysLeft: null,
     });
+  });
+
+  it('adds how many days the credits last at the recent pace', async () => {
+    const f = build(
+      { included: 15, authorized: 12, reserved: 0 },
+      { perDay: 1.5 },
+    );
+    await f.notifier.notify(tenantId);
+    expect(f.pace.perDay).toHaveBeenCalledWith(tenantId);
+    expect(f.email.enqueueCreditsLow).toHaveBeenCalledWith(
+      expect.objectContaining({ remaining: 3, daysLeft: 2 }),
+    );
+  });
+
+  it('leaves the forecast out without enough history', async () => {
+    const f = build({ included: 15, authorized: 12, reserved: 0 });
+    await f.notifier.notify(tenantId);
+    expect(f.email.enqueueCreditsLow).toHaveBeenCalledWith(
+      expect.objectContaining({ daysLeft: null }),
+    );
+  });
+
+  it('leaves the forecast out when the plan renews before the credits end', async () => {
+    const f = build(
+      { included: 15, authorized: 12, reserved: 0 },
+      { perDay: 0.1, periodDaysLeft: 10 },
+    );
+    await f.notifier.notify(tenantId);
+    expect(f.email.enqueueCreditsLow).toHaveBeenCalledWith(
+      expect.objectContaining({ daysLeft: null }),
+    );
+  });
+
+  it('skips the forecast when its switch is off, and still warns', async () => {
+    const f = build(
+      { included: 15, authorized: 12, reserved: 0 },
+      { perDay: 1.5, forecastOn: false },
+    );
+    await f.notifier.notify(tenantId);
+    expect(f.pace.perDay).not.toHaveBeenCalled();
+    expect(f.email.enqueueCreditsLow).toHaveBeenCalledWith(
+      expect.objectContaining({ daysLeft: null }),
+    );
+  });
+
+  it('still warns when the pace cannot be read', async () => {
+    const f = build({ included: 15, authorized: 12, reserved: 0 });
+    f.pace.perDay.mockRejectedValue(new Error('db down'));
+    await f.notifier.notify(tenantId);
+    expect(f.email.enqueueCreditsLow).toHaveBeenCalledTimes(2);
   });
 
   it('never goes below zero remaining', async () => {

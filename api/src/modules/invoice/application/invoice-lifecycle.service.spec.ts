@@ -311,6 +311,7 @@ describe('InvoiceLifecycleService', () => {
           kind: 'invoice-rejected',
           invoiceId: liveInvoice.id,
           reason: 'CNPJ inválido',
+          errorCode: 'E1',
         },
       }),
     );
@@ -419,6 +420,40 @@ describe('InvoiceLifecycleService', () => {
       expect(f.credits.confirm).toHaveBeenCalledTimes(1);
     },
   );
+
+  it('announces a live authorization (for the first-invoice e-mail) but not a test one', async () => {
+    const authorize = async (environment: 'test' | 'live') => {
+      const f = build();
+      f.invoices.findByIdAndTenantId.mockResolvedValue({
+        status: 'processing',
+      });
+      const invoice = newInvoice(undefined, environment);
+      invoice.transitionTo('processing');
+      invoice.setAuthorized(
+        'A'.repeat(50),
+        7,
+        new Date('2026-11-02T12:00:00Z'),
+      );
+      invoice.transitionTo('authorized');
+      await f.service.transition(
+        invoice,
+        InvoiceEvent.create(invoice.id, 'processing', 'authorized'),
+      );
+      return { f, invoice };
+    };
+    const live = await authorize('live');
+    expect(live.f.eventBus.publishBestEffort).toHaveBeenCalledWith({
+      name: 'invoice.live.authorized',
+      tenantId,
+      invoiceId: live.invoice.id,
+      authorizedAt: new Date('2026-11-02T12:00:00Z'),
+      customerEmailed: false,
+    });
+    const test = await authorize('test');
+    expect(test.f.eventBus.publishBestEffort).not.toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'invoice.live.authorized' }),
+    );
+  });
 
   it('rejects a stale transition before writes', async () => {
     const f = build();
