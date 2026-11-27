@@ -18,6 +18,7 @@
       "pushinpay": "Sale (PushinPay)",
       "stripe": "Sale (Stripe)",
       "kiwify": "Sale (Kiwify)",
+      "eduzz": "Sale (Eduzz)",
       "hotmart": "Sale (Hotmart)",
       "generic": "Integration sale"
     }
@@ -2927,6 +2928,7 @@
       "pushinpay": "Pix, boleto and recurring Pix paid on PushinPay.",
       "stripe": "Card, Pix and boleto paid on Stripe.",
       "kiwify": "Approved sales on Kiwify.",
+      "eduzz": "Digital product sales paid on Eduzz.",
       "hotmart": "Digital product purchases paid on Hotmart.",
       "other": "Confirmed payments."
     },

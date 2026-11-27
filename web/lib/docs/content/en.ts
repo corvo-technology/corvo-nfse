@@ -2795,7 +2795,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     municipalities: municipalitiesPage("en"),
     "payment-integrations": {
       title: "Payment integrations",
-      description: "Connect Woovi, AbacatePay, Stripe, PushinPay, Hotmart or Kiwify and issue the NFS-e automatically for every confirmed payment.",
+      description: "Connect Woovi, AbacatePay, Stripe, PushinPay, Hotmart, Kiwify or Eduzz and issue the NFS-e automatically for every confirmed payment.",
       blocks: [
         {
           kind: "text",
@@ -2889,6 +2889,20 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Invoice amount: `total` uses the amount paid (`full_price`); `mine` (\"my share\") subtracts coproducer and affiliate commissions. If the notice has no commissions, the sale goes to attention and does not issue.",
             "A refund (`PURCHASE_REFUNDED`) and a chargeback (`PURCHASE_CHARGEBACK`) cancel the invoice only if the rule has automatic cancellation on; a partial refund is ignored. A protest (`PURCHASE_PROTEST`) only flags the sale, without cancelling.",
             "Hotmart does not report the environment in the notice: the environment chosen on the connection applies. The notice fields still need to be confirmed with a real notice.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "Eduzz" },
+        {
+          kind: "list",
+          items: [
+            "Credentials: `secretKey`, the secret key you create in the Eduzz Console (Webhooks > Security), and the `invoiceValue` option (\"Invoice amount\": `total` or `mine`). Corvo generates the `webhookSecret` and shows the full webhook URL when you create the connection. Copy and save that address.",
+            "Steps: (1) in the Eduzz Console, create the secret key and paste it in Corvo; (2) create the webhook with the `webhookUrl` and the Invoice events: paid, refunded, chargeback and canceled; (3) activate the URL and send a test.",
+            "Corvo checks the `x-signature` header (HMAC-SHA256 of the raw body, key = `secretKey`) and the connection secret in the address, in constant time. Events Corvo does not handle get a success response and are ignored.",
+            "Each paid invoice (`myeduzz.invoice_paid`) becomes one NFS-e, identified by `eduzz:<invoice id>`. It uses the amount paid (`data.paid`) and the buyer's CPF/CNPJ, e-mail, name and address.",
+            "BRL only. A foreign buyer, or a document that is not a CPF/CNPJ, goes to complete data (`customer_tax_id_missing`). The CPF/CNPJ only arrives if the checkout asks for it.",
+            "Invoice amount: `total` uses the amount paid; `mine` (\"my share\") uses the producer earnings (`data.gains.producer`), already net of coproducer and affiliate. If that field is missing, the sale goes to attention and does not issue.",
+            "A refund (`myeduzz.invoice_refunded`), a chargeback (`myeduzz.invoice_chargeback`) and a canceled invoice (`myeduzz.invoice_canceled`) cancel the NFS-e only if the rule has automatic cancellation on; a partial refund is ignored.",
+            "Eduzz does not report the environment in the notice: the environment chosen on the connection applies. The notice fields still need to be confirmed with a real sale.",
           ],
         },
         { kind: "heading", level: 2, body: "Sales that need attention" },

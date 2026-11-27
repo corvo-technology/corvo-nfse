@@ -2772,7 +2772,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     municipalities: municipalitiesPage("pt"),
     "payment-integrations": {
       title: "Integrações de pagamento",
-      description: "Conecte Woovi, AbacatePay, Stripe, PushinPay, Hotmart ou Kiwify e emita a NFS-e automaticamente a cada pagamento confirmado.",
+      description: "Conecte Woovi, AbacatePay, Stripe, PushinPay, Hotmart, Kiwify ou Eduzz e emita a NFS-e automaticamente a cada pagamento confirmado.",
       blocks: [
         {
           kind: "text",
@@ -2866,6 +2866,20 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Valor da nota: `total` usa o valor pago (`full_price`); `mine` (\"minha parte\") desconta as comissões de coprodutor e afiliado. Se as comissões não vierem no aviso, a venda vai para atenção e não emite.",
             "Reembolso (`PURCHASE_REFUNDED`) e chargeback (`PURCHASE_CHARGEBACK`) cancelam a nota só se a regra tiver o cancelamento automático ligado; reembolso parcial é ignorado. Protesto (`PURCHASE_PROTEST`) só sinaliza a venda, sem cancelar.",
             "A Hotmart não informa o ambiente no aviso: vale o ambiente escolhido na conexão. Os campos dos avisos ainda precisam ser confirmados com um aviso real.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "Eduzz" },
+        {
+          kind: "list",
+          items: [
+            "Credenciais: `secretKey`, a chave secreta que você cria no Console da Eduzz (Webhooks > Segurança), e a opção `invoiceValue` (\"Valor da nota\": `total` ou `mine`). A Corvo gera o `webhookSecret` e exibe o endereço completo do webhook ao criar a conexão. Copie e guarde esse endereço.",
+            "Passo a passo: (1) no Console da Eduzz, crie a chave secreta e cole na Corvo; (2) crie o webhook com o `webhookUrl` e os eventos de Fatura: paga, reembolsada, chargeback e cancelada; (3) ative a URL e envie um teste.",
+            "A Corvo confere o cabeçalho `x-signature` (HMAC-SHA256 do corpo cru, chave = `secretKey`) e o segredo da conexão no endereço, em tempo constante. Eventos que a Corvo não trata recebem resposta de sucesso e são ignorados.",
+            "Cada fatura paga (`myeduzz.invoice_paid`) vira uma nota, identificada por `eduzz:<id da fatura>`. A nota usa o valor pago (`data.paid`), o CPF/CNPJ, o e-mail, o nome e o endereço do comprador.",
+            "Só BRL. Comprador estrangeiro, ou documento que não seja CPF/CNPJ, vai para completar dados (`customer_tax_id_missing`). O CPF/CNPJ só chega se o checkout pedir esse dado.",
+            "Valor da nota: `total` usa o valor pago; `mine` (\"minha parte\") usa o ganho do produtor (`data.gains.producer`), já sem coprodutor e afiliado. Se esse campo não vier, a venda vai para atenção e não emite.",
+            "Reembolso (`myeduzz.invoice_refunded`), chargeback (`myeduzz.invoice_chargeback`) e fatura cancelada (`myeduzz.invoice_canceled`) cancelam a nota só se a regra tiver o cancelamento automático ligado; reembolso parcial é ignorado.",
+            "A Eduzz não informa o ambiente no aviso: vale o ambiente escolhido na conexão. Os campos dos avisos ainda precisam ser confirmados com uma venda real.",
           ],
         },
         { kind: "heading", level: 2, body: "Vendas que precisam de atenção" },

@@ -10,6 +10,7 @@ import { PushinPayConnectorModule } from './modules/integrations/connectors/push
 import { StripeConnectorModule } from './modules/integrations/connectors/stripe/stripe.module';
 import { KiwifyConnectorModule } from './modules/integrations/connectors/kiwify/kiwify.module';
 import { HotmartConnectorModule } from './modules/integrations/connectors/hotmart/hotmart.module';
+import { EduzzConnectorModule } from './modules/integrations/connectors/eduzz/eduzz.module';
 
 function importedModules(moduleClass: object): unknown[] {
   const imports =
@@ -50,7 +51,9 @@ describe('runtime wiring', () => {
     expect(importedModules(AppModule)).toContain(KiwifyConnectorModule);
     expect(importedModules(WorkerAppModule)).toContain(KiwifyConnectorModule);
     expect(importedModules(AppModule)).toContain(HotmartConnectorModule);
+    expect(importedModules(AppModule)).toContain(EduzzConnectorModule);
     expect(importedModules(WorkerAppModule)).toContain(HotmartConnectorModule);
+    expect(importedModules(WorkerAppModule)).toContain(EduzzConnectorModule);
   });
 
   it('loads the PushinPay connector in both processes', () => {
