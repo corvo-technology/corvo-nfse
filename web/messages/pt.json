@@ -669,7 +669,8 @@
       "invitation": { "accepted": "Aceitou convite" },
       "api_key": { "created": "Criou chave de API", "revoked": "Revogou chave de API" },
       "agent": { "connected": "Conectou agente", "disconnected": "Desconectou agente" },
-      "accountant": { "package_sent": "Enviou pacote ao contador", "email_changed": "Mudou e-mail do contador" }
+      "accountant": { "package_sent": "Enviou pacote ao contador", "email_changed": "Mudou e-mail do contador" },
+      "integration": { "sale_resolved": "Completou uma venda de integração", "sale_ignored": "Ignorou uma venda de integração" }
     }
   },
   "Members": {
@@ -1307,7 +1308,8 @@
       "processing": "Processando",
       "manual_review": "Revisão manual",
       "rejected": "Rejeitadas",
-      "cancelled": "Canceladas"
+      "cancelled": "Canceladas",
+      "sales": "Vendas pendentes"
     },
     "form": {
       "company": "Empresa emissora",
@@ -2289,6 +2291,8 @@
     "connection_state_invalid": "Essa ação não é possível no estado atual da conexão.",
     "operation_has_invoice": "Esta operação já tem uma nota.",
     "operation_not_found": "Operação não encontrada.",
+    "operation_not_resolvable": "Esta venda não está esperando dados. Atualize a página.",
+    "invalid_address": "Informe cidade e UF do endereço, ou deixe os dois em branco.",
     "operation_request_fixed": "O pedido de nota desta operação já está definido.",
     "inbound_invalid": "Requisição de webhook inválida.",
     "webhook_not_found": "Webhook não encontrado.",
@@ -2996,7 +3000,8 @@
         "blocked": "Não emitida",
         "processing": "Processando",
         "cancelRequested": "Cancelamento solicitado",
-        "cancelFailed": "Não foi possível cancelar a nota"
+        "cancelFailed": "Não foi possível cancelar a nota",
+        "ignored": "Ignorada"
       },
       "fixCustomer": "Informar CPF/CNPJ",
       "taxIdLabel": "CPF ou CNPJ do cliente",
@@ -3066,9 +3071,151 @@
       "attention": "Precisam de atenção",
       "viewInvoice": "Ver nota",
       "allGood": "Tudo em dia: nenhuma venda precisa de você.",
-      "attentionBanner": "{count} vendas precisam de você",
+      "attentionBanner": "{count, plural, one {# venda precisa de você} other {# vendas precisam de você}}",
       "empty": "Nenhuma venda recebida ainda. Faça um pagamento de teste para ver aqui.",
       "noneAttention": "Nenhuma venda precisa de atenção."
+    },
+    "reasons": {
+      "connection_inactive": {
+        "title": "A integração está pausada ou desligada.",
+        "action": "Ligue a integração de novo e tente emitir esta venda."
+      },
+      "before_active_from": {
+        "title": "A venda é anterior à data em que a integração começou a valer.",
+        "action": "Se quiser a nota mesmo assim, emita pela tela de notas fiscais."
+      },
+      "refunded": {
+        "title": "A venda foi reembolsada.",
+        "action": "Nenhuma nota é emitida para venda reembolsada."
+      },
+      "disputed": {
+        "title": "A venda está em disputa na plataforma.",
+        "action": "Espere a disputa terminar; a nota só sai se a venda ficar paga."
+      },
+      "not_paid": {
+        "title": "A venda ainda não foi paga.",
+        "action": "A nota sai sozinha assim que o pagamento for confirmado."
+      },
+      "unsupported_currency": {
+        "title": "A venda não foi feita em reais.",
+        "action": "A Corvo só emite nota para vendas em reais (BRL)."
+      },
+      "invalid_amount": {
+        "title": "O valor da venda é inválido.",
+        "action": "Confira o valor na plataforma; a nota precisa de um valor maior que zero."
+      },
+      "seller_not_issuer": {
+        "title": "A plataforma informa que outra empresa emite a nota desta venda.",
+        "action": "Se você mesmo deve emitir, emita pela tela de notas fiscais."
+      },
+      "no_rule": {
+        "title": "Não há uma regra de emissão para esta venda.",
+        "action": "Abra a integração e defina o serviço padrão das notas."
+      },
+      "ambiguous_rule": {
+        "title": "Mais de uma regra serve para esta venda.",
+        "action": "Abra a integração e deixe uma só regra para cada produto."
+      },
+      "customer_tax_id_missing": {
+        "title": "Falta o CPF ou CNPJ do cliente.",
+        "action": "Informe o documento do cliente e emita a nota."
+      },
+      "refund_after_invoice": {
+        "title": "A venda foi reembolsada depois de a nota ser emitida.",
+        "action": "Cancele a nota, se for o caso."
+      },
+      "cancel_requested": {
+        "title": "O cancelamento da nota foi pedido por causa do reembolso.",
+        "action": "Nada a fazer: acompanhe o cancelamento na nota."
+      },
+      "cancel_failed": {
+        "title": "Não conseguimos cancelar a nota depois do reembolso.",
+        "action": "Tente de novo ou cancele a nota pela tela de notas fiscais."
+      },
+      "quota_exceeded": {
+        "title": "Seus créditos de notas acabaram.",
+        "action": "Compre mais créditos ou troque de plano e tente de novo."
+      },
+      "company_not_ready": {
+        "title": "A empresa ainda não está pronta para emitir.",
+        "action": "Confira o certificado digital e os dados da empresa, depois tente de novo."
+      },
+      "invoice_rejected": {
+        "title": "Os dados desta venda foram recusados na hora de emitir a nota.",
+        "action": "Corrija os dados do cliente ou do serviço e emita de novo."
+      },
+      "ignored_by_user": {
+        "title": "Você marcou esta venda para não emitir nota.",
+        "action": "Nada a fazer."
+      }
+    },
+    "errors": {
+      "emailRequired": "A nota estava para ser enviada por e-mail, mas o cliente não tem e-mail. Agora a nota sai sem o envio; tente de novo.",
+      "noCorrelationId": "Aviso da plataforma sem o identificador da cobrança. Não dá para emitir nota a partir dele.",
+      "refundNoOriginal": "Aviso de reembolso sem indicar qual pagamento foi devolvido. Não dá para usar.",
+      "badAmount": "O valor informado pela plataforma não é válido. Não dá para emitir nota a partir dele.",
+      "notReadable": "Não conseguimos ler este aviso da plataforma.",
+      "refundNotFound": "Reembolso de um pagamento que não é uma venda da Corvo.",
+      "unknown": "Não foi possível usar este aviso. Detalhe técnico:"
+    },
+    "reasonLabel": "Motivo",
+    "whatToDo": "O que fazer",
+    "resolveAction": "Resolver",
+    "tryAgainDone": "Nota emitida.",
+    "tryAgainStill": "Ainda não foi possível emitir:",
+    "viewSale": "Abrir a venda",
+    "pendingSales": {
+      "tab": "Vendas pendentes",
+      "title": "Vendas esperando você",
+      "intro": "Vendas das suas integrações que ainda não viraram nota. Complete os dados e emita.",
+      "empty": "Nenhuma venda esperando você.",
+      "banner": "{count, plural, one {# venda das integrações espera você} other {# vendas das integrações esperam você}}",
+      "bannerAction": "Ver vendas",
+      "status": "Aguardando você",
+      "origin": "Venda Pix ({provider})",
+      "originOther": "Venda ({provider})",
+      "loadError": "Não foi possível carregar as vendas pendentes."
+    },
+    "resolve": {
+      "title": "Completar a venda",
+      "back": "Voltar",
+      "notFound": "Venda não encontrada.",
+      "amount": "Valor (vem do pagamento)",
+      "paidAt": "Pago em",
+      "source": "Origem",
+      "customerTitle": "Cliente (tomador)",
+      "taxId": "CPF ou CNPJ",
+      "lookupCnpj": "Buscar dados do CNPJ",
+      "lookupFound": "Dados do CNPJ preenchidos.",
+      "lookupFail": "Não encontramos este CNPJ. Preencha à mão.",
+      "name": "Nome ou razão social",
+      "email": "E-mail",
+      "emailHint": "Opcional. Sem e-mail, a nota é emitida e não é enviada ao cliente.",
+      "sendEmail": "Enviar a nota por e-mail ao cliente",
+      "addressTitle": "Endereço (opcional)",
+      "zip": "CEP",
+      "street": "Rua",
+      "city": "Cidade",
+      "state": "UF",
+      "serviceTitle": "Serviço",
+      "serviceCode": "Código do serviço",
+      "serviceDescription": "Descrição na nota",
+      "serviceHint": "Já vem do que a integração usa. Mude só para esta venda, se precisar.",
+      "emit": "Emitir nota",
+      "issued": "Nota emitida.",
+      "viewInvoice": "Ver nota",
+      "stillFailing": "A nota ainda não saiu:",
+      "taxIdInvalid": "Informe um CPF ou CNPJ válido (11 ou 14 caracteres).",
+    "addressIncomplete": "Informe cidade e UF juntas, ou deixe as duas em branco.",
+      "ignoreTitle": "Esta venda não precisa de nota?",
+      "ignoreHint": "Se não for emitir nota para esta venda, diga o motivo. Ela fica guardada, sem nota.",
+      "ignoreReason": "Motivo",
+      "ignore": "Ignorar esta venda",
+      "ignored": "Venda ignorada.",
+      "alreadyIssued": "Esta venda já tem nota.",
+      "noPermission": "Para completar a venda, peça a permissão de gerenciar integrações.",
+      "anonymousTip": "Prefere emitir sempre sem o documento do cliente? Ligue \"Emitir mesmo sem CPF/CNPJ do cliente\" nas configurações da integração. Fica mais rápido, mas a nota sai sem tomador identificado.",
+      "settingsLink": "Abrir configurações da integração"
     }
   },
   "LandingIntegrations": {

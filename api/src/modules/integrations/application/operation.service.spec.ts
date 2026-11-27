@@ -4,7 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { OperationService } from './operation.service';
-import { MemoryOperations } from '../testing/memory-repositories';
+import {
+  MemoryEvents,
+  MemoryOperations,
+  MemoryRules,
+} from '../testing/memory-repositories';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 import type { OperationEmitter } from './operation-emitter.service';
 import type { NormalizedOperation } from '../domain/connector';
 
@@ -28,10 +33,16 @@ function setup() {
   const emitter = {
     run: jest.fn().mockResolvedValue({ state: 'processed' }),
   } as unknown as OperationEmitter & { run: jest.Mock };
+  const events = new MemoryEvents();
+  const rules = new MemoryRules();
+  const audit = new FakeAccountAudit();
   return {
-    service: new OperationService(operations, emitter),
+    service: new OperationService(operations, emitter, events, rules, audit),
     operations,
     emitter,
+    events,
+    rules,
+    audit,
   };
 }
 const seed = (operations: MemoryOperations) =>
@@ -151,5 +162,113 @@ describe('OperationService', () => {
       ConflictException,
     );
     expect(emitter.run).not.toHaveBeenCalled();
+  });
+
+  describe('resolve', () => {
+    const waiting = async (operations: MemoryOperations) => {
+      const op = await seed(operations);
+      await operations.setFiscal(
+        op.id,
+        TENANT,
+        'needs_attention',
+        'customer_tax_id_missing',
+      );
+      return op;
+    };
+    it('stores what the client typed, then asks the emitter once', async () => {
+      const { service, operations, emitter, audit } = setup();
+      const op = await waiting(operations);
+      const { outcome } = await service.resolve(TENANT, op.id, {
+        customer: {
+          name: 'Empresa X',
+          taxId: '11.222.333/0001-81',
+          address: { zip: '01001000', city: 'São Paulo', state: 'SP' },
+        },
+        service: { code: '010101', description: 'Consultoria' },
+        sendEmail: false,
+      });
+      expect(outcome).toEqual({ state: 'processed' });
+      expect(emitter.run).toHaveBeenCalledTimes(1);
+      const stored = (await operations.findById(op.id, TENANT))!.snapshot;
+      expect(stored.customer).toMatchObject({
+        taxId: '11222333000181',
+        taxIdMasked: false,
+        address: { zip: '01001000', city: 'São Paulo', state: 'SP' },
+      });
+      expect(stored.serviceOverride).toEqual({
+        code: '010101',
+        description: 'Consultoria',
+      });
+      expect(stored.sendEmailOverride).toBe(false);
+      expect(audit.events.map((e) => e.action)).toEqual([
+        'integration.sale_resolved',
+      ]);
+      expect(JSON.stringify(audit.events)).not.toContain('11222333000181');
+    });
+    it('refuses an invalid document and does not touch the sale', async () => {
+      const { service, operations, emitter } = setup();
+      const op = await waiting(operations);
+      await expect(
+        service.resolve(TENANT, op.id, { customer: { taxId: '111' } }),
+      ).rejects.toThrow(BadRequestException);
+      expect(emitter.run).not.toHaveBeenCalled();
+    });
+    it('refuses a sale that already has its invoice (never issues twice)', async () => {
+      const { service, operations, emitter } = setup();
+      const op = await waiting(operations);
+      await operations.setFiscal(op.id, TENANT, 'submitted', null, 'inv1');
+      await expect(
+        service.resolve(TENANT, op.id, { customer: { taxId: '52998224725' } }),
+      ).rejects.toThrow(ConflictException);
+      expect(emitter.run).not.toHaveBeenCalled();
+    });
+    it('refuses new data once the request is frozen', async () => {
+      const { service, operations } = setup();
+      const op = await waiting(operations);
+      await operations.freezeEmission(op.id, TENANT, {
+        ruleId: 'r',
+        request: {},
+        requestHash: 'h',
+        idempotencyKey: 'k',
+      });
+      await expect(
+        service.resolve(TENANT, op.id, { customer: { taxId: '52998224725' } }),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('ignore', () => {
+    it('blocks the sale, settles its notices and audits the reason', async () => {
+      const { service, operations, audit } = setup();
+      const op = await seed(operations);
+      await operations.setFiscal(op.id, TENANT, 'needs_attention', 'no_rule');
+      const done = await service.ignore(TENANT, op.id, 'Venda de teste');
+      expect(done.fiscalStatus).toBe('blocked');
+      expect(done.blockReason).toBe('ignored_by_user');
+      expect(audit.events[0]).toMatchObject({
+        action: 'integration.sale_ignored',
+        metadata: { reason: 'Venda de teste' },
+      });
+    });
+    it('cannot ignore a sale that has an invoice', async () => {
+      const { service, operations } = setup();
+      const op = await seed(operations);
+      await operations.setFiscal(op.id, TENANT, 'submitted', null, 'inv1');
+      await expect(service.ignore(TENANT, op.id, 'x')).rejects.toThrow(
+        ConflictException,
+      );
+    });
+  });
+
+  it('lists the sales waiting for the client of one environment', async () => {
+    const { service, operations } = setup();
+    const op = await seed(operations);
+    await operations.setFiscal(op.id, TENANT, 'needs_attention', 'no_rule');
+    expect(await service.listNeedingAttention(TENANT, 'test', 10)).toHaveLength(
+      1,
+    );
+    expect(await service.listNeedingAttention(TENANT, 'live', 10)).toHaveLength(
+      0,
+    );
   });
 });

@@ -1,0 +1,43 @@
+{
+  "event": "OPENPIX:CHARGE_COMPLETED",
+  "charge": {
+    "status": "COMPLETED",
+    "customer": {
+      "name": "EMPRESA EXEMPLO SOCIEDADE INDIVIDUAL DE ADVOCACIA",
+      "taxID": {
+        "taxID": "11222333000181",
+        "type": "BR:CNPJ"
+      },
+      "correlationID": "cust-2"
+    },
+    "value": 990,
+    "transactionID": "tx-charge-2",
+    "correlationID": "pedido-cnpj-1",
+    "createdAt": "2026-11-26T14:59:00.000Z",
+    "updatedAt": "2026-11-26T15:00:05.000Z"
+  },
+  "pix": {
+    "charge": {
+      "correlationID": "pedido-cnpj-1"
+    },
+    "payer": {
+      "name": "EMPRESA EXEMPLO SOCIEDADE INDIVIDUAL DE ADVOCACIA",
+      "taxID": {
+        "taxID": "11222333000181",
+        "type": "BR:CNPJ"
+      }
+    },
+    "time": "2026-11-26T15:00:00.000Z",
+    "value": 990,
+    "transactionID": "tx-pix-2",
+    "endToEndId": "E00000000202611261500ABCDEFGH5678"
+  },
+  "company": {
+    "id": "company-1",
+    "name": "Minha Loja",
+    "taxID": "11222333000181"
+  },
+  "account": {
+    "environment": "TESTING"
+  }
+}

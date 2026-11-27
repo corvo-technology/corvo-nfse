@@ -177,6 +177,10 @@ Where each part lives:
 | `integrationConnections_updateCredentials` | PUT | `/integrations/connections/{id}/credentials` | 0.3.0 | Replace credentials (for example a rotated API key) |
 | `integrationConnections_validate` | POST | `/integrations/connections/{id}/validate` | 0.3.0 | Check the credentials and identify the external account |
 | `integrationOperations_completeCustomer` | PATCH | `/integrations/operations/{id}/customer` | 0.3.0 | Fill in the customer of an operation waiting for it |
+| `integrationOperations_get` | GET | `/integrations/operations/{id}` | 0.3.0 | One sale, with the service its invoice would describe |
+| `integrationOperations_ignore` | POST | `/integrations/operations/{id}/ignore` | 0.3.0 | Mark a sale as one that needs no invoice |
+| `integrationOperations_listPending` | GET | `/integrations/operations` | 0.3.0 | Sales of all connections that wait for you to complete them |
+| `integrationOperations_resolve` | POST | `/integrations/operations/{id}/resolve` | 0.3.0 | Complete the data of a sale (customer, service) and issue its invoice |
 | `integrationOperations_retry` | POST | `/integrations/operations/{id}/retry` | 0.3.0 | Try to issue the invoice of an operation again |
 | `integrations_listProviders` | GET | `/integrations/providers` | 0.3.0 | List the payment platforms Corvo can connect to |
 | **Health** | | | | |

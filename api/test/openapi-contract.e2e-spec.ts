@@ -815,12 +815,72 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         path: `${base}/operations`,
         status: 200,
       });
+      const seed = async (fiscal: string, key: string) => {
+        const rows: Array<{ id: string }> = await dataSource.query(
+          `INSERT INTO "${schema}".integration_operations
+             (tenant_id, connection_id, provider, environment, external_account_id, operation_key, commercial_state, fiscal_status, block_reason, snapshot)
+           VALUES ($1, $2, 'woovi', 'test', 'acc', $3, 'paid', $4, 'customer_tax_id_missing', $5::jsonb)
+           RETURNING id`,
+          [
+            tenantId,
+            id,
+            key,
+            fiscal,
+            JSON.stringify({
+              operationKey: key,
+              commercialState: 'paid',
+              externalRefs: {},
+              occurredAt: '2026-11-26T15:00:00.000Z',
+              paidAt: '2026-11-26T15:00:00.000Z',
+              currency: 'BRL',
+              amountCents: 990,
+              discountCents: 0,
+              customer: {
+                name: 'ACME',
+                email: null,
+                taxId: null,
+                taxIdMasked: false,
+              },
+              items: [],
+              sellerIssuesInvoice: true,
+            }),
+          ],
+        );
+        return rows[0].id;
+      };
+      const waiting = await seed('needs_attention', 'charge:waiting');
+      const resolvable = await seed('needs_attention', 'charge:resolvable');
+      const listed = await call('GET /integrations/operations', {
+        query: { environment: 'test' },
+        status: 200,
+      });
+      expect(
+        (listed.body.data as Array<{ id: string }>).map((row) => row.id),
+      ).toContain(waiting);
+      await call('GET /integrations/operations/{id}', {
+        path: `/integrations/operations/${waiting}`,
+        status: 200,
+      });
+      await call('POST /integrations/operations/{id}/ignore', {
+        path: `/integrations/operations/${waiting}/ignore`,
+        body: { reason: 'Venda de teste' },
+        status: 200,
+      });
       await call('POST /integrations/connections/{id}/validate', {
         path: `${base}/validate`,
         status: 200,
       });
       await call('POST /integrations/connections/{id}/activate', {
         path: `${base}/activate`,
+        status: 200,
+      });
+      await call('POST /integrations/operations/{id}/resolve', {
+        path: `/integrations/operations/${resolvable}/resolve`,
+        body: {
+          customer: { taxId: '11222333000181', name: 'ACME LTDA' },
+          service: { description: 'Consultoria' },
+          sendEmail: false,
+        },
         status: 200,
       });
       await call('POST /integrations/connections/{id}/pause', {

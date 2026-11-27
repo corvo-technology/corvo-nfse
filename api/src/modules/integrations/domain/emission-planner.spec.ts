@@ -267,4 +267,50 @@ describe('planEmission', () => {
       }),
     );
   });
+
+  it('issues without e-mail when the rule sends e-mail but the buyer has none', () => {
+    const plan = planEmission(
+      input({
+        snap: {
+          customer: {
+            name: 'JESSICA CASTRO SOCIEDADE INDIVIDUAL DE ADVOCACIA',
+            email: null,
+            taxId: '11222333000181',
+            taxIdMasked: false,
+          },
+        },
+      }),
+    );
+    expect(plan.kind).toBe('issue');
+    if (plan.kind === 'issue') expect(plan.request.email).toBe(false);
+  });
+
+  it('what the client typed on the sale wins: service, address and e-mail choice', () => {
+    const plan = planEmission(
+      input({
+        snap: {
+          customer: {
+            name: 'ACME',
+            email: 'a@acme.com',
+            taxId: '11222333000181',
+            taxIdMasked: false,
+            address: { zip: '01001000', state: 'SP' },
+          },
+          serviceOverride: { code: '020202', description: 'Mentoria' },
+          sendEmailOverride: false,
+        },
+      }),
+    );
+    expect(plan.kind).toBe('issue');
+    if (plan.kind !== 'issue') return;
+    expect(plan.request.service).toMatchObject({
+      code: '020202',
+      description: 'Mentoria',
+    });
+    expect(plan.request.customer?.address).toEqual({
+      zip: '01001000',
+      state: 'SP',
+    });
+    expect(plan.request.email).toBe(false);
+  });
 });

@@ -239,7 +239,8 @@ describePostgres('AbacatePay connector through the real pipeline', () => {
     expect(request).toMatchObject({
       amount: 100,
       competenceDate: '2026-10-29',
-      email: true,
+      // No document and no e-mail from the platform: nothing to send the invoice to.
+      email: false,
       service: { code: '020202' },
       externalId: 'checkout:bill_abc123xyz',
     });

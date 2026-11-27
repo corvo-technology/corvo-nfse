@@ -18,9 +18,11 @@ import { isScheduled } from "@/lib/invoice-schedule";
 import { INVOICE_ORIGINS, type InvoiceOriginKind } from "@/lib/invoice-origin";
 import { SchedulePanel } from "@/components/schedules/schedule-panel";
 import { ManualReviewActions } from "@/components/invoices/manual-review-actions";
+import { PendingSalesPanel } from "@/components/dashboard/integrations/pending-sales-panel";
+import { usePendingSales } from "@/lib/use-pending-sales";
 import { InvoicePackageButton } from "@/components/invoices/invoice-package-button";
 
-const FILTERS = ["all", "scheduled", "authorized", "processing", "manual_review", "rejected", "cancelled"] as const;
+const FILTERS = ["all", "scheduled", "authorized", "processing", "manual_review", "rejected", "cancelled", "sales"] as const;
 type Filter = (typeof FILTERS)[number];
 
 export default function InvoicesPage() {
@@ -30,6 +32,7 @@ export default function InvoicesPage() {
 function InvoicesList() {
   const t = useTranslations("Invoices");
   const tImports = useTranslations("Imports");
+  const tIntegrations = useTranslations("Integrations");
   const { can } = useAuth();
   const tCommon = useTranslations("Common");
   const params = useSearchParams();
@@ -44,12 +47,15 @@ function InvoicesList() {
     [reviewing, origin],
   );
   const failed = error !== null;
+  // Sales of the integrations that did not become invoices: read from the integrations, shown as their own tab.
+  const pendingSales = usePendingSales();
+  const showingSales = filter === "sales";
 
   const all = invoices ?? [];
   const scheduled = all.filter((i) => isScheduled(i));
-  const matches = (i: (typeof all)[number], f: Exclude<Filter, "all">) => (f === "scheduled" ? isScheduled(i) : !isScheduled(i) && i.status === f);
-  const filtered = filter === "all" ? all : all.filter((i) => matches(i, filter));
-  const countOf = (f: Exclude<Filter, "all">) => (f === "scheduled" ? scheduled.length : all.filter((i) => matches(i, f)).length);
+  const matches = (i: (typeof all)[number], f: Exclude<Filter, "all" | "sales">) => (f === "scheduled" ? isScheduled(i) : !isScheduled(i) && i.status === f);
+  const filtered = filter === "all" || filter === "sales" ? all : all.filter((i) => matches(i, filter));
+  const countOf = (f: Exclude<Filter, "all" | "sales">) => (f === "scheduled" ? scheduled.length : all.filter((i) => matches(i, f)).length);
 
   return (
     <div className="flex flex-col gap-6">
@@ -94,8 +100,10 @@ function InvoicesList() {
               )}
             >
               {t(`filters.${f}`)}
-              {f !== "all" && !loading && (
-                <span className="font-mono text-[11px] text-text-4">{countOf(f)}</span>
+              {f === "sales" ? (
+                !pendingSales.loading && <span className="font-mono text-[11px] text-text-4">{pendingSales.sales.length}</span>
+              ) : (
+                f !== "all" && !loading && <span className="font-mono text-[11px] text-text-4">{countOf(f)}</span>
               )}
             </button>
           );
@@ -110,7 +118,14 @@ function InvoicesList() {
         </select>
       </label>
 
-      {!reviewing && !loading && countOf("manual_review") > 0 && (
+      {!showingSales && pendingSales.sales.length > 0 && (
+        <p role="status" className="banner banner-warn flex flex-wrap items-center justify-between gap-2">
+          <span>{tIntegrations("pendingSales.banner", { count: pendingSales.sales.length })}</span>
+          <button type="button" className="btn btn-secondary" onClick={() => setFilter("sales")}>{tIntegrations("pendingSales.bannerAction")}</button>
+        </p>
+      )}
+      {showingSales && <PendingSalesPanel sales={pendingSales.sales} loading={pendingSales.loading} failed={pendingSales.failed} />}
+      {!showingSales && !reviewing && !loading && countOf("manual_review") > 0 && (
         <p role="status" className="banner banner-warn flex flex-wrap items-center justify-between gap-2">
           <span>{t("needsDecision", { count: countOf("manual_review") })}</span>
           <button type="button" className="btn btn-secondary" onClick={() => setFilter("manual_review")}>{t("needsDecisionAction")}</button>
@@ -118,15 +133,15 @@ function InvoicesList() {
       )}
       {filter === "scheduled" && <SchedulePanel />}
       {reviewing && !loading && can("nfse.invoices.issue") && <ManualReviewActions invoiceIds={filtered.map((i) => i.id)} onDone={reload} />}
-      {(filter !== "scheduled" || scheduled.length > 0) && <p className="text-sm text-text-3">{t("loadedRecords", { count: all.length })}</p>}
-      {(filter !== "scheduled" || scheduled.length > 0) && <Card className="dash-in dash-in-2 overflow-hidden" aria-live="polite">
+      {!showingSales && (filter !== "scheduled" || scheduled.length > 0) && <p className="text-sm text-text-3">{t("loadedRecords", { count: all.length })}</p>}
+      {!showingSales && (filter !== "scheduled" || scheduled.length > 0) && <Card className="dash-in dash-in-2 overflow-hidden" aria-live="polite">
         {failed ? (
           <EmptyState tone="danger" icon={AlertTriangle} title={t("loadFailed")} />
         ) : (
           <InvoiceTable invoices={filtered} loading={loading} emptyText={t("noInvoices")} timeAgoT={tCommon} />
         )}
       </Card>}
-      {hasMore && <Button loading={loadingMore} onClick={() => void loadMore()}>{t("loadMore")}</Button>}
+      {!showingSales && hasMore && <Button loading={loadingMore} onClick={() => void loadMore()}>{t("loadMore")}</Button>}
     </div>
   );
 }

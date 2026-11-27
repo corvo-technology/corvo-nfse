@@ -140,7 +140,7 @@ describe("Sales on the list", () => {
     expect(screen.getAllByRole("link", { name: "View invoice" }).map((a) => a.getAttribute("href"))).toEqual(expect.arrayContaining(["/app/invoices/inv-a", "/app/invoices/inv-b"]));
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith("b"));
-    expect(screen.getAllByText("1 sales need you").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1 sale needs you").length).toBeGreaterThan(0);
   });
 
   it("says so when no sale arrived yet", async () => {
@@ -148,22 +148,24 @@ describe("Sales on the list", () => {
     expect(await screen.findByText(/No sales received yet/)).toBeTruthy();
   });
 
-  it("completes the customer document of a waiting sale and issues it, then refreshes", async () => {
-    mocks.completeCustomer.mockResolvedValue(sale());
-    mocks.retry.mockResolvedValue({ state: "processed" });
+  it("shows the reason in plain words on the row, with Resolve first and Try again second", async () => {
     listWith([waiting("s2")]);
-    fireEvent.click(await screen.findByRole("button", { name: "Add CPF/CNPJ" }));
-    const input = screen.getByLabelText(/Customer CPF or CNPJ/);
-    const save = screen.getByRole("button", { name: "Save and issue" }) as HTMLButtonElement;
-    expect(save.disabled).toBe(true);
-    fireEvent.change(input, { target: { value: "529.982.247-25" } });
-    expect(save.disabled).toBe(false);
-    const loads = mocks.list.mock.calls.length;
-    fireEvent.click(save);
-    await waitFor(() => expect(mocks.completeCustomer).toHaveBeenCalledWith("s2", { taxId: "52998224725" }));
-    await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith("s2"));
-    expect(mocks.completeCustomer.mock.invocationCallOrder[0]).toBeLessThan(mocks.retry.mock.invocationCallOrder[0]);
-    await waitFor(() => expect(mocks.list.mock.calls.length).toBeGreaterThan(loads));
+    expect((await screen.findAllByText("The customer's CPF or CNPJ is missing.")).length).toBeGreaterThan(0);
+    const resolve = screen.getByRole("link", { name: "Resolve" });
+    expect(resolve.getAttribute("href")).toBe("/app/integrations/sales/s2");
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Joao" }).getAttribute("href")).toBe("/app/integrations/sales/s2");
+  });
+
+  it("Try again always answers: the invoice was issued, or what still blocks it", async () => {
+    mocks.retry.mockResolvedValueOnce({ state: "needs_attention", lastError: "customer.email: customer.email is required when email notification is enabled" });
+    listWith([waiting("s2")]);
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(await screen.findByText(/It could not be issued yet:.*customer has no e-mail/)).toBeTruthy();
+    mocks.retry.mockResolvedValueOnce({ state: "processed" });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(mocks.success).toHaveBeenCalledWith("Invoice issued."));
+    expect(await screen.findByText("Invoice issued.", { selector: "p" })).toBeTruthy();
   });
 
   it("offers a retry for a sale that was held by a paused connection", async () => {
@@ -177,7 +179,7 @@ describe("Sales on the list", () => {
     mocks.permissions = new Set(["integrations.view"]);
     listWith([waiting("s2")]);
     await screen.findByText("CPF/CNPJ missing");
-    expect(screen.queryByRole("button", { name: "Add CPF/CNPJ" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Resolve" })).toBeNull();
   });
 
   it("shows no sales section when there is no integration yet", async () => {
@@ -445,7 +447,7 @@ describe("Connection page", () => {
     expect(await screen.findByRole("switch", { name: "Email the invoice to the customer" })).toBeTruthy();
     expect(screen.queryByLabelText(/Service description/)).toBeNull();
     expect(screen.queryByText("Latest sales")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Add CPF/CNPJ" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Resolve" })).toBeNull();
     expect(screen.getByText("https://api.corvo.tech/v1/integrations/inbound/PUB")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Disconnect" })).toBeTruthy();
   });

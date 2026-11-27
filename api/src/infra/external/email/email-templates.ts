@@ -221,6 +221,58 @@ export function invoiceRejectedEmail(input: {
   ]);
 }
 
+/** A sale from a payment platform that could not become an invoice. Reason and next step in plain words. */
+export function integrationSaleNeedsAttentionEmail(input: {
+  platform: string;
+  amount: string;
+  date: string;
+  buyerName: string | null;
+  reasonTitle: string;
+  reasonAction: string;
+  saleUrl: string;
+  pendingCount: number;
+}): RenderedEmail {
+  const rows: Array<[string, string]> = [
+    ['Plataforma', input.platform],
+    ['Valor', input.amount],
+    ['Data', input.date],
+  ];
+  if (input.buyerName) rows.push(['Cliente', input.buyerName]);
+  return emailLayout('Uma venda está esperando você para virar nota', [
+    paragraph(
+      `Recebemos uma venda de ${input.platform}, mas ainda não conseguimos emitir a nota fiscal dela.`,
+    ),
+    details(rows),
+    paragraph(`O que aconteceu: ${input.reasonTitle}`),
+    paragraph(`O que fazer: ${input.reasonAction}`),
+    button(input.saleUrl, 'Resolver esta venda'),
+    ...(input.pendingCount > 1
+      ? [
+          note(
+            `Você tem ${input.pendingCount} vendas esperando. Veja todas no painel.`,
+          ),
+        ]
+      : []),
+  ]);
+}
+
+/** One e-mail a day when many sales wait, instead of one per sale. */
+export function integrationSalesDigestEmail(input: {
+  count: number;
+  listUrl: string;
+}): RenderedEmail {
+  return emailLayout('Vendas esperando você para virar nota', [
+    paragraph(
+      `Você tem ${input.count} ${input.count === 1 ? 'venda' : 'vendas'} das integrações que ainda não viraram nota fiscal.`,
+    ),
+    paragraph('Abra cada uma, complete os dados e emita a nota.'),
+    button(input.listUrl, 'Ver vendas pendentes'),
+    note(
+      'Para não lotar sua caixa de entrada, enviamos no máximo 1 resumo por dia.',
+    ),
+  ]);
+}
+
 export function apiKeyCreatedEmail(input: {
   name: string;
   keysUrl: string;
