@@ -4507,7 +4507,7 @@
       "docs": "Ler a documentação",
       "scope": "Para empresas do Simples Nacional e MEI. Você informa CFOP, NCM e CSOSN como o seu contador orienta.",
       "note": "Disponível em teste (homologação). Produção em breve.",
-      "release": "A NF-e é liberada conta por conta: fale com a Corvo para liberar a sua."
+      "release": "Funciona em todos os estados, sem configurar nada: é só cadastrar a empresa."
     },
     "code": {
       "label": "Exemplo de chamada da API",
@@ -4588,7 +4588,7 @@
       "docs": "Ler a documentação",
       "scope": "CPF do consumidor é opcional. Para empresas do Simples Nacional e MEI, com a inscrição estadual credenciada para NFC-e.",
       "note": "Disponível em teste (homologação). Produção em breve.",
-      "release": "Começa por São Paulo. A liberação é feita conta por conta: fale com a Corvo."
+      "release": "Começa por São Paulo. Os outros estados chegam em breve."
     },
     "receipt": {
       "label": "Exemplo de cupom NFC-e",

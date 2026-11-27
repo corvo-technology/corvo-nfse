@@ -4507,7 +4507,7 @@
       "docs": "Read the documentation",
       "scope": "For Simples Nacional and MEI companies. You give the CFOP, NCM and CSOSN as your accountant tells you.",
       "note": "Available in test mode (homologação). Production coming soon.",
-      "release": "NF-e is released account by account: talk to Corvo to get yours released."
+      "release": "Works in every state with nothing to set up: just register the company."
     },
     "code": {
       "label": "API call example",
@@ -4588,7 +4588,7 @@
       "docs": "Read the documentation",
       "scope": "The consumer's CPF is optional. For Simples Nacional and MEI companies, with the state registration accredited for NFC-e.",
       "note": "Available in test mode (homologação). Production coming soon.",
-      "release": "Starts with São Paulo. It is released account by account: talk to Corvo."
+      "release": "Starts with São Paulo. Other states are coming soon."
     },
     "receipt": {
       "label": "NFC-e receipt example",
