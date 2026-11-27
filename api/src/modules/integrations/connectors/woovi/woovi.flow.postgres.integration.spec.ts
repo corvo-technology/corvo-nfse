@@ -344,12 +344,14 @@ describePostgres('Woovi connector through the real pipeline', () => {
     expect(rows[0].n).toBe(0);
   });
 
-  it('a charge without a usable customer document waits for the customer to be completed', async () => {
+  it('a sale with no document anywhere (charge customer or Pix payer) waits for the customer to be completed', async () => {
     const { publicId } = await liveConnection();
     const data = JSON.parse(fixture) as {
       charge: { customer: { taxID?: unknown } };
+      pix: { payer: { taxID?: unknown } };
     };
     delete data.charge.customer.taxID;
+    delete data.pix.payer.taxID;
     await receiver.receive(publicId, signed(JSON.stringify(data)));
     await drain();
     expect(issuance.commands).toHaveLength(0);
@@ -357,5 +359,16 @@ describePostgres('Woovi connector through the real pipeline', () => {
       `SELECT block_reason FROM ${t('integration_operations')}`,
     );
     expect(rows[0].block_reason).toBe('customer_tax_id_missing');
+  });
+
+  it('a charge customer without a document falls back to the Pix payer and issues the invoice', async () => {
+    const { publicId } = await liveConnection();
+    const data = JSON.parse(fixture) as {
+      charge: { customer: { taxID?: unknown } };
+    };
+    delete data.charge.customer.taxID;
+    await receiver.receive(publicId, signed(JSON.stringify(data)));
+    await drain();
+    expect(issuance.commands).toHaveLength(1);
   });
 });
