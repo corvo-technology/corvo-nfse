@@ -56,6 +56,25 @@ export abstract class IIntegrationOperationRepository {
     blockReason: BlockReason | null,
     invoiceId?: string,
   ): Promise<void>;
+  /** Sales of the workspace waiting for the client (no invoice yet), newest first. */
+  abstract listNeedingAttention(
+    tenantId: string,
+    environment: 'test' | 'live',
+    limit: number,
+  ): Promise<IntegrationOperation[]>;
+  /**
+   * What the client typed to complete the sale. Only while the request is not
+   * frozen and the sale has no invoice; returns null otherwise.
+   */
+  abstract applyResolution(
+    id: string,
+    tenantId: string,
+    resolution: {
+      customer?: NormalizedCustomer;
+      service?: { code?: string; description?: string };
+      sendEmail?: boolean;
+    },
+  ): Promise<IntegrationOperation | null>;
   /** Only while the request is not frozen; returns null otherwise. */
   abstract updateCustomer(
     id: string,

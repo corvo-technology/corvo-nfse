@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ApplicationEventBus } from '@/shared/events/application-event-bus';
+import { accountNotice } from '@/shared/events/account-notice.events';
 import { QuotaExceededError } from '@/modules/plans/application/quota.service';
 import { IdempotencyConflictError } from '@/modules/invoice/domain/errors';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
@@ -47,7 +49,11 @@ export class OperationEmitter {
     private readonly issuance: InvoiceIssuancePort,
     private readonly events: IIntegrationEventRepository,
     private readonly cancellation: InvoiceCancellationPort,
+    /** Optional so unit tests that do not care about notices can leave it out. */
+    private readonly bus?: ApplicationEventBus,
   ) {}
+
+  private readonly noticeLogger = new Logger(OperationEmitter.name);
 
   /** Throws on unexpected errors so the caller retries; the frozen request makes a retry safe. */
   async run(operation: IntegrationOperation): Promise<EventOutcome> {
@@ -58,6 +64,9 @@ export class OperationEmitter {
     );
 
     if (operation.invoiceId) return this.afterInvoice(operation);
+    // The client chose not to invoice this sale: a repeated notice must not bring it back.
+    if (operation.blockReason === 'ignored_by_user')
+      return { state: 'processed', operationId: id };
 
     let frozen = operation.emissionRequest ? operation : null;
     if (!frozen) {
@@ -189,6 +198,7 @@ export class OperationEmitter {
               'needs_attention',
               'cancel_failed',
             );
+            await this.tellOwners(operation, 'cancel_failed');
             return {
               state: 'needs_attention',
               operationId: id,
@@ -243,6 +253,7 @@ export class OperationEmitter {
       status,
       reason,
     );
+    if (status === 'needs_attention') await this.tellOwners(operation, reason);
     return status === 'blocked'
       ? { state: 'processed', operationId: operation.id }
       : {
@@ -250,5 +261,46 @@ export class OperationEmitter {
           operationId: operation.id,
           lastError: detail ?? reason,
         };
+  }
+
+  /**
+   * A sale that waits for the client is announced once (the listener dedupes per sale).
+   * Live only, and a failure here never changes what happened to the sale.
+   */
+  private async tellOwners(
+    operation: IntegrationOperation,
+    reason: BlockReason,
+  ): Promise<void> {
+    if (operation.environment !== 'live') return;
+    try {
+      const waiting = await this.operations.listNeedingAttention(
+        operation.tenantId,
+        'live',
+        100,
+      );
+      const { snapshot } = operation;
+      this.bus?.publishBestEffort(
+        accountNotice(operation.tenantId, {
+          kind: 'integration-sale-needs-attention',
+          operationId: operation.id,
+          connectionId: operation.connectionId,
+          provider: operation.provider,
+          amountCents: snapshot.amountCents,
+          paidAt: snapshot.paidAt ?? snapshot.occurredAt,
+          buyerName: snapshot.customer?.name ?? null,
+          reason,
+          pendingCount: Math.max(
+            waiting.length,
+            waiting.some((row) => row.id === operation.id) ? 0 : 1,
+          ),
+        }),
+      );
+    } catch (error) {
+      this.noticeLogger.warn({
+        event: 'integration_notice_failed',
+        operationId: operation.id,
+        error: error instanceof Error ? error.name : 'unknown',
+      });
+    }
   }
 }

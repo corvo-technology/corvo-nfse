@@ -45,6 +45,17 @@ export interface NormalizedCustomer {
   taxId: string | null;
   /** True when the platform masked the document. */
   taxIdMasked: boolean;
+  /** Filled in by the client when resolving the sale; platforms do not send it. */
+  address?: CustomerAddress;
+}
+
+export interface CustomerAddress {
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  municipalityCode?: string;
 }
 
 export interface NormalizedOperation {
@@ -70,6 +81,10 @@ export interface NormalizedOperation {
    * payment): the sale is the one whose `externalRefs[ref]` equals `value`.
    */
   refersTo?: { ref: string; value: string };
+  /** What the client typed when resolving the sale; wins over the rule and the platform's text. */
+  serviceOverride?: { code?: string; description?: string };
+  /** The client's choice for this sale: send the invoice by e-mail or not. */
+  sendEmailOverride?: boolean;
   /** False when the platform says someone else issues the invoice. */
   sellerIssuesInvoice: boolean;
 }

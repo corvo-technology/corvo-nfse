@@ -127,6 +127,7 @@ function setup() {
       normalized: n,
     });
   return {
+    connections,
     emitter,
     operations,
     rules,
@@ -564,4 +565,94 @@ describe('OperationEmitter', () => {
       });
     },
   );
+});
+
+describe('OperationEmitter notices', () => {
+  const live = (n: NormalizedOperation) => n;
+  function withBus() {
+    const ctx = setup();
+    const published: Array<{
+      tenantId: string;
+      notice: Record<string, unknown>;
+    }> = [];
+    const bus = {
+      publishBestEffort: (event: {
+        tenantId: string;
+        notice: Record<string, unknown>;
+      }) => published.push(event),
+    };
+    const emitter = new OperationEmitter(
+      ctx.connections,
+      ctx.operations,
+      ctx.rules,
+      ctx.issuance,
+      ctx.events,
+      new FakeCancellation(),
+      bus as never,
+    );
+    const seedLive = (n: NormalizedOperation) =>
+      ctx.operations.upsertFromNormalized({
+        tenantId: TENANT,
+        connectionId: 'c1',
+        provider: 'woovi',
+        environment: 'live',
+        externalAccountId: 'acc',
+        normalized: live(n),
+      });
+    return { ...ctx, emitter, published, seedLive };
+  }
+
+  it('announces a live sale that waits for the client, with what the owner needs', async () => {
+    const { emitter, published, seedLive } = withBus();
+    const op = await seedLive(
+      snapshot({
+        customer: {
+          name: 'ACME',
+          email: null,
+          taxId: null,
+          taxIdMasked: false,
+        },
+      }),
+    );
+    await emitter.run(op);
+    expect(published).toHaveLength(1);
+    expect(published[0].tenantId).toBe(TENANT);
+    expect(published[0].notice).toMatchObject({
+      kind: 'integration-sale-needs-attention',
+      operationId: op.id,
+      provider: 'woovi',
+      amountCents: 4990,
+      buyerName: 'ACME',
+      reason: 'customer_tax_id_missing',
+      pendingCount: 1,
+    });
+  });
+
+  it('says nothing for a test sale or one that blocks for a reason the client cannot act on', async () => {
+    const { emitter, published, upsert, seedLive } = withBus();
+    await emitter.run(
+      await upsert(
+        snapshot({
+          operationKey: 'c:t',
+          customer: null,
+        }),
+      ),
+    );
+    await emitter.run(
+      await seedLive(snapshot({ operationKey: 'c:r', currency: 'USD' })),
+    );
+    expect(published).toHaveLength(0);
+  });
+
+  it('does not run again for a sale the client chose to ignore', async () => {
+    const { emitter, published, issuance, operations, seedLive } = withBus();
+    const op = await seedLive(snapshot());
+    await operations.setFiscal(op.id, TENANT, 'blocked', 'ignored_by_user');
+    const outcome = await emitter.run(
+      (await operations.findById(op.id, TENANT))!,
+    );
+    expect(outcome.state).toBe('processed');
+    expect(issuance.calls).toHaveLength(0);
+    expect(published).toHaveLength(0);
+  });
 });

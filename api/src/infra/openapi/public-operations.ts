@@ -134,6 +134,8 @@ export const ADDED_IN_0_3_0: ReadonlySet<string> = new Set([
   'GET /integrations/connections/{id}/events',
   'GET /integrations/connections/{id}/operations',
   'GET /integrations/connections/{id}/rules',
+  'GET /integrations/operations',
+  'GET /integrations/operations/{id}',
   'GET /integrations/providers',
   'GET /plans',
   'GET /plans/{slug}',
@@ -153,6 +155,8 @@ export const ADDED_IN_0_3_0: ReadonlySet<string> = new Set([
   'POST /integrations/connections/{id}/disconnect',
   'POST /integrations/connections/{id}/pause',
   'POST /integrations/connections/{id}/validate',
+  'POST /integrations/operations/{id}/ignore',
+  'POST /integrations/operations/{id}/resolve',
   'POST /integrations/operations/{id}/retry',
   'POST /invoices/review',
   'POST /invoices/{id}/substitute',
@@ -936,6 +940,41 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
       'The latest operations (sales) of the connection and the status of their invoices.',
     ok: { 200: list(ref('IntegrationOperation')) },
     paramDescriptions: { limit: 'How many operations (1 to 100, default 50).' },
+  },
+  'GET /integrations/operations': {
+    id: 'integrationOperations_listPending',
+    tag: 'Integrations',
+    description:
+      'Sales of every connection that wait for you (no invoice yet, `fiscalStatus` `needs_attention`), newest first.',
+    ok: { 200: list(ref('IntegrationOperation')) },
+    paramDescriptions: {
+      environment: 'test or live (default live). An API key uses its own.',
+      limit: 'How many sales (1 to 100, default 50).',
+    },
+  },
+  'GET /integrations/operations/{id}': {
+    id: 'integrationOperations_get',
+    tag: 'Integrations',
+    description:
+      'One sale, with the service (code and description) its invoice would carry.',
+    ok: { 200: data(ref('IntegrationOperationDetail')) },
+    errors: [404],
+  },
+  'POST /integrations/operations/{id}/resolve': {
+    id: 'integrationOperations_resolve',
+    tag: 'Integrations',
+    description:
+      'Completes the data of a sale that waits for you (customer with CPF/CNPJ, name, e-mail and address; service code and description; whether to e-mail the invoice) and issues its invoice. Safe to repeat: a sale never gets two invoices. Answers 409 `OPERATION_HAS_INVOICE`, `OPERATION_NOT_RESOLVABLE` or `OPERATION_REQUEST_FIXED`, and 400 `INVALID_TAX_ID`.',
+    ok: { 200: data(ref('IntegrationOperationResolved')) },
+    errors: [400, 404, 409],
+  },
+  'POST /integrations/operations/{id}/ignore': {
+    id: 'integrationOperations_ignore',
+    tag: 'Integrations',
+    description:
+      'Marks a sale as one that needs no invoice (`blockReason` `ignored_by_user`). The reason is kept in the audit trail. Answers 409 `OPERATION_HAS_INVOICE` when it already has one.',
+    ok: { 200: data(ref('IntegrationOperation')) },
+    errors: [404, 409],
   },
   'PATCH /integrations/operations/{id}/customer': {
     id: 'integrationOperations_completeCustomer',

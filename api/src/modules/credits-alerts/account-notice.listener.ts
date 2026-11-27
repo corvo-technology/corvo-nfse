@@ -7,6 +7,8 @@ import {
   runWithoutDatabaseScope,
   runWithTenant,
 } from '@/infra/persistence/typeorm/tenant-context.storage';
+import { BLOCK_REASON_TEXT } from '@/modules/integrations/domain/block-reason-text';
+import type { BlockReason } from '@/modules/integrations/domain/integration-operation';
 import { monthLabel } from '@/modules/invoice/application/package/package-month';
 import {
   accountantPackageEmptyEmail,
@@ -14,6 +16,8 @@ import {
   accountantPackageTooLargeEmail,
   apiKeyCreatedEmail,
   certificateExpiringEmail,
+  integrationSaleNeedsAttentionEmail,
+  integrationSalesDigestEmail,
   invoiceBlockedOnPortalEmail,
   invoiceCancelledOnPortalEmail,
   invoiceRejectedByTakerEmail,
@@ -40,6 +44,16 @@ import { TenantRecipientsService } from './tenant-recipients.service';
 const DEFAULT_APP_URL = 'https://www.corvo.tech/app';
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
+/** Sales that wait for the client: this many e-mails a day per workspace, then one summary. */
+const SALE_EMAILS_PER_DAY = 5;
+const PLATFORM_NAMES: Record<string, string> = {
+  woovi: 'Woovi',
+  stripe: 'Stripe',
+  hotmart: 'Hotmart',
+  kiwify: 'Kiwify',
+  abacatepay: 'AbacatePay',
+  pushinpay: 'PushinPay',
+};
 
 /** Turns account events into e-mails for the workspace admins. A failure never affects the action that caused it. */
 @Injectable()
@@ -119,6 +133,51 @@ export class AccountNoticeListener {
         if (!(await this.once(`exhausted:${tenantId}`, DAY_MS))) return;
         message = creditsExhaustedEmail({ billingUrl: this.page('billing') });
         to = await this.recipients.emailsFor(tenantId);
+        break;
+      }
+      case 'integration-sale-needs-attention': {
+        // The same sale is announced once, whatever the number of retries.
+        if (
+          !(await this.once(
+            `integration-sale:${notice.operationId}`,
+            30 * DAY_MS,
+          ))
+        )
+          return;
+        let slot = 0;
+        for (let n = 1; n <= SALE_EMAILS_PER_DAY && slot === 0; n++)
+          if (await this.once(`integration-sale-day:${tenantId}:${n}`, DAY_MS))
+            slot = n;
+        const pending = this.page('invoices?filter=sales');
+        if (slot === 0) {
+          // Over the daily limit: one summary a day, the rest is in the panel.
+          if (!(await this.once(`integration-sale-digest:${tenantId}`, DAY_MS)))
+            return;
+          message = integrationSalesDigestEmail({
+            count: notice.pendingCount,
+            listUrl: pending,
+          });
+        } else {
+          const text =
+            BLOCK_REASON_TEXT[notice.reason as BlockReason] ??
+            BLOCK_REASON_TEXT.invoice_rejected;
+          message = integrationSaleNeedsAttentionEmail({
+            platform: PLATFORM_NAMES[notice.provider] ?? notice.provider,
+            amount: (notice.amountCents / 100).toLocaleString('pt-BR', {
+              style: 'currency',
+              currency: 'BRL',
+            }),
+            date: notice.paidAt.toLocaleDateString('pt-BR', {
+              timeZone: 'America/Sao_Paulo',
+            }),
+            buyerName: notice.buyerName,
+            reasonTitle: text.title,
+            reasonAction: text.action,
+            saleUrl: this.page(`integrations/sales/${notice.operationId}`),
+            pendingCount: notice.pendingCount,
+          });
+        }
+        to = await this.recipients.ownerEmailsFor(tenantId);
         break;
       }
       case 'payment-failed': {
