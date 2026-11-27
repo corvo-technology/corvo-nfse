@@ -22,6 +22,23 @@ describe('nfse emission environment configuration', () => {
   });
 });
 
+describe('test queue concurrency configuration', () => {
+  it('runs two test jobs at once per queue by default', () => {
+    expect(parseEnvConfig({ NODE_ENV: 'test' }).TEST_QUEUE_CONCURRENCY).toBe(2);
+  });
+
+  it('accepts an override between 1 and 10 and rejects anything else', () => {
+    expect(
+      parseEnvConfig({ NODE_ENV: 'test', TEST_QUEUE_CONCURRENCY: '4' })
+        .TEST_QUEUE_CONCURRENCY,
+    ).toBe(4);
+    for (const invalid of ['0', '11', 'abc'])
+      expect(() =>
+        parseEnvConfig({ NODE_ENV: 'test', TEST_QUEUE_CONCURRENCY: invalid }),
+      ).toThrow();
+  });
+});
+
 describe('government rate limit configuration', () => {
   it('defaults to 5 per second, burst 10, 10 s of waiting and 50 recovered items', () => {
     const env = parseEnvConfig({ NODE_ENV: 'test' });

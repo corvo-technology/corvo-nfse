@@ -1,3 +1,4 @@
+import { queueFor } from '@/infra/redis/queue-routing';
 import { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -53,7 +54,7 @@ export class ManualReviewSweepScheduler {
       for (const invoice of found) {
         try {
           await this.queues.add(
-            'nfse-reconciliation',
+            queueFor('nfse-reconciliation', invoice.environment),
             'reconcile',
             {
               invoiceId: invoice.id,

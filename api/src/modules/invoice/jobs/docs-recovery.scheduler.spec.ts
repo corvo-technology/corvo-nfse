@@ -173,6 +173,87 @@ describe('DocsRecoveryScheduler', () => {
     });
   });
 
+  describe('test and live use separate queues', () => {
+    const getJobStatus = mockQueueService.getJobStatus as jest.Mock;
+    afterEach(() => getJobStatus.mockReset());
+    const only = (tenant: string, rows: unknown[]) => async (id: string) =>
+      id === tenant ? rows : [];
+
+    it('re-queues doc-prep and reconciliation of a test invoice on the test twins and a live one on the live queues', async () => {
+      addMock.mockClear();
+      getJobStatus.mockResolvedValue(null);
+      findPendingReconciliation.mockImplementation(
+        only('tenant-a', [
+          {
+            id: 'r-live',
+            tenantId: 'tenant-a',
+            companyId: 'c',
+            environment: 'live',
+          },
+          {
+            id: 'r-test',
+            tenantId: 'tenant-a',
+            companyId: 'c',
+            environment: 'test',
+          },
+        ]),
+      );
+      findAuthorizedWithoutDocuments.mockImplementation(
+        only('tenant-a', [
+          {
+            id: 'd-live',
+            tenantId: 'tenant-a',
+            companyId: 'c',
+            environment: 'live',
+          },
+          {
+            id: 'd-test',
+            tenantId: 'tenant-a',
+            companyId: 'c',
+            environment: 'test',
+          },
+        ]),
+      );
+      findAuthorizedWithoutReconciliation.mockResolvedValue([]);
+
+      await scheduler.handle();
+
+      const queues = (addMock.mock.calls as unknown[][]).map((c) => [
+        c[0],
+        (c[2] as { invoiceId: string }).invoiceId,
+      ]);
+      expect(queues).toEqual([
+        ['nfse-reconciliation', 'r-live'],
+        ['nfse-reconciliation-test', 'r-test'],
+        ['nfse-doc-prep', 'd-live'],
+        ['nfse-doc-prep-test', 'd-test'],
+      ]);
+    });
+
+    it('a test chain started before the split (old shared queue) still counts as pending, so no second chain is queued', async () => {
+      addMock.mockClear();
+      getJobStatus.mockImplementation(async (queue: string) =>
+        queue === 'nfse-reconciliation' ? 'delayed' : null,
+      );
+      findPendingReconciliation.mockImplementation(
+        only('tenant-a', [
+          {
+            id: 'r-test',
+            tenantId: 'tenant-a',
+            companyId: 'c',
+            environment: 'test',
+          },
+        ]),
+      );
+      findAuthorizedWithoutDocuments.mockResolvedValue([]);
+      findAuthorizedWithoutReconciliation.mockResolvedValue([]);
+
+      await scheduler.handle();
+
+      expect(addMock).not.toHaveBeenCalled();
+    });
+  });
+
   it('enqueues a doc-prep job for each invoice returned by the query', async () => {
     const pending = [
       { id: 'inv-1', tenantId: 'tenant-a', companyId: 'comp-1' },

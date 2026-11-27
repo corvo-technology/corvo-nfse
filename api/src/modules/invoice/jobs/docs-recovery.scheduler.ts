@@ -1,4 +1,6 @@
 import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
+import { queueFor, queuesHolding } from '@/infra/redis/queue-routing';
+import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -19,7 +21,7 @@ import {
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
 import { observeScheduledTask } from '@/shared/observability/scheduled-task-telemetry';
 
-const QUEUE_NAME = 'nfse-doc-prep';
+const QUEUE_NAME = 'nfse-doc-prep' as const;
 const JOB_NAME = 'prepare';
 const RECONCILE_QUEUE_NAME = 'nfse-fiscal-reconcile';
 const RECONCILE_JOB_NAME = 'reconcile';
@@ -54,14 +56,19 @@ export class DocsRecoveryScheduler {
     );
   }
 
-  private async hasPendingReconciliation(invoiceId: string): Promise<boolean> {
-    for (const key of reconciliationJobKeys(invoiceId)) {
-      const state = await this.queueService.getJobStatus(
-        'nfse-reconciliation',
-        key.replace(/:/g, '_'),
-      );
-      if (isPendingJobState(state)) return true;
-    }
+  private async hasPendingReconciliation(
+    invoiceId: string,
+    environment: ExecutionEnvironment,
+  ): Promise<boolean> {
+    // A test chain started before the queues were split may still sit in the old shared queue.
+    for (const queue of queuesHolding('nfse-reconciliation', environment))
+      for (const key of reconciliationJobKeys(invoiceId)) {
+        const state = await this.queueService.getJobStatus(
+          queue,
+          key.replace(/:/g, '_'),
+        );
+        if (isPendingJobState(state)) return true;
+      }
     return false;
   }
 
@@ -88,10 +95,11 @@ export class DocsRecoveryScheduler {
         if (budget <= 0) break;
         try {
           // One reconciliation chain per invoice: while one is queued, delayed or running, recovery waits.
-          if (await this.hasPendingReconciliation(i.id)) continue;
+          if (await this.hasPendingReconciliation(i.id, i.environment))
+            continue;
           await this.jitter();
           await this.queueService.add(
-            'nfse-reconciliation',
+            queueFor('nfse-reconciliation', i.environment),
             'recover',
             {
               invoiceId: i.id,
@@ -126,12 +134,12 @@ export class DocsRecoveryScheduler {
             ).slice(0, budget)
           : [];
 
-      for (const { id, tenantId, companyId } of pending) {
+      for (const { id, tenantId, companyId, environment } of pending) {
         if (budget <= 0) break;
         await this.jitter();
         try {
           await this.queueService.add(
-            QUEUE_NAME,
+            queueFor(QUEUE_NAME, environment),
             JOB_NAME,
             { invoiceId: id, tenantId, companyId },
             {

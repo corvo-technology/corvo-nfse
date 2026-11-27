@@ -6,6 +6,7 @@ import {
   QUEUE_RETENTION,
 } from './queue-retention';
 import { buildJobOptions } from './bullmq-queue.helpers';
+import { SPLIT_QUEUES, testTwinOf } from './queue-routing';
 
 const queueConfig = { defaultAttempts: 3, defaultBackoffMs: 1000 } as never;
 
@@ -57,6 +58,25 @@ describe('queue retention', () => {
     expect(QUEUE_RETENTION['nfse-cancellation'].removeOnComplete.age).toBe(
       window,
     );
+  });
+
+  it.each([
+    'nfse-emission',
+    'nfse-cancellation',
+    'nfse-email',
+    'nfse-doc-prep',
+  ] as const)(
+    'the test twin of %s keeps jobs exactly like the live queue',
+    (q) => {
+      expect(QUEUE_RETENTION[testTwinOf(q)]).toBe(QUEUE_RETENTION[q]);
+    },
+  );
+
+  it('every retained split queue has a retained twin', () => {
+    for (const base of SPLIT_QUEUES) {
+      if (base in QUEUE_RETENTION)
+        expect(QUEUE_RETENTION).toHaveProperty([testTwinOf(base)]);
+    }
   });
 
   it('passes the options through to BullMQ unchanged', () => {
