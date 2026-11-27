@@ -216,23 +216,26 @@ describePostgres('NF-e cancellation on PostgreSQL (simulated SEFAZ)', () => {
     expect(await eventsOf(id)).toHaveLength(1);
   });
 
-  it('the log of the timeline joins the states and the event', async () => {
+  it('the timeline tells the cancellation once: the request with its reason, then the answer', async () => {
     const id = (current = await s.issue('FAKE-100'));
     await s.cancelService.cancel(id, h.tenantId, 'test', JUSTIFICATION);
     await s.dispatch('nfe.cancel', id);
     const timeline = await s.timeline.timeline(id, h.tenantId, 'test');
-    const names = timeline.map((e) => `${e.kind}:${e.tpEvento ?? e.status}`);
-    expect(names.slice(0, 3)).toEqual([
+    expect(timeline.map((e) => `${e.kind}:${e.tpEvento ?? e.status}`)).toEqual([
       'status:queued',
       'status:processing',
       'status:authorized',
-    ]);
-    // The request and the state change of the same transaction share the instant.
-    expect(names.slice(3, 5).sort()).toEqual([
-      'event:110111',
       'status:cancelling',
+      'status:cancelled',
     ]);
-    expect(names[5]).toBe('status:cancelled');
+    const [, , authorized, cancelling, cancelled] = timeline;
+    expect(authorized.cStat).toBe('100');
+    expect(cancelling).toMatchObject({
+      text: JUSTIFICATION,
+      cStat: null,
+      xMotivo: null,
+    });
+    expect(cancelled.cStat).toBe('135');
   });
 
   describe('credits of a live company', () => {
