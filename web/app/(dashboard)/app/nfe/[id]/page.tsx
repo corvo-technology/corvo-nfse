@@ -123,6 +123,7 @@ export default function NfeDetailPage() {
           {last.issues && last.issues.length > 0 && <ul className="list-disc pl-5 text-sm">{last.issues.map((issue) => <li key={`${issue.field}-${issue.code}`}><span className="font-mono">{issue.field}</span>: {te.has(errorCodeKey(issue.code)) ? te(errorCodeKey(issue.code)) : issue.message}</li>)}</ul>}
         </div>
       )}
+      {(nfe.emissionType === 6 || nfe.emissionType === 7) && <p role="note" className="banner banner-warn">{t("svcIssued", { authority: nfe.emissionType === 6 ? "SVC-AN" : "SVC-RS" })}</p>}
       {nfe.status === "contingency_pending" && <p role="status" className="banner banner-warn">{t("contingencyPending", { deadline: date(nfe.contingencyDeadlineAt ?? null) })}</p>}
       {nfe.status === "reconciliation_required" && <p role="status" className="banner banner-warn">{t("reconciling")}</p>}
       {nfe.status === "manual_review" && <p role="status" className="banner banner-warn">{t("manualReview")}</p>}

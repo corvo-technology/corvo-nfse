@@ -74,6 +74,8 @@ describePostgres('off-line NFC-e migrations', () => {
   });
 
   it('down of the contingency columns fails while a contingency_pending row exists; then up again', async () => {
+    // Newest first: the SVC state table, then the off-line option.
+    await db.undoLastMigration();
     await db.undoLastMigration();
     expect(await columns('company_nfe_settings')).not.toContain(
       'nfce_auto_offline',

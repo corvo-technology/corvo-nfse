@@ -72,6 +72,8 @@ import type { FiscalSituation } from '@/modules/fiscal-core/domain/fiscal-situat
 import type { NfceInput } from '@/modules/nfce/domain/nfce-input';
 import type { NfeInput } from '../domain/nfe-input';
 import { TypeOrmNfeDocumentRepository } from '../infra/typeorm-nfe-document.repository';
+import { NfeContingencyStateOrmEntity } from '../infra/nfe-contingency-state.orm-entity';
+import { TypeormNfeContingencyStates } from '../infra/typeorm-nfe-contingency-states';
 import { TypeormNfeEvents } from '../infra/typeorm-nfe-events';
 import { TypeormNfeInutilizations } from '../infra/typeorm-nfe-inutilizations';
 import { NfeNumberGapsQuery } from '../infra/typeorm-nfe-number-gaps.query';
@@ -305,6 +307,9 @@ export function createNfeStack(
   } as unknown as ApplicationCertificateDecryptor;
   const access = new NfeSefazAccess(config, decryptor);
   const numbering = new TypeormNfeNumbering(h.helper);
+  const contingencyStates = new TypeormNfeContingencyStates(
+    h.runtime.getRepository(NfeContingencyStateOrmEntity),
+  );
   const handlers = new OutboxHandlerRegistry();
   const emit = new NfeEmitHandler(
     handlers,
@@ -318,6 +323,7 @@ export function createNfeStack(
     outcomes,
     breaker,
     config,
+    contingencyStates,
   );
   const consult = new NfeConsultService(
     documents,
@@ -676,6 +682,8 @@ export function createNfeStack(
     cache,
     remembered,
     numbering,
+    /** The SVC state per UF (a test enters or leaves the SVC through it). */
+    contingencyStates,
     input,
     nfceInput,
     nfceResubmit,

@@ -539,16 +539,20 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
             'NFC-e only: the address to consult the note by its key (`infNFeSupl`). Absent on an NF-e.',
         }),
       ),
+      emissionType: int({
+        description:
+          'NF-e only: the `tpEmis` of the current key. `1` normal, `6` issued through the SVC-AN and `7` through the SVC-RS (the SEFAZ Virtual de Contingência, used when the SEFAZ of the state is out). Absent on a NFC-e.',
+      }),
       contingencyAt: nullable(
         dateTime({
           description:
-            'NFC-e only: when it was issued off-line (`tpEmis` 9, `dhCont`). `null` when it was issued online.',
+            'When it was issued in contingency (`dhCont`): off-line for a NFC-e (`tpEmis` 9) or through the SVC for a NF-e (`tpEmis` 6 or 7). `null` when it was issued normally.',
         }),
       ),
       contingencyReason: nullable(
         str({
           description:
-            'NFC-e only: the reason of the off-line emission (`xJust`).',
+            'The reason of the contingency emission (`xJust`), for a NFC-e off-line or a NF-e through the SVC.',
         }),
       ),
       contingencyDeadlineAt: nullable(
@@ -563,6 +567,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     [
       'qrCode',
       'urlChave',
+      'emissionType',
       'contingencyAt',
       'contingencyReason',
       'contingencyDeadlineAt',
@@ -1056,6 +1061,8 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       'nfce.inutilization.completed',
       'nfce.inutilization.rejected',
       'nfce.contingency.deadline_near',
+      'nfe.contingency.entered',
+      'nfe.contingency.exited',
     ],
   }),
   Webhook: obj({

@@ -159,6 +159,13 @@ export interface CreateNfeDocumentParams {
   requestHash: string;
 }
 
+/** An NF-e attempt issued through the SVC: `tpEmis` 6 (SVC-AN) or 7 (SVC-RS), `dhCont` and `xJust`. */
+export interface SvcEmission {
+  tpEmis: 6 | 7;
+  at: Date;
+  reason: string;
+}
+
 /** One row of `nfe_document_history`. */
 export interface NfeHistoryEntry {
   tenantId: string;
@@ -374,8 +381,16 @@ export class NfeDocument {
     issuedAt: Date,
     supplement?: { qrCode: string; urlChave: string },
     now: Date = new Date(),
+    emission?: SvcEmission | null,
   ): NfeHistoryEntry {
     this.props.attempt += 1;
+    // An NF-e attempt says whether it goes through the SVC (`SvcEmission`) or normally (`null`); an
+    // attempt that says nothing (the off-line NFC-e) keeps what the document already has.
+    if (emission !== undefined) {
+      this.props.tpEmis = emission?.tpEmis ?? 1;
+      this.props.contingencyAt = emission?.at ?? null;
+      this.props.contingencyReason = emission?.reason ?? null;
+    }
     this.props.qrCode = supplement?.qrCode ?? null;
     this.props.urlChave = supplement?.urlChave ?? null;
     this.props.cNf = cNf;
@@ -384,6 +399,11 @@ export class NfeDocument {
     this.props.issuedAt = issuedAt;
     this.props.transmittedAt = null;
     this.props.updatedAt = now;
+    return this.historyEntry(this.props.status, this.props.status);
+  }
+
+  /** A history row with the key and attempt as they are now: written before a new attempt replaces them. */
+  keyChangeEntry(): NfeHistoryEntry {
     return this.historyEntry(this.props.status, this.props.status);
   }
 

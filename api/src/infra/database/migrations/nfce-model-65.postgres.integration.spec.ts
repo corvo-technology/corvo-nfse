@@ -92,7 +92,8 @@ describePostgres('NFC-e model 65 migrations', () => {
   });
 
   it('down fails while an NFC-e row exists, and works once it is gone; then up again', async () => {
-    // Newest first: the off-line option and the contingency columns, QR columns, recipient, series, model 65 (this one refuses to go with a model 65 row), tenant release.
+    // Newest first: the SVC state table, the off-line option and the contingency columns, QR columns, recipient, series, model 65 (this one refuses to go with a model 65 row), tenant release.
+    await db.undoLastMigration();
     await db.undoLastMigration();
     await db.undoLastMigration();
     expect(await columns('nfe_documents')).not.toContain('contingency_at');

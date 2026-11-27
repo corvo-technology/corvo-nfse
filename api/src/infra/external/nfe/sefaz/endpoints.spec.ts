@@ -7,15 +7,12 @@ import {
   AuthorityNotConfiguredError,
   ENDPOINTS,
   ENDPOINTS_65,
+  ENDPOINTS_SVC,
+  endpointTpEmis,
   TableAuthorityEndpointResolver,
   WSDL_NAMESPACE,
 } from './endpoints';
-import {
-  dhEmiFor,
-  SVC_AUTHORITY_BY_UF,
-  SVC_URL_AUTHORITY,
-  UF_TABLE,
-} from './uf';
+import { dhEmiFor, UF_TABLE } from './uf';
 
 describe('UF_TABLE', () => {
   it('has the 27 UFs with unique IBGE codes', () => {
@@ -150,12 +147,84 @@ describe('every UF', () => {
     ).toHaveLength(16);
   });
 
-  it('has a contingency authority for every UF, with the same URLs as SVAN/SVRS', () => {
-    for (const uf of Object.keys(UF_TABLE) as Uf[])
-      expect(['SVC-AN', 'SVC-RS']).toContain(SVC_AUTHORITY_BY_UF[uf]);
-    expect(SVC_AUTHORITY_BY_UF.MA).toBe('SVC-AN');
-    expect(SVC_AUTHORITY_BY_UF.SP).toBe('SVC-RS');
-    expect(SVC_URL_AUTHORITY).toEqual({ 'SVC-AN': 'SVAN', 'SVC-RS': 'SVRS' });
+  it('has a contingency authority for every UF (Ato COTEPE 39/2012)', () => {
+    const an = [
+      'AC',
+      'AL',
+      'AP',
+      'CE',
+      'DF',
+      'ES',
+      'MG',
+      'PA',
+      'PB',
+      'PI',
+      'RJ',
+      'RN',
+      'RO',
+      'RR',
+      'RS',
+      'SC',
+      'SE',
+      'SP',
+      'TO',
+    ];
+    const rs = ['AM', 'BA', 'GO', 'MA', 'MT', 'MS', 'PE', 'PR'];
+    for (const uf of an) expect(UF_TABLE[uf as Uf].svc).toBe('SVCAN');
+    for (const uf of rs) expect(UF_TABLE[uf as Uf].svc).toBe('SVCRS');
+    expect(an.length + rs.length).toBe(27);
+    expect(Object.keys(UF_TABLE)).toHaveLength(27);
+  });
+});
+
+describe('ENDPOINTS_SVC', () => {
+  it('has five services (no inutilização) per authority and environment, model 55 only', () => {
+    for (const [authority] of [
+      ['SVCAN', 6],
+      ['SVCRS', 7],
+    ] as const)
+      for (const tpAmb of [1, 2])
+        expect(
+          ENDPOINTS_SVC.filter(
+            (e) => e.authority === authority && e.tpAmb === tpAmb,
+          )
+            .map((e) => e.service)
+            .sort(),
+        ).toEqual(SERVICES.filter((s) => s !== 'NfeInutilizacao').sort());
+    expect(ENDPOINTS_SVC.every((e) => e.model === 55)).toBe(true);
+    expect(
+      ENDPOINTS_SVC.every(
+        (e) => e.tpEmis === (e.authority === 'SVCAN' ? 6 : 7),
+      ),
+    ).toBe(true);
+  });
+
+  it('uses the SVC hosts', () => {
+    const host = (authority: string, tpAmb: number) =>
+      new URL(
+        ENDPOINTS_SVC.find(
+          (e) =>
+            e.authority === authority &&
+            e.tpAmb === tpAmb &&
+            e.service === 'NfeAutorizacao',
+        )!.url,
+      ).hostname;
+    expect(host('SVCAN', 2)).toBe('hom.svc.fazenda.gov.br');
+    expect(host('SVCAN', 1)).toBe('www.svc.fazenda.gov.br');
+    expect(host('SVCRS', 2)).toBe('nfe-homologacao.svrs.rs.gov.br');
+    expect(host('SVCRS', 1)).toBe('nfe.svrs.rs.gov.br');
+  });
+});
+
+describe('endpointTpEmis', () => {
+  const key = (tpEmis: string) =>
+    `3526110000000000000055001000000001${tpEmis}123456780`;
+  it('sends 6 and 7 to the SVC and everything else to the origin', () => {
+    expect(key('6').charAt(34)).toBe('6');
+    expect(endpointTpEmis(key('6'))).toBe(6);
+    expect(endpointTpEmis(key('7'))).toBe(7);
+    expect(endpointTpEmis(key('1'))).toBe(1);
+    expect(endpointTpEmis(key('9'))).toBe(1);
   });
 });
 
@@ -236,6 +305,78 @@ describe('TableAuthorityEndpointResolver', () => {
     expect(
       resolver.resolve({ ...base, uf: 'SP', service: 'NfeAutorizacao' }).url,
     ).toContain('.nfe.fazenda.sp.gov.br');
+  });
+
+  it('resolves tpEmis 6 and 7 to the SVC of the UF', () => {
+    const r6 = resolver.resolve({
+      ...base,
+      uf: 'SP',
+      tpEmis: 6,
+      service: 'NfeAutorizacao',
+    });
+    expect(r6.authority).toBe('SVCAN');
+    expect(new URL(r6.url).hostname).toBe('hom.svc.fazenda.gov.br');
+    const r7 = resolver.resolve({
+      ...base,
+      uf: 'AM',
+      tpEmis: 7,
+      service: 'NfeAutorizacao',
+    });
+    expect(r7.authority).toBe('SVCRS');
+  });
+
+  it('refuses the SVC the UF does not belong to, the inutilização and the NFC-e', () => {
+    expect(() =>
+      resolver.resolve({
+        ...base,
+        uf: 'SP',
+        tpEmis: 7,
+        service: 'NfeAutorizacao',
+      }),
+    ).toThrow(AuthorityNotConfiguredError);
+    expect(() =>
+      resolver.resolve({
+        ...base,
+        uf: 'AM',
+        tpEmis: 6,
+        service: 'NfeAutorizacao',
+      }),
+    ).toThrow(AuthorityNotConfiguredError);
+    expect(() =>
+      resolver.resolve({
+        ...base,
+        uf: 'SP',
+        tpEmis: 6,
+        service: 'NfeInutilizacao',
+      }),
+    ).toThrow(AuthorityNotConfiguredError);
+    expect(() =>
+      resolver.resolve({
+        ...base,
+        uf: 'SP',
+        model: 65,
+        tpEmis: 6,
+        service: 'NfeAutorizacao',
+      }),
+    ).toThrow(AuthorityNotConfiguredError);
+  });
+
+  it('sends the off-line NFC-e (tpEmis 9) to the normal authorizer', () => {
+    const normal = resolver.resolve({
+      ...base,
+      model: 65,
+      uf: 'SP',
+      tpEmis: 1,
+      service: 'NfeAutorizacao',
+    });
+    const offline = resolver.resolve({
+      ...base,
+      model: 65,
+      uf: 'SP',
+      tpEmis: 9,
+      service: 'NfeAutorizacao',
+    });
+    expect(offline.url).toBe(normal.url);
   });
 });
 

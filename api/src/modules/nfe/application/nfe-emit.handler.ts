@@ -1,7 +1,8 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { endpointTpEmis } from '@/infra/external/nfe/sefaz/endpoints';
 import { nfceUrlsFor } from '@/infra/external/nfe/sefaz/nfce-urls';
-import { dhEmiFor } from '@/infra/external/nfe/sefaz/uf';
+import { dhEmiFor, UF_TABLE } from '@/infra/external/nfe/sefaz/uf';
 import type {
   NfeConsultResult,
   SignedNfe,
@@ -24,10 +25,11 @@ import type { OutboxMessage } from '@/modules/invoice/domain/outbox-message';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { randomCnf } from '../domain/access-key';
 import { NfeXmlBuilder } from '../domain/builder/nfe-xml-builder';
-import type { NfeDocument } from '../domain/nfe-document';
+import type { NfeDocument, SvcEmission } from '../domain/nfe-document';
 import { INfeDocumentRepository } from '../domain/nfe-document.repository';
 import { draftFromDocument } from '../domain/nfe-draft-mapper';
 import { NFE_EMIT, type NfeMessagePayload } from '../domain/nfe-message-types';
+import { TypeormNfeContingencyStates } from '../infra/typeorm-nfe-contingency-states';
 import { TypeormNfeNumbering } from '../infra/typeorm-nfe-numbering';
 import { nfeIssuerOf, nfeRespTec, nfeVerProc } from './nfe-issuer';
 import { emitRetryMessage, reconcileMessage } from './nfe-messages';
@@ -56,6 +58,10 @@ const CERTIFICATE_UNUSABLE = 'CERTIFICATE_UNUSABLE';
  *  2. Outside any transaction, the authority's breaker is checked and the signed XML is sent.
  *  3. The answer decides the next state (`NfeOutcomeService`).
  *
+ * With the UF in the SVC, a note that was **never transmitted** (`queued`, or `retry_pending` with
+ * `transmitted_at` empty) gets a new key with `tpEmis` 6 or 7 and goes to the SVC; one that may have
+ * reached its SEFAZ keeps its key and waits for it (spec 4.2.2).
+ *
  * A worker that dies after the send leaves the document `processing`; the redelivered message sees
  * that and hands the document to the reconciliation, which asks the SEFAZ by key and never renumbers.
  * The decrypted certificate lives only inside `process`.
@@ -79,6 +85,7 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
     private readonly outcomes: NfeOutcomeService,
     private readonly breaker: FiscalPortalBreaker,
     private readonly config: ConfigService,
+    private readonly contingency: TypeormNfeContingencyStates,
   ) {}
 
   onModuleInit(): void {
@@ -127,6 +134,8 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
     const issuer = nfeIssuerOf(company, settings);
     const uf = issuer.uf;
     const model = doc.toSnapshot().model;
+    const tpAmb = this.access.tpAmb(environment);
+    const emission = await this.svcEmissionFor(doc, uf, tpAmb);
 
     let certificate: LoadedCertificate;
     try {
@@ -141,13 +150,28 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
 
     // A retry and an off-line NFC-e (already numbered, keyed and signed) send the very same XML.
     const reuse =
-      doc.status === 'retry_pending' || doc.status === 'contingency_pending';
+      (doc.status === 'retry_pending' && emission === undefined) ||
+      doc.status === 'contingency_pending';
     const started = await this.transitions.apply(keyOf(doc), 'processing', {
       from: ['queued', 'retry_pending', 'contingency_pending'],
       change: async (locked) => {
-        locked.setAuthority(this.access.authorityOf(uf, model));
         // A retry sends the very same signed XML: nothing new is numbered, keyed or signed.
-        if (reuse) return;
+        if (reuse) {
+          locked.setAuthority(
+            this.access.authorityOf(
+              uf,
+              model,
+              endpointTpEmis(locked.accessKey ?? ''),
+            ),
+          );
+          return;
+        }
+        locked.setAuthority(
+          this.access.authorityOf(uf, model, emission?.tpEmis ?? 1),
+        );
+        // The key of the attempt that is being replaced stays in the history.
+        if (emission && locked.accessKey)
+          await this.documents.appendHistory(locked.keyChangeEntry());
         if (locked.number === null) {
           const next = await this.numbering.reserveNext({
             companyId: locked.companyId,
@@ -164,7 +188,6 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
         const { series, number } = locked.toSnapshot();
         const cNf = randomCnf(number as number);
         const issuedAtText = dhEmiFor(uf, new Date());
-        const tpAmb = this.access.tpAmb(environment);
         const base = NfeXmlBuilder.for(
           draftFromDocument(locked.toSnapshot(), issuer),
         )
@@ -173,7 +196,16 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
           .withIssuedAt(issuedAtText)
           .withTpAmb(tpAmb)
           .withVerProc(nfeVerProc(this.config))
-          .withRespTec(nfeRespTec(this.config));
+          .withRespTec(nfeRespTec(this.config))
+          .withContingency(
+            emission
+              ? {
+                  tpEmis: emission.tpEmis,
+                  dhCont: dhEmiFor(uf, emission.at),
+                  xJust: emission.reason,
+                }
+              : null,
+          );
         // The NFC-e carries its QR Code (`infNFeSupl`), built with the key of this very attempt.
         const urls = model === 65 ? nfceUrlsFor(uf, tpAmb) : null;
         const built = (
@@ -192,6 +224,9 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
           built.qrCode && built.urlChave
             ? { qrCode: built.qrCode, urlChave: built.urlChave }
             : undefined,
+          undefined,
+          // An NF-e says where this attempt goes; the NFC-e keeps what it has (off-line or online).
+          model === 55 ? (emission ?? null) : undefined,
         );
       },
     });
@@ -208,7 +243,14 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
   ): Promise<void> {
     const snapshot = doc.toSnapshot();
     const environment = doc.environment;
-    const authority = this.access.breakerAuthority(uf, environment, model);
+    // The authority is the one of the key of this attempt: the SVC for `tpEmis` 6 and 7.
+    const tpEmis = endpointTpEmis(snapshot.accessKey ?? '');
+    const authority = this.access.breakerAuthority(
+      uf,
+      environment,
+      model,
+      tpEmis,
+    );
     try {
       await this.breaker.assertAvailable(environment, authority);
     } catch (error) {
@@ -217,12 +259,17 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
       throw error;
     }
     // Proof that this attempt may have reached the SEFAZ, committed before the call (decision 14).
-    if (snapshot.tpEmis === 9)
-      await this.transitions.touch(keyOf(doc), {
-        change: (d) => d.markTransmitted(new Date()),
-      });
+    await this.transitions.touch(keyOf(doc), {
+      change: (d) => d.markTransmitted(new Date()),
+    });
     const gateway = this.gateways.get<SignedNfe>(gatewayTypeOf(model));
-    const ctx = this.access.context(uf, environment, certificate, model);
+    const ctx = this.access.context(
+      uf,
+      environment,
+      certificate,
+      model,
+      tpEmis,
+    );
     const signed: SignedNfe = {
       accessKey: snapshot.accessKey as string,
       signedXml: snapshot.signedXml as string,
@@ -245,6 +292,46 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
         new Date(Date.now() + (resolution.retryAfterMs ?? RETRY_DELAY_MS)),
       );
     await this.toReconciliation(doc, NO_ANSWER_CODE);
+  }
+
+  /**
+   * Whether this attempt goes through the SVC: the UF is in it and the document was never
+   * transmitted. `undefined` means the normal way (also for the NFC-e, which has no SVC).
+   */
+  private async svcEmissionFor(
+    doc: NfeDocument,
+    uf: Uf,
+    tpAmb: 1 | 2,
+  ): Promise<SvcEmission | undefined> {
+    const s = doc.toSnapshot();
+    if (s.model !== 55) return undefined;
+    // `queued` always starts a new attempt (a new key); a retry only while nothing was sent and
+    // the key is still the normal one. Anything that may have reached the SEFAZ keeps its key.
+    const neverTransmitted =
+      doc.status === 'queued' ||
+      (doc.status === 'retry_pending' &&
+        s.transmittedAt === null &&
+        s.tpEmis === 1);
+    if (!neverTransmitted) return undefined;
+    try {
+      const state = await this.contingency.get(uf, tpAmb);
+      if (state.mode !== 'svc' || !state.dhCont || !state.xJust)
+        return undefined;
+      const at = new Date(state.dhCont);
+      if (Number.isNaN(at.getTime())) return undefined;
+      return {
+        tpEmis: UF_TABLE[uf].svc === 'SVCAN' ? 6 : 7,
+        at,
+        reason: state.xJust,
+      };
+    } catch (error: unknown) {
+      // A state that cannot be read never stops an emission: it goes the normal way.
+      this.logger.warn(
+        { err: error, uf, documentId: doc.id },
+        'SVC state unreadable; emitting normally',
+      );
+      return undefined;
+    }
   }
 
   /** Nothing was sent: the same attempt waits for the authority and goes out again. */

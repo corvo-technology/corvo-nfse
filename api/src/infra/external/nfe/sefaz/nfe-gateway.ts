@@ -3,6 +3,7 @@ import type { GatewayOutcome } from '@/modules/fiscal-core/domain/gateway-outcom
 import type {
   AuthorityEndpointResolver,
   SefazService,
+  TpEmis,
   Uf,
 } from '@/modules/fiscal-core/domain/ports/authority.port';
 import type {
@@ -21,6 +22,7 @@ import type {
   SchemaId,
   SchemaValidator,
 } from '@/modules/fiscal-core/domain/ports/xml.port';
+import { endpointTpEmis } from './endpoints';
 import { CSTAT_MESSAGES, classifyCstat, explainCstat } from './cstat';
 import type { SefazSoapClient, SoapResult } from './soap-client';
 import type {
@@ -35,6 +37,8 @@ export interface StatusTarget {
   uf: Uf;
   tpAmb: 1 | 2;
   certificate: LoadedCertificate;
+  /** 6 or 7 asks the SVC of the UF; the origin when omitted. */
+  tpEmis?: TpEmis;
 }
 
 export interface StatusDetail {
@@ -258,13 +262,11 @@ export class NfeGateway {
   };
 
   readonly cancel: CancelCapability = {
-    cancel: (req, ctx) =>
-      this.sendEvent(ufOfKey(req.accessKey), req.signedXml, ctx),
+    cancel: (req, ctx) => this.sendEvent(req.accessKey, req.signedXml, ctx),
   };
 
   readonly correct: CorrectCapability = {
-    correct: (req, ctx) =>
-      this.sendEvent(ufOfKey(req.accessKey), req.signedXml, ctx),
+    correct: (req, ctx) => this.sendEvent(req.accessKey, req.signedXml, ctx),
   };
 
   readonly inutilize: InutilizeCapability = {
@@ -302,6 +304,7 @@ export class NfeGateway {
       'NfeStatusServico',
       message,
       target.certificate,
+      target.tpEmis,
     );
     return this.toStatus(answer);
   }
@@ -328,6 +331,7 @@ export class NfeGateway {
       'NfeAutorizacao',
       message,
       ctx.certificate,
+      endpointTpEmis(doc.accessKey),
     );
     if (answer.kind !== 'ok') return this.communication(answer);
     return this.fromLot(answer.bodyXml, doc, ctx, 1);
@@ -378,6 +382,7 @@ export class NfeGateway {
       'NfeRetAutorizacao',
       consReciNFeXml(nRec, ctx.tpAmb),
       ctx.certificate,
+      endpointTpEmis(doc.accessKey),
     );
     if (answer.kind !== 'ok') return this.communication(answer);
     return this.fromLot(answer.bodyXml, doc, ctx, round + 1);
@@ -439,6 +444,7 @@ export class NfeGateway {
       'NfeConsultaProtocolo',
       message,
       ctx.certificate,
+      endpointTpEmis(key),
     );
     if (answer.kind !== 'ok') return this.communication(answer);
     return this.toConsult(answer.bodyXml, key);
@@ -446,7 +452,7 @@ export class NfeGateway {
 
   /** `retEnvEvento`: lot 128 and then the status of the one event; 135/136/155 registered it. */
   private async sendEvent(
-    uf: Uf,
+    accessKey: string,
     signedXml: string | undefined,
     ctx: SigningContext,
   ): Promise<GatewayOutcome<EventReceipt>> {
@@ -465,11 +471,12 @@ export class NfeGateway {
         message: schema.errors[0]?.message ?? 'XML fora do layout',
       };
     const answer = await this.call(
-      uf,
+      ufOfKey(accessKey),
       ctx.tpAmb,
       'RecepcaoEvento',
       signedXml,
       ctx.certificate,
+      endpointTpEmis(accessKey),
     );
     if (answer.kind !== 'ok') return this.communication(answer);
 
@@ -621,18 +628,20 @@ export class NfeGateway {
     return rejection(cStat, xMotivo);
   }
 
+  /** `tpEmis` 6 and 7 (read from the key of the note) go to the SVC; the rest to the origin. */
   private call(
     uf: Uf,
     tpAmb: 1 | 2,
     service: SefazService,
     bodyXml: string,
     certificate: LoadedCertificate,
+    tpEmis: TpEmis = 1,
   ): Promise<SoapResult> {
     const endpoint = this.resolver.resolve({
       uf,
       tpAmb,
       model: this.model,
-      tpEmis: 1,
+      tpEmis,
       service,
     });
     return this.soap.call({
