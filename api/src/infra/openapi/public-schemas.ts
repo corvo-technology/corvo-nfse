@@ -929,6 +929,9 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
   }),
   IntegrationOperation: obj({
     id: uuid(),
+    connectionId: uuid(),
+    provider: str({ example: 'woovi' }),
+    environment: str({ enum: ['test', 'live'] }),
     operationKey: str(),
     commercialState: str({
       enum: ['pending', 'paid', 'refunded', 'disputed', 'canceled'],
@@ -945,17 +948,66 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     amountCents: int(),
     currency: str({ example: 'BRL' }),
     customer: nullable(
-      obj({
-        name: nullable(str()),
-        email: nullable(str()),
-        taxId: nullable(str()),
-        taxIdMasked: bool(),
-      }),
+      obj(
+        {
+          name: nullable(str()),
+          email: nullable(str()),
+          taxId: nullable(str()),
+          taxIdMasked: bool(),
+          address: obj(
+            {
+              street: str(),
+              city: str(),
+              state: str(),
+              zip: str(),
+              country: str(),
+              municipalityCode: str(),
+            },
+            ['street', 'city', 'state', 'zip', 'country', 'municipalityCode'],
+          ),
+        },
+        ['address'],
+      ),
     ),
     paidAt: nullable(dateTime()),
     invoiceId: nullable(uuid()),
     createdAt: dateTime(),
     updatedAt: dateTime(),
+  }),
+  IntegrationOperationDetail: obj({
+    id: uuid(),
+    connectionId: uuid(),
+    provider: str({ example: 'woovi' }),
+    environment: str({ enum: ['test', 'live'] }),
+    operationKey: str(),
+    commercialState: str({
+      enum: ['pending', 'paid', 'refunded', 'disputed', 'canceled'],
+    }),
+    fiscalStatus: str({
+      enum: ['none', 'blocked', 'needs_attention', 'submitted'],
+    }),
+    blockReason: nullable(str()),
+    amountCents: int(),
+    currency: str({ example: 'BRL' }),
+    customer: nullable({ type: 'object', additionalProperties: true }),
+    paidAt: nullable(dateTime()),
+    invoiceId: nullable(uuid()),
+    createdAt: dateTime(),
+    updatedAt: dateTime(),
+    service: obj({
+      code: nullable(str()),
+      description: nullable(str()),
+    }),
+    lastError: nullable(
+      str({ description: 'What the last attempt said, when it was refused.' }),
+    ),
+    sendEmail: bool({
+      description: 'Whether the invoice would be e-mailed to the customer.',
+    }),
+  }),
+  IntegrationOperationResolved: obj({
+    outcome: ref('IntegrationOperationRetry'),
+    operation: ref('IntegrationOperation'),
   }),
   IntegrationOperationRetry: obj(
     {

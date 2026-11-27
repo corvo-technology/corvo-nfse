@@ -9,7 +9,7 @@ import { useCompleteRegistration } from "@/lib/use-complete-registration";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { NoAccess } from "@/components/dashboard/no-access";
 import { ProfileNamePrompt } from "@/components/profile/name-prompt";
-import { canOpenPath, permissionForPath } from "@/lib/route-permissions";
+import { canOpenPath, parentSection, permissionForPath } from "@/lib/route-permissions";
 import { Topbar } from "@/components/dashboard/topbar";
 import { CorvoLogo } from "@/components/ui/corvo-logo";
 import { PortalStatusBanner } from "@/components/dashboard/portal-status-banner";
@@ -33,6 +33,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     "/app/companies": t("Companies.title"),
     "/app/invoices": t("Invoices.title"),
     "/app/invoices/new": t("Invoices.newTitle"),
+    "/app/integrations": t("Integrations.title"),
     "/app/webhooks": t("Webhooks.title"),
     "/app/api-keys": t("ApiKeys.title"),
     "/app/agents": t("Agents.title"),
@@ -44,8 +45,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     "/app/admin/attention": `${t("Admin.title")} / ${t("Admin.attention.title")}`,
     "/app/admin/audit": `${t("Admin.title")} / ${t("Admin.audit.title")}`,
   };
+  // A page inside a section (a company, a note) shows the section it belongs to: the longest known prefix.
+  const section = parentSection(pathname, Object.keys(pathToPage));
   const page =
     pathToPage[pathname] ??
+    (section ? pathToPage[section] : undefined) ??
     (/^\/app\/admin\/users\/[^/]+$/.test(pathname) ? `${t("Admin.title")} / ${t("Admin.detail.title")}` : t("Dashboard.overview"));
 
   // Browser tab title follows the page.

@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { FakeAccountAudit } from '@/modules/account-audit/testing/fake-account-audit';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
@@ -220,7 +221,13 @@ describePostgres('integrations end to end on real PostgreSQL', () => {
       eventsRepo,
       cancellation,
     );
-    operationService = new OperationService(operationsRepo, emitter);
+    operationService = new OperationService(
+      operationsRepo,
+      emitter,
+      eventsRepo,
+      rules,
+      new FakeAccountAudit(),
+    );
     processor = new EventProcessorService(
       eventsRepo,
       new EventHandlerService(

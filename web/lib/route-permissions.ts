@@ -50,3 +50,10 @@ export function canOpenPath(pathname: string, can: (permission: string) => boole
 
 /** Every rule, for tests that keep the table honest. */
 export const ROUTE_PERMISSION_RULES = ROUTE_PERMISSIONS;
+
+/** The section a page inside it belongs to (`/app/companies/abc` is in `/app/companies`): the longest listed prefix. The overview and the admin pages are never a parent. */
+export function parentSection(pathname: string, sections: readonly string[]): string | undefined {
+  const path = pathname.split(/[?#]/)[0].replace(/\/+$/, "");
+  if (path.startsWith("/app/admin/")) return undefined;
+  return sections.filter((section) => section !== "/app" && path.startsWith(`${section}/`)).sort((a, b) => b.length - a.length)[0];
+}

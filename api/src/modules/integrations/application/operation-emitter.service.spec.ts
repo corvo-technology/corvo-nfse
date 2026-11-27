@@ -128,6 +128,7 @@ function setup() {
       normalized: n,
     });
   return {
+    connections,
     emitter,
     operations,
     rules,
@@ -590,4 +591,192 @@ describe('OperationEmitter', () => {
       });
     },
   );
+});
+
+describe('OperationEmitter notices', () => {
+  const live = (n: NormalizedOperation) => n;
+  function withBus() {
+    const ctx = setup();
+    const published: Array<{
+      tenantId: string;
+      notice: Record<string, unknown>;
+    }> = [];
+    const bus = {
+      publishBestEffort: (event: {
+        tenantId: string;
+        notice: Record<string, unknown>;
+      }) => published.push(event),
+    };
+    const emitter = new OperationEmitter(
+      ctx.connections,
+      ctx.operations,
+      ctx.rules,
+      ctx.issuance,
+      ctx.events,
+      new FakeCancellation(),
+      bus as never,
+    );
+    const seedLive = (n: NormalizedOperation) =>
+      ctx.operations.upsertFromNormalized({
+        tenantId: TENANT,
+        connectionId: 'c1',
+        provider: 'woovi',
+        environment: 'live',
+        externalAccountId: 'acc',
+        normalized: live(n),
+      });
+    return { ...ctx, emitter, published, seedLive };
+  }
+
+  it('announces a live sale that waits for the client, with what the owner needs', async () => {
+    const { emitter, published, seedLive } = withBus();
+    const op = await seedLive(
+      snapshot({
+        customer: {
+          name: 'ACME',
+          email: null,
+          taxId: null,
+          taxIdMasked: false,
+        },
+      }),
+    );
+    await emitter.run(op);
+    expect(published).toHaveLength(1);
+    expect(published[0].tenantId).toBe(TENANT);
+    expect(published[0].notice).toMatchObject({
+      kind: 'integration-sale-needs-attention',
+      operationId: op.id,
+      provider: 'woovi',
+      amountCents: 4990,
+      buyerName: 'ACME',
+      reason: 'customer_tax_id_missing',
+      pendingCount: 1,
+    });
+  });
+
+  it('says nothing for a test sale or one that blocks for a reason the client cannot act on', async () => {
+    const { emitter, published, upsert, seedLive } = withBus();
+    await emitter.run(
+      await upsert(
+        snapshot({
+          operationKey: 'c:t',
+          customer: null,
+        }),
+      ),
+    );
+    await emitter.run(
+      await seedLive(snapshot({ operationKey: 'c:r', currency: 'USD' })),
+    );
+    expect(published).toHaveLength(0);
+  });
+
+  it('does not run again for a sale the client chose to ignore', async () => {
+    const { emitter, published, issuance, operations, seedLive } = withBus();
+    const op = await seedLive(snapshot());
+    await operations.setFiscal(op.id, TENANT, 'blocked', 'ignored_by_user');
+    const outcome = await emitter.run(
+      (await operations.findById(op.id, TENANT))!,
+    );
+    expect(outcome.state).toBe('processed');
+    expect(issuance.calls).toHaveLength(0);
+    expect(published).toHaveLength(0);
+  });
+});
+
+describe('OperationEmitter with saved customers', () => {
+  function withSaved(
+    saved: { name: string; email: string | null } | null | 'fail',
+  ) {
+    const ctx = setup();
+    ctx.rules.rules = ctx.rules.rules.map((rule) => ({
+      ...rule,
+      sendEmail: true,
+    }));
+    const find = jest
+      .fn()
+      .mockImplementation(() =>
+        saved === 'fail'
+          ? Promise.reject(new Error('db down'))
+          : Promise.resolve(saved),
+      );
+    const emitter = new OperationEmitter(
+      ctx.connections,
+      ctx.operations,
+      ctx.rules,
+      ctx.issuance,
+      ctx.events,
+      new FakeCancellation(),
+      undefined,
+      { find },
+    );
+    return { ...ctx, emitter, find };
+  }
+  const buyer = (over: Partial<NonNullable<NormalizedOperation['customer']>>) =>
+    snapshot({
+      customer: {
+        name: 'EMPRESA EXEMPLO',
+        email: null,
+        taxId: '11222333000181',
+        taxIdMasked: false,
+        ...over,
+      },
+    });
+
+  it('a Woovi sale without e-mail goes to the e-mail the workspace has saved for that CNPJ', async () => {
+    const { emitter, issuance, upsert, find } = withSaved({
+      name: 'Empresa Exemplo Ltda',
+      email: 'financeiro@exemplo.com',
+    });
+    await emitter.run(await upsert(buyer({})));
+    expect(find).toHaveBeenCalledWith(TENANT, 'test', '11222333000181');
+    expect(issuance.calls[0].request).toMatchObject({
+      email: true,
+      customer: {
+        name: 'EMPRESA EXEMPLO',
+        taxId: '11222333000181',
+        email: 'financeiro@exemplo.com',
+      },
+    });
+  });
+
+  it('what the platform sent wins when it is usable', async () => {
+    const { emitter, issuance, upsert } = withSaved({
+      name: 'Outro Nome',
+      email: 'saved@x.com',
+    });
+    await emitter.run(await upsert(buyer({ email: 'sent@x.com' })));
+    expect(issuance.calls[0].request.customer).toMatchObject({
+      name: 'EMPRESA EXEMPLO',
+      email: 'sent@x.com',
+    });
+  });
+
+  it('an obviously incomplete name is replaced by the saved one', async () => {
+    const { emitter, issuance, upsert } = withSaved({
+      name: 'Empresa Exemplo Ltda',
+      email: null,
+    });
+    await emitter.run(await upsert(buyer({ name: 'E' })));
+    expect(issuance.calls[0].request.customer?.name).toBe(
+      'Empresa Exemplo Ltda',
+    );
+  });
+
+  it('a buyer nobody knows, or a failing lookup, changes nothing and still issues', async () => {
+    for (const saved of [null, 'fail'] as const) {
+      const { emitter, issuance, upsert } = withSaved(saved);
+      await emitter.run(await upsert(buyer({})));
+      expect(issuance.calls).toHaveLength(1);
+      expect(issuance.calls[0].request.email).toBe(false);
+    }
+  });
+
+  it('does not look up a masked document', async () => {
+    const { emitter, upsert, find } = withSaved({
+      name: 'X Y Z',
+      email: 'a@b.com',
+    });
+    await emitter.run(await upsert(buyer({ taxId: null, taxIdMasked: true })));
+    expect(find).not.toHaveBeenCalled();
+  });
 });

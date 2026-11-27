@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import type { NormalizedCustomer } from '../domain/connector';
@@ -107,6 +107,70 @@ export class TypeOrmIntegrationOperationRepository extends IIntegrationOperation
         })
       ).map((row) => this.toDomain(row)),
     );
+  }
+
+  listNeedingAttention(
+    tenantId: string,
+    environment: 'test' | 'live',
+    limit: number,
+  ): Promise<IntegrationOperation[]> {
+    return runWithTenant(tenantId, async () =>
+      (
+        await this.repo.find({
+          where: {
+            tenantId,
+            environment,
+            fiscalStatus: 'needs_attention',
+            invoiceId: IsNull(),
+          },
+          order: { createdAt: 'DESC' },
+          take: limit,
+        })
+      ).map((row) => this.toDomain(row)),
+    );
+  }
+
+  applyResolution(
+    id: string,
+    tenantId: string,
+    resolution: Parameters<
+      IIntegrationOperationRepository['applyResolution']
+    >[2],
+  ): Promise<IntegrationOperation | null> {
+    return runWithTenant(tenantId, async () => {
+      let snapshot = 'snapshot';
+      const params: Record<string, string> = {};
+      if (resolution.customer) {
+        snapshot = `jsonb_set(${snapshot}, '{customer}', :customer::jsonb)`;
+        params.customer = JSON.stringify(resolution.customer);
+      }
+      if (resolution.service) {
+        snapshot = `jsonb_set(${snapshot}, '{serviceOverride}', :service::jsonb, true)`;
+        params.service = JSON.stringify(resolution.service);
+      }
+      if (resolution.sendEmail !== undefined) {
+        snapshot = `jsonb_set(${snapshot}, '{sendEmailOverride}', :sendEmail::jsonb, true)`;
+        params.sendEmail = JSON.stringify(resolution.sendEmail);
+      }
+      const query = this.repo
+        .createQueryBuilder()
+        .update()
+        .set({
+          snapshot: () => snapshot,
+          fiscalStatus: 'none',
+          blockReason: null,
+        })
+        .where(
+          'id = :id AND tenant_id = :tenantId AND emission_request IS NULL AND invoice_id IS NULL',
+          { id, tenantId },
+        );
+      for (const [key, value] of Object.entries(params))
+        query.setParameter(key, value);
+      const result = await query.execute();
+      if (!result.affected) return null;
+      const row = await this.repo.findOneOrFail({ where: { id, tenantId } });
+      return this.toDomain(row);
+    });
   }
 
   freezeEmission(

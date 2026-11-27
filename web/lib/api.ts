@@ -371,10 +371,13 @@ export interface IntegrationConnection { id: string; provider: string; environme
   /** Only in the create response: secrets the client must paste into the platform. */
   secrets?: Record<string, string> }
 export interface IntegrationSale {
-  id: string; operationKey: string; commercialState: "pending" | "paid" | "refunded" | "disputed" | "canceled"; fiscalStatus: "none" | "blocked" | "needs_attention" | "submitted";
-  blockReason: string | null; amountCents: number; currency: string; customer: { name: string | null; email: string | null; taxId: string | null; taxIdMasked: boolean } | null;
+  id: string; connectionId?: string; provider?: string; environment?: "test" | "live"; operationKey: string; commercialState: "pending" | "paid" | "refunded" | "disputed" | "canceled"; fiscalStatus: "none" | "blocked" | "needs_attention" | "submitted";
+  blockReason: string | null; amountCents: number; currency: string; customer: { name: string | null; email: string | null; taxId: string | null; taxIdMasked: boolean; address?: SaleAddress } | null;
   paidAt: string | null; invoiceId: string | null; createdAt: string; updatedAt: string;
 }
+export interface SaleAddress { street?: string; city?: string; state?: string; zip?: string; country?: string; municipalityCode?: string }
+export interface IntegrationSaleDetail extends IntegrationSale { service: { code: string | null; description: string | null }; lastError: string | null; sendEmail: boolean }
+export interface ResolveSaleInput { customer?: { name?: string; taxId: string; email?: string; address?: SaleAddress }; service?: { code?: string; description?: string }; sendEmail?: boolean }
 export interface IntegrationRuleInput { externalProductId?: string | null; service: { description?: string; code?: string }; sendEmail: boolean; allowAnonymousCustomer?: boolean; cancelOnRefund?: boolean }
 export interface IntegrationRule { id: string; externalProductId: string | null; service: { description?: string; code?: string }; sendEmail: boolean; allowAnonymousCustomer: boolean; cancelOnRefund: boolean }
 export interface IntegrationEvent { id: string; deliveryId: string; externalType: string; state: "received" | "processing" | "retry_pending" | "processed" | "ignored" | "needs_attention" | "dead"; attempts: number; lastError: string | null; operationId: string | null; createdAt: string }
@@ -393,6 +396,10 @@ export const integrations = {
   rules: async (id: string) => unwrap(await request<Envelope<IntegrationRule[]>>(`/integrations/connections/${idPath(id)}/rules`)),
   events: async (id: string, limit = 20) => unwrap(await request<Envelope<IntegrationEvent[]>>(`/integrations/connections/${idPath(id)}/events${query({ limit })}`)),
   sales: async (id: string, limit = 50) => unwrap(await request<Envelope<IntegrationSale[]>>(`/integrations/connections/${idPath(id)}/operations${query({ limit })}`)),
+  pending: async (environment: "test" | "live", limit = 100) => unwrap(await request<Envelope<IntegrationSale[]>>(`/integrations/operations${query({ environment, limit })}`)),
+  sale: async (saleId: string) => unwrap(await request<Envelope<IntegrationSaleDetail>>(`/integrations/operations/${idPath(saleId)}`)),
+  resolve: async (saleId: string, data: ResolveSaleInput) => unwrap(await request<Envelope<{ outcome: { state: string; lastError?: string }; operation: IntegrationSale }>>(`/integrations/operations/${idPath(saleId)}/resolve`, json(data))),
+  ignore: async (saleId: string, reason: string) => unwrap(await request<Envelope<IntegrationSale>>(`/integrations/operations/${idPath(saleId)}/ignore`, json({ reason }))),
   completeCustomer: async (saleId: string, data: { taxId: string; name?: string; email?: string }) => unwrap(await request<Envelope<IntegrationSale>>(`/integrations/operations/${idPath(saleId)}/customer`, json(data, "PATCH"))),
   retry: async (saleId: string) => unwrap(await request<Envelope<{ state: string; lastError?: string }>>(`/integrations/operations/${idPath(saleId)}/retry`, { method: "POST" })),
 };

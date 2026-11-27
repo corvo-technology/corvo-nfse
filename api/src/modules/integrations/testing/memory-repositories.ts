@@ -132,6 +132,49 @@ export class MemoryOperations extends IIntegrationOperationRepository {
     });
     return Promise.resolve();
   }
+  listNeedingAttention(
+    tenantId: string,
+    environment: 'test' | 'live',
+    limit: number,
+  ) {
+    return Promise.resolve(
+      [...this.rows.values()]
+        .filter(
+          (r) =>
+            r.tenantId === tenantId &&
+            r.environment === environment &&
+            r.fiscalStatus === 'needs_attention' &&
+            !r.invoiceId,
+        )
+        .reverse()
+        .slice(0, limit),
+    );
+  }
+  applyResolution(
+    id: string,
+    _tenantId: string,
+    resolution: Parameters<
+      IIntegrationOperationRepository['applyResolution']
+    >[2],
+  ) {
+    const row = this.rows.get(id)!;
+    if (row.emissionRequest || row.invoiceId) return Promise.resolve(null);
+    const updated: IntegrationOperation = {
+      ...row,
+      snapshot: {
+        ...row.snapshot,
+        ...(resolution.customer ? { customer: resolution.customer } : {}),
+        ...(resolution.service ? { serviceOverride: resolution.service } : {}),
+        ...(resolution.sendEmail !== undefined
+          ? { sendEmailOverride: resolution.sendEmail }
+          : {}),
+      },
+      fiscalStatus: 'none',
+      blockReason: null,
+    };
+    this.rows.set(id, updated);
+    return Promise.resolve(updated);
+  }
   updateCustomer(id: string, _tenantId: string, customer: NormalizedCustomer) {
     const row = this.rows.get(id)!;
     if (row.emissionRequest) return Promise.resolve(null);
