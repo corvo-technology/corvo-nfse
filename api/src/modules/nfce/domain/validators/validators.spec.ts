@@ -167,6 +167,10 @@ describe('NFCE_PRE_SEND_VALIDATORS', () => {
       expect(codes(await card('01', {}))).toEqual(['NFCE_CARD_NOT_ALLOWED']);
     });
 
+    it('PIX (17) with no card group gets the minimal one', async () => {
+      expect(await run({ payments: [{ tPag: '17', amount: 10 }] })).toEqual([]);
+    });
+
     it('PIX (17) accepts the card group', async () => {
       expect(await card('17', {})).toEqual([]);
     });

@@ -228,6 +228,41 @@ export class NfeItemDto {
   tax?: NfeItemTaxDto;
 }
 
+/** The `card` group: cards, PIX and other electronic payments (NF-e and NFC-e). */
+export class NfceCardDto {
+  @ApiPropertyOptional({
+    enum: [1, 2],
+    default: 2,
+    description:
+      '1 payment integrated with the sales system (needs `cnpj` and `cAut`), 2 not integrated.',
+  })
+  @IsOptional()
+  @NumericOption('tpIntegra', [1, 2])
+  tpIntegra?: 1 | 2;
+
+  @ApiPropertyOptional({ description: 'CNPJ of the payment institution.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(18)
+  cnpj?: string;
+
+  @ApiPropertyOptional({
+    example: '01',
+    description: 'Card brand, 2 digits (table of the NT).',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{2}$/)
+  tBand?: string;
+
+  @ApiPropertyOptional({ description: 'Authorization number.' })
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(128)
+  cAut?: string;
+}
+
 export class NfePaymentDto {
   @ApiProperty({
     example: '17',
@@ -241,6 +276,17 @@ export class NfePaymentDto {
   @IsNumber(money)
   @Min(0)
   amount!: number;
+
+  @ApiPropertyOptional({
+    type: NfceCardDto,
+    description:
+      'Cards, PIX and other electronic payments. The SEFAZ requires it with `tPag` 03, 04 and 17 (rejection 391): left out, Corvo sends `tpIntegra` 2 (not integrated).',
+  })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => NfceCardDto)
+  card?: NfceCardDto;
 }
 
 /** Body of `POST /v1/invoices/validate` (and, later, `POST /v1/invoices` (`type: "nfe"`)). */

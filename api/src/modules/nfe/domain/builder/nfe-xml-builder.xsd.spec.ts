@@ -3,6 +3,7 @@ import { runValidators } from '@/modules/fiscal-core/application/emission-pipeli
 import { XmllintSchemaValidator } from '@/infra/external/nfe/sefaz/schema-validator';
 import { withStructuralSignature } from '@/infra/external/nfe/sefaz/xml-signer';
 import { buildDraft } from '../nfe-draft';
+import type { NfeInput } from '../nfe-input';
 import { NFE_PRE_SEND_VALIDATORS } from '../validators';
 import { NfeXmlBuilder } from './nfe-xml-builder';
 import { ALL_FIXTURES, TEXTO_ESPECIAL } from './__fixtures__/inputs';
@@ -76,6 +77,60 @@ describe('NfeXmlBuilder against the NF-e 4.00 XSD', () => {
         'nfe',
       ),
     ).toEqual({ ok: true });
+  });
+
+  describe('card group (rejection 391 of the SEFAZ)', () => {
+    const base = ALL_FIXTURES['simples-102'];
+    const paying = (payments: NfeInput['payments']) => ({
+      ...base,
+      payments,
+    });
+    const xmlOf = (payments: NfeInput['payments']) =>
+      builderOf(paying(payments)).build();
+
+    it.each(['03', '04', '17'])(
+      'tPag %s gets <card><tpIntegra>2</tpIntegra></card> and passes the XSD',
+      async (tPag) => {
+        const built = xmlOf([{ tPag, amount: 20 }]);
+        expect(built.xml).toContain(
+          `<tPag>${tPag}</tPag><vPag>20.00</vPag><card><tpIntegra>2</tpIntegra></card>`,
+        );
+        expect(
+          await schema.validate(
+            withStructuralSignature(built.xml, built.referenceTag),
+            'nfe',
+          ),
+        ).toEqual({ ok: true });
+      },
+    );
+
+    it('cash (01) goes without the card group', () => {
+      expect(xmlOf([{ tPag: '01', amount: 20 }]).xml).not.toContain('<card>');
+    });
+
+    it('the card the caller sent is respected and passes the XSD', async () => {
+      const built = xmlOf([
+        {
+          tPag: '03',
+          amount: 20,
+          card: {
+            tpIntegra: 1,
+            cnpj: '11.222.333/0001-81',
+            tBand: '01',
+            cAut: 'A1B2C3',
+          },
+        },
+      ]);
+      expect(built.xml).toContain(
+        '<card><tpIntegra>1</tpIntegra><CNPJ>11222333000181</CNPJ><tBand>01</tBand><cAut>A1B2C3</cAut></card>',
+      );
+      expect(
+        await schema.validate(
+          withStructuralSignature(built.xml, built.referenceTag),
+          'nfe',
+        ),
+      ).toEqual({ ok: true });
+    });
   });
 
   it('is refused by the XSD when the NCM is wrong, so the XSD is really being applied', async () => {

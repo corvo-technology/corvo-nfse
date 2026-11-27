@@ -15,10 +15,8 @@ export interface NfceRecipientInput {
   address?: NfeAddressInput;
 }
 
-export interface NfcePaymentInput extends NfePaymentInput {
-  /** Cards, PIX and other electronic payments; `{}` means "not integrated" (`tpIntegra` 2). */
-  card?: Partial<NfceCard>;
-}
+/** The same payment as the NF-e: `card` (`{}` means "not integrated", `tpIntegra` 2) is optional. */
+export type NfcePaymentInput = NfePaymentInput;
 
 /**
  * What the customer sends to `POST /v1/invoices` (`type: "nfce"`) and `POST /v1/invoices/validate`,

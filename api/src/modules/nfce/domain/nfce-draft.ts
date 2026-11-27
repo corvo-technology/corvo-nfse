@@ -1,5 +1,5 @@
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
-import type { NfceCard, NfeRecipient } from '@/modules/nfe/domain/nfe-document';
+import type { NfeRecipient } from '@/modules/nfe/domain/nfe-document';
 import {
   buildDraftBody,
   type NfeDraft,
@@ -50,16 +50,6 @@ function recipientOf(
   };
 }
 
-function cardOf(card: Partial<NfceCard> | undefined): NfceCard | undefined {
-  if (!card) return undefined;
-  return {
-    tpIntegra: card.tpIntegra ?? 2,
-    cnpj: orNull(taxIdOf(card.cnpj ?? '')),
-    tBand: orNull(card.tBand),
-    cAut: orNull(card.cAut),
-  };
-}
-
 /**
  * The normalized NFC-e: the items, taxes, totals and payments of the NF-e draft, with the fixed
  * fields of model 65. It is always a sale inside the issuer's UF to a final consumer.
@@ -73,10 +63,6 @@ export function buildNfceDraft(
   const body = buildDraftBody(input, settings);
   return {
     ...body,
-    payments: body.payments.map((p, index) => {
-      const card = cardOf(input.payments[index].card);
-      return card ? { ...p, card } : p;
-    }),
     model: 65,
     environment,
     issuer,
