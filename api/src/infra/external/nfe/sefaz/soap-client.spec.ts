@@ -8,6 +8,7 @@ import {
   buildEnvelope,
   extractSoapResult,
   SefazSoapClient,
+  sefazAgentOptions,
   type SoapLogEntry,
 } from './soap-client';
 
@@ -184,5 +185,17 @@ describe('source guard', () => {
     const source = readFileSync(join(__dirname, 'soap-client.ts'), 'utf8');
     expect(source).not.toMatch(/rejectUnauthorized\s*:\s*false/);
     expect(source).not.toContain('NODE_TLS_REJECT_UNAUTHORIZED');
+  });
+});
+
+describe('sefazAgentOptions', () => {
+  it('talks HTTP/1.1 only: the SEFAZ breaks on HTTP/2 (undici 8 tries it by default)', () => {
+    const options = sefazAgentOptions({ keyPem: 'k', certPem: 'c' }, 5000);
+    expect(options.allowH2).toBe(false);
+    expect(options.connect).toMatchObject({
+      ALPNProtocols: ['http/1.1'],
+      rejectUnauthorized: true,
+      timeout: 5000,
+    });
   });
 });
