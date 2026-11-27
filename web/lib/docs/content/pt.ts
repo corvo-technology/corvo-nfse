@@ -2772,7 +2772,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     municipalities: municipalitiesPage("pt"),
     "payment-integrations": {
       title: "Integrações de pagamento",
-      description: "Conecte Woovi, AbacatePay, Stripe, PushinPay, Hotmart ou Kiwify e emita a NFS-e automaticamente a cada pagamento confirmado.",
+      description: "Conecte Woovi, AbacatePay, Stripe, PushinPay, Hotmart, Kiwify ou Monetizze e emita a NFS-e automaticamente a cada pagamento confirmado.",
       blocks: [
         {
           kind: "text",
@@ -2851,6 +2851,19 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Valor da nota: por padrão o total pago pelo comprador (`Commissions.charge_amount`). Com `invoiceValue` = `mine` usa a sua parte (`Commissions.my_commission`); se o aviso não trouxer esse valor, a venda vai para atenção em vez de usar o total.",
             "A Kiwify não tem modo de teste: o \"Testar Webhook\" manda dados fictícios. Faça esse teste numa conexão de teste da Corvo, nunca numa conexão de produção.",
             "Reembolso e chargeback ligam à venda pelo `order_id`. Com \"cancelar nota no reembolso\" ligado, o reembolso cancela a nota; sem isso (e no chargeback) a venda só é sinalizada (`refund_after_invoice`).",
+          ],
+        },
+        { kind: "heading", level: 3, body: "Monetizze" },
+        {
+          kind: "list",
+          items: [
+            "Credenciais: `chaveUnica`, a \"Chave única\" da sua conta Monetizze, e, opcionalmente, `invoiceValue` (`total` ou `mine`). A Corvo gera o `webhookSecret` e exibe o endereço completo do webhook ao criar a conexão. Copie e guarde esse endereço.",
+            "Passo a passo: (1) na Monetizze, em Ferramentas > Postback, cadastre um postback do tipo \"server to server\" com o `webhookUrl`, escolhendo os produtos; (2) copie a \"Chave única\" (no fim da mesma tela) e cole na Corvo; (3) marque os eventos Finalizada/Aprovada, Completa e Devolvida e faça uma venda de teste.",
+            "A Monetizze não assina o postback: a Corvo confere o campo `chave_unica` do corpo e o segredo da conexão no endereço, os dois em tempo constante. O corpo pode chegar como formulário (`application/x-www-form-urlencoded`, `venda[valor]=97.90`) ou JSON; os dois são aceitos.",
+            "Cada venda com `venda.codigo_status` 2 (Finalizada/Aprovada) ou 6 (Completa) vira uma nota, identificada por `monetizze:<venda.codigo>`; os dois avisos da mesma venda geram uma só nota. Só valem os avisos do produtor (`tipoPostback` 2) e do coprodutor (3); afiliado e sistema são ignorados. Aguardando (1), Cancelada (3), Bloqueada (5), abandono de checkout e assinatura são ignorados.",
+            "Valor da nota: por padrão o total pago (`venda.valor`). Com `invoiceValue` = `mine` usa a sua parte (`venda.valorRecebido`); se o aviso não trouxer esse valor, a venda vai para atenção em vez de usar o total.",
+            "Comprador (`comprador`): nome, e-mail, `cnpj_cpf` e endereço. O CPF/CNPJ só chega para produtor e coprodutor, e só se o checkout pedir; sem ele, com documento inválido ou comprador de outro país, a venda fica pendente (`customer_tax_id_missing`) ou sai sem tomador se a regra tiver `allowAnonymousCustomer`.",
+            "Devolvida (`venda.codigo_status` 4) liga à venda pelo código. Com \"cancelar nota no reembolso\" ligado, cancela a nota; sem isso a venda só é sinalizada (`refund_after_invoice`). A documentação da Monetizze não lista um aviso de chargeback.",
           ],
         },
         { kind: "heading", level: 3, body: "Hotmart" },

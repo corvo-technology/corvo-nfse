@@ -1,0 +1,68 @@
+{
+  "chave_unica": "chave-unica-fake-0123456789abcdef",
+  "produto": {
+    "codigo": "4000001",
+    "chave": "chave-produto-fake",
+    "nome": "Curso de Exemplo",
+    "categoria": "Educacao"
+  },
+  "tipoPostback": { "codigo": 2, "descricao": "Produtor" },
+  "tipoEvento": { "codigo": 2, "descricao": "Finalizada / Aprovada" },
+  "order_bump": 2,
+  "venda": {
+    "codigo": "9000001",
+    "plano": 35553,
+    "dataInicio": "2026-11-26 14:55:10",
+    "dataFinalizada": "2026-11-26 15:00:00",
+    "meioPagamento": "Monetizze",
+    "formaPagamento": "Cartão de crédito",
+    "garantiaRestante": 7,
+    "parcelas": 1,
+    "status": "Finalizada",
+    "codigo_status": 2,
+    "valor": "97.90",
+    "quantidade": 1,
+    "valorRecebido": "72.40"
+  },
+  "comissoes": [
+    {
+      "refAfiliado": null,
+      "nome": "Produtor Exemplo",
+      "tipo_comissao": "Produtor",
+      "valor": "72.40",
+      "comissao": "74",
+      "email": "produtor@example.com"
+    },
+    {
+      "refAfiliado": "AF123",
+      "nome": "Afiliado Exemplo",
+      "tipo_comissao": "Último Clique",
+      "valor": "15.50",
+      "comissao": "16",
+      "email": "afiliado@example.com"
+    },
+    {
+      "refAfiliado": null,
+      "nome": "Monetizze",
+      "tipo_comissao": "Sistema",
+      "valor": "10.00",
+      "comissao": "10",
+      "email": ""
+    }
+  ],
+  "comprador": {
+    "nome": "Maria Compradora",
+    "email": "maria@example.com",
+    "data_nascimento": "1990-01-31",
+    "cnpj_cpf": "52998224725",
+    "telefone": "11999990000",
+    "cep": "1310100",
+    "endereco": "Avenida Exemplo",
+    "numero": "100",
+    "complemento": "Sala 2",
+    "bairro": "Centro",
+    "cidade": "Sao Paulo",
+    "estado": "SP",
+    "pais": "Brasil"
+  }
+}

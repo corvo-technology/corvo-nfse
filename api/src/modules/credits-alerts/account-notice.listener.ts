@@ -54,6 +54,7 @@ const PLATFORM_NAMES: Record<string, string> = {
   stripe: 'Stripe',
   hotmart: 'Hotmart',
   kiwify: 'Kiwify',
+  monetizze: 'Monetizze',
   abacatepay: 'AbacatePay',
   pushinpay: 'PushinPay',
 };

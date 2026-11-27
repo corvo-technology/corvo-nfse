@@ -49,6 +49,11 @@ describe.each(["pt", "en"] as const)("payment integrations docs (%s)", (locale) 
       expect(text).toContain(term);
   });
 
+  it("documents how to connect Monetizze", () => {
+    for (const term of ["chave_unica", "chaveUnica", "venda.codigo_status", "monetizze:<venda.codigo>", "invoiceValue", "valorRecebido", "x-www-form-urlencoded", "refund_after_invoice"])
+      expect(text.toLowerCase()).toContain(term.toLowerCase());
+  });
+
   it("documents how to connect Kiwify", () => {
     for (const term of ["?signature=", "HMAC-SHA1", "order_approved", "kiwify:<order_id>", "invoiceValue", "my_commission", "chargeback", "token"])
       expect(text.toLowerCase()).toContain(term.toLowerCase());

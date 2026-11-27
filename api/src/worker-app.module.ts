@@ -25,6 +25,7 @@ import { AbacatePayConnectorModule } from '@/modules/integrations/connectors/aba
 import { PushinPayConnectorModule } from '@/modules/integrations/connectors/pushinpay/pushinpay.module';
 import { StripeConnectorModule } from '@/modules/integrations/connectors/stripe/stripe.module';
 import { KiwifyConnectorModule } from '@/modules/integrations/connectors/kiwify/kiwify.module';
+import { MonetizzeConnectorModule } from '@/modules/integrations/connectors/monetizze/monetizze.module';
 import { HotmartConnectorModule } from '@/modules/integrations/connectors/hotmart/hotmart.module';
 import { EventProcessorScheduler } from '@/modules/integrations/jobs/event-processor.scheduler';
 import { FiscalEngineModule } from '@/modules/invoice/application/fiscal/fiscal-engine.module';
@@ -83,6 +84,7 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     PushinPayConnectorModule,
     StripeConnectorModule,
     KiwifyConnectorModule,
+    MonetizzeConnectorModule,
     HotmartConnectorModule,
     FiscalEngineModule,
     CompanyModule,

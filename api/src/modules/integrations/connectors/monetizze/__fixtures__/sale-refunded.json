@@ -1,0 +1,33 @@
+{
+  "chave_unica": "chave-unica-fake-0123456789abcdef",
+  "produto": {
+    "codigo": "4000001",
+    "chave": "chave-produto-fake",
+    "nome": "Curso de Exemplo",
+    "categoria": "Educacao"
+  },
+  "tipoPostback": {
+    "codigo": 2,
+    "descricao": "Produtor"
+  },
+  "tipoEvento": {
+    "codigo": 4,
+    "descricao": "Devolvida (Reembolso)"
+  },
+  "order_bump": 2,
+  "venda": {
+    "codigo": "9000001",
+    "plano": 35553,
+    "dataInicio": "2026-11-26 14:55:10",
+    "dataFinalizada": "2026-11-26 15:00:00",
+    "meioPagamento": "Monetizze",
+    "formaPagamento": "Cartão de crédito",
+    "garantiaRestante": 7,
+    "parcelas": 1,
+    "status": "Devolvida",
+    "codigo_status": 4,
+    "valor": "97.90",
+    "quantidade": 1,
+    "valorRecebido": "72.40"
+  }
+}

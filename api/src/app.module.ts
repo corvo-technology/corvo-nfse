@@ -30,6 +30,7 @@ import { AbacatePayConnectorModule } from '@/modules/integrations/connectors/aba
 import { PushinPayConnectorModule } from '@/modules/integrations/connectors/pushinpay/pushinpay.module';
 import { StripeConnectorModule } from '@/modules/integrations/connectors/stripe/stripe.module';
 import { KiwifyConnectorModule } from '@/modules/integrations/connectors/kiwify/kiwify.module';
+import { MonetizzeConnectorModule } from '@/modules/integrations/connectors/monetizze/monetizze.module';
 import { HotmartConnectorModule } from '@/modules/integrations/connectors/hotmart/hotmart.module';
 import { PublicConfigModule } from '@/modules/public-config/public-config.module';
 import { McpModule } from '@/modules/mcp/mcp.module';
@@ -72,6 +73,7 @@ import { SentryModule } from '@/infra/observability/sentry.module';
     PushinPayConnectorModule,
     StripeConnectorModule,
     KiwifyConnectorModule,
+    MonetizzeConnectorModule,
     HotmartConnectorModule,
     McpModule,
     PlatformAdminModule,
