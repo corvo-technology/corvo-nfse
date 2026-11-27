@@ -37,12 +37,9 @@ interface RecentRow {
 export class TypeOrmInvoiceOverviewRepository implements IInvoiceOverviewRepository {
   constructor(private readonly db: TypeOrmRepositoryHelper) {}
 
+  /** Schema-qualified name of a mapped table, for the raw SQL below. */
   private table(name: string): string {
-    const found = this.db
-      .manager()
-      .connection.entityMetadatas.find((meta) => meta.tableName === name);
-    if (!found) throw new Error(`Table ${name} is not mapped`);
-    return found.tablePath;
+    return this.db.manager().connection.getMetadata(name).tablePath;
   }
 
   read(
