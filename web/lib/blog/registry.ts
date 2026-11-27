@@ -5,13 +5,32 @@ import { post as claude } from "./posts/emitir-nota-fiscal-com-claude";
 import { post as planilha } from "./posts/emitir-varias-notas-fiscais-com-planilha";
 import { post as pilar } from "./posts/como-emitir-nota-fiscal-de-servico-nfse";
 import { post as simples } from "./posts/simples-nacional-nfse-nacional-novembro-2026";
+import { post as nfeProduto } from "./posts/o-que-e-nf-e-como-emitir-nota-fiscal-de-produto";
+import { post as nfceCupom } from "./posts/o-que-e-nfc-e-cupom-fiscal-eletronico";
+import { post as qualNota } from "./posts/nfse-nfe-ou-nfce-qual-nota-fiscal-emitir";
+import { post as integracoes } from "./posts/nota-fiscal-automatica-para-cada-venda-integracoes";
+import { post as infoprodutor } from "./posts/nota-fiscal-infoprodutor-hotmart-kiwify-eduzz-monetizze";
+import { post as reembolso } from "./posts/reembolso-chargeback-nota-fiscal-cancelar";
 import type { BlogBlock, BlogPost } from "./types";
 
 /** The blog exists in Brazilian Portuguese only: the audience and the keywords are Brazilian. */
 export const BLOG_LOCALE = "pt" as const;
 
 /** Newest first. Posts with the same date keep the order written here. */
-export const POSTS: BlogPost[] = [pilar, simples, certificado, planilha, agenda, claude].sort((a, b) =>
+export const POSTS: BlogPost[] = [
+  nfeProduto,
+  nfceCupom,
+  qualNota,
+  integracoes,
+  infoprodutor,
+  reembolso,
+  pilar,
+  simples,
+  certificado,
+  planilha,
+  agenda,
+  claude,
+].sort((a, b) =>
   b.publishedAt.localeCompare(a.publishedAt),
 );
 

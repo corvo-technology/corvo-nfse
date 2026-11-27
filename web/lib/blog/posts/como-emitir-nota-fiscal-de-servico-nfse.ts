@@ -31,7 +31,7 @@ export const post: BlogPost = {
     },
     {
       kind: "p",
-      text: "Quem vende **produto** emite outra nota, a NF-e. É outro assunto, e a Corvo não emite esse tipo de nota.",
+      text: "Quem vende **produto** emite outra nota, a NF-e. É outro assunto: veja [o que é NF-e e como emitir](/pt/blog/o-que-e-nf-e-como-emitir-nota-fiscal-de-produto) e [qual nota emitir](/pt/blog/nfse-nfe-ou-nfce-qual-nota-fiscal-emitir).",
     },
     {
       kind: "p",
@@ -91,7 +91,7 @@ export const post: BlogPost = {
     },
     {
       kind: "p",
-      text: "A Corvo **não** emite nota de produto (NF-e), não atende empresas fora do MEI e do Simples Nacional e não gera a guia do DAS.",
+      text: "A Corvo emite nota de produto (NF-e) e de balcão (NFC-e) só em teste por enquanto. Ela também não atende empresas fora do MEI e do Simples Nacional e não gera a guia do DAS.",
     },
     { kind: "h2", text: "E se eu não entendo de imposto?" },
     {
@@ -114,7 +114,7 @@ export const post: BlogPost = {
     },
     {
       q: "A Corvo emite nota de produto?",
-      a: "Não. A Corvo emite só NFS-e, a nota de serviço. Nota de produto (NF-e) e nota de varejo (NFC-e) não fazem parte do que ela oferece.",
+      a: "Em teste, sim. A NFS-e, a nota de serviço, já sai de verdade. A NF-e (nota de produto) e a NFC-e (nota de balcão) estão disponíveis só em teste (homologação), sem valor fiscal, e a produção chega em breve.",
     },
     {
       q: "Quanto custa emitir a primeira nota?",
