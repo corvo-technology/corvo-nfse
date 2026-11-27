@@ -269,11 +269,11 @@ describePostgres('Asaas connector through the real pipeline', () => {
     );
     await drain();
     expect(issuance.commands).toHaveLength(0);
-    const rows: Array<{ fiscal_state: string }> = await db.query(
-      `SELECT fiscal_state FROM ${t('integration_operations')}`,
+    const rows: Array<{ block_reason: string | null }> = await db.query(
+      `SELECT block_reason FROM ${t('integration_operations')}`,
     );
     expect(rows).toHaveLength(1);
-    expect(rows[0].fiscal_state).not.toBe('issued');
+    expect(rows[0].block_reason).toBe('customer_tax_id_missing');
   });
 
   it('with "cancel on refund" on, a refund after the invoice asks for that invoice to be cancelled, once', async () => {
