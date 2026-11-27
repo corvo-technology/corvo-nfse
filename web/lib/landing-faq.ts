@@ -11,6 +11,8 @@ import { REPO_URL } from "@/lib/repo";
 export const FAQ_ITEMS = [
   { id: "coverage", path: "/docs/municipalities" },
   { id: "issues", path: "/docs" },
+  // The three types of invoice: the answer links to the NF-e page and, as a second link, to the NFC-e page.
+  { id: "types", path: "/nf-e", extra: { path: "/nfc-e" } },
   // The visible link goes to the pricing section of the landing; machines get the landing itself.
   { id: "companies", path: "", anchor: "#pricing" },
   { id: "payments", path: "/docs/payment-integrations" },

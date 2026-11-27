@@ -90,7 +90,7 @@ export function IntegrationsSection() {
         <div className="relative grid items-center gap-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)] lg:gap-14">
           <div className="min-w-0">
             <h2 className="max-w-[480px] text-balance text-[clamp(32px,4.4vw,56px)] font-semibold leading-[1.02] tracking-[-0.035em] text-ink">{t("title")}</h2>
-            <p className="mt-5 max-w-[460px] text-[16px] leading-relaxed text-ink-2 text-pretty">{t("description")}</p>
+            <p className="mt-5 max-w-[460px] text-[16px] leading-relaxed text-ink-2 text-pretty">{t("description", { count: INTEGRATION_PLATFORMS.length })}</p>
 
             <ol className="mt-8 flex flex-col gap-4">
               {STEPS.map((step, index) => (

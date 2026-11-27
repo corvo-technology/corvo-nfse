@@ -826,8 +826,8 @@
   },
   "Hero": {
     "badge": "Tax invoice infrastructure for developers",
-    "title": "Issue NFS-e through an API or an AI agent.",
-    "subtitle": "Send the sale data and Corvo issues the NFS-e (Brazilian service invoice) for your MEI or Simples Nacional company in Brazil. Use it through the API, or ask Claude and Cursor (via MCP).",
+    "title": "Issue invoices through an API or an AI agent.",
+    "subtitle": "Send the sale data and Corvo issues the invoice for your MEI or Simples Nacional company in Brazil: NFS-e (services) and, in test mode, NF-e and NFC-e (goods). Use the API, or ask Claude and Cursor (via MCP).",
     "startFree": "Start free",
     "viewDocs": "View documentation",
     "mono": "Your first invoice is free. No credit card required."
@@ -972,13 +972,13 @@
   },
   "Flow": {
     "eyebrow": "HOW IT WORKS",
-    "title": "From your application to the NFS-e.",
-    "description": "Four steps, from your system to the customer.",
+    "title": "From your application to the invoice.",
+    "description": "Four steps, from your system to the customer. The path is the same for NFS-e, NF-e and NFC-e.",
     "steps": {
       "step1": "Your application sends the data",
-      "step1Desc": "Issuer company, customer and service description.",
+      "step1Desc": "Issuer company, customer, and the service or the goods sold.",
       "step2": "Corvo issues the invoice",
-      "step2Desc": "It signs with the company's certificate and sends it to the Receita.",
+      "step2Desc": "It signs with the company's certificate and sends it to the government.",
       "step3": "The invoice is ready",
       "step3Desc": "You check the status through the API.",
       "step4": "The customer gets the invoice",
@@ -1003,7 +1003,7 @@
     "description": "From the small SaaS to the large ERP: one API to issue invoices.",
     "saas": {
       "title": "SaaS",
-      "description": "Issue NFS-e in your product without building the tax side."
+      "description": "Issue invoices in your product without building the tax side."
     },
     "erp": {
       "title": "ERPs and platforms",
@@ -3300,8 +3300,8 @@
     }
   },
   "LandingIntegrations": {
-    "title": "Sold on Pix? The invoice issues itself.",
-    "description": "Connect Woovi or AbacatePay and Corvo issues the NFS-e for every approved payment, with the customer and product details. No code, no spreadsheet.",
+    "title": "Sold online? The invoice issues itself.",
+    "description": "{count} platforms, from Mercado Pago and Stripe to Hotmart and Kiwify. Connect yours and Corvo issues the NFS-e for every approved payment, with the customer and product details. No code, no spreadsheet.",
     "steps": {
       "connect": {
         "title": "Connect the platform",
@@ -3313,7 +3313,7 @@
       },
       "done": {
         "title": "Done",
-        "body": "Every approved payment becomes an invoice. If the CPF or CNPJ is missing, you complete it on screen and it goes out."
+        "body": "Every approved payment becomes an invoice. CPF or CNPJ missing? The sale waits in Pending sales until you complete it, and the invoice goes out."
       }
     },
     "platforms": {
@@ -3332,12 +3332,12 @@
     "guide": "Read the integrations guide",
     "refund": {
       "title": "Got a refund?",
-      "body": "Corvo cancels the invoice on its own. It's a setting you turn on whenever you want."
+      "body": "Corvo cancels the invoice on its own, if you turn that rule on. On a dispute (chargeback), the sale is only marked for you to decide."
     }
   },
   "LandingFaq": {
     "title": "Frequently asked questions",
-    "description": "What people ask most before integrating NFS-e issuance.",
+    "description": "What people ask most before integrating invoice issuing.",
     "docs": "Read the documentation",
     "items": {
       "coverage": {
@@ -3350,6 +3350,12 @@
         "a": "Yes. You send the sale data and Corvo builds the invoice, signs it with the company's A1 certificate and sends it to the Receita. If you want, it emails the PDF and XML to your customer. Today it serves MEI and Simples Nacional companies.",
         "link": "Read the getting-started guide"
       },
+      "types": {
+        "q": "Which types of invoice does Corvo issue?",
+        "a": "NFS-e (service invoice, on the national standard), NF-e (goods invoice, model 55) and NFC-e (retail receipt, model 65). All three use the same API call (POST /v1/invoices, with the type field), the same key and the same credit. NF-e and NFC-e are in test mode (homologação); production is coming soon.",
+        "link": "Learn about NF-e",
+        "link2": "Learn about NFC-e"
+      },
       "companies": {
         "q": "Can I issue invoices for more than one CNPJ on Corvo?",
         "a": "Yes. The recurring plans (Solo, Equipe, Empresa and Escala) have unlimited companies, each with its own certificate and its own usage, without building a new integration for each one. With single invoices only, no plan, the account has 1 company.",
@@ -3357,7 +3363,7 @@
       },
       "payments": {
         "q": "Which payment platforms does Corvo integrate with?",
-        "a": "Corvo integrates with Woovi and AbacatePay. Once connected, every approved payment becomes an NFS-e automatically, with no code. If there is a refund, the invoice can be cancelled on its own, if you turn that option on.",
+        "a": "Corvo integrates with Mercado Pago, Stripe, Asaas, Pagar.me, Woovi, AbacatePay and PushinPay (payments), and with Hotmart, Kiwify, Eduzz and Monetizze (info products). Every approved payment becomes an NFS-e on its own, with no code. If there is a refund, the invoice can be cancelled on its own, if you turn that rule on.",
         "link": "See how to connect"
       },
       "sdks": {
