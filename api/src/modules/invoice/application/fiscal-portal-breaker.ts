@@ -1,6 +1,12 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type Redis from 'ioredis';
+import {
+  NetworkError,
+  ServerError,
+  TimeoutError,
+  TooManyRequestsError,
+} from 'open-nfse';
 import type { FiscalPortalConfig } from '@/infra/config/configuration.types';
 import { REDIS_CLIENT } from '@/infra/redis/redis.constants';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
@@ -15,6 +21,19 @@ const FAILURE_WINDOW_MS = 15 * 60_000;
 /** Failures are also counted per minute, so the ops alert can ask "how many in the last N minutes". */
 const MINUTE_MS = 60_000;
 const BUCKET_TTL_MS = 20 * MINUTE_MS;
+
+/**
+ * True only when the portal really did not answer (timeout, connection error, 5xx, 429).
+ * An answer such as HTTP 400, a rejection or our own bug is not an outage and must not open the breaker.
+ */
+export function isPortalOutage(error: unknown): boolean {
+  return (
+    error instanceof NetworkError ||
+    error instanceof TimeoutError ||
+    error instanceof ServerError ||
+    error instanceof TooManyRequestsError
+  );
+}
 
 /** The portal is paused: the job waits until `retryAt` without spending an attempt. */
 export class PortalUnavailableError extends Error {
@@ -96,12 +115,14 @@ export class FiscalPortalBreaker {
     const failures = this.key(environment, 'failures');
     const count = await this.redis.incr(failures);
     await this.redis.pexpire(failures, FAILURE_WINDOW_MS);
+    // First failure after a quiet window: a new outage begins, so an old start time must not survive.
+    if (count === 1) await this.redis.del(this.key(environment, 'since'));
     if (count < this.settings.breakerThreshold) return;
     const now = Date.now();
     const cooldown = this.settings.breakerCooldownMs;
     // `since` outlives one cooldown so the banner stays up between trials, and expires on its
     // own if no call ever tries the portal again.
-    const sinceTtl = cooldown * 3;
+    const sinceTtl = cooldown * 2;
     await this.redis
       .multi()
       .set(
