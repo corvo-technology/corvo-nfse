@@ -19,6 +19,7 @@ import type { NfeDocument } from '../domain/nfe-document';
 import { INfeDocumentRepository } from '../domain/nfe-document.repository';
 import type { NfeStatus } from '../domain/nfe-status';
 import { nfeInvalidState, nfeNotFound } from './nfe-errors';
+import { endpointTpEmis } from '@/infra/external/nfe/sefaz/endpoints';
 import { nfeIssuerOf } from './nfe-issuer';
 import { reconcileMessage } from './nfe-messages';
 import {
@@ -93,7 +94,13 @@ export class NfeConsultService {
     );
     const uf = nfeIssuerOf(company, settings).uf;
     const model = snapshot.model;
-    const authority = this.access.breakerAuthority(uf, environment, model);
+    const tpEmis = endpointTpEmis(snapshot.accessKey ?? '');
+    const authority = this.access.breakerAuthority(
+      uf,
+      environment,
+      model,
+      tpEmis,
+    );
 
     if (mode === 'automatic') {
       try {
@@ -111,7 +118,13 @@ export class NfeConsultService {
       tenantId,
       environment,
     );
-    const ctx = this.access.context(uf, environment, certificate, model);
+    const ctx = this.access.context(
+      uf,
+      environment,
+      certificate,
+      model,
+      tpEmis,
+    );
     const gateway = this.gateways.get<SignedNfe>(gatewayTypeOf(model));
     const consult = () =>
       gateway.consult.consultByKey(

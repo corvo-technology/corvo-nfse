@@ -12,6 +12,7 @@ import { ApplicationCertificateDecryptor } from '@/modules/certificate/applicati
 import type {
   AuthorityEndpoint,
   AuthorityId,
+  TpEmis,
   Uf,
 } from '@/modules/fiscal-core/domain/ports/authority.port';
 import type { SigningContext } from '@/modules/fiscal-core/domain/ports/gateway.port';
@@ -63,7 +64,9 @@ export class NfeSefazAccess {
     );
   }
 
-  authorityOf(uf: Uf, model: 55 | 65 = 55): AuthorityId {
+  /** The authority that serves the note: the SVC of the UF for `tpEmis` 6 and 7, the origin otherwise. */
+  authorityOf(uf: Uf, model: 55 | 65 = 55, tpEmis: TpEmis = 1): AuthorityId {
+    if (model === 55 && (tpEmis === 6 || tpEmis === 7)) return UF_TABLE[uf].svc;
     return model === 65 ? UF_TABLE[uf].authorizer65 : UF_TABLE[uf].authorizer55;
   }
 
@@ -71,8 +74,9 @@ export class NfeSefazAccess {
     uf: Uf,
     environment: ExecutionEnvironment,
     model: 55 | 65 = 55,
+    tpEmis: TpEmis = 1,
   ): string {
-    const authority = this.authorityOf(uf, model);
+    const authority = this.authorityOf(uf, model, tpEmis);
     const tpAmb = this.tpAmb(environment);
     return model === 65
       ? nfceBreakerAuthority(authority, tpAmb)
@@ -124,6 +128,7 @@ export class NfeSefazAccess {
     environment: ExecutionEnvironment,
     certificate: LoadedCertificate,
     model: 55 | 65 = 55,
+    tpEmis: TpEmis = 1,
   ): SigningContext {
     const tpAmb = this.tpAmb(environment);
     let target: AuthorityEndpoint;
@@ -132,14 +137,14 @@ export class NfeSefazAccess {
         uf,
         tpAmb,
         model,
-        tpEmis: 1,
+        tpEmis,
         service: 'NfeAutorizacao',
       });
     } catch (error) {
       // Only the simulator may go on without an endpoint table row.
       if (!this.isSimulated(environment)) throw error;
       target = {
-        authority: this.authorityOf(uf, model),
+        authority: this.authorityOf(uf, model, tpEmis),
         url: '',
         soapAction: '',
         version: '4.00',

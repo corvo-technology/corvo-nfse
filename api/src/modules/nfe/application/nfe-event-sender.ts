@@ -1,3 +1,4 @@
+import { endpointTpEmis } from '@/infra/external/nfe/sefaz/endpoints';
 import { Inject, Injectable } from '@nestjs/common';
 import type { SignedNfe } from '@/infra/external/nfe/sefaz/signed-nfe';
 import { FiscalDocumentRegistry } from '@/modules/fiscal-core/application/fiscal-document.registry';
@@ -86,10 +87,12 @@ export class NfeEventSender {
     }
 
     const model = doc.toSnapshot().model;
+    const tpEmis = endpointTpEmis(doc.toSnapshot().accessKey ?? '');
     const authority = this.access.breakerAuthority(
       issuer.uf,
       environment,
       model,
+      tpEmis,
     );
     try {
       await this.breaker.assertAvailable(environment, authority);
@@ -109,7 +112,13 @@ export class NfeEventSender {
     }
 
     const snapshot = doc.toSnapshot();
-    const ctx = this.access.context(issuer.uf, environment, certificate, model);
+    const ctx = this.access.context(
+      issuer.uf,
+      environment,
+      certificate,
+      model,
+      tpEmis,
+    );
     const gateway = this.gateways.get<SignedNfe>(gatewayTypeOf(model));
     const text = event.text ?? '';
     const outcome: GatewayOutcome<EventReceipt> = cancel
