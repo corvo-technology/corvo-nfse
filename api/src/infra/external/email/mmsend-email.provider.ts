@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
+import { formatFromHeader } from './email-templates';
 
 export type SendEmailInput = {
   to: string[];
@@ -13,6 +14,10 @@ export type SendEmailInput = {
     contentType: string;
   }>;
   idempotencyKey?: string;
+  /** Sender name shown to the reader (the issuing company); the address stays Corvo's. */
+  fromName?: string;
+  /** Where the reader's reply goes. */
+  replyTo?: string;
 };
 
 export type SendEmailOutput = {
@@ -26,6 +31,7 @@ export class PermanentEmailError extends Error {}
 export class MillionSendEmailProvider {
   private readonly client: Resend | null;
   private readonly from: string;
+  private readonly fromAddress: string;
 
   constructor(private readonly config: ConfigService) {
     const apiKey = this.config.get<string>('RESEND_API_KEY', '');
@@ -43,6 +49,7 @@ export class MillionSendEmailProvider {
     }
     this.client = apiKey ? new Resend(apiKey, { baseUrl }) : null;
     this.from = from;
+    this.fromAddress = /<([^<>]+)>\s*$/.exec(from)?.[1] ?? from.trim();
   }
 
   async send(input: SendEmailInput): Promise<SendEmailOutput> {
@@ -52,7 +59,10 @@ export class MillionSendEmailProvider {
 
     const result = await this.client.emails.send(
       {
-        from: this.from,
+        from: input.fromName
+          ? formatFromHeader(input.fromName, this.fromAddress)
+          : this.from,
+        ...(input.replyTo ? { replyTo: input.replyTo } : {}),
         to: input.to,
         subject: input.subject,
         html: input.html,
