@@ -18,6 +18,7 @@
       "pushinpay": "Sale (PushinPay)",
       "stripe": "Sale (Stripe)",
       "kiwify": "Sale (Kiwify)",
+      "pagarme": "Sale (Pagar.me)",
       "hotmart": "Sale (Hotmart)",
       "generic": "Integration sale"
     }
@@ -2927,6 +2928,7 @@
       "pushinpay": "Pix, boleto and recurring Pix paid on PushinPay.",
       "stripe": "Card, Pix and boleto paid on Stripe.",
       "kiwify": "Approved sales on Kiwify.",
+      "pagarme": "Orders paid on Pagar.me (card, Pix and boleto).",
       "hotmart": "Digital product purchases paid on Hotmart.",
       "other": "Confirmed payments."
     },
@@ -2956,7 +2958,8 @@
         }
       },
       "hints": {
-        "apiKey": "Optional. Do not use the secret key (sk_). Create a read-only restricted key (rk_): Corvo only looks up the tax ID, e-mail and sale items; it cannot charge, refund or change anything. Without it, sales missing a tax ID go to \"Pending sales\"."
+        "apiKey": "Optional. Do not use the secret key (sk_). Create a read-only restricted key (rk_): Corvo only looks up the tax ID, e-mail and sale items; it cannot charge, refund or change anything. Without it, sales missing a tax ID go to \"Pending sales\".",
+        "secretKey": "Optional. Your Pagar.me account secret key (sk_). With it Corvo checks the X-Hub-Signature of every notice; it is stored encrypted and never shown again."
       },
       "awaitingSecret": {
         "title": "Webhook still to connect",

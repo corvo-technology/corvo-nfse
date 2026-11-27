@@ -1,0 +1,22 @@
+{
+  "id": "hook_Rr5Ss4Tt3Uu2Vv1W",
+  "account": { "id": "acc_jZkdN857et650oNv", "name": "Lojinha" },
+  "type": "charge.refunded",
+  "created_at": "2022-07-01T10:00:00Z",
+  "data": {
+    "id": "ch_d22356Jf4WuGr8no",
+    "code": "1303624",
+    "amount": 12356,
+    "paid_amount": 12356,
+    "canceled_amount": 12356,
+    "status": "canceled",
+    "currency": "BRL",
+    "payment_method": "credit_card",
+    "customer": { "id": "cus_oy23JRQCM1cvzlmD", "name": "FABIO " },
+    "last_transaction": {
+      "id": "tran_opAqDj2390S1lKQO",
+      "status": "refunded",
+      "operation_type": "refund"
+    }
+  }
+}

@@ -2795,7 +2795,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     municipalities: municipalitiesPage("en"),
     "payment-integrations": {
       title: "Payment integrations",
-      description: "Connect Woovi, AbacatePay, Stripe, PushinPay, Hotmart or Kiwify and issue the NFS-e automatically for every confirmed payment.",
+      description: "Connect Woovi, AbacatePay, Stripe, PushinPay, Hotmart, Kiwify or Pagar.me and issue the NFS-e automatically for every confirmed payment.",
       blocks: [
         {
           kind: "text",
@@ -2889,6 +2889,19 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Invoice amount: `total` uses the amount paid (`full_price`); `mine` (\"my share\") subtracts coproducer and affiliate commissions. If the notice has no commissions, the sale goes to attention and does not issue.",
             "A refund (`PURCHASE_REFUNDED`) and a chargeback (`PURCHASE_CHARGEBACK`) cancel the invoice only if the rule has automatic cancellation on; a partial refund is ignored. A protest (`PURCHASE_PROTEST`) only flags the sale, without cancelling.",
             "Hotmart does not report the environment in the notice: the environment chosen on the connection applies. The notice fields still need to be confirmed with a real notice.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "Pagar.me" },
+        {
+          kind: "list",
+          items: [
+            "Credentials: none required. Corvo generates the `webhookSecret` (already inside the `webhookUrl`), the `webhookUser` and the `webhookPassword` (basic authentication), shown only once when the connection is created. Copy and keep them. Optionally give the `secretKey` (the account secret key, `sk_...`) so Corvo checks the signature.",
+            "Steps: (1) in the Pagar.me Dashboard, under Settings > Webhooks, create a webhook with the `webhookUrl` and the events `order.paid`, `charge.refunded`, `order.canceled`, `charge.chargedback` and `chargeback.received`; (2) if there are user and password fields, fill them with the `webhookUser` and `webhookPassword`; (3) make a test sale. Corvo never calls the Pagar.me API: everything comes in the notice.",
+            "Authentication: the Pagar.me v5 docs describe no webhook signature. Corvo requires the connection secret in the address (constant-time comparison); if the call carries basic authentication (`Authorization: Basic`), it must match the `webhookUser` and `webhookPassword`; and if you gave the `secretKey`, the `X-Hub-Signature` header (HMAC-SHA1 of the raw body with the key, as `sha1=...`) must be right.",
+            "Each paid order (`order.paid`, `status` `paid`) becomes one invoice, identified by `pagarme:<order id>`. The amount is the order total (`amount`, in cents, shipping and discounts included). Items come from `items` (description and quantity). The tax ID comes from `customer.document`; without it, or with a document that is not a CPF/CNPJ (`document_type`), the sale goes to \"Pending sales\" (`customer_tax_id_missing`). The address comes from `customer.address`, or the shipping address.",
+            "BRL only: another currency is blocked with `unsupported_currency`. If the buyer has no e-mail, the invoice is issued without sending.",
+            "A refund (`charge.refunded`) and a cancelled order (`order.canceled`) link to the sale by charge or order id and cancel the invoice only if the rule has automatic cancellation on. A chargeback (`charge.chargedback`, `chargeback.received`) only flags the sale (`refund_after_invoice`), without cancelling. A partial refund (`charge.partial_canceled`) is ignored.",
+            "The `chargeback.received` format and whether `document_type` and `customer.address` come in the notice still need to be confirmed with a real sale.",
           ],
         },
         { kind: "heading", level: 2, body: "Sales that need attention" },
