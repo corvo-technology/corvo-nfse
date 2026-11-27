@@ -17,7 +17,6 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import type { Dispatcher } from 'undici';
 import { GovRouteSelector } from '@/modules/portal-reachability/gov-route.selector';
-import { certificateCacheKey } from '@/infra/external/fiscal-proxy/gov-proxy';
 import {
   NfseClient,
   parsePfx,

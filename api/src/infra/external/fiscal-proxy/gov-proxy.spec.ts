@@ -52,10 +52,9 @@ describe('GovProxyDispatchers', () => {
 
   it('keeps the client certificate in requestTls and never disables verification', () => {
     new GovProxyDispatchers(PROXY).for('a', pem, 'CA');
-    const options = (ProxyAgent as unknown as jest.Mock).mock.calls[0][0] as {
-      uri: string;
-      requestTls: Record<string, unknown>;
-    };
+    const [[options]] = (ProxyAgent as unknown as jest.Mock).mock.calls as [
+      [{ uri: string; requestTls: Record<string, unknown> }],
+    ];
     expect(options.uri).toBe(PROXY);
     expect(options.requestTls).toEqual({
       key: 'K',
