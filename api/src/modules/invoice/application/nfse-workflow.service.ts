@@ -32,6 +32,13 @@ import {
 } from '@/infra/storage/domain/document-storage';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
 import { FiscalPortalBreaker, isPortalOutage } from './fiscal-portal-breaker';
+import {
+  PORTAL_DPS_QUERY_REJECTED,
+  PORTAL_DPS_QUERY_REJECTED_MESSAGE,
+  isPortalLookupRejected,
+  portalBodyOf,
+  reconciliationJobKey,
+} from './reconciliation-job';
 import { failureMessage } from '@/infra/external/nfse/connection-failure';
 import {
   DpsNumberingService,
@@ -318,6 +325,8 @@ export class NfseWorkflowService {
     try {
       result = await this.providers.resolve(invoice.environment).issue(payload);
     } catch (error: unknown) {
+      if (isPortalLookupRejected(error))
+        return this.stopOnRejectedLookup(invoice, error, 'reconciliation');
       if (isPortalOutage(error))
         await this.breaker?.recordFailure(invoice.environment);
       this.logReconciliation('warn', invoice, failureKind(error), {
@@ -325,6 +334,7 @@ export class NfseWorkflowService {
         nextDelayMs: reconciliationDelayMs((data.attemptCount ?? 0) + 1),
         errorName: error instanceof Error ? error.name : undefined,
         reason: safeReason(error instanceof Error ? error.message : undefined),
+        portalBody: portalBodyOf(error) || undefined,
       });
       invoice.setReconciliationRequired(
         failureMessage(error, 'Uncertain fiscal result'),
@@ -816,7 +826,8 @@ export class NfseWorkflowService {
     const lastCode = invoice.toSnapshot().lastErrorCode;
     if (
       lastCode === DPS_USED_BY_OTHER_NFSE ||
-      lastCode === PORTAL_NFSE_WRONG_ENVIRONMENT
+      lastCode === PORTAL_NFSE_WRONG_ENVIRONMENT ||
+      lastCode === PORTAL_DPS_QUERY_REJECTED
     )
       return;
     // Never reserve a DPS number here: without one there is nothing to look up.
@@ -843,7 +854,10 @@ export class NfseWorkflowService {
         source: 'manual_review_sweep',
         errorName: error instanceof Error ? error.name : undefined,
         reason: safeReason(error instanceof Error ? error.message : undefined),
+        portalBody: portalBodyOf(error) || undefined,
       });
+      if (isPortalLookupRejected(error))
+        await this.markLookupRejected(invoice, error);
       return;
     }
     await this.breaker?.recordSuccess(invoice.environment);
@@ -942,9 +956,75 @@ export class NfseWorkflowService {
       if (isPortalOutage(error))
         await this.breaker?.recordFailure(invoice.environment);
       const reason = error instanceof Error ? error.message : 'no answer';
-      await this.keepInReview(invoice, `Discard not confirmed: ${reason}`);
+      const body = portalBodyOf(error);
+      this.logReconciliation('warn', invoice, failureKind(error), {
+        source: 'manual_review_discard',
+        reason: safeReason(reason),
+        portalBody: body || undefined,
+      });
+      await this.keepInReview(
+        invoice,
+        body
+          ? `Discard not confirmed: ${reason}. Portal: ${body}`
+          : `Discard not confirmed: ${reason}`,
+      );
       return null;
     }
+  }
+
+  /**
+   * The portal answered the DPS lookup with HTTP 400: the lookup itself was refused, so asking
+   * again changes nothing. No new attempt is queued; the invoice goes to manual review with the
+   * portal's (sanitized) words so a person can see why.
+   */
+  private async stopOnRejectedLookup(
+    invoice: Invoice,
+    error: unknown,
+    source: string,
+  ): Promise<void> {
+    this.logReconciliation('warn', invoice, 'lookup_rejected', {
+      source,
+      status: 400,
+      portalBody: portalBodyOf(error) || undefined,
+    });
+    await this.markLookupRejected(invoice, error);
+  }
+
+  private async markLookupRejected(
+    invoice: Invoice,
+    error: unknown,
+  ): Promise<void> {
+    if (
+      invoice.status === 'manual_review' &&
+      invoice.toSnapshot().lastErrorCode === PORTAL_DPS_QUERY_REJECTED
+    )
+      return;
+    const detail = portalBodyOf(error);
+    const reason = detail
+      ? `${PORTAL_DPS_QUERY_REJECTED_MESSAGE} Detalhe do portal: ${detail}`
+      : PORTAL_DPS_QUERY_REJECTED_MESSAGE;
+    invoice.setRejected(
+      PORTAL_DPS_QUERY_REJECTED,
+      PORTAL_DPS_QUERY_REJECTED_MESSAGE,
+      detail || undefined,
+    );
+    if (invoice.status === 'manual_review') {
+      await this.invoices.save(invoice, invoice.tenantId);
+      return;
+    }
+    if (invoice.status === 'processing')
+      await this.lifecycle.transition(
+        invoice,
+        invoice.transitionTo('reconciliation_required', reason),
+      );
+    await this.lifecycle.transition(
+      invoice,
+      invoice.transitionTo('manual_review', reason),
+    );
+    await this.webhooks.publish(invoice, 'nfse.invoice.manual_review', {
+      reason,
+      errorCode: PORTAL_DPS_QUERY_REJECTED,
+    });
   }
 
   private async keepInReview(invoice: Invoice, message: string): Promise<void> {
@@ -1332,11 +1412,13 @@ export class NfseWorkflowService {
         uncertainSince: uncertainSince.toISOString(),
       },
       {
+        // One chain per invoice: a second job for the same attempt slot is ignored by the queue.
+        idempotencyKey: reconciliationJobKey(invoice.id, attemptCount),
         attempts: 5,
         backoffMs: 30000,
         delayMs: reconciliationDelayMs(attemptCount),
         removeOnComplete: true,
-        removeOnFail: 1000,
+        removeOnFail: true,
       },
     );
   }
